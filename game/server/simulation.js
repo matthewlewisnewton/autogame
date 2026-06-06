@@ -6,6 +6,9 @@ const crypto = require('crypto');
 const {
   TICK_RATE,
   MOVE_SPEED,
+  SLIPPERY_ACCEL,
+  SLIPPERY_FRICTION,
+  NORMAL_STOP_FRICTION,
   INPUT_STALE_MS,
   DETECTION_RADIUS,
   ENEMY_ATTACK_RANGE,
@@ -33,7 +36,7 @@ const {
   SPIRE_EDGE_HAZARD_DAMAGE,
   SPIRE_EDGE_HAZARD_COOLDOWN_MS,
 } = require('./config');
-const { PASSAGE_WIDTH, sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } = require('./dungeon');
+const { PASSAGE_WIDTH, sampleFloorY, sampleFloorSurface, DEFAULT_FLOOR_Y, resolveFloorY } = require('./dungeon');
 const { applyLeechHeal, getFrenziedCombatMultipliers, checkFrenziedTelegraph } = require('./enemyVariants');
 const { isPlayingPhase, isLobbyPhase } = require('./lobbies');
 const { getEncounterBossId, isEncounterDormant, isEncounterLocked } = require('./encounters');
@@ -445,6 +448,14 @@ function applyEdgeHazardResponse(playerId, player, layout) {
 /** @deprecated alias — use applyEdgeHazardResponse */
 const applySpireEdgeHazardResponse = applyEdgeHazardResponse;
 
+function playerMoveSpeedScale(player, now) {
+  let scale = 1;
+  if (now < (player.blockingUntil || 0)) scale *= 0.2;
+  if (now < (player.rallyUntil || 0)) scale *= (player.rallySpeedMultiplier || 1);
+  if (now < (player.anchorUntil || 0)) scale *= (player.anchorSpeedMultiplier || 0.7);
+  return scale;
+}
+
 /**
  * Apply one tick of movement for all players with active input.
  * Uses a fixed step (MOVE_SPEED / TICK_RATE) so client and server stay aligned.
@@ -470,32 +481,113 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
       player.inputActive = false;
     }
 
-    if (inputFresh) {
-      const mag = Math.hypot(player.inputDx || 0, player.inputDz || 0);
-      if (mag >= 1e-8) {
-        let dx = player.inputDx;
-        let dz = player.inputDz;
-        if (mag > 1) { dx /= mag; dz /= mag; }
+    if (player.vx == null) player.vx = 0;
+    if (player.vz == null) player.vz = 0;
 
-        // Slow movement to 20% while guard_block is active
-        let playerStep = now < (player.blockingUntil || 0) ? step * 0.2 : step;
-        // rally_cry: boost move speed while the buff is active
-        if (now < (player.rallyUntil || 0)) playerStep *= (player.rallySpeedMultiplier || 1);
-        // ground_anchor: slow move speed while the anchor window is active
-        if (now < (player.anchorUntil || 0)) playerStep *= (player.anchorSpeedMultiplier || 0.7);
+    const floorSurface = sampleFloorSurface(ctx.layout, player.x, player.z);
 
-        const prevX = player.x;
-        const prevZ = player.z;
-        const result = tryPlayerMove(player.x, player.z, dx, dz, playerStep, ctx);
+    if (floorSurface === 'slippery') {
+      const speedScale = playerMoveSpeedScale(player, now);
+      const maxSpeed = MOVE_SPEED * speedScale;
+      let inputDx = 0;
+      let inputDz = 0;
+      let inputMag = 0;
+
+      if (inputFresh) {
+        inputMag = Math.hypot(player.inputDx || 0, player.inputDz || 0);
+        if (inputMag >= 1e-8) {
+          inputDx = player.inputDx;
+          inputDz = player.inputDz;
+          if (inputMag > 1) {
+            inputDx /= inputMag;
+            inputDz /= inputMag;
+          } else {
+            inputMag = Math.min(1, inputMag);
+          }
+
+          const accel = (SLIPPERY_ACCEL / TICK_RATE) * inputMag * speedScale;
+          player.vx += inputDx * accel;
+          player.vz += inputDz * accel;
+        }
+      } else {
+        player.vx *= SLIPPERY_FRICTION;
+        player.vz *= SLIPPERY_FRICTION;
+      }
+
+      let speed = Math.hypot(player.vx, player.vz);
+      if (speed > maxSpeed) {
+        player.vx = (player.vx / speed) * maxSpeed;
+        player.vz = (player.vz / speed) * maxSpeed;
+        speed = maxSpeed;
+      }
+
+      const prevX = player.x;
+      const prevZ = player.z;
+      let moved = false;
+
+      if (speed >= 1e-4) {
+        const dispX = player.vx / TICK_RATE;
+        const dispZ = player.vz / TICK_RATE;
+        const dispMag = Math.hypot(dispX, dispZ);
+        const result = tryPlayerMove(
+          player.x,
+          player.z,
+          dispX / dispMag,
+          dispZ / dispMag,
+          dispMag,
+          ctx
+        );
         player.x = result.x;
         player.z = result.z;
-        player.y = resolveFloorY(sampleFloorY(ctx.layout, result.x, result.z));
-        if (Number.isFinite(player.inputRotation)) {
-          player.rotation = player.inputRotation;
-        }
+        player.vx = (result.x - prevX) * TICK_RATE;
+        player.vz = (result.z - prevZ) * TICK_RATE;
+        moved = result.moved || player.x !== prevX || player.z !== prevZ;
+      } else {
+        player.vx = 0;
+        player.vz = 0;
+      }
+
+      player.y = resolveFloorY(sampleFloorY(ctx.layout, player.x, player.z));
+
+      if (inputFresh && Number.isFinite(player.inputRotation)) {
+        player.rotation = player.inputRotation;
+      }
+      if (moved) {
         player.lastMoveTime = now;
-        if (result.moved || player.x !== prevX || player.z !== prevZ) {
-          player.persistenceDirty = true;
+        player.persistenceDirty = true;
+      }
+    } else {
+      player.vx *= NORMAL_STOP_FRICTION;
+      player.vz *= NORMAL_STOP_FRICTION;
+      if (NORMAL_STOP_FRICTION === 0) {
+        player.vx = 0;
+        player.vz = 0;
+      }
+
+      if (inputFresh) {
+        const mag = Math.hypot(player.inputDx || 0, player.inputDz || 0);
+        if (mag >= 1e-8) {
+          let dx = player.inputDx;
+          let dz = player.inputDz;
+          if (mag > 1) { dx /= mag; dz /= mag; }
+
+          let playerStep = now < (player.blockingUntil || 0) ? step * 0.2 : step;
+          if (now < (player.rallyUntil || 0)) playerStep *= (player.rallySpeedMultiplier || 1);
+          if (now < (player.anchorUntil || 0)) playerStep *= (player.anchorSpeedMultiplier || 0.7);
+
+          const prevX = player.x;
+          const prevZ = player.z;
+          const result = tryPlayerMove(player.x, player.z, dx, dz, playerStep, ctx);
+          player.x = result.x;
+          player.z = result.z;
+          player.y = resolveFloorY(sampleFloorY(ctx.layout, result.x, result.z));
+          if (Number.isFinite(player.inputRotation)) {
+            player.rotation = player.inputRotation;
+          }
+          player.lastMoveTime = now;
+          if (result.moved || player.x !== prevX || player.z !== prevZ) {
+            player.persistenceDirty = true;
+          }
         }
       }
     }

@@ -487,6 +487,7 @@ const DEBUG_SCENARIOS = new Set([
   'extracted-in-hub',
   'suspended-run-hub',
   'sloped-dungeon',
+  'slippery-floor-lab',
   'key-item-cooldown',
   'medic-kit-ready',
   'guard-block-ready',
@@ -720,6 +721,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'arena-trials-boss-approach',
   'arena-trials-boss-low-hp',
   'annex-overseer-ready',
+  'slippery-floor-lab',
 ]);
 
 function shouldSkipDefaultEnemySpawn(state) {

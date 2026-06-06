@@ -8,12 +8,14 @@ const PLAYER_RADIUS = 0.5;
 
 import {
 	sampleFloorY as _sampleFloorY,
+	sampleFloorSurface as _sampleFloorSurface,
 	DEFAULT_FLOOR_Y as _DEFAULT_FLOOR_Y,
 	resolveFloorY as _resolveFloorY,
 } from '../shared/floorSampling.esm.js';
 
 export {
 	_sampleFloorY as sampleFloorY,
+	_sampleFloorSurface as sampleFloorSurface,
 	_DEFAULT_FLOOR_Y as DEFAULT_FLOOR_Y,
 	_resolveFloorY as resolveFloorY,
 };

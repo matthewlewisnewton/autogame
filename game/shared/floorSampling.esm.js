@@ -85,3 +85,47 @@ export function sampleFloorY(layout, x, z) {
 	}
 	return null;
 }
+
+/**
+ * Return the floor surface type at world (x, z).
+ * Uses the same room/platform containment rules as `sampleFloorY`.
+ * Platforms inherit `'normal'` unless explicitly tagged; rooms default to `'normal'`.
+ *
+ * @param {object} layout - dungeon layout from generateLayout()
+ * @param {number} x - world X coordinate
+ * @param {number} z - world Z coordinate
+ * @returns {'normal'|'slippery'}
+ */
+export function sampleFloorSurface(layout, x, z) {
+	if (!layout) return 'normal';
+
+	if (layout.platforms) {
+		for (const platform of layout.platforms) {
+			const halfW = platform.width / 2;
+			const halfD = platform.depth / 2;
+			if (
+				x >= platform.x - halfW &&
+				x <= platform.x + halfW &&
+				z >= platform.z - halfD &&
+				z <= platform.z + halfD
+			) {
+				return platform.floorSurface === 'slippery' ? 'slippery' : 'normal';
+			}
+		}
+	}
+
+	for (const room of layout.rooms) {
+		const halfW = room.width / 2;
+		const halfD = room.depth / 2;
+		if (
+			x >= room.x - halfW &&
+			x <= room.x + halfW &&
+			z >= room.z - halfD &&
+			z <= room.z + halfD
+		) {
+			return room.floorSurface === 'slippery' ? 'slippery' : 'normal';
+		}
+	}
+
+	return 'normal';
+}

@@ -1,6 +1,6 @@
 // ── Floor Height Sampling (imported from shared module) ──
 
-const { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } = require('../shared/floorSampling.js');
+const { sampleFloorY, sampleFloorSurface, DEFAULT_FLOOR_Y, resolveFloorY } = require('../shared/floorSampling.js');
 
 // ── Seeded PRNG (Mulberry32) ──
 
@@ -2893,6 +2893,7 @@ module.exports = {
   roomsByRole,
   randomRoomPositionByRole,
   sampleFloorY,
+  sampleFloorSurface,
   resolveFloorY,
   questLayoutSeed,
   normalizeLayoutProfile,

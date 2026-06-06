@@ -1256,6 +1256,72 @@ function applyDebugScenario(socket, name) {
       state.selectedQuestId = 'crystal_rescue';
     }
 
+    if (name === 'slippery-floor-lab') {
+      // Two-room synthetic layout: normal entry room north, slippery ice room south.
+      // Player starts on the slippery side for momentum physics QA. Reachable normally
+      // once ice-level rooms with floorSurface: 'slippery' land in production layouts.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.layout = {
+        profile: 'slippery-floor-lab',
+        passageWidth: 4,
+        rooms: [
+          {
+            role: 'start',
+            x: 0,
+            z: 0,
+            width: 12,
+            depth: 12,
+            floorSurface: 'normal',
+            walls: [],
+          },
+          {
+            x: 0,
+            z: 18,
+            width: 12,
+            depth: 12,
+            floorSurface: 'slippery',
+            walls: [],
+          },
+        ],
+        passages: [
+          { x1: 0, z1: 0, x2: 0, z2: 18, walls: [], corridorLength: 18 },
+        ],
+      };
+      state.layoutSeed = state.layoutSeed || 0;
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      rebuildWallColliders();
+
+      player.ready = true;
+      const slipperyRoom = state.layout.rooms.find((r) => r.floorSurface === 'slippery');
+      player.x = slipperyRoom.x;
+      player.z = slipperyRoom.z;
+      player.vx = 0;
+      player.vz = 0;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      enterPlayingPhase(lobby);
+
+      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+        createDrawDeckFromSelectedDeck(player);
+        initPlayerHand(player);
+        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+        if (!player.pendingSummons) {
+          player.pendingSummons = new Set();
+        }
+      }
+
+      state.enemies = [];
+      state.loot = [];
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
     player.ready = true;
     player.x = spawn.x;
     player.z = spawn.z;
