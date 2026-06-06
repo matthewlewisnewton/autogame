@@ -177,11 +177,15 @@ def scope_audit(workspace, head_before: str, untracked_before: set[str],
 
 
 def commit_verified(workspace, message: str, *, include_harness: bool = False,
+                    include_validation: bool = False,
                     telemetry=None) -> bool:
     """Stage scoped paths + commit + assert HEAD advanced. Ports
     lib.sh::commit_verified (lib.sh:1202-1228). Returns True on success
     (incl. nothing-to-commit) or False on hard failure."""
-    paths = ["."] if include_harness else [".", ":!harness"]
+    if include_harness or include_validation:
+        paths = ["."]
+    else:
+        paths = [".", ":!harness"]
     try:
         workspace.stage(paths)
     except Exception:

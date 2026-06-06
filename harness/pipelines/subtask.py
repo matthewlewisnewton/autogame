@@ -227,6 +227,7 @@ def _subtask_body(ctx: SubtaskContext) -> PipelineResult:
                                      fallback_message=f"{ctx.label}: sub-ticket verified (iter {iteration})",
                                      artifacts_dir=arti,
                                      include_harness=ticket_allows_harness,
+                                     include_validation=ticket_allows_validation,
                                      telemetry=ctx.telemetry):
                 return PipelineResult.ESCALATE
             (ctx.subdir / ".passed").write_text("")

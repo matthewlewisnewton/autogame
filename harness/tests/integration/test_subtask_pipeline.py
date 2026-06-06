@@ -23,7 +23,9 @@ from harness.config.tunables import (
     PipelineTunables, Tunables, VisionTunables,
 )
 from harness.git_helpers import PathScope
+import harness.pipelines.subtask as subtask_pipeline
 from harness.pipelines.subtask import SubtaskContext, subtask
+from harness.pipelines.ticket import _reload_harness_for_subtask
 from harness.prompts.acceptance import OkRcAccept, VerdictAccept
 from harness.roles import Role
 from harness.workspace.ports import PortAllocation
@@ -358,6 +360,76 @@ class TestSubtaskValidationScope:
         assert rc == 1
         assert not (workspace.root / "validation" / "rooms" / "findings.md").exists()
         assert "out-of-scope" in (subdir / "feedback.md").read_text().lower()
+
+
+class TestSubtaskHarnessReload:
+    """Regression: ticket() reloads harness modules between sub-tickets so a
+    validation-allow fix committed in sub-ticket N is active for N+1 without
+    restarting the interpreter."""
+
+    def _agent_touching_game_and_validation(self, name, workspace) -> StubAgent:
+        a = StubAgent(name=name, writable=True)
+        orig_run = a.run
+
+        def run(invocation, ws, *, telemetry):
+            (workspace.root / "game" / "added.txt").write_text("by stub\n")
+            findings = workspace.root / "validation" / "rooms" / "findings.md"
+            findings.parent.mkdir(parents=True, exist_ok=True)
+            findings.write_text("# findings\n")
+            return orig_run(invocation, ws, telemetry=telemetry)
+        a.run = run  # type: ignore[assignment]
+        a.canned_results = [_ok("implementer wrote files")]
+        return a
+
+    def _roster(self, impl):
+        qa_agent = StubAgent(name="qa", writable=False,
+                             canned_stdouts=[_qa_pass_text()],
+                             canned_results=[_ok(_qa_pass_text())])
+        committer = StubAgent(name="committer", writable=True, canned_results=[_ok()])
+        return _StubRoster({
+            "implementer": _make_role("implementer", impl,
+                                       usage_kind=UsageKind.IMPLEMENTER, writable=True,
+                                       scope_allow=["game/**"], scope_deny=["tickets/**"]),
+            "qa:code": _make_role("qa:code", qa_agent,
+                                   acceptance=VerdictAccept(), out_file="qa.txt"),
+            "committer": _make_role("committer", committer, usage_kind=UsageKind.COMMITTER),
+        })
+
+    def test_reload_restores_validation_allow_after_stale_import(self, workspace, subdir,
+                                                                  monkeypatch):
+        (subdir / "ticket.md").write_text(
+            "# Rooms validation\n\nWrite `validation/rooms/findings.md`.\n\n## Verification: code\n"
+        )
+        # Simulate stale in-memory state from before a harness fix landed.
+        monkeypatch.setattr(subtask_pipeline, "_detect_ticket_allows_validation",
+                            lambda _tf: False)
+
+        # Sub-ticket N committed the harness fix (on disk the real detector exists).
+        (workspace.root / "harness").mkdir(exist_ok=True)
+        (workspace.root / "harness" / "validation-allow-fix.txt").write_text("landed\n")
+        subprocess.run(["git", "add", "harness/validation-allow-fix.txt"],
+                       cwd=workspace.root, check=True)
+        subprocess.run(["git", "commit", "-q", "-m", "allow validation scope"],
+                       cwd=workspace.root, check=True)
+
+        impl = self._agent_touching_game_and_validation("impl", workspace)
+        ctx = SubtaskContext(workspace=workspace, roster=self._roster(impl), subdir=subdir,
+                             label="047-test/01-thing",
+                             tunables=_make_tunables(max_iter=2, local_checks=False))
+        (subdir / "handoff.md").write_text("(initial)\n")
+
+        # Without reload the stale stub would revert validation writes.
+        _reload_harness_for_subtask()
+        rc = subtask_pipeline.subtask(ctx)
+
+        assert rc == 0
+        assert (workspace.root / "validation" / "rooms" / "findings.md").read_text() == "# findings\n"
+        assert impl.call_count == 1
+        files_in_commit = subprocess.run(
+            ["git", "show", "--name-only", "--pretty=", "HEAD"],
+            cwd=str(workspace.root), capture_output=True, text=True, check=True,
+        ).stdout.split()
+        assert "validation/rooms/findings.md" in files_in_commit
 
 
 class TestSubtaskQAFail:

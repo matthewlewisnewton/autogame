@@ -5,6 +5,7 @@ ESCALATE (harness/tool failure), or SPLIT (restructured — backlog re-scans).
 """
 from __future__ import annotations
 
+import importlib
 import json
 import re
 import shutil
@@ -14,7 +15,10 @@ from pathlib import Path
 
 from harness.config.tunables import Tunables, get_tunables
 from harness.pipelines.result import PipelineResult
-from harness.pipelines.subtask import SubtaskContext, subtask
+import harness.git_helpers as _git_helpers_mod
+import harness.pipelines.subtask as _subtask_pipeline
+import harness.steps.commit as _commit_mod
+import harness.steps.implement as _implement_mod
 from harness.roles import Roster
 from harness.steps.append_review import append_review_pointer, put_review_fb
 from harness.steps.capture_run import capture_run
@@ -141,6 +145,15 @@ def _carry_scope_conflict_into_feedback(ctx: TicketContext, review_fb: Path,
 _INTEGRATION_REF = "main"
 
 
+def _reload_harness_for_subtask() -> None:
+    """Reload harness modules so a fix committed in sub-ticket N is active
+    when sub-ticket N+1 starts in the same ticket() interpreter."""
+    importlib.reload(_implement_mod)
+    importlib.reload(_git_helpers_mod)
+    importlib.reload(_commit_mod)
+    importlib.reload(_subtask_pipeline)
+
+
 def _rebase_onto_integration(workspace: Repo, base_ref: str,
                              *, integration_ref: str = _INTEGRATION_REF,
                              ticket_name: str = "") -> str:
@@ -260,7 +273,8 @@ def _ticket_body(ctx: TicketContext) -> PipelineResult:
         for sub in subs:
             if (sub / ".passed").exists():
                 continue
-            sub_rc = subtask(SubtaskContext(
+            _reload_harness_for_subtask()
+            sub_rc = _subtask_pipeline.subtask(_subtask_pipeline.SubtaskContext(
                 workspace=ctx.workspace, roster=ctx.roster, subdir=sub,
                 label=f"{ctx.name}/{sub.name}", tunables=ctx.tunables,
                 telemetry=ctx.telemetry,
@@ -468,4 +482,4 @@ def _ticket_body(ctx: TicketContext) -> PipelineResult:
     return PipelineResult.INCOMPLETE
 
 
-__all__ = ["TicketContext", "ticket"]
+__all__ = ["TicketContext", "ticket", "_reload_harness_for_subtask"]

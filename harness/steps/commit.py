@@ -13,7 +13,9 @@ if TYPE_CHECKING:
 
 def commit_with_role(role: "Role", *, workspace, ticket_file: Path, label: str,
                      fallback_message: str, artifacts_dir: Path,
-                     include_harness: bool = False, telemetry=None) -> bool:
+                     include_harness: bool = False,
+                     include_validation: bool = False,
+                     telemetry=None) -> bool:
     """Run committer role; deterministic fallback via commit_verified.
     Returns True iff a commit landed (or none needed)."""
     head_before = workspace.head()
@@ -27,7 +29,9 @@ def commit_with_role(role: "Role", *, workspace, ticket_file: Path, label: str,
         log(f"[commit] role committed: {workspace.head_short()}")
         return True
     if not commit_verified(workspace, fallback_message,
-                           include_harness=include_harness, telemetry=telemetry):
+                           include_harness=include_harness,
+                           include_validation=include_validation,
+                           telemetry=telemetry):
         log("[commit] commit_verified failed — escalating")
         return False
     if workspace.head() != head_before:
