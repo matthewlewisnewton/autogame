@@ -187,6 +187,17 @@
     "freezeDurationMs": 2000,
     "specialEffect": "freeze"
   },
+  "ice_ball": {
+    "magicStoneCost": 32,
+    "effect": "ice_ball",
+    "damage": 12,
+    "attackRange": 9,
+    "specialEffect": "slow",
+    "slowDurationMs": 3000,
+    "slowFactor": 0.5,
+    "slowChance": 0.5,
+    "projectileTravelMs": 1200
+  },
   "glacier_collapse": {
     "magicStoneCost": 35,
     "effect": "glacier_collapse",
@@ -201,6 +212,13 @@
     "effect": "healing_font",
     "healAmount": 25,
     "specialEffect": "heal"
+  },
+  "purifying_pulse": {
+    "magicStoneCost": 0,
+    "effect": "purifying_pulse",
+    "healAmount": 15,
+    "radius": 5.5,
+    "specialEffect": "heal_and_cleanse"
   },
   "divine_grace": {
     "magicStoneCost": 0,

@@ -17,6 +17,8 @@ function makeCtx(overrides = {}) {
 		spawnAttackEffect: record('spawnAttackEffect'),
 		spawnSummonEffect: record('spawnSummonEffect'),
 		spawnDivineGraceEffect: record('spawnDivineGraceEffect'),
+		spawnPurifyingPulseHealRing: record('spawnPurifyingPulseHealRing'),
+		spawnCleanseBurstEffect: record('spawnCleanseBurstEffect'),
 		spawnInfernoPillarEffect: record('spawnInfernoPillarEffect'),
 		spawnChainLightningEffect: record('spawnChainLightningEffect'),
 		spawnLightningArc: record('spawnLightningArc'),
@@ -43,7 +45,9 @@ describe('resolveRenderers()', () => {
 	it('returns the per-card renderer when one is registered', () => {
 		expect(resolveRenderers('infinite_disk')).toHaveLength(1);
 		expect(resolveRenderers('fireball')).toHaveLength(1);
+		expect(resolveRenderers('ice_ball')).toHaveLength(1);
 		expect(resolveRenderers('divine_grace')).toHaveLength(1);
+		expect(resolveRenderers('purifying_pulse')).toHaveLength(1);
 		expect(resolveRenderers('spike_trap')).toHaveLength(1);
 		expect(resolveRenderers('undead_commander')).toHaveLength(1);
 		expect(resolveRenderers('thunderbird')).toHaveLength(1);
@@ -329,6 +333,27 @@ describe('renderCardUsed() — weapon dispatch', () => {
 		expect(attacks[0][1]).toEqual({ x: 1, z: 2 });
 		expect(attacks[0][3]).toMatchObject({ effect: 'fireball', range: 9 });
 	});
+
+	it('spawns a single ice_ball-effect projectile with slow travel time', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'ice_ball',
+			effect: 'ice_ball',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			attackRange: 9,
+			projectileTravelMs: 1200,
+			hits: [],
+		}, ctx);
+		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
+		expect(attacks).toHaveLength(1);
+		expect(attacks[0][1]).toEqual({ x: 1, z: 2 });
+		expect(attacks[0][3]).toMatchObject({
+			effect: 'ice_ball',
+			range: 9,
+			projectileTravelMs: 1200,
+		});
+	});
 });
 
 describe('renderCardUsed() — spell dispatch', () => {
@@ -382,6 +407,37 @@ describe('renderCardUsed() — spell dispatch', () => {
 			hits: [],
 		}, ctx);
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'loot')).toBe(false);
+	});
+
+	it('purifying_pulse renders heal ring and cleanse burst with heal sound', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'purifying_pulse',
+			origin: { x: 2, z: 3 },
+			radius: 5.5,
+			specialEffect: 'heal_and_cleanse',
+			hits: [],
+		}, ctx);
+		const healRing = ctx._calls.find((c) => c[0] === 'spawnPurifyingPulseHealRing');
+		const cleanse = ctx._calls.find((c) => c[0] === 'spawnCleanseBurstEffect');
+		expect(healRing).toBeDefined();
+		expect(healRing[1]).toEqual({ x: 2, z: 3 });
+		expect(healRing[2]).toBe(5.5);
+		expect(cleanse).toBeDefined();
+		expect(cleanse[1]).toEqual({ x: 2, z: 3 });
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(true);
+	});
+
+	it('purifying_pulse skips VFX when radius is absent', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'purifying_pulse',
+			origin: { x: 0, z: 0 },
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnPurifyingPulseHealRing')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnCleanseBurstEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
 	});
 
 	it('event_horizon renders both the outer pull ring and the inner crush ring', () => {

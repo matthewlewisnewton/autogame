@@ -5217,6 +5217,24 @@ PASS. This ticket did not add or change any `debugScenario` shortcut. The captur
 
 None.
 
+## v0.293 — 298-vault-wyrm-burning-rebalance  (2026-06-06 13:54:54)
+
+PASS. The shared `dungeon_drake` stats add `burnDurationMs: 2000` and `specialEffect: "burning_breath"`. Both server and client build `CARD_DEFS` from the shared JSON sources, and the client card HUD renders `specialEffect` by replacing underscores with spaces, producing the captured `BURNING BREATH` label on the Vault Wyrm cards.
+
+### Server tests cover reduced damage and burn application
+
+PASS. The new `game/server/test/vault_wyrm_burning.test.js` covers cone miss behavior, burn refresh/extension on subsequent breath ticks, and the evolved Wyrm non-burn guard. Existing Wyrm tests were updated to assert 50 HP -> 48 HP, `isBurning(enemy) === true`, and `burningUntil === now + 2000`. The changed `astral_guardian` default-minion assertion was also updated for the new fallback damage.
+
+`coverage.log` shows the full test run passed: 53 test files and 1466 tests. Coverage was collected successfully with thresholds disabled.
+
+## Design and requirements consistency
+
+PASS. The change stays within the existing card-combat model: Vault Wyrm remains a creature/minion summon with channeled breath, but now trades lower direct damage for the already-established BURNING status. It does not alter the lobby/dungeon loop, movement, networking, rendering, or multiplayer foundations listed in `game/docs/design.md` and `game/docs/requirements.md`. The captured smoke run confirms server-client connection, 3D rendering, player representation, and movement synchronization still work.
+
+## Debug scenarios
+
+PASS. The ticket updates an existing `minion-combat` debug scenario's hard-coded Vault Wyrm stats to mirror production damage and burn duration. The scenario remains behind the existing debug-scenario path (`?debugScenario=...` / debug socket event from local debug flow), and normal gameplay can reach the equivalent end state by starting a run with Vault Wyrm in the deck and casting it near enemies. The scenario does not replace the production summon path or weaken server-side card validation for normal play.
+
 ## v0.294 — 297-fireball-card-inflicts-burning  (2026-06-06 14:20:38)
 
 PASS. Casting flows through the authoritative `useCard` weapon branch in `game/server/cardEffects.js`: `effect: "fireball"` uses `collectProjectileHits`, applies impact damage, preserves projectile render data in the `cardUsed` payload, consumes charges/cooldowns through the existing weapon path, and emits state updates normally.
@@ -5239,24 +5257,69 @@ PASS. The added `fireball-ready` scenario is only reachable through the debug-sc
 
 None.
 
+## v0.295 — 299-aoe-heal-and-cleanse-card  (2026-06-06 14:28:29)
 
-## v0.293 — 298-vault-wyrm-burning-rebalance  (2026-06-06 13:54:54)
+**Casting removes slow, burning, and other negative statuses on affected players.** Passed. `clearNegativeStatuses` resets `slowedUntil`, `slowFactor`, `burningUntil`, `lastBurnTickAt`, `frozenUntil` when present, and the generic `debuffs` array. The radius heal path runs this cleanse for every in-radius active player, including full-health players whose HP cannot increase. Tests cover slow, burn, frozen/debuff cleanup, and socket integration after casting from a slowed/burning player.
 
-PASS. The shared `dungeon_drake` stats add `burnDurationMs: 2000` and `specialEffect: "burning_breath"`. Both server and client build `CARD_DEFS` from the shared JSON sources, and the client card HUD renders `specialEffect` by replacing underscores with spaces, producing the captured `BURNING BREATH` label on the Vault Wyrm cards.
+**Client shows AoE heal and cleanse effects.** Passed. `purifying_pulse` has a card-specific renderer that spawns a mint-green expanding heal ring and a white/teal cleanse burst at the cast origin, plays the heal sound, and is registered in the card renderer dispatch. Client tests verify renderer registration and the specific heal-ring/cleanse-burst calls.
 
-### Server tests cover reduced damage and burn application
-
-PASS. The new `game/server/test/vault_wyrm_burning.test.js` covers cone miss behavior, burn refresh/extension on subsequent breath ticks, and the evolved Wyrm non-burn guard. Existing Wyrm tests were updated to assert 50 HP -> 48 HP, `isBurning(enemy) === true`, and `burningUntil === now + 2000`. The changed `astral_guardian` default-minion assertion was also updated for the new fallback damage.
-
-`coverage.log` shows the full test run passed: 53 test files and 1466 tests. Coverage was collected successfully with thresholds disabled.
+**Server tests cover radius heal and status clear.** Passed. `server/test/purifying_pulse.test.js` directly covers the helper behavior and socket `useCard` path. The full captured coverage run reports 127 test files and 2220 tests passing.
 
 ## Design and requirements consistency
 
-PASS. The change stays within the existing card-combat model: Vault Wyrm remains a creature/minion summon with channeled breath, but now trades lower direct damage for the already-established BURNING status. It does not alter the lobby/dungeon loop, movement, networking, rendering, or multiplayer foundations listed in `game/docs/design.md` and `game/docs/requirements.md`. The captured smoke run confirms server-client connection, 3D rendering, player representation, and movement synchronization still work.
+The implementation fits the documented combat model: Purifying Pulse is a single-use spell with an instant radial support effect, matching the card-combat system in `game/docs/design.md`. It does not weaken the foundation requirements in `game/docs/requirements.md`; the captured run confirms 3D rendering, WebSocket connection, player visualization, and movement synchronization still work.
+
+The new `purifying-pulse-ready` debug scenario is gated through the existing `debugScenario` URL/socket path and is included in the debug scenario allowlist, not normal gameplay. Its end state is reachable through normal play by earning the reward card and being affected by existing slow/burning/debuff systems before casting. It does not bypass the real card-use path; the integration test uses the scenario only to stage state, then casts through normal `useCard` handling.
+
+## Code quality
+
+The implementation is tightly scoped and follows existing patterns for card JSON, server card effect dispatch, simulation helpers, debug scenarios, and client renderer registration. I did not find dead/broken code or whitespace issues (`git diff --check` passed). One non-blocking observation is that `healedTargets` only includes players who gained HP, even though full-health in-radius players are still cleansed server-side; this does not block the acceptance criteria because the cleanse is applied and the client effect is a radius-wide AoE, not per-target.
+
+## Remaining gaps
+
+None.
+
+
+## v0.296 — 294-ice-slow-ball-card  (2026-06-06 15:14:34)
+
+### Client renders projectile and slow indicator
+
+Pass. `game/client/cardRenderers.js` registers a dedicated `ice_ball` renderer that calls `spawnAttackEffect` with an icy palette and slow travel duration. `game/client/renderer.js` implements the `ice_ball` attack effect as a cyan sphere that travels over `projectileTravelMs`. Existing slow indicators are driven from broadcast `slowedUntil` on enemies and players, so Ice Ball's server-applied slow is visible via the same status indicator system as the ice enemy slow mechanic.
+
+### Server tests for cast, projectile, and chance-to-slow
+
+Pass. `game/server/test/ice_ball_card.test.js` verifies card definition/economy, reward availability, cast payload with projectile metadata and hit damage, success-roll slow application, and failure-roll no-slow behavior. `coverage.log` reports 115 test files and 1765 tests passed.
+
+## Design and regression review
+
+The implementation is consistent with the card-combat design: Glacial Orb is a spell card using Magic Stones, is acquired as loot/reward, and reuses the established shared-card-data pipeline so client and server definitions stay aligned. It does not weaken the base requirements in `game/docs/requirements.md`; the captured run still renders the 3D scene, connects to the backend, shows multiple players, and processes movement.
 
 ## Debug scenarios
 
-PASS. The ticket updates an existing `minion-combat` debug scenario's hard-coded Vault Wyrm stats to mirror production damage and burn duration. The scenario remains behind the existing debug-scenario path (`?debugScenario=...` / debug socket event from local debug flow), and normal gameplay can reach the equivalent end state by starting a run with Vault Wyrm in the deck and casting it near enemies. The scenario does not replace the production summon path or weaken server-side card validation for normal play.
+The new `ice-ball-ready` debug scenario is gated through the existing debug-scenario socket path and registered only in the `DEBUG_SCENARIOS` set. It shortcuts into a QA-ready state by placing Glacial Orb in hand, topping up Magic Stones, and lining up enemies, but the equivalent state is reachable through normal gameplay by earning the reward card, adding it to a deck, entering combat, and casting it at an enemy. It does not bypass server-side card validation or effect handling; tests still emit `useCard` and exercise the authoritative `handleUseCard` path.
+
+## Remaining gaps
+
+None.
+
+
+## v0.297 — 296-fire-enemy-inflicts-burning  (2026-06-06 15:48:10)
+
+## Lock-on panel and enemy display metadata
+
+PASS. `ENEMY_DEFS.ember_wraith` includes name, description, surfaced stats, combat stats, cone attack style, and burn duration metadata. The enemy display catalog trims and publishes the surfaced values, while the client lock-on panel labels and formats `burnDurationMs` as seconds. Client tests verify the Ember Wraith panel model includes name, description, HP, attack, cone style, chase speed, and burn duration.
+
+## Client render and attack telegraph
+
+PASS. The client registers `ember_wraith` as a procedural warm emissive octahedron with a distinct footprint, model registry entry, and cone telegraph matching the server's `Math.PI / 3` attack cone. Renderer and main tests cover mesh creation, height/footprint normalization, visual distinction from grunt, and registry handling.
+
+## Design and requirements consistency
+
+PASS. The change fits the documented action-RPG dungeon loop: a level-exclusive enemy in the fire-cavern quest adds combat pressure without altering lobby flow, multiplayer state, movement, or rendering foundations. The captured smoke run verifies the baseline requirements still hold: Three.js scene initializes, clients connect over WebSockets, multiplayer presence exists, and movement/dodge state updates during gameplay.
+
+## Test and coverage evidence
+
+PASS. The provided coverage run reports 116 test files and 1895 tests passed. Relevant coverage includes `server/test/ember_wraith_burning.test.js`, `server/test/enemy-spawn-pools-wiring.test.js`, `server/test/quests-spawn-pools.test.js`, `server/test/enemy_display_catalog.test.js`, `client/test/lock-on-info-panel.test.js`, `client/test/main.test.js`, and `client/test/renderer-registry-normalize.test.js`.
 
 ## Remaining gaps
 

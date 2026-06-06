@@ -168,6 +168,7 @@ const QUEST_DEFS = {
     enemyPool: [
       { type: 'grunt', weight: 3 },
       { type: 'skirmisher', weight: 2 },
+      { type: 'ember_wraith', weight: 2 },
     ],
     tiers: {
       1: {

@@ -4892,7 +4892,7 @@ describe('hotStateSnapshot() — slim per-tick payload', () => {
 // ── ENEMY_DEFS ──
 
 describe('ENEMY_DEFS', () => {
-	it('is exported and contains grunt, skirmisher, miniboss, annex_overseer, arena_champion, spire_warden, spawner, field_medic keys', () => {
+	it('is exported and contains grunt, skirmisher, miniboss, annex_overseer, arena_champion, spire_warden, spawner, field_medic, ember_wraith keys', () => {
 		expect(ENEMY_DEFS).toBeDefined();
 		expect(ENEMY_DEFS).toHaveProperty('grunt');
 		expect(ENEMY_DEFS).toHaveProperty('skirmisher');
@@ -4902,6 +4902,7 @@ describe('ENEMY_DEFS', () => {
 		expect(ENEMY_DEFS).toHaveProperty('spire_warden');
 		expect(ENEMY_DEFS).toHaveProperty('spawner');
 		expect(ENEMY_DEFS).toHaveProperty('field_medic');
+		expect(ENEMY_DEFS).toHaveProperty('ember_wraith');
 	});
 
 	it('grunt has correct stat values', () => {
@@ -4976,7 +4977,25 @@ describe('ENEMY_DEFS', () => {
 		);
 	});
 
-	const ENEMY_TYPES = ['grunt', 'skirmisher', 'miniboss', 'annex_overseer', 'arena_champion', 'spire_warden', 'spawner', 'field_medic'];
+	it('ember_wraith has fire skirmisher tuning and burn metadata', () => {
+		const def = ENEMY_DEFS.ember_wraith;
+		expect(def.name).toBe('Ember Wraith');
+		expect(def.description).toMatch(/ignit|burn/i);
+		expect(def.hp).toBeGreaterThanOrEqual(45);
+		expect(def.hp).toBeLessThanOrEqual(70);
+		expect(def.attackDamage).toBeGreaterThanOrEqual(6);
+		expect(def.attackDamage).toBeLessThanOrEqual(10);
+		expect(def.attackStyle).toBe('cone');
+		expect(def.attackConeAngle).toBe(Math.PI / 3);
+		expect(def.burnDurationMs).toBeGreaterThan(0);
+		expect(def.burnDurationMs).toBeGreaterThanOrEqual(2000);
+		expect(def.burnDurationMs).toBeLessThanOrEqual(3500);
+		expect(def.surfacedStats).toEqual(
+			expect.arrayContaining(['hp', 'attackDamage', 'attackStyle', 'chaseSpeed', 'burnDurationMs']),
+		);
+	});
+
+	const ENEMY_TYPES = ['grunt', 'skirmisher', 'miniboss', 'annex_overseer', 'arena_champion', 'spire_warden', 'spawner', 'field_medic', 'ember_wraith'];
 	const DISPLAY_ONLY_KEYS = ['name', 'description', 'surfacedStats'];
 
 	it('every type has non-empty display metadata with valid surfacedStats keys', () => {
@@ -5019,6 +5038,21 @@ describe('ENEMY_DEFS', () => {
 		expect(enemy.healAmount).toBe(ENEMY_DEFS.field_medic.healAmount);
 		expect(enemy.fleeSpeed).toBe(ENEMY_DEFS.field_medic.fleeSpeed);
 		expect(enemy.beadRange).toBe(ENEMY_DEFS.field_medic.beadRange);
+		for (const key of DISPLAY_ONLY_KEYS) {
+			expect(enemy).not.toHaveProperty(key);
+		}
+	});
+
+	it('spawnEnemy(ember_wraith) spreads combat stats including burnDurationMs but omits display metadata', () => {
+		resetState();
+		const enemy = spawnEnemy(0, 0, 'ember_wraith');
+		expect(enemy.type).toBe('ember_wraith');
+		expect(enemy.hp).toBe(ENEMY_DEFS.ember_wraith.hp);
+		expect(enemy.maxHp).toBe(ENEMY_DEFS.ember_wraith.hp);
+		expect(enemy.attackDamage).toBe(ENEMY_DEFS.ember_wraith.attackDamage);
+		expect(enemy.attackStyle).toBe('cone');
+		expect(enemy.attackConeAngle).toBe(ENEMY_DEFS.ember_wraith.attackConeAngle);
+		expect(enemy.burnDurationMs).toBe(ENEMY_DEFS.ember_wraith.burnDurationMs);
 		for (const key of DISPLAY_ONLY_KEYS) {
 			expect(enemy).not.toHaveProperty(key);
 		}
@@ -5076,7 +5110,8 @@ describe('spawnEnemy() type validation', () => {
 		expect(() => spawnEnemy(0, 0, 'spire_warden')).not.toThrow();
 		expect(() => spawnEnemy(0, 0, 'spawner')).not.toThrow();
 		expect(() => spawnEnemy(0, 0, 'field_medic')).not.toThrow();
-		expect(gameState.enemies.length).toBe(7);
+		expect(() => spawnEnemy(0, 0, 'ember_wraith')).not.toThrow();
+		expect(gameState.enemies.length).toBe(8);
 	});
 });
 

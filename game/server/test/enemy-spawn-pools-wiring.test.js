@@ -63,6 +63,29 @@ describe('spawnCombatEnemies draws from the quest enemy pool', () => {
 	});
 });
 
+describe('ember_wraith cross-level exclusion', () => {
+	beforeEach(() => resetGameState());
+
+	it('never spawns the ember-exclusive `ember_wraith` type for non-ember quests', () => {
+		const nonEmberQuests = Object.keys(QUEST_DEFS).filter(id => id !== 'ember_descent');
+		for (const questId of nonEmberQuests) {
+			expect(poolTypes(questId)).not.toContain('ember_wraith');
+			for (const seed of [1, 42, 123, 777]) {
+				resetGameState();
+				deployQuest(questId, seed);
+				expect(gameState.enemies.some(e => e.type === 'ember_wraith')).toBe(false);
+			}
+		}
+	});
+
+	it('can spawn `ember_wraith` for an ember_descent run', () => {
+		expect(poolTypes('ember_descent')).toContain('ember_wraith');
+		resetGameState();
+		deployQuest('ember_descent', 1);
+		expect(gameState.enemies.some(e => e.type === 'ember_wraith')).toBe(true);
+	});
+});
+
 describe('spawner cross-level exclusion', () => {
 	beforeEach(() => resetGameState());
 

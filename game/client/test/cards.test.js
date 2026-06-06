@@ -380,6 +380,7 @@ describe('card ID sets', () => {
 		expect(spellCardIds.has('sacrificial_altar')).toBe(true);
 		expect(spellCardIds.has('chrono_trigger')).toBe(true);
 		expect(spellCardIds.has('frost_nova')).toBe(true);
+		expect(spellCardIds.has('ice_ball')).toBe(true);
 		expect(spellCardIds.has('glacier_collapse')).toBe(true);
 		expect(spellCardIds.has('healing_font')).toBe(true);
 		expect(spellCardIds.has('divine_grace')).toBe(true);
@@ -390,8 +391,9 @@ describe('card ID sets', () => {
 		expect(spellCardIds.has('dragons_breath')).toBe(true);
 		expect(spellCardIds.has('inferno_pillar')).toBe(true);
 		expect(spellCardIds.has('chain_lightning')).toBe(true);
+		expect(spellCardIds.has('purifying_pulse')).toBe(true);
 		expect(spellCardIds.has('iron_sword')).toBe(false);
-		expect(spellCardIds.size).toBe(19);
+		expect(spellCardIds.size).toBe(21);
 	});
 
 	it('creatureCardIds contains base, evolved, and synergistic creature card IDs', () => {
@@ -448,6 +450,13 @@ describe('card ID sets', () => {
 		expect(CARD_ACCENT_STYLE.divine_grace).toMatchObject({
 			color: '#fde68a',
 			icon: '✧',
+		});
+	});
+
+	it('CARD_ACCENT_STYLE defines icon and color for Ice Ball', () => {
+		expect(CARD_ACCENT_STYLE.ice_ball).toMatchObject({
+			color: '#67e8f9',
+			icon: '❄',
 		});
 	});
 });

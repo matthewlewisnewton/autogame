@@ -1647,6 +1647,14 @@ function applyDebugScenario(socket, name) {
       state.iceBalls = [];
       const thrower = spawnEnemy(player.x + 6, player.z, 'glacial_thrower');
       thrower.wanderTarget = { x: thrower.x, z: thrower.z };
+    } else if (name === 'ember-wraith') {
+      // One Ember Wraith in cone-strike range for burning-on-hit QA. The same
+      // enemy is reachable on ember_descent runs (or via fire-cavern); shortcut only.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const wraith = spawnEnemy(player.x + 3, player.z, 'ember_wraith');
+      wraith.wanderTarget = { x: wraith.x, z: wraith.z };
     } else if (name === 'variant-enemy') {
       // Spawn one variant ("elite") enemy beside a plain one of the same type so
       // the client variant marker can be verified side-by-side. The same state is
@@ -2146,6 +2154,30 @@ function applyDebugScenario(socket, name) {
       player.magicStones = 5;
       player.equippedKeyItemId = 'field_medic_kit';
       player.keyItemCooldownUntil = 0;
+    } else if (name === 'purifying-pulse-ready') {
+      // Low-HP player with Purifying Pulse in hand and active negative statuses.
+      // Same state is reachable by earning the reward card deep in a dungeon run
+      // and casting while slowed, burning, or debuffed.
+      const statusNow = Date.now();
+      player.hp = Math.floor(MAX_HP * 0.4);
+      player.magicStones = MAX_MAGIC_STONES;
+      player.slowedUntil = statusNow + 5000;
+      player.slowFactor = 0.5;
+      player.burningUntil = statusNow + 5000;
+      player.lastBurnTickAt = statusNow;
+      player.debuffs = [{ type: 'slow', expiresAt: statusNow + 5000 }];
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'purifying_pulse',
+          name: 'Purifying Pulse',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+          magicStoneCost: 0,
+          specialEffect: 'heal_and_cleanse',
+        };
+      }
     } else if (name === 'guard-block-ready') {
       // Put player at low HP with guard_block equipped and no cooldown to test blocking.
       player.hp = Math.floor(MAX_HP * 0.5);
@@ -2307,6 +2339,32 @@ function applyDebugScenario(socket, name) {
           type: 'weapon',
           charges: 4,
           remainingCharges: 4,
+        };
+      }
+      state.enemies = [];
+      const near = spawnEnemy(player.x + 4, player.z, 'grunt');
+      near.hp = 80;
+      near.maxHp = 80;
+      near.wanderTarget = { x: near.x, z: near.z };
+      const far = spawnEnemy(player.x + 7, player.z, 'grunt');
+      far.hp = 80;
+      far.maxHp = 80;
+      far.wanderTarget = { x: far.x, z: far.z };
+    } else if (name === 'ice-ball-ready') {
+      // Playing phase with Glacial Orb in hand, full Magic Stones, and grunts
+      // lined up along +X so a cast hits the nearest and can roll SLOW. The same
+      // state is reachable normally by earning the reward card and entering combat.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'ice_ball',
+          name: 'Glacial Orb',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
         };
       }
       state.enemies = [];

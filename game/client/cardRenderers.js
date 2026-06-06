@@ -14,6 +14,9 @@
 //   spawnAttackEffect(origin, direction, style?)
 //   spawnSummonEffect(origin, radius, styleOrColor?)
 //   spawnDivineGraceEffect(origin, radius)
+//   spawnPurifyingPulseHealRing(origin, radius)
+//   spawnCleanseBurstEffect(origin)
+//   spawnPurifyingPulseEffect(origin, radius)
 //   spawnInfernoPillarEffect(origin, radius)
 //   spawnChainLightningEffect(origin, direction)
 //   spawnLightningArc(from, to, style?)
@@ -120,6 +123,17 @@ function renderDivineGrace(data, ctx) {
 	if (data.radius === undefined) return;
 	ctx.spawnDivineGraceEffect(originOf(data), data.radius);
 	if (data.magicStonesGained > 0) ctx.playSound('loot');
+}
+
+/**
+ * Purifying Pulse: mint AoE heal ring plus a white/teal cleanse sparkle burst.
+ */
+function renderPurifyingPulse(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	ctx.spawnPurifyingPulseHealRing(origin, data.radius);
+	ctx.spawnCleanseBurstEffect(origin);
+	ctx.playSound('heal');
 }
 
 /**
@@ -243,6 +257,22 @@ function renderFireball(data, ctx) {
 }
 
 /**
+ * Ice Ball: a slow-moving icy sphere projectile. Slow-on-hit visuals are
+ * driven separately by the broadcast `slowedUntil` state, not here.
+ */
+function renderIceBall(data, ctx) {
+	if (!data.origin) return;
+	const accentHex = getAccentHex(data.cardId);
+	ctx.spawnAttackEffect(originOf(data), directionOf(data), {
+		effect: 'ice_ball',
+		range: data.attackRange,
+		projectileTravelMs: data.projectileTravelMs,
+		color: accentHex ?? 0x67e8f9,
+		emissive: 0x38bdf8,
+	});
+}
+
+/**
  * Phase Stalker: narrow cyan beam corridor along the projectile path.
  */
 function renderPhaseBeam(data, ctx) {
@@ -310,8 +340,10 @@ const CARD_RENDERERS = {
 
 	// Spells
 	chain_lightning: renderChainLightningArcs,
+	ice_ball: renderIceBall,
 	glacier_collapse: renderGlacierCollapse,
 	divine_grace: renderDivineGrace,
+	purifying_pulse: renderPurifyingPulse,
 	event_horizon: renderEventHorizon,
 	inferno_pillar: [renderInfernoPillar, renderGenericSpellBurst],
 	telepipe: renderTelepipe,

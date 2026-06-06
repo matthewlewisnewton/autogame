@@ -1,8 +1,13 @@
-Merge conflict in `LOGBOOK.md` is resolved.
+Merge conflicts are resolved. Each conflict was the same pattern: both branches added a new enemy/feature at the same registry location, so I kept **both** sides rather than choosing one.
 
-**Resolution:** Both ticket log entries are kept in descending version order (matching the rest of the logbook):
+**Resolved files:**
 
-1. **v0.294 — 297-fireball-card-inflicts-burning** (this ticket) — full fireball card review, including its `## Remaining gaps` section
-2. **v0.293 — 298-vault-wyrm-burning-rebalance** (from `main`) — full Vault Wyrm burning rebalance review, including its `## Remaining gaps` section
+| File | Resolution |
+|------|------------|
+| `game/client/renderer.js` | Both `glacial_thrower` and `ember_wraith` in `ENEMY_GEOMETRY` and `ENEMY_ATTACK_VISUAL` |
+| `game/server/simulation.js` | Both enemy defs in `ENEMY_DEFS` |
+| `game/server/debugScenarios.js` | Both `glacial-thrower` and `ember-wraith` debug scenario branches |
+| `game/server/index.js` | Both `glacial-thrower` and `ice-ball-ready` in `DEBUG_SCENARIOS` |
+| `game/server/test/enemy_display_catalog.test.js` | Both enemy types in `ENEMY_TYPES` |
 
-All conflict markers are removed. The harness can proceed with the merge commit.
+All conflict markers are removed. Quick test run: **170 files, 2632 tests passed**. The harness can commit and finish the merge.
