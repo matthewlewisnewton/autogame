@@ -1,0 +1,76 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/281-playthrough-validate-ship-hub/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3223
+Player connected: socket=OmaSj6o5VgmnniHcAAAB, playerId=35645a90-5d11-413b-85c7-f7cd7058fec6
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=d62249a7-e260-4713-88b6-a7edb091fdc4 value=11
+[loot] magic stone drop id=5784ab85-595e-4900-b8b4-5b05758707c1 value=15 at (3.9, 25.1)
+[loot] picked up id=5784ab85-595e-4900-b8b4-5b05758707c1 (magic stone) value=15 by OmaSj6o5VgmnniHcAAAB (currency=0, ms=64.70500000000035)
+[loot] magic stone drop id=1cd814c3-257c-4a95-b109-7e27f05a3a44 value=15 at (2.7, 15.3)
+[loot] magic stone drop id=a61f05c0-f01c-4023-a515-1530ccfffe51 value=15 at (-3.7, 24.7)
+[telepipe] placed at (-2.2, 28.4) by 35645a90-5d11-413b-85c7-f7cd7058fec6
+[telepipe] player 35645a90-5d11-413b-85c7-f7cd7058fec6 extracted
+[run] checkpoint captured
+[run] suspended: Initiate Vault
+[loot] spawned id=df47710c-9c70-4acb-b9a4-08035ce798e8 value=10
+Player disconnected: OmaSj6o5VgmnniHcAAAB
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/281-playthrough-validate-ship-hub/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3206
+Player connected: socket=91mZ9-_Pp3XKYNwgAAAB, playerId=c282b60a-a7fc-4ccb-af41-ece101164e21
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] magic stone drop id=3b16a56e-e370-4f7b-b45c-47e05d62eff5 value=15 at (7.3, 23.7)
+[loot] picked up id=3b16a56e-e370-4f7b-b45c-47e05d62eff5 (magic stone) value=15 by 91mZ9-_Pp3XKYNwgAAAB (currency=0, ms=64)
+[loot] magic stone drop id=e74067cc-2b77-4e01-a1df-4c6c34704233 value=15 at (7.6, 15.2)
+[loot] picked up id=e74067cc-2b77-4e01-a1df-4c6c34704233 (magic stone) value=15 by 91mZ9-_Pp3XKYNwgAAAB (currency=0, ms=79.60499999999945)
+[loot] magic stone drop id=55e8ea1b-6a82-472c-98ac-cf2e2454d8c9 value=15 at (-3.2, 2.7)
+[loot] currency drop id=812c66dd-09c1-41ec-bfce-cf4a32d6cbd3 value=10 at (-3.2, 2.7)
+[telepipe] placed at (15.3, 2.7) by c282b60a-a7fc-4ccb-af41-ece101164e21
+[telepipe] player c282b60a-a7fc-4ccb-af41-ece101164e21 extracted
+[run] checkpoint captured
+[run] suspended: Initiate Vault
+[loot] spawned id=4920b19d-0608-4063-850a-f95b0faec17b value=18
+Player disconnected: 91mZ9-_Pp3XKYNwgAAAB
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/281-playthrough-validate-ship-hub/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3254
+Player connected: socket=HL42rHc2jQenQ7DoAAAB, playerId=ad1cabcf-3fb0-48e1-af26-1bd54e5219c3
+Player connected: socket=ozLcchm1iqH0oPzqAAAD, playerId=28c7d7b4-1287-47f8-baac-aeff31558dc4
+Player connected: socket=uPOLwgL_1pW0ZDj9AAAF, playerId=4e414725-cd53-40cb-880a-a6a080977130
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: ozLcchm1iqH0oPzqAAAD
+Player disconnected: uPOLwgL_1pW0ZDj9AAAF
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: HL42rHc2jQenQ7DoAAAB
+[users] Loaded 6 user record(s) from /home/matt/workspace/.autogame-worktrees/281-playthrough-validate-ship-hub/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3263
+Player connected: socket=Iz5ULW6q41P7QOtkAAAB, playerId=41118b24-992d-46fc-a6e6-0eb84bde33b6
+Player connected: socket=UxFKg0ngDgAde4OqAAAD, playerId=c8c33a79-df71-4d9d-9e3a-9e7124ae4b94
+Player connected: socket=X1oZqSOYo5zvMrkgAAAF, playerId=0b4f5a88-b965-41da-ac5f-6df2a609038d
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: UxFKg0ngDgAde4OqAAAD
+Player disconnected: X1oZqSOYo5zvMrkgAAAF
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] magic stone drop id=b2d0b8d3-c187-4735-947f-1cdfb872519e value=15 at (3.7, 24.0)
+[loot] currency drop id=b50a79d5-7cdb-4b40-9d93-a81e073fcbfd value=7 at (3.7, 24.0)
+Player disconnected due to inactivity: c8c33a79-df71-4d9d-9e3a-9e7124ae4b94
+Player disconnected due to inactivity: 0b4f5a88-b965-41da-ac5f-6df2a609038d
+[loot] picked up id=b2d0b8d3-c187-4735-947f-1cdfb872519e (magic stone) value=15 by Iz5ULW6q41P7QOtkAAAB (currency=975, ms=15.325000000000545)
+[telepipe] placed at (-2.3, 25.6) by 41118b24-992d-46fc-a6e6-0eb84bde33b6
+[telepipe] player 41118b24-992d-46fc-a6e6-0eb84bde33b6 extracted
+[run] checkpoint captured
+[run] suspended: Initiate Vault
+Player disconnected: Iz5ULW6q41P7QOtkAAAB

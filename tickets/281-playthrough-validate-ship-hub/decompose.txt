@@ -1,0 +1,21 @@
+## Round 4 sub-tickets
+
+Three new sub-tickets map to the three open gaps in `review-feedback.md`. Sub-tickets **01–03**, **05**, and **08–11** already have `.passed` markers and were left untouched. No failed sub-ticket folders needed deletion.
+
+| # | Folder | Closes gap |
+|---|--------|------------|
+| **12** | Revert gameplay regressions + stabilize telepipe probes in harness only | Out-of-scope `regenMagicStones` skip, `hasSpentMagicStonesThisRun`, solo overlay/`isReady` changes, `#112233` palette |
+| **13** | Fix hub capture plan selection + server stability | Round-3 capture failure (`capturePlanSource: fallback`, ECONNREFUSED, suspend→resume path) |
+| **14** | Regenerate full `--steps full` artifacts + sync `findings.md` | `run-summary.json` vs `findings.md` mismatch; `validate:hub:check` failure |
+
+Dependency order: **12 → 13 → 14**.
+
+### Created folder paths
+
+```
+/home/matt/workspace/.autogame-worktrees/281-playthrough-validate-ship-hub/tickets/281-playthrough-validate-ship-hub/subtickets/12-revert-gameplay-and-harness-probes/ticket.md
+/home/matt/workspace/.autogame-worktrees/281-playthrough-validate-ship-hub/tickets/281-playthrough-validate-ship-hub/subtickets/13-fix-hub-capture-stability/ticket.md
+/home/matt/workspace/.autogame-worktrees/281-playthrough-validate-ship-hub/tickets/281-playthrough-validate-ship-hub/subtickets/14-regenerate-full-hub-artifacts/ticket.md
+```
+
+All three use **Verification: code** — every acceptance criterion involves handlers, server state, artifact structure, or probe values, not pure on-screen rendering.

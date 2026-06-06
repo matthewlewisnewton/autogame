@@ -1,0 +1,13 @@
+Review complete. **VERDICT: FAIL.**
+
+## Summary
+
+I judged the whole ticket against the live working tree and the round-3 capture. It fails on three independent blocking grounds:
+
+**1. No runnable proof (automatic gate failure).** `round-3/metrics.json` is `"ok": false` / `capture_failed` with empty `screenshots`/`probes`. The game server dropped mid-capture — `client.log` shows `ECONNREFUSED 127.0.0.1:3003`, `console.log` shows four `502 Bad Gateway`s after `[launchBooth] ready-up via booth`, then a `waitForFunction` timeout. `pageerrors` is empty and there's no `harness_failure` block, so this is a capture that simply never produced proof (the `fallback` suspend/resume plan ran despite the intended hub exclusion).
+
+**2. Out-of-scope gameplay regression.** The ticket scope is `harness/validate/** + validation/** only, "no gameplay changes beyond a minimal justified test hook."` Instead it modified `simulation.js` `regenMagicStones()` to **skip passive magic-stone regen on fresh deploys** ("so harness probes stay stable") and threaded a new `hasSpentMagicStonesThisRun` field through `progression.js`/`index.js`/`cardEffects.js`/`keyItemEffects.js`. That changes real balance (players used to regen 49→99 passively) purely to stabilize a probe. Plus solo-squad overlay/`isReady` changes and a new palette color in client code.
+
+**3. Inconsistent / verifier-failing artifacts.** Latest `run-summary.json` is `steps:"telepipe-reset"` with only `telepipeUpReset`, while `findings.md` claims all three asserts PASS — an overstated pass. The verifier (`verify-hub-artifacts.mjs`) requires `steps:"full"` + all three keys, so `validate:hub:check` fails.
+
+Wrote `review.md` (per-criterion + gaps, ending in `VERDICT: FAIL`), `gaps.md` (3 actionable blocking items, replacing the prior version), and `nits.md` (stray `server.log` artifact; proliferating client test hooks). Did not touch game code or git state.

@@ -1,0 +1,6 @@
+[A:debug] [vite] connecting...
+[A:debug] [vite] connected.
+[A:log] [initScene] Initializing Three.js scene...
+[A:log] [debugScenario] applied telepipe-ready
+[A:log] [launchBooth] ready-up via booth
+[A:log] [run] suspended: Initiate Vault

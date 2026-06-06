@@ -4870,3 +4870,26 @@ PASS. The captured coverage run reports `101` test files and `1600` tests passin
 
 None.
 
+
+## v0.283 — 281-playthrough-validate-ship-hub  (2026-06-06 05:59:45)
+
+### Lobby finder remains 2D
+
+PASS. The auth/lobby-finder probe verifies the lobby browser is visible, the lobby hub is hidden, `hub3dStarted` is false, and the browser is not fixed over an active playing canvas. `09-lobby-finder.png` shows the 2D Lobby Registry menu rather than the 3D hub.
+
+### Debug scenarios and test hooks
+
+PASS. The new/used shortcuts are gated through the existing local/dev debug path (`?debugScenario` and `ALLOW_DEBUG_SCENARIOS` / localhost socket allowance). The end states remain reachable through normal play: currency and hats through dungeon rewards/shop unlocks, Telepipe through an in-run deck/card flow, and suspended-run reset through Telepipe extraction plus abandon. The harness does not bypass the server-side booth save, Telepipe suspend, abandon, or fresh deploy invariants.
+
+### Design and requirements consistency
+
+PASS. The implementation stays aligned with `game/docs/design.md`: the lobby remains a squad management hub, Telepipe suspends an in-progress run, and abandoning clears the checkpoint. It does not regress the foundation requirements: the captured run renders a Three.js scene, connects over WebSockets, shows multiplayer presence, and movement/state synchronization is exercised in the hub validation and tests.
+
+### Code quality and validation
+
+PASS. The diff was reviewed against `8bf01834a57011da31965759d85eea40e47222bb`; the current game code is the source of truth. Coverage output reports 31 test files and 1160 tests passing. I noticed one unused import nit in `game/server/simulation.js`, filed separately in `nits.md`; it is not a blocker.
+
+## Remaining gaps
+
+None.
+

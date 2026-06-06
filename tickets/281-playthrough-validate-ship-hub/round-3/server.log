@@ -1,0 +1,8 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/281-playthrough-validate-ship-hub/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/281-playthrough-validate-ship-hub/game/data
+Server listening on port 3003
+Player connected: socket=ZZ5-39UM48E3dF7FAAAB, playerId=49146244-091d-4971-b050-67cd08f6654e
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
