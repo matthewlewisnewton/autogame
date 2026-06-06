@@ -31,6 +31,7 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..');
 
 const PRESET_MODULES = {
 	rooms: () => import('./presets/rooms.mjs'),
+	'sunken-canyon': () => import('./presets/sunken-canyon.mjs'),
 };
 
 const FULL_STEPS = new Set(['full']);
@@ -139,12 +140,17 @@ async function runAuthStep({ page, serverUrl, clientUrl, outDirAbs }) {
 	};
 }
 
+function deployRunLabel(preset) {
+	return `${preset.questId} tier ${preset.questTier}`;
+}
+
 async function runHubStep({ page, preset, outDirAbs }) {
-	await page.evaluate(() => {
+	const lobbyName = preset.lobbyName || 'Playthrough Validation';
+	await page.evaluate((channelName) => {
 		const name = document.getElementById('create-lobby-name');
-		if (name) name.value = 'Rooms Validation';
+		if (name) name.value = channelName;
 		document.getElementById('create-lobby-btn')?.click();
-	});
+	}, lobbyName);
 
 	await page.waitForFunction(() => {
 		const lobby = document.getElementById('lobby');
@@ -202,13 +208,16 @@ async function runHubStep({ page, preset, outDirAbs }) {
 			&& h.cardHandVisible === true
 			&& h.objective?.type === 'stage_boss';
 	}, { timeout: 25000 }).catch(async () => {
-		await failWithHarness(page, 'Training Caverns Tier II run did not start');
+		await failWithHarness(page, `${deployRunLabel(preset)} stage_boss run did not start after ${preset.deployScenario}`);
 	});
 
 	const playingHarness = await readHarness(page);
-	const hasOverseer = Array.isArray(playingHarness?.enemyHp)
+	if (preset.layoutProfile && playingHarness?.layout?.profile !== preset.layoutProfile) {
+		await failWithHarness(page, `Expected layout.profile ${preset.layoutProfile}`);
+	}
+	const hasBoss = Array.isArray(playingHarness?.enemyHp)
 		&& playingHarness.enemyHp.some((enemy) => enemy.type === preset.bossType);
-	if (!hasOverseer) {
+	if (!hasBoss) {
 		await failWithHarness(page, `Expected ${preset.bossType} in enemyHp`);
 	}
 	if (playingHarness?.encounter?.phase !== 'dormant') {

@@ -26,6 +26,7 @@
     "test:smoke:hub-lobby-visible": "node client/scripts/test-hub-lobby-visible.mjs",
     "validate:rooms": "node ../harness/validate/playthrough.mjs --preset rooms --steps full --out game/validation/rooms",
     "validate:rooms:check": "node ../harness/validate/verify-rooms-artifacts.mjs",
+    "validate:sunken-canyon": "node ../harness/validate/playthrough.mjs --preset sunken-canyon --steps full --out game/validation/sunken-canyon",
     "cleanup:vitest": "bash scripts/kill-vitest.sh"
   },
   "keywords": [],

@@ -4,6 +4,8 @@ export default {
 	questTier: 2,
 	bossType: 'annex_overseer',
 	deployScenario: 'training-caverns-tier-2',
+	layoutProfile: 'crowded',
+	lobbyName: 'Rooms Validation',
 	nearAddsScenario: 'training-caverns-near-adds',
 	bossApproachScenario: 'training-caverns-boss-approach',
 	bossLowHpScenario: 'training-caverns-boss-low-hp',
