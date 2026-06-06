@@ -1,0 +1,19 @@
+## Sub-ticket plan
+
+The top-level ticket breaks into **2 sub-tickets** in dependency order:
+
+| # | Folder | Scope |
+|---|--------|--------|
+| 01 | Card data | Lower `attackDamage` 3→2, add `burnDurationMs` + `specialEffect` in shared JSON |
+| 02 | Server + tests | Apply `applyBurning` on `dungeon_drake` breath hits only; update tests |
+
+Both use **`code`** verification — acceptance criteria cover stats, handlers, burn state, and test assertions, not purely visual rendering.
+
+No existing sub-ticket folders were present (nothing to delete or skip).
+
+### Created paths
+
+```
+/home/matt/workspace/.autogame-worktrees/298-vault-wyrm-burning-rebalance/tickets/298-vault-wyrm-burning-rebalance/subtickets/01-vault-wyrm-card-stats/ticket.md
+/home/matt/workspace/.autogame-worktrees/298-vault-wyrm-burning-rebalance/tickets/298-vault-wyrm-burning-rebalance/subtickets/02-vault-wyrm-breath-burn-and-tests/ticket.md
+```

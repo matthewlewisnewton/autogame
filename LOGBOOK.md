@@ -5171,3 +5171,26 @@ PASS. The round-2 coverage log shows the full Vitest suite passing: 114 test fil
 
 None.
 
+
+## v0.293 — 298-vault-wyrm-burning-rebalance  (2026-06-06 13:54:54)
+
+PASS. The shared `dungeon_drake` stats add `burnDurationMs: 2000` and `specialEffect: "burning_breath"`. Both server and client build `CARD_DEFS` from the shared JSON sources, and the client card HUD renders `specialEffect` by replacing underscores with spaces, producing the captured `BURNING BREATH` label on the Vault Wyrm cards.
+
+### Server tests cover reduced damage and burn application
+
+PASS. The new `game/server/test/vault_wyrm_burning.test.js` covers cone miss behavior, burn refresh/extension on subsequent breath ticks, and the evolved Wyrm non-burn guard. Existing Wyrm tests were updated to assert 50 HP -> 48 HP, `isBurning(enemy) === true`, and `burningUntil === now + 2000`. The changed `astral_guardian` default-minion assertion was also updated for the new fallback damage.
+
+`coverage.log` shows the full test run passed: 53 test files and 1466 tests. Coverage was collected successfully with thresholds disabled.
+
+## Design and requirements consistency
+
+PASS. The change stays within the existing card-combat model: Vault Wyrm remains a creature/minion summon with channeled breath, but now trades lower direct damage for the already-established BURNING status. It does not alter the lobby/dungeon loop, movement, networking, rendering, or multiplayer foundations listed in `game/docs/design.md` and `game/docs/requirements.md`. The captured smoke run confirms server-client connection, 3D rendering, player representation, and movement synchronization still work.
+
+## Debug scenarios
+
+PASS. The ticket updates an existing `minion-combat` debug scenario's hard-coded Vault Wyrm stats to mirror production damage and burn duration. The scenario remains behind the existing debug-scenario path (`?debugScenario=...` / debug socket event from local debug flow), and normal gameplay can reach the equivalent end state by starting a run with Vault Wyrm in the deck and casting it near enemies. The scenario does not replace the production summon path or weaken server-side card validation for normal play.
+
+## Remaining gaps
+
+None.
+
