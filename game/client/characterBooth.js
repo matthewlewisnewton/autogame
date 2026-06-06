@@ -287,3 +287,33 @@ async function saveCharacterBooth() {
 export function isCharacterBoothOpen() {
 	return isOpen;
 }
+
+/**
+ * Apply a partial cosmetic patch to the in-progress booth selection and refresh
+ * the preview/save label. Test/harness helper only.
+ * @param {object} patch
+ * @returns {boolean}
+ */
+export function patchBoothSelection(patch) {
+	if (!selection || !patch || typeof patch !== 'object') return false;
+	if (patch.bodyColor !== undefined) selection.bodyColor = patch.bodyColor;
+	if (patch.accentColor !== undefined) selection.accentColor = patch.accentColor;
+	if (patch.bodyShape !== undefined) selection.bodyShape = patch.bodyShape;
+	if (patch.hat !== undefined) selection.hat = patch.hat;
+	if (patch.proportions && typeof patch.proportions === 'object') {
+		selection.proportions = { ...selection.proportions, ...patch.proportions };
+	}
+	refreshBoothPreview();
+	form?.syncUI(buildCosmeticPayload());
+	return true;
+}
+
+/** Trigger the booth save flow (may open the paid-change confirm dialog). */
+export function requestBoothSave() {
+	saveCharacterBooth();
+}
+
+/** Confirm a pending paid booth save when the confirm dialog is visible. */
+export function confirmBoothPaidSave() {
+	confirmPaidSave();
+}

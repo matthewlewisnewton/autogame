@@ -12,6 +12,7 @@ import {
 	resolveEncounterAnchor,
 } from '../encounters.js';
 import { resetGameState, gameState, runGameLoopTick } from '../index.js';
+import { APPEARANCE_CHANGE_COST } from '../config.js';
 import { spawnEnemies, setGameState } from '../progression.js';
 import {
 	startTestServer,
@@ -891,5 +892,45 @@ describe('debugScenario — variant-frenzied', () => {
 		expect(frenzied.type).toBe('grunt');
 		expect(plain).toBeDefined();
 		expect(plain.type).toBe('grunt');
+	});
+});
+
+describe('debugScenario — hat-shop-currency', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('stays in lobby with at least APPEARANCE_CHANGE_COST and broadcasts currency', async () => {
+		const { socket } = await connectClient(baseUrl);
+		const player = playerForSocket(socket);
+		player.currency = 0;
+
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'hat-shop-currency' });
+		const [result, snapshot] = await Promise.all([debugResultPromise, stateUpdatePromise]);
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('hat-shop-currency');
+		expect(result.currency).toBeGreaterThanOrEqual(APPEARANCE_CHANGE_COST);
+
+		const state = testGameState();
+		expect(state.gamePhase).toBe('lobby');
+		expect(player.currency).toBeGreaterThanOrEqual(APPEARANCE_CHANGE_COST);
+		expect(snapshot.players[socket._playerId].currency).toBe(player.currency);
 	});
 });

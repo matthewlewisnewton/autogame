@@ -30,6 +30,15 @@ import {
 	createLobby,
 	joinLobby,
 } from './lib/multiPlayer.mjs';
+import {
+	APPEARANCE_CHANGE_COST,
+	DEFAULT_HAT_SWAP_ID,
+	grantHubCurrency,
+	openCharacterBooth,
+	readCurrency,
+	stagePaidAppearanceConfirm,
+	completePaidAppearanceConfirm,
+} from './lib/booth.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
@@ -43,7 +52,7 @@ const ROOMS_FULL_STEPS = new Set(['full']);
 const ROOMS_HUB_STEPS = new Set(['hub', 'deploy']);
 const ROOMS_BOSS_ENCOUNTER_STEPS = new Set(['boss-encounter']);
 const HUB_PRESET_STEPS = new Set(['auth', 'hub-walk', 'booth', 'telepipe-reset', 'full']);
-const HUB_STUB_STEPS = new Set(['booth', 'telepipe-reset', 'full']);
+const HUB_STUB_STEPS = new Set(['telepipe-reset', 'full']);
 const ADD_TYPES = new Set(['grunt', 'skirmisher']);
 
 function defaultOutDir(preset) {
@@ -157,6 +166,80 @@ async function nudgeJoinerForPresence(joinerPage, targetX, targetZ) {
 			await joinerPage.keyboard.up(key);
 		}
 	}
+}
+
+async function runBoothStep({ page, preset, outDirAbs }) {
+	await createLobby(page, 'Booth Validation');
+	await waitForHubLobby(page);
+
+	await grantHubCurrency(page, preset.currencyScenario);
+	const currencyBefore = await readCurrency(page);
+	if (!Number.isFinite(currencyBefore)) {
+		const harness = await readHarness(page);
+		throw new Error(`currencyBefore is not numeric: ${JSON.stringify(harness)}`);
+	}
+
+	await openCharacterBooth(page);
+	await stagePaidAppearanceConfirm(page, { bodyColor: '#112233' });
+	const paidScreenshotPath = await writeScreenshot(page, outDirAbs, '05-booth-paid');
+	await completePaidAppearanceConfirm(page);
+
+	const currencyAfterPaid = await readCurrency(page);
+	const paidDelta = Number.isFinite(currencyAfterPaid) ? currencyAfterPaid - currencyBefore : null;
+	const boothDeductsGold = currencyAfterPaid === currencyBefore - APPEARANCE_CHANGE_COST;
+
+	const hatsResult = await page.evaluate(async (scenario) => {
+		if (typeof window.__requestDebugScenarioForTest !== 'function') {
+			return { ok: false, reason: '__requestDebugScenarioForTest missing' };
+		}
+		return window.__requestDebugScenarioForTest(scenario);
+	}, preset.hatsScenario);
+	if (!hatsResult?.ok) {
+		const harness = await readHarness(page);
+		throw new Error(`hats scenario ${preset.hatsScenario} failed: ${JSON.stringify(hatsResult)} harness=${JSON.stringify(harness)}`);
+	}
+
+	const currencyBeforeHat = await readCurrency(page);
+	if (!Number.isFinite(currencyBeforeHat)) {
+		const harness = await readHarness(page);
+		throw new Error(`currencyBeforeHat is not numeric: ${JSON.stringify(harness)}`);
+	}
+
+	await openCharacterBooth(page);
+	await page.evaluate((hatId) => {
+		window.__patchCharacterBoothForTest({ hat: hatId });
+	}, DEFAULT_HAT_SWAP_ID);
+	const hatScreenshotPath = await writeScreenshot(page, outDirAbs, '06-hat-swap');
+	const hatSaveResult = await page.evaluate(() => window.__saveCharacterBoothForTest());
+	if (!hatSaveResult?.ok) {
+		const harness = await readHarness(page);
+		throw new Error(`Hat save failed: ${JSON.stringify(hatSaveResult)} harness=${JSON.stringify(harness)}`);
+	}
+	await page.waitForFunction(() => {
+		const h = window.__AUTOGAME_HARNESS_STATE__?.();
+		return h?.characterBoothOpen === false;
+	}, { timeout: 15000 });
+
+	const currencyAfterHat = await readCurrency(page);
+	const hatDelta = Number.isFinite(currencyAfterHat) ? currencyAfterHat - currencyBeforeHat : null;
+	const hatSwapFree = currencyAfterHat === currencyBeforeHat;
+
+	return {
+		currencyScenario: preset.currencyScenario,
+		hatsScenario: preset.hatsScenario,
+		currencyBefore,
+		currencyAfterPaid,
+		paidDelta,
+		currencyBeforeHat,
+		currencyAfterHat,
+		hatDelta,
+		appearanceChangeCost: APPEARANCE_CHANGE_COST,
+		hatId: DEFAULT_HAT_SWAP_ID,
+		boothDeductsGold,
+		hatSwapFree,
+		paidScreenshot: path.relative(REPO_ROOT, paidScreenshotPath),
+		hatScreenshot: path.relative(REPO_ROOT, hatScreenshotPath),
+	};
 }
 
 async function runHubWalkStep({ browser, game, preset, outDirAbs }) {
@@ -629,6 +712,7 @@ async function main() {
 	let runsBossEncounter = false;
 	let runsFull = false;
 	let runsHubWalk = false;
+	let runsBooth = false;
 	const summary = {
 		ok: true,
 		preset: opts.preset,
@@ -646,6 +730,7 @@ async function main() {
 			&& (ROOMS_BOSS_ENCOUNTER_STEPS.has(opts.steps) || ROOMS_FULL_STEPS.has(opts.steps));
 		runsFull = opts.preset === 'rooms' && ROOMS_FULL_STEPS.has(opts.steps);
 		runsHubWalk = opts.preset === 'hub' && opts.steps === 'hub-walk';
+		runsBooth = opts.preset === 'hub' && opts.steps === 'booth';
 		game = await startGame();
 		summary.serverPort = game.serverPort;
 		summary.clientPort = game.clientPort;
@@ -671,6 +756,19 @@ async function main() {
 				outDirAbs,
 				presetName: opts.preset,
 			});
+		}
+
+		if (runsBooth && page) {
+			summary.booth = await runBoothStep({ page, preset, outDirAbs });
+			summary.assertions = {
+				boothDeductsGold: summary.booth.boothDeductsGold === true,
+				hatSwapFree: summary.booth.hatSwapFree === true,
+			};
+			summary.ok = summary.assertions.boothDeductsGold && summary.assertions.hatSwapFree;
+			if (!summary.ok) {
+				summary.error = summary.error || 'One or more booth assertions failed';
+				exitCode = 1;
+			}
 		}
 
 		if (runsRoomsHub && page) {

@@ -12,7 +12,7 @@ import {
 /** Preset body-color swatches (#RRGGBB). First entry mirrors the server default. */
 export const BODY_COLOR_PALETTE = [
 	'#4f9dde', '#ef4444', '#22c55e', '#a855f7',
-	'#f97316', '#14b8a6', '#e2e8f0', '#1e293b',
+	'#f97316', '#14b8a6', '#e2e8f0', '#1e293b', '#112233',
 ];
 
 /** Preset accent-color swatches (#RRGGBB). */

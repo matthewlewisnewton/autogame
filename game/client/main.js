@@ -82,6 +82,9 @@ import {
 	handleAppearanceChanged,
 	handleAppearanceError,
 	isCharacterBoothOpen,
+	patchBoothSelection,
+	requestBoothSave,
+	confirmBoothPaidSave,
 } from './characterBooth.js';
 import {
 	initControllerCalibration,
@@ -1376,6 +1379,13 @@ function bindSocketHandlers(s) {
 					rebuildBoothHatList();
 				}
 			}
+			if (Number.isFinite(data.currency)) {
+				myCurrency = data.currency;
+				updateCurrencyHud(myCurrency);
+				if (myId && gameState?.players?.[myId]) {
+					gameState.players[myId].currency = data.currency;
+				}
+			}
 		} else if (data && data.reason) {
 			console.warn(`[debugScenario] ${data.reason}`);
 		}
@@ -2084,6 +2094,74 @@ function requestBoothDebugOpen() {
 
 /** Test / Playwright hook: apply a debug scenario on demand. */
 window.__toggleDebugGodmodeForTest = emitToggleDebugGodmode;
+
+window.__patchCharacterBoothForTest = (patch) => patchBoothSelection(patch);
+window.__requestBoothSaveForTest = () => requestBoothSave();
+window.__confirmBoothPaidSaveForTest = () => confirmBoothPaidSave();
+
+window.__applyAppearanceChangeForTest = (cosmetic, timeoutMs) => new Promise((resolve) => {
+	if (!socket?.connected) {
+		resolve({ ok: false, reason: 'no socket' });
+		return;
+	}
+	if (!cosmetic || typeof cosmetic !== 'object') {
+		resolve({ ok: false, reason: 'cosmetic must be an object' });
+		return;
+	}
+	const timeout = Math.max(1000, Math.min(timeoutMs || 10000, 30000));
+	const cleanup = () => {
+		clearTimeout(timer);
+		socket.off(SERVER_TO_CLIENT.APPEARANCE_CHANGED, onChanged);
+		socket.off(SERVER_TO_CLIENT.APPEARANCE_ERROR, onError);
+	};
+	const onChanged = (data) => {
+		cleanup();
+		resolve({ ok: true, ...data });
+	};
+	const onError = (data) => {
+		cleanup();
+		resolve({ ok: false, reason: data?.reason || 'appearanceError' });
+	};
+	const timer = setTimeout(() => {
+		cleanup();
+		resolve({ ok: false, reason: 'timeout waiting for appearanceChanged' });
+	}, timeout);
+	socket.once(SERVER_TO_CLIENT.APPEARANCE_CHANGED, onChanged);
+	socket.once(SERVER_TO_CLIENT.APPEARANCE_ERROR, onError);
+	socket.emit(CLIENT_TO_SERVER.APPLY_APPEARANCE_CHANGE, { cosmetic });
+});
+
+window.__saveCharacterBoothForTest = (timeoutMs) => new Promise((resolve) => {
+	if (!socket?.connected) {
+		resolve({ ok: false, reason: 'no socket' });
+		return;
+	}
+	const timeout = Math.max(1000, Math.min(timeoutMs || 10000, 30000));
+	const cleanup = () => {
+		clearTimeout(timer);
+		socket.off(SERVER_TO_CLIENT.APPEARANCE_CHANGED, onChanged);
+		socket.off(SERVER_TO_CLIENT.APPEARANCE_ERROR, onError);
+	};
+	const onChanged = (data) => {
+		cleanup();
+		resolve({ ok: true, ...data });
+	};
+	const onError = (data) => {
+		cleanup();
+		resolve({ ok: false, reason: data?.reason || 'appearanceError' });
+	};
+	const timer = setTimeout(() => {
+		cleanup();
+		resolve({ ok: false, reason: 'timeout waiting for appearanceChanged' });
+	}, timeout);
+	socket.once(SERVER_TO_CLIENT.APPEARANCE_CHANGED, onChanged);
+	socket.once(SERVER_TO_CLIENT.APPEARANCE_ERROR, onError);
+	requestBoothSave();
+	const confirmEl = document.getElementById('character-booth-confirm');
+	if (confirmEl && !confirmEl.classList.contains('hidden')) {
+		confirmBoothPaidSave();
+	}
+});
 
 window.__requestDebugScenarioForTest = (name, timeoutMs) => new Promise((resolve) => {
 	if (!socket) {
@@ -4546,9 +4624,11 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		hpText: hpText ? hpText.textContent : '',
 		msText: msText ? msText.textContent : '',
 		currencyText: currencyDisplayEl ? currencyDisplayEl.textContent : '',
+		currency: Number.isFinite(myCurrency) ? myCurrency : (me?.currency ?? null),
 		player: me ? {
 			hp: me.hp,
 			magicStones: me.magicStones,
+			currency: Number.isFinite(me.currency) ? me.currency : myCurrency,
 			debugScenario: me.debugScenario,
 			debugGodmode: !!me.debugGodmode,
 			dead: me.dead,

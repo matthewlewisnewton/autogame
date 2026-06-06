@@ -18,7 +18,7 @@ const { SERVER_TO_CLIENT } = require('../shared/events.js');
 const crypto = require('crypto');
 const { generateLayout, questLayoutSeed, sampleFloorY, resolveFloorY } = require('./dungeon');
 const { DEFAULT_QUEST_ID, getLayoutProfileForQuest, buildQuestUpdatePayload } = require('./quests');
-const { DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS } = require('./config');
+const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS } = require('./config');
 const {
   firstRoomPosition,
   computeDungeonBounds,
@@ -203,14 +203,16 @@ function applyDebugScenario(socket, name) {
     }
 
     if (name === 'hat-shop-currency') {
-      // Stay in the lobby with enough currency to unlock any catalog hat,
-      // so the unlockHat flow can be exercised without grinding runs first.
-      // The same state is reachable normally by earning currency in dungeons.
+      // Stay in the lobby with enough currency for a paid booth appearance change
+      // (at least APPEARANCE_CHANGE_COST) and to unlock any catalog hat without
+      // grinding runs first. The same state is reachable normally by earning
+      // currency in dungeons.
       setPhase(lobby, PHASES.LOBBY);
       player.ready = false;
       player.hp = MAX_HP;
-      player.currency = Math.max(player.currency || 0, 1000);
-      return { ok: true, scenario: name };
+      player.currency = Math.max(player.currency || 0, APPEARANCE_CHANGE_COST, 1000);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name, currency: player.currency };
     }
 
     if (name === 'quest-tier-2-unlocked') {

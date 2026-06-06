@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "preset": "hub",
+  "steps": "booth",
+  "outDir": "game/validation/hub",
+  "presetConfig": {
+    "hubZones": [
+      "operations",
+      "commerce",
+      "salon"
+    ],
+    "telepipeScenario": "telepipe-ready",
+    "currencyScenario": "hat-shop-currency",
+    "hatsScenario": "hats-unlocked",
+    "boothAnchors": [
+      "quest",
+      "launch",
+      "shop",
+      "deck",
+      "character",
+      "hats"
+    ]
+  },
+  "serverPort": 3220,
+  "clientPort": 5231,
+  "auth": {
+    "username": "playthrough-1780737305459",
+    "connected": true,
+    "lobbyBrowserVisible": true,
+    "harnessPhase": "unknown",
+    "lobbyFinder": {
+      "lobbyBrowserVisible": true,
+      "lobbyHidden": true,
+      "hasCanvas": true,
+      "hub3dStarted": false,
+      "position": "fixed",
+      "fixedOverPlayingCanvas": false
+    },
+    "screenshot": "game/validation/hub/09-lobby-finder.png"
+  },
+  "booth": {
+    "currencyScenario": "hat-shop-currency",
+    "hatsScenario": "hats-unlocked",
+    "currencyBefore": 1000,
+    "currencyAfterPaid": 975,
+    "paidDelta": -25,
+    "currencyBeforeHat": 975,
+    "currencyAfterHat": 975,
+    "hatDelta": 0,
+    "appearanceChangeCost": 25,
+    "hatId": "cap",
+    "boothDeductsGold": true,
+    "hatSwapFree": true,
+    "paidScreenshot": "game/validation/hub/05-booth-paid.png",
+    "hatScreenshot": "game/validation/hub/06-hat-swap.png"
+  },
+  "assertions": {
+    "boothDeductsGold": true,
+    "hatSwapFree": true
+  }
+}
