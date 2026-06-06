@@ -5279,3 +5279,26 @@ The implementation is tightly scoped and follows existing patterns for card JSON
 
 None.
 
+
+## v0.296 — 294-ice-slow-ball-card  (2026-06-06 15:14:34)
+
+### Client renders projectile and slow indicator
+
+Pass. `game/client/cardRenderers.js` registers a dedicated `ice_ball` renderer that calls `spawnAttackEffect` with an icy palette and slow travel duration. `game/client/renderer.js` implements the `ice_ball` attack effect as a cyan sphere that travels over `projectileTravelMs`. Existing slow indicators are driven from broadcast `slowedUntil` on enemies and players, so Ice Ball's server-applied slow is visible via the same status indicator system as the ice enemy slow mechanic.
+
+### Server tests for cast, projectile, and chance-to-slow
+
+Pass. `game/server/test/ice_ball_card.test.js` verifies card definition/economy, reward availability, cast payload with projectile metadata and hit damage, success-roll slow application, and failure-roll no-slow behavior. `coverage.log` reports 115 test files and 1765 tests passed.
+
+## Design and regression review
+
+The implementation is consistent with the card-combat design: Glacial Orb is a spell card using Magic Stones, is acquired as loot/reward, and reuses the established shared-card-data pipeline so client and server definitions stay aligned. It does not weaken the base requirements in `game/docs/requirements.md`; the captured run still renders the 3D scene, connects to the backend, shows multiple players, and processes movement.
+
+## Debug scenarios
+
+The new `ice-ball-ready` debug scenario is gated through the existing debug-scenario socket path and registered only in the `DEBUG_SCENARIOS` set. It shortcuts into a QA-ready state by placing Glacial Orb in hand, topping up Magic Stones, and lining up enemies, but the equivalent state is reachable through normal gameplay by earning the reward card, adding it to a deck, entering combat, and casting it at an enemy. It does not bypass server-side card validation or effect handling; tests still emit `useCard` and exercise the authoritative `handleUseCard` path.
+
+## Remaining gaps
+
+None.
+
