@@ -1,0 +1,5 @@
+I created one sub-ticket. The entire ticket reduces to a small, cohesive server change: enforcing mutual exclusivity inside `applySlow`/`applyBurning` (each clears the opposite status field), plus server tests for both orders on players and enemies. No client work is needed — the client's slow ring and burn flame are each driven solely by their own broadcast field (`slowedUntil` / `burningUntil`), so clearing the opposite field server-side makes the client show only the active indicator for free. Verification is `code` since the criteria concern state, logic, timing-clock reset, and tests existing.
+
+Sub-ticket folder created:
+
+- `/home/matt/workspace/.autogame-worktrees/301-burning-and-slow-mutually-exclusive/tickets/301-burning-and-slow-mutually-exclusive/subtickets/01-burning-slow-mutually-exclusive/ticket.md`
