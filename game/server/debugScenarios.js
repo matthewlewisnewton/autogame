@@ -80,6 +80,40 @@ function setCallbacks(deps) {
   DEBUG_SCENARIOS = deps.DEBUG_SCENARIOS;
 }
 
+function setupFrostCrossingTier1Deploy(lobby, state, player) {
+  const questId = 'frost_crossing';
+  const tier = 1;
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+
+  player.ready = true;
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  const startSpawn = firstRoomPosition();
+  player.x = startSpawn.x;
+  player.z = startSpawn.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+  enterPlayingPhase(lobby);
+
+  if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+    createDrawDeckFromSelectedDeck(player);
+    initPlayerHand(player);
+    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+    if (!player.pendingSummons) {
+      player.pendingSummons = new Set();
+    }
+  }
+
+  state.enemies = [];
+  state.loot = [];
+  delete state.run;
+  delete state._pendingEncounterBossId;
+  spawnEnemies();
+  startDungeonRun();
+}
+
 function setupArenaTrialsTier2StageBossDebug(lobby, state, player) {
   const questId = 'arena_trials';
   const tier = 2;
@@ -804,37 +838,7 @@ function applyDebugScenario(socket, name) {
       // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
       // snapshots the correct run.questTier/objective. Reachable normally by selecting
       // Frost Crossing and deploying; this scenario is a shortcut into that state.
-      const questId = 'frost_crossing';
-      const tier = 1;
-      state.selectedQuestId = questId;
-      state.selectedQuestTier = tier;
-      applyLayoutForQuest(state, questId, tier);
-
-      player.ready = true;
-      player.hp = MAX_HP;
-      player.magicStones = MAX_MAGIC_STONES;
-      const startSpawn = firstRoomPosition();
-      player.x = startSpawn.x;
-      player.z = startSpawn.z;
-      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-
-      enterPlayingPhase(lobby);
-
-      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
-        createDrawDeckFromSelectedDeck(player);
-        initPlayerHand(player);
-        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
-        if (!player.pendingSummons) {
-          player.pendingSummons = new Set();
-        }
-      }
-
-      state.enemies = [];
-      state.loot = [];
-      delete state.run;
-      delete state._pendingEncounterBossId;
-      spawnEnemies();
-      startDungeonRun();
+      setupFrostCrossingTier1Deploy(lobby, state, player);
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
@@ -1307,69 +1311,32 @@ function applyDebugScenario(socket, name) {
     }
 
     if (name === 'slippery-floor-lab') {
-      // Two-room synthetic layout: normal entry room north, slippery ice room south.
-      // Player starts on the slippery side for momentum physics QA. Reachable normally
-      // once ice-level rooms with floorSurface: 'slippery' land in production layouts.
-      player.hp = MAX_HP;
-      player.magicStones = MAX_MAGIC_STONES;
-      state.layout = {
-        profile: 'slippery-floor-lab',
-        passageWidth: 4,
-        rooms: [
-          {
-            role: 'start',
-            x: 0,
-            z: 0,
-            width: 12,
-            depth: 12,
-            floorSurface: 'normal',
-            walls: [],
-          },
-          {
-            x: 0,
-            z: 18,
-            width: 12,
-            depth: 12,
-            floorSurface: 'slippery',
-            walls: [],
-          },
-        ],
-        passages: [
-          { x1: 0, z1: 0, x2: 0, z2: 18, walls: [], corridorLength: 18 },
-        ],
-      };
-      state.layoutSeed = state.layoutSeed || 0;
-      state.dungeonBounds = computeDungeonBounds(state.layout);
-      state.walkableAABBs = computeWalkableAABBs(state.layout);
-      rebuildWallColliders();
+      // Frost Crossing tier 1 deploy, then seat the player on a production slippery
+      // ice room for momentum physics QA. Reachable normally by deploying Frost
+      // Crossing and walking onto the ice band.
+      setupFrostCrossingTier1Deploy(lobby, state, player);
 
-      player.ready = true;
-      const slipperyRoom = state.layout.rooms.find((r) => r.floorSurface === 'slippery');
-      player.x = slipperyRoom.x;
-      player.z = slipperyRoom.z;
-      player.vx = 0;
-      player.vz = 0;
-      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      enterPlayingPhase(lobby);
-
-      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
-        createDrawDeckFromSelectedDeck(player);
-        initPlayerHand(player);
-        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
-        if (!player.pendingSummons) {
-          player.pendingSummons = new Set();
-        }
+      const slipperyRoom = state.layout.rooms.find((r) => r.floorSurface === 'slippery')
+        || state.layout.rooms.find((r) => r.band === 'ice');
+      if (slipperyRoom) {
+        player.x = slipperyRoom.x;
+        player.z = slipperyRoom.z;
+        player.vx = 0;
+        player.vz = 0;
+        player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       }
 
-      state.enemies = [];
-      state.loot = [];
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
       broadcastLobbyUpdate(lobby);
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-      return { ok: true, scenario: name };
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
     }
 
     player.ready = true;
@@ -1864,27 +1831,6 @@ function applyDebugScenario(socket, name) {
       const seed = state.layoutSeed || 42;
       state.layoutSeed = seed;
       state.layout = generateLayout(seed, 'sunken-canyon');
-      state.dungeonBounds = computeDungeonBounds(state.layout);
-      state.walkableAABBs = computeWalkableAABBs(state.layout);
-      rebuildWallColliders();
-      const startRoom = state.layout.rooms.find(r => r.role === 'start');
-      if (startRoom) {
-        player.x = startRoom.x;
-        player.z = startRoom.z;
-      }
-      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      emitLobbyQuestUpdate(lobby, state, {
-        layoutSeed: state.layoutSeed,
-        layout: state.layout,
-      });
-    } else if (name === 'ice-cavern-stage') {
-      // Load the ice-cavern stage layout for client render / collision QA.
-      // Same profile as generateLayout(seed, 'ice-cavern'); reachable via frost_crossing.
-      player.hp = MAX_HP;
-      player.magicStones = MAX_MAGIC_STONES;
-      const seed = state.layoutSeed || 42;
-      state.layoutSeed = seed;
-      state.layout = generateLayout(seed, 'ice-cavern');
       state.dungeonBounds = computeDungeonBounds(state.layout);
       state.walkableAABBs = computeWalkableAABBs(state.layout);
       rebuildWallColliders();

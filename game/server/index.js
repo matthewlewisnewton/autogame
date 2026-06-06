@@ -503,7 +503,6 @@ const DEBUG_SCENARIOS = new Set([
   'sunken-canyon',
   'sunken-canyon-stage',
   'sunken-canyon-cliff-hazard',
-  'ice-cavern-stage',
   'frost-crossing-tier-1',
   'spire-ascent',
   'spire-ascent-stage',
