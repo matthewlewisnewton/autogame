@@ -1,0 +1,10 @@
+Created **4 sub-tickets** in dependency order. Root cause: `returnToGuildLobby()` and `applyLobbyJoinedData()` call `showGameLobby()` unconditionally, so every lobby-phase `STATE_UPDATE` re-shows `#lobby` over the walkable hub.
+
+**Sub-ticket folder paths:**
+
+1. `/home/matt/workspace/.autogame-worktrees/304-fix-lobby-menu-overlay-reshows-over-walkable-hub/tickets/304-fix-lobby-menu-overlay-reshows-over-walkable-hub/subtickets/01-lobby-dismiss-api-and-hud-relocate/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/304-fix-lobby-menu-overlay-reshows-over-walkable-hub/tickets/304-fix-lobby-menu-overlay-reshows-over-walkable-hub/subtickets/02-gate-reshow-default-hub-entry-hidden/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/304-fix-lobby-menu-overlay-reshows-over-walkable-hub/tickets/304-fix-lobby-menu-overlay-reshows-over-walkable-hub/subtickets/03-booth-on-demand-lobby-open/ticket.md`
+4. `/home/matt/workspace/.autogame-worktrees/304-fix-lobby-menu-overlay-reshows-over-walkable-hub/tickets/304-fix-lobby-menu-overlay-reshows-over-walkable-hub/subtickets/04-client-tests-dismiss-stays-dismissed/ticket.md`
+
+**Flow:** 01 adds dismiss/show API and moves suspended-run chrome out of the dismissible overlay → 02 stops auto re-show on hub join and `stateUpdate` → 03 wires booth/toggle on-demand open (quest booth must call `showGameLobby()` since its panel lives inside `#lobby`) → 04 adds vitest coverage for dismiss-stays-dismissed and hub presence. All use **code** verification.

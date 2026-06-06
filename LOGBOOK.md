@@ -5325,3 +5325,26 @@ PASS. The provided coverage run reports 116 test files and 1895 tests passed. Re
 
 None.
 
+
+## v0.299 — 304-fix-lobby-menu-overlay-reshows-over-walkable-hub  (2026-06-06 16:51:57)
+
+### Client test for dismiss / stays-dismissed behavior
+
+PASS. `client/test/lobby-menu-dismiss.test.js` covers hub lobby join starting hidden, state updates staying hidden after dismissal, hub presence updates not reopening the menu, and deck/shop booth reopen behavior. `coverage.log` shows the test run passed: 12 files and 247 tests passed. Coverage thresholds were disabled as expected.
+
+## Design and requirements consistency
+
+PASS. The change supports the design doc's lobby role of squad management in a shared 3D space without regressing the foundational requirements: the captured run rendered a Three.js scene, connected to the server, represented two multiplayer participants, and progressed through movement/gameplay probes.
+
+## Code quality
+
+PASS. The main implementation is scoped to the client lobby/menu surface and keeps state explicit with `lobbyMenuDismissed` and `extractedLobbyOverlayActive`. The persistent lobby controls moved outside the dismissible menu, which avoids losing essential lobby actions when the large panel is hidden. I did not find dead code, a normal-gameplay regression, or a blocking console/runtime issue.
+
+## Debug scenarios
+
+No `?debugScenario=NAME` shortcut was added or changed for this ticket. Existing debug-scenario gating remains localhost-only through `debugScenarioAllowed`, and normal gameplay reaches the same lobby and booth states without debug shortcuts.
+
+## Remaining gaps
+
+None.
+
