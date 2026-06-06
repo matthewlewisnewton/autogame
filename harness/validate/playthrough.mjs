@@ -33,6 +33,7 @@ import {
 	waitForHubLobby,
 	createLobby,
 	joinLobby,
+	dismissLobbyOverlay,
 } from './lib/multiPlayer.mjs';
 import {
 	APPEARANCE_CHANGE_COST,
@@ -297,6 +298,7 @@ async function runHubWalkStep({ browser, game, preset, outDirAbs }) {
 			await failWithHarnessPair(hostPage, joinerPage, 'Remote squadmate position did not update after joiner move');
 		});
 
+		await dismissLobbyOverlay(hostPage);
 		const overviewScreenshot = await writeScreenshot(hostPage, outDirAbs, '01-hub-overview');
 
 		const zoneScreenshots = {};
@@ -314,6 +316,7 @@ async function runHubWalkStep({ browser, game, preset, outDirAbs }) {
 			if (!shotName) {
 				throw new Error(`No screenshot name mapped for hub zone ${zoneName}`);
 			}
+			await dismissLobbyOverlay(hostPage);
 			const shotPath = await writeScreenshot(hostPage, outDirAbs, shotName);
 			zoneScreenshots[zoneName] = path.relative(REPO_ROOT, shotPath);
 		}
