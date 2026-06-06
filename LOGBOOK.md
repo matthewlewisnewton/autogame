@@ -4870,3 +4870,26 @@ PASS. The captured coverage run reports `101` test files and `1600` tests passin
 
 None.
 
+
+## v0.275 — 278-playthrough-validate-open-plaza  (2026-06-06 02:33:34)
+
+- Victory fires: final probe has `runStatus: "victory"` and objective complete.
+
+### Debug scenario safety
+
+PASS. This ticket did not add a new game debug scenario. It reuses `arena-trials-tier-2`, which is gated behind the existing debug-scenario socket path and `ALLOW_DEBUG_SCENARIOS` server gate. Normal gameplay still reaches the same end state by clearing Arena Trials tier 1, unlocking tier 2, deploying, clearing adds, entering the trigger radius, and defeating the boss. The playthrough harness only uses the debug scenario as a QA entry shortcut; the boss activation and defeat path in this run proceeds through normal encounter/combat logic.
+
+### Design and requirements consistency
+
+PASS. The implementation does not change `game/**` gameplay code, so it does not regress the documented lobby-to-dungeon core loop or the foundation requirements for 3D rendering, client/server connectivity, player visualization, and movement synchronization. The round-1 smoke capture confirms the game loads, connects, renders, enters play, and responds to movement/key-item input.
+
+### Code quality and verification
+
+PASS with non-blocking nits. The harness changes are small and scoped to `harness/validate/**`. `node harness/validate/playthrough.mjs --help` runs successfully, and `git diff --check` reports no whitespace errors. The provided coverage log is informational only and found no changed-file test files to cover.
+
+The remaining rough edges are backlog-worthy rather than blockers for this validation ticket: the findings renderer still has hard-coded Rooms/annex-overseer labels, the arena champion model asset is missing and falls back to a placeholder mesh, and the Open Plaza full-HP run is documented as flaky over repeated executions.
+
+## Remaining gaps
+
+None.
+
