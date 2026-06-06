@@ -1,0 +1,6 @@
+Wrote the review artifacts:
+
+- `tickets/293-ice-enemy-glacial-ball-thrower/round-1/review.md`
+- `tickets/293-ice-enemy-glacial-ball-thrower/round-1/gaps.md`
+
+Verdict is `FAIL`. Runtime capture was clean, but I found two blocking gaps: Frost Crossing can spawn zero Glacial Throwers, and in-flight `iceBalls` are not cleared on run-exit cleanup. No `nits.md` was created.

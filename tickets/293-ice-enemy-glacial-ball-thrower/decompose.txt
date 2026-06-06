@@ -1,0 +1,11 @@
+Created 2 new code-verified sub-tickets, one per open gap. Both existing sub-tickets (`01`, `02`) have `.passed` markers and were left untouched.
+
+Sub-tickets created:
+- `/home/matt/workspace/.autogame-worktrees/293-ice-enemy-glacial-ball-thrower/tickets/293-ice-enemy-glacial-ball-thrower/subtickets/03-guarantee-glacial-thrower-spawn/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/293-ice-enemy-glacial-ball-thrower/tickets/293-ice-enemy-glacial-ball-thrower/subtickets/04-clear-iceballs-on-run-exit/ticket.md`
+
+**03** closes gap 1 — guarantees ≥1 `glacial_thrower` in every Frost Crossing spawn set via a level-scoped quest declaration consumed by `spawnCombatEnemies`, plus a seeded spawn-pool test.
+
+**04** closes gap 2 — clears `_gameState.iceBalls` in `resetTransientRunState()` so run-exit cleanup broadcasts an empty projectile array, plus a cleanup test.
+
+Both are server-only logic/state/test changes, so verification is `code`.

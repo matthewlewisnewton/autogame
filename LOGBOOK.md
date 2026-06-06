@@ -5262,3 +5262,26 @@ PASS. The ticket updates an existing `minion-combat` debug scenario's hard-coded
 
 None.
 
+
+## v0.298 — 293-ice-enemy-glacial-ball-thrower  (2026-06-06 16:27:08)
+
+PASS. The client has a glacial thrower mesh preset, projectile telegraph visual metadata, and keyed ice-ball mesh syncing from `gameState.iceBalls`. Stale projectile meshes are disposed when projectiles leave the server state, and run-exit cleanup clears `iceBalls` from world snapshots.
+
+### Server tests
+
+PASS for this ticket's new behavior. `coverage.log` shows `server/test/ice_enemy.test.js` passing all 13 tests and `server/test/enemy_display_catalog.test.js` passing all 4 tests.
+
+There is one existing-suite failure in `coverage.log`: `server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > positions miniboss at 1 HP beside the player in playing phase`. That failure is outside this ticket's glacial enemy path and is not evidence that this implementation fails the ticket acceptance criteria.
+
+## Design and requirements consistency
+
+PASS. The implementation fits the documented multiplayer dungeon combat loop: enemies are authoritative on the server, snapshots drive client rendering, and the new foe is scoped to the ice-themed Frost Crossing level. It does not regress the foundation requirements: the captured run shows client/server connection, 3D scene initialization, player representation, and movement/gameplay state.
+
+## Debug scenarios
+
+PASS. This ticket added `?debugScenario=glacial-thrower`. It is gated through the existing debug-scenario allowlist and URL-driven client request path, clears current enemies/projectiles, and spawns the thrower as a QA shortcut. The same end state is reachable through normal gameplay because Frost Crossing is selectable/deployable and guarantees at least one `glacial_thrower` through the normal spawn path; the scenario does not bypass persistence or server validation beyond the existing debug-only state setup pattern.
+
+## Remaining gaps
+
+None.
+
