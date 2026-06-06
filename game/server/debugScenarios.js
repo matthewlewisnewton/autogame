@@ -662,32 +662,26 @@ function applyDebugScenario(socket, name) {
         remainingCharges: 5,
         grind: 0,
       };
-      const addsByBand = new Map();
-      for (const add of adds) {
-        const band = bandAt(state.layout, add.x, add.z) || 'plateau';
-        if (!addsByBand.has(band)) addsByBand.set(band, []);
-        addsByBand.get(band).push(add);
-      }
+      // Cluster every live add on the start plateau (wounded, shields stripped) so the
+      // harness can clear the pack through lock-on + swings without crossing bands or
+      // the canyon_monolith boss trigger. Each add still gets band-correct floor Y via
+      // sampleFloorY at its cluster position.
+      const clusterAnchor = firstRoomPosition();
       const clusterRadius = 4;
-      for (const [band, bandAdds] of addsByBand) {
-        const anchor = clusterAnchorForBand(state.layout, band, player);
-        let angle = 0;
-        const step = bandAdds.length > 0 ? (Math.PI * 2) / bandAdds.length : 0;
-        for (const add of bandAdds) {
-          add.hp = 1;
-          add.shieldHp = 0;
-          add.maxShieldHp = 0;
-          add.x = anchor.x + Math.cos(angle) * clusterRadius;
-          add.z = anchor.z + Math.sin(angle) * clusterRadius;
-          add.y = resolveFloorY(sampleFloorY(state.layout, add.x, add.z));
-          add.wanderTarget = { x: add.x, z: add.z };
-          angle += step;
-        }
+      let angle = 0;
+      const step = adds.length > 0 ? (Math.PI * 2) / adds.length : 0;
+      for (const add of adds) {
+        add.hp = 1;
+        add.shieldHp = 0;
+        add.maxShieldHp = 0;
+        add.x = clusterAnchor.x + Math.cos(angle) * clusterRadius;
+        add.z = clusterAnchor.z + Math.sin(angle) * clusterRadius;
+        add.y = resolveFloorY(sampleFloorY(state.layout, add.x, add.z));
+        add.wanderTarget = { x: add.x, z: add.z };
+        angle += step;
       }
-      const playerBand = bandAt(state.layout, player.x, player.z) || 'plateau';
-      const playerAnchor = clusterAnchorForBand(state.layout, playerBand, player);
-      player.x = playerAnchor.x;
-      player.z = playerAnchor.z;
+      player.x = clusterAnchor.x;
+      player.z = clusterAnchor.z;
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       repositionNearEnemy(player, nearest);
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
@@ -755,8 +749,13 @@ function applyDebugScenario(socket, name) {
       boss.maxHp = boss.maxHp || boss.hp;
       boss.shieldHp = 0;
       boss.maxShieldHp = 0;
-      activateEncounter(state.run);
-      lockEncounter(state.run);
+      // Harness activates the encounter before boss-low-hp; direct URL/debug use may still be dormant.
+      if (isEncounterDormant(state.run)) {
+        activateEncounter(state.run);
+      }
+      if (!state.run.encounter.locked) {
+        lockEncounter(state.run);
+      }
       broadcastLobbyUpdate(lobby);
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return { ok: true, scenario: name };
