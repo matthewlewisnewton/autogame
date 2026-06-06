@@ -1236,6 +1236,79 @@ function collectProjectileHits(originX, originZ, dirX, dirZ, range, damage, opti
   return { hits, magicStonesGained };
 }
 
+function collectChainLightningHits(originX, originZ, dirX, dirZ, range, damage, options = {}) {
+  const hits = [];
+  let magicStonesGained = 0;
+  const magicStoneOnHit = options.magicStoneOnHit || 0;
+  const magicStoneOnKill = options.magicStoneOnKill || 0;
+  const attackerId = options.attackerId;
+  const chainRadius = options.chainRadius ?? 5;
+  const maxChainTargets = options.maxChainTargets ?? 2;
+  const chainDamage = Math.round(damage * 0.5);
+  const hitWidth = options.hitWidth ?? PROJECTILE_HIT_WIDTH;
+  const hitEnemyIds = new Set();
+
+  function recordHit(enemy, hitDamage) {
+    const hitX = enemy.x;
+    const hitZ = enemy.z;
+    if (attackerId) enemy.lastDamagedBy = attackerId;
+    const { killed } = damageEnemy(enemy, hitDamage);
+    const hitGain = magicStoneOnHit;
+    const killGain = killed ? magicStoneOnKill : 0;
+    magicStonesGained += hitGain + killGain;
+    hitEnemyIds.add(enemy.id);
+    hits.push({
+      enemyId: enemy.id,
+      hp: enemy.hp,
+      damageDealt: hitDamage,
+      x: hitX,
+      z: hitZ,
+      magicStonesGained: hitGain + killGain,
+    });
+    return { x: hitX, z: hitZ };
+  }
+
+  const sampleCount = Math.max(4, Math.ceil(range * 2));
+  let primary = null;
+  for (let i = 0; i <= sampleCount && !primary; i++) {
+    const t = range * (i / sampleCount);
+    const px = originX + dirX * t;
+    const pz = originZ + dirZ * t;
+
+    for (const enemy of _gameState.enemies) {
+      if (hitEnemyIds.has(enemy.id) || enemy.hp <= 0) continue;
+      const dist = Math.hypot(enemy.x - px, enemy.z - pz);
+      if (dist > hitWidth) continue;
+      primary = enemy;
+      break;
+    }
+  }
+
+  let currentPos = { x: originX, z: originZ };
+  if (primary) {
+    currentPos = recordHit(primary, damage);
+  }
+
+  let chains = 0;
+  while (chains < maxChainTargets) {
+    let next = null;
+    let nextDist = Infinity;
+    for (const enemy of _gameState.enemies) {
+      if (hitEnemyIds.has(enemy.id) || enemy.hp <= 0) continue;
+      const dist = Math.hypot(enemy.x - currentPos.x, enemy.z - currentPos.z);
+      if (dist <= chainRadius && dist < nextDist) {
+        nextDist = dist;
+        next = enemy;
+      }
+    }
+    if (!next) break;
+    currentPos = recordHit(next, chainDamage);
+    chains++;
+  }
+
+  return { hits, magicStonesGained };
+}
+
 function collectPhaseBeamHits(originX, originZ, dirX, dirZ, range, damage, options = {}) {
   const hits = [];
   const attackerId = options.attackerId;
@@ -2740,6 +2813,7 @@ module.exports = {
   collectConeHits,
   collectRadialHits,
   collectProjectileHits,
+  collectChainLightningHits,
   collectPhaseBeamHits,
   collectReturningProjectileHits,
   applyFreezeInRadius,

@@ -167,6 +167,7 @@ const {
   collectConeHits,
   collectRadialHits,
   collectProjectileHits,
+  collectChainLightningHits,
   collectReturningProjectileHits,
   applyFreezeInRadius,
   pullEnemiesToward,
@@ -541,6 +542,7 @@ const DEBUG_SCENARIOS = new Set([
   'arena-trials-boss-approach',
   'arena-trials-boss-low-hp',
   'annex-overseer-ready',
+  'chain-lightning-ready',
 ]);
 
 // Wire debugScenarios with io, the index.js-local helpers its setup chain needs,
@@ -1611,6 +1613,7 @@ if (typeof module !== 'undefined' && module.exports) {
     collectConeHits,
     collectRadialHits,
     collectProjectileHits,
+    collectChainLightningHits,
     collectReturningProjectileHits,
     applyFreezeInRadius,
     pullEnemiesToward,

@@ -2229,6 +2229,36 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       const grunt = spawnEnemy(player.x + 4, player.z, 'grunt');
       grunt.wanderTarget = { x: grunt.x, z: grunt.z };
+    } else if (name === 'chain-lightning-ready') {
+      // Playing phase with Voltaic Chain in hand, full Magic Stones, and three
+      // grunts lined up along +X so a cast chains primary → two half-damage hops.
+      // Same state is reachable by earning the reward card and entering combat.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'chain_lightning',
+          name: 'Voltaic Chain',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      state.enemies = [];
+      const primary = spawnEnemy(player.x + 5, player.z, 'grunt');
+      primary.hp = 80;
+      primary.maxHp = 80;
+      primary.wanderTarget = { x: primary.x, z: primary.z };
+      const chain1 = spawnEnemy(player.x + 8, player.z, 'grunt');
+      chain1.hp = 80;
+      chain1.maxHp = 80;
+      chain1.wanderTarget = { x: chain1.x, z: chain1.z };
+      const chain2 = spawnEnemy(player.x + 11, player.z, 'grunt');
+      chain2.hp = 80;
+      chain2.maxHp = 80;
+      chain2.wanderTarget = { x: chain2.x, z: chain2.z };
     }
 
     syncRunObjectiveToEnemies();
