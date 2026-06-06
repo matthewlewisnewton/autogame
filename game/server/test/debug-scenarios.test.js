@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { generateLayout, questLayoutSeed, sampleFloorY, resolveFloorY } from '../dungeon.js';
 import {
 	getQuest,
+	getEnemyPool,
 	getLayoutProfileForQuest,
 	getLayoutGenerationOptions,
 } from '../quests.js';
@@ -1564,9 +1565,8 @@ describe('debugScenario — fire-cavern', () => {
 		expect(player.z).toBe(startRoom.z);
 		expect(player.y).toBe(resolveFloorY(sampleFloorY(state.layout, player.x, player.z)));
 		expect(stateUpdate.enemies.length).toBe(tier1Quest.enemyCount);
-		expect(stateUpdate.enemies.every((e) => e.type === 'grunt' || e.type === 'skirmisher')).toBe(
-			true,
-		);
+		const allowedTypes = new Set(getEnemyPool(EMBER_DESCENT_ID, EMBER_DESCENT_TIER_1).map((e) => e.type));
+		expect(stateUpdate.enemies.every((e) => allowedTypes.has(e.type))).toBe(true);
 	});
 });
 

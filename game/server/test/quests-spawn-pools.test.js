@@ -15,6 +15,7 @@ const EXPECTED_POOLS = {
   crystal_rescue: [['grunt', 2], ['skirmisher', 3]],
   arena_trials: [['grunt', 2], ['miniboss', 1], ['skirmisher', 2]],
   canyon_descent: [['grunt', 2], ['miniboss', 1], ['skirmisher', 2]],
+  ember_descent: [['ember_wraith', 2], ['grunt', 3], ['skirmisher', 2]],
   spire_ascent: [['grunt', 2], ['miniboss', 1], ['skirmisher', 1], ['spawner', 2]],
   endless_siege: [['grunt', 2], ['skirmisher', 2]],
 };
@@ -51,6 +52,19 @@ describe('QUEST_DEFS enemy pools', () => {
     expect(questsWithSpawner.map((q) => q.id)).toEqual(['spire_ascent']);
   });
 
+  it('keeps ember_wraith level-exclusive to ember_descent', () => {
+    const questsWithEmberWraith = Object.values(QUEST_DEFS).filter((q) =>
+      q.enemyPool.some((e) => e.type === 'ember_wraith')
+    );
+    expect(questsWithEmberWraith.map((q) => q.id)).toEqual(['ember_descent']);
+    for (const quest of Object.values(QUEST_DEFS)) {
+      const tier2 = quest.tier2EnemyPool;
+      if (Array.isArray(tier2)) {
+        expect(tier2.some((e) => e.type === 'ember_wraith')).toBe(false);
+      }
+    }
+  });
+
   it('shares grunt and skirmisher across two or more quests', () => {
     const countQuestsWith = (type) =>
       Object.values(QUEST_DEFS).filter((q) => q.enemyPool.some((e) => e.type === type)).length;
@@ -74,6 +88,12 @@ describe('getEnemyPool', () => {
   it('returns the base pool only for tier 1 (default and explicit)', () => {
     expect(getEnemyPool('crystal_rescue')).toBe(QUEST_DEFS.crystal_rescue.enemyPool);
     expect(getEnemyPool('crystal_rescue', 1)).toBe(QUEST_DEFS.crystal_rescue.enemyPool);
+  });
+
+  it('includes ember_wraith in ember_descent tier-1 pools', () => {
+    for (const pool of [getEnemyPool('ember_descent'), getEnemyPool('ember_descent', 1)]) {
+      expect(pool.some((entry) => entry.type === 'ember_wraith')).toBe(true);
+    }
   });
 
   it('merges tier2EnemyPool into the base pool for tier 2 eligible quests', () => {
@@ -140,6 +160,32 @@ describe('field_medic tier-2 spawn weighting', () => {
     expect(sawMedic).toBe(true);
     expect(counts.field_medic).toBeLessThan(counts.grunt);
     expect(counts.field_medic).toBeLessThan(counts.skirmisher);
+  });
+});
+
+describe('ember_wraith spawn weighting', () => {
+  it('can be selected for ember_descent but never for other quest pools', () => {
+    const emberPool = getEnemyPool('ember_descent', 1);
+    const rng = mulberry32(1);
+    let sawEmberWraith = false;
+    for (let i = 0; i < 500; i++) {
+      if (pickWeightedEnemyType(emberPool, rng) === 'ember_wraith') {
+        sawEmberWraith = true;
+        break;
+      }
+    }
+    expect(sawEmberWraith).toBe(true);
+
+    for (const questId of Object.keys(QUEST_DEFS)) {
+      if (questId === 'ember_descent') continue;
+      const pool = getEnemyPool(questId, 1);
+      const poolTypes = new Set(pool.map((entry) => entry.type));
+      expect(poolTypes.has('ember_wraith')).toBe(false);
+      const otherRng = mulberry32(4242);
+      for (let i = 0; i < 200; i++) {
+        expect(pickWeightedEnemyType(pool, otherRng)).not.toBe('ember_wraith');
+      }
+    }
   });
 });
 
