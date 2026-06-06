@@ -40,7 +40,7 @@ describe('new card pack definitions', () => {
 		expect(CARD_DEFS.permafrost_lance).toMatchObject({
 			type: 'spell',
 			magicStoneCost: 30,
-			damage: 8,
+			damage: 12,
 			radius: 6,
 			freezeDurationMs: 2000,
 			effect: 'frost_nova',

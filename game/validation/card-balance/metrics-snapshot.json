@@ -1,15 +1,7 @@
 {
   "generatedAt": "2026-06-06",
   "cardCount": 47,
-  "rewardOrderCollisions": [
-    {
-      "rewardOrder": 27,
-      "cardIds": [
-        "fireball",
-        "purifying_pulse"
-      ]
-    }
-  ],
+  "rewardOrderCollisions": [],
   "peerBandNotes": "Peer groups: card type × MS tier (0 / 1–35 / 36–50 / 51+). over-budget = comparisonValue > group max × 1.17 (ticket 207). under-budget = at group min and ≥15% below group max. Utility cards use utilityScore; others use estimatedBurstDamage.",
   "cards": {
     "aegis_sentinel": {
@@ -230,7 +222,7 @@
       "damagePerMsStone": 0,
       "minionDpsEstimate": 0,
       "sellValueRatio": 2,
-      "peerBandFlag": "ok"
+      "peerBandFlag": "under-budget"
     },
     "divine_grace": {
       "id": "divine_grace",
@@ -281,15 +273,15 @@
       "acquisition": "reward",
       "rewardOrder": 2,
       "sellValue": 10,
-      "directDamage": 2,
-      "estimatedBurstDamage": 30,
+      "directDamage": 3,
+      "estimatedBurstDamage": 45,
       "utilityScore": 0,
       "isUtility": false,
-      "comparisonValue": 30,
-      "damagePerCharge": 30,
+      "comparisonValue": 45,
+      "damagePerCharge": 45,
       "damagePerMsStone": 0,
-      "minionDpsEstimate": 1,
-      "sellValueRatio": 3,
+      "minionDpsEstimate": 1.5,
+      "sellValueRatio": 4.5,
       "peerBandFlag": "under-budget"
     },
     "echo_blade": {
@@ -341,15 +333,15 @@
       "acquisition": null,
       "rewardOrder": null,
       "sellValue": 12,
-      "directDamage": 14,
-      "estimatedBurstDamage": 28,
+      "directDamage": 21,
+      "estimatedBurstDamage": 42,
       "utilityScore": 0,
       "isUtility": false,
-      "comparisonValue": 28,
-      "damagePerCharge": 4.666666666666667,
+      "comparisonValue": 42,
+      "damagePerCharge": 7,
       "damagePerMsStone": 0,
       "minionDpsEstimate": 0,
-      "sellValueRatio": 2.3333333333333335,
+      "sellValueRatio": 3.5,
       "peerBandFlag": "ok"
     },
     "fireball": {
@@ -359,7 +351,7 @@
       "magicStoneCost": 0,
       "msTier": "0",
       "acquisition": "reward",
-      "rewardOrder": 27,
+      "rewardOrder": 29,
       "sellValue": 10,
       "directDamage": 16,
       "estimatedBurstDamage": 46,
@@ -410,7 +402,7 @@
       "damagePerMsStone": 0.3142857142857143,
       "minionDpsEstimate": 0,
       "sellValueRatio": 0.9166666666666666,
-      "peerBandFlag": "ok"
+      "peerBandFlag": "under-budget"
     },
     "glacier_collapse": {
       "id": "glacier_collapse",
@@ -443,13 +435,13 @@
       "sellValue": 12,
       "directDamage": 0,
       "estimatedBurstDamage": 0,
-      "utilityScore": 20,
+      "utilityScore": 25,
       "isUtility": true,
-      "comparisonValue": 20,
-      "damagePerCharge": 20,
+      "comparisonValue": 25,
+      "damagePerCharge": 25,
       "damagePerMsStone": 0,
       "minionDpsEstimate": 0,
-      "sellValueRatio": 1.6666666666666667,
+      "sellValueRatio": 2.0833333333333335,
       "peerBandFlag": "under-budget"
     },
     "harvesting_scythe": {
@@ -461,16 +453,16 @@
       "acquisition": "reward",
       "rewardOrder": 19,
       "sellValue": 6,
-      "directDamage": 9,
-      "estimatedBurstDamage": 9,
+      "directDamage": 14,
+      "estimatedBurstDamage": 14,
       "utilityScore": 0,
       "isUtility": false,
-      "comparisonValue": 9,
-      "damagePerCharge": 3,
+      "comparisonValue": 14,
+      "damagePerCharge": 4.666666666666667,
       "damagePerMsStone": 0,
       "minionDpsEstimate": 0,
-      "sellValueRatio": 1.5,
-      "peerBandFlag": "under-budget"
+      "sellValueRatio": 2.3333333333333335,
+      "peerBandFlag": "ok"
     },
     "healing_font": {
       "id": "healing_font",
@@ -641,15 +633,15 @@
       "acquisition": "reward",
       "rewardOrder": 25,
       "sellValue": 5,
-      "directDamage": 17,
-      "estimatedBurstDamage": 17,
+      "directDamage": 24,
+      "estimatedBurstDamage": 24,
       "utilityScore": 0,
       "isUtility": false,
-      "comparisonValue": 17,
-      "damagePerCharge": 17,
-      "damagePerMsStone": 0.5666666666666667,
+      "comparisonValue": 24,
+      "damagePerCharge": 24,
+      "damagePerMsStone": 0.8,
       "minionDpsEstimate": 0,
-      "sellValueRatio": 3.4,
+      "sellValueRatio": 4.8,
       "peerBandFlag": "under-budget"
     },
     "null_crawler": {
@@ -681,16 +673,16 @@
       "acquisition": "reward",
       "rewardOrder": 5,
       "sellValue": 12,
-      "directDamage": 8,
-      "estimatedBurstDamage": 8,
+      "directDamage": 12,
+      "estimatedBurstDamage": 12,
       "utilityScore": 0,
       "isUtility": false,
-      "comparisonValue": 8,
-      "damagePerCharge": 8,
-      "damagePerMsStone": 0.26666666666666666,
+      "comparisonValue": 12,
+      "damagePerCharge": 12,
+      "damagePerMsStone": 0.4,
       "minionDpsEstimate": 0,
-      "sellValueRatio": 0.6666666666666666,
-      "peerBandFlag": "under-budget"
+      "sellValueRatio": 1,
+      "peerBandFlag": "ok"
     },
     "photon_slicer": {
       "id": "photon_slicer",
@@ -723,14 +715,14 @@
       "sellValue": 12,
       "directDamage": 0,
       "estimatedBurstDamage": 0,
-      "utilityScore": 15,
+      "utilityScore": 22,
       "isUtility": true,
-      "comparisonValue": 15,
-      "damagePerCharge": 15,
+      "comparisonValue": 22,
+      "damagePerCharge": 22,
       "damagePerMsStone": 0,
       "minionDpsEstimate": 0,
-      "sellValueRatio": 1.25,
-      "peerBandFlag": "under-budget"
+      "sellValueRatio": 1.8333333333333333,
+      "peerBandFlag": "ok"
     },
     "resonance_edge": {
       "id": "resonance_edge",
@@ -761,16 +753,16 @@
       "acquisition": "reward",
       "rewardOrder": 3,
       "sellValue": 8,
-      "directDamage": 9,
-      "estimatedBurstDamage": 9,
+      "directDamage": 14,
+      "estimatedBurstDamage": 14,
       "utilityScore": 0,
       "isUtility": false,
-      "comparisonValue": 9,
-      "damagePerCharge": 1.5,
+      "comparisonValue": 14,
+      "damagePerCharge": 2.3333333333333335,
       "damagePerMsStone": 0,
       "minionDpsEstimate": 0,
-      "sellValueRatio": 1.125,
-      "peerBandFlag": "under-budget"
+      "sellValueRatio": 1.75,
+      "peerBandFlag": "ok"
     },
     "sacrificial_altar": {
       "id": "sacrificial_altar",

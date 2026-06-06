@@ -123,11 +123,7 @@ describe('card balance metrics — reward order & peer bands', () => {
 	it('detects rewardOrder collisions among acquisition reward cards', () => {
 		const collisions = findRewardOrderCollisions();
 		expect(collisions).toEqual(snapshot.rewardOrderCollisions);
-		expect(collisions.length).toBeGreaterThan(0);
-		expect(collisions).toContainEqual({
-			rewardOrder: 27,
-			cardIds: ['fireball', 'purifying_pulse'],
-		});
+		expect(collisions).toEqual([]);
 	});
 
 	it('flags cards outside documented peer bands by type and MS tier', () => {

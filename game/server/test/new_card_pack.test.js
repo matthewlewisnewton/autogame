@@ -70,13 +70,14 @@ describe('new card combat helpers', () => {
 	});
 
 	it('Excalibur Photon double swing applies cone damage twice', () => {
-		gameState.enemies = [{ id: 'e1', type: 'grunt', x: 3, z: 0, hp: 40 }];
 		const damage = CARD_DEFS.excalibur_photon.damage;
 		const swings = CARD_DEFS.excalibur_photon.swingsPerUse;
+		const enemyHp = damage * swings + 10;
+		gameState.enemies = [{ id: 'e1', type: 'grunt', x: 3, z: 0, hp: enemyHp }];
 		for (let swing = 0; swing < swings; swing++) {
 			collectConeHits(0, 0, 1, 0, ATTACK_RANGE, Math.PI / 2, damage);
 		}
-		expect(gameState.enemies[0].hp).toBe(40 - damage * swings);
+		expect(gameState.enemies[0].hp).toBe(enemyHp - damage * swings);
 	});
 
 	it('Photon Slicer returning projectile can hit on outbound and return passes', () => {

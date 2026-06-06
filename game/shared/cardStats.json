@@ -4,7 +4,7 @@
   "battle_familiar": { "magicStoneCost": 50, "damage": 44 },
   "dungeon_drake": {
     "minionTtl": 30,
-    "attackDamage": 2,
+    "attackDamage": 3,
     "burnDurationMs": 2000,
     "specialEffect": "burning_breath",
     "breathRange": 6,
@@ -93,7 +93,7 @@
     "pulseIntervalMs": 2000
   },
   "harvesting_scythe": {
-    "damage": 9,
+    "damage": 14,
     "magicStoneOnHit": 5,
     "magicStoneOnKill": 15
   },
@@ -123,12 +123,12 @@
     "adjacentChargeRestore": 2
   },
   "saber_of_light": {
-    "damage": 9,
+    "damage": 14,
     "cooldownMs": 400,
     "specialEffect": "swift_slash"
   },
   "excalibur_photon": {
-    "damage": 14,
+    "damage": 21,
     "cooldownMs": 200,
     "isEvolved": true,
     "swingsPerUse": 2,
@@ -182,7 +182,7 @@
   "permafrost_lance": {
     "magicStoneCost": 30,
     "effect": "frost_nova",
-    "damage": 8,
+    "damage": 12,
     "radius": 6,
     "freezeDurationMs": 2000,
     "specialEffect": "freeze"
@@ -216,7 +216,7 @@
   "purifying_pulse": {
     "magicStoneCost": 0,
     "effect": "purifying_pulse",
-    "healAmount": 15,
+    "healAmount": 22,
     "radius": 5.5,
     "specialEffect": "heal_and_cleanse"
   },
@@ -266,7 +266,7 @@
     "magicStoneCost": 45,
     "effect": "gravity_well",
     "pullRadius": 12,
-    "pullStrength": 4,
+    "pullStrength": 5,
     "specialEffect": "pull"
   },
   "event_horizon": {
@@ -347,7 +347,7 @@
     "effect": "mirror_ward",
     "target": "self",
     "damageScale": 0.5,
-    "minReflectDamage": 17,
+    "minReflectDamage": 24,
     "reflectRange": 11,
     "ttlMs": 20000,
     "specialEffect": "damage_reflect"

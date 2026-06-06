@@ -158,3 +158,21 @@ Key snapshot flags used above:
 
 - Sub-ticket **03** applies Tier A tunings and updates tests.
 - Re-run `CARD_BALANCE_UPDATE_SNAPSHOT=1` vitest after any stat changes to refresh the snapshot.
+
+## Applied tunings
+
+Sub-ticket **03** (2026-06-06) — Tier A safe apply:
+
+| Card | Field | Before → After |
+|------|-------|----------------|
+| Permafrost Lance (`permafrost_lance`) | `cardStats.damage` | 8 → 12 |
+| Saber of Light (`saber_of_light`) | `cardStats.damage` | 9 → 14 |
+| Excalibur Photon (`excalibur_photon`) | `cardStats.damage` | 14 → 21 (cascade: +50% evolution rule vs Saber) |
+| Ether Scythe (`harvesting_scythe`) | `cardStats.damage` | 9 → 14 |
+| Mirror Ward (`mirror_ward`) | `cardStats.minReflectDamage` | 17 → 24 |
+| Purifying Pulse (`purifying_pulse`) | `cardStats.healAmount` | 15 → 22 |
+| Vault Wyrm (`dungeon_drake`) | `cardStats.attackDamage` | 2 → 3 |
+| Gravity Well (`gravity_well`) | `cardStats.pullStrength` | 4 → 5 |
+| Fireball (`fireball`) | `cardDefs.rewardOrder` | 27 → 29 |
+
+Tier B items remain report-only (economy sell bumps, Battery Automaton pulse, Telepipe, etc.).
