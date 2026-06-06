@@ -2,16 +2,23 @@
 /**
  * Headless Playwright playthrough driver for autogame validation.
  *
- *   node harness/validate/playthrough.mjs [--preset rooms] [--out validation/rooms/] [--steps auth|hub|deploy]
+ *   node harness/validate/playthrough.mjs [--preset rooms] [--out validation/rooms/] [--steps auth|hub|deploy|boss-encounter|full]
  *
  * Steps: auth (register/login), hub | deploy (ship hub + character save + tier-2 deploy),
- * boss | full (stubbed for later sub-tickets).
+ * boss-encounter (godmode + defeat adds + dormant/active boss screenshots), full (stubbed for sub-ticket 07).
  */
 import { chromium } from 'playwright';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { registerUser, injectToken, isSocketConnected } from './lib/auth.mjs';
+import {
+	enableGodmode,
+	defeatAdds,
+	activateEncounter,
+	assertDormantBoss,
+} from './lib/combat.mjs';
+import { wireConsoleLog, writeConsoleLog } from './lib/consoleLog.mjs';
 import { startGame, stopGame } from './lib/gameProcess.mjs';
 import { readHarness } from './lib/harnessState.mjs';
 import { writeScreenshot } from './lib/screenshot.mjs';
@@ -23,8 +30,10 @@ const PRESET_MODULES = {
 	rooms: () => import('./presets/rooms.mjs'),
 };
 
-const STUB_STEPS = new Set(['boss', 'full']);
+const STUB_STEPS = new Set(['full']);
 const HUB_STEPS = new Set(['hub', 'deploy']);
+const BOSS_ENCOUNTER_STEPS = new Set(['boss-encounter']);
+const ADD_TYPES = new Set(['grunt', 'skirmisher']);
 
 function parseArgs(argv) {
 	const opts = {
@@ -41,7 +50,7 @@ function parseArgs(argv) {
 		} else if (arg === '--steps' && argv[i + 1]) {
 			opts.steps = argv[++i];
 		} else if (arg === '--help' || arg === '-h') {
-			console.log('usage: node harness/validate/playthrough.mjs [--preset <name>] [--out <dir>] [--steps auth|hub|deploy|boss|full]');
+			console.log('usage: node harness/validate/playthrough.mjs [--preset <name>] [--out <dir>] [--steps auth|hub|deploy|boss-encounter|full]');
 			process.exit(0);
 		} else {
 			throw new Error(`Unknown argument: ${arg}`);
@@ -75,6 +84,36 @@ async function waitForLobbyBrowser(page) {
 async function failWithHarness(page, message) {
 	const harness = await readHarness(page);
 	throw new Error(`${message}: ${JSON.stringify(harness)}`);
+}
+
+function liveAdds(harness, bossType) {
+	return (harness?.enemyHp || []).filter(
+		(e) => e.type !== bossType && e.hp > 0 && ADD_TYPES.has(e.type),
+	);
+}
+
+async function requestScenario(page, scenario) {
+	const result = await page.evaluate((name) => {
+		if (typeof window.__requestDebugScenarioForTest !== 'function') {
+			return { ok: false, reason: '__requestDebugScenarioForTest missing' };
+		}
+		return window.__requestDebugScenarioForTest(name);
+	}, scenario);
+	if (!result?.ok) {
+		await failWithHarness(page, `Debug scenario ${scenario} failed: ${result?.reason || 'unknown'}`);
+	}
+	return result;
+}
+
+function buildEncounterProbe(harness, bossType) {
+	const boss = (harness?.enemyHp || []).find((e) => e.type === bossType && e.hp > 0) || null;
+	return {
+		encounterPhase: harness?.encounter?.phase ?? null,
+		encounterLocked: harness?.encounter?.locked ?? null,
+		bossEnemyId: harness?.encounter?.bossEnemyId ?? null,
+		bossHp: boss?.hp ?? null,
+		liveAddCount: liveAdds(harness, bossType).length,
+	};
 }
 
 async function runAuthStep({ page, serverUrl, clientUrl, outDirAbs }) {
@@ -151,16 +190,7 @@ async function runHubStep({ page, preset, outDirAbs }) {
 
 	const hubScreenshot = await writeScreenshot(page, outDirAbs, '01-hub');
 
-	const deployResult = await page.evaluate((scenario) => {
-		if (typeof window.__requestDebugScenarioForTest !== 'function') {
-			return { ok: false, reason: '__requestDebugScenarioForTest missing' };
-		}
-		return window.__requestDebugScenarioForTest(scenario);
-	}, preset.deployScenario);
-
-	if (!deployResult?.ok) {
-		await failWithHarness(page, `Debug scenario ${preset.deployScenario} failed: ${deployResult?.reason || 'unknown'}`);
-	}
+	await requestScenario(page, preset.deployScenario);
 
 	await page.waitForFunction(() => {
 		const h = window.__AUTOGAME_HARNESS_STATE__?.();
@@ -195,53 +225,136 @@ async function runHubStep({ page, preset, outDirAbs }) {
 	};
 }
 
+async function runBossEncounterStep({ page, preset, outDirAbs }) {
+	const { bossType, nearAddsScenario, bossApproachScenario, encounterTriggerRadius } = preset;
+
+	await enableGodmode(page);
+	await requestScenario(page, nearAddsScenario);
+
+	const preCombatHarness = await readHarness(page);
+	if (liveAdds(preCombatHarness, bossType).length === 0) {
+		throw new Error(`nearAddsScenario left no live adds for mid-combat capture: ${JSON.stringify(preCombatHarness)}`);
+	}
+
+	let midCombatScreenshot = null;
+	const afterAddsHarness = await defeatAdds(page, {
+		bossType,
+		timeoutMs: preset.addsTimeoutMs ?? 90000,
+		minAddsLeft: 0,
+		onMidCombat: async () => {
+			const midHarness = await readHarness(page);
+			if (liveAdds(midHarness, bossType).length === 0) {
+				throw new Error('onMidCombat requested with zero live adds');
+			}
+			const shotPath = await writeScreenshot(page, outDirAbs, '03-mid-combat');
+			midCombatScreenshot = path.relative(REPO_ROOT, shotPath);
+		},
+	});
+
+	if (!midCombatScreenshot) {
+		throw new Error('defeatAdds finished without capturing mid-combat screenshot');
+	}
+
+	assertDormantBoss(afterAddsHarness, bossType);
+	const dormantProbe = buildEncounterProbe(afterAddsHarness, bossType);
+	const dormantScreenshotPath = await writeScreenshot(page, outDirAbs, '04-boss-dormant');
+	const dormantScreenshot = path.relative(REPO_ROOT, dormantScreenshotPath);
+
+	await requestScenario(page, bossApproachScenario);
+	const approachHarness = await readHarness(page);
+	assertDormantBoss(approachHarness, bossType);
+
+	const activeHarness = await activateEncounter(page, {
+		bossType,
+		triggerRadius: encounterTriggerRadius,
+		timeoutMs: preset.encounterTimeoutMs ?? 60000,
+	});
+	if (activeHarness?.encounter?.phase !== 'active' || activeHarness?.encounter?.locked !== true) {
+		throw new Error(`Encounter did not reach active/locked: ${JSON.stringify(activeHarness?.encounter)}`);
+	}
+
+	const activeProbe = buildEncounterProbe(activeHarness, bossType);
+	const activeScreenshotPath = await writeScreenshot(page, outDirAbs, '05-boss-active');
+	const activeScreenshot = path.relative(REPO_ROOT, activeScreenshotPath);
+
+	return {
+		midCombatScreenshot,
+		dormantScreenshot,
+		activeScreenshot,
+		encounterPhase: activeHarness.encounter.phase,
+		encounterLocked: activeHarness.encounter.locked,
+		probes: {
+			dormant: dormantProbe,
+			active: activeProbe,
+		},
+	};
+}
+
 async function main() {
 	const opts = parseArgs(process.argv);
 	const outDirAbs = path.resolve(REPO_ROOT, opts.out);
 	fs.mkdirSync(outDirAbs, { recursive: true });
 
 	if (STUB_STEPS.has(opts.steps)) {
-		throw new Error(`--steps ${opts.steps} is not implemented yet (sub-tickets 04–05)`);
+		throw new Error(`--steps ${opts.steps} is not implemented yet (sub-ticket 07)`);
 	}
-	if (opts.steps !== 'auth' && !HUB_STEPS.has(opts.steps)) {
+	const knownSteps = new Set(['auth', ...HUB_STEPS, ...BOSS_ENCOUNTER_STEPS]);
+	if (!knownSteps.has(opts.steps)) {
 		throw new Error(`Unknown --steps value: ${opts.steps}`);
 	}
 
 	const preset = await loadPreset(opts.preset);
 	let browser;
 	let game;
+	let consoleLog;
+	const summary = {
+		ok: true,
+		preset: opts.preset,
+		steps: opts.steps,
+		outDir: path.relative(REPO_ROOT, outDirAbs),
+		presetConfig: preset,
+	};
 
 	try {
 		game = await startGame();
+		summary.serverPort = game.serverPort;
+		summary.clientPort = game.clientPort;
+
 		browser = await chromium.launch({ headless: true });
 		const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+		consoleLog = wireConsoleLog(page);
 
-		const authResult = await runAuthStep({
+		summary.auth = await runAuthStep({
 			page,
 			serverUrl: game.serverUrl,
 			clientUrl: game.clientUrl,
 			outDirAbs,
 		});
 
-		const summary = {
-			ok: true,
-			preset: opts.preset,
-			steps: opts.steps,
-			outDir: path.relative(REPO_ROOT, outDirAbs),
-			serverPort: game.serverPort,
-			clientPort: game.clientPort,
-			presetConfig: preset,
-			auth: authResult,
-		};
-
-		if (HUB_STEPS.has(opts.steps)) {
+		if (HUB_STEPS.has(opts.steps) || BOSS_ENCOUNTER_STEPS.has(opts.steps)) {
 			summary.hub = await runHubStep({ page, preset, outDirAbs });
 		}
 
+		if (BOSS_ENCOUNTER_STEPS.has(opts.steps)) {
+			summary.bossEncounter = await runBossEncounterStep({ page, preset, outDirAbs });
+		}
+
+		console.log(JSON.stringify(summary));
+	} catch (err) {
+		summary.ok = false;
+		summary.error = err.message;
+		console.error(`playthrough failed: ${err.message}`);
+		throw err;
+	} finally {
+		if (consoleLog) {
+			writeConsoleLog(outDirAbs, consoleLog.flush());
+		}
+		if (summary.bossEncounter?.probes) {
+			const probesPath = path.join(outDirAbs, 'probes.json');
+			fs.writeFileSync(probesPath, JSON.stringify(summary.bossEncounter.probes, null, 2));
+		}
 		const summaryPath = path.join(outDirAbs, 'run-summary.json');
 		fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
-		console.log(JSON.stringify(summary));
-	} finally {
 		if (browser) await browser.close().catch(() => {});
 		await stopGame();
 	}
@@ -255,8 +368,6 @@ async function shutdown(code) {
 process.on('SIGINT', () => { shutdown(130); });
 process.on('SIGTERM', () => { shutdown(143); });
 
-main().catch(async (err) => {
-	console.error(`playthrough failed: ${err.message}`);
-	await stopGame();
+main().catch(() => {
 	process.exit(1);
 });

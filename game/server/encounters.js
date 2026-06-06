@@ -132,8 +132,8 @@ function clearNonBossEnemies(gameState, bossId) {
 }
 
 /**
- * While dormant, transitions to active + locked when all non-boss enemies are
- * defeated or any active player enters the trigger radius around spawnAnchor.
+ * While dormant, transitions to active + locked only after all non-boss enemies
+ * are defeated AND an active player enters the trigger radius around spawnAnchor.
  */
 /** Optional hooks invoked once per stage-boss defeat (after loot, before filter). */
 const encounterRewardHooks = [];
@@ -181,12 +181,13 @@ function tryActivateEncounter(gameState) {
 
   const anchor = resolveEncounterAnchor(run, gameState);
   const addsCleared = areAllNonBossEnemiesDefeated(gameState, bossId);
+  if (!addsCleared) return false;
   const playerNear = isPlayerNearEncounterAnchor(
     gameState,
     anchor,
     ENCOUNTER_TRIGGER_RADIUS,
   );
-  if (!addsCleared && !playerNear) return false;
+  if (!playerNear) return false;
 
   activateEncounter(run);
   lockEncounter(run);
@@ -210,6 +211,7 @@ module.exports = {
   getEncounterBossId,
   isEncounterCleared,
   ensureEncounterSpawnAnchor,
+  areAllNonBossEnemiesDefeated,
   tryActivateEncounter,
   onStageBossDefeated,
   registerEncounterRewardHook,

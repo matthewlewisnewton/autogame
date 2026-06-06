@@ -312,6 +312,22 @@ function advanceLockOnCameraYaw(currentCameraYaw, rawCameraYaw, delta) {
 }
 
 /**
+ * Dormant stage bosses are not engageable yet — keep them out of the lock-on pool
+ * so Z targets wandering adds first (normal play reaches the same filter once the
+ * encounter is dormant and adds are still alive).
+ * @param {Array<{ id: string, x: number, z: number, hp?: number }>} enemies
+ * @param {{ phase?: string, bossEnemyId?: string } | null | undefined} encounter
+ * @returns {Array<{ id: string, x: number, z: number, hp?: number }>}
+ */
+export function filterLockOnEnemies(enemies, encounter) {
+	if (!Array.isArray(enemies)) return [];
+	if (encounter?.phase === 'dormant' && encounter.bossEnemyId) {
+		return enemies.filter((e) => e && e.id !== encounter.bossEnemyId);
+	}
+	return enemies;
+}
+
+/**
  * @param {Array<{ id: string, x: number, z: number, hp?: number }>} enemies
  * @param {number} playerX
  * @param {number} playerZ

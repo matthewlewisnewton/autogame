@@ -126,6 +126,22 @@ describe('debug godmode toggle (main.js)', () => {
 		expect(log.filter((entry) => entry.event === 'toggleDebugGodmode')).toHaveLength(1);
 	});
 
+	it('mirrors debugGodmode onto local player when toggle succeeds', async () => {
+		stubLocation('localhost');
+		await import('../main.js');
+		window.__setGameState({
+			gamePhase: 'playing',
+			players: {
+				p1: { hp: 80, magicStones: 40, x: 0, z: 0, debugGodmode: false },
+			},
+			enemies: [],
+		}, 'p1');
+		window.__triggerSocketEvent('debugGodmodeResult', { ok: true, enabled: true });
+		const harness = window.__AUTOGAME_HARNESS_STATE__();
+		expect(harness.player.debugGodmode).toBe(true);
+		expect(harness.debugGodmodeResult).toEqual({ ok: true, enabled: true });
+	});
+
 	it('stores debugGodmodeResult in harness state and logs success/failure', async () => {
 		stubLocation('localhost');
 		const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});

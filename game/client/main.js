@@ -100,6 +100,7 @@ import {
 	getCardMagicStoneCost,
 } from './vanguard-hud.js';
 import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
+import { clearAllLockOnState } from './lockOn.js';
 
 // ── Renderer module imports ──
 import {
@@ -1178,6 +1179,11 @@ function bindSocketHandlers(s) {
 		}
 		gameState = state;
 		setGameStateRef(state);
+		// Server snapshots omit debugGodmode; re-apply the last toggle so harness
+		// probes and local handlers stay consistent across stateUpdate.
+		if (myId && debugGodmodeResult?.ok && gameState.players?.[myId]) {
+			gameState.players[myId].debugGodmode = !!debugGodmodeResult.enabled;
+		}
 		const me = myId && gameState.players ? gameState.players[myId] : null;
 		const isExtracted = !!(me && me.extracted);
 		// The renderer shows the hub during the lobby, and also while the local
@@ -1348,6 +1354,15 @@ function bindSocketHandlers(s) {
 		debugScenarioResult = data || null;
 		if (data && data.ok) {
 			console.log(`[debugScenario] applied ${data.scenario}`);
+			// Repositioning scenarios emit stateUpdate before this result; defer one
+			// tick so the client sim snaps after that payload is applied.
+			setTimeout(() => {
+				if (gameState?.gamePhase === 'playing' && myId && gameState.players[myId]) {
+					const me = gameState.players[myId];
+					setPlayerPosition(me.x, me.z);
+					clearAllLockOnState();
+				}
+			}, 0);
 			// Debug-only: the `hats-unlocked` scenario persists hat unlocks on the
 			// account and reports the new owned set so the (already-loaded) client
 			// cache reflects them without a full reload. No normal scenario sends
@@ -1369,6 +1384,11 @@ function bindSocketHandlers(s) {
 	s.on(SERVER_TO_CLIENT.DEBUG_GODMODE_RESULT, (data) => {
 		debugGodmodeResult = data || null;
 		if (data && data.ok) {
+			// Mirror server toggle locally so harness probes see debugGodmode without
+			// waiting for a full stateUpdate (snapshots omit this debug-only flag).
+			if (myId && gameState?.players?.[myId]) {
+				gameState.players[myId].debugGodmode = !!data.enabled;
+			}
 			console.log(`[debugGodmode] ${data.enabled ? 'enabled' : 'disabled'}`);
 		} else if (data && data.reason) {
 			console.warn(`[debugGodmode] ${data.reason}`);
@@ -3475,10 +3495,12 @@ function playActivationEffect(slotIndex) {
 		slot.classList.add('cooldown');
 	}, 200);
 
+	// Keep in sync with server COOLDOWN_MS (800) so rapid slot re-presses are not
+	// rejected client-side before the server would accept the next useCard.
 	setTimeout(() => {
 		slot.classList.remove('cooldown');
 		slotCooldowns[slotIndex] = false;
-	}, 1200);
+	}, 800);
 }
 
 function useCard(slotIndex) {
@@ -4539,6 +4561,8 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 			revealedUntil: enemy.revealedUntil ?? undefined,
 			type: enemy.type,
 			spawnedBy: enemy.spawnedBy ?? null,
+			x: enemy.x,
+			z: enemy.z,
 		})) : [],
 		minions: gameState && gameState.minions ? gameState.minions.map((m) => ({
 			id: m.id,

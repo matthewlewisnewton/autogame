@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
 	findClosestTargetableEnemy,
+	filterLockOnEnemies,
 	findEnemyById,
 	getDirectionToTarget,
 	cameraYawBehindFacing,
@@ -28,6 +29,26 @@ const enemies = [
 	{ id: 'b', x: 0, z: 5, hp: 50 },
 	{ id: 'c', x: 20, z: 0, hp: 0 },
 ];
+
+describe('filterLockOnEnemies', () => {
+	it('excludes the dormant stage boss from lock-on targets', () => {
+		const pool = [
+			{ id: 'boss', x: 2, z: 0, hp: 100 },
+			{ id: 'add', x: 4, z: 0, hp: 10 },
+		];
+		const filtered = filterLockOnEnemies(pool, { phase: 'dormant', bossEnemyId: 'boss' });
+		expect(filtered.map((e) => e.id)).toEqual(['add']);
+	});
+
+	it('keeps the boss targetable once the encounter is active', () => {
+		const pool = [
+			{ id: 'boss', x: 2, z: 0, hp: 100 },
+			{ id: 'add', x: 4, z: 0, hp: 10 },
+		];
+		const filtered = filterLockOnEnemies(pool, { phase: 'active', bossEnemyId: 'boss' });
+		expect(filtered.map((e) => e.id)).toEqual(['boss', 'add']);
+	});
+});
 
 describe('findClosestTargetableEnemy', () => {
 	it('returns nearest living enemy within range', () => {

@@ -468,6 +468,79 @@ describe('debugScenario — training-caverns-tier-2', () => {
 		expect(resolveVariantRollTier(stateUpdate.run.questTier, 0)).toBe(1);
 	});
 
+	it('repositions beside live adds after training-caverns-tier-2 deploy', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'training-caverns-tier-2' });
+		const tier2Result = await tier2Promise;
+		expect(tier2Result.ok).toBe(true);
+
+		const state = testGameState();
+		const player = playerForSocket(socket);
+		const addsBefore = state.enemies.filter(
+			(e) => e.hp > 0 && e.type !== 'annex_overseer' && (e.type === 'grunt' || e.type === 'skirmisher'),
+		);
+		expect(addsBefore.length).toBeGreaterThan(0);
+
+		const nearAddsPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('debugScenario', { name: 'training-caverns-near-adds' });
+		const nearAddsResult = await nearAddsPromise;
+		await stateUpdatePromise;
+
+		expect(nearAddsResult.ok).toBe(true);
+		expect(nearAddsResult.scenario).toBe('training-caverns-near-adds');
+
+		expect(player.hand[0]?.type).toBe('weapon');
+		expect(player.hand[0]?.remainingCharges).toBeGreaterThan(0);
+		expect(
+			state.enemies.filter(
+				(e) => e.hp > 0 && e.type !== 'annex_overseer' && (e.type === 'grunt' || e.type === 'skirmisher'),
+			).every((e) => e.hp === 1 && !e.shieldHp),
+		).toBe(true);
+
+		let nearest = addsBefore[0];
+		let bestDist = Infinity;
+		for (const add of addsBefore) {
+			const dist = Math.hypot(add.x - player.x, add.z - player.z);
+			if (dist < bestDist) {
+				bestDist = dist;
+				nearest = add;
+			}
+		}
+		expect(bestDist).toBeGreaterThanOrEqual(2);
+		expect(bestDist).toBeLessThanOrEqual(5);
+	});
+
+	it('places player outside dormant boss trigger after adds cleared', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'training-caverns-tier-2' });
+		await tier2Promise;
+
+		const state = testGameState();
+		const bossId = state.run.encounter.bossEnemyId;
+		for (const enemy of state.enemies) {
+			if (enemy.id !== bossId) enemy.hp = 0;
+		}
+		state.enemies = state.enemies.filter((e) => e.hp > 0);
+
+		const approachPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'training-caverns-boss-approach' });
+		const approachResult = await approachPromise;
+
+		expect(approachResult.ok).toBe(true);
+		expect(approachResult.scenario).toBe('training-caverns-boss-approach');
+
+		const player = playerForSocket(socket);
+		const boss = state.enemies.find((e) => e.id === bossId);
+		const dist = Math.hypot(boss.x - player.x, boss.z - player.z);
+		expect(dist).toBeGreaterThan(ENCOUNTER_TRIGGER_RADIUS);
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
+	});
+
 	it('Tier 2 variant rolls tag enemies under fixed seed 4242 (training_caverns_tier2 parity)', () => {
 		const SEED = 4242;
 		resetGameState();

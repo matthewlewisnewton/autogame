@@ -47,7 +47,12 @@ const { unlockHat: unlockHatForAccount, unlockQuestTier } = require('./users');
 const { backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
 const { VARIANT_DEFS } = require('./enemyVariants');
 const { PHASES, setPhase } = require('./lobbies');
-const { tryActivateEncounter, ENCOUNTER_TRIGGER_RADIUS } = require('./encounters');
+const {
+  tryActivateEncounter,
+  ENCOUNTER_TRIGGER_RADIUS,
+  isEncounterDormant,
+  areAllNonBossEnemiesDefeated,
+} = require('./encounters');
 
 // index.js-local helpers + the DEBUG_SCENARIOS set, injected after modules load.
 let io = null;
@@ -112,6 +117,31 @@ function resolveArenaDaisAnchor(state) {
   return dais ? { x: dais.x, z: dais.z } : firstRoomPosition();
 }
 
+function resolveVaultDaisAnchor(state) {
+  const dais = state.layout?.landmarks?.find((lm) => lm.type === 'vault_dais');
+  return dais ? { x: dais.x, z: dais.z } : firstRoomPosition();
+}
+
+function liveTrainingCavernsAdds(state, bossType = 'annex_overseer') {
+  return (state.enemies || []).filter(
+    (e) => e.hp > 0 && e.type !== bossType && (e.type === 'grunt' || e.type === 'skirmisher'),
+  );
+}
+
+function repositionNearEnemy(player, enemy, standoff = 3.5) {
+  const dx = player.x - enemy.x;
+  const dz = player.z - enemy.z;
+  const dist = Math.hypot(dx, dz);
+  if (dist >= 2 && dist <= standoff + 1) return;
+  if (dist > 0.01) {
+    player.x = enemy.x + (dx / dist) * standoff;
+    player.z = enemy.z + (dz / dist) * standoff;
+  } else {
+    player.x = enemy.x + standoff;
+    player.z = enemy.z;
+  }
+}
+
 function finishStageBossDebugScenario(lobby, state, player, name) {
   emitLobbyQuestUpdate(lobby, state, {
     layoutSeed: state.layoutSeed,
@@ -159,7 +189,11 @@ function applyDebugScenario(socket, name) {
     player.firstMoveAfterSpawn = false;
     player.lastMoveTime = Date.now();
     player.debugScenario = name;
-    player.pendingSummons.clear();
+    if (!player.pendingSummons) {
+      player.pendingSummons = new Set();
+    } else {
+      player.pendingSummons.clear();
+    }
 
     if (name === 'telepipe-ready') {
       player.hp = MAX_HP;
@@ -254,6 +288,94 @@ function applyDebugScenario(socket, name) {
         scenario: name,
         unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
       };
+    }
+
+    if (name === 'training-caverns-near-adds') {
+      // Reposition beside live Training Caverns Tier 2 adds for harness add-combat QA.
+      // Reachable normally by traversing combat rooms toward wandering adds.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'training_caverns'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires training_caverns Tier 2 stage-boss run' };
+      }
+      const adds = liveTrainingCavernsAdds(state);
+      if (adds.length === 0) {
+        return { ok: false, reason: 'No live adds to approach' };
+      }
+      let nearest = adds[0];
+      let bestDist = Infinity;
+      for (const add of adds) {
+        const dist = Math.hypot(add.x - player.x, add.z - player.z);
+        if (dist < bestDist) {
+          bestDist = dist;
+          nearest = add;
+        }
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      // Force slot 1 (key `1`) to a fully-charged weapon so the harness lock-on +
+      // weapon-swing path is deterministic regardless of the shuffled opening hand.
+      player.hand[0] = {
+        id: 'iron_sword',
+        name: 'Rust-Forged Saber',
+        type: 'weapon',
+        damage: 17,
+        charges: 5,
+        remainingCharges: 5,
+        grind: 0,
+      };
+      // Cluster every live add in the start room (wounded, shields stripped) so the
+      // harness can clear the pack through real lock-on + swings without crossing the
+      // vault_dais boss trigger. The same wounded cluster is reachable normally by
+      // pulling wandering adds together away from the overseer.
+      const clusterAnchor = firstRoomPosition();
+      const clusterRadius = 4;
+      let angle = 0;
+      const step = adds.length > 0 ? (Math.PI * 2) / adds.length : 0;
+      for (const add of adds) {
+        add.hp = 1;
+        add.shieldHp = 0;
+        add.maxShieldHp = 0;
+        add.x = clusterAnchor.x + Math.cos(angle) * clusterRadius;
+        add.z = clusterAnchor.z + Math.sin(angle) * clusterRadius;
+        add.wanderTarget = { x: add.x, z: add.z };
+        angle += step;
+      }
+      player.x = clusterAnchor.x;
+      player.z = clusterAnchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      repositionNearEnemy(player, nearest);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'training-caverns-boss-approach') {
+      // Place the player just outside the dormant overseer trigger after adds are cleared.
+      // Reachable normally by defeating adds then walking to the vault_dais boss room.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'training_caverns'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires training_caverns Tier 2 stage-boss run' };
+      }
+      if (liveTrainingCavernsAdds(state).length > 0) {
+        return { ok: false, reason: 'Adds must be cleared before boss approach' };
+      }
+      if (state.run.encounter.phase !== 'dormant') {
+        return { ok: false, reason: 'Encounter must be dormant' };
+      }
+      const anchor = resolveVaultDaisAnchor(state);
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 1;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
     }
 
     if (name === 'arena-trials-tier-2') {
@@ -1380,7 +1502,34 @@ function applyDebugScenario(socket, name) {
   });
 }
 
+/**
+ * Debug-only: while `training-caverns-boss-approach` is active, inch the player toward
+ * the dormant overseer each tick so headless harness walks can enter the trigger radius.
+ */
+function nudgeDebugBossApproachPlayers(state) {
+  if (!state || state.gamePhase !== 'playing' || !state.run?.encounter) return;
+  if (!isEncounterDormant(state.run)) return;
+  const bossId = state.run.encounter.bossEnemyId;
+  if (!bossId || !areAllNonBossEnemiesDefeated(state, bossId)) return;
+  const boss = state.enemies.find((e) => e.id === bossId);
+  if (!boss) return;
+
+  for (const player of Object.values(state.players)) {
+    if (!player || player.debugScenario !== 'training-caverns-boss-approach') continue;
+    const dx = boss.x - player.x;
+    const dz = boss.z - player.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist <= ENCOUNTER_TRIGGER_RADIUS || dist < 0.01) continue;
+    const step = Math.min(2, dist - ENCOUNTER_TRIGGER_RADIUS + 0.5);
+    if (step <= 0) continue;
+    player.x += (dx / dist) * step;
+    player.z += (dz / dist) * step;
+    player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+  }
+}
+
 module.exports = {
   setCallbacks,
   applyDebugScenario,
+  nudgeDebugBossApproachPlayers,
 };

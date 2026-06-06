@@ -106,12 +106,16 @@ describe('tryActivateEncounter', () => {
     expect(state.enemies.length).toBeGreaterThan(1);
   });
 
-  it('activates and locks when every non-boss enemy is defeated', () => {
+  it('activates and locks when every non-boss enemy is defeated and the player enters the trigger radius', () => {
     const bossId = state.run.encounter.bossEnemyId;
     for (const enemy of state.enemies) {
       if (enemy.id !== bossId) enemy.hp = 0;
     }
     state.enemies = state.enemies.filter((e) => e.hp > 0);
+
+    const anchor = state.run.encounter.spawnAnchor;
+    state.players.p1.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS - 1;
+    state.players.p1.z = anchor.z;
 
     expect(tryActivateEncounter(state)).toBe(true);
     expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
@@ -120,7 +124,26 @@ describe('tryActivateEncounter', () => {
     expect(state.enemies[0].id).toBe(bossId);
   });
 
-  it('activates and locks when a non-extracted player enters the trigger radius', () => {
+  it('stays dormant when adds are cleared but the player is outside the trigger radius', () => {
+    const bossId = state.run.encounter.bossEnemyId;
+    for (const enemy of state.enemies) {
+      if (enemy.id !== bossId) enemy.hp = 0;
+    }
+    state.enemies = state.enemies.filter((e) => e.hp > 0);
+    state.players.p1.x = -40;
+    state.players.p1.z = 0;
+
+    expect(tryActivateEncounter(state)).toBe(false);
+    expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
+  });
+
+  it('activates and locks when a non-extracted player enters the trigger radius after adds are cleared', () => {
+    const bossId = state.run.encounter.bossEnemyId;
+    for (const enemy of state.enemies) {
+      if (enemy.id !== bossId) enemy.hp = 0;
+    }
+    state.enemies = state.enemies.filter((e) => e.hp > 0);
+
     const anchor = state.run.encounter.spawnAnchor;
     expect(anchor).toBeTruthy();
 
@@ -170,6 +193,11 @@ describe('dormant boss AI and spawner suppression', () => {
 
   it('lets the active boss chase after encounter activation', () => {
     const boss = bossEnemy(state);
+    const bossId = state.run.encounter.bossEnemyId;
+    for (const enemy of state.enemies) {
+      if (enemy.id !== bossId) enemy.hp = 0;
+    }
+    state.enemies = state.enemies.filter((e) => e.hp > 0);
     const anchor = state.run.encounter.spawnAnchor;
     state.players.p1.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS - 1;
     state.players.p1.z = anchor.z;
@@ -226,6 +254,10 @@ describe('dormant boss AI and spawner suppression', () => {
       if (enemy.id !== bossId) enemy.hp = 0;
     }
     state.enemies = state.enemies.filter((e) => e.hp > 0);
+
+    const anchor = state.run.encounter.spawnAnchor;
+    state.players.p1.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS - 1;
+    state.players.p1.z = anchor.z;
 
     updateEncounterTriggers();
 

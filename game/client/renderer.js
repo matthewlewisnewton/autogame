@@ -76,6 +76,7 @@ import {
 	isLockOnCameraReleasing,
 	updateLockOnCameraRelease,
 	handleLockOnPress,
+	filterLockOnEnemies,
 	updateLockOn,
 	targetRelativeDirection,
 	getDirectionToTarget,
@@ -868,15 +869,30 @@ function getCameraForwardDirection() {
 	return cameraRelativeDirection(0, 1);
 }
 
+function lockOnEnemyPool() {
+	const gs = gameStateRef;
+	return filterLockOnEnemies(gs?.enemies, gs?.run?.encounter);
+}
+
+/** Prefer server-authoritative player coords for lock-on targeting (sim can lag after teleports). */
+function lockOnAnchorCoords() {
+	const me = myIdRef && gameStateRef?.players?.[myIdRef];
+	if (me && Number.isFinite(me.x) && Number.isFinite(me.z)) {
+		return { x: me.x, z: me.z };
+	}
+	return { x: simX, z: simZ };
+}
+
 export function applyLockOnPress() {
 	if (currentGamePhase !== 'playing') return;
 	const gs = gameStateRef;
 	if (!gs?.enemies) return;
 
+	const anchor = lockOnAnchorCoords();
 	const result = handleLockOnPress(
-		gs.enemies,
-		simX,
-		simZ,
+		lockOnEnemyPool(),
+		anchor.x,
+		anchor.z,
 		getLockOnRepeatAction(),
 		playerRotation,
 	);
@@ -885,7 +901,7 @@ export function applyLockOnPress() {
 		clearLockOnCameraRelease();
 		lockOnReleaseLookAt = null;
 		resetLockOnTracking();
-		const toTarget = getDirectionToTarget(simX, simZ, result.enemy);
+		const toTarget = getDirectionToTarget(anchor.x, anchor.z, result.enemy);
 		lockOnToTarget = toTarget;
 		playerRotation = Math.atan2(toTarget.z, toTarget.x);
 		lastEmittedRotation = playerRotation;
@@ -1543,7 +1559,7 @@ export function updateMyPlayer(delta) {
 	}
 
 	const lockState = updateLockOn(
-		gameStateRef?.enemies,
+		lockOnEnemyPool(),
 		simX,
 		simZ,
 		delta,

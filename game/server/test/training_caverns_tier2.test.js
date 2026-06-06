@@ -15,6 +15,7 @@ import {
 import { generateLayout, questLayoutSeed } from '../dungeon.js';
 import {
   ENCOUNTER_PHASES,
+  ENCOUNTER_TRIGGER_RADIUS,
   tryActivateEncounter,
   isEncounterCleared,
 } from '../encounters.js';
@@ -132,6 +133,12 @@ function activateEncounterForTest(state) {
     if (enemy.id !== bossId) enemy.hp = 0;
   }
   state.enemies = state.enemies.filter((e) => e.hp > 0);
+  const anchor = state.run.encounter.spawnAnchor;
+  const player = Object.values(state.players)[0];
+  if (anchor && player) {
+    player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS - 1;
+    player.z = anchor.z;
+  }
   tryActivateEncounter(state);
 }
 
