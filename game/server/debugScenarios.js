@@ -558,6 +558,7 @@ function applyDebugScenario(socket, name) {
         add.maxShieldHp = 0;
         add.x = clusterAnchor.x + Math.cos(angle) * clusterRadius;
         add.z = clusterAnchor.z + Math.sin(angle) * clusterRadius;
+        add.y = resolveFloorY(sampleFloorY(state.layout, add.x, add.z));
         add.wanderTarget = { x: add.x, z: add.z };
         angle += step;
       }
@@ -566,33 +567,6 @@ function applyDebugScenario(socket, name) {
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       repositionNearEnemy(player, nearest);
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-      return { ok: true, scenario: name };
-    }
-
-    if (name === 'arena-trials-boss-approach') {
-      // Place the player just outside the dormant arena_champion trigger after adds are cleared.
-      // Reachable normally by defeating adds then walking to the arena_dais boss.
-      if (state.gamePhase !== 'playing'
-        || state.selectedQuestId !== 'arena_trials'
-        || state.selectedQuestTier !== 2
-        || !state.run?.encounter) {
-        return { ok: false, reason: 'Requires arena_trials Tier 2 stage-boss run' };
-      }
-      if (liveArenaTrialsAdds(state).length > 0) {
-        return { ok: false, reason: 'Adds must be cleared before boss approach' };
-      }
-      if (state.run.encounter.phase !== 'dormant') {
-        return { ok: false, reason: 'Encounter must be dormant' };
-      }
-      const anchor = resolveArenaDaisAnchor(state);
-      player.hp = MAX_HP;
-      player.magicStones = MAX_MAGIC_STONES;
-      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 1;
-      player.z = anchor.z;
-      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      player.debugScenarioNudgeAfter = Date.now() + 1500;
       broadcastLobbyUpdate(lobby);
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return { ok: true, scenario: name };
@@ -666,66 +640,6 @@ function applyDebugScenario(socket, name) {
         boss.maxHp = boss.maxHp || boss.hp;
       }
       return finishStageBossDebugScenario(lobby, state, player, name);
-    }
-
-    if (name === 'arena-trials-near-adds') {
-      // Reposition beside live Arena Trials Tier 2 adds for harness add-combat QA.
-      // Reachable normally by traversing the open plaza toward wandering adds.
-      if (state.gamePhase !== 'playing'
-        || state.selectedQuestId !== 'arena_trials'
-        || state.selectedQuestTier !== 2
-        || !state.run?.encounter) {
-        return { ok: false, reason: 'Requires arena_trials Tier 2 stage-boss run' };
-      }
-      const adds = liveArenaTrialsAdds(state);
-      if (adds.length === 0) {
-        return { ok: false, reason: 'No live adds to approach' };
-      }
-      let nearest = adds[0];
-      let bestDist = Infinity;
-      for (const add of adds) {
-        const dist = Math.hypot(add.x - player.x, add.z - player.z);
-        if (dist < bestDist) {
-          bestDist = dist;
-          nearest = add;
-        }
-      }
-      player.hp = MAX_HP;
-      player.magicStones = MAX_MAGIC_STONES;
-      player.hand[0] = {
-        id: 'iron_sword',
-        name: 'Rust-Forged Saber',
-        type: 'weapon',
-        damage: 17,
-        charges: 5,
-        remainingCharges: 5,
-        grind: 0,
-      };
-      // Cluster every live add on the start plaza (wounded, shields stripped) so the
-      // harness can clear the pack through lock-on + swings without crossing the
-      // arena_champion boss trigger. Each add gets correct floor Y via sampleFloorY.
-      const clusterAnchor = firstRoomPosition();
-      const clusterRadius = 4;
-      let angle = 0;
-      const step = adds.length > 0 ? (Math.PI * 2) / adds.length : 0;
-      for (const add of adds) {
-        add.hp = 1;
-        add.shieldHp = 0;
-        add.maxShieldHp = 0;
-        add.x = clusterAnchor.x + Math.cos(angle) * clusterRadius;
-        add.z = clusterAnchor.z + Math.sin(angle) * clusterRadius;
-        add.y = resolveFloorY(sampleFloorY(state.layout, add.x, add.z));
-        add.wanderTarget = { x: add.x, z: add.z };
-        angle += step;
-      }
-      player.x = clusterAnchor.x;
-      player.z = clusterAnchor.z;
-      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      repositionNearEnemy(player, nearest);
-      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-      return { ok: true, scenario: name };
     }
 
     if (name === 'arena-trials-boss-approach') {
