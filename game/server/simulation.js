@@ -1026,6 +1026,14 @@ const ENEMY_DEFS = {
 		healAmount: 18, healRadius: 6, healCooldownMs: 4000,
 		beadRange: 8, beadCooldownMs: 2500,
 	},
+	ember_wraith: {
+		name: 'Ember Wraith',
+		description: 'Fast cone striker that ignites players on hit, leaving them burning.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'chaseSpeed', 'burnDurationMs'],
+		hp: 55, chaseSpeed: 4.2, wanderSpeed: 1.4, attackDamage: 8, attackWindupMs: 450,
+		attackStyle: 'cone', attackConeAngle: Math.PI / 3,
+		burnDurationMs: 2800,
+	},
 };
 
 function enemyDefFor(type) {
