@@ -159,6 +159,8 @@ import {
 	getWindupFlashing,
 	triggerDashVFX,
 	triggerHealPulseVFX,
+	triggerMedicAllyHealVFX,
+	triggerMedicEnergyBeadVFX,
 	triggerShieldVFX,
 	triggerSmokeVFX,
 	triggerLootMagnetVFX,
@@ -1565,6 +1567,18 @@ function bindSocketHandlers(s) {
 			? healRadius
 			: (keyItemDefs.field_medic_kit?.healRadius ?? 5);
 		triggerHealPulseVFX({ x, y: 0, z }, radius);
+	});
+
+	s.on(SERVER_TO_CLIENT.MEDIC_ALLY_HEAL, (data) => {
+		if (!data || !getScene()) return;
+		const { x, z, healRadius } = data;
+		if (!Number.isFinite(x) || !Number.isFinite(z)) return;
+		triggerMedicAllyHealVFX({ x, y: 0, z }, healRadius);
+	});
+
+	s.on(SERVER_TO_CLIENT.MEDIC_BEAD, (data) => {
+		if (!data || !getScene()) return;
+		triggerMedicEnergyBeadVFX(data);
 	});
 
 	s.on(SERVER_TO_CLIENT.KEY_ITEM_USED, (data) => {

@@ -435,6 +435,7 @@ const ENEMY_GEOMETRY = {
 	arena_champion: { type: 'cone', radius: 1.4, height: 3.0, segments: 16, color: 0xffaa00, emissive: 0xcc3300, emissiveIntensity: 0.45 },
 	spire_warden: { type: 'cone', radius: 1.1, height: 2.4, segments: 12, color: 0x3388cc, emissive: 0x2266aa, emissiveIntensity: 0.3 },
 	spawner:    { type: 'octahedron', radius: 0.6, color: 0x00ccaa, emissive: 0x00ccaa, emissiveIntensity: 0.4 },
+	field_medic: { type: 'octahedron', radius: 0.4, color: 0x10b981, emissive: 0x2dd4bf, emissiveIntensity: 0.55 },
 };
 
 /** Windup telegraph shape per enemy type — mirrors server ENEMY_DEFS attackStyle */
@@ -446,6 +447,7 @@ const ENEMY_ATTACK_VISUAL = {
 	arena_champion: { style: 'cone', coneAngle: (2 * Math.PI) / 3, range: 6.5, color: 0xffcc44, emissive: 0xcc3300 },
 	spire_warden: { style: 'cone', coneAngle: Math.PI / 2, range: 6, color: 0x55aaff, emissive: 0x3388cc },
 	spawner:    { style: 'radial' },
+	field_medic: { style: 'projectile', range: 8, color: 0x2dd4bf, emissive: 0x14b8a6, hitWidth: 0.5 },
 };
 
 /** Minion mesh presets keyed by minion.type */
@@ -2523,6 +2525,62 @@ export function triggerHealPulseVFX(position, healRadius) {
 		}
 	}
 	requestAnimationFrame(animatePulse);
+}
+
+const MEDIC_BEAD_COLOR = 0x2dd4bf;
+const MEDIC_BEAD_EMISSIVE = 0x14b8a6;
+const MEDIC_HEAL_DEFAULT_RADIUS = 6;
+
+/**
+ * Ally-heal pulse at the medic position (wraps the Field Medic Kit ring VFX).
+ *
+ * @param {{ x: number, y?: number, z: number }} position
+ * @param {number} [healRadius] — metres; matches server ENEMY_DEFS.field_medic.healRadius
+ */
+export function triggerMedicAllyHealVFX(position, healRadius) {
+	if (!scene || !position) return;
+	if (!Number.isFinite(position.x) || !Number.isFinite(position.z)) return;
+	const radius = Number.isFinite(healRadius) && healRadius > 0
+		? healRadius
+		: MEDIC_HEAL_DEFAULT_RADIUS;
+	triggerHealPulseVFX(position, radius);
+}
+
+/**
+ * Narrow energy-bead beam along the medic attack vector (phase-beam corridor).
+ *
+ * @param {{ origin: { x: number, z: number }, direction: { x: number, z: number }, beadRange?: number, hitWidth?: number, hits?: Array<{ playerId?: string }> }} record
+ */
+export function triggerMedicEnergyBeadVFX(record) {
+	if (!scene || !record) return;
+	const { origin, direction, beadRange, hitWidth, hits } = record;
+	if (!origin || !direction) return;
+	if (!Number.isFinite(origin.x) || !Number.isFinite(origin.z)) return;
+	if (!Number.isFinite(direction.x) || !Number.isFinite(direction.z)) return;
+
+	spawnAttackEffect(
+		{ x: origin.x, z: origin.z },
+		{ x: direction.x, z: direction.z },
+		{
+			effect: 'returning_projectile',
+			returnPasses: 0,
+			range: Number.isFinite(beadRange) ? beadRange : 8,
+			projectileHitWidth: Number.isFinite(hitWidth) ? hitWidth : 0.5,
+			color: MEDIC_BEAD_COLOR,
+			emissive: MEDIC_BEAD_EMISSIVE,
+		},
+	);
+
+	if (!hits?.length) return;
+	for (const hit of hits) {
+		if (!hit.playerId) continue;
+		const mesh = playersMeshes[hit.playerId];
+		if (!mesh) continue;
+		spawnHitSpark(
+			{ x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z },
+			{ color: MEDIC_BEAD_COLOR, emissive: MEDIC_BEAD_EMISSIVE, count: 5, spread: 0.55 },
+		);
+	}
 }
 
 // ── Loot magnet VFX ──

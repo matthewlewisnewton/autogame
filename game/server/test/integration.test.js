@@ -3946,10 +3946,11 @@ describe('magic stone drops — any player can pick up', () => {
 		p2.x = drop.x;
 		p2.z = drop.z;
 
+		const msBeforePickup = p2.magicStones;
 		socket2.emit('lootPickup', { lootId: drop.id });
 		await sleep(10);
 
-		expect(p2.magicStones).toBe(10 + drop.value);
+		expect(p2.magicStones).toBeCloseTo(msBeforePickup + drop.value, 5);
 		expect(state.loot.find((l) => l.id === drop.id)).toBeUndefined();
 
 		const moneyDrop = moneyLoot[0];

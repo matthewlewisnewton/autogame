@@ -106,6 +106,32 @@ describe('buildLockOnPanelModel', () => {
     });
   });
 
+  it('builds a field_medic panel with support stats and description', () => {
+    const enemy = {
+      type: 'field_medic',
+      hp: 50,
+      maxHp: 65,
+      attackDamage: 6,
+      healAmount: 18,
+      healCooldownMs: 4000,
+      fleeSpeed: 5.0,
+    };
+    const model = buildLockOnPanelModel(enemy, catalog);
+    expect(model).toEqual({
+      name: 'Field Medic',
+      variantName: undefined,
+      description:
+        'Fragile support drone that kites attackers, heals nearby allies, and fires defensive suppression beads.',
+      hpText: '50 / 65',
+      stats: [
+        { label: 'Attack', value: '6' },
+        { label: 'healAmount', value: '18' },
+        { label: 'healCooldownMs', value: '4000' },
+        { label: 'fleeSpeed', value: '5' },
+      ],
+    });
+  });
+
   it('appends variant name, stats, and description for volatile grunts', () => {
     const enemy = {
       type: 'grunt',
