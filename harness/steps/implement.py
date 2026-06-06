@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 def implement(role: "Role", *, workspace, ticket_file: Path, feedback: Path,
               handoff: Path, artifacts_dir: Path, telemetry=None,
               allow_harness: bool = False,
+              allow_validation: bool = False,
               extra_safe_paths: "list[str] | None" = None) -> "ChainResult":
     """Run the implementer role.
 
@@ -30,6 +31,10 @@ def implement(role: "Role", *, workspace, ticket_file: Path, feedback: Path,
     harness misreads it as a repeated coder tool failure → exit 2. This
     matches the harness-allow signal already threaded into the diff capture
     (`:!tickets`) and the commit (`include_harness`) in subtask.py.
+
+    `allow_validation` (set by subtask when the sub-ticket's ticket.md targets
+    `validation/`): adds `validation/**` so capture/execute sub-tickets can
+    land artifact trees without scope_audit reverting them.
     """
     log("[impl] implementing...")
     try:
@@ -39,6 +44,8 @@ def implement(role: "Role", *, workspace, ticket_file: Path, feedback: Path,
         extra_safe = []
     if allow_harness:
         extra_safe.append("harness/**")
+    if allow_validation:
+        extra_safe.append("validation/**")
     if extra_safe_paths:
         extra_safe.extend(p for p in extra_safe_paths if p not in extra_safe)
     return role.execute(

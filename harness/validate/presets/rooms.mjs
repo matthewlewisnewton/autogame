@@ -6,6 +6,7 @@ export default {
 	deployScenario: 'training-caverns-tier-2',
 	nearAddsScenario: 'training-caverns-near-adds',
 	bossApproachScenario: 'training-caverns-boss-approach',
+	bossLowHpScenario: 'training-caverns-boss-low-hp',
 	encounterTriggerRadius: 8,
 	addsTimeoutMs: 90000,
 	encounterTimeoutMs: 60000,

@@ -5,7 +5,8 @@
  *   node harness/validate/playthrough.mjs [--preset rooms] [--out validation/rooms/] [--steps auth|hub|deploy|boss-encounter|full]
  *
  * Steps: auth (register/login), hub | deploy (ship hub + character save + tier-2 deploy),
- * boss-encounter (godmode + defeat adds + dormant/active boss screenshots), full (stubbed for sub-ticket 07).
+ * boss-encounter (godmode + defeat adds + dormant/active boss screenshots),
+ * full (auth → hub/deploy → boss-encounter → victory).
  */
 import { chromium } from 'playwright';
 import fs from 'fs';
@@ -15,10 +16,12 @@ import { registerUser, injectToken, isSocketConnected } from './lib/auth.mjs';
 import {
 	enableGodmode,
 	defeatAdds,
+	defeatBoss,
 	activateEncounter,
 	assertDormantBoss,
 } from './lib/combat.mjs';
 import { wireConsoleLog, writeConsoleLog } from './lib/consoleLog.mjs';
+import { renderFindings } from './lib/findings.mjs';
 import { startGame, stopGame } from './lib/gameProcess.mjs';
 import { readHarness } from './lib/harnessState.mjs';
 import { writeScreenshot } from './lib/screenshot.mjs';
@@ -30,7 +33,7 @@ const PRESET_MODULES = {
 	rooms: () => import('./presets/rooms.mjs'),
 };
 
-const STUB_STEPS = new Set(['full']);
+const FULL_STEPS = new Set(['full']);
 const HUB_STEPS = new Set(['hub', 'deploy']);
 const BOSS_ENCOUNTER_STEPS = new Set(['boss-encounter']);
 const ADD_TYPES = new Set(['grunt', 'skirmisher']);
@@ -290,23 +293,130 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 	};
 }
 
+function buildVictoryProbe(harness) {
+	return {
+		runStatus: harness?.runStatus ?? null,
+		runObjectiveComplete: harness?.runObjectiveComplete ?? false,
+		bossDefeated: harness?.objective?.bossDefeated ?? null,
+		lastRunSummaryStatus: harness?.lastRunSummary?.status ?? null,
+	};
+}
+
+async function waitForVictoryState(page, { timeoutMs = 30000 } = {}) {
+	await page.waitForFunction(() => {
+		const h = window.__AUTOGAME_HARNESS_STATE__?.();
+		return h
+			&& h.runStatus === 'victory'
+			&& h.runObjectiveComplete === true
+			&& h.objective?.bossDefeated === true
+			&& h.lastRunSummary?.status === 'victory';
+	}, { timeout: timeoutMs }).catch(async () => {
+		await failWithHarness(page, 'Victory state not reached');
+	});
+	return readHarness(page);
+}
+
+async function runVictoryStep({ page, preset, outDirAbs }) {
+	const { bossType, bossLowHpScenario } = preset;
+
+	if (bossLowHpScenario) {
+		await requestScenario(page, bossLowHpScenario);
+	}
+
+	const afterBossHarness = await defeatBoss(page, {
+		bossType,
+		timeoutMs: preset.bossDefeatTimeoutMs ?? 180000,
+	});
+	const afterBossProbe = buildVictoryProbe(afterBossHarness);
+	const bossDefeatedScreenshotPath = await writeScreenshot(page, outDirAbs, '06-boss-defeated');
+
+	const victoryHarness = await waitForVictoryState(page, {
+		timeoutMs: preset.victoryTimeoutMs ?? 30000,
+	});
+	const victoryProbe = buildVictoryProbe(victoryHarness);
+	const victoryScreenshotPath = await writeScreenshot(page, outDirAbs, '07-victory');
+
+	return {
+		bossDefeatedScreenshot: path.relative(REPO_ROOT, bossDefeatedScreenshotPath),
+		victoryScreenshot: path.relative(REPO_ROOT, victoryScreenshotPath),
+		probes: {
+			afterBoss: afterBossProbe,
+			victory: victoryProbe,
+		},
+	};
+}
+
+function buildAssertions(summary, preset) {
+	const bossSpawned = Array.isArray(summary.hub?.bossTypes)
+		&& summary.hub.bossTypes.includes(preset.bossType);
+	const encounterActivated = summary.bossEncounter?.encounterPhase === 'active'
+		&& summary.bossEncounter?.encounterLocked === true;
+	const victoryProbe = summary.victory?.probes?.victory;
+	const afterBossProbe = summary.victory?.probes?.afterBoss;
+	const bossDefeated = afterBossProbe?.bossDefeated === true
+		|| victoryProbe?.bossDefeated === true;
+	const victoryFired = victoryProbe?.runStatus === 'victory'
+		&& victoryProbe?.runObjectiveComplete === true
+		&& victoryProbe?.bossDefeated === true
+		&& victoryProbe?.lastRunSummaryStatus === 'victory';
+	return {
+		bossSpawned,
+		encounterActivated,
+		bossDefeated,
+		victoryFired,
+	};
+}
+
+function collectScreenshots(summary) {
+	const shots = [];
+	if (summary.auth?.screenshot) shots.push(summary.auth.screenshot);
+	if (summary.hub?.hubScreenshot) shots.push(summary.hub.hubScreenshot);
+	if (summary.hub?.entryScreenshot) shots.push(summary.hub.entryScreenshot);
+	if (summary.bossEncounter?.midCombatScreenshot) shots.push(summary.bossEncounter.midCombatScreenshot);
+	if (summary.bossEncounter?.dormantScreenshot) shots.push(summary.bossEncounter.dormantScreenshot);
+	if (summary.bossEncounter?.activeScreenshot) shots.push(summary.bossEncounter.activeScreenshot);
+	if (summary.victory?.bossDefeatedScreenshot) shots.push(summary.victory.bossDefeatedScreenshot);
+	if (summary.victory?.victoryScreenshot) shots.push(summary.victory.victoryScreenshot);
+	return shots;
+}
+
+function writeFullArtifacts({ outDirAbs, summary, consoleEntries }) {
+	const probes = {
+		...(summary.bossEncounter?.probes || {}),
+		...(summary.victory?.probes || {}),
+	};
+	fs.writeFileSync(path.join(outDirAbs, 'probes.json'), JSON.stringify(probes, null, 2));
+
+	const findings = renderFindings({
+		ok: summary.ok === true,
+		preset: summary.preset,
+		assertions: summary.assertions || {},
+		consoleErrors: consoleEntries || [],
+		screenshots: collectScreenshots(summary),
+		error: summary.error || null,
+	});
+	fs.writeFileSync(path.join(outDirAbs, 'findings.md'), findings);
+}
+
 async function main() {
 	const opts = parseArgs(process.argv);
 	const outDirAbs = path.resolve(REPO_ROOT, opts.out);
 	fs.mkdirSync(outDirAbs, { recursive: true });
 
-	if (STUB_STEPS.has(opts.steps)) {
-		throw new Error(`--steps ${opts.steps} is not implemented yet (sub-ticket 07)`);
-	}
-	const knownSteps = new Set(['auth', ...HUB_STEPS, ...BOSS_ENCOUNTER_STEPS]);
+	const knownSteps = new Set(['auth', ...HUB_STEPS, ...BOSS_ENCOUNTER_STEPS, ...FULL_STEPS]);
 	if (!knownSteps.has(opts.steps)) {
 		throw new Error(`Unknown --steps value: ${opts.steps}`);
 	}
 
 	const preset = await loadPreset(opts.preset);
+	const runsHub = HUB_STEPS.has(opts.steps) || FULL_STEPS.has(opts.steps);
+	const runsBossEncounter = BOSS_ENCOUNTER_STEPS.has(opts.steps) || FULL_STEPS.has(opts.steps);
+	const runsFull = FULL_STEPS.has(opts.steps);
+
 	let browser;
 	let game;
 	let consoleLog;
+	let exitCode = 0;
 	const summary = {
 		ok: true,
 		preset: opts.preset,
@@ -331,12 +441,22 @@ async function main() {
 			outDirAbs,
 		});
 
-		if (HUB_STEPS.has(opts.steps) || BOSS_ENCOUNTER_STEPS.has(opts.steps)) {
+		if (runsHub) {
 			summary.hub = await runHubStep({ page, preset, outDirAbs });
 		}
 
-		if (BOSS_ENCOUNTER_STEPS.has(opts.steps)) {
+		if (runsBossEncounter) {
 			summary.bossEncounter = await runBossEncounterStep({ page, preset, outDirAbs });
+		}
+
+		if (runsFull) {
+			summary.victory = await runVictoryStep({ page, preset, outDirAbs });
+			summary.assertions = buildAssertions(summary, preset);
+			summary.ok = Object.values(summary.assertions).every((value) => value === true);
+			if (!summary.ok) {
+				summary.error = summary.error || 'One or more assertions failed';
+				exitCode = 1;
+			}
 		}
 
 		console.log(JSON.stringify(summary));
@@ -344,12 +464,21 @@ async function main() {
 		summary.ok = false;
 		summary.error = err.message;
 		console.error(`playthrough failed: ${err.message}`);
-		throw err;
-	} finally {
-		if (consoleLog) {
-			writeConsoleLog(outDirAbs, consoleLog.flush());
+		exitCode = 1;
+		if (runsFull && !summary.assertions) {
+			summary.assertions = buildAssertions(summary, preset);
 		}
-		if (summary.bossEncounter?.probes) {
+	} finally {
+		const consoleEntries = consoleLog ? consoleLog.flush() : [];
+		if (consoleLog) {
+			writeConsoleLog(outDirAbs, consoleEntries);
+		}
+		if (runsFull) {
+			if (!summary.assertions) {
+				summary.assertions = buildAssertions(summary, preset);
+			}
+			writeFullArtifacts({ outDirAbs, summary, consoleEntries });
+		} else if (summary.bossEncounter?.probes) {
 			const probesPath = path.join(outDirAbs, 'probes.json');
 			fs.writeFileSync(probesPath, JSON.stringify(summary.bossEncounter.probes, null, 2));
 		}
@@ -358,6 +487,8 @@ async function main() {
 		if (browser) await browser.close().catch(() => {});
 		await stopGame();
 	}
+
+	return exitCode;
 }
 
 async function shutdown(code) {
@@ -368,6 +499,10 @@ async function shutdown(code) {
 process.on('SIGINT', () => { shutdown(130); });
 process.on('SIGTERM', () => { shutdown(143); });
 
-main().catch(() => {
-	process.exit(1);
-});
+main()
+	.then((code) => {
+		process.exit(code ?? 0);
+	})
+	.catch(() => {
+		process.exit(1);
+	});
