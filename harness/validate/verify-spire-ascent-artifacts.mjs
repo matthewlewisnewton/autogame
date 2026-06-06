@@ -84,6 +84,22 @@ function readRunSummary(errors) {
 	return summary;
 }
 
+function checkFindingsBossLabel(errors, content) {
+	const bossSpawnedLine = content
+		.split('\n')
+		.find((line) => line.includes('bossSpawned'));
+	if (!bossSpawnedLine) {
+		fail(errors, 'findings.md missing bossSpawned assertion line');
+		return;
+	}
+	if (bossSpawnedLine.includes('annex_overseer')) {
+		fail(errors, 'findings.md bossSpawned line must not reference annex_overseer (Training Caverns boss)');
+	}
+	if (!bossSpawnedLine.includes('spire_warden') && !bossSpawnedLine.includes('Summit Warden')) {
+		fail(errors, 'findings.md bossSpawned line must reference spire_warden or Summit Warden');
+	}
+}
+
 function checkRequiredFiles(errors) {
 	for (const name of REQUIRED_PNGS) {
 		const filePath = path.join(SPIRE_DIR, name);
@@ -102,6 +118,8 @@ function checkRequiredFiles(errors) {
 			const content = fs.readFileSync(filePath, 'utf8').trim();
 			if (content.length === 0) {
 				fail(errors, 'findings.md is empty');
+			} else {
+				checkFindingsBossLabel(errors, content);
 			}
 		}
 	}

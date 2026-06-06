@@ -406,6 +406,7 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries }) {
 	const findings = renderFindings({
 		ok: summary.ok === true,
 		preset: summary.preset,
+		bossType: summary.presetConfig?.bossType,
 		assertions: summary.assertions || {},
 		consoleErrors: consoleEntries || [],
 		screenshots: collectScreenshots(summary),

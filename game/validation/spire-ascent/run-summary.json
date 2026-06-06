@@ -22,10 +22,10 @@
     "encounterTimeoutMs": 60000,
     "lobbyName": "Spire Ascent Validation"
   },
-  "serverPort": 3245,
-  "clientPort": 5256,
+  "serverPort": 3295,
+  "clientPort": 5291,
   "auth": {
-    "username": "playthrough-1780737196544",
+    "username": "playthrough-1780748031459",
     "connected": true,
     "lobbyBrowserVisible": true,
     "harnessPhase": "unknown",
@@ -57,14 +57,14 @@
       "dormant": {
         "encounterPhase": "dormant",
         "encounterLocked": false,
-        "bossEnemyId": "2a91b052-6388-4983-b85e-afcbcf32667a",
+        "bossEnemyId": "94ab460f-249c-49e6-8f75-47e033eac200",
         "bossHp": 420,
         "liveAddCount": 0
       },
       "active": {
         "encounterPhase": "active",
         "encounterLocked": true,
-        "bossEnemyId": "2a91b052-6388-4983-b85e-afcbcf32667a",
+        "bossEnemyId": "94ab460f-249c-49e6-8f75-47e033eac200",
         "bossHp": 420,
         "liveAddCount": 0
       }

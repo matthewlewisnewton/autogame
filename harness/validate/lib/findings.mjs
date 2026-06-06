@@ -1,6 +1,15 @@
 /**
- * Render validation/rooms/findings.md from a playthrough run summary.
+ * Render validation findings markdown from a playthrough run summary.
  */
+
+const PRESET_TITLES = {
+	rooms: 'Rooms validation findings',
+	'spire-ascent': 'Spire Ascent validation findings',
+};
+
+function findingsTitle(preset) {
+	return PRESET_TITLES[preset] ?? `${preset} validation findings`;
+}
 
 function formatAssertion(name, passed, detail = '') {
 	const status = passed ? 'PASS' : 'FAIL';
@@ -12,6 +21,7 @@ function formatAssertion(name, passed, detail = '') {
  * @param {{
  *   ok: boolean,
  *   preset: string,
+ *   bossType: string,
  *   assertions: Record<string, boolean>,
  *   consoleErrors?: string[],
  *   screenshots?: string[],
@@ -21,15 +31,19 @@ function formatAssertion(name, passed, detail = '') {
  * @returns {string}
  */
 export function renderFindings(run) {
+	if (!run.bossType) {
+		throw new Error('renderFindings requires bossType');
+	}
+
 	const lines = [
-		'# Rooms validation findings',
+		`# ${findingsTitle(run.preset)}`,
 		'',
 		`**Outcome:** ${run.ok ? 'PASS' : 'FAIL'}`,
 		`**Preset:** ${run.preset}`,
 		'',
 		'## Assertions',
 		'',
-		formatAssertion('bossSpawned (annex_overseer)', run.assertions?.bossSpawned === true),
+		formatAssertion(`bossSpawned (${run.bossType})`, run.assertions?.bossSpawned === true),
 		formatAssertion('encounterActivated', run.assertions?.encounterActivated === true),
 		formatAssertion('bossDefeated', run.assertions?.bossDefeated === true),
 		formatAssertion('victoryFired', run.assertions?.victoryFired === true),

@@ -2,14 +2,14 @@
   "dormant": {
     "encounterPhase": "dormant",
     "encounterLocked": false,
-    "bossEnemyId": "2a91b052-6388-4983-b85e-afcbcf32667a",
+    "bossEnemyId": "94ab460f-249c-49e6-8f75-47e033eac200",
     "bossHp": 420,
     "liveAddCount": 0
   },
   "active": {
     "encounterPhase": "active",
     "encounterLocked": true,
-    "bossEnemyId": "2a91b052-6388-4983-b85e-afcbcf32667a",
+    "bossEnemyId": "94ab460f-249c-49e6-8f75-47e033eac200",
     "bossHp": 420,
     "liveAddCount": 0
   },

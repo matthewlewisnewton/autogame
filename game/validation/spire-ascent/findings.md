@@ -1,11 +1,11 @@
-# Rooms validation findings
+# Spire Ascent validation findings
 
 **Outcome:** PASS
 **Preset:** spire-ascent
 
 ## Assertions
 
-- **bossSpawned (annex_overseer)**: PASS
+- **bossSpawned (spire_warden)**: PASS
 - **encounterActivated**: PASS
 - **bossDefeated**: PASS
 - **victoryFired**: PASS
