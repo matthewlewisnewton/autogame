@@ -25,14 +25,14 @@ Each stage culminates in a single stage boss (`ENEMY_DEFS` in `game/server/simul
 
 `arena_champion` was previously the outlier at **500 HP** — markedly above every other stage boss. At the driver's sustained attack DPS, 500 HP could not be reduced to 0 inside the 180s `defeatBoss` timeout (even in god-mode), which made the open-plaza validation flaky. It was retuned to **420**, aligning it with `spire_warden` (the next-highest boss) so a real, full-HP defeat is achievable within the window while the open plaza stays the joint-toughest encounter. Only `hp` changed; the boss's identity and pressure profile (higher `attackDamage` 26, widest cone `2π/3`, longest `attackRange` 6.5) are unchanged, so it remains the hardest-hitting, farthest-reaching stage boss.
 
-## Run Suspend / Resume
-Telepipe is a mid-run evacuation spell that lets a squad suspend a dungeon without losing the current run state.
+## Telepipe Evacuation
+Telepipe is a mid-run evacuation spell that lets squad members leave the dungeon early and return to the hub.
 
 - A player can place one shared Telepipe portal per run. The card is consumed, costs 0 Magic Stones, and creates a fixed portal at the caster's position.
-- Each player enters the portal individually. Extracted players return to the lobby overlay, cannot use dungeon actions, and are ignored by combat simulation while remaining squadmates continue playing.
-- The run only suspends when no active players remain in the dungeon. At that point the server captures a checkpoint with the run, layout, enemies, minions, loot, hands, objective progress, and portal position.
-- When the squad Deploys again from the suspended lobby, the checkpoint is restored instead of generating a fresh layout, and the dungeon resumes with the preserved portal/enemy/loot state.
-- Players can abandon a suspended run from the lobby, which clears the checkpoint and returns the squad to normal lobby flow.
+- Each player enters the portal individually (auto-enter when within range). Extracted players return to the hub lobby overlay, cannot use dungeon actions, and are ignored by combat simulation while remaining squadmates continue playing.
+- When no active players remain in the dungeon, the run ends and the whole squad returns to the guild hub lobby. Transient dungeon state — layout, enemies, loot, objective progress, and the portal — is cleared; there is no run checkpoint or resume path.
+- When the squad Deploys again from the hub, the server starts a **fresh** dungeon run (new layout, enemies, and run id). Player **hp** and **magicStones** persist across the hub↔sortie transition and into the new sortie; they are not reset by telepipe-up or redeploy. Hands are re-dealt from deck loadouts on deploy as on any normal sortie — **card charge persistence is unchanged** and remains out of scope for this policy.
+- Player health is **durable** across hub↔sortie transitions and across runs. Telepipe-up and redeploy do not restore HP. The hub **Medic station** (`healAtMedic` in `game/server/progression.js`) is the **only** way to restore a player to full health (costs currency).
 
 ## Combat Mechanics
 Instead of standard weapons, players equip a lobby loadout of 4–24 cards (the default starter deck has 12). During a run they have six hand slots; four cards are dealt into those slots at run open (the opening hand), and each occupied slot maps to an input button.
