@@ -4119,6 +4119,66 @@ export function spawnHitSpark(position, style = {}) {
 	}
 }
 
+const LIGHTNING_ARC_Y = 1.2;
+
+/**
+ * Build a jagged polyline between two floor points for a brief lightning arc.
+ * @param {object} from - { x, z }
+ * @param {object} to - { x, z }
+ * @param {object} [style]
+ * @returns {{ line: THREE.Line, points: THREE.Vector3[] }}
+ */
+function createLightningArcLine(from, to, style = {}) {
+	const y = style.y ?? LIGHTNING_ARC_Y;
+	const color = style.emissive ?? style.color ?? 0x0ea5e9;
+	const dx = to.x - from.x;
+	const dz = to.z - from.z;
+	const len = Math.hypot(dx, dz) || 1;
+	const segments = Math.max(3, Math.floor(len * 2));
+	const perpX = -dz / len;
+	const perpZ = dx / len;
+	const points = [];
+
+	for (let i = 0; i <= segments; i++) {
+		const t = i / segments;
+		const jitter = (i === 0 || i === segments) ? 0 : (Math.random() - 0.5) * 0.4;
+		points.push(new THREE.Vector3(
+			from.x + dx * t + perpX * jitter,
+			y + (Math.random() - 0.5) * 0.15,
+			from.z + dz * t + perpZ * jitter,
+		));
+	}
+
+	const geometry = new THREE.BufferGeometry().setFromPoints(points);
+	const material = new THREE.LineBasicMaterial({
+		color,
+		transparent: true,
+		opacity: 1.0,
+		depthWrite: false,
+	});
+	return { line: new THREE.Line(geometry, material), points };
+}
+
+/**
+ * Spawn a short-lived cyan lightning arc between two floor points.
+ * @param {object} from - { x, z }
+ * @param {object} to - { x, z }
+ * @param {object} [style] - optional color/emissive/y/duration overrides
+ */
+export function spawnLightningArc(from, to, style = {}) {
+	const { line } = createLightningArcLine(from, to, style);
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (targetScene) targetScene.add(line);
+
+	activeEffects.push({
+		mesh: line,
+		_scene: targetScene,
+		isLightningArc: true,
+		createdAt: performance.now(),
+		duration: style.duration ?? ATTACK_EFFECT_DURATION,
+	});
+}
+
 /**
  * Spawn a cyan lightning bolt projectile (Thunderbird ranged/chain feedback).
  * @param {object} origin - { x, z }
@@ -4173,6 +4233,20 @@ export function updateAttackEffects() {
 
 			if (elapsed >= fx.duration) {
 				scene.remove(fx.mesh);
+				fx.mesh.geometry.dispose();
+				fx.mesh.material.dispose();
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Lightning arc (chain segments) ──
+		if (fx.isLightningArc) {
+			const lifeRatio = 1.0 - (elapsed / fx.duration);
+			fx.mesh.material.opacity = Math.max(0.01, lifeRatio);
+
+			if (elapsed >= fx.duration) {
+				(fx._scene || scene).remove(fx.mesh);
 				fx.mesh.geometry.dispose();
 				fx.mesh.material.dispose();
 				activeEffects.splice(i, 1);

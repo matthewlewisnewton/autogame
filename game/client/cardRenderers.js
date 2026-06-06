@@ -16,6 +16,7 @@
 //   spawnDivineGraceEffect(origin, radius)
 //   spawnInfernoPillarEffect(origin, radius)
 //   spawnChainLightningEffect(origin, direction)
+//   spawnLightningArc(from, to, style?)
 //   flashMesh(mesh, color, durationMs)
 //   enemyMeshes()      → { [enemyId]: Three.js mesh }
 //   playSound(name)
@@ -152,6 +153,27 @@ function renderUndeadCommander(data, ctx) {
 	}
 }
 
+const CHAIN_LIGHTNING_ARC_STYLE = { color: 0x38bdf8, emissive: 0x0ea5e9 };
+
+function spawnChainSegmentArcs(data, ctx) {
+	const segments = data.chainSegments;
+	if (!segments || segments.length === 0) return false;
+	for (const seg of segments) {
+		ctx.spawnLightningArc(seg.from, seg.to, CHAIN_LIGHTNING_ARC_STYLE);
+	}
+	return true;
+}
+
+/**
+ * Voltaic Chain spell: one cyan arc per server chain segment, or a legacy
+ * directional bolt when segments are absent.
+ */
+function renderChainLightningArcs(data, ctx) {
+	if (spawnChainSegmentArcs(data, ctx)) return;
+	if (!data.origin) return;
+	ctx.spawnChainLightningEffect(data.origin, directionOf(data));
+}
+
 /**
  * Thunderbird (chain_lightning): zap effect on origin, an enemy-hit cue, and
  * a follow-up attack flash. Triggered by specialEffect rather than cardId so
@@ -159,7 +181,9 @@ function renderUndeadCommander(data, ctx) {
  */
 function renderChainLightning(data, ctx) {
 	if (!data.origin) return;
-	ctx.spawnChainLightningEffect(data.origin, { x: 1, z: 0 });
+	if (!spawnChainSegmentArcs(data, ctx)) {
+		ctx.spawnChainLightningEffect(data.origin, { x: 1, z: 0 });
+	}
 	ctx.playSound('enemyHit');
 	ctx.spawnAttackEffect(data.origin, directionOf(data));
 }
@@ -267,6 +291,7 @@ const CARD_RENDERERS = {
 	infinite_disk: renderTripleReturning,
 
 	// Spells
+	chain_lightning: renderChainLightningArcs,
 	glacier_collapse: renderGlacierCollapse,
 	divine_grace: renderDivineGrace,
 	event_horizon: renderEventHorizon,
