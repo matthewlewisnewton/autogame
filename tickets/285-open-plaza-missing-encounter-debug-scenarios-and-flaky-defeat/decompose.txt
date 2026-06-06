@@ -1,0 +1,15 @@
+I broke the top-level ticket into two independently-implementable, code-verifiable sub-tickets.
+
+**Created sub-ticket folders:**
+- `tickets/285-open-plaza-missing-encounter-debug-scenarios-and-flaky-defeat/subtickets/01-arena-trials-encounter-debug-scenarios/ticket.md`
+- `tickets/285-open-plaza-missing-encounter-debug-scenarios-and-flaky-defeat/subtickets/02-arena-champion-hp-tuning/ticket.md`
+
+**Rationale:**
+
+**01 — debug scenarios** (DO item 1): The open-plaza/`arena_trials` level already has deploy/dormant/active shortcuts but is missing the per-phase scenarios the other levels have. This adds `arena-trials-near-adds`, `arena-trials-boss-approach`, and `arena-trials-boss-low-hp`, mirroring the existing `canyon-descent-*` / `training-caverns-*` blocks in `debugScenarios.js`, plus registration in both `DEBUG_SCENARIOS` sets and the boss-approach nudge wiring. This is the primary determinism fix for validation.
+
+**02 — `arena_champion` HP tuning** (DO item 2): The investigation root cause is already visible in the code — `arena_champion` is tuned at HP 500, far above every other stage boss (miniboss 300, annex_overseer 320, spire_warden 420). That's why full-HP defeat can't finish inside the 180s window even in god-mode. This sub-ticket lowers it into line and documents the boss-HP relationship and DPS rationale in `design.md`.
+
+Both are `code` verification: every criterion concerns logic, server state, guards, registered scenario names, an HP value, or documentation — none is a pixel-level look check. I kept the three new scenarios together in 01 since they share one file and one pattern (one focused pass), and split the HP/tuning concern into 02 since it touches different files (`simulation.js`/`config.js`/`design.md`) and is independently verifiable.
+
+No existing sub-ticket folders were present, so nothing was retired.

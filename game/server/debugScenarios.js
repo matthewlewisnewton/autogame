@@ -655,6 +655,137 @@ function applyDebugScenario(socket, name) {
       return finishStageBossDebugScenario(lobby, state, player, name);
     }
 
+    if (name === 'arena-trials-near-adds') {
+      // Reposition beside live Arena Trials Tier 2 adds for harness add-combat QA.
+      // Reachable normally by traversing the open plaza toward wandering adds.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'arena_trials'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires arena_trials Tier 2 stage-boss run' };
+      }
+      const adds = liveArenaTrialsAdds(state);
+      if (adds.length === 0) {
+        return { ok: false, reason: 'No live adds to approach' };
+      }
+      let nearest = adds[0];
+      let bestDist = Infinity;
+      for (const add of adds) {
+        const dist = Math.hypot(add.x - player.x, add.z - player.z);
+        if (dist < bestDist) {
+          bestDist = dist;
+          nearest = add;
+        }
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.hand[0] = {
+        id: 'iron_sword',
+        name: 'Rust-Forged Saber',
+        type: 'weapon',
+        damage: 17,
+        charges: 5,
+        remainingCharges: 5,
+        grind: 0,
+      };
+      // Cluster every live add on the start plaza (wounded, shields stripped) so the
+      // harness can clear the pack through lock-on + swings without crossing the
+      // arena_champion boss trigger. Each add gets correct floor Y via sampleFloorY.
+      const clusterAnchor = firstRoomPosition();
+      const clusterRadius = 4;
+      let angle = 0;
+      const step = adds.length > 0 ? (Math.PI * 2) / adds.length : 0;
+      for (const add of adds) {
+        add.hp = 1;
+        add.shieldHp = 0;
+        add.maxShieldHp = 0;
+        add.x = clusterAnchor.x + Math.cos(angle) * clusterRadius;
+        add.z = clusterAnchor.z + Math.sin(angle) * clusterRadius;
+        add.y = resolveFloorY(sampleFloorY(state.layout, add.x, add.z));
+        add.wanderTarget = { x: add.x, z: add.z };
+        angle += step;
+      }
+      player.x = clusterAnchor.x;
+      player.z = clusterAnchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      repositionNearEnemy(player, nearest);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'arena-trials-boss-approach') {
+      // Place the player just outside the dormant arena_champion trigger after adds clear.
+      // Reachable normally by defeating adds then walking to the arena dais anchor.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'arena_trials'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires arena_trials Tier 2 stage-boss run' };
+      }
+      if (liveArenaTrialsAdds(state).length > 0) {
+        return { ok: false, reason: 'Adds must be cleared before boss approach' };
+      }
+      if (state.run.encounter.phase !== 'dormant') {
+        return { ok: false, reason: 'Encounter must be dormant' };
+      }
+      const anchor = resolveEncounterAnchor(state.run, state) || resolveArenaDaisAnchor(state);
+      if (!anchor) {
+        return { ok: false, reason: 'No encounter anchor for boss approach' };
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 1;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      player.debugScenarioNudgeAfter = Date.now() + 1500;
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'arena-trials-boss-low-hp') {
+      // Arena Trials Tier 2 arena_champion beside the player at 1 HP for fast victory.
+      // Reachable normally by clearing adds and engaging the boss; shortcut after deploy.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'arena_trials'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires arena_trials Tier 2 stage-boss run' };
+      }
+      const bossId = state.run.encounter.bossEnemyId;
+      for (const enemy of state.enemies || []) {
+        if (enemy.id !== bossId) enemy.hp = 0;
+      }
+      state.enemies = (state.enemies || []).filter((e) => e.hp > 0);
+      const boss = state.enemies.find((e) => e.id === bossId);
+      if (!boss || boss.type !== 'arena_champion') {
+        return { ok: false, reason: 'Arena champion not found' };
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      boss.x = player.x + 4;
+      boss.z = player.z;
+      boss.y = resolveFloorY(sampleFloorY(state.layout, boss.x, boss.z));
+      repositionNearEnemy(player, boss, 4);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      boss.hp = 1;
+      boss.maxHp = boss.maxHp || boss.hp;
+      boss.shieldHp = 0;
+      boss.maxShieldHp = 0;
+      // Harness activates the encounter before boss-low-hp; direct URL/debug use may still be dormant.
+      if (isEncounterDormant(state.run)) {
+        activateEncounter(state.run);
+      }
+      if (!state.run.encounter.locked) {
+        lockEncounter(state.run);
+      }
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
     if (name === 'crystal-rescue-tier-2') {
       // crystal_rescue Tier 2 with rigid open layout, prism collect_items objective,
       // and cover/platform/hazard-aware spawns. Quest/tier and layout must be set

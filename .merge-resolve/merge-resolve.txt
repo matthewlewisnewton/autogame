@@ -1,11 +1,7 @@
-Merge conflicts are resolved. Both tickets’ changes are preserved:
+Resolved `LOGBOOK.md` by keeping **all three** review entries in chronological order:
 
-**`harness/validate/playthrough.mjs`** — `PRESET_MODULES` now registers all three presets: `rooms`, `open-plaza` (from main), and `sunken-canyon` (from this branch).
+1. **v0.278** — `283-add-stage-boss-health-bar-and-encounter-ui` (from `main`)
+2. **v0.279** — `285-open-plaza-missing-encounter-debug-scenarios-and-flaky-defeat` (from `main`)
+3. **v0.280** — `286-playthrough-driver-output-quality-findings-victory-path` (from this branch)
 
-**`TASKS.md`** — Both cleanup tickets are listed:
-- `284-cleanup-playthrough-validate-open-plaza`
-- `284-cleanup-playthrough-validate-sunken-canyon`
-
-**`LOGBOOK.md`** — Both review entries are kept in version order: v0.275 (open-plaza) then v0.276 (sunken-canyon), with a single trailing “Remaining gaps” section.
-
-All conflict markers are removed. `playthrough.mjs --help` runs successfully. The harness can commit and finish the merge.
+Conflict markers are removed. The harness can finish the merge.

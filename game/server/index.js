@@ -526,6 +526,9 @@ const DEBUG_SCENARIOS = new Set([
   'spire-ascent-tier-2',
   'stage-boss-dormant',
   'stage-boss-active',
+  'arena-trials-near-adds',
+  'arena-trials-boss-approach',
+  'arena-trials-boss-low-hp',
   'annex-overseer-ready',
 ]);
 
@@ -705,6 +708,9 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'spire-ascent-tier-2',
   'stage-boss-dormant',
   'stage-boss-active',
+  'arena-trials-near-adds',
+  'arena-trials-boss-approach',
+  'arena-trials-boss-low-hp',
   'annex-overseer-ready',
 ]);
 

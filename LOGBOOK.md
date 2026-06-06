@@ -4935,6 +4935,52 @@ PASS. This ticket did not add or change debug scenario entry points. Existing bo
 None.
 
 
+## v0.278 — 283-add-stage-boss-health-bar-and-encounter-ui  (2026-06-06 03:36:23)
+
+### Every per-level stage boss is supported
+
+PASS. The implementation is data-driven by `bossEnemyId` plus the enemy display catalog, so it is not hard-coded to a single boss type. The wiring test covers the current stage-boss enemy types from the live quest/catalog data: `annex_overseer`, `arena_champion`, `miniboss`, and `spire_warden`.
+
+### No gameplay changes or foundation regressions
+
+PASS. The branch is scoped to client UI, styling, and tests. Server encounter activation, boss spawn, objective completion, movement, rendering, and multiplayer socket flow are untouched. The captured run still satisfies the foundation requirements: 3D scene renders, socket connection succeeds, two players enter gameplay, and movement/key-item state updates are visible.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=...` shortcut. Existing debug scenarios remain server-side QA conveniences and are not part of the normal gameplay entry path for this HUD.
+
+## Code quality and validation
+
+PASS. The HUD logic is isolated in a small pure module with DOM sync separated from model building, matching existing client test patterns. The coverage log shows `client/test/boss-encounter-hud.test.js` and `client/test/boss-encounter-hud-wiring.test.js` passing, with the overall visible test run at 12 files / 250 tests passed. The only stderr in coverage is pre-existing jsdom model URL noise, not a runtime browser error.
+
+## Remaining gaps
+
+None.
+
+
+## v0.279 — 285-open-plaza-missing-encounter-debug-scenarios-and-flaky-defeat  (2026-06-06 04:06:17)
+
+PASS. The captured run proof is clean: `metrics.json` has `"ok": true`, no `harness_failure`, and an empty `pageerrors` array. `console.log` contains only Vite connection logs, scene initialization, ready-up, and the applied `sunken-canyon-stage` debug scenario; there are no `pageerror` or `[fatal]` lines from game code. Server and client logs show normal startup and teardown, with only a benign THREE deprecation warning in the Vite client log.
+
+### Add open-plaza / arena_trials encounter debug scenarios
+PASS. The implementation adds and registers `arena-trials-near-adds`, `arena-trials-boss-approach`, and `arena-trials-boss-low-hp` in the existing debug-scenario path. Each requires an active `arena_trials` Tier 2 stage-boss run and refuses to run outside that state, so normal gameplay does not touch the shortcuts. The client entry remains the localhost `?debugScenario=NAME` flow, with the socket event serving as the existing transport behind that debug path.
+
+The scenarios are consistent with the training-caverns and canyon-descent patterns: near-adds clusters live adds with a usable weapon, boss-approach requires adds cleared and places the player just outside the dormant trigger, and boss-low-hp preserves the real boss enemy, locks/activates the encounter, and leaves the player to finish through normal combat. The normal state remains reachable by clearing Arena Trials Tier 1 to unlock Tier 2, deploying into the `arena_trials` stage-boss quest, defeating adds, approaching the arena dais, and fighting the `arena_champion`.
+
+### Investigate and retune arena_champion defeat flakiness
+PASS. `arena_champion` HP is reduced from 500 to 420 while leaving its identity and pressure profile unchanged (`attackDamage`, cone style/angle, and range are pinned by tests). This aligns it with `spire_warden`, matching the design note that stage boss HP values should stay within a tight band so full-HP defeats fit the 180s validation window.
+
+### Design and requirements consistency
+PASS. The new Stage Bosses section in `game/docs/design.md` accurately documents the HP tuning and preserves the open plaza boss as a hard-hitting, long-range encounter. The changes do not regress the foundation in `game/docs/requirements.md`: the captured run proves the 3D scene renders, socket connection works, multiplayer state appears, and movement/dodge interactions still update.
+
+### Code quality, tests, and coverage
+PASS. The code is scoped to server debug scenario setup, scenario registration, the enemy definition, docs, and focused tests. The scenario code uses existing helpers for quest layout, encounter anchors, floor sampling, lobby broadcast, and state snapshots; no dead or broken code was found. Coverage log shows `75` test files and `1421` tests passing, including `server/test/debug-scenarios.test.js` and `server/test/arena_champion_hp.test.js`.
+
+## Remaining gaps
+
+None.
+
+
 ## v0.280 — 286-playthrough-driver-output-quality-findings-victory-path  (2026-06-06 04:27:59)
 
 - **No invariant short-circuit** — no server validation, persistence, or
