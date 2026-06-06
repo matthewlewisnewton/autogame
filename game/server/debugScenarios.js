@@ -25,6 +25,7 @@ const {
   computeWalkableAABBs,
   rebuildWallColliders,
   ENEMY_DEFS,
+  applySlow,
 } = require('./simulation');
 const {
   normalizePlayerInventory,
@@ -1340,6 +1341,17 @@ function applyDebugScenario(socket, name) {
     } else if (name === 'combat-damaged-player') {
       player.hp = 25;
       player.magicStones = MAX_MAGIC_STONES;
+    } else if (name === 'slowed-player') {
+      // Local player starts under an active SLOW status so the client movement
+      // prediction (renderer.js localSlowFactor) and the icy slow ring can be
+      // verified immediately, without waiting to be hit by a slow-applying card
+      // or enemy in normal play. A long duration (20s) keeps the slowed state up
+      // long enough to walk around and confirm the predicted avatar tracks the
+      // server speed with no rubber-band. The SAME state is reachable normally by
+      // being struck by any effect that calls applySlow during a run.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      applySlow(player, 60000, 0.5);
     } else if (name === 'extracted-in-hub') {
       // Partial extract: the local player has stepped through the Telepipe and is
       // standing in the walkable hub while the run stays in `playing` (as it

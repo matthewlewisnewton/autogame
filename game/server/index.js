@@ -467,6 +467,7 @@ const DEBUG_SCENARIOS = new Set([
   'summon-ready',
   'summon-recall',
   'combat-damaged-player',
+  'slowed-player',
   'custom-avatar-demo',
   'avatar-proportions-demo',
   'avatar-wizard-hat',

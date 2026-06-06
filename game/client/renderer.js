@@ -158,6 +158,9 @@ let boothInRangeListener = null; // edge-triggered: fires when the in-range boot
 // ── Input state ──
 let inputListenersAdded = false;
 const TICK_DT = 1 / TICK_RATE;
+// Mirrors the server's applySlow() default (game/server/simulation.js): used for
+// local prediction when a player is slowed but the snapshot omits slowFactor.
+const DEFAULT_SLOW_FACTOR = 0.5;
 let moveAccumulator = 0;
 let moveEmitAccumulator = 0;
 let moveSequence = 0;
@@ -1543,6 +1546,21 @@ export function setGamePhase(phase) {
 // ── Player movement ──
 
 /**
+ * Local slow factor for movement prediction. Reads the local player's broadcast
+ * snapshot: when it is currently slowed (`slowedUntil` in the future) the
+ * clamped `slowFactor` is returned so prediction advances at the same reduced
+ * speed the server applies (no rubber-band). Returns 1 when not slowed or when
+ * the fields are missing, leaving unslowed movement unchanged.
+ * @param {object} me - local player broadcast snapshot
+ * @returns {number} factor in (0, 1]
+ */
+export function localSlowFactor(me) {
+	if (!me || !me.slowedUntil || Date.now() >= me.slowedUntil) return 1;
+	const f = Number(me.slowFactor);
+	return Number.isFinite(f) && f > 0 && f <= 1 ? f : DEFAULT_SLOW_FACTOR;
+}
+
+/**
  * Read WASD keys, normalize direction, apply movement speed, resolve wall
  * collision, and emit 'move'. Called each frame from animate().
  * @param {number} delta - clamped delta in seconds
@@ -1612,11 +1630,16 @@ export function updateMyPlayer(delta) {
 			? playerRotation
 			: Math.atan2(dirZ, dirX);
 
+		// Scale the predicted per-tick distance by the active slow factor so a
+		// slowed local player advances at the same speed the server applies. The
+		// emit below is left at unit direction — the server stays the authority.
+		const slowFactor = localSlowFactor(me);
+
 		while (moveAccumulator >= TICK_DT) {
 			prevSimX = simX;
 			prevSimZ = simZ;
 			const result = tryPlayerMove(
-				simX, simZ, dirX, dirZ, MOVE_SPEED * TICK_DT,
+				simX, simZ, dirX, dirZ, MOVE_SPEED * TICK_DT * slowFactor,
 				wallColliders, walkableAABBs, dungeonBounds
 			);
 			simX = result.x;
@@ -4460,7 +4483,18 @@ export function animate(timestamp) {
 			updateKeyItemProp(playersMeshes[id], pData.equippedKeyItemId);
 
 			// Slow status ring (local + remote) — driven by the broadcast slowedUntil.
-			applySlowIndicator(playerSlowMarkers, id, pData);
+			// For the local player, anchor the ring to the predicted myX/myZ (the
+			// slower predicted avatar position) so it does not lag behind the avatar
+			// while slowed; remote players use their broadcast x/z directly.
+			if (id === myId) {
+				applySlowIndicator(playerSlowMarkers, id, {
+					slowedUntil: pData.slowedUntil,
+					x: myX,
+					z: myZ,
+				});
+			} else {
+				applySlowIndicator(playerSlowMarkers, id, pData);
+			}
 
 			if (id === myId) continue;
 
