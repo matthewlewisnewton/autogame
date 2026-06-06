@@ -316,6 +316,8 @@ const TOKEN_KEY = 'autogame_token';
 let currentLobbyName = '';
 /** When true, the dismissible #lobby menu stays hidden until showGameLobby(). */
 let lobbyMenuDismissed = false;
+/** True after the first extracted-waiting overlay setup; avoids re-showing #lobby each tick. */
+let extractedLobbyOverlayActive = false;
 
 function setLoggedInStatus(username, lobbyName) {
 	if (!statusEl || !username) return;
@@ -404,6 +406,8 @@ function dismissGameLobby() {
 }
 
 function showLobbyBrowser() {
+	lobbyMenuDismissed = false;
+	extractedLobbyOverlayActive = false;
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.remove('hidden');
 	if (lobbyEl) lobbyEl.classList.add('hidden');
 	setLobbyHudVisible(false);
@@ -525,7 +529,16 @@ function returnToGuildLobby(state, { refreshCollection = false, rebuildHub = fal
 	hideVariantCodex();
 	setDeckStackVisible(false);
 	clearKeyItemCooldownHud();
-	showGameLobby();
+	extractedLobbyOverlayActive = false;
+	if (lobbyMenuDismissed) {
+		if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
+		setLobbyHudVisible(true);
+		if (lobbyEl) lobbyEl.classList.add('hidden');
+		if (questBoardWrapperEl) questBoardWrapperEl.classList.add('hidden');
+		applyLobbyThemeLabels();
+	} else {
+		showGameLobby();
+	}
 	setDeployButtonVisible(true);
 	// On the play→lobby transition, switch the rendered geometry back to the hub
 	// and re-seat the avatar at the hub spawn. `renderHubScene()` also sets the
@@ -646,7 +659,12 @@ function showExtractedLobbyOverlay() {
 	if (renderedSceneProfile !== 'hub' && hubLayout && isSceneInitialized()) {
 		renderHubScene();
 	}
-	showGameLobby();
+	if (!extractedLobbyOverlayActive) {
+		showGameLobby();
+		extractedLobbyOverlayActive = true;
+	} else if (!lobbyMenuDismissed && !isGameLobbyMenuVisible()) {
+		showGameLobby();
+	}
 	setDeployButtonVisible(false);
 	if (suspendedRunBannerEl) {
 		suspendedRunBannerEl.textContent = THEME.run.awaitingExtract;
@@ -833,8 +851,6 @@ function applyLobbyJoinedData(data) {
 		showAppToolbar();
 	}
 
-	showGameLobby();
-
 	if (data.hubPresence) applyHubPresence(data.hubPresence);
 
 	const receivedSeed = data.layoutSeed;
@@ -845,6 +861,7 @@ function applyLobbyJoinedData(data) {
 	// never reuses (or rebuilds into) the quest geometry, and a run join never
 	// deploys the player into the hub geometry.
 	if (joinPhase === 'playing') {
+		if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 		const seedChanged = receivedSeed !== undefined && receivedSeed !== currentLayoutSeed;
 		if (receivedSeed !== undefined) currentLayoutSeed = receivedSeed;
 		requestDebugScenario();
@@ -871,6 +888,8 @@ function applyLobbyJoinedData(data) {
 		}
 		renderedSceneProfile = 'quest';
 		if (gameState) gameState.layout = currentLayout;
+		if (lobbyEl) lobbyEl.classList.add('hidden');
+		setLobbyHudVisible(false);
 		const me = myId && gameState && gameState.players ? gameState.players[myId] : null;
 		if (me && Number.isFinite(me.x) && Number.isFinite(me.z)) {
 			setPlayerPosition(me.x, me.z);
@@ -888,6 +907,14 @@ function applyLobbyJoinedData(data) {
 	requestDebugBoothOpen();
 	requestDebugShopBoothOpen();
 	updateObjectiveHud();
+	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
+	setLobbyHudVisible(true);
+	applyLobbyThemeLabels();
+	const lobbyMe = myId && gameState?.players ? gameState.players[myId] : null;
+	syncVanguardHud(lobbyMe, 'lobby');
+	dismissGameLobby();
+	renderSuspendedRunBanner(gameState);
+	setDeployButtonVisible(true);
 }
 
 /** Show the registration form and hide the login form. */
@@ -1262,7 +1289,11 @@ function bindSocketHandlers(s) {
 
 		if (enteringLobby) {
 			_lastReturnRewardsPreview = null;
+			extractedLobbyOverlayActive = false;
 		} else if (me && state.gamePhase === 'playing') {
+			if (enteringPlaying) {
+				extractedLobbyOverlayActive = false;
+			}
 			if (me.returnRewardsPreview != null) {
 				_lastReturnRewardsPreview = me.returnRewardsPreview;
 			} else if (_lastReturnRewardsPreview != null) {
@@ -4792,6 +4823,7 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		sceneInitialized: isSceneInitialized(),
 		hasCanvas: !!document.querySelector('canvas'),
 		lobbyVisible,
+		lobbyMenuDismissed,
 		characterBoothOpen: isCharacterBoothOpen(),
 		deckEditorVisible,
 		resumeBtnUsable,
