@@ -3,11 +3,16 @@
  */
 import { readHarness } from './harnessState.mjs';
 
-const ADD_TYPES = new Set(['grunt', 'skirmisher']);
+const DEFAULT_ADD_TYPES = ['grunt', 'skirmisher'];
 
-function questAdds(harness, bossType) {
+function addTypeSet(addTypes) {
+	return new Set(addTypes ?? DEFAULT_ADD_TYPES);
+}
+
+function questAdds(harness, bossType, addTypes) {
+	const types = addTypeSet(addTypes);
 	return (harness?.enemyHp || []).filter(
-		(e) => e.type !== bossType && e.hp > 0 && ADD_TYPES.has(e.type),
+		(e) => e.type !== bossType && e.hp > 0 && types.has(e.type),
 	);
 }
 
@@ -31,19 +36,19 @@ function chooseAttack(harness) {
 	return null;
 }
 
-function nonBossEnemies(harness, bossType) {
-	return questAdds(harness, bossType);
+function nonBossEnemies(harness, bossType, addTypes) {
+	return questAdds(harness, bossType, addTypes);
 }
 
 function bossEnemy(harness, bossType) {
 	return (harness?.enemyHp || []).find((e) => e.type === bossType && e.hp > 0) || null;
 }
 
-function nearestEnemy(harness, bossType, { addsOnly = false } = {}) {
+function nearestEnemy(harness, bossType, { addsOnly = false, addTypes } = {}) {
 	const player = harness?.player;
 	if (!player) return null;
 	const pool = addsOnly
-		? nonBossEnemies(harness, bossType)
+		? nonBossEnemies(harness, bossType, addTypes)
 		: (harness?.enemyHp || []).filter((e) => e.hp > 0);
 	if (pool.length === 0) return null;
 	let nearest = null;
@@ -73,9 +78,9 @@ async function nudgeToward(page, targetX, targetZ, { steps = 4, holdMs = 450 } =
 	}
 }
 
-async function lockOntoNearestAdd(page, bossType) {
+async function lockOntoNearestAdd(page, bossType, addTypes) {
 	const harness = await readHarness(page);
-	const target = nearestEnemy(harness, bossType, { addsOnly: true });
+	const target = nearestEnemy(harness, bossType, { addsOnly: true, addTypes });
 	if (target && target.dist > 5) {
 		await nudgeToward(page, target.enemy.x, target.enemy.z, { steps: 2, holdMs: 400 });
 	}
@@ -108,9 +113,9 @@ async function lockOntoBoss(page, bossType) {
 	return !!(locked && locked.type === bossType);
 }
 
-async function swingAtTarget(page, attackKey, bossType, { minAddsLeft = 0 } = {}) {
+async function swingAtTarget(page, attackKey, bossType, { minAddsLeft = 0, addTypes } = {}) {
 	const before = await readHarness(page);
-	const addsBefore = nonBossEnemies(before, bossType).length;
+	const addsBefore = nonBossEnemies(before, bossType, addTypes).length;
 	if (addsBefore <= minAddsLeft) return before;
 
 	for (let swing = 0; swing < 8; swing += 1) {
@@ -118,7 +123,7 @@ async function swingAtTarget(page, attackKey, bossType, { minAddsLeft = 0 } = {}
 		await page.waitForTimeout(900);
 
 		const after = await readHarness(page);
-		const addsAfter = nonBossEnemies(after, bossType).length;
+		const addsAfter = nonBossEnemies(after, bossType, addTypes).length;
 		if (addsAfter <= minAddsLeft) return after;
 		if (addsAfter < addsBefore) return after;
 	}
@@ -153,7 +158,7 @@ export async function enableGodmode(page) {
 
 /**
  * @param {import('playwright').Page} page
- * @param {{ bossType: string, timeoutMs?: number, minAddsLeft?: number, onMidCombat?: () => Promise<void> }} opts
+ * @param {{ bossType: string, timeoutMs?: number, minAddsLeft?: number, addTypes?: string[], onMidCombat?: () => Promise<void> }} opts
  */
 async function focusCanvas(page) {
 	await page.evaluate(() => {
@@ -165,6 +170,7 @@ export async function defeatAdds(page, {
 	bossType,
 	timeoutMs = 90000,
 	minAddsLeft = 0,
+	addTypes,
 	onMidCombat = null,
 }) {
 	const deadline = Date.now() + timeoutMs;
@@ -173,10 +179,10 @@ export async function defeatAdds(page, {
 
 	while (Date.now() < deadline) {
 		const harness = await readHarness(page);
-		const adds = nonBossEnemies(harness, bossType);
+		const adds = nonBossEnemies(harness, bossType, addTypes);
 		if (adds.length <= minAddsLeft) return harness;
 
-		const target = nearestEnemy(harness, bossType, { addsOnly: true });
+		const target = nearestEnemy(harness, bossType, { addsOnly: true, addTypes });
 		if (target && target.dist > 5) {
 			await nudgeToward(page, target.enemy.x, target.enemy.z, { steps: 3, holdMs: 500 });
 		}
@@ -192,7 +198,7 @@ export async function defeatAdds(page, {
 		}
 		const attackKey = String(attack.slot + 1);
 		if (attack.mode === 'weapon') {
-			const locked = await lockOntoNearestAdd(page, bossType);
+			const locked = await lockOntoNearestAdd(page, bossType, addTypes);
 			if (!locked) {
 				if (target) {
 					await nudgeToward(page, target.enemy.x, target.enemy.z, { steps: 2, holdMs: 400 });
@@ -203,7 +209,7 @@ export async function defeatAdds(page, {
 				}
 				continue;
 			}
-			await swingAtTarget(page, attackKey, bossType, { minAddsLeft });
+			await swingAtTarget(page, attackKey, bossType, { minAddsLeft, addTypes });
 		} else {
 			await page.keyboard.press(attackKey);
 			await page.waitForTimeout(4000);
@@ -211,7 +217,7 @@ export async function defeatAdds(page, {
 	}
 
 	const finalHarness = await readHarness(page);
-	const remaining = nonBossEnemies(finalHarness, bossType).length;
+	const remaining = nonBossEnemies(finalHarness, bossType, addTypes).length;
 	if (remaining > minAddsLeft) {
 		throw new Error(`Adds not cleared within timeout (remaining ${remaining}, wanted <= ${minAddsLeft})`);
 	}

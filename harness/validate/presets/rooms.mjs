@@ -10,4 +10,5 @@ export default {
 	encounterTriggerRadius: 8,
 	addsTimeoutMs: 90000,
 	encounterTimeoutMs: 60000,
+	lobbyName: 'Rooms Validation',
 };

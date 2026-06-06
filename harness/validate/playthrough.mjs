@@ -31,12 +31,13 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..');
 
 const PRESET_MODULES = {
 	rooms: () => import('./presets/rooms.mjs'),
+	'spire-ascent': () => import('./presets/spire-ascent.mjs'),
 };
 
 const FULL_STEPS = new Set(['full']);
 const HUB_STEPS = new Set(['hub', 'deploy']);
 const BOSS_ENCOUNTER_STEPS = new Set(['boss-encounter']);
-const ADD_TYPES = new Set(['grunt', 'skirmisher']);
+const DEFAULT_ADD_TYPES = ['grunt', 'skirmisher'];
 
 function parseArgs(argv) {
 	const opts = {
@@ -89,9 +90,10 @@ async function failWithHarness(page, message) {
 	throw new Error(`${message}: ${JSON.stringify(harness)}`);
 }
 
-function liveAdds(harness, bossType) {
+function liveAdds(harness, bossType, addTypes) {
+	const types = new Set(addTypes ?? DEFAULT_ADD_TYPES);
 	return (harness?.enemyHp || []).filter(
-		(e) => e.type !== bossType && e.hp > 0 && ADD_TYPES.has(e.type),
+		(e) => e.type !== bossType && e.hp > 0 && types.has(e.type),
 	);
 }
 
@@ -108,14 +110,14 @@ async function requestScenario(page, scenario) {
 	return result;
 }
 
-function buildEncounterProbe(harness, bossType) {
+function buildEncounterProbe(harness, bossType, addTypes) {
 	const boss = (harness?.enemyHp || []).find((e) => e.type === bossType && e.hp > 0) || null;
 	return {
 		encounterPhase: harness?.encounter?.phase ?? null,
 		encounterLocked: harness?.encounter?.locked ?? null,
 		bossEnemyId: harness?.encounter?.bossEnemyId ?? null,
 		bossHp: boss?.hp ?? null,
-		liveAddCount: liveAdds(harness, bossType).length,
+		liveAddCount: liveAdds(harness, bossType, addTypes).length,
 	};
 }
 
@@ -139,12 +141,19 @@ async function runAuthStep({ page, serverUrl, clientUrl, outDirAbs }) {
 	};
 }
 
+function deployLabel(preset) {
+	const quest = preset.questId ?? 'unknown';
+	const tier = preset.questTier ?? '?';
+	return `${quest} tier ${tier}`;
+}
+
 async function runHubStep({ page, preset, outDirAbs }) {
-	await page.evaluate(() => {
-		const name = document.getElementById('create-lobby-name');
-		if (name) name.value = 'Rooms Validation';
+	const lobbyName = preset.lobbyName ?? 'Validation Lobby';
+	await page.evaluate((name) => {
+		const input = document.getElementById('create-lobby-name');
+		if (input) input.value = name;
 		document.getElementById('create-lobby-btn')?.click();
-	});
+	}, lobbyName);
 
 	await page.waitForFunction(() => {
 		const lobby = document.getElementById('lobby');
@@ -202,7 +211,7 @@ async function runHubStep({ page, preset, outDirAbs }) {
 			&& h.cardHandVisible === true
 			&& h.objective?.type === 'stage_boss';
 	}, { timeout: 25000 }).catch(async () => {
-		await failWithHarness(page, 'Training Caverns Tier II run did not start');
+		await failWithHarness(page, `${deployLabel(preset)} deploy did not start`);
 	});
 
 	const playingHarness = await readHarness(page);
@@ -229,13 +238,19 @@ async function runHubStep({ page, preset, outDirAbs }) {
 }
 
 async function runBossEncounterStep({ page, preset, outDirAbs }) {
-	const { bossType, nearAddsScenario, bossApproachScenario, encounterTriggerRadius } = preset;
+	const {
+		bossType,
+		nearAddsScenario,
+		bossApproachScenario,
+		encounterTriggerRadius,
+		addTypes,
+	} = preset;
 
 	await enableGodmode(page);
 	await requestScenario(page, nearAddsScenario);
 
 	const preCombatHarness = await readHarness(page);
-	if (liveAdds(preCombatHarness, bossType).length === 0) {
+	if (liveAdds(preCombatHarness, bossType, addTypes).length === 0) {
 		throw new Error(`nearAddsScenario left no live adds for mid-combat capture: ${JSON.stringify(preCombatHarness)}`);
 	}
 
@@ -244,9 +259,10 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 		bossType,
 		timeoutMs: preset.addsTimeoutMs ?? 90000,
 		minAddsLeft: 0,
+		addTypes,
 		onMidCombat: async () => {
 			const midHarness = await readHarness(page);
-			if (liveAdds(midHarness, bossType).length === 0) {
+			if (liveAdds(midHarness, bossType, addTypes).length === 0) {
 				throw new Error('onMidCombat requested with zero live adds');
 			}
 			const shotPath = await writeScreenshot(page, outDirAbs, '03-mid-combat');
@@ -259,7 +275,7 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 	}
 
 	assertDormantBoss(afterAddsHarness, bossType);
-	const dormantProbe = buildEncounterProbe(afterAddsHarness, bossType);
+	const dormantProbe = buildEncounterProbe(afterAddsHarness, bossType, addTypes);
 	const dormantScreenshotPath = await writeScreenshot(page, outDirAbs, '04-boss-dormant');
 	const dormantScreenshot = path.relative(REPO_ROOT, dormantScreenshotPath);
 
@@ -276,7 +292,7 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 		throw new Error(`Encounter did not reach active/locked: ${JSON.stringify(activeHarness?.encounter)}`);
 	}
 
-	const activeProbe = buildEncounterProbe(activeHarness, bossType);
+	const activeProbe = buildEncounterProbe(activeHarness, bossType, addTypes);
 	const activeScreenshotPath = await writeScreenshot(page, outDirAbs, '05-boss-active');
 	const activeScreenshot = path.relative(REPO_ROOT, activeScreenshotPath);
 
