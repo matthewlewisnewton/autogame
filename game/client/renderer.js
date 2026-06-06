@@ -29,7 +29,7 @@ import {
 	passageFloorMaterial,
 	groundMaterial,
 } from './dungeon.js';
-import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY, findBoothInRange } from './collision.js';
+import { sampleFloorY, sampleFloorSurface, DEFAULT_FLOOR_Y, resolveFloorY, findBoothInRange } from './collision.js';
 import {
 	CARD_HIT_GRACE_MS,
 	ATTACK_RANGE,
@@ -50,6 +50,9 @@ import {
 	MOVE_SPEED,
 	MAX_ELAPSED_MS,
 	TICK_RATE,
+	SLIPPERY_ACCEL,
+	SLIPPERY_FRICTION,
+	NORMAL_STOP_FRICTION,
 	CAMERA_DISTANCE,
 	getCameraFollowHeight,
 	CAMERA_YAW_SENSITIVITY,
@@ -65,6 +68,7 @@ import {
 	resetGamepadState,
 } from './gamepad.js';
 import { pollInput, getMovementDirection, resetInputState } from './input.js';
+import { clientMoveSpeedScale, tickMovementPrediction } from './movementPrediction.js';
 import { playSound } from './audio.js';
 import {
 	isLockOnActive,
@@ -163,10 +167,23 @@ let enemyHitboxPhase = 0;
 /** Fixed-tick simulation position; myX/myZ interpolate between prevSim and sim for smooth rendering. */
 let simX = 0;
 let simZ = 0;
+let simVx = 0;
+let simVz = 0;
 let prevSimX = 0;
 let prevSimZ = 0;
 let lastEmittedRotation = null;
 const ROTATION_SYNC_EPS = 0.02;
+
+function resetSimVelocity() {
+	simVx = 0;
+	simVz = 0;
+}
+
+function isCoastingOnSlippery(layout) {
+	if (!layout) return false;
+	if (sampleFloorSurface(layout, simX, simZ) !== 'slippery') return false;
+	return Math.hypot(simVx, simVz) >= 1e-4;
+}
 
 // ── Loot state ──
 const lootGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.1, 16);
@@ -1137,6 +1154,7 @@ export function setPlayerPosition(x, z) {
 	prevSimX = x;
 	prevSimZ = z;
 	moveAccumulator = 0;
+	resetSimVelocity();
 }
 
 /**
@@ -1439,6 +1457,7 @@ export function initScene(layout, spawnPos) {
 	prevSimX = spawnPosition.x;
 	prevSimZ = spawnPosition.z;
 	moveAccumulator = 0;
+	resetSimVelocity();
 
 	// Reset movement when the tab loses focus (keyboard state lives in input.js).
 	if (!inputListenersAdded) {
@@ -1510,6 +1529,8 @@ export function rebuildDungeonLayout(layout) {
 	simZ = spawnPosition.z;
 	prevSimX = spawnPosition.x;
 	prevSimZ = spawnPosition.z;
+	moveAccumulator = 0;
+	resetSimVelocity();
 
 	if (layout.profile === 'spire-ascent') {
 		const floorY = resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z));
@@ -1594,6 +1615,10 @@ export function updateMyPlayer(delta) {
 	}
 
 	const movement = getMovementInput();
+	const layout = gameStateRef?.layout;
+	let dirX = 0;
+	let dirZ = 0;
+	let moveRotation = playerRotation;
 
 	if (movement) {
 		moveAccumulator += delta;
@@ -1604,24 +1629,50 @@ export function updateMyPlayer(delta) {
 		const dir = lockState.locked && lockState.liveToTarget
 			? targetRelativeDirection(movement.x, movement.z, lockState.liveToTarget)
 			: cameraRelativeDirection(movement.x, movement.z);
-		const dirX = dir.x;
-		const dirZ = dir.z;
-		const moveRotation = lockState.locked
+		dirX = dir.x;
+		dirZ = dir.z;
+		moveRotation = lockState.locked
 			? playerRotation
 			: Math.atan2(dirZ, dirX);
-
-		while (moveAccumulator >= TICK_DT) {
-			prevSimX = simX;
-			prevSimZ = simZ;
-			const result = tryPlayerMove(
-				simX, simZ, dirX, dirZ, MOVE_SPEED * TICK_DT,
-				wallColliders, walkableAABBs, dungeonBounds
-			);
-			simX = result.x;
-			simZ = result.z;
-			moveAccumulator -= TICK_DT;
+	} else {
+		moveEmitAccumulator = 0;
+		if (isCoastingOnSlippery(layout)) {
+			moveAccumulator += delta;
 		}
+	}
 
+	const speedScale = clientMoveSpeedScale(me);
+	while (moveAccumulator >= TICK_DT) {
+		prevSimX = simX;
+		prevSimZ = simZ;
+		const tickResult = tickMovementPrediction({
+			x: simX,
+			z: simZ,
+			vx: simVx,
+			vz: simVz,
+			layout,
+			inputDx: dirX,
+			inputDz: dirZ,
+			inputActive: Boolean(movement),
+			speedScale,
+			tryPlayerMove,
+			colliders: wallColliders,
+			walkableAABBs,
+			bounds: dungeonBounds,
+			tickRate: TICK_RATE,
+			moveSpeed: MOVE_SPEED,
+			slipperyAccel: SLIPPERY_ACCEL,
+			slipperyFriction: SLIPPERY_FRICTION,
+			normalStopFriction: NORMAL_STOP_FRICTION,
+		});
+		simX = tickResult.x;
+		simZ = tickResult.z;
+		simVx = tickResult.vx;
+		simVz = tickResult.vz;
+		moveAccumulator -= TICK_DT;
+	}
+
+	if (movement) {
 		while (moveEmitAccumulator >= TICK_DT && socketRef) {
 			moveEmitAccumulator -= TICK_DT;
 			moveSequence += 1;
@@ -1633,8 +1684,6 @@ export function updateMyPlayer(delta) {
 				sequence: moveSequence,
 			});
 		}
-	} else {
-		moveEmitAccumulator = 0;
 	}
 
 	updatePlayerFacing();
@@ -4459,6 +4508,7 @@ export function animate(timestamp) {
 				prevSimX = spawnPosition.x;
 				prevSimZ = spawnPosition.z;
 				moveAccumulator = 0;
+				resetSimVelocity();
 				playerRotation = 0;
 				lastEmittedRotation = null;
 				clearAllLockOnState();
