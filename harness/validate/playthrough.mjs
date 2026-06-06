@@ -2,11 +2,10 @@
 /**
  * Headless Playwright playthrough driver for autogame validation.
  *
- *   node harness/validate/playthrough.mjs [--preset rooms] [--out game/validation/rooms/] [--steps auth|hub|deploy|boss-encounter|full]
+ *   node harness/validate/playthrough.mjs [--preset rooms|hub] [--out <dir>] [--steps <slice>]
  *
- * Steps: auth (register/login), hub | deploy (ship hub + character save + tier-2 deploy),
- * boss-encounter (godmode + defeat adds + dormant/active boss screenshots),
- * full (auth → hub/deploy → boss-encounter → victory).
+ * Rooms preset steps: auth, hub | deploy, boss-encounter, full.
+ * Hub preset steps: auth, hub-walk, booth, telepipe-reset, full (latter slices stubbed until sub-tickets 02–05).
  */
 import { chromium } from 'playwright';
 import fs from 'fs';
@@ -31,17 +30,24 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..');
 
 const PRESET_MODULES = {
 	rooms: () => import('./presets/rooms.mjs'),
+	hub: () => import('./presets/hub.mjs'),
 };
 
-const FULL_STEPS = new Set(['full']);
-const HUB_STEPS = new Set(['hub', 'deploy']);
-const BOSS_ENCOUNTER_STEPS = new Set(['boss-encounter']);
+const ROOMS_FULL_STEPS = new Set(['full']);
+const ROOMS_HUB_STEPS = new Set(['hub', 'deploy']);
+const ROOMS_BOSS_ENCOUNTER_STEPS = new Set(['boss-encounter']);
+const HUB_PRESET_STEPS = new Set(['auth', 'hub-walk', 'booth', 'telepipe-reset', 'full']);
+const HUB_STUB_STEPS = new Set(['hub-walk', 'booth', 'telepipe-reset', 'full']);
 const ADD_TYPES = new Set(['grunt', 'skirmisher']);
+
+function defaultOutDir(preset) {
+	return preset === 'hub' ? 'game/validation/hub/' : 'game/validation/rooms/';
+}
 
 function parseArgs(argv) {
 	const opts = {
 		preset: 'rooms',
-		out: 'game/validation/rooms/',
+		out: null,
 		steps: 'auth',
 	};
 	for (let i = 2; i < argv.length; i += 1) {
@@ -53,13 +59,37 @@ function parseArgs(argv) {
 		} else if (arg === '--steps' && argv[i + 1]) {
 			opts.steps = argv[++i];
 		} else if (arg === '--help' || arg === '-h') {
-			console.log('usage: node harness/validate/playthrough.mjs [--preset <name>] [--out <dir>] [--steps auth|hub|deploy|boss-encounter|full]');
+			console.log('usage: node harness/validate/playthrough.mjs [--preset rooms|hub] [--out <dir>] [--steps <slice>]');
 			process.exit(0);
 		} else {
 			throw new Error(`Unknown argument: ${arg}`);
 		}
 	}
+	if (!opts.out) {
+		opts.out = defaultOutDir(opts.preset);
+	}
 	return opts;
+}
+
+function assertStepsForPreset(preset, steps) {
+	if (preset === 'hub') {
+		if (!HUB_PRESET_STEPS.has(steps)) {
+			throw new Error(`Unknown --steps value "${steps}" for preset hub — expected: ${[...HUB_PRESET_STEPS].join(', ')}`);
+		}
+		if (HUB_STUB_STEPS.has(steps)) {
+			throw new Error(`Hub preset step "${steps}" is not implemented yet (sub-tickets 02–05)`);
+		}
+		return;
+	}
+	const roomsSteps = new Set([
+		'auth',
+		...ROOMS_HUB_STEPS,
+		...ROOMS_BOSS_ENCOUNTER_STEPS,
+		...ROOMS_FULL_STEPS,
+	]);
+	if (!roomsSteps.has(steps)) {
+		throw new Error(`Unknown --steps value "${steps}" for preset rooms — expected: ${[...roomsSteps].join(', ')}`);
+	}
 }
 
 async function loadPreset(name) {
@@ -119,7 +149,59 @@ function buildEncounterProbe(harness, bossType) {
 	};
 }
 
-async function runAuthStep({ page, serverUrl, clientUrl, outDirAbs }) {
+async function probeHubLobbyFinder(page) {
+	return page.evaluate(() => {
+		const lobbyBrowser = document.getElementById('lobby-browser');
+		const lobby = document.getElementById('lobby');
+		const canvas = document.querySelector('canvas');
+		const lobbyBrowserStyle = lobbyBrowser ? getComputedStyle(lobbyBrowser) : null;
+		const lobbyBrowserVisible = !!lobbyBrowser
+			&& !lobbyBrowser.classList.contains('hidden')
+			&& lobbyBrowserStyle?.display !== 'none';
+		const lobbyHidden = !lobby || lobby.classList.contains('hidden');
+		const hasCanvas = !!canvas;
+		const canvasActiveFullscreen = !!canvas
+			&& canvas.width > 0
+			&& canvas.height > 0
+			&& getComputedStyle(canvas).display !== 'none';
+		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
+		const hub3dStarted = canvasActiveFullscreen
+			&& (harness?.sceneInitialized === true || harness?.layout?.profile === 'hub');
+		const position = lobbyBrowserStyle?.position ?? null;
+		const activePlayingCanvas = canvasActiveFullscreen && harness?.phase === 'playing';
+		const fixedOverPlayingCanvas = position === 'fixed'
+			&& lobbyBrowserVisible
+			&& activePlayingCanvas;
+
+		return {
+			lobbyBrowserVisible,
+			lobbyHidden,
+			hasCanvas,
+			hub3dStarted,
+			position,
+			fixedOverPlayingCanvas,
+		};
+	});
+}
+
+async function assertHubLobbyFinder(page) {
+	const probe = await probeHubLobbyFinder(page);
+	if (!probe.lobbyBrowserVisible) {
+		throw new Error(`#lobby-browser not visible in lobby-finder probe: ${JSON.stringify(probe)}`);
+	}
+	if (!probe.lobbyHidden) {
+		throw new Error(`#lobby should be hidden in lobby-finder probe: ${JSON.stringify(probe)}`);
+	}
+	if (probe.hub3dStarted) {
+		throw new Error(`Hub 3D should not be active in lobby-finder probe: ${JSON.stringify(probe)}`);
+	}
+	if (probe.fixedOverPlayingCanvas) {
+		throw new Error(`#lobby-browser must not be fixed over an active playing canvas: ${JSON.stringify(probe)}`);
+	}
+	return probe;
+}
+
+async function runAuthStep({ page, serverUrl, clientUrl, outDirAbs, presetName }) {
 	const username = `playthrough-${Date.now()}`;
 	const password = 'harness-test-password';
 	const token = await registerUser(serverUrl, username, password);
@@ -128,13 +210,20 @@ async function runAuthStep({ page, serverUrl, clientUrl, outDirAbs }) {
 
 	const harness = await readHarness(page);
 	const connected = await isSocketConnected(page);
-	const screenshotPath = await writeScreenshot(page, outDirAbs, '01-lobby-browser');
+	const isHubPreset = presetName === 'hub';
+	let lobbyFinderProbe = null;
+	if (isHubPreset) {
+		lobbyFinderProbe = await assertHubLobbyFinder(page);
+	}
+	const screenshotName = isHubPreset ? '09-lobby-finder' : '01-lobby-browser';
+	const screenshotPath = await writeScreenshot(page, outDirAbs, screenshotName);
 
 	return {
 		username,
 		connected,
 		lobbyBrowserVisible: true,
 		harnessPhase: harness?.phase ?? null,
+		...(lobbyFinderProbe ? { lobbyFinder: lobbyFinderProbe } : {}),
 		screenshot: path.relative(REPO_ROOT, screenshotPath),
 	};
 }
@@ -403,29 +492,30 @@ async function main() {
 	const outDirAbs = path.resolve(REPO_ROOT, opts.out);
 	fs.mkdirSync(outDirAbs, { recursive: true });
 
-	const knownSteps = new Set(['auth', ...HUB_STEPS, ...BOSS_ENCOUNTER_STEPS, ...FULL_STEPS]);
-	if (!knownSteps.has(opts.steps)) {
-		throw new Error(`Unknown --steps value: ${opts.steps}`);
-	}
-
-	const preset = await loadPreset(opts.preset);
-	const runsHub = HUB_STEPS.has(opts.steps) || FULL_STEPS.has(opts.steps);
-	const runsBossEncounter = BOSS_ENCOUNTER_STEPS.has(opts.steps) || FULL_STEPS.has(opts.steps);
-	const runsFull = FULL_STEPS.has(opts.steps);
-
 	let browser;
 	let game;
 	let consoleLog;
 	let exitCode = 0;
+	let preset;
+	let runsRoomsHub = false;
+	let runsBossEncounter = false;
+	let runsFull = false;
 	const summary = {
 		ok: true,
 		preset: opts.preset,
 		steps: opts.steps,
 		outDir: path.relative(REPO_ROOT, outDirAbs),
-		presetConfig: preset,
 	};
 
 	try {
+		assertStepsForPreset(opts.preset, opts.steps);
+		preset = await loadPreset(opts.preset);
+		summary.presetConfig = preset;
+		runsRoomsHub = opts.preset === 'rooms'
+			&& (ROOMS_HUB_STEPS.has(opts.steps) || ROOMS_FULL_STEPS.has(opts.steps));
+		runsBossEncounter = opts.preset === 'rooms'
+			&& (ROOMS_BOSS_ENCOUNTER_STEPS.has(opts.steps) || ROOMS_FULL_STEPS.has(opts.steps));
+		runsFull = opts.preset === 'rooms' && ROOMS_FULL_STEPS.has(opts.steps);
 		game = await startGame();
 		summary.serverPort = game.serverPort;
 		summary.clientPort = game.clientPort;
@@ -439,9 +529,10 @@ async function main() {
 			serverUrl: game.serverUrl,
 			clientUrl: game.clientUrl,
 			outDirAbs,
+			presetName: opts.preset,
 		});
 
-		if (runsHub) {
+		if (runsRoomsHub) {
 			summary.hub = await runHubStep({ page, preset, outDirAbs });
 		}
 
@@ -503,6 +594,7 @@ main()
 	.then((code) => {
 		process.exit(code ?? 0);
 	})
-	.catch(() => {
+	.catch((err) => {
+		console.error(`playthrough failed: ${err.message}`);
 		process.exit(1);
 	});
