@@ -27,6 +27,7 @@
   "glacier_collapse": { "id": "glacier_collapse", "name": "Glacier Rupture", "type": "spell", "charges": 1 },
   "healing_font": { "id": "healing_font", "name": "Restoration Beacon", "type": "spell", "charges": 1, "acquisition": "reward", "rewardOrder": 8 },
   "divine_grace": { "id": "divine_grace", "name": "Sanctum Pulse", "type": "spell", "charges": 1 },
+  "purifying_pulse": { "id": "purifying_pulse", "name": "Purifying Pulse", "type": "spell", "charges": 1, "acquisition": "reward", "rewardOrder": 27 },
   "skeleton_knight": { "id": "skeleton_knight", "name": "Necroframe Knight", "type": "creature", "charges": 1, "acquisition": "reward", "rewardOrder": 9 },
   "undead_commander": { "id": "undead_commander", "name": "Legion Marshal", "type": "creature", "charges": 1 },
   "storm_eagle": { "id": "storm_eagle", "name": "Stormwing Drone", "type": "creature", "charges": 1, "acquisition": "reward", "rewardOrder": 11 },

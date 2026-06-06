@@ -192,6 +192,13 @@
     "healAmount": 25,
     "specialEffect": "heal"
   },
+  "purifying_pulse": {
+    "magicStoneCost": 0,
+    "effect": "purifying_pulse",
+    "healAmount": 15,
+    "radius": 5.5,
+    "specialEffect": "heal_and_cleanse"
+  },
   "divine_grace": {
     "magicStoneCost": 0,
     "effect": "divine_grace",

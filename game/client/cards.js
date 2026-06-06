@@ -151,6 +151,7 @@ export const CARD_ACCENT_STYLE = {
   permafrost_lance: { color: '#67e8f9', icon: '❄' },
   glacier_collapse: { color: '#38bdf8', icon: '🧊' },
   healing_font: { color: '#86efac', icon: '♥' },
+  purifying_pulse: { color: '#a7f3d0', icon: '✦' },
   divine_grace: { color: '#fde68a', icon: '✧' },
   skeleton_knight: { color: '#d4d4d8', icon: '💀' },
   undead_commander: { color: '#a1a1aa', icon: '☠' },
