@@ -443,14 +443,13 @@ function ensureShopOffer(state = _gameState) {
   return state.shopOffer;
 }
 
-/** Restore minimal HP when returning to the lobby ship after death or wipe. */
+/** Restore minimal HP for dead players returning to the hub; living partial HP is preserved. */
 function revivePlayerInLobby(player) {
   if (!player) return;
   const hp = Number.isFinite(player.hp) ? player.hp : 0;
-  if (player.dead || hp <= 0) {
-    player.hp = LOBBY_REVIVE_HP;
-    player.dead = false;
-  }
+  if (!player.dead && hp > 0) return;
+  player.hp = LOBBY_REVIVE_HP;
+  player.dead = false;
 }
 
 function healAtMedic(playerId, state = _gameState) {

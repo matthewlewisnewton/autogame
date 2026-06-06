@@ -18,7 +18,7 @@ const { SERVER_TO_CLIENT } = require('../shared/events.js');
 const crypto = require('crypto');
 const { generateLayout, questLayoutSeed, sampleFloorY, resolveFloorY } = require('./dungeon');
 const { DEFAULT_QUEST_ID, getLayoutProfileForQuest, buildQuestUpdatePayload } = require('./quests');
-const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS } = require('./config');
+const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS, MEDIC_HEAL_COST } = require('./config');
 const {
   firstRoomPosition,
   computeDungeonBounds,
@@ -293,6 +293,18 @@ function applyDebugScenario(socket, name) {
       player.magicStones = 15;
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return { ok: true, scenario: name, hp: player.hp, magicStones: player.magicStones };
+    }
+
+    if (name === 'hub-med-booth-ready') {
+      // Hub lobby with partial HP and enough currency for the Medic station.
+      // The same state is reachable by returning from a damaged run with earned gold.
+      setPhase(lobby, PHASES.LOBBY);
+      delete state.run;
+      player.ready = false;
+      player.hp = 42;
+      player.currency = Math.max(player.currency || 0, MEDIC_HEAL_COST + 15);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name, hp: player.hp, currency: player.currency };
     }
 
     if (name === 'hat-shop-currency') {

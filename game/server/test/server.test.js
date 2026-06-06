@@ -42,6 +42,7 @@ import {
 	giveUpRun,
 	previewReturnRewards,
 	healAtMedic,
+	revivePlayerInLobby,
 	checkAllReady,
 	initializePlayerForActiveRun,
 		tryEnterTelepipe,
@@ -3315,6 +3316,29 @@ describe('run state', () => {
 		});
 	});
 
+	describe('revivePlayerInLobby()', () => {
+		it('leaves living players with partial HP unchanged', () => {
+			const player = { hp: 42, dead: false };
+			revivePlayerInLobby(player);
+			expect(player.hp).toBe(42);
+			expect(player.dead).toBe(false);
+		});
+
+		it('revives dead players to LOBBY_REVIVE_HP', () => {
+			const player = { hp: 0, dead: true };
+			revivePlayerInLobby(player);
+			expect(player.hp).toBe(config.LOBBY_REVIVE_HP);
+			expect(player.dead).toBe(false);
+		});
+
+		it('revives players at zero HP without dead flag to LOBBY_REVIVE_HP', () => {
+			const player = { hp: 0, dead: false };
+			revivePlayerInLobby(player);
+			expect(player.hp).toBe(config.LOBBY_REVIVE_HP);
+			expect(player.dead).toBe(false);
+		});
+	});
+
 	describe('healAtMedic()', () => {
 		beforeEach(() => {
 			resetState();
@@ -3337,6 +3361,13 @@ describe('run state', () => {
 		it('rejects when player cannot afford the heal', () => {
 			addPlayer('p1', { hp: 40, currency: 5 });
 			expect(healAtMedic('p1')).toEqual({ ok: false, reason: 'insufficient_gold' });
+		});
+
+		it('rejects when not in lobby phase', () => {
+			addPlayer('p1', { hp: 40, currency: 25 });
+			gameState.gamePhase = 'playing';
+			startDungeonRun();
+			expect(healAtMedic('p1')).toEqual({ ok: false, reason: 'not_in_lobby' });
 		});
 	});
 
