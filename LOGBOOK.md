@@ -5125,3 +5125,26 @@ PASS. `coverage.log` reports `108` test files and `1808` tests passing. Focused 
 
 None.
 
+
+## v0.290 — 302-chain-lightning-card  (2026-06-06 13:15:58)
+
+PASS. Client arc rendering is wired from server payload to visual effect. The card effect emits `chainSegments` from caster to primary and each subsequent hop; `cardRenderers.js` registers a Voltaic Chain renderer that spawns a cyan `spawnLightningArc()` for every segment, with a legacy directional fallback. `renderer.js` creates and fades short-lived jagged line arcs, and the client renderer tests assert that chain segments invoke arc rendering instead of the legacy bolt.
+
+PASS. The implementation stays consistent with the design document's active card-combat model: this is a single-use spell with an instant combat effect, consumes Magic Stones through the existing spell branch, uses existing hand validation/cooldown/consumption flow, and does not alter the lobby/dungeon/core loop or foundation requirements.
+
+## Debug scenario review
+
+PASS. The added `chain-lightning-ready` shortcut is reachable only through the existing debug scenario URL/client socket path. The client only requests debug scenarios from localhost-style hosts, and the server rejects production/non-loopback use unless `ALLOW_DEBUG_SCENARIOS=1` is explicitly set.
+
+PASS. The same end state is reachable through normal gameplay: `chain_lightning` is a reward-acquisition card included in the reward rotation, and normal run combat can put the player near multiple enemies in range. The debug setup only makes that state deterministic by putting Voltaic Chain in hand, restoring Magic Stones, and lining up three grunts.
+
+PASS. The scenario does not replace or weaken production validation. It still enters a normal playing phase, uses the regular hand/card structures, and any cast goes through the normal authoritative `useCard` validation, Magic Stone cost, cooldown, card consumption, damage, cleanup, state update, and `cardUsed` broadcast paths.
+
+## Test and coverage review
+
+PASS. The round-2 coverage log shows the full Vitest suite passing: 114 test files and 1971 tests. Relevant ticket coverage includes `server/test/chain_lightning.test.js` with 7 passing tests and `client/test/cardRenderers.test.js` with the new chain segment renderer coverage. Overall coverage is visible at 72.71% statements / 72.68% lines with thresholds disabled.
+
+## Remaining gaps
+
+None.
+
