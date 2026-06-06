@@ -104,4 +104,5 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [281-cleanup-rooms-objective-hud-and-default-profile-bugs](tickets/281-cleanup-rooms-objective-hud-and-default-profile-bugs/)
 - [ ] [282-cleanup-debug-unlimited-health-godmode](tickets/282-cleanup-debug-unlimited-health-godmode/)
 - [ ] [283-cleanup-miniboss-spire-ascent](tickets/283-cleanup-miniboss-spire-ascent/)
+- [ ] [284-cleanup-playthrough-validate-open-plaza](tickets/284-cleanup-playthrough-validate-open-plaza/)
 - [ ] [284-cleanup-playthrough-validate-sunken-canyon](tickets/284-cleanup-playthrough-validate-sunken-canyon/)

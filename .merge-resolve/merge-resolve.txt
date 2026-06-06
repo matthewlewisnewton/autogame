@@ -1,13 +1,11 @@
-Merge conflicts are resolved in both files.
+Merge conflicts are resolved. Both tickets’ changes are preserved:
 
-### `TASKS.md`
-Combined cleanup backlog entries from both sides:
-- All 9 cleanup tickets from `main` (hub presence, booth terminals, plaza arena, etc.)
-- The branch’s `278-cleanup-sec-jwt-require-explicit-dev-auth` entry
+**`harness/validate/playthrough.mjs`** — `PRESET_MODULES` now registers all three presets: `rooms`, `open-plaza` (from main), and `sunken-canyon` (from this branch).
 
-### `LOGBOOK.md`
-- Kept all `main` logbook entries (`v0.236` through `v0.269`) after the shared `v0.234` section
-- Appended the ticket’s `v0.273 — 266-sec-jwt-require-explicit-dev-auth` entry at the end
-- Restored the truncated branch entry (it had started mid-sentence with “throw messages.”) using the round-9 review content so the logbook entry is complete and coherent
+**`TASKS.md`** — Both cleanup tickets are listed:
+- `284-cleanup-playthrough-validate-open-plaza`
+- `284-cleanup-playthrough-validate-sunken-canyon`
 
-No conflict markers remain in either file. The harness can proceed with commit and merge.
+**`LOGBOOK.md`** — Both review entries are kept in version order: v0.275 (open-plaza) then v0.276 (sunken-canyon), with a single trailing “Remaining gaps” section.
+
+All conflict markers are removed. `playthrough.mjs --help` runs successfully. The harness can commit and finish the merge.

@@ -1,0 +1,86 @@
+{
+  "ok": true,
+  "preset": "open-plaza",
+  "steps": "full",
+  "outDir": "validation/open-plaza",
+  "presetConfig": {
+    "questId": "arena_trials",
+    "questTier": 2,
+    "bossType": "arena_champion",
+    "deployScenario": "arena-trials-tier-2",
+    "encounterTriggerRadius": 8,
+    "addsTimeoutMs": 90000,
+    "encounterTimeoutMs": 60000
+  },
+  "serverPort": 3253,
+  "clientPort": 5240,
+  "auth": {
+    "username": "playthrough-1780736874219",
+    "connected": true,
+    "lobbyBrowserVisible": true,
+    "harnessPhase": "unknown",
+    "screenshot": "validation/open-plaza/01-lobby-browser.png"
+  },
+  "hub": {
+    "hubScreenshot": "validation/open-plaza/01-hub.png",
+    "entryScreenshot": "validation/open-plaza/02-level-entry.png",
+    "deployScenario": "arena-trials-tier-2",
+    "deployOk": true,
+    "objectiveType": "stage_boss",
+    "encounterPhase": "dormant",
+    "bossTypes": [
+      "arena_champion",
+      "grunt",
+      "grunt",
+      "grunt",
+      "skirmisher"
+    ]
+  },
+  "bossEncounter": {
+    "midCombatScreenshot": "validation/open-plaza/03-mid-combat.png",
+    "dormantScreenshot": "validation/open-plaza/04-boss-dormant.png",
+    "activeScreenshot": "validation/open-plaza/05-boss-active.png",
+    "encounterPhase": "active",
+    "encounterLocked": true,
+    "probes": {
+      "dormant": {
+        "encounterPhase": "dormant",
+        "encounterLocked": false,
+        "bossEnemyId": "0609fdaf-a336-4ff5-bc08-078680ac8f5e",
+        "bossHp": 456,
+        "liveAddCount": 0
+      },
+      "active": {
+        "encounterPhase": "active",
+        "encounterLocked": true,
+        "bossEnemyId": "0609fdaf-a336-4ff5-bc08-078680ac8f5e",
+        "bossHp": 456,
+        "liveAddCount": 0
+      }
+    }
+  },
+  "victory": {
+    "bossDefeatedScreenshot": "validation/open-plaza/06-boss-defeated.png",
+    "victoryScreenshot": "validation/open-plaza/07-victory.png",
+    "probes": {
+      "afterBoss": {
+        "runStatus": "victory",
+        "runObjectiveComplete": true,
+        "bossDefeated": true,
+        "lastRunSummaryStatus": "victory"
+      },
+      "victory": {
+        "runStatus": "victory",
+        "runObjectiveComplete": true,
+        "bossDefeated": true,
+        "lastRunSummaryStatus": "victory"
+      }
+    }
+  },
+  "assertions": {
+    "bossSpawned": true,
+    "encounterActivated": true,
+    "bossDefeated": true,
+    "victoryFired": true
+  }
+}
