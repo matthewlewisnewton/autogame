@@ -130,6 +130,8 @@ describe('stage_boss objective registry', () => {
       type: 'stage_boss',
       bossDefeated: false,
       addCount: 3,
+      totalEnemies: 4,
+      defeatedEnemies: 0,
     });
   });
 

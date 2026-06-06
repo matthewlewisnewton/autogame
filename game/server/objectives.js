@@ -246,6 +246,8 @@ const OBJECTIVE_DEFS = {
         label: `${quest.name}: defeat the stage warden`,
         bossDefeated: false,
         addCount,
+        totalEnemies: addCount + 1,
+        defeatedEnemies: 0,
       };
     },
     isComplete(objective, run) {
@@ -253,8 +255,12 @@ const OBJECTIVE_DEFS = {
       if (objective.bossDefeated) return true;
       return false;
     },
-    clampProgress() {
-      // Progress is driven by encounter phase / boss defeat hooks (sub-ticket 04).
+    clampProgress(run) {
+      clampDefeatedEnemies(run.objective);
+    },
+    onEnemyDefeated(run, count) {
+      run.objective.defeatedEnemies += count;
+      clampDefeatedEnemies(run.objective);
     },
     onBossDefeated(run) {
       run.objective.bossDefeated = true;
