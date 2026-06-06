@@ -106,3 +106,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [283-cleanup-miniboss-spire-ascent](tickets/283-cleanup-miniboss-spire-ascent/)
 - [ ] [284-cleanup-playthrough-validate-open-plaza](tickets/284-cleanup-playthrough-validate-open-plaza/)
 - [ ] [284-cleanup-playthrough-validate-sunken-canyon](tickets/284-cleanup-playthrough-validate-sunken-canyon/)
+- [ ] [287-cleanup-playthrough-driver-output-quality-findings-victory-path](tickets/287-cleanup-playthrough-driver-output-quality-findings-victory-path/)

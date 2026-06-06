@@ -4934,3 +4934,26 @@ PASS. This ticket did not add or change debug scenario entry points. Existing bo
 
 None.
 
+
+## v0.280 — 286-playthrough-driver-output-quality-findings-victory-path  (2026-06-06 04:27:59)
+
+- **No invariant short-circuit** — no server validation, persistence, or
+  replication is skipped; the boss-low-hp scenario sets HP to 1 but the kill,
+  victory detection and run-summary still run normally.
+  Covered by new `server/test/debug-scenarios.test.js`.
+
+## Validation
+
+- `vitest run server/` — 98 files, 1668 tests passed.
+- `findings-render` + `debug-scenarios` + client `main.test.js` — 186 passed.
+- `node harness/validate/verify-open-plaza-artifacts.mjs` — exit 0.
+- Visual: `06`/`07` PNGs both show a clean Sortie Complete overlay.
+
+## Remaining gaps
+
+None blocking. All three acceptance criteria are fully and robustly met, the
+new debug scenarios are correctly gated and tested, and the captured run is
+healthy. One non-blocking nit recorded in `nits.md` (06-boss-defeated frame
+now shows the summary overlay rather than a mid-combat defeat frame for the
+instakill boss-low-hp path).
+
