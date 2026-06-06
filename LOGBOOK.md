@@ -4847,3 +4847,26 @@ None blocking. Minor nits recorded in `nits.md` (a slightly stale inline comment
 and smoke-script header comments).
 
 
+
+## v0.274 — 277-playthrough-validation-harness-and-rooms  (2026-06-06 01:13:29)
+
+## Stage-boss encounter integration
+
+PASS. Normal gameplay remains the source of the stage-boss state: Tier 2 Training Caverns starts a `stage_boss` run with an `annex_overseer`, the encounter stays dormant while adds are present, activates and locks only after adds are gone and a live player reaches the trigger, and boss defeat clears the encounter and completes the run. The debug scenarios are URL/test shortcuts into reachable normal states, are gated by localhost/server debug allowances, and preserve the real combat/victory invariants the harness needs to exercise.
+
+## Validation artifacts
+
+PASS. `game/validation/rooms/run-summary.json` records `"steps": "full"`, `"ok": true`, a victory section, and all four assertion booleans true: `bossSpawned`, `encounterActivated`, `bossDefeated`, and `victoryFired`. `probes.json` includes dormant, active, afterBoss, and victory probes. `findings.md` reports PASS with no console/page errors, and the required screenshots are present, including boss dormant/active, boss defeated, and victory states.
+
+## Design and foundation consistency
+
+PASS. The implementation remains consistent with the documented PSO-style lobby-to-dungeon loop and active card combat. It does not regress the foundation requirements: the captured run renders a Three.js scene, connects to the backend via sockets, visualizes players/enemies, and exercises movement/lock-on/combat synchronization through the harness.
+
+## Test and coverage visibility
+
+PASS. The captured coverage run reports `101` test files and `1600` tests passing. Coverage is visible only, with thresholds disabled, and no changed-file test failures appear in the log.
+
+## Remaining gaps
+
+None.
+

@@ -1,0 +1,15 @@
+Round 8 remediation is planned. Sub-ticket **18** failed five times with `scope_audit` reverting every `validation/rooms/` file; the log never shows `[scope] validation writes allowed`, which means the long-running `ticket()` process kept stale harness imports and never enabled the `validation/**` safe-path (sub-ticket **17**'s reload lives in committed `ticket.py` but the in-memory module never picked it up).
+
+**Deleted:** `18-execute-rooms-validation-artifacts` (failed, no `.passed`)
+
+**Created:**
+
+1. **19-game-validation-artifact-output-path** — Move default artifact output to `game/validation/rooms/` so writes fall under implementer `game/**` scope without relying on harness reload.
+2. **20-execute-rooms-validation-artifacts** — Run `pnpm validate:rooms` and land the full artifact tree under `game/validation/rooms/`.
+
+Note: the top-level `ticket.md` is missing from the ticket folder (likely reverted during round 6 scope_audit). Scope was inferred from passed sub-tickets **01–17** and `review-feedback.md`.
+
+**Sub-ticket folder paths created:**
+
+- `/home/matt/workspace/.autogame-worktrees/277-playthrough-validation-harness-and-rooms/tickets/277-playthrough-validation-harness-and-rooms/subtickets/19-game-validation-artifact-output-path`
+- `/home/matt/workspace/.autogame-worktrees/277-playthrough-validation-harness-and-rooms/tickets/277-playthrough-validation-harness-and-rooms/subtickets/20-execute-rooms-validation-artifacts`
