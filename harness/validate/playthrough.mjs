@@ -24,6 +24,12 @@ import { renderFindings } from './lib/findings.mjs';
 import { startGame, stopGame } from './lib/gameProcess.mjs';
 import { readHarness } from './lib/harnessState.mjs';
 import { writeScreenshot } from './lib/screenshot.mjs';
+import { walkToZone } from './lib/hubMovement.mjs';
+import {
+	waitForHubLobby,
+	createLobby,
+	joinLobby,
+} from './lib/multiPlayer.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
@@ -37,7 +43,7 @@ const ROOMS_FULL_STEPS = new Set(['full']);
 const ROOMS_HUB_STEPS = new Set(['hub', 'deploy']);
 const ROOMS_BOSS_ENCOUNTER_STEPS = new Set(['boss-encounter']);
 const HUB_PRESET_STEPS = new Set(['auth', 'hub-walk', 'booth', 'telepipe-reset', 'full']);
-const HUB_STUB_STEPS = new Set(['hub-walk', 'booth', 'telepipe-reset', 'full']);
+const HUB_STUB_STEPS = new Set(['booth', 'telepipe-reset', 'full']);
 const ADD_TYPES = new Set(['grunt', 'skirmisher']);
 
 function defaultOutDir(preset) {
@@ -117,6 +123,128 @@ async function waitForLobbyBrowser(page) {
 async function failWithHarness(page, message) {
 	const harness = await readHarness(page);
 	throw new Error(`${message}: ${JSON.stringify(harness)}`);
+}
+
+async function failWithHarnessPair(hostPage, joinerPage, message) {
+	const hostHarness = await readHarness(hostPage);
+	const joinerHarness = await readHarness(joinerPage);
+	throw new Error(`${message}: host=${JSON.stringify(hostHarness)} joiner=${JSON.stringify(joinerHarness)}`);
+}
+
+function firstSquadmate(harness) {
+	const mates = Array.isArray(harness?.squadmates) ? harness.squadmates : [];
+	return mates.find((m) => m && Number.isFinite(m.x) && Number.isFinite(m.z)) || null;
+}
+
+async function nudgeJoinerForPresence(joinerPage, targetX, targetZ) {
+	await joinerPage.evaluate(() => document.querySelector('canvas')?.focus());
+	const harness = await readHarness(joinerPage);
+	const player = harness?.player;
+	if (!player) return;
+	const dx = targetX - player.x;
+	const dz = targetZ - player.z;
+	const keys = [];
+	if (Math.abs(dx) >= Math.abs(dz)) {
+		if (dx > 0.5) keys.push('d');
+		else if (dx < -0.5) keys.push('a');
+	} else if (dz > 0.5) keys.push('s');
+	else if (dz < -0.5) keys.push('w');
+	if (keys.length === 0) keys.push('d');
+	for (let i = 0; i < 4; i += 1) {
+		for (const key of keys) {
+			await joinerPage.keyboard.down(key);
+			await joinerPage.waitForTimeout(450);
+			await joinerPage.keyboard.up(key);
+		}
+	}
+}
+
+async function runHubWalkStep({ browser, game, preset, outDirAbs }) {
+	const stamp = Date.now();
+	const lobbyName = `Hub Walk ${stamp}`;
+	const hostUsername = `hub-host-${stamp}`;
+	const joinerUsername = `hub-joiner-${stamp}`;
+	const password = 'harness-test-password';
+
+	const hostPage = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+	const joinerPage = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+
+	try {
+		const hostToken = await registerUser(game.serverUrl, hostUsername, password);
+		const joinerToken = await registerUser(game.serverUrl, joinerUsername, password);
+
+		await injectToken(hostPage, hostToken, game.clientUrl);
+		await injectToken(joinerPage, joinerToken, game.clientUrl);
+		await waitForLobbyBrowser(hostPage);
+		await waitForLobbyBrowser(joinerPage);
+
+		await createLobby(hostPage, lobbyName);
+		await joinLobby(joinerPage, lobbyName);
+		await waitForHubLobby(hostPage);
+		await waitForHubLobby(joinerPage);
+
+		const hostHarness = await readHarness(hostPage);
+		if ((hostHarness?.players ?? 0) < 2) {
+			await failWithHarnessPair(hostPage, joinerPage, 'Expected at least two players on host after join');
+		}
+
+		const mateAtJoin = firstSquadmate(hostHarness);
+		if (!mateAtJoin) {
+			await failWithHarnessPair(hostPage, joinerPage, 'Expected a remote squadmate on host at join time');
+		}
+
+		const joinerHarness = await readHarness(joinerPage);
+		const joinerPlayer = joinerHarness?.player;
+		if (!joinerPlayer || joinerPlayer.x == null) {
+			await failWithHarnessPair(hostPage, joinerPage, 'Joiner local player missing position');
+		}
+		await nudgeJoinerForPresence(joinerPage, joinerPlayer.x + 4, joinerPlayer.z);
+
+		await hostPage.waitForFunction(({ x, z }) => {
+			const h = window.__AUTOGAME_HARNESS_STATE__?.();
+			const mate = (h?.squadmates || []).find((m) => m && Number.isFinite(m.x) && Number.isFinite(m.z));
+			if (!mate) return false;
+			return Math.hypot(mate.x - x, mate.z - z) > 0.05;
+		}, { x: mateAtJoin.x, z: mateAtJoin.z }, { timeout: 15000 }).catch(async () => {
+			await failWithHarnessPair(hostPage, joinerPage, 'Remote squadmate position did not update after joiner move');
+		});
+
+		const overviewScreenshot = await writeScreenshot(hostPage, outDirAbs, '01-hub-overview');
+
+		const zoneScreenshots = {};
+		const zoneShotNames = {
+			operations: '02-room-operations',
+			commerce: '03-room-commerce',
+			salon: '04-room-salon',
+		};
+		for (const zoneName of preset.hubZones) {
+			const afterWalk = await walkToZone(hostPage, zoneName, preset.boothAnchors);
+			if (afterWalk?.layout?.profile !== 'hub') {
+				await failWithHarnessPair(hostPage, joinerPage, `Layout left hub profile in zone ${zoneName}`);
+			}
+			const shotName = zoneShotNames[zoneName];
+			if (!shotName) {
+				throw new Error(`No screenshot name mapped for hub zone ${zoneName}`);
+			}
+			const shotPath = await writeScreenshot(hostPage, outDirAbs, shotName);
+			zoneScreenshots[zoneName] = path.relative(REPO_ROOT, shotPath);
+		}
+
+		const finalHostHarness = await readHarness(hostPage);
+		return {
+			lobbyName,
+			hostUsername,
+			joinerUsername,
+			playersOnHost: finalHostHarness?.players ?? null,
+			overviewScreenshot: path.relative(REPO_ROOT, overviewScreenshot),
+			zoneScreenshots,
+			layoutProfile: finalHostHarness?.layout?.profile ?? null,
+			layoutRoomCount: finalHostHarness?.layout?.roomCount ?? null,
+		};
+	} finally {
+		await hostPage.close().catch(() => {});
+		await joinerPage.close().catch(() => {});
+	}
 }
 
 function liveAdds(harness, bossType) {
@@ -500,6 +628,7 @@ async function main() {
 	let runsRoomsHub = false;
 	let runsBossEncounter = false;
 	let runsFull = false;
+	let runsHubWalk = false;
 	const summary = {
 		ok: true,
 		preset: opts.preset,
@@ -516,31 +645,43 @@ async function main() {
 		runsBossEncounter = opts.preset === 'rooms'
 			&& (ROOMS_BOSS_ENCOUNTER_STEPS.has(opts.steps) || ROOMS_FULL_STEPS.has(opts.steps));
 		runsFull = opts.preset === 'rooms' && ROOMS_FULL_STEPS.has(opts.steps);
+		runsHubWalk = opts.preset === 'hub' && opts.steps === 'hub-walk';
 		game = await startGame();
 		summary.serverPort = game.serverPort;
 		summary.clientPort = game.clientPort;
 
 		browser = await chromium.launch({ headless: true });
-		const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
-		consoleLog = wireConsoleLog(page);
+		let page = null;
 
-		summary.auth = await runAuthStep({
-			page,
-			serverUrl: game.serverUrl,
-			clientUrl: game.clientUrl,
-			outDirAbs,
-			presetName: opts.preset,
-		});
+		if (runsHubWalk) {
+			summary.hubWalk = await runHubWalkStep({
+				browser,
+				game,
+				preset,
+				outDirAbs,
+			});
+		} else {
+			page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+			consoleLog = wireConsoleLog(page);
 
-		if (runsRoomsHub) {
+			summary.auth = await runAuthStep({
+				page,
+				serverUrl: game.serverUrl,
+				clientUrl: game.clientUrl,
+				outDirAbs,
+				presetName: opts.preset,
+			});
+		}
+
+		if (runsRoomsHub && page) {
 			summary.hub = await runHubStep({ page, preset, outDirAbs });
 		}
 
-		if (runsBossEncounter) {
+		if (runsBossEncounter && page) {
 			summary.bossEncounter = await runBossEncounterStep({ page, preset, outDirAbs });
 		}
 
-		if (runsFull) {
+		if (runsFull && page) {
 			summary.victory = await runVictoryStep({ page, preset, outDirAbs });
 			summary.assertions = buildAssertions(summary, preset);
 			summary.ok = Object.values(summary.assertions).every((value) => value === true);

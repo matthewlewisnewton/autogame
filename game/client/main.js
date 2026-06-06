@@ -4566,6 +4566,15 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 			return el ? el.textContent : '';
 		})(),
 		players: gameState ? Object.keys(gameState.players).length : 0,
+		squadmates: gameState && myId
+			? Object.entries(gameState.players)
+				.filter(([id]) => id !== myId)
+				.map(([id, p]) => ({
+					id,
+					x: Number.isFinite(p.x) ? p.x : null,
+					z: Number.isFinite(p.z) ? p.z : null,
+				}))
+			: [],
 		enemies: gameState ? gameState.enemies.length : 0,
 		enemyHp: gameState ? gameState.enemies.map((enemy) => ({
 			id: enemy.id,
