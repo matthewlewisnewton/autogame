@@ -5302,3 +5302,26 @@ The new `ice-ball-ready` debug scenario is gated through the existing debug-scen
 
 None.
 
+
+## v0.297 — 296-fire-enemy-inflicts-burning  (2026-06-06 15:48:10)
+
+## Lock-on panel and enemy display metadata
+
+PASS. `ENEMY_DEFS.ember_wraith` includes name, description, surfaced stats, combat stats, cone attack style, and burn duration metadata. The enemy display catalog trims and publishes the surfaced values, while the client lock-on panel labels and formats `burnDurationMs` as seconds. Client tests verify the Ember Wraith panel model includes name, description, HP, attack, cone style, chase speed, and burn duration.
+
+## Client render and attack telegraph
+
+PASS. The client registers `ember_wraith` as a procedural warm emissive octahedron with a distinct footprint, model registry entry, and cone telegraph matching the server's `Math.PI / 3` attack cone. Renderer and main tests cover mesh creation, height/footprint normalization, visual distinction from grunt, and registry handling.
+
+## Design and requirements consistency
+
+PASS. The change fits the documented action-RPG dungeon loop: a level-exclusive enemy in the fire-cavern quest adds combat pressure without altering lobby flow, multiplayer state, movement, or rendering foundations. The captured smoke run verifies the baseline requirements still hold: Three.js scene initializes, clients connect over WebSockets, multiplayer presence exists, and movement/dodge state updates during gameplay.
+
+## Test and coverage evidence
+
+PASS. The provided coverage run reports 116 test files and 1895 tests passed. Relevant coverage includes `server/test/ember_wraith_burning.test.js`, `server/test/enemy-spawn-pools-wiring.test.js`, `server/test/quests-spawn-pools.test.js`, `server/test/enemy_display_catalog.test.js`, `client/test/lock-on-info-panel.test.js`, `client/test/main.test.js`, and `client/test/renderer-registry-normalize.test.js`.
+
+## Remaining gaps
+
+None.
+
