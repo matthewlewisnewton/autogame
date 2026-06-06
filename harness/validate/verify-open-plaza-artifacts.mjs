@@ -1,0 +1,131 @@
+#!/usr/bin/env node
+/**
+ * Verify game/validation/open-plaza/ artifacts came from a --steps full playthrough run.
+ *
+ *   node harness/validate/verify-open-plaza-artifacts.mjs
+ */
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { assertDistinctVictoryScreenshots } from './lib/distinctVictoryScreenshots.mjs';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = path.resolve(__dirname, '..', '..');
+const OPEN_PLAZA_DIR = path.join(REPO_ROOT, 'game', 'validation', 'open-plaza');
+const OPEN_PLAZA_REL = path.join('game', 'validation', 'open-plaza');
+
+const REQUIRED_ASSERTION_KEYS = [
+	'bossSpawned',
+	'encounterActivated',
+	'bossDefeated',
+	'victoryFired',
+];
+
+const REQUIRED_PNGS = [
+	'06-boss-defeated.png',
+	'07-victory.png',
+];
+
+const REQUIRED_FILES = [
+	'findings.md',
+	'probes.json',
+	'console.log',
+];
+
+function fail(errors, message) {
+	errors.push(message);
+}
+
+function readRunSummary(errors) {
+	const summaryPath = path.join(OPEN_PLAZA_DIR, 'run-summary.json');
+	if (!fs.existsSync(summaryPath)) {
+		fail(errors, `missing ${OPEN_PLAZA_REL}/run-summary.json (run pnpm validate:open-plaza first)`);
+		return null;
+	}
+
+	let summary;
+	try {
+		summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+	} catch (err) {
+		fail(errors, `run-summary.json is not valid JSON: ${err.message}`);
+		return null;
+	}
+
+	if (summary.steps !== 'full') {
+		const actual = summary.steps == null ? '(missing)' : JSON.stringify(summary.steps);
+		fail(errors, `run-summary.json steps must be "full", got ${actual}`);
+	}
+
+	if (!summary.assertions || typeof summary.assertions !== 'object' || Array.isArray(summary.assertions)) {
+		fail(errors, 'run-summary.json missing assertions object');
+	} else {
+		for (const key of REQUIRED_ASSERTION_KEYS) {
+			if (!Object.prototype.hasOwnProperty.call(summary.assertions, key)) {
+				fail(errors, `run-summary.json assertions missing key "${key}"`);
+			}
+		}
+	}
+
+	if (!Object.prototype.hasOwnProperty.call(summary, 'victory')) {
+		fail(errors, 'run-summary.json missing victory section');
+	} else if (summary.victory == null || typeof summary.victory !== 'object' || Array.isArray(summary.victory)) {
+		fail(errors, 'run-summary.json victory must be an object');
+	}
+
+	return summary;
+}
+
+function checkRequiredFiles(errors) {
+	for (const name of REQUIRED_PNGS) {
+		const filePath = path.join(OPEN_PLAZA_DIR, name);
+		if (!fs.existsSync(filePath)) {
+			fail(errors, `missing ${name}`);
+		}
+	}
+
+	for (const name of REQUIRED_FILES) {
+		const filePath = path.join(OPEN_PLAZA_DIR, name);
+		if (!fs.existsSync(filePath)) {
+			fail(errors, `missing ${name}`);
+			continue;
+		}
+		if (name === 'findings.md') {
+			const content = fs.readFileSync(filePath, 'utf8').trim();
+			if (content.length === 0) {
+				fail(errors, 'findings.md is empty');
+			}
+		}
+	}
+}
+
+function main() {
+	const summaryPath = path.join(OPEN_PLAZA_DIR, 'run-summary.json');
+	if (!fs.existsSync(summaryPath)) {
+		console.error(
+			`verify-open-plaza-artifacts: missing ${OPEN_PLAZA_REL}/run-summary.json (run pnpm validate:open-plaza first)`,
+		);
+		process.exit(1);
+	}
+
+	const errors = [];
+
+	if (!fs.existsSync(OPEN_PLAZA_DIR)) {
+		errors.push(`missing validation directory: ${OPEN_PLAZA_REL}/`);
+	} else {
+		readRunSummary(errors);
+		checkRequiredFiles(errors);
+		assertDistinctVictoryScreenshots(OPEN_PLAZA_DIR, errors, `${OPEN_PLAZA_REL}/`);
+	}
+
+	if (errors.length > 0) {
+		console.error(`verify-open-plaza-artifacts: ${OPEN_PLAZA_REL}/ artifacts invalid:`);
+		for (const message of errors) {
+			console.error(`  - ${message}`);
+		}
+		process.exit(1);
+	}
+
+	process.exit(0);
+}
+
+main();
