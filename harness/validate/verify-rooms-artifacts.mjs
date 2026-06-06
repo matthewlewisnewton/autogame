@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Verify validation/rooms/ artifacts came from a --steps full playthrough run.
+ * Verify game/validation/rooms/ artifacts came from a --steps full playthrough run.
  *
  *   node harness/validate/verify-rooms-artifacts.mjs
  */
@@ -10,7 +10,8 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
-const ROOMS_DIR = path.join(REPO_ROOT, 'validation', 'rooms');
+const ROOMS_DIR = path.join(REPO_ROOT, 'game', 'validation', 'rooms');
+const ROOMS_REL = path.join('game', 'validation', 'rooms');
 
 const REQUIRED_ASSERTION_KEYS = [
 	'bossSpawned',
@@ -37,7 +38,7 @@ function fail(errors, message) {
 function readRunSummary(errors) {
 	const summaryPath = path.join(ROOMS_DIR, 'run-summary.json');
 	if (!fs.existsSync(summaryPath)) {
-		fail(errors, 'missing run-summary.json');
+		fail(errors, `missing ${ROOMS_REL}/run-summary.json (run pnpm validate:rooms first)`);
 		return null;
 	}
 
@@ -97,17 +98,25 @@ function checkRequiredFiles(errors) {
 }
 
 function main() {
+	const summaryPath = path.join(ROOMS_DIR, 'run-summary.json');
+	if (!fs.existsSync(summaryPath)) {
+		console.error(
+			`verify-rooms-artifacts: missing ${ROOMS_REL}/run-summary.json (run pnpm validate:rooms first)`,
+		);
+		process.exit(1);
+	}
+
 	const errors = [];
 
 	if (!fs.existsSync(ROOMS_DIR)) {
-		errors.push(`missing validation directory: ${path.relative(REPO_ROOT, ROOMS_DIR)}/`);
+		errors.push(`missing validation directory: ${ROOMS_REL}/`);
 	} else {
 		readRunSummary(errors);
 		checkRequiredFiles(errors);
 	}
 
 	if (errors.length > 0) {
-		console.error('verify-rooms-artifacts: validation/rooms/ artifacts invalid:');
+		console.error(`verify-rooms-artifacts: ${ROOMS_REL}/ artifacts invalid:`);
 		for (const message of errors) {
 			console.error(`  - ${message}`);
 		}

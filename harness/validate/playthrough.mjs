@@ -2,7 +2,7 @@
 /**
  * Headless Playwright playthrough driver for autogame validation.
  *
- *   node harness/validate/playthrough.mjs [--preset rooms] [--out validation/rooms/] [--steps auth|hub|deploy|boss-encounter|full]
+ *   node harness/validate/playthrough.mjs [--preset rooms] [--out game/validation/rooms/] [--steps auth|hub|deploy|boss-encounter|full]
  *
  * Steps: auth (register/login), hub | deploy (ship hub + character save + tier-2 deploy),
  * boss-encounter (godmode + defeat adds + dormant/active boss screenshots),
@@ -41,7 +41,7 @@ const ADD_TYPES = new Set(['grunt', 'skirmisher']);
 function parseArgs(argv) {
 	const opts = {
 		preset: 'rooms',
-		out: 'validation/rooms/',
+		out: 'game/validation/rooms/',
 		steps: 'auth',
 	};
 	for (let i = 2; i < argv.length; i += 1) {
