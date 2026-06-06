@@ -5194,3 +5194,26 @@ Observed evidence: `coverage.log` reports 114 passed test files and 1856 passed 
 
 No blocking gaps remain.
 
+
+## v0.295 — 299-aoe-heal-and-cleanse-card  (2026-06-06 14:28:29)
+
+**Casting removes slow, burning, and other negative statuses on affected players.** Passed. `clearNegativeStatuses` resets `slowedUntil`, `slowFactor`, `burningUntil`, `lastBurnTickAt`, `frozenUntil` when present, and the generic `debuffs` array. The radius heal path runs this cleanse for every in-radius active player, including full-health players whose HP cannot increase. Tests cover slow, burn, frozen/debuff cleanup, and socket integration after casting from a slowed/burning player.
+
+**Client shows AoE heal and cleanse effects.** Passed. `purifying_pulse` has a card-specific renderer that spawns a mint-green expanding heal ring and a white/teal cleanse burst at the cast origin, plays the heal sound, and is registered in the card renderer dispatch. Client tests verify renderer registration and the specific heal-ring/cleanse-burst calls.
+
+**Server tests cover radius heal and status clear.** Passed. `server/test/purifying_pulse.test.js` directly covers the helper behavior and socket `useCard` path. The full captured coverage run reports 127 test files and 2220 tests passing.
+
+## Design and requirements consistency
+
+The implementation fits the documented combat model: Purifying Pulse is a single-use spell with an instant radial support effect, matching the card-combat system in `game/docs/design.md`. It does not weaken the foundation requirements in `game/docs/requirements.md`; the captured run confirms 3D rendering, WebSocket connection, player visualization, and movement synchronization still work.
+
+The new `purifying-pulse-ready` debug scenario is gated through the existing `debugScenario` URL/socket path and is included in the debug scenario allowlist, not normal gameplay. Its end state is reachable through normal play by earning the reward card and being affected by existing slow/burning/debuff systems before casting. It does not bypass the real card-use path; the integration test uses the scenario only to stage state, then casts through normal `useCard` handling.
+
+## Code quality
+
+The implementation is tightly scoped and follows existing patterns for card JSON, server card effect dispatch, simulation helpers, debug scenarios, and client renderer registration. I did not find dead/broken code or whitespace issues (`git diff --check` passed). One non-blocking observation is that `healedTargets` only includes players who gained HP, even though full-health in-radius players are still cleansed server-side; this does not block the acceptance criteria because the cleanse is applied and the client effect is a radius-wide AoE, not per-target.
+
+## Remaining gaps
+
+None.
+

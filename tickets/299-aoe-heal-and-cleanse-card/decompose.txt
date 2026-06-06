@@ -1,0 +1,17 @@
+Broke ticket **299** into **3 sub-tickets** (card data → server logic/tests → client VFX), following the same pattern as the chain-lightning ticket.
+
+**Sub-ticket folder paths created:**
+
+1. `/home/matt/workspace/.autogame-worktrees/299-aoe-heal-and-cleanse-card/tickets/299-aoe-heal-and-cleanse-card/subtickets/01-purifying-pulse-card-data`
+2. `/home/matt/workspace/.autogame-worktrees/299-aoe-heal-and-cleanse-card/tickets/299-aoe-heal-and-cleanse-card/subtickets/02-server-aoe-heal-cleanse`
+3. `/home/matt/workspace/.autogame-worktrees/299-aoe-heal-and-cleanse-card/tickets/299-aoe-heal-and-cleanse-card/subtickets/03-client-aoe-cleanse-vfx`
+
+**Plan summary:**
+
+| # | Focus | Key deliverable |
+|---|--------|-----------------|
+| 01 | `purifying_pulse` card defs | `cardDefs.json`, `cardStats.json`, `cards.js` accent style |
+| 02 | Server AoE heal + cleanse | `clearNegativeStatuses`, `healPlayersInRadius`, `cardEffects.js` wiring, `purifying_pulse.test.js` |
+| 03 | Client VFX | `spawnPurifyingPulseEffect`, renderer registration, renderer tests |
+
+All three use **Verification: code** — acceptance criteria cover structure, handlers, server state, and test coverage, not pixel-level rendering alone.
