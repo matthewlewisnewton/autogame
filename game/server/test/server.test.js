@@ -2993,7 +2993,7 @@ describe('run state', () => {
 			}
 		});
 
-		it('fresh deploy after telepipe suspend and abandon resets magicStones and card charges', () => {
+		it('fresh deploy after telepipe suspend and abandon preserves magicStones and resets card charges', () => {
 			resetState();
 			gameState._lobbyId = 'test-lobby';
 			addPlayer('p1', {
@@ -3007,7 +3007,8 @@ describe('run state', () => {
 			checkAllReady();
 			const preSuspendRunId = gameState.run.id;
 
-			gameState.players.p1.magicStones = STARTING_MAGIC_STONES - 5;
+			const spentMagicStones = STARTING_MAGIC_STONES - 5;
+			gameState.players.p1.magicStones = spentMagicStones;
 			for (const card of gameState.players.p1.hand) {
 				if (card && card.charges != null) {
 					card.remainingCharges = Math.max(0, card.charges - 1);
@@ -3029,16 +3030,17 @@ describe('run state', () => {
 			expect(gameState.run).toBeUndefined();
 			expect(gameState.suspendedCheckpoint).toBeUndefined();
 
+			gameState.players.p1.debugScenario = null;
 			gameState.players.p1.ready = true;
 			checkAllReady();
 
 			expect(gameState.run.id).not.toBe(preSuspendRunId);
-			expect(gameState.players.p1.magicStones).toBe(STARTING_MAGIC_STONES);
+			expect(gameState.players.p1.magicStones).toBeCloseTo(spentMagicStones, 5);
 			for (let tick = 0; tick < 5; tick += 1) {
 				regenMagicStones();
 			}
 			expect(gameState.players.p1.magicStones).toBeCloseTo(
-				STARTING_MAGIC_STONES + 5 * MAGIC_STONES_REGEN_PER_TICK,
+				spentMagicStones + 5 * MAGIC_STONES_REGEN_PER_TICK,
 				5,
 			);
 			const occupied = gameState.players.p1.hand.filter(Boolean);
@@ -3048,6 +3050,30 @@ describe('run state', () => {
 					expect(card.remainingCharges).toBe(card.charges);
 				}
 			}
+		});
+
+		it('checkAllReady preserves magicStones across deploy and redeploy', () => {
+			resetState();
+			gameState._lobbyId = 'test-lobby';
+			const spentMagicStones = 15;
+			addPlayer('p1', {
+				magicStones: spentMagicStones,
+				ready: true,
+				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+			});
+
+			checkAllReady();
+			expect(gameState.run).toBeDefined();
+			expect(gameState.players.p1.magicStones).toBeCloseTo(spentMagicStones, 5);
+
+			giveUpRun();
+			expect(gameState.run).toBeUndefined();
+
+			gameState.players.p1.ready = true;
+			checkAllReady();
+
+			expect(gameState.run).toBeDefined();
+			expect(gameState.players.p1.magicStones).toBeCloseTo(spentMagicStones, 0);
 		});
 		it('checkAllReady does not start when a disconnected player has stale ready', () => {
 			resetState();

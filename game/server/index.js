@@ -1034,7 +1034,6 @@ function initializePlayerForActiveRun(player) {
     initPlayerHand(player);
   }
   player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
-  player.magicStones = STARTING_MAGIC_STONES;
   if (!player.pendingSummons) {
     player.pendingSummons = new Set();
   }

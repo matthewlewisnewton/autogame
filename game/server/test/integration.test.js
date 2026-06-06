@@ -5030,7 +5030,7 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 		c1Reconnect.socket.disconnect();
 	});
 
-	it('resets slotCooldowns and magicStones on active-run reconnect', async () => {
+	it('resets slotCooldowns on cold reconnect drop-in without initializePlayerForActiveRun MS overwrite', async () => {
 		// --- Connect two players and start a run ---
 		const c1 = await connectClient(baseUrl);
 		const c2 = await connectClient(baseUrl, undefined, { joinLobbyId: c1.lobbyId });
@@ -5061,6 +5061,7 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 
 		const restoredPlayer = testGameState().players[player2Id];
 		expect(restoredPlayer.slotCooldowns).toEqual(new Array(MAX_HAND_SLOTS).fill(null));
+		// Cold reconnect after eviction rebuilds via buildPlayerRecord (STARTING), not initializePlayerForActiveRun reset.
 		expect(restoredPlayer.magicStones).toBe(STARTING_MAGIC_STONES);
 
 		c1.socket.disconnect();
