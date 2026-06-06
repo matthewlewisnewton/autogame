@@ -211,6 +211,7 @@ module.exports = {
   getEncounterBossId,
   isEncounterCleared,
   ensureEncounterSpawnAnchor,
+  resolveEncounterAnchor,
   areAllNonBossEnemiesDefeated,
   tryActivateEncounter,
   onStageBossDefeated,

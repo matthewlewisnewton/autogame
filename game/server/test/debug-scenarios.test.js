@@ -9,8 +9,9 @@ import { resolveVariantRollTier } from '../enemyVariants.js';
 import {
 	ENCOUNTER_PHASES,
 	ENCOUNTER_TRIGGER_RADIUS,
+	resolveEncounterAnchor,
 } from '../encounters.js';
-import { resetGameState, gameState } from '../index.js';
+import { resetGameState, gameState, runGameLoopTick } from '../index.js';
 import { spawnEnemies, setGameState } from '../progression.js';
 import {
 	startTestServer,
@@ -539,6 +540,14 @@ describe('debugScenario — training-caverns-tier-2', () => {
 		const dist = Math.hypot(boss.x - player.x, boss.z - player.z);
 		expect(dist).toBeGreaterThan(ENCOUNTER_TRIGGER_RADIUS);
 		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
+
+		for (let i = 0; i < 30; i++) {
+			runGameLoopTick();
+		}
+		const anchor = resolveEncounterAnchor(state.run, state);
+		const distFromAnchor = Math.hypot(anchor.x - player.x, anchor.z - player.z);
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
+		expect(distFromAnchor).toBeGreaterThan(ENCOUNTER_TRIGGER_RADIUS);
 	});
 
 	it('positions annex_overseer at 1 HP beside the player in playing phase', async () => {

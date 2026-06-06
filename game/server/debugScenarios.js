@@ -52,6 +52,7 @@ const {
   ENCOUNTER_TRIGGER_RADIUS,
   isEncounterDormant,
   areAllNonBossEnemiesDefeated,
+  resolveEncounterAnchor,
 } = require('./encounters');
 
 // index.js-local helpers + the DEBUG_SCENARIOS set, injected after modules load.
@@ -373,6 +374,7 @@ function applyDebugScenario(socket, name) {
       player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 1;
       player.z = anchor.z;
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      player.debugScenarioNudgeAfter = Date.now() + 1500;
       broadcastLobbyUpdate(lobby);
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return { ok: true, scenario: name };
@@ -1536,20 +1538,23 @@ function applyDebugScenario(socket, name) {
 
 /**
  * Debug-only: while `training-caverns-boss-approach` is active, inch the player toward
- * the dormant overseer each tick so headless harness walks can enter the trigger radius.
+ * the encounter anchor each tick so headless harness walks can enter the trigger radius.
+ * Nudging is deferred briefly after setup so dormant probes can read stable state.
  */
 function nudgeDebugBossApproachPlayers(state) {
   if (!state || state.gamePhase !== 'playing' || !state.run?.encounter) return;
   if (!isEncounterDormant(state.run)) return;
   const bossId = state.run.encounter.bossEnemyId;
   if (!bossId || !areAllNonBossEnemiesDefeated(state, bossId)) return;
-  const boss = state.enemies.find((e) => e.id === bossId);
-  if (!boss) return;
+  const anchor = resolveEncounterAnchor(state.run, state);
+  if (!anchor) return;
 
+  const now = Date.now();
   for (const player of Object.values(state.players)) {
     if (!player || player.debugScenario !== 'training-caverns-boss-approach') continue;
-    const dx = boss.x - player.x;
-    const dz = boss.z - player.z;
+    if (player.debugScenarioNudgeAfter && now < player.debugScenarioNudgeAfter) continue;
+    const dx = anchor.x - player.x;
+    const dz = anchor.z - player.z;
     const dist = Math.hypot(dx, dz);
     if (dist <= ENCOUNTER_TRIGGER_RADIUS || dist < 0.01) continue;
     const step = Math.min(2, dist - ENCOUNTER_TRIGGER_RADIUS + 0.5);
