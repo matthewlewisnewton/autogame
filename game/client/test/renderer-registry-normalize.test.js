@@ -21,6 +21,7 @@ describe('getRegistryTargetFootprint()', () => {
 	it('uses diameter for octahedron enemies', () => {
 		expect(getRegistryTargetFootprint('spawner')).toEqual({ targetHeight: 1.2 });
 		expect(getRegistryTargetFootprint('field_medic')).toEqual({ targetHeight: 0.8 });
+		expect(getRegistryTargetFootprint('ember_wraith')).toEqual({ targetHeight: 0.7 });
 	});
 
 	it('applies minion height and scale multiplier', () => {
@@ -48,6 +49,7 @@ describe('getRegistryHostVerticalOffset()', () => {
 		expect(getRegistryHostVerticalOffset('spire_warden')).toBe(enemyMeshHalfHeight('spire_warden'));
 		expect(getRegistryHostVerticalOffset('spawner')).toBe(enemyMeshHalfHeight('spawner'));
 		expect(getRegistryHostVerticalOffset('field_medic')).toBe(enemyMeshHalfHeight('field_medic'));
+		expect(getRegistryHostVerticalOffset('ember_wraith')).toBe(enemyMeshHalfHeight('ember_wraith'));
 	});
 
 	it('returns 0.5 for minion registry keys', () => {
@@ -155,6 +157,16 @@ describe('ENEMY_GEOMETRY export', () => {
 		expect(medic.radius).toBeLessThan(spawner.radius);
 		expect(medic.color).not.toBe(spawner.color);
 		expect(enemyMeshHalfHeight('field_medic')).toBe(medic.radius);
+	});
+
+	it('gives ember_wraith a distinct emissive octahedron vs grunt', () => {
+		const wraith = ENEMY_GEOMETRY.ember_wraith;
+		const grunt = ENEMY_GEOMETRY.grunt;
+		expect(wraith.type).toBe('octahedron');
+		expect(wraith.emissive).toBe(0xff2200);
+		expect(wraith.color).not.toBe(grunt.color);
+		expect(enemyMeshHalfHeight('ember_wraith')).toBe(wraith.radius);
+		expect(getRegistryTargetFootprint('ember_wraith')).toEqual({ targetHeight: wraith.radius * 2 });
 	});
 
 	it('gives arena_champion its own distinct, larger silhouette vs miniboss', () => {
