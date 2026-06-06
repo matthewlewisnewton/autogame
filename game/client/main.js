@@ -518,6 +518,11 @@ function returnToGuildLobby(state, { refreshCollection = false, rebuildHub = fal
 	}
 }
 
+/** True when exactly one player is in the squad (solo deploy). */
+function isSoloSquad(state = gameState) {
+	return !!(state && state.players && Object.keys(state.players).length === 1);
+}
+
 /** True when the squad is sitting in the lobby on top of a suspended run. */
 function isRunSuspended() {
 	return !!(gameState && gameState.gamePhase === 'lobby' && gameState.suspendedRunSummary);
@@ -580,6 +585,10 @@ function renderSuspendedRunBanner(state) {
 }
 
 function showExtractedLobbyOverlay() {
+	// Solo telepipe UP suspends immediately; skip the per-player extract overlay so
+	// #abandon-run-btn stays visible through suspend rather than being hidden here
+	// before RUN_SUSPENDED lands.
+	if (isSoloSquad()) return;
 	if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
 	if (cardHandEl) hideCardHand();
 	hideVariantCodex();
@@ -1820,6 +1829,7 @@ function bindSocketHandlers(s) {
 	});
 
 	s.on(SERVER_TO_CLIENT.RUN_ABANDONED, () => {
+		isReady = false;
 		if (gameState) {
 			gameState.gamePhase = 'lobby';
 			delete gameState.run;
@@ -1837,6 +1847,7 @@ function bindSocketHandlers(s) {
 	}
 
 	s.on(SERVER_TO_CLIENT.RUN_SUSPENDED, (summary) => {
+		isReady = false;
 		if (summary && summary.questName) {
 			console.log(`[run] suspended: ${summary.questName}`);
 		}
@@ -2070,6 +2081,13 @@ window.__requestDebugShopBoothOpenForTest = requestDebugShopBoothOpen;
 // reaches the playing phase without re-introducing the retired 2D #ready-btn.
 // Idempotent — launchBoothReadyUp() bails when the player is already ready.
 window.__launchReadyUpForTest = () => launchBoothReadyUp();
+// Test hook: abandon a suspended checkpoint via ABANDON_RUN (mirrors #abandon-run-btn).
+window.__abandonSuspendedRunForTest = () => {
+	if (!socket?.connected) return { ok: false, reason: 'no socket' };
+	if (!isRunSuspended()) return { ok: false, reason: 'not suspended' };
+	socket.emit(CLIENT_TO_SERVER.ABANDON_RUN);
+	return { ok: true };
+};
 /** Localhost-only `?booth=<id>` — open a booth once in hub lobby. */
 function requestBoothDebugOpen() {
 	if (!debugScenarioAllowed || boothDebugRequested) return;
@@ -4553,6 +4571,10 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		&& !resumeBtnEl.classList.contains('hidden')
 		&& !resumeBtnEl.disabled
 		&& getComputedStyle(resumeBtnEl).pointerEvents !== 'none';
+	const abandonRunBtnUsable = !!abandonRunBtn
+		&& !abandonRunBtn.classList.contains('hidden')
+		&& isRunSuspended();
+	const runId = gameState?.run?.id ?? null;
 	const cardHandVisible = !!cardHandEl && getComputedStyle(cardHandEl).display !== 'none';
 
 	const runObjective = gameState && gameState.run ? gameState.run.objective : null;
@@ -4619,6 +4641,8 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		characterBoothOpen: isCharacterBoothOpen(),
 		deckEditorVisible,
 		resumeBtnUsable,
+		abandonRunBtnUsable,
+		runId,
 		cardHandVisible,
 		status: statusEl ? statusEl.innerText : '',
 		hpText: hpText ? hpText.textContent : '',
