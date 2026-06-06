@@ -1,0 +1,14 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 3 sub-tickets:
+
+```
+tickets/288-hub-validation-capture-walkable-3d-not-menu-overlay/subtickets/
+├── 01-add-dismiss-lobby-overlay-helper/ticket.md    (Verification: code)
+├── 02-dismiss-overlay-before-hub-screenshots/ticket.md  (Verification: code)
+└── 03-revalidate-hub-screenshots/ticket.md          (Verification: visual)
+```
+
+**Breakdown:**
+1. **01** — Add `dismissLobbyOverlay(page)` helper to `multiPlayer.mjs` that hides `#lobby` via `.hidden` class and waits for it to take effect
+2. **02** — Import and call `dismissLobbyOverlay()` in `runHubWalkStep()` before each of the 4 hub screenshots (overview + 3 zones)
+3. **03** — Re-run `pnpm run validate:hub` and visually verify the corrected screenshots show the 3D walkable hub without the menu overlay, with party-mates visible
