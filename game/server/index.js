@@ -503,6 +503,8 @@ const DEBUG_SCENARIOS = new Set([
   'sunken-canyon',
   'sunken-canyon-stage',
   'sunken-canyon-cliff-hazard',
+  'ice-cavern-stage',
+  'frost-crossing-tier-1',
   'spire-ascent',
   'spire-ascent-stage',
   'spire-summit-beacon',
@@ -722,6 +724,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'arena-trials-boss-low-hp',
   'annex-overseer-ready',
   'slippery-floor-lab',
+  'frost-crossing-tier-1',
 ]);
 
 function shouldSkipDefaultEnemySpawn(state) {
