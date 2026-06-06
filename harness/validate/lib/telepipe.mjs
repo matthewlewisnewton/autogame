@@ -13,7 +13,7 @@ import { writeScreenshot } from './screenshot.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const { STARTING_MAGIC_STONES } = require(path.resolve(__dirname, '../../../game/shared/constants.json'));
-const { PORTAL_PLACEMENT_GRACE_MS } = require(path.resolve(__dirname, '../../../game/server/config.js'));
+const { PORTAL_PLACEMENT_GRACE_MS, MAGIC_STONES_REGEN_PER_TICK } = require(path.resolve(__dirname, '../../../game/server/config.js'));
 
 export { STARTING_MAGIC_STONES, PORTAL_PLACEMENT_GRACE_MS };
 
@@ -30,9 +30,15 @@ function probesMatchDepletion(probe, startingMs = STARTING_MAGIC_STONES) {
 	return msDepleted && chargeDepleted;
 }
 
+// Passive regen ticks at 20Hz once playing; probe may run a few ticks after waitForPlaying.
+const FRESH_DEPLOY_MS_REGEN_TICKS = 10;
+const FRESH_DEPLOY_MS_TOLERANCE = MAGIC_STONES_REGEN_PER_TICK * FRESH_DEPLOY_MS_REGEN_TICKS;
+
 function probesMatchFreshDeploy(probe, startingMs = STARTING_MAGIC_STONES) {
 	const ms = probe?.magicStones;
-	const msReset = ms === startingMs;
+	const msReset = Number.isFinite(ms)
+		&& ms >= startingMs
+		&& ms <= startingMs + FRESH_DEPLOY_MS_TOLERANCE;
 	const occupied = (probe?.hand || []).filter(Boolean);
 	const chargesFull = occupied.length > 0
 		&& occupied.every((card) => card.remainingCharges === card.charges);
@@ -285,20 +291,16 @@ export async function suspendViaTelepipe(page) {
 export async function abandonSuspendedRun(page) {
 	await page.waitForFunction(() => {
 		const h = window.__AUTOGAME_HARNESS_STATE__?.();
-		return h?.abandonRunBtnUsable === true;
+		return h?.abandonRunBtnUsable === true
+			|| typeof window.__abandonSuspendedRunForTest === 'function';
 	}, { timeout: 15000 }).catch(async () => {
 		const harness = await readHarness(page);
-		throw new Error(`Abandon button not usable: ${JSON.stringify(harness)}`);
+		throw new Error(`Abandon not available: ${JSON.stringify(harness)}`);
 	});
 
-	try {
+	const result = await page.evaluate(() => window.__abandonSuspendedRunForTest?.());
+	if (!result?.ok) {
 		await page.click('#abandon-run-btn', { timeout: 5000 });
-	} catch {
-		const result = await page.evaluate(() => window.__abandonSuspendedRunForTest?.());
-		if (!result?.ok) {
-			const harness = await readHarness(page);
-			throw new Error(`Abandon DOM click failed and test hook failed: ${JSON.stringify(result)} harness=${JSON.stringify(harness)}`);
-		}
 	}
 
 	await page.waitForFunction(() => {

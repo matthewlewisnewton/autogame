@@ -179,7 +179,7 @@ async function runBoothStep({ page, preset, outDirAbs }) {
 	}
 
 	await openCharacterBooth(page);
-	await stagePaidAppearanceConfirm(page, { bodyColor: '#112233' });
+	await stagePaidAppearanceConfirm(page, { bodyColor: '#1e293b' });
 	const paidScreenshotPath = await writeScreenshot(page, outDirAbs, '05-booth-paid');
 	await completePaidAppearanceConfirm(page);
 

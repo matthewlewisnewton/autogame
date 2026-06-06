@@ -2089,15 +2089,10 @@ function discardCardFromHand(player, slotIndex, cardId) {
   return { valid: true };
 }
 
-function markMagicStonesActive(player) {
-  if (player) player.hasSpentMagicStonesThisRun = true;
-}
-
 function addMagicStones(player, amount) {
   if (!player || !Number.isFinite(amount) || amount <= 0) return 0;
   const before = Number.isFinite(player.magicStones) ? player.magicStones : 0;
   player.magicStones = Math.min(MAX_MAGIC_STONES, before + amount);
-  markMagicStonesActive(player);
   return player.magicStones - before;
 }
 
@@ -2603,7 +2598,6 @@ function capturePlayerCombatState(player) {
     hp: player.hp,
     dead: player.dead,
     magicStones: player.magicStones,
-    hasSpentMagicStonesThisRun: !!player.hasSpentMagicStonesThisRun,
     hand: Array.isArray(player.hand) ? player.hand.map((card) => (card ? { ...card } : null)) : [],
     deck: Array.isArray(player.deck) ? [...player.deck] : [],
     slotCooldowns: Array.isArray(player.slotCooldowns) ? [...player.slotCooldowns] : new Array(MAX_HAND_SLOTS).fill(null),
@@ -2686,9 +2680,6 @@ function restoreRunCheckpoint() {
     const player = _gameState.players[id];
     if (!player) continue;
     Object.assign(player, saved);
-    if (player.hasSpentMagicStonesThisRun == null) {
-      player.hasSpentMagicStonesThisRun = saved.magicStones !== STARTING_MAGIC_STONES;
-    }
     player.extracted = false;
     player.ready = false;
     player.pendingSummons = new Set();
@@ -2826,7 +2817,6 @@ function abandonSuspendedRun(state = _gameState) {
     revivePlayerInLobby(player);
     player.ready = false;
     player.extracted = false;
-    player.hasSpentMagicStonesThisRun = false;
     player.x = spawn.x;
     player.z = spawn.z;
     player.y = resolveFloorY(sampleFloorY(HUB_LAYOUT, player.x, player.z));
@@ -3187,7 +3177,6 @@ function checkAllReadyInner() {
       }
       player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
       player.magicStones = STARTING_MAGIC_STONES;
-      player.hasSpentMagicStonesThisRun = false;
       player.overclockChargesRemaining = 0;
     }
     spawnEnemies();
@@ -3304,7 +3293,6 @@ module.exports = {
   isPlayerOutOfCards,
   validateUseCardHand,
   addMagicStones,
-  markMagicStonesActive,
   restoreCardCharges,
   restoreHandCharges,
   spawnEnemy,

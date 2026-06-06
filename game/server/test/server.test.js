@@ -1588,17 +1588,9 @@ describe('regenMagicStones (game tick)', () => {
 		expect(gameState.players['p1'].magicStones).toBe(0);
 	});
 
-	it('does not regen from fresh-deploy STARTING_MAGIC_STONES until MS is spent or gained', () => {
-		addPlayer('p1', {
-			magicStones: STARTING_MAGIC_STONES,
-			hasSpentMagicStonesThisRun: false,
-		});
+	it('regenerates from STARTING_MAGIC_STONES on fresh deploy', () => {
+		addPlayer('p1', { magicStones: STARTING_MAGIC_STONES });
 
-		regenMagicStones();
-
-		expect(gameState.players['p1'].magicStones).toBe(STARTING_MAGIC_STONES);
-
-		gameState.players['p1'].hasSpentMagicStonesThisRun = true;
 		regenMagicStones();
 
 		expect(gameState.players['p1'].magicStones).toBeCloseTo(
@@ -3042,11 +3034,13 @@ describe('run state', () => {
 
 			expect(gameState.run.id).not.toBe(preSuspendRunId);
 			expect(gameState.players.p1.magicStones).toBe(STARTING_MAGIC_STONES);
-			expect(gameState.players.p1.hasSpentMagicStonesThisRun).toBe(false);
 			for (let tick = 0; tick < 5; tick += 1) {
 				regenMagicStones();
 			}
-			expect(gameState.players.p1.magicStones).toBe(STARTING_MAGIC_STONES);
+			expect(gameState.players.p1.magicStones).toBeCloseTo(
+				STARTING_MAGIC_STONES + 5 * MAGIC_STONES_REGEN_PER_TICK,
+				5,
+			);
 			const occupied = gameState.players.p1.hand.filter(Boolean);
 			expect(occupied.length).toBeGreaterThan(0);
 			for (const card of occupied) {

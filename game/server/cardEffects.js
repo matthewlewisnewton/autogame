@@ -54,7 +54,6 @@ const {
   canDrawIntoHand,
   scaledGrindStat,
   addMagicStones,
-  markMagicStonesActive,
   restoreHandCharges,
   pickRandomExhaustedCard,
   createEchoCard,
@@ -423,7 +422,6 @@ function handleUseCard(socket, state, lobby, data) {
       if (cardDef.effect === 'memory_shard') {
         player.pendingSummons.add(summonKey);
         player.magicStones -= magicStoneCost;
-        markMagicStonesActive(player);
         applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
 
         const exhausted = pickRandomExhaustedCard(player);
@@ -477,7 +475,6 @@ function handleUseCard(socket, state, lobby, data) {
 
         player.pendingSummons.add(summonKey);
         player.magicStones -= magicStoneCost;
-        markMagicStonesActive(player);
         releaseBurningCreatureCard(player, target.minion);
         state.minions.splice(target.index, 1);
         const magicStonesGained = addMagicStones(player, cardDef.magicStoneGain || 0);
@@ -510,7 +507,6 @@ function handleUseCard(socket, state, lobby, data) {
 
       // Deduct cost
       player.magicStones -= magicStoneCost;
-      markMagicStonesActive(player);
 
       if (cardDef.effect === 'chrono_trigger') {
         const restoredCharges = restoreHandCharges(player, cardDef.adjacentChargeRestore || 0, {
@@ -842,7 +838,6 @@ function handleUseCard(socket, state, lobby, data) {
 
       player.pendingSummons.add(enchantKey);
       player.magicStones -= magicStoneCost;
-      markMagicStonesActive(player);
       applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
       replaceConsumedCard(player, data.slotIndex, handCard);
 
@@ -891,7 +886,6 @@ function handleUseCard(socket, state, lobby, data) {
 
       if (cardDef.effect === 'astral_guardian' || cardDef.specialEffect === 'astral_shield') {
         player.magicStones -= magicStoneCost;
-        markMagicStonesActive(player);
         applyAstralShieldCast({
           socket, state, lobby, data, cardDef, handCard, player,
           originX, originZ, now, hasOverclock,
@@ -900,7 +894,6 @@ function handleUseCard(socket, state, lobby, data) {
       }
 
       player.magicStones -= magicStoneCost;
-      markMagicStonesActive(player);
 
       const grind = handCard.grind || 0;
       const minionHp = scaledGrindStat(cardDef.minionHp || 50, grind);

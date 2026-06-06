@@ -585,10 +585,6 @@ function renderSuspendedRunBanner(state) {
 }
 
 function showExtractedLobbyOverlay() {
-	// Solo telepipe UP suspends immediately; skip the per-player extract overlay so
-	// #abandon-run-btn stays visible through suspend rather than being hidden here
-	// before RUN_SUSPENDED lands.
-	if (isSoloSquad()) return;
 	if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
 	if (cardHandEl) hideCardHand();
 	hideVariantCodex();
@@ -1829,7 +1825,6 @@ function bindSocketHandlers(s) {
 	});
 
 	s.on(SERVER_TO_CLIENT.RUN_ABANDONED, () => {
-		isReady = false;
 		if (gameState) {
 			gameState.gamePhase = 'lobby';
 			delete gameState.run;
@@ -1847,7 +1842,6 @@ function bindSocketHandlers(s) {
 	}
 
 	s.on(SERVER_TO_CLIENT.RUN_SUSPENDED, (summary) => {
-		isReady = false;
 		if (summary && summary.questName) {
 			console.log(`[run] suspended: ${summary.questName}`);
 		}
