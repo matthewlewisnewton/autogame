@@ -16,6 +16,9 @@ import {
 	getProfileMaterialColors,
 	getSunkenCanyonBandFloorHex,
 	getSunkenCanyonBandMaterials,
+	getIceCavernBandFloorHex,
+	getIceCavernBandMaterials,
+	getSlipperyFloorMaterial,
 	LARGE_ROOM_MIN_SIZE,
 	FLOOR_Y,
 	WALL_HEIGHT,
@@ -1445,5 +1448,107 @@ describe('open-plaza center ring floor markings', () => {
 		const withMarkings = buildWallColliders(layout);
 		const withoutMarkings = buildWallColliders({ ...layout, floorMarkings: [] });
 		expect(withMarkings).toEqual(withoutMarkings);
+	});
+});
+
+describe('ice-cavern profile & slippery floors', () => {
+	/** Treasure exit pillar from dungeon.js (THREE mock has no geometry.type). */
+	function findTreasureMarker(meshes) {
+		return meshes.find(m =>
+			m.geometry?.parameters?.height === 1.5 &&
+			m.geometry?.parameters?.radiusTop === 0.3 &&
+			m.geometry?.parameters?.radiusBottom === 0.3
+		);
+	}
+
+	function slipperyFloorLabLayout() {
+		return {
+			profile: 'slippery-floor-lab',
+			passageWidth: 4,
+			rooms: [
+				{ role: 'start', x: 0, z: 0, width: 12, depth: 12, floorSurface: 'normal', walls: [] },
+				{ x: 0, z: 18, width: 12, depth: 12, floorSurface: 'slippery', walls: [] },
+			],
+			passages: [{ x1: 0, z1: 0, x2: 0, z2: 18, walls: [], corridorLength: 18 }],
+		};
+	}
+
+	it('defines ice-cavern palette distinct from sunken-canyon and crowded', () => {
+		const ice = getProfileMaterialColors('ice-cavern');
+		const canyon = getProfileMaterialColors('sunken-cavern');
+		const crowded = getProfileMaterialColors('crowded');
+		expect(ice.floor).toBe(0x5c6b7a);
+		expect(ice.floor).not.toBe(canyon.floor);
+		expect(ice.floor).not.toBe(crowded.floor);
+		expect(ice.wall).not.toBe(canyon.wall);
+		expect(ice.wall).not.toBe(crowded.wall);
+		expect(getIceCavernBandFloorHex('stone')).toBe(0x5c6b7a);
+		expect(getIceCavernBandFloorHex('ice')).toBe(0xc8e8f8);
+	});
+
+	it('caches profile and band materials as singletons', () => {
+		const profileA = getProfileMaterials('ice-cavern');
+		const profileB = getProfileMaterials('ice-cavern');
+		expect(profileA.floor).toBe(profileB.floor);
+		const bandA = getIceCavernBandMaterials('stone');
+		const bandB = getIceCavernBandMaterials('stone');
+		expect(bandA.floor).toBe(bandB.floor);
+		const slipperyA = getSlipperyFloorMaterial();
+		const slipperyB = getSlipperyFloorMaterial();
+		expect(slipperyA).toBe(slipperyB);
+		expect(slipperyA.emissiveIntensity).toBeGreaterThan(0);
+	});
+
+	it('slippery room mesh material differs from co-layout normal room (lab fixture)', () => {
+		const layout = slipperyFloorLabLayout();
+		const result = buildDungeon(mockScene(), layout);
+		const normalRoom = layout.rooms[0];
+		const slipperyRoom = layout.rooms[1];
+		const normalFloor = findRoomFloorMesh(result.meshes, normalRoom);
+		const slipperyFloor = findRoomFloorMesh(result.meshes, slipperyRoom);
+		expect(normalFloor).toBeDefined();
+		expect(slipperyFloor).toBeDefined();
+		expect(slipperyFloor.material).toBe(getSlipperyFloorMaterial());
+		expect(slipperyFloor.material.color.getHex()).not.toBe(normalFloor.material.color.getHex());
+	});
+
+	it('generateLayout(42, ice-cavern) builds without error and emits ≥1 slippery floor mesh', () => {
+		const layout = generateLayout(42, 'ice-cavern');
+		expect(layout.profile).toBe('ice-cavern');
+		const slipperyRooms = layout.rooms.filter(r => r.floorSurface === 'slippery');
+		expect(slipperyRooms.length).toBeGreaterThanOrEqual(1);
+
+		const result = buildDungeon(mockScene(), layout);
+		for (const room of slipperyRooms) {
+			const floor = findRoomFloorMesh(result.meshes, room);
+			expect(floor).toBeDefined();
+			expect(floor.material).toBe(getSlipperyFloorMaterial());
+		}
+	});
+
+	it('assigns distinct stone and ice band floor colors before slippery override', () => {
+		const layout = generateLayout(42, 'ice-cavern');
+		const stoneStart = layout.rooms.find(r => r.role === 'start');
+		const iceField = layout.rooms.find(r => r.band === 'ice');
+		expect(stoneStart.floorSurface).toBe('normal');
+		expect(iceField.floorSurface).toBe('slippery');
+
+		const result = buildDungeon(mockScene(), layout);
+		const stoneFloor = findRoomFloorMesh(result.meshes, stoneStart);
+		const iceFloor = findRoomFloorMesh(result.meshes, iceField);
+		expect(stoneFloor).toBeDefined();
+		expect(iceFloor).toBeDefined();
+		expect(stoneFloor.material.color.getHex()).not.toBe(iceFloor.material.color.getHex());
+		expect(iceFloor.material).toBe(getSlipperyFloorMaterial());
+	});
+
+	it('places treasure marker on sampled floor Y for ice-cavern', () => {
+		const layout = generateLayout(42, 'ice-cavern');
+		const treasure = layout.rooms.find(r => r.role === 'treasure');
+		const result = buildDungeon(mockScene(), layout);
+		const marker = findTreasureMarker(result.meshes);
+		expect(marker).toBeDefined();
+		const floorY = resolveFloorY(sampleFloorY(layout, treasure.x, treasure.z));
+		expect(marker.position.y).toBeCloseTo(floorY + 0.75, 4);
 	});
 });
