@@ -39,7 +39,7 @@ export async function assertGameProcessAlive({ serverUrl, serverChild, serverLog
 	}
 	if (!serverUrl) return;
 	try {
-		const res = await fetch(`${serverUrl}/api/me`, { signal: AbortSignal.timeout(3000) });
+		const res = await fetch(`${serverUrl}/healthz`, { signal: AbortSignal.timeout(3000) });
 		if (!res.ok) {
 			throw new Error(`HTTP ${res.status}`);
 		}
@@ -142,7 +142,7 @@ export async function startGame({ serverPort, clientPort, serverLogPath } = {}) 
 	serverChild.stderr?.on('data', (d) => {
 		serverLogStream?.write(d);
 	});
-	await waitForHttp(`${serverUrl}/api/me`, { timeout: 30000 });
+	await waitForHttp(`${serverUrl}/healthz`, { timeout: 30000, expectOk: true });
 
 	launch('npx', ['vite', '--port', String(resolvedClientPort), '--strictPort'], {
 		cwd: CLIENT_DIR,

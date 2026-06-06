@@ -7,11 +7,11 @@
 
 - **boothDeductsGold**: PASS — paid 1000→975 (Δ-25), hat 975→975 (Δ0)
 - **hatSwapFree**: PASS — paid 1000→975 (Δ-25), hat 975→975 (Δ0)
-- **telepipeUpReset**: PASS — preSuspend ms=17, postDeploy ms=49
+- **telepipeUpReset**: PASS — preSuspend ms=15.55500000000058, postDeploy ms=49.005; runId 61c27093-6f6e-4893-9a5a-ee62d24c856c→ea6c2887-ea50-46b1-b558-7c2d56b5c1ec (changed); checkpoint restored in log: no
 
 ## Hub walk notes
 
-- Lobby: Hub Walk 1780740552994
+- Lobby: Hub Walk 1780749858743
 - Players on host at end: 2
 - Layout profile: hub
 - Hub room count: 3

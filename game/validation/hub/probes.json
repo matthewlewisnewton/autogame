@@ -17,8 +17,8 @@
   },
   "telepipeReset": {
     "preSuspend": {
-      "magicStones": 17,
-      "msText": "17/99",
+      "magicStones": 15.55500000000058,
+      "msText": "15/99",
       "hand": [
         {
           "id": "telepipe",
@@ -27,10 +27,10 @@
           "charges": 1
         },
         {
-          "id": "flame_blade",
-          "type": "weapon",
-          "remainingCharges": 2,
-          "charges": 3
+          "id": "battle_familiar",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
         },
         {
           "id": "dungeon_drake",
@@ -45,10 +45,10 @@
           "charges": 5
         },
         {
-          "id": "battle_familiar",
-          "type": "spell",
-          "remainingCharges": 1,
-          "charges": 1
+          "id": "iron_sword",
+          "type": "weapon",
+          "remainingCharges": 4,
+          "charges": 5
         },
         null
       ],
@@ -56,10 +56,11 @@
       "runStatus": "playing",
       "extracted": false,
       "suspendedRunSummary": null,
-      "layoutSeed": 352369970
+      "layoutSeed": 352369970,
+      "runId": "61c27093-6f6e-4893-9a5a-ee62d24c856c"
     },
     "postDeploy": {
-      "magicStones": 49,
+      "magicStones": 49.005,
       "msText": "49/99",
       "hand": [
         {
@@ -69,23 +70,23 @@
           "charges": 1
         },
         {
-          "id": "iron_sword",
-          "type": "weapon",
-          "remainingCharges": 5,
-          "charges": 5
-        },
-        null,
-        {
-          "id": "iron_sword",
-          "type": "weapon",
-          "remainingCharges": 5,
-          "charges": 5
-        },
-        {
           "id": "battle_familiar",
           "type": "spell",
           "remainingCharges": 1,
           "charges": 1
+        },
+        null,
+        {
+          "id": "flame_blade",
+          "type": "weapon",
+          "remainingCharges": 3,
+          "charges": 3
+        },
+        {
+          "id": "iron_sword",
+          "type": "weapon",
+          "remainingCharges": 5,
+          "charges": 5
         },
         null
       ],
@@ -93,14 +94,15 @@
       "runStatus": "playing",
       "extracted": false,
       "suspendedRunSummary": null,
-      "layoutSeed": 352369970
+      "layoutSeed": 352369970,
+      "runId": "ea6c2887-ea50-46b1-b558-7c2d56b5c1ec"
     },
     "telepipeUpReset": true
   },
   "hubWalk": {
-    "lobbyName": "Hub Walk 1780740552994",
-    "hostUsername": "hub-host-1780740552994",
-    "joinerUsername": "hub-joiner-1780740552994",
+    "lobbyName": "Hub Walk 1780749858743",
+    "hostUsername": "hub-host-1780749858743",
+    "joinerUsername": "hub-joiner-1780749858743",
     "playersOnHost": 2,
     "overviewScreenshot": "game/validation/hub/01-hub-overview.png",
     "zoneScreenshots": {
