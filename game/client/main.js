@@ -4277,6 +4277,17 @@ function showRunSummary(data) {
 		}
 	}
 
+	// Mirror victory onto gameState.run immediately so harness polling sees it
+	// before any delayed server stateUpdate resync.
+	if (data.status === 'victory' && gameState?.run) {
+		gameState.run.status = 'victory';
+		if (gameState.run.objective?.type === 'stage_boss') {
+			gameState.run.objective.bossDefeated = true;
+		} else if (data.objective?.bossDefeated === true && gameState.run.objective) {
+			gameState.run.objective.bossDefeated = true;
+		}
+	}
+
 	runSummaryOverlay.style.display = 'flex';
 }
 
@@ -4486,7 +4497,9 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 	const runObjectiveComplete = !!objective && (
 		objective.type === 'collect_items'
 			? (objective.collectedItems ?? 0) >= (objective.totalItems ?? 0)
-			: (objective.defeatedEnemies ?? 0) >= (objective.totalEnemies ?? 0)
+			: objective.type === 'stage_boss'
+				? objective.bossDefeated === true
+				: (objective.defeatedEnemies ?? 0) >= (objective.totalEnemies ?? 0)
 	);
 
 	return {

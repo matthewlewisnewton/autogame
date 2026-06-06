@@ -541,6 +541,41 @@ describe('debugScenario — training-caverns-tier-2', () => {
 		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
 	});
 
+	it('positions annex_overseer at 1 HP beside the player in playing phase', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'training-caverns-tier-2' });
+		await tier2Promise;
+
+		const lowHpPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('debugScenario', { name: 'training-caverns-boss-low-hp' });
+		const lowHpResult = await lowHpPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(lowHpResult.ok).toBe(true);
+		expect(lowHpResult.scenario).toBe('training-caverns-boss-low-hp');
+
+		const state = testGameState();
+		expect(state.gamePhase).toBe('playing');
+
+		const bossId = state.run.encounter.bossEnemyId;
+		const boss = state.enemies.find((e) => e.id === bossId);
+		expect(boss).toBeTruthy();
+		expect(boss.type).toBe('annex_overseer');
+		expect(boss.hp).toBe(1);
+
+		const player = playerForSocket(socket);
+		const dist = Math.hypot(boss.x - player.x, boss.z - player.z);
+		expect(dist).toBeGreaterThanOrEqual(2);
+		expect(dist).toBeLessThanOrEqual(5.5);
+
+		const overseerUpdate = stateUpdate.enemies.find((e) => e.id === bossId);
+		expect(overseerUpdate?.hp).toBe(1);
+		expect(overseerUpdate?.type).toBe('annex_overseer');
+	});
+
 	it('Tier 2 variant rolls tag enemies under fixed seed 4242 (training_caverns_tier2 parity)', () => {
 		const SEED = 4242;
 		resetGameState();

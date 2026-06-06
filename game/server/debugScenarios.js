@@ -378,6 +378,38 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
+    if (name === 'training-caverns-boss-low-hp') {
+      // Training Caverns Tier 2 annex_overseer beside the player at 1 HP for fast
+      // harness victory. Reachable normally by clearing adds and engaging the boss;
+      // this scenario is a shortcut after deploy or mid-encounter.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'training_caverns'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires training_caverns Tier 2 stage-boss run' };
+      }
+      const bossId = state.run.encounter.bossEnemyId;
+      for (const enemy of state.enemies || []) {
+        if (enemy.id !== bossId) enemy.hp = 0;
+      }
+      state.enemies = (state.enemies || []).filter((e) => e.hp > 0);
+      const boss = state.enemies.find((e) => e.id === bossId);
+      if (!boss || boss.type !== 'annex_overseer') {
+        return { ok: false, reason: 'Annex overseer boss not found' };
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      repositionNearEnemy(player, boss, 4);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      boss.hp = 1;
+      boss.maxHp = boss.maxHp || boss.hp;
+      boss.shieldHp = 0;
+      boss.maxShieldHp = 0;
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
     if (name === 'arena-trials-tier-2') {
       // arena_trials Tier 2 with rigid open-plaza layout and cover-aware spawns.
       // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun

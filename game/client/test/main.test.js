@@ -4227,6 +4227,80 @@ describe('__AUTOGAME_HARNESS_STATE__ encounter and godmode fields', () => {
 		expect(noEncounter.player.debugGodmode).toBe(false);
 	});
 
+	it('runObjectiveComplete is true only when stage_boss bossDefeated is true', async () => {
+		await import('../main.js');
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			run: {
+				status: 'playing',
+				objective: {
+					type: 'stage_boss',
+					defeatedEnemies: 5,
+					totalEnemies: 5,
+					bossDefeated: false,
+				},
+			},
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+			enemies: [],
+		}, 'p1');
+
+		expect(window.__AUTOGAME_HARNESS_STATE__().runObjectiveComplete).toBe(false);
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			run: {
+				status: 'victory',
+				objective: {
+					type: 'stage_boss',
+					defeatedEnemies: 5,
+					totalEnemies: 5,
+					bossDefeated: true,
+				},
+			},
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+			enemies: [],
+		}, 'p1');
+
+		expect(window.__AUTOGAME_HARNESS_STATE__().runObjectiveComplete).toBe(true);
+	});
+
+	it('mirrors victory onto gameState.run when showRunSummary receives victory', async () => {
+		await import('../main.js');
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			run: {
+				status: 'playing',
+				objective: {
+					type: 'stage_boss',
+					label: 'Initiate Vault: defeat the stage warden',
+					bossDefeated: false,
+				},
+			},
+			players: { p1: { id: 'p1', rewards: { currency: 0, cards: [] }, cardChoices: [] } },
+			enemies: [],
+		}, 'p1');
+
+		window.showRunSummary({
+			status: 'victory',
+			durationMs: 5000,
+			defeatedEnemies: 3,
+			currencyCollected: 12,
+			players: [{
+				id: 'p1',
+				rewards: { currency: 12, cards: [] },
+				cardChoices: [],
+			}],
+		});
+
+		const harness = window.__AUTOGAME_HARNESS_STATE__();
+		expect(harness.runStatus).toBe('victory');
+		expect(harness.runObjectiveComplete).toBe(true);
+		expect(harness.objective.bossDefeated).toBe(true);
+		expect(harness.lastRunSummary?.status).toBe('victory');
+	});
+
 	it('reports hub layout.profile while the ship hub is rendered in lobby phase', async () => {
 		const { generateHub, generateLayout } = await import('../../server/dungeon.js');
 		const hubLayout = generateHub(0);
