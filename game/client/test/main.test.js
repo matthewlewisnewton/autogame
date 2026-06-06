@@ -2296,8 +2296,8 @@ describe('createEnemyMesh()', () => {
 		expect(mesh.geometry.parameters.radius).toBe(0.8);
 		expect(mesh.geometry.parameters.height).toBe(1.8);
 		expect(mesh.material.color.getHex()).toBe(0x8800cc);
-		expect(mesh._origEmissive).toBe(0x000000);
-		expect(mesh._origEmissiveIntensity).toBe(0);
+		expect(mesh._origEmissive).toBe(0x6600aa);
+		expect(mesh._origEmissiveIntensity).toBe(0.3);
 	});
 
 	it('defaults to grunt mesh for unknown types', async () => {
