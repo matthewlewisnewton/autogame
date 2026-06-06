@@ -1213,6 +1213,32 @@ function healPlayer(playerId, amount) {
   return player.hp - before;
 }
 
+function clearNegativeStatuses(entity) {
+  if (!entity) return;
+  entity.slowedUntil = 0;
+  entity.slowFactor = 1;
+  entity.burningUntil = 0;
+  entity.lastBurnTickAt = null;
+  if ('frozenUntil' in entity) {
+    entity.frozenUntil = 0;
+  }
+  entity.debuffs = [];
+}
+
+function healPlayersInRadius(originX, originZ, radius, healAmount) {
+  const healedTargets = [];
+  for (const [playerId, player] of Object.entries(_gameState.players)) {
+    if (!player || player.dead || player.extracted) continue;
+    if (Math.hypot(player.x - originX, player.z - originZ) > radius) continue;
+    const hpGained = healPlayer(playerId, healAmount);
+    clearNegativeStatuses(player);
+    if (hpGained > 0) {
+      healedTargets.push({ playerId, hpGained, cleansed: true });
+    }
+  }
+  return healedTargets;
+}
+
 // Minimal debuff helper: append a debuff to a player's debuffs array in
 // insertion (oldest-first) order. No per-tick effects are applied here; this
 // exists so debuffs can be placed on a player (e.g. by tests or future systems)
@@ -3040,6 +3066,8 @@ module.exports = {
   damageEnemy,
   damageMinion,
   healPlayer,
+  clearNegativeStatuses,
+  healPlayersInRadius,
   addDebuff,
 
   // Card combat helpers

@@ -40,6 +40,7 @@ const {
   spawnInfernoPillarEffect,
   damagePlayer,
   healPlayer,
+  healPlayersInRadius,
   spawnGroundEnchantment,
   armSelfEnchantment,
   countGroundEnchantmentsForPlayer,
@@ -596,6 +597,32 @@ function handleUseCard(socket, state, lobby, data) {
           radius: SUMMON_RADIUS,
           healAmount: healed,
           magicStonesGained,
+        });
+
+        return;
+      }
+
+      if (cardDef.effect === 'purifying_pulse') {
+        const radius = cardDef.radius || SUMMON_RADIUS;
+        const healedTargets = healPlayersInRadius(
+          originX,
+          originZ,
+          radius,
+          cardDef.healAmount || 0
+        );
+
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
+        replaceConsumedCard(player, data.slotIndex, handCard);
+
+        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          specialEffect: 'heal_and_cleanse',
+          origin: { x: originX, z: originZ },
+          radius,
+          healedTargets,
         });
 
         return;
