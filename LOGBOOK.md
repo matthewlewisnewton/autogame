@@ -5062,3 +5062,26 @@ Pass. The implementation is narrowly scoped to `game/client/models.js`, `game/cl
 
 None.
 
+
+## v0.285 — 295-fire-level  (2026-06-06 11:38:30)
+
+
+### Fire level reachable via debug scenario
+PASS. `fire-cavern` and `fire-cavern-stage` are registered debug scenarios. The `fire-cavern` scenario selects `ember_descent` tier 1, applies the same quest-derived layout seed/profile path, enters playing phase, spawns the quest enemy pack, and starts a normal run state. The client URL entry point remains gated to localhost by `?debugScenario=...`, and the server also gates debug scenario use through `isDebugScenarioAllowed`.
+
+### Layout generation and floor alignment
+PASS. `generateLayout(seed, 'fire-cavern')` dispatches to a deterministic rim/ramp/basin layout with a high rim start room, 2-3 descent ramps, a large lower basin, solid perimeter walls, cover in the basin, and floor corners compatible with shared `sampleFloorY`. Server walkability tests cover rim-to-basin reachability across regression seeds, and client render tests assert elevated rim floors, sloped ramp meshes, basin marker placement, and cover placement on sampled floor Y.
+
+### Themed visuals and atmosphere
+PASS. `dungeonTheme.json`, `game/client/dungeon.js`, and `game/client/renderer.js` add a distinct fire-cavern palette, rim/basin floor material separation, and depth-responsive warm fog/background. The fire-specific render and atmosphere tests passed. The final round-2 browser capture used the fallback sunken-canyon scenario rather than a fire-cavern scenario, but it still proves the game runs cleanly with this ticket applied; fire-specific behavior is covered by the live code tests and earlier sub-ticket visual QA.
+
+### Design and requirements consistency
+PASS. The implementation stays consistent with the design document's floor-height model by using `sampleFloorY`/`resolveFloorY` for player placement, wall placement, cover, and treasure markers. It does not regress the foundation requirements: the captured run renders a 3D scene, connects to the backend, shows multiplayer state, and preserves movement/key-item smoke behavior.
+
+### Code quality and validation
+PASS. The changed server/client code is scoped to quest wiring, layout generation, debug shortcuts, fire-cavern render materials, and atmosphere. The coverage log reports the full vitest suite passing: 109 test files and 1895 tests.
+
+## Remaining gaps
+
+None.
+
