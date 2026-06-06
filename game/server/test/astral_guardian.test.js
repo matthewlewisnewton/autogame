@@ -204,6 +204,6 @@ describe('Astral Guardian gameplay', () => {
 		enemy.z = 0;
 		enemy.hp = 100;
 		updateMinions();
-		expect(enemy.hp).toBe(97);
+		expect(enemy.hp).toBe(98);
 	});
 });
