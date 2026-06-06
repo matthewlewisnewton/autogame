@@ -1,0 +1,97 @@
+{
+  "ok": true,
+  "preset": "spire-ascent",
+  "steps": "full",
+  "outDir": "game/validation/spire-ascent",
+  "presetConfig": {
+    "questId": "spire_ascent",
+    "questTier": 2,
+    "bossType": "spire_warden",
+    "deployScenario": "spire-ascent-tier-2",
+    "nearAddsScenario": "spire-ascent-near-adds",
+    "bossApproachScenario": "spire-ascent-boss-approach",
+    "bossLowHpScenario": "spire-ascent-boss-low-hp",
+    "addTypes": [
+      "grunt",
+      "skirmisher",
+      "miniboss",
+      "spawner"
+    ],
+    "encounterTriggerRadius": 8,
+    "addsTimeoutMs": 90000,
+    "encounterTimeoutMs": 60000,
+    "lobbyName": "Spire Ascent Validation"
+  },
+  "serverPort": 3245,
+  "clientPort": 5256,
+  "auth": {
+    "username": "playthrough-1780737196544",
+    "connected": true,
+    "lobbyBrowserVisible": true,
+    "harnessPhase": "unknown",
+    "screenshot": "game/validation/spire-ascent/01-lobby-browser.png"
+  },
+  "hub": {
+    "hubScreenshot": "game/validation/spire-ascent/01-hub.png",
+    "entryScreenshot": "game/validation/spire-ascent/02-level-entry.png",
+    "deployScenario": "spire-ascent-tier-2",
+    "deployOk": true,
+    "objectiveType": "stage_boss",
+    "encounterPhase": "dormant",
+    "bossTypes": [
+      "spire_warden",
+      "grunt",
+      "skirmisher",
+      "grunt",
+      "spawner",
+      "grunt"
+    ]
+  },
+  "bossEncounter": {
+    "midCombatScreenshot": "game/validation/spire-ascent/03-mid-combat.png",
+    "dormantScreenshot": "game/validation/spire-ascent/04-boss-dormant.png",
+    "activeScreenshot": "game/validation/spire-ascent/05-boss-active.png",
+    "encounterPhase": "active",
+    "encounterLocked": true,
+    "probes": {
+      "dormant": {
+        "encounterPhase": "dormant",
+        "encounterLocked": false,
+        "bossEnemyId": "2a91b052-6388-4983-b85e-afcbcf32667a",
+        "bossHp": 420,
+        "liveAddCount": 0
+      },
+      "active": {
+        "encounterPhase": "active",
+        "encounterLocked": true,
+        "bossEnemyId": "2a91b052-6388-4983-b85e-afcbcf32667a",
+        "bossHp": 420,
+        "liveAddCount": 0
+      }
+    }
+  },
+  "victory": {
+    "bossDefeatedScreenshot": "game/validation/spire-ascent/06-boss-defeated.png",
+    "victoryScreenshot": "game/validation/spire-ascent/07-victory.png",
+    "probes": {
+      "afterBoss": {
+        "runStatus": "victory",
+        "runObjectiveComplete": true,
+        "bossDefeated": true,
+        "lastRunSummaryStatus": "victory"
+      },
+      "victory": {
+        "runStatus": "victory",
+        "runObjectiveComplete": true,
+        "bossDefeated": true,
+        "lastRunSummaryStatus": "victory"
+      }
+    }
+  },
+  "assertions": {
+    "bossSpawned": true,
+    "encounterActivated": true,
+    "bossDefeated": true,
+    "victoryFired": true
+  }
+}
