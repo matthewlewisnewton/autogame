@@ -13,9 +13,10 @@ describe('getRegistryTargetFootprint()', () => {
 		expect(getRegistryTargetFootprint('grunt')).toEqual({ targetHeight: 1 });
 		expect(getRegistryTargetFootprint('skirmisher')).toEqual({ targetHeight: 0.6 });
 		expect(getRegistryTargetFootprint('miniboss')).toEqual({ targetHeight: 1.8 });
-		expect(getRegistryTargetFootprint('annex_overseer')).toEqual({ targetHeight: 2 });
-		expect(getRegistryTargetFootprint('arena_champion')).toEqual({ targetHeight: 2.8 });
-		expect(getRegistryTargetFootprint('spire_warden')).toEqual({ targetHeight: 2 });
+		expect(getRegistryTargetFootprint('annex_overseer')).toEqual({ targetHeight: 2.4 });
+		expect(getRegistryTargetFootprint('arena_champion')).toEqual({ targetHeight: 3 });
+		expect(getRegistryTargetFootprint('spire_warden')).toEqual({ targetHeight: 2.2 });
+		expect(getRegistryTargetFootprint('canyon_warden')).toEqual({ targetHeight: 2.2 });
 	});
 
 	it('uses diameter for octahedron enemies', () => {
@@ -45,6 +46,7 @@ describe('getRegistryHostVerticalOffset()', () => {
 		expect(getRegistryHostVerticalOffset('annex_overseer')).toBe(enemyMeshHalfHeight('annex_overseer'));
 		expect(getRegistryHostVerticalOffset('arena_champion')).toBe(enemyMeshHalfHeight('arena_champion'));
 		expect(getRegistryHostVerticalOffset('spire_warden')).toBe(enemyMeshHalfHeight('spire_warden'));
+		expect(getRegistryHostVerticalOffset('canyon_warden')).toBe(enemyMeshHalfHeight('canyon_warden'));
 		expect(getRegistryHostVerticalOffset('spawner')).toBe(enemyMeshHalfHeight('spawner'));
 	});
 
