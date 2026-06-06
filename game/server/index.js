@@ -183,6 +183,7 @@ const {
   isSlowed,
   applyBurning,
   isBurning,
+  updateBurning,
   cleanupStalePlayers,
   regenMagicStones,
   randomWanderTarget,
@@ -1343,6 +1344,7 @@ function runGameLoopTick() {
           flushDirtyPlayerSaves();
           updateEnemies();
           updateMinions();
+          updateBurning();
           debugScenarios.nudgeDebugBossApproachPlayers(state);
           updateEncounterTriggers();
           updateSurviveSpawns();
@@ -1625,6 +1627,7 @@ if (typeof module !== 'undefined' && module.exports) {
     isSlowed,
     applyBurning,
     isBurning,
+    updateBurning,
     updateEnemies,
     isPlayerConcealed,
     updateMinions,
