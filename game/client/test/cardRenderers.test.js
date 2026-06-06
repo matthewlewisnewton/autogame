@@ -42,6 +42,7 @@ function methodsCalled(ctx) {
 describe('resolveRenderers()', () => {
 	it('returns the per-card renderer when one is registered', () => {
 		expect(resolveRenderers('infinite_disk')).toHaveLength(1);
+		expect(resolveRenderers('fireball')).toHaveLength(1);
 		expect(resolveRenderers('divine_grace')).toHaveLength(1);
 		expect(resolveRenderers('spike_trap')).toHaveLength(1);
 		expect(resolveRenderers('undead_commander')).toHaveLength(1);
@@ -311,6 +312,22 @@ describe('renderCardUsed() — weapon dispatch', () => {
 		// Perpendicular offsets along z for a +x facing direction → distinct z coords.
 		const zs = attacks.map((a) => a[1].z).sort((p, q) => p - q);
 		expect(zs).toEqual([-0.6, 0, 0.6]);
+	});
+
+	it('spawns a single fireball-effect projectile for fireball', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'fireball',
+			effect: 'fireball',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			attackRange: 9,
+			hits: [],
+		}, ctx);
+		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
+		expect(attacks).toHaveLength(1);
+		expect(attacks[0][1]).toEqual({ x: 1, z: 2 });
+		expect(attacks[0][3]).toMatchObject({ effect: 'fireball', range: 9 });
 	});
 });
 

@@ -226,6 +226,23 @@ function renderWyrmAttack(data, ctx) {
 }
 
 /**
+ * Fireball: a fiery sphere projectile that travels from the caster along the
+ * cast direction. Distinct from the plain `projectile` visual via the warm
+ * fire palette in the renderer's `fireball` branch. Burning-on-hit visuals are
+ * driven separately by the broadcast `burningUntil` state, not here.
+ */
+function renderFireball(data, ctx) {
+	if (!data.origin) return;
+	const accentHex = getAccentHex(data.cardId);
+	ctx.spawnAttackEffect(originOf(data), directionOf(data), {
+		effect: 'fireball',
+		range: data.attackRange,
+		color: accentHex ?? 0xff7a18,
+		emissive: 0xff3b00,
+	});
+}
+
+/**
  * Phase Stalker: narrow cyan beam corridor along the projectile path.
  */
 function renderPhaseBeam(data, ctx) {
@@ -289,6 +306,7 @@ function renderTelepipe(data, ctx) {
 const CARD_RENDERERS = {
 	// Weapons
 	infinite_disk: renderTripleReturning,
+	fireball: renderFireball,
 
 	// Spells
 	chain_lightning: renderChainLightningArcs,
