@@ -8,7 +8,7 @@
  * → game/validation/open-plaza/). Explicit --out overrides the preset default.
  *
  * Rooms / stage preset steps: auth, hub | deploy, boss-encounter, full.
- * Hub preset steps: auth, hub-walk, booth, telepipe-reset, full.
+ * Hub preset steps: auth, hub-walk, booth, telepipe-reset|telepipe-persistence, full.
  */
 import { chromium } from 'playwright';
 import fs from 'fs';
@@ -43,7 +43,7 @@ import {
 	stagePaidAppearanceConfirm,
 	completePaidAppearanceConfirm,
 } from './lib/booth.mjs';
-import { runTelepipeResetStep } from './lib/telepipe.mjs';
+import { runTelepipePersistenceStep } from './lib/telepipe.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
@@ -60,7 +60,7 @@ const STAGE_PRESETS = new Set(['rooms', 'open-plaza', 'spire-ascent', 'sunken-ca
 const ROOMS_FULL_STEPS = new Set(['full']);
 const ROOMS_HUB_STEPS = new Set(['hub', 'deploy']);
 const ROOMS_BOSS_ENCOUNTER_STEPS = new Set(['boss-encounter']);
-const HUB_PRESET_STEPS = new Set(['auth', 'hub-walk', 'booth', 'telepipe-reset', 'full']);
+const HUB_PRESET_STEPS = new Set(['auth', 'hub-walk', 'booth', 'telepipe-reset', 'telepipe-persistence', 'full']);
 const HUB_FULL_STEPS = new Set(['full']);
 const DEFAULT_ADD_TYPES = ['grunt', 'skirmisher'];
 
@@ -767,7 +767,8 @@ function buildHubAssertions(summary) {
 	return {
 		boothDeductsGold: summary.booth?.boothDeductsGold === true,
 		hatSwapFree: summary.booth?.hatSwapFree === true,
-		telepipeUpReset: summary.telepipeReset?.telepipeUpReset === true,
+		telepipePreservesPlayerState: (summary.telepipePersistence ?? summary.telepipeReset)
+			?.telepipePreservesPlayerState === true,
 	};
 }
 
@@ -795,8 +796,9 @@ function collectHubScreenshots(summary) {
 	}
 	if (summary.booth?.paidScreenshot) shots.push(summary.booth.paidScreenshot);
 	if (summary.booth?.hatScreenshot) shots.push(summary.booth.hatScreenshot);
-	if (summary.telepipeReset?.beforeScreenshot) shots.push(summary.telepipeReset.beforeScreenshot);
-	if (summary.telepipeReset?.afterScreenshot) shots.push(summary.telepipeReset.afterScreenshot);
+	const telepipeSlice = summary.telepipePersistence ?? summary.telepipeReset;
+	if (telepipeSlice?.beforeScreenshot) shots.push(telepipeSlice.beforeScreenshot);
+	if (telepipeSlice?.afterScreenshot) shots.push(telepipeSlice.afterScreenshot);
 	if (summary.auth?.screenshot) shots.push(summary.auth.screenshot);
 	return shots;
 }
@@ -814,12 +816,13 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
 	let probes;
 	let findings;
 	if (isHub) {
+		const telepipeSlice = summary.telepipePersistence ?? summary.telepipeReset;
 		probes = {
 			booth: summary.booth || null,
-			telepipeReset: {
-				preSuspend: summary.telepipeReset?.preSuspend ?? null,
-				postDeploy: summary.telepipeReset?.postDeploy ?? null,
-				telepipeUpReset: summary.telepipeReset?.telepipeUpReset ?? null,
+			telepipePersistence: {
+				preSuspend: telepipeSlice?.preSuspend ?? null,
+				postDeploy: telepipeSlice?.postDeploy ?? null,
+				telepipePreservesPlayerState: telepipeSlice?.telepipePreservesPlayerState ?? null,
 			},
 			hubWalk: summary.hubWalk || null,
 		};
@@ -831,7 +834,7 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
 			screenshots: collectHubScreenshots(summary),
 			hubWalk: summary.hubWalk,
 			booth: summary.booth,
-			telepipeReset: summary.telepipeReset,
+			telepipePersistence: telepipeSlice,
 			error: summary.error || null,
 		});
 	} else {
@@ -879,7 +882,7 @@ async function main() {
 	let runsHubFull = false;
 	let runsHubWalk = false;
 	let runsBooth = false;
-	let runsTelepipeReset = false;
+	let runsTelepipePersistence = false;
 	const summary = {
 		ok: true,
 		preset: opts.preset,
@@ -903,8 +906,10 @@ async function main() {
 			&& (opts.steps === 'hub-walk' || runsHubFull);
 		runsBooth = opts.preset === 'hub'
 			&& (opts.steps === 'booth' || runsHubFull);
-		runsTelepipeReset = opts.preset === 'hub'
-			&& (opts.steps === 'telepipe-reset' || runsHubFull);
+		runsTelepipePersistence = opts.preset === 'hub'
+			&& (opts.steps === 'telepipe-reset'
+				|| opts.steps === 'telepipe-persistence'
+				|| runsHubFull);
 		const serverLogPath = path.join(outDirAbs, 'server.log');
 		game = await startGame({ serverLogPath });
 		summary.serverPort = game.serverPort;
@@ -967,13 +972,13 @@ async function main() {
 			}
 		}
 
-		if (runsTelepipeReset && page) {
+		if (runsTelepipePersistence && page) {
 			await assertGameProcessAlive({
 				serverUrl: game.serverUrl,
 				serverChild: game.serverChild,
 				serverLogPath: game.serverLogPath,
 			});
-			summary.telepipeReset = await runTelepipeResetStep({
+			summary.telepipePersistence = await runTelepipePersistenceStep({
 				page,
 				preset,
 				outDirAbs,
@@ -983,11 +988,12 @@ async function main() {
 			});
 			if (!runsHubFull) {
 				summary.assertions = {
-					telepipeUpReset: summary.telepipeReset.telepipeUpReset === true,
+					telepipePreservesPlayerState:
+						summary.telepipePersistence.telepipePreservesPlayerState === true,
 				};
-				summary.ok = summary.assertions.telepipeUpReset;
+				summary.ok = summary.assertions.telepipePreservesPlayerState;
 				if (!summary.ok) {
-					summary.error = summary.error || 'telepipeUpReset assertion failed';
+					summary.error = summary.error || 'telepipePreservesPlayerState assertion failed';
 					exitCode = 1;
 				}
 			}

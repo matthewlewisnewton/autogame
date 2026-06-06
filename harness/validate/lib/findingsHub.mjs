@@ -15,16 +15,14 @@ function boothDetail(summary) {
 }
 
 function telepipeDetail(summary) {
-	const reset = summary.telepipeReset;
-	if (!reset) return 'telepipe-reset step missing';
-	const pre = reset.preSuspend;
-	const post = reset.postDeploy;
-	const runIdChanged = pre?.runId && post?.runId && pre.runId !== post.runId;
-	const checkpointRestored = reset.checkpointRestoredInLog === true;
+	const slice = summary.telepipePersistence ?? summary.telepipeReset;
+	if (!slice) return 'telepipe persistence step missing';
+	const pre = slice.preSuspend;
+	const post = slice.postDeploy;
+	const runIdSame = pre?.runId && post?.runId && pre.runId === post.runId;
 	return [
-		`preSuspend ms=${pre?.magicStones}, postDeploy ms=${post?.magicStones}`,
-		`runId ${pre?.runId ?? '?'}→${post?.runId ?? '?'} (${runIdChanged ? 'changed' : 'unchanged'})`,
-		`checkpoint restored in log: ${checkpointRestored ? 'yes (FAIL)' : 'no'}`,
+		`preSuspend ms=${pre?.magicStones} hp=${pre?.hp}, postDeploy ms=${post?.magicStones} hp=${post?.hp}`,
+		`runId ${pre?.runId ?? '?'}→${post?.runId ?? '?'} (${runIdSame ? 'same (PASS)' : 'changed (FAIL)'})`,
 	].join('; ');
 }
 
@@ -53,6 +51,7 @@ function hubWalkNotes(summary) {
  *   screenshots?: string[],
  *   hubWalk?: object,
  *   booth?: object,
+ *   telepipePersistence?: object,
  *   telepipeReset?: object,
  *   error?: string | null,
  * }} run
@@ -79,8 +78,8 @@ export function renderHubFindings(run) {
 			boothDetail(run),
 		),
 		formatAssertion(
-			'telepipeUpReset',
-			assertions.telepipeUpReset === true,
+			'telepipePreservesPlayerState',
+			assertions.telepipePreservesPlayerState === true,
 			telepipeDetail(run),
 		),
 	];

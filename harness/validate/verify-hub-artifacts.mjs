@@ -16,7 +16,7 @@ const HUB_REL = path.join('game', 'validation', 'hub');
 const REQUIRED_ASSERTION_KEYS = [
 	'boothDeductsGold',
 	'hatSwapFree',
-	'telepipeUpReset',
+	'telepipePreservesPlayerState',
 ];
 
 const REQUIRED_PNGS = [
@@ -80,15 +80,15 @@ function readRunSummary(errors) {
 }
 
 function checkTelepipeRunIdSanity(summary, errors) {
-	const reset = summary?.telepipeReset;
-	if (!reset) return;
-	const preId = reset.preSuspend?.runId;
-	const postId = reset.postDeploy?.runId;
+	const slice = summary?.telepipePersistence ?? summary?.telepipeReset;
+	if (!slice) return;
+	const preId = slice.preSuspend?.runId;
+	const postId = slice.postDeploy?.runId;
 	if (preId == null || postId == null) return;
-	if (preId === postId && summary.assertions?.telepipeUpReset === true) {
+	if (preId !== postId && summary.assertions?.telepipePreservesPlayerState === true) {
 		fail(
 			errors,
-			`telepipeReset runId unchanged (${preId}) while assertions.telepipeUpReset is true`,
+			`telepipe persistence runId changed (${preId}→${postId}) while assertions.telepipePreservesPlayerState is true`,
 		);
 	}
 }

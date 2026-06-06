@@ -1,8 +1,8 @@
 /**
- * Telepipe UP → abandon → fresh-deploy validation helpers (ticket 281 sub-ticket 04).
+ * Telepipe UP → hub → redeploy persistence validation (ticket 287 sub-ticket 05).
+ * Asserts magic stones and HP survive telepipe-up and resume the same run (runId).
  */
 import { createRequire } from 'module';
-import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { enableGodmode } from './combat.mjs';
@@ -24,44 +24,36 @@ function usable(card) {
 
 function probesMatchDepletion(probe, startingMs = STARTING_MAGIC_STONES) {
 	const ms = probe?.magicStones;
-	const msDepleted = Number.isFinite(ms) && ms < startingMs;
-	const chargeDepleted = (probe?.hand || []).some(
-		(card) => card && card.charges != null && card.remainingCharges < card.charges,
-	);
-	return msDepleted && chargeDepleted;
+	return Number.isFinite(ms) && ms < startingMs;
 }
 
-// Passive regen ticks at 20Hz once playing; probe may run a few ticks after waitForPlaying.
-const FRESH_DEPLOY_MS_REGEN_TICKS = 10;
-const FRESH_DEPLOY_MS_TOLERANCE = MAGIC_STONES_REGEN_PER_TICK * FRESH_DEPLOY_MS_REGEN_TICKS;
+// Passive regen ticks at 20Hz while playing; allow regen during the post-redeploy probe window.
+const REDEPLOY_MS_REGEN_TICKS = 120;
+const REDEPLOY_MS_TOLERANCE = MAGIC_STONES_REGEN_PER_TICK * REDEPLOY_MS_REGEN_TICKS;
 
-function probesMatchFreshDeploy(probe, startingMs = STARTING_MAGIC_STONES) {
-	const ms = probe?.magicStones;
-	const msReset = Number.isFinite(ms)
-		&& ms >= startingMs
-		&& ms <= startingMs + FRESH_DEPLOY_MS_TOLERANCE;
-	const occupied = (probe?.hand || []).filter(Boolean);
-	const chargesFull = occupied.length > 0
-		&& occupied.every((card) => card.remainingCharges === card.charges);
-	return msReset && chargesFull;
+function probesMatchPreservedMs(pre, post, startingMs = STARTING_MAGIC_STONES) {
+	const preMs = pre?.magicStones;
+	const postMs = post?.magicStones;
+	if (!Number.isFinite(preMs) || !Number.isFinite(postMs)) return false;
+	if (postMs >= startingMs) return false;
+	return postMs >= preMs && postMs <= preMs + REDEPLOY_MS_TOLERANCE;
 }
 
-function probesMatchFreshRunId(pre, post) {
-	return pre?.runId != null && post?.runId != null && pre.runId !== post.runId;
+function probesMatchPreservedHp(pre, post) {
+	const preHp = pre?.hp;
+	const postHp = post?.hp;
+	if (!Number.isFinite(preHp) || !Number.isFinite(postHp)) return true;
+	return preHp === postHp;
 }
 
-/**
- * @param {string | null | undefined} logPath
- * @param {number} fromByteOffset
- * @param {string} substr
- * @returns {boolean} true when substr appears in the log slice after fromByteOffset
- */
-export function readServerLogForbidden(logPath, fromByteOffset, substr) {
-	if (!logPath || !substr || !fs.existsSync(logPath)) return false;
-	const stat = fs.statSync(logPath);
-	const start = Math.min(Math.max(0, fromByteOffset), stat.size);
-	const slice = fs.readFileSync(logPath).subarray(start);
-	return slice.toString('utf8').includes(substr);
+function probesMatchSameRunId(pre, post) {
+	return pre?.runId != null && post?.runId != null && pre.runId === post.runId;
+}
+
+function isSuspendedHarness(h) {
+	return h?.runStatus === 'suspended'
+		|| (h?.phase === 'lobby' && h?.runPaused === true)
+		|| (h?.phase === 'lobby' && h?.suspendedRunSummary);
 }
 
 /**
@@ -71,7 +63,9 @@ export async function probeHandAndMs(page) {
 	const harness = await readHarness(page);
 	return {
 		magicStones: harness?.player?.magicStones ?? null,
+		hp: harness?.player?.hp ?? null,
 		msText: harness?.msText ?? null,
+		hpText: harness?.hpText ?? null,
 		hand: (harness?.hand || []).map((card) => (card ? {
 			id: card.id,
 			type: card.type,
@@ -81,7 +75,7 @@ export async function probeHandAndMs(page) {
 		phase: harness?.phase ?? null,
 		runStatus: harness?.runStatus ?? null,
 		extracted: harness?.extracted ?? null,
-		suspendedRunSummary: harness?.suspendedRunSummary ?? null,
+		runPaused: harness?.runPaused ?? null,
 		layoutSeed: harness?.layout?.seed ?? null,
 		runId: harness?.runId ?? null,
 	};
@@ -120,6 +114,17 @@ async function waitForPlaying(page, timeout = 30000) {
 	}, { timeout }).catch(async () => {
 		const harness = await readHarness(page);
 		throw new Error(`Playing phase not reached: ${JSON.stringify(harness)}`);
+	});
+}
+
+async function waitForSuspendedLobby(page, timeout = 30000) {
+	await page.waitForFunction(() => {
+		const h = window.__AUTOGAME_HARNESS_STATE__?.();
+		return h?.phase === 'lobby'
+			&& (h?.runStatus === 'suspended' || h?.runPaused === true);
+	}, { timeout }).catch(async () => {
+		const harness = await readHarness(page);
+		throw new Error(`Suspended lobby not reached: ${JSON.stringify(harness)}`);
 	});
 }
 
@@ -272,49 +277,14 @@ export async function suspendViaTelepipe(page) {
 	const deadline = Date.now() + 30000;
 	while (Date.now() < deadline) {
 		const h = await readHarness(page);
-		const suspended = h.runStatus === 'suspended'
-			|| (h.phase === 'lobby' && h.suspendedRunSummary)
-			|| h.extracted === true;
-		if (suspended) return h;
+		if (isSuspendedHarness(h)) return h;
 		await page.keyboard.press('w');
 		await page.waitForTimeout(500);
 	}
 
 	const h = await readHarness(page);
 	throw new Error(`Run did not suspend via telepipe: phase=${h?.phase} runStatus=${h?.runStatus} `
-		+ `extracted=${h?.extracted} suspendedRunSummary=${JSON.stringify(h?.suspendedRunSummary)}`);
-}
-
-/**
- * Abandon the suspended checkpoint via #abandon-run-btn (not resume).
- * @param {import('playwright').Page} page
- */
-export async function abandonSuspendedRun(page) {
-	await page.waitForFunction(() => {
-		const h = window.__AUTOGAME_HARNESS_STATE__?.();
-		return h?.abandonRunBtnUsable === true
-			|| typeof window.__abandonSuspendedRunForTest === 'function';
-	}, { timeout: 15000 }).catch(async () => {
-		const harness = await readHarness(page);
-		throw new Error(`Abandon not available: ${JSON.stringify(harness)}`);
-	});
-
-	const result = await page.evaluate(() => window.__abandonSuspendedRunForTest?.());
-	if (!result?.ok) {
-		await page.click('#abandon-run-btn', { timeout: 5000 });
-	}
-
-	await page.waitForFunction(() => {
-		const h = window.__AUTOGAME_HARNESS_STATE__?.();
-		return h?.phase === 'lobby'
-			&& !h?.suspendedRunSummary
-			&& h?.runStatus !== 'suspended'
-			&& h?.abandonRunBtnUsable !== true
-			&& h?.resumeBtnUsable !== true;
-	}, { timeout: 15000 }).catch(async () => {
-		const harness = await readHarness(page);
-		throw new Error(`Suspended run not cleared after abandon: ${JSON.stringify(harness)}`);
-	});
+		+ `runPaused=${h?.runPaused} extracted=${h?.extracted}`);
 }
 
 async function assertServerAlive(gameProcess, serverLogPath) {
@@ -330,7 +300,7 @@ async function assertServerAlive(gameProcess, serverLogPath) {
  * @param {import('playwright').Page} page
  * @param {{ preset: object, outDirAbs: string, repoRoot: string, serverLogPath?: string | null, gameProcess?: object | null }} opts
  */
-export async function runTelepipeResetStep({
+export async function runTelepipePersistenceStep({
 	page,
 	preset,
 	outDirAbs,
@@ -339,7 +309,7 @@ export async function runTelepipeResetStep({
 	gameProcess = null,
 }) {
 	await assertServerAlive(gameProcess, serverLogPath);
-	await createLobby(page, 'Telepipe Reset');
+	await createLobby(page, 'Telepipe Persistence');
 	await waitForHubLobby(page);
 	await requestScenario(page, preset.telepipeScenario);
 	await deployViaLaunchBooth(page);
@@ -358,68 +328,65 @@ export async function runTelepipeResetStep({
 
 	const beforeScreenshotPath = await writeScreenshot(page, outDirAbs, '07-telepipe-before');
 
-	const logSliceStart = serverLogPath && fs.existsSync(serverLogPath)
-		? fs.statSync(serverLogPath).size
-		: 0;
-
 	await suspendViaTelepipe(page);
+	await waitForSuspendedLobby(page);
 	await assertServerAlive(gameProcess, serverLogPath);
 	const suspendedHarness = await readHarness(page);
-	const suspended = suspendedHarness?.runStatus === 'suspended'
-		|| (suspendedHarness?.phase === 'lobby' && suspendedHarness?.suspendedRunSummary)
-		|| suspendedHarness?.extracted === true;
-	if (!suspended) {
+	if (!isSuspendedHarness(suspendedHarness)) {
 		throw new Error(`Expected suspended lobby after telepipe UP: ${JSON.stringify(suspendedHarness)}`);
 	}
 
-	await abandonSuspendedRun(page);
-	await assertServerAlive(gameProcess, serverLogPath);
-
-	await deployViaLaunchBooth(page, preset.telepipeScenario);
+	// Redeploy without abandon — resume the in-memory suspended run.
+	await deployViaLaunchBooth(page);
 	await assertServerAlive(gameProcess, serverLogPath);
 
 	const postDeploy = await probeHandAndMs(page);
 	const postHarness = await readHarness(page);
-	if (postHarness?.suspendedRunSummary || postHarness?.runStatus === 'suspended') {
-		throw new Error(`Fresh deploy still shows suspended checkpoint: ${JSON.stringify(postHarness)}`);
-	}
-	if (!probesMatchFreshDeploy(postDeploy)) {
-		throw new Error(`postDeploy probes failed reset criteria: ${JSON.stringify(postDeploy)}`);
+	if (postHarness?.runStatus === 'suspended' || postHarness?.runPaused === true) {
+		throw new Error(`Redeploy still shows suspended run: ${JSON.stringify(postHarness)}`);
 	}
 
-	const freshRunIdConfirmed = probesMatchFreshRunId(preSuspend, postDeploy);
-	if (!freshRunIdConfirmed) {
+	const msPreserved = probesMatchPreservedMs(preSuspend, postDeploy);
+	if (!msPreserved) {
 		throw new Error(
-			`postDeploy.runId must differ from preSuspend (fresh createRunState, not checkpoint restore): `
+			`postDeploy.magicStones must match preSuspend (within regen tolerance): `
+			+ `pre=${preSuspend.magicStones} post=${postDeploy.magicStones}`,
+		);
+	}
+
+	const hpPreserved = probesMatchPreservedHp(preSuspend, postDeploy);
+	if (!hpPreserved) {
+		throw new Error(
+			`postDeploy.hp must match preSuspend: pre=${preSuspend.hp} post=${postDeploy.hp}`,
+		);
+	}
+
+	const sameRunIdConfirmed = probesMatchSameRunId(preSuspend, postDeploy);
+	if (!sameRunIdConfirmed) {
+		throw new Error(
+			`postDeploy.runId must equal preSuspend.runId (resume, not fresh run): `
 			+ `pre=${preSuspend.runId} post=${postDeploy.runId}`,
 		);
 	}
 
 	const afterScreenshotPath = await writeScreenshot(page, outDirAbs, '08-telepipe-after');
-	const checkpointRestoredInLog = readServerLogForbidden(
-		serverLogPath,
-		logSliceStart,
-		'[run] checkpoint restored',
-	);
-	if (checkpointRestoredInLog) {
-		throw new Error(
-			'telepipe-reset slice contains forbidden "[run] checkpoint restored" — resume path ran instead of abandon+fresh deploy',
-		);
-	}
 
-	const telepipeUpReset = probesMatchDepletion(preSuspend)
-		&& probesMatchFreshDeploy(postDeploy)
-		&& freshRunIdConfirmed
-		&& !checkpointRestoredInLog;
+	const telepipePreservesPlayerState = msPreserved
+		&& hpPreserved
+		&& sameRunIdConfirmed;
 
 	return {
 		telepipeScenario: preset.telepipeScenario,
 		preSuspend,
 		postDeploy,
-		telepipeUpReset,
-		freshRunIdConfirmed,
-		checkpointRestoredInLog,
+		telepipePreservesPlayerState,
+		sameRunIdConfirmed,
+		msPreserved,
+		hpPreserved,
 		beforeScreenshot: path.relative(repoRoot, beforeScreenshotPath),
 		afterScreenshot: path.relative(repoRoot, afterScreenshotPath),
 	};
 }
+
+/** @deprecated ticket 281 — use runTelepipePersistenceStep */
+export const runTelepipeResetStep = runTelepipePersistenceStep;
