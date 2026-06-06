@@ -1,0 +1,11 @@
+Wrote the review artifacts.
+
+Verdict: `VERDICT: FAIL`
+
+Blocking gap: local client prediction ignores SLOW, so a slowed local player still moves at full predicted speed and rubber-bands against the server position.
+
+Files written:
+- `tickets/290-slow-status-effect-foundation/round-1/review.md`
+- `tickets/290-slow-status-effect-foundation/round-1/gaps.md`
+
+No `nits.md` created.

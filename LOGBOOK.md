@@ -5062,3 +5062,26 @@ Pass. The implementation is narrowly scoped to `game/client/models.js`, `game/cl
 
 None.
 
+
+## v0.286 — 290-slow-status-effect-foundation  (2026-06-06 12:09:09)
+
+### Helper exposure for future ice systems
+
+PASS. `applySlow` and `isSlowed` are exported from `game/server/simulation.js` and surfaced through `game/server/index.js`, so the future ice enemy and ice card can call the shared foundation helpers directly instead of reimplementing status state.
+
+### Design and foundation requirements
+
+PASS. The implementation is consistent with the design doc's multiplayer action-combat foundation and does not regress the setup requirements: Three.js rendering, WebSocket connection, multiplayer visualization, and WASD movement synchronization are all still demonstrated by the round-3 capture. The SLOW status is server-authoritative, replicated to clients, and does not alter the lobby/dungeon/deck loop.
+
+### Debug scenarios
+
+PASS. The live code does not add a slow debug scenario or any normal-gameplay shortcut for applying slow. The ticket history includes removal of an intermediate slowed-player debug shortcut, and no `?debugScenario=` path remains for this status, so there is no debug-only path masking a missing normal gameplay path.
+
+### Test and coverage evidence
+
+PASS. `coverage.log` reports `108` test files and `1808` tests passing. Focused coverage includes `game/server/test/slow_status.test.js` for helper semantics, player movement scaling, enemy chase scaling, freeze precedence, expiry, and refresh; `game/client/test/local-slow-prediction.test.js` covers local prediction with valid, missing, expired, and invalid slow factors; and existing snapshot expectations now include the player slow fields.
+
+## Remaining gaps
+
+None.
+

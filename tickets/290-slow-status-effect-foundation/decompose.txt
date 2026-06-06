@@ -1,0 +1,10 @@
+Created one new sub-ticket to close the single open gap.
+
+**Gap analysis:** All four implementation sub-tickets (`01`–`04`) have `.passed` markers and are done. The only open gap from `review-feedback.md` is the debug-scenario reachability rule: `?debugScenario=slowed-player` lets QA reach a SLOW state that no normal gameplay path can produce (the only non-test caller of `applySlow` is the debug branch itself).
+
+**Decision:** Since #290 is explicitly a *foundation* ticket whose real slow sources are separate future tickets (ice enemy #293, ice card #294), adding a real card/enemy here would be scope creep. The smallest in-scope fix is the review's first option: withdraw the debug shortcut. I scoped the removal to cover all three live references — the `DEBUG_SCENARIOS` entry in `index.js`, the scenario branch in `debugScenarios.js`, and the now-dead `applySlow` import in that file — while explicitly protecting the foundation (simulation helpers, movement integration, indicator, prediction, and the `index.js` re-export for #293/#294). Verification is `code` (structural removal + state-intact checks).
+
+No existing failed folders to retire — every prior folder passed.
+
+Sub-ticket folder created:
+- `/home/matt/workspace/.autogame-worktrees/290-slow-status-effect-foundation/tickets/290-slow-status-effect-foundation/subtickets/05-remove-slowed-player-debug-scenario/ticket.md`
