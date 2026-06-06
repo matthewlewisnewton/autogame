@@ -143,7 +143,7 @@ describe('debugScenario — suspended-run-hub', () => {
 		}
 	});
 
-	it('drops the squad into the hub lobby on top of a suspended checkpoint', async () => {
+	it('drops the squad into the hub lobby after telepipe extract with durable vitals', async () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
@@ -154,19 +154,14 @@ describe('debugScenario — suspended-run-hub', () => {
 		expect(result.scenario).toBe('suspended-run-hub');
 
 		const state = testGameState();
-		// Suspended run: back in the lobby with a checkpoint that drives the
-		// distinct Resume affordance (and the suspended-run banner) in the hub.
 		expect(state.gamePhase).toBe('lobby');
-		expect(state.suspendedCheckpoint).toBeTruthy();
-		expect(state.suspendedCheckpoint.run.status).toBe('playing');
+		expect(state.run).toBeUndefined();
+		expect(state.enemies).toHaveLength(0);
+		expect(state.telepipe).toBeNull();
 
-		// The checkpoint carries non-default spent/damaged values to resume into.
 		const playerId = socket._playerId;
-		const saved = state.suspendedCheckpoint.playerStates[playerId];
-		expect(saved.magicStones).toBeLessThan(49);
-		const weapon = saved.hand.find((c) => c && c.type === 'weapon');
-		expect(weapon).toBeTruthy();
-		expect(weapon.remainingCharges).toBeLessThan(weapon.charges);
+		expect(state.players[playerId].hp).toBe(42);
+		expect(state.players[playerId].magicStones).toBe(15);
 	});
 });
 

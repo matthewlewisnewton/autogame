@@ -125,11 +125,6 @@ function register(socket, ctx) {
 
   socket.on(CLIENT_TO_SERVER.SELECT_QUEST, (data) => {
     withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
-    if (state.suspendedCheckpoint) {
-      socket.emit(SERVER_TO_CLIENT.QUEST_ERROR, { reason: 'Abandon the suspended expedition before changing quests' });
-      return;
-    }
-
     const questId = data && typeof data.questId === 'string' ? data.questId : null;
     if (!questId) {
       socket.emit(SERVER_TO_CLIENT.QUEST_ERROR, { reason: 'Missing questId' });

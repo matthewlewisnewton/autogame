@@ -25,8 +25,6 @@ import {
 	checkRunTerminalState,
 	setGameState,
 	tryEnterTelepipe,
-	captureRunCheckpoint,
-	restoreRunCheckpoint,
 	checkTelepipeProximity,
 	PORTAL_RADIUS,
 	PORTAL_PLACEMENT_GRACE_MS,
@@ -5252,7 +5250,7 @@ describe('Telepipe suspend and resume', () => {
 		p2.socket.disconnect();
 	});
 
-	it('two-player extract, suspend, and resume restores portal position and enemies', async () => {
+	it('two-player telepipe extract returns to hub and redeploy spawns a fresh dungeon', async () => {
 		const baseUrl = await startTestServer();
 		const p1 = await connectAndJoinLobby(baseUrl, 'telepipe-1');
 		const p2 = await connectAndJoinLobby(baseUrl, 'telepipe-2', { joinLobbyId: p1.init.lobbyId });
@@ -5267,6 +5265,7 @@ describe('Telepipe suspend and resume', () => {
 		const state = testGameState();
 		const p1Id = p1.socket._playerId;
 		const p2Id = p2.socket._playerId;
+		const preExtractRunId = state.run.id;
 		state.telepipe = {
 			x: state.players[p1Id].x,
 			z: state.players[p1Id].z,
@@ -5289,9 +5288,6 @@ describe('Telepipe suspend and resume', () => {
 		const portalX = state.telepipe.x;
 		const portalZ = state.telepipe.z;
 
-		const suspendedPromise1 = waitForEvent(p1.socket, 'runSuspended');
-		const suspendedPromise2 = waitForEvent(p2.socket, 'runSuspended');
-
 		expect(tryEnterTelepipe(p1Id).ok).toBe(true);
 		expect(testGameState().gamePhase).toBe('playing');
 
@@ -5300,13 +5296,10 @@ describe('Telepipe suspend and resume', () => {
 		live.players[p2Id].z = portalZ;
 		expect(tryEnterTelepipe(p2Id).ok).toBe(true);
 
-		await suspendedPromise1;
-		await suspendedPromise2;
-
 		expect(testGameState().gamePhase).toBe('lobby');
-		expect(testGameState().suspendedCheckpoint.telepipe).toEqual(
-			expect.objectContaining({ x: portalX, z: portalZ }),
-		);
+		expect(testGameState().run).toBeUndefined();
+		expect(testGameState().enemies).toHaveLength(0);
+		expect(testGameState().telepipe).toBeNull();
 
 		const resumePromise1 = waitForEvent(p1.socket, 'startGame');
 		const resumePromise2 = waitForEvent(p2.socket, 'startGame');
@@ -5315,25 +5308,19 @@ describe('Telepipe suspend and resume', () => {
 		await resumePromise1;
 		await resumePromise2;
 
-		expect(testGameState().gamePhase).toBe('playing');
-		expect(testGameState().telepipe).toEqual(expect.objectContaining({ x: portalX, z: portalZ }));
-		expect(testGameState().enemies.some((e) => e.id === 'e-telepipe-test')).toBe(true);
-		expect(testGameState().players[p1Id].extracted).toBe(false);
-		expect(testGameState().players[p2Id].extracted).toBe(false);
-
-		const afterResume = testGameState();
-		afterResume.telepipe.placedAt = Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1;
-		checkTelepipeProximity();
-
-		expect(testGameState().gamePhase).toBe('playing');
-		expect(testGameState().players[p1Id].extracted).toBe(false);
-		expect(testGameState().players[p2Id].extracted).toBe(false);
+		const redeployed = testGameState();
+		expect(redeployed.gamePhase).toBe('playing');
+		expect(redeployed.run.id).not.toBe(preExtractRunId);
+		expect(redeployed.enemies.some((e) => e.id === 'e-telepipe-test')).toBe(false);
+		expect(redeployed.telepipe).toBeNull();
+		expect(redeployed.players[p1Id].extracted).toBe(false);
+		expect(redeployed.players[p2Id].extracted).toBe(false);
 
 		p1.socket.disconnect();
 		p2.socket.disconnect();
 	});
 
-	it('two-player suspend then resume preserves magic stones, card charges, and objective progress', async () => {
+	it('two-player telepipe extract preserves magic stones across hub return and redeploy', async () => {
 		const baseUrl = await startTestServer();
 		const p1 = await connectAndJoinLobby(baseUrl, 'telepipe-preserve-1');
 		const p2 = await connectAndJoinLobby(baseUrl, 'telepipe-preserve-2', { joinLobbyId: p1.init.lobbyId });
@@ -5349,23 +5336,9 @@ describe('Telepipe suspend and resume', () => {
 		const p1Id = p1.socket._playerId;
 		const p2Id = p2.socket._playerId;
 
-		// Spend magic stones, damage a hand card's charges, and advance objective
-		// progress so the checkpoint carries non-default values that resume must keep.
 		const SPENT_MAGIC_STONES = STARTING_MAGIC_STONES - 30;
-		const DAMAGED_REMAINING_CHARGES = 2;
 		state.players[p1Id].magicStones = SPENT_MAGIC_STONES;
-		state.players[p1Id].hand[0] = {
-			id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon',
-			damage: 17, charges: 5, remainingCharges: DAMAGED_REMAINING_CHARGES,
-		};
-
-		const objective = state.run.objective;
-		if (objective.type === 'defeat_enemies') {
-			objective.defeatedEnemies = 1;
-		} else if (objective.type === 'collect_items') {
-			objective.collectedItems = 1;
-		}
-		const expectedObjective = { ...objective };
+		state.players[p1Id].hp = 42;
 
 		state.telepipe = {
 			x: state.players[p1Id].x,
@@ -5378,29 +5351,17 @@ describe('Telepipe suspend and resume', () => {
 		const portalX = state.telepipe.x;
 		const portalZ = state.telepipe.z;
 
-		const suspendedPromise1 = waitForEvent(p1.socket, 'runSuspended');
-		const suspendedPromise2 = waitForEvent(p2.socket, 'runSuspended');
-
-		// Both players step through the conduit to suspend the run to the hub.
 		expect(tryEnterTelepipe(p1Id).ok).toBe(true);
 		const live = testGameState();
 		live.players[p2Id].x = portalX;
 		live.players[p2Id].z = portalZ;
 		expect(tryEnterTelepipe(p2Id).ok).toBe(true);
 
-		await suspendedPromise1;
-		await suspendedPromise2;
+		const hub = testGameState();
+		expect(hub.gamePhase).toBe('lobby');
+		expect(hub.players[p1Id].magicStones).toBe(SPENT_MAGIC_STONES);
+		expect(hub.players[p1Id].hp).toBe(42);
 
-		expect(testGameState().gamePhase).toBe('lobby');
-		const checkpoint = testGameState().suspendedCheckpoint;
-		expect(checkpoint).toBeTruthy();
-		// The captured checkpoint holds the exact spent/damaged/progressed values.
-		expect(checkpoint.playerStates[p1Id].magicStones).toBe(SPENT_MAGIC_STONES);
-		const checkpointCard = checkpoint.playerStates[p1Id].hand.find((c) => c && c.id === 'iron_sword');
-		expect(checkpointCard.remainingCharges).toBe(DAMAGED_REMAINING_CHARGES);
-
-		// Resume via the all-ready gate: checkAllReady routes to restoreRunCheckpoint
-		// because a suspendedCheckpoint exists, re-entering the in-progress run.
 		const resumePromise1 = waitForEvent(p1.socket, 'startGame');
 		const resumePromise2 = waitForEvent(p2.socket, 'startGame');
 		p1.socket.emit('playerReady', true);
@@ -5408,27 +5369,10 @@ describe('Telepipe suspend and resume', () => {
 		await resumePromise1;
 		await resumePromise2;
 
-		const resumed = testGameState();
-		expect(resumed.gamePhase).toBe('playing');
-
-		// Magic stones keep the spent value rather than resetting to the run start.
-		// (Passive regen may nudge it up a hair once the run is playing again, so
-		// assert it stayed near the spent value and well below the run-start total.)
-		expect(resumed.players[p1Id].magicStones).toBeCloseTo(SPENT_MAGIC_STONES, 0);
-		expect(resumed.players[p1Id].magicStones).toBeLessThan(STARTING_MAGIC_STONES);
-
-		// The damaged card keeps its drained charges rather than refilling to full.
-		const restoredCard = resumed.players[p1Id].hand.find((c) => c && c.id === 'iron_sword');
-		expect(restoredCard).toBeTruthy();
-		expect(restoredCard.remainingCharges).toBe(DAMAGED_REMAINING_CHARGES);
-		expect(restoredCard.remainingCharges).not.toBe(restoredCard.charges);
-
-		// Objective progress (collected/defeated counts) survives the round-trip.
-		if (expectedObjective.type === 'defeat_enemies') {
-			expect(resumed.run.objective.defeatedEnemies).toBe(expectedObjective.defeatedEnemies);
-		} else if (expectedObjective.type === 'collect_items') {
-			expect(resumed.run.objective.collectedItems).toBe(expectedObjective.collectedItems);
-		}
+		const redeployed = testGameState();
+		expect(redeployed.gamePhase).toBe('playing');
+		expect(redeployed.players[p1Id].magicStones).toBeCloseTo(SPENT_MAGIC_STONES, 0);
+		expect(redeployed.players[p1Id].hp).toBe(42);
 
 		p1.socket.disconnect();
 		p2.socket.disconnect();

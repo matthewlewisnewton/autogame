@@ -13,7 +13,6 @@ import {
 import { createGameState } from '../game-state.js';
 import {
   createRunState,
-  captureRunCheckpoint,
   setGameState,
   stateSnapshot,
 } from '../progression.js';
@@ -200,8 +199,8 @@ describe('suspended checkpoint encounter preservation', () => {
     setGameState(state);
   });
 
-  it('captureRunCheckpoint preserves encounter on checkpoint.run', () => {
-    const checkpoint = captureRunCheckpoint();
-    expect(checkpoint.run.encounter).toEqual(state.run.encounter);
+  it('stateSnapshot includes encounter on active run', () => {
+    const snapshot = stateSnapshot();
+    expect(snapshot.run.encounter).toEqual(state.run.encounter);
   });
 });

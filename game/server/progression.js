@@ -2589,127 +2589,14 @@ function hasActivePlayers() {
   return Object.values(_gameState.players).some(isPlayerActive);
 }
 
-function capturePlayerCombatState(player) {
-  return {
-    x: player.x,
-    y: player.y,
-    z: player.z,
-    rotation: player.rotation,
-    hp: player.hp,
-    dead: player.dead,
-    magicStones: player.magicStones,
-    hand: Array.isArray(player.hand) ? player.hand.map((card) => (card ? { ...card } : null)) : [],
-    deck: Array.isArray(player.deck) ? [...player.deck] : [],
-    slotCooldowns: Array.isArray(player.slotCooldowns) ? [...player.slotCooldowns] : new Array(MAX_HAND_SLOTS).fill(null),
-    nextDrawAt: player.nextDrawAt ?? null,
-    currencyEarnedThisRun: player.currencyEarnedThisRun || 0,
-    runCardDropIds: Array.isArray(player.runCardDropIds) ? [...player.runCardDropIds] : [],
-    inDesperation: !!player.inDesperation,
-    desperationDeck: Array.isArray(player.desperationDeck) ? [...player.desperationDeck] : [],
-    desperationCardsPlayed: player.desperationCardsPlayed || 0,
-    weaponComboCounts: player.weaponComboCounts ? { ...player.weaponComboCounts } : {},
-  };
-}
-
-function captureRunCheckpoint() {
-  const playerStates = {};
-  for (const [id, player] of Object.entries(_gameState.players)) {
-    playerStates[id] = capturePlayerCombatState(player);
-  }
-
-  return {
-    version: 1,
-    savedAt: Date.now(),
-    run: JSON.parse(JSON.stringify(_gameState.run)),
-    selectedQuestId: _gameState.selectedQuestId,
-    selectedQuestTier: _gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER,
-    layoutSeed: _gameState.layoutSeed,
-    layout: JSON.parse(JSON.stringify(_gameState.layout)),
-    dungeonBounds: JSON.parse(JSON.stringify(_gameState.dungeonBounds)),
-    walkableAABBs: JSON.parse(JSON.stringify(_gameState.walkableAABBs || [])),
-    enemies: JSON.parse(JSON.stringify(_gameState.enemies)),
-    minions: JSON.parse(JSON.stringify(_gameState.minions)),
-    loot: JSON.parse(JSON.stringify(_gameState.loot)),
-    areaEffects: JSON.parse(JSON.stringify(_gameState.areaEffects)),
-    telepipe: _gameState.telepipe ? { ..._gameState.telepipe } : null,
-    playerStates,
-  };
-}
-
-function buildSuspendedRunSummary(checkpoint) {
-  if (!checkpoint || !checkpoint.run) return null;
-  return {
-    questId: checkpoint.run.questId,
-    questTier: checkpoint.run.questTier ?? DEFAULT_QUEST_TIER,
-    questName: checkpoint.run.questName,
-    objective: { ...checkpoint.run.objective },
-  };
-}
-
-function clearSuspendedRunData() {
-  _gameState.telepipe = null;
-  delete _gameState.suspendedCheckpoint;
-}
-
-function restoreRunCheckpoint() {
-  const checkpoint = _gameState.suspendedCheckpoint;
-  if (!checkpoint) return false;
-
-  _gameState.run = JSON.parse(JSON.stringify(checkpoint.run));
-  _gameState.run.status = 'playing';
-  _gameState.selectedQuestId = checkpoint.selectedQuestId;
-  _gameState.selectedQuestTier = checkpoint.selectedQuestTier ?? DEFAULT_QUEST_TIER;
-  _gameState.layoutSeed = checkpoint.layoutSeed;
-  _gameState.layout = JSON.parse(JSON.stringify(checkpoint.layout));
-  _gameState.dungeonBounds = JSON.parse(JSON.stringify(checkpoint.dungeonBounds));
-  _gameState.walkableAABBs = JSON.parse(JSON.stringify(checkpoint.walkableAABBs || []));
-  _gameState.enemies = JSON.parse(JSON.stringify(checkpoint.enemies));
-  _gameState.minions = JSON.parse(JSON.stringify(checkpoint.minions));
-  _gameState.loot = JSON.parse(JSON.stringify(checkpoint.loot));
-
-  const quest = getSelectedQuest(_gameState);
-  if (_gameState.enemies.length === 0 && Number.isFinite(quest.enemyCount) && quest.enemyCount > 0) {
-    const rng = mulberry32((_gameState.layoutSeed || 42) + 1000);
-    spawnCombatEnemies(_gameState.layout, rng, quest);
-    console.log(`[run] restored run had no enemies — spawned ${quest.enemyCount} for ${quest.id}`);
-  }
-  _gameState.areaEffects = JSON.parse(JSON.stringify(checkpoint.areaEffects));
-  _gameState.telepipe = checkpoint.telepipe ? { ...checkpoint.telepipe } : null;
-
-  for (const [id, saved] of Object.entries(checkpoint.playerStates || {})) {
-    const player = _gameState.players[id];
-    if (!player) continue;
-    Object.assign(player, saved);
-    player.extracted = false;
-    player.ready = false;
-    player.pendingSummons = new Set();
-    player.lastMoveTime = Date.now();
-    player.inputActive = false;
-    player.inputDx = 0;
-    player.inputDz = 0;
-    delete player.lastTelepipeEnterAt;
-  }
-
-  if (_gameState.telepipe) {
-    _gameState.telepipe.placedAt = Date.now();
-  }
-  repositionPlayersAwayFromPortal(_gameState.players);
-
-  delete _gameState.suspendedCheckpoint;
-  _rebuildWallColliders();
-  console.log('[run] checkpoint restored');
-  return true;
-}
-
 function suspendRunToLobby() {
   if (!_gameState.run || _gameState.run.status !== 'playing') return;
 
-  _gameState.suspendedCheckpoint = captureRunCheckpoint();
-  console.log('[run] checkpoint captured');
+  const questName = _gameState.run.questName || 'unknown';
+  console.log(`[run] extracted to hub: ${questName}`);
 
-  _gameState.run.status = 'suspended';
   resetTransientRunState();
-  _gameState.telepipe = null;
+  delete _gameState.run;
   setGamePhase(_gameState, PHASES.LOBBY);
 
   const spawn = hubSpawnPosition(HUB_LAYOUT);
@@ -2733,11 +2620,8 @@ function suspendRunToLobby() {
 
   refreshShopOffer();
 
-  const summary = buildSuspendedRunSummary(_gameState.suspendedCheckpoint);
-  console.log(`[run] suspended: ${summary?.questName || _gameState.suspendedCheckpoint?.run?.questName || 'unknown'}`);
   const io = getIoTarget();
   if (io) {
-    io.emit(SERVER_TO_CLIENT.RUN_SUSPENDED, summary);
     io.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
   }
   _broadcastLobbyUpdate();
@@ -2803,43 +2687,6 @@ function checkTelepipeProximity() {
   }
 }
 
-function abandonSuspendedRun(state = _gameState) {
-  if (!state.suspendedCheckpoint) {
-    return { ok: false, reason: 'no_checkpoint' };
-  }
-
-  clearSuspendedRunData();
-  delete state.run;
-  setGamePhase(state, PHASES.LOBBY);
-
-  const spawn = hubSpawnPosition(HUB_LAYOUT);
-  for (const player of Object.values(state.players)) {
-    revivePlayerInLobby(player);
-    player.ready = false;
-    player.extracted = false;
-    player.x = spawn.x;
-    player.z = spawn.z;
-    player.y = resolveFloorY(sampleFloorY(HUB_LAYOUT, player.x, player.z));
-    player.hand = [];
-    player.deck = [];
-    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
-    player.pendingSummons = new Set();
-  }
-
-  refreshShopOffer();
-
-  for (const playerId of Object.keys(state.players)) {
-    savePlayerData(playerId);
-  }
-
-  const io = getIoTarget();
-  if (io) {
-    io.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-  }
-  _broadcastLobbyUpdate();
-  return { ok: true };
-}
-
 function checkRunTerminalState() {
   if (!_gameState.run || _gameState.run.status !== 'playing') return;
 
@@ -2864,8 +2711,6 @@ function checkRunTerminalState() {
   }
 
   if (!status) return;
-
-  clearSuspendedRunData();
 
   _gameState.run.status = status;
 
@@ -2956,7 +2801,7 @@ function buildPlayerColdSnapshot(id, p) {
   };
 }
 
-function buildWorldSnapshot(shopOffer, suspendedRunSummary) {
+function buildWorldSnapshot(shopOffer) {
   return {
     enemies: _gameState.enemies,
     minions: _gameState.minions,
@@ -2971,13 +2816,11 @@ function buildWorldSnapshot(shopOffer, suspendedRunSummary) {
     currency: _gameState.currency,
     shopOffer,
     telepipe: _gameState.telepipe || null,
-    suspendedRunSummary,
   };
 }
 
 function hotStateSnapshot() {
   const shopOffer = ensureShopOffer();
-  const suspendedRunSummary = buildSuspendedRunSummary(_gameState.suspendedCheckpoint);
 
   const players = {};
   for (const [id, p] of Object.entries(_gameState.players)) {
@@ -2986,13 +2829,12 @@ function hotStateSnapshot() {
 
   return {
     players,
-    ...buildWorldSnapshot(shopOffer, suspendedRunSummary),
+    ...buildWorldSnapshot(shopOffer),
   };
 }
 
 function stateSnapshot() {
   const shopOffer = ensureShopOffer();
-  const suspendedRunSummary = buildSuspendedRunSummary(_gameState.suspendedCheckpoint);
 
   const players = {};
   for (const [id, p] of Object.entries(_gameState.players)) {
@@ -3004,7 +2846,7 @@ function stateSnapshot() {
 
   return {
     players,
-    ...buildWorldSnapshot(shopOffer, suspendedRunSummary),
+    ...buildWorldSnapshot(shopOffer),
   };
 }
 
@@ -3013,7 +2855,6 @@ function returnPlayersToLobby(state = _gameState) {
     throw new Error('returnPlayersToLobby requires lobby context');
   }
 
-  clearSuspendedRunData();
   resetTransientRunState();
 
   setGamePhase(state, PHASES.LOBBY);
@@ -3066,11 +2907,10 @@ function giveUpRun(state = _gameState) {
   if (!state || !state._lobbyId) {
     throw new Error('giveUpRun requires lobby context');
   }
-  if (!isPlayingPhase(state) || !state.run || state.run.status === 'suspended') {
+  if (!isPlayingPhase(state) || !state.run) {
     return { ok: false, reason: 'no_active_run' };
   }
 
-  clearSuspendedRunData();
   resetTransientRunState();
 
   setGamePhase(state, PHASES.LOBBY);
@@ -3176,14 +3016,6 @@ function checkAllReadyInner() {
 
     try {
       setGamePhase(_gameState, PHASES.PLAYING);
-
-      if (_gameState.suspendedCheckpoint) {
-        restoreRunCheckpoint();
-        const io = getIoTarget();
-        emitLobbyDeploy(io, SERVER_TO_CLIENT.START_GAME);
-        emitLobbyDeploy(io, SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-        return;
-      }
 
       assignRunSpawnPositions(all);
       for (const player of all) {
@@ -3348,15 +3180,10 @@ module.exports = {
   hotStateSnapshot,
   isPlayerActive,
   hasActivePlayers,
-  captureRunCheckpoint,
-  restoreRunCheckpoint,
   suspendRunToLobby,
   maybeSuspendRun,
   tryEnterTelepipe,
   checkTelepipeProximity,
-  abandonSuspendedRun,
-  buildSuspendedRunSummary,
-  clearSuspendedRunData,
   previewReturnRewards,
   emitPlayerDeckUpdate,
   buildPlayerDeckUpdatePayload,
