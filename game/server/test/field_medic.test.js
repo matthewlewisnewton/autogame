@@ -82,6 +82,48 @@ describe('field_medic AI', () => {
 		expect(gameState._pendingMedicBeads).toHaveLength(1);
 	});
 
+	it('energy bead does not damage the firing medic', () => {
+		const medic = spawnEnemy(0, 0, 'field_medic');
+		medic.lastBeadAt = Date.now() - ENEMY_DEFS.field_medic.beadCooldownMs - 100;
+		medic.wanderTarget = { x: medic.x, z: medic.z };
+		const medicHpBefore = medic.hp;
+		gameState.players.p1 = {
+			id: 'p1',
+			x: 5,
+			z: 0,
+			hp: 100,
+			dead: false,
+		};
+
+		updateEnemies();
+
+		expect(medic.hp).toBe(medicHpBefore);
+		expect(gameState.players.p1.hp).toBe(100 - ENEMY_DEFS.field_medic.attackDamage);
+	});
+
+	it('energy bead does not damage allies between medic and target player', () => {
+		const medic = spawnEnemy(0, 0, 'field_medic');
+		const grunt = spawnEnemy(2.5, 0, 'grunt');
+		grunt.hp = Math.floor(grunt.maxHp * 0.5);
+		medic.lastHealAt = Date.now();
+		medic.lastBeadAt = Date.now() - ENEMY_DEFS.field_medic.beadCooldownMs - 100;
+		medic.wanderTarget = { x: medic.x, z: medic.z };
+		grunt.wanderTarget = { x: grunt.x, z: grunt.z };
+		const gruntHpBefore = grunt.hp;
+		gameState.players.p1 = {
+			id: 'p1',
+			x: 5,
+			z: 0,
+			hp: 100,
+			dead: false,
+		};
+
+		updateEnemies();
+
+		expect(grunt.hp).toBe(gruntHpBefore);
+		expect(gameState.players.p1.hp).toBe(100 - ENEMY_DEFS.field_medic.attackDamage);
+	});
+
 	it('does not close distance to a player beyond beadRange (no chase)', () => {
 		const medic = spawnEnemy(0, 0, 'field_medic');
 		medic.wanderTarget = { x: -10, z: 0 };

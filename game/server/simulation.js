@@ -1139,6 +1139,7 @@ function collectPhaseBeamHits(originX, originZ, dirX, dirZ, range, damage, optio
   const attackerId = options.attackerId;
   const hitWidth = options.hitWidth ?? PROJECTILE_HIT_WIDTH;
   const excludeMinionId = options.excludeMinionId;
+  const playersOnly = options.playersOnly === true;
   const sampleCount = Math.max(4, Math.ceil(range * 2));
   const hitEnemyIds = new Set();
   const hitMinionIds = new Set();
@@ -1149,25 +1150,27 @@ function collectPhaseBeamHits(originX, originZ, dirX, dirZ, range, damage, optio
     const px = originX + dirX * t;
     const pz = originZ + dirZ * t;
 
-    for (const enemy of _gameState.enemies) {
-      if (hitEnemyIds.has(enemy.id)) continue;
-      const dist = Math.hypot(enemy.x - px, enemy.z - pz);
-      if (dist > hitWidth) continue;
+    if (!playersOnly) {
+      for (const enemy of _gameState.enemies) {
+        if (hitEnemyIds.has(enemy.id)) continue;
+        const dist = Math.hypot(enemy.x - px, enemy.z - pz);
+        if (dist > hitWidth) continue;
 
-      if (attackerId) enemy.lastDamagedBy = attackerId;
-      damageEnemy(enemy, damage);
-      hitEnemyIds.add(enemy.id);
-      hits.push({ enemyId: enemy.id, hp: enemy.hp });
-    }
+        if (attackerId) enemy.lastDamagedBy = attackerId;
+        damageEnemy(enemy, damage);
+        hitEnemyIds.add(enemy.id);
+        hits.push({ enemyId: enemy.id, hp: enemy.hp });
+      }
 
-    for (const ally of _gameState.minions) {
-      if (ally.id === excludeMinionId || hitMinionIds.has(ally.id) || ally.hp <= 0) continue;
-      const dist = Math.hypot(ally.x - px, ally.z - pz);
-      if (dist > hitWidth) continue;
+      for (const ally of _gameState.minions) {
+        if (ally.id === excludeMinionId || hitMinionIds.has(ally.id) || ally.hp <= 0) continue;
+        const dist = Math.hypot(ally.x - px, ally.z - pz);
+        if (dist > hitWidth) continue;
 
-      damageMinion(ally, damage);
-      hitMinionIds.add(ally.id);
-      hits.push({ minionId: ally.id, hp: ally.hp });
+        damageMinion(ally, damage);
+        hitMinionIds.add(ally.id);
+        hits.push({ minionId: ally.id, hp: ally.hp });
+      }
     }
 
     for (const [playerId, player] of Object.entries(_gameState.players)) {
@@ -2067,7 +2070,7 @@ function fireMedicEnergyBead(medic, target, now) {
 		dirZ,
 		beadRange,
 		medic.attackDamage,
-		{ attackerEnemyId: medic.id, hitWidth },
+		{ attackerEnemyId: medic.id, hitWidth, playersOnly: true },
 	);
 
 	medic.lastBeadAt = now;
