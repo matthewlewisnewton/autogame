@@ -1,0 +1,12 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/278-playthrough-validate-open-plaza/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/278-playthrough-validate-open-plaza/game/data
+Server listening on port 3001
+Player connected: socket=AQfFLlw4-txxbiIXAAAB, playerId=60a282de-1f9e-43e6-ba54-71d36ad6fa98
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=7NkVlEv32BqOyBTNAAAD, playerId=d19d4015-325c-469e-878c-2796f916e602
+[loot] spawned id=6ad0da32-725d-4561-84f8-e42a0bd2bbd0 value=10
+Player disconnected: AQfFLlw4-txxbiIXAAAB
+Player disconnected: 7NkVlEv32BqOyBTNAAAD

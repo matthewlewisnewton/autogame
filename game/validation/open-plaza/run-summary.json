@@ -1,0 +1,124 @@
+{
+  "ok": true,
+  "preset": "open-plaza",
+  "steps": "full",
+  "outDir": "game/validation/open-plaza",
+  "presetConfig": {
+    "findingsTitle": "Open Plaza validation findings",
+    "bossSpawnLabel": "arena_champion (Arena Champion)",
+    "questId": "arena_trials",
+    "questTier": 2,
+    "bossType": "arena_champion",
+    "deployScenario": "arena-trials-tier-2",
+    "lobbyName": "Open Plaza Validation",
+    "nearAddsScenario": "arena-trials-near-adds",
+    "bossApproachScenario": "arena-trials-boss-approach",
+    "bossLowHpScenario": "arena-trials-boss-low-hp",
+    "encounterTriggerRadius": 8,
+    "addsTimeoutMs": 90000,
+    "encounterTimeoutMs": 60000
+  },
+  "serverPort": 3267,
+  "clientPort": 5231,
+  "auth": {
+    "username": "playthrough-1780743657283",
+    "connected": true,
+    "lobbyBrowserVisible": true,
+    "harnessPhase": "unknown",
+    "screenshot": "game/validation/open-plaza/01-lobby-browser.png"
+  },
+  "hub": {
+    "hubScreenshot": "game/validation/open-plaza/01-hub.png",
+    "entryScreenshot": "game/validation/open-plaza/02-level-entry.png",
+    "deployScenario": "arena-trials-tier-2",
+    "deployOk": true,
+    "objectiveType": "stage_boss",
+    "encounterPhase": "dormant",
+    "bossTypes": [
+      "arena_champion",
+      "grunt",
+      "grunt",
+      "grunt",
+      "skirmisher"
+    ],
+    "floorAlignment": {
+      "levelEntry": {
+        "playerY": 0.5,
+        "floorY": 0.5,
+        "delta": 0,
+        "layoutProfile": "open-plaza",
+        "band": null
+      }
+    }
+  },
+  "bossEncounter": {
+    "midCombatScreenshot": "game/validation/open-plaza/03-mid-combat.png",
+    "dormantScreenshot": "game/validation/open-plaza/04-boss-dormant.png",
+    "activeScreenshot": "game/validation/open-plaza/05-boss-active.png",
+    "encounterPhase": "active",
+    "encounterLocked": true,
+    "probes": {
+      "dormant": {
+        "encounterPhase": "dormant",
+        "encounterLocked": false,
+        "bossEnemyId": "f08b7105-b8da-4c0b-8150-5b74fad8e768",
+        "bossHp": 500,
+        "liveAddCount": 0
+      },
+      "active": {
+        "encounterPhase": "active",
+        "encounterLocked": true,
+        "bossEnemyId": "f08b7105-b8da-4c0b-8150-5b74fad8e768",
+        "bossHp": 500,
+        "liveAddCount": 0
+      },
+      "floorAlignment": {
+        "midCombat": {
+          "playerY": 1.3,
+          "floorY": 1.3,
+          "delta": 0,
+          "layoutProfile": "open-plaza",
+          "band": null
+        },
+        "bossDormant": {
+          "playerY": 1.3,
+          "floorY": 1.3,
+          "delta": 0,
+          "layoutProfile": "open-plaza",
+          "band": null
+        },
+        "bossActive": {
+          "playerY": 0.5,
+          "floorY": 0.5,
+          "delta": 0,
+          "layoutProfile": "open-plaza",
+          "band": null
+        }
+      }
+    }
+  },
+  "victory": {
+    "bossDefeatedScreenshot": "game/validation/open-plaza/06-boss-defeated.png",
+    "victoryScreenshot": "game/validation/open-plaza/07-victory.png",
+    "probes": {
+      "afterBoss": {
+        "runStatus": "victory",
+        "runObjectiveComplete": true,
+        "bossDefeated": true,
+        "lastRunSummaryStatus": "victory"
+      },
+      "victory": {
+        "runStatus": "victory",
+        "runObjectiveComplete": true,
+        "bossDefeated": true,
+        "lastRunSummaryStatus": "victory"
+      }
+    }
+  },
+  "assertions": {
+    "bossSpawned": true,
+    "encounterActivated": true,
+    "bossDefeated": true,
+    "victoryFired": true
+  }
+}

@@ -4,7 +4,10 @@
  *
  *   node harness/validate/playthrough.mjs [--preset rooms|hub] [--out <dir>] [--steps <slice>]
  *
- * Rooms preset steps: auth, hub | deploy, boss-encounter, full.
+ * When --out is omitted, output defaults to game/validation/<preset>/ (e.g. --preset open-plaza
+ * → game/validation/open-plaza/). Explicit --out overrides the preset default.
+ *
+ * Rooms / stage preset steps: auth, hub | deploy, boss-encounter, full.
  * Hub preset steps: auth, hub-walk, booth, telepipe-reset, full.
  */
 import { chromium } from 'playwright';
@@ -48,18 +51,18 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const PRESET_MODULES = {
 	rooms: () => import('./presets/rooms.mjs'),
 	hub: () => import('./presets/hub.mjs'),
+	'spire-ascent': () => import('./presets/spire-ascent.mjs'),
+	'open-plaza': () => import('./presets/open-plaza.mjs'),
+	'sunken-canyon': () => import('./presets/sunken-canyon.mjs'),
 };
 
+const STAGE_PRESETS = new Set(['rooms', 'open-plaza', 'spire-ascent', 'sunken-canyon']);
 const ROOMS_FULL_STEPS = new Set(['full']);
 const ROOMS_HUB_STEPS = new Set(['hub', 'deploy']);
 const ROOMS_BOSS_ENCOUNTER_STEPS = new Set(['boss-encounter']);
 const HUB_PRESET_STEPS = new Set(['auth', 'hub-walk', 'booth', 'telepipe-reset', 'full']);
 const HUB_FULL_STEPS = new Set(['full']);
-const ADD_TYPES = new Set(['grunt', 'skirmisher']);
-
-function defaultOutDir(preset) {
-	return preset === 'hub' ? 'game/validation/hub/' : 'game/validation/rooms/';
-}
+const DEFAULT_ADD_TYPES = ['grunt', 'skirmisher'];
 
 function parseArgs(argv) {
 	const opts = {
@@ -76,14 +79,14 @@ function parseArgs(argv) {
 		} else if (arg === '--steps' && argv[i + 1]) {
 			opts.steps = argv[++i];
 		} else if (arg === '--help' || arg === '-h') {
-			console.log('usage: node harness/validate/playthrough.mjs [--preset rooms|hub] [--out <dir>] [--steps <slice>]');
+			console.log('usage: node harness/validate/playthrough.mjs [--preset <name>] [--out <dir>] [--steps <slice>]');
 			process.exit(0);
 		} else {
 			throw new Error(`Unknown argument: ${arg}`);
 		}
 	}
-	if (!opts.out) {
-		opts.out = defaultOutDir(opts.preset);
+	if (opts.out == null) {
+		opts.out = `game/validation/${opts.preset}/`;
 	}
 	return opts;
 }
@@ -95,14 +98,17 @@ function assertStepsForPreset(preset, steps) {
 		}
 		return;
 	}
-	const roomsSteps = new Set([
+	if (!STAGE_PRESETS.has(preset)) {
+		throw new Error(`Unknown preset "${preset}"`);
+	}
+	const stageSteps = new Set([
 		'auth',
 		...ROOMS_HUB_STEPS,
 		...ROOMS_BOSS_ENCOUNTER_STEPS,
 		...ROOMS_FULL_STEPS,
 	]);
-	if (!roomsSteps.has(steps)) {
-		throw new Error(`Unknown --steps value "${steps}" for preset rooms — expected: ${[...roomsSteps].join(', ')}`);
+	if (!stageSteps.has(steps)) {
+		throw new Error(`Unknown --steps value "${steps}" for preset ${preset} — expected: ${[...stageSteps].join(', ')}`);
 	}
 }
 
@@ -329,9 +335,10 @@ async function runHubWalkStep({ browser, game, preset, outDirAbs }) {
 	}
 }
 
-function liveAdds(harness, bossType) {
+function liveAdds(harness, bossType, addTypes) {
+	const types = new Set(addTypes ?? DEFAULT_ADD_TYPES);
 	return (harness?.enemyHp || []).filter(
-		(e) => e.type !== bossType && e.hp > 0 && ADD_TYPES.has(e.type),
+		(e) => e.type !== bossType && e.hp > 0 && types.has(e.type),
 	);
 }
 
@@ -348,14 +355,14 @@ async function requestScenario(page, scenario) {
 	return result;
 }
 
-function buildEncounterProbe(harness, bossType) {
+function buildEncounterProbe(harness, bossType, addTypes) {
 	const boss = (harness?.enemyHp || []).find((e) => e.type === bossType && e.hp > 0) || null;
 	return {
 		encounterPhase: harness?.encounter?.phase ?? null,
 		encounterLocked: harness?.encounter?.locked ?? null,
 		bossEnemyId: harness?.encounter?.bossEnemyId ?? null,
 		bossHp: boss?.hp ?? null,
-		liveAddCount: liveAdds(harness, bossType).length,
+		liveAddCount: liveAdds(harness, bossType, addTypes).length,
 	};
 }
 
@@ -390,6 +397,43 @@ async function probeHubLobbyFinder(page) {
 			hub3dStarted,
 			position,
 			fixedOverPlayingCanvas,
+		};
+	});
+}
+
+async function captureFloorAlignmentProbe(page) {
+	return page.evaluate(async () => {
+		if (typeof window.__sampleFloorAlignmentForHarness === 'function') {
+			return window.__sampleFloorAlignmentForHarness();
+		}
+		const { sampleFloorY, resolveFloorY } = await import('/shared/floorSampling.esm.js');
+		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
+		if (!harness?.player || harness.player.x == null || harness.player.z == null) {
+			return null;
+		}
+		const layout = harness.layout;
+		if (!layout?.rooms || !Array.isArray(layout.rooms)) {
+			return null;
+		}
+		const { x, z } = harness.player;
+		const playerY = Number.isFinite(harness.player.y) ? harness.player.y : null;
+		const floorY = resolveFloorY(sampleFloorY(layout, x, z));
+		let band = null;
+		for (const room of layout.rooms) {
+			const halfW = room.width / 2;
+			const halfD = room.depth / 2;
+			if (x >= room.x - halfW && x <= room.x + halfW && z >= room.z - halfD && z <= room.z + halfD) {
+				band = room.band ?? null;
+				break;
+			}
+		}
+		if (playerY == null) return null;
+		return {
+			playerY,
+			floorY,
+			delta: playerY - floorY,
+			layoutProfile: layout.profile ?? null,
+			band,
 		};
 	});
 }
@@ -438,12 +482,17 @@ async function runAuthStep({ page, serverUrl, clientUrl, outDirAbs, presetName }
 	};
 }
 
+function deployRunLabel(preset) {
+	return `${preset.questId} tier ${preset.questTier}`;
+}
+
 async function runHubStep({ page, preset, outDirAbs }) {
-	await page.evaluate(() => {
+	const lobbyName = preset.lobbyName || 'Playthrough Validation';
+	await page.evaluate((channelName) => {
 		const name = document.getElementById('create-lobby-name');
-		if (name) name.value = 'Rooms Validation';
+		if (name) name.value = channelName;
 		document.getElementById('create-lobby-btn')?.click();
-	});
+	}, lobbyName);
 
 	await page.waitForFunction(() => {
 		const lobby = document.getElementById('lobby');
@@ -501,13 +550,16 @@ async function runHubStep({ page, preset, outDirAbs }) {
 			&& h.cardHandVisible === true
 			&& h.objective?.type === 'stage_boss';
 	}, { timeout: 25000 }).catch(async () => {
-		await failWithHarness(page, 'Training Caverns Tier II run did not start');
+		await failWithHarness(page, `${deployRunLabel(preset)} stage_boss run did not start after ${preset.deployScenario}`);
 	});
 
 	const playingHarness = await readHarness(page);
-	const hasOverseer = Array.isArray(playingHarness?.enemyHp)
+	if (preset.layoutProfile && playingHarness?.layout?.profile !== preset.layoutProfile) {
+		await failWithHarness(page, `Expected layout.profile ${preset.layoutProfile}`);
+	}
+	const hasBoss = Array.isArray(playingHarness?.enemyHp)
 		&& playingHarness.enemyHp.some((enemy) => enemy.type === preset.bossType);
-	if (!hasOverseer) {
+	if (!hasBoss) {
 		await failWithHarness(page, `Expected ${preset.bossType} in enemyHp`);
 	}
 	if (playingHarness?.encounter?.phase !== 'dormant') {
@@ -515,6 +567,7 @@ async function runHubStep({ page, preset, outDirAbs }) {
 	}
 
 	const entryScreenshot = await writeScreenshot(page, outDirAbs, '02-level-entry');
+	const levelEntryFloor = await captureFloorAlignmentProbe(page);
 
 	return {
 		hubScreenshot: path.relative(REPO_ROOT, hubScreenshot),
@@ -524,32 +577,45 @@ async function runHubStep({ page, preset, outDirAbs }) {
 		objectiveType: playingHarness?.objective?.type ?? null,
 		encounterPhase: playingHarness?.encounter?.phase ?? null,
 		bossTypes: (playingHarness?.enemyHp || []).map((e) => e.type),
+		floorAlignment: levelEntryFloor ? { levelEntry: levelEntryFloor } : {},
 	};
 }
 
 async function runBossEncounterStep({ page, preset, outDirAbs }) {
-	const { bossType, nearAddsScenario, bossApproachScenario, encounterTriggerRadius } = preset;
+	const {
+		bossType,
+		nearAddsScenario,
+		bossApproachScenario,
+		encounterTriggerRadius,
+		addTypes,
+	} = preset;
 
 	await enableGodmode(page);
-	await requestScenario(page, nearAddsScenario);
+	if (nearAddsScenario) {
+		await requestScenario(page, nearAddsScenario);
+	}
 
 	const preCombatHarness = await readHarness(page);
-	if (liveAdds(preCombatHarness, bossType).length === 0) {
-		throw new Error(`nearAddsScenario left no live adds for mid-combat capture: ${JSON.stringify(preCombatHarness)}`);
+	if (liveAdds(preCombatHarness, bossType, addTypes).length === 0) {
+		throw new Error(`No live adds for mid-combat capture (nearAddsScenario=${nearAddsScenario ?? 'none'}): ${JSON.stringify(preCombatHarness)}`);
 	}
 
 	let midCombatScreenshot = null;
+	const floorAlignment = {};
 	const afterAddsHarness = await defeatAdds(page, {
 		bossType,
 		timeoutMs: preset.addsTimeoutMs ?? 90000,
 		minAddsLeft: 0,
+		addTypes,
 		onMidCombat: async () => {
 			const midHarness = await readHarness(page);
-			if (liveAdds(midHarness, bossType).length === 0) {
+			if (liveAdds(midHarness, bossType, addTypes).length === 0) {
 				throw new Error('onMidCombat requested with zero live adds');
 			}
 			const shotPath = await writeScreenshot(page, outDirAbs, '03-mid-combat');
 			midCombatScreenshot = path.relative(REPO_ROOT, shotPath);
+			const midCombatFloor = await captureFloorAlignmentProbe(page);
+			if (midCombatFloor) floorAlignment.midCombat = midCombatFloor;
 		},
 	});
 
@@ -558,13 +624,17 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 	}
 
 	assertDormantBoss(afterAddsHarness, bossType);
-	const dormantProbe = buildEncounterProbe(afterAddsHarness, bossType);
+	const dormantProbe = buildEncounterProbe(afterAddsHarness, bossType, addTypes);
 	const dormantScreenshotPath = await writeScreenshot(page, outDirAbs, '04-boss-dormant');
 	const dormantScreenshot = path.relative(REPO_ROOT, dormantScreenshotPath);
+	const dormantFloor = await captureFloorAlignmentProbe(page);
+	if (dormantFloor) floorAlignment.bossDormant = dormantFloor;
 
-	await requestScenario(page, bossApproachScenario);
-	const approachHarness = await readHarness(page);
-	assertDormantBoss(approachHarness, bossType);
+	if (bossApproachScenario) {
+		await requestScenario(page, bossApproachScenario);
+		const approachHarness = await readHarness(page);
+		assertDormantBoss(approachHarness, bossType);
+	}
 
 	const activeHarness = await activateEncounter(page, {
 		bossType,
@@ -575,9 +645,11 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 		throw new Error(`Encounter did not reach active/locked: ${JSON.stringify(activeHarness?.encounter)}`);
 	}
 
-	const activeProbe = buildEncounterProbe(activeHarness, bossType);
+	const activeProbe = buildEncounterProbe(activeHarness, bossType, addTypes);
 	const activeScreenshotPath = await writeScreenshot(page, outDirAbs, '05-boss-active');
 	const activeScreenshot = path.relative(REPO_ROOT, activeScreenshotPath);
+	const activeFloor = await captureFloorAlignmentProbe(page);
+	if (activeFloor) floorAlignment.bossActive = activeFloor;
 
 	return {
 		midCombatScreenshot,
@@ -588,6 +660,7 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 		probes: {
 			dormant: dormantProbe,
 			active: activeProbe,
+			...(Object.keys(floorAlignment).length > 0 ? { floorAlignment } : {}),
 		},
 	};
 }
@@ -615,6 +688,27 @@ async function waitForVictoryState(page, { timeoutMs = 30000 } = {}) {
 	return readHarness(page);
 }
 
+function loadSortieCompleteLabel() {
+	const themePath = path.join(REPO_ROOT, 'game', 'shared', 'theme.json');
+	const theme = JSON.parse(fs.readFileSync(themePath, 'utf8'));
+	return theme.run?.sortieComplete ?? 'Sortie Complete';
+}
+
+async function waitForSortieCompleteOverlay(page, { timeoutMs = 30000 } = {}) {
+	const sortieCompleteLabel = loadSortieCompleteLabel();
+	await page.waitForFunction((expected) => {
+		const overlay = document.getElementById('run-summary-overlay');
+		const status = document.getElementById('summary-status');
+		if (!overlay || !status) return false;
+		const style = getComputedStyle(overlay);
+		if (style.display === 'none' || style.visibility === 'hidden') return false;
+		if (status.textContent.trim() !== expected) return false;
+		return overlay.getBoundingClientRect().height > 0;
+	}, sortieCompleteLabel, { timeout: timeoutMs }).catch(async () => {
+		await failWithHarness(page, 'Sortie Complete overlay not visible');
+	});
+}
+
 async function runVictoryStep({ page, preset, outDirAbs }) {
 	const { bossType, bossLowHpScenario } = preset;
 
@@ -630,6 +724,9 @@ async function runVictoryStep({ page, preset, outDirAbs }) {
 	const bossDefeatedScreenshotPath = await writeScreenshot(page, outDirAbs, '06-boss-defeated');
 
 	const victoryHarness = await waitForVictoryState(page, {
+		timeoutMs: preset.victoryTimeoutMs ?? 30000,
+	});
+	await waitForSortieCompleteOverlay(page, {
 		timeoutMs: preset.victoryTimeoutMs ?? 30000,
 	});
 	const victoryProbe = buildVictoryProbe(victoryHarness);
@@ -704,10 +801,20 @@ function collectHubScreenshots(summary) {
 	return shots;
 }
 
-function writeFullArtifacts({ outDirAbs, summary, consoleEntries }) {
+function mergeFloorAlignmentProbes(summary) {
+	const merged = {
+		...(summary.hub?.floorAlignment || {}),
+		...(summary.bossEncounter?.probes?.floorAlignment || {}),
+	};
+	return Object.keys(merged).length > 0 ? merged : null;
+}
+
+function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
 	const isHub = summary.preset === 'hub';
-	const probes = isHub
-		? {
+	let probes;
+	let findings;
+	if (isHub) {
+		probes = {
 			booth: summary.booth || null,
 			telepipeReset: {
 				preSuspend: summary.telepipeReset?.preSuspend ?? null,
@@ -715,15 +822,8 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries }) {
 				telepipeUpReset: summary.telepipeReset?.telepipeUpReset ?? null,
 			},
 			hubWalk: summary.hubWalk || null,
-		}
-		: {
-			...(summary.bossEncounter?.probes || {}),
-			...(summary.victory?.probes || {}),
 		};
-	fs.writeFileSync(path.join(outDirAbs, 'probes.json'), JSON.stringify(probes, null, 2));
-
-	const findings = isHub
-		? renderHubFindings({
+		findings = renderHubFindings({
 			ok: summary.ok === true,
 			preset: summary.preset,
 			assertions: summary.assertions || {},
@@ -733,15 +833,32 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries }) {
 			booth: summary.booth,
 			telepipeReset: summary.telepipeReset,
 			error: summary.error || null,
-		})
-		: renderFindings({
+		});
+	} else {
+		const { floorAlignment: _bossFloorAlignment, ...encounterProbes } = summary.bossEncounter?.probes || {};
+		const bossProbes = { ...encounterProbes };
+		const floorAlignment = mergeFloorAlignmentProbes(summary);
+		if (floorAlignment) {
+			bossProbes.floorAlignment = floorAlignment;
+		}
+		probes = {
+			...bossProbes,
+			...(summary.victory?.probes || {}),
+		};
+		findings = renderFindings({
 			ok: summary.ok === true,
 			preset: summary.preset,
+			findingsTitle: preset?.findingsTitle,
+			bossSpawnLabel: preset?.bossSpawnLabel,
+			bossType: preset?.bossType,
 			assertions: summary.assertions || {},
+			floorAlignment,
 			consoleErrors: consoleEntries || [],
 			screenshots: collectScreenshots(summary),
 			error: summary.error || null,
 		});
+	}
+	fs.writeFileSync(path.join(outDirAbs, 'probes.json'), JSON.stringify(probes, null, 2));
 	fs.writeFileSync(path.join(outDirAbs, 'findings.md'), findings);
 }
 
@@ -774,11 +891,12 @@ async function main() {
 		assertStepsForPreset(opts.preset, opts.steps);
 		preset = await loadPreset(opts.preset);
 		summary.presetConfig = preset;
-		runsRoomsHub = opts.preset === 'rooms'
+		const isStagePreset = STAGE_PRESETS.has(opts.preset);
+		runsRoomsHub = isStagePreset
 			&& (ROOMS_HUB_STEPS.has(opts.steps) || ROOMS_FULL_STEPS.has(opts.steps));
-		runsBossEncounter = opts.preset === 'rooms'
+		runsBossEncounter = isStagePreset
 			&& (ROOMS_BOSS_ENCOUNTER_STEPS.has(opts.steps) || ROOMS_FULL_STEPS.has(opts.steps));
-		runsRoomsFull = opts.preset === 'rooms' && ROOMS_FULL_STEPS.has(opts.steps);
+		runsRoomsFull = isStagePreset && ROOMS_FULL_STEPS.has(opts.steps);
 		runsHubFull = opts.preset === 'hub' && HUB_FULL_STEPS.has(opts.steps);
 		runsFull = runsRoomsFull || runsHubFull;
 		runsHubWalk = opts.preset === 'hub'
@@ -931,7 +1049,7 @@ async function main() {
 					? buildHubAssertions(summary)
 					: buildAssertions(summary, preset);
 			}
-			writeFullArtifacts({ outDirAbs, summary, consoleEntries });
+			writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset });
 		} else if (summary.bossEncounter?.probes) {
 			const probesPath = path.join(outDirAbs, 'probes.json');
 			fs.writeFileSync(probesPath, JSON.stringify(summary.bossEncounter.probes, null, 2));

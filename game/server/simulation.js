@@ -904,7 +904,7 @@ const ENEMY_DEFS = {
 		name: 'Plaza Sovereign',
 		description: 'Crowned warlord of the open plaza; strikes harder and reaches farther than any vault warden.',
 		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
-		hp: 500, chaseSpeed: 1.5, wanderSpeed: 0.7, attackDamage: 26, attackWindupMs: 1100,
+		hp: 420, chaseSpeed: 1.5, wanderSpeed: 0.7, attackDamage: 26, attackWindupMs: 1100,
 		attackStyle: 'cone', attackConeAngle: (2 * Math.PI) / 3, attackRange: 6.5,
 	},
 	spire_warden: {

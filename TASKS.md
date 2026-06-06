@@ -105,3 +105,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [282-cleanup-debug-unlimited-health-godmode](tickets/282-cleanup-debug-unlimited-health-godmode/)
 - [ ] [283-cleanup-miniboss-spire-ascent](tickets/283-cleanup-miniboss-spire-ascent/)
 - [ ] [284-cleanup-playthrough-validate-ship-hub](tickets/284-cleanup-playthrough-validate-ship-hub/)
+- [ ] [284-cleanup-playthrough-validate-open-plaza](tickets/284-cleanup-playthrough-validate-open-plaza/)
+- [ ] [284-cleanup-playthrough-validate-sunken-canyon](tickets/284-cleanup-playthrough-validate-sunken-canyon/)
+- [ ] [284-cleanup-playthrough-validate-spire-ascent](tickets/284-cleanup-playthrough-validate-spire-ascent/)
+- [ ] [287-cleanup-playthrough-driver-output-quality-findings-victory-path](tickets/287-cleanup-playthrough-driver-output-quality-findings-victory-path/)

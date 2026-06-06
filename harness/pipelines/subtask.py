@@ -186,7 +186,7 @@ def _subtask_body(ctx: SubtaskContext) -> PipelineResult:
         keep_game_running = (game_live and qa_mode == "visual"
                              and ctx.tunables.vision.feedback_on_fail)
         if not keep_game_running:
-            stop_game()
+            stop_game(ports)
 
         try:
             if ticket_allows_harness or ticket_allows_validation:
@@ -220,7 +220,7 @@ def _subtask_body(ctx: SubtaskContext) -> PipelineResult:
         })
         if verdict == "PASS":
             if keep_game_running:
-                stop_game()
+                stop_game(ports)
             committer = ctx.roster.role("committer")
             if not commit_with_role(committer, workspace=ctx.workspace,
                                      ticket_file=ctx.ticket_file, label=ctx.label,
@@ -245,7 +245,7 @@ def _subtask_body(ctx: SubtaskContext) -> PipelineResult:
                                       label=ctx.label, iteration=iteration,
                                       telemetry=ctx.telemetry)
         if keep_game_running:
-            stop_game()
+            stop_game(ports)
         accumulate_feedback(ctx.feedback, iteration=iteration, qa_text=qa_text)
 
     log(f"=== sub-ticket FAILED after {ctx.tunables.max_iter} iterations: {ctx.label} ===")

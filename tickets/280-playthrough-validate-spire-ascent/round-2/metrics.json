@@ -1,0 +1,18 @@
+{
+  "ok": false,
+  "failure_kind": "capture_failed",
+  "capture_diagnosis": {
+    "detected": [],
+    "client_log_tail": "\n  VITE v8.0.13  ready in 643 ms\n\n  \u279c  Local:   http://localhost:5177/\n  \u279c  Network: use --host to expose\n4:53:56 AM [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.\n4:53:59 AM [vite] http proxy error: /api/register\nError: connect ECONNREFUSED 127.0.0.1:3004\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n4:54:00 AM [vite] http proxy error: /api/login\nError: connect ECONNREFUSED 127.0.0.1:3004\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n4:54:02 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=aox4b0bn\nError: connect ECONNREFUSED 127.0.0.1:3004\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n4:54:04 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=aoz3i3q2\nError: connect ECONNREFUSED 127.0.0.1:3004\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n4:54:09 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=ap30goxo\nError: connect ECONNREFUSED 127.0.0.1:3004\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n4:54:14 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=ap6xeg26\nError: connect ECONNREFUSED 127.0.0.1:3004\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n4:54:19 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=apau0t58\nError: connect ECONNREFUSED 127.0.0.1:3004\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n4:54:24 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=apeqc14x\nError: connect ECONNREFUSED 127.0.0.1:3004\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)",
+    "server_log_tail": "[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/280-playthrough-validate-spire-ascent/game/data/users.json\n[server] Layout for quest \"training_caverns\" tier 1: seed=352369970, profile=crowded, rooms=10\n[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]\n[auth] JWT_SECRET not set \u2014 using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.\n[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/280-playthrough-validate-spire-ascent/game/data\nServer listening on port 3004\nPlayer connected: socket=pzOpOcFyX0wj-aMWAAAB, playerId=7de59500-906b-4d3f-9aa3-781afad97606\n[server] SIGTERM received \u2014 closing HTTP server undefined\n[server] Layout for quest \"training_caverns\" tier 1: seed=352369970, profile=crowded, rooms=10\n[server] forced exit after SIGTERM shutdown timeout undefined",
+    "port_holders": {
+      "5177": [
+        {
+          "pid": 1211202,
+          "cmdline": "node /home/matt/workspace/.autogame-worktrees/280-playthrough-validate-spire-ascent/game/client/node_modules/.bin/../vite/bin/vite.js --port 5177 --strictPort"
+        }
+      ],
+      "3004": []
+    }
+  }
+}

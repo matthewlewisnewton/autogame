@@ -49,6 +49,8 @@ const { VARIANT_DEFS } = require('./enemyVariants');
 const { PHASES, setPhase } = require('./lobbies');
 const {
   tryActivateEncounter,
+  activateEncounter,
+  lockEncounter,
   ENCOUNTER_TRIGGER_RADIUS,
   isEncounterDormant,
   areAllNonBossEnemiesDefeated,
@@ -127,6 +129,51 @@ function liveTrainingCavernsAdds(state, bossType = 'annex_overseer') {
   return (state.enemies || []).filter(
     (e) => e.hp > 0 && e.type !== bossType && (e.type === 'grunt' || e.type === 'skirmisher'),
   );
+}
+
+function resolveSpireSummitAnchor(state) {
+  const summit = state.layout?.landmarks?.find((lm) => lm.type === 'spire_summit');
+  return summit ? { x: summit.x, z: summit.z } : firstRoomPosition();
+}
+
+function liveSpireAscentAdds(state, bossType = 'spire_warden') {
+  return (state.enemies || []).filter(
+    (e) => e.hp > 0 && e.type !== bossType,
+  );
+}
+
+function liveCanyonDescentAdds(state, bossType = 'miniboss') {
+  return (state.enemies || []).filter(
+    (e) => e.hp > 0 && e.type !== bossType && (e.type === 'grunt' || e.type === 'skirmisher'),
+  );
+}
+
+function liveArenaTrialsAdds(state, bossType = 'arena_champion') {
+  return (state.enemies || []).filter(
+    (e) => e.hp > 0 && e.type !== bossType && (e.type === 'grunt' || e.type === 'skirmisher'),
+  );
+}
+
+function roomAt(layout, x, z) {
+  return layout.rooms.find((r) => {
+    const hw = r.width / 2;
+    const hd = r.depth / 2;
+    return x >= r.x - hw && x <= r.x + hw && z >= r.z - hd && z <= r.z + hd;
+  });
+}
+
+function bandAt(layout, x, z) {
+  const room = roomAt(layout, x, z);
+  return room ? room.band : null;
+}
+
+function clusterAnchorForBand(layout, band, player) {
+  if (band === 'plateau' || !band) {
+    return { x: player.x, z: player.z };
+  }
+  const room = layout.rooms.find((r) => r.band === band);
+  if (room) return { x: room.x, z: room.z };
+  return { x: player.x, z: player.z };
 }
 
 function repositionNearEnemy(player, enemy, standoff = 3.5) {
@@ -466,6 +513,128 @@ function applyDebugScenario(socket, name) {
       };
     }
 
+    if (name === 'arena-trials-near-adds') {
+      // Reposition beside live Arena Trials Tier 2 adds for harness add-combat QA.
+      // Reachable normally by pulling wandering adds together on the open plaza.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'arena_trials'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires arena_trials Tier 2 stage-boss run' };
+      }
+      const adds = liveArenaTrialsAdds(state);
+      if (adds.length === 0) {
+        return { ok: false, reason: 'No live adds to approach' };
+      }
+      let nearest = adds[0];
+      let bestDist = Infinity;
+      for (const add of adds) {
+        const dist = Math.hypot(add.x - player.x, add.z - player.z);
+        if (dist < bestDist) {
+          bestDist = dist;
+          nearest = add;
+        }
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.hand[0] = {
+        id: 'iron_sword',
+        name: 'Rust-Forged Saber',
+        type: 'weapon',
+        damage: 17,
+        charges: 5,
+        remainingCharges: 5,
+        grind: 0,
+      };
+      // Cluster away from arena_dais so add combat does not walk into the boss trigger.
+      const dais = resolveArenaDaisAnchor(state);
+      const clusterAnchor = { x: dais.x - 12, z: dais.z - 12 };
+      const clusterRadius = 4;
+      let angle = 0;
+      const step = adds.length > 0 ? (Math.PI * 2) / adds.length : 0;
+      for (const add of adds) {
+        add.hp = 1;
+        add.shieldHp = 0;
+        add.maxShieldHp = 0;
+        add.x = clusterAnchor.x + Math.cos(angle) * clusterRadius;
+        add.z = clusterAnchor.z + Math.sin(angle) * clusterRadius;
+        add.wanderTarget = { x: add.x, z: add.z };
+        angle += step;
+      }
+      player.x = clusterAnchor.x;
+      player.z = clusterAnchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      repositionNearEnemy(player, nearest);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'arena-trials-boss-approach') {
+      // Place the player just outside the dormant arena_champion trigger after adds are cleared.
+      // Reachable normally by defeating adds then walking to the arena_dais boss.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'arena_trials'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires arena_trials Tier 2 stage-boss run' };
+      }
+      if (liveArenaTrialsAdds(state).length > 0) {
+        return { ok: false, reason: 'Adds must be cleared before boss approach' };
+      }
+      if (state.run.encounter.phase !== 'dormant') {
+        return { ok: false, reason: 'Encounter must be dormant' };
+      }
+      const anchor = resolveArenaDaisAnchor(state);
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 1;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      player.debugScenarioNudgeAfter = Date.now() + 1500;
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'arena-trials-boss-low-hp') {
+      // Arena Trials Tier 2 arena_champion beside the player at 1 HP for fast harness victory.
+      // Reachable normally by clearing adds and engaging the boss; shortcut after deploy.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'arena_trials'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires arena_trials Tier 2 stage-boss run' };
+      }
+      const bossId = state.run.encounter.bossEnemyId;
+      for (const enemy of state.enemies || []) {
+        if (enemy.id !== bossId) enemy.hp = 0;
+      }
+      state.enemies = (state.enemies || []).filter((e) => e.hp > 0);
+      const boss = state.enemies.find((e) => e.id === bossId);
+      if (!boss || boss.type !== 'arena_champion') {
+        return { ok: false, reason: 'Arena champion boss not found' };
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      repositionNearEnemy(player, boss, 4);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      boss.hp = 1;
+      boss.maxHp = boss.maxHp || boss.hp;
+      boss.shieldHp = 0;
+      boss.maxShieldHp = 0;
+      if (isEncounterDormant(state.run)) {
+        activateEncounter(state.run);
+      }
+      if (!state.run.encounter.locked) {
+        lockEncounter(state.run);
+      }
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
     if (name === 'stage-boss-dormant') {
       // arena_trials Tier 2 stage_boss encounter left dormant for QA.
       // Reachable normally by unlocking Arena Trials Tier 2 and deploying.
@@ -497,6 +666,137 @@ function applyDebugScenario(socket, name) {
         boss.maxHp = boss.maxHp || boss.hp;
       }
       return finishStageBossDebugScenario(lobby, state, player, name);
+    }
+
+    if (name === 'arena-trials-near-adds') {
+      // Reposition beside live Arena Trials Tier 2 adds for harness add-combat QA.
+      // Reachable normally by traversing the open plaza toward wandering adds.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'arena_trials'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires arena_trials Tier 2 stage-boss run' };
+      }
+      const adds = liveArenaTrialsAdds(state);
+      if (adds.length === 0) {
+        return { ok: false, reason: 'No live adds to approach' };
+      }
+      let nearest = adds[0];
+      let bestDist = Infinity;
+      for (const add of adds) {
+        const dist = Math.hypot(add.x - player.x, add.z - player.z);
+        if (dist < bestDist) {
+          bestDist = dist;
+          nearest = add;
+        }
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.hand[0] = {
+        id: 'iron_sword',
+        name: 'Rust-Forged Saber',
+        type: 'weapon',
+        damage: 17,
+        charges: 5,
+        remainingCharges: 5,
+        grind: 0,
+      };
+      // Cluster every live add on the start plaza (wounded, shields stripped) so the
+      // harness can clear the pack through lock-on + swings without crossing the
+      // arena_champion boss trigger. Each add gets correct floor Y via sampleFloorY.
+      const clusterAnchor = firstRoomPosition();
+      const clusterRadius = 4;
+      let angle = 0;
+      const step = adds.length > 0 ? (Math.PI * 2) / adds.length : 0;
+      for (const add of adds) {
+        add.hp = 1;
+        add.shieldHp = 0;
+        add.maxShieldHp = 0;
+        add.x = clusterAnchor.x + Math.cos(angle) * clusterRadius;
+        add.z = clusterAnchor.z + Math.sin(angle) * clusterRadius;
+        add.y = resolveFloorY(sampleFloorY(state.layout, add.x, add.z));
+        add.wanderTarget = { x: add.x, z: add.z };
+        angle += step;
+      }
+      player.x = clusterAnchor.x;
+      player.z = clusterAnchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      repositionNearEnemy(player, nearest);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'arena-trials-boss-approach') {
+      // Place the player just outside the dormant arena_champion trigger after adds clear.
+      // Reachable normally by defeating adds then walking to the arena dais anchor.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'arena_trials'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires arena_trials Tier 2 stage-boss run' };
+      }
+      if (liveArenaTrialsAdds(state).length > 0) {
+        return { ok: false, reason: 'Adds must be cleared before boss approach' };
+      }
+      if (state.run.encounter.phase !== 'dormant') {
+        return { ok: false, reason: 'Encounter must be dormant' };
+      }
+      const anchor = resolveEncounterAnchor(state.run, state) || resolveArenaDaisAnchor(state);
+      if (!anchor) {
+        return { ok: false, reason: 'No encounter anchor for boss approach' };
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 1;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      player.debugScenarioNudgeAfter = Date.now() + 1500;
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'arena-trials-boss-low-hp') {
+      // Arena Trials Tier 2 arena_champion beside the player at 1 HP for fast victory.
+      // Reachable normally by clearing adds and engaging the boss; shortcut after deploy.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'arena_trials'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires arena_trials Tier 2 stage-boss run' };
+      }
+      const bossId = state.run.encounter.bossEnemyId;
+      for (const enemy of state.enemies || []) {
+        if (enemy.id !== bossId) enemy.hp = 0;
+      }
+      state.enemies = (state.enemies || []).filter((e) => e.hp > 0);
+      const boss = state.enemies.find((e) => e.id === bossId);
+      if (!boss || boss.type !== 'arena_champion') {
+        return { ok: false, reason: 'Arena champion not found' };
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      boss.x = player.x + 4;
+      boss.z = player.z;
+      boss.y = resolveFloorY(sampleFloorY(state.layout, boss.x, boss.z));
+      repositionNearEnemy(player, boss, 4);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      boss.hp = 1;
+      boss.maxHp = boss.maxHp || boss.hp;
+      boss.shieldHp = 0;
+      boss.maxShieldHp = 0;
+      // Harness activates the encounter before boss-low-hp; direct URL/debug use may still be dormant.
+      if (isEncounterDormant(state.run)) {
+        activateEncounter(state.run);
+      }
+      if (!state.run.encounter.locked) {
+        lockEncounter(state.run);
+      }
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
     }
 
     if (name === 'crystal-rescue-tier-2') {
@@ -601,6 +901,138 @@ function applyDebugScenario(socket, name) {
       };
     }
 
+    if (name === 'canyon-descent-near-adds') {
+      // Reposition beside live Canyon Descent Tier 2 adds for harness add-combat QA.
+      // Reachable normally by traversing plateau/canyon bands toward wandering adds.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'canyon_descent'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires canyon_descent Tier 2 stage-boss run' };
+      }
+      const adds = liveCanyonDescentAdds(state);
+      if (adds.length === 0) {
+        return { ok: false, reason: 'No live adds to approach' };
+      }
+      let nearest = adds[0];
+      let bestDist = Infinity;
+      for (const add of adds) {
+        const dist = Math.hypot(add.x - player.x, add.z - player.z);
+        if (dist < bestDist) {
+          bestDist = dist;
+          nearest = add;
+        }
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.hand[0] = {
+        id: 'iron_sword',
+        name: 'Rust-Forged Saber',
+        type: 'weapon',
+        damage: 17,
+        charges: 5,
+        remainingCharges: 5,
+        grind: 0,
+      };
+      // Cluster every live add on the start plateau (wounded, shields stripped) so the
+      // harness can clear the pack through lock-on + swings without crossing bands or
+      // the canyon_monolith boss trigger. Each add still gets band-correct floor Y via
+      // sampleFloorY at its cluster position.
+      const clusterAnchor = firstRoomPosition();
+      const clusterRadius = 4;
+      let angle = 0;
+      const step = adds.length > 0 ? (Math.PI * 2) / adds.length : 0;
+      for (const add of adds) {
+        add.hp = 1;
+        add.shieldHp = 0;
+        add.maxShieldHp = 0;
+        add.x = clusterAnchor.x + Math.cos(angle) * clusterRadius;
+        add.z = clusterAnchor.z + Math.sin(angle) * clusterRadius;
+        add.y = resolveFloorY(sampleFloorY(state.layout, add.x, add.z));
+        add.wanderTarget = { x: add.x, z: add.z };
+        angle += step;
+      }
+      player.x = clusterAnchor.x;
+      player.z = clusterAnchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      repositionNearEnemy(player, nearest);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'canyon-descent-boss-approach') {
+      // Place the player just outside the dormant miniboss trigger after adds are cleared.
+      // Reachable normally by defeating adds then walking to the canyon_monolith anchor.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'canyon_descent'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires canyon_descent Tier 2 stage-boss run' };
+      }
+      if (liveCanyonDescentAdds(state).length > 0) {
+        return { ok: false, reason: 'Adds must be cleared before boss approach' };
+      }
+      if (state.run.encounter.phase !== 'dormant') {
+        return { ok: false, reason: 'Encounter must be dormant' };
+      }
+      const anchor = resolveEncounterAnchor(state.run, state);
+      if (!anchor) {
+        return { ok: false, reason: 'No encounter anchor for boss approach' };
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 1;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      player.debugScenarioNudgeAfter = Date.now() + 1500;
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'canyon-descent-boss-low-hp') {
+      // Canyon Descent Tier 2 miniboss beside the player at 1 HP for fast harness victory.
+      // Reachable normally by clearing adds and engaging the boss; shortcut after deploy.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'canyon_descent'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires canyon_descent Tier 2 stage-boss run' };
+      }
+      const bossId = state.run.encounter.bossEnemyId;
+      for (const enemy of state.enemies || []) {
+        if (enemy.id !== bossId) enemy.hp = 0;
+      }
+      state.enemies = (state.enemies || []).filter((e) => e.hp > 0);
+      const boss = state.enemies.find((e) => e.id === bossId);
+      if (!boss || boss.type !== 'miniboss') {
+        return { ok: false, reason: 'Canyon miniboss not found' };
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      boss.x = player.x + 4;
+      boss.z = player.z;
+      boss.y = resolveFloorY(sampleFloorY(state.layout, boss.x, boss.z));
+      repositionNearEnemy(player, boss, 4);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      boss.hp = 1;
+      boss.maxHp = boss.maxHp || boss.hp;
+      boss.shieldHp = 0;
+      boss.maxShieldHp = 0;
+      // Harness activates the encounter before boss-low-hp; direct URL/debug use may still be dormant.
+      if (isEncounterDormant(state.run)) {
+        activateEncounter(state.run);
+      }
+      if (!state.run.encounter.locked) {
+        lockEncounter(state.run);
+      }
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
     if (name === 'spire-ascent-tier-2') {
       // spire_ascent Tier 2 with rigid spire-ascent layout and bottom/top-weighted spawns.
       // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
@@ -651,6 +1083,121 @@ function applyDebugScenario(socket, name) {
         scenario: name,
         unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
       };
+    }
+
+    if (name === 'spire-ascent-near-adds') {
+      // Reposition beside live Spire Ascent Tier 2 adds for harness add-combat QA.
+      // Reachable normally by traversing combat tiers toward wandering adds.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'spire_ascent'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires spire_ascent Tier 2 stage-boss run' };
+      }
+      const adds = liveSpireAscentAdds(state);
+      if (adds.length === 0) {
+        return { ok: false, reason: 'No live adds to approach' };
+      }
+      let nearest = adds[0];
+      let bestDist = Infinity;
+      for (const add of adds) {
+        const dist = Math.hypot(add.x - player.x, add.z - player.z);
+        if (dist < bestDist) {
+          bestDist = dist;
+          nearest = add;
+        }
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.hand[0] = {
+        id: 'iron_sword',
+        name: 'Rust-Forged Saber',
+        type: 'weapon',
+        damage: 17,
+        charges: 5,
+        remainingCharges: 5,
+        grind: 0,
+      };
+      const clusterAnchor = firstRoomPosition();
+      const clusterRadius = 4;
+      let angle = 0;
+      const step = adds.length > 0 ? (Math.PI * 2) / adds.length : 0;
+      for (const add of adds) {
+        add.hp = 1;
+        add.shieldHp = 0;
+        add.maxShieldHp = 0;
+        add.x = clusterAnchor.x + Math.cos(angle) * clusterRadius;
+        add.z = clusterAnchor.z + Math.sin(angle) * clusterRadius;
+        add.wanderTarget = { x: add.x, z: add.z };
+        angle += step;
+      }
+      player.x = clusterAnchor.x;
+      player.z = clusterAnchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      repositionNearEnemy(player, nearest);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'spire-ascent-boss-approach') {
+      // Place the player just outside the dormant Summit Warden trigger after adds are cleared.
+      // Reachable normally by defeating adds then walking to the spire_summit boss room.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'spire_ascent'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires spire_ascent Tier 2 stage-boss run' };
+      }
+      if (liveSpireAscentAdds(state).length > 0) {
+        return { ok: false, reason: 'Adds must be cleared before boss approach' };
+      }
+      if (state.run.encounter.phase !== 'dormant') {
+        return { ok: false, reason: 'Encounter must be dormant' };
+      }
+      const anchor = resolveEncounterAnchor(state.run, state) || resolveSpireSummitAnchor(state);
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 1;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      player.debugScenarioNudgeAfter = Date.now() + 1500;
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'spire-ascent-boss-low-hp') {
+      // Spire Ascent Tier 2 spire_warden beside the player at 1 HP for fast
+      // harness victory. Reachable normally by clearing adds and engaging the boss;
+      // this scenario is a shortcut after deploy or mid-encounter.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'spire_ascent'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires spire_ascent Tier 2 stage-boss run' };
+      }
+      const bossId = state.run.encounter.bossEnemyId;
+      for (const enemy of state.enemies || []) {
+        if (enemy.id !== bossId) enemy.hp = 0;
+      }
+      state.enemies = (state.enemies || []).filter((e) => e.hp > 0);
+      const boss = state.enemies.find((e) => e.id === bossId);
+      if (!boss || boss.type !== 'spire_warden') {
+        return { ok: false, reason: 'Summit Warden boss not found' };
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      repositionNearEnemy(player, boss, 4);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      boss.hp = 1;
+      boss.maxHp = boss.maxHp || boss.hp;
+      boss.shieldHp = 0;
+      boss.maxShieldHp = 0;
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
     }
 
     if (name === 'hats-unlocked') {
@@ -1538,8 +2085,15 @@ function applyDebugScenario(socket, name) {
   });
 }
 
+const BOSS_APPROACH_NUDGE_SCENARIOS = new Set([
+  'training-caverns-boss-approach',
+  'canyon-descent-boss-approach',
+  'arena-trials-boss-approach',
+  'spire-ascent-boss-approach',
+]);
+
 /**
- * Debug-only: while `training-caverns-boss-approach` is active, inch the player toward
+ * Debug-only: while a boss-approach scenario is active, inch the player toward
  * the encounter anchor each tick so headless harness walks can enter the trigger radius.
  * Nudging is deferred briefly after setup so dormant probes can read stable state.
  */
@@ -1553,7 +2107,7 @@ function nudgeDebugBossApproachPlayers(state) {
 
   const now = Date.now();
   for (const player of Object.values(state.players)) {
-    if (!player || player.debugScenario !== 'training-caverns-boss-approach') continue;
+    if (!player || !BOSS_APPROACH_NUDGE_SCENARIOS.has(player.debugScenario)) continue;
     if (player.debugScenarioNudgeAfter && now < player.debugScenarioNudgeAfter) continue;
     const dx = anchor.x - player.x;
     const dz = anchor.z - player.z;

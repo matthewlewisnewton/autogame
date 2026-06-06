@@ -1,0 +1,13 @@
+Review complete. **VERDICT: PASS.**
+
+Summary:
+- **Runtime gate passes** — `metrics.json` `ok: true`, empty `pageerrors`, no `harness_failure`; console/client logs only benign noise. Game starts and loads cleanly.
+- **AC1 (parameterized findings.md)** ✓ — `PRESET_FINDINGS` map removed; title/boss now derive from the preset. Regenerated `findings.md` is correctly headed "Open Plaza validation findings" with boss `arena_champion (Arena Champion)`. The rooms/annex_overseer copy-paste bug is gone.
+- **AC2 (distinct victory screenshot)** ✓ — 06 and 07 now byte-distinct (md5 `dc92be05…` vs `79a2c3f7…`); driver explicitly waits for the Sortie Complete overlay before 07; an md5-distinctness guard was added to all three preset verifiers.
+- **AC3 (standardized location)** ✓ — `--out` defaults to `game/validation/<preset>/`; repo-root `validation/open-plaza/` deleted; new open-plaza verifier exits 0.
+- **New arena_trials debug scenarios** are properly gated, preserve the normal-play path to the same end-state, short-circuit no invariants, and are test-covered.
+- **Validation:** server suite 1668 passed, 186 in the targeted files, verifier exit 0.
+
+I recorded one non-blocking nit in `nits.md`: for the instakill boss-low-hp path, `06-boss-defeated.png` shows the same Sortie Complete overlay as `07-victory.png`, so byte-distinctness rests on spinner animation rather than a genuinely different game state.
+
+Wrote `review.md` and `nits.md`; per instructions, did not write `gaps.md` (PASS). Note: a stale `gaps.md` from a prior attempt remains in the directory — I left it untouched per the "only write the review files" rule, but the harness should rely on the `VERDICT: PASS` line.

@@ -1,0 +1,14 @@
+I've broken the top-level ticket into two dependency-ordered sub-tickets.
+
+**Sub-ticket folders created:**
+- `tickets/278-playthrough-validate-open-plaza/subtickets/01-open-plaza-preset-and-optional-scenarios/ticket.md`
+- `tickets/278-playthrough-validate-open-plaza/subtickets/02-execute-open-plaza-validation/ticket.md`
+
+**Rationale for this split:**
+
+The 277 playthrough driver is generic via presets, but `runBossEncounterStep` hard-requires a `nearAddsScenario` and `bossApproachScenario`. Arena Trials only has `arena-trials-tier-2`, `stage-boss-dormant`, and `stage-boss-active` — there are **no** arena equivalents of the rooms `near-adds` / `boss-approach` / `boss-low-hp` scenarios, and adding them would be out-of-scope gameplay code. Since the `arena-trials-tier-2` deploy already spawns live adds plus a dormant `arena_champion`, and the combat helpers (`defeatAdds`, `activateEncounter`, `defeatBoss`) are generic, the in-scope fix is to make those two scenario steps optional and drive the natural flow (clear adds → walk into trigger → defeat boss).
+
+- **01 (harness, `code`)** adds the `open-plaza` preset and makes the two scenario steps optional, keeping `rooms` behavior identical. Verified by reading the diff/logic and the test suite — no running game needed.
+- **02 (artifacts, `code`)** executes the full run and lands `validation/open-plaza/` artifacts, with assertions passing or `findings.md` honestly documenting a real failure. Verified by QA reading the diff, `run-summary.json` assertions, `findings.md`, and the committed screenshots — `visual` QA only sees one happy-path WASD run and couldn't confirm boss spawn/activation/hp→0/victory state, so `code` is required.
+
+Both default to `code` verification per the guidance, since every acceptance criterion concerns structure, config, server/run state, and assertion values rather than pure on-screen rendering.

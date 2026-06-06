@@ -1,0 +1,13 @@
+Created **2 sub-tickets** in dependency order:
+
+1. `/home/matt/workspace/.autogame-worktrees/282-fix-hostiles-purged-count-ignores-boss-encounter-kills/tickets/282-fix-hostiles-purged-count-ignores-boss-encounter-kills/subtickets/01-failing-stage-boss-kill-count-test/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/282-fix-hostiles-purged-count-ignores-boss-encounter-kills/tickets/282-fix-hostiles-purged-count-ignores-boss-encounter-kills/subtickets/02-stage-boss-kill-accounting/ticket.md`
+
+**Plan summary**
+
+| # | Focus |
+|---|--------|
+| **01** | Red vitest reproducing the bug via real `removeDeadEnemies` → `buildRunSummary` (boss + adds killed, `defeatedEnemies` still 0) |
+| **02** | Server fix: `stage_boss` `defeatedEnemies`/`totalEnemies` tracking, activation-time dead-add credit, regression test updates |
+
+Root cause: `stage_boss` in `objectives.js` has no `onEnemyDefeated` hook or `defeatedEnemies` field, so `recordEnemyDefeated` is a no-op and the victory summary shows `Hostiles purged: 0` despite `bossDefeated: true`. Both sub-tickets use **code** verification.

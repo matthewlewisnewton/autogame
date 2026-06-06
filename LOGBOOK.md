@@ -4889,6 +4889,152 @@ PASS. The implementation stays aligned with `game/docs/design.md`: the lobby rem
 
 PASS. The diff was reviewed against `8bf01834a57011da31965759d85eea40e47222bb`; the current game code is the source of truth. Coverage output reports 31 test files and 1160 tests passing. I noticed one unused import nit in `game/server/simulation.js`, filed separately in `nits.md`; it is not a blocker.
 
+
+## v0.275 — 278-playthrough-validate-open-plaza  (2026-06-06 02:33:34)
+
+- Victory fires: final probe has `runStatus: "victory"` and objective complete.
+
+### Debug scenario safety
+
+PASS. This ticket did not add a new game debug scenario. It reuses `arena-trials-tier-2`, which is gated behind the existing debug-scenario socket path and `ALLOW_DEBUG_SCENARIOS` server gate. Normal gameplay still reaches the same end state by clearing Arena Trials tier 1, unlocking tier 2, deploying, clearing adds, entering the trigger radius, and defeating the boss. The playthrough harness only uses the debug scenario as a QA entry shortcut; the boss activation and defeat path in this run proceeds through normal encounter/combat logic.
+
+### Design and requirements consistency
+
+PASS. The implementation does not change `game/**` gameplay code, so it does not regress the documented lobby-to-dungeon core loop or the foundation requirements for 3D rendering, client/server connectivity, player visualization, and movement synchronization. The round-1 smoke capture confirms the game loads, connects, renders, enters play, and responds to movement/key-item input.
+
+### Code quality and verification
+
+PASS with non-blocking nits. The harness changes are small and scoped to `harness/validate/**`. `node harness/validate/playthrough.mjs --help` runs successfully, and `git diff --check` reports no whitespace errors. The provided coverage log is informational only and found no changed-file test files to cover.
+
+The remaining rough edges are backlog-worthy rather than blockers for this validation ticket: the findings renderer still has hard-coded Rooms/annex-overseer labels, the arena champion model asset is missing and falls back to a placeholder mesh, and the Open Plaza full-HP run is documented as flaky over repeated executions.
+
+## v0.276 — 279-playthrough-validate-sunken-canyon  (2026-06-06 02:45:41)
+
+- **Reach, activate, and defeat the stage boss:** PASS. `run-summary.json` has all four assertions true: `bossSpawned`, `encounterActivated`, `bossDefeated`, and `victoryFired`. The active probe shows the encounter locked/active, and the victory probes show `runStatus: "victory"`, `runObjectiveComplete: true`, `bossDefeated: true`, and `lastRunSummaryStatus: "victory"`.
+- **Capture required screenshots and findings under `game/validation/sunken-canyon/`:** PASS. The directory contains hub/lobby, level entry, mid-combat, boss dormant, boss active, boss defeated, and victory screenshots, plus `findings.md`, `probes.json`, `console.log`, and `run-summary.json`. The screenshots show the expected lobby, Sunken Canyon run, boss encounter states, and sortie-complete overlay.
+- **Pay attention to multi-level canyon floor alignment:** PASS. `probes.json` records floor samples at level entry, mid-combat, boss dormant, and boss active. All sampled `playerY - floorY` deltas are `0`, including the canyon-band boss-active probe at `playerY: 0.5`.
+
+## Design and requirements consistency
+
+PASS. The implementation remains aligned with the documented lobby-to-dungeon loop and server-authoritative floor sampling in `game/docs/design.md`. It does not regress the foundation requirements: the captured run renders a 3D scene, connects client/server over sockets, shows multiplayer state, and preserves movement/gameplay responsiveness in the smoke capture.
+
+## Debug scenario review
+
+PASS. The newly used Canyon Descent shortcuts are debug-only socket scenarios gated by `isDebugScenarioAllowed`, and the URL `?debugScenario=...` path remains localhost-only on the client. The same gameplay states remain reachable normally by unlocking Canyon Descent Tier II, deploying into the stage-boss run, clearing adds, approaching the `canyon_monolith`, and defeating the boss. The scenarios use the normal quest/run/encounter helpers (`applyLayoutForQuest`, `spawnEnemies`, `startDungeonRun`, `activateEncounter`, `lockEncounter`) and do not alter production gameplay paths.
+
+## Code quality and validation
+
+PASS. The changed code is scoped to the validation harness, artifacts, debug/test hooks, and focused tests. Full Vitest coverage visibility completed with `79` test files and `1406` tests passing, and `pnpm validate:sunken-canyon:check` exits `0` against the committed artifacts. I found only a minor cleanup nit, recorded separately in `nits.md`.
+
+## v0.277 — 282-fix-hostiles-purged-count-ignores-boss-encounter-kills  (2026-06-06 03:20:03)
+
+### Stage-boss victory semantics are preserved
+
+PASS. The implementation does not make kill count progress complete a `stage_boss` run. `isComplete()` still depends on a cleared encounter or `bossDefeated`, and the updated tests assert that `recordEnemyDefeated(5)` increases the count without completing the objective. This preserves the design requirement that dungeon completion depends on defeating the boss, not merely satisfying a numeric kill counter.
+
+### Regression coverage
+
+PASS. The new `game/server/test/stage_boss_kill_count.test.js` exercises the full server-side path: deploy a stage-boss run, kill and remove adds through `removeDeadEnemies()`, activate the encounter, kill the boss through `cleanupAfterDamage()`, finish victory, and assert both `run.objective.defeatedEnemies` and `buildRunSummary('victory').defeatedEnemies` equal boss plus adds. Existing stage-boss tests for Training Caverns, Canyon Descent, Spire Ascent, and Arena Trials were adjusted to reflect the new progress accounting while preserving boss-gated completion.
+
+### Design and foundation consistency
+
+PASS. The changes stay in server kill/objective accounting and tests, matching the design's dungeon loop of defeating AI enemies and completing objectives. They do not affect the Three.js rendering, socket architecture, multiplayer visualization, or movement synchronization requirements in `game/docs/requirements.md`.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change debug scenario entry points. Existing boss approach and low-HP shortcuts remain debug-only paths behind `?debugScenario`/debug socket invocation, and the normal equivalent path remains reachable by unlocking/deploying the Tier 2 quest, clearing adds through combat, entering the encounter radius, and defeating the boss. The accounting fix is in the shared server removal/objective path, not in a debug-only substitute.
+
+## Remaining gaps
+
+None.
+
+
+## v0.278 — 283-add-stage-boss-health-bar-and-encounter-ui  (2026-06-06 03:36:23)
+
+### Every per-level stage boss is supported
+
+PASS. The implementation is data-driven by `bossEnemyId` plus the enemy display catalog, so it is not hard-coded to a single boss type. The wiring test covers the current stage-boss enemy types from the live quest/catalog data: `annex_overseer`, `arena_champion`, `miniboss`, and `spire_warden`.
+
+### No gameplay changes or foundation regressions
+
+PASS. The branch is scoped to client UI, styling, and tests. Server encounter activation, boss spawn, objective completion, movement, rendering, and multiplayer socket flow are untouched. The captured run still satisfies the foundation requirements: 3D scene renders, socket connection succeeds, two players enter gameplay, and movement/key-item state updates are visible.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=...` shortcut. Existing debug scenarios remain server-side QA conveniences and are not part of the normal gameplay entry path for this HUD.
+
+## Code quality and validation
+
+PASS. The HUD logic is isolated in a small pure module with DOM sync separated from model building, matching existing client test patterns. The coverage log shows `client/test/boss-encounter-hud.test.js` and `client/test/boss-encounter-hud-wiring.test.js` passing, with the overall visible test run at 12 files / 250 tests passed. The only stderr in coverage is pre-existing jsdom model URL noise, not a runtime browser error.
+
+## Remaining gaps
+
+None.
+
+
+## v0.279 — 285-open-plaza-missing-encounter-debug-scenarios-and-flaky-defeat  (2026-06-06 04:06:17)
+
+PASS. The captured run proof is clean: `metrics.json` has `"ok": true`, no `harness_failure`, and an empty `pageerrors` array. `console.log` contains only Vite connection logs, scene initialization, ready-up, and the applied `sunken-canyon-stage` debug scenario; there are no `pageerror` or `[fatal]` lines from game code. Server and client logs show normal startup and teardown, with only a benign THREE deprecation warning in the Vite client log.
+
+### Add open-plaza / arena_trials encounter debug scenarios
+PASS. The implementation adds and registers `arena-trials-near-adds`, `arena-trials-boss-approach`, and `arena-trials-boss-low-hp` in the existing debug-scenario path. Each requires an active `arena_trials` Tier 2 stage-boss run and refuses to run outside that state, so normal gameplay does not touch the shortcuts. The client entry remains the localhost `?debugScenario=NAME` flow, with the socket event serving as the existing transport behind that debug path.
+
+The scenarios are consistent with the training-caverns and canyon-descent patterns: near-adds clusters live adds with a usable weapon, boss-approach requires adds cleared and places the player just outside the dormant trigger, and boss-low-hp preserves the real boss enemy, locks/activates the encounter, and leaves the player to finish through normal combat. The normal state remains reachable by clearing Arena Trials Tier 1 to unlock Tier 2, deploying into the `arena_trials` stage-boss quest, defeating adds, approaching the arena dais, and fighting the `arena_champion`.
+
+### Investigate and retune arena_champion defeat flakiness
+PASS. `arena_champion` HP is reduced from 500 to 420 while leaving its identity and pressure profile unchanged (`attackDamage`, cone style/angle, and range are pinned by tests). This aligns it with `spire_warden`, matching the design note that stage boss HP values should stay within a tight band so full-HP defeats fit the 180s validation window.
+
+### Design and requirements consistency
+PASS. The new Stage Bosses section in `game/docs/design.md` accurately documents the HP tuning and preserves the open plaza boss as a hard-hitting, long-range encounter. The changes do not regress the foundation in `game/docs/requirements.md`: the captured run proves the 3D scene renders, socket connection works, multiplayer state appears, and movement/dodge interactions still update.
+
+### Code quality, tests, and coverage
+PASS. The code is scoped to server debug scenario setup, scenario registration, the enemy definition, docs, and focused tests. The scenario code uses existing helpers for quest layout, encounter anchors, floor sampling, lobby broadcast, and state snapshots; no dead or broken code was found. Coverage log shows `75` test files and `1421` tests passing, including `server/test/debug-scenarios.test.js` and `server/test/arena_champion_hp.test.js`.
+
+## Remaining gaps
+
+None.
+
+
+## v0.280 — 286-playthrough-driver-output-quality-findings-victory-path  (2026-06-06 04:27:59)
+
+- **No invariant short-circuit** — no server validation, persistence, or
+  replication is skipped; the boss-low-hp scenario sets HP to 1 but the kill,
+  victory detection and run-summary still run normally.
+  Covered by new `server/test/debug-scenarios.test.js`.
+
+## Validation
+
+- `vitest run server/` — 98 files, 1668 tests passed.
+- `findings-render` + `debug-scenarios` + client `main.test.js` — 186 passed.
+- `node harness/validate/verify-open-plaza-artifacts.mjs` — exit 0.
+- Visual: `06`/`07` PNGs both show a clean Sortie Complete overlay.
+
+## Remaining gaps
+
+None blocking. All three acceptance criteria are fully and robustly met, the
+new debug scenarios are correctly gated and tested, and the captured run is
+healthy. One non-blocking nit recorded in `nits.md` (06-boss-defeated frame
+now shows the summary overlay rather than a mid-combat defeat frame for the
+instakill boss-low-hp path).
+
+## v0.281 — 280-playthrough-validate-spire-ascent  (2026-06-06 05:24:26)
+
+PASS. The implementation adds and verifies a dedicated `spire-ascent` validation preset targeting `questId: "spire_ascent"`, Tier 2, and `bossType: "spire_warden"` (Summit Warden). `game/validation/spire-ascent/run-summary.json` records a full run with `"ok": true`, `"steps": "full"`, `deployScenario: "spire-ascent-tier-2"`, all four required assertions true, and victory probes showing `runStatus: "victory"`, `runObjectiveComplete: true`, `bossDefeated: true`, and `lastRunSummaryStatus: "victory"`.
+
+PASS. The required deliverables are present under `game/validation/spire-ascent/`: hub/lobby, level entry, mid-combat, boss dormant, boss active, boss defeated, and victory screenshots, plus `findings.md`, `probes.json`, `console.log`, and `run-summary.json`. `findings.md` now correctly reports `bossSpawned (spire_warden): PASS` rather than the earlier Training Caverns boss label. I also ran `pnpm validate:spire-ascent:check`, which exited 0.
+
+### Design and requirements consistency
+
+PASS. The changes remain consistent with the documented lobby-to-dungeon core loop and the foundation requirements: the round-3 capture exercises auth, lobby creation/join, ready/deploy, multiplayer socket state, 3D rendering, movement, and gameplay HUD; the Spire validation artifacts exercise the level-specific boss flow. Existing quest progression supports the normal path: Spire Ascent Tier 1 victory unlocks Tier 2, Tier 2 uses the `stage_boss` objective, and the Summit Warden victory is driven by the encounter/boss-defeat terminal-state path rather than a bespoke completion shortcut.
+
+### Debug scenarios
+
+PASS. The added Spire debug scenarios are gated behind the existing debug path: the client requests scenarios only on localhost/test hooks, the server applies them only when `ALLOW_DEBUG_SCENARIOS=1` or non-production loopback access permits it, and normal gameplay does not call them. The same end states are reachable through normal progression: clearing Spire Ascent Tier 1 unlocks Tier 2, deploying Tier 2 creates the stage-boss run, clearing adds and entering the encounter trigger activates the Summit Warden, and killing the active boss clears the objective. The shortcuts do not replace the terminal-state invariant; the final validation still kills the real `spire_warden` enemy and observes the standard victory/run-complete state.
+
+### Code quality and tests
+
+PASS. The harness preset changes are narrow and preserve the existing Rooms defaults while adding configurable add types for Spire. The artifact renderer/verifier now derives the boss label from the preset, preventing the previous `annex_overseer` false label from recurring. The server readiness/PID cleanup changes address capture stability without changing combat rules. Round-3 coverage reports `76` test files and `1225` tests passing with coverage enabled.
+
 ## Remaining gaps
 
 None.

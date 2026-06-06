@@ -287,7 +287,8 @@ describe('training_caverns Tier 2 stage-boss encounter flow', () => {
   it('recordEnemyDefeated does not complete the stage_boss objective', () => {
     const before = { ...gameState.run.objective };
     recordEnemyDefeated(5);
-    expect(gameState.run.objective).toEqual(before);
+    expect(gameState.run.objective.bossDefeated).toBe(false);
+    expect(gameState.run.objective.defeatedEnemies).toBeGreaterThan(before.defeatedEnemies);
     expect(isRunObjectiveComplete(gameState.run.objective)).toBe(false);
   });
 

@@ -34,6 +34,9 @@ describe('lobby ready → deploy resilience', () => {
 		await Promise.all([startA, startB]);
 
 		expect(httpServer.listening).toBe(true);
+		const healthz = await fetch(`${baseUrl}/healthz`);
+		expect(healthz.status).toBe(200);
+		expect(await healthz.json()).toEqual({ ok: true });
 		expect(testGameState().gamePhase).toBe('playing');
 		expect(testGameState().run).toBeTruthy();
 

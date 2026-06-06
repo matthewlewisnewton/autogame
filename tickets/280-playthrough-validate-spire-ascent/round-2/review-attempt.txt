@@ -1,0 +1,11 @@
+VERDICT: FAIL
+
+Wrote:
+- `tickets/280-playthrough-validate-spire-ascent/round-2/review.md`
+- `tickets/280-playthrough-validate-spire-ascent/round-2/gaps.md`
+
+Blocking issues:
+- Latest round-2 capture is unhealthy: `metrics.json` is `ok:false` / `capture_failed`, with the game server receiving `SIGTERM` and Vite proxying to a refused backend port.
+- Spire Ascent `findings.md` reports the wrong boss label: `annex_overseer` instead of Summit Warden / `spire_warden`.
+
+No `nits.md` was created.

@@ -1,0 +1,10 @@
+I broke the top-level ticket into two dependency-ordered sub-tickets. The encounter state (`gameState.run.encounter` → `phase`/`bossEnemyId`/`locked`) and enemy HP/display catalog already reach the client (from the 252 lock-on work), so this is purely a client HUD feature mirroring the existing `lock-on-info-panel.js` pattern.
+
+Sub-tickets created:
+
+- `tickets/283-add-stage-boss-health-bar-and-encounter-ui/subtickets/01-boss-encounter-hud-module/ticket.md` — new `boss-encounter-hud.js` module (pure `buildBossEncounterModel` + `syncBossEncounterHud`), `#boss-encounter-hud` DOM scaffold in `index.html`, CSS in `style.css`, and unit tests. Verification: **code**.
+- `tickets/283-add-stage-boss-health-bar-and-encounter-ui/subtickets/02-wire-boss-hud-into-render-loop/ticket.md` — wire the module into `main.js`'s per-frame HUD update using live `gameState.run.encounter` + `gameState.enemies` + `enemyDisplayCatalog`, expose a test hook, and add an integration test. Verification: **code**.
+
+Both are `code`-verified: the acceptance criteria are about module exports, null/gating logic, name resolution, server-driven state, and show/hide behavior — none of which a single happy-path screenshot run (no boss encounter) could confirm.
+
+No existing sub-ticket folders were present, so nothing was retired.

@@ -51,7 +51,7 @@ def confirm_game_broken(suspect_dir: Path, confirmation_dir: Path,
     log("[confirm] second capture run to disambiguate game-smoke flake...")
     confirmation_dir = Path(confirmation_dir)
     confirmation_dir.mkdir(parents=True, exist_ok=True)
-    start_game(confirmation_dir, ports)
+    launch_pids = start_game(confirmation_dir, ports)
     try:
         if not wait_for_game(ports, timeout_s=45):
             # Route the server-down path through the classifier so the
@@ -65,7 +65,7 @@ def confirm_game_broken(suspect_dir: Path, confirmation_dir: Path,
             return True
         capture(ports.vite_url, confirmation_dir)  # allocated port, not static default
     finally:
-        stop_game()
+        stop_game(ports, pids=launch_pids)
     confirmed = not game_smoke_ok(confirmation_dir)
     if confirmed:
         log("[confirm] confirmation run also failed — game IS broken")

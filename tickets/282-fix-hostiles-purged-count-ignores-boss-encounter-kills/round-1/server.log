@@ -1,0 +1,12 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/282-fix-hostiles-purged-count-ignores-boss-encounter-kills/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/282-fix-hostiles-purged-count-ignores-boss-encounter-kills/game/data
+Server listening on port 3002
+Player connected: socket=JgzUSZUP1ZSvogwBAAAB, playerId=7b68116e-2dfe-40ec-90a9-2e3d7d6ccba0
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=3eNQJU2zhBEONBz_AAAD, playerId=eec35a70-cfb9-490f-9529-1f394f232ee4
+[loot] spawned id=910b061e-a744-4ba0-93f6-1c0ca05a0751 value=20
+Player disconnected: JgzUSZUP1ZSvogwBAAAB
+Player disconnected: 3eNQJU2zhBEONBz_AAAD

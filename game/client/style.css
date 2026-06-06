@@ -1305,6 +1305,74 @@ canvas {
   display: none;
 }
 
+/* ── Boss-encounter HUD ── */
+
+#boss-encounter-hud {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(520px, calc(100vw - 48px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+  z-index: 12;
+}
+
+#boss-encounter-banner {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #fca5a5;
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+}
+
+#boss-encounter-name {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #f8fafc;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+}
+
+#boss-encounter-hp-bar {
+  position: relative;
+  width: 100%;
+  height: 14px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 7px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+
+#boss-encounter-hp-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 7px;
+  transition: width 0.2s ease-out;
+}
+
+#boss-encounter-hp-fill.hp-high {
+  background: linear-gradient(90deg, #991b1b 0%, #ef4444 55%, #f87171 100%);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.55);
+}
+
+#boss-encounter-hp-fill.hp-mid {
+  background: linear-gradient(90deg, #a16207 0%, #eab308 50%, #facc15 100%);
+  box-shadow: 0 0 8px rgba(234, 179, 8, 0.45);
+}
+
+#boss-encounter-hp-fill.hp-low {
+  background: linear-gradient(90deg, #7f1d1d 0%, #dc2626 50%, #ef4444 100%);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
+}
+
 /* ── Lock-on info panel ── */
 
 #lock-on-info-panel {

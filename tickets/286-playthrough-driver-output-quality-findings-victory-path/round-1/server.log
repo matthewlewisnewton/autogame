@@ -1,0 +1,11 @@
+[users] Loaded 6 user record(s) from /home/matt/workspace/.autogame-worktrees/286-playthrough-driver-output-quality-findings-victory-path/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/286-playthrough-driver-output-quality-findings-victory-path/game/data
+Server listening on port 3002
+Player connected: socket=5hfn3EDvXqp8jeLWAAAB, playerId=805d869b-1e2e-4354-a08e-22b83f2d675d
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=ty94mdMNKxJiU8cUAAAD, playerId=638de5d7-6fc2-4440-b841-e59579a2aa9a
+Player disconnected: 5hfn3EDvXqp8jeLWAAAB
+Player disconnected: ty94mdMNKxJiU8cUAAAD

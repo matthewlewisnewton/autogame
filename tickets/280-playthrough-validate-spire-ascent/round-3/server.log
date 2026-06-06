@@ -1,0 +1,14 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/280-playthrough-validate-spire-ascent/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/280-playthrough-validate-spire-ascent/game/data
+Server listening on port 3004
+Player connected: socket=4yTzdGE0awN8g0C0AAAB, playerId=24354e1c-3843-43d3-bc19-ff476269354b
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=o8On-xxI7K0Zeq_cAAAD, playerId=7dbcfe53-4c35-454c-bb9b-8a57628f77f7
+[loot] spawned id=86885169-68c5-4ea3-add1-fd11ea5cc6ec value=18
+Player disconnected: 4yTzdGE0awN8g0C0AAAB
+Player disconnected: o8On-xxI7K0Zeq_cAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

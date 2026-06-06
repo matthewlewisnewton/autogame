@@ -1,13 +1,18 @@
-Merge conflicts are resolved in both files.
+All three conflicted files are resolved and marker-free. Summary of the merge:
 
 ### `TASKS.md`
-Combined cleanup backlog entries from both sides:
-- All 9 cleanup tickets from `main` (hub presence, booth terminals, plaza arena, etc.)
-- The branch’s `278-cleanup-sec-jwt-require-explicit-dev-auth` entry
+Kept all cleanup backlog entries from both sides: ship-hub plus open-plaza, sunken-canyon, spire-ascent, and the driver-output-quality ticket.
 
 ### `LOGBOOK.md`
-- Kept all `main` logbook entries (`v0.236` through `v0.269`) after the shared `v0.234` section
-- Appended the ticket’s `v0.273 — 266-sec-jwt-require-explicit-dev-auth` entry at the end
-- Restored the truncated branch entry (it had started mid-sentence with “throw messages.”) using the round-9 review content so the logbook entry is complete and coherent
+Combined both histories: v0.283 ship-hub validation (ticket 281) at the top, followed by main’s v0.275–v0.281 entries in order, with a single “Remaining gaps: None” footer.
 
-No conflict markers remain in either file. The harness can proceed with commit and merge.
+### `harness/validate/playthrough.mjs`
+Merged both drivers into one coherent script:
+
+- **Presets**: `rooms`, `hub`, `open-plaza`, `spire-ascent`, `sunken-canyon`
+- **Hub ticket behavior**: hub-walk, booth, telepipe-reset steps; lobby-finder probes; `renderHubFindings`; hub-specific screenshots and assertions
+- **Main ticket behavior**: stage presets with configurable `addTypes`; floor-alignment probes; preset-aware findings (`findingsTitle`, `bossSpawnLabel`, `bossType`)
+- **Routing**: `STAGE_PRESETS` so open-plaza/spire-ascent/sunken-canyon run the full stage playthrough path (not only `rooms`)
+- **Output dirs**: `game/validation/<preset>/` for all presets including hub
+
+Syntax check and `--help` both pass. The harness can commit and finish the merge.

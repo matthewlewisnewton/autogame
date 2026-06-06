@@ -1,0 +1,58 @@
+{
+  "dormant": {
+    "encounterPhase": "dormant",
+    "encounterLocked": false,
+    "bossEnemyId": "442bd37c-47ec-407c-835d-f11a47b00bd3",
+    "bossHp": 300,
+    "liveAddCount": 0
+  },
+  "active": {
+    "encounterPhase": "active",
+    "encounterLocked": true,
+    "bossEnemyId": "442bd37c-47ec-407c-835d-f11a47b00bd3",
+    "bossHp": 300,
+    "liveAddCount": 0
+  },
+  "floorAlignment": {
+    "levelEntry": {
+      "playerY": 10.5,
+      "floorY": 10.5,
+      "delta": 0,
+      "layoutProfile": "sunken-canyon",
+      "band": "plateau"
+    },
+    "midCombat": {
+      "playerY": 10.5,
+      "floorY": 10.5,
+      "delta": 0,
+      "layoutProfile": "sunken-canyon",
+      "band": "plateau"
+    },
+    "bossDormant": {
+      "playerY": 10.5,
+      "floorY": 10.5,
+      "delta": 0,
+      "layoutProfile": "sunken-canyon",
+      "band": "plateau"
+    },
+    "bossActive": {
+      "playerY": 0.5,
+      "floorY": 0.5,
+      "delta": 0,
+      "layoutProfile": "sunken-canyon",
+      "band": "canyon"
+    }
+  },
+  "afterBoss": {
+    "runStatus": "victory",
+    "runObjectiveComplete": true,
+    "bossDefeated": true,
+    "lastRunSummaryStatus": "victory"
+  },
+  "victory": {
+    "runStatus": "victory",
+    "runObjectiveComplete": true,
+    "bossDefeated": true,
+    "lastRunSummaryStatus": "victory"
+  }
+}
