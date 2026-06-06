@@ -16,7 +16,7 @@ const HUB_REL = path.join('game', 'validation', 'hub');
 const REQUIRED_ASSERTION_KEYS = [
 	'boothDeductsGold',
 	'hatSwapFree',
-	'telepipeUpReset',
+	'telepipeVitalsPreserved',
 ];
 
 const REQUIRED_PNGS = [
@@ -85,10 +85,10 @@ function checkTelepipeRunIdSanity(summary, errors) {
 	const preId = reset.preSuspend?.runId;
 	const postId = reset.postDeploy?.runId;
 	if (preId == null || postId == null) return;
-	if (preId === postId && summary.assertions?.telepipeUpReset === true) {
+	if (preId === postId && summary.assertions?.telepipeVitalsPreserved === true) {
 		fail(
 			errors,
-			`telepipeReset runId unchanged (${preId}) while assertions.telepipeUpReset is true`,
+			`telepipeReset runId unchanged (${preId}) while assertions.telepipeVitalsPreserved is true`,
 		);
 	}
 }

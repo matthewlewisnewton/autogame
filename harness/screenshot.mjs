@@ -7,11 +7,17 @@
 //
 // Exit 0 if capture succeeded, 1 if the game failed to load, 2 on bad usage.
 
+import { createRequire } from 'module';
 import { chromium } from 'playwright';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, join, relative, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
+
+const require = createRequire(import.meta.url);
+const { MAGIC_STONES_REGEN_PER_TICK } = require('../game/server/config.js');
+const VITALS_MS_REGEN_TICKS = 10;
+const VITALS_MS_TOLERANCE = MAGIC_STONES_REGEN_PER_TICK * VITALS_MS_REGEN_TICKS;
 
 const baseUrl = process.argv[2] || 'http://localhost:5173';
 const outDir = process.argv[3];
@@ -60,6 +66,8 @@ const ACTIONS = new Set([
   'wait',
   'screenshot',
   'probe',
+  'assertRunPreserved',
+  'assertVitalsPreserved',
 ]);
 
 function wire(page, tag) {
@@ -269,6 +277,7 @@ const HUB_VALIDATE_281_SUBTICKETS_RE = /281-playthrough-validate-ship-hub\/subti
 const HUB_VALIDATE_281_ROUND_RE = /281-playthrough-validate-ship-hub\/round-[^/]+/i;
 const HUB_VALIDATION_HUB_DIR_RE = /(?:^|\/)game\/validation\/hub(?:\/|$)/i;
 const HUB_TELEPIPE_ABANDON_VALIDATE_RE = /telepipe-reset|telepipe-abandon|abandon-fresh|abandonSuspendedRun|telepipe[- ]?up|playthrough-validate-ship-hub/i;
+const PERSIST_VITALS_TELEPIPE_RE = /287-persist|persist-player-health|persist.*vitals|harness-telepipe-vitals-capture|no-telepipe-reset/i;
 
 function inferSubticketFolder(outDirAbs) {
   const match = outDirAbs.match(/281-playthrough-validate-ship-hub\/subtickets\/([^/]+)/i);
@@ -296,6 +305,25 @@ function isHubTelepipeAbandonValidateTicket(ticket, outDirAbs) {
   }
   const folderName = inferSubticketFolder(outDirAbs);
   return HUB_TELEPIPE_ABANDON_VALIDATE_RE.test(`${folderName}\n${ticket}`);
+}
+
+/**
+ * Ticket 287 / persist-vitals telepipe capture: hub return + fresh redeploy must
+ * preserve player HP and magic stones (not checkpoint suspend/resume).
+ */
+function isPersistVitalsTelepipeTicket(ticket, outDirAbs) {
+  return PERSIST_VITALS_TELEPIPE_RE.test(ticket)
+    || PERSIST_VITALS_TELEPIPE_RE.test(outDirAbs);
+}
+
+function probesMatchVitalsPreserved(pre, post) {
+  const hpMatch = Number.isFinite(pre?.hp) && Number.isFinite(post?.hp) && pre.hp === post.hp;
+  const ms = pre?.magicStones;
+  const postMs = post?.magicStones;
+  const msMatch = Number.isFinite(ms) && Number.isFinite(postMs)
+    && postMs >= ms
+    && postMs <= ms + VITALS_MS_TOLERANCE;
+  return hpMatch && msMatch;
 }
 
 /** Solo deploy → telepipe placement → suspend through the 02-suspended-lobby probe. */
@@ -359,6 +387,45 @@ function buildSoloTelepipeSuspendThroughProbeSteps() {
       description: 'SUSPENDED state: record runStatus/suspendedRunSummary (questId, questName, objective totalEnemies/defeatedEnemies) after suspendRunToLobby. Expect runStatus === "suspended" or suspendedRunSummary present; abandonRunBtnUsable when sub-ticket 09 lands.',
     },
   ];
+}
+
+/** Solo telepipe-up → hub → redeploy with vitals-preservation assertion (ticket 287). */
+function buildSoloTelepipeVitalsPreservationSteps() {
+  const suspendSteps = buildSoloTelepipeSuspendThroughProbeSteps();
+  const steps = suspendSteps.map((step) => {
+    if (step.action === 'probe' && step.stashBaseline) {
+      const { stashBaseline, ...rest } = step;
+      return {
+        ...rest,
+        stashVitals: true,
+        description: 'PRE-TELEPIPE state: stash player HP, magic stones, and runId before placing the telepipe.',
+      };
+    }
+    if (step.action === 'probe' && step.stashObjective) {
+      const { stashObjective, ...rest } = step;
+      return {
+        ...rest,
+        description: 'HUB state after telepipe UP: record phase, runId, and player vitals in lobby before redeploy.',
+      };
+    }
+    return step;
+  });
+  steps.push(
+    { action: 'readyAll' },
+    { action: 'waitForGame', player: 'A', timeoutMs: 12000 },
+    {
+      action: 'screenshot',
+      player: 'A',
+      name: '03-redeployed-dungeon',
+      description: 'Fresh dungeon after hub return and redeploy — player vitals should match pre-telepipe.',
+    },
+    {
+      action: 'assertVitalsPreserved',
+      player: 'A',
+      description: 'VERIFY vitals preservation: HP exact match; MS within passive-regen tolerance; runId must differ (fresh run, no checkpoint restore).',
+    },
+  );
+  return steps;
 }
 
 function ensureAuthLobbyPrefix(recipe) {
@@ -440,7 +507,8 @@ function fallbackRecipe() {
   // mentions portals/suspend) cannot make the world-stage/flare/slope branches
   // fire — those are all guarded with !isTelepipeTicket below.
   const isHubTelepipeAbandonValidate = isHubTelepipeAbandonValidateTicket(ticket, outDirAbs);
-  const isTelepipeTicket = !isHubTelepipeAbandonValidate &&
+  const isPersistVitalsTelepipe = isPersistVitalsTelepipeTicket(ticket, outDirAbs);
+  const isTelepipeTicket = !isHubTelepipeAbandonValidate && !isPersistVitalsTelepipe &&
                            (/telepipe|suspend[-_ ]?resume|175-qa-telepipe/i.test(ticket) ||
                             /telepipe|suspend[-_]?resume|175-qa-telepipe/i.test(outDirAbs));
   const isWorldStageTicket = !isTelepipeTicket &&
@@ -517,6 +585,9 @@ function fallbackRecipe() {
       },
     ];
     summary = 'Deterministic full-flow smoke capture with world-stage fallback: auth, lobby, ready, movement, then before/after screenshots and probes around the sunken-canyon-stage portal transition (default -> sunken-canyon layout swap).';
+  } else if (isPersistVitalsTelepipe) {
+    steps = buildSoloTelepipeVitalsPreservationSteps();
+    summary = 'Deterministic solo Telepipe vitals-preservation capture: auth, solo lobby + deploy, telepipe-ready scenario, place telepipe, hub return, redeploy, assertVitalsPreserved (HP/MS persist, fresh runId, no checkpoint restore).';
   } else if (isHubTelepipeAbandonValidate) {
     // Hub telepipe-reset / abandon-fresh validation: suspend-only — never re-ready
     // after suspend (no restoreRunCheckpoint, no 03-resumed-dungeon.png).
@@ -983,6 +1054,64 @@ async function executeRecipe(browser, recipe) {
           ? { type: objective.type, totalEnemies: objective.totalEnemies, defeatedEnemies: objective.defeatedEnemies }
           : null;
         telepipeRunBaseline.set(player, entry);
+      }
+      if (step.stashVitals) {
+        const playerState = data?.harnessState?.player;
+        const entry = telepipeRunBaseline.get(player) || {};
+        entry.preTelepipeVitals = {
+          hp: playerState?.hp ?? null,
+          magicStones: playerState?.magicStones ?? null,
+          runId: data?.harnessState?.runId ?? null,
+        };
+        telepipeRunBaseline.set(player, entry);
+      }
+    } else if (step.action === 'assertVitalsPreserved') {
+      const data = await collectProbe(page);
+      const postPlayer = data?.harnessState?.player;
+      const postRunId = data?.harnessState?.runId ?? null;
+      const entry = telepipeRunBaseline.get(player) || {};
+      const pre = entry.preTelepipeVitals || {};
+
+      const hpPreserved = Number.isFinite(pre.hp) && pre.hp === postPlayer?.hp;
+      const msPreserved = probesMatchVitalsPreserved(
+        { hp: pre.hp, magicStones: pre.magicStones },
+        { hp: postPlayer?.hp, magicStones: postPlayer?.magicStones },
+      );
+      const freshRunId = pre.runId != null && postRunId != null && pre.runId !== postRunId;
+      const vitalsPreservation = {
+        preHp: pre.hp,
+        postHp: postPlayer?.hp ?? null,
+        preMagicStones: pre.magicStones,
+        postMagicStones: postPlayer?.magicStones ?? null,
+        preRunId: pre.runId,
+        postRunId,
+        hpPreserved,
+        msPreserved,
+        freshRunId,
+        preserved: hpPreserved && msPreserved && freshRunId,
+      };
+
+      probes.push({
+        player,
+        description: step.description || 'Telepipe vitals-preservation verification.',
+        data: { vitalsPreservation, harnessState: data?.harnessState ?? null },
+      });
+
+      const failures = [];
+      if (!Number.isFinite(pre.hp)) {
+        failures.push('pre-telepipe HP was not stashed before assertVitalsPreserved');
+      }
+      if (!hpPreserved) {
+        failures.push(`HP mismatch across telepipe redeploy: ${pre.hp} → ${postPlayer?.hp}`);
+      }
+      if (!msPreserved) {
+        failures.push(`magic stones mismatch across telepipe redeploy: ${pre.magicStones} → ${postPlayer?.magicStones}`);
+      }
+      if (!freshRunId) {
+        failures.push(`runId must differ after fresh redeploy: pre=${pre.runId} post=${postRunId}`);
+      }
+      if (failures.length) {
+        throw new Error(`Telepipe vitals-preservation assertion failed: ${failures.join('; ')}`);
       }
     } else if (step.action === 'assertRunPreserved') {
       // Verify the suspend → resume checkpoint preserved the original enemy set and

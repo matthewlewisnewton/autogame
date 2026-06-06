@@ -22,7 +22,7 @@ function telepipeDetail(summary) {
 	const runIdChanged = pre?.runId && post?.runId && pre.runId !== post.runId;
 	const checkpointRestored = reset.checkpointRestoredInLog === true;
 	return [
-		`preSuspend ms=${pre?.magicStones}, postDeploy ms=${post?.magicStones}`,
+		`preSuspend hp=${pre?.hp}, ms=${pre?.magicStones}; postDeploy hp=${post?.hp}, ms=${post?.magicStones}`,
 		`runId ${pre?.runId ?? '?'}→${post?.runId ?? '?'} (${runIdChanged ? 'changed' : 'unchanged'})`,
 		`checkpoint restored in log: ${checkpointRestored ? 'yes (FAIL)' : 'no'}`,
 	].join('; ');
@@ -79,8 +79,8 @@ export function renderHubFindings(run) {
 			boothDetail(run),
 		),
 		formatAssertion(
-			'telepipeUpReset',
-			assertions.telepipeUpReset === true,
+			'telepipeVitalsPreserved',
+			assertions.telepipeVitalsPreserved === true,
 			telepipeDetail(run),
 		),
 	];

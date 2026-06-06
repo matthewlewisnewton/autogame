@@ -767,7 +767,7 @@ function buildHubAssertions(summary) {
 	return {
 		boothDeductsGold: summary.booth?.boothDeductsGold === true,
 		hatSwapFree: summary.booth?.hatSwapFree === true,
-		telepipeUpReset: summary.telepipeReset?.telepipeUpReset === true,
+		telepipeVitalsPreserved: summary.telepipeReset?.telepipeVitalsPreserved === true,
 	};
 }
 
@@ -819,7 +819,7 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
 			telepipeReset: {
 				preSuspend: summary.telepipeReset?.preSuspend ?? null,
 				postDeploy: summary.telepipeReset?.postDeploy ?? null,
-				telepipeUpReset: summary.telepipeReset?.telepipeUpReset ?? null,
+				telepipeVitalsPreserved: summary.telepipeReset?.telepipeVitalsPreserved ?? null,
 			},
 			hubWalk: summary.hubWalk || null,
 		};
@@ -983,11 +983,11 @@ async function main() {
 			});
 			if (!runsHubFull) {
 				summary.assertions = {
-					telepipeUpReset: summary.telepipeReset.telepipeUpReset === true,
+					telepipeVitalsPreserved: summary.telepipeReset.telepipeVitalsPreserved === true,
 				};
-				summary.ok = summary.assertions.telepipeUpReset;
+				summary.ok = summary.assertions.telepipeVitalsPreserved;
 				if (!summary.ok) {
-					summary.error = summary.error || 'telepipeUpReset assertion failed';
+					summary.error = summary.error || 'telepipeVitalsPreserved assertion failed';
 					exitCode = 1;
 				}
 			}
