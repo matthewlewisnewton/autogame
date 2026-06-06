@@ -2108,6 +2108,8 @@ function applyQuestLayoutFromServer(data) {
 // below); this only brings the wrapper into view. Guarded to the lobby phase.
 function openQuestPanel() {
 	if (gameState?.gamePhase !== 'lobby') return;
+	// Quest board lives inside #lobby; reopen the menu when it was dismissed.
+	showGameLobby();
 	// The wrapper is hidden by default; the booth is what reveals it.
 	questBoardWrapperEl?.classList.remove('hidden');
 	// jsdom lacks scrollIntoView, so guard defensively for tests.
@@ -3872,6 +3874,11 @@ window.__variantCodexKeydownHandler = (e) => {
 	if (key === 'escape' && isGameLobbyMenuVisible() && !isLobbyMenuDismissKeyBlocked(e)) {
 		e.preventDefault();
 		dismissGameLobby();
+		return;
+	}
+	if (key === 'l' && gameState?.gamePhase === 'lobby' && lobbyMenuDismissed && !isLobbyMenuDismissKeyBlocked(e)) {
+		e.preventDefault();
+		showGameLobby();
 		return;
 	}
 	if (key === 'g' && e.shiftKey && debugScenarioAllowed && socket?.connected && !isDebugGodmodeKeyBlocked(e)) {
