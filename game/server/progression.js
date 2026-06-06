@@ -3187,6 +3187,8 @@ function checkAllReadyInner() {
 
       assignRunSpawnPositions(all);
       for (const player of all) {
+        const deployHp = Number.isFinite(player.hp) ? player.hp : null;
+        const deployMagicStones = Number.isFinite(player.magicStones) ? player.magicStones : null;
         player.extracted = false;
         player.lastMoveTime = Date.now();
         createDrawDeckFromSelectedDeck(player);
@@ -3195,7 +3197,17 @@ function checkAllReadyInner() {
           applyTelepipeReadyHand(player);
         }
         player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
-        player.magicStones = STARTING_MAGIC_STONES;
+        if (deployMagicStones != null) {
+          player.magicStones = deployMagicStones;
+        } else {
+          player.magicStones = STARTING_MAGIC_STONES;
+        }
+        if (deployHp != null) {
+          player.hp = deployHp;
+        } else {
+          player.hp = MAX_HP;
+          player.dead = false;
+        }
         player.overclockChargesRemaining = 0;
       }
       spawnEnemies();

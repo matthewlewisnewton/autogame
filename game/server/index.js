@@ -467,6 +467,7 @@ const DEBUG_SCENARIOS = new Set([
   'summon-ready',
   'summon-recall',
   'combat-damaged-player',
+  'lobby-partial-vitals',
   'custom-avatar-demo',
   'avatar-proportions-demo',
   'avatar-wizard-hat',
@@ -1042,11 +1043,13 @@ function initializePlayerForActiveRun(player) {
     initPlayerHand(player);
   }
   player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
-  player.magicStones = STARTING_MAGIC_STONES;
+  if (!Number.isFinite(player.magicStones)) {
+    player.magicStones = STARTING_MAGIC_STONES;
+  }
   if (!player.pendingSummons) {
     player.pendingSummons = new Set();
   }
-  if (player.hp == null || player.hp <= 0) {
+  if (!Number.isFinite(player.hp)) {
     player.hp = MAX_HP;
     player.dead = false;
   }
@@ -1837,6 +1840,7 @@ if (typeof module !== 'undefined' && module.exports) {
     tryEnterTelepipe,
     checkTelepipeProximity,
     abandonSuspendedRun,
+    initializePlayerForActiveRun,
     isPlayerActive,
     hasActivePlayers,
     buildSuspendedRunSummary,

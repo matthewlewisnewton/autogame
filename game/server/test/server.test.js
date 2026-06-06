@@ -43,6 +43,7 @@ import {
 	previewReturnRewards,
 	healAtMedic,
 	checkAllReady,
+	initializePlayerForActiveRun,
 	captureRunCheckpoint,
 	restoreRunCheckpoint,
 		tryEnterTelepipe,
@@ -2993,7 +2994,73 @@ describe('run state', () => {
 			}
 		});
 
-		it('fresh deploy after telepipe suspend and abandon resets magicStones and card charges', () => {
+		it('checkAllReady fresh deploy preserves existing hp and magicStones', () => {
+			resetState();
+			addPlayer('p1', {
+				ready: true,
+				hp: 42,
+				magicStones: 15,
+				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+			});
+
+			checkAllReady();
+
+			expect(gameState.gamePhase).toBe('playing');
+			expect(gameState.players.p1.hp).toBe(42);
+			expect(gameState.players.p1.magicStones).toBe(15);
+		});
+
+		it('checkAllReady fresh deploy defaults vitals for brand-new players', () => {
+			resetState();
+			addPlayer('p1', {
+				ready: true,
+				hp: undefined,
+				magicStones: undefined,
+				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+			});
+
+			checkAllReady();
+
+			expect(gameState.gamePhase).toBe('playing');
+			expect(gameState.players.p1.hp).toBe(100);
+			expect(gameState.players.p1.magicStones).toBe(STARTING_MAGIC_STONES);
+		});
+
+		it('initializePlayerForActiveRun preserves existing hp and magicStones on drop-in', () => {
+			resetState();
+			const player = {
+				hp: 42,
+				magicStones: 15,
+				hand: [{ id: 'iron_sword', type: 'weapon' }],
+				deck: [],
+				slotCooldowns: [null, null, null, null],
+				pendingSummons: new Set(),
+			};
+
+			initializePlayerForActiveRun(player);
+
+			expect(player.hp).toBe(42);
+			expect(player.magicStones).toBe(15);
+		});
+
+		it('initializePlayerForActiveRun defaults vitals when missing on drop-in', () => {
+			resetState();
+			const player = {
+				hp: undefined,
+				magicStones: undefined,
+				hand: [{ id: 'iron_sword', type: 'weapon' }],
+				deck: [],
+				slotCooldowns: [null, null, null, null],
+				pendingSummons: new Set(),
+			};
+
+			initializePlayerForActiveRun(player);
+
+			expect(player.hp).toBe(100);
+			expect(player.magicStones).toBe(STARTING_MAGIC_STONES);
+		});
+
+		it('fresh deploy after telepipe suspend and abandon preserves magicStones and resets card charges', () => {
 			resetState();
 			gameState._lobbyId = 'test-lobby';
 			addPlayer('p1', {
@@ -3033,12 +3100,13 @@ describe('run state', () => {
 			checkAllReady();
 
 			expect(gameState.run.id).not.toBe(preSuspendRunId);
-			expect(gameState.players.p1.magicStones).toBe(STARTING_MAGIC_STONES);
+			const preservedMagicStones = STARTING_MAGIC_STONES - 5;
+			expect(gameState.players.p1.magicStones).toBe(preservedMagicStones);
 			for (let tick = 0; tick < 5; tick += 1) {
 				regenMagicStones();
 			}
 			expect(gameState.players.p1.magicStones).toBeCloseTo(
-				STARTING_MAGIC_STONES + 5 * MAGIC_STONES_REGEN_PER_TICK,
+				preservedMagicStones + 5 * MAGIC_STONES_REGEN_PER_TICK,
 				5,
 			);
 			const occupied = gameState.players.p1.hand.filter(Boolean);

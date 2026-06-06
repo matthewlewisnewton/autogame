@@ -283,6 +283,18 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
+    if (name === 'lobby-partial-vitals') {
+      // Lobby after a prior run with reduced HP and spent magic stones, ready to
+      // redeploy. The same state is reachable normally by finishing or abandoning
+      // a run and returning to the hub with partial vitals.
+      setPhase(lobby, PHASES.LOBBY);
+      player.ready = false;
+      player.hp = 42;
+      player.magicStones = 15;
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name, hp: player.hp, magicStones: player.magicStones };
+    }
+
     if (name === 'hat-shop-currency') {
       // Stay in the lobby with enough currency for a paid booth appearance change
       // (at least APPEARANCE_CHANGE_COST) and to unlock any catalog hat without
