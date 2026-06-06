@@ -296,6 +296,137 @@ describe('debugScenario — arena-trials-tier-2', () => {
 	});
 });
 
+describe('debugScenario — arena-trials harness combat shortcuts', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('repositions beside live adds after arena-trials-tier-2 deploy', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'arena-trials-tier-2' });
+		const tier2Result = await tier2Promise;
+		expect(tier2Result.ok).toBe(true);
+
+		const state = testGameState();
+		const player = playerForSocket(socket);
+		const addsBefore = state.enemies.filter(
+			(e) => e.hp > 0 && e.type !== 'arena_champion' && (e.type === 'grunt' || e.type === 'skirmisher'),
+		);
+		expect(addsBefore.length).toBeGreaterThan(0);
+
+		const nearAddsPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('debugScenario', { name: 'arena-trials-near-adds' });
+		const nearAddsResult = await nearAddsPromise;
+		await stateUpdatePromise;
+
+		expect(nearAddsResult.ok).toBe(true);
+		expect(nearAddsResult.scenario).toBe('arena-trials-near-adds');
+		expect(player.hand[0]?.type).toBe('weapon');
+		expect(
+			state.enemies.filter(
+				(e) => e.hp > 0 && e.type !== 'arena_champion' && (e.type === 'grunt' || e.type === 'skirmisher'),
+			).every((e) => e.hp === 1 && !e.shieldHp),
+		).toBe(true);
+
+		let nearest = addsBefore[0];
+		let bestDist = Infinity;
+		for (const add of addsBefore) {
+			const dist = Math.hypot(add.x - player.x, add.z - player.z);
+			if (dist < bestDist) {
+				bestDist = dist;
+				nearest = add;
+			}
+		}
+		expect(bestDist).toBeGreaterThanOrEqual(2);
+		expect(bestDist).toBeLessThanOrEqual(5);
+	});
+
+	it('places player outside dormant arena_champion trigger after adds cleared', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'arena-trials-tier-2' });
+		await tier2Promise;
+
+		const state = testGameState();
+		const bossId = state.run.encounter.bossEnemyId;
+		for (const enemy of state.enemies) {
+			if (enemy.id !== bossId) enemy.hp = 0;
+		}
+		state.enemies = state.enemies.filter((e) => e.hp > 0);
+
+		const approachPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'arena-trials-boss-approach' });
+		const approachResult = await approachPromise;
+
+		expect(approachResult.ok).toBe(true);
+		expect(approachResult.scenario).toBe('arena-trials-boss-approach');
+
+		const player = playerForSocket(socket);
+		const boss = state.enemies.find((e) => e.id === bossId);
+		const dist = Math.hypot(boss.x - player.x, boss.z - player.z);
+		expect(dist).toBeGreaterThan(ENCOUNTER_TRIGGER_RADIUS);
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
+
+		for (let i = 0; i < 30; i++) {
+			runGameLoopTick();
+		}
+		const dais = state.layout.landmarks.find((lm) => lm.type === 'arena_dais');
+		const distFromAnchor = Math.hypot(dais.x - player.x, dais.z - player.z);
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
+		expect(distFromAnchor).toBeGreaterThan(ENCOUNTER_TRIGGER_RADIUS);
+	});
+
+	it('positions arena_champion at 1 HP beside the player in playing phase', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'arena-trials-tier-2' });
+		await tier2Promise;
+
+		const lowHpPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('debugScenario', { name: 'arena-trials-boss-low-hp' });
+		const lowHpResult = await lowHpPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(lowHpResult.ok).toBe(true);
+		expect(lowHpResult.scenario).toBe('arena-trials-boss-low-hp');
+
+		const state = testGameState();
+		const bossId = state.run.encounter.bossEnemyId;
+		const boss = state.enemies.find((e) => e.id === bossId);
+		expect(boss?.type).toBe('arena_champion');
+		expect(boss?.hp).toBe(1);
+
+		const player = playerForSocket(socket);
+		const dist = Math.hypot(boss.x - player.x, boss.z - player.z);
+		expect(dist).toBeGreaterThanOrEqual(2);
+		expect(dist).toBeLessThanOrEqual(5.5);
+
+		const bossUpdate = stateUpdate.enemies.find((e) => e.id === bossId);
+		expect(bossUpdate?.hp).toBe(1);
+		expect(bossUpdate?.type).toBe('arena_champion');
+	});
+});
+
 describe('debugScenario — stage-boss-dormant', () => {
 	let baseUrl;
 	let prevAllowDebug;
