@@ -1,0 +1,14 @@
+Broke ticket **296** into **4 sub-tickets** in dependency order, following the medic-enemy pattern (def → spawn pool → server behavior → client render). Enemy type id: `ember_wraith`. All use **code** verification.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/296-fire-enemy-inflicts-burning/tickets/296-fire-enemy-inflicts-burning/subtickets/01-fire-enemy-def/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/296-fire-enemy-inflicts-burning/tickets/296-fire-enemy-inflicts-burning/subtickets/02-ember-descent-spawn-pool/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/296-fire-enemy-inflicts-burning/tickets/296-fire-enemy-inflicts-burning/subtickets/03-burning-on-hit-attack/ticket.md`
+4. `/home/matt/workspace/.autogame-worktrees/296-fire-enemy-inflicts-burning/tickets/296-fire-enemy-inflicts-burning/subtickets/04-client-fire-enemy-render/ticket.md`
+
+**Rationale:**
+- **01** — `ENEMY_DEFS` + display catalog (no wiring yet)
+- **02** — Level-exclusive `ember_descent` spawn pool (mirrors `spawner` / `spire_ascent`)
+- **03** — `applyBurning` on successful player hits + server tests (reuses ticket 291 burn tick/VFX)
+- **04** — Distinct mesh, attack telegraph, lock-on panel (burn flame on player is already handled by existing `burningUntil` sync)
