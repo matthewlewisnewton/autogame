@@ -299,6 +299,67 @@ class TestSubtaskHarnessScope:
         assert "out-of-scope" in (subdir / "feedback.md").read_text().lower()
 
 
+class TestSubtaskValidationScope:
+    """Regression: a sub-ticket whose ticket.md targets `validation/` must let
+    the implementer write validation artifacts. Without threading the
+    validation-allow signal into scope_audit's safe-list every validation edit
+    is reverted, the iteration produces an empty diff, and the harness misreads
+    it as a repeated coder tool failure."""
+
+    def _agent_touching_game_and_validation(self, name, workspace) -> StubAgent:
+        a = StubAgent(name=name, writable=True)
+        orig_run = a.run
+
+        def run(invocation, ws, *, telemetry):
+            (workspace.root / "game" / "added.txt").write_text("by stub\n")
+            findings = workspace.root / "validation" / "rooms" / "findings.md"
+            findings.parent.mkdir(parents=True, exist_ok=True)
+            findings.write_text("# findings\n")
+            return orig_run(invocation, ws, telemetry=telemetry)
+        a.run = run  # type: ignore[assignment]
+        a.canned_results = [_ok("implementer wrote files")]
+        return a
+
+    def _roster(self, impl):
+        qa_agent = StubAgent(name="qa", writable=False,
+                             canned_stdouts=[_qa_pass_text()],
+                             canned_results=[_ok(_qa_pass_text())])
+        committer = StubAgent(name="committer", writable=True, canned_results=[_ok()])
+        return _StubRoster({
+            "implementer": _make_role("implementer", impl,
+                                       usage_kind=UsageKind.IMPLEMENTER, writable=True,
+                                       scope_allow=["game/**"], scope_deny=["tickets/**"]),
+            "qa:code": _make_role("qa:code", qa_agent,
+                                   acceptance=VerdictAccept(), out_file="qa.txt"),
+            "committer": _make_role("committer", committer, usage_kind=UsageKind.COMMITTER),
+        })
+
+    def test_validation_edit_survives_when_ticket_targets_validation(self, workspace, subdir):
+        (subdir / "ticket.md").write_text(
+            "# Rooms validation\n\nWrite `validation/rooms/findings.md`.\n\n## Verification: code\n"
+        )
+        impl = self._agent_touching_game_and_validation("impl", workspace)
+        ctx = SubtaskContext(workspace=workspace, roster=self._roster(impl), subdir=subdir,
+                             label="047-test/01-thing",
+                             tunables=_make_tunables(max_iter=2, local_checks=False))
+        (subdir / "handoff.md").write_text("(initial)\n")
+        rc = subtask(ctx)
+        assert rc == 0
+        assert (workspace.root / "validation" / "rooms" / "findings.md").read_text() == "# findings\n"
+        assert impl.call_count == 1
+
+    def test_validation_edit_reverted_when_ticket_silent_on_validation(self, workspace, subdir):
+        impl = self._agent_touching_game_and_validation("impl", workspace)
+        ctx = SubtaskContext(workspace=workspace, roster=self._roster(impl), subdir=subdir,
+                             label="047-test/01-thing",
+                             tunables=_make_tunables(max_iter=2, local_checks=False))
+        (subdir / "handoff.md").write_text("(initial)\n")
+        rc = subtask(ctx)
+        assert rc == 1
+        assert not (workspace.root / "validation" / "rooms" / "findings.md").exists()
+        assert "out-of-scope" in (subdir / "feedback.md").read_text().lower()
+
+
 class TestSubtaskQAFail:
     def test_qa_fail_iter_1_pass_iter_2(self, workspace, subdir):
         impl = _agent_that_modifies_game("impl", workspace)

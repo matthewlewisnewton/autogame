@@ -96,6 +96,8 @@ def _subtask_body(ctx: SubtaskContext) -> PipelineResult:
     ticket_allows_harness = _detect_ticket_allows_harness(ctx.ticket_file)
     ticket_allows_validation = _detect_ticket_allows_validation(ctx.ticket_file)
     log(f"=== sub-ticket: {ctx.label} — QA mode: {qa_mode} ===")
+    if ticket_allows_validation:
+        log("[scope] validation writes allowed")
     emit_progress_event("subtask_start", {
         "label": ctx.label, "ticketFile": str(ctx.ticket_file), "qaMode": qa_mode,
     })
@@ -187,7 +189,7 @@ def _subtask_body(ctx: SubtaskContext) -> PipelineResult:
             stop_game()
 
         try:
-            if ticket_allows_harness:
+            if ticket_allows_harness or ticket_allows_validation:
                 diff_text = ctx.workspace.run_git("diff", "HEAD", "--", ".", ":!tickets")
             else:
                 diff_text = ctx.workspace.run_git("diff", "HEAD", "--", "game/")
