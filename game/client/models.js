@@ -30,6 +30,7 @@ export const MODEL_REGISTRY = {
 	spire_warden: null,
 	spawner: '/models/spawner.glb',
 	field_medic: null,
+	ember_wraith: null,
 
 	// Minion types (renderer.js MINION_VISUAL)
 	ancient_wyrm: '/models/minion-ancient-wyrm.glb',

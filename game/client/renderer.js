@@ -460,6 +460,7 @@ const ENEMY_GEOMETRY = {
 	spire_warden: { type: 'cone', radius: 1.1, height: 2.4, segments: 12, color: 0x3388cc, emissive: 0x2266aa, emissiveIntensity: 0.3 },
 	spawner:    { type: 'octahedron', radius: 0.6, color: 0x00ccaa, emissive: 0x00ccaa, emissiveIntensity: 0.4 },
 	field_medic: { type: 'octahedron', radius: 0.4, color: 0x10b981, emissive: 0x2dd4bf, emissiveIntensity: 0.55 },
+	ember_wraith: { type: 'octahedron', radius: 0.35, color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.6 },
 };
 
 /** Windup telegraph shape per enemy type — mirrors server ENEMY_DEFS attackStyle */
@@ -472,6 +473,7 @@ const ENEMY_ATTACK_VISUAL = {
 	spire_warden: { style: 'cone', coneAngle: Math.PI / 2, range: 6, color: 0x55aaff, emissive: 0x3388cc },
 	spawner:    { style: 'radial' },
 	field_medic: { style: 'projectile', range: 8, color: 0x2dd4bf, emissive: 0x14b8a6, hitWidth: 0.5 },
+	ember_wraith: { style: 'cone', coneAngle: Math.PI / 3, color: 0xff4400, emissive: 0xff2200 },
 };
 
 /** Minion mesh presets keyed by minion.type */
