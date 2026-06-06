@@ -1,12 +1,11 @@
-Conflict resolved in `LOGBOOK.md`.
+Merge conflicts are resolved in both files.
 
-**What I merged:** Both sides are kept — all four logbook entries appear in version order after v0.291:
+**`TASKS.md`** — Kept both cleanup backlog entries in ticket-number order:
+- `303-cleanup-ice-enemy-glacial-ball-thrower` (from `main`)
+- `305-cleanup-fix-lobby-menu-overlay-reshows-over-walkable-hub` (from ticket 304)
 
-1. **v0.292** — 301-burning-and-slow-mutually-exclusive (from `main`)
-2. **v0.293** — 298-vault-wyrm-burning-rebalance (from `main`)
-3. **v0.294** — 297-fireball-card-inflicts-burning (from `main`)
-4. **v0.295** — 299-aoe-heal-and-cleanse-card (from this ticket)
+**`LOGBOOK.md`** — Kept both review entries in version/chronological order:
+- **v0.298** — `293-ice-enemy-glacial-ball-thrower` (from `main`)
+- **v0.299** — `304-fix-lobby-menu-overlay-reshows-over-walkable-hub` (from this ticket)
 
-The Purifying Pulse review content is unchanged, including design/requirements consistency and code quality notes. The closing **Remaining gaps: None** for v0.295 is preserved.
-
-All conflict markers are removed from the working tree. The harness can commit and finish the merge.
+Each logbook section includes its own “Remaining gaps / None.” block, matching the pattern used by earlier entries. All conflict markers are removed; the harness can continue the merge.

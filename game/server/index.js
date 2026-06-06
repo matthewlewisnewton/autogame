@@ -158,6 +158,8 @@ const {
   MINION_FOLLOW_DISTANCE,
   MINION_FOLLOW_SPEED,
   updateEnemies,
+  updateEnemyProjectiles,
+  spawnIceBall,
   isPlayerConcealed,
   updateMinions,
   processPendingEchoes,
@@ -301,6 +303,7 @@ const {
   restoreHandCharges,
   spawnEnemy,
   spawnEnemies,
+  spawnCombatEnemies,
   updateSurviveSpawns,
   updateEncounterTriggers,
   spawnLoot,
@@ -317,6 +320,7 @@ const {
   assignRunSpawnPositions,
   stateSnapshot,
   hotStateSnapshot,
+  buildWorldSnapshot,
   checkTelepipeProximity,
   abandonSuspendedRun,
   captureRunCheckpoint,
@@ -553,6 +557,7 @@ const DEBUG_SCENARIOS = new Set([
   'ember-wraith',
   'chain-lightning-ready',
   'fireball-ready',
+  'glacial-thrower',
   'ice-ball-ready',
 ]);
 
@@ -1360,6 +1365,7 @@ function runGameLoopTick() {
           checkTelepipeProximity();
           flushDirtyPlayerSaves();
           updateEnemies();
+          updateEnemyProjectiles();
           updateMinions();
           updateBurning();
           debugScenarios.nudgeDebugBossApproachPlayers(state);
@@ -1663,6 +1669,8 @@ if (typeof module !== 'undefined' && module.exports) {
     isBurning,
     updateBurning,
     updateEnemies,
+    updateEnemyProjectiles,
+    spawnIceBall,
     isPlayerConcealed,
     updateMinions,
     processPendingEchoes,
@@ -1670,6 +1678,7 @@ if (typeof module !== 'undefined' && module.exports) {
     spawnCrystals,
     spawnEnemy,
     spawnEnemies,
+    spawnCombatEnemies,
     updateSurviveSpawns,
     firstRoomPosition,
     pickFloorSpawnPosition,
@@ -1688,6 +1697,7 @@ if (typeof module !== 'undefined' && module.exports) {
     regenMagicStones,
     stateSnapshot,
     hotStateSnapshot,
+    buildWorldSnapshot,
     createRunState,
     startDungeonRun,
     recordEnemyDefeated,

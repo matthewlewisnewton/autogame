@@ -123,6 +123,7 @@ let phaseStepAllyRing = null;
 const windupFlashing = new Set(); // enemy ids currently showing windup emissive
 const minionsMeshes = {};
 const lootMeshes = {};
+const iceBallMeshes = {}; // ice-ball projectile id → giant icy sphere mesh (glacial thrower)
 let telepipeMesh = null;
 const activeEffects = []; // { mesh, origin, direction, createdAt, duration }
 
@@ -460,6 +461,7 @@ const ENEMY_GEOMETRY = {
 	spire_warden: { type: 'cone', radius: 1.1, height: 2.4, segments: 12, color: 0x3388cc, emissive: 0x2266aa, emissiveIntensity: 0.3 },
 	spawner:    { type: 'octahedron', radius: 0.6, color: 0x00ccaa, emissive: 0x00ccaa, emissiveIntensity: 0.4 },
 	field_medic: { type: 'octahedron', radius: 0.4, color: 0x10b981, emissive: 0x2dd4bf, emissiveIntensity: 0.55 },
+	glacial_thrower: { type: 'cone', radius: 1.0, height: 2.2, segments: 12, color: 0x7dd3fc, emissive: 0x38bdf8, emissiveIntensity: 0.35 },
 	ember_wraith: { type: 'octahedron', radius: 0.35, color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.6 },
 };
 
@@ -473,6 +475,7 @@ const ENEMY_ATTACK_VISUAL = {
 	spire_warden: { style: 'cone', coneAngle: Math.PI / 2, range: 6, color: 0x55aaff, emissive: 0x3388cc },
 	spawner:    { style: 'radial' },
 	field_medic: { style: 'projectile', range: 8, color: 0x2dd4bf, emissive: 0x14b8a6, hitWidth: 0.5 },
+	glacial_thrower: { style: 'projectile', range: 7, color: 0x7dd3fc, emissive: 0x38bdf8, hitWidth: 0.9 },
 	ember_wraith: { style: 'cone', coneAngle: Math.PI / 3, color: 0xff4400, emissive: 0xff2200 },
 };
 
@@ -1196,6 +1199,7 @@ export function getMeshMaps() {
 		minionTelegraphMeshes,
 		minionsMeshes,
 		lootMeshes,
+		iceBallMeshes,
 	};
 }
 
@@ -4859,6 +4863,60 @@ export function syncLootMeshes() {
 	}
 }
 
+// ── Ice-ball projectile sync (glacial thrower) ──
+
+// Height of an ice ball's centre above the floor. The server simulates the ball
+// on the (x, z) plane only; lift it to roughly the thrower's chest so it reads as
+// a lobbed projectile rather than rolling along the ground.
+const ICE_BALL_HEIGHT = 1.0;
+
+/**
+ * Build a giant icy sphere mesh for a traveling ice ball. Geometry + material are
+ * owned per-mesh (like enemy meshes) so disposeStaleMeshes / disposeMeshMap fully
+ * free them when the projectile leaves the state array.
+ * @param {object} ball - server ice-ball record (uses `radius`)
+ * @returns {THREE.Mesh}
+ */
+function createIceBallMesh(ball) {
+	const radius = (ball && ball.radius) || 0.9;
+	const geometry = new THREE.SphereGeometry(radius, 16, 16);
+	const material = new THREE.MeshStandardMaterial({
+		color: 0x9fe0ff,
+		emissive: 0x38bdf8,
+		emissiveIntensity: 0.55,
+		roughness: 0.15,
+		metalness: 0.1,
+	});
+	return new THREE.Mesh(geometry, material);
+}
+
+/**
+ * Sync ice-ball projectile meshes with gameState.iceBalls: create a mesh for each
+ * new projectile id, move existing meshes to follow their server (x, z), and dispose
+ * meshes whose projectile has left the state array. Mirrors the enemy/minion/loot
+ * keyed-mesh-map pattern so projectiles never leak.
+ */
+export function syncIceBallMeshes() {
+	const gs = gameStateRef;
+	if (!gs || !scene) return;
+
+	const balls = Array.isArray(gs.iceBalls) ? gs.iceBalls : [];
+	const currentIds = new Set(balls.map((b) => b.id));
+
+	for (const ball of balls) {
+		let mesh = iceBallMeshes[ball.id];
+		if (!mesh) {
+			mesh = createIceBallMesh(ball);
+			scene.add(mesh);
+			iceBallMeshes[ball.id] = mesh;
+		}
+		mesh.position.set(ball.x, ICE_BALL_HEIGHT, ball.z);
+	}
+
+	// Remove projectiles that have left the broadcast state (hit, expired, run ended).
+	disposeStaleMeshes(iceBallMeshes, currentIds, scene);
+}
+
 /**
  * Bob and rotate loot meshes each frame.
  */
@@ -5416,6 +5474,8 @@ export function animate(timestamp) {
 
 		// ── Loot mesh sync ──
 		syncLootMeshes();
+		// ── Ice-ball projectile sync ──
+		syncIceBallMeshes();
 		syncTelepipeMesh();
 	}
 

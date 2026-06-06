@@ -1026,6 +1026,20 @@ const ENEMY_DEFS = {
 		healAmount: 18, healRadius: 6, healCooldownMs: 4000,
 		beadRange: 8, beadCooldownMs: 2500,
 	},
+	glacial_thrower: {
+		name: 'Glacial Thrower',
+		description: 'Hulking ice brute that lobs a slow, giant ice ball — on impact it chills its target (SLOW) and batters it for damage.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 90, chaseSpeed: 1.6, wanderSpeed: 0.8, attackDamage: 12, attackWindupMs: 1100,
+		attackStyle: 'ice_ball', attackRange: 7,
+		// Ice-ball tuning: a slow-moving projectile (well below player MOVE_SPEED of 12)
+		// that applies SLOW + damage on contact.
+		iceBallSpeed: 6,            // units/sec — clearly below any player's move speed
+		iceBallSlowDurationMs: 2500,
+		iceBallSlowFactor: 0.5,
+		iceBallRadius: 0.9,         // projectile hit radius (added to PLAYER_RADIUS for contact)
+		iceBallMaxRange: 18,        // travel distance before it dissipates
+	},
 	ember_wraith: {
 		name: 'Ember Wraith',
 		description: 'Fast cone striker that ignites players on hit, leaving them burning.',
@@ -2496,6 +2510,15 @@ function updateEnemies() {
 		if (enemy.attackState === 'windup') {
 			const elapsed = Date.now() - enemy.windupStartTime;
 			if (elapsed >= attackWindupMs) {
+				// Ranged ice-ball throwers launch a slow traveling projectile in the
+				// locked wind-up direction instead of dealing instant melee/cone damage.
+				// The projectile (not this strike) carries the SLOW + damage on contact.
+				if (enemy.attackStyle === 'ice_ball') {
+					spawnIceBall(enemy);
+					enemy.attackState = 'recovering';
+					enemy.recoverUntil = Date.now() + ENEMY_ATTACK_RECOVERY_MS;
+					continue;
+				}
 				const target = resolveWindupTarget(enemy);
 				// A player who became concealed by smoke during the wind-up is no
 				// longer a valid target — cancel the strike and return to chasing.
@@ -2647,6 +2670,80 @@ function updateEnemies() {
 			enemy.blockedTicks = 0;
 		}
 	}
+}
+
+// ── Enemy Projectiles (ice balls) ──
+
+/**
+ * Spawn a traveling ice-ball projectile from a glacial thrower, aimed in the
+ * direction locked at wind-up start. Stored in `_gameState.iceBalls` and advanced
+ * each tick by updateEnemyProjectiles(). Carries its own SLOW + damage tuning so a
+ * mid-flight change to the enemy def never mutates an in-flight ball.
+ */
+function spawnIceBall(enemy) {
+	if (!_gameState.iceBalls) _gameState.iceBalls = [];
+	const dirX = enemy.windupDirX ?? 1;
+	const dirZ = enemy.windupDirZ ?? 0;
+	const len = Math.hypot(dirX, dirZ) || 1;
+	const ball = {
+		id: crypto.randomUUID(),
+		ownerId: enemy.id,
+		x: enemy.x,
+		z: enemy.z,
+		dirX: dirX / len,
+		dirZ: dirZ / len,
+		speed: enemy.iceBallSpeed ?? 6,
+		radius: enemy.iceBallRadius ?? 0.9,
+		damage: enemy.attackDamage,
+		slowDurationMs: enemy.iceBallSlowDurationMs ?? 2500,
+		slowFactor: enemy.iceBallSlowFactor ?? 0.5,
+		maxRange: enemy.iceBallMaxRange ?? 18,
+		traveled: 0,
+	};
+	_gameState.iceBalls.push(ball);
+	return ball;
+}
+
+/**
+ * Advance every live ice-ball projectile in a straight line at its configured
+ * speed. A ball that reaches a player (within radius + PLAYER_RADIUS) applies SLOW
+ * and damage, then is removed. Balls also expire once they exceed their max travel
+ * range or leave the dungeon, so they never accumulate.
+ */
+function updateEnemyProjectiles() {
+	if (!_gameState.iceBalls || _gameState.iceBalls.length === 0) return;
+
+	const dt = 1 / TICK_RATE;
+	const players = Object.values(_gameState.players).filter(p => !p.dead && !p.extracted);
+	const survivors = [];
+
+	for (const ball of _gameState.iceBalls) {
+		const step = ball.speed * dt;
+		ball.x += ball.dirX * step;
+		ball.z += ball.dirZ * step;
+		ball.traveled = (ball.traveled || 0) + step;
+
+		// Contact with a player: chill (SLOW) + damage, then consume the ball.
+		let consumed = false;
+		for (const player of players) {
+			const dist = Math.hypot(player.x - ball.x, player.z - ball.z);
+			if (dist <= ball.radius + PLAYER_RADIUS) {
+				applySlow(player, ball.slowDurationMs, ball.slowFactor);
+				damagePlayer(player.id, ball.damage, { attackerEnemyId: ball.ownerId });
+				consumed = true;
+				break;
+			}
+		}
+		if (consumed) continue;
+
+		// Expire on max range / leaving the dungeon so projectiles never pile up.
+		if (ball.traveled >= ball.maxRange) continue;
+		if (!isInsideDungeon(ball.x, ball.z)) continue;
+
+		survivors.push(ball);
+	}
+
+	_gameState.iceBalls = survivors;
 }
 
 // ── Minion AI Tick ──
@@ -3083,6 +3180,8 @@ module.exports = {
 
   // Enemy AI
   updateEnemies,
+  updateEnemyProjectiles,
+  spawnIceBall,
   isPlayerConcealed,
 
   // Minion AI

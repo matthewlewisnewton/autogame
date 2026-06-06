@@ -1911,6 +1911,7 @@ function bindSocketHandlers(s) {
 			rendererDisposeMeshMap(maps.telegraphMeshes, sc);
 			rendererDisposeMeshMap(maps.minionTelegraphMeshes, sc);
 			rendererDisposeMeshMap(maps.minionsMeshes, sc);
+			rendererDisposeMeshMap(maps.iceBallMeshes, sc);
 			rendererDisposeAllLootMeshes();
 		}
 	});
@@ -4671,6 +4672,7 @@ window.renderQuestBoard = renderQuestBoard;
 window.__windupFlashing = () => getWindupFlashing();
 window.__pickedUpLootIds = () => getPickedUpLootIds();
 window.__enemiesMeshes = () => getMeshMaps().enemiesMeshes;
+window.__iceBallMeshes = () => getMeshMaps().iceBallMeshes;
 window.applyWindupFlash = rendererApplyWindupFlash;
 window.applyRevealHighlight = rendererApplyRevealHighlight;
 window.__useCardForTest = useCard;

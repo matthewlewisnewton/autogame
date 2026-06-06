@@ -107,9 +107,15 @@ const QUEST_DEFS = {
   },
   frost_crossing: {
     id: 'frost_crossing',
+    // Signature foe that must always appear in this level's combat spawn set.
+    // Level-scoped: only quests that declare this force a guaranteed type.
+    guaranteedEnemyType: 'glacial_thrower',
     enemyPool: [
       { type: 'grunt', weight: 3 },
       { type: 'skirmisher', weight: 2 },
+      // Ice-level signature foe — a ranged thrower that lobs slow ice balls.
+      // Level-exclusive: do not add to non-ice quests.
+      { type: 'glacial_thrower', weight: 2 },
     ],
     tiers: {
       1: {
@@ -445,6 +451,14 @@ function getEnemyPool(questId, tier = DEFAULT_QUEST_TIER) {
   return def.enemyPool;
 }
 
+// Returns the quest's guaranteed/signature enemy type (the foe that must always
+// appear in its combat spawn set), or null when the quest declares none. Quests
+// without a declared type are unaffected — no enemy is forced.
+function getGuaranteedEnemyType(questId) {
+  const def = isValidQuestId(questId) ? QUEST_DEFS[questId] : null;
+  return def && typeof def.guaranteedEnemyType === 'string' ? def.guaranteedEnemyType : null;
+}
+
 // Draws an enemy `type` from a `[{ type, weight }]` pool in proportion to the
 // weights. Deterministic for a given `rng` (defaults to Math.random).
 function pickWeightedEnemyType(pool, rng = Math.random) {
@@ -478,5 +492,6 @@ module.exports = {
   formatRewardSummary,
   getEncounterConfig,
   getEnemyPool,
+  getGuaranteedEnemyType,
   pickWeightedEnemyType,
 };
