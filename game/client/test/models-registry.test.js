@@ -7,14 +7,14 @@ const ENTITY_MODEL_PATHS = {
 	grunt: '/models/grunt.glb',
 	skirmisher: '/models/skirmisher.glb',
 	miniboss: '/models/miniboss.glb',
-	annex_overseer: '/models/miniboss.glb',
-	arena_champion: '/models/arena-champion.glb',
-	spire_warden: '/models/miniboss.glb',
 	spawner: '/models/spawner.glb',
 	ancient_wyrm: '/models/minion-ancient-wyrm.glb',
 	null_crawler: '/models/minion-null-crawler.glb',
 	bulkhead_mauler: '/models/minion-bulkhead-mauler.glb',
 };
+
+/** Stage bosses that rely on distinct procedural geometry (ENEMY_GEOMETRY) instead of glTF. */
+const PROCEDURAL_ONLY_BOSSES = ['annex_overseer', 'arena_champion', 'spire_warden'];
 
 const gltfLoadMock = vi.hoisted(() => vi.fn());
 
@@ -80,6 +80,13 @@ describe('MODEL_REGISTRY', () => {
 		expect(MODEL_REGISTRY.currency).toBeNull();
 		expect(MODEL_REGISTRY.crystal).toBeNull();
 		expect(MODEL_REGISTRY.magic_stone).toBeNull();
+	});
+
+	it('leaves stage bosses procedural (null paths) for distinct ENEMY_GEOMETRY fallback', () => {
+		for (const key of PROCEDURAL_ONLY_BOSSES) {
+			expect(MODEL_REGISTRY[key]).toBeNull();
+			expect(modelPathFor(key)).toBeNull();
+		}
 	});
 });
 
