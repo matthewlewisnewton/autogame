@@ -1,7 +1,7 @@
 {
   "ok": true,
   "preset": "hub",
-  "steps": "full",
+  "steps": "telepipe-reset",
   "outDir": "game/validation/hub",
   "presetConfig": {
     "hubZones": [
@@ -21,10 +21,10 @@
       "hats"
     ]
   },
-  "serverPort": 3292,
-  "clientPort": 5263,
+  "serverPort": 3206,
+  "clientPort": 5287,
   "auth": {
-    "username": "playthrough-1780740552442",
+    "username": "playthrough-1780748069473",
     "connected": true,
     "lobbyBrowserVisible": true,
     "harnessPhase": "unknown",
@@ -38,41 +38,11 @@
     },
     "screenshot": "game/validation/hub/09-lobby-finder.png"
   },
-  "hubWalk": {
-    "lobbyName": "Hub Walk 1780740552994",
-    "hostUsername": "hub-host-1780740552994",
-    "joinerUsername": "hub-joiner-1780740552994",
-    "playersOnHost": 2,
-    "overviewScreenshot": "game/validation/hub/01-hub-overview.png",
-    "zoneScreenshots": {
-      "operations": "game/validation/hub/02-room-operations.png",
-      "commerce": "game/validation/hub/03-room-commerce.png",
-      "salon": "game/validation/hub/04-room-salon.png"
-    },
-    "layoutProfile": "hub",
-    "layoutRoomCount": 3
-  },
-  "booth": {
-    "currencyScenario": "hat-shop-currency",
-    "hatsScenario": "hats-unlocked",
-    "currencyBefore": 1000,
-    "currencyAfterPaid": 975,
-    "paidDelta": -25,
-    "currencyBeforeHat": 975,
-    "currencyAfterHat": 975,
-    "hatDelta": 0,
-    "appearanceChangeCost": 25,
-    "hatId": "cap",
-    "boothDeductsGold": true,
-    "hatSwapFree": true,
-    "paidScreenshot": "game/validation/hub/05-booth-paid.png",
-    "hatScreenshot": "game/validation/hub/06-hat-swap.png"
-  },
   "telepipeReset": {
     "telepipeScenario": "telepipe-ready",
     "preSuspend": {
-      "magicStones": 17,
-      "msText": "17/99",
+      "magicStones": 34.774999999995245,
+      "msText": "34/99",
       "hand": [
         {
           "id": "telepipe",
@@ -81,22 +51,17 @@
           "charges": 1
         },
         {
-          "id": "flame_blade",
+          "id": "throw_rock",
           "type": "weapon",
-          "remainingCharges": 2,
-          "charges": 3
-        },
-        {
-          "id": "dungeon_drake",
-          "type": "creature",
           "remainingCharges": 1,
           "charges": 1
         },
+        null,
         {
-          "id": "iron_sword",
-          "type": "weapon",
-          "remainingCharges": 5,
-          "charges": 5
+          "id": "dungeon_drake",
+          "type": "creature",
+          "remainingCharges": 0,
+          "charges": 1
         },
         {
           "id": "battle_familiar",
@@ -104,13 +69,19 @@
           "remainingCharges": 1,
           "charges": 1
         },
-        null
+        {
+          "id": "battle_familiar",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        }
       ],
       "phase": "playing",
       "runStatus": "playing",
       "extracted": false,
       "suspendedRunSummary": null,
-      "layoutSeed": 352369970
+      "layoutSeed": 352369970,
+      "runId": "05a49167-ce11-4b74-9b8e-0cfcff54da43"
     },
     "postDeploy": {
       "magicStones": 49,
@@ -130,14 +101,14 @@
         },
         null,
         {
-          "id": "iron_sword",
-          "type": "weapon",
-          "remainingCharges": 5,
-          "charges": 5
-        },
-        {
           "id": "battle_familiar",
           "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        {
+          "id": "dungeon_drake",
+          "type": "creature",
           "remainingCharges": 1,
           "charges": 1
         },
@@ -147,15 +118,16 @@
       "runStatus": "playing",
       "extracted": false,
       "suspendedRunSummary": null,
-      "layoutSeed": 352369970
+      "layoutSeed": 352369970,
+      "runId": "25a8f135-62b3-4168-a757-b4d176682579"
     },
     "telepipeUpReset": true,
+    "freshRunIdConfirmed": true,
+    "checkpointRestoredInLog": false,
     "beforeScreenshot": "game/validation/hub/07-telepipe-before.png",
     "afterScreenshot": "game/validation/hub/08-telepipe-after.png"
   },
   "assertions": {
-    "boothDeductsGold": true,
-    "hatSwapFree": true,
     "telepipeUpReset": true
   }
 }

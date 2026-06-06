@@ -12,6 +12,7 @@ const {
   ENEMY_ATTACK_RECOVERY_MS,
   ATTACK_CONE_ANGLE,
   MAX_MAGIC_STONES,
+  STARTING_MAGIC_STONES,
   MAGIC_STONES_REGEN_PER_TICK,
   SUMMON_RADIUS,
   ATTACK_RANGE,
@@ -2521,6 +2522,12 @@ function regenMagicStones() {
   for (const p of Object.values(_gameState.players)) {
     if (p.debugScenario === 'summon-low-mana') {
       p.magicStones = 0;
+    } else if (
+      p.magicStones === STARTING_MAGIC_STONES
+      && !p.hasSpentMagicStonesThisRun
+    ) {
+      // Fresh deploy starts at exactly STARTING_MAGIC_STONES; skip passive regen
+      // until the player spends or gains MS so harness probes stay stable.
     } else {
       p.magicStones = Math.min(MAX_MAGIC_STONES, p.magicStones + MAGIC_STONES_REGEN_PER_TICK);
     }

@@ -843,6 +843,7 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
     persistenceDirty: false,
     ready: false,
     magicStones: STARTING_MAGIC_STONES,
+    hasSpentMagicStonesThisRun: false,
     currency: progress.currency,
     inventory: progress.inventory,
     ownedCards: progress.ownedCards,
@@ -960,6 +961,7 @@ function initializePlayerForActiveRun(player) {
   }
   player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
   player.magicStones = STARTING_MAGIC_STONES;
+  player.hasSpentMagicStonesThisRun = false;
   if (!player.pendingSummons) {
     player.pendingSummons = new Set();
   }

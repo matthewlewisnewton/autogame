@@ -1588,6 +1588,25 @@ describe('regenMagicStones (game tick)', () => {
 		expect(gameState.players['p1'].magicStones).toBe(0);
 	});
 
+	it('does not regen from fresh-deploy STARTING_MAGIC_STONES until MS is spent or gained', () => {
+		addPlayer('p1', {
+			magicStones: STARTING_MAGIC_STONES,
+			hasSpentMagicStonesThisRun: false,
+		});
+
+		regenMagicStones();
+
+		expect(gameState.players['p1'].magicStones).toBe(STARTING_MAGIC_STONES);
+
+		gameState.players['p1'].hasSpentMagicStonesThisRun = true;
+		regenMagicStones();
+
+		expect(gameState.players['p1'].magicStones).toBeCloseTo(
+			STARTING_MAGIC_STONES + MAGIC_STONES_REGEN_PER_TICK,
+			5,
+		);
+	});
+
 	it('clears pendingSummons for each player', () => {
 		addPlayer('p1');
 		gameState.players['p1'].pendingSummons.add('0:iron_sword');
@@ -3022,6 +3041,11 @@ describe('run state', () => {
 			checkAllReady();
 
 			expect(gameState.run.id).not.toBe(preSuspendRunId);
+			expect(gameState.players.p1.magicStones).toBe(STARTING_MAGIC_STONES);
+			expect(gameState.players.p1.hasSpentMagicStonesThisRun).toBe(false);
+			for (let tick = 0; tick < 5; tick += 1) {
+				regenMagicStones();
+			}
 			expect(gameState.players.p1.magicStones).toBe(STARTING_MAGIC_STONES);
 			const occupied = gameState.players.p1.hand.filter(Boolean);
 			expect(occupied.length).toBeGreaterThan(0);

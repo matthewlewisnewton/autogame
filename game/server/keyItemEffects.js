@@ -35,6 +35,7 @@ const {
 const {
   getKeyItemDef,
   addMagicStones,
+  markMagicStonesActive,
   recordCrystalCollected,
   checkRunTerminalState,
   savePlayerData,
@@ -110,6 +111,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
         if (dist <= healRadius) {
           p.hp = Math.min(p.hp + MAX_HP * healPercent, MAX_HP);
           p.magicStones = Math.min((p.magicStones || 0) + msRestore, MAX_MAGIC_STONES);
+          if (msRestore > 0) markMagicStonesActive(p);
           healed++;
         }
       }
