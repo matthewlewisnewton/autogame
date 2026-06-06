@@ -1,0 +1,14 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/297-fireball-card-inflicts-burning/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/297-fireball-card-inflicts-burning/game/data
+Server listening on port 3001
+Player connected: socket=McScJLIN4PU5M4gRAAAB, playerId=8575dc99-c53d-46a3-9776-39f636f24d44
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=Wi3-xjlzJ-_QpcO7AAAD, playerId=25aeea80-6560-44c7-84f1-e3f7542baa51
+[loot] spawned id=73927cbd-8562-4f24-be97-67f224df296b value=12
+Player disconnected: McScJLIN4PU5M4gRAAAB
+Player disconnected: Wi3-xjlzJ-_QpcO7AAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

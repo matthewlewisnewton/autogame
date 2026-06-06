@@ -5195,6 +5195,68 @@ Observed evidence: `coverage.log` reports 114 passed test files and 1856 passed 
 No blocking gaps remain.
 
 
+## v0.292 — 301-burning-and-slow-mutually-exclusive  (2026-06-06 13:37:01)
+
+
+### Burning and slow are mutually exclusive on any entity
+PASS. `applySlow()` now clears `burningUntil` and resets `lastBurnTickAt` before applying slow, while `applyBurning()` clears `slowedUntil` before applying burn. Because these helpers operate on generic entities and are the shared status entry points, both player and enemy sources inherit the most-recent-wins behavior.
+
+### Both application orders are covered for players and enemies
+PASS. `server/test/burn_slow_mutual_exclusion.test.js` covers slowed-then-burned, burned-then-slowed, repeated toggles, and "never both" assertions for player-shaped and enemy-shaped entities. It also covers the burn tick clock reset when slow douses burn. The captured coverage log shows the new test file passed as part of the server suite, with 24 test files and 966 tests passing.
+
+### Client shows only the active status
+PASS. The client slow and burn indicators are separately driven by `slowedUntil` and `burningUntil` from the server snapshot. Since the server now zeroes the opposing timestamp on every status application, the existing renderer path disposes the inactive marker and displays only the current effect for local players, remote players, and enemies.
+
+### Design and foundation consistency
+PASS. The change is consistent with the combat status model in `game/docs/design.md`: it keeps the existing card-combat/status-effect architecture and does not alter the lobby, dungeon, rendering, networking, or movement foundations in `game/docs/requirements.md`. The captured run still demonstrates 3D rendering, client/server connectivity, multiplayer presence, and movement.
+
+### Debug scenarios
+PASS. This ticket did not add or change any `debugScenario` shortcut. The captured scenarios list is empty, so there is no debug-only path to validate for this ticket.
+
+## Remaining gaps
+
+None.
+
+## v0.293 — 298-vault-wyrm-burning-rebalance  (2026-06-06 13:54:54)
+
+PASS. The shared `dungeon_drake` stats add `burnDurationMs: 2000` and `specialEffect: "burning_breath"`. Both server and client build `CARD_DEFS` from the shared JSON sources, and the client card HUD renders `specialEffect` by replacing underscores with spaces, producing the captured `BURNING BREATH` label on the Vault Wyrm cards.
+
+### Server tests cover reduced damage and burn application
+
+PASS. The new `game/server/test/vault_wyrm_burning.test.js` covers cone miss behavior, burn refresh/extension on subsequent breath ticks, and the evolved Wyrm non-burn guard. Existing Wyrm tests were updated to assert 50 HP -> 48 HP, `isBurning(enemy) === true`, and `burningUntil === now + 2000`. The changed `astral_guardian` default-minion assertion was also updated for the new fallback damage.
+
+`coverage.log` shows the full test run passed: 53 test files and 1466 tests. Coverage was collected successfully with thresholds disabled.
+
+## Design and requirements consistency
+
+PASS. The change stays within the existing card-combat model: Vault Wyrm remains a creature/minion summon with channeled breath, but now trades lower direct damage for the already-established BURNING status. It does not alter the lobby/dungeon loop, movement, networking, rendering, or multiplayer foundations listed in `game/docs/design.md` and `game/docs/requirements.md`. The captured smoke run confirms server-client connection, 3D rendering, player representation, and movement synchronization still work.
+
+## Debug scenarios
+
+PASS. The ticket updates an existing `minion-combat` debug scenario's hard-coded Vault Wyrm stats to mirror production damage and burn duration. The scenario remains behind the existing debug-scenario path (`?debugScenario=...` / debug socket event from local debug flow), and normal gameplay can reach the equivalent end state by starting a run with Vault Wyrm in the deck and casting it near enemies. The scenario does not replace the production summon path or weaken server-side card validation for normal play.
+
+## v0.294 — 297-fireball-card-inflicts-burning  (2026-06-06 14:20:38)
+
+PASS. Casting flows through the authoritative `useCard` weapon branch in `game/server/cardEffects.js`: `effect: "fireball"` uses `collectProjectileHits`, applies impact damage, preserves projectile render data in the `cardUsed` payload, consumes charges/cooldowns through the existing weapon path, and emits state updates normally.
+
+PASS. Burning-on-hit is implemented on the server by resolving each hit enemy and calling `applyBurning(enemy, burningDurationMs)`. This reuses the existing Burning status implementation from ticket 291, including mutual exclusion with Slow and ticking fire damage. State snapshots expose enemies directly, so `burningUntil` reaches clients for visual status rendering.
+
+PASS. Client visuals are covered on both sides of the requirement: `game/client/cardRenderers.js` registers a Fireball-specific renderer that spawns a warm `effect: "fireball"` projectile, and `game/client/renderer.js` has a matching sphere projectile branch. Burning on enemies is rendered via the existing `burningUntil`-driven flame markers.
+
+PASS. Server and client tests cover the new behavior: `game/server/test/fireball_card.test.js` verifies the definition, reward obtainability, cast payload, impact damage, and Burning status on struck enemies; `game/client/test/cardRenderers.test.js` verifies the Fireball projectile renderer; `game/client/test/cards.test.js` verifies Fireball is in weapon card sets. The coverage run reports `112 passed` test files and `1745 passed` tests.
+
+## Design and requirements fit
+
+PASS. The change fits the design document's card-combat model: Fireball is a multi-charge weapon projectile in the active deck/hand system, and it adds a status-based combat effect without changing the lobby, dungeon, loot, multiplayer, movement, or rendering foundations required by `game/docs/requirements.md`.
+
+## Debug scenario review
+
+PASS. The added `fireball-ready` scenario is only reachable through the debug-scenario URL/socket path guarded by `isDebugScenarioAllowed`; normal gameplay does not call it. It is a deterministic QA shortcut into a state that remains reachable normally by earning the reward card, putting it in a deck, deploying, and fighting enemies. The scenario still uses normal `useCard` server validation and combat resolution; it only seeds the hand and enemies for repeatable testing.
+
+## Remaining gaps
+
+None.
+
 ## v0.295 — 299-aoe-heal-and-cleanse-card  (2026-06-06 14:28:29)
 
 **Casting removes slow, burning, and other negative statuses on affected players.** Passed. `clearNegativeStatuses` resets `slowedUntil`, `slowFactor`, `burningUntil`, `lastBurnTickAt`, `frozenUntil` when present, and the generic `debuffs` array. The radius heal path runs this cleanse for every in-radius active player, including full-health players whose HP cannot increase. Tests cover slow, burn, frozen/debuff cleanup, and socket integration after casting from a slowed/burning player.

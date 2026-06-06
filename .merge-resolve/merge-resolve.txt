@@ -1,11 +1,12 @@
-Merge conflict in `game/server/index.js` is resolved. Both sides were additive debug-scenario registry entries, so I kept all of them:
+Conflict resolved in `LOGBOOK.md`.
 
-1. **`DEBUG_SCENARIOS`** — ticket entries plus main:
-   - `field-medic`, `field-medic-spawn` (ticket)
-   - `chain-lightning-ready` (main)
+**What I merged:** Both sides are kept — all four logbook entries appear in version order after v0.291:
 
-2. **`DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN`** — ticket entries plus main:
-   - `field-medic`, `field-medic-spawn` (ticket)
-   - `slippery-floor-lab`, `frost-crossing-tier-1` (main)
+1. **v0.292** — 301-burning-and-slow-mutually-exclusive (from `main`)
+2. **v0.293** — 298-vault-wyrm-burning-rebalance (from `main`)
+3. **v0.294** — 297-fireball-card-inflicts-burning (from `main`)
+4. **v0.295** — 299-aoe-heal-and-cleanse-card (from this ticket)
 
-All conflict markers are removed; the file is ready for the harness to commit and run tests.
+The Purifying Pulse review content is unchanged, including design/requirements consistency and code quality notes. The closing **Remaining gaps: None** for v0.295 is preserved.
+
+All conflict markers are removed from the working tree. The harness can commit and finish the merge.

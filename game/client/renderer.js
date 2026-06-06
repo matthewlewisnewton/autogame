@@ -4015,6 +4015,34 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 		return;
 	}
 
+	if (effect === 'fireball') {
+		// Fiery sphere projectile — same travel/cleanup shape as `projectile`
+		// but with warm fire colors and a stronger glow so it reads as flame.
+		const geometry = new THREE.SphereGeometry(0.35, 12, 12);
+		const material = new THREE.MeshStandardMaterial({
+			color: style.color ?? 0xff7a18,
+			emissive: style.emissive ?? 0xff3b00,
+			emissiveIntensity: 1.6,
+			roughness: 0.5,
+			metalness: 0.0,
+			transparent: true,
+			opacity: 1.0,
+		});
+		const mesh = new THREE.Mesh(geometry, material);
+		mesh.position.set(origin.x, 1.0, origin.z);
+		targetScene.add(mesh);
+
+		activeEffects.push({
+			mesh,
+			origin: { x: origin.x, z: origin.z },
+			direction: { x: direction.x, z: direction.z },
+			range,
+			createdAt: performance.now(),
+			duration: ATTACK_EFFECT_DURATION,
+		});
+		return;
+	}
+
 	if (effect === 'returning_projectile' || effect === 'triple_returning_projectile') {
 		const hitWidth = style.projectileHitWidth ?? PROJECTILE_HIT_WIDTH;
 		const { group, head } = createProjectileHitboxGroup(direction, range, hitWidth, { color, emissive });

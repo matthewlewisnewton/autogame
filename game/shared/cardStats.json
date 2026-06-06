@@ -4,7 +4,9 @@
   "battle_familiar": { "magicStoneCost": 50, "damage": 44 },
   "dungeon_drake": {
     "minionTtl": 30,
-    "attackDamage": 3,
+    "attackDamage": 2,
+    "burnDurationMs": 2000,
+    "specialEffect": "burning_breath",
     "breathRange": 6,
     "breathHoldDistance": 3.5,
     "breathDurationMs": 2000,
@@ -151,6 +153,14 @@
     "attackRange": 10,
     "effect": "projectile",
     "specialEffect": "long_range",
+    "projectile": { "pierces": true }
+  },
+  "fireball": {
+    "damage": 16,
+    "attackRange": 9,
+    "effect": "fireball",
+    "specialEffect": "burning",
+    "burningDurationMs": 3000,
     "projectile": { "pierces": true }
   },
   "chain_lightning": {

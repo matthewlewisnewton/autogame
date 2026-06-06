@@ -1792,7 +1792,8 @@ function applyDebugScenario(socket, name) {
         breathRange: 6,
         breathHoldDistance: 3.5,
         breathConeAngle: Math.PI / 4,
-        breathDamage: 3,
+        breathDamage: 2,
+        burnDurationMs: 2000,
         breathDurationMs: 2000,
         breathTickMs: 500,
         breathIntervalMs: 2500,
@@ -2303,6 +2304,33 @@ function applyDebugScenario(socket, name) {
       chain2.hp = 80;
       chain2.maxHp = 80;
       chain2.wanderTarget = { x: chain2.x, z: chain2.z };
+    } else if (name === 'fireball-ready') {
+      // Playing phase with Fireball in hand, full Magic Stones, and two grunts
+      // lined up along +X so a single cast pierces both, deals impact damage,
+      // and leaves them BURNING (visible damage-over-time afterward). The same
+      // state is reachable normally by earning the reward card and entering combat.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'fireball',
+          name: 'Fireball',
+          type: 'weapon',
+          charges: 4,
+          remainingCharges: 4,
+        };
+      }
+      state.enemies = [];
+      const near = spawnEnemy(player.x + 4, player.z, 'grunt');
+      near.hp = 80;
+      near.maxHp = 80;
+      near.wanderTarget = { x: near.x, z: near.z };
+      const far = spawnEnemy(player.x + 7, player.z, 'grunt');
+      far.hp = 80;
+      far.maxHp = 80;
+      far.wanderTarget = { x: far.x, z: far.z };
     }
 
     syncRunObjectiveToEnemies();

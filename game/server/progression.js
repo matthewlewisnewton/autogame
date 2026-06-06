@@ -694,6 +694,7 @@ function applyWyrmMinionBreathStats(minion, cardDef, grind, now) {
   minion.breathConeAngle = cardDef.breathConeAngle ?? (Math.PI / 4);
   minion.breathDurationMs = cardDef.breathDurationMs ?? 2000;
   minion.breathTickMs = cardDef.breathTickMs ?? 500;
+  minion.burnDurationMs = cardDef.burnDurationMs ?? 0;
   const baseDamage = cardDef.breathDamage ?? cardDef.attackDamage ?? 3;
   minion.breathDamage = scaledGrindStat(baseDamage, grind);
 }
