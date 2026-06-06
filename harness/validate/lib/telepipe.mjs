@@ -1,0 +1,345 @@
+/**
+ * Telepipe UP → abandon → fresh-deploy validation helpers (ticket 281 sub-ticket 04).
+ */
+import { createRequire } from 'module';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { enableGodmode } from './combat.mjs';
+import { readHarness } from './harnessState.mjs';
+import { createLobby, waitForHubLobby } from './multiPlayer.mjs';
+import { writeScreenshot } from './screenshot.mjs';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
+const { STARTING_MAGIC_STONES } = require(path.resolve(__dirname, '../../../game/shared/constants.json'));
+const { PORTAL_PLACEMENT_GRACE_MS } = require(path.resolve(__dirname, '../../../game/server/config.js'));
+
+export { STARTING_MAGIC_STONES, PORTAL_PLACEMENT_GRACE_MS };
+
+function usable(card) {
+	return card && (card.remainingCharges == null || card.remainingCharges > 0);
+}
+
+function probesMatchDepletion(probe, startingMs = STARTING_MAGIC_STONES) {
+	const ms = probe?.magicStones;
+	const msDepleted = Number.isFinite(ms) && ms < startingMs;
+	const chargeDepleted = (probe?.hand || []).some(
+		(card) => card && card.charges != null && card.remainingCharges < card.charges,
+	);
+	return msDepleted && chargeDepleted;
+}
+
+function probesMatchFreshDeploy(probe, startingMs = STARTING_MAGIC_STONES) {
+	const ms = probe?.magicStones;
+	const msReset = ms === startingMs;
+	const occupied = (probe?.hand || []).filter(Boolean);
+	const chargesFull = occupied.length > 0
+		&& occupied.every((card) => card.remainingCharges === card.charges);
+	return msReset && chargesFull;
+}
+
+/**
+ * @param {import('playwright').Page} page
+ */
+export async function probeHandAndMs(page) {
+	const harness = await readHarness(page);
+	return {
+		magicStones: harness?.player?.magicStones ?? null,
+		msText: harness?.msText ?? null,
+		hand: (harness?.hand || []).map((card) => (card ? {
+			id: card.id,
+			type: card.type,
+			remainingCharges: card.remainingCharges,
+			charges: card.charges,
+		} : null)),
+		phase: harness?.phase ?? null,
+		runStatus: harness?.runStatus ?? null,
+		extracted: harness?.extracted ?? null,
+		suspendedRunSummary: harness?.suspendedRunSummary ?? null,
+		layoutSeed: harness?.layout?.seed ?? null,
+	};
+}
+
+async function focusCanvas(page) {
+	await page.evaluate(() => {
+		document.querySelector('canvas:not(.cosmetic-preview-canvas)')?.focus();
+	});
+}
+
+async function requestScenario(page, scenario) {
+	const result = await page.evaluate(async (name) => {
+		if (typeof window.__requestDebugScenarioForTest !== 'function') {
+			return { ok: false, reason: '__requestDebugScenarioForTest missing' };
+		}
+		return window.__requestDebugScenarioForTest(name);
+	}, scenario);
+	if (!result?.ok) {
+		const harness = await readHarness(page);
+		throw new Error(`Debug scenario ${scenario} failed: ${JSON.stringify(result)} harness=${JSON.stringify(harness)}`);
+	}
+	return result;
+}
+
+async function waitForPlaying(page, timeout = 30000) {
+	await page.waitForFunction(() => {
+		const h = window.__AUTOGAME_HARNESS_STATE__?.();
+		return h?.phase === 'playing'
+			&& h.player
+			&& h.player.x != null
+			&& h.cardHandVisible
+			&& Array.isArray(h.enemyHp)
+			&& h.layout
+			&& h.layout.seed != null;
+	}, { timeout }).catch(async () => {
+		const harness = await readHarness(page);
+		throw new Error(`Playing phase not reached: ${JSON.stringify(harness)}`);
+	});
+}
+
+/**
+ * @param {import('playwright').Page} page
+ * @param {string} [scenario]
+ */
+export async function deployViaLaunchBooth(page, scenario) {
+	if (scenario) {
+		await requestScenario(page, scenario);
+	}
+	const launched = await page.evaluate(() => {
+		if (typeof window.__launchReadyUpForTest !== 'function') {
+			return { ok: false, reason: '__launchReadyUpForTest missing' };
+		}
+		window.__launchReadyUpForTest();
+		return { ok: true };
+	});
+	if (!launched?.ok) {
+		const harness = await readHarness(page);
+		throw new Error(`Launch Bay ready-up failed: ${JSON.stringify(launched)} harness=${JSON.stringify(harness)}`);
+	}
+	await waitForPlaying(page);
+}
+
+function chooseDepletionAttack(harness) {
+	if (!harness || !Array.isArray(harness.hand)) return null;
+	const weaponSlot = harness.hand.findIndex(
+		(card) => usable(card) && card.type === 'weapon' && card.id !== 'telepipe',
+	);
+	if (weaponSlot >= 0) return { mode: 'weapon', slot: weaponSlot };
+	const spellSlot = harness.hand.findIndex(
+		(card) => usable(card)
+			&& card.id !== 'telepipe'
+			&& (card.type === 'spell' || card.type === 'creature'),
+	);
+	if (spellSlot >= 0) return { mode: 'spell', slot: spellSlot };
+	return null;
+}
+
+async function lockOntoNearestEnemy(page) {
+	const harness = await readHarness(page);
+	const player = harness?.player;
+	const enemies = (harness?.enemyHp || []).filter((e) => e.hp > 0 && e.x != null && e.z != null);
+	if (!player || enemies.length === 0) return false;
+
+	let nearest = null;
+	let bestDist = Infinity;
+	for (const enemy of enemies) {
+		const dist = Math.hypot(enemy.x - player.x, enemy.z - player.z);
+		if (dist < bestDist) {
+			bestDist = dist;
+			nearest = enemy;
+		}
+	}
+	if (!nearest) return false;
+
+	if (bestDist > 5) {
+		const dx = nearest.x - player.x;
+		const dz = nearest.z - player.z;
+		const keys = [];
+		if (Math.abs(dx) >= Math.abs(dz)) {
+			if (dx > 0.5) keys.push('d');
+			else if (dx < -0.5) keys.push('a');
+		} else if (dz > 0.5) keys.push('s');
+		else if (dz < -0.5) keys.push('w');
+		if (keys.length === 0) keys.push('w');
+		for (let i = 0; i < 3; i += 1) {
+			for (const key of keys) {
+				await page.keyboard.down(key);
+				await page.waitForTimeout(450);
+				await page.keyboard.up(key);
+			}
+		}
+	}
+
+	await page.keyboard.press('z');
+	await page.waitForTimeout(300);
+	const lock = await page.evaluate(async () => {
+		const mod = await import('/lockOn.js');
+		return { active: mod.isLockOnActive(), targetId: mod.getLockedEnemyId() };
+	});
+	return lock.active;
+}
+
+/**
+ * Deplete MS below run-start and reduce at least one occupied hand card's charges via combat.
+ * @param {import('playwright').Page} page
+ */
+export async function depleteRunResources(page) {
+	await focusCanvas(page);
+	await enableGodmode(page);
+
+	const deadline = Date.now() + 120000;
+	while (Date.now() < deadline) {
+		const probe = await probeHandAndMs(page);
+		if (probesMatchDepletion(probe)) {
+			return probe;
+		}
+
+		const harness = await readHarness(page);
+		const attack = chooseDepletionAttack(harness);
+		if (!attack) {
+			throw new Error(`No usable card to deplete resources: ${JSON.stringify(harness?.hand)}`);
+		}
+
+		const attackKey = String(attack.slot + 1);
+		if (attack.mode === 'weapon') {
+			await lockOntoNearestEnemy(page);
+			for (let swing = 0; swing < 4; swing += 1) {
+				await page.keyboard.press(attackKey);
+				await page.waitForTimeout(900);
+				const mid = await probeHandAndMs(page);
+				if (probesMatchDepletion(mid)) return mid;
+			}
+		} else {
+			await page.keyboard.press(attackKey);
+			await page.waitForTimeout(3500);
+		}
+	}
+
+	const finalProbe = await probeHandAndMs(page);
+	throw new Error(`Failed to deplete run resources: ${JSON.stringify(finalProbe)}`);
+}
+
+/**
+ * Place telepipe, wait past portal grace, solo-extract until run suspends to lobby.
+ * @param {import('playwright').Page} page
+ */
+export async function suspendViaTelepipe(page) {
+	await focusCanvas(page);
+	const harness = await readHarness(page);
+	const telepipeSlot = (harness?.hand || []).findIndex((card) => card?.id === 'telepipe');
+	if (telepipeSlot < 0) {
+		throw new Error(`Telepipe not in hand before suspend: ${JSON.stringify(harness?.hand)}`);
+	}
+
+	const slotKey = String(telepipeSlot + 1);
+	await page.keyboard.press(slotKey);
+	await page.waitForFunction(() => {
+		const h = window.__AUTOGAME_HARNESS_STATE__?.();
+		return !!h?.telepipe;
+	}, { timeout: 10000 }).catch(async () => {
+		const state = await readHarness(page);
+		throw new Error(`Telepipe portal not placed: ${JSON.stringify(state)}`);
+	});
+
+	await page.waitForTimeout(PORTAL_PLACEMENT_GRACE_MS + 500);
+
+	const deadline = Date.now() + 30000;
+	while (Date.now() < deadline) {
+		const h = await readHarness(page);
+		const suspended = h.runStatus === 'suspended'
+			|| (h.phase === 'lobby' && h.suspendedRunSummary)
+			|| h.extracted === true;
+		if (suspended) return h;
+		await page.keyboard.press('w');
+		await page.waitForTimeout(500);
+	}
+
+	const h = await readHarness(page);
+	throw new Error(`Run did not suspend via telepipe: phase=${h?.phase} runStatus=${h?.runStatus} `
+		+ `extracted=${h?.extracted} suspendedRunSummary=${JSON.stringify(h?.suspendedRunSummary)}`);
+}
+
+/**
+ * Abandon the suspended checkpoint via #abandon-run-btn (not resume).
+ * @param {import('playwright').Page} page
+ */
+export async function abandonSuspendedRun(page) {
+	await page.waitForFunction(() => {
+		const h = window.__AUTOGAME_HARNESS_STATE__?.();
+		return h?.abandonRunBtnUsable === true;
+	}, { timeout: 15000 }).catch(async () => {
+		const harness = await readHarness(page);
+		throw new Error(`Abandon button not usable: ${JSON.stringify(harness)}`);
+	});
+
+	await page.click('#abandon-run-btn');
+
+	await page.waitForFunction(() => {
+		const h = window.__AUTOGAME_HARNESS_STATE__?.();
+		return h?.phase === 'lobby'
+			&& !h?.suspendedRunSummary
+			&& h?.runStatus !== 'suspended'
+			&& h?.abandonRunBtnUsable !== true
+			&& h?.resumeBtnUsable !== true;
+	}, { timeout: 15000 }).catch(async () => {
+		const harness = await readHarness(page);
+		throw new Error(`Suspended run not cleared after abandon: ${JSON.stringify(harness)}`);
+	});
+}
+
+/**
+ * @param {import('playwright').Page} page
+ * @param {{ preset: object, outDirAbs: string, repoRoot: string }} opts
+ */
+export async function runTelepipeResetStep({ page, preset, outDirAbs, repoRoot }) {
+	await createLobby(page, 'Telepipe Reset');
+	await waitForHubLobby(page);
+	await requestScenario(page, preset.telepipeScenario);
+	await deployViaLaunchBooth(page);
+
+	const deployedHarness = await readHarness(page);
+	const telepipeInHand = (deployedHarness?.hand || []).some((card) => card?.id === 'telepipe');
+	if (!telepipeInHand) {
+		throw new Error(`Expected telepipe in hand after deploy: ${JSON.stringify(deployedHarness?.hand)}`);
+	}
+
+	const preSuspend = await depleteRunResources(page);
+	if (!probesMatchDepletion(preSuspend)) {
+		throw new Error(`preSuspend probes failed depletion criteria: ${JSON.stringify(preSuspend)}`);
+	}
+
+	const beforeScreenshotPath = await writeScreenshot(page, outDirAbs, '07-telepipe-before');
+
+	await suspendViaTelepipe(page);
+	const suspendedHarness = await readHarness(page);
+	const suspended = suspendedHarness?.runStatus === 'suspended'
+		|| (suspendedHarness?.phase === 'lobby' && suspendedHarness?.suspendedRunSummary)
+		|| suspendedHarness?.extracted === true;
+	if (!suspended) {
+		throw new Error(`Expected suspended lobby after telepipe UP: ${JSON.stringify(suspendedHarness)}`);
+	}
+
+	await abandonSuspendedRun(page);
+
+	await deployViaLaunchBooth(page, preset.telepipeScenario);
+
+	const postDeploy = await probeHandAndMs(page);
+	const postHarness = await readHarness(page);
+	if (postHarness?.suspendedRunSummary || postHarness?.runStatus === 'suspended') {
+		throw new Error(`Fresh deploy still shows suspended checkpoint: ${JSON.stringify(postHarness)}`);
+	}
+	if (!probesMatchFreshDeploy(postDeploy)) {
+		throw new Error(`postDeploy probes failed reset criteria: ${JSON.stringify(postDeploy)}`);
+	}
+
+	const afterScreenshotPath = await writeScreenshot(page, outDirAbs, '08-telepipe-after');
+	const telepipeUpReset = probesMatchDepletion(preSuspend) && probesMatchFreshDeploy(postDeploy);
+
+	return {
+		telepipeScenario: preset.telepipeScenario,
+		preSuspend,
+		postDeploy,
+		telepipeUpReset,
+		beforeScreenshot: path.relative(repoRoot, beforeScreenshotPath),
+		afterScreenshot: path.relative(repoRoot, afterScreenshotPath),
+	};
+}

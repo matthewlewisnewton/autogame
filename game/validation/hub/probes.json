@@ -1,57 +1,4 @@
 {
-  "ok": true,
-  "preset": "hub",
-  "steps": "full",
-  "outDir": "game/validation/hub",
-  "presetConfig": {
-    "hubZones": [
-      "operations",
-      "commerce",
-      "salon"
-    ],
-    "telepipeScenario": "telepipe-ready",
-    "currencyScenario": "hat-shop-currency",
-    "hatsScenario": "hats-unlocked",
-    "boothAnchors": [
-      "quest",
-      "launch",
-      "shop",
-      "deck",
-      "character",
-      "hats"
-    ]
-  },
-  "serverPort": 3292,
-  "clientPort": 5263,
-  "auth": {
-    "username": "playthrough-1780740552442",
-    "connected": true,
-    "lobbyBrowserVisible": true,
-    "harnessPhase": "unknown",
-    "lobbyFinder": {
-      "lobbyBrowserVisible": true,
-      "lobbyHidden": true,
-      "hasCanvas": true,
-      "hub3dStarted": false,
-      "position": "fixed",
-      "fixedOverPlayingCanvas": false
-    },
-    "screenshot": "game/validation/hub/09-lobby-finder.png"
-  },
-  "hubWalk": {
-    "lobbyName": "Hub Walk 1780740552994",
-    "hostUsername": "hub-host-1780740552994",
-    "joinerUsername": "hub-joiner-1780740552994",
-    "playersOnHost": 2,
-    "overviewScreenshot": "game/validation/hub/01-hub-overview.png",
-    "zoneScreenshots": {
-      "operations": "game/validation/hub/02-room-operations.png",
-      "commerce": "game/validation/hub/03-room-commerce.png",
-      "salon": "game/validation/hub/04-room-salon.png"
-    },
-    "layoutProfile": "hub",
-    "layoutRoomCount": 3
-  },
   "booth": {
     "currencyScenario": "hat-shop-currency",
     "hatsScenario": "hats-unlocked",
@@ -69,7 +16,6 @@
     "hatScreenshot": "game/validation/hub/06-hat-swap.png"
   },
   "telepipeReset": {
-    "telepipeScenario": "telepipe-ready",
     "preSuspend": {
       "magicStones": 17,
       "msText": "17/99",
@@ -149,13 +95,20 @@
       "suspendedRunSummary": null,
       "layoutSeed": 352369970
     },
-    "telepipeUpReset": true,
-    "beforeScreenshot": "game/validation/hub/07-telepipe-before.png",
-    "afterScreenshot": "game/validation/hub/08-telepipe-after.png"
-  },
-  "assertions": {
-    "boothDeductsGold": true,
-    "hatSwapFree": true,
     "telepipeUpReset": true
+  },
+  "hubWalk": {
+    "lobbyName": "Hub Walk 1780740552994",
+    "hostUsername": "hub-host-1780740552994",
+    "joinerUsername": "hub-joiner-1780740552994",
+    "playersOnHost": 2,
+    "overviewScreenshot": "game/validation/hub/01-hub-overview.png",
+    "zoneScreenshots": {
+      "operations": "game/validation/hub/02-room-operations.png",
+      "commerce": "game/validation/hub/03-room-commerce.png",
+      "salon": "game/validation/hub/04-room-salon.png"
+    },
+    "layoutProfile": "hub",
+    "layoutRoomCount": 3
   }
 }

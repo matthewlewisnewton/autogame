@@ -5,7 +5,7 @@
  *   node harness/validate/playthrough.mjs [--preset rooms|hub] [--out <dir>] [--steps <slice>]
  *
  * Rooms preset steps: auth, hub | deploy, boss-encounter, full.
- * Hub preset steps: auth, hub-walk, booth, telepipe-reset, full (latter slices stubbed until sub-tickets 02–05).
+ * Hub preset steps: auth, hub-walk, booth, telepipe-reset, full.
  */
 import { chromium } from 'playwright';
 import fs from 'fs';
@@ -21,6 +21,7 @@ import {
 } from './lib/combat.mjs';
 import { wireConsoleLog, writeConsoleLog } from './lib/consoleLog.mjs';
 import { renderFindings } from './lib/findings.mjs';
+import { renderHubFindings } from './lib/findingsHub.mjs';
 import { startGame, stopGame } from './lib/gameProcess.mjs';
 import { readHarness } from './lib/harnessState.mjs';
 import { writeScreenshot } from './lib/screenshot.mjs';
@@ -39,6 +40,7 @@ import {
 	stagePaidAppearanceConfirm,
 	completePaidAppearanceConfirm,
 } from './lib/booth.mjs';
+import { runTelepipeResetStep } from './lib/telepipe.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
@@ -52,7 +54,7 @@ const ROOMS_FULL_STEPS = new Set(['full']);
 const ROOMS_HUB_STEPS = new Set(['hub', 'deploy']);
 const ROOMS_BOSS_ENCOUNTER_STEPS = new Set(['boss-encounter']);
 const HUB_PRESET_STEPS = new Set(['auth', 'hub-walk', 'booth', 'telepipe-reset', 'full']);
-const HUB_STUB_STEPS = new Set(['telepipe-reset', 'full']);
+const HUB_FULL_STEPS = new Set(['full']);
 const ADD_TYPES = new Set(['grunt', 'skirmisher']);
 
 function defaultOutDir(preset) {
@@ -90,9 +92,6 @@ function assertStepsForPreset(preset, steps) {
 	if (preset === 'hub') {
 		if (!HUB_PRESET_STEPS.has(steps)) {
 			throw new Error(`Unknown --steps value "${steps}" for preset hub — expected: ${[...HUB_PRESET_STEPS].join(', ')}`);
-		}
-		if (HUB_STUB_STEPS.has(steps)) {
-			throw new Error(`Hub preset step "${steps}" is not implemented yet (sub-tickets 02–05)`);
 		}
 		return;
 	}
@@ -667,6 +666,14 @@ function buildAssertions(summary, preset) {
 	};
 }
 
+function buildHubAssertions(summary) {
+	return {
+		boothDeductsGold: summary.booth?.boothDeductsGold === true,
+		hatSwapFree: summary.booth?.hatSwapFree === true,
+		telepipeUpReset: summary.telepipeReset?.telepipeUpReset === true,
+	};
+}
+
 function collectScreenshots(summary) {
 	const shots = [];
 	if (summary.auth?.screenshot) shots.push(summary.auth.screenshot);
@@ -680,21 +687,61 @@ function collectScreenshots(summary) {
 	return shots;
 }
 
+function collectHubScreenshots(summary) {
+	const shots = [];
+	if (summary.hubWalk?.overviewScreenshot) shots.push(summary.hubWalk.overviewScreenshot);
+	if (summary.hubWalk?.zoneScreenshots && typeof summary.hubWalk.zoneScreenshots === 'object') {
+		for (const zone of ['operations', 'commerce', 'salon']) {
+			const shot = summary.hubWalk.zoneScreenshots[zone];
+			if (shot) shots.push(shot);
+		}
+	}
+	if (summary.booth?.paidScreenshot) shots.push(summary.booth.paidScreenshot);
+	if (summary.booth?.hatScreenshot) shots.push(summary.booth.hatScreenshot);
+	if (summary.telepipeReset?.beforeScreenshot) shots.push(summary.telepipeReset.beforeScreenshot);
+	if (summary.telepipeReset?.afterScreenshot) shots.push(summary.telepipeReset.afterScreenshot);
+	if (summary.auth?.screenshot) shots.push(summary.auth.screenshot);
+	return shots;
+}
+
 function writeFullArtifacts({ outDirAbs, summary, consoleEntries }) {
-	const probes = {
-		...(summary.bossEncounter?.probes || {}),
-		...(summary.victory?.probes || {}),
-	};
+	const isHub = summary.preset === 'hub';
+	const probes = isHub
+		? {
+			booth: summary.booth || null,
+			telepipeReset: {
+				preSuspend: summary.telepipeReset?.preSuspend ?? null,
+				postDeploy: summary.telepipeReset?.postDeploy ?? null,
+				telepipeUpReset: summary.telepipeReset?.telepipeUpReset ?? null,
+			},
+			hubWalk: summary.hubWalk || null,
+		}
+		: {
+			...(summary.bossEncounter?.probes || {}),
+			...(summary.victory?.probes || {}),
+		};
 	fs.writeFileSync(path.join(outDirAbs, 'probes.json'), JSON.stringify(probes, null, 2));
 
-	const findings = renderFindings({
-		ok: summary.ok === true,
-		preset: summary.preset,
-		assertions: summary.assertions || {},
-		consoleErrors: consoleEntries || [],
-		screenshots: collectScreenshots(summary),
-		error: summary.error || null,
-	});
+	const findings = isHub
+		? renderHubFindings({
+			ok: summary.ok === true,
+			preset: summary.preset,
+			assertions: summary.assertions || {},
+			consoleErrors: consoleEntries || [],
+			screenshots: collectHubScreenshots(summary),
+			hubWalk: summary.hubWalk,
+			booth: summary.booth,
+			telepipeReset: summary.telepipeReset,
+			error: summary.error || null,
+		})
+		: renderFindings({
+			ok: summary.ok === true,
+			preset: summary.preset,
+			assertions: summary.assertions || {},
+			consoleErrors: consoleEntries || [],
+			screenshots: collectScreenshots(summary),
+			error: summary.error || null,
+		});
 	fs.writeFileSync(path.join(outDirAbs, 'findings.md'), findings);
 }
 
@@ -710,9 +757,12 @@ async function main() {
 	let preset;
 	let runsRoomsHub = false;
 	let runsBossEncounter = false;
+	let runsRoomsFull = false;
 	let runsFull = false;
+	let runsHubFull = false;
 	let runsHubWalk = false;
 	let runsBooth = false;
+	let runsTelepipeReset = false;
 	const summary = {
 		ok: true,
 		preset: opts.preset,
@@ -728,9 +778,15 @@ async function main() {
 			&& (ROOMS_HUB_STEPS.has(opts.steps) || ROOMS_FULL_STEPS.has(opts.steps));
 		runsBossEncounter = opts.preset === 'rooms'
 			&& (ROOMS_BOSS_ENCOUNTER_STEPS.has(opts.steps) || ROOMS_FULL_STEPS.has(opts.steps));
-		runsFull = opts.preset === 'rooms' && ROOMS_FULL_STEPS.has(opts.steps);
-		runsHubWalk = opts.preset === 'hub' && opts.steps === 'hub-walk';
-		runsBooth = opts.preset === 'hub' && opts.steps === 'booth';
+		runsRoomsFull = opts.preset === 'rooms' && ROOMS_FULL_STEPS.has(opts.steps);
+		runsHubFull = opts.preset === 'hub' && HUB_FULL_STEPS.has(opts.steps);
+		runsFull = runsRoomsFull || runsHubFull;
+		runsHubWalk = opts.preset === 'hub'
+			&& (opts.steps === 'hub-walk' || runsHubFull);
+		runsBooth = opts.preset === 'hub'
+			&& (opts.steps === 'booth' || runsHubFull);
+		runsTelepipeReset = opts.preset === 'hub'
+			&& (opts.steps === 'telepipe-reset' || runsHubFull);
 		game = await startGame();
 		summary.serverPort = game.serverPort;
 		summary.clientPort = game.clientPort;
@@ -738,17 +794,27 @@ async function main() {
 		browser = await chromium.launch({ headless: true });
 		let page = null;
 
-		if (runsHubWalk) {
+		if (runsHubFull || !runsHubWalk) {
+			page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+			consoleLog = wireConsoleLog(page);
+		}
+
+		if (runsHubFull) {
+			summary.auth = await runAuthStep({
+				page,
+				serverUrl: game.serverUrl,
+				clientUrl: game.clientUrl,
+				outDirAbs,
+				presetName: opts.preset,
+			});
+		} else if (runsHubWalk) {
 			summary.hubWalk = await runHubWalkStep({
 				browser,
 				game,
 				preset,
 				outDirAbs,
 			});
-		} else {
-			page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
-			consoleLog = wireConsoleLog(page);
-
+		} else if (page) {
 			summary.auth = await runAuthStep({
 				page,
 				serverUrl: game.serverUrl,
@@ -758,15 +824,54 @@ async function main() {
 			});
 		}
 
+		if (runsHubWalk && runsHubFull) {
+			summary.hubWalk = await runHubWalkStep({
+				browser,
+				game,
+				preset,
+				outDirAbs,
+			});
+		}
+
 		if (runsBooth && page) {
 			summary.booth = await runBoothStep({ page, preset, outDirAbs });
-			summary.assertions = {
-				boothDeductsGold: summary.booth.boothDeductsGold === true,
-				hatSwapFree: summary.booth.hatSwapFree === true,
-			};
-			summary.ok = summary.assertions.boothDeductsGold && summary.assertions.hatSwapFree;
+			if (!runsHubFull) {
+				summary.assertions = {
+					boothDeductsGold: summary.booth.boothDeductsGold === true,
+					hatSwapFree: summary.booth.hatSwapFree === true,
+				};
+				summary.ok = summary.assertions.boothDeductsGold && summary.assertions.hatSwapFree;
+				if (!summary.ok) {
+					summary.error = summary.error || 'One or more booth assertions failed';
+					exitCode = 1;
+				}
+			}
+		}
+
+		if (runsTelepipeReset && page) {
+			summary.telepipeReset = await runTelepipeResetStep({
+				page,
+				preset,
+				outDirAbs,
+				repoRoot: REPO_ROOT,
+			});
+			if (!runsHubFull) {
+				summary.assertions = {
+					telepipeUpReset: summary.telepipeReset.telepipeUpReset === true,
+				};
+				summary.ok = summary.assertions.telepipeUpReset;
+				if (!summary.ok) {
+					summary.error = summary.error || 'telepipeUpReset assertion failed';
+					exitCode = 1;
+				}
+			}
+		}
+
+		if (runsHubFull) {
+			summary.assertions = buildHubAssertions(summary);
+			summary.ok = Object.values(summary.assertions).every((value) => value === true);
 			if (!summary.ok) {
-				summary.error = summary.error || 'One or more booth assertions failed';
+				summary.error = summary.error || 'One or more hub assertions failed';
 				exitCode = 1;
 			}
 		}
@@ -779,7 +884,7 @@ async function main() {
 			summary.bossEncounter = await runBossEncounterStep({ page, preset, outDirAbs });
 		}
 
-		if (runsFull && page) {
+		if (runsRoomsFull && page) {
 			summary.victory = await runVictoryStep({ page, preset, outDirAbs });
 			summary.assertions = buildAssertions(summary, preset);
 			summary.ok = Object.values(summary.assertions).every((value) => value === true);
@@ -796,7 +901,9 @@ async function main() {
 		console.error(`playthrough failed: ${err.message}`);
 		exitCode = 1;
 		if (runsFull && !summary.assertions) {
-			summary.assertions = buildAssertions(summary, preset);
+			summary.assertions = runsHubFull
+				? buildHubAssertions(summary)
+				: buildAssertions(summary, preset);
 		}
 	} finally {
 		const consoleEntries = consoleLog ? consoleLog.flush() : [];
@@ -805,7 +912,9 @@ async function main() {
 		}
 		if (runsFull) {
 			if (!summary.assertions) {
-				summary.assertions = buildAssertions(summary, preset);
+				summary.assertions = runsHubFull
+					? buildHubAssertions(summary)
+					: buildAssertions(summary, preset);
 			}
 			writeFullArtifacts({ outDirAbs, summary, consoleEntries });
 		} else if (summary.bossEncounter?.probes) {

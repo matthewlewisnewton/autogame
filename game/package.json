@@ -24,7 +24,8 @@
     "test:smoke:telepipe-suspend-resume": "node client/scripts/test-telepipe-suspend-resume.mjs",
     "test:smoke:card-evolution": "node client/scripts/test-card-evolution.mjs",
     "test:smoke:hub-lobby-visible": "node client/scripts/test-hub-lobby-visible.mjs",
-    "validate:hub": "node ../harness/validate/playthrough.mjs --preset hub --steps auth --out game/validation/hub",
+    "validate:hub": "node ../harness/validate/playthrough.mjs --preset hub --steps full --out game/validation/hub",
+    "validate:hub:check": "node ../harness/validate/verify-hub-artifacts.mjs",
     "validate:rooms": "node ../harness/validate/playthrough.mjs --preset rooms --steps full --out game/validation/rooms",
     "validate:rooms:check": "node ../harness/validate/verify-rooms-artifacts.mjs",
     "cleanup:vitest": "bash scripts/kill-vitest.sh"

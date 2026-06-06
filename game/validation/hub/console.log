@@ -1,0 +1,30 @@
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:log] [debugScenario] applied hat-shop-currency
+[console:log] [debugScenario] applied hats-unlocked
+[console:log] [debugScenario] applied telepipe-ready
+[console:log] [launchBooth] ready-up via booth
+[console:log] [debugGodmode] enabled
+[console:log] [run] suspended: Initiate Vault
+[console:log] [debugScenario] applied telepipe-ready
+[console:log] [launchBooth] ready-up via booth
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:log] [debugScenario] applied hat-shop-currency
+[console:log] [debugScenario] applied hats-unlocked
+[console:log] [debugScenario] applied telepipe-ready
+[console:log] [launchBooth] ready-up via booth
+[console:log] [debugGodmode] enabled
+[console:log] [run] suspended: Initiate Vault
+[console:log] [debugScenario] applied telepipe-ready
+[console:log] [launchBooth] ready-up via booth
