@@ -2981,6 +2981,56 @@ describe('run state', () => {
 				expect(isInsideDungeon(player.x, player.z, hubCtx)).toBe(true);
 			}
 		});
+
+		it('fresh deploy after telepipe suspend and abandon resets magicStones and card charges', () => {
+			resetState();
+			gameState._lobbyId = 'test-lobby';
+			addPlayer('p1', {
+				x: 5,
+				z: 5,
+				ready: true,
+				debugScenario: 'telepipe-ready',
+				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+			});
+
+			checkAllReady();
+			const preSuspendRunId = gameState.run.id;
+
+			gameState.players.p1.magicStones = STARTING_MAGIC_STONES - 5;
+			for (const card of gameState.players.p1.hand) {
+				if (card && card.charges != null) {
+					card.remainingCharges = Math.max(0, card.charges - 1);
+				}
+			}
+
+			const { x: portalX, z: portalZ } = gameState.players.p1;
+			gameState.telepipe = {
+				x: portalX,
+				z: portalZ,
+				placedBy: 'p1',
+				placedAt: Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1,
+			};
+			expect(tryEnterTelepipe('p1').ok).toBe(true);
+			expect(gameState.run.status).toBe('suspended');
+			expect(gameState.suspendedCheckpoint).toBeDefined();
+
+			expect(abandonSuspendedRun().ok).toBe(true);
+			expect(gameState.run).toBeUndefined();
+			expect(gameState.suspendedCheckpoint).toBeUndefined();
+
+			gameState.players.p1.ready = true;
+			checkAllReady();
+
+			expect(gameState.run.id).not.toBe(preSuspendRunId);
+			expect(gameState.players.p1.magicStones).toBe(STARTING_MAGIC_STONES);
+			const occupied = gameState.players.p1.hand.filter(Boolean);
+			expect(occupied.length).toBeGreaterThan(0);
+			for (const card of occupied) {
+				if (card.charges != null) {
+					expect(card.remainingCharges).toBe(card.charges);
+				}
+			}
+		});
 		it('checkAllReady does not start when a disconnected player has stale ready', () => {
 			resetState();
 			addPlayer('p1', {

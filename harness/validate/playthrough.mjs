@@ -787,7 +787,8 @@ async function main() {
 			&& (opts.steps === 'booth' || runsHubFull);
 		runsTelepipeReset = opts.preset === 'hub'
 			&& (opts.steps === 'telepipe-reset' || runsHubFull);
-		game = await startGame();
+		const serverLogPath = path.join(outDirAbs, 'server.log');
+		game = await startGame({ serverLogPath });
 		summary.serverPort = game.serverPort;
 		summary.clientPort = game.clientPort;
 
@@ -854,6 +855,7 @@ async function main() {
 				preset,
 				outDirAbs,
 				repoRoot: REPO_ROOT,
+				serverLogPath: game.serverLogPath,
 			});
 			if (!runsHubFull) {
 				summary.assertions = {

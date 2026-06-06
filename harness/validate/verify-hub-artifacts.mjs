@@ -79,6 +79,20 @@ function readRunSummary(errors) {
 	return summary;
 }
 
+function checkTelepipeRunIdSanity(summary, errors) {
+	const reset = summary?.telepipeReset;
+	if (!reset) return;
+	const preId = reset.preSuspend?.runId;
+	const postId = reset.postDeploy?.runId;
+	if (preId == null || postId == null) return;
+	if (preId === postId && summary.assertions?.telepipeUpReset === true) {
+		fail(
+			errors,
+			`telepipeReset runId unchanged (${preId}) while assertions.telepipeUpReset is true`,
+		);
+	}
+}
+
 function checkRequiredFiles(errors) {
 	for (const name of REQUIRED_PNGS) {
 		const filePath = path.join(HUB_DIR, name);
@@ -116,7 +130,8 @@ function main() {
 	if (!fs.existsSync(HUB_DIR)) {
 		errors.push(`missing validation directory: ${HUB_REL}/`);
 	} else {
-		readRunSummary(errors);
+		const summary = readRunSummary(errors);
+		if (summary) checkTelepipeRunIdSanity(summary, errors);
 		checkRequiredFiles(errors);
 	}
 

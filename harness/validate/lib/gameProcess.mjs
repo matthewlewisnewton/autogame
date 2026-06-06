@@ -3,6 +3,7 @@
  * Mirrors game/client/scripts/test-deck-loadout.mjs / test-quest-completion.mjs.
  */
 import { spawn } from 'child_process';
+import fs from 'fs';
 import net from 'net';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -73,13 +74,19 @@ async function waitForHttp(url, { timeout = 30000, expectOk = false } = {}) {
  * Start isolated server + Vite on high ports with harness env flags.
  * @returns {{ serverUrl: string, clientUrl: string, serverPort: number, clientPort: number }}
  */
-export async function startGame({ serverPort, clientPort } = {}) {
+export async function startGame({ serverPort, clientPort, serverLogPath } = {}) {
 	const resolvedServerPort = serverPort ?? await findFreePortInRange(...SERVER_PORT_RANGE);
 	const resolvedClientPort = clientPort ?? await findFreePortInRange(...VITE_PORT_RANGE);
 	const serverUrl = `http://localhost:${resolvedServerPort}`;
 	const clientUrl = `http://localhost:${resolvedClientPort}`;
 
-	launch(process.execPath, ['index.js'], {
+	let serverLogStream = null;
+	if (serverLogPath) {
+		fs.mkdirSync(path.dirname(serverLogPath), { recursive: true });
+		serverLogStream = fs.createWriteStream(serverLogPath, { flags: 'a' });
+	}
+
+	const serverChild = launch(process.execPath, ['index.js'], {
 		cwd: SERVER_DIR,
 		tag: 'server',
 		env: {
@@ -89,6 +96,12 @@ export async function startGame({ serverPort, clientPort } = {}) {
 			ALLOW_DEV_AUTH: '1',
 			PERSISTENCE_BACKEND: 'memory',
 		},
+	});
+	serverChild.stdout?.on('data', (d) => {
+		serverLogStream?.write(d);
+	});
+	serverChild.stderr?.on('data', (d) => {
+		serverLogStream?.write(d);
 	});
 	await waitForHttp(`${serverUrl}/api/me`, { timeout: 30000 });
 
@@ -104,6 +117,7 @@ export async function startGame({ serverPort, clientPort } = {}) {
 		clientUrl,
 		serverPort: resolvedServerPort,
 		clientPort: resolvedClientPort,
+		serverLogPath: serverLogPath ?? null,
 	};
 }
 

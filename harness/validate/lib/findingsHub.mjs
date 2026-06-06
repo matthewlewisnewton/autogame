@@ -19,7 +19,13 @@ function telepipeDetail(summary) {
 	if (!reset) return 'telepipe-reset step missing';
 	const pre = reset.preSuspend;
 	const post = reset.postDeploy;
-	return `preSuspend ms=${pre?.magicStones}, postDeploy ms=${post?.magicStones}`;
+	const runIdChanged = pre?.runId && post?.runId && pre.runId !== post.runId;
+	const checkpointRestored = reset.checkpointRestoredInLog === true;
+	return [
+		`preSuspend ms=${pre?.magicStones}, postDeploy ms=${post?.magicStones}`,
+		`runId ${pre?.runId ?? '?'}→${post?.runId ?? '?'} (${runIdChanged ? 'changed' : 'unchanged'})`,
+		`checkpoint restored in log: ${checkpointRestored ? 'yes (FAIL)' : 'no'}`,
+	].join('; ');
 }
 
 function hubWalkNotes(summary) {

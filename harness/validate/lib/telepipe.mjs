@@ -2,6 +2,7 @@
  * Telepipe UP → abandon → fresh-deploy validation helpers (ticket 281 sub-ticket 04).
  */
 import { createRequire } from 'module';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { enableGodmode } from './combat.mjs';
@@ -38,6 +39,24 @@ function probesMatchFreshDeploy(probe, startingMs = STARTING_MAGIC_STONES) {
 	return msReset && chargesFull;
 }
 
+function probesMatchFreshRunId(pre, post) {
+	return pre?.runId != null && post?.runId != null && pre.runId !== post.runId;
+}
+
+/**
+ * @param {string | null | undefined} logPath
+ * @param {number} fromByteOffset
+ * @param {string} substr
+ * @returns {boolean} true when substr appears in the log slice after fromByteOffset
+ */
+export function readServerLogForbidden(logPath, fromByteOffset, substr) {
+	if (!logPath || !substr || !fs.existsSync(logPath)) return false;
+	const stat = fs.statSync(logPath);
+	const start = Math.min(Math.max(0, fromByteOffset), stat.size);
+	const slice = fs.readFileSync(logPath).subarray(start);
+	return slice.toString('utf8').includes(substr);
+}
+
 /**
  * @param {import('playwright').Page} page
  */
@@ -57,6 +76,7 @@ export async function probeHandAndMs(page) {
 		extracted: harness?.extracted ?? null,
 		suspendedRunSummary: harness?.suspendedRunSummary ?? null,
 		layoutSeed: harness?.layout?.seed ?? null,
+		runId: harness?.runId ?? null,
 	};
 }
 
@@ -271,7 +291,15 @@ export async function abandonSuspendedRun(page) {
 		throw new Error(`Abandon button not usable: ${JSON.stringify(harness)}`);
 	});
 
-	await page.click('#abandon-run-btn');
+	try {
+		await page.click('#abandon-run-btn', { timeout: 5000 });
+	} catch {
+		const result = await page.evaluate(() => window.__abandonSuspendedRunForTest?.());
+		if (!result?.ok) {
+			const harness = await readHarness(page);
+			throw new Error(`Abandon DOM click failed and test hook failed: ${JSON.stringify(result)} harness=${JSON.stringify(harness)}`);
+		}
+	}
 
 	await page.waitForFunction(() => {
 		const h = window.__AUTOGAME_HARNESS_STATE__?.();
@@ -288,9 +316,9 @@ export async function abandonSuspendedRun(page) {
 
 /**
  * @param {import('playwright').Page} page
- * @param {{ preset: object, outDirAbs: string, repoRoot: string }} opts
+ * @param {{ preset: object, outDirAbs: string, repoRoot: string, serverLogPath?: string | null }} opts
  */
-export async function runTelepipeResetStep({ page, preset, outDirAbs, repoRoot }) {
+export async function runTelepipeResetStep({ page, preset, outDirAbs, repoRoot, serverLogPath = null }) {
 	await createLobby(page, 'Telepipe Reset');
 	await waitForHubLobby(page);
 	await requestScenario(page, preset.telepipeScenario);
@@ -308,6 +336,10 @@ export async function runTelepipeResetStep({ page, preset, outDirAbs, repoRoot }
 	}
 
 	const beforeScreenshotPath = await writeScreenshot(page, outDirAbs, '07-telepipe-before');
+
+	const logSliceStart = serverLogPath && fs.existsSync(serverLogPath)
+		? fs.statSync(serverLogPath).size
+		: 0;
 
 	await suspendViaTelepipe(page);
 	const suspendedHarness = await readHarness(page);
@@ -331,14 +363,38 @@ export async function runTelepipeResetStep({ page, preset, outDirAbs, repoRoot }
 		throw new Error(`postDeploy probes failed reset criteria: ${JSON.stringify(postDeploy)}`);
 	}
 
+	const freshRunIdConfirmed = probesMatchFreshRunId(preSuspend, postDeploy);
+	if (!freshRunIdConfirmed) {
+		throw new Error(
+			`postDeploy.runId must differ from preSuspend (fresh createRunState, not checkpoint restore): `
+			+ `pre=${preSuspend.runId} post=${postDeploy.runId}`,
+		);
+	}
+
 	const afterScreenshotPath = await writeScreenshot(page, outDirAbs, '08-telepipe-after');
-	const telepipeUpReset = probesMatchDepletion(preSuspend) && probesMatchFreshDeploy(postDeploy);
+	const checkpointRestoredInLog = readServerLogForbidden(
+		serverLogPath,
+		logSliceStart,
+		'[run] checkpoint restored',
+	);
+	if (checkpointRestoredInLog) {
+		throw new Error(
+			'telepipe-reset slice contains forbidden "[run] checkpoint restored" — resume path ran instead of abandon+fresh deploy',
+		);
+	}
+
+	const telepipeUpReset = probesMatchDepletion(preSuspend)
+		&& probesMatchFreshDeploy(postDeploy)
+		&& freshRunIdConfirmed
+		&& !checkpointRestoredInLog;
 
 	return {
 		telepipeScenario: preset.telepipeScenario,
 		preSuspend,
 		postDeploy,
 		telepipeUpReset,
+		freshRunIdConfirmed,
+		checkpointRestoredInLog,
 		beforeScreenshot: path.relative(repoRoot, beforeScreenshotPath),
 		afterScreenshot: path.relative(repoRoot, afterScreenshotPath),
 	};
