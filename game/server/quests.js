@@ -137,6 +137,23 @@ const QUEST_DEFS = {
       },
     },
   },
+  ember_descent: {
+    id: 'ember_descent',
+    enemyPool: [
+      { type: 'grunt', weight: 3 },
+      { type: 'skirmisher', weight: 2 },
+    ],
+    tiers: {
+      1: {
+        name: 'Ember Descent',
+        description: 'Purge hostiles from the volcanic rim overlooking the molten basin.',
+        objectiveType: 'defeat_enemies',
+        enemyCount: 6,
+        rewardCurrency: 14,
+        layoutProfile: 'fire-cavern',
+      },
+    },
+  },
   spire_ascent: {
     id: 'spire_ascent',
     enemyPool: [

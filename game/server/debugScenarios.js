@@ -1951,6 +1951,24 @@ function applyDebugScenario(socket, name) {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
+    } else if (name === 'fire-cavern') {
+      // Ember Descent quest with default combat spawns — same state as deploying into
+      // ember_descent normally; shortcut for QA (enemies, layout, rim spawn).
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.selectedQuestId = 'ember_descent';
+      applyLayoutForQuest(state, 'ember_descent');
+      const rimSpawn = firstRoomPosition();
+      player.x = rimSpawn.x;
+      player.z = rimSpawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      state.enemies = [];
+      state.loot = [];
+      spawnEnemies();
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
     } else if (name === 'spire-ascent') {
       // Spire Ascent quest with tier-aware spawns — same state as deploying into
       // spire_ascent normally; shortcut for QA (enemies, layout, bottom-tier spawn).

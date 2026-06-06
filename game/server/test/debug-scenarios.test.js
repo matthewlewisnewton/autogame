@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { generateLayout, questLayoutSeed } from '../dungeon.js';
+import { generateLayout, questLayoutSeed, sampleFloorY, resolveFloorY } from '../dungeon.js';
 import {
 	getQuest,
 	getLayoutProfileForQuest,
@@ -34,6 +34,8 @@ const SPIRE_ASCENT_ID = 'spire_ascent';
 const SPIRE_ASCENT_TIER_2 = 2;
 const CANYON_DESCENT_ID = 'canyon_descent';
 const CANYON_DESCENT_TIER_2 = 2;
+const EMBER_DESCENT_ID = 'ember_descent';
+const EMBER_DESCENT_TIER_1 = 1;
 
 describe('debugScenario — key-item-cooldown', () => {
 	let baseUrl;
@@ -1460,6 +1462,106 @@ describe('debugScenario — variant-frenzied', () => {
 		expect(frenzied.type).toBe('grunt');
 		expect(plain).toBeDefined();
 		expect(plain.type).toBe('grunt');
+	});
+});
+
+describe('debugScenario — fire-cavern-stage', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('loads fire-cavern layout with player on rim and floor-aligned Y', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('debugScenario', { name: 'fire-cavern-stage' });
+		const result = await debugResultPromise;
+		await stateUpdatePromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('fire-cavern-stage');
+
+		const state = testGameState();
+		const player = playerForSocket(socket);
+		const startRoom = state.layout.rooms.find((r) => r.role === 'start');
+
+		expect(state.layout.profile).toBe('fire-cavern');
+		expect(startRoom).toBeTruthy();
+		expect(startRoom.band).toBe('rim');
+		expect(player.x).toBe(startRoom.x);
+		expect(player.z).toBe(startRoom.z);
+		expect(player.y).toBe(resolveFloorY(sampleFloorY(state.layout, player.x, player.z)));
+	});
+});
+
+describe('debugScenario — fire-cavern', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('deploys ember_descent tier-1 with fire-cavern layout, rim spawn, and enemies', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('debugScenario', { name: 'fire-cavern' });
+		const result = await debugResultPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('fire-cavern');
+
+		const state = testGameState();
+		const player = playerForSocket(socket);
+		const tier1Quest = getQuest(EMBER_DESCENT_ID, EMBER_DESCENT_TIER_1);
+		const startRoom = state.layout.rooms.find((r) => r.role === 'start');
+
+		expect(state.gamePhase).toBe('playing');
+		expect(state.selectedQuestId).toBe(EMBER_DESCENT_ID);
+		expect(state.selectedQuestTier).toBe(EMBER_DESCENT_TIER_1);
+		expect(state.layout.profile).toBe('fire-cavern');
+		expect(getLayoutGenerationOptions(EMBER_DESCENT_ID, EMBER_DESCENT_TIER_1)).toEqual({
+			slopes: true,
+			layoutMode: 'default',
+		});
+		expect(state.layoutSeed).toBe(questLayoutSeed(EMBER_DESCENT_ID, EMBER_DESCENT_TIER_1));
+		expect(startRoom?.band).toBe('rim');
+		expect(player.x).toBe(startRoom.x);
+		expect(player.z).toBe(startRoom.z);
+		expect(player.y).toBe(resolveFloorY(sampleFloorY(state.layout, player.x, player.z)));
+		expect(stateUpdate.enemies.length).toBe(tier1Quest.enemyCount);
+		expect(stateUpdate.enemies.every((e) => e.type === 'grunt' || e.type === 'skirmisher')).toBe(
+			true,
+		);
 	});
 });
 
