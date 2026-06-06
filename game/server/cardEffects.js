@@ -32,6 +32,7 @@ const {
   collectChainLightningHits,
   collectReturningProjectileHits,
   applyBurning,
+  applySlow,
   applyFreezeInRadius,
   pullEnemiesToward,
   applyKnockback,
@@ -808,6 +809,70 @@ function handleUseCard(socket, state, lobby, data) {
           socket, state, lobby, data, cardDef, handCard, player,
           originX, originZ, now, hasOverclock,
         });
+        return;
+      }
+
+      if (cardDef.effect === 'ice_ball') {
+        const rotation = resolveAttackRotation(player, data);
+        player.rotation = rotation;
+        const dirX = Math.cos(rotation);
+        const dirZ = Math.sin(rotation);
+        const attackRange = cardDef.attackRange || ATTACK_RANGE;
+        const grind = handCard.grind || 0;
+        const damage = handCard.echoDamage != null
+          ? handCard.echoDamage
+          : scaledGrindStat(cardDef.damage || 0, grind);
+
+        const { hits, magicStonesGained: rawMagicStones } = collectProjectileHits(
+          originX,
+          originZ,
+          dirX,
+          dirZ,
+          attackRange,
+          damage,
+          {
+            magicStoneOnHit: cardDef.magicStoneOnHit,
+            magicStoneOnKill: cardDef.magicStoneOnKill,
+            attackerId: socket.playerId,
+            pierces: false,
+          }
+        );
+        const appliedMagicStones = addMagicStones(player, rawMagicStones);
+
+        const slowChance = cardDef.slowChance ?? 1;
+        const slowDurationMs = cardDef.slowDurationMs || 0;
+        if (slowDurationMs > 0 && slowChance > 0) {
+          const slowed = new Set();
+          for (const hit of hits) {
+            if (!hit.enemyId || slowed.has(hit.enemyId)) continue;
+            const enemy = state.enemies.find(e => e.id === hit.enemyId);
+            if (enemy && Math.random() < slowChance) {
+              applySlow(enemy, slowDurationMs, cardDef.slowFactor);
+              slowed.add(hit.enemyId);
+            }
+          }
+        }
+
+        cleanupAfterDamage();
+
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
+        replaceConsumedCard(player, data.slotIndex, handCard);
+
+        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          effect: 'ice_ball',
+          specialEffect: cardDef.specialEffect,
+          origin: { x: originX, z: originZ },
+          direction: { x: dirX, z: dirZ },
+          attackRange,
+          hits,
+          projectileTravelMs: cardDef.projectileTravelMs,
+          magicStonesGained: appliedMagicStones,
+        });
+
         return;
       }
 

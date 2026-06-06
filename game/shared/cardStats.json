@@ -187,6 +187,17 @@
     "freezeDurationMs": 2000,
     "specialEffect": "freeze"
   },
+  "ice_ball": {
+    "magicStoneCost": 32,
+    "effect": "ice_ball",
+    "damage": 12,
+    "attackRange": 9,
+    "specialEffect": "slow",
+    "slowDurationMs": 3000,
+    "slowFactor": 0.5,
+    "slowChance": 0.5,
+    "projectileTravelMs": 1200
+  },
   "glacier_collapse": {
     "magicStoneCost": 35,
     "effect": "glacier_collapse",

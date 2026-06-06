@@ -552,6 +552,7 @@ const DEBUG_SCENARIOS = new Set([
   'field-medic-spawn',
   'chain-lightning-ready',
   'fireball-ready',
+  'ice-ball-ready',
 ]);
 
 // Wire debugScenarios with io, the index.js-local helpers its setup chain needs,

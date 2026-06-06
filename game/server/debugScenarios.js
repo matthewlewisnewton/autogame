@@ -2331,6 +2331,32 @@ function applyDebugScenario(socket, name) {
       far.hp = 80;
       far.maxHp = 80;
       far.wanderTarget = { x: far.x, z: far.z };
+    } else if (name === 'ice-ball-ready') {
+      // Playing phase with Glacial Orb in hand, full Magic Stones, and grunts
+      // lined up along +X so a cast hits the nearest and can roll SLOW. The same
+      // state is reachable normally by earning the reward card and entering combat.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'ice_ball',
+          name: 'Glacial Orb',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      state.enemies = [];
+      const near = spawnEnemy(player.x + 4, player.z, 'grunt');
+      near.hp = 80;
+      near.maxHp = 80;
+      near.wanderTarget = { x: near.x, z: near.z };
+      const far = spawnEnemy(player.x + 7, player.z, 'grunt');
+      far.hp = 80;
+      far.maxHp = 80;
+      far.wanderTarget = { x: far.x, z: far.z };
     }
 
     syncRunObjectiveToEnemies();

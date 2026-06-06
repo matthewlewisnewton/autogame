@@ -25,6 +25,7 @@
   "chain_lightning": { "id": "chain_lightning", "name": "Voltaic Chain", "type": "spell", "charges": 1, "acquisition": "reward", "rewardOrder": 26 },
   "frost_nova": { "id": "frost_nova", "name": "Cryo Burst", "type": "spell", "charges": 1, "acquisition": "reward", "rewardOrder": 4 },
   "permafrost_lance": { "id": "permafrost_lance", "name": "Permafrost Lance", "type": "spell", "charges": 1, "acquisition": "reward", "rewardOrder": 5 },
+  "ice_ball": { "id": "ice_ball", "name": "Glacial Orb", "type": "spell", "charges": 1, "acquisition": "reward", "rewardOrder": 28 },
   "glacier_collapse": { "id": "glacier_collapse", "name": "Glacier Rupture", "type": "spell", "charges": 1 },
   "healing_font": { "id": "healing_font", "name": "Restoration Beacon", "type": "spell", "charges": 1, "acquisition": "reward", "rewardOrder": 8 },
   "divine_grace": { "id": "divine_grace", "name": "Sanctum Pulse", "type": "spell", "charges": 1 },
