@@ -1636,6 +1636,14 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       const medic = spawnEnemy(player.x + 4, player.z, 'field_medic');
       medic.wanderTarget = { x: medic.x, z: medic.z };
+    } else if (name === 'ember-wraith') {
+      // One Ember Wraith in cone-strike range for burning-on-hit QA. The same
+      // enemy is reachable on ember_descent runs (or via fire-cavern); shortcut only.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const wraith = spawnEnemy(player.x + 3, player.z, 'ember_wraith');
+      wraith.wanderTarget = { x: wraith.x, z: wraith.z };
     } else if (name === 'variant-enemy') {
       // Spawn one variant ("elite") enemy beside a plain one of the same type so
       // the client variant marker can be verified side-by-side. The same state is
