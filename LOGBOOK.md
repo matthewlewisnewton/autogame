@@ -5389,3 +5389,26 @@ No `?debugScenario=NAME` shortcut was added or changed for this ticket. Existing
 
 None.
 
+
+## v0.303 — 303-card-balance-analysis  (2026-06-06 18:46:16)
+
+### Applied safe tunings
+
+PASS. The implementation applies only low-risk numeric stat changes in `game/shared/cardStats.json`: `saber_of_light`, `fireball`, `harvesting_scythe`, `permafrost_lance`, and `dragons_breath`. The later `excalibur_photon` revert leaves it as a written triage item, matching the ticket's requirement to avoid broader reworks.
+
+### Tests and validation
+
+PASS. The new analyzer in `game/validation/card-balance/analyzeCards.mjs` is covered by `game/server/test/card_balance_metrics.test.js`, which verifies every `cardDefs` id has stats and complete metric rows, checks key cards, documents server overlay keys, and smoke-runs the CLI. Existing tests were updated for the changed numeric values. The supplied coverage run reports 24 test files and 460 tests passing.
+
+### Design and foundation consistency
+
+PASS. The changes stay within card data, report generation, and tests; they do not alter the multiplayer lobby/dungeon flow, rendering, movement synchronization, or server-client architecture described in `game/docs/design.md` and `game/docs/requirements.md`.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change any game debug scenario implementation. Existing test use of `debugScenario` remains confined to test harness paths and does not introduce a normal-gameplay shortcut.
+
+## Remaining gaps
+
+None.
+
