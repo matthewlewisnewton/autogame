@@ -68,6 +68,8 @@ const ACTIONS = new Set([
   'probe',
   'assertRunPreserved',
   'assertVitalsPreserved',
+  'waitForHubLobby',
+  'assertWalkableHubPresentation',
 ]);
 
 function wire(page, tag) {
@@ -278,6 +280,7 @@ const HUB_VALIDATE_281_ROUND_RE = /281-playthrough-validate-ship-hub\/round-[^/]
 const HUB_VALIDATION_HUB_DIR_RE = /(?:^|\/)game\/validation\/hub(?:\/|$)/i;
 const HUB_TELEPIPE_ABANDON_VALIDATE_RE = /telepipe-reset|telepipe-abandon|abandon-fresh|abandonSuspendedRun|telepipe[- ]?up|playthrough-validate-ship-hub/i;
 const PERSIST_VITALS_TELEPIPE_RE = /287-persist|persist-player-health|persist.*vitals|harness-telepipe-vitals-capture|no-telepipe-reset/i;
+const WALKABLE_HUB_RECAPTURE_RE = /305-recapture-walkable-hub|recapture-walkable-hub|walkable[- ]hub|game\/validation\/hub/i;
 
 function inferSubticketFolder(outDirAbs) {
   const match = outDirAbs.match(/281-playthrough-validate-ship-hub\/subtickets\/([^/]+)/i);
@@ -314,6 +317,120 @@ function isHubTelepipeAbandonValidateTicket(ticket, outDirAbs) {
 function isPersistVitalsTelepipeTicket(ticket, outDirAbs) {
   return PERSIST_VITALS_TELEPIPE_RE.test(ticket)
     || PERSIST_VITALS_TELEPIPE_RE.test(outDirAbs);
+}
+
+/**
+ * Ticket 305 walkable-hub recapture: route review capture to the ship hub
+ * (menu dismissed, canvas active, remote squadmate) instead of telepipe suspend/resume.
+ */
+function isWalkableHubRecaptureTicket(ticket, outDirAbs) {
+  return WALKABLE_HUB_RECAPTURE_RE.test(ticket)
+    || WALKABLE_HUB_RECAPTURE_RE.test(outDirAbs);
+}
+
+/** Post-304 hub-ready contract — mirrors harness/validate/lib/multiPlayer.mjs hubLobbyReadyCheck. */
+async function waitForHubLobbyPage(page, timeoutMs = 20000) {
+  await page.waitForFunction(() => {
+    const h = window.__AUTOGAME_HARNESS_STATE__?.();
+    const lobby = document.getElementById('lobby');
+    return h
+      && h.phase === 'lobby'
+      && h.hasCanvas === true
+      && h.lobbyMenuDismissed === true
+      && h.layout?.profile === 'hub'
+      && h.layout?.roomCount === 3
+      && lobby
+      && lobby.classList.contains('hidden');
+  }, null, { timeout: timeoutMs }).catch(async () => {
+    const state = await page.evaluate(() => {
+      const h = window.__AUTOGAME_HARNESS_STATE__?.();
+      const lobbyHidden = document.getElementById('lobby')?.classList.contains('hidden');
+      return { harness: h, lobbyHidden };
+    });
+    throw new Error(`Ship hub lobby not ready: ${JSON.stringify(state)}`);
+  });
+}
+
+/** Mirrors harness/validate/playthrough.mjs probeWalkableHubPresentation. */
+async function probeWalkableHubPresentation(page) {
+  return page.evaluate(() => {
+    const harness = window.__AUTOGAME_HARNESS_STATE__?.();
+    const lobby = document.getElementById('lobby');
+    const canvas = document.querySelector('canvas');
+    const squadmates = Array.isArray(harness?.squadmates) ? harness.squadmates : [];
+    const remoteSquadmateCount = squadmates.filter(
+      (m) => m && Number.isFinite(m.x) && Number.isFinite(m.z),
+    ).length;
+    return {
+      lobbyHidden: lobby ? lobby.classList.contains('hidden') : false,
+      lobbyMenuDismissed: harness?.lobbyMenuDismissed === true,
+      hubCanvasActive: harness?.hasCanvas === true
+        && !!canvas
+        && canvas.width > 0
+        && canvas.height > 0,
+      playersOnHost: harness?.players ?? null,
+      remoteSquadmateCount,
+      layoutProfile: harness?.layout?.profile ?? null,
+    };
+  });
+}
+
+function assertWalkableHubPresentationFields(probe) {
+  const failures = [];
+  if (probe.lobbyHidden !== true) failures.push('lobbyHidden !== true');
+  if (probe.lobbyMenuDismissed !== true) failures.push('lobbyMenuDismissed !== true');
+  if (probe.hubCanvasActive !== true) failures.push('hubCanvasActive !== true');
+  if (!Number.isFinite(probe.playersOnHost) || probe.playersOnHost < 2) {
+    failures.push(`playersOnHost expected >= 2, got ${probe.playersOnHost}`);
+  }
+  if (!Number.isFinite(probe.remoteSquadmateCount) || probe.remoteSquadmateCount < 1) {
+    failures.push(`remoteSquadmateCount expected >= 1, got ${probe.remoteSquadmateCount}`);
+  }
+  if (failures.length) {
+    throw new Error(`Walkable hub presentation assertion failed: ${failures.join('; ')} (${JSON.stringify(probe)})`);
+  }
+}
+
+/** Two-player ship hub review capture for ticket 305 (no readyAll / dungeon deploy). */
+function buildWalkableHubReviewCaptureSteps() {
+  return [
+    { action: 'connectPlayer', player: 'A' },
+    { action: 'wait', player: 'A', ms: 1000 },
+    { action: 'registerUser', player: 'A', username: 'playerA', password: 'test123' },
+    { action: 'loginUser', player: 'A', username: 'playerA', password: 'test123' },
+    { action: 'wait', player: 'A', ms: 1000 },
+    { action: 'createLobby', player: 'A', name: 'Hub Walk QA' },
+    { action: 'wait', player: 'A', ms: 1000 },
+    { action: 'connectPlayer', player: 'B' },
+    { action: 'wait', player: 'B', ms: 1000 },
+    { action: 'registerUser', player: 'B', username: 'playerB', password: 'test123' },
+    { action: 'loginUser', player: 'B', username: 'playerB', password: 'test123' },
+    { action: 'wait', player: 'B', ms: 1000 },
+    { action: 'joinLobby', player: 'B' },
+    { action: 'waitForHubLobby', player: 'A' },
+    { action: 'waitForHubLobby', player: 'B' },
+    { action: 'move', player: 'B', key: 'd', durationMs: 450 },
+    { action: 'move', player: 'B', key: 'd', durationMs: 450 },
+    { action: 'move', player: 'B', key: 'd', durationMs: 450 },
+    { action: 'move', player: 'B', key: 'd', durationMs: 450 },
+    { action: 'wait', player: 'A', ms: 500 },
+    {
+      action: 'screenshot',
+      player: 'A',
+      name: '01-hub-overview',
+      description: 'Walkable ship hub with menu dismissed and remote squadmate visible.',
+    },
+    {
+      action: 'probe',
+      player: 'A',
+      description: 'Hub overview probe: lobby hidden, menu dismissed, canvas active, two players, remote squadmate.',
+    },
+    {
+      action: 'assertWalkableHubPresentation',
+      player: 'A',
+      description: 'VERIFY walkable hub presentation: lobbyHidden, lobbyMenuDismissed, hubCanvasActive, playersOnHost >= 2, remoteSquadmateCount >= 1.',
+    },
+  ];
 }
 
 function probesMatchVitalsPreserved(pre, post) {
@@ -507,8 +624,9 @@ function fallbackRecipe() {
   // mentions portals/suspend) cannot make the world-stage/flare/slope branches
   // fire — those are all guarded with !isTelepipeTicket below.
   const isHubTelepipeAbandonValidate = isHubTelepipeAbandonValidateTicket(ticket, outDirAbs);
+  const isWalkableHubRecapture = isWalkableHubRecaptureTicket(ticket, outDirAbs);
   const isPersistVitalsTelepipe = isPersistVitalsTelepipeTicket(ticket, outDirAbs);
-  const isTelepipeTicket = !isHubTelepipeAbandonValidate && !isPersistVitalsTelepipe &&
+  const isTelepipeTicket = !isHubTelepipeAbandonValidate && !isPersistVitalsTelepipe && !isWalkableHubRecapture &&
                            (/telepipe|suspend[-_ ]?resume|175-qa-telepipe/i.test(ticket) ||
                             /telepipe|suspend[-_]?resume|175-qa-telepipe/i.test(outDirAbs));
   const isWorldStageTicket = !isTelepipeTicket &&
@@ -585,6 +703,9 @@ function fallbackRecipe() {
       },
     ];
     summary = 'Deterministic full-flow smoke capture with world-stage fallback: auth, lobby, ready, movement, then before/after screenshots and probes around the sunken-canyon-stage portal transition (default -> sunken-canyon layout swap).';
+  } else if (isWalkableHubRecapture) {
+    steps = buildWalkableHubReviewCaptureSteps();
+    summary = 'Deterministic walkable-hub review capture: two-player auth, create/join lobby, post-304 hub-ready wait (lobby hidden, menu dismissed, hub canvas), joiner WASD nudge, 01-hub-overview screenshot and assertWalkableHubPresentation.';
   } else if (isPersistVitalsTelepipe) {
     steps = buildSoloTelepipeVitalsPreservationSteps();
     summary = 'Deterministic solo Telepipe vitals-preservation capture: auth, solo lobby + deploy, telepipe-ready scenario, place telepipe, hub return, redeploy, assertVitalsPreserved (HP/MS persist, fresh runId, no checkpoint restore).';
@@ -952,6 +1073,9 @@ async function executeRecipe(browser, recipe) {
 
     if (step.action === 'waitForGame') {
       await waitForGameplay(page, step.timeoutMs || 12000);
+    } else if (step.action === 'waitForHubLobby') {
+      await waitForHubLobbyPage(page, step.timeoutMs || 20000);
+      await page.waitForTimeout(250);
     } else if (step.action === 'emitScenario') {
       const scenarioName = step.scenario;
       const result = await page.evaluate(({ name, timeoutMs }) => {
@@ -1197,6 +1321,14 @@ async function executeRecipe(browser, recipe) {
       if (failures.length) {
         throw new Error(`Telepipe run-preservation assertion failed: ${failures.join('; ')}`);
       }
+    } else if (step.action === 'assertWalkableHubPresentation') {
+      const presentation = await probeWalkableHubPresentation(page);
+      probes.push({
+        player,
+        description: step.description || 'Walkable hub presentation verification.',
+        data: { walkableHubPresentation: presentation },
+      });
+      assertWalkableHubPresentationFields(presentation);
     }
   }
 
