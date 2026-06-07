@@ -1,0 +1,7 @@
+Created **1** new sub-ticket for remediation round 2. Sub-tickets 01–04 all have `.passed` markers and were left untouched. The review identified a single gap: the balance report is stale relative to the post-tuning metrics snapshot.
+
+**New sub-ticket:**
+
+- `/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/tickets/303-card-balance-analysis/subtickets/05-refresh-report-post-tuning/ticket.md`
+
+**Scope:** Refresh `game/validation/card-balance/report.md` so the per-card table, Outliers section, Snapshot reference, and New & recently changed cards analysis match the committed `metrics-snapshot.json` after Tier A tunings — including current flags (`deck_sifter`, `frost_nova`, etc.), removal of resolved outliers (`purifying_pulse`, `saber_of_light`, etc.), and `rewardOrderCollisions: []`. Verification mode: **code** (report content only; no JSON or test changes).

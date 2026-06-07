@@ -1,0 +1,991 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game
+      Coverage enabled with v8
+
+stdout | server/test/card_acquisition.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/data/users.json
+
+stdout | server/test/new_card_pack_definitions.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/card_evolution.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/card_evolution.test.js > card evolution > evolves a +10 card while preserving the instance identity
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/card_balance_metrics.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+ ✓ |server| server/test/card_acquisition.test.js (5 tests) 6ms
+stdout | server/test/card_evolution.test.js > card evolution > rejects evolution below +10 without mutating the card
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/card_evolution.test.js > card evolution > rejects cards without an evolution transform
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/card_evolution.test.js > card evolution > evolves Saber of Light +10 into Excalibur Photon
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+ ✓ |server| server/test/new_card_pack_definitions.test.js (3 tests) 9ms
+stdout | server/test/debug-scenarios.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/card_evolution.test.js > card evolution > persists evolved inventory and exposes it in snapshots
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/card_evolution.test.js > card evolution > evolves Cryo Burst +10 into Glacier Rupture
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/card_evolution.test.js > card evolution > evolves Restoration Beacon +10 into Sanctum Pulse
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/card_evolution.test.js > card evolution > evolves Stormwing Drone +10 into Thunderbird
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/card_evolution.test.js > card evolution > evolves Phase Echo +10 into Resonance Edge
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/card_evolution.test.js > card evolution > evolves Ether Siphon +10 into Soul Drain
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/card_evolution.test.js > card evolution > evolves Dragon's Breath +10 into Thermal Column
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/card_evolution.test.js > card evolution > defines every evolved card referenced by the transform table
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/card_evolution.test.js > card evolution > evolves Photon Slicer +10 into Infinite Disk
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/new_card_pack.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/card_evolution.test.js > card evolution > evolves a +10 Gravity Well into Event Horizon
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+ ✓ |server| server/test/card_evolution.test.js (14 tests) 76ms
+stdout | server/test/debug-scenarios.test.js > debugScenario — key-item-cooldown > puts the player in playing phase with dodge_roll equipped and active cooldown
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+ ✓ |server| server/test/new_card_pack.test.js (28 tests) 24ms
+stdout | server/test/debug-scenarios.test.js > debugScenario — key-item-cooldown > puts the player in playing phase with dodge_roll equipped and active cooldown
+Server listening on port 0
+
+ ✓ |server| server/test/card_balance_metrics.test.js (10 tests) 32ms
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > casting sets smokeBombUntil/radius/center and cooldown on the caster
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > casting sets smokeBombUntil/radius/center and cooldown on the caster
+Server listening on port 0
+
+stdout | server/test/card_sync.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — key-item-cooldown > puts the player in playing phase with dodge_roll equipped and active cooldown
+Player connected: socket=C5aaFMLzOR2ePlBSAAAB, playerId=test-1780789947518-8ux1yf
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > casting sets smokeBombUntil/radius/center and cooldown on the caster
+Player connected: socket=0JzQ8VUfOUyKP7VsAAAB, playerId=test-1780789947524-kyqizy
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — key-item-cooldown > puts the player in playing phase with dodge_roll equipped and active cooldown
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > casting sets smokeBombUntil/radius/center and cooldown on the caster
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — key-item-cooldown > puts the player in playing phase with dodge_roll equipped and active cooldown
+[loot] spawned id=29e2bc41-567c-42dc-88b6-18381cd0acf0 value=16
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > casting sets smokeBombUntil/radius/center and cooldown on the caster
+Player disconnected: 0JzQ8VUfOUyKP7VsAAAB
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — key-item-cooldown > puts the player in playing phase with dodge_roll equipped and active cooldown
+Player disconnected: C5aaFMLzOR2ePlBSAAAB
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — quest-objective-near-complete > leaves a playing defeat_enemies run one low-HP grunt from victory
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — quest-objective-near-complete > leaves a playing defeat_enemies run one low-HP grunt from victory
+Server listening on port 0
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the smoke window
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the smoke window
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — quest-objective-near-complete > leaves a playing defeat_enemies run one low-HP grunt from victory
+Player connected: socket=Z1IvtVV-PhVry3Z8AAAD, playerId=test-1780789947609-wlwier
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — quest-objective-near-complete > leaves a playing defeat_enemies run one low-HP grunt from victory
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the smoke window
+Player connected: socket=t9tX0_hC1zsHHUu-AAAD, playerId=test-1780789947613-d1fm3s
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — quest-objective-near-complete > leaves a playing defeat_enemies run one low-HP grunt from victory
+Player disconnected: Z1IvtVV-PhVry3Z8AAAD
+
+ ✓ |server| server/test/card_sync.test.js (9 tests) 32ms
+stdout | server/test/debug-scenarios.test.js > debugScenario — suspended-run-hub > drops the squad into the hub lobby on top of a suspended checkpoint
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — suspended-run-hub > drops the squad into the hub lobby on top of a suspended checkpoint
+Server listening on port 0
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the smoke window
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the smoke window
+Player disconnected: t9tX0_hC1zsHHUu-AAAD
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — suspended-run-hub > drops the squad into the hub lobby on top of a suspended checkpoint
+Player connected: socket=5KPLuOLmAZxg-CQPAAAF, playerId=test-1780789947630-03exdp
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — suspended-run-hub > drops the squad into the hub lobby on top of a suspended checkpoint
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — suspended-run-hub > drops the squad into the hub lobby on top of a suspended checkpoint
+[loot] spawned id=fa86e26b-5b28-46b0-a9a7-bd34451a9856 value=8
+[run] checkpoint captured
+[run] suspended: Initiate Vault
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — suspended-run-hub > drops the squad into the hub lobby on top of a suspended checkpoint
+Player disconnected: 5KPLuOLmAZxg-CQPAAAF
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — warded-enemy > spawns a warded grunt with shield beside a plain grunt
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — warded-enemy > spawns a warded grunt with shield beside a plain grunt
+Server listening on port 0
+
+stdout | server/test/smoke_bomb.test.js > smoke_bomb concealment — enemy targeting > isPlayerConcealed is true inside an active zone and false once expired or exited
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — warded-enemy > spawns a warded grunt with shield beside a plain grunt
+Player connected: socket=GR8jW4ISA2_Cwd_9AAAH, playerId=test-1780789947649-e5auxi
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — warded-enemy > spawns a warded grunt with shield beside a plain grunt
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — warded-enemy > spawns a warded grunt with shield beside a plain grunt
+Player disconnected: GR8jW4ISA2_Cwd_9AAAH
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-tier-2 > deploys arena_trials Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-tier-2 > deploys arena_trials Tier 2 stage-boss run with encounter and rigid layout
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-tier-2 > deploys arena_trials Tier 2 stage-boss run with encounter and rigid layout
+Player connected: socket=zRzWiYhQaL0zLL1UAAAJ, playerId=test-1780789947666-wuxp31
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-tier-2 > deploys arena_trials Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > smoke_bomb concealment — enemy targeting > an ally standing in the caster's zone is concealed even without their own smoke
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > smoke_bomb concealment — enemy targeting > a concealed player is never acquired as an enemy target
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > smoke_bomb concealment — enemy targeting > the same player IS acquired once the smoke zone has expired
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > smoke_bomb concealment — enemy targeting > an enemy mid-wind-up against a newly concealed player cancels the strike
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > smoke_bomb concealment — enemy targeting > an enemy mid-wind-up against a non-concealed player still deals damage
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-tier-2 > deploys arena_trials Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-tier-2 > deploys arena_trials Tier 2 stage-boss run with encounter and rigid layout
+Player disconnected: zRzWiYhQaL0zLL1UAAAJ
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (arena_trials_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (arena_trials_tier2 parity)
+Server listening on port 0
+
+ ✓ |server| server/test/smoke_bomb.test.js (9 tests) 185ms
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (arena_trials_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=66a55e5a-856f-405c-b4d8-8696e66b6c39 value=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > repositions beside live adds after arena-trials-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > repositions beside live adds after arena-trials-tier-2 deploy
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > repositions beside live adds after arena-trials-tier-2 deploy
+Player connected: socket=QLzaSd1Efkth-82OAAAL, playerId=test-1780789947749-xyqnz8
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > repositions beside live adds after arena-trials-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > repositions beside live adds after arena-trials-tier-2 deploy
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > repositions beside live adds after arena-trials-tier-2 deploy
+Player disconnected: QLzaSd1Efkth-82OAAAL
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > places player outside dormant arena_champion trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > places player outside dormant arena_champion trigger after adds cleared
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > places player outside dormant arena_champion trigger after adds cleared
+Player connected: socket=7UN7xsJZBXSRBXdfAAAN, playerId=test-1780789947774-lbangc
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > places player outside dormant arena_champion trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > places player outside dormant arena_champion trigger after adds cleared
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > places player outside dormant arena_champion trigger after adds cleared
+Player disconnected: 7UN7xsJZBXSRBXdfAAAN
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > positions arena_champion at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > positions arena_champion at 1 HP beside the player in playing phase
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > positions arena_champion at 1 HP beside the player in playing phase
+Player connected: socket=oZgwDjV9Z3R1aVbQAAAP, playerId=test-1780789947801-j15xz6
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > positions arena_champion at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > positions arena_champion at 1 HP beside the player in playing phase
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > positions arena_champion at 1 HP beside the player in playing phase
+Player disconnected: oZgwDjV9Z3R1aVbQAAAP
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-dormant > deploys arena_trials Tier 2 dormant stage-boss encounter via normal run path
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-dormant > deploys arena_trials Tier 2 dormant stage-boss encounter via normal run path
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-dormant > deploys arena_trials Tier 2 dormant stage-boss encounter via normal run path
+Player connected: socket=ORmtlP-Y1Zwhe2L-AAAR, playerId=test-1780789947827-mwjlwy
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-dormant > deploys arena_trials Tier 2 dormant stage-boss encounter via normal run path
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-dormant > deploys arena_trials Tier 2 dormant stage-boss encounter via normal run path
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-dormant > deploys arena_trials Tier 2 dormant stage-boss encounter via normal run path
+Player disconnected: ORmtlP-Y1Zwhe2L-AAAR
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-active > activates arena_trials Tier 2 stage-boss encounter with boss at 1 HP
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-active > activates arena_trials Tier 2 stage-boss encounter with boss at 1 HP
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-active > activates arena_trials Tier 2 stage-boss encounter with boss at 1 HP
+Player connected: socket=hQIDACcbgtBNnC4wAAAT, playerId=test-1780789947856-m288es
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-active > activates arena_trials Tier 2 stage-boss encounter with boss at 1 HP
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-active > activates arena_trials Tier 2 stage-boss encounter with boss at 1 HP
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+[loot] spawned id=caf5cf11-7b92-4958-8e74-9c42be1bc1f4 value=8
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-active > activates arena_trials Tier 2 stage-boss encounter with boss at 1 HP
+Player disconnected: hQIDACcbgtBNnC4wAAAT
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > deploys training_caverns Tier 2 stage-boss run with encounter and rigid crowded layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > deploys training_caverns Tier 2 stage-boss run with encounter and rigid crowded layout
+Server listening on port 0
+
+ ✓ |client| client/test/attune-preview.test.js (1 test) 4ms
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > deploys training_caverns Tier 2 stage-boss run with encounter and rigid crowded layout
+Player connected: socket=EyPpjSKNzB2pG9xSAAAV, playerId=test-1780789947881-16mko5
+
+ ✓ |client| client/test/vanguard-hud.test.js (19 tests) 10ms
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > deploys training_caverns Tier 2 stage-boss run with encounter and rigid crowded layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > deploys training_caverns Tier 2 stage-boss run with encounter and rigid crowded layout
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+[loot] spawned id=be799760-80b9-438d-a929-99e2e3126358 value=8
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > deploys training_caverns Tier 2 stage-boss run with encounter and rigid crowded layout
+Player disconnected: EyPpjSKNzB2pG9xSAAAV
+
+ ✓ |client| client/test/deck-loadout.test.js (6 tests) 14ms
+ ✓ |client| client/test/cards.test.js (22 tests) 11ms
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > repositions beside live adds after training-caverns-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > repositions beside live adds after training-caverns-tier-2 deploy
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > repositions beside live adds after training-caverns-tier-2 deploy
+Player connected: socket=87u0DNCQg3WOH9AnAAAX, playerId=test-1780789947905-9n35wo
+
+ ✓ |client| client/test/cardRenderers.test.js (51 tests) 18ms
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > repositions beside live adds after training-caverns-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+ ✓ |client| client/test/boss-encounter-hud.test.js (12 tests) 17ms
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > repositions beside live adds after training-caverns-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > repositions beside live adds after training-caverns-tier-2 deploy
+Player disconnected: 87u0DNCQg3WOH9AnAAAX
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > places player outside dormant boss trigger after adds cleared
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > places player outside dormant boss trigger after adds cleared
+Player connected: socket=XWPM7NxVfpH9BuYrAAAZ, playerId=test-1780789947925-98v4cd
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+[loot] spawned id=cf1fec01-fbf8-4f39-b8b7-94c92a31f851 value=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > places player outside dormant boss trigger after adds cleared
+Player disconnected: XWPM7NxVfpH9BuYrAAAZ
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > positions annex_overseer at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > positions annex_overseer at 1 HP beside the player in playing phase
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > positions annex_overseer at 1 HP beside the player in playing phase
+Player connected: socket=9p4-bko1OUudI-0fAAAb, playerId=test-1780789947950-kslwz4
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > positions annex_overseer at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > positions annex_overseer at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+[loot] spawned id=0b28624c-9c85-4aa2-8f40-53395ce51821 value=7
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > positions annex_overseer at 1 HP beside the player in playing phase
+Player disconnected: 9p4-bko1OUudI-0fAAAb
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (training_caverns_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (training_caverns_tier2 parity)
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (training_caverns_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-tier-2 > deploys crystal_rescue Tier 2 with rigid open layout, collect_items run metadata, and variant enemies
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-tier-2 > deploys crystal_rescue Tier 2 with rigid open layout, collect_items run metadata, and variant enemies
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-tier-2 > deploys crystal_rescue Tier 2 with rigid open layout, collect_items run metadata, and variant enemies
+Player connected: socket=aZbmnRZId93UmpqNAAAd, playerId=test-1780789947994-3ym3hg
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-tier-2 > deploys crystal_rescue Tier 2 with rigid open layout, collect_items run metadata, and variant enemies
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-tier-2 > deploys crystal_rescue Tier 2 with rigid open layout, collect_items run metadata, and variant enemies
+[server] Layout for quest "crystal_rescue" tier 2: seed=2125694908, profile=open, rooms=5
+[crystal] spawned id=e1bdca79-5caf-49d2-8e84-e32a3cce2f82 at (35.1, -38.1)
+[crystal] spawned id=226c3ff0-715b-4a05-a04f-4d061cb6e054 at (8.8, -46.9)
+[crystal] spawned id=d55f4b59-3a3e-447b-a596-a7c25aeaea15 at (-5.6, -44.0)
+[crystal] spawned id=fe6b205e-5c9d-4ad4-8d63-92df1df91bbd at (-46.7, -40.4)
+[crystal] spawned id=3dd32e97-502a-4225-8aa3-f76ce75b1ccc at (45.7, -45.8)
+[loot] spawned id=314eb362-996e-4cd5-824e-d6bf153c1d34 value=9
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-tier-2 > deploys crystal_rescue Tier 2 with rigid open layout, collect_items run metadata, and variant enemies
+Player disconnected: aZbmnRZId93UmpqNAAAd
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (crystal_rescue_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (crystal_rescue_tier2 parity)
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (crystal_rescue_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[crystal] spawned id=812cef48-0e26-4ebe-80e0-2e44b7b4470f at (48.1, -47.5)
+[crystal] spawned id=9be4e9d5-d963-46b9-9634-97c487bfc1cf at (16.0, -46.4)
+[crystal] spawned id=eeda3769-0c51-4819-aaa3-320bc7360454 at (-15.1, -42.6)
+[crystal] spawned id=9e4864da-9ac2-411d-a48e-4d554add8694 at (-43.5, -47.8)
+[crystal] spawned id=a99c4028-7fb2-4553-894c-84dbc052c2ee at (44.3, -36.4)
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > deploys canyon_descent Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > deploys canyon_descent Tier 2 stage-boss run with encounter and rigid layout
+Server listening on port 0
+
+ ✓ |client| client/test/collision-hand.test.js (53 tests) 21ms
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > deploys canyon_descent Tier 2 stage-boss run with encounter and rigid layout
+Player connected: socket=-sER_nyEzCD51dDKAAAf, playerId=test-1780789948034-jxxhvw
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > deploys canyon_descent Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > builds meshes for local and remote lobby players
+[initScene] Initializing Three.js scene...
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > deploys canyon_descent Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+
+stdout | client/test/questBooth.test.js > quest booth booth:action hook (main.js) > reveals and scrolls the quest panel into view for boothId quest in lobby and ignores other booths
+[launchBooth] ready-up via booth
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > deploys canyon_descent Tier 2 stage-boss run with encounter and rigid layout
+Player disconnected: -sER_nyEzCD51dDKAAAf
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (canyon_descent_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (canyon_descent_tier2 parity)
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (canyon_descent_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > repositions beside live adds after canyon-descent-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > repositions beside live adds after canyon-descent-tier-2 deploy
+Server listening on port 0
+
+stderr | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > builds meshes for local and remote lobby players
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/renderer.js:621:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/renderer.js:2226:2[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/renderer.js:4944:20[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/test/hub-presence-avatars.test.js:187:3 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/models.js:88:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/models.js:79:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/renderer.js:621:11[90m)[39m
+}
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/renderer.js:621:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/renderer.js:2226:2[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/renderer.js:4944:20[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/test/hub-presence-avatars.test.js:187:3 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/models.js:88:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/models.js:79:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/renderer.js:621:11[90m)[39m
+}
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > repositions beside live adds after canyon-descent-tier-2 deploy
+Player connected: socket=2kGz3Lj8rvzPV61KAAAh, playerId=test-1780789948115-qpwhtb
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > repositions beside live adds after canyon-descent-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > repositions beside live adds after canyon-descent-tier-2 deploy
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] spawned id=c7c01313-05d9-4d49-919e-0afd6cd03f33 value=6
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > repositions beside live adds after canyon-descent-tier-2 deploy
+Player disconnected: 2kGz3Lj8rvzPV61KAAAh
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > places player outside dormant boss trigger after adds cleared
+Server listening on port 0
+
+ ✓ |client| client/test/boss-encounter-hud-wiring.test.js (6 tests) 276ms
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > places player outside dormant boss trigger after adds cleared
+Player connected: socket=yA8tSNhHOPvePhEzAAAj, playerId=test-1780789948172-aa3l5s
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+ ✓ |client| client/test/deck-viewer.test.js (21 tests) 227ms
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > moves the remote mesh when hub presence coordinates change
+[initScene] Initializing Three.js scene...
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > places player outside dormant boss trigger after adds cleared
+Player disconnected: yA8tSNhHOPvePhEzAAAj
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > positions miniboss at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > positions miniboss at 1 HP beside the player in playing phase
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > positions miniboss at 1 HP beside the player in playing phase
+Player connected: socket=sRBMrcJHBzQXfUsSAAAl, playerId=test-1780789948221-ce7gy0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > positions miniboss at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | client/test/key-item-dodge.test.js > dash VFX > triggerDashVFX applies squash scale when a player mesh exists
+[initScene] Initializing Three.js scene...
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > positions miniboss at 1 HP beside the player in playing phase
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] spawned id=56b168d9-b8ee-43ea-88ce-163079978ec3 value=14
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > positions miniboss at 1 HP beside the player in playing phase
+Player disconnected: sRBMrcJHBzQXfUsSAAAl
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > repositions beside live adds after arena-trials-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > repositions beside live adds after arena-trials-tier-2 deploy
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > repositions beside live adds after arena-trials-tier-2 deploy
+Player connected: socket=rhhzqFG_b1sEIZmKAAAn, playerId=test-1780789948264-gfpvfw
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > repositions beside live adds after arena-trials-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+ ✓ |client| client/test/boothDeck.test.js (4 tests) 596ms
+   ✓ deck booth via booth:action > opens the loadout bay when booth:action targets the deck booth  467ms
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > applyHubPresence sequence updates remote mesh position and cosmeticKey
+[initScene] Initializing Three.js scene...
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > repositions beside live adds after arena-trials-tier-2 deploy
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > repositions beside live adds after arena-trials-tier-2 deploy
+Player disconnected: rhhzqFG_b1sEIZmKAAAn
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-near-adds without an active arena_trials run
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-near-adds without an active arena_trials run
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-near-adds without an active arena_trials run
+Player connected: socket=on598jgQY0O_MNLcAAAp, playerId=test-1780789948300-491x4i
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-near-adds without an active arena_trials run
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-near-adds without an active arena_trials run
+Player disconnected: on598jgQY0O_MNLcAAAp
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > places player outside dormant boss trigger after adds cleared
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > places player outside dormant boss trigger after adds cleared
+Player connected: socket=yGJqe6vn_C6zm81IAAAr, playerId=test-1780789948314-t8hmbt
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > places player outside dormant boss trigger after adds cleared
+Player disconnected: yGJqe6vn_C6zm81IAAAr
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > applyHubPresence removedPlayerIds disposes remote avatar mesh
+[initScene] Initializing Three.js scene...
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-approach while adds remain
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-approach while adds remain
+Server listening on port 0
+
+ ✓ |client| client/test/debug-hatswap-hook.test.js (3 tests) 481ms
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-approach while adds remain
+Player connected: socket=ISpjUnV5OsV6MQLtAAAt, playerId=test-1780789948348-j0fwd3
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-approach while adds remain
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+ ✓ |client| client/test/boothShop.test.js (5 tests) 483ms
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-approach while adds remain
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-approach while adds remain
+Player disconnected: ISpjUnV5OsV6MQLtAAAt
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > positions arena champion at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > positions arena champion at 1 HP beside the player in playing phase
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > positions arena champion at 1 HP beside the player in playing phase
+Player connected: socket=nHQd_aJIOwa3S5gwAAAv, playerId=test-1780789948385-sb5xhr
+
+stdout | client/test/debug-godmode.test.js > debug godmode toggle (main.js) > mirrors debugGodmode onto local player when toggle succeeds
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+
+ ✓ |client| client/test/key-item-dodge.test.js (4 tests) 629ms
+   ✓ key item cooldown HUD > updateKeyItemCooldownHud toggles cooldown class and countdown text  390ms
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > positions arena champion at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > positions arena champion at 1 HP beside the player in playing phase
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+[loot] spawned id=4d567fd8-0ad5-4339-85d7-e33beca4645d value=15
+
+ ✓ |client| client/test/hub-presence-avatars.test.js (4 tests) 574ms
+   ✓ hub presence avatars (lobby) > builds meshes for local and remote lobby players  350ms
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > positions arena champion at 1 HP beside the player in playing phase
+Player disconnected: nHQd_aJIOwa3S5gwAAAv
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-low-hp without an active arena_trials run
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-low-hp without an active arena_trials run
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-low-hp without an active arena_trials run
+Player connected: socket=Aycv4uwBXxHXSDDGAAAx, playerId=test-1780789948417-dib78h
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-low-hp without an active arena_trials run
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-low-hp without an active arena_trials run
+Player disconnected: Aycv4uwBXxHXSDDGAAAx
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > deploys spire_ascent Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > deploys spire_ascent Tier 2 stage-boss run with encounter and rigid layout
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > deploys spire_ascent Tier 2 stage-boss run with encounter and rigid layout
+Player connected: socket=KhGaoAd6SM5G3SjXAAAz, playerId=test-1780789948430-7vhhh7
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > deploys spire_ascent Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > deploys spire_ascent Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "spire_ascent" tier 2: seed=727116418, profile=spire-ascent, rooms=7
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > deploys spire_ascent Tier 2 stage-boss run with encounter and rigid layout
+Player disconnected: KhGaoAd6SM5G3SjXAAAz
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (spire_ascent_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (spire_ascent_tier2 parity)
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (spire_ascent_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > repositions beside live adds after spire-ascent-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > repositions beside live adds after spire-ascent-tier-2 deploy
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > repositions beside live adds after spire-ascent-tier-2 deploy
+Player connected: socket=AUUSLjpB5o0pkwKYAAA1, playerId=test-1780789948456-s4fzut
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > repositions beside live adds after spire-ascent-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > repositions beside live adds after spire-ascent-tier-2 deploy
+[server] Layout for quest "spire_ascent" tier 2: seed=727116418, profile=spire-ascent, rooms=7
+[loot] spawned id=6b348a40-eb45-4ec4-8e7c-c61df8343d8e value=11
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > repositions beside live adds after spire-ascent-tier-2 deploy
+Player disconnected: AUUSLjpB5o0pkwKYAAA1
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > places player outside dormant boss trigger after adds cleared
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > places player outside dormant boss trigger after adds cleared
+Player connected: socket=pMuaRlgqn_ni6K_vAAA3, playerId=test-1780789948473-0af494
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "spire_ascent" tier 2: seed=727116418, profile=spire-ascent, rooms=7
+[loot] spawned id=a80e8d71-180b-4b8a-b42a-64c2c3081972 value=20
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > places player outside dormant boss trigger after adds cleared
+Player disconnected: pMuaRlgqn_ni6K_vAAA3
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > positions spire_warden at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > positions spire_warden at 1 HP beside the player in playing phase
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > positions spire_warden at 1 HP beside the player in playing phase
+Player connected: socket=OsToE6ZzfMfWdOLZAAA5, playerId=test-1780789948493-8gjh0b
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > positions spire_warden at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > positions spire_warden at 1 HP beside the player in playing phase
+[server] Layout for quest "spire_ascent" tier 2: seed=727116418, profile=spire-ascent, rooms=7
+[loot] spawned id=b6655932-54cf-4bad-8203-ace863bd2e7f value=12
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > positions spire_warden at 1 HP beside the player in playing phase
+Player disconnected: OsToE6ZzfMfWdOLZAAA5
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — variant-frenzied > spawns a frenzied grunt beside a plain grunt
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — variant-frenzied > spawns a frenzied grunt beside a plain grunt
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — variant-frenzied > spawns a frenzied grunt beside a plain grunt
+Player connected: socket=DFujhaBQnddFtRhBAAA7, playerId=test-1780789948510-ngnimz
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — variant-frenzied > spawns a frenzied grunt beside a plain grunt
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — variant-frenzied > spawns a frenzied grunt beside a plain grunt
+Player disconnected: DFujhaBQnddFtRhBAAA7
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern-stage > loads fire-cavern layout with player on rim and floor-aligned Y
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern-stage > loads fire-cavern layout with player on rim and floor-aligned Y
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern-stage > loads fire-cavern layout with player on rim and floor-aligned Y
+Player connected: socket=Qnq32XmAJyZQjhpoAAA9, playerId=test-1780789948526-8mumzs
+
+ ✓ |client| client/test/debug-godmode.test.js (6 tests) 782ms
+   ✓ debug godmode toggle (main.js) > Shift+G emits toggleDebugGodmode when debugScenarioAllowed is true  357ms
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern-stage > loads fire-cavern layout with player on rim and floor-aligned Y
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern-stage > loads fire-cavern layout with player on rim and floor-aligned Y
+[loot] spawned id=d8c87d67-622c-452a-bc0d-0408b9a94d9b value=12
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern-stage > loads fire-cavern layout with player on rim and floor-aligned Y
+Player disconnected: Qnq32XmAJyZQjhpoAAA9
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern > deploys ember_descent tier-1 with fire-cavern layout, rim spawn, and enemies
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern > deploys ember_descent tier-1 with fire-cavern layout, rim spawn, and enemies
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern > deploys ember_descent tier-1 with fire-cavern layout, rim spawn, and enemies
+Player connected: socket=4k38d62If8NVO7r-AAA_, playerId=test-1780789948559-twkjf4
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern > deploys ember_descent tier-1 with fire-cavern layout, rim spawn, and enemies
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern > deploys ember_descent tier-1 with fire-cavern layout, rim spawn, and enemies
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=794b96e3-4d8d-4a5e-9013-8702b1cce4d3 value=20
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern > deploys ember_descent tier-1 with fire-cavern layout, rim spawn, and enemies
+Player disconnected: 4k38d62If8NVO7r-AAA_
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — hat-shop-currency > stays in lobby with at least APPEARANCE_CHANGE_COST and broadcasts currency
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — hat-shop-currency > stays in lobby with at least APPEARANCE_CHANGE_COST and broadcasts currency
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — hat-shop-currency > stays in lobby with at least APPEARANCE_CHANGE_COST and broadcasts currency
+Player connected: socket=7O7rRL7fZJS6e2URAABB, playerId=test-1780789948592-afixev
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — hat-shop-currency > stays in lobby with at least APPEARANCE_CHANGE_COST and broadcasts currency
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — hat-shop-currency > stays in lobby with at least APPEARANCE_CHANGE_COST and broadcasts currency
+Player disconnected: 7O7rRL7fZJS6e2URAABB
+
+ ✓ |server| server/test/debug-scenarios.test.js (38 tests) 1094ms
+ ✓ |client| client/test/questBooth.test.js (16 tests) 760ms
+stdout | client/test/characterBooth.test.js > character booth ?booth=character debug hook (main.js) > auto-opens once after hub lobby entry on localhost with ?booth=character
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/characterBooth.test.js > character booth ?booth=character debug hook (main.js) > stays closed without the booth URL param
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/main.test.js > cardError handler — server hand rejection > shows a toast when the server rejects an unauthorized card use
+[cardError] Card not in hand
+
+ ✓ |client| client/test/characterBooth.test.js (13 tests) 840ms
+stderr | client/test/main.test.js > createEnemyMesh() > creates a red cone for grunt (default) type
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/renderer.js:621:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/renderer.js:3004:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/test/main.test.js:2259:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/models.js:88:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/models.js:79:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/renderer.js:621:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates an orange cone for skirmisher type
+[renderer] failed to apply model "/models/skirmisher.glb" for "skirmisher": TypeError: Failed to parse URL from /models/skirmisher.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/renderer.js:621:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/renderer.js:3004:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/test/main.test.js:2271:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/skirmisher.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/models.js:88:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/models.js:79:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/renderer.js:621:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a teal octahedron for spawner type
+[renderer] failed to apply model "/models/spawner.glb" for "spawner": TypeError: Failed to parse URL from /models/spawner.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/renderer.js:621:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/renderer.js:3004:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/test/main.test.js:2281:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/spawner.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/models.js:88:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/models.js:79:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/renderer.js:621:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a purple cone for miniboss type
+[renderer] failed to apply model "/models/miniboss.glb" for "miniboss": TypeError: Failed to parse URL from /models/miniboss.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/renderer.js:621:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/renderer.js:3004:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/test/main.test.js:2307:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/miniboss.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/models.js:88:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/models.js:79:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/game/[39mclient/renderer.js:621:11[90m)[39m
+}
+
+ ✓ |client| client/test/main.test.js (157 tests) 1794ms
+
+ Test Files  26 passed (26)
+      Tests  519 passed (519)
+   Start at  16:52:25
+   Duration  4.10s (transform 813ms, setup 688ms, collect 5.05s, tests 8.99s, environment 10.39s, prepare 4.67s)
+
+ % Coverage report from v8
+---------------|---------|----------|---------|---------|-----------------------
+File           | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s     
+---------------|---------|----------|---------|---------|-----------------------
+All files      |   78.72 |    63.77 |   68.67 |   78.69 |                       
+ client        |   87.37 |    76.08 |   84.37 |   87.31 |                       
+  cards.js     |   87.75 |    73.17 |   88.88 |    87.6 | 94-99,102-107,231-248 
+  collision.js |   85.42 |    67.24 |     100 |   85.42 | ...98,200-201,243-244 
+  delta.js     |     100 |       50 |     100 |     100 | 12                    
+  hand.js      |   88.12 |    94.59 |   69.23 |   88.12 | ...78,156-157,160-163 
+ server        |   75.44 |    50.39 |   58.82 |   75.44 |                       
+  index.js     |   75.44 |    50.39 |   58.82 |   75.44 | ...619-1620,1625-1627 
+---------------|---------|----------|---------|---------|-----------------------

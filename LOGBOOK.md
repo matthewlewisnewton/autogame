@@ -5302,3 +5302,26 @@ The new `ice-ball-ready` debug scenario is gated through the existing debug-scen
 
 None.
 
+
+## v0.301 — 303-card-balance-analysis  (2026-06-06 17:12:44)
+
+- Round-2 `coverage.log` passed for the changed-file visibility run: 26 files, 519 tests.
+
+The new `card_balance_metrics.test.js` verifies shared JSON/server key parity, per-card metric records, utility scoring, burst stat shapes, reward-order collision detection, peer-band flags, and committed snapshot consistency.
+
+### Design and requirements consistency
+
+PASS. The implementation stays within the documented card-combat design: it analyzes and lightly tunes cards without changing the lobby/dungeon loop, deck/hand model, card type semantics, socket architecture, rendering requirements, movement synchronization, or multiplayer visualization. The capture confirms the core run flow still operates.
+
+### Debug scenarios
+
+PASS / not applicable for blocking review. This ticket did not add or change a development debug scenario implementation; it only adjusted one debug-scenario test to wait for the intended low-HP boss state instead of an arbitrary next update. Existing debug scenario entry remains gated through the `?debugScenario=` URL parameter on localhost/dev hosts, and this ticket did not introduce a new shortcut that substitutes for normal gameplay.
+
+### Code quality
+
+PASS. The balance helper is pure and data-driven over shared JSON, the snapshot test prevents report metrics from silently drifting, and the live report reflects post-tuning metrics. I found no broken imports, dead code that affects runtime, or console errors from game code.
+
+## Remaining gaps
+
+None.
+
