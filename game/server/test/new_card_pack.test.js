@@ -59,10 +59,9 @@ describe('new card combat helpers', () => {
 		expect(CARD_DEFS.saber_of_light.damage).toBeLessThan(CARD_DEFS.iron_sword.damage);
 	});
 
-	it('Excalibur Photon inherits Saber stats with +50% damage and double swings', () => {
-		expect(CARD_DEFS.excalibur_photon.damage).toBe(
-			Math.round(CARD_DEFS.saber_of_light.damage * 1.5)
-		);
+	it('Excalibur Photon inherits Saber charges and cooldown with double swings', () => {
+		expect(CARD_DEFS.excalibur_photon.damage).toBe(14);
+		expect(CARD_DEFS.excalibur_photon.damage).toBeGreaterThan(CARD_DEFS.saber_of_light.damage);
 		expect(CARD_DEFS.excalibur_photon.charges).toBe(CARD_DEFS.saber_of_light.charges);
 		expect(CARD_DEFS.excalibur_photon.cooldownMs).toBeLessThan(CARD_DEFS.saber_of_light.cooldownMs);
 		expect(CARD_DEFS.excalibur_photon.swingsPerUse).toBe(2);

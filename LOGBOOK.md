@@ -5390,6 +5390,52 @@ No `?debugScenario=NAME` shortcut was added or changed for this ticket. Existing
 None.
 
 
+## v0.302 — 305-recapture-walkable-hub-after-overlay-fix  (2026-06-06 18:39:43)
+
+### `findings.md` covers walkable presentation
+
+PASS. `game/validation/hub/findings.md` includes a dedicated walkable presentation section covering overview, operations, commerce, salon, menu dominance, and party-mate visibility, plus hub walk notes and screenshot references.
+
+## Design and foundation consistency
+
+PASS. The implementation is scoped to validation harness code and generated hub-validation artifacts; it does not alter `game/client` or `game/server` gameplay behavior. The new checks support the documented lobby/hub multiplayer flow and do not regress the requirements for 3D rendering, client-server connectivity, multiplayer visualization, or movement synchronization.
+
+## Code quality and integration
+
+PASS. The harness changes align the hub waits with the post-304 contract, add explicit walkable-presentation probes, enforce required hub artifacts, and route the ticket-305 fallback capture away from dungeon deploys. I found no dead/broken code or blocking integration issues. The only coverage artifact reports no matching test files for changed files, which is informational because thresholds are disabled.
+
+## Debug scenarios
+
+PASS. This ticket did not add or modify game debug scenarios. The generated validation artifacts use existing debug helpers for booth and telepipe validation through the harness path only; normal gameplay paths remain unchanged.
+
+## Remaining gaps
+
+None.
+
+
+## v0.303 — 303-card-balance-analysis  (2026-06-06 18:46:16)
+
+### Applied safe tunings
+
+PASS. The implementation applies only low-risk numeric stat changes in `game/shared/cardStats.json`: `saber_of_light`, `fireball`, `harvesting_scythe`, `permafrost_lance`, and `dragons_breath`. The later `excalibur_photon` revert leaves it as a written triage item, matching the ticket's requirement to avoid broader reworks.
+
+### Tests and validation
+
+PASS. The new analyzer in `game/validation/card-balance/analyzeCards.mjs` is covered by `game/server/test/card_balance_metrics.test.js`, which verifies every `cardDefs` id has stats and complete metric rows, checks key cards, documents server overlay keys, and smoke-runs the CLI. Existing tests were updated for the changed numeric values. The supplied coverage run reports 24 test files and 460 tests passing.
+
+### Design and foundation consistency
+
+PASS. The changes stay within card data, report generation, and tests; they do not alter the multiplayer lobby/dungeon flow, rendering, movement synchronization, or server-client architecture described in `game/docs/design.md` and `game/docs/requirements.md`.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change any game debug scenario implementation. Existing test use of `debugScenario` remains confined to test harness paths and does not introduce a normal-gameplay shortcut.
+
+## Remaining gaps
+
+None.
+
+
 ## v0.304 — 289-card-charges-persist-on-telepipe-resume-reset-on-new-sortie  (2026-06-06 19:14:38)
 
 3. Health + magic stones persist in BOTH cases.

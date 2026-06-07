@@ -7,6 +7,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { evaluateWalkablePresentation } from './lib/findingsHub.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
@@ -93,6 +94,15 @@ function checkTelepipeRunIdSanity(summary, errors) {
 	}
 }
 
+function checkWalkablePresentation(summary, errors) {
+	const result = evaluateWalkablePresentation(summary?.hubWalk);
+	if (!result.ok) {
+		for (const issue of result.issues) {
+			fail(errors, issue);
+		}
+	}
+}
+
 function checkRequiredFiles(errors) {
 	for (const name of REQUIRED_PNGS) {
 		const filePath = path.join(HUB_DIR, name);
@@ -131,7 +141,10 @@ function main() {
 		errors.push(`missing validation directory: ${HUB_REL}/`);
 	} else {
 		const summary = readRunSummary(errors);
-		if (summary) checkTelepipeRunIdSanity(summary, errors);
+		if (summary) {
+			checkTelepipeRunIdSanity(summary, errors);
+			checkWalkablePresentation(summary, errors);
+		}
 		checkRequiredFiles(errors);
 	}
 

@@ -21,7 +21,7 @@ describe('Fireball definitions', () => {
 			name: 'Fireball',
 			type: 'weapon',
 			charges: 4,
-			damage: 16,
+			damage: 18,
 			attackRange: 9,
 			effect: 'fireball',
 			acquisition: 'reward',

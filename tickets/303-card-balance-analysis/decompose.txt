@@ -1,0 +1,10 @@
+Remediation round 2 closes the two open gaps from `review-feedback.md`. Sub-tickets 01–04 are marked `.passed` and were left untouched.
+
+**Gap mapping**
+1. Stale report tables → **06-reconcile-balance-report**
+2. Incidental `excalibur_photon` buff → **05-revert-excalibur-photon-buff** (runs first so 06 reconciles against final stats)
+
+**Created sub-ticket folders:**
+
+- `/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/tickets/303-card-balance-analysis/subtickets/05-revert-excalibur-photon-buff`
+- `/home/matt/workspace/.autogame-worktrees/303-card-balance-analysis/tickets/303-card-balance-analysis/subtickets/06-reconcile-balance-report`

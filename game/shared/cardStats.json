@@ -93,7 +93,7 @@
     "pulseIntervalMs": 2000
   },
   "harvesting_scythe": {
-    "damage": 9,
+    "damage": 12,
     "magicStoneOnHit": 5,
     "magicStoneOnKill": 15
   },
@@ -123,7 +123,7 @@
     "adjacentChargeRestore": 2
   },
   "saber_of_light": {
-    "damage": 9,
+    "damage": 12,
     "cooldownMs": 400,
     "specialEffect": "swift_slash"
   },
@@ -156,7 +156,7 @@
     "projectile": { "pierces": true }
   },
   "fireball": {
-    "damage": 16,
+    "damage": 18,
     "attackRange": 9,
     "effect": "fireball",
     "specialEffect": "burning",
@@ -182,7 +182,7 @@
   "permafrost_lance": {
     "magicStoneCost": 30,
     "effect": "frost_nova",
-    "damage": 8,
+    "damage": 11,
     "radius": 6,
     "freezeDurationMs": 2000,
     "specialEffect": "freeze"
@@ -309,7 +309,7 @@
   "dragons_breath": {
     "magicStoneCost": 40,
     "effect": "dragons_breath",
-    "damage": 9,
+    "damage": 13,
     "dotTicks": 4,
     "dotIntervalMs": 500,
     "attackRange": 7,
