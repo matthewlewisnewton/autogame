@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import config from '../config.js';
+import config, { MAX_HP } from '../config.js';
 import { getQuest } from '../quests.js';
 import { DEFAULT_COSMETIC } from '../cosmetic.js';
 import { createLobbyGameState } from '../lobbies.js';
@@ -3193,6 +3193,171 @@ describe('run state', () => {
 			expect(gameState.gamePhase).toBe('playing');
 			expect(gameState.run.status).toBe('playing');
 			expect(isPlayerActive(gameState.players.p2)).toBe(true);
+		});
+	});
+
+	describe('card charge persistence — telepipe resume vs new sortie', () => {
+		const deck = ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'];
+
+		function setupTwoPlayerRun() {
+			resetState();
+			gameState._lobbyId = 'test-lobby';
+			startDungeonRun();
+			gameState.gamePhase = 'playing';
+			addPlayer('p1', {
+				x: 5,
+				z: 5,
+				selectedDeck: [...deck],
+				hand: [{ id: 'telepipe', name: 'Telepipe', type: 'spell', charges: 1, remainingCharges: 1 }],
+				deck: [],
+				slotCooldowns: [null, null, null, null],
+				pendingSummons: new Set(),
+			});
+			addPlayer('p2', {
+				x: 10,
+				z: 10,
+				selectedDeck: [...deck],
+				hand: [{ id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 }],
+				deck: [],
+				slotCooldowns: [null, null, null, null],
+				pendingSummons: new Set(),
+			});
+			gameState.telepipe = {
+				x: 5,
+				z: 5,
+				placedBy: 'p1',
+				placedAt: Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1,
+			};
+		}
+
+		function extractAllPlayers() {
+			tryEnterTelepipe('p1');
+			gameState.players.p2.x = 5;
+			gameState.players.p2.z = 5;
+			tryEnterTelepipe('p2');
+		}
+
+		it('telepipe-resume: spend charges → full extract → redeploy preserves remainingCharges, hp, and magicStones', () => {
+			setupTwoPlayerRun();
+			const preExtractRunId = gameState.run.id;
+			const nonDefaultHp = 42;
+			const nonDefaultMs = 15;
+
+			gameState.players.p1.hp = nonDefaultHp;
+			gameState.players.p1.magicStones = nonDefaultMs;
+			gameState.players.p2.hp = 55;
+			gameState.players.p2.magicStones = 22;
+
+			const spentCharges = {};
+			for (const card of gameState.players.p1.hand) {
+				if (card && card.charges != null) {
+					card.remainingCharges = Math.max(0, card.charges - 1);
+					spentCharges[card.id] = card.remainingCharges;
+				}
+			}
+			gameState.players.p2.hand[0].remainingCharges = 2;
+
+			extractAllPlayers();
+			expect(gameState.gamePhase).toBe('lobby');
+			expect(gameState.suspendedCheckpoint).not.toBeNull();
+
+			gameState.players.p1.ready = true;
+			gameState.players.p2.ready = true;
+			checkAllReady();
+
+			expect(gameState.run.id).toBe(preExtractRunId);
+			expect(gameState.players.p1.hp).toBe(nonDefaultHp);
+			expect(gameState.players.p1.magicStones).toBe(nonDefaultMs);
+			expect(gameState.players.p2.hp).toBe(55);
+			expect(gameState.players.p2.magicStones).toBe(22);
+
+			for (const card of gameState.players.p1.hand) {
+				if (card && card.charges != null && spentCharges[card.id] != null) {
+					expect(card.remainingCharges).toBe(spentCharges[card.id]);
+				}
+			}
+			const p2Sword = gameState.players.p2.hand.find((c) => c && c.id === 'iron_sword');
+			if (p2Sword) {
+				expect(p2Sword.remainingCharges).toBe(2);
+			}
+		});
+
+		it('new sortie: spend charges → full extract → abandon → redeploy resets charges and run id', () => {
+			setupTwoPlayerRun();
+			const preSuspendRunId = gameState.run.id;
+			const nonDefaultHp = 42;
+			const nonDefaultMs = 15;
+
+			gameState.players.p1.hp = nonDefaultHp;
+			gameState.players.p1.magicStones = nonDefaultMs;
+			gameState.players.p2.hp = 55;
+			gameState.players.p2.magicStones = 22;
+			gameState.players.p1.hand[0].remainingCharges = 0;
+			gameState.players.p2.hand[0].remainingCharges = 0;
+
+			extractAllPlayers();
+			expect(gameState.suspendedCheckpoint).not.toBeNull();
+			expect(gameState.suspendedCheckpoint.playerStates.p1.hand[0].remainingCharges).toBe(0);
+
+			const abandonResult = abandonSuspendedRun();
+			expect(abandonResult.ok).toBe(true);
+			expect(gameState.suspendedCheckpoint).toBeNull();
+
+			gameState.players.p1.ready = true;
+			gameState.players.p2.ready = true;
+			checkAllReady();
+
+			expect(gameState.gamePhase).toBe('playing');
+			expect(gameState.run.id).not.toBe(preSuspendRunId);
+			expect(gameState.players.p1.hp).toBe(nonDefaultHp);
+			expect(gameState.players.p1.magicStones).toBe(nonDefaultMs);
+			expect(gameState.players.p2.hp).toBe(55);
+			expect(gameState.players.p2.magicStones).toBe(22);
+
+			for (const player of [gameState.players.p1, gameState.players.p2]) {
+				for (const card of player.hand) {
+					if (card) {
+						expect(card.remainingCharges).toBe(card.charges);
+					}
+				}
+			}
+		});
+
+		it('regression: neither path resets hp to MAX_HP or magicStones to STARTING_MAGIC_STONES', () => {
+			const nonDefaultHp = 37;
+			const nonDefaultMs = 23;
+
+			setupTwoPlayerRun();
+			gameState.players.p1.hp = nonDefaultHp;
+			gameState.players.p1.magicStones = nonDefaultMs;
+			gameState.players.p1.hand[0].remainingCharges = 0;
+			extractAllPlayers();
+
+			gameState.players.p1.ready = true;
+			gameState.players.p2.ready = true;
+			checkAllReady();
+
+			expect(gameState.players.p1.hp).toBe(nonDefaultHp);
+			expect(gameState.players.p1.magicStones).toBe(nonDefaultMs);
+			expect(gameState.players.p1.hp).not.toBe(MAX_HP);
+			expect(gameState.players.p1.magicStones).not.toBe(STARTING_MAGIC_STONES);
+
+			resetState();
+			setupTwoPlayerRun();
+			gameState.players.p1.hp = nonDefaultHp;
+			gameState.players.p1.magicStones = nonDefaultMs;
+			gameState.players.p1.hand[0].remainingCharges = 0;
+			extractAllPlayers();
+			abandonSuspendedRun();
+
+			gameState.players.p1.ready = true;
+			gameState.players.p2.ready = true;
+			checkAllReady();
+
+			expect(gameState.players.p1.hp).toBe(nonDefaultHp);
+			expect(gameState.players.p1.magicStones).toBe(nonDefaultMs);
+			expect(gameState.players.p1.hp).not.toBe(MAX_HP);
+			expect(gameState.players.p1.magicStones).not.toBe(STARTING_MAGIC_STONES);
 		});
 	});
 

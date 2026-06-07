@@ -5256,7 +5256,7 @@ describe('Telepipe extract and redeploy vitals persistence', () => {
 		p2.socket.disconnect();
 	});
 
-	it('two-player telepipe extract returns to hub and redeploy resumes suspended run', async () => {
+	it('two-player telepipe extract returns to hub and redeploy spawns a fresh dungeon', async () => {
 		const baseUrl = await startTestServer();
 		const p1 = await connectAndJoinLobby(baseUrl, 'telepipe-1');
 		const p2 = await connectAndJoinLobby(baseUrl, 'telepipe-2', { joinLobbyId: p1.init.lobbyId });
@@ -5425,6 +5425,99 @@ describe('Telepipe extract and redeploy vitals persistence', () => {
 		expect(redeployed.run.id).toBe(preExtractRunId);
 		expect(redeployed.players[p1Id].magicStones).toBeCloseTo(expectedMs, 0);
 		expect(redeployed.players[p1Id].hp).toBe(expectedHp);
+
+		p1.socket.disconnect();
+		p2.socket.disconnect();
+	});
+
+	it('abandon after telepipe extract starts new sortie with full card charges and new run id', async () => {
+		const baseUrl = await startTestServer();
+		const p1 = await connectAndJoinLobby(baseUrl, 'telepipe-abandon-1');
+		const p2 = await connectAndJoinLobby(baseUrl, 'telepipe-abandon-2', { joinLobbyId: p1.init.lobbyId });
+
+		const startPromise1 = waitForEvent(p1.socket, 'startGame');
+		const startPromise2 = waitForEvent(p2.socket, 'startGame');
+		p1.socket.emit('playerReady', true);
+		p2.socket.emit('playerReady', true);
+		await startPromise1;
+		await startPromise2;
+
+		const state = testGameState();
+		const p1Id = p1.socket._playerId;
+		const p2Id = p2.socket._playerId;
+		const preExtractRunId = state.run.id;
+		const nonDefaultHp = 47;
+		const nonDefaultMs = 18;
+
+		runSimulationInPrimaryLobby((liveState) => {
+			const player = liveState.players[p1Id];
+			player.hp = nonDefaultHp;
+			player.magicStones = nonDefaultMs;
+			for (const card of player.hand) {
+				if (card && card.charges != null) {
+					card.remainingCharges = Math.max(0, card.charges - 1);
+				}
+			}
+			liveState.telepipe = {
+				x: player.x,
+				z: player.z,
+				placedBy: p1Id,
+				placedAt: Date.now() - 3000,
+			};
+		});
+
+		const spentCharges = {};
+		for (const card of testGameState().players[p1Id].hand) {
+			if (card && card.charges != null) {
+				spentCharges[card.id] = card.remainingCharges;
+			}
+		}
+
+		const portalState = testGameState();
+		const portalX = portalState.telepipe.x;
+		const portalZ = portalState.telepipe.z;
+
+		expect(tryEnterTelepipe(p1Id).ok).toBe(true);
+		runSimulationInPrimaryLobby((afterP1Extract) => {
+			afterP1Extract.players[p2Id].x = portalX;
+			afterP1Extract.players[p2Id].z = portalZ;
+		});
+		expect(tryEnterTelepipe(p2Id).ok).toBe(true);
+
+		expect(testGameState().gamePhase).toBe('lobby');
+		expect(testGameState().suspendedCheckpoint).not.toBeNull();
+		expect(testGameState().players[p1Id].hp).toBe(nonDefaultHp);
+		expect(testGameState().players[p1Id].magicStones).toBe(nonDefaultMs);
+
+		const abandonedPromise = waitForEvent(p1.socket, 'runAbandoned');
+		p1.socket.emit('abandonRun');
+		await abandonedPromise;
+
+		expect(testGameState().suspendedCheckpoint).toBeNull();
+
+		const redeployPromise1 = waitForEvent(p1.socket, 'startGame');
+		const redeployPromise2 = waitForEvent(p2.socket, 'startGame');
+		p1.socket.emit('playerReady', true);
+		p2.socket.emit('playerReady', true);
+		await redeployPromise1;
+		await redeployPromise2;
+
+		const redeployed = testGameState();
+		expect(redeployed.gamePhase).toBe('playing');
+		expect(redeployed.run.id).not.toBe(preExtractRunId);
+		expect(redeployed.players[p1Id].hp).toBe(nonDefaultHp);
+		expect(redeployed.players[p1Id].magicStones).toBe(nonDefaultMs);
+		expect(redeployed.players[p1Id].hp).not.toBe(MAX_HP);
+		expect(redeployed.players[p1Id].magicStones).not.toBe(STARTING_MAGIC_STONES);
+
+		for (const card of redeployed.players[p1Id].hand) {
+			if (card) {
+				expect(card.remainingCharges).toBe(card.charges);
+				if (spentCharges[card.id] != null) {
+					expect(card.remainingCharges).toBeGreaterThan(spentCharges[card.id]);
+				}
+			}
+		}
 
 		p1.socket.disconnect();
 		p2.socket.disconnect();
