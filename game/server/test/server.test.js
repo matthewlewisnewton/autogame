@@ -2913,22 +2913,24 @@ describe('run state', () => {
 		});
 
 		it('checkAllReady after telepipe extract spawns a fresh dungeon run', () => {
+			const preExtractRunId = gameState.run.id;
 			tryEnterTelepipe('p1');
 			gameState.players.p2.x = 5;
 			gameState.players.p2.z = 5;
 			tryEnterTelepipe('p2');
 
-			const preExtractRunId = 'should-not-exist';
 			gameState.players.p1.ready = true;
 			gameState.players.p2.ready = true;
 			checkAllReady();
 
 			expect(gameState.gamePhase).toBe('playing');
 			expect(gameState.run).toBeDefined();
-			expect(gameState.run.id).not.toBe(preExtractRunId);
+			expect(gameState.run.id).toBe(preExtractRunId);
 			expect(gameState.run.status).toBe('playing');
 			expect(gameState.enemies.length).toBeGreaterThan(0);
 			expect(gameState.telepipe).toBeNull();
+			expect(gameState.suspendedCheckpoint).toBeNull();
+			expect(stateSnapshot().suspendedRunSummary).toBeNull();
 		});
 
 		it('checkAllReady fresh deploy preserves existing hp and magicStones', () => {
@@ -2997,7 +2999,7 @@ describe('run state', () => {
 			expect(player.magicStones).toBe(STARTING_MAGIC_STONES);
 		});
 
-		it('fresh deploy after telepipe extract preserves hp and magicStones and resets card charges', () => {
+		it('telepipe resume redeploy preserves hp, magicStones, and card charges', () => {
 			resetState();
 			gameState._lobbyId = 'test-lobby';
 			addPlayer('p1', {
@@ -3013,9 +3015,11 @@ describe('run state', () => {
 
 			gameState.players.p1.hp = 42;
 			gameState.players.p1.magicStones = STARTING_MAGIC_STONES - 5;
+			const spentCharges = {};
 			for (const card of gameState.players.p1.hand) {
 				if (card && card.charges != null) {
 					card.remainingCharges = Math.max(0, card.charges - 1);
+					spentCharges[card.id] = card.remainingCharges;
 				}
 			}
 
@@ -3033,7 +3037,7 @@ describe('run state', () => {
 			gameState.players.p1.ready = true;
 			checkAllReady();
 
-			expect(gameState.run.id).not.toBe(preExtractRunId);
+			expect(gameState.run.id).toBe(preExtractRunId);
 			const preservedMagicStones = STARTING_MAGIC_STONES - 5;
 			expect(gameState.players.p1.hp).toBe(42);
 			expect(gameState.players.p1.magicStones).toBe(preservedMagicStones);
@@ -3048,9 +3052,11 @@ describe('run state', () => {
 			expect(occupied.length).toBeGreaterThan(0);
 			for (const card of occupied) {
 				if (card.charges != null) {
-					expect(card.remainingCharges).toBe(card.charges);
+					expect(card.remainingCharges).toBe(spentCharges[card.id]);
 				}
 			}
+			expect(gameState.suspendedCheckpoint).toBeNull();
+			expect(stateSnapshot().suspendedRunSummary).toBeNull();
 		});
 		it('checkAllReady does not start when a disconnected player has stale ready', () => {
 			resetState();

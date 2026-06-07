@@ -2647,6 +2647,50 @@ function buildSuspendedRunSummary(checkpoint) {
   };
 }
 
+function restoreCardCheckpoint() {
+  const checkpoint = _gameState.suspendedCheckpoint;
+  if (!checkpoint?.run) return;
+
+  _gameState.run = JSON.parse(JSON.stringify(checkpoint.run));
+
+  const all = Object.values(_gameState.players);
+  for (const [playerId, player] of Object.entries(_gameState.players)) {
+    const saved = checkpoint.playerStates[playerId];
+    if (saved) {
+      player.hand = cloneHandCards(saved.hand);
+      player.deck = Array.isArray(saved.deck) ? [...saved.deck] : [];
+      player.inDesperation = !!saved.inDesperation;
+      player.nextDrawAt = saved.nextDrawAt ?? null;
+      player.desperationDeck = Array.isArray(saved.desperationDeck) ? [...saved.desperationDeck] : [];
+    }
+    player.extracted = false;
+    player.ready = false;
+    player.lastMoveTime = Date.now();
+    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+    player.overclockChargesRemaining = 0;
+    player.currencyEarnedThisRun = 0;
+    player.runRewards = null;
+    player.runCardDropIds = [];
+    player.pendingCardChoices = null;
+    player.claimedCardRewardId = null;
+  }
+
+  setGamePhase(_gameState, PHASES.PLAYING);
+  assignRunSpawnPositions(all);
+  spawnEnemies();
+
+  if (_gameState.run.encounter) {
+    ensureEncounterSpawnAnchor(_gameState.run, _gameState.enemies);
+  }
+
+  _gameState.suspendedCheckpoint = null;
+  console.log('[run] checkpoint restored');
+
+  const io = getIoTarget();
+  emitLobbyDeploy(io, SERVER_TO_CLIENT.START_GAME);
+  emitLobbyDeploy(io, SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+}
+
 function suspendRunToLobby() {
   if (!_gameState.run || _gameState.run.status !== 'playing') return;
 
@@ -3084,6 +3128,11 @@ function checkAllReadyInner() {
     if (!isLobbyPhase(_gameState)) return;
 
     try {
+      if (_gameState.suspendedCheckpoint) {
+        restoreCardCheckpoint();
+        return;
+      }
+
       setGamePhase(_gameState, PHASES.PLAYING);
 
       assignRunSpawnPositions(all);
@@ -3251,6 +3300,7 @@ module.exports = {
   buildWorldSnapshot,
   isPlayerActive,
   hasActivePlayers,
+  restoreCardCheckpoint,
   suspendRunToLobby,
   maybeSuspendRun,
   tryEnterTelepipe,

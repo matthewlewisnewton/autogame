@@ -5256,7 +5256,7 @@ describe('Telepipe extract and redeploy vitals persistence', () => {
 		p2.socket.disconnect();
 	});
 
-	it('two-player telepipe extract returns to hub and redeploy spawns a fresh dungeon', async () => {
+	it('two-player telepipe extract returns to hub and redeploy resumes suspended run', async () => {
 		const baseUrl = await startTestServer();
 		const p1 = await connectAndJoinLobby(baseUrl, 'telepipe-1');
 		const p2 = await connectAndJoinLobby(baseUrl, 'telepipe-2', { joinLobbyId: p1.init.lobbyId });
@@ -5316,7 +5316,7 @@ describe('Telepipe extract and redeploy vitals persistence', () => {
 
 		const redeployed = testGameState();
 		expect(redeployed.gamePhase).toBe('playing');
-		expect(redeployed.run.id).not.toBe(preExtractRunId);
+		expect(redeployed.run.id).toBe(preExtractRunId);
 		expect(redeployed.enemies.some((e) => e.id === 'e-telepipe-test')).toBe(false);
 		expect(redeployed.telepipe).toBeNull();
 		expect(redeployed.players[p1Id].extracted).toBe(false);
@@ -5422,7 +5422,7 @@ describe('Telepipe extract and redeploy vitals persistence', () => {
 
 		const redeployed = testGameState();
 		expect(redeployed.gamePhase).toBe('playing');
-		expect(redeployed.run.id).not.toBe(preExtractRunId);
+		expect(redeployed.run.id).toBe(preExtractRunId);
 		expect(redeployed.players[p1Id].magicStones).toBeCloseTo(expectedMs, 0);
 		expect(redeployed.players[p1Id].hp).toBe(expectedHp);
 
