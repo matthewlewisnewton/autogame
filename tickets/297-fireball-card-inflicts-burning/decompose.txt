@@ -1,0 +1,14 @@
+I broke the top-level ticket into two dependency-ordered sub-tickets, both **code**-verified (each criterion concerns logic, structure, server state, tests, or a render handler existing — not a pixel look-check of the one happy-path run).
+
+**Decomposition rationale:** the burning status (291) and the enemy burning visual already exist, so the only new work is (a) the server card + cast effect + tests, and (b) the client projectile render + card art. These are cleanly separable concerns; the client depends on the server's `fireball` effect name, hence the ordering.
+
+Sub-ticket folders created:
+
+- `/home/matt/workspace/.autogame-worktrees/297-fireball-card-inflicts-burning/tickets/297-fireball-card-inflicts-burning/subtickets/01-fireball-card-server/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/297-fireball-card-inflicts-burning/tickets/297-fireball-card-inflicts-burning/subtickets/02-fireball-client-render/ticket.md`
+
+Key facts I verified to scope these precisely:
+- `CARD_DEFS` = `cardDefs.json` (identity) ⋈ `cardStats.json` (where `effect`/`damage`/`attackRange` live) — so a new card needs entries in **both**, plus a `cardEconomy.json` sell value.
+- `VICTORY_REWARD_ROTATION` is auto-derived from `acquisition: "reward"`, so no `config.js` edit is needed to make the card obtainable — but `card_acquisition.test.js` enforces reachability and key-set sync.
+- `applyBurning`/`isBurning` are exported from `simulation.js`; projectile hits are collected in the weapon branch of `cardEffects.js` (~line 249), which is the natural home for the new `fireball` effect.
+- The client already renders enemy burning flames from the broadcast `burningUntil` (291), so sub-ticket 02 only adds the projectile visual + card art.

@@ -1,5 +1,6 @@
 /**
- * Telepipe UP → abandon → fresh-deploy validation helpers (ticket 281 sub-ticket 04).
+ * Telepipe UP → hub → fresh-redeploy validation helpers.
+ * Ticket 281 originally expected MS reset; ticket 287 expects vitals preserved.
  */
 import { createRequire } from 'module';
 import fs from 'fs';
@@ -34,6 +35,18 @@ function probesMatchDepletion(probe, startingMs = STARTING_MAGIC_STONES) {
 // Passive regen ticks at 20Hz once playing; probe may run a few ticks after waitForPlaying.
 const FRESH_DEPLOY_MS_REGEN_TICKS = 10;
 const FRESH_DEPLOY_MS_TOLERANCE = MAGIC_STONES_REGEN_PER_TICK * FRESH_DEPLOY_MS_REGEN_TICKS;
+const VITALS_MS_REGEN_TICKS = FRESH_DEPLOY_MS_REGEN_TICKS;
+const VITALS_MS_TOLERANCE = FRESH_DEPLOY_MS_TOLERANCE;
+
+export function probesMatchVitalsPreserved(pre, post, msTolerance = VITALS_MS_TOLERANCE) {
+	const hpMatch = Number.isFinite(pre?.hp) && Number.isFinite(post?.hp) && pre.hp === post.hp;
+	const ms = pre?.magicStones;
+	const postMs = post?.magicStones;
+	const msMatch = Number.isFinite(ms) && Number.isFinite(postMs)
+		&& postMs >= ms
+		&& postMs <= ms + msTolerance;
+	return hpMatch && msMatch;
+}
 
 function probesMatchFreshDeploy(probe, startingMs = STARTING_MAGIC_STONES) {
 	const ms = probe?.magicStones;
@@ -70,6 +83,7 @@ export function readServerLogForbidden(logPath, fromByteOffset, substr) {
 export async function probeHandAndMs(page) {
 	const harness = await readHarness(page);
 	return {
+		hp: harness?.player?.hp ?? null,
 		magicStones: harness?.player?.magicStones ?? null,
 		msText: harness?.msText ?? null,
 		hand: (harness?.hand || []).map((card) => (card ? {
@@ -272,10 +286,12 @@ export async function suspendViaTelepipe(page) {
 	const deadline = Date.now() + 30000;
 	while (Date.now() < deadline) {
 		const h = await readHarness(page);
-		const suspended = h.runStatus === 'suspended'
-			|| (h.phase === 'lobby' && h.suspendedRunSummary)
-			|| h.extracted === true;
-		if (suspended) return h;
+		const hubReturned = h.phase === 'lobby'
+			&& (h.runStatus === 'suspended'
+				|| !!h.suspendedRunSummary
+				|| h.extracted === true
+				|| h.runId == null);
+		if (hubReturned) return h;
 		await page.keyboard.press('w');
 		await page.waitForTimeout(500);
 	}
@@ -364,16 +380,14 @@ export async function runTelepipeResetStep({
 
 	await suspendViaTelepipe(page);
 	await assertServerAlive(gameProcess, serverLogPath);
-	const suspendedHarness = await readHarness(page);
-	const suspended = suspendedHarness?.runStatus === 'suspended'
-		|| (suspendedHarness?.phase === 'lobby' && suspendedHarness?.suspendedRunSummary)
-		|| suspendedHarness?.extracted === true;
-	if (!suspended) {
-		throw new Error(`Expected suspended lobby after telepipe UP: ${JSON.stringify(suspendedHarness)}`);
+	const hubHarness = await readHarness(page);
+	const hubReturned = hubHarness?.phase === 'lobby'
+		&& (hubHarness?.runStatus === 'suspended'
+			|| !!hubHarness?.suspendedRunSummary
+			|| hubHarness?.runId == null);
+	if (!hubReturned) {
+		throw new Error(`Expected hub lobby after telepipe UP: ${JSON.stringify(hubHarness)}`);
 	}
-
-	await abandonSuspendedRun(page);
-	await assertServerAlive(gameProcess, serverLogPath);
 
 	await deployViaLaunchBooth(page, preset.telepipeScenario);
 	await assertServerAlive(gameProcess, serverLogPath);
@@ -383,8 +397,8 @@ export async function runTelepipeResetStep({
 	if (postHarness?.suspendedRunSummary || postHarness?.runStatus === 'suspended') {
 		throw new Error(`Fresh deploy still shows suspended checkpoint: ${JSON.stringify(postHarness)}`);
 	}
-	if (!probesMatchFreshDeploy(postDeploy)) {
-		throw new Error(`postDeploy probes failed reset criteria: ${JSON.stringify(postDeploy)}`);
+	if (!probesMatchVitalsPreserved(preSuspend, postDeploy)) {
+		throw new Error(`postDeploy probes failed vitals-preservation criteria: pre=${JSON.stringify({ hp: preSuspend.hp, magicStones: preSuspend.magicStones })} post=${JSON.stringify({ hp: postDeploy.hp, magicStones: postDeploy.magicStones })}`);
 	}
 
 	const freshRunIdConfirmed = probesMatchFreshRunId(preSuspend, postDeploy);
@@ -407,8 +421,8 @@ export async function runTelepipeResetStep({
 		);
 	}
 
-	const telepipeUpReset = probesMatchDepletion(preSuspend)
-		&& probesMatchFreshDeploy(postDeploy)
+	const telepipeVitalsPreserved = probesMatchDepletion(preSuspend)
+		&& probesMatchVitalsPreserved(preSuspend, postDeploy)
 		&& freshRunIdConfirmed
 		&& !checkpointRestoredInLog;
 
@@ -416,7 +430,8 @@ export async function runTelepipeResetStep({
 		telepipeScenario: preset.telepipeScenario,
 		preSuspend,
 		postDeploy,
-		telepipeUpReset,
+		telepipeVitalsPreserved,
+		telepipeUpReset: false,
 		freshRunIdConfirmed,
 		checkpointRestoredInLog,
 		beforeScreenshot: path.relative(repoRoot, beforeScreenshotPath),

@@ -25,8 +25,6 @@ import {
 	checkRunTerminalState,
 	setGameState,
 	tryEnterTelepipe,
-	captureRunCheckpoint,
-	restoreRunCheckpoint,
 	checkTelepipeProximity,
 	PORTAL_RADIUS,
 	PORTAL_PLACEMENT_GRACE_MS,
@@ -45,7 +43,7 @@ import {
 import { hubSpawnPosition } from '../simulation.js';
 import { InMemoryProvider } from '../providers.js';
 import { getQuest } from '../quests.js';
-import { COOLDOWN_MS, MOVE_SPEED, MAX_HP, MAX_HAND_SLOTS, MAX_MAGIC_STONES, STARTING_MAGIC_STONES, TICK_RATE } from '../config.js';
+import { COOLDOWN_MS, MOVE_SPEED, MAX_HP, MAX_HAND_SLOTS, MAX_MAGIC_STONES, STARTING_MAGIC_STONES, MEDIC_HEAL_COST, TICK_RATE, MAGIC_STONES_REGEN_PER_TICK } from '../config.js';
 
 // ── Helpers ──
 
@@ -1893,7 +1891,7 @@ describe('Socket Integration — Quest Selection', () => {
 		expect(u1.selectedQuestId).toBe('crystal_rescue');
 		expect(u2.selectedQuestId).toBe('crystal_rescue');
 		expect(Array.isArray(u1.quests)).toBe(true);
-		expect(u1.quests.map(q => q.id)).toEqual(['training_caverns', 'crystal_rescue', 'arena_trials', 'canyon_descent', 'spire_ascent', 'endless_siege']);
+		expect(u1.quests.map(q => q.id)).toEqual(['training_caverns', 'crystal_rescue', 'arena_trials', 'frost_crossing', 'canyon_descent', 'ember_descent', 'spire_ascent', 'endless_siege']);
 		expect(u1.layoutSeed).toBeDefined();
 		expect(u1.layout).toBeDefined();
 		expect(u1.layout.profile).toBe('open');
@@ -3946,10 +3944,16 @@ describe('magic stone drops — any player can pick up', () => {
 		p2.x = drop.x;
 		p2.z = drop.z;
 
+		const msBeforePickup = p2.magicStones;
 		socket2.emit('lootPickup', { lootId: drop.id });
-		await sleep(10);
+		const pickupSleepMs = 10;
+		await sleep(pickupSleepMs);
 
-		expect(p2.magicStones).toBe(10 + drop.value);
+		const regenTicksDuringSleep =
+			Math.ceil(pickupSleepMs / (1000 / TICK_RATE)) + 1;
+		const regenSlack = MAGIC_STONES_REGEN_PER_TICK * regenTicksDuringSleep;
+		expect(p2.magicStones).toBeGreaterThanOrEqual(msBeforePickup + drop.value);
+		expect(p2.magicStones).toBeLessThanOrEqual(msBeforePickup + drop.value + regenSlack);
 		expect(state.loot.find((l) => l.id === drop.id)).toBeUndefined();
 
 		const moneyDrop = moneyLoot[0];
@@ -5030,7 +5034,7 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 		c1Reconnect.socket.disconnect();
 	});
 
-	it('resets slotCooldowns and magicStones on active-run reconnect', async () => {
+	it('resets slotCooldowns and preserves magicStones on active-run reconnect', async () => {
 		// --- Connect two players and start a run ---
 		const c1 = await connectClient(baseUrl);
 		const c2 = await connectClient(baseUrl, undefined, { joinLobbyId: c1.lobbyId });
@@ -5061,13 +5065,13 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 
 		const restoredPlayer = testGameState().players[player2Id];
 		expect(restoredPlayer.slotCooldowns).toEqual(new Array(MAX_HAND_SLOTS).fill(null));
-		expect(restoredPlayer.magicStones).toBe(STARTING_MAGIC_STONES);
+		expect(restoredPlayer.magicStones).toBeCloseTo(0, 0);
 
 		c1.socket.disconnect();
 		c2Reconnect.socket.disconnect();
 	});
 
-	it('resets HP and dead flag when reconnecting as dead player during active run', async () => {
+	it('preserves HP and dead flag when reconnecting as dead player during active run', async () => {
 		// --- Connect two players and start a run ---
 		const c1 = await connectClient(baseUrl);
 		const c2 = await connectClient(baseUrl, undefined, { joinLobbyId: c1.lobbyId });
@@ -5097,8 +5101,8 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 		const c2Reconnect = await reconnectClient(baseUrl, player2Id, c1.lobbyId);
 
 		const restoredPlayer = testGameState().players[player2Id];
-		expect(restoredPlayer.hp).toBe(100); // MAX_HP
-		expect(restoredPlayer.dead).toBe(false);
+		expect(restoredPlayer.hp).toBe(0);
+		expect(restoredPlayer.dead).toBe(true);
 
 		c1.socket.disconnect();
 		c2Reconnect.socket.disconnect();
@@ -5214,7 +5218,7 @@ describe('Socket Integration — Wall-Aware Enemy Movement', () => {
 	});
 });
 
-describe('Telepipe suspend and resume', () => {
+describe('Telepipe extract and redeploy vitals persistence', () => {
 	it('single player extract keeps the dungeon running for remaining players', async () => {
 		const baseUrl = await startTestServer();
 		const p1 = await connectAndJoinLobby(baseUrl, 'telepipe-partial-1');
@@ -5252,7 +5256,7 @@ describe('Telepipe suspend and resume', () => {
 		p2.socket.disconnect();
 	});
 
-	it('two-player extract, suspend, and resume restores portal position and enemies', async () => {
+	it('two-player telepipe extract returns to hub and redeploy resumes suspended dungeon', async () => {
 		const baseUrl = await startTestServer();
 		const p1 = await connectAndJoinLobby(baseUrl, 'telepipe-1');
 		const p2 = await connectAndJoinLobby(baseUrl, 'telepipe-2', { joinLobbyId: p1.init.lobbyId });
@@ -5267,6 +5271,7 @@ describe('Telepipe suspend and resume', () => {
 		const state = testGameState();
 		const p1Id = p1.socket._playerId;
 		const p2Id = p2.socket._playerId;
+		const preExtractRunId = state.run.id;
 		state.telepipe = {
 			x: state.players[p1Id].x,
 			z: state.players[p1Id].z,
@@ -5289,9 +5294,6 @@ describe('Telepipe suspend and resume', () => {
 		const portalX = state.telepipe.x;
 		const portalZ = state.telepipe.z;
 
-		const suspendedPromise1 = waitForEvent(p1.socket, 'runSuspended');
-		const suspendedPromise2 = waitForEvent(p2.socket, 'runSuspended');
-
 		expect(tryEnterTelepipe(p1Id).ok).toBe(true);
 		expect(testGameState().gamePhase).toBe('playing');
 
@@ -5300,13 +5302,10 @@ describe('Telepipe suspend and resume', () => {
 		live.players[p2Id].z = portalZ;
 		expect(tryEnterTelepipe(p2Id).ok).toBe(true);
 
-		await suspendedPromise1;
-		await suspendedPromise2;
-
 		expect(testGameState().gamePhase).toBe('lobby');
-		expect(testGameState().suspendedCheckpoint.telepipe).toEqual(
-			expect.objectContaining({ x: portalX, z: portalZ }),
-		);
+		expect(testGameState().run).toBeUndefined();
+		expect(testGameState().enemies).toHaveLength(0);
+		expect(testGameState().telepipe).toBeNull();
 
 		const resumePromise1 = waitForEvent(p1.socket, 'startGame');
 		const resumePromise2 = waitForEvent(p2.socket, 'startGame');
@@ -5315,25 +5314,26 @@ describe('Telepipe suspend and resume', () => {
 		await resumePromise1;
 		await resumePromise2;
 
-		expect(testGameState().gamePhase).toBe('playing');
-		expect(testGameState().telepipe).toEqual(expect.objectContaining({ x: portalX, z: portalZ }));
-		expect(testGameState().enemies.some((e) => e.id === 'e-telepipe-test')).toBe(true);
-		expect(testGameState().players[p1Id].extracted).toBe(false);
-		expect(testGameState().players[p2Id].extracted).toBe(false);
-
-		const afterResume = testGameState();
-		afterResume.telepipe.placedAt = Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1;
-		checkTelepipeProximity();
-
-		expect(testGameState().gamePhase).toBe('playing');
-		expect(testGameState().players[p1Id].extracted).toBe(false);
-		expect(testGameState().players[p2Id].extracted).toBe(false);
+		const redeployed = testGameState();
+		expect(redeployed.gamePhase).toBe('playing');
+		expect(redeployed.run.id).toBe(preExtractRunId);
+		const restoredEnemy = redeployed.enemies.find((e) => e.id === 'e-telepipe-test');
+		expect(restoredEnemy).toBeDefined();
+		expect(restoredEnemy.hp).toBe(55);
+		expect(redeployed.telepipe).toEqual({
+			x: portalX,
+			z: portalZ,
+			placedBy: p1Id,
+			placedAt: state.telepipe.placedAt,
+		});
+		expect(redeployed.players[p1Id].extracted).toBe(false);
+		expect(redeployed.players[p2Id].extracted).toBe(false);
 
 		p1.socket.disconnect();
 		p2.socket.disconnect();
 	});
 
-	it('two-player suspend then resume preserves magic stones, card charges, and objective progress', async () => {
+	it('two-player telepipe extract preserves damage and spent magic stones across hub return and redeploy', async () => {
 		const baseUrl = await startTestServer();
 		const p1 = await connectAndJoinLobby(baseUrl, 'telepipe-preserve-1');
 		const p2 = await connectAndJoinLobby(baseUrl, 'telepipe-preserve-2', { joinLobbyId: p1.init.lobbyId });
@@ -5348,59 +5348,78 @@ describe('Telepipe suspend and resume', () => {
 		const state = testGameState();
 		const p1Id = p1.socket._playerId;
 		const p2Id = p2.socket._playerId;
+		const preExtractRunId = state.run.id;
 
-		// Spend magic stones, damage a hand card's charges, and advance objective
-		// progress so the checkpoint carries non-default values that resume must keep.
-		const SPENT_MAGIC_STONES = STARTING_MAGIC_STONES - 30;
-		const DAMAGED_REMAINING_CHARGES = 2;
-		state.players[p1Id].magicStones = SPENT_MAGIC_STONES;
-		state.players[p1Id].hand[0] = {
-			id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon',
-			damage: 17, charges: 5, remainingCharges: DAMAGED_REMAINING_CHARGES,
-		};
+		runSimulationInPrimaryLobby(() => {
+			damagePlayer(p1Id, 58);
+		});
+		const expectedHp = testGameState().players[p1Id].hp;
+		expect(expectedHp).toBe(42);
 
-		const objective = state.run.objective;
-		if (objective.type === 'defeat_enemies') {
-			objective.defeatedEnemies = 1;
-		} else if (objective.type === 'collect_items') {
-			objective.collectedItems = 1;
-		}
-		const expectedObjective = { ...objective };
+		const SUMMON_COST = 50;
+		runSimulationInPrimaryLobby((liveState) => {
+			const player = liveState.players[p1Id];
+			let summonSlot = player.hand.findIndex((c) => c && c.type === 'spell');
+			if (summonSlot < 0) {
+				summonSlot = player.hand.findIndex((c) => !c);
+				player.hand[summonSlot] = {
+					id: 'battle_familiar',
+					name: 'Signal Familiar',
+					type: 'spell',
+					charges: 1,
+					remainingCharges: 1,
+					magicStoneCost: SUMMON_COST,
+					damage: 44,
+				};
+			}
+			player.magicStones = SUMMON_COST + 20;
+			liveState.enemies.push({
+				id: 'e-ms-spend',
+				type: 'grunt',
+				x: player.x + 5,
+				z: player.z,
+				hp: 60,
+				state: 'idle',
+				wanderTarget: { x: player.x + 5, z: player.z },
+			});
+		});
 
-		state.telepipe = {
-			x: state.players[p1Id].x,
-			z: state.players[p1Id].z,
-			placedBy: p1Id,
-			placedAt: Date.now(),
-		};
-		setGameState(state);
+		const player = testGameState().players[p1Id];
+		const summonSlot = player.hand.findIndex((c) => c && c.type === 'spell');
+		const summonCard = player.hand[summonSlot];
+		const cardUsedPromise = waitForEvent(p1.socket, 'cardUsed');
+		p1.socket.emit('useCard', { cardId: summonCard.id, slotIndex: summonSlot });
+		await cardUsedPromise;
 
-		const portalX = state.telepipe.x;
-		const portalZ = state.telepipe.z;
+		const expectedMs = testGameState().players[p1Id].magicStones;
+		expect(expectedMs).toBeCloseTo(20, 0);
 
-		const suspendedPromise1 = waitForEvent(p1.socket, 'runSuspended');
-		const suspendedPromise2 = waitForEvent(p2.socket, 'runSuspended');
+		runSimulationInPrimaryLobby((liveState) => {
+			liveState.telepipe = {
+				x: liveState.players[p1Id].x,
+				z: liveState.players[p1Id].z,
+				placedBy: p1Id,
+				placedAt: Date.now(),
+			};
+		});
 
-		// Both players step through the conduit to suspend the run to the hub.
+		const portalState = testGameState();
+		const portalX = portalState.telepipe.x;
+		const portalZ = portalState.telepipe.z;
+
 		expect(tryEnterTelepipe(p1Id).ok).toBe(true);
-		const live = testGameState();
-		live.players[p2Id].x = portalX;
-		live.players[p2Id].z = portalZ;
+		runSimulationInPrimaryLobby((afterP1Extract) => {
+			afterP1Extract.players[p2Id].x = portalX;
+			afterP1Extract.players[p2Id].z = portalZ;
+		});
 		expect(tryEnterTelepipe(p2Id).ok).toBe(true);
 
-		await suspendedPromise1;
-		await suspendedPromise2;
+		const hub = testGameState();
+		expect(hub.gamePhase).toBe('lobby');
+		expect(hub.run).toBeUndefined();
+		expect(hub.players[p1Id].magicStones).toBeCloseTo(expectedMs, 0);
+		expect(hub.players[p1Id].hp).toBe(expectedHp);
 
-		expect(testGameState().gamePhase).toBe('lobby');
-		const checkpoint = testGameState().suspendedCheckpoint;
-		expect(checkpoint).toBeTruthy();
-		// The captured checkpoint holds the exact spent/damaged/progressed values.
-		expect(checkpoint.playerStates[p1Id].magicStones).toBe(SPENT_MAGIC_STONES);
-		const checkpointCard = checkpoint.playerStates[p1Id].hand.find((c) => c && c.id === 'iron_sword');
-		expect(checkpointCard.remainingCharges).toBe(DAMAGED_REMAINING_CHARGES);
-
-		// Resume via the all-ready gate: checkAllReady routes to restoreRunCheckpoint
-		// because a suspendedCheckpoint exists, re-entering the in-progress run.
 		const resumePromise1 = waitForEvent(p1.socket, 'startGame');
 		const resumePromise2 = waitForEvent(p2.socket, 'startGame');
 		p1.socket.emit('playerReady', true);
@@ -5408,26 +5427,103 @@ describe('Telepipe suspend and resume', () => {
 		await resumePromise1;
 		await resumePromise2;
 
-		const resumed = testGameState();
-		expect(resumed.gamePhase).toBe('playing');
+		const redeployed = testGameState();
+		expect(redeployed.gamePhase).toBe('playing');
+		expect(redeployed.run.id).toBe(preExtractRunId);
+		expect(redeployed.players[p1Id].magicStones).toBeCloseTo(expectedMs, 0);
+		expect(redeployed.players[p1Id].hp).toBe(expectedHp);
 
-		// Magic stones keep the spent value rather than resetting to the run start.
-		// (Passive regen may nudge it up a hair once the run is playing again, so
-		// assert it stayed near the spent value and well below the run-start total.)
-		expect(resumed.players[p1Id].magicStones).toBeCloseTo(SPENT_MAGIC_STONES, 0);
-		expect(resumed.players[p1Id].magicStones).toBeLessThan(STARTING_MAGIC_STONES);
+		p1.socket.disconnect();
+		p2.socket.disconnect();
+	});
 
-		// The damaged card keeps its drained charges rather than refilling to full.
-		const restoredCard = resumed.players[p1Id].hand.find((c) => c && c.id === 'iron_sword');
-		expect(restoredCard).toBeTruthy();
-		expect(restoredCard.remainingCharges).toBe(DAMAGED_REMAINING_CHARGES);
-		expect(restoredCard.remainingCharges).not.toBe(restoredCard.charges);
+	it('abandon after telepipe extract starts new sortie with full card charges and new run id', async () => {
+		const baseUrl = await startTestServer();
+		const p1 = await connectAndJoinLobby(baseUrl, 'telepipe-abandon-1');
+		const p2 = await connectAndJoinLobby(baseUrl, 'telepipe-abandon-2', { joinLobbyId: p1.init.lobbyId });
 
-		// Objective progress (collected/defeated counts) survives the round-trip.
-		if (expectedObjective.type === 'defeat_enemies') {
-			expect(resumed.run.objective.defeatedEnemies).toBe(expectedObjective.defeatedEnemies);
-		} else if (expectedObjective.type === 'collect_items') {
-			expect(resumed.run.objective.collectedItems).toBe(expectedObjective.collectedItems);
+		const startPromise1 = waitForEvent(p1.socket, 'startGame');
+		const startPromise2 = waitForEvent(p2.socket, 'startGame');
+		p1.socket.emit('playerReady', true);
+		p2.socket.emit('playerReady', true);
+		await startPromise1;
+		await startPromise2;
+
+		const state = testGameState();
+		const p1Id = p1.socket._playerId;
+		const p2Id = p2.socket._playerId;
+		const preExtractRunId = state.run.id;
+		const nonDefaultHp = 47;
+		const nonDefaultMs = 18;
+
+		runSimulationInPrimaryLobby((liveState) => {
+			const player = liveState.players[p1Id];
+			player.hp = nonDefaultHp;
+			player.magicStones = nonDefaultMs;
+			for (const card of player.hand) {
+				if (card && card.charges != null) {
+					card.remainingCharges = Math.max(0, card.charges - 1);
+				}
+			}
+			liveState.telepipe = {
+				x: player.x,
+				z: player.z,
+				placedBy: p1Id,
+				placedAt: Date.now() - 3000,
+			};
+		});
+
+		const spentCharges = {};
+		for (const card of testGameState().players[p1Id].hand) {
+			if (card && card.charges != null) {
+				spentCharges[card.id] = card.remainingCharges;
+			}
+		}
+
+		const portalState = testGameState();
+		const portalX = portalState.telepipe.x;
+		const portalZ = portalState.telepipe.z;
+
+		expect(tryEnterTelepipe(p1Id).ok).toBe(true);
+		runSimulationInPrimaryLobby((afterP1Extract) => {
+			afterP1Extract.players[p2Id].x = portalX;
+			afterP1Extract.players[p2Id].z = portalZ;
+		});
+		expect(tryEnterTelepipe(p2Id).ok).toBe(true);
+
+		expect(testGameState().gamePhase).toBe('lobby');
+		expect(testGameState().suspendedCheckpoint).not.toBeNull();
+		expect(testGameState().players[p1Id].hp).toBe(nonDefaultHp);
+		expect(testGameState().players[p1Id].magicStones).toBe(nonDefaultMs);
+
+		const abandonedPromise = waitForEvent(p1.socket, 'runAbandoned');
+		p1.socket.emit('abandonRun');
+		await abandonedPromise;
+
+		expect(testGameState().suspendedCheckpoint).toBeNull();
+
+		const redeployPromise1 = waitForEvent(p1.socket, 'startGame');
+		const redeployPromise2 = waitForEvent(p2.socket, 'startGame');
+		p1.socket.emit('playerReady', true);
+		p2.socket.emit('playerReady', true);
+		await redeployPromise1;
+		await redeployPromise2;
+
+		const redeployed = testGameState();
+		expect(redeployed.gamePhase).toBe('playing');
+		expect(redeployed.run.id).not.toBe(preExtractRunId);
+		expect(redeployed.players[p1Id].hp).toBe(nonDefaultHp);
+		expect(redeployed.players[p1Id].magicStones).toBe(nonDefaultMs);
+		expect(redeployed.players[p1Id].hp).not.toBe(MAX_HP);
+		expect(redeployed.players[p1Id].magicStones).not.toBe(STARTING_MAGIC_STONES);
+
+		for (const card of redeployed.players[p1Id].hand) {
+			if (card) {
+				expect(card.remainingCharges).toBe(card.charges);
+				if (spentCharges[card.id] != null) {
+					expect(card.remainingCharges).toBeGreaterThan(spentCharges[card.id]);
+				}
+			}
 		}
 
 		p1.socket.disconnect();
@@ -5465,6 +5561,42 @@ describe('Telepipe suspend and resume', () => {
 
 		p1.socket.disconnect();
 		p2.socket.disconnect();
+	});
+});
+
+describe('Socket Integration — MEDIC_HEAL', () => {
+	let baseUrl;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+	});
+
+	it('partial-HP player in hub lobby heals to MAX_HP via medicHeal socket event', async () => {
+		const { socket } = await connectAndJoinLobby(baseUrl, 'medic-heal-1');
+		const playerId = socket._playerId;
+
+		runSimulationInPrimaryLobby((state) => {
+			state.players[playerId].hp = 40;
+			state.players[playerId].currency = 25;
+		});
+
+		const healedPromise = waitForEvent(socket, 'medicHealed');
+		socket.emit('medicHeal');
+		const result = await healedPromise;
+
+		expect(result).toEqual({
+			hp: MAX_HP,
+			currency: 25 - MEDIC_HEAL_COST,
+			cost: MEDIC_HEAL_COST,
+		});
+		expect(testGameState().players[playerId].hp).toBe(MAX_HP);
+		expect(testGameState().players[playerId].currency).toBe(25 - MEDIC_HEAL_COST);
+
+		socket.disconnect();
 	});
 });
 

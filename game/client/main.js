@@ -141,7 +141,11 @@ import {
 	spawnAttackEffect as rendererSpawnAttackEffect,
 	spawnSummonEffect as rendererSpawnSummonEffect,
 	spawnDivineGraceEffect as rendererSpawnDivineGraceEffect,
+	spawnPurifyingPulseEffect as rendererSpawnPurifyingPulseEffect,
+	spawnPurifyingPulseHealRing as rendererSpawnPurifyingPulseHealRing,
+	spawnCleanseBurstEffect as rendererSpawnCleanseBurstEffect,
 	spawnChainLightningEffect as rendererSpawnChainLightningEffect,
+	spawnLightningArc as rendererSpawnLightningArc,
 	spawnInfernoPillarEffect as rendererSpawnInfernoPillarEffect,
 	spawnVolatileExplosionEffect as rendererSpawnVolatileExplosionEffect,
 	spawnFireTrailEffect as rendererSpawnFireTrailEffect,
@@ -159,6 +163,8 @@ import {
 	getWindupFlashing,
 	triggerDashVFX,
 	triggerHealPulseVFX,
+	triggerMedicAllyHealVFX,
+	triggerMedicEnergyBeadVFX,
 	triggerShieldVFX,
 	triggerSmokeVFX,
 	triggerLootMagnetVFX,
@@ -184,9 +190,11 @@ const lobbyPlayerList = document.getElementById('lobby-player-list');
 const questBoardEl = document.getElementById('quest-board');
 const questBoardWrapperEl = document.getElementById('quest-board-wrapper');
 const questErrorEl = document.getElementById('quest-error');
-const abandonRunBtn = document.getElementById('abandon-run-btn');
-const resumeRunBtn = document.getElementById('resume-run-btn');
 const suspendedRunBannerEl = document.getElementById('suspended-run-banner');
+const resumeRunBtnEl = document.getElementById('resume-run-btn');
+const abandonRunBtnEl = document.getElementById('abandon-run-btn');
+const lobbyHudEl = document.getElementById('lobby-hud');
+const lobbyCloseBtnEl = document.getElementById('lobby-close-btn');
 const lobbyEl = document.getElementById('lobby');
 const lobbyBrowserEl = document.getElementById('lobby-browser');
 const lobbyListEl = document.getElementById('lobby-list');
@@ -306,6 +314,10 @@ const showRegisterLinkEl = document.getElementById('show-register-link');
 
 const TOKEN_KEY = 'autogame_token';
 let currentLobbyName = '';
+/** When true, the dismissible #lobby menu stays hidden until showGameLobby(). */
+let lobbyMenuDismissed = false;
+/** True after the first extracted-waiting overlay setup; avoids re-showing #lobby each tick. */
+let extractedLobbyOverlayActive = false;
 
 function setLoggedInStatus(username, lobbyName) {
 	if (!statusEl || !username) return;
@@ -319,6 +331,7 @@ function showAuthOverlay() {
 	if (authOverlayEl) authOverlayEl.classList.remove('hidden');
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 	if (lobbyEl) lobbyEl.classList.add('hidden');
+	setLobbyHudVisible(false);
 	hideAppToolbar();
 }
 
@@ -343,7 +356,6 @@ function updateLevelSettingsBtnVisibility() {
 	// Stay visible for the whole in-dungeon phase (including after objective complete, before extract).
 	const inDungeon = gameState?.gamePhase === 'playing'
 		&& !!gameState?.run
-		&& gameState.run.status !== 'suspended'
 		&& !(me && me.extracted);
 	levelSettingsBtnEl.classList.toggle('hidden', !inDungeon);
 }
@@ -361,9 +373,84 @@ function applyLobbyThemeLabels() {
 
 applyLobbyThemeLabels();
 
+function setLobbyHudVisible(visible) {
+	if (lobbyHudEl) lobbyHudEl.classList.toggle('hidden', !visible);
+}
+
+function setSuspendedRunControlsVisible(visible) {
+	if (resumeRunBtnEl) resumeRunBtnEl.classList.toggle('hidden', !visible);
+	if (abandonRunBtnEl) abandonRunBtnEl.classList.toggle('hidden', !visible);
+}
+
+function clearSuspendedRunUi() {
+	if (suspendedRunBannerEl) {
+		suspendedRunBannerEl.textContent = '';
+		suspendedRunBannerEl.classList.add('hidden');
+	}
+	setSuspendedRunControlsVisible(false);
+	if (questErrorEl && questErrorEl.textContent === THEME.run.questSuspendedLocked) {
+		questErrorEl.style.display = 'none';
+		questErrorEl.textContent = '';
+	}
+}
+
+function renderSuspendedRunBanner(summary) {
+	if (!summary) {
+		clearSuspendedRunUi();
+		return;
+	}
+	const questName = summary.questName
+		|| (summary.questId ? summary.questId.replace(/_/g, ' ') : '')
+		|| THEME.run.unknownSector;
+	if (suspendedRunBannerEl) {
+		suspendedRunBannerEl.textContent = THEME.run.suspendedSortieBanner.replace('{questName}', questName);
+		suspendedRunBannerEl.classList.remove('hidden');
+	}
+	if (resumeRunBtnEl) resumeRunBtnEl.textContent = THEME.run.resumeSortie;
+	if (abandonRunBtnEl) abandonRunBtnEl.textContent = THEME.run.abandonSortie;
+	setSuspendedRunControlsVisible(true);
+	renderQuestBoardState();
+}
+
+function setDeployButtonVisible(visible) {
+	// During a suspended sortie the hub resume button replaces the retired 2D Deploy
+	// control; fresh sorties still ready-up via the Launch Bay booth.
+	setSuspendedRunControlsVisible(visible);
+}
+
+function isGameLobbyMenuVisible() {
+	return !!lobbyEl && !lobbyEl.classList.contains('hidden');
+}
+
+function isLobbyMenuDismissKeyBlocked(e) {
+	const target = e.target;
+	if (target instanceof HTMLInputElement ||
+		target instanceof HTMLTextAreaElement ||
+		target instanceof HTMLSelectElement ||
+		target?.isContentEditable) {
+		return true;
+	}
+	return !!(variantCodexOpen || deckViewerOpen || isLevelSettingsOpen() || isCharacterBoothOpen()
+		|| (settingsOverlayEl && !settingsOverlayEl.classList.contains('hidden'))
+		|| (authOverlayEl && !authOverlayEl.classList.contains('hidden'))
+		|| (accountOverlayEl && !accountOverlayEl.classList.contains('hidden'))
+		|| (levelSettingsOverlayEl && !levelSettingsOverlayEl.classList.contains('hidden'))
+		|| (runSummaryOverlay && getComputedStyle(runSummaryOverlay).display !== 'none'));
+}
+
+function dismissGameLobby() {
+	if (!lobbyEl) return;
+	lobbyMenuDismissed = true;
+	lobbyEl.classList.add('hidden');
+	if (questBoardWrapperEl) questBoardWrapperEl.classList.add('hidden');
+}
+
 function showLobbyBrowser() {
+	lobbyMenuDismissed = false;
+	extractedLobbyOverlayActive = false;
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.remove('hidden');
 	if (lobbyEl) lobbyEl.classList.add('hidden');
+	setLobbyHudVisible(false);
 	if (uiEl) uiEl.style.display = 'none';
 	if (cardHandEl) hideCardHand();
 	hideVariantCodex();
@@ -373,7 +460,9 @@ function showLobbyBrowser() {
 
 function showGameLobby() {
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
+	lobbyMenuDismissed = false;
 	if (lobbyEl) lobbyEl.classList.remove('hidden');
+	setLobbyHudVisible(true);
 	// Quest board only appears via the quest booth, so keep it hidden each time
 	// the lobby is (re)shown.
 	if (questBoardWrapperEl) questBoardWrapperEl.classList.add('hidden');
@@ -480,8 +569,21 @@ function returnToGuildLobby(state, { refreshCollection = false, rebuildHub = fal
 	hideVariantCodex();
 	setDeckStackVisible(false);
 	clearKeyItemCooldownHud();
-	showGameLobby();
-	setDeployButtonVisible(true);
+	extractedLobbyOverlayActive = false;
+	if (lobbyMenuDismissed) {
+		if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
+		setLobbyHudVisible(true);
+		if (lobbyEl) lobbyEl.classList.add('hidden');
+		if (questBoardWrapperEl) questBoardWrapperEl.classList.add('hidden');
+		applyLobbyThemeLabels();
+	} else {
+		showGameLobby();
+	}
+	if (suspendedRunSummary) {
+		renderSuspendedRunBanner(suspendedRunSummary);
+	} else {
+		clearSuspendedRunUi();
+	}
 	// On the play→lobby transition, switch the rendered geometry back to the hub
 	// and re-seat the avatar at the hub spawn. `renderHubScene()` also sets the
 	// lobby game phase. Guarded by `rebuildHub` so this runs once per return, not
@@ -515,74 +617,12 @@ function returnToGuildLobby(state, { refreshCollection = false, rebuildHub = fal
 				selectedQuestTier: state.selectedQuestTier,
 			});
 		}
-		renderSuspendedRunBanner(state);
 	}
 }
 
 /** True when exactly one player is in the squad (solo deploy). */
 function isSoloSquad(state = gameState) {
 	return !!(state && state.players && Object.keys(state.players).length === 1);
-}
-
-/** True when the squad is sitting in the lobby on top of a suspended run. */
-function isRunSuspended() {
-	return !!(gameState && gameState.gamePhase === 'lobby' && gameState.suspendedRunSummary);
-}
-
-/**
- * Sync the #resume-run-btn label to its current role. Fresh deploy and ready-up
- * now happen only through the hub Launch Bay booth (the 2D #ready-btn is
- * retired); the dedicated #resume-run-btn is the on-screen resume affordance
- * shown while a run is suspended, so it always carries the "Resume…" label.
- */
-function syncReadyButtonRole() {
-	// The dedicated #resume-run-btn is only ever shown while suspended, so it
-	// always carries the "Resume…" theme label rather than the static HTML text.
-	if (resumeRunBtn) {
-		resumeRunBtn.textContent = isReady ? THEME.run.resumeReady : THEME.run.resumeSortie;
-	}
-}
-
-function setDeployButtonVisible(visible) {
-	// Fresh deploy / ready-up is handled by the hub Launch Bay booth, so there is
-	// no longer a 2D deploy button to show or hide. While a run is suspended
-	// #resume-run-btn is the dedicated resume affordance; it is hidden otherwise.
-	// `visible` is retained for call-site symmetry with the play↔lobby transitions.
-	const suspended = isRunSuspended();
-	if (resumeRunBtn) resumeRunBtn.classList.toggle('hidden', !suspended);
-	syncReadyButtonRole();
-}
-
-function renderSuspendedRunBanner(state) {
-	const summary = state && state.suspendedRunSummary;
-	const suspended = !!(state && state.gamePhase === 'lobby' && summary);
-	// While suspended #resume-run-btn is the dedicated resume affordance; resuming
-	// the run itself goes through the launch booth ready-up path the same as a
-	// fresh deploy. syncReadyButtonRole applies the "Resume…" label.
-	if (resumeRunBtn) resumeRunBtn.classList.toggle('hidden', !suspended);
-	syncReadyButtonRole();
-	if (!suspendedRunBannerEl) return;
-	if (suspended) {
-		const objective = summary.objective;
-		let progress = '';
-		if (objective && objective.type === 'collect_items') {
-			progress = THEME.objectives.collectPrismsProgress
-				.replace('{collected}', String(objective.collectedItems))
-				.replace('{total}', String(objective.totalItems));
-		} else if (objective && objective.type === 'defeat_enemies') {
-			progress = `${objective.defeatedEnemies}/${objective.totalEnemies} hostiles`;
-		}
-		const questLabel = formatQuestTierLabel(
-			summary.questName || THEME.run.unknownSector,
-			summary.questTier ?? 1,
-		);
-		suspendedRunBannerEl.textContent = `${THEME.run.resumeSortie}: ${questLabel}${progress ? ` — ${progress}` : ''}`;
-		suspendedRunBannerEl.classList.remove('hidden');
-		if (abandonRunBtn) abandonRunBtn.classList.remove('hidden');
-		return;
-	}
-	suspendedRunBannerEl.classList.add('hidden');
-	if (abandonRunBtn) abandonRunBtn.classList.add('hidden');
 }
 
 function showExtractedLobbyOverlay() {
@@ -601,13 +641,18 @@ function showExtractedLobbyOverlay() {
 	if (renderedSceneProfile !== 'hub' && hubLayout && isSceneInitialized()) {
 		renderHubScene();
 	}
-	showGameLobby();
+	if (!extractedLobbyOverlayActive) {
+		showGameLobby();
+		extractedLobbyOverlayActive = true;
+	} else if (!lobbyMenuDismissed && !isGameLobbyMenuVisible()) {
+		showGameLobby();
+	}
 	setDeployButtonVisible(false);
+	setSuspendedRunControlsVisible(false);
 	if (suspendedRunBannerEl) {
 		suspendedRunBannerEl.textContent = THEME.run.awaitingExtract;
 		suspendedRunBannerEl.classList.remove('hidden');
 	}
-	if (abandonRunBtn) abandonRunBtn.classList.add('hidden');
 	const me = myId && gameState?.players ? gameState.players[myId] : null;
 	syncVanguardHud(me, 'lobby');
 }
@@ -763,6 +808,7 @@ function applyLobbyJoinedData(data) {
 		try { localStorage.setItem(STORAGE_KEY_PLAYER_ID, data.playerId); } catch (_) {}
 	}
 	gameState = data.state;
+	suspendedRunSummary = cloneSuspendedRunSummary(data.state?.suspendedRunSummary ?? null);
 	currentLayout = data.layout || (data.state && data.state.layout) || currentLayout;
 	hubLayout = data.hubLayout || hubLayout;
 	if (gameState && currentLayout) gameState.layout = currentLayout;
@@ -788,8 +834,6 @@ function applyLobbyJoinedData(data) {
 		showAppToolbar();
 	}
 
-	showGameLobby();
-
 	if (data.hubPresence) applyHubPresence(data.hubPresence);
 
 	const receivedSeed = data.layoutSeed;
@@ -800,12 +844,14 @@ function applyLobbyJoinedData(data) {
 	// never reuses (or rebuilds into) the quest geometry, and a run join never
 	// deploys the player into the hub geometry.
 	if (joinPhase === 'playing') {
+		if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 		const seedChanged = receivedSeed !== undefined && receivedSeed !== currentLayoutSeed;
 		if (receivedSeed !== undefined) currentLayoutSeed = receivedSeed;
 		requestDebugScenario();
 
 		if (!isSceneInitialized()) {
 			if (lobbyEl) lobbyEl.classList.add('hidden');
+			setLobbyHudVisible(false);
 			uiEl.style.display = 'block';
 			showCardHand();
 			setDeckStackVisible(true);
@@ -825,6 +871,8 @@ function applyLobbyJoinedData(data) {
 		}
 		renderedSceneProfile = 'quest';
 		if (gameState) gameState.layout = currentLayout;
+		if (lobbyEl) lobbyEl.classList.add('hidden');
+		setLobbyHudVisible(false);
 		const me = myId && gameState && gameState.players ? gameState.players[myId] : null;
 		if (me && Number.isFinite(me.x) && Number.isFinite(me.z)) {
 			setPlayerPosition(me.x, me.z);
@@ -842,6 +890,17 @@ function applyLobbyJoinedData(data) {
 	requestDebugBoothOpen();
 	requestDebugShopBoothOpen();
 	updateObjectiveHud();
+	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
+	setLobbyHudVisible(true);
+	applyLobbyThemeLabels();
+	const lobbyMe = myId && gameState?.players ? gameState.players[myId] : null;
+	syncVanguardHud(lobbyMe, 'lobby');
+	dismissGameLobby();
+	if (suspendedRunSummary) {
+		renderSuspendedRunBanner(suspendedRunSummary);
+	} else {
+		clearSuspendedRunUi();
+	}
 }
 
 /** Show the registration form and hide the login form. */
@@ -914,7 +973,18 @@ let debugGodmodeResult = null;
 const debugBooth = new URLSearchParams(window.location.search).get('booth');
 const debugBoothAllowed = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 let lastRunSummary = null; // most recent runComplete payload, for harness-state inspection
+/** @type {null | { questId: string, questName: string, objective: object | null }} */
+let suspendedRunSummary = null;
 let lastUsedSlot = -1; // tracks the most recently clicked/pressed slot index for cardError targeting
+
+function cloneSuspendedRunSummary(summary) {
+	if (!summary) return null;
+	return {
+		questId: summary.questId,
+		questName: summary.questName,
+		objective: summary.objective ? { ...summary.objective } : null,
+	};
+}
 
 // ── Socket setup ──
 const STORAGE_KEY_PLAYER_ID = 'autogame_playerId';
@@ -1035,9 +1105,13 @@ const cardRenderCtx = {
 	spawnAttackEffect: rendererSpawnAttackEffect,
 	spawnSummonEffect: rendererSpawnSummonEffect,
 	spawnDivineGraceEffect: rendererSpawnDivineGraceEffect,
+	spawnPurifyingPulseEffect: rendererSpawnPurifyingPulseEffect,
+	spawnPurifyingPulseHealRing: rendererSpawnPurifyingPulseHealRing,
+	spawnCleanseBurstEffect: rendererSpawnCleanseBurstEffect,
 	spawnInfernoPillarEffect: rendererSpawnInfernoPillarEffect,
 	spawnVolatileExplosionEffect: rendererSpawnVolatileExplosionEffect,
 	spawnChainLightningEffect: rendererSpawnChainLightningEffect,
+	spawnLightningArc: rendererSpawnLightningArc,
 	flashMesh: rendererFlashMesh,
 	markCardHitEnemies: rendererMarkCardHitEnemies,
 	spawnHitSpark: rendererSpawnHitSpark,
@@ -1100,6 +1174,7 @@ function bindSocketHandlers(s) {
 			hideVariantCodex();
 			setDeckStackVisible(false);
 			if (lobbyEl) lobbyEl.classList.add('hidden');
+			setLobbyHudVisible(false);
 			if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 			if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
 			showAuthOverlay();
@@ -1187,6 +1262,7 @@ function bindSocketHandlers(s) {
 			currentLayoutSeed = state.layoutSeed;
 		}
 		gameState = state;
+		suspendedRunSummary = cloneSuspendedRunSummary(state.suspendedRunSummary ?? null);
 		setGameStateRef(state);
 		// Server snapshots omit debugGodmode; re-apply the last toggle so harness
 		// probes and local handlers stay consistent across stateUpdate.
@@ -1211,7 +1287,11 @@ function bindSocketHandlers(s) {
 
 		if (enteringLobby) {
 			_lastReturnRewardsPreview = null;
+			extractedLobbyOverlayActive = false;
 		} else if (me && state.gamePhase === 'playing') {
+			if (enteringPlaying) {
+				extractedLobbyOverlayActive = false;
+			}
 			if (me.returnRewardsPreview != null) {
 				_lastReturnRewardsPreview = me.returnRewardsPreview;
 			} else if (_lastReturnRewardsPreview != null) {
@@ -1235,7 +1315,9 @@ function bindSocketHandlers(s) {
 			showCardHand();
 			setDeckStackVisible(true);
 			if (lobbyEl) lobbyEl.classList.add('hidden');
+			setLobbyHudVisible(false);
 			setDeployButtonVisible(false);
+			clearSuspendedRunUi();
 			setGamePhase('playing');
 			if (enteringPlaying) {
 				_lastMagicStones = undefined;
@@ -1567,6 +1649,18 @@ function bindSocketHandlers(s) {
 		triggerHealPulseVFX({ x, y: 0, z }, radius);
 	});
 
+	s.on(SERVER_TO_CLIENT.MEDIC_ALLY_HEAL, (data) => {
+		if (!data || !getScene()) return;
+		const { x, z, healRadius } = data;
+		if (!Number.isFinite(x) || !Number.isFinite(z)) return;
+		triggerMedicAllyHealVFX({ x, y: 0, z }, healRadius);
+	});
+
+	s.on(SERVER_TO_CLIENT.MEDIC_BEAD, (data) => {
+		if (!data || !getScene()) return;
+		triggerMedicEnergyBeadVFX(data);
+	});
+
 	s.on(SERVER_TO_CLIENT.KEY_ITEM_USED, (data) => {
 		if (!data) return;
 		const me = myId && gameState?.players ? gameState.players[myId] : null;
@@ -1623,7 +1717,10 @@ function bindSocketHandlers(s) {
 
 	s.on(SERVER_TO_CLIENT.QUEST_ERROR, (data) => {
 		if (!data || !data.reason) return;
-		showQuestError(data.reason);
+		const reason = data.reason === 'suspended_checkpoint'
+			? THEME.run.questSuspendedLocked
+			: data.reason;
+		showQuestError(reason);
 	});
 
 	s.on(SERVER_TO_CLIENT.CARD_INVENTORY_UPDATE, (data) => {
@@ -1742,10 +1839,6 @@ function bindSocketHandlers(s) {
 			const me = data.players.find((p) => p.id === myId);
 			if (me) {
 				isReady = me.ready;
-				syncReadyButtonRole();
-				if (gameState && gameState.gamePhase === 'lobby') {
-					setDeployButtonVisible(true);
-				}
 			}
 		}
 		if (data.quests || data.questVariants || data.selectedQuestId || data.unlockedQuestTiers) {
@@ -1769,6 +1862,7 @@ function bindSocketHandlers(s) {
 		claimedCardRewardId = null;
 		currentCardChoices = [];
 		if (lobbyEl) lobbyEl.classList.add('hidden');
+		setLobbyHudVisible(false);
 		uiEl.style.display = 'block';
 		showCardHand();
 		setDeckStackVisible(true);
@@ -1795,7 +1889,7 @@ function bindSocketHandlers(s) {
 		setPlayerPosition(spawnPos.x, spawnPos.z);
 		setPlayerRotation(0);
 		setWasDead(false);
-		setDeployButtonVisible(false);
+		clearSuspendedRunUi();
 		setGamePhase('playing');
 		updateLevelSettingsBtnVisibility();
 
@@ -1815,6 +1909,7 @@ function bindSocketHandlers(s) {
 			rendererDisposeMeshMap(maps.telegraphMeshes, sc);
 			rendererDisposeMeshMap(maps.minionTelegraphMeshes, sc);
 			rendererDisposeMeshMap(maps.minionsMeshes, sc);
+			rendererDisposeMeshMap(maps.iceBallMeshes, sc);
 			rendererDisposeAllLootMeshes();
 		}
 	});
@@ -1829,14 +1924,19 @@ function bindSocketHandlers(s) {
 		if (giveUpBtnEl) giveUpBtnEl.disabled = false;
 	});
 
+	s.on(SERVER_TO_CLIENT.RUN_SUSPENDED, (summary) => {
+		suspendedRunSummary = cloneSuspendedRunSummary(summary);
+		if (gameState?.gamePhase === 'lobby') {
+			renderSuspendedRunBanner(suspendedRunSummary);
+		}
+	});
+
 	s.on(SERVER_TO_CLIENT.RUN_ABANDONED, () => {
+		suspendedRunSummary = null;
+		clearSuspendedRunUi();
 		if (gameState) {
 			gameState.gamePhase = 'lobby';
 			delete gameState.run;
-			// Abandoning clears the checkpoint, so drop the suspended summary that
-			// drives the Resume affordance and fall back to the normal lobby flow
-			// with the new-mission Deploy button visible again.
-			delete gameState.suspendedRunSummary;
 		}
 		if (giveUpBtnEl) giveUpBtnEl.disabled = false;
 		returnToGuildLobby(gameState, { refreshCollection: true, rebuildHub: true });
@@ -1845,17 +1945,6 @@ function bindSocketHandlers(s) {
 	if (giveUpBtnEl) {
 		giveUpBtnEl.onclick = () => requestGiveUp(s);
 	}
-
-	s.on(SERVER_TO_CLIENT.RUN_SUSPENDED, (summary) => {
-		if (summary && summary.questName) {
-			console.log(`[run] suspended: ${summary.questName}`);
-		}
-		if (gameState) {
-			gameState.suspendedRunSummary = summary;
-			gameState.gamePhase = 'lobby';
-		}
-		returnToGuildLobby({ gamePhase: 'lobby', suspendedRunSummary: summary }, { rebuildHub: true });
-	});
 
 	s.on(SERVER_TO_CLIENT.PLAYER_EXTRACTED, (data) => {
 		if (data && data.playerId === myId) {
@@ -2012,6 +2101,8 @@ function applyQuestLayoutFromServer(data) {
 // below); this only brings the wrapper into view. Guarded to the lobby phase.
 function openQuestPanel() {
 	if (gameState?.gamePhase !== 'lobby') return;
+	// Quest board lives inside #lobby; reopen the menu when it was dismissed.
+	showGameLobby();
 	// The wrapper is hidden by default; the booth is what reveals it.
 	questBoardWrapperEl?.classList.remove('hidden');
 	// jsdom lacks scrollIntoView, so guard defensively for tests.
@@ -2025,12 +2116,17 @@ function renderQuestBoardState() {
 		selectedQuestId,
 		(questId, tier) => {
 			if (!socket) return;
+			if (suspendedRunSummary) {
+				showQuestError(THEME.run.questSuspendedLocked);
+				return;
+			}
 			socket.emit(CLIENT_TO_SERVER.SELECT_QUEST, { questId, tier: tier ?? 1 });
 		},
 		{
 			selectedQuestTier,
 			unlockedQuestTiers,
 			questVariants,
+			selectionLocked: !!suspendedRunSummary,
 		},
 	);
 	if (questErrorEl) {
@@ -2080,13 +2176,6 @@ window.__requestDebugShopBoothOpenForTest = requestDebugShopBoothOpen;
 // reaches the playing phase without re-introducing the retired 2D #ready-btn.
 // Idempotent — launchBoothReadyUp() bails when the player is already ready.
 window.__launchReadyUpForTest = () => launchBoothReadyUp();
-// Test hook: abandon a suspended checkpoint via ABANDON_RUN (mirrors #abandon-run-btn).
-window.__abandonSuspendedRunForTest = () => {
-	if (!socket?.connected) return { ok: false, reason: 'no socket' };
-	if (!isRunSuspended()) return { ok: false, reason: 'not suspended' };
-	socket.emit(CLIENT_TO_SERVER.ABANDON_RUN);
-	return { ok: true };
-};
 /** Localhost-only `?booth=<id>` — open a booth once in hub lobby. */
 function requestBoothDebugOpen() {
 	if (!debugScenarioAllowed || boothDebugRequested) return;
@@ -3773,6 +3862,16 @@ window.__variantCodexKeydownHandler = (e) => {
 		hideVariantCodex();
 		return;
 	}
+	if (key === 'escape' && isGameLobbyMenuVisible() && !isLobbyMenuDismissKeyBlocked(e)) {
+		e.preventDefault();
+		dismissGameLobby();
+		return;
+	}
+	if (key === 'l' && gameState?.gamePhase === 'lobby' && lobbyMenuDismissed && !isLobbyMenuDismissKeyBlocked(e)) {
+		e.preventDefault();
+		showGameLobby();
+		return;
+	}
 	if (key === 'g' && e.shiftKey && debugScenarioAllowed && socket?.connected && !isDebugGodmodeKeyBlocked(e)) {
 		e.preventDefault();
 		emitToggleDebugGodmode();
@@ -3882,6 +3981,7 @@ function performLogout() {
 	hideVariantCodex();
 	setDeckStackVisible(false);
 	if (lobbyEl) lobbyEl.classList.add('hidden');
+	setLobbyHudVisible(false);
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 	updateStatus('Disconnected', 'disconnected');
 	showAuthOverlay();
@@ -4060,20 +4160,16 @@ function renderPlayerList(players) {
 	}
 }
 
-// Ready the local player up through the SAME path as #resume-run-btn: set the
-// shared isReady flag, emit playerReady(true) — which the server's checkAllReady
-// gate routes to startGame once the whole party is ready, or to resume when a
-// suspendedCheckpoint exists, so this single path covers both a fresh deploy and
-// a suspended-run resume sortie that the retired #ready-btn used to serve. The
-// Launch Bay booth and the ?booth=launch debug hook both call this; no new
-// socket event is introduced. Idempotent: a second booth touch or a repeated
-// lobbyJoined (reconnect) does NOT re-emit, since we bail out early when the
-// player is already ready.
+// Ready the local player up via the hub Launch Bay booth: set the shared isReady
+// flag and emit playerReady(true). The server's checkAllReady gate routes to
+// startGame once the whole party is ready. The Launch Bay booth and the
+// ?booth=launch debug hook both call this; no new socket event is introduced.
+// Idempotent: a second booth touch or a repeated lobbyJoined (reconnect) does
+// NOT re-emit, since we bail out early when the player is already ready.
 function launchBoothReadyUp() {
 	if (!shouldLaunchReadyUp(isReady)) return;
 	isReady = true;
 	socket.emit(CLIENT_TO_SERVER.PLAYER_READY, true);
-	syncReadyButtonRole();
 	console.log('[launchBooth] ready-up via booth');
 	window.dispatchEvent(new CustomEvent(LAUNCH_READY_EVENT));
 }
@@ -4424,23 +4520,9 @@ returnToLobbyBtn.addEventListener('click', () => {
 	socket.emit(CLIENT_TO_SERVER.RETURN_TO_LOBBY);
 });
 
-if (abandonRunBtn) {
-	abandonRunBtn.addEventListener('click', () => {
-		socket.emit(CLIENT_TO_SERVER.ABANDON_RUN);
-	});
-}
-
-// #resume-run-btn is the dedicated, distinct resume affordance shown while a run
-// is suspended. It re-enters the run through the SAME path as the launch booth
-// ready-up: emit playerReady(true), which the server's checkAllReady gate routes
-// to restoreRunCheckpoint → startGame because a suspendedCheckpoint exists. It
-// sets the shared isReady flag and resyncs the label via syncReadyButtonRole. No
-// separate fresh-launch / resume socket event.
-if (resumeRunBtn) {
-	resumeRunBtn.addEventListener('click', () => {
-		isReady = true;
-		socket.emit(CLIENT_TO_SERVER.PLAYER_READY, true);
-		syncReadyButtonRole();
+if (lobbyCloseBtnEl) {
+	lobbyCloseBtnEl.addEventListener('click', () => {
+		dismissGameLobby();
 	});
 }
 
@@ -4461,6 +4543,19 @@ if (refreshLobbiesBtnEl) {
 if (leaveLobbyBtnEl) {
 	leaveLobbyBtnEl.addEventListener('click', () => {
 		if (socket) socket.emit(CLIENT_TO_SERVER.LEAVE_LOBBY);
+	});
+}
+
+if (resumeRunBtnEl) {
+	resumeRunBtnEl.addEventListener('click', () => launchBoothReadyUp());
+}
+
+if (abandonRunBtnEl) {
+	abandonRunBtnEl.addEventListener('click', () => {
+		if (!socket) return;
+		socket.emit(CLIENT_TO_SERVER.ABANDON_RUN);
+		suspendedRunSummary = null;
+		clearSuspendedRunUi();
 	});
 }
 
@@ -4556,6 +4651,7 @@ window.renderQuestBoard = renderQuestBoard;
 window.__windupFlashing = () => getWindupFlashing();
 window.__pickedUpLootIds = () => getPickedUpLootIds();
 window.__enemiesMeshes = () => getMeshMaps().enemiesMeshes;
+window.__iceBallMeshes = () => getMeshMaps().iceBallMeshes;
 window.applyWindupFlash = rendererApplyWindupFlash;
 window.applyRevealHighlight = rendererApplyRevealHighlight;
 window.__useCardForTest = useCard;
@@ -4580,6 +4676,8 @@ window.openQuestPanel = openQuestPanel;
 window.__requestBoothDebugOpenForTest = requestBoothDebugOpen;
 window.performLogout = performLogout;
 window.showGameLobby = showGameLobby;
+window.dismissGameLobby = dismissGameLobby;
+window.__getLobbyMenuDismissed = () => lobbyMenuDismissed;
 window.renderLobbyList = renderLobbyList;
 window.applyLobbyJoinedData = applyLobbyJoinedData;
 window.applyHubPresence = applyHubPresence;
@@ -4631,17 +4729,6 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 	const lobbyVisible = !!lobbyEl && !lobbyEl.classList.contains('hidden');
 	const deckEditorEl = document.getElementById('deck-editor');
 	const deckEditorVisible = !!deckEditorEl && !deckEditorEl.classList.contains('hidden');
-	// The 2D #ready-btn is retired; fresh deploy / resume now happen through the
-	// hub Launch Bay booth. While a run is suspended #resume-run-btn is the
-	// dedicated on-screen resume affordance, so capture can watch its usability.
-	const resumeBtnEl = document.getElementById('resume-run-btn');
-	const resumeBtnUsable = !!resumeBtnEl
-		&& !resumeBtnEl.classList.contains('hidden')
-		&& !resumeBtnEl.disabled
-		&& getComputedStyle(resumeBtnEl).pointerEvents !== 'none';
-	const abandonRunBtnUsable = !!abandonRunBtn
-		&& !abandonRunBtn.classList.contains('hidden')
-		&& isRunSuspended();
 	const runId = gameState?.run?.id ?? null;
 	const cardHandVisible = !!cardHandEl && getComputedStyle(cardHandEl).display !== 'none';
 
@@ -4689,9 +4776,10 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		myId,
 		selectedDeck: Array.isArray(mySelectedDeck) ? [...mySelectedDeck] : [],
 		phase: gameState ? gameState.gamePhase : 'unknown',
-		runStatus: gameState && gameState.run ? gameState.run.status : null,
+		runStatus: (gameState && gameState.run && gameState.run.status)
+			|| (suspendedRunSummary ? 'suspended' : null),
+		suspendedRunSummary: cloneSuspendedRunSummary(suspendedRunSummary),
 		extracted: !!(me && me.extracted),
-		suspendedRunSummary: gameState ? gameState.suspendedRunSummary : null,
 		telepipe: gameState ? gameState.telepipe : null,
 		layout: (() => {
 			// During the lobby phase the renderer shows hubLayout while currentLayout
@@ -4713,10 +4801,9 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		sceneInitialized: isSceneInitialized(),
 		hasCanvas: !!document.querySelector('canvas'),
 		lobbyVisible,
+		lobbyMenuDismissed,
 		characterBoothOpen: isCharacterBoothOpen(),
 		deckEditorVisible,
-		resumeBtnUsable,
-		abandonRunBtnUsable,
 		runId,
 		cardHandVisible,
 		status: statusEl ? statusEl.innerText : '',

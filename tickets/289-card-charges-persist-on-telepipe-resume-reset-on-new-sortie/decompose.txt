@@ -1,0 +1,13 @@
+Broke ticket **289** into **4 sub-tickets** in dependency order. The split follows the minimal checkpoint model the top-level ticket describes: capture card state on telepipe suspend (01), resume deploy restores charges (02), abandon/fresh deploy resets charges (03), and a final test matrix (04). All use **code** verification because every criterion is about server state, handlers, and test assertions — not purely visual rendering.
+
+**Sub-ticket folder paths created:**
+
+1. `/home/matt/workspace/.autogame-worktrees/289-card-charges-persist-on-telepipe-resume-reset-on-new-sortie/tickets/289-card-charges-persist-on-telepipe-resume-reset-on-new-sortie/subtickets/01-suspend-captures-card-checkpoint/ticket.md`
+
+2. `/home/matt/workspace/.autogame-worktrees/289-card-charges-persist-on-telepipe-resume-reset-on-new-sortie/tickets/289-card-charges-persist-on-telepipe-resume-reset-on-new-sortie/subtickets/02-resume-deploy-restores-card-charges/ticket.md`
+
+3. `/home/matt/workspace/.autogame-worktrees/289-card-charges-persist-on-telepipe-resume-reset-on-new-sortie/tickets/289-card-charges-persist-on-telepipe-resume-reset-on-new-sortie/subtickets/03-new-sortie-resets-card-charges/ticket.md`
+
+4. `/home/matt/workspace/.autogame-worktrees/289-card-charges-persist-on-telepipe-resume-reset-on-new-sortie/tickets/289-card-charges-persist-on-telepipe-resume-reset-on-new-sortie/subtickets/04-server-tests-card-charge-persistence/ticket.md`
+
+**Dependency flow:** 01 adds `suspendedCheckpoint` capture on full telepipe extract → 02 branches `checkAllReady` to restore same `run.id` + card charges → 03 adds `abandonSuspendedRun` / fresh-deploy path so new sorties reset charges → 04 consolidates the acceptance test matrix and updates integration tests that currently expect a fresh run id after telepipe redeploy.

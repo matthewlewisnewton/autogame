@@ -1,0 +1,5 @@
+Wrote `tickets/291-burning-status-effect-foundation/round-1/review.md`.
+
+Final verdict: `VERDICT: PASS`
+
+I did not create `gaps.md` or `nits.md`. The captured game run was clean, and the burning-status acceptance criteria are met. Note: `coverage.log` has one unrelated existing debug-scenario test failure outside this ticket’s diff; I documented it in the review but did not count it as a blocking burning-status gap.

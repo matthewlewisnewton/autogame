@@ -1,0 +1,356 @@
+[createLobby] timeout waiting for #lobby visibility: page.waitForFunction: Timeout 10000ms exceeded.
+[joinLobby] timeout waiting for #lobby visibility: page.waitForFunction: Timeout 10000ms exceeded.
+{
+  "url": "http://localhost:5175/",
+  "ok": true,
+  "ticketFile": "/home/matt/workspace/.autogame-worktrees/305-recapture-walkable-hub-after-overlay-fix/tickets/305-recapture-walkable-hub-after-overlay-fix/ticket.md",
+  "capturePlanSource": "fallback",
+  "capturePlanValid": true,
+  "capturePlanAttempts": [],
+  "capturePlanSummary": "Deterministic walkable-hub review capture: two-player auth, create/join lobby, post-304 hub-ready wait (lobby hidden, menu dismissed, hub canvas), joiner WASD nudge, 01-hub-overview screenshot and assertWalkableHubPresentation.",
+  "scenarios": [],
+  "screenshots": [
+    {
+      "file": "01-hub-overview.png",
+      "player": "A",
+      "description": "Walkable ship hub with menu dismissed and remote squadmate visible."
+    }
+  ],
+  "probes": [
+    {
+      "player": "A",
+      "description": "Hub overview probe: lobby hidden, menu dismissed, canvas active, two players, remote squadmate.",
+      "data": {
+        "harnessState": {
+          "debugScenario": null,
+          "debugScenarioAllowed": true,
+          "debugScenarioResult": null,
+          "debugGodmodeResult": null,
+          "objective": null,
+          "encounter": null,
+          "bossEncounter": null,
+          "runObjectiveComplete": false,
+          "lastRunSummary": null,
+          "sortieCompleteOverlayVisible": false,
+          "myId": "3b8f6327-7d2c-478b-a729-68fe4050a1b3",
+          "selectedDeck": [
+            "9c4d6b6f-2669-4c03-a995-8b97cb3d5855",
+            "75954f1a-0ab7-4811-ae86-d8e84507b67c",
+            "35b5c0b6-0d3c-4db1-bf02-52127553d1a4",
+            "8f8daf5b-4733-4260-833b-66e8e24c4c4f",
+            "ba9ba860-2ee7-4626-9a88-17d1c48c97aa",
+            "f381baa7-4679-4e8b-bd42-8ca44564cff0",
+            "4a8954e9-a6f1-42e0-987b-c96ee4e064bb",
+            "03649aaa-a4a4-479f-b5a5-f21737e2b4c0",
+            "cd95505e-6789-4bbc-a5b5-04c45a77cc4f",
+            "4d6a21d1-fcc5-4641-b25a-4e1e9556cb36",
+            "2a14a518-ff37-4936-bef2-869b4724f16b",
+            "dd349fec-c5b8-4b61-954b-a27dcab47029"
+          ],
+          "phase": "lobby",
+          "runStatus": null,
+          "extracted": false,
+          "telepipe": null,
+          "layout": {
+            "profile": "hub",
+            "seed": 352369970,
+            "roomCount": 3,
+            "startRoom": {
+              "x": -20,
+              "z": 0,
+              "role": "start"
+            }
+          },
+          "connectionState": "connected",
+          "sceneInitialized": true,
+          "hasCanvas": true,
+          "lobbyVisible": false,
+          "lobbyMenuDismissed": true,
+          "characterBoothOpen": false,
+          "deckEditorVisible": false,
+          "runId": null,
+          "cardHandVisible": false,
+          "status": "Latency: 1ms",
+          "hpText": "100/100",
+          "msText": "90/90",
+          "currencyText": "Money 0",
+          "currency": 0,
+          "player": {
+            "hp": 100,
+            "magicStones": 99,
+            "currency": 0,
+            "debugGodmode": false,
+            "dead": false,
+            "x": -20,
+            "y": 0.5,
+            "z": 0,
+            "equippedKeyItemId": "dodge_roll",
+            "keyItemCooldownRemaining": 0
+          },
+          "keyItemIndicatorOnCooldown": false,
+          "keyItemIndicatorText": "",
+          "players": 2,
+          "squadmates": [
+            {
+              "id": "ce2a22ed-0be3-40ff-8ffd-46306450ac5c",
+              "x": -2.5999999999999983,
+              "z": 0
+            }
+          ],
+          "enemies": 0,
+          "enemyHp": [],
+          "minions": [],
+          "hand": [],
+          "inventory": [
+            {
+              "instanceId": "9c4d6b6f-2669-4c03-a995-8b97cb3d5855",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "75954f1a-0ab7-4811-ae86-d8e84507b67c",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "35b5c0b6-0d3c-4db1-bf02-52127553d1a4",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "8f8daf5b-4733-4260-833b-66e8e24c4c4f",
+              "cardId": "dungeon_drake",
+              "grind": 0
+            },
+            {
+              "instanceId": "ba9ba860-2ee7-4626-9a88-17d1c48c97aa",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "f381baa7-4679-4e8b-bd42-8ca44564cff0",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "4a8954e9-a6f1-42e0-987b-c96ee4e064bb",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "03649aaa-a4a4-479f-b5a5-f21737e2b4c0",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "cd95505e-6789-4bbc-a5b5-04c45a77cc4f",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "4d6a21d1-fcc5-4641-b25a-4e1e9556cb36",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "2a14a518-ff37-4936-bef2-869b4724f16b",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "dd349fec-c5b8-4b61-954b-a27dcab47029",
+              "cardId": "dungeon_drake",
+              "grind": 0
+            }
+          ],
+          "lastEvolutionResult": null
+        },
+        "keyItemIndicatorOnCooldown": false,
+        "keyItemIndicatorText": "",
+        "keyItemCooldownRemaining": 0,
+        "status": "Latency: 1ms",
+        "hasCanvas": true,
+        "canvasCount": 2,
+        "lobbyVisible": false,
+        "cardHandVisible": false,
+        "title": "Void Grimoire",
+        "bodyText": "👤\n🔊\n⚙\n?\nLV\n1\nHP\n100/100\nMoney 0\nLatency: 1ms\nReturn to Registry"
+      }
+    },
+    {
+      "player": "A",
+      "description": "VERIFY walkable hub presentation: lobbyHidden, lobbyMenuDismissed, hubCanvasActive, playersOnHost >= 2, remoteSquadmateCount >= 1.",
+      "data": {
+        "walkableHubPresentation": {
+          "lobbyHidden": true,
+          "lobbyMenuDismissed": true,
+          "hubCanvasActive": true,
+          "playersOnHost": 2,
+          "remoteSquadmateCount": 1,
+          "layoutProfile": "hub"
+        }
+      }
+    },
+    {
+      "player": "A",
+      "description": "Final capture probe.",
+      "data": {
+        "harnessState": {
+          "debugScenario": null,
+          "debugScenarioAllowed": true,
+          "debugScenarioResult": null,
+          "debugGodmodeResult": null,
+          "objective": null,
+          "encounter": null,
+          "bossEncounter": null,
+          "runObjectiveComplete": false,
+          "lastRunSummary": null,
+          "sortieCompleteOverlayVisible": false,
+          "myId": "3b8f6327-7d2c-478b-a729-68fe4050a1b3",
+          "selectedDeck": [
+            "9c4d6b6f-2669-4c03-a995-8b97cb3d5855",
+            "75954f1a-0ab7-4811-ae86-d8e84507b67c",
+            "35b5c0b6-0d3c-4db1-bf02-52127553d1a4",
+            "8f8daf5b-4733-4260-833b-66e8e24c4c4f",
+            "ba9ba860-2ee7-4626-9a88-17d1c48c97aa",
+            "f381baa7-4679-4e8b-bd42-8ca44564cff0",
+            "4a8954e9-a6f1-42e0-987b-c96ee4e064bb",
+            "03649aaa-a4a4-479f-b5a5-f21737e2b4c0",
+            "cd95505e-6789-4bbc-a5b5-04c45a77cc4f",
+            "4d6a21d1-fcc5-4641-b25a-4e1e9556cb36",
+            "2a14a518-ff37-4936-bef2-869b4724f16b",
+            "dd349fec-c5b8-4b61-954b-a27dcab47029"
+          ],
+          "phase": "lobby",
+          "runStatus": null,
+          "extracted": false,
+          "telepipe": null,
+          "layout": {
+            "profile": "hub",
+            "seed": 352369970,
+            "roomCount": 3,
+            "startRoom": {
+              "x": -20,
+              "z": 0,
+              "role": "start"
+            }
+          },
+          "connectionState": "connected",
+          "sceneInitialized": true,
+          "hasCanvas": true,
+          "lobbyVisible": false,
+          "lobbyMenuDismissed": true,
+          "characterBoothOpen": false,
+          "deckEditorVisible": false,
+          "runId": null,
+          "cardHandVisible": false,
+          "status": "Latency: 1ms",
+          "hpText": "100/100",
+          "msText": "90/90",
+          "currencyText": "Money 0",
+          "currency": 0,
+          "player": {
+            "hp": 100,
+            "magicStones": 99,
+            "currency": 0,
+            "debugGodmode": false,
+            "dead": false,
+            "x": -20,
+            "y": 0.5,
+            "z": 0,
+            "equippedKeyItemId": "dodge_roll",
+            "keyItemCooldownRemaining": 0
+          },
+          "keyItemIndicatorOnCooldown": false,
+          "keyItemIndicatorText": "",
+          "players": 2,
+          "squadmates": [
+            {
+              "id": "ce2a22ed-0be3-40ff-8ffd-46306450ac5c",
+              "x": -2.5999999999999983,
+              "z": 0
+            }
+          ],
+          "enemies": 0,
+          "enemyHp": [],
+          "minions": [],
+          "hand": [],
+          "inventory": [
+            {
+              "instanceId": "9c4d6b6f-2669-4c03-a995-8b97cb3d5855",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "75954f1a-0ab7-4811-ae86-d8e84507b67c",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "35b5c0b6-0d3c-4db1-bf02-52127553d1a4",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "8f8daf5b-4733-4260-833b-66e8e24c4c4f",
+              "cardId": "dungeon_drake",
+              "grind": 0
+            },
+            {
+              "instanceId": "ba9ba860-2ee7-4626-9a88-17d1c48c97aa",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "f381baa7-4679-4e8b-bd42-8ca44564cff0",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "4a8954e9-a6f1-42e0-987b-c96ee4e064bb",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "03649aaa-a4a4-479f-b5a5-f21737e2b4c0",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "cd95505e-6789-4bbc-a5b5-04c45a77cc4f",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "4d6a21d1-fcc5-4641-b25a-4e1e9556cb36",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "2a14a518-ff37-4936-bef2-869b4724f16b",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "dd349fec-c5b8-4b61-954b-a27dcab47029",
+              "cardId": "dungeon_drake",
+              "grind": 0
+            }
+          ],
+          "lastEvolutionResult": null
+        },
+        "keyItemIndicatorOnCooldown": false,
+        "keyItemIndicatorText": "",
+        "keyItemCooldownRemaining": 0,
+        "status": "Latency: 1ms",
+        "hasCanvas": true,
+        "canvasCount": 2,
+        "lobbyVisible": false,
+        "cardHandVisible": false,
+        "title": "Void Grimoire",
+        "bodyText": "👤\n🔊\n⚙\n?\nLV\n1\nHP\n100/100\nMoney 0\nLatency: 1ms\nReturn to Registry"
+      }
+    }
+  ],
+  "pageerrors": []
+}

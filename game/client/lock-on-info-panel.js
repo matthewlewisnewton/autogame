@@ -15,6 +15,7 @@ export const STAT_LABELS = {
   leechFraction: 'Leech',
   chaseSpeedMult: 'Chase speed (enraged)',
   attackWindupMult: 'Attack speed (enraged)',
+  burnDurationMs: 'Burn duration',
 };
 
 function statLabelFor(key) {
@@ -71,6 +72,7 @@ export function formatStatValue(enemy, key, catalog) {
     case 'spawnType':
       return formatSpawnType(raw, catalog);
     case 'spawnIntervalMs':
+    case 'burnDurationMs':
       return `${raw / 1000}s`;
     case 'leechFraction':
       return `${Math.round(Number(raw) * 100)}%`;

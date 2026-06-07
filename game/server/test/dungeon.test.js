@@ -9,6 +9,7 @@ import {
   roomsByRole,
   randomRoomPositionByRole,
   sampleFloorY,
+  sampleFloorSurface,
   questLayoutSeed,
   DEFAULT_FLOOR_Y,
   LAYOUT_PROFILES,
@@ -2453,6 +2454,243 @@ describe("generateLayout(seed, 'sunken-canyon')", () => {
   });
 });
 
+// ── ice-cavern stage layout ──
+
+describe("generateLayout(seed, 'ice-cavern')", () => {
+  function roomsByBand(layout, band) {
+    return layout.rooms.filter(r => r.band === band);
+  }
+
+  function canReachPoint(fromX, fromZ, toX, toZ, aabbs, colliders) {
+    const tolerance = 1.5;
+    const seen = new Set();
+    const key = (x, z) => `${Math.round(x * 10)},${Math.round(z * 10)}`;
+    const queue = [{ x: fromX, z: fromZ }];
+    seen.add(key(fromX, fromZ));
+    const dirs = [[WALK_STEP, 0], [-WALK_STEP, 0], [0, WALK_STEP], [0, -WALK_STEP]];
+
+    for (let qi = 0; qi < queue.length && qi < 200000; qi++) {
+      const { x, z } = queue[qi];
+      if (Math.hypot(x - toX, z - toZ) <= tolerance) return true;
+      for (const [dx, dz] of dirs) {
+        const nx = x + dx;
+        const nz = z + dz;
+        const k = key(nx, nz);
+        if (seen.has(k) || !isWalkable(nx, nz, aabbs, colliders)) continue;
+        seen.add(k);
+        queue.push({ x: nx, z: nz });
+      }
+    }
+    return false;
+  }
+
+  it('returns profile ice-cavern with stone, ice, and ramp bands', () => {
+    const layout = generateLayout(42, 'ice-cavern');
+    expect(layout.profile).toBe('ice-cavern');
+    expect(layout.passages).toEqual([]);
+    expect(roomsByBand(layout, 'stone').length).toBe(2);
+    expect(roomsByBand(layout, 'ice').length).toBe(1);
+    const ramps = roomsByBand(layout, 'ramp');
+    expect(ramps.length).toBeGreaterThanOrEqual(1);
+    expect(ramps.length).toBeLessThanOrEqual(2);
+  });
+
+  it('tags slippery ice field ≥ 4× default room area and normal stone pads', () => {
+    const layout = generateLayout(42, 'ice-cavern');
+    const ice = roomsByBand(layout, 'ice')[0];
+    const stoneRooms = roomsByBand(layout, 'stone');
+    expect(ice.width * ice.depth).toBeGreaterThanOrEqual(4 * 182);
+    expect(ice.floorSurface).toBe('slippery');
+    expect(sampleFloorSurface(layout, ice.x, ice.z)).toBe('slippery');
+    for (const stone of stoneRooms) {
+      expect(stone.floorSurface).toBe('normal');
+      expect(sampleFloorSurface(layout, stone.x, stone.z)).toBe('normal');
+    }
+    for (const ramp of roomsByBand(layout, 'ramp')) {
+      expect(ramp.floorSurface).toBe('normal');
+    }
+  });
+
+  it('assigns explicit roles: stone start, stone treasure, ramps=connector', () => {
+    const layout = generateLayout(42, 'ice-cavern');
+    const start = layout.rooms.find(r => r.role === 'start');
+    const treasure = layout.rooms.find(r => r.role === 'treasure');
+    expect(start.band).toBe('stone');
+    expect(treasure.band).toBe('stone');
+    for (const ramp of roomsByBand(layout, 'ramp')) {
+      expect(ramp.role).toBe('connector');
+      expect(ramp.spawnWeight).toBe(0);
+    }
+  });
+
+  it('start spawn can reach treasure room center via walkable AABBs', () => {
+    for (const seed of [1, 42, 123, 777, 9999]) {
+      const layout = generateLayout(seed, 'ice-cavern');
+      const start = layout.rooms.find(r => r.role === 'start');
+      const treasure = layout.rooms.find(r => r.role === 'treasure');
+      const colliders = buildWallColliders(layout);
+      const aabbs = computeWalkableAABBs(layout);
+      expect(canReachPoint(start.x, start.z, treasure.x, treasure.z, aabbs, colliders)).toBe(true);
+    }
+  });
+
+  it('is deterministic: same seed yields deep-equal layouts', () => {
+    const a = generateLayout(2024, 'ice-cavern');
+    const b = generateLayout(2024, 'ice-cavern');
+    expect(a).toEqual(b);
+  });
+
+  it('places cover only on stone pads, not on the ice field', () => {
+    const layout = generateLayout(42, 'ice-cavern');
+    const ice = roomsByBand(layout, 'ice')[0];
+    const half = ice.width / 2;
+    for (const c of layout.cover) {
+      const onIce =
+        Math.abs(c.x - ice.x) + c.width / 2 <= half &&
+        Math.abs(c.z - ice.z) + c.depth / 2 <= half;
+      expect(onIce).toBe(false);
+    }
+  });
+});
+
+// ── fire-cavern stage layout ──
+
+describe("generateLayout(seed, 'fire-cavern')", () => {
+  function roomsByBand(layout, band) {
+    return layout.rooms.filter(r => r.band === band);
+  }
+
+  function isFlatAtY(room, y) {
+    const fc = room.floorCorners;
+    return fc.yNW === y && fc.yNE === y && fc.ySE === y && fc.ySW === y;
+  }
+
+  function rampAverageSlope(room) {
+    const fc = room.floorCorners;
+    const yHigh = Math.max(fc.yNW, fc.yNE, fc.ySE, fc.ySW);
+    const yLow = Math.min(fc.yNW, fc.yNE, fc.ySE, fc.ySW);
+    const rise = yHigh - yLow;
+    const run = (fc.yNW === fc.yNE && fc.ySE === fc.ySW) ? room.depth : room.width;
+    return rise / run;
+  }
+
+  function basinReachableFromRim(layout) {
+    const colliders = buildWallColliders(layout);
+    const aabbs = computeWalkableAABBs(layout);
+    return countReachableRooms(layout, aabbs, colliders) === layout.rooms.length;
+  }
+
+  it('returns profile fire-cavern with rim, ramps, and basin bands', () => {
+    const layout = generateLayout(42, 'fire-cavern');
+    expect(layout.profile).toBe('fire-cavern');
+    expect(layout.passages).toEqual([]);
+    expect(roomsByBand(layout, 'rim').length).toBe(1);
+    expect(roomsByBand(layout, 'basin').length).toBe(1);
+    const ramps = roomsByBand(layout, 'ramp');
+    expect(ramps.length).toBeGreaterThanOrEqual(2);
+    expect(ramps.length).toBeLessThanOrEqual(3);
+  });
+
+  it('has a flat rim (~12–15 units) and a basin floor ≥ 4× default room area', () => {
+    const layout = generateLayout(42, 'fire-cavern');
+    const rim = roomsByBand(layout, 'rim')[0];
+    const basin = roomsByBand(layout, 'basin')[0];
+    expect(rim.width).toBeGreaterThanOrEqual(12);
+    expect(rim.width).toBeLessThanOrEqual(15);
+    expect(rim.depth).toBeGreaterThanOrEqual(12);
+    expect(rim.depth).toBeLessThanOrEqual(15);
+    expect(basin.width * basin.depth).toBeGreaterThanOrEqual(4 * 182);
+    expect(isFlatAtY(rim, sampleFloorY(layout, rim.x, rim.z))).toBe(true);
+    expect(isFlatAtY(basin, sampleFloorY(layout, basin.x, basin.z))).toBe(true);
+  });
+
+  it('Y drop from rim centre to basin centre is ≥ 8 units', () => {
+    for (const seed of [1, 42, 123, 777]) {
+      const layout = generateLayout(seed, 'fire-cavern');
+      const rim = roomsByBand(layout, 'rim')[0];
+      const basin = roomsByBand(layout, 'basin')[0];
+      const yRim = sampleFloorY(layout, rim.x, rim.z);
+      const yBasin = sampleFloorY(layout, basin.x, basin.z);
+      expect(yRim - yBasin).toBeGreaterThanOrEqual(8);
+    }
+  });
+
+  it('each ramp has non-uniform corners and average slope ≥ 0.15', () => {
+    for (const seed of [1, 42, 999]) {
+      const layout = generateLayout(seed, 'fire-cavern');
+      for (const ramp of roomsByBand(layout, 'ramp')) {
+        const fc = ramp.floorCorners;
+        const corners = [fc.yNW, fc.yNE, fc.ySE, fc.ySW];
+        expect(new Set(corners).size).toBeGreaterThan(1);
+        expect(rampAverageSlope(ramp)).toBeGreaterThanOrEqual(0.15);
+      }
+    }
+  });
+
+  it('assigns explicit roles: rim=start, basin=treasure, ramps=connector spawnWeight 0', () => {
+    const layout = generateLayout(42, 'fire-cavern');
+    const rim = roomsByBand(layout, 'rim')[0];
+    const basin = roomsByBand(layout, 'basin')[0];
+    expect(rim.role).toBe('start');
+    expect(basin.role).toBe('treasure');
+    for (const ramp of roomsByBand(layout, 'ramp')) {
+      expect(ramp.role).toBe('connector');
+      expect(ramp.spawnWeight).toBe(0);
+    }
+  });
+
+  it('has ≥ 6 basin cover pieces of valid type inside the basin interior', () => {
+    const layout = generateLayout(42, 'fire-cavern');
+    const basin = roomsByBand(layout, 'basin')[0];
+    const half = basin.width / 2;
+    expect(layout.cover.length).toBeGreaterThanOrEqual(6);
+    for (const c of layout.cover) {
+      expect(['pillar', 'broken_wall']).toContain(c.type);
+      expect(Math.abs(c.x - basin.x) + c.width / 2).toBeLessThanOrEqual(half);
+      expect(Math.abs(c.z - basin.z) + c.depth / 2).toBeLessThanOrEqual(half);
+    }
+  });
+
+  it('rim and basin have solid outer perimeter walls (no walk-off gaps)', () => {
+    const layout = generateLayout(42, 'fire-cavern');
+    const rim = roomsByBand(layout, 'rim')[0];
+    const basin = roomsByBand(layout, 'basin')[0];
+    const rh = rim.depth / 2;
+    const rw = rim.width / 2;
+    const bh = basin.depth / 2;
+    const bw = basin.width / 2;
+
+    expect(rim.walls.some(w => w.axis === 'x' && Math.abs(w.z - (rim.z - rh)) < 0.01 && Math.abs(w.length - rim.width) < 0.01)).toBe(true);
+    expect(rim.walls.some(w => w.axis === 'z' && Math.abs(w.x - (rim.x - rw)) < 0.01)).toBe(true);
+    expect(rim.walls.some(w => w.axis === 'z' && Math.abs(w.x - (rim.x + rw)) < 0.01)).toBe(true);
+
+    expect(basin.walls.some(w => w.axis === 'x' && Math.abs(w.z - (basin.z + bh)) < 0.01 && Math.abs(w.length - basin.width) < 0.01)).toBe(true);
+    expect(basin.walls.some(w => w.axis === 'z' && Math.abs(w.x - (basin.x - bw)) < 0.01)).toBe(true);
+    expect(basin.walls.some(w => w.axis === 'z' && Math.abs(w.x - (basin.x + bw)) < 0.01)).toBe(true);
+  });
+
+  it('full foot reachability from rim spawn to basin floor via ramps', () => {
+    for (const seed of [1, 42, 123, 777, 9999]) {
+      const layout = generateLayout(seed, 'fire-cavern');
+      expect(basinReachableFromRim(layout)).toBe(true);
+    }
+  });
+
+  it('is deterministic: same seed yields deep-equal layouts', () => {
+    const a = generateLayout(2024, 'fire-cavern');
+    const b = generateLayout(2024, 'fire-cavern');
+    expect(a).toEqual(b);
+  });
+
+  it('ramp count is 2–3 across many seeds', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const layout = generateLayout(seed, 'fire-cavern');
+      const rampCount = roomsByBand(layout, 'ramp').length;
+      expect(rampCount).toBeGreaterThanOrEqual(2);
+      expect(rampCount).toBeLessThanOrEqual(3);
+    }
+  });
+});
 // ── spire-ascent stage layout ──
 
 describe("generateLayout(seed, 'spire-ascent')", () => {

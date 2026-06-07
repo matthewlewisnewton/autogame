@@ -2288,6 +2288,35 @@ describe('createEnemyMesh()', () => {
 		expect(mesh._origEmissiveIntensity).toBe(0.4);
 	});
 
+	it('creates a small green-teal octahedron for field_medic type', async () => {
+		await import('../main.js');
+
+		const mesh = window.createEnemyMesh('field_medic');
+		expect(mesh).toBeDefined();
+		expect(mesh.geometry.parameters.radius).toBe(0.4);
+		expect(mesh.material.color.getHex()).toBe(0x10b981);
+		expect(mesh.material.emissive.getHex()).toBe(0x2dd4bf);
+		expect(mesh.material.emissiveIntensity).toBe(0.55);
+		expect(mesh._origEmissive).toBe(0x2dd4bf);
+		expect(mesh._origEmissiveIntensity).toBe(0.55);
+	});
+
+	it('creates a warm emissive octahedron for ember_wraith type', async () => {
+		await import('../main.js');
+
+		const mesh = window.createEnemyMesh('ember_wraith');
+		const grunt = window.createEnemyMesh('grunt');
+		expect(mesh).toBeDefined();
+		expect(mesh.geometry.parameters.radius).toBe(0.35);
+		expect(mesh.material.color.getHex()).toBe(0xff4400);
+		expect(mesh.material.emissive.getHex()).toBe(0xff2200);
+		expect(mesh.material.emissiveIntensity).toBe(0.6);
+		expect(mesh._origEmissive).toBe(0xff2200);
+		expect(mesh._origEmissiveIntensity).toBe(0.6);
+		expect(mesh.geometry.parameters.radius).not.toBe(grunt.geometry.parameters.radius);
+		expect(mesh.material.color.getHex()).not.toBe(grunt.material.color.getHex());
+	});
+
 	it('creates a purple cone for miniboss type', async () => {
 		await import('../main.js');
 
@@ -2360,6 +2389,8 @@ describe('enemyMeshHalfHeight()', () => {
 		expect(window.enemyMeshHalfHeight('skirmisher')).toBe(0.3);
 		expect(window.enemyMeshHalfHeight('miniboss')).toBe(1.1);
 		expect(window.enemyMeshHalfHeight('spawner')).toBe(0.6);
+		expect(window.enemyMeshHalfHeight('field_medic')).toBe(0.4);
+		expect(window.enemyMeshHalfHeight('ember_wraith')).toBe(0.35);
 	});
 
 	it('defaults to grunt half-height for unknown types', async () => {
@@ -2803,6 +2834,7 @@ describe('bindSocketHandlers() — handler rebinding on socket recreate', () => 
 			'hubPresenceUpdate',
 			'cardUsed', 'cardError', 'deckUpdate', 'deckError',
 			'lobbyUpdate', 'startGame', 'runComplete', 'runFailed',
+			'runSuspended', 'runAbandoned',
 		];
 		for (const event of expectedEvents) {
 			expect(events.has(event)).toBe(true);
@@ -2844,6 +2876,7 @@ describe('bindSocketHandlers() — handler rebinding on socket recreate', () => 
 			'hubPresenceUpdate',
 			'cardUsed', 'cardError', 'deckUpdate', 'deckError',
 			'lobbyUpdate', 'startGame', 'runComplete', 'runFailed',
+			'runSuspended', 'runAbandoned',
 		];
 		for (const event of expectedSocketEvents) {
 			expect(socketEvents).toContain(event);
@@ -3571,7 +3604,7 @@ describe('Key Items equip UI', () => {
 		field_medic_kit: {
 			id: 'field_medic_kit',
 			name: 'Field Medic Kit',
-			description: 'Heal nearby allies and restore Magic Stones in an area',
+			description: 'Restore Magic Stones for nearby allies in an area',
 			cooldownMs: 20000,
 		},
 	};
@@ -4327,5 +4360,224 @@ describe('__AUTOGAME_HARNESS_STATE__ encounter and godmode fields', () => {
 		expect(harness.phase).toBe('lobby');
 		expect(harness.layout?.profile).toBe('hub');
 		expect(questLayout.profile).not.toBe('hub');
+	});
+});
+
+describe('__AUTOGAME_HARNESS_STATE__ suspendedRunSummary', () => {
+	const requiredIds = [
+		'status', 'vanguard-hud', 'character-id', 'player-level',
+		'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+		'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+		'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+		'currency-display', 'objective-hud', 'ui', 'card-hand',
+		'lobby', 'lobby-browser', 'lobby-player-list',
+		'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+		'summary-currency', 'summary-rewards', 'return-to-lobby-btn',
+	];
+
+	const suspendedSummary = {
+		questId: 'training_caverns',
+		questName: 'Initiate Vault',
+		objective: {
+			type: 'defeat_enemies',
+			label: 'Initiate Vault: Purge hostiles from the derelict annex sector.',
+			totalEnemies: 5,
+			defeatedEnemies: 0,
+		},
+	};
+
+	beforeEach(() => {
+		vi.resetModules();
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('stores runSuspended payload and exposes it via harness with runStatus suspended', async () => {
+		await import('../main.js');
+
+		window.__triggerSocketEvent('runSuspended', suspendedSummary);
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'lobby',
+			suspendedRunSummary: suspendedSummary,
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+			enemies: [],
+		});
+
+		const harness = window.__AUTOGAME_HARNESS_STATE__();
+		expect(harness.phase).toBe('lobby');
+		expect(harness.runStatus).toBe('suspended');
+		expect(harness.suspendedRunSummary).toEqual(suspendedSummary);
+		expect(harness.suspendedRunSummary.objective).toEqual(suspendedSummary.objective);
+		expect(harness.suspendedRunSummary).not.toBe(suspendedSummary);
+	});
+
+	it('clears suspendedRunSummary when stateUpdate reports null after resume or abandon', async () => {
+		await import('../main.js');
+
+		window.__triggerSocketEvent('runSuspended', suspendedSummary);
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'lobby',
+			suspendedRunSummary: suspendedSummary,
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+			enemies: [],
+		});
+		expect(window.__AUTOGAME_HARNESS_STATE__().suspendedRunSummary).toEqual(suspendedSummary);
+
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'playing',
+			suspendedRunSummary: null,
+			run: { status: 'playing', objective: suspendedSummary.objective },
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0, hand: [] } },
+			enemies: [],
+		});
+
+		const resumed = window.__AUTOGAME_HARNESS_STATE__();
+		expect(resumed.suspendedRunSummary).toBeNull();
+		expect(resumed.runStatus).toBe('playing');
+		expect(resumed.phase).toBe('playing');
+
+		window.__triggerSocketEvent('runSuspended', suspendedSummary);
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'lobby',
+			suspendedRunSummary: suspendedSummary,
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+			enemies: [],
+		});
+		window.__triggerSocketEvent('runAbandoned');
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'lobby',
+			suspendedRunSummary: null,
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+			enemies: [],
+		});
+
+		const abandoned = window.__AUTOGAME_HARNESS_STATE__();
+		expect(abandoned.suspendedRunSummary).toBeNull();
+		expect(abandoned.runStatus).toBeNull();
+		expect(abandoned.phase).toBe('lobby');
+	});
+});
+
+describe('suspended run resume/abandon UI', () => {
+	const requiredIds = [
+		'status', 'vanguard-hud', 'character-id', 'player-level',
+		'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+		'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+		'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+		'currency-display', 'objective-hud', 'ui', 'card-hand',
+		'lobby', 'lobby-browser', 'lobby-player-list', 'lobby-hud',
+		'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+		'summary-currency', 'summary-rewards', 'return-to-lobby-btn',
+		'suspended-run-banner', 'resume-run-btn', 'abandon-run-btn',
+		'quest-board', 'quest-board-wrapper', 'quest-error',
+	];
+
+	const suspendedSummary = {
+		questId: 'training_caverns',
+		questName: 'Initiate Vault',
+		objective: {
+			type: 'defeat_enemies',
+			label: 'Initiate Vault: Purge hostiles from the derelict annex sector.',
+			totalEnemies: 5,
+			defeatedEnemies: 0,
+		},
+	};
+
+	function lobbyStateUpdate(extra = {}) {
+		return {
+			gamePhase: 'lobby',
+			suspendedRunSummary: suspendedSummary,
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+			enemies: [],
+			...extra,
+		};
+	}
+
+	beforeEach(() => {
+		vi.resetModules();
+		document.body.innerHTML = '';
+		for (const id of requiredIds) {
+			const tag = id.endsWith('-btn') ? 'button' : 'div';
+			const el = document.createElement(tag);
+			el.id = id;
+			if (id.endsWith('-btn')) {
+				el.classList.add('hidden');
+			}
+			document.body.appendChild(el);
+		}
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('shows the suspended-run banner and resume/abandon controls in lobby', async () => {
+		await import('../main.js');
+
+		window.__triggerSocketEvent('runSuspended', suspendedSummary);
+		window.__triggerSocketEvent('stateUpdate', lobbyStateUpdate());
+
+		const banner = document.getElementById('suspended-run-banner');
+		const resumeBtn = document.getElementById('resume-run-btn');
+		const abandonBtn = document.getElementById('abandon-run-btn');
+
+		expect(banner.classList.contains('hidden')).toBe(false);
+		expect(banner.textContent).toContain('Initiate Vault');
+		expect(resumeBtn.classList.contains('hidden')).toBe(false);
+		expect(abandonBtn.classList.contains('hidden')).toBe(false);
+		expect(abandonBtn.textContent).toBe('Abort Sortie');
+	});
+
+	it('emits abandonRun and clears suspended UI when abort is clicked', async () => {
+		await import('../main.js');
+
+		window.__triggerSocketEvent('runSuspended', suspendedSummary);
+		window.__triggerSocketEvent('stateUpdate', lobbyStateUpdate());
+		window.__clearSocketEmitLog();
+
+		document.getElementById('abandon-run-btn').click();
+
+		const abandonEmits = window.__socketEmitLog().filter((entry) => entry.event === 'abandonRun');
+		expect(abandonEmits).toHaveLength(1);
+
+		expect(document.getElementById('suspended-run-banner').classList.contains('hidden')).toBe(true);
+		expect(document.getElementById('resume-run-btn').classList.contains('hidden')).toBe(true);
+		expect(document.getElementById('abandon-run-btn').classList.contains('hidden')).toBe(true);
+		expect(window.__AUTOGAME_HARNESS_STATE__().suspendedRunSummary).toBeNull();
+
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'lobby',
+			suspendedRunSummary: null,
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+			enemies: [],
+		});
+
+		expect(document.getElementById('suspended-run-banner').classList.contains('hidden')).toBe(true);
+		expect(window.__AUTOGAME_HARNESS_STATE__().suspendedRunSummary).toBeNull();
+	});
+
+	it('resume button triggers the launch-booth ready-up path', async () => {
+		await import('../main.js');
+
+		window.__triggerSocketEvent('runSuspended', suspendedSummary);
+		window.__triggerSocketEvent('stateUpdate', lobbyStateUpdate());
+		window.__clearSocketEmitLog();
+
+		document.getElementById('resume-run-btn').click();
+
+		const readyEmits = window.__socketEmitLog().filter((entry) => entry.event === 'playerReady');
+		expect(readyEmits).toHaveLength(1);
+		expect(readyEmits[0].data).toBe(true);
 	});
 });

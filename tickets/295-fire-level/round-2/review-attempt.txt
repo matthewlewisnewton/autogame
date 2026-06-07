@@ -1,0 +1,3 @@
+Wrote the final review to `tickets/295-fire-level/round-2/review.md` with `VERDICT: PASS`.
+
+No `gaps.md` was created because there are no blocking gaps. I also wrote one non-blocking cleanup item to `tickets/295-fire-level/round-2/nits.md`.

@@ -110,3 +110,8 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [284-cleanup-playthrough-validate-spire-ascent](tickets/284-cleanup-playthrough-validate-spire-ascent/)
 - [ ] [287-cleanup-playthrough-driver-output-quality-findings-victory-path](tickets/287-cleanup-playthrough-driver-output-quality-findings-victory-path/)
 - [ ] [288-cleanup-distinct-stage-boss-visual-identity](tickets/288-cleanup-distinct-stage-boss-visual-identity/)
+- [ ] [296-cleanup-fire-level](tickets/296-cleanup-fire-level/)
+- [ ] [297-cleanup-persist-player-health-and-stones-no-telepipe-reset](tickets/297-cleanup-persist-player-health-and-stones-no-telepipe-reset/)
+- [ ] [303-cleanup-ice-enemy-glacial-ball-thrower](tickets/303-cleanup-ice-enemy-glacial-ball-thrower/)
+- [ ] [305-cleanup-fix-lobby-menu-overlay-reshows-over-walkable-hub](tickets/305-cleanup-fix-lobby-menu-overlay-reshows-over-walkable-hub/)
+- [ ] [306-cleanup-recapture-walkable-hub-after-overlay-fix](tickets/306-cleanup-recapture-walkable-hub-after-overlay-fix/)

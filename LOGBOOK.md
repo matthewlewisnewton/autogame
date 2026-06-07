@@ -5081,6 +5081,397 @@ PASS. The harness change is small, direct, and failure-producing if the overlay 
 
 No development debug scenario was added or changed by this ticket. The existing debug scenarios used by broader hub validation remain URL/harness-driven and are not part of normal gameplay entry.
 
+## v0.287 — 292-ice-level-and-slippery-floor-physics  (2026-06-06 12:14:08)
+
+### Client visuals and movement feel
+
+PASS. `ice-cavern` has a distinct cold palette in `dungeonTheme.json`; the renderer uses ice-cavern band materials, applies a profile-independent emissive slippery material override for slippery rooms/platforms, and places the treasure marker using sampled floor height. Client prediction was extracted into `movementPrediction.js` and mirrors the server's acceleration/coast/stop behavior, with velocity reset on spawn/layout changes. Client tests cover slippery material rendering and local movement carry/normal-stop behavior.
+
+### Debug scenarios
+
+PASS. The remaining ice/slippery URL shortcuts are gated by the existing localhost/dev debug-scenario mechanism. `frost-crossing-tier-1` is the canonical deploy shortcut and uses the production Frost Crossing path: selected quest/tier, `applyLayoutForQuest`, `enterPlayingPhase`, enemy spawn, and `startDungeonRun`. `slippery-floor-lab` no longer builds a synthetic URL-only lab layout; it deploys Frost Crossing and then positions the player on a real slippery room from that generated layout. The equivalent states remain reachable through normal play by selecting Frost Crossing, deploying, and walking from the stone start onto the ice field.
+
+### Design and foundation consistency
+
+PASS. The work fits the documented dungeon-room/floor-sampling model and preserves the foundation requirements: Three.js rendering still initializes, sockets connect, multiplayer state is present, and movement continues to sync through the server. The new slippery system extends floor metadata without regressing existing normal-floor movement semantics.
+
+### Tests and coverage
+
+PASS. The round-2 coverage run reports `124 passed (124)` test files and `2111 passed (2111)` tests. Relevant ticket suites include `server/test/slippery_floor.test.js`, `server/test/frost_crossing_spawn.test.js`, and `client/test/slippery_movement.test.js`; coverage was reported for visibility with thresholds disabled.
+
+## Remaining gaps
+
+No blocking gaps found.
+
+## v0.285 — 295-fire-level  (2026-06-06 11:38:30)
+
+
+### Fire level reachable via debug scenario
+PASS. `fire-cavern` and `fire-cavern-stage` are registered debug scenarios. The `fire-cavern` scenario selects `ember_descent` tier 1, applies the same quest-derived layout seed/profile path, enters playing phase, spawns the quest enemy pack, and starts a normal run state. The client URL entry point remains gated to localhost by `?debugScenario=...`, and the server also gates debug scenario use through `isDebugScenarioAllowed`.
+
+### Layout generation and floor alignment
+PASS. `generateLayout(seed, 'fire-cavern')` dispatches to a deterministic rim/ramp/basin layout with a high rim start room, 2-3 descent ramps, a large lower basin, solid perimeter walls, cover in the basin, and floor corners compatible with shared `sampleFloorY`. Server walkability tests cover rim-to-basin reachability across regression seeds, and client render tests assert elevated rim floors, sloped ramp meshes, basin marker placement, and cover placement on sampled floor Y.
+
+### Themed visuals and atmosphere
+PASS. `dungeonTheme.json`, `game/client/dungeon.js`, and `game/client/renderer.js` add a distinct fire-cavern palette, rim/basin floor material separation, and depth-responsive warm fog/background. The fire-specific render and atmosphere tests passed. The final round-2 browser capture used the fallback sunken-canyon scenario rather than a fire-cavern scenario, but it still proves the game runs cleanly with this ticket applied; fire-specific behavior is covered by the live code tests and earlier sub-ticket visual QA.
+
+### Design and requirements consistency
+PASS. The implementation stays consistent with the design document's floor-height model by using `sampleFloorY`/`resolveFloorY` for player placement, wall placement, cover, and treasure markers. It does not regress the foundation requirements: the captured run renders a 3D scene, connects to the backend, shows multiplayer state, and preserves movement/key-item smoke behavior.
+
+### Code quality and validation
+PASS. The changed server/client code is scoped to quest wiring, layout generation, debug shortcuts, fire-cavern render materials, and atmosphere. The coverage log reports the full vitest suite passing: 109 test files and 1895 tests.
+
+## v0.286 — 290-slow-status-effect-foundation  (2026-06-06 12:09:09)
+
+### Helper exposure for future ice systems
+
+PASS. `applySlow` and `isSlowed` are exported from `game/server/simulation.js` and surfaced through `game/server/index.js`, so the future ice enemy and ice card can call the shared foundation helpers directly instead of reimplementing status state.
+
+### Design and foundation requirements
+
+PASS. The implementation is consistent with the design doc's multiplayer action-combat foundation and does not regress the setup requirements: Three.js rendering, WebSocket connection, multiplayer visualization, and WASD movement synchronization are all still demonstrated by the round-3 capture. The SLOW status is server-authoritative, replicated to clients, and does not alter the lobby/dungeon/deck loop.
+
+### Debug scenarios
+
+PASS. The live code does not add a slow debug scenario or any normal-gameplay shortcut for applying slow. The ticket history includes removal of an intermediate slowed-player debug shortcut, and no `?debugScenario=` path remains for this status, so there is no debug-only path masking a missing normal gameplay path.
+
+### Test and coverage evidence
+
+PASS. `coverage.log` reports `108` test files and `1808` tests passing. Focused coverage includes `game/server/test/slow_status.test.js` for helper semantics, player movement scaling, enemy chase scaling, freeze precedence, expiry, and refresh; `game/client/test/local-slow-prediction.test.js` covers local prediction with valid, missing, expired, and invalid slow factors; and existing snapshot expectations now include the player slow fields.
+
+## Remaining gaps
+
+None.
+
+
+## v0.300 — 287-persist-player-health-and-stones-no-telepipe-reset  (2026-06-06 16:52:52)
+
+
+### No Checkpoint Resume / Fresh Run Does Not Wipe Vitals
+PASS. The removed checkpoint machinery is not present in live server code: searches found no `captureRunCheckpoint`, `restoreRunCheckpoint`, or `suspendedCheckpoint` implementation. `resetTransientRunState()` only clears enemies, minions, loot, area effects, and the telepipe. The captured redeploy produced a different run id while preserving vitals, which matches the updated design: fresh dungeon state, durable player state.
+
+### Medic Booth Is The Only Health Restore
+PASS. `healAtMedic()` is restricted to lobby phase, charges the configured cost, sets `hp` to `MAX_HP`, clears `dead`, saves player data, and is exposed through the `medicHeal` socket event. Combat cards/key items no longer define or apply HP healing: healing-themed cards now restore Magic Stones, field medic kit restores Magic Stones, and damage code only subtracts HP. Tests cover both direct medic healing and socket-level healing.
+
+### Server Tests And Coverage
+PASS. `coverage.log` reports 104 test files passing and 1,938 tests passing. Relevant tests cover telepipe extraction preserving HP/MS in hub, fresh redeploy preserving HP/MS with a new run id, drop-in default/preservation behavior, cold save/load of vitals, and med booth healing.
+
+### Debug Scenario Review
+PASS. This ticket uses/updates `telepipe-ready`. The scenario is only reachable through the debug scenario path, which is gated by localhost/debug allowance and the URL/test hook request path. It does not itself complete the telepipe flow: it leaves the player in the lobby until normal ready-up, then `checkAllReady()` injects a telepipe into a normal dealt hand. The later placement, portal entry, extraction, lobby return, and redeploy all use the ordinary server-side card, telepipe, and ready-up paths. The same end state remains reachable in normal gameplay by deploying with/obtaining a Telepipe card, placing it, entering it, and redeploying from the hub.
+
+### Design And Foundation Requirements
+PASS. `game/docs/design.md` now describes Telepipe as ending the dungeon run, clearing transient world state, starting a fresh dungeon on redeploy, and preserving `hp`/`magicStones` across hub-sortie transitions, with the Medic station as the only full-health restore. The implementation does not regress the foundation requirements: the captured run renders, connects to the server, shows the player, and proceeds through lobby/dungeon transitions.
+
+## v0.289 — 291-burning-status-effect-foundation  (2026-06-06 13:14:08)
+
+PASS. The implementation is entity-generic and covers players and enemies separately in the server tick pass. Player `burningUntil` is included in the hot state snapshot in `game/server/progression.js`, and enemies are already broadcast as live world objects, so the client receives the status timestamp for both entity classes.
+
+### Burning animation on players and enemies
+
+PASS. `game/client/renderer.js` adds distinct player and enemy burn marker maps, creates a warm additive flame marker, updates it every animation frame while `burningUntil` is active, anchors the local-player marker to predicted local position, anchors remote players/enemies to broadcast positions, and disposes markers on expiry or entity removal. The effect is visually distinct from the existing slow/freeze indicators.
+
+### Server tests
+
+PASS for the burning acceptance coverage. `game/server/test/burning_status.test.js` covers helper state, expiry, reapplication, player/enemy-shaped entities, and null tolerance. `game/server/test/burning_tick_damage.test.js` covers player and enemy periodic damage, expiry, godmode immunity, dead/extracted player skips, refreshed duration, and re-ignition after a gap. The latest `coverage.log` shows both new burning test files passing.
+
+Note: the full coverage run in `coverage.log` has one unrelated existing failure in `server/test/debug-scenarios.test.js` for the `arena-trials` debug scenario expecting an `arena_champion` at 1 HP and receiving 420 HP. This ticket did not add or change debug scenarios and the failing area is outside the burning-status diff, so I am not counting it as a burning-status blocking gap.
+
+### Design and requirements consistency
+
+PASS. The change preserves the documented multiplayer client/server foundation: server state remains authoritative, clients receive status state through snapshots, and rendering remains a Three.js overlay effect. The captured smoke run still satisfies the foundation requirements for scene rendering, WebSocket connectivity, multiplayer visualization, and movement synchronization.
+
+## Remaining gaps
+
+None.
+
+
+## v0.290 — 302-chain-lightning-card  (2026-06-06 13:15:58)
+
+PASS. Client arc rendering is wired from server payload to visual effect. The card effect emits `chainSegments` from caster to primary and each subsequent hop; `cardRenderers.js` registers a Voltaic Chain renderer that spawns a cyan `spawnLightningArc()` for every segment, with a legacy directional fallback. `renderer.js` creates and fades short-lived jagged line arcs, and the client renderer tests assert that chain segments invoke arc rendering instead of the legacy bolt.
+
+PASS. The implementation stays consistent with the design document's active card-combat model: this is a single-use spell with an instant combat effect, consumes Magic Stones through the existing spell branch, uses existing hand validation/cooldown/consumption flow, and does not alter the lobby/dungeon/core loop or foundation requirements.
+
+## Debug scenario review
+
+PASS. The added `chain-lightning-ready` shortcut is reachable only through the existing debug scenario URL/client socket path. The client only requests debug scenarios from localhost-style hosts, and the server rejects production/non-loopback use unless `ALLOW_DEBUG_SCENARIOS=1` is explicitly set.
+
+PASS. The same end state is reachable through normal gameplay: `chain_lightning` is a reward-acquisition card included in the reward rotation, and normal run combat can put the player near multiple enemies in range. The debug setup only makes that state deterministic by putting Voltaic Chain in hand, restoring Magic Stones, and lining up three grunts.
+
+PASS. The scenario does not replace or weaken production validation. It still enters a normal playing phase, uses the regular hand/card structures, and any cast goes through the normal authoritative `useCard` validation, Magic Stone cost, cooldown, card consumption, damage, cleanup, state update, and `cardUsed` broadcast paths.
+
+## Test and coverage review
+
+PASS. The round-2 coverage log shows the full Vitest suite passing: 114 test files and 1971 tests. Relevant ticket coverage includes `server/test/chain_lightning.test.js` with 7 passing tests and `client/test/cardRenderers.test.js` with the new chain segment renderer coverage. Overall coverage is visible at 72.71% statements / 72.68% lines with thresholds disabled.
+
+## Remaining gaps
+
+None.
+
+
+## v0.291 — 300-rare-medic-enemy-in-level2  (2026-06-06 13:24:25)
+
+PASS - Medic flees, heals allies, and does not chase. `game/server/simulation.js` gives `field_medic` its own AI path before the regular chase/windup branch. It prioritizes wounded nearby allies when heal cooldown is ready, fires only when a visible player is within bead range, flees from players inside `fleeRadius`, and otherwise wanders rather than entering the normal chasing state. `game/server/test/field_medic.test.js` covers flee movement, lowest-HP ally healing, close-range bead damage, no self/ally friendly fire, and no closing distance to a distant player.
+
+PASS - Close-range defensive energy bead works. The bead uses the existing phase-beam hit collector with `playersOnly: true`, applies weak ranged damage to players, queues a `medicBead` event for clients, and avoids damaging the firing medic or allied enemies. Client-side handling in `game/client/main.js` and `game/client/renderer.js` renders the bead and hit sparks from the server event.
+
+PASS - Display metadata and lock-on info are present. `ENEMY_DEFS.field_medic` includes name, description, surfaced stats, and combat tuning. The server display catalog includes the type, and the client lock-on panel test verifies the Field Medic name, HP, support stats, and description are shown.
+
+PASS - Client visuals are integrated. `game/client/renderer.js` defines a distinct small green-teal octahedron for `field_medic`, registers a projectile telegraph style, and renders medic ally-heal and bead VFX from the new socket events. Renderer tests cover the mesh shape/scale and registry normalization.
+
+PASS - Debug scenarios are acceptable. The new `field-medic` and `field-medic-spawn` scenarios are only reachable through the existing debug scenario path, with browser auto-request gated to localhost and `?debugScenario=...`. The same end states are reachable through normal tier-2 quest selection and weighted spawn pools, and the scenarios reuse server `spawnEnemy` state rather than bypassing combat or persistence invariants.
+
+PASS - Consistency with design and foundation requirements. The change stays within the existing multiplayer dungeon combat loop, preserves server-authoritative enemy behavior and WebSocket event delivery, and does not regress the documented basics: 3D render, server-client connection, multiplayer visualization, or movement synchronization. The round-2 smoke capture reached lobby and gameplay with two connected players and live movement probes.
+
+## Verification
+
+Observed evidence: `coverage.log` reports 114 passed test files and 1856 passed tests. Relevant passing suites include `server/test/field_medic.test.js`, `server/test/enemy-spawn-pools-wiring.test.js`, `server/test/quests-spawn-pools.test.js`, `server/test/enemy_display_catalog.test.js`, `client/test/lock-on-info-panel.test.js`, `client/test/main.test.js`, and `client/test/renderer-registry-normalize.test.js`.
+
+## Remaining gaps
+
+No blocking gaps remain.
+
+
+## v0.292 — 301-burning-and-slow-mutually-exclusive  (2026-06-06 13:37:01)
+
+
+### Burning and slow are mutually exclusive on any entity
+PASS. `applySlow()` now clears `burningUntil` and resets `lastBurnTickAt` before applying slow, while `applyBurning()` clears `slowedUntil` before applying burn. Because these helpers operate on generic entities and are the shared status entry points, both player and enemy sources inherit the most-recent-wins behavior.
+
+### Both application orders are covered for players and enemies
+PASS. `server/test/burn_slow_mutual_exclusion.test.js` covers slowed-then-burned, burned-then-slowed, repeated toggles, and "never both" assertions for player-shaped and enemy-shaped entities. It also covers the burn tick clock reset when slow douses burn. The captured coverage log shows the new test file passed as part of the server suite, with 24 test files and 966 tests passing.
+
+### Client shows only the active status
+PASS. The client slow and burn indicators are separately driven by `slowedUntil` and `burningUntil` from the server snapshot. Since the server now zeroes the opposing timestamp on every status application, the existing renderer path disposes the inactive marker and displays only the current effect for local players, remote players, and enemies.
+
+### Design and foundation consistency
+PASS. The change is consistent with the combat status model in `game/docs/design.md`: it keeps the existing card-combat/status-effect architecture and does not alter the lobby, dungeon, rendering, networking, or movement foundations in `game/docs/requirements.md`. The captured run still demonstrates 3D rendering, client/server connectivity, multiplayer presence, and movement.
+
+### Debug scenarios
+PASS. This ticket did not add or change any `debugScenario` shortcut. The captured scenarios list is empty, so there is no debug-only path to validate for this ticket.
+
+## Remaining gaps
+
+None.
+
+## v0.293 — 298-vault-wyrm-burning-rebalance  (2026-06-06 13:54:54)
+
+PASS. The shared `dungeon_drake` stats add `burnDurationMs: 2000` and `specialEffect: "burning_breath"`. Both server and client build `CARD_DEFS` from the shared JSON sources, and the client card HUD renders `specialEffect` by replacing underscores with spaces, producing the captured `BURNING BREATH` label on the Vault Wyrm cards.
+
+### Server tests cover reduced damage and burn application
+
+PASS. The new `game/server/test/vault_wyrm_burning.test.js` covers cone miss behavior, burn refresh/extension on subsequent breath ticks, and the evolved Wyrm non-burn guard. Existing Wyrm tests were updated to assert 50 HP -> 48 HP, `isBurning(enemy) === true`, and `burningUntil === now + 2000`. The changed `astral_guardian` default-minion assertion was also updated for the new fallback damage.
+
+`coverage.log` shows the full test run passed: 53 test files and 1466 tests. Coverage was collected successfully with thresholds disabled.
+
+## Design and requirements consistency
+
+PASS. The change stays within the existing card-combat model: Vault Wyrm remains a creature/minion summon with channeled breath, but now trades lower direct damage for the already-established BURNING status. It does not alter the lobby/dungeon loop, movement, networking, rendering, or multiplayer foundations listed in `game/docs/design.md` and `game/docs/requirements.md`. The captured smoke run confirms server-client connection, 3D rendering, player representation, and movement synchronization still work.
+
+## Debug scenarios
+
+PASS. The ticket updates an existing `minion-combat` debug scenario's hard-coded Vault Wyrm stats to mirror production damage and burn duration. The scenario remains behind the existing debug-scenario path (`?debugScenario=...` / debug socket event from local debug flow), and normal gameplay can reach the equivalent end state by starting a run with Vault Wyrm in the deck and casting it near enemies. The scenario does not replace the production summon path or weaken server-side card validation for normal play.
+
+## v0.294 — 297-fireball-card-inflicts-burning  (2026-06-06 14:20:38)
+
+PASS. Casting flows through the authoritative `useCard` weapon branch in `game/server/cardEffects.js`: `effect: "fireball"` uses `collectProjectileHits`, applies impact damage, preserves projectile render data in the `cardUsed` payload, consumes charges/cooldowns through the existing weapon path, and emits state updates normally.
+
+PASS. Burning-on-hit is implemented on the server by resolving each hit enemy and calling `applyBurning(enemy, burningDurationMs)`. This reuses the existing Burning status implementation from ticket 291, including mutual exclusion with Slow and ticking fire damage. State snapshots expose enemies directly, so `burningUntil` reaches clients for visual status rendering.
+
+PASS. Client visuals are covered on both sides of the requirement: `game/client/cardRenderers.js` registers a Fireball-specific renderer that spawns a warm `effect: "fireball"` projectile, and `game/client/renderer.js` has a matching sphere projectile branch. Burning on enemies is rendered via the existing `burningUntil`-driven flame markers.
+
+PASS. Server and client tests cover the new behavior: `game/server/test/fireball_card.test.js` verifies the definition, reward obtainability, cast payload, impact damage, and Burning status on struck enemies; `game/client/test/cardRenderers.test.js` verifies the Fireball projectile renderer; `game/client/test/cards.test.js` verifies Fireball is in weapon card sets. The coverage run reports `112 passed` test files and `1745 passed` tests.
+
+## Design and requirements fit
+
+PASS. The change fits the design document's card-combat model: Fireball is a multi-charge weapon projectile in the active deck/hand system, and it adds a status-based combat effect without changing the lobby, dungeon, loot, multiplayer, movement, or rendering foundations required by `game/docs/requirements.md`.
+
+## Debug scenario review
+
+PASS. The added `fireball-ready` scenario is only reachable through the debug-scenario URL/socket path guarded by `isDebugScenarioAllowed`; normal gameplay does not call it. It is a deterministic QA shortcut into a state that remains reachable normally by earning the reward card, putting it in a deck, deploying, and fighting enemies. The scenario still uses normal `useCard` server validation and combat resolution; it only seeds the hand and enemies for repeatable testing.
+
+## Remaining gaps
+
+None.
+
+## v0.295 — 299-aoe-heal-and-cleanse-card  (2026-06-06 14:28:29)
+
+**Casting removes slow, burning, and other negative statuses on affected players.** Passed. `clearNegativeStatuses` resets `slowedUntil`, `slowFactor`, `burningUntil`, `lastBurnTickAt`, `frozenUntil` when present, and the generic `debuffs` array. The radius heal path runs this cleanse for every in-radius active player, including full-health players whose HP cannot increase. Tests cover slow, burn, frozen/debuff cleanup, and socket integration after casting from a slowed/burning player.
+
+**Client shows AoE heal and cleanse effects.** Passed. `purifying_pulse` has a card-specific renderer that spawns a mint-green expanding heal ring and a white/teal cleanse burst at the cast origin, plays the heal sound, and is registered in the card renderer dispatch. Client tests verify renderer registration and the specific heal-ring/cleanse-burst calls.
+
+**Server tests cover radius heal and status clear.** Passed. `server/test/purifying_pulse.test.js` directly covers the helper behavior and socket `useCard` path. The full captured coverage run reports 127 test files and 2220 tests passing.
+
+## Design and requirements consistency
+
+The implementation fits the documented combat model: Purifying Pulse is a single-use spell with an instant radial support effect, matching the card-combat system in `game/docs/design.md`. It does not weaken the foundation requirements in `game/docs/requirements.md`; the captured run confirms 3D rendering, WebSocket connection, player visualization, and movement synchronization still work.
+
+The new `purifying-pulse-ready` debug scenario is gated through the existing `debugScenario` URL/socket path and is included in the debug scenario allowlist, not normal gameplay. Its end state is reachable through normal play by earning the reward card and being affected by existing slow/burning/debuff systems before casting. It does not bypass the real card-use path; the integration test uses the scenario only to stage state, then casts through normal `useCard` handling.
+
+## Code quality
+
+The implementation is tightly scoped and follows existing patterns for card JSON, server card effect dispatch, simulation helpers, debug scenarios, and client renderer registration. I did not find dead/broken code or whitespace issues (`git diff --check` passed). One non-blocking observation is that `healedTargets` only includes players who gained HP, even though full-health in-radius players are still cleansed server-side; this does not block the acceptance criteria because the cleanse is applied and the client effect is a radius-wide AoE, not per-target.
+
+## Remaining gaps
+
+None.
+
+
+## v0.296 — 294-ice-slow-ball-card  (2026-06-06 15:14:34)
+
+### Client renders projectile and slow indicator
+
+Pass. `game/client/cardRenderers.js` registers a dedicated `ice_ball` renderer that calls `spawnAttackEffect` with an icy palette and slow travel duration. `game/client/renderer.js` implements the `ice_ball` attack effect as a cyan sphere that travels over `projectileTravelMs`. Existing slow indicators are driven from broadcast `slowedUntil` on enemies and players, so Ice Ball's server-applied slow is visible via the same status indicator system as the ice enemy slow mechanic.
+
+### Server tests for cast, projectile, and chance-to-slow
+
+Pass. `game/server/test/ice_ball_card.test.js` verifies card definition/economy, reward availability, cast payload with projectile metadata and hit damage, success-roll slow application, and failure-roll no-slow behavior. `coverage.log` reports 115 test files and 1765 tests passed.
+
+## Design and regression review
+
+The implementation is consistent with the card-combat design: Glacial Orb is a spell card using Magic Stones, is acquired as loot/reward, and reuses the established shared-card-data pipeline so client and server definitions stay aligned. It does not weaken the base requirements in `game/docs/requirements.md`; the captured run still renders the 3D scene, connects to the backend, shows multiple players, and processes movement.
+
+## Debug scenarios
+
+The new `ice-ball-ready` debug scenario is gated through the existing debug-scenario socket path and registered only in the `DEBUG_SCENARIOS` set. It shortcuts into a QA-ready state by placing Glacial Orb in hand, topping up Magic Stones, and lining up enemies, but the equivalent state is reachable through normal gameplay by earning the reward card, adding it to a deck, entering combat, and casting it at an enemy. It does not bypass server-side card validation or effect handling; tests still emit `useCard` and exercise the authoritative `handleUseCard` path.
+
+## Remaining gaps
+
+None.
+
+
+## v0.297 — 296-fire-enemy-inflicts-burning  (2026-06-06 15:48:10)
+
+## Lock-on panel and enemy display metadata
+
+PASS. `ENEMY_DEFS.ember_wraith` includes name, description, surfaced stats, combat stats, cone attack style, and burn duration metadata. The enemy display catalog trims and publishes the surfaced values, while the client lock-on panel labels and formats `burnDurationMs` as seconds. Client tests verify the Ember Wraith panel model includes name, description, HP, attack, cone style, chase speed, and burn duration.
+
+## Client render and attack telegraph
+
+PASS. The client registers `ember_wraith` as a procedural warm emissive octahedron with a distinct footprint, model registry entry, and cone telegraph matching the server's `Math.PI / 3` attack cone. Renderer and main tests cover mesh creation, height/footprint normalization, visual distinction from grunt, and registry handling.
+
+## Design and requirements consistency
+
+PASS. The change fits the documented action-RPG dungeon loop: a level-exclusive enemy in the fire-cavern quest adds combat pressure without altering lobby flow, multiplayer state, movement, or rendering foundations. The captured smoke run verifies the baseline requirements still hold: Three.js scene initializes, clients connect over WebSockets, multiplayer presence exists, and movement/dodge state updates during gameplay.
+
+## Test and coverage evidence
+
+PASS. The provided coverage run reports 116 test files and 1895 tests passed. Relevant coverage includes `server/test/ember_wraith_burning.test.js`, `server/test/enemy-spawn-pools-wiring.test.js`, `server/test/quests-spawn-pools.test.js`, `server/test/enemy_display_catalog.test.js`, `client/test/lock-on-info-panel.test.js`, `client/test/main.test.js`, and `client/test/renderer-registry-normalize.test.js`.
+
+## Remaining gaps
+
+None.
+
+
+## v0.298 — 293-ice-enemy-glacial-ball-thrower  (2026-06-06 16:27:08)
+
+PASS. The client has a glacial thrower mesh preset, projectile telegraph visual metadata, and keyed ice-ball mesh syncing from `gameState.iceBalls`. Stale projectile meshes are disposed when projectiles leave the server state, and run-exit cleanup clears `iceBalls` from world snapshots.
+
+### Server tests
+
+PASS for this ticket's new behavior. `coverage.log` shows `server/test/ice_enemy.test.js` passing all 13 tests and `server/test/enemy_display_catalog.test.js` passing all 4 tests.
+
+There is one existing-suite failure in `coverage.log`: `server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > positions miniboss at 1 HP beside the player in playing phase`. That failure is outside this ticket's glacial enemy path and is not evidence that this implementation fails the ticket acceptance criteria.
+
+## Design and requirements consistency
+
+PASS. The implementation fits the documented multiplayer dungeon combat loop: enemies are authoritative on the server, snapshots drive client rendering, and the new foe is scoped to the ice-themed Frost Crossing level. It does not regress the foundation requirements: the captured run shows client/server connection, 3D scene initialization, player representation, and movement/gameplay state.
+
+## Debug scenarios
+
+PASS. This ticket added `?debugScenario=glacial-thrower`. It is gated through the existing debug-scenario allowlist and URL-driven client request path, clears current enemies/projectiles, and spawns the thrower as a QA shortcut. The same end state is reachable through normal gameplay because Frost Crossing is selectable/deployable and guarantees at least one `glacial_thrower` through the normal spawn path; the scenario does not bypass persistence or server validation beyond the existing debug-only state setup pattern.
+
+## Remaining gaps
+
+None.
+
+
+## v0.299 — 304-fix-lobby-menu-overlay-reshows-over-walkable-hub  (2026-06-06 16:51:57)
+
+### Client test for dismiss / stays-dismissed behavior
+
+PASS. `client/test/lobby-menu-dismiss.test.js` covers hub lobby join starting hidden, state updates staying hidden after dismissal, hub presence updates not reopening the menu, and deck/shop booth reopen behavior. `coverage.log` shows the test run passed: 12 files and 247 tests passed. Coverage thresholds were disabled as expected.
+
+## Design and requirements consistency
+
+PASS. The change supports the design doc's lobby role of squad management in a shared 3D space without regressing the foundational requirements: the captured run rendered a Three.js scene, connected to the server, represented two multiplayer participants, and progressed through movement/gameplay probes.
+
+## Code quality
+
+PASS. The main implementation is scoped to the client lobby/menu surface and keeps state explicit with `lobbyMenuDismissed` and `extractedLobbyOverlayActive`. The persistent lobby controls moved outside the dismissible menu, which avoids losing essential lobby actions when the large panel is hidden. I did not find dead code, a normal-gameplay regression, or a blocking console/runtime issue.
+
+## Debug scenarios
+
+No `?debugScenario=NAME` shortcut was added or changed for this ticket. Existing debug-scenario gating remains localhost-only through `debugScenarioAllowed`, and normal gameplay reaches the same lobby and booth states without debug shortcuts.
+
+## Remaining gaps
+
+None.
+
+
+## v0.302 — 305-recapture-walkable-hub-after-overlay-fix  (2026-06-06 18:39:43)
+
+### `findings.md` covers walkable presentation
+
+PASS. `game/validation/hub/findings.md` includes a dedicated walkable presentation section covering overview, operations, commerce, salon, menu dominance, and party-mate visibility, plus hub walk notes and screenshot references.
+
+## Design and foundation consistency
+
+PASS. The implementation is scoped to validation harness code and generated hub-validation artifacts; it does not alter `game/client` or `game/server` gameplay behavior. The new checks support the documented lobby/hub multiplayer flow and do not regress the requirements for 3D rendering, client-server connectivity, multiplayer visualization, or movement synchronization.
+
+## Code quality and integration
+
+PASS. The harness changes align the hub waits with the post-304 contract, add explicit walkable-presentation probes, enforce required hub artifacts, and route the ticket-305 fallback capture away from dungeon deploys. I found no dead/broken code or blocking integration issues. The only coverage artifact reports no matching test files for changed files, which is informational because thresholds are disabled.
+
+## Debug scenarios
+
+PASS. This ticket did not add or modify game debug scenarios. The generated validation artifacts use existing debug helpers for booth and telepipe validation through the harness path only; normal gameplay paths remain unchanged.
+
+## Remaining gaps
+
+None.
+
+
+## v0.303 — 303-card-balance-analysis  (2026-06-06 18:46:16)
+
+### Applied safe tunings
+
+PASS. The implementation applies only low-risk numeric stat changes in `game/shared/cardStats.json`: `saber_of_light`, `fireball`, `harvesting_scythe`, `permafrost_lance`, and `dragons_breath`. The later `excalibur_photon` revert leaves it as a written triage item, matching the ticket's requirement to avoid broader reworks.
+
+### Tests and validation
+
+PASS. The new analyzer in `game/validation/card-balance/analyzeCards.mjs` is covered by `game/server/test/card_balance_metrics.test.js`, which verifies every `cardDefs` id has stats and complete metric rows, checks key cards, documents server overlay keys, and smoke-runs the CLI. Existing tests were updated for the changed numeric values. The supplied coverage run reports 24 test files and 460 tests passing.
+
+### Design and foundation consistency
+
+PASS. The changes stay within card data, report generation, and tests; they do not alter the multiplayer lobby/dungeon flow, rendering, movement synchronization, or server-client architecture described in `game/docs/design.md` and `game/docs/requirements.md`.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change any game debug scenario implementation. Existing test use of `debugScenario` remains confined to test harness paths and does not introduce a normal-gameplay shortcut.
+
+## Remaining gaps
+
+None.
+
+
+## v0.304 — 289-card-charges-persist-on-telepipe-resume-reset-on-new-sortie  (2026-06-06 19:14:38)
+
+3. Health + magic stones persist in BOTH cases.
+
+   PASS. The restore branch does not overwrite finite `hp` or `magicStones`, and the fresh-deploy branch preserves existing finite vitals instead of resetting them. Tests exercise telepipe resume and abandon-then-new-sortie with non-default HP/MS and verify neither path resets HP to max or MS to the starting amount. This matches the ticket-287 durability rule in `game/docs/design.md`.
+
+4. Server tests covering both paths.
+
+   PASS. The changed tests include focused server coverage for telepipe-resume card-charge preservation, new-sortie charge reset after abandon, and HP/MS regression guards, plus socket integration coverage for the same two-player flows. The round-3 `coverage.log` shows the full suite passed.
+
+## Design and regression review
+
+PASS. The updated `game/docs/design.md` accurately describes the implemented telepipe suspend/resume policy: last active player extraction suspends the run, resume restores the same run/checkpoint including card charges, and Abort Sortie discards the checkpoint so the next deploy is a fresh run with reset card charges. This does not regress the foundation requirements: the captured run rendered a 3D scene, maintained a WebSocket connection, showed the player in the world, and successfully transitioned lobby -> dungeon -> suspended lobby -> resumed dungeon.
+
+## Debug scenario review
+
+PASS. The round-3 capture used the existing `telepipe-ready` debug scenario. It remains gated by the localhost-only `?debugScenario=` client path and server debug-scenario allowlist, and it does not replace the real flow: normal play still reaches the same state by deploying with a Telepipe card, placing the portal, extracting all active players, then readying from the hub to resume. The scenario only prepares a QA-friendly hand/state before normal ready-up and telepipe/resume server logic run, so it does not bypass checkpoint persistence or net-replication invariants.
+
 ## Remaining gaps
 
 None.

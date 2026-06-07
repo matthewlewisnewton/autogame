@@ -158,15 +158,20 @@ const {
   MINION_FOLLOW_DISTANCE,
   MINION_FOLLOW_SPEED,
   updateEnemies,
+  updateEnemyProjectiles,
+  spawnIceBall,
   isPlayerConcealed,
   updateMinions,
   processPendingEchoes,
   damagePlayer,
   damageMinion,
   healPlayer,
+  clearNegativeStatuses,
+  healPlayersInRadius,
   collectConeHits,
   collectRadialHits,
   collectProjectileHits,
+  collectChainLightningHits,
   collectReturningProjectileHits,
   applyFreezeInRadius,
   pullEnemiesToward,
@@ -179,6 +184,11 @@ const {
   spawnVolatileExplosion,
   updateAreaEffects,
   isEnemyFrozen,
+  applySlow,
+  isSlowed,
+  applyBurning,
+  isBurning,
+  updateBurning,
   cleanupStalePlayers,
   regenMagicStones,
   randomWanderTarget,
@@ -293,6 +303,7 @@ const {
   restoreHandCharges,
   spawnEnemy,
   spawnEnemies,
+  spawnCombatEnemies,
   updateSurviveSpawns,
   updateEncounterTriggers,
   spawnLoot,
@@ -309,17 +320,14 @@ const {
   assignRunSpawnPositions,
   stateSnapshot,
   hotStateSnapshot,
+  buildWorldSnapshot,
   checkTelepipeProximity,
-  abandonSuspendedRun,
-  captureRunCheckpoint,
-  restoreRunCheckpoint,
   suspendRunToLobby,
   maybeSuspendRun,
   tryEnterTelepipe,
   isPlayerActive,
   hasActivePlayers,
-  buildSuspendedRunSummary,
-  clearSuspendedRunData,
+  abandonSuspendedRun,
   setGameState: setProgressionGameState,
   getGameState: getProgressionGameState,
   setRebuildWallColliders: setProgressionRebuildWallColliders,
@@ -465,6 +473,8 @@ const DEBUG_SCENARIOS = new Set([
   'summon-ready',
   'summon-recall',
   'combat-damaged-player',
+  'lobby-partial-vitals',
+  'hub-med-booth-ready',
   'custom-avatar-demo',
   'avatar-proportions-demo',
   'avatar-wizard-hat',
@@ -487,8 +497,10 @@ const DEBUG_SCENARIOS = new Set([
   'extracted-in-hub',
   'suspended-run-hub',
   'sloped-dungeon',
+  'slippery-floor-lab',
   'key-item-cooldown',
   'medic-kit-ready',
+  'purifying-pulse-ready',
   'guard-block-ready',
   'flare-beacon-ready',
   'loot-magnet-ready',
@@ -502,6 +514,9 @@ const DEBUG_SCENARIOS = new Set([
   'sunken-canyon',
   'sunken-canyon-stage',
   'sunken-canyon-cliff-hazard',
+  'frost-crossing-tier-1',
+  'fire-cavern',
+  'fire-cavern-stage',
   'spire-ascent',
   'spire-ascent-stage',
   'spire-summit-beacon',
@@ -531,10 +546,14 @@ const DEBUG_SCENARIOS = new Set([
   'spire-ascent-boss-low-hp',
   'stage-boss-dormant',
   'stage-boss-active',
-  'arena-trials-near-adds',
-  'arena-trials-boss-approach',
-  'arena-trials-boss-low-hp',
   'annex-overseer-ready',
+  'field-medic',
+  'field-medic-spawn',
+  'ember-wraith',
+  'chain-lightning-ready',
+  'fireball-ready',
+  'glacial-thrower',
+  'ice-ball-ready',
 ]);
 
 // Wire debugScenarios with io, the index.js-local helpers its setup chain needs,
@@ -716,10 +735,12 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'spire-ascent-boss-low-hp',
   'stage-boss-dormant',
   'stage-boss-active',
-  'arena-trials-near-adds',
-  'arena-trials-boss-approach',
-  'arena-trials-boss-low-hp',
   'annex-overseer-ready',
+  'field-medic',
+  'field-medic-spawn',
+  'ember-wraith',
+  'slippery-floor-lab',
+  'frost-crossing-tier-1',
 ]);
 
 function shouldSkipDefaultEnemySpawn(state) {
@@ -958,6 +979,9 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
     player.z = savedData.z ?? player.z;
     player.rotation = savedData.rotation ?? player.rotation;
     player.equippedKeyItemId = savedData.equippedKeyItemId || 'dodge_roll';
+    player.hp = savedData.hp ?? player.hp;
+    player.dead = savedData.dead ?? player.dead;
+    player.magicStones = savedData.magicStones ?? player.magicStones;
   }
 
   normalizePlayerInventory(player);
@@ -1034,11 +1058,13 @@ function initializePlayerForActiveRun(player) {
     initPlayerHand(player);
   }
   player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
-  player.magicStones = STARTING_MAGIC_STONES;
+  if (!Number.isFinite(player.magicStones)) {
+    player.magicStones = STARTING_MAGIC_STONES;
+  }
   if (!player.pendingSummons) {
     player.pendingSummons = new Set();
   }
-  if (player.hp == null || player.hp <= 0) {
+  if (!Number.isFinite(player.hp)) {
     player.hp = MAX_HP;
     player.dead = false;
   }
@@ -1140,6 +1166,9 @@ function joinPlayerToLobby(socket, lobby, options = {}) {
         ? normalizeSelectedDeck(savedData.selectedDeck, player.inventory)
         : player.selectedDeck;
       player.equippedKeyItemId = savedData.equippedKeyItemId || 'dodge_roll';
+      player.hp = savedData.hp ?? player.hp;
+      player.dead = savedData.dead ?? player.dead;
+      player.magicStones = savedData.magicStones ?? player.magicStones;
     }
     normalizePlayerInventory(player);
     if (player.equippedKeyItemId == null) player.equippedKeyItemId = 'dodge_roll';
@@ -1336,7 +1365,9 @@ function runGameLoopTick() {
           checkTelepipeProximity();
           flushDirtyPlayerSaves();
           updateEnemies();
+          updateEnemyProjectiles();
           updateMinions();
+          updateBurning();
           debugScenarios.nudgeDebugBossApproachPlayers(state);
           updateEncounterTriggers();
           updateSurviveSpawns();
@@ -1363,6 +1394,20 @@ function runGameLoopTick() {
               io.to(lobby.id).emit(SERVER_TO_CLIENT.LEECH_HEAL, record);
             }
             state._pendingLeechHeals.length = 0;
+          }
+
+          if (state._pendingMedicHeals?.length) {
+            for (const record of state._pendingMedicHeals) {
+              io.to(lobby.id).emit(SERVER_TO_CLIENT.MEDIC_ALLY_HEAL, record);
+            }
+            state._pendingMedicHeals.length = 0;
+          }
+
+          if (state._pendingMedicBeads?.length) {
+            for (const record of state._pendingMedicBeads) {
+              io.to(lobby.id).emit(SERVER_TO_CLIENT.MEDIC_BEAD, record);
+            }
+            state._pendingMedicBeads.length = 0;
           }
 
           if (state._pendingShieldBreaks?.length) {
@@ -1597,12 +1642,15 @@ if (typeof module !== 'undefined' && module.exports) {
     damagePlayer,
     damageMinion,
     healPlayer,
+    clearNegativeStatuses,
+    healPlayersInRadius,
     updateEnchantments,
     spawnGroundEnchantment,
     armSelfEnchantment,
     collectConeHits,
     collectRadialHits,
     collectProjectileHits,
+    collectChainLightningHits,
     collectReturningProjectileHits,
     applyFreezeInRadius,
     pullEnemiesToward,
@@ -1615,7 +1663,14 @@ if (typeof module !== 'undefined' && module.exports) {
     spawnVolatileExplosion,
     updateAreaEffects,
     isEnemyFrozen,
+    applySlow,
+    isSlowed,
+    applyBurning,
+    isBurning,
+    updateBurning,
     updateEnemies,
+    updateEnemyProjectiles,
+    spawnIceBall,
     isPlayerConcealed,
     updateMinions,
     processPendingEchoes,
@@ -1623,6 +1678,7 @@ if (typeof module !== 'undefined' && module.exports) {
     spawnCrystals,
     spawnEnemy,
     spawnEnemies,
+    spawnCombatEnemies,
     updateSurviveSpawns,
     firstRoomPosition,
     pickFloorSpawnPosition,
@@ -1641,6 +1697,7 @@ if (typeof module !== 'undefined' && module.exports) {
     regenMagicStones,
     stateSnapshot,
     hotStateSnapshot,
+    buildWorldSnapshot,
     createRunState,
     startDungeonRun,
     recordEnemyDefeated,
@@ -1662,6 +1719,7 @@ if (typeof module !== 'undefined' && module.exports) {
     resetTransientRunState,
     returnPlayersToLobby,
     giveUpRun,
+    abandonSuspendedRun,
     previewReturnRewards,
     createPlayerProgress,
     grantCard,
@@ -1736,6 +1794,7 @@ if (typeof module !== 'undefined' && module.exports) {
     getCardSellValue,
     getCardBuyValue,
     ensureShopOffer,
+    revivePlayerInLobby,
     healAtMedic,
   buyShopCard,
     pickShopOffer,
@@ -1820,17 +1879,13 @@ if (typeof module !== 'undefined' && module.exports) {
     isValidQuestId,
     buildQuestUpdatePayload,
     checkAllReady,
-    captureRunCheckpoint,
-    restoreRunCheckpoint,
     suspendRunToLobby,
     maybeSuspendRun,
     tryEnterTelepipe,
     checkTelepipeProximity,
-    abandonSuspendedRun,
+    initializePlayerForActiveRun,
     isPlayerActive,
     hasActivePlayers,
-    buildSuspendedRunSummary,
-    clearSuspendedRunData,
     PORTAL_RADIUS,
     PORTAL_PLACEMENT_GRACE_MS,
   };

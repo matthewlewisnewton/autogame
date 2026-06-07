@@ -4,6 +4,9 @@ const CARD_DEFS = require('../shared/cardDefs.json');
 
 const TICK_RATE = 20; // times per second
 const MOVE_SPEED = 12; // units per second — maximum player movement speed (matches client terminal velocity)
+const SLIPPERY_ACCEL = 30; // units/s² — input acceleration on slippery floors (full stick)
+const SLIPPERY_FRICTION = 0.92; // per-tick velocity retention when coasting on slippery floors
+const NORMAL_STOP_FRICTION = 0; // normal floors zero horizontal velocity each tick (instant stop)
 const MAX_ELAPSED_MS = 200; // maximum milliseconds of movement granted per request (prevents teleport via large time delta)
 const INPUT_STALE_MS = 150; // stop applying stored input if no fresh move packet arrives
 const DETECTION_RADIUS = 8; // units
@@ -140,6 +143,9 @@ function runPlayerCount(gameState) {
 module.exports = {
   TICK_RATE,
   MOVE_SPEED,
+  SLIPPERY_ACCEL,
+  SLIPPERY_FRICTION,
+  NORMAL_STOP_FRICTION,
   MAX_ELAPSED_MS,
   INPUT_STALE_MS,
   DETECTION_RADIUS,

@@ -46,6 +46,28 @@
       "accent": "#6a9a6a",
       "floorRoughness": 0.85,
       "wallRoughness": 0.75
+    },
+    "ice-cavern": {
+      "floor": "#5c6b7a",
+      "stoneFloor": "#5c6b7a",
+      "iceFloor": "#c8e8f8",
+      "wall": "#6b8494",
+      "passageFloor": "#4a5f6e",
+      "passageWall": "#3d4f5c",
+      "accent": "#7dd3fc",
+      "floorRoughness": 0.45,
+      "wallRoughness": 0.6
+    },
+    "fire-cavern": {
+      "floor": "#3d2820",
+      "rimFloor": "#2a1f24",
+      "basinFloor": "#5c2818",
+      "wall": "#4a3028",
+      "passageFloor": "#352820",
+      "passageWall": "#2e221c",
+      "accent": "#e85d04",
+      "floorRoughness": 0.85,
+      "wallRoughness": 0.75
     }
   },
   "roleTints": {

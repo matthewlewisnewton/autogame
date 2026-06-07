@@ -1,0 +1,6 @@
+Wrote the final review artifacts:
+
+- `tickets/302-chain-lightning-card/round-1/review.md`
+- `tickets/302-chain-lightning-card/round-1/gaps.md`
+
+Verdict is `FAIL`. The captured game run is clean, but there is a blocking server bug: `collectChainLightningHits()` can apply half-damage chain hits from the caster when no primary full-damage target was found, violating the card’s required full-hit-then-chain behavior.

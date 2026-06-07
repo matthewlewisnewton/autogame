@@ -28,17 +28,25 @@ export async function waitForLobbyBrowser(page) {
 	});
 }
 
+/** Post-304 hub-ready contract — matches game/client/scripts/test-hub-lobby-visible.mjs. */
+function hubLobbyReadyCheck() {
+	const h = window.__AUTOGAME_HARNESS_STATE__?.();
+	const lobby = document.getElementById('lobby');
+	return h
+		&& h.phase === 'lobby'
+		&& h.hasCanvas === true
+		&& h.lobbyMenuDismissed === true
+		&& h.layout?.profile === 'hub'
+		&& h.layout?.roomCount === 3
+		&& lobby
+		&& lobby.classList.contains('hidden');
+}
+
 export async function waitForHubLobby(page) {
-	await page.waitForFunction(() => {
-		const h = window.__AUTOGAME_HARNESS_STATE__?.();
-		return h
-			&& h.phase === 'lobby'
-			&& h.hasCanvas === true
-			&& h.layout?.profile === 'hub'
-			&& h.layout?.roomCount === 3;
-	}, { timeout: 20000 }).catch(async () => {
+	await page.waitForFunction(hubLobbyReadyCheck, { timeout: 20000 }).catch(async () => {
 		const harness = await readHarness(page);
-		throw new Error(`Ship hub lobby not ready: ${JSON.stringify(harness)}`);
+		const lobbyHidden = await page.evaluate(() => document.getElementById('lobby')?.classList.contains('hidden'));
+		throw new Error(`Ship hub lobby not ready: ${JSON.stringify({ ...harness, lobbyHidden })}`);
 	});
 }
 
@@ -49,12 +57,10 @@ export async function createLobby(page, lobbyName) {
 		document.getElementById('create-lobby-btn')?.click();
 	}, lobbyName);
 
-	await page.waitForFunction(() => {
-		const lobby = document.getElementById('lobby');
-		return lobby && !lobby.classList.contains('hidden');
-	}, { timeout: 15000 }).catch(async () => {
+	await page.waitForFunction(hubLobbyReadyCheck, { timeout: 15000 }).catch(async () => {
 		const harness = await readHarness(page);
-		throw new Error(`#lobby not visible after create channel: ${JSON.stringify(harness)}`);
+		const lobbyHidden = await page.evaluate(() => document.getElementById('lobby')?.classList.contains('hidden'));
+		throw new Error(`Hub not ready after create channel: ${JSON.stringify({ ...harness, lobbyHidden })}`);
 	});
 }
 
@@ -72,12 +78,10 @@ export async function joinLobby(page, lobbyName) {
 		item?.querySelector('.join-lobby-btn[data-join-mode="join"]')?.click();
 	}, lobbyName);
 
-	await page.waitForFunction(() => {
-		const lobby = document.getElementById('lobby');
-		return lobby && !lobby.classList.contains('hidden');
-	}, { timeout: 15000 }).catch(async () => {
+	await page.waitForFunction(hubLobbyReadyCheck, { timeout: 15000 }).catch(async () => {
 		const harness = await readHarness(page);
-		throw new Error(`#lobby not visible after join: ${JSON.stringify(harness)}`);
+		const lobbyHidden = await page.evaluate(() => document.getElementById('lobby')?.classList.contains('hidden'));
+		throw new Error(`Hub not ready after join: ${JSON.stringify({ ...harness, lobbyHidden })}`);
 	});
 }
 

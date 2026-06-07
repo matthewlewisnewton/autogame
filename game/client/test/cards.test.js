@@ -189,16 +189,16 @@ describe('CARD_DEFS', () => {
 			name: 'Restoration Beacon',
 			type: 'spell',
 			effect: 'healing_font',
+			magicStoneRestore: 6,
 		});
 		expect(CARD_DEFS.divine_grace).toMatchObject({
 			id: 'divine_grace',
 			name: 'Sanctum Pulse',
 			type: 'spell',
 			effect: 'divine_grace',
-			healAmount: 38,
 			magicStoneRestore: 10,
 			isEvolved: true,
-			specialEffect: 'heal_and_mana',
+			specialEffect: 'mana_restore',
 		});
 		expect(EVOLUTION_TRANSFORMS.healing_font).toBe('divine_grace');
 		expect(CARD_DEFS.skeleton_knight).toMatchObject({
@@ -368,7 +368,8 @@ describe('card ID sets', () => {
 		expect(weaponCardIds.has('resonance_edge')).toBe(true);
 		expect(weaponCardIds.has('battle_familiar')).toBe(false);
 		expect(weaponCardIds.has('dungeon_drake')).toBe(false);
-		expect(weaponCardIds.size).toBe(16);
+		expect(weaponCardIds.has('fireball')).toBe(true);
+		expect(weaponCardIds.size).toBe(17);
 	});
 
 	it('spellCardIds contains base, evolved, and synergistic spell card IDs', () => {
@@ -379,6 +380,7 @@ describe('card ID sets', () => {
 		expect(spellCardIds.has('sacrificial_altar')).toBe(true);
 		expect(spellCardIds.has('chrono_trigger')).toBe(true);
 		expect(spellCardIds.has('frost_nova')).toBe(true);
+		expect(spellCardIds.has('ice_ball')).toBe(true);
 		expect(spellCardIds.has('glacier_collapse')).toBe(true);
 		expect(spellCardIds.has('healing_font')).toBe(true);
 		expect(spellCardIds.has('divine_grace')).toBe(true);
@@ -388,8 +390,10 @@ describe('card ID sets', () => {
 		expect(spellCardIds.has('soul_drain')).toBe(true);
 		expect(spellCardIds.has('dragons_breath')).toBe(true);
 		expect(spellCardIds.has('inferno_pillar')).toBe(true);
+		expect(spellCardIds.has('chain_lightning')).toBe(true);
+		expect(spellCardIds.has('purifying_pulse')).toBe(true);
 		expect(spellCardIds.has('iron_sword')).toBe(false);
-		expect(spellCardIds.size).toBe(18);
+		expect(spellCardIds.size).toBe(21);
 	});
 
 	it('creatureCardIds contains base, evolved, and synergistic creature card IDs', () => {
@@ -446,6 +450,13 @@ describe('card ID sets', () => {
 		expect(CARD_ACCENT_STYLE.divine_grace).toMatchObject({
 			color: '#fde68a',
 			icon: '✧',
+		});
+	});
+
+	it('CARD_ACCENT_STYLE defines icon and color for Ice Ball', () => {
+		expect(CARD_ACCENT_STYLE.ice_ball).toMatchObject({
+			color: '#67e8f9',
+			icon: '❄',
 		});
 	});
 });

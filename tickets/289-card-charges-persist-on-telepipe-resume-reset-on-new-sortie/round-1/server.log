@@ -1,0 +1,18 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/289-card-charges-persist-on-telepipe-resume-reset-on-new-sortie/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/289-card-charges-persist-on-telepipe-resume-reset-on-new-sortie/game/data
+Server listening on port 3003
+Player connected: socket=QaKXLmLPrGlcqO3_AAAB, playerId=46023064-9570-47a9-95bf-8194b9e3352f
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=b82e636d-0988-44f4-87db-9ec3ef70cca1 value=19
+[telepipe] placed at (-9.0, 27.0) by 46023064-9570-47a9-95bf-8194b9e3352f
+[telepipe] player 46023064-9570-47a9-95bf-8194b9e3352f extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault
+[loot] spawned id=3b825c3d-dc6e-40bf-9796-34380f0baa87 value=18
+[run] checkpoint restored
+Player disconnected: QaKXLmLPrGlcqO3_AAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

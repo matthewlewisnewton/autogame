@@ -7,6 +7,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { evaluateWalkablePresentation } from './lib/findingsHub.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
@@ -16,7 +17,7 @@ const HUB_REL = path.join('game', 'validation', 'hub');
 const REQUIRED_ASSERTION_KEYS = [
 	'boothDeductsGold',
 	'hatSwapFree',
-	'telepipeUpReset',
+	'telepipeVitalsPreserved',
 ];
 
 const REQUIRED_PNGS = [
@@ -85,11 +86,20 @@ function checkTelepipeRunIdSanity(summary, errors) {
 	const preId = reset.preSuspend?.runId;
 	const postId = reset.postDeploy?.runId;
 	if (preId == null || postId == null) return;
-	if (preId === postId && summary.assertions?.telepipeUpReset === true) {
+	if (preId === postId && summary.assertions?.telepipeVitalsPreserved === true) {
 		fail(
 			errors,
-			`telepipeReset runId unchanged (${preId}) while assertions.telepipeUpReset is true`,
+			`telepipeReset runId unchanged (${preId}) while assertions.telepipeVitalsPreserved is true`,
 		);
+	}
+}
+
+function checkWalkablePresentation(summary, errors) {
+	const result = evaluateWalkablePresentation(summary?.hubWalk);
+	if (!result.ok) {
+		for (const issue of result.issues) {
+			fail(errors, issue);
+		}
 	}
 }
 
@@ -131,7 +141,10 @@ function main() {
 		errors.push(`missing validation directory: ${HUB_REL}/`);
 	} else {
 		const summary = readRunSummary(errors);
-		if (summary) checkTelepipeRunIdSanity(summary, errors);
+		if (summary) {
+			checkTelepipeRunIdSanity(summary, errors);
+			checkWalkablePresentation(summary, errors);
+		}
 		checkRequiredFiles(errors);
 	}
 

@@ -38,7 +38,6 @@ function resetState() {
 	gameState.pendingTrades = {};
 	gameState.shopOffer = null;
 	gameState.telepipe = null;
-	gameState.suspendedCheckpoint = null;
 	gameState._pendingMinionBreaths = [];
 }
 

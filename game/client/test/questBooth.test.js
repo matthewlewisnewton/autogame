@@ -69,7 +69,7 @@ const MAIN_DOM_IDS = [
 	'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
 	'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 	'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
-	'quest-board', 'quest-board-wrapper', 'quest-error', 'booth-prompt', 'suspended-run-banner',
+	'quest-board', 'quest-board-wrapper', 'quest-error', 'booth-prompt', 'lobby-status-banner',
 ];
 
 function ensureElement(id, tag = 'div') {
@@ -123,6 +123,25 @@ describe('quest booth booth:action hook (main.js)', () => {
 
 	afterEach(() => {
 		vi.unstubAllGlobals();
+	});
+
+	it('shows #lobby and reveals the quest panel when the menu starts dismissed', async () => {
+		await import('../main.js');
+		const lobby = document.getElementById('lobby');
+		const wrapper = document.getElementById('quest-board-wrapper');
+		wrapper.scrollIntoView = vi.fn();
+
+		window.__setGameState({ gamePhase: 'lobby', players: { p1: {} } }, 'p1');
+		window.dismissGameLobby();
+		expect(lobby.classList.contains('hidden')).toBe(true);
+		expect(window.__getLobbyMenuDismissed()).toBe(true);
+
+		dispatchBoothAction({ boothId: 'quest' });
+
+		expect(lobby.classList.contains('hidden')).toBe(false);
+		expect(window.__getLobbyMenuDismissed()).toBe(false);
+		expect(wrapper.classList.contains('hidden')).toBe(false);
+		expect(wrapper.scrollIntoView).toHaveBeenCalledTimes(1);
 	});
 
 	it('reveals and scrolls the quest panel into view for boothId quest in lobby and ignores other booths', async () => {

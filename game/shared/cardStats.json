@@ -4,7 +4,9 @@
   "battle_familiar": { "magicStoneCost": 50, "damage": 44 },
   "dungeon_drake": {
     "minionTtl": 30,
-    "attackDamage": 3,
+    "attackDamage": 2,
+    "burnDurationMs": 2000,
+    "specialEffect": "burning_breath",
     "breathRange": 6,
     "breathHoldDistance": 3.5,
     "breathDurationMs": 2000,
@@ -91,7 +93,7 @@
     "pulseIntervalMs": 2000
   },
   "harvesting_scythe": {
-    "damage": 9,
+    "damage": 12,
     "magicStoneOnHit": 5,
     "magicStoneOnKill": 15
   },
@@ -121,7 +123,7 @@
     "adjacentChargeRestore": 2
   },
   "saber_of_light": {
-    "damage": 9,
+    "damage": 12,
     "cooldownMs": 400,
     "specialEffect": "swift_slash"
   },
@@ -153,6 +155,23 @@
     "specialEffect": "long_range",
     "projectile": { "pierces": true }
   },
+  "fireball": {
+    "damage": 18,
+    "attackRange": 9,
+    "effect": "fireball",
+    "specialEffect": "burning",
+    "burningDurationMs": 3000,
+    "projectile": { "pierces": true }
+  },
+  "chain_lightning": {
+    "magicStoneCost": 42,
+    "effect": "chain_lightning",
+    "damage": 22,
+    "attackRange": 9,
+    "chainRadius": 5,
+    "maxChainTargets": 2,
+    "specialEffect": "chain_lightning"
+  },
   "frost_nova": {
     "magicStoneCost": 35,
     "effect": "frost_nova",
@@ -163,10 +182,21 @@
   "permafrost_lance": {
     "magicStoneCost": 30,
     "effect": "frost_nova",
-    "damage": 8,
+    "damage": 11,
     "radius": 6,
     "freezeDurationMs": 2000,
     "specialEffect": "freeze"
+  },
+  "ice_ball": {
+    "magicStoneCost": 32,
+    "effect": "ice_ball",
+    "damage": 12,
+    "attackRange": 9,
+    "specialEffect": "slow",
+    "slowDurationMs": 3000,
+    "slowFactor": 0.5,
+    "slowChance": 0.5,
+    "projectileTravelMs": 1200
   },
   "glacier_collapse": {
     "magicStoneCost": 35,
@@ -180,16 +210,22 @@
   "healing_font": {
     "magicStoneCost": 0,
     "effect": "healing_font",
-    "healAmount": 25,
-    "specialEffect": "heal"
+    "magicStoneRestore": 6,
+    "specialEffect": "mana_restore"
+  },
+  "purifying_pulse": {
+    "magicStoneCost": 0,
+    "effect": "purifying_pulse",
+    "healAmount": 15,
+    "radius": 5.5,
+    "specialEffect": "heal_and_cleanse"
   },
   "divine_grace": {
     "magicStoneCost": 0,
     "effect": "divine_grace",
-    "healAmount": 38,
     "magicStoneRestore": 10,
     "isEvolved": true,
-    "specialEffect": "heal_and_mana"
+    "specialEffect": "mana_restore"
   },
   "skeleton_knight": {
     "minionHp": 120,
@@ -267,15 +303,13 @@
     "magicStoneCost": 30,
     "damage": 42,
     "magicStoneOnHit": 12,
-    "healOnHit": 4,
-    "healOnKill": 8,
     "isEvolved": true,
     "specialEffect": "soul_drain"
   },
   "dragons_breath": {
     "magicStoneCost": 40,
     "effect": "dragons_breath",
-    "damage": 9,
+    "damage": 13,
     "dotTicks": 4,
     "dotIntervalMs": 500,
     "attackRange": 7,

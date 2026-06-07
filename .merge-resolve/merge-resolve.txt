@@ -1,18 +1,18 @@
-All three conflicted files are resolved and marker-free. Summary of the merge:
+All conflict markers are removed. Summary of how each file was merged:
 
-### `TASKS.md`
-Kept all cleanup backlog entries from both sides: ship-hub plus open-plaza, sunken-canyon, spire-ascent, and the driver-output-quality ticket.
+### Code
+- **`game/client/main.js`** — Kept ticket 288’s `if (lobbyEl)` null guard and main’s `setLobbyHudVisible(false)` (overlay-fix from #304).
+- **`harness/validate/playthrough.mjs`** — Combined both flows:
+  - Proximity assertion + `dismissLobbyOverlay()` before screenshots (288)
+  - `requireWalkableHubPresentation()` probes and `walkablePresentation` in the return value (305/main)
 
-### `LOGBOOK.md`
-Combined both histories: v0.283 ship-hub validation (ticket 281) at the top, followed by main’s v0.275–v0.281 entries in order, with a single “Remaining gaps: None” footer.
+### Validation artifacts
+- **`findings.md`**, **`probes.json`**, **`run-summary.json`** — Merged:
+  - Ticket 288 hub-walk run metadata (lobby names, ports)
+  - Main telepipe vitals (`telepipeVitalsPreserved`) and walkable-presentation probes
+- **PNG screenshots** — Kept ticket 288’s regenerated captures (overlay dismissed)
 
-### `harness/validate/playthrough.mjs`
-Merged both drivers into one coherent script:
+### Docs
+- **`LOGBOOK.md`** — Prepended v0.305 (288) entry before main’s v0.287–v0.304 entries
 
-- **Presets**: `rooms`, `hub`, `open-plaza`, `spire-ascent`, `sunken-canyon`
-- **Hub ticket behavior**: hub-walk, booth, telepipe-reset steps; lobby-finder probes; `renderHubFindings`; hub-specific screenshots and assertions
-- **Main ticket behavior**: stage presets with configurable `addTypes`; floor-alignment probes; preset-aware findings (`findingsTitle`, `bossSpawnLabel`, `bossType`)
-- **Routing**: `STAGE_PRESETS` so open-plaza/spire-ascent/sunken-canyon run the full stage playthrough path (not only `rooms`)
-- **Output dirs**: `game/validation/<preset>/` for all presets including hub
-
-Syntax check and `--help` both pass. The harness can commit and finish the merge.
+The harness can commit and finish the merge when ready.

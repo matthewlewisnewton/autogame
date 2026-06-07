@@ -160,6 +160,15 @@ export const MAX_ELAPSED_MS = 200;
 /** Simulation tick rate (Hz) — must match server TICK_RATE */
 export const TICK_RATE = 20;
 
+/** Slippery-floor input acceleration (units/s²) — matches server SLIPPERY_ACCEL */
+export const SLIPPERY_ACCEL = 30;
+
+/** Slippery-floor coasting retention per tick — matches server SLIPPERY_FRICTION */
+export const SLIPPERY_FRICTION = 0.92;
+
+/** Normal-floor velocity retention per tick — matches server NORMAL_STOP_FRICTION */
+export const NORMAL_STOP_FRICTION = 0;
+
 // ── Dungeon ──
 
 /** Width of passage corridors (matches server constant) */
@@ -183,6 +192,7 @@ export const SOUND_CONFIG = {
 	failure:          { notes: [{ freq: 400, duration: 0.2, gain: 0.3 }, { freq: 250, duration: 0.2, gain: 0.3 }] },
 	volatileExplosion: { freq: 80, duration: 0.5, gain: 0.25 },
 	leechHeal:        { freq: 900, duration: 0.2, gain: 0.2 },
+	heal:             { notes: [{ freq: 520, duration: 0.12, gain: 0.25 }, { freq: 780, duration: 0.15, gain: 0.22 }] },
 	shieldBreak:      { freq: 150, duration: 0.15, gain: 0.35 },
 };
 

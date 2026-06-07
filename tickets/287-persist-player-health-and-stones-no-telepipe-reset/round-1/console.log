@@ -1,0 +1,8 @@
+[A:debug] [vite] connecting...
+[A:debug] [vite] connected.
+[A:error] Failed to load resource: the server responded with a status of 409 (Conflict)
+[A:log] [initScene] Initializing Three.js scene...
+[A:log] [debugScenario] applied telepipe-ready
+[A:log] [launchBooth] ready-up via booth
+[A:log] [launchBooth] ready-up via booth
+[capture:error] Telepipe run-preservation assertion failed: pre-suspend enemy id(s) missing after resume: ae7c8343-4b09-4824-8460-f77d6037c56f, 32dccdcc-4e1f-4e40-b249-f3c2bbb7ea21, 94f85dc2-8dd5-425e-a8f3-3f3fb7ad0181, 5b197b45-c900-49ca-a665-6e09cde5d3f7, 2fdb8a2a-c339-464c-a043-31ac3ff69502; restore conjured non-spawner enemy id(s): 9836825c-7614-4688-8025-561af3590133, 3bf98673-3451-4ca9-86f2-28cacae27356, 0356ecde-f652-49c5-9428-6e2310d7af43, 023a63d3-a403-419d-9cf8-6435c744dbf2, 2fab9b1e-8bf6-4069-8a3a-f24f88af7673; suspended objective was not captured before assertRunPreserved

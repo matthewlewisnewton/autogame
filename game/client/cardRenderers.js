@@ -14,8 +14,12 @@
 //   spawnAttackEffect(origin, direction, style?)
 //   spawnSummonEffect(origin, radius, styleOrColor?)
 //   spawnDivineGraceEffect(origin, radius)
+//   spawnPurifyingPulseHealRing(origin, radius)
+//   spawnCleanseBurstEffect(origin)
+//   spawnPurifyingPulseEffect(origin, radius)
 //   spawnInfernoPillarEffect(origin, radius)
 //   spawnChainLightningEffect(origin, direction)
+//   spawnLightningArc(from, to, style?)
 //   flashMesh(mesh, color, durationMs)
 //   enemyMeshes()      → { [enemyId]: Three.js mesh }
 //   playSound(name)
@@ -113,12 +117,23 @@ function renderGlacierCollapse(data, ctx) {
 }
 
 /**
- * Divine Grace: heal ring + loot sound when the caster gained Magic Stones.
+ * Restoration Beacon / Sanctum Pulse: MS restore ring + loot sound when stones gained.
  */
-function renderDivineGrace(data, ctx) {
+function renderManaRestore(data, ctx) {
 	if (data.radius === undefined) return;
 	ctx.spawnDivineGraceEffect(originOf(data), data.radius);
-	if (data.magicStonesGained > 0) ctx.playSound('loot');
+	if (data.magicStonesGained > 0 && data.playerId === ctx.myId) ctx.playSound('loot');
+}
+
+/**
+ * Purifying Pulse: mint AoE heal ring plus a white/teal cleanse sparkle burst.
+ */
+function renderPurifyingPulse(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	ctx.spawnPurifyingPulseHealRing(origin, data.radius);
+	ctx.spawnCleanseBurstEffect(origin);
+	ctx.playSound('heal');
 }
 
 /**
@@ -152,6 +167,27 @@ function renderUndeadCommander(data, ctx) {
 	}
 }
 
+const CHAIN_LIGHTNING_ARC_STYLE = { color: 0x38bdf8, emissive: 0x0ea5e9 };
+
+function spawnChainSegmentArcs(data, ctx) {
+	const segments = data.chainSegments;
+	if (!segments || segments.length === 0) return false;
+	for (const seg of segments) {
+		ctx.spawnLightningArc(seg.from, seg.to, CHAIN_LIGHTNING_ARC_STYLE);
+	}
+	return true;
+}
+
+/**
+ * Voltaic Chain spell: one cyan arc per server chain segment, or a legacy
+ * directional bolt when segments are absent.
+ */
+function renderChainLightningArcs(data, ctx) {
+	if (spawnChainSegmentArcs(data, ctx)) return;
+	if (!data.origin) return;
+	ctx.spawnChainLightningEffect(data.origin, directionOf(data));
+}
+
 /**
  * Thunderbird (chain_lightning): zap effect on origin, an enemy-hit cue, and
  * a follow-up attack flash. Triggered by specialEffect rather than cardId so
@@ -159,7 +195,9 @@ function renderUndeadCommander(data, ctx) {
  */
 function renderChainLightning(data, ctx) {
 	if (!data.origin) return;
-	ctx.spawnChainLightningEffect(data.origin, { x: 1, z: 0 });
+	if (!spawnChainSegmentArcs(data, ctx)) {
+		ctx.spawnChainLightningEffect(data.origin, { x: 1, z: 0 });
+	}
 	ctx.playSound('enemyHit');
 	ctx.spawnAttackEffect(data.origin, directionOf(data));
 }
@@ -199,6 +237,39 @@ function renderWyrmAttack(data, ctx) {
 			{ color, emissive, count: 5, spread: 0.55 },
 		);
 	}
+}
+
+/**
+ * Fireball: a fiery sphere projectile that travels from the caster along the
+ * cast direction. Distinct from the plain `projectile` visual via the warm
+ * fire palette in the renderer's `fireball` branch. Burning-on-hit visuals are
+ * driven separately by the broadcast `burningUntil` state, not here.
+ */
+function renderFireball(data, ctx) {
+	if (!data.origin) return;
+	const accentHex = getAccentHex(data.cardId);
+	ctx.spawnAttackEffect(originOf(data), directionOf(data), {
+		effect: 'fireball',
+		range: data.attackRange,
+		color: accentHex ?? 0xff7a18,
+		emissive: 0xff3b00,
+	});
+}
+
+/**
+ * Ice Ball: a slow-moving icy sphere projectile. Slow-on-hit visuals are
+ * driven separately by the broadcast `slowedUntil` state, not here.
+ */
+function renderIceBall(data, ctx) {
+	if (!data.origin) return;
+	const accentHex = getAccentHex(data.cardId);
+	ctx.spawnAttackEffect(originOf(data), directionOf(data), {
+		effect: 'ice_ball',
+		range: data.attackRange,
+		projectileTravelMs: data.projectileTravelMs,
+		color: accentHex ?? 0x67e8f9,
+		emissive: 0x38bdf8,
+	});
 }
 
 /**
@@ -265,10 +336,15 @@ function renderTelepipe(data, ctx) {
 const CARD_RENDERERS = {
 	// Weapons
 	infinite_disk: renderTripleReturning,
+	fireball: renderFireball,
 
 	// Spells
+	chain_lightning: renderChainLightningArcs,
+	ice_ball: renderIceBall,
 	glacier_collapse: renderGlacierCollapse,
-	divine_grace: renderDivineGrace,
+	healing_font: renderManaRestore,
+	divine_grace: renderManaRestore,
+	purifying_pulse: renderPurifyingPulse,
 	event_horizon: renderEventHorizon,
 	inferno_pillar: [renderInfernoPillar, renderGenericSpellBurst],
 	telepipe: renderTelepipe,
@@ -378,10 +454,6 @@ export function renderCardUsed(data, ctx) {
 	}
 
 	renderEnchantmentTrigger(data, ctx);
-
-	if (data.hpHealed > 0 && data.playerId === ctx.myId) {
-		ctx.playSound('loot');
-	}
 
 	const accentHex = getAccentHex(data.cardId);
 	applyShockwave(data, ctx, accentHex);

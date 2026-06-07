@@ -1,0 +1,13 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/295-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/295-fire-level/game/data
+Server listening on port 3004
+Player connected: socket=2t0wKsWWteb8er1yAAAB, playerId=d9fc1ab3-c571-4890-97f6-5f4068547653
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=Y2NkKXFKWunEV8KFAAAD, playerId=6102721f-8008-420e-b337-94145a990bc2
+Player disconnected: 2t0wKsWWteb8er1yAAAB
+Player disconnected: Y2NkKXFKWunEV8KFAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

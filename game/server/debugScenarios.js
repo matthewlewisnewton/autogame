@@ -18,7 +18,7 @@ const { SERVER_TO_CLIENT } = require('../shared/events.js');
 const crypto = require('crypto');
 const { generateLayout, questLayoutSeed, sampleFloorY, resolveFloorY } = require('./dungeon');
 const { DEFAULT_QUEST_ID, getLayoutProfileForQuest, buildQuestUpdatePayload } = require('./quests');
-const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS } = require('./config');
+const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS, MEDIC_HEAL_COST } = require('./config');
 const {
   firstRoomPosition,
   computeDungeonBounds,
@@ -78,6 +78,40 @@ function setCallbacks(deps) {
   broadcastLobbyUpdate = deps.broadcastLobbyUpdate;
   emitQuestPayloadToLobby = deps.emitQuestPayloadToLobby;
   DEBUG_SCENARIOS = deps.DEBUG_SCENARIOS;
+}
+
+function setupFrostCrossingTier1Deploy(lobby, state, player) {
+  const questId = 'frost_crossing';
+  const tier = 1;
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+
+  player.ready = true;
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  const startSpawn = firstRoomPosition();
+  player.x = startSpawn.x;
+  player.z = startSpawn.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+  enterPlayingPhase(lobby);
+
+  if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+    createDrawDeckFromSelectedDeck(player);
+    initPlayerHand(player);
+    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+    if (!player.pendingSummons) {
+      player.pendingSummons = new Set();
+    }
+  }
+
+  state.enemies = [];
+  state.loot = [];
+  delete state.run;
+  delete state._pendingEncounterBossId;
+  spawnEnemies();
+  startDungeonRun();
 }
 
 function setupArenaTrialsTier2StageBossDebug(lobby, state, player) {
@@ -247,6 +281,30 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       return { ok: true, scenario: name };
+    }
+
+    if (name === 'lobby-partial-vitals') {
+      // Lobby after a prior run with reduced HP and spent magic stones, ready to
+      // redeploy. The same state is reachable normally by finishing or abandoning
+      // a run and returning to the hub with partial vitals.
+      setPhase(lobby, PHASES.LOBBY);
+      player.ready = false;
+      player.hp = 42;
+      player.magicStones = 15;
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name, hp: player.hp, magicStones: player.magicStones };
+    }
+
+    if (name === 'hub-med-booth-ready') {
+      // Hub lobby with partial HP and enough currency for the Medic station.
+      // The same state is reachable by returning from a damaged run with earned gold.
+      setPhase(lobby, PHASES.LOBBY);
+      delete state.run;
+      player.ready = false;
+      player.hp = 42;
+      player.currency = Math.max(player.currency || 0, MEDIC_HEAL_COST + 15);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name, hp: player.hp, currency: player.currency };
     }
 
     if (name === 'hat-shop-currency') {
@@ -513,128 +571,6 @@ function applyDebugScenario(socket, name) {
       };
     }
 
-    if (name === 'arena-trials-near-adds') {
-      // Reposition beside live Arena Trials Tier 2 adds for harness add-combat QA.
-      // Reachable normally by pulling wandering adds together on the open plaza.
-      if (state.gamePhase !== 'playing'
-        || state.selectedQuestId !== 'arena_trials'
-        || state.selectedQuestTier !== 2
-        || !state.run?.encounter) {
-        return { ok: false, reason: 'Requires arena_trials Tier 2 stage-boss run' };
-      }
-      const adds = liveArenaTrialsAdds(state);
-      if (adds.length === 0) {
-        return { ok: false, reason: 'No live adds to approach' };
-      }
-      let nearest = adds[0];
-      let bestDist = Infinity;
-      for (const add of adds) {
-        const dist = Math.hypot(add.x - player.x, add.z - player.z);
-        if (dist < bestDist) {
-          bestDist = dist;
-          nearest = add;
-        }
-      }
-      player.hp = MAX_HP;
-      player.magicStones = MAX_MAGIC_STONES;
-      player.hand[0] = {
-        id: 'iron_sword',
-        name: 'Rust-Forged Saber',
-        type: 'weapon',
-        damage: 17,
-        charges: 5,
-        remainingCharges: 5,
-        grind: 0,
-      };
-      // Cluster away from arena_dais so add combat does not walk into the boss trigger.
-      const dais = resolveArenaDaisAnchor(state);
-      const clusterAnchor = { x: dais.x - 12, z: dais.z - 12 };
-      const clusterRadius = 4;
-      let angle = 0;
-      const step = adds.length > 0 ? (Math.PI * 2) / adds.length : 0;
-      for (const add of adds) {
-        add.hp = 1;
-        add.shieldHp = 0;
-        add.maxShieldHp = 0;
-        add.x = clusterAnchor.x + Math.cos(angle) * clusterRadius;
-        add.z = clusterAnchor.z + Math.sin(angle) * clusterRadius;
-        add.wanderTarget = { x: add.x, z: add.z };
-        angle += step;
-      }
-      player.x = clusterAnchor.x;
-      player.z = clusterAnchor.z;
-      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      repositionNearEnemy(player, nearest);
-      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-      return { ok: true, scenario: name };
-    }
-
-    if (name === 'arena-trials-boss-approach') {
-      // Place the player just outside the dormant arena_champion trigger after adds are cleared.
-      // Reachable normally by defeating adds then walking to the arena_dais boss.
-      if (state.gamePhase !== 'playing'
-        || state.selectedQuestId !== 'arena_trials'
-        || state.selectedQuestTier !== 2
-        || !state.run?.encounter) {
-        return { ok: false, reason: 'Requires arena_trials Tier 2 stage-boss run' };
-      }
-      if (liveArenaTrialsAdds(state).length > 0) {
-        return { ok: false, reason: 'Adds must be cleared before boss approach' };
-      }
-      if (state.run.encounter.phase !== 'dormant') {
-        return { ok: false, reason: 'Encounter must be dormant' };
-      }
-      const anchor = resolveArenaDaisAnchor(state);
-      player.hp = MAX_HP;
-      player.magicStones = MAX_MAGIC_STONES;
-      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 1;
-      player.z = anchor.z;
-      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      player.debugScenarioNudgeAfter = Date.now() + 1500;
-      broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-      return { ok: true, scenario: name };
-    }
-
-    if (name === 'arena-trials-boss-low-hp') {
-      // Arena Trials Tier 2 arena_champion beside the player at 1 HP for fast harness victory.
-      // Reachable normally by clearing adds and engaging the boss; shortcut after deploy.
-      if (state.gamePhase !== 'playing'
-        || state.selectedQuestId !== 'arena_trials'
-        || state.selectedQuestTier !== 2
-        || !state.run?.encounter) {
-        return { ok: false, reason: 'Requires arena_trials Tier 2 stage-boss run' };
-      }
-      const bossId = state.run.encounter.bossEnemyId;
-      for (const enemy of state.enemies || []) {
-        if (enemy.id !== bossId) enemy.hp = 0;
-      }
-      state.enemies = (state.enemies || []).filter((e) => e.hp > 0);
-      const boss = state.enemies.find((e) => e.id === bossId);
-      if (!boss || boss.type !== 'arena_champion') {
-        return { ok: false, reason: 'Arena champion boss not found' };
-      }
-      player.hp = MAX_HP;
-      player.magicStones = MAX_MAGIC_STONES;
-      repositionNearEnemy(player, boss, 4);
-      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      boss.hp = 1;
-      boss.maxHp = boss.maxHp || boss.hp;
-      boss.shieldHp = 0;
-      boss.maxShieldHp = 0;
-      if (isEncounterDormant(state.run)) {
-        activateEncounter(state.run);
-      }
-      if (!state.run.encounter.locked) {
-        lockEncounter(state.run);
-      }
-      broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-      return { ok: true, scenario: name };
-    }
-
     if (name === 'stage-boss-dormant') {
       // arena_trials Tier 2 stage_boss encounter left dormant for QA.
       // Reachable normally by unlocking Arena Trials Tier 2 and deploying.
@@ -799,6 +735,26 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
+    if (name === 'frost-crossing-tier-1') {
+      // frost_crossing Tier 1 with ice-cavern layout and defeat_enemies objective.
+      // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
+      // snapshots the correct run.questTier/objective. Reachable normally by selecting
+      // Frost Crossing and deploying; this scenario is a shortcut into that state.
+      setupFrostCrossingTier1Deploy(lobby, state, player);
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
     if (name === 'crystal-rescue-tier-2') {
       // crystal_rescue Tier 2 with rigid open layout, prism collect_items objective,
       // and cover/platform/hazard-aware spawns. Quest/tier and layout must be set
@@ -846,6 +802,56 @@ function applyDebugScenario(socket, name) {
         ok: true,
         scenario: name,
         unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
+    if (name === 'fire-cavern') {
+      // ember_descent Tier 1 with fire-cavern layout and rim spawn.
+      // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
+      // snapshots the correct run.questTier/objective and spawnEnemy variant rolls.
+      // Reachable normally by selecting Ember Descent tier 1 and deploying;
+      // this scenario is a shortcut into that state.
+      const questId = 'ember_descent';
+      const tier = 1;
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+
+      player.ready = true;
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const rimSpawn = firstRoomPosition();
+      player.x = rimSpawn.x;
+      player.z = rimSpawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      enterPlayingPhase(lobby);
+
+      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+        createDrawDeckFromSelectedDeck(player);
+        initPlayerHand(player);
+        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+        if (!player.pendingSummons) {
+          player.pendingSummons = new Set();
+        }
+      }
+
+      state.enemies = [];
+      state.loot = [];
+      delete state.run;
+      delete state._pendingEncounterBossId;
+      spawnEnemies();
+      startDungeonRun();
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
       };
     }
 
@@ -1256,6 +1262,35 @@ function applyDebugScenario(socket, name) {
       state.selectedQuestId = 'crystal_rescue';
     }
 
+    if (name === 'slippery-floor-lab') {
+      // Frost Crossing tier 1 deploy, then seat the player on a production slippery
+      // ice room for momentum physics QA. Reachable normally by deploying Frost
+      // Crossing and walking onto the ice band.
+      setupFrostCrossingTier1Deploy(lobby, state, player);
+
+      const slipperyRoom = state.layout.rooms.find((r) => r.floorSurface === 'slippery')
+        || state.layout.rooms.find((r) => r.band === 'ice');
+      if (slipperyRoom) {
+        player.x = slipperyRoom.x;
+        player.z = slipperyRoom.z;
+        player.vx = 0;
+        player.vz = 0;
+        player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      }
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
     player.ready = true;
     player.x = spawn.x;
     player.z = spawn.z;
@@ -1359,39 +1394,13 @@ function applyDebugScenario(socket, name) {
       player.inputDx = 0;
       player.inputDz = 0;
     } else if (name === 'suspended-run-hub') {
-      // Stand in the walkable hub on top of a suspended run so the distinct
-      // Resume affordance (vs. the new-mission Deploy) can be verified without
-      // playing a full run then extracting the whole squad through a Telepipe.
-      // We spend magic stones, drain a hand card's charges, and advance the
-      // objective before capturing the checkpoint so the resume round-trip has
-      // visibly non-default values to preserve. The SAME suspended-lobby state
-      // is reachable normally by deploying, placing a Telepipe, and extracting
-      // every squadmate through it, which suspends the run to the hub.
-      player.hp = MAX_HP;
-      // A clearly-spent stone count (well under the run-start total) so resume
-      // visibly preserves the partial bar rather than refilling it.
+      // Stand in the walkable hub after the whole squad extracted through a
+      // Telepipe, with durable hp/magicStones but no in-progress run. Spend
+      // magic stones before the hub return so redeploy visibly preserves vitals.
+      // The same state is reachable by deploying, placing a Telepipe, and
+      // extracting every squadmate through it.
+      player.hp = 42;
       player.magicStones = 15;
-      const weaponSlot = player.hand.findIndex(c => c && c.type === 'weapon');
-      if (weaponSlot >= 0) {
-        const card = player.hand[weaponSlot];
-        card.charges = card.charges ?? 5;
-        card.remainingCharges = Math.max(1, Math.min(2, card.charges - 1));
-      } else {
-        const replaceSlot = player.hand.findIndex(c => c);
-        if (replaceSlot >= 0) {
-          player.hand[replaceSlot] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', damage: 17, charges: 5, remainingCharges: 2 };
-        }
-      }
-      const objective = state.run && state.run.objective;
-      if (objective) {
-        if (objective.type === 'defeat_enemies' && objective.totalEnemies > 1) {
-          objective.defeatedEnemies = 1;
-        } else if (objective.type === 'collect_items' && objective.totalItems > 1) {
-          objective.collectedItems = 1;
-        }
-      }
-      // Capture the checkpoint and drop the squad into the hub lobby with the
-      // suspended-run banner + Resume control showing.
       suspendRunToLobby();
       return { ok: true, scenario: name };
     } else if (name === 'deck-viewer-instances') {
@@ -1483,6 +1492,45 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       const overseer = spawnEnemy(player.x + 4, player.z, 'annex_overseer');
       overseer.wanderTarget = { x: overseer.x, z: overseer.z };
+    } else if (name === 'field-medic') {
+      // Field Medic with a wounded grunt ally for heal/flee/bead QA. Same enemies
+      // are reachable on tier-2 runs with tier2EnemyPool; this is a shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const medic = spawnEnemy(player.x + 3, player.z, 'field_medic');
+      const grunt = spawnEnemy(player.x + 1, player.z + 2, 'grunt');
+      grunt.hp = Math.max(1, Math.floor(grunt.maxHp * 0.4));
+      medic.wanderTarget = { x: medic.x, z: medic.z };
+      grunt.wanderTarget = { x: grunt.x, z: grunt.z };
+    } else if (name === 'field-medic-spawn') {
+      // Spawn a Field Medic beside the player for tier-2 rare-spawn QA. The same
+      // enemy type is reachable normally on tier-2 runs for quests with
+      // tier2EnemyPool (e.g. crystal_rescue); this is a deterministic shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const medic = spawnEnemy(player.x + 4, player.z, 'field_medic');
+      medic.wanderTarget = { x: medic.x, z: medic.z };
+    } else if (name === 'glacial-thrower') {
+      // Spawn a Glacial Thrower in front of the player so QA can watch it lob a
+      // slow giant ice ball, see the projectile travel, and take the SLOW + damage
+      // on contact. The same enemy is reachable normally on Frost Crossing runs
+      // (it is in that quest's enemyPool); this is a deterministic shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      state.iceBalls = [];
+      const thrower = spawnEnemy(player.x + 6, player.z, 'glacial_thrower');
+      thrower.wanderTarget = { x: thrower.x, z: thrower.z };
+    } else if (name === 'ember-wraith') {
+      // One Ember Wraith in cone-strike range for burning-on-hit QA. The same
+      // enemy is reachable on ember_descent runs (or via fire-cavern); shortcut only.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const wraith = spawnEnemy(player.x + 3, player.z, 'ember_wraith');
+      wraith.wanderTarget = { x: wraith.x, z: wraith.z };
     } else if (name === 'variant-enemy') {
       // Spawn one variant ("elite") enemy beside a plain one of the same type so
       // the client variant marker can be verified side-by-side. The same state is
@@ -1639,7 +1687,8 @@ function applyDebugScenario(socket, name) {
         breathRange: 6,
         breathHoldDistance: 3.5,
         breathConeAngle: Math.PI / 4,
-        breathDamage: 3,
+        breathDamage: 2,
+        burnDurationMs: 2000,
         breathDurationMs: 2000,
         breathTickMs: 500,
         breathIntervalMs: 2500,
@@ -1748,6 +1797,27 @@ function applyDebugScenario(socket, name) {
       const seed = state.layoutSeed || 42;
       state.layoutSeed = seed;
       state.layout = generateLayout(seed, 'sunken-canyon');
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      rebuildWallColliders();
+      const startRoom = state.layout.rooms.find(r => r.role === 'start');
+      if (startRoom) {
+        player.x = startRoom.x;
+        player.z = startRoom.z;
+      }
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'fire-cavern-stage') {
+      // Load the fire-cavern stage layout for client render / collision QA.
+      // Same profile as generateLayout(seed, 'fire-cavern').
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const seed = state.layoutSeed || 42;
+      state.layoutSeed = seed;
+      state.layout = generateLayout(seed, 'fire-cavern');
       state.dungeonBounds = computeDungeonBounds(state.layout);
       state.walkableAABBs = computeWalkableAABBs(state.layout);
       rebuildWallColliders();
@@ -1955,11 +2025,35 @@ function applyDebugScenario(socket, name) {
       player.equippedKeyItemId = 'dodge_roll';
       player.keyItemCooldownUntil = Date.now() + 5000; // 5-second cooldown remaining
     } else if (name === 'medic-kit-ready') {
-      // Put player at low HP with some MS to test Field Medic Kit healing.
+      // Put player at low HP with low MS to test Field Medic Kit MS restore.
       player.hp = Math.floor(MAX_HP * 0.3);
       player.magicStones = 5;
       player.equippedKeyItemId = 'field_medic_kit';
       player.keyItemCooldownUntil = 0;
+    } else if (name === 'purifying-pulse-ready') {
+      // Low-HP player with Purifying Pulse in hand and active negative statuses.
+      // Same state is reachable by earning the reward card deep in a dungeon run
+      // and casting while slowed, burning, or debuffed.
+      const statusNow = Date.now();
+      player.hp = Math.floor(MAX_HP * 0.4);
+      player.magicStones = MAX_MAGIC_STONES;
+      player.slowedUntil = statusNow + 5000;
+      player.slowFactor = 0.5;
+      player.burningUntil = statusNow + 5000;
+      player.lastBurnTickAt = statusNow;
+      player.debuffs = [{ type: 'slow', expiresAt: statusNow + 5000 }];
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'purifying_pulse',
+          name: 'Purifying Pulse',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+          magicStoneCost: 0,
+          specialEffect: 'heal_and_cleanse',
+        };
+      }
     } else if (name === 'guard-block-ready') {
       // Put player at low HP with guard_block equipped and no cooldown to test blocking.
       player.hp = Math.floor(MAX_HP * 0.5);
@@ -2075,6 +2169,89 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       const grunt = spawnEnemy(player.x + 4, player.z, 'grunt');
       grunt.wanderTarget = { x: grunt.x, z: grunt.z };
+    } else if (name === 'chain-lightning-ready') {
+      // Playing phase with Voltaic Chain in hand, full Magic Stones, and three
+      // grunts lined up along +X so a cast chains primary → two half-damage hops.
+      // Same state is reachable by earning the reward card and entering combat.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'chain_lightning',
+          name: 'Voltaic Chain',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      state.enemies = [];
+      const primary = spawnEnemy(player.x + 5, player.z, 'grunt');
+      primary.hp = 80;
+      primary.maxHp = 80;
+      primary.wanderTarget = { x: primary.x, z: primary.z };
+      const chain1 = spawnEnemy(player.x + 8, player.z, 'grunt');
+      chain1.hp = 80;
+      chain1.maxHp = 80;
+      chain1.wanderTarget = { x: chain1.x, z: chain1.z };
+      const chain2 = spawnEnemy(player.x + 11, player.z, 'grunt');
+      chain2.hp = 80;
+      chain2.maxHp = 80;
+      chain2.wanderTarget = { x: chain2.x, z: chain2.z };
+    } else if (name === 'fireball-ready') {
+      // Playing phase with Fireball in hand, full Magic Stones, and two grunts
+      // lined up along +X so a single cast pierces both, deals impact damage,
+      // and leaves them BURNING (visible damage-over-time afterward). The same
+      // state is reachable normally by earning the reward card and entering combat.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'fireball',
+          name: 'Fireball',
+          type: 'weapon',
+          charges: 4,
+          remainingCharges: 4,
+        };
+      }
+      state.enemies = [];
+      const near = spawnEnemy(player.x + 4, player.z, 'grunt');
+      near.hp = 80;
+      near.maxHp = 80;
+      near.wanderTarget = { x: near.x, z: near.z };
+      const far = spawnEnemy(player.x + 7, player.z, 'grunt');
+      far.hp = 80;
+      far.maxHp = 80;
+      far.wanderTarget = { x: far.x, z: far.z };
+    } else if (name === 'ice-ball-ready') {
+      // Playing phase with Glacial Orb in hand, full Magic Stones, and grunts
+      // lined up along +X so a cast hits the nearest and can roll SLOW. The same
+      // state is reachable normally by earning the reward card and entering combat.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'ice_ball',
+          name: 'Glacial Orb',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      state.enemies = [];
+      const near = spawnEnemy(player.x + 4, player.z, 'grunt');
+      near.hp = 80;
+      near.maxHp = 80;
+      near.wanderTarget = { x: near.x, z: near.z };
+      const far = spawnEnemy(player.x + 7, player.z, 'grunt');
+      far.hp = 80;
+      far.maxHp = 80;
+      far.wanderTarget = { x: far.x, z: far.z };
     }
 
     syncRunObjectiveToEnemies();

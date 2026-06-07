@@ -17,8 +17,9 @@
   },
   "telepipeReset": {
     "preSuspend": {
-      "magicStones": 1.5800000000011334,
-      "msText": "1/99",
+      "hp": 100,
+      "magicStones": 3.1250000000017346,
+      "msText": "3/99",
       "hand": [
         {
           "id": "telepipe",
@@ -26,67 +27,14 @@
           "remainingCharges": 1,
           "charges": 1
         },
-        {
-          "id": "iron_sword",
-          "type": "weapon",
-          "remainingCharges": 5,
-          "charges": 5
-        },
+        null,
+        null,
         null,
         {
           "id": "dungeon_drake",
           "type": "creature",
           "remainingCharges": 0,
           "charges": 1
-        },
-        {
-          "id": "battle_familiar",
-          "type": "spell",
-          "remainingCharges": 1,
-          "charges": 1
-        },
-        {
-          "id": "dungeon_drake",
-          "type": "creature",
-          "remainingCharges": 1,
-          "charges": 1
-        }
-      ],
-      "phase": "playing",
-      "runStatus": "playing",
-      "extracted": false,
-      "suspendedRunSummary": null,
-      "layoutSeed": 352369970,
-      "runId": "e8338dcc-e849-428f-9936-bbc863cee7cd"
-    },
-    "postDeploy": {
-      "magicStones": 49.005,
-      "msText": "49/99",
-      "hand": [
-        {
-          "id": "telepipe",
-          "type": "spell",
-          "remainingCharges": 1,
-          "charges": 1
-        },
-        {
-          "id": "iron_sword",
-          "type": "weapon",
-          "remainingCharges": 5,
-          "charges": 5
-        },
-        null,
-        {
-          "id": "flame_blade",
-          "type": "weapon",
-          "remainingCharges": 3,
-          "charges": 3
-        },
-        {
-          "id": "flame_blade",
-          "type": "weapon",
-          "remainingCharges": 3,
-          "charges": 3
         },
         null
       ],
@@ -95,9 +43,48 @@
       "extracted": false,
       "suspendedRunSummary": null,
       "layoutSeed": 352369970,
-      "runId": "c24f13a1-e4f1-455b-9def-9ff2fb4cef20"
+      "runId": "e0ea56dc-05b5-4298-ba46-79a00656e6c3"
     },
-    "telepipeUpReset": true
+    "postDeploy": {
+      "hp": 100,
+      "magicStones": 3.3650000000017295,
+      "msText": "3/99",
+      "hand": [
+        {
+          "id": "telepipe",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        {
+          "id": "iron_sword",
+          "type": "weapon",
+          "remainingCharges": 5,
+          "charges": 5
+        },
+        null,
+        {
+          "id": "battle_familiar",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        {
+          "id": "iron_sword",
+          "type": "weapon",
+          "remainingCharges": 5,
+          "charges": 5
+        },
+        null
+      ],
+      "phase": "playing",
+      "runStatus": "playing",
+      "extracted": false,
+      "suspendedRunSummary": null,
+      "layoutSeed": 352369970,
+      "runId": "9ef2fd1d-040e-4094-910f-15e4a314768e"
+    },
+    "telepipeVitalsPreserved": true
   },
   "hubWalk": {
     "lobbyName": "Hub Walk 1780793663705",
@@ -111,6 +98,42 @@
       "salon": "game/validation/hub/04-room-salon.png"
     },
     "layoutProfile": "hub",
-    "layoutRoomCount": 3
+    "layoutRoomCount": 3,
+    "walkablePresentation": {
+      "overview": {
+        "lobbyHidden": true,
+        "lobbyMenuDismissed": true,
+        "hubCanvasActive": true,
+        "playersOnHost": 2,
+        "remoteSquadmateCount": 1,
+        "layoutProfile": "hub"
+      },
+      "zones": {
+        "operations": {
+          "lobbyHidden": true,
+          "lobbyMenuDismissed": true,
+          "hubCanvasActive": true,
+          "playersOnHost": 2,
+          "remoteSquadmateCount": 1,
+          "layoutProfile": "hub"
+        },
+        "commerce": {
+          "lobbyHidden": true,
+          "lobbyMenuDismissed": true,
+          "hubCanvasActive": true,
+          "playersOnHost": 2,
+          "remoteSquadmateCount": 1,
+          "layoutProfile": "hub"
+        },
+        "salon": {
+          "lobbyHidden": true,
+          "lobbyMenuDismissed": true,
+          "hubCanvasActive": true,
+          "playersOnHost": 2,
+          "remoteSquadmateCount": 1,
+          "layoutProfile": "hub"
+        }
+      }
+    }
   }
 }

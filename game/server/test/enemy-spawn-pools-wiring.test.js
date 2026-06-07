@@ -11,17 +11,18 @@ import {
 
 // Deploy a quest the same way the live server does for bulk-combat quests:
 // select the quest, build its layout, then run the seeded bulk spawner.
-function deployQuest(questId, seed = 123) {
+function deployQuest(questId, seed = 123, tier = 1) {
 	gameState.selectedQuestId = questId;
-	gameState.layout = generateLayout(seed, getLayoutProfileForQuest(questId));
+	gameState.selectedQuestTier = tier;
+	gameState.layout = generateLayout(seed, getLayoutProfileForQuest(questId, tier));
 	gameState.layoutSeed = seed;
 	gameState.enemies = [];
 	gameState.loot = [];
 	spawnEnemies();
 }
 
-function poolTypes(questId) {
-	return getEnemyPool(questId).map(entry => entry.type);
+function poolTypes(questId, tier = 1) {
+	return getEnemyPool(questId, tier).map(entry => entry.type);
 }
 
 describe('spawnCombatEnemies draws from the quest enemy pool', () => {
@@ -62,6 +63,29 @@ describe('spawnCombatEnemies draws from the quest enemy pool', () => {
 	});
 });
 
+describe('ember_wraith cross-level exclusion', () => {
+	beforeEach(() => resetGameState());
+
+	it('never spawns the ember-exclusive `ember_wraith` type for non-ember quests', () => {
+		const nonEmberQuests = Object.keys(QUEST_DEFS).filter(id => id !== 'ember_descent');
+		for (const questId of nonEmberQuests) {
+			expect(poolTypes(questId)).not.toContain('ember_wraith');
+			for (const seed of [1, 42, 123, 777]) {
+				resetGameState();
+				deployQuest(questId, seed);
+				expect(gameState.enemies.some(e => e.type === 'ember_wraith')).toBe(false);
+			}
+		}
+	});
+
+	it('can spawn `ember_wraith` for an ember_descent run', () => {
+		expect(poolTypes('ember_descent')).toContain('ember_wraith');
+		resetGameState();
+		deployQuest('ember_descent', 1);
+		expect(gameState.enemies.some(e => e.type === 'ember_wraith')).toBe(true);
+	});
+});
+
 describe('spawner cross-level exclusion', () => {
 	beforeEach(() => resetGameState());
 
@@ -89,6 +113,40 @@ describe('spawner cross-level exclusion', () => {
 			}
 		}
 		expect(sawSpawner).toBe(true);
+	});
+});
+
+describe('tier-2 field_medic spawn wiring', () => {
+	beforeEach(() => resetGameState());
+
+	it('never spawns field_medic on tier-1 crystal_rescue runs', () => {
+		for (const seed of [1, 7, 42, 123, 777, 9001]) {
+			resetGameState();
+			deployQuest('crystal_rescue', seed, 1);
+			expect(gameState.enemies.some(e => e.type === 'field_medic')).toBe(false);
+		}
+	});
+
+	it('can spawn field_medic on tier-2 crystal_rescue bulk combat', () => {
+		expect(poolTypes('crystal_rescue', 2)).toContain('field_medic');
+		let sawMedic = false;
+		for (const seed of [1, 2, 3, 5, 7, 11, 42, 123, 256, 777, 2026]) {
+			resetGameState();
+			deployQuest('crystal_rescue', seed, 2);
+			if (gameState.enemies.some(e => e.type === 'field_medic')) {
+				sawMedic = true;
+				break;
+			}
+		}
+		expect(sawMedic).toBe(true);
+	});
+
+	it('never spawns field_medic on tier-2 arena_trials (no tier2EnemyPool)', () => {
+		for (const seed of [1, 42, 123, 777]) {
+			resetGameState();
+			deployQuest('arena_trials', seed, 2);
+			expect(gameState.enemies.some(e => e.type === 'field_medic')).toBe(false);
+		}
 	});
 });
 

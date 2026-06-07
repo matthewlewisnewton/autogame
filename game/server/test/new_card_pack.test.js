@@ -12,7 +12,6 @@ import {
 	cleanupAfterDamage,
 	updateEnemies,
 	updateMinions,
-	healPlayer,
 	collectConeHits,
 	collectRadialHits,
 	collectReturningProjectileHits,
@@ -60,10 +59,9 @@ describe('new card combat helpers', () => {
 		expect(CARD_DEFS.saber_of_light.damage).toBeLessThan(CARD_DEFS.iron_sword.damage);
 	});
 
-	it('Excalibur Photon inherits Saber stats with +50% damage and double swings', () => {
-		expect(CARD_DEFS.excalibur_photon.damage).toBe(
-			Math.round(CARD_DEFS.saber_of_light.damage * 1.5)
-		);
+	it('Excalibur Photon inherits Saber charges and cooldown with double swings', () => {
+		expect(CARD_DEFS.excalibur_photon.damage).toBe(14);
+		expect(CARD_DEFS.excalibur_photon.damage).toBeGreaterThan(CARD_DEFS.saber_of_light.damage);
 		expect(CARD_DEFS.excalibur_photon.charges).toBe(CARD_DEFS.saber_of_light.charges);
 		expect(CARD_DEFS.excalibur_photon.cooldownMs).toBeLessThan(CARD_DEFS.saber_of_light.cooldownMs);
 		expect(CARD_DEFS.excalibur_photon.swingsPerUse).toBe(2);
@@ -207,23 +205,26 @@ describe('new card combat helpers', () => {
 		expect(isEnemyFrozen(gameState.enemies[0])).toBe(true);
 	});
 
-	it('Restoration Beacon restores player HP up to max', () => {
-		addPlayer('p1', { hp: 60 });
-		const healed = healPlayer('p1', CARD_DEFS.healing_font.healAmount);
-		expect(healed).toBe(25);
-		expect(gameState.players.p1.hp).toBe(85);
+	it('Restoration Beacon restores Magic Stones without changing HP', () => {
+		addPlayer('p1', { hp: 60, magicStones: 0 });
+		expect(CARD_DEFS.healing_font.healAmount).toBeUndefined();
+		expect(CARD_DEFS.healing_font.magicStoneRestore).toBe(6);
+		const hpBefore = gameState.players.p1.hp;
+		const gained = addMagicStones(gameState.players.p1, CARD_DEFS.healing_font.magicStoneRestore);
+		expect(gained).toBe(6);
+		expect(gameState.players.p1.magicStones).toBe(6);
+		expect(gameState.players.p1.hp).toBe(hpBefore);
 	});
 
-	it('Sanctum Pulse heals 50% more than Restoration Beacon and restores magic stones', () => {
-		expect(CARD_DEFS.divine_grace.healAmount).toBe(38);
+	it('Sanctum Pulse restores magic stones without changing HP', () => {
+		expect(CARD_DEFS.divine_grace.healAmount).toBeUndefined();
 		expect(CARD_DEFS.divine_grace.magicStoneRestore).toBe(10);
 		addPlayer('p1', { hp: 60, magicStones: 0 });
-		const healed = healPlayer('p1', CARD_DEFS.divine_grace.healAmount);
-		expect(healed).toBe(38);
-		expect(gameState.players.p1.hp).toBe(98);
+		const hpBefore = gameState.players.p1.hp;
 		const gained = addMagicStones(gameState.players.p1, CARD_DEFS.divine_grace.magicStoneRestore);
 		expect(gained).toBe(10);
 		expect(gameState.players.p1.magicStones).toBe(10);
+		expect(gameState.players.p1.hp).toBe(hpBefore);
 	});
 
 	it('Steel Claymore knockback pushes hit enemies along attack direction', () => {
@@ -333,25 +334,25 @@ describe('new card combat helpers', () => {
 		expect(gameState.players.p1.magicStones).toBe(16);
 	});
 
-	it('Soul Drain radial hits grant magic stones and heal the attacker', () => {
+	it('Soul Drain radial hits grant magic stones without healing the attacker', () => {
 		addPlayer('p1', { hp: 50, magicStones: 0 });
 		gameState.enemies = [
 			{ id: 'e1', type: 'grunt', x: 1, z: 0, hp: 40 },
 			{ id: 'e2', type: 'grunt', x: -2, z: 0, hp: 40 },
 		];
 		const def = CARD_DEFS.soul_drain;
+		expect(def.healOnHit).toBeUndefined();
+		expect(def.healOnKill).toBeUndefined();
 		const result = collectRadialHits(0, 0, SUMMON_RADIUS, def.damage, {
 			magicStoneOnHit: def.magicStoneOnHit,
-			healOnHit: def.healOnHit,
-			healOnKill: def.healOnKill,
 			attackerId: 'p1',
 		});
 		addMagicStones(gameState.players.p1, result.magicStonesGained);
 		expect(def.damage).toBe(42);
 		expect(def.magicStoneOnHit).toBe(12);
 		expect(result.magicStonesGained).toBe(24);
-		expect(result.hpHealed).toBe(24);
-		expect(gameState.players.p1.hp).toBe(74);
+		expect(result.hpHealed).toBeUndefined();
+		expect(gameState.players.p1.hp).toBe(50);
 	});
 
 	it("Wyrmflare leaves a ticking cone area effect", () => {

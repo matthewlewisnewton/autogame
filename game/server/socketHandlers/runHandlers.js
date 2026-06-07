@@ -37,10 +37,32 @@ function register(socket, ctx) {
     });
   });
 
+  socket.on(CLIENT_TO_SERVER.ABANDON_RUN, () => {
+    withLobbyFromSocket(socket, (state) => {
+      try {
+        if (!isLobbyPhase(state)) {
+          socket.emit(SERVER_TO_CLIENT.RUN_ERROR, { reason: 'Not in lobby' });
+          return;
+        }
+        if (!state.suspendedCheckpoint) {
+          socket.emit(SERVER_TO_CLIENT.RUN_ERROR, { reason: 'No suspended run' });
+          return;
+        }
+        const result = abandonSuspendedRun(state);
+        if (!result.ok) {
+          socket.emit(SERVER_TO_CLIENT.RUN_ERROR, { reason: result.reason || 'Cannot abandon run' });
+        }
+      } catch (err) {
+        console.error('[abandonRun] failed:', err);
+        socket.emit(SERVER_TO_CLIENT.RUN_ERROR, { reason: 'Abandon run failed' });
+      }
+    });
+  });
+
   socket.on(CLIENT_TO_SERVER.GIVE_UP, () => {
     withLobbyFromSocket(socket, (state) => {
       try {
-        if (!isPlayingPhase(state) || !state.run || state.run.status === 'suspended') {
+        if (!isPlayingPhase(state) || !state.run) {
           socket.emit(SERVER_TO_CLIENT.RUN_ERROR, { reason: 'No active run' });
           return;
         }
@@ -54,16 +76,6 @@ function register(socket, ctx) {
         console.error('[giveUp] failed:', err);
         socket.emit(SERVER_TO_CLIENT.RUN_ERROR, { reason: 'Give up failed' });
       }
-    });
-  });
-
-  socket.on(CLIENT_TO_SERVER.ABANDON_RUN, () => {
-    withLobbyFromSocket(socket, (state) => {
-      if (!state.suspendedCheckpoint) {
-        socket.emit(SERVER_TO_CLIENT.RUN_ERROR, { reason: 'No suspended expedition' });
-        return;
-      }
-      abandonSuspendedRun(state);
     });
   });
 

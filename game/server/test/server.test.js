@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import config from '../config.js';
+import config, { MAX_HP } from '../config.js';
 import { getQuest } from '../quests.js';
 import { DEFAULT_COSMETIC } from '../cosmetic.js';
 import { createLobbyGameState } from '../lobbies.js';
@@ -42,11 +42,10 @@ import {
 	giveUpRun,
 	previewReturnRewards,
 	healAtMedic,
+	revivePlayerInLobby,
 	checkAllReady,
-	captureRunCheckpoint,
-	restoreRunCheckpoint,
+	initializePlayerForActiveRun,
 		tryEnterTelepipe,
-		suspendRunToLobby,
 		abandonSuspendedRun,
 		isPlayerActive,
 		checkTelepipeProximity,
@@ -294,7 +293,7 @@ describe('runGameLoopTick()', () => {
 describe('QUEST_DEFS', () => {
 	it('exposes stable quest ids with required metadata', () => {
 		expect(DEFAULT_QUEST_ID).toBe('training_caverns');
-		expect(Object.keys(QUEST_DEFS).sort()).toEqual(['arena_trials', 'canyon_descent', 'crystal_rescue', 'endless_siege', 'spire_ascent', 'training_caverns']);
+		expect(Object.keys(QUEST_DEFS).sort()).toEqual(['arena_trials', 'canyon_descent', 'crystal_rescue', 'ember_descent', 'endless_siege', 'frost_crossing', 'spire_ascent', 'training_caverns']);
 
 		for (const [questId, quest] of Object.entries(QUEST_DEFS)) {
 			expect(quest.id).toBe(questId);
@@ -485,28 +484,19 @@ describe('damagePlayer(playerId, amount)', () => {
 		expect(gameState.players['p1'].dead).toBe(true);
 	});
 
-	it('schedules respawn after 3 seconds', () => {
-		addPlayer('p1', { hp: 30 });
-		damagePlayer('p1', 30);
-
-		// Before timeout fires
-		expect(gameState.players['p1'].dead).toBe(true);
-
-		// Advance 3 seconds
-		vi.advanceTimersByTime(3000);
-
-		// After respawn
-		expect(gameState.players['p1'].dead).toBe(false);
-		expect(gameState.players['p1'].hp).toBe(100);
-	});
-
-	it('respawn resets position to the first room spawn', () => {
+	it('does not auto-respawn or heal after death', () => {
 		addPlayer('p1', { hp: 30, x: 10, z: 20 });
 		damagePlayer('p1', 30);
+
+		expect(gameState.players['p1'].dead).toBe(true);
+		expect(gameState.players['p1'].hp).toBe(0);
+
 		vi.advanceTimersByTime(3000);
-		const spawn = firstRoomSpawn();
-		expect(gameState.players['p1'].x).toBe(spawn.x);
-		expect(gameState.players['p1'].z).toBe(spawn.z);
+
+		expect(gameState.players['p1'].dead).toBe(true);
+		expect(gameState.players['p1'].hp).toBe(0);
+		expect(gameState.players['p1'].x).toBe(10);
+		expect(gameState.players['p1'].z).toBe(20);
 	});
 
 	it('partial damage does not mark dead', () => {
@@ -544,17 +534,6 @@ describe('damagePlayer(playerId, amount)', () => {
 		expect(gameState.players['p1'].shieldHp).toBe(50); // shield untouched
 	});
 
-	it('respawn resets invulnerableUntil to 0', () => {
-		addPlayer('p1', { hp: 30, invulnerableUntil: 999999999999 });
-		damagePlayer('p1', 30);
-		expect(gameState.players['p1'].invulnerableUntil).toBe(999999999999);
-
-		vi.advanceTimersByTime(3000);
-
-		expect(gameState.players['p1'].invulnerableUntil).toBe(0);
-	});
-
-	// ── Guard block damage reduction ──
 
 	it('reduces frontal damage when blocking (enemy attacker)', () => {
 		const now = 1000000;
@@ -2841,7 +2820,7 @@ describe('run state', () => {
 		});
 	});
 
-	describe('telepipe suspend/resume', () => {
+	describe('telepipe extract hub return', () => {
 		beforeEach(() => {
 			resetState();
 			gameState._lobbyId = 'test-lobby';
@@ -2877,22 +2856,12 @@ describe('run state', () => {
 			});
 		});
 
-		it('captureRunCheckpoint and restoreRunCheckpoint preserve telepipe and enemies', () => {
-			gameState.suspendedCheckpoint = captureRunCheckpoint();
-			resetTransientRunState();
-			restoreRunCheckpoint();
-
-			expect(gameState.enemies).toHaveLength(1);
-			expect(gameState.telepipe).toEqual(expect.objectContaining({ x: 5, z: 5 }));
-			expect(gameState.players.p1.hand[0].id).toBe('telepipe');
-		});
-
 		it('tryEnterTelepipe extracts one player while another remains active', () => {
 			const result = tryEnterTelepipe('p1');
 			expect(result.ok).toBe(true);
 			expect(gameState.players.p1.extracted).toBe(true);
 			expect(gameState.gamePhase).toBe('playing');
-			expect(gameState.suspendedCheckpoint).toBeNull();
+			expect(gameState.run).toBeDefined();
 			expect(isPlayerActive(gameState.players.p2)).toBe(true);
 		});
 
@@ -2904,96 +2873,383 @@ describe('run state', () => {
 			expect(result.reason).toBe('too_far');
 		});
 
-		it('suspendRunToLobby when all players have extracted', () => {
+		it('telepipe extract returns squad to hub with cleared world and captured checkpoint', () => {
+			const preSuspendRunId = gameState.run.id;
+			gameState.players.p1.hp = 42;
+			gameState.players.p1.magicStones = 15;
+			gameState.players.p1.hand[0].remainingCharges = 0;
+			gameState.players.p2.hp = 55;
+			gameState.players.p2.magicStones = 22;
+			gameState.players.p2.hand[0].remainingCharges = 0;
+
 			tryEnterTelepipe('p1');
 			gameState.players.p2.x = 5;
 			gameState.players.p2.z = 5;
 			tryEnterTelepipe('p2');
 
 			expect(gameState.gamePhase).toBe('lobby');
-			expect(gameState.run.status).toBe('suspended');
-			expect(gameState.suspendedCheckpoint.telepipe).toEqual(expect.objectContaining({ x: 5, z: 5 }));
-			expect(stateSnapshot().suspendedRunSummary).toEqual(expect.objectContaining({
-				questName: expect.any(String),
-			}));
-		});
-
-		it('checkAllReady restores checkpoint instead of spawning a fresh run', () => {
-			tryEnterTelepipe('p1');
-			gameState.players.p2.x = 5;
-			gameState.players.p2.z = 5;
-			tryEnterTelepipe('p2');
-
-			const portalX = gameState.suspendedCheckpoint.telepipe.x;
-			gameState.players.p1.ready = true;
-			gameState.players.p2.ready = true;
-			checkAllReady();
-
-			expect(gameState.gamePhase).toBe('playing');
-			expect(gameState.run.status).toBe('playing');
-			expect(gameState.telepipe.x).toBe(portalX);
-			expect(gameState.enemies).toHaveLength(1);
-			expect(gameState.suspendedCheckpoint).toBeUndefined();
-		});
-
-		it('resume does not instantly re-extract players restored at the portal', () => {
-			tryEnterTelepipe('p1');
-			gameState.players.p2.x = 5;
-			gameState.players.p2.z = 5;
-			tryEnterTelepipe('p2');
-
-			gameState.players.p1.ready = true;
-			gameState.players.p2.ready = true;
-			checkAllReady();
-
-			expect(gameState.players.p1.extracted).toBe(false);
-			expect(gameState.players.p2.extracted).toBe(false);
-			expect(Math.hypot(
-				gameState.players.p1.x - gameState.telepipe.x,
-				gameState.players.p1.z - gameState.telepipe.z,
-			)).toBeGreaterThan(PORTAL_RADIUS);
-			expect(Math.hypot(
-				gameState.players.p2.x - gameState.telepipe.x,
-				gameState.players.p2.z - gameState.telepipe.z,
-			)).toBeGreaterThan(PORTAL_RADIUS);
-
-			gameState.telepipe.placedAt = Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1;
-			checkTelepipeProximity();
-
-			expect(gameState.players.p1.extracted).toBe(false);
-			expect(gameState.players.p2.extracted).toBe(false);
-			expect(gameState.gamePhase).toBe('playing');
-			expect(gameState.run.status).toBe('playing');
-		});
-
-		it('abandonSuspendedRun clears checkpoint and run', () => {
-			tryEnterTelepipe('p1');
-			gameState.players.p2.x = 5;
-			gameState.players.p2.z = 5;
-			tryEnterTelepipe('p2');
-
-			const result = abandonSuspendedRun();
-			expect(result.ok).toBe(true);
-			expect(gameState.suspendedCheckpoint).toBeUndefined();
 			expect(gameState.run).toBeUndefined();
-			expect(gameState.gamePhase).toBe('lobby');
+			expect(gameState.enemies).toHaveLength(0);
+			expect(gameState.telepipe).toBeNull();
+			expect(gameState.players.p1.hp).toBe(42);
+			expect(gameState.players.p1.magicStones).toBe(15);
+			expect(gameState.players.p2.hp).toBe(55);
+			expect(gameState.players.p2.magicStones).toBe(22);
+			expect(gameState.players.p1.hand).toEqual([]);
+			expect(gameState.players.p2.hand).toEqual([]);
 
-			const spawn = hubSpawnPosition(HUB_LAYOUT);
-			const hubCtx = buildHubMovementContext(HUB_LAYOUT);
-			const bounds = computeDungeonBounds(HUB_LAYOUT);
+			expect(gameState.suspendedCheckpoint).not.toBeNull();
+			expect(gameState.suspendedCheckpoint.run.id).toBe(preSuspendRunId);
+			expect(gameState.suspendedCheckpoint.playerStates.p1.hand[0].remainingCharges).toBe(0);
+			expect(gameState.suspendedCheckpoint.playerStates.p2.hand[0].remainingCharges).toBe(0);
+			gameState.suspendedCheckpoint.playerStates.p1.hand[0].remainingCharges = 99;
+			expect(gameState.players.p1.hand).toEqual([]);
+
+			const snapshot = stateSnapshot();
+			expect(snapshot.suspendedRunSummary).toEqual({
+				questId: gameState.selectedQuestId,
+				questName: gameState.suspendedCheckpoint.run.questName,
+				objective: gameState.suspendedCheckpoint.run.objective,
+			});
+		});
+
+		it('suspendRunToLobby captures world snapshot with enemy ids, objective, and layout', () => {
+			const liveEnemyRef = {
+				id: 'enemy-alpha',
+				x: 14,
+				z: 14,
+				hp: 22,
+				maxHp: 40,
+				type: 'grunt',
+				state: 'chase',
+				attackState: 'windup',
+				spawnedBy: null,
+				wanderTarget: { x: 14, z: 14 },
+			};
+			const liveEnemyRef2 = {
+				id: 'enemy-beta',
+				x: 16,
+				z: 16,
+				hp: 40,
+				maxHp: 40,
+				type: 'grunt',
+				state: 'idle',
+				attackState: 'idle',
+				spawnedBy: 'spawner-1',
+				wanderTarget: { x: 16, z: 16 },
+			};
+			gameState.enemies = [liveEnemyRef, liveEnemyRef2];
+			gameState.minions.push({ id: 'minion-1', ownerId: 'p1', x: 8, z: 8, hp: 30, ttl: 20 });
+			gameState.loot.push({ id: 'loot-1', x: 9, z: 9, value: 5, createdAt: Date.now() });
+			gameState.areaEffects.push({ id: 'fx-1', type: 'fire', x: 10, z: 10, radius: 2, expiresAt: Date.now() + 5000 });
+			gameState.iceBalls.push({ id: 'ice-1', ownerId: 'enemy-beta', x: 15, z: 15, dirX: 1, dirZ: 0, traveled: 1 });
+			gameState.enchantments.push({ id: 'enc-1', cardId: 'spike_trap', x: 11, z: 11, expiresAt: Date.now() + 10000 });
+			gameState.layout = { rooms: [{ x: 0, z: 0, width: 20, depth: 20, role: 'start' }] };
+			gameState.layoutSeed = 4242;
+			gameState.dungeonBounds = { minX: -10, maxX: 10, minZ: -10, maxZ: 10 };
+			gameState.run.encounter = {
+				bossEnemyId: 'enemy-alpha',
+				phase: 'active',
+				locked: true,
+				spawnAnchor: { x: 14, z: 14 },
+			};
+			gameState.run.objective = {
+				type: 'defeat_enemies',
+				totalEnemies: 5,
+				defeatedEnemies: 0,
+				label: 'Purge hostiles',
+			};
+			recordEnemyDefeated(1);
+
+			const preSuspendObjective = {
+				type: gameState.run.objective.type,
+				totalEnemies: gameState.run.objective.totalEnemies,
+				defeatedEnemies: gameState.run.objective.defeatedEnemies,
+				label: gameState.run.objective.label,
+			};
+			const preSuspendTelepipe = { ...gameState.telepipe };
+
+			tryEnterTelepipe('p1');
+			gameState.players.p2.x = 5;
+			gameState.players.p2.z = 5;
+			tryEnterTelepipe('p2');
+
+			expect(gameState.enemies).toHaveLength(0);
+			expect(gameState.minions).toHaveLength(0);
+			expect(gameState.loot).toHaveLength(0);
+			expect(gameState.areaEffects).toHaveLength(0);
+			expect(gameState.iceBalls).toHaveLength(0);
+			expect(gameState.telepipe).toBeNull();
+
+			const checkpoint = gameState.suspendedCheckpoint;
+			expect(checkpoint).not.toBeNull();
+			expect(checkpoint.worldState).toBeDefined();
+
+			const world = checkpoint.worldState;
+			expect(world.enemies.map((e) => e.id)).toEqual(['enemy-alpha', 'enemy-beta']);
+			expect(world.enemies[0].hp).toBe(22);
+			expect(world.enemies[0].state).toBe('chase');
+			expect(world.enemies[0].attackState).toBe('windup');
+			expect(world.enemies[1].spawnedBy).toBe('spawner-1');
+			expect(world.minions).toHaveLength(1);
+			expect(world.loot).toHaveLength(1);
+			expect(world.areaEffects).toHaveLength(1);
+			expect(world.iceBalls).toHaveLength(1);
+			expect(world.enchantments).toHaveLength(1);
+			expect(world.telepipe).toEqual(preSuspendTelepipe);
+			expect(world.layout).toEqual(gameState.layout);
+			expect(world.layoutSeed).toBe(4242);
+			expect(world.dungeonBounds).toEqual({ minX: -10, maxX: 10, minZ: -10, maxZ: 10 });
+
+			expect(checkpoint.run.objective).toEqual(preSuspendObjective);
+			expect(checkpoint.run.encounter).toEqual({
+				bossEnemyId: 'enemy-alpha',
+				phase: 'active',
+				locked: true,
+				spawnAnchor: { x: 14, z: 14 },
+			});
+
+			liveEnemyRef.hp = 999;
+			expect(checkpoint.worldState.enemies[0].hp).toBe(22);
+			checkpoint.worldState.enemies[0].hp = 888;
+			expect(liveEnemyRef.hp).toBe(999);
+		});
+
+		it('checkAllReady after telepipe extract restores full world snapshot on resume', () => {
+			gameState.enemies = [{
+				id: 'enemy-alpha',
+				x: 14,
+				z: 14,
+				hp: 22,
+				maxHp: 40,
+				type: 'grunt',
+				state: 'chase',
+				attackState: 'windup',
+				spawnedBy: null,
+				wanderTarget: { x: 14, z: 14 },
+			}, {
+				id: 'enemy-beta',
+				x: 16,
+				z: 16,
+				hp: 40,
+				maxHp: 40,
+				type: 'grunt',
+				state: 'idle',
+				attackState: 'idle',
+				spawnedBy: 'spawner-1',
+				wanderTarget: { x: 16, z: 16 },
+			}];
+			gameState.minions.push({ id: 'minion-1', ownerId: 'p1', x: 8, z: 8, hp: 30, ttl: 20 });
+			gameState.loot.push({ id: 'loot-1', x: 9, z: 9, value: 5, createdAt: Date.now() });
+			gameState.areaEffects.push({ id: 'fx-1', type: 'fire', x: 10, z: 10, radius: 2, expiresAt: Date.now() + 5000 });
+			gameState.iceBalls.push({ id: 'ice-1', ownerId: 'enemy-beta', x: 15, z: 15, dirX: 1, dirZ: 0, traveled: 1 });
+			gameState.enchantments.push({ id: 'enc-1', cardId: 'spike_trap', x: 11, z: 11, expiresAt: Date.now() + 10000 });
+			gameState.layout = { rooms: [{ x: 0, z: 0, width: 20, depth: 20, role: 'start' }] };
+			gameState.layoutSeed = 4242;
+			gameState.dungeonBounds = { minX: -10, maxX: 10, minZ: -10, maxZ: 10 };
+			gameState.run.objective = {
+				type: 'defeat_enemies',
+				totalEnemies: 5,
+				defeatedEnemies: 1,
+				label: 'Purge hostiles',
+			};
+			const preSuspendTelepipe = { ...gameState.telepipe };
+			const preSuspendEnemyIds = gameState.enemies.map((e) => e.id);
+
+			tryEnterTelepipe('p1');
+			gameState.players.p2.x = 5;
+			gameState.players.p2.z = 5;
+			tryEnterTelepipe('p2');
+
+			gameState.players.p1.ready = true;
+			gameState.players.p2.ready = true;
+			checkAllReady();
+
+			expect(gameState.enemies.map((e) => e.id)).toEqual(preSuspendEnemyIds);
+			expect(gameState.enemies[0].hp).toBe(22);
+			expect(gameState.enemies[1].spawnedBy).toBe('spawner-1');
+			expect(gameState.minions).toHaveLength(1);
+			expect(gameState.loot).toHaveLength(1);
+			expect(gameState.areaEffects).toHaveLength(1);
+			expect(gameState.iceBalls).toHaveLength(1);
+			expect(gameState.enchantments).toHaveLength(1);
+			expect(gameState.telepipe).toEqual(preSuspendTelepipe);
+			expect(gameState.layout).toEqual({ rooms: [{ x: 0, z: 0, width: 20, depth: 20, role: 'start' }] });
+			expect(gameState.layoutSeed).toBe(4242);
+			expect(gameState.dungeonBounds).toEqual({ minX: -10, maxX: 10, minZ: -10, maxZ: 10 });
+			expect(gameState.run.objective).toEqual({
+				type: 'defeat_enemies',
+				totalEnemies: 5,
+				defeatedEnemies: 1,
+				label: 'Purge hostiles',
+			});
+		});
+
+		it('checkAllReady after telepipe extract resumes suspended dungeon run', () => {
+			const preExtractRunId = gameState.run.id;
+			const preSuspendEnemyIds = gameState.enemies.map((e) => e.id);
+			const preSuspendObjective = gameState.run.objective
+				? { ...gameState.run.objective }
+				: null;
+			const preSuspendTelepipe = { ...gameState.telepipe };
+
+			tryEnterTelepipe('p1');
+			gameState.players.p2.x = 5;
+			gameState.players.p2.z = 5;
+			tryEnterTelepipe('p2');
+
+			gameState.players.p1.ready = true;
+			gameState.players.p2.ready = true;
+			checkAllReady();
+
+			expect(gameState.gamePhase).toBe('playing');
+			expect(gameState.run).toBeDefined();
+			expect(gameState.run.id).toBe(preExtractRunId);
+			expect(gameState.run.status).toBe('playing');
+			expect(gameState.suspendedCheckpoint).toBeNull();
+			expect(stateSnapshot().suspendedRunSummary).toBeNull();
+
+			const restoredEnemy = gameState.enemies.find((e) => e.id === 'e1');
+			expect(restoredEnemy).toBeDefined();
+			expect(restoredEnemy.hp).toBe(40);
+			for (const id of preSuspendEnemyIds) {
+				expect(gameState.enemies.some((e) => e.id === id)).toBe(true);
+			}
+			const conjuredIds = gameState.enemies
+				.filter((e) => !e.spawnedBy && !preSuspendEnemyIds.includes(e.id))
+				.map((e) => e.id);
+			expect(conjuredIds).toEqual([]);
+
+			if (preSuspendObjective) {
+				expect(gameState.run.objective.type).toBe(preSuspendObjective.type);
+				expect(gameState.run.objective.totalEnemies).toBe(preSuspendObjective.totalEnemies);
+				expect(gameState.run.objective.defeatedEnemies).toBe(preSuspendObjective.defeatedEnemies);
+			}
+
+			expect(gameState.telepipe).toEqual(preSuspendTelepipe);
 			for (const player of Object.values(gameState.players)) {
-				expect(player.x).toBe(spawn.x);
-				expect(player.z).toBe(spawn.z);
-				expect(player.y).toBe(resolveFloorY(sampleFloorY(HUB_LAYOUT, player.x, player.z)));
-				expect(player.x).toBeGreaterThanOrEqual(bounds.minX);
-				expect(player.x).toBeLessThanOrEqual(bounds.maxX);
-				expect(player.z).toBeGreaterThanOrEqual(bounds.minZ);
-				expect(player.z).toBeLessThanOrEqual(bounds.maxZ);
-				expect(isInsideDungeon(player.x, player.z, hubCtx)).toBe(true);
+				const dist = Math.hypot(player.x - gameState.telepipe.x, player.z - gameState.telepipe.z);
+				expect(dist).toBeGreaterThan(PORTAL_RADIUS);
 			}
 		});
 
-		it('fresh deploy after telepipe suspend and abandon resets magicStones and card charges', () => {
+		it('new sortie after abandon resets card charges but preserves hp and magicStones', () => {
+			const deck = ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'];
+			gameState.players.p1.selectedDeck = [...deck];
+			gameState.players.p2.selectedDeck = [...deck];
+
+			const preSuspendRunId = gameState.run.id;
+			gameState.players.p1.hp = 42;
+			gameState.players.p1.magicStones = 15;
+			gameState.players.p2.hp = 55;
+			gameState.players.p2.magicStones = 22;
+			gameState.players.p1.hand[0].remainingCharges = 0;
+			gameState.players.p2.hand[0].remainingCharges = 0;
+
+			tryEnterTelepipe('p1');
+			gameState.players.p2.x = 5;
+			gameState.players.p2.z = 5;
+			tryEnterTelepipe('p2');
+
+			expect(gameState.suspendedCheckpoint).not.toBeNull();
+			expect(gameState.suspendedCheckpoint.run.id).toBe(preSuspendRunId);
+			expect(gameState.suspendedCheckpoint.playerStates.p1.hand[0].remainingCharges).toBe(0);
+
+			const abandonResult = abandonSuspendedRun();
+			expect(abandonResult.ok).toBe(true);
+			expect(gameState.suspendedCheckpoint).toBeNull();
+			expect(gameState.players.p1.ready).toBe(false);
+			expect(gameState.players.p2.ready).toBe(false);
+			expect(stateSnapshot().suspendedRunSummary).toBeNull();
+
+			gameState.players.p1.ready = true;
+			gameState.players.p2.ready = true;
+			checkAllReady();
+
+			expect(gameState.gamePhase).toBe('playing');
+			expect(gameState.run).toBeDefined();
+			expect(gameState.run.id).not.toBe(preSuspendRunId);
+			expect(gameState.players.p1.hp).toBe(42);
+			expect(gameState.players.p1.magicStones).toBe(15);
+			expect(gameState.players.p2.hp).toBe(55);
+			expect(gameState.players.p2.magicStones).toBe(22);
+
+			for (const player of [gameState.players.p1, gameState.players.p2]) {
+				for (const card of player.hand) {
+					if (card) {
+						expect(card.remainingCharges).toBe(card.charges);
+					}
+				}
+			}
+		});
+
+		it('checkAllReady fresh deploy preserves existing hp and magicStones', () => {
+			resetState();
+			addPlayer('p1', {
+				ready: true,
+				hp: 42,
+				magicStones: 15,
+				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+			});
+
+			checkAllReady();
+
+			expect(gameState.gamePhase).toBe('playing');
+			expect(gameState.players.p1.hp).toBe(42);
+			expect(gameState.players.p1.magicStones).toBe(15);
+		});
+
+		it('checkAllReady fresh deploy defaults vitals for brand-new players', () => {
+			resetState();
+			addPlayer('p1', {
+				ready: true,
+				hp: undefined,
+				magicStones: undefined,
+				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+			});
+
+			checkAllReady();
+
+			expect(gameState.gamePhase).toBe('playing');
+			expect(gameState.players.p1.hp).toBe(100);
+			expect(gameState.players.p1.magicStones).toBe(STARTING_MAGIC_STONES);
+		});
+
+		it('initializePlayerForActiveRun preserves existing hp and magicStones on drop-in', () => {
+			resetState();
+			const player = {
+				hp: 42,
+				magicStones: 15,
+				hand: [{ id: 'iron_sword', type: 'weapon' }],
+				deck: [],
+				slotCooldowns: [null, null, null, null],
+				pendingSummons: new Set(),
+			};
+
+			initializePlayerForActiveRun(player);
+
+			expect(player.hp).toBe(42);
+			expect(player.magicStones).toBe(15);
+		});
+
+		it('initializePlayerForActiveRun defaults vitals when missing on drop-in', () => {
+			resetState();
+			const player = {
+				hp: undefined,
+				magicStones: undefined,
+				hand: [{ id: 'iron_sword', type: 'weapon' }],
+				deck: [],
+				slotCooldowns: [null, null, null, null],
+				pendingSummons: new Set(),
+			};
+
+			initializePlayerForActiveRun(player);
+
+			expect(player.hp).toBe(100);
+			expect(player.magicStones).toBe(STARTING_MAGIC_STONES);
+		});
+
+		it('telepipe resume redeploy preserves hp, magicStones, and card charges', () => {
 			resetState();
 			gameState._lobbyId = 'test-lobby';
 			addPlayer('p1', {
@@ -3005,12 +3261,15 @@ describe('run state', () => {
 			});
 
 			checkAllReady();
-			const preSuspendRunId = gameState.run.id;
+			const preExtractRunId = gameState.run.id;
 
+			gameState.players.p1.hp = 42;
 			gameState.players.p1.magicStones = STARTING_MAGIC_STONES - 5;
+			const spentCharges = {};
 			for (const card of gameState.players.p1.hand) {
 				if (card && card.charges != null) {
 					card.remainingCharges = Math.max(0, card.charges - 1);
+					spentCharges[card.id] = card.remainingCharges;
 				}
 			}
 
@@ -3022,32 +3281,32 @@ describe('run state', () => {
 				placedAt: Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1,
 			};
 			expect(tryEnterTelepipe('p1').ok).toBe(true);
-			expect(gameState.run.status).toBe('suspended');
-			expect(gameState.suspendedCheckpoint).toBeDefined();
-
-			expect(abandonSuspendedRun().ok).toBe(true);
+			expect(gameState.gamePhase).toBe('lobby');
 			expect(gameState.run).toBeUndefined();
-			expect(gameState.suspendedCheckpoint).toBeUndefined();
 
 			gameState.players.p1.ready = true;
 			checkAllReady();
 
-			expect(gameState.run.id).not.toBe(preSuspendRunId);
-			expect(gameState.players.p1.magicStones).toBe(STARTING_MAGIC_STONES);
+			expect(gameState.run.id).toBe(preExtractRunId);
+			const preservedMagicStones = STARTING_MAGIC_STONES - 5;
+			expect(gameState.players.p1.hp).toBe(42);
+			expect(gameState.players.p1.magicStones).toBe(preservedMagicStones);
 			for (let tick = 0; tick < 5; tick += 1) {
 				regenMagicStones();
 			}
 			expect(gameState.players.p1.magicStones).toBeCloseTo(
-				STARTING_MAGIC_STONES + 5 * MAGIC_STONES_REGEN_PER_TICK,
+				preservedMagicStones + 5 * MAGIC_STONES_REGEN_PER_TICK,
 				5,
 			);
 			const occupied = gameState.players.p1.hand.filter(Boolean);
 			expect(occupied.length).toBeGreaterThan(0);
 			for (const card of occupied) {
 				if (card.charges != null) {
-					expect(card.remainingCharges).toBe(card.charges);
+					expect(card.remainingCharges).toBe(spentCharges[card.id]);
 				}
 			}
+			expect(gameState.suspendedCheckpoint).toBeNull();
+			expect(stateSnapshot().suspendedRunSummary).toBeNull();
 		});
 		it('checkAllReady does not start when a disconnected player has stale ready', () => {
 			resetState();
@@ -3132,8 +3391,172 @@ describe('run state', () => {
 			expect(tryEnterTelepipe('p1').ok).toBe(true);
 			expect(gameState.gamePhase).toBe('playing');
 			expect(gameState.run.status).toBe('playing');
-			expect(gameState.suspendedCheckpoint).toBeNull();
 			expect(isPlayerActive(gameState.players.p2)).toBe(true);
+		});
+	});
+
+	describe('card charge persistence — telepipe resume vs new sortie', () => {
+		const deck = ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'];
+
+		function setupTwoPlayerRun() {
+			resetState();
+			gameState._lobbyId = 'test-lobby';
+			startDungeonRun();
+			gameState.gamePhase = 'playing';
+			addPlayer('p1', {
+				x: 5,
+				z: 5,
+				selectedDeck: [...deck],
+				hand: [{ id: 'telepipe', name: 'Telepipe', type: 'spell', charges: 1, remainingCharges: 1 }],
+				deck: [],
+				slotCooldowns: [null, null, null, null],
+				pendingSummons: new Set(),
+			});
+			addPlayer('p2', {
+				x: 10,
+				z: 10,
+				selectedDeck: [...deck],
+				hand: [{ id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 }],
+				deck: [],
+				slotCooldowns: [null, null, null, null],
+				pendingSummons: new Set(),
+			});
+			gameState.telepipe = {
+				x: 5,
+				z: 5,
+				placedBy: 'p1',
+				placedAt: Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1,
+			};
+		}
+
+		function extractAllPlayers() {
+			tryEnterTelepipe('p1');
+			gameState.players.p2.x = 5;
+			gameState.players.p2.z = 5;
+			tryEnterTelepipe('p2');
+		}
+
+		it('telepipe-resume: spend charges → full extract → redeploy preserves remainingCharges, hp, and magicStones', () => {
+			setupTwoPlayerRun();
+			const preExtractRunId = gameState.run.id;
+			const nonDefaultHp = 42;
+			const nonDefaultMs = 15;
+
+			gameState.players.p1.hp = nonDefaultHp;
+			gameState.players.p1.magicStones = nonDefaultMs;
+			gameState.players.p2.hp = 55;
+			gameState.players.p2.magicStones = 22;
+
+			const spentCharges = {};
+			for (const card of gameState.players.p1.hand) {
+				if (card && card.charges != null) {
+					card.remainingCharges = Math.max(0, card.charges - 1);
+					spentCharges[card.id] = card.remainingCharges;
+				}
+			}
+			gameState.players.p2.hand[0].remainingCharges = 2;
+
+			extractAllPlayers();
+			expect(gameState.gamePhase).toBe('lobby');
+			expect(gameState.suspendedCheckpoint).not.toBeNull();
+
+			gameState.players.p1.ready = true;
+			gameState.players.p2.ready = true;
+			checkAllReady();
+
+			expect(gameState.run.id).toBe(preExtractRunId);
+			expect(gameState.players.p1.hp).toBe(nonDefaultHp);
+			expect(gameState.players.p1.magicStones).toBe(nonDefaultMs);
+			expect(gameState.players.p2.hp).toBe(55);
+			expect(gameState.players.p2.magicStones).toBe(22);
+
+			for (const card of gameState.players.p1.hand) {
+				if (card && card.charges != null && spentCharges[card.id] != null) {
+					expect(card.remainingCharges).toBe(spentCharges[card.id]);
+				}
+			}
+			const p2Sword = gameState.players.p2.hand.find((c) => c && c.id === 'iron_sword');
+			if (p2Sword) {
+				expect(p2Sword.remainingCharges).toBe(2);
+			}
+		});
+
+		it('new sortie: spend charges → full extract → abandon → redeploy resets charges and run id', () => {
+			setupTwoPlayerRun();
+			const preSuspendRunId = gameState.run.id;
+			const nonDefaultHp = 42;
+			const nonDefaultMs = 15;
+
+			gameState.players.p1.hp = nonDefaultHp;
+			gameState.players.p1.magicStones = nonDefaultMs;
+			gameState.players.p2.hp = 55;
+			gameState.players.p2.magicStones = 22;
+			gameState.players.p1.hand[0].remainingCharges = 0;
+			gameState.players.p2.hand[0].remainingCharges = 0;
+
+			extractAllPlayers();
+			expect(gameState.suspendedCheckpoint).not.toBeNull();
+			expect(gameState.suspendedCheckpoint.playerStates.p1.hand[0].remainingCharges).toBe(0);
+
+			const abandonResult = abandonSuspendedRun();
+			expect(abandonResult.ok).toBe(true);
+			expect(gameState.suspendedCheckpoint).toBeNull();
+
+			gameState.players.p1.ready = true;
+			gameState.players.p2.ready = true;
+			checkAllReady();
+
+			expect(gameState.gamePhase).toBe('playing');
+			expect(gameState.run.id).not.toBe(preSuspendRunId);
+			expect(gameState.players.p1.hp).toBe(nonDefaultHp);
+			expect(gameState.players.p1.magicStones).toBe(nonDefaultMs);
+			expect(gameState.players.p2.hp).toBe(55);
+			expect(gameState.players.p2.magicStones).toBe(22);
+
+			for (const player of [gameState.players.p1, gameState.players.p2]) {
+				for (const card of player.hand) {
+					if (card) {
+						expect(card.remainingCharges).toBe(card.charges);
+					}
+				}
+			}
+		});
+
+		it('regression: neither path resets hp to MAX_HP or magicStones to STARTING_MAGIC_STONES', () => {
+			const nonDefaultHp = 37;
+			const nonDefaultMs = 23;
+
+			setupTwoPlayerRun();
+			gameState.players.p1.hp = nonDefaultHp;
+			gameState.players.p1.magicStones = nonDefaultMs;
+			gameState.players.p1.hand[0].remainingCharges = 0;
+			extractAllPlayers();
+
+			gameState.players.p1.ready = true;
+			gameState.players.p2.ready = true;
+			checkAllReady();
+
+			expect(gameState.players.p1.hp).toBe(nonDefaultHp);
+			expect(gameState.players.p1.magicStones).toBe(nonDefaultMs);
+			expect(gameState.players.p1.hp).not.toBe(MAX_HP);
+			expect(gameState.players.p1.magicStones).not.toBe(STARTING_MAGIC_STONES);
+
+			resetState();
+			setupTwoPlayerRun();
+			gameState.players.p1.hp = nonDefaultHp;
+			gameState.players.p1.magicStones = nonDefaultMs;
+			gameState.players.p1.hand[0].remainingCharges = 0;
+			extractAllPlayers();
+			abandonSuspendedRun();
+
+			gameState.players.p1.ready = true;
+			gameState.players.p2.ready = true;
+			checkAllReady();
+
+			expect(gameState.players.p1.hp).toBe(nonDefaultHp);
+			expect(gameState.players.p1.magicStones).toBe(nonDefaultMs);
+			expect(gameState.players.p1.hp).not.toBe(MAX_HP);
+			expect(gameState.players.p1.magicStones).not.toBe(STARTING_MAGIC_STONES);
 		});
 	});
 
@@ -3200,14 +3623,27 @@ describe('run state', () => {
 			expect(gameState.gamePhase).toBe('lobby');
 		});
 
-		it('revives dead players to LOBBY_REVIVE_HP when returning to lobby', () => {
+		it('clears dead flag without raising HP when returning dead player to lobby', () => {
 			addPlayer('p1', { hp: 0, dead: true });
 
 			const { restore } = mockRoomEmit();
 			returnPlayersToLobby();
 			restore();
 
-			expect(gameState.players.p1.hp).toBe(config.LOBBY_REVIVE_HP);
+			expect(gameState.players.p1.hp).toBe(0);
+			expect(gameState.players.p1.dead).toBe(false);
+		});
+
+		it('preserves partial-HP for living player on run-failure return', () => {
+			addPlayer('p1', { hp: 42, dead: false });
+			gameState.gamePhase = 'playing';
+			startDungeonRun();
+
+			const { restore } = mockRoomEmit();
+			returnPlayersToLobby();
+			restore();
+
+			expect(gameState.players.p1.hp).toBe(42);
 			expect(gameState.players.p1.dead).toBe(false);
 		});
 
@@ -3314,11 +3750,81 @@ describe('run state', () => {
 		});
 	});
 
+	describe('buildPlayerRecord() vitals restoration', () => {
+		it('restores hp, dead, and magicStones from savedData', () => {
+			const savedData = {
+				currency: 10,
+				ownedCards: { iron_sword: 1 },
+				selectedDeck: ['iron_sword'],
+				hp: 42,
+				dead: false,
+				magicStones: 15,
+			};
+			const player = buildPlayerRecord('acct1', 'acct1', 'alice', savedData);
+			expect(player.hp).toBe(42);
+			expect(player.dead).toBe(false);
+			expect(player.magicStones).toBe(15);
+		});
+
+		it('defaults vitals for brand-new accounts with no savedData', () => {
+			const player = buildPlayerRecord('acct-new', 'acct-new', 'newbie', null);
+			expect(player.hp).toBe(100);
+			expect(player.dead).toBe(false);
+			expect(player.magicStones).toBe(STARTING_MAGIC_STONES);
+		});
+
+		it('preserves dead state and zero HP from savedData', () => {
+			const savedData = {
+				currency: 0,
+				ownedCards: {},
+				selectedDeck: [],
+				hp: 0,
+				dead: true,
+				magicStones: 3,
+			};
+			const player = buildPlayerRecord('acct-dead', 'acct-dead', 'ghost', savedData);
+			expect(player.hp).toBe(0);
+			expect(player.dead).toBe(true);
+			expect(player.magicStones).toBe(3);
+		});
+	});
+
+	describe('revivePlayerInLobby()', () => {
+		it('leaves living players with partial HP unchanged', () => {
+			const player = { hp: 42, dead: false };
+			revivePlayerInLobby(player);
+			expect(player.hp).toBe(42);
+			expect(player.dead).toBe(false);
+		});
+
+		it('clears dead flag without raising HP for dead players', () => {
+			const player = { hp: 0, dead: true };
+			revivePlayerInLobby(player);
+			expect(player.hp).toBe(0);
+			expect(player.dead).toBe(false);
+		});
+
+		it('clears dead flag without raising HP for zero-HP players without dead flag', () => {
+			const player = { hp: 0, dead: false };
+			revivePlayerInLobby(player);
+			expect(player.hp).toBe(0);
+			expect(player.dead).toBe(false);
+		});
+	});
+
 	describe('healAtMedic()', () => {
 		beforeEach(() => {
 			resetState();
 			gameState._lobbyId = 'test-lobby';
 			gameState.gamePhase = 'lobby';
+		});
+
+		it('heals dead-or-zero-HP hub player to MAX_HP', () => {
+			addPlayer('p1', { hp: 0, dead: true, currency: 25 });
+			const result = healAtMedic('p1');
+			expect(result).toEqual({ ok: true, hp: 100, currency: 15, cost: 10 });
+			expect(gameState.players.p1.hp).toBe(100);
+			expect(gameState.players.p1.dead).toBe(false);
 		});
 
 		it('heals to full and charges 10 currency', () => {
@@ -3336,6 +3842,20 @@ describe('run state', () => {
 		it('rejects when player cannot afford the heal', () => {
 			addPlayer('p1', { hp: 40, currency: 5 });
 			expect(healAtMedic('p1')).toEqual({ ok: false, reason: 'insufficient_gold' });
+		});
+
+		it('rejects when not in lobby phase', () => {
+			addPlayer('p1', { hp: 40, currency: 25 });
+			gameState.gamePhase = 'playing';
+			startDungeonRun();
+			expect(healAtMedic('p1')).toEqual({ ok: false, reason: 'not_in_lobby' });
+		});
+
+		it('remains the sole player HP-restore path — combat cards and key items define no HP healing', () => {
+			expect(CARD_DEFS.healing_font.healAmount).toBeUndefined();
+			expect(CARD_DEFS.divine_grace.healAmount).toBeUndefined();
+			expect(CARD_DEFS.soul_drain.healOnHit).toBeUndefined();
+			expect(CARD_DEFS.soul_drain.healOnKill).toBeUndefined();
 		});
 	});
 
@@ -4658,6 +5178,9 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 			smokeBombRadius: 0,
 			smokeBombX: 0,
 			smokeBombZ: 0,
+			slowedUntil: 0,
+			slowFactor: 1,
+			burningUntil: 0,
 			cosmetic: { ...DEFAULT_COSMETIC },
 			username: undefined,
 		});
@@ -4856,7 +5379,7 @@ describe('hotStateSnapshot() — slim per-tick payload', () => {
 		expect(snapshot.lobby).toEqual([]);
 		expect(snapshot.dungeonBounds).toEqual(gameState.dungeonBounds);
 		expect(snapshot).toHaveProperty('shopOffer');
-		expect(snapshot).toHaveProperty('suspendedRunSummary');
+		expect(snapshot.suspendedRunSummary).toBeNull();
 	});
 
 	it('full stateSnapshot still includes cold fields', () => {
@@ -4889,7 +5412,7 @@ describe('hotStateSnapshot() — slim per-tick payload', () => {
 // ── ENEMY_DEFS ──
 
 describe('ENEMY_DEFS', () => {
-	it('is exported and contains grunt, skirmisher, miniboss, annex_overseer, arena_champion, spire_warden, spawner keys', () => {
+	it('is exported and contains grunt, skirmisher, miniboss, annex_overseer, arena_champion, spire_warden, spawner, field_medic, ember_wraith keys', () => {
 		expect(ENEMY_DEFS).toBeDefined();
 		expect(ENEMY_DEFS).toHaveProperty('grunt');
 		expect(ENEMY_DEFS).toHaveProperty('skirmisher');
@@ -4898,6 +5421,8 @@ describe('ENEMY_DEFS', () => {
 		expect(ENEMY_DEFS).toHaveProperty('arena_champion');
 		expect(ENEMY_DEFS).toHaveProperty('spire_warden');
 		expect(ENEMY_DEFS).toHaveProperty('spawner');
+		expect(ENEMY_DEFS).toHaveProperty('field_medic');
+		expect(ENEMY_DEFS).toHaveProperty('ember_wraith');
 	});
 
 	it('grunt has correct stat values', () => {
@@ -4951,7 +5476,46 @@ describe('ENEMY_DEFS', () => {
 		expect(ENEMY_DEFS.spawner.spawnType).toBe('skirmisher');
 	});
 
-	const ENEMY_TYPES = ['grunt', 'skirmisher', 'miniboss', 'annex_overseer', 'arena_champion', 'spire_warden', 'spawner'];
+	it('field_medic has fragile support tuning and medic AI fields', () => {
+		const def = ENEMY_DEFS.field_medic;
+		expect(def.name).toBe('Field Medic');
+		expect(def.description).toMatch(/heal|kite|bead/i);
+		expect(def.hp).toBeGreaterThanOrEqual(50);
+		expect(def.hp).toBeLessThanOrEqual(80);
+		expect(def.attackDamage).toBeGreaterThanOrEqual(4);
+		expect(def.attackDamage).toBeLessThanOrEqual(8);
+		expect(def.attackStyle).toBe('projectile');
+		expect(def.fleeSpeed).toBeGreaterThan(def.chaseSpeed);
+		expect(def.fleeRadius).toBeGreaterThan(0);
+		expect(def.healAmount).toBeGreaterThan(0);
+		expect(def.healRadius).toBeGreaterThan(0);
+		expect(def.healCooldownMs).toBeGreaterThan(0);
+		expect(def.beadRange).toBeGreaterThan(0);
+		expect(def.beadCooldownMs).toBeGreaterThan(0);
+		expect(def.surfacedStats).toEqual(
+			expect.arrayContaining(['hp', 'attackDamage', 'healAmount', 'healCooldownMs', 'fleeSpeed']),
+		);
+	});
+
+	it('ember_wraith has fire skirmisher tuning and burn metadata', () => {
+		const def = ENEMY_DEFS.ember_wraith;
+		expect(def.name).toBe('Ember Wraith');
+		expect(def.description).toMatch(/ignit|burn/i);
+		expect(def.hp).toBeGreaterThanOrEqual(45);
+		expect(def.hp).toBeLessThanOrEqual(70);
+		expect(def.attackDamage).toBeGreaterThanOrEqual(6);
+		expect(def.attackDamage).toBeLessThanOrEqual(10);
+		expect(def.attackStyle).toBe('cone');
+		expect(def.attackConeAngle).toBe(Math.PI / 3);
+		expect(def.burnDurationMs).toBeGreaterThan(0);
+		expect(def.burnDurationMs).toBeGreaterThanOrEqual(2000);
+		expect(def.burnDurationMs).toBeLessThanOrEqual(3500);
+		expect(def.surfacedStats).toEqual(
+			expect.arrayContaining(['hp', 'attackDamage', 'attackStyle', 'chaseSpeed', 'burnDurationMs']),
+		);
+	});
+
+	const ENEMY_TYPES = ['grunt', 'skirmisher', 'miniboss', 'annex_overseer', 'arena_champion', 'spire_warden', 'spawner', 'field_medic', 'ember_wraith'];
 	const DISPLAY_ONLY_KEYS = ['name', 'description', 'surfacedStats'];
 
 	it('every type has non-empty display metadata with valid surfacedStats keys', () => {
@@ -4979,6 +5543,36 @@ describe('ENEMY_DEFS', () => {
 	it('spawnEnemy does not copy display metadata onto spawned enemies', () => {
 		resetState();
 		const enemy = spawnEnemy(0, 0, 'grunt');
+		for (const key of DISPLAY_ONLY_KEYS) {
+			expect(enemy).not.toHaveProperty(key);
+		}
+	});
+
+	it('spawnEnemy(field_medic) spreads combat stats but omits display metadata', () => {
+		resetState();
+		const enemy = spawnEnemy(0, 0, 'field_medic');
+		expect(enemy.type).toBe('field_medic');
+		expect(enemy.hp).toBe(ENEMY_DEFS.field_medic.hp);
+		expect(enemy.maxHp).toBe(ENEMY_DEFS.field_medic.hp);
+		expect(enemy.attackDamage).toBe(ENEMY_DEFS.field_medic.attackDamage);
+		expect(enemy.healAmount).toBe(ENEMY_DEFS.field_medic.healAmount);
+		expect(enemy.fleeSpeed).toBe(ENEMY_DEFS.field_medic.fleeSpeed);
+		expect(enemy.beadRange).toBe(ENEMY_DEFS.field_medic.beadRange);
+		for (const key of DISPLAY_ONLY_KEYS) {
+			expect(enemy).not.toHaveProperty(key);
+		}
+	});
+
+	it('spawnEnemy(ember_wraith) spreads combat stats including burnDurationMs but omits display metadata', () => {
+		resetState();
+		const enemy = spawnEnemy(0, 0, 'ember_wraith');
+		expect(enemy.type).toBe('ember_wraith');
+		expect(enemy.hp).toBe(ENEMY_DEFS.ember_wraith.hp);
+		expect(enemy.maxHp).toBe(ENEMY_DEFS.ember_wraith.hp);
+		expect(enemy.attackDamage).toBe(ENEMY_DEFS.ember_wraith.attackDamage);
+		expect(enemy.attackStyle).toBe('cone');
+		expect(enemy.attackConeAngle).toBe(ENEMY_DEFS.ember_wraith.attackConeAngle);
+		expect(enemy.burnDurationMs).toBe(ENEMY_DEFS.ember_wraith.burnDurationMs);
 		for (const key of DISPLAY_ONLY_KEYS) {
 			expect(enemy).not.toHaveProperty(key);
 		}
@@ -5035,7 +5629,9 @@ describe('spawnEnemy() type validation', () => {
 		expect(() => spawnEnemy(0, 0, 'annex_overseer')).not.toThrow();
 		expect(() => spawnEnemy(0, 0, 'spire_warden')).not.toThrow();
 		expect(() => spawnEnemy(0, 0, 'spawner')).not.toThrow();
-		expect(gameState.enemies.length).toBe(6);
+		expect(() => spawnEnemy(0, 0, 'field_medic')).not.toThrow();
+		expect(() => spawnEnemy(0, 0, 'ember_wraith')).not.toThrow();
+		expect(gameState.enemies.length).toBe(8);
 	});
 });
 

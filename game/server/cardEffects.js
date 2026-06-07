@@ -29,7 +29,10 @@ const {
   collectConeHits,
   collectRadialHits,
   collectProjectileHits,
+  collectChainLightningHits,
   collectReturningProjectileHits,
+  applyBurning,
+  applySlow,
   applyFreezeInRadius,
   pullEnemiesToward,
   applyKnockback,
@@ -39,6 +42,7 @@ const {
   spawnInfernoPillarEffect,
   damagePlayer,
   healPlayer,
+  healPlayersInRadius,
   spawnGroundEnchantment,
   armSelfEnchantment,
   countGroundEnchantmentsForPlayer,
@@ -103,8 +107,6 @@ function applyAstralShieldCast(ctx) {
   const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, summonDamage, {
     magicStoneOnHit: cardDef.magicStoneOnHit,
     magicStoneOnKill: cardDef.magicStoneOnKill,
-    healOnHit: cardDef.healOnHit,
-    healOnKill: cardDef.healOnKill,
     attackerId: socket.playerId,
   });
   const hits = radial.hits;
@@ -153,7 +155,6 @@ function applyAstralShieldCast(ctx) {
     radius: SUMMON_RADIUS,
     hits,
     magicStonesGained: appliedMagicStones,
-    hpHealed: radial.hpHealed || 0,
     shieldGranted: shieldHp,
     minionId: minion.id,
   });
@@ -245,7 +246,7 @@ function handleUseCard(socket, state, lobby, data) {
 
       for (let swing = 0; swing < swingsPerUse; swing++) {
         let swingResult;
-        if (cardDef.effect === 'throw_rock' || cardDef.effect === 'projectile') {
+        if (cardDef.effect === 'throw_rock' || cardDef.effect === 'projectile' || cardDef.effect === 'fireball') {
           swingResult = collectProjectileHits(originX, originZ, dirX, dirZ, attackRange, damage, {
             magicStoneOnHit: cardDef.magicStoneOnHit,
             magicStoneOnKill: cardDef.magicStoneOnKill,
@@ -272,6 +273,24 @@ function handleUseCard(socket, state, lobby, data) {
           hits.push({ ...hit, swing: swing + 1 });
         }
         magicStonesGained += swingResult.magicStonesGained;
+      }
+
+      // Fireball: every enemy struck by the projectile catches fire (BURNING).
+      // Resolve each hit's enemyId back to its live entity in game state and
+      // ignite it for the card's configured burning duration.
+      if (cardDef.effect === 'fireball') {
+        const burnDurationMs = cardDef.burningDurationMs || 0;
+        if (burnDurationMs > 0) {
+          const ignited = new Set();
+          for (const hit of hits) {
+            if (!hit.enemyId || ignited.has(hit.enemyId)) continue;
+            const enemy = state.enemies.find(e => e.id === hit.enemyId);
+            if (enemy) {
+              applyBurning(enemy, burnDurationMs);
+              ignited.add(hit.enemyId);
+            }
+          }
+        }
       }
 
       let knockbackMoved = [];
@@ -559,27 +578,6 @@ function handleUseCard(socket, state, lobby, data) {
       }
 
       if (cardDef.effect === 'healing_font') {
-        const healed = healPlayer(socket.playerId, cardDef.healAmount || 0);
-
-        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
-        replaceConsumedCard(player, data.slotIndex, handCard);
-
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
-          playerId: socket.playerId,
-          cardId: data.cardId,
-          slotIndex: data.slotIndex,
-          specialEffect: cardDef.specialEffect,
-          origin: { x: originX, z: originZ },
-          radius: SUMMON_RADIUS,
-          healAmount: healed,
-        });
-
-        return;
-      }
-
-      if (cardDef.effect === 'divine_grace') {
-        const healed = healPlayer(socket.playerId, cardDef.healAmount || 0);
         const magicStonesGained = addMagicStones(player, cardDef.magicStoneRestore || 0);
 
         applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
@@ -593,8 +591,53 @@ function handleUseCard(socket, state, lobby, data) {
           specialEffect: cardDef.specialEffect,
           origin: { x: originX, z: originZ },
           radius: SUMMON_RADIUS,
-          healAmount: healed,
           magicStonesGained,
+        });
+
+        return;
+      }
+
+      if (cardDef.effect === 'divine_grace') {
+        const magicStonesGained = addMagicStones(player, cardDef.magicStoneRestore || 0);
+
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
+        replaceConsumedCard(player, data.slotIndex, handCard);
+
+        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          specialEffect: cardDef.specialEffect,
+          origin: { x: originX, z: originZ },
+          radius: SUMMON_RADIUS,
+          magicStonesGained,
+        });
+
+        return;
+      }
+
+      if (cardDef.effect === 'purifying_pulse') {
+        const radius = cardDef.radius || SUMMON_RADIUS;
+        const healedTargets = healPlayersInRadius(
+          originX,
+          originZ,
+          radius,
+          cardDef.healAmount || 0
+        );
+
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
+        replaceConsumedCard(player, data.slotIndex, handCard);
+
+        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          specialEffect: 'heal_and_cleanse',
+          origin: { x: originX, z: originZ },
+          radius,
+          healedTargets,
         });
 
         return;
@@ -764,6 +807,137 @@ function handleUseCard(socket, state, lobby, data) {
         return;
       }
 
+      if (cardDef.effect === 'ice_ball') {
+        const rotation = resolveAttackRotation(player, data);
+        player.rotation = rotation;
+        const dirX = Math.cos(rotation);
+        const dirZ = Math.sin(rotation);
+        const attackRange = cardDef.attackRange || ATTACK_RANGE;
+        const grind = handCard.grind || 0;
+        const damage = handCard.echoDamage != null
+          ? handCard.echoDamage
+          : scaledGrindStat(cardDef.damage || 0, grind);
+
+        const { hits, magicStonesGained: rawMagicStones } = collectProjectileHits(
+          originX,
+          originZ,
+          dirX,
+          dirZ,
+          attackRange,
+          damage,
+          {
+            magicStoneOnHit: cardDef.magicStoneOnHit,
+            magicStoneOnKill: cardDef.magicStoneOnKill,
+            attackerId: socket.playerId,
+            pierces: false,
+          }
+        );
+        const appliedMagicStones = addMagicStones(player, rawMagicStones);
+
+        const slowChance = cardDef.slowChance ?? 1;
+        const slowDurationMs = cardDef.slowDurationMs || 0;
+        if (slowDurationMs > 0 && slowChance > 0) {
+          const slowed = new Set();
+          for (const hit of hits) {
+            if (!hit.enemyId || slowed.has(hit.enemyId)) continue;
+            const enemy = state.enemies.find(e => e.id === hit.enemyId);
+            if (enemy && Math.random() < slowChance) {
+              applySlow(enemy, slowDurationMs, cardDef.slowFactor);
+              slowed.add(hit.enemyId);
+            }
+          }
+        }
+
+        cleanupAfterDamage();
+
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
+        replaceConsumedCard(player, data.slotIndex, handCard);
+
+        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          effect: 'ice_ball',
+          specialEffect: cardDef.specialEffect,
+          origin: { x: originX, z: originZ },
+          direction: { x: dirX, z: dirZ },
+          attackRange,
+          hits,
+          projectileTravelMs: cardDef.projectileTravelMs,
+          magicStonesGained: appliedMagicStones,
+        });
+
+        return;
+      }
+
+      if (cardDef.effect === 'chain_lightning') {
+        const rotation = resolveAttackRotation(player, data);
+        player.rotation = rotation;
+        const dirX = Math.cos(rotation);
+        const dirZ = Math.sin(rotation);
+        const attackRange = cardDef.attackRange || ATTACK_RANGE;
+        const chainRadius = cardDef.chainRadius || 5;
+        const grind = handCard.grind || 0;
+        const damage = handCard.echoDamage != null
+          ? handCard.echoDamage
+          : scaledGrindStat(cardDef.damage || 0, grind);
+
+        const { hits: rawHits, magicStonesGained: rawMagicStones } = collectChainLightningHits(
+          originX,
+          originZ,
+          dirX,
+          dirZ,
+          attackRange,
+          damage,
+          {
+            chainRadius,
+            maxChainTargets: cardDef.maxChainTargets ?? 2,
+            magicStoneOnHit: cardDef.magicStoneOnHit,
+            magicStoneOnKill: cardDef.magicStoneOnKill,
+            attackerId: socket.playerId,
+          }
+        );
+        const appliedMagicStones = addMagicStones(player, rawMagicStones);
+
+        const chainSegments = [];
+        let from = { x: originX, z: originZ };
+        const hits = [];
+        for (const hit of rawHits) {
+          const to = { x: hit.x, z: hit.z };
+          chainSegments.push({ from, to });
+          from = to;
+          hits.push({
+            enemyId: hit.enemyId,
+            hp: hit.hp,
+            damageDealt: hit.damageDealt,
+            ...(hit.magicStonesGained ? { magicStonesGained: hit.magicStonesGained } : {}),
+          });
+        }
+
+        cleanupAfterDamage();
+
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
+        replaceConsumedCard(player, data.slotIndex, handCard);
+
+        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          specialEffect: 'chain_lightning',
+          origin: { x: originX, z: originZ },
+          direction: { x: dirX, z: dirZ },
+          attackRange,
+          chainRadius,
+          hits,
+          chainSegments,
+          magicStonesGained: appliedMagicStones,
+        });
+
+        return;
+      }
+
       // Radial AoE: apply damage to every enemy within SUMMON_RADIUS
       const grind = handCard.grind || 0;
       const summonDamage = handCard.echoDamage != null
@@ -772,8 +946,6 @@ function handleUseCard(socket, state, lobby, data) {
       const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, summonDamage, {
         magicStoneOnHit: cardDef.magicStoneOnHit,
         magicStoneOnKill: cardDef.magicStoneOnKill,
-        healOnHit: cardDef.healOnHit,
-        healOnKill: cardDef.healOnKill,
         attackerId: socket.playerId,
       });
       const hits = radial.hits;
@@ -799,7 +971,6 @@ function handleUseCard(socket, state, lobby, data) {
         radius: SUMMON_RADIUS,
         hits: hits,
         magicStonesGained: appliedMagicStones,
-        hpHealed: radial.hpHealed || 0,
       });
 
       // Do NOT delete pendingSummons here — leave the entry so any duplicate

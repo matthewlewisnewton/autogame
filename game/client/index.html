@@ -115,9 +115,18 @@
       <div id="lobby-browser-error" style="display:none;"></div>
       <ul id="lobby-list"></ul>
     </div>
+    <div id="lobby-hud" class="hidden">
+      <div id="suspended-run-banner" class="hidden"></div>
+      <div id="lobby-hud-actions">
+        <button id="resume-run-btn" type="button" class="hidden">Resume sortie</button>
+        <button id="abandon-run-btn" type="button" class="hidden">Abort Sortie</button>
+        <button id="leave-lobby-btn" type="button">Return to Registry</button>
+      </div>
+    </div>
     <div id="lobby" class="hidden">
       <div class="lobby-header">
         <h2 id="lobby-title">Lobby Connection</h2>
+        <button type="button" id="lobby-close-btn" class="settings-close lobby-close-btn" aria-label="Close lobby menu">&times;</button>
       </div>
       <div id="lobby-player-list-wrapper">
         <h3>Players</h3>
@@ -230,10 +239,6 @@
           </div>
         </div>
       </div>
-      <div id="suspended-run-banner" class="hidden"></div>
-      <button id="resume-run-btn" type="button" class="hidden">Resume sortie</button>
-      <button id="abandon-run-btn" type="button" class="hidden">Abort Sortie</button>
-      <button id="leave-lobby-btn" type="button">Return to Registry</button>
     </div>
     <div id="run-summary-overlay" style="display:none;">
       <h2 id="summary-status">Sortie Complete</h2>

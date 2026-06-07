@@ -14,6 +14,7 @@ const QUEST_DEFS = {
       { type: 'grunt', weight: 3 },
       { type: 'skirmisher', weight: 2 },
     ],
+    tier2EnemyPool: [{ type: 'field_medic', weight: 1 }],
     tiers: {
       1: {
         name: 'Initiate Vault',
@@ -46,6 +47,7 @@ const QUEST_DEFS = {
       { type: 'skirmisher', weight: 3 },
       { type: 'grunt', weight: 2 },
     ],
+    tier2EnemyPool: [{ type: 'field_medic', weight: 1 }],
     tiers: {
       1: {
         name: 'Prism Salvage',
@@ -103,6 +105,29 @@ const QUEST_DEFS = {
       },
     },
   },
+  frost_crossing: {
+    id: 'frost_crossing',
+    // Signature foe that must always appear in this level's combat spawn set.
+    // Level-scoped: only quests that declare this force a guaranteed type.
+    guaranteedEnemyType: 'glacial_thrower',
+    enemyPool: [
+      { type: 'grunt', weight: 3 },
+      { type: 'skirmisher', weight: 2 },
+      // Ice-level signature foe — a ranged thrower that lobs slow ice balls.
+      // Level-exclusive: do not add to non-ice quests.
+      { type: 'glacial_thrower', weight: 2 },
+    ],
+    tiers: {
+      1: {
+        name: 'Frost Crossing',
+        description: 'Cross the frozen cavern and purge hostiles from the ice field.',
+        objectiveType: 'defeat_enemies',
+        enemyCount: 6,
+        rewardCurrency: 14,
+        layoutProfile: 'ice-cavern',
+      },
+    },
+  },
   canyon_descent: {
     id: 'canyon_descent',
     enemyPool: [
@@ -110,6 +135,7 @@ const QUEST_DEFS = {
       { type: 'grunt', weight: 2 },
       { type: 'miniboss', weight: 1 },
     ],
+    tier2EnemyPool: [{ type: 'field_medic', weight: 1 }],
     tiers: {
       1: {
         name: 'Canyon Descent',
@@ -134,6 +160,24 @@ const QUEST_DEFS = {
           landmark: 'canyon_monolith',
           addCount: 4,
         },
+      },
+    },
+  },
+  ember_descent: {
+    id: 'ember_descent',
+    enemyPool: [
+      { type: 'grunt', weight: 3 },
+      { type: 'skirmisher', weight: 2 },
+      { type: 'ember_wraith', weight: 2 },
+    ],
+    tiers: {
+      1: {
+        name: 'Ember Descent',
+        description: 'Purge hostiles from the volcanic rim overlooking the molten basin.',
+        objectiveType: 'defeat_enemies',
+        enemyCount: 6,
+        rewardCurrency: 14,
+        layoutProfile: 'fire-cavern',
       },
     },
   },
@@ -389,13 +433,30 @@ function getLayoutGenerationOptions(questId, tier) {
 }
 
 // Returns the enemy spawn pool for a quest, falling back to the default quest's
-// pool for an unknown/invalid quest id.
-function getEnemyPool(questId) {
+// pool for an unknown/invalid quest id. Tier 2 merges the base pool with an
+// optional quest-level tier2EnemyPool (weights add to the draw).
+function getEnemyPool(questId, tier = DEFAULT_QUEST_TIER) {
   const def = isValidQuestId(questId) ? QUEST_DEFS[questId] : null;
-  if (def && def.enemyPool) {
-    return def.enemyPool;
+  if (!def || !def.enemyPool) {
+    return QUEST_DEFS[DEFAULT_QUEST_ID].enemyPool;
   }
-  return QUEST_DEFS[DEFAULT_QUEST_ID].enemyPool;
+  const normalizedTier = normalizeQuestTier(tier);
+  if (
+    normalizedTier === 2
+    && Array.isArray(def.tier2EnemyPool)
+    && def.tier2EnemyPool.length > 0
+  ) {
+    return [...def.enemyPool, ...def.tier2EnemyPool];
+  }
+  return def.enemyPool;
+}
+
+// Returns the quest's guaranteed/signature enemy type (the foe that must always
+// appear in its combat spawn set), or null when the quest declares none. Quests
+// without a declared type are unaffected — no enemy is forced.
+function getGuaranteedEnemyType(questId) {
+  const def = isValidQuestId(questId) ? QUEST_DEFS[questId] : null;
+  return def && typeof def.guaranteedEnemyType === 'string' ? def.guaranteedEnemyType : null;
 }
 
 // Draws an enemy `type` from a `[{ type, weight }]` pool in proportion to the
@@ -431,5 +492,6 @@ module.exports = {
   formatRewardSummary,
   getEncounterConfig,
   getEnemyPool,
+  getGuaranteedEnemyType,
   pickWeightedEnemyType,
 };

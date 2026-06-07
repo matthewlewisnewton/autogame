@@ -7,7 +7,17 @@
 
 - **boothDeductsGold**: PASS — paid 1000→975 (Δ-25), hat 975→975 (Δ0)
 - **hatSwapFree**: PASS — paid 1000→975 (Δ-25), hat 975→975 (Δ0)
-- **telepipeUpReset**: PASS — preSuspend ms=1.5800000000011334, postDeploy ms=49.005; runId e8338dcc-e849-428f-9936-bbc863cee7cd→c24f13a1-e4f1-455b-9def-9ff2fb4cef20 (changed); checkpoint restored in log: no
+- **telepipeVitalsPreserved**: PASS — preSuspend hp=100, ms=3.1250000000017346; postDeploy hp=100, ms=3.3650000000017295; runId e0ea56dc-05b5-4298-ba46-79a00656e6c3→9ef2fd1d-040e-4094-910f-15e4a314768e (changed); checkpoint restored in log: no
+
+## Walkable presentation
+
+- **overview**: lobbyHidden=true, lobbyMenuDismissed=true, hubCanvasActive=true, playersOnHost=2 remoteSquadmateCount=1
+- **operations**: lobbyHidden=true, lobbyMenuDismissed=true, hubCanvasActive=true, playersOnHost=2 remoteSquadmateCount=1
+- **commerce**: lobbyHidden=true, lobbyMenuDismissed=true, hubCanvasActive=true, playersOnHost=2 remoteSquadmateCount=1
+- **salon**: lobbyHidden=true, lobbyMenuDismissed=true, hubCanvasActive=true, playersOnHost=2 remoteSquadmateCount=1
+- **3D hub visible with menu closed**: Yes — lobby hidden, menu dismissed, and canvas active on overview and all zone walk captures.
+- **Menu dominance on walk captures**: None observed.
+- **Party-mates in-world**: Yes — 2 players on host and 1 remote squadmate(s) in harness.
 
 ## Hub walk notes
 

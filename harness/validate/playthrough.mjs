@@ -24,7 +24,7 @@ import {
 } from './lib/combat.mjs';
 import { wireConsoleLog, writeConsoleLog } from './lib/consoleLog.mjs';
 import { renderFindings } from './lib/findings.mjs';
-import { renderHubFindings } from './lib/findingsHub.mjs';
+import { renderHubFindings, evaluateWalkablePresentation } from './lib/findingsHub.mjs';
 import { assertGameProcessAlive, getServerLogTail, startGame, stopGame } from './lib/gameProcess.mjs';
 import { readHarness } from './lib/harnessState.mjs';
 import { writeScreenshot } from './lib/screenshot.mjs';
@@ -149,6 +149,41 @@ async function failWithHarnessPair(hostPage, joinerPage, message) {
 function firstSquadmate(harness) {
 	const mates = Array.isArray(harness?.squadmates) ? harness.squadmates : [];
 	return mates.find((m) => m && Number.isFinite(m.x) && Number.isFinite(m.z)) || null;
+}
+
+async function probeWalkableHubPresentation(page) {
+	return page.evaluate(() => {
+		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
+		const lobby = document.getElementById('lobby');
+		const canvas = document.querySelector('canvas');
+		const squadmates = Array.isArray(harness?.squadmates) ? harness.squadmates : [];
+		const remoteSquadmateCount = squadmates.filter(
+			(m) => m && Number.isFinite(m.x) && Number.isFinite(m.z),
+		).length;
+		return {
+			lobbyHidden: lobby ? lobby.classList.contains('hidden') : false,
+			lobbyMenuDismissed: harness?.lobbyMenuDismissed === true,
+			hubCanvasActive: harness?.hasCanvas === true
+				&& !!canvas
+				&& canvas.width > 0
+				&& canvas.height > 0,
+			playersOnHost: harness?.players ?? null,
+			remoteSquadmateCount,
+			layoutProfile: harness?.layout?.profile ?? null,
+		};
+	});
+}
+
+function assertWalkableHubPresentation(probe) {
+	if (probe.lobbyHidden !== true || probe.lobbyMenuDismissed !== true || probe.hubCanvasActive !== true) {
+		throw new Error(`Walkable hub presentation probe failed: ${JSON.stringify(probe)}`);
+	}
+}
+
+async function requireWalkableHubPresentation(page) {
+	const probe = await probeWalkableHubPresentation(page);
+	assertWalkableHubPresentation(probe);
+	return probe;
 }
 
 async function nudgeJoinerForPresence(joinerPage, targetX, targetZ) {
@@ -312,9 +347,11 @@ async function runHubWalkStep({ browser, game, preset, outDirAbs }) {
 		}
 
 		await dismissLobbyOverlay(hostPage);
+		const overviewProbe = await requireWalkableHubPresentation(hostPage);
 		const overviewScreenshot = await writeScreenshot(hostPage, outDirAbs, '01-hub-overview');
 
 		const zoneScreenshots = {};
+		const zoneProbes = {};
 		const zoneShotNames = {
 			operations: '02-room-operations',
 			commerce: '03-room-commerce',
@@ -330,6 +367,7 @@ async function runHubWalkStep({ browser, game, preset, outDirAbs }) {
 				throw new Error(`No screenshot name mapped for hub zone ${zoneName}`);
 			}
 			await dismissLobbyOverlay(hostPage);
+			zoneProbes[zoneName] = await requireWalkableHubPresentation(hostPage);
 			const shotPath = await writeScreenshot(hostPage, outDirAbs, shotName);
 			zoneScreenshots[zoneName] = path.relative(REPO_ROOT, shotPath);
 		}
@@ -344,6 +382,10 @@ async function runHubWalkStep({ browser, game, preset, outDirAbs }) {
 			zoneScreenshots,
 			layoutProfile: finalHostHarness?.layout?.profile ?? null,
 			layoutRoomCount: finalHostHarness?.layout?.roomCount ?? null,
+			walkablePresentation: {
+				overview: overviewProbe,
+				zones: zoneProbes,
+			},
 		};
 	} finally {
 		await hostPage.close().catch(() => {});
@@ -783,7 +825,7 @@ function buildHubAssertions(summary) {
 	return {
 		boothDeductsGold: summary.booth?.boothDeductsGold === true,
 		hatSwapFree: summary.booth?.hatSwapFree === true,
-		telepipeUpReset: summary.telepipeReset?.telepipeUpReset === true,
+		telepipeVitalsPreserved: summary.telepipeReset?.telepipeVitalsPreserved === true,
 	};
 }
 
@@ -835,7 +877,7 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
 			telepipeReset: {
 				preSuspend: summary.telepipeReset?.preSuspend ?? null,
 				postDeploy: summary.telepipeReset?.postDeploy ?? null,
-				telepipeUpReset: summary.telepipeReset?.telepipeUpReset ?? null,
+				telepipeVitalsPreserved: summary.telepipeReset?.telepipeVitalsPreserved ?? null,
 			},
 			hubWalk: summary.hubWalk || null,
 		};
@@ -999,11 +1041,11 @@ async function main() {
 			});
 			if (!runsHubFull) {
 				summary.assertions = {
-					telepipeUpReset: summary.telepipeReset.telepipeUpReset === true,
+					telepipeVitalsPreserved: summary.telepipeReset.telepipeVitalsPreserved === true,
 				};
-				summary.ok = summary.assertions.telepipeUpReset;
+				summary.ok = summary.assertions.telepipeVitalsPreserved;
 				if (!summary.ok) {
-					summary.error = summary.error || 'telepipeUpReset assertion failed';
+					summary.error = summary.error || 'telepipeVitalsPreserved assertion failed';
 					exitCode = 1;
 				}
 			}
@@ -1011,9 +1053,15 @@ async function main() {
 
 		if (runsHubFull) {
 			summary.assertions = buildHubAssertions(summary);
-			summary.ok = Object.values(summary.assertions).every((value) => value === true);
+			const walkableOk = evaluateWalkablePresentation(summary.hubWalk).ok;
+			const assertionsOk = Object.values(summary.assertions).every((value) => value === true);
+			summary.ok = assertionsOk && walkableOk;
 			if (!summary.ok) {
-				summary.error = summary.error || 'One or more hub assertions failed';
+				if (!walkableOk) {
+					summary.error = summary.error || 'Walkable hub presentation probes failed';
+				} else {
+					summary.error = summary.error || 'One or more hub assertions failed';
+				}
 				exitCode = 1;
 			}
 		}

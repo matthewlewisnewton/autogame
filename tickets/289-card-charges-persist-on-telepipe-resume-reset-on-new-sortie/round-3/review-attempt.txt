@@ -1,0 +1,3 @@
+Review written to `tickets/289-card-charges-persist-on-telepipe-resume-reset-on-new-sortie/round-3/review.md`.
+
+Verdict is `VERDICT: PASS`. No `gaps.md` or `nits.md` was created.

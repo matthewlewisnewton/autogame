@@ -1,0 +1,7 @@
+Review complete: `VERDICT: PASS`.
+
+Wrote:
+- `tickets/287-persist-player-health-and-stones-no-telepipe-reset/round-3/review.md`
+- `tickets/287-persist-player-health-and-stones-no-telepipe-reset/round-3/nits.md`
+
+No `gaps.md` was created because there were no blocking gaps.

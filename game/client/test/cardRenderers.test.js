@@ -17,8 +17,11 @@ function makeCtx(overrides = {}) {
 		spawnAttackEffect: record('spawnAttackEffect'),
 		spawnSummonEffect: record('spawnSummonEffect'),
 		spawnDivineGraceEffect: record('spawnDivineGraceEffect'),
+		spawnPurifyingPulseHealRing: record('spawnPurifyingPulseHealRing'),
+		spawnCleanseBurstEffect: record('spawnCleanseBurstEffect'),
 		spawnInfernoPillarEffect: record('spawnInfernoPillarEffect'),
 		spawnChainLightningEffect: record('spawnChainLightningEffect'),
+		spawnLightningArc: record('spawnLightningArc'),
 		flashMesh: record('flashMesh'),
 		spawnHitSpark: record('spawnHitSpark'),
 		enemyMeshes: () => ({}),
@@ -41,7 +44,10 @@ function methodsCalled(ctx) {
 describe('resolveRenderers()', () => {
 	it('returns the per-card renderer when one is registered', () => {
 		expect(resolveRenderers('infinite_disk')).toHaveLength(1);
+		expect(resolveRenderers('fireball')).toHaveLength(1);
+		expect(resolveRenderers('ice_ball')).toHaveLength(1);
 		expect(resolveRenderers('divine_grace')).toHaveLength(1);
+		expect(resolveRenderers('purifying_pulse')).toHaveLength(1);
 		expect(resolveRenderers('spike_trap')).toHaveLength(1);
 		expect(resolveRenderers('undead_commander')).toHaveLength(1);
 		expect(resolveRenderers('thunderbird')).toHaveLength(1);
@@ -73,6 +79,10 @@ describe('resolveRenderers()', () => {
 	it('returns bespoke attack renderers for Phase Stalker and Bulkhead Mauler', () => {
 		expect(resolveRenderers('null_crawler')).toHaveLength(1);
 		expect(resolveRenderers('bulkhead_mauler')).toHaveLength(1);
+	});
+
+	it('returns the chain_lightning arc renderer for Voltaic Chain', () => {
+		expect(resolveRenderers('chain_lightning')).toHaveLength(1);
 	});
 
 	it('returns an empty list for unknown card ids', () => {
@@ -132,25 +142,25 @@ describe('renderCardUsed() — common post-effects', () => {
 		expect(triggerCalls[0][2]).toBe(3);
 	});
 
-	it('plays the heal sound only when the local player was healed', () => {
+	it('plays the loot sound when the local player gained magic stones from Restoration Beacon', () => {
 		const ctx = makeCtx({ myId: 'me' });
 		renderCardUsed({
 			cardId: 'healing_font',
 			origin: { x: 0, z: 0 },
 			radius: 4,
-			hpHealed: 12,
+			magicStonesGained: 6,
 			playerId: 'me',
 		}, ctx);
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'loot')).toBe(true);
 	});
 
-	it('does not play the heal sound when another player was healed', () => {
+	it('does not play the loot sound when another player used Restoration Beacon', () => {
 		const ctx = makeCtx({ myId: 'me' });
 		renderCardUsed({
 			cardId: 'healing_font',
 			origin: { x: 0, z: 0 },
 			radius: 4,
-			hpHealed: 12,
+			magicStonesGained: 6,
 			playerId: 'someone-else',
 		}, ctx);
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'loot')).toBe(false);
@@ -307,6 +317,43 @@ describe('renderCardUsed() — weapon dispatch', () => {
 		const zs = attacks.map((a) => a[1].z).sort((p, q) => p - q);
 		expect(zs).toEqual([-0.6, 0, 0.6]);
 	});
+
+	it('spawns a single fireball-effect projectile for fireball', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'fireball',
+			effect: 'fireball',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			attackRange: 9,
+			hits: [],
+		}, ctx);
+		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
+		expect(attacks).toHaveLength(1);
+		expect(attacks[0][1]).toEqual({ x: 1, z: 2 });
+		expect(attacks[0][3]).toMatchObject({ effect: 'fireball', range: 9 });
+	});
+
+	it('spawns a single ice_ball-effect projectile with slow travel time', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'ice_ball',
+			effect: 'ice_ball',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			attackRange: 9,
+			projectileTravelMs: 1200,
+			hits: [],
+		}, ctx);
+		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
+		expect(attacks).toHaveLength(1);
+		expect(attacks[0][1]).toEqual({ x: 1, z: 2 });
+		expect(attacks[0][3]).toMatchObject({
+			effect: 'ice_ball',
+			range: 9,
+			projectileTravelMs: 1200,
+		});
+	});
 });
 
 describe('renderCardUsed() — spell dispatch', () => {
@@ -337,13 +384,14 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ring[3]).toEqual({ color: 0x38bdf8, emissive: 0x0ea5e9 });
 	});
 
-	it('divine_grace renders the heal ring and plays loot when magicStonesGained > 0', () => {
-		const ctx = makeCtx();
+	it('divine_grace renders the MS restore ring and plays loot when magicStonesGained > 0', () => {
+		const ctx = makeCtx({ myId: 'me' });
 		renderCardUsed({
 			cardId: 'divine_grace',
 			origin: { x: 0, z: 0 },
 			radius: 3,
 			magicStonesGained: 8,
+			playerId: 'me',
 			hits: [],
 		}, ctx);
 		expect(ctx._calls.some((c) => c[0] === 'spawnDivineGraceEffect')).toBe(true);
@@ -360,6 +408,37 @@ describe('renderCardUsed() — spell dispatch', () => {
 			hits: [],
 		}, ctx);
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'loot')).toBe(false);
+	});
+
+	it('purifying_pulse renders heal ring and cleanse burst with heal sound', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'purifying_pulse',
+			origin: { x: 2, z: 3 },
+			radius: 5.5,
+			specialEffect: 'heal_and_cleanse',
+			hits: [],
+		}, ctx);
+		const healRing = ctx._calls.find((c) => c[0] === 'spawnPurifyingPulseHealRing');
+		const cleanse = ctx._calls.find((c) => c[0] === 'spawnCleanseBurstEffect');
+		expect(healRing).toBeDefined();
+		expect(healRing[1]).toEqual({ x: 2, z: 3 });
+		expect(healRing[2]).toBe(5.5);
+		expect(cleanse).toBeDefined();
+		expect(cleanse[1]).toEqual({ x: 2, z: 3 });
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(true);
+	});
+
+	it('purifying_pulse skips VFX when radius is absent', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'purifying_pulse',
+			origin: { x: 0, z: 0 },
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnPurifyingPulseHealRing')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnCleanseBurstEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
 	});
 
 	it('event_horizon renders both the outer pull ring and the inner crush ring', () => {
@@ -537,6 +616,31 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 		const hitSounds = ctx._calls.filter((c) => c[0] === 'playSound' && c[1] === 'enemyHit');
 		expect(hitSounds).toHaveLength(1);
+	});
+
+	it('chain_lightning with two chainSegments invokes spawnLightningArc twice', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'chain_lightning',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			chainSegments: [
+				{ from: { x: 0, z: 0 }, to: { x: 5, z: 0 } },
+				{ from: { x: 5, z: 0 }, to: { x: 8, z: 0 } },
+			],
+			hits: [
+				{ enemyId: 'e1', hp: 50 },
+				{ enemyId: 'e2', hp: 30 },
+			],
+		}, ctx);
+		const arcs = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
+		expect(arcs).toHaveLength(2);
+		expect(arcs[0][1]).toEqual({ x: 0, z: 0 });
+		expect(arcs[0][2]).toEqual({ x: 5, z: 0 });
+		expect(arcs[1][1]).toEqual({ x: 5, z: 0 });
+		expect(arcs[1][2]).toEqual({ x: 8, z: 0 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnChainLightningEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'enemyHit')).toBe(true);
 	});
 });
 
