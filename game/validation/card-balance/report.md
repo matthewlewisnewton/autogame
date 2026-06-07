@@ -1,6 +1,6 @@
 # Card balance report
 
-Part 1 of the card-balance pass: **weapons** and **spells** only. Metrics sourced from `game/validation/card-balance/analyzeCards.mjs` (sub-ticket 01). No JSON or gameplay changes applied in this pass.
+Card-balance pass parts 1–2: **weapons**, **spells**, **creatures**, **enchantments**, economy, combos, and consolidated recommendations. Metrics sourced from `game/validation/card-balance/analyzeCards.mjs` (sub-ticket 01) plus manual simulation notes (sub-ticket 03). No JSON or gameplay changes applied in this pass.
 
 ## Methodology
 
@@ -160,20 +160,154 @@ Cards landed in tickets 294–302. Compared to same-type peers on damage, MS cos
 
 ## Creatures
 
-*(Sub-ticket 03 — pending.)*
+10 creature cards; one row each. Harness `damage` uses `attackDamage` or `breathDamage`; breath/DoT and minion AI cadence are mostly **not** in harness totals (see assumptions). Overlay: `dungeon_drake` / `ancient_wyrm` receive `breathConeAngle` from `CARD_STAT_OVERLAY` in `progression.js`. Default spawn HP is **50** when `minionHp` is absent (`cardEffects.js`).
+
+| Name | id | charges | MS cost | atk/breath | minion HP | TTL | acquisition | verdict | recommendation |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |
+| Vault Wyrm | dungeon_drake | 1 | 0 | 2 | 50† | 30 | reward:2 | ok | — (see 298 spotlight) |
+| Phase Stalker | null_crawler | 1 | 35 | 22 | 55 | 30 | reward:12 | over | `operator-triage` — 22 dmg beam every 2 s at range 14; confirm reward:12 intent |
+| Bulkhead Mauler | bulkhead_mauler | 1 | 0 | 9 | 100 | 30 | reward:13 | ok | — (cone shockwave not in harness) |
+| Aegis Sentinel | aegis_sentinel | 1 | 45 | 0 | 160 | 30 | reward:10 | ok | — (taunt + 30 shield HP) |
+| Archive Wyrm | ancient_wyrm | 1 | 0 | 4 | 90 | 30 | evolved | ok | — (evolution target; no burn) |
+| Necroframe Knight | skeleton_knight | 1 | 0 | 0 | 120 | 30‡ | reward:9 | ok | — (taunt wall) |
+| Legion Marshal | undead_commander | 1 | 0 | 0 | 180 | 30‡ | evolved | ok | `operator-triage` — +2 skeletons (60 HP each) not in harness |
+| Stormwing Drone | storm_eagle | 1 | 40 | 13 | 45 | 30 | reward:11 | over | `operator-triage` — ranged strike fires every sim tick in range (`simulation.js`); harness DPC understates |
+| Thunderbird | thunderbird | 1 | 40 | 20 | 68 | 30 | evolved | ok | — (chain up to 2×20) |
+| Battery Automaton | battery_automaton | 1 | 50 | 0 | 80 | 30 | reward:22 | ok | — (utility: +1 charge / 6 s pulse) |
+
+† No `minionHp` in JSON — runtime default 50 at grind 0. ‡ No explicit `minionTtl` — runtime default 30 s.
+
+**Peer bands (damage-dealing minions, harness DPC):** Q1–Q3 ≈ 4–13 (null_crawler and thunderbird sit above; wyrms below on paper).
+
+### Vault Wyrm / `dungeon_drake` (ticket 298 rebalance)
+
+Post-298 stats in `cardStats.json`: `attackDamage: 2` (mapped to `breathDamage` via `applyWyrmMinionBreathStats`), `burnDurationMs: 2000`, `specialEffect: burning_breath`, breath cone overlay `π/4` (`CARD_STAT_OVERLAY`).
+
+| Stat | Vault Wyrm | Archive Wyrm (`ancient_wyrm`) | Peer context |
+| --- | --- | --- | --- |
+| `attackDamage` / breath tick | 2 / 500 ms | 4 / 500 ms | null_crawler 22 / 2000 ms; storm_eagle 13 (per tick in range) |
+| Breath window | 2000 ms (4 ticks) | 2500 ms (5 ticks) | bulkhead_mauler 9 cone on contact |
+| Breath interval | 2500 ms | 3000 ms | — |
+| Range / hold | 6 / 3.5 | 10 / 5.5 | storm_eagle range 7 |
+| Burn on breath | yes — `burnDurationMs` 2000, refresh per tick (`vault_wyrm_burning.test.js`) | no — pure fire breath (`ancient_wyrm.test.js`) | global burn tick 5 dmg / 500 ms (`BURN_BASE + BURN_EXTRA`) |
+| Minion HP | 50 (default) | 90 | skeleton_knight 120 taunt |
+
+**Breath DPS (single target in cone, grind 0).**
+
+- **Direct breath:** 4 ticks × 2 = **8** per breath cycle (~2000 ms active).
+- **Burn:** each breath tick applies/refreshes 2000 ms burn; while active, **5 DPS** (5 dmg / 500 ms). Overlap during a full breath adds ≈ **20** burn damage → **~28 total** per breath vs Archive Wyrm **20** direct (5 × 4) with no burn rider.
+- **Sustained (breath + cooldown):** ~4500 ms cycle (2500 ms interval + 2000 ms breath) → **~6.2 combined DPS** vs Archive **~3.6 DPS** (5500 ms cycle). Vault trades evolution range (6 vs 10) and HP (50 vs 90) for burn attrition.
+- **298 intent:** lower `attackDamage` (2) plus `burning_breath` shifts power from burst to DoT; harness `DPC 2` alone is misleading — **ok** at reward:2 when burn is counted. Archive Wyrm is the grind/evolution payoff (wider cone `π/3`, higher tick damage, +40 HP).
+
+**Recommendation:** `ok` — no numeric change unless playtests show early reward still dominates; then `apply-now` `attackDamage` +1 **or** `burnDurationMs` +500 (not both).
+
+### Creature outlier notes
+
+1. **null_crawler** — Highest harness minion DPC (22); 35 MS cost is fair but power spikes vs reward:12 neighbors. **`operator-triage`**
+2. **storm_eagle** — 13 dmg with no attack-interval gate in `simulation.js`; real DPS exceeds harness. **`operator-triage`**
+3. **dungeon_drake** — Paper DPC 2; burn breath ~6 sustained DPS post-298. **`ok`**
+4. **undead_commander** — 180 HP + skeleton spawn package; evolution finisher. **`operator-triage`**
 
 ## Enchantments
 
-*(Sub-ticket 03 — pending.)*
+3 enchantment cards; one row each. Ground hazards use proximity trigger + TTL; `mirror_ward` is self-buff reflect.
 
-## Economy
+| Name | id | charges | MS cost | burst / effect | DPC | TTL | acquisition | verdict | recommendation |
+| --- | --- | ---: | ---: | --- | ---: | ---: | --- | --- | --- |
+| Spike Trap | spike_trap | 1 | 25 | 39 instant | 39 | 30 s | reward:24 | ok | — |
+| Mirror Ward | mirror_ward | 1 | 30 | 50% reflect, min 17, range 11 | 17† | 20 s | reward:25 | ok | — |
+| Cinder Snare | cinder_snare | 1 | 25 | 8×4 DoT + zone | 40 | 30 s | shop | ok | — |
 
-*(Sub-ticket 03 — pending.)*
+† Harness proxy uses `minReflectDamage` (17); actual reflect scales at 50% incoming (`enchantment.test.js`).
+
+**Vs spell peers at similar MS:** spike_trap (25 MS, 39 burst) ≈ frost_nova lane (35 MS, 11 + freeze); cinder_snare (25 MS, 40 total DoT) ≈ dragons_breath (40 MS, 9 + DoT undercounted). Mirror ward (30 MS) competes with mana_leach (30 MS, 28 dmg) on cost but is defensive — different role.
+
+### Enchantment notes
+
+1. **spike_trap** — Highest one-shot hazard; single enemy trigger then expires. **`ok`**
+2. **cinder_snare** — Lingering zone + 32 DoT; shop-only pairs with pull combos. **`ok`**
+3. **mirror_ward** — `reflectRange: 11` tested in `enchantment.test.js`; strong vs swarms if player can tank. **`ok`**
+
+## Economy & acquisition
+
+**Sell values (`cardEconomy.json` → `cardSellValues`).** 30 cards have explicit sell values; **17 rely on harness fallbacks** (5 weapon / 12 spell / 10 creature / 5 enchantment defaults):
+
+| id | fallback sell | note |
+| --- | ---: | --- |
+| photon_slicer, echo_blade | 5 | reward weapons |
+| frost_nova, permafrost_lance, healing_font, purifying_pulse, chain_lightning, gravity_well | 12 | reward spells |
+| glacier_collapse, resonance_edge | 15 | evolved |
+| skeleton_knight, storm_eagle | 10 | reward creatures |
+| spike_trap, mirror_ward, cinder_snare | 5 | enchantments use default 5 |
+
+**Flags:** `purifying_pulse` and `fireball` share **rewardOrder 27** — duplicate slot may skew `buildCardChoices` ordering. Shop cards (`telepipe`, `cinder_snare`) correctly omit `rewardOrder`. Evolved-only cards (no `acquisition: reward`) correctly omit reward order.
+
+**Evolution paths (`evolutionTransforms`).** 14 base → evolved pairs; all evolved ids in defs have a transform source except shop/starter-only cards. Notable: `dungeon_drake` → `ancient_wyrm` (+10 grind, `ancient_wyrm.test.js`).
+
+**Acquisition vs power outliers:** early rewards with high metrics — `flame_blade` (0), `battle_familiar` (1), `dungeon_drake` (2) — vs late rewards `chain_lightning` / `fireball` (27–28). Economy sell values partially compensate (e.g. battle_familiar 12 vs dungeon_drake 10) but do not fully offset combat outliers.
 
 ## Degenerate combos
 
-*(Sub-ticket 03 — pending.)*
+Plausible multi-card loops from `cardEffects.js`, `simulation.js`, and integration tests. Severity = ladder impact if stacked in a 4-card hand; **data-only fix** = adjustable via `cardStats.json` / `cardEconomy.json` without code changes.
+
+| Combo | Cards | Severity | Data-only fix? | Notes |
+| --- | --- | --- | --- | --- |
+| Sacrifice MS engine | `sacrificial_altar` + any summon (`dungeon_drake`, `battery_automaton`, `skeleton_knight`) + MS spender (`battle_familiar`, `null_crawler`) | **high** | Partial — reduce `magicStoneGain` (100) or `chargeRestore` (2) on altar; raise summon MS costs | `integration.test.js`: altar consumes oldest minion for max MS + 2 weapon charges |
+| Battery + altar loop | `battery_automaton` + `sacrificial_altar` + `chrono_trigger` | **medium** | Partial — tune `chargePulseIntervalMs` (6000) or altar `chargeRestore` | Battery pulses +1 charge / 6 s; altar refills adjacent weapons; chrono restores ±2 adjacent |
+| Pull into hazard | `gravity_well` / `event_horizon` + `spike_trap` / `cinder_snare` | **medium** | Yes — reduce hazard `damage` / `damagePerTick` or widen MS gap vs pull cost | Enemies pulled into ground enchantments (`new_card_pack.test.js` pull radii 12) |
+| MS grind + spender | `harvesting_scythe` + `mana_prism` + `sacrificial_altar` + burst spell | **medium** | Partial — lower `magicStoneOnKill` (15) or prism `magicStonePulse` (10) | Scythe grants 5/15 MS on hit/kill; prism passively feeds spells |
+| Cleanse attrition counter | `purifying_pulse` + `dungeon_drake` / fire enemies | **low** | Yes — reduce `healAmount` (15) if TTK too long | Zero-MS heal + cleanse vs burn/slow content (`purifying_pulse.test.js`) |
+| Chrono weapon refresh | `chrono_trigger` + high-charge weapons (`iron_sword`, `flame_blade`) | **low** | Yes — lower `adjacentChargeRestore` (2) | `integration.test.js`: both neighbors +2 charges |
 
 ## Executive summary
 
-*(Sub-ticket 03 — pending.)*
+- **47 cards** catalogued once across weapons (14), spells (20), creatures (10), and enchantments (3). Harness metrics flag **over** outliers on early rewards (`flame_blade`, `battle_familiar`) and evolved finishers (`magma_greatsword`, `excalibur_photon`, `astral_guardian`, `soul_drain`); **under** on `saber_of_light`, `permafrost_lance`, `dragons_breath`, `harvesting_scythe`.
+- **Vault Wyrm (298):** rebalance to `attackDamage: 2` + `burning_breath` is **ok** — combined breath + burn DPS (~6) beats Archive Wyrm sustained direct (~3.6) but on a fragile 50 HP body at reward:2; evolution to Archive Wyrm remains the range/DPS upgrade path.
+- **Creatures:** `null_crawler` and `storm_eagle` are the main combat outliers (harness and simulation cadence respectively). Tank/summon roles (`skeleton_knight`, `aegis_sentinel`, `undead_commander`, `battery_automaton`) read **ok** on utility.
+- **Enchantments:** hazard DPS is in-band for MS cost; no mandatory tuning.
+- **Economy:** 17 cards use fallback sell values; duplicate `rewardOrder: 27` on `fireball` / `purifying_pulse` should be deduped in a future data pass.
+- **Combos:** altar-centric MS/charge engines are the highest-risk degenerate line; pull+hazard and chrono refresh are moderate but mostly data-tunable.
+- **Sub-ticket 04 scope:** **8 `apply-now`** numeric tweaks (small stat bumps/reductions); **18 `operator-triage`** items (design intent, harness gaps, or utility scoring).
+
+## Recommendations
+
+Consolidated from all type tables. **No JSON applied in this sub-ticket** — field names refer to `game/shared/cardStats.json` unless noted (`cardDefs.json` for `rewardOrder`, `cardEconomy.json` for sell values).
+
+### apply-now (small numeric tweaks)
+
+| id | field(s) | change |
+| --- | --- | --- |
+| saber_of_light | `damage` | +3 (9 → 12) **or** `cooldownMs` 400 → 350 |
+| fireball | `damage` | +2 (16 → 18) |
+| harvesting_scythe | `damage` **or** `magicStoneOnHit` | +3 damage **or** +5 MS on hit |
+| permafrost_lance | `damage` | +3 (8 → 11) |
+| dragons_breath | `damage` | +4 (9 → 13) |
+| ice_ball | `slowChance` | 0.5 → 0.65 (only if slow feels weak in playtests) |
+| purifying_pulse | `healAmount` **or** `radius` | +5 heal **or** +1 m radius (only if underused) |
+| chain_lightning | `magicStoneCost` | −5 (42 → 37; only if MS starvation blocks casts) |
+
+Optional creature tweak (playtest-gated): `dungeon_drake` — `attackDamage` +1 **or** `burnDurationMs` +500, not both.
+
+### operator-triage (design / harness / economy)
+
+| id | field(s) / topic | reason |
+| --- | --- | --- |
+| flame_blade | `damage`, `rewardOrder` | early reward DPC exceeds evolved weapons |
+| magma_greatsword | `damage`, `trailDamagePerTick`, `dotTicks` | fire-trail doubles effective burst |
+| excalibur_photon | `cooldownMs`, `swingsPerUse` | DPM ~4.5× peer Q3 |
+| deck_sifter | utility scoring | draw-only; no combat metric |
+| battle_familiar | `damage`, `minionHp` | reward:1 burst + body |
+| astral_guardian | `damage`, `magicStoneCost`, `minionHp` | top spell DPC/DPM |
+| soul_drain | `damage`, `magicStoneOnHit` | evolved finisher burst |
+| gravity_well | CC utility score | pull-only |
+| event_horizon | `centerDamage` in harness | crush damage not in primary field |
+| mana_prism | passive MS model | no combat metric |
+| sacrificial_altar | `magicStoneGain`, combo balance | 100 MS + charge restore enables engines |
+| chrono_trigger | `adjacentChargeRestore` | charge loop enabler |
+| telepipe | shop pricing | portal utility |
+| echo_blade | `shockwaveDamage`, `shockwaveEvery` | periodic AoE omitted from harness |
+| null_crawler | `attackDamage`, `rewardOrder` | 22 dmg beam at reward:12 |
+| storm_eagle | attack cadence in code | per-tick ranged hits |
+| undead_commander | `summonSkeletonCount`, `summonSkeletonHp` | skeleton package not in harness |
+| fireball + purifying_pulse | `rewardOrder` in `cardDefs.json` | duplicate order 27 |
+| missing sell values | `cardSellValues` in `cardEconomy.json` | 17 cards on fallbacks (see Economy section) |
