@@ -1,29 +1,8 @@
-Connection lost, reconnecting (attempt 1)...
-Retry attempt 1...
-All conflict markers are removed. Summary of how the two sides were combined:
+`LOGBOOK.md` is resolved. The conflict was two new logbook entries appended after v0.299 — one from each side:
 
-### Ticket 287 (persist vitals, no telepipe reset)
-- Kept durable HP/magic stones, med-booth-only full heal, and removal of suspend/resume UI
-- `healing_font` / `divine_grace` stay as mana-restore cards (`renderManaRestore`, ◈ icon)
-- Integration tests keep `MEDIC_HEAL_COST` imports
-- LOGBOOK v0.300 entry preserved
+- **main (v0.302):** 305-recapture-walkable-hub-after-overlay-fix — hub validation harness and walkable presentation findings
+- **branch (v0.303):** 303-card-balance-analysis — card balance metrics, safe tunings, and tests
 
-### Main (burning, purifying pulse, lobby dismiss, etc.)
-- Kept burning status + tick damage in `simulation.js`
-- Kept `healPlayer`, `clearNegativeStatuses`, `healPlayersInRadius` for **Purifying Pulse**
-- Kept `purifying_pulse` client wiring (cards, cardRenderers)
-- Kept lobby menu dismiss behavior (`lobbyMenuDismissed`, `lobbyCloseBtn`, `lobby-hud`, `suspended-run-banner` for awaiting-extract)
-- Kept cleanup task entries for tickets 303 and 305
+The merged file keeps **both** entries in version order (v0.302 → v0.303), each with its full review sections and its own `## Remaining gaps / None.` footer, matching the pattern used elsewhere in the logbook.
 
-### Client merge details (`main.js`)
-- Uses `#suspended-run-banner` in `#lobby-hud` (not the removed `#lobby-status-banner`)
-- Keeps 304’s dismiss/extracted-overlay logic
-- Drops abandon/resume wiring and `renderSuspendedRunBanner` (287 intent)
-- Added a no-op `setDeployButtonVisible()` stub for call sites that main still references
-
-### Verification
-- No conflict markers remain (`git diff --check` clean)
-- **2651 / 2652** tests pass
-- 1 pre-existing failure: `debug-scenarios.test.js` canyon-descent-tier-2 miniboss HP (noted in main LOGBOOK as unrelated)
-
-The harness can commit and finish the merge.
+All conflict markers are removed. The harness can proceed with the merge commit and test run.

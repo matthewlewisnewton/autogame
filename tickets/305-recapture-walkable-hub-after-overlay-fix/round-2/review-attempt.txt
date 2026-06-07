@@ -1,0 +1,9 @@
+Wrote the senior review with final `VERDICT: PASS`:
+
+`tickets/305-recapture-walkable-hub-after-overlay-fix/round-2/review.md`
+
+No `gaps.md` was created because there are no blocking gaps. I also wrote one non-blocking cleanup nit:
+
+`tickets/305-recapture-walkable-hub-after-overlay-fix/round-2/nits.md`
+
+Validation run: `pnpm validate:hub:check` passed.

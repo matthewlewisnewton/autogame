@@ -74,3 +74,112 @@ Player disconnected due to inactivity: 0b4f5a88-b965-41da-ac5f-6df2a609038d
 [run] checkpoint captured
 [run] suspended: Initiate Vault
 Player disconnected: Iz5ULW6q41P7QOtkAAAB
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/305-recapture-walkable-hub-after-overlay-fix/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3234
+Player connected: socket=NiwkWwf8FzF2EsyRAAAB, playerId=1e160702-c8c7-4a67-8534-4b5063c4a3c6
+Player connected: socket=-SaPe6EIoSx9bZOCAAAD, playerId=d3c2a12a-b2e2-4d5d-8e49-cbc666092e31
+Player connected: socket=jcJXLLSmNaSE27HbAAAF, playerId=7bcbfe24-aded-4d95-a906-b5b94432e40f
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: -SaPe6EIoSx9bZOCAAAD
+Player disconnected: jcJXLLSmNaSE27HbAAAF
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=eedd344b-dab5-497f-8c99-ab4617573576 value=14
+[loot] magic stone drop id=21461365-5503-4436-8f7a-c273af9e3179 value=15 at (7.5, 23.7)
+[loot] picked up id=21461365-5503-4436-8f7a-c273af9e3179 (magic stone) value=15 by NiwkWwf8FzF2EsyRAAAB (currency=975, ms=99)
+Player disconnected due to inactivity: d3c2a12a-b2e2-4d5d-8e49-cbc666092e31
+Player disconnected due to inactivity: 7bcbfe24-aded-4d95-a906-b5b94432e40f
+[loot] magic stone drop id=a7ed1859-1e17-4be3-8aac-7b0a851c90a4 value=15 at (-0.0, 8.0)
+[telepipe] placed at (14.7, 13.6) by 1e160702-c8c7-4a67-8534-4b5063c4a3c6
+[telepipe] player 1e160702-c8c7-4a67-8534-4b5063c4a3c6 extracted
+[run] extracted to hub: Initiate Vault
+Player disconnected: NiwkWwf8FzF2EsyRAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/305-recapture-walkable-hub-after-overlay-fix/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3225
+Player connected: socket=u7rcOgxpR8JGg9YVAAAB, playerId=8f33988e-a332-48db-9fb9-3b48dde114bc
+Player connected: socket=zHO815CIFRg3NS1eAAAD, playerId=1bf5bfab-98c3-4af1-b55e-c97de78a5e69
+Player connected: socket=IiyszI0lgycAB1mOAAAF, playerId=1062a882-0559-4933-92a3-e3ea0e2ffa52
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: zHO815CIFRg3NS1eAAAD
+Player disconnected: IiyszI0lgycAB1mOAAAF
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=5e93e3bf-676c-41f8-add7-e96354481ab5 value=15
+[loot] magic stone drop id=b57e2f54-6303-4a31-97d3-5de9f3bd81e7 value=15 at (8.0, 24.8)
+[loot] picked up id=b57e2f54-6303-4a31-97d3-5de9f3bd81e7 (magic stone) value=15 by u7rcOgxpR8JGg9YVAAAB (currency=975, ms=99)
+[loot] magic stone drop id=076475b3-3c01-4e7d-9f9a-42a9d4aeccf1 value=15 at (13.1, 13.9)
+[loot] picked up id=076475b3-3c01-4e7d-9f9a-42a9d4aeccf1 (magic stone) value=15 by u7rcOgxpR8JGg9YVAAAB (currency=975, ms=99)
+Player disconnected due to inactivity: 1bf5bfab-98c3-4af1-b55e-c97de78a5e69
+Player disconnected due to inactivity: 1062a882-0559-4933-92a3-e3ea0e2ffa52
+[telepipe] placed at (10.3, 19.8) by 8f33988e-a332-48db-9fb9-3b48dde114bc
+[telepipe] player 8f33988e-a332-48db-9fb9-3b48dde114bc extracted
+[run] extracted to hub: Initiate Vault
+Player disconnected: u7rcOgxpR8JGg9YVAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 5 user record(s) from /home/matt/workspace/.autogame-worktrees/305-recapture-walkable-hub-after-overlay-fix/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3250
+Player connected: socket=V3MdsRkWQfGvDzRFAAAB, playerId=6cd75977-d1ea-4a36-acc6-910c4a8f5a3a
+Player connected: socket=ZVZJe5UaMbdE0LkdAAAD, playerId=88c186ec-0970-439a-a98a-9eb8e1053c58
+Player connected: socket=rOoDiSBnX7dFbBypAAAF, playerId=d8dfb7a1-af1d-41f2-8934-0cb2bc99d57e
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: ZVZJe5UaMbdE0LkdAAAD
+Player disconnected: rOoDiSBnX7dFbBypAAAF
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] magic stone drop id=6432d60e-542b-486c-8514-66fc1ac2ee83 value=15 at (4.6, 24.2)
+[loot] currency drop id=5d26b80f-70e6-402d-b1ed-d15e4b8496ba value=11 at (4.6, 24.2)
+[loot] picked up id=5d26b80f-70e6-402d-b1ed-d15e4b8496ba value=11 by V3MdsRkWQfGvDzRFAAAB (currency=986, ms=99)
+[loot] picked up id=6432d60e-542b-486c-8514-66fc1ac2ee83 (magic stone) value=15 by V3MdsRkWQfGvDzRFAAAB (currency=986, ms=99)
+Player disconnected due to inactivity: 88c186ec-0970-439a-a98a-9eb8e1053c58
+Player disconnected due to inactivity: d8dfb7a1-af1d-41f2-8934-0cb2bc99d57e
+[loot] magic stone drop id=c7b1f9ca-c50a-4097-b265-e2462e42a406 value=15 at (-3.2, 14.6)
+[loot] currency drop id=367321d0-51fa-4dfb-81e0-16774a37ea70 value=6 at (-3.2, 14.6)
+[loot] magic stone drop id=8cb4ffb9-28ab-469f-bda3-d84090f22e2e value=15 at (7.5, 12.7)
+[loot] picked up id=8cb4ffb9-28ab-469f-bda3-d84090f22e2e (magic stone) value=15 by V3MdsRkWQfGvDzRFAAAB (currency=986, ms=69.37500000000276)
+[telepipe] placed at (15.3, 2.7) by 6cd75977-d1ea-4a36-acc6-910c4a8f5a3a
+[telepipe] player 6cd75977-d1ea-4a36-acc6-910c4a8f5a3a extracted
+[run] extracted to hub: Initiate Vault
+Player disconnected: V3MdsRkWQfGvDzRFAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 8 user record(s) from /home/matt/workspace/.autogame-worktrees/305-recapture-walkable-hub-after-overlay-fix/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3235
+Player connected: socket=6N7BJ_Yh6cBEKanMAAAB, playerId=0f96b79c-e039-44c9-b4b5-f0274767613e
+Player connected: socket=wSDbz0htt9kk8wFLAAAD, playerId=2d55f556-a2f6-4103-8d0c-19a31cff0b83
+Player connected: socket=UWI04EkAQm43jKS3AAAF, playerId=a089636d-ac9a-486a-96ec-e64d8b7fc5ea
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: wSDbz0htt9kk8wFLAAAD
+Player disconnected: UWI04EkAQm43jKS3AAAF
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] magic stone drop id=d1c7b5fc-c9e9-449f-b200-4c6e26ed6999 value=15 at (3.8, 24.2)
+[loot] currency drop id=a91afb84-2570-4034-8dca-f4adffb6cbb9 value=7 at (3.8, 24.2)
+Player disconnected due to inactivity: 2d55f556-a2f6-4103-8d0c-19a31cff0b83
+Player disconnected due to inactivity: a089636d-ac9a-486a-96ec-e64d8b7fc5ea
+[loot] magic stone drop id=256e5fdb-d938-4109-8894-ad32d4cf1a57 value=20 at (20.7, 21.2)
+[loot] currency drop id=cd7df5c3-41b3-4713-95ce-8a20cfb727d5 value=10 at (20.7, 21.2)
+[loot] picked up id=cd7df5c3-41b3-4713-95ce-8a20cfb727d5 value=10 by 6N7BJ_Yh6cBEKanMAAAB (currency=985, ms=99)
+[loot] picked up id=256e5fdb-d938-4109-8894-ad32d4cf1a57 (magic stone) value=20 by 6N7BJ_Yh6cBEKanMAAAB (currency=985, ms=99)
+[loot] magic stone drop id=2cc4f1f9-aece-4082-9467-296c978f87ba value=15 at (6.5, 12.9)
+[loot] currency drop id=4fca4474-48c8-4267-980e-945573d76a9b value=14 at (6.5, 12.9)
+[telepipe] placed at (7.7, 19.8) by 0f96b79c-e039-44c9-b4b5-f0274767613e
+[telepipe] player 0f96b79c-e039-44c9-b4b5-f0274767613e extracted
+[run] extracted to hub: Initiate Vault
+Player disconnected: 6N7BJ_Yh6cBEKanMAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
