@@ -1,0 +1,16 @@
+Review complete. **VERDICT: FAIL** — but with corrected reasoning versus the prior review.
+
+## Summary
+
+**Runtime health: clean.** `metrics.json` is `ok: true` with empty `pageerrors`, no `harness_failure`, and the hub-validation logs show no errors. The game runs fine with this ticket applied.
+
+**What the ticket got right (most of it):**
+- The lobby menu is now genuinely dismissed via a validation-only CSS injection (`dismissLobbyOverlay`) — no production behavior touched.
+- Screenshots 01–04 decisively show the walkable 3D ship hub (Quest Board / Launch Bay / Shop / Deck Editor / Character / Hats zones), fixing 281's menu-dominated captures.
+- Booth and telepipe regression assertions still pass.
+
+**The blocking gap:** This is a *validation* ticket — its deliverable is screenshots that visually confirm two things. The EVIDENCE explicitly says "We cannot visually confirm the walkable hub **or party-mate presence** in 3D." The walkable-hub half is fixed, but I zoomed every hub capture (including the overview taken right after both players spawn) and **only the host avatar ever appears** — the second party member is never in frame. So "the 2 party-mates visible in-world" remains unmet.
+
+**Correction to the prior reviewer:** The previous FAIL claimed the driver must create a *second joiner* (3 players). That's a misreading — the 2-player party (host + joiner) is correct. The real defect is **framing**, not party size. My `gaps.md` makes this explicit so the next coder fixes camera/positioning rather than adding an unnecessary third player and re-running with the same blind spot.
+
+**Files written:** `review.md` (corrected, ends `VERDICT: FAIL`), `gaps.md` (single framing gap), and `nits.md` retained (out-of-scope `if (lobbyEl)` guards in `main.js` — harmless, behavior-neutral, non-blocking).

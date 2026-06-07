@@ -1,0 +1,18 @@
+Review complete. Verdict: **FAIL**.
+
+## Summary
+
+**Runtime gate — PASSES.** `metrics.json` is `ok: true` with empty `pageerrors`; both capture logs are clean (the lone `409 Conflict` is a benign auth register/login retry, not a game page error). The game starts and loads fine.
+
+**The visual deliverable — fully achieved.** The whole point of the ticket is realized:
+- `01-hub-overview.png` shows the walkable 3D hub with Quest Board / Shop / Launch Bay labels, **no menu overlay** (old 233 KB menu capture → new 41 KB 3D capture).
+- All 3 rooms captured as walkable zones with the menu dismissed (operations / commerce / salon).
+- Both party-mates visible — the commerce shot shows host + joiner nameplates side by side; `playersOnHost: 2`.
+
+**Why it fails anyway — out-of-scope production change.** The ticket explicitly scoped to "validation driver + outputs, **No gameplay changes**," but the implementation patched `game/client/main.js` (~40 lines): a per-page `MutationObserver`, an unnamespaced sticky global `window.__testKeepLobbyDismissed`, and a `withLobbyGuard` wrapper around seven hide sites — test machinery embedded in the shipping client. I traced every lobby show/hide site and confirmed it's *inert in normal play today*, but it's fragile (if anything ever hides `#lobby` outside the guard, the lobby silently never re-shows), and a clean harness-only alternative exists (inject `#lobby { display:none !important }` on the throwaway capture pages). This matches the project norm that out-of-scope diffs block.
+
+**Files written:**
+- `review.md` — per-criterion findings + `VERDICT: FAIL`
+- `gaps.md` — single blocking gap: revert the main.js changes, move the sticky dismissal entirely into the harness via injected `!important` CSS, then re-run.
+
+No `nits.md` — the only issue is the blocking gap itself. I did not modify game code or git state.

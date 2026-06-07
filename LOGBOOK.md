@@ -5062,3 +5062,26 @@ Pass. The implementation is narrowly scoped to `game/client/models.js`, `game/cl
 
 None.
 
+
+## v0.305 — 288-hub-validation-capture-walkable-3d-not-menu-overlay  (2026-06-06 21:26:26)
+
+### Scope remains validation-focused
+
+PASS. The meaningful behavior change is in `harness/validate/**` plus regenerated `game/validation/hub/**` artifacts. The only `game/client/main.js` change is a harmless null guard around existing `lobbyEl.classList.add('hidden')` calls; it does not add a debug shortcut or alter the hub flow.
+
+## Design and requirements consistency
+
+PASS. The change supports the design requirement that the lobby is a 3D multiplayer space where players gather before deployment, and it does not regress the foundational requirements for Three.js rendering, client/server connection, player visualization, or movement synchronization.
+
+## Code quality and validation
+
+PASS. The harness change is small, direct, and failure-producing if the overlay cannot be hidden. `coverage.log` shows the relevant Vitest run completed successfully with 11 files and 238 tests passing; coverage thresholds were disabled as expected. Existing model-load warnings in the jsdom test environment are caught by fallback rendering and do not affect the captured browser run.
+
+## Debug scenarios
+
+No development debug scenario was added or changed by this ticket. The existing debug scenarios used by broader hub validation remain URL/harness-driven and are not part of normal gameplay entry.
+
+## Remaining gaps
+
+None.
+
