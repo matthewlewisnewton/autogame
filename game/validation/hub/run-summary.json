@@ -21,10 +21,10 @@
       "hats"
     ]
   },
-  "serverPort": 3204,
-  "clientPort": 5216,
+  "serverPort": 3241,
+  "clientPort": 5274,
   "auth": {
-    "username": "playthrough-1780785844532",
+    "username": "playthrough-1780793663212",
     "connected": true,
     "lobbyBrowserVisible": true,
     "harnessPhase": "unknown",
@@ -39,9 +39,9 @@
     "screenshot": "game/validation/hub/09-lobby-finder.png"
   },
   "hubWalk": {
-    "lobbyName": "Hub Walk 1780785845059",
-    "hostUsername": "hub-host-1780785845059",
-    "joinerUsername": "hub-joiner-1780785845059",
+    "lobbyName": "Hub Walk 1780793663705",
+    "hostUsername": "hub-host-1780793663705",
+    "joinerUsername": "hub-joiner-1780793663705",
     "playersOnHost": 2,
     "overviewScreenshot": "game/validation/hub/01-hub-overview.png",
     "zoneScreenshots": {
@@ -71,8 +71,8 @@
   "telepipeReset": {
     "telepipeScenario": "telepipe-ready",
     "preSuspend": {
-      "magicStones": 16.57999999999868,
-      "msText": "16/99",
+      "magicStones": 1.5800000000011334,
+      "msText": "1/99",
       "hand": [
         {
           "id": "telepipe",
@@ -86,10 +86,11 @@
           "remainingCharges": 5,
           "charges": 5
         },
+        null,
         {
           "id": "dungeon_drake",
           "type": "creature",
-          "remainingCharges": 1,
+          "remainingCharges": 0,
           "charges": 1
         },
         {
@@ -99,19 +100,18 @@
           "charges": 1
         },
         {
-          "id": "flame_blade",
-          "type": "weapon",
-          "remainingCharges": 2,
-          "charges": 3
-        },
-        null
+          "id": "dungeon_drake",
+          "type": "creature",
+          "remainingCharges": 1,
+          "charges": 1
+        }
       ],
       "phase": "playing",
       "runStatus": "playing",
       "extracted": false,
       "suspendedRunSummary": null,
       "layoutSeed": 352369970,
-      "runId": "774388fa-73f8-4acf-8335-3f7cab542040"
+      "runId": "e8338dcc-e849-428f-9936-bbc863cee7cd"
     },
     "postDeploy": {
       "magicStones": 49.005,
@@ -149,7 +149,7 @@
       "extracted": false,
       "suspendedRunSummary": null,
       "layoutSeed": 352369970,
-      "runId": "182ec9fa-b7fd-4809-93dc-a395411b2df3"
+      "runId": "c24f13a1-e4f1-455b-9def-9ff2fb4cef20"
     },
     "telepipeUpReset": true,
     "freshRunIdConfirmed": true,
