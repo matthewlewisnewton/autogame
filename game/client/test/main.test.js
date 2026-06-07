@@ -2834,6 +2834,7 @@ describe('bindSocketHandlers() — handler rebinding on socket recreate', () => 
 			'hubPresenceUpdate',
 			'cardUsed', 'cardError', 'deckUpdate', 'deckError',
 			'lobbyUpdate', 'startGame', 'runComplete', 'runFailed',
+			'runSuspended', 'runAbandoned',
 		];
 		for (const event of expectedEvents) {
 			expect(events.has(event)).toBe(true);
@@ -2875,6 +2876,7 @@ describe('bindSocketHandlers() — handler rebinding on socket recreate', () => 
 			'hubPresenceUpdate',
 			'cardUsed', 'cardError', 'deckUpdate', 'deckError',
 			'lobbyUpdate', 'startGame', 'runComplete', 'runFailed',
+			'runSuspended', 'runAbandoned',
 		];
 		for (const event of expectedSocketEvents) {
 			expect(socketEvents).toContain(event);
@@ -4358,5 +4360,111 @@ describe('__AUTOGAME_HARNESS_STATE__ encounter and godmode fields', () => {
 		expect(harness.phase).toBe('lobby');
 		expect(harness.layout?.profile).toBe('hub');
 		expect(questLayout.profile).not.toBe('hub');
+	});
+});
+
+describe('__AUTOGAME_HARNESS_STATE__ suspendedRunSummary', () => {
+	const requiredIds = [
+		'status', 'vanguard-hud', 'character-id', 'player-level',
+		'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+		'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+		'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+		'currency-display', 'objective-hud', 'ui', 'card-hand',
+		'lobby', 'lobby-browser', 'lobby-player-list',
+		'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+		'summary-currency', 'summary-rewards', 'return-to-lobby-btn',
+	];
+
+	const suspendedSummary = {
+		questId: 'training_caverns',
+		questName: 'Initiate Vault',
+		objective: {
+			type: 'defeat_enemies',
+			label: 'Initiate Vault: Purge hostiles from the derelict annex sector.',
+			totalEnemies: 5,
+			defeatedEnemies: 0,
+		},
+	};
+
+	beforeEach(() => {
+		vi.resetModules();
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('stores runSuspended payload and exposes it via harness with runStatus suspended', async () => {
+		await import('../main.js');
+
+		window.__triggerSocketEvent('runSuspended', suspendedSummary);
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'lobby',
+			suspendedRunSummary: suspendedSummary,
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+			enemies: [],
+		});
+
+		const harness = window.__AUTOGAME_HARNESS_STATE__();
+		expect(harness.phase).toBe('lobby');
+		expect(harness.runStatus).toBe('suspended');
+		expect(harness.suspendedRunSummary).toEqual(suspendedSummary);
+		expect(harness.suspendedRunSummary.objective).toEqual(suspendedSummary.objective);
+		expect(harness.suspendedRunSummary).not.toBe(suspendedSummary);
+	});
+
+	it('clears suspendedRunSummary when stateUpdate reports null after resume or abandon', async () => {
+		await import('../main.js');
+
+		window.__triggerSocketEvent('runSuspended', suspendedSummary);
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'lobby',
+			suspendedRunSummary: suspendedSummary,
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+			enemies: [],
+		});
+		expect(window.__AUTOGAME_HARNESS_STATE__().suspendedRunSummary).toEqual(suspendedSummary);
+
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'playing',
+			suspendedRunSummary: null,
+			run: { status: 'playing', objective: suspendedSummary.objective },
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0, hand: [] } },
+			enemies: [],
+		});
+
+		const resumed = window.__AUTOGAME_HARNESS_STATE__();
+		expect(resumed.suspendedRunSummary).toBeNull();
+		expect(resumed.runStatus).toBe('playing');
+		expect(resumed.phase).toBe('playing');
+
+		window.__triggerSocketEvent('runSuspended', suspendedSummary);
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'lobby',
+			suspendedRunSummary: suspendedSummary,
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+			enemies: [],
+		});
+		window.__triggerSocketEvent('runAbandoned');
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'lobby',
+			suspendedRunSummary: null,
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+			enemies: [],
+		});
+
+		const abandoned = window.__AUTOGAME_HARNESS_STATE__();
+		expect(abandoned.suspendedRunSummary).toBeNull();
+		expect(abandoned.runStatus).toBeNull();
+		expect(abandoned.phase).toBe('lobby');
 	});
 });

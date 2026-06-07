@@ -926,7 +926,18 @@ let debugGodmodeResult = null;
 const debugBooth = new URLSearchParams(window.location.search).get('booth');
 const debugBoothAllowed = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 let lastRunSummary = null; // most recent runComplete payload, for harness-state inspection
+/** @type {null | { questId: string, questName: string, objective: object | null }} */
+let suspendedRunSummary = null;
 let lastUsedSlot = -1; // tracks the most recently clicked/pressed slot index for cardError targeting
+
+function cloneSuspendedRunSummary(summary) {
+	if (!summary) return null;
+	return {
+		questId: summary.questId,
+		questName: summary.questName,
+		objective: summary.objective ? { ...summary.objective } : null,
+	};
+}
 
 // ── Socket setup ──
 const STORAGE_KEY_PLAYER_ID = 'autogame_playerId';
@@ -1204,6 +1215,7 @@ function bindSocketHandlers(s) {
 			currentLayoutSeed = state.layoutSeed;
 		}
 		gameState = state;
+		suspendedRunSummary = cloneSuspendedRunSummary(state.suspendedRunSummary ?? null);
 		setGameStateRef(state);
 		// Server snapshots omit debugGodmode; re-apply the last toggle so harness
 		// probes and local handlers stay consistent across stateUpdate.
@@ -1862,7 +1874,12 @@ function bindSocketHandlers(s) {
 		if (giveUpBtnEl) giveUpBtnEl.disabled = false;
 	});
 
+	s.on(SERVER_TO_CLIENT.RUN_SUSPENDED, (summary) => {
+		suspendedRunSummary = cloneSuspendedRunSummary(summary);
+	});
+
 	s.on(SERVER_TO_CLIENT.RUN_ABANDONED, () => {
+		suspendedRunSummary = null;
 		if (gameState) {
 			gameState.gamePhase = 'lobby';
 			delete gameState.run;
@@ -4687,7 +4704,9 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		myId,
 		selectedDeck: Array.isArray(mySelectedDeck) ? [...mySelectedDeck] : [],
 		phase: gameState ? gameState.gamePhase : 'unknown',
-		runStatus: gameState && gameState.run ? gameState.run.status : null,
+		runStatus: (gameState && gameState.run && gameState.run.status)
+			|| (suspendedRunSummary ? 'suspended' : null),
+		suspendedRunSummary: cloneSuspendedRunSummary(suspendedRunSummary),
 		extracted: !!(me && me.extracted),
 		telepipe: gameState ? gameState.telepipe : null,
 		layout: (() => {
