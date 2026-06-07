@@ -473,6 +473,7 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
     if (!player) continue;
     if (player.connected === false) continue;
     if (inPlaying && (player.dead || player.extracted)) continue;
+    if (inPlaying && isPlayerCardCommitted(player)) continue;
 
     const inputFresh = player.inputActive
       && now - (player.lastInputTime || 0) <= INPUT_STALE_MS;
@@ -2205,6 +2206,22 @@ function damageEnemy(enemy, amount) {
   return { hpBefore, killed };
 }
 
+function isPlayerCardCommitted(player) {
+  if (!player || player.cardUseState !== 'windup') return false;
+  const start = player.cardWindupStartTime || 0;
+  const ms = player.cardWindupMs || 0;
+  if (ms <= 0) return false;
+  return Date.now() - start < ms;
+}
+
+function clearPlayerCardCommitment(player) {
+  if (!player) return;
+  delete player.cardUseState;
+  delete player.cardWindupStartTime;
+  delete player.cardWindupMs;
+  delete player.pendingCardUse;
+}
+
 function damagePlayer(playerId, amount, options = {}) {
   const player = _gameState.players[playerId];
   if (!player) return null;
@@ -2294,6 +2311,7 @@ function damagePlayer(playerId, amount, options = {}) {
 
   if (player.hp <= 0 && !player.dead) {
     player.dead = true;
+    clearPlayerCardCommitment(player);
 
     if (_onTerminalCheck) {
       _onTerminalCheck();
@@ -3168,6 +3186,8 @@ module.exports = {
 
   // Player damage
   damagePlayer,
+  isPlayerCardCommitted,
+  clearPlayerCardCommitment,
   damageEnemy,
   damageMinion,
   healPlayer,

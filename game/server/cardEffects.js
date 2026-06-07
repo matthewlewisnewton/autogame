@@ -41,6 +41,7 @@ const {
   spawnFireTrailEffect,
   spawnInfernoPillarEffect,
   damagePlayer,
+  isPlayerCardCommitted,
   healPlayer,
   healPlayersInRadius,
   spawnGroundEnchantment,
@@ -92,6 +93,50 @@ function applySlotCooldown(player, slotIndex, hasOverclock, now, cooldownMs) {
   } else {
     player.slotCooldowns[slotIndex] = now + cooldownMs;
   }
+}
+
+function tryBeginCardWindup(ctx) {
+  const {
+    socket, lobby, player, data, cardDef, handCard, hasOverclock, now,
+    magicStoneCost = 0,
+  } = ctx;
+  const windUpMs = cardDef.windUpMs || 0;
+  if (windUpMs <= 0) return false;
+
+  if (magicStoneCost > 0) {
+    player.magicStones -= magicStoneCost;
+  }
+
+  handCard.remainingCharges -= 1;
+
+  let rotation = player.rotation || 0;
+  if (resolveAttackRotation) {
+    rotation = resolveAttackRotation(player, data);
+    player.rotation = rotation;
+  } else if (Number.isFinite(data.rotation)) {
+    rotation = data.rotation;
+    player.rotation = rotation;
+  }
+
+  applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
+
+  if (handCard.remainingCharges <= 0) {
+    replaceConsumedCard(player, data.slotIndex, handCard);
+  }
+
+  player.cardUseState = 'windup';
+  player.cardWindupStartTime = now;
+  player.cardWindupMs = windUpMs;
+  player.pendingCardUse = {
+    slotIndex: data.slotIndex,
+    cardId: data.cardId,
+    rotation,
+    originX: player.x,
+    originZ: player.z,
+  };
+
+  io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+  return true;
 }
 
 function applyAstralShieldCast(ctx) {
@@ -179,6 +224,11 @@ function handleUseCard(socket, state, lobby, data) {
     const player = state.players[socket.playerId];
     if (!player || player.dead || player.extracted) return;
 
+    if (isPlayerCardCommitted(player)) {
+      socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: 'Card commitment in progress' });
+      return;
+    }
+
     // (3) Authoritative hand validation: slot must hold the requested card
     const handValidation = validateUseCardHand(player, data.slotIndex, data.cardId);
     if (!handValidation.valid) {
@@ -223,6 +273,12 @@ function handleUseCard(socket, state, lobby, data) {
           slotIndex: data.slotIndex,
           effect: 'draw_card',
         });
+        return;
+      }
+
+      if (tryBeginCardWindup({
+        socket, state, lobby, player, data, cardDef, handCard, hasOverclock, now,
+      })) {
         return;
       }
 
@@ -405,6 +461,12 @@ function handleUseCard(socket, state, lobby, data) {
       // Validate Magic Stones
       if (player.magicStones < magicStoneCost) {
         socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: THEME.resource.insufficient });
+        return;
+      }
+
+      if (tryBeginCardWindup({
+        socket, state, lobby, player, data, cardDef, handCard, hasOverclock, now, magicStoneCost,
+      })) {
         return;
       }
 
@@ -1052,6 +1114,12 @@ function handleUseCard(socket, state, lobby, data) {
       const magicStoneCost = cardDef.magicStoneCost || 0;
       if (player.magicStones < magicStoneCost) {
         socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: THEME.resource.insufficient });
+        return;
+      }
+
+      if (tryBeginCardWindup({
+        socket, state, lobby, player, data, cardDef, handCard, hasOverclock, now, magicStoneCost,
+      })) {
         return;
       }
 

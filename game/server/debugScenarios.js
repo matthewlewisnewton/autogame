@@ -2252,6 +2252,28 @@ function applyDebugScenario(socket, name) {
       far.hp = 80;
       far.maxHp = 80;
       far.wanderTarget = { x: far.x, z: far.z };
+    } else if (name === 'magma-windup-ready') {
+      // Playing phase with Corebreaker Greatsword (windUpMs) in hand and a grunt
+      // in melee range so commitment entry and input lock are exercisable without
+      // evolving flame_blade first. The same state is reachable via normal evolution.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'magma_greatsword',
+          name: 'Corebreaker Greatsword',
+          type: 'weapon',
+          charges: 4,
+          remainingCharges: 4,
+        };
+      }
+      state.enemies = [];
+      const target = spawnEnemy(player.x + 2.5, player.z, 'grunt');
+      target.hp = 200;
+      target.maxHp = 200;
+      target.wanderTarget = { x: target.x, z: target.z };
     }
 
     syncRunObjectiveToEnemies();

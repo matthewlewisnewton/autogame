@@ -52,7 +52,8 @@ const {
   hubSpawnPosition,
   pickFloorSpawnPosition,
   randomWanderTarget,
-  spawnVolatileExplosion
+  spawnVolatileExplosion,
+  clearPlayerCardCommitment,
 } = require('./simulation');
 
 const HUB_LAYOUT = generateHub(0);
@@ -2772,6 +2773,7 @@ function suspendRunToLobby() {
     player.inputDx = 0;
     player.inputDz = 0;
     player.invulnerableUntil = 0;
+    clearPlayerCardCommitment(player);
   }
 
   refreshShopOffer();
@@ -2854,6 +2856,7 @@ function tryEnterTelepipe(playerId) {
   player.inputActive = false;
   player.inputDx = 0;
   player.inputDz = 0;
+  clearPlayerCardCommitment(player);
   savePlayerData(playerId);
   console.log(`[telepipe] player ${playerId} extracted`);
 
@@ -2974,6 +2977,11 @@ function buildPlayerHotSnapshot(id, p) {
     slowedUntil: p.slowedUntil || 0,
     slowFactor: p.slowFactor || 1,
     burningUntil: p.burningUntil || 0,
+    cardUseState: p.cardUseState || null,
+    cardWindupUntil: p.cardUseState === 'windup' && p.cardWindupStartTime && p.cardWindupMs
+      ? p.cardWindupStartTime + p.cardWindupMs
+      : 0,
+    cardWindupCardId: p.pendingCardUse?.cardId || null,
     cosmetic: p.cosmetic ?? { ...DEFAULT_COSMETIC },
     username: p.username,
   };
@@ -3084,6 +3092,7 @@ function returnPlayersToLobby(state = _gameState) {
     player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
     player.invulnerableUntil = 0;
     player.overclockChargesRemaining = 0;
+    clearPlayerCardCommitment(player);
   }
 
   refreshShopOffer();
@@ -3147,6 +3156,7 @@ function giveUpRun(state = _gameState) {
     player.inputDx = 0;
     player.inputDz = 0;
     player.overclockChargesRemaining = 0;
+    clearPlayerCardCommitment(player);
   }
 
   for (const playerId of Object.keys(state.players)) {

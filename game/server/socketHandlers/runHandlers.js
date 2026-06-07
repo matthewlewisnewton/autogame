@@ -4,6 +4,7 @@
 const { CLIENT_TO_SERVER, SERVER_TO_CLIENT } = require('../../shared/events.js');
 const { LOOT_PICKUP_RADIUS } = require('../config');
 const { isPlayingPhase, isLobbyPhase } = require('../lobbies');
+const { isPlayerCardCommitted } = require('../simulation');
 const {
   savePlayerData,
   discardCardFromHand,
@@ -108,6 +109,7 @@ function register(socket, ctx) {
     if (isPlayingPhase(state)) {
       if (player.dead) return;
       if (player.extracted) return;
+      if (isPlayerCardCommitted(player)) return;
     }
     if (player.connected === false) return;
 

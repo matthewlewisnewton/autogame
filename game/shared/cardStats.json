@@ -45,6 +45,7 @@
     "dotTicks": 4,
     "dotIntervalMs": 500,
     "trailDamagePerTick": 11,
+    "windUpMs": 800,
     "isEvolved": true,
     "specialEffect": "fire_trail"
   },

@@ -1,0 +1,19 @@
+Broke ticket 307 into **4 sub-tickets** in dependency order. Each is independently implementable and uses **code** verification (handlers, state, timing, and tests — not screenshot-only QA).
+
+### Sub-ticket plan
+
+| # | Focus |
+|---|--------|
+| **01** | Server commitment state, `windUpMs` data, input lock (movement + duplicate `useCard`), snapshot exposure |
+| **02** | Deferred resolution at wind-up end (`processPendingCardWindups`), `CARD_USED` after delay |
+| **03** | Client wind-up telegraph, hand lockout UI, local input guards |
+| **04** | Backward-compat regression + `pnpm test:quick` harness gate |
+
+### Created folders
+
+```
+/home/matt/workspace/.autogame-worktrees/307-card-windup-commitment-input-lock-mechanic/tickets/307-card-windup-commitment-input-lock-mechanic/subtickets/01-server-card-windup-state-and-input-lock/
+/home/matt/workspace/.autogame-worktrees/307-card-windup-commitment-input-lock-mechanic/tickets/307-card-windup-commitment-input-lock-mechanic/subtickets/02-server-deferred-card-resolution/
+/home/matt/workspace/.autogame-worktrees/307-card-windup-commitment-input-lock-mechanic/tickets/307-card-windup-commitment-input-lock-mechanic/subtickets/03-client-windup-animation-and-input-lock/
+/home/matt/workspace/.autogame-worktrees/307-card-windup-commitment-input-lock-mechanic/tickets/307-card-windup-commitment-input-lock-mechanic/subtickets/04-backward-compat-regression/
+```

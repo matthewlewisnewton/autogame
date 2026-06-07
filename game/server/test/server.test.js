@@ -5181,6 +5181,9 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 			slowedUntil: 0,
 			slowFactor: 1,
 			burningUntil: 0,
+			cardUseState: null,
+			cardWindupUntil: 0,
+			cardWindupCardId: null,
 			cosmetic: { ...DEFAULT_COSMETIC },
 			username: undefined,
 		});
