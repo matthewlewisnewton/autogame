@@ -191,6 +191,8 @@ const questBoardEl = document.getElementById('quest-board');
 const questBoardWrapperEl = document.getElementById('quest-board-wrapper');
 const questErrorEl = document.getElementById('quest-error');
 const suspendedRunBannerEl = document.getElementById('suspended-run-banner');
+const resumeRunBtnEl = document.getElementById('resume-run-btn');
+const abandonRunBtnEl = document.getElementById('abandon-run-btn');
 const lobbyHudEl = document.getElementById('lobby-hud');
 const lobbyCloseBtnEl = document.getElementById('lobby-close-btn');
 const lobbyEl = document.getElementById('lobby');
@@ -375,9 +377,45 @@ function setLobbyHudVisible(visible) {
 	if (lobbyHudEl) lobbyHudEl.classList.toggle('hidden', !visible);
 }
 
-function setDeployButtonVisible(_visible) {
-	// Fresh deploy / ready-up is handled by the hub Launch Bay booth. Retained for
-	// call-site symmetry with play↔lobby transitions after suspend/resume removal.
+function setSuspendedRunControlsVisible(visible) {
+	if (resumeRunBtnEl) resumeRunBtnEl.classList.toggle('hidden', !visible);
+	if (abandonRunBtnEl) abandonRunBtnEl.classList.toggle('hidden', !visible);
+}
+
+function clearSuspendedRunUi() {
+	if (suspendedRunBannerEl) {
+		suspendedRunBannerEl.textContent = '';
+		suspendedRunBannerEl.classList.add('hidden');
+	}
+	setSuspendedRunControlsVisible(false);
+	if (questErrorEl && questErrorEl.textContent === THEME.run.questSuspendedLocked) {
+		questErrorEl.style.display = 'none';
+		questErrorEl.textContent = '';
+	}
+}
+
+function renderSuspendedRunBanner(summary) {
+	if (!summary) {
+		clearSuspendedRunUi();
+		return;
+	}
+	const questName = summary.questName
+		|| (summary.questId ? summary.questId.replace(/_/g, ' ') : '')
+		|| THEME.run.unknownSector;
+	if (suspendedRunBannerEl) {
+		suspendedRunBannerEl.textContent = THEME.run.suspendedSortieBanner.replace('{questName}', questName);
+		suspendedRunBannerEl.classList.remove('hidden');
+	}
+	if (resumeRunBtnEl) resumeRunBtnEl.textContent = THEME.run.resumeSortie;
+	if (abandonRunBtnEl) abandonRunBtnEl.textContent = THEME.run.abandonSortie;
+	setSuspendedRunControlsVisible(true);
+	renderQuestBoardState();
+}
+
+function setDeployButtonVisible(visible) {
+	// During a suspended sortie the hub resume button replaces the retired 2D Deploy
+	// control; fresh sorties still ready-up via the Launch Bay booth.
+	setSuspendedRunControlsVisible(visible);
 }
 
 function isGameLobbyMenuVisible() {
@@ -541,8 +579,11 @@ function returnToGuildLobby(state, { refreshCollection = false, rebuildHub = fal
 	} else {
 		showGameLobby();
 	}
-	if (suspendedRunBannerEl) suspendedRunBannerEl.classList.add('hidden');
-	setDeployButtonVisible(true);
+	if (suspendedRunSummary) {
+		renderSuspendedRunBanner(suspendedRunSummary);
+	} else {
+		clearSuspendedRunUi();
+	}
 	// On the play→lobby transition, switch the rendered geometry back to the hub
 	// and re-seat the avatar at the hub spawn. `renderHubScene()` also sets the
 	// lobby game phase. Guarded by `rebuildHub` so this runs once per return, not
@@ -607,6 +648,7 @@ function showExtractedLobbyOverlay() {
 		showGameLobby();
 	}
 	setDeployButtonVisible(false);
+	setSuspendedRunControlsVisible(false);
 	if (suspendedRunBannerEl) {
 		suspendedRunBannerEl.textContent = THEME.run.awaitingExtract;
 		suspendedRunBannerEl.classList.remove('hidden');
@@ -766,6 +808,7 @@ function applyLobbyJoinedData(data) {
 		try { localStorage.setItem(STORAGE_KEY_PLAYER_ID, data.playerId); } catch (_) {}
 	}
 	gameState = data.state;
+	suspendedRunSummary = cloneSuspendedRunSummary(data.state?.suspendedRunSummary ?? null);
 	currentLayout = data.layout || (data.state && data.state.layout) || currentLayout;
 	hubLayout = data.hubLayout || hubLayout;
 	if (gameState && currentLayout) gameState.layout = currentLayout;
@@ -853,7 +896,11 @@ function applyLobbyJoinedData(data) {
 	const lobbyMe = myId && gameState?.players ? gameState.players[myId] : null;
 	syncVanguardHud(lobbyMe, 'lobby');
 	dismissGameLobby();
-	setDeployButtonVisible(true);
+	if (suspendedRunSummary) {
+		renderSuspendedRunBanner(suspendedRunSummary);
+	} else {
+		clearSuspendedRunUi();
+	}
 }
 
 /** Show the registration form and hide the login form. */
@@ -1270,7 +1317,7 @@ function bindSocketHandlers(s) {
 			if (lobbyEl) lobbyEl.classList.add('hidden');
 			setLobbyHudVisible(false);
 			setDeployButtonVisible(false);
-			if (suspendedRunBannerEl) suspendedRunBannerEl.classList.add('hidden');
+			clearSuspendedRunUi();
 			setGamePhase('playing');
 			if (enteringPlaying) {
 				_lastMagicStones = undefined;
@@ -1670,7 +1717,10 @@ function bindSocketHandlers(s) {
 
 	s.on(SERVER_TO_CLIENT.QUEST_ERROR, (data) => {
 		if (!data || !data.reason) return;
-		showQuestError(data.reason);
+		const reason = data.reason === 'suspended_checkpoint'
+			? THEME.run.questSuspendedLocked
+			: data.reason;
+		showQuestError(reason);
 	});
 
 	s.on(SERVER_TO_CLIENT.CARD_INVENTORY_UPDATE, (data) => {
@@ -1839,7 +1889,7 @@ function bindSocketHandlers(s) {
 		setPlayerPosition(spawnPos.x, spawnPos.z);
 		setPlayerRotation(0);
 		setWasDead(false);
-		if (suspendedRunBannerEl) suspendedRunBannerEl.classList.add('hidden');
+		clearSuspendedRunUi();
 		setGamePhase('playing');
 		updateLevelSettingsBtnVisibility();
 
@@ -1876,10 +1926,14 @@ function bindSocketHandlers(s) {
 
 	s.on(SERVER_TO_CLIENT.RUN_SUSPENDED, (summary) => {
 		suspendedRunSummary = cloneSuspendedRunSummary(summary);
+		if (gameState?.gamePhase === 'lobby') {
+			renderSuspendedRunBanner(suspendedRunSummary);
+		}
 	});
 
 	s.on(SERVER_TO_CLIENT.RUN_ABANDONED, () => {
 		suspendedRunSummary = null;
+		clearSuspendedRunUi();
 		if (gameState) {
 			gameState.gamePhase = 'lobby';
 			delete gameState.run;
@@ -2062,12 +2116,17 @@ function renderQuestBoardState() {
 		selectedQuestId,
 		(questId, tier) => {
 			if (!socket) return;
+			if (suspendedRunSummary) {
+				showQuestError(THEME.run.questSuspendedLocked);
+				return;
+			}
 			socket.emit(CLIENT_TO_SERVER.SELECT_QUEST, { questId, tier: tier ?? 1 });
 		},
 		{
 			selectedQuestTier,
 			unlockedQuestTiers,
 			questVariants,
+			selectionLocked: !!suspendedRunSummary,
 		},
 	);
 	if (questErrorEl) {
@@ -4484,6 +4543,19 @@ if (refreshLobbiesBtnEl) {
 if (leaveLobbyBtnEl) {
 	leaveLobbyBtnEl.addEventListener('click', () => {
 		if (socket) socket.emit(CLIENT_TO_SERVER.LEAVE_LOBBY);
+	});
+}
+
+if (resumeRunBtnEl) {
+	resumeRunBtnEl.addEventListener('click', () => launchBoothReadyUp());
+}
+
+if (abandonRunBtnEl) {
+	abandonRunBtnEl.addEventListener('click', () => {
+		if (!socket) return;
+		socket.emit(CLIENT_TO_SERVER.ABANDON_RUN);
+		suspendedRunSummary = null;
+		clearSuspendedRunUi();
 	});
 }
 

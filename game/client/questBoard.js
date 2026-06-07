@@ -126,13 +126,15 @@ function buildQuestBoardRows(quests, questVariants) {
 	return rows;
 }
 
-function updateQuestSelection(container, selectedQuestId, selectedQuestTier) {
+function updateQuestSelection(container, selectedQuestId, selectedQuestTier, selectionLocked = false) {
 	container.querySelectorAll('.quest-card').forEach((card) => {
 		const cardTier = Number(card.dataset.questTier) || 1;
 		const selected =
 			card.dataset.questId === selectedQuestId
 			&& cardTier === (selectedQuestTier ?? 1);
 		card.classList.toggle('selected', selected);
+		card.classList.toggle('quest-card-locked', selectionLocked || card.classList.contains('quest-card-tier-locked'));
+		card.disabled = selectionLocked || card.classList.contains('quest-card-tier-locked');
 	});
 }
 
@@ -156,6 +158,7 @@ export function renderQuestBoard(
 		selectedQuestTier = 1,
 		unlockedQuestTiers = {},
 		questVariants = [],
+		selectionLocked = false,
 	} = {},
 ) {
 	if (!container) return;
@@ -173,19 +176,20 @@ export function renderQuestBoard(
 	}
 
 	const structureKey = questBoardStructureKey(rows, unlockedQuestTiers);
-	const nextKey = `${structureKey}|${selectedQuestId}|${selectedQuestTier ?? 1}`;
+	const nextKey = `${structureKey}|${selectedQuestId}|${selectedQuestTier ?? 1}|${selectionLocked ? 'locked' : 'open'}`;
 	const existingCards = container.querySelectorAll('.quest-card');
 	if (
 		container.dataset.questBoardKey?.startsWith(`${structureKey}|`)
 		&& existingCards.length === rows.length
 	) {
-		updateQuestSelection(container, selectedQuestId, selectedQuestTier);
+		updateQuestSelection(container, selectedQuestId, selectedQuestTier, selectionLocked);
 		container.querySelectorAll('.quest-card').forEach((card) => {
 			const questId = card.dataset.questId;
 			const tier = Number(card.dataset.questTier) || 1;
-			const locked = tier >= 2 && !isQuestTierUnlocked(unlockedQuestTiers, questId, tier);
-			card.classList.toggle('quest-card-locked', locked);
-			card.disabled = locked;
+			const tierLocked = tier >= 2 && !isQuestTierUnlocked(unlockedQuestTiers, questId, tier);
+			card.classList.toggle('quest-card-tier-locked', tierLocked);
+			card.classList.toggle('quest-card-locked', selectionLocked || tierLocked);
+			card.disabled = selectionLocked || tierLocked;
 		});
 		container.dataset.questBoardKey = nextKey;
 		return;
@@ -195,12 +199,14 @@ export function renderQuestBoard(
 
 	for (const row of rows) {
 		const tier = row.tier ?? 1;
-		const locked = tier >= 2 && !isQuestTierUnlocked(unlockedQuestTiers, row.id, tier);
+		const tierLocked = tier >= 2 && !isQuestTierUnlocked(unlockedQuestTiers, row.id, tier);
+		const locked = selectionLocked || tierLocked;
 
 		const card = document.createElement('button');
 		card.type = 'button';
 		card.className = 'quest-card';
 		if (locked) card.classList.add('quest-card-locked');
+		if (tierLocked) card.classList.add('quest-card-tier-locked');
 		card.dataset.questId = row.id;
 		card.dataset.questTier = String(tier);
 		card.disabled = locked;
@@ -211,7 +217,7 @@ export function renderQuestBoard(
 
 		const tierBadge =
 			tier >= 2
-				? `<span class="quest-tier-badge">${locked ? 'Tier 2 — Locked' : 'Tier 2'}</span>`
+				? `<span class="quest-tier-badge">${tierLocked ? 'Tier 2 — Locked' : 'Tier 2'}</span>`
 				: '';
 
 		card.innerHTML = `

@@ -4468,3 +4468,116 @@ describe('__AUTOGAME_HARNESS_STATE__ suspendedRunSummary', () => {
 		expect(abandoned.phase).toBe('lobby');
 	});
 });
+
+describe('suspended run resume/abandon UI', () => {
+	const requiredIds = [
+		'status', 'vanguard-hud', 'character-id', 'player-level',
+		'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+		'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+		'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+		'currency-display', 'objective-hud', 'ui', 'card-hand',
+		'lobby', 'lobby-browser', 'lobby-player-list', 'lobby-hud',
+		'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+		'summary-currency', 'summary-rewards', 'return-to-lobby-btn',
+		'suspended-run-banner', 'resume-run-btn', 'abandon-run-btn',
+		'quest-board', 'quest-board-wrapper', 'quest-error',
+	];
+
+	const suspendedSummary = {
+		questId: 'training_caverns',
+		questName: 'Initiate Vault',
+		objective: {
+			type: 'defeat_enemies',
+			label: 'Initiate Vault: Purge hostiles from the derelict annex sector.',
+			totalEnemies: 5,
+			defeatedEnemies: 0,
+		},
+	};
+
+	function lobbyStateUpdate(extra = {}) {
+		return {
+			gamePhase: 'lobby',
+			suspendedRunSummary: suspendedSummary,
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+			enemies: [],
+			...extra,
+		};
+	}
+
+	beforeEach(() => {
+		vi.resetModules();
+		document.body.innerHTML = '';
+		for (const id of requiredIds) {
+			const tag = id.endsWith('-btn') ? 'button' : 'div';
+			const el = document.createElement(tag);
+			el.id = id;
+			if (id.endsWith('-btn')) {
+				el.classList.add('hidden');
+			}
+			document.body.appendChild(el);
+		}
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('shows the suspended-run banner and resume/abandon controls in lobby', async () => {
+		await import('../main.js');
+
+		window.__triggerSocketEvent('runSuspended', suspendedSummary);
+		window.__triggerSocketEvent('stateUpdate', lobbyStateUpdate());
+
+		const banner = document.getElementById('suspended-run-banner');
+		const resumeBtn = document.getElementById('resume-run-btn');
+		const abandonBtn = document.getElementById('abandon-run-btn');
+
+		expect(banner.classList.contains('hidden')).toBe(false);
+		expect(banner.textContent).toContain('Initiate Vault');
+		expect(resumeBtn.classList.contains('hidden')).toBe(false);
+		expect(abandonBtn.classList.contains('hidden')).toBe(false);
+		expect(abandonBtn.textContent).toBe('Abort Sortie');
+	});
+
+	it('emits abandonRun and clears suspended UI when abort is clicked', async () => {
+		await import('../main.js');
+
+		window.__triggerSocketEvent('runSuspended', suspendedSummary);
+		window.__triggerSocketEvent('stateUpdate', lobbyStateUpdate());
+		window.__clearSocketEmitLog();
+
+		document.getElementById('abandon-run-btn').click();
+
+		const abandonEmits = window.__socketEmitLog().filter((entry) => entry.event === 'abandonRun');
+		expect(abandonEmits).toHaveLength(1);
+
+		expect(document.getElementById('suspended-run-banner').classList.contains('hidden')).toBe(true);
+		expect(document.getElementById('resume-run-btn').classList.contains('hidden')).toBe(true);
+		expect(document.getElementById('abandon-run-btn').classList.contains('hidden')).toBe(true);
+		expect(window.__AUTOGAME_HARNESS_STATE__().suspendedRunSummary).toBeNull();
+
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'lobby',
+			suspendedRunSummary: null,
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+			enemies: [],
+		});
+
+		expect(document.getElementById('suspended-run-banner').classList.contains('hidden')).toBe(true);
+		expect(window.__AUTOGAME_HARNESS_STATE__().suspendedRunSummary).toBeNull();
+	});
+
+	it('resume button triggers the launch-booth ready-up path', async () => {
+		await import('../main.js');
+
+		window.__triggerSocketEvent('runSuspended', suspendedSummary);
+		window.__triggerSocketEvent('stateUpdate', lobbyStateUpdate());
+		window.__clearSocketEmitLog();
+
+		document.getElementById('resume-run-btn').click();
+
+		const readyEmits = window.__socketEmitLog().filter((entry) => entry.event === 'playerReady');
+		expect(readyEmits).toHaveLength(1);
+		expect(readyEmits[0].data).toBe(true);
+	});
+});
