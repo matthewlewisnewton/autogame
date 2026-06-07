@@ -5389,3 +5389,26 @@ No `?debugScenario=NAME` shortcut was added or changed for this ticket. Existing
 
 None.
 
+
+## v0.304 — 289-card-charges-persist-on-telepipe-resume-reset-on-new-sortie  (2026-06-06 19:14:38)
+
+3. Health + magic stones persist in BOTH cases.
+
+   PASS. The restore branch does not overwrite finite `hp` or `magicStones`, and the fresh-deploy branch preserves existing finite vitals instead of resetting them. Tests exercise telepipe resume and abandon-then-new-sortie with non-default HP/MS and verify neither path resets HP to max or MS to the starting amount. This matches the ticket-287 durability rule in `game/docs/design.md`.
+
+4. Server tests covering both paths.
+
+   PASS. The changed tests include focused server coverage for telepipe-resume card-charge preservation, new-sortie charge reset after abandon, and HP/MS regression guards, plus socket integration coverage for the same two-player flows. The round-3 `coverage.log` shows the full suite passed.
+
+## Design and regression review
+
+PASS. The updated `game/docs/design.md` accurately describes the implemented telepipe suspend/resume policy: last active player extraction suspends the run, resume restores the same run/checkpoint including card charges, and Abort Sortie discards the checkpoint so the next deploy is a fresh run with reset card charges. This does not regress the foundation requirements: the captured run rendered a 3D scene, maintained a WebSocket connection, showed the player in the world, and successfully transitioned lobby -> dungeon -> suspended lobby -> resumed dungeon.
+
+## Debug scenario review
+
+PASS. The round-3 capture used the existing `telepipe-ready` debug scenario. It remains gated by the localhost-only `?debugScenario=` client path and server debug-scenario allowlist, and it does not replace the real flow: normal play still reaches the same state by deploying with a Telepipe card, placing the portal, extracting all active players, then readying from the hub to resume. The scenario only prepares a QA-friendly hand/state before normal ready-up and telepipe/resume server logic run, so it does not bypass checkpoint persistence or net-replication invariants.
+
+## Remaining gaps
+
+None.
+

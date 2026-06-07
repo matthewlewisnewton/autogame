@@ -1,0 +1,3 @@
+1. Telepipe resume restores only run/card metadata and respawns enemies, so the captured "same run" resume loses the pre-suspend enemy/objective world state and fails run-preservation validation.
+   Files: game/server/progression.js, game/server/test/server.test.js, game/server/test/integration.test.js
+   Fix: Extend the suspended checkpoint to capture and restore live run world state (enemies, loot, objective progress, encounter/minion/effect state as applicable), remove the `spawnEnemies()` regeneration on resume, and add tests asserting resumed enemy ids/objective state match pre-suspend state.

@@ -1,0 +1,9 @@
+Wrote the review artifacts:
+
+- `tickets/289-card-charges-persist-on-telepipe-resume-reset-on-new-sortie/round-1/review.md`
+- `tickets/289-card-charges-persist-on-telepipe-resume-reset-on-new-sortie/round-1/gaps.md`
+- `tickets/289-card-charges-persist-on-telepipe-resume-reset-on-new-sortie/round-1/nits.md`
+
+Final verdict: `VERDICT: FAIL`.
+
+Primary blocker: the captured run fails because telepipe resume keeps the old `run.id` but respawns enemies instead of restoring the suspended run’s live world state, so the “same run” resume is not robust. No game code was edited.

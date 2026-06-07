@@ -1,0 +1,8 @@
+Review complete: `VERDICT: FAIL`.
+
+Wrote:
+- `tickets/289-card-charges-persist-on-telepipe-resume-reset-on-new-sortie/round-2/review.md`
+- `tickets/289-card-charges-persist-on-telepipe-resume-reset-on-new-sortie/round-2/gaps.md`
+- `tickets/289-card-charges-persist-on-telepipe-resume-reset-on-new-sortie/round-2/nits.md`
+
+Key blockers: captured run has `"ok": false`, the client does not expose/render suspended checkpoint state for QA, the browser has no normal abandon-new-sortie path after telepipe suspend, and `game/docs/design.md` contradicts the new telepipe resume behavior. No game code was edited.
