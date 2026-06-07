@@ -2734,6 +2734,41 @@ function suspendRunToLobby() {
   _broadcastLobbyUpdate();
 }
 
+function abandonSuspendedRun(state = _gameState) {
+  if (!state || !state._lobbyId) {
+    throw new Error('abandonSuspendedRun requires lobby context');
+  }
+  if (!isLobbyPhase(state)) {
+    return { ok: false, reason: 'not_lobby' };
+  }
+  if (!state.suspendedCheckpoint) {
+    return { ok: false, reason: 'no_suspended_checkpoint' };
+  }
+
+  state.suspendedCheckpoint = null;
+  if (state.run) {
+    delete state.run;
+  }
+
+  for (const player of Object.values(state.players)) {
+    player.ready = false;
+  }
+
+  const io = getIoTarget();
+  if (io) {
+    const lobbyId = state._lobbyId;
+    if (lobbyId) {
+      io.to(lobbyId).emit(SERVER_TO_CLIENT.RUN_ABANDONED);
+      io.to(lobbyId).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+    } else {
+      io.emit(SERVER_TO_CLIENT.RUN_ABANDONED);
+      io.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+    }
+  }
+  _broadcastLobbyUpdate();
+  return { ok: true };
+}
+
 function maybeSuspendRun() {
   if (!_gameState.run || _gameState.run.status !== 'playing') return;
   if (hasActivePlayers()) return;
@@ -2970,6 +3005,7 @@ function returnPlayersToLobby(state = _gameState) {
 
   resetTransientRunState();
 
+  state.suspendedCheckpoint = null;
   setGamePhase(state, PHASES.LOBBY);
   delete state.run;
 
@@ -3026,6 +3062,7 @@ function giveUpRun(state = _gameState) {
 
   resetTransientRunState();
 
+  state.suspendedCheckpoint = null;
   setGamePhase(state, PHASES.LOBBY);
   delete state.run;
 
@@ -3302,6 +3339,7 @@ module.exports = {
   hasActivePlayers,
   restoreCardCheckpoint,
   suspendRunToLobby,
+  abandonSuspendedRun,
   maybeSuspendRun,
   tryEnterTelepipe,
   checkTelepipeProximity,

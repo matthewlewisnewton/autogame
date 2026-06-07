@@ -46,6 +46,7 @@ import {
 	checkAllReady,
 	initializePlayerForActiveRun,
 		tryEnterTelepipe,
+		abandonSuspendedRun,
 		isPlayerActive,
 		checkTelepipeProximity,
 		PORTAL_PLACEMENT_GRACE_MS,
@@ -2931,6 +2932,56 @@ describe('run state', () => {
 			expect(gameState.telepipe).toBeNull();
 			expect(gameState.suspendedCheckpoint).toBeNull();
 			expect(stateSnapshot().suspendedRunSummary).toBeNull();
+		});
+
+		it('new sortie after abandon resets card charges but preserves hp and magicStones', () => {
+			const deck = ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'];
+			gameState.players.p1.selectedDeck = [...deck];
+			gameState.players.p2.selectedDeck = [...deck];
+
+			const preSuspendRunId = gameState.run.id;
+			gameState.players.p1.hp = 42;
+			gameState.players.p1.magicStones = 15;
+			gameState.players.p2.hp = 55;
+			gameState.players.p2.magicStones = 22;
+			gameState.players.p1.hand[0].remainingCharges = 0;
+			gameState.players.p2.hand[0].remainingCharges = 0;
+
+			tryEnterTelepipe('p1');
+			gameState.players.p2.x = 5;
+			gameState.players.p2.z = 5;
+			tryEnterTelepipe('p2');
+
+			expect(gameState.suspendedCheckpoint).not.toBeNull();
+			expect(gameState.suspendedCheckpoint.run.id).toBe(preSuspendRunId);
+			expect(gameState.suspendedCheckpoint.playerStates.p1.hand[0].remainingCharges).toBe(0);
+
+			const abandonResult = abandonSuspendedRun();
+			expect(abandonResult.ok).toBe(true);
+			expect(gameState.suspendedCheckpoint).toBeNull();
+			expect(gameState.players.p1.ready).toBe(false);
+			expect(gameState.players.p2.ready).toBe(false);
+			expect(stateSnapshot().suspendedRunSummary).toBeNull();
+
+			gameState.players.p1.ready = true;
+			gameState.players.p2.ready = true;
+			checkAllReady();
+
+			expect(gameState.gamePhase).toBe('playing');
+			expect(gameState.run).toBeDefined();
+			expect(gameState.run.id).not.toBe(preSuspendRunId);
+			expect(gameState.players.p1.hp).toBe(42);
+			expect(gameState.players.p1.magicStones).toBe(15);
+			expect(gameState.players.p2.hp).toBe(55);
+			expect(gameState.players.p2.magicStones).toBe(22);
+
+			for (const player of [gameState.players.p1, gameState.players.p2]) {
+				for (const card of player.hand) {
+					if (card) {
+						expect(card.remainingCharges).toBe(card.charges);
+					}
+				}
+			}
 		});
 
 		it('checkAllReady fresh deploy preserves existing hp and magicStones', () => {
