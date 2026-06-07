@@ -101,7 +101,7 @@ describe('card evolution', () => {
 		expect(player.inventory[0].evolvedFrom).toBe('saber_of_light');
 		expect(player.ownedCards.excalibur_photon).toBe(1);
 		expect(CARD_DEFS.excalibur_photon).toMatchObject({
-			damage: 18,
+			damage: 14,
 			charges: 6,
 			cooldownMs: 200,
 			swingsPerUse: 2,

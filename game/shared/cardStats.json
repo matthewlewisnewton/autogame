@@ -128,7 +128,7 @@
     "specialEffect": "swift_slash"
   },
   "excalibur_photon": {
-    "damage": 18,
+    "damage": 14,
     "cooldownMs": 200,
     "isEvolved": true,
     "swingsPerUse": 2,

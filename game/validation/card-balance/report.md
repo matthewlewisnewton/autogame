@@ -318,7 +318,8 @@ Data-only changes in `game/shared/cardStats.json` (sub-ticket 04). The **18 `ope
 
 | id | field | before → after | notes |
 | --- | --- | --- | --- |
-| saber_of_light | `damage` | 9 → 12 | per-charge efficiency bump; excalibur_photon `damage` 14 → 18 to preserve +50% evolution ratio |
+| saber_of_light | `damage` | 9 → 12 | per-charge efficiency bump |
+| excalibur_photon | — | not tuned | incidental `damage` 14 → 18 from sub-ticket 04 reverted; remains `operator-triage` |
 | fireball | `damage` | 16 → 18 | align impact with arcane_bolt lane; burn/pierce unchanged |
 | harvesting_scythe | `damage` | 9 → 12 | combat DPM lift; MS-on-hit economy unchanged |
 | permafrost_lance | `damage` | 8 → 11 | match frost_nova lane |
