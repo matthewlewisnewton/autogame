@@ -65,7 +65,7 @@ describe('card balance metrics harness', () => {
 			id: 'fireball',
 			type: 'weapon',
 			charges: 4,
-			damage: 16,
+			damage: 18,
 			acquisition: 'reward',
 			rewardOrder: 27,
 			sellValue: cardEconomy.cardSellValues.fireball,

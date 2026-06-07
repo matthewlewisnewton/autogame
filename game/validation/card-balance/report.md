@@ -311,3 +311,24 @@ Optional creature tweak (playtest-gated): `dungeon_drake` — `attackDamage` +1 
 | undead_commander | `summonSkeletonCount`, `summonSkeletonHp` | skeleton package not in harness |
 | fireball + purifying_pulse | `rewardOrder` in `cardDefs.json` | duplicate order 27 |
 | missing sell values | `cardSellValues` in `cardEconomy.json` | 17 cards on fallbacks (see Economy section) |
+
+## Applied tunings
+
+Data-only changes in `game/shared/cardStats.json` (sub-ticket 04). The **18 `operator-triage`** items in the Recommendations section are unchanged.
+
+| id | field | before → after | notes |
+| --- | --- | --- | --- |
+| saber_of_light | `damage` | 9 → 12 | per-charge efficiency bump; excalibur_photon `damage` 14 → 18 to preserve +50% evolution ratio |
+| fireball | `damage` | 16 → 18 | align impact with arcane_bolt lane; burn/pierce unchanged |
+| harvesting_scythe | `damage` | 9 → 12 | combat DPM lift; MS-on-hit economy unchanged |
+| permafrost_lance | `damage` | 8 → 11 | match frost_nova lane |
+| dragons_breath | `damage` | 9 → 13 | initial burst bump; DoT ticks unchanged |
+
+**Deferred — no safe change identified**
+
+| id | recommendation | reason |
+| --- | --- | --- |
+| ice_ball | `slowChance` 0.5 → 0.65 | verdict `ok`; bump gated on playtest slow-proc feedback |
+| purifying_pulse | `healAmount` +5 or `radius` +1 | verdict `ok`; cleanse is primary value; no underuse signal |
+| chain_lightning | `magicStoneCost` 42 → 37 | verdict `ok`; MS reduction gated on starvation in playtests |
+| dungeon_drake | `attackDamage` +1 or `burnDurationMs` +500 | optional playtest-gated tweak; post-298 burn breath already `ok` |
