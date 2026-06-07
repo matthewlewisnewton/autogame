@@ -2696,9 +2696,39 @@ function restoreCardCheckpoint() {
     player.claimedCardRewardId = null;
   }
 
+  const world = checkpoint.worldState;
+  if (world) {
+    if (world.layout != null) {
+      _gameState.layout = deepCloneJson(world.layout);
+    }
+    if (world.layoutSeed != null) {
+      _gameState.layoutSeed = world.layoutSeed;
+    }
+    if (world.dungeonBounds != null) {
+      _gameState.dungeonBounds = deepCloneJson(world.dungeonBounds);
+    }
+    if (world.layout != null) {
+      _rebuildWallColliders();
+    }
+
+    assignRunSpawnPositions(all);
+
+    _gameState.enemies = deepCloneJson(world.enemies ?? []);
+    _gameState.minions = deepCloneJson(world.minions ?? []);
+    _gameState.loot = deepCloneJson(world.loot ?? []);
+    _gameState.areaEffects = deepCloneJson(world.areaEffects ?? []);
+    _gameState.iceBalls = deepCloneJson(world.iceBalls ?? []);
+    _gameState.enchantments = deepCloneJson(world.enchantments ?? []);
+    _gameState.telepipe = world.telepipe ? deepCloneJson(world.telepipe) : null;
+
+    if (_gameState.telepipe) {
+      repositionPlayersAwayFromPortal(all);
+    }
+  } else {
+    assignRunSpawnPositions(all);
+  }
+
   setGamePhase(_gameState, PHASES.PLAYING);
-  assignRunSpawnPositions(all);
-  spawnEnemies();
 
   if (_gameState.run.encounter) {
     ensureEncounterSpawnAnchor(_gameState.run, _gameState.enemies);

@@ -5256,7 +5256,7 @@ describe('Telepipe extract and redeploy vitals persistence', () => {
 		p2.socket.disconnect();
 	});
 
-	it('two-player telepipe extract returns to hub and redeploy spawns a fresh dungeon', async () => {
+	it('two-player telepipe extract returns to hub and redeploy resumes suspended dungeon', async () => {
 		const baseUrl = await startTestServer();
 		const p1 = await connectAndJoinLobby(baseUrl, 'telepipe-1');
 		const p2 = await connectAndJoinLobby(baseUrl, 'telepipe-2', { joinLobbyId: p1.init.lobbyId });
@@ -5317,8 +5317,15 @@ describe('Telepipe extract and redeploy vitals persistence', () => {
 		const redeployed = testGameState();
 		expect(redeployed.gamePhase).toBe('playing');
 		expect(redeployed.run.id).toBe(preExtractRunId);
-		expect(redeployed.enemies.some((e) => e.id === 'e-telepipe-test')).toBe(false);
-		expect(redeployed.telepipe).toBeNull();
+		const restoredEnemy = redeployed.enemies.find((e) => e.id === 'e-telepipe-test');
+		expect(restoredEnemy).toBeDefined();
+		expect(restoredEnemy.hp).toBe(55);
+		expect(redeployed.telepipe).toEqual({
+			x: portalX,
+			z: portalZ,
+			placedBy: p1Id,
+			placedAt: state.telepipe.placedAt,
+		});
 		expect(redeployed.players[p1Id].extracted).toBe(false);
 		expect(redeployed.players[p2Id].extracted).toBe(false);
 

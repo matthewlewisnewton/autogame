@@ -3015,8 +3015,84 @@ describe('run state', () => {
 			expect(liveEnemyRef.hp).toBe(999);
 		});
 
-		it('checkAllReady after telepipe extract spawns a fresh dungeon run', () => {
+		it('checkAllReady after telepipe extract restores full world snapshot on resume', () => {
+			gameState.enemies = [{
+				id: 'enemy-alpha',
+				x: 14,
+				z: 14,
+				hp: 22,
+				maxHp: 40,
+				type: 'grunt',
+				state: 'chase',
+				attackState: 'windup',
+				spawnedBy: null,
+				wanderTarget: { x: 14, z: 14 },
+			}, {
+				id: 'enemy-beta',
+				x: 16,
+				z: 16,
+				hp: 40,
+				maxHp: 40,
+				type: 'grunt',
+				state: 'idle',
+				attackState: 'idle',
+				spawnedBy: 'spawner-1',
+				wanderTarget: { x: 16, z: 16 },
+			}];
+			gameState.minions.push({ id: 'minion-1', ownerId: 'p1', x: 8, z: 8, hp: 30, ttl: 20 });
+			gameState.loot.push({ id: 'loot-1', x: 9, z: 9, value: 5, createdAt: Date.now() });
+			gameState.areaEffects.push({ id: 'fx-1', type: 'fire', x: 10, z: 10, radius: 2, expiresAt: Date.now() + 5000 });
+			gameState.iceBalls.push({ id: 'ice-1', ownerId: 'enemy-beta', x: 15, z: 15, dirX: 1, dirZ: 0, traveled: 1 });
+			gameState.enchantments.push({ id: 'enc-1', cardId: 'spike_trap', x: 11, z: 11, expiresAt: Date.now() + 10000 });
+			gameState.layout = { rooms: [{ x: 0, z: 0, width: 20, depth: 20, role: 'start' }] };
+			gameState.layoutSeed = 4242;
+			gameState.dungeonBounds = { minX: -10, maxX: 10, minZ: -10, maxZ: 10 };
+			gameState.run.objective = {
+				type: 'defeat_enemies',
+				totalEnemies: 5,
+				defeatedEnemies: 1,
+				label: 'Purge hostiles',
+			};
+			const preSuspendTelepipe = { ...gameState.telepipe };
+			const preSuspendEnemyIds = gameState.enemies.map((e) => e.id);
+
+			tryEnterTelepipe('p1');
+			gameState.players.p2.x = 5;
+			gameState.players.p2.z = 5;
+			tryEnterTelepipe('p2');
+
+			gameState.players.p1.ready = true;
+			gameState.players.p2.ready = true;
+			checkAllReady();
+
+			expect(gameState.enemies.map((e) => e.id)).toEqual(preSuspendEnemyIds);
+			expect(gameState.enemies[0].hp).toBe(22);
+			expect(gameState.enemies[1].spawnedBy).toBe('spawner-1');
+			expect(gameState.minions).toHaveLength(1);
+			expect(gameState.loot).toHaveLength(1);
+			expect(gameState.areaEffects).toHaveLength(1);
+			expect(gameState.iceBalls).toHaveLength(1);
+			expect(gameState.enchantments).toHaveLength(1);
+			expect(gameState.telepipe).toEqual(preSuspendTelepipe);
+			expect(gameState.layout).toEqual({ rooms: [{ x: 0, z: 0, width: 20, depth: 20, role: 'start' }] });
+			expect(gameState.layoutSeed).toBe(4242);
+			expect(gameState.dungeonBounds).toEqual({ minX: -10, maxX: 10, minZ: -10, maxZ: 10 });
+			expect(gameState.run.objective).toEqual({
+				type: 'defeat_enemies',
+				totalEnemies: 5,
+				defeatedEnemies: 1,
+				label: 'Purge hostiles',
+			});
+		});
+
+		it('checkAllReady after telepipe extract resumes suspended dungeon run', () => {
 			const preExtractRunId = gameState.run.id;
+			const preSuspendEnemyIds = gameState.enemies.map((e) => e.id);
+			const preSuspendObjective = gameState.run.objective
+				? { ...gameState.run.objective }
+				: null;
+			const preSuspendTelepipe = { ...gameState.telepipe };
+
 			tryEnterTelepipe('p1');
 			gameState.players.p2.x = 5;
 			gameState.players.p2.z = 5;
@@ -3030,10 +3106,31 @@ describe('run state', () => {
 			expect(gameState.run).toBeDefined();
 			expect(gameState.run.id).toBe(preExtractRunId);
 			expect(gameState.run.status).toBe('playing');
-			expect(gameState.enemies.length).toBeGreaterThan(0);
-			expect(gameState.telepipe).toBeNull();
 			expect(gameState.suspendedCheckpoint).toBeNull();
 			expect(stateSnapshot().suspendedRunSummary).toBeNull();
+
+			const restoredEnemy = gameState.enemies.find((e) => e.id === 'e1');
+			expect(restoredEnemy).toBeDefined();
+			expect(restoredEnemy.hp).toBe(40);
+			for (const id of preSuspendEnemyIds) {
+				expect(gameState.enemies.some((e) => e.id === id)).toBe(true);
+			}
+			const conjuredIds = gameState.enemies
+				.filter((e) => !e.spawnedBy && !preSuspendEnemyIds.includes(e.id))
+				.map((e) => e.id);
+			expect(conjuredIds).toEqual([]);
+
+			if (preSuspendObjective) {
+				expect(gameState.run.objective.type).toBe(preSuspendObjective.type);
+				expect(gameState.run.objective.totalEnemies).toBe(preSuspendObjective.totalEnemies);
+				expect(gameState.run.objective.defeatedEnemies).toBe(preSuspendObjective.defeatedEnemies);
+			}
+
+			expect(gameState.telepipe).toEqual(preSuspendTelepipe);
+			for (const player of Object.values(gameState.players)) {
+				const dist = Math.hypot(player.x - gameState.telepipe.x, player.z - gameState.telepipe.z);
+				expect(dist).toBeGreaterThan(PORTAL_RADIUS);
+			}
 		});
 
 		it('new sortie after abandon resets card charges but preserves hp and magicStones', () => {
