@@ -1,0 +1,11 @@
+Round 2 planning is done. Sub-tickets **01–03** all have `.passed` markers and were left untouched. The only open gap from `review-feedback.md` is the harness review-capture blocker (fallback telepipe plan + stale `assertRunPreserved`).
+
+## New sub-ticket
+
+**04-harness-walkable-hub-review-capture** — Routes ticket **305** away from the telepipe suspend→resume fallback and adds a deterministic walkable-hub review capture in `harness/screenshot.mjs` (post-304 hub waits, walkable presentation assert, `metrics.json` `"ok": true`). Scope is harness-only; no `game/` or `harness/validate/*` changes.
+
+## Created folder
+
+```
+/home/matt/workspace/.autogame-worktrees/305-recapture-walkable-hub-after-overlay-fix/tickets/305-recapture-walkable-hub-after-overlay-fix/subtickets/04-harness-walkable-hub-review-capture/
+```

@@ -114,3 +114,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [297-cleanup-persist-player-health-and-stones-no-telepipe-reset](tickets/297-cleanup-persist-player-health-and-stones-no-telepipe-reset/)
 - [ ] [303-cleanup-ice-enemy-glacial-ball-thrower](tickets/303-cleanup-ice-enemy-glacial-ball-thrower/)
 - [ ] [305-cleanup-fix-lobby-menu-overlay-reshows-over-walkable-hub](tickets/305-cleanup-fix-lobby-menu-overlay-reshows-over-walkable-hub/)
+- [ ] [306-cleanup-recapture-walkable-hub-after-overlay-fix](tickets/306-cleanup-recapture-walkable-hub-after-overlay-fix/)

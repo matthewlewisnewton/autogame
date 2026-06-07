@@ -1,0 +1,19 @@
+The existing nits.md (stale appended validation logs) is a genuine nit worth keeping. I'll leave it as-is — it's already well-formed. My review is complete.
+
+## Summary
+
+**VERDICT: FAIL** — forced by the runtime-health gate: `round-1/metrics.json` reports `"ok": false` (`failure_kind: "capture_failed"`). No clean runnable proof from the review capture.
+
+The key finding, however, is that this is a **harness blocker, not a game-code or deliverable defect**:
+
+- **Game ran cleanly** — `pageerrors: []`, servers up on :5173/:3002, dungeon playable, telepipe placed and extracted. No fatal errors.
+- **The failure is in the harness's own review-capture machinery** (`harness/screenshot.mjs:1198`, `assertRunPreserved`), which this ticket never touched (305 only changed `harness/validate/*`).
+- **The fallback plan is stale & self-contradictory**: it ran a telepipe suspend/resume capture (`capturePlanSource:"fallback"`) — not the hub walk this ticket is about — and `assertRunPreserved` expects checkpoint enemy-ID restore, while the current post-287 design does a *fresh redeploy* (new runId, regenerated dungeon, vitals preserved). The sibling `assertVitalsPreserved` even *requires* `freshRunId`. So that assertion can never pass against the live game.
+- **The ticket's actual deliverable is complete and green**: `game/validation/hub/run-summary.json` is `ok:true`, all 9 screenshots present, `findings.md` covers walkable presentation, party-mates visible (2 players / 1 remote squadmate), all three rooms walkable with menu dismissed. Unit suite: 36 files / 856 tests passed.
+
+Files written:
+- `review.md` — full assessment with `## Harness blockers` section, per-criterion findings, verdict.
+- `gaps.md` — single infra blocker, steering remediation to `harness/screenshot.mjs` and explicitly away from `game/` and `harness/validate/*`.
+- `nits.md` — left in place (stale appended validation logs).
+
+The next round should **not churn on game code or the hub validation driver** — the fix is to either run the review capture with the hub-full plan or reconcile `assertRunPreserved` with current telepipe semantics.

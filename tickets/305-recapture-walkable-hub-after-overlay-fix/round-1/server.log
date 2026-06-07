@@ -1,0 +1,15 @@
+[users] Loaded 12 user record(s) from /home/matt/workspace/.autogame-worktrees/305-recapture-walkable-hub-after-overlay-fix/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/305-recapture-walkable-hub-after-overlay-fix/game/data
+Server listening on port 3002
+Player connected: socket=jJvnv7wfpxSSfufrAAAB, playerId=3b8f6327-7d2c-478b-a729-68fe4050a1b3
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[telepipe] placed at (-9.0, 27.0) by 3b8f6327-7d2c-478b-a729-68fe4050a1b3
+[telepipe] player 3b8f6327-7d2c-478b-a729-68fe4050a1b3 extracted
+[run] extracted to hub: Initiate Vault
+[loot] spawned id=1c411c61-0a96-45a1-a4f5-d69e7235e104 value=5
+Player disconnected: jJvnv7wfpxSSfufrAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

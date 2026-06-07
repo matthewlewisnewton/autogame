@@ -1,0 +1,23 @@
+{
+  "ok": false,
+  "failure_kind": "capture_failed",
+  "capture_diagnosis": {
+    "detected": [],
+    "client_log_tail": "[vite] Proxying /api and /socket.io \u2192 http://127.0.0.1:3002\n[vite] Game server ready at http://127.0.0.1:3002\n\n  VITE v8.0.13  ready in 665 ms\n\n  \u279c  Local:   http://localhost:5175/\n  \u279c  Network: use --host to expose\n6:15:11 PM [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.",
+    "server_log_tail": "[users] Loaded 12 user record(s) from /home/matt/workspace/.autogame-worktrees/305-recapture-walkable-hub-after-overlay-fix/game/data/users.json\n[server] Layout for quest \"training_caverns\" tier 1: seed=352369970, profile=crowded, rooms=10\n[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]\n[auth] JWT_SECRET not set \u2014 using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.\n[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/305-recapture-walkable-hub-after-overlay-fix/game/data\nServer listening on port 3002\nPlayer connected: socket=jJvnv7wfpxSSfufrAAAB, playerId=3b8f6327-7d2c-478b-a729-68fe4050a1b3\n[server] Layout for quest \"training_caverns\" tier 1: seed=352369970, profile=crowded, rooms=10\n[telepipe] placed at (-9.0, 27.0) by 3b8f6327-7d2c-478b-a729-68fe4050a1b3\n[telepipe] player 3b8f6327-7d2c-478b-a729-68fe4050a1b3 extracted\n[run] extracted to hub: Initiate Vault\n[loot] spawned id=1c411c61-0a96-45a1-a4f5-d69e7235e104 value=5\nPlayer disconnected: jJvnv7wfpxSSfufrAAAB",
+    "port_holders": {
+      "5175": [
+        {
+          "pid": 73937,
+          "cmdline": "node /home/matt/workspace/.autogame-worktrees/305-recapture-walkable-hub-after-overlay-fix/game/client/node_modules/.bin/../vite/bin/vite.js --port 5175 --strictPort"
+        }
+      ],
+      "3002": [
+        {
+          "pid": 73907,
+          "cmdline": "node game/server/index.js"
+        }
+      ]
+    }
+  }
+}
