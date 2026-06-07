@@ -287,7 +287,7 @@ async function runHubWalkStep({ browser, game, preset, outDirAbs }) {
 		if (!joinerPlayer || joinerPlayer.x == null) {
 			await failWithHarnessPair(hostPage, joinerPage, 'Joiner local player missing position');
 		}
-		await nudgeJoinerForPresence(joinerPage, joinerPlayer.x + 4, joinerPlayer.z);
+		await nudgeJoinerForPresence(joinerPage, joinerPlayer.x + 2, joinerPlayer.z);
 
 		await hostPage.waitForFunction(({ x, z }) => {
 			const h = window.__AUTOGAME_HARNESS_STATE__?.();
@@ -297,6 +297,19 @@ async function runHubWalkStep({ browser, game, preset, outDirAbs }) {
 		}, { x: mateAtJoin.x, z: mateAtJoin.z }, { timeout: 15000 }).catch(async () => {
 			await failWithHarnessPair(hostPage, joinerPage, 'Remote squadmate position did not update after joiner move');
 		});
+
+		// Assert both players are close enough for both avatars to fit in the overview frame.
+		const hState = await readHarness(hostPage);
+		const jState = await readHarness(joinerPage);
+		const hostP = hState?.player;
+		const joinerP = jState?.player;
+		if (hostP && joinerP && Number.isFinite(hostP.x) && Number.isFinite(joinerP.x)) {
+			const dist = Math.hypot(hostP.x - joinerP.x, hostP.z - joinerP.z);
+			if (dist > 4) {
+				await failWithHarnessPair(hostPage, joinerPage,
+					`Host-joiner distance ${dist.toFixed(1)} exceeds 4 units for overview frame`);
+			}
+		}
 
 		await dismissLobbyOverlay(hostPage);
 		const overviewScreenshot = await writeScreenshot(hostPage, outDirAbs, '01-hub-overview');
