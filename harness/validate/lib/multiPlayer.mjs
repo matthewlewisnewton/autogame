@@ -82,19 +82,17 @@ export async function joinLobby(page, lobbyName) {
 }
 
 export async function dismissLobbyOverlay(page) {
-	await page.evaluate(() => {
-		document.getElementById('lobby')?.classList.add('hidden');
+	await page.addStyleTag({
+		content: '#lobby { display: none !important; }',
 	});
 	await page.waitForFunction(() => {
 		const el = document.getElementById('lobby');
-		return el && el.classList.contains('hidden')
-			&& window.getComputedStyle(el).display === 'none';
+		return el && window.getComputedStyle(el).display === 'none';
 	}, { timeout: 5000 }).catch(async () => {
 		const state = await page.evaluate(() => {
 			const el = document.getElementById('lobby');
 			return {
 				exists: !!el,
-				hidden: el?.classList.contains('hidden'),
 				display: el ? window.getComputedStyle(el).display : null,
 			};
 		});
