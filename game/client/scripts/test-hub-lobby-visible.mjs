@@ -1,14 +1,12 @@
 #!/usr/bin/env node
 /**
- * Smoke test: the rendered hub canvas stays visible behind the lobby UI during
- * the lobby phase, and the Deploy button stays interactive.
+ * Smoke test: the walkable hub canvas stays visible during the lobby phase while
+ * the dismissible #lobby menu starts hidden, and the booth prompt stays usable.
  *
  * Drives register -> create lobby -> reach lobby phase, then asserts:
+ *   - #lobby starts hidden (lobbyMenuDismissed) so the hub canvas is unobstructed
  *   - a real <canvas> is rendered (non-zero size, in the DOM)
- *   - the #lobby overlay does NOT paint an opaque, viewport-filling background
- *     over it (its computed background-color is transparent)
- *   - the Deploy button (#ready-btn) is visible, enabled, has pointer-events
- *     active, and is the topmost element at its own location (nothing covering)
+ *   - the #booth-prompt overlay can be shown and remains interactive (not covered)
  *   - no console/page errors occurred during the lobby phase
  *
  * Requires: client on :5173, server on :3000, playwright chromium.
@@ -66,44 +64,46 @@ async function main() {
     document.getElementById('create-lobby-btn')?.click();
   });
   await page.waitForFunction(() => {
+    const harness = window.__AUTOGAME_HARNESS_STATE__?.();
     const lobby = document.getElementById('lobby');
-    return lobby && !lobby.classList.contains('hidden');
+    const canvas = document.querySelector('canvas');
+    return harness
+      && harness.phase === 'lobby'
+      && harness.lobbyMenuDismissed === true
+      && lobby && lobby.classList.contains('hidden')
+      && canvas && canvas.width > 0 && canvas.height > 0;
   }, { timeout: 10000 });
-  console.log('✓ Reached lobby phase');
-
-  // Give the renderer a moment to mount the hub canvas / spawn the avatar.
-  await page.waitForFunction(() => {
-    const c = document.querySelector('canvas');
-    return c && c.width > 0 && c.height > 0;
-  }, { timeout: 10000 });
+  console.log('✓ Reached lobby phase with menu dismissed');
 
   const result = await page.evaluate(() => {
     const canvas = document.querySelector('canvas');
     const lobby = document.getElementById('lobby');
-    const deploy = document.getElementById('ready-btn');
+    const prompt = document.getElementById('booth-prompt');
+    const harness = window.__AUTOGAME_HARNESS_STATE__();
 
-    const lobbyBg = getComputedStyle(lobby).backgroundColor;
-    // Transparent => rgba(0, 0, 0, 0) (or the legacy keyword "transparent").
-    const lobbyBgTransparent = lobbyBg === 'rgba(0, 0, 0, 0)' || lobbyBg === 'transparent';
-
-    // The lobby scrolls; make sure Deploy is in view before probing it.
-    deploy.scrollIntoView({ block: 'center' });
-    const deployRect = deploy.getBoundingClientRect();
-    const deployStyle = getComputedStyle(deploy);
-    const cx = deployRect.left + deployRect.width / 2;
-    const cy = deployRect.top + deployRect.height / 2;
-    const topAtDeploy = document.elementFromPoint(cx, cy);
+    // Simulate an in-range booth prompt (proximity is renderer-driven; verify the
+    // overlay itself is usable while the lobby menu stays dismissed).
+    if (prompt) {
+      prompt.textContent = 'Press F — Launch Bay';
+      prompt.dataset.boothId = 'launch';
+      prompt.classList.remove('hidden');
+    }
+    const promptRect = prompt?.getBoundingClientRect?.() ?? { width: 0, height: 0 };
+    const promptStyle = prompt ? getComputedStyle(prompt) : null;
+    const cx = promptRect.left + promptRect.width / 2;
+    const cy = promptRect.top + promptRect.height / 2;
+    const topAtPrompt = promptRect.width > 0 ? document.elementFromPoint(cx, cy) : null;
 
     return {
       hasCanvas: !!canvas,
       canvasW: canvas ? canvas.width : 0,
       canvasH: canvas ? canvas.height : 0,
-      lobbyBg,
-      lobbyBgTransparent,
-      deployVisible: deployRect.width > 0 && deployRect.height > 0,
-      deployDisabled: deploy.disabled,
-      deployPointerEvents: deployStyle.pointerEvents,
-      deployIsTopmost: deploy.contains(topAtDeploy) || topAtDeploy === deploy,
+      lobbyHidden: lobby ? lobby.classList.contains('hidden') : false,
+      lobbyMenuDismissed: harness?.lobbyMenuDismissed === true,
+      hasBoothPrompt: !!prompt,
+      boothPromptVisible: promptRect.width > 0 && promptRect.height > 0,
+      boothPromptPointerEvents: promptStyle ? promptStyle.pointerEvents : null,
+      boothPromptIsTopmost: prompt && (prompt.contains(topAtPrompt) || topAtPrompt === prompt),
     };
   });
 
@@ -112,24 +112,24 @@ async function main() {
   if (!result.hasCanvas || result.canvasW <= 0 || result.canvasH <= 0) {
     throw new Error('Hub canvas is not rendered during the lobby phase');
   }
-  if (!result.lobbyBgTransparent) {
-    throw new Error(`#lobby background is not transparent (got "${result.lobbyBg}") — it occludes the hub canvas`);
+  if (!result.lobbyHidden || !result.lobbyMenuDismissed) {
+    throw new Error('#lobby menu is visible on hub join — it should start dismissed');
   }
-  if (!result.deployVisible || result.deployDisabled) {
-    throw new Error('Deploy button is not visible/enabled in the lobby');
+  if (!result.hasBoothPrompt || !result.boothPromptVisible) {
+    throw new Error('#booth-prompt is not visible when in range');
   }
-  if (result.deployPointerEvents === 'none' || !result.deployIsTopmost) {
-    throw new Error('Deploy button is not interactive (covered or pointer-events disabled)');
+  if (result.boothPromptPointerEvents === 'none' || !result.boothPromptIsTopmost) {
+    throw new Error('#booth-prompt is not interactive (covered or pointer-events disabled)');
   }
-  console.log('✓ Hub canvas visible, #lobby background transparent, Deploy interactive');
+  console.log('✓ Hub canvas visible, #lobby dismissed, booth prompt interactive');
 
-  // Confirm the Deploy button actually responds to a click (transitions to run).
-  await page.click('#ready-btn');
+  // Confirm deploy still works via the launch-booth ready-up test hook.
+  await page.evaluate(() => window.__launchReadyUpForTest?.());
   await page.waitForFunction(() => {
     const ui = document.getElementById('ui');
     return ui && ui.style.display === 'block';
   }, { timeout: 15000 });
-  console.log('✓ Deploy click started the run');
+  console.log('✓ Launch-booth ready-up started the run');
 
   if (errors.length) {
     throw new Error(`Console/page errors during lobby phase:\n${errors.join('\n')}`);

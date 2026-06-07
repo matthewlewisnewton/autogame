@@ -1,0 +1,13 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/298-vault-wyrm-burning-rebalance/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/298-vault-wyrm-burning-rebalance/game/data
+Server listening on port 3002
+Player connected: socket=ZcQGLAXYkU1_4Z9oAAAB, playerId=244d8e57-42ae-49f0-8516-2d8bd43a67be
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=c1Ys0ilY6wFJOHc5AAAD, playerId=59327596-9a23-4b8a-b803-a9eac55846e9
+Player disconnected: ZcQGLAXYkU1_4Z9oAAAB
+Player disconnected: c1Ys0ilY6wFJOHc5AAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

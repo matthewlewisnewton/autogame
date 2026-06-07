@@ -1492,6 +1492,45 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       const overseer = spawnEnemy(player.x + 4, player.z, 'annex_overseer');
       overseer.wanderTarget = { x: overseer.x, z: overseer.z };
+    } else if (name === 'field-medic') {
+      // Field Medic with a wounded grunt ally for heal/flee/bead QA. Same enemies
+      // are reachable on tier-2 runs with tier2EnemyPool; this is a shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const medic = spawnEnemy(player.x + 3, player.z, 'field_medic');
+      const grunt = spawnEnemy(player.x + 1, player.z + 2, 'grunt');
+      grunt.hp = Math.max(1, Math.floor(grunt.maxHp * 0.4));
+      medic.wanderTarget = { x: medic.x, z: medic.z };
+      grunt.wanderTarget = { x: grunt.x, z: grunt.z };
+    } else if (name === 'field-medic-spawn') {
+      // Spawn a Field Medic beside the player for tier-2 rare-spawn QA. The same
+      // enemy type is reachable normally on tier-2 runs for quests with
+      // tier2EnemyPool (e.g. crystal_rescue); this is a deterministic shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const medic = spawnEnemy(player.x + 4, player.z, 'field_medic');
+      medic.wanderTarget = { x: medic.x, z: medic.z };
+    } else if (name === 'glacial-thrower') {
+      // Spawn a Glacial Thrower in front of the player so QA can watch it lob a
+      // slow giant ice ball, see the projectile travel, and take the SLOW + damage
+      // on contact. The same enemy is reachable normally on Frost Crossing runs
+      // (it is in that quest's enemyPool); this is a deterministic shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      state.iceBalls = [];
+      const thrower = spawnEnemy(player.x + 6, player.z, 'glacial_thrower');
+      thrower.wanderTarget = { x: thrower.x, z: thrower.z };
+    } else if (name === 'ember-wraith') {
+      // One Ember Wraith in cone-strike range for burning-on-hit QA. The same
+      // enemy is reachable on ember_descent runs (or via fire-cavern); shortcut only.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const wraith = spawnEnemy(player.x + 3, player.z, 'ember_wraith');
+      wraith.wanderTarget = { x: wraith.x, z: wraith.z };
     } else if (name === 'variant-enemy') {
       // Spawn one variant ("elite") enemy beside a plain one of the same type so
       // the client variant marker can be verified side-by-side. The same state is
@@ -1648,7 +1687,8 @@ function applyDebugScenario(socket, name) {
         breathRange: 6,
         breathHoldDistance: 3.5,
         breathConeAngle: Math.PI / 4,
-        breathDamage: 3,
+        breathDamage: 2,
+        burnDurationMs: 2000,
         breathDurationMs: 2000,
         breathTickMs: 500,
         breathIntervalMs: 2500,
@@ -1990,6 +2030,30 @@ function applyDebugScenario(socket, name) {
       player.magicStones = 5;
       player.equippedKeyItemId = 'field_medic_kit';
       player.keyItemCooldownUntil = 0;
+    } else if (name === 'purifying-pulse-ready') {
+      // Low-HP player with Purifying Pulse in hand and active negative statuses.
+      // Same state is reachable by earning the reward card deep in a dungeon run
+      // and casting while slowed, burning, or debuffed.
+      const statusNow = Date.now();
+      player.hp = Math.floor(MAX_HP * 0.4);
+      player.magicStones = MAX_MAGIC_STONES;
+      player.slowedUntil = statusNow + 5000;
+      player.slowFactor = 0.5;
+      player.burningUntil = statusNow + 5000;
+      player.lastBurnTickAt = statusNow;
+      player.debuffs = [{ type: 'slow', expiresAt: statusNow + 5000 }];
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'purifying_pulse',
+          name: 'Purifying Pulse',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+          magicStoneCost: 0,
+          specialEffect: 'heal_and_cleanse',
+        };
+      }
     } else if (name === 'guard-block-ready') {
       // Put player at low HP with guard_block equipped and no cooldown to test blocking.
       player.hp = Math.floor(MAX_HP * 0.5);
@@ -2105,6 +2169,89 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       const grunt = spawnEnemy(player.x + 4, player.z, 'grunt');
       grunt.wanderTarget = { x: grunt.x, z: grunt.z };
+    } else if (name === 'chain-lightning-ready') {
+      // Playing phase with Voltaic Chain in hand, full Magic Stones, and three
+      // grunts lined up along +X so a cast chains primary → two half-damage hops.
+      // Same state is reachable by earning the reward card and entering combat.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'chain_lightning',
+          name: 'Voltaic Chain',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      state.enemies = [];
+      const primary = spawnEnemy(player.x + 5, player.z, 'grunt');
+      primary.hp = 80;
+      primary.maxHp = 80;
+      primary.wanderTarget = { x: primary.x, z: primary.z };
+      const chain1 = spawnEnemy(player.x + 8, player.z, 'grunt');
+      chain1.hp = 80;
+      chain1.maxHp = 80;
+      chain1.wanderTarget = { x: chain1.x, z: chain1.z };
+      const chain2 = spawnEnemy(player.x + 11, player.z, 'grunt');
+      chain2.hp = 80;
+      chain2.maxHp = 80;
+      chain2.wanderTarget = { x: chain2.x, z: chain2.z };
+    } else if (name === 'fireball-ready') {
+      // Playing phase with Fireball in hand, full Magic Stones, and two grunts
+      // lined up along +X so a single cast pierces both, deals impact damage,
+      // and leaves them BURNING (visible damage-over-time afterward). The same
+      // state is reachable normally by earning the reward card and entering combat.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'fireball',
+          name: 'Fireball',
+          type: 'weapon',
+          charges: 4,
+          remainingCharges: 4,
+        };
+      }
+      state.enemies = [];
+      const near = spawnEnemy(player.x + 4, player.z, 'grunt');
+      near.hp = 80;
+      near.maxHp = 80;
+      near.wanderTarget = { x: near.x, z: near.z };
+      const far = spawnEnemy(player.x + 7, player.z, 'grunt');
+      far.hp = 80;
+      far.maxHp = 80;
+      far.wanderTarget = { x: far.x, z: far.z };
+    } else if (name === 'ice-ball-ready') {
+      // Playing phase with Glacial Orb in hand, full Magic Stones, and grunts
+      // lined up along +X so a cast hits the nearest and can roll SLOW. The same
+      // state is reachable normally by earning the reward card and entering combat.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'ice_ball',
+          name: 'Glacial Orb',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      state.enemies = [];
+      const near = spawnEnemy(player.x + 4, player.z, 'grunt');
+      near.hp = 80;
+      near.maxHp = 80;
+      near.wanderTarget = { x: near.x, z: near.z };
+      const far = spawnEnemy(player.x + 7, player.z, 'grunt');
+      far.hp = 80;
+      far.maxHp = 80;
+      far.wanderTarget = { x: far.x, z: far.z };
     }
 
     syncRunObjectiveToEnemies();

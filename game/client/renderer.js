@@ -111,6 +111,8 @@ const variantMarkerMeshes = {}; // enemy id → floating badge for variant ("eli
 const frenziedTelegraphMeshes = {}; // enemy id → pulsing red ring (pre-enrage telegraph)
 const enemySlowMarkers = {}; // enemy id → icy ground ring shown while slowed
 const playerSlowMarkers = {}; // player id → icy ground ring shown while slowed
+const enemyBurnMarkers = {}; // enemy id → flickering flame shown while burning
+const playerBurnMarkers = {}; // player id → flickering flame shown while burning
 
 // phase_step ally targeting: nearest in-range ally id (or null) recomputed each
 // frame, plus the ground ring that highlights it. Read by main.js via
@@ -121,6 +123,7 @@ let phaseStepAllyRing = null;
 const windupFlashing = new Set(); // enemy ids currently showing windup emissive
 const minionsMeshes = {};
 const lootMeshes = {};
+const iceBallMeshes = {}; // ice-ball projectile id → giant icy sphere mesh (glacial thrower)
 let telepipeMesh = null;
 const activeEffects = []; // { mesh, origin, direction, createdAt, duration }
 
@@ -457,6 +460,9 @@ const ENEMY_GEOMETRY = {
 	arena_champion: { type: 'cone', radius: 1.4, height: 3.0, segments: 16, color: 0xffaa00, emissive: 0xcc3300, emissiveIntensity: 0.45 },
 	spire_warden: { type: 'cone', radius: 1.1, height: 2.4, segments: 12, color: 0x3388cc, emissive: 0x2266aa, emissiveIntensity: 0.3 },
 	spawner:    { type: 'octahedron', radius: 0.6, color: 0x00ccaa, emissive: 0x00ccaa, emissiveIntensity: 0.4 },
+	field_medic: { type: 'octahedron', radius: 0.4, color: 0x10b981, emissive: 0x2dd4bf, emissiveIntensity: 0.55 },
+	glacial_thrower: { type: 'cone', radius: 1.0, height: 2.2, segments: 12, color: 0x7dd3fc, emissive: 0x38bdf8, emissiveIntensity: 0.35 },
+	ember_wraith: { type: 'octahedron', radius: 0.35, color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.6 },
 };
 
 /** Windup telegraph shape per enemy type — mirrors server ENEMY_DEFS attackStyle */
@@ -468,6 +474,9 @@ const ENEMY_ATTACK_VISUAL = {
 	arena_champion: { style: 'cone', coneAngle: (2 * Math.PI) / 3, range: 6.5, color: 0xffcc44, emissive: 0xcc3300 },
 	spire_warden: { style: 'cone', coneAngle: Math.PI / 2, range: 6, color: 0x55aaff, emissive: 0x3388cc },
 	spawner:    { style: 'radial' },
+	field_medic: { style: 'projectile', range: 8, color: 0x2dd4bf, emissive: 0x14b8a6, hitWidth: 0.5 },
+	glacial_thrower: { style: 'projectile', range: 7, color: 0x7dd3fc, emissive: 0x38bdf8, hitWidth: 0.9 },
+	ember_wraith: { style: 'cone', coneAngle: Math.PI / 3, color: 0xff4400, emissive: 0xff2200 },
 };
 
 /** Minion mesh presets keyed by minion.type */
@@ -1190,6 +1199,7 @@ export function getMeshMaps() {
 		minionTelegraphMeshes,
 		minionsMeshes,
 		lootMeshes,
+		iceBallMeshes,
 	};
 }
 
@@ -2594,6 +2604,62 @@ export function triggerHealPulseVFX(position, healRadius) {
 	requestAnimationFrame(animatePulse);
 }
 
+const MEDIC_BEAD_COLOR = 0x2dd4bf;
+const MEDIC_BEAD_EMISSIVE = 0x14b8a6;
+const MEDIC_HEAL_DEFAULT_RADIUS = 6;
+
+/**
+ * Ally-heal pulse at the medic position (wraps the Field Medic Kit ring VFX).
+ *
+ * @param {{ x: number, y?: number, z: number }} position
+ * @param {number} [healRadius] — metres; matches server ENEMY_DEFS.field_medic.healRadius
+ */
+export function triggerMedicAllyHealVFX(position, healRadius) {
+	if (!scene || !position) return;
+	if (!Number.isFinite(position.x) || !Number.isFinite(position.z)) return;
+	const radius = Number.isFinite(healRadius) && healRadius > 0
+		? healRadius
+		: MEDIC_HEAL_DEFAULT_RADIUS;
+	triggerHealPulseVFX(position, radius);
+}
+
+/**
+ * Narrow energy-bead beam along the medic attack vector (phase-beam corridor).
+ *
+ * @param {{ origin: { x: number, z: number }, direction: { x: number, z: number }, beadRange?: number, hitWidth?: number, hits?: Array<{ playerId?: string }> }} record
+ */
+export function triggerMedicEnergyBeadVFX(record) {
+	if (!scene || !record) return;
+	const { origin, direction, beadRange, hitWidth, hits } = record;
+	if (!origin || !direction) return;
+	if (!Number.isFinite(origin.x) || !Number.isFinite(origin.z)) return;
+	if (!Number.isFinite(direction.x) || !Number.isFinite(direction.z)) return;
+
+	spawnAttackEffect(
+		{ x: origin.x, z: origin.z },
+		{ x: direction.x, z: direction.z },
+		{
+			effect: 'returning_projectile',
+			returnPasses: 0,
+			range: Number.isFinite(beadRange) ? beadRange : 8,
+			projectileHitWidth: Number.isFinite(hitWidth) ? hitWidth : 0.5,
+			color: MEDIC_BEAD_COLOR,
+			emissive: MEDIC_BEAD_EMISSIVE,
+		},
+	);
+
+	if (!hits?.length) return;
+	for (const hit of hits) {
+		if (!hit.playerId) continue;
+		const mesh = playersMeshes[hit.playerId];
+		if (!mesh) continue;
+		spawnHitSpark(
+			{ x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z },
+			{ color: MEDIC_BEAD_COLOR, emissive: MEDIC_BEAD_EMISSIVE, count: 5, spread: 0.55 },
+		);
+	}
+}
+
 // ── Loot magnet VFX ──
 
 const LOOT_MAGNET_DURATION = 700;
@@ -3336,6 +3402,93 @@ function applySlowIndicator(markerMap, id, entity) {
 	}
 }
 
+// ── Burning status indicator ──
+
+// Warm fire palette (orange shell + bright yellow core), deliberately the
+// opposite end of the spectrum from the icy cool-blue slow ring and the pale
+// freeze visuals so a burning entity reads instantly and is never confused with
+// "slowed" or "frozen".
+
+/**
+ * Create an attached flame for a burning entity: two stacked additive cones
+ * (an orange outer shell and a brighter yellow inner core) that rise from the
+ * entity's feet. Returned as a group so the per-frame flicker can scale the two
+ * cones independently. The warm colour keeps it distinct from the icy slow ring.
+ * @returns {THREE.Group}
+ */
+function createBurnMarker() {
+	const group = new THREE.Group();
+	// Outer shell — broad, deeper orange, semi-transparent.
+	const outer = new THREE.Mesh(
+		new THREE.ConeGeometry(0.45, 1.3, 12, 1, true),
+		new THREE.MeshBasicMaterial({
+			color: 0xff5a1e,
+			transparent: true,
+			opacity: 0.6,
+			side: THREE.DoubleSide,
+			depthWrite: false,
+			blending: THREE.AdditiveBlending,
+		}),
+	);
+	outer.position.y = 0.65;
+	group.add(outer);
+	// Inner core — narrower, brighter yellow so the flame has a hot centre.
+	const inner = new THREE.Mesh(
+		new THREE.ConeGeometry(0.25, 0.85, 12, 1, true),
+		new THREE.MeshBasicMaterial({
+			color: 0xffd24a,
+			transparent: true,
+			opacity: 0.8,
+			side: THREE.DoubleSide,
+			depthWrite: false,
+			blending: THREE.AdditiveBlending,
+		}),
+	);
+	inner.position.y = 0.45;
+	group.add(inner);
+	group.userData.outer = outer;
+	group.userData.inner = inner;
+	return group;
+}
+
+/**
+ * Show or hide the burning flame for an entity (player or enemy). Driven by
+ * `burningUntil`: while it is in the future a flickering flame is shown at the
+ * entity's feet; once it passes (or the entity is gone) the flame is disposed so
+ * nothing stays stuck on screen. The flicker (fast scale/opacity variation on
+ * both cones, plus a slow spin) makes the fire read as alive rather than a
+ * static sprite, and contrasts with the slow ring's gentle ~1 Hz pulse.
+ * @param {Object} markerMap - per-entity marker map (enemyBurnMarkers / playerBurnMarkers)
+ * @param {string} id - entity id
+ * @param {object} entity - { burningUntil, x, z }
+ */
+function applyBurnIndicator(markerMap, id, entity) {
+	const now = Date.now();
+	const burning = entity && entity.burningUntil && now < entity.burningUntil;
+
+	if (burning) {
+		if (!markerMap[id]) {
+			markerMap[id] = createBurnMarker();
+			scene.add(markerMap[id]);
+		}
+		const marker = markerMap[id];
+		marker.position.set(entity.x, GROUND_OVERLAY_Y, entity.z);
+		// Two out-of-phase fast flickers (~4 Hz / ~6 Hz) drive the cones'
+		// height and opacity so the flame jitters like real fire.
+		const flickerA = 0.5 + 0.5 * Math.sin((now % 250) / 250 * Math.PI * 2);
+		const flickerB = 0.5 + 0.5 * Math.sin((now % 170) / 170 * Math.PI * 2);
+		const { outer, inner } = marker.userData;
+		outer.scale.set(1, 0.85 + flickerA * 0.4, 1);
+		outer.material.opacity = 0.45 + flickerA * 0.35;
+		inner.scale.set(1, 0.8 + flickerB * 0.5, 1);
+		inner.material.opacity = 0.6 + flickerB * 0.35;
+		// Slow spin so the flame shimmers instead of sitting flat.
+		marker.rotation.y = (now % 2000) / 2000 * Math.PI * 2;
+	} else if (markerMap[id]) {
+		disposeOne(markerMap, id, scene);
+	}
+}
+
 // ── Attack visual effects ──
 
 // Room floors are 0.1-tall boxes centered at FLOOR_Y (top ≈ FLOOR_Y + 0.05).
@@ -3868,6 +4021,62 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 		return;
 	}
 
+	if (effect === 'fireball') {
+		// Fiery sphere projectile — same travel/cleanup shape as `projectile`
+		// but with warm fire colors and a stronger glow so it reads as flame.
+		const geometry = new THREE.SphereGeometry(0.35, 12, 12);
+		const material = new THREE.MeshStandardMaterial({
+			color: style.color ?? 0xff7a18,
+			emissive: style.emissive ?? 0xff3b00,
+			emissiveIntensity: 1.6,
+			roughness: 0.5,
+			metalness: 0.0,
+			transparent: true,
+			opacity: 1.0,
+		});
+		const mesh = new THREE.Mesh(geometry, material);
+		mesh.position.set(origin.x, 1.0, origin.z);
+		targetScene.add(mesh);
+
+		activeEffects.push({
+			mesh,
+			origin: { x: origin.x, z: origin.z },
+			direction: { x: direction.x, z: direction.z },
+			range,
+			createdAt: performance.now(),
+			duration: ATTACK_EFFECT_DURATION,
+		});
+		return;
+	}
+
+	if (effect === 'ice_ball') {
+		// Icy sphere projectile — same travel/cleanup shape as `fireball` but
+		// with cool cyan/blue colors and a slower `projectileTravelMs` duration.
+		const geometry = new THREE.SphereGeometry(0.35, 12, 12);
+		const material = new THREE.MeshStandardMaterial({
+			color: style.color ?? 0x67e8f9,
+			emissive: style.emissive ?? 0x38bdf8,
+			emissiveIntensity: 1.2,
+			roughness: 0.35,
+			metalness: 0.1,
+			transparent: true,
+			opacity: 1.0,
+		});
+		const mesh = new THREE.Mesh(geometry, material);
+		mesh.position.set(origin.x, 1.0, origin.z);
+		targetScene.add(mesh);
+
+		activeEffects.push({
+			mesh,
+			origin: { x: origin.x, z: origin.z },
+			direction: { x: direction.x, z: direction.z },
+			range,
+			createdAt: performance.now(),
+			duration: style.projectileTravelMs ?? 1200,
+		});
+		return;
+	}
+
 	if (effect === 'returning_projectile' || effect === 'triple_returning_projectile') {
 		const hitWidth = style.projectileHitWidth ?? PROJECTILE_HIT_WIDTH;
 		const { group, head } = createProjectileHitboxGroup(direction, range, hitWidth, { color, emissive });
@@ -3975,6 +4184,74 @@ export function spawnDivineGraceEffect(origin, radius) {
 		createdAt: performance.now(),
 		duration: SUMMON_EFFECT_DURATION,
 	});
+}
+
+const PURIFYING_HEAL_COLOR = 0x6ee7b7;
+const PURIFYING_HEAL_EMISSIVE = 0x34d399;
+const CLEANSE_BURST_COLOR = 0xffffff;
+const CLEANSE_BURST_EMISSIVE = 0x5eead4;
+const CLEANSE_BURST_SPARK_COUNT = 10;
+const CLEANSE_BURST_SPARK_SPREAD = 1.2;
+const CLEANSE_BURST_SPARK_DURATION = 450;
+
+/**
+ * Mint-green expanding heal ring for Purifying Pulse (distinct from Divine Grace gold).
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ */
+export function spawnPurifyingPulseHealRing(origin, radius) {
+	const geometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const material = new THREE.MeshStandardMaterial({
+		color: PURIFYING_HEAL_COLOR,
+		emissive: PURIFYING_HEAL_EMISSIVE,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.position.set(origin.x, 0.1, origin.z);
+	mesh.rotation.x = -Math.PI / 2;
+	mesh.scale.setScalar(0.001);
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (targetScene) targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration: SUMMON_EFFECT_DURATION,
+	});
+}
+
+/**
+ * Brief white/teal upward sparkle burst for the cleanse half of Purifying Pulse.
+ * @param {object} origin - { x, z }
+ */
+export function spawnCleanseBurstEffect(origin) {
+	if (!origin) return;
+	spawnHitSpark(
+		{ x: origin.x, y: 0.35, z: origin.z },
+		{
+			color: CLEANSE_BURST_COLOR,
+			emissive: CLEANSE_BURST_EMISSIVE,
+			count: CLEANSE_BURST_SPARK_COUNT,
+			spread: CLEANSE_BURST_SPARK_SPREAD,
+			duration: CLEANSE_BURST_SPARK_DURATION,
+		},
+	);
+}
+
+/**
+ * Purifying Pulse: mint heal ring plus a white/teal cleanse sparkle burst.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ */
+export function spawnPurifyingPulseEffect(origin, radius) {
+	spawnPurifyingPulseHealRing(origin, radius);
+	spawnCleanseBurstEffect(origin);
 }
 
 export function spawnFireTrailEffect(origin, direction, style = {}) {
@@ -4119,6 +4396,66 @@ export function spawnHitSpark(position, style = {}) {
 	}
 }
 
+const LIGHTNING_ARC_Y = 1.2;
+
+/**
+ * Build a jagged polyline between two floor points for a brief lightning arc.
+ * @param {object} from - { x, z }
+ * @param {object} to - { x, z }
+ * @param {object} [style]
+ * @returns {{ line: THREE.Line, points: THREE.Vector3[] }}
+ */
+function createLightningArcLine(from, to, style = {}) {
+	const y = style.y ?? LIGHTNING_ARC_Y;
+	const color = style.emissive ?? style.color ?? 0x0ea5e9;
+	const dx = to.x - from.x;
+	const dz = to.z - from.z;
+	const len = Math.hypot(dx, dz) || 1;
+	const segments = Math.max(3, Math.floor(len * 2));
+	const perpX = -dz / len;
+	const perpZ = dx / len;
+	const points = [];
+
+	for (let i = 0; i <= segments; i++) {
+		const t = i / segments;
+		const jitter = (i === 0 || i === segments) ? 0 : (Math.random() - 0.5) * 0.4;
+		points.push(new THREE.Vector3(
+			from.x + dx * t + perpX * jitter,
+			y + (Math.random() - 0.5) * 0.15,
+			from.z + dz * t + perpZ * jitter,
+		));
+	}
+
+	const geometry = new THREE.BufferGeometry().setFromPoints(points);
+	const material = new THREE.LineBasicMaterial({
+		color,
+		transparent: true,
+		opacity: 1.0,
+		depthWrite: false,
+	});
+	return { line: new THREE.Line(geometry, material), points };
+}
+
+/**
+ * Spawn a short-lived cyan lightning arc between two floor points.
+ * @param {object} from - { x, z }
+ * @param {object} to - { x, z }
+ * @param {object} [style] - optional color/emissive/y/duration overrides
+ */
+export function spawnLightningArc(from, to, style = {}) {
+	const { line } = createLightningArcLine(from, to, style);
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (targetScene) targetScene.add(line);
+
+	activeEffects.push({
+		mesh: line,
+		_scene: targetScene,
+		isLightningArc: true,
+		createdAt: performance.now(),
+		duration: style.duration ?? ATTACK_EFFECT_DURATION,
+	});
+}
+
 /**
  * Spawn a cyan lightning bolt projectile (Thunderbird ranged/chain feedback).
  * @param {object} origin - { x, z }
@@ -4173,6 +4510,20 @@ export function updateAttackEffects() {
 
 			if (elapsed >= fx.duration) {
 				scene.remove(fx.mesh);
+				fx.mesh.geometry.dispose();
+				fx.mesh.material.dispose();
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Lightning arc (chain segments) ──
+		if (fx.isLightningArc) {
+			const lifeRatio = 1.0 - (elapsed / fx.duration);
+			fx.mesh.material.opacity = Math.max(0.01, lifeRatio);
+
+			if (elapsed >= fx.duration) {
+				(fx._scene || scene).remove(fx.mesh);
 				fx.mesh.geometry.dispose();
 				fx.mesh.material.dispose();
 				activeEffects.splice(i, 1);
@@ -4512,6 +4863,60 @@ export function syncLootMeshes() {
 	}
 }
 
+// ── Ice-ball projectile sync (glacial thrower) ──
+
+// Height of an ice ball's centre above the floor. The server simulates the ball
+// on the (x, z) plane only; lift it to roughly the thrower's chest so it reads as
+// a lobbed projectile rather than rolling along the ground.
+const ICE_BALL_HEIGHT = 1.0;
+
+/**
+ * Build a giant icy sphere mesh for a traveling ice ball. Geometry + material are
+ * owned per-mesh (like enemy meshes) so disposeStaleMeshes / disposeMeshMap fully
+ * free them when the projectile leaves the state array.
+ * @param {object} ball - server ice-ball record (uses `radius`)
+ * @returns {THREE.Mesh}
+ */
+function createIceBallMesh(ball) {
+	const radius = (ball && ball.radius) || 0.9;
+	const geometry = new THREE.SphereGeometry(radius, 16, 16);
+	const material = new THREE.MeshStandardMaterial({
+		color: 0x9fe0ff,
+		emissive: 0x38bdf8,
+		emissiveIntensity: 0.55,
+		roughness: 0.15,
+		metalness: 0.1,
+	});
+	return new THREE.Mesh(geometry, material);
+}
+
+/**
+ * Sync ice-ball projectile meshes with gameState.iceBalls: create a mesh for each
+ * new projectile id, move existing meshes to follow their server (x, z), and dispose
+ * meshes whose projectile has left the state array. Mirrors the enemy/minion/loot
+ * keyed-mesh-map pattern so projectiles never leak.
+ */
+export function syncIceBallMeshes() {
+	const gs = gameStateRef;
+	if (!gs || !scene) return;
+
+	const balls = Array.isArray(gs.iceBalls) ? gs.iceBalls : [];
+	const currentIds = new Set(balls.map((b) => b.id));
+
+	for (const ball of balls) {
+		let mesh = iceBallMeshes[ball.id];
+		if (!mesh) {
+			mesh = createIceBallMesh(ball);
+			scene.add(mesh);
+			iceBallMeshes[ball.id] = mesh;
+		}
+		mesh.position.set(ball.x, ICE_BALL_HEIGHT, ball.z);
+	}
+
+	// Remove projectiles that have left the broadcast state (hit, expired, run ended).
+	disposeStaleMeshes(iceBallMeshes, currentIds, scene);
+}
+
 /**
  * Bob and rotate loot meshes each frame.
  */
@@ -4623,6 +5028,19 @@ export function animate(timestamp) {
 				});
 			} else {
 				applySlowIndicator(playerSlowMarkers, id, pData);
+			}
+
+			// Burning flame (local + remote) — driven by the broadcast burningUntil.
+			// Local player anchors to the predicted myX/myZ like the slow ring so
+			// the flame tracks the avatar; remote players use broadcast x/z.
+			if (id === myId) {
+				applyBurnIndicator(playerBurnMarkers, id, {
+					burningUntil: pData.burningUntil,
+					x: myX,
+					z: myZ,
+				});
+			} else {
+				applyBurnIndicator(playerBurnMarkers, id, pData);
 			}
 
 			if (id === myId) continue;
@@ -4772,6 +5190,13 @@ export function animate(timestamp) {
 		for (const id of Object.keys(playerSlowMarkers)) {
 			if (!gs.players[id]) {
 				disposeOne(playerSlowMarkers, id, scene);
+			}
+		}
+
+		// ── Clean up burn markers for players who left ──
+		for (const id of Object.keys(playerBurnMarkers)) {
+			if (!gs.players[id]) {
+				disposeOne(playerBurnMarkers, id, scene);
 			}
 		}
 
@@ -4964,6 +5389,9 @@ export function animate(timestamp) {
 
 			// ── Slow status ring (driven by the broadcast slowedUntil) ──
 			applySlowIndicator(enemySlowMarkers, enemy.id, enemy);
+
+			// ── Burning flame (driven by the broadcast burningUntil) ──
+			applyBurnIndicator(enemyBurnMarkers, enemy.id, enemy);
 		}
 
 		// Clean up removed enemies
@@ -4975,6 +5403,7 @@ export function animate(timestamp) {
 		disposeStaleMeshes(variantMarkerMeshes, currentEnemyIds, scene);
 		disposeStaleMeshes(frenziedTelegraphMeshes, currentEnemyIds, scene);
 		disposeStaleMeshes(enemySlowMarkers, currentEnemyIds, scene);
+		disposeStaleMeshes(enemyBurnMarkers, currentEnemyIds, scene);
 		for (const id of Object.keys(previousEnemyHp)) {
 			if (!currentEnemyIds.has(id)) {
 				delete previousEnemyHp[id];
@@ -5045,6 +5474,8 @@ export function animate(timestamp) {
 
 		// ── Loot mesh sync ──
 		syncLootMeshes();
+		// ── Ice-ball projectile sync ──
+		syncIceBallMeshes();
 		syncTelepipeMesh();
 	}
 

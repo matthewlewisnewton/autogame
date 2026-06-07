@@ -4,7 +4,9 @@
   "battle_familiar": { "magicStoneCost": 50, "damage": 44 },
   "dungeon_drake": {
     "minionTtl": 30,
-    "attackDamage": 3,
+    "attackDamage": 2,
+    "burnDurationMs": 2000,
+    "specialEffect": "burning_breath",
     "breathRange": 6,
     "breathHoldDistance": 3.5,
     "breathDurationMs": 2000,
@@ -153,6 +155,23 @@
     "specialEffect": "long_range",
     "projectile": { "pierces": true }
   },
+  "fireball": {
+    "damage": 16,
+    "attackRange": 9,
+    "effect": "fireball",
+    "specialEffect": "burning",
+    "burningDurationMs": 3000,
+    "projectile": { "pierces": true }
+  },
+  "chain_lightning": {
+    "magicStoneCost": 42,
+    "effect": "chain_lightning",
+    "damage": 22,
+    "attackRange": 9,
+    "chainRadius": 5,
+    "maxChainTargets": 2,
+    "specialEffect": "chain_lightning"
+  },
   "frost_nova": {
     "magicStoneCost": 35,
     "effect": "frost_nova",
@@ -168,6 +187,17 @@
     "freezeDurationMs": 2000,
     "specialEffect": "freeze"
   },
+  "ice_ball": {
+    "magicStoneCost": 32,
+    "effect": "ice_ball",
+    "damage": 12,
+    "attackRange": 9,
+    "specialEffect": "slow",
+    "slowDurationMs": 3000,
+    "slowFactor": 0.5,
+    "slowChance": 0.5,
+    "projectileTravelMs": 1200
+  },
   "glacier_collapse": {
     "magicStoneCost": 35,
     "effect": "glacier_collapse",
@@ -182,6 +212,13 @@
     "effect": "healing_font",
     "magicStoneRestore": 6,
     "specialEffect": "mana_restore"
+  },
+  "purifying_pulse": {
+    "magicStoneCost": 0,
+    "effect": "purifying_pulse",
+    "healAmount": 15,
+    "radius": 5.5,
+    "specialEffect": "heal_and_cleanse"
   },
   "divine_grace": {
     "magicStoneCost": 0,

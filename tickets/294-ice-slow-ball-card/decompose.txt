@@ -1,0 +1,13 @@
+Created **2 sub-tickets** in dependency order, following the fireball (297) split: server gameplay first, then client render.
+
+**Sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/294-ice-slow-ball-card/tickets/294-ice-slow-ball-card/subtickets/01-ice-ball-server/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/294-ice-slow-ball-card/tickets/294-ice-slow-ball-card/subtickets/02-ice-ball-client-render/ticket.md`
+
+**Rationale:**
+
+- **01-ice-ball-server** — Card JSON (`cardDefs` / `cardStats` / `cardEconomy`), spell-branch `ice_ball` effect in `cardEffects.js` (projectile hits + chance-based `applySlow`), debug scenario, and server tests with mocked RNG for slow/no-slow paths. Slow indicator is already handled by ticket 290 via broadcast state.
+- **02-ice-ball-client-render** — Slow-moving icy projectile visual (`projectileTravelMs`), `cardRenderers` / `cards.js` registration, and client tests.
+
+Both use **Verification: code** because acceptance criteria cover handlers, state, chance rolls, and structure — not purely on-screen appearance.

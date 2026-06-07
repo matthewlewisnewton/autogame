@@ -1,0 +1,14 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/296-fire-enemy-inflicts-burning/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/296-fire-enemy-inflicts-burning/game/data
+Server listening on port 3002
+Player connected: socket=_uYn_vFsW4l7LyzDAAAB, playerId=056d45b0-e8d6-491b-8c21-d7a76a10cba0
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=nMMCvwUXPVhRFkEsAAAD, playerId=b5afe1d4-94be-4b07-be6e-24999f9a0298
+[loot] spawned id=26bca72c-cb84-47a1-a17f-b08c062ce155 value=6
+Player disconnected: _uYn_vFsW4l7LyzDAAAB
+Player disconnected: nMMCvwUXPVhRFkEsAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

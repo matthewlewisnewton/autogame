@@ -1015,6 +1015,38 @@ const ENEMY_DEFS = {
 		attackStyle: 'radial',
 		spawnIntervalMs: 4000, spawnMaxAlive: 3, spawnType: 'skirmisher',
 	},
+	field_medic: {
+		name: 'Field Medic',
+		description: 'Fragile support drone that kites attackers, heals nearby allies, and fires defensive suppression beads.',
+		surfacedStats: ['hp', 'attackDamage', 'healAmount', 'healCooldownMs', 'fleeSpeed'],
+		hp: 65, chaseSpeed: 3.0, wanderSpeed: 1.2, attackDamage: 6, attackWindupMs: 600,
+		attackStyle: 'projectile',
+		fleeSpeed: 5.0, fleeRadius: 4,
+		healAmount: 18, healRadius: 6, healCooldownMs: 4000,
+		beadRange: 8, beadCooldownMs: 2500,
+	},
+	glacial_thrower: {
+		name: 'Glacial Thrower',
+		description: 'Hulking ice brute that lobs a slow, giant ice ball — on impact it chills its target (SLOW) and batters it for damage.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 90, chaseSpeed: 1.6, wanderSpeed: 0.8, attackDamage: 12, attackWindupMs: 1100,
+		attackStyle: 'ice_ball', attackRange: 7,
+		// Ice-ball tuning: a slow-moving projectile (well below player MOVE_SPEED of 12)
+		// that applies SLOW + damage on contact.
+		iceBallSpeed: 6,            // units/sec — clearly below any player's move speed
+		iceBallSlowDurationMs: 2500,
+		iceBallSlowFactor: 0.5,
+		iceBallRadius: 0.9,         // projectile hit radius (added to PLAYER_RADIUS for contact)
+		iceBallMaxRange: 18,        // travel distance before it dissipates
+	},
+	ember_wraith: {
+		name: 'Ember Wraith',
+		description: 'Fast cone striker that ignites players on hit, leaving them burning.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'chaseSpeed', 'burnDurationMs'],
+		hp: 55, chaseSpeed: 4.2, wanderSpeed: 1.4, attackDamage: 8, attackWindupMs: 450,
+		attackStyle: 'cone', attackConeAngle: Math.PI / 3,
+		burnDurationMs: 2800,
+	},
 };
 
 function enemyDefFor(type) {
@@ -1111,6 +1143,11 @@ function isEnemyFrozen(enemy) {
 function applySlow(entity, durationMs, factor) {
   if (!entity) return;
   const now = Date.now();
+  // BURNING and SLOW are mutually exclusive (fire vs ice): applying slow
+  // extinguishes any active/lingering burn first, and resets its tick clock so
+  // a later re-ignition does not dump a burst of catch-up damage ticks.
+  entity.burningUntil = 0;
+  entity.lastBurnTickAt = null;
   // Re-application REFRESHES: never shorten an existing longer slow.
   entity.slowedUntil = Math.max(entity.slowedUntil || 0, now + durationMs);
   // Clamp factor to (0, 1]; default to 0.5 when omitted or invalid.
@@ -1120,6 +1157,116 @@ function applySlow(entity, durationMs, factor) {
 
 function isSlowed(entity) {
   return entity != null && entity.slowedUntil != null && Date.now() < entity.slowedUntil;
+}
+
+// BURNING status effect: a timed damage-over-time mark that mirrors the
+// frozenUntil/isEnemyFrozen and slowedUntil/isSlowed idioms. Works on any
+// generic entity (player or enemy). This manages the status state + helpers;
+// the per-tick damage pass lives in updateBurning() below and the client flame
+// animation lives in a separate sub-ticket.
+
+// Burn cadence + per-tick damage. A burning entity loses HP every
+// BURN_TICK_INTERVAL_MS rather than every simulation frame, and each tick deals
+// BURN_BASE_TICK_DAMAGE + BURN_EXTRA_FIRE_DAMAGE.
+const BURN_TICK_INTERVAL_MS = 500;
+const BURN_BASE_TICK_DAMAGE = 4;
+const BURN_EXTRA_FIRE_DAMAGE = 1;
+
+function applyBurning(entity, durationMs) {
+  if (!entity) return;
+  const now = Date.now();
+  // BURNING and SLOW are mutually exclusive (fire vs ice): igniting clears any
+  // active/lingering slow first so isSlowed(entity) becomes false. Leaving
+  // slowFactor is harmless since isSlowed gates solely on slowedUntil.
+  entity.slowedUntil = 0;
+  // Re-application REFRESHES: never shorten an existing longer burn, and never
+  // stack additively — just extend to the later expiry.
+  entity.burningUntil = Math.max(entity.burningUntil || 0, now + durationMs);
+}
+
+function isBurning(entity) {
+  return entity != null && entity.burningUntil != null && Date.now() < entity.burningUntil;
+}
+
+// Burn-tick pass: runs every game-loop tick during the playing phase and damages
+// every currently-burning player and enemy. Damage is interval-gated per entity
+// (BURN_TICK_INTERVAL_MS) via a lastBurnTickAt timestamp, mirroring the minion
+// pulse-interval pattern in updateMinions. Players route through damagePlayer so
+// godmode/invulnerability rules apply automatically; enemies route through
+// damageEnemy. Damage continues while isBurning() is true and stops once the
+// burn has expired.
+function updateBurning() {
+  const now = Date.now();
+  const amount = BURN_BASE_TICK_DAMAGE + BURN_EXTRA_FIRE_DAMAGE;
+
+  for (const [playerId, player] of Object.entries(_gameState.players)) {
+    if (!player || player.dead || player.extracted) continue;
+    if (!isBurning(player)) {
+      // Clear the tick clock so a future re-ignition starts fresh instead of
+      // dumping a burst of catch-up ticks for time spent not burning.
+      if (player.lastBurnTickAt != null) player.lastBurnTickAt = null;
+      continue;
+    }
+    if (player.lastBurnTickAt == null) {
+      player.lastBurnTickAt = now; // arm the clock; first tick fires one interval later
+      continue;
+    }
+    if (now - player.lastBurnTickAt >= BURN_TICK_INTERVAL_MS) {
+      const ticks = Math.floor((now - player.lastBurnTickAt) / BURN_TICK_INTERVAL_MS);
+      damagePlayer(playerId, ticks * amount);
+      player.lastBurnTickAt += ticks * BURN_TICK_INTERVAL_MS;
+    }
+  }
+
+  for (const enemy of _gameState.enemies) {
+    if (!isBurning(enemy)) {
+      if (enemy.lastBurnTickAt != null) enemy.lastBurnTickAt = null;
+      continue;
+    }
+    if (enemy.lastBurnTickAt == null) {
+      enemy.lastBurnTickAt = now; // arm the clock; first tick fires one interval later
+      continue;
+    }
+    if (now - enemy.lastBurnTickAt >= BURN_TICK_INTERVAL_MS) {
+      const ticks = Math.floor((now - enemy.lastBurnTickAt) / BURN_TICK_INTERVAL_MS);
+      damageEnemy(enemy, ticks * amount);
+      enemy.lastBurnTickAt += ticks * BURN_TICK_INTERVAL_MS;
+    }
+  }
+}
+
+function healPlayer(playerId, amount) {
+  const player = _gameState.players[playerId];
+  if (!player || player.dead || !Number.isFinite(amount) || amount <= 0) return 0;
+  const before = Number.isFinite(player.hp) ? player.hp : MAX_HP;
+  player.hp = Math.min(MAX_HP, before + amount);
+  return player.hp - before;
+}
+
+function clearNegativeStatuses(entity) {
+  if (!entity) return;
+  entity.slowedUntil = 0;
+  entity.slowFactor = 1;
+  entity.burningUntil = 0;
+  entity.lastBurnTickAt = null;
+  if ('frozenUntil' in entity) {
+    entity.frozenUntil = 0;
+  }
+  entity.debuffs = [];
+}
+
+function healPlayersInRadius(originX, originZ, radius, healAmount) {
+  const healedTargets = [];
+  for (const [playerId, player] of Object.entries(_gameState.players)) {
+    if (!player || player.dead || player.extracted) continue;
+    if (Math.hypot(player.x - originX, player.z - originZ) > radius) continue;
+    const hpGained = healPlayer(playerId, healAmount);
+    clearNegativeStatuses(player);
+    if (hpGained > 0) {
+      healedTargets.push({ playerId, hpGained, cleansed: true });
+    }
+  }
+  return healedTargets;
 }
 
 // Minimal debuff helper: append a debuff to a player's debuffs array in
@@ -1221,11 +1368,86 @@ function collectProjectileHits(originX, originZ, dirX, dirZ, range, damage, opti
   return { hits, magicStonesGained };
 }
 
+function collectChainLightningHits(originX, originZ, dirX, dirZ, range, damage, options = {}) {
+  const hits = [];
+  let magicStonesGained = 0;
+  const magicStoneOnHit = options.magicStoneOnHit || 0;
+  const magicStoneOnKill = options.magicStoneOnKill || 0;
+  const attackerId = options.attackerId;
+  const chainRadius = options.chainRadius ?? 5;
+  const maxChainTargets = options.maxChainTargets ?? 2;
+  const chainDamage = Math.round(damage * 0.5);
+  const hitWidth = options.hitWidth ?? PROJECTILE_HIT_WIDTH;
+  const hitEnemyIds = new Set();
+
+  function recordHit(enemy, hitDamage) {
+    const hitX = enemy.x;
+    const hitZ = enemy.z;
+    if (attackerId) enemy.lastDamagedBy = attackerId;
+    const { killed } = damageEnemy(enemy, hitDamage);
+    const hitGain = magicStoneOnHit;
+    const killGain = killed ? magicStoneOnKill : 0;
+    magicStonesGained += hitGain + killGain;
+    hitEnemyIds.add(enemy.id);
+    hits.push({
+      enemyId: enemy.id,
+      hp: enemy.hp,
+      damageDealt: hitDamage,
+      x: hitX,
+      z: hitZ,
+      magicStonesGained: hitGain + killGain,
+    });
+    return { x: hitX, z: hitZ };
+  }
+
+  const sampleCount = Math.max(4, Math.ceil(range * 2));
+  let primary = null;
+  for (let i = 0; i <= sampleCount && !primary; i++) {
+    const t = range * (i / sampleCount);
+    const px = originX + dirX * t;
+    const pz = originZ + dirZ * t;
+
+    for (const enemy of _gameState.enemies) {
+      if (hitEnemyIds.has(enemy.id) || enemy.hp <= 0) continue;
+      const dist = Math.hypot(enemy.x - px, enemy.z - pz);
+      if (dist > hitWidth) continue;
+      primary = enemy;
+      break;
+    }
+  }
+
+  if (!primary) {
+    return { hits: [], magicStonesGained: 0 };
+  }
+
+  let currentPos = recordHit(primary, damage);
+
+  let chains = 0;
+  while (chains < maxChainTargets) {
+    let next = null;
+    let nextDist = Infinity;
+    for (const enemy of _gameState.enemies) {
+      if (hitEnemyIds.has(enemy.id) || enemy.hp <= 0) continue;
+      const dist = Math.hypot(enemy.x - currentPos.x, enemy.z - currentPos.z);
+      if (dist <= chainRadius && dist < nextDist) {
+        nextDist = dist;
+        next = enemy;
+      }
+    }
+    if (!next) break;
+    currentPos = recordHit(next, chainDamage);
+    chains++;
+  }
+
+  return { hits, magicStonesGained };
+}
+
 function collectPhaseBeamHits(originX, originZ, dirX, dirZ, range, damage, options = {}) {
   const hits = [];
   const attackerId = options.attackerId;
   const hitWidth = options.hitWidth ?? PROJECTILE_HIT_WIDTH;
   const excludeMinionId = options.excludeMinionId;
+  const playersOnly = options.playersOnly === true;
   const sampleCount = Math.max(4, Math.ceil(range * 2));
   const hitEnemyIds = new Set();
   const hitMinionIds = new Set();
@@ -1236,25 +1458,27 @@ function collectPhaseBeamHits(originX, originZ, dirX, dirZ, range, damage, optio
     const px = originX + dirX * t;
     const pz = originZ + dirZ * t;
 
-    for (const enemy of _gameState.enemies) {
-      if (hitEnemyIds.has(enemy.id)) continue;
-      const dist = Math.hypot(enemy.x - px, enemy.z - pz);
-      if (dist > hitWidth) continue;
+    if (!playersOnly) {
+      for (const enemy of _gameState.enemies) {
+        if (hitEnemyIds.has(enemy.id)) continue;
+        const dist = Math.hypot(enemy.x - px, enemy.z - pz);
+        if (dist > hitWidth) continue;
 
-      if (attackerId) enemy.lastDamagedBy = attackerId;
-      damageEnemy(enemy, damage);
-      hitEnemyIds.add(enemy.id);
-      hits.push({ enemyId: enemy.id, hp: enemy.hp });
-    }
+        if (attackerId) enemy.lastDamagedBy = attackerId;
+        damageEnemy(enemy, damage);
+        hitEnemyIds.add(enemy.id);
+        hits.push({ enemyId: enemy.id, hp: enemy.hp });
+      }
 
-    for (const ally of _gameState.minions) {
-      if (ally.id === excludeMinionId || hitMinionIds.has(ally.id) || ally.hp <= 0) continue;
-      const dist = Math.hypot(ally.x - px, ally.z - pz);
-      if (dist > hitWidth) continue;
+      for (const ally of _gameState.minions) {
+        if (ally.id === excludeMinionId || hitMinionIds.has(ally.id) || ally.hp <= 0) continue;
+        const dist = Math.hypot(ally.x - px, ally.z - pz);
+        if (dist > hitWidth) continue;
 
-      damageMinion(ally, damage);
-      hitMinionIds.add(ally.id);
-      hits.push({ minionId: ally.id, hp: ally.hp });
+        damageMinion(ally, damage);
+        hitMinionIds.add(ally.id);
+        hits.push({ minionId: ally.id, hp: ally.hp });
+      }
     }
 
     for (const [playerId, player] of Object.entries(_gameState.players)) {
@@ -1264,7 +1488,11 @@ function collectPhaseBeamHits(originX, originZ, dirX, dirZ, range, damage, optio
 
       // Phase beam is a ranged/projectile attack — taggable so an active
       // barrier dome can block it (see damagePlayer's barrier-dome check).
-      damagePlayer(playerId, damage, { attackerId, ranged: true });
+      damagePlayer(playerId, damage, {
+        attackerId,
+        attackerEnemyId: options.attackerEnemyId,
+        ranged: true,
+      });
       hitPlayerIds.add(playerId);
       hits.push({ playerId, hp: player.hp });
     }
@@ -1323,6 +1551,12 @@ function applyWyrmBreathTick(minion, cardId, config, breathPhase) {
     config.breathDamage,
     { attackerId: minion.ownerId }
   );
+  if (cardId === 'dungeon_drake' && config.burnDurationMs > 0) {
+    for (const hit of hits) {
+      const enemy = _gameState.enemies.find((e) => e.id === hit.enemyId);
+      if (enemy) applyBurning(enemy, config.burnDurationMs);
+    }
+  }
   queueWyrmBreathCardUsed(minion, cardId, {
     specialEffect: config.specialEffect,
     breathRange: config.breathRange,
@@ -2069,6 +2303,144 @@ function damagePlayer(playerId, amount, options = {}) {
   return mirrorResult;
 }
 
+// ── Field Medic support AI ──
+
+function findNearestVisiblePlayer(enemy, maxRadius, players, now) {
+	let nearest = null;
+	let nearestDist = Infinity;
+	for (const player of players) {
+		if (isPlayerConcealed(player, now)) continue;
+		const dist = Math.hypot(player.x - enemy.x, player.z - enemy.z);
+		if (dist <= maxRadius && dist < nearestDist) {
+			nearestDist = dist;
+			nearest = player;
+		}
+	}
+	return nearest ? { player: nearest, dist: nearestDist } : null;
+}
+
+function healFieldMedicAlly(medic, now) {
+	const healRadius = medic.healRadius;
+	const healAmount = medic.healAmount;
+	let lowestAlly = null;
+	let lowestHpRatio = 1;
+
+	for (const ally of _gameState.enemies) {
+		if (ally.id === medic.id || ally.hp <= 0) continue;
+		if (ally.hp >= ally.maxHp) continue;
+		const dist = Math.hypot(ally.x - medic.x, ally.z - medic.z);
+		if (dist > healRadius) continue;
+		const ratio = ally.hp / ally.maxHp;
+		if (ratio < lowestHpRatio) {
+			lowestHpRatio = ratio;
+			lowestAlly = ally;
+		}
+	}
+
+	if (!lowestAlly) return false;
+
+	lowestAlly.hp = Math.min(lowestAlly.maxHp, lowestAlly.hp + healAmount);
+	medic.lastHealAt = now;
+
+	if (!_gameState._pendingMedicHeals) _gameState._pendingMedicHeals = [];
+	_gameState._pendingMedicHeals.push({
+		medicId: medic.id,
+		targetId: lowestAlly.id,
+		x: medic.x,
+		z: medic.z,
+		healRadius,
+	});
+	return true;
+}
+
+/** Energy bead: instant narrow phase-beam at close range (no wind-up, beadCooldownMs gates fire rate). */
+function fireMedicEnergyBead(medic, target, now) {
+	const dx = target.x - medic.x;
+	const dz = target.z - medic.z;
+	const len = Math.hypot(dx, dz);
+	const dirX = len > 0 ? dx / len : 1;
+	const dirZ = len > 0 ? dz / len : 0;
+	const beadRange = medic.beadRange;
+	const hitWidth = 0.5;
+
+	const { hits } = collectPhaseBeamHits(
+		medic.x,
+		medic.z,
+		dirX,
+		dirZ,
+		beadRange,
+		medic.attackDamage,
+		{ attackerEnemyId: medic.id, hitWidth, playersOnly: true },
+	);
+
+	medic.lastBeadAt = now;
+
+	if (!_gameState._pendingMedicBeads) _gameState._pendingMedicBeads = [];
+	_gameState._pendingMedicBeads.push({
+		medicId: medic.id,
+		origin: { x: medic.x, z: medic.z },
+		direction: { x: dirX, z: dirZ },
+		beadRange,
+		hitWidth,
+		hits,
+	});
+}
+
+function updateFieldMedicEnemy(enemy, players, dt, now, encounterLocked) {
+	if (enemy.hp <= 0) return;
+
+	enemy.state = 'idle';
+	enemy.attackState = 'idle';
+
+	if (!encounterLocked) {
+		const lastHealAt = enemy.lastHealAt ?? 0;
+		if (now - lastHealAt >= enemy.healCooldownMs) {
+			if (healFieldMedicAlly(enemy, now)) {
+				return;
+			}
+		}
+
+		const lastBeadAt = enemy.lastBeadAt ?? 0;
+		if (now - lastBeadAt >= enemy.beadCooldownMs) {
+			const beadTarget = findNearestVisiblePlayer(enemy, enemy.beadRange, players, now);
+			if (beadTarget) {
+				fireMedicEnergyBead(enemy, beadTarget.player, now);
+			}
+		}
+	}
+
+	const fleeTarget = findNearestVisiblePlayer(enemy, enemy.fleeRadius, players, now);
+	if (fleeTarget) {
+		enemy.state = 'fleeing';
+		const retreatX = enemy.x - (fleeTarget.player.x - enemy.x);
+		const retreatZ = enemy.z - (fleeTarget.player.z - enemy.z);
+		moveEntityToward(enemy, { x: retreatX, z: retreatZ }, enemy.fleeSpeed * dt);
+		return;
+	}
+
+	const wdx = enemy.wanderTarget.x - enemy.x;
+	const wdz = enemy.wanderTarget.z - enemy.z;
+	const wdist = Math.hypot(wdx, wdz);
+
+	if (wdist < 0.5) {
+		enemy.wanderTarget = randomWanderTarget();
+		enemy.blockedTicks = 0;
+		return;
+	}
+
+	const wanderResult = moveEntityToward(enemy, enemy.wanderTarget, enemy.wanderSpeed * dt);
+	if (wanderResult.blocked) {
+		if (!enemy.blockedTicks) enemy.blockedTicks = 0;
+		enemy.blockedTicks += 1;
+		if (enemy.blockedTicks > 10) {
+			enemy.wanderTarget = randomWanderTarget();
+			enemy.blockedTicks = 0;
+		}
+	} else {
+		enemy.blockedTicks = 0;
+	}
+}
+
 // ── Enemy AI Tick ──
 
 function updateEnemies() {
@@ -2117,6 +2489,15 @@ function updateEnemies() {
 		if (enemy.attackState === 'windup') {
 			const elapsed = Date.now() - enemy.windupStartTime;
 			if (elapsed >= attackWindupMs) {
+				// Ranged ice-ball throwers launch a slow traveling projectile in the
+				// locked wind-up direction instead of dealing instant melee/cone damage.
+				// The projectile (not this strike) carries the SLOW + damage on contact.
+				if (enemy.attackStyle === 'ice_ball') {
+					spawnIceBall(enemy);
+					enemy.attackState = 'recovering';
+					enemy.recoverUntil = Date.now() + ENEMY_ATTACK_RECOVERY_MS;
+					continue;
+				}
 				const target = resolveWindupTarget(enemy);
 				// A player who became concealed by smoke during the wind-up is no
 				// longer a valid target — cancel the strike and return to chasing.
@@ -2134,6 +2515,9 @@ function updateEnemies() {
 							DIFFICULTY_ENEMY_DAMAGE_PER_PLAYER
 						);
 						damagePlayer(enemy.windupTargetId, scaledDamage, { attackerEnemyId: enemy.id });
+						if (enemy.burnDurationMs > 0) {
+							applyBurning(target, enemy.burnDurationMs);
+						}
 					}
 					enemy.attackState = 'recovering';
 					enemy.recoverUntil = Date.now() + ENEMY_ATTACK_RECOVERY_MS;
@@ -2180,6 +2564,11 @@ function updateEnemies() {
 			} else {
 				moveEntityToward(enemy, tauntMinion, chaseSpeed * dt);
 			}
+			continue;
+		}
+
+		if (enemy.type === 'field_medic') {
+			updateFieldMedicEnemy(enemy, players, dt, Date.now(), encounterLocked);
 			continue;
 		}
 
@@ -2260,6 +2649,80 @@ function updateEnemies() {
 			enemy.blockedTicks = 0;
 		}
 	}
+}
+
+// ── Enemy Projectiles (ice balls) ──
+
+/**
+ * Spawn a traveling ice-ball projectile from a glacial thrower, aimed in the
+ * direction locked at wind-up start. Stored in `_gameState.iceBalls` and advanced
+ * each tick by updateEnemyProjectiles(). Carries its own SLOW + damage tuning so a
+ * mid-flight change to the enemy def never mutates an in-flight ball.
+ */
+function spawnIceBall(enemy) {
+	if (!_gameState.iceBalls) _gameState.iceBalls = [];
+	const dirX = enemy.windupDirX ?? 1;
+	const dirZ = enemy.windupDirZ ?? 0;
+	const len = Math.hypot(dirX, dirZ) || 1;
+	const ball = {
+		id: crypto.randomUUID(),
+		ownerId: enemy.id,
+		x: enemy.x,
+		z: enemy.z,
+		dirX: dirX / len,
+		dirZ: dirZ / len,
+		speed: enemy.iceBallSpeed ?? 6,
+		radius: enemy.iceBallRadius ?? 0.9,
+		damage: enemy.attackDamage,
+		slowDurationMs: enemy.iceBallSlowDurationMs ?? 2500,
+		slowFactor: enemy.iceBallSlowFactor ?? 0.5,
+		maxRange: enemy.iceBallMaxRange ?? 18,
+		traveled: 0,
+	};
+	_gameState.iceBalls.push(ball);
+	return ball;
+}
+
+/**
+ * Advance every live ice-ball projectile in a straight line at its configured
+ * speed. A ball that reaches a player (within radius + PLAYER_RADIUS) applies SLOW
+ * and damage, then is removed. Balls also expire once they exceed their max travel
+ * range or leave the dungeon, so they never accumulate.
+ */
+function updateEnemyProjectiles() {
+	if (!_gameState.iceBalls || _gameState.iceBalls.length === 0) return;
+
+	const dt = 1 / TICK_RATE;
+	const players = Object.values(_gameState.players).filter(p => !p.dead && !p.extracted);
+	const survivors = [];
+
+	for (const ball of _gameState.iceBalls) {
+		const step = ball.speed * dt;
+		ball.x += ball.dirX * step;
+		ball.z += ball.dirZ * step;
+		ball.traveled = (ball.traveled || 0) + step;
+
+		// Contact with a player: chill (SLOW) + damage, then consume the ball.
+		let consumed = false;
+		for (const player of players) {
+			const dist = Math.hypot(player.x - ball.x, player.z - ball.z);
+			if (dist <= ball.radius + PLAYER_RADIUS) {
+				applySlow(player, ball.slowDurationMs, ball.slowFactor);
+				damagePlayer(player.id, ball.damage, { attackerEnemyId: ball.ownerId });
+				consumed = true;
+				break;
+			}
+		}
+		if (consumed) continue;
+
+		// Expire on max range / leaving the dungeon so projectiles never pile up.
+		if (ball.traveled >= ball.maxRange) continue;
+		if (!isInsideDungeon(ball.x, ball.z)) continue;
+
+		survivors.push(ball);
+	}
+
+	_gameState.iceBalls = survivors;
 }
 
 // ── Minion AI Tick ──
@@ -2526,7 +2989,8 @@ function updateMinions() {
           breathRange: minion.breathRange ?? (isAncient ? 10 : 6),
           breathHoldDistance: minion.breathHoldDistance ?? Math.max(2.5, (minion.breathRange ?? (isAncient ? 10 : 6)) * 0.58),
           breathConeAngle: minion.breathConeAngle ?? (isAncient ? (Math.PI / 3) : (Math.PI / 4)),
-          breathDamage: minion.breathDamage ?? (isAncient ? 4 : 3),
+          breathDamage: minion.breathDamage ?? (isAncient ? 4 : 2),
+          burnDurationMs: isAncient ? 0 : (minion.burnDurationMs ?? 0),
           breathDurationMs: minion.breathDurationMs ?? (isAncient ? 2500 : 2000),
           breathTickMs: minion.breathTickMs ?? 500,
           breathIntervalMs: minion.breathIntervalMs ?? (isAncient ? 3000 : 2500),
@@ -2695,6 +3159,8 @@ module.exports = {
 
   // Enemy AI
   updateEnemies,
+  updateEnemyProjectiles,
+  spawnIceBall,
   isPlayerConcealed,
 
   // Minion AI
@@ -2704,12 +3170,16 @@ module.exports = {
   damagePlayer,
   damageEnemy,
   damageMinion,
+  healPlayer,
+  clearNegativeStatuses,
+  healPlayersInRadius,
   addDebuff,
 
   // Card combat helpers
   collectConeHits,
   collectRadialHits,
   collectProjectileHits,
+  collectChainLightningHits,
   collectPhaseBeamHits,
   collectReturningProjectileHits,
   applyFreezeInRadius,
@@ -2729,6 +3199,9 @@ module.exports = {
   isEnemyFrozen,
   applySlow,
   isSlowed,
+  applyBurning,
+  isBurning,
+  updateBurning,
 
   // Magic stones
   regenMagicStones,

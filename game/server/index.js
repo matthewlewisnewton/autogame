@@ -158,14 +158,20 @@ const {
   MINION_FOLLOW_DISTANCE,
   MINION_FOLLOW_SPEED,
   updateEnemies,
+  updateEnemyProjectiles,
+  spawnIceBall,
   isPlayerConcealed,
   updateMinions,
   processPendingEchoes,
   damagePlayer,
   damageMinion,
+  healPlayer,
+  clearNegativeStatuses,
+  healPlayersInRadius,
   collectConeHits,
   collectRadialHits,
   collectProjectileHits,
+  collectChainLightningHits,
   collectReturningProjectileHits,
   applyFreezeInRadius,
   pullEnemiesToward,
@@ -180,6 +186,9 @@ const {
   isEnemyFrozen,
   applySlow,
   isSlowed,
+  applyBurning,
+  isBurning,
+  updateBurning,
   cleanupStalePlayers,
   regenMagicStones,
   randomWanderTarget,
@@ -294,6 +303,7 @@ const {
   restoreHandCharges,
   spawnEnemy,
   spawnEnemies,
+  spawnCombatEnemies,
   updateSurviveSpawns,
   updateEncounterTriggers,
   spawnLoot,
@@ -310,6 +320,7 @@ const {
   assignRunSpawnPositions,
   stateSnapshot,
   hotStateSnapshot,
+  buildWorldSnapshot,
   checkTelepipeProximity,
   suspendRunToLobby,
   maybeSuspendRun,
@@ -488,6 +499,7 @@ const DEBUG_SCENARIOS = new Set([
   'slippery-floor-lab',
   'key-item-cooldown',
   'medic-kit-ready',
+  'purifying-pulse-ready',
   'guard-block-ready',
   'flare-beacon-ready',
   'loot-magnet-ready',
@@ -534,6 +546,13 @@ const DEBUG_SCENARIOS = new Set([
   'stage-boss-dormant',
   'stage-boss-active',
   'annex-overseer-ready',
+  'field-medic',
+  'field-medic-spawn',
+  'ember-wraith',
+  'chain-lightning-ready',
+  'fireball-ready',
+  'glacial-thrower',
+  'ice-ball-ready',
 ]);
 
 // Wire debugScenarios with io, the index.js-local helpers its setup chain needs,
@@ -716,6 +735,9 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'stage-boss-dormant',
   'stage-boss-active',
   'annex-overseer-ready',
+  'field-medic',
+  'field-medic-spawn',
+  'ember-wraith',
   'slippery-floor-lab',
   'frost-crossing-tier-1',
 ]);
@@ -1342,7 +1364,9 @@ function runGameLoopTick() {
           checkTelepipeProximity();
           flushDirtyPlayerSaves();
           updateEnemies();
+          updateEnemyProjectiles();
           updateMinions();
+          updateBurning();
           debugScenarios.nudgeDebugBossApproachPlayers(state);
           updateEncounterTriggers();
           updateSurviveSpawns();
@@ -1369,6 +1393,20 @@ function runGameLoopTick() {
               io.to(lobby.id).emit(SERVER_TO_CLIENT.LEECH_HEAL, record);
             }
             state._pendingLeechHeals.length = 0;
+          }
+
+          if (state._pendingMedicHeals?.length) {
+            for (const record of state._pendingMedicHeals) {
+              io.to(lobby.id).emit(SERVER_TO_CLIENT.MEDIC_ALLY_HEAL, record);
+            }
+            state._pendingMedicHeals.length = 0;
+          }
+
+          if (state._pendingMedicBeads?.length) {
+            for (const record of state._pendingMedicBeads) {
+              io.to(lobby.id).emit(SERVER_TO_CLIENT.MEDIC_BEAD, record);
+            }
+            state._pendingMedicBeads.length = 0;
           }
 
           if (state._pendingShieldBreaks?.length) {
@@ -1601,12 +1639,16 @@ if (typeof module !== 'undefined' && module.exports) {
     generateLayout,
     damagePlayer,
     damageMinion,
+    healPlayer,
+    clearNegativeStatuses,
+    healPlayersInRadius,
     updateEnchantments,
     spawnGroundEnchantment,
     armSelfEnchantment,
     collectConeHits,
     collectRadialHits,
     collectProjectileHits,
+    collectChainLightningHits,
     collectReturningProjectileHits,
     applyFreezeInRadius,
     pullEnemiesToward,
@@ -1621,7 +1663,12 @@ if (typeof module !== 'undefined' && module.exports) {
     isEnemyFrozen,
     applySlow,
     isSlowed,
+    applyBurning,
+    isBurning,
+    updateBurning,
     updateEnemies,
+    updateEnemyProjectiles,
+    spawnIceBall,
     isPlayerConcealed,
     updateMinions,
     processPendingEchoes,
@@ -1629,6 +1676,7 @@ if (typeof module !== 'undefined' && module.exports) {
     spawnCrystals,
     spawnEnemy,
     spawnEnemies,
+    spawnCombatEnemies,
     updateSurviveSpawns,
     firstRoomPosition,
     pickFloorSpawnPosition,
@@ -1647,6 +1695,7 @@ if (typeof module !== 'undefined' && module.exports) {
     regenMagicStones,
     stateSnapshot,
     hotStateSnapshot,
+    buildWorldSnapshot,
     createRunState,
     startDungeonRun,
     recordEnemyDefeated,

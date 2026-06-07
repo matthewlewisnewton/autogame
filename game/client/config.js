@@ -192,6 +192,7 @@ export const SOUND_CONFIG = {
 	failure:          { notes: [{ freq: 400, duration: 0.2, gain: 0.3 }, { freq: 250, duration: 0.2, gain: 0.3 }] },
 	volatileExplosion: { freq: 80, duration: 0.5, gain: 0.25 },
 	leechHeal:        { freq: 900, duration: 0.2, gain: 0.2 },
+	heal:             { notes: [{ freq: 520, duration: 0.12, gain: 0.25 }, { freq: 780, duration: 0.15, gain: 0.22 }] },
 	shieldBreak:      { freq: 150, duration: 0.15, gain: 0.35 },
 };
 

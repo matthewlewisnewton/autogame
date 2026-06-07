@@ -53,6 +53,7 @@ describe('STAT_LABELS', () => {
     expect(STAT_LABELS.attackDamage).toBe('Attack');
     expect(STAT_LABELS.chaseSpeed).toBe('Chase speed');
     expect(STAT_LABELS.radius).toBe('Explosion radius');
+    expect(STAT_LABELS.burnDurationMs).toBe('Burn duration');
   });
 });
 
@@ -63,6 +64,11 @@ describe('formatStatValue', () => {
       attackDamage: 7,
     };
     expect(formatStatValue(enemy, 'attackDamage', catalog)).toBe('7');
+  });
+
+  it('formats burn duration in seconds', () => {
+    const enemy = { type: 'ember_wraith', burnDurationMs: 2800 };
+    expect(formatStatValue(enemy, 'burnDurationMs', catalog)).toBe('2.8s');
   });
 
   it('falls back to catalog type defaults when live value is absent', () => {
@@ -102,6 +108,57 @@ describe('buildLockOnPanelModel', () => {
         { label: 'Attack', value: '10' },
         { label: 'Attack style', value: 'Radial' },
         { label: 'Chase speed', value: '2.5' },
+      ],
+    });
+  });
+
+  it('builds a field_medic panel with support stats and description', () => {
+    const enemy = {
+      type: 'field_medic',
+      hp: 50,
+      maxHp: 65,
+      attackDamage: 6,
+      healAmount: 18,
+      healCooldownMs: 4000,
+      fleeSpeed: 5.0,
+    };
+    const model = buildLockOnPanelModel(enemy, catalog);
+    expect(model).toEqual({
+      name: 'Field Medic',
+      variantName: undefined,
+      description:
+        'Fragile support drone that kites attackers, heals nearby allies, and fires defensive suppression beads.',
+      hpText: '50 / 65',
+      stats: [
+        { label: 'Attack', value: '6' },
+        { label: 'healAmount', value: '18' },
+        { label: 'healCooldownMs', value: '4000' },
+        { label: 'fleeSpeed', value: '5' },
+      ],
+    });
+  });
+
+  it('builds an ember_wraith panel with burn duration and description', () => {
+    const enemy = {
+      type: 'ember_wraith',
+      hp: 40,
+      maxHp: 55,
+      attackDamage: 8,
+      attackStyle: 'cone',
+      chaseSpeed: 4.2,
+      burnDurationMs: 2800,
+    };
+    const model = buildLockOnPanelModel(enemy, catalog);
+    expect(model).toEqual({
+      name: 'Ember Wraith',
+      variantName: undefined,
+      description: 'Fast cone striker that ignites players on hit, leaving them burning.',
+      hpText: '40 / 55',
+      stats: [
+        { label: 'Attack', value: '8' },
+        { label: 'Attack style', value: 'Cone' },
+        { label: 'Chase speed', value: '4.2' },
+        { label: 'Burn duration', value: '2.8s' },
       ],
     });
   });

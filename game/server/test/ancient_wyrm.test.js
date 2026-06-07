@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
 	resetGameState,
 	gameState,
@@ -11,6 +11,7 @@ import {
 	updateMinions,
 	applyWyrmMinionBreathStats,
 	scaledGrindStat,
+	isBurning,
 } from '../index.js';
 import {
 	connectAndJoinLobby,
@@ -130,7 +131,15 @@ describe('Wyrm channeled breath', () => {
 		resetState();
 	});
 
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	it('Vault Wyrm opens a short cone breath that ticks once immediately', () => {
+		const now = 1_000_000;
+		vi.useFakeTimers();
+		vi.setSystemTime(now);
+
 		gameState.enemies.push({
 			id: 'e1',
 			x: 4,
@@ -150,7 +159,8 @@ describe('Wyrm channeled breath', () => {
 			breathRange: 6,
 			breathHoldDistance: 3.5,
 			breathConeAngle: Math.PI / 4,
-			breathDamage: 3,
+			breathDamage: 2,
+			burnDurationMs: 2000,
 			breathDurationMs: 2000,
 			breathTickMs: 500,
 			breathIntervalMs: 2500,
@@ -159,7 +169,9 @@ describe('Wyrm channeled breath', () => {
 
 		updateMinions();
 
-		expect(gameState.enemies[0].hp).toBe(47);
+		expect(gameState.enemies[0].hp).toBe(48);
+		expect(isBurning(gameState.enemies[0])).toBe(true);
+		expect(gameState.enemies[0].burningUntil).toBe(now + 2000);
 		expect(gameState.minions[0].breathState).toBe('breathing');
 		expect(gameState._pendingMinionBreaths).toHaveLength(1);
 		expect(gameState._pendingMinionBreaths[0]).toMatchObject({
@@ -168,7 +180,7 @@ describe('Wyrm channeled breath', () => {
 			attackConeAngle: Math.PI / 4,
 			breathPhase: 'start',
 			breathDurationMs: 2000,
-			hits: [{ enemyId: 'e1', hp: 47 }],
+			hits: [{ enemyId: 'e1', hp: 48 }],
 		});
 	});
 
@@ -229,7 +241,8 @@ describe('Wyrm channeled breath', () => {
 			breathRange: 6,
 			breathHoldDistance: 3.5,
 			breathConeAngle: Math.PI / 4,
-			breathDamage: 3,
+			breathDamage: 2,
+			burnDurationMs: 2000,
 			breathDurationMs: 2000,
 			breathTickMs: 500,
 		});

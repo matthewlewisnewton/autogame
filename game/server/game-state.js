@@ -16,6 +16,9 @@ function createGameState() {
     enemies: [],
     minions: [],
     loot: [],
+    // Traveling enemy projectiles (glacial thrower ice balls). Advanced each tick
+    // by simulation.updateEnemyProjectiles(); shipped in every world snapshot.
+    iceBalls: [],
     areaEffects: [],
     enchantments: [],
     lobby: [],
@@ -39,6 +42,10 @@ function createGameState() {
     // Per-tick queue of shield-break audio cues ({ enemyId }); drained in
     // runGameLoopTick to emit 'shieldBreak' to the lobby room.
     _pendingShieldBreaks: [],
+    // Per-tick queue of field-medic ally heals ({ medicId, targetId, x, z, healRadius }).
+    _pendingMedicHeals: [],
+    // Per-tick queue of field-medic energy beads (origin, direction, hits).
+    _pendingMedicBeads: [],
   };
 }
 

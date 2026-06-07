@@ -1,0 +1,13 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/300-rare-medic-enemy-in-level2/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/300-rare-medic-enemy-in-level2/game/data
+Server listening on port 3004
+Player connected: socket=4sCvCvd7HSdMekcuAAAB, playerId=6d09bd13-37af-4780-b8dc-8e685ad3024b
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=P86TjsPzbqfHxh8GAAAD, playerId=4691d874-fe3d-430b-bcf9-3769393169f6
+Player disconnected: 4sCvCvd7HSdMekcuAAAB
+Player disconnected: P86TjsPzbqfHxh8GAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

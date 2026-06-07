@@ -1,0 +1,14 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/293-ice-enemy-glacial-ball-thrower/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/293-ice-enemy-glacial-ball-thrower/game/data
+Server listening on port 3001
+Player connected: socket=sJu_1RKwigQxFUoAAAAB, playerId=f67aaf90-6771-4149-b752-9c8adf6ea3c0
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=Aa2JC4EgHATrWCrLAAAD, playerId=e26fef8a-726e-4213-a703-61999d92c27c
+[loot] spawned id=b38f12eb-4ed9-4ca2-89b5-54f78f7f2a0c value=14
+Player disconnected: sJu_1RKwigQxFUoAAAAB
+Player disconnected: Aa2JC4EgHATrWCrLAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

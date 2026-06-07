@@ -61,6 +61,7 @@ const {
   getQuest,
   getSelectedQuest,
   getEnemyPool,
+  getGuaranteedEnemyType,
   pickWeightedEnemyType,
   DEFAULT_QUEST_TIER,
 } = require('./quests');
@@ -690,6 +691,7 @@ function applyWyrmMinionBreathStats(minion, cardDef, grind, now) {
   minion.breathConeAngle = cardDef.breathConeAngle ?? (Math.PI / 4);
   minion.breathDurationMs = cardDef.breathDurationMs ?? 2000;
   minion.breathTickMs = cardDef.breathTickMs ?? 500;
+  minion.burnDurationMs = cardDef.burnDurationMs ?? 0;
   const baseDamage = cardDef.breathDamage ?? cardDef.attackDamage ?? 3;
   minion.breathDamage = scaledGrindStat(baseDamage, grind);
 }
@@ -2474,13 +2476,17 @@ function spawnCombatEnemies(layout, rng, quest) {
   // only its thematically-appropriate enemies (and level-exclusive types like
   // `spawner` never leak into other levels). Uses the run's seeded `rng` so
   // type selection stays deterministic for a given seed.
-  const enemyPool = getEnemyPool(quest.id);
+  const enemyPool = getEnemyPool(quest.id, quest.tier);
   const enemyCount = Number.isFinite(quest.enemyCount) ? quest.enemyCount : enemyPool.length;
   const preferNearest = def?.preferNearestEnemySpawns?.(quest) ?? false;
   const nearbyCount = preferNearest ? Math.min(2, enemyCount) : 0;
+  // Level-scoped signature foe: if the quest declares a guaranteed enemy type,
+  // force the first spawn to it and draw the rest from the weighted pool as
+  // usual. Quests without one (`getGuaranteedEnemyType` → null) are unchanged.
+  const guaranteedType = enemyCount > 0 ? getGuaranteedEnemyType(quest.id) : null;
 
   for (let i = 0; i < enemyCount; i++) {
-    const type = pickWeightedEnemyType(enemyPool, rng);
+    const type = i === 0 && guaranteedType ? guaranteedType : pickWeightedEnemyType(enemyPool, rng);
     const useNearest = preferNearest && i < nearbyCount;
     const pos = pickEnemySpawnPosition(layout, rng, useNearest, i, enemyCount);
     // Variant seam (centralized in spawnEnemy): encounterTier from the spawn
@@ -2748,6 +2754,7 @@ function resetTransientRunState() {
   _gameState.minions = [];
   _gameState.loot = [];
   _gameState.areaEffects = [];
+  _gameState.iceBalls = [];
   _gameState.telepipe = null;
 }
 
@@ -2778,6 +2785,7 @@ function buildPlayerHotSnapshot(id, p) {
     smokeBombZ: p.smokeBombZ || 0,
     slowedUntil: p.slowedUntil || 0,
     slowFactor: p.slowFactor || 1,
+    burningUntil: p.burningUntil || 0,
     cosmetic: p.cosmetic ?? { ...DEFAULT_COSMETIC },
     username: p.username,
   };
@@ -2805,6 +2813,7 @@ function buildWorldSnapshot(shopOffer) {
     enemies: _gameState.enemies,
     minions: _gameState.minions,
     loot: _gameState.loot,
+    iceBalls: _gameState.iceBalls || [],
     lobby: _gameState.lobby,
     gamePhase: _gameState.gamePhase,
     selectedQuestId: _gameState.selectedQuestId,
@@ -3164,6 +3173,7 @@ module.exports = {
   spawnLoot,
   spawnCrystals,
   spawnEnemies,
+  spawnCombatEnemies,
   updateSurviveSpawns,
   updateEncounterTriggers,
   recordCrystalCollected,
@@ -3177,6 +3187,7 @@ module.exports = {
   applyTelepipeReadyHand,
   stateSnapshot,
   hotStateSnapshot,
+  buildWorldSnapshot,
   isPlayerActive,
   hasActivePlayers,
   suspendRunToLobby,

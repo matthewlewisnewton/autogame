@@ -2288,6 +2288,35 @@ describe('createEnemyMesh()', () => {
 		expect(mesh._origEmissiveIntensity).toBe(0.4);
 	});
 
+	it('creates a small green-teal octahedron for field_medic type', async () => {
+		await import('../main.js');
+
+		const mesh = window.createEnemyMesh('field_medic');
+		expect(mesh).toBeDefined();
+		expect(mesh.geometry.parameters.radius).toBe(0.4);
+		expect(mesh.material.color.getHex()).toBe(0x10b981);
+		expect(mesh.material.emissive.getHex()).toBe(0x2dd4bf);
+		expect(mesh.material.emissiveIntensity).toBe(0.55);
+		expect(mesh._origEmissive).toBe(0x2dd4bf);
+		expect(mesh._origEmissiveIntensity).toBe(0.55);
+	});
+
+	it('creates a warm emissive octahedron for ember_wraith type', async () => {
+		await import('../main.js');
+
+		const mesh = window.createEnemyMesh('ember_wraith');
+		const grunt = window.createEnemyMesh('grunt');
+		expect(mesh).toBeDefined();
+		expect(mesh.geometry.parameters.radius).toBe(0.35);
+		expect(mesh.material.color.getHex()).toBe(0xff4400);
+		expect(mesh.material.emissive.getHex()).toBe(0xff2200);
+		expect(mesh.material.emissiveIntensity).toBe(0.6);
+		expect(mesh._origEmissive).toBe(0xff2200);
+		expect(mesh._origEmissiveIntensity).toBe(0.6);
+		expect(mesh.geometry.parameters.radius).not.toBe(grunt.geometry.parameters.radius);
+		expect(mesh.material.color.getHex()).not.toBe(grunt.material.color.getHex());
+	});
+
 	it('creates a purple cone for miniboss type', async () => {
 		await import('../main.js');
 
@@ -2360,6 +2389,8 @@ describe('enemyMeshHalfHeight()', () => {
 		expect(window.enemyMeshHalfHeight('skirmisher')).toBe(0.3);
 		expect(window.enemyMeshHalfHeight('miniboss')).toBe(1.1);
 		expect(window.enemyMeshHalfHeight('spawner')).toBe(0.6);
+		expect(window.enemyMeshHalfHeight('field_medic')).toBe(0.4);
+		expect(window.enemyMeshHalfHeight('ember_wraith')).toBe(0.35);
 	});
 
 	it('defaults to grunt half-height for unknown types', async () => {

@@ -141,7 +141,11 @@ import {
 	spawnAttackEffect as rendererSpawnAttackEffect,
 	spawnSummonEffect as rendererSpawnSummonEffect,
 	spawnDivineGraceEffect as rendererSpawnDivineGraceEffect,
+	spawnPurifyingPulseEffect as rendererSpawnPurifyingPulseEffect,
+	spawnPurifyingPulseHealRing as rendererSpawnPurifyingPulseHealRing,
+	spawnCleanseBurstEffect as rendererSpawnCleanseBurstEffect,
 	spawnChainLightningEffect as rendererSpawnChainLightningEffect,
+	spawnLightningArc as rendererSpawnLightningArc,
 	spawnInfernoPillarEffect as rendererSpawnInfernoPillarEffect,
 	spawnVolatileExplosionEffect as rendererSpawnVolatileExplosionEffect,
 	spawnFireTrailEffect as rendererSpawnFireTrailEffect,
@@ -159,6 +163,8 @@ import {
 	getWindupFlashing,
 	triggerDashVFX,
 	triggerHealPulseVFX,
+	triggerMedicAllyHealVFX,
+	triggerMedicEnergyBeadVFX,
 	triggerShieldVFX,
 	triggerSmokeVFX,
 	triggerLootMagnetVFX,
@@ -184,7 +190,9 @@ const lobbyPlayerList = document.getElementById('lobby-player-list');
 const questBoardEl = document.getElementById('quest-board');
 const questBoardWrapperEl = document.getElementById('quest-board-wrapper');
 const questErrorEl = document.getElementById('quest-error');
-const lobbyStatusBannerEl = document.getElementById('lobby-status-banner');
+const suspendedRunBannerEl = document.getElementById('suspended-run-banner');
+const lobbyHudEl = document.getElementById('lobby-hud');
+const lobbyCloseBtnEl = document.getElementById('lobby-close-btn');
 const lobbyEl = document.getElementById('lobby');
 const lobbyBrowserEl = document.getElementById('lobby-browser');
 const lobbyListEl = document.getElementById('lobby-list');
@@ -304,6 +312,10 @@ const showRegisterLinkEl = document.getElementById('show-register-link');
 
 const TOKEN_KEY = 'autogame_token';
 let currentLobbyName = '';
+/** When true, the dismissible #lobby menu stays hidden until showGameLobby(). */
+let lobbyMenuDismissed = false;
+/** True after the first extracted-waiting overlay setup; avoids re-showing #lobby each tick. */
+let extractedLobbyOverlayActive = false;
 
 function setLoggedInStatus(username, lobbyName) {
 	if (!statusEl || !username) return;
@@ -317,6 +329,7 @@ function showAuthOverlay() {
 	if (authOverlayEl) authOverlayEl.classList.remove('hidden');
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 	if (lobbyEl) lobbyEl.classList.add('hidden');
+	setLobbyHudVisible(false);
 	hideAppToolbar();
 }
 
@@ -358,9 +371,48 @@ function applyLobbyThemeLabels() {
 
 applyLobbyThemeLabels();
 
+function setLobbyHudVisible(visible) {
+	if (lobbyHudEl) lobbyHudEl.classList.toggle('hidden', !visible);
+}
+
+function setDeployButtonVisible(_visible) {
+	// Fresh deploy / ready-up is handled by the hub Launch Bay booth. Retained for
+	// call-site symmetry with play↔lobby transitions after suspend/resume removal.
+}
+
+function isGameLobbyMenuVisible() {
+	return !!lobbyEl && !lobbyEl.classList.contains('hidden');
+}
+
+function isLobbyMenuDismissKeyBlocked(e) {
+	const target = e.target;
+	if (target instanceof HTMLInputElement ||
+		target instanceof HTMLTextAreaElement ||
+		target instanceof HTMLSelectElement ||
+		target?.isContentEditable) {
+		return true;
+	}
+	return !!(variantCodexOpen || deckViewerOpen || isLevelSettingsOpen() || isCharacterBoothOpen()
+		|| (settingsOverlayEl && !settingsOverlayEl.classList.contains('hidden'))
+		|| (authOverlayEl && !authOverlayEl.classList.contains('hidden'))
+		|| (accountOverlayEl && !accountOverlayEl.classList.contains('hidden'))
+		|| (levelSettingsOverlayEl && !levelSettingsOverlayEl.classList.contains('hidden'))
+		|| (runSummaryOverlay && getComputedStyle(runSummaryOverlay).display !== 'none'));
+}
+
+function dismissGameLobby() {
+	if (!lobbyEl) return;
+	lobbyMenuDismissed = true;
+	lobbyEl.classList.add('hidden');
+	if (questBoardWrapperEl) questBoardWrapperEl.classList.add('hidden');
+}
+
 function showLobbyBrowser() {
+	lobbyMenuDismissed = false;
+	extractedLobbyOverlayActive = false;
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.remove('hidden');
 	if (lobbyEl) lobbyEl.classList.add('hidden');
+	setLobbyHudVisible(false);
 	if (uiEl) uiEl.style.display = 'none';
 	if (cardHandEl) hideCardHand();
 	hideVariantCodex();
@@ -370,7 +422,9 @@ function showLobbyBrowser() {
 
 function showGameLobby() {
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
+	lobbyMenuDismissed = false;
 	if (lobbyEl) lobbyEl.classList.remove('hidden');
+	setLobbyHudVisible(true);
 	// Quest board only appears via the quest booth, so keep it hidden each time
 	// the lobby is (re)shown.
 	if (questBoardWrapperEl) questBoardWrapperEl.classList.add('hidden');
@@ -477,8 +531,18 @@ function returnToGuildLobby(state, { refreshCollection = false, rebuildHub = fal
 	hideVariantCodex();
 	setDeckStackVisible(false);
 	clearKeyItemCooldownHud();
-	showGameLobby();
-	if (lobbyStatusBannerEl) lobbyStatusBannerEl.classList.add('hidden');
+	extractedLobbyOverlayActive = false;
+	if (lobbyMenuDismissed) {
+		if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
+		setLobbyHudVisible(true);
+		if (lobbyEl) lobbyEl.classList.add('hidden');
+		if (questBoardWrapperEl) questBoardWrapperEl.classList.add('hidden');
+		applyLobbyThemeLabels();
+	} else {
+		showGameLobby();
+	}
+	if (suspendedRunBannerEl) suspendedRunBannerEl.classList.add('hidden');
+	setDeployButtonVisible(true);
 	// On the play→lobby transition, switch the rendered geometry back to the hub
 	// and re-seat the avatar at the hub spawn. `renderHubScene()` also sets the
 	// lobby game phase. Guarded by `rebuildHub` so this runs once per return, not
@@ -536,10 +600,16 @@ function showExtractedLobbyOverlay() {
 	if (renderedSceneProfile !== 'hub' && hubLayout && isSceneInitialized()) {
 		renderHubScene();
 	}
-	showGameLobby();
-	if (lobbyStatusBannerEl) {
-		lobbyStatusBannerEl.textContent = THEME.run.awaitingExtract;
-		lobbyStatusBannerEl.classList.remove('hidden');
+	if (!extractedLobbyOverlayActive) {
+		showGameLobby();
+		extractedLobbyOverlayActive = true;
+	} else if (!lobbyMenuDismissed && !isGameLobbyMenuVisible()) {
+		showGameLobby();
+	}
+	setDeployButtonVisible(false);
+	if (suspendedRunBannerEl) {
+		suspendedRunBannerEl.textContent = THEME.run.awaitingExtract;
+		suspendedRunBannerEl.classList.remove('hidden');
 	}
 	const me = myId && gameState?.players ? gameState.players[myId] : null;
 	syncVanguardHud(me, 'lobby');
@@ -721,8 +791,6 @@ function applyLobbyJoinedData(data) {
 		showAppToolbar();
 	}
 
-	showGameLobby();
-
 	if (data.hubPresence) applyHubPresence(data.hubPresence);
 
 	const receivedSeed = data.layoutSeed;
@@ -733,12 +801,14 @@ function applyLobbyJoinedData(data) {
 	// never reuses (or rebuilds into) the quest geometry, and a run join never
 	// deploys the player into the hub geometry.
 	if (joinPhase === 'playing') {
+		if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 		const seedChanged = receivedSeed !== undefined && receivedSeed !== currentLayoutSeed;
 		if (receivedSeed !== undefined) currentLayoutSeed = receivedSeed;
 		requestDebugScenario();
 
 		if (!isSceneInitialized()) {
 			lobbyEl.classList.add('hidden');
+			setLobbyHudVisible(false);
 			uiEl.style.display = 'block';
 			showCardHand();
 			setDeckStackVisible(true);
@@ -758,6 +828,8 @@ function applyLobbyJoinedData(data) {
 		}
 		renderedSceneProfile = 'quest';
 		if (gameState) gameState.layout = currentLayout;
+		if (lobbyEl) lobbyEl.classList.add('hidden');
+		setLobbyHudVisible(false);
 		const me = myId && gameState && gameState.players ? gameState.players[myId] : null;
 		if (me && Number.isFinite(me.x) && Number.isFinite(me.z)) {
 			setPlayerPosition(me.x, me.z);
@@ -775,6 +847,13 @@ function applyLobbyJoinedData(data) {
 	requestDebugBoothOpen();
 	requestDebugShopBoothOpen();
 	updateObjectiveHud();
+	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
+	setLobbyHudVisible(true);
+	applyLobbyThemeLabels();
+	const lobbyMe = myId && gameState?.players ? gameState.players[myId] : null;
+	syncVanguardHud(lobbyMe, 'lobby');
+	dismissGameLobby();
+	setDeployButtonVisible(true);
 }
 
 /** Show the registration form and hide the login form. */
@@ -968,9 +1047,13 @@ const cardRenderCtx = {
 	spawnAttackEffect: rendererSpawnAttackEffect,
 	spawnSummonEffect: rendererSpawnSummonEffect,
 	spawnDivineGraceEffect: rendererSpawnDivineGraceEffect,
+	spawnPurifyingPulseEffect: rendererSpawnPurifyingPulseEffect,
+	spawnPurifyingPulseHealRing: rendererSpawnPurifyingPulseHealRing,
+	spawnCleanseBurstEffect: rendererSpawnCleanseBurstEffect,
 	spawnInfernoPillarEffect: rendererSpawnInfernoPillarEffect,
 	spawnVolatileExplosionEffect: rendererSpawnVolatileExplosionEffect,
 	spawnChainLightningEffect: rendererSpawnChainLightningEffect,
+	spawnLightningArc: rendererSpawnLightningArc,
 	flashMesh: rendererFlashMesh,
 	markCardHitEnemies: rendererMarkCardHitEnemies,
 	spawnHitSpark: rendererSpawnHitSpark,
@@ -1033,6 +1116,7 @@ function bindSocketHandlers(s) {
 			hideVariantCodex();
 			setDeckStackVisible(false);
 			if (lobbyEl) lobbyEl.classList.add('hidden');
+			setLobbyHudVisible(false);
 			if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 			if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
 			showAuthOverlay();
@@ -1144,7 +1228,11 @@ function bindSocketHandlers(s) {
 
 		if (enteringLobby) {
 			_lastReturnRewardsPreview = null;
+			extractedLobbyOverlayActive = false;
 		} else if (me && state.gamePhase === 'playing') {
+			if (enteringPlaying) {
+				extractedLobbyOverlayActive = false;
+			}
 			if (me.returnRewardsPreview != null) {
 				_lastReturnRewardsPreview = me.returnRewardsPreview;
 			} else if (_lastReturnRewardsPreview != null) {
@@ -1168,7 +1256,9 @@ function bindSocketHandlers(s) {
 			showCardHand();
 			setDeckStackVisible(true);
 			if (lobbyEl) lobbyEl.classList.add('hidden');
-			if (lobbyStatusBannerEl) lobbyStatusBannerEl.classList.add('hidden');
+			setLobbyHudVisible(false);
+			setDeployButtonVisible(false);
+			if (suspendedRunBannerEl) suspendedRunBannerEl.classList.add('hidden');
 			setGamePhase('playing');
 			if (enteringPlaying) {
 				_lastMagicStones = undefined;
@@ -1500,6 +1590,18 @@ function bindSocketHandlers(s) {
 		triggerHealPulseVFX({ x, y: 0, z }, radius);
 	});
 
+	s.on(SERVER_TO_CLIENT.MEDIC_ALLY_HEAL, (data) => {
+		if (!data || !getScene()) return;
+		const { x, z, healRadius } = data;
+		if (!Number.isFinite(x) || !Number.isFinite(z)) return;
+		triggerMedicAllyHealVFX({ x, y: 0, z }, healRadius);
+	});
+
+	s.on(SERVER_TO_CLIENT.MEDIC_BEAD, (data) => {
+		if (!data || !getScene()) return;
+		triggerMedicEnergyBeadVFX(data);
+	});
+
 	s.on(SERVER_TO_CLIENT.KEY_ITEM_USED, (data) => {
 		if (!data) return;
 		const me = myId && gameState?.players ? gameState.players[myId] : null;
@@ -1698,6 +1800,7 @@ function bindSocketHandlers(s) {
 		claimedCardRewardId = null;
 		currentCardChoices = [];
 		lobbyEl.classList.add('hidden');
+		setLobbyHudVisible(false);
 		uiEl.style.display = 'block';
 		showCardHand();
 		setDeckStackVisible(true);
@@ -1724,7 +1827,7 @@ function bindSocketHandlers(s) {
 		setPlayerPosition(spawnPos.x, spawnPos.z);
 		setPlayerRotation(0);
 		setWasDead(false);
-		if (lobbyStatusBannerEl) lobbyStatusBannerEl.classList.add('hidden');
+		if (suspendedRunBannerEl) suspendedRunBannerEl.classList.add('hidden');
 		setGamePhase('playing');
 		updateLevelSettingsBtnVisibility();
 
@@ -1744,6 +1847,7 @@ function bindSocketHandlers(s) {
 			rendererDisposeMeshMap(maps.telegraphMeshes, sc);
 			rendererDisposeMeshMap(maps.minionTelegraphMeshes, sc);
 			rendererDisposeMeshMap(maps.minionsMeshes, sc);
+			rendererDisposeMeshMap(maps.iceBallMeshes, sc);
 			rendererDisposeAllLootMeshes();
 		}
 	});
@@ -1926,6 +2030,8 @@ function applyQuestLayoutFromServer(data) {
 // below); this only brings the wrapper into view. Guarded to the lobby phase.
 function openQuestPanel() {
 	if (gameState?.gamePhase !== 'lobby') return;
+	// Quest board lives inside #lobby; reopen the menu when it was dismissed.
+	showGameLobby();
 	// The wrapper is hidden by default; the booth is what reveals it.
 	questBoardWrapperEl?.classList.remove('hidden');
 	// jsdom lacks scrollIntoView, so guard defensively for tests.
@@ -3680,6 +3786,16 @@ window.__variantCodexKeydownHandler = (e) => {
 		hideVariantCodex();
 		return;
 	}
+	if (key === 'escape' && isGameLobbyMenuVisible() && !isLobbyMenuDismissKeyBlocked(e)) {
+		e.preventDefault();
+		dismissGameLobby();
+		return;
+	}
+	if (key === 'l' && gameState?.gamePhase === 'lobby' && lobbyMenuDismissed && !isLobbyMenuDismissKeyBlocked(e)) {
+		e.preventDefault();
+		showGameLobby();
+		return;
+	}
 	if (key === 'g' && e.shiftKey && debugScenarioAllowed && socket?.connected && !isDebugGodmodeKeyBlocked(e)) {
 		e.preventDefault();
 		emitToggleDebugGodmode();
@@ -3789,6 +3905,7 @@ function performLogout() {
 	hideVariantCodex();
 	setDeckStackVisible(false);
 	if (lobbyEl) lobbyEl.classList.add('hidden');
+	setLobbyHudVisible(false);
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 	updateStatus('Disconnected', 'disconnected');
 	showAuthOverlay();
@@ -4327,6 +4444,12 @@ returnToLobbyBtn.addEventListener('click', () => {
 	socket.emit(CLIENT_TO_SERVER.RETURN_TO_LOBBY);
 });
 
+if (lobbyCloseBtnEl) {
+	lobbyCloseBtnEl.addEventListener('click', () => {
+		dismissGameLobby();
+	});
+}
+
 if (createLobbyBtnEl) {
 	createLobbyBtnEl.addEventListener('click', () => {
 		if (!socket) return;
@@ -4439,6 +4562,7 @@ window.renderQuestBoard = renderQuestBoard;
 window.__windupFlashing = () => getWindupFlashing();
 window.__pickedUpLootIds = () => getPickedUpLootIds();
 window.__enemiesMeshes = () => getMeshMaps().enemiesMeshes;
+window.__iceBallMeshes = () => getMeshMaps().iceBallMeshes;
 window.applyWindupFlash = rendererApplyWindupFlash;
 window.applyRevealHighlight = rendererApplyRevealHighlight;
 window.__useCardForTest = useCard;
@@ -4463,6 +4587,8 @@ window.openQuestPanel = openQuestPanel;
 window.__requestBoothDebugOpenForTest = requestBoothDebugOpen;
 window.performLogout = performLogout;
 window.showGameLobby = showGameLobby;
+window.dismissGameLobby = dismissGameLobby;
+window.__getLobbyMenuDismissed = () => lobbyMenuDismissed;
 window.renderLobbyList = renderLobbyList;
 window.applyLobbyJoinedData = applyLobbyJoinedData;
 window.applyHubPresence = applyHubPresence;
@@ -4584,6 +4710,7 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		sceneInitialized: isSceneInitialized(),
 		hasCanvas: !!document.querySelector('canvas'),
 		lobbyVisible,
+		lobbyMenuDismissed,
 		characterBoothOpen: isCharacterBoothOpen(),
 		deckEditorVisible,
 		runId,

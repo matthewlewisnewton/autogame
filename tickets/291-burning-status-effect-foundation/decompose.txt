@@ -1,0 +1,15 @@
+Created 3 sub-tickets, mirroring the proven SLOW (290) decomposition that just shipped in this same codebase.
+
+**Sub-ticket folder paths created:**
+
+- `tickets/291-burning-status-effect-foundation/subtickets/01-burning-status-helpers/ticket.md`
+- `tickets/291-burning-status-effect-foundation/subtickets/02-burning-deals-tick-damage/ticket.md`
+- `tickets/291-burning-status-effect-foundation/subtickets/03-client-burning-animation/ticket.md`
+
+**Rationale for the split (dependency order):**
+
+1. **01 — Server helpers/state**: pure `applyBurning`/`isBurning` + `burningUntil` state + exports + unit tests. Smallest verifiable unit, no dependencies. Mirrors `applySlow`/`isSlowed`.
+2. **02 — Server damage tick**: the actual DoT — a `updateBurning()` pass wired into `runGameLoopTick`, interval-gated damage via `damagePlayer` (free godmode immunity) and `damageEnemy`, snapshot exposure of `burningUntil`, plus the ticket-mandated tests for tick damage + expiry on players AND enemies, godmode immunity, and refresh. Depends on 01.
+3. **03 — Client flame animation**: flickering flame visual on players and enemies driven by the broadcast `burningUntil`, mirroring the existing slow-indicator machinery. Depends on 02 exposing the field.
+
+All three are `code` verification: 01/02 concern functions, server state, timing, values, and an error/immunity path; 03 mixes "flame exists/animates/cleans up" structural checks with look — and since no card/enemy lights anything on fire yet (296/297/298 land later), it can't be confirmed in a happy-path screenshot run, so it must be read from the diff.
