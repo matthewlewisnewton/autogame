@@ -1,6 +1,6 @@
 # Card balance report
 
-Card-balance pass parts 1–2: **weapons**, **spells**, **creatures**, **enchantments**, economy, combos, and consolidated recommendations. Metrics sourced from `game/validation/card-balance/analyzeCards.mjs` (sub-ticket 01) plus manual simulation notes (sub-ticket 03). No JSON or gameplay changes applied in this pass.
+Card-balance pass parts 1–2: **weapons**, **spells**, **creatures**, **enchantments**, economy, combos, and consolidated recommendations. Metrics sourced from `game/validation/card-balance/analyzeCards.mjs` (sub-ticket 01) plus manual simulation notes (sub-ticket 03). Sub-ticket 04 applied five `apply-now` tunings in `cardStats.json`; sub-ticket 06 reconciles this report to post-tuning live stats (no further JSON or gameplay changes).
 
 ## Methodology
 
@@ -26,8 +26,8 @@ Card-balance pass parts 1–2: **weapons**, **spells**, **creatures**, **enchant
 
 **Peer bands.** Verdicts compare each card to same-type peers on `damagePerCharge` and `damagePerMs`:
 
-- **Weapons** (13 damage-dealing rows): DPC Q1–Q3 ≈ 3.25–5.0; DPM Q1–Q3 ≈ 0.020–0.031.
-- **Spells** (11 damage-dealing rows): DPC Q1–Q3 ≈ 11–42; DPM Q1–Q3 ≈ 0.014–0.053.
+- **Weapons** (13 damage-dealing rows): DPC Q1–Q3 ≈ 3.4–5.0; DPM Q1–Q3 ≈ 0.021–0.031.
+- **Spells** (11 damage-dealing rows): DPC Q1–Q3 ≈ 11–35; DPM Q1–Q3 ≈ 0.014–0.044.
 - **Utility-only** rows (0 damage, non-zero utility effect): verdict `ok` when role is clear; `dead` when the card has no combat or economy proxy in harness (e.g. pure draw).
 
 **Verdict labels:** `ok` (within band or role-appropriate), `over`, `under`, `dead` (zero combat metric, niche/utility).
@@ -46,24 +46,24 @@ Regenerate raw metrics: `node game/validation/card-balance/analyzeCards.mjs`
 | Solar Edge | flame_blade | 3 | 0 | 28 | 9.33 | 0.035 | reward:0 | over | `operator-triage` — early reward outpaces evolved-band weapons; confirm intentional power spike |
 | Alloy Greatblade | steel_claymore | 6 | 0 | 25 | 4.17 | 0.031 | evolved | ok | — |
 | Corebreaker Greatsword | magma_greatsword | 4 | 0 | 86 | 21.50 | 0.108 | evolved | over | `operator-triage` — fire-trail DoT doubles effective burst; evolution target may be fine but dwarfs non-evolved lane |
-| Saber of Light | saber_of_light | 6 | 0 | 9 | 1.50 | 0.023 | reward:3 | under | `apply-now` — raise base damage ~3 (to ~12) or reduce cooldown slightly; per-charge efficiency is bottom of band despite fast swing |
+| Saber of Light | saber_of_light | 6 | 0 | 12 | 2.00 | 0.030 | reward:3 | under | **done** (sub-ticket 04) — DPC still below Q1 despite 12 base; 400 ms cooldown keeps DPM in band |
 | Excalibur Photon | excalibur_photon | 6 | 0 | 14×2 | 4.67 | 0.140 | evolved | over | `operator-triage` — 200 ms cooldown + double swing dominates DPM; verify evolution rarity justifies |
 | Photon Slicer | photon_slicer | 4 | 0 | 13 | 3.25 | 0.016 | reward:6 | ok | — |
 | Infinite Disk | infinite_disk | 4 | 0 | 20 | 5.00 | 0.025 | evolved | ok | — |
 | Arcane Bolt | arcane_bolt | 4 | 0 | 20 | 5.00 | 0.025 | reward:7 | ok | — |
-| Fireball | fireball | 4 | 0 | 16 | 4.00 | 0.020 | reward:27 | ok | `apply-now` — +2 impact damage to align with arcane_bolt lane; burn/pierce already compensates (see spotlight) |
+| Fireball | fireball | 4 | 0 | 18 | 4.50 | 0.023 | reward:27 | ok | **done** (sub-ticket 04) — impact 18 aligns with arcane_bolt lane; burn/pierce unchanged (see spotlight) |
 | Phase Echo | echo_blade | 5 | 0 | 15 | 3.00 | 0.019 | reward:15 | ok | `operator-triage` — shockwave every 3rd swing not in harness; qualitative bump likely |
 | Resonance Edge | resonance_edge | 5 | 0 | 23 | 4.60 | 0.029 | evolved | ok | — |
-| Ether Scythe | harvesting_scythe | 3 | 0 | 9 | 3.00 | 0.011 | reward:19 | under | `apply-now` — +3 base damage or +5 MS-on-hit; economy role but combat DPM is lowest weapon band |
+| Ether Scythe | harvesting_scythe | 3 | 0 | 12 | 4.00 | 0.015 | reward:19 | under | **done** (sub-ticket 04) — DPC in band but DPM still lowest weapon band; MS-on-hit/kill economy unchanged |
 | Deck Sifter | deck_sifter | 3 | 0 | 0 | 0 | 0 | reward:20 | dead | `operator-triage` — draw utility only; add non-damage utility scoring before numeric tuning |
 
 ### Weapon outlier notes
 
 1. **magma_greatsword** — DPC 21.5 and DPM 0.108 sit far above Q3; fire-trail DoT (44 trail + 42 hit) makes it the clearest weapon outlier. **`operator-triage`**
 2. **excalibur_photon** — DPM 0.14 is ~4.5× peer Q3 from 200 ms cooldown and `swingsPerUse: 2`; evolved rarity may justify. **`operator-triage`**
-3. **saber_of_light** — DPC 1.5 is lowest in band; fast cooldown partially offsets but charge efficiency is weak vs iron_sword. **`apply-now`**
+3. **saber_of_light** — Post-tuning DPC 2.0 remains lowest in band (6 charges); 400 ms cooldown yields DPM 0.030 in band. Further bump needs charge-pool or cooldown pass. **`operator-triage`**
 4. **flame_blade** — DPC 9.33 exceeds most evolved weapons despite being an early reward; competes with fireball/arcane_bolt unlock window. **`operator-triage`**
-5. **harvesting_scythe** — Lowest weapon DPM; MS-on-hit/kill economy is the real value. **`apply-now`**
+5. **harvesting_scythe** — Post-tuning DPM 0.015 is still lowest weapon band; MS-on-hit/kill economy is the real value. **`operator-triage`**
 
 ## Spells
 
@@ -74,7 +74,7 @@ Regenerate raw metrics: `node game/validation/card-balance/analyzeCards.mjs`
 | Signal Familiar | battle_familiar | 1 | 50 | 44 | 44.00 | 0.055 | reward:1 | over | `operator-triage` — high burst + summon body; early reward power budget |
 | Astral Guardian | astral_guardian | 1 | 65 | 66 | 66.00 | 0.083 | evolved | over | `operator-triage` — top spell DPC/DPM; evolution + shield/minion stack |
 | Cryo Burst | frost_nova | 1 | 35 | 11 | 11.00 | 0.014 | reward:4 | ok | — |
-| Permafrost Lance | permafrost_lance | 1 | 30 | 8 | 8.00 | 0.010 | reward:5 | under | `apply-now` — +3 damage to match frost_nova lane or widen radius |
+| Permafrost Lance | permafrost_lance | 1 | 30 | 11 | 11.00 | 0.014 | reward:5 | ok | **done** (sub-ticket 04) — matches frost_nova DPC/DPM lane |
 | Restoration Beacon | healing_font | 1 | 0 | 0 | — | — | reward:8 | ok | — (utility: +6 MS) |
 | Sanctum Pulse | divine_grace | 1 | 0 | 0 | — | — | evolved | ok | — (utility: +10 MS) |
 | Voltaic Chain | chain_lightning | 1 | 42 | 22 | 22.00 | 0.028 | reward:26 | ok | — (max 44 vs clusters; see spotlight) |
@@ -85,7 +85,7 @@ Regenerate raw metrics: `node game/validation/card-balance/analyzeCards.mjs`
 | Event Horizon | event_horizon | 1 | 45 | 0 | 0 | 0 | evolved | dead | `operator-triage` — crush damage (33 center) not in harness primary field |
 | Ether Siphon | mana_leach | 1 | 30 | 28 | 28.00 | 0.035 | reward:16 | ok | — |
 | Soul Drain | soul_drain | 1 | 30 | 42 | 42.00 | 0.053 | evolved | over | `operator-triage` — top-tier single-target burst + MS leech; evolution target |
-| Wyrmflare | dragons_breath | 1 | 40 | 9 | 9.00 | 0.011 | reward:17 | under | `apply-now` — +4 initial damage; DoT ticks exist in stats but lack per-tick field for harness |
+| Wyrmflare | dragons_breath | 1 | 40 | 13 | 13.00 | 0.016 | reward:17 | ok | **done** (sub-ticket 04) — initial burst in band; DoT ticks exist in stats but lack per-tick field for harness |
 | Thermal Column | inferno_pillar | 1 | 40 | 13 | 13.00 | 0.016 | evolved | ok | — |
 | Mana Prism | mana_prism | 1 | 0 | 0 | 0 | 0 | reward:18 | dead | `operator-triage` — passive MS pulse; no combat metric |
 | Offering Terminal | sacrificial_altar | 1 | 0 | 0 | — | — | reward:21 | ok | — (utility: +100 MS, charge restore) |
@@ -96,9 +96,7 @@ Regenerate raw metrics: `node game/validation/card-balance/analyzeCards.mjs`
 
 1. **astral_guardian** — DPC 66 / DPM 0.083 exceed all peers; 65 MS cost partially gates but burst is extreme. **`operator-triage`**
 2. **soul_drain** — DPC 42 at Q3 ceiling with MS leech; evolved finisher. **`operator-triage`**
-3. **permafrost_lance** — DPC 8 below Q1 (11); frost_nova outclasses for +5 MS. **`apply-now`**
-4. **dragons_breath** — DPC 9 bottom of damage band; breath DoT undercounted in harness. **`apply-now`**
-5. **battle_familiar** — DPC 44 on reward:1 competes with late-game evolved spells. **`operator-triage`**
+3. **battle_familiar** — DPC 44 on reward:1 competes with late-game evolved spells. **`operator-triage`**
 
 ## New/changed cards (294–302 spotlight)
 
@@ -108,20 +106,20 @@ Cards landed in tickets 294–302. Compared to same-type peers on damage, MS cos
 
 | Stat | Value | Peer context |
 | --- | --- | --- |
-| Impact damage | 16 | arcane_bolt 20, photon_slicer 13 |
+| Impact damage | 18 | arcane_bolt 20, photon_slicer 13 |
 | Charges / cooldown | 4 / 800 ms | Same charge pool as arcane_bolt |
 | MS cost | 0 | Free to cast (weapon) |
 | Utility | Pierce + burn (3000 ms) | arcane_bolt pierces only; ~30 bonus burn damage not in harness |
 
-**Assessment.** Raw DPC (4.0) sits at weapon median; pierce-line and guaranteed burn on every hit add clear upside over arcane_bolt in multi-enemy lanes. Slightly **under** on paper vs arcane_bolt (5.0 DPC) but **ok** overall once burn is counted. Late reward (order 27) is appropriate.
+**Assessment.** Raw DPC (4.5) sits mid-band; pierce-line and guaranteed burn on every hit add clear upside over arcane_bolt in multi-enemy lanes. Post-tuning impact (18) closes the gap vs arcane_bolt (5.0 DPC) while burn remains extra upside. Late reward (order 27) is appropriate.
 
-**Recommendation:** `apply-now` — optional +2 impact if burn feels weak in playtests; otherwise leave numbers.
+**Recommendation:** **done** (sub-ticket 04) — +2 impact applied (16 → 18); burn/pierce unchanged.
 
 ### ice_ball (294) — spell
 
 | Stat | Value | Peer context |
 | --- | --- | --- |
-| Impact damage | 12 | frost_nova 11, permafrost_lance 8 |
+| Impact damage | 12 | frost_nova 11, permafrost_lance 11 |
 | MS cost | 32 | frost_nova 35, permafrost_lance 30 |
 | Charges / cooldown | 1 / 800 ms | Standard spell slot |
 | Utility | 50% slow, 3 s, 0.5 factor | frost_nova: AoE freeze; permafrost: wider nova freeze |
@@ -220,7 +218,7 @@ Post-298 stats in `cardStats.json`: `attackDamage: 2` (mapped to `breathDamage` 
 
 † Harness proxy uses `minReflectDamage` (17); actual reflect scales at 50% incoming (`enchantment.test.js`).
 
-**Vs spell peers at similar MS:** spike_trap (25 MS, 39 burst) ≈ frost_nova lane (35 MS, 11 + freeze); cinder_snare (25 MS, 40 total DoT) ≈ dragons_breath (40 MS, 9 + DoT undercounted). Mirror ward (30 MS) competes with mana_leach (30 MS, 28 dmg) on cost but is defensive — different role.
+**Vs spell peers at similar MS:** spike_trap (25 MS, 39 burst) ≈ frost_nova lane (35 MS, 11 + freeze); cinder_snare (25 MS, 40 total DoT) ≈ dragons_breath (40 MS, 13 + DoT undercounted). Mirror ward (30 MS) competes with mana_leach (30 MS, 28 dmg) on cost but is defensive — different role.
 
 ### Enchantment notes
 
@@ -261,30 +259,30 @@ Plausible multi-card loops from `cardEffects.js`, `simulation.js`, and integrati
 
 ## Executive summary
 
-- **47 cards** catalogued once across weapons (14), spells (20), creatures (10), and enchantments (3). Harness metrics flag **over** outliers on early rewards (`flame_blade`, `battle_familiar`) and evolved finishers (`magma_greatsword`, `excalibur_photon`, `astral_guardian`, `soul_drain`); **under** on `saber_of_light`, `permafrost_lance`, `dragons_breath`, `harvesting_scythe`.
+- **47 cards** catalogued once across weapons (14), spells (20), creatures (10), and enchantments (3). Harness metrics flag **over** outliers on early rewards (`flame_blade`, `battle_familiar`) and evolved finishers (`magma_greatsword`, `excalibur_photon`, `astral_guardian`, `soul_drain`); **under** on `saber_of_light` and `harvesting_scythe` only (post-tuning `fireball`, `permafrost_lance`, and `dragons_breath` now **ok**).
 - **Vault Wyrm (298):** rebalance to `attackDamage: 2` + `burning_breath` is **ok** — combined breath + burn DPS (~6) beats Archive Wyrm sustained direct (~3.6) but on a fragile 50 HP body at reward:2; evolution to Archive Wyrm remains the range/DPS upgrade path.
 - **Creatures:** `null_crawler` and `storm_eagle` are the main combat outliers (harness and simulation cadence respectively). Tank/summon roles (`skeleton_knight`, `aegis_sentinel`, `undead_commander`, `battery_automaton`) read **ok** on utility.
 - **Enchantments:** hazard DPS is in-band for MS cost; no mandatory tuning.
 - **Economy:** 17 cards use fallback sell values; duplicate `rewardOrder: 27` on `fireball` / `purifying_pulse` should be deduped in a future data pass.
 - **Combos:** altar-centric MS/charge engines are the highest-risk degenerate line; pull+hazard and chrono refresh are moderate but mostly data-tunable.
-- **Sub-ticket 04 scope:** **8 `apply-now`** numeric tweaks (small stat bumps/reductions); **18 `operator-triage`** items (design intent, harness gaps, or utility scoring).
+- **Sub-ticket 04 scope:** **5 `apply-now` tunings applied** in `cardStats.json`; **3 optional `apply-now`** remain (ice_ball, purifying_pulse, chain_lightning); **18 `operator-triage`** items (design intent, harness gaps, or utility scoring). Sub-ticket 06 reconciled this report to post-tuning harness output.
 
 ## Recommendations
 
-Consolidated from all type tables. **No JSON applied in this sub-ticket** — field names refer to `game/shared/cardStats.json` unless noted (`cardDefs.json` for `rewardOrder`, `cardEconomy.json` for sell values).
+Consolidated from all type tables. Five **apply-now** items were applied in sub-ticket 04 (see `## Applied tunings`); remaining rows are optional or triage backlog.
 
 ### apply-now (small numeric tweaks)
 
-| id | field(s) | change |
-| --- | --- | --- |
-| saber_of_light | `damage` | +3 (9 → 12) **or** `cooldownMs` 400 → 350 |
-| fireball | `damage` | +2 (16 → 18) |
-| harvesting_scythe | `damage` **or** `magicStoneOnHit` | +3 damage **or** +5 MS on hit |
-| permafrost_lance | `damage` | +3 (8 → 11) |
-| dragons_breath | `damage` | +4 (9 → 13) |
-| ice_ball | `slowChance` | 0.5 → 0.65 (only if slow feels weak in playtests) |
-| purifying_pulse | `healAmount` **or** `radius` | +5 heal **or** +1 m radius (only if underused) |
-| chain_lightning | `magicStoneCost` | −5 (42 → 37; only if MS starvation blocks casts) |
+| id | field(s) | change | status |
+| --- | --- | --- | --- |
+| saber_of_light | `damage` | +3 (9 → 12) | **done** — see Applied tunings |
+| fireball | `damage` | +2 (16 → 18) | **done** — see Applied tunings |
+| harvesting_scythe | `damage` | +3 (9 → 12) | **done** — see Applied tunings |
+| permafrost_lance | `damage` | +3 (8 → 11) | **done** — see Applied tunings |
+| dragons_breath | `damage` | +4 (9 → 13) | **done** — see Applied tunings |
+| ice_ball | `slowChance` | 0.5 → 0.65 (only if slow feels weak in playtests) | optional |
+| purifying_pulse | `healAmount` **or** `radius` | +5 heal **or** +1 m radius (only if underused) | optional |
+| chain_lightning | `magicStoneCost` | −5 (42 → 37; only if MS starvation blocks casts) | optional |
 
 Optional creature tweak (playtest-gated): `dungeon_drake` — `attackDamage` +1 **or** `burnDurationMs` +500, not both.
 
