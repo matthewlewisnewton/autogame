@@ -2594,10 +2594,66 @@ function hasActivePlayers() {
   return Object.values(_gameState.players).some(isPlayerActive);
 }
 
+function cloneHandCards(hand) {
+  if (!Array.isArray(hand)) return [];
+  return hand.map((card) => (card ? { ...card } : card));
+}
+
+function capturePlayerCardState(player) {
+  return {
+    hand: cloneHandCards(player.hand),
+    deck: Array.isArray(player.deck) ? [...player.deck] : [],
+    inDesperation: !!player.inDesperation,
+    nextDrawAt: player.nextDrawAt ?? null,
+    desperationDeck: Array.isArray(player.desperationDeck) ? [...player.desperationDeck] : [],
+  };
+}
+
+function captureCardCheckpoint() {
+  const run = _gameState.run;
+  if (!run) return null;
+
+  const checkpoint = {
+    run: {
+      id: run.id,
+      questId: run.questId,
+      questTier: run.questTier ?? DEFAULT_QUEST_TIER,
+      questName: run.questName,
+      objective: run.objective ? JSON.parse(JSON.stringify(run.objective)) : null,
+      status: run.status,
+      startedAt: run.startedAt,
+    },
+    playerStates: {},
+  };
+
+  if (run.encounter) {
+    checkpoint.run.encounter = JSON.parse(JSON.stringify(run.encounter));
+  }
+
+  for (const [playerId, player] of Object.entries(_gameState.players)) {
+    checkpoint.playerStates[playerId] = capturePlayerCardState(player);
+  }
+
+  return checkpoint;
+}
+
+function buildSuspendedRunSummary(checkpoint) {
+  if (!checkpoint?.run) return null;
+  const { run } = checkpoint;
+  return {
+    questId: run.questId,
+    questName: run.questName,
+    objective: run.objective ? { ...run.objective } : null,
+  };
+}
+
 function suspendRunToLobby() {
   if (!_gameState.run || _gameState.run.status !== 'playing') return;
 
   const questName = _gameState.run.questName || 'unknown';
+
+  _gameState.suspendedCheckpoint = captureCardCheckpoint();
+  console.log('[run] checkpoint captured');
   console.log(`[run] extracted to hub: ${questName}`);
 
   resetTransientRunState();
@@ -2625,8 +2681,10 @@ function suspendRunToLobby() {
 
   refreshShopOffer();
 
+  const suspendedRunSummary = buildSuspendedRunSummary(_gameState.suspendedCheckpoint);
   const io = getIoTarget();
   if (io) {
+    io.emit(SERVER_TO_CLIENT.RUN_SUSPENDED, suspendedRunSummary);
     io.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
   }
   _broadcastLobbyUpdate();
@@ -2824,6 +2882,9 @@ function buildWorldSnapshot(shopOffer) {
     currency: _gameState.currency,
     shopOffer,
     telepipe: _gameState.telepipe || null,
+    suspendedRunSummary: _gameState.suspendedCheckpoint
+      ? buildSuspendedRunSummary(_gameState.suspendedCheckpoint)
+      : null,
   };
 }
 

@@ -2872,11 +2872,14 @@ describe('run state', () => {
 			expect(result.reason).toBe('too_far');
 		});
 
-		it('telepipe extract returns squad to hub with cleared world and no checkpoint', () => {
+		it('telepipe extract returns squad to hub with cleared world and captured checkpoint', () => {
+			const preSuspendRunId = gameState.run.id;
 			gameState.players.p1.hp = 42;
 			gameState.players.p1.magicStones = 15;
+			gameState.players.p1.hand[0].remainingCharges = 0;
 			gameState.players.p2.hp = 55;
 			gameState.players.p2.magicStones = 22;
+			gameState.players.p2.hand[0].remainingCharges = 0;
 
 			tryEnterTelepipe('p1');
 			gameState.players.p2.x = 5;
@@ -2891,7 +2894,22 @@ describe('run state', () => {
 			expect(gameState.players.p1.magicStones).toBe(15);
 			expect(gameState.players.p2.hp).toBe(55);
 			expect(gameState.players.p2.magicStones).toBe(22);
-			expect(stateSnapshot().suspendedRunSummary).toBeUndefined();
+			expect(gameState.players.p1.hand).toEqual([]);
+			expect(gameState.players.p2.hand).toEqual([]);
+
+			expect(gameState.suspendedCheckpoint).not.toBeNull();
+			expect(gameState.suspendedCheckpoint.run.id).toBe(preSuspendRunId);
+			expect(gameState.suspendedCheckpoint.playerStates.p1.hand[0].remainingCharges).toBe(0);
+			expect(gameState.suspendedCheckpoint.playerStates.p2.hand[0].remainingCharges).toBe(0);
+			gameState.suspendedCheckpoint.playerStates.p1.hand[0].remainingCharges = 99;
+			expect(gameState.players.p1.hand).toEqual([]);
+
+			const snapshot = stateSnapshot();
+			expect(snapshot.suspendedRunSummary).toEqual({
+				questId: gameState.selectedQuestId,
+				questName: gameState.suspendedCheckpoint.run.questName,
+				objective: gameState.suspendedCheckpoint.run.objective,
+			});
 		});
 
 		it('checkAllReady after telepipe extract spawns a fresh dungeon run', () => {
@@ -4940,7 +4958,7 @@ describe('hotStateSnapshot() — slim per-tick payload', () => {
 		expect(snapshot.lobby).toEqual([]);
 		expect(snapshot.dungeonBounds).toEqual(gameState.dungeonBounds);
 		expect(snapshot).toHaveProperty('shopOffer');
-		expect(snapshot.suspendedRunSummary).toBeUndefined();
+		expect(snapshot.suspendedRunSummary).toBeNull();
 	});
 
 	it('full stateSnapshot still includes cold fields', () => {

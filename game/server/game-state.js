@@ -28,6 +28,7 @@ function createGameState() {
     pendingTrades: {},
     shopOffer: null,
     telepipe: null,
+    suspendedCheckpoint: null,
     // Pending Echo Strike packets ({ attackerId, targets:[{enemyId,damage}], applyAt }),
     // applied on a later tick by simulation.processPendingEchoes().
     pendingEchoes: [],
