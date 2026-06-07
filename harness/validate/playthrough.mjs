@@ -24,7 +24,7 @@ import {
 } from './lib/combat.mjs';
 import { wireConsoleLog, writeConsoleLog } from './lib/consoleLog.mjs';
 import { renderFindings } from './lib/findings.mjs';
-import { renderHubFindings } from './lib/findingsHub.mjs';
+import { renderHubFindings, evaluateWalkablePresentation } from './lib/findingsHub.mjs';
 import { assertGameProcessAlive, getServerLogTail, startGame, stopGame } from './lib/gameProcess.mjs';
 import { readHarness } from './lib/harnessState.mjs';
 import { writeScreenshot } from './lib/screenshot.mjs';
@@ -1037,9 +1037,15 @@ async function main() {
 
 		if (runsHubFull) {
 			summary.assertions = buildHubAssertions(summary);
-			summary.ok = Object.values(summary.assertions).every((value) => value === true);
+			const walkableOk = evaluateWalkablePresentation(summary.hubWalk).ok;
+			const assertionsOk = Object.values(summary.assertions).every((value) => value === true);
+			summary.ok = assertionsOk && walkableOk;
 			if (!summary.ok) {
-				summary.error = summary.error || 'One or more hub assertions failed';
+				if (!walkableOk) {
+					summary.error = summary.error || 'Walkable hub presentation probes failed';
+				} else {
+					summary.error = summary.error || 'One or more hub assertions failed';
+				}
 				exitCode = 1;
 			}
 		}
