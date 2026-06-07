@@ -2913,6 +2913,108 @@ describe('run state', () => {
 			});
 		});
 
+		it('suspendRunToLobby captures world snapshot with enemy ids, objective, and layout', () => {
+			const liveEnemyRef = {
+				id: 'enemy-alpha',
+				x: 14,
+				z: 14,
+				hp: 22,
+				maxHp: 40,
+				type: 'grunt',
+				state: 'chase',
+				attackState: 'windup',
+				spawnedBy: null,
+				wanderTarget: { x: 14, z: 14 },
+			};
+			const liveEnemyRef2 = {
+				id: 'enemy-beta',
+				x: 16,
+				z: 16,
+				hp: 40,
+				maxHp: 40,
+				type: 'grunt',
+				state: 'idle',
+				attackState: 'idle',
+				spawnedBy: 'spawner-1',
+				wanderTarget: { x: 16, z: 16 },
+			};
+			gameState.enemies = [liveEnemyRef, liveEnemyRef2];
+			gameState.minions.push({ id: 'minion-1', ownerId: 'p1', x: 8, z: 8, hp: 30, ttl: 20 });
+			gameState.loot.push({ id: 'loot-1', x: 9, z: 9, value: 5, createdAt: Date.now() });
+			gameState.areaEffects.push({ id: 'fx-1', type: 'fire', x: 10, z: 10, radius: 2, expiresAt: Date.now() + 5000 });
+			gameState.iceBalls.push({ id: 'ice-1', ownerId: 'enemy-beta', x: 15, z: 15, dirX: 1, dirZ: 0, traveled: 1 });
+			gameState.enchantments.push({ id: 'enc-1', cardId: 'spike_trap', x: 11, z: 11, expiresAt: Date.now() + 10000 });
+			gameState.layout = { rooms: [{ x: 0, z: 0, width: 20, depth: 20, role: 'start' }] };
+			gameState.layoutSeed = 4242;
+			gameState.dungeonBounds = { minX: -10, maxX: 10, minZ: -10, maxZ: 10 };
+			gameState.run.encounter = {
+				bossEnemyId: 'enemy-alpha',
+				phase: 'active',
+				locked: true,
+				spawnAnchor: { x: 14, z: 14 },
+			};
+			gameState.run.objective = {
+				type: 'defeat_enemies',
+				totalEnemies: 5,
+				defeatedEnemies: 0,
+				label: 'Purge hostiles',
+			};
+			recordEnemyDefeated(1);
+
+			const preSuspendObjective = {
+				type: gameState.run.objective.type,
+				totalEnemies: gameState.run.objective.totalEnemies,
+				defeatedEnemies: gameState.run.objective.defeatedEnemies,
+				label: gameState.run.objective.label,
+			};
+			const preSuspendTelepipe = { ...gameState.telepipe };
+
+			tryEnterTelepipe('p1');
+			gameState.players.p2.x = 5;
+			gameState.players.p2.z = 5;
+			tryEnterTelepipe('p2');
+
+			expect(gameState.enemies).toHaveLength(0);
+			expect(gameState.minions).toHaveLength(0);
+			expect(gameState.loot).toHaveLength(0);
+			expect(gameState.areaEffects).toHaveLength(0);
+			expect(gameState.iceBalls).toHaveLength(0);
+			expect(gameState.telepipe).toBeNull();
+
+			const checkpoint = gameState.suspendedCheckpoint;
+			expect(checkpoint).not.toBeNull();
+			expect(checkpoint.worldState).toBeDefined();
+
+			const world = checkpoint.worldState;
+			expect(world.enemies.map((e) => e.id)).toEqual(['enemy-alpha', 'enemy-beta']);
+			expect(world.enemies[0].hp).toBe(22);
+			expect(world.enemies[0].state).toBe('chase');
+			expect(world.enemies[0].attackState).toBe('windup');
+			expect(world.enemies[1].spawnedBy).toBe('spawner-1');
+			expect(world.minions).toHaveLength(1);
+			expect(world.loot).toHaveLength(1);
+			expect(world.areaEffects).toHaveLength(1);
+			expect(world.iceBalls).toHaveLength(1);
+			expect(world.enchantments).toHaveLength(1);
+			expect(world.telepipe).toEqual(preSuspendTelepipe);
+			expect(world.layout).toEqual(gameState.layout);
+			expect(world.layoutSeed).toBe(4242);
+			expect(world.dungeonBounds).toEqual({ minX: -10, maxX: 10, minZ: -10, maxZ: 10 });
+
+			expect(checkpoint.run.objective).toEqual(preSuspendObjective);
+			expect(checkpoint.run.encounter).toEqual({
+				bossEnemyId: 'enemy-alpha',
+				phase: 'active',
+				locked: true,
+				spawnAnchor: { x: 14, z: 14 },
+			});
+
+			liveEnemyRef.hp = 999;
+			expect(checkpoint.worldState.enemies[0].hp).toBe(22);
+			checkpoint.worldState.enemies[0].hp = 888;
+			expect(liveEnemyRef.hp).toBe(999);
+		});
+
 		it('checkAllReady after telepipe extract spawns a fresh dungeon run', () => {
 			const preExtractRunId = gameState.run.id;
 			tryEnterTelepipe('p1');

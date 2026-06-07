@@ -2609,6 +2609,26 @@ function capturePlayerCardState(player) {
   };
 }
 
+function deepCloneJson(value) {
+  if (value == null) return value;
+  return JSON.parse(JSON.stringify(value));
+}
+
+function captureWorldState() {
+  return {
+    enemies: deepCloneJson(_gameState.enemies ?? []),
+    minions: deepCloneJson(_gameState.minions ?? []),
+    loot: deepCloneJson(_gameState.loot ?? []),
+    areaEffects: deepCloneJson(_gameState.areaEffects ?? []),
+    iceBalls: deepCloneJson(_gameState.iceBalls ?? []),
+    enchantments: deepCloneJson(_gameState.enchantments ?? []),
+    telepipe: _gameState.telepipe ? deepCloneJson(_gameState.telepipe) : null,
+    layout: _gameState.layout ? deepCloneJson(_gameState.layout) : null,
+    layoutSeed: _gameState.layoutSeed ?? null,
+    dungeonBounds: _gameState.dungeonBounds ? deepCloneJson(_gameState.dungeonBounds) : null,
+  };
+}
+
 function captureCardCheckpoint() {
   const run = _gameState.run;
   if (!run) return null;
@@ -2619,15 +2639,16 @@ function captureCardCheckpoint() {
       questId: run.questId,
       questTier: run.questTier ?? DEFAULT_QUEST_TIER,
       questName: run.questName,
-      objective: run.objective ? JSON.parse(JSON.stringify(run.objective)) : null,
+      objective: run.objective ? deepCloneJson(run.objective) : null,
       status: run.status,
       startedAt: run.startedAt,
     },
     playerStates: {},
+    worldState: captureWorldState(),
   };
 
   if (run.encounter) {
-    checkpoint.run.encounter = JSON.parse(JSON.stringify(run.encounter));
+    checkpoint.run.encounter = deepCloneJson(run.encounter);
   }
 
   for (const [playerId, player] of Object.entries(_gameState.players)) {
