@@ -150,6 +150,41 @@ function firstSquadmate(harness) {
 	return mates.find((m) => m && Number.isFinite(m.x) && Number.isFinite(m.z)) || null;
 }
 
+async function probeWalkableHubPresentation(page) {
+	return page.evaluate(() => {
+		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
+		const lobby = document.getElementById('lobby');
+		const canvas = document.querySelector('canvas');
+		const squadmates = Array.isArray(harness?.squadmates) ? harness.squadmates : [];
+		const remoteSquadmateCount = squadmates.filter(
+			(m) => m && Number.isFinite(m.x) && Number.isFinite(m.z),
+		).length;
+		return {
+			lobbyHidden: lobby ? lobby.classList.contains('hidden') : false,
+			lobbyMenuDismissed: harness?.lobbyMenuDismissed === true,
+			hubCanvasActive: harness?.hasCanvas === true
+				&& !!canvas
+				&& canvas.width > 0
+				&& canvas.height > 0,
+			playersOnHost: harness?.players ?? null,
+			remoteSquadmateCount,
+			layoutProfile: harness?.layout?.profile ?? null,
+		};
+	});
+}
+
+function assertWalkableHubPresentation(probe) {
+	if (probe.lobbyHidden !== true || probe.lobbyMenuDismissed !== true || probe.hubCanvasActive !== true) {
+		throw new Error(`Walkable hub presentation probe failed: ${JSON.stringify(probe)}`);
+	}
+}
+
+async function requireWalkableHubPresentation(page) {
+	const probe = await probeWalkableHubPresentation(page);
+	assertWalkableHubPresentation(probe);
+	return probe;
+}
+
 async function nudgeJoinerForPresence(joinerPage, targetX, targetZ) {
 	await joinerPage.evaluate(() => document.querySelector('canvas')?.focus());
 	const harness = await readHarness(joinerPage);
@@ -297,9 +332,11 @@ async function runHubWalkStep({ browser, game, preset, outDirAbs }) {
 			await failWithHarnessPair(hostPage, joinerPage, 'Remote squadmate position did not update after joiner move');
 		});
 
+		const overviewProbe = await requireWalkableHubPresentation(hostPage);
 		const overviewScreenshot = await writeScreenshot(hostPage, outDirAbs, '01-hub-overview');
 
 		const zoneScreenshots = {};
+		const zoneProbes = {};
 		const zoneShotNames = {
 			operations: '02-room-operations',
 			commerce: '03-room-commerce',
@@ -314,6 +351,7 @@ async function runHubWalkStep({ browser, game, preset, outDirAbs }) {
 			if (!shotName) {
 				throw new Error(`No screenshot name mapped for hub zone ${zoneName}`);
 			}
+			zoneProbes[zoneName] = await requireWalkableHubPresentation(hostPage);
 			const shotPath = await writeScreenshot(hostPage, outDirAbs, shotName);
 			zoneScreenshots[zoneName] = path.relative(REPO_ROOT, shotPath);
 		}
@@ -328,6 +366,10 @@ async function runHubWalkStep({ browser, game, preset, outDirAbs }) {
 			zoneScreenshots,
 			layoutProfile: finalHostHarness?.layout?.profile ?? null,
 			layoutRoomCount: finalHostHarness?.layout?.roomCount ?? null,
+			walkablePresentation: {
+				overview: overviewProbe,
+				zones: zoneProbes,
+			},
 		};
 	} finally {
 		await hostPage.close().catch(() => {});
