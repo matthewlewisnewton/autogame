@@ -3854,8 +3854,8 @@ describe('run state', () => {
 		it('healing_font and divine_grace define healAmount for HP restoration', () => {
 			expect(CARD_DEFS.healing_font.healAmount).toBe(6);
 			expect(CARD_DEFS.divine_grace.healAmount).toBe(10);
-			expect(CARD_DEFS.soul_drain.healOnHit).toBeUndefined();
-			expect(CARD_DEFS.soul_drain.healOnKill).toBeUndefined();
+			expect(CARD_DEFS.soul_drain.healOnHit).toBe(12);
+			expect(CARD_DEFS.soul_drain.healOnKill).toBe(18);
 		});
 	});
 

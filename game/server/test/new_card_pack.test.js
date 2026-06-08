@@ -335,25 +335,30 @@ describe('new card combat helpers', () => {
 		expect(gameState.players.p1.magicStones).toBe(16);
 	});
 
-	it('Soul Drain radial hits grant magic stones without healing the attacker', () => {
-		addPlayer('p1', { hp: 50, magicStones: 0 });
+	it('Soul Drain radial hits grant magic stones and heal the attacker', () => {
+		addPlayer('p1', { hp: 30, magicStones: 0 });
 		gameState.enemies = [
 			{ id: 'e1', type: 'grunt', x: 1, z: 0, hp: 40 },
 			{ id: 'e2', type: 'grunt', x: -2, z: 0, hp: 40 },
 		];
 		const def = CARD_DEFS.soul_drain;
-		expect(def.healOnHit).toBeUndefined();
-		expect(def.healOnKill).toBeUndefined();
+		expect(def.healOnHit).toBe(12);
+		expect(def.healOnKill).toBe(18);
 		const result = collectRadialHits(0, 0, SUMMON_RADIUS, def.damage, {
 			magicStoneOnHit: def.magicStoneOnHit,
+			healOnHit: def.healOnHit,
+			healOnKill: def.healOnKill,
 			attackerId: 'p1',
 		});
 		addMagicStones(gameState.players.p1, result.magicStonesGained);
 		expect(def.damage).toBe(42);
 		expect(def.magicStoneOnHit).toBe(12);
 		expect(result.magicStonesGained).toBe(24);
-		expect(result.hpHealed).toBeUndefined();
-		expect(gameState.players.p1.hp).toBe(50);
+		// Both enemies die (42 > 40 HP), so heal = 2*12 (hit) + 2*18 (kill) = 60
+		expect(result.hpHealed).toBe(60);
+		const hpHealed = healPlayer('p1', result.hpHealed);
+		expect(hpHealed).toBe(60);
+		expect(gameState.players.p1.hp).toBe(90);
 	});
 
 	it("Wyrmflare leaves a ticking cone area effect", () => {

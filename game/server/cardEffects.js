@@ -946,10 +946,13 @@ function handleUseCard(socket, state, lobby, data) {
       const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, summonDamage, {
         magicStoneOnHit: cardDef.magicStoneOnHit,
         magicStoneOnKill: cardDef.magicStoneOnKill,
+        healOnHit: cardDef.healOnHit,
+        healOnKill: cardDef.healOnKill,
         attackerId: socket.playerId,
       });
       const hits = radial.hits;
       const appliedMagicStones = addMagicStones(player, radial.magicStonesGained);
+      const appliedHpHealed = radial.hpHealed ? healPlayer(socket.playerId, radial.hpHealed) : 0;
 
       cleanupAfterDamage();
 
@@ -971,6 +974,7 @@ function handleUseCard(socket, state, lobby, data) {
         radius: SUMMON_RADIUS,
         hits: hits,
         magicStonesGained: appliedMagicStones,
+        hpHealed: appliedHpHealed,
       });
 
       // Do NOT delete pendingSummons here — leave the entry so any duplicate

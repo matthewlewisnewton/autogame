@@ -303,6 +303,8 @@
     "magicStoneCost": 30,
     "damage": 42,
     "magicStoneOnHit": 12,
+    "healOnHit": 12,
+    "healOnKill": 18,
     "isEvolved": true,
     "specialEffect": "soul_drain"
   },
