@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CARD_DEFS } from '../cards.js';
 import {
 	renderCardUsed,
@@ -6,7 +6,6 @@ import {
 	getAccentHex,
 	SPELL_TYPE_DEFAULT_RENDERER,
 } from '../cardRenderers.js';
-import { CARD_DEFS } from '../cards.js';
 
 /**
  * Build a fresh context object whose helper functions record every call.
@@ -1132,6 +1131,71 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnDivineGraceEffect')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
+	});
+
+	it('divine_grace does not play heal sound for another player even when hpGained > 0', () => {
+		const ctx = makeCtx({ myId: 'me' });
+		renderCardUsed({
+			cardId: 'divine_grace',
+			origin: { x: 0, z: 0 },
+			radius: 3,
+			hpGained: 10,
+			playerId: 'someone-else',
+			hits: [],
+		}, ctx);
+		// VFX still play for the spectator, but the heal cue is local-only.
+		expect(ctx._calls.some((c) => c[0] === 'spawnDivineGraceEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
+	});
+
+	it('divine_grace and purifying_pulse produce different helper signatures and palette for the same payload', () => {
+		const payload = {
+			origin: { x: 0, z: 0 },
+			radius: 3,
+			hpGained: 8,
+			playerId: 'me',
+			hits: [],
+		};
+		const graceCtx = makeCtx({ myId: 'me' });
+		resolveRenderers('divine_grace')[0]({ ...payload, cardId: 'divine_grace' }, graceCtx);
+		const pulseCtx = makeCtx({ myId: 'me' });
+		resolveRenderers('purifying_pulse')[0]({ ...payload, cardId: 'purifying_pulse' }, pulseCtx);
+		const graceHelpers = graceCtx._calls.map((c) => c[0]);
+		const pulseHelpers = pulseCtx._calls.map((c) => c[0]);
+		// Distinct primitive mix: gold sanctum effect vs mint heal ring + cleanse burst.
+		expect(graceHelpers).not.toEqual(pulseHelpers);
+		expect(graceHelpers).toContain('spawnDivineGraceEffect');
+		expect(pulseHelpers).not.toContain('spawnDivineGraceEffect');
+		expect(graceHelpers).not.toContain('spawnPurifyingPulseHealRing');
+		// Gold particle palette is unique to divine_grace (purifying_pulse never bursts gold).
+		const graceBurst = graceCtx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(graceBurst).toBeDefined();
+		expect(graceBurst[2]).toMatchObject({ color: 0xfde68a, emissive: 0xfbbf24 });
+		expect(pulseCtx._calls.some((c) => c[0] === 'spawnParticleBurst' && c[2]?.color === 0xfde68a)).toBe(false);
+	});
+
+	it('divine_grace invokes spawnDivineGraceEffect synchronously with no deferred scheduling', () => {
+		// scheduleAfter is rigged to NEVER run its callback, so anything deferred
+		// through it would be missing from _calls. setTimeout is spied to prove no
+		// timer-based projectile-travel delay is introduced (server resolves instantly).
+		const timeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+		const ctx = makeCtx({
+			myId: 'me',
+			scheduleAfter: (ms) => { ctx._calls.push(['scheduleAfter', ms]); },
+		});
+		renderCardUsed({
+			cardId: 'divine_grace',
+			origin: { x: 0, z: 0 },
+			radius: 3,
+			hpGained: 10,
+			playerId: 'me',
+			hits: [],
+		}, ctx);
+		// The pulse primitive fired during the synchronous render call itself.
+		expect(ctx._calls.some((c) => c[0] === 'spawnDivineGraceEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+		expect(timeoutSpy).not.toHaveBeenCalled();
+		timeoutSpy.mockRestore();
 	});
 
 	it('purifying_pulse renders heal ring and cleanse burst with heal sound', () => {
