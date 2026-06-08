@@ -5587,3 +5587,26 @@ PASS. This ticket did not add or change any development `?debugScenario=` URL sh
 
 None.
 
+
+## v0.320 — 315-card-animation-shared-vfx-primitives-foundation  (2026-06-08 01:05:38)
+
+### Client tests where feasible
+
+PASS. The coverage log shows all tests passing: 30 files, 418 tests. New focused coverage includes primitive lifecycle/disposal tests, accent override tests, card renderer composition/fallback tests, and wind-up charge ratio/telegraph lifecycle tests.
+
+### No performance regression
+
+PASS. The new primitives allocate on effect spawn, then update existing meshes in `updateAttackEffects` without per-frame allocation. Particle effects honor the existing `particlesEnabled` setting, and all new transient meshes are removed and disposed at expiry. No runtime errors or capture regressions were observed.
+
+## Design and requirements consistency
+
+PASS. The changes are client-side visual polish for card combat and do not alter the lobby/dungeon/card-combat loop described in `game/docs/design.md`. They preserve the foundational requirements in `game/docs/requirements.md`: the captured run renders a 3D scene, connects to the backend, shows multiplayer presence, and updates movement during play.
+
+## Debug scenarios
+
+No development debug scenario was added or changed by this ticket. Existing debug scenario plumbing remains outside the changed behavior.
+
+## Remaining gaps
+
+None.
+
