@@ -1038,6 +1038,7 @@ initInput({
 	onToggleDeck: () => toggleDeckViewer(),
 	onUseKeyItem: () => {
 		if (!socket) return;
+		if (isLocalPlayerCardCommitted()) return;
 		const me = gameState?.players?.[myId];
 		if (me && me.equippedKeyItemId) {
 			// phase_step targets the highlighted ally; the renderer recomputes

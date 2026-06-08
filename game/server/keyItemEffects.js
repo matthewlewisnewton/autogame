@@ -24,6 +24,7 @@ const {
   isEntityPositionBlocked,
   isInsideDungeon,
   nearbySpawnPosition,
+  isPlayerCardCommitted,
   ENTITY_RADIUS,
   PLAYER_RADIUS,
 } = require('./simulation');
@@ -64,6 +65,10 @@ function handleUseKeyItem(socket, state, lobby, data) {
     }
     if (player.extracted) {
       socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: false, reason: 'extracted' });
+      return;
+    }
+    if (isPlayerCardCommitted(player)) {
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: false, reason: 'card_commitment' });
       return;
     }
 

@@ -113,4 +113,62 @@ describe('card wind-up input lock until resolution', () => {
 		await cardUsedPromise;
 		expect(cardErrors).not.toContain('Card commitment in progress');
 	});
+
+	it('rejects useKeyItem while card-committed and allows dodge after wind-up resolves', async () => {
+		const { state, player } = await startMagmaWindupScenario();
+		const windUpMs = getCardDef('magma_greatsword').windUpMs;
+		const slotIndex = player.hand.findIndex((c) => c && c.id === 'magma_greatsword');
+		expect(slotIndex).toBeGreaterThanOrEqual(0);
+
+		const startX = player.x;
+		const startZ = player.z;
+		const cooldownBefore = player.keyItemCooldownUntil || 0;
+		const invulnBefore = player.invulnerableUntil || 0;
+
+		player.inputDx = 1;
+		player.inputDz = 0;
+
+		await waitForEvent(socket, 'stateUpdate');
+		socket.emit('useCard', { cardId: 'magma_greatsword', slotIndex, rotation: 0 });
+		await waitForEvent(socket, 'stateUpdate');
+
+		player.cardWindupStartTime = Date.now() - windUpMs - 50;
+		setSimGameState(state, {});
+		setProgressionGameState(state);
+
+		expect(isPlayerCardCommitted(player)).toBe(true);
+
+		const dodgeRejectPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'dodge_roll' });
+		const dodgeReject = await dodgeRejectPromise;
+		expect(dodgeReject.ok).toBe(false);
+		expect(dodgeReject.reason).toBe('card_commitment');
+		expect(player.x).toBe(startX);
+		expect(player.z).toBe(startZ);
+		expect(player.keyItemCooldownUntil || 0).toBe(cooldownBefore);
+		expect(player.invulnerableUntil || 0).toBe(invulnBefore);
+
+		const blockingBefore = player.blockingUntil || 0;
+		const guardRejectPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'guard_block' });
+		const guardReject = await guardRejectPromise;
+		expect(guardReject.ok).toBe(false);
+		expect(guardReject.reason).toBe('card_commitment');
+		expect(player.blockingUntil || 0).toBe(blockingBefore);
+
+		processPendingCardWindups();
+		expect(isPlayerCardCommitted(player)).toBe(false);
+
+		player.keyItemCooldownUntil = 0;
+		player.inputDx = 1;
+		player.inputDz = 0;
+
+		const dodgeOkPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'dodge_roll' });
+		const dodgeOk = await dodgeOkPromise;
+		expect(dodgeOk.ok).toBe(true);
+		expect(dodgeOk.keyItemId).toBe('dodge_roll');
+		expect(Math.hypot(player.x - startX, player.z - startZ)).toBeGreaterThan(0);
+		expect(player.keyItemCooldownUntil).toBeGreaterThan(Date.now());
+	});
 });

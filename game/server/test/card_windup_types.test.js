@@ -71,6 +71,15 @@ describe('card wind-up by card type', () => {
 		return { state, player };
 	}
 
+	async function waitForPlayerWindup(player, timeoutMs = 10000) {
+		const deadline = Date.now() + timeoutMs;
+		while (Date.now() < deadline) {
+			if (player.cardUseState === 'windup') return;
+			await new Promise((resolve) => setTimeout(resolve, 5));
+		}
+		throw new Error('Timed out waiting for cardUseState windup');
+	}
+
 	async function expectWindupLifecycle({
 		cardId,
 		handCard,
@@ -89,14 +98,13 @@ describe('card wind-up by card type', () => {
 		let cardUsed = false;
 		socket.on('cardUsed', () => { cardUsed = true; });
 
-		const commitUpdatePromise = waitForEvent(socket, 'stateUpdate');
 		socket.emit('useCard', { cardId, slotIndex: 0, rotation: 0 });
-		await commitUpdatePromise;
+		await waitForPlayerWindup(player);
 
 		expect(cardUsed).toBe(false);
 		expect(player.cardUseState).toBe('windup');
 		expect(isPlayerCardCommitted(player)).toBe(true);
-		expect(player.magicStones).toBeCloseTo(msBefore - magicStoneCost, 5);
+		expect(player.magicStones).toBeCloseTo(msBefore - magicStoneCost, 1);
 		expect(player.slotCooldowns[0]).toBeGreaterThan(Date.now() - 1000);
 		if (handAfterCommit) {
 			handAfterCommit({ player, chargesBefore, handIdBefore });
@@ -121,6 +129,7 @@ describe('card wind-up by card type', () => {
 		expect(player.cardUseState).toBeUndefined();
 		expect(isPlayerCardCommitted(player)).toBe(false);
 		expect(player.pendingCardUse).toBeUndefined();
+		// runGameLoopTick during resolve may apply MAGIC_STONES_REGEN_PER_TICK (0.005).
 		expect(player.magicStones).toBeCloseTo(msAfterCommit, 1);
 		expect(player.slotCooldowns[0]).toBe(cooldownAfterCommit);
 		expect(cardUsedPayload.cardId).toBe(cardId);

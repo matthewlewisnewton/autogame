@@ -2370,6 +2370,70 @@ describe('Card wind-up input lock', () => {
 
 		window.dispatchEvent(new KeyboardEvent('keyup', { key: 'w' }));
 	});
+
+	it('pressing the key-item binding while committed does NOT emit useKeyItem', async () => {
+		await import('../main.js');
+
+		window.createSocket('test-token');
+		window.__setGameState({
+			gamePhase: 'playing',
+			players: {
+				player1: {
+					cardUseState: 'windup',
+					cardWindupUntil: Date.now() + 800,
+					equippedKeyItemId: 'dodge_roll',
+					hand: hand.slice(),
+					magicStones: 30,
+				},
+			},
+		}, 'player1');
+
+		window.__clearSocketEmitLog();
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e' }));
+
+		const useKeyItemEmits = window.__socketEmitLog().filter(e => e.event === 'useKeyItem');
+		expect(useKeyItemEmits).toHaveLength(0);
+	});
+
+	it('key-item binding emits useKeyItem again after commitment clears', async () => {
+		await import('../main.js');
+
+		window.createSocket('test-token');
+		window.__setGameState({
+			gamePhase: 'playing',
+			players: {
+				player1: {
+					cardUseState: 'windup',
+					cardWindupUntil: Date.now() + 800,
+					equippedKeyItemId: 'dodge_roll',
+					hand: hand.slice(),
+					magicStones: 30,
+				},
+			},
+		}, 'player1');
+
+		window.__clearSocketEmitLog();
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e' }));
+		expect(window.__socketEmitLog().filter(e => e.event === 'useKeyItem')).toHaveLength(0);
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			players: {
+				player1: {
+					equippedKeyItemId: 'dodge_roll',
+					hand: hand.slice(),
+					magicStones: 30,
+				},
+			},
+		}, 'player1');
+
+		window.__clearSocketEmitLog();
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e' }));
+
+		const useKeyItemEmits = window.__socketEmitLog().filter(e => e.event === 'useKeyItem');
+		expect(useKeyItemEmits).toHaveLength(1);
+		expect(useKeyItemEmits[0].data.keyItemId).toBe('dodge_roll');
+	});
 });
 
 describe('cardError handler — server hand rejection', () => {
