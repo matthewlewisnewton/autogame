@@ -20,7 +20,7 @@ import {
 import { io } from 'socket.io-client';
 import { CARD_DEFS, CARD_TYPE_STYLE, CARD_ACCENT_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, getCardSellValue, getGrindCost, getCardDef, getForgeAttunePreview, weaponCardIds, spellCardIds, creatureCardIds, enchantmentCardIds } from './cards.js';
 import { buildLoadoutDeckDisplay } from './deck-loadout.js';
-import { drawCard, initHand as initHandFromModule, hand, deck, desperationDeck, slotCooldowns, canUseSlot, setDrawPile, setDesperationDrawPile, inDesperation, setInDesperation, canDrawIntoHandLocal, MAX_HAND_SLOTS } from './hand.js';
+import { drawCard, initHand as initHandFromModule, hand, deck, desperationDeck, slotCooldowns, canUseSlot, setDrawPile, setDesperationDrawPile, inDesperation, setInDesperation, canDrawIntoHandLocal, MAX_HAND_SLOTS, setHandInputLockChecker } from './hand.js';
 import { renderCardUsed } from './cardRenderers.js';
 import {
 	buildDeckMiniEntries,
@@ -2655,6 +2655,7 @@ function renderHand() {
 		cardHandEl.classList.toggle('show-input-hints', true);
 		cardHandEl.classList.toggle('input-hints-gamepad', inputHints.mode === 'gamepad');
 		cardHandEl.classList.toggle('input-hints-keyboard', inputHints.mode === 'keyboard');
+		cardHandEl.classList.toggle('input-locked', isLocalPlayerCardCommitted());
 	}
 	for (let i = 0; i < MAX_HAND_SLOTS; i++) {
 		const slot = getCardSlotEl(i);
@@ -3702,6 +3703,13 @@ if (document.getElementById('forge-attune-btn')) {
 }
 
 // ── Card input handling ──
+
+function isLocalPlayerCardCommitted() {
+	const me = myId && gameState?.players ? gameState.players[myId] : null;
+	return me?.cardUseState === 'windup';
+}
+
+setHandInputLockChecker(isLocalPlayerCardCommitted);
 
 function playActivationEffect(slotIndex) {
 	const slot = getCardSlotEl(slotIndex);

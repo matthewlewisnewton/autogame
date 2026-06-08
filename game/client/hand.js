@@ -17,6 +17,24 @@ export let desperationDeck = [];
 export let slotCooldowns = new Array(MAX_HAND_SLOTS).fill(false);
 export let inDesperation = false;
 
+/** @type {() => boolean} */
+let handInputLockChecker = () => false;
+
+/**
+ * Register a callback that reports whether the local player's hand input is
+ * locked (e.g. during card wind-up commitment). Set from main.js.
+ *
+ * @param {() => boolean} checker
+ */
+export function setHandInputLockChecker(checker) {
+	handInputLockChecker = typeof checker === 'function' ? checker : () => false;
+}
+
+/** @returns {boolean} */
+export function isHandInputLocked() {
+	return handInputLockChecker();
+}
+
 /**
  * Draw one card from the deck.
  * Returns null if the deck is empty or the card id is unknown.
@@ -149,6 +167,7 @@ export function canUseSlot(slotIndex) {
 	if (slotIndex < 0 || slotIndex >= MAX_HAND_SLOTS) return false;
 	if (!hand[slotIndex]) return false;
 	if (slotCooldowns[slotIndex]) return false;
+	if (isHandInputLocked()) return false;
 	return true;
 }
 

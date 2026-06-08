@@ -113,6 +113,8 @@ const enemySlowMarkers = {}; // enemy id → icy ground ring shown while slowed
 const playerSlowMarkers = {}; // player id → icy ground ring shown while slowed
 const enemyBurnMarkers = {}; // enemy id → flickering flame shown while burning
 const playerBurnMarkers = {}; // player id → flickering flame shown while burning
+const playerCardWindupMarkers = {}; // player id → ground ring during card wind-up
+const playerCardWindupFlashing = new Set(); // player ids showing card-windup emissive
 
 // phase_step ally targeting: nearest in-range ally id (or null) recomputed each
 // frame, plus the ground ring that highlights it. Read by main.js via
@@ -1037,8 +1039,18 @@ function updatePlayerFacing() {
 	syncFacingToServer();
 }
 
+function isPlayerCardWindup(player) {
+	return player?.cardUseState === 'windup';
+}
+
+function isLocalPlayerCardWindup() {
+	const me = myIdRef && gameStateRef?.players?.[myIdRef];
+	return isPlayerCardWindup(me);
+}
+
 function syncFacingToServer() {
 	if (!socketRef || !myIdRef) return;
+	if (isLocalPlayerCardWindup()) return;
 	// While moving, rotation is included in movement packets. Rotation-only
 	// packets would zero inputDx/inputDz on the server and fight prediction.
 	if (getMovementInput()) {
@@ -1729,7 +1741,8 @@ export function updateMyPlayer(delta) {
 		cameraYaw += pollGamepadLook(delta, getGamepadRuntimeOptions().deadzone);
 	}
 
-	const movement = getMovementInput();
+	const cardWindupLocked = isLocalPlayerCardWindup();
+	const movement = cardWindupLocked ? null : getMovementInput();
 	const layout = gameStateRef?.layout;
 	let dirX = 0;
 	let dirZ = 0;
@@ -3678,6 +3691,57 @@ function createEnemyRadialTelegraph(range) {
 	return mesh;
 }
 
+/** Sky-blue ring for player card wind-up — distinct from enemy attack telegraphs. */
+function createPlayerCardWindupTelegraph() {
+	const geo = new THREE.RingGeometry(0.38, 0.58, 32);
+	const mat = new THREE.MeshStandardMaterial({
+		color: 0x38bdf8,
+		emissive: 0x0ea5e9,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 0.55,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geo, mat);
+	mesh.rotation.x = -Math.PI / 2;
+	return mesh;
+}
+
+function applyPlayerCardWindupFlash(playerId, isWindup) {
+	const avatar = playersMeshes[playerId];
+	const body = avatar?.userData?.bodyMesh;
+	if (!body?.material?.emissive) return;
+
+	if (isWindup) {
+		if (!playerCardWindupFlashing.has(playerId)) {
+			body.material.emissive.set(0x38bdf8);
+			body.material.emissiveIntensity = 1.2;
+			playerCardWindupFlashing.add(playerId);
+		}
+	} else if (playerCardWindupFlashing.has(playerId)) {
+		body.material.emissive.set(0x000000);
+		body.material.emissiveIntensity = 0;
+		playerCardWindupFlashing.delete(playerId);
+	}
+}
+
+function applyPlayerCardWindupIndicator(id, player, x, z) {
+	const windup = isPlayerCardWindup(player);
+	if (windup) {
+		applyPlayerCardWindupFlash(id, true);
+		if (!playerCardWindupMarkers[id]) {
+			const ring = createPlayerCardWindupTelegraph();
+			scene.add(ring);
+			playerCardWindupMarkers[id] = ring;
+		}
+		playerCardWindupMarkers[id].position.set(x, GROUND_OVERLAY_Y + 0.02, z);
+	} else {
+		disposeOne(playerCardWindupMarkers, id, scene);
+		applyPlayerCardWindupFlash(id, false);
+	}
+}
+
 function getEnemyWindupDirection(enemy, targetPlayer) {
 	if (enemy.windupDirX != null && enemy.windupDirZ != null) {
 		return { x: enemy.windupDirX, z: enemy.windupDirZ };
@@ -5043,6 +5107,10 @@ export function animate(timestamp) {
 				applyBurnIndicator(playerBurnMarkers, id, pData);
 			}
 
+			const windupX = id === myId ? myX : pData.x;
+			const windupZ = id === myId ? myZ : pData.z;
+			applyPlayerCardWindupIndicator(id, pData, windupX, windupZ);
+
 			if (id === myId) continue;
 
 			const body = playersMeshes[id].userData.bodyMesh;
@@ -5197,6 +5265,14 @@ export function animate(timestamp) {
 		for (const id of Object.keys(playerBurnMarkers)) {
 			if (!gs.players[id]) {
 				disposeOne(playerBurnMarkers, id, scene);
+			}
+		}
+
+		// ── Clean up card wind-up markers for players who left ──
+		for (const id of Object.keys(playerCardWindupMarkers)) {
+			if (!gs.players[id]) {
+				disposeOne(playerCardWindupMarkers, id, scene);
+				playerCardWindupFlashing.delete(id);
 			}
 		}
 

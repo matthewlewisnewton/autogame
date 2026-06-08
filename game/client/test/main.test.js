@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { resetHandState, canUseSlot, hand, slotCooldowns, deck, setDrawPile } from '../hand.js';
+import { resetHandState, canUseSlot, isHandInputLocked, hand, slotCooldowns, deck, setDrawPile } from '../hand.js';
+import { resetInputState } from '../input.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const styleCss = fs.readFileSync(path.join(__dirname, '..', 'style.css'), 'utf8');
@@ -2175,6 +2176,199 @@ describe('Cooldown Enforcement (useCard)', () => {
 
 		const useCardEmits = window.__socketEmitLog().filter(e => e.event === 'useCard');
 		expect(useCardEmits).toHaveLength(0);
+	});
+});
+
+describe('Card wind-up input lock', () => {
+	beforeEach(() => {
+		const requiredIds = [
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-browser', 'lobby-player-list',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 6; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+		resetHandState();
+		resetInputState();
+		if (typeof window.__clearSocketEmitLog === 'function') {
+			window.__clearSocketEmitLog();
+		}
+	});
+
+	afterEach(() => {
+		resetHandState();
+		resetInputState();
+		if (typeof window.__clearSocketEmitLog === 'function') {
+			window.__clearSocketEmitLog();
+		}
+	});
+
+	it('canUseSlot() returns false while the local player is card-committed', async () => {
+		await import('../main.js');
+
+		hand[0] = { id: 'magma_greatsword', name: 'Corebreaker Greatsword', type: 'weapon', charges: 4, remainingCharges: 4 };
+		slotCooldowns[0] = false;
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			players: {
+				player1: {
+					cardUseState: 'windup',
+					cardWindupUntil: Date.now() + 800,
+					hand: hand.slice(),
+					magicStones: 30,
+				},
+			},
+		}, 'player1');
+
+		expect(isHandInputLocked()).toBe(true);
+		expect(canUseSlot(0)).toBe(false);
+	});
+
+	it('calling useCard() while committed does NOT emit a useCard socket event', async () => {
+		await import('../main.js');
+
+		hand[0] = { id: 'magma_greatsword', name: 'Corebreaker Greatsword', type: 'weapon', charges: 4, remainingCharges: 4 };
+		slotCooldowns[0] = false;
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			players: {
+				player1: {
+					cardUseState: 'windup',
+					cardWindupUntil: Date.now() + 800,
+					hand: hand.slice(),
+					magicStones: 30,
+				},
+			},
+		}, 'player1');
+
+		window.__clearSocketEmitLog();
+		window.__useCardForTest(0);
+
+		const useCardEmits = window.__socketEmitLog().filter(e => e.event === 'useCard');
+		expect(useCardEmits).toHaveLength(0);
+	});
+
+	it('toggles #card-hand.input-locked from stateUpdate commitment fields', async () => {
+		await import('../main.js');
+
+		hand[0] = { id: 'magma_greatsword', name: 'Corebreaker Greatsword', type: 'weapon', charges: 4, remainingCharges: 4 };
+		const cardHand = document.getElementById('card-hand');
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			players: { player1: { hand: hand.slice(), magicStones: 30 } },
+		}, 'player1');
+
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'playing',
+			players: {
+				player1: {
+					cardUseState: 'windup',
+					cardWindupUntil: Date.now() + 800,
+					hand: hand.slice(),
+					magicStones: 30,
+				},
+			},
+		});
+
+		expect(cardHand.classList.contains('input-locked')).toBe(true);
+
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'playing',
+			players: {
+				player1: {
+					hand: hand.slice(),
+					magicStones: 30,
+				},
+			},
+		});
+
+		expect(cardHand.classList.contains('input-locked')).toBe(false);
+	});
+
+	it('updateMyPlayer() does not emit move while the local player is card-committed', async () => {
+		await import('../main.js');
+		const { updateMyPlayer, setGamePhase } = await import('../renderer.js');
+
+		window.createSocket('test-token');
+		window.__setGameState({
+			gamePhase: 'playing',
+			players: {
+				player1: {
+					cardUseState: 'windup',
+					cardWindupUntil: Date.now() + 800,
+					x: 0,
+					z: 0,
+					dead: false,
+				},
+			},
+		}, 'player1');
+		setGamePhase('playing');
+
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'w' }));
+		window.__clearSocketEmitLog();
+
+		updateMyPlayer(0.1);
+		updateMyPlayer(0.1);
+
+		const moveEmits = window.__socketEmitLog().filter(e => e.event === 'move');
+		expect(moveEmits).toHaveLength(0);
+
+		window.dispatchEvent(new KeyboardEvent('keyup', { key: 'w' }));
+	});
+
+	it('updateMyPlayer() emits move again after commitment clears', async () => {
+		await import('../main.js');
+		const { updateMyPlayer, setGamePhase } = await import('../renderer.js');
+
+		window.createSocket('test-token');
+		window.__setGameState({
+			gamePhase: 'playing',
+			players: {
+				player1: {
+					x: 0,
+					z: 0,
+					dead: false,
+				},
+			},
+		}, 'player1');
+		setGamePhase('playing');
+
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'w' }));
+		window.__clearSocketEmitLog();
+
+		updateMyPlayer(0.1);
+		updateMyPlayer(0.1);
+
+		expect(window.__socketEmitLog().filter(e => e.event === 'move').length).toBeGreaterThan(0);
+
+		window.dispatchEvent(new KeyboardEvent('keyup', { key: 'w' }));
 	});
 });
 

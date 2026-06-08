@@ -429,6 +429,17 @@ canvas {
   border-color: rgba(148, 163, 184, 0.5);
 }
 
+/* ── Card wind-up commitment lockout ── */
+#card-hand.input-locked {
+  opacity: 0.72;
+}
+
+#card-hand.input-locked .card-slot {
+  pointer-events: none;
+  opacity: 0.45;
+  border-color: rgba(56, 189, 248, 0.55);
+}
+
 /* ── Insufficient Magic Stones ── */
 .card-slot.no-ms {
   border-color: #ef4444;
