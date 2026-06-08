@@ -2382,6 +2382,47 @@ function applyDebugScenario(socket, name) {
       pillarMid.hp = 80;
       pillarMid.maxHp = 80;
       pillarMid.wanderTarget = { x: pillarMid.x, z: pillarMid.z };
+    } else if (name === 'gravity-spells-ready') {
+      // Playing phase with Gravity Well and Event Horizon in hand, full Magic
+      // Stones, and clustered grunts inside pull/crush AoE. The same state is
+      // reachable by earning late reward/evolved gravity spells in a dungeon run.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const filledSlots = player.hand
+        .map((c, i) => (c != null ? i : -1))
+        .filter((i) => i >= 0);
+      if (filledSlots[0] !== undefined) {
+        player.hand[filledSlots[0]] = {
+          id: 'gravity_well',
+          name: 'Gravity Well',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      if (filledSlots[1] !== undefined) {
+        player.hand[filledSlots[1]] = {
+          id: 'event_horizon',
+          name: 'Event Horizon',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      state.enemies = [];
+      const near = spawnEnemy(player.x + 4, player.z, 'grunt');
+      near.hp = 80;
+      near.maxHp = 80;
+      near.wanderTarget = { x: near.x, z: near.z };
+      const mid = spawnEnemy(player.x + 6, player.z + 1, 'grunt');
+      mid.hp = 80;
+      mid.maxHp = 80;
+      mid.wanderTarget = { x: mid.x, z: mid.z };
+      const far = spawnEnemy(player.x + 7, player.z - 1, 'grunt');
+      far.hp = 80;
+      far.maxHp = 80;
+      far.wanderTarget = { x: far.x, z: far.z };
     } else if (name === 'magma-windup-ready') {
       // Playing phase with Corebreaker Greatsword (windUpMs) in hand and a grunt
       // in melee range so commitment entry and input lock are exercisable without

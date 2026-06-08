@@ -57,6 +57,7 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('thunderbird')).toHaveLength(1);
 		expect(resolveRenderers('dragons_breath')).toHaveLength(1);
 		expect(resolveRenderers('inferno_pillar')).toHaveLength(1);
+		expect(resolveRenderers('gravity_well')).toHaveLength(1);
 	});
 
 	it('returns the composed renderer list for cards with multiple visuals', () => {
@@ -640,7 +641,46 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
 	});
 
-	it('event_horizon renders both the outer pull ring and the inner crush ring', () => {
+	it('gravity_well adds a purple pull telegraph, inward burst, and center impact decal', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'gravity_well',
+			origin: { x: 1, z: 2 },
+			radius: 12,
+			pulled: 2,
+			hits: [],
+		}, ctx);
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 1, z: 2 });
+		expect(ring[2]).toBe(12);
+		expect(ring[3]).toMatchObject({ color: 0xc084fc, emissive: 0xa855f7 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 1, z: 2 });
+		expect(burst[2]).toMatchObject({ color: 0xc084fc, count: 18, spread: 2.8 });
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 1, z: 2 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('gravity_well still renders without throwing when the new ctx primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnTelegraphRing: undefined,
+			spawnParticleBurst: undefined,
+			spawnImpactDecal: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'gravity_well',
+			origin: { x: 0, z: 0 },
+			radius: 12,
+			pulled: 0,
+			hits: [],
+		}, ctx)).not.toThrow();
+	});
+
+	it('event_horizon renders outer pull telegraph/burst and inner crush ring at centerRadius', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'event_horizon',
@@ -649,9 +689,36 @@ describe('renderCardUsed() — spell dispatch', () => {
 			centerRadius: 2.5,
 			hits: [],
 		}, ctx);
-		const rings = ctx._calls.filter((c) => c[0] === 'spawnSummonEffect');
-		const radii = rings.map((r) => r[2]).sort((p, q) => p - q);
-		expect(radii).toEqual([2.5, 12]);
+		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(telegraph).toBeDefined();
+		expect(telegraph[2]).toBe(12);
+		expect(telegraph[3]).toMatchObject({ color: 0x581c87, emissive: 0x7c3aed });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[2]).toMatchObject({ color: 0x581c87, count: 12, spread: 2.4 });
+		const crush = ctx._calls.find((c) => c[0] === 'spawnSummonEffect');
+		expect(crush).toBeDefined();
+		expect(crush[2]).toBe(2.5);
+		expect(crush[3]).toMatchObject({ color: 0x581c87, emissive: 0x7c3aed });
+		const outerSummon = ctx._calls.filter(
+			(c) => c[0] === 'spawnSummonEffect' && c[2] === 12,
+		);
+		expect(outerSummon).toHaveLength(0);
+	});
+
+	it('event_horizon still renders without throwing when the new ctx primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnTelegraphRing: undefined,
+			spawnParticleBurst: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'event_horizon',
+			origin: { x: 0, z: 0 },
+			radius: 12,
+			centerRadius: 2.5,
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(true);
 	});
 
 	it('inferno_pillar renders the pillar without the generic accent summon ring', () => {

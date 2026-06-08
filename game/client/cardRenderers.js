@@ -205,14 +205,48 @@ function renderPurifyingPulse(data, ctx) {
 	ctx.playSound('heal');
 }
 
+const GRAVITY_WELL_COLOR = 0xc084fc;
+const GRAVITY_WELL_EMISSIVE = 0xa855f7;
+const EVENT_HORIZON_COLOR = 0x581c87;
+const EVENT_HORIZON_EMISSIVE = 0x7c3aed;
+
 /**
- * Event Horizon: outer pull ring (handled by renderGenericSpellBurst) plus
- * a tighter inner crush ring keyed off `data.centerRadius`.
+ * Gravity Well: purple pull telegraph at pull radius, inward-styled particle
+ * burst at the origin, and an optional center impact decal.
+ */
+function renderGravityWell(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = getAccentHex(data.cardId) ?? GRAVITY_WELL_COLOR;
+	const emissive = GRAVITY_WELL_EMISSIVE;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 18, spread: 2.8 });
+	}
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(origin, { color, emissive });
+	}
+}
+
+/**
+ * Event Horizon: dark-purple outer pull telegraph + burst, plus a tighter inner
+ * crush ring keyed off `data.centerRadius` (distinct helper mix from Gravity Well).
  */
 function renderEventHorizon(data, ctx) {
-	renderGenericSpellBurst(data, ctx);
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = getAccentHex(data.cardId) ?? EVENT_HORIZON_COLOR;
+	const emissive = EVENT_HORIZON_EMISSIVE;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 12, spread: 2.4 });
+	}
 	if (data.centerRadius) {
-		ctx.spawnSummonEffect(originOf(data), data.centerRadius, accentSummonStyle(data.cardId));
+		ctx.spawnSummonEffect(origin, data.centerRadius, { color, emissive });
 	}
 }
 
@@ -503,6 +537,7 @@ const CARD_RENDERERS = {
 	healing_font: renderHealRestore,
 	divine_grace: renderHealRestore,
 	purifying_pulse: renderPurifyingPulse,
+	gravity_well: renderGravityWell,
 	event_horizon: renderEventHorizon,
 	dragons_breath: renderDragonsBreath,
 	inferno_pillar: renderInfernoPillar,
