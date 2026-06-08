@@ -5564,3 +5564,26 @@ This ticket changed the Arena Trials boss-approach debug scenario logic. It rema
 
 None.
 
+
+## v0.319 — 308-apply-windup-and-lower-charges-to-heavy-hitter-cards  (2026-06-08 01:05:08)
+
+PASS. The hand renderer now shows a per-card wind-up label such as `0.7s wind-up`, adds a tooltip explaining that movement and other cards are locked during wind-up, and the reward/card-choice description path appends `heavy wind-up ({seconds}s)`. The live capture verifies Solar Edge rendering with `0.7s wind-up` and `2/2` charges, while instant weapons remain unlabeled.
+
+### Tests cover wind-up and charge values
+
+PASS. The ticket adds targeted unit/integration coverage for weapon wind-up definitions and lifecycle, heavy spell wind-up lifecycle, instant-card regressions, UI wind-up formatting/rendering, forge preview wind-up rows, and updated charge values.
+
+The captured coverage run itself had 1 unrelated failure in `server/test/smoke_bomb.test.js` (`persistenceDirtyOnCast` expected true). That file and the smoke-bomb implementation were not changed by this ticket, and the failure is not tied to the heavy-card wind-up/charge work. Relevant wind-up and charge assertions are present and pass within the run.
+
+## Design and requirements
+
+PASS. The change stays within the documented card-combat model: powerful cards remain powerful but now behave as committed plays in the active deck combat loop. The captured run preserves the foundation requirements: 3D rendering initializes, the server/client connection is established, multiplayer state is present, and movement/dodge probes work in a live dungeon.
+
+## Debug scenarios
+
+PASS. The new `heavy-spell-windup` and adjusted `magma-windup-ready` shortcuts are gated through the existing debug-scenario socket path and `DEBUG_SCENARIOS` registry; normal gameplay does not enter them. Their end states are reachable normally through reward/evolution flow: Signal Familiar is an early reward, Soul Drain and Astral Guardian are evolved heavy spells, and Corebreaker Greatsword is the evolved Solar Edge. The shortcuts set up hands/enemies for QA but do not weaken normal card validation, wind-up resolution, charge consumption, or Magic Stone costs.
+
+## Remaining gaps
+
+None.
+

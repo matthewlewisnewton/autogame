@@ -1,0 +1,15 @@
+Broke ticket 308 into **3 sub-tickets** in dependency order (shared JSON → spells → client copy). All use **code** verification.
+
+| # | Focus |
+|---|--------|
+| **01** | `flame_blade` + `magma_greatsword`: `windUpMs` + reduced charges |
+| **02** | `battle_familiar`, `soul_drain`, `astral_guardian`: spell wind-up tiers |
+| **03** | Hand, forge, and reward-choice UI copy for wind-up cards |
+
+### Created folders
+
+```
+/home/matt/workspace/.autogame-worktrees/308-apply-windup-and-lower-charges-to-heavy-hitter-cards/tickets/308-apply-windup-and-lower-charges-to-heavy-hitter-cards/subtickets/01-heavy-weapon-windup-and-charges/
+/home/matt/workspace/.autogame-worktrees/308-apply-windup-and-lower-charges-to-heavy-hitter-cards/tickets/308-apply-windup-and-lower-charges-to-heavy-hitter-cards/subtickets/02-heavy-spell-windup/
+/home/matt/workspace/.autogame-worktrees/308-apply-windup-and-lower-charges-to-heavy-hitter-cards/tickets/308-apply-windup-and-lower-charges-to-heavy-hitter-cards/subtickets/03-client-windup-card-copy/
+```
