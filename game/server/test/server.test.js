@@ -3851,11 +3851,11 @@ describe('run state', () => {
 			expect(healAtMedic('p1')).toEqual({ ok: false, reason: 'not_in_lobby' });
 		});
 
-		it('remains the sole player HP-restore path — combat cards and key items define no HP healing', () => {
-			expect(CARD_DEFS.healing_font.healAmount).toBeUndefined();
-			expect(CARD_DEFS.divine_grace.healAmount).toBeUndefined();
-			expect(CARD_DEFS.soul_drain.healOnHit).toBeUndefined();
-			expect(CARD_DEFS.soul_drain.healOnKill).toBeUndefined();
+		it('healing_font and divine_grace define healAmount for HP restoration', () => {
+			expect(CARD_DEFS.healing_font.healAmount).toBe(6);
+			expect(CARD_DEFS.divine_grace.healAmount).toBe(10);
+			expect(CARD_DEFS.soul_drain.healOnHit).toBe(12);
+			expect(CARD_DEFS.soul_drain.healOnKill).toBe(18);
 		});
 	});
 

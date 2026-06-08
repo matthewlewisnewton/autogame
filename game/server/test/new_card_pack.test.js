@@ -9,6 +9,7 @@ import {
 	createGameState,
 	gameState,
 	addMagicStones,
+	healPlayer,
 	cleanupAfterDamage,
 	updateEnemies,
 	updateMinions,
@@ -205,26 +206,26 @@ describe('new card combat helpers', () => {
 		expect(isEnemyFrozen(gameState.enemies[0])).toBe(true);
 	});
 
-	it('Restoration Beacon restores Magic Stones without changing HP', () => {
-		addPlayer('p1', { hp: 60, magicStones: 0 });
-		expect(CARD_DEFS.healing_font.healAmount).toBeUndefined();
-		expect(CARD_DEFS.healing_font.magicStoneRestore).toBe(6);
-		const hpBefore = gameState.players.p1.hp;
-		const gained = addMagicStones(gameState.players.p1, CARD_DEFS.healing_font.magicStoneRestore);
+	it('Restoration Beacon restores HP without changing Magic Stones', () => {
+		addPlayer('p1', { hp: 60, magicStones: 50 });
+		expect(CARD_DEFS.healing_font.healAmount).toBe(6);
+		expect(CARD_DEFS.healing_font.magicStoneRestore).toBeUndefined();
+		const msBefore = gameState.players.p1.magicStones;
+		const gained = healPlayer('p1', CARD_DEFS.healing_font.healAmount);
 		expect(gained).toBe(6);
-		expect(gameState.players.p1.magicStones).toBe(6);
-		expect(gameState.players.p1.hp).toBe(hpBefore);
+		expect(gameState.players.p1.hp).toBe(66);
+		expect(gameState.players.p1.magicStones).toBe(msBefore);
 	});
 
-	it('Sanctum Pulse restores magic stones without changing HP', () => {
-		expect(CARD_DEFS.divine_grace.healAmount).toBeUndefined();
-		expect(CARD_DEFS.divine_grace.magicStoneRestore).toBe(10);
-		addPlayer('p1', { hp: 60, magicStones: 0 });
-		const hpBefore = gameState.players.p1.hp;
-		const gained = addMagicStones(gameState.players.p1, CARD_DEFS.divine_grace.magicStoneRestore);
+	it('Sanctum Pulse restores HP without changing Magic Stones', () => {
+		expect(CARD_DEFS.divine_grace.healAmount).toBe(10);
+		expect(CARD_DEFS.divine_grace.magicStoneRestore).toBeUndefined();
+		addPlayer('p1', { hp: 60, magicStones: 50 });
+		const msBefore = gameState.players.p1.magicStones;
+		const gained = healPlayer('p1', CARD_DEFS.divine_grace.healAmount);
 		expect(gained).toBe(10);
-		expect(gameState.players.p1.magicStones).toBe(10);
-		expect(gameState.players.p1.hp).toBe(hpBefore);
+		expect(gameState.players.p1.hp).toBe(70);
+		expect(gameState.players.p1.magicStones).toBe(msBefore);
 	});
 
 	it('Steel Claymore knockback pushes hit enemies along attack direction', () => {
@@ -334,25 +335,30 @@ describe('new card combat helpers', () => {
 		expect(gameState.players.p1.magicStones).toBe(16);
 	});
 
-	it('Soul Drain radial hits grant magic stones without healing the attacker', () => {
-		addPlayer('p1', { hp: 50, magicStones: 0 });
+	it('Soul Drain radial hits grant magic stones and heal the attacker', () => {
+		addPlayer('p1', { hp: 30, magicStones: 0 });
 		gameState.enemies = [
 			{ id: 'e1', type: 'grunt', x: 1, z: 0, hp: 40 },
 			{ id: 'e2', type: 'grunt', x: -2, z: 0, hp: 40 },
 		];
 		const def = CARD_DEFS.soul_drain;
-		expect(def.healOnHit).toBeUndefined();
-		expect(def.healOnKill).toBeUndefined();
+		expect(def.healOnHit).toBe(12);
+		expect(def.healOnKill).toBe(18);
 		const result = collectRadialHits(0, 0, SUMMON_RADIUS, def.damage, {
 			magicStoneOnHit: def.magicStoneOnHit,
+			healOnHit: def.healOnHit,
+			healOnKill: def.healOnKill,
 			attackerId: 'p1',
 		});
 		addMagicStones(gameState.players.p1, result.magicStonesGained);
 		expect(def.damage).toBe(42);
 		expect(def.magicStoneOnHit).toBe(12);
 		expect(result.magicStonesGained).toBe(24);
-		expect(result.hpHealed).toBeUndefined();
-		expect(gameState.players.p1.hp).toBe(50);
+		// Both enemies die (42 > 40 HP), so heal = 2*12 (hit) + 2*18 (kill) = 60
+		expect(result.hpHealed).toBe(60);
+		const hpHealed = healPlayer('p1', result.hpHealed);
+		expect(hpHealed).toBe(60);
+		expect(gameState.players.p1.hp).toBe(90);
 	});
 
 	it("Wyrmflare leaves a ticking cone area effect", () => {

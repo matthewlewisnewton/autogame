@@ -1314,8 +1314,11 @@ function collectConeHits(originX, originZ, dirX, dirZ, range, coneAngle, damage,
 function collectRadialHits(originX, originZ, radius, damage, options = {}) {
   const hits = [];
   let magicStonesGained = 0;
+  let hpHealed = 0;
   const magicStoneOnHit = options.magicStoneOnHit || 0;
   const magicStoneOnKill = options.magicStoneOnKill || 0;
+  const healOnHit = options.healOnHit || 0;
+  const healOnKill = options.healOnKill || 0;
   const attackerId = options.attackerId;
 
   for (const enemy of _gameState.enemies) {
@@ -1327,10 +1330,11 @@ function collectRadialHits(originX, originZ, radius, damage, options = {}) {
     const hitGain = magicStoneOnHit;
     const killGain = killed ? magicStoneOnKill : 0;
     magicStonesGained += hitGain + killGain;
+    hpHealed += healOnHit + (killed ? healOnKill : 0);
     hits.push({ enemyId: enemy.id, hp: enemy.hp, magicStonesGained: hitGain + killGain });
   }
 
-  return { hits, magicStonesGained };
+  return { hits, magicStonesGained, hpHealed };
 }
 
 function collectProjectileHits(originX, originZ, dirX, dirZ, range, damage, options = {}) {

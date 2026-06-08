@@ -117,12 +117,12 @@ function renderGlacierCollapse(data, ctx) {
 }
 
 /**
- * Restoration Beacon / Sanctum Pulse: MS restore ring + loot sound when stones gained.
+ * Healing Font / Divine Grace: golden heal ring + heal sound when HP is restored.
  */
-function renderManaRestore(data, ctx) {
+function renderHealRestore(data, ctx) {
 	if (data.radius === undefined) return;
 	ctx.spawnDivineGraceEffect(originOf(data), data.radius);
-	if (data.magicStonesGained > 0 && data.playerId === ctx.myId) ctx.playSound('loot');
+	if (data.hpGained > 0 && data.playerId === ctx.myId) ctx.playSound('heal');
 }
 
 /**
@@ -342,8 +342,8 @@ const CARD_RENDERERS = {
 	chain_lightning: renderChainLightningArcs,
 	ice_ball: renderIceBall,
 	glacier_collapse: renderGlacierCollapse,
-	healing_font: renderManaRestore,
-	divine_grace: renderManaRestore,
+	healing_font: renderHealRestore,
+	divine_grace: renderHealRestore,
 	purifying_pulse: renderPurifyingPulse,
 	event_horizon: renderEventHorizon,
 	inferno_pillar: [renderInfernoPillar, renderGenericSpellBurst],

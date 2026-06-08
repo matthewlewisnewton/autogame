@@ -680,7 +680,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       }
 
       if (cardDef.effect === 'healing_font') {
-        const magicStonesGained = addMagicStones(player, cardDef.magicStoneRestore || 0);
+        const hpGained = healPlayer(socket.playerId, cardDef.healAmount || 0);
 
         consumeSpellSlot();
 
@@ -692,14 +692,14 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           specialEffect: cardDef.specialEffect,
           origin: { x: originX, z: originZ },
           radius: SUMMON_RADIUS,
-          magicStonesGained,
+          hpGained,
         });
 
         return;
       }
 
       if (cardDef.effect === 'divine_grace') {
-        const magicStonesGained = addMagicStones(player, cardDef.magicStoneRestore || 0);
+        const hpGained = healPlayer(socket.playerId, cardDef.healAmount || 0);
 
         consumeSpellSlot();
 
@@ -711,7 +711,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           specialEffect: cardDef.specialEffect,
           origin: { x: originX, z: originZ },
           radius: SUMMON_RADIUS,
-          magicStonesGained,
+          hpGained,
         });
 
         return;
@@ -1038,10 +1038,13 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, summonDamage, {
         magicStoneOnHit: cardDef.magicStoneOnHit,
         magicStoneOnKill: cardDef.magicStoneOnKill,
+        healOnHit: cardDef.healOnHit,
+        healOnKill: cardDef.healOnKill,
         attackerId: socket.playerId,
       });
       const hits = radial.hits;
       const appliedMagicStones = addMagicStones(player, radial.magicStonesGained);
+      const appliedHpHealed = radial.hpHealed ? healPlayer(socket.playerId, radial.hpHealed) : 0;
 
       cleanupAfterDamage();
 
@@ -1060,6 +1063,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
         radius: SUMMON_RADIUS,
         hits: hits,
         magicStonesGained: appliedMagicStones,
+        hpHealed: appliedHpHealed,
       });
 
       // Do NOT delete pendingSummons here — leave the entry so any duplicate

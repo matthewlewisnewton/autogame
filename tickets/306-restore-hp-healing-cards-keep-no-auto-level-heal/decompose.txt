@@ -1,0 +1,18 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 5 sub-tickets:
+
+```
+tickets/306-restore-hp-healing-cards-keep-no-auto-level-heal/subtickets/
+├── 01-revert-healing-font-divine-grace-to-hp/ticket.md
+├── 02-revert-field-medic-kit-to-hp-heal/ticket.md
+├── 03-revert-soul-drain-to-life-drain/ticket.md
+├── 04-client-rendering-healing-cards/ticket.md
+└── 05-correct-design-note/ticket.md
+```
+
+**Breakdown:**
+- **01** — Revert `healing_font` (6 HP) and `divine_grace` (10 HP) from MS restore to HP restore in `cardEffects.js` + `cardStats.json` + server tests
+- **02** — Revert `field_medic_kit` key item from AoE MS restore to AoE HP heal (8 HP) in `keyItemEffects.js` + `progression.js` + tests
+- **03** — Add `healOnHit: 12` / `healOnKill: 18` to `soul_drain` and wire life-drain through `collectRadialHits()` in `simulation.js` + `cardEffects.js` + tests
+- **04** — Update client `cardRenderers.js`: rename `renderManaRestore` → `renderHealRestore`, switch from `magicStonesGained`/`loot` sound to `hpGained`/`heal` sound
+- **05** — Correct `game/docs/design.md` to say med booth replaces automatic start-of-level healing; healing cards remain

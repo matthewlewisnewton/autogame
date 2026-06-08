@@ -1,18 +1,8 @@
-All conflict markers are removed. Summary of how each file was merged:
+`LOGBOOK.md` is resolved.
 
-### Code
-- **`game/client/main.js`** — Kept ticket 288’s `if (lobbyEl)` null guard and main’s `setLobbyHudVisible(false)` (overlay-fix from #304).
-- **`harness/validate/playthrough.mjs`** — Combined both flows:
-  - Proximity assertion + `dismissLobbyOverlay()` before screenshots (288)
-  - `requireWalkableHubPresentation()` probes and `walkablePresentation` in the return value (305/main)
+**Resolution:** Both logbook entries are kept in chronological order:
 
-### Validation artifacts
-- **`findings.md`**, **`probes.json`**, **`run-summary.json`** — Merged:
-  - Ticket 288 hub-walk run metadata (lobby names, ports)
-  - Main telepipe vitals (`telepipeVitalsPreserved`) and walkable-presentation probes
-- **PNG screenshots** — Kept ticket 288’s regenerated captures (overlay dismissed)
+1. **v0.306** (from `main`) — restore HP healing cards, keep no auto-level heal  
+2. **v0.307** (from the branch) — card wind-up commitment input-lock mechanic  
 
-### Docs
-- **`LOGBOOK.md`** — Prepended v0.305 (288) entry before main’s v0.287–v0.304 entries
-
-The harness can commit and finish the merge when ready.
+The file follows the existing LOGBOOK pattern (ascending version numbers, newest at the end) and closes with a single `## Remaining gaps` section. All conflict markers are removed; no other files had conflicts.

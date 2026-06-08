@@ -1,0 +1,14 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/306-restore-hp-healing-cards-keep-no-auto-level-heal/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/306-restore-hp-healing-cards-keep-no-auto-level-heal/game/data
+Server listening on port 3000
+Player connected: socket=xwVepZ9leFZSxvPYAAAB, playerId=9ba49c90-c842-4307-80ff-07f1c790a0d9
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=r8PIL8iFvx7uMcqWAAAD, playerId=d60055b8-88df-4d77-bd80-4bcc833d16ce
+[loot] spawned id=963694d8-9b32-4357-993a-1fa3f566a13b value=13
+Player disconnected: xwVepZ9leFZSxvPYAAAB
+Player disconnected: r8PIL8iFvx7uMcqWAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
