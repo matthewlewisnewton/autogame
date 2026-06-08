@@ -82,6 +82,10 @@
   "cardDescriptions": {
     "summonAlly": "Channels an invocation",
     "spawnMinion": "Deploys a bound construct",
-    "damageWeapon": "{damage} output technique"
+    "damageWeapon": "{damage} output technique",
+    "damageWeaponWindup": "{damage} output technique · {windUpMs}ms wind-up",
+    "damageSpellWindup": "{damage} burst invocation · {windUpMs}ms wind-up",
+    "windupHandHint": "{windUpMs}ms wind-up",
+    "windupTooltip": "Wind-up commitment — cannot move or use other cards during wind-up. Right-click to discard."
   }
 }

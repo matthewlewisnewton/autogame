@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { patchSettings } from '../settings.js';
 import { Mesh, BoxGeometry, Group, Box3, MeshStandardMaterial } from 'three';
 import {
 	getRegistryTargetFootprint,
@@ -118,8 +119,35 @@ describe('registry model world grounding', () => {
 	});
 });
 
-describe('triggerMedicEnergyBeadVFX', () => {
-	it('spawns a narrow returning-projectile corridor along the bead vector', async () => {
+describe('field medic VFX', () => {
+	beforeEach(() => {
+		patchSettings({ particlesEnabled: true });
+	});
+
+	afterEach(async () => {
+		const { getActiveEffects } = await import('../renderer.js');
+		getActiveEffects().length = 0;
+	});
+
+	it('triggerMedicAllyHealVFX spawns telegraph ring and particle burst primitives', async () => {
+		const {
+			initScene,
+			triggerMedicAllyHealVFX,
+			getActiveEffects,
+		} = await import('../renderer.js');
+
+		initScene(null, { x: 0, z: 0 });
+		const before = getActiveEffects().length;
+
+		triggerMedicAllyHealVFX({ x: 4, y: 0, z: 5 }, 6);
+
+		expect(getActiveEffects().length).toBe(before + 2);
+		const effects = getActiveEffects().slice(before);
+		expect(effects.some((fx) => fx.isTelegraphRing && fx.telegraphRadius === 6)).toBe(true);
+		expect(effects.some((fx) => fx.isParticleBurst)).toBe(true);
+	});
+
+	it('triggerMedicEnergyBeadVFX spawns corridor, trail, decal, and burst along the bead vector', async () => {
 		const {
 			initScene,
 			triggerMedicEnergyBeadVFX,
@@ -136,12 +164,16 @@ describe('triggerMedicEnergyBeadVFX', () => {
 			hitWidth: 0.5,
 		});
 
-		expect(getActiveEffects().length).toBe(before + 1);
-		const effect = getActiveEffects()[getActiveEffects().length - 1];
-		expect(effect.returning).toBe(true);
-		expect(effect.returnPasses).toBe(0);
-		expect(effect.range).toBe(8);
-		expect(effect.hitWidth).toBe(0.5);
+		expect(getActiveEffects().length).toBe(before + 4);
+		const effects = getActiveEffects().slice(before);
+		const corridor = effects.find((fx) => fx.returning === true);
+		expect(corridor).toBeTruthy();
+		expect(corridor.returnPasses).toBe(0);
+		expect(corridor.range).toBe(8);
+		expect(corridor.hitWidth).toBe(0.5);
+		expect(effects.some((fx) => fx.isProjectileTrail)).toBe(true);
+		expect(effects.some((fx) => fx.isImpactDecal)).toBe(true);
+		expect(effects.some((fx) => fx.isParticleBurst)).toBe(true);
 	});
 });
 

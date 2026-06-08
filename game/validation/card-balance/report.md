@@ -1,6 +1,6 @@
 # Card balance report
 
-Card-balance pass parts 1–2: **weapons**, **spells**, **creatures**, **enchantments**, economy, combos, and consolidated recommendations. Metrics sourced from `game/validation/card-balance/analyzeCards.mjs` (sub-ticket 01) plus manual simulation notes (sub-ticket 03). Ticket 303 sub-ticket 04 applied five `apply-now` tunings in `cardStats.json`; ticket 311 sub-ticket 04 reconciles this report to post-311 live stats (grind-scale map + Astral Guardian trim; no further JSON or gameplay changes in this pass).
+Card-balance pass parts 1–2: **weapons**, **spells**, **creatures**, **enchantments**, economy, combos, and consolidated recommendations. Metrics sourced from `game/validation/card-balance/analyzeCards.mjs` (sub-ticket 01) plus manual simulation notes (sub-ticket 03). Ticket 303 sub-ticket 04 applied five `apply-now` tunings in `cardStats.json`; ticket 311 sub-ticket 04 reconciles this report to post-311 live stats (grind-scale map + Astral Guardian trim); ticket **308** sub-ticket 04 reconciles heavy-hitter wind-up + charge pass for `flame_blade`, `magma_greatsword`, and `soul_drain` (report-only; data applied in ticket 308 sub-tickets 01–03).
 
 ## Methodology
 
@@ -43,9 +43,9 @@ Regenerate raw metrics: `node game/validation/card-balance/analyzeCards.mjs`
 | Name | id | charges | MS cost | burst | DPC | DPM | acquisition | verdict | recommendation |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |
 | Rust-Forged Saber | iron_sword | 5 | 0 | 17 | 3.40 | 0.021 | starter | ok | — |
-| Solar Edge | flame_blade | 3 | 0 | 28 | 9.33 | 0.035 | reward:0 | over | `operator-triage` — early reward outpaces evolved-band weapons; confirm intentional power spike |
+| Solar Edge | flame_blade | 2 | 0 | 28 | 14.00 | 0.019 | reward:0 | ok | **done** (ticket 308) — `windUpMs` 650 ms + charges 3→2; burst 28 unchanged; DPM folds into 1450 ms cycle |
 | Alloy Greatblade | steel_claymore | 6 | 0 | 25 | 4.17 | 0.031 | evolved | ok | — |
-| Corebreaker Greatsword | magma_greatsword | 4 | 0 | 86 | 21.50 | 0.108 | evolved | over | `operator-triage` — fire-trail DoT doubles effective burst; evolution target may be fine but dwarfs non-evolved lane |
+| Corebreaker Greatsword | magma_greatsword | 2 | 0 | 86 | 43.00 | 0.054 | evolved | over | **done** (ticket 308) — charges 4→2; `windUpMs` 800 ms (307) folds into 1600 ms cycle; fire-trail burst unchanged |
 | Saber of Light | saber_of_light | 6 | 0 | 12 | 2.00 | 0.030 | reward:3 | under | **done** (sub-ticket 04) — DPC still below Q1 despite 12 base; 400 ms cooldown keeps DPM in band |
 | Excalibur Photon | excalibur_photon | 6 | 0 | 14×2 | 4.67 | 0.035 | evolved | ok | **done** (sub-ticket 02–03) — `windUpMs` 600 ms folds into cycle; per-hit 14×2 burst unchanged |
 | Photon Slicer | photon_slicer | 4 | 0 | 13 | 3.25 | 0.016 | reward:6 | ok | — |
@@ -59,10 +59,10 @@ Regenerate raw metrics: `node game/validation/card-balance/analyzeCards.mjs`
 
 ### Weapon outlier notes
 
-1. **magma_greatsword** — DPC 21.5 and DPM 0.108 sit far above Q3; fire-trail DoT (44 trail + 42 hit) makes it the clearest weapon outlier. **`operator-triage`**
+1. **magma_greatsword** — **done** (ticket 308): charges 4→2 and 800 ms wind-up (307) yield harness DPC 43 / DPM 0.054 on a 1600 ms cycle; fire-trail DoT still drives high per-charge burst but sustained DPM is halved vs pre-tune 0.108.
 2. **excalibur_photon** — **done** (sub-ticket 02–03): `windUpMs` 600 ms corrects harness DPM from 0.14 (cooldown-only) to 0.035 on an 800 ms effective cycle; double 14-damage swings unchanged.
 3. **saber_of_light** — Post-tuning DPC 2.0 remains lowest in band (6 charges); 400 ms cooldown yields DPM 0.030 in band. Further bump needs charge-pool or cooldown pass. **`operator-triage`**
-4. **flame_blade** — DPC 9.33 exceeds most evolved weapons despite being an early reward; competes with fireball/arcane_bolt unlock window. **`operator-triage`**
+4. **flame_blade** — **done** (ticket 308): 650 ms wind-up + charges 3→2; harness DPC 14 / DPM 0.019 (1450 ms cycle). Early-reward burst 28 unchanged; commitment and smaller charge pool replace raw DPM spike.
 5. **harvesting_scythe** — Post-tuning DPM 0.015 is still lowest weapon band; MS-on-hit/kill economy is the real value. **`operator-triage`**
 
 ## Spells
@@ -84,7 +84,7 @@ Regenerate raw metrics: `node game/validation/card-balance/analyzeCards.mjs`
 | Gravity Well | gravity_well | 1 | 45 | 0 | 0 | 0 | reward:14 | dead | `operator-triage` — pull-only; needs CC utility score |
 | Event Horizon | event_horizon | 1 | 45 | 0 | 0 | 0 | evolved | dead | `operator-triage` — crush damage (33 center) not in harness primary field |
 | Ether Siphon | mana_leach | 1 | 30 | 28 | 28.00 | 0.035 | reward:16 | ok | — |
-| Soul Drain | soul_drain | 1 | 30 | 42 | 42.00 | 0.053 | evolved | over | `operator-triage` — top-tier single-target burst + MS leech; evolution target |
+| Soul Drain | soul_drain | 1 | 30 | 42 | 42.00 | 0.028 | evolved | ok | **done** (ticket 308) — `windUpMs` 700 ms folds into 1500 ms cycle; burst 42 + MS leech unchanged |
 | Wyrmflare | dragons_breath | 1 | 40 | 13 | 13.00 | 0.016 | reward:17 | ok | **done** (sub-ticket 04) — initial burst in band; DoT ticks exist in stats but lack per-tick field for harness |
 | Thermal Column | inferno_pillar | 1 | 40 | 13 | 13.00 | 0.016 | evolved | ok | — |
 | Mana Prism | mana_prism | 1 | 0 | 0 | 0 | 0 | reward:18 | dead | `operator-triage` — passive MS pulse; no combat metric |
@@ -95,7 +95,7 @@ Regenerate raw metrics: `node game/validation/card-balance/analyzeCards.mjs`
 ### Spell outlier notes
 
 1. **astral_guardian** — Post-311 DPC 63 / DPM 0.079 still above peers but trimmed from 66 / 0.083; shield 14 HP. **`addressed in 311`**
-2. **soul_drain** — DPC 42 at Q3 ceiling with MS leech; evolved finisher. **`operator-triage`**
+2. **soul_drain** — **done** (ticket 308): 700 ms wind-up commitment; harness DPM 0.028 (was 0.053 cooldown-only); DPC 42 and MS leech unchanged — evolved finisher with telegraphed cast.
 3. **battle_familiar** — Harness grind-0 DPC 44 on reward:1; late scaling capped via per-card grind scale 0.03. **`addressed in 311`**
 
 ## New/changed cards (294–302 spotlight)
@@ -259,13 +259,13 @@ Plausible multi-card loops from `cardEffects.js`, `simulation.js`, and integrati
 
 ## Executive summary
 
-- **47 cards** catalogued once across weapons (14), spells (20), creatures (10), and enchantments (3). Harness metrics flag **over** outliers on early rewards (`flame_blade`, `battle_familiar` grind-0 row) and evolved finishers (`magma_greatsword`, `astral_guardian`, `soul_drain`); **under** on `saber_of_light` and `harvesting_scythe` only (post-tuning `fireball`, `permafrost_lance`, `dragons_breath`, and `excalibur_photon` now **ok**). **Ticket 311:** `battle_familiar` and `null_crawler` keep strong grind-0 bases but scale at 0.03 per grind (vs global 0.05); `astral_guardian` trimmed to damage 63 / shield 14 (harness DPC 63, DPM 0.079).
+- **47 cards** catalogued once across weapons (14), spells (20), creatures (10), and enchantments (3). Harness metrics flag **over** outliers on early rewards (`battle_familiar` grind-0 row) and evolved finishers (`magma_greatsword` DPC, `astral_guardian`); **under** on `saber_of_light` and `harvesting_scythe` only (post-tuning `fireball`, `permafrost_lance`, `dragons_breath`, `excalibur_photon`, `flame_blade`, and `soul_drain` now **ok**). **Ticket 308:** `flame_blade`, `magma_greatsword`, and `soul_drain` received wind-up commitment + charge-pool tuning (alongside ticket **312** `excalibur_photon` wind-up). **Ticket 311:** `battle_familiar` and `null_crawler` keep strong grind-0 bases but scale at 0.03 per grind (vs global 0.05); `astral_guardian` trimmed to damage 63 / shield 14 (harness DPC 63, DPM 0.079).
 - **Vault Wyrm (298):** rebalance to `attackDamage: 2` + `burning_breath` is **ok** — combined breath + burn DPS (~6) beats Archive Wyrm sustained direct (~3.6) but on a fragile 50 HP body at reward:2; evolution to Archive Wyrm remains the range/DPS upgrade path.
 - **Creatures:** `null_crawler` grind-0 harness row still **over** but **addressed in 311** via slower per-grind scaling; `storm_eagle` remains **`operator-triage`** (simulation cadence). Tank/summon roles (`skeleton_knight`, `aegis_sentinel`, `undead_commander`, `battery_automaton`) read **ok** on utility.
 - **Enchantments:** hazard DPS is in-band for MS cost; no mandatory tuning.
 - **Economy:** 17 cards use fallback sell values; duplicate `rewardOrder: 27` on `fireball` / `purifying_pulse` should be deduped in a future data pass.
 - **Combos:** altar-centric MS/charge engines are the highest-risk degenerate line; pull+hazard and chrono refresh are moderate but mostly data-tunable.
-- **Ticket 303 sub-ticket 04 scope:** **5 `apply-now` tunings applied** in `cardStats.json`; the **3 optional `apply-now`** items (ice_ball, purifying_pulse, chain_lightning) are now **applied in ticket 310** (see `## Applied tunings`). **Ticket 311 sub-ticket 04:** reconciled harness rows and triage notes for `battle_familiar`, `null_crawler`, and `astral_guardian`. **Ticket 312 sub-tickets 02–03:** **`excalibur_photon` wind-up DPM** addressed via `windUpMs` and report reconciliation. **15 `operator-triage`** items remain in backlog.
+- **Ticket 303 sub-ticket 04 scope:** **5 `apply-now` tunings applied** in `cardStats.json`; the **3 optional `apply-now`** items (ice_ball, purifying_pulse, chain_lightning) are now **applied in ticket 310** (see `## Applied tunings`). **Ticket 311 sub-ticket 04:** reconciled harness rows and triage notes for `battle_familiar`, `null_crawler`, and `astral_guardian`. **Ticket 312 sub-tickets 02–03:** **`excalibur_photon` wind-up DPM** addressed via `windUpMs` and report reconciliation. **Ticket 308 sub-ticket 04:** reconciled `flame_blade`, `magma_greatsword`, and `soul_drain` wind-up/charge pass (data in sub-tickets 01–03). **12 `operator-triage`** items remain in backlog.
 
 ## Recommendations
 
@@ -290,12 +290,12 @@ Optional creature tweak (playtest-gated): `dungeon_drake` — `attackDamage` +1 
 
 | id | field(s) / topic | reason |
 | --- | --- | --- |
-| flame_blade | `damage`, `rewardOrder` | early reward DPC exceeds evolved weapons |
-| magma_greatsword | `damage`, `trailDamagePerTick`, `dotTicks` | fire-trail doubles effective burst |
+| ~~flame_blade~~ | `windUpMs`, `charges` | **done (ticket 308)** — 650 ms wind-up, charges 3→2; see Applied tunings |
+| ~~magma_greatsword~~ | `charges`, `windUpMs` | **done (ticket 308)** — charges 4→2; 800 ms wind-up (307); see Applied tunings |
 | deck_sifter | utility scoring | draw-only; no combat metric |
 | battle_familiar | `damage`, `minionHp` | **addressed in 311** — per-card `CARD_GRIND_STAT_SCALE` 0.03; base `cardStats` unchanged |
 | astral_guardian | `damage`, `magicStoneCost`, `minionHp` | **addressed in 311** — `damage` 66→63, `shieldHp` 15→14; harness DPC 63 |
-| soul_drain | `damage`, `magicStoneOnHit` | evolved finisher burst |
+| ~~soul_drain~~ | `windUpMs` | **done (ticket 308)** — 700 ms wind-up; burst/MS leech unchanged; see Applied tunings |
 | gravity_well | CC utility score | pull-only |
 | event_horizon | `centerDamage` in harness | crush damage not in primary field |
 | mana_prism | passive MS model | no combat metric |
@@ -311,7 +311,7 @@ Optional creature tweak (playtest-gated): `dungeon_drake` — `attackDamage` +1 
 
 ## Applied tunings
 
-Combat stat changes in `game/shared/cardStats.json` (ticket 303 sub-ticket 04). Sub-ticket 02 added `excalibur_photon` `windUpMs` (ticket 312; documented below). Per-card grind scaling and Astral Guardian trim (ticket 311 sub-tickets 01–03) documented below. Remaining **`operator-triage`** backlog excludes `excalibur_photon` and the three cards marked **addressed in 311**.
+Combat stat changes in `game/shared/cardStats.json` (ticket 303 sub-ticket 04). Sub-ticket 02 added `excalibur_photon` `windUpMs` (ticket 312; documented below). Per-card grind scaling and Astral Guardian trim (ticket 311 sub-tickets 01–03) documented below. Ticket **308** heavy-hitter wind-up + charge pass documented below. Remaining **`operator-triage`** backlog excludes `excalibur_photon`, the three cards marked **addressed in 311**, and `flame_blade` / `magma_greatsword` / `soul_drain`.
 
 | id | field | before → after | notes |
 | --- | --- | --- | --- |
@@ -324,6 +324,10 @@ Combat stat changes in `game/shared/cardStats.json` (ticket 303 sub-ticket 04). 
 | ice_ball | `slowChance` | 0.5 → 0.65 | ticket 310 — stronger slow proc; damage/cost unchanged |
 | purifying_pulse | `healAmount` | 15 → 20 | ticket 310 — more heal; cleanse/radius/0 MS unchanged |
 | chain_lightning | `magicStoneCost` | 42 → 37 | ticket 310 — cheaper cast; damage/chain unchanged |
+| flame_blade | `windUpMs` | none → 650 ms | ticket 308 — DPM 0.035 (cooldown-only) → 0.019 (1450 ms effective cycle); burst 28 unchanged |
+| flame_blade | `charges` | 3 → 2 | ticket 308 — smaller charge pool pairs with wind-up commitment; harness DPC 9.33 → 14 |
+| magma_greatsword | `charges` | 4 → 2 | ticket 308 — DPM 0.108 → 0.054 (1600 ms cycle with `windUpMs` 800 ms from 307); harness DPC 21.5 → 43; fire-trail burst unchanged |
+| soul_drain | `windUpMs` | none → 700 ms | ticket 308 — DPM 0.053 → 0.028 (1500 ms effective cycle); DPC 42 and MS leech unchanged |
 
 ### Ticket 311 tunings
 

@@ -1631,7 +1631,7 @@ describe('synergistic card helpers', () => {
 			hand: [
 				{ id: 'iron_sword', type: 'weapon', charges: 5, remainingCharges: 1 },
 				{ id: 'chrono_trigger', type: 'spell', charges: 1, remainingCharges: 1 },
-				{ id: 'flame_blade', type: 'weapon', charges: 3, remainingCharges: 1 },
+				{ id: 'flame_blade', type: 'weapon', charges: 2, remainingCharges: 1 },
 			],
 		});
 
@@ -1639,10 +1639,10 @@ describe('synergistic card helpers', () => {
 
 		expect(restored).toEqual([
 			{ slotIndex: 0, cardId: 'iron_sword', amount: 2 },
-			{ slotIndex: 2, cardId: 'flame_blade', amount: 2 },
+			{ slotIndex: 2, cardId: 'flame_blade', amount: 1 },
 		]);
 		expect(gameState.players['p1'].hand[0].remainingCharges).toBe(3);
-		expect(gameState.players['p1'].hand[2].remainingCharges).toBe(3);
+		expect(gameState.players['p1'].hand[2].remainingCharges).toBe(2);
 	});
 });
 
@@ -1846,7 +1846,7 @@ describe('synergistic minion pulses', () => {
 		addPlayer('p1', {
 			hand: [
 				{ id: 'iron_sword', type: 'weapon', charges: 5, remainingCharges: 4 },
-				{ id: 'flame_blade', type: 'weapon', charges: 3, remainingCharges: 3 },
+				{ id: 'flame_blade', type: 'weapon', charges: 2, remainingCharges: 2 },
 			],
 		});
 		gameState.minions.push({
@@ -4776,7 +4776,7 @@ describe('server hand management', () => {
 		const player = {
 			hand: [
 				{ id: 'iron_sword', type: 'weapon', charges: 5, remainingCharges: 0 },
-				{ id: 'flame_blade', type: 'weapon', charges: 3, remainingCharges: 0 },
+				{ id: 'flame_blade', type: 'weapon', charges: 2, remainingCharges: 0 },
 			],
 			deck: ['battle_familiar'],
 		};
@@ -4819,7 +4819,7 @@ describe('server hand management', () => {
 			hand: [
 				{ id: 'iron_sword', type: 'weapon', charges: 5, remainingCharges: 5 },
 				null,
-				{ id: 'flame_blade', type: 'weapon', charges: 3, remainingCharges: 3 },
+				{ id: 'flame_blade', type: 'weapon', charges: 2, remainingCharges: 2 },
 			],
 		};
 
@@ -5081,7 +5081,7 @@ describe('server hand management', () => {
 			hand: [
 				{ id: 'deck_sifter', type: 'weapon', charges: 3, remainingCharges: 3, effect: 'draw_card' },
 				{ id: 'iron_sword', type: 'weapon', charges: 5, remainingCharges: 5 },
-				{ id: 'flame_blade', type: 'weapon', charges: 3, remainingCharges: 3 },
+				{ id: 'flame_blade', type: 'weapon', charges: 2, remainingCharges: 2 },
 				{ id: 'battle_familiar', type: 'spell', charges: 1, remainingCharges: 1 },
 				{ id: 'dungeon_drake', type: 'creature', charges: 1, remainingCharges: 1 },
 				{ id: 'harvesting_scythe', type: 'weapon', charges: 3, remainingCharges: 3 },

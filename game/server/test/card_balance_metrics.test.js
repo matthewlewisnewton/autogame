@@ -180,6 +180,48 @@ describe('card balance metrics harness', () => {
 		expect(photon.damagePerMs).toBeLessThanOrEqual(0.045);
 	});
 
+	it('documents heavy-hitter windUpMs, lowered charges, and wind-up-aware metrics', () => {
+		const heavyHitters = [
+			{
+				id: 'flame_blade',
+				windUpMs: 650,
+				charges: 2,
+				effectiveBurst: 28,
+			},
+			{
+				id: 'magma_greatsword',
+				windUpMs: 800,
+				charges: 2,
+				effectiveBurst: 86,
+			},
+			{
+				id: 'soul_drain',
+				windUpMs: 700,
+				charges: 1,
+				effectiveBurst: 42,
+			},
+		];
+
+		for (const { id, windUpMs, charges, effectiveBurst } of heavyHitters) {
+			const row = report.cards[id];
+			const stats = cardStats[id];
+			const perUseDamage = effectiveBurst * (stats.swingsPerUse ?? 1);
+			const effectiveCycleMs = row.cooldownMs + windUpMs;
+			const cooldownOnlyDpm = perUseDamage / row.cooldownMs;
+
+			expect(row).toMatchObject({
+				id,
+				windUpMs,
+				charges,
+				effectiveBurst,
+				effectiveCycleMs,
+			});
+			expect(row.damagePerCharge).toBeCloseTo(perUseDamage / charges);
+			expect(row.damagePerMs).toBeCloseTo(perUseDamage / effectiveCycleMs);
+			expect(row.damagePerMs).toBeLessThan(cooldownOnlyDpm);
+		}
+	});
+
 	it('runs as a standalone node script', () => {
 		const result = spawnSync(process.execPath, [ANALYZER_PATH], {
 			encoding: 'utf8',

@@ -41,6 +41,7 @@ import {
 	ATTACK_EFFECT_SPEED,
 	SUMMON_EXPAND_MS,
 	SUMMON_EFFECT_DURATION,
+	MINION_SUMMON_IN_MS,
 	HIT_SPARK_DURATION,
 	LOOT_COLLECT_DURATION,
 	DAMAGE_NUMBER_DURATION,
@@ -126,6 +127,12 @@ let phaseStepTargetId = null;
 let phaseStepAllyRing = null;
 const windupFlashing = new Set(); // enemy ids currently showing windup emissive
 const minionsMeshes = {};
+/** First-seen minion ids — avoids re-playing spawn scale-in after resync/reconnect. */
+const seenMinionIds = new Set();
+/** Minion id → performance.now() when scale-in began (cleared once settled). */
+const minionSpawnTimes = {};
+/** Minion id → target uniform scale while scale-in is active. */
+const minionBaseScales = {};
 const lootMeshes = {};
 const iceBallMeshes = {}; // ice-ball projectile id → giant icy sphere mesh (glacial thrower)
 let telepipeMesh = null; // Group: cylinder + 2 torus rings + particle children
@@ -1338,6 +1345,11 @@ export function getWallColliders() {
  */
 export function getActiveEffects() {
 	return activeEffects;
+}
+
+/** Test harness: pending minion scale-in start times keyed by minion id. */
+export function getMinionSpawnTimes() {
+	return minionSpawnTimes;
 }
 
 /**
@@ -2624,10 +2636,12 @@ export function triggerHealPulseVFX(position, healRadius) {
 
 const MEDIC_BEAD_COLOR = 0x2dd4bf;
 const MEDIC_BEAD_EMISSIVE = 0x14b8a6;
+const MEDIC_HEAL_COLOR = 0x34d399;
 const MEDIC_HEAL_DEFAULT_RADIUS = 6;
 
 /**
- * Ally-heal pulse at the medic position (wraps the Field Medic Kit ring VFX).
+ * Ally-heal pulse at the medic position — mint/teal telegraph ring and burst
+ * distinct from the bright-green Field Medic Kit pulse and null_crawler cyan.
  *
  * @param {{ x: number, y?: number, z: number }} position
  * @param {number} [healRadius] — metres; matches server ENEMY_DEFS.field_medic.healRadius
@@ -2638,7 +2652,22 @@ export function triggerMedicAllyHealVFX(position, healRadius) {
 	const radius = Number.isFinite(healRadius) && healRadius > 0
 		? healRadius
 		: MEDIC_HEAL_DEFAULT_RADIUS;
-	triggerHealPulseVFX(position, radius);
+	const origin = { x: position.x, z: position.z };
+	spawnTelegraphRing(origin, radius, {
+		color: MEDIC_HEAL_COLOR,
+		emissive: MEDIC_BEAD_COLOR,
+		duration: HEAL_PULSE_DURATION,
+	});
+	spawnParticleBurst(
+		{ x: position.x, y: position.y ?? 0.5, z: position.z },
+		{
+			color: MEDIC_HEAL_COLOR,
+			emissive: MEDIC_BEAD_EMISSIVE,
+			count: 12,
+			spread: 1.6,
+			duration: HEAL_PULSE_DURATION,
+		},
+	);
 }
 
 /**
@@ -2653,17 +2682,39 @@ export function triggerMedicEnergyBeadVFX(record) {
 	if (!Number.isFinite(origin.x) || !Number.isFinite(origin.z)) return;
 	if (!Number.isFinite(direction.x) || !Number.isFinite(direction.z)) return;
 
+	const range = Number.isFinite(beadRange) ? beadRange : 8;
+	const dirLen = Math.hypot(direction.x, direction.z) || 1;
+	const nx = direction.x / dirLen;
+	const nz = direction.z / dirLen;
+
 	spawnAttackEffect(
 		{ x: origin.x, z: origin.z },
 		{ x: direction.x, z: direction.z },
 		{
 			effect: 'returning_projectile',
 			returnPasses: 0,
-			range: Number.isFinite(beadRange) ? beadRange : 8,
+			range,
 			projectileHitWidth: Number.isFinite(hitWidth) ? hitWidth : 0.5,
 			color: MEDIC_BEAD_COLOR,
 			emissive: MEDIC_BEAD_EMISSIVE,
 		},
+	);
+
+	spawnProjectileTrail(
+		{ x: origin.x, z: origin.z },
+		{ x: nx, z: nz },
+		{ range, color: MEDIC_BEAD_COLOR, emissive: MEDIC_BEAD_EMISSIVE, y: 0.85 },
+	);
+
+	const terminus = { x: origin.x + nx * range, z: origin.z + nz * range };
+	spawnImpactDecal(terminus, {
+		color: MEDIC_BEAD_COLOR,
+		emissive: MEDIC_BEAD_EMISSIVE,
+		radius: 0.65,
+	});
+	spawnParticleBurst(
+		{ x: terminus.x, y: 0.5, z: terminus.z },
+		{ color: MEDIC_BEAD_COLOR, emissive: MEDIC_BEAD_EMISSIVE, count: 8, spread: 1.0 },
 	);
 
 	if (!hits?.length) return;
@@ -4007,10 +4058,11 @@ function createNullCrawlerTelegraph(minion) {
 	const direction = getMinionWindupDirection(minion);
 	const range = minion.attackRange ?? 14;
 	const hitWidth = minion.projectileHitWidth ?? 0.8;
+	// Windup corridor reads ghostlier than the resolved beam (brighter emissive, lower opacity).
 	const group = createBeamTelegraphGroup(direction, range, hitWidth, {
-		color: 0x22d3ee,
-		emissive: 0x06b6d4,
-		opacity: 0.55,
+		color: 0x67e8f9,
+		emissive: 0xa5f3fc,
+		opacity: 0.38,
 	});
 	group.position.set(minion.x, GROUND_OVERLAY_Y, minion.z);
 	return group;
@@ -4275,6 +4327,32 @@ export function spawnSummonEffect(origin, radius, styleOrColor = {}) {
 		createdAt: performance.now(),
 		duration: SUMMON_EFFECT_DURATION,
 	});
+}
+
+/**
+ * Shared minion summon-in flourish: accent ground ring, telegraph pulse, and
+ * particle burst at the spawn point. Composes existing 315 VFX primitives.
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, radius }
+ */
+export function spawnMinionSummonInEffect(origin, style = {}) {
+	const color = style.color ?? 0x22c55e;
+	const emissive = style.emissive ?? color;
+	const radius = style.radius ?? 1.4;
+	const burstCount = style.burstCount ?? 12;
+	const burstSpread = style.burstSpread ?? 1.8;
+	const summonStyle = { color, emissive };
+
+	spawnSummonEffect(origin, radius, summonStyle);
+	spawnTelegraphRing(origin, radius * 0.85, {
+		color,
+		emissive,
+		duration: MINION_SUMMON_IN_MS,
+	});
+	spawnParticleBurst(
+		{ x: origin.x, y: 1.0, z: origin.z },
+		{ color, emissive, count: burstCount, spread: burstSpread, duration: MINION_SUMMON_IN_MS },
+	);
 }
 
 /**
@@ -5744,15 +5822,17 @@ export function animate(timestamp) {
 						}
 					}
 					const fromThunderbird = nearestMinion && nearestMinion.type === 'thunderbird';
+					const fromStormEagle = nearestMinion && nearestMinion.type === 'storm_eagle';
 					const fromAncientWyrm = nearestMinion && nearestMinion.type === 'ancient_wyrm';
 					const fromNullCrawler = nearestMinion && nearestMinion.type === 'null_crawler';
 					const fromBulkheadMauler = nearestMinion && nearestMinion.type === 'bulkhead_mauler';
 					flashMesh(
 						enemiesMeshes[enemy.id],
 						fromThunderbird ? 0x38bdf8
-							: (fromAncientWyrm ? 0xfb923c
-								: (fromNullCrawler ? 0x22d3ee
-									: (fromBulkheadMauler ? 0xf59e0b : 0xff4444))),
+							: (fromStormEagle ? 0x67e8f9
+								: (fromAncientWyrm ? 0xfb923c
+									: (fromNullCrawler ? 0x22d3ee
+										: (fromBulkheadMauler ? 0xf59e0b : 0xff4444)))),
 						150
 					);
 					if (fromThunderbird) {
@@ -5765,6 +5845,12 @@ export function animate(timestamp) {
 						spawnChainLightningEffect(
 							{ x: nearestMinion.x, z: nearestMinion.z },
 							sparkDir
+						);
+					} else if (fromStormEagle) {
+						spawnLightningArc(
+							{ x: nearestMinion.x, z: nearestMinion.z },
+							{ x: enemy.x, z: enemy.z },
+							{ color: 0x67e8f9, emissive: 0x22d3ee },
 						);
 					} else if (fromAncientWyrm) {
 						const breathDir = nearestMinion
@@ -5782,6 +5868,10 @@ export function animate(timestamp) {
 								color: 0xef4444,
 								emissive: 0x9333ea,
 							}
+						);
+						spawnParticleBurst(
+							{ x: enemy.x, y: halfHeight, z: enemy.z },
+							{ color: 0xef4444, emissive: 0xff3b00, count: 8, spread: 0.85 },
 						);
 					} else if (fromNullCrawler) {
 						const beamDir = nearestMinion
@@ -5827,9 +5917,10 @@ export function animate(timestamp) {
 						flashMesh(
 							minionsMeshes[nearestMinion.id],
 							fromThunderbird ? 0x7dd3fc
-								: (fromAncientWyrm ? 0xfb923c
-									: (fromNullCrawler ? 0x67e8f9
-										: (fromBulkheadMauler ? 0xfbbf24 : 0x88ff88))),
+								: (fromStormEagle ? 0x93c5fd
+									: (fromAncientWyrm ? 0xfb923c
+										: (fromNullCrawler ? 0x67e8f9
+											: (fromBulkheadMauler ? 0xfbbf24 : 0x88ff88)))),
 							200
 						);
 					}
@@ -5911,14 +6002,48 @@ export function animate(timestamp) {
 				const mesh = createMinionMesh(minion.type);
 				scene.add(mesh);
 				minionsMeshes[minion.id] = mesh;
+				if (!seenMinionIds.has(minion.id)) {
+					seenMinionIds.add(minion.id);
+					minionSpawnTimes[minion.id] = performance.now();
+					minionBaseScales[minion.id] = mesh.scale.x;
+					mesh.scale.setScalar(0.001);
+				} else if (minionSpawnTimes[minion.id] === undefined) {
+					const settledScale = minionBaseScales[minion.id] ?? mesh.scale.x;
+					mesh.scale.setScalar(settledScale);
+				}
 			}
-			minionsMeshes[minion.id].position.set(minion.x, 0.5, minion.z);
+			const minionMesh = minionsMeshes[minion.id];
+			minionMesh.position.set(minion.x, 0.5, minion.z);
+
+			const spawnAt = minionSpawnTimes[minion.id];
+			if (spawnAt !== undefined) {
+				const rawT = Math.min((performance.now() - spawnAt) / MINION_SUMMON_IN_MS, 1);
+				const eased = rawT * (2 - rawT);
+				const baseScale = minionBaseScales[minion.id] ?? 1;
+				minionMesh.scale.setScalar(Math.max(0.001, baseScale * eased));
+				if (rawT >= 1) {
+					minionMesh.scale.setScalar(baseScale);
+					delete minionSpawnTimes[minion.id];
+					delete minionBaseScales[minion.id];
+				}
+			}
 
 			if (minion.type === 'null_crawler' && minion.attackState === 'windup') {
 				if (!minionTelegraphMeshes[minion.id]) {
 					const telegraph = createNullCrawlerTelegraph(minion);
 					scene.add(telegraph);
 					minionTelegraphMeshes[minion.id] = telegraph;
+					const windupMs = minion.attackWindupMs ?? 1000;
+					const beamRange = minion.attackRange ?? 14;
+					spawnTelegraphRing(
+						{ x: minion.x, z: minion.z },
+						Math.min(beamRange * 0.32, 3.2),
+						{
+							color: 0x67e8f9,
+							emissive: 0xa5f3fc,
+							duration: windupMs,
+						},
+					);
 				} else {
 					updateNullCrawlerTelegraph(minion, minionTelegraphMeshes[minion.id]);
 				}
@@ -5951,6 +6076,13 @@ export function animate(timestamp) {
 		for (const id of Object.keys(previousMinionHp)) {
 			if (!currentMinionIds.has(id)) {
 				delete previousMinionHp[id];
+			}
+		}
+		for (const id of [...seenMinionIds]) {
+			if (!currentMinionIds.has(id)) {
+				seenMinionIds.delete(id);
+				delete minionSpawnTimes[id];
+				delete minionBaseScales[id];
 			}
 		}
 

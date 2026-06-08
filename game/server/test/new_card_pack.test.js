@@ -475,6 +475,16 @@ describe('new card combat helpers', () => {
 			gameState.enemies[0].z - gameState.minions[0].z
 		);
 		expect(distAfter).toBeGreaterThanOrEqual(distBefore - 0.5);
+		expect(gameState._pendingMinionBreaths).toHaveLength(1);
+		expect(gameState._pendingMinionBreaths[0]).toMatchObject({
+			playerId: 'p1',
+			cardId: 'storm_eagle',
+			minionId: 'eagle',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			hits: [{ enemyId: 'e1' }],
+			strikeTarget: { x: 6, z: 0 },
+		});
 	});
 
 	it('Thunderbird minion chains lightning damage to nearby enemies', () => {
@@ -520,6 +530,25 @@ describe('new card combat helpers', () => {
 		cleanupAfterDamage();
 		expect(gameState.enemies[0].hp).toBeLessThan(50);
 		expect(gameState.enemies[1].hp).toBeLessThan(50);
+		expect(gameState._pendingMinionBreaths).toHaveLength(1);
+		expect(gameState._pendingMinionBreaths[0]).toMatchObject({
+			playerId: 'p1',
+			cardId: 'thunderbird',
+			minionId: 'bird',
+			specialEffect: 'chain_lightning',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+		});
+		expect(gameState._pendingMinionBreaths[0].hits).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ enemyId: 'e1' }),
+				expect.objectContaining({ enemyId: 'e2' }),
+			]),
+		);
+		expect(gameState._pendingMinionBreaths[0].chainSegments).toEqual([
+			{ from: { x: 0, z: 0 }, to: { x: 6, z: 0 } },
+			{ from: { x: 6, z: 0 }, to: { x: 8, z: 0 } },
+		]);
 	});
 
 	it('storm_eagle fires on first tick but NOT again within the same attackIntervalMs', () => {

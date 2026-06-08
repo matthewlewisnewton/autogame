@@ -5649,6 +5649,24 @@ PASS. The implementation is minimal and localized to the expected files. The int
 No blocking gaps.
 
 
+## v0.321 — 308-apply-windup-and-lower-charges-to-heavy-hitter-cards  (2026-06-08 02:37:44)
+
+### Card text and rendering
+
+PASS. Hand rendering now shows the wind-up hint for cards with `windUpMs`, the tooltip explains the movement/card lockout, and reward choice descriptions include wind-up-aware damage copy. This satisfies the requirement that card text/rendering convey the heavy wind-up.
+
+### Tests and coverage
+
+PASS. The captured coverage run passed: 38 test files and 1134 tests. Relevant coverage includes merged card stat assertions, charge-value updates, delayed resolution for Solar Edge, Soul Drain, and Corebreaker, input-lock behavior, death cleanup, and UI wind-up hints/tooltips. Coverage thresholds were disabled as expected.
+
+### Design and requirements consistency
+
+PASS. The change stays within the card-combat system described in `game/docs/design.md`: weapons/spells remain card-driven combat actions, charge behavior is preserved, and the wind-up mechanic adds commitment without changing the lobby/dungeon/loot loop. The foundation requirements are not regressed: the captured run renders the scene, connects client/server, shows multiplayer state, and accepts movement.
+
+### Debug scenarios
+
+PASS. This ticket only updates the existing `magma-windup-ready` debug scenario fixture to match the new Corebreaker charge count. Debug scenarios remain gated by the debug socket path, which is only allowed locally or via `ALLOW_DEBUG_SCENARIOS`, and the normal equivalent state is still reachable by obtaining/grinding/evolving `flame_blade` into `magma_greatsword` and entering a run. The shortcut does not replace normal gameplay or weaken the production card-use path; wind-up validation still goes through the same server `useCard` and resolution code.
+
 ## v0.320 — 315-card-animation-shared-vfx-primitives-foundation  (2026-06-08 01:05:38)
 
 ### Client tests where feasible
@@ -5694,3 +5712,60 @@ PASS. The implementation stays within the card-combat and dungeon/lobby loop des
 
 No blocking gaps remain for this ticket.
 
+## v0.324 — 316-distinct-weapon-card-animations  (2026-06-08 03:06:17)
+
+### No performance regression
+
+PASS. The implementation composes a small, bounded number of existing primitive effects per card use. Delayed effects use the existing scheduler, and optional primitive calls are guarded so missing helpers degrade to the core swing rather than throwing. No per-frame work was added to normal gameplay beyond the existing wind-up marker path.
+
+### Tests where feasible
+
+PASS. `game/client/test/cardRenderers.test.js` exercises all weapon visual families, distinctness, optional-helper fallback, heavy impact parameters, photon barrage scheduling, and Solar Edge/heavy weapon wind-up stat presence. Integration tests were adjusted where Solar Edge's new wind-up changes timing assumptions. The round-2 coverage run passed: 127 files, 1929 tests.
+
+## Design and requirements consistency
+
+PASS. The change remains consistent with the active card-combat design: weapons are still multi-charge directional attacks, and wind-up cards now better communicate committed hits. The foundation requirements are not regressed: the capture shows a 3D scene, WebSocket-connected multiplayer state, player visualization, and movement/dodge probes working in a live run.
+
+## Debug scenarios
+
+PASS. This ticket adds `weapon-slash-ready`, `energy-blade-slash-ready`, and `heavy-greatsword-slash-ready`. They are reachable only through the existing `debugScenario` socket path, which is gated to localhost/non-production unless `ALLOW_DEBUG_SCENARIOS=1` is set. They do not replace normal gameplay: the same weapons are reachable as starter/reward/evolved cards through inventory, deck, and evolution systems. The scenarios prepare hand contents and nearby enemies for QA but still use the normal `useCard` server path for card validation, wind-up resolution, net replication, and `cardUsed` rendering.
+
+## v0.323 — 318-creature-minion-summon-and-attack-animations  (2026-06-08 02:59:05)
+
+## Performance and cleanup
+
+PASS. The new effects reuse existing short-lived primitive systems and active-effect cleanup instead of adding persistent unbounded meshes. Minion telegraphs and mesh maps are disposed with stale minions, and pending server VFX queues are drained each game-loop tick. I did not see a perf-risk pattern such as unbounded DOM or scene growth.
+
+## Tests and coverage visibility
+
+PASS. `coverage.log` shows the test run completed successfully: 138 test files passed and 2331 tests passed. Focused coverage includes renderer dispatch tests for the new card visuals, minion summon scale-in tests, field medic VFX tests, and server tests for the new minion attack payloads/evolution paths.
+
+## Design and requirements consistency
+
+PASS. The changes are consistent with the documented card-combat design: creatures remain persistent battlefield allies, enemies remain server-authoritative, and the client renders visual feedback from server events. The captured run still satisfies the foundation requirements: 3D scene renders, WebSocket state connects, multiplayer squad state exists, and movement updates during gameplay.
+
+## Debug scenarios
+
+PASS. This ticket added debug scenarios for minion and enemy VFX review. They are only reachable through the existing debug scenario mechanism (`?debugScenario=...` / debug socket path), with normal gameplay untouched. Equivalent states remain reachable through regular card acquisition, deployment, evolution, and enemy spawning paths: `dungeon_drake`, `null_crawler`, `storm_eagle`, and `skeleton_knight` are reward cards; `ancient_wyrm`, `thunderbird`, and `undead_commander` are normal evolution targets; Field Medic is a normal enemy type. The scenarios set up QA states but do not weaken the server-side cast, combat, persistence, or replication invariants.
+
+## v0.322 — 317-distinct-spell-card-animations  (2026-06-08 02:54:50)
+
+### Cast, projectile, and impact VFX
+
+PASS. The implementation distinguishes cast/projectile/impact where those phases apply. Projectile-style cards such as Fireball, Glacial Orb, Permafrost Lance, and Voltaic Chain include directional travel cues and endpoint/impact flourishes. Radial and utility spells use distinct cast telegraphs and origin bursts, while specialized effects such as Thermal Column, Sanctum Pulse, Purifying Pulse, and Event Horizon preserve their thematic impact visuals. The code also keeps existing hit flashes and common sounds in the shared post-effect path, so new renderers do not duplicate those responsibilities.
+
+### Performance and robustness
+
+PASS. The added effects are bounded helper calls per cast and do not introduce persistent loops or unbounded allocation. Optional newer renderer primitives are guarded in the renderers that can operate without them, and the main client context supplies all new helpers. The full vitest run passed: 120 test files and 1811 tests, including `client/test/cardRenderers.test.js`.
+
+### Design and requirements consistency
+
+PASS. The work stays within the documented card-combat model: spells remain single-use card actions whose server effects and validation are unchanged, with the client only adding presentation for `cardUsed` events. The foundational requirements are not regressed: the captured run shows the 3D scene, server/client connection, multiplayer state, movement, and HUD still functioning.
+
+### Debug scenarios
+
+PASS. This ticket added spell-ready debug scenarios for QA, but normal gameplay does not touch them: the client only requests `?debugScenario=...` on localhost, and the server accepts debug scenarios only via the existing debug gate. The shortcuts seed hands/enemies for visual capture, while the real card-cast path still goes through normal `useCard` validation and `cardUsed` broadcasts. The scenarios document equivalent normal reachability through earning/evolving the cards and entering combat, so they are QA shortcuts rather than substitutes for player flow.
+
+## Remaining gaps
+
+No blocking gaps found.
