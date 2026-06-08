@@ -40,6 +40,10 @@ function nonBossEnemies(harness, bossType, addTypes) {
 	return questAdds(harness, bossType, addTypes);
 }
 
+function allLiveEnemies(harness) {
+	return (harness?.enemyHp || []).filter((e) => e.hp > 0);
+}
+
 function bossEnemy(harness, bossType) {
 	return (harness?.enemyHp || []).find((e) => e.type === bossType && e.hp > 0) || null;
 }
@@ -93,6 +97,20 @@ async function lockOntoNearestAdd(page, bossType, addTypes) {
 	return !!(locked && locked.type !== bossType);
 }
 
+async function lockOntoNearestLiveEnemy(page) {
+	const harness = await readHarness(page);
+	const target = nearestEnemy(harness, null, { addsOnly: false });
+	if (target && target.dist > 5) {
+		await nudgeToward(page, target.enemy.x, target.enemy.z, { steps: 2, holdMs: 400 });
+	}
+	await page.keyboard.press('z');
+	await page.waitForTimeout(300);
+	const lock = await readLockOnState(page);
+	if (!lock.active) return false;
+	const after = await readHarness(page);
+	return !!(after?.enemyHp || []).find((e) => e.id === lock.targetId && e.hp > 0);
+}
+
 async function lockOntoBoss(page, bossType) {
 	const harness = await readHarness(page);
 	const boss = bossEnemy(harness, bossType);
@@ -126,6 +144,23 @@ async function swingAtTarget(page, attackKey, bossType, { minAddsLeft = 0, addTy
 		const addsAfter = nonBossEnemies(after, bossType, addTypes).length;
 		if (addsAfter <= minAddsLeft) return after;
 		if (addsAfter < addsBefore) return after;
+	}
+	return readHarness(page);
+}
+
+async function swingAtLiveEnemy(page, attackKey, { minEnemiesLeft = 0 } = {}) {
+	const before = await readHarness(page);
+	const enemiesBefore = allLiveEnemies(before).length;
+	if (enemiesBefore <= minEnemiesLeft) return before;
+
+	for (let swing = 0; swing < 8; swing += 1) {
+		await page.keyboard.press(attackKey);
+		await page.waitForTimeout(900);
+
+		const after = await readHarness(page);
+		const enemiesAfter = allLiveEnemies(after).length;
+		if (enemiesAfter <= minEnemiesLeft) return after;
+		if (enemiesAfter < enemiesBefore) return after;
 	}
 	return readHarness(page);
 }
@@ -220,6 +255,66 @@ export async function defeatAdds(page, {
 	const remaining = nonBossEnemies(finalHarness, bossType, addTypes).length;
 	if (remaining > minAddsLeft) {
 		throw new Error(`Adds not cleared within timeout (remaining ${remaining}, wanted <= ${minAddsLeft})`);
+	}
+	return finalHarness;
+}
+
+/**
+ * @param {import('playwright').Page} page
+ * @param {{ timeoutMs?: number, minEnemiesLeft?: number, onMidCombat?: () => Promise<void> }} opts
+ */
+export async function defeatAllEnemies(page, {
+	timeoutMs = 90000,
+	minEnemiesLeft = 0,
+	onMidCombat = null,
+}) {
+	const deadline = Date.now() + timeoutMs;
+	let midCombatCaptured = false;
+	await focusCanvas(page);
+
+	while (Date.now() < deadline) {
+		const harness = await readHarness(page);
+		const enemies = allLiveEnemies(harness);
+		if (enemies.length <= minEnemiesLeft) return harness;
+
+		const target = nearestEnemy(harness, null, { addsOnly: false });
+		if (target && target.dist > 5) {
+			await nudgeToward(page, target.enemy.x, target.enemy.z, { steps: 3, holdMs: 500 });
+		}
+
+		if (!midCombatCaptured && enemies.length > 0 && typeof onMidCombat === 'function') {
+			await onMidCombat();
+			midCombatCaptured = true;
+		}
+
+		const attack = chooseAttack(harness);
+		if (!attack) {
+			throw new Error(`No usable attack card to defeat enemies: ${JSON.stringify(harness?.hand)}`);
+		}
+		const attackKey = String(attack.slot + 1);
+		if (attack.mode === 'weapon') {
+			const locked = await lockOntoNearestLiveEnemy(page);
+			if (!locked) {
+				if (target) {
+					await nudgeToward(page, target.enemy.x, target.enemy.z, { steps: 2, holdMs: 400 });
+				} else {
+					await page.keyboard.down('w');
+					await page.waitForTimeout(400);
+					await page.keyboard.up('w');
+				}
+				continue;
+			}
+			await swingAtLiveEnemy(page, attackKey, { minEnemiesLeft });
+		} else {
+			await page.keyboard.press(attackKey);
+			await page.waitForTimeout(4000);
+		}
+	}
+
+	const finalHarness = await readHarness(page);
+	const remaining = allLiveEnemies(finalHarness).length;
+	if (remaining > minEnemiesLeft) {
+		throw new Error(`Enemies not cleared within timeout (remaining ${remaining}, wanted <= ${minEnemiesLeft})`);
 	}
 	return finalHarness;
 }

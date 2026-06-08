@@ -18,6 +18,7 @@ import { registerUser, injectToken, isSocketConnected } from './lib/auth.mjs';
 import {
 	enableGodmode,
 	defeatAdds,
+	defeatAllEnemies,
 	defeatBoss,
 	activateEncounter,
 	assertDormantBoss,
@@ -55,9 +56,10 @@ const PRESET_MODULES = {
 	'spire-ascent': () => import('./presets/spire-ascent.mjs'),
 	'open-plaza': () => import('./presets/open-plaza.mjs'),
 	'sunken-canyon': () => import('./presets/sunken-canyon.mjs'),
+	fire: () => import('./presets/fire.mjs'),
 };
 
-const STAGE_PRESETS = new Set(['rooms', 'open-plaza', 'spire-ascent', 'sunken-canyon']);
+const STAGE_PRESETS = new Set(['rooms', 'open-plaza', 'spire-ascent', 'sunken-canyon', 'fire']);
 const ROOMS_FULL_STEPS = new Set(['full']);
 const ROOMS_HUB_STEPS = new Set(['hub', 'deploy']);
 const ROOMS_BOSS_ENCOUNTER_STEPS = new Set(['boss-encounter']);
@@ -601,6 +603,43 @@ async function runHubStep({ page, preset, outDirAbs }) {
 
 	await requestScenario(page, preset.deployScenario);
 
+	const objectiveType = preset.objectiveType ?? 'stage_boss';
+	if (objectiveType === 'defeat_enemies') {
+		await page.waitForFunction(() => {
+			const h = window.__AUTOGAME_HARNESS_STATE__?.();
+			return h
+				&& h.phase === 'playing'
+				&& h.cardHandVisible === true
+				&& h.objective?.type === 'defeat_enemies';
+		}, { timeout: 25000 }).catch(async () => {
+			await failWithHarness(page, `${deployRunLabel(preset)} defeat_enemies run did not start after ${preset.deployScenario}`);
+		});
+
+		const playingHarness = await readHarness(page);
+		if (preset.layoutProfile && playingHarness?.layout?.profile !== preset.layoutProfile) {
+			await failWithHarness(page, `Expected layout.profile ${preset.layoutProfile}`);
+		}
+		const liveEnemyCount = (playingHarness?.enemyHp || []).filter((enemy) => enemy.hp > 0).length;
+		if (liveEnemyCount === 0) {
+			await failWithHarness(page, 'Expected live enemies after defeat_enemies deploy');
+		}
+
+		const entryScreenshot = await writeScreenshot(page, outDirAbs, '02-level-entry');
+		const levelEntryFloor = await captureFloorAlignmentProbe(page);
+
+		return {
+			hubScreenshot: path.relative(REPO_ROOT, hubScreenshot),
+			entryScreenshot: path.relative(REPO_ROOT, entryScreenshot),
+			deployScenario: preset.deployScenario,
+			deployOk: true,
+			objectiveType: playingHarness?.objective?.type ?? null,
+			layoutProfile: playingHarness?.layout?.profile ?? null,
+			liveEnemyCount,
+			enemyTypes: (playingHarness?.enemyHp || []).map((e) => e.type),
+			floorAlignment: levelEntryFloor ? { levelEntry: levelEntryFloor } : {},
+		};
+	}
+
 	await page.waitForFunction(() => {
 		const h = window.__AUTOGAME_HARNESS_STATE__?.();
 		return h
@@ -636,6 +675,53 @@ async function runHubStep({ page, preset, outDirAbs }) {
 		encounterPhase: playingHarness?.encounter?.phase ?? null,
 		bossTypes: (playingHarness?.enemyHp || []).map((e) => e.type),
 		floorAlignment: levelEntryFloor ? { levelEntry: levelEntryFloor } : {},
+	};
+}
+
+async function runDefeatEnemiesCombatStep({ page, preset, outDirAbs }) {
+	await enableGodmode(page);
+	if (preset.nearAddsScenario) {
+		await requestScenario(page, preset.nearAddsScenario);
+	}
+
+	const preCombatHarness = await readHarness(page);
+	const preLiveEnemyCount = (preCombatHarness?.enemyHp || []).filter((enemy) => enemy.hp > 0).length;
+	if (preLiveEnemyCount === 0) {
+		throw new Error(`No live enemies for mid-combat capture (nearAddsScenario=${preset.nearAddsScenario ?? 'none'}): ${JSON.stringify(preCombatHarness)}`);
+	}
+
+	let midCombatScreenshot = null;
+	const floorAlignment = {};
+	const afterCombatHarness = await defeatAllEnemies(page, {
+		timeoutMs: preset.addsTimeoutMs ?? 90000,
+		minEnemiesLeft: 1,
+		onMidCombat: async () => {
+			const midHarness = await readHarness(page);
+			const midLiveCount = (midHarness?.enemyHp || []).filter((enemy) => enemy.hp > 0).length;
+			if (midLiveCount === 0) {
+				throw new Error('onMidCombat requested with zero live enemies');
+			}
+			const shotPath = await writeScreenshot(page, outDirAbs, '03-mid-combat');
+			midCombatScreenshot = path.relative(REPO_ROOT, shotPath);
+			const midCombatFloor = await captureFloorAlignmentProbe(page);
+			if (midCombatFloor) floorAlignment.midCombat = midCombatFloor;
+		},
+	});
+
+	if (!midCombatScreenshot) {
+		throw new Error('defeatAllEnemies finished without capturing mid-combat screenshot');
+	}
+
+	const postLiveEnemyCount = (afterCombatHarness?.enemyHp || []).filter((enemy) => enemy.hp > 0).length;
+
+	return {
+		midCombatScreenshot,
+		preLiveEnemyCount,
+		postLiveEnemyCount,
+		enemiesDefeated: preLiveEnemyCount > postLiveEnemyCount,
+		probes: {
+			...(Object.keys(floorAlignment).length > 0 ? { floorAlignment } : {}),
+		},
 	};
 }
 
@@ -732,6 +818,27 @@ function buildVictoryProbe(harness) {
 	};
 }
 
+function buildDefeatEnemiesVictoryProbe(harness) {
+	return {
+		runStatus: harness?.runStatus ?? null,
+		runObjectiveComplete: harness?.runObjectiveComplete ?? false,
+		lastRunSummaryStatus: harness?.lastRunSummary?.status ?? null,
+	};
+}
+
+async function waitForDefeatEnemiesVictoryState(page, { timeoutMs = 30000 } = {}) {
+	await page.waitForFunction(() => {
+		const h = window.__AUTOGAME_HARNESS_STATE__?.();
+		return h
+			&& h.runStatus === 'victory'
+			&& h.runObjectiveComplete === true
+			&& h.lastRunSummary?.status === 'victory';
+	}, { timeout: timeoutMs }).catch(async () => {
+		await failWithHarness(page, 'Victory state not reached');
+	});
+	return readHarness(page);
+}
+
 async function waitForVictoryState(page, { timeoutMs = 30000 } = {}) {
 	await page.waitForFunction(() => {
 		const h = window.__AUTOGAME_HARNESS_STATE__?.();
@@ -768,6 +875,39 @@ async function waitForSortieCompleteOverlay(page, { timeoutMs = 30000 } = {}) {
 }
 
 async function runVictoryStep({ page, preset, outDirAbs }) {
+	const objectiveType = preset.objectiveType ?? 'stage_boss';
+
+	if (objectiveType === 'defeat_enemies') {
+		if (preset.lastEnemyScenario) {
+			await requestScenario(page, preset.lastEnemyScenario);
+		}
+
+		const afterEnemiesHarness = await defeatAllEnemies(page, {
+			timeoutMs: preset.bossDefeatTimeoutMs ?? 180000,
+			minEnemiesLeft: 0,
+		});
+		const afterEnemiesProbe = buildDefeatEnemiesVictoryProbe(afterEnemiesHarness);
+		const objectiveCompleteScreenshotPath = await writeScreenshot(page, outDirAbs, '06-objective-complete');
+
+		const victoryHarness = await waitForDefeatEnemiesVictoryState(page, {
+			timeoutMs: preset.victoryTimeoutMs ?? 30000,
+		});
+		await waitForSortieCompleteOverlay(page, {
+			timeoutMs: preset.victoryTimeoutMs ?? 30000,
+		});
+		const victoryProbe = buildDefeatEnemiesVictoryProbe(victoryHarness);
+		const victoryScreenshotPath = await writeScreenshot(page, outDirAbs, '07-victory');
+
+		return {
+			objectiveCompleteScreenshot: path.relative(REPO_ROOT, objectiveCompleteScreenshotPath),
+			victoryScreenshot: path.relative(REPO_ROOT, victoryScreenshotPath),
+			probes: {
+				afterEnemies: afterEnemiesProbe,
+				victory: victoryProbe,
+			},
+		};
+	}
+
 	const { bossType, bossLowHpScenario } = preset;
 
 	if (bossLowHpScenario) {
@@ -801,6 +941,26 @@ async function runVictoryStep({ page, preset, outDirAbs }) {
 }
 
 function buildAssertions(summary, preset) {
+	const objectiveType = preset.objectiveType ?? 'stage_boss';
+
+	if (objectiveType === 'defeat_enemies') {
+		const layoutDeployed = summary.hub?.deployOk === true
+			&& summary.hub?.objectiveType === 'defeat_enemies'
+			&& (!preset.layoutProfile || summary.hub?.layoutProfile === preset.layoutProfile);
+		const combat = summary.defeatEnemiesCombat;
+		const enemiesCleared = combat?.enemiesDefeated === true
+			&& (combat?.postLiveEnemyCount ?? 1) <= 1;
+		const victoryProbe = summary.victory?.probes?.victory;
+		const victoryFired = victoryProbe?.runStatus === 'victory'
+			&& victoryProbe?.runObjectiveComplete === true
+			&& victoryProbe?.lastRunSummaryStatus === 'victory';
+		return {
+			layoutDeployed,
+			enemiesCleared,
+			victoryFired,
+		};
+	}
+
 	const bossSpawned = Array.isArray(summary.hub?.bossTypes)
 		&& summary.hub.bossTypes.includes(preset.bossType);
 	const encounterActivated = summary.bossEncounter?.encounterPhase === 'active'
@@ -834,9 +994,11 @@ function collectScreenshots(summary) {
 	if (summary.auth?.screenshot) shots.push(summary.auth.screenshot);
 	if (summary.hub?.hubScreenshot) shots.push(summary.hub.hubScreenshot);
 	if (summary.hub?.entryScreenshot) shots.push(summary.hub.entryScreenshot);
+	if (summary.defeatEnemiesCombat?.midCombatScreenshot) shots.push(summary.defeatEnemiesCombat.midCombatScreenshot);
 	if (summary.bossEncounter?.midCombatScreenshot) shots.push(summary.bossEncounter.midCombatScreenshot);
 	if (summary.bossEncounter?.dormantScreenshot) shots.push(summary.bossEncounter.dormantScreenshot);
 	if (summary.bossEncounter?.activeScreenshot) shots.push(summary.bossEncounter.activeScreenshot);
+	if (summary.victory?.objectiveCompleteScreenshot) shots.push(summary.victory.objectiveCompleteScreenshot);
 	if (summary.victory?.bossDefeatedScreenshot) shots.push(summary.victory.bossDefeatedScreenshot);
 	if (summary.victory?.victoryScreenshot) shots.push(summary.victory.victoryScreenshot);
 	return shots;
@@ -862,6 +1024,7 @@ function collectHubScreenshots(summary) {
 function mergeFloorAlignmentProbes(summary) {
 	const merged = {
 		...(summary.hub?.floorAlignment || {}),
+		...(summary.defeatEnemiesCombat?.probes?.floorAlignment || {}),
 		...(summary.bossEncounter?.probes?.floorAlignment || {}),
 	};
 	return Object.keys(merged).length > 0 ? merged : null;
@@ -893,14 +1056,15 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
 			error: summary.error || null,
 		});
 	} else {
+		const { floorAlignment: _defeatFloorAlignment, ...defeatProbes } = summary.defeatEnemiesCombat?.probes || {};
 		const { floorAlignment: _bossFloorAlignment, ...encounterProbes } = summary.bossEncounter?.probes || {};
-		const bossProbes = { ...encounterProbes };
+		const stageProbes = { ...defeatProbes, ...encounterProbes };
 		const floorAlignment = mergeFloorAlignmentProbes(summary);
 		if (floorAlignment) {
-			bossProbes.floorAlignment = floorAlignment;
+			stageProbes.floorAlignment = floorAlignment;
 		}
 		probes = {
-			...bossProbes,
+			...stageProbes,
 			...(summary.victory?.probes || {}),
 		};
 		findings = renderFindings({
@@ -1071,7 +1235,12 @@ async function main() {
 		}
 
 		if (runsBossEncounter && page) {
-			summary.bossEncounter = await runBossEncounterStep({ page, preset, outDirAbs });
+			const objectiveType = preset.objectiveType ?? 'stage_boss';
+			if (objectiveType === 'defeat_enemies') {
+				summary.defeatEnemiesCombat = await runDefeatEnemiesCombatStep({ page, preset, outDirAbs });
+			} else {
+				summary.bossEncounter = await runBossEncounterStep({ page, preset, outDirAbs });
+			}
 		}
 
 		if (runsRoomsFull && page) {
@@ -1114,9 +1283,10 @@ async function main() {
 					: buildAssertions(summary, preset);
 			}
 			writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset });
-		} else if (summary.bossEncounter?.probes) {
+		} else if (summary.defeatEnemiesCombat?.probes || summary.bossEncounter?.probes) {
 			const probesPath = path.join(outDirAbs, 'probes.json');
-			fs.writeFileSync(probesPath, JSON.stringify(summary.bossEncounter.probes, null, 2));
+			const probes = summary.defeatEnemiesCombat?.probes || summary.bossEncounter.probes;
+			fs.writeFileSync(probesPath, JSON.stringify(probes, null, 2));
 		}
 		const summaryPath = path.join(outDirAbs, 'run-summary.json');
 		fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
