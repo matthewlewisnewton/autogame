@@ -120,13 +120,69 @@ function renderGenericSpellBurst(data, ctx) {
 	ctx.spawnSummonEffect(originOf(data), data.radius, accentSummonStyle(data.cardId));
 }
 
+const ICE_ACCENT_COLOR = 0x67e8f9;
+const ICE_ACCENT_EMISSIVE = 0x38bdf8;
+const GLACIER_COLOR = 0x38bdf8;
+const GLACIER_EMISSIVE = 0x0ea5e9;
+
+/**
+ * Cryo Burst: expanding icy telegraph plus a radial frost particle burst at
+ * the cast origin. Replaces the generic accent summon ring.
+ */
+function renderFrostNova(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = getAccentHex(data.cardId) ?? ICE_ACCENT_COLOR;
+	const emissive = ICE_ACCENT_EMISSIVE;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.0 });
+	}
+}
+
+/**
+ * Permafrost Lance: narrower telegraph, a directional frost shard trail, and a
+ * secondary burst at the lance tip so it reads distinctly from Cryo Burst.
+ */
+function renderPermafrostLance(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex(data.cardId) ?? ICE_ACCENT_COLOR;
+	const emissive = ICE_ACCENT_EMISSIVE;
+	const narrowRadius = data.radius * 0.55;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, narrowRadius, { color, emissive });
+	}
+	if (ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, {
+			range: data.radius,
+			color,
+			emissive,
+		});
+	}
+	const tip = pointAlong(origin, direction, data.radius);
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(tip, { color, emissive, count: 10, spread: 1.2 });
+	}
+}
+
 /**
  * Glacier Collapse uses a fixed icy palette rather than the accent color
  * so the freeze visual reads the same regardless of upgrade styling.
  */
 function renderGlacierCollapse(data, ctx) {
 	if (data.radius === undefined) return;
-	ctx.spawnSummonEffect(originOf(data), data.radius, { color: 0x38bdf8, emissive: 0x0ea5e9 });
+	const origin = originOf(data);
+	ctx.spawnSummonEffect(origin, data.radius, { color: GLACIER_COLOR, emissive: GLACIER_EMISSIVE });
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color: GLACIER_COLOR, emissive: GLACIER_EMISSIVE });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color: GLACIER_COLOR, emissive: GLACIER_EMISSIVE, count: 12, spread: 2.4 });
+	}
 }
 
 /**
@@ -303,14 +359,31 @@ function renderFireball(data, ctx) {
  */
 function renderIceBall(data, ctx) {
 	if (!data.origin) return;
-	const accentHex = getAccentHex(data.cardId);
-	ctx.spawnAttackEffect(originOf(data), directionOf(data), {
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex(data.cardId) ?? ICE_ACCENT_COLOR;
+	const emissive = ICE_ACCENT_EMISSIVE;
+	ctx.spawnAttackEffect(origin, direction, {
 		effect: 'ice_ball',
 		range: data.attackRange,
 		projectileTravelMs: data.projectileTravelMs,
-		color: accentHex ?? 0x67e8f9,
-		emissive: 0x38bdf8,
+		color,
+		emissive,
 	});
+	if (ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, {
+			range: data.attackRange,
+			color,
+			emissive,
+		});
+	}
+	const impact = pointAlong(origin, direction, data.attackRange ?? 8);
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(impact, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(impact, { color, emissive, count: 10, spread: 1.6 });
+	}
 }
 
 /**
@@ -386,6 +459,8 @@ const CARD_RENDERERS = {
 
 	// Spells
 	chain_lightning: renderChainLightningArcs,
+	frost_nova: renderFrostNova,
+	permafrost_lance: renderPermafrostLance,
 	ice_ball: renderIceBall,
 	glacier_collapse: renderGlacierCollapse,
 	healing_font: renderHealRestore,

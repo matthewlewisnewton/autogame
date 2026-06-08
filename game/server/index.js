@@ -557,6 +557,8 @@ const DEBUG_SCENARIOS = new Set([
   'fireball-ready',
   'glacial-thrower',
   'ice-ball-ready',
+  'frost-spells-ready',
+  'glacier-collapse-ready',
   'magma-windup-ready',
 ]);
 
