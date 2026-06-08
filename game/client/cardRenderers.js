@@ -32,7 +32,7 @@
 //   scheduleAfter(ms, fn) — wrapper around setTimeout used for delayed swings
 
 import { CARD_ACCENT_STYLE, CARD_DEFS } from './cards.js';
-import { MINION_SUMMON_IN_MS } from './config.js';
+import { ATTACK_EFFECT_DURATION, MINION_SUMMON_IN_MS } from './config.js';
 
 const NULL_CRAWLER_SUMMON_COLOR = 0x22d3ee;
 const NULL_CRAWLER_SUMMON_EMISSIVE = 0x67e8f9;
@@ -470,29 +470,42 @@ function renderFrostNova(data, ctx) {
 }
 
 /**
- * Permafrost Lance: narrower telegraph, a directional frost shard trail, and a
- * secondary burst at the lance tip so it reads distinctly from Cryo Burst.
+ * Permafrost Lance: narrow cast telegraph, forward ice-lance projectile (315),
+ * frost streak, and instant tip impact — timed to match the server's immediate
+ * frost_nova-branch resolution (no wind-up, no travel delay).
  */
 function renderPermafrostLance(data, ctx) {
-	if (data.radius === undefined) return;
+	if (data.radius === undefined || !data.origin) return;
 	const origin = originOf(data);
 	const direction = directionOf(data);
 	const color = getAccentHex(data.cardId) ?? ICE_ACCENT_COLOR;
 	const emissive = ICE_ACCENT_EMISSIVE;
-	const narrowRadius = data.radius * 0.55;
+	const tip = pointAlong(origin, direction, data.radius);
 	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, narrowRadius, { color, emissive });
+		ctx.spawnTelegraphRing(origin, data.radius * 0.55, { color, emissive });
+	}
+	if (ctx.spawnAttackEffect) {
+		ctx.spawnAttackEffect(origin, direction, {
+			effect: 'permafrost_lance',
+			range: data.radius,
+			color,
+			emissive,
+			duration: ATTACK_EFFECT_DURATION,
+		});
 	}
 	if (ctx.spawnProjectileTrail) {
 		ctx.spawnProjectileTrail(origin, direction, {
 			range: data.radius,
 			color,
 			emissive,
+			travelMs: ATTACK_EFFECT_DURATION,
 		});
 	}
-	const tip = pointAlong(origin, direction, data.radius);
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(tip, { color, emissive });
+	}
 	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(tip, { color, emissive, count: 10, spread: 1.2 });
+		ctx.spawnParticleBurst(tip, { color, emissive, count: 12, spread: 1.2 });
 	}
 }
 
