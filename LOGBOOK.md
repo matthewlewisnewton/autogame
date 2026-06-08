@@ -5518,3 +5518,26 @@ This ticket adds `magma-windup-ready`. It remains behind the existing debug-scen
 
 None.
 
+
+## v0.313 — 311-slower-scaling-early-strong-cards-plus-astral-trim  (2026-06-07 23:39:26)
+
+### Astral Guardian is conservatively trimmed without gutting its role
+
+PASS. `game/shared/cardStats.json` trims only the requested direct stats: `damage` from 66 to 63 and `shieldHp` from 15 to 14. Its evolved identity, 65 MS cost, minion HP/TTL, shield duration, and attack behavior are preserved, so it remains a top-tier evolved payoff while being slightly less of an outlier. `game/server/test/astral_guardian.test.js` and `game/server/test/card_balance_metrics.test.js` assert the live values.
+
+### Tests and ticket 303 report are updated
+
+PASS. The coverage log reports `115 passed` test files and `1829 passed` tests with coverage generated. New/updated tests cover the per-card grind scale, Phase Stalker beam behavior, Astral Guardian values, balance metrics, and the debug scenario follow-up. `game/validation/card-balance/report.md` documents the post-311 Signal Familiar, Phase Stalker, and Astral Guardian changes and keeps remaining operator-triage items separate from this ticket's completed scope.
+
+## Design and requirements consistency
+
+The changes are consistent with the card-combat design: they preserve the active deck/card loop and tune numeric progression rather than changing card acquisition, combat type, or multiplayer flow. The requirements baseline is not regressed: the capture confirms 3D rendering, client-server connection, multiplayer state, and movement synchronization.
+
+## Debug scenario review
+
+This ticket changed the Arena Trials boss-approach debug scenario logic. It remains gated behind the existing localhost `?debugScenario=` / debug socket pathway and is listed only in the debug scenario allowlists. The shortcut still requires an `arena_trials` Tier 2 playing run with an encounter, refuses to run while any non-boss enemies remain alive, and only repositions the player outside the dormant boss trigger after the same add-clear state that normal gameplay reaches by defeating adds and walking to the arena dais. It does not replace or weaken the normal encounter activation invariant; it now reuses `areAllNonBossEnemiesDefeated`, the same helper used by the encounter state machine.
+
+## Remaining gaps
+
+None.
+
