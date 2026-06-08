@@ -3034,6 +3034,17 @@ function buildWorldSnapshot(shopOffer) {
     minions: _gameState.minions,
     loot: _gameState.loot,
     iceBalls: _gameState.iceBalls || [],
+    enchantments: (_gameState.enchantments || [])
+      .filter((e) => e.armed && e.target === 'ground')
+      .map((e) => ({
+        id: e.id,
+        effect: e.effect,
+        x: e.x,
+        z: e.z,
+        radius: e.radius,
+        expiresAt: e.expiresAt,
+        armed: e.armed,
+      })),
     lobby: _gameState.lobby,
     gamePhase: _gameState.gamePhase,
     selectedQuestId: _gameState.selectedQuestId,

@@ -1413,6 +1413,13 @@ function runGameLoopTick() {
             state._pendingVolatileExplosions.length = 0;
           }
 
+          if (state._pendingSpikeTrapTriggers?.length) {
+            for (const record of state._pendingSpikeTrapTriggers) {
+              io.to(lobby.id).emit(SERVER_TO_CLIENT.SPIKE_TRAP_TRIGGERED, record);
+            }
+            state._pendingSpikeTrapTriggers.length = 0;
+          }
+
           if (state._pendingLeechHeals?.length) {
             for (const record of state._pendingLeechHeals) {
               io.to(lobby.id).emit(SERVER_TO_CLIENT.LEECH_HEAL, record);
