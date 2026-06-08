@@ -15,6 +15,7 @@ import {
  */
 function makeCtx(overrides = {}) {
 	const calls = [];
+	const scheduled = [];
 	const record = (name) => (...args) => calls.push([name, ...args]);
 	const ctx = {
 		spawnAttackEffect: record('spawnAttackEffect'),
@@ -39,10 +40,19 @@ function makeCtx(overrides = {}) {
 		playSound: record('playSound'),
 		scheduleAfter: (ms, fn) => {
 			calls.push(['scheduleAfter', ms]);
-			fn();
+			scheduled.push({ ms, fn, invoked: false });
+		},
+		runScheduled: () => {
+			for (const entry of scheduled) {
+				if (!entry.invoked) {
+					entry.invoked = true;
+					entry.fn();
+				}
+			}
 		},
 		myId: 'me',
 		_calls: calls,
+		_scheduled: scheduled,
 		...overrides,
 	};
 	return ctx;
@@ -55,7 +65,9 @@ function methodsCalled(ctx) {
 describe('resolveRenderers()', () => {
 	it('returns the per-card renderer when one is registered', () => {
 		expect(resolveRenderers('infinite_disk')).toHaveLength(1);
-		expect(resolveRenderers('fireball')).toHaveLength(1);
+		const fireballRenderers = resolveRenderers('fireball');
+		expect(fireballRenderers).toHaveLength(1);
+		expect(fireballRenderers[0].name).toBe('renderFireball');
 		expect(resolveRenderers('ice_ball')).toHaveLength(1);
 		expect(resolveRenderers('divine_grace')).toHaveLength(1);
 		expect(resolveRenderers('purifying_pulse')).toHaveLength(1);
@@ -64,7 +76,9 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('thunderbird')).toHaveLength(2);
 		expect(resolveRenderers('storm_eagle')).toHaveLength(2);
 		expect(resolveRenderers('dragons_breath')).toHaveLength(1);
-		expect(resolveRenderers('inferno_pillar')).toHaveLength(1);
+		const infernoRenderers = resolveRenderers('inferno_pillar');
+		expect(infernoRenderers).toHaveLength(1);
+		expect(infernoRenderers[0].name).toBe('renderInfernoPillar');
 		expect(resolveRenderers('gravity_well')).toHaveLength(1);
 		expect(resolveRenderers('deck_sifter')).toHaveLength(1);
 		expect(resolveRenderers('chrono_trigger')).toHaveLength(1);
@@ -449,10 +463,16 @@ describe('renderCardUsed() — weapon dispatch', () => {
 		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
 		expect(attacks).toHaveLength(1);
 		expect(attacks[0][1]).toEqual({ x: 1, z: 2 });
-		expect(attacks[0][3]).toMatchObject({ effect: 'fireball', range: 9 });
+		expect(attacks[0][3]).toMatchObject({
+			effect: 'fireball',
+			range: 9,
+			projectileTravelMs: ATTACK_EFFECT_DURATION,
+			color: 0xf97316,
+			emissive: 0xff3b00,
+		});
 	});
 
-	it('fireball adds an accent-tinted projectile trail, impact decal and ember burst', () => {
+	it('fireball adds cast flourish, synced travel timing, and deferred terminal impact', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'fireball',
@@ -461,21 +481,71 @@ describe('renderCardUsed() — weapon dispatch', () => {
 			attackRange: 9,
 			hits: [],
 		}, ctx);
-		// fireball accent color is 0xf97316
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 1, z: 2 });
+		expect(ring[3]).toMatchObject({ color: 0xf97316, emissive: 0xff3b00 });
+		const castBurst = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.find((c) => c[1].x === 1 && c[1].z === 2 && c[2].count === 8);
+		expect(castBurst).toBeDefined();
 		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
 		expect(trail).toBeDefined();
 		expect(trail[1]).toEqual({ x: 1, z: 2 });
 		expect(trail[2]).toEqual({ x: 1, z: 0 });
-		expect(trail[3]).toMatchObject({ range: 9, color: 0xf97316 });
+		expect(trail[3]).toMatchObject({
+			range: 9,
+			travelMs: ATTACK_EFFECT_DURATION,
+			color: 0xf97316,
+		});
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(schedules).toHaveLength(1);
+		expect(schedules[0][1]).toBe(ATTACK_EFFECT_DURATION);
+		expect(ctx._scheduled).toHaveLength(1);
+		expect(ctx._scheduled[0].invoked).toBe(false);
+		// Terminal impact at (10, 2) is deferred — not fired synchronously at cast.
+		expect(ctx._calls.find((c) => c[0] === 'spawnImpactDecal')).toBeUndefined();
+		expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.some((c) => c[1].x === 10 && c[1].z === 2 && c[2].count === 16)).toBe(false);
+		ctx.runScheduled();
+		expect(ctx._scheduled[0].invoked).toBe(true);
 		// Impact decal + ember burst land at origin + direction * range = (10, 2).
 		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
 		expect(decal).toBeDefined();
 		expect(decal[1]).toEqual({ x: 10, z: 2 });
 		expect(decal[2]).toMatchObject({ color: 0xf97316 });
-		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
-		expect(burst).toBeDefined();
-		expect(burst[1]).toEqual({ x: 10, z: 2 });
-		expect(burst[2]).toMatchObject({ color: 0xf97316, emissive: 0xff3b00, count: 16, spread: 2.0 });
+		const terminalBurst = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.find((c) => c[1].x === 10 && c[1].z === 2 && c[2].count === 16);
+		expect(terminalBurst).toBeDefined();
+		expect(terminalBurst[2]).toMatchObject({ color: 0xf97316, emissive: 0xff3b00, spread: 2.0 });
+	});
+
+	it('fireball has no positive windUpMs (instant cast; 315 charge telegraph absent)', () => {
+		expect(CARD_DEFS.fireball).toBeDefined();
+		expect(CARD_DEFS.fireball.windUpMs ?? 0).toBeLessThanOrEqual(0);
+	});
+
+	it('fireball spawns immediate per-hit ignite bursts at enemy mesh positions', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 4, y: 0, z: 2 } },
+				e2: { position: { x: 7, y: 0, z: 2 } },
+			}),
+		});
+		renderCardUsed({
+			cardId: 'fireball',
+			effect: 'fireball',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			attackRange: 9,
+			hits: [{ enemyId: 'e1' }, { enemyId: 'e2' }, { enemyId: 'missing' }],
+		}, ctx);
+		const hitSparks = ctx._calls.filter((c) => c[0] === 'spawnHitSpark');
+		expect(hitSparks).toHaveLength(2);
+		expect(hitSparks[0][1]).toEqual({ x: 4, y: 0.6, z: 2 });
+		expect(hitSparks[1][1]).toEqual({ x: 7, y: 0.6, z: 2 });
+		const igniteBursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.filter((c) => c[2].count === 6);
+		expect(igniteBursts).toHaveLength(2);
 	});
 
 	it('fireball still renders without throwing when the new ctx primitives are absent', () => {
@@ -483,6 +553,8 @@ describe('renderCardUsed() — weapon dispatch', () => {
 			spawnProjectileTrail: undefined,
 			spawnImpactDecal: undefined,
 			spawnParticleBurst: undefined,
+			spawnTelegraphRing: undefined,
+			spawnHitSpark: undefined,
 		});
 		expect(() => renderCardUsed({
 			cardId: 'fireball',
@@ -491,8 +563,8 @@ describe('renderCardUsed() — weapon dispatch', () => {
 			attackRange: 9,
 			hits: [],
 		}, ctx)).not.toThrow();
-		// The original projectile visual still fires.
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(true);
 	});
 
 	it('spawns a single ice_ball-effect projectile with slow travel time', () => {
@@ -698,13 +770,16 @@ describe('renderCardUsed() — energy & photon blade slashes', () => {
 		fire('resonance_edge', ctx);
 		const style = swingStyle(ctx);
 		expect(style).toMatchObject({ color: 0xe879f9, coneAngle: Math.PI / 3.5 });
-		// Double pulse: two telegraph rings, the second delayed via scheduleAfter.
-		const rings = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
-		expect(rings).toHaveLength(2);
-		expect(rings[0][2]).toBe(1.6);
-		expect(rings[1][2]).toBe(2.6);
+		// First pulse is immediate; the second ring is deferred via scheduleAfter.
+		const ringsBefore = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
+		expect(ringsBefore).toHaveLength(1);
+		expect(ringsBefore[0][2]).toBe(1.6);
 		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
 		expect(schedules.map((c) => c[1])).toEqual([130]);
+		ctx.runScheduled();
+		const rings = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
+		expect(rings).toHaveLength(2);
+		expect(rings[1][2]).toBe(2.6);
 		// Both pulses share the magenta accent.
 		for (const r of rings) expect(r[3]).toMatchObject({ color: 0xe879f9 });
 	});
@@ -712,16 +787,18 @@ describe('renderCardUsed() — energy & photon blade slashes', () => {
 	it('Phase Echo swings pink, then schedules a fainter echo swing', () => {
 		const ctx = makeCtx();
 		fire('echo_blade', ctx);
+		const leadAttacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
+		expect(leadAttacks).toHaveLength(1);
+		expect(leadAttacks[0][3]).toMatchObject({ color: 0xf472b6, coneAngle: Math.PI / 4 });
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(schedules.map((c) => c[1])).toEqual([150]);
+		ctx.runScheduled();
 		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
 		// Twin slash: the swing plus its delayed echo.
 		expect(attacks).toHaveLength(2);
-		expect(attacks[0][3]).toMatchObject({ color: 0xf472b6, coneAngle: Math.PI / 4 });
 		// The echo is fainter than the lead swing.
 		expect(attacks[1][3].fillOpacity).toBeLessThan(attacks[0][3].fillOpacity);
 		expect(attacks[1][3].edgeOpacity).toBeLessThan(attacks[0][3].edgeOpacity);
-		// Delivered via a delayed second swing.
-		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
-		expect(schedules.map((c) => c[1])).toEqual([150]);
 	});
 
 	it('the five energy blades use mutually distinct accent colors', () => {
@@ -792,6 +869,22 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 		expect(decal[2]).toMatchObject({ color: 0xf97316, radius: 3.8 });
 		const burst = debrisBurst(ctx);
 		expect(burst[2]).toMatchObject({ color: 0xf97316, count: 24 });
+	});
+
+	it('Excalibur Photon greatslashes magenta with a light-shard burst, honoring the photon_barrage stagger', () => {
+		const ctx = makeCtx();
+		fire('excalibur_photon', ctx, { swingCount: 2, specialEffect: 'photon_barrage' });
+		const style = swingStyle(ctx);
+		expect(style).toMatchObject({ color: 0xe879f9, coneAngle: Math.PI / 2.5, range: 6 });
+		// Two staggered swings (first immediate, second delayed 80ms).
+		expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(1);
+		expect(ctx._calls.filter((c) => c[0] === 'scheduleAfter').map((c) => c[1])).toEqual([80]);
+		ctx.runScheduled();
+		expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(2);
+		const decal = impactDecal(ctx);
+		expect(decal[1]).toEqual({ x: 6, z: 0 });
+		expect(decal[2]).toMatchObject({ color: 0xe879f9, radius: 3.0 });
+		expect(debrisBurst(ctx)[2]).toMatchObject({ color: 0xe879f9, count: 20 });
 	});
 
 	it('heavy greatswords (claymore, magma) do not emit photon-only trail or telegraph ring primitives', () => {
@@ -871,10 +964,12 @@ describe('renderCardUsed() — excalibur_photon', () => {
 	it('photon_barrage fires two cone swings staggered by PHOTON_BARRAGE_SWING_DELAY_MS', () => {
 		const ctx = makeCtx();
 		fire(ctx, { swingCount: 2, specialEffect: 'photon_barrage' });
-		expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(2);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(1);
 		expect(ctx._calls.filter((c) => c[0] === 'scheduleAfter').map((c) => c[1])).toEqual([
 			PHOTON_BARRAGE_SWING_DELAY_MS,
 		]);
+		ctx.runScheduled();
+		expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(2);
 	});
 
 	it('schedules impact primitives per swing (second swing behind scheduleAfter)', () => {
@@ -900,6 +995,7 @@ describe('renderCardUsed() — excalibur_photon', () => {
 	it('greatslashes magenta with trail, pulse ring, and light-shard burst per swing', () => {
 		const ctx = makeCtx();
 		fire(ctx, { swingCount: 2, specialEffect: 'photon_barrage' });
+		ctx.runScheduled();
 		const style = swingStyle(ctx);
 		expect(style).toMatchObject({ color: 0xe879f9, coneAngle: Math.PI / 2.5, range: 6 });
 		const trails = ctx._calls.filter((c) => c[0] === 'spawnProjectileTrail');
@@ -1483,7 +1579,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
 	});
 
-	it('inferno_pillar adds an accent telegraph ring and ember burst at the eruption point', () => {
+	it('inferno_pillar dispatches spawnInfernoPillarEffect with server-synced timing style', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'inferno_pillar',
@@ -1491,27 +1587,122 @@ describe('renderCardUsed() — spell dispatch', () => {
 			radius: 7,
 			hits: [],
 		}, ctx);
-		// inferno_pillar accent color is 0xef4444
+		const pillar = ctx._calls.find((c) => c[0] === 'spawnInfernoPillarEffect');
+		expect(pillar).toBeDefined();
+		expect(pillar[1]).toEqual({ x: 4, z: 5 });
+		expect(pillar[2]).toBe(7);
+		expect(pillar[3]).toMatchObject({
+			color: 0xef4444,
+			emissive: 0xff3b00,
+			dotTicks: 4,
+			dotIntervalMs: 500,
+			duration: 2250,
+		});
+	});
+
+	it('inferno_pillar fires eruption telegraph, burst, and decal synchronously at cast', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'inferno_pillar',
+			origin: { x: 4, z: 5 },
+			radius: 7,
+			hits: [],
+		}, ctx);
 		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
 		expect(ring).toBeDefined();
 		expect(ring[1]).toEqual({ x: 4, z: 5 });
 		expect(ring[2]).toBe(7);
-		expect(ring[3]).toMatchObject({ color: 0xef4444 });
-		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
-		expect(burst).toBeDefined();
-		expect(burst[1]).toEqual({ x: 4, z: 5 });
-		expect(burst[2]).toMatchObject({ color: 0xef4444 });
+		expect(ring[3]).toMatchObject({ color: 0xef4444, emissive: 0xff3b00 });
+		const castBurst = ctx._calls.find(
+			(c) => c[0] === 'spawnParticleBurst' && c[2].count === 14,
+		);
+		expect(castBurst).toBeDefined();
+		expect(castBurst[1]).toEqual({ x: 4, z: 5 });
+		expect(castBurst[2]).toMatchObject({ color: 0xef4444, emissive: 0xff3b00, spread: 2.2 });
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 4, z: 5 });
+		expect(decal[2]).toMatchObject({ color: 0xef4444, emissive: 0xff3b00 });
+		// DoT tick pulses are deferred — only the cast ring exists before scheduling runs.
+		expect(ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing' && c[2] === 7 * 0.65)).toHaveLength(0);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst' && c[2].count === 8)).toHaveLength(0);
 	});
 
-	it('inferno_pillar still renders without throwing when the new ctx primitives are absent', () => {
-		const ctx = makeCtx({ spawnTelegraphRing: undefined, spawnParticleBurst: undefined });
-		expect(() => renderCardUsed({
+	it('inferno_pillar schedules four DoT tick pulses at 500ms intervals', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
 			cardId: 'inferno_pillar',
 			origin: { x: 0, z: 0 },
 			radius: 7,
 			hits: [],
+		}, ctx);
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(schedules.map((c) => c[1])).toEqual([500, 1000, 1500, 2000]);
+		expect(ctx._scheduled).toHaveLength(4);
+		for (const entry of ctx._scheduled) expect(entry.invoked).toBe(false);
+		ctx.runScheduled();
+		const tickRings = ctx._calls.filter(
+			(c) => c[0] === 'spawnTelegraphRing' && c[2] === 7 * 0.65,
+		);
+		expect(tickRings).toHaveLength(4);
+		for (const r of tickRings) {
+			expect(r[3]).toMatchObject({ color: 0xef4444, emissive: 0xff3b00 });
+		}
+		const tickBursts = ctx._calls.filter(
+			(c) => c[0] === 'spawnParticleBurst' && c[2].count === 8,
+		);
+		expect(tickBursts).toHaveLength(4);
+	});
+
+	it('inferno_pillar spawns immediate per-hit ignite bursts at enemy mesh positions', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 4, y: 0, z: 2 } },
+				e2: { position: { x: 7, y: 0, z: 2 } },
+			}),
+		});
+		renderCardUsed({
+			cardId: 'inferno_pillar',
+			origin: { x: 1, z: 2 },
+			radius: 7,
+			hits: [{ enemyId: 'e1' }, { enemyId: 'e2' }, { enemyId: 'missing' }],
+		}, ctx);
+		const hitSparks = ctx._calls.filter((c) => c[0] === 'spawnHitSpark');
+		expect(hitSparks).toHaveLength(2);
+		expect(hitSparks[0][1]).toEqual({ x: 4, y: 0.6, z: 2 });
+		expect(hitSparks[1][1]).toEqual({ x: 7, y: 0.6, z: 2 });
+		expect(hitSparks[0][2]).toMatchObject({ color: 0xef4444, emissive: 0xff3b00, count: 5 });
+		const igniteBursts = ctx._calls.filter(
+			(c) => c[0] === 'spawnParticleBurst' && c[2].count === 6,
+		);
+		expect(igniteBursts).toHaveLength(2);
+		expect(igniteBursts[0][1]).toEqual({ x: 4, y: 0.6, z: 2 });
+		expect(igniteBursts[1][1]).toEqual({ x: 7, y: 0.6, z: 2 });
+	});
+
+	it('inferno_pillar has no positive windUpMs (instant cast; 315 charge telegraph absent)', () => {
+		expect(CARD_DEFS.inferno_pillar).toBeDefined();
+		expect(CARD_DEFS.inferno_pillar.windUpMs ?? 0).toBeLessThanOrEqual(0);
+	});
+
+	it('inferno_pillar still renders without throwing when the new ctx primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnTelegraphRing: undefined,
+			spawnParticleBurst: undefined,
+			spawnImpactDecal: undefined,
+			spawnHitSpark: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'inferno_pillar',
+			origin: { x: 0, z: 0 },
+			radius: 7,
+			hits: [{ enemyId: 'e1' }],
 		}, ctx)).not.toThrow();
 		expect(ctx._calls.some((c) => c[0] === 'spawnInfernoPillarEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+		expect(ctx._calls.filter((c) => c[0] === 'scheduleAfter').map((c) => c[1])).toEqual([
+			500, 1000, 1500, 2000,
+		]);
 	});
 
 	it('dragons_breath renders a forward fire cone, trail, and tip embers', () => {

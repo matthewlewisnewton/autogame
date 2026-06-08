@@ -18,7 +18,7 @@
 //   spawnPurifyingPulseHealRing(origin, radius)
 //   spawnCleanseBurstEffect(origin)
 //   spawnPurifyingPulseEffect(origin, radius)
-//   spawnInfernoPillarEffect(origin, radius)
+//   spawnInfernoPillarEffect(origin, radius, style?) — style: { color, emissive, dotTicks, dotIntervalMs, duration }
 //   spawnChainLightningEffect(origin, direction)
 //   spawnLightningArc(from, to, style?)
 //   spawnParticleBurst(position, style?)       — multi-particle spark/ember burst
@@ -713,21 +713,61 @@ function renderDragonsBreath(data, ctx) {
 }
 
 /**
- * Inferno Pillar: tall fiery pillar effect plus accent telegraph ring and
- * ember burst at the eruption point.
+ * Thermal Column (inferno_pillar): instant radial eruption plus a lingering
+ * burning column whose tick pulses align with server area-effect intervals.
  */
 function renderInfernoPillar(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
-	ctx.spawnInfernoPillarEffect(origin, data.radius);
-	// Accent-themed AoE telegraph ring + ember burst at the eruption point.
-	const color = getAccentHex(data.cardId) ?? 0xff7a18;
+	const color = getAccentHex(data.cardId) ?? 0xef4444;
 	const emissive = 0xff3b00;
+	const dotTicks = data.dotTicks ?? 4;
+	const dotIntervalMs = data.dotIntervalMs ?? 500;
+	const duration = dotTicks * dotIntervalMs + 250;
+
+	ctx.spawnInfernoPillarEffect(origin, data.radius, {
+		color,
+		emissive,
+		dotTicks,
+		dotIntervalMs,
+		duration,
+	});
+
+	// Instant eruption (t = 0): mirrors server immediate collectRadialHits burst.
 	if (ctx.spawnTelegraphRing) {
 		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
 	}
 	if (ctx.spawnParticleBurst) {
 		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.2 });
+	}
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(origin, { color, emissive });
+	}
+
+	if (data.hits?.length) {
+		const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(pos, { color, emissive, count: 5, spread: 0.55 });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pos, { color, emissive, count: 6, spread: 0.7 });
+			}
+		}
+	}
+
+	for (let tick = 1; tick <= dotTicks; tick += 1) {
+		ctx.scheduleAfter(dotIntervalMs * tick, () => {
+			if (ctx.spawnTelegraphRing) {
+				ctx.spawnTelegraphRing(origin, data.radius * 0.65, { color, emissive });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(origin, { color, emissive, count: 8, spread: 1.4 });
+			}
+		});
 	}
 }
 
@@ -1032,28 +1072,59 @@ function renderFireball(data, ctx) {
 	if (!data.origin) return;
 	const origin = originOf(data);
 	const direction = directionOf(data);
-	const color = getAccentHex(data.cardId) ?? 0xff7a18;
+	const travelMs = data.projectileTravelMs ?? ATTACK_EFFECT_DURATION;
+	const color = getAccentHex(data.cardId) ?? 0xf97316;
 	const emissive = 0xff3b00;
+	const impact = pointAlong(origin, direction, data.attackRange ?? 8);
+
+	// Brief fire channel at cast (instant weapon — no wind-up telegraph).
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, 0.45, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 8, spread: 1.0 });
+	}
+
 	ctx.spawnAttackEffect(origin, direction, {
 		effect: 'fireball',
 		range: data.attackRange,
+		projectileTravelMs: travelMs,
 		color,
 		emissive,
 	});
-	// Fiery streak chasing the projectile, plus a scorch flourish where it lands.
 	if (ctx.spawnProjectileTrail) {
 		ctx.spawnProjectileTrail(origin, direction, {
 			range: data.attackRange,
+			travelMs,
 			color,
 			emissive,
 		});
 	}
-	const impact = pointAlong(origin, direction, data.attackRange ?? 8);
-	if (ctx.spawnImpactDecal) {
-		ctx.spawnImpactDecal(impact, { color, emissive });
-	}
-	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(impact, { color, emissive, count: 16, spread: 2.0 });
+
+	const terminalImpact = () => {
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(impact, { color, emissive });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(impact, { color, emissive, count: 16, spread: 2.0 });
+		}
+	};
+	ctx.scheduleAfter(travelMs, terminalImpact);
+
+	// Per-enemy ignition bursts align with instant server damage + applyBurning.
+	if (data.hits?.length) {
+		const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(pos, { color, emissive, count: 5, spread: 0.55 });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pos, { color, emissive, count: 6, spread: 0.7 });
+			}
+		}
 	}
 }
 

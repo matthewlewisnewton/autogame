@@ -1,16 +1,9 @@
-All four conflicted files are resolved. Summary:
+All three conflicted files are resolved with both sides preserved:
 
-**`game/client/cardRenderers.js`** — Combined config imports so both tickets' constants are available:
-- `ATTACK_EFFECT_DURATION` (permafrost lance timing)
-- `PHOTON_BARRAGE_SWING_DELAY_MS` (excalibur photon barrage)
-- `MINION_SUMMON_IN_MS` (shared)
+**`game/client/test/vfx-primitives.test.js`** — Combined imports: Mirror Ward primitives (`spawnMirrorWardShellEffect`, `dismissMirrorWardShellEffect`, `spawnMirrorWardReflectBurst`) from the ticket plus `spawnInfernoPillarEffect` from main. Both test suites were already present below the import block.
 
-**`game/client/test/cardRenderers.test.js`** — Same combined import for `ATTACK_EFFECT_DURATION` and `PHOTON_BARRAGE_SWING_DELAY_MS`.
+**`LOGBOOK.md`** — Kept all three version entries in chronological order: v0.329 (fireball), v0.331 (thermal column), then v0.332 (mirror ward).
 
-**`game/client/test/vfx-primitives.test.js`** — Kept all three renderer imports:
-- `spawnAttackEffect` (permafrost lance primitive test)
-- `spawnDivineGraceEffect` / `spawnDivineGraceColumn` (sanctum pulse tests)
+**`TASKS.md`** — Listed both cleanup tickets: `364-cleanup-anim-thermal-column` and `367-cleanup-anim-mirror-ward`.
 
-**`LOGBOOK.md`** — Merged review entries in version order: v0.326 (excalibur photon), v0.327 (sanctum pulse), v0.328 (permafrost lance), each with its own "Remaining gaps" section.
-
-No conflict markers remain in the target files. Client test suite passes (60 files, 949 tests). The harness can commit and complete the merge.
+All conflict markers are removed. The `vfx-primitives.test.js` suite passes locally. The harness can commit and complete the merge.

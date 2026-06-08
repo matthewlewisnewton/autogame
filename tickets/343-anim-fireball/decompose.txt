@@ -1,0 +1,12 @@
+Broke ticket **343-anim-fireball** into **3 sub-tickets** (dependency order: visual mesh → cast/trail/impact timing → tests). All use **code** verification since criteria cover functions, timing values, and structure — not purely on-screen appearance.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/343-anim-fireball/tickets/343-anim-fireball/subtickets/01-fireball-projectile-visual`
+2. `/home/matt/workspace/.autogame-worktrees/343-anim-fireball/tickets/343-anim-fireball/subtickets/02-fireball-cast-trail-impact-sync`
+3. `/home/matt/workspace/.autogame-worktrees/343-anim-fireball/tickets/343-anim-fireball/subtickets/03-fireball-animation-tests`
+
+**Rationale:**
+- **01** — Fire-themed projectile mesh in `renderer.js` (distinct from generic `projectile` and `ice_ball`).
+- **02** — Full `renderFireball` composition: cast flourish, shared `travelMs`, deferred terminal impact via `scheduleAfter`, immediate per-hit ignition synced to server instant resolution; documents no `windUpMs`.
+- **03** — Client tests locking dispatch, timing, and regression coverage.

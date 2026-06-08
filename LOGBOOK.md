@@ -5837,6 +5837,50 @@ PASS. The round coverage run completed successfully with `32` client test files 
 
 None.
 
+## v0.329 — 343-anim-fireball  (2026-06-08 11:33:50)
+
+### No performance regression
+
+PASS. The new Fireball projectile uses a small group with two sphere meshes and existing active-effect cleanup. The added primitives are short-lived and follow existing VFX patterns; grouped meshes are disposed through the existing recursive effect disposal helper.
+
+### Client test coverage where feasible
+
+PASS. `coverage.log` shows the vitest run completed successfully: 32 test files and 504 tests passed. The Fireball-specific tests cover renderer registration, projectile style payload, cast/trail/impact timing, absence of wind-up, per-hit ignite feedback, and graceful fallback when optional VFX primitives are unavailable.
+
+### Design and foundation consistency
+
+PASS. The change stays within the active card-combat/VFX architecture described in `game/docs/design.md`: Fireball remains a weapon card, server-authoritative hit/burn logic is unchanged, and the client only renders the `cardUsed` event. The core requirements in `game/docs/requirements.md` are preserved by the clean capture: 3D scene rendering, WebSocket connection, multiplayer presence, and movement/gameplay progression all worked.
+
+### Debug scenarios
+
+PASS. This ticket did not add or modify any `?debugScenario=` shortcut. The captured run used normal lobby create/join and ready-up flow, with `debugScenario: null`.
+
+## Remaining gaps
+
+None.
+
+## v0.331 — 363-anim-thermal-column  (2026-06-08 12:38:16)
+
+### Performance and cleanup
+
+PASS. The new effect adds two active effect meshes plus scheduled primitive pulses, all handled through the existing `activeEffects` lifecycle. The thermal shaft has a dedicated update branch with no per-frame mesh allocation, and tests verify both the scorch ring and shaft are disposed when expired.
+
+### Tests and coverage
+
+PASS. The round's `coverage.log` shows the full client suite passed: 32 files, 527 tests. New coverage exercises renderer registration, removal of the generic summon fallback, cast-time eruption feedback, DoT pulse scheduling, per-hit ignite bursts, absence of wind-up for this instant spell, and primitive lifecycle/disposal. Coverage output contains expected modeled-asset fallback noise from unrelated renderer tests, not failures.
+
+### Design and requirements consistency
+
+PASS. The change is visual-only on the client and does not alter the card combat model, server-client architecture, multiplayer state, movement synchronization, or core dungeon loop described in the design and requirements documents.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=` shortcut. The existing `fire-spells-ready` scenario remains a QA shortcut only; normal reachability remains through reward/evolution progression and the same server card-use path.
+
+## Remaining gaps
+
+None.
+
 ## v0.332 — 366-anim-mirror-ward  (2026-06-08 13:23:46)
 
 ### Reflect consumption sync

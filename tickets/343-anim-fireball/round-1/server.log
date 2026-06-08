@@ -1,0 +1,13 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/343-anim-fireball/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/343-anim-fireball/game/data
+Server listening on port 3004
+Player connected: socket=mNtSzs6TO8IXYushAAAB, playerId=99175666-cbf3-4837-96ee-9a734278abb0
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=mZgQu_P7-Ti_NrMBAAAD, playerId=90949677-42f3-4238-a1f3-869a1465cc19
+Player disconnected: mNtSzs6TO8IXYushAAAB
+Player disconnected: mZgQu_P7-Ti_NrMBAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
