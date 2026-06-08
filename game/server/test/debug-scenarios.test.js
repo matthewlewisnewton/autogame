@@ -364,12 +364,14 @@ describe('debugScenario — arena-trials harness combat shortcuts', () => {
 		socket.emit('debugScenario', { name: 'arena-trials-tier-2' });
 		await tier2Promise;
 
+		const clearedPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'arena-trials-adds-cleared' });
+		const clearedResult = await clearedPromise;
+		expect(clearedResult.ok).toBe(true);
+		expect(clearedResult.scenario).toBe('arena-trials-adds-cleared');
+
 		const state = testGameState();
 		const bossId = state.run.encounter.bossEnemyId;
-		for (const enemy of state.enemies) {
-			if (enemy.id !== bossId) enemy.hp = 0;
-		}
-		state.enemies = state.enemies.filter((e) => e.hp > 0);
 
 		const approachPromise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'arena-trials-boss-approach' });
@@ -1111,12 +1113,13 @@ describe('debugScenario — arena-trials-*', () => {
 		socket.emit('debugScenario', { name: 'arena-trials-tier-2' });
 		await tier2Promise;
 
+		const clearedPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'arena-trials-adds-cleared' });
+		const clearedResult = await clearedPromise;
+		expect(clearedResult.ok).toBe(true);
+		expect(clearedResult.scenario).toBe('arena-trials-adds-cleared');
+
 		const state = testGameState();
-		const bossId = state.run.encounter.bossEnemyId;
-		for (const enemy of state.enemies) {
-			if (enemy.id !== bossId) enemy.hp = 0;
-		}
-		state.enemies = state.enemies.filter((e) => e.hp > 0);
 
 		const approachPromise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'arena-trials-boss-approach' });

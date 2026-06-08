@@ -664,6 +664,32 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
+    if (name === 'arena-trials-adds-cleared') {
+      // Zero and filter all non-boss enemies so harness can reach boss-approach reliably.
+      // Reachable normally by defeating every add before walking to the arena dais.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'arena_trials'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires arena_trials Tier 2 stage-boss run' };
+      }
+      const bossId = state.run.encounter.bossEnemyId;
+      for (const enemy of state.enemies || []) {
+        if (enemy.id !== bossId) enemy.hp = 0;
+      }
+      state.enemies = (state.enemies || []).filter((e) => e.hp > 0);
+      const boss = state.enemies.find((e) => e.id === bossId);
+      if (!boss || boss.type !== 'arena_champion') {
+        return { ok: false, reason: 'Arena champion not found' };
+      }
+      if (state.run.encounter.phase !== 'dormant') {
+        return { ok: false, reason: 'Encounter must be dormant' };
+      }
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
     if (name === 'arena-trials-boss-approach') {
       // Place the player just outside the dormant arena_champion trigger after adds clear.
       // Reachable normally by defeating adds then walking to the arena dais anchor.
@@ -673,7 +699,8 @@ function applyDebugScenario(socket, name) {
         || !state.run?.encounter) {
         return { ok: false, reason: 'Requires arena_trials Tier 2 stage-boss run' };
       }
-      if (liveArenaTrialsAdds(state).length > 0) {
+      const bossId = state.run.encounter.bossEnemyId;
+      if (!bossId || !areAllNonBossEnemiesDefeated(state, bossId)) {
         return { ok: false, reason: 'Adds must be cleared before boss approach' };
       }
       if (state.run.encounter.phase !== 'dormant') {
