@@ -4252,6 +4252,44 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 		return;
 	}
 
+	if (effect === 'permafrost_lance') {
+		// Elongated crystalline ice spear — travels like `fireball` / `ice_ball` but
+		// reads as a forward-thrusting lance rather than a sphere or ground cone.
+		const dir = direction || { x: 1, z: 0 };
+		const len = Math.hypot(dir.x, dir.z) || 1;
+		const nx = dir.x / len;
+		const nz = dir.z / len;
+		const lanceColor = style.color ?? 0x67e8f9;
+		const lanceEmissive = style.emissive ?? 0x38bdf8;
+		const geometry = new THREE.ConeGeometry(0.12, 1.5, 8);
+		const material = new THREE.MeshStandardMaterial({
+			color: lanceColor,
+			emissive: lanceEmissive,
+			emissiveIntensity: 1.1,
+			roughness: 0.25,
+			metalness: 0.15,
+			transparent: true,
+			opacity: 1.0,
+		});
+		const mesh = new THREE.Mesh(geometry, material);
+		mesh.position.set(origin.x, 1.0, origin.z);
+		mesh.rotation.x = Math.PI / 2;
+		mesh.rotation.y = Math.atan2(nx, nz);
+		targetScene.add(mesh);
+
+		activeEffects.push({
+			mesh,
+			_scene: targetScene,
+			origin: { x: origin.x, z: origin.z },
+			direction: { x: nx, z: nz },
+			range,
+			effect: 'permafrost_lance',
+			createdAt: performance.now(),
+			duration: style.duration ?? ATTACK_EFFECT_DURATION,
+		});
+		return;
+	}
+
 	if (effect === 'returning_projectile' || effect === 'triple_returning_projectile') {
 		const hitWidth = style.projectileHitWidth ?? PROJECTILE_HIT_WIDTH;
 		const { group, head } = createProjectileHitboxGroup(direction, range, hitWidth, { color, emissive });
@@ -5100,7 +5138,7 @@ export function updateAttackEffects() {
 		fx.mesh.material.opacity = Math.max(0.01, lifeRatio);
 
 		if (elapsed >= fx.duration) {
-			scene.remove(fx.mesh);
+			(fx._scene || scene).remove(fx.mesh);
 			fx.mesh.geometry.dispose();
 			fx.mesh.material.dispose();
 			activeEffects.splice(i, 1);

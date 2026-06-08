@@ -6,6 +6,7 @@ import {
 	spawnProjectileTrail,
 	spawnImpactDecal,
 	spawnTelegraphRing,
+	spawnAttackEffect,
 	updateAttackEffects,
 	getActiveEffects,
 } from '../renderer.js';
@@ -112,5 +113,31 @@ describe('shared VFX primitives', () => {
 		const fx = lastEffect();
 		expect(fx.mesh.material.color.getHex()).toBe(0x123456);
 		expect(fx.mesh.material.emissive.getHex()).toBe(0x654321);
+	});
+
+	it('spawnAttackEffect permafrost_lance adds a flagged lance projectile and cleans it up', () => {
+		const before = getActiveEffects().length;
+		spawnAttackEffect(
+			{ x: 0, z: 0 },
+			{ x: 1, z: 0 },
+			{ effect: 'permafrost_lance', range: 6, color: 0x67e8f9, emissive: 0x38bdf8 },
+		);
+		expect(getActiveEffects().length).toBe(before + 1);
+
+		const fx = lastEffect();
+		expect(fx.effect).toBe('permafrost_lance');
+		expect(fx.range).toBe(6);
+		expect(fx.mesh.geometry._name).toBe('ConeGeometry');
+		const { height, radius } = fx.mesh.geometry.parameters;
+		expect(height / radius).toBeGreaterThan(5);
+		expect(fx.mesh.material.color.getHex()).toBe(0x67e8f9);
+		expect(fx.mesh.material.emissive.getHex()).toBe(0x38bdf8);
+
+		const disposeSpy = vi.spyOn(fx.mesh.geometry, 'dispose');
+		fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(disposeSpy).toHaveBeenCalled();
 	});
 });
