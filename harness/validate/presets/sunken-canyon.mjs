@@ -6,6 +6,8 @@ export default {
 	questTier: 2,
 	bossType: 'miniboss',
 	deployScenario: 'canyon-descent-tier-2',
+	telepipeScenario: 'canyon-descent-telepipe-ready',
+	telepipeDeployScenario: 'canyon-descent-tier-2',
 	layoutProfile: 'sunken-canyon',
 	lobbyName: 'Sunken Canyon Validation',
 	nearAddsScenario: 'canyon-descent-near-adds',

@@ -5635,6 +5635,103 @@ describe('Telepipe extract and redeploy vitals persistence', () => {
 		p2.socket.disconnect();
 	});
 
+	it('canyon_descent: telepipe extract → abandon → redeploy preserves vitals and resets card charges', async () => {
+		const baseUrl = await startTestServer();
+		const p1 = await connectAndJoinLobby(baseUrl, 'canyon-telepipe-abandon-1');
+		const p2 = await connectAndJoinLobby(baseUrl, 'canyon-telepipe-abandon-2', { joinLobbyId: p1.init.lobbyId });
+
+		const debug1 = waitForEvent(p1.socket, 'debugScenarioResult');
+		p1.socket.emit('debugScenario', { name: 'canyon-descent-telepipe-ready' });
+		expect((await debug1).ok).toBe(true);
+
+		const debug2 = waitForEvent(p2.socket, 'debugScenarioResult');
+		p2.socket.emit('debugScenario', { name: 'canyon-descent-telepipe-ready' });
+		expect((await debug2).ok).toBe(true);
+
+		const state = testGameState();
+		const p1Id = p1.socket._playerId;
+		const p2Id = p2.socket._playerId;
+		expect(state.gamePhase).toBe('playing');
+		expect(state.selectedQuestId).toBe('canyon_descent');
+		expect(state.selectedQuestTier).toBe(2);
+		expect(state.players[p1Id].hand.some((card) => card && card.id === 'telepipe')).toBe(true);
+
+		const preSuspendRunId = state.run.id;
+		const nonDefaultHp = 51;
+		const nonDefaultMs = 19;
+
+		runSimulationInPrimaryLobby((liveState) => {
+			const player = liveState.players[p1Id];
+			player.hp = nonDefaultHp;
+			player.magicStones = nonDefaultMs;
+			for (const card of player.hand) {
+				if (card && card.charges != null) {
+					card.remainingCharges = Math.max(0, card.charges - 1);
+				}
+			}
+			liveState.telepipe = {
+				x: player.x,
+				z: player.z,
+				placedBy: p1Id,
+				placedAt: Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1,
+			};
+		});
+
+		const spentCharges = {};
+		for (const card of testGameState().players[p1Id].hand) {
+			if (card && card.charges != null) {
+				spentCharges[card.id] = card.remainingCharges;
+			}
+		}
+
+		const portalState = testGameState();
+		const portalX = portalState.telepipe.x;
+		const portalZ = portalState.telepipe.z;
+
+		expect(tryEnterTelepipe(p1Id).ok).toBe(true);
+		runSimulationInPrimaryLobby((afterP1Extract) => {
+			afterP1Extract.players[p2Id].x = portalX;
+			afterP1Extract.players[p2Id].z = portalZ;
+		});
+		expect(tryEnterTelepipe(p2Id).ok).toBe(true);
+
+		expect(testGameState().gamePhase).toBe('lobby');
+		expect(testGameState().suspendedCheckpoint).not.toBeNull();
+
+		const abandonedPromise = waitForEvent(p1.socket, 'runAbandoned');
+		p1.socket.emit('abandonRun');
+		await abandonedPromise;
+
+		expect(testGameState().suspendedCheckpoint).toBeNull();
+
+		const redeployDebug1 = waitForEvent(p1.socket, 'debugScenarioResult');
+		const redeployDebug2 = waitForEvent(p2.socket, 'debugScenarioResult');
+		p1.socket.emit('debugScenario', { name: 'canyon-descent-tier-2' });
+		p2.socket.emit('debugScenario', { name: 'canyon-descent-tier-2' });
+		expect((await redeployDebug1).ok).toBe(true);
+		expect((await redeployDebug2).ok).toBe(true);
+
+		const redeployed = testGameState();
+		expect(redeployed.gamePhase).toBe('playing');
+		expect(redeployed.run.id).not.toBe(preSuspendRunId);
+		expect(redeployed.players[p1Id].hp).toBe(nonDefaultHp);
+		expect(redeployed.players[p1Id].magicStones).toBe(nonDefaultMs);
+		expect(redeployed.players[p1Id].hp).not.toBe(MAX_HP);
+		expect(redeployed.players[p1Id].magicStones).not.toBe(STARTING_MAGIC_STONES);
+
+		for (const card of redeployed.players[p1Id].hand) {
+			if (card) {
+				expect(card.remainingCharges).toBe(card.charges);
+				if (spentCharges[card.id] != null) {
+					expect(card.remainingCharges).toBeGreaterThan(spentCharges[card.id]);
+				}
+			}
+		}
+
+		p1.socket.disconnect();
+		p2.socket.disconnect();
+	});
+
 	it('telepipe-ready debug scenario stays in lobby until ready-up injects telepipe', async () => {
 		const baseUrl = await startTestServer();
 		const p1 = await connectAndJoinLobby(baseUrl, 'telepipe-debug-1');

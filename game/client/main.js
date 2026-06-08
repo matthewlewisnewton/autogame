@@ -2194,6 +2194,18 @@ window.__requestDebugShopBoothOpenForTest = requestDebugShopBoothOpen;
 // reaches the playing phase without re-introducing the retired 2D #ready-btn.
 // Idempotent — launchBoothReadyUp() bails when the player is already ready.
 window.__launchReadyUpForTest = () => launchBoothReadyUp();
+window.__abandonSuspendedRunForTest = () => {
+	if (!suspendedRunSummary) {
+		return { ok: false, reason: 'not suspended' };
+	}
+	if (!socket) {
+		return { ok: false, reason: 'no socket' };
+	}
+	socket.emit(CLIENT_TO_SERVER.ABANDON_RUN);
+	suspendedRunSummary = null;
+	clearSuspendedRunUi();
+	return { ok: true };
+};
 /** Localhost-only `?booth=<id>` — open a booth once in hub lobby. */
 function requestBoothDebugOpen() {
 	if (!debugScenarioAllowed || boothDebugRequested) return;
@@ -4803,6 +4815,12 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		&& !!summaryStatusEl
 		&& getComputedStyle(runSummaryOverlay).display !== 'none'
 		&& summaryStatusEl.textContent.trim() === THEME.run.sortieComplete;
+	const resumeBtnUsable = !!resumeRunBtnEl
+		&& !resumeRunBtnEl.classList.contains('hidden')
+		&& !!suspendedRunSummary;
+	const abandonRunBtnUsable = !!abandonRunBtnEl
+		&& !abandonRunBtnEl.classList.contains('hidden')
+		&& !!suspendedRunSummary;
 
 	return {
 		debugScenario,
@@ -4847,6 +4865,8 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		characterBoothOpen: isCharacterBoothOpen(),
 		deckEditorVisible,
 		runId,
+		resumeBtnUsable,
+		abandonRunBtnUsable,
 		cardHandVisible,
 		status: statusEl ? statusEl.innerText : '',
 		hpText: hpText ? hpText.textContent : '',

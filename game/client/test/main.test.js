@@ -5003,6 +5003,11 @@ describe('suspended run resume/abandon UI', () => {
 		expect(resumeBtn.classList.contains('hidden')).toBe(false);
 		expect(abandonBtn.classList.contains('hidden')).toBe(false);
 		expect(abandonBtn.textContent).toBe('Abort Sortie');
+
+		const harness = window.__AUTOGAME_HARNESS_STATE__();
+		expect(harness.resumeBtnUsable).toBe(true);
+		expect(harness.abandonRunBtnUsable).toBe(true);
+		expect(harness.suspendedRunSummary).toEqual(suspendedSummary);
 	});
 
 	it('emits abandonRun and clears suspended UI when abort is clicked', async () => {
@@ -5030,6 +5035,22 @@ describe('suspended run resume/abandon UI', () => {
 		});
 
 		expect(document.getElementById('suspended-run-banner').classList.contains('hidden')).toBe(true);
+		expect(window.__AUTOGAME_HARNESS_STATE__().suspendedRunSummary).toBeNull();
+	});
+
+	it('__abandonSuspendedRunForTest emits abandonRun when suspended', async () => {
+		await import('../main.js');
+
+		window.__triggerSocketEvent('runSuspended', suspendedSummary);
+		window.__triggerSocketEvent('stateUpdate', lobbyStateUpdate());
+		window.__clearSocketEmitLog();
+
+		const result = window.__abandonSuspendedRunForTest();
+		expect(result).toEqual({ ok: true });
+
+		const abandonEmits = window.__socketEmitLog().filter((entry) => entry.event === 'abandonRun');
+		expect(abandonEmits).toHaveLength(1);
+		expect(window.__AUTOGAME_HARNESS_STATE__().abandonRunBtnUsable).toBe(false);
 		expect(window.__AUTOGAME_HARNESS_STATE__().suspendedRunSummary).toBeNull();
 	});
 
