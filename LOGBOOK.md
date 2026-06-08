@@ -5769,3 +5769,26 @@ PASS. This ticket added spell-ready debug scenarios for QA, but normal gameplay 
 ## Remaining gaps
 
 No blocking gaps found.
+
+## v0.334 — 334-anim-deck-sifter  (2026-06-08 15:01:14)
+
+`deck_sifter` is `effect: draw_card` with **no `windUpMs`** (game/shared/cardStats.json:112-116), so it resolves **instantly** on cast — there is no wind-up telegraph to sync to (the 307 wind-up path at cardEffects.js:117-118 short-circuits when `windUpMs <= 0`). The server's `draw_card` branch resolves the draw and emits `CARD_USED` in the same tick (cardEffects.js:299-323); the renderer fires immediately off that event. The 100ms/200ms staggers are intra-animation beats, not a desync. Timing is correct.
+
+Integration fix: the `CARD_USED` payload for `draw_card` now includes `origin: { x: originX, z: originZ }` (cardEffects.js:321). This is necessary — `originOf(data)` (cardRenderers.js:61) falls back to world `{0,0}` without it, so previously the VFX would have rendered at map origin rather than the caster. Minimal and correct.
+
+### Debug scenario — `deck-sifter-ready`
+Added at debugScenarios.js:1412 and registered in the `DEBUG_SCENARIOS` set (index.js:574). Audited against the debug-scenario rules:
+- **Debug-gated only**: reachable solely via the `?debugScenario=deck-sifter-ready` path through `applyDebugScenario`; no normal gameplay code references it.
+- **End-state reachable normally**: `deck_sifter` is a real reward card (`acquisition: "reward"`, `rewardOrder: 20` in game/shared/cardDefs.json:16) — a player obtains it through dungeon rewards and deploys with it, exactly as the scenario's comment states.
+- **No weakened invariants**: it only seeds `hp`/`magicStones`/hand/enemies (same pattern as sibling `*-ready` scenarios). It does not pre-resolve the draw or bypass `executeUseCard` — casting still goes through full server validation (`canDrawIntoHand`, charge decrement, cooldown). No invariant is short-circuited.
+
+### Code quality / regressions
+- 5 `deck_sifter` client tests pass (ran `vitest run -t deck_sifter`): ring params, staggered double-burst timing, graceful degradation when `scheduleAfter` and/or `spawnParticleBurst` are absent. Good defensive coverage of optional ctx helpers.
+- No perf regression: 2 extra short-lived particle bursts + 1 ring, gated behind helper-presence checks, all reusing existing primitives.
+- Consistent with `design.md` card-VFX conventions; no foundation regression.
+
+## Remaining gaps
+None blocking. One non-blocking nit (duplicate test import) is carried to `nits.md`.
+
+A prior review attempt failed this ticket arguing the VFX "still reads as a generic golden ring and spark burst" and demanded literal card-shaped silhouettes rendered from a new primitive in `renderer.js`. I disagree: that bar requires a new shared VFX primitive, which the ticket explicitly scopes out to avoid conflicts with other per-card animation beads. Within the mandated "use the 315 primitives, this card's renderer only" constraint, the delivered 3-phase accent-colored sequence is a meaningful, theme-appropriate improvement and satisfies the acceptance criteria.
+

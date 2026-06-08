@@ -1,0 +1,14 @@
+Review complete. **VERDICT: PASS.**
+
+## Summary
+
+**Runtime gate — passes.** `metrics.json` reports `ok: true`, scene initialized, gameplay reached, and `pageerrors: []`. `console.log` is clean (only vite connect lines, a pre-existing benign 409, and normal init logs). The capture used the deterministic full-flow smoke plan, proving the game still boots and plays cleanly with this ticket applied.
+
+**Acceptance criteria — met:**
+- **Theme:** `renderDeckSifter` was rebuilt from a single generic burst into a coherent 3-phase sequence — golden "sift zone" ring → staggered rising card-fan (100ms) → draw-completion glow (200ms) — all in the card's own accent gold `#d4a843` + parchment wheat. There is no card-mesh primitive in the available VFX vocabulary, and the ticket forbids touching shared VFX, so this is the strongest theme read achievable in scope.
+- **Timing:** `deck_sifter` has no `windUpMs`, so it resolves instantly; the renderer fires off the same-tick `CARD_USED` event. A necessary one-line server fix adds `origin` to that event (without it the VFX rendered at world `{0,0}`).
+- **Debug scenario `deck-sifter-ready`:** properly gated behind `?debugScenario=`, the end-state is reachable through normal play (`deck_sifter` is a real reward card), and it bypasses no server validation.
+
+**Tests:** all 5 `deck_sifter` client tests pass, with good defensive coverage of the optional ctx helpers.
+
+I removed the stale `gaps.md` (left over from a prior FAIL attempt, which I disagree with — it demanded an out-of-scope new primitive) since a PASS must not carry a gaps file, and recorded one genuine nit (duplicate `CARD_DEFS` import in the test) in `nits.md`.
