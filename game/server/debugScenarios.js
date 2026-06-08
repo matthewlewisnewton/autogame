@@ -27,6 +27,7 @@ const {
   ENEMY_DEFS,
 } = require('./simulation');
 const {
+  CARD_DEFS,
   normalizePlayerInventory,
   validateDeck,
   createDrawDeckFromSelectedDeck,
@@ -2259,14 +2260,15 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       player.rotation = 0;
+      const def = CARD_DEFS.magma_greatsword;
       const replaceSlot = player.hand.findIndex(c => c != null);
       if (replaceSlot >= 0) {
         player.hand[replaceSlot] = {
-          id: 'magma_greatsword',
-          name: 'Corebreaker Greatsword',
-          type: 'weapon',
-          charges: 4,
-          remainingCharges: 4,
+          id: def.id,
+          name: def.name,
+          type: def.type,
+          charges: def.charges,
+          remainingCharges: def.charges,
         };
       }
       state.enemies = [];
@@ -2281,14 +2283,15 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       player.rotation = 0;
+      const def = CARD_DEFS.flame_blade;
       const replaceSlot = player.hand.findIndex(c => c != null);
       if (replaceSlot >= 0) {
         player.hand[replaceSlot] = {
-          id: 'flame_blade',
-          name: 'Solar Edge',
-          type: 'weapon',
-          charges: 3,
-          remainingCharges: 3,
+          id: def.id,
+          name: def.name,
+          type: def.type,
+          charges: def.charges,
+          remainingCharges: def.charges,
         };
       }
       state.enemies = [];
