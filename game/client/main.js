@@ -4853,19 +4853,31 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		msText: msText ? msText.textContent : '',
 		currencyText: currencyDisplayEl ? currencyDisplayEl.textContent : '',
 		currency: Number.isFinite(myCurrency) ? myCurrency : (me?.currency ?? null),
-		player: me ? {
-			hp: me.hp,
-			magicStones: me.magicStones,
-			currency: Number.isFinite(me.currency) ? me.currency : myCurrency,
-			debugScenario: me.debugScenario,
-			debugGodmode: !!me.debugGodmode,
-			dead: me.dead,
-			x: me.x,
-			y: me.y,
-			z: me.z,
-			equippedKeyItemId: me.equippedKeyItemId ?? null,
-			keyItemCooldownRemaining: getKeyItemCooldownRemainingMs(me),
-		} : null,
+		player: me ? (() => {
+			const statusNow = Date.now();
+			const slowedUntil = me.slowedUntil ?? 0;
+			const burningUntil = me.burningUntil ?? 0;
+			return {
+				hp: me.hp,
+				magicStones: me.magicStones,
+				currency: Number.isFinite(me.currency) ? me.currency : myCurrency,
+				debugScenario: me.debugScenario,
+				debugGodmode: !!me.debugGodmode,
+				dead: me.dead,
+				x: me.x,
+				y: me.y,
+				z: me.z,
+				equippedKeyItemId: me.equippedKeyItemId ?? null,
+				keyItemCooldownRemaining: getKeyItemCooldownRemainingMs(me),
+				cardUseState: me.cardUseState ?? null,
+				cardWindupUntil: me.cardWindupUntil ?? 0,
+				cardWindupCardId: me.cardWindupCardId ?? null,
+				slowedUntil,
+				burningUntil,
+				slowActive: slowedUntil > statusNow,
+				burnActive: burningUntil > statusNow,
+			};
+		})() : null,
 		keyItemIndicatorOnCooldown: (() => {
 			const el = document.getElementById('key-item-indicator');
 			return !!el && el.classList.contains('cooldown');

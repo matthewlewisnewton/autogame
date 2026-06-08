@@ -4637,6 +4637,42 @@ describe('__AUTOGAME_HARNESS_STATE__ encounter and godmode fields', () => {
 		expect(noEncounter.player.debugGodmode).toBe(false);
 	});
 
+	it('player mirrors card wind-up and slow/burn fields for harness probes', async () => {
+		await import('../main.js');
+
+		const statusNow = Date.now();
+		window.__setGameState({
+			gamePhase: 'playing',
+			run: { status: 'playing' },
+			players: {
+				p1: {
+					hp: 42,
+					magicStones: 40,
+					x: 0,
+					z: 0,
+					cardUseState: 'windup',
+					cardWindupUntil: statusNow + 800,
+					cardWindupCardId: 'magma_greatsword',
+					slowedUntil: statusNow + 3000,
+					burningUntil: statusNow + 4000,
+				},
+			},
+			enemies: [],
+		}, 'p1');
+
+		const harness = window.__AUTOGAME_HARNESS_STATE__();
+		expect(harness.player).toEqual(expect.objectContaining({
+			hp: 42,
+			cardUseState: 'windup',
+			cardWindupUntil: statusNow + 800,
+			cardWindupCardId: 'magma_greatsword',
+			slowedUntil: statusNow + 3000,
+			burningUntil: statusNow + 4000,
+			slowActive: true,
+			burnActive: true,
+		}));
+	});
+
 	it('enemyHp includes slowedUntil, burningUntil, and slowFactor for status probes', async () => {
 		await import('../main.js');
 

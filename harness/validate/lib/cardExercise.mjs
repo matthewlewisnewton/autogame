@@ -32,6 +32,17 @@ async function focusCanvas(page) {
 	});
 }
 
+/**
+ * Press the keyboard hint for a 0-based hand slot (1–6).
+ *
+ * @param {import('playwright').Page} page
+ * @param {number} slotIndex
+ */
+export async function castHandSlot(page, slotIndex) {
+	await focusCanvas(page);
+	await page.keyboard.press(String(slotIndex + 1));
+}
+
 async function requestScenario(page, scenario) {
 	const result = await page.evaluate((name) => {
 		if (typeof window.__requestDebugScenarioForTest !== 'function') {
@@ -132,7 +143,7 @@ export async function runSlowBurnExercise(page, { outDir } = {}) {
 		};
 	});
 
-	await page.keyboard.press(String(iceSlot + 1));
+	await castHandSlot(page, iceSlot);
 	await page.waitForTimeout(2200);
 	await page.evaluate(() => window.__restoreHarnessMathRandom?.());
 
@@ -147,7 +158,7 @@ export async function runSlowBurnExercise(page, { outDir } = {}) {
 		throw new Error(`fireball not in hand after fireball-hand-ready: ${JSON.stringify(harness?.hand)}`);
 	}
 
-	await page.keyboard.press(String(fireSlot + 1));
+	await castHandSlot(page, fireSlot);
 	await page.waitForTimeout(1500);
 
 	harness = await readHarness(page);
@@ -163,5 +174,189 @@ export async function runSlowBurnExercise(page, { outDir } = {}) {
 		afterSlow,
 		afterBurn,
 		...assertion,
+	};
+}
+
+/**
+ * @param {object} harness
+ */
+export function probePlayerStatus(harness) {
+	const now = Date.now();
+	const player = harness?.player;
+	if (!player) {
+		return {
+			found: false,
+			hp: null,
+			slowedUntil: 0,
+			burningUntil: 0,
+			slowActive: false,
+			burnActive: false,
+		};
+	}
+	const slowedUntil = player.slowedUntil ?? 0;
+	const burningUntil = player.burningUntil ?? 0;
+	return {
+		found: true,
+		hp: player.hp,
+		slowedUntil,
+		burningUntil,
+		slowActive: player.slowActive ?? slowedUntil > now,
+		burnActive: player.burnActive ?? burningUntil > now,
+	};
+}
+
+function enemyStatusesCleared(harness) {
+	return (harness?.enemyHp || []).every((enemy) => !enemy.slowActive && !enemy.burnActive);
+}
+
+/**
+ * Probe DOM signals for an active card wind-up telegraph while input is locked.
+ *
+ * @param {import('playwright').Page} page
+ */
+export async function probeWindupTelegraphDom(page) {
+	return page.evaluate(() => {
+		const cardHand = document.getElementById('card-hand');
+		const inputLocked = !!cardHand?.classList.contains('input-locked');
+		const activatingSlot = document.querySelector('.card-slot.activating');
+		const windupIndicator = document.querySelector('.card-windup-indicator');
+		const indicatorWidth = windupIndicator?.getBoundingClientRect().width ?? 0;
+		const telegraphVisible = !!activatingSlot || indicatorWidth > 0 || inputLocked;
+		return {
+			inputLocked,
+			activatingSlot: !!activatingSlot,
+			windupIndicatorWidth: indicatorWidth,
+			telegraphVisible,
+		};
+	});
+}
+
+/**
+ * Cast Purifying Pulse after purifying-pulse-ready and assert heal + cleanse.
+ *
+ * @param {import('playwright').Page} page
+ * @param {{ outDir?: string }} [opts]
+ */
+export async function runPurifyingPulseExercise(page, { outDir } = {}) {
+	await page.waitForFunction(() => {
+		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
+		return harness?.phase === 'playing' && harness?.layout?.profile === 'sunken-canyon';
+	}, { timeout: 60000 });
+
+	await focusCanvas(page);
+	await requestScenario(page, 'purifying-pulse-ready');
+
+	let harness = await readHarness(page);
+	const pulseSlot = handSlotForCard(harness, 'purifying_pulse');
+	if (pulseSlot < 0) {
+		throw new Error(`purifying_pulse not in hand after purifying-pulse-ready: ${JSON.stringify(harness?.hand)}`);
+	}
+
+	const preCast = probePlayerStatus(harness);
+	if (!preCast.slowActive && !preCast.burnActive) {
+		throw new Error(`Expected slow or burn active before Purifying Pulse: ${JSON.stringify(preCast)}`);
+	}
+
+	await castHandSlot(page, pulseSlot);
+	await page.waitForTimeout(1500);
+
+	harness = await readHarness(page);
+	const postCast = probePlayerStatus(harness);
+	const healCleanseApplied = postCast.hp > preCast.hp
+		&& !postCast.slowActive
+		&& !postCast.burnActive
+		&& enemyStatusesCleared(harness);
+
+	if (!healCleanseApplied) {
+		throw new Error(`Purifying Pulse heal/cleanse failed: pre=${JSON.stringify(preCast)} post=${JSON.stringify(postCast)} enemies=${JSON.stringify(harness?.enemyHp)}`);
+	}
+
+	if (outDir) {
+		await writeScreenshot(page, outDir, '09-purifying-pulse');
+	}
+
+	return {
+		preCast,
+		postCast,
+		healCleanseApplied,
+	};
+}
+
+/**
+ * Press a wind-up weapon once and capture harness + DOM probes during lockout.
+ *
+ * @param {import('playwright').Page} page
+ * @param {{ outDir?: string, cardId?: string, scenario?: string }} [opts]
+ */
+export async function runWindupCardExercise(page, {
+	outDir,
+	cardId = 'magma_greatsword',
+	scenario = 'magma-windup-ready',
+} = {}) {
+	await page.waitForFunction(() => {
+		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
+		return harness?.phase === 'playing' && harness?.layout?.profile === 'sunken-canyon';
+	}, { timeout: 60000 });
+
+	await focusCanvas(page);
+	await requestScenario(page, scenario);
+
+	let harness = await readHarness(page);
+	const weaponSlot = handSlotForCard(harness, cardId);
+	if (weaponSlot < 0) {
+		throw new Error(`${cardId} not in hand after ${scenario}: ${JSON.stringify(harness?.hand)}`);
+	}
+
+	await castHandSlot(page, weaponSlot);
+
+	const windupProbe = await page.waitForFunction((expectedCardId) => {
+		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
+		const player = harness?.player;
+		if (!player) return false;
+		if (player.cardUseState !== 'windup') return false;
+		if (!(player.cardWindupUntil > Date.now())) return false;
+		if (player.cardWindupCardId !== expectedCardId) return false;
+
+		const cardHand = document.getElementById('card-hand');
+		const inputLocked = !!cardHand?.classList.contains('input-locked');
+		const activatingSlot = document.querySelector('.card-slot.activating');
+		const windupIndicator = document.querySelector('.card-windup-indicator');
+		const indicatorWidth = windupIndicator?.getBoundingClientRect().width ?? 0;
+		const telegraphVisible = !!activatingSlot || indicatorWidth > 0 || inputLocked;
+		if (!inputLocked || !telegraphVisible) return false;
+
+		return {
+			cardUseState: player.cardUseState,
+			cardWindupUntil: player.cardWindupUntil,
+			cardWindupCardId: player.cardWindupCardId,
+			inputLocked,
+			activatingSlot: !!activatingSlot,
+			windupIndicatorWidth: indicatorWidth,
+			telegraphVisible,
+		};
+	}, cardId, { timeout: 5000 });
+
+	const duringWindup = await windupProbe.jsonValue();
+	const domProbe = await probeWindupTelegraphDom(page);
+	const windupTelegraphActive = duringWindup.cardUseState === 'windup'
+		&& duringWindup.cardWindupUntil > Date.now()
+		&& duringWindup.cardWindupCardId === cardId
+		&& domProbe.inputLocked
+		&& domProbe.telegraphVisible;
+
+	if (!windupTelegraphActive) {
+		throw new Error(`Wind-up telegraph mismatch: probe=${JSON.stringify(duringWindup)} dom=${JSON.stringify(domProbe)}`);
+	}
+
+	if (outDir) {
+		await writeScreenshot(page, outDir, '10-windup-charge');
+	}
+
+	return {
+		cardId,
+		scenario,
+		duringWindup,
+		domProbe,
+		windupTelegraphActive,
 	};
 }
