@@ -38,6 +38,27 @@ const CANYON_DESCENT_TIER_2 = 2;
 const EMBER_DESCENT_ID = 'ember_descent';
 const EMBER_DESCENT_TIER_1 = 1;
 
+// Game-loop ticks can emit a stale stateUpdate before the boss-low-hp scenario
+// finishes; collect every update during the scenario and pick the boss at 1 HP.
+async function applyBossLowHpScenario(socket, scenarioName) {
+	const updates = [];
+	const onUpdate = (data) => updates.push(data);
+	socket.on('stateUpdate', onUpdate);
+	const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+	socket.emit('debugScenario', { name: scenarioName });
+	const result = await debugResultPromise;
+	socket.off('stateUpdate', onUpdate);
+	return { result, updates };
+}
+
+function findBossUpdateAtOneHp(updates, bossId) {
+	for (let i = updates.length - 1; i >= 0; i--) {
+		const bossUpdate = updates[i].enemies?.find((e) => e.id === bossId);
+		if (bossUpdate?.hp === 1) return bossUpdate;
+	}
+	return undefined;
+}
+
 describe('debugScenario — key-item-cooldown', () => {
 	let baseUrl;
 	let prevAllowDebug;
@@ -993,11 +1014,10 @@ describe('debugScenario — canyon-descent-tier-2', () => {
 		socket.emit('debugScenario', { name: 'canyon-descent-tier-2' });
 		await tier2Promise;
 
-		const lowHpPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
-		socket.emit('debugScenario', { name: 'canyon-descent-boss-low-hp' });
-		const lowHpResult = await lowHpPromise;
-		const stateUpdate = await stateUpdatePromise;
+		const { result: lowHpResult, updates } = await applyBossLowHpScenario(
+			socket,
+			'canyon-descent-boss-low-hp',
+		);
 
 		expect(lowHpResult.ok).toBe(true);
 		expect(lowHpResult.scenario).toBe('canyon-descent-boss-low-hp');
@@ -1018,7 +1038,8 @@ describe('debugScenario — canyon-descent-tier-2', () => {
 		expect(dist).toBeGreaterThanOrEqual(2);
 		expect(dist).toBeLessThanOrEqual(5.5);
 
-		const bossUpdate = stateUpdate.enemies.find((e) => e.id === bossId);
+		const bossUpdate = findBossUpdateAtOneHp(updates, bossId);
+		expect(bossUpdate, 'expected a stateUpdate with the encounter boss at 1 HP').toBeTruthy();
 		expect(bossUpdate?.hp).toBe(1);
 		expect(bossUpdate?.type).toBe('miniboss');
 	});

@@ -1023,10 +1023,6 @@ function applyDebugScenario(socket, name) {
       boss.y = resolveFloorY(sampleFloorY(state.layout, boss.x, boss.z));
       repositionNearEnemy(player, boss, 4);
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      boss.hp = 1;
-      boss.maxHp = boss.maxHp || boss.hp;
-      boss.shieldHp = 0;
-      boss.maxShieldHp = 0;
       // Harness activates the encounter before boss-low-hp; direct URL/debug use may still be dormant.
       if (isEncounterDormant(state.run)) {
         activateEncounter(state.run);
@@ -1034,6 +1030,12 @@ function applyDebugScenario(socket, name) {
       if (!state.run.encounter.locked) {
         lockEncounter(state.run);
       }
+      // Clamp to 1 HP immediately before the authoritative snapshot so a concurrent
+      // game-loop tick cannot win the race with a full-HP boss broadcast.
+      boss.hp = 1;
+      boss.maxHp = boss.maxHp || 1;
+      boss.shieldHp = 0;
+      boss.maxShieldHp = 0;
       broadcastLobbyUpdate(lobby);
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return { ok: true, scenario: name };
