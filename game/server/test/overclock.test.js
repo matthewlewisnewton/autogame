@@ -243,10 +243,11 @@ describe('Overclock key item', () => {
 		// Play card — should succeed (overclock bypasses cooldown, not MS cost)
 		await playCard(socket, cardId, spellSlot);
 
-		// Magic stones should have decreased by approximately the card's cost
-		// (tiny drift from MS regen tick is expected)
+		// Magic stones are deducted at wind-up commit; regen during wind-up adds a sliver back.
 		expect(player.magicStones).toBeLessThan(msBefore);
-		expect(msBefore - player.magicStones).toBeCloseTo(cardCost, 1);
+		const msSpent = msBefore - player.magicStones;
+		expect(msSpent).toBeGreaterThan(cardCost - 0.15);
+		expect(msSpent).toBeLessThan(cardCost + 0.15);
 	}, 20000);
 
 	it('overclockChargesRemaining appears in stateSnapshot and is visible in stateUpdate', async () => {

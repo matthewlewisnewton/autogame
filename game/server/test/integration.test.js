@@ -244,6 +244,34 @@ function runSimulationInPrimaryLobby(fn) {
 	return fn(state);
 }
 
+/** Advance a committed card wind-up to resolution in integration tests. */
+async function resolveCardWindup(socket, playerKey, timeoutMs = 10000) {
+	const deadline = Date.now() + timeoutMs;
+	while (Date.now() < deadline) {
+		const state = testGameState();
+		const player = state.players[playerKey];
+		if (player?.cardUseState === 'windup' && player.pendingCardUse) break;
+		await new Promise((resolve) => setTimeout(resolve, 5));
+	}
+
+	const state = testGameState();
+	const player = state.players[playerKey];
+	if (player.cardUseState !== 'windup' || !player.pendingCardUse) return;
+
+	const windUpMs = getCardDef(player.pendingCardUse.cardId).windUpMs || 0;
+	if (windUpMs <= 0) return;
+
+	const sim = require('../simulation');
+	const progression = require('../progression');
+	sim.setGameState(state, _timeouts);
+	progression.setGameState(state);
+	player.cardWindupStartTime = Date.now() - windUpMs - 50;
+
+	const cardUsedPromise = waitForEvent(socket, 'cardUsed');
+	runGameLoopTick();
+	await cardUsedPromise;
+}
+
 async function connectTwoClients(baseUrl, id1, id2) {
 	const firstId = id1 || `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 	const secondId = id2 || `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -907,21 +935,24 @@ describe('Socket Integration — useCard Event', () => {
 
 			const player = testGameState().players[socket._playerId];
 
-			// Ensure a summon card is in hand — the random deal from summon-ready
-			// may not include battle_familiar (2 of 8 deck cards), so we
-			// manually place one if not present.
+			// Force Signal Familiar so wind-up summon behavior is deterministic.
 			let summonSlot = player.hand.findIndex(c => c && c.type === 'spell');
 			if (summonSlot < 0) {
-				const emptySlot = player.hand.findIndex(c => !c);
-				if (emptySlot >= 0) {
-					player.hand[emptySlot] = { id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 44 };
-					summonSlot = emptySlot;
-				} else {
-					const replaceSlot = player.hand.findIndex((c, index) => c && index !== 0) ;
-					player.hand[replaceSlot >= 0 ? replaceSlot : 5] = { id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 44 };
-					summonSlot = replaceSlot >= 0 ? replaceSlot : 5;
-				}
+				summonSlot = player.hand.findIndex(c => !c);
 			}
+			if (summonSlot < 0) {
+				summonSlot = player.hand.findIndex((c, index) => c && index !== 0);
+			}
+			expect(summonSlot).toBeGreaterThanOrEqual(0);
+			player.hand[summonSlot] = {
+				id: 'battle_familiar',
+				name: 'Signal Familiar',
+				type: 'spell',
+				charges: 1,
+				remainingCharges: 1,
+				magicStoneCost: 50,
+				damage: 44,
+			};
 			const summonCard = player.hand[summonSlot];
 			expect(summonCard).toBeDefined();
 			expect(summonCard.type).toBe('spell');
@@ -940,11 +971,8 @@ describe('Socket Integration — useCard Event', () => {
 
 			const beforeStones = testGameState().players[socket._playerId].magicStones;
 
-			const cardUsedPromise = waitForEvent(socket, 'cardUsed');
-
 			socket.emit('useCard', { cardId: summonCard.id, slotIndex: summonSlot });
-
-			await cardUsedPromise;
+			await resolveCardWindup(socket, socket._playerId);
 
 			// Enemy should have taken summon damage
 			const enemy = testGameState().enemies.find(e => e.id === 'e1');
@@ -1014,22 +1042,7 @@ describe('Socket Integration — useCard Event', () => {
 	}
 
 	async function resolveMonsterCardWindup(socket, playerKey) {
-		const state = testGameState();
-		const player = state.players[playerKey];
-		if (player.cardUseState !== 'windup' || !player.pendingCardUse) return;
-
-		const windUpMs = getCardDef(player.pendingCardUse.cardId).windUpMs || 0;
-		if (windUpMs <= 0) return;
-
-		const sim = require('../simulation');
-		const progression = require('../progression');
-		sim.setGameState(state, _timeouts);
-		progression.setGameState(state);
-		player.cardWindupStartTime = Date.now() - windUpMs - 50;
-
-		const cardUsedPromise = waitForEvent(socket, 'cardUsed');
-		runGameLoopTick();
-		await cardUsedPromise;
+		await resolveCardWindup(socket, playerKey);
 	}
 
 	describe('Monster card', () => {
@@ -5431,9 +5444,8 @@ describe('Telepipe extract and redeploy vitals persistence', () => {
 		const player = testGameState().players[p1Id];
 		const summonSlot = player.hand.findIndex((c) => c && c.type === 'spell');
 		const summonCard = player.hand[summonSlot];
-		const cardUsedPromise = waitForEvent(p1.socket, 'cardUsed');
 		p1.socket.emit('useCard', { cardId: summonCard.id, slotIndex: summonSlot });
-		await cardUsedPromise;
+		await resolveCardWindup(p1.socket, p1Id);
 
 		const expectedMs = testGameState().players[p1Id].magicStones;
 		expect(expectedMs).toBeCloseTo(20, 0);

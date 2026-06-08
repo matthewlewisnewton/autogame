@@ -1,7 +1,7 @@
 {
   "iron_sword": { "damage": 17 },
   "flame_blade": { "damage": 28, "windUpMs": 700 },
-  "battle_familiar": { "magicStoneCost": 50, "damage": 44 },
+  "battle_familiar": { "magicStoneCost": 50, "damage": 44, "windUpMs": 750 },
   "dungeon_drake": {
     "windUpMs": 600,
     "minionTtl": 30,
@@ -67,6 +67,7 @@
   "astral_guardian": {
     "magicStoneCost": 65,
     "damage": 63,
+    "windUpMs": 950,
     "isEvolved": true,
     "specialEffect": "astral_shield",
     "effect": "astral_guardian",
@@ -308,6 +309,7 @@
   "soul_drain": {
     "magicStoneCost": 30,
     "damage": 42,
+    "windUpMs": 850,
     "magicStoneOnHit": 12,
     "healOnHit": 12,
     "healOnKill": 18,

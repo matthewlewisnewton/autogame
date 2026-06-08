@@ -89,6 +89,7 @@ describe('card wind-up by card type', () => {
 		assertNoEffectAtCommit,
 		assertEffectAfterResolve,
 		handAfterCommit,
+		allowMsChangeOnResolve = false,
 	}) {
 		const { state, player } = setupWindupCard({ cardId, handCard, enemyNear });
 		const msBefore = player.magicStones;
@@ -130,7 +131,9 @@ describe('card wind-up by card type', () => {
 		expect(isPlayerCardCommitted(player)).toBe(false);
 		expect(player.pendingCardUse).toBeUndefined();
 		// runGameLoopTick during resolve may apply MAGIC_STONES_REGEN_PER_TICK (0.005).
-		expect(player.magicStones).toBeCloseTo(msAfterCommit, 1);
+		if (!allowMsChangeOnResolve) {
+			expect(player.magicStones).toBeCloseTo(msAfterCommit, 1);
+		}
 		expect(player.slotCooldowns[0]).toBe(cooldownAfterCommit);
 		expect(cardUsedPayload.cardId).toBe(cardId);
 		assertEffectAfterResolve({ state, player, cardUsedPayload });
@@ -225,6 +228,102 @@ describe('card wind-up by card type', () => {
 				expect(state.enchantments.length).toBe(1);
 				expect(state.enchantments[0].cardId).toBe('spike_trap');
 				expect(cardUsedPayload.effect).toBe('spike_trap');
+			},
+		});
+	});
+
+	it('battle_familiar commits to windup and resolves radial damage once after windUpMs', async () => {
+		await connectAndStartRun();
+		const windUpMs = getCardDef('battle_familiar').windUpMs;
+		const magicStoneCost = getCardDef('battle_familiar').magicStoneCost;
+
+		await expectWindupLifecycle({
+			cardId: 'battle_familiar',
+			windUpMs,
+			magicStoneCost,
+			handCard: {
+				id: 'battle_familiar',
+				name: 'Signal Familiar',
+				type: 'spell',
+				charges: 1,
+				remainingCharges: 1,
+			},
+			handAfterCommit: ({ player }) => {
+				expect(player.hand[0]).toBeNull();
+			},
+			assertNoEffectAtCommit: ({ state }) => {
+				expect(state.enemies[0].hp).toBe(200);
+			},
+			assertEffectAfterResolve: ({ state, cardUsedPayload }) => {
+				expect(state.enemies[0].hp).toBeLessThan(200);
+				expect(cardUsedPayload.hits.length).toBeGreaterThan(0);
+			},
+		});
+	});
+
+	it('soul_drain commits to windup and resolves damage and leech once after windUpMs', async () => {
+		await connectAndStartRun();
+		const windUpMs = getCardDef('soul_drain').windUpMs;
+		const magicStoneCost = getCardDef('soul_drain').magicStoneCost;
+
+		await expectWindupLifecycle({
+			cardId: 'soul_drain',
+			windUpMs,
+			magicStoneCost,
+			allowMsChangeOnResolve: true,
+			handCard: {
+				id: 'soul_drain',
+				name: 'Soul Drain',
+				type: 'spell',
+				charges: 1,
+				remainingCharges: 1,
+			},
+			handAfterCommit: ({ player }) => {
+				expect(player.hand[0]).toBeNull();
+			},
+			assertNoEffectAtCommit: ({ state }) => {
+				expect(state.enemies[0].hp).toBe(200);
+			},
+			assertEffectAfterResolve: ({ state, cardUsedPayload }) => {
+				expect(state.enemies[0].hp).toBeLessThan(200);
+				expect(cardUsedPayload.hits.length).toBeGreaterThan(0);
+				expect(cardUsedPayload.magicStonesGained).toBeGreaterThan(0);
+			},
+		});
+	});
+
+	it('astral_guardian commits to windup and spawns shielded minion once after windUpMs', async () => {
+		await connectAndStartRun();
+		const windUpMs = getCardDef('astral_guardian').windUpMs;
+		const magicStoneCost = getCardDef('astral_guardian').magicStoneCost;
+
+		await expectWindupLifecycle({
+			cardId: 'astral_guardian',
+			windUpMs,
+			magicStoneCost,
+			handCard: {
+				id: 'astral_guardian',
+				name: 'Astral Guardian',
+				type: 'spell',
+				charges: 1,
+				remainingCharges: 1,
+			},
+			handAfterCommit: ({ player }) => {
+				expect(player.hand[0]).toBeNull();
+			},
+			assertNoEffectAtCommit: ({ state, player }) => {
+				expect(state.enemies[0].hp).toBe(200);
+				expect(state.minions.length).toBe(0);
+				expect(player.shieldHp).toBeFalsy();
+			},
+			assertEffectAfterResolve: ({ state, player, cardUsedPayload }) => {
+				expect(state.enemies[0].hp).toBeLessThan(200);
+				expect(state.minions.length).toBe(1);
+				expect(state.minions[0].ownerId).toBe(socket._playerId);
+				expect(state.minions[0].type).toBe('astral_guardian');
+				expect(player.shieldHp).toBe(14);
+				expect(cardUsedPayload.minionId).toBe(state.minions[0].id);
+				expect(cardUsedPayload.shieldGranted).toBe(14);
 			},
 		});
 	});

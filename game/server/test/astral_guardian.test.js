@@ -11,7 +11,14 @@ import {
 	damagePlayer,
 	spawnEnemy,
 	updateMinions,
+	getCardDef,
+	runGameLoopTick,
 } from '../index.js';
+import {
+	isPlayerCardCommitted,
+	setGameState as setSimGameState,
+} from '../simulation.js';
+import { setGameState as setProgressionGameState } from '../progression.js';
 import { ATTACK_RANGE, DETECTION_RADIUS, TICK_RATE } from '../config.js';
 import {
 	connectAndJoinLobby,
@@ -140,12 +147,30 @@ describe('Astral Guardian gameplay', () => {
 		}];
 		player.magicStones = 65;
 
-		const cardUsedPromise = waitForEvent(socket, 'cardUsed');
 		socket.emit('useCard', { cardId: 'astral_guardian', slotIndex: 0 });
+		await waitForEvent(socket, 'stateUpdate');
+		const committedState = lobbyGameState(socket._lobbyId);
+		const committedPlayer = committedState.players[socket._playerId];
+		const committedEnemy = committedState.enemies.find((e) => e.id === 'e1');
+		expect(committedPlayer.cardUseState).toBe('windup');
+		expect(isPlayerCardCommitted(committedPlayer)).toBe(true);
+		expect(committedEnemy.hp).toBe(50);
+		expect(committedState.minions.length).toBe(0);
+		expect(committedPlayer.shieldHp).toBeFalsy();
+
+		const windUpMs = getCardDef('astral_guardian').windUpMs;
+		const liveState = lobbyGameState(socket._lobbyId);
+		setSimGameState(liveState, {});
+		setProgressionGameState(liveState);
+		const resolvingPlayer = liveState.players[socket._playerId];
+		resolvingPlayer.cardWindupStartTime = Date.now() - windUpMs - 50;
+		const cardUsedPromise = waitForEvent(socket, 'cardUsed');
+		runGameLoopTick();
 		const cardUsed = await cardUsedPromise;
 
-		expect(player.shieldHp).toBe(14);
-		expect(player.shieldExpiresAt).toBeGreaterThan(Date.now());
+		const resolvedPlayer = lobbyGameState(socket._lobbyId).players[socket._playerId];
+		expect(resolvedPlayer.shieldHp).toBe(14);
+		expect(resolvedPlayer.shieldExpiresAt).toBeGreaterThan(Date.now());
 		expect(cardUsed.shieldGranted).toBe(14);
 		expect(cardUsed.hits.length).toBeGreaterThan(0);
 

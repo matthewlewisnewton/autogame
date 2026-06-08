@@ -143,9 +143,13 @@ describe('card wind-up backward compatibility', () => {
 		expect(getCardDef('glacier_collapse').windUpMs).toBe(700);
 		expect(getCardDef('dungeon_drake').windUpMs).toBe(600);
 		expect(getCardDef('spike_trap').windUpMs).toBe(500);
+		expect(getCardDef('battle_familiar').windUpMs).toBe(750);
+		expect(getCardDef('soul_drain').windUpMs).toBe(850);
+		expect(getCardDef('astral_guardian').windUpMs).toBe(950);
 		expect(getCardDef('iron_sword').windUpMs).toBeUndefined();
 		expect(getCardDef('frost_nova').windUpMs).toBeUndefined();
 		expect(getCardDef('skeleton_knight').windUpMs).toBeUndefined();
+		expect(getCardDef('excalibur_photon').windUpMs).toBeUndefined();
 	});
 });
 

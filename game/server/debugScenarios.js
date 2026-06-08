@@ -2302,6 +2302,38 @@ function applyDebugScenario(socket, name) {
       target.hp = 200;
       target.maxHp = 200;
       target.wanderTarget = { x: target.x, z: target.z };
+    } else if (name === 'heavy-spell-windup') {
+      // Playing phase with evolved heavy-spell wind-up cards in hand and a grunt
+      // in summon range. Same cards are reachable via evolution and reward flow.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      player.hand[0] = {
+        id: 'soul_drain',
+        name: 'Soul Drain',
+        type: 'spell',
+        charges: 1,
+        remainingCharges: 1,
+      };
+      player.hand[1] = {
+        id: 'astral_guardian',
+        name: 'Astral Guardian',
+        type: 'spell',
+        charges: 1,
+        remainingCharges: 1,
+      };
+      player.hand[2] = {
+        id: 'battle_familiar',
+        name: 'Signal Familiar',
+        type: 'spell',
+        charges: 1,
+        remainingCharges: 1,
+      };
+      state.enemies = [];
+      const target = spawnEnemy(player.x + 5, player.z, 'grunt');
+      target.hp = 200;
+      target.maxHp = 200;
+      target.wanderTarget = { x: target.x, z: target.z };
     }
 
     syncRunObjectiveToEnemies();
