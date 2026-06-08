@@ -184,8 +184,9 @@ function liveCanyonDescentAdds(state, bossType = 'miniboss') {
 }
 
 function liveArenaTrialsAdds(state, bossType = 'arena_champion') {
+  const bossId = state.run?.encounter?.bossEnemyId;
   return (state.enemies || []).filter(
-    (e) => e.hp > 0 && e.type !== bossType && (e.type === 'grunt' || e.type === 'skirmisher'),
+    (e) => e.hp > 0 && e.id !== bossId && e.type !== bossType,
   );
 }
 
@@ -674,7 +675,8 @@ function applyDebugScenario(socket, name) {
         || !state.run?.encounter) {
         return { ok: false, reason: 'Requires arena_trials Tier 2 stage-boss run' };
       }
-      if (liveArenaTrialsAdds(state).length > 0) {
+      const bossId = state.run.encounter.bossEnemyId;
+      if (!areAllNonBossEnemiesDefeated(state, bossId)) {
         return { ok: false, reason: 'Adds must be cleared before boss approach' };
       }
       if (state.run.encounter.phase !== 'dormant') {

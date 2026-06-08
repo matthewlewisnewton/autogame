@@ -8,6 +8,7 @@ import {
 	getGrindCost,
 	getStatMultiplier,
 	scaledGrindStat,
+	CARD_GRIND_STAT_SCALE,
 	drawCardFromDeck,
 	createDrawDeckFromSelectedDeck,
 	initPlayerHand,
@@ -103,6 +104,34 @@ describe('card grinding', () => {
 	it('scales weapon damage for ground cards in combat stats', () => {
 		const baseDamage = CARD_DEFS.iron_sword.damage;
 		expect(scaledGrindStat(baseDamage, 5)).toBe(Math.round(baseDamage * 1.25));
+	});
+
+	it('uses per-card grind scale for battle_familiar', () => {
+		expect(CARD_GRIND_STAT_SCALE.battle_familiar).toBeLessThan(0.05);
+		expect(getStatMultiplier(5, 'battle_familiar')).toBeCloseTo(1.15);
+		expect(getStatMultiplier(5)).toBeCloseTo(1.25);
+	});
+
+	it('keeps battle_familiar at base stats at grind 0', () => {
+		const baseDamage = CARD_DEFS.battle_familiar.damage;
+		const defaultMinionHp = 50;
+		expect(scaledGrindStat(baseDamage, 0, 'battle_familiar')).toBe(44);
+		expect(scaledGrindStat(defaultMinionHp, 0, 'battle_familiar')).toBe(defaultMinionHp);
+	});
+
+	it('scales battle_familiar below the global grind curve at grind 5+', () => {
+		const baseDamage = CARD_DEFS.battle_familiar.damage;
+		const defaultMinionHp = 50;
+		const grind = 5;
+		const familiarDamage = scaledGrindStat(baseDamage, grind, 'battle_familiar');
+		const globalDamage = scaledGrindStat(baseDamage, grind);
+		const familiarMinionHp = scaledGrindStat(defaultMinionHp, grind, 'battle_familiar');
+		const globalMinionHp = scaledGrindStat(defaultMinionHp, grind);
+
+		expect(familiarDamage).toBeLessThan(globalDamage);
+		expect(familiarMinionHp).toBeLessThan(globalMinionHp);
+		expect(familiarDamage).toBe(Math.round(baseDamage * 1.15));
+		expect(familiarMinionHp).toBe(Math.round(defaultMinionHp * 1.15));
 	});
 
 	it('persists grind in snapshots and persistence', () => {

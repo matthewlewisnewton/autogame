@@ -1,6 +1,6 @@
 # Card balance report
 
-Card-balance pass parts 1–2: **weapons**, **spells**, **creatures**, **enchantments**, economy, combos, and consolidated recommendations. Metrics sourced from `game/validation/card-balance/analyzeCards.mjs` (sub-ticket 01) plus manual simulation notes (sub-ticket 03). Sub-ticket 04 applied five `apply-now` tunings in `cardStats.json`; sub-ticket 06 reconciles this report to post-tuning live stats (no further JSON or gameplay changes).
+Card-balance pass parts 1–2: **weapons**, **spells**, **creatures**, **enchantments**, economy, combos, and consolidated recommendations. Metrics sourced from `game/validation/card-balance/analyzeCards.mjs` (sub-ticket 01) plus manual simulation notes (sub-ticket 03). Ticket 303 sub-ticket 04 applied five `apply-now` tunings in `cardStats.json`; ticket 311 sub-ticket 04 reconciles this report to post-311 live stats (grind-scale map + Astral Guardian trim; no further JSON or gameplay changes in this pass).
 
 ## Methodology
 
@@ -71,16 +71,16 @@ Regenerate raw metrics: `node game/validation/card-balance/analyzeCards.mjs`
 
 | Name | id | charges | MS cost | burst | DPC | DPM | acquisition | verdict | recommendation |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |
-| Signal Familiar | battle_familiar | 1 | 50 | 44 | 44.00 | 0.055 | reward:1 | over | `operator-triage` — high burst + summon body; early reward power budget |
-| Astral Guardian | astral_guardian | 1 | 65 | 66 | 66.00 | 0.083 | evolved | over | `operator-triage` — top spell DPC/DPM; evolution + shield/minion stack |
+| Signal Familiar | battle_familiar | 1 | 50 | 44 | 44.00 | 0.055 | reward:1 | over | **addressed in 311** — grind-0 harness row unchanged; `CARD_GRIND_STAT_SCALE` 0.03 (vs global 0.05) slows late damage/minion growth; early reward intent preserved |
+| Astral Guardian | astral_guardian | 1 | 65 | 63 | 63.00 | 0.079 | evolved | over | **addressed in 311** — `damage` 66→63, `shieldHp` 15→14; still top evolved finisher, DPC/DPM reduced vs pre-311 |
 | Cryo Burst | frost_nova | 1 | 35 | 11 | 11.00 | 0.014 | reward:4 | ok | — |
 | Permafrost Lance | permafrost_lance | 1 | 30 | 11 | 11.00 | 0.014 | reward:5 | ok | **done** (sub-ticket 04) — matches frost_nova DPC/DPM lane |
 | Restoration Beacon | healing_font | 1 | 0 | 0 | — | — | reward:8 | ok | — (utility: +6 MS) |
 | Sanctum Pulse | divine_grace | 1 | 0 | 0 | — | — | evolved | ok | — (utility: +10 MS) |
-| Voltaic Chain | chain_lightning | 1 | 42 | 22 | 22.00 | 0.028 | reward:26 | ok | — (max 44 vs clusters; see spotlight) |
+| Voltaic Chain | chain_lightning | 1 | 37 | 22 | 22.00 | 0.028 | reward:26 | ok | — (max 44 vs clusters; see spotlight) |
 | Glacial Orb | ice_ball | 1 | 32 | 12 | 12.00 | 0.015 | reward:28 | ok | — |
 | Glacier Rupture | glacier_collapse | 1 | 35 | 17 | 17.00 | 0.021 | evolved | ok | — |
-| Purifying Pulse | purifying_pulse | 1 | 0 | 0 | — | — | reward:27 | ok | — (utility: 15 heal + cleanse; see spotlight) |
+| Purifying Pulse | purifying_pulse | 1 | 0 | 0 | — | — | reward:27 | ok | — (utility: 20 heal + cleanse; see spotlight) |
 | Gravity Well | gravity_well | 1 | 45 | 0 | 0 | 0 | reward:14 | dead | `operator-triage` — pull-only; needs CC utility score |
 | Event Horizon | event_horizon | 1 | 45 | 0 | 0 | 0 | evolved | dead | `operator-triage` — crush damage (33 center) not in harness primary field |
 | Ether Siphon | mana_leach | 1 | 30 | 28 | 28.00 | 0.035 | reward:16 | ok | — |
@@ -94,9 +94,9 @@ Regenerate raw metrics: `node game/validation/card-balance/analyzeCards.mjs`
 
 ### Spell outlier notes
 
-1. **astral_guardian** — DPC 66 / DPM 0.083 exceed all peers; 65 MS cost partially gates but burst is extreme. **`operator-triage`**
+1. **astral_guardian** — Post-311 DPC 63 / DPM 0.079 still above peers but trimmed from 66 / 0.083; shield 14 HP. **`addressed in 311`**
 2. **soul_drain** — DPC 42 at Q3 ceiling with MS leech; evolved finisher. **`operator-triage`**
-3. **battle_familiar** — DPC 44 on reward:1 competes with late-game evolved spells. **`operator-triage`**
+3. **battle_familiar** — Harness grind-0 DPC 44 on reward:1; late scaling capped via per-card grind scale 0.03. **`addressed in 311`**
 
 ## New/changed cards (294–302 spotlight)
 
@@ -122,11 +122,11 @@ Cards landed in tickets 294–302. Compared to same-type peers on damage, MS cos
 | Impact damage | 12 | frost_nova 11, permafrost_lance 11 |
 | MS cost | 32 | frost_nova 35, permafrost_lance 30 |
 | Charges / cooldown | 1 / 800 ms | Standard spell slot |
-| Utility | 50% slow, 3 s, 0.5 factor | frost_nova: AoE freeze; permafrost: wider nova freeze |
+| Utility | 65% slow, 3 s, 0.5 factor | frost_nova: AoE freeze; permafrost: wider nova freeze |
 
 **Assessment.** Best single-target damage in the frost lane for MS spent; trades AoE freeze for ranged projectile + probabilistic slow. DPC 12 is mid-band for spells. Slow is weaker than freeze but cheaper MS and safer at range (1200 ms travel).
 
-**Recommendation:** `ok` — no numeric change unless slow proc rate feels bad; then `apply-now` raise `slowChance` to 0.65.
+**Recommendation:** **done** (ticket 310) — `slowChance` raised 0.5 → 0.65 for a more reliable slow proc; damage/cost unchanged.
 
 ### chain_lightning (302) — spell
 
@@ -134,27 +134,27 @@ Cards landed in tickets 294–302. Compared to same-type peers on damage, MS cos
 | --- | --- | --- |
 | Primary damage | 22 | mana_leach 28 (single target) |
 | Max cluster burst | 44 (22+11+11) | battle_familiar 44 (single + summon) |
-| MS cost | 42 | mana_leach 30, frost_nova 35 |
+| MS cost | 37 | mana_leach 30, frost_nova 35 |
 | Chain | radius 5, max 2 | thunderbird minion chains similarly |
 | Charges / cooldown | 1 / 800 ms | Standard spell |
 
-**Assessment.** Harness undervalues cluster fights: at three targets, DPC-equivalent **44** matches battle_familiar at lower summon overhead. Single-target DPM (0.028) is mid-band. 42 MS is the highest among spotlight cards but fair for multi-hit potential.
+**Assessment.** Harness undervalues cluster fights: at three targets, DPC-equivalent **44** matches battle_familiar at lower summon overhead. Single-target DPM (0.028) is mid-band. Post-tune 37 MS keeps it slightly above the mid-spell band while easing back-to-back casts.
 
-**Recommendation:** `ok` — tune only if MS starvation blocks casts; then `apply-now` −5 MS cost.
+**Recommendation:** **done** (ticket 310) — `magicStoneCost` lowered 42 → 37 to ease MS starvation; damage/chain unchanged.
 
 ### purifying_pulse (299) — spell
 
 | Stat | Value | Peer context |
 | --- | --- | --- |
-| Heal | 15 HP | healing_font restores 6 MS (different resource) |
+| Heal | 20 HP | healing_font restores 6 MS (different resource) |
 | MS cost | 0 | healing_font 0 MS |
 | Radius | 5.5 | AoE ally heal + cleanse |
 | Charges / cooldown | 1 / 800 ms | Same as healing_font |
 | Utility | Clears burn, slow, freeze, debuffs | Unique among heals |
 
-**Assessment.** Only zero-MS ally heal with full cleanse (`purifying_pulse.test.js`). `utilityScore` 15 is modest vs sacrificial_altar (100 MS) but combat-relevant in debuff-heavy content. No direct damage — correctly **ok** on utility verdict. Pairs with ice/fire enemy kits from same ticket batch.
+**Assessment.** Only zero-MS ally heal with full cleanse (`purifying_pulse.test.js`). `utilityScore` 20 is modest vs sacrificial_altar (100 MS) but combat-relevant in debuff-heavy content. No direct damage — correctly **ok** on utility verdict. Pairs with ice/fire enemy kits from same ticket batch.
 
-**Recommendation:** `ok` — if underused, `apply-now` +5 heal or +1 m radius; cleanse value is the main draw.
+**Recommendation:** **done** (ticket 310) — `healAmount` raised 15 → 20; cleanse remains the main draw, radius/0 MS unchanged.
 
 ## Creatures
 
@@ -163,7 +163,7 @@ Cards landed in tickets 294–302. Compared to same-type peers on damage, MS cos
 | Name | id | charges | MS cost | atk/breath | minion HP | TTL | acquisition | verdict | recommendation |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |
 | Vault Wyrm | dungeon_drake | 1 | 0 | 2 | 50† | 30 | reward:2 | ok | — (see 298 spotlight) |
-| Phase Stalker | null_crawler | 1 | 35 | 22 | 55 | 30 | reward:12 | over | `operator-triage` — 22 dmg beam every 2 s at range 14; confirm reward:12 intent |
+| Phase Stalker | null_crawler | 1 | 35 | 22 | 55 | 30 | reward:12 | over | **addressed in 311** — grind-0 harness row unchanged (22 dmg / 55 HP); `CARD_GRIND_STAT_SCALE` 0.03 slows high-grind beam/minion growth |
 | Bulkhead Mauler | bulkhead_mauler | 1 | 0 | 9 | 100 | 30 | reward:13 | ok | — (cone shockwave not in harness) |
 | Aegis Sentinel | aegis_sentinel | 1 | 45 | 0 | 160 | 30 | reward:10 | ok | — (taunt + 30 shield HP) |
 | Archive Wyrm | ancient_wyrm | 1 | 0 | 4 | 90 | 30 | evolved | ok | — (evolution target; no burn) |
@@ -201,7 +201,7 @@ Post-298 stats in `cardStats.json`: `attackDamage: 2` (mapped to `breathDamage` 
 
 ### Creature outlier notes
 
-1. **null_crawler** — Highest harness minion DPC (22); 35 MS cost is fair but power spikes vs reward:12 neighbors. **`operator-triage`**
+1. **null_crawler** — Grind-0 harness DPC still highest (22); per-card scale 0.03 tapers reward:12 power at high grind. **`addressed in 311`**
 2. **storm_eagle** — 13 dmg with no attack-interval gate in `simulation.js`; real DPS exceeds harness. **`operator-triage`**
 3. **dungeon_drake** — Paper DPC 2; burn breath ~6 sustained DPS post-298. **`ok`**
 4. **undead_commander** — 180 HP + skeleton spawn package; evolution finisher. **`operator-triage`**
@@ -254,18 +254,18 @@ Plausible multi-card loops from `cardEffects.js`, `simulation.js`, and integrati
 | Battery + altar loop | `battery_automaton` + `sacrificial_altar` + `chrono_trigger` | **medium** | Partial — tune `chargePulseIntervalMs` (6000) or altar `chargeRestore` | Battery pulses +1 charge / 6 s; altar refills adjacent weapons; chrono restores ±2 adjacent |
 | Pull into hazard | `gravity_well` / `event_horizon` + `spike_trap` / `cinder_snare` | **medium** | Yes — reduce hazard `damage` / `damagePerTick` or widen MS gap vs pull cost | Enemies pulled into ground enchantments (`new_card_pack.test.js` pull radii 12) |
 | MS grind + spender | `harvesting_scythe` + `mana_prism` + `sacrificial_altar` + burst spell | **medium** | Partial — lower `magicStoneOnKill` (15) or prism `magicStonePulse` (10) | Scythe grants 5/15 MS on hit/kill; prism passively feeds spells |
-| Cleanse attrition counter | `purifying_pulse` + `dungeon_drake` / fire enemies | **low** | Yes — reduce `healAmount` (15) if TTK too long | Zero-MS heal + cleanse vs burn/slow content (`purifying_pulse.test.js`) |
+| Cleanse attrition counter | `purifying_pulse` + `dungeon_drake` / fire enemies | **low** | Yes — reduce `healAmount` (20) if TTK too long | Zero-MS heal + cleanse vs burn/slow content (`purifying_pulse.test.js`) |
 | Chrono weapon refresh | `chrono_trigger` + high-charge weapons (`iron_sword`, `flame_blade`) | **low** | Yes — lower `adjacentChargeRestore` (2) | `integration.test.js`: both neighbors +2 charges |
 
 ## Executive summary
 
-- **47 cards** catalogued once across weapons (14), spells (20), creatures (10), and enchantments (3). Harness metrics flag **over** outliers on early rewards (`flame_blade`, `battle_familiar`) and evolved finishers (`magma_greatsword`, `astral_guardian`, `soul_drain`); **under** on `saber_of_light` and `harvesting_scythe` only (post-tuning `fireball`, `permafrost_lance`, `dragons_breath`, and `excalibur_photon` now **ok**).
+- **47 cards** catalogued once across weapons (14), spells (20), creatures (10), and enchantments (3). Harness metrics flag **over** outliers on early rewards (`flame_blade`, `battle_familiar` grind-0 row) and evolved finishers (`magma_greatsword`, `astral_guardian`, `soul_drain`); **under** on `saber_of_light` and `harvesting_scythe` only (post-tuning `fireball`, `permafrost_lance`, `dragons_breath`, and `excalibur_photon` now **ok**). **Ticket 311:** `battle_familiar` and `null_crawler` keep strong grind-0 bases but scale at 0.03 per grind (vs global 0.05); `astral_guardian` trimmed to damage 63 / shield 14 (harness DPC 63, DPM 0.079).
 - **Vault Wyrm (298):** rebalance to `attackDamage: 2` + `burning_breath` is **ok** — combined breath + burn DPS (~6) beats Archive Wyrm sustained direct (~3.6) but on a fragile 50 HP body at reward:2; evolution to Archive Wyrm remains the range/DPS upgrade path.
-- **Creatures:** `null_crawler` and `storm_eagle` are the main combat outliers (harness and simulation cadence respectively). Tank/summon roles (`skeleton_knight`, `aegis_sentinel`, `undead_commander`, `battery_automaton`) read **ok** on utility.
+- **Creatures:** `null_crawler` grind-0 harness row still **over** but **addressed in 311** via slower per-grind scaling; `storm_eagle` remains **`operator-triage`** (simulation cadence). Tank/summon roles (`skeleton_knight`, `aegis_sentinel`, `undead_commander`, `battery_automaton`) read **ok** on utility.
 - **Enchantments:** hazard DPS is in-band for MS cost; no mandatory tuning.
 - **Economy:** 17 cards use fallback sell values; duplicate `rewardOrder: 27` on `fireball` / `purifying_pulse` should be deduped in a future data pass.
 - **Combos:** altar-centric MS/charge engines are the highest-risk degenerate line; pull+hazard and chrono refresh are moderate but mostly data-tunable.
-- **Sub-ticket 04 scope:** **5 `apply-now` tunings applied** in `cardStats.json`; **3 optional `apply-now`** remain (ice_ball, purifying_pulse, chain_lightning); **17 `operator-triage`** items remain (design intent, harness gaps, or utility scoring); **`excalibur_photon` wind-up DPM** addressed in sub-tickets 02–03. Sub-ticket 06 reconciled this report to post-tuning harness output.
+- **Ticket 303 sub-ticket 04 scope:** **5 `apply-now` tunings applied** in `cardStats.json`; the **3 optional `apply-now`** items (ice_ball, purifying_pulse, chain_lightning) are now **applied in ticket 310** (see `## Applied tunings`). **Ticket 311 sub-ticket 04:** reconciled harness rows and triage notes for `battle_familiar`, `null_crawler`, and `astral_guardian`. **Ticket 312 sub-tickets 02–03:** **`excalibur_photon` wind-up DPM** addressed via `windUpMs` and report reconciliation. **15 `operator-triage`** items remain in backlog.
 
 ## Recommendations
 
@@ -280,9 +280,9 @@ Consolidated from all type tables. Five **apply-now** items were applied in sub-
 | harvesting_scythe | `damage` | +3 (9 → 12) | **done** — see Applied tunings |
 | permafrost_lance | `damage` | +3 (8 → 11) | **done** — see Applied tunings |
 | dragons_breath | `damage` | +4 (9 → 13) | **done** — see Applied tunings |
-| ice_ball | `slowChance` | 0.5 → 0.65 (only if slow feels weak in playtests) | optional |
-| purifying_pulse | `healAmount` **or** `radius` | +5 heal **or** +1 m radius (only if underused) | optional |
-| chain_lightning | `magicStoneCost` | −5 (42 → 37; only if MS starvation blocks casts) | optional |
+| ice_ball | `slowChance` | 0.5 → 0.65 | **done** — see Applied tunings |
+| purifying_pulse | `healAmount` | +5 (15 → 20) | **done** — see Applied tunings |
+| chain_lightning | `magicStoneCost` | −5 (42 → 37) | **done** — see Applied tunings |
 
 Optional creature tweak (playtest-gated): `dungeon_drake` — `attackDamage` +1 **or** `burnDurationMs` +500, not both.
 
@@ -293,8 +293,8 @@ Optional creature tweak (playtest-gated): `dungeon_drake` — `attackDamage` +1 
 | flame_blade | `damage`, `rewardOrder` | early reward DPC exceeds evolved weapons |
 | magma_greatsword | `damage`, `trailDamagePerTick`, `dotTicks` | fire-trail doubles effective burst |
 | deck_sifter | utility scoring | draw-only; no combat metric |
-| battle_familiar | `damage`, `minionHp` | reward:1 burst + body |
-| astral_guardian | `damage`, `magicStoneCost`, `minionHp` | top spell DPC/DPM |
+| battle_familiar | `damage`, `minionHp` | **addressed in 311** — per-card `CARD_GRIND_STAT_SCALE` 0.03; base `cardStats` unchanged |
+| astral_guardian | `damage`, `magicStoneCost`, `minionHp` | **addressed in 311** — `damage` 66→63, `shieldHp` 15→14; harness DPC 63 |
 | soul_drain | `damage`, `magicStoneOnHit` | evolved finisher burst |
 | gravity_well | CC utility score | pull-only |
 | event_horizon | `centerDamage` in harness | crush damage not in primary field |
@@ -303,7 +303,7 @@ Optional creature tweak (playtest-gated): `dungeon_drake` — `attackDamage` +1 
 | chrono_trigger | `adjacentChargeRestore` | charge loop enabler |
 | telepipe | shop pricing | portal utility |
 | echo_blade | `shockwaveDamage`, `shockwaveEvery` | periodic AoE omitted from harness |
-| null_crawler | `attackDamage`, `rewardOrder` | 22 dmg beam at reward:12 |
+| null_crawler | `attackDamage`, `rewardOrder` | **addressed in 311** — per-card `CARD_GRIND_STAT_SCALE` 0.03; grind-0 base 22 dmg / 55 HP unchanged |
 | storm_eagle | attack cadence in code | per-tick ranged hits |
 | undead_commander | `summonSkeletonCount`, `summonSkeletonHp` | skeleton package not in harness |
 | fireball + purifying_pulse | `rewardOrder` in `cardDefs.json` | duplicate order 27 |
@@ -311,7 +311,7 @@ Optional creature tweak (playtest-gated): `dungeon_drake` — `attackDamage` +1 
 
 ## Applied tunings
 
-Combat stat changes in `game/shared/cardStats.json`. Sub-ticket 04 applied five `damage` bumps; sub-ticket 02 added `excalibur_photon` `windUpMs` (documented below). Remaining **`operator-triage`** backlog excludes `excalibur_photon`.
+Combat stat changes in `game/shared/cardStats.json` (ticket 303 sub-ticket 04). Sub-ticket 02 added `excalibur_photon` `windUpMs` (ticket 312; documented below). Per-card grind scaling and Astral Guardian trim (ticket 311 sub-tickets 01–03) documented below. Remaining **`operator-triage`** backlog excludes `excalibur_photon` and the three cards marked **addressed in 311**.
 
 | id | field | before → after | notes |
 | --- | --- | --- | --- |
@@ -321,12 +321,20 @@ Combat stat changes in `game/shared/cardStats.json`. Sub-ticket 04 applied five 
 | harvesting_scythe | `damage` | 9 → 12 | combat DPM lift; MS-on-hit economy unchanged |
 | permafrost_lance | `damage` | 8 → 11 | match frost_nova lane |
 | dragons_breath | `damage` | 9 → 13 | initial burst bump; DoT ticks unchanged |
+| ice_ball | `slowChance` | 0.5 → 0.65 | ticket 310 — stronger slow proc; damage/cost unchanged |
+| purifying_pulse | `healAmount` | 15 → 20 | ticket 310 — more heal; cleanse/radius/0 MS unchanged |
+| chain_lightning | `magicStoneCost` | 42 → 37 | ticket 310 — cheaper cast; damage/chain unchanged |
+
+### Ticket 311 tunings
+
+| id | change | notes |
+| --- | --- | --- |
+| battle_familiar | `CARD_GRIND_STAT_SCALE` **0.03** (global `GRIND_STAT_SCALE` 0.05) | base `cardStats` unchanged (`damage` 44, `magicStoneCost` 50); harness grind-0 row unchanged; late damage/minion HP grow slower per grind |
+| null_crawler | `CARD_GRIND_STAT_SCALE` **0.03** | base `cardStats` unchanged (`attackDamage` 22, `minionHp` 55); harness grind-0 row unchanged; high-grind beam/minion stats taper vs default curve |
+| astral_guardian | `damage` 66 → **63**, `shieldHp` 15 → **14** | direct base-stat trim in `cardStats.json`; `magicStoneCost` 65 and evolution identity unchanged; harness DPC 63 / DPM 0.079 / `utilityScore` 14 (shield) |
 
 **Deferred — no safe change identified**
 
 | id | recommendation | reason |
 | --- | --- | --- |
-| ice_ball | `slowChance` 0.5 → 0.65 | verdict `ok`; bump gated on playtest slow-proc feedback |
-| purifying_pulse | `healAmount` +5 or `radius` +1 | verdict `ok`; cleanse is primary value; no underuse signal |
-| chain_lightning | `magicStoneCost` 42 → 37 | verdict `ok`; MS reduction gated on starvation in playtests |
 | dungeon_drake | `attackDamage` +1 or `burnDurationMs` +500 | optional playtest-gated tweak; post-298 burn breath already `ok` |

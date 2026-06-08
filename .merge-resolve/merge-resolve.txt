@@ -1,8 +1,19 @@
-`LOGBOOK.md` is resolved.
+Merge conflicts are resolved in both files.
 
-**Resolution:** Both logbook entries are kept in chronological order:
+### `LOGBOOK.md`
+Combined both sides in chronological order:
+- **v0.313** (311 — slower scaling + Astral trim)
+- **v0.315** (310 — optional balance tunes)
+- **v0.316** (314 — Ether Scythe evolution)
+- **v0.317** (312 — Excalibur Photon wind-up balance)
 
-1. **v0.306** (from `main`) — restore HP healing cards, keep no auto-level heal  
-2. **v0.307** (from the branch) — card wind-up commitment input-lock mechanic  
+### `game/validation/card-balance/report.md`
+Merged three executive-summary sections to keep both intents:
 
-The file follows the existing LOGBOOK pattern (ascending version numbers, newest at the end) and closes with a single `## Remaining gaps` section. All conflict markers are removed; no other files had conflicts.
+1. **Outlier summary** — Uses main’s ticket 311 grind-scale / Astral trim notes, and ticket 312’s fix that `excalibur_photon` is now **ok** (removed from the over list).
+
+2. **Scope bullet** — Ticket 310 optional tunes applied, ticket 311 report reconciliation, and ticket 312 `excalibur_photon` wind-up DPM fix; **15** operator-triage items remain.
+
+3. **Applied tunings intro** — Documents ticket 303 damage bumps, ticket 312 `windUpMs`, and ticket 311 grind scaling; operator-triage backlog excludes both `excalibur_photon` and the three cards addressed in 311.
+
+All conflict markers are removed. The harness can commit and complete the merge.

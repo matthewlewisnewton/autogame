@@ -169,7 +169,7 @@ function applyAstralShieldCast(ctx) {
   const grind = handCard.grind || 0;
   const summonDamage = handCard.echoDamage != null
     ? handCard.echoDamage
-    : scaledGrindStat(cardDef.damage || 0, grind);
+    : scaledGrindStat(cardDef.damage || 0, grind, data.cardId);
   const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, summonDamage, {
     magicStoneOnHit: cardDef.magicStoneOnHit,
     magicStoneOnKill: cardDef.magicStoneOnKill,
@@ -183,8 +183,8 @@ function applyAstralShieldCast(ctx) {
   player.shieldHp = shieldHp;
   player.shieldExpiresAt = now + shieldDurationMs;
 
-  const minionHp = scaledGrindStat(cardDef.minionHp || 60, grind);
-  const minionTtl = scaledGrindStat(cardDef.minionTtl || 30, grind);
+  const minionHp = scaledGrindStat(cardDef.minionHp || 60, grind, data.cardId);
+  const minionTtl = scaledGrindStat(cardDef.minionTtl || 30, grind, data.cardId);
   const minion = {
     id: crypto.randomUUID(),
     ownerId: socket.playerId,
@@ -351,6 +351,8 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       const swingsPerUse = cardDef.swingsPerUse || 1;
       let hits = [];
       let magicStonesGained = 0;
+      let totalHpHealed = 0;
+      let totalCurrencyGained = 0;
 
       for (let swing = 0; swing < swingsPerUse; swing++) {
         let swingResult;
@@ -374,6 +376,8 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           swingResult = collectConeHits(originX, originZ, dirX, dirZ, attackRange, attackConeAngle, damage, {
             magicStoneOnHit: cardDef.magicStoneOnHit,
             magicStoneOnKill: cardDef.magicStoneOnKill,
+            healOnKill: cardDef.healOnKill,
+            currencyOnKill: cardDef.currencyOnKill,
             attackerId: socket.playerId,
           });
         }
@@ -381,6 +385,8 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           hits.push({ ...hit, swing: swing + 1 });
         }
         magicStonesGained += swingResult.magicStonesGained;
+        totalHpHealed += swingResult.hpHealed || 0;
+        totalCurrencyGained += swingResult.currencyGained || 0;
       }
 
       // Fireball: every enemy struck by the projectile catches fire (BURNING).
@@ -462,6 +468,11 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       }
 
       const appliedMagicStones = addMagicStones(player, magicStonesGained);
+      const appliedHpHealed = totalHpHealed > 0 ? healPlayer(socket.playerId, totalHpHealed) : 0;
+      if (totalCurrencyGained > 0) {
+        player.currency = (player.currency || 0) + totalCurrencyGained;
+        player.currencyEarnedThisRun = (player.currencyEarnedThisRun || 0) + totalCurrencyGained;
+      }
       cleanupAfterDamage();
 
       if (!fromWindup) {
@@ -490,6 +501,8 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
         magicStonesGained: appliedMagicStones,
         swingCount: swingsPerUse,
         comboCount: player.weaponComboCounts ? player.weaponComboCounts[data.cardId] : undefined,
+        ...(appliedHpHealed > 0 ? { hpHealed: appliedHpHealed } : {}),
+        ...(totalCurrencyGained > 0 ? { currencyGained: totalCurrencyGained } : {}),
         ...(cardDef.specialEffect === 'fire_trail' ? {
           dotTicks: cardDef.dotTicks || 4,
           dotIntervalMs: cardDef.dotIntervalMs || 500,
@@ -1047,7 +1060,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       const grind = handCard.grind || 0;
       const summonDamage = handCard.echoDamage != null
         ? handCard.echoDamage
-        : scaledGrindStat(cardDef.damage || 0, grind);
+        : scaledGrindStat(cardDef.damage || 0, grind, data.cardId);
       const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, summonDamage, {
         magicStoneOnHit: cardDef.magicStoneOnHit,
         magicStoneOnKill: cardDef.magicStoneOnKill,
@@ -1192,8 +1205,8 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       }
 
       const grind = handCard.grind || 0;
-      const minionHp = scaledGrindStat(cardDef.minionHp || 50, grind);
-      const minionTtl = scaledGrindStat(cardDef.minionTtl || 30, grind);
+      const minionHp = scaledGrindStat(cardDef.minionHp || 50, grind, data.cardId);
+      const minionTtl = scaledGrindStat(cardDef.minionTtl || 30, grind, data.cardId);
       const minion = {
         id: crypto.randomUUID(),
         ownerId: socket.playerId,
@@ -1226,7 +1239,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       if (cardDef.effect === 'null_crawler') {
         const attackIntervalMs = cardDef.attackIntervalMs || 2000;
         minion.attackRange = cardDef.attackRange || 14;
-        minion.attackDamage = cardDef.attackDamage || 22;
+        minion.attackDamage = scaledGrindStat(cardDef.attackDamage || 22, grind, 'null_crawler');
         minion.attackIntervalMs = attackIntervalMs;
         minion.attackWindupMs = cardDef.attackWindupMs || 1000;
         minion.projectileHitWidth = cardDef.projectileHitWidth || 0.8;

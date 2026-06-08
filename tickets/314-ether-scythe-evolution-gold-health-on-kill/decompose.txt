@@ -1,0 +1,19 @@
+Broke ticket **314** into **3 sub-tickets** in dependency order. There were no existing sub-tickets (passed or failed) to preserve or retire.
+
+**Plan summary**
+
+| # | Scope | Why separate |
+|---|--------|--------------|
+| **01** | Add `reapers_scythe` evolution + shared card JSON | Base scythe has no evolution yet; data must exist before behavior tests |
+| **02** | Extend `collectConeHits()` + weapon branch for `currencyOnKill` / `healOnKill` | Cone weapons lack the radial kill-reward path `soul_drain` uses |
+| **03** | Integration/regression tests | Proves evolved grants gold+HP on kill; base stays MS-only |
+
+All sub-tickets use **`Verification: code`** (logic, handlers, server state, values — not purely visual).
+
+**Created sub-ticket folders**
+
+```
+/home/matt/workspace/.autogame-worktrees/314-ether-scythe-evolution-gold-health-on-kill/tickets/314-ether-scythe-evolution-gold-health-on-kill/subtickets/01-evolved-scythe-card-data
+/home/matt/workspace/.autogame-worktrees/314-ether-scythe-evolution-gold-health-on-kill/tickets/314-ether-scythe-evolution-gold-health-on-kill/subtickets/02-cone-weapon-kill-rewards
+/home/matt/workspace/.autogame-worktrees/314-ether-scythe-evolution-gold-health-on-kill/tickets/314-ether-scythe-evolution-gold-health-on-kill/subtickets/03-evolved-scythe-kill-reward-tests
+```
