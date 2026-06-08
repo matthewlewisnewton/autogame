@@ -32,7 +32,7 @@
 //   scheduleAfter(ms, fn) — wrapper around setTimeout used for delayed swings
 
 import { CARD_ACCENT_STYLE, CARD_DEFS } from './cards.js';
-import { MINION_SUMMON_IN_MS } from './config.js';
+import { ATTACK_EFFECT_DURATION, MINION_SUMMON_IN_MS } from './config.js';
 
 const NULL_CRAWLER_SUMMON_COLOR = 0x22d3ee;
 const NULL_CRAWLER_SUMMON_EMISSIVE = 0x67e8f9;
@@ -964,28 +964,59 @@ function renderFireball(data, ctx) {
 	if (!data.origin) return;
 	const origin = originOf(data);
 	const direction = directionOf(data);
-	const color = getAccentHex(data.cardId) ?? 0xff7a18;
+	const travelMs = data.projectileTravelMs ?? ATTACK_EFFECT_DURATION;
+	const color = getAccentHex(data.cardId) ?? 0xf97316;
 	const emissive = 0xff3b00;
+	const impact = pointAlong(origin, direction, data.attackRange ?? 8);
+
+	// Brief fire channel at cast (instant weapon — no wind-up telegraph).
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, 0.45, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 8, spread: 1.0 });
+	}
+
 	ctx.spawnAttackEffect(origin, direction, {
 		effect: 'fireball',
 		range: data.attackRange,
+		projectileTravelMs: travelMs,
 		color,
 		emissive,
 	});
-	// Fiery streak chasing the projectile, plus a scorch flourish where it lands.
 	if (ctx.spawnProjectileTrail) {
 		ctx.spawnProjectileTrail(origin, direction, {
 			range: data.attackRange,
+			travelMs,
 			color,
 			emissive,
 		});
 	}
-	const impact = pointAlong(origin, direction, data.attackRange ?? 8);
-	if (ctx.spawnImpactDecal) {
-		ctx.spawnImpactDecal(impact, { color, emissive });
-	}
-	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(impact, { color, emissive, count: 16, spread: 2.0 });
+
+	const terminalImpact = () => {
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(impact, { color, emissive });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(impact, { color, emissive, count: 16, spread: 2.0 });
+		}
+	};
+	ctx.scheduleAfter(travelMs, terminalImpact);
+
+	// Per-enemy ignition bursts align with instant server damage + applyBurning.
+	if (data.hits?.length) {
+		const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(pos, { color, emissive, count: 5, spread: 0.55 });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pos, { color, emissive, count: 6, spread: 0.7 });
+			}
+		}
 	}
 }
 

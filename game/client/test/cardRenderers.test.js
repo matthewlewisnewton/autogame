@@ -6,7 +6,7 @@ import {
 	getAccentHex,
 	SPELL_TYPE_DEFAULT_RENDERER,
 } from '../cardRenderers.js';
-import { CARD_DEFS } from '../cards.js';
+import { ATTACK_EFFECT_DURATION } from '../config.js';
 
 /**
  * Build a fresh context object whose helper functions record every call.
@@ -437,10 +437,16 @@ describe('renderCardUsed() — weapon dispatch', () => {
 		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
 		expect(attacks).toHaveLength(1);
 		expect(attacks[0][1]).toEqual({ x: 1, z: 2 });
-		expect(attacks[0][3]).toMatchObject({ effect: 'fireball', range: 9 });
+		expect(attacks[0][3]).toMatchObject({
+			effect: 'fireball',
+			range: 9,
+			projectileTravelMs: ATTACK_EFFECT_DURATION,
+			color: 0xf97316,
+			emissive: 0xff3b00,
+		});
 	});
 
-	it('fireball adds an accent-tinted projectile trail, impact decal and ember burst', () => {
+	it('fireball adds cast flourish, synced travel timing, and deferred terminal impact', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'fireball',
@@ -449,21 +455,58 @@ describe('renderCardUsed() — weapon dispatch', () => {
 			attackRange: 9,
 			hits: [],
 		}, ctx);
-		// fireball accent color is 0xf97316
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 1, z: 2 });
+		expect(ring[3]).toMatchObject({ color: 0xf97316, emissive: 0xff3b00 });
+		const castBurst = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.find((c) => c[1].x === 1 && c[1].z === 2 && c[2].count === 8);
+		expect(castBurst).toBeDefined();
 		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
 		expect(trail).toBeDefined();
 		expect(trail[1]).toEqual({ x: 1, z: 2 });
 		expect(trail[2]).toEqual({ x: 1, z: 0 });
-		expect(trail[3]).toMatchObject({ range: 9, color: 0xf97316 });
+		expect(trail[3]).toMatchObject({
+			range: 9,
+			travelMs: ATTACK_EFFECT_DURATION,
+			color: 0xf97316,
+		});
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(schedules).toHaveLength(1);
+		expect(schedules[0][1]).toBe(ATTACK_EFFECT_DURATION);
 		// Impact decal + ember burst land at origin + direction * range = (10, 2).
 		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
 		expect(decal).toBeDefined();
 		expect(decal[1]).toEqual({ x: 10, z: 2 });
 		expect(decal[2]).toMatchObject({ color: 0xf97316 });
-		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
-		expect(burst).toBeDefined();
-		expect(burst[1]).toEqual({ x: 10, z: 2 });
-		expect(burst[2]).toMatchObject({ color: 0xf97316, emissive: 0xff3b00, count: 16, spread: 2.0 });
+		const terminalBurst = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.find((c) => c[1].x === 10 && c[1].z === 2 && c[2].count === 16);
+		expect(terminalBurst).toBeDefined();
+		expect(terminalBurst[2]).toMatchObject({ color: 0xf97316, emissive: 0xff3b00, spread: 2.0 });
+	});
+
+	it('fireball spawns immediate per-hit ignite bursts at enemy mesh positions', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 4, y: 0, z: 2 } },
+				e2: { position: { x: 7, y: 0, z: 2 } },
+			}),
+		});
+		renderCardUsed({
+			cardId: 'fireball',
+			effect: 'fireball',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			attackRange: 9,
+			hits: [{ enemyId: 'e1' }, { enemyId: 'e2' }, { enemyId: 'missing' }],
+		}, ctx);
+		const hitSparks = ctx._calls.filter((c) => c[0] === 'spawnHitSpark');
+		expect(hitSparks).toHaveLength(2);
+		expect(hitSparks[0][1]).toEqual({ x: 4, y: 0.6, z: 2 });
+		expect(hitSparks[1][1]).toEqual({ x: 7, y: 0.6, z: 2 });
+		const igniteBursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.filter((c) => c[2].count === 6);
+		expect(igniteBursts).toHaveLength(2);
 	});
 
 	it('fireball still renders without throwing when the new ctx primitives are absent', () => {
@@ -471,6 +514,8 @@ describe('renderCardUsed() — weapon dispatch', () => {
 			spawnProjectileTrail: undefined,
 			spawnImpactDecal: undefined,
 			spawnParticleBurst: undefined,
+			spawnTelegraphRing: undefined,
+			spawnHitSpark: undefined,
 		});
 		expect(() => renderCardUsed({
 			cardId: 'fireball',
@@ -479,8 +524,8 @@ describe('renderCardUsed() — weapon dispatch', () => {
 			attackRange: 9,
 			hits: [],
 		}, ctx)).not.toThrow();
-		// The original projectile visual still fires.
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(true);
 	});
 
 	it('spawns a single ice_ball-effect projectile with slow travel time', () => {
