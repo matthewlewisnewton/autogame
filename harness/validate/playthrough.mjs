@@ -29,6 +29,7 @@ import { assertGameProcessAlive, getServerLogTail, startGame, stopGame } from '.
 import { readHarness } from './lib/harnessState.mjs';
 import { writeScreenshot } from './lib/screenshot.mjs';
 import { probeBossUi } from './lib/bossUiProbe.mjs';
+import { probeStatusCards } from './lib/statusCardsProbe.mjs';
 import { walkToZone } from './lib/hubMovement.mjs';
 import {
 	waitForHubLobby,
@@ -721,6 +722,21 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 		});
 	}
 
+	// Slow/burn mutual-exclusivity + heal/cleanse status-card probe (tickets 301 /
+	// 299), gated behind the preset flag so other presets are unaffected. Runs
+	// while the boss is alive so the slow/burn marks land on a live enemy.
+	let statusCardsResult = null;
+	if (preset.probeStatusCards) {
+		statusCardsResult = await probeStatusCards(page, {
+			outDir: outDirAbs,
+			repoRoot: REPO_ROOT,
+			bossType,
+			slowScenario: preset.statusSlowScenario,
+			burnScenario: preset.statusBurnScenario,
+			healScenario: preset.healCleanseScenario,
+		});
+	}
+
 	return {
 		midCombatScreenshot,
 		dormantScreenshot,
@@ -732,10 +748,19 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 			bossVisuals: bossUiResult.bossVisuals,
 			bossUiScreenshot: bossUiResult.screenshot,
 		} : {}),
+		...(statusCardsResult ? {
+			statusCards: statusCardsResult.statusCards,
+			healCleanse: statusCardsResult.healCleanse,
+			statusCardsScreenshot: statusCardsResult.screenshot,
+		} : {}),
 		probes: {
 			dormant: dormantProbe,
 			active: activeProbe,
 			...(bossUiResult ? { bossUi: bossUiResult.bossUi, bossVisuals: bossUiResult.bossVisuals } : {}),
+			...(statusCardsResult ? {
+				statusCards: statusCardsResult.statusCards,
+				healCleanse: statusCardsResult.healCleanse,
+			} : {}),
 			...(Object.keys(floorAlignment).length > 0 ? { floorAlignment } : {}),
 		},
 	};
@@ -856,6 +881,7 @@ function collectScreenshots(summary) {
 	if (summary.bossEncounter?.dormantScreenshot) shots.push(summary.bossEncounter.dormantScreenshot);
 	if (summary.bossEncounter?.activeScreenshot) shots.push(summary.bossEncounter.activeScreenshot);
 	if (summary.bossEncounter?.bossUiScreenshot) shots.push(summary.bossEncounter.bossUiScreenshot);
+	if (summary.bossEncounter?.statusCardsScreenshot) shots.push(summary.bossEncounter.statusCardsScreenshot);
 	if (summary.victory?.bossDefeatedScreenshot) shots.push(summary.victory.bossDefeatedScreenshot);
 	if (summary.victory?.victoryScreenshot) shots.push(summary.victory.victoryScreenshot);
 	return shots;

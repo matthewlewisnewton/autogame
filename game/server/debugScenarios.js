@@ -26,6 +26,8 @@ const {
   computeWalkableAABBs,
   rebuildWallColliders,
   ENEMY_DEFS,
+  applySlow,
+  applyBurning,
 } = require('./simulation');
 const {
   normalizePlayerInventory,
@@ -2276,6 +2278,70 @@ function applyDebugScenario(socket, name) {
           specialEffect: 'heal_and_cleanse',
         };
       }
+    } else if (name === 'spire-ascent-status-cards') {
+      // Live-run slow/burn probe setup (tickets 301 / 299). Unlike
+      // cinder-snare-ready / fireball-ready — which clear `state.enemies` and
+      // rebuild a fresh encounter — this is ADDITIVE: it injects the slow
+      // (Cinder Snare) and burn (Fireball) cards into the CURRENT spire run's
+      // hand and marks a live enemy without resetting enemies, position, or the
+      // run. It first ignites a live target (a remaining add, else the locked
+      // boss), then applies SLOW via the real applySlow(), which extinguishes
+      // that burn — the first half of the slow/burn mutual-exclusivity proof.
+      // The identical slowedUntil/burningUntil state is reachable in normal play:
+      // enemy ice/fire attacks manage the same fields through the same helpers.
+      player.magicStones = MAX_MAGIC_STONES;
+      if (player.hand.length > 0) {
+        player.hand[0] = { id: 'cinder_snare', name: 'Cinder Snare', type: 'enchantment', charges: 1, remainingCharges: 1 };
+      }
+      if (player.hand.length > 1) {
+        player.hand[1] = { id: 'fireball', name: 'Fireball', type: 'weapon', charges: 4, remainingCharges: 4 };
+      }
+      const bossId = state.run?.encounter?.bossEnemyId;
+      const target = liveSpireAscentAdds(state)[0]
+        || (state.enemies || []).find((e) => e.hp > 0 && e.id === bossId)
+        || (state.enemies || []).find((e) => e.hp > 0)
+        || null;
+      if (!target) {
+        return { ok: false, reason: 'spire-ascent-status-cards: no live enemy to mark' };
+      }
+      // Pre-existing burn, then slow: applySlow() clears the burn, proving the
+      // two statuses cannot coexist (BURNING ⊥ SLOW).
+      applyBurning(target, 3000);
+      applySlow(target, 8000, 0.5);
+      state._spireStatusProbeEnemyId = target.id;
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        enemyId: target.id,
+        enemyType: target.type,
+        slowedUntil: target.slowedUntil || 0,
+        burningUntil: target.burningUntil || 0,
+        slowFactor: target.slowFactor || 1,
+      };
+    } else if (name === 'spire-ascent-status-burn') {
+      // Second half of the slow/burn mutual-exclusivity proof (ticket 301):
+      // ignite the SAME enemy that spire-ascent-status-cards slowed. applyBurning()
+      // clears the active slow, so the enemy ends up burning and no longer slowed.
+      const probedId = state._spireStatusProbeEnemyId;
+      const target = (state.enemies || []).find((e) => e.hp > 0 && e.id === probedId)
+        || liveSpireAscentAdds(state)[0]
+        || (state.enemies || []).find((e) => e.hp > 0)
+        || null;
+      if (!target) {
+        return { ok: false, reason: 'spire-ascent-status-burn: no live enemy to ignite' };
+      }
+      applyBurning(target, 8000);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        enemyId: target.id,
+        enemyType: target.type,
+        slowedUntil: target.slowedUntil || 0,
+        burningUntil: target.burningUntil || 0,
+        slowFactor: target.slowFactor || 1,
+      };
     } else if (name === 'heal-spell-ready') {
       // Low-HP player with Restoration Beacon and Sanctum Pulse in hand so heal
       // cast/impact VFX can be compared without earning reward cards in a run.

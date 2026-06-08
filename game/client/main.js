@@ -4873,6 +4873,12 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 			z: me.z,
 			equippedKeyItemId: me.equippedKeyItemId ?? null,
 			keyItemCooldownRemaining: getKeyItemCooldownRemainingMs(me),
+			// Read-only status instrumentation for the heal/cleanse probe
+			// (tickets 301 / 299): mirror server-set status timers so the probe
+			// can assert HP recovery + status clearance. Read-only.
+			slowedUntil: me.slowedUntil ?? 0,
+			burningUntil: me.burningUntil ?? 0,
+			slowFactor: me.slowFactor ?? 1,
 		} : null,
 		keyItemIndicatorOnCooldown: (() => {
 			const el = document.getElementById('key-item-indicator');
@@ -4904,6 +4910,13 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 			// (ticket 284). No gameplay behavior depends on this.
 			variant: enemy.variant ?? null,
 			spawnedBy: enemy.spawnedBy ?? null,
+			// Read-only status instrumentation for the slow/burn mutual-exclusivity
+			// probe (tickets 301 / 299): mirror the server-set slowedUntil/
+			// burningUntil/slowFactor so the probe can assert exclusivity. No
+			// gameplay behavior depends on these reads.
+			slowedUntil: enemy.slowedUntil ?? 0,
+			burningUntil: enemy.burningUntil ?? 0,
+			slowFactor: enemy.slowFactor ?? 1,
 			x: enemy.x,
 			z: enemy.z,
 		})) : [],

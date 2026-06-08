@@ -554,6 +554,8 @@ const DEBUG_SCENARIOS = new Set([
   'spire-ascent-near-adds',
   'spire-ascent-boss-approach',
   'spire-ascent-boss-low-hp',
+  'spire-ascent-status-cards',
+  'spire-ascent-status-burn',
   'stage-boss-dormant',
   'stage-boss-active',
   'annex-overseer-ready',
