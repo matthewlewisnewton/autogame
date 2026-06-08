@@ -1,0 +1,211 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/371-playthrough-revalidate-spire-ascent/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3255
+Player connected: socket=M751elhyzJPmzc8pAAAB, playerId=c86ad2c0-5dc6-449b-9319-47dc9f21045a
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: M751elhyzJPmzc8pAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/371-playthrough-revalidate-spire-ascent/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3213
+Player connected: socket=aDuNXa0fRF9UQRuiAAAB, playerId=287e094b-7c7a-4a5b-a68b-edebb640b6cf
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: aDuNXa0fRF9UQRuiAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/371-playthrough-revalidate-spire-ascent/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3211
+Player connected: socket=Hy7HfuV9-WFnzlCAAAAB, playerId=e762046d-8d12-40b9-ba88-9f9c95ecd826
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: Hy7HfuV9-WFnzlCAAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 5 user record(s) from /home/matt/workspace/.autogame-worktrees/371-playthrough-revalidate-spire-ascent/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3246
+Player connected: socket=5QZwD8h75_zdjhPJAAAB, playerId=75896432-84ca-46d3-a510-6e3e5e7d9b00
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "spire_ascent" tier 2: seed=727116418, profile=spire-ascent, rooms=7
+[loot] spawned id=e684d05c-b107-42dd-9994-cb7c37701623 value=11
+[loot] magic stone drop id=c52be133-f18e-4881-99be-3614b427682b value=25 at (-3.2, 30.7)
+[loot] magic stone drop id=d2729db1-e043-4351-ae97-5d957c634bff value=20 at (4.0, 33.0)
+[loot] variant bonus magic stone drop id=c7d4c5ef-473a-4768-a9e1-a0f2e0cc3c5d value=20 at (4.0, 33.0)
+[loot] magic stone drop id=f295b3c3-022d-4674-bd63-b07912797e34 value=15 at (1.2, 36.8)
+[loot] magic stone drop id=51868bd4-5c3d-4319-b708-1cfae2f6bf65 value=20 at (-3.2, 35.4)
+[loot] currency drop id=06de362d-5064-44b5-9085-26afa3d68a3e value=14 at (-3.2, 35.4)
+[loot] picked up id=06de362d-5064-44b5-9085-26afa3d68a3e value=14 by 5QZwD8h75_zdjhPJAAAB (currency=14, ms=99)
+[loot] magic stone drop id=da80a6d0-f84d-4261-aa80-c2aa6cbeac81 value=20 at (1.2, 29.2)
+Player disconnected: 5QZwD8h75_zdjhPJAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 6 user record(s) from /home/matt/workspace/.autogame-worktrees/371-playthrough-revalidate-spire-ascent/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3274
+Player connected: socket=dAauMHIZbbHn2I42AAAB, playerId=70bb251b-de4c-48cb-a726-3b885cca5607
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "spire_ascent" tier 2: seed=727116418, profile=spire-ascent, rooms=7
+[loot] magic stone drop id=051833b2-10c9-4306-a37b-1441ef715c9f value=25 at (-3.2, 30.7)
+[loot] magic stone drop id=e4e20d40-b2d8-4e44-bd3f-68a4d35b02e6 value=20 at (4.0, 33.0)
+[loot] variant bonus magic stone drop id=12cc7fa1-632a-4976-9782-52a61f3aa773 value=20 at (4.0, 33.0)
+[loot] currency drop id=6405868d-5e72-48cf-aa37-457c20f8b873 value=8 at (4.0, 33.0)
+[loot] magic stone drop id=a0103e3d-d4e2-4268-b7f8-44391e08a633 value=15 at (1.2, 36.8)
+[loot] currency drop id=86b0d5d2-97ef-4865-887e-a86cff10776b value=6 at (1.2, 36.8)
+[loot] magic stone drop id=eb595fea-931e-48d9-a6e1-bf9e6ab72b86 value=20 at (-3.2, 35.4)
+[loot] magic stone drop id=216924f9-7844-457f-93eb-7d46417af046 value=20 at (1.2, 29.2)
+[loot] magic stone drop id=e9500a60-b8ec-4128-955b-e603eb56ecbd value=55 at (13.5, -32.1)
+[loot] currency drop id=5d4fe857-1a51-4070-b853-42c88b69b645 value=24 at (13.5, -32.1)
+[server] Layout for quest "spire_ascent" tier 2: seed=727116418, profile=spire-ascent, rooms=7
+[loot] spawned id=2ed64ca4-f8bd-453b-a961-ab1a69484421 value=12
+Player disconnected: dAauMHIZbbHn2I42AAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 7 user record(s) from /home/matt/workspace/.autogame-worktrees/371-playthrough-revalidate-spire-ascent/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3247
+Player connected: socket=lOZhR8Yl925Upce5AAAB, playerId=7b7ab33f-f5aa-42e0-87b9-63aa9b401263
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "spire_ascent" tier 2: seed=727116418, profile=spire-ascent, rooms=7
+[loot] magic stone drop id=41b1d303-4327-4d8a-995c-469a3d9c6d58 value=25 at (-3.2, 30.7)
+[loot] magic stone drop id=fd53ba45-d50f-4c07-91f3-d2354854c919 value=20 at (4.0, 33.0)
+[loot] variant bonus magic stone drop id=00bd765d-a720-499f-aaaa-f5e2373c9ffb value=20 at (4.0, 33.0)
+[loot] currency drop id=5a889253-fc3c-4642-9116-4a9bf5a5ca2a value=18 at (4.0, 33.0)
+[loot] magic stone drop id=aa0f4b8b-7bc9-493f-a06e-0e134d2e691c value=15 at (1.2, 36.8)
+[loot] magic stone drop id=8b5ccf8e-6c74-452a-a9ed-57647599ef8e value=20 at (-3.2, 35.4)
+[loot] magic stone drop id=809923a1-d5c0-47e5-b86c-9dc39d59faf0 value=20 at (1.2, 29.2)
+[loot] magic stone drop id=79c1209c-beea-40dc-b34a-46e50444a9ee value=55 at (13.1, -32.4)
+[loot] spawned id=20512d83-e5c2-413d-8389-2ff034411ff2 value=20
+[server] Layout for quest "spire_ascent" tier 2: seed=727116418, profile=spire-ascent, rooms=7
+Player disconnected: lOZhR8Yl925Upce5AAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 8 user record(s) from /home/matt/workspace/.autogame-worktrees/371-playthrough-revalidate-spire-ascent/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3208
+Player connected: socket=PzN7HIf9bY8tpsAvAAAB, playerId=d5b16416-dc30-40a2-9206-0d67083eb0f5
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "spire_ascent" tier 2: seed=727116418, profile=spire-ascent, rooms=7
+[loot] magic stone drop id=74911b2f-7417-488f-b6f2-26bf68e154d8 value=25 at (-3.2, 30.7)
+[loot] magic stone drop id=3b516b96-fbaa-4319-b96a-4ae0b297bb6a value=20 at (4.0, 33.0)
+[loot] variant bonus magic stone drop id=3c6c274d-32d0-42a7-a4c6-046acafe8534 value=20 at (4.0, 33.0)
+[loot] magic stone drop id=ee36f7e1-3598-421c-a733-5d477e09f167 value=15 at (1.2, 36.8)
+[loot] magic stone drop id=16a65050-9eff-490a-83ba-3d1936db659c value=20 at (-3.2, 35.4)
+[loot] magic stone drop id=0311d895-6ff4-40fe-bf39-20c96f9411cd value=20 at (1.2, 29.2)
+[loot] magic stone drop id=91328642-77a1-4a5f-9f1e-81bb41645df1 value=55 at (13.4, -32.2)
+[loot] currency drop id=ed4d803e-d944-4bc6-b603-65e168781a7d value=52 at (13.4, -32.2)
+[loot] spawned id=c3c749db-09bf-47bb-bd89-acc82ce805bb value=20
+[server] Layout for quest "spire_ascent" tier 2: seed=727116418, profile=spire-ascent, rooms=7
+[loot] magic stone drop id=db28ecb6-21d5-46bf-9ca2-584d9a3451c1 value=20 at (-1.1, 32.6)
+[loot] variant bonus magic stone drop id=53bbe43e-9a7c-499c-89d2-a4ae812ec4cb value=20 at (-1.1, 32.6)
+[loot] currency drop id=5ac3a675-43d4-411e-a4ff-42e0d7c3178a value=11 at (-1.1, 32.6)
+[loot] magic stone drop id=7e860506-b275-4c8e-b811-9295e6527915 value=20 at (-1.1, 32.6)
+[loot] variant bonus magic stone drop id=b212ef37-fe47-4d85-aec1-402f13353525 value=20 at (-1.1, 32.6)
+[loot] picked up id=b212ef37-fe47-4d85-aec1-402f13353525 (magic stone) value=20 by PzN7HIf9bY8tpsAvAAAB (currency=16, ms=99)
+[loot] picked up id=5ac3a675-43d4-411e-a4ff-42e0d7c3178a value=11 by PzN7HIf9bY8tpsAvAAAB (currency=27, ms=99)
+[loot] picked up id=53bbe43e-9a7c-499c-89d2-a4ae812ec4cb (magic stone) value=20 by PzN7HIf9bY8tpsAvAAAB (currency=27, ms=99)
+[loot] picked up id=7e860506-b275-4c8e-b811-9295e6527915 (magic stone) value=20 by PzN7HIf9bY8tpsAvAAAB (currency=27, ms=99)
+[loot] picked up id=db28ecb6-21d5-46bf-9ca2-584d9a3451c1 (magic stone) value=20 by PzN7HIf9bY8tpsAvAAAB (currency=27, ms=99)
+[loot] magic stone drop id=5efbe803-561d-4682-9020-587ac52a1adf value=15 at (1.9, 29.6)
+[loot] variant bonus magic stone drop id=8c285c6f-07e7-4529-8924-ddad4a31b67a value=20 at (1.9, 29.6)
+[loot] picked up id=5efbe803-561d-4682-9020-587ac52a1adf (magic stone) value=15 by PzN7HIf9bY8tpsAvAAAB (currency=27, ms=99)
+[loot] magic stone drop id=12b868aa-e830-4103-a530-1615becf6c00 value=20 at (-2.4, 29.8)
+[loot] magic stone drop id=de1200e8-46ab-4c7e-bea6-e75cd5a2f9ff value=15 at (0.0, 29.0)
+[loot] currency drop id=f0ed2ebb-9124-4b12-b6ad-59e19bd5ddca value=6 at (0.0, 29.0)
+[loot] magic stone drop id=494d3f9a-48fd-4c5d-8dce-e7d3e649e1cf value=15 at (1.1, 29.2)
+[loot] magic stone drop id=dccfcd3a-6c2c-43da-b3bd-f96aedcbb662 value=25 at (0.6, 29.1)
+[loot] currency drop id=62514f3a-8a5b-40ca-9e08-c57780a65707 value=12 at (0.6, 29.1)
+[loot] magic stone drop id=bfb7b8c1-f1b7-48ed-8bd8-5102c2bd4540 value=15 at (-0.7, 29.2)
+[loot] magic stone drop id=f0f5f50c-72bb-427e-905e-8ba5dd548076 value=15 at (0.9, 29.2)
+[loot] currency drop id=15d00514-bed9-45db-ab2f-4faf508b0c06 value=9 at (0.9, 29.2)
+[loot] picked up id=494d3f9a-48fd-4c5d-8dce-e7d3e649e1cf (magic stone) value=15 by PzN7HIf9bY8tpsAvAAAB (currency=27, ms=65.22500000000062)
+[loot] picked up id=f0f5f50c-72bb-427e-905e-8ba5dd548076 (magic stone) value=15 by PzN7HIf9bY8tpsAvAAAB (currency=27, ms=80.2400000000006)
+[loot] picked up id=62514f3a-8a5b-40ca-9e08-c57780a65707 value=12 by PzN7HIf9bY8tpsAvAAAB (currency=39, ms=80.2500000000006)
+[loot] picked up id=15d00514-bed9-45db-ab2f-4faf508b0c06 value=9 by PzN7HIf9bY8tpsAvAAAB (currency=48, ms=80.27500000000057)
+[loot] picked up id=f0ed2ebb-9124-4b12-b6ad-59e19bd5ddca value=6 by PzN7HIf9bY8tpsAvAAAB (currency=54, ms=80.28500000000057)
+[loot] magic stone drop id=ccf29081-a7b4-41a9-aabb-67265f7724ed value=15 at (-3.7, 18.6)
+[loot] currency drop id=99901762-ded0-457e-9278-cde59ebe2b32 value=10 at (-3.7, 18.6)
+[telepipe] placed at (4.4, 14.3) by d5b16416-dc30-40a2-9206-0d67083eb0f5
+[telepipe] player d5b16416-dc30-40a2-9206-0d67083eb0f5 extracted
+[run] checkpoint captured
+[run] extracted to hub: Spire Ascent — Tier II
+Player disconnected: PzN7HIf9bY8tpsAvAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 9 user record(s) from /home/matt/workspace/.autogame-worktrees/371-playthrough-revalidate-spire-ascent/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3204
+Player connected: socket=H4udT8IiFlcr6BdcAAAB, playerId=6fd3a937-6fc4-4df7-b8ce-5ab0ca861518
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "spire_ascent" tier 2: seed=727116418, profile=spire-ascent, rooms=7
+[loot] spawned id=9cdf648e-b889-42c4-8c54-4fedea6bcc22 value=7
+[loot] magic stone drop id=468c9912-88f9-4848-91a9-f82c7e1d94db value=25 at (-3.2, 30.7)
+[loot] magic stone drop id=a637c845-8f57-497a-8ff8-a24af9a6a409 value=20 at (4.0, 33.0)
+[loot] variant bonus magic stone drop id=06718a22-6302-481d-9001-2b3e87d2ae6a value=20 at (4.0, 33.0)
+[loot] currency drop id=dd69d45e-5b86-45d1-a349-e3440b1df696 value=16 at (4.0, 33.0)
+[loot] magic stone drop id=e7267f98-408f-4316-adfb-f4b428fb2dac value=15 at (1.2, 36.8)
+[loot] magic stone drop id=4b1386d2-9af9-41bd-9425-7390bab21a2d value=20 at (-3.2, 35.4)
+[loot] magic stone drop id=4ceaa6a4-b84a-4972-bb82-43ca8f927b04 value=20 at (1.2, 29.2)
+[loot] currency drop id=06a2ab60-3507-4483-92d5-d68345d3752e value=8 at (1.2, 29.2)
+[loot] magic stone drop id=75d30b46-80b9-4671-b833-f9fb53037578 value=55 at (13.3, -32.2)
+[loot] currency drop id=760bc048-7f02-4c5e-b60d-87b084ad2cb4 value=28 at (13.3, -32.2)
+[loot] spawned id=eb25f8ff-b56e-4cc2-a28d-b052c2a43465 value=7
+[server] Layout for quest "spire_ascent" tier 2: seed=727116418, profile=spire-ascent, rooms=7
+[loot] magic stone drop id=8f1bae61-b106-4c65-8011-cecf9b59afa3 value=20 at (-1.1, 32.6)
+[loot] variant bonus magic stone drop id=86b7472e-4525-4cc8-a450-6d4f1973b94c value=20 at (-1.1, 32.6)
+[loot] currency drop id=8f52b5d5-1894-4e58-a931-8d5e66e30a58 value=11 at (-1.1, 32.6)
+[loot] magic stone drop id=3a0cb4de-c519-40e7-af4f-3a0f368111a1 value=20 at (-1.1, 32.6)
+[loot] variant bonus magic stone drop id=2ddd4ef4-b408-48d0-9b46-11fc51b5eb76 value=20 at (-1.1, 32.6)
+[loot] currency drop id=3d78909f-9670-43c3-8c45-c24d3af18804 value=19 at (-1.1, 32.6)
+[loot] picked up id=3d78909f-9670-43c3-8c45-c24d3af18804 value=19 by H4udT8IiFlcr6BdcAAAB (currency=35, ms=99)
+[loot] picked up id=2ddd4ef4-b408-48d0-9b46-11fc51b5eb76 (magic stone) value=20 by H4udT8IiFlcr6BdcAAAB (currency=35, ms=99)
+[loot] picked up id=8f52b5d5-1894-4e58-a931-8d5e66e30a58 value=11 by H4udT8IiFlcr6BdcAAAB (currency=46, ms=99)
+[loot] picked up id=86b7472e-4525-4cc8-a450-6d4f1973b94c (magic stone) value=20 by H4udT8IiFlcr6BdcAAAB (currency=46, ms=99)
+[loot] picked up id=3a0cb4de-c519-40e7-af4f-3a0f368111a1 (magic stone) value=20 by H4udT8IiFlcr6BdcAAAB (currency=46, ms=99)
+[loot] picked up id=8f1bae61-b106-4c65-8011-cecf9b59afa3 (magic stone) value=20 by H4udT8IiFlcr6BdcAAAB (currency=46, ms=99)
+[loot] magic stone drop id=d4bdfcce-a7ea-4d0b-9aac-a80e3ebc12bb value=20 at (-2.4, 29.8)
+[loot] variant bonus magic stone drop id=27222f9e-96d8-4047-8b75-c97fcb4d81dc value=15 at (-2.4, 29.8)
+[loot] currency drop id=068d8da6-8495-4680-addf-25301793cbfe value=11 at (-2.4, 29.8)
+[loot] picked up id=d4bdfcce-a7ea-4d0b-9aac-a80e3ebc12bb (magic stone) value=20 by H4udT8IiFlcr6BdcAAAB (currency=46, ms=99)
+[loot] picked up id=068d8da6-8495-4680-addf-25301793cbfe value=11 by H4udT8IiFlcr6BdcAAAB (currency=57, ms=99)
+[loot] picked up id=27222f9e-96d8-4047-8b75-c97fcb4d81dc (magic stone) value=15 by H4udT8IiFlcr6BdcAAAB (currency=57, ms=99)
+[loot] magic stone drop id=b645af61-3881-4a96-9757-b3d02c32d9df value=25 at (-2.4, 27.4)
+[loot] magic stone drop id=6c12710f-ddfc-497c-892d-fbb01a4e462c value=25 at (-2.3, 26.7)
+[loot] currency drop id=7eebfebf-4710-4874-9701-1698e190f188 value=24 at (-2.3, 26.7)
+[loot] magic stone drop id=4834f78d-d5c2-45de-93ba-c5d8ba2016eb value=15 at (-2.4, 26.7)
+[loot] magic stone drop id=455b41b2-7343-4375-a65c-26a3c0dcdbdb value=15 at (-2.3, 26.7)
+[loot] currency drop id=02dc5920-137e-4744-b483-f6ad987b9c71 value=7 at (-2.3, 26.7)
+[telepipe] placed at (-6.1, 39.3) by 6fd3a937-6fc4-4df7-b8ce-5ab0ca861518
+[loot] magic stone drop id=989fa2c0-5450-491b-a470-7bc23bd601d9 value=15 at (-2.3, 26.7)
+[loot] variant bonus magic stone drop id=3a4b7d00-8836-41f4-8eb6-d1429af117f8 value=20 at (-2.3, 26.7)
+[telepipe] player 6fd3a937-6fc4-4df7-b8ce-5ab0ca861518 extracted
+[run] checkpoint captured
+[run] extracted to hub: Spire Ascent — Tier II
+[server] Layout for quest "spire_ascent" tier 2: seed=727116418, profile=spire-ascent, rooms=7
+Player disconnected: H4udT8IiFlcr6BdcAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

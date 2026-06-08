@@ -1,0 +1,9 @@
+Completed the senior review.
+
+Wrote:
+- `tickets/371-playthrough-revalidate-spire-ascent/round-1/review.md`
+- `tickets/371-playthrough-revalidate-spire-ascent/round-1/nits.md`
+
+No `gaps.md` was created because the verdict is pass.
+
+VERDICT: PASS

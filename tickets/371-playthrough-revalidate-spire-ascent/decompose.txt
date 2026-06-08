@@ -1,0 +1,14 @@
+I've broken the top-level re-validation ticket into 5 sub-tickets in dependency order. The driver lives at `harness/validate/` (the ticket's "game/validate" driver); the existing spire-ascent run only covers the base boss flow, so sub-tickets 01–04 each add a focused, gated probe for the NEW content the ticket calls out, and 05 runs the whole thing and writes `findings.md`.
+
+Sub-ticket folders created:
+
+- `tickets/371-playthrough-revalidate-spire-ascent/subtickets/01-boss-ui-visuals-probe/ticket.md` — boss health-bar/encounter UI (283) + distinct boss visuals (284)
+- `tickets/371-playthrough-revalidate-spire-ascent/subtickets/02-status-heal-cards-probe/ticket.md` — slow/burn mutual exclusivity (301) + heal/cleanse (299)
+- `tickets/371-playthrough-revalidate-spire-ascent/subtickets/03-windup-card-probe/ticket.md` — wind-up input-lock + charge telegraph (308)
+- `tickets/371-playthrough-revalidate-spire-ascent/subtickets/04-telepipe-and-charge-reset-probe/ticket.md` — telepipe vitals persistence (287) + card-charge reset on new sortie (289)
+- `tickets/371-playthrough-revalidate-spire-ascent/subtickets/05-run-and-findings/ticket.md` — run full re-validation, regenerate artifacts, tighten verifier, author findings.md
+
+Notes on the decomposition:
+- **All `Verification: code`** — every criterion concerns probe structure, server/client state, status timing, value/charge resets, or error paths (HUD null, statuses both active, vitals lost), none of which `visual` QA can see. The single happy-path visual run wouldn't exercise card plays, telepipe-up, or a second sortie at all.
+- **Only 05 runs the driver**, so 01–04 are pure additive code passes (no clobbering of the shared `game/validation/spire-ascent/` output dir) and are verifiable by reading the diff.
+- I kept edits inside the validation harness, with **read-only harness-state instrumentation** in `game/client/main.js` and **minimal additive card-grant scenarios** in `game/server/debugScenarios.js` only where a probe needs an unexposed field or an in-run card grant — matching the sunken-canyon sibling's documented precedent of touching `debugScenarios.js` to unblock the driver.

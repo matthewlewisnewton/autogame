@@ -5924,3 +5924,26 @@ PASS. The round-3 coverage log reports `137 passed` test files and `2219 passed`
 ## Remaining gaps
 
 None.
+
+## v0.335 — 371-playthrough-revalidate-spire-ascent  (2026-06-08 15:55:12)
+
+### Findings.md documents bugs/glitches/oddities
+
+PASS. `game/validation/spire-ascent/findings.md` lists all new-content probe results, screenshots, runtime console status, floor alignment checks, and the validation harness fixes needed to get the full run through. It also documents a non-spire, separately observed arena-trials debug-scenario flake from an earlier `test:quick` run instead of hiding it.
+
+## Design and Requirements Consistency
+
+PASS. The implementation stays consistent with the documented lobby/dungeon loop, stage boss flow, card-combat model, and Telepipe evacuation rules. The normal runtime requirements remain intact: the captured game renders a Three.js scene, connects over Socket.IO, shows the player in world state, and preserves server-authoritative run state across telepipe resume.
+
+The only game-code changes are debug-gated validation support and read-only harness-state instrumentation. The new `?debugScenario` shortcuts are localhost/server-debug gated, invoked only through the existing debug-scenario socket path, and comments trace their equivalent normal gameplay routes. The lifecycle probe still exercises normal launch-booth ready-up, deploy, hand initialization, telepipe placement/extraction, and new-sortie hand dealing rather than replacing those flows.
+
+## Code Quality and Test Coverage
+
+PASS. The changed validation harness fails hard on missing or false probe state, so the green artifacts are backed by assertions rather than prose-only findings. The latest `round-1/coverage.log` ends green for the changed-file coverage run: `Test Files 110 passed (110)` and `Tests 1687 passed (1687)`, with thresholds disabled for visibility. The broader `findings.md` note about a separate arena-trials debug-scenario `test:quick` flake is not a spire-ascent gameplay regression and does not block this ticket.
+
+No obvious dead code, production path regression, browser page error, or fatal console error was found in the live codebase review.
+
+## Remaining gaps
+
+None blocking. I noted one non-blocking cleanup item in `nits.md` for a dedicated follow-up on the separately observed arena-trials debug-scenario flake.
+
