@@ -59,6 +59,7 @@ const {
   ensurePassiveDrawScheduled,
   canDrawIntoHand,
   scaledGrindStat,
+  scaledGrindArea,
   addMagicStones,
   restoreHandCharges,
   pickRandomExhaustedCard,
@@ -325,9 +326,16 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       if (!fromWindup) {
         player.rotation = rotation;
       }
-      const attackRange = cardDef.attackRange || ATTACK_RANGE;
+      let attackRange = cardDef.attackRange || ATTACK_RANGE;
       const attackConeAngle = cardDef.attackConeAngle || ATTACK_CONE_ANGLE;
       const grind = handCard.grind || 0;
+      // Saber-scoped opt-in: gently widen the cone reach per grind level (tiny,
+      // float, unrounded) so the hit area grows smoothly. Other weapons lack
+      // `grindAreaScale` and are unaffected. Applied before cone hit detection
+      // and reused in the CARD_USED payload so the swing visual matches.
+      if (cardDef.grindAreaScale) {
+        attackRange = scaledGrindArea(attackRange, grind, cardDef.grindAreaScale);
+      }
       const damage = handCard.echoDamage != null
         ? handCard.echoDamage
         : scaledGrindStat(cardDef.damage || 0, grind);

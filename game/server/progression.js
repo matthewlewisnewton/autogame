@@ -681,6 +681,16 @@ function scaledGrindStat(baseValue, grind) {
   return Math.round(baseValue * getStatMultiplier(grind));
 }
 
+// Smoothly grow an area/reach stat with grind using a tiny, card-specific
+// per-level rate (e.g. saber_of_light's `grindAreaScale`). Unlike
+// scaledGrindStat this stays a float (no rounding) so radius growth is
+// gradual, and at grind 0 it returns the base value unchanged.
+function scaledGrindArea(baseValue, grind, perLevelScale) {
+  if (!Number.isFinite(baseValue) || !Number.isFinite(perLevelScale)) return baseValue;
+  const level = Number.isFinite(grind) ? Math.max(0, Math.floor(grind)) : 0;
+  return baseValue * (1 + level * perLevelScale);
+}
+
 function applyWyrmMinionBreathStats(minion, cardDef, grind, now) {
   const breathIntervalMs = cardDef.breathIntervalMs ?? 2500;
   minion.breathIntervalMs = breathIntervalMs;
@@ -3327,6 +3337,7 @@ module.exports = {
   getGrindCost,
   getStatMultiplier,
   scaledGrindStat,
+  scaledGrindArea,
   applyWyrmMinionBreathStats,
   grindCard,
   unlockHatForPlayer,
