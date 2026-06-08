@@ -92,6 +92,108 @@ function renderConeSwings(data, ctx) {
 }
 
 /**
+ * Per-weapon slash styling for standard melee blades. Keyed by cardId; each
+ * entry gives the shared `renderWeaponSwing` helper a distinct accent and arc
+ * shape so weapons read differently without bespoke renderers. Weapons listed
+ * here have no `CARD_ACCENT_STYLE` entry, so their `color` is authoritative;
+ * any weapon that later gains an accent has it honored via `getAccentHex`.
+ * Optional flags (`trail`, `decal`, `sparkCount`) opt the swing into extra
+ * composed primitives.
+ */
+const WEAPON_SLASH_STYLES = {
+	// Rust-Forged Saber: a tight, steely arc — a quick clean cut with a few sparks.
+	iron_sword: {
+		color: 0x94a3b8,
+		emissive: 0x64748b,
+		coneAngle: Math.PI / 5,
+		range: 4,
+		fillOpacity: 0.42,
+		edgeOpacity: 0.85,
+		sparkCount: 6,
+		sparkSpread: 0.7,
+	},
+	// Solar Edge: a warm fiery arc with a trailing flame streak and ember burst.
+	flame_blade: {
+		color: 0xff7a18,
+		emissive: 0xff3b00,
+		coneAngle: Math.PI / 4,
+		range: 5,
+		fillOpacity: 0.4,
+		edgeOpacity: 0.8,
+		trail: true,
+		sparkCount: 10,
+		sparkSpread: 1.3,
+	},
+	// Ether Scythe: a wide ghostly sweeping arc with a lingering spectral decal.
+	harvesting_scythe: {
+		color: 0x86efac,
+		emissive: 0x8b5cf6,
+		coneAngle: (Math.PI * 2) / 3,
+		range: 6,
+		fillOpacity: 0.3,
+		edgeOpacity: 0.65,
+		decal: true,
+		sparkCount: 8,
+		sparkSpread: 1.6,
+	},
+};
+
+/**
+ * Shared melee-blade slash. Looks up the firing card's style in
+ * `WEAPON_SLASH_STYLES` and composes the 315 VFX primitives — the cone swing
+ * plus optional flame trail, spark burst, and impact decal — into one
+ * accent-themed arc. Adds nothing to renderer.js; it only reuses existing ctx
+ * helpers, each guarded so the swing degrades gracefully when a primitive is
+ * absent. Falls back to the plain cone swing for any unstyled weapon.
+ */
+function renderWeaponSwing(data, ctx) {
+	const style = WEAPON_SLASH_STYLES[data.cardId];
+	if (!style) {
+		renderConeSwings(data, ctx);
+		return;
+	}
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex(data.cardId) ?? style.color;
+	const emissive = style.emissive;
+
+	ctx.spawnAttackEffect(origin, direction, {
+		color,
+		emissive,
+		coneAngle: style.coneAngle,
+		range: style.range,
+		fillOpacity: style.fillOpacity,
+		edgeOpacity: style.edgeOpacity,
+	});
+
+	// Optional flame streak chasing the blade's leading edge.
+	if (style.trail && ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, {
+			range: style.range,
+			color,
+			emissive,
+		});
+	}
+
+	// Spark/ember burst out along the blade's mid-arc reach.
+	if (style.sparkCount && ctx.spawnParticleBurst) {
+		const sparkAt = pointAlong(origin, direction, style.range * 0.6);
+		ctx.spawnParticleBurst(sparkAt, {
+			color,
+			emissive,
+			count: style.sparkCount,
+			spread: style.sparkSpread,
+		});
+	}
+
+	// Lingering ground decal traced by a wide sweep.
+	if (style.decal && ctx.spawnImpactDecal) {
+		const decalAt = pointAlong(origin, direction, style.range * 0.6);
+		ctx.spawnImpactDecal(decalAt, { color, emissive });
+	}
+}
+
+/**
  * Infinite Disk and any card flagged with `triple_returning_projectile`:
  * spawn three projectile flashes offset along the perpendicular axis so the
  * player can see the three disks fan out.
@@ -381,6 +483,9 @@ function renderTelepipe(data, ctx) {
 
 const CARD_RENDERERS = {
 	// Weapons
+	iron_sword: renderWeaponSwing,
+	flame_blade: renderWeaponSwing,
+	harvesting_scythe: renderWeaponSwing,
 	infinite_disk: renderTripleReturning,
 	fireball: renderFireball,
 

@@ -62,8 +62,16 @@ describe('resolveRenderers()', () => {
 	});
 
 	it('falls back to the weapon default for plain weapon cards', () => {
+		expect(resolveRenderers('steel_claymore')).toHaveLength(1);
+		expect(resolveRenderers('saber_of_light')).toHaveLength(1);
+	});
+
+	it('returns the card-specific weapon swing for the styled standard blades', () => {
 		expect(resolveRenderers('iron_sword')).toHaveLength(1);
 		expect(resolveRenderers('flame_blade')).toHaveLength(1);
+		expect(resolveRenderers('harvesting_scythe')).toHaveLength(1);
+		// Distinct from the plain cone-swing default.
+		expect(resolveRenderers('iron_sword')[0]).not.toBe(resolveRenderers('steel_claymore')[0]);
 	});
 
 	it('falls back to the spell default for plain spell cards', () => {
@@ -263,7 +271,7 @@ describe('renderCardUsed() — weapon dispatch', () => {
 	it('spawns a single attack effect for a standard one-swing weapon', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
-			cardId: 'iron_sword',
+			cardId: 'steel_claymore',
 			origin: { x: 1, z: 2 },
 			direction: { x: 0, z: 1 },
 			hits: [],
@@ -400,6 +408,101 @@ describe('renderCardUsed() — weapon dispatch', () => {
 			range: 9,
 			projectileTravelMs: 1200,
 		});
+	});
+});
+
+describe('renderCardUsed() — styled weapon slashes', () => {
+	function swingStyle(ctx) {
+		const attack = ctx._calls.find((c) => c[0] === 'spawnAttackEffect');
+		expect(attack).toBeDefined();
+		return attack[3];
+	}
+
+	it('Rust-Forged Saber slashes a tight steely arc with a spark burst and no trail/decal', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'iron_sword',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			hits: [],
+		}, ctx);
+		const style = swingStyle(ctx);
+		expect(style).toMatchObject({ color: 0x94a3b8, coneAngle: Math.PI / 5, range: 4 });
+		// Steel slash kicks up sparks but no flame trail and no ground decal.
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
+	});
+
+	it('Solar Edge slashes a warm fiery arc with a flame trail and ember burst', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'flame_blade',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			hits: [],
+		}, ctx);
+		const style = swingStyle(ctx);
+		expect(style).toMatchObject({ color: 0xff7a18, emissive: 0xff3b00, range: 5 });
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail).toBeDefined();
+		expect(trail[3]).toMatchObject({ color: 0xff7a18, range: 5 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[2]).toMatchObject({ color: 0xff7a18 });
+		// No lingering decal for the fiery blade.
+		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
+	});
+
+	it('Ether Scythe slashes a wide ghostly arc with a lingering decal', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'harvesting_scythe',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			hits: [],
+		}, ctx);
+		const style = swingStyle(ctx);
+		expect(style).toMatchObject({ color: 0x86efac, emissive: 0x8b5cf6, coneAngle: (Math.PI * 2) / 3, range: 6 });
+		// Decal lands out along the sweep at range * 0.6 = 3.6.
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1].x).toBeCloseTo(3.6);
+		expect(decal[1].z).toBe(0);
+		expect(decal[2]).toMatchObject({ color: 0x86efac });
+		// Wide ghostly sweep adds no flame trail.
+		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
+	});
+
+	it('the three blades use mutually distinct colors and arc shapes', () => {
+		const styleFor = (cardId) => {
+			const ctx = makeCtx();
+			renderCardUsed({ cardId, origin: { x: 0, z: 0 }, direction: { x: 1, z: 0 }, hits: [] }, ctx);
+			return swingStyle(ctx);
+		};
+		const iron = styleFor('iron_sword');
+		const flame = styleFor('flame_blade');
+		const scythe = styleFor('harvesting_scythe');
+		const colors = new Set([iron.color, flame.color, scythe.color]);
+		expect(colors.size).toBe(3);
+		const cones = new Set([iron.coneAngle, flame.coneAngle, scythe.coneAngle]);
+		expect(cones.size).toBe(3);
+	});
+
+	it('weapon swing degrades gracefully when the optional ctx primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnProjectileTrail: undefined,
+			spawnImpactDecal: undefined,
+			spawnParticleBurst: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'flame_blade',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			hits: [],
+		}, ctx)).not.toThrow();
+		// The core cone swing still fires.
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 });
 

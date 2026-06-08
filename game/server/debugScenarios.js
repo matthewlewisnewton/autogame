@@ -2296,6 +2296,38 @@ function applyDebugScenario(socket, name) {
       target.hp = 200;
       target.maxHp = 200;
       target.wanderTarget = { x: target.x, z: target.z };
+    } else if (name === 'weapon-slash-ready') {
+      // Playing phase with the three distinct-slash blades — Rust-Forged Saber
+      // (iron_sword, steely arc), Solar Edge (flame_blade, fiery arc + trail),
+      // and Ether Scythe (harvesting_scythe, wide ghostly sweep) — in hand at
+      // full Magic Stones with grunts lined up along +X so each can be swung
+      // back-to-back to compare their slash visuals. The same state is reachable
+      // normally: iron_sword and flame_blade are starter cards and the scythe is
+      // an earnable reward; this only skips the grind.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const blades = [
+        { id: 'iron_sword', name: 'Rust-Forged Saber', charges: 5 },
+        { id: 'flame_blade', name: 'Solar Edge', charges: 3 },
+        { id: 'harvesting_scythe', name: 'Ether Scythe', charges: 3 },
+      ];
+      for (let i = 0; i < blades.length && i < player.hand.length; i++) {
+        player.hand[i] = {
+          id: blades[i].id,
+          name: blades[i].name,
+          type: 'weapon',
+          charges: blades[i].charges,
+          remainingCharges: blades[i].charges,
+        };
+      }
+      state.enemies = [];
+      for (const dx of [3, 5, 7]) {
+        const e = spawnEnemy(player.x + dx, player.z, 'grunt');
+        e.hp = 120;
+        e.maxHp = 120;
+        e.wanderTarget = { x: e.x, z: e.z };
+      }
     }
 
     syncRunObjectiveToEnemies();
