@@ -1012,6 +1012,7 @@ function isPortalEntryGraceActive() {
 
 function cardChoiceDescription(def) {
   if (!def) return '';
+  if (def.description) return def.description;
   if (def.specialEffect) return def.specialEffect.replace(/_/g, ' ');
   if (def.type === 'weapon') {
     return THEME.cardDescriptions.damageWeapon.replace('{damage}', String(def.damage || 0));
@@ -3359,6 +3360,7 @@ module.exports = {
   spawnMagicStoneDrop,
   spawnCurrencyDrop,
   buildCardChoices,
+  cardChoiceDescription,
   claimCardReward,
   buildRunSummary,
   grantCard,
