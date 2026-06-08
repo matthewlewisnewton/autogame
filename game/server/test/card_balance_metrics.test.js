@@ -106,6 +106,37 @@ describe('card balance metrics harness', () => {
 			sellValue: cardEconomy.cardSellValues.dungeon_drake,
 			serverStatOverlayKeys: ['breathConeAngle'],
 		});
+
+		// Ticket 311 — harness grind-0 rows match live cardStats.json
+		expect(report.cards.battle_familiar).toMatchObject({
+			id: 'battle_familiar',
+			type: 'spell',
+			damage: cardStats.battle_familiar.damage,
+			effectiveBurst: 44,
+			damagePerCharge: 44,
+			magicStoneCost: 50,
+			rewardOrder: 1,
+		});
+		expect(report.cards.null_crawler).toMatchObject({
+			id: 'null_crawler',
+			type: 'creature',
+			damage: cardStats.null_crawler.attackDamage,
+			effectiveBurst: 22,
+			damagePerCharge: 22,
+			utilityScore: cardStats.null_crawler.minionHp,
+			magicStoneCost: 35,
+			rewardOrder: 12,
+		});
+		expect(report.cards.astral_guardian).toMatchObject({
+			id: 'astral_guardian',
+			type: 'spell',
+			damage: cardStats.astral_guardian.damage,
+			effectiveBurst: 63,
+			damagePerCharge: 63,
+			damagePerMs: 63 / 800,
+			utilityScore: cardStats.astral_guardian.shieldHp,
+			magicStoneCost: 65,
+		});
 	});
 
 	it('runs as a standalone node script', () => {
