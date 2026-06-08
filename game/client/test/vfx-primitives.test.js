@@ -8,6 +8,7 @@ import {
 	spawnTelegraphRing,
 	spawnDivineGraceEffect,
 	spawnDivineGraceColumn,
+	spawnSpikeTrapEffect,
 	updateAttackEffects,
 	getActiveEffects,
 } from '../renderer.js';
@@ -148,6 +149,48 @@ describe('shared VFX primitives', () => {
 
 		expect(getActiveEffects().length).toBe(before);
 		expect(disposeSpy).toHaveBeenCalled();
+	});
+
+	it('spawnSpikeTrapEffect pushes erupting steel spikes + a blood-red hazard ring', () => {
+		const before = getActiveEffects().length;
+		spawnSpikeTrapEffect({ x: 5, z: -2 }, 1.4);
+
+		const effects = getActiveEffects().slice(before);
+		const ring = effects.find((fx) => fx.spikeTrapRing);
+		const spikes = effects.filter((fx) => fx.isSpikeTrapSpike);
+
+		// One hazard ring plus several upward spike meshes (NOT a flat ring alone).
+		expect(ring).toBeDefined();
+		expect(spikes.length).toBeGreaterThanOrEqual(3);
+		expect(effects.length).toBe(spikes.length + 1);
+
+		// Ring: radius-based expanding hazard ring in blood-red, finite-lived,
+		// distinct from cinder_snare's orange inferno (color 0xef4444).
+		expect(ring.radius).toBe(1.4);
+		expect(Number.isFinite(ring.duration)).toBe(true);
+		expect(ring.duration).toBeGreaterThan(0);
+		expect(ring.mesh.material.color.getHex()).toBe(0xb91c1c);
+
+		// Spikes: metallic steel grey body with a blood-red emissive glow, each a
+		// vertical cone (height-bearing ConeGeometry) with a finite, lifted lifecycle.
+		for (const spike of spikes) {
+			expect(spike.mesh.material.color.getHex()).toBe(0x9ca3af); // steel grey
+			expect(spike.mesh.material.emissive.getHex()).toBe(0xdc2626); // blood-red
+			expect(spike.spikeHeight).toBeGreaterThan(0); // vertical spike geometry
+			expect(spike.mesh.geometry.parameters.height).toBe(spike.spikeHeight);
+			expect(Number.isFinite(spike.duration)).toBe(true);
+			expect(spike.duration).toBeGreaterThan(0);
+		}
+
+		// Animation cleanup: once past duration, every mesh is disposed and removed.
+		const ringDispose = vi.spyOn(ring.mesh.geometry, 'dispose');
+		const spikeDispose = vi.spyOn(spikes[0].mesh.geometry, 'dispose');
+		for (const fx of effects) fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(ringDispose).toHaveBeenCalled();
+		expect(spikeDispose).toHaveBeenCalled();
 	});
 
 	it('primitives honor color/emissive accent overrides on the mesh material', () => {

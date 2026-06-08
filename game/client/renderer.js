@@ -4576,6 +4576,95 @@ export function spawnInfernoPillarEffect(origin, radius) {
 	});
 }
 
+// Spike Trap palette: a hostile steel-spike hazard, coherent with the card's red
+// accent (#f87171) yet clearly distinct from cinder_snare's fiery inferno burst —
+// brushed-steel spikes lit by a blood-red emissive glow rather than orange fire.
+const SPIKE_TRAP_SPIKE_COLOR = 0x9ca3af; // brushed steel grey
+const SPIKE_TRAP_EMISSIVE = 0xdc2626; // blood-red hazard glow on the iron
+const SPIKE_TRAP_RING_COLOR = 0xb91c1c; // dark blood-red hazard ring
+const SPIKE_TRAP_RING_EMISSIVE = 0xef4444; // red ring glow
+const SPIKE_TRAP_SPIKE_COUNT = 6; // spikes erupting in a ring around the trap
+const SPIKE_TRAP_SPIKE_HEIGHT = 0.75; // height of each iron spike
+const SPIKE_TRAP_SPIKE_RADIUS = 0.13; // base radius of each cone spike
+
+/**
+ * Spawn the erupting-spikes VFX for a Spike Trap: a cluster of vertical
+ * iron/steel cones bursting up out of the ground inside a blood-red hazard ring.
+ * Modeled on spawnInfernoPillarEffect's ring lifecycle, but the upward elements
+ * are vertical spike geometry (apex-up ConeGeometry) instead of a fire column, and
+ * the palette is hostile steel + blood-red rather than orange fire. Pure additive
+ * VFX: no network traffic, no state beyond activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ */
+export function spawnSpikeTrapEffect(origin, radius) {
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+
+	// Ground hazard ring — rides the shared radius-based expand→fade lifecycle in
+	// updateAttackEffects, exactly like spawnInfernoPillarEffect's ring.
+	const ringGeometry = new THREE.RingGeometry(0.1, 0.5, 48);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color: SPIKE_TRAP_RING_COLOR,
+		emissive: SPIKE_TRAP_RING_EMISSIVE,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+	ring.position.set(origin.x, 0.15, origin.z);
+	ring.rotation.x = -Math.PI / 2;
+	ring.scale.setScalar(0.001);
+	if (targetScene) targetScene.add(ring);
+
+	activeEffects.push({
+		mesh: ring,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration: SUMMON_EFFECT_DURATION,
+		spikeTrapRing: true,
+		_scene: targetScene,
+	});
+
+	// Erupting spikes — vertical apex-up cones clustered around the trap point,
+	// within `radius`. Each starts flattened (scale.y ≈ 0) so the dedicated
+	// isSpikeTrapSpike branch in updateAttackEffects lifts/scales it out of the
+	// ground while the base stays pinned to the floor.
+	const spikeOffset = radius * 0.55; // how far out the spikes erupt from center
+	for (let s = 0; s < SPIKE_TRAP_SPIKE_COUNT; s++) {
+		const angle = (s / SPIKE_TRAP_SPIKE_COUNT) * Math.PI * 2;
+		const geometry = new THREE.ConeGeometry(SPIKE_TRAP_SPIKE_RADIUS, SPIKE_TRAP_SPIKE_HEIGHT, 6);
+		const material = new THREE.MeshStandardMaterial({
+			color: SPIKE_TRAP_SPIKE_COLOR,
+			emissive: SPIKE_TRAP_EMISSIVE,
+			emissiveIntensity: 0.9,
+			transparent: true,
+			opacity: 1.0,
+		});
+		const spike = new THREE.Mesh(geometry, material);
+		// ConeGeometry's apex already points up (+Y); rotation.x = 0 keeps it
+		// standing vertically out of the ground rather than lying flat.
+		spike.rotation.x = 0;
+		const sx = origin.x + Math.cos(angle) * spikeOffset;
+		const sz = origin.z + Math.sin(angle) * spikeOffset;
+		spike.position.set(sx, 0, sz);
+		spike.scale.y = 0.001;
+		if (targetScene) targetScene.add(spike);
+
+		activeEffects.push({
+			mesh: spike,
+			origin: { x: sx, z: sz },
+			createdAt: performance.now(),
+			duration: SUMMON_EFFECT_DURATION,
+			isSpikeTrapSpike: true,
+			spikeHeight: SPIKE_TRAP_SPIKE_HEIGHT,
+			_scene: targetScene,
+		});
+	}
+}
+
 /**
  * Spawn the on-death radial blast of a `volatile`-variant enemy: an expanding
  * ground ring in a hot volatile orange, distinct from the friendly amber summon
@@ -4965,9 +5054,27 @@ export function updateAttackEffects() {
 			}
 
 			if (elapsed >= fx.duration) {
-				scene.remove(fx.mesh);
+				(fx._scene || scene)?.remove(fx.mesh);
 				fx.mesh.geometry.dispose();
 				fx.mesh.material.dispose();
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Erupting spike (Spike Trap) ──
+		if (fx.isSpikeTrapSpike) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.3, 1.0); // burst upward over the first 30%
+			const s = Math.max(0.001, riseT);
+			fx.mesh.scale.y = s;
+			// Cone is centered on its local origin, so raise position.y in lockstep
+			// with scale.y to keep the spike's base pinned to the ground as it grows.
+			fx.mesh.position.y = (fx.spikeHeight * s) / 2;
+			fx.mesh.material.opacity = Math.max(0.01, 1.0 - t);
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
 				activeEffects.splice(i, 1);
 			}
 			continue;
