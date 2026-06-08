@@ -66,11 +66,11 @@
   },
   "astral_guardian": {
     "magicStoneCost": 65,
-    "damage": 66,
+    "damage": 63,
     "isEvolved": true,
     "specialEffect": "astral_shield",
     "effect": "astral_guardian",
-    "shieldHp": 15,
+    "shieldHp": 14,
     "shieldDurationMs": 8000,
     "minionHp": 60,
     "minionTtl": 30,

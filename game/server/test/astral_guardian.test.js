@@ -27,12 +27,12 @@ describe('Astral Guardian definitions', () => {
 		expect(CARD_DEFS.astral_guardian).toMatchObject({
 			id: 'astral_guardian',
 			type: 'spell',
-			damage: 66,
+			damage: 63,
 			magicStoneCost: 65,
 			isEvolved: true,
 			specialEffect: 'astral_shield',
 			effect: 'astral_guardian',
-			shieldHp: 15,
+			shieldHp: 14,
 			shieldDurationMs: 8000,
 		});
 	});
@@ -72,21 +72,21 @@ describe('Astral Guardian shield', () => {
 
 	it('absorbs damage before HP and clears when depleted', () => {
 		const player = gameState.players.p1;
-		player.shieldHp = 15;
+		player.shieldHp = 14;
 		player.shieldExpiresAt = Date.now() + 8000;
 
 		damagePlayer('p1', 10);
-		expect(player.shieldHp).toBe(5);
+		expect(player.shieldHp).toBe(4);
 		expect(player.hp).toBe(100);
 
 		damagePlayer('p1', 8);
 		expect(player.shieldHp).toBe(0);
-		expect(player.hp).toBe(97);
+		expect(player.hp).toBe(96);
 	});
 
 	it('expires shield after shieldExpiresAt', () => {
 		const player = gameState.players.p1;
-		player.shieldHp = 15;
+		player.shieldHp = 14;
 		player.shieldExpiresAt = Date.now() - 1;
 
 		damagePlayer('p1', 10);
@@ -136,7 +136,7 @@ describe('Astral Guardian gameplay', () => {
 			charges: 1,
 			remainingCharges: 1,
 			magicStoneCost: 65,
-			damage: 66,
+			damage: 63,
 		}];
 		player.magicStones = 65;
 
@@ -144,9 +144,9 @@ describe('Astral Guardian gameplay', () => {
 		socket.emit('useCard', { cardId: 'astral_guardian', slotIndex: 0 });
 		const cardUsed = await cardUsedPromise;
 
-		expect(player.shieldHp).toBe(15);
+		expect(player.shieldHp).toBe(14);
 		expect(player.shieldExpiresAt).toBeGreaterThan(Date.now());
-		expect(cardUsed.shieldGranted).toBe(15);
+		expect(cardUsed.shieldGranted).toBe(14);
 		expect(cardUsed.hits.length).toBeGreaterThan(0);
 
 		const ownerMinions = state.minions.filter(m => m.ownerId === socket._playerId);
