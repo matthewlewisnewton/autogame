@@ -1,0 +1,14 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/316-distinct-weapon-card-animations/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/316-distinct-weapon-card-animations/game/data
+Server listening on port 3002
+Player connected: socket=LOgeS-iqcBqXXWgKAAAB, playerId=7b7fb82b-1f1d-421e-95ab-295ef4e0c782
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=el4-nOcnzmeCUATiAAAD, playerId=294d6d7a-4bca-479f-b2c4-e8cd17cf9764
+[loot] spawned id=83403d3f-fd34-4e73-b104-1b7f9f2f7eb6 value=14
+Player disconnected: LOgeS-iqcBqXXWgKAAAB
+Player disconnected: el4-nOcnzmeCUATiAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

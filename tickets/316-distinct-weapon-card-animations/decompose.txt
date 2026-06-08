@@ -1,0 +1,6 @@
+Created one new sub-ticket that closes the single open gap from review round 2.
+
+**Sub-ticket folder created:**
+- `/home/matt/workspace/.autogame-worktrees/316-distinct-weapon-card-animations/tickets/316-distinct-weapon-card-animations/subtickets/04-solar-edge-windup-telegraph/ticket.md`
+
+**Rationale:** The only open gap is that Solar Edge (`flame_blade`) has distinct slash VFX but no `windUpMs`, so the 315 charge-up telegraph never fires for it. The fix is purely a one-field data change in `cardStats.json` plus a test assertion — `code` verification (it's about data state + a test existing, not how something renders). The three passed sub-tickets (01, 02, 03) were left untouched.

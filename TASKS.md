@@ -118,3 +118,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [307-cleanup-restore-hp-healing-cards-keep-no-auto-level-heal](tickets/307-cleanup-restore-hp-healing-cards-keep-no-auto-level-heal/)
 - [ ] [314-cleanup-saber-of-light-aoe-per-grind-scaling](tickets/314-cleanup-saber-of-light-aoe-per-grind-scaling/)
 - [ ] [315-cleanup-fix-storm-eagle-thunderbird-attack-interval-gate](tickets/315-cleanup-fix-storm-eagle-thunderbird-attack-interval-gate/)
+- [ ] [317-cleanup-distinct-weapon-card-animations](tickets/317-cleanup-distinct-weapon-card-animations/)

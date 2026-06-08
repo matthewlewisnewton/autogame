@@ -5671,3 +5671,26 @@ No development debug scenario was added or changed by this ticket. Existing debu
 
 None.
 
+
+## v0.324 — 316-distinct-weapon-card-animations  (2026-06-08 03:06:17)
+
+### No performance regression
+
+PASS. The implementation composes a small, bounded number of existing primitive effects per card use. Delayed effects use the existing scheduler, and optional primitive calls are guarded so missing helpers degrade to the core swing rather than throwing. No per-frame work was added to normal gameplay beyond the existing wind-up marker path.
+
+### Tests where feasible
+
+PASS. `game/client/test/cardRenderers.test.js` exercises all weapon visual families, distinctness, optional-helper fallback, heavy impact parameters, photon barrage scheduling, and Solar Edge/heavy weapon wind-up stat presence. Integration tests were adjusted where Solar Edge's new wind-up changes timing assumptions. The round-2 coverage run passed: 127 files, 1929 tests.
+
+## Design and requirements consistency
+
+PASS. The change remains consistent with the active card-combat design: weapons are still multi-charge directional attacks, and wind-up cards now better communicate committed hits. The foundation requirements are not regressed: the capture shows a 3D scene, WebSocket-connected multiplayer state, player visualization, and movement/dodge probes working in a live run.
+
+## Debug scenarios
+
+PASS. This ticket adds `weapon-slash-ready`, `energy-blade-slash-ready`, and `heavy-greatsword-slash-ready`. They are reachable only through the existing `debugScenario` socket path, which is gated to localhost/non-production unless `ALLOW_DEBUG_SCENARIOS=1` is set. They do not replace normal gameplay: the same weapons are reachable as starter/reward/evolved cards through inventory, deck, and evolution systems. The scenarios prepare hand contents and nearby enemies for QA but still use the normal `useCard` server path for card validation, wind-up resolution, net replication, and `cardUsed` rendering.
+
+## Remaining gaps
+
+None.
+

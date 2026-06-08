@@ -1,0 +1,9 @@
+Wrote the final review and remediation files.
+
+Verdict is `VERDICT: FAIL` because Solar Edge has distinct slash VFX but does not show the required 315 charge-up telegraph despite being explicitly named as a wind-up weapon in the top-level ticket.
+
+Files written:
+- `tickets/316-distinct-weapon-card-animations/round-1/review.md`
+- `tickets/316-distinct-weapon-card-animations/round-1/gaps.md`
+
+No `nits.md` was created because I did not find non-blocking cleanup worth filing.
