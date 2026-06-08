@@ -6,6 +6,8 @@ import {
 	spawnProjectileTrail,
 	spawnImpactDecal,
 	spawnTelegraphRing,
+	spawnDivineGraceEffect,
+	spawnDivineGraceColumn,
 	updateAttackEffects,
 	getActiveEffects,
 } from '../renderer.js';
@@ -98,6 +100,47 @@ describe('shared VFX primitives', () => {
 		const fx = lastEffect();
 		expect(fx.isTelegraphRing).toBe(true);
 		expect(fx.telegraphRadius).toBe(2.5);
+
+		const disposeSpy = vi.spyOn(fx.mesh.geometry, 'dispose');
+		fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(disposeSpy).toHaveBeenCalled();
+	});
+
+	it('spawnDivineGraceEffect pushes a holy-gold pulse ring + ascending column', () => {
+		const before = getActiveEffects().length;
+		spawnDivineGraceEffect({ x: 2, z: -3 }, 1.4);
+		// Two meshes: the expanding ground pulse ring and the vertical light column.
+		expect(getActiveEffects().length).toBe(before + 2);
+
+		const effects = getActiveEffects();
+		const ring = effects[before];
+		const column = effects[before + 1];
+
+		// Ring is the radius-based expanding pulse with a gold (NOT green) emissive.
+		expect(ring.radius).toBe(1.4);
+		expect(Number.isFinite(ring.duration)).toBe(true);
+		expect(ring.duration).toBeGreaterThan(0);
+		expect(ring.mesh.material.emissive.getHex()).not.toBe(0x86efac); // old green
+		expect(ring.mesh.material.emissive.getHex()).toBe(0xf59e0b); // gold/amber
+		expect(ring.mesh.material.color.getHex()).toBe(0xfde68a); // warm gold
+
+		// Column is the vertical ascending shaft, also gold and finite-lived.
+		expect(column.isLightColumn).toBe(true);
+		expect(Number.isFinite(column.duration)).toBe(true);
+		expect(column.duration).toBeGreaterThan(0);
+		expect(column.mesh.material.emissive.getHex()).toBe(0xfbbf24); // bright gold
+	});
+
+	it('spawnDivineGraceColumn rises then fades and cleans itself up', () => {
+		const before = getActiveEffects().length;
+		spawnDivineGraceColumn({ x: 0, z: 0 });
+		expect(getActiveEffects().length).toBe(before + 1);
+
+		const fx = lastEffect();
+		expect(fx.isLightColumn).toBe(true);
 
 		const disposeSpy = vi.spyOn(fx.mesh.geometry, 'dispose');
 		fx.createdAt = performance.now() - fx.duration - 100;
