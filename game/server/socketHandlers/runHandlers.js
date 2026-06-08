@@ -165,6 +165,10 @@ function register(socket, ctx) {
 
     const player = state.players[socket.playerId];
     if (!player || player.dead) return;
+    if (isPlayerCardCommitted(player)) {
+      socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: 'Card commitment in progress' });
+      return;
+    }
 
     const result = discardCardFromHand(player, data.slotIndex, data.cardId);
     if (!result.valid) {

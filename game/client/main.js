@@ -3787,6 +3787,7 @@ function useCard(slotIndex) {
 }
 
 function discardCard(slotIndex) {
+	if (isLocalPlayerCardCommitted()) return;
 	if (slotIndex < 0 || slotIndex >= MAX_HAND_SLOTS) return;
 	if (!gameState || gameState.gamePhase !== 'playing') return;
 

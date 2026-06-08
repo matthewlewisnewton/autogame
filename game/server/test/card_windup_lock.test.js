@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
 	clearAllTimers,
 	getCardDef,
+	runGameLoopTick,
 } from '../index.js';
 import {
 	isPlayerCardCommitted,
@@ -11,6 +12,7 @@ import {
 	setGameState as setSimGameState,
 } from '../simulation.js';
 import { setGameState as setProgressionGameState } from '../progression.js';
+import { MAX_MAGIC_STONES } from '../config.js';
 import {
 	connectClient,
 	startTestServer,
@@ -170,5 +172,94 @@ describe('card wind-up input lock until resolution', () => {
 		expect(dodgeOk.keyItemId).toBe('dodge_roll');
 		expect(Math.hypot(player.x - startX, player.z - startZ)).toBeGreaterThan(0);
 		expect(player.keyItemCooldownUntil).toBeGreaterThan(Date.now());
+	});
+
+	it('rejects discardCard while committed and resolves dungeon_drake minion after wind-up', async () => {
+		({ socket } = await connectClient(baseUrl));
+		const startGamePromise = waitForEvent(socket, 'startGame');
+		socket.emit('playerReady', true);
+		await startGamePromise;
+
+		const state = lobbyGameState(socket._lobbyId);
+		const player = state.players[socket._playerId];
+		const windUpMs = getCardDef('dungeon_drake').windUpMs;
+		const slotIndex = 0;
+
+		player.rotation = 0;
+		player.magicStones = MAX_MAGIC_STONES;
+		player.slotCooldowns = new Array(player.hand.length).fill(null);
+		player.hand[slotIndex] = {
+			id: 'dungeon_drake',
+			name: 'Vault Wyrm',
+			type: 'creature',
+			charges: 1,
+			remainingCharges: 1,
+		};
+		state.enemies = [];
+		state.enchantments = state.enchantments || [];
+		state.minions = state.minions || [];
+
+		await waitForEvent(socket, 'stateUpdate');
+		socket.emit('useCard', { cardId: 'dungeon_drake', slotIndex, rotation: 0 });
+		await waitForEvent(socket, 'stateUpdate');
+
+		expect(isPlayerCardCommitted(player)).toBe(true);
+		expect(player.hand[slotIndex].id).toBe('dungeon_drake');
+		const pendingAtCommit = player.pendingCardUse
+			? { ...player.pendingCardUse }
+			: undefined;
+		expect(pendingAtCommit?.cardId).toBe('dungeon_drake');
+
+		player.cardWindupStartTime = Date.now() - windUpMs - 50;
+		setSimGameState(state, {});
+		setProgressionGameState(state);
+
+		expect(isPlayerCardCommitted(player)).toBe(true);
+		expect(player.pendingCardUse?.cardId).toBe('dungeon_drake');
+
+		const nextDrawAtBefore = player.nextDrawAt;
+
+		const cardErrorPromise = waitForEvent(socket, 'cardError');
+		socket.emit('discardCard', { slotIndex, cardId: 'dungeon_drake' });
+		const cardError = await cardErrorPromise;
+		expect(cardError.reason).toBe('Card commitment in progress');
+
+		expect(player.hand[slotIndex].id).toBe('dungeon_drake');
+		expect(player.pendingCardUse?.cardId).toBe(pendingAtCommit?.cardId);
+		expect(player.pendingCardUse?.slotIndex).toBe(pendingAtCommit?.slotIndex);
+		expect(state.minions.length).toBe(0);
+		expect(player.nextDrawAt).toBe(nextDrawAtBefore);
+
+		const cardUsedPromise = waitForEvent(socket, 'cardUsed');
+		processPendingCardWindups();
+		runGameLoopTick();
+		const cardUsedPayload = await cardUsedPromise;
+
+		expect(isPlayerCardCommitted(player)).toBe(false);
+		expect(player.pendingCardUse).toBeUndefined();
+		expect(state.minions.length).toBe(1);
+		expect(state.minions[0].ownerId).toBe(socket._playerId);
+		expect(cardUsedPayload.minionId).toBe(state.minions[0].id);
+		expect(player.hand[slotIndex].activeMinionId).toBe(state.minions[0].id);
+		expect(player.hand[slotIndex].remainingCharges).toBe(0);
+
+		const freeSlot = player.hand.findIndex((c) => c === null);
+		expect(freeSlot).toBeGreaterThanOrEqual(0);
+		player.hand[freeSlot] = {
+			id: 'iron_sword',
+			name: 'Rust-Forged Saber',
+			type: 'weapon',
+			charges: 5,
+			remainingCharges: 5,
+		};
+
+		const cardErrors = [];
+		socket.on('cardError', (payload) => cardErrors.push(payload.reason));
+
+		const discardUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('discardCard', { slotIndex: freeSlot, cardId: 'iron_sword' });
+		await discardUpdatePromise;
+		expect(cardErrors).not.toContain('Card commitment in progress');
+		expect(player.hand[freeSlot]).toBeNull();
 	});
 });

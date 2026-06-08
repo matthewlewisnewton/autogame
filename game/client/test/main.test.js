@@ -2274,6 +2274,47 @@ describe('Card wind-up input lock', () => {
 		expect(useCardEmits).toHaveLength(0);
 	});
 
+	it('calling discardCard() while committed does NOT emit discardCard; emits again after clear', async () => {
+		await import('../main.js');
+
+		hand[0] = { id: 'dungeon_drake', name: 'Vault Wyrm', type: 'creature', charges: 1, remainingCharges: 1 };
+		slotCooldowns[0] = false;
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			players: {
+				player1: {
+					cardUseState: 'windup',
+					cardWindupUntil: Date.now() + 800,
+					hand: hand.slice(),
+					magicStones: 30,
+				},
+			},
+		}, 'player1');
+
+		window.__clearSocketEmitLog();
+		window.__discardCardForTest(0);
+
+		expect(window.__socketEmitLog().filter(e => e.event === 'discardCard')).toHaveLength(0);
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			players: {
+				player1: {
+					hand: hand.slice(),
+					magicStones: 30,
+				},
+			},
+		}, 'player1');
+
+		window.__clearSocketEmitLog();
+		window.__discardCardForTest(0);
+
+		const discardEmits = window.__socketEmitLog().filter(e => e.event === 'discardCard');
+		expect(discardEmits).toHaveLength(1);
+		expect(discardEmits[0].data).toEqual({ slotIndex: 0, cardId: 'dungeon_drake' });
+	});
+
 	it('toggles #card-hand.input-locked from stateUpdate commitment fields', async () => {
 		await import('../main.js');
 
