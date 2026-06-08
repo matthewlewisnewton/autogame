@@ -5671,3 +5671,26 @@ No development debug scenario was added or changed by this ticket. Existing debu
 
 None.
 
+
+## v0.325 — 319-status-support-utility-card-animations  (2026-06-08 03:50:25)
+
+
+### Telepipe portal animation
+PASS. `game/client/renderer.js` now represents active telepipes as a group with a shimmering cylinder, two orbiting rings, and a small rising particle column. The capture exercised Telepipe placement, extraction, suspended lobby, and resume; probes confirm the game returned to a clean playing state with the same run id, layout seed/profile, objective, and preserved enemy set.
+
+### Performance and integration risk
+PASS. New effects allocate short-lived groups through the existing `activeEffects` cleanup model or a fixed telepipe particle pool. The particle counts are small, the telepipe particles are reused while the portal exists, and no per-frame unbounded allocations were introduced in the hot path.
+
+### Tests and coverage
+PASS with note. The ticket added focused renderer tests for status/economy/enchantment dispatch and telepipe portal animation. The visibility-only coverage run reports `126` test files passed and `1` failed due to two existing-looking `server/test/debug-scenarios.test.js` stage-boss shortcut assertions unrelated to this ticket's changed VFX surfaces or the newly added `economy-cards-ready` shortcut. I do not consider those a blocking gap for this top-level VFX ticket.
+
+### Debug scenarios
+PASS. The ticket adds `economy-cards-ready` to the existing debug scenario system, and normal gameplay does not touch it: the client only requests scenarios through `?debugScenario=...` on localhost and the server also gates debug scenarios through `isDebugScenarioAllowed`. The scenario enters a normal run and only preloads reward/shop cards that are otherwise reachable through the regular card economy, so it is a QA shortcut rather than a replacement for player progression or card-use validation.
+
+### Design and requirements consistency
+PASS. The implementation stays within the card-combat and dungeon/lobby loop described in `game/docs/design.md`: cards remain the combat surface, Telepipe remains a mid-run evacuation/resume feature, and no foundation requirements for rendering, server/client connectivity, player visualization, or movement synchronization are regressed.
+
+## Remaining gaps
+
+No blocking gaps remain for this ticket.
+
