@@ -4197,29 +4197,52 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 	}
 
 	if (effect === 'fireball') {
-		// Fiery sphere projectile — same travel/cleanup shape as `projectile`
-		// but with warm fire colors and a stronger glow so it reads as flame.
-		const geometry = new THREE.SphereGeometry(0.35, 12, 12);
-		const material = new THREE.MeshStandardMaterial({
-			color: style.color ?? 0xff7a18,
-			emissive: style.emissive ?? 0xff3b00,
-			emissiveIntensity: 1.6,
-			roughness: 0.5,
+		// Fiery orb: ember core + outer flame shell — visually distinct from
+		// generic `projectile`/`throw_rock` and cool-toned `ice_ball`.
+		const fireColor = style.color ?? 0xff7a18;
+		const fireEmissive = style.emissive ?? 0xff3b00;
+		const group = new THREE.Group();
+
+		const coreMat = new THREE.MeshStandardMaterial({
+			color: fireColor,
+			emissive: fireEmissive,
+			emissiveIntensity: 2.2,
+			roughness: 0.4,
 			metalness: 0.0,
 			transparent: true,
-			opacity: 1.0,
+			opacity: 0.95,
 		});
-		const mesh = new THREE.Mesh(geometry, material);
-		mesh.position.set(origin.x, 1.0, origin.z);
-		targetScene.add(mesh);
+		const coreMesh = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), coreMat);
+		coreMesh.position.y = 1.0;
+		group.add(coreMesh);
+
+		const haloMat = new THREE.MeshStandardMaterial({
+			color: fireColor,
+			emissive: fireEmissive,
+			emissiveIntensity: 1.4,
+			roughness: 0.6,
+			metalness: 0.0,
+			transparent: true,
+			opacity: 0.48,
+			depthWrite: false,
+		});
+		const haloMesh = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 10), haloMat);
+		haloMesh.position.y = 1.0;
+		group.add(haloMesh);
+
+		group.position.set(origin.x, 0, origin.z);
+		targetScene.add(group);
 
 		activeEffects.push({
-			mesh,
+			mesh: group,
+			coreMesh,
+			haloMesh,
 			origin: { x: origin.x, z: origin.z },
 			direction: { x: direction.x, z: direction.z },
 			range,
 			createdAt: performance.now(),
-			duration: ATTACK_EFFECT_DURATION,
+			duration: style.projectileTravelMs ?? ATTACK_EFFECT_DURATION,
+			isFireballProjectile: true,
 		});
 		return;
 	}
@@ -5051,6 +5074,39 @@ export function updateAttackEffects() {
 		if (fx.isWeaponCone) {
 			const lifeRatio = 1.0 - (elapsed / fx.duration);
 			fadeHitboxOpacity(fx.mesh, lifeRatio);
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Fireball projectile (grouped core + flame halo) ──
+		if (fx.isFireballProjectile) {
+			const travelRange = fx.range ?? ATTACK_RANGE;
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const travel = travelRange * t;
+			fx.mesh.position.x = fx.origin.x + fx.direction.x * travel;
+			fx.mesh.position.z = fx.origin.z + fx.direction.z * travel;
+
+			const pulse = 0.9 + 0.14 * Math.sin(elapsed / 45);
+			const flicker = 1.0 + 0.28 * Math.sin(elapsed / 28 + 1.3);
+			if (fx.coreMesh) {
+				fx.coreMesh.scale.setScalar(pulse);
+				fx.coreMesh.material.emissiveIntensity = 2.0 * flicker;
+			}
+			if (fx.haloMesh) {
+				const haloPulse = 1.0 + 0.2 * Math.sin(elapsed / 60 + 0.7);
+				fx.haloMesh.scale.setScalar(haloPulse);
+				fx.haloMesh.material.emissiveIntensity = 1.3 * flicker;
+				fx.haloMesh.material.opacity = Math.max(0.2, 0.48 + 0.14 * Math.sin(elapsed / 35));
+			}
+
+			const lifeRatio = 1.0 - t;
+			if (fx.coreMesh?.material) {
+				fx.coreMesh.material.opacity = Math.max(0.01, 0.95 * lifeRatio);
+			}
 
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, scene);
