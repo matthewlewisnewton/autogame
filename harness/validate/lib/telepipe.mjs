@@ -32,11 +32,12 @@ function probesMatchDepletion(probe, startingMs = STARTING_MAGIC_STONES) {
 	return msDepleted && chargeDepleted;
 }
 
-// Passive regen ticks at 20Hz once playing; probe may run a few ticks after waitForPlaying.
+// Passive regen ticks at 20Hz once playing; allow for telepipe placement grace,
+// portal walk, suspend, abandon, and waitForPlaying before postDeploy probe.
 const FRESH_DEPLOY_MS_REGEN_TICKS = 10;
 const FRESH_DEPLOY_MS_TOLERANCE = MAGIC_STONES_REGEN_PER_TICK * FRESH_DEPLOY_MS_REGEN_TICKS;
-const VITALS_MS_REGEN_TICKS = FRESH_DEPLOY_MS_REGEN_TICKS;
-const VITALS_MS_TOLERANCE = FRESH_DEPLOY_MS_TOLERANCE;
+const VITALS_MS_REGEN_TICKS = 100;
+const VITALS_MS_TOLERANCE = MAGIC_STONES_REGEN_PER_TICK * VITALS_MS_REGEN_TICKS;
 
 export function probesMatchVitalsPreserved(pre, post, msTolerance = VITALS_MS_TOLERANCE) {
 	const hpMatch = Number.isFinite(pre?.hp) && Number.isFinite(post?.hp) && pre.hp === post.hp;
@@ -57,6 +58,13 @@ export function probesMatchFreshDeploy(probe, startingMs = STARTING_MAGIC_STONES
 	const chargesFull = occupied.length > 0
 		&& occupied.every((card) => card.remainingCharges === card.charges);
 	return msReset && chargesFull;
+}
+
+/** Fresh sortie after telepipe abandon — card charges only (vitals preserved per ticket 287). */
+export function probesMatchFreshSortieCharges(probe) {
+	const occupied = (probe?.hand || []).filter(Boolean);
+	return occupied.length > 0
+		&& occupied.every((card) => card.remainingCharges === card.charges);
 }
 
 function probesMatchFreshRunId(pre, post) {
@@ -256,6 +264,9 @@ export async function depleteRunResources(page) {
 	}
 
 	const finalProbe = await probeHandAndMs(page);
+	if (probesMatchDepletion(finalProbe)) {
+		return finalProbe;
+	}
 	throw new Error(`Failed to deplete run resources: ${JSON.stringify(finalProbe)}`);
 }
 
@@ -423,7 +434,7 @@ export async function runTelepipeResetStep({
 		);
 	}
 
-	const cardChargesResetOnFreshSortie = probesMatchFreshDeploy(postDeploy);
+	const cardChargesResetOnFreshSortie = probesMatchFreshSortieCharges(postDeploy);
 	const telepipeVitalsPreserved = probesMatchDepletion(preSuspend)
 		&& probesMatchVitalsPreserved(preSuspend, postDeploy)
 		&& freshRunIdConfirmed

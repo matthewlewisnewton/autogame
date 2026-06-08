@@ -5,6 +5,12 @@ import {
 	isSlowed,
 	isBurning,
 } from '../simulation.js';
+import {
+	applyFreezeInRadius,
+	createGameState,
+	gameState,
+	isEnemyFrozen,
+} from '../index.js';
 
 // BURNING (291) and SLOW/cold (290) are mutually exclusive on any entity: fire
 // and ice cancel, so the most-recent application wins and the two are never
@@ -112,5 +118,22 @@ describe('BURNING and SLOW mutual exclusion', () => {
 	it('both helpers remain null-safe', () => {
 		expect(() => applySlow(null, 1000, 0.5)).not.toThrow();
 		expect(() => applyBurning(null, 1000)).not.toThrow();
+	});
+
+	it('freezing a burning enemy clears burn and applies slow (permafrost path)', () => {
+		const now = 1_000_000;
+		vi.useFakeTimers();
+		vi.setSystemTime(now);
+		Object.assign(gameState, createGameState());
+		gameState.enemies = [{ id: 'e1', type: 'grunt', x: 2, z: 0, hp: 50, maxHp: 50 }];
+		const enemy = gameState.enemies[0];
+
+		applyBurning(enemy, 5000);
+		expect(isBurning(enemy)).toBe(true);
+
+		applyFreezeInRadius(0, 0, 6, 2000, 0);
+		expect(isBurning(enemy)).toBe(false);
+		expect(isSlowed(enemy)).toBe(true);
+		expect(isEnemyFrozen(enemy)).toBe(true);
 	});
 });

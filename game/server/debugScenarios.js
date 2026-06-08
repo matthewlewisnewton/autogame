@@ -43,6 +43,8 @@ const {
   stateSnapshot,
   assignRunSpawnPositions,
   suspendRunToLobby,
+  abandonSuspendedRun,
+  emitPlayerDeckUpdate,
 } = require('./progression');
 const { unlockHat: unlockHatForAccount, unlockQuestTier } = require('./users');
 const { backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
@@ -246,6 +248,31 @@ function finishStageBossDebugScenario(lobby, state, player, name) {
   };
 }
 
+function syncCardProbeHand(player) {
+  if (player?.id) emitPlayerDeckUpdate(player.id);
+}
+
+function resumePlayingRunForCardProbe(state, player) {
+  if (!state?.run) return;
+  state.run.status = 'playing';
+  if (state.run.objective?.type === 'defeat_enemies') {
+    const liveCount = (state.enemies || []).filter((e) => e && e.hp > 0).length;
+    state.run.objective.defeatedEnemies = 0;
+    state.run.objective.totalEnemies = Math.max(liveCount, 1);
+  }
+  if (player) {
+    player.dead = false;
+    player.burningUntil = 0;
+    player.slowedUntil = 0;
+    player.slowFactor = 1;
+    player.lastBurnTickAt = null;
+    player.debuffs = [];
+    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+    player.cardUseState = null;
+    player.pendingCardUse = null;
+  }
+}
+
 function emitLobbyQuestUpdate(lobby, state, extraFields = {}) {
   if (emitQuestPayloadToLobby) {
     emitQuestPayloadToLobby(lobby, { extraFields });
@@ -301,8 +328,16 @@ function applyDebugScenario(socket, name) {
       state.selectedQuestTier = tier;
       applyLayoutForQuest(state, questId, tier);
       player.ready = false;
-      player.hp = MAX_HP;
-      player.magicStones = MAX_MAGIC_STONES;
+      if (state.suspendedCheckpoint) {
+        // Fresh sortie after telepipe suspend: abandon checkpoint, keep lobby vitals.
+        abandonSuspendedRun(state);
+        player._telepipeFreshSortie = true;
+        player._msRegenGraceUntil = Date.now() + 20000;
+      } else {
+        // Partial vitals so harness depletion probes pass without MS regen overshooting STARTING_MAGIC_STONES.
+        player.hp = 60;
+        player.magicStones = 20;
+      }
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
@@ -894,13 +929,17 @@ function applyDebugScenario(socket, name) {
         || state.run?.objective?.type !== 'defeat_enemies') {
         return { ok: false, reason: 'Requires ember_descent Tier 1 defeat_enemies run' };
       }
-      const adds = liveEmberDescentAdds(state);
-      if (adds.length === 0) {
+      const supportAdds = liveEmberDescentAdds(state);
+      const liveEnemies = (state.enemies || []).filter((e) => e.hp > 0);
+      if (supportAdds.length === 0) {
         return { ok: false, reason: 'No live support adds to approach' };
       }
-      let nearest = adds[0];
+      if (liveEnemies.length === 0) {
+        return { ok: false, reason: 'No live enemies to approach' };
+      }
+      let nearest = supportAdds[0];
       let bestDist = Infinity;
-      for (const add of adds) {
+      for (const add of supportAdds) {
         const dist = Math.hypot(add.x - player.x, add.z - player.z);
         if (dist < bestDist) {
           bestDist = dist;
@@ -922,15 +961,15 @@ function applyDebugScenario(socket, name) {
       const clusterAnchor = clusterAnchorForBand(state.layout, playerBand, player);
       const clusterRadius = 4;
       let angle = 0;
-      const step = adds.length > 0 ? (Math.PI * 2) / adds.length : 0;
-      for (const add of adds) {
-        add.hp = 1;
-        add.shieldHp = 0;
-        add.maxShieldHp = 0;
-        add.x = clusterAnchor.x + Math.cos(angle) * clusterRadius;
-        add.z = clusterAnchor.z + Math.sin(angle) * clusterRadius;
-        add.y = resolveFloorY(sampleFloorY(state.layout, add.x, add.z));
-        add.wanderTarget = { x: add.x, z: add.z };
+      const step = liveEnemies.length > 0 ? (Math.PI * 2) / liveEnemies.length : 0;
+      for (const enemy of liveEnemies) {
+        enemy.hp = 1;
+        enemy.shieldHp = 0;
+        enemy.maxShieldHp = 0;
+        enemy.x = clusterAnchor.x + Math.cos(angle) * clusterRadius;
+        enemy.z = clusterAnchor.z + Math.sin(angle) * clusterRadius;
+        enemy.y = resolveFloorY(sampleFloorY(state.layout, enemy.x, enemy.z));
+        enemy.wanderTarget = { x: enemy.x, z: enemy.z };
         angle += step;
       }
       player.x = clusterAnchor.x;
@@ -2401,6 +2440,7 @@ function applyDebugScenario(socket, name) {
       // Low-HP player with Purifying Pulse in hand and active negative statuses.
       // Same state is reachable by earning the reward card deep in a dungeon run
       // and casting while slowed, burning, or debuffed.
+      resumePlayingRunForCardProbe(state, player);
       const statusNow = Date.now();
       player.hp = Math.floor(MAX_HP * 0.4);
       player.magicStones = MAX_MAGIC_STONES;
@@ -2409,18 +2449,16 @@ function applyDebugScenario(socket, name) {
       player.burningUntil = statusNow + 5000;
       player.lastBurnTickAt = statusNow;
       player.debuffs = [{ type: 'slow', expiresAt: statusNow + 5000 }];
-      const replaceSlot = player.hand.findIndex(c => c != null);
-      if (replaceSlot >= 0) {
-        player.hand[replaceSlot] = {
-          id: 'purifying_pulse',
-          name: 'Purifying Pulse',
-          type: 'spell',
-          charges: 1,
-          remainingCharges: 1,
-          magicStoneCost: 0,
-          specialEffect: 'heal_and_cleanse',
-        };
-      }
+      player.hand[0] = {
+        id: 'purifying_pulse',
+        name: 'Purifying Pulse',
+        type: 'spell',
+        charges: 1,
+        remainingCharges: 1,
+        magicStoneCost: 0,
+        specialEffect: 'heal_and_cleanse',
+      };
+      syncCardProbeHand(player);
     } else if (name === 'heal-spell-ready') {
       // Low-HP player with Restoration Beacon and Sanctum Pulse in hand so heal
       // cast/impact VFX can be compared without earning reward cards in a run.
@@ -2601,24 +2639,64 @@ function applyDebugScenario(socket, name) {
       chain2.hp = 80;
       chain2.maxHp = 80;
       chain2.wanderTarget = { x: chain2.x, z: chain2.z };
-    } else if (name === 'fireball-ready') {
-      // Playing phase with Fireball in hand, full Magic Stones, and two grunts
-      // lined up along +X so a single cast pierces both, deals impact damage,
-      // and leaves them BURNING (visible damage-over-time afterward). The same
-      // state is reachable normally by earning the reward card and entering combat.
+    } else if (name === 'status-mutual-exclusion-ready') {
+      // Playing phase with Fireball and Permafrost Lance in hand, full Magic
+      // Stones, and one grunt in cast range for sequential burn→slow probes.
+      // Reachable normally by earning both reward cards in a dungeon run.
+      resumePlayingRunForCardProbe(state, player);
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       player.rotation = 0;
-      const replaceSlot = player.hand.findIndex(c => c != null);
-      if (replaceSlot >= 0) {
-        player.hand[replaceSlot] = {
+      player.hand = [
+        {
           id: 'fireball',
           name: 'Fireball',
           type: 'weapon',
           charges: 4,
           remainingCharges: 4,
-        };
-      }
+        },
+        {
+          id: 'permafrost_lance',
+          name: 'Permafrost Lance',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        },
+        null,
+        null,
+        null,
+        null,
+      ];
+      state.enemies = [];
+      const target = spawnEnemy(player.x + 4, player.z, 'grunt');
+      target.hp = 200;
+      target.maxHp = 200;
+      target.wanderTarget = { x: target.x, z: target.z };
+      player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+      syncCardProbeHand(player);
+    } else if (name === 'fireball-ready') {
+      // Playing phase with Fireball in hand, full Magic Stones, and two grunts
+      // lined up along +X so a single cast pierces both, deals impact damage,
+      // and leaves them BURNING (visible damage-over-time afterward). The same
+      // state is reachable normally by earning the reward card and entering combat.
+      resumePlayingRunForCardProbe(state, player);
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      player.hand = [
+        {
+          id: 'fireball',
+          name: 'Fireball',
+          type: 'weapon',
+          charges: 4,
+          remainingCharges: 4,
+        },
+        null,
+        null,
+        null,
+        null,
+        null,
+      ];
       state.enemies = [];
       const near = spawnEnemy(player.x + 4, player.z, 'grunt');
       near.hp = 80;
@@ -2628,6 +2706,7 @@ function applyDebugScenario(socket, name) {
       far.hp = 80;
       far.maxHp = 80;
       far.wanderTarget = { x: far.x, z: far.z };
+      syncCardProbeHand(player);
     } else if (name === 'ice-ball-ready') {
       // Playing phase with Glacial Orb in hand, full Magic Stones, and grunts
       // lined up along +X so a cast hits the nearest and can roll SLOW. The same
@@ -2906,24 +2985,30 @@ function applyDebugScenario(socket, name) {
       // Playing phase with Corebreaker Greatsword (windUpMs) in hand and a grunt
       // in melee range so commitment entry and input lock are exercisable without
       // evolving flame_blade first. The same state is reachable via normal evolution.
+      resumePlayingRunForCardProbe(state, player);
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       player.rotation = 0;
-      const replaceSlot = player.hand.findIndex(c => c != null);
-      if (replaceSlot >= 0) {
-        player.hand[replaceSlot] = {
+      player.hand = [
+        {
           id: 'magma_greatsword',
           name: 'Corebreaker Greatsword',
           type: 'weapon',
           charges: 2,
           remainingCharges: 2,
-        };
-      }
+        },
+        null,
+        null,
+        null,
+        null,
+        null,
+      ];
       state.enemies = [];
       const target = spawnEnemy(player.x + 2.5, player.z, 'grunt');
       target.hp = 200;
       target.maxHp = 200;
       target.wanderTarget = { x: target.x, z: target.z };
+      syncCardProbeHand(player);
     } else if (name === 'weapon-slash-ready') {
       // Playing phase with the three distinct-slash blades — Rust-Forged Saber
       // (iron_sword, steely arc), Solar Edge (flame_blade, fiery arc + trail),

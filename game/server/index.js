@@ -565,6 +565,7 @@ const DEBUG_SCENARIOS = new Set([
   'ember-wraith',
   'chain-lightning-ready',
   'arcane-radial-ready',
+  'status-mutual-exclusion-ready',
   'fireball-ready',
   'glacial-thrower',
   'ice-ball-ready',

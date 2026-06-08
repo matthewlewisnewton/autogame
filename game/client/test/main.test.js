@@ -4702,6 +4702,72 @@ describe('__AUTOGAME_HARNESS_STATE__ encounter and godmode fields', () => {
 	});
 });
 
+describe('__AUTOGAME_HARNESS_STATE__ card mechanics status fields', () => {
+	const requiredIds = [
+		'status', 'vanguard-hud', 'character-id', 'player-level',
+		'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+		'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+		'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+		'currency-display', 'objective-hud', 'ui', 'card-hand',
+		'lobby', 'lobby-browser', 'lobby-player-list',
+		'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+		'summary-currency', 'summary-rewards', 'return-to-lobby-btn',
+	];
+
+	beforeEach(() => {
+		vi.resetModules();
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+	});
+
+	it('mirrors player and enemy status fields plus windupFlashing', async () => {
+		const renderer = await import('../renderer.js');
+		renderer.getPlayerCardWindupFlashing().add('p1');
+		await import('../main.js');
+
+		const now = Date.now() + 5000;
+		window.__setGameState({
+			gamePhase: 'playing',
+			players: {
+				p1: {
+					hp: 80,
+					magicStones: 40,
+					x: 1,
+					z: 2,
+					burningUntil: now,
+					slowedUntil: now,
+					cardUseState: 'windup',
+				},
+			},
+			enemies: [{
+				id: 'e1',
+				type: 'grunt',
+				hp: 50,
+				maxHp: 80,
+				x: 4,
+				z: 2,
+				burningUntil: now,
+				slowedUntil: 0,
+			}],
+		}, 'p1');
+
+		const harness = window.__AUTOGAME_HARNESS_STATE__();
+		expect(harness.player.burningUntil).toBe(now);
+		expect(harness.player.slowedUntil).toBe(now);
+		expect(harness.player.cardUseState).toBe('windup');
+		expect(harness.windupFlashing).toBe(true);
+		expect(harness.enemyHp[0].burningUntil).toBe(now);
+		expect(harness.enemyHp[0].slowedUntil).toBe(0);
+	});
+});
+
 describe('__AUTOGAME_HARNESS_STATE__ suspendedRunSummary', () => {
 	const requiredIds = [
 		'status', 'vanguard-hud', 'character-id', 'player-level',

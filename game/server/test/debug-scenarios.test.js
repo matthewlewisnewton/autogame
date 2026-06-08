@@ -14,7 +14,7 @@ import {
 	resolveEncounterAnchor,
 } from '../encounters.js';
 import { resetGameState, gameState, runGameLoopTick } from '../index.js';
-import { APPEARANCE_CHANGE_COST } from '../config.js';
+import { APPEARANCE_CHANGE_COST, MAX_MAGIC_STONES } from '../config.js';
 import { spawnEnemies, setGameState } from '../progression.js';
 import {
 	startTestServer,
@@ -1677,6 +1677,32 @@ describe('debugScenario — ember-descent harness shortcuts', () => {
 		expect(state.enemies[0].type).toBe('ember_wraith');
 		expect(state.enemies[0].hp).toBeGreaterThan(0);
 		expect(player.hp).toBeGreaterThan(30);
+	});
+
+	it('status-mutual-exclusion-ready pins fireball and permafrost_lance with one grunt in cast range', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const deployPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'fire-cavern' });
+		await deployPromise;
+
+		const readyPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'status-mutual-exclusion-ready' });
+		const readyResult = await readyPromise;
+
+		expect(readyResult.ok).toBe(true);
+		expect(readyResult.scenario).toBe('status-mutual-exclusion-ready');
+
+		const state = testGameState();
+		const player = playerForSocket(socket);
+		expect(state.gamePhase).toBe('playing');
+		expect(player.magicStones).toBe(MAX_MAGIC_STONES);
+		expect(player.hand[0]?.id).toBe('fireball');
+		expect(player.hand[1]?.id).toBe('permafrost_lance');
+		expect(state.enemies.length).toBe(1);
+		const dist = Math.hypot(state.enemies[0].x - player.x, state.enemies[0].z - player.z);
+		expect(dist).toBeGreaterThanOrEqual(3);
+		expect(dist).toBeLessThanOrEqual(6);
 	});
 
 	it('leaves one 1-HP enemy with objective not yet complete after fire-cavern deploy', async () => {

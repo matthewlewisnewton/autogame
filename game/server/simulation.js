@@ -1176,10 +1176,12 @@ const BURN_EXTRA_FIRE_DAMAGE = 1;
 function applyBurning(entity, durationMs) {
   if (!entity) return;
   const now = Date.now();
-  // BURNING and SLOW are mutually exclusive (fire vs ice): igniting clears any
-  // active/lingering slow first so isSlowed(entity) becomes false. Leaving
-  // slowFactor is harmless since isSlowed gates solely on slowedUntil.
+  // BURNING and SLOW/freeze are mutually exclusive (fire vs ice): igniting clears
+  // any active/lingering slow or freeze first so isSlowed/isEnemyFrozen become false.
   entity.slowedUntil = 0;
+  if ('frozenUntil' in entity) {
+    entity.frozenUntil = 0;
+  }
   // Re-application REFRESHES: never shorten an existing longer burn, and never
   // stack additively — just extend to the later expiry.
   entity.burningUntil = Math.max(entity.burningUntil || 0, now + durationMs);
@@ -1706,6 +1708,8 @@ function applyFreezeInRadius(originX, originZ, radius, durationMs, damage = 0, f
       }
       hits.push(hit);
     }
+    // Freeze is ice-themed: extinguish burn and apply slow (301) before locking movement.
+    applySlow(enemy, durationMs, 0.5);
     enemy.frozenUntil = Math.max(enemy.frozenUntil || 0, frozenUntil);
   }
 
@@ -3183,10 +3187,20 @@ function updateMinions() {
 // ── Magic Stone Regen ──
 
 function regenMagicStones() {
+  const now = Date.now();
   for (const p of Object.values(_gameState.players)) {
     if (p.debugScenario === 'summon-low-mana') {
       p.magicStones = 0;
+    } else if (Number.isFinite(p._telepipeDeployMagicStones)
+      && Number.isFinite(p._msRegenGraceUntil)
+      && now < p._msRegenGraceUntil) {
+      p.magicStones = p._telepipeDeployMagicStones;
+    } else if (Number.isFinite(p._msRegenGraceUntil) && now < p._msRegenGraceUntil) {
+      // Debug telepipe fresh-sortie probe window — preserve depleted MS for harness.
     } else {
+      if (Number.isFinite(p._telepipeDeployMagicStones)) {
+        delete p._telepipeDeployMagicStones;
+      }
       p.magicStones = Math.min(MAX_MAGIC_STONES, p.magicStones + MAGIC_STONES_REGEN_PER_TICK);
     }
     if (p.pendingSummons) p.pendingSummons.clear();

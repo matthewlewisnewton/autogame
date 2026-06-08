@@ -1506,6 +1506,14 @@ export function getWindupFlashing() {
 	return windupFlashing;
 }
 
+/**
+ * Player ids currently showing card-windup emissive (weapon charge telegraph).
+ * @returns {Set<string>}
+ */
+export function getPlayerCardWindupFlashing() {
+	return playerCardWindupFlashing;
+}
+
 // ── Scene initialization ──
 
 /**

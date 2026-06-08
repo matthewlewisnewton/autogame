@@ -962,13 +962,7 @@ function applyTelepipeReadyHand(player) {
   const def = CARD_DEFS.telepipe;
   if (!def) return;
 
-  player.hp = MAX_HP;
-  player.magicStones = MAX_MAGIC_STONES;
-
-  const replaceSlot = player.hand.findIndex((c) => c);
-  if (replaceSlot < 0) return;
-
-  player.hand[replaceSlot] = {
+  const telepipeCard = {
     id: 'telepipe',
     name: def.name,
     type: def.type,
@@ -977,6 +971,44 @@ function applyTelepipeReadyHand(player) {
     magicStoneCost: def.magicStoneCost || 0,
     effect: 'telepipe',
   };
+
+  if (player.debugScenario === 'fire-telepipe-ready') {
+    const freshSortie = !!player._telepipeFreshSortie;
+    if (freshSortie) {
+      delete player._telepipeFreshSortie;
+    }
+    const ironCharges = 30;
+    player.hand[0] = {
+      id: 'iron_sword',
+      name: 'Rust-Forged Saber',
+      type: 'weapon',
+      damage: 17,
+      charges: ironCharges,
+      remainingCharges: freshSortie ? ironCharges : 25,
+      grind: 0,
+    };
+    player.hand[1] = telepipeCard;
+    const fireballCharges = 5;
+    player.hand[2] = {
+      id: 'fireball',
+      name: 'Fireball',
+      type: 'spell',
+      magicStoneCost: 15,
+      charges: fireballCharges,
+      remainingCharges: fireballCharges,
+      grind: 0,
+    };
+    maybeEmitPlayerDeckUpdate(player);
+    return;
+  }
+
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+
+  const replaceSlot = player.hand.findIndex((c) => c);
+  if (replaceSlot < 0) return;
+
+  player.hand[replaceSlot] = telepipeCard;
   maybeEmitPlayerDeckUpdate(player);
 }
 
@@ -3280,9 +3312,24 @@ function checkAllReadyInner() {
           player.hp = MAX_HP;
           player.dead = false;
         }
+        if (player.debugScenario === 'fire-telepipe-ready' && deployMagicStones != null) {
+          player._telepipeDeployMagicStones = deployMagicStones;
+          player._msRegenGraceUntil = Date.now() + 120000;
+        }
         player.overclockChargesRemaining = 0;
       }
       spawnEnemies();
+      for (const player of connectedPlayers) {
+        if (player.debugScenario === 'fire-telepipe-ready') {
+          const dummy = spawnEnemy(player.x + 2.5, player.z, 'grunt');
+          dummy.hp = 500;
+          dummy.maxHp = 500;
+          dummy.shieldHp = 0;
+          dummy.maxShieldHp = 0;
+          dummy.wanderTarget = { x: dummy.x, z: dummy.z };
+          break;
+        }
+      }
       startDungeonRun();
       const io = getIoTarget();
       emitLobbyDeploy(io, SERVER_TO_CLIENT.START_GAME);

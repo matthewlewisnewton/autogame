@@ -28,6 +28,8 @@ const REQUIRED_PNGS = [
 	'01-hub.png',
 	'02-level-entry.png',
 	'03-mid-combat.png',
+	'04-ember-burn.png',
+	'05-card-burn.png',
 	'06-objective-complete.png',
 	'07-victory.png',
 	'08-telepipe-before.png',

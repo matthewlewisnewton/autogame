@@ -1,0 +1,300 @@
+{
+  "ok": true,
+  "preset": "fire",
+  "steps": "full",
+  "outDir": "game/validation/fire",
+  "presetConfig": {
+    "findingsTitle": "Fire level validation findings",
+    "questId": "ember_descent",
+    "questTier": 1,
+    "objectiveType": "defeat_enemies",
+    "deployScenario": "fire-cavern",
+    "layoutProfile": "fire-cavern",
+    "lobbyName": "Fire Level Validation",
+    "nearAddsScenario": "ember-descent-near-adds",
+    "emberBurnScenario": "ember-descent-ember-wraith-burn",
+    "lastEnemyScenario": "ember-descent-last-enemy",
+    "cardMechanicsScenarios": {
+      "burn": "fireball-ready",
+      "mutualExclusion": "status-mutual-exclusion-ready",
+      "cleanse": "purifying-pulse-ready",
+      "windup": "magma-windup-ready"
+    },
+    "objectiveCompleteScreenshot": "06-objective-complete",
+    "victoryScreenshot": "07-victory",
+    "telepipeScenario": "fire-telepipe-ready",
+    "telepipeBeforeScreenshot": "08-telepipe-before",
+    "telepipeAfterScreenshot": "09-telepipe-after",
+    "addsTimeoutMs": 90000,
+    "bossDefeatTimeoutMs": 180000,
+    "victoryTimeoutMs": 30000
+  },
+  "serverPort": 3252,
+  "clientPort": 5278,
+  "auth": {
+    "username": "playthrough-1780955660424",
+    "connected": true,
+    "lobbyBrowserVisible": true,
+    "harnessPhase": "unknown",
+    "screenshot": "game/validation/fire/01-lobby-browser.png"
+  },
+  "hub": {
+    "hubScreenshot": "game/validation/fire/01-hub.png",
+    "entryScreenshot": "game/validation/fire/02-level-entry.png",
+    "deployScenario": "fire-cavern",
+    "deployOk": true,
+    "objectiveType": "defeat_enemies",
+    "layoutProfile": "fire-cavern",
+    "liveEnemyCount": 6,
+    "enemyTypes": [
+      "ember_wraith",
+      "grunt",
+      "grunt",
+      "ember_wraith",
+      "ember_wraith",
+      "ember_wraith"
+    ],
+    "floorAlignment": {
+      "levelEntry": {
+        "playerY": 10.5,
+        "floorY": 10.5,
+        "delta": 0,
+        "layoutProfile": "fire-cavern",
+        "band": "rim"
+      }
+    }
+  },
+  "defeatEnemiesCombat": {
+    "midCombatScreenshot": "game/validation/fire/03-mid-combat.png",
+    "preLiveEnemyCount": 6,
+    "postLiveEnemyCount": 1,
+    "enemiesDefeated": true,
+    "probes": {
+      "floorAlignment": {
+        "midCombat": {
+          "playerY": 10.5,
+          "floorY": 10.5,
+          "delta": 0,
+          "layoutProfile": "fire-cavern",
+          "band": "rim"
+        }
+      }
+    }
+  },
+  "emberBurn": {
+    "emberBurnApplied": true,
+    "playerBurningUntil": 1780955675600,
+    "hpBefore": 100,
+    "hpAfterTicks": 100,
+    "hpDelta": 0,
+    "screenshot": "game/validation/fire/04-ember-burn.png"
+  },
+  "cardMechanics": {
+    "ok": true,
+    "probes": {
+      "burn": {
+        "ok": true,
+        "before": {
+          "burningUntil": 0,
+          "slowedUntil": 0,
+          "hp": 80
+        },
+        "after": {
+          "burningUntil": 1780955677806,
+          "slowedUntil": 0,
+          "hp": 62
+        },
+        "screenshot": "game/validation/fire/05-card-burn.png"
+      },
+      "slow": {
+        "ok": true,
+        "afterBurn": {
+          "burningUntil": 1780955678948,
+          "slowedUntil": 0,
+          "hp": 182
+        },
+        "afterSlow": {
+          "burningUntil": 0,
+          "slowedUntil": 1780955686533,
+          "hp": 166
+        },
+        "burnCleared": true
+      },
+      "cleanse": {
+        "ok": true,
+        "before": {
+          "burningUntil": 1780955682109,
+          "slowedUntil": 1780955682109,
+          "cardUseState": null,
+          "hp": 40,
+          "x": -9,
+          "z": 27,
+          "windupFlashing": false
+        },
+        "after": {
+          "burningUntil": 0,
+          "slowedUntil": 0,
+          "cardUseState": null,
+          "hp": 60,
+          "x": -9,
+          "z": 27,
+          "windupFlashing": false
+        }
+      },
+      "windup": {
+        "ok": true,
+        "start": {
+          "burningUntil": 0,
+          "slowedUntil": 0,
+          "cardUseState": null,
+          "hp": 100,
+          "x": -9,
+          "z": 27,
+          "windupFlashing": false
+        },
+        "during": {
+          "burningUntil": 0,
+          "slowedUntil": 0,
+          "cardUseState": "windup",
+          "hp": 100,
+          "x": -9,
+          "z": 27,
+          "windupFlashing": true
+        },
+        "afterMove": {
+          "burningUntil": 0,
+          "slowedUntil": 0,
+          "cardUseState": "windup",
+          "hp": 100,
+          "x": -9,
+          "z": 27,
+          "windupFlashing": true
+        },
+        "movementBlocked": true
+      }
+    }
+  },
+  "victory": {
+    "objectiveCompleteScreenshot": "game/validation/fire/06-objective-complete.png",
+    "victoryScreenshot": "game/validation/fire/07-victory.png",
+    "probes": {
+      "afterEnemies": {
+        "runStatus": "victory",
+        "runObjectiveComplete": true,
+        "lastRunSummaryStatus": "victory"
+      },
+      "victory": {
+        "runStatus": "victory",
+        "runObjectiveComplete": true,
+        "lastRunSummaryStatus": "victory"
+      }
+    }
+  },
+  "telepipeReset": {
+    "telepipeScenario": "fire-telepipe-ready",
+    "preSuspend": {
+      "hp": 60,
+      "magicStones": 20,
+      "msText": "20/99",
+      "hand": [
+        {
+          "id": "iron_sword",
+          "type": "weapon",
+          "remainingCharges": 25,
+          "charges": 30
+        },
+        {
+          "id": "telepipe",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        {
+          "id": "fireball",
+          "type": "spell",
+          "remainingCharges": 5,
+          "charges": 5
+        },
+        {
+          "id": "iron_sword",
+          "type": "weapon",
+          "remainingCharges": 5,
+          "charges": 5
+        },
+        {
+          "id": "battle_familiar",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        null
+      ],
+      "phase": "playing",
+      "runStatus": "playing",
+      "extracted": false,
+      "suspendedRunSummary": null,
+      "layoutSeed": 1023983957,
+      "runId": "39e828a8-ec25-4a4b-8bec-dd9044256058"
+    },
+    "postDeploy": {
+      "hp": 60,
+      "magicStones": 20,
+      "msText": "20/99",
+      "hand": [
+        {
+          "id": "iron_sword",
+          "type": "weapon",
+          "remainingCharges": 30,
+          "charges": 30
+        },
+        {
+          "id": "telepipe",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        {
+          "id": "fireball",
+          "type": "spell",
+          "remainingCharges": 5,
+          "charges": 5
+        },
+        {
+          "id": "battle_familiar",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        {
+          "id": "dungeon_drake",
+          "type": "creature",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        null
+      ],
+      "phase": "playing",
+      "runStatus": "playing",
+      "extracted": false,
+      "suspendedRunSummary": null,
+      "layoutSeed": 1023983957,
+      "runId": "9b7c730d-30ca-40b2-9503-a08bdd43a761"
+    },
+    "telepipeVitalsPreserved": true,
+    "cardChargesResetOnFreshSortie": true,
+    "telepipeUpReset": false,
+    "freshRunIdConfirmed": true,
+    "checkpointRestoredInLog": false,
+    "beforeScreenshot": "game/validation/fire/08-telepipe-before.png",
+    "afterScreenshot": "game/validation/fire/09-telepipe-after.png"
+  },
+  "assertions": {
+    "layoutDeployed": true,
+    "enemiesCleared": true,
+    "victoryFired": true,
+    "emberBurnApplied": true,
+    "cardMechanicsOk": true,
+    "telepipeVitalsPreserved": true,
+    "cardChargesResetOnFreshSortie": true
+  }
+}

@@ -46,6 +46,7 @@ import {
 	completePaidAppearanceConfirm,
 } from './lib/booth.mjs';
 import { runTelepipeResetStep } from './lib/telepipe.mjs';
+import { runEmberBurnStep, runCardMechanicsStep } from './lib/cardMechanics.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
@@ -1002,6 +1003,8 @@ function collectScreenshots(summary) {
 	if (summary.hub?.hubScreenshot) shots.push(summary.hub.hubScreenshot);
 	if (summary.hub?.entryScreenshot) shots.push(summary.hub.entryScreenshot);
 	if (summary.defeatEnemiesCombat?.midCombatScreenshot) shots.push(summary.defeatEnemiesCombat.midCombatScreenshot);
+	if (summary.emberBurn?.screenshot) shots.push(summary.emberBurn.screenshot);
+	if (summary.cardMechanics?.probes?.burn?.screenshot) shots.push(summary.cardMechanics.probes.burn.screenshot);
 	if (summary.bossEncounter?.midCombatScreenshot) shots.push(summary.bossEncounter.midCombatScreenshot);
 	if (summary.bossEncounter?.dormantScreenshot) shots.push(summary.bossEncounter.dormantScreenshot);
 	if (summary.bossEncounter?.activeScreenshot) shots.push(summary.bossEncounter.activeScreenshot);
@@ -1266,6 +1269,24 @@ async function main() {
 			} else {
 				summary.bossEncounter = await runBossEncounterStep({ page, preset, outDirAbs });
 			}
+		}
+
+		if (runsRoomsFull && page && preset.emberBurnScenario) {
+			summary.emberBurn = await runEmberBurnStep({
+				page,
+				preset,
+				outDirAbs,
+				repoRoot: REPO_ROOT,
+			});
+		}
+
+		if (runsRoomsFull && page && preset.cardMechanicsScenarios) {
+			summary.cardMechanics = await runCardMechanicsStep({
+				page,
+				preset,
+				outDirAbs,
+				repoRoot: REPO_ROOT,
+			});
 		}
 
 		if (runsRoomsFull && page) {

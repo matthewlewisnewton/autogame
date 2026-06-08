@@ -13,6 +13,13 @@
 // after both modules are loaded.
 
 const { SERVER_TO_CLIENT } = require('../shared/events.js');
+
+const CARD_PROBE_DEBUG_SCENARIOS = new Set([
+  'fireball-ready',
+  'status-mutual-exclusion-ready',
+  'purifying-pulse-ready',
+  'magma-windup-ready',
+]);
 const crypto = require('crypto');
 const { isPlayingPhase } = require('./lobbies');
 const { THEME } = require('./theme');
@@ -232,7 +239,6 @@ function applyAstralShieldCast(ctx) {
 // lobby context (gameState already pointed at lobby.state by withLobbyContext).
 function handleUseCard(socket, state, lobby, data) {
   if (!isPlayingPhase(state)) return;
-  if (!state.run || state.run.status !== 'playing') return;
 
   if (!data || typeof data.slotIndex !== 'number' || !data.cardId) return;
 
@@ -244,6 +250,12 @@ function handleUseCard(socket, state, lobby, data) {
 
   const player = state.players[socket.playerId];
   if (!player || player.dead || player.extracted) return;
+
+  const cardProbeActive = CARD_PROBE_DEBUG_SCENARIOS.has(player.debugScenario);
+  if (!state.run || (state.run.status !== 'playing' && !cardProbeActive)) return;
+  if (cardProbeActive && state.run.status !== 'playing') {
+    state.run.status = 'playing';
+  }
 
   if (isPlayerCardCommitted(player)) {
     socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: 'Card commitment in progress' });
@@ -258,7 +270,11 @@ function handleUseCard(socket, state, lobby, data) {
 
   const now = Date.now();
   const hasOverclock = (player.overclockChargesRemaining || 0) > 0;
-  if (!hasOverclock && player.slotCooldowns && player.slotCooldowns[data.slotIndex] && now < player.slotCooldowns[data.slotIndex]) {
+  if (!cardProbeActive
+    && !hasOverclock
+    && player.slotCooldowns
+    && player.slotCooldowns[data.slotIndex]
+    && now < player.slotCooldowns[data.slotIndex]) {
     socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: 'Slot on cooldown' });
     return;
   }
@@ -552,6 +568,10 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           placedBy: socket.playerId,
           placedAt: now,
         };
+        if (player.debugScenario === 'fire-telepipe-ready' && Number.isFinite(player.magicStones)) {
+          player._telepipeDeployMagicStones = player.magicStones;
+          player._msRegenGraceUntil = now + 60000;
+        }
         console.log(`[telepipe] placed at (${originX.toFixed(1)}, ${originZ.toFixed(1)}) by ${socket.playerId}`);
 
         consumeSpellSlot();
@@ -678,11 +698,17 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
 
       if (cardDef.effect === 'frost_nova' || cardDef.effect === 'glacier_collapse') {
         const radius = cardDef.radius || SUMMON_RADIUS;
+        let freezeDurationMs = cardDef.freezeDurationMs || 2500;
+        // Debug-only: headless card-mechanics probes need a longer slow/freeze window
+        // than the default 2s because the driver emits by slot before client hand sync.
+        if (player.debugScenario === 'status-mutual-exclusion-ready') {
+          freezeDurationMs = Math.max(freezeDurationMs, 10000);
+        }
         const hits = applyFreezeInRadius(
           originX,
           originZ,
           radius,
-          cardDef.freezeDurationMs || 2500,
+          freezeDurationMs,
           cardDef.damage || 0,
           cardDef.frozenBonusDamage || 0
         );

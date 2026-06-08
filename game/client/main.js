@@ -166,6 +166,7 @@ import {
 	getPickedUpLootIds,
 	pruneLootPickupAttempts,
 	getWindupFlashing,
+	getPlayerCardWindupFlashing,
 	triggerDashVFX,
 	triggerHealPulseVFX,
 	triggerMedicAllyHealVFX,
@@ -321,6 +322,10 @@ const TOKEN_KEY = 'autogame_token';
 let currentLobbyName = '';
 /** When true, the dismissible #lobby menu stays hidden until showGameLobby(). */
 let lobbyMenuDismissed = false;
+/** Set when the user clicks Create Channel; cleared on lobbyJoined to show #lobby for hosts. */
+let pendingShowLobbyOnJoin = false;
+/** True after the first lobbyJoined this session (create or join). */
+let hasCreatedLobbyThisSession = false;
 /** True after the first extracted-waiting overlay setup; avoids re-showing #lobby each tick. */
 let extractedLobbyOverlayActive = false;
 
@@ -900,7 +905,13 @@ function applyLobbyJoinedData(data) {
 	applyLobbyThemeLabels();
 	const lobbyMe = myId && gameState?.players ? gameState.players[myId] : null;
 	syncVanguardHud(lobbyMe, 'lobby');
-	dismissGameLobby();
+	if (pendingShowLobbyOnJoin) {
+		pendingShowLobbyOnJoin = false;
+		showGameLobby();
+	} else {
+		dismissGameLobby();
+	}
+	hasCreatedLobbyThisSession = true;
 	if (suspendedRunSummary) {
 		renderSuspendedRunBanner(suspendedRunSummary);
 	} else {
@@ -1267,6 +1278,12 @@ function bindSocketHandlers(s) {
 
 	s.on(SERVER_TO_CLIENT.STATE_UPDATE, (state) => {
 		const previousPhase = gameState && gameState.gamePhase;
+		if (myId && state?.players?.[myId] && gameState?.players?.[myId]) {
+			const prevHand = gameState.players[myId].hand;
+			if (Array.isArray(prevHand) && !Array.isArray(state.players[myId].hand)) {
+				state.players[myId].hand = prevHand;
+			}
+		}
 		// Verify layout seed consistency on every state update
 		if (currentLayoutSeed !== null && state.layoutSeed !== undefined && state.layoutSeed !== currentLayoutSeed) {
 			console.warn(`[layout] Seed mismatch: local=${currentLayoutSeed} server=${state.layoutSeed}`);
@@ -1281,6 +1298,19 @@ function bindSocketHandlers(s) {
 			gameState.players[myId].debugGodmode = !!debugGodmodeResult.enabled;
 		}
 		const me = myId && gameState.players ? gameState.players[myId] : null;
+		const cardProbeScenarios = new Set([
+			'fireball-ready',
+			'status-mutual-exclusion-ready',
+			'purifying-pulse-ready',
+			'magma-windup-ready',
+		]);
+		if (state.gamePhase === 'playing'
+			&& me?.debugScenario
+			&& cardProbeScenarios.has(me.debugScenario)
+			&& Array.isArray(me.hand)) {
+			applyInRunDeckPayload({ hand: me.hand });
+			renderHand();
+		}
 		const isExtracted = !!(me && me.extracted);
 		// The renderer shows the hub during the lobby, and also while the local
 		// player is extracted into the hub mid-run (server still 'playing'), so
@@ -1460,6 +1490,12 @@ function bindSocketHandlers(s) {
 		debugScenarioResult = data || null;
 		if (data && data.ok) {
 			console.log(`[debugScenario] applied ${data.scenario}`);
+			const cardProbeScenarios = new Set([
+				'fireball-ready',
+				'status-mutual-exclusion-ready',
+				'purifying-pulse-ready',
+				'magma-windup-ready',
+			]);
 			// Repositioning scenarios emit stateUpdate before this result; defer one
 			// tick so the client sim snaps after that payload is applied.
 			setTimeout(() => {
@@ -1467,6 +1503,10 @@ function bindSocketHandlers(s) {
 					const me = gameState.players[myId];
 					setPlayerPosition(me.x, me.z);
 					clearAllLockOnState();
+					if (cardProbeScenarios.has(data.scenario) && Array.isArray(me.hand)) {
+						applyInRunDeckPayload({ hand: me.hand });
+						renderHand();
+					}
 				}
 			}, 0);
 			// Debug-only: the `hats-unlocked` scenario persists hat unlocks on the
@@ -4555,10 +4595,69 @@ if (lobbyCloseBtnEl) {
 }
 
 if (createLobbyBtnEl) {
+	function waitForHarnessPhase(targetPhase, timeoutMs = 20000) {
+		return new Promise((resolve, reject) => {
+			const deadline = Date.now() + timeoutMs;
+			const tick = () => {
+				const phase = window.__AUTOGAME_HARNESS_STATE__?.()?.phase;
+				if (phase === targetPhase) {
+					resolve(phase);
+					return;
+				}
+				if (Date.now() >= deadline) {
+					reject(new Error(`Timed out waiting for phase ${targetPhase} (last=${phase ?? 'unknown'})`));
+					return;
+				}
+				setTimeout(tick, 50);
+			};
+			tick();
+		});
+	}
+
+	function waitForLobbyBrowserVisible(timeoutMs = 20000) {
+		return new Promise((resolve, reject) => {
+			const deadline = Date.now() + timeoutMs;
+			const tick = () => {
+				const el = document.getElementById('lobby-browser');
+				if (el && !el.classList.contains('hidden')) {
+					resolve();
+					return;
+				}
+				if (Date.now() >= deadline) {
+					reject(new Error('Timed out waiting for #lobby-browser'));
+					return;
+				}
+				setTimeout(tick, 50);
+			};
+			tick();
+		});
+	}
+
+	async function prepareAndCreateLobby(name) {
+		if (!socket) return;
+		let harness = window.__AUTOGAME_HARNESS_STATE__?.();
+		if (harness?.phase === 'playing' && harness?.runStatus === 'victory') {
+			socket.emit(CLIENT_TO_SERVER.RETURN_TO_LOBBY);
+			await waitForHarnessPhase('lobby');
+			harness = window.__AUTOGAME_HARNESS_STATE__?.();
+		}
+		const browserHidden = document.getElementById('lobby-browser')?.classList.contains('hidden');
+		if (harness?.phase === 'lobby' && browserHidden) {
+			socket.emit(CLIENT_TO_SERVER.LEAVE_LOBBY);
+			await waitForLobbyBrowserVisible();
+		}
+		pendingShowLobbyOnJoin = !hasCreatedLobbyThisSession;
+		socket.emit(CLIENT_TO_SERVER.CREATE_LOBBY, name ? { name } : {});
+	}
+
+	let createLobbyInFlight = null;
 	createLobbyBtnEl.addEventListener('click', () => {
 		if (!socket) return;
 		const name = createLobbyNameEl ? createLobbyNameEl.value.trim() : '';
-		socket.emit(CLIENT_TO_SERVER.CREATE_LOBBY, name ? { name } : {});
+		if (createLobbyInFlight) return;
+		createLobbyInFlight = prepareAndCreateLobby(name).finally(() => {
+			createLobbyInFlight = null;
+		});
 	});
 }
 
@@ -4683,6 +4782,28 @@ window.__iceBallMeshes = () => getMeshMaps().iceBallMeshes;
 window.applyWindupFlash = rendererApplyWindupFlash;
 window.applyRevealHighlight = rendererApplyRevealHighlight;
 window.__useCardForTest = useCard;
+window.__emitUseCardForTest = (cardId, slotIndex = null) => {
+	if (!socket || !cardId) return false;
+	const me = myId && gameState?.players ? gameState.players[myId] : null;
+	const sourceHand = (me && Array.isArray(me.hand)) ? me.hand : hand;
+	let slot = Number.isInteger(slotIndex) ? slotIndex : -1;
+	if (slot < 0) {
+		slot = sourceHand.findIndex((card) => card && card.id === cardId);
+	}
+	if (slot < 0 || slot >= MAX_HAND_SLOTS) return false;
+	const facing = getPlayerFacingDirection();
+	socket.emit(CLIENT_TO_SERVER.USE_CARD, {
+		slotIndex: slot,
+		cardId,
+		rotation: Math.atan2(facing.z, facing.x),
+	});
+	return true;
+};
+window.__clearHandCooldownsForTest = () => {
+	for (let i = 0; i < slotCooldowns.length; i += 1) {
+		slotCooldowns[i] = false;
+	}
+};
 window.__discardCardForTest = discardCard;
 window.__resumeAudioContext = resumeAudioContext;
 window.__setAudioCtx = (ctx) => { setAudioContext(ctx); };
@@ -4849,9 +4970,13 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 			x: me.x,
 			y: me.y,
 			z: me.z,
+			burningUntil: me.burningUntil ?? 0,
+			slowedUntil: me.slowedUntil ?? 0,
+			cardUseState: me.cardUseState ?? null,
 			equippedKeyItemId: me.equippedKeyItemId ?? null,
 			keyItemCooldownRemaining: getKeyItemCooldownRemainingMs(me),
 		} : null,
+		windupFlashing: !!(myId && getPlayerCardWindupFlashing().has(myId)),
 		keyItemIndicatorOnCooldown: (() => {
 			const el = document.getElementById('key-item-indicator');
 			return !!el && el.classList.contains('cooldown');
@@ -4876,6 +5001,9 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 			hp: enemy.hp,
 			maxHp: enemy.maxHp,
 			revealedUntil: enemy.revealedUntil ?? undefined,
+			burningUntil: enemy.burningUntil ?? 0,
+			slowedUntil: enemy.slowedUntil ?? 0,
+			frozenUntil: enemy.frozenUntil ?? 0,
 			type: enemy.type,
 			spawnedBy: enemy.spawnedBy ?? null,
 			x: enemy.x,
@@ -4890,23 +5018,26 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 			x: m.x,
 			z: m.z,
 		})) : [],
-		hand: hand.map((card, slotIndex) => {
-			if (!card) return null;
-			const slotEl = getCardSlotEl(slotIndex);
-			return {
-				id: card.id,
-				name: card.name,
-				type: card.type,
-				remainingCharges: card.remainingCharges,
-				charges: card.charges,
-				activeMinionId: card.activeMinionId || null,
-				burnMaxTtl: card.burnMaxTtl ?? null,
-				burnLabel: slotEl?.querySelector('.card-charges')?.textContent || null,
-				creatureBurning: !!slotEl?.classList.contains('creature-burning'),
-				isEvolved: !!card.isEvolved,
-				specialEffect: card.specialEffect,
-			};
-		}),
+		hand: (() => {
+			const sourceHand = (me && Array.isArray(me.hand)) ? me.hand : hand;
+			return sourceHand.map((card, slotIndex) => {
+				if (!card) return null;
+				const slotEl = getCardSlotEl(slotIndex);
+				return {
+					id: card.id,
+					name: card.name,
+					type: card.type,
+					remainingCharges: card.remainingCharges,
+					charges: card.charges,
+					activeMinionId: card.activeMinionId || null,
+					burnMaxTtl: card.burnMaxTtl ?? null,
+					burnLabel: slotEl?.querySelector('.card-charges')?.textContent || null,
+					creatureBurning: !!slotEl?.classList.contains('creature-burning'),
+					isEvolved: !!card.isEvolved,
+					specialEffect: card.specialEffect,
+				};
+			});
+		})(),
 		inventory: Array.isArray(myInventory)
 			? myInventory.map((inst) => ({
 				instanceId: inst.instanceId,

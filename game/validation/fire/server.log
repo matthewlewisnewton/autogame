@@ -1,0 +1,801 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3298
+Player connected: socket=-qvIs9phVaL4IWcZAAAB, playerId=2a770169-cf7b-4608-8496-d7f3b7e861f5
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: -qvIs9phVaL4IWcZAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3294
+Player connected: socket=n7PwN7I0-d7X8z0KAAAB, playerId=673b9b93-896b-4b4e-9f64-1db8c9cfbd74
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=5667d314-c744-443e-bb43-6c14b7ba1daa value=13
+[loot] spawned id=d04e4ef9-1c8f-461d-9d50-b022503abd72 value=18
+[loot] magic stone drop id=f7098fb1-8f83-48be-ad10-68ef40c083b5 value=20 at (4.0, -46.5)
+[loot] currency drop id=0be88e5a-0e37-432f-94b8-550aa676a0bc value=17 at (4.0, -46.5)
+[loot] magic stone drop id=beaafd3d-6dce-48a4-9f31-75c526c979c1 value=20 at (-4.0, -46.5)
+[loot] currency drop id=291ff976-120a-490d-bc77-3bac7d77b963 value=10 at (-4.0, -46.5)
+[loot] picked up id=f7098fb1-8f83-48be-ad10-68ef40c083b5 (magic stone) value=20 by n7PwN7I0-d7X8z0KAAAB (currency=0, ms=99)
+[loot] picked up id=0be88e5a-0e37-432f-94b8-550aa676a0bc value=17 by n7PwN7I0-d7X8z0KAAAB (currency=17, ms=99)
+[loot] magic stone drop id=826a713e-a21a-4f72-bcb1-8bd9294eb429 value=15 at (5.2, -48.4)
+[loot] currency drop id=83352696-97ca-40bf-ba1d-74c76a8b7ad4 value=12 at (5.2, -48.4)
+[loot] picked up id=83352696-97ca-40bf-ba1d-74c76a8b7ad4 value=12 by n7PwN7I0-d7X8z0KAAAB (currency=29, ms=99)
+[loot] picked up id=826a713e-a21a-4f72-bcb1-8bd9294eb429 (magic stone) value=15 by n7PwN7I0-d7X8z0KAAAB (currency=29, ms=99)
+[loot] magic stone drop id=776bf463-4e08-4b82-93ed-112b66ecafb1 value=15 at (4.1, -30.0)
+[loot] currency drop id=6d86fe01-8c0c-44e7-8fa0-9e9eb4d6e9de value=11 at (4.1, -30.0)
+[loot] magic stone drop id=b05817ea-831f-4a30-9475-6093fa4e0d6c value=15 at (5.2, -27.9)
+[loot] currency drop id=13f6dee0-ad79-42f3-b830-2a9052e9590c value=12 at (5.2, -27.9)
+[loot] picked up id=b05817ea-831f-4a30-9475-6093fa4e0d6c (magic stone) value=15 by n7PwN7I0-d7X8z0KAAAB (currency=29, ms=99)
+[loot] picked up id=13f6dee0-ad79-42f3-b830-2a9052e9590c value=12 by n7PwN7I0-d7X8z0KAAAB (currency=41, ms=99)
+[loot] magic stone drop id=f0bff336-46fb-4a2b-9984-c749d78a6b51 value=20 at (5.7, -26.2)
+[loot] currency drop id=957eb02e-05c8-4967-97d8-28b692dfcf12 value=18 at (5.7, -26.2)
+[loot] picked up id=f0bff336-46fb-4a2b-9984-c749d78a6b51 (magic stone) value=20 by n7PwN7I0-d7X8z0KAAAB (currency=55, ms=99)
+[loot] picked up id=957eb02e-05c8-4967-97d8-28b692dfcf12 value=18 by n7PwN7I0-d7X8z0KAAAB (currency=73, ms=99)
+Player disconnected: n7PwN7I0-d7X8z0KAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 5 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3220
+Player connected: socket=qK9_Hcp0Rfj20SgAAAAB, playerId=33e6fbee-441a-443c-8dce-4d7f6cd779b7
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=7c1f9b01-a187-4d65-8e4a-eb9def5a89e4 value=14
+[loot] magic stone drop id=372929a0-8b7a-45b5-b405-1af10ab44e3e value=20 at (4.0, -46.5)
+[loot] magic stone drop id=7a63396b-bc00-4971-9640-9e5ae69aa553 value=20 at (-4.0, -46.5)
+[loot] currency drop id=039542db-5f15-491f-a0ba-27f77802afd8 value=16 at (-4.0, -46.5)
+[loot] picked up id=372929a0-8b7a-45b5-b405-1af10ab44e3e (magic stone) value=20 by qK9_Hcp0Rfj20SgAAAAB (currency=0, ms=99)
+[loot] magic stone drop id=03c9f36f-71bb-4a52-8465-657350746a41 value=15 at (5.0, -37.5)
+[loot] currency drop id=dd13f78f-7132-45bb-b1ac-b755184fd71b value=9 at (5.0, -37.5)
+[loot] picked up id=dd13f78f-7132-45bb-b1ac-b755184fd71b value=9 by qK9_Hcp0Rfj20SgAAAAB (currency=9, ms=99)
+Player disconnected: qK9_Hcp0Rfj20SgAAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 6 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3272
+Player connected: socket=mhkbNlDaQAyD7_WjAAAB, playerId=126b2ceb-1908-4a5f-9630-7b35bcd61248
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=ae61f1be-a42d-4556-89e6-f08cf6bf0a5b value=6
+[loot] magic stone drop id=41fda937-f3a4-4af2-8194-7a57652cd6cb value=20 at (4.0, -46.5)
+[loot] currency drop id=1759c09a-2330-49a4-8d28-13b6ebb18065 value=18 at (4.0, -46.5)
+[loot] magic stone drop id=8a5b419d-5f76-4599-80f4-1ce816af493a value=20 at (-4.0, -46.5)
+[loot] picked up id=41fda937-f3a4-4af2-8194-7a57652cd6cb (magic stone) value=20 by mhkbNlDaQAyD7_WjAAAB (currency=0, ms=99)
+[loot] picked up id=1759c09a-2330-49a4-8d28-13b6ebb18065 value=18 by mhkbNlDaQAyD7_WjAAAB (currency=18, ms=99)
+[loot] picked up id=8a5b419d-5f76-4599-80f4-1ce816af493a (magic stone) value=20 by mhkbNlDaQAyD7_WjAAAB (currency=18, ms=99)
+[loot] magic stone drop id=bddb255a-1c7c-49ce-b9e5-8fde2c82a4e8 value=15 at (5.2, -48.4)
+[loot] picked up id=bddb255a-1c7c-49ce-b9e5-8fde2c82a4e8 (magic stone) value=15 by mhkbNlDaQAyD7_WjAAAB (currency=18, ms=99)
+Player disconnected: mhkbNlDaQAyD7_WjAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 7 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3232
+Player connected: socket=hD84Zf1hX5ZBPAx3AAAB, playerId=51a3ae8c-64c2-4f93-b59d-dc29560c42d3
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=440bb739-56dc-4c0f-aff5-9df425a1c1c0 value=17
+[loot] magic stone drop id=1ed5c800-cab6-401e-a63d-f19c9ed67fe5 value=15 at (1.9, -49.8)
+[loot] picked up id=1ed5c800-cab6-401e-a63d-f19c9ed67fe5 (magic stone) value=15 by hD84Zf1hX5ZBPAx3AAAB (currency=0, ms=99)
+[loot] magic stone drop id=3223220b-2c0d-45c9-862a-ed5d7844fee9 value=15 at (-1.9, -49.8)
+[loot] magic stone drop id=07345b8c-6e24-4897-9321-58a641d8156c value=20 at (-1.9, -43.1)
+[loot] currency drop id=7b99cb43-4928-4c17-877a-8cdea75aa8a1 value=16 at (-1.9, -43.1)
+[loot] picked up id=7b99cb43-4928-4c17-877a-8cdea75aa8a1 value=16 by hD84Zf1hX5ZBPAx3AAAB (currency=16, ms=99)
+[loot] magic stone drop id=169fb4c6-2260-47df-9253-7d9355474906 value=20 at (1.9, -43.1)
+[loot] magic stone drop id=8623d29e-6b06-4b26-b1d3-a1f782715ed9 value=15 at (4.0, -46.5)
+[loot] magic stone drop id=de1bfc02-8b1b-4512-b23c-539e3744c20b value=20 at (2.0, -46.5)
+[loot] picked up id=de1bfc02-8b1b-4512-b23c-539e3744c20b (magic stone) value=20 by hD84Zf1hX5ZBPAx3AAAB (currency=30, ms=99)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=c17b06ee-2b1a-4ca2-acb7-8d326ab0d2da value=20
+[loot] magic stone drop id=8a0188fe-c3b5-45f6-a12d-62b96bc498d8 value=20 at (-5.6, -27.0)
+[loot] currency drop id=1054258f-27d4-4e46-b012-256566140817 value=10 at (-5.6, -27.0)
+[loot] picked up id=1054258f-27d4-4e46-b012-256566140817 value=10 by hD84Zf1hX5ZBPAx3AAAB (currency=40, ms=99)
+[loot] picked up id=8a0188fe-c3b5-45f6-a12d-62b96bc498d8 (magic stone) value=20 by hD84Zf1hX5ZBPAx3AAAB (currency=40, ms=99)
+[loot] magic stone drop id=cb31855d-9573-4822-8fa0-8082fc906be1 value=15 at (-7.8, -12.5)
+[loot] currency drop id=5bd28a1d-4f2d-43a0-9fb6-86a3109b1807 value=11 at (-7.8, -12.5)
+[telepipe] placed at (-10.7, -15.3) by 51a3ae8c-64c2-4f93-b59d-dc29560c42d3
+[telepipe] player 51a3ae8c-64c2-4f93-b59d-dc29560c42d3 extracted
+[run] checkpoint captured
+[run] extracted to hub: Ember Descent
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[run] checkpoint restored
+Player disconnected: hD84Zf1hX5ZBPAx3AAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 8 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3273
+Player connected: socket=tmsp0fTidq-haRqyAAAB, playerId=61ea0730-4947-4560-b4d2-52d072d74a6d
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=1944e032-fb3c-4792-aae3-e0641a9bc9e3 value=8
+[loot] magic stone drop id=3db8943f-7f51-4a3f-9dee-d6e42ae06b6f value=15 at (1.9, -49.8)
+[loot] picked up id=3db8943f-7f51-4a3f-9dee-d6e42ae06b6f (magic stone) value=15 by tmsp0fTidq-haRqyAAAB (currency=0, ms=99)
+[loot] magic stone drop id=d39071cc-734f-4410-9217-803a631839f6 value=15 at (-1.9, -49.8)
+[loot] currency drop id=a3abc66d-6751-41f6-9af1-01c525e03333 value=12 at (-1.9, -49.8)
+[loot] magic stone drop id=a60f0c07-f6fa-4a90-a93f-c546ac7f034a value=20 at (-1.9, -43.1)
+[loot] magic stone drop id=5e907f8b-8376-40e3-b339-f7ab4f32cbc9 value=20 at (1.9, -43.1)
+[loot] currency drop id=3ea051fa-4a38-4d4f-8ce0-be514c41f440 value=16 at (1.9, -43.1)
+[loot] magic stone drop id=127f03fe-5c91-43f5-9ed1-1367330833b2 value=15 at (4.0, -46.5)
+[loot] magic stone drop id=5dcd2916-ca2e-457e-8c1a-8982523c1dd9 value=20 at (2.0, -46.5)
+[loot] currency drop id=5402d186-df83-4395-acda-560d1056f493 value=14 at (2.0, -46.5)
+[loot] picked up id=5dcd2916-ca2e-457e-8c1a-8982523c1dd9 (magic stone) value=20 by tmsp0fTidq-haRqyAAAB (currency=14, ms=99)
+[loot] picked up id=5402d186-df83-4395-acda-560d1056f493 value=14 by tmsp0fTidq-haRqyAAAB (currency=28, ms=99)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=d2ea7f9a-285e-4c48-acf6-5d1dbbb21366 value=16
+[loot] magic stone drop id=ff68e109-4101-47bd-b049-6bd5d7f4c720 value=20 at (-8.8, -14.0)
+[telepipe] placed at (-7.2, -39.9) by 61ea0730-4947-4560-b4d2-52d072d74a6d
+[telepipe] player 61ea0730-4947-4560-b4d2-52d072d74a6d extracted
+[run] checkpoint captured
+[run] extracted to hub: Ember Descent
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=a1d0aa44-24de-4fce-b115-d9d0a421cff0 value=20
+Player disconnected: tmsp0fTidq-haRqyAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 9 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3222
+Player connected: socket=LS9jJ23JXy4VsMCoAAAB, playerId=6409e5d7-6555-4ddf-8571-b4d2a7424f10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=35474c69-04b4-4eab-b9f6-7a5c12b28523 value=19
+[loot] magic stone drop id=959a197b-361f-47ec-9e25-99c68650223f value=15 at (1.9, -49.8)
+[loot] picked up id=959a197b-361f-47ec-9e25-99c68650223f (magic stone) value=15 by LS9jJ23JXy4VsMCoAAAB (currency=0, ms=99)
+[loot] magic stone drop id=e196412a-5b7f-4d93-b448-88a4d4e6e71d value=15 at (-1.9, -49.8)
+[loot] magic stone drop id=3e294892-c74c-40fc-aff0-271254f2cac0 value=20 at (-1.9, -43.1)
+[loot] currency drop id=04f20861-e8f1-462b-b8c1-63ced5287c34 value=13 at (-1.9, -43.1)
+[loot] picked up id=04f20861-e8f1-462b-b8c1-63ced5287c34 value=13 by LS9jJ23JXy4VsMCoAAAB (currency=13, ms=99)
+[loot] magic stone drop id=f565b8ca-d1d4-4fb3-b928-95826f5df060 value=20 at (1.9, -43.1)
+[loot] magic stone drop id=93c5ce0e-bb34-47f2-9626-f87fdbfefb6d value=15 at (4.0, -46.5)
+[loot] currency drop id=0a8f9405-d1b4-410c-a8c7-7c30f06e94a3 value=8 at (4.0, -46.5)
+[loot] magic stone drop id=7c53b62f-59d4-41c5-8a6b-0e3ce92c2a98 value=20 at (2.0, -46.5)
+[loot] currency drop id=a19d72ab-2c81-45b4-9910-b0912ff13caf value=18 at (2.0, -46.5)
+[loot] picked up id=7c53b62f-59d4-41c5-8a6b-0e3ce92c2a98 (magic stone) value=20 by LS9jJ23JXy4VsMCoAAAB (currency=27, ms=99)
+[loot] picked up id=a19d72ab-2c81-45b4-9910-b0912ff13caf value=18 by LS9jJ23JXy4VsMCoAAAB (currency=45, ms=99)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] magic stone drop id=6154afd5-d379-47b3-a4c6-f7e70eadc95d value=20 at (-6.0, -27.6)
+[loot] picked up id=6154afd5-d379-47b3-a4c6-f7e70eadc95d (magic stone) value=20 by LS9jJ23JXy4VsMCoAAAB (currency=45, ms=72.02500000000154)
+[telepipe] placed at (-8.3, -18.8) by 6409e5d7-6555-4ddf-8571-b4d2a7424f10
+[telepipe] player 6409e5d7-6555-4ddf-8571-b4d2a7424f10 extracted
+[run] checkpoint captured
+[run] extracted to hub: Ember Descent
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+Player disconnected: LS9jJ23JXy4VsMCoAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 10 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3222
+Player connected: socket=2ec-vE8wigICQ84DAAAB, playerId=ac5ad383-ef95-450c-b15b-34b6d410cdf1
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] magic stone drop id=76327e8e-97c0-408f-8336-00b4e95a8869 value=15 at (1.9, -49.8)
+[loot] currency drop id=c1181bb1-228e-4368-8384-03109e8868aa value=12 at (1.9, -49.8)
+[loot] picked up id=76327e8e-97c0-408f-8336-00b4e95a8869 (magic stone) value=15 by 2ec-vE8wigICQ84DAAAB (currency=0, ms=99)
+[loot] magic stone drop id=13507b4f-fc82-4317-8b42-0fd8718d949d value=15 at (-1.9, -49.8)
+[loot] magic stone drop id=4722bd4a-1224-4f3e-8c14-a29b9dd11fd4 value=20 at (-1.9, -43.1)
+[loot] currency drop id=2bc06f7c-5726-4912-986f-15ca39781011 value=15 at (-1.9, -43.1)
+[loot] picked up id=2bc06f7c-5726-4912-986f-15ca39781011 value=15 by 2ec-vE8wigICQ84DAAAB (currency=15, ms=99)
+[loot] magic stone drop id=6c422085-fd5e-475d-8f3c-dd3a55606709 value=20 at (1.9, -43.1)
+[loot] currency drop id=f4bdf441-e6ce-477e-9349-4c27364afaf9 value=11 at (1.9, -43.1)
+[loot] magic stone drop id=a8e3ee1f-f869-4e17-962b-5c54201ae964 value=15 at (4.0, -46.5)
+[loot] currency drop id=44bffb3d-f22e-4b3a-99e1-a091b3307e3f value=12 at (4.0, -46.5)
+[loot] magic stone drop id=7b28c565-bad3-4cb5-aad8-eb26799cc84c value=20 at (2.0, -46.5)
+[loot] currency drop id=b1f5804a-9941-484e-8358-5be26646fdee value=14 at (2.0, -46.5)
+[loot] picked up id=7b28c565-bad3-4cb5-aad8-eb26799cc84c (magic stone) value=20 by 2ec-vE8wigICQ84DAAAB (currency=29, ms=99)
+[loot] picked up id=b1f5804a-9941-484e-8358-5be26646fdee value=14 by 2ec-vE8wigICQ84DAAAB (currency=43, ms=99)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[telepipe] placed at (-5.8, -46.5) by ac5ad383-ef95-450c-b15b-34b6d410cdf1
+[telepipe] player ac5ad383-ef95-450c-b15b-34b6d410cdf1 extracted
+[run] checkpoint captured
+[run] extracted to hub: Ember Descent
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+Player disconnected: 2ec-vE8wigICQ84DAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 11 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3295
+Player connected: socket=2ODrQED1VAq8h2FGAAAB, playerId=97005052-a416-4fec-afbf-e78c5348f311
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] magic stone drop id=d072f372-91dd-4452-b052-983877e52135 value=15 at (1.9, -49.8)
+[loot] currency drop id=3b636189-7b95-41a3-80ed-4267f190f49b value=13 at (1.9, -49.8)
+[loot] picked up id=d072f372-91dd-4452-b052-983877e52135 (magic stone) value=15 by 2ODrQED1VAq8h2FGAAAB (currency=0, ms=99)
+[loot] magic stone drop id=5ad9b58c-74c8-4d56-9ae4-04a88c9720c2 value=15 at (-1.9, -49.8)
+[loot] currency drop id=408cc014-ae66-48df-95ae-f12d734aa447 value=12 at (-1.9, -49.8)
+[loot] magic stone drop id=5cf56f89-3711-40ef-96f0-f37c3b623f0e value=20 at (-1.9, -43.1)
+[loot] magic stone drop id=ebc46265-eff9-4ede-965e-47a6875a10db value=20 at (1.9, -43.1)
+[loot] currency drop id=d4bf017b-a669-4e23-ae40-c9c56498b4cf value=13 at (1.9, -43.1)
+[loot] magic stone drop id=33e7a5c2-6183-40f1-b274-a4b0144d2858 value=15 at (4.0, -46.5)
+[loot] currency drop id=b275b389-b3ff-4ea5-ac18-55ec376651be value=14 at (4.0, -46.5)
+[loot] magic stone drop id=8aee6cba-9f67-43d2-b11e-d3df97fefa44 value=20 at (2.0, -46.5)
+[loot] picked up id=8aee6cba-9f67-43d2-b11e-d3df97fefa44 (magic stone) value=20 by 2ODrQED1VAq8h2FGAAAB (currency=14, ms=99)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=13ac5cf2-6201-49b0-a0be-a555e3550199 value=9
+[loot] magic stone drop id=d87ff394-15a5-4dd0-b21a-c76a865613db value=20 at (-6.2, -32.5)
+[loot] currency drop id=7f9adbbe-8e82-4541-8b68-ffd36a09f126 value=9 at (-6.2, -32.5)
+[loot] picked up id=7f9adbbe-8e82-4541-8b68-ffd36a09f126 value=9 by 2ODrQED1VAq8h2FGAAAB (currency=23, ms=99)
+[loot] picked up id=d87ff394-15a5-4dd0-b21a-c76a865613db (magic stone) value=20 by 2ODrQED1VAq8h2FGAAAB (currency=23, ms=99)
+[loot] magic stone drop id=1ab0b424-321f-4f29-84dd-42fc9c929df4 value=15 at (-4.4, -41.4)
+[loot] currency drop id=1b770ef3-867b-4ce4-9adb-10c6753a09f7 value=7 at (-4.4, -41.4)
+[loot] picked up id=1b770ef3-867b-4ce4-9adb-10c6753a09f7 value=7 by 2ODrQED1VAq8h2FGAAAB (currency=30, ms=49.57000000000029)
+[telepipe] placed at (5.8, -52.3) by 97005052-a416-4fec-afbf-e78c5348f311
+[telepipe] player 97005052-a416-4fec-afbf-e78c5348f311 extracted
+[run] checkpoint captured
+[run] extracted to hub: Ember Descent
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+Player disconnected: 2ODrQED1VAq8h2FGAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 12 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3225
+Player connected: socket=t6zlJXuvSUivPz57AAAB, playerId=cccdec2b-d2a0-474e-a912-ec02d4f97fff
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=475867d6-a338-497e-8f01-f5252f01b99c value=17
+[loot] magic stone drop id=8b883ac8-0c2a-4b4d-83c9-0cc82157e71d value=15 at (1.9, -49.8)
+[loot] picked up id=8b883ac8-0c2a-4b4d-83c9-0cc82157e71d (magic stone) value=15 by t6zlJXuvSUivPz57AAAB (currency=0, ms=99)
+[loot] magic stone drop id=574b3618-043d-4f5c-8157-15936d9557b2 value=15 at (-1.9, -49.8)
+[loot] currency drop id=87de8163-223b-4a7b-9fa2-9f6be428a132 value=8 at (-1.9, -49.8)
+[loot] magic stone drop id=670e2365-ed6f-49bc-a5a8-74bcc476d885 value=20 at (-1.9, -43.1)
+[loot] magic stone drop id=08fd15ad-cf46-4405-a615-f82d76432a90 value=20 at (1.9, -43.1)
+[loot] currency drop id=c1cad521-f758-4422-9248-11f2efcc6df2 value=17 at (1.9, -43.1)
+[loot] magic stone drop id=aff3ef23-5878-4c6a-8cec-29b600091d47 value=15 at (4.0, -46.5)
+[loot] magic stone drop id=3b3012a1-9139-4068-934d-6bdba041b04c value=20 at (2.0, -46.5)
+[loot] currency drop id=e5ae100d-8d64-4d26-8438-1ec023d86add value=9 at (2.0, -46.5)
+[loot] picked up id=3b3012a1-9139-4068-934d-6bdba041b04c (magic stone) value=20 by t6zlJXuvSUivPz57AAAB (currency=14, ms=99)
+[loot] picked up id=e5ae100d-8d64-4d26-8438-1ec023d86add value=9 by t6zlJXuvSUivPz57AAAB (currency=23, ms=99)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=3e86a19a-0922-47fc-8e12-4b83e7c47c8a value=7
+[loot] magic stone drop id=49335262-76b3-4638-b8aa-fbf54f0ef1fe value=20 at (-4.9, -26.5)
+[loot] picked up id=49335262-76b3-4638-b8aa-fbf54f0ef1fe (magic stone) value=20 by t6zlJXuvSUivPz57AAAB (currency=23, ms=99)
+Player disconnected: t6zlJXuvSUivPz57AAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 13 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3249
+Player connected: socket=AbIR8MjaBGmM2L83AAAB, playerId=c6f27d7f-2a14-4ffa-8e56-c84fcadc3085
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=5bcef79e-890b-41f1-b274-b35d73c441e2 value=5
+[loot] magic stone drop id=4ce93cc2-3d58-43f4-9fb5-1403e0830bea value=15 at (1.9, -49.8)
+[loot] currency drop id=3a731f53-f5f1-407d-a4e6-aa99cb599309 value=9 at (1.9, -49.8)
+[loot] picked up id=4ce93cc2-3d58-43f4-9fb5-1403e0830bea (magic stone) value=15 by AbIR8MjaBGmM2L83AAAB (currency=0, ms=99)
+[loot] magic stone drop id=4d1dd432-524b-401c-acc9-d76f1e2fe8ef value=15 at (-1.9, -49.8)
+[loot] magic stone drop id=632ad49e-dc0f-4d27-8591-7cf637f08668 value=20 at (-1.9, -43.1)
+[loot] currency drop id=c9b85cc2-dc40-4e43-bb19-b00609e57cf8 value=18 at (-1.9, -43.1)
+[loot] picked up id=c9b85cc2-dc40-4e43-bb19-b00609e57cf8 value=18 by AbIR8MjaBGmM2L83AAAB (currency=18, ms=99)
+[loot] magic stone drop id=ac4cdcf9-5fbb-4f80-9a0f-38f208b20b61 value=20 at (1.9, -43.1)
+[loot] currency drop id=10bd6b9e-e036-4ff2-863d-882e9553918c value=13 at (1.9, -43.1)
+[loot] magic stone drop id=f4e6ae97-1b7a-41d6-81e6-100d059712ba value=15 at (4.0, -46.5)
+[loot] magic stone drop id=54d4d49e-a3c8-486f-b384-0906d0c325e8 value=20 at (2.0, -46.5)
+[loot] currency drop id=3c7e8b87-7ce8-40fa-ba9f-3253206fe9b0 value=8 at (2.0, -46.5)
+[loot] picked up id=54d4d49e-a3c8-486f-b384-0906d0c325e8 (magic stone) value=20 by AbIR8MjaBGmM2L83AAAB (currency=32, ms=99)
+[loot] picked up id=3c7e8b87-7ce8-40fa-ba9f-3253206fe9b0 value=8 by AbIR8MjaBGmM2L83AAAB (currency=40, ms=99)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=cc5d4e59-8d35-4a44-87f9-e66f11b4f529 value=20
+[loot] magic stone drop id=c5d31d5b-67dd-4d3b-bf79-5f8c350d0825 value=20 at (-6.6, -27.6)
+[loot] currency drop id=fef5944f-e514-4a3b-9349-7466b8345361 value=10 at (-6.6, -27.6)
+Player disconnected: AbIR8MjaBGmM2L83AAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 14 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3205
+Player connected: socket=q4Y_ybfLXkLhONNmAAAB, playerId=b07f4816-a553-483f-adba-7be08822bb91
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=e650980a-d6e9-402a-bde5-57f42ab169e7 value=7
+[loot] magic stone drop id=659f844b-3962-45df-8aee-6f0f22a4a774 value=15 at (1.9, -49.8)
+[loot] picked up id=659f844b-3962-45df-8aee-6f0f22a4a774 (magic stone) value=15 by q4Y_ybfLXkLhONNmAAAB (currency=0, ms=99)
+[loot] magic stone drop id=4ce82025-b217-47e8-aa58-f33d1b511218 value=15 at (-1.9, -49.8)
+[loot] magic stone drop id=ed3b7b59-4940-4f2a-bd92-184d02087f18 value=20 at (-1.9, -43.1)
+[loot] currency drop id=52370b6e-aff2-4b6f-b34a-b0e57740350d value=15 at (-1.9, -43.1)
+[loot] picked up id=52370b6e-aff2-4b6f-b34a-b0e57740350d value=15 by q4Y_ybfLXkLhONNmAAAB (currency=15, ms=99)
+[loot] magic stone drop id=279e9c0a-f888-43d3-a7a4-2b43b160975c value=20 at (1.9, -43.1)
+[loot] currency drop id=69066f60-05bf-43c7-83d0-a31386a43628 value=10 at (1.9, -43.1)
+[loot] magic stone drop id=dc54103e-1d9b-46ab-82a7-36b1d9c152da value=15 at (4.0, -46.5)
+[loot] magic stone drop id=f3413f9f-aaed-443c-89ad-9619572df259 value=20 at (2.0, -46.5)
+[loot] picked up id=f3413f9f-aaed-443c-89ad-9619572df259 (magic stone) value=20 by q4Y_ybfLXkLhONNmAAAB (currency=29, ms=99)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=0caa4a6d-8208-4cb2-8b47-a79fe7e1d935 value=7
+[loot] magic stone drop id=062a1f62-308d-407c-be23-778823c6b4e0 value=20 at (-4.7, -42.7)
+[loot] currency drop id=fec83ce7-0fff-4121-835a-bfe631133beb value=13 at (-4.7, -42.7)
+[loot] magic stone drop id=5d0b50db-8a61-48c7-9eaf-f5968088ad48 value=15 at (-2.2, -50.0)
+[loot] currency drop id=cabdb4cc-4ca3-43b9-b448-3370bf41ba38 value=7 at (-2.2, -50.0)
+[loot] picked up id=5d0b50db-8a61-48c7-9eaf-f5968088ad48 (magic stone) value=15 by q4Y_ybfLXkLhONNmAAAB (currency=29, ms=20.90500000000353)
+Player disconnected: q4Y_ybfLXkLhONNmAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 15 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3275
+Player connected: socket=v98mT807ws57Hu_OAAAB, playerId=0e5704bd-9d6e-41b3-a9b3-10cc981077bb
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=df5b45b5-097d-4e77-b28f-0b645c0d119e value=16
+[loot] magic stone drop id=af2dab08-4d97-4ca1-b1c0-615161bdfc8b value=15 at (1.9, -49.8)
+[loot] picked up id=af2dab08-4d97-4ca1-b1c0-615161bdfc8b (magic stone) value=15 by v98mT807ws57Hu_OAAAB (currency=0, ms=99)
+[loot] magic stone drop id=0dbe63c3-c0a5-4d0e-af5b-3dd07408115b value=15 at (-1.9, -49.8)
+[loot] currency drop id=0e69f166-5dfc-44de-a8d4-55adc77833d6 value=9 at (-1.9, -49.8)
+[loot] magic stone drop id=f9b33655-8a88-4549-87fa-43762db72e86 value=20 at (-1.9, -43.1)
+[loot] currency drop id=4caf9ca6-9b2e-42ec-96e0-2b11da214500 value=14 at (-1.9, -43.1)
+[loot] picked up id=4caf9ca6-9b2e-42ec-96e0-2b11da214500 value=14 by v98mT807ws57Hu_OAAAB (currency=14, ms=99)
+[loot] magic stone drop id=82113bcb-6a69-4d8c-8f77-0652665d1ff8 value=20 at (1.9, -43.1)
+[loot] magic stone drop id=32f9a8c4-49a3-49b0-b97c-2b9f352c0b4b value=15 at (4.0, -46.5)
+[loot] currency drop id=3fcc2a1c-ba54-4703-865e-6b68ca0d5efb value=11 at (4.0, -46.5)
+[loot] magic stone drop id=b5408b90-d033-41b5-87be-b632dd55e08f value=20 at (2.0, -46.5)
+[loot] currency drop id=e4c9b5d3-db36-4bd6-b67b-25250c51b628 value=19 at (2.0, -46.5)
+[loot] picked up id=b5408b90-d033-41b5-87be-b632dd55e08f (magic stone) value=20 by v98mT807ws57Hu_OAAAB (currency=28, ms=99)
+[loot] picked up id=e4c9b5d3-db36-4bd6-b67b-25250c51b628 value=19 by v98mT807ws57Hu_OAAAB (currency=47, ms=99)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=472d3a61-2eb3-4f24-a131-a7d3866e9920 value=18
+[loot] magic stone drop id=81f3c58d-1496-4c4a-a274-66f1e414d240 value=20 at (2.5, -46.5)
+[loot] currency drop id=a2548d61-dcfd-423e-bf1c-09fd8557367a value=13 at (2.5, -46.5)
+[loot] picked up id=81f3c58d-1496-4c4a-a274-66f1e414d240 (magic stone) value=20 by v98mT807ws57Hu_OAAAB (currency=47, ms=99)
+[loot] picked up id=a2548d61-dcfd-423e-bf1c-09fd8557367a value=13 by v98mT807ws57Hu_OAAAB (currency=60, ms=99)
+[loot] magic stone drop id=a9d45ca4-d777-4ffc-a42d-de4391abbf83 value=15 at (2.0, -43.2)
+[loot] magic stone drop id=7d2a2201-e1eb-49ee-adcb-1fa0916bd08e value=15 at (-2.0, -43.2)
+[telepipe] placed at (5.8, -52.3) by 0e5704bd-9d6e-41b3-a9b3-10cc981077bb
+[telepipe] player 0e5704bd-9d6e-41b3-a9b3-10cc981077bb extracted
+[run] checkpoint captured
+[run] extracted to hub: Ember Descent
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+Player disconnected: v98mT807ws57Hu_OAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 16 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3247
+Player connected: socket=A9XEXmo2qHqLeO9bAAAB, playerId=ab0b8da8-82ee-47b1-b07f-140684b89960
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=02d3833e-5c6f-4ffe-8068-fc86a52ba0ec value=8
+[loot] spawned id=ae34708a-9add-44fe-89a3-1b7f7b0984bc value=12
+[loot] magic stone drop id=cb3b7b54-d226-429f-99e5-52deec6cac82 value=15 at (1.9, -49.8)
+[loot] currency drop id=f8b7baa6-d70e-4307-9c94-e5706af8844b value=12 at (1.9, -49.8)
+[loot] picked up id=cb3b7b54-d226-429f-99e5-52deec6cac82 (magic stone) value=15 by A9XEXmo2qHqLeO9bAAAB (currency=0, ms=99)
+[loot] magic stone drop id=01f90201-07b0-4b26-a6d0-bc24f2694e1a value=15 at (-1.9, -49.8)
+[loot] currency drop id=842e0092-c0c2-4839-a629-8ec80d61a663 value=9 at (-1.9, -49.8)
+[loot] magic stone drop id=15895136-c641-4e09-8c40-d5a5c6eb37e2 value=20 at (-1.9, -43.1)
+[loot] magic stone drop id=625dc8b2-bf18-40f5-9710-db97b74fff93 value=20 at (1.9, -43.1)
+[loot] currency drop id=1bfd18d3-04e9-456f-92eb-7d2b0042cc24 value=19 at (1.9, -43.1)
+[loot] magic stone drop id=18277688-c952-4dd9-aad0-c518ed647cac value=15 at (4.0, -46.5)
+[loot] currency drop id=33f2488c-3bbc-4747-b406-2f552e151128 value=8 at (4.0, -46.5)
+[loot] magic stone drop id=2a753834-6c9b-4a17-8076-1697aebd785f value=20 at (2.0, -46.5)
+[loot] currency drop id=8a034435-5636-4911-8fe1-689b11fe8b8f value=18 at (2.0, -46.5)
+[loot] picked up id=2a753834-6c9b-4a17-8076-1697aebd785f (magic stone) value=20 by A9XEXmo2qHqLeO9bAAAB (currency=14, ms=99)
+[loot] picked up id=8a034435-5636-4911-8fe1-689b11fe8b8f value=18 by A9XEXmo2qHqLeO9bAAAB (currency=32, ms=99)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] magic stone drop id=99088958-a0ad-4bf7-8a21-abd8658e7842 value=20 at (2.5, -46.5)
+[loot] picked up id=99088958-a0ad-4bf7-8a21-abd8658e7842 (magic stone) value=20 by A9XEXmo2qHqLeO9bAAAB (currency=32, ms=99)
+[loot] magic stone drop id=432f95d0-cc5c-4f85-ad58-d247aa5ed565 value=15 at (-2.1, -43.2)
+[loot] magic stone drop id=a7a44675-c6e7-4542-8a56-a727625f41ba value=20 at (-2.1, -43.1)
+[loot] currency drop id=b81209a0-4e14-4644-9c96-baa33cc7a096 value=9 at (-2.1, -43.1)
+[loot] picked up id=b81209a0-4e14-4644-9c96-baa33cc7a096 value=9 by A9XEXmo2qHqLeO9bAAAB (currency=41, ms=99)
+[loot] magic stone drop id=6267b03f-f71b-4d9e-9afd-032b02fb7b5b value=15 at (2.1, -43.2)
+[loot] currency drop id=6d0d581a-9c10-4f52-afbc-3568d7e03cb0 value=12 at (2.1, -43.2)
+[loot] magic stone drop id=ed9a13af-cade-4719-9eca-9830a03c8a9f value=15 at (2.1, -43.1)
+[loot] magic stone drop id=036725d6-5ec4-4c1e-a0da-695a90ac35e6 value=20 at (2.1, -43.2)
+[loot] currency drop id=47b86280-15a2-47e6-afe0-8ff6773ac42d value=8 at (2.1, -43.2)
+Player disconnected: A9XEXmo2qHqLeO9bAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 17 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3235
+Player connected: socket=6mu0DWjmJrWIDR48AAAB, playerId=2685593d-1c41-48e2-9372-a61c144881da
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=43637c97-99ac-4c01-aafd-b919ba94c9a9 value=6
+[loot] magic stone drop id=db951264-107e-442e-acba-008ca1bf5b8a value=15 at (1.9, -49.8)
+[loot] currency drop id=2bc48816-539f-43d6-afe8-939e33a52189 value=12 at (1.9, -49.8)
+[loot] picked up id=db951264-107e-442e-acba-008ca1bf5b8a (magic stone) value=15 by 6mu0DWjmJrWIDR48AAAB (currency=0, ms=99)
+[loot] magic stone drop id=0b5125ca-95ca-42a8-8b31-7ca472e2931e value=15 at (-1.9, -49.8)
+[loot] magic stone drop id=bd2ca632-1d2c-4e99-981b-0af31ba990f3 value=20 at (-1.9, -43.1)
+[loot] currency drop id=ce44abbc-723d-4ff3-93ac-962ce365bbe8 value=12 at (-1.9, -43.1)
+[loot] picked up id=ce44abbc-723d-4ff3-93ac-962ce365bbe8 value=12 by 6mu0DWjmJrWIDR48AAAB (currency=12, ms=99)
+[loot] magic stone drop id=46aa746a-3074-43d9-a5b5-8874502e69cf value=20 at (1.9, -43.1)
+[loot] currency drop id=f4422058-3c0f-4adf-b4f9-b9ac6dd7a836 value=19 at (1.9, -43.1)
+[loot] magic stone drop id=bfd15cf0-82e6-4508-b6cc-a8aa675d82e5 value=15 at (4.0, -46.5)
+[loot] magic stone drop id=c53c81bd-6cd1-43b7-9d66-7730f46d2e94 value=20 at (2.0, -46.5)
+[loot] currency drop id=6be6fb47-3f7b-4563-9124-c4fe23acd85a value=13 at (2.0, -46.5)
+[loot] picked up id=c53c81bd-6cd1-43b7-9d66-7730f46d2e94 (magic stone) value=20 by 6mu0DWjmJrWIDR48AAAB (currency=26, ms=99)
+[loot] picked up id=6be6fb47-3f7b-4563-9124-c4fe23acd85a value=13 by 6mu0DWjmJrWIDR48AAAB (currency=39, ms=99)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] magic stone drop id=39c562f4-75b8-4984-a0fd-b59ea7be5e6d value=20 at (2.5, -46.5)
+[loot] picked up id=39c562f4-75b8-4984-a0fd-b59ea7be5e6d (magic stone) value=20 by 6mu0DWjmJrWIDR48AAAB (currency=39, ms=99)
+[telepipe] placed at (-5.8, -46.5) by 2685593d-1c41-48e2-9372-a61c144881da
+[telepipe] player 2685593d-1c41-48e2-9372-a61c144881da extracted
+[run] checkpoint captured
+[run] extracted to hub: Ember Descent
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+Player disconnected: 6mu0DWjmJrWIDR48AAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3267
+Player connected: socket=0R5ffih9ElJLEP6oAAAB, playerId=d3db5955-ee08-4eae-a074-b2d80e82e3c3
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=1797d25d-4f6d-4fd8-ad94-304aa2434b7e value=11
+[loot] magic stone drop id=6bb5be12-e6c5-43e5-b930-fbf8295f5f39 value=15 at (1.9, -49.8)
+[loot] currency drop id=db8a10df-d001-4898-865d-2cc62eb52633 value=14 at (1.9, -49.8)
+[loot] picked up id=6bb5be12-e6c5-43e5-b930-fbf8295f5f39 (magic stone) value=15 by 0R5ffih9ElJLEP6oAAAB (currency=0, ms=99)
+[loot] magic stone drop id=769b66bb-5675-4092-b77a-37f509d56a72 value=15 at (-1.9, -49.8)
+[loot] currency drop id=54224e12-501c-4887-8ebc-9cdcda1efcad value=7 at (-1.9, -49.8)
+[loot] magic stone drop id=5bd154ea-33cf-461b-8c33-d8196f4a863f value=20 at (-1.9, -43.1)
+[loot] currency drop id=3ccee908-9cf2-45a3-8234-7ec76407b9ed value=9 at (-1.9, -43.1)
+[loot] picked up id=3ccee908-9cf2-45a3-8234-7ec76407b9ed value=9 by 0R5ffih9ElJLEP6oAAAB (currency=9, ms=99)
+[loot] magic stone drop id=ac70ca37-1e13-48bc-9a70-20d3fc3e15de value=20 at (1.9, -43.1)
+[loot] currency drop id=a6092157-236e-4717-8453-90e4f8564234 value=19 at (1.9, -43.1)
+[loot] magic stone drop id=d42b8d09-51a8-4700-8dd9-3ab3320e3c80 value=15 at (4.0, -46.5)
+[loot] magic stone drop id=9503c8d7-e8c7-4dd0-8727-61c44c548872 value=20 at (2.0, -46.5)
+[loot] picked up id=9503c8d7-e8c7-4dd0-8727-61c44c548872 (magic stone) value=20 by 0R5ffih9ElJLEP6oAAAB (currency=23, ms=99)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=52a20abe-92c9-4b60-8288-184971828b6b value=19
+[loot] magic stone drop id=81323abb-6deb-47f0-8c7d-aa95ea2627b7 value=20 at (2.5, -46.5)
+[loot] currency drop id=fc7cb4e6-6247-4877-ac0c-136e59b087b4 value=17 at (2.5, -46.5)
+[loot] picked up id=81323abb-6deb-47f0-8c7d-aa95ea2627b7 (magic stone) value=20 by 0R5ffih9ElJLEP6oAAAB (currency=23, ms=99)
+[loot] picked up id=fc7cb4e6-6247-4877-ac0c-136e59b087b4 value=17 by 0R5ffih9ElJLEP6oAAAB (currency=40, ms=99)
+[loot] magic stone drop id=77ff892b-268d-4f2e-ab09-5149a5c35894 value=15 at (-6.1, -27.5)
+[loot] currency drop id=8f185c7e-c637-4623-b73f-ec09c98e4edc value=8 at (-6.1, -27.5)
+[loot] picked up id=77ff892b-268d-4f2e-ab09-5149a5c35894 (magic stone) value=15 by 0R5ffih9ElJLEP6oAAAB (currency=40, ms=99)
+Player disconnected: 0R5ffih9ElJLEP6oAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3287
+Player connected: socket=ClVmn_wK6Uy9kf22AAAB, playerId=428d3dfb-08cb-4534-87a8-adc53a60a7d0
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=2b3871d8-06b6-4006-bebc-21d41e85c500 value=15
+[loot] magic stone drop id=73c1e7b3-6686-4872-9516-3b819dce3e78 value=15 at (1.9, -49.8)
+[loot] picked up id=73c1e7b3-6686-4872-9516-3b819dce3e78 (magic stone) value=15 by ClVmn_wK6Uy9kf22AAAB (currency=0, ms=99)
+[loot] magic stone drop id=019476c4-2ed0-47fb-99c3-4746fd4278c0 value=15 at (-1.9, -49.8)
+[loot] currency drop id=7cc8158f-f916-4329-88f8-a83db7186238 value=9 at (-1.9, -49.8)
+[loot] magic stone drop id=e958e7a3-2ae4-4cf0-8650-80118827286b value=20 at (-1.9, -43.1)
+[loot] currency drop id=16f16ce8-1341-4596-ab1d-6ebf83c033ad value=8 at (-1.9, -43.1)
+[loot] picked up id=16f16ce8-1341-4596-ab1d-6ebf83c033ad value=8 by ClVmn_wK6Uy9kf22AAAB (currency=8, ms=99)
+[loot] magic stone drop id=805cc4c6-9800-456c-9eb6-f499d318899a value=20 at (1.9, -43.1)
+[loot] currency drop id=3223f582-55db-4239-b37b-def7c924d5c1 value=16 at (1.9, -43.1)
+[loot] magic stone drop id=ab1a9128-0cb5-4c01-8b47-38e8721a0a52 value=15 at (4.0, -46.5)
+[loot] currency drop id=94179f06-7369-45ed-8fc1-5b9b005e59b2 value=7 at (4.0, -46.5)
+Player disconnected: ClVmn_wK6Uy9kf22AAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3212
+Player connected: socket=g_0hQXEvN8HkMBnkAAAB, playerId=09fca258-949b-41e2-a293-265ed855bdd5
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=8b3faa9b-fcf5-4059-b9ac-49c607f624a0 value=20
+[loot] magic stone drop id=a4156a94-0520-4cf9-b9c4-d10e7257c45c value=15 at (1.9, -49.8)
+[loot] picked up id=a4156a94-0520-4cf9-b9c4-d10e7257c45c (magic stone) value=15 by g_0hQXEvN8HkMBnkAAAB (currency=0, ms=99)
+[loot] magic stone drop id=79d77c45-c1c8-4226-bc8c-2e906eb58319 value=15 at (-1.9, -49.8)
+[loot] currency drop id=b1b8be20-470b-4235-b39d-ed4992248cb0 value=14 at (-1.9, -49.8)
+[loot] magic stone drop id=94ccaa3c-a346-40d6-a547-726ef2923062 value=20 at (-1.9, -43.1)
+[loot] magic stone drop id=ace3926c-0c5c-47e8-8634-c5d7e0eedfcc value=20 at (1.9, -43.1)
+[loot] magic stone drop id=44aee4c7-3a42-469e-9e55-b302ba8fd8dd value=15 at (4.0, -46.5)
+Player disconnected: g_0hQXEvN8HkMBnkAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3233
+Player connected: socket=wVGin4MdLolf3hA5AAAB, playerId=b20c4194-1332-44d4-a68d-72f41663a116
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=23fb0b3f-e07d-47a7-aabd-6bfa8fcf5d37 value=11
+[loot] spawned id=26f3ce83-8256-45ca-893d-3384df46009c value=11
+[loot] magic stone drop id=51e62159-90cc-4163-84da-359c8b94fdb6 value=15 at (1.9, -49.8)
+[loot] currency drop id=913cc625-5894-4ab8-9cc2-792da51a513d value=14 at (1.9, -49.8)
+[loot] picked up id=51e62159-90cc-4163-84da-359c8b94fdb6 (magic stone) value=15 by wVGin4MdLolf3hA5AAAB (currency=0, ms=99)
+[loot] magic stone drop id=7ff2ba98-e1be-4ea7-9c60-7d387bfb63ca value=15 at (-1.9, -49.8)
+[loot] magic stone drop id=df3031de-d7b7-4bf1-bdb9-4e8a5a085290 value=20 at (-1.9, -43.1)
+[loot] currency drop id=127766ff-2f9d-4537-8897-420d3a50a1b4 value=10 at (-1.9, -43.1)
+[loot] picked up id=127766ff-2f9d-4537-8897-420d3a50a1b4 value=10 by wVGin4MdLolf3hA5AAAB (currency=10, ms=99)
+[loot] magic stone drop id=153b869f-4e66-421d-8ef5-114063e2a3d3 value=20 at (1.9, -43.1)
+[loot] magic stone drop id=8ddd8b2f-8ca4-46d8-9249-bf7dd9e2c8e7 value=15 at (4.0, -46.5)
+Player disconnected: wVGin4MdLolf3hA5AAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 5 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3221
+Player connected: socket=DT46rYDn0swmr6VGAAAB, playerId=589d350c-603c-49cd-80b5-cab937f55ddd
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=639f02df-cb6c-47ff-bf38-04a6eb7adcb7 value=19
+[loot] magic stone drop id=5152be7b-5e90-448b-b3d1-40981500a249 value=15 at (1.9, -49.8)
+[loot] picked up id=5152be7b-5e90-448b-b3d1-40981500a249 (magic stone) value=15 by DT46rYDn0swmr6VGAAAB (currency=0, ms=99)
+[loot] magic stone drop id=82f349d5-9afd-4f06-840f-6f251d1c5a49 value=15 at (-1.9, -49.8)
+[loot] magic stone drop id=8f0da10b-548a-481b-8e05-3c94dd776ae1 value=20 at (-1.9, -43.1)
+[loot] magic stone drop id=0fc24cce-600c-4280-814d-af3cf59b2b5a value=20 at (1.9, -43.1)
+[loot] magic stone drop id=b5cc4e98-f97a-4bb5-bfc5-84fd5f8380e0 value=15 at (4.0, -46.5)
+Player disconnected: DT46rYDn0swmr6VGAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 6 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3291
+Player connected: socket=Ti0Fi2KGZpFYqxRtAAAB, playerId=a7fa6bd7-b1c5-4cd9-86f4-d35123738524
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] magic stone drop id=457fe13e-84c9-40d1-bd1b-55b1b76f7be2 value=15 at (1.9, -49.8)
+[loot] picked up id=457fe13e-84c9-40d1-bd1b-55b1b76f7be2 (magic stone) value=15 by Ti0Fi2KGZpFYqxRtAAAB (currency=0, ms=99)
+[loot] magic stone drop id=ee21d365-dfde-4542-b97f-499ebb38601c value=15 at (-1.9, -49.8)
+[loot] magic stone drop id=5e23549a-ea78-422a-b0cd-173e02796fef value=20 at (-1.9, -43.1)
+[loot] currency drop id=f7d4d9b1-a735-42e6-a8db-69ad862f6905 value=18 at (-1.9, -43.1)
+[loot] picked up id=f7d4d9b1-a735-42e6-a8db-69ad862f6905 value=18 by Ti0Fi2KGZpFYqxRtAAAB (currency=18, ms=99)
+[loot] magic stone drop id=91b6f201-ed53-4721-b76a-4a2e73826996 value=20 at (1.9, -43.1)
+[loot] currency drop id=cc768351-b3c8-4600-b44f-3fb39e220c4e value=16 at (1.9, -43.1)
+[loot] magic stone drop id=d7cda870-5f84-4ee3-8733-9f2dc90cd10c value=15 at (4.0, -46.5)
+[loot] currency drop id=36d2500a-5b30-4a67-bd43-b887c737fb71 value=9 at (4.0, -46.5)
+Player disconnected: Ti0Fi2KGZpFYqxRtAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 7 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3240
+Player connected: socket=TvcetxRAGQLTd9zWAAAB, playerId=bde7ad46-a9f8-452c-92cf-817c4f9b00b5
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=345e29a0-f3a7-4184-bd7e-e3978f47ddf2 value=8
+[loot] magic stone drop id=9902334e-aa9d-4b86-b595-6fce254d6f57 value=15 at (1.9, -49.8)
+[loot] picked up id=9902334e-aa9d-4b86-b595-6fce254d6f57 (magic stone) value=15 by TvcetxRAGQLTd9zWAAAB (currency=0, ms=99)
+[loot] magic stone drop id=a75b129a-a0bd-4c14-903b-bb662e614ce9 value=15 at (-1.9, -49.8)
+[loot] magic stone drop id=5488b730-4d2a-4867-87e4-602b49cb2d4d value=20 at (-1.9, -43.1)
+[loot] magic stone drop id=a11e7b56-123e-4436-9742-f10657ca53d8 value=20 at (1.9, -43.1)
+[loot] currency drop id=5172b3cf-28a2-4eb6-a3a7-28582c8953ff value=12 at (1.9, -43.1)
+[loot] magic stone drop id=1838c3b2-7704-4acb-bdb9-91a4c791562d value=15 at (4.0, -46.5)
+Player disconnected: TvcetxRAGQLTd9zWAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 8 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3231
+Player connected: socket=2-JHe8prgFqqMTI6AAAB, playerId=7be715df-332e-4ced-b31b-047898098c8e
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=5030f58e-a749-496a-a0cb-41c5070c6b27 value=5
+[loot] spawned id=c989486f-0c10-4a7f-b51c-9557af04e610 value=8
+[loot] magic stone drop id=1681ec85-2ee0-4efe-9821-74bf84b83c7a value=15 at (1.9, -49.8)
+[loot] currency drop id=0efc46a1-422c-4b70-b060-d079b049d859 value=11 at (1.9, -49.8)
+[loot] picked up id=1681ec85-2ee0-4efe-9821-74bf84b83c7a (magic stone) value=15 by 2-JHe8prgFqqMTI6AAAB (currency=0, ms=99)
+[loot] magic stone drop id=648ee510-d754-48f3-a571-be6679b82cd2 value=15 at (-1.9, -49.8)
+[loot] currency drop id=2306ee8d-05b7-4773-8ecd-4b0ae3a3df9f value=11 at (-1.9, -49.8)
+[loot] magic stone drop id=40fb9d47-fc86-4db6-a342-bbec56e9718f value=20 at (-1.9, -43.1)
+[loot] currency drop id=b2b4765c-2afd-4727-a743-877bcf90a33d value=13 at (-1.9, -43.1)
+[loot] picked up id=b2b4765c-2afd-4727-a743-877bcf90a33d value=13 by 2-JHe8prgFqqMTI6AAAB (currency=13, ms=99)
+[loot] magic stone drop id=f4f18990-7b8b-4075-9422-27c9e0157f7a value=20 at (1.9, -43.1)
+[loot] currency drop id=15cbb25e-bf4b-4f1f-ac1a-d16d059f1678 value=13 at (1.9, -43.1)
+[loot] magic stone drop id=55a69093-e75e-43a0-a237-4d6a63e9b0d4 value=15 at (4.0, -46.5)
+Player disconnected: 2-JHe8prgFqqMTI6AAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 9 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3206
+Player connected: socket=zGmCacTTNKDPU6pzAAAB, playerId=e71f6966-cff2-43c6-a0ab-b9e01a0b9551
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=98f8737a-d26a-44e0-b3ad-0eb210380571 value=15
+[loot] spawned id=94659be6-1995-4840-ac74-ed96de4361c5 value=20
+[loot] magic stone drop id=f473fb37-6372-4991-ab77-2a54d4b22071 value=15 at (1.9, -49.8)
+[loot] currency drop id=253fd629-d880-49ae-8afa-9c35fe4adffd value=12 at (1.9, -49.8)
+[loot] picked up id=f473fb37-6372-4991-ab77-2a54d4b22071 (magic stone) value=15 by zGmCacTTNKDPU6pzAAAB (currency=0, ms=99)
+[loot] magic stone drop id=af388246-184b-45ba-963a-684ca80c46a4 value=15 at (-1.9, -49.8)
+[loot] magic stone drop id=8034e94e-c896-4901-9ec5-02c47780e825 value=20 at (-1.9, -43.1)
+[loot] magic stone drop id=cc4a35f7-d2de-46cb-9f31-4965b70407a6 value=20 at (1.9, -43.1)
+[loot] currency drop id=0d344809-b867-4fd9-a087-c074eb68684b value=9 at (1.9, -43.1)
+[loot] magic stone drop id=ec9d4e52-5876-440c-9ffc-0300ae5b5ed8 value=15 at (4.0, -46.5)
+[loot] currency drop id=cd9fc050-a9ec-4a60-841c-af01011da800 value=14 at (4.0, -46.5)
+Player disconnected: zGmCacTTNKDPU6pzAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 10 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3287
+Player connected: socket=6dOLWMmgt_YyvqjYAAAB, playerId=62d7a74f-a939-4ed1-ae36-e72cf60634a3
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=e3b62dee-ef53-4418-8b88-070e28d6512c value=14
+[loot] magic stone drop id=3c0ab9bc-c7fc-42f2-bf6b-04ac967b7c01 value=15 at (1.9, -49.8)
+[loot] currency drop id=325c12b6-e534-4360-b82f-6ea63b08a9a8 value=13 at (1.9, -49.8)
+[loot] picked up id=3c0ab9bc-c7fc-42f2-bf6b-04ac967b7c01 (magic stone) value=15 by 6dOLWMmgt_YyvqjYAAAB (currency=0, ms=99)
+[loot] magic stone drop id=e1f55a3f-f402-4f05-8582-b0230dadb343 value=15 at (-1.9, -49.8)
+[loot] magic stone drop id=b29bfb15-9eff-47cd-bee1-6733ed16f528 value=20 at (-1.9, -43.1)
+[loot] currency drop id=6f6deb00-3639-4900-ac95-bc0c9f856c97 value=16 at (-1.9, -43.1)
+[loot] picked up id=6f6deb00-3639-4900-ac95-bc0c9f856c97 value=16 by 6dOLWMmgt_YyvqjYAAAB (currency=16, ms=99)
+[loot] magic stone drop id=dd2d0adc-7ad3-4b39-b9d6-8a2aef7821c8 value=20 at (1.9, -43.1)
+[loot] currency drop id=0b8c3bd3-61d1-46e9-9ec3-ac7ba5036f18 value=10 at (1.9, -43.1)
+[loot] magic stone drop id=baf29ab3-6163-4cda-8d31-99795cce2f16 value=15 at (4.0, -46.5)
+[loot] currency drop id=932e0874-e1a9-405b-aa2d-1bc5e6218347 value=6 at (4.0, -46.5)
+Player disconnected: 6dOLWMmgt_YyvqjYAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3258
+Player connected: socket=VvswZxkFQwxcFv9UAAAB, playerId=514658b8-c695-4a6a-96fb-8b0e9257f6db
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] magic stone drop id=2e23f3d8-10a2-4604-882c-b71010a3758b value=15 at (1.9, -49.8)
+[loot] currency drop id=fef7687a-9795-4158-98c4-5a9e64087e36 value=11 at (1.9, -49.8)
+[loot] picked up id=2e23f3d8-10a2-4604-882c-b71010a3758b (magic stone) value=15 by VvswZxkFQwxcFv9UAAAB (currency=0, ms=99)
+[loot] magic stone drop id=e7e21bba-7521-40f7-b007-53993a94ac98 value=15 at (-1.9, -49.8)
+[loot] currency drop id=b32fb36e-839d-44a8-8986-59f39ca7587d value=11 at (-1.9, -49.8)
+[loot] magic stone drop id=a49a8861-82e2-4c1c-ad50-6b95e109aec5 value=20 at (-1.9, -43.1)
+[loot] magic stone drop id=eb6c7d57-4e9d-4625-926c-2ee5deaa1f6a value=20 at (1.9, -43.1)
+[loot] currency drop id=52d2221d-e1d9-4812-8055-d64879608b28 value=16 at (1.9, -43.1)
+[loot] magic stone drop id=da039629-1e74-4cc8-9720-4472c92dacbd value=15 at (4.0, -46.5)
+[loot] currency drop id=5bbfe405-22d3-48e2-a869-c238b924bf01 value=10 at (4.0, -46.5)
+Player disconnected: VvswZxkFQwxcFv9UAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3257
+Player connected: socket=pDsRfH1doqwk_TACAAAB, playerId=6ecb5dc3-d435-4904-b2e7-51b9b413e265
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=3b549188-0f13-4d79-a4ec-b0c5d6a19aa5 value=17
+[loot] magic stone drop id=5baeb71e-0f80-431a-b5c0-13c122dc876d value=15 at (1.9, -49.8)
+[loot] currency drop id=a8627f97-e3d4-4316-ae30-2f6900e22d40 value=9 at (1.9, -49.8)
+[loot] picked up id=5baeb71e-0f80-431a-b5c0-13c122dc876d (magic stone) value=15 by pDsRfH1doqwk_TACAAAB (currency=0, ms=99)
+[loot] magic stone drop id=f6c98e4e-1cdc-473b-a5b5-b6f07aa5b6f1 value=15 at (-1.9, -49.8)
+[loot] currency drop id=e0df1ab6-a75d-4ddf-94a7-7debc6d11fda value=9 at (-1.9, -49.8)
+[loot] magic stone drop id=2b3c3160-e16b-4f71-9b30-b6ca683487a1 value=20 at (-1.9, -43.1)
+[loot] magic stone drop id=d1b4dac2-68c2-4dcb-9357-cdf99a27848e value=20 at (1.9, -43.1)
+[loot] currency drop id=85ced2e9-e944-41f3-b9a0-fcd75348bfdc value=16 at (1.9, -43.1)
+[loot] magic stone drop id=828c566c-be25-4c65-95ac-b5b07a193e0d value=15 at (4.0, -46.5)
+[loot] magic stone drop id=e4dab269-fc49-4a51-8a09-10b2348077fe value=20 at (-7.0, 27.0)
+[loot] picked up id=e4dab269-fc49-4a51-8a09-10b2348077fe (magic stone) value=20 by pDsRfH1doqwk_TACAAAB (currency=14, ms=99)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=6dd7b3ea-ccd3-4393-b0d0-564b99d7f9ba value=18
+[telepipe] placed at (0.0, -46.5) by 6ecb5dc3-d435-4904-b2e7-51b9b413e265
+[telepipe] player 6ecb5dc3-d435-4904-b2e7-51b9b413e265 extracted
+[run] checkpoint captured
+[run] extracted to hub: Ember Descent
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+Player disconnected: pDsRfH1doqwk_TACAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+Server listening on port 3252
+Player connected: socket=q2-oBw6oLnadFb9cAAAB, playerId=0310ddfe-8b7a-4e3f-b606-2ffbc97cdb42
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=73998878-7f01-4faa-b72f-c27d4ab579cb value=8
+[loot] spawned id=671efd27-12b3-4889-a70e-0c8a13637e73 value=6
+[loot] magic stone drop id=56944087-dc9d-4f36-99f7-aa8d27ffd232 value=15 at (1.9, -49.8)
+[loot] picked up id=56944087-dc9d-4f36-99f7-aa8d27ffd232 (magic stone) value=15 by q2-oBw6oLnadFb9cAAAB (currency=0, ms=99)
+[loot] magic stone drop id=c18bf973-ebf2-4646-858f-006b8bf9f638 value=15 at (-1.9, -49.8)
+[loot] magic stone drop id=73fada20-99da-48d9-8638-9c7e8ec72b76 value=20 at (-1.9, -43.1)
+[loot] magic stone drop id=b64b04c1-5280-4262-8b56-f8eb4a985ce1 value=20 at (1.9, -43.1)
+[loot] magic stone drop id=7469af83-19e9-4923-994c-ac16973557f3 value=15 at (4.0, -46.5)
+[loot] magic stone drop id=d562b5ca-2597-4ed1-b8a4-2bf19f2570de value=20 at (-7.0, 27.0)
+[loot] currency drop id=b6efc126-60d9-4bf6-b164-e6f269fbdff6 value=12 at (-7.0, 27.0)
+[loot] picked up id=d562b5ca-2597-4ed1-b8a4-2bf19f2570de (magic stone) value=20 by q2-oBw6oLnadFb9cAAAB (currency=28, ms=99)
+[loot] picked up id=b6efc126-60d9-4bf6-b164-e6f269fbdff6 value=12 by q2-oBw6oLnadFb9cAAAB (currency=40, ms=99)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[telepipe] placed at (0.0, -46.5) by 0310ddfe-8b7a-4e3f-b606-2ffbc97cdb42
+[telepipe] player 0310ddfe-8b7a-4e3f-b606-2ffbc97cdb42 extracted
+[run] checkpoint captured
+[run] extracted to hub: Ember Descent
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=4809a145-9ade-494b-a248-893a2279c55e value=11
+Player disconnected: q2-oBw6oLnadFb9cAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
