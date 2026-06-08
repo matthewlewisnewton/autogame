@@ -34,7 +34,7 @@ Telepipe is a mid-run evacuation spell that lets squad members leave the dungeon
 - **Resume:** When all squad members ready and Deploy, `checkAllReady()` detects `suspendedCheckpoint` and calls `restoreRunCheckpoint()` instead of generating a fresh dungeon. The squad re-enters the **same run id** with checkpoint layout, enemies, objective progress, and **card charges restored** to their pre-suspend values.
 - **New sortie:** **Abort Sortie** in the hub UI (`abandonRun` socket → `abandonSuspendedRun()`) discards the suspended checkpoint and returns the squad to a normal waiting lobby. Deploying again (or starting a fresh quest when no checkpoint exists) starts a **new run** with a new layout, enemies, and run id; hands are re-dealt from deck loadouts and **card charges reset** to full.
 - **Durability across telepipe suspend/resume and new sortie** (ticket 287 baseline; card charges per ticket 289):
-  - **HP:** Persists across telepipe-resume **and** new sortie; restored only at the hub **Medic station** (`healAtMedic` in `game/server/progression.js`), not by telepipe-up, resume, or redeploy.
+  - **HP:** Persists across telepipe-resume **and** new sortie; restored at the hub **Medic station** or by **healing cards** (healing_font, divine_grace, soul_drain, Field Medic Kit, purifying_pulse) during combat — no automatic free heal at level start.
   - **Magic stones:** Persist across telepipe-resume **and** new sortie.
   - **Card charges:** **Persist** on telepipe-resume; **reset** on new sortie.
 
