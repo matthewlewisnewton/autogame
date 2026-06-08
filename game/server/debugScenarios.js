@@ -1375,6 +1375,21 @@ function applyDebugScenario(socket, name) {
     } else if (name === 'combat-damaged-player') {
       player.hp = 25;
       player.magicStones = MAX_MAGIC_STONES;
+    } else if (name === 'saber-grind-max') {
+      // Enter a normal run holding a saber_of_light at +10 grind so the gentle
+      // AoE-per-grind reach widening can be observed against a nearby enemy
+      // without grinding the card first. The same state is reachable normally by
+      // owning a saber_of_light, leveling it through +10 grinds, and deploying.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const saberSlot = player.hand.findIndex(c => c && c.id === 'saber_of_light');
+      const saberCard = { id: 'saber_of_light', name: 'Saber of Light', type: 'weapon', charges: 5, remainingCharges: 5, grind: 10 };
+      if (saberSlot >= 0) {
+        player.hand[saberSlot].grind = 10;
+        player.hand[saberSlot].remainingCharges = player.hand[saberSlot].charges || 5;
+      } else {
+        player.hand[0] = saberCard;
+      }
     } else if (name === 'extracted-in-hub') {
       // Partial extract: the local player has stepped through the Telepipe and is
       // standing in the walkable hub while the run stays in `playing` (as it
