@@ -2473,6 +2473,55 @@ function applyDebugScenario(socket, name) {
       far.hp = 80;
       far.maxHp = 80;
       far.wanderTarget = { x: far.x, z: far.z };
+    } else if (name === 'utility-spells-ready') {
+      // Playing phase with Astral Guardian, Mana Prism, Offering Terminal, and
+      // Chrono Trigger in hand, a friendly minion for sacrifice, and grunts in
+      // radial range. The same state is reachable by earning late reward spells
+      // and evolving battle_familiar in a dungeon run.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const filledSlots = player.hand
+        .map((c, i) => (c != null ? i : -1))
+        .filter((i) => i >= 0);
+      const utilitySpells = [
+        { id: 'astral_guardian', name: 'Astral Guardian', magicStoneCost: 65 },
+        { id: 'mana_prism', name: 'Mana Prism', magicStoneCost: 0 },
+        { id: 'sacrificial_altar', name: 'Offering Terminal', magicStoneCost: 0 },
+        { id: 'chrono_trigger', name: 'Chrono Trigger', magicStoneCost: 0 },
+      ];
+      for (let i = 0; i < utilitySpells.length && filledSlots[i] !== undefined; i++) {
+        const spell = utilitySpells[i];
+        player.hand[filledSlots[i]] = {
+          id: spell.id,
+          name: spell.name,
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+          magicStoneCost: spell.magicStoneCost,
+        };
+      }
+      state.minions = [{
+        id: crypto.randomUUID(),
+        ownerId: player.id,
+        type: 'battery_automaton',
+        x: player.x + 2,
+        z: player.z,
+        hp: 80,
+        maxHp: 80,
+        ttl: 30,
+        maxTtl: 30,
+        createdAt: Date.now(),
+      }];
+      state.enemies = [];
+      const near = spawnEnemy(player.x + 3, player.z, 'grunt');
+      near.hp = 80;
+      near.maxHp = 80;
+      near.wanderTarget = { x: near.x, z: near.z };
+      const mid = spawnEnemy(player.x + 4, player.z + 1, 'grunt');
+      mid.hp = 80;
+      mid.maxHp = 80;
+      mid.wanderTarget = { x: mid.x, z: mid.z };
     } else if (name === 'magma-windup-ready') {
       // Playing phase with Corebreaker Greatsword (windUpMs) in hand and a grunt
       // in melee range so commitment entry and input lock are exercisable without
