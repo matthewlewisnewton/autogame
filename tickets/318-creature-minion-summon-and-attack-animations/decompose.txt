@@ -1,0 +1,21 @@
+Broke ticket **318** into **5 sub-tickets** in dependency order. All use **Verification: code** (acceptance is testable from diffs/logs, not screenshot-only).
+
+**Sub-ticket folder paths created:**
+
+1. `/home/matt/workspace/.autogame-worktrees/318-creature-minion-summon-and-attack-animations/tickets/318-creature-minion-summon-and-attack-animations/subtickets/01-minion-summon-in-foundation`
+2. `/home/matt/workspace/.autogame-worktrees/318-creature-minion-summon-and-attack-animations/tickets/318-creature-minion-summon-and-attack-animations/subtickets/02-wyrm-summon-and-breath-vfx`
+3. `/home/matt/workspace/.autogame-worktrees/318-creature-minion-summon-and-attack-animations/tickets/318-creature-minion-summon-and-attack-animations/subtickets/03-storm-eagle-thunderbird-lightning-vfx`
+4. `/home/matt/workspace/.autogame-worktrees/318-creature-minion-summon-and-attack-animations/tickets/318-creature-minion-summon-and-attack-animations/subtickets/04-phase-beam-undead-commander-vfx`
+5. `/home/matt/workspace/.autogame-worktrees/318-creature-minion-summon-and-attack-animations/tickets/318-creature-minion-summon-and-attack-animations/subtickets/05-field-medic-enemy-vfx`
+
+**Planning rationale (brief):**
+
+| # | Focus |
+|---|--------|
+| **01** | Shared summon-in primitive + creature default renderer + mesh scale-in (foundation for all minions) |
+| **02** | `dungeon_drake` / `ancient_wyrm` breath + summon polish |
+| **03** | `storm_eagle` / `thunderbird` — server `cardUsed` emission + lightning renderers (closes the `storm_eagle` gap in HP-drop fallback) |
+| **04** | `null_crawler` phase beam + `undead_commander` skeleton deployment |
+| **05** | `field_medic` enemy heal/bead VFX (separate socket path from creature cards) |
+
+No existing sub-ticket folders were present, so nothing was deleted or skipped.

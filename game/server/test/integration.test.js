@@ -340,27 +340,46 @@ function findWeaponSlot(player) {
 }
 
 /**
- * Find the slot index of a weapon that strikes immediately (no server wind-up
- * lockout). Heavy weapons (e.g. flame_blade, the greatswords) carry a positive
- * `windUpMs` and resolve their hit a game-loop tick later, which synchronous
- * weapon-kill assertions don't model. Since the opening hand is drawn from a
- * shuffled deck, a light weapon is not guaranteed — if none is in hand, swap the
- * first weapon slot for a light iron_sword so the strike lands in the same tick.
- * Returns the slot index, or -1 if the hand holds no weapon at all.
+ * Find the slot index of an instant weapon (no windUpMs) in a player's hand.
+ * Returns -1 if not found.
  */
-function findImmediateWeaponSlot(player) {
-	if (!player.hand) return -1;
-	const lightSlot = player.hand.findIndex(
-		c => c && c.type === 'weapon' && !(getCardDef(c.id)?.windUpMs > 0)
-	);
-	if (lightSlot >= 0) return lightSlot;
-	const weaponSlot = player.hand.findIndex(c => c && c.type === 'weapon');
-	if (weaponSlot < 0) return -1;
-	player.hand[weaponSlot] = {
-		id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon',
-		charges: 5, remainingCharges: 5, grind: 0,
+function findInstantWeaponSlot(player) {
+	return player.hand ? player.hand.findIndex(
+		(c) => c && c.type === 'weapon' && !getCardDef(c.id).windUpMs
+	) : -1;
+}
+
+/**
+ * Ensure the hand has an instant weapon for synchronous kill tests.
+ * Heavy weapons (e.g. flame_blade, the greatswords) carry a positive `windUpMs`
+ * and resolve their hit a game-loop tick later, which synchronous weapon-kill
+ * assertions don't model. Seeds iron_sword in a non-spell slot when only
+ * wind-up weapons are present.
+ */
+function ensureInstantWeaponInHand(player) {
+	const slot = findInstantWeaponSlot(player);
+	if (slot >= 0) return slot;
+
+	const ironSword = {
+		id: 'iron_sword',
+		name: 'Rust-Forged Saber',
+		type: 'weapon',
+		charges: 5,
+		remainingCharges: 5,
+		grind: 0,
 	};
-	return weaponSlot;
+	const windUpWeaponSlot = player.hand.findIndex(
+		(c) => c && c.type === 'weapon' && getCardDef(c.id).windUpMs
+	);
+	const replaceSlot = windUpWeaponSlot >= 0
+		? windUpWeaponSlot
+		: player.hand.findIndex((c) => c && c.type !== 'spell');
+	if (replaceSlot >= 0) {
+		player.hand[replaceSlot] = ironSword;
+		return replaceSlot;
+	}
+	player.hand[0] = ironSword;
+	return 0;
 }
 
 /**
@@ -1163,7 +1182,7 @@ describe('Socket Integration — useCard Event', () => {
 		player.deck = ['iron_sword', 'flame_blade', 'battle_familiar'];
 		player.hand = [
 			{ id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 },
-			{ id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 3, remainingCharges: 3 },
+			{ id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 2, remainingCharges: 2 },
 			{ id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50 },
 			{ id: 'dungeon_drake', name: 'Vault Wyrm', type: 'creature', charges: 1, remainingCharges: 1 },
 			{ id: 'deck_sifter', name: 'Deck Sifter', type: 'weapon', charges: 3, remainingCharges: 3, effect: 'draw_card' },
@@ -1195,7 +1214,7 @@ describe('Socket Integration — useCard Event', () => {
 			player.hand = [
 				{ id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 1 },
 				{ id: 'chrono_trigger', name: 'Chrono Trigger', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 0 },
-				{ id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 3, remainingCharges: 1 },
+				{ id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 2, remainingCharges: 1 },
 			];
 
 			const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
@@ -1205,7 +1224,7 @@ describe('Socket Integration — useCard Event', () => {
 			const sword = player.hand.find(c => c && c.id === 'iron_sword');
 			const flame = player.hand.find(c => c && c.id === 'flame_blade');
 			expect(sword.remainingCharges).toBe(3);
-			expect(flame.remainingCharges).toBe(3);
+			expect(flame.remainingCharges).toBe(2);
 		});
 
 		it('Ether Scythe grants Magic Stones on hit and kill', async () => {
@@ -2199,9 +2218,9 @@ describe('dungeon run objective', () => {
 			wanderTarget: { x: player.x + 3, z: player.z }
 		}];
 
-		// Use an immediate-strike weapon so the kill resolves in the same tick
-		// (heavy wind-up weapons like flame_blade land a tick later).
-		const weaponSlot = findImmediateWeaponSlot(player);
+		// Seed an instant weapon when the dealt hand only has wind-up heavy hitters
+		// (heavy wind-up weapons like flame_blade land their hit a tick later).
+		const weaponSlot = ensureInstantWeaponInHand(player);
 		expect(weaponSlot).toBeGreaterThanOrEqual(0);
 		const weaponCard = player.hand[weaponSlot];
 
@@ -4099,9 +4118,9 @@ describe('killing skirmisher via weapon card (integration)', () => {
 		skirmisher.x = player.x + 3;
 		skirmisher.z = player.z;
 
-		// Use an immediate-strike weapon so a single swing kills the skirmisher this
-		// tick (heavy wind-up weapons like flame_blade land their hit a tick later).
-		const weaponSlot = findImmediateWeaponSlot(player);
+		// Seed an instant weapon so the kill resolves synchronously
+		// (heavy wind-up weapons like flame_blade land their hit a tick later).
+		const weaponSlot = ensureInstantWeaponInHand(player);
 		expect(weaponSlot).toBeGreaterThanOrEqual(0);
 		const weaponCard = player.hand[weaponSlot];
 

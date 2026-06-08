@@ -1,0 +1,7 @@
+Remediation round 2 had one open gap in `review-feedback.md`: `healing_font` and `divine_grace` still share `renderHealRestore`. Sub-tickets `01`–`05` all have `.passed` markers and were left untouched.
+
+**New sub-ticket created:**
+
+- `/home/matt/workspace/.autogame-worktrees/317-distinct-spell-card-animations/tickets/317-distinct-spell-card-animations/subtickets/06-heal-spell-distinct-vfx/ticket.md`
+
+**Scope:** Split the shared heal renderer into separate `renderHealingFont` (green restoration-beacon primitives) and `renderDivineGrace` (golden `spawnDivineGraceEffect`), register them independently, and add tests proving different dispatch and helper call signatures. Verification mode is `code` because acceptance includes registry structure, helper existence, sound gating, and test assertions—not only on-screen appearance.

@@ -1022,7 +1022,7 @@ describe('renderHand()', () => {
 		resetHandState();
 		hand[0] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 };
 		hand[1] = null;
-		hand[2] = { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 3, remainingCharges: 3 };
+		hand[2] = { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 2, remainingCharges: 3 };
 		hand[3] = null;
 
 		window.renderHand();
@@ -1132,7 +1132,7 @@ describe('renderHand()', () => {
 		resetHandState();
 		hand[0] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 2 };
 		hand[1] = { id: 'chrono_trigger', name: 'Chrono Trigger', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 0 };
-		hand[2] = { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 3, remainingCharges: 1 };
+		hand[2] = { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 2, remainingCharges: 1 };
 		hand[3] = { id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50 };
 
 		window.__setGameState({
@@ -1161,7 +1161,7 @@ describe('renderHand()', () => {
 		resetHandState();
 		hand[0] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 2 };
 		hand[1] = null;
-		hand[2] = { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 3, remainingCharges: 3 };
+		hand[2] = { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 2, remainingCharges: 3 };
 		hand[3] = null;
 
 		window.renderHand();
@@ -1199,6 +1199,46 @@ describe('renderHand()', () => {
 
 		const slot = document.querySelector('.card-slot[data-slot-index="2"]');
 		expect(slot.style.getPropertyValue('--charge-pct')).toBe('60');
+	});
+
+	it('shows wind-up commitment hint for heavy-hitter cards from CARD_DEFS', async () => {
+		await import('../main.js');
+
+		resetHandState();
+		hand[0] = { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 2, remainingCharges: 2 };
+		hand[1] = { id: 'magma_greatsword', name: 'Corebreaker Greatsword', type: 'weapon', charges: 2, remainingCharges: 2 };
+		hand[2] = { id: 'soul_drain', name: 'Soul Drain', type: 'spell', charges: 1, remainingCharges: 1 };
+		hand[3] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 };
+
+		window.__setGameState({
+			players: { player1: { magicStones: 90 } },
+			gamePhase: 'playing',
+		}, 'player1');
+		window.renderHand();
+
+		const slots = document.querySelectorAll('.card-slot');
+		expect(slots[0].querySelector('.card-windup-hint')?.textContent).toBe('650ms wind-up');
+		expect(slots[1].querySelector('.card-windup-hint')?.textContent).toBe('800ms wind-up');
+		expect(slots[2].querySelector('.card-windup-hint')?.textContent).toBe('700ms wind-up');
+		expect(slots[3].querySelector('.card-windup-hint')).toBeNull();
+	});
+
+	it('sets wind-up lockout tooltip on heavy-hitter hand slots', async () => {
+		await import('../main.js');
+
+		resetHandState();
+		hand[0] = { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 2, remainingCharges: 2 };
+		hand[1] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 };
+
+		window.__setGameState({
+			players: { player1: { magicStones: 90 } },
+			gamePhase: 'playing',
+		}, 'player1');
+		window.renderHand();
+
+		const slots = document.querySelectorAll('.card-slot');
+		expect(slots[0].title).toContain('cannot move or use other cards');
+		expect(slots[1].title).toBe('Right-click to discard');
 	});
 
 	it('lays out hand slots on an N64 controller grid for 8BitDo 64 only', () => {
@@ -2001,7 +2041,7 @@ describe('Cooldown Enforcement (useCard)', () => {
 		await import('../main.js');
 
 		// Place a weapon card with 3 remaining charges in slot 1
-		hand[1] = { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 3, remainingCharges: 3 };
+		hand[1] = { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 2, remainingCharges: 3 };
 		slotCooldowns[1] = true;
 
 		const chargesBefore = hand[1].remainingCharges;
@@ -2052,7 +2092,7 @@ describe('Cooldown Enforcement (useCard)', () => {
 	it('useCard() on a non-cooling weapon slot emits without optimistic charge drain', async () => {
 		await import('../main.js');
 
-		hand[1] = { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 3, remainingCharges: 3 };
+		hand[1] = { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 2, remainingCharges: 3 };
 		slotCooldowns[1] = false;
 
 		window.__clearSocketEmitLog();
@@ -2230,7 +2270,7 @@ describe('Card wind-up input lock', () => {
 	it('canUseSlot() returns false while the local player is card-committed', async () => {
 		await import('../main.js');
 
-		hand[0] = { id: 'magma_greatsword', name: 'Corebreaker Greatsword', type: 'weapon', charges: 4, remainingCharges: 4 };
+		hand[0] = { id: 'magma_greatsword', name: 'Corebreaker Greatsword', type: 'weapon', charges: 2, remainingCharges: 2 };
 		slotCooldowns[0] = false;
 
 		window.__setGameState({
@@ -2252,7 +2292,7 @@ describe('Card wind-up input lock', () => {
 	it('calling useCard() while committed does NOT emit a useCard socket event', async () => {
 		await import('../main.js');
 
-		hand[0] = { id: 'magma_greatsword', name: 'Corebreaker Greatsword', type: 'weapon', charges: 4, remainingCharges: 4 };
+		hand[0] = { id: 'magma_greatsword', name: 'Corebreaker Greatsword', type: 'weapon', charges: 2, remainingCharges: 2 };
 		slotCooldowns[0] = false;
 
 		window.__setGameState({
@@ -2318,7 +2358,7 @@ describe('Card wind-up input lock', () => {
 	it('toggles #card-hand.input-locked from stateUpdate commitment fields', async () => {
 		await import('../main.js');
 
-		hand[0] = { id: 'magma_greatsword', name: 'Corebreaker Greatsword', type: 'weapon', charges: 4, remainingCharges: 4 };
+		hand[0] = { id: 'magma_greatsword', name: 'Corebreaker Greatsword', type: 'weapon', charges: 2, remainingCharges: 2 };
 		const cardHand = document.getElementById('card-hand');
 
 		window.__setGameState({

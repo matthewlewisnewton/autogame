@@ -1,0 +1,8 @@
+Review complete. I wrote:
+
+- `tickets/317-distinct-spell-card-animations/round-1/review.md`
+- `tickets/317-distinct-spell-card-animations/round-1/gaps.md`
+
+Verdict is `FAIL`. The captured game run is clean, but `healing_font` and `divine_grace` still share the exact same spell renderer, so the top-level “per-card spell animations / each spell visually distinct” acceptance criterion is not fully met.
+
+No `nits.md` was created.

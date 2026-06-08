@@ -1,6 +1,6 @@
 {
   "iron_sword": { "damage": 17 },
-  "flame_blade": { "damage": 28, "windUpMs": 600 },
+  "flame_blade": { "damage": 28, "windUpMs": 650 },
   "battle_familiar": { "magicStoneCost": 50, "damage": 44 },
   "dungeon_drake": {
     "windUpMs": 600,
@@ -323,6 +323,7 @@
     "magicStoneOnHit": 12,
     "healOnHit": 12,
     "healOnKill": 18,
+    "windUpMs": 700,
     "isEvolved": true,
     "specialEffect": "soul_drain"
   },

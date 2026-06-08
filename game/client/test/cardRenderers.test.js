@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { CARD_DEFS } from '../cards.js';
 import {
 	renderCardUsed,
 	resolveRenderers,
 	getAccentHex,
+	SPELL_TYPE_DEFAULT_RENDERER,
 } from '../cardRenderers.js';
 import { CARD_DEFS } from '../cards.js';
 
@@ -27,6 +29,7 @@ function makeCtx(overrides = {}) {
 		spawnProjectileTrail: record('spawnProjectileTrail'),
 		spawnImpactDecal: record('spawnImpactDecal'),
 		spawnTelegraphRing: record('spawnTelegraphRing'),
+		spawnMinionSummonInEffect: record('spawnMinionSummonInEffect'),
 		flashMesh: record('flashMesh'),
 		spawnHitSpark: record('spawnHitSpark'),
 		enemyMeshes: () => ({}),
@@ -55,11 +58,15 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('purifying_pulse')).toHaveLength(1);
 		expect(resolveRenderers('spike_trap')).toHaveLength(1);
 		expect(resolveRenderers('undead_commander')).toHaveLength(1);
-		expect(resolveRenderers('thunderbird')).toHaveLength(1);
+		expect(resolveRenderers('thunderbird')).toHaveLength(2);
+		expect(resolveRenderers('storm_eagle')).toHaveLength(2);
+		expect(resolveRenderers('dragons_breath')).toHaveLength(1);
+		expect(resolveRenderers('inferno_pillar')).toHaveLength(1);
+		expect(resolveRenderers('gravity_well')).toHaveLength(1);
 	});
 
 	it('returns the composed renderer list for cards with multiple visuals', () => {
-		expect(resolveRenderers('inferno_pillar')).toHaveLength(2);
+		expect(resolveRenderers('event_horizon')).toHaveLength(1);
 	});
 
 	it('falls back to the weapon default for plain weapon cards', () => {
@@ -94,22 +101,60 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('steel_claymore')[0]).toBe(resolveRenderers('excalibur_photon')[0]);
 	});
 
-	it('falls back to the spell default for plain spell cards', () => {
+	it('returns bespoke renderers for utility support spells', () => {
+		expect(resolveRenderers('astral_guardian')).toHaveLength(1);
+		expect(resolveRenderers('mana_prism')).toHaveLength(1);
+		expect(resolveRenderers('sacrificial_altar')).toHaveLength(1);
+		expect(resolveRenderers('chrono_trigger')).toHaveLength(1);
+	});
+
+	it('returns bespoke renderers for arcane radial spells', () => {
 		expect(resolveRenderers('battle_familiar')).toHaveLength(1);
-		expect(resolveRenderers('frost_nova')).toHaveLength(1);
+		expect(resolveRenderers('mana_leach')).toHaveLength(1);
+		expect(resolveRenderers('soul_drain')).toHaveLength(1);
 	});
 
-	it('returns an empty list for creature/enchantment cards without an override', () => {
-		expect(resolveRenderers('battery_automaton')).toEqual([]);
+	it('does not fall back to the spell default for frost_nova and permafrost_lance', () => {
+		const frostCtx = makeCtx();
+		renderCardUsed({
+			cardId: 'frost_nova',
+			origin: { x: 0, z: 0 },
+			radius: 4,
+			hits: [],
+		}, frostCtx);
+		expect(frostCtx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+		expect(frostCtx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(true);
+
+		const lanceCtx = makeCtx();
+		renderCardUsed({
+			cardId: 'permafrost_lance',
+			origin: { x: 0, z: 0 },
+			radius: 6,
+			direction: { x: 1, z: 0 },
+			hits: [],
+		}, lanceCtx);
+		expect(lanceCtx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+		expect(lanceCtx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(true);
 	});
 
-	it('returns wyrm attack renderer for Vault Wyrm and Archive Wyrm', () => {
-		expect(resolveRenderers('dungeon_drake')).toHaveLength(1);
-		expect(resolveRenderers('ancient_wyrm')).toHaveLength(1);
+	it('falls back to the creature default for plain creature cards', () => {
+		expect(resolveRenderers('battery_automaton')).toHaveLength(1);
 	});
 
-	it('returns bespoke attack renderers for Phase Stalker and Bulkhead Mauler', () => {
-		expect(resolveRenderers('null_crawler')).toHaveLength(1);
+	it('returns an empty list for unknown card ids', () => {
+		expect(resolveRenderers('not_a_real_card')).toEqual([]);
+	});
+
+	it('returns composed summon + attack renderers for Vault Wyrm and Archive Wyrm', () => {
+		expect(resolveRenderers('dungeon_drake')).toHaveLength(2);
+		expect(resolveRenderers('ancient_wyrm')).toHaveLength(2);
+	});
+
+	it('returns composed summon + attack renderers for Phase Stalker', () => {
+		expect(resolveRenderers('null_crawler')).toHaveLength(2);
+	});
+
+	it('returns bespoke attack renderer for Bulkhead Mauler', () => {
 		expect(resolveRenderers('bulkhead_mauler')).toHaveLength(1);
 	});
 
@@ -117,15 +162,11 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('chain_lightning')).toHaveLength(1);
 	});
 
-	it('returns an empty list for unknown card ids', () => {
-		expect(resolveRenderers('not_a_real_card')).toEqual([]);
-	});
-
 	it('returns a fresh array (mutating one does not affect the next call)', () => {
-		const a = resolveRenderers('inferno_pillar');
+		const a = resolveRenderers('dragons_breath');
 		a.pop();
-		const b = resolveRenderers('inferno_pillar');
-		expect(b).toHaveLength(2);
+		const b = resolveRenderers('dragons_breath');
+		expect(b).toHaveLength(1);
 	});
 });
 
@@ -459,6 +500,48 @@ describe('renderCardUsed() — weapon dispatch', () => {
 			projectileTravelMs: 1200,
 		});
 	});
+
+	it('ice_ball adds an accent-tinted projectile trail, impact decal and frost burst', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'ice_ball',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			attackRange: 9,
+			projectileTravelMs: 1200,
+			hits: [],
+		}, ctx);
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail).toBeDefined();
+		expect(trail[1]).toEqual({ x: 1, z: 2 });
+		expect(trail[2]).toEqual({ x: 1, z: 0 });
+		expect(trail[3]).toMatchObject({ range: 9, color: 0x67e8f9 });
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 10, z: 2 });
+		expect(decal[2]).toMatchObject({ color: 0x67e8f9 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 10, z: 2 });
+		expect(burst[2]).toMatchObject({ color: 0x67e8f9 });
+	});
+
+	it('ice_ball still renders without throwing when the new ctx primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnProjectileTrail: undefined,
+			spawnImpactDecal: undefined,
+			spawnParticleBurst: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'ice_ball',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			attackRange: 9,
+			projectileTravelMs: 1200,
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+	});
 });
 
 describe('renderCardUsed() — styled weapon slashes', () => {
@@ -754,19 +837,150 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 });
 
 describe('renderCardUsed() — spell dispatch', () => {
-	it('spawns a generic accent-tinted ring for plain spell cards', () => {
+	it('every spell card has a bespoke renderer', () => {
+		for (const [cardId, def] of Object.entries(CARD_DEFS)) {
+			if (def.type !== 'spell') continue;
+			const renderers = resolveRenderers(cardId);
+			expect(renderers.length).toBeGreaterThan(0);
+			expect(renderers).not.toContain(SPELL_TYPE_DEFAULT_RENDERER);
+		}
+	});
+
+	it('spell type default renderer still produces accent-tinted summon rings', () => {
 		const ctx = makeCtx();
-		renderCardUsed({
+		SPELL_TYPE_DEFAULT_RENDERER({
 			cardId: 'frost_nova',
 			origin: { x: 0, z: 0 },
 			radius: 4,
-			hits: [],
 		}, ctx);
 		const ring = ctx._calls.find((c) => c[0] === 'spawnSummonEffect');
 		expect(ring).toBeDefined();
 		expect(ring[2]).toBe(4);
-		// frost_nova accent color is 0x67e8f9
-		expect(ring[3]).toEqual({ color: 0x67e8f9, emissive: 0x67e8f9 });
+		expect(ring[3]).toMatchObject({ color: 0x67e8f9 });
+	});
+
+	it('battle_familiar adds an indigo arcane telegraph and spark burst at the cast origin', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'battle_familiar',
+			origin: { x: 2, z: 3 },
+			radius: 4,
+			hits: [],
+		}, ctx);
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 2, z: 3 });
+		expect(ring[2]).toBe(4);
+		expect(ring[3]).toMatchObject({ color: 0x818cf8, emissive: 0x6366f1 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 2, z: 3 });
+		expect(burst[2]).toMatchObject({ color: 0x818cf8, count: 14, spread: 2.0 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('mana_leach adds a purple drain telegraph and siphon burst at AoE radius', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'mana_leach',
+			origin: { x: 1, z: 2 },
+			radius: 4,
+			specialEffect: 'mana_drain',
+			hits: [],
+		}, ctx);
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 1, z: 2 });
+		expect(ring[2]).toBe(4);
+		expect(ring[3]).toMatchObject({ color: 0xa855f7, emissive: 0x9333ea });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[2]).toMatchObject({ color: 0xa855f7, count: 16, spread: 2.2 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('soul_drain adds pink drain telegraph, primary burst, and heal flourish decal', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'soul_drain',
+			origin: { x: 0, z: 0 },
+			radius: 4,
+			specialEffect: 'soul_drain',
+			hpHealed: 12,
+			hits: [],
+		}, ctx);
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[3]).toMatchObject({ color: 0xe879f9, emissive: 0xd946ef });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[2]).toMatchObject({ color: 0xe879f9, count: 14, spread: 2.4 });
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 0, z: 0 });
+		expect(decal[2]).toMatchObject({ color: 0xd946ef, emissive: 0xf0abfc });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
+	});
+
+	it('arcane radial spells still render without throwing when new ctx primitives are absent', () => {
+		const minimalCtx = makeCtx({
+			spawnTelegraphRing: undefined,
+			spawnParticleBurst: undefined,
+			spawnImpactDecal: undefined,
+		});
+		for (const cardId of ['battle_familiar', 'mana_leach', 'soul_drain']) {
+			const ctx = { ...minimalCtx, _calls: [] };
+			expect(() => renderCardUsed({
+				cardId,
+				origin: { x: 0, z: 0 },
+				radius: 4,
+				hits: [],
+			}, ctx)).not.toThrow();
+		}
+	});
+
+	it('frost_nova adds an icy telegraph ring and radial frost burst at the cast origin', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'frost_nova',
+			origin: { x: 2, z: 3 },
+			radius: 4,
+			hits: [],
+		}, ctx);
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 2, z: 3 });
+		expect(ring[2]).toBe(4);
+		expect(ring[3]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 2, z: 3 });
+		expect(burst[2]).toMatchObject({ color: 0x67e8f9 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('permafrost_lance uses a narrower telegraph, directional shard trail, and tip burst', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'permafrost_lance',
+			origin: { x: 0, z: 0 },
+			radius: 6,
+			direction: { x: 1, z: 0 },
+			hits: [],
+		}, ctx);
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[2]).toBeCloseTo(3.3, 5);
+		expect(ring[3]).toMatchObject({ color: 0x67e8f9 });
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail).toBeDefined();
+		expect(trail[2]).toEqual({ x: 1, z: 0 });
+		expect(trail[3]).toMatchObject({ range: 6, color: 0x67e8f9 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 6, z: 0 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
 	});
 
 	it('uses the fixed glacier palette for glacier_collapse (not the accent)', () => {
@@ -781,7 +995,47 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ring[3]).toEqual({ color: 0x38bdf8, emissive: 0x0ea5e9 });
 	});
 
-	it('healing_font renders the heal ring and plays heal sound when hpGained > 0', () => {
+	it('glacier_collapse adds a glacier telegraph ring and shatter burst at the rupture point', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'glacier_collapse',
+			origin: { x: 1, z: 2 },
+			radius: 5,
+			hits: [],
+		}, ctx);
+		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(telegraph).toBeDefined();
+		expect(telegraph[1]).toEqual({ x: 1, z: 2 });
+		expect(telegraph[2]).toBe(5);
+		expect(telegraph[3]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 1, z: 2 });
+		expect(burst[2]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+	});
+
+	it('healing_font and divine_grace resolve to different renderer functions', () => {
+		expect(resolveRenderers('healing_font')[0]).not.toBe(resolveRenderers('divine_grace')[0]);
+	});
+
+	it('healing_font and divine_grace produce different helper call signatures for the same payload', () => {
+		const payload = {
+			origin: { x: 0, z: 0 },
+			radius: 3,
+			hpGained: 6,
+			playerId: 'me',
+			hits: [],
+		};
+		const fontCtx = makeCtx({ myId: 'me' });
+		resolveRenderers('healing_font')[0]({ ...payload, cardId: 'healing_font' }, fontCtx);
+		const graceCtx = makeCtx({ myId: 'me' });
+		resolveRenderers('divine_grace')[0]({ ...payload, cardId: 'divine_grace' }, graceCtx);
+		const fontHelpers = fontCtx._calls.map((c) => c[0]);
+		const graceHelpers = graceCtx._calls.map((c) => c[0]);
+		expect(fontHelpers).not.toEqual(graceHelpers);
+	});
+
+	it('healing_font renders a green telegraph ring and burst without divine grace', () => {
 		const ctx = makeCtx({ myId: 'me' });
 		renderCardUsed({
 			cardId: 'healing_font',
@@ -791,7 +1045,15 @@ describe('renderCardUsed() — spell dispatch', () => {
 			playerId: 'me',
 			hits: [],
 		}, ctx);
-		expect(ctx._calls.some((c) => c[0] === 'spawnDivineGraceEffect')).toBe(true);
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 0, z: 0 });
+		expect(ring[2]).toBe(3);
+		expect(ring[3]).toMatchObject({ color: 0x86efac, emissive: 0x4ade80 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[2]).toMatchObject({ color: 0x86efac, count: 14, spread: 2.0 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnDivineGraceEffect')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(true);
 	});
 
@@ -807,7 +1069,21 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
 	});
 
-	it('divine_grace renders the heal ring and plays heal sound when hpGained > 0', () => {
+	it('healing_font skips VFX when radius is absent', () => {
+		const ctx = makeCtx({ myId: 'me' });
+		renderCardUsed({
+			cardId: 'healing_font',
+			origin: { x: 0, z: 0 },
+			hpGained: 6,
+			playerId: 'me',
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
+	});
+
+	it('divine_grace renders sanctum heal ring, gold burst, and heal sound when hpGained > 0', () => {
 		const ctx = makeCtx({ myId: 'me' });
 		renderCardUsed({
 			cardId: 'divine_grace',
@@ -817,7 +1093,14 @@ describe('renderCardUsed() — spell dispatch', () => {
 			playerId: 'me',
 			hits: [],
 		}, ctx);
-		expect(ctx._calls.some((c) => c[0] === 'spawnDivineGraceEffect')).toBe(true);
+		const grace = ctx._calls.find((c) => c[0] === 'spawnDivineGraceEffect');
+		expect(grace).toBeDefined();
+		expect(grace[1]).toEqual({ x: 0, z: 0 });
+		expect(grace[2]).toBe(3);
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[2]).toMatchObject({ color: 0xfde68a, emissive: 0xfbbf24, count: 12, spread: 2.2 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(true);
 	});
 
@@ -830,6 +1113,20 @@ describe('renderCardUsed() — spell dispatch', () => {
 			hpGained: 0,
 			hits: [],
 		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
+	});
+
+	it('divine_grace skips VFX when radius is absent', () => {
+		const ctx = makeCtx({ myId: 'me' });
+		renderCardUsed({
+			cardId: 'divine_grace',
+			origin: { x: 0, z: 0 },
+			hpGained: 10,
+			playerId: 'me',
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnDivineGraceEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
 	});
 
@@ -864,7 +1161,46 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
 	});
 
-	it('event_horizon renders both the outer pull ring and the inner crush ring', () => {
+	it('gravity_well adds a purple pull telegraph, inward burst, and center impact decal', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'gravity_well',
+			origin: { x: 1, z: 2 },
+			radius: 12,
+			pulled: 2,
+			hits: [],
+		}, ctx);
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 1, z: 2 });
+		expect(ring[2]).toBe(12);
+		expect(ring[3]).toMatchObject({ color: 0xc084fc, emissive: 0xa855f7 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 1, z: 2 });
+		expect(burst[2]).toMatchObject({ color: 0xc084fc, count: 18, spread: 2.8 });
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 1, z: 2 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('gravity_well still renders without throwing when the new ctx primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnTelegraphRing: undefined,
+			spawnParticleBurst: undefined,
+			spawnImpactDecal: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'gravity_well',
+			origin: { x: 0, z: 0 },
+			radius: 12,
+			pulled: 0,
+			hits: [],
+		}, ctx)).not.toThrow();
+	});
+
+	it('event_horizon renders outer pull telegraph/burst and inner crush ring at centerRadius', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'event_horizon',
@@ -873,12 +1209,39 @@ describe('renderCardUsed() — spell dispatch', () => {
 			centerRadius: 2.5,
 			hits: [],
 		}, ctx);
-		const rings = ctx._calls.filter((c) => c[0] === 'spawnSummonEffect');
-		const radii = rings.map((r) => r[2]).sort((p, q) => p - q);
-		expect(radii).toEqual([2.5, 12]);
+		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(telegraph).toBeDefined();
+		expect(telegraph[2]).toBe(12);
+		expect(telegraph[3]).toMatchObject({ color: 0x581c87, emissive: 0x7c3aed });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[2]).toMatchObject({ color: 0x581c87, count: 12, spread: 2.4 });
+		const crush = ctx._calls.find((c) => c[0] === 'spawnSummonEffect');
+		expect(crush).toBeDefined();
+		expect(crush[2]).toBe(2.5);
+		expect(crush[3]).toMatchObject({ color: 0x581c87, emissive: 0x7c3aed });
+		const outerSummon = ctx._calls.filter(
+			(c) => c[0] === 'spawnSummonEffect' && c[2] === 12,
+		);
+		expect(outerSummon).toHaveLength(0);
 	});
 
-	it('inferno_pillar renders both the pillar and the accent AoE ring', () => {
+	it('event_horizon still renders without throwing when the new ctx primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnTelegraphRing: undefined,
+			spawnParticleBurst: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'event_horizon',
+			origin: { x: 0, z: 0 },
+			radius: 12,
+			centerRadius: 2.5,
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(true);
+	});
+
+	it('inferno_pillar renders the pillar without the generic accent summon ring', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'inferno_pillar',
@@ -887,7 +1250,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 			hits: [],
 		}, ctx);
 		expect(ctx._calls.some((c) => c[0] === 'spawnInfernoPillarEffect')).toBe(true);
-		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
 	});
 
 	it('inferno_pillar adds an accent telegraph ring and ember burst at the eruption point', () => {
@@ -920,22 +1283,199 @@ describe('renderCardUsed() — spell dispatch', () => {
 		}, ctx)).not.toThrow();
 		expect(ctx._calls.some((c) => c[0] === 'spawnInfernoPillarEffect')).toBe(true);
 	});
+
+	it('dragons_breath renders a forward fire cone, trail, and tip embers', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'dragons_breath',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			radius: 7,
+			dotTicks: 4,
+			specialEffect: 'fire_dot',
+			hits: [],
+		}, ctx);
+		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
+		expect(attacks).toHaveLength(1);
+		expect(attacks[0][1]).toEqual({ x: 1, z: 2 });
+		expect(attacks[0][2]).toEqual({ x: 1, z: 0 });
+		expect(attacks[0][3]).toMatchObject({
+			range: 7,
+			coneAngle: Math.PI / 3,
+			color: 0xfb923c,
+			emissive: 0xff3b00,
+		});
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail).toBeDefined();
+		expect(trail[3]).toMatchObject({ range: 7, color: 0xfb923c });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 8, z: 2 });
+		expect(burst[2]).toMatchObject({ color: 0xfb923c });
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 8, z: 2 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('dragons_breath still renders without throwing when the new ctx primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnProjectileTrail: undefined,
+			spawnImpactDecal: undefined,
+			spawnParticleBurst: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'dragons_breath',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			radius: 7,
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+	});
+
+	it('astral_guardian adds indigo shield telegraph, burst, and minion spawn ring', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'astral_guardian',
+			origin: { x: 2, z: 3 },
+			radius: 4,
+			shieldGranted: 14,
+			minionId: 'minion-1',
+			hits: [],
+		}, ctx);
+		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(telegraph).toBeDefined();
+		expect(telegraph[1]).toEqual({ x: 2, z: 3 });
+		expect(telegraph[2]).toBe(4);
+		expect(telegraph[3]).toMatchObject({ color: 0x818cf8, emissive: 0x6366f1 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 2, z: 3 });
+		const summon = ctx._calls.find(
+			(c) => c[0] === 'spawnSummonEffect' && c[2] === 1.2,
+		);
+		expect(summon).toBeDefined();
+		expect(summon[3]).toMatchObject({ color: 0x818cf8, emissive: 0x6366f1 });
+	});
+
+	it('mana_prism adds a violet/cyan prism telegraph and arcane burst at radius 1', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'mana_prism',
+			origin: { x: 1, z: 2 },
+			radius: 1,
+			hits: [],
+		}, ctx);
+		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(telegraph).toBeDefined();
+		expect(telegraph[1]).toEqual({ x: 1, z: 2 });
+		expect(telegraph[2]).toBe(1);
+		expect(telegraph[3]).toMatchObject({ color: 0xa855f7, emissive: 0x22d3ee });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[2]).toMatchObject({ color: 0xa855f7, count: 12, spread: 1.6 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('sacrificial_altar adds a gold/red ritual telegraph and burst at sacrifice radius', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'sacrificial_altar',
+			origin: { x: 0, z: 0 },
+			radius: 10,
+			sacrificedMinionId: 'minion-2',
+			hits: [],
+		}, ctx);
+		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(telegraph).toBeDefined();
+		expect(telegraph[2]).toBe(10);
+		expect(telegraph[3]).toMatchObject({ color: 0xfbbf24, emissive: 0xef4444 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[2]).toMatchObject({ color: 0xfbbf24, count: 16, spread: 2.4 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('chrono_trigger adds a time-ripple telegraph and burst using a default radius', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'chrono_trigger',
+			origin: { x: 3, z: 4 },
+			restoredCharges: 2,
+			hits: [],
+		}, ctx);
+		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(telegraph).toBeDefined();
+		expect(telegraph[1]).toEqual({ x: 3, z: 4 });
+		expect(telegraph[2]).toBe(2);
+		expect(telegraph[3]).toMatchObject({ color: 0x67e8f9, emissive: 0xfbbf24 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 3, z: 4 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('chrono_trigger no-ops when origin is absent', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'chrono_trigger',
+			restoredCharges: 2,
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
+	});
+
+	it('utility spells still render without throwing when new ctx primitives are absent', () => {
+		const minimalCtx = makeCtx({
+			spawnTelegraphRing: undefined,
+			spawnParticleBurst: undefined,
+		});
+		for (const payload of [
+			{ cardId: 'astral_guardian', origin: { x: 0, z: 0 }, radius: 4, hits: [] },
+			{ cardId: 'mana_prism', origin: { x: 0, z: 0 }, radius: 1, hits: [] },
+			{ cardId: 'sacrificial_altar', origin: { x: 0, z: 0 }, radius: 10, hits: [] },
+			{ cardId: 'chrono_trigger', origin: { x: 0, z: 0 }, hits: [] },
+		]) {
+			const ctx = { ...minimalCtx, _calls: [] };
+			expect(() => renderCardUsed(payload, ctx)).not.toThrow();
+		}
+	});
 });
 
 describe('renderCardUsed() — creature dispatch', () => {
-	it('does not render any extra visuals for vanilla creature spawns', () => {
+	it('vanilla creature spawn with minionId triggers the summon-in flourish', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
-			cardId: 'battle_familiar',
+			cardId: 'battery_automaton',
+			origin: { x: 2, z: 3 },
+			minionId: 'minion-1',
+			hits: [],
+		}, ctx);
+		const summon = ctx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(summon).toBeDefined();
+		expect(summon[1]).toEqual({ x: 2, z: 3 });
+		expect(methodsCalled(ctx)).toContain('playSound');
+	});
+
+	it('vanilla creature spawn without minionId stays sound-only', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'battery_automaton',
 			origin: { x: 0, z: 0 },
 			hits: [],
 		}, ctx);
-		// Only the card sound — no summon ring, no attack flash.
+		expect(ctx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
 		expect(methodsCalled(ctx)).toEqual(['playSound']);
 	});
 
 	it('Vault Wyrm minion breath renders a forward cone hitbox on breath start', () => {
-		const ctx = makeCtx();
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 2, y: 0.5, z: 3 } },
+			}),
+		});
 		renderCardUsed({
 			cardId: 'dungeon_drake',
 			origin: { x: 1, z: 2 },
@@ -950,7 +1490,25 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(attacks).toHaveLength(1);
 		expect(attacks[0][1]).toEqual({ x: 1, z: 2 });
 		expect(attacks[0][2]).toEqual({ x: 0, z: 1 });
-		expect(attacks[0][3]).toMatchObject({ range: 4, coneAngle: Math.PI / 4, duration: 2000 });
+		expect(attacks[0][3]).toMatchObject({
+			range: 4,
+			coneAngle: Math.PI / 4,
+			duration: 2000,
+			color: 0x22c55e,
+			emissive: 0x16a34a,
+		});
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 1, z: 2 });
+		expect(ring[2]).toBeCloseTo(4 * 0.55);
+		expect(ring[3]).toMatchObject({ color: 0x22c55e, emissive: 0x16a34a });
+		const alongBurst = ctx._calls.find(
+			(c) => c[0] === 'spawnParticleBurst' && c[1].x === 1 && c[1].z === 2 + 4 * 0.45,
+		);
+		expect(alongBurst).toBeDefined();
+		expect(alongBurst[2]).toMatchObject({ color: 0x22c55e, emissive: 0x16a34a, count: 10 });
+		expect(ctx._calls.filter((c) => c[0] === 'spawnHitSpark')).toHaveLength(1);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(2);
 	});
 
 	it('Vault Wyrm breath ticks skip duplicate cone visuals but still emit hit particles', () => {
@@ -973,7 +1531,11 @@ describe('renderCardUsed() — creature dispatch', () => {
 	});
 
 	it('Archive Wyrm fire breath renders a channeled cone hitbox', () => {
-		const ctx = makeCtx();
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 5, y: 0.5, z: 0 } },
+			}),
+		});
 		renderCardUsed({
 			cardId: 'ancient_wyrm',
 			specialEffect: 'fire_breath',
@@ -994,10 +1556,99 @@ describe('renderCardUsed() — creature dispatch', () => {
 			emissive: 0x9333ea,
 			duration: 2500,
 		});
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[3]).toMatchObject({ color: 0xef4444, emissive: 0x9333ea });
+		const alongBurst = ctx._calls.find(
+			(c) => c[0] === 'spawnParticleBurst' && c[1].x === 8 * 0.45,
+		);
+		expect(alongBurst).toBeDefined();
+		expect(alongBurst[2]).toMatchObject({ color: 0xef4444, emissive: 0x9333ea, count: 14 });
+		expect(ctx._calls.filter((c) => c[0] === 'spawnHitSpark')).toHaveLength(1);
 	});
 
-	it('Phase Stalker beam renders a narrow projectile corridor', () => {
+	it('Vault Wyrm and Archive Wyrm summons use distinct flourish radii', () => {
+		const vaultCtx = makeCtx();
+		renderCardUsed({
+			cardId: 'dungeon_drake',
+			origin: { x: 0, z: 0 },
+			minionId: 'wyrm-vault',
+			hits: [],
+		}, vaultCtx);
+		const vaultSummon = vaultCtx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(vaultSummon).toBeDefined();
+		expect(vaultSummon[2]).toMatchObject({ radius: 1.0, burstCount: 8, burstSpread: 1.2 });
+
+		const archiveCtx = makeCtx();
+		renderCardUsed({
+			cardId: 'ancient_wyrm',
+			origin: { x: 3, z: 4 },
+			minionId: 'wyrm-archive',
+			hits: [],
+		}, archiveCtx);
+		const archiveSummon = archiveCtx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(archiveSummon).toBeDefined();
+		expect(archiveSummon[2]).toMatchObject({
+			radius: 1.85,
+			burstCount: 18,
+			burstSpread: 2.5,
+			color: 0x9333ea,
+			emissive: 0x9333ea,
+		});
+		expect(archiveSummon[2].radius).toBeGreaterThan(vaultSummon[2].radius);
+	});
+
+	it('wyrm summon renderers skip breath payloads and attack renderers skip deploy payloads', () => {
+		const summonCtx = makeCtx();
+		renderCardUsed({
+			cardId: 'dungeon_drake',
+			origin: { x: 0, z: 0 },
+			minionId: 'wyrm-1',
+			breathPhase: 'start',
+			direction: { x: 1, z: 0 },
+			attackRange: 6,
+			hits: [],
+		}, summonCtx);
+		expect(summonCtx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
+		expect(summonCtx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+
+		const deployCtx = makeCtx();
+		renderCardUsed({
+			cardId: 'ancient_wyrm',
+			origin: { x: 0, z: 0 },
+			minionId: 'wyrm-2',
+			hits: [],
+		}, deployCtx);
+		expect(deployCtx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(true);
+		expect(deployCtx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(false);
+	});
+
+	it('Phase Stalker deploy uses a tight cyan telegraph ring and ground swirl', () => {
 		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'null_crawler',
+			origin: { x: 2, z: 3 },
+			minionId: 'stalker-1',
+			hits: [],
+		}, ctx);
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 2, z: 3 });
+		expect(ring[2]).toBe(0.72);
+		expect(ring[3]).toMatchObject({ color: 0x67e8f9, emissive: 0xa5f3fc });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 2, y: 0.4, z: 3 });
+		expect(burst[2]).toMatchObject({ color: 0x22d3ee, emissive: 0x67e8f9 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
+	});
+
+	it('Phase Stalker beam renders a narrow projectile corridor with trail, terminus burst, and hit sparks', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 8, y: 0.5, z: 0 } },
+			}),
+		});
 		renderCardUsed({
 			cardId: 'null_crawler',
 			specialEffect: 'phase_beam',
@@ -1016,6 +1667,35 @@ describe('renderCardUsed() — creature dispatch', () => {
 			projectileHitWidth: 0.8,
 			color: 0x22d3ee,
 		});
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail).toBeDefined();
+		expect(trail[1]).toEqual({ x: 0, z: 0 });
+		expect(trail[2]).toEqual({ x: 1, z: 0 });
+		expect(trail[3]).toMatchObject({ range: 14, color: 0x22d3ee });
+		const terminusBurst = ctx._calls.find(
+			(c) => c[0] === 'spawnParticleBurst' && c[1].x === 14 && c[1].z === 0,
+		);
+		expect(terminusBurst).toBeDefined();
+		expect(terminusBurst[2]).toMatchObject({ color: 0x22d3ee, emissive: 0x06b6d4 });
+		expect(ctx._calls.filter((c) => c[0] === 'spawnHitSpark')).toHaveLength(1);
+	});
+
+	it('Phase Stalker beam still renders without throwing when primitive helpers are absent', () => {
+		const ctx = makeCtx({
+			spawnProjectileTrail: undefined,
+			spawnParticleBurst: undefined,
+			spawnHitSpark: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'null_crawler',
+			specialEffect: 'phase_beam',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			attackRange: 14,
+			hitWidth: 0.8,
+			hits: [{ enemyId: 'e1', hp: 34 }],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 
 	it('Bulkhead Mauler shockwave renders a short wide cone', () => {
@@ -1058,7 +1738,7 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 
-	it('undead_commander renders a caster ring and one ring per spawned skeleton', () => {
+	it('undead_commander renders bone-white/purple caster ring and per-skeleton summon flourishes', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'undead_commander',
@@ -1069,11 +1749,69 @@ describe('renderCardUsed() — creature dispatch', () => {
 			],
 			hits: [],
 		}, ctx);
-		const rings = ctx._calls.filter((c) => c[0] === 'spawnSummonEffect');
-		// 1 caster ring (radius 2) + 2 skeleton rings (radius 1.2)
-		expect(rings).toHaveLength(3);
-		const radii = rings.map((r) => r[2]).sort();
-		expect(radii).toEqual([1.2, 1.2, 2]);
+		const casterRing = ctx._calls.filter((c) => c[0] === 'spawnSummonEffect');
+		expect(casterRing).toHaveLength(1);
+		expect(casterRing[0][2]).toBe(2);
+		expect(casterRing[0][3]).toMatchObject({ color: 0xe4e4e7, emissive: 0xa855f7 });
+		const skeletonFlourishes = ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(skeletonFlourishes).toHaveLength(2);
+		expect(skeletonFlourishes[0][1]).toEqual({ x: 1, z: 0 });
+		expect(skeletonFlourishes[1][1]).toEqual({ x: 0, z: 1 });
+		expect(skeletonFlourishes[0][2]).toMatchObject({
+			color: 0xe4e4e7,
+			emissive: 0xa855f7,
+			radius: 0.85,
+		});
+		const groundBursts = ctx._calls.filter(
+			(c) => c[0] === 'spawnParticleBurst' && c[1].y === 0.35,
+		);
+		expect(groundBursts).toHaveLength(2);
+		expect(groundBursts[0][2]).toMatchObject({ color: 0xe4e4e7, emissive: 0xa855f7 });
+	});
+
+	it('storm_eagle summon renders a soft cyan minion flourish', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'storm_eagle',
+			minionId: 'eagle-1',
+			origin: { x: 2, z: 3 },
+			hits: [],
+		}, ctx);
+		const flourishes = ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(flourishes).toHaveLength(1);
+		expect(flourishes[0][1]).toEqual({ x: 2, z: 3 });
+		expect(flourishes[0][2]).toMatchObject({ color: 0x93c5fd, emissive: 0x7dd3fc });
+		expect(ctx._calls.some((c) => c[0] === 'spawnLightningArc')).toBe(false);
+	});
+
+	it('storm_eagle attack renders a cyan arc and impact burst', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'storm_eagle',
+			minionId: 'eagle-1',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			strikeTarget: { x: 6, z: 0 },
+			hits: [{ enemyId: 'e1', hp: 27 }],
+		}, ctx);
+		const arcs = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
+		expect(arcs).toHaveLength(1);
+		expect(arcs[0][1]).toEqual({ x: 0, z: 0 });
+		expect(arcs[0][2]).toEqual({ x: 6, z: 0 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(true);
+	});
+
+	it('thunderbird summon renders a sky-blue flourish distinct from storm_eagle', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'thunderbird',
+			minionId: 'bird-1',
+			origin: { x: 1, z: 2 },
+			hits: [],
+		}, ctx);
+		const flourishes = ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(flourishes).toHaveLength(1);
+		expect(flourishes[0][2]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9, radius: 1.2 });
 	});
 
 	it('thunderbird (chain_lightning) renders zap + enemy-hit cue + follow-up attack', () => {
@@ -1083,12 +1821,34 @@ describe('renderCardUsed() — creature dispatch', () => {
 			origin: { x: 3, z: 4 },
 			direction: { x: 1, z: 0 },
 			specialEffect: 'chain_lightning',
-			hits: [],
+			hits: [{ enemyId: 'e1', hp: 30 }],
 		}, ctx);
 		expect(ctx._calls.some((c) => c[0] === 'spawnChainLightningEffect')).toBe(true);
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 		const hitSounds = ctx._calls.filter((c) => c[0] === 'playSound' && c[1] === 'enemyHit');
-		expect(hitSounds).toHaveLength(1);
+		expect(hitSounds).toHaveLength(2);
+	});
+
+	it('thunderbird chain_lightning with chainSegments invokes spawnLightningArc per hop', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'thunderbird',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			specialEffect: 'chain_lightning',
+			chainSegments: [
+				{ from: { x: 0, z: 0 }, to: { x: 6, z: 0 } },
+				{ from: { x: 6, z: 0 }, to: { x: 8, z: 0 } },
+			],
+			hits: [
+				{ enemyId: 'e1', hp: 30 },
+				{ enemyId: 'e2', hp: 10 },
+			],
+		}, ctx);
+		const arcs = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
+		expect(arcs).toHaveLength(2);
+		expect(ctx._calls.some((c) => c[0] === 'spawnChainLightningEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 
 	it('chain_lightning with two chainSegments invokes spawnLightningArc twice', () => {
@@ -1097,6 +1857,7 @@ describe('renderCardUsed() — creature dispatch', () => {
 			cardId: 'chain_lightning',
 			origin: { x: 0, z: 0 },
 			direction: { x: 1, z: 0 },
+			chainRadius: 5,
 			chainSegments: [
 				{ from: { x: 0, z: 0 }, to: { x: 5, z: 0 } },
 				{ from: { x: 5, z: 0 }, to: { x: 8, z: 0 } },
@@ -1112,8 +1873,50 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(arcs[0][2]).toEqual({ x: 5, z: 0 });
 		expect(arcs[1][1]).toEqual({ x: 5, z: 0 });
 		expect(arcs[1][2]).toEqual({ x: 8, z: 0 });
+		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(telegraph).toBeDefined();
+		expect(telegraph[1]).toEqual({ x: 0, z: 0 });
+		expect(telegraph[2]).toBe(5);
+		expect(telegraph[3]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+		const endpointBursts = ctx._calls.filter(
+			(c) => c[0] === 'spawnParticleBurst' && (c[1].x === 5 || c[1].x === 8),
+		);
+		expect(endpointBursts).toHaveLength(2);
+		expect(endpointBursts[0][1]).toEqual({ x: 5, z: 0 });
+		expect(endpointBursts[1][1]).toEqual({ x: 8, z: 0 });
 		expect(ctx._calls.some((c) => c[0] === 'spawnChainLightningEffect')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'enemyHit')).toBe(true);
+	});
+
+	it('chain_lightning without chainSegments still uses legacy spawnChainLightningEffect', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'chain_lightning',
+			origin: { x: 1, z: 2 },
+			direction: { x: 0, z: 1 },
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnChainLightningEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnLightningArc')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+	});
+
+	it('chain_lightning segment path still renders without throwing when new ctx primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnTelegraphRing: undefined,
+			spawnParticleBurst: undefined,
+			spawnImpactDecal: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'chain_lightning',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			chainSegments: [
+				{ from: { x: 0, z: 0 }, to: { x: 5, z: 0 } },
+			],
+			hits: [{ enemyId: 'e1', hp: 50 }],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnLightningArc')).toBe(true);
 	});
 });
 

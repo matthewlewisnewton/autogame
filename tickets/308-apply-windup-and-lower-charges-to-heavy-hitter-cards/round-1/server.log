@@ -1,0 +1,13 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/308-apply-windup-and-lower-charges-to-heavy-hitter-cards/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/308-apply-windup-and-lower-charges-to-heavy-hitter-cards/game/data
+Server listening on port 3000
+Player connected: socket=PqN7wKH7Lvk3Kk-mAAAB, playerId=ccd66fc0-45ec-4421-a123-43fe89e198d6
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=-2Y2TYBxZIjIfpzRAAAD, playerId=229ce041-e50a-4cba-b561-23392c65187f
+Player disconnected: PqN7wKH7Lvk3Kk-mAAAB
+Player disconnected: -2Y2TYBxZIjIfpzRAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

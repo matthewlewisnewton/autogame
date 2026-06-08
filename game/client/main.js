@@ -153,6 +153,7 @@ import {
 	spawnProjectileTrail as rendererSpawnProjectileTrail,
 	spawnImpactDecal as rendererSpawnImpactDecal,
 	spawnTelegraphRing as rendererSpawnTelegraphRing,
+	spawnMinionSummonInEffect as rendererSpawnMinionSummonInEffect,
 	markLootCollected as rendererMarkLootCollected,
 	markCardHitEnemies as rendererMarkCardHitEnemies,
 	disposeMeshMap as rendererDisposeMeshMap,
@@ -1109,6 +1110,7 @@ window.addEventListener(BOOTH_ACTION_EVENT, (ev) => {
 const cardRenderCtx = {
 	spawnAttackEffect: rendererSpawnAttackEffect,
 	spawnSummonEffect: rendererSpawnSummonEffect,
+	spawnMinionSummonInEffect: rendererSpawnMinionSummonInEffect,
 	spawnDivineGraceEffect: rendererSpawnDivineGraceEffect,
 	spawnPurifyingPulseEffect: rendererSpawnPurifyingPulseEffect,
 	spawnPurifyingPulseHealRing: rendererSpawnPurifyingPulseHealRing,
@@ -2693,6 +2695,11 @@ function renderHand() {
 				? '<span class="desperation-ribbon">Desperate</span>'
 				: '';
 			const echoBadge = card.isEcho ? '<span class="echo-badge">Echo</span>' : '';
+			const cardDef = CARD_DEFS[card.id];
+			const windUpMs = cardDef?.windUpMs || 0;
+			const windupHint = windUpMs > 0
+				? `<span class="card-windup-hint">${THEME.cardDescriptions.windupHandHint.replace('{windUpMs}', String(windUpMs))}</span>`
+				: '';
 			content.innerHTML = `
 				${desperationRibbon}
 				<span class="card-icon">${style.icon}</span>
@@ -2701,6 +2708,7 @@ function renderHand() {
 				${evolvedBadge}
 				${grindBadge}
 				${effectText}
+				${windupHint}
 				${msCostBadge}
 				<span class="card-charges">${formatCardChargesDisplay(card)}</span>
 			`;
@@ -2714,6 +2722,8 @@ function renderHand() {
 				? 'Summoned creature active — card burns down until it expires'
 				: card.isDesperation
 				? 'Last-resort card — drawn when your deck runs out'
+				: windUpMs > 0
+				? THEME.cardDescriptions.windupTooltip
 				: 'Right-click to discard';
 
 			if (cardCost > 0 && playerMs < cardCost) {

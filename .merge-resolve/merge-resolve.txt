@@ -1,8 +1,19 @@
-`LOGBOOK.md` is resolved.
+All four conflicted files are resolved and marker-free. Summary of how each was merged:
 
-The conflict was two append-only review entries at the end of the log. I kept **both** in version order:
+### `game/shared/cardStats.json`
+Kept **main's `windUpMs: 650`** for `flame_blade` (ticket 308 balance pass). The branch's `600` was an earlier value; tests and the balance report expect `650`, and the 316 ticket's wind-up telegraph works with that stat.
 
-1. **v0.318** — `309-fix-storm-eagle-thunderbird-attack-interval-gate` (from `main`)
-2. **v0.320** — `315-card-animation-shared-vfx-primitives-foundation` (from this ticket’s branch)
+### `game/server/test/integration.test.js`
+Combined both sides:
+- **Main's** `findInstantWeaponSlot` + `ensureInstantWeaponInHand` helpers (more robust hand seeding)
+- **Branch's** comments about heavy wind-up weapons and `expect(weaponSlot).toBeGreaterThanOrEqual(0)` assertions at both call sites
 
-All conflict markers are removed. The file flows v0.315 → v0.316 → v0.317 → v0.318 → v0.320 with no gaps. The harness can commit and finish the merge.
+### `TASKS.md`
+Listed **both** cleanup follow-ups in numeric order:
+- `316-cleanup-apply-windup-and-lower-charges-to-heavy-hitter-cards` (main)
+- `317-cleanup-distinct-weapon-card-animations` (branch)
+
+### `LOGBOOK.md`
+Appended all three release entries newest-first: **v0.324** (316 weapon animations), **v0.323** (318 minion animations), **v0.322** (317 spell animations).
+
+Affected tests pass (192 tests across integration, windup regression, and cards). The harness can commit and complete the merge.
