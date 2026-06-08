@@ -520,4 +520,188 @@ describe('new card combat helpers', () => {
 		expect(gameState.enemies[0].hp).toBeLessThan(50);
 		expect(gameState.enemies[1].hp).toBeLessThan(50);
 	});
+
+	it('storm_eagle fires on first tick but NOT again within the same attackIntervalMs', () => {
+		addPlayer('p1', { x: 0, z: 0 });
+		const damage = 13;
+		const interval = 1500;
+		gameState.enemies = [{
+			id: 'e1',
+			type: 'grunt',
+			x: 5,
+			z: 0,
+			hp: 100,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: 5, z: 0 },
+		}];
+		gameState.minions = [{
+			id: 'eagle',
+			ownerId: 'p1',
+			type: 'storm_eagle',
+			x: 0,
+			z: 0,
+			hp: 45,
+			attackRange: 7,
+			attackDamage: damage,
+			attackIntervalMs: interval,
+			ttl: 30,
+		}];
+		gameState.run = { status: 'playing' };
+
+		updateMinions();
+		const hpAfterFirst = gameState.enemies[0].hp;
+		expect(hpAfterFirst).toBe(100 - damage);
+
+		// Second tick within the same interval — should NOT fire again
+		updateMinions();
+		expect(gameState.enemies[0].hp).toBe(hpAfterFirst);
+	});
+
+	it('storm_eagle fires again after attackIntervalMs has elapsed', () => {
+		addPlayer('p1', { x: 0, z: 0 });
+		const damage = 13;
+		const interval = 1500;
+		gameState.enemies = [{
+			id: 'e1',
+			type: 'grunt',
+			x: 5,
+			z: 0,
+			hp: 100,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: 5, z: 0 },
+		}];
+		gameState.minions = [{
+			id: 'eagle',
+			ownerId: 'p1',
+			type: 'storm_eagle',
+			x: 0,
+			z: 0,
+			hp: 45,
+			attackRange: 7,
+			attackDamage: damage,
+			attackIntervalMs: interval,
+			ttl: 30,
+		}];
+		gameState.run = { status: 'playing' };
+
+		updateMinions();
+		expect(gameState.enemies[0].hp).toBe(100 - damage);
+
+		// Manually set lastAttackAt to be older than the interval
+		gameState.minions[0].lastAttackAt = Date.now() - interval - 100;
+
+		updateMinions();
+		expect(gameState.enemies[0].hp).toBe(100 - damage * 2);
+	});
+
+	it('thunderbird fires one full chain on first tick but NOT a second chain within interval', () => {
+		addPlayer('p1', { x: 0, z: 0 });
+		const damage = 20;
+		const interval = 1500;
+		gameState.enemies = [
+			{
+				id: 'e1',
+				type: 'grunt',
+				x: 6,
+				z: 0,
+				hp: 200,
+				state: 'idle',
+				attackState: 'idle',
+				wanderTarget: { x: 6, z: 0 },
+			},
+			{
+				id: 'e2',
+				type: 'grunt',
+				x: 8,
+				z: 0,
+				hp: 200,
+				state: 'idle',
+				attackState: 'idle',
+				wanderTarget: { x: 8, z: 0 },
+			},
+		];
+		gameState.minions = [{
+			id: 'bird',
+			ownerId: 'p1',
+			type: 'thunderbird',
+			x: 0,
+			z: 0,
+			hp: 68,
+			attackRange: 11,
+			attackDamage: damage,
+			attackIntervalMs: interval,
+			chainRadius: 5,
+			maxChainTargets: 2,
+			ttl: 30,
+		}];
+		gameState.run = { status: 'playing' };
+
+		updateMinions();
+		const hp1AfterFirst = gameState.enemies[0].hp;
+		const hp2AfterFirst = gameState.enemies[1].hp;
+		// Primary hit on e1, chain to e2
+		expect(hp1AfterFirst).toBe(200 - damage);
+		expect(hp2AfterFirst).toBe(200 - damage);
+
+		// Second tick within the same interval — should NOT fire a second chain
+		updateMinions();
+		expect(gameState.enemies[0].hp).toBe(hp1AfterFirst);
+		expect(gameState.enemies[1].hp).toBe(hp2AfterFirst);
+	});
+
+	it('thunderbird chain fires again after attackIntervalMs has elapsed', () => {
+		addPlayer('p1', { x: 0, z: 0 });
+		const damage = 20;
+		const interval = 1500;
+		gameState.enemies = [
+			{
+				id: 'e1',
+				type: 'grunt',
+				x: 6,
+				z: 0,
+				hp: 300,
+				state: 'idle',
+				attackState: 'idle',
+				wanderTarget: { x: 6, z: 0 },
+			},
+			{
+				id: 'e2',
+				type: 'grunt',
+				x: 8,
+				z: 0,
+				hp: 300,
+				state: 'idle',
+				attackState: 'idle',
+				wanderTarget: { x: 8, z: 0 },
+			},
+		];
+		gameState.minions = [{
+			id: 'bird',
+			ownerId: 'p1',
+			type: 'thunderbird',
+			x: 0,
+			z: 0,
+			hp: 68,
+			attackRange: 11,
+			attackDamage: damage,
+			attackIntervalMs: interval,
+			chainRadius: 5,
+			maxChainTargets: 2,
+			ttl: 30,
+		}];
+		gameState.run = { status: 'playing' };
+
+		updateMinions();
+		expect(gameState.enemies[0].hp).toBe(300 - damage);
+		expect(gameState.enemies[1].hp).toBe(300 - damage);
+
+		// Manually set lastAttackAt to be older than the interval
+		gameState.minions[0].lastAttackAt = Date.now() - interval - 100;
+
+		updateMinions();
+		expect(gameState.enemies[0].hp).toBe(300 - damage * 2);
+		expect(gameState.enemies[1].hp).toBe(300 - damage * 2);
+	});
 });
