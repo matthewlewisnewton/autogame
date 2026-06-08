@@ -1,0 +1,8 @@
+Created 2 sub-tickets. Since Sanctum Pulse (`divine_grace`) is an **instant** self-heal + mana-restore — no projectile, windUp, or DoT (confirmed in `cardEffects.js:727` and `cardStats.json:239`) — the work is concentrated on making the VFX read as a divine golden *pulse* (the current primitive has a mismatched green emissive and a flat single ring), with "timing sync" reducing to firing synchronously at cast. Both are code-verifiable.
+
+Sub-ticket folder paths created:
+
+- `tickets/350-anim-sanctum-pulse/subtickets/01-sanctum-pulse-divine-vfx/ticket.md`
+- `tickets/350-anim-sanctum-pulse/subtickets/02-sanctum-pulse-renderer-timing/ticket.md`
+
+**01** reworks the `spawnDivineGraceEffect` primitive in `renderer.js` into a coherent holy-gold pulse (expanding ground ring + ascending light column modeled on `spawnInfernoPillarEffect`), built from the 315 shared primitives. **02** wires `renderDivineGrace` to the holy-gold palette, confirms instant/synchronous timing against the server's instant resolution, preserves the heal-sound and radius guards, and extends `cardRenderers.test.js` with palette-distinctness (vs Restoration Beacon & Purifying Pulse), sound-gating, and synchronous-invocation/timing assertions.

@@ -1,0 +1,14 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/350-anim-sanctum-pulse/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/350-anim-sanctum-pulse/game/data
+Server listening on port 3000
+Player connected: socket=m25SMc_Il5R1_o_UAAAB, playerId=c2414e66-3a4a-44bc-abc8-cffa3d523e3e
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=LBMPE5J-pdZegguAAAAD, playerId=571e471a-7956-4324-9a82-9da9d3d67731
+[loot] spawned id=02586d49-d0da-4ce0-91e7-6883bdcd16c6 value=19
+Player disconnected: m25SMc_Il5R1_o_UAAAB
+Player disconnected: LBMPE5J-pdZegguAAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

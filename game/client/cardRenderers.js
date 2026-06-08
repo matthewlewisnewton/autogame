@@ -32,7 +32,7 @@
 //   scheduleAfter(ms, fn) — wrapper around setTimeout used for delayed swings
 
 import { CARD_ACCENT_STYLE, CARD_DEFS } from './cards.js';
-import { ATTACK_EFFECT_DURATION, MINION_SUMMON_IN_MS } from './config.js';
+import { ATTACK_EFFECT_DURATION, MINION_SUMMON_IN_MS, PHOTON_BARRAGE_SWING_DELAY_MS } from './config.js';
 
 const NULL_CRAWLER_SUMMON_COLOR = 0x22d3ee;
 const NULL_CRAWLER_SUMMON_EMISSIVE = 0x67e8f9;
@@ -86,7 +86,7 @@ function renderConeSwings(data, ctx) {
 	const origin = originOf(data);
 	const direction = directionOf(data);
 	const swingCount = data.swingCount || 1;
-	const delayPerSwing = data.specialEffect === 'photon_barrage' ? 80 : 0;
+	const delayPerSwing = data.specialEffect === 'photon_barrage' ? PHOTON_BARRAGE_SWING_DELAY_MS : 0;
 
 	for (let i = 0; i < swingCount; i++) {
 		const delay = delayPerSwing * i;
@@ -237,7 +237,7 @@ function renderWeaponSwing(data, ctx) {
 
 /**
  * Per-weapon styling for the heavy wind-up greatswords (`steel_claymore`,
- * `magma_greatsword`, `excalibur_photon`). These carry a `windUpMs` lockout, so
+ * `magma_greatsword`). These carry a `windUpMs` lockout, so
  * the 315 charge telegraph already plays during the wind-up; the entries here
  * make the *resulting* hit feel proportionally heavy: a wider/larger cone arc
  * plus a pronounced impact — a larger-radius decal and a high-`count` debris/
@@ -270,19 +270,72 @@ const HEAVY_GREATSWORD_STYLES = {
 		debrisCount: 24,
 		debrisSpread: 2.8,
 	},
-	// Excalibur Photon: a magenta photon greatslash bursting with light shards.
-	excalibur_photon: {
-		color: 0xe879f9,
-		emissive: 0xc026d3,
-		coneAngle: Math.PI / 2.5,
-		range: 6,
-		fillOpacity: 0.48,
-		edgeOpacity: 0.95,
-		decalRadius: 3.0,
-		debrisCount: 20,
-		debrisSpread: 2.2,
-	},
 };
+
+/** Excalibur Photon: magenta photon greatslash bursting with light shards. */
+const EXCALIBUR_PHOTON_STYLE = {
+	color: 0xe879f9,
+	emissive: 0xc026d3,
+	coneAngle: Math.PI / 2.5,
+	range: 6,
+	fillOpacity: 0.48,
+	edgeOpacity: 0.95,
+	pulseRadius: 2.1,
+	decalRadius: 3.0,
+	debrisCount: 20,
+	debrisSpread: 2.2,
+};
+
+/**
+ * Excalibur Photon greatslash. Composes the 315 primitives — a wide magenta
+ * cone swing, a photon projectile trail along the arc, a radiant telegraph
+ * pulse and light-shard burst at the strike point, plus a ground impact decal —
+ * into one unmistakable light-energy weapon blow. Honors `swingCount` and the
+ * `photon_barrage` stagger like the heavy greatswords.
+ */
+function renderExcaliburPhoton(data, ctx) {
+	const style = EXCALIBUR_PHOTON_STYLE;
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex('excalibur_photon') ?? style.color;
+	const emissive = style.emissive;
+	const swingCount = data.swingCount || 1;
+	const delayPerSwing = data.specialEffect === 'photon_barrage' ? PHOTON_BARRAGE_SWING_DELAY_MS : 0;
+	const impactAt = pointAlong(origin, direction, style.range);
+
+	const swing = () => {
+		ctx.spawnAttackEffect(origin, direction, {
+			color,
+			emissive,
+			coneAngle: style.coneAngle,
+			range: style.range,
+			fillOpacity: style.fillOpacity,
+			edgeOpacity: style.edgeOpacity,
+		});
+		if (ctx.spawnProjectileTrail) {
+			ctx.spawnProjectileTrail(origin, direction, { color, emissive, range: style.range });
+		}
+		if (ctx.spawnTelegraphRing) {
+			ctx.spawnTelegraphRing(impactAt, style.pulseRadius, { color, emissive });
+		}
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(impactAt, { color, emissive, radius: style.decalRadius });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(impactAt, {
+				color,
+				emissive,
+				count: style.debrisCount,
+				spread: style.debrisSpread,
+			});
+		}
+	};
+	for (let i = 0; i < swingCount; i++) {
+		const delay = delayPerSwing * i;
+		if (delay > 0) ctx.scheduleAfter(delay, swing);
+		else swing();
+	}
+}
 
 /**
  * Heavy wind-up greatsword swing. Composes the 315 primitives — a wide cone
@@ -304,7 +357,7 @@ function renderHeavyGreatsword(data, ctx) {
 	const color = getAccentHex(data.cardId) ?? style.color;
 	const emissive = style.emissive;
 	const swingCount = data.swingCount || 1;
-	const delayPerSwing = data.specialEffect === 'photon_barrage' ? 80 : 0;
+	const delayPerSwing = data.specialEffect === 'photon_barrage' ? PHOTON_BARRAGE_SWING_DELAY_MS : 0;
 
 	const swing = () => ctx.spawnAttackEffect(origin, direction, {
 		color,
@@ -1294,7 +1347,7 @@ const CARD_RENDERERS = {
 	// Heavy wind-up greatswords — weighty committed-hit slash + impact.
 	steel_claymore: renderHeavyGreatsword,
 	magma_greatsword: renderHeavyGreatsword,
-	excalibur_photon: renderHeavyGreatsword,
+	excalibur_photon: renderExcaliburPhoton,
 	fireball: renderFireball,
 	deck_sifter: renderDeckSifter,
 
