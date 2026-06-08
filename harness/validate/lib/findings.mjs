@@ -32,6 +32,52 @@ function resolvePresetCopy(run) {
 	};
 }
 
+function renderBossEncounterUiSection(probe) {
+	const lines = ['', '## Boss encounter UI', ''];
+	if (!probe || typeof probe !== 'object') {
+		lines.push('No boss encounter UI probe recorded.');
+		return lines;
+	}
+	const encounterActive = probe.encounterLocked === true && probe.encounterPhase === 'active';
+	lines.push(`- **hudVisible**: ${probe.hudVisible === true ? 'yes' : 'no'}`);
+	lines.push(`- **bossName**: ${probe.bossName || '(empty)'}`);
+	lines.push(`- **hpFillWidthPct**: ${probe.hpFillWidthPct ?? '(missing)'}`);
+	lines.push(`- **encounterLocked / phase**: ${probe.encounterLocked === true ? 'locked' : 'unlocked'} / ${probe.encounterPhase ?? '(unknown)'}`);
+	if (probe.hudVisible !== true) {
+		lines.push('  - Note: boss encounter HUD missing or hidden during boss-active capture.');
+	}
+	if (!probe.bossName) {
+		lines.push('  - Note: boss display name is empty.');
+	}
+	if (!encounterActive) {
+		lines.push('  - Note: encounter was not active/locked when probed.');
+	}
+	return lines;
+}
+
+function renderBossVisualIdentitySection(probe) {
+	const lines = ['', '## Boss visual identity', ''];
+	if (!probe || typeof probe !== 'object') {
+		lines.push('No boss visual identity probe recorded.');
+		return lines;
+	}
+	lines.push(`- **bossType**: ${probe.bossType ?? '(missing)'}`);
+	lines.push(`- **bossEnemyId**: ${probe.bossEnemyId ?? '(missing)'}`);
+	lines.push(`- **nearestAddType**: ${probe.nearestAddType ?? '(none)'}`);
+	lines.push(`- **bossDistinctFromAdds**: ${probe.bossDistinctFromAdds === true ? 'yes' : 'no'}`);
+	if (probe.bossRenderScale != null || probe.addRenderScale != null) {
+		lines.push(`- **bossRenderScale / addRenderScale**: ${probe.bossRenderScale ?? '?'} / ${probe.addRenderScale ?? '?'}`);
+	}
+	if (probe.bossDistinctFromAdds !== true) {
+		lines.push('  - Note: boss type or maxHp is not clearly distinct from the nearest live add.');
+	}
+	if (probe.bossRenderScale != null && probe.addRenderScale != null
+		&& !(probe.bossRenderScale > probe.addRenderScale)) {
+		lines.push('  - Note: boss render scale is not larger than the nearest add.');
+	}
+	return lines;
+}
+
 function renderFloorAlignmentSection(floorAlignment) {
 	const lines = ['', '## Floor alignment', ''];
 	const probes = floorAlignment && typeof floorAlignment === 'object' ? floorAlignment : {};
@@ -69,6 +115,8 @@ function renderFloorAlignmentSection(floorAlignment) {
  *   bossType?: string,
  *   assertions: Record<string, boolean>,
  *   floorAlignment?: Record<string, object>,
+ *   bossEncounterUi?: object | null,
+ *   bossVisualIdentity?: object | null,
  *   consoleErrors?: string[],
  *   screenshots?: string[],
  *   visualNotes?: string[],
@@ -117,6 +165,8 @@ export function renderFindings(run) {
 	}
 
 	lines.push(...renderFloorAlignmentSection(run.floorAlignment));
+	lines.push(...renderBossEncounterUiSection(run.bossEncounterUi));
+	lines.push(...renderBossVisualIdentitySection(run.bossVisualIdentity));
 
 	lines.push('', '## Screenshots', '');
 	for (const shot of run.screenshots || []) {

@@ -424,6 +424,77 @@ function buildEncounterProbe(harness, bossType, addTypes) {
 	};
 }
 
+async function captureBossEncounterUiProbe(page) {
+	return page.evaluate(() => {
+		const hud = document.getElementById('boss-encounter-hud');
+		const nameEl = document.getElementById('boss-encounter-name');
+		const fillEl = document.getElementById('boss-encounter-hp-fill');
+		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
+		const hudVisible = !!hud
+			&& !hud.classList.contains('hidden')
+			&& hud.getAttribute('aria-hidden') !== 'true';
+		const bossName = nameEl?.textContent?.trim() ?? '';
+		let hpFillWidthPct = null;
+		if (fillEl) {
+			const match = (fillEl.style.width || '').match(/^([\d.]+)%$/);
+			if (match) hpFillWidthPct = Number(match[1]);
+		}
+		if (hpFillWidthPct == null && harness?.bossEncounter?.hpPct != null) {
+			hpFillWidthPct = harness.bossEncounter.hpPct;
+		}
+		return {
+			hudVisible,
+			bossName,
+			hpFillWidthPct,
+			encounterLocked: harness?.encounter?.locked === true,
+			encounterPhase: harness?.encounter?.phase ?? null,
+		};
+	});
+}
+
+async function captureBossVisualIdentityProbe(page, bossType) {
+	return page.evaluate((expectedBossType) => {
+		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
+		const bossEnemyId = harness?.encounter?.bossEnemyId ?? null;
+		const boss = (harness?.enemyHp || []).find((e) => e.id === bossEnemyId && e.hp > 0)
+			|| (harness?.enemyHp || []).find((e) => e.type === expectedBossType && e.hp > 0)
+			|| null;
+		const adds = (harness?.enemyHp || []).filter(
+			(e) => e.hp > 0 && e.id !== boss?.id && e.type !== expectedBossType,
+		);
+		let nearestAdd = null;
+		let nearestDist = Infinity;
+		if (boss) {
+			for (const add of adds) {
+				const dist = Math.hypot((add.x ?? 0) - (boss.x ?? 0), (add.z ?? 0) - (boss.z ?? 0));
+				if (dist < nearestDist) {
+					nearestDist = dist;
+					nearestAdd = add;
+				}
+			}
+		}
+		const nearestAddType = nearestAdd?.type ?? null;
+		const bossDistinctFromAdds = !!boss
+			&& !!nearestAdd
+			&& boss.type !== nearestAddType
+			&& (boss.maxHp ?? 0) > (nearestAdd.maxHp ?? 0);
+		const bossRenderScale = boss && typeof window.__getEnemyRenderScaleForTest === 'function'
+			? window.__getEnemyRenderScaleForTest(boss.id)?.scale ?? null
+			: null;
+		const addRenderScale = nearestAdd && typeof window.__getEnemyRenderScaleForTest === 'function'
+			? window.__getEnemyRenderScaleForTest(nearestAdd.id)?.scale ?? null
+			: null;
+		return {
+			bossType: boss?.type ?? expectedBossType,
+			bossEnemyId: boss?.id ?? bossEnemyId,
+			nearestAddType,
+			bossDistinctFromAdds,
+			bossRenderScale,
+			addRenderScale,
+		};
+	}, bossType);
+}
+
 async function probeHubLobbyFinder(page) {
 	return page.evaluate(() => {
 		const lobbyBrowser = document.getElementById('lobby-browser');
@@ -708,6 +779,8 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 	const activeScreenshot = path.relative(REPO_ROOT, activeScreenshotPath);
 	const activeFloor = await captureFloorAlignmentProbe(page);
 	if (activeFloor) floorAlignment.bossActive = activeFloor;
+	const bossEncounterUi = await captureBossEncounterUiProbe(page);
+	const bossVisualIdentity = await captureBossVisualIdentityProbe(page, bossType);
 
 	return {
 		midCombatScreenshot,
@@ -718,6 +791,8 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 		probes: {
 			dormant: dormantProbe,
 			active: activeProbe,
+			bossEncounterUi,
+			bossVisualIdentity,
 			...(Object.keys(floorAlignment).length > 0 ? { floorAlignment } : {}),
 		},
 	};
@@ -910,6 +985,8 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
 			bossSpawnLabel: preset?.bossSpawnLabel,
 			bossType: preset?.bossType,
 			assertions: summary.assertions || {},
+			bossEncounterUi: summary.bossEncounter?.probes?.bossEncounterUi ?? null,
+			bossVisualIdentity: summary.bossEncounter?.probes?.bossVisualIdentity ?? null,
 			floorAlignment,
 			consoleErrors: consoleEntries || [],
 			screenshots: collectScreenshots(summary),

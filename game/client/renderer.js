@@ -3054,6 +3054,28 @@ export function enemyMeshHalfHeight(type) {
 }
 
 /**
+ * Harness-safe read of an enemy's rendered world height (or geometry preset when
+ * the mesh has not synced yet). Used by playthrough visual-identity probes.
+ * @param {string} enemyId
+ * @param {string} [enemyType]
+ * @returns {{ scale: number } | null}
+ */
+export function getEnemyRenderScaleForTest(enemyId, enemyType) {
+	const mesh = enemiesMeshes[enemyId];
+	if (mesh) {
+		const box = new THREE.Box3().setFromObject(mesh);
+		const size = new THREE.Vector3();
+		box.getSize(size);
+		const scale = Math.max(size.x, size.y, size.z);
+		if (scale > 0) return { scale };
+	}
+	const def = ENEMY_GEOMETRY[enemyType] || null;
+	if (!def) return null;
+	const scale = def.type === 'octahedron' ? def.radius * 2 : def.height;
+	return { scale };
+}
+
+/**
  * Create a Three.js mesh for an enemy based on its type.
  * @param {string} type - 'grunt', 'skirmisher', 'miniboss', or 'spawner'
  * @returns {THREE.Mesh}

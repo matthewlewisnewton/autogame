@@ -4511,6 +4511,44 @@ describe('updateObjectiveHud()', () => {
 	});
 });
 
+describe('__getEnemyRenderScaleForTest', () => {
+	const requiredIds = [
+		'status', 'vanguard-hud', 'character-id', 'player-level',
+		'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+		'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+		'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+		'currency-display', 'objective-hud', 'ui', 'card-hand',
+		'lobby', 'lobby-browser', 'lobby-player-list',
+		'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+		'summary-currency', 'summary-rewards', 'return-to-lobby-btn',
+	];
+
+	beforeEach(() => {
+		vi.resetModules();
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+	});
+
+	it('returns scale and type for a live enemy from harness state', async () => {
+		await import('../main.js');
+		window.__setGameState({
+			gamePhase: 'playing',
+			players: {},
+			enemies: [{ id: 'e1', type: 'miniboss', hp: 100, maxHp: 300, x: 0, z: 0 }],
+			run: null,
+		}, 'me');
+		expect(window.__getEnemyRenderScaleForTest('e1')).toEqual({ scale: 2.2, type: 'miniboss' });
+		expect(window.__getEnemyRenderScaleForTest('missing')).toBeNull();
+	});
+});
+
 describe('__AUTOGAME_HARNESS_STATE__ encounter and godmode fields', () => {
 	const requiredIds = [
 		'status', 'vanguard-hud', 'character-id', 'player-level',

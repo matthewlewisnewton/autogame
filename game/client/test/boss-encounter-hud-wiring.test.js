@@ -135,19 +135,18 @@ describe('boss-encounter HUD wiring in main.js', () => {
 		window.__setEnemyDisplayCatalog(buildEnemyDisplayCatalog());
 
 		const cases = [
-			['annex_overseer', 'Annex Overseer'],
-			['arena_champion', 'Plaza Sovereign'],
-			['miniboss', 'Vault Warden'],
-			['spire_warden', 'Summit Warden'],
+			['annex_overseer', 'Annex Overseer', 'training_caverns'],
+			['arena_champion', 'Trial Warden', 'arena_trials'],
+			['miniboss', 'Canyon Warden', 'canyon_descent'],
+			['spire_warden', 'Summit Warden', 'spire_ascent'],
 		];
-		for (const [type, expectedName] of cases) {
-			window.__setGameState(
-				makeGameState({
-					encounter: { phase: 'active', locked: false, bossEnemyId: 'boss-1' },
-					enemies: [{ id: 'boss-1', type, hp: 800, maxHp: 1000 }],
-				}),
-				'me',
-			);
+		for (const [type, expectedName, questId] of cases) {
+			const gs = makeGameState({
+				encounter: { phase: 'active', locked: false, bossEnemyId: 'boss-1' },
+				enemies: [{ id: 'boss-1', type, hp: 800, maxHp: 1000 }],
+			});
+			gs.run.questId = questId;
+			window.__setGameState(gs, 'me');
 			const model = window.__updateBossEncounterHud();
 			expect(model.name).toBe(expectedName);
 			expect(document.getElementById('boss-encounter-name').textContent).toBe(expectedName);

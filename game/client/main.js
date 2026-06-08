@@ -133,6 +133,7 @@ import {
 	spawnHitSpark as rendererSpawnHitSpark,
 	createEnemyMesh as rendererCreateEnemyMesh,
 	enemyMeshHalfHeight as rendererEnemyMeshHalfHeight,
+	getEnemyRenderScaleForTest as rendererGetEnemyRenderScaleForTest,
 	healthBarColor as rendererHealthBarColor,
 	createHealthBarMesh as rendererCreateHealthBarMesh,
 	updateHealthBarMesh as rendererUpdateHealthBarMesh,
@@ -2582,6 +2583,7 @@ function updateBossEncounterHud() {
 		encounter: gameState?.run?.encounter,
 		enemies: gameState?.enemies,
 		catalog: enemyDisplayCatalog,
+		questId: gameState?.run?.questId ?? null,
 	});
 	const dom = getBossEncounterHudDom();
 	if (dom) syncBossEncounterHud(bossEncounterModel, dom);
@@ -4685,6 +4687,12 @@ window.renderQuestBoard = renderQuestBoard;
 window.__windupFlashing = () => getWindupFlashing();
 window.__pickedUpLootIds = () => getPickedUpLootIds();
 window.__enemiesMeshes = () => getMeshMaps().enemiesMeshes;
+window.__getEnemyRenderScaleForTest = (enemyId) => {
+	const enemy = gameState?.enemies?.find((e) => e && e.id === enemyId);
+	if (!enemy) return null;
+	const info = rendererGetEnemyRenderScaleForTest(enemyId, enemy.type);
+	return info ? { scale: info.scale, type: enemy.type } : null;
+};
 window.__iceBallMeshes = () => getMeshMaps().iceBallMeshes;
 window.applyWindupFlash = rendererApplyWindupFlash;
 window.applyRevealHighlight = rendererApplyRevealHighlight;

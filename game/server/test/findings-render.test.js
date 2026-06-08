@@ -56,4 +56,54 @@ describe('renderFindings preset copy', () => {
 		expect(md).toMatch(/^# Open Plaza validation findings/m);
 		expect(md).toContain('**bossSpawned (arena_champion)**: PASS');
 	});
+
+	it('renders boss encounter UI and visual identity probe sections', () => {
+		const md = renderFindings({
+			...baseRun,
+			preset: 'sunken-canyon',
+			findingsTitle: 'Sunken Canyon validation findings',
+			bossSpawnLabel: 'miniboss (Canyon Warden)',
+			bossEncounterUi: {
+				hudVisible: true,
+				bossName: 'Canyon Warden',
+				hpFillWidthPct: 100,
+				encounterLocked: true,
+				encounterPhase: 'active',
+			},
+			bossVisualIdentity: {
+				bossType: 'miniboss',
+				bossEnemyId: 'boss-1',
+				nearestAddType: 'grunt',
+				bossDistinctFromAdds: true,
+				bossRenderScale: 2.2,
+				addRenderScale: 1,
+			},
+		});
+		expect(md).toContain('## Boss encounter UI');
+		expect(md).toContain('**bossName**: Canyon Warden');
+		expect(md).toContain('## Boss visual identity');
+		expect(md).toContain('**bossDistinctFromAdds**: yes');
+	});
+
+	it('flags missing boss HUD in findings', () => {
+		const md = renderFindings({
+			...baseRun,
+			bossEncounterUi: {
+				hudVisible: false,
+				bossName: '',
+				hpFillWidthPct: null,
+				encounterLocked: false,
+				encounterPhase: 'dormant',
+			},
+			bossVisualIdentity: {
+				bossType: 'miniboss',
+				bossEnemyId: 'boss-1',
+				nearestAddType: 'miniboss',
+				bossDistinctFromAdds: false,
+			},
+		});
+		expect(md).toContain('boss encounter HUD missing or hidden');
+		expect(md).toContain('boss display name is empty');
+		expect(md).toContain('not clearly distinct from the nearest live add');
+	});
 });
