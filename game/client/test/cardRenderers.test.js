@@ -2141,6 +2141,37 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 		}, ctx)).not.toThrow();
 	});
 
+	it('cinder_snare matches server timing contract (dotTicks 4, dotIntervalMs 500, no windUpMs)', () => {
+		expect(CARD_DEFS.cinder_snare.dotTicks).toBe(4);
+		expect(CARD_DEFS.cinder_snare.dotIntervalMs).toBe(500);
+		expect(CARD_DEFS.cinder_snare.windUpMs).toBeUndefined();
+	});
+
+	it('cinder_snare schedules smolder pulses at dotIntervalMs cadence after placement', () => {
+		const pending = [];
+		const ctx = makeCtx({
+			scheduleAfter: (ms, fn) => {
+				ctx._calls.push(['scheduleAfter', ms]);
+				pending.push({ ms, fn });
+			},
+		});
+		renderCardUsed({
+			cardId: 'cinder_snare',
+			origin: { x: 2, z: 3 },
+			radius: 2.5,
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.filter((c) => c[0] === 'scheduleAfter').map((c) => c[1])).toEqual([
+			500, 1000, 1500,
+		]);
+		expect(pending).toHaveLength(3);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(1);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing')).toHaveLength(1);
+		for (const { fn } of pending) fn();
+		expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(4);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing')).toHaveLength(4);
+	});
+
 	it('spike_trap does not emit telegraph ring, particle burst, or impact decal', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
