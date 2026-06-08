@@ -21,9 +21,14 @@ import {
 } from './helpers.js';
 
 describe('card wind-up definitions', () => {
+	it('exposes windUpMs on flame_blade via getCardDef', () => {
+		expect(CARD_DEFS.flame_blade.windUpMs).toBe(700);
+		expect(getCardDef('flame_blade').windUpMs).toBe(700);
+	});
+
 	it('exposes windUpMs on magma_greatsword via getCardDef', () => {
-		expect(CARD_DEFS.magma_greatsword.windUpMs).toBe(800);
-		expect(getCardDef('magma_greatsword').windUpMs).toBe(800);
+		expect(CARD_DEFS.magma_greatsword.windUpMs).toBe(1100);
+		expect(getCardDef('magma_greatsword').windUpMs).toBe(1100);
 	});
 
 	it('does not define windUpMs on iron_sword', () => {
@@ -43,18 +48,18 @@ describe('buildPlayerHotSnapshot commitment fields', () => {
 			dead: false,
 			cardUseState: 'windup',
 			cardWindupStartTime: now,
-			cardWindupMs: 800,
+			cardWindupMs: 1100,
 			pendingCardUse: { cardId: 'magma_greatsword', slotIndex: 0 },
 		};
 		const hot = hotStateSnapshot().players.p1;
 		expect(hot.cardUseState).toBe('windup');
 		expect(hot.cardWindupCardId).toBe('magma_greatsword');
-		expect(hot.cardWindupUntil).toBe(now + 800);
+		expect(hot.cardWindupUntil).toBe(now + 1100);
 	});
 
 	it('extends cardWindupUntil while pendingCardUse survives past windUpMs', () => {
 		const now = Date.now();
-		const originalWindupEnd = now - 900 + 800;
+		const originalWindupEnd = now - 1200 + 1100;
 		gameState.players.p1 = {
 			x: 0,
 			y: 0.5,
@@ -63,8 +68,8 @@ describe('buildPlayerHotSnapshot commitment fields', () => {
 			hp: 100,
 			dead: false,
 			cardUseState: 'windup',
-			cardWindupStartTime: now - 900,
-			cardWindupMs: 800,
+			cardWindupStartTime: now - 1200,
+			cardWindupMs: 1100,
 			pendingCardUse: { cardId: 'magma_greatsword', slotIndex: 0 },
 		};
 		const snapshotTime = Date.now();
@@ -81,14 +86,14 @@ describe('isPlayerCardCommitted', () => {
 		const player = {
 			cardUseState: 'windup',
 			cardWindupStartTime: Date.now(),
-			cardWindupMs: 800,
+			cardWindupMs: 1100,
 		};
 		expect(isPlayerCardCommitted(player)).toBe(true);
 
 		player.cardWindupStartTime = Date.now() - 100;
 		expect(isPlayerCardCommitted(player)).toBe(true);
 
-		player.cardWindupStartTime = Date.now() - 800;
+		player.cardWindupStartTime = Date.now() - 1100;
 		expect(isPlayerCardCommitted(player)).toBe(false);
 
 		player.pendingCardUse = { cardId: 'magma_greatsword', slotIndex: 0 };
@@ -130,6 +135,66 @@ describe('card wind-up gameplay', () => {
 		return { state, player, enemy };
 	}
 
+	async function waitForPlayerWindup(player, timeoutMs = 10000) {
+		const deadline = Date.now() + timeoutMs;
+		while (Date.now() < deadline) {
+			if (player.cardUseState === 'windup') return;
+			await new Promise((resolve) => setTimeout(resolve, 5));
+		}
+		throw new Error('Timed out waiting for cardUseState windup');
+	}
+
+	it('flame_blade enters commitment without CARD_USED or enemy damage', async () => {
+		({ socket } = await connectClient(baseUrl));
+		const startGamePromise = waitForEvent(socket, 'startGame');
+		socket.emit('playerReady', true);
+		await startGamePromise;
+
+		const state = lobbyGameState(socket._lobbyId);
+		const player = state.players[socket._playerId];
+		player.x = 0;
+		player.z = 0;
+		player.rotation = 0;
+		player.slotCooldowns = new Array(player.hand.length).fill(null);
+		state.enemies = [{
+			id: 'flame-windup-target',
+			type: 'grunt',
+			x: 2,
+			z: 0,
+			y: 0.5,
+			hp: 200,
+			maxHp: 200,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: 2, z: 0 },
+		}];
+		player.hand[0] = {
+			id: 'flame_blade',
+			name: 'Solar Edge',
+			type: 'weapon',
+			charges: 2,
+			remainingCharges: 2,
+		};
+
+		const enemy = state.enemies[0];
+		const hpBefore = enemy.hp;
+		let cardUsed = false;
+		socket.on('cardUsed', () => { cardUsed = true; });
+
+		socket.emit('useCard', { cardId: 'flame_blade', slotIndex: 0, rotation: 0 });
+		await waitForPlayerWindup(player);
+
+		expect(cardUsed).toBe(false);
+		expect(enemy.hp).toBe(hpBefore);
+		expect(player.cardUseState).toBe('windup');
+		expect(player.pendingCardUse).toMatchObject({
+			slotIndex: 0,
+			cardId: 'flame_blade',
+		});
+		expect(isPlayerCardCommitted(player)).toBe(true);
+		expect(player.cardWindupStartTime + player.cardWindupMs).toBeGreaterThan(Date.now());
+	});
+
 	it('magma_greatsword enters commitment without CARD_USED or enemy damage', async () => {
 		const { state, player, enemy } = await startMagmaWindupScenario();
 		const hpBefore = enemy.hp;
@@ -139,9 +204,8 @@ describe('card wind-up gameplay', () => {
 		let cardUsed = false;
 		socket.on('cardUsed', () => { cardUsed = true; });
 
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
 		socket.emit('useCard', { cardId: 'magma_greatsword', slotIndex, rotation: 0 });
-		await stateUpdatePromise;
+		await waitForPlayerWindup(player);
 
 		expect(cardUsed).toBe(false);
 		expect(enemy.hp).toBe(hpBefore);
@@ -225,7 +289,7 @@ describe('card wind-up gameplay', () => {
 		const player = {
 			cardUseState: 'windup',
 			cardWindupStartTime: Date.now(),
-			cardWindupMs: 800,
+			cardWindupMs: 1100,
 			pendingCardUse: { cardId: 'magma_greatsword', slotIndex: 0 },
 		};
 		clearPlayerCardCommitment(player);

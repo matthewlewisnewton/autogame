@@ -1,6 +1,6 @@
 {
   "iron_sword": { "damage": 17 },
-  "flame_blade": { "damage": 28 },
+  "flame_blade": { "damage": 28, "windUpMs": 700 },
   "battle_familiar": { "magicStoneCost": 50, "damage": 44 },
   "dungeon_drake": {
     "windUpMs": 600,
@@ -47,7 +47,7 @@
     "dotTicks": 4,
     "dotIntervalMs": 500,
     "trailDamagePerTick": 11,
-    "windUpMs": 800,
+    "windUpMs": 1100,
     "isEvolved": true,
     "specialEffect": "fire_trail"
   },

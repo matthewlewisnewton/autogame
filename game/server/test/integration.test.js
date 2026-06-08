@@ -333,10 +333,31 @@ function firstRoomSpawn() {
 
 /**
  * Find the slot index of a weapon card in a player's hand.
+ * Prefers instant (no wind-up) weapons so useCard kills resolve in one tick.
+ * When only wind-up weapons are dealt, swaps one slot to iron_sword for tests.
  * Returns -1 if no weapon card is found.
  */
 function findWeaponSlot(player) {
-	return player.hand ? player.hand.findIndex(c => c && c.type === 'weapon') : -1;
+	if (!player.hand) return -1;
+	const instantIdx = player.hand.findIndex(
+		(c) => c && c.type === 'weapon' && !getCardDef(c.id).windUpMs,
+	);
+	if (instantIdx >= 0) return instantIdx;
+	const windupIdx = player.hand.findIndex((c) => c && c.type === 'weapon');
+	if (windupIdx < 0) return -1;
+	player.hand[windupIdx] = {
+		id: 'iron_sword',
+		name: 'Rust-Forged Saber',
+		type: 'weapon',
+		charges: 5,
+		remainingCharges: 5,
+	};
+	if (!player.slotCooldowns) {
+		player.slotCooldowns = new Array(player.hand.length).fill(null);
+	} else {
+		player.slotCooldowns[windupIdx] = null;
+	}
+	return windupIdx;
 }
 
 /**
@@ -1139,7 +1160,7 @@ describe('Socket Integration — useCard Event', () => {
 		player.deck = ['iron_sword', 'flame_blade', 'battle_familiar'];
 		player.hand = [
 			{ id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 },
-			{ id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 3, remainingCharges: 3 },
+			{ id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 2, remainingCharges: 2 },
 			{ id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50 },
 			{ id: 'dungeon_drake', name: 'Vault Wyrm', type: 'creature', charges: 1, remainingCharges: 1 },
 			{ id: 'deck_sifter', name: 'Deck Sifter', type: 'weapon', charges: 3, remainingCharges: 3, effect: 'draw_card' },
@@ -1171,7 +1192,7 @@ describe('Socket Integration — useCard Event', () => {
 			player.hand = [
 				{ id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 1 },
 				{ id: 'chrono_trigger', name: 'Chrono Trigger', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 0 },
-				{ id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 3, remainingCharges: 1 },
+				{ id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 2, remainingCharges: 1 },
 			];
 
 			const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
@@ -1181,7 +1202,7 @@ describe('Socket Integration — useCard Event', () => {
 			const sword = player.hand.find(c => c && c.id === 'iron_sword');
 			const flame = player.hand.find(c => c && c.id === 'flame_blade');
 			expect(sword.remainingCharges).toBe(3);
-			expect(flame.remainingCharges).toBe(3);
+			expect(flame.remainingCharges).toBe(2);
 		});
 
 		it('Ether Scythe grants Magic Stones on hit and kill', async () => {
@@ -2138,8 +2159,8 @@ describe('dungeon run objective', () => {
 			wanderTarget: { x: player.x + 3, z: player.z }
 		}];
 
-		// Find a weapon card in hand
-		const weaponSlot = player.hand.findIndex(c => c && c.type === 'weapon');
+		// Find an instant weapon (no wind-up) so the kill resolves in this tick
+		const weaponSlot = findWeaponSlot(player);
 		expect(weaponSlot).toBeGreaterThanOrEqual(0);
 		const weaponCard = player.hand[weaponSlot];
 

@@ -51,8 +51,8 @@ describe('processPendingCardWindups (unit)', () => {
 				wanderTarget: { x: 2, z: 0 },
 			}];
 			player.cardUseState = 'windup';
-			player.cardWindupMs = 800;
-			player.cardWindupStartTime = Date.now() - 800;
+			player.cardWindupMs = 1100;
+			player.cardWindupStartTime = Date.now() - 1100;
 			player.pendingCardUse = {
 				cardId: 'magma_greatsword',
 				slotIndex: 0,

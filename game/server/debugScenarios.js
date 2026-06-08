@@ -20,6 +20,7 @@ const { generateLayout, questLayoutSeed, sampleFloorY, resolveFloorY } = require
 const { DEFAULT_QUEST_ID, getLayoutProfileForQuest, buildQuestUpdatePayload } = require('./quests');
 const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS, MEDIC_HEAL_COST } = require('./config');
 const CARD_DEFS = require('../shared/cardDefs.json');
+const CARD_STATS = require('../shared/cardStats.json');
 const {
   firstRoomPosition,
   computeDungeonBounds,
@@ -1324,10 +1325,15 @@ function applyDebugScenario(socket, name) {
         }
       }
       // The opening hand is drawn from a shuffled deck, so a weapon card is not
-      // guaranteed (~1% of hands have none). Force one in (without clobbering the
-      // spell above) so weapon-card flows entering via this scenario are deterministic.
-      if (!player.hand.some(c => c && c.type === 'weapon')) {
-        const replaceSlot = player.hand.findIndex(c => c && c.type !== 'weapon' && c.type !== 'spell');
+      // guaranteed (~1% of hands have none). Force an instant weapon in (without
+      // clobbering the spell above) so weapon-card flows resolve in one swing.
+      const hasInstantWeapon = player.hand.some((c) => {
+        if (!c || c.type !== 'weapon') return false;
+        const windUpMs = CARD_STATS[c.id]?.windUpMs || 0;
+        return windUpMs <= 0;
+      });
+      if (!hasInstantWeapon) {
+        const replaceSlot = player.hand.findIndex(c => c && c.type !== 'spell');
         if (replaceSlot >= 0) {
           player.hand[replaceSlot] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5, grind: 0 };
         }
@@ -2287,8 +2293,8 @@ function applyDebugScenario(socket, name) {
           id: 'magma_greatsword',
           name: 'Corebreaker Greatsword',
           type: 'weapon',
-          charges: 4,
-          remainingCharges: 4,
+          charges: 2,
+          remainingCharges: 2,
         };
       }
       state.enemies = [];
