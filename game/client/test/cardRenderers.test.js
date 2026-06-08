@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { CARD_DEFS } from '../cards.js';
+import { ATTACK_EFFECT_DURATION } from '../config.js';
 import {
 	renderCardUsed,
 	resolveRenderers,
 	getAccentHex,
 	SPELL_TYPE_DEFAULT_RENDERER,
 } from '../cardRenderers.js';
-import { CARD_DEFS } from '../cards.js';
 
 /**
  * Build a fresh context object whose helper functions record every call.
@@ -964,7 +964,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
 	});
 
-	it('permafrost_lance uses a narrower telegraph, directional shard trail, and tip burst', () => {
+	it('permafrost_lance uses a narrower telegraph, lance projectile, trail, tip decal, and burst', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'permafrost_lance',
@@ -973,18 +973,66 @@ describe('renderCardUsed() — spell dispatch', () => {
 			direction: { x: 1, z: 0 },
 			hits: [],
 		}, ctx);
+		const attack = ctx._calls.find((c) => c[0] === 'spawnAttackEffect');
+		expect(attack).toBeDefined();
+		expect(attack[1]).toEqual({ x: 0, z: 0 });
+		expect(attack[2]).toEqual({ x: 1, z: 0 });
+		expect(attack[3]).toMatchObject({
+			effect: 'permafrost_lance',
+			range: 6,
+			color: 0x67e8f9,
+			emissive: 0x38bdf8,
+			duration: ATTACK_EFFECT_DURATION,
+		});
 		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
 		expect(ring).toBeDefined();
-		expect(ring[2]).toBeCloseTo(3.3, 5);
-		expect(ring[3]).toMatchObject({ color: 0x67e8f9 });
+		expect(ring[1]).toEqual({ x: 0, z: 0 });
+		expect(ring[2]).toBeCloseTo(6 * 0.55, 5);
+		expect(ring[3]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
 		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
 		expect(trail).toBeDefined();
+		expect(trail[1]).toEqual({ x: 0, z: 0 });
 		expect(trail[2]).toEqual({ x: 1, z: 0 });
-		expect(trail[3]).toMatchObject({ range: 6, color: 0x67e8f9 });
+		expect(trail[3]).toMatchObject({
+			range: 6,
+			color: 0x67e8f9,
+			emissive: 0x38bdf8,
+			travelMs: ATTACK_EFFECT_DURATION,
+		});
+		expect(trail[3].travelMs).toBe(600);
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 6, z: 0 });
+		expect(decal[2]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
 		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
 		expect(burst).toBeDefined();
 		expect(burst[1]).toEqual({ x: 6, z: 0 });
+		expect(burst[2]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('frost_nova and permafrost_lance resolve to different renderer functions', () => {
+		expect(resolveRenderers('frost_nova')[0]).not.toBe(resolveRenderers('permafrost_lance')[0]);
+	});
+
+	it('frost_nova and permafrost_lance produce different helper call signatures for equivalent radial payloads', () => {
+		const payload = {
+			origin: { x: 0, z: 0 },
+			radius: 6,
+			direction: { x: 1, z: 0 },
+			hits: [],
+		};
+		const novaCtx = makeCtx();
+		resolveRenderers('frost_nova')[0]({ ...payload, cardId: 'frost_nova' }, novaCtx);
+		const lanceCtx = makeCtx();
+		resolveRenderers('permafrost_lance')[0]({ ...payload, cardId: 'permafrost_lance' }, lanceCtx);
+		expect(methodsCalled(novaCtx)).not.toEqual(methodsCalled(lanceCtx));
+	});
+
+	it('Permafrost Lance has no positive windUpMs (instant cast, distinct from wind-up blades)', () => {
+		expect(CARD_DEFS.permafrost_lance).toBeDefined();
+		const windUp = CARD_DEFS.permafrost_lance.windUpMs;
+		expect(windUp == null || windUp <= 0).toBe(true);
 	});
 
 	it('uses the fixed glacier palette for glacier_collapse (not the accent)', () => {
