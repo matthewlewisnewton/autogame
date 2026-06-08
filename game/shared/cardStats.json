@@ -100,6 +100,15 @@
     "magicStoneOnHit": 5,
     "magicStoneOnKill": 15
   },
+  "reapers_scythe": {
+    "damage": 14,
+    "magicStoneOnHit": 5,
+    "magicStoneOnKill": 15,
+    "currencyOnKill": 6,
+    "healOnKill": 8,
+    "isEvolved": true,
+    "specialEffect": "reap"
+  },
   "deck_sifter": {
     "effect": "draw_card",
     "magicStoneCost": 0,
@@ -135,6 +144,7 @@
   "excalibur_photon": {
     "damage": 14,
     "cooldownMs": 200,
+    "windUpMs": 600,
     "isEvolved": true,
     "swingsPerUse": 2,
     "specialEffect": "photon_barrage"
@@ -254,6 +264,7 @@
     "minionHp": 45,
     "attackRange": 7,
     "attackDamage": 13,
+    "attackIntervalMs": 1500,
     "specialEffect": "ranged_strike"
   },
   "thunderbird": {
@@ -262,6 +273,7 @@
     "minionHp": 68,
     "attackRange": 11,
     "attackDamage": 20,
+    "attackIntervalMs": 1500,
     "chainRadius": 5,
     "maxChainTargets": 2,
     "isEvolved": true,

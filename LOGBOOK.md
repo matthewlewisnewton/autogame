@@ -5583,9 +5583,70 @@ PASS. The changes are data-only numeric tuning within the existing card combat m
 
 PASS. This ticket did not add or change any development `?debugScenario=` URL shortcut. The existing `ice-ball-ready` server test setup is unchanged by the implementation and remains test-only setup, so there is no new debug-path acceptance risk.
 
+
+## v0.316 — 314-ether-scythe-evolution-gold-health-on-kill  (2026-06-08 00:18:31)
+
+### Evolution data and card definitions are complete
+
+PASS. `cardEconomy.json` maps `harvesting_scythe` to `reapers_scythe`; `cardDefs.json`, `cardStats.json`, server stat overlays, client card ID sets, and balance metrics all include the evolved card. This matches the existing evolution pattern for other cards and keeps the evolved variant reachable through normal gameplay evolution rather than a debug-only path.
+
+### Tests and coverage visibility
+
+PASS. The latest coverage run reports `65 passed` test files and `1602 passed` tests. Relevant passing tests include `server/test/card_evolution.test.js`, `server/test/collect_cone_kill_rewards.test.js`, `server/test/integration.test.js`, `server/test/card_balance_metrics.test.js`, and `client/test/cards.test.js`. Coverage thresholds are disabled, but the changed behavior has focused and integration coverage.
+
+## Design and requirements consistency
+
+PASS. The change fits the documented card-combat and loot/economy loop: enemies can reward currency, HP restoration exists through combat effects, and the scythe evolution reinforces the harvest/reap fantasy without changing movement, rendering, lobby, or multiplayer foundations. The smoke capture confirms the foundation requirements still hold: the 3D scene renders, the client connects to the server, players are present in multiplayer, and movement/dodge gameplay remains functional.
+
+## Debug scenarios
+
+PASS. This ticket did not add or modify a `?debugScenario=...` URL shortcut. The tests use existing socket-level debug scenarios for setup only; normal gameplay reachability is provided by the existing card evolution transform from base Ether Scythe to Reaper's Scythe.
+
+
+## v0.317 — 312-excalibur-photon-windup-balance  (2026-06-08 00:36:08)
+
+### Test coverage
+
+PASS. Coverage log shows `25` test files and `496` tests passing. New and updated tests cover the wind-up-aware balance calculation, Excalibur Photon stat exposure, evolution/new-card expectations, generic instant-card regression, and a live socket `useCard` path where Excalibur Photon commits wind-up, deals no early damage, resolves after `windUpMs`, applies two hits, and clears commitment state. Coverage output includes unrelated stderr from existing test-time model URL fallbacks and socket disconnect cleanup, but the suite passes and the captured browser run is clean.
+
+## Design and requirements consistency
+
+PASS. The change remains within the documented card-combat model: Excalibur Photon is still a weapon card in the active deck combat loop, and the wind-up/recovery lock is consistent with existing wind-up cards such as Steel Claymore and Corebreaker Greatsword. The implementation does not affect the foundational requirements for Three.js rendering, websocket connection, multiplayer visualization, or movement sync; the capture verifies those still run.
+
+## Debug scenarios
+
+PASS. This ticket did not add or change a development `?debugScenario=` entry. The new tests seed state directly or use an existing debug scenario for Magma Greatsword regression coverage; normal gameplay remains the only route for real players to obtain and use Excalibur Photon through the existing card/evolution systems.
+
+## Code quality
+
+PASS. The code change is appropriately narrow: one data-field addition, balance-metric accounting for `windUpMs`, report reconciliation, and targeted regression/integration tests. The existing wind-up pipeline locks cost/cooldown/origin at commit, resolves from `pendingCardUse`, applies `swingsPerUse` during deferred resolution, and clears commitment after use. I did not find dead code, duplicated gameplay paths, or a mismatch between stats, report, and tests.
+
 ## Remaining gaps
 
 None.
+
+
+## v0.318 — 309-fix-storm-eagle-thunderbird-attack-interval-gate  (2026-06-08 00:43:26)
+
+### Server test asserting the gate
+
+PASS. `game/server/test/new_card_pack.test.js` adds focused coverage for first-hit behavior, suppression within the interval, re-fire after interval expiry, and Thunderbird chain suppression/re-fire. The provided `coverage.log` shows `server/test/new_card_pack.test.js` passed, and the full suite passed with `53` test files and `1514` tests.
+
+## Design and requirements consistency
+
+PASS. The change is server-authoritative combat tuning for creature cards, consistent with the design document's card-based combat model and the existing minion AI patterns. It does not touch rendering, WebSocket connectivity, multiplayer visualization, or movement synchronization requirements, and the captured fallback smoke flow confirms those foundations still load and run.
+
+## Debug scenarios
+
+No development debug scenario was added or changed by this ticket. The captured run did not use a debug scenario (`debugScenario: null`), so there is no debug shortcut gating issue to review.
+
+## Code quality
+
+PASS. The implementation is minimal and localized to the expected files. The interval gate mirrors existing minion timing patterns, avoids changing hit damage, and does not introduce dead code or console/runtime errors. One non-blocking cleanup is tracked separately in `nits.md`: live creature spawn currently relies on the simulation fallback interval rather than copying the new stat onto the minion instance.
+
+## Remaining gaps
+
+No blocking gaps.
 
 
 ## v0.320 — 315-card-animation-shared-vfx-primitives-foundation  (2026-06-08 01:05:38)

@@ -1,0 +1,17 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 3 sub-tickets:
+
+```
+tickets/309-fix-storm-eagle-thunderbird-attack-interval-gate/subtickets/
+├── 01-add-attack-interval-gate/ticket.md
+├── 02-set-attack-interval-stats/ticket.md
+└── 03-test-attack-interval-gate/ticket.md
+```
+
+**Breakdown:**
+
+1. **01-add-attack-interval-gate** — Add `attackIntervalMs` + `lastAttackAt` gating to the `storm_eagle`/`thunderbird` block in `simulation.js`, mirroring `null_crawler`. Gates the whole thunderbird chain as one unit per interval.
+
+2. **02-set-attack-interval-stats** — Add `"attackIntervalMs": 1500` to both `storm_eagle` and `thunderbird` in `cardStats.json`. 1500ms brings storm_eagle to ~8.7 DPS (within the 4–13 peer band from the 303 report) and thunderbird to ~13.3 DPS primary hit.
+
+3. **03-test-attack-interval-gate** — Server tests verifying: (a) no double-fire within interval, (b) fire resumes after interval elapses, (c) thunderbird chain is gated as one unit. All use `code` verification.

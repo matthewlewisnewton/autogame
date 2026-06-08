@@ -1,8 +1,8 @@
 `LOGBOOK.md` is resolved.
 
-Both sides were independent logbook entries that landed after `v0.307`. I kept **both**, in chronological order:
+The conflict was two append-only review entries at the end of the log. I kept **both** in version order:
 
-1. **v0.309 — 313-saber-of-light-aoe-per-grind-scaling** (from `main`, 23:09:16) — Saber AOE per-grind scaling review
-2. **v0.313 — 311-slower-scaling-early-strong-cards-plus-astral-trim** (from this branch, 23:39:26) — per-card grind scale, Astral Guardian trim, arena-trials debug scenario fix
+1. **v0.318** — `309-fix-storm-eagle-thunderbird-attack-interval-gate` (from `main`)
+2. **v0.320** — `315-card-animation-shared-vfx-primitives-foundation` (from this ticket’s branch)
 
-Each entry retains its own `## Remaining gaps / None.` section, matching the logbook pattern on both sides. All conflict markers are removed; the harness can proceed with the merge.
+All conflict markers are removed. The file flows v0.315 → v0.316 → v0.317 → v0.318 → v0.320 with no gaps. The harness can commit and finish the merge.

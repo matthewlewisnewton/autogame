@@ -20,7 +20,7 @@ describe('card balance metrics harness', () => {
 
 	it('covers every cardDefs id with a metrics row', () => {
 		expect(Object.keys(report.cards).sort()).toEqual(cardIds);
-		expect(report.cardCount).toBe(47);
+		expect(report.cardCount).toBe(48);
 	});
 
 	it('has cardStats entries for every card id', () => {
@@ -42,6 +42,7 @@ describe('card balance metrics harness', () => {
 			'dragons_breath',
 			'dungeon_drake',
 			'harvesting_scythe',
+			'reapers_scythe',
 		]);
 		for (const [cardId, keys] of Object.entries(SERVER_STAT_OVERLAY)) {
 			expect(report.cards[cardId].serverStatOverlayKeys).toEqual(keys);
@@ -137,6 +138,46 @@ describe('card balance metrics harness', () => {
 			utilityScore: cardStats.astral_guardian.shieldHp,
 			magicStoneCost: 65,
 		});
+	});
+
+	it('computes wind-up-aware damagePerMs for cards with windUpMs', () => {
+		const magma = report.cards.magma_greatsword;
+		const perUseDamage = magma.effectiveBurst * (cardStats.magma_greatsword.swingsPerUse ?? 1);
+		const cooldownMs = magma.cooldownMs;
+		const windUpMs = cardStats.magma_greatsword.windUpMs;
+		const cooldownOnlyDpm = perUseDamage / cooldownMs;
+		const effectiveCycleMs = cooldownMs + windUpMs;
+
+		expect(magma.windUpMs).toBe(windUpMs);
+		expect(magma.effectiveCycleMs).toBe(effectiveCycleMs);
+		expect(magma.damagePerMs).toBeCloseTo(perUseDamage / effectiveCycleMs);
+		expect(magma.damagePerMs).toBeLessThan(cooldownOnlyDpm);
+	});
+
+	it('leaves damagePerMs unchanged for cards without windUpMs', () => {
+		const iron = report.cards.iron_sword;
+		const perUseDamage = iron.effectiveBurst;
+		const cooldownOnlyDpm = perUseDamage / iron.cooldownMs;
+
+		expect(iron.windUpMs).toBeNull();
+		expect(iron.effectiveCycleMs).toBe(iron.cooldownMs);
+		expect(iron.damagePerMs).toBeCloseTo(cooldownOnlyDpm);
+	});
+
+	it('tunes excalibur_photon damagePerMs toward weapon Q3 via windUpMs', () => {
+		const photon = report.cards.excalibur_photon;
+		const perUseDamage = photon.effectiveBurst * cardStats.excalibur_photon.swingsPerUse;
+		const windUpMs = cardStats.excalibur_photon.windUpMs;
+		const effectiveCycleMs = photon.cooldownMs + windUpMs;
+		const cooldownOnlyDpm = perUseDamage / photon.cooldownMs;
+
+		expect(windUpMs).toBe(600);
+		expect(photon.windUpMs).toBe(windUpMs);
+		expect(photon.effectiveCycleMs).toBe(effectiveCycleMs);
+		expect(photon.damagePerMs).toBeCloseTo(perUseDamage / effectiveCycleMs);
+		expect(photon.damagePerMs).toBeLessThan(cooldownOnlyDpm);
+		expect(photon.damagePerMs).toBeLessThan(0.14);
+		expect(photon.damagePerMs).toBeLessThanOrEqual(0.045);
 	});
 
 	it('runs as a standalone node script', () => {

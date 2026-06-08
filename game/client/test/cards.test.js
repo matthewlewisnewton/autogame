@@ -359,6 +359,7 @@ describe('card ID sets', () => {
 		expect(weaponCardIds.has('steel_claymore')).toBe(true);
 		expect(weaponCardIds.has('magma_greatsword')).toBe(true);
 		expect(weaponCardIds.has('harvesting_scythe')).toBe(true);
+		expect(weaponCardIds.has('reapers_scythe')).toBe(true);
 		expect(weaponCardIds.has('saber_of_light')).toBe(true);
 		expect(weaponCardIds.has('photon_slicer')).toBe(true);
 		expect(weaponCardIds.has('arcane_bolt')).toBe(true);
@@ -369,7 +370,7 @@ describe('card ID sets', () => {
 		expect(weaponCardIds.has('battle_familiar')).toBe(false);
 		expect(weaponCardIds.has('dungeon_drake')).toBe(false);
 		expect(weaponCardIds.has('fireball')).toBe(true);
-		expect(weaponCardIds.size).toBe(17);
+		expect(weaponCardIds.size).toBe(18);
 	});
 
 	it('spellCardIds contains base, evolved, and synergistic spell card IDs', () => {
