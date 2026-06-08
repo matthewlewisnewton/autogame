@@ -2287,8 +2287,8 @@ function applyDebugScenario(socket, name) {
           id: 'magma_greatsword',
           name: 'Corebreaker Greatsword',
           type: 'weapon',
-          charges: 4,
-          remainingCharges: 4,
+          charges: 2,
+          remainingCharges: 2,
         };
       }
       state.enemies = [];

@@ -2175,8 +2175,10 @@ describe('dungeon run objective', () => {
 			wanderTarget: { x: player.x + 3, z: player.z }
 		}];
 
-		// Find a weapon card in hand
-		const weaponSlot = player.hand.findIndex(c => c && c.type === 'weapon');
+		// Find an instant weapon (no windUpMs) so the kill resolves synchronously
+		const weaponSlot = player.hand.findIndex(
+			(c) => c && c.type === 'weapon' && !getCardDef(c.id).windUpMs
+		);
 		expect(weaponSlot).toBeGreaterThanOrEqual(0);
 		const weaponCard = player.hand[weaponSlot];
 
