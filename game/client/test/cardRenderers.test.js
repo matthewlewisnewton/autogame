@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { CARD_DEFS } from '../cards.js';
 import {
 	renderCardUsed,
 	resolveRenderers,
 	getAccentHex,
+	SPELL_TYPE_DEFAULT_RENDERER,
 } from '../cardRenderers.js';
 
 /**
@@ -69,8 +71,11 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('flame_blade')).toHaveLength(1);
 	});
 
-	it('falls back to the spell default for plain spell cards', () => {
+	it('returns bespoke renderers for utility support spells', () => {
+		expect(resolveRenderers('astral_guardian')).toHaveLength(1);
 		expect(resolveRenderers('mana_prism')).toHaveLength(1);
+		expect(resolveRenderers('sacrificial_altar')).toHaveLength(1);
+		expect(resolveRenderers('chrono_trigger')).toHaveLength(1);
 	});
 
 	it('returns bespoke renderers for arcane radial spells', () => {
@@ -477,17 +482,26 @@ describe('renderCardUsed() — weapon dispatch', () => {
 });
 
 describe('renderCardUsed() — spell dispatch', () => {
-	it('spawns a generic accent-tinted ring for plain spell cards', () => {
+	it('every spell card has a bespoke renderer', () => {
+		for (const [cardId, def] of Object.entries(CARD_DEFS)) {
+			if (def.type !== 'spell') continue;
+			const renderers = resolveRenderers(cardId);
+			expect(renderers.length).toBeGreaterThan(0);
+			expect(renderers).not.toContain(SPELL_TYPE_DEFAULT_RENDERER);
+		}
+	});
+
+	it('spell type default renderer still produces accent-tinted summon rings', () => {
 		const ctx = makeCtx();
-		renderCardUsed({
-			cardId: 'mana_prism',
+		SPELL_TYPE_DEFAULT_RENDERER({
+			cardId: 'frost_nova',
 			origin: { x: 0, z: 0 },
 			radius: 4,
-			hits: [],
 		}, ctx);
 		const ring = ctx._calls.find((c) => c[0] === 'spawnSummonEffect');
 		expect(ring).toBeDefined();
 		expect(ring[2]).toBe(4);
+		expect(ring[3]).toMatchObject({ color: 0x67e8f9 });
 	});
 
 	it('battle_familiar adds an indigo arcane telegraph and spark burst at the cast origin', () => {
@@ -899,6 +913,115 @@ describe('renderCardUsed() — spell dispatch', () => {
 			hits: [],
 		}, ctx)).not.toThrow();
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+	});
+
+	it('astral_guardian adds indigo shield telegraph, burst, and minion spawn ring', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'astral_guardian',
+			origin: { x: 2, z: 3 },
+			radius: 4,
+			shieldGranted: 14,
+			minionId: 'minion-1',
+			hits: [],
+		}, ctx);
+		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(telegraph).toBeDefined();
+		expect(telegraph[1]).toEqual({ x: 2, z: 3 });
+		expect(telegraph[2]).toBe(4);
+		expect(telegraph[3]).toMatchObject({ color: 0x818cf8, emissive: 0x6366f1 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 2, z: 3 });
+		const summon = ctx._calls.find(
+			(c) => c[0] === 'spawnSummonEffect' && c[2] === 1.2,
+		);
+		expect(summon).toBeDefined();
+		expect(summon[3]).toMatchObject({ color: 0x818cf8, emissive: 0x6366f1 });
+	});
+
+	it('mana_prism adds a violet/cyan prism telegraph and arcane burst at radius 1', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'mana_prism',
+			origin: { x: 1, z: 2 },
+			radius: 1,
+			hits: [],
+		}, ctx);
+		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(telegraph).toBeDefined();
+		expect(telegraph[1]).toEqual({ x: 1, z: 2 });
+		expect(telegraph[2]).toBe(1);
+		expect(telegraph[3]).toMatchObject({ color: 0xa855f7, emissive: 0x22d3ee });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[2]).toMatchObject({ color: 0xa855f7, count: 12, spread: 1.6 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('sacrificial_altar adds a gold/red ritual telegraph and burst at sacrifice radius', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'sacrificial_altar',
+			origin: { x: 0, z: 0 },
+			radius: 10,
+			sacrificedMinionId: 'minion-2',
+			hits: [],
+		}, ctx);
+		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(telegraph).toBeDefined();
+		expect(telegraph[2]).toBe(10);
+		expect(telegraph[3]).toMatchObject({ color: 0xfbbf24, emissive: 0xef4444 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[2]).toMatchObject({ color: 0xfbbf24, count: 16, spread: 2.4 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('chrono_trigger adds a time-ripple telegraph and burst using a default radius', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'chrono_trigger',
+			origin: { x: 3, z: 4 },
+			restoredCharges: 2,
+			hits: [],
+		}, ctx);
+		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(telegraph).toBeDefined();
+		expect(telegraph[1]).toEqual({ x: 3, z: 4 });
+		expect(telegraph[2]).toBe(2);
+		expect(telegraph[3]).toMatchObject({ color: 0x67e8f9, emissive: 0xfbbf24 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 3, z: 4 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('chrono_trigger no-ops when origin is absent', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'chrono_trigger',
+			restoredCharges: 2,
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
+	});
+
+	it('utility spells still render without throwing when new ctx primitives are absent', () => {
+		const minimalCtx = makeCtx({
+			spawnTelegraphRing: undefined,
+			spawnParticleBurst: undefined,
+		});
+		for (const payload of [
+			{ cardId: 'astral_guardian', origin: { x: 0, z: 0 }, radius: 4, hits: [] },
+			{ cardId: 'mana_prism', origin: { x: 0, z: 0 }, radius: 1, hits: [] },
+			{ cardId: 'sacrificial_altar', origin: { x: 0, z: 0 }, radius: 10, hits: [] },
+			{ cardId: 'chrono_trigger', origin: { x: 0, z: 0 }, hits: [] },
+		]) {
+			const ctx = { ...minimalCtx, _calls: [] };
+			expect(() => renderCardUsed(payload, ctx)).not.toThrow();
+		}
 	});
 });
 

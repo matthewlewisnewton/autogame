@@ -562,6 +562,7 @@ const DEBUG_SCENARIOS = new Set([
   'glacier-collapse-ready',
   'fire-spells-ready',
   'gravity-spells-ready',
+  'utility-spells-ready',
   'magma-windup-ready',
 ]);
 

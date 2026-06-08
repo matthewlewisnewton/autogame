@@ -601,6 +601,86 @@ function renderTelepipe(data, ctx) {
 	ctx.spawnSummonEffect(originOf(data), data.radius || 2.5, { color: 0x22d3ee, emissive: 0x67e8f9 });
 }
 
+const ASTRAL_GUARDIAN_COLOR = 0x818cf8;
+const ASTRAL_GUARDIAN_EMISSIVE = 0x6366f1;
+const MANA_PRISM_COLOR = 0xa855f7;
+const MANA_PRISM_EMISSIVE = 0x22d3ee;
+const SACRIFICIAL_ALTAR_COLOR = 0xfbbf24;
+const SACRIFICIAL_ALTAR_EMISSIVE = 0xef4444;
+const CHRONO_TRIGGER_COLOR = 0x67e8f9;
+const CHRONO_TRIGGER_EMISSIVE = 0xfbbf24;
+const CHRONO_TRIGGER_TELEGRAPH_RADIUS = 2;
+
+/**
+ * Astral Guardian: indigo shield/summon telegraph at cast radius, spark burst,
+ * and a tight minion-spawn ring distinct from the generic accent burst.
+ */
+function renderAstralGuardian(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = getAccentHex(data.cardId) ?? ASTRAL_GUARDIAN_COLOR;
+	const emissive = ASTRAL_GUARDIAN_EMISSIVE;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.0 });
+	}
+	ctx.spawnSummonEffect(origin, 1.2, { color, emissive });
+}
+
+/**
+ * Mana Prism: pulsing violet/cyan prism telegraph at placement radius plus
+ * an arcane spark burst at the cast origin.
+ */
+function renderManaPrism(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = MANA_PRISM_COLOR;
+	const emissive = MANA_PRISM_EMISSIVE;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 12, spread: 1.6 });
+	}
+}
+
+/**
+ * Sacrificial Altar: large gold/red ritual telegraph at sacrifice radius and
+ * an ember burst at the caster origin.
+ */
+function renderSacrificialAltar(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = SACRIFICIAL_ALTAR_COLOR;
+	const emissive = SACRIFICIAL_ALTAR_EMISSIVE;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 16, spread: 2.4 });
+	}
+}
+
+/**
+ * Chrono Trigger: time-ripple telegraph and burst at the cast origin. Uses a
+ * fixed small radius when the server omits `radius` from the payload.
+ */
+function renderChronoTrigger(data, ctx) {
+	if (!data.origin) return;
+	const origin = originOf(data);
+	const color = CHRONO_TRIGGER_COLOR;
+	const emissive = CHRONO_TRIGGER_EMISSIVE;
+	const radius = data.radius ?? CHRONO_TRIGGER_TELEGRAPH_RADIUS;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 12, spread: 2.0 });
+	}
+}
+
 // ── Registry ────────────────────────────────────────────────────────────
 //
 // Override the per-type default for any card that needs a bespoke effect.
@@ -629,6 +709,10 @@ const CARD_RENDERERS = {
 	dragons_breath: renderDragonsBreath,
 	inferno_pillar: renderInfernoPillar,
 	telepipe: renderTelepipe,
+	astral_guardian: renderAstralGuardian,
+	mana_prism: renderManaPrism,
+	sacrificial_altar: renderSacrificialAltar,
+	chrono_trigger: renderChronoTrigger,
 
 	// Creatures
 	undead_commander: renderUndeadCommander,
@@ -651,6 +735,9 @@ const TYPE_DEFAULT_RENDERERS = {
 	weapon: renderConeSwings,
 	spell: renderGenericSpellBurst,
 };
+
+/** Alias for coverage tests asserting no spell card still uses the generic burst. */
+export const SPELL_TYPE_DEFAULT_RENDERER = TYPE_DEFAULT_RENDERERS.spell;
 
 /**
  * Return the renderer(s) responsible for the given cardId, accounting for
