@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { CARD_DEFS } from '../cards.js';
+import { CARD_DEFS, getCardDef } from '../cards.js';
 import { ATTACK_EFFECT_DURATION, PHOTON_BARRAGE_SWING_DELAY_MS, SUMMON_EFFECT_DURATION } from '../config.js';
 import {
 	renderCardUsed,
@@ -2217,6 +2217,45 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnMirrorWardShellEffect')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
+	});
+
+	it('mirror_ward reflect path spawns reflect burst once without a new shell', () => {
+		const ctx = makeCtx();
+		const def = CARD_DEFS.mirror_ward;
+		renderCardUsed({
+			cardId: 'mirror_ward',
+			playerId: 'p1',
+			origin: { x: 1, z: 2 },
+			reflectTriggered: true,
+			direction: { x: 0, z: 1 },
+			hits: [{ enemyId: 'e1', damage: 17 }],
+			reflectDamage: 17,
+		}, ctx);
+
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnMirrorWardReflectBurst');
+		expect(bursts).toHaveLength(1);
+		expect(bursts[0][1]).toEqual({ x: 1, z: 2 });
+		expect(bursts[0][2]).toEqual({ x: 0, z: 1 });
+		expect(bursts[0][3]).toMatchObject({
+			range: def.reflectRange,
+			color: 0x5eead4,
+			emissive: 0x2dd4bf,
+		});
+		expect(ctx._calls.some((c) => c[0] === 'spawnMirrorWardShellEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+	});
+
+	it('mirror_ward resolves to renderMirrorWard, distinct from ground enchantments', () => {
+		const mirror = resolveRenderers('mirror_ward');
+		const ground = resolveRenderers('spike_trap');
+		expect(mirror).toHaveLength(1);
+		expect(ground).toHaveLength(1);
+		expect(mirror[0]).not.toBe(ground[0]);
+	});
+
+	it('mirror_ward has no positive windUpMs', () => {
+		const windUp = getCardDef('mirror_ward').windUpMs;
+		expect(windUp === undefined || windUp === 0).toBe(true);
 	});
 });
 

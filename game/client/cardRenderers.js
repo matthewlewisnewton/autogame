@@ -1209,7 +1209,18 @@ const MIRROR_WARD_EMISSIVE = 0x2dd4bf;
  */
 function renderMirrorWard(data, ctx) {
 	if (data.reflectTriggered) {
-		// Reflect burst VFX — sub-ticket 03
+		const origin = originOf(data);
+		const direction = directionOf(data);
+		const def = getCardDef('mirror_ward');
+		const color = getAccentHex('mirror_ward') ?? MIRROR_WARD_COLOR;
+		const emissive = MIRROR_WARD_EMISSIVE;
+		if (ctx.spawnMirrorWardReflectBurst) {
+			ctx.spawnMirrorWardReflectBurst(origin, direction, {
+				range: def.reflectRange,
+				color,
+				emissive,
+			});
+		}
 		return;
 	}
 	if (data.target !== 'self' || !data.origin) return;
