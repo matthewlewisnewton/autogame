@@ -80,9 +80,9 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('not_a_real_card')).toEqual([]);
 	});
 
-	it('returns wyrm attack renderer for Vault Wyrm and Archive Wyrm', () => {
-		expect(resolveRenderers('dungeon_drake')).toHaveLength(1);
-		expect(resolveRenderers('ancient_wyrm')).toHaveLength(1);
+	it('returns composed summon + attack renderers for Vault Wyrm and Archive Wyrm', () => {
+		expect(resolveRenderers('dungeon_drake')).toHaveLength(2);
+		expect(resolveRenderers('ancient_wyrm')).toHaveLength(2);
 	});
 
 	it('returns bespoke attack renderers for Phase Stalker and Bulkhead Mauler', () => {
@@ -600,7 +600,11 @@ describe('renderCardUsed() — creature dispatch', () => {
 	});
 
 	it('Vault Wyrm minion breath renders a forward cone hitbox on breath start', () => {
-		const ctx = makeCtx();
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 2, y: 0.5, z: 3 } },
+			}),
+		});
 		renderCardUsed({
 			cardId: 'dungeon_drake',
 			origin: { x: 1, z: 2 },
@@ -615,7 +619,25 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(attacks).toHaveLength(1);
 		expect(attacks[0][1]).toEqual({ x: 1, z: 2 });
 		expect(attacks[0][2]).toEqual({ x: 0, z: 1 });
-		expect(attacks[0][3]).toMatchObject({ range: 4, coneAngle: Math.PI / 4, duration: 2000 });
+		expect(attacks[0][3]).toMatchObject({
+			range: 4,
+			coneAngle: Math.PI / 4,
+			duration: 2000,
+			color: 0x22c55e,
+			emissive: 0x16a34a,
+		});
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 1, z: 2 });
+		expect(ring[2]).toBeCloseTo(4 * 0.55);
+		expect(ring[3]).toMatchObject({ color: 0x22c55e, emissive: 0x16a34a });
+		const alongBurst = ctx._calls.find(
+			(c) => c[0] === 'spawnParticleBurst' && c[1].x === 1 && c[1].z === 2 + 4 * 0.45,
+		);
+		expect(alongBurst).toBeDefined();
+		expect(alongBurst[2]).toMatchObject({ color: 0x22c55e, emissive: 0x16a34a, count: 10 });
+		expect(ctx._calls.filter((c) => c[0] === 'spawnHitSpark')).toHaveLength(1);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(2);
 	});
 
 	it('Vault Wyrm breath ticks skip duplicate cone visuals but still emit hit particles', () => {
@@ -638,7 +660,11 @@ describe('renderCardUsed() — creature dispatch', () => {
 	});
 
 	it('Archive Wyrm fire breath renders a channeled cone hitbox', () => {
-		const ctx = makeCtx();
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 5, y: 0.5, z: 0 } },
+			}),
+		});
 		renderCardUsed({
 			cardId: 'ancient_wyrm',
 			specialEffect: 'fire_breath',
@@ -659,6 +685,71 @@ describe('renderCardUsed() — creature dispatch', () => {
 			emissive: 0x9333ea,
 			duration: 2500,
 		});
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[3]).toMatchObject({ color: 0xef4444, emissive: 0x9333ea });
+		const alongBurst = ctx._calls.find(
+			(c) => c[0] === 'spawnParticleBurst' && c[1].x === 8 * 0.45,
+		);
+		expect(alongBurst).toBeDefined();
+		expect(alongBurst[2]).toMatchObject({ color: 0xef4444, emissive: 0x9333ea, count: 14 });
+		expect(ctx._calls.filter((c) => c[0] === 'spawnHitSpark')).toHaveLength(1);
+	});
+
+	it('Vault Wyrm and Archive Wyrm summons use distinct flourish radii', () => {
+		const vaultCtx = makeCtx();
+		renderCardUsed({
+			cardId: 'dungeon_drake',
+			origin: { x: 0, z: 0 },
+			minionId: 'wyrm-vault',
+			hits: [],
+		}, vaultCtx);
+		const vaultSummon = vaultCtx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(vaultSummon).toBeDefined();
+		expect(vaultSummon[2]).toMatchObject({ radius: 1.0, burstCount: 8, burstSpread: 1.2 });
+
+		const archiveCtx = makeCtx();
+		renderCardUsed({
+			cardId: 'ancient_wyrm',
+			origin: { x: 3, z: 4 },
+			minionId: 'wyrm-archive',
+			hits: [],
+		}, archiveCtx);
+		const archiveSummon = archiveCtx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(archiveSummon).toBeDefined();
+		expect(archiveSummon[2]).toMatchObject({
+			radius: 1.85,
+			burstCount: 18,
+			burstSpread: 2.5,
+			color: 0x9333ea,
+			emissive: 0x9333ea,
+		});
+		expect(archiveSummon[2].radius).toBeGreaterThan(vaultSummon[2].radius);
+	});
+
+	it('wyrm summon renderers skip breath payloads and attack renderers skip deploy payloads', () => {
+		const summonCtx = makeCtx();
+		renderCardUsed({
+			cardId: 'dungeon_drake',
+			origin: { x: 0, z: 0 },
+			minionId: 'wyrm-1',
+			breathPhase: 'start',
+			direction: { x: 1, z: 0 },
+			attackRange: 6,
+			hits: [],
+		}, summonCtx);
+		expect(summonCtx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
+		expect(summonCtx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+
+		const deployCtx = makeCtx();
+		renderCardUsed({
+			cardId: 'ancient_wyrm',
+			origin: { x: 0, z: 0 },
+			minionId: 'wyrm-2',
+			hits: [],
+		}, deployCtx);
+		expect(deployCtx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(true);
+		expect(deployCtx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(false);
 	});
 
 	it('Phase Stalker beam renders a narrow projectile corridor', () => {

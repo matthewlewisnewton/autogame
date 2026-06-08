@@ -241,12 +241,31 @@ function renderChainLightning(data, ctx) {
 	ctx.spawnAttackEffect(data.origin, directionOf(data));
 }
 
+const WYRM_SUMMON_STYLES = {
+	dungeon_drake: { radius: 1.0, burstCount: 8, burstSpread: 1.2 },
+	ancient_wyrm: { radius: 1.85, burstCount: 18, burstSpread: 2.5 },
+};
+
+/**
+ * Vault Wyrm / Archive Wyrm deploy: per-card summon-in palettes on top of the
+ * shared minion flourish (tight burst vs wide ring + embers).
+ */
+function renderWyrmSummon(data, ctx) {
+	if (!data.minionId || data.breathPhase || !ctx.spawnMinionSummonInEffect) return;
+	const preset = WYRM_SUMMON_STYLES[data.cardId] ?? {};
+	ctx.spawnMinionSummonInEffect(originOf(data), {
+		...accentSummonStyle(data.cardId),
+		...preset,
+	});
+}
+
 /**
  * Vault Wyrm / Archive Wyrm minion attacks: ground cone matching server
  * collectConeHits geometry (melee swipe or fire breath).
  */
 function renderWyrmAttack(data, ctx) {
 	if (!data.origin) return;
+	if (data.minionId && !data.breathPhase) return;
 
 	const isFireBreath = data.specialEffect === 'fire_breath';
 	const accentHex = getAccentHex(data.cardId);
@@ -254,7 +273,9 @@ function renderWyrmAttack(data, ctx) {
 	const emissive = isFireBreath ? (accentHex ?? 0x9333ea) : 0x16a34a;
 
 	if (data.breathPhase !== 'tick') {
-		ctx.spawnAttackEffect(originOf(data), directionOf(data), {
+		const origin = originOf(data);
+		const direction = directionOf(data);
+		ctx.spawnAttackEffect(origin, direction, {
 			range: data.attackRange,
 			coneAngle: data.attackConeAngle,
 			color,
@@ -263,18 +284,37 @@ function renderWyrmAttack(data, ctx) {
 			fillOpacity: isFireBreath ? 0.38 : 0.48,
 			edgeOpacity: isFireBreath ? 0.72 : 0.85,
 		});
+		const breathRange = data.attackRange ?? 6;
+		if (ctx.spawnTelegraphRing) {
+			ctx.spawnTelegraphRing(origin, breathRange * 0.55, { color, emissive });
+		}
+		if (ctx.spawnParticleBurst) {
+			const along = pointAlong(origin, direction, breathRange * 0.45);
+			ctx.spawnParticleBurst(
+				{ x: along.x, y: 0.8, z: along.z },
+				{
+					color,
+					emissive,
+					count: isFireBreath ? 14 : 10,
+					spread: isFireBreath ? 2.0 : 1.5,
+				},
+			);
+		}
 	}
 
-	if (!data.hits?.length || !ctx.spawnHitSpark || !ctx.enemyMeshes) return;
+	if (!data.hits?.length) return;
 
-	const meshes = ctx.enemyMeshes();
+	const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
 	for (const hit of data.hits) {
 		const mesh = meshes[hit.enemyId];
 		if (!mesh) continue;
-		ctx.spawnHitSpark(
-			{ x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z },
-			{ color, emissive, count: 5, spread: 0.55 },
-		);
+		const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+		if (ctx.spawnHitSpark) {
+			ctx.spawnHitSpark(pos, { color, emissive, count: 5, spread: 0.55 });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(pos, { color, emissive, count: 6, spread: 0.7 });
+		}
 	}
 }
 
@@ -414,8 +454,8 @@ const CARD_RENDERERS = {
 	// Creatures
 	undead_commander: renderUndeadCommander,
 	thunderbird: renderChainLightning,
-	dungeon_drake: renderWyrmAttack,
-	ancient_wyrm: renderWyrmAttack,
+	dungeon_drake: [renderWyrmSummon, renderWyrmAttack],
+	ancient_wyrm: [renderWyrmSummon, renderWyrmAttack],
 	null_crawler: renderPhaseBeam,
 	bulkhead_mauler: renderShockwaveSweep,
 

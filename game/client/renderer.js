@@ -4297,6 +4297,8 @@ export function spawnMinionSummonInEffect(origin, style = {}) {
 	const color = style.color ?? 0x22c55e;
 	const emissive = style.emissive ?? color;
 	const radius = style.radius ?? 1.4;
+	const burstCount = style.burstCount ?? 12;
+	const burstSpread = style.burstSpread ?? 1.8;
 	const summonStyle = { color, emissive };
 
 	spawnSummonEffect(origin, radius, summonStyle);
@@ -4307,7 +4309,7 @@ export function spawnMinionSummonInEffect(origin, style = {}) {
 	});
 	spawnParticleBurst(
 		{ x: origin.x, y: 1.0, z: origin.z },
-		{ color, emissive, count: 12, spread: 1.8, duration: MINION_SUMMON_IN_MS },
+		{ color, emissive, count: burstCount, spread: burstSpread, duration: MINION_SUMMON_IN_MS },
 	);
 }
 
@@ -5721,6 +5723,10 @@ export function animate(timestamp) {
 								color: 0xef4444,
 								emissive: 0x9333ea,
 							}
+						);
+						spawnParticleBurst(
+							{ x: enemy.x, y: halfHeight, z: enemy.z },
+							{ color: 0xef4444, emissive: 0xff3b00, count: 8, spread: 0.85 },
 						);
 					} else if (fromNullCrawler) {
 						const beamDir = nearestMinion

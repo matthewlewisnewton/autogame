@@ -1726,6 +1726,46 @@ function applyDebugScenario(socket, name) {
           }
         }
       }
+    } else if (name === 'archive-wyrm-combat') {
+      // Archive Wyrm fire-breath QA — same layout as minion-combat but with the
+      // evolved wyrm. Reachable normally by evolving dungeon_drake to ancient_wyrm
+      // and deploying into combat.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const anchorX = player.x;
+      const anchorZ = player.z;
+      player.x = anchorX - DETECTION_RADIUS - 1;
+      state.enemies = [];
+      const enemy = spawnEnemy(anchorX + 7, anchorZ, 'grunt');
+      enemy.hp = 500;
+      enemy.maxHp = 500;
+      enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+      enemy.attackState = 'idle';
+      state.minions = [{
+        id: crypto.randomUUID(),
+        ownerId: player.id,
+        type: 'ancient_wyrm',
+        x: anchorX + 1,
+        z: anchorZ,
+        hp: 90,
+        maxHp: 90,
+        maxTtl: 30,
+        ttl: 30,
+        breathRange: 10,
+        breathHoldDistance: 5.5,
+        breathConeAngle: Math.PI / 3,
+        breathDamage: 4,
+        breathDurationMs: 2500,
+        breathTickMs: 500,
+        breathIntervalMs: 3000,
+        lastBreathAt: 0,
+      }];
+      if (!player.hand.some(c => c && c.id === 'ancient_wyrm')) {
+        const replaceSlot = player.hand.findIndex(c => c && c.type !== 'creature');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = { id: 'ancient_wyrm', name: 'Archive Wyrm', type: 'creature', charges: 1, remainingCharges: 1 };
+        }
+      }
     } else if (name === 'run-failed') {
       for (const p of Object.values(state.players)) {
         p.hp = 0;
