@@ -2328,6 +2328,41 @@ function applyDebugScenario(socket, name) {
         e.maxHp = 120;
         e.wanderTarget = { x: e.x, z: e.z };
       }
+    } else if (name === 'energy-blade-slash-ready') {
+      // Playing phase holding the energy/photon-class blades — Saber of Light
+      // (radiant pale-gold arc), Photon Slicer (cyan spin slice), Arcane Bolt
+      // (violet energy lance), Resonance Edge (magenta resonant double pulse),
+      // Phase Echo (pink delayed twin-slash), and Infinite Disk (three-disk fan
+      // with cyan trail polish) — at full Magic Stones with grunts lined up
+      // along +X so each blade can be swung back-to-back to compare its slash
+      // visual. The same state is reachable normally: every card here is an
+      // earnable reward weapon; this only skips the grind to acquire them.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const energyBlades = [
+        { id: 'saber_of_light', name: 'Saber of Light', charges: 6 },
+        { id: 'photon_slicer', name: 'Photon Slicer', charges: 4 },
+        { id: 'arcane_bolt', name: 'Arcane Bolt', charges: 4 },
+        { id: 'resonance_edge', name: 'Resonance Edge', charges: 5 },
+        { id: 'echo_blade', name: 'Phase Echo', charges: 5 },
+        { id: 'infinite_disk', name: 'Infinite Disk', charges: 4 },
+      ];
+      player.hand = energyBlades.slice(0, MAX_HAND_SLOTS).map((b) => ({
+        id: b.id,
+        name: b.name,
+        type: 'weapon',
+        charges: b.charges,
+        remainingCharges: b.charges,
+      }));
+      player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+      state.enemies = [];
+      for (const dx of [3, 5, 7]) {
+        const e = spawnEnemy(player.x + dx, player.z, 'grunt');
+        e.hp = 120;
+        e.maxHp = 120;
+        e.wanderTarget = { x: e.x, z: e.z };
+      }
     }
 
     syncRunObjectiveToEnemies();

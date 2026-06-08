@@ -559,6 +559,7 @@ const DEBUG_SCENARIOS = new Set([
   'ice-ball-ready',
   'magma-windup-ready',
   'weapon-slash-ready',
+  'energy-blade-slash-ready',
 ]);
 
 // Wire debugScenarios with io, the index.js-local helpers its setup chain needs,

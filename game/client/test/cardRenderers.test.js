@@ -63,7 +63,7 @@ describe('resolveRenderers()', () => {
 
 	it('falls back to the weapon default for plain weapon cards', () => {
 		expect(resolveRenderers('steel_claymore')).toHaveLength(1);
-		expect(resolveRenderers('saber_of_light')).toHaveLength(1);
+		expect(resolveRenderers('excalibur_photon')).toHaveLength(1);
 	});
 
 	it('returns the card-specific weapon swing for the styled standard blades', () => {
@@ -72,6 +72,14 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('harvesting_scythe')).toHaveLength(1);
 		// Distinct from the plain cone-swing default.
 		expect(resolveRenderers('iron_sword')[0]).not.toBe(resolveRenderers('steel_claymore')[0]);
+	});
+
+	it('returns card-specific renderers for the energy/photon blades (not the cone default)', () => {
+		const plain = resolveRenderers('steel_claymore')[0];
+		for (const cardId of ['saber_of_light', 'photon_slicer', 'arcane_bolt', 'resonance_edge', 'echo_blade']) {
+			expect(resolveRenderers(cardId)).toHaveLength(1);
+			expect(resolveRenderers(cardId)[0]).not.toBe(plain);
+		}
 	});
 
 	it('falls back to the spell default for plain spell cards', () => {
@@ -285,7 +293,7 @@ describe('renderCardUsed() — weapon dispatch', () => {
 	it('spawns swingCount attack effects for multi-swing weapons', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
-			cardId: 'saber_of_light',
+			cardId: 'steel_claymore',
 			origin: { x: 0, z: 0 },
 			direction: { x: 1, z: 0 },
 			swingCount: 3,
@@ -328,6 +336,36 @@ describe('renderCardUsed() — weapon dispatch', () => {
 		// Perpendicular offsets along z for a +x facing direction → distinct z coords.
 		const zs = attacks.map((a) => a[1].z).sort((p, q) => p - q);
 		expect(zs).toEqual([-0.6, 0, 0.6]);
+	});
+
+	it('infinite_disk adds a cyan trail and spark burst along the disk path', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'infinite_disk',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			hits: [],
+		}, ctx);
+		// Still three offset disks.
+		expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(3);
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail).toBeDefined();
+		expect(trail[3]).toMatchObject({ color: 0xa5f3fc, emissive: 0x22d3ee });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 3.5, z: 0 });
+		expect(burst[2]).toMatchObject({ color: 0xa5f3fc, emissive: 0x22d3ee });
+	});
+
+	it('infinite_disk still renders three disks without the new ctx primitives', () => {
+		const ctx = makeCtx({ spawnProjectileTrail: undefined, spawnParticleBurst: undefined });
+		expect(() => renderCardUsed({
+			cardId: 'infinite_disk',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(3);
 	});
 
 	it('spawns a single fireball-effect projectile for fireball', () => {
@@ -502,6 +540,102 @@ describe('renderCardUsed() — styled weapon slashes', () => {
 			hits: [],
 		}, ctx)).not.toThrow();
 		// The core cone swing still fires.
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+	});
+});
+
+describe('renderCardUsed() — energy & photon blade slashes', () => {
+	function fire(cardId, ctx, extra = {}) {
+		renderCardUsed({ cardId, origin: { x: 0, z: 0 }, direction: { x: 1, z: 0 }, hits: [], ...extra }, ctx);
+	}
+	function swingStyle(ctx) {
+		const attack = ctx._calls.find((c) => c[0] === 'spawnAttackEffect');
+		expect(attack).toBeDefined();
+		return attack[3];
+	}
+
+	it('Saber of Light slashes a radiant pale-gold arc using its accent color', () => {
+		const ctx = makeCtx();
+		fire('saber_of_light', ctx);
+		const style = swingStyle(ctx);
+		expect(style).toMatchObject({ color: 0xfef08a, coneAngle: Math.PI / 3, range: 5.5 });
+		// Radiant blade throws sparks but no flame trail.
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
+	});
+
+	it('Photon Slicer cuts a wide cyan spin slice with a light trail', () => {
+		const ctx = makeCtx();
+		fire('photon_slicer', ctx);
+		const style = swingStyle(ctx);
+		expect(style).toMatchObject({ color: 0x22d3ee, coneAngle: Math.PI, range: 4.5 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(true);
+	});
+
+	it('Arcane Bolt thrusts a tight violet energy lance with a beam streak', () => {
+		const ctx = makeCtx();
+		fire('arcane_bolt', ctx);
+		const style = swingStyle(ctx);
+		expect(style).toMatchObject({ color: 0xa78bfa, coneAngle: Math.PI / 9, range: 7.5 });
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail).toBeDefined();
+		expect(trail[3]).toMatchObject({ color: 0xa78bfa, range: 7.5 });
+	});
+
+	it('Resonance Edge slashes magenta and rings twice via a scheduled second pulse', () => {
+		const ctx = makeCtx();
+		fire('resonance_edge', ctx);
+		const style = swingStyle(ctx);
+		expect(style).toMatchObject({ color: 0xe879f9, coneAngle: Math.PI / 3.5 });
+		// Double pulse: two telegraph rings, the second delayed via scheduleAfter.
+		const rings = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
+		expect(rings).toHaveLength(2);
+		expect(rings[0][2]).toBe(1.6);
+		expect(rings[1][2]).toBe(2.6);
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(schedules.map((c) => c[1])).toEqual([130]);
+		// Both pulses share the magenta accent.
+		for (const r of rings) expect(r[3]).toMatchObject({ color: 0xe879f9 });
+	});
+
+	it('Phase Echo swings pink, then schedules a fainter echo swing', () => {
+		const ctx = makeCtx();
+		fire('echo_blade', ctx);
+		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
+		// Twin slash: the swing plus its delayed echo.
+		expect(attacks).toHaveLength(2);
+		expect(attacks[0][3]).toMatchObject({ color: 0xf472b6, coneAngle: Math.PI / 4 });
+		// The echo is fainter than the lead swing.
+		expect(attacks[1][3].fillOpacity).toBeLessThan(attacks[0][3].fillOpacity);
+		expect(attacks[1][3].edgeOpacity).toBeLessThan(attacks[0][3].edgeOpacity);
+		// Delivered via a delayed second swing.
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(schedules.map((c) => c[1])).toEqual([150]);
+	});
+
+	it('the five energy blades use mutually distinct accent colors', () => {
+		const colorFor = (cardId) => {
+			const ctx = makeCtx();
+			fire(cardId, ctx);
+			return swingStyle(ctx).color;
+		};
+		const colors = new Set(
+			['saber_of_light', 'photon_slicer', 'arcane_bolt', 'resonance_edge', 'echo_blade'].map(colorFor),
+		);
+		expect(colors.size).toBe(5);
+	});
+
+	it('energy blade slashes degrade gracefully when optional ctx primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnProjectileTrail: undefined,
+			spawnParticleBurst: undefined,
+			spawnTelegraphRing: undefined,
+			spawnImpactDecal: undefined,
+		});
+		for (const cardId of ['saber_of_light', 'photon_slicer', 'arcane_bolt', 'resonance_edge', 'echo_blade']) {
+			expect(() => fire(cardId, ctx)).not.toThrow();
+		}
+		// Each blade's core cone swing still fired.
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 });

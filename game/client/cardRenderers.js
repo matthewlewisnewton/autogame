@@ -136,6 +136,41 @@ const WEAPON_SLASH_STYLES = {
 		sparkCount: 8,
 		sparkSpread: 1.6,
 	},
+	// Saber of Light: a broad, radiant pale-gold arc haloed in bright sparks.
+	saber_of_light: {
+		color: 0xfef08a,
+		emissive: 0xfde047,
+		coneAngle: Math.PI / 3,
+		range: 5.5,
+		fillOpacity: 0.46,
+		edgeOpacity: 0.95,
+		sparkCount: 12,
+		sparkSpread: 1.8,
+	},
+	// Photon Slicer: a near-full cyan spin slice trailing light around the arc.
+	photon_slicer: {
+		color: 0x22d3ee,
+		emissive: 0x06b6d4,
+		coneAngle: Math.PI,
+		range: 4.5,
+		fillOpacity: 0.34,
+		edgeOpacity: 0.8,
+		trail: true,
+		sparkCount: 9,
+		sparkSpread: 1.4,
+	},
+	// Arcane Bolt: a tight violet energy lance stabbing far forward with a beam streak.
+	arcane_bolt: {
+		color: 0xa78bfa,
+		emissive: 0x7c3aed,
+		coneAngle: Math.PI / 9,
+		range: 7.5,
+		fillOpacity: 0.5,
+		edgeOpacity: 0.92,
+		trail: true,
+		sparkCount: 7,
+		sparkSpread: 0.8,
+	},
 };
 
 /**
@@ -194,22 +229,104 @@ function renderWeaponSwing(data, ctx) {
 }
 
 /**
+ * Resonance Edge: a magenta slash that "rings" twice. The cut lands, then a
+ * resonant double pulse — two expanding telegraph rings (the second delayed via
+ * scheduleAfter) with a magenta spark burst — radiates out from the arc. Reuses
+ * the same 315 primitives as the styled blades, each guarded so the swing
+ * degrades gracefully when a primitive is absent.
+ */
+function renderResonantDoublePulse(data, ctx) {
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex(data.cardId) ?? 0xe879f9;
+	const emissive = 0xc026d3;
+	const range = 5;
+
+	ctx.spawnAttackEffect(origin, direction, {
+		color,
+		emissive,
+		coneAngle: Math.PI / 3.5,
+		range,
+		fillOpacity: 0.4,
+		edgeOpacity: 0.88,
+	});
+
+	const pulseAt = pointAlong(origin, direction, range * 0.55);
+	const pulse = (radius) => {
+		if (ctx.spawnTelegraphRing) ctx.spawnTelegraphRing(pulseAt, radius, { color, emissive });
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(pulseAt, { color, emissive, count: 8, spread: 1.2 });
+		}
+	};
+	pulse(1.6);
+	ctx.scheduleAfter(130, () => pulse(2.6));
+}
+
+/**
+ * Phase Echo: a pink twin-slash. The blade swings once, then a fainter echo
+ * swing replays a beat later via scheduleAfter so it reads as a phasing
+ * after-image. A pink light streak trails both passes.
+ */
+function renderEchoSlash(data, ctx) {
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex(data.cardId) ?? 0xf472b6;
+	const emissive = 0xdb2777;
+	const coneAngle = Math.PI / 4;
+	const range = 5;
+
+	const swing = (fillOpacity, edgeOpacity) => {
+		ctx.spawnAttackEffect(origin, direction, {
+			color,
+			emissive,
+			coneAngle,
+			range,
+			fillOpacity,
+			edgeOpacity,
+		});
+		if (ctx.spawnProjectileTrail) {
+			ctx.spawnProjectileTrail(origin, direction, { range, color, emissive });
+		}
+	};
+
+	swing(0.42, 0.9);
+	// The echo: a fainter after-image swing a beat later.
+	ctx.scheduleAfter(150, () => swing(0.22, 0.55));
+}
+
+/**
  * Infinite Disk and any card flagged with `triple_returning_projectile`:
  * spawn three projectile flashes offset along the perpendicular axis so the
- * player can see the three disks fan out.
+ * player can see the three disks fan out, plus a cyan trail/spark polish pass
+ * along the disk path so the fan reads richer than three flat flashes.
  */
 function renderTripleReturning(data, ctx) {
 	const origin = originOf(data);
 	const direction = directionOf(data);
 	const perpX = -direction.z;
 	const perpZ = direction.x;
-	const style = { color: 0xa5f3fc, emissive: 0x22d3ee };
+	const color = getAccentHex(data.cardId) ?? 0xa5f3fc;
+	const emissive = 0x22d3ee;
+	const style = { color, emissive };
 	for (const offset of [-0.6, 0, 0.6]) {
 		ctx.spawnAttackEffect(
 			{ x: origin.x + perpX * offset, z: origin.z + perpZ * offset },
 			direction,
 			style,
 		);
+	}
+	// Spinning-light polish: a cyan streak chasing the lead disk plus a spark
+	// shower out along its path.
+	if (ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, { range: 6, color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(pointAlong(origin, direction, 3.5), {
+			color,
+			emissive,
+			count: 10,
+			spread: 1.6,
+		});
 	}
 }
 
@@ -486,6 +603,11 @@ const CARD_RENDERERS = {
 	iron_sword: renderWeaponSwing,
 	flame_blade: renderWeaponSwing,
 	harvesting_scythe: renderWeaponSwing,
+	saber_of_light: renderWeaponSwing,
+	photon_slicer: renderWeaponSwing,
+	arcane_bolt: renderWeaponSwing,
+	resonance_edge: renderResonantDoublePulse,
+	echo_blade: renderEchoSlash,
 	infinite_disk: renderTripleReturning,
 	fireball: renderFireball,
 
