@@ -280,6 +280,7 @@ const EXCALIBUR_PHOTON_STYLE = {
 	range: 6,
 	fillOpacity: 0.48,
 	edgeOpacity: 0.95,
+	pulseRadius: 2.1,
 	decalRadius: 3.0,
 	debrisCount: 20,
 	debrisSpread: 2.2,
@@ -287,8 +288,9 @@ const EXCALIBUR_PHOTON_STYLE = {
 
 /**
  * Excalibur Photon greatslash. Composes the 315 primitives — a wide magenta
- * cone swing plus `spawnImpactDecal` and `spawnParticleBurst` at the strike
- * point — into one photon-themed committed blow. Honors `swingCount` and the
+ * cone swing, a photon projectile trail along the arc, a radiant telegraph
+ * pulse and light-shard burst at the strike point, plus a ground impact decal —
+ * into one unmistakable light-energy weapon blow. Honors `swingCount` and the
  * `photon_barrage` stagger like the heavy greatswords.
  */
 function renderExcaliburPhoton(data, ctx) {
@@ -299,32 +301,39 @@ function renderExcaliburPhoton(data, ctx) {
 	const emissive = style.emissive;
 	const swingCount = data.swingCount || 1;
 	const delayPerSwing = data.specialEffect === 'photon_barrage' ? 80 : 0;
+	const impactAt = pointAlong(origin, direction, style.range);
 
-	const swing = () => ctx.spawnAttackEffect(origin, direction, {
-		color,
-		emissive,
-		coneAngle: style.coneAngle,
-		range: style.range,
-		fillOpacity: style.fillOpacity,
-		edgeOpacity: style.edgeOpacity,
-	});
+	const swing = () => {
+		ctx.spawnAttackEffect(origin, direction, {
+			color,
+			emissive,
+			coneAngle: style.coneAngle,
+			range: style.range,
+			fillOpacity: style.fillOpacity,
+			edgeOpacity: style.edgeOpacity,
+		});
+		if (ctx.spawnProjectileTrail) {
+			ctx.spawnProjectileTrail(origin, direction, { color, emissive, range: style.range });
+		}
+		if (ctx.spawnTelegraphRing) {
+			ctx.spawnTelegraphRing(impactAt, style.pulseRadius, { color, emissive });
+		}
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(impactAt, { color, emissive, radius: style.decalRadius });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(impactAt, {
+				color,
+				emissive,
+				count: style.debrisCount,
+				spread: style.debrisSpread,
+			});
+		}
+	};
 	for (let i = 0; i < swingCount; i++) {
 		const delay = delayPerSwing * i;
 		if (delay > 0) ctx.scheduleAfter(delay, swing);
 		else swing();
-	}
-
-	const impactAt = pointAlong(origin, direction, style.range);
-	if (ctx.spawnImpactDecal) {
-		ctx.spawnImpactDecal(impactAt, { color, emissive, radius: style.decalRadius });
-	}
-	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(impactAt, {
-			color,
-			emissive,
-			count: style.debrisCount,
-			spread: style.debrisSpread,
-		});
 	}
 }
 
