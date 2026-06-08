@@ -571,6 +571,7 @@ const DEBUG_SCENARIOS = new Set([
   'utility-spells-ready',
   'magma-windup-ready',
   'economy-cards-ready',
+  'deck-sifter-ready',
   'weapon-slash-ready',
   'energy-blade-slash-ready',
   'heavy-greatsword-slash-ready',

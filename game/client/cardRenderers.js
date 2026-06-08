@@ -1140,17 +1140,51 @@ function renderTelepipe(data, ctx) {
 }
 
 /**
- * Deck Sifter: fan of ghost card silhouettes rising from the caster using
- * a parchment/gold particle burst to signal a draw action.
+ * Deck Sifter: golden shimmer ring marks the sift zone around the caster,
+ * followed by a staggered fan of ghost-card particles rising from the deck
+ * and a final draw-completion glow. Reads unmistakably as "sift through
+ * your deck to draw a card".
  */
 function renderDeckSifter(data, ctx) {
-	if (!ctx.spawnParticleBurst) return;
-	ctx.spawnParticleBurst(originOf(data), {
-		color: 0xf5deb3,
-		emissive: 0xdaa520,
-		count: 10,
-		spread: 1.8,
-	});
+	const origin = originOf(data);
+	const color = getAccentHex(data.cardId) ?? 0xd4a843;
+	const emissive = 0xf5deb3; // wheat / parchment highlight
+
+	// Phase 1 — shimmer ring at caster feet (deck sifting area)
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, 2.2, { color, emissive });
+	}
+
+	// Phase 2 — ghost-card fan rising from the deck (staggered to read as "sifting")
+	if (ctx.scheduleAfter && ctx.spawnParticleBurst) {
+		ctx.scheduleAfter(100, () => {
+			ctx.spawnParticleBurst(origin, {
+				color: emissive,
+				emissive: color,
+				count: 14,
+				spread: 2.2,
+			});
+		});
+	} else if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, {
+			color: emissive,
+			emissive: color,
+			count: 14,
+			spread: 2.2,
+		});
+	}
+
+	// Phase 3 — draw-completion glow (card materializes)
+	if (ctx.scheduleAfter && ctx.spawnParticleBurst) {
+		ctx.scheduleAfter(200, () => {
+			ctx.spawnParticleBurst(origin, {
+				color,
+				emissive: emissive,
+				count: 8,
+				spread: 1.0,
+			});
+		});
+	}
 }
 
 const ASTRAL_GUARDIAN_COLOR = 0x818cf8;

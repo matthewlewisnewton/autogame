@@ -1970,7 +1970,21 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 
 describe('renderCardUsed() — economy card VFX', () => {
 	describe('deck_sifter', () => {
-		it('spawns a parchment/gold particle burst at the caster origin', () => {
+		it('spawns a golden telegraph ring at the caster origin', () => {
+			const ctx = makeCtx();
+			renderCardUsed({
+				cardId: 'deck_sifter',
+				origin: { x: 3, z: 4 },
+				hits: [],
+			}, ctx);
+			const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+			expect(ring).toBeDefined();
+			expect(ring[1]).toEqual({ x: 3, z: 4 });
+			expect(ring[2]).toBe(2.2);
+			expect(ring[3]).toMatchObject({ color: 0xd4a843, emissive: 0xf5deb3 });
+		});
+
+		it('spawns a card-fan burst staggered at 100ms and a draw-completion burst at 200ms', () => {
 			const ctx = makeCtx();
 			renderCardUsed({
 				cardId: 'deck_sifter',
@@ -1978,14 +1992,42 @@ describe('renderCardUsed() — economy card VFX', () => {
 				hits: [],
 			}, ctx);
 			const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
-			expect(bursts).toHaveLength(1);
-			expect(bursts[0][1]).toEqual({ x: 3, z: 4 });
+			expect(bursts).toHaveLength(2);
+			// Both bursts at caster origin.
+			for (const b of bursts) {
+				expect(b[1]).toEqual({ x: 3, z: 4 });
+			}
+			// Fan burst: wheat particles with gold emissive, wider spread.
 			expect(bursts[0][2]).toMatchObject({
 				color: 0xf5deb3,
-				emissive: 0xdaa520,
-				count: 10,
-				spread: 1.8,
+				emissive: 0xd4a843,
+				count: 14,
+				spread: 2.2,
 			});
+			// Completion burst: gold particles, tighter spread.
+			expect(bursts[1][2]).toMatchObject({
+				color: 0xd4a843,
+				emissive: 0xf5deb3,
+				count: 8,
+				spread: 1.0,
+			});
+
+			// Verify stagger timing.
+			const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+			expect(schedules.map((c) => c[1])).toEqual([100, 200]);
+		});
+
+		it('still spawns the card-fan burst when scheduleAfter is absent (no stagger)', () => {
+			const ctx = makeCtx({ scheduleAfter: undefined });
+			renderCardUsed({
+				cardId: 'deck_sifter',
+				origin: { x: 0, z: 0 },
+				hits: [],
+			}, ctx);
+			const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+			// Fan burst fires immediately; completion burst is skipped (needs scheduleAfter).
+			expect(bursts).toHaveLength(1);
+			expect(bursts[0][2]).toMatchObject({ count: 14, spread: 2.2 });
 		});
 
 		it('does not throw when spawnParticleBurst is absent', () => {
@@ -1996,6 +2038,20 @@ describe('renderCardUsed() — economy card VFX', () => {
 				hits: [],
 			}, ctx)).not.toThrow();
 			expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(0);
+			// Telegraph ring still fires (independent of particle burst).
+			expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(true);
+		});
+
+		it('renders only the telegraph ring when both scheduleAfter and spawnParticleBurst are absent', () => {
+			const ctx = makeCtx({ spawnParticleBurst: undefined, scheduleAfter: undefined });
+			renderCardUsed({
+				cardId: 'deck_sifter',
+				origin: { x: 1, z: 2 },
+				hits: [],
+			}, ctx);
+			expect(ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing')).toHaveLength(1);
+			expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(0);
+			expect(ctx._calls.filter((c) => c[0] === 'scheduleAfter')).toHaveLength(0);
 		});
 	});
 

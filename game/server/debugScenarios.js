@@ -1409,6 +1409,17 @@ function applyDebugScenario(socket, name) {
       player.hand[1] = { id: 'chrono_trigger', name: 'Chrono Trigger', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 0, effect: 'chrono_trigger', adjacentChargeRestore: 2 };
       player.hand[2] = { id: 'mana_prism', name: 'Mana Prism', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 0, effect: 'mana_prism', durationSeconds: 12, magicStonePulse: 10, pulseIntervalMs: 2000 };
       player.hand[3] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5, grind: 0 };
+    } else if (name === 'deck-sifter-ready') {
+      // Enter a normal run with Deck Sifter in hand, full HP/mana, and a nearby
+      // enemy so the golden-ring + card-fan + draw-glow animation can be observed
+      // immediately on cast. The same state is reachable normally by acquiring
+      // the Deck Sifter reward card through dungeon runs and deploying with it.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.hand[0] = { id: 'deck_sifter', name: 'Deck Sifter', type: 'weapon', charges: 3, remainingCharges: 3, magicStoneCost: 0, effect: 'draw_card', drawsOnUse: 1 };
+      player.hand[1] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5, grind: 0 };
+      state.enemies = [];
+      spawnEnemy(player.x + 4, player.z, 'grunt');
     } else if (name === 'extracted-in-hub') {
       // Partial extract: the local player has stepped through the Telepipe and is
       // standing in the walkable hub while the run stays in `playing` (as it
