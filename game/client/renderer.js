@@ -127,6 +127,8 @@ let phaseStepTargetId = null;
 let phaseStepAllyRing = null;
 const windupFlashing = new Set(); // enemy ids currently showing windup emissive
 const minionsMeshes = {};
+/** Persistent ground-hazard meshes for armed spike_trap enchantments, keyed by enc.id. */
+const spikeTrapMeshes = {};
 /** First-seen minion ids — avoids re-playing spawn scale-in after resync/reconnect. */
 const seenMinionIds = new Set();
 /** Minion id → performance.now() when scale-in began (cleared once settled). */
@@ -1221,6 +1223,7 @@ export function getMeshMaps() {
 		telegraphMeshes,
 		minionTelegraphMeshes,
 		minionsMeshes,
+		spikeTrapMeshes,
 		lootMeshes,
 		iceBallMeshes,
 		playerCardWindupMarkers,
@@ -4666,6 +4669,62 @@ export function spawnSpikeTrapEffect(origin, radius) {
 }
 
 /**
+ * Build the persistent ground-hazard mesh for an armed spike_trap enchantment:
+ * a hostile blood-red ring sized to `enc.radius` plus a small cluster of static
+ * upward steel spikes. Reuses the SPIKE_TRAP_* palette so it reads as an armed
+ * spike trap and stays distinct from cinder_snare's orange fire look. Geometry
+ * and materials are owned by the returned group (like enemy meshes), so
+ * disposeStaleMeshes / disposeMeshMap fully release them; they are allocated once
+ * per trap on first sight and never per frame.
+ * @param {object} enc - { x, z, radius }
+ * @returns {THREE.Group}
+ */
+export function createSpikeTrapHazardMesh(enc) {
+	const radius = Number.isFinite(enc?.radius) ? enc.radius : 2.5;
+	const group = new THREE.Group();
+
+	// Hostile ground ring marking the armed hazard footprint.
+	const ringGeometry = new THREE.RingGeometry(radius * 0.78, radius, 48);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color: SPIKE_TRAP_RING_COLOR,
+		emissive: SPIKE_TRAP_RING_EMISSIVE,
+		emissiveIntensity: 0.85,
+		transparent: true,
+		opacity: 0.6,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+	ring.position.y = 0.06;
+	ring.rotation.x = -Math.PI / 2;
+	group.add(ring);
+
+	// Static cluster of short upward steel spikes signalling the primed trap —
+	// shorter than the eruption VFX cones so the firing burst still reads as a hit.
+	const spikeHeight = SPIKE_TRAP_SPIKE_HEIGHT * 0.5;
+	const spikeOffset = radius * 0.45;
+	for (let s = 0; s < SPIKE_TRAP_SPIKE_COUNT; s++) {
+		const angle = (s / SPIKE_TRAP_SPIKE_COUNT) * Math.PI * 2;
+		const geometry = new THREE.ConeGeometry(SPIKE_TRAP_SPIKE_RADIUS, spikeHeight, 6);
+		const material = new THREE.MeshStandardMaterial({
+			color: SPIKE_TRAP_SPIKE_COLOR,
+			emissive: SPIKE_TRAP_EMISSIVE,
+			emissiveIntensity: 0.6,
+		});
+		const spike = new THREE.Mesh(geometry, material);
+		spike.position.set(
+			Math.cos(angle) * spikeOffset,
+			spikeHeight / 2,
+			Math.sin(angle) * spikeOffset,
+		);
+		group.add(spike);
+	}
+
+	group.position.set(enc.x, 0, enc.z);
+	return group;
+}
+
+/**
  * Spawn the on-death radial blast of a `volatile`-variant enemy: an expanding
  * ground ring in a hot volatile orange, distinct from the friendly amber summon
  * and red inferno bursts. Reuses the radius-based lifecycle in
@@ -6270,6 +6329,23 @@ export function animate(timestamp) {
 				delete minionBaseScales[id];
 			}
 		}
+
+		// Spike trap hazard mesh sync: reconcile a persistent ground-hazard mesh
+		// per armed spike_trap from the snapshot, mirroring the enemy/minion
+		// pattern. Only spike_trap is handled here; other effects (e.g.
+		// cinder_snare) are left to their own handling.
+		const currentSpikeTrapIds = new Set();
+		for (const enc of (gs.enchantments || [])) {
+			if (!enc || enc.effect !== 'spike_trap' || !enc.armed) continue;
+			currentSpikeTrapIds.add(enc.id);
+			if (!spikeTrapMeshes[enc.id]) {
+				const mesh = createSpikeTrapHazardMesh(enc);
+				scene.add(mesh);
+				spikeTrapMeshes[enc.id] = mesh;
+			}
+			spikeTrapMeshes[enc.id].position.set(enc.x, 0, enc.z);
+		}
+		disposeStaleMeshes(spikeTrapMeshes, currentSpikeTrapIds, scene);
 
 		// ── Loot mesh sync ──
 		syncLootMeshes();

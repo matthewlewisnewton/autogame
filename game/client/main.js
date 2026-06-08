@@ -1536,6 +1536,19 @@ function bindSocketHandlers(s) {
 		);
 	});
 
+	// Synced hit feedback: erupt the spike VFX where the server reports a trap
+	// firing. Purely additive — no new network traffic or server payload.
+	s.on(SERVER_TO_CLIENT.SPIKE_TRAP_TRIGGERED, (data) => {
+		if (!data || !getScene()) return;
+		const { x, z, radius } = data;
+		if (!Number.isFinite(x) || !Number.isFinite(z)) return;
+		if (typeof rendererSpawnSpikeTrapEffect !== 'function') return;
+		rendererSpawnSpikeTrapEffect(
+			{ x, z },
+			Number.isFinite(radius) ? radius : 2.5,
+		);
+	});
+
 	s.on(SERVER_TO_CLIENT.LEECH_HEAL, (data) => {
 		if (!data) return;
 		playSound('leechHeal');
@@ -1922,6 +1935,7 @@ function bindSocketHandlers(s) {
 			rendererDisposeMeshMap(maps.telegraphMeshes, sc);
 			rendererDisposeMeshMap(maps.minionTelegraphMeshes, sc);
 			rendererDisposeMeshMap(maps.minionsMeshes, sc);
+			rendererDisposeMeshMap(maps.spikeTrapMeshes, sc);
 			rendererDisposeMeshMap(maps.iceBallMeshes, sc);
 			rendererDisposeAllLootMeshes();
 		}
