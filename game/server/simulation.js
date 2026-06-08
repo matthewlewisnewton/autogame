@@ -1945,6 +1945,46 @@ function processPendingEchoes() {
   _gameState.pendingEchoes = pending.filter(echo => !echo.done);
 }
 
+function _cardEffects() {
+  return require('./cardEffects');
+}
+
+/**
+ * Resolve due player card wind-ups. Each committed use was queued by tryBeginCardWindup
+ * with costs paid at commit; when cardWindupMs elapses we run the stored effect using
+ * the locked origin/rotation from pendingCardUse (see cardEffects.resolvePendingCardUse).
+ */
+function processPendingCardWindups() {
+  if (!_gameState || !isPlayingPhase(_gameState)) return;
+  if (!_gameState.run || _gameState.run.status !== 'playing') return;
+
+  const lobbyId = _gameState._lobbyId;
+  if (!lobbyId) return;
+
+  const now = Date.now();
+  const lobby = { id: lobbyId };
+
+  for (const playerId of Object.keys(_gameState.players)) {
+    const player = _gameState.players[playerId];
+    if (player.cardUseState !== 'windup') continue;
+
+    const ms = player.cardWindupMs || 0;
+    if (ms <= 0) continue;
+
+    const start = player.cardWindupStartTime || 0;
+    if (now - start < ms) continue;
+
+    if (player.dead || player.extracted) {
+      clearPlayerCardCommitment(player);
+      continue;
+    }
+
+    const socket = _findSocketByPlayerId ? _findSocketByPlayerId(playerId) : null;
+    const pseudoSocket = socket || { playerId, emit: () => {} };
+    _cardEffects().resolvePendingCardUse(pseudoSocket, _gameState, lobby, player);
+  }
+}
+
 function findNearestMinionNear(enemyX, enemyZ, detectionRadius, options = {}) {
   const tauntOnly = options.tauntOnly === true;
   let nearestDist = Infinity;
@@ -3050,6 +3090,9 @@ function updateMinions() {
   // Apply due Echo Strike second-hit packets
   processPendingEchoes();
 
+  // Resolve due player card wind-ups (deferred weapon/spell/creature commits)
+  processPendingCardWindups();
+
   // Ground enchantments (Spike Trap, etc.)
   updateEnchantments();
 
@@ -3212,6 +3255,7 @@ module.exports = {
   spawnVolatileExplosion,
   updateAreaEffects,
   processPendingEchoes,
+  processPendingCardWindups,
   updateEnchantments,
   spawnGroundEnchantment,
   armSelfEnchantment,

@@ -42,6 +42,7 @@ const {
   spawnInfernoPillarEffect,
   damagePlayer,
   isPlayerCardCommitted,
+  clearPlayerCardCommitment,
   healPlayer,
   healPlayersInRadius,
   spawnGroundEnchantment,
@@ -127,12 +128,16 @@ function tryBeginCardWindup(ctx) {
   player.cardUseState = 'windup';
   player.cardWindupStartTime = now;
   player.cardWindupMs = windUpMs;
+  // Origin and facing are locked at commit; deferred resolution uses these values
+  // rather than the player's live position after wind-up ends.
   player.pendingCardUse = {
     slotIndex: data.slotIndex,
     cardId: data.cardId,
     rotation,
     originX: player.x,
     originZ: player.z,
+    grind: handCard.grind || 0,
+    echoDamage: handCard.echoDamage,
   };
 
   io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
@@ -208,45 +213,68 @@ function applyAstralShieldCast(ctx) {
 // Dispatch a useCard event. Called from socket.on('useCard') inside the active
 // lobby context (gameState already pointed at lobby.state by withLobbyContext).
 function handleUseCard(socket, state, lobby, data) {
-    if (!isPlayingPhase(state)) return;
-    if (!state.run || state.run.status !== 'playing') return;
+  if (!isPlayingPhase(state)) return;
+  if (!state.run || state.run.status !== 'playing') return;
 
-    if (!data || typeof data.slotIndex !== 'number' || !data.cardId) return;
+  if (!data || typeof data.slotIndex !== 'number' || !data.cardId) return;
 
-    // (1) Look up card definition
-    const cardDef = getCardDef(data.cardId);
-    if (!cardDef) {
-      socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: 'Unknown card' });
-      return;
-    }
+  const cardDef = getCardDef(data.cardId);
+  if (!cardDef) {
+    socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: 'Unknown card' });
+    return;
+  }
 
-    // (2) Get player
-    const player = state.players[socket.playerId];
-    if (!player || player.dead || player.extracted) return;
+  const player = state.players[socket.playerId];
+  if (!player || player.dead || player.extracted) return;
 
-    if (isPlayerCardCommitted(player)) {
-      socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: 'Card commitment in progress' });
-      return;
-    }
+  if (isPlayerCardCommitted(player)) {
+    socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: 'Card commitment in progress' });
+    return;
+  }
 
-    // (3) Authoritative hand validation: slot must hold the requested card
-    const handValidation = validateUseCardHand(player, data.slotIndex, data.cardId);
-    if (!handValidation.valid) {
-      socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: handValidation.reason });
-      return;
-    }
+  const handValidation = validateUseCardHand(player, data.slotIndex, data.cardId);
+  if (!handValidation.valid) {
+    socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: handValidation.reason });
+    return;
+  }
 
-    // (4) Cooldown check: reject if slot is still cooling down (bypassed by overclock charges)
-    const now = Date.now();
-    const hasOverclock = (player.overclockChargesRemaining || 0) > 0;
-    if (!hasOverclock && player.slotCooldowns && player.slotCooldowns[data.slotIndex] && now < player.slotCooldowns[data.slotIndex]) {
-      socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: 'Slot on cooldown' });
-      return;
-    }
+  const now = Date.now();
+  const hasOverclock = (player.overclockChargesRemaining || 0) > 0;
+  if (!hasOverclock && player.slotCooldowns && player.slotCooldowns[data.slotIndex] && now < player.slotCooldowns[data.slotIndex]) {
+    socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: 'Slot on cooldown' });
+    return;
+  }
 
-    const handCard = handValidation.handCard;
-    const originX = player.x;
-    const originZ = player.z;
+  executeUseCard(socket, state, lobby, data, {
+    now,
+    hasOverclock,
+    handCard: handValidation.handCard,
+    player,
+    cardDef,
+    originX: player.x,
+    originZ: player.z,
+  });
+}
+
+// Shared card-effect dispatch for instant use and deferred wind-up resolution.
+// When options.fromWindupResolution is true, costs were paid at commit and
+// pendingCardUse origin/rotation are authoritative for the strike.
+function executeUseCard(socket, state, lobby, data, precomputed = {}, options = {}) {
+    const fromWindup = options.fromWindupResolution === true;
+    const now = precomputed.now ?? Date.now();
+    const player = precomputed.player ?? state.players[socket.playerId];
+    const cardDef = precomputed.cardDef ?? getCardDef(data.cardId);
+    if (!player || !cardDef) return;
+
+    const hasOverclock = fromWindup ? false : (precomputed.hasOverclock ?? false);
+    const handCard = fromWindup
+      ? {
+        grind: options.handCardSnapshot?.grind || 0,
+        echoDamage: options.handCardSnapshot?.echoDamage,
+      }
+      : precomputed.handCard;
+    const originX = fromWindup ? options.originX : precomputed.originX;
+    const originZ = fromWindup ? options.originZ : precomputed.originZ;
 
     // ── Weapon branch (forward cone attack) ──
     if (cardDef.type === 'weapon') {
@@ -276,16 +304,22 @@ function handleUseCard(socket, state, lobby, data) {
         return;
       }
 
-      if (tryBeginCardWindup({
+      if (!fromWindup && tryBeginCardWindup({
         socket, state, lobby, player, data, cardDef, handCard, hasOverclock, now,
       })) {
         return;
       }
 
-      handCard.remainingCharges -= 1;
+      if (!fromWindup) {
+        handCard.remainingCharges -= 1;
+      }
 
-      const rotation = resolveAttackRotation(player, data);
-      player.rotation = rotation;
+      const rotation = fromWindup
+        ? (options.rotation ?? player.rotation ?? 0)
+        : resolveAttackRotation(player, data);
+      if (!fromWindup) {
+        player.rotation = rotation;
+      }
       const attackRange = cardDef.attackRange || ATTACK_RANGE;
       const attackConeAngle = cardDef.attackConeAngle || ATTACK_CONE_ANGLE;
       const grind = handCard.grind || 0;
@@ -412,10 +446,11 @@ function handleUseCard(socket, state, lobby, data) {
       const appliedMagicStones = addMagicStones(player, magicStonesGained);
       cleanupAfterDamage();
 
-      applySlotCooldown(player, data.slotIndex, hasOverclock, now, cooldownMs);
-
-      if (handCard.remainingCharges <= 0) {
-        replaceConsumedCard(player, data.slotIndex, handCard);
+      if (!fromWindup) {
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cooldownMs);
+        if (handCard.remainingCharges <= 0) {
+          replaceConsumedCard(player, data.slotIndex, handCard);
+        }
       }
 
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
@@ -450,24 +485,22 @@ function handleUseCard(socket, state, lobby, data) {
     if (cardDef.type === 'spell') {
       const summonKey = `${data.slotIndex}:${data.cardId}`;
 
-      // Guard: reject duplicate activation while previous summon is still resolving
-      if (player.pendingSummons.has(summonKey)) {
-        socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: 'Summon already resolving' });
-        return;
-      }
-
       const magicStoneCost = cardDef.magicStoneCost || 0;
 
-      // Validate Magic Stones
-      if (player.magicStones < magicStoneCost) {
-        socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: THEME.resource.insufficient });
-        return;
-      }
-
-      if (tryBeginCardWindup({
-        socket, state, lobby, player, data, cardDef, handCard, hasOverclock, now, magicStoneCost,
-      })) {
-        return;
+      if (!fromWindup) {
+        if (player.pendingSummons.has(summonKey)) {
+          socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: 'Summon already resolving' });
+          return;
+        }
+        if (player.magicStones < magicStoneCost) {
+          socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: THEME.resource.insufficient });
+          return;
+        }
+        if (tryBeginCardWindup({
+          socket, state, lobby, player, data, cardDef, handCard, hasOverclock, now, magicStoneCost,
+        })) {
+          return;
+        }
       }
 
       if (cardDef.effect === 'telepipe') {
@@ -1112,15 +1145,16 @@ function handleUseCard(socket, state, lobby, data) {
     // ── Monster branch (spawn persistent minion) ──
     if (cardDef.type === 'creature') {
       const magicStoneCost = cardDef.magicStoneCost || 0;
-      if (player.magicStones < magicStoneCost) {
-        socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: THEME.resource.insufficient });
-        return;
-      }
-
-      if (tryBeginCardWindup({
-        socket, state, lobby, player, data, cardDef, handCard, hasOverclock, now, magicStoneCost,
-      })) {
-        return;
+      if (!fromWindup) {
+        if (player.magicStones < magicStoneCost) {
+          socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: THEME.resource.insufficient });
+          return;
+        }
+        if (tryBeginCardWindup({
+          socket, state, lobby, player, data, cardDef, handCard, hasOverclock, now, magicStoneCost,
+        })) {
+          return;
+        }
       }
 
       if (cardDef.effect === 'astral_guardian' || cardDef.specialEffect === 'astral_shield') {
@@ -1239,7 +1273,36 @@ function handleUseCard(socket, state, lobby, data) {
     }
 }
 
+function resolvePendingCardUse(socket, state, lobby, player) {
+  const pending = player.pendingCardUse;
+  if (!pending) return;
+
+  executeUseCard(socket, state, lobby, {
+    cardId: pending.cardId,
+    slotIndex: pending.slotIndex,
+    rotation: pending.rotation,
+  }, {
+    now: Date.now(),
+    player,
+    cardDef: getCardDef(pending.cardId),
+  }, {
+    fromWindupResolution: true,
+    originX: pending.originX,
+    originZ: pending.originZ,
+    rotation: pending.rotation,
+    handCardSnapshot: {
+      grind: pending.grind || 0,
+      echoDamage: pending.echoDamage,
+    },
+  });
+
+  clearPlayerCardCommitment(player);
+  io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+}
+
 module.exports = {
   setCallbacks,
   handleUseCard,
+  executeUseCard,
+  resolvePendingCardUse,
 };
