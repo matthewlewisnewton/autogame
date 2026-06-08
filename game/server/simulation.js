@@ -2877,35 +2877,40 @@ function updateMinions() {
       if (minion.type === 'storm_eagle' || minion.type === 'thunderbird') {
         const attackRange = minion.attackRange || (minion.type === 'thunderbird' ? 11 : 7);
         const attackDamage = minion.attackDamage || (minion.type === 'thunderbird' ? 18 : 12);
+        const attackIntervalMs = minion.attackIntervalMs || 1500;
+        const lastAttackAt = minion.lastAttackAt ?? 0;
 
         if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
           if (nearestDist <= attackRange) {
-            nearestEnemy.lastDamagedBy = minion.ownerId;
-            damageEnemy(nearestEnemy, attackDamage);
-            if (minion.type === 'thunderbird') {
-              const chainRadius = minion.chainRadius || 5;
-              const maxChainTargets = minion.maxChainTargets || 2;
-              const hitIds = new Set([nearestEnemy.id]);
-              let current = nearestEnemy;
-              let chains = 0;
-              while (chains < maxChainTargets) {
-                let next = null;
-                let nextDist = Infinity;
-                for (const enemy of _gameState.enemies) {
-                  if (hitIds.has(enemy.id) || enemy.hp <= 0) continue;
-                  const dist = Math.hypot(enemy.x - current.x, enemy.z - current.z);
-                  if (dist <= chainRadius && dist < nextDist) {
-                    nextDist = dist;
-                    next = enemy;
+            if (now - lastAttackAt >= attackIntervalMs) {
+              nearestEnemy.lastDamagedBy = minion.ownerId;
+              damageEnemy(nearestEnemy, attackDamage);
+              if (minion.type === 'thunderbird') {
+                const chainRadius = minion.chainRadius || 5;
+                const maxChainTargets = minion.maxChainTargets || 2;
+                const hitIds = new Set([nearestEnemy.id]);
+                let current = nearestEnemy;
+                let chains = 0;
+                while (chains < maxChainTargets) {
+                  let next = null;
+                  let nextDist = Infinity;
+                  for (const enemy of _gameState.enemies) {
+                    if (hitIds.has(enemy.id) || enemy.hp <= 0) continue;
+                    const dist = Math.hypot(enemy.x - current.x, enemy.z - current.z);
+                    if (dist <= chainRadius && dist < nextDist) {
+                      nextDist = dist;
+                      next = enemy;
+                    }
                   }
+                  if (!next) break;
+                  next.lastDamagedBy = minion.ownerId;
+                  damageEnemy(next, attackDamage);
+                  hitIds.add(next.id);
+                  current = next;
+                  chains++;
                 }
-                if (!next) break;
-                next.lastDamagedBy = minion.ownerId;
-                damageEnemy(next, attackDamage);
-                hitIds.add(next.id);
-                current = next;
-                chains++;
               }
+              minion.lastAttackAt = now;
             }
           } else {
             moveEntityToward(minion, nearestEnemy, MINION_CHASE_SPEED_SKIRMISHER * dt);
