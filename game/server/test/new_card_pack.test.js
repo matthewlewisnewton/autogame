@@ -66,6 +66,7 @@ describe('new card combat helpers', () => {
 		expect(CARD_DEFS.excalibur_photon.charges).toBe(CARD_DEFS.saber_of_light.charges);
 		expect(CARD_DEFS.excalibur_photon.cooldownMs).toBeLessThan(CARD_DEFS.saber_of_light.cooldownMs);
 		expect(CARD_DEFS.excalibur_photon.swingsPerUse).toBe(2);
+		expect(CARD_DEFS.excalibur_photon.windUpMs).toBe(600);
 	});
 
 	it('Excalibur Photon double swing applies cone damage twice', () => {

@@ -132,15 +132,20 @@ describe('card balance metrics harness', () => {
 		expect(iron.damagePerMs).toBeCloseTo(cooldownOnlyDpm);
 	});
 
-	it('keeps excalibur_photon on cooldown-only DPM until windUpMs is added', () => {
+	it('tunes excalibur_photon damagePerMs toward weapon Q3 via windUpMs', () => {
 		const photon = report.cards.excalibur_photon;
 		const perUseDamage = photon.effectiveBurst * cardStats.excalibur_photon.swingsPerUse;
+		const windUpMs = cardStats.excalibur_photon.windUpMs;
+		const effectiveCycleMs = photon.cooldownMs + windUpMs;
 		const cooldownOnlyDpm = perUseDamage / photon.cooldownMs;
 
-		expect(cardStats.excalibur_photon.windUpMs).toBeUndefined();
-		expect(photon.windUpMs).toBeNull();
-		expect(photon.damagePerMs).toBeCloseTo(cooldownOnlyDpm);
-		expect(photon.damagePerMs).toBeCloseTo(0.14);
+		expect(windUpMs).toBe(600);
+		expect(photon.windUpMs).toBe(windUpMs);
+		expect(photon.effectiveCycleMs).toBe(effectiveCycleMs);
+		expect(photon.damagePerMs).toBeCloseTo(perUseDamage / effectiveCycleMs);
+		expect(photon.damagePerMs).toBeLessThan(cooldownOnlyDpm);
+		expect(photon.damagePerMs).toBeLessThan(0.14);
+		expect(photon.damagePerMs).toBeLessThanOrEqual(0.045);
 	});
 
 	it('runs as a standalone node script', () => {

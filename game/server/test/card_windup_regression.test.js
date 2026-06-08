@@ -140,6 +140,8 @@ describe('card wind-up backward compatibility', () => {
 
 	it('exposes windUpMs on exemplar cards without affecting instant cards', () => {
 		expect(getCardDef('steel_claymore').windUpMs).toBe(600);
+		expect(getCardDef('magma_greatsword').windUpMs).toBe(800);
+		expect(getCardDef('excalibur_photon').windUpMs).toBe(600);
 		expect(getCardDef('glacier_collapse').windUpMs).toBe(700);
 		expect(getCardDef('dungeon_drake').windUpMs).toBe(600);
 		expect(getCardDef('spike_trap').windUpMs).toBe(500);

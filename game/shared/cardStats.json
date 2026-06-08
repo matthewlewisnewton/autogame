@@ -135,6 +135,7 @@
   "excalibur_photon": {
     "damage": 14,
     "cooldownMs": 200,
+    "windUpMs": 600,
     "isEvolved": true,
     "swingsPerUse": 2,
     "specialEffect": "photon_barrage"
