@@ -19,6 +19,7 @@ const crypto = require('crypto');
 const { generateLayout, questLayoutSeed, sampleFloorY, resolveFloorY } = require('./dungeon');
 const { DEFAULT_QUEST_ID, getLayoutProfileForQuest, buildQuestUpdatePayload } = require('./quests');
 const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS, MEDIC_HEAL_COST } = require('./config');
+const CARD_DEFS = require('../shared/cardDefs.json');
 const {
   firstRoomPosition,
   computeDungeonBounds,
@@ -1382,11 +1383,15 @@ function applyDebugScenario(socket, name) {
       // owning a saber_of_light, leveling it through +10 grinds, and deploying.
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
+      // Match the real card definition's charge count (6) so the fabricated
+      // Saber mirrors a normally owned, grinded, deployed one rather than an
+      // impossible 5-charge variant.
+      const saberCharges = CARD_DEFS.saber_of_light.charges;
       const saberSlot = player.hand.findIndex(c => c && c.id === 'saber_of_light');
-      const saberCard = { id: 'saber_of_light', name: 'Saber of Light', type: 'weapon', charges: 5, remainingCharges: 5, grind: 10 };
+      const saberCard = { id: 'saber_of_light', name: 'Saber of Light', type: 'weapon', charges: saberCharges, remainingCharges: saberCharges, grind: 10 };
       if (saberSlot >= 0) {
         player.hand[saberSlot].grind = 10;
-        player.hand[saberSlot].remainingCharges = player.hand[saberSlot].charges || 5;
+        player.hand[saberSlot].remainingCharges = player.hand[saberSlot].charges || saberCharges;
       } else {
         player.hand[0] = saberCard;
       }
