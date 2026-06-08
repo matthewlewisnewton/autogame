@@ -31,6 +31,7 @@ import { writeScreenshot } from './lib/screenshot.mjs';
 import { probeBossUi } from './lib/bossUiProbe.mjs';
 import { probeStatusCards } from './lib/statusCardsProbe.mjs';
 import { probeWindUp } from './lib/windUpProbe.mjs';
+import { probeCardChargeReset, probeTelepipePersistence } from './lib/lifecycleProbe.mjs';
 import { walkToZone } from './lib/hubMovement.mjs';
 import {
 	waitForHubLobby,
@@ -862,6 +863,60 @@ async function runVictoryStep({ page, preset, outDirAbs }) {
 	};
 }
 
+/** Return from the post-victory run-summary overlay to the walkable hub lobby. */
+async function returnToHubLobby(page) {
+	await page.evaluate(() => {
+		document.getElementById('return-to-lobby-btn')?.click();
+	});
+	await page.waitForFunction(() => {
+		const h = window.__AUTOGAME_HARNESS_STATE__?.();
+		const overlay = document.getElementById('run-summary-overlay');
+		const overlayHidden = !overlay || getComputedStyle(overlay).display === 'none';
+		return h?.phase === 'lobby' && h?.layout?.profile === 'hub' && overlayHidden;
+	}, { timeout: 20000 }).catch(async () => {
+		await failWithHarness(page, 'Hub lobby not reached after return-to-lobby');
+	});
+}
+
+/**
+ * Post-combat lifecycle probes (tickets 287 / 289), gated behind the preset
+ * flags. Runs after the victory step as a dedicated re-deploy cycle so the main
+ * spire run's assertions are untouched: return to the hub, then Telepipe-up
+ * vitals persistence + new-sortie card-charge reset.
+ */
+async function runLifecycleStep({ page, preset, outDirAbs }) {
+	await returnToHubLobby(page);
+
+	const fragment = {};
+	let telepipeResult = null;
+	if (preset.probeTelepipePersistence) {
+		telepipeResult = await probeTelepipePersistence(page, {
+			outDir: outDirAbs,
+			repoRoot: REPO_ROOT,
+			lifecycleScenario: preset.lifecycleScenario,
+		});
+		fragment.telepipePersistence = {
+			...telepipeResult.telepipePersistence,
+			screenshot: telepipeResult.screenshot,
+		};
+	}
+
+	if (preset.probeCardChargeReset) {
+		const chargeResult = await probeCardChargeReset(page, {
+			outDir: outDirAbs,
+			repoRoot: REPO_ROOT,
+			lifecycleScenario: preset.lifecycleScenario,
+			endOfSortieHand: telepipeResult?.spentHand ?? null,
+		});
+		fragment.cardChargeReset = {
+			...chargeResult.cardChargeReset,
+			screenshot: chargeResult.screenshot,
+		};
+	}
+
+	return fragment;
+}
+
 function buildAssertions(summary, preset) {
 	const bossSpawned = Array.isArray(summary.hub?.bossTypes)
 		&& summary.hub.bossTypes.includes(preset.bossType);
@@ -875,12 +930,22 @@ function buildAssertions(summary, preset) {
 		&& victoryProbe?.runObjectiveComplete === true
 		&& victoryProbe?.bossDefeated === true
 		&& victoryProbe?.lastRunSummaryStatus === 'victory';
-	return {
+	const assertions = {
 		bossSpawned,
 		encounterActivated,
 		bossDefeated,
 		victoryFired,
 	};
+	// Lifecycle probes (tickets 287 / 289) fold their assertions in only when the
+	// preset enabled them, so other presets are unaffected.
+	if (preset.probeTelepipePersistence) {
+		assertions.telepipeVitalsPreserved =
+			summary.telepipePersistence?.vitalsPreserved === true;
+	}
+	if (preset.probeCardChargeReset) {
+		assertions.cardChargeReset = summary.cardChargeReset?.allReset === true;
+	}
+	return assertions;
 }
 
 function buildHubAssertions(summary) {
@@ -904,6 +969,8 @@ function collectScreenshots(summary) {
 	if (summary.bossEncounter?.windUpScreenshot) shots.push(summary.bossEncounter.windUpScreenshot);
 	if (summary.victory?.bossDefeatedScreenshot) shots.push(summary.victory.bossDefeatedScreenshot);
 	if (summary.victory?.victoryScreenshot) shots.push(summary.victory.victoryScreenshot);
+	if (summary.telepipePersistence?.screenshot) shots.push(summary.telepipePersistence.screenshot);
+	if (summary.cardChargeReset?.screenshot) shots.push(summary.cardChargeReset.screenshot);
 	return shots;
 }
 
@@ -967,6 +1034,8 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
 		probes = {
 			...bossProbes,
 			...(summary.victory?.probes || {}),
+			...(summary.telepipePersistence ? { telepipePersistence: summary.telepipePersistence } : {}),
+			...(summary.cardChargeReset ? { cardChargeReset: summary.cardChargeReset } : {}),
 		};
 		findings = renderFindings({
 			ok: summary.ok === true,
@@ -1141,6 +1210,18 @@ async function main() {
 
 		if (runsRoomsFull && page) {
 			summary.victory = await runVictoryStep({ page, preset, outDirAbs });
+			// Post-combat lifecycle probes (tickets 287 / 289): dedicated post-victory
+			// re-deploy cycle, gated behind the preset flags so other presets are
+			// unaffected.
+			if (preset.probeTelepipePersistence || preset.probeCardChargeReset) {
+				const lifecycle = await runLifecycleStep({ page, preset, outDirAbs });
+				if (lifecycle.telepipePersistence) {
+					summary.telepipePersistence = lifecycle.telepipePersistence;
+				}
+				if (lifecycle.cardChargeReset) {
+					summary.cardChargeReset = lifecycle.cardChargeReset;
+				}
+			}
 			summary.assertions = buildAssertions(summary, preset);
 			summary.ok = Object.values(summary.assertions).every((value) => value === true);
 			if (!summary.ok) {

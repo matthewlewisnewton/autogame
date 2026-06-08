@@ -27,4 +27,11 @@ export default {
 	// encounter stays intact for the victory step. Gated; other presets unaffected.
 	probeWindUp: true,
 	windUpScenario: 'spire-ascent-windup-ready',
+	// Run the post-combat lifecycle probes (tickets 287 / 289): Telepipe-up vitals
+	// persistence and card-charge reset on a fresh sortie. They run after victory
+	// as a dedicated re-deploy cycle and reuse a fresh spire launch-booth deploy.
+	// Gated; other presets unaffected.
+	probeTelepipePersistence: true,
+	probeCardChargeReset: true,
+	lifecycleScenario: 'spire-ascent-launch-ready',
 };

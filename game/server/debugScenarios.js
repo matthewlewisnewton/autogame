@@ -2382,6 +2382,44 @@ function applyDebugScenario(socket, name) {
         cardId: 'magma_greatsword',
         windUpMs,
       };
+    } else if (name === 'spire-ascent-launch-ready') {
+      // Hub lobby staged for a FRESH spire_ascent Tier 2 launch-booth deploy
+      // (lifecycle probes — tickets 287 / 289). Mirrors `telepipe-ready` (full
+      // vitals, stays in the hub lobby) but additionally selects spire_ascent
+      // Tier 2 and clears any stale run hand/deck so the subsequent Launch Bay
+      // ready-up rebuilds a full-charge hand (with telepipe) through the normal
+      // deploy path. Read-only staging: it only sets lobby selection + vitals;
+      // the run start, hand build, and charge/vitals logic all run unchanged via
+      // ready-up. The identical state is reachable normally by unlocking Spire
+      // Ascent Tier 2, returning to the hub with an empty hand, and selecting it
+      // before launching.
+      setPhase(lobby, PHASES.LOBBY);
+      delete state.run;
+      state.suspendedCheckpoint = null;
+      const questId = 'spire_ascent';
+      const tier = 2;
+      unlockQuestTier(player.accountId, questId, tier);
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+      player.ready = false;
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.hand = [];
+      player.deck = [];
+      player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+      assignRunSpawnPositions(Object.values(state.players));
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
     } else if (name === 'heal-spell-ready') {
       // Low-HP player with Restoration Beacon and Sanctum Pulse in hand so heal
       // cast/impact VFX can be compared without earning reward cards in a run.
