@@ -560,6 +560,7 @@ const DEBUG_SCENARIOS = new Set([
   'frost-spells-ready',
   'glacier-collapse-ready',
   'fire-spells-ready',
+  'gravity-spells-ready',
   'magma-windup-ready',
 ]);
 
