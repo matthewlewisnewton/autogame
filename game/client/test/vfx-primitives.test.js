@@ -9,9 +9,12 @@ import {
 	spawnAttackEffect,
 	spawnDivineGraceEffect,
 	spawnDivineGraceColumn,
+	spawnMirrorWardShellEffect,
+	spawnMirrorWardReflectBurst,
 	updateAttackEffects,
 	getActiveEffects,
 } from '../renderer.js';
+import { ATTACK_EFFECT_DURATION, SUMMON_EFFECT_DURATION } from '../config.js';
 
 // Each primitive should: add exactly one entry to activeEffects on spawn, and be
 // removed (and its mesh's geometry/material disposed) once updateAttackEffects()
@@ -156,6 +159,67 @@ describe('shared VFX primitives', () => {
 		const fx = lastEffect();
 		expect(fx.mesh.material.color.getHex()).toBe(0x123456);
 		expect(fx.mesh.material.emissive.getHex()).toBe(0x654321);
+	});
+
+	it('spawnMirrorWardShellEffect adds a flagged shell with mirror palette and cleans it up', () => {
+		const before = getActiveEffects().length;
+		spawnMirrorWardShellEffect({ x: 0, z: 0 }, 11);
+		expect(getActiveEffects().length).toBe(before + 1);
+
+		const fx = lastEffect();
+		expect(fx.isMirrorWardShell).toBe(true);
+		expect(fx.wardRadius).toBe(11);
+		expect(fx.duration).toBe(SUMMON_EFFECT_DURATION);
+		expect(Number.isFinite(fx.duration)).toBe(true);
+		expect(fx.mesh.children.length).toBeGreaterThanOrEqual(3);
+
+		const ring = fx.mesh.children.find((c) => c.userData.isMirrorWardRing);
+		expect(ring).toBeDefined();
+		expect(ring.material.emissive.getHex()).toBe(0x2dd4bf);
+		expect(ring.material.color.getHex()).toBe(0x5eead4);
+
+		const disposeSpy = vi.spyOn(ring.geometry, 'dispose');
+		fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(disposeSpy).toHaveBeenCalled();
+	});
+
+	it('spawnMirrorWardShellEffect honors style.duration override', () => {
+		spawnMirrorWardShellEffect({ x: 1, z: 2 }, 5, { duration: 900 });
+		const fx = lastEffect();
+		expect(fx.duration).toBe(900);
+	});
+
+	it('spawnMirrorWardReflectBurst adds flagged trail, decal, and burst with mirror palette', () => {
+		const before = getActiveEffects().length;
+		spawnMirrorWardReflectBurst({ x: 0, z: 0 }, { x: 1, z: 0 }, { range: 6 });
+		expect(getActiveEffects().length).toBe(before + 3);
+
+		const effects = getActiveEffects().slice(before);
+		expect(effects.every((fx) => fx.isMirrorWardReflect)).toBe(true);
+		expect(effects.some((fx) => fx.isProjectileTrail)).toBe(true);
+		expect(effects.some((fx) => fx.isImpactDecal)).toBe(true);
+		expect(effects.some((fx) => fx.isParticleBurst)).toBe(true);
+
+		const trail = effects.find((fx) => fx.isProjectileTrail);
+		expect(trail.duration).toBe(ATTACK_EFFECT_DURATION);
+		expect(trail.mesh.material.emissive.getHex()).toBe(0x2dd4bf);
+
+		const decal = effects.find((fx) => fx.isImpactDecal);
+		expect(decal.mesh.material.color.getHex()).toBe(0x5eead4);
+
+		for (const fx of effects) {
+			const disposeSpy = vi.spyOn(
+				fx.isParticleBurst ? fx.mesh.children[0].geometry : fx.mesh.geometry,
+				'dispose',
+			);
+			fx.createdAt = performance.now() - fx.duration - 100;
+		}
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
 	});
 
 	it('spawnAttackEffect permafrost_lance adds a flagged lance projectile and cleans it up', () => {

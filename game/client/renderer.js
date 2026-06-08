@@ -4787,6 +4787,131 @@ export function spawnChainLightningEffect(origin, direction) {
 	});
 }
 
+const MIRROR_WARD_COLOR = 0x5eead4;
+const MIRROR_WARD_EMISSIVE = 0x2dd4bf;
+const MIRROR_WARD_SILVER = 0xe2e8f0;
+
+/**
+ * Mirror Ward protective shell: pulsing ground ring at `radius` plus vertical
+ * mirror-like facets in the teal/silver palette.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ * @param {object} [style]
+ */
+export function spawnMirrorWardShellEffect(origin, radius, style = {}) {
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const r = radius ?? 1.5;
+	const color = style.color ?? MIRROR_WARD_COLOR;
+	const emissive = style.emissive ?? MIRROR_WARD_EMISSIVE;
+	const duration = style.duration ?? SUMMON_EFFECT_DURATION;
+	const group = new THREE.Group();
+	group.position.set(origin.x, 0, origin.z);
+
+	const ringGeometry = new THREE.RingGeometry(0.82, 1.0, 48);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.1,
+		transparent: true,
+		opacity: 0.85,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	ringMesh.position.y = GROUND_OVERLAY_Y;
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(0.001);
+	ringMesh.userData.isMirrorWardRing = true;
+	group.add(ringMesh);
+
+	const facetHeight = Math.min(r * 1.15, 2.6);
+	const facetWidth = Math.min(r * 0.75, 1.6);
+	const facetAngles = [Math.PI * 0.22, -Math.PI * 0.22];
+	const facetPalette = [
+		{ color, emissive },
+		{ color: MIRROR_WARD_SILVER, emissive: MIRROR_WARD_SILVER },
+	];
+	for (let i = 0; i < facetAngles.length; i += 1) {
+		const palette = facetPalette[i];
+		const facetGeometry = new THREE.PlaneGeometry(facetWidth, facetHeight);
+		const facetMaterial = new THREE.MeshStandardMaterial({
+			color: palette.color,
+			emissive: palette.emissive,
+			emissiveIntensity: 1.25,
+			transparent: true,
+			opacity: 0.62,
+			side: THREE.DoubleSide,
+			depthWrite: false,
+		});
+		const facetMesh = new THREE.Mesh(facetGeometry, facetMaterial);
+		facetMesh.position.y = facetHeight * 0.5;
+		facetMesh.rotation.y = facetAngles[i];
+		facetMesh.userData.isMirrorWardFacet = true;
+		group.add(facetMesh);
+	}
+
+	targetScene.add(group);
+
+	activeEffects.push({
+		mesh: group,
+		_scene: targetScene,
+		origin: { x: origin.x, z: origin.z },
+		wardRadius: r,
+		isMirrorWardShell: true,
+		createdAt: performance.now(),
+		duration,
+	});
+}
+
+/**
+ * Mirror Ward reflect impact: projectile streak, ground decal, and sparkle burst
+ * along `direction` using the mirror palette.
+ * @param {object} origin - { x, z }
+ * @param {object} direction - { x, z }
+ * @param {object} [style]
+ */
+export function spawnMirrorWardReflectBurst(origin, direction, style = {}) {
+	const duration = style.duration ?? ATTACK_EFFECT_DURATION;
+	const travelMs = style.travelMs ?? duration;
+	const range = style.range ?? ATTACK_RANGE;
+	const color = style.color ?? MIRROR_WARD_COLOR;
+	const emissive = style.emissive ?? MIRROR_WARD_EMISSIVE;
+
+	const dir = direction || { x: 1, z: 0 };
+	const len = Math.hypot(dir.x, dir.z) || 1;
+	const nx = dir.x / len;
+	const nz = dir.z / len;
+	const terminus = { x: origin.x + nx * range, z: origin.z + nz * range };
+
+	const before = activeEffects.length;
+	spawnProjectileTrail(
+		{ x: origin.x, z: origin.z },
+		{ x: nx, z: nz },
+		{ range, travelMs, duration: travelMs, color, emissive, y: 0.9 },
+	);
+	spawnImpactDecal(terminus, {
+		color,
+		emissive,
+		radius: style.impactRadius ?? 0.75,
+		duration,
+	});
+	spawnParticleBurst(
+		{ x: terminus.x, y: 0.55, z: terminus.z },
+		{
+			color: MIRROR_WARD_SILVER,
+			emissive,
+			count: style.count ?? 8,
+			spread: style.spread ?? 1.1,
+			duration,
+		},
+	);
+	for (let i = before; i < activeEffects.length; i += 1) {
+		activeEffects[i].isMirrorWardReflect = true;
+	}
+}
+
 // ── Shared accent-themeable VFX primitives ──
 //
 // The four helpers below are reusable building blocks for per-card renderers.
@@ -5110,6 +5235,28 @@ export function updateAttackEffects() {
 			fx.mesh.scale.setScalar(Math.max(0.001, fx.telegraphRadius * expandT));
 			const pulse = 0.55 + 0.35 * Math.abs(Math.sin(elapsed / 120));
 			fx.mesh.material.opacity = Math.max(0.01, pulse * (1.0 - t));
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Mirror Ward protective shell (ring + mirror facets) ──
+		if (fx.isMirrorWardShell) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const expandT = Math.min(t / 0.35, 1.0);
+			const pulse = 0.5 + 0.32 * Math.abs(Math.sin(elapsed / 280));
+			for (let c = 0; c < fx.mesh.children.length; c += 1) {
+				const child = fx.mesh.children[c];
+				if (child.userData.isMirrorWardRing) {
+					child.scale.setScalar(Math.max(0.001, fx.wardRadius * expandT));
+					child.material.opacity = Math.max(0.01, pulse * (1.0 - t * 0.85));
+				} else if (child.userData.isMirrorWardFacet) {
+					const facetPulse = 0.55 + 0.25 * Math.abs(Math.sin(elapsed / 320));
+					child.material.opacity = Math.max(0.01, facetPulse * (1.0 - t));
+				}
+			}
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, fx._scene || scene);
 				activeEffects.splice(i, 1);
