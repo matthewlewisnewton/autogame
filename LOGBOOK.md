@@ -5541,3 +5541,26 @@ The change stays within the card-combat model described in `game/docs/design.md`
 
 None.
 
+
+## v0.317 — 312-excalibur-photon-windup-balance  (2026-06-08 00:36:08)
+
+### Test coverage
+
+PASS. Coverage log shows `25` test files and `496` tests passing. New and updated tests cover the wind-up-aware balance calculation, Excalibur Photon stat exposure, evolution/new-card expectations, generic instant-card regression, and a live socket `useCard` path where Excalibur Photon commits wind-up, deals no early damage, resolves after `windUpMs`, applies two hits, and clears commitment state. Coverage output includes unrelated stderr from existing test-time model URL fallbacks and socket disconnect cleanup, but the suite passes and the captured browser run is clean.
+
+## Design and requirements consistency
+
+PASS. The change remains within the documented card-combat model: Excalibur Photon is still a weapon card in the active deck combat loop, and the wind-up/recovery lock is consistent with existing wind-up cards such as Steel Claymore and Corebreaker Greatsword. The implementation does not affect the foundational requirements for Three.js rendering, websocket connection, multiplayer visualization, or movement sync; the capture verifies those still run.
+
+## Debug scenarios
+
+PASS. This ticket did not add or change a development `?debugScenario=` entry. The new tests seed state directly or use an existing debug scenario for Magma Greatsword regression coverage; normal gameplay remains the only route for real players to obtain and use Excalibur Photon through the existing card/evolution systems.
+
+## Code quality
+
+PASS. The code change is appropriately narrow: one data-field addition, balance-metric accounting for `windUpMs`, report reconciliation, and targeted regression/integration tests. The existing wind-up pipeline locks cost/cooldown/origin at commit, resolves from `pendingCardUse`, applies `swingsPerUse` during deferred resolution, and clears commitment after use. I did not find dead code, duplicated gameplay paths, or a mismatch between stats, report, and tests.
+
+## Remaining gaps
+
+None.
+
