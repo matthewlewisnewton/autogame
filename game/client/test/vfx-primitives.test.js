@@ -9,6 +9,7 @@ import {
 	spawnAttackEffect,
 	spawnDivineGraceEffect,
 	spawnDivineGraceColumn,
+	spawnInfernoPillarEffect,
 	updateAttackEffects,
 	getActiveEffects,
 } from '../renderer.js';
@@ -149,6 +150,33 @@ describe('shared VFX primitives', () => {
 
 		expect(getActiveEffects().length).toBe(before);
 		expect(disposeSpy).toHaveBeenCalled();
+	});
+
+	it('spawnInfernoPillarEffect pushes a fire scorch ring + rising thermal column', () => {
+		const before = getActiveEffects().length;
+		spawnInfernoPillarEffect({ x: 1, z: -2 }, 3.5);
+		expect(getActiveEffects().length).toBe(before + 2);
+
+		const effects = getActiveEffects();
+		const ring = effects[before];
+		const column = effects[before + 1];
+
+		expect(ring.radius).toBe(3.5);
+		expect(ring.duration).toBe(2250);
+		expect(column.isThermalColumn).toBe(true);
+		expect(column.duration).toBe(2250);
+		expect(column.mesh.material.color.getHex()).toBe(0xef4444);
+		expect(column.mesh.material.emissive.getHex()).toBe(0xdc2626);
+
+		const ringDisposeSpy = vi.spyOn(ring.mesh.geometry, 'dispose');
+		const columnDisposeSpy = vi.spyOn(column.mesh.geometry, 'dispose');
+		ring.createdAt = performance.now() - ring.duration - 100;
+		column.createdAt = performance.now() - column.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(ringDisposeSpy).toHaveBeenCalled();
+		expect(columnDisposeSpy).toHaveBeenCalled();
 	});
 
 	it('primitives honor color/emissive accent overrides on the mesh material', () => {

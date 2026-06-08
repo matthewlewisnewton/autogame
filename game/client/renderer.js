@@ -4604,16 +4604,37 @@ export function spawnFireTrailEffect(origin, direction, style = {}) {
 	});
 }
 
+const THERMAL_COLUMN_COLOR = 0xef4444;
+const THERMAL_COLUMN_EMISSIVE = 0xdc2626;
+const THERMAL_COLUMN_HEIGHT = 4.5;
+const THERMAL_COLUMN_OPACITY = 0.75;
+const THERMAL_COLUMN_BASE_Y = 0.1;
+const THERMAL_COLUMN_DEFAULT_DOT_TICKS = 4;
+const THERMAL_COLUMN_DEFAULT_DOT_INTERVAL_MS = 500;
+const THERMAL_COLUMN_EMISSIVE_INTENSITY = 1.4;
+
+function thermalColumnDuration(style = {}) {
+	if (style.duration !== undefined) return style.duration;
+	const dotTicks = style.dotTicks ?? THERMAL_COLUMN_DEFAULT_DOT_TICKS;
+	const dotIntervalMs = style.dotIntervalMs ?? THERMAL_COLUMN_DEFAULT_DOT_INTERVAL_MS;
+	return dotTicks * dotIntervalMs + 250;
+}
+
 /**
- * Spawn a full radial fire burst on the ground (Inferno Pillar).
+ * Expanding ground scorch ring for Thermal Column (attack-range AoE footprint).
  * @param {object} origin - { x, z }
  * @param {number} radius
+ * @param {object} style
  */
-export function spawnInfernoPillarEffect(origin, radius) {
+function spawnThermalColumnScorchRing(origin, radius, style = {}) {
+	const color = style.color ?? THERMAL_COLUMN_COLOR;
+	const emissive = style.emissive ?? THERMAL_COLUMN_EMISSIVE;
+	const duration = thermalColumnDuration(style);
+
 	const geometry = new THREE.RingGeometry(0.1, 0.5, 48);
 	const material = new THREE.MeshStandardMaterial({
-		color: 0xef4444,
-		emissive: 0xdc2626,
+		color,
+		emissive,
 		emissiveIntensity: 1.2,
 		transparent: true,
 		opacity: 1.0,
@@ -4632,9 +4653,59 @@ export function spawnInfernoPillarEffect(origin, radius) {
 		origin: { x: origin.x, z: origin.z },
 		radius,
 		createdAt: performance.now(),
-		duration: SUMMON_EFFECT_DURATION,
-		infernoBurst: true,
+		duration,
+		_scene: targetScene,
 	});
+}
+
+/**
+ * Vertical rising fire shaft for Thermal Column. Rises and fades via the
+ * `isThermalColumn` branch in updateAttackEffects (no per-frame allocation).
+ * @param {object} origin - { x, z }
+ * @param {object} style
+ */
+export function spawnThermalColumnShaft(origin, style = {}) {
+	const color = style.color ?? THERMAL_COLUMN_COLOR;
+	const emissive = style.emissive ?? THERMAL_COLUMN_EMISSIVE;
+	const duration = thermalColumnDuration(style);
+
+	const geometry = new THREE.CylinderGeometry(0.3, 0.55, THERMAL_COLUMN_HEIGHT, 16, 1, true);
+	const material = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: THERMAL_COLUMN_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: THERMAL_COLUMN_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.scale.y = 0.001;
+	mesh.position.set(origin.x, THERMAL_COLUMN_BASE_Y, origin.z);
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (targetScene) targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration,
+		isThermalColumn: true,
+		_baseEmissiveIntensity: THERMAL_COLUMN_EMISSIVE_INTENSITY,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Thermal Column: a rising vertical fire shaft plus an expanding ground scorch
+ * ring scaled to attack range (Inferno Pillar / evolved Dragons Breath).
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ * @param {object} [style]
+ */
+export function spawnInfernoPillarEffect(origin, radius, style = {}) {
+	spawnThermalColumnScorchRing(origin, radius, style);
+	spawnThermalColumnShaft(origin, style);
 }
 
 /**
@@ -5026,9 +5097,7 @@ export function updateAttackEffects() {
 			}
 
 			if (elapsed >= fx.duration) {
-				scene.remove(fx.mesh);
-				fx.mesh.geometry.dispose();
-				fx.mesh.material.dispose();
+				disposeEffectObject(fx.mesh, fx._scene || scene);
 				activeEffects.splice(i, 1);
 			}
 			continue;
@@ -5043,6 +5112,26 @@ export function updateAttackEffects() {
 			// Keep the base on the ground as the centered cylinder scales up.
 			fx.mesh.position.y = DIVINE_GRACE_COLUMN_BASE_Y + (DIVINE_GRACE_COLUMN_HEIGHT * s) / 2;
 			fx.mesh.material.opacity = Math.max(0.01, DIVINE_GRACE_COLUMN_OPACITY * (1.0 - t));
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Rising thermal fire column (Thermal Column) ──
+		if (fx.isThermalColumn) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.35, 1.0);
+			const s = Math.max(0.001, riseT);
+			fx.mesh.scale.y = s;
+			fx.mesh.position.y = THERMAL_COLUMN_BASE_Y + (THERMAL_COLUMN_HEIGHT * s) / 2;
+			const fade = Math.max(0.01, THERMAL_COLUMN_OPACITY * (1.0 - t));
+			fx.mesh.material.opacity = fade;
+			const baseIntensity = fx._baseEmissiveIntensity ?? THERMAL_COLUMN_EMISSIVE_INTENSITY;
+			const flicker = 1.0 + 0.25 * Math.sin(elapsed * 0.02);
+			fx.mesh.material.emissiveIntensity = baseIntensity * flicker * fade;
 
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, fx._scene || scene);
