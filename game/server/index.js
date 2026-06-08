@@ -495,6 +495,8 @@ const DEBUG_SCENARIOS = new Set([
   'archive-wyrm-combat',
   'storm-eagle-combat',
   'thunderbird-combat',
+  'phase-stalker-combat',
+  'legion-marshal-ready',
   'run-failed',
   'run-exhausted',
   'quest-objective-near-complete',

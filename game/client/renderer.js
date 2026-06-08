@@ -4017,10 +4017,11 @@ function createNullCrawlerTelegraph(minion) {
 	const direction = getMinionWindupDirection(minion);
 	const range = minion.attackRange ?? 14;
 	const hitWidth = minion.projectileHitWidth ?? 0.8;
+	// Windup corridor reads ghostlier than the resolved beam (brighter emissive, lower opacity).
 	const group = createBeamTelegraphGroup(direction, range, hitWidth, {
-		color: 0x22d3ee,
-		emissive: 0x06b6d4,
-		opacity: 0.55,
+		color: 0x67e8f9,
+		emissive: 0xa5f3fc,
+		opacity: 0.38,
 	});
 	group.position.set(minion.x, GROUND_OVERLAY_Y, minion.z);
 	return group;
@@ -5896,6 +5897,17 @@ export function animate(timestamp) {
 					const telegraph = createNullCrawlerTelegraph(minion);
 					scene.add(telegraph);
 					minionTelegraphMeshes[minion.id] = telegraph;
+					const windupMs = minion.attackWindupMs ?? 1000;
+					const beamRange = minion.attackRange ?? 14;
+					spawnTelegraphRing(
+						{ x: minion.x, z: minion.z },
+						Math.min(beamRange * 0.32, 3.2),
+						{
+							color: 0x67e8f9,
+							emissive: 0xa5f3fc,
+							duration: windupMs,
+						},
+					);
 				} else {
 					updateNullCrawlerTelegraph(minion, minionTelegraphMeshes[minion.id]);
 				}

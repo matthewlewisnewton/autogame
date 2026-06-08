@@ -32,6 +32,12 @@
 //   scheduleAfter(ms, fn) — wrapper around setTimeout used for delayed swings
 
 import { CARD_ACCENT_STYLE, CARD_DEFS } from './cards.js';
+import { MINION_SUMMON_IN_MS } from './config.js';
+
+const NULL_CRAWLER_SUMMON_COLOR = 0x22d3ee;
+const NULL_CRAWLER_SUMMON_EMISSIVE = 0x67e8f9;
+const UNDEAD_COMMANDER_COLOR = 0xe4e4e7;
+const UNDEAD_COMMANDER_EMISSIVE = 0xa855f7;
 
 // ── Accent helpers ──────────────────────────────────────────────────────
 
@@ -190,18 +196,36 @@ function renderCreatureSummon(data, ctx) {
 }
 
 /**
- * Undead Commander: caster summon ring plus a summon-in flourish for each
- * spawned skeleton minion.
+ * Undead Commander: bone-white/purple caster ring plus a smaller summon-in
+ * flourish and rising ground burst for each spawned skeleton minion.
  */
 function renderUndeadCommander(data, ctx) {
-	ctx.spawnSummonEffect(originOf(data), 2);
-	const style = accentSummonStyle(data.cardId);
+	const commanderStyle = { color: UNDEAD_COMMANDER_COLOR, emissive: UNDEAD_COMMANDER_EMISSIVE };
+	ctx.spawnSummonEffect(originOf(data), 2, commanderStyle);
+	const skeletonStyle = {
+		color: UNDEAD_COMMANDER_COLOR,
+		emissive: UNDEAD_COMMANDER_EMISSIVE,
+		radius: 0.85,
+		burstCount: 8,
+		burstSpread: 1.4,
+	};
 	for (const spawn of (data.summonedMinions || [])) {
 		const origin = { x: spawn.x, z: spawn.z };
 		if (ctx.spawnMinionSummonInEffect) {
-			ctx.spawnMinionSummonInEffect(origin, style);
+			ctx.spawnMinionSummonInEffect(origin, skeletonStyle);
 		} else {
-			ctx.spawnSummonEffect(origin, 1.2);
+			ctx.spawnSummonEffect(origin, 1.0, commanderStyle);
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(
+				{ x: origin.x, y: 0.35, z: origin.z },
+				{
+					color: UNDEAD_COMMANDER_COLOR,
+					emissive: UNDEAD_COMMANDER_EMISSIVE,
+					count: 10,
+					spread: 1.2,
+				},
+			);
 		}
 	}
 }
@@ -419,19 +443,73 @@ function renderIceBall(data, ctx) {
 }
 
 /**
+ * Phase Stalker deploy: tight cyan telegraph ring and ground swirl distinct
+ * from the generic creature summon flourish.
+ */
+function renderNullCrawlerSummon(data, ctx) {
+	if (!data.minionId || data.specialEffect === 'phase_beam') return;
+	const origin = originOf(data);
+	ctx.spawnSummonEffect(origin, 0.95, {
+		color: NULL_CRAWLER_SUMMON_COLOR,
+		emissive: NULL_CRAWLER_SUMMON_EMISSIVE,
+	});
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, 0.72, {
+			color: NULL_CRAWLER_SUMMON_EMISSIVE,
+			emissive: 0xa5f3fc,
+			duration: MINION_SUMMON_IN_MS,
+		});
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(
+			{ x: origin.x, y: 0.4, z: origin.z },
+			{
+				color: NULL_CRAWLER_SUMMON_COLOR,
+				emissive: NULL_CRAWLER_SUMMON_EMISSIVE,
+				count: 16,
+				spread: 2.4,
+				duration: MINION_SUMMON_IN_MS,
+			},
+		);
+	}
+}
+
+/**
  * Phase Stalker: narrow cyan beam corridor along the projectile path.
  */
 function renderPhaseBeam(data, ctx) {
 	if (!data.origin) return;
+	const origin = originOf(data);
+	const direction = directionOf(data);
 	const accentHex = getAccentHex(data.cardId);
-	ctx.spawnAttackEffect(originOf(data), directionOf(data), {
+	const color = accentHex ?? 0x22d3ee;
+	const emissive = 0x06b6d4;
+	const range = data.attackRange;
+	ctx.spawnAttackEffect(origin, direction, {
 		effect: 'returning_projectile',
 		returnPasses: 0,
-		range: data.attackRange,
+		range,
 		projectileHitWidth: data.hitWidth ?? 0.8,
-		color: accentHex ?? 0x22d3ee,
-		emissive: 0x06b6d4,
+		color,
+		emissive,
 	});
+	if (ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, { range, color, emissive });
+	}
+	const terminus = pointAlong(origin, direction, range ?? 14);
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(terminus, { color, emissive, count: 10, spread: 1.2 });
+	}
+	if (!data.hits?.length) return;
+	const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+	for (const hit of data.hits) {
+		const mesh = meshes[hit.enemyId];
+		if (!mesh) continue;
+		const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+		if (ctx.spawnHitSpark) {
+			ctx.spawnHitSpark(pos, { color, emissive, count: 5, spread: 0.55 });
+		}
+	}
 }
 
 /**
@@ -506,7 +584,7 @@ const CARD_RENDERERS = {
 	thunderbird: [renderThunderbirdSummon, renderChainLightning],
 	dungeon_drake: [renderWyrmSummon, renderWyrmAttack],
 	ancient_wyrm: [renderWyrmSummon, renderWyrmAttack],
-	null_crawler: renderPhaseBeam,
+	null_crawler: [renderNullCrawlerSummon, renderPhaseBeam],
 	bulkhead_mauler: renderShockwaveSweep,
 
 	// Enchantments

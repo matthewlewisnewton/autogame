@@ -1803,6 +1803,73 @@ function applyDebugScenario(socket, name) {
           player.hand[replaceSlot] = { id: 'thunderbird', name: 'Thunderbird', type: 'creature', charges: 1, remainingCharges: 1 };
         }
       }
+    } else if (name === 'phase-stalker-combat') {
+      // Phase Stalker phase-beam QA — pre-spawned minion mid windup with a grunt
+      // in beam range. Reachable by earning null_crawler (reward:12) and deploying.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const anchorX = player.x;
+      const anchorZ = player.z;
+      player.x = anchorX - DETECTION_RADIUS - 1;
+      state.enemies = [];
+      const enemy = spawnEnemy(anchorX + 8, anchorZ, 'grunt');
+      enemy.hp = 500;
+      enemy.maxHp = 500;
+      enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+      enemy.attackState = 'idle';
+      const now = Date.now();
+      state.minions = [{
+        id: crypto.randomUUID(),
+        ownerId: player.id,
+        type: 'null_crawler',
+        x: anchorX + 1,
+        z: anchorZ,
+        hp: 55,
+        maxHp: 55,
+        attackRange: 14,
+        attackDamage: 22,
+        attackIntervalMs: 2000,
+        attackWindupMs: 1000,
+        projectileHitWidth: 0.8,
+        lastAttackAt: 0,
+        attackState: 'windup',
+        windupStartTime: now,
+        windupDirX: 1,
+        windupDirZ: 0,
+        maxTtl: 30,
+        ttl: 30,
+      }];
+      if (!player.hand.some(c => c && c.id === 'null_crawler')) {
+        const replaceSlot = player.hand.findIndex(c => c && c.type !== 'creature');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = {
+            id: 'null_crawler',
+            name: 'Phase Stalker',
+            type: 'creature',
+            charges: 1,
+            remainingCharges: 1,
+            magicStoneCost: 35,
+          };
+        }
+      }
+    } else if (name === 'legion-marshal-ready') {
+      // Legion Marshal skeleton-summon QA — full mana and the evolved card in hand
+      // after deploy. Reachable by evolving skeleton_knight and deploying in combat.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      if (!player.hand.some(c => c && c.id === 'undead_commander')) {
+        const replaceSlot = player.hand.findIndex(c => c && c.type !== 'creature');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = {
+            id: 'undead_commander',
+            name: 'Legion Marshal',
+            type: 'creature',
+            charges: 1,
+            remainingCharges: 1,
+            isEvolved: true,
+          };
+        }
+      }
     } else if (name === 'archive-wyrm-combat') {
       // Archive Wyrm fire-breath QA — same layout as minion-combat but with the
       // evolved wyrm. Reachable normally by evolving dungeon_drake to ancient_wyrm

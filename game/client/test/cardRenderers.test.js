@@ -86,8 +86,11 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('ancient_wyrm')).toHaveLength(2);
 	});
 
-	it('returns bespoke attack renderers for Phase Stalker and Bulkhead Mauler', () => {
-		expect(resolveRenderers('null_crawler')).toHaveLength(1);
+	it('returns composed summon + attack renderers for Phase Stalker', () => {
+		expect(resolveRenderers('null_crawler')).toHaveLength(2);
+	});
+
+	it('returns bespoke attack renderer for Bulkhead Mauler', () => {
 		expect(resolveRenderers('bulkhead_mauler')).toHaveLength(1);
 	});
 
@@ -753,8 +756,32 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(deployCtx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(false);
 	});
 
-	it('Phase Stalker beam renders a narrow projectile corridor', () => {
+	it('Phase Stalker deploy uses a tight cyan telegraph ring and ground swirl', () => {
 		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'null_crawler',
+			origin: { x: 2, z: 3 },
+			minionId: 'stalker-1',
+			hits: [],
+		}, ctx);
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 2, z: 3 });
+		expect(ring[2]).toBe(0.72);
+		expect(ring[3]).toMatchObject({ color: 0x67e8f9, emissive: 0xa5f3fc });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 2, y: 0.4, z: 3 });
+		expect(burst[2]).toMatchObject({ color: 0x22d3ee, emissive: 0x67e8f9 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
+	});
+
+	it('Phase Stalker beam renders a narrow projectile corridor with trail, terminus burst, and hit sparks', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 8, y: 0.5, z: 0 } },
+			}),
+		});
 		renderCardUsed({
 			cardId: 'null_crawler',
 			specialEffect: 'phase_beam',
@@ -773,6 +800,35 @@ describe('renderCardUsed() — creature dispatch', () => {
 			projectileHitWidth: 0.8,
 			color: 0x22d3ee,
 		});
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail).toBeDefined();
+		expect(trail[1]).toEqual({ x: 0, z: 0 });
+		expect(trail[2]).toEqual({ x: 1, z: 0 });
+		expect(trail[3]).toMatchObject({ range: 14, color: 0x22d3ee });
+		const terminusBurst = ctx._calls.find(
+			(c) => c[0] === 'spawnParticleBurst' && c[1].x === 14 && c[1].z === 0,
+		);
+		expect(terminusBurst).toBeDefined();
+		expect(terminusBurst[2]).toMatchObject({ color: 0x22d3ee, emissive: 0x06b6d4 });
+		expect(ctx._calls.filter((c) => c[0] === 'spawnHitSpark')).toHaveLength(1);
+	});
+
+	it('Phase Stalker beam still renders without throwing when primitive helpers are absent', () => {
+		const ctx = makeCtx({
+			spawnProjectileTrail: undefined,
+			spawnParticleBurst: undefined,
+			spawnHitSpark: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'null_crawler',
+			specialEffect: 'phase_beam',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			attackRange: 14,
+			hitWidth: 0.8,
+			hits: [{ enemyId: 'e1', hp: 34 }],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 
 	it('Bulkhead Mauler shockwave renders a short wide cone', () => {
@@ -815,7 +871,7 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 
-	it('undead_commander renders a caster ring and summon-in flourishes per skeleton', () => {
+	it('undead_commander renders bone-white/purple caster ring and per-skeleton summon flourishes', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'undead_commander',
@@ -829,11 +885,21 @@ describe('renderCardUsed() — creature dispatch', () => {
 		const casterRing = ctx._calls.filter((c) => c[0] === 'spawnSummonEffect');
 		expect(casterRing).toHaveLength(1);
 		expect(casterRing[0][2]).toBe(2);
+		expect(casterRing[0][3]).toMatchObject({ color: 0xe4e4e7, emissive: 0xa855f7 });
 		const skeletonFlourishes = ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect');
 		expect(skeletonFlourishes).toHaveLength(2);
 		expect(skeletonFlourishes[0][1]).toEqual({ x: 1, z: 0 });
 		expect(skeletonFlourishes[1][1]).toEqual({ x: 0, z: 1 });
-		expect(skeletonFlourishes[0][2]).toMatchObject({ color: 0xa1a1aa });
+		expect(skeletonFlourishes[0][2]).toMatchObject({
+			color: 0xe4e4e7,
+			emissive: 0xa855f7,
+			radius: 0.85,
+		});
+		const groundBursts = ctx._calls.filter(
+			(c) => c[0] === 'spawnParticleBurst' && c[1].y === 0.35,
+		);
+		expect(groundBursts).toHaveLength(2);
+		expect(groundBursts[0][2]).toMatchObject({ color: 0xe4e4e7, emissive: 0xa855f7 });
 	});
 
 	it('storm_eagle summon renders a soft cyan minion flourish', () => {
