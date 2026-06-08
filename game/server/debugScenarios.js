@@ -2260,6 +2260,41 @@ function applyDebugScenario(socket, name) {
           specialEffect: 'heal_and_cleanse',
         };
       }
+    } else if (name === 'heal-spell-ready') {
+      // Low-HP player with Restoration Beacon and Sanctum Pulse in hand so heal
+      // cast/impact VFX can be compared without earning reward cards in a run.
+      // Same state is reachable by acquiring healing_font (and evolving to
+      // divine_grace), deploying, and taking damage in combat.
+      player.hp = Math.floor(MAX_HP * 0.4);
+      player.magicStones = MAX_MAGIC_STONES;
+      const healCards = [
+        {
+          id: 'healing_font',
+          name: CARD_DEFS.healing_font.name,
+          type: 'spell',
+          charges: CARD_DEFS.healing_font.charges,
+          remainingCharges: CARD_DEFS.healing_font.charges,
+          magicStoneCost: 0,
+          specialEffect: 'mana_restore',
+        },
+        {
+          id: 'divine_grace',
+          name: CARD_DEFS.divine_grace.name,
+          type: 'spell',
+          charges: CARD_DEFS.divine_grace.charges,
+          remainingCharges: CARD_DEFS.divine_grace.charges,
+          magicStoneCost: 0,
+          specialEffect: 'mana_restore',
+        },
+      ];
+      let slot = 0;
+      for (const card of healCards) {
+        while (slot < player.hand.length && player.hand[slot] != null) slot += 1;
+        if (slot < player.hand.length) {
+          player.hand[slot] = card;
+          slot += 1;
+        }
+      }
     } else if (name === 'guard-block-ready') {
       // Put player at low HP with guard_block equipped and no cooldown to test blocking.
       player.hp = Math.floor(MAX_HP * 0.5);
@@ -2458,6 +2493,254 @@ function applyDebugScenario(socket, name) {
       far.hp = 80;
       far.maxHp = 80;
       far.wanderTarget = { x: far.x, z: far.z };
+    } else if (name === 'frost-spells-ready') {
+      // Playing phase with Cryo Burst and Permafrost Lance in hand, full Magic
+      // Stones, and clustered grunts so both AoE freeze casts are exercisable.
+      // The same state is reachable by earning early reward spells in a dungeon run.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const filledSlots = player.hand
+        .map((c, i) => (c != null ? i : -1))
+        .filter((i) => i >= 0);
+      if (filledSlots[0] !== undefined) {
+        player.hand[filledSlots[0]] = {
+          id: 'frost_nova',
+          name: 'Cryo Burst',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      if (filledSlots[1] !== undefined) {
+        player.hand[filledSlots[1]] = {
+          id: 'permafrost_lance',
+          name: 'Permafrost Lance',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      state.enemies = [];
+      const near = spawnEnemy(player.x + 3, player.z, 'grunt');
+      near.hp = 80;
+      near.maxHp = 80;
+      near.wanderTarget = { x: near.x, z: near.z };
+      const mid = spawnEnemy(player.x + 5, player.z + 1, 'grunt');
+      mid.hp = 80;
+      mid.maxHp = 80;
+      mid.wanderTarget = { x: mid.x, z: mid.z };
+      const far = spawnEnemy(player.x + 6, player.z - 1, 'grunt');
+      far.hp = 80;
+      far.maxHp = 80;
+      far.wanderTarget = { x: far.x, z: far.z };
+    } else if (name === 'glacier-collapse-ready') {
+      // Playing phase with Glacier Rupture in hand, full Magic Stones, and
+      // grunts in AoE range so the wind-up shatter cast is exercisable without
+      // evolving frost_nova first. The same state is reachable via evolution.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'glacier_collapse',
+          name: 'Glacier Rupture',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      state.enemies = [];
+      const near = spawnEnemy(player.x + 3, player.z, 'grunt');
+      near.hp = 80;
+      near.maxHp = 80;
+      near.wanderTarget = { x: near.x, z: near.z };
+      const mid = spawnEnemy(player.x + 5, player.z + 1, 'grunt');
+      mid.hp = 80;
+      mid.maxHp = 80;
+      mid.wanderTarget = { x: mid.x, z: mid.z };
+    } else if (name === 'fire-spells-ready') {
+      // Playing phase with Wyrmflare and Thermal Column in hand, full Magic Stones,
+      // and grunts in breath-cone and pillar-AoE range. The same state is reachable
+      // by earning late reward/evolved fire spells in a dungeon run.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const filledSlots = player.hand
+        .map((c, i) => (c != null ? i : -1))
+        .filter((i) => i >= 0);
+      if (filledSlots[0] !== undefined) {
+        player.hand[filledSlots[0]] = {
+          id: 'dragons_breath',
+          name: 'Wyrmflare',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      if (filledSlots[1] !== undefined) {
+        player.hand[filledSlots[1]] = {
+          id: 'inferno_pillar',
+          name: 'Thermal Column',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      state.enemies = [];
+      const breathNear = spawnEnemy(player.x + 4, player.z, 'grunt');
+      breathNear.hp = 80;
+      breathNear.maxHp = 80;
+      breathNear.wanderTarget = { x: breathNear.x, z: breathNear.z };
+      const breathFar = spawnEnemy(player.x + 6, player.z, 'grunt');
+      breathFar.hp = 80;
+      breathFar.maxHp = 80;
+      breathFar.wanderTarget = { x: breathFar.x, z: breathFar.z };
+      const pillarMid = spawnEnemy(player.x + 3, player.z + 1.5, 'grunt');
+      pillarMid.hp = 80;
+      pillarMid.maxHp = 80;
+      pillarMid.wanderTarget = { x: pillarMid.x, z: pillarMid.z };
+    } else if (name === 'gravity-spells-ready') {
+      // Playing phase with Gravity Well and Event Horizon in hand, full Magic
+      // Stones, and clustered grunts inside pull/crush AoE. The same state is
+      // reachable by earning late reward/evolved gravity spells in a dungeon run.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const filledSlots = player.hand
+        .map((c, i) => (c != null ? i : -1))
+        .filter((i) => i >= 0);
+      if (filledSlots[0] !== undefined) {
+        player.hand[filledSlots[0]] = {
+          id: 'gravity_well',
+          name: 'Gravity Well',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      if (filledSlots[1] !== undefined) {
+        player.hand[filledSlots[1]] = {
+          id: 'event_horizon',
+          name: 'Event Horizon',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      state.enemies = [];
+      const near = spawnEnemy(player.x + 4, player.z, 'grunt');
+      near.hp = 80;
+      near.maxHp = 80;
+      near.wanderTarget = { x: near.x, z: near.z };
+      const mid = spawnEnemy(player.x + 6, player.z + 1, 'grunt');
+      mid.hp = 80;
+      mid.maxHp = 80;
+      mid.wanderTarget = { x: mid.x, z: mid.z };
+      const far = spawnEnemy(player.x + 7, player.z - 1, 'grunt');
+      far.hp = 80;
+      far.maxHp = 80;
+      far.wanderTarget = { x: far.x, z: far.z };
+    } else if (name === 'arcane-radial-ready') {
+      // Playing phase with Signal Familiar, Ether Siphon, and Soul Drain in hand,
+      // full Magic Stones, and clustered grunts inside radial AoE. The same state
+      // is reachable by earning reward/evolved arcane spells in a dungeon run.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const filledSlots = player.hand
+        .map((c, i) => (c != null ? i : -1))
+        .filter((i) => i >= 0);
+      if (filledSlots[0] !== undefined) {
+        player.hand[filledSlots[0]] = {
+          id: 'battle_familiar',
+          name: 'Signal Familiar',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      if (filledSlots[1] !== undefined) {
+        player.hand[filledSlots[1]] = {
+          id: 'mana_leach',
+          name: 'Ether Siphon',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      if (filledSlots[2] !== undefined) {
+        player.hand[filledSlots[2]] = {
+          id: 'soul_drain',
+          name: 'Soul Drain',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      state.enemies = [];
+      const near = spawnEnemy(player.x + 3, player.z, 'grunt');
+      near.hp = 80;
+      near.maxHp = 80;
+      near.wanderTarget = { x: near.x, z: near.z };
+      const mid = spawnEnemy(player.x + 4, player.z + 1, 'grunt');
+      mid.hp = 80;
+      mid.maxHp = 80;
+      mid.wanderTarget = { x: mid.x, z: mid.z };
+      const far = spawnEnemy(player.x + 5, player.z - 1, 'grunt');
+      far.hp = 80;
+      far.maxHp = 80;
+      far.wanderTarget = { x: far.x, z: far.z };
+    } else if (name === 'utility-spells-ready') {
+      // Playing phase with Astral Guardian, Mana Prism, Offering Terminal, and
+      // Chrono Trigger in hand, a friendly minion for sacrifice, and grunts in
+      // radial range. The same state is reachable by earning late reward spells
+      // and evolving battle_familiar in a dungeon run.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const filledSlots = player.hand
+        .map((c, i) => (c != null ? i : -1))
+        .filter((i) => i >= 0);
+      const utilitySpells = [
+        { id: 'astral_guardian', name: 'Astral Guardian', magicStoneCost: 65 },
+        { id: 'mana_prism', name: 'Mana Prism', magicStoneCost: 0 },
+        { id: 'sacrificial_altar', name: 'Offering Terminal', magicStoneCost: 0 },
+        { id: 'chrono_trigger', name: 'Chrono Trigger', magicStoneCost: 0 },
+      ];
+      for (let i = 0; i < utilitySpells.length && filledSlots[i] !== undefined; i++) {
+        const spell = utilitySpells[i];
+        player.hand[filledSlots[i]] = {
+          id: spell.id,
+          name: spell.name,
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+          magicStoneCost: spell.magicStoneCost,
+        };
+      }
+      state.minions = [{
+        id: crypto.randomUUID(),
+        ownerId: player.id,
+        type: 'battery_automaton',
+        x: player.x + 2,
+        z: player.z,
+        hp: 80,
+        maxHp: 80,
+        ttl: 30,
+        maxTtl: 30,
+        createdAt: Date.now(),
+      }];
+      state.enemies = [];
+      const near = spawnEnemy(player.x + 3, player.z, 'grunt');
+      near.hp = 80;
+      near.maxHp = 80;
+      near.wanderTarget = { x: near.x, z: near.z };
+      const mid = spawnEnemy(player.x + 4, player.z + 1, 'grunt');
+      mid.hp = 80;
+      mid.maxHp = 80;
+      mid.wanderTarget = { x: mid.x, z: mid.z };
     } else if (name === 'magma-windup-ready') {
       // Playing phase with Corebreaker Greatsword (windUpMs) in hand and a grunt
       // in melee range so commitment entry and input lock are exercisable without
@@ -2471,8 +2754,8 @@ function applyDebugScenario(socket, name) {
           id: 'magma_greatsword',
           name: 'Corebreaker Greatsword',
           type: 'weapon',
-          charges: 4,
-          remainingCharges: 4,
+          charges: 2,
+          remainingCharges: 2,
         };
       }
       state.enemies = [];

@@ -1,8 +1,16 @@
-`LOGBOOK.md` is resolved.
+Merge conflicts are resolved. Summary of how each file was combined:
 
-The conflict was two append-only review entries at the end of the log. I kept **both** in version order:
+### `game/client/cardRenderers.js`
+Kept **both** constant sets:
+- **318 (ticket):** `STORM_EAGLE_ARC_STYLE` for storm eagle lightning arcs
+- **317 (main):** `ARCANE_FAMILIAR_*`, `MANA_LEACH_*`, and `SOUL_DRAIN_*` for arcane radial spell renderers
 
-1. **v0.318** — `309-fix-storm-eagle-thunderbird-attack-interval-gate` (from `main`)
-2. **v0.320** — `315-card-animation-shared-vfx-primitives-foundation` (from this ticket’s branch)
+### `game/client/test/cardRenderers.test.js`
+Combined registry expectations from both sides:
+- **318:** `thunderbird` and `storm_eagle` each have **2** renderers (summon + attack VFX)
+- **317:** `dragons_breath`, `inferno_pillar`, and `gravity_well` each have **1** renderer
 
-All conflict markers are removed. The file flows v0.315 → v0.316 → v0.317 → v0.318 → v0.320 with no gaps. The harness can commit and finish the merge.
+### `LOGBOOK.md`
+Kept both review entries in version order: **v0.323** (318) then **v0.322** (317).
+
+All conflict markers are removed. `cardRenderers.test.js` passes (97/97 tests). The harness can commit and finish the merge.

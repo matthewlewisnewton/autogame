@@ -340,6 +340,46 @@ function findWeaponSlot(player) {
 }
 
 /**
+ * Find the slot index of an instant weapon (no windUpMs) in a player's hand.
+ * Returns -1 if not found.
+ */
+function findInstantWeaponSlot(player) {
+	return player.hand ? player.hand.findIndex(
+		(c) => c && c.type === 'weapon' && !getCardDef(c.id).windUpMs
+	) : -1;
+}
+
+/**
+ * Ensure the hand has an instant weapon for synchronous kill tests.
+ * Seeds iron_sword in a non-spell slot when only wind-up weapons are present.
+ */
+function ensureInstantWeaponInHand(player) {
+	const slot = findInstantWeaponSlot(player);
+	if (slot >= 0) return slot;
+
+	const ironSword = {
+		id: 'iron_sword',
+		name: 'Rust-Forged Saber',
+		type: 'weapon',
+		charges: 5,
+		remainingCharges: 5,
+		grind: 0,
+	};
+	const windUpWeaponSlot = player.hand.findIndex(
+		(c) => c && c.type === 'weapon' && getCardDef(c.id).windUpMs
+	);
+	const replaceSlot = windUpWeaponSlot >= 0
+		? windUpWeaponSlot
+		: player.hand.findIndex((c) => c && c.type !== 'spell');
+	if (replaceSlot >= 0) {
+		player.hand[replaceSlot] = ironSword;
+		return replaceSlot;
+	}
+	player.hand[0] = ironSword;
+	return 0;
+}
+
+/**
  * Find the slot index of a card of the given type in a player's hand.
  * Returns -1 if not found.
  */
@@ -1139,7 +1179,7 @@ describe('Socket Integration — useCard Event', () => {
 		player.deck = ['iron_sword', 'flame_blade', 'battle_familiar'];
 		player.hand = [
 			{ id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 },
-			{ id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 3, remainingCharges: 3 },
+			{ id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 2, remainingCharges: 2 },
 			{ id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50 },
 			{ id: 'dungeon_drake', name: 'Vault Wyrm', type: 'creature', charges: 1, remainingCharges: 1 },
 			{ id: 'deck_sifter', name: 'Deck Sifter', type: 'weapon', charges: 3, remainingCharges: 3, effect: 'draw_card' },
@@ -1171,7 +1211,7 @@ describe('Socket Integration — useCard Event', () => {
 			player.hand = [
 				{ id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 1 },
 				{ id: 'chrono_trigger', name: 'Chrono Trigger', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 0 },
-				{ id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 3, remainingCharges: 1 },
+				{ id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 2, remainingCharges: 1 },
 			];
 
 			const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
@@ -1181,7 +1221,7 @@ describe('Socket Integration — useCard Event', () => {
 			const sword = player.hand.find(c => c && c.id === 'iron_sword');
 			const flame = player.hand.find(c => c && c.id === 'flame_blade');
 			expect(sword.remainingCharges).toBe(3);
-			expect(flame.remainingCharges).toBe(3);
+			expect(flame.remainingCharges).toBe(2);
 		});
 
 		it('Ether Scythe grants Magic Stones on hit and kill', async () => {
@@ -2175,9 +2215,8 @@ describe('dungeon run objective', () => {
 			wanderTarget: { x: player.x + 3, z: player.z }
 		}];
 
-		// Find a weapon card in hand
-		const weaponSlot = player.hand.findIndex(c => c && c.type === 'weapon');
-		expect(weaponSlot).toBeGreaterThanOrEqual(0);
+		// Seed an instant weapon when the dealt hand only has wind-up heavy hitters
+		const weaponSlot = ensureInstantWeaponInHand(player);
 		const weaponCard = player.hand[weaponSlot];
 
 		// Wait for stateUpdate after the enemy kill
@@ -4074,9 +4113,8 @@ describe('killing skirmisher via weapon card (integration)', () => {
 		skirmisher.x = player.x + 3;
 		skirmisher.z = player.z;
 
-		// Find a weapon card in hand
-		const weaponSlot = findWeaponSlot(player);
-		expect(weaponSlot).toBeGreaterThanOrEqual(0);
+		// Seed an instant weapon so the kill resolves synchronously
+		const weaponSlot = ensureInstantWeaponInHand(player);
 		const weaponCard = player.hand[weaponSlot];
 
 		// Wait for stateUpdate after the kill

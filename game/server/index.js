@@ -509,6 +509,7 @@ const DEBUG_SCENARIOS = new Set([
   'key-item-cooldown',
   'medic-kit-ready',
   'purifying-pulse-ready',
+  'heal-spell-ready',
   'guard-block-ready',
   'flare-beacon-ready',
   'loot-magnet-ready',
@@ -559,9 +560,15 @@ const DEBUG_SCENARIOS = new Set([
   'field-medic-spawn',
   'ember-wraith',
   'chain-lightning-ready',
+  'arcane-radial-ready',
   'fireball-ready',
   'glacial-thrower',
   'ice-ball-ready',
+  'frost-spells-ready',
+  'glacier-collapse-ready',
+  'fire-spells-ready',
+  'gravity-spells-ready',
+  'utility-spells-ready',
   'magma-windup-ready',
 ]);
 

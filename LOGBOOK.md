@@ -5649,6 +5649,24 @@ PASS. The implementation is minimal and localized to the expected files. The int
 No blocking gaps.
 
 
+## v0.321 — 308-apply-windup-and-lower-charges-to-heavy-hitter-cards  (2026-06-08 02:37:44)
+
+### Card text and rendering
+
+PASS. Hand rendering now shows the wind-up hint for cards with `windUpMs`, the tooltip explains the movement/card lockout, and reward choice descriptions include wind-up-aware damage copy. This satisfies the requirement that card text/rendering convey the heavy wind-up.
+
+### Tests and coverage
+
+PASS. The captured coverage run passed: 38 test files and 1134 tests. Relevant coverage includes merged card stat assertions, charge-value updates, delayed resolution for Solar Edge, Soul Drain, and Corebreaker, input-lock behavior, death cleanup, and UI wind-up hints/tooltips. Coverage thresholds were disabled as expected.
+
+### Design and requirements consistency
+
+PASS. The change stays within the card-combat system described in `game/docs/design.md`: weapons/spells remain card-driven combat actions, charge behavior is preserved, and the wind-up mechanic adds commitment without changing the lobby/dungeon/loot loop. The foundation requirements are not regressed: the captured run renders the scene, connects client/server, shows multiplayer state, and accepts movement.
+
+### Debug scenarios
+
+PASS. This ticket only updates the existing `magma-windup-ready` debug scenario fixture to match the new Corebreaker charge count. Debug scenarios remain gated by the debug socket path, which is only allowed locally or via `ALLOW_DEBUG_SCENARIOS`, and the normal equivalent state is still reachable by obtaining/grinding/evolving `flame_blade` into `magma_greatsword` and entering a run. The shortcut does not replace normal gameplay or weaken the production card-use path; wind-up validation still goes through the same server `useCard` and resolution code.
+
 ## v0.320 — 315-card-animation-shared-vfx-primitives-foundation  (2026-06-08 01:05:38)
 
 ### Client tests where feasible
@@ -5693,4 +5711,26 @@ PASS. This ticket added debug scenarios for minion and enemy VFX review. They ar
 ## Remaining gaps
 
 None.
+
+## v0.322 — 317-distinct-spell-card-animations  (2026-06-08 02:54:50)
+
+### Cast, projectile, and impact VFX
+
+PASS. The implementation distinguishes cast/projectile/impact where those phases apply. Projectile-style cards such as Fireball, Glacial Orb, Permafrost Lance, and Voltaic Chain include directional travel cues and endpoint/impact flourishes. Radial and utility spells use distinct cast telegraphs and origin bursts, while specialized effects such as Thermal Column, Sanctum Pulse, Purifying Pulse, and Event Horizon preserve their thematic impact visuals. The code also keeps existing hit flashes and common sounds in the shared post-effect path, so new renderers do not duplicate those responsibilities.
+
+### Performance and robustness
+
+PASS. The added effects are bounded helper calls per cast and do not introduce persistent loops or unbounded allocation. Optional newer renderer primitives are guarded in the renderers that can operate without them, and the main client context supplies all new helpers. The full vitest run passed: 120 test files and 1811 tests, including `client/test/cardRenderers.test.js`.
+
+### Design and requirements consistency
+
+PASS. The work stays within the documented card-combat model: spells remain single-use card actions whose server effects and validation are unchanged, with the client only adding presentation for `cardUsed` events. The foundational requirements are not regressed: the captured run shows the 3D scene, server/client connection, multiplayer state, movement, and HUD still functioning.
+
+### Debug scenarios
+
+PASS. This ticket added spell-ready debug scenarios for QA, but normal gameplay does not touch them: the client only requests `?debugScenario=...` on localhost, and the server accepts debug scenarios only via the existing debug gate. The shortcuts seed hands/enemies for visual capture, while the real card-cast path still goes through normal `useCard` validation and `cardUsed` broadcasts. The scenarios document equivalent normal reachability through earning/evolving the cards and entering combat, so they are QA shortcuts rather than substitutes for player flow.
+
+## Remaining gaps
+
+No blocking gaps found.
 

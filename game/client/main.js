@@ -2695,6 +2695,11 @@ function renderHand() {
 				? '<span class="desperation-ribbon">Desperate</span>'
 				: '';
 			const echoBadge = card.isEcho ? '<span class="echo-badge">Echo</span>' : '';
+			const cardDef = CARD_DEFS[card.id];
+			const windUpMs = cardDef?.windUpMs || 0;
+			const windupHint = windUpMs > 0
+				? `<span class="card-windup-hint">${THEME.cardDescriptions.windupHandHint.replace('{windUpMs}', String(windUpMs))}</span>`
+				: '';
 			content.innerHTML = `
 				${desperationRibbon}
 				<span class="card-icon">${style.icon}</span>
@@ -2703,6 +2708,7 @@ function renderHand() {
 				${evolvedBadge}
 				${grindBadge}
 				${effectText}
+				${windupHint}
 				${msCostBadge}
 				<span class="card-charges">${formatCardChargesDisplay(card)}</span>
 			`;
@@ -2716,6 +2722,8 @@ function renderHand() {
 				? 'Summoned creature active — card burns down until it expires'
 				: card.isDesperation
 				? 'Last-resort card — drawn when your deck runs out'
+				: windUpMs > 0
+				? THEME.cardDescriptions.windupTooltip
 				: 'Right-click to discard';
 
 			if (cardCost > 0 && playerMs < cardCost) {

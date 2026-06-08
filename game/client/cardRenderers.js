@@ -127,21 +127,107 @@ function renderGenericSpellBurst(data, ctx) {
 	ctx.spawnSummonEffect(originOf(data), data.radius, accentSummonStyle(data.cardId));
 }
 
+const ICE_ACCENT_COLOR = 0x67e8f9;
+const ICE_ACCENT_EMISSIVE = 0x38bdf8;
+const GLACIER_COLOR = 0x38bdf8;
+const GLACIER_EMISSIVE = 0x0ea5e9;
+
+/**
+ * Cryo Burst: expanding icy telegraph plus a radial frost particle burst at
+ * the cast origin. Replaces the generic accent summon ring.
+ */
+function renderFrostNova(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = getAccentHex(data.cardId) ?? ICE_ACCENT_COLOR;
+	const emissive = ICE_ACCENT_EMISSIVE;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.0 });
+	}
+}
+
+/**
+ * Permafrost Lance: narrower telegraph, a directional frost shard trail, and a
+ * secondary burst at the lance tip so it reads distinctly from Cryo Burst.
+ */
+function renderPermafrostLance(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex(data.cardId) ?? ICE_ACCENT_COLOR;
+	const emissive = ICE_ACCENT_EMISSIVE;
+	const narrowRadius = data.radius * 0.55;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, narrowRadius, { color, emissive });
+	}
+	if (ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, {
+			range: data.radius,
+			color,
+			emissive,
+		});
+	}
+	const tip = pointAlong(origin, direction, data.radius);
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(tip, { color, emissive, count: 10, spread: 1.2 });
+	}
+}
+
 /**
  * Glacier Collapse uses a fixed icy palette rather than the accent color
  * so the freeze visual reads the same regardless of upgrade styling.
  */
 function renderGlacierCollapse(data, ctx) {
 	if (data.radius === undefined) return;
-	ctx.spawnSummonEffect(originOf(data), data.radius, { color: 0x38bdf8, emissive: 0x0ea5e9 });
+	const origin = originOf(data);
+	ctx.spawnSummonEffect(origin, data.radius, { color: GLACIER_COLOR, emissive: GLACIER_EMISSIVE });
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color: GLACIER_COLOR, emissive: GLACIER_EMISSIVE });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color: GLACIER_COLOR, emissive: GLACIER_EMISSIVE, count: 12, spread: 2.4 });
+	}
+}
+
+const HEALING_FONT_COLOR = 0x86efac;
+const HEALING_FONT_EMISSIVE = 0x4ade80;
+const DIVINE_GRACE_COLOR = 0xfde68a;
+const DIVINE_GRACE_EMISSIVE = 0xfbbf24;
+
+/**
+ * Restoration Beacon: green telegraph ring plus radial heal spark burst at
+ * the cast origin. Distinct from Sanctum Pulse's golden sanctum signature.
+ */
+function renderHealingFont(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = getAccentHex(data.cardId) ?? HEALING_FONT_COLOR;
+	const emissive = HEALING_FONT_EMISSIVE;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.0 });
+	}
+	if (data.hpGained > 0 && data.playerId === ctx.myId) ctx.playSound('heal');
 }
 
 /**
- * Healing Font / Divine Grace: golden heal ring + heal sound when HP is restored.
+ * Sanctum Pulse: golden sanctum heal ring plus a secondary gold ember burst
+ * so its primitive mix differs from Restoration Beacon.
  */
-function renderHealRestore(data, ctx) {
+function renderDivineGrace(data, ctx) {
 	if (data.radius === undefined) return;
-	ctx.spawnDivineGraceEffect(originOf(data), data.radius);
+	const origin = originOf(data);
+	const color = getAccentHex(data.cardId) ?? DIVINE_GRACE_COLOR;
+	const emissive = DIVINE_GRACE_EMISSIVE;
+	ctx.spawnDivineGraceEffect(origin, data.radius);
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 12, spread: 2.2 });
+	}
 	if (data.hpGained > 0 && data.playerId === ctx.myId) ctx.playSound('heal');
 }
 
@@ -156,20 +242,91 @@ function renderPurifyingPulse(data, ctx) {
 	ctx.playSound('heal');
 }
 
+const GRAVITY_WELL_COLOR = 0xc084fc;
+const GRAVITY_WELL_EMISSIVE = 0xa855f7;
+const EVENT_HORIZON_COLOR = 0x581c87;
+const EVENT_HORIZON_EMISSIVE = 0x7c3aed;
+
 /**
- * Event Horizon: outer pull ring (handled by renderGenericSpellBurst) plus
- * a tighter inner crush ring keyed off `data.centerRadius`.
+ * Gravity Well: purple pull telegraph at pull radius, inward-styled particle
+ * burst at the origin, and an optional center impact decal.
  */
-function renderEventHorizon(data, ctx) {
-	renderGenericSpellBurst(data, ctx);
-	if (data.centerRadius) {
-		ctx.spawnSummonEffect(originOf(data), data.centerRadius, accentSummonStyle(data.cardId));
+function renderGravityWell(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = getAccentHex(data.cardId) ?? GRAVITY_WELL_COLOR;
+	const emissive = GRAVITY_WELL_EMISSIVE;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 18, spread: 2.8 });
+	}
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(origin, { color, emissive });
 	}
 }
 
 /**
- * Inferno Pillar: tall fiery pillar effect plus the standard accent AoE
- * preview ring underneath.
+ * Event Horizon: dark-purple outer pull telegraph + burst, plus a tighter inner
+ * crush ring keyed off `data.centerRadius` (distinct helper mix from Gravity Well).
+ */
+function renderEventHorizon(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = getAccentHex(data.cardId) ?? EVENT_HORIZON_COLOR;
+	const emissive = EVENT_HORIZON_EMISSIVE;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 12, spread: 2.4 });
+	}
+	if (data.centerRadius) {
+		ctx.spawnSummonEffect(origin, data.centerRadius, { color, emissive });
+	}
+}
+
+const FIRE_ACCENT_COLOR = 0xfb923c;
+const FIRE_ACCENT_EMISSIVE = 0xff3b00;
+
+/**
+ * Wyrmflare: forward fire breath cone with ember trail and impact flourish at
+ * the cone tip. Replaces the generic accent summon ring.
+ */
+function renderDragonsBreath(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex(data.cardId) ?? FIRE_ACCENT_COLOR;
+	const emissive = FIRE_ACCENT_EMISSIVE;
+	ctx.spawnAttackEffect(origin, direction, {
+		range: data.radius,
+		coneAngle: data.attackConeAngle ?? Math.PI / 3,
+		color,
+		emissive,
+		fillOpacity: 0.38,
+		edgeOpacity: 0.72,
+	});
+	if (ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, {
+			range: data.radius,
+			color,
+			emissive,
+		});
+	}
+	const tip = pointAlong(origin, direction, data.radius);
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(tip, { color, emissive, count: 10, spread: 1.2 });
+	}
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(tip, { color, emissive });
+	}
+}
+
+/**
+ * Inferno Pillar: tall fiery pillar effect plus accent telegraph ring and
+ * ember burst at the eruption point.
  */
 function renderInfernoPillar(data, ctx) {
 	if (data.radius === undefined) return;
@@ -232,6 +389,12 @@ function renderUndeadCommander(data, ctx) {
 
 const CHAIN_LIGHTNING_ARC_STYLE = { color: 0x38bdf8, emissive: 0x0ea5e9 };
 const STORM_EAGLE_ARC_STYLE = { color: 0x67e8f9, emissive: 0x22d3ee };
+const ARCANE_FAMILIAR_COLOR = 0x818cf8;
+const ARCANE_FAMILIAR_EMISSIVE = 0x6366f1;
+const MANA_LEACH_COLOR = 0xa855f7;
+const MANA_LEACH_EMISSIVE = 0x9333ea;
+const SOUL_DRAIN_COLOR = 0xe879f9;
+const SOUL_DRAIN_EMISSIVE = 0xd946ef;
 
 function spawnChainSegmentArcs(data, ctx) {
 	const segments = data.chainSegments;
@@ -243,13 +406,91 @@ function spawnChainSegmentArcs(data, ctx) {
 }
 
 /**
- * Voltaic Chain spell: one cyan arc per server chain segment, or a legacy
- * directional bolt when segments are absent.
+ * Voltaic Chain spell: one cyan arc per server chain segment with cast
+ * telegraph and endpoint impacts, or a legacy directional bolt when segments
+ * are absent.
  */
 function renderChainLightningArcs(data, ctx) {
-	if (spawnChainSegmentArcs(data, ctx)) return;
+	if (spawnChainSegmentArcs(data, ctx)) {
+		const origin = originOf(data);
+		if (ctx.spawnTelegraphRing) {
+			ctx.spawnTelegraphRing(origin, data.chainRadius ?? 2, CHAIN_LIGHTNING_ARC_STYLE);
+		}
+		for (const seg of data.chainSegments) {
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(seg.to, {
+					...CHAIN_LIGHTNING_ARC_STYLE,
+					count: 8,
+					spread: 1.0,
+				});
+			} else if (ctx.spawnImpactDecal) {
+				ctx.spawnImpactDecal(seg.to, CHAIN_LIGHTNING_ARC_STYLE);
+			}
+		}
+		return;
+	}
 	if (!data.origin) return;
 	ctx.spawnChainLightningEffect(data.origin, directionOf(data));
+}
+
+/**
+ * Signal Familiar: indigo arcane telegraph and spark burst at the cast origin.
+ */
+function renderBattleFamiliar(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = getAccentHex(data.cardId) ?? ARCANE_FAMILIAR_COLOR;
+	const emissive = ARCANE_FAMILIAR_EMISSIVE;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.0 });
+	}
+}
+
+/**
+ * Ether Siphon: purple drain telegraph at AoE radius plus a siphon burst.
+ */
+function renderManaLeach(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = getAccentHex(data.cardId) ?? MANA_LEACH_COLOR;
+	const emissive = MANA_LEACH_EMISSIVE;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 16, spread: 2.2 });
+	}
+}
+
+/**
+ * Soul Drain: pink evolved drain telegraph, primary burst, and a smaller
+ * heal-adjacent flourish at the origin. No extra sounds — heal audio stays in
+ * common post-effects when applicable.
+ */
+function renderSoulDrain(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = getAccentHex(data.cardId) ?? SOUL_DRAIN_COLOR;
+	const emissive = SOUL_DRAIN_EMISSIVE;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.4 });
+	}
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(origin, { color: SOUL_DRAIN_EMISSIVE, emissive: 0xf0abfc });
+	} else if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, {
+			color: SOUL_DRAIN_EMISSIVE,
+			emissive: 0xf0abfc,
+			count: 6,
+			spread: 1.0,
+		});
+	}
 }
 
 /**
@@ -432,14 +673,31 @@ function renderFireball(data, ctx) {
  */
 function renderIceBall(data, ctx) {
 	if (!data.origin) return;
-	const accentHex = getAccentHex(data.cardId);
-	ctx.spawnAttackEffect(originOf(data), directionOf(data), {
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex(data.cardId) ?? ICE_ACCENT_COLOR;
+	const emissive = ICE_ACCENT_EMISSIVE;
+	ctx.spawnAttackEffect(origin, direction, {
 		effect: 'ice_ball',
 		range: data.attackRange,
 		projectileTravelMs: data.projectileTravelMs,
-		color: accentHex ?? 0x67e8f9,
-		emissive: 0x38bdf8,
+		color,
+		emissive,
 	});
+	if (ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, {
+			range: data.attackRange,
+			color,
+			emissive,
+		});
+	}
+	const impact = pointAlong(origin, direction, data.attackRange ?? 8);
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(impact, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(impact, { color, emissive, count: 10, spread: 1.6 });
+	}
 }
 
 /**
@@ -556,6 +814,86 @@ function renderTelepipe(data, ctx) {
 	ctx.spawnSummonEffect(originOf(data), data.radius || 2.5, { color: 0x22d3ee, emissive: 0x67e8f9 });
 }
 
+const ASTRAL_GUARDIAN_COLOR = 0x818cf8;
+const ASTRAL_GUARDIAN_EMISSIVE = 0x6366f1;
+const MANA_PRISM_COLOR = 0xa855f7;
+const MANA_PRISM_EMISSIVE = 0x22d3ee;
+const SACRIFICIAL_ALTAR_COLOR = 0xfbbf24;
+const SACRIFICIAL_ALTAR_EMISSIVE = 0xef4444;
+const CHRONO_TRIGGER_COLOR = 0x67e8f9;
+const CHRONO_TRIGGER_EMISSIVE = 0xfbbf24;
+const CHRONO_TRIGGER_TELEGRAPH_RADIUS = 2;
+
+/**
+ * Astral Guardian: indigo shield/summon telegraph at cast radius, spark burst,
+ * and a tight minion-spawn ring distinct from the generic accent burst.
+ */
+function renderAstralGuardian(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = getAccentHex(data.cardId) ?? ASTRAL_GUARDIAN_COLOR;
+	const emissive = ASTRAL_GUARDIAN_EMISSIVE;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.0 });
+	}
+	ctx.spawnSummonEffect(origin, 1.2, { color, emissive });
+}
+
+/**
+ * Mana Prism: pulsing violet/cyan prism telegraph at placement radius plus
+ * an arcane spark burst at the cast origin.
+ */
+function renderManaPrism(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = MANA_PRISM_COLOR;
+	const emissive = MANA_PRISM_EMISSIVE;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 12, spread: 1.6 });
+	}
+}
+
+/**
+ * Sacrificial Altar: large gold/red ritual telegraph at sacrifice radius and
+ * an ember burst at the caster origin.
+ */
+function renderSacrificialAltar(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = SACRIFICIAL_ALTAR_COLOR;
+	const emissive = SACRIFICIAL_ALTAR_EMISSIVE;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 16, spread: 2.4 });
+	}
+}
+
+/**
+ * Chrono Trigger: time-ripple telegraph and burst at the cast origin. Uses a
+ * fixed small radius when the server omits `radius` from the payload.
+ */
+function renderChronoTrigger(data, ctx) {
+	if (!data.origin) return;
+	const origin = originOf(data);
+	const color = CHRONO_TRIGGER_COLOR;
+	const emissive = CHRONO_TRIGGER_EMISSIVE;
+	const radius = data.radius ?? CHRONO_TRIGGER_TELEGRAPH_RADIUS;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 12, spread: 2.0 });
+	}
+}
+
 // ── Registry ────────────────────────────────────────────────────────────
 //
 // Override the per-type default for any card that needs a bespoke effect.
@@ -569,14 +907,25 @@ const CARD_RENDERERS = {
 
 	// Spells
 	chain_lightning: renderChainLightningArcs,
+	battle_familiar: renderBattleFamiliar,
+	mana_leach: renderManaLeach,
+	soul_drain: renderSoulDrain,
+	frost_nova: renderFrostNova,
+	permafrost_lance: renderPermafrostLance,
 	ice_ball: renderIceBall,
 	glacier_collapse: renderGlacierCollapse,
-	healing_font: renderHealRestore,
-	divine_grace: renderHealRestore,
+	healing_font: renderHealingFont,
+	divine_grace: renderDivineGrace,
 	purifying_pulse: renderPurifyingPulse,
+	gravity_well: renderGravityWell,
 	event_horizon: renderEventHorizon,
-	inferno_pillar: [renderInfernoPillar, renderGenericSpellBurst],
+	dragons_breath: renderDragonsBreath,
+	inferno_pillar: renderInfernoPillar,
 	telepipe: renderTelepipe,
+	astral_guardian: renderAstralGuardian,
+	mana_prism: renderManaPrism,
+	sacrificial_altar: renderSacrificialAltar,
+	chrono_trigger: renderChronoTrigger,
 
 	// Creatures
 	undead_commander: renderUndeadCommander,
@@ -600,6 +949,9 @@ const TYPE_DEFAULT_RENDERERS = {
 	spell: renderGenericSpellBurst,
 	creature: renderCreatureSummon,
 };
+
+/** Alias for coverage tests asserting no spell card still uses the generic burst. */
+export const SPELL_TYPE_DEFAULT_RENDERER = TYPE_DEFAULT_RENDERERS.spell;
 
 /**
  * Return the renderer(s) responsible for the given cardId, accounting for

@@ -1,0 +1,16 @@
+Broke ticket 308 into **4 sub-tickets** in dependency order. Card scope follows the 303 balance report: `flame_blade`, `magma_greatsword`, and `soul_drain` as single big-hit outliers; `excalibur_photon` and summon spells are explicitly out of scope.
+
+**Sub-ticket folder paths created:**
+
+1. `/home/matt/workspace/.autogame-worktrees/308-apply-windup-and-lower-charges-to-heavy-hitter-cards/tickets/308-apply-windup-and-lower-charges-to-heavy-hitter-cards/subtickets/01-heavy-hitter-windup-and-charge-stats/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/308-apply-windup-and-lower-charges-to-heavy-hitter-cards/tickets/308-apply-windup-and-lower-charges-to-heavy-hitter-cards/subtickets/02-heavy-hitter-windup-behavior-tests/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/308-apply-windup-and-lower-charges-to-heavy-hitter-cards/tickets/308-apply-windup-and-lower-charges-to-heavy-hitter-cards/subtickets/03-heavy-hitter-card-ui-copy/ticket.md`
+4. `/home/matt/workspace/.autogame-worktrees/308-apply-windup-and-lower-charges-to-heavy-hitter-cards/tickets/308-apply-windup-and-lower-charges-to-heavy-hitter-cards/subtickets/04-balance-report-reconcile/ticket.md`
+
+**Dependency chain:**
+- **01** — JSON stats (`windUpMs` + lower charges) and metric/regression test updates
+- **02** — Server wind-up resolution tests + charge fixture fixes across test suite
+- **03** — Client hand UI + `cardChoiceDescription` wind-up copy
+- **04** — Balance report reconciliation (docs only)
+
+All four use **Verification: code** (criteria cover stats, handlers, structure, and text — not purely visual rendering).
