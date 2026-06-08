@@ -169,7 +169,7 @@
     "projectile": { "pierces": true }
   },
   "chain_lightning": {
-    "magicStoneCost": 42,
+    "magicStoneCost": 37,
     "effect": "chain_lightning",
     "damage": 22,
     "attackRange": 9,
@@ -200,7 +200,7 @@
     "specialEffect": "slow",
     "slowDurationMs": 3000,
     "slowFactor": 0.5,
-    "slowChance": 0.5,
+    "slowChance": 0.65,
     "projectileTravelMs": 1200
   },
   "glacier_collapse": {
@@ -222,7 +222,7 @@
   "purifying_pulse": {
     "magicStoneCost": 0,
     "effect": "purifying_pulse",
-    "healAmount": 15,
+    "healAmount": 20,
     "radius": 5.5,
     "specialEffect": "heal_and_cleanse"
   },
