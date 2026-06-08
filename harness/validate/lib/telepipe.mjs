@@ -15,7 +15,7 @@ import { writeScreenshot } from './screenshot.mjs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const { STARTING_MAGIC_STONES } = require(path.resolve(__dirname, '../../../game/shared/constants.json'));
-const { PORTAL_PLACEMENT_GRACE_MS, MAGIC_STONES_REGEN_PER_TICK } = require(path.resolve(__dirname, '../../../game/server/config.js'));
+const { PORTAL_PLACEMENT_GRACE_MS, MAGIC_STONES_REGEN_PER_TICK, TICK_RATE } = require(path.resolve(__dirname, '../../../game/server/config.js'));
 
 export { STARTING_MAGIC_STONES, PORTAL_PLACEMENT_GRACE_MS };
 
@@ -35,8 +35,16 @@ function probesMatchDepletion(probe, startingMs = STARTING_MAGIC_STONES) {
 // Passive regen ticks at 20Hz once playing; probe may run a few ticks after waitForPlaying.
 const FRESH_DEPLOY_MS_REGEN_TICKS = 10;
 const FRESH_DEPLOY_MS_TOLERANCE = MAGIC_STONES_REGEN_PER_TICK * FRESH_DEPLOY_MS_REGEN_TICKS;
-const VITALS_MS_REGEN_TICKS = FRESH_DEPLOY_MS_REGEN_TICKS;
-const VITALS_MS_TOLERANCE = FRESH_DEPLOY_MS_TOLERANCE;
+// The Telepipe-up vitals snapshot spans the entire suspend sequence: the player
+// stays in 'playing' through the PORTAL_PLACEMENT_GRACE_MS portal-arming window
+// and the walk-into-portal loop before the run suspends, so passive MS regen
+// accrues for several seconds (≈grace + ~6s walk margin) — far more than the
+// short fresh-deploy snapshot gap. Size the vitals tolerance to that window so
+// legitimate regen drift isn't mistaken for a reset (a real vitals reset jumps
+// MS by tens, which still trips the check).
+const VITALS_SUSPEND_WINDOW_MS = PORTAL_PLACEMENT_GRACE_MS + 6000;
+const VITALS_MS_REGEN_TICKS = Math.ceil((VITALS_SUSPEND_WINDOW_MS / 1000) * TICK_RATE);
+const VITALS_MS_TOLERANCE = MAGIC_STONES_REGEN_PER_TICK * VITALS_MS_REGEN_TICKS;
 
 export function probesMatchVitalsPreserved(pre, post, msTolerance = VITALS_MS_TOLERANCE) {
 	const hpMatch = Number.isFinite(pre?.hp) && Number.isFinite(post?.hp) && pre.hp === post.hp;

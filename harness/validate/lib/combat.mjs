@@ -134,11 +134,18 @@ async function swingAtTarget(page, attackKey, bossType, { minAddsLeft = 0, addTy
  * @param {import('playwright').Page} page
  */
 export async function enableGodmode(page) {
+	// __toggleDebugGodmodeForTest() flips the flag, so calling it when godmode is
+	// already on (e.g. it persisted from a prior combat phase into a fresh
+	// re-deploy) would turn it OFF. Toggle only when currently disabled so this
+	// helper is idempotent and truly "enables".
 	await page.evaluate(() => {
 		if (typeof window.__toggleDebugGodmodeForTest !== 'function') {
 			throw new Error('__toggleDebugGodmodeForTest missing');
 		}
-		window.__toggleDebugGodmodeForTest();
+		const h = window.__AUTOGAME_HARNESS_STATE__?.();
+		if (h?.player?.debugGodmode !== true) {
+			window.__toggleDebugGodmodeForTest();
+		}
 	});
 
 	await page.waitForFunction(() => {

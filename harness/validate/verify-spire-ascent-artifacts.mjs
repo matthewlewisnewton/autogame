@@ -26,8 +26,31 @@ const REQUIRED_PNGS = [
 	'03-mid-combat.png',
 	'04-boss-dormant.png',
 	'05-boss-active.png',
+	// New-content probe screenshots (tickets 283/284/301/299/308/287/289). A run
+	// without the new-content probes will not produce these, so requiring them
+	// fails verification of any stale/base-only run.
+	'05a-boss-healthbar.png',
+	'05b-status-cards.png',
+	'05c-windup.png',
 	'06-boss-defeated.png',
 	'07-victory.png',
+	'08-telepipe-hub.png',
+	'09-new-sortie-charges.png',
+];
+
+// New-content probe sections that a --steps full spire-ascent run must record in
+// run-summary.json. bossUi/bossVisuals/statusCards/healCleanse/windUp live under
+// the bossEncounter section; telepipePersistence/cardChargeReset are top-level.
+const REQUIRED_BOSS_ENCOUNTER_PROBE_KEYS = [
+	'bossUi',
+	'bossVisuals',
+	'statusCards',
+	'healCleanse',
+	'windUp',
+];
+const REQUIRED_TOP_LEVEL_PROBE_KEYS = [
+	'telepipePersistence',
+	'cardChargeReset',
 ];
 
 const REQUIRED_FILES = [
@@ -81,7 +104,32 @@ function readRunSummary(errors) {
 		fail(errors, 'run-summary.json victory must be an object');
 	}
 
+	checkProbeSections(errors, summary);
+
 	return summary;
+}
+
+function isPlainObject(value) {
+	return value != null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function checkProbeSections(errors, summary) {
+	const bossEncounter = summary.bossEncounter;
+	if (!isPlainObject(bossEncounter)) {
+		fail(errors, 'run-summary.json missing bossEncounter section with the new-content probes');
+	} else {
+		for (const key of REQUIRED_BOSS_ENCOUNTER_PROBE_KEYS) {
+			if (!isPlainObject(bossEncounter[key])) {
+				fail(errors, `run-summary.json bossEncounter missing new-content probe section "${key}"`);
+			}
+		}
+	}
+
+	for (const key of REQUIRED_TOP_LEVEL_PROBE_KEYS) {
+		if (!isPlainObject(summary[key])) {
+			fail(errors, `run-summary.json missing new-content probe section "${key}"`);
+		}
+	}
 }
 
 function checkFindingsBossLabel(errors, content) {

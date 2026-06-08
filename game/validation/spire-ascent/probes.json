@@ -2,16 +2,135 @@
   "dormant": {
     "encounterPhase": "dormant",
     "encounterLocked": false,
-    "bossEnemyId": "94ab460f-249c-49e6-8f75-47e033eac200",
+    "bossEnemyId": "40c5c523-2cc0-4615-bcbe-d1d3b5d79c35",
     "bossHp": 420,
     "liveAddCount": 0
   },
   "active": {
     "encounterPhase": "active",
     "encounterLocked": true,
-    "bossEnemyId": "94ab460f-249c-49e6-8f75-47e033eac200",
+    "bossEnemyId": "40c5c523-2cc0-4615-bcbe-d1d3b5d79c35",
     "bossHp": 420,
     "liveAddCount": 0
+  },
+  "bossUi": {
+    "hudPresent": true,
+    "hudVisible": true,
+    "name": "Summit Warden",
+    "hp": 420,
+    "maxHp": 420,
+    "hpPct": 100,
+    "tier": "hp-high",
+    "phase": "active",
+    "locked": true,
+    "bossEnemyId": "40c5c523-2cc0-4615-bcbe-d1d3b5d79c35"
+  },
+  "bossVisuals": {
+    "type": "spire_warden",
+    "variant": null,
+    "catalogName": "Summit Warden",
+    "catalogTypeName": "Summit Warden",
+    "catalogVariantName": null,
+    "modelName": "Summit Warden",
+    "isDistinctBoss": true
+  },
+  "statusCards": {
+    "enemyId": "ba258bae-dbc0-48ac-923a-192da2678da8",
+    "enemyType": "grunt",
+    "mutuallyExclusive": true,
+    "slow": {
+      "before": {
+        "slowedUntil": 0,
+        "burningUntil": 0,
+        "slowFactor": 1
+      },
+      "after": {
+        "slowedUntil": 1780957933934,
+        "burningUntil": 0,
+        "slowFactor": 0.5
+      }
+    },
+    "burn": {
+      "before": {
+        "slowedUntil": 1780957933934,
+        "burningUntil": 0,
+        "slowFactor": 0.5
+      },
+      "after": {
+        "slowedUntil": 0,
+        "burningUntil": 1780957934174,
+        "slowFactor": 0.5
+      }
+    }
+  },
+  "healCleanse": {
+    "cardSlot": 0,
+    "before": {
+      "hp": 40,
+      "slowedUntil": 1780957931272,
+      "burningUntil": 1780957931272
+    },
+    "after": {
+      "hp": 60,
+      "slowedUntil": 0,
+      "burningUntil": 0
+    }
+  },
+  "windUp": {
+    "cardId": "magma_greatsword",
+    "slotIndex": 1,
+    "windUpMs": 800,
+    "telegraphPresent": true,
+    "telegraphSlot": 1,
+    "lockedDuringWindUp": true,
+    "secondPlayRejected": true,
+    "secondPressSlot": 2,
+    "unlockedAfterWindUp": true,
+    "before": {
+      "handInputLocked": false,
+      "telegraphPresent": true,
+      "cardUseState": null
+    },
+    "during": {
+      "handInputLocked": true,
+      "telegraphPresent": true,
+      "cardUseState": "windup",
+      "cardWindupUntil": 1780957927766
+    },
+    "after": {
+      "handInputLocked": false,
+      "cardUseState": null
+    }
+  },
+  "floorAlignment": {
+    "levelEntry": {
+      "playerY": 0.5,
+      "floorY": 0.5,
+      "delta": 0,
+      "layoutProfile": "spire-ascent",
+      "band": "tier"
+    },
+    "midCombat": {
+      "playerY": 0.5,
+      "floorY": 0.5,
+      "delta": 0,
+      "layoutProfile": "spire-ascent",
+      "band": "tier"
+    },
+    "bossDormant": {
+      "playerY": 0.5,
+      "floorY": 0.5,
+      "delta": 0,
+      "layoutProfile": "spire-ascent",
+      "band": "tier"
+    },
+    "bossActive": {
+      "playerY": 0.5,
+      "floorY": 0.5,
+      "delta": 0,
+      "layoutProfile": "spire-ascent",
+      "band": null
+    }
   },
   "afterBoss": {
     "runStatus": "victory",
@@ -24,5 +143,140 @@
     "runObjectiveComplete": true,
     "bossDefeated": true,
     "lastRunSummaryStatus": "victory"
+  },
+  "telepipePersistence": {
+    "lifecycleScenario": "spire-ascent-launch-ready",
+    "vitalsPreserved": true,
+    "before": {
+      "hp": 100,
+      "magicStones": 1.460000000001072,
+      "charges": [
+        {
+          "id": "telepipe",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        {
+          "id": "iron_sword",
+          "type": "weapon",
+          "remainingCharges": 5,
+          "charges": 5
+        },
+        {
+          "id": "dungeon_drake",
+          "type": "creature",
+          "remainingCharges": 0,
+          "charges": 1
+        },
+        {
+          "id": "dungeon_drake",
+          "type": "creature",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        {
+          "id": "battle_familiar",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        }
+      ]
+    },
+    "afterHub": {
+      "phase": "lobby",
+      "hp": 100,
+      "magicStones": 1.6800000000010673,
+      "charges": [
+        {
+          "id": "iron_sword",
+          "type": "weapon",
+          "remainingCharges": 5,
+          "charges": 5
+        },
+        {
+          "id": "dungeon_drake",
+          "type": "creature",
+          "remainingCharges": 0,
+          "charges": 1
+        },
+        {
+          "id": "dungeon_drake",
+          "type": "creature",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        {
+          "id": "battle_familiar",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        }
+      ]
+    },
+    "screenshot": "game/validation/spire-ascent/08-telepipe-hub.png"
+  },
+  "cardChargeReset": {
+    "lifecycleScenario": "spire-ascent-launch-ready",
+    "allReset": true,
+    "endOfSortie": [
+      {
+        "id": "telepipe",
+        "type": "spell",
+        "remainingCharges": 1,
+        "charges": 1
+      },
+      {
+        "id": "iron_sword",
+        "type": "weapon",
+        "remainingCharges": 5,
+        "charges": 5
+      },
+      {
+        "id": "dungeon_drake",
+        "type": "creature",
+        "remainingCharges": 0,
+        "charges": 1
+      },
+      {
+        "id": "dungeon_drake",
+        "type": "creature",
+        "remainingCharges": 1,
+        "charges": 1
+      },
+      {
+        "id": "battle_familiar",
+        "type": "spell",
+        "remainingCharges": 1,
+        "charges": 1
+      }
+    ],
+    "newSortie": [
+      {
+        "id": "telepipe",
+        "type": "spell",
+        "remainingCharges": 1,
+        "charges": 1
+      },
+      {
+        "id": "iron_sword",
+        "type": "weapon",
+        "remainingCharges": 5,
+        "charges": 5
+      },
+      {
+        "id": "battle_familiar",
+        "type": "spell",
+        "remainingCharges": 1,
+        "charges": 1
+      },
+      {
+        "id": "iron_sword",
+        "type": "weapon",
+        "remainingCharges": 5,
+        "charges": 5
+      }
+    ],
+    "screenshot": "game/validation/spire-ascent/09-new-sortie-charges.png"
   }
 }

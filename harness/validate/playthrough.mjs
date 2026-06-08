@@ -556,13 +556,11 @@ async function runHubStep({ page, preset, outDirAbs }) {
 		document.getElementById('create-lobby-btn')?.click();
 	}, lobbyName);
 
-	await page.waitForFunction(() => {
-		const lobby = document.getElementById('lobby');
-		return lobby && !lobby.classList.contains('hidden');
-	}, { timeout: 15000 }).catch(async () => {
-		await failWithHarness(page, '#lobby not visible after create channel');
-	});
-
+	// Walkable hub entry auto-dismisses the dismissible #lobby menu (the lobby
+	// menu defaults to hidden on hub entry — see client dismissGameLobby() on the
+	// lobby-phase render path), so we no longer wait for #lobby to become visible.
+	// Readiness is the walkable hub itself: lobby phase, an active canvas, and the
+	// hub layout profile.
 	await page.waitForFunction(() => {
 		const h = window.__AUTOGAME_HARNESS_STATE__?.();
 		return h
@@ -570,7 +568,7 @@ async function runHubStep({ page, preset, outDirAbs }) {
 			&& h.hasCanvas === true
 			&& h.layout?.profile === 'hub';
 	}, { timeout: 20000 }).catch(async () => {
-		await failWithHarness(page, 'Ship hub lobby not ready');
+		await failWithHarness(page, 'Ship hub lobby not ready after create channel');
 	});
 
 	await page.evaluate(() => {

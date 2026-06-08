@@ -22,3 +22,98 @@
 [console:log] [debugScenario] applied spire-ascent-near-adds
 [console:log] [debugScenario] applied spire-ascent-boss-approach
 [console:log] [debugScenario] applied spire-ascent-boss-low-hp
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:log] [debugScenario] applied spire-ascent-tier-2
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied spire-ascent-near-adds
+[console:log] [debugScenario] applied spire-ascent-boss-approach
+[console:log] [debugScenario] applied spire-ascent-status-cards
+[console:log] [debugScenario] applied spire-ascent-status-burn
+[console:log] [debugScenario] applied purifying-pulse-ready
+[console:log] [debugScenario] applied spire-ascent-windup-ready
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:log] [debugScenario] applied spire-ascent-tier-2
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied spire-ascent-near-adds
+[console:log] [debugScenario] applied spire-ascent-boss-approach
+[console:log] [debugScenario] applied spire-ascent-status-cards
+[console:log] [debugScenario] applied spire-ascent-status-burn
+[console:log] [debugScenario] applied purifying-pulse-ready
+[console:log] [debugScenario] applied spire-ascent-windup-ready
+[console:log] [debugScenario] applied spire-ascent-boss-low-hp
+[console:log] [debugScenario] applied spire-ascent-launch-ready
+[console:log] [launchBooth] ready-up via booth
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:log] [debugScenario] applied spire-ascent-tier-2
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied spire-ascent-near-adds
+[console:log] [debugScenario] applied spire-ascent-boss-approach
+[console:log] [debugScenario] applied spire-ascent-status-cards
+[console:log] [debugScenario] applied spire-ascent-status-burn
+[console:log] [debugScenario] applied purifying-pulse-ready
+[console:log] [debugScenario] applied spire-ascent-windup-ready
+[console:log] [debugScenario] applied spire-ascent-boss-low-hp
+[console:log] [debugScenario] applied spire-ascent-launch-ready
+[console:log] [launchBooth] ready-up via booth
+[console:log] [debugGodmode] disabled
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:log] [debugScenario] applied spire-ascent-tier-2
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied spire-ascent-near-adds
+[console:log] [debugScenario] applied spire-ascent-boss-approach
+[console:log] [debugScenario] applied spire-ascent-status-cards
+[console:log] [debugScenario] applied spire-ascent-status-burn
+[console:log] [debugScenario] applied purifying-pulse-ready
+[console:log] [debugScenario] applied spire-ascent-windup-ready
+[console:log] [debugScenario] applied spire-ascent-boss-low-hp
+[console:log] [debugScenario] applied spire-ascent-launch-ready
+[console:log] [launchBooth] ready-up via booth
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:log] [debugScenario] applied spire-ascent-tier-2
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied spire-ascent-near-adds
+[console:log] [debugScenario] applied spire-ascent-boss-approach
+[console:log] [debugScenario] applied spire-ascent-status-cards
+[console:log] [debugScenario] applied spire-ascent-status-burn
+[console:log] [debugScenario] applied purifying-pulse-ready
+[console:log] [debugScenario] applied spire-ascent-windup-ready
+[console:log] [debugScenario] applied spire-ascent-boss-low-hp
+[console:log] [debugScenario] applied spire-ascent-launch-ready
+[console:log] [launchBooth] ready-up via booth
+[console:log] [debugScenario] applied spire-ascent-launch-ready
+[console:log] [launchBooth] ready-up via booth
