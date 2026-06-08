@@ -1,0 +1,7 @@
+Review complete: `VERDICT: FAIL`.
+
+I wrote:
+- `tickets/310-apply-3-optional-newcard-balance-tunes/round-1/review.md`
+- `tickets/310-apply-3-optional-newcard-balance-tunes/round-1/gaps.md`
+
+The game runs cleanly and the live card stats/tests are correct, but `game/validation/card-balance/report.md` still has stale pre-tune values/recommendations in earlier summary/spotlight sections, so the report-update acceptance item is not fully satisfied. No `nits.md` was created.

@@ -1,0 +1,7 @@
+Created one new sub-ticket to close the single open gap (stale values in `report.md`'s spell summary, spotlight, and combo sections). Sub-ticket 01 has a `.passed` marker and was left untouched.
+
+Sub-ticket folder created:
+
+- `tickets/310-apply-3-optional-newcard-balance-tunes/subtickets/02-reconcile-report-spotlight-stale-values/ticket.md`
+
+Scope: documentation-only edits to `game/validation/card-balance/report.md` so the spell summary table (chain_lightning MS 42→37), the three spotlight sections (ice_ball 65%/0.65, purifying_pulse 20 HP / utilityScore 20, chain_lightning 37 MS), and the lingering `healAmount (15)` combo note all read as **applied/done** rather than optional/conditional. Verification is `code` (whole diff reviewable; no rendering concerns), and it asserts the `cardStats.json` values stay unchanged.

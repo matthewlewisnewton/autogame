@@ -117,3 +117,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [306-cleanup-recapture-walkable-hub-after-overlay-fix](tickets/306-cleanup-recapture-walkable-hub-after-overlay-fix/)
 - [ ] [307-cleanup-restore-hp-healing-cards-keep-no-auto-level-heal](tickets/307-cleanup-restore-hp-healing-cards-keep-no-auto-level-heal/)
 - [ ] [314-cleanup-saber-of-light-aoe-per-grind-scaling](tickets/314-cleanup-saber-of-light-aoe-per-grind-scaling/)
+- [ ] [315-cleanup-apply-3-optional-newcard-balance-tunes](tickets/315-cleanup-apply-3-optional-newcard-balance-tunes/)

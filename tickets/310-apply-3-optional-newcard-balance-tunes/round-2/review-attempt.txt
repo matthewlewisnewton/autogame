@@ -1,0 +1,7 @@
+Review complete: `VERDICT: PASS`.
+
+Wrote:
+- `tickets/310-apply-3-optional-newcard-balance-tunes/round-2/review.md`
+- `tickets/310-apply-3-optional-newcard-balance-tunes/round-2/nits.md`
+
+No `gaps.md` was created because there are no blocking gaps. The only nit is report wording that says ice_ball has a `0.65` slow factor; the actual implemented tune correctly changed only `slowChance` to `0.65`.

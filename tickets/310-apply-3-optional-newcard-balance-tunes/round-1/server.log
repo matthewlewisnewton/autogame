@@ -1,0 +1,13 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/data
+Server listening on port 3001
+Player connected: socket=qhkMlp6VrrPqHWHWAAAB, playerId=bb26765c-7c2e-432a-a335-76c72d907c1e
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=haEMaRGwjmMgrmxVAAAD, playerId=a1177141-8e3b-4dde-a19c-a1d53a3c44e9
+Player disconnected: qhkMlp6VrrPqHWHWAAAB
+Player disconnected: haEMaRGwjmMgrmxVAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
