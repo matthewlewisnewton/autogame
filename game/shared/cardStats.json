@@ -100,6 +100,15 @@
     "magicStoneOnHit": 5,
     "magicStoneOnKill": 15
   },
+  "reapers_scythe": {
+    "damage": 14,
+    "magicStoneOnHit": 5,
+    "magicStoneOnKill": 15,
+    "currencyOnKill": 6,
+    "healOnKill": 8,
+    "isEvolved": true,
+    "specialEffect": "reap"
+  },
   "deck_sifter": {
     "effect": "draw_card",
     "magicStoneCost": 0,

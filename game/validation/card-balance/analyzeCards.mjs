@@ -22,6 +22,7 @@ export const SERVER_STAT_OVERLAY = {
 	bulkhead_mauler: ['attackConeAngle'],
 	ancient_wyrm: ['breathConeAngle'],
 	harvesting_scythe: ['attackConeAngle'],
+	reapers_scythe: ['attackConeAngle'],
 	dragons_breath: ['breathConeAngle'],
 	astral_guardian: ['attackIntervalMs'],
 };
