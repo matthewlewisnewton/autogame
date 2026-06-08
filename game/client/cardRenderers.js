@@ -1168,12 +1168,35 @@ function renderShockwaveSweep(data, ctx) {
 }
 
 /**
- * Spike Trap (and any ground-targeted enchantment): show the trap radius
- * with a hostile-red AoE preview at the placement point.
+ * Generic ground-targeted enchantment (e.g. cinder_snare): show the trap
+ * radius with a hostile AoE preview at the placement point.
  */
 function renderGroundEnchantment(data, ctx) {
 	if (data.radius === undefined) return;
 	ctx.spawnSummonEffect(originOf(data), data.radius, { color: 0xf87171, emissive: 0xef4444 });
+}
+
+const SPIKE_TRAP_COLOR = 0xf87171; // steel/blood-red hazard accent (card accent)
+const SPIKE_TRAP_EMISSIVE = 0xdc2626; // blood-red telegraph glow
+
+/**
+ * Spike Trap: erupting steel/blood-red spikes at the placement origin plus an
+ * armed hostile-red telegraph ring at the proximity-hazard radius. Distinct from
+ * the generic orange ground-enchantment preview used by cinder_snare.
+ *
+ * Placement-only and synced to the server: the server emits CARD_USED only after
+ * the 500ms windUpMs commit (the 307/315 charge telegraph plays during wind-up),
+ * then arms the trap server-side for its ttlMs and resolves the single
+ * proximity_hazard burst. So this renderer fires synchronously at cast — no
+ * setTimeout/projectile delay — and adds no network traffic or payload changes.
+ */
+function renderSpikeTrap(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = getAccentHex('spike_trap') ?? SPIKE_TRAP_COLOR;
+	const emissive = SPIKE_TRAP_EMISSIVE;
+	if (ctx.spawnSpikeTrapEffect) ctx.spawnSpikeTrapEffect(origin, data.radius);
+	if (ctx.spawnTelegraphRing) ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
 }
 
 /**
@@ -1370,7 +1393,7 @@ const CARD_RENDERERS = {
 	bulkhead_mauler: renderShockwaveSweep,
 
 	// Enchantments
-	spike_trap: renderGroundEnchantment,
+	spike_trap: renderSpikeTrap,
 	mirror_ward: renderSelfEnchantment,
 	cinder_snare: renderGroundEnchantment,
 };
