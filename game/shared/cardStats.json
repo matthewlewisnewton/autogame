@@ -210,7 +210,7 @@
   "healing_font": {
     "magicStoneCost": 0,
     "effect": "healing_font",
-    "magicStoneRestore": 6,
+    "healAmount": 6,
     "specialEffect": "mana_restore"
   },
   "purifying_pulse": {
@@ -223,7 +223,7 @@
   "divine_grace": {
     "magicStoneCost": 0,
     "effect": "divine_grace",
-    "magicStoneRestore": 10,
+    "healAmount": 10,
     "isEvolved": true,
     "specialEffect": "mana_restore"
   },

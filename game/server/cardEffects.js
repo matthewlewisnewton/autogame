@@ -578,7 +578,7 @@ function handleUseCard(socket, state, lobby, data) {
       }
 
       if (cardDef.effect === 'healing_font') {
-        const magicStonesGained = addMagicStones(player, cardDef.magicStoneRestore || 0);
+        const hpGained = healPlayer(socket.playerId, cardDef.healAmount || 0);
 
         applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
         replaceConsumedCard(player, data.slotIndex, handCard);
@@ -591,14 +591,14 @@ function handleUseCard(socket, state, lobby, data) {
           specialEffect: cardDef.specialEffect,
           origin: { x: originX, z: originZ },
           radius: SUMMON_RADIUS,
-          magicStonesGained,
+          hpGained,
         });
 
         return;
       }
 
       if (cardDef.effect === 'divine_grace') {
-        const magicStonesGained = addMagicStones(player, cardDef.magicStoneRestore || 0);
+        const hpGained = healPlayer(socket.playerId, cardDef.healAmount || 0);
 
         applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
         replaceConsumedCard(player, data.slotIndex, handCard);
@@ -611,7 +611,7 @@ function handleUseCard(socket, state, lobby, data) {
           specialEffect: cardDef.specialEffect,
           origin: { x: originX, z: originZ },
           radius: SUMMON_RADIUS,
-          magicStonesGained,
+          hpGained,
         });
 
         return;

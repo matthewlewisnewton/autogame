@@ -9,6 +9,7 @@ import {
 	createGameState,
 	gameState,
 	addMagicStones,
+	healPlayer,
 	cleanupAfterDamage,
 	updateEnemies,
 	updateMinions,
@@ -205,26 +206,26 @@ describe('new card combat helpers', () => {
 		expect(isEnemyFrozen(gameState.enemies[0])).toBe(true);
 	});
 
-	it('Restoration Beacon restores Magic Stones without changing HP', () => {
-		addPlayer('p1', { hp: 60, magicStones: 0 });
-		expect(CARD_DEFS.healing_font.healAmount).toBeUndefined();
-		expect(CARD_DEFS.healing_font.magicStoneRestore).toBe(6);
-		const hpBefore = gameState.players.p1.hp;
-		const gained = addMagicStones(gameState.players.p1, CARD_DEFS.healing_font.magicStoneRestore);
+	it('Restoration Beacon restores HP without changing Magic Stones', () => {
+		addPlayer('p1', { hp: 60, magicStones: 50 });
+		expect(CARD_DEFS.healing_font.healAmount).toBe(6);
+		expect(CARD_DEFS.healing_font.magicStoneRestore).toBeUndefined();
+		const msBefore = gameState.players.p1.magicStones;
+		const gained = healPlayer('p1', CARD_DEFS.healing_font.healAmount);
 		expect(gained).toBe(6);
-		expect(gameState.players.p1.magicStones).toBe(6);
-		expect(gameState.players.p1.hp).toBe(hpBefore);
+		expect(gameState.players.p1.hp).toBe(66);
+		expect(gameState.players.p1.magicStones).toBe(msBefore);
 	});
 
-	it('Sanctum Pulse restores magic stones without changing HP', () => {
-		expect(CARD_DEFS.divine_grace.healAmount).toBeUndefined();
-		expect(CARD_DEFS.divine_grace.magicStoneRestore).toBe(10);
-		addPlayer('p1', { hp: 60, magicStones: 0 });
-		const hpBefore = gameState.players.p1.hp;
-		const gained = addMagicStones(gameState.players.p1, CARD_DEFS.divine_grace.magicStoneRestore);
+	it('Sanctum Pulse restores HP without changing Magic Stones', () => {
+		expect(CARD_DEFS.divine_grace.healAmount).toBe(10);
+		expect(CARD_DEFS.divine_grace.magicStoneRestore).toBeUndefined();
+		addPlayer('p1', { hp: 60, magicStones: 50 });
+		const msBefore = gameState.players.p1.magicStones;
+		const gained = healPlayer('p1', CARD_DEFS.divine_grace.healAmount);
 		expect(gained).toBe(10);
-		expect(gameState.players.p1.magicStones).toBe(10);
-		expect(gameState.players.p1.hp).toBe(hpBefore);
+		expect(gameState.players.p1.hp).toBe(70);
+		expect(gameState.players.p1.magicStones).toBe(msBefore);
 	});
 
 	it('Steel Claymore knockback pushes hit enemies along attack direction', () => {
