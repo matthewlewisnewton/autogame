@@ -5648,3 +5648,26 @@ PASS. The implementation is minimal and localized to the expected files. The int
 
 No blocking gaps.
 
+
+## v0.321 — 308-apply-windup-and-lower-charges-to-heavy-hitter-cards  (2026-06-08 02:37:44)
+
+### Card text and rendering
+
+PASS. Hand rendering now shows the wind-up hint for cards with `windUpMs`, the tooltip explains the movement/card lockout, and reward choice descriptions include wind-up-aware damage copy. This satisfies the requirement that card text/rendering convey the heavy wind-up.
+
+### Tests and coverage
+
+PASS. The captured coverage run passed: 38 test files and 1134 tests. Relevant coverage includes merged card stat assertions, charge-value updates, delayed resolution for Solar Edge, Soul Drain, and Corebreaker, input-lock behavior, death cleanup, and UI wind-up hints/tooltips. Coverage thresholds were disabled as expected.
+
+### Design and requirements consistency
+
+PASS. The change stays within the card-combat system described in `game/docs/design.md`: weapons/spells remain card-driven combat actions, charge behavior is preserved, and the wind-up mechanic adds commitment without changing the lobby/dungeon/loot loop. The foundation requirements are not regressed: the captured run renders the scene, connects client/server, shows multiplayer state, and accepts movement.
+
+### Debug scenarios
+
+PASS. This ticket only updates the existing `magma-windup-ready` debug scenario fixture to match the new Corebreaker charge count. Debug scenarios remain gated by the debug socket path, which is only allowed locally or via `ALLOW_DEBUG_SCENARIOS`, and the normal equivalent state is still reachable by obtaining/grinding/evolving `flame_blade` into `magma_greatsword` and entering a run. The shortcut does not replace normal gameplay or weaken the production card-use path; wind-up validation still goes through the same server `useCard` and resolution code.
+
+## Remaining gaps
+
+None.
+
