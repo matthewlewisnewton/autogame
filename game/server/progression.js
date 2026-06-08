@@ -2695,6 +2695,7 @@ function restoreCardCheckpoint() {
     player.runCardDropIds = [];
     player.pendingCardChoices = null;
     player.claimedCardRewardId = null;
+    clearPlayerCardCommitment(player);
   }
 
   const world = checkpoint.worldState;

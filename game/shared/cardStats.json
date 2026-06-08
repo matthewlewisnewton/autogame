@@ -37,6 +37,7 @@
     "damage": 25,
     "attackRange": 7,
     "knockbackStrength": 3,
+    "windUpMs": 600,
     "isEvolved": true,
     "specialEffect": "knockback"
   },
