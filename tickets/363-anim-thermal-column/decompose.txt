@@ -1,0 +1,15 @@
+Broke ticket **363-anim-thermal-column** into **3 sub-tickets** (dependency order):
+
+| # | Focus |
+|---|--------|
+| **01** | Rework `spawnInfernoPillarEffect` — vertical fire column + ground scorch ring, `isThermalColumn` animation, server-matched duration |
+| **02** | `renderInfernoPillar` timing — instant radial burst, per-hit sparks, DoT tick pulses at 500 ms intervals |
+| **03** | Client tests locking dispatch, timing constants, and regression guards |
+
+All use **Verification: code** (criteria cover handlers, timing, structure, and scheduled callbacks — not purely visual).
+
+**Created sub-ticket folders:**
+
+- `/home/matt/workspace/.autogame-worktrees/363-anim-thermal-column/tickets/363-anim-thermal-column/subtickets/01-thermal-column-pillar-vfx`
+- `/home/matt/workspace/.autogame-worktrees/363-anim-thermal-column/tickets/363-anim-thermal-column/subtickets/02-thermal-column-renderer-and-timing`
+- `/home/matt/workspace/.autogame-worktrees/363-anim-thermal-column/tickets/363-anim-thermal-column/subtickets/03-thermal-column-animation-tests`

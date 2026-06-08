@@ -120,3 +120,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [315-cleanup-fix-storm-eagle-thunderbird-attack-interval-gate](tickets/315-cleanup-fix-storm-eagle-thunderbird-attack-interval-gate/)
 - [ ] [316-cleanup-apply-windup-and-lower-charges-to-heavy-hitter-cards](tickets/316-cleanup-apply-windup-and-lower-charges-to-heavy-hitter-cards/)
 - [ ] [317-cleanup-distinct-weapon-card-animations](tickets/317-cleanup-distinct-weapon-card-animations/)
+- [ ] [364-cleanup-anim-thermal-column](tickets/364-cleanup-anim-thermal-column/)

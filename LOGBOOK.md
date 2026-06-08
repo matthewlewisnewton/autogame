@@ -5858,3 +5858,26 @@ PASS. This ticket did not add or modify any `?debugScenario=` shortcut. The capt
 ## Remaining gaps
 
 None.
+
+## v0.331 — 363-anim-thermal-column  (2026-06-08 12:38:16)
+
+### Performance and cleanup
+
+PASS. The new effect adds two active effect meshes plus scheduled primitive pulses, all handled through the existing `activeEffects` lifecycle. The thermal shaft has a dedicated update branch with no per-frame mesh allocation, and tests verify both the scorch ring and shaft are disposed when expired.
+
+### Tests and coverage
+
+PASS. The round's `coverage.log` shows the full client suite passed: 32 files, 527 tests. New coverage exercises renderer registration, removal of the generic summon fallback, cast-time eruption feedback, DoT pulse scheduling, per-hit ignite bursts, absence of wind-up for this instant spell, and primitive lifecycle/disposal. Coverage output contains expected modeled-asset fallback noise from unrelated renderer tests, not failures.
+
+### Design and requirements consistency
+
+PASS. The change is visual-only on the client and does not alter the card combat model, server-client architecture, multiplayer state, movement synchronization, or core dungeon loop described in the design and requirements documents.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=` shortcut. The existing `fire-spells-ready` scenario remains a QA shortcut only; normal reachability remains through reward/evolution progression and the same server card-use path.
+
+## Remaining gaps
+
+None.
+
