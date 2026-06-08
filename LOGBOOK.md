@@ -5667,6 +5667,24 @@ PASS. The change stays within the card-combat system described in `game/docs/des
 
 PASS. This ticket only updates the existing `magma-windup-ready` debug scenario fixture to match the new Corebreaker charge count. Debug scenarios remain gated by the debug socket path, which is only allowed locally or via `ALLOW_DEBUG_SCENARIOS`, and the normal equivalent state is still reachable by obtaining/grinding/evolving `flame_blade` into `magma_greatsword` and entering a run. The shortcut does not replace normal gameplay or weaken the production card-use path; wind-up validation still goes through the same server `useCard` and resolution code.
 
+## v0.320 — 315-card-animation-shared-vfx-primitives-foundation  (2026-06-08 01:05:38)
+
+### Client tests where feasible
+
+PASS. The coverage log shows all tests passing: 30 files, 418 tests. New focused coverage includes primitive lifecycle/disposal tests, accent override tests, card renderer composition/fallback tests, and wind-up charge ratio/telegraph lifecycle tests.
+
+### No performance regression
+
+PASS. The new primitives allocate on effect spawn, then update existing meshes in `updateAttackEffects` without per-frame allocation. Particle effects honor the existing `particlesEnabled` setting, and all new transient meshes are removed and disposed at expiry. No runtime errors or capture regressions were observed.
+
+## Design and requirements consistency
+
+PASS. The changes are client-side visual polish for card combat and do not alter the lobby/dungeon/card-combat loop described in `game/docs/design.md`. They preserve the foundational requirements in `game/docs/requirements.md`: the captured run renders a 3D scene, connects to the backend, shows multiplayer presence, and updates movement during play.
+
+## Debug scenarios
+
+No development debug scenario was added or changed by this ticket. Existing debug scenario plumbing remains outside the changed behavior.
+
 ## Remaining gaps
 
 None.

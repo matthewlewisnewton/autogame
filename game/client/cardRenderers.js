@@ -20,6 +20,10 @@
 //   spawnInfernoPillarEffect(origin, radius)
 //   spawnChainLightningEffect(origin, direction)
 //   spawnLightningArc(from, to, style?)
+//   spawnParticleBurst(position, style?)       — multi-particle spark/ember burst
+//   spawnProjectileTrail(origin, direction, style?) — fading streak along a path
+//   spawnImpactDecal(origin, style?)           — lingering ground flash/decal ring
+//   spawnTelegraphRing(origin, radius, style?) — expanding/pulsing AoE telegraph ring
 //   flashMesh(mesh, color, durationMs)
 //   enemyMeshes()      → { [enemyId]: Three.js mesh }
 //   playSound(name)
@@ -53,6 +57,15 @@ function originOf(data) {
 
 function directionOf(data) {
 	return data.direction || { x: 1, z: 0 };
+}
+
+/** Point `distance` units from `origin` along (normalized) `direction`. */
+function pointAlong(origin, direction, distance) {
+	const len = Math.hypot(direction.x, direction.z) || 1;
+	return {
+		x: origin.x + (direction.x / len) * distance,
+		z: origin.z + (direction.z / len) * distance,
+	};
 }
 
 // ── Card-specific renderers ─────────────────────────────────────────────
@@ -153,7 +166,17 @@ function renderEventHorizon(data, ctx) {
  */
 function renderInfernoPillar(data, ctx) {
 	if (data.radius === undefined) return;
-	ctx.spawnInfernoPillarEffect(originOf(data), data.radius);
+	const origin = originOf(data);
+	ctx.spawnInfernoPillarEffect(origin, data.radius);
+	// Accent-themed AoE telegraph ring + ember burst at the eruption point.
+	const color = getAccentHex(data.cardId) ?? 0xff7a18;
+	const emissive = 0xff3b00;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.2 });
+	}
 }
 
 /**
@@ -247,13 +270,31 @@ function renderWyrmAttack(data, ctx) {
  */
 function renderFireball(data, ctx) {
 	if (!data.origin) return;
-	const accentHex = getAccentHex(data.cardId);
-	ctx.spawnAttackEffect(originOf(data), directionOf(data), {
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex(data.cardId) ?? 0xff7a18;
+	const emissive = 0xff3b00;
+	ctx.spawnAttackEffect(origin, direction, {
 		effect: 'fireball',
 		range: data.attackRange,
-		color: accentHex ?? 0xff7a18,
-		emissive: 0xff3b00,
+		color,
+		emissive,
 	});
+	// Fiery streak chasing the projectile, plus a scorch flourish where it lands.
+	if (ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, {
+			range: data.attackRange,
+			color,
+			emissive,
+		});
+	}
+	const impact = pointAlong(origin, direction, data.attackRange ?? 8);
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(impact, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(impact, { color, emissive, count: 10, spread: 1.6 });
+	}
 }
 
 /**
@@ -293,13 +334,18 @@ function renderPhaseBeam(data, ctx) {
  */
 function renderShockwaveSweep(data, ctx) {
 	if (!data.origin) return;
-	const accentHex = getAccentHex(data.cardId);
+	const color = getAccentHex(data.cardId) ?? 0x78716c;
+	const emissive = 0xf59e0b;
 	ctx.spawnAttackEffect(originOf(data), directionOf(data), {
 		range: data.attackRange,
 		coneAngle: data.attackConeAngle,
-		color: accentHex ?? 0x78716c,
-		emissive: 0xf59e0b,
+		color,
+		emissive,
 	});
+	// Debris spray kicked up at the construct's feet on impact.
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(originOf(data), { color, emissive, count: 10, spread: 1.6 });
+	}
 }
 
 /**

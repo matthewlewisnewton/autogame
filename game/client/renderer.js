@@ -91,6 +91,8 @@ import {
 import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
 import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled, getAccountProfile } from './settings.js';
 import { MODEL_REGISTRY, loadModel, modelPathFor } from './models.js';
+import { getCardDef } from './cards.js';
+import { getAccentHex } from './cardRenderers.js';
 import eventsCatalog from '../shared/events.json' with { type: 'json' };
 
 const { clientToServer: CLIENT_TO_SERVER } = eventsCatalog;
@@ -1212,6 +1214,7 @@ export function getMeshMaps() {
 		minionsMeshes,
 		lootMeshes,
 		iceBallMeshes,
+		playerCardWindupMarkers,
 	};
 }
 
@@ -3691,15 +3694,56 @@ function createEnemyRadialTelegraph(range) {
 	return mesh;
 }
 
-/** Sky-blue ring for player card wind-up — distinct from enemy attack telegraphs. */
-function createPlayerCardWindupTelegraph() {
+// ── Card wind-up charge telegraph tuning ──
+// The telegraph grows from a small/dim state to a large/bright state as the
+// wind-up charge ratio climbs 0→1, so heavy wind-up cards visibly "charge a
+// big hit". Defaults match the previous static look at full charge.
+const WINDUP_DEFAULT_ACCENT = 0x38bdf8; // sky-blue, used when the card has no accent
+const WINDUP_RING_MIN_SCALE = 0.55;
+const WINDUP_RING_MAX_SCALE = 1.5;
+const WINDUP_RING_MIN_EMISSIVE = 0.4;
+const WINDUP_RING_MAX_EMISSIVE = 2.0;
+const WINDUP_RING_MIN_OPACITY = 0.3;
+const WINDUP_RING_MAX_OPACITY = 0.7;
+const WINDUP_FLASH_MIN_EMISSIVE = 0.35;
+const WINDUP_FLASH_MAX_EMISSIVE = 1.6;
+
+function lerp(a, b, t) {
+	return a + (b - a) * t;
+}
+
+/**
+ * Normalized 0→1 charge ratio for a card wind-up, derived from the broadcast
+ * `cardWindupUntil` timestamp and the card's wind-up duration (`windUpMs`). The
+ * ratio is 0 at the start of the wind-up and reaches 1 exactly when the lockout
+ * ends, regardless of the card's individual `windUpMs`. Pure + sceneless so it
+ * can be unit tested directly.
+ */
+export function computeWindupChargeRatio(now, windupUntil, windUpMs) {
+	if (!Number.isFinite(windUpMs) || windUpMs <= 0) return 1;
+	if (!Number.isFinite(windupUntil) || windupUntil <= 0) return 0;
+	const remaining = windupUntil - now;
+	const ratio = 1 - remaining / windUpMs;
+	if (ratio <= 0) return 0;
+	if (ratio >= 1) return 1;
+	return ratio;
+}
+
+/** Accent tint (hex int) for a wind-up card, falling back to the default blue. */
+export function resolveWindupAccentHex(cardId) {
+	const hex = getAccentHex(cardId);
+	return hex === undefined ? WINDUP_DEFAULT_ACCENT : hex;
+}
+
+/** Ring for player card wind-up — distinct from enemy attack telegraphs. */
+function createPlayerCardWindupTelegraph(accentHex = WINDUP_DEFAULT_ACCENT) {
 	const geo = new THREE.RingGeometry(0.38, 0.58, 32);
 	const mat = new THREE.MeshStandardMaterial({
-		color: 0x38bdf8,
-		emissive: 0x0ea5e9,
-		emissiveIntensity: 1.2,
+		color: accentHex,
+		emissive: accentHex,
+		emissiveIntensity: WINDUP_RING_MIN_EMISSIVE,
 		transparent: true,
-		opacity: 0.55,
+		opacity: WINDUP_RING_MIN_OPACITY,
 		side: THREE.DoubleSide,
 		depthWrite: false,
 	});
@@ -3708,17 +3752,18 @@ function createPlayerCardWindupTelegraph() {
 	return mesh;
 }
 
-function applyPlayerCardWindupFlash(playerId, isWindup) {
+function applyPlayerCardWindupFlash(playerId, isWindup, accentHex = WINDUP_DEFAULT_ACCENT, ratio = 0) {
 	const avatar = playersMeshes[playerId];
 	const body = avatar?.userData?.bodyMesh;
 	if (!body?.material?.emissive) return;
 
 	if (isWindup) {
 		if (!playerCardWindupFlashing.has(playerId)) {
-			body.material.emissive.set(0x38bdf8);
-			body.material.emissiveIntensity = 1.2;
+			body.material.emissive.set(accentHex);
 			playerCardWindupFlashing.add(playerId);
 		}
+		// Brighten the avatar as the charge builds toward the hit.
+		body.material.emissiveIntensity = lerp(WINDUP_FLASH_MIN_EMISSIVE, WINDUP_FLASH_MAX_EMISSIVE, ratio);
 	} else if (playerCardWindupFlashing.has(playerId)) {
 		body.material.emissive.set(0x000000);
 		body.material.emissiveIntensity = 0;
@@ -3726,18 +3771,30 @@ function applyPlayerCardWindupFlash(playerId, isWindup) {
 	}
 }
 
-function applyPlayerCardWindupIndicator(id, player, x, z) {
+export function applyPlayerCardWindupIndicator(id, player, x, z, now = Date.now()) {
 	const windup = isPlayerCardWindup(player);
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
 	if (windup) {
-		applyPlayerCardWindupFlash(id, true);
+		const accentHex = resolveWindupAccentHex(player.cardWindupCardId);
+		const windUpMs = getCardDef(player.cardWindupCardId)?.windUpMs;
+		const ratio = computeWindupChargeRatio(now, player.cardWindupUntil, windUpMs);
+
+		applyPlayerCardWindupFlash(id, true, accentHex, ratio);
 		if (!playerCardWindupMarkers[id]) {
-			const ring = createPlayerCardWindupTelegraph();
-			scene.add(ring);
+			const ring = createPlayerCardWindupTelegraph(accentHex);
+			targetScene.add(ring);
 			playerCardWindupMarkers[id] = ring;
 		}
-		playerCardWindupMarkers[id].position.set(x, GROUND_OVERLAY_Y + 0.02, z);
+		const ring = playerCardWindupMarkers[id];
+		ring.position.set(x, GROUND_OVERLAY_Y + 0.02, z);
+		// Grow + brighten the existing mesh each frame — no per-frame allocation.
+		ring.scale.setScalar(lerp(WINDUP_RING_MIN_SCALE, WINDUP_RING_MAX_SCALE, ratio));
+		if (ring.material) {
+			ring.material.emissiveIntensity = lerp(WINDUP_RING_MIN_EMISSIVE, WINDUP_RING_MAX_EMISSIVE, ratio);
+			ring.material.opacity = lerp(WINDUP_RING_MIN_OPACITY, WINDUP_RING_MAX_OPACITY, ratio);
+		}
 	} else {
-		disposeOne(playerCardWindupMarkers, id, scene);
+		disposeOne(playerCardWindupMarkers, id, targetScene);
 		applyPlayerCardWindupFlash(id, false);
 	}
 }
@@ -4551,6 +4608,200 @@ export function spawnChainLightningEffect(origin, direction) {
 	});
 }
 
+// ── Shared accent-themeable VFX primitives ──
+//
+// The four helpers below are reusable building blocks for per-card renderers.
+// Each accepts a trailing `style = {}` bundle that honors a `color` and
+// `emissive` override (used for accent theming), pushes onto `activeEffects`,
+// and is advanced + disposed by its own flagged branch in updateAttackEffects()
+// so it leaves no leaked meshes. They follow the existing
+// geometry/material/disposeEffectObject conventions and allocate nothing per
+// frame in the update loop.
+
+/**
+ * Spawn a multi-particle spark/ember burst — a richer sibling of spawnHitSpark.
+ * Each particle flies outward along a random direction and fades. Honors
+ * `count`, `spread`, `color`, `emissive`, `duration`.
+ * @param {object} position - { x, y, z }
+ * @param {object} [style]
+ */
+export function spawnParticleBurst(position, style = {}) {
+	if (!areParticlesEnabled()) return;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const color = style.color ?? 0xffd166;
+	const emissive = style.emissive ?? 0xf97316;
+	const count = style.count ?? 8;
+	const spread = style.spread ?? 1.4;
+	const py = position.y ?? 1.0;
+
+	const group = new THREE.Group();
+	group.position.set(position.x, py, position.z);
+
+	for (let i = 0; i < count; i += 1) {
+		const geometry = new THREE.IcosahedronGeometry
+			? new THREE.IcosahedronGeometry(0.08, 0)
+			: new THREE.SphereGeometry(0.08, 6, 6);
+		const material = new THREE.MeshStandardMaterial({
+			color,
+			emissive,
+			emissiveIntensity: 1.4,
+			transparent: true,
+			opacity: 1.0,
+		});
+		const particle = new THREE.Mesh(geometry, material);
+		const angle = Math.random() * Math.PI * 2;
+		const elevation = 0.2 + Math.random() * 0.6;
+		const speed = spread * (0.5 + Math.random() * 0.5);
+		particle.userData.velocity = {
+			x: Math.cos(angle) * speed,
+			y: elevation * speed,
+			z: Math.sin(angle) * speed,
+		};
+		group.add(particle);
+	}
+	targetScene.add(group);
+
+	activeEffects.push({
+		mesh: group,
+		_scene: targetScene,
+		isParticleBurst: true,
+		createdAt: performance.now(),
+		duration: style.duration ?? HIT_SPARK_DURATION,
+	});
+}
+
+/**
+ * Spawn a fading streak that follows a projectile path along `direction`.
+ * Travels `range` units over `travelMs` and fades out. Honors `color`,
+ * `emissive`, `range`, `travelMs`, `y`.
+ * @param {object} origin - { x, z }
+ * @param {object} direction - { x, z }
+ * @param {object} [style]
+ */
+export function spawnProjectileTrail(origin, direction, style = {}) {
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const dir = direction || { x: 1, z: 0 };
+	const len = Math.hypot(dir.x, dir.z) || 1;
+	const nx = dir.x / len;
+	const nz = dir.z / len;
+	const range = style.range ?? ATTACK_RANGE;
+	const color = style.color ?? 0x93c5fd;
+	const emissive = style.emissive ?? 0x3b82f6;
+	const y = style.y ?? 1.0;
+
+	// An elongated box oriented along the travel direction reads as a streak.
+	const geometry = new THREE.BoxGeometry(0.1, 0.1, 1.0);
+	const material = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 1.0,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.position.set(origin.x, y, origin.z);
+	mesh.rotation.y = Math.atan2(nx, nz);
+	targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		_scene: targetScene,
+		origin: { x: origin.x, z: origin.z },
+		direction: { x: nx, z: nz },
+		range,
+		isProjectileTrail: true,
+		createdAt: performance.now(),
+		duration: style.travelMs ?? style.duration ?? ATTACK_EFFECT_DURATION,
+	});
+}
+
+/**
+ * Spawn a short-lived lingering ground flash/decal ring at an impact point
+ * that pops in then fades out. Honors `color`, `emissive`, `radius`, `duration`.
+ * @param {object} origin - { x, z }
+ * @param {object} [style]
+ */
+export function spawnImpactDecal(origin, style = {}) {
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const color = style.color ?? 0xfca5a5;
+	const emissive = style.emissive ?? 0xef4444;
+	const radius = style.radius ?? 0.8;
+
+	const geometry = new THREE.RingGeometry(radius * 0.25, radius, 32);
+	const material = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.1,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.position.set(origin.x, GROUND_OVERLAY_Y, origin.z);
+	mesh.rotation.x = -Math.PI / 2;
+	mesh.scale.setScalar(0.6);
+	targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		_scene: targetScene,
+		isImpactDecal: true,
+		createdAt: performance.now(),
+		duration: style.duration ?? HIT_SPARK_DURATION,
+	});
+}
+
+/**
+ * Spawn an expanding/pulsing ground ring used to telegraph an incoming AoE.
+ * Expands out to `radius`, pulses, and fades. Honors `color`, `emissive`,
+ * `duration`.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ * @param {object} [style]
+ */
+export function spawnTelegraphRing(origin, radius, style = {}) {
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const r = radius ?? 1.5;
+	const color = style.color ?? 0xfacc15;
+	const emissive = style.emissive ?? 0xf59e0b;
+
+	// Unit-radius ring (outer 1.0); scaled up to `r` in the update branch.
+	const geometry = new THREE.RingGeometry(0.82, 1.0, 48);
+	const material = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.0,
+		transparent: true,
+		opacity: 0.85,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.position.set(origin.x, GROUND_OVERLAY_Y, origin.z);
+	mesh.rotation.x = -Math.PI / 2;
+	mesh.scale.setScalar(0.001);
+	targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		_scene: targetScene,
+		telegraphRadius: r,
+		isTelegraphRing: true,
+		createdAt: performance.now(),
+		duration: style.duration ?? SUMMON_EFFECT_DURATION,
+	});
+}
+
 /**
  * Per-frame update for attack effects: move projectiles, expand/fade summon rings,
  * scale/fade sparks, dispose expired.
@@ -4607,6 +4858,64 @@ export function updateAttackEffects() {
 				(fx._scene || scene).remove(fx.mesh);
 				fx.mesh.geometry.dispose();
 				fx.mesh.material.dispose();
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Shared primitive: multi-particle burst ──
+		if (fx.isParticleBurst) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const opacity = Math.max(0.01, 1.0 - t);
+			for (let c = 0; c < fx.mesh.children.length; c++) {
+				const particle = fx.mesh.children[c];
+				const v = particle.userData.velocity;
+				particle.position.set(v.x * t, v.y * t - t * t * 0.8, v.z * t);
+				particle.material.opacity = opacity;
+			}
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Shared primitive: projectile trail streak ──
+		if (fx.isProjectileTrail) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const travel = fx.range * t;
+			fx.mesh.position.x = fx.origin.x + fx.direction.x * travel;
+			fx.mesh.position.z = fx.origin.z + fx.direction.z * travel;
+			fx.mesh.material.opacity = Math.max(0.01, 1.0 - t);
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Shared primitive: lingering impact decal ──
+		if (fx.isImpactDecal) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const scale = t < 0.2 ? 0.6 + (t / 0.2) * 0.4 : 1.0;
+			fx.mesh.scale.setScalar(scale);
+			fx.mesh.material.opacity = Math.max(0.01, 1.0 - t);
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Shared primitive: expanding/pulsing telegraph ring ──
+		if (fx.isTelegraphRing) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const expandT = Math.min(t / 0.4, 1.0);
+			fx.mesh.scale.setScalar(Math.max(0.001, fx.telegraphRadius * expandT));
+			const pulse = 0.55 + 0.35 * Math.abs(Math.sin(elapsed / 120));
+			fx.mesh.material.opacity = Math.max(0.01, pulse * (1.0 - t));
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
 				activeEffects.splice(i, 1);
 			}
 			continue;
@@ -5109,7 +5418,7 @@ export function animate(timestamp) {
 
 			const windupX = id === myId ? myX : pData.x;
 			const windupZ = id === myId ? myZ : pData.z;
-			applyPlayerCardWindupIndicator(id, pData, windupX, windupZ);
+			applyPlayerCardWindupIndicator(id, pData, windupX, windupZ, Date.now());
 
 			if (id === myId) continue;
 

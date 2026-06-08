@@ -1,0 +1,14 @@
+I broke the top-level ticket into 3 code-verifiable sub-tickets in dependency order:
+
+**01 — Shared VFX primitives** (`renderer.js` + `main.js` ctx wiring + `cardRenderers.js` docs): adds `spawnParticleBurst`, `spawnProjectileTrail`, `spawnImpactDecal`, `spawnTelegraphRing` with pooled lifecycles in `updateAttackEffects()`, accent-theme-aware, exposed on the ctx, plus unit tests. Foundation only.
+
+**02 — Wind-up charge telegraph**: upgrades the static player wind-up indicator into a growing accent-tinted charge animation driven by the already-broadcast `cardWindupUntil` / `cardWindupCardId`, with a testable charge-ratio helper and clean teardown. Renderer-internal, so it's independent of 01.
+
+**03 — Exemplar card upgrades** (depends on 01): rewires 2–3 renderers (fireball, an AoE spell, a melee hit) to compose the new primitives with `getAccentHex` theming, guarded for partial ctx, plus tests.
+
+All three are `code` verification — every criterion concerns function/helper existence, ctx wiring, snapshot-driven timing/rate, teardown, and renderers invoking specific helpers, none of which a single happy-path screenshot run can confirm.
+
+Created sub-ticket folders:
+- `tickets/315-card-animation-shared-vfx-primitives-foundation/subtickets/01-shared-vfx-primitives/ticket.md`
+- `tickets/315-card-animation-shared-vfx-primitives-foundation/subtickets/02-windup-charge-telegraph/ticket.md`
+- `tickets/315-card-animation-shared-vfx-primitives-foundation/subtickets/03-exemplar-card-upgrades/ticket.md`

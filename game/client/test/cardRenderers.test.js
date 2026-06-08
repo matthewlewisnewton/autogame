@@ -22,6 +22,10 @@ function makeCtx(overrides = {}) {
 		spawnInfernoPillarEffect: record('spawnInfernoPillarEffect'),
 		spawnChainLightningEffect: record('spawnChainLightningEffect'),
 		spawnLightningArc: record('spawnLightningArc'),
+		spawnParticleBurst: record('spawnParticleBurst'),
+		spawnProjectileTrail: record('spawnProjectileTrail'),
+		spawnImpactDecal: record('spawnImpactDecal'),
+		spawnTelegraphRing: record('spawnTelegraphRing'),
 		flashMesh: record('flashMesh'),
 		spawnHitSpark: record('spawnHitSpark'),
 		enemyMeshes: () => ({}),
@@ -334,6 +338,49 @@ describe('renderCardUsed() — weapon dispatch', () => {
 		expect(attacks[0][3]).toMatchObject({ effect: 'fireball', range: 9 });
 	});
 
+	it('fireball adds an accent-tinted projectile trail, impact decal and ember burst', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'fireball',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			attackRange: 9,
+			hits: [],
+		}, ctx);
+		// fireball accent color is 0xf97316
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail).toBeDefined();
+		expect(trail[1]).toEqual({ x: 1, z: 2 });
+		expect(trail[2]).toEqual({ x: 1, z: 0 });
+		expect(trail[3]).toMatchObject({ range: 9, color: 0xf97316 });
+		// Impact decal + ember burst land at origin + direction * range = (10, 2).
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 10, z: 2 });
+		expect(decal[2]).toMatchObject({ color: 0xf97316 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 10, z: 2 });
+		expect(burst[2]).toMatchObject({ color: 0xf97316 });
+	});
+
+	it('fireball still renders without throwing when the new ctx primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnProjectileTrail: undefined,
+			spawnImpactDecal: undefined,
+			spawnParticleBurst: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'fireball',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			attackRange: 9,
+			hits: [],
+		}, ctx)).not.toThrow();
+		// The original projectile visual still fires.
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+	});
+
 	it('spawns a single ice_ball-effect projectile with slow travel time', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
@@ -492,6 +539,37 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnInfernoPillarEffect')).toBe(true);
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(true);
 	});
+
+	it('inferno_pillar adds an accent telegraph ring and ember burst at the eruption point', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'inferno_pillar',
+			origin: { x: 4, z: 5 },
+			radius: 7,
+			hits: [],
+		}, ctx);
+		// inferno_pillar accent color is 0xef4444
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 4, z: 5 });
+		expect(ring[2]).toBe(7);
+		expect(ring[3]).toMatchObject({ color: 0xef4444 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 4, z: 5 });
+		expect(burst[2]).toMatchObject({ color: 0xef4444 });
+	});
+
+	it('inferno_pillar still renders without throwing when the new ctx primitives are absent', () => {
+		const ctx = makeCtx({ spawnTelegraphRing: undefined, spawnParticleBurst: undefined });
+		expect(() => renderCardUsed({
+			cardId: 'inferno_pillar',
+			origin: { x: 0, z: 0 },
+			radius: 7,
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnInfernoPillarEffect')).toBe(true);
+	});
 });
 
 describe('renderCardUsed() — creature dispatch', () => {
@@ -609,6 +687,25 @@ describe('renderCardUsed() — creature dispatch', () => {
 			color: 0x78716c,
 			emissive: 0xf59e0b,
 		});
+		// Accent-tinted debris burst at the construct's feet.
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 0, z: 0 });
+		expect(burst[2]).toMatchObject({ color: 0x78716c, emissive: 0xf59e0b });
+	});
+
+	it('Bulkhead Mauler still renders without throwing when spawnParticleBurst is absent', () => {
+		const ctx = makeCtx({ spawnParticleBurst: undefined });
+		expect(() => renderCardUsed({
+			cardId: 'bulkhead_mauler',
+			specialEffect: 'shockwave_sweep',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			attackRange: 4,
+			attackConeAngle: (Math.PI * 2) / 3,
+			hits: [{ enemyId: 'e1', hp: 41 }],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 
 	it('undead_commander renders a caster ring and one ring per spawned skeleton', () => {
