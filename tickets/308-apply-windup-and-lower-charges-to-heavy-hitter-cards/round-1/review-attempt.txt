@@ -1,0 +1,8 @@
+Wrote the review artifacts:
+
+- `tickets/308-apply-windup-and-lower-charges-to-heavy-hitter-cards/round-1/review.md`
+- `tickets/308-apply-windup-and-lower-charges-to-heavy-hitter-cards/round-1/gaps.md`
+
+Verdict is `VERDICT: FAIL`.
+
+The captured game run is healthy, but the wind-up debug scenarios inject stale charge counts: Corebreaker at `4/4` instead of `3/3`, and Solar Edge at `3/3` instead of `2/2`. No `nits.md` was created.

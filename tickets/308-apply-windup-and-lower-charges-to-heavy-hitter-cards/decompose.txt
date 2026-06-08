@@ -1,0 +1,4 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Done. Created one new sub-ticket:
+
+- `subtickets/06-show-windup-warning-in-card-hand/ticket.md` — Add a wind-up warning badge to the in-run card-hand render for `flame_blade` and `magma_greatsword`, with CSS styling and client tests verifying the badge appears for wind-up cards and is absent for cards without wind-up.

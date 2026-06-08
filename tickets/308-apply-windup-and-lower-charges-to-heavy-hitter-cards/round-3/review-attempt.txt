@@ -1,0 +1,11 @@
+Wrote the review artifacts.
+
+Verdict: `VERDICT: FAIL`
+
+Reason: the game runs cleanly and the wind-up/charge behavior is implemented, but the normal player-facing card render still does not show the wind-up/commit warning for Solar Edge or Corebreaker Greatsword.
+
+Files written:
+- `tickets/308-apply-windup-and-lower-charges-to-heavy-hitter-cards/round-3/review.md`
+- `tickets/308-apply-windup-and-lower-charges-to-heavy-hitter-cards/round-3/gaps.md`
+
+No `nits.md` was created.

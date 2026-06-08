@@ -1,0 +1,16 @@
+No nits.md — the only finding is the blocking gap itself (no separate low-priority cleanups introduced by this ticket).
+
+## Verdict: FAIL
+
+**Game runs clean** — `metrics.json` `ok: true`, empty `pageerrors`, no fatal console errors; Solar Edge renders live at `2/2` charges.
+
+What's solid:
+- **Wind-up (DO 1):** `flame_blade` gets `windUpMs: 600`; `magma_greatsword` keeps `800` (bigger hit → longer commit). Deferred-resolution path is well covered — damage/`cardUsed` fire only after the window, player is committed during it, death cancels, non-windUp weapons still resolve instantly.
+- **Reduced charges (DO 2):** `flame_blade` 3→2, `magma_greatsword` 4→3; verified live and in tests. Fast multi-swing `excalibur_photon` correctly excluded.
+- **Debug scenario:** `flame-blade-windup-ready` is properly gated, reachable through normal play, and derives charges from `CARD_DEFS`.
+- 30/30 target tests green.
+
+The blocking gap:
+- **DO 3 ("card text reflects it") is unmet.** The `description` strings added to both cards in `cardDefs.json` are **dead data** — no card UI reads `def.description`. The reward-choice screen uses `cardChoiceDescription(def)`, which derives text from `specialEffect`/type and ignores the field; the in-game hand shows only name + charges; the deck/forge viewer shows stats only. So no player-facing card text ever conveys the wind-up, despite the 03 commit message claiming it appears in the codex/deck-viewer/reward-choice UI.
+
+Fix is small (have `cardChoiceDescription` prefer `def.description`), captured in `gaps.md`. Wrote `review.md` (overwrote the prior one) and `gaps.md`; no `nits.md` needed.
