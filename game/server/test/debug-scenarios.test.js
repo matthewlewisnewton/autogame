@@ -1566,6 +1566,130 @@ describe('debugScenario — fire-cavern', () => {
 	});
 });
 
+describe('debugScenario — ember-descent harness shortcuts', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('repositions beside live support adds after fire-cavern deploy', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const deployPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'fire-cavern' });
+		const deployResult = await deployPromise;
+		expect(deployResult.ok).toBe(true);
+
+		const state = testGameState();
+		const player = playerForSocket(socket);
+		expect(state.layout.profile).toBe('fire-cavern');
+
+		const addsBefore = state.enemies.filter(
+			(e) => e.hp > 0 && e.type !== 'ember_wraith' && (e.type === 'grunt' || e.type === 'skirmisher'),
+		);
+		expect(addsBefore.length).toBeGreaterThan(0);
+
+		const nearAddsPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('debugScenario', { name: 'ember-descent-near-adds' });
+		const nearAddsResult = await nearAddsPromise;
+		await stateUpdatePromise;
+
+		expect(nearAddsResult.ok).toBe(true);
+		expect(nearAddsResult.scenario).toBe('ember-descent-near-adds');
+
+		expect(player.hand[0]?.type).toBe('weapon');
+		expect(player.hand[0]?.remainingCharges).toBeGreaterThan(0);
+
+		const liveAdds = state.enemies.filter(
+			(e) => e.hp > 0 && e.type !== 'ember_wraith' && (e.type === 'grunt' || e.type === 'skirmisher'),
+		);
+		expect(liveAdds.length).toBe(addsBefore.length);
+		expect(liveAdds.every((e) => e.hp === 1 && !e.shieldHp)).toBe(true);
+		for (const add of liveAdds) {
+			expect(add.y).toBe(resolveFloorY(sampleFloorY(state.layout, add.x, add.z)));
+		}
+		expect(player.y).toBe(resolveFloorY(sampleFloorY(state.layout, player.x, player.z)));
+
+		let bestDist = Infinity;
+		for (const add of liveAdds) {
+			const dist = Math.hypot(add.x - player.x, add.z - player.z);
+			if (dist < bestDist) bestDist = dist;
+		}
+		expect(bestDist).toBeGreaterThanOrEqual(2);
+		expect(bestDist).toBeLessThanOrEqual(5);
+	});
+
+	it('spawns ember_wraith with godmode off for burn QA after fire-cavern deploy', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const deployPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'fire-cavern' });
+		await deployPromise;
+
+		playerForSocket(socket).debugGodmode = true;
+
+		const burnPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'ember-descent-ember-wraith-burn' });
+		const burnResult = await burnPromise;
+
+		expect(burnResult.ok).toBe(true);
+		expect(burnResult.scenario).toBe('ember-descent-ember-wraith-burn');
+
+		const state = testGameState();
+		const player = playerForSocket(socket);
+		expect(player.debugGodmode).toBe(false);
+		expect(state.enemies.length).toBe(1);
+		expect(state.enemies[0].type).toBe('ember_wraith');
+		expect(state.enemies[0].hp).toBeGreaterThan(0);
+		expect(player.hp).toBeGreaterThan(30);
+	});
+
+	it('leaves one 1-HP enemy with objective not yet complete after fire-cavern deploy', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const deployPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'fire-cavern' });
+		await deployPromise;
+
+		const lastEnemyPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'ember-descent-last-enemy' });
+		const lastEnemyResult = await lastEnemyPromise;
+
+		expect(lastEnemyResult.ok).toBe(true);
+		expect(lastEnemyResult.scenario).toBe('ember-descent-last-enemy');
+
+		const state = testGameState();
+		const player = playerForSocket(socket);
+		expect(state.gamePhase).toBe('playing');
+		expect(state.run.status).toBe('playing');
+		expect(state.run.objective.type).toBe('defeat_enemies');
+		expect(state.run.objective.defeatedEnemies).toBeLessThan(state.run.objective.totalEnemies);
+		expect(state.enemies.length).toBe(1);
+		expect(state.enemies[0].hp).toBe(1);
+		expect(state.enemies[0].y).toBe(
+			resolveFloorY(sampleFloorY(state.layout, state.enemies[0].x, state.enemies[0].z)),
+		);
+
+		const dist = Math.hypot(state.enemies[0].x - player.x, state.enemies[0].z - player.z);
+		expect(dist).toBeGreaterThanOrEqual(2);
+		expect(dist).toBeLessThanOrEqual(5.5);
+	});
+});
+
 describe('debugScenario — hat-shop-currency', () => {
 	let baseUrl;
 	let prevAllowDebug;

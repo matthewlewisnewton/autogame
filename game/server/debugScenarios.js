@@ -183,6 +183,12 @@ function liveCanyonDescentAdds(state, bossType = 'miniboss') {
   );
 }
 
+function liveEmberDescentAdds(state) {
+  return (state.enemies || []).filter(
+    (e) => e.hp > 0 && e.type !== 'ember_wraith' && (e.type === 'grunt' || e.type === 'skirmisher'),
+  );
+}
+
 function liveArenaTrialsAdds(state, bossType = 'arena_champion') {
   const bossId = state.run?.encounter?.bossEnemyId;
   return (state.enemies || []).filter(
@@ -856,6 +862,128 @@ function applyDebugScenario(socket, name) {
         ok: true,
         scenario: name,
       };
+    }
+
+    if (name === 'ember-descent-near-adds') {
+      // Reposition beside live Ember Descent Tier 1 support adds for harness add-combat QA.
+      // Reachable normally by traversing rim/ramp/basin bands toward wandering adds.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'ember_descent'
+        || state.selectedQuestTier !== 1
+        || state.run?.objective?.type !== 'defeat_enemies') {
+        return { ok: false, reason: 'Requires ember_descent Tier 1 defeat_enemies run' };
+      }
+      const adds = liveEmberDescentAdds(state);
+      if (adds.length === 0) {
+        return { ok: false, reason: 'No live support adds to approach' };
+      }
+      let nearest = adds[0];
+      let bestDist = Infinity;
+      for (const add of adds) {
+        const dist = Math.hypot(add.x - player.x, add.z - player.z);
+        if (dist < bestDist) {
+          bestDist = dist;
+          nearest = add;
+        }
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.hand[0] = {
+        id: 'iron_sword',
+        name: 'Rust-Forged Saber',
+        type: 'weapon',
+        damage: 17,
+        charges: 5,
+        remainingCharges: 5,
+        grind: 0,
+      };
+      const playerBand = bandAt(state.layout, player.x, player.z) || 'rim';
+      const clusterAnchor = clusterAnchorForBand(state.layout, playerBand, player);
+      const clusterRadius = 4;
+      let angle = 0;
+      const step = adds.length > 0 ? (Math.PI * 2) / adds.length : 0;
+      for (const add of adds) {
+        add.hp = 1;
+        add.shieldHp = 0;
+        add.maxShieldHp = 0;
+        add.x = clusterAnchor.x + Math.cos(angle) * clusterRadius;
+        add.z = clusterAnchor.z + Math.sin(angle) * clusterRadius;
+        add.y = resolveFloorY(sampleFloorY(state.layout, add.x, add.z));
+        add.wanderTarget = { x: add.x, z: add.z };
+        angle += step;
+      }
+      player.x = clusterAnchor.x;
+      player.z = clusterAnchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      repositionNearEnemy(player, nearest);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'ember-descent-ember-wraith-burn') {
+      // One Ember Wraith in cone-strike range with godmode off for burn-on-hit QA.
+      // Reachable normally on ember_descent runs when an ember_wraith attacks the player.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'ember_descent'
+        || state.selectedQuestTier !== 1
+        || state.run?.objective?.type !== 'defeat_enemies') {
+        return { ok: false, reason: 'Requires ember_descent Tier 1 defeat_enemies run' };
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.debugGodmode = false;
+      state.enemies = [];
+      const wraith = spawnEnemy(player.x + 3, player.z, 'ember_wraith');
+      wraith.y = resolveFloorY(sampleFloorY(state.layout, wraith.x, wraith.z));
+      wraith.wanderTarget = { x: wraith.x, z: wraith.z };
+      syncRunObjectiveToEnemies();
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'ember-descent-last-enemy') {
+      // Leave a defeat_enemies run one 1-HP enemy from victory on fire-cavern bands.
+      // Reachable normally by clearing all but the last hostile of an Ember Descent run.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'ember_descent'
+        || state.selectedQuestTier !== 1
+        || state.run?.objective?.type !== 'defeat_enemies') {
+        return { ok: false, reason: 'Requires ember_descent Tier 1 defeat_enemies run' };
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const total = state.run.objective.totalEnemies ?? 6;
+      const defeated = Math.max(0, total - 1);
+      state.enemies = [];
+      const enemyType = 'grunt';
+      const enemy = spawnEnemy(player.x + 2, player.z, enemyType);
+      enemy.hp = 1;
+      enemy.maxHp = ENEMY_DEFS[enemyType]?.hp ?? enemy.maxHp;
+      enemy.y = resolveFloorY(sampleFloorY(state.layout, enemy.x, enemy.z));
+      enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+      repositionNearEnemy(player, enemy);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      state.run.objective.totalEnemies = total;
+      state.run.objective.defeatedEnemies = defeated;
+      if (!player.hand.some((c) => c && c.type === 'weapon' && (c.remainingCharges == null || c.remainingCharges > 0))) {
+        const replaceSlot = player.hand.findIndex((c) => c && c.type !== 'weapon');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = {
+            id: 'iron_sword',
+            name: 'Rust-Forged Saber',
+            type: 'weapon',
+            charges: 5,
+            remainingCharges: 5,
+            grind: 0,
+          };
+        }
+      }
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
     }
 
     if (name === 'canyon-descent-tier-2') {
