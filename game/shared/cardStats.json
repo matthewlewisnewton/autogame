@@ -3,6 +3,7 @@
   "flame_blade": { "damage": 28 },
   "battle_familiar": { "magicStoneCost": 50, "damage": 44 },
   "dungeon_drake": {
+    "windUpMs": 600,
     "minionTtl": 30,
     "attackDamage": 2,
     "burnDurationMs": 2000,
@@ -201,6 +202,7 @@
     "projectileTravelMs": 1200
   },
   "glacier_collapse": {
+    "windUpMs": 700,
     "magicStoneCost": 35,
     "effect": "glacier_collapse",
     "damage": 17,
@@ -333,6 +335,7 @@
     "specialEffect": "portal"
   },
   "spike_trap": {
+    "windUpMs": 500,
     "magicStoneCost": 25,
     "effect": "spike_trap",
     "target": "ground",

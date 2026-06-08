@@ -117,11 +117,11 @@ describe('card wind-up backward compatibility', () => {
 		});
 	});
 
-	it('dungeon_drake resolves instantly, spawns a minion, and does not commit', async () => {
+	it('skeleton_knight resolves instantly, spawns a minion, and does not commit', async () => {
 		await connectAndStartRun();
 		const { state, player } = setupInstantCardScenario({
-			id: 'dungeon_drake',
-			name: 'Vault Wyrm',
+			id: 'skeleton_knight',
+			name: 'Necroframe Knight',
 			type: 'creature',
 			charges: 1,
 			remainingCharges: 1,
@@ -129,7 +129,7 @@ describe('card wind-up backward compatibility', () => {
 		const minionsBefore = state.minions.length;
 
 		const cardUsedPromise = waitForEvent(socket, 'cardUsed');
-		socket.emit('useCard', { cardId: 'dungeon_drake', slotIndex: 0, rotation: 0 });
+		socket.emit('useCard', { cardId: 'skeleton_knight', slotIndex: 0, rotation: 0 });
 		await cardUsedPromise;
 
 		expect(player.cardUseState).toBeUndefined();
@@ -138,11 +138,14 @@ describe('card wind-up backward compatibility', () => {
 		expect(state.minions.some((m) => m.ownerId === socket._playerId)).toBe(true);
 	});
 
-	it('exposes windUpMs on steel_claymore without affecting instant cards', () => {
+	it('exposes windUpMs on exemplar cards without affecting instant cards', () => {
 		expect(getCardDef('steel_claymore').windUpMs).toBe(600);
+		expect(getCardDef('glacier_collapse').windUpMs).toBe(700);
+		expect(getCardDef('dungeon_drake').windUpMs).toBe(600);
+		expect(getCardDef('spike_trap').windUpMs).toBe(500);
 		expect(getCardDef('iron_sword').windUpMs).toBeUndefined();
 		expect(getCardDef('frost_nova').windUpMs).toBeUndefined();
-		expect(getCardDef('dungeon_drake').windUpMs).toBeUndefined();
+		expect(getCardDef('skeleton_knight').windUpMs).toBeUndefined();
 	});
 });
 

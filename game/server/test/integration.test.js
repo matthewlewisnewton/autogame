@@ -37,6 +37,7 @@ import {
 	evictDisconnectedPlayers,
 	DISCONNECT_GRACE_MS,
 	runGameLoopTick,
+	getCardDef,
 	processPassiveDraws,
 	HUB_LAYOUT,
 } from '../index.js';
@@ -991,6 +992,25 @@ describe('Socket Integration — useCard Event', () => {
 		return { socket, playerKey, monsterSlot, monsterCardId, handSizeBefore: playerData.hand.length };
 	}
 
+	async function resolveMonsterCardWindup(socket, playerKey) {
+		const state = testGameState();
+		const player = state.players[playerKey];
+		if (player.cardUseState !== 'windup' || !player.pendingCardUse) return;
+
+		const windUpMs = getCardDef(player.pendingCardUse.cardId).windUpMs || 0;
+		if (windUpMs <= 0) return;
+
+		const sim = require('../simulation');
+		const progression = require('../progression');
+		sim.setGameState(state, _timeouts);
+		progression.setGameState(state);
+		player.cardWindupStartTime = Date.now() - windUpMs - 50;
+
+		const cardUsedPromise = waitForEvent(socket, 'cardUsed');
+		runGameLoopTick();
+		await cardUsedPromise;
+	}
+
 	describe('Monster card', () => {
 		it('uses monster card: minion spawned, card stays in hand until minion expires', async () => {
 			const { playerKey, monsterSlot, monsterCardId, handSizeBefore } = await setupMonsterCard(socket);
@@ -1002,7 +1022,9 @@ describe('Socket Integration — useCard Event', () => {
 			});
 
 			socket.emit('useCard', { cardId: monsterCardId, slotIndex: monsterSlot });
-			const updatedSnapshot = await stateUpdatePromise;
+			await stateUpdatePromise;
+			await resolveMonsterCardWindup(socket, playerKey);
+			const updatedSnapshot = testGameState();
 
 			expect(testGameState().minions.length).toBe(minionCountBefore + 1);
 			const newMinion = testGameState().minions[testGameState().minions.length - 1];
@@ -1016,14 +1038,14 @@ describe('Socket Integration — useCard Event', () => {
 			expect(updatedSnapshot.minions).toBeDefined();
 			expect(updatedSnapshot.minions.length).toBe(minionCountBefore + 1);
 
-			const updatedPlayer = updatedSnapshot.players[playerKey];
+			const updatedPlayer = updatedSnapshot.players[playerKey] || testGameState().players[playerKey];
 			expect(updatedPlayer).toBeDefined();
 			expect(updatedPlayer.hand.length).toBe(handSizeBefore);
 			const burningCard = updatedPlayer.hand[monsterSlot];
 			expect(burningCard).toBeDefined();
 			expect(burningCard.id).toBe(monsterCardId);
 			expect(burningCard.activeMinionId).toBe(newMinion.id);
-			expect(burningCard.burnMaxTtl).toBeCloseTo(newMinion.ttl, 1);
+			expect(burningCard.burnMaxTtl).toBe(newMinion.maxTtl);
 			expect(updatedPlayer.deck.length).toBe(deckBefore.length);
 
 			const state = testGameState();
@@ -1063,6 +1085,7 @@ describe('Socket Integration — useCard Event', () => {
 			await waitForEvent(socket, 'stateUpdate');
 			socket.emit('useCard', { cardId: monsterCardId, slotIndex: monsterSlot });
 			await waitForEvent(socket, 'stateUpdate');
+			await resolveMonsterCardWindup(socket, playerKey);
 
 			const player = testGameState().players[playerKey];
 			player.slotCooldowns[monsterSlot] = 0;
