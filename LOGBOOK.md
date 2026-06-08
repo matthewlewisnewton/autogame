@@ -5518,3 +5518,26 @@ This ticket adds `magma-windup-ready`. It remains behind the existing debug-scen
 
 None.
 
+
+## v0.309 — 313-saber-of-light-aoe-per-grind-scaling  (2026-06-07 23:09:16)
+
+### Scaling is scoped and does not affect other weapons
+
+Pass. Weapons without `aoeGrindScale` return their original explicit `attackRange` or the existing `ATTACK_RANGE` fallback. The new helper is exported for tests but otherwise stays internal to weapon resolution.
+
+### Tests
+
+Pass for this ticket. `game/server/test/saber_aoe_grind.test.js` covers unchanged damage/cooldown, the explicit small scale, smooth reach growth, and a control weapon without scaling. In `coverage.log`, this new test file passed (`5 tests`). The full visibility run shows one unrelated failing `debug-scenarios` assertion for `canyon-descent-boss-low-hp`; the live state assertions in that same test passed, and only the captured `stateUpdate` packet was stale. I do not consider that a Saber implementation blocker.
+
+### Debug scenario
+
+Pass. The added `saber-grind-max` scenario is reachable only through the existing debug scenario mechanism: client URL parameter `?debugScenario=...` on localhost and server-side `isDebugScenarioAllowed` gating. It sets up a normal playing run with a +10 `saber_of_light` in hand and matches the real 6-charge card definition. The state is reachable through normal gameplay by owning/grinding Saber of Light and deploying; the shortcut does not bypass card-use validation, combat resolution, persistence, or net replication.
+
+## Design and requirements consistency
+
+The change stays within the card-combat model described in `game/docs/design.md`: a weapon card gets a small per-grind combat stat improvement while normal dungeon, lobby, movement, rendering, and multiplayer requirements remain intact. The captured smoke confirms lobby join, ready transition, gameplay rendering, movement, socket connectivity, and key-item HUD state still work.
+
+## Remaining gaps
+
+None.
+
