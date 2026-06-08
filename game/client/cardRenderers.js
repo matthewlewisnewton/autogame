@@ -13,6 +13,7 @@
 // ctx interface (provided by main.js):
 //   spawnAttackEffect(origin, direction, style?)
 //   spawnSummonEffect(origin, radius, styleOrColor?)
+//   spawnMinionSummonInEffect(origin, style?) — creature minion summon flourish
 //   spawnDivineGraceEffect(origin, radius)
 //   spawnPurifyingPulseHealRing(origin, radius)
 //   spawnCleanseBurstEffect(origin)
@@ -180,13 +181,28 @@ function renderInfernoPillar(data, ctx) {
 }
 
 /**
- * Undead Commander: caster summon ring plus a small ring for each spawned
- * skeleton minion.
+ * Default creature deploy: accent summon-in flourish when the server reports a
+ * new minion id (initial summon, not minion attacks).
+ */
+function renderCreatureSummon(data, ctx) {
+	if (!data.minionId || !ctx.spawnMinionSummonInEffect) return;
+	ctx.spawnMinionSummonInEffect(originOf(data), accentSummonStyle(data.cardId));
+}
+
+/**
+ * Undead Commander: caster summon ring plus a summon-in flourish for each
+ * spawned skeleton minion.
  */
 function renderUndeadCommander(data, ctx) {
 	ctx.spawnSummonEffect(originOf(data), 2);
+	const style = accentSummonStyle(data.cardId);
 	for (const spawn of (data.summonedMinions || [])) {
-		ctx.spawnSummonEffect({ x: spawn.x, z: spawn.z }, 1.2);
+		const origin = { x: spawn.x, z: spawn.z };
+		if (ctx.spawnMinionSummonInEffect) {
+			ctx.spawnMinionSummonInEffect(origin, style);
+		} else {
+			ctx.spawnSummonEffect(origin, 1.2);
+		}
 	}
 }
 
@@ -410,11 +426,11 @@ const CARD_RENDERERS = {
 };
 
 // Type-level defaults — used when no card-specific renderer is registered.
-// `creature` and `enchantment` have no default ring of their own; specific
-// cards opt-in via the registry above.
+// Enchantments have no type default; specific cards opt-in via the registry above.
 const TYPE_DEFAULT_RENDERERS = {
 	weapon: renderConeSwings,
 	spell: renderGenericSpellBurst,
+	creature: renderCreatureSummon,
 };
 
 /**

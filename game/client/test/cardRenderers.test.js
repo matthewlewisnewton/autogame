@@ -26,6 +26,7 @@ function makeCtx(overrides = {}) {
 		spawnProjectileTrail: record('spawnProjectileTrail'),
 		spawnImpactDecal: record('spawnImpactDecal'),
 		spawnTelegraphRing: record('spawnTelegraphRing'),
+		spawnMinionSummonInEffect: record('spawnMinionSummonInEffect'),
 		flashMesh: record('flashMesh'),
 		spawnHitSpark: record('spawnHitSpark'),
 		enemyMeshes: () => ({}),
@@ -71,8 +72,12 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('frost_nova')).toHaveLength(1);
 	});
 
-	it('returns an empty list for creature/enchantment cards without an override', () => {
-		expect(resolveRenderers('battery_automaton')).toEqual([]);
+	it('falls back to the creature default for plain creature cards', () => {
+		expect(resolveRenderers('battery_automaton')).toHaveLength(1);
+	});
+
+	it('returns an empty list for unknown card ids', () => {
+		expect(resolveRenderers('not_a_real_card')).toEqual([]);
 	});
 
 	it('returns wyrm attack renderer for Vault Wyrm and Archive Wyrm', () => {
@@ -87,10 +92,6 @@ describe('resolveRenderers()', () => {
 
 	it('returns the chain_lightning arc renderer for Voltaic Chain', () => {
 		expect(resolveRenderers('chain_lightning')).toHaveLength(1);
-	});
-
-	it('returns an empty list for unknown card ids', () => {
-		expect(resolveRenderers('not_a_real_card')).toEqual([]);
 	});
 
 	it('returns a fresh array (mutating one does not affect the next call)', () => {
@@ -573,14 +574,28 @@ describe('renderCardUsed() — spell dispatch', () => {
 });
 
 describe('renderCardUsed() — creature dispatch', () => {
-	it('does not render any extra visuals for vanilla creature spawns', () => {
+	it('vanilla creature spawn with minionId triggers the summon-in flourish', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
-			cardId: 'battle_familiar',
+			cardId: 'battery_automaton',
+			origin: { x: 2, z: 3 },
+			minionId: 'minion-1',
+			hits: [],
+		}, ctx);
+		const summon = ctx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(summon).toBeDefined();
+		expect(summon[1]).toEqual({ x: 2, z: 3 });
+		expect(methodsCalled(ctx)).toContain('playSound');
+	});
+
+	it('vanilla creature spawn without minionId stays sound-only', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'battery_automaton',
 			origin: { x: 0, z: 0 },
 			hits: [],
 		}, ctx);
-		// Only the card sound — no summon ring, no attack flash.
+		expect(ctx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
 		expect(methodsCalled(ctx)).toEqual(['playSound']);
 	});
 
@@ -708,7 +723,7 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 
-	it('undead_commander renders a caster ring and one ring per spawned skeleton', () => {
+	it('undead_commander renders a caster ring and summon-in flourishes per skeleton', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'undead_commander',
@@ -719,11 +734,14 @@ describe('renderCardUsed() — creature dispatch', () => {
 			],
 			hits: [],
 		}, ctx);
-		const rings = ctx._calls.filter((c) => c[0] === 'spawnSummonEffect');
-		// 1 caster ring (radius 2) + 2 skeleton rings (radius 1.2)
-		expect(rings).toHaveLength(3);
-		const radii = rings.map((r) => r[2]).sort();
-		expect(radii).toEqual([1.2, 1.2, 2]);
+		const casterRing = ctx._calls.filter((c) => c[0] === 'spawnSummonEffect');
+		expect(casterRing).toHaveLength(1);
+		expect(casterRing[0][2]).toBe(2);
+		const skeletonFlourishes = ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(skeletonFlourishes).toHaveLength(2);
+		expect(skeletonFlourishes[0][1]).toEqual({ x: 1, z: 0 });
+		expect(skeletonFlourishes[1][1]).toEqual({ x: 0, z: 1 });
+		expect(skeletonFlourishes[0][2]).toMatchObject({ color: 0xa1a1aa });
 	});
 
 	it('thunderbird (chain_lightning) renders zap + enemy-hit cue + follow-up attack', () => {

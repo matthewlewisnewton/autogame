@@ -70,6 +70,9 @@ export const SUMMON_EFFECT_DURATION = 1000;
 /** Summon AoE: time to reach full radius in ms */
 export const SUMMON_EXPAND_MS = 700;
 
+/** Minion mesh scale-in and summon-in ground VFX duration in ms */
+export const MINION_SUMMON_IN_MS = 750;
+
 /** Hit spark: ms before auto-removal */
 export const HIT_SPARK_DURATION = 400;
 

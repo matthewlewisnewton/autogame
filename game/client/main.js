@@ -153,6 +153,7 @@ import {
 	spawnProjectileTrail as rendererSpawnProjectileTrail,
 	spawnImpactDecal as rendererSpawnImpactDecal,
 	spawnTelegraphRing as rendererSpawnTelegraphRing,
+	spawnMinionSummonInEffect as rendererSpawnMinionSummonInEffect,
 	markLootCollected as rendererMarkLootCollected,
 	markCardHitEnemies as rendererMarkCardHitEnemies,
 	disposeMeshMap as rendererDisposeMeshMap,
@@ -1109,6 +1110,7 @@ window.addEventListener(BOOTH_ACTION_EVENT, (ev) => {
 const cardRenderCtx = {
 	spawnAttackEffect: rendererSpawnAttackEffect,
 	spawnSummonEffect: rendererSpawnSummonEffect,
+	spawnMinionSummonInEffect: rendererSpawnMinionSummonInEffect,
 	spawnDivineGraceEffect: rendererSpawnDivineGraceEffect,
 	spawnPurifyingPulseEffect: rendererSpawnPurifyingPulseEffect,
 	spawnPurifyingPulseHealRing: rendererSpawnPurifyingPulseHealRing,

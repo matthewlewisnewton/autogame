@@ -41,6 +41,7 @@ import {
 	ATTACK_EFFECT_SPEED,
 	SUMMON_EXPAND_MS,
 	SUMMON_EFFECT_DURATION,
+	MINION_SUMMON_IN_MS,
 	HIT_SPARK_DURATION,
 	LOOT_COLLECT_DURATION,
 	DAMAGE_NUMBER_DURATION,
@@ -126,6 +127,12 @@ let phaseStepTargetId = null;
 let phaseStepAllyRing = null;
 const windupFlashing = new Set(); // enemy ids currently showing windup emissive
 const minionsMeshes = {};
+/** First-seen minion ids — avoids re-playing spawn scale-in after resync/reconnect. */
+const seenMinionIds = new Set();
+/** Minion id → performance.now() when scale-in began (cleared once settled). */
+const minionSpawnTimes = {};
+/** Minion id → target uniform scale while scale-in is active. */
+const minionBaseScales = {};
 const lootMeshes = {};
 const iceBallMeshes = {}; // ice-ball projectile id → giant icy sphere mesh (glacial thrower)
 let telepipeMesh = null;
@@ -1336,6 +1343,11 @@ export function getWallColliders() {
  */
 export function getActiveEffects() {
 	return activeEffects;
+}
+
+/** Test harness: pending minion scale-in start times keyed by minion id. */
+export function getMinionSpawnTimes() {
+	return minionSpawnTimes;
 }
 
 /**
@@ -4276,6 +4288,30 @@ export function spawnSummonEffect(origin, radius, styleOrColor = {}) {
 }
 
 /**
+ * Shared minion summon-in flourish: accent ground ring, telegraph pulse, and
+ * particle burst at the spawn point. Composes existing 315 VFX primitives.
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, radius }
+ */
+export function spawnMinionSummonInEffect(origin, style = {}) {
+	const color = style.color ?? 0x22c55e;
+	const emissive = style.emissive ?? color;
+	const radius = style.radius ?? 1.4;
+	const summonStyle = { color, emissive };
+
+	spawnSummonEffect(origin, radius, summonStyle);
+	spawnTelegraphRing(origin, radius * 0.85, {
+		color,
+		emissive,
+		duration: MINION_SUMMON_IN_MS,
+	});
+	spawnParticleBurst(
+		{ x: origin.x, y: 1.0, z: origin.z },
+		{ color, emissive, count: 12, spread: 1.8, duration: MINION_SUMMON_IN_MS },
+	);
+}
+
+/**
  * Golden heal burst for Divine Grace (heal + magic stone restore).
  * @param {object} origin - { x, z }
  * @param {number} radius
@@ -5814,8 +5850,31 @@ export function animate(timestamp) {
 				const mesh = createMinionMesh(minion.type);
 				scene.add(mesh);
 				minionsMeshes[minion.id] = mesh;
+				if (!seenMinionIds.has(minion.id)) {
+					seenMinionIds.add(minion.id);
+					minionSpawnTimes[minion.id] = performance.now();
+					minionBaseScales[minion.id] = mesh.scale.x;
+					mesh.scale.setScalar(0.001);
+				} else if (minionSpawnTimes[minion.id] === undefined) {
+					const settledScale = minionBaseScales[minion.id] ?? mesh.scale.x;
+					mesh.scale.setScalar(settledScale);
+				}
 			}
-			minionsMeshes[minion.id].position.set(minion.x, 0.5, minion.z);
+			const minionMesh = minionsMeshes[minion.id];
+			minionMesh.position.set(minion.x, 0.5, minion.z);
+
+			const spawnAt = minionSpawnTimes[minion.id];
+			if (spawnAt !== undefined) {
+				const rawT = Math.min((performance.now() - spawnAt) / MINION_SUMMON_IN_MS, 1);
+				const eased = rawT * (2 - rawT);
+				const baseScale = minionBaseScales[minion.id] ?? 1;
+				minionMesh.scale.setScalar(Math.max(0.001, baseScale * eased));
+				if (rawT >= 1) {
+					minionMesh.scale.setScalar(baseScale);
+					delete minionSpawnTimes[minion.id];
+					delete minionBaseScales[minion.id];
+				}
+			}
 
 			if (minion.type === 'null_crawler' && minion.attackState === 'windup') {
 				if (!minionTelegraphMeshes[minion.id]) {
@@ -5854,6 +5913,13 @@ export function animate(timestamp) {
 		for (const id of Object.keys(previousMinionHp)) {
 			if (!currentMinionIds.has(id)) {
 				delete previousMinionHp[id];
+			}
+		}
+		for (const id of [...seenMinionIds]) {
+			if (!currentMinionIds.has(id)) {
+				seenMinionIds.delete(id);
+				delete minionSpawnTimes[id];
+				delete minionBaseScales[id];
 			}
 		}
 
