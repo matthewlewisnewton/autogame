@@ -1,0 +1,6 @@
+Review complete. I wrote:
+
+- `tickets/367-anim-cinder-snare/round-1/review.md`
+- `tickets/367-anim-cinder-snare/round-1/gaps.md`
+
+Verdict is `VERDICT: FAIL` due to a blocking timing mismatch: Cinder Snare’s client DoT pulses start on placement, but the server DoT starts only later when an enemy triggers the snare. The captured game run itself was healthy.

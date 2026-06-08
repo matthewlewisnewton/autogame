@@ -1,0 +1,15 @@
+## Planning summary
+
+Sub-tickets **01–03** are done (`.passed`). Round-2 review has **one open gap**: ember/DoT pulses still start on trap **placement** instead of when the server triggers the snare and spawns the `inferno_pillar` area effect.
+
+Sub-ticket **03** scoped timing to placement `cardUsed` and explicitly avoided server changes — that’s why it passed its own criteria but didn’t close the top-level timing gap.
+
+**One new sub-ticket** closes that gap end-to-end: server queues a trigger `cardUsed` when the trap fires, client moves the `scheduleAfter` DoT cadence to the trigger path, placement keeps only the t = 0 burst.
+
+No failed sub-ticket folders needed deletion (all prior folders have `.passed`).
+
+### Created sub-ticket
+
+- `/home/matt/workspace/.autogame-worktrees/367-anim-cinder-snare/tickets/367-anim-cinder-snare/subtickets/04-cinder-snare-dot-on-trigger/ticket.md`
+
+**Verification mode:** `code` — criteria cover server event emission, handler branching, and timing sync, not only on-screen appearance.

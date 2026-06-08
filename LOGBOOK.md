@@ -5792,3 +5792,26 @@ Pass. This ticket did not add or change a `?debugScenario=NAME` shortcut, so the
 
 None.
 
+
+## v0.330 — 367-anim-cinder-snare  (2026-06-08 12:22:44)
+
+### Client test where feasible
+
+PASS. `game/client/test/cardRenderers.test.js` covers dedicated renderer registration, placement VFX, optional primitive fallback, zero placement scheduling, and trigger pulse cadence. `game/server/test/enchantment.test.js` covers Cinder Snare trigger behavior, DoT ticking, queued trigger payload, and kill credit. Coverage run completed with `136` test files and `2208` tests passing.
+
+## Design and foundation consistency
+
+PASS. The implementation remains consistent with the design document's enchantment model: Cinder Snare is a single-use ground enchantment that leaves a lingering magical hazard and triggers when an enemy enters its radius. It does not alter the foundation requirements for 3D rendering, websocket connection, multiplayer visualization, or movement synchronization; the captured smoke run confirms those basics still work.
+
+## Debug scenarios
+
+No new or changed `?debugScenario=` shortcut was introduced by this ticket. Existing debug-scenario code remains outside the Cinder Snare implementation path.
+
+## Code quality
+
+PASS. The card-specific renderer is scoped and registered cleanly. The server-side trigger event is narrow and does not change Cinder Snare's balance numbers or normal placement rules; it only exposes the already-existing trigger moment to the client so the visual can sync with gameplay. I did not find dead code, uncaught runtime errors, or obvious regressions in the changed files.
+
+## Remaining gaps
+
+None.
+
