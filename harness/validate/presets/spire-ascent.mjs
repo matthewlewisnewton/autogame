@@ -12,4 +12,7 @@ export default {
 	addsTimeoutMs: 90000,
 	encounterTimeoutMs: 60000,
 	lobbyName: 'Spire Ascent Validation',
+	// Run the boss health-bar / encounter-HUD + distinct-visual probe during the
+	// active boss phase (tickets 283 / 284). Gated so other presets are unaffected.
+	probeBossUi: true,
 };

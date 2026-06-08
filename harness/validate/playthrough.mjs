@@ -28,6 +28,7 @@ import { renderHubFindings, evaluateWalkablePresentation } from './lib/findingsH
 import { assertGameProcessAlive, getServerLogTail, startGame, stopGame } from './lib/gameProcess.mjs';
 import { readHarness } from './lib/harnessState.mjs';
 import { writeScreenshot } from './lib/screenshot.mjs';
+import { probeBossUi } from './lib/bossUiProbe.mjs';
 import { walkToZone } from './lib/hubMovement.mjs';
 import {
 	waitForHubLobby,
@@ -709,15 +710,32 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 	const activeFloor = await captureFloorAlignmentProbe(page);
 	if (activeFloor) floorAlignment.bossActive = activeFloor;
 
+	// Boss health-bar / encounter-HUD + distinct-visual probe (tickets 283 / 284),
+	// gated behind the preset flag so other presets are unaffected.
+	let bossUiResult = null;
+	if (preset.probeBossUi) {
+		bossUiResult = await probeBossUi(page, {
+			outDir: outDirAbs,
+			repoRoot: REPO_ROOT,
+			bossType,
+		});
+	}
+
 	return {
 		midCombatScreenshot,
 		dormantScreenshot,
 		activeScreenshot,
 		encounterPhase: activeHarness.encounter.phase,
 		encounterLocked: activeHarness.encounter.locked,
+		...(bossUiResult ? {
+			bossUi: bossUiResult.bossUi,
+			bossVisuals: bossUiResult.bossVisuals,
+			bossUiScreenshot: bossUiResult.screenshot,
+		} : {}),
 		probes: {
 			dormant: dormantProbe,
 			active: activeProbe,
+			...(bossUiResult ? { bossUi: bossUiResult.bossUi, bossVisuals: bossUiResult.bossVisuals } : {}),
 			...(Object.keys(floorAlignment).length > 0 ? { floorAlignment } : {}),
 		},
 	};
@@ -837,6 +855,7 @@ function collectScreenshots(summary) {
 	if (summary.bossEncounter?.midCombatScreenshot) shots.push(summary.bossEncounter.midCombatScreenshot);
 	if (summary.bossEncounter?.dormantScreenshot) shots.push(summary.bossEncounter.dormantScreenshot);
 	if (summary.bossEncounter?.activeScreenshot) shots.push(summary.bossEncounter.activeScreenshot);
+	if (summary.bossEncounter?.bossUiScreenshot) shots.push(summary.bossEncounter.bossUiScreenshot);
 	if (summary.victory?.bossDefeatedScreenshot) shots.push(summary.victory.bossDefeatedScreenshot);
 	if (summary.victory?.victoryScreenshot) shots.push(summary.victory.victoryScreenshot);
 	return shots;

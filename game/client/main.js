@@ -4899,6 +4899,10 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 			maxHp: enemy.maxHp,
 			revealedUntil: enemy.revealedUntil ?? undefined,
 			type: enemy.type,
+			// Read-only validation instrumentation: surface the enemy's distinct
+			// visual variant tag so the boss-UI probe can assert distinctness
+			// (ticket 284). No gameplay behavior depends on this.
+			variant: enemy.variant ?? null,
 			spawnedBy: enemy.spawnedBy ?? null,
 			x: enemy.x,
 			z: enemy.z,
