@@ -361,7 +361,7 @@ describe('renderCardUsed() — weapon dispatch', () => {
 		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
 		expect(burst).toBeDefined();
 		expect(burst[1]).toEqual({ x: 10, z: 2 });
-		expect(burst[2]).toMatchObject({ color: 0xf97316 });
+		expect(burst[2]).toMatchObject({ color: 0xf97316, emissive: 0xff3b00, count: 16, spread: 2.0 });
 	});
 
 	it('fireball still renders without throwing when the new ctx primitives are absent', () => {
@@ -400,6 +400,44 @@ describe('renderCardUsed() — weapon dispatch', () => {
 			range: 9,
 			projectileTravelMs: 1200,
 		});
+	});
+
+	it('ice_ball adds a freeze-crystal particle burst and frost decal at impact', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'ice_ball',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			attackRange: 9,
+			projectileTravelMs: 1200,
+			hits: [],
+		}, ctx);
+		// Impact at origin + direction * range = (10, 2).
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 10, z: 2 });
+		expect(decal[2]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 10, z: 2 });
+		expect(burst[2]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8, count: 14, spread: 1.8 });
+	});
+
+	it('ice_ball still renders without throwing when ctx primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnImpactDecal: undefined,
+			spawnParticleBurst: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'ice_ball',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			attackRange: 9,
+			projectileTravelMs: 1200,
+			hits: [],
+		}, ctx)).not.toThrow();
+		// The original projectile visual still fires.
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 });
 

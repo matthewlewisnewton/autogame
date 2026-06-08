@@ -265,8 +265,10 @@ function renderWyrmAttack(data, ctx) {
 /**
  * Fireball: a fiery sphere projectile that travels from the caster along the
  * cast direction. Distinct from the plain `projectile` visual via the warm
- * fire palette in the renderer's `fireball` branch. Burning-on-hit visuals are
- * driven separately by the broadcast `burningUntil` state, not here.
+ * fire palette in the renderer's `fireball` branch. On impact, an enhanced
+ * ember shower and scorch decal mark the burn application — distinct from a
+ * plain damage hit. Ongoing burn visuals (flames around the enemy) are driven
+ * separately by the broadcast `burningUntil` state, not here.
  */
 function renderFireball(data, ctx) {
 	if (!data.origin) return;
@@ -293,24 +295,37 @@ function renderFireball(data, ctx) {
 		ctx.spawnImpactDecal(impact, { color, emissive });
 	}
 	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(impact, { color, emissive, count: 10, spread: 1.6 });
+		ctx.spawnParticleBurst(impact, { color, emissive, count: 16, spread: 2.0 });
 	}
 }
 
 /**
- * Ice Ball: a slow-moving icy sphere projectile. Slow-on-hit visuals are
- * driven separately by the broadcast `slowedUntil` state, not here.
+ * Ice Ball: a slow-moving icy sphere projectile. On impact, a freeze-crystal
+ * particle burst and frost decal mark the slow application at the hit point —
+ * distinct from a plain damage hit. Ongoing slow visuals (ring around the
+ * enemy) are driven separately by the broadcast `slowedUntil` state.
  */
 function renderIceBall(data, ctx) {
 	if (!data.origin) return;
-	const accentHex = getAccentHex(data.cardId);
-	ctx.spawnAttackEffect(originOf(data), directionOf(data), {
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex(data.cardId) ?? 0x67e8f9;
+	const emissive = 0x38bdf8;
+	ctx.spawnAttackEffect(origin, direction, {
 		effect: 'ice_ball',
 		range: data.attackRange,
 		projectileTravelMs: data.projectileTravelMs,
-		color: accentHex ?? 0x67e8f9,
-		emissive: 0x38bdf8,
+		color,
+		emissive,
 	});
+	// Freeze-crystal burst + frost scorch where the projectile lands.
+	const impact = pointAlong(origin, direction, data.attackRange ?? 8);
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(impact, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(impact, { color, emissive, count: 14, spread: 1.8 });
+	}
 }
 
 /**
