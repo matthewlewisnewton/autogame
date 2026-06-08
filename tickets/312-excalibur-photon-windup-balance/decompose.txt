@@ -1,0 +1,7 @@
+Remediation round 2 has one open gap: the vitest failure in `arena-trials-boss-approach`. Sub-tickets 01–03 already have `.passed` markers and were left untouched.
+
+**Created sub-ticket:**
+
+- `/home/matt/workspace/.autogame-worktrees/312-excalibur-photon-windup-balance/tickets/312-excalibur-photon-windup-balance/subtickets/04-arena-trials-boss-approach-test-fix/ticket.md`
+
+**Scope:** Add a server-side `arena-trials-adds-cleared` debug scenario so the failing test clears adds through the socket path (not local `testGameState()` mutation), align the boss-approach guard with `areAllNonBossEnemiesDefeated` if needed, and restore a green full vitest run without touching Excalibur Photon balance work from 01–03.

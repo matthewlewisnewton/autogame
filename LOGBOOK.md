@@ -5518,3 +5518,26 @@ This ticket adds `magma-windup-ready`. It remains behind the existing debug-scen
 
 None.
 
+
+## v0.312 — 312-excalibur-photon-windup-balance  (2026-06-07 23:38:21)
+
+PASS. The implementation changes only `windUpMs` for `excalibur_photon`; `damage` remains 14 and `swingsPerUse` remains 2. The regression and evolution tests explicitly assert the 14 damage, two-swing behavior, and inherited evolved-card stats.
+
+### Tests and coverage
+
+PASS. The round-2 coverage log shows the full Vitest suite passed: 108 test files and 1777 tests. Coverage was collected with thresholds disabled for visibility. New/updated tests exercise the data stat, analyzer metric, evolution output, wind-up resolution, input lock, and instant-card regressions.
+
+### Design and requirements consistency
+
+PASS. The change stays within the card-combat model described in `game/docs/design.md`: Excalibur remains a weapon card with active combat timing, not a separate basic attack path or economy change. The capture also preserves the foundation in `game/docs/requirements.md`: Three.js scene renders, WebSocket multiplayer connects, players are visible, and movement/key-item input synchronize in a running session.
+
+### Debug scenarios
+
+PASS. This ticket adds `excalibur-windup-ready` and `arena-trials-adds-cleared` debug shortcuts. They are still gated by the existing debug socket path: the client emits `debugScenario` only from localhost `?debugScenario=...` or test hooks, and the server rejects debug scenarios unless `isDebugScenarioAllowed()` passes.
+
+The Excalibur shortcut only creates a testable state that normal gameplay can reach by evolving `saber_of_light` into `excalibur_photon` and entering combat; it does not change persistence, rewards, or normal card-use validation. The arena shortcut mirrors a normal state after defeating all non-boss adds and is constrained to an active arena-trials Tier 2 stage-boss run.
+
+## Remaining gaps
+
+None. The captured run is clean, the acceptance criteria are met, and the remaining observations are non-blocking cleanup.
+
