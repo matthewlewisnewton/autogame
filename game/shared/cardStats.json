@@ -254,6 +254,7 @@
     "minionHp": 45,
     "attackRange": 7,
     "attackDamage": 13,
+    "attackIntervalMs": 1500,
     "specialEffect": "ranged_strike"
   },
   "thunderbird": {
@@ -262,6 +263,7 @@
     "minionHp": 68,
     "attackRange": 11,
     "attackDamage": 20,
+    "attackIntervalMs": 1500,
     "chainRadius": 5,
     "maxChainTargets": 2,
     "isEvolved": true,
