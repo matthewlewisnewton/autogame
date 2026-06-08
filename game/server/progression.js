@@ -368,6 +368,9 @@ const STARTING_DECK_IDS = [
 const EVOLUTION_GRIND_REQUIRED = 10;
 const GRIND_COST_BASE = 100;
 const GRIND_STAT_SCALE = 0.05;
+const CARD_GRIND_STAT_SCALE = {
+  battle_familiar: 0.03,
+};
 const LEGACY_EVOLVED_CARD_IDS = {
   steel_broadsword: 'steel_claymore',
   inferno_edge: 'magma_greatsword',
@@ -671,14 +674,21 @@ function getGrindCost(grind) {
   return GRIND_COST_BASE * (level + 1);
 }
 
-function getStatMultiplier(grind) {
-  const level = Number.isFinite(grind) ? Math.max(0, Math.floor(grind)) : 0;
-  return 1.0 + (level * GRIND_STAT_SCALE);
+function getGrindStatScale(cardId) {
+  if (cardId && Object.prototype.hasOwnProperty.call(CARD_GRIND_STAT_SCALE, cardId)) {
+    return CARD_GRIND_STAT_SCALE[cardId];
+  }
+  return GRIND_STAT_SCALE;
 }
 
-function scaledGrindStat(baseValue, grind) {
+function getStatMultiplier(grind, cardId) {
+  const level = Number.isFinite(grind) ? Math.max(0, Math.floor(grind)) : 0;
+  return 1.0 + (level * getGrindStatScale(cardId));
+}
+
+function scaledGrindStat(baseValue, grind, cardId) {
   if (!Number.isFinite(baseValue)) return baseValue;
-  return Math.round(baseValue * getStatMultiplier(grind));
+  return Math.round(baseValue * getStatMultiplier(grind, cardId));
 }
 
 function applyWyrmMinionBreathStats(minion, cardDef, grind, now) {
@@ -3309,6 +3319,7 @@ module.exports = {
   EVOLUTION_GRIND_REQUIRED,
   GRIND_COST_BASE,
   GRIND_STAT_SCALE,
+  CARD_GRIND_STAT_SCALE,
   EVOLUTION_TRANSFORMS,
   CARD_SELL_VALUES,
   getCardSellValue,
