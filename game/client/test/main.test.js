@@ -1260,6 +1260,55 @@ describe('renderHand()', () => {
 		expect(getComputedStyle(emptySlot).display).not.toBe('none');
 		expect(emptySlot.querySelector(':scope > .card-input-hint')?.innerHTML).toContain('c-button-mark');
 	});
+
+	it('renders wind-up badge for flame_blade (Solar Edge) hand card', async () => {
+		await import('../main.js');
+
+		resetHandState();
+		hand[0] = { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 2, remainingCharges: 2 };
+		hand[1] = null;
+		hand[2] = null;
+		hand[3] = null;
+
+		window.renderHand();
+
+		const slot = document.querySelector('.card-slot[data-slot-index="0"]');
+		const badge = slot.querySelector('.windup-badge');
+		expect(badge).not.toBeNull();
+		expect(badge.textContent).toBe('600 ms');
+	});
+
+	it('renders wind-up badge for magma_greatsword (Corebreaker Greatsword) hand card', async () => {
+		await import('../main.js');
+
+		resetHandState();
+		hand[0] = { id: 'magma_greatsword', name: 'Corebreaker Greatsword', type: 'weapon', charges: 1, remainingCharges: 1 };
+		hand[1] = null;
+		hand[2] = null;
+		hand[3] = null;
+
+		window.renderHand();
+
+		const slot = document.querySelector('.card-slot[data-slot-index="0"]');
+		const badge = slot.querySelector('.windup-badge');
+		expect(badge).not.toBeNull();
+		expect(badge.textContent).toBe('800 ms');
+	});
+
+	it('does not render wind-up badge for cards without wind-up (iron_sword)', async () => {
+		await import('../main.js');
+
+		resetHandState();
+		hand[0] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 };
+		hand[1] = null;
+		hand[2] = null;
+		hand[3] = null;
+
+		window.renderHand();
+
+		const slot = document.querySelector('.card-slot[data-slot-index="0"]');
+		expect(slot.querySelector('.windup-badge')).toBeNull();
+	});
 });
 
 // ── playSound / mute toggle ──

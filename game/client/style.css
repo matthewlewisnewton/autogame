@@ -3336,6 +3336,21 @@ body[data-phase="lobby"] #objective-hud {
   color: #c4b5fd;
 }
 
+/* ── Wind-up warning badge (commit lockout indicator) ── */
+
+.card-slot .windup-badge {
+  display: block;
+  padding: 1px 5px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #fde68a;
+  background: rgba(120, 53, 15, 0.75);
+  border: 1px solid rgba(251, 191, 36, 0.55);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+}
+
 #deck-viewer-overlay {
   position: fixed;
   inset: 0;

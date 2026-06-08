@@ -2685,11 +2685,16 @@ function renderHand() {
 				? '<span class="desperation-ribbon">Desperate</span>'
 				: '';
 			const echoBadge = card.isEcho ? '<span class="echo-badge">Echo</span>' : '';
+			const windUpMs = CARD_DEFS[card.id]?.windUpMs || 0;
+			const windupBadge = windUpMs > 0
+				? `<span class="windup-badge">${windUpMs} ms</span>`
+				: '';
 			content.innerHTML = `
 				${desperationRibbon}
 				<span class="card-icon">${style.icon}</span>
 				<span class="card-name">${card.name}</span>
 				${echoBadge}
+				${windupBadge}
 				${evolvedBadge}
 				${grindBadge}
 				${effectText}
