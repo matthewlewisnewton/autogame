@@ -212,6 +212,13 @@ describe('card evolution', () => {
 		expect(player.ownedCards.resonance_edge).toBe(1);
 	});
 
+	it('Reaper\'s Scythe exposes conservative kill reward stats', () => {
+		expect(CARD_DEFS.reapers_scythe).toMatchObject({
+			currencyOnKill: 6,
+			healOnKill: 8,
+		});
+	});
+
 	it('evolves Ether Scythe +10 into Reaper\'s Scythe', () => {
 		const player = {
 			inventory: [
