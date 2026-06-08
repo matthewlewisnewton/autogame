@@ -5836,3 +5836,26 @@ PASS. The round coverage run completed successfully with `32` client test files 
 ## Remaining gaps
 
 None.
+
+## v0.332 — 366-anim-mirror-ward  (2026-06-08 13:23:46)
+
+### Reflect consumption sync
+
+Pass. The renderer tracks one shell per `playerId`, dismisses any prior shell on recast, and calls `dismissMirrorWardShellEffect(playerId)` before spawning the reflect burst. Natural TTL expiry still cleans up through `updateAttackEffects()`. This keeps the client shell from lingering after the server has consumed the active enchantment.
+
+### Scope, performance, and code quality
+
+Pass. The implementation is focused on the card renderer, renderer primitives, minimal context wiring, the reflect event bridge, tests, and a debug scenario. The VFX primitives are active-effect records cleaned by the existing update loop, with no per-frame allocation patterns beyond iterating child meshes/material opacity. I did not find dead or broken code paths that would block the ticket.
+
+### Debug scenario review
+
+Pass. The added `mirror-ward-ready` scenario is only entered through `?debugScenario=mirror-ward-ready`; normal gameplay does not call it. Client-side debug scenario requests are localhost-gated, and server-side scenario application remains behind the existing debug-scenario allowance. The same end state is reachable through normal progression because `mirror_ward` is a standard reward card (`rewardOrder: 25`) and normal casting still goes through the real server card-use validation, Magic Stone cost, active-enchantment guard, state update, and card-used broadcast. The scenario does not replace or weaken the production path.
+
+### Design and foundation consistency
+
+Pass. Mirror Ward remains an enchantment, consistent with the design document's "lingering magical effect" model. The changes do not affect the required foundations: the captured run confirms 3D rendering, WebSocket connectivity, multiplayer presence, and movement/update flow still work.
+
+## Remaining gaps
+
+No blocking gaps remain.
+
