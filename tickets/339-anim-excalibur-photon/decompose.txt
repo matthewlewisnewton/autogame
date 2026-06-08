@@ -1,0 +1,15 @@
+Broke ticket **339-anim-excalibur-photon** into **3 sub-tickets** in dependency order:
+
+| # | Focus |
+|---|--------|
+| **01** | Split `excalibur_photon` off the shared `renderHeavyGreatsword` path into its own renderer |
+| **02** | Photon identity VFX — projectile trail, telegraph ring, light-shard burst (distinct from claymore/magma) |
+| **03** | `photon_barrage` timing — 80 ms per-swing stagger on all VFX, shared constant, test coverage |
+
+All three use **code** verification (structure, primitives, timing, and tests — not pixel-level screenshots).
+
+**Sub-ticket folders created:**
+
+- `/home/matt/workspace/.autogame-worktrees/339-anim-excalibur-photon/tickets/339-anim-excalibur-photon/subtickets/01-excalibur-photon-dedicated-renderer`
+- `/home/matt/workspace/.autogame-worktrees/339-anim-excalibur-photon/tickets/339-anim-excalibur-photon/subtickets/02-photon-theme-vfx-composition`
+- `/home/matt/workspace/.autogame-worktrees/339-anim-excalibur-photon/tickets/339-anim-excalibur-photon/subtickets/03-photon-barrage-timing-and-tests`

@@ -1,21 +1,8 @@
-All four conflicted files are resolved and marker-free. Summary of how the two sides were combined:
+`LOGBOOK.md` is resolved. Both sides were competing for the same tail of the log after the v0.322 entry.
 
-### `game/server/index.js`
-Kept all debug scenarios from both branches: `economy-cards-ready` (319) plus `weapon-slash-ready`, `energy-blade-slash-ready`, and `heavy-greatsword-slash-ready` (316).
+**Resolution:** Kept both version entries in chronological order (newest-last, per the logbook convention):
 
-### `LOGBOOK.md`
-Kept the v0.325 ticket entry at the top, followed by the v0.324/v0.323/v0.322 entries from `main`.
+1. **v0.326 — 339-anim-excalibur-photon** (from `main`) with its review sections and `## Remaining gaps / None.`
+2. **v0.327 — 350-anim-sanctum-pulse** (from this ticket) with its review sections and `## Remaining gaps / None.`
 
-### `game/client/cardRenderers.js`
-- **ice_ball**: Uses `main`'s projectile trail and accent constants, plus the ticket's stronger freeze-crystal impact (emissive decal, count 14, spread 1.8).
-- **deck_sifter**: Kept the ticket's draw-economy renderer.
-- **astral_guardian / sacrificial_altar**: Kept `main`'s utility spell renderers.
-- **mana_prism / chrono_trigger**: Merged with payload branching — `radius` vs no-radius for mana prism; `restoredCharges` vs economy path for chrono trigger — so both the 317 utility tests and the 319 economy tests pass.
-- **Registry**: All card entries from both sides are registered.
-
-### `game/client/test/cardRenderers.test.js`
-- Combined `resolveRenderers` expectations (creature multi-renderers from `main` + economy cards from the ticket).
-- Merged ice_ball test to assert trail + freeze-crystal impact.
-- Kept the full weapon-slash test suites from `main` after the weapon-dispatch block.
-
-`cardRenderers.test.js` passes all 130 tests. The harness can proceed with commit and the full suite.
+All conflict markers are removed. The harness can continue the merge and run tests.

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CARD_DEFS } from '../cards.js';
+import { PHOTON_BARRAGE_SWING_DELAY_MS } from '../config.js';
 import {
 	renderCardUsed,
 	resolveRenderers,
@@ -92,15 +93,21 @@ describe('resolveRenderers()', () => {
 		}
 	});
 
-	it('returns the heavy greatsword renderer for the wind-up greatswords (not the cone default)', () => {
+	it('returns the heavy greatsword renderer for alloy/corebreaker (not the cone default)', () => {
 		const plain = resolveRenderers('reapers_scythe')[0];
-		for (const cardId of ['steel_claymore', 'magma_greatsword', 'excalibur_photon']) {
+		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
 			expect(resolveRenderers(cardId)).toHaveLength(1);
 			expect(resolveRenderers(cardId)[0]).not.toBe(plain);
 		}
-		// All three share the same heavy-greatsword renderer.
 		expect(resolveRenderers('steel_claymore')[0]).toBe(resolveRenderers('magma_greatsword')[0]);
-		expect(resolveRenderers('steel_claymore')[0]).toBe(resolveRenderers('excalibur_photon')[0]);
+	});
+
+	it('returns a dedicated renderer for excalibur_photon (not heavy greatsword or cone default)', () => {
+		const plain = resolveRenderers('reapers_scythe')[0];
+		const heavy = resolveRenderers('steel_claymore')[0];
+		expect(resolveRenderers('excalibur_photon')).toHaveLength(1);
+		expect(resolveRenderers('excalibur_photon')[0]).not.toBe(plain);
+		expect(resolveRenderers('excalibur_photon')[0]).not.toBe(heavy);
 	});
 
 	it('returns bespoke renderers for utility support spells', () => {
@@ -370,7 +377,10 @@ describe('renderCardUsed() — weapon dispatch', () => {
 		}, ctx);
 		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
 		// First swing fires immediately (no scheduleAfter), swings 2 and 3 delay.
-		expect(schedules.map((c) => c[1])).toEqual([80, 160]);
+		expect(schedules.map((c) => c[1])).toEqual([
+			PHOTON_BARRAGE_SWING_DELAY_MS,
+			PHOTON_BARRAGE_SWING_DELAY_MS * 2,
+		]);
 	});
 
 	it('spawns three offset projectiles for infinite_disk / triple_returning_projectile', () => {
@@ -781,35 +791,30 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 		expect(burst[2]).toMatchObject({ color: 0xf97316, count: 24 });
 	});
 
-	it('Excalibur Photon greatslashes magenta with a light-shard burst, honoring the photon_barrage stagger', () => {
-		const ctx = makeCtx();
-		fire('excalibur_photon', ctx, { swingCount: 2, specialEffect: 'photon_barrage' });
-		const style = swingStyle(ctx);
-		expect(style).toMatchObject({ color: 0xe879f9, coneAngle: Math.PI / 2.5, range: 6 });
-		// Two staggered swings (first immediate, second delayed 80ms).
-		expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(2);
-		expect(ctx._calls.filter((c) => c[0] === 'scheduleAfter').map((c) => c[1])).toEqual([80]);
-		const decal = impactDecal(ctx);
-		expect(decal[1]).toEqual({ x: 6, z: 0 });
-		expect(decal[2]).toMatchObject({ color: 0xe879f9, radius: 3.0 });
-		expect(debrisBurst(ctx)[2]).toMatchObject({ color: 0xe879f9, count: 20 });
+	it('heavy greatswords (claymore, magma) do not emit photon-only trail or telegraph ring primitives', () => {
+		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
+			const ctx = makeCtx();
+			fire(cardId, ctx);
+			expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
+			expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		}
 	});
 
-	it('the three greatswords use mutually distinct accent colors and an impact param', () => {
+	it('the two heavy greatswords use mutually distinct accent colors and an impact param', () => {
 		const read = (cardId) => {
 			const ctx = makeCtx();
 			fire(cardId, ctx);
 			return { color: swingStyle(ctx).color, decalRadius: impactDecal(ctx)[2].radius, count: debrisBurst(ctx)[2].count };
 		};
-		const rows = ['steel_claymore', 'magma_greatsword', 'excalibur_photon'].map(read);
-		expect(new Set(rows.map((r) => r.color)).size).toBe(3);
+		const rows = ['steel_claymore', 'magma_greatsword'].map(read);
+		expect(new Set(rows.map((r) => r.color)).size).toBe(2);
 		// Differ from each other by at least one impact param too (decal radius).
-		expect(new Set(rows.map((r) => r.decalRadius)).size).toBe(3);
+		expect(new Set(rows.map((r) => r.decalRadius)).size).toBe(2);
 	});
 
 	it('hit harder than the lighter sub-ticket 01/02 blades (bigger decal + more particles)', () => {
 		// Lighter blades top out around 12 sparks and use the default ~0.8 decal radius.
-		for (const cardId of ['steel_claymore', 'magma_greatsword', 'excalibur_photon']) {
+		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
 			const ctx = makeCtx();
 			fire(cardId, ctx);
 			expect(impactDecal(ctx)[2].radius).toBeGreaterThan(2);
@@ -819,15 +824,15 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 
 	it('greatsword swings degrade gracefully when the optional impact primitives are absent', () => {
 		const ctx = makeCtx({ spawnImpactDecal: undefined, spawnParticleBurst: undefined });
-		for (const cardId of ['steel_claymore', 'magma_greatsword', 'excalibur_photon']) {
+		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
 			expect(() => fire(cardId, ctx)).not.toThrow();
 		}
 		// The core heavy cone swing still fires.
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 
-	it('each greatsword carries a positive windUpMs so the 315 charge telegraph fires', () => {
-		for (const cardId of ['steel_claymore', 'magma_greatsword', 'excalibur_photon']) {
+	it('each heavy greatsword carries a positive windUpMs so the 315 charge telegraph fires', () => {
+		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
 			expect(CARD_DEFS[cardId]).toBeDefined();
 			expect(CARD_DEFS[cardId].windUpMs).toBeGreaterThan(0);
 		}
@@ -836,6 +841,112 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 	it('Solar Edge (flame_blade) carries a positive windUpMs so the 315 charge telegraph fires', () => {
 		expect(CARD_DEFS['flame_blade']).toBeDefined();
 		expect(CARD_DEFS['flame_blade'].windUpMs).toBeGreaterThan(0);
+	});
+});
+
+describe('renderCardUsed() — excalibur_photon', () => {
+	function fire(ctx, extra = {}) {
+		renderCardUsed({
+			cardId: 'excalibur_photon',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			hits: [],
+			...extra,
+		}, ctx);
+	}
+	function swingStyle(ctx) {
+		const attack = ctx._calls.find((c) => c[0] === 'spawnAttackEffect');
+		expect(attack).toBeDefined();
+		return attack[3];
+	}
+
+	it('matches server timing contract (windUpMs 600, swingsPerUse 2)', () => {
+		expect(CARD_DEFS.excalibur_photon.windUpMs).toBe(600);
+		expect(CARD_DEFS.excalibur_photon.swingsPerUse).toBe(2);
+	});
+
+	it('photon_barrage fires two cone swings staggered by PHOTON_BARRAGE_SWING_DELAY_MS', () => {
+		const ctx = makeCtx();
+		fire(ctx, { swingCount: 2, specialEffect: 'photon_barrage' });
+		expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(2);
+		expect(ctx._calls.filter((c) => c[0] === 'scheduleAfter').map((c) => c[1])).toEqual([
+			PHOTON_BARRAGE_SWING_DELAY_MS,
+		]);
+	});
+
+	it('schedules impact primitives per swing (second swing behind scheduleAfter)', () => {
+		const pending = [];
+		const ctx = makeCtx({
+			scheduleAfter: (ms, fn) => {
+				ctx._calls.push(['scheduleAfter', ms]);
+				pending.push({ ms, fn });
+			},
+		});
+		fire(ctx, { swingCount: 2, specialEffect: 'photon_barrage' });
+		expect(ctx._calls.filter((c) => c[0] === 'spawnImpactDecal')).toHaveLength(1);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing')).toHaveLength(1);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(1);
+		expect(pending).toHaveLength(1);
+		expect(pending[0].ms).toBe(PHOTON_BARRAGE_SWING_DELAY_MS);
+		pending[0].fn();
+		expect(ctx._calls.filter((c) => c[0] === 'spawnImpactDecal')).toHaveLength(2);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing')).toHaveLength(2);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(2);
+	});
+
+	it('greatslashes magenta with trail, pulse ring, and light-shard burst per swing', () => {
+		const ctx = makeCtx();
+		fire(ctx, { swingCount: 2, specialEffect: 'photon_barrage' });
+		const style = swingStyle(ctx);
+		expect(style).toMatchObject({ color: 0xe879f9, coneAngle: Math.PI / 2.5, range: 6 });
+		const trails = ctx._calls.filter((c) => c[0] === 'spawnProjectileTrail');
+		expect(trails).toHaveLength(2);
+		for (const trail of trails) {
+			expect(trail[3]).toMatchObject({ color: 0xe879f9, emissive: 0xc026d3, range: 6 });
+		}
+		const rings = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
+		expect(rings).toHaveLength(2);
+		for (const ring of rings) {
+			expect(ring[1]).toEqual({ x: 6, z: 0 });
+			expect(ring[2]).toBe(2.1);
+			expect(ring[3]).toMatchObject({ color: 0xe879f9, emissive: 0xc026d3 });
+		}
+		const decals = ctx._calls.filter((c) => c[0] === 'spawnImpactDecal');
+		expect(decals).toHaveLength(2);
+		expect(decals[0][2]).toMatchObject({ color: 0xe879f9, radius: 3.0 });
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		expect(bursts).toHaveLength(2);
+		for (const burst of bursts) {
+			expect(burst[1]).toEqual({ x: 6, z: 0 });
+			expect(burst[2]).toMatchObject({ color: 0xe879f9, emissive: 0xc026d3, count: 20, spread: 2.2 });
+		}
+	});
+
+	it('hit harder than the lighter sub-ticket 01/02 blades (bigger decal + more particles)', () => {
+		const ctx = makeCtx();
+		fire(ctx);
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(decal[2].radius).toBeGreaterThan(2);
+		expect(burst[2].count).toBeGreaterThan(12);
+	});
+
+	it('degrades gracefully when photon VFX primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnProjectileTrail: undefined,
+			spawnTelegraphRing: undefined,
+			spawnImpactDecal: undefined,
+			spawnParticleBurst: undefined,
+		});
+		expect(() => fire(ctx)).not.toThrow();
+		expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(1);
+		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+	});
+
+	it('carries a positive windUpMs so the 315 charge telegraph fires', () => {
+		expect(CARD_DEFS.excalibur_photon).toBeDefined();
+		expect(CARD_DEFS.excalibur_photon.windUpMs).toBeGreaterThan(0);
 	});
 });
 
