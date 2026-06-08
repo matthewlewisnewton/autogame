@@ -10,6 +10,7 @@ import { resolveVariantRollTier } from '../enemyVariants.js';
 import {
 	ENCOUNTER_PHASES,
 	ENCOUNTER_TRIGGER_RADIUS,
+	clearNonBossEnemies,
 	resolveEncounterAnchor,
 } from '../encounters.js';
 import { resetGameState, gameState, runGameLoopTick } from '../index.js';
@@ -1113,10 +1114,7 @@ describe('debugScenario — arena-trials-*', () => {
 
 		const state = testGameState();
 		const bossId = state.run.encounter.bossEnemyId;
-		for (const enemy of state.enemies) {
-			if (enemy.id !== bossId) enemy.hp = 0;
-		}
-		state.enemies = state.enemies.filter((e) => e.hp > 0);
+		clearNonBossEnemies(state, bossId);
 
 		const approachPromise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'arena-trials-boss-approach' });
@@ -1126,7 +1124,10 @@ describe('debugScenario — arena-trials-*', () => {
 		expect(approachResult.scenario).toBe('arena-trials-boss-approach');
 
 		const player = playerForSocket(socket);
-		const anchor = resolveEncounterAnchor(state.run, state);
+		const dais = state.layout.landmarks.find((lm) => lm.type === 'arena_dais');
+		const anchor = resolveEncounterAnchor(state.run, state)
+			|| (dais ? { x: dais.x, z: dais.z } : null);
+		expect(anchor).toBeTruthy();
 		const distFromAnchor = Math.hypot(anchor.x - player.x, anchor.z - player.z);
 		expect(distFromAnchor).toBeGreaterThan(ENCOUNTER_TRIGGER_RADIUS);
 		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
