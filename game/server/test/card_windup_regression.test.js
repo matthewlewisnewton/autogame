@@ -143,6 +143,7 @@ describe('card wind-up backward compatibility', () => {
 		expect(getCardDef('glacier_collapse').windUpMs).toBe(700);
 		expect(getCardDef('dungeon_drake').windUpMs).toBe(600);
 		expect(getCardDef('spike_trap').windUpMs).toBe(500);
+		expect(getCardDef('excalibur_photon').windUpMs).toBe(600);
 		expect(getCardDef('iron_sword').windUpMs).toBeUndefined();
 		expect(getCardDef('frost_nova').windUpMs).toBeUndefined();
 		expect(getCardDef('skeleton_knight').windUpMs).toBeUndefined();

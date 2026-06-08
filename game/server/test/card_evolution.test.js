@@ -104,6 +104,7 @@ describe('card evolution', () => {
 			damage: 14,
 			charges: 6,
 			cooldownMs: 200,
+			windUpMs: 600,
 			swingsPerUse: 2,
 			specialEffect: 'photon_barrage',
 		});
