@@ -4637,6 +4637,59 @@ describe('__AUTOGAME_HARNESS_STATE__ encounter and godmode fields', () => {
 		expect(noEncounter.player.debugGodmode).toBe(false);
 	});
 
+	it('enemyHp includes slowedUntil, burningUntil, and slowFactor for status probes', async () => {
+		await import('../main.js');
+
+		const statusNow = Date.now();
+		window.__setGameState({
+			gamePhase: 'playing',
+			run: { status: 'playing' },
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+			enemies: [
+				{
+					id: 'e-slow',
+					type: 'grunt',
+					hp: 50,
+					maxHp: 80,
+					x: 4,
+					z: 0,
+					slowedUntil: statusNow + 3000,
+					slowFactor: 0.4,
+					burningUntil: 0,
+				},
+				{
+					id: 'e-burn',
+					type: 'grunt',
+					hp: 50,
+					maxHp: 80,
+					x: 7,
+					z: 0,
+					slowedUntil: 0,
+					burningUntil: statusNow + 4000,
+				},
+			],
+		}, 'p1');
+
+		const harness = window.__AUTOGAME_HARNESS_STATE__();
+		expect(harness.enemyHp).toEqual([
+			expect.objectContaining({
+				id: 'e-slow',
+				slowedUntil: statusNow + 3000,
+				burningUntil: 0,
+				slowActive: true,
+				burnActive: false,
+				slowFactor: 0.4,
+			}),
+			expect.objectContaining({
+				id: 'e-burn',
+				slowedUntil: 0,
+				burningUntil: statusNow + 4000,
+				slowActive: false,
+				burnActive: true,
+			}),
+		]);
+	});
+
 	it('runObjectiveComplete is true only when stage_boss bossDefeated is true', async () => {
 		await import('../main.js');
 

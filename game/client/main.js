@@ -4885,16 +4885,26 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 				}))
 			: [],
 		enemies: gameState ? gameState.enemies.length : 0,
-		enemyHp: gameState ? gameState.enemies.map((enemy) => ({
-			id: enemy.id,
-			hp: enemy.hp,
-			maxHp: enemy.maxHp,
-			revealedUntil: enemy.revealedUntil ?? undefined,
-			type: enemy.type,
-			spawnedBy: enemy.spawnedBy ?? null,
-			x: enemy.x,
-			z: enemy.z,
-		})) : [],
+		enemyHp: gameState ? gameState.enemies.map((enemy) => {
+			const statusNow = Date.now();
+			const slowedUntil = enemy.slowedUntil ?? 0;
+			const burningUntil = enemy.burningUntil ?? 0;
+			return {
+				id: enemy.id,
+				hp: enemy.hp,
+				maxHp: enemy.maxHp,
+				revealedUntil: enemy.revealedUntil ?? undefined,
+				type: enemy.type,
+				spawnedBy: enemy.spawnedBy ?? null,
+				x: enemy.x,
+				z: enemy.z,
+				slowedUntil,
+				burningUntil,
+				slowActive: slowedUntil > statusNow,
+				burnActive: burningUntil > statusNow,
+				...(enemy.slowFactor != null ? { slowFactor: enemy.slowFactor } : {}),
+			};
+		}) : [],
 		minions: gameState && gameState.minions ? gameState.minions.map((m) => ({
 			id: m.id,
 			type: m.type,

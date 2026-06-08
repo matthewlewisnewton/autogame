@@ -285,6 +285,26 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
+    if (name === 'fireball-hand-ready') {
+      // Swap Fireball into hand without resetting enemies or status — for sequential
+      // card exercises (e.g. slow then burn on the same target after ice-ball-ready).
+      // The same card is reachable normally by earning or drawing Fireball mid-run.
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'fireball',
+          name: 'Fireball',
+          type: 'weapon',
+          charges: 4,
+          remainingCharges: 4,
+        };
+      }
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
     if (name === 'lobby-partial-vitals') {
       // Lobby after a prior run with reduced HP and spent magic stones, ready to
       // redeploy. The same state is reachable normally by finishing or abandoning

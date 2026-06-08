@@ -563,6 +563,7 @@ const DEBUG_SCENARIOS = new Set([
   'chain-lightning-ready',
   'arcane-radial-ready',
   'fireball-ready',
+  'fireball-hand-ready',
   'glacial-thrower',
   'ice-ball-ready',
   'frost-spells-ready',
