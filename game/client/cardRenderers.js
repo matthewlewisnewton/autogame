@@ -20,6 +20,10 @@
 //   spawnInfernoPillarEffect(origin, radius)
 //   spawnChainLightningEffect(origin, direction)
 //   spawnLightningArc(from, to, style?)
+//   spawnParticleBurst(position, style?)       — multi-particle spark/ember burst
+//   spawnProjectileTrail(origin, direction, style?) — fading streak along a path
+//   spawnImpactDecal(origin, style?)           — lingering ground flash/decal ring
+//   spawnTelegraphRing(origin, radius, style?) — expanding/pulsing AoE telegraph ring
 //   flashMesh(mesh, color, durationMs)
 //   enemyMeshes()      → { [enemyId]: Three.js mesh }
 //   playSound(name)
