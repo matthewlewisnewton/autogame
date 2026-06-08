@@ -1,0 +1,14 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/318-creature-minion-summon-and-attack-animations/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/318-creature-minion-summon-and-attack-animations/game/data
+Server listening on port 3004
+Player connected: socket=Ao5i3OuCHvz_hugXAAAB, playerId=79a41568-c38a-4197-88a0-0ad82a93fe4d
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=wOwcKeNfD6J93TxTAAAD, playerId=8740f84d-2d6d-4a25-8bce-766fe39827fb
+[loot] spawned id=9719edb7-ccc1-4cd0-bf01-7bea21335b48 value=19
+Player disconnected: Ao5i3OuCHvz_hugXAAAB
+Player disconnected: wOwcKeNfD6J93TxTAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
