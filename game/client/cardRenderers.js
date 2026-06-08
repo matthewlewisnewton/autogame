@@ -1182,6 +1182,24 @@ function renderCinderSnare(data, ctx) {
 	const emissive = CINDER_SNARE_EMISSIVE;
 	const { dotTicks = 4, dotIntervalMs = 500 } = CARD_DEFS.cinder_snare;
 
+	if (data.enchantmentTriggered) {
+		if (ctx.spawnInfernoPillarEffect) {
+			ctx.spawnInfernoPillarEffect(origin, data.radius);
+		}
+		const emberPulse = () => {
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(origin, { color, emissive, count: 6, spread: 1.4 });
+			}
+			if (ctx.spawnTelegraphRing) {
+				ctx.spawnTelegraphRing(origin, data.radius * 0.85, { color, emissive });
+			}
+		};
+		for (let i = 1; i <= dotTicks; i++) {
+			ctx.scheduleAfter(dotIntervalMs * i, emberPulse);
+		}
+		return;
+	}
+
 	// t = 0 placement burst (no windUpMs — instant on cardUsed).
 	if (ctx.spawnTelegraphRing) {
 		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
@@ -1191,18 +1209,6 @@ function renderCinderSnare(data, ctx) {
 	}
 	if (ctx.spawnImpactDecal) {
 		ctx.spawnImpactDecal(origin, { color, emissive });
-	}
-
-	const emberPulse = () => {
-		if (ctx.spawnParticleBurst) {
-			ctx.spawnParticleBurst(origin, { color, emissive, count: 6, spread: 1.4 });
-		}
-		if (ctx.spawnTelegraphRing) {
-			ctx.spawnTelegraphRing(origin, data.radius * 0.85, { color, emissive });
-		}
-	};
-	for (let i = 1; i < dotTicks; i++) {
-		ctx.scheduleAfter(dotIntervalMs * i, emberPulse);
 	}
 }
 

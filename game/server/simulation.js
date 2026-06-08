@@ -2204,6 +2204,17 @@ function updateEnchantments() {
             attackRange: enc.radius,
           };
           spawnInfernoPillarEffect(enc.x, enc.z, syntheticDef, enc.ownerId);
+          if (!_gameState._pendingCinderSnareTriggers) {
+            _gameState._pendingCinderSnareTriggers = [];
+          }
+          _gameState._pendingCinderSnareTriggers.push({
+            cardId: 'cinder_snare',
+            enchantmentTriggered: true,
+            playerId: enc.ownerId,
+            origin: { x: enc.x, z: enc.z },
+            radius: enc.radius,
+            effect: 'cinder_snare',
+          });
         } else {
           enemy.lastDamagedBy = enc.ownerId;
           damageEnemy(enemy, enc.damage);

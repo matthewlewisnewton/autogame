@@ -16,6 +16,7 @@ function resetState() {
 	gameState.loot = [];
 	gameState.areaEffects = [];
 	gameState.enchantments = [];
+	gameState._pendingCinderSnareTriggers = [];
 	gameState.lobby = [];
 	gameState.gamePhase = 'playing';
 	gameState.run = { status: 'playing' };
@@ -84,6 +85,15 @@ describe('enchantment cards', () => {
 		// Trap disarmed and an inferno_pillar area effect spawned at trap pos.
 		expect(gameState.enchantments).toHaveLength(0);
 		expect(gameState.areaEffects).toHaveLength(1);
+		expect(gameState._pendingCinderSnareTriggers).toHaveLength(1);
+		expect(gameState._pendingCinderSnareTriggers[0]).toMatchObject({
+			cardId: 'cinder_snare',
+			enchantmentTriggered: true,
+			playerId: 'p1',
+			origin: { x: 0, z: 0 },
+			radius: CARD_DEFS.cinder_snare.radius,
+			effect: 'cinder_snare',
+		});
 		const area = gameState.areaEffects[0];
 		expect(area.type).toBe('inferno_pillar');
 		expect(area.originX).toBe(0);

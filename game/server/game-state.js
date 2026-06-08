@@ -34,6 +34,9 @@ function createGameState() {
     pendingEchoes: [],
     // Per-tick queue of minion cardUsed payloads; flushed after updateMinions each tick.
     _pendingMinionBreaths: [],
+    // Per-tick queue of cinder_snare trigger cardUsed payloads; flushed after
+    // updateEnchantments each tick.
+    _pendingCinderSnareTriggers: [],
     // Per-tick queue of volatile-enemy detonations ({ x, z, radius }); drained
     // in runGameLoopTick to emit 'volatileExplosion' to the lobby room.
     _pendingVolatileExplosions: [],

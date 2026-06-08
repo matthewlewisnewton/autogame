@@ -2147,7 +2147,23 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 		expect(CARD_DEFS.cinder_snare.windUpMs).toBeUndefined();
 	});
 
-	it('cinder_snare schedules smolder pulses at dotIntervalMs cadence after placement', () => {
+	it('cinder_snare placement records zero scheduleAfter calls', () => {
+		const ctx = makeCtx({
+			scheduleAfter: (ms, fn) => {
+				ctx._calls.push(['scheduleAfter', ms]);
+			},
+		});
+		renderCardUsed({
+			cardId: 'cinder_snare',
+			origin: { x: 2, z: 3 },
+			radius: 2.5,
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.filter((c) => c[0] === 'scheduleAfter')).toHaveLength(0);
+		expect(ctx._calls.some((c) => c[0] === 'spawnInfernoPillarEffect')).toBe(false);
+	});
+
+	it('cinder_snare trigger schedules smolder pulses at dotIntervalMs cadence', () => {
 		const pending = [];
 		const ctx = makeCtx({
 			scheduleAfter: (ms, fn) => {
@@ -2157,19 +2173,25 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 		});
 		renderCardUsed({
 			cardId: 'cinder_snare',
+			enchantmentTriggered: true,
 			origin: { x: 2, z: 3 },
 			radius: 2.5,
 			hits: [],
 		}, ctx);
 		expect(ctx._calls.filter((c) => c[0] === 'scheduleAfter').map((c) => c[1])).toEqual([
-			500, 1000, 1500,
+			500, 1000, 1500, 2000,
 		]);
-		expect(pending).toHaveLength(3);
-		expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(1);
-		expect(ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing')).toHaveLength(1);
+		expect(pending).toHaveLength(4);
+		expect(ctx._calls.some((c) => c[0] === 'spawnInfernoPillarEffect')).toBe(true);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(0);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing')).toHaveLength(0);
 		for (const { fn } of pending) fn();
 		expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(4);
 		expect(ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing')).toHaveLength(4);
+		const triggerRing = ctx._calls.filter(
+			(c) => c[0] === 'spawnSummonEffect' && c[3] && c[3].color === 0xfbbf24,
+		);
+		expect(triggerRing).toHaveLength(1);
 	});
 
 	it('spike_trap does not emit telegraph ring, particle burst, or impact decal', () => {

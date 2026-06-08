@@ -1406,6 +1406,13 @@ function runGameLoopTick() {
             state._pendingMinionBreaths.length = 0;
           }
 
+          if (state._pendingCinderSnareTriggers?.length) {
+            for (const event of state._pendingCinderSnareTriggers) {
+              io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, event);
+            }
+            state._pendingCinderSnareTriggers.length = 0;
+          }
+
           if (state._pendingVolatileExplosions?.length) {
             for (const record of state._pendingVolatileExplosions) {
               io.to(lobby.id).emit(SERVER_TO_CLIENT.VOLATILE_EXPLOSION, record);

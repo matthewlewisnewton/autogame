@@ -3124,6 +3124,9 @@ function returnPlayersToLobby(state = _gameState) {
   if (state._pendingMinionBreaths?.length) {
     state._pendingMinionBreaths.length = 0;
   }
+  if (state._pendingCinderSnareTriggers?.length) {
+    state._pendingCinderSnareTriggers.length = 0;
+  }
 
   for (const playerId of Object.keys(state.players)) {
     savePlayerData(playerId);
@@ -3191,6 +3194,9 @@ function giveUpRun(state = _gameState) {
 
   if (state._pendingMinionBreaths?.length) {
     state._pendingMinionBreaths.length = 0;
+  }
+  if (state._pendingCinderSnareTriggers?.length) {
+    state._pendingCinderSnareTriggers.length = 0;
   }
 
   const io = getIoTarget();
