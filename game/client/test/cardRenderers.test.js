@@ -55,6 +55,9 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('spike_trap')).toHaveLength(1);
 		expect(resolveRenderers('undead_commander')).toHaveLength(1);
 		expect(resolveRenderers('thunderbird')).toHaveLength(1);
+		expect(resolveRenderers('deck_sifter')).toHaveLength(1);
+		expect(resolveRenderers('chrono_trigger')).toHaveLength(1);
+		expect(resolveRenderers('mana_prism')).toHaveLength(1);
 	});
 
 	it('returns the composed renderer list for cards with multiple visuals', () => {
@@ -846,5 +849,130 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 			hits: [],
 		}, ctx);
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+});
+
+describe('renderCardUsed() — economy card VFX', () => {
+	describe('deck_sifter', () => {
+		it('spawns a parchment/gold particle burst at the caster origin', () => {
+			const ctx = makeCtx();
+			renderCardUsed({
+				cardId: 'deck_sifter',
+				origin: { x: 3, z: 4 },
+				hits: [],
+			}, ctx);
+			const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+			expect(bursts).toHaveLength(1);
+			expect(bursts[0][1]).toEqual({ x: 3, z: 4 });
+			expect(bursts[0][2]).toMatchObject({
+				color: 0xf5deb3,
+				emissive: 0xdaa520,
+				count: 10,
+				spread: 1.8,
+			});
+		});
+
+		it('does not throw when spawnParticleBurst is absent', () => {
+			const ctx = makeCtx({ spawnParticleBurst: undefined });
+			expect(() => renderCardUsed({
+				cardId: 'deck_sifter',
+				origin: { x: 0, z: 0 },
+				hits: [],
+			}, ctx)).not.toThrow();
+			expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(0);
+		});
+	});
+
+	describe('chrono_trigger', () => {
+		it('spawns a temporal amber/gold telegraph ring around the caster', () => {
+			const ctx = makeCtx();
+			renderCardUsed({
+				cardId: 'chrono_trigger',
+				origin: { x: 5, z: 6 },
+				direction: { x: 1, z: 0 },
+				hits: [],
+			}, ctx);
+			const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+			expect(ring).toBeDefined();
+			expect(ring[1]).toEqual({ x: 5, z: 6 });
+			expect(ring[2]).toBe(3);
+			expect(ring[3]).toMatchObject({ color: 0xfbbf24, emissive: 0xf59e0b });
+		});
+
+		it('spawns two particle bursts at adjacent hand-slot positions', () => {
+			const ctx = makeCtx();
+			renderCardUsed({
+				cardId: 'chrono_trigger',
+				origin: { x: 0, z: 0 },
+				direction: { x: 1, z: 0 },
+				hits: [],
+			}, ctx);
+			const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+			expect(bursts).toHaveLength(2);
+			// Direction is +x, so perpendicular is along z: offsets at z = -1.2 and z = +1.2.
+			const positions = bursts.map((b) => b[1]).sort((p, q) => p.z - q.z);
+			expect(positions[0]).toEqual({ x: 0, z: -1.2 });
+			expect(positions[1]).toEqual({ x: 0, z: 1.2 });
+			// Both bursts use the amber/gold palette.
+			for (const b of bursts) {
+				expect(b[2]).toMatchObject({ color: 0xfbbf24, emissive: 0xf59e0b, count: 8, spread: 1.0 });
+			}
+		});
+
+		it('does not throw when telegraph ring or particle burst primitives are absent', () => {
+			const ctx = makeCtx({ spawnTelegraphRing: undefined, spawnParticleBurst: undefined });
+			expect(() => renderCardUsed({
+				cardId: 'chrono_trigger',
+				origin: { x: 0, z: 0 },
+				hits: [],
+			}, ctx)).not.toThrow();
+			expect(ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing')).toHaveLength(0);
+			expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(0);
+		});
+	});
+
+	describe('mana_prism', () => {
+		it('spawns a violet summon ring at the placement point', () => {
+			const ctx = makeCtx();
+			renderCardUsed({
+				cardId: 'mana_prism',
+				origin: { x: 7, z: 8 },
+				hits: [],
+			}, ctx);
+			const rings = ctx._calls.filter((c) => c[0] === 'spawnSummonEffect');
+			expect(rings).toHaveLength(1);
+			expect(rings[0][1]).toEqual({ x: 7, z: 8 });
+			expect(rings[0][2]).toBe(2);
+			expect(rings[0][3]).toMatchObject({ color: 0xa78bfa, emissive: 0x8b5cf6 });
+		});
+
+		it('spawns a violet/cyan crystal particle burst at the center', () => {
+			const ctx = makeCtx();
+			renderCardUsed({
+				cardId: 'mana_prism',
+				origin: { x: 7, z: 8 },
+				hits: [],
+			}, ctx);
+			const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+			expect(bursts).toHaveLength(1);
+			expect(bursts[0][1]).toEqual({ x: 7, z: 8 });
+			expect(bursts[0][2]).toMatchObject({
+				color: 0x22d3ee,
+				emissive: 0xa78bfa,
+				count: 12,
+				spread: 1.2,
+			});
+		});
+
+		it('still renders the summon ring when spawnParticleBurst is absent', () => {
+			const ctx = makeCtx({ spawnParticleBurst: undefined });
+			renderCardUsed({
+				cardId: 'mana_prism',
+				origin: { x: 0, z: 0 },
+				hits: [],
+			}, ctx);
+			expect(ctx._calls.filter((c) => c[0] === 'spawnSummonEffect')).toHaveLength(1);
+			expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(0);
+		});
 	});
 });

@@ -1397,6 +1397,18 @@ function applyDebugScenario(socket, name) {
       } else {
         player.hand[0] = saberCard;
       }
+    } else if (name === 'economy-cards-ready') {
+      // Enter a normal run with the three economy utility cards (deck_sifter,
+      // chrono_trigger, mana_prism) in hand plus an iron_sword filler, full HP
+      // and mana, and a nearby enemy so the VFX can be observed immediately.
+      // The same state is reachable normally by acquiring these reward cards
+      // through dungeon runs and deploying with them in hand.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.hand[0] = { id: 'deck_sifter', name: 'Deck Sifter', type: 'weapon', charges: 3, remainingCharges: 3, magicStoneCost: 0, effect: 'draw_card', drawsOnUse: 1 };
+      player.hand[1] = { id: 'chrono_trigger', name: 'Chrono Trigger', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 0, effect: 'chrono_trigger', adjacentChargeRestore: 2 };
+      player.hand[2] = { id: 'mana_prism', name: 'Mana Prism', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 0, effect: 'mana_prism', durationSeconds: 12, magicStonePulse: 10, pulseIntervalMs: 2000 };
+      player.hand[3] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5, grind: 0 };
     } else if (name === 'extracted-in-hub') {
       // Partial extract: the local player has stepped through the Telepipe and is
       // standing in the walkable hub while the run stays in `playing` (as it

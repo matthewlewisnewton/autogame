@@ -388,6 +388,68 @@ function renderTelepipe(data, ctx) {
 	ctx.spawnSummonEffect(originOf(data), data.radius || 2.5, { color: 0x22d3ee, emissive: 0x67e8f9 });
 }
 
+/**
+ * Deck Sifter: fan of ghost card silhouettes rising from the caster using
+ * a parchment/gold particle burst to signal a draw action.
+ */
+function renderDeckSifter(data, ctx) {
+	if (!ctx.spawnParticleBurst) return;
+	ctx.spawnParticleBurst(originOf(data), {
+		color: 0xf5deb3,
+		emissive: 0xdaa520,
+		count: 10,
+		spread: 1.8,
+	});
+}
+
+/**
+ * Chrono Trigger: temporal amber/gold telegraph ring around the caster
+ * plus two particle bursts at adjacent hand-slot positions to visualize
+ * charge restoration on neighboring cards.
+ */
+function renderChronoTrigger(data, ctx) {
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const perpX = -direction.z;
+	const perpZ = direction.x;
+
+	// Telegraph ring around the caster.
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, 3, { color: 0xfbbf24, emissive: 0xf59e0b });
+	}
+
+	// Two bursts at left/right hand-slot positions (perpendicular offsets).
+	if (ctx.spawnParticleBurst) {
+		for (const offset of [-1.2, 1.2]) {
+			ctx.spawnParticleBurst(
+				{ x: origin.x + perpX * offset, z: origin.z + perpZ * offset },
+				{ color: 0xfbbf24, emissive: 0xf59e0b, count: 8, spread: 1.0 },
+			);
+		}
+	}
+}
+
+/**
+ * Mana Prism: summon ring plus a violet/cyan crystal particle burst at
+ * the placement point to distinguish it from combat minions.
+ */
+function renderManaPrism(data, ctx) {
+	const origin = originOf(data);
+
+	// Summon ring at the placement point.
+	ctx.spawnSummonEffect(origin, 2, { color: 0xa78bfa, emissive: 0x8b5cf6 });
+
+	// Crystal particle burst at the center.
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, {
+			color: 0x22d3ee,
+			emissive: 0xa78bfa,
+			count: 12,
+			spread: 1.2,
+		});
+	}
+}
+
 // ── Registry ────────────────────────────────────────────────────────────
 //
 // Override the per-type default for any card that needs a bespoke effect.
@@ -398,6 +460,7 @@ const CARD_RENDERERS = {
 	// Weapons
 	infinite_disk: renderTripleReturning,
 	fireball: renderFireball,
+	deck_sifter: renderDeckSifter,
 
 	// Spells
 	chain_lightning: renderChainLightningArcs,
@@ -409,6 +472,8 @@ const CARD_RENDERERS = {
 	event_horizon: renderEventHorizon,
 	inferno_pillar: [renderInfernoPillar, renderGenericSpellBurst],
 	telepipe: renderTelepipe,
+	chrono_trigger: renderChronoTrigger,
+	mana_prism: renderManaPrism,
 
 	// Creatures
 	undead_commander: renderUndeadCommander,
