@@ -338,6 +338,8 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       const swingsPerUse = cardDef.swingsPerUse || 1;
       let hits = [];
       let magicStonesGained = 0;
+      let goldGained = 0;
+      let hpHealed = 0;
 
       for (let swing = 0; swing < swingsPerUse; swing++) {
         let swingResult;
@@ -361,6 +363,8 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           swingResult = collectConeHits(originX, originZ, dirX, dirZ, attackRange, attackConeAngle, damage, {
             magicStoneOnHit: cardDef.magicStoneOnHit,
             magicStoneOnKill: cardDef.magicStoneOnKill,
+            goldOnKill: cardDef.goldOnKill,
+            healOnKill: cardDef.healOnKill,
             attackerId: socket.playerId,
           });
         }
@@ -368,6 +372,8 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           hits.push({ ...hit, swing: swing + 1 });
         }
         magicStonesGained += swingResult.magicStonesGained;
+        goldGained += swingResult.goldGained || 0;
+        hpHealed += swingResult.hpHealed || 0;
       }
 
       // Fireball: every enemy struck by the projectile catches fire (BURNING).
@@ -449,6 +455,11 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       }
 
       const appliedMagicStones = addMagicStones(player, magicStonesGained);
+      if (goldGained > 0) {
+        player.currency = (player.currency || 0) + goldGained;
+        player.currencyEarnedThisRun = (player.currencyEarnedThisRun || 0) + goldGained;
+      }
+      const appliedHpHealed = hpHealed > 0 ? healPlayer(socket.playerId, hpHealed) : 0;
       cleanupAfterDamage();
 
       if (!fromWindup) {
@@ -475,6 +486,8 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
         shockwaveHits,
         knockbackMoved,
         magicStonesGained: appliedMagicStones,
+        ...(goldGained > 0 ? { goldGained } : {}),
+        ...(appliedHpHealed > 0 ? { hpHealed: appliedHpHealed } : {}),
         swingCount: swingsPerUse,
         comboCount: player.weaponComboCounts ? player.weaponComboCounts[data.cardId] : undefined,
         ...(cardDef.specialEffect === 'fire_trail' ? {

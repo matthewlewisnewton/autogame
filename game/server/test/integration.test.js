@@ -1206,6 +1206,36 @@ describe('Socket Integration — useCard Event', () => {
 			expect(testGameState().enemies.some(e => e.id === 'scythe-kill')).toBe(false);
 		});
 
+		it('Soul Reaper grants gold and health on kill', async () => {
+			const player = await enterScenario();
+			const def = getCardDef('soul_reaper');
+			player.magicStones = 0;
+			player.currency = 10;
+			player.currencyEarnedThisRun = 0;
+			player.hp = MAX_HP - 20;
+			player.deck = [];
+			player.hand = [
+				{ id: 'soul_reaper', name: 'Soul Reaper', type: 'weapon', charges: 3, remainingCharges: 3 },
+			];
+			testGameState().enemies = [
+				{ id: 'reaper-hit', x: player.x + 3, z: player.z, hp: 50, state: 'idle', wanderTarget: { x: player.x + 3, z: player.z } },
+				{ id: 'reaper-kill', x: player.x + 4, z: player.z, hp: 8, state: 'idle', wanderTarget: { x: player.x + 4, z: player.z } },
+			];
+
+			const cardUsedPromise = waitForEvent(socket, 'cardUsed');
+			socket.emit('useCard', { cardId: 'soul_reaper', slotIndex: 0 });
+			const used = await cardUsedPromise;
+
+			expect(used.magicStonesGained).toBe(25);
+			expect(used.goldGained).toBe(def.goldOnKill);
+			expect(used.hpHealed).toBe(def.healOnKill);
+			expect(player.currency).toBe(10 + def.goldOnKill);
+			expect(player.currencyEarnedThisRun).toBe(def.goldOnKill);
+			expect(player.hp).toBe(MAX_HP - 20 + def.healOnKill);
+			expect(player.magicStones).toBeGreaterThanOrEqual(25);
+			expect(testGameState().enemies.some(e => e.id === 'reaper-kill')).toBe(false);
+		});
+
 		it('Offering Terminal consumes the oldest nearby friendly minion for Magic Stones and weapon charges', async () => {
 			const player = await enterScenario();
 			player.magicStones = 0;
