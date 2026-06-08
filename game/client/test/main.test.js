@@ -1201,6 +1201,46 @@ describe('renderHand()', () => {
 		expect(slot.style.getPropertyValue('--charge-pct')).toBe('60');
 	});
 
+	it('shows wind-up commitment hint for heavy-hitter cards from CARD_DEFS', async () => {
+		await import('../main.js');
+
+		resetHandState();
+		hand[0] = { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 2, remainingCharges: 2 };
+		hand[1] = { id: 'magma_greatsword', name: 'Corebreaker Greatsword', type: 'weapon', charges: 2, remainingCharges: 2 };
+		hand[2] = { id: 'soul_drain', name: 'Soul Drain', type: 'spell', charges: 1, remainingCharges: 1 };
+		hand[3] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 };
+
+		window.__setGameState({
+			players: { player1: { magicStones: 90 } },
+			gamePhase: 'playing',
+		}, 'player1');
+		window.renderHand();
+
+		const slots = document.querySelectorAll('.card-slot');
+		expect(slots[0].querySelector('.card-windup-hint')?.textContent).toBe('650ms wind-up');
+		expect(slots[1].querySelector('.card-windup-hint')?.textContent).toBe('800ms wind-up');
+		expect(slots[2].querySelector('.card-windup-hint')?.textContent).toBe('700ms wind-up');
+		expect(slots[3].querySelector('.card-windup-hint')).toBeNull();
+	});
+
+	it('sets wind-up lockout tooltip on heavy-hitter hand slots', async () => {
+		await import('../main.js');
+
+		resetHandState();
+		hand[0] = { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 2, remainingCharges: 2 };
+		hand[1] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 };
+
+		window.__setGameState({
+			players: { player1: { magicStones: 90 } },
+			gamePhase: 'playing',
+		}, 'player1');
+		window.renderHand();
+
+		const slots = document.querySelectorAll('.card-slot');
+		expect(slots[0].title).toContain('cannot move or use other cards');
+		expect(slots[1].title).toBe('Right-click to discard');
+	});
+
 	it('lays out hand slots on an N64 controller grid for 8BitDo 64 only', () => {
 		expect(styleCss).toContain('repeat(4, var(--hand-n64-col-w))');
 		expect(styleCss).toContain('grid-column: 1');

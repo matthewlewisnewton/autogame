@@ -36,6 +36,13 @@ describe('CARD_DEFS', () => {
 		});
 	});
 
+	it('exposes windUpMs on heavy-hitter cards after stat merge', () => {
+		expect(CARD_DEFS.flame_blade.windUpMs).toBe(650);
+		expect(CARD_DEFS.magma_greatsword.windUpMs).toBe(800);
+		expect(CARD_DEFS.soul_drain.windUpMs).toBe(700);
+		expect(CARD_DEFS.iron_sword.windUpMs).toBeUndefined();
+	});
+
 	it('contains magma_greatsword evolved weapon with fire trail', () => {
 		expect(CARD_DEFS.magma_greatsword).toMatchObject({
 			id: 'magma_greatsword',

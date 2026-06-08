@@ -1024,6 +1024,15 @@ function isPortalEntryGraceActive() {
 
 function cardChoiceDescription(def) {
   if (!def) return '';
+  const windUpMs = def.windUpMs || 0;
+  if (windUpMs > 0 && def.damage > 0) {
+    const template = def.type === 'weapon'
+      ? THEME.cardDescriptions.damageWeaponWindup
+      : THEME.cardDescriptions.damageSpellWindup;
+    return template
+      .replace('{damage}', String(def.damage))
+      .replace('{windUpMs}', String(windUpMs));
+  }
   if (def.specialEffect) return def.specialEffect.replace(/_/g, ' ');
   if (def.type === 'weapon') {
     return THEME.cardDescriptions.damageWeapon.replace('{damage}', String(def.damage || 0));
