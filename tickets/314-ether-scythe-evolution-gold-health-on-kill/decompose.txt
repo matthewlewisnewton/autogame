@@ -1,0 +1,9 @@
+## Remediation Round 2 Plan
+
+Sub-tickets **01** and **02** already have `.passed` markers (Soul Reaper card data + kill rewards). The only open gap from `review-feedback.md` is the failing coverage test for `canyon-descent-boss-low-hp` (miniboss stays at 300 HP in the captured `stateUpdate`).
+
+One new sub-ticket was added to close that gap:
+
+- `/home/matt/workspace/.autogame-worktrees/314-ether-scythe-evolution-gold-health-on-kill/tickets/314-ether-scythe-evolution-gold-health-on-kill/subtickets/03-canyon-descent-boss-low-hp-regression/ticket.md`
+
+It targets the stale `stateUpdate` race in `game/server/debugScenarios.js` (with optional test hardening in `debug-scenarios.test.js`) so the full vitest/coverage run passes without touching the completed Soul Reaper work. Verification mode is **code**.

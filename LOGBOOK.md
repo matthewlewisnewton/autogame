@@ -5518,3 +5518,26 @@ This ticket adds `magma-windup-ready`. It remains behind the existing debug-scen
 
 None.
 
+
+## v0.311 — 314-ether-scythe-evolution-gold-health-on-kill  (2026-06-07 23:33:15)
+
+- Healing application respecting `MAX_HP`.
+- Socket integration for Soul Reaper applying currency, run-earned currency, health, and Magic Stones.
+- Existing Ether Scythe behavior remaining Magic Stone-only.
+
+## Design and foundation consistency
+
+PASS. The implementation fits the design document's loot/economy and combat-card model: enemies can provide currency rewards, and weapons remain multi-charge active combat cards. The reward amounts are conservative and harvest-themed, and they do not alter the foundation requirements for 3D rendering, server-client connectivity, player visualization, or movement synchronization.
+
+## Debug scenarios
+
+PASS. This ticket adjusted a `canyon-descent-boss-low-hp` debug-scenario race by clamping the boss to 1 HP immediately before the authoritative snapshot. The shortcut remains in the server debug-scenario path, is exercised only through the existing debug-scenario socket/URL mechanism, and the normal equivalent state remains reachable through the regular stage-boss flow: deploy the Canyon Descent tier-2 run, clear adds, activate/lock the encounter, then damage the boss to low HP. The scenario does not replace or weaken the normal run setup, encounter activation, or boss-lock invariants.
+
+## Code quality
+
+PASS. The changes are small and follow existing patterns: shared card data remains the source of truth, client/server card definitions stay aligned, server combat uses existing hit collection and healing helpers, and tests are focused on the new behavior. I found no dead code, broken exports, or console/runtime errors attributable to the ticket.
+
+## Remaining gaps
+
+None.
+

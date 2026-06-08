@@ -1,0 +1,14 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/314-ether-scythe-evolution-gold-health-on-kill/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/314-ether-scythe-evolution-gold-health-on-kill/game/data
+Server listening on port 3002
+Player connected: socket=Udpvyq96zWb6sZT6AAAB, playerId=76bbb782-098c-4b5d-abcd-b85da824705c
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=Mj-9qcVnF55URQOFAAAD, playerId=5b532380-f4a6-45e5-924d-4667c530a045
+[loot] spawned id=57ee6306-2a19-43de-8c0c-9c770f6dee09 value=20
+Player disconnected: Udpvyq96zWb6sZT6AAAB
+Player disconnected: Mj-9qcVnF55URQOFAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

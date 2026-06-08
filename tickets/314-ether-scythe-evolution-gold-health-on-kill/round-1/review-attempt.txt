@@ -1,0 +1,5 @@
+Wrote the holistic review to `tickets/314-ether-scythe-evolution-gold-health-on-kill/round-1/review.md`.
+
+Verdict is `VERDICT: FAIL` because the recorded vitest coverage run is not green: `server/test/debug-scenarios.test.js` fails for `canyon-descent-tier-2`, expecting miniboss HP `1` but receiving `300`.
+
+Also wrote the blocking remediation file to `tickets/314-ether-scythe-evolution-gold-health-on-kill/round-1/gaps.md`. No `nits.md` was created.
