@@ -91,6 +91,8 @@ import {
 import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
 import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled, getAccountProfile } from './settings.js';
 import { MODEL_REGISTRY, loadModel, modelPathFor } from './models.js';
+import { getCardDef } from './cards.js';
+import { getAccentHex } from './cardRenderers.js';
 import eventsCatalog from '../shared/events.json' with { type: 'json' };
 
 const { clientToServer: CLIENT_TO_SERVER } = eventsCatalog;
@@ -1212,6 +1214,7 @@ export function getMeshMaps() {
 		minionsMeshes,
 		lootMeshes,
 		iceBallMeshes,
+		playerCardWindupMarkers,
 	};
 }
 
@@ -3691,15 +3694,56 @@ function createEnemyRadialTelegraph(range) {
 	return mesh;
 }
 
-/** Sky-blue ring for player card wind-up — distinct from enemy attack telegraphs. */
-function createPlayerCardWindupTelegraph() {
+// ── Card wind-up charge telegraph tuning ──
+// The telegraph grows from a small/dim state to a large/bright state as the
+// wind-up charge ratio climbs 0→1, so heavy wind-up cards visibly "charge a
+// big hit". Defaults match the previous static look at full charge.
+const WINDUP_DEFAULT_ACCENT = 0x38bdf8; // sky-blue, used when the card has no accent
+const WINDUP_RING_MIN_SCALE = 0.55;
+const WINDUP_RING_MAX_SCALE = 1.5;
+const WINDUP_RING_MIN_EMISSIVE = 0.4;
+const WINDUP_RING_MAX_EMISSIVE = 2.0;
+const WINDUP_RING_MIN_OPACITY = 0.3;
+const WINDUP_RING_MAX_OPACITY = 0.7;
+const WINDUP_FLASH_MIN_EMISSIVE = 0.35;
+const WINDUP_FLASH_MAX_EMISSIVE = 1.6;
+
+function lerp(a, b, t) {
+	return a + (b - a) * t;
+}
+
+/**
+ * Normalized 0→1 charge ratio for a card wind-up, derived from the broadcast
+ * `cardWindupUntil` timestamp and the card's wind-up duration (`windUpMs`). The
+ * ratio is 0 at the start of the wind-up and reaches 1 exactly when the lockout
+ * ends, regardless of the card's individual `windUpMs`. Pure + sceneless so it
+ * can be unit tested directly.
+ */
+export function computeWindupChargeRatio(now, windupUntil, windUpMs) {
+	if (!Number.isFinite(windUpMs) || windUpMs <= 0) return 1;
+	if (!Number.isFinite(windupUntil) || windupUntil <= 0) return 0;
+	const remaining = windupUntil - now;
+	const ratio = 1 - remaining / windUpMs;
+	if (ratio <= 0) return 0;
+	if (ratio >= 1) return 1;
+	return ratio;
+}
+
+/** Accent tint (hex int) for a wind-up card, falling back to the default blue. */
+export function resolveWindupAccentHex(cardId) {
+	const hex = getAccentHex(cardId);
+	return hex === undefined ? WINDUP_DEFAULT_ACCENT : hex;
+}
+
+/** Ring for player card wind-up — distinct from enemy attack telegraphs. */
+function createPlayerCardWindupTelegraph(accentHex = WINDUP_DEFAULT_ACCENT) {
 	const geo = new THREE.RingGeometry(0.38, 0.58, 32);
 	const mat = new THREE.MeshStandardMaterial({
-		color: 0x38bdf8,
-		emissive: 0x0ea5e9,
-		emissiveIntensity: 1.2,
+		color: accentHex,
+		emissive: accentHex,
+		emissiveIntensity: WINDUP_RING_MIN_EMISSIVE,
 		transparent: true,
-		opacity: 0.55,
+		opacity: WINDUP_RING_MIN_OPACITY,
 		side: THREE.DoubleSide,
 		depthWrite: false,
 	});
@@ -3708,17 +3752,18 @@ function createPlayerCardWindupTelegraph() {
 	return mesh;
 }
 
-function applyPlayerCardWindupFlash(playerId, isWindup) {
+function applyPlayerCardWindupFlash(playerId, isWindup, accentHex = WINDUP_DEFAULT_ACCENT, ratio = 0) {
 	const avatar = playersMeshes[playerId];
 	const body = avatar?.userData?.bodyMesh;
 	if (!body?.material?.emissive) return;
 
 	if (isWindup) {
 		if (!playerCardWindupFlashing.has(playerId)) {
-			body.material.emissive.set(0x38bdf8);
-			body.material.emissiveIntensity = 1.2;
+			body.material.emissive.set(accentHex);
 			playerCardWindupFlashing.add(playerId);
 		}
+		// Brighten the avatar as the charge builds toward the hit.
+		body.material.emissiveIntensity = lerp(WINDUP_FLASH_MIN_EMISSIVE, WINDUP_FLASH_MAX_EMISSIVE, ratio);
 	} else if (playerCardWindupFlashing.has(playerId)) {
 		body.material.emissive.set(0x000000);
 		body.material.emissiveIntensity = 0;
@@ -3726,18 +3771,30 @@ function applyPlayerCardWindupFlash(playerId, isWindup) {
 	}
 }
 
-function applyPlayerCardWindupIndicator(id, player, x, z) {
+export function applyPlayerCardWindupIndicator(id, player, x, z, now = Date.now()) {
 	const windup = isPlayerCardWindup(player);
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
 	if (windup) {
-		applyPlayerCardWindupFlash(id, true);
+		const accentHex = resolveWindupAccentHex(player.cardWindupCardId);
+		const windUpMs = getCardDef(player.cardWindupCardId)?.windUpMs;
+		const ratio = computeWindupChargeRatio(now, player.cardWindupUntil, windUpMs);
+
+		applyPlayerCardWindupFlash(id, true, accentHex, ratio);
 		if (!playerCardWindupMarkers[id]) {
-			const ring = createPlayerCardWindupTelegraph();
-			scene.add(ring);
+			const ring = createPlayerCardWindupTelegraph(accentHex);
+			targetScene.add(ring);
 			playerCardWindupMarkers[id] = ring;
 		}
-		playerCardWindupMarkers[id].position.set(x, GROUND_OVERLAY_Y + 0.02, z);
+		const ring = playerCardWindupMarkers[id];
+		ring.position.set(x, GROUND_OVERLAY_Y + 0.02, z);
+		// Grow + brighten the existing mesh each frame — no per-frame allocation.
+		ring.scale.setScalar(lerp(WINDUP_RING_MIN_SCALE, WINDUP_RING_MAX_SCALE, ratio));
+		if (ring.material) {
+			ring.material.emissiveIntensity = lerp(WINDUP_RING_MIN_EMISSIVE, WINDUP_RING_MAX_EMISSIVE, ratio);
+			ring.material.opacity = lerp(WINDUP_RING_MIN_OPACITY, WINDUP_RING_MAX_OPACITY, ratio);
+		}
 	} else {
-		disposeOne(playerCardWindupMarkers, id, scene);
+		disposeOne(playerCardWindupMarkers, id, targetScene);
 		applyPlayerCardWindupFlash(id, false);
 	}
 }
@@ -5361,7 +5418,7 @@ export function animate(timestamp) {
 
 			const windupX = id === myId ? myX : pData.x;
 			const windupZ = id === myId ? myZ : pData.z;
-			applyPlayerCardWindupIndicator(id, pData, windupX, windupZ);
+			applyPlayerCardWindupIndicator(id, pData, windupX, windupZ, Date.now());
 
 			if (id === myId) continue;
 
