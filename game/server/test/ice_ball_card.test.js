@@ -28,7 +28,7 @@ describe('Ice Ball definitions', () => {
 			acquisition: 'reward',
 			specialEffect: 'slow',
 			slowDurationMs: 3000,
-			slowChance: 0.5,
+			slowChance: 0.65,
 			projectileTravelMs: 1200,
 		});
 		expect(typeof CARD_DEFS.ice_ball.rewardOrder).toBe('number');

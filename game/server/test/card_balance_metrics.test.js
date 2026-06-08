@@ -83,7 +83,7 @@ describe('card balance metrics harness', () => {
 		expect(report.cards.chain_lightning).toMatchObject({
 			id: 'chain_lightning',
 			type: 'spell',
-			magicStoneCost: 42,
+			magicStoneCost: 37,
 			damage: 22,
 			rewardOrder: 26,
 		});
@@ -93,7 +93,7 @@ describe('card balance metrics harness', () => {
 			type: 'spell',
 			magicStoneCost: 0,
 			damage: 0,
-			utilityScore: 15,
+			utilityScore: 20,
 			rewardOrder: 27,
 		});
 

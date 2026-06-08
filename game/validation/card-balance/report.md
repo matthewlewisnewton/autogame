@@ -265,7 +265,7 @@ Plausible multi-card loops from `cardEffects.js`, `simulation.js`, and integrati
 - **Enchantments:** hazard DPS is in-band for MS cost; no mandatory tuning.
 - **Economy:** 17 cards use fallback sell values; duplicate `rewardOrder: 27` on `fireball` / `purifying_pulse` should be deduped in a future data pass.
 - **Combos:** altar-centric MS/charge engines are the highest-risk degenerate line; pull+hazard and chrono refresh are moderate but mostly data-tunable.
-- **Sub-ticket 04 scope:** **5 `apply-now` tunings applied** in `cardStats.json`; **3 optional `apply-now`** remain (ice_ball, purifying_pulse, chain_lightning); **18 `operator-triage`** items (design intent, harness gaps, or utility scoring). Sub-ticket 06 reconciled this report to post-tuning harness output.
+- **Sub-ticket 04 scope:** **5 `apply-now` tunings applied** in `cardStats.json`; the **3 optional `apply-now`** nudges (ice_ball, purifying_pulse, chain_lightning) were applied in sub-ticket 310; **18 `operator-triage`** items (design intent, harness gaps, or utility scoring) remain. Sub-ticket 06 reconciled this report to post-tuning harness output.
 
 ## Recommendations
 
@@ -280,9 +280,9 @@ Consolidated from all type tables. Five **apply-now** items were applied in sub-
 | harvesting_scythe | `damage` | +3 (9 → 12) | **done** — see Applied tunings |
 | permafrost_lance | `damage` | +3 (8 → 11) | **done** — see Applied tunings |
 | dragons_breath | `damage` | +4 (9 → 13) | **done** — see Applied tunings |
-| ice_ball | `slowChance` | 0.5 → 0.65 (only if slow feels weak in playtests) | optional |
-| purifying_pulse | `healAmount` **or** `radius` | +5 heal **or** +1 m radius (only if underused) | optional |
-| chain_lightning | `magicStoneCost` | −5 (42 → 37; only if MS starvation blocks casts) | optional |
+| ice_ball | `slowChance` | 0.5 → 0.65 | **done** — see Applied tunings |
+| purifying_pulse | `healAmount` | +5 (15 → 20) | **done** — see Applied tunings |
+| chain_lightning | `magicStoneCost` | −5 (42 → 37) | **done** — see Applied tunings |
 
 Optional creature tweak (playtest-gated): `dungeon_drake` — `attackDamage` +1 **or** `burnDurationMs` +500, not both.
 
@@ -322,12 +322,12 @@ Data-only changes in `game/shared/cardStats.json` (sub-ticket 04). The **18 `ope
 | harvesting_scythe | `damage` | 9 → 12 | combat DPM lift; MS-on-hit economy unchanged |
 | permafrost_lance | `damage` | 8 → 11 | match frost_nova lane |
 | dragons_breath | `damage` | 9 → 13 | initial burst bump; DoT ticks unchanged |
+| ice_ball | `slowChance` | 0.5 → 0.65 | optional slow-proc bump applied (sub-ticket 310) |
+| purifying_pulse | `healAmount` | 15 → 20 | optional heal bump applied (sub-ticket 310) |
+| chain_lightning | `magicStoneCost` | 42 → 37 | optional MS-cost reduction applied (sub-ticket 310) |
 
 **Deferred — no safe change identified**
 
 | id | recommendation | reason |
 | --- | --- | --- |
-| ice_ball | `slowChance` 0.5 → 0.65 | verdict `ok`; bump gated on playtest slow-proc feedback |
-| purifying_pulse | `healAmount` +5 or `radius` +1 | verdict `ok`; cleanse is primary value; no underuse signal |
-| chain_lightning | `magicStoneCost` 42 → 37 | verdict `ok`; MS reduction gated on starvation in playtests |
 | dungeon_drake | `attackDamage` +1 or `burnDurationMs` +500 | optional playtest-gated tweak; post-298 burn breath already `ok` |
