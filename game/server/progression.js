@@ -1021,15 +1021,23 @@ function isPortalEntryGraceActive() {
   return Date.now() - telepipe.placedAt < PORTAL_PLACEMENT_GRACE_MS;
 }
 
+function appendWindUpCommitHint(description, def) {
+  const windUpMs = def?.windUpMs;
+  if (!windUpMs || windUpMs <= 0) return description;
+  const seconds = (Math.round(windUpMs / 100) / 10).toFixed(1);
+  return description + THEME.cardDescriptions.windUpCommit.replace('{seconds}', seconds);
+}
+
 function cardChoiceDescription(def) {
   if (!def) return '';
-  if (def.specialEffect) return def.specialEffect.replace(/_/g, ' ');
-  if (def.type === 'weapon') {
-    return THEME.cardDescriptions.damageWeapon.replace('{damage}', String(def.damage || 0));
-  }
-  if (def.type === 'spell') return THEME.cardDescriptions.summonAlly;
-  if (def.type === 'creature') return THEME.cardDescriptions.spawnMinion;
-  return `${def.type} card`;
+  let description;
+  if (def.specialEffect) description = def.specialEffect.replace(/_/g, ' ');
+  else if (def.type === 'weapon') {
+    description = THEME.cardDescriptions.damageWeapon.replace('{damage}', String(def.damage || 0));
+  } else if (def.type === 'spell') description = THEME.cardDescriptions.summonAlly;
+  else if (def.type === 'creature') description = THEME.cardDescriptions.spawnMinion;
+  else description = `${def.type} card`;
+  return appendWindUpCommitHint(description, def);
 }
 
 function getEnemyCardDrop(enemy) {

@@ -1126,6 +1126,31 @@ describe('renderHand()', () => {
 		expect(slots[1].querySelector('.card-ms-cost')).toBeNull();
 	});
 
+	it('shows wind-up label and commitment tooltip on wind-up cards', async () => {
+		await import('../main.js');
+
+		resetHandState();
+		hand[0] = { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 2, remainingCharges: 2 };
+		hand[1] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 };
+		hand[2] = null;
+		hand[3] = null;
+
+		window.__setGameState({
+			players: {
+				player1: { magicStones: 100 },
+			},
+			gamePhase: 'playing',
+		}, 'player1');
+
+		window.renderHand();
+
+		const slots = document.querySelectorAll('.card-slot');
+		expect(slots[0].querySelector('.card-windup')?.textContent).toBe('0.7s wind-up');
+		expect(slots[0].title).toContain('0.7s wind-up');
+		expect(slots[0].title.toLowerCase()).toContain('locked');
+		expect(slots[1].querySelector('.card-windup')).toBeNull();
+	});
+
 	it('highlights adjacent cards when hovering Chrono Trigger', async () => {
 		await import('../main.js');
 

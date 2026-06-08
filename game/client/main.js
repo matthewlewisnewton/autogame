@@ -18,7 +18,7 @@ import {
 	getCardTypeLabel,
 } from './theme.js';
 import { io } from 'socket.io-client';
-import { CARD_DEFS, CARD_TYPE_STYLE, CARD_ACCENT_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, getCardSellValue, getGrindCost, getCardDef, getForgeAttunePreview, weaponCardIds, spellCardIds, creatureCardIds, enchantmentCardIds } from './cards.js';
+import { CARD_DEFS, CARD_TYPE_STYLE, CARD_ACCENT_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, getCardSellValue, getGrindCost, getCardDef, getForgeAttunePreview, formatWindUpLabel, weaponCardIds, spellCardIds, creatureCardIds, enchantmentCardIds } from './cards.js';
 import { buildLoadoutDeckDisplay } from './deck-loadout.js';
 import { drawCard, initHand as initHandFromModule, hand, deck, desperationDeck, slotCooldowns, canUseSlot, setDrawPile, setDesperationDrawPile, inDesperation, setInDesperation, canDrawIntoHandLocal, MAX_HAND_SLOTS, setHandInputLockChecker } from './hand.js';
 import { renderCardUsed } from './cardRenderers.js';
@@ -2685,6 +2685,11 @@ function renderHand() {
 				? '<span class="desperation-ribbon">Desperate</span>'
 				: '';
 			const echoBadge = card.isEcho ? '<span class="echo-badge">Echo</span>' : '';
+			const windUpMs = CARD_DEFS[card.id]?.windUpMs || 0;
+			const windUpLabel = windUpMs > 0 ? formatWindUpLabel(windUpMs) : '';
+			const windUpSpan = windUpLabel
+				? `<span class="card-windup">${windUpLabel}</span>`
+				: '';
 			content.innerHTML = `
 				${desperationRibbon}
 				<span class="card-icon">${style.icon}</span>
@@ -2693,6 +2698,7 @@ function renderHand() {
 				${evolvedBadge}
 				${grindBadge}
 				${effectText}
+				${windUpSpan}
 				${msCostBadge}
 				<span class="card-charges">${formatCardChargesDisplay(card)}</span>
 			`;
@@ -2702,11 +2708,15 @@ function renderHand() {
 			slot.classList.toggle('echo-card', !!card.isEcho);
 			slot.classList.toggle('creature-burning', !!card.activeMinionId);
 			slot.dataset.cardType = card.type;
-			slot.title = card.activeMinionId
+			let slotTitle = card.activeMinionId
 				? 'Summoned creature active — card burns down until it expires'
 				: card.isDesperation
 				? 'Last-resort card — drawn when your deck runs out'
 				: 'Right-click to discard';
+			if (windUpMs > 0) {
+				slotTitle = `${windUpLabel} — committed until release; movement and other cards locked during wind-up. ${slotTitle}`;
+			}
+			slot.title = slotTitle;
 
 			if (cardCost > 0 && playerMs < cardCost) {
 				slot.classList.add('no-ms');

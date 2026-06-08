@@ -596,6 +596,15 @@ canvas {
   text-align: center;
 }
 
+.card-slot .card-windup {
+  font-size: 8px;
+  font-weight: 700;
+  color: #a5b4fc;
+  text-align: center;
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+}
+
 /* ── Lobby browser overlay ── */
 
 #lobby-browser {

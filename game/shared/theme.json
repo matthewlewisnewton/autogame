@@ -82,6 +82,7 @@
   "cardDescriptions": {
     "summonAlly": "Channels an invocation",
     "spawnMinion": "Deploys a bound construct",
-    "damageWeapon": "{damage} output technique"
+    "damageWeapon": "{damage} output technique",
+    "windUpCommit": " — heavy wind-up ({seconds}s)"
   }
 }

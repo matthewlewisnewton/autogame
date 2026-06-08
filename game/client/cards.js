@@ -72,6 +72,19 @@ export function scaledGrindStat(baseValue, grind) {
   return Math.round(baseValue * getStatMultiplier(grind));
 }
 
+/** Wind-up duration as seconds with one decimal (e.g. 700 → "0.7s"). */
+export function formatWindUpSeconds(windUpMs) {
+  const ms = Number(windUpMs);
+  if (!Number.isFinite(ms) || ms <= 0) return '';
+  return `${(Math.round(ms / 100) / 10).toFixed(1)}s`;
+}
+
+/** In-hand wind-up label (e.g. 700 → "0.7s wind-up"). */
+export function formatWindUpLabel(windUpMs) {
+  const seconds = formatWindUpSeconds(windUpMs);
+  return seconds ? `${seconds} wind-up` : '';
+}
+
 export function getForgeAttunePreview(cardDef, grind) {
   if (!cardDef) return [];
 
@@ -103,6 +116,15 @@ export function getForgeAttunePreview(cardDef, grind) {
       label: 'Minion HP',
       current: String(scaledGrindStat(cardDef.minionHp, currentGrind)),
       next: String(scaledGrindStat(cardDef.minionHp, nextGrind)),
+    });
+  }
+
+  if (cardDef.windUpMs > 0) {
+    const seconds = formatWindUpSeconds(cardDef.windUpMs);
+    rows.push({
+      label: 'Wind-up',
+      current: seconds,
+      next: seconds,
     });
   }
 

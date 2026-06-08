@@ -8,6 +8,9 @@ import {
 	spellCardIds,
 	creatureCardIds,
 	EVOLUTION_TRANSFORMS,
+	formatWindUpSeconds,
+	formatWindUpLabel,
+	getForgeAttunePreview,
 } from '../cards.js';
 
 // ── CARD_DEFS ──
@@ -458,5 +461,53 @@ describe('card ID sets', () => {
 			color: '#67e8f9',
 			icon: '❄',
 		});
+	});
+});
+
+describe('formatWindUpSeconds()', () => {
+	it('formats milliseconds to one decimal second', () => {
+		expect(formatWindUpSeconds(700)).toBe('0.7s');
+		expect(formatWindUpSeconds(600)).toBe('0.6s');
+		expect(formatWindUpSeconds(1100)).toBe('1.1s');
+		expect(formatWindUpSeconds(500)).toBe('0.5s');
+	});
+
+	it('returns empty string for missing or non-positive values', () => {
+		expect(formatWindUpSeconds(0)).toBe('');
+		expect(formatWindUpSeconds(undefined)).toBe('');
+	});
+});
+
+describe('formatWindUpLabel()', () => {
+	it('appends wind-up suffix to formatted seconds', () => {
+		expect(formatWindUpLabel(750)).toBe('0.8s wind-up');
+		expect(formatWindUpLabel(850)).toBe('0.9s wind-up');
+	});
+});
+
+describe('getForgeAttunePreview() wind-up row', () => {
+	it('includes a Wind-up row for heavy hitter and exemplar cards', () => {
+		for (const cardId of [
+			'flame_blade',
+			'magma_greatsword',
+			'battle_familiar',
+			'soul_drain',
+			'astral_guardian',
+			'steel_claymore',
+			'glacier_collapse',
+			'dungeon_drake',
+			'spike_trap',
+		]) {
+			const rows = getForgeAttunePreview(CARD_DEFS[cardId], 0);
+			const windUpRow = rows.find((row) => row.label === 'Wind-up');
+			expect(windUpRow, cardId).toBeTruthy();
+			expect(windUpRow.current).toBe(formatWindUpSeconds(CARD_DEFS[cardId].windUpMs));
+			expect(windUpRow.next).toBe(windUpRow.current);
+		}
+	});
+
+	it('omits the Wind-up row when windUpMs is absent', () => {
+		const rows = getForgeAttunePreview(CARD_DEFS.iron_sword, 0);
+		expect(rows.some((row) => row.label === 'Wind-up')).toBe(false);
 	});
 });
