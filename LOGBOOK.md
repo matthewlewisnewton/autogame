@@ -5541,3 +5541,26 @@ The change stays within the card-combat model described in `game/docs/design.md`
 
 None.
 
+
+## v0.318 — 309-fix-storm-eagle-thunderbird-attack-interval-gate  (2026-06-08 00:43:26)
+
+### Server test asserting the gate
+
+PASS. `game/server/test/new_card_pack.test.js` adds focused coverage for first-hit behavior, suppression within the interval, re-fire after interval expiry, and Thunderbird chain suppression/re-fire. The provided `coverage.log` shows `server/test/new_card_pack.test.js` passed, and the full suite passed with `53` test files and `1514` tests.
+
+## Design and requirements consistency
+
+PASS. The change is server-authoritative combat tuning for creature cards, consistent with the design document's card-based combat model and the existing minion AI patterns. It does not touch rendering, WebSocket connectivity, multiplayer visualization, or movement synchronization requirements, and the captured fallback smoke flow confirms those foundations still load and run.
+
+## Debug scenarios
+
+No development debug scenario was added or changed by this ticket. The captured run did not use a debug scenario (`debugScenario: null`), so there is no debug shortcut gating issue to review.
+
+## Code quality
+
+PASS. The implementation is minimal and localized to the expected files. The interval gate mirrors existing minion timing patterns, avoids changing hit damage, and does not introduce dead code or console/runtime errors. One non-blocking cleanup is tracked separately in `nits.md`: live creature spawn currently relies on the simulation fallback interval rather than copying the new stat onto the minion instance.
+
+## Remaining gaps
+
+No blocking gaps.
+
