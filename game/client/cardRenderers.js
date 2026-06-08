@@ -32,7 +32,7 @@
 //   scheduleAfter(ms, fn) — wrapper around setTimeout used for delayed swings
 
 import { CARD_ACCENT_STYLE, CARD_DEFS } from './cards.js';
-import { MINION_SUMMON_IN_MS } from './config.js';
+import { MINION_SUMMON_IN_MS, PHOTON_BARRAGE_SWING_DELAY_MS } from './config.js';
 
 const NULL_CRAWLER_SUMMON_COLOR = 0x22d3ee;
 const NULL_CRAWLER_SUMMON_EMISSIVE = 0x67e8f9;
@@ -86,7 +86,7 @@ function renderConeSwings(data, ctx) {
 	const origin = originOf(data);
 	const direction = directionOf(data);
 	const swingCount = data.swingCount || 1;
-	const delayPerSwing = data.specialEffect === 'photon_barrage' ? 80 : 0;
+	const delayPerSwing = data.specialEffect === 'photon_barrage' ? PHOTON_BARRAGE_SWING_DELAY_MS : 0;
 
 	for (let i = 0; i < swingCount; i++) {
 		const delay = delayPerSwing * i;
@@ -300,7 +300,7 @@ function renderExcaliburPhoton(data, ctx) {
 	const color = getAccentHex('excalibur_photon') ?? style.color;
 	const emissive = style.emissive;
 	const swingCount = data.swingCount || 1;
-	const delayPerSwing = data.specialEffect === 'photon_barrage' ? 80 : 0;
+	const delayPerSwing = data.specialEffect === 'photon_barrage' ? PHOTON_BARRAGE_SWING_DELAY_MS : 0;
 	const impactAt = pointAlong(origin, direction, style.range);
 
 	const swing = () => {
@@ -357,7 +357,7 @@ function renderHeavyGreatsword(data, ctx) {
 	const color = getAccentHex(data.cardId) ?? style.color;
 	const emissive = style.emissive;
 	const swingCount = data.swingCount || 1;
-	const delayPerSwing = data.specialEffect === 'photon_barrage' ? 80 : 0;
+	const delayPerSwing = data.specialEffect === 'photon_barrage' ? PHOTON_BARRAGE_SWING_DELAY_MS : 0;
 
 	const swing = () => ctx.spawnAttackEffect(origin, direction, {
 		color,
