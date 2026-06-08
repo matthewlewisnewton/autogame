@@ -1,0 +1,335 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game
+      Coverage enabled with v8
+
+ ✓ |server| server/test/card_balance_metrics.test.js (6 tests) 62ms
+stdout | server/test/ice_ball_card.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/card_sync.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/ice_ball_card.test.js > Ice Ball gameplay > casts an ice ball that emits CARD_USED with hits and impact damage
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/ice_ball_card.test.js > Ice Ball gameplay > casts an ice ball that emits CARD_USED with hits and impact damage
+Server listening on port 0
+
+ ✓ |server| server/test/card_sync.test.js (9 tests) 38ms
+stdout | server/test/ice_ball_card.test.js > Ice Ball gameplay > casts an ice ball that emits CARD_USED with hits and impact damage
+Player connected: socket=1TloAmNuuMH-WEBcAAAB, playerId=test-1780902783295-oz5h3a
+
+stdout | server/test/ice_ball_card.test.js > Ice Ball gameplay > casts an ice ball that emits CARD_USED with hits and impact damage
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/ice_ball_card.test.js > Ice Ball gameplay > casts an ice ball that emits CARD_USED with hits and impact damage
+Player disconnected: 1TloAmNuuMH-WEBcAAAB
+
+stdout | server/test/ice_ball_card.test.js > Ice Ball gameplay > slows struck enemies when the slow roll succeeds
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/ice_ball_card.test.js > Ice Ball gameplay > slows struck enemies when the slow roll succeeds
+Server listening on port 0
+
+stdout | server/test/ice_ball_card.test.js > Ice Ball gameplay > slows struck enemies when the slow roll succeeds
+Player connected: socket=EJHEM8uV3MeSuFjRAAAD, playerId=test-1780902783408-khvyc4
+
+stdout | server/test/ice_ball_card.test.js > Ice Ball gameplay > slows struck enemies when the slow roll succeeds
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/ice_ball_card.test.js > Ice Ball gameplay > slows struck enemies when the slow roll succeeds
+[loot] spawned id=6480a06b-7d00-4e1a-8447-bd8ad75035e2 value=6
+
+stdout | server/test/ice_ball_card.test.js > Ice Ball gameplay > slows struck enemies when the slow roll succeeds
+Player disconnected: EJHEM8uV3MeSuFjRAAAD
+
+stdout | server/test/ice_ball_card.test.js > Ice Ball gameplay > deals impact damage without slowing when the slow roll fails
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/ice_ball_card.test.js > Ice Ball gameplay > deals impact damage without slowing when the slow roll fails
+Server listening on port 0
+
+stdout | server/test/ice_ball_card.test.js > Ice Ball gameplay > deals impact damage without slowing when the slow roll fails
+Player connected: socket=cRgUUiqfrEwwPuvwAAAF, playerId=test-1780902783465-iohwdl
+
+stdout | server/test/ice_ball_card.test.js > Ice Ball gameplay > deals impact damage without slowing when the slow roll fails
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/ice_ball_card.test.js > Ice Ball gameplay > deals impact damage without slowing when the slow roll fails
+Player disconnected: cRgUUiqfrEwwPuvwAAAF
+
+ ✓ |server| server/test/ice_ball_card.test.js (5 tests) 241ms
+ ✓ |client| client/test/vanguard-hud.test.js (19 tests) 6ms
+ ✓ |client| client/test/cards.test.js (22 tests) 11ms
+ ✓ |client| client/test/attune-preview.test.js (1 test) 3ms
+ ✓ |client| client/test/deck-loadout.test.js (6 tests) 14ms
+ ✓ |client| client/test/cardRenderers.test.js (53 tests) 29ms
+ ✓ |client| client/test/boss-encounter-hud.test.js (12 tests) 18ms
+ ✓ |client| client/test/collision-hand.test.js (53 tests) 24ms
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > builds meshes for local and remote lobby players
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > builds meshes for local and remote lobby players
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:628:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:2245:2[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:5068:20[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/test/hub-presence-avatars.test.js:187:3 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/models.js:89:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/models.js:80:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:628:11[90m)[39m
+}
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:628:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:2245:2[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:5068:20[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/test/hub-presence-avatars.test.js:187:3 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/models.js:89:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/models.js:80:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:628:11[90m)[39m
+}
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > hub lobby join starts with #lobby hidden and lobbyMenuDismissed true
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/questBooth.test.js > quest booth booth:action hook (main.js) > reveals and scrolls the quest panel into view for boothId quest in lobby and ignores other booths
+[launchBooth] ready-up via booth
+[launchBooth] ready-up via booth
+
+ ✓ |client| client/test/boss-encounter-hud-wiring.test.js (6 tests) 308ms
+   ✓ boss-encounter HUD wiring in main.js > populates the model and shows the HUD for an active encounter with a live boss  302ms
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > moves the remote mesh when hub presence coordinates change
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/deck-viewer.test.js (21 tests) 285ms
+stdout | client/test/key-item-dodge.test.js > dash VFX > triggerDashVFX applies squash scale when a player mesh exists
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/boothDeck.test.js (4 tests) 606ms
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > dismissGameLobby then lobby-phase stateUpdate keeps #lobby hidden
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/debug-hatswap-hook.test.js (3 tests) 1190ms
+   ✓ ?booth=hatswap debug hook (main.js requestBoothDebugOpen) > opens the character booth and requests hats-unlocked once on localhost  621ms
+   ✓ ?booth=hatswap debug hook (main.js requestBoothDebugOpen) > does not fire before the phase is lobby  414ms
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > applyHubPresence sequence updates remote mesh position and cosmeticKey
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > hubPresenceUpdate and applyHubPresence while dismissed do not show #lobby
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > applyHubPresence removedPlayerIds disposes remote avatar mesh
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/boothShop.test.js (5 tests) 1257ms
+   ✓ shop booth via booth:action > opens the card shop when booth:action targets the shop booth  315ms
+   ✓ shop booth via booth:action > emits sellCard when a sell button is clicked after booth open  516ms
+ ✓ |client| client/test/key-item-dodge.test.js (4 tests) 1739ms
+   ✓ key item cooldown HUD > updateKeyItemCooldownHud toggles cooldown class and countdown text  647ms
+   ✓ dash VFX detection in stateUpdate > calls triggerDashVFX when player position jumps beyond dash threshold  685ms
+stdout | client/test/debug-godmode.test.js > debug godmode toggle (main.js) > mirrors debugGodmode onto local player when toggle succeeds
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+
+ ✓ |client| client/test/hub-presence-avatars.test.js (4 tests) 1670ms
+   ✓ hub presence avatars (lobby) > builds meshes for local and remote lobby players  523ms
+   ✓ hub presence avatars (lobby) > applyHubPresence sequence updates remote mesh position and cosmeticKey  570ms
+   ✓ hub presence avatars (lobby) > applyHubPresence removedPlayerIds disposes remote avatar mesh  410ms
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > deck booth open shows #lobby and clears the dismissed flag
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > shop booth open shows #lobby and clears the dismissed flag
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/debug-godmode.test.js (6 tests) 1849ms
+   ✓ debug godmode toggle (main.js) > __toggleDebugGodmodeForTest emits toggleDebugGodmode when the socket is ready  517ms
+   ✓ debug godmode toggle (main.js) > mirrors debugGodmode onto local player when toggle succeeds  377ms
+stdout | client/test/main.test.js > cardError handler — server hand rejection > shows a toast when the server rejects an unauthorized card use
+[cardError] Card not in hand
+[cardError] Card not in hand
+[cardError] Card not in hand
+[cardError] Card not in hand
+[cardError] Card not in hand
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a red cone for grunt (default) type
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:628:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:3023:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/test/main.test.js:2558:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/models.js:89:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/models.js:80:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:628:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates an orange cone for skirmisher type
+[renderer] failed to apply model "/models/skirmisher.glb" for "skirmisher": TypeError: Failed to parse URL from /models/skirmisher.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:628:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:3023:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/test/main.test.js:2570:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/skirmisher.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/models.js:89:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/models.js:80:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:628:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a teal octahedron for spawner type
+[renderer] failed to apply model "/models/spawner.glb" for "spawner": TypeError: Failed to parse URL from /models/spawner.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:628:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:3023:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/test/main.test.js:2580:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/spawner.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/models.js:89:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/models.js:80:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:628:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a warm emissive octahedron for ember_wraith type
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:628:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:3023:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/test/main.test.js:2558:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/models.js:89:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/models.js:80:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:628:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a purple cone for miniboss type
+[renderer] failed to apply model "/models/miniboss.glb" for "miniboss": TypeError: Failed to parse URL from /models/miniboss.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:628:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:3023:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/test/main.test.js:2622:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/miniboss.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/models.js:89:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/models.js:80:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/game/[39mclient/renderer.js:628:11[90m)[39m
+}
+
+ ✓ |client| client/test/lobby-menu-dismiss.test.js (6 tests) 2027ms
+   ✓ lobby menu dismiss guard (main.js) > hub lobby join starts with #lobby hidden and lobbyMenuDismissed true  312ms
+   ✓ lobby menu dismiss guard (main.js) > dismissGameLobby then lobby-phase stateUpdate keeps #lobby hidden  408ms
+   ✓ lobby menu dismiss guard (main.js) > hubPresenceUpdate and applyHubPresence while dismissed do not show #lobby  480ms
+   ✓ lobby menu dismiss guard (main.js) > deck booth open shows #lobby and clears the dismissed flag  452ms
+stdout | client/test/characterBooth.test.js > character booth ?booth=character debug hook (main.js) > auto-opens once after hub lobby entry on localhost with ?booth=character
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/characterBooth.test.js > character booth ?booth=character debug hook (main.js) > stays closed without the booth URL param
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/questBooth.test.js (17 tests) 2589ms
+   ✓ quest booth booth:action hook (main.js) > re-hides the quest panel when the lobby is (re)shown  520ms
+   ✓ quest booth booth:action hook (main.js) > does not open the panel when gamePhase is not lobby  353ms
+ ✓ |client| client/test/characterBooth.test.js (13 tests) 2603ms
+   ✓ character booth overlay (module) > save button shows cost hint when appearance fields are dirty  309ms
+stdout | client/test/main.test.js > suspended run resume/abandon UI > resume button triggers the launch-booth ready-up path
+[launchBooth] ready-up via booth
+
+ ✓ |client| client/test/main.test.js (171 tests) 6150ms
+   ✓ renderDeckEditor() > populates owned card counts and deck size from mock data  318ms
+   ✓ updateObjectiveHud() > shows prism progress for collect_items and hides outside playing  491ms
+   ✓ updateObjectiveHud() > shows hostiles progress for defeat_enemies  371ms
+   ✓ __AUTOGAME_HARNESS_STATE__ suspendedRunSummary > clears suspendedRunSummary when stateUpdate reports null after resume or abandon  529ms
+
+ Test Files  22 passed (22)
+      Tests  446 passed (446)
+   Start at  00:13:01
+   Duration  9.03s (transform 2.54s, setup 1.29s, collect 6.80s, tests 22.72s, environment 10.64s, prepare 3.83s)
+
+ % Coverage report from v8
+---------------|---------|----------|---------|---------|-----------------------
+File           | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s     
+---------------|---------|----------|---------|---------|-----------------------
+All files      |   77.53 |    64.52 |   67.81 |    77.5 |                       
+ client        |    88.8 |       78 |   83.33 |   88.74 |                       
+  cards.js     |   87.75 |    73.17 |   88.88 |    87.6 | 94-99,102-107,231-248 
+  collision.js |   88.94 |     72.3 |     100 |   88.94 | ...98,200-201,243-244 
+  delta.js     |     100 |       50 |     100 |     100 | 12                    
+  hand.js      |    89.2 |    92.85 |   70.58 |    89.2 | ...96,175-176,179-182 
+ server        |   73.19 |    46.95 |   56.86 |   73.19 |                       
+  index.js     |   73.19 |    46.95 |   56.86 |   73.19 | ...632-1633,1638-1640 
+---------------|---------|----------|---------|---------|-----------------------

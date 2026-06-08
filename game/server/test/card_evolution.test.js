@@ -104,6 +104,7 @@ describe('card evolution', () => {
 			damage: 14,
 			charges: 6,
 			cooldownMs: 200,
+			windUpMs: 600,
 			swingsPerUse: 2,
 			specialEffect: 'photon_barrage',
 		});
@@ -210,6 +211,45 @@ describe('card evolution', () => {
 		expect(player.inventory[0].cardId).toBe('resonance_edge');
 		expect(player.inventory[0].isEvolved).toBe(true);
 		expect(player.ownedCards.resonance_edge).toBe(1);
+	});
+
+	it('Reaper\'s Scythe exposes conservative kill reward stats', () => {
+		expect(CARD_DEFS.reapers_scythe).toMatchObject({
+			currencyOnKill: 6,
+			healOnKill: 8,
+		});
+	});
+
+	it('evolves Ether Scythe +10 into Reaper\'s Scythe', () => {
+		const player = {
+			inventory: [
+				createCardInstance('harvesting_scythe', {
+					instanceId: 'scythe-1',
+					grind: EVOLUTION_GRIND_REQUIRED,
+				}),
+			],
+			ownedCards: { harvesting_scythe: 1 },
+			selectedDeck: ['scythe-1'],
+		};
+
+		const result = evolveCard(player, 'scythe-1');
+
+		expect(result.ok).toBe(true);
+		expect(result.fromCardId).toBe('harvesting_scythe');
+		expect(result.toCardId).toBe('reapers_scythe');
+		expect(player.inventory[0].cardId).toBe('reapers_scythe');
+		expect(player.inventory[0].isEvolved).toBe(true);
+		expect(player.ownedCards.reapers_scythe).toBe(1);
+		expect(CARD_DEFS.reapers_scythe).toMatchObject({
+			damage: 14,
+			magicStoneOnHit: 5,
+			magicStoneOnKill: 15,
+			currencyOnKill: 6,
+			healOnKill: 8,
+			isEvolved: true,
+			specialEffect: 'reap',
+			attackConeAngle: Math.PI,
+		});
 	});
 
 	it('evolves Ether Siphon +10 into Soul Drain', () => {

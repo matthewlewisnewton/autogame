@@ -5542,6 +5542,90 @@ The change stays within the card-combat model described in `game/docs/design.md`
 None.
 
 
+## v0.313 — 311-slower-scaling-early-strong-cards-plus-astral-trim  (2026-06-07 23:39:26)
+
+### Astral Guardian is conservatively trimmed without gutting its role
+
+PASS. `game/shared/cardStats.json` trims only the requested direct stats: `damage` from 66 to 63 and `shieldHp` from 15 to 14. Its evolved identity, 65 MS cost, minion HP/TTL, shield duration, and attack behavior are preserved, so it remains a top-tier evolved payoff while being slightly less of an outlier. `game/server/test/astral_guardian.test.js` and `game/server/test/card_balance_metrics.test.js` assert the live values.
+
+### Tests and ticket 303 report are updated
+
+PASS. The coverage log reports `115 passed` test files and `1829 passed` tests with coverage generated. New/updated tests cover the per-card grind scale, Phase Stalker beam behavior, Astral Guardian values, balance metrics, and the debug scenario follow-up. `game/validation/card-balance/report.md` documents the post-311 Signal Familiar, Phase Stalker, and Astral Guardian changes and keeps remaining operator-triage items separate from this ticket's completed scope.
+
+## Design and requirements consistency
+
+The changes are consistent with the card-combat design: they preserve the active deck/card loop and tune numeric progression rather than changing card acquisition, combat type, or multiplayer flow. The requirements baseline is not regressed: the capture confirms 3D rendering, client-server connection, multiplayer state, and movement synchronization.
+
+## Debug scenario review
+
+This ticket changed the Arena Trials boss-approach debug scenario logic. It remains gated behind the existing localhost `?debugScenario=` / debug socket pathway and is listed only in the debug scenario allowlists. The shortcut still requires an `arena_trials` Tier 2 playing run with an encounter, refuses to run while any non-boss enemies remain alive, and only repositions the player outside the dormant boss trigger after the same add-clear state that normal gameplay reaches by defeating adds and walking to the arena dais. It does not replace or weaken the normal encounter activation invariant; it now reuses `areAllNonBossEnemiesDefeated`, the same helper used by the encounter state machine.
+
+## Remaining gaps
+
+None.
+
+
+## v0.315 — 310-apply-3-optional-newcard-balance-tunes  (2026-06-08 00:14:45)
+
+
+PASS. The relevant assertions were updated:
+
+- `server/test/ice_ball_card.test.js` now expects `slowChance: 0.65`.
+- `server/test/card_balance_metrics.test.js` now expects `chain_lightning.magicStoneCost: 37` and `purifying_pulse.utilityScore: 20`.
+
+`coverage.log` shows the full suite passed: 22 test files and 446 tests. Coverage thresholds were disabled, but coverage completed successfully for the files under visibility.
+
+### Design and requirements consistency
+
+PASS. The changes are data-only numeric tuning within the existing card combat model described in `game/docs/design.md`: spells remain card-based combat actions, and no new flow or mechanic is introduced. The foundation in `game/docs/requirements.md` is not regressed; the capture confirms rendering, client/server connectivity, multiplayer presence, and movement synchronization still work.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change any development `?debugScenario=` URL shortcut. The existing `ice-ball-ready` server test setup is unchanged by the implementation and remains test-only setup, so there is no new debug-path acceptance risk.
+
+
+## v0.316 — 314-ether-scythe-evolution-gold-health-on-kill  (2026-06-08 00:18:31)
+
+### Evolution data and card definitions are complete
+
+PASS. `cardEconomy.json` maps `harvesting_scythe` to `reapers_scythe`; `cardDefs.json`, `cardStats.json`, server stat overlays, client card ID sets, and balance metrics all include the evolved card. This matches the existing evolution pattern for other cards and keeps the evolved variant reachable through normal gameplay evolution rather than a debug-only path.
+
+### Tests and coverage visibility
+
+PASS. The latest coverage run reports `65 passed` test files and `1602 passed` tests. Relevant passing tests include `server/test/card_evolution.test.js`, `server/test/collect_cone_kill_rewards.test.js`, `server/test/integration.test.js`, `server/test/card_balance_metrics.test.js`, and `client/test/cards.test.js`. Coverage thresholds are disabled, but the changed behavior has focused and integration coverage.
+
+## Design and requirements consistency
+
+PASS. The change fits the documented card-combat and loot/economy loop: enemies can reward currency, HP restoration exists through combat effects, and the scythe evolution reinforces the harvest/reap fantasy without changing movement, rendering, lobby, or multiplayer foundations. The smoke capture confirms the foundation requirements still hold: the 3D scene renders, the client connects to the server, players are present in multiplayer, and movement/dodge gameplay remains functional.
+
+## Debug scenarios
+
+PASS. This ticket did not add or modify a `?debugScenario=...` URL shortcut. The tests use existing socket-level debug scenarios for setup only; normal gameplay reachability is provided by the existing card evolution transform from base Ether Scythe to Reaper's Scythe.
+
+
+## v0.317 — 312-excalibur-photon-windup-balance  (2026-06-08 00:36:08)
+
+### Test coverage
+
+PASS. Coverage log shows `25` test files and `496` tests passing. New and updated tests cover the wind-up-aware balance calculation, Excalibur Photon stat exposure, evolution/new-card expectations, generic instant-card regression, and a live socket `useCard` path where Excalibur Photon commits wind-up, deals no early damage, resolves after `windUpMs`, applies two hits, and clears commitment state. Coverage output includes unrelated stderr from existing test-time model URL fallbacks and socket disconnect cleanup, but the suite passes and the captured browser run is clean.
+
+## Design and requirements consistency
+
+PASS. The change remains within the documented card-combat model: Excalibur Photon is still a weapon card in the active deck combat loop, and the wind-up/recovery lock is consistent with existing wind-up cards such as Steel Claymore and Corebreaker Greatsword. The implementation does not affect the foundational requirements for Three.js rendering, websocket connection, multiplayer visualization, or movement sync; the capture verifies those still run.
+
+## Debug scenarios
+
+PASS. This ticket did not add or change a development `?debugScenario=` entry. The new tests seed state directly or use an existing debug scenario for Magma Greatsword regression coverage; normal gameplay remains the only route for real players to obtain and use Excalibur Photon through the existing card/evolution systems.
+
+## Code quality
+
+PASS. The code change is appropriately narrow: one data-field addition, balance-metric accounting for `windUpMs`, report reconciliation, and targeted regression/integration tests. The existing wind-up pipeline locks cost/cooldown/origin at commit, resolves from `pendingCardUse`, applies `swingsPerUse` during deferred resolution, and clears commitment after use. I did not find dead code, duplicated gameplay paths, or a mismatch between stats, report, and tests.
+
+## Remaining gaps
+
+None.
+
+
 ## v0.318 — 309-fix-storm-eagle-thunderbird-attack-interval-gate  (2026-06-08 00:43:26)
 
 ### Server test asserting the gate

@@ -109,6 +109,93 @@ describe('card wind-up deferred resolution', () => {
 		return { state, player, enemy };
 	}
 
+	async function waitForPlayerWindup(player, timeoutMs = 10000) {
+		const deadline = Date.now() + timeoutMs;
+		while (Date.now() < deadline) {
+			if (player.cardUseState === 'windup') return;
+			await new Promise((resolve) => setTimeout(resolve, 5));
+		}
+		throw new Error('Timed out waiting for cardUseState windup');
+	}
+
+	async function startExcaliburWindupScenario() {
+		({ socket } = await connectClient(baseUrl));
+		const startGamePromise = waitForEvent(socket, 'startGame');
+		socket.emit('playerReady', true);
+		await startGamePromise;
+
+		const state = lobbyGameState(socket._lobbyId);
+		const player = state.players[socket._playerId];
+		state.gamePhase = 'playing';
+		state.run = { status: 'playing' };
+		player.x = 0;
+		player.z = 0;
+		player.rotation = 0;
+		player.dead = false;
+		player.extracted = false;
+		player.slotCooldowns = new Array(player.hand.length).fill(null);
+		player.hand[0] = {
+			id: 'excalibur_photon',
+			name: 'Excalibur Photon',
+			type: 'weapon',
+			charges: 6,
+			remainingCharges: 6,
+		};
+		state.enemies = [{
+			id: 'excalibur-windup-target',
+			type: 'grunt',
+			x: 2,
+			z: 0,
+			y: 0.5,
+			hp: 100,
+			maxHp: 100,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: 2, z: 0 },
+		}];
+		return { state, player, enemy: state.enemies[0] };
+	}
+
+	it('excalibur_photon commits wind-up then applies two 14-damage cone hits', async () => {
+		const { state, player } = await startExcaliburWindupScenario();
+		const target = () => state.enemies[0];
+		const hpBefore = target().hp;
+		const windUpMs = getCardDef('excalibur_photon').windUpMs;
+		const perHitDamage = getCardDef('excalibur_photon').damage;
+		const swingsPerUse = getCardDef('excalibur_photon').swingsPerUse;
+		const slotIndex = 0;
+
+		let cardUsedAtCommit = false;
+		socket.on('cardUsed', () => { cardUsedAtCommit = true; });
+		socket.emit('useCard', { cardId: 'excalibur_photon', slotIndex, rotation: 0 });
+		await waitForPlayerWindup(player);
+
+		expect(cardUsedAtCommit).toBe(false);
+		expect(target().hp).toBe(hpBefore);
+		expect(player.cardUseState).toBe('windup');
+		expect(player.pendingCardUse?.cardId).toBe('excalibur_photon');
+		expect(isPlayerCardCommitted(player)).toBe(true);
+
+		setSimGameState(state, {});
+		setProgressionGameState(state);
+		player.cardWindupStartTime = Date.now() + 100000;
+		processPendingCardWindups();
+		expect(target().hp).toBe(hpBefore);
+		expect(player.cardUseState).toBe('windup');
+
+		const cardUsedPromise = waitForEvent(socket, 'cardUsed');
+		player.cardWindupStartTime = Date.now() - windUpMs - 50;
+		runGameLoopTick();
+		const cardUsedPayload = await cardUsedPromise;
+
+		expect(player.cardUseState).toBeUndefined();
+		expect(player.pendingCardUse).toBeUndefined();
+		expect(isPlayerCardCommitted(player)).toBe(false);
+		expect(target().hp).toBe(hpBefore - perHitDamage * swingsPerUse);
+		expect(cardUsedPayload.hits).toHaveLength(swingsPerUse);
+		expect(cardUsedPayload.swingCount).toBe(swingsPerUse);
+	});
+
 	it('magma_greatsword applies damage and CARD_USED only after windUpMs', async () => {
 		const { state, player } = await startMagmaWindupScenario();
 		const target = () => state.enemies[0];

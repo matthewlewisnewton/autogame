@@ -1285,8 +1285,12 @@ function addDebuff(player, type, expiresAt) {
 function collectConeHits(originX, originZ, dirX, dirZ, range, coneAngle, damage, options = {}) {
   const hits = [];
   let magicStonesGained = 0;
+  let hpHealed = 0;
+  let currencyGained = 0;
   const magicStoneOnHit = options.magicStoneOnHit || 0;
   const magicStoneOnKill = options.magicStoneOnKill || 0;
+  const healOnKill = options.healOnKill || 0;
+  const currencyOnKill = options.currencyOnKill || 0;
   const attackerId = options.attackerId;
 
   for (const enemy of _gameState.enemies) {
@@ -1305,10 +1309,14 @@ function collectConeHits(originX, originZ, dirX, dirZ, range, coneAngle, damage,
     const hitGain = magicStoneOnHit;
     const killGain = killed ? magicStoneOnKill : 0;
     magicStonesGained += hitGain + killGain;
+    if (killed) {
+      hpHealed += healOnKill;
+      currencyGained += currencyOnKill;
+    }
     hits.push({ enemyId: enemy.id, hp: enemy.hp, magicStonesGained: hitGain + killGain });
   }
 
-  return { hits, magicStonesGained };
+  return { hits, magicStonesGained, hpHealed, currencyGained };
 }
 
 function collectRadialHits(originX, originZ, radius, damage, options = {}) {

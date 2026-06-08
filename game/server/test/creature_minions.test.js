@@ -4,6 +4,8 @@ import {
 	gameState,
 	CARD_DEFS,
 	updateMinions,
+	scaledGrindStat,
+	CARD_GRIND_STAT_SCALE,
 } from '../index.js';
 import { ATTACK_CONE_ANGLE, ATTACK_RANGE } from '../config.js';
 
@@ -21,17 +23,19 @@ function resetState() {
 	gameState.run = { status: 'playing' };
 }
 
-function makeStalker(overrides = {}) {
+function makeStalker(overrides = {}, grind = 0) {
+	const baseAttackDamage = CARD_DEFS.null_crawler.attackDamage;
+	const baseMinionHp = CARD_DEFS.null_crawler.minionHp;
 	return {
 		id: 'stalker-1',
 		ownerId: 'p1',
 		type: 'null_crawler',
 		x: 0,
 		z: 0,
-		hp: 55,
-		ttl: 30,
+		hp: scaledGrindStat(baseMinionHp, grind, 'null_crawler'),
+		ttl: scaledGrindStat(CARD_DEFS.null_crawler.minionTtl, grind, 'null_crawler'),
 		attackRange: 14,
-		attackDamage: 22,
+		attackDamage: scaledGrindStat(baseAttackDamage, grind, 'null_crawler'),
 		attackIntervalMs: 2000,
 		attackWindupMs: 1000,
 		projectileHitWidth: 0.8,
@@ -174,6 +178,51 @@ describe('Phase Stalker (null_crawler)', () => {
 		expect(gameState.enemies[0].hp).toBe(50);
 		expect(gameState.minions[0].attackState).toBeUndefined();
 		expect(gameState._pendingMinionBreaths).toHaveLength(0);
+	});
+
+	it('uses a conservative per-card grind scale below the global curve', () => {
+		expect(CARD_GRIND_STAT_SCALE.null_crawler).toBeLessThan(0.05);
+		expect(CARD_GRIND_STAT_SCALE.null_crawler).toBe(CARD_GRIND_STAT_SCALE.battle_familiar);
+	});
+
+	it('keeps base spawn stats at grind 0', () => {
+		const stalker = makeStalker({}, 0);
+		expect(stalker.attackDamage).toBe(22);
+		expect(stalker.hp).toBe(55);
+	});
+
+	it('scales spawn stats below the global grind curve at grind 5+', () => {
+		const grind = 5;
+		const baseAttackDamage = CARD_DEFS.null_crawler.attackDamage;
+		const baseMinionHp = CARD_DEFS.null_crawler.minionHp;
+		const stalker = makeStalker({}, grind);
+
+		expect(stalker.attackDamage).toBe(scaledGrindStat(baseAttackDamage, grind, 'null_crawler'));
+		expect(stalker.hp).toBe(scaledGrindStat(baseMinionHp, grind, 'null_crawler'));
+		expect(stalker.attackDamage).toBeLessThan(scaledGrindStat(baseAttackDamage, grind));
+		expect(stalker.hp).toBeLessThan(scaledGrindStat(baseMinionHp, grind));
+		expect(stalker.attackDamage).toBe(Math.round(baseAttackDamage * 1.15));
+		expect(stalker.hp).toBe(Math.round(baseMinionHp * 1.15));
+	});
+
+	it('applies scaled attackDamage to beam hits at high grind', () => {
+		const grind = 5;
+		const scaledDamage = scaledGrindStat(CARD_DEFS.null_crawler.attackDamage, grind, 'null_crawler');
+		gameState.enemies.push({
+			id: 'e1',
+			x: 7,
+			z: 0,
+			hp: 50,
+			state: 'idle',
+			wanderTarget: { x: 7, z: 0 },
+		});
+		gameState.minions.push(makeStalker({}, grind));
+
+		updateMinions();
+		fireStalkerBeam();
+
+		expect(scaledDamage).toBeLessThan(CARD_DEFS.null_crawler.attackDamage * 1.25);
+		expect(gameState.enemies[0].hp).toBe(50 - scaledDamage);
 	});
 });
 

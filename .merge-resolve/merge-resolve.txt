@@ -1,8 +1,6 @@
-`LOGBOOK.md` is resolved.
+Resolved `LOGBOOK.md` by combining both sides in version order:
 
-**Resolution:** Both logbook entries are kept in chronological order:
+1. **From `main`:** v0.313 (311), v0.315 (310), v0.316 (314), v0.317 (312)
+2. **From the ticket branch:** v0.318 (309 storm eagle/thunderbird attack-interval gate)
 
-1. **v0.306** (from `main`) — restore HP healing cards, keep no auto-level heal  
-2. **v0.307** (from the branch) — card wind-up commitment input-lock mechanic  
-
-The file follows the existing LOGBOOK pattern (ascending version numbers, newest at the end) and closes with a single `## Remaining gaps` section. All conflict markers are removed; no other files had conflicts.
+All conflict markers are removed. The logbook now reads chronologically after v0.309, with this ticket’s review entry appended at the end. Ready for the harness to commit and finish the merge.

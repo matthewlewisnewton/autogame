@@ -1187,6 +1187,9 @@ describe('Socket Integration — useCard Event', () => {
 		it('Ether Scythe grants Magic Stones on hit and kill', async () => {
 			const player = await enterScenario();
 			player.magicStones = 0;
+			player.currency = 0;
+			const hpBefore = 80;
+			player.hp = hpBefore;
 			player.deck = [];
 			player.hand = [
 				{ id: 'harvesting_scythe', name: 'Ether Scythe', type: 'weapon', charges: 3, remainingCharges: 3 },
@@ -1203,7 +1206,41 @@ describe('Socket Integration — useCard Event', () => {
 			expect(used.magicStonesGained).toBe(25);
 			expect(player.magicStones).toBeGreaterThanOrEqual(25);
 			expect(player.magicStones).toBeLessThan(27);
+			expect(player.currency).toBe(0);
+			expect(player.hp).toBe(hpBefore);
+			expect(used.currencyGained ?? 0).toBe(0);
+			expect(used.hpHealed ?? 0).toBe(0);
 			expect(testGameState().enemies.some(e => e.id === 'scythe-kill')).toBe(false);
+		});
+
+		it('Reaper\'s Scythe grants currency and HP on kill', async () => {
+			const player = await enterScenario();
+			const reaperDef = getCardDef('reapers_scythe');
+			player.magicStones = 0;
+			player.currency = 0;
+			const hpBefore = 80;
+			player.hp = hpBefore;
+			player.deck = [];
+			player.hand = [
+				{ id: 'reapers_scythe', name: 'Reaper\'s Scythe', type: 'weapon', charges: 4, remainingCharges: 4 },
+			];
+			testGameState().enemies = [
+				{ id: 'reaper-hit', x: player.x + 3, z: player.z, hp: 50, state: 'idle', wanderTarget: { x: player.x + 3, z: player.z } },
+				{ id: 'reaper-kill', x: player.x + 4, z: player.z, hp: 8, state: 'idle', wanderTarget: { x: player.x + 4, z: player.z } },
+			];
+
+			const cardUsedPromise = waitForEvent(socket, 'cardUsed');
+			socket.emit('useCard', { cardId: 'reapers_scythe', slotIndex: 0 });
+			const used = await cardUsedPromise;
+
+			expect(used.magicStonesGained).toBe(25);
+			expect(player.magicStones).toBeGreaterThanOrEqual(25);
+			expect(player.magicStones).toBeLessThan(27);
+			expect(player.currency).toBe(reaperDef.currencyOnKill);
+			expect(player.hp).toBe(Math.min(MAX_HP, hpBefore + reaperDef.healOnKill));
+			expect(used.currencyGained).toBe(reaperDef.currencyOnKill);
+			expect(used.hpHealed).toBe(reaperDef.healOnKill);
+			expect(testGameState().enemies.some(e => e.id === 'reaper-kill')).toBe(false);
 		});
 
 		it('Offering Terminal consumes the oldest nearby friendly minion for Magic Stones and weapon charges', async () => {

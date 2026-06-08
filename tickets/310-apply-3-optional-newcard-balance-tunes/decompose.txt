@@ -1,0 +1,11 @@
+Created one sub-ticket. This top-level ticket is a tight, data-only balance pass — three numeric nudges plus the report/test bookkeeping that goes with them — so it decomposes into a single focused, independently-verifiable pass.
+
+Sub-ticket folder created:
+
+- `/home/matt/workspace/.autogame-worktrees/310-apply-3-optional-newcard-balance-tunes/tickets/310-apply-3-optional-newcard-balance-tunes/subtickets/01-apply-three-optional-tunes/ticket.md`
+
+Notes on the scoping:
+- **One sub-ticket, not three** — the changes share one concern (apply the optional tunes + reconcile the report), touch the same files, and are trivially co-implementable in one pass. Splitting would just multiply report-edit conflicts.
+- **Verification: code** — every criterion is about exact values, report text, and test assertions; nothing is visual.
+- **Pre-flagged the test breakage** I found: `ice_ball_card.test.js` hardcodes `slowChance: 0.5`, and `card_balance_metrics.test.js` hardcodes `chain_lightning.magicStoneCost: 42` and `purifying_pulse.utilityScore: 15` (derived from `healAmount`). These must be updated or the suite fails — called out explicitly in the spec.
+- Picked `healAmount +5` over the `radius +1` alternative for purifying_pulse (report lists healAmount first; it's the cleaner, testable single value).

@@ -20,7 +20,7 @@ describe('card balance metrics harness', () => {
 
 	it('covers every cardDefs id with a metrics row', () => {
 		expect(Object.keys(report.cards).sort()).toEqual(cardIds);
-		expect(report.cardCount).toBe(47);
+		expect(report.cardCount).toBe(48);
 	});
 
 	it('has cardStats entries for every card id', () => {
@@ -42,6 +42,7 @@ describe('card balance metrics harness', () => {
 			'dragons_breath',
 			'dungeon_drake',
 			'harvesting_scythe',
+			'reapers_scythe',
 		]);
 		for (const [cardId, keys] of Object.entries(SERVER_STAT_OVERLAY)) {
 			expect(report.cards[cardId].serverStatOverlayKeys).toEqual(keys);
@@ -83,7 +84,7 @@ describe('card balance metrics harness', () => {
 		expect(report.cards.chain_lightning).toMatchObject({
 			id: 'chain_lightning',
 			type: 'spell',
-			magicStoneCost: 42,
+			magicStoneCost: 37,
 			damage: 22,
 			rewardOrder: 26,
 		});
@@ -93,7 +94,7 @@ describe('card balance metrics harness', () => {
 			type: 'spell',
 			magicStoneCost: 0,
 			damage: 0,
-			utilityScore: 15,
+			utilityScore: 20,
 			rewardOrder: 27,
 		});
 
@@ -106,6 +107,77 @@ describe('card balance metrics harness', () => {
 			sellValue: cardEconomy.cardSellValues.dungeon_drake,
 			serverStatOverlayKeys: ['breathConeAngle'],
 		});
+
+		// Ticket 311 — harness grind-0 rows match live cardStats.json
+		expect(report.cards.battle_familiar).toMatchObject({
+			id: 'battle_familiar',
+			type: 'spell',
+			damage: cardStats.battle_familiar.damage,
+			effectiveBurst: 44,
+			damagePerCharge: 44,
+			magicStoneCost: 50,
+			rewardOrder: 1,
+		});
+		expect(report.cards.null_crawler).toMatchObject({
+			id: 'null_crawler',
+			type: 'creature',
+			damage: cardStats.null_crawler.attackDamage,
+			effectiveBurst: 22,
+			damagePerCharge: 22,
+			utilityScore: cardStats.null_crawler.minionHp,
+			magicStoneCost: 35,
+			rewardOrder: 12,
+		});
+		expect(report.cards.astral_guardian).toMatchObject({
+			id: 'astral_guardian',
+			type: 'spell',
+			damage: cardStats.astral_guardian.damage,
+			effectiveBurst: 63,
+			damagePerCharge: 63,
+			damagePerMs: 63 / 800,
+			utilityScore: cardStats.astral_guardian.shieldHp,
+			magicStoneCost: 65,
+		});
+	});
+
+	it('computes wind-up-aware damagePerMs for cards with windUpMs', () => {
+		const magma = report.cards.magma_greatsword;
+		const perUseDamage = magma.effectiveBurst * (cardStats.magma_greatsword.swingsPerUse ?? 1);
+		const cooldownMs = magma.cooldownMs;
+		const windUpMs = cardStats.magma_greatsword.windUpMs;
+		const cooldownOnlyDpm = perUseDamage / cooldownMs;
+		const effectiveCycleMs = cooldownMs + windUpMs;
+
+		expect(magma.windUpMs).toBe(windUpMs);
+		expect(magma.effectiveCycleMs).toBe(effectiveCycleMs);
+		expect(magma.damagePerMs).toBeCloseTo(perUseDamage / effectiveCycleMs);
+		expect(magma.damagePerMs).toBeLessThan(cooldownOnlyDpm);
+	});
+
+	it('leaves damagePerMs unchanged for cards without windUpMs', () => {
+		const iron = report.cards.iron_sword;
+		const perUseDamage = iron.effectiveBurst;
+		const cooldownOnlyDpm = perUseDamage / iron.cooldownMs;
+
+		expect(iron.windUpMs).toBeNull();
+		expect(iron.effectiveCycleMs).toBe(iron.cooldownMs);
+		expect(iron.damagePerMs).toBeCloseTo(cooldownOnlyDpm);
+	});
+
+	it('tunes excalibur_photon damagePerMs toward weapon Q3 via windUpMs', () => {
+		const photon = report.cards.excalibur_photon;
+		const perUseDamage = photon.effectiveBurst * cardStats.excalibur_photon.swingsPerUse;
+		const windUpMs = cardStats.excalibur_photon.windUpMs;
+		const effectiveCycleMs = photon.cooldownMs + windUpMs;
+		const cooldownOnlyDpm = perUseDamage / photon.cooldownMs;
+
+		expect(windUpMs).toBe(600);
+		expect(photon.windUpMs).toBe(windUpMs);
+		expect(photon.effectiveCycleMs).toBe(effectiveCycleMs);
+		expect(photon.damagePerMs).toBeCloseTo(perUseDamage / effectiveCycleMs);
+		expect(photon.damagePerMs).toBeLessThan(cooldownOnlyDpm);
+		expect(photon.damagePerMs).toBeLessThan(0.14);
+		expect(photon.damagePerMs).toBeLessThanOrEqual(0.045);
 	});
 
 	it('runs as a standalone node script', () => {

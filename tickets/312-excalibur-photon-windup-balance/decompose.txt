@@ -1,0 +1,11 @@
+Created **3 sub-tickets** in dependency order for the Excalibur Photon wind-up balance work:
+
+1. **01-windup-aware-effective-dpm** — Extend the balance harness so `damagePerMs` accounts for `windUpMs` (prerequisite for objective tuning).
+2. **02-excalibur-photon-windup-stat** — Add tuned `windUpMs` to `excalibur_photon`, keep per-hit damage at 14, and assert effective DPM moves into band.
+3. **03-excalibur-windup-behavior-and-report** — Integration tests for deferred double-swing resolution and balance report reconciliation.
+
+Sub-ticket folder paths:
+
+- `/home/matt/workspace/.autogame-worktrees/312-excalibur-photon-windup-balance/tickets/312-excalibur-photon-windup-balance/subtickets/01-windup-aware-effective-dpm`
+- `/home/matt/workspace/.autogame-worktrees/312-excalibur-photon-windup-balance/tickets/312-excalibur-photon-windup-balance/subtickets/02-excalibur-photon-windup-stat`
+- `/home/matt/workspace/.autogame-worktrees/312-excalibur-photon-windup-balance/tickets/312-excalibur-photon-windup-balance/subtickets/03-excalibur-windup-behavior-and-report`
