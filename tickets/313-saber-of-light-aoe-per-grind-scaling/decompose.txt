@@ -1,0 +1,7 @@
+Created 1 sub-ticket. The top-level ticket is a single, tightly-coupled change (card config + server attack-path scaling + tests) that's implementable in one focused pass and verifiable from the diff/logs.
+
+Sub-ticket folder created:
+
+- `/home/matt/workspace/.autogame-worktrees/313-saber-of-light-aoe-per-grind-scaling/tickets/313-saber-of-light-aoe-per-grind-scaling/subtickets/01-saber-aoe-per-grind-scaling/ticket.md`
+
+**Why one sub-ticket:** Saber currently uses the default `ATTACK_RANGE` (5) / `ATTACK_CONE_ANGLE` (π/2) for its cone hit detection (`cardEffects.js:328`). Adding a conservative per-grind reach multiplier requires (a) an opt-in stat on `saber_of_light` in `cardStats.json` and (b) one scaling line in the weapon attack path that also feeds the emitted `CARD_USED.attackRange`. These are inseparable — splitting would leave each half non-deliverable. Verification is `code` because every criterion concerns values, scaling rate, server hit logic, and unchanged fields — none are about pure on-screen appearance.
