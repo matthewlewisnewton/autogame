@@ -5769,3 +5769,26 @@ PASS. This ticket added spell-ready debug scenarios for QA, but normal gameplay 
 ## Remaining gaps
 
 No blocking gaps found.
+
+## v0.329 — 343-anim-fireball  (2026-06-08 11:33:50)
+
+### No performance regression
+
+PASS. The new Fireball projectile uses a small group with two sphere meshes and existing active-effect cleanup. The added primitives are short-lived and follow existing VFX patterns; grouped meshes are disposed through the existing recursive effect disposal helper.
+
+### Client test coverage where feasible
+
+PASS. `coverage.log` shows the vitest run completed successfully: 32 test files and 504 tests passed. The Fireball-specific tests cover renderer registration, projectile style payload, cast/trail/impact timing, absence of wind-up, per-hit ignite feedback, and graceful fallback when optional VFX primitives are unavailable.
+
+### Design and foundation consistency
+
+PASS. The change stays within the active card-combat/VFX architecture described in `game/docs/design.md`: Fireball remains a weapon card, server-authoritative hit/burn logic is unchanged, and the client only renders the `cardUsed` event. The core requirements in `game/docs/requirements.md` are preserved by the clean capture: 3D scene rendering, WebSocket connection, multiplayer presence, and movement/gameplay progression all worked.
+
+### Debug scenarios
+
+PASS. This ticket did not add or modify any `?debugScenario=` shortcut. The captured run used normal lobby create/join and ready-up flow, with `debugScenario: null`.
+
+## Remaining gaps
+
+None.
+
