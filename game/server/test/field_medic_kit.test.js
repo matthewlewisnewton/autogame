@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
 	resetGameState,
 	MAX_HP,
-	MAX_MAGIC_STONES,
 } from '../index.js';
 import { InMemoryProvider } from '../providers.js';
 import {
@@ -16,8 +15,8 @@ import {
 
 /**
  * Integration tests for the `field_medic_kit` key item.
- * Verifies AoE MS restore, radius boundary, dead-player skip, cooldown gate,
- * and caster self-restore using socket-based test helpers.
+ * Verifies AoE HP heal, radius boundary, dead-player skip, cooldown gate,
+ * and caster self-heal using socket-based test helpers.
  */
 describe('useKeyItem — field_medic_kit', () => {
 	let baseUrl;
@@ -93,7 +92,7 @@ describe('useKeyItem — field_medic_kit', () => {
 		return [{ socket: s1 }, { socket: s2 }, { socket: s3 }];
 	}
 
-	it('two players in range both receive MS (HP unchanged, MS capped)', async () => {
+	it('two players in range both gain HP (MS unchanged)', async () => {
 		const players = await connectTwoAndStartRun();
 		const state = testGameState();
 
@@ -104,10 +103,12 @@ describe('useKeyItem — field_medic_kit', () => {
 		p1.x = 0; p1.z = 0;
 		p2.x = 2; p2.z = 0;
 
-		// Set both to low HP and low MS
-		p1.hp = 20;
+		// Set both to low HP and some MS
+		const p1HpBefore = 20;
+		const p2HpBefore = 30;
+		p1.hp = p1HpBefore;
 		p1.magicStones = 2;
-		p2.hp = 30;
+		p2.hp = p2HpBefore;
 		p2.magicStones = 5;
 
 		// Clear cooldown on caster
@@ -122,14 +123,13 @@ describe('useKeyItem — field_medic_kit', () => {
 		expect(result.keyItemId).toBe('field_medic_kit');
 		expect(result.alliesRestored).toBe(2);
 
-		// HP must not change
-		expect(playerForSocket(players[0].socket).hp).toBe(20);
-		expect(playerForSocket(players[1].socket).hp).toBe(30);
+		// Both should have gained HP (hpRestore=8, capped at MAX_HP)
+		expect(playerForSocket(players[0].socket).hp).toBe(p1HpBefore + 8); // 20 + 8 = 28
+		expect(playerForSocket(players[1].socket).hp).toBe(p2HpBefore + 8); // 30 + 8 = 38
 
-		// Both should have gained MS (msRestore=3, capped at MAX_MAGIC_STONES=99)
-		// Use toBeCloseTo because MS regen tick may add fractional amounts during test
-		expect(playerForSocket(players[0].socket).magicStones).toBeCloseTo(5, 1); // 2 + 3
-		expect(playerForSocket(players[1].socket).magicStones).toBeCloseTo(8, 1); // 5 + 3
+		// MS must not change (may tick regen by a fraction)
+		expect(playerForSocket(players[0].socket).magicStones).toBeCloseTo(2, 1);
+		expect(playerForSocket(players[1].socket).magicStones).toBeCloseTo(5, 1);
 	});
 
 	it('out-of-range player unchanged', async () => {
@@ -146,9 +146,11 @@ describe('useKeyItem — field_medic_kit', () => {
 
 		const p3HpBefore = 50;
 		const p3MsBefore = 10;
-		p1.hp = 20;
+		const p1HpBefore = 20;
+		const p2HpBefore = 30;
+		p1.hp = p1HpBefore;
 		p1.magicStones = 2;
-		p2.hp = 30;
+		p2.hp = p2HpBefore;
 		p2.magicStones = 5;
 		p3.hp = p3HpBefore;
 		p3.magicStones = p3MsBefore;
@@ -162,11 +164,13 @@ describe('useKeyItem — field_medic_kit', () => {
 		expect(result.ok).toBe(true);
 		expect(result.alliesRestored).toBe(2); // only p1 and p2
 
+		// p1 and p2 should have gained HP
+		expect(playerForSocket(players[0].socket).hp).toBe(p1HpBefore + 8);
+		expect(playerForSocket(players[1].socket).hp).toBe(p2HpBefore + 8);
+
 		// p3 should be unchanged (HP exact; MS may tick regen by a fraction)
 		expect(playerForSocket(players[2].socket).hp).toBe(p3HpBefore);
 		const p3MsAfter = playerForSocket(players[2].socket).magicStones;
-		// Out-of-range player must not receive the +3 MS restore; only ambient regen may apply.
-		expect(p3MsAfter).toBeLessThan(p3MsBefore + 1);
 		expect(p3MsAfter).toBeCloseTo(p3MsBefore, 1);
 	});
 
@@ -181,9 +185,11 @@ describe('useKeyItem — field_medic_kit', () => {
 		p2.x = 2; p2.z = 0;
 
 		// Set p2 as dead
-		p1.hp = 20;
+		const p1HpBefore = 20;
+		const p2HpBefore = 30;
+		p1.hp = p1HpBefore;
 		p1.magicStones = 2;
-		p2.hp = 30;
+		p2.hp = p2HpBefore;
 		p2.magicStones = 5;
 		p2.dead = true;
 
@@ -196,12 +202,12 @@ describe('useKeyItem — field_medic_kit', () => {
 		expect(result.ok).toBe(true);
 		expect(result.alliesRestored).toBe(1); // only p1 (caster), p2 is dead
 
-		// p1 HP unchanged; MS restored
-		expect(playerForSocket(players[0].socket).hp).toBe(20);
-		expect(playerForSocket(players[0].socket).magicStones).toBeCloseTo(5, 1);
+		// p1 HP increased by 8; MS unchanged
+		expect(playerForSocket(players[0].socket).hp).toBe(p1HpBefore + 8);
+		expect(playerForSocket(players[0].socket).magicStones).toBeCloseTo(2, 1);
 
 		// p2 should be unchanged (still dead, HP not modified)
-		expect(playerForSocket(players[1].socket).hp).toBe(30);
+		expect(playerForSocket(players[1].socket).hp).toBe(p2HpBefore);
 		// MS regen tick may add fractional amounts during the test
 		expect(playerForSocket(players[1].socket).magicStones).toBeCloseTo(5, 1);
 	});
@@ -213,7 +219,8 @@ describe('useKeyItem — field_medic_kit', () => {
 
 		// Set both players in range and at low HP
 		p1.x = 0; p1.z = 0;
-		p1.hp = 20;
+		const p1HpBefore = 20;
+		p1.hp = p1HpBefore;
 		p1.magicStones = 2;
 
 		p1.keyItemCooldownUntil = 0;
@@ -235,17 +242,19 @@ describe('useKeyItem — field_medic_kit', () => {
 		expect(result2.reason).toBe('on_cooldown');
 		expect(result2.remainingMs).toBeGreaterThan(0);
 
-		// HP unchanged after first use only
-		expect(playerForSocket(players[0].socket).hp).toBe(20);
+		// HP increased by 8 after first use only
+		expect(playerForSocket(players[0].socket).hp).toBe(p1HpBefore + 8);
 	});
 
-	it('caster receives MS restore (included in AoE)', async () => {
+	it('caster receives HP heal (included in AoE)', async () => {
 		const { socket } = await connectAndStartRun(`solo-${Date.now()}`);
 		const player = playerForSocket(socket);
 
-		// Set caster to low HP and low MS
-		player.hp = 10;
-		player.magicStones = 1;
+		// Set caster to low HP and some MS
+		const hpBefore = 10;
+		const msBefore = 1;
+		player.hp = hpBefore;
+		player.magicStones = msBefore;
 		player.keyItemCooldownUntil = 0;
 
 		const resultPromise = waitForEvent(socket, 'keyItemUsed');
@@ -255,9 +264,9 @@ describe('useKeyItem — field_medic_kit', () => {
 		expect(result.ok).toBe(true);
 		expect(result.alliesRestored).toBe(1); // only the caster
 
-		// Caster HP unchanged; MS restored
-		expect(playerForSocket(socket).hp).toBe(10);
-		expect(playerForSocket(socket).magicStones).toBeCloseTo(4, 1); // 1 + 3
+		// Caster HP increased by 8; MS unchanged
+		expect(playerForSocket(socket).hp).toBe(hpBefore + 8); // 10 + 8 = 18
+		expect(playerForSocket(socket).magicStones).toBeCloseTo(msBefore, 1);
 
 		// Cooldown should be set
 		expect(playerForSocket(socket).keyItemCooldownUntil).toBeGreaterThan(Date.now());
@@ -297,7 +306,7 @@ describe('useKeyItem — field_medic_kit', () => {
 		expect(allyPulse.healRadius).toBe(5);
 	});
 
-	it('HP unchanged and MS capped at MAX_MAGIC_STONES', async () => {
+	it('HP capped at MAX_HP and MS unchanged', async () => {
 		const players = await connectTwoAndStartRun();
 
 		const p1 = playerForSocket(players[0].socket);
@@ -307,12 +316,14 @@ describe('useKeyItem — field_medic_kit', () => {
 		p1.x = 0; p1.z = 0;
 		p2.x = 2; p2.z = 0;
 
-		const p1HpBefore = MAX_HP - 10;
-		const p2HpBefore = MAX_HP;
+		const p1HpBefore = MAX_HP - 5; // 5 below max — heal of 8 would overflow
+		const p2HpBefore = MAX_HP; // already at max
+		const p1MsBefore = 50;
+		const p2MsBefore = 90;
 		p1.hp = p1HpBefore;
-		p1.magicStones = MAX_MAGIC_STONES - 1; // 98
+		p1.magicStones = p1MsBefore;
 		p2.hp = p2HpBefore;
-		p2.magicStones = MAX_MAGIC_STONES; // already at max
+		p2.magicStones = p2MsBefore;
 
 		p1.keyItemCooldownUntil = 0;
 
@@ -320,10 +331,13 @@ describe('useKeyItem — field_medic_kit', () => {
 		players[0].socket.emit('useKeyItem', { keyItemId: 'field_medic_kit' });
 		await resultPromise;
 
-		expect(playerForSocket(players[0].socket).hp).toBe(p1HpBefore);
-		expect(playerForSocket(players[0].socket).magicStones).toBeCloseTo(MAX_MAGIC_STONES, 0);
+		// p1 should be capped at MAX_HP (not overflow)
+		expect(playerForSocket(players[0].socket).hp).toBe(MAX_HP);
+		// p2 already at MAX_HP — stays at MAX_HP
+		expect(playerForSocket(players[1].socket).hp).toBe(MAX_HP);
 
-		expect(playerForSocket(players[1].socket).hp).toBe(p2HpBefore);
-		expect(playerForSocket(players[1].socket).magicStones).toBeCloseTo(MAX_MAGIC_STONES, 0);
+		// MS unchanged for both (may tick regen by a fraction)
+		expect(playerForSocket(players[0].socket).magicStones).toBeCloseTo(p1MsBefore, 1);
+		expect(playerForSocket(players[1].socket).magicStones).toBeCloseTo(p2MsBefore, 1);
 	});
 });
