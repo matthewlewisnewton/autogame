@@ -1,21 +1,14 @@
-All four conflicted files are resolved and marker-free. Summary of how the two sides were combined:
-
-### `game/server/index.js`
-Kept all debug scenarios from both branches: `economy-cards-ready` (319) plus `weapon-slash-ready`, `energy-blade-slash-ready`, and `heavy-greatsword-slash-ready` (316).
-
-### `LOGBOOK.md`
-Kept the v0.325 ticket entry at the top, followed by the v0.324/v0.323/v0.322 entries from `main`.
+Merge conflicts are resolved. Summary:
 
 ### `game/client/cardRenderers.js`
-- **ice_ball**: Uses `main`'s projectile trail and accent constants, plus the ticket's stronger freeze-crystal impact (emissive decal, count 14, spread 1.8).
-- **deck_sifter**: Kept the ticket's draw-economy renderer.
-- **astral_guardian / sacrificial_altar**: Kept `main`'s utility spell renderers.
-- **mana_prism / chrono_trigger**: Merged with payload branching — `radius` vs no-radius for mana prism; `restoredCharges` vs economy path for chrono trigger — so both the 317 utility tests and the 319 economy tests pass.
-- **Registry**: All card entries from both sides are registered.
+- Combined imports: kept `PHOTON_BARRAGE_SWING_DELAY_MS` from `main` alongside the fireball branch’s existing config imports.
 
 ### `game/client/test/cardRenderers.test.js`
-- Combined `resolveRenderers` expectations (creature multi-renderers from `main` + economy cards from the ticket).
-- Merged ice_ball test to assert trail + freeze-crystal impact.
-- Kept the full weapon-slash test suites from `main` after the weapon-dispatch block.
+- Removed duplicate `ATTACK_EFFECT_DURATION` import (already imported on line 3 with `PHOTON_BARRAGE_SWING_DELAY_MS`).
+- Kept **both** tests from the conflict: Excalibur Photon greatslash stagger test (branch) and heavy-greatsword “no photon trail/telegraph” test (`main`).
+- Adjusted two `excalibur_photon` tests to call `ctx.runScheduled()` — needed because the fireball branch’s auto-merged `makeCtx` defers `scheduleAfter` callbacks (for fireball impact timing), while `main`’s excalibur tests assumed immediate execution.
 
-`cardRenderers.test.js` passes all 130 tests. The harness can proceed with commit and the full suite.
+### `LOGBOOK.md`
+- Merged all four version entries in order: v0.326 (Excalibur Photon), v0.327 (Sanctum Pulse), v0.328 (Permafrost Lance), v0.329 (Fireball), each with its own “Remaining gaps” section.
+
+All conflict markers are removed. `cardRenderers.test.js` passes (147/147). The harness can proceed with commit and merge.

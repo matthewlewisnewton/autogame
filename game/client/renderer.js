@@ -4275,6 +4275,44 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 		return;
 	}
 
+	if (effect === 'permafrost_lance') {
+		// Elongated crystalline ice spear — travels like `fireball` / `ice_ball` but
+		// reads as a forward-thrusting lance rather than a sphere or ground cone.
+		const dir = direction || { x: 1, z: 0 };
+		const len = Math.hypot(dir.x, dir.z) || 1;
+		const nx = dir.x / len;
+		const nz = dir.z / len;
+		const lanceColor = style.color ?? 0x67e8f9;
+		const lanceEmissive = style.emissive ?? 0x38bdf8;
+		const geometry = new THREE.ConeGeometry(0.12, 1.5, 8);
+		const material = new THREE.MeshStandardMaterial({
+			color: lanceColor,
+			emissive: lanceEmissive,
+			emissiveIntensity: 1.1,
+			roughness: 0.25,
+			metalness: 0.15,
+			transparent: true,
+			opacity: 1.0,
+		});
+		const mesh = new THREE.Mesh(geometry, material);
+		mesh.position.set(origin.x, 1.0, origin.z);
+		mesh.rotation.x = Math.PI / 2;
+		mesh.rotation.y = Math.atan2(nx, nz);
+		targetScene.add(mesh);
+
+		activeEffects.push({
+			mesh,
+			_scene: targetScene,
+			origin: { x: origin.x, z: origin.z },
+			direction: { x: nx, z: nz },
+			range,
+			effect: 'permafrost_lance',
+			createdAt: performance.now(),
+			duration: style.duration ?? ATTACK_EFFECT_DURATION,
+		});
+		return;
+	}
+
 	if (effect === 'returning_projectile' || effect === 'triple_returning_projectile') {
 		const hitWidth = style.projectileHitWidth ?? PROJECTILE_HIT_WIDTH;
 		const { group, head } = createProjectileHitboxGroup(direction, range, hitWidth, { color, emissive });
@@ -4378,16 +4416,28 @@ export function spawnMinionSummonInEffect(origin, style = {}) {
 	);
 }
 
+// Sanctum Pulse palette: a coherent holy-gold so the divine "pulse" reads as
+// radiant sacred light, not the accidental green the ring emissive used to be.
+const DIVINE_GRACE_RING_COLOR = 0xfde68a; // warm gold ground ring
+const DIVINE_GRACE_EMISSIVE = 0xf59e0b; // amber/gold glow (replaces green 0x86efac)
+const DIVINE_GRACE_COLUMN_COLOR = 0xfef3c7; // pale radiant column body
+const DIVINE_GRACE_COLUMN_EMISSIVE = 0xfbbf24; // bright gold column glow
+const DIVINE_GRACE_COLUMN_HEIGHT = 4.5; // ascending shaft height
+const DIVINE_GRACE_COLUMN_OPACITY = 0.7; // peak opacity of the light shaft
+const DIVINE_GRACE_COLUMN_BASE_Y = 0.1; // ground offset of the shaft's base
+
 /**
- * Golden heal burst for Divine Grace (heal + magic stone restore).
+ * Expanding holy-gold ground pulse ring (heal half of Sanctum Pulse).
+ * Radius-based, so it rides the shared expand→fade lifecycle in
+ * updateAttackEffects exactly like the other heal-card pulse rings.
  * @param {object} origin - { x, z }
  * @param {number} radius
  */
-export function spawnDivineGraceEffect(origin, radius) {
+export function spawnDivineGracePulseRing(origin, radius) {
 	const geometry = new THREE.RingGeometry(0.1, 0.5, 32);
 	const material = new THREE.MeshStandardMaterial({
-		color: 0xfde68a,
-		emissive: 0x86efac,
+		color: DIVINE_GRACE_RING_COLOR,
+		emissive: DIVINE_GRACE_EMISSIVE,
 		emissiveIntensity: 1.2,
 		transparent: true,
 		opacity: 1.0,
@@ -4408,6 +4458,55 @@ export function spawnDivineGraceEffect(origin, radius) {
 		createdAt: performance.now(),
 		duration: SUMMON_EFFECT_DURATION,
 	});
+}
+
+/**
+ * Vertical ascending holy light column rising from the origin, giving Sanctum
+ * Pulse a sacred upward-burst silhouette instead of a flat ring. Modeled on the
+ * open-ended cylinder shaft used by the telepipe portal; rises and fades via the
+ * `isLightColumn` branch in updateAttackEffects (no per-frame allocation).
+ * @param {object} origin - { x, z }
+ */
+export function spawnDivineGraceColumn(origin) {
+	// Open-ended cone-tapered shaft. The cylinder is centered on its own origin,
+	// so updateAttackEffects raises position.y in lockstep with scale.y to keep
+	// the base pinned to the ground while the column grows upward.
+	const geometry = new THREE.CylinderGeometry(0.3, 0.55, DIVINE_GRACE_COLUMN_HEIGHT, 16, 1, true);
+	const material = new THREE.MeshStandardMaterial({
+		color: DIVINE_GRACE_COLUMN_COLOR,
+		emissive: DIVINE_GRACE_COLUMN_EMISSIVE,
+		emissiveIntensity: 1.4,
+		transparent: true,
+		opacity: DIVINE_GRACE_COLUMN_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.scale.y = 0.001;
+	mesh.position.set(origin.x, DIVINE_GRACE_COLUMN_BASE_Y, origin.z);
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (targetScene) targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration: SUMMON_EFFECT_DURATION,
+		isLightColumn: true,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Sanctum Pulse: a holy-gold heal that reads as a divine pulse — an expanding
+ * golden ground ring plus a vertical ascending light column from the origin.
+ * Pure additive VFX; no network traffic or state beyond activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ */
+export function spawnDivineGraceEffect(origin, radius) {
+	spawnDivineGracePulseRing(origin, radius);
+	spawnDivineGraceColumn(origin);
 }
 
 const PURIFYING_HEAL_COLOR = 0x6ee7b7;
@@ -4935,6 +5034,23 @@ export function updateAttackEffects() {
 			continue;
 		}
 
+		// ── Ascending holy light column (Sanctum Pulse) ──
+		if (fx.isLightColumn) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.35, 1.0); // grow upward over first 35%
+			const s = Math.max(0.001, riseT);
+			fx.mesh.scale.y = s;
+			// Keep the base on the ground as the centered cylinder scales up.
+			fx.mesh.position.y = DIVINE_GRACE_COLUMN_BASE_Y + (DIVINE_GRACE_COLUMN_HEIGHT * s) / 2;
+			fx.mesh.material.opacity = Math.max(0.01, DIVINE_GRACE_COLUMN_OPACITY * (1.0 - t));
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
 		// ── Lightning arc (chain segments) ──
 		if (fx.isLightningArc) {
 			const lifeRatio = 1.0 - (elapsed / fx.duration);
@@ -5156,7 +5272,7 @@ export function updateAttackEffects() {
 		fx.mesh.material.opacity = Math.max(0.01, lifeRatio);
 
 		if (elapsed >= fx.duration) {
-			scene.remove(fx.mesh);
+			(fx._scene || scene).remove(fx.mesh);
 			fx.mesh.geometry.dispose();
 			fx.mesh.material.dispose();
 			activeEffects.splice(i, 1);

@@ -1,0 +1,15 @@
+Broke ticket **346-anim-permafrost-lance** into **3 sub-tickets** in dependency order:
+
+1. **01-permafrost-lance-attack-effect** — New `permafrost_lance` branch in `spawnAttackEffect` (elongated ice lance mesh in `renderer.js`) + `vfx-primitives` smoke test.
+
+2. **02-permafrost-lance-renderer-and-timing** — Full `renderPermafrostLance` polish composing telegraph, lance projectile, trail, impact decal, and tip burst; timing synced to instant server resolution (`ATTACK_EFFECT_DURATION` = 600 ms, no `windUpMs`).
+
+3. **03-permafrost-lance-test-coverage** — `cardRenderers.test.js` assertions for the polished call signature, frost_nova distinction, and no-windup regression.
+
+All use **Verification: code** (criteria cover structure, timing values, handlers, and tests — not purely screenshot appearance).
+
+**Created sub-ticket folder paths:**
+
+- `/home/matt/workspace/.autogame-worktrees/346-anim-permafrost-lance/tickets/346-anim-permafrost-lance/subtickets/01-permafrost-lance-attack-effect`
+- `/home/matt/workspace/.autogame-worktrees/346-anim-permafrost-lance/tickets/346-anim-permafrost-lance/subtickets/02-permafrost-lance-renderer-and-timing`
+- `/home/matt/workspace/.autogame-worktrees/346-anim-permafrost-lance/tickets/346-anim-permafrost-lance/subtickets/03-permafrost-lance-test-coverage`

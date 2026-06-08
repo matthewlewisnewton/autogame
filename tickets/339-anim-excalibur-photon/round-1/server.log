@@ -1,0 +1,13 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/339-anim-excalibur-photon/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/339-anim-excalibur-photon/game/data
+Server listening on port 3002
+Player connected: socket=xWiWgMe8OCfzFXMFAAAB, playerId=73b82762-033d-48eb-8597-9759de7004ff
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=VyF7AhsSbxB_F73PAAAD, playerId=9c000304-fb1c-4eec-9718-1dc327a37946
+Player disconnected: xWiWgMe8OCfzFXMFAAAB
+Player disconnected: VyF7AhsSbxB_F73PAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

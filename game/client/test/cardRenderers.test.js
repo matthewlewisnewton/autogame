@@ -1,12 +1,12 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CARD_DEFS } from '../cards.js';
+import { ATTACK_EFFECT_DURATION, PHOTON_BARRAGE_SWING_DELAY_MS } from '../config.js';
 import {
 	renderCardUsed,
 	resolveRenderers,
 	getAccentHex,
 	SPELL_TYPE_DEFAULT_RENDERER,
 } from '../cardRenderers.js';
-import { ATTACK_EFFECT_DURATION } from '../config.js';
 
 /**
  * Build a fresh context object whose helper functions record every call.
@@ -105,15 +105,21 @@ describe('resolveRenderers()', () => {
 		}
 	});
 
-	it('returns the heavy greatsword renderer for the wind-up greatswords (not the cone default)', () => {
+	it('returns the heavy greatsword renderer for alloy/corebreaker (not the cone default)', () => {
 		const plain = resolveRenderers('reapers_scythe')[0];
-		for (const cardId of ['steel_claymore', 'magma_greatsword', 'excalibur_photon']) {
+		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
 			expect(resolveRenderers(cardId)).toHaveLength(1);
 			expect(resolveRenderers(cardId)[0]).not.toBe(plain);
 		}
-		// All three share the same heavy-greatsword renderer.
 		expect(resolveRenderers('steel_claymore')[0]).toBe(resolveRenderers('magma_greatsword')[0]);
-		expect(resolveRenderers('steel_claymore')[0]).toBe(resolveRenderers('excalibur_photon')[0]);
+	});
+
+	it('returns a dedicated renderer for excalibur_photon (not heavy greatsword or cone default)', () => {
+		const plain = resolveRenderers('reapers_scythe')[0];
+		const heavy = resolveRenderers('steel_claymore')[0];
+		expect(resolveRenderers('excalibur_photon')).toHaveLength(1);
+		expect(resolveRenderers('excalibur_photon')[0]).not.toBe(plain);
+		expect(resolveRenderers('excalibur_photon')[0]).not.toBe(heavy);
 	});
 
 	it('returns bespoke renderers for utility support spells', () => {
@@ -383,7 +389,10 @@ describe('renderCardUsed() — weapon dispatch', () => {
 		}, ctx);
 		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
 		// First swing fires immediately (no scheduleAfter), swings 2 and 3 delay.
-		expect(schedules.map((c) => c[1])).toEqual([80, 160]);
+		expect(schedules.map((c) => c[1])).toEqual([
+			PHOTON_BARRAGE_SWING_DELAY_MS,
+			PHOTON_BARRAGE_SWING_DELAY_MS * 2,
+		]);
 	});
 
 	it('spawns three offset projectiles for infinite_disk / triple_returning_projectile', () => {
@@ -873,21 +882,30 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 		expect(debrisBurst(ctx)[2]).toMatchObject({ color: 0xe879f9, count: 20 });
 	});
 
-	it('the three greatswords use mutually distinct accent colors and an impact param', () => {
+	it('heavy greatswords (claymore, magma) do not emit photon-only trail or telegraph ring primitives', () => {
+		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
+			const ctx = makeCtx();
+			fire(cardId, ctx);
+			expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
+			expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		}
+	});
+
+	it('the two heavy greatswords use mutually distinct accent colors and an impact param', () => {
 		const read = (cardId) => {
 			const ctx = makeCtx();
 			fire(cardId, ctx);
 			return { color: swingStyle(ctx).color, decalRadius: impactDecal(ctx)[2].radius, count: debrisBurst(ctx)[2].count };
 		};
-		const rows = ['steel_claymore', 'magma_greatsword', 'excalibur_photon'].map(read);
-		expect(new Set(rows.map((r) => r.color)).size).toBe(3);
+		const rows = ['steel_claymore', 'magma_greatsword'].map(read);
+		expect(new Set(rows.map((r) => r.color)).size).toBe(2);
 		// Differ from each other by at least one impact param too (decal radius).
-		expect(new Set(rows.map((r) => r.decalRadius)).size).toBe(3);
+		expect(new Set(rows.map((r) => r.decalRadius)).size).toBe(2);
 	});
 
 	it('hit harder than the lighter sub-ticket 01/02 blades (bigger decal + more particles)', () => {
 		// Lighter blades top out around 12 sparks and use the default ~0.8 decal radius.
-		for (const cardId of ['steel_claymore', 'magma_greatsword', 'excalibur_photon']) {
+		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
 			const ctx = makeCtx();
 			fire(cardId, ctx);
 			expect(impactDecal(ctx)[2].radius).toBeGreaterThan(2);
@@ -897,15 +915,15 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 
 	it('greatsword swings degrade gracefully when the optional impact primitives are absent', () => {
 		const ctx = makeCtx({ spawnImpactDecal: undefined, spawnParticleBurst: undefined });
-		for (const cardId of ['steel_claymore', 'magma_greatsword', 'excalibur_photon']) {
+		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
 			expect(() => fire(cardId, ctx)).not.toThrow();
 		}
 		// The core heavy cone swing still fires.
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 
-	it('each greatsword carries a positive windUpMs so the 315 charge telegraph fires', () => {
-		for (const cardId of ['steel_claymore', 'magma_greatsword', 'excalibur_photon']) {
+	it('each heavy greatsword carries a positive windUpMs so the 315 charge telegraph fires', () => {
+		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
 			expect(CARD_DEFS[cardId]).toBeDefined();
 			expect(CARD_DEFS[cardId].windUpMs).toBeGreaterThan(0);
 		}
@@ -914,6 +932,115 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 	it('Solar Edge (flame_blade) carries a positive windUpMs so the 315 charge telegraph fires', () => {
 		expect(CARD_DEFS['flame_blade']).toBeDefined();
 		expect(CARD_DEFS['flame_blade'].windUpMs).toBeGreaterThan(0);
+	});
+});
+
+describe('renderCardUsed() — excalibur_photon', () => {
+	function fire(ctx, extra = {}) {
+		renderCardUsed({
+			cardId: 'excalibur_photon',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			hits: [],
+			...extra,
+		}, ctx);
+	}
+	function swingStyle(ctx) {
+		const attack = ctx._calls.find((c) => c[0] === 'spawnAttackEffect');
+		expect(attack).toBeDefined();
+		return attack[3];
+	}
+
+	it('matches server timing contract (windUpMs 600, swingsPerUse 2)', () => {
+		expect(CARD_DEFS.excalibur_photon.windUpMs).toBe(600);
+		expect(CARD_DEFS.excalibur_photon.swingsPerUse).toBe(2);
+	});
+
+	it('photon_barrage fires two cone swings staggered by PHOTON_BARRAGE_SWING_DELAY_MS', () => {
+		const ctx = makeCtx();
+		fire(ctx, { swingCount: 2, specialEffect: 'photon_barrage' });
+		expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(1);
+		expect(ctx._calls.filter((c) => c[0] === 'scheduleAfter').map((c) => c[1])).toEqual([
+			PHOTON_BARRAGE_SWING_DELAY_MS,
+		]);
+		ctx.runScheduled();
+		expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(2);
+	});
+
+	it('schedules impact primitives per swing (second swing behind scheduleAfter)', () => {
+		const pending = [];
+		const ctx = makeCtx({
+			scheduleAfter: (ms, fn) => {
+				ctx._calls.push(['scheduleAfter', ms]);
+				pending.push({ ms, fn });
+			},
+		});
+		fire(ctx, { swingCount: 2, specialEffect: 'photon_barrage' });
+		expect(ctx._calls.filter((c) => c[0] === 'spawnImpactDecal')).toHaveLength(1);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing')).toHaveLength(1);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(1);
+		expect(pending).toHaveLength(1);
+		expect(pending[0].ms).toBe(PHOTON_BARRAGE_SWING_DELAY_MS);
+		pending[0].fn();
+		expect(ctx._calls.filter((c) => c[0] === 'spawnImpactDecal')).toHaveLength(2);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing')).toHaveLength(2);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(2);
+	});
+
+	it('greatslashes magenta with trail, pulse ring, and light-shard burst per swing', () => {
+		const ctx = makeCtx();
+		fire(ctx, { swingCount: 2, specialEffect: 'photon_barrage' });
+		ctx.runScheduled();
+		const style = swingStyle(ctx);
+		expect(style).toMatchObject({ color: 0xe879f9, coneAngle: Math.PI / 2.5, range: 6 });
+		const trails = ctx._calls.filter((c) => c[0] === 'spawnProjectileTrail');
+		expect(trails).toHaveLength(2);
+		for (const trail of trails) {
+			expect(trail[3]).toMatchObject({ color: 0xe879f9, emissive: 0xc026d3, range: 6 });
+		}
+		const rings = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
+		expect(rings).toHaveLength(2);
+		for (const ring of rings) {
+			expect(ring[1]).toEqual({ x: 6, z: 0 });
+			expect(ring[2]).toBe(2.1);
+			expect(ring[3]).toMatchObject({ color: 0xe879f9, emissive: 0xc026d3 });
+		}
+		const decals = ctx._calls.filter((c) => c[0] === 'spawnImpactDecal');
+		expect(decals).toHaveLength(2);
+		expect(decals[0][2]).toMatchObject({ color: 0xe879f9, radius: 3.0 });
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		expect(bursts).toHaveLength(2);
+		for (const burst of bursts) {
+			expect(burst[1]).toEqual({ x: 6, z: 0 });
+			expect(burst[2]).toMatchObject({ color: 0xe879f9, emissive: 0xc026d3, count: 20, spread: 2.2 });
+		}
+	});
+
+	it('hit harder than the lighter sub-ticket 01/02 blades (bigger decal + more particles)', () => {
+		const ctx = makeCtx();
+		fire(ctx);
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(decal[2].radius).toBeGreaterThan(2);
+		expect(burst[2].count).toBeGreaterThan(12);
+	});
+
+	it('degrades gracefully when photon VFX primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnProjectileTrail: undefined,
+			spawnTelegraphRing: undefined,
+			spawnImpactDecal: undefined,
+			spawnParticleBurst: undefined,
+		});
+		expect(() => fire(ctx)).not.toThrow();
+		expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(1);
+		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+	});
+
+	it('carries a positive windUpMs so the 315 charge telegraph fires', () => {
+		expect(CARD_DEFS.excalibur_photon).toBeDefined();
+		expect(CARD_DEFS.excalibur_photon.windUpMs).toBeGreaterThan(0);
 	});
 });
 
@@ -1041,7 +1168,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
 	});
 
-	it('permafrost_lance uses a narrower telegraph, directional shard trail, and tip burst', () => {
+	it('permafrost_lance uses a narrower telegraph, lance projectile, trail, tip decal, and burst', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'permafrost_lance',
@@ -1050,18 +1177,66 @@ describe('renderCardUsed() — spell dispatch', () => {
 			direction: { x: 1, z: 0 },
 			hits: [],
 		}, ctx);
+		const attack = ctx._calls.find((c) => c[0] === 'spawnAttackEffect');
+		expect(attack).toBeDefined();
+		expect(attack[1]).toEqual({ x: 0, z: 0 });
+		expect(attack[2]).toEqual({ x: 1, z: 0 });
+		expect(attack[3]).toMatchObject({
+			effect: 'permafrost_lance',
+			range: 6,
+			color: 0x67e8f9,
+			emissive: 0x38bdf8,
+			duration: ATTACK_EFFECT_DURATION,
+		});
 		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
 		expect(ring).toBeDefined();
-		expect(ring[2]).toBeCloseTo(3.3, 5);
-		expect(ring[3]).toMatchObject({ color: 0x67e8f9 });
+		expect(ring[1]).toEqual({ x: 0, z: 0 });
+		expect(ring[2]).toBeCloseTo(6 * 0.55, 5);
+		expect(ring[3]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
 		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
 		expect(trail).toBeDefined();
+		expect(trail[1]).toEqual({ x: 0, z: 0 });
 		expect(trail[2]).toEqual({ x: 1, z: 0 });
-		expect(trail[3]).toMatchObject({ range: 6, color: 0x67e8f9 });
+		expect(trail[3]).toMatchObject({
+			range: 6,
+			color: 0x67e8f9,
+			emissive: 0x38bdf8,
+			travelMs: ATTACK_EFFECT_DURATION,
+		});
+		expect(trail[3].travelMs).toBe(600);
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 6, z: 0 });
+		expect(decal[2]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
 		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
 		expect(burst).toBeDefined();
 		expect(burst[1]).toEqual({ x: 6, z: 0 });
+		expect(burst[2]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('frost_nova and permafrost_lance resolve to different renderer functions', () => {
+		expect(resolveRenderers('frost_nova')[0]).not.toBe(resolveRenderers('permafrost_lance')[0]);
+	});
+
+	it('frost_nova and permafrost_lance produce different helper call signatures for equivalent radial payloads', () => {
+		const payload = {
+			origin: { x: 0, z: 0 },
+			radius: 6,
+			direction: { x: 1, z: 0 },
+			hits: [],
+		};
+		const novaCtx = makeCtx();
+		resolveRenderers('frost_nova')[0]({ ...payload, cardId: 'frost_nova' }, novaCtx);
+		const lanceCtx = makeCtx();
+		resolveRenderers('permafrost_lance')[0]({ ...payload, cardId: 'permafrost_lance' }, lanceCtx);
+		expect(methodsCalled(novaCtx)).not.toEqual(methodsCalled(lanceCtx));
+	});
+
+	it('Permafrost Lance has no positive windUpMs (instant cast, distinct from wind-up blades)', () => {
+		expect(CARD_DEFS.permafrost_lance).toBeDefined();
+		const windUp = CARD_DEFS.permafrost_lance.windUpMs;
+		expect(windUp == null || windUp <= 0).toBe(true);
 	});
 
 	it('uses the fixed glacier palette for glacier_collapse (not the accent)', () => {
@@ -1209,6 +1384,71 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnDivineGraceEffect')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
+	});
+
+	it('divine_grace does not play heal sound for another player even when hpGained > 0', () => {
+		const ctx = makeCtx({ myId: 'me' });
+		renderCardUsed({
+			cardId: 'divine_grace',
+			origin: { x: 0, z: 0 },
+			radius: 3,
+			hpGained: 10,
+			playerId: 'someone-else',
+			hits: [],
+		}, ctx);
+		// VFX still play for the spectator, but the heal cue is local-only.
+		expect(ctx._calls.some((c) => c[0] === 'spawnDivineGraceEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
+	});
+
+	it('divine_grace and purifying_pulse produce different helper signatures and palette for the same payload', () => {
+		const payload = {
+			origin: { x: 0, z: 0 },
+			radius: 3,
+			hpGained: 8,
+			playerId: 'me',
+			hits: [],
+		};
+		const graceCtx = makeCtx({ myId: 'me' });
+		resolveRenderers('divine_grace')[0]({ ...payload, cardId: 'divine_grace' }, graceCtx);
+		const pulseCtx = makeCtx({ myId: 'me' });
+		resolveRenderers('purifying_pulse')[0]({ ...payload, cardId: 'purifying_pulse' }, pulseCtx);
+		const graceHelpers = graceCtx._calls.map((c) => c[0]);
+		const pulseHelpers = pulseCtx._calls.map((c) => c[0]);
+		// Distinct primitive mix: gold sanctum effect vs mint heal ring + cleanse burst.
+		expect(graceHelpers).not.toEqual(pulseHelpers);
+		expect(graceHelpers).toContain('spawnDivineGraceEffect');
+		expect(pulseHelpers).not.toContain('spawnDivineGraceEffect');
+		expect(graceHelpers).not.toContain('spawnPurifyingPulseHealRing');
+		// Gold particle palette is unique to divine_grace (purifying_pulse never bursts gold).
+		const graceBurst = graceCtx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(graceBurst).toBeDefined();
+		expect(graceBurst[2]).toMatchObject({ color: 0xfde68a, emissive: 0xfbbf24 });
+		expect(pulseCtx._calls.some((c) => c[0] === 'spawnParticleBurst' && c[2]?.color === 0xfde68a)).toBe(false);
+	});
+
+	it('divine_grace invokes spawnDivineGraceEffect synchronously with no deferred scheduling', () => {
+		// scheduleAfter is rigged to NEVER run its callback, so anything deferred
+		// through it would be missing from _calls. setTimeout is spied to prove no
+		// timer-based projectile-travel delay is introduced (server resolves instantly).
+		const timeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+		const ctx = makeCtx({
+			myId: 'me',
+			scheduleAfter: (ms) => { ctx._calls.push(['scheduleAfter', ms]); },
+		});
+		renderCardUsed({
+			cardId: 'divine_grace',
+			origin: { x: 0, z: 0 },
+			radius: 3,
+			hpGained: 10,
+			playerId: 'me',
+			hits: [],
+		}, ctx);
+		// The pulse primitive fired during the synchronous render call itself.
+		expect(ctx._calls.some((c) => c[0] === 'spawnDivineGraceEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+		expect(timeoutSpy).not.toHaveBeenCalled();
+		timeoutSpy.mockRestore();
 	});
 
 	it('purifying_pulse renders heal ring and cleanse burst with heal sound', () => {
