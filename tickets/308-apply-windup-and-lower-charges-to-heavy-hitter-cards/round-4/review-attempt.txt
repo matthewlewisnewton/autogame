@@ -1,0 +1,5 @@
+Wrote the senior review to `tickets/308-apply-windup-and-lower-charges-to-heavy-hitter-cards/round-4/review.md`.
+
+Final verdict: `VERDICT: PASS`
+
+No `gaps.md` or `nits.md` was created because I found no blocking gaps or backlog-worthy nits.

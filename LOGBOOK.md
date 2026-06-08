@@ -5518,3 +5518,26 @@ This ticket adds `magma-windup-ready`. It remains behind the existing debug-scen
 
 None.
 
+
+## v0.310 — 308-apply-windup-and-lower-charges-to-heavy-hitter-cards  (2026-06-07 23:09:43)
+
+### Card text and rendering communicate wind-up
+
+PASS. `cardDefs.json` adds explicit wind-up descriptions for Solar Edge and Corebreaker Greatsword. Server reward-choice text now prefers `def.description`, and client reward choice rendering displays that description. The in-hand card UI also renders a wind-up badge from `CARD_DEFS[card.id].windUpMs`, with tests for both heavy hitters and a no-badge control card.
+
+### Tests and coverage
+
+PASS. The coverage log shows the relevant suites passing, including `server/test/card_windup_resolution.test.js`, `server/test/card_windup_lock.test.js`, `server/test/card_windup_types.test.js`, `server/test/card_windup_regression.test.js`, `server/test/debug_scenarios_charges.test.js`, `server/test/card_choice_description.test.js`, and `client/test/main.test.js` coverage for the hand badge. Broader server/client suites also ran in the same artifact; the logged test-environment model URL and simulated persistence failures are not ticket regressions.
+
+### Design and foundation consistency
+
+PASS. The change preserves the documented card-combat loop: weapons remain card-driven, charges still persist/reset according to existing systems, and the server remains authoritative for combat resolution. The captured run confirms the foundation requirements are not regressed: Three.js renders, the frontend connects to the backend, multiplayer state is visible, and WASD/dodge gameplay proceeds in a live run.
+
+### Debug scenarios
+
+PASS. The new `magma-windup-ready` and `flame-blade-windup-ready` states are debug-only scenarios invoked through the existing localhost `?debugScenario=` path or test socket flow. Normal gameplay can still reach equivalent states: `flame_blade` is in the starter deck, and `magma_greatsword` is reachable by evolving `flame_blade`. The scenarios do not replace production flow or weaken card authority; they inject hand cards using `CARD_DEFS` charges, then exercise the same server `useCard` and wind-up resolution path as normal play.
+
+## Remaining gaps
+
+None.
+
