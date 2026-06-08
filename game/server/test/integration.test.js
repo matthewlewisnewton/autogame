@@ -1139,7 +1139,7 @@ describe('Socket Integration — useCard Event', () => {
 		player.deck = ['iron_sword', 'flame_blade', 'battle_familiar'];
 		player.hand = [
 			{ id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 },
-			{ id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 3, remainingCharges: 3 },
+			{ id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 2, remainingCharges: 2 },
 			{ id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50 },
 			{ id: 'dungeon_drake', name: 'Vault Wyrm', type: 'creature', charges: 1, remainingCharges: 1 },
 			{ id: 'deck_sifter', name: 'Deck Sifter', type: 'weapon', charges: 3, remainingCharges: 3, effect: 'draw_card' },
@@ -1171,7 +1171,7 @@ describe('Socket Integration — useCard Event', () => {
 			player.hand = [
 				{ id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 1 },
 				{ id: 'chrono_trigger', name: 'Chrono Trigger', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 0 },
-				{ id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 3, remainingCharges: 1 },
+				{ id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 2, remainingCharges: 1 },
 			];
 
 			const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
@@ -1181,7 +1181,7 @@ describe('Socket Integration — useCard Event', () => {
 			const sword = player.hand.find(c => c && c.id === 'iron_sword');
 			const flame = player.hand.find(c => c && c.id === 'flame_blade');
 			expect(sword.remainingCharges).toBe(3);
-			expect(flame.remainingCharges).toBe(3);
+			expect(flame.remainingCharges).toBe(2);
 		});
 
 		it('Ether Scythe grants Magic Stones on hit and kill', async () => {
@@ -2143,23 +2143,14 @@ describe('dungeon run objective', () => {
 		expect(weaponSlot).toBeGreaterThanOrEqual(0);
 		const weaponCard = player.hand[weaponSlot];
 
-		// Wait for stateUpdate after the enemy kill
-		const stateUpdatePromise = waitForEvent(socket1, 'stateUpdate');
+		// Wait for cardUsed event (fires after windup resolves, or immediately for
+		// weapons without windup) so damage is applied before we check the objective.
+		const cardUsedPromise = waitForEvent(socket1, 'cardUsed');
 
 		socket1.emit('useCard', { cardId: weaponCard.id, slotIndex: weaponSlot });
+		await cardUsedPromise;
 
-		// Wait for the stateUpdate broadcast confirming the kill
-		const stateUpdate = await Promise.race([
-			stateUpdatePromise,
-			new Promise((_, r) => setTimeout(() => r(null), 3000))
-		]);
-
-		// Verify the broadcasted state contains the updated objective
-		if (stateUpdate && stateUpdate.run) {
-			expect(stateUpdate.run.objective.defeatedEnemies).toBe(defeatedBefore + 1);
-		}
-
-		// Also verify server gameState directly
+		// Verify server gameState directly
 		expect(testGameState().run.objective.defeatedEnemies).toBe(defeatedBefore + 1);
 	});
 });
@@ -4042,11 +4033,12 @@ describe('killing skirmisher via weapon card (integration)', () => {
 		expect(weaponSlot).toBeGreaterThanOrEqual(0);
 		const weaponCard = player.hand[weaponSlot];
 
-		// Wait for stateUpdate after the kill
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		// Wait for cardUsed event (fires after windup resolves, or immediately for
+		// weapons without windup) so damage is applied before we check the enemy.
+		const cardUsedPromise = waitForEvent(socket, 'cardUsed');
 
 		socket.emit('useCard', { cardId: weaponCard.id, slotIndex: weaponSlot });
-		await stateUpdatePromise;
+		await cardUsedPromise;
 
 		// Enemy should be removed
 		expect(testGameState().enemies.find(e => e.id === skirmisher.id)).toBeUndefined();

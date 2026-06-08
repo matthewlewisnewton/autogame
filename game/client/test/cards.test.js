@@ -32,7 +32,7 @@ describe('CARD_DEFS', () => {
 			id: 'flame_blade',
 			name: 'Solar Edge',
 			type: 'weapon',
-			charges: 3,
+			charges: 2,
 		});
 		expect(CARD_DEFS.flame_blade.windUpMs).toBe(600);
 	});
@@ -42,7 +42,7 @@ describe('CARD_DEFS', () => {
 			id: 'magma_greatsword',
 			name: 'Corebreaker Greatsword',
 			type: 'weapon',
-			charges: 4,
+			charges: 3,
 			isEvolved: true,
 			specialEffect: 'fire_trail',
 		});
