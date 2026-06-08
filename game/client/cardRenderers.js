@@ -25,14 +25,16 @@
 //   spawnProjectileTrail(origin, direction, style?) — fading streak along a path
 //   spawnImpactDecal(origin, style?)           — lingering ground flash/decal ring
 //   spawnTelegraphRing(origin, radius, style?) — expanding/pulsing AoE telegraph ring
+//   spawnMirrorWardShellEffect(origin, radius, style?) — lingering mirror ward shell
+//   spawnMirrorWardReflectBurst(origin, direction, style?) — mirror reflect impact VFX
 //   flashMesh(mesh, color, durationMs)
 //   enemyMeshes()      → { [enemyId]: Three.js mesh }
 //   playSound(name)
 //   myId               → local player id (string|null)
 //   scheduleAfter(ms, fn) — wrapper around setTimeout used for delayed swings
 
-import { CARD_ACCENT_STYLE, CARD_DEFS } from './cards.js';
-import { ATTACK_EFFECT_DURATION, MINION_SUMMON_IN_MS, PHOTON_BARRAGE_SWING_DELAY_MS } from './config.js';
+import { CARD_ACCENT_STYLE, CARD_DEFS, getCardDef } from './cards.js';
+import { ATTACK_EFFECT_DURATION, MINION_SUMMON_IN_MS, PHOTON_BARRAGE_SWING_DELAY_MS, SUMMON_EFFECT_DURATION } from './config.js';
 
 const NULL_CRAWLER_SUMMON_COLOR = 0x22d3ee;
 const NULL_CRAWLER_SUMMON_EMISSIVE = 0x67e8f9;
@@ -1190,12 +1192,51 @@ function renderGroundEnchantment(data, ctx) {
 }
 
 /**
- * Mirror Ward (and any self-targeted enchantment): teal ring around the
- * caster. Range is fixed since self-enchantments don't report a radius.
+ * Future self-targeted enchantments: teal ring around the caster. Range is
+ * fixed since self-enchantments don't report a radius.
  */
 function renderSelfEnchantment(data, ctx) {
 	if (data.target !== 'self') return;
 	ctx.spawnSummonEffect(originOf(data), 2, { color: 0x5eead4, emissive: 0x2dd4bf });
+}
+
+const MIRROR_WARD_COLOR = 0x5eead4;
+const MIRROR_WARD_EMISSIVE = 0x2dd4bf;
+
+/**
+ * Mirror Ward: instant self-cast shell at reflect range plus a short cast
+ * flourish. Reflect-trigger VFX is owned by sub-ticket 03.
+ */
+function renderMirrorWard(data, ctx) {
+	if (data.reflectTriggered) {
+		// Reflect burst VFX — sub-ticket 03
+		return;
+	}
+	if (data.target !== 'self' || !data.origin) return;
+
+	const origin = originOf(data);
+	const def = getCardDef('mirror_ward');
+	const radius = def.reflectRange;
+	const lingerMs = def.ttlMs;
+	const color = getAccentHex('mirror_ward') ?? MIRROR_WARD_COLOR;
+	const emissive = MIRROR_WARD_EMISSIVE;
+
+	if (ctx.spawnMirrorWardShellEffect) {
+		ctx.spawnMirrorWardShellEffect(origin, radius, { duration: lingerMs, color, emissive });
+	}
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, radius, {
+			duration: SUMMON_EFFECT_DURATION,
+			color,
+			emissive,
+		});
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(
+			{ x: origin.x, y: 1.0, z: origin.z },
+			{ color, emissive, count: 12, spread: 1.6 },
+		);
+	}
 }
 
 /**
@@ -1384,7 +1425,7 @@ const CARD_RENDERERS = {
 
 	// Enchantments
 	spike_trap: renderGroundEnchantment,
-	mirror_ward: renderSelfEnchantment,
+	mirror_ward: renderMirrorWard,
 	cinder_snare: renderGroundEnchantment,
 };
 

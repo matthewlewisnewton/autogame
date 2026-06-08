@@ -2422,6 +2422,27 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       const grunt = spawnEnemy(player.x + 4, player.z, 'grunt');
       grunt.wanderTarget = { x: grunt.x, z: grunt.z };
+    } else if (name === 'mirror-ward-ready') {
+      // Playing phase with Mirror Ward in hand, full Magic Stones, and a grunt
+      // nearby so QA can self-cast and see the instant shell + lingering ward VFX
+      // (and later test reflect on hit). Same state is reachable by earning the
+      // reward card deep in a dungeon run and casting in combat.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'mirror_ward',
+          name: 'Mirror Ward',
+          type: 'enchantment',
+          charges: 1,
+          remainingCharges: 1,
+          effect: 'mirror_ward',
+        };
+      }
+      state.enemies = [];
+      const grunt = spawnEnemy(player.x + 4, player.z, 'grunt');
+      grunt.wanderTarget = { x: grunt.x, z: grunt.z };
     } else if (name === 'chain-lightning-ready') {
       // Playing phase with Voltaic Chain in hand, full Magic Stones, and three
       // grunts lined up along +X so a cast chains primary → two half-damage hops.

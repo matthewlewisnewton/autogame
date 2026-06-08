@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CARD_DEFS } from '../cards.js';
-import { ATTACK_EFFECT_DURATION, PHOTON_BARRAGE_SWING_DELAY_MS } from '../config.js';
+import { ATTACK_EFFECT_DURATION, PHOTON_BARRAGE_SWING_DELAY_MS, SUMMON_EFFECT_DURATION } from '../config.js';
 import {
 	renderCardUsed,
 	resolveRenderers,
@@ -29,6 +29,8 @@ function makeCtx(overrides = {}) {
 		spawnProjectileTrail: record('spawnProjectileTrail'),
 		spawnImpactDecal: record('spawnImpactDecal'),
 		spawnTelegraphRing: record('spawnTelegraphRing'),
+		spawnMirrorWardShellEffect: record('spawnMirrorWardShellEffect'),
+		spawnMirrorWardReflectBurst: record('spawnMirrorWardReflectBurst'),
 		spawnMinionSummonInEffect: record('spawnMinionSummonInEffect'),
 		flashMesh: record('flashMesh'),
 		spawnHitSpark: record('spawnHitSpark'),
@@ -2164,7 +2166,7 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 		expect(rings[0][2]).toBe(2.5);
 	});
 
-	it('mirror_ward renders a teal self ring only when target=self', () => {
+	it('mirror_ward spawns shell, telegraph ring, and burst when target=self', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'mirror_ward',
@@ -2172,11 +2174,36 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 			target: 'self',
 			hits: [],
 		}, ctx);
-		const rings = ctx._calls.filter(
-			(c) => c[0] === 'spawnSummonEffect' && c[3] && c[3].color === 0x5eead4,
-		);
+		const def = CARD_DEFS.mirror_ward;
+		const shells = ctx._calls.filter((c) => c[0] === 'spawnMirrorWardShellEffect');
+		expect(shells).toHaveLength(1);
+		expect(shells[0][1]).toEqual({ x: 0, z: 0 });
+		expect(shells[0][2]).toBe(def.reflectRange);
+		expect(shells[0][3]).toMatchObject({
+			duration: def.ttlMs,
+			color: 0x5eead4,
+			emissive: 0x2dd4bf,
+		});
+
+		const rings = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
 		expect(rings).toHaveLength(1);
-		expect(rings[0][2]).toBe(2);
+		expect(rings[0][2]).toBe(def.reflectRange);
+		expect(rings[0][3]).toMatchObject({
+			duration: SUMMON_EFFECT_DURATION,
+			color: 0x5eead4,
+			emissive: 0x2dd4bf,
+		});
+
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		expect(bursts).toHaveLength(1);
+		expect(bursts[0][1]).toEqual({ x: 0, y: 1.0, z: 0 });
+		expect(bursts[0][2]).toMatchObject({
+			color: 0x5eead4,
+			emissive: 0x2dd4bf,
+			count: 12,
+			spread: 1.6,
+		});
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
 	});
 
 	it('mirror_ward does nothing when target is not self', () => {
@@ -2187,7 +2214,9 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 			target: 'ground',
 			hits: [],
 		}, ctx);
-		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnMirrorWardShellEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
 	});
 });
 

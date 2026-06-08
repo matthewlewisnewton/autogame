@@ -535,6 +535,7 @@ const DEBUG_SCENARIOS = new Set([
   'evolution-ready',
   'deck-viewer-instances',
   'cinder-snare-ready',
+  'mirror-ward-ready',
   'quest-tier-2-unlocked',
   'arena-trials-tier-2',
   'arena-trials-near-adds',
