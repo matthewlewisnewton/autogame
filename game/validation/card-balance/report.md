@@ -77,10 +77,10 @@ Regenerate raw metrics: `node game/validation/card-balance/analyzeCards.mjs`
 | Permafrost Lance | permafrost_lance | 1 | 30 | 11 | 11.00 | 0.014 | reward:5 | ok | **done** (sub-ticket 04) — matches frost_nova DPC/DPM lane |
 | Restoration Beacon | healing_font | 1 | 0 | 0 | — | — | reward:8 | ok | — (utility: +6 MS) |
 | Sanctum Pulse | divine_grace | 1 | 0 | 0 | — | — | evolved | ok | — (utility: +10 MS) |
-| Voltaic Chain | chain_lightning | 1 | 42 | 22 | 22.00 | 0.028 | reward:26 | ok | — (max 44 vs clusters; see spotlight) |
+| Voltaic Chain | chain_lightning | 1 | 37 | 22 | 22.00 | 0.028 | reward:26 | ok | — (max 44 vs clusters; see spotlight) |
 | Glacial Orb | ice_ball | 1 | 32 | 12 | 12.00 | 0.015 | reward:28 | ok | — |
 | Glacier Rupture | glacier_collapse | 1 | 35 | 17 | 17.00 | 0.021 | evolved | ok | — |
-| Purifying Pulse | purifying_pulse | 1 | 0 | 0 | — | — | reward:27 | ok | — (utility: 15 heal + cleanse; see spotlight) |
+| Purifying Pulse | purifying_pulse | 1 | 0 | 0 | — | — | reward:27 | ok | — (utility: 20 heal + cleanse; see spotlight) |
 | Gravity Well | gravity_well | 1 | 45 | 0 | 0 | 0 | reward:14 | dead | `operator-triage` — pull-only; needs CC utility score |
 | Event Horizon | event_horizon | 1 | 45 | 0 | 0 | 0 | evolved | dead | `operator-triage` — crush damage (33 center) not in harness primary field |
 | Ether Siphon | mana_leach | 1 | 30 | 28 | 28.00 | 0.035 | reward:16 | ok | — |
@@ -122,11 +122,11 @@ Cards landed in tickets 294–302. Compared to same-type peers on damage, MS cos
 | Impact damage | 12 | frost_nova 11, permafrost_lance 11 |
 | MS cost | 32 | frost_nova 35, permafrost_lance 30 |
 | Charges / cooldown | 1 / 800 ms | Standard spell slot |
-| Utility | 50% slow, 3 s, 0.5 factor | frost_nova: AoE freeze; permafrost: wider nova freeze |
+| Utility | 65% slow, 3 s, 0.65 factor | frost_nova: AoE freeze; permafrost: wider nova freeze |
 
 **Assessment.** Best single-target damage in the frost lane for MS spent; trades AoE freeze for ranged projectile + probabilistic slow. DPC 12 is mid-band for spells. Slow is weaker than freeze but cheaper MS and safer at range (1200 ms travel).
 
-**Recommendation:** `ok` — no numeric change unless slow proc rate feels bad; then `apply-now` raise `slowChance` to 0.65.
+**Recommendation:** **done** (sub-ticket 310) — `slowChance` raised 0.5 → 0.65; slow now procs more reliably, narrowing the gap vs frost_nova/permafrost freeze uptime.
 
 ### chain_lightning (302) — spell
 
@@ -134,27 +134,27 @@ Cards landed in tickets 294–302. Compared to same-type peers on damage, MS cos
 | --- | --- | --- |
 | Primary damage | 22 | mana_leach 28 (single target) |
 | Max cluster burst | 44 (22+11+11) | battle_familiar 44 (single + summon) |
-| MS cost | 42 | mana_leach 30, frost_nova 35 |
+| MS cost | 37 | mana_leach 30, frost_nova 35 |
 | Chain | radius 5, max 2 | thunderbird minion chains similarly |
 | Charges / cooldown | 1 / 800 ms | Standard spell |
 
-**Assessment.** Harness undervalues cluster fights: at three targets, DPC-equivalent **44** matches battle_familiar at lower summon overhead. Single-target DPM (0.028) is mid-band. 42 MS is the highest among spotlight cards but fair for multi-hit potential.
+**Assessment.** Harness undervalues cluster fights: at three targets, DPC-equivalent **44** matches battle_familiar at lower summon overhead. Single-target DPM (0.028) is mid-band. Post-tune 37 MS is still the highest among spotlight cards but easier to cast back-to-back for multi-hit potential.
 
-**Recommendation:** `ok` — tune only if MS starvation blocks casts; then `apply-now` −5 MS cost.
+**Recommendation:** **done** (sub-ticket 310) — `magicStoneCost` reduced 42 → 37 (−5 MS); eases MS starvation between casts while keeping it the priciest spotlight spell.
 
 ### purifying_pulse (299) — spell
 
 | Stat | Value | Peer context |
 | --- | --- | --- |
-| Heal | 15 HP | healing_font restores 6 MS (different resource) |
+| Heal | 20 HP | healing_font restores 6 MS (different resource) |
 | MS cost | 0 | healing_font 0 MS |
 | Radius | 5.5 | AoE ally heal + cleanse |
 | Charges / cooldown | 1 / 800 ms | Same as healing_font |
 | Utility | Clears burn, slow, freeze, debuffs | Unique among heals |
 
-**Assessment.** Only zero-MS ally heal with full cleanse (`purifying_pulse.test.js`). `utilityScore` 15 is modest vs sacrificial_altar (100 MS) but combat-relevant in debuff-heavy content. No direct damage — correctly **ok** on utility verdict. Pairs with ice/fire enemy kits from same ticket batch.
+**Assessment.** Only zero-MS ally heal with full cleanse (`purifying_pulse.test.js`). `utilityScore` 20 is modest vs sacrificial_altar (100 MS) but combat-relevant in debuff-heavy content. No direct damage — correctly **ok** on utility verdict. Pairs with ice/fire enemy kits from same ticket batch.
 
-**Recommendation:** `ok` — if underused, `apply-now` +5 heal or +1 m radius; cleanse value is the main draw.
+**Recommendation:** **done** (sub-ticket 310) — `healAmount` raised 15 → 20 (+5 heal); cleanse remains the main draw, with the larger heal improving sustain in debuff-heavy content.
 
 ## Creatures
 
@@ -254,7 +254,7 @@ Plausible multi-card loops from `cardEffects.js`, `simulation.js`, and integrati
 | Battery + altar loop | `battery_automaton` + `sacrificial_altar` + `chrono_trigger` | **medium** | Partial — tune `chargePulseIntervalMs` (6000) or altar `chargeRestore` | Battery pulses +1 charge / 6 s; altar refills adjacent weapons; chrono restores ±2 adjacent |
 | Pull into hazard | `gravity_well` / `event_horizon` + `spike_trap` / `cinder_snare` | **medium** | Yes — reduce hazard `damage` / `damagePerTick` or widen MS gap vs pull cost | Enemies pulled into ground enchantments (`new_card_pack.test.js` pull radii 12) |
 | MS grind + spender | `harvesting_scythe` + `mana_prism` + `sacrificial_altar` + burst spell | **medium** | Partial — lower `magicStoneOnKill` (15) or prism `magicStonePulse` (10) | Scythe grants 5/15 MS on hit/kill; prism passively feeds spells |
-| Cleanse attrition counter | `purifying_pulse` + `dungeon_drake` / fire enemies | **low** | Yes — reduce `healAmount` (15) if TTK too long | Zero-MS heal + cleanse vs burn/slow content (`purifying_pulse.test.js`) |
+| Cleanse attrition counter | `purifying_pulse` + `dungeon_drake` / fire enemies | **low** | Yes — reduce `healAmount` (20) if TTK too long | Zero-MS heal + cleanse vs burn/slow content (`purifying_pulse.test.js`) |
 | Chrono weapon refresh | `chrono_trigger` + high-charge weapons (`iron_sword`, `flame_blade`) | **low** | Yes — lower `adjacentChargeRestore` (2) | `integration.test.js`: both neighbors +2 charges |
 
 ## Executive summary
