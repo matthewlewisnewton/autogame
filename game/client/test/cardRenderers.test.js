@@ -30,6 +30,7 @@ function makeCtx(overrides = {}) {
 		spawnImpactDecal: record('spawnImpactDecal'),
 		spawnTelegraphRing: record('spawnTelegraphRing'),
 		spawnMirrorWardShellEffect: record('spawnMirrorWardShellEffect'),
+		dismissMirrorWardShellEffect: record('dismissMirrorWardShellEffect'),
 		spawnMirrorWardReflectBurst: record('spawnMirrorWardReflectBurst'),
 		spawnMinionSummonInEffect: record('spawnMinionSummonInEffect'),
 		flashMesh: record('flashMesh'),
@@ -2170,6 +2171,7 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'mirror_ward',
+			playerId: 'p1',
 			origin: { x: 0, z: 0 },
 			target: 'self',
 			hits: [],
@@ -2183,6 +2185,7 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 			duration: def.ttlMs,
 			color: 0x5eead4,
 			emissive: 0x2dd4bf,
+			playerId: 'p1',
 		});
 
 		const rings = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
@@ -2241,6 +2244,14 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 			color: 0x5eead4,
 			emissive: 0x2dd4bf,
 		});
+
+		const dismissCalls = ctx._calls.filter((c) => c[0] === 'dismissMirrorWardShellEffect');
+		expect(dismissCalls).toHaveLength(1);
+		expect(dismissCalls[0][1]).toBe('p1');
+		const dismissIdx = ctx._calls.findIndex((c) => c[0] === 'dismissMirrorWardShellEffect');
+		const burstIdx = ctx._calls.findIndex((c) => c[0] === 'spawnMirrorWardReflectBurst');
+		expect(dismissIdx).toBeLessThan(burstIdx);
+
 		expect(ctx._calls.some((c) => c[0] === 'spawnMirrorWardShellEffect')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
 	});

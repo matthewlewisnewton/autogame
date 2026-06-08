@@ -10,6 +10,7 @@ import {
 	spawnDivineGraceEffect,
 	spawnDivineGraceColumn,
 	spawnMirrorWardShellEffect,
+	dismissMirrorWardShellEffect,
 	spawnMirrorWardReflectBurst,
 	updateAttackEffects,
 	getActiveEffects,
@@ -190,6 +191,24 @@ describe('shared VFX primitives', () => {
 		spawnMirrorWardShellEffect({ x: 1, z: 2 }, 5, { duration: 900 });
 		const fx = lastEffect();
 		expect(fx.duration).toBe(900);
+	});
+
+	it('dismissMirrorWardShellEffect removes tracked shell by playerId immediately', () => {
+		const before = getActiveEffects().length;
+		spawnMirrorWardShellEffect({ x: 0, z: 0 }, 11, { playerId: 'p1' });
+		expect(getActiveEffects().length).toBe(before + 1);
+
+		const fx = lastEffect();
+		expect(fx.isMirrorWardShell).toBe(true);
+		expect(fx.playerId).toBe('p1');
+
+		const ring = fx.mesh.children.find((c) => c.userData.isMirrorWardRing);
+		const disposeSpy = vi.spyOn(ring.geometry, 'dispose');
+		dismissMirrorWardShellEffect('p1');
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(getActiveEffects().some((e) => e.isMirrorWardShell && e.playerId === 'p1')).toBe(false);
+		expect(disposeSpy).toHaveBeenCalled();
 	});
 
 	it('spawnMirrorWardReflectBurst adds flagged trail, decal, and burst with mirror palette', () => {

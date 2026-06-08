@@ -4790,6 +4790,26 @@ export function spawnChainLightningEffect(origin, direction) {
 const MIRROR_WARD_COLOR = 0x5eead4;
 const MIRROR_WARD_EMISSIVE = 0x2dd4bf;
 const MIRROR_WARD_SILVER = 0xe2e8f0;
+const mirrorWardShellsByPlayer = new Map();
+
+/**
+ * Immediately dispose a tracked Mirror Ward shell for `playerId`.
+ * @param {string} playerId
+ */
+export function dismissMirrorWardShellEffect(playerId) {
+	if (!playerId) return;
+	const fx = mirrorWardShellsByPlayer.get(playerId);
+	if (!fx) return;
+
+	const idx = activeEffects.indexOf(fx);
+	if (idx !== -1) {
+		disposeEffectObject(fx.mesh, fx._scene || scene);
+		activeEffects.splice(idx, 1);
+	} else {
+		disposeEffectObject(fx.mesh, fx._scene || scene);
+	}
+	mirrorWardShellsByPlayer.delete(playerId);
+}
 
 /**
  * Mirror Ward protective shell: pulsing ground ring at `radius` plus vertical
@@ -4801,6 +4821,10 @@ const MIRROR_WARD_SILVER = 0xe2e8f0;
 export function spawnMirrorWardShellEffect(origin, radius, style = {}) {
 	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
 	if (!targetScene) return;
+
+	if (style.playerId) {
+		dismissMirrorWardShellEffect(style.playerId);
+	}
 
 	const r = radius ?? 1.5;
 	const color = style.color ?? MIRROR_WARD_COLOR;
@@ -4854,15 +4878,20 @@ export function spawnMirrorWardShellEffect(origin, radius, style = {}) {
 
 	targetScene.add(group);
 
-	activeEffects.push({
+	const effect = {
 		mesh: group,
 		_scene: targetScene,
 		origin: { x: origin.x, z: origin.z },
 		wardRadius: r,
 		isMirrorWardShell: true,
+		playerId: style.playerId,
 		createdAt: performance.now(),
 		duration,
-	});
+	};
+	activeEffects.push(effect);
+	if (style.playerId) {
+		mirrorWardShellsByPlayer.set(style.playerId, effect);
+	}
 }
 
 /**
@@ -5260,6 +5289,9 @@ export function updateAttackEffects() {
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, fx._scene || scene);
 				activeEffects.splice(i, 1);
+				if (fx.playerId) {
+					mirrorWardShellsByPlayer.delete(fx.playerId);
+				}
 			}
 			continue;
 		}

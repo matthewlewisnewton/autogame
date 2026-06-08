@@ -1214,6 +1214,7 @@ function renderMirrorWard(data, ctx) {
 		const def = getCardDef('mirror_ward');
 		const color = getAccentHex('mirror_ward') ?? MIRROR_WARD_COLOR;
 		const emissive = MIRROR_WARD_EMISSIVE;
+		ctx.dismissMirrorWardShellEffect?.(data.playerId);
 		if (ctx.spawnMirrorWardReflectBurst) {
 			ctx.spawnMirrorWardReflectBurst(origin, direction, {
 				range: def.reflectRange,
@@ -1233,7 +1234,12 @@ function renderMirrorWard(data, ctx) {
 	const emissive = MIRROR_WARD_EMISSIVE;
 
 	if (ctx.spawnMirrorWardShellEffect) {
-		ctx.spawnMirrorWardShellEffect(origin, radius, { duration: lingerMs, color, emissive });
+		ctx.spawnMirrorWardShellEffect(origin, radius, {
+			duration: lingerMs,
+			color,
+			emissive,
+			playerId: data.playerId,
+		});
 	}
 	if (ctx.spawnTelegraphRing) {
 		ctx.spawnTelegraphRing(origin, radius, {
