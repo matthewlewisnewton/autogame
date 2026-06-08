@@ -1,0 +1,6 @@
+Created one new sub-ticket closing the single open gap from round 2's review.
+
+**Sub-ticket created:**
+- `/home/matt/workspace/.autogame-worktrees/313-saber-of-light-aoe-per-grind-scaling/tickets/313-saber-of-light-aoe-per-grind-scaling/subtickets/02-saber-grind-debug-charges-match-real-card/ticket.md`
+
+**Rationale:** Sub-ticket 01 (`saber-aoe-per-grind-scaling`) carries a `.passed` marker — the core AoE-per-grind change, base damage/cooldown preservation, and tests are done and untouched. The only remaining gap is that the `saber-grind-max` debug scenario fabricates a 5-charge Saber when the real card has 6, making it an unreachable game state. The new sub-ticket fixes that in `game/server/debugScenarios.js`, sourcing the charge count from the real `cardDefs.json` definition. Verification is `code` (it concerns server state values and a fallback value, not on-screen rendering).

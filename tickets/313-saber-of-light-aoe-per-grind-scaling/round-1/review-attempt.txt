@@ -1,0 +1,5 @@
+VERDICT: FAIL
+
+Wrote the review to `tickets/313-saber-of-light-aoe-per-grind-scaling/round-1/review.md` and the standalone blocker to `tickets/313-saber-of-light-aoe-per-grind-scaling/round-1/gaps.md`.
+
+The game run itself was healthy, but the added `saber-grind-max` debug scenario fabricates a 5-charge Saber of Light when the real card has 6 charges, so the shortcut creates an unreachable/impossible gameplay state.

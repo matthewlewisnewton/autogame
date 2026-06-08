@@ -128,6 +128,8 @@
   "saber_of_light": {
     "damage": 12,
     "cooldownMs": 400,
+    "attackRange": 5,
+    "aoeGrindScale": 0.03,
     "specialEffect": "swift_slash"
   },
   "excalibur_photon": {

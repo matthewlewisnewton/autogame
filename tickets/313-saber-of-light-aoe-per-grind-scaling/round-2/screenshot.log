@@ -1,0 +1,851 @@
+[createLobby] timeout waiting for #lobby visibility: page.waitForFunction: Timeout 10000ms exceeded.
+[joinLobby] timeout waiting for #lobby visibility: page.waitForFunction: Timeout 10000ms exceeded.
+{
+  "url": "http://localhost:5174/",
+  "ok": true,
+  "ticketFile": "/home/matt/workspace/.autogame-worktrees/313-saber-of-light-aoe-per-grind-scaling/tickets/313-saber-of-light-aoe-per-grind-scaling/ticket.md",
+  "capturePlanSource": "fallback",
+  "capturePlanValid": true,
+  "capturePlanAttempts": [],
+  "capturePlanSummary": "Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement, dodge/key-item with post-dodge cooldown probe.",
+  "scenarios": [],
+  "screenshots": [
+    {
+      "file": "01-initial.png",
+      "player": "A",
+      "description": "Both players in squad lobby."
+    },
+    {
+      "file": "02-after-w.png",
+      "player": "A",
+      "description": "Gameplay after holding W."
+    },
+    {
+      "file": "03-after-d.png",
+      "player": "A",
+      "description": "Gameplay after holding D."
+    },
+    {
+      "file": "04-after-dodge.png",
+      "player": "A",
+      "description": "Gameplay after dodge roll with cooldown HUD."
+    }
+  ],
+  "probes": [
+    {
+      "player": "A",
+      "description": "After readying all players and entering gameplay.",
+      "data": {
+        "harnessState": {
+          "debugScenario": null,
+          "debugScenarioAllowed": true,
+          "debugScenarioResult": null,
+          "debugGodmodeResult": null,
+          "objective": {
+            "type": "defeat_enemies",
+            "totalEnemies": 5,
+            "defeatedEnemies": 0,
+            "label": "Initiate Vault: Purge hostiles from the derelict annex sector."
+          },
+          "encounter": null,
+          "bossEncounter": null,
+          "runObjectiveComplete": false,
+          "lastRunSummary": null,
+          "sortieCompleteOverlayVisible": false,
+          "myId": "e05fcc13-24dd-4224-ae4c-974bce550615",
+          "selectedDeck": [
+            "b60d5a7b-da5f-4f13-90fa-5a559698a02c",
+            "f6180792-f30f-4b52-9584-7098683b2e44",
+            "03c59cb7-58ea-46b8-ac82-59483d501d6e",
+            "d781d529-1030-48b0-b19c-888fbd8d14b0",
+            "85ede7a2-4b26-40a9-8329-5beb158aceda",
+            "f4887f92-4166-43c1-a16f-1e10f92ed667",
+            "643c428f-f4c4-4c50-8f6d-5d94b35b2350",
+            "d3ad9a7b-3aa1-42f0-a28d-2f5c32152378",
+            "f91e754d-743f-48fd-a7bb-28ad68c6958d",
+            "e280c6e7-94aa-47a6-b560-391c1a9ccaef",
+            "7d0a0806-72a5-4c8e-a2e1-5164dfae8adf",
+            "ced6a5bd-bf75-40ef-961c-a2f22ce7f0c1"
+          ],
+          "phase": "playing",
+          "runStatus": "playing",
+          "suspendedRunSummary": null,
+          "extracted": false,
+          "telepipe": null,
+          "layout": {
+            "profile": "crowded",
+            "seed": 352369970,
+            "roomCount": 10,
+            "startRoom": {
+              "x": -9,
+              "z": 27,
+              "role": "start"
+            }
+          },
+          "connectionState": "connected",
+          "sceneInitialized": true,
+          "hasCanvas": true,
+          "lobbyVisible": false,
+          "lobbyMenuDismissed": true,
+          "characterBoothOpen": false,
+          "deckEditorVisible": false,
+          "runId": "75cc8df1-cf25-4905-9aaa-bcbb5d63ff03",
+          "cardHandVisible": true,
+          "status": "Latency: 1ms",
+          "hpText": "88/100",
+          "msText": "49/99",
+          "currencyText": "Money 0",
+          "currency": 0,
+          "player": {
+            "hp": 88,
+            "magicStones": 49.73000000000037,
+            "currency": 0,
+            "debugGodmode": false,
+            "dead": false,
+            "x": -9,
+            "y": 0.5,
+            "z": 27,
+            "equippedKeyItemId": "dodge_roll",
+            "keyItemCooldownRemaining": 0
+          },
+          "keyItemIndicatorOnCooldown": false,
+          "keyItemIndicatorText": "",
+          "players": 2,
+          "squadmates": [
+            {
+              "id": "bab039d4-a56f-4f8a-9288-3013b6463c2b",
+              "x": -6,
+              "z": 27
+            }
+          ],
+          "enemies": 5,
+          "enemyHp": [
+            {
+              "id": "58744f15-8cab-4c2f-9ca4-aa969623e40e",
+              "hp": 40,
+              "maxHp": 40,
+              "type": "skirmisher",
+              "spawnedBy": null,
+              "x": -11.205945049739082,
+              "z": 5.2443603914153165
+            },
+            {
+              "id": "f5954aea-f155-46a0-8057-567926cc2c73",
+              "hp": 40,
+              "maxHp": 40,
+              "type": "skirmisher",
+              "spawnedBy": null,
+              "x": 5.137699599411786,
+              "z": 9.359848531868064
+            },
+            {
+              "id": "31c325a9-b093-4c6c-a789-a365d410697c",
+              "hp": 40,
+              "maxHp": 40,
+              "type": "skirmisher",
+              "spawnedBy": null,
+              "x": -25.624438839135706,
+              "z": 21.492979059596507
+            },
+            {
+              "id": "47b80c28-bbd9-4b17-89a3-86f5a928b5e3",
+              "hp": 100,
+              "maxHp": 100,
+              "type": "grunt",
+              "spawnedBy": null,
+              "x": 28.117186309607085,
+              "z": 28.535644605824793
+            },
+            {
+              "id": "59b581d9-c92c-49b9-8ef3-30032630b35d",
+              "hp": 40,
+              "maxHp": 40,
+              "type": "skirmisher",
+              "spawnedBy": null,
+              "x": 5.21331217992191,
+              "z": 23.54376301972018
+            }
+          ],
+          "minions": [],
+          "hand": [
+            {
+              "id": "dungeon_drake",
+              "name": "Vault Wyrm",
+              "type": "creature",
+              "remainingCharges": 1,
+              "charges": 1,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "1/1",
+              "creatureBurning": false,
+              "isEvolved": false,
+              "specialEffect": "burning_breath"
+            },
+            {
+              "id": "flame_blade",
+              "name": "Solar Edge",
+              "type": "weapon",
+              "remainingCharges": 3,
+              "charges": 3,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "3/3",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            null,
+            {
+              "id": "iron_sword",
+              "name": "Rust-Forged Saber",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "5/5",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            {
+              "id": "iron_sword",
+              "name": "Rust-Forged Saber",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "5/5",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            null
+          ],
+          "inventory": [
+            {
+              "instanceId": "b60d5a7b-da5f-4f13-90fa-5a559698a02c",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "f6180792-f30f-4b52-9584-7098683b2e44",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "03c59cb7-58ea-46b8-ac82-59483d501d6e",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "d781d529-1030-48b0-b19c-888fbd8d14b0",
+              "cardId": "dungeon_drake",
+              "grind": 0
+            },
+            {
+              "instanceId": "85ede7a2-4b26-40a9-8329-5beb158aceda",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "f4887f92-4166-43c1-a16f-1e10f92ed667",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "643c428f-f4c4-4c50-8f6d-5d94b35b2350",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "d3ad9a7b-3aa1-42f0-a28d-2f5c32152378",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "f91e754d-743f-48fd-a7bb-28ad68c6958d",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "e280c6e7-94aa-47a6-b560-391c1a9ccaef",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "7d0a0806-72a5-4c8e-a2e1-5164dfae8adf",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "ced6a5bd-bf75-40ef-961c-a2f22ce7f0c1",
+              "cardId": "dungeon_drake",
+              "grind": 0
+            }
+          ],
+          "lastEvolutionResult": null
+        },
+        "keyItemIndicatorOnCooldown": false,
+        "keyItemIndicatorText": "",
+        "keyItemCooldownRemaining": 0,
+        "status": "Latency: 1ms",
+        "hasCanvas": true,
+        "canvasCount": 2,
+        "lobbyVisible": false,
+        "cardHandVisible": true,
+        "title": "Void Grimoire",
+        "bodyText": "👤\nLv\n🔊\n⚙\nE0\nLV\n1\nHP\n88/100\nMS\n49/99\nDeck: 0/0\n⟡ 0\n✦ 0\n🐉 0\n✨ 0\nMoney 0\nLatency: 1ms\nInitiate Vault\nPurged 0 / 5 hostiles\nClick to attack · press 1–6 to cast cards\n1\n🐉\nVault Wyrm\nBURNING BREATH\n1/1\n2\n⚔\nSolar Edge\n3/3\n4\n⚔\nRust-Forged Saber\n5/5\n5\n⚔\nRust-Forged Saber\n5/5"
+      }
+    },
+    {
+      "player": "A",
+      "description": "After dodge roll — cooldown HUD should be active.",
+      "data": {
+        "harnessState": {
+          "debugScenario": null,
+          "debugScenarioAllowed": true,
+          "debugScenarioResult": null,
+          "debugGodmodeResult": null,
+          "objective": {
+            "type": "defeat_enemies",
+            "totalEnemies": 5,
+            "defeatedEnemies": 0,
+            "label": "Initiate Vault: Purge hostiles from the derelict annex sector."
+          },
+          "encounter": null,
+          "bossEncounter": null,
+          "runObjectiveComplete": false,
+          "lastRunSummary": null,
+          "sortieCompleteOverlayVisible": false,
+          "myId": "e05fcc13-24dd-4224-ae4c-974bce550615",
+          "selectedDeck": [
+            "b60d5a7b-da5f-4f13-90fa-5a559698a02c",
+            "f6180792-f30f-4b52-9584-7098683b2e44",
+            "03c59cb7-58ea-46b8-ac82-59483d501d6e",
+            "d781d529-1030-48b0-b19c-888fbd8d14b0",
+            "85ede7a2-4b26-40a9-8329-5beb158aceda",
+            "f4887f92-4166-43c1-a16f-1e10f92ed667",
+            "643c428f-f4c4-4c50-8f6d-5d94b35b2350",
+            "d3ad9a7b-3aa1-42f0-a28d-2f5c32152378",
+            "f91e754d-743f-48fd-a7bb-28ad68c6958d",
+            "e280c6e7-94aa-47a6-b560-391c1a9ccaef",
+            "7d0a0806-72a5-4c8e-a2e1-5164dfae8adf",
+            "ced6a5bd-bf75-40ef-961c-a2f22ce7f0c1"
+          ],
+          "phase": "playing",
+          "runStatus": "playing",
+          "suspendedRunSummary": null,
+          "extracted": false,
+          "telepipe": null,
+          "layout": {
+            "profile": "crowded",
+            "seed": 352369970,
+            "roomCount": 10,
+            "startRoom": {
+              "x": -9,
+              "z": 27,
+              "role": "start"
+            }
+          },
+          "connectionState": "connected",
+          "sceneInitialized": true,
+          "hasCanvas": true,
+          "lobbyVisible": false,
+          "lobbyMenuDismissed": true,
+          "characterBoothOpen": false,
+          "deckEditorVisible": false,
+          "runId": "75cc8df1-cf25-4905-9aaa-bcbb5d63ff03",
+          "cardHandVisible": true,
+          "status": "Latency: 1ms",
+          "hpText": "82/100",
+          "msText": "50/99",
+          "currencyText": "Money 0",
+          "currency": 0,
+          "player": {
+            "hp": 82,
+            "magicStones": 50.220000000000624,
+            "currency": 0,
+            "debugGodmode": false,
+            "dead": false,
+            "x": 2.999999999999994,
+            "y": 0.5,
+            "z": 7.799999999999979,
+            "equippedKeyItemId": "dodge_roll",
+            "keyItemCooldownRemaining": 401
+          },
+          "keyItemIndicatorOnCooldown": true,
+          "keyItemIndicatorText": "0.4",
+          "players": 2,
+          "squadmates": [
+            {
+              "id": "bab039d4-a56f-4f8a-9288-3013b6463c2b",
+              "x": -6,
+              "z": 27
+            }
+          ],
+          "enemies": 5,
+          "enemyHp": [
+            {
+              "id": "58744f15-8cab-4c2f-9ca4-aa969623e40e",
+              "hp": 40,
+              "maxHp": 40,
+              "type": "skirmisher",
+              "spawnedBy": null,
+              "x": -14.551687705712167,
+              "z": 7.434145704684939
+            },
+            {
+              "id": "f5954aea-f155-46a0-8057-567926cc2c73",
+              "hp": 40,
+              "maxHp": 40,
+              "type": "skirmisher",
+              "spawnedBy": null,
+              "x": -0.4787622041086966,
+              "z": 7.822294994408647
+            },
+            {
+              "id": "31c325a9-b093-4c6c-a789-a365d410697c",
+              "hp": 40,
+              "maxHp": 40,
+              "type": "skirmisher",
+              "spawnedBy": null,
+              "x": -20.712565767146735,
+              "z": 21.746168589856488
+            },
+            {
+              "id": "47b80c28-bbd9-4b17-89a3-86f5a928b5e3",
+              "hp": 100,
+              "maxHp": 100,
+              "type": "grunt",
+              "spawnedBy": null,
+              "x": 27.446129442851756,
+              "z": 23.68181285332436
+            },
+            {
+              "id": "59b581d9-c92c-49b9-8ef3-30032630b35d",
+              "hp": 40,
+              "maxHp": 40,
+              "type": "skirmisher",
+              "spawnedBy": null,
+              "x": 6.346105098716985,
+              "z": 22.3173642672117
+            }
+          ],
+          "minions": [],
+          "hand": [
+            {
+              "id": "dungeon_drake",
+              "name": "Vault Wyrm",
+              "type": "creature",
+              "remainingCharges": 1,
+              "charges": 1,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "1/1",
+              "creatureBurning": false,
+              "isEvolved": false,
+              "specialEffect": "burning_breath"
+            },
+            {
+              "id": "flame_blade",
+              "name": "Solar Edge",
+              "type": "weapon",
+              "remainingCharges": 3,
+              "charges": 3,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "3/3",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            {
+              "id": "battle_familiar",
+              "name": "Signal Familiar",
+              "type": "spell",
+              "remainingCharges": 1,
+              "charges": 1,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "1/1",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            {
+              "id": "iron_sword",
+              "name": "Rust-Forged Saber",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "5/5",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            {
+              "id": "iron_sword",
+              "name": "Rust-Forged Saber",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "5/5",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            null
+          ],
+          "inventory": [
+            {
+              "instanceId": "b60d5a7b-da5f-4f13-90fa-5a559698a02c",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "f6180792-f30f-4b52-9584-7098683b2e44",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "03c59cb7-58ea-46b8-ac82-59483d501d6e",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "d781d529-1030-48b0-b19c-888fbd8d14b0",
+              "cardId": "dungeon_drake",
+              "grind": 0
+            },
+            {
+              "instanceId": "85ede7a2-4b26-40a9-8329-5beb158aceda",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "f4887f92-4166-43c1-a16f-1e10f92ed667",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "643c428f-f4c4-4c50-8f6d-5d94b35b2350",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "d3ad9a7b-3aa1-42f0-a28d-2f5c32152378",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "f91e754d-743f-48fd-a7bb-28ad68c6958d",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "e280c6e7-94aa-47a6-b560-391c1a9ccaef",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "7d0a0806-72a5-4c8e-a2e1-5164dfae8adf",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "ced6a5bd-bf75-40ef-961c-a2f22ce7f0c1",
+              "cardId": "dungeon_drake",
+              "grind": 0
+            }
+          ],
+          "lastEvolutionResult": null
+        },
+        "keyItemIndicatorOnCooldown": true,
+        "keyItemIndicatorText": "0.4",
+        "keyItemCooldownRemaining": 401,
+        "status": "Latency: 1ms",
+        "hasCanvas": true,
+        "canvasCount": 2,
+        "lobbyVisible": false,
+        "cardHandVisible": true,
+        "title": "Void Grimoire",
+        "bodyText": "👤\nLv\n🔊\n⚙\nE0\nLV\n1\nHP\n82/100\nMS\n50/99\nDeck: 0/0\n⟡ 0\n✦ 0\n🐉 0\n✨ 0\nMoney 0\nLatency: 1ms\n0.4\nInitiate Vault\nPurged 0 / 5 hostiles\nClick to attack · press 1–6 to cast cards\n1\n🐉\nVault Wyrm\nBURNING BREATH\n1/1\n2\n⚔\nSolar Edge\n3/3\n3\n✦\nSignal Familiar\n50 MS\n1/1\n4\n⚔\nRust-Forged Saber\n5/5\n5\n⚔\nRust-Forged Saber\n5/5"
+      }
+    },
+    {
+      "player": "A",
+      "description": "Final capture probe.",
+      "data": {
+        "harnessState": {
+          "debugScenario": null,
+          "debugScenarioAllowed": true,
+          "debugScenarioResult": null,
+          "debugGodmodeResult": null,
+          "objective": {
+            "type": "defeat_enemies",
+            "totalEnemies": 5,
+            "defeatedEnemies": 0,
+            "label": "Initiate Vault: Purge hostiles from the derelict annex sector."
+          },
+          "encounter": null,
+          "bossEncounter": null,
+          "runObjectiveComplete": false,
+          "lastRunSummary": null,
+          "sortieCompleteOverlayVisible": false,
+          "myId": "e05fcc13-24dd-4224-ae4c-974bce550615",
+          "selectedDeck": [
+            "b60d5a7b-da5f-4f13-90fa-5a559698a02c",
+            "f6180792-f30f-4b52-9584-7098683b2e44",
+            "03c59cb7-58ea-46b8-ac82-59483d501d6e",
+            "d781d529-1030-48b0-b19c-888fbd8d14b0",
+            "85ede7a2-4b26-40a9-8329-5beb158aceda",
+            "f4887f92-4166-43c1-a16f-1e10f92ed667",
+            "643c428f-f4c4-4c50-8f6d-5d94b35b2350",
+            "d3ad9a7b-3aa1-42f0-a28d-2f5c32152378",
+            "f91e754d-743f-48fd-a7bb-28ad68c6958d",
+            "e280c6e7-94aa-47a6-b560-391c1a9ccaef",
+            "7d0a0806-72a5-4c8e-a2e1-5164dfae8adf",
+            "ced6a5bd-bf75-40ef-961c-a2f22ce7f0c1"
+          ],
+          "phase": "playing",
+          "runStatus": "playing",
+          "suspendedRunSummary": null,
+          "extracted": false,
+          "telepipe": null,
+          "layout": {
+            "profile": "crowded",
+            "seed": 352369970,
+            "roomCount": 10,
+            "startRoom": {
+              "x": -9,
+              "z": 27,
+              "role": "start"
+            }
+          },
+          "connectionState": "connected",
+          "sceneInitialized": true,
+          "hasCanvas": true,
+          "lobbyVisible": false,
+          "lobbyMenuDismissed": true,
+          "characterBoothOpen": false,
+          "deckEditorVisible": false,
+          "runId": "75cc8df1-cf25-4905-9aaa-bcbb5d63ff03",
+          "cardHandVisible": true,
+          "status": "Latency: 1ms",
+          "hpText": "76/100",
+          "msText": "50/99",
+          "currencyText": "Money 0",
+          "currency": 0,
+          "player": {
+            "hp": 76,
+            "magicStones": 50.260000000000645,
+            "currency": 0,
+            "debugGodmode": false,
+            "dead": false,
+            "x": 2.999999999999994,
+            "y": 0.5,
+            "z": 7.799999999999979,
+            "equippedKeyItemId": "dodge_roll",
+            "keyItemCooldownRemaining": 0
+          },
+          "keyItemIndicatorOnCooldown": false,
+          "keyItemIndicatorText": "",
+          "players": 2,
+          "squadmates": [
+            {
+              "id": "bab039d4-a56f-4f8a-9288-3013b6463c2b",
+              "x": -6,
+              "z": 27
+            }
+          ],
+          "enemies": 5,
+          "enemyHp": [
+            {
+              "id": "58744f15-8cab-4c2f-9ca4-aa969623e40e",
+              "hp": 40,
+              "maxHp": 40,
+              "type": "skirmisher",
+              "spawnedBy": null,
+              "x": -14.624615074049927,
+              "z": 7.572505866021873
+            },
+            {
+              "id": "f5954aea-f155-46a0-8057-567926cc2c73",
+              "hp": 40,
+              "maxHp": 40,
+              "type": "skirmisher",
+              "spawnedBy": null,
+              "x": -0.4787622041086966,
+              "z": 7.822294994408647
+            },
+            {
+              "id": "31c325a9-b093-4c6c-a789-a365d410697c",
+              "hp": 40,
+              "maxHp": 40,
+              "type": "skirmisher",
+              "spawnedBy": null,
+              "x": -20.872519842113576,
+              "z": 21.355899460824126
+            },
+            {
+              "id": "47b80c28-bbd9-4b17-89a3-86f5a928b5e3",
+              "hp": 100,
+              "maxHp": 100,
+              "type": "grunt",
+              "spawnedBy": null,
+              "x": 27.391349290463566,
+              "z": 23.285581689854936
+            },
+            {
+              "id": "59b581d9-c92c-49b9-8ef3-30032630b35d",
+              "hp": 40,
+              "maxHp": 40,
+              "type": "skirmisher",
+              "spawnedBy": null,
+              "x": 6.9400955691658295,
+              "z": 22.402071533818287
+            }
+          ],
+          "minions": [],
+          "hand": [
+            {
+              "id": "dungeon_drake",
+              "name": "Vault Wyrm",
+              "type": "creature",
+              "remainingCharges": 1,
+              "charges": 1,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "1/1",
+              "creatureBurning": false,
+              "isEvolved": false,
+              "specialEffect": "burning_breath"
+            },
+            {
+              "id": "flame_blade",
+              "name": "Solar Edge",
+              "type": "weapon",
+              "remainingCharges": 3,
+              "charges": 3,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "3/3",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            {
+              "id": "battle_familiar",
+              "name": "Signal Familiar",
+              "type": "spell",
+              "remainingCharges": 1,
+              "charges": 1,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "1/1",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            {
+              "id": "iron_sword",
+              "name": "Rust-Forged Saber",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "5/5",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            {
+              "id": "iron_sword",
+              "name": "Rust-Forged Saber",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "5/5",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            null
+          ],
+          "inventory": [
+            {
+              "instanceId": "b60d5a7b-da5f-4f13-90fa-5a559698a02c",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "f6180792-f30f-4b52-9584-7098683b2e44",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "03c59cb7-58ea-46b8-ac82-59483d501d6e",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "d781d529-1030-48b0-b19c-888fbd8d14b0",
+              "cardId": "dungeon_drake",
+              "grind": 0
+            },
+            {
+              "instanceId": "85ede7a2-4b26-40a9-8329-5beb158aceda",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "f4887f92-4166-43c1-a16f-1e10f92ed667",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "643c428f-f4c4-4c50-8f6d-5d94b35b2350",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "d3ad9a7b-3aa1-42f0-a28d-2f5c32152378",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "f91e754d-743f-48fd-a7bb-28ad68c6958d",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "e280c6e7-94aa-47a6-b560-391c1a9ccaef",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "7d0a0806-72a5-4c8e-a2e1-5164dfae8adf",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "ced6a5bd-bf75-40ef-961c-a2f22ce7f0c1",
+              "cardId": "dungeon_drake",
+              "grind": 0
+            }
+          ],
+          "lastEvolutionResult": null
+        },
+        "keyItemIndicatorOnCooldown": false,
+        "keyItemIndicatorText": "",
+        "keyItemCooldownRemaining": 0,
+        "status": "Latency: 1ms",
+        "hasCanvas": true,
+        "canvasCount": 2,
+        "lobbyVisible": false,
+        "cardHandVisible": true,
+        "title": "Void Grimoire",
+        "bodyText": "👤\nLv\n🔊\n⚙\nE0\nLV\n1\nHP\n76/100\nMS\n50/99\nDeck: 0/0\n⟡ 0\n✦ 0\n🐉 0\n✨ 0\nMoney 0\nLatency: 1ms\nInitiate Vault\nPurged 0 / 5 hostiles\nClick to attack · press 1–6 to cast cards\n1\n🐉\nVault Wyrm\nBURNING BREATH\n1/1\n2\n⚔\nSolar Edge\n3/3\n3\n✦\nSignal Familiar\n50 MS\n1/1\n4\n⚔\nRust-Forged Saber\n5/5\n5\n⚔\nRust-Forged Saber\n5/5\n-6"
+      }
+    }
+  ],
+  "pageerrors": []
+}

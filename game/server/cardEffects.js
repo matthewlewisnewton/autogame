@@ -87,6 +87,19 @@ function setCallbacks(deps) {
   resolveAttackRotation = deps.resolveAttackRotation;
 }
 
+// Helper: resolve a card's effective attack reach for a given grind level.
+// Base reach is the card's explicit `attackRange` (falling back to ATTACK_RANGE).
+// Cards that opt in via `aoeGrindScale` get a small, conservative per-grind
+// widening: base * (1 + grind * aoeGrindScale). Kept as a float (no rounding)
+// so the growth stays smooth and gentle. Cards without the field are unchanged.
+function effectiveAttackRange(cardDef, grind) {
+  const base = (cardDef && cardDef.attackRange) || ATTACK_RANGE;
+  const scale = cardDef && cardDef.aoeGrindScale;
+  if (!scale) return base;
+  const level = Number.isFinite(grind) ? Math.max(0, grind) : 0;
+  return base * (1 + level * scale);
+}
+
 // Helper: apply slot cooldown, consuming an overclock charge when available.
 function applySlotCooldown(player, slotIndex, hasOverclock, now, cooldownMs) {
   if (hasOverclock) {
@@ -325,9 +338,9 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       if (!fromWindup) {
         player.rotation = rotation;
       }
-      const attackRange = cardDef.attackRange || ATTACK_RANGE;
       const attackConeAngle = cardDef.attackConeAngle || ATTACK_CONE_ANGLE;
       const grind = handCard.grind || 0;
+      const attackRange = effectiveAttackRange(cardDef, grind);
       const damage = handCard.echoDamage != null
         ? handCard.echoDamage
         : scaledGrindStat(cardDef.damage || 0, grind);
@@ -1317,4 +1330,5 @@ module.exports = {
   handleUseCard,
   executeUseCard,
   resolvePendingCardUse,
+  effectiveAttackRange,
 };
