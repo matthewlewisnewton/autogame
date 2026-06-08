@@ -51,23 +51,48 @@ describe('buildPlayerHotSnapshot commitment fields', () => {
 		expect(hot.cardWindupCardId).toBe('magma_greatsword');
 		expect(hot.cardWindupUntil).toBe(now + 800);
 	});
+
+	it('extends cardWindupUntil while pendingCardUse survives past windUpMs', () => {
+		const now = Date.now();
+		const originalWindupEnd = now - 900 + 800;
+		gameState.players.p1 = {
+			x: 0,
+			y: 0.5,
+			z: 0,
+			rotation: 0,
+			hp: 100,
+			dead: false,
+			cardUseState: 'windup',
+			cardWindupStartTime: now - 900,
+			cardWindupMs: 800,
+			pendingCardUse: { cardId: 'magma_greatsword', slotIndex: 0 },
+		};
+		const snapshotTime = Date.now();
+		const hot = hotStateSnapshot().players.p1;
+		expect(hot.cardUseState).toBe('windup');
+		expect(hot.cardWindupCardId).toBe('magma_greatsword');
+		expect(hot.cardWindupUntil).toBeGreaterThan(originalWindupEnd);
+		expect(hot.cardWindupUntil).toBeGreaterThanOrEqual(snapshotTime);
+	});
 });
 
 describe('isPlayerCardCommitted', () => {
-	it('returns true only during the configured wind-up window', () => {
-		const now = Date.now();
+	it('returns true during the wind-up window and while pendingCardUse is unresolved', () => {
 		const player = {
 			cardUseState: 'windup',
-			cardWindupStartTime: now,
+			cardWindupStartTime: Date.now(),
 			cardWindupMs: 800,
 		};
 		expect(isPlayerCardCommitted(player)).toBe(true);
 
-		player.cardWindupStartTime = now - 799;
+		player.cardWindupStartTime = Date.now() - 100;
 		expect(isPlayerCardCommitted(player)).toBe(true);
 
-		player.cardWindupStartTime = now - 800;
+		player.cardWindupStartTime = Date.now() - 800;
 		expect(isPlayerCardCommitted(player)).toBe(false);
+
+		player.pendingCardUse = { cardId: 'magma_greatsword', slotIndex: 0 };
+		expect(isPlayerCardCommitted(player)).toBe(true);
 
 		player.cardUseState = 'idle';
 		expect(isPlayerCardCommitted(player)).toBe(false);

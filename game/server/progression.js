@@ -2980,7 +2980,9 @@ function buildPlayerHotSnapshot(id, p) {
     burningUntil: p.burningUntil || 0,
     cardUseState: p.cardUseState || null,
     cardWindupUntil: p.cardUseState === 'windup' && p.cardWindupStartTime && p.cardWindupMs
-      ? p.cardWindupStartTime + p.cardWindupMs
+      ? (p.pendingCardUse
+        ? Math.max(Date.now(), p.cardWindupStartTime + p.cardWindupMs)
+        : p.cardWindupStartTime + p.cardWindupMs)
       : 0,
     cardWindupCardId: p.pendingCardUse?.cardId || null,
     cosmetic: p.cosmetic ?? { ...DEFAULT_COSMETIC },

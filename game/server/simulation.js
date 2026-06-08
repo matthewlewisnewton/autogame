@@ -2248,6 +2248,7 @@ function damageEnemy(enemy, amount) {
 
 function isPlayerCardCommitted(player) {
   if (!player || player.cardUseState !== 'windup') return false;
+  if (player.pendingCardUse) return true;
   const start = player.cardWindupStartTime || 0;
   const ms = player.cardWindupMs || 0;
   if (ms <= 0) return false;
@@ -3089,9 +3090,6 @@ function updateMinions() {
 
   // Apply due Echo Strike second-hit packets
   processPendingEchoes();
-
-  // Resolve due player card wind-ups (deferred weapon/spell/creature commits)
-  processPendingCardWindups();
 
   // Ground enchantments (Spike Trap, etc.)
   updateEnchantments();

@@ -163,6 +163,7 @@ const {
   isPlayerConcealed,
   updateMinions,
   processPendingEchoes,
+  processPendingCardWindups,
   damagePlayer,
   damageMinion,
   healPlayer,
@@ -1362,6 +1363,7 @@ function runGameLoopTick() {
           syncAndEmitHubPresenceIfChanged(io, lobby);
           flushDirtyPlayerSaves();
         } else if (isPlayingPhase(state)) {
+          processPendingCardWindups();
           applyPlayerMovement(state, buildMovementContext(state));
           checkTelepipeProximity();
           flushDirtyPlayerSaves();
