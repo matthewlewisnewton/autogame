@@ -93,15 +93,21 @@ describe('resolveRenderers()', () => {
 		}
 	});
 
-	it('returns the heavy greatsword renderer for the wind-up greatswords (not the cone default)', () => {
+	it('returns the heavy greatsword renderer for alloy/corebreaker (not the cone default)', () => {
 		const plain = resolveRenderers('reapers_scythe')[0];
-		for (const cardId of ['steel_claymore', 'magma_greatsword', 'excalibur_photon']) {
+		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
 			expect(resolveRenderers(cardId)).toHaveLength(1);
 			expect(resolveRenderers(cardId)[0]).not.toBe(plain);
 		}
-		// All three share the same heavy-greatsword renderer.
 		expect(resolveRenderers('steel_claymore')[0]).toBe(resolveRenderers('magma_greatsword')[0]);
-		expect(resolveRenderers('steel_claymore')[0]).toBe(resolveRenderers('excalibur_photon')[0]);
+	});
+
+	it('returns a dedicated renderer for excalibur_photon (not heavy greatsword or cone default)', () => {
+		const plain = resolveRenderers('reapers_scythe')[0];
+		const heavy = resolveRenderers('steel_claymore')[0];
+		expect(resolveRenderers('excalibur_photon')).toHaveLength(1);
+		expect(resolveRenderers('excalibur_photon')[0]).not.toBe(plain);
+		expect(resolveRenderers('excalibur_photon')[0]).not.toBe(heavy);
 	});
 
 	it('returns bespoke renderers for utility support spells', () => {
