@@ -216,9 +216,46 @@ function renderEventHorizon(data, ctx) {
 	}
 }
 
+const FIRE_ACCENT_COLOR = 0xfb923c;
+const FIRE_ACCENT_EMISSIVE = 0xff3b00;
+
 /**
- * Inferno Pillar: tall fiery pillar effect plus the standard accent AoE
- * preview ring underneath.
+ * Wyrmflare: forward fire breath cone with ember trail and impact flourish at
+ * the cone tip. Replaces the generic accent summon ring.
+ */
+function renderDragonsBreath(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex(data.cardId) ?? FIRE_ACCENT_COLOR;
+	const emissive = FIRE_ACCENT_EMISSIVE;
+	ctx.spawnAttackEffect(origin, direction, {
+		range: data.radius,
+		coneAngle: data.attackConeAngle ?? Math.PI / 3,
+		color,
+		emissive,
+		fillOpacity: 0.38,
+		edgeOpacity: 0.72,
+	});
+	if (ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, {
+			range: data.radius,
+			color,
+			emissive,
+		});
+	}
+	const tip = pointAlong(origin, direction, data.radius);
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(tip, { color, emissive, count: 10, spread: 1.2 });
+	}
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(tip, { color, emissive });
+	}
+}
+
+/**
+ * Inferno Pillar: tall fiery pillar effect plus accent telegraph ring and
+ * ember burst at the eruption point.
  */
 function renderInfernoPillar(data, ctx) {
 	if (data.radius === undefined) return;
@@ -467,7 +504,8 @@ const CARD_RENDERERS = {
 	divine_grace: renderHealRestore,
 	purifying_pulse: renderPurifyingPulse,
 	event_horizon: renderEventHorizon,
-	inferno_pillar: [renderInfernoPillar, renderGenericSpellBurst],
+	dragons_breath: renderDragonsBreath,
+	inferno_pillar: renderInfernoPillar,
 	telepipe: renderTelepipe,
 
 	// Creatures

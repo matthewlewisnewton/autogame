@@ -55,10 +55,12 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('spike_trap')).toHaveLength(1);
 		expect(resolveRenderers('undead_commander')).toHaveLength(1);
 		expect(resolveRenderers('thunderbird')).toHaveLength(1);
+		expect(resolveRenderers('dragons_breath')).toHaveLength(1);
+		expect(resolveRenderers('inferno_pillar')).toHaveLength(1);
 	});
 
 	it('returns the composed renderer list for cards with multiple visuals', () => {
-		expect(resolveRenderers('inferno_pillar')).toHaveLength(2);
+		expect(resolveRenderers('event_horizon')).toHaveLength(1);
 	});
 
 	it('falls back to the weapon default for plain weapon cards', () => {
@@ -116,10 +118,10 @@ describe('resolveRenderers()', () => {
 	});
 
 	it('returns a fresh array (mutating one does not affect the next call)', () => {
-		const a = resolveRenderers('inferno_pillar');
+		const a = resolveRenderers('dragons_breath');
 		a.pop();
-		const b = resolveRenderers('inferno_pillar');
-		expect(b).toHaveLength(2);
+		const b = resolveRenderers('dragons_breath');
+		expect(b).toHaveLength(1);
 	});
 });
 
@@ -652,7 +654,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(radii).toEqual([2.5, 12]);
 	});
 
-	it('inferno_pillar renders both the pillar and the accent AoE ring', () => {
+	it('inferno_pillar renders the pillar without the generic accent summon ring', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'inferno_pillar',
@@ -661,7 +663,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 			hits: [],
 		}, ctx);
 		expect(ctx._calls.some((c) => c[0] === 'spawnInfernoPillarEffect')).toBe(true);
-		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
 	});
 
 	it('inferno_pillar adds an accent telegraph ring and ember burst at the eruption point', () => {
@@ -693,6 +695,56 @@ describe('renderCardUsed() — spell dispatch', () => {
 			hits: [],
 		}, ctx)).not.toThrow();
 		expect(ctx._calls.some((c) => c[0] === 'spawnInfernoPillarEffect')).toBe(true);
+	});
+
+	it('dragons_breath renders a forward fire cone, trail, and tip embers', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'dragons_breath',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			radius: 7,
+			dotTicks: 4,
+			specialEffect: 'fire_dot',
+			hits: [],
+		}, ctx);
+		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
+		expect(attacks).toHaveLength(1);
+		expect(attacks[0][1]).toEqual({ x: 1, z: 2 });
+		expect(attacks[0][2]).toEqual({ x: 1, z: 0 });
+		expect(attacks[0][3]).toMatchObject({
+			range: 7,
+			coneAngle: Math.PI / 3,
+			color: 0xfb923c,
+			emissive: 0xff3b00,
+		});
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail).toBeDefined();
+		expect(trail[3]).toMatchObject({ range: 7, color: 0xfb923c });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 8, z: 2 });
+		expect(burst[2]).toMatchObject({ color: 0xfb923c });
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 8, z: 2 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('dragons_breath still renders without throwing when the new ctx primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnProjectileTrail: undefined,
+			spawnImpactDecal: undefined,
+			spawnParticleBurst: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'dragons_breath',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			radius: 7,
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 });
 

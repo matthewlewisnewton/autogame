@@ -2341,6 +2341,47 @@ function applyDebugScenario(socket, name) {
       mid.hp = 80;
       mid.maxHp = 80;
       mid.wanderTarget = { x: mid.x, z: mid.z };
+    } else if (name === 'fire-spells-ready') {
+      // Playing phase with Wyrmflare and Thermal Column in hand, full Magic Stones,
+      // and grunts in breath-cone and pillar-AoE range. The same state is reachable
+      // by earning late reward/evolved fire spells in a dungeon run.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const filledSlots = player.hand
+        .map((c, i) => (c != null ? i : -1))
+        .filter((i) => i >= 0);
+      if (filledSlots[0] !== undefined) {
+        player.hand[filledSlots[0]] = {
+          id: 'dragons_breath',
+          name: 'Wyrmflare',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      if (filledSlots[1] !== undefined) {
+        player.hand[filledSlots[1]] = {
+          id: 'inferno_pillar',
+          name: 'Thermal Column',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      state.enemies = [];
+      const breathNear = spawnEnemy(player.x + 4, player.z, 'grunt');
+      breathNear.hp = 80;
+      breathNear.maxHp = 80;
+      breathNear.wanderTarget = { x: breathNear.x, z: breathNear.z };
+      const breathFar = spawnEnemy(player.x + 6, player.z, 'grunt');
+      breathFar.hp = 80;
+      breathFar.maxHp = 80;
+      breathFar.wanderTarget = { x: breathFar.x, z: breathFar.z };
+      const pillarMid = spawnEnemy(player.x + 3, player.z + 1.5, 'grunt');
+      pillarMid.hp = 80;
+      pillarMid.maxHp = 80;
+      pillarMid.wanderTarget = { x: pillarMid.x, z: pillarMid.z };
     } else if (name === 'magma-windup-ready') {
       // Playing phase with Corebreaker Greatsword (windUpMs) in hand and a grunt
       // in melee range so commitment entry and input lock are exercisable without
