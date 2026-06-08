@@ -185,12 +185,42 @@ function renderGlacierCollapse(data, ctx) {
 	}
 }
 
+const HEALING_FONT_COLOR = 0x86efac;
+const HEALING_FONT_EMISSIVE = 0x4ade80;
+const DIVINE_GRACE_COLOR = 0xfde68a;
+const DIVINE_GRACE_EMISSIVE = 0xfbbf24;
+
 /**
- * Healing Font / Divine Grace: golden heal ring + heal sound when HP is restored.
+ * Restoration Beacon: green telegraph ring plus radial heal spark burst at
+ * the cast origin. Distinct from Sanctum Pulse's golden sanctum signature.
  */
-function renderHealRestore(data, ctx) {
+function renderHealingFont(data, ctx) {
 	if (data.radius === undefined) return;
-	ctx.spawnDivineGraceEffect(originOf(data), data.radius);
+	const origin = originOf(data);
+	const color = getAccentHex(data.cardId) ?? HEALING_FONT_COLOR;
+	const emissive = HEALING_FONT_EMISSIVE;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.0 });
+	}
+	if (data.hpGained > 0 && data.playerId === ctx.myId) ctx.playSound('heal');
+}
+
+/**
+ * Sanctum Pulse: golden sanctum heal ring plus a secondary gold ember burst
+ * so its primitive mix differs from Restoration Beacon.
+ */
+function renderDivineGrace(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = getAccentHex(data.cardId) ?? DIVINE_GRACE_COLOR;
+	const emissive = DIVINE_GRACE_EMISSIVE;
+	ctx.spawnDivineGraceEffect(origin, data.radius);
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 12, spread: 2.2 });
+	}
 	if (data.hpGained > 0 && data.playerId === ctx.myId) ctx.playSound('heal');
 }
 
@@ -701,8 +731,8 @@ const CARD_RENDERERS = {
 	permafrost_lance: renderPermafrostLance,
 	ice_ball: renderIceBall,
 	glacier_collapse: renderGlacierCollapse,
-	healing_font: renderHealRestore,
-	divine_grace: renderHealRestore,
+	healing_font: renderHealingFont,
+	divine_grace: renderDivineGrace,
 	purifying_pulse: renderPurifyingPulse,
 	gravity_well: renderGravityWell,
 	event_horizon: renderEventHorizon,

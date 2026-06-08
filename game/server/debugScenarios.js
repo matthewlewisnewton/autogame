@@ -2076,6 +2076,41 @@ function applyDebugScenario(socket, name) {
           specialEffect: 'heal_and_cleanse',
         };
       }
+    } else if (name === 'heal-spell-ready') {
+      // Low-HP player with Restoration Beacon and Sanctum Pulse in hand so heal
+      // cast/impact VFX can be compared without earning reward cards in a run.
+      // Same state is reachable by acquiring healing_font (and evolving to
+      // divine_grace), deploying, and taking damage in combat.
+      player.hp = Math.floor(MAX_HP * 0.4);
+      player.magicStones = MAX_MAGIC_STONES;
+      const healCards = [
+        {
+          id: 'healing_font',
+          name: CARD_DEFS.healing_font.name,
+          type: 'spell',
+          charges: CARD_DEFS.healing_font.charges,
+          remainingCharges: CARD_DEFS.healing_font.charges,
+          magicStoneCost: 0,
+          specialEffect: 'mana_restore',
+        },
+        {
+          id: 'divine_grace',
+          name: CARD_DEFS.divine_grace.name,
+          type: 'spell',
+          charges: CARD_DEFS.divine_grace.charges,
+          remainingCharges: CARD_DEFS.divine_grace.charges,
+          magicStoneCost: 0,
+          specialEffect: 'mana_restore',
+        },
+      ];
+      let slot = 0;
+      for (const card of healCards) {
+        while (slot < player.hand.length && player.hand[slot] != null) slot += 1;
+        if (slot < player.hand.length) {
+          player.hand[slot] = card;
+          slot += 1;
+        }
+      }
     } else if (name === 'guard-block-ready') {
       // Put player at low HP with guard_block equipped and no cooldown to test blocking.
       player.hp = Math.floor(MAX_HP * 0.5);

@@ -659,7 +659,28 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(burst[2]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9 });
 	});
 
-	it('healing_font renders the heal ring and plays heal sound when hpGained > 0', () => {
+	it('healing_font and divine_grace resolve to different renderer functions', () => {
+		expect(resolveRenderers('healing_font')[0]).not.toBe(resolveRenderers('divine_grace')[0]);
+	});
+
+	it('healing_font and divine_grace produce different helper call signatures for the same payload', () => {
+		const payload = {
+			origin: { x: 0, z: 0 },
+			radius: 3,
+			hpGained: 6,
+			playerId: 'me',
+			hits: [],
+		};
+		const fontCtx = makeCtx({ myId: 'me' });
+		resolveRenderers('healing_font')[0]({ ...payload, cardId: 'healing_font' }, fontCtx);
+		const graceCtx = makeCtx({ myId: 'me' });
+		resolveRenderers('divine_grace')[0]({ ...payload, cardId: 'divine_grace' }, graceCtx);
+		const fontHelpers = fontCtx._calls.map((c) => c[0]);
+		const graceHelpers = graceCtx._calls.map((c) => c[0]);
+		expect(fontHelpers).not.toEqual(graceHelpers);
+	});
+
+	it('healing_font renders a green telegraph ring and burst without divine grace', () => {
 		const ctx = makeCtx({ myId: 'me' });
 		renderCardUsed({
 			cardId: 'healing_font',
@@ -669,7 +690,15 @@ describe('renderCardUsed() — spell dispatch', () => {
 			playerId: 'me',
 			hits: [],
 		}, ctx);
-		expect(ctx._calls.some((c) => c[0] === 'spawnDivineGraceEffect')).toBe(true);
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 0, z: 0 });
+		expect(ring[2]).toBe(3);
+		expect(ring[3]).toMatchObject({ color: 0x86efac, emissive: 0x4ade80 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[2]).toMatchObject({ color: 0x86efac, count: 14, spread: 2.0 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnDivineGraceEffect')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(true);
 	});
 
@@ -685,7 +714,21 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
 	});
 
-	it('divine_grace renders the heal ring and plays heal sound when hpGained > 0', () => {
+	it('healing_font skips VFX when radius is absent', () => {
+		const ctx = makeCtx({ myId: 'me' });
+		renderCardUsed({
+			cardId: 'healing_font',
+			origin: { x: 0, z: 0 },
+			hpGained: 6,
+			playerId: 'me',
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
+	});
+
+	it('divine_grace renders sanctum heal ring, gold burst, and heal sound when hpGained > 0', () => {
 		const ctx = makeCtx({ myId: 'me' });
 		renderCardUsed({
 			cardId: 'divine_grace',
@@ -695,7 +738,14 @@ describe('renderCardUsed() — spell dispatch', () => {
 			playerId: 'me',
 			hits: [],
 		}, ctx);
-		expect(ctx._calls.some((c) => c[0] === 'spawnDivineGraceEffect')).toBe(true);
+		const grace = ctx._calls.find((c) => c[0] === 'spawnDivineGraceEffect');
+		expect(grace).toBeDefined();
+		expect(grace[1]).toEqual({ x: 0, z: 0 });
+		expect(grace[2]).toBe(3);
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[2]).toMatchObject({ color: 0xfde68a, emissive: 0xfbbf24, count: 12, spread: 2.2 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(true);
 	});
 
@@ -708,6 +758,20 @@ describe('renderCardUsed() — spell dispatch', () => {
 			hpGained: 0,
 			hits: [],
 		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
+	});
+
+	it('divine_grace skips VFX when radius is absent', () => {
+		const ctx = makeCtx({ myId: 'me' });
+		renderCardUsed({
+			cardId: 'divine_grace',
+			origin: { x: 0, z: 0 },
+			hpGained: 10,
+			playerId: 'me',
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnDivineGraceEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
 	});
 

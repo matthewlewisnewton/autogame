@@ -504,6 +504,7 @@ const DEBUG_SCENARIOS = new Set([
   'key-item-cooldown',
   'medic-kit-ready',
   'purifying-pulse-ready',
+  'heal-spell-ready',
   'guard-block-ready',
   'flare-beacon-ready',
   'loot-magnet-ready',
