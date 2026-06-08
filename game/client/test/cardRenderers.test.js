@@ -15,6 +15,7 @@ import { ATTACK_EFFECT_DURATION } from '../config.js';
  */
 function makeCtx(overrides = {}) {
 	const calls = [];
+	const scheduled = [];
 	const record = (name) => (...args) => calls.push([name, ...args]);
 	const ctx = {
 		spawnAttackEffect: record('spawnAttackEffect'),
@@ -36,10 +37,19 @@ function makeCtx(overrides = {}) {
 		playSound: record('playSound'),
 		scheduleAfter: (ms, fn) => {
 			calls.push(['scheduleAfter', ms]);
-			fn();
+			scheduled.push({ ms, fn, invoked: false });
+		},
+		runScheduled: () => {
+			for (const entry of scheduled) {
+				if (!entry.invoked) {
+					entry.invoked = true;
+					entry.fn();
+				}
+			}
 		},
 		myId: 'me',
 		_calls: calls,
+		_scheduled: scheduled,
 		...overrides,
 	};
 	return ctx;
@@ -52,7 +62,9 @@ function methodsCalled(ctx) {
 describe('resolveRenderers()', () => {
 	it('returns the per-card renderer when one is registered', () => {
 		expect(resolveRenderers('infinite_disk')).toHaveLength(1);
-		expect(resolveRenderers('fireball')).toHaveLength(1);
+		const fireballRenderers = resolveRenderers('fireball');
+		expect(fireballRenderers).toHaveLength(1);
+		expect(fireballRenderers[0].name).toBe('renderFireball');
 		expect(resolveRenderers('ice_ball')).toHaveLength(1);
 		expect(resolveRenderers('divine_grace')).toHaveLength(1);
 		expect(resolveRenderers('purifying_pulse')).toHaveLength(1);
@@ -474,6 +486,14 @@ describe('renderCardUsed() — weapon dispatch', () => {
 		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
 		expect(schedules).toHaveLength(1);
 		expect(schedules[0][1]).toBe(ATTACK_EFFECT_DURATION);
+		expect(ctx._scheduled).toHaveLength(1);
+		expect(ctx._scheduled[0].invoked).toBe(false);
+		// Terminal impact at (10, 2) is deferred — not fired synchronously at cast.
+		expect(ctx._calls.find((c) => c[0] === 'spawnImpactDecal')).toBeUndefined();
+		expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.some((c) => c[1].x === 10 && c[1].z === 2 && c[2].count === 16)).toBe(false);
+		ctx.runScheduled();
+		expect(ctx._scheduled[0].invoked).toBe(true);
 		// Impact decal + ember burst land at origin + direction * range = (10, 2).
 		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
 		expect(decal).toBeDefined();
@@ -483,6 +503,11 @@ describe('renderCardUsed() — weapon dispatch', () => {
 			.find((c) => c[1].x === 10 && c[1].z === 2 && c[2].count === 16);
 		expect(terminalBurst).toBeDefined();
 		expect(terminalBurst[2]).toMatchObject({ color: 0xf97316, emissive: 0xff3b00, spread: 2.0 });
+	});
+
+	it('fireball has no positive windUpMs (instant cast; 315 charge telegraph absent)', () => {
+		expect(CARD_DEFS.fireball).toBeDefined();
+		expect(CARD_DEFS.fireball.windUpMs ?? 0).toBeLessThanOrEqual(0);
 	});
 
 	it('fireball spawns immediate per-hit ignite bursts at enemy mesh positions', () => {
@@ -731,13 +756,16 @@ describe('renderCardUsed() — energy & photon blade slashes', () => {
 		fire('resonance_edge', ctx);
 		const style = swingStyle(ctx);
 		expect(style).toMatchObject({ color: 0xe879f9, coneAngle: Math.PI / 3.5 });
-		// Double pulse: two telegraph rings, the second delayed via scheduleAfter.
-		const rings = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
-		expect(rings).toHaveLength(2);
-		expect(rings[0][2]).toBe(1.6);
-		expect(rings[1][2]).toBe(2.6);
+		// First pulse is immediate; the second ring is deferred via scheduleAfter.
+		const ringsBefore = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
+		expect(ringsBefore).toHaveLength(1);
+		expect(ringsBefore[0][2]).toBe(1.6);
 		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
 		expect(schedules.map((c) => c[1])).toEqual([130]);
+		ctx.runScheduled();
+		const rings = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
+		expect(rings).toHaveLength(2);
+		expect(rings[1][2]).toBe(2.6);
 		// Both pulses share the magenta accent.
 		for (const r of rings) expect(r[3]).toMatchObject({ color: 0xe879f9 });
 	});
@@ -745,16 +773,18 @@ describe('renderCardUsed() — energy & photon blade slashes', () => {
 	it('Phase Echo swings pink, then schedules a fainter echo swing', () => {
 		const ctx = makeCtx();
 		fire('echo_blade', ctx);
+		const leadAttacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
+		expect(leadAttacks).toHaveLength(1);
+		expect(leadAttacks[0][3]).toMatchObject({ color: 0xf472b6, coneAngle: Math.PI / 4 });
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(schedules.map((c) => c[1])).toEqual([150]);
+		ctx.runScheduled();
 		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
 		// Twin slash: the swing plus its delayed echo.
 		expect(attacks).toHaveLength(2);
-		expect(attacks[0][3]).toMatchObject({ color: 0xf472b6, coneAngle: Math.PI / 4 });
 		// The echo is fainter than the lead swing.
 		expect(attacks[1][3].fillOpacity).toBeLessThan(attacks[0][3].fillOpacity);
 		expect(attacks[1][3].edgeOpacity).toBeLessThan(attacks[0][3].edgeOpacity);
-		// Delivered via a delayed second swing.
-		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
-		expect(schedules.map((c) => c[1])).toEqual([150]);
 	});
 
 	it('the five energy blades use mutually distinct accent colors', () => {
@@ -833,8 +863,10 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 		const style = swingStyle(ctx);
 		expect(style).toMatchObject({ color: 0xe879f9, coneAngle: Math.PI / 2.5, range: 6 });
 		// Two staggered swings (first immediate, second delayed 80ms).
-		expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(2);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(1);
 		expect(ctx._calls.filter((c) => c[0] === 'scheduleAfter').map((c) => c[1])).toEqual([80]);
+		ctx.runScheduled();
+		expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(2);
 		const decal = impactDecal(ctx);
 		expect(decal[1]).toEqual({ x: 6, z: 0 });
 		expect(decal[2]).toMatchObject({ color: 0xe879f9, radius: 3.0 });
