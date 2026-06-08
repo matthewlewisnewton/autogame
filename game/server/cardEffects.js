@@ -169,7 +169,7 @@ function applyAstralShieldCast(ctx) {
   const grind = handCard.grind || 0;
   const summonDamage = handCard.echoDamage != null
     ? handCard.echoDamage
-    : scaledGrindStat(cardDef.damage || 0, grind);
+    : scaledGrindStat(cardDef.damage || 0, grind, data.cardId);
   const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, summonDamage, {
     magicStoneOnHit: cardDef.magicStoneOnHit,
     magicStoneOnKill: cardDef.magicStoneOnKill,
@@ -183,8 +183,8 @@ function applyAstralShieldCast(ctx) {
   player.shieldHp = shieldHp;
   player.shieldExpiresAt = now + shieldDurationMs;
 
-  const minionHp = scaledGrindStat(cardDef.minionHp || 60, grind);
-  const minionTtl = scaledGrindStat(cardDef.minionTtl || 30, grind);
+  const minionHp = scaledGrindStat(cardDef.minionHp || 60, grind, data.cardId);
+  const minionTtl = scaledGrindStat(cardDef.minionTtl || 30, grind, data.cardId);
   const minion = {
     id: crypto.randomUUID(),
     ownerId: socket.playerId,
@@ -1060,7 +1060,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       const grind = handCard.grind || 0;
       const summonDamage = handCard.echoDamage != null
         ? handCard.echoDamage
-        : scaledGrindStat(cardDef.damage || 0, grind);
+        : scaledGrindStat(cardDef.damage || 0, grind, data.cardId);
       const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, summonDamage, {
         magicStoneOnHit: cardDef.magicStoneOnHit,
         magicStoneOnKill: cardDef.magicStoneOnKill,
@@ -1205,8 +1205,8 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       }
 
       const grind = handCard.grind || 0;
-      const minionHp = scaledGrindStat(cardDef.minionHp || 50, grind);
-      const minionTtl = scaledGrindStat(cardDef.minionTtl || 30, grind);
+      const minionHp = scaledGrindStat(cardDef.minionHp || 50, grind, data.cardId);
+      const minionTtl = scaledGrindStat(cardDef.minionTtl || 30, grind, data.cardId);
       const minion = {
         id: crypto.randomUUID(),
         ownerId: socket.playerId,
@@ -1239,7 +1239,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       if (cardDef.effect === 'null_crawler') {
         const attackIntervalMs = cardDef.attackIntervalMs || 2000;
         minion.attackRange = cardDef.attackRange || 14;
-        minion.attackDamage = cardDef.attackDamage || 22;
+        minion.attackDamage = scaledGrindStat(cardDef.attackDamage || 22, grind, 'null_crawler');
         minion.attackIntervalMs = attackIntervalMs;
         minion.attackWindupMs = cardDef.attackWindupMs || 1000;
         minion.projectileHitWidth = cardDef.projectileHitWidth || 0.8;

@@ -1,0 +1,9 @@
+Remediation round 2 adds one sub-ticket for the sole open gap from `review-feedback.md`. Sub-tickets 01–04 (all marked `.passed`) are unchanged.
+
+**Context:** Round 1 delivered all card-balance work (grind scaling, Astral trim, report). The only blocker is a pre-existing Vitest failure in `debug-scenarios.test.js` for `arena-trials-boss-approach` — unrelated to balance, but it blocks the ticket’s “tests pass” acceptance.
+
+**New sub-ticket created:**
+
+- `/home/matt/workspace/.autogame-worktrees/311-slower-scaling-early-strong-cards-plus-astral-trim/tickets/311-slower-scaling-early-strong-cards-plus-astral-trim/subtickets/05-fix-arena-trials-boss-approach/ticket.md`
+
+**Scope:** Align `arena-trials-boss-approach` adds-cleared validation with `areAllNonBossEnemiesDefeated` from `encounters.js` (same source of truth as `nudgeDebugBossApproachPlayers`), update the failing test setup accordingly, and get `pnpm test:quick` green — without touching balance files from 01–04.

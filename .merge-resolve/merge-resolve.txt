@@ -1,8 +1,9 @@
-`LOGBOOK.md` is resolved.
+`LOGBOOK.md` is resolved. The conflict was at the end of the log where both sides added new ticket entries.
 
-**Resolution:** Both logbook entries are kept in chronological order:
+**Resolution:** Kept all three entries in ascending version order (matching the rest of the logbook):
 
-1. **v0.306** (from `main`) — restore HP healing cards, keep no auto-level heal  
-2. **v0.307** (from the branch) — card wind-up commitment input-lock mechanic  
+1. **v0.313** — `311-slower-scaling-early-strong-cards-plus-astral-trim` (from `main`)
+2. **v0.315** — `310-apply-3-optional-newcard-balance-tunes` (from `main`)
+3. **v0.316** — `314-ether-scythe-evolution-gold-health-on-kill` (from this branch)
 
-The file follows the existing LOGBOOK pattern (ascending version numbers, newest at the end) and closes with a single `## Remaining gaps` section. All conflict markers are removed; no other files had conflicts.
+All conflict markers are removed. The file ends with the v0.316 "Remaining gaps: None." section. The harness can proceed with commit and merge.

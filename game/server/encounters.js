@@ -220,6 +220,7 @@ module.exports = {
   ensureEncounterSpawnAnchor,
   resolveEncounterAnchor,
   areAllNonBossEnemiesDefeated,
+  clearNonBossEnemies,
   tryActivateEncounter,
   onStageBossDefeated,
   registerEncounterRewardHook,

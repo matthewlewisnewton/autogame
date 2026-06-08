@@ -1,0 +1,6 @@
+Wrote the review outputs:
+
+- `tickets/311-slower-scaling-early-strong-cards-plus-astral-trim/round-1/review.md`
+- `tickets/311-slower-scaling-early-strong-cards-plus-astral-trim/round-1/gaps.md`
+
+Verdict is `FAIL` because the captured game run is healthy, but `coverage.log` shows the overall Vitest run failing in `server/test/debug-scenarios.test.js` for `arena-trials-boss-approach`. No `nits.md` was created.
