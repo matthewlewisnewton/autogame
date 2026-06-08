@@ -370,6 +370,7 @@ const GRIND_COST_BASE = 100;
 const GRIND_STAT_SCALE = 0.05;
 const CARD_GRIND_STAT_SCALE = {
   battle_familiar: 0.03,
+  null_crawler: 0.03,
 };
 const LEGACY_EVOLVED_CARD_IDS = {
   steel_broadsword: 'steel_claymore',

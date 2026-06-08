@@ -1213,7 +1213,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       if (cardDef.effect === 'null_crawler') {
         const attackIntervalMs = cardDef.attackIntervalMs || 2000;
         minion.attackRange = cardDef.attackRange || 14;
-        minion.attackDamage = cardDef.attackDamage || 22;
+        minion.attackDamage = scaledGrindStat(cardDef.attackDamage || 22, grind, 'null_crawler');
         minion.attackIntervalMs = attackIntervalMs;
         minion.attackWindupMs = cardDef.attackWindupMs || 1000;
         minion.projectileHitWidth = cardDef.projectileHitWidth || 0.8;
