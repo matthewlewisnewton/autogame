@@ -1726,6 +1726,83 @@ function applyDebugScenario(socket, name) {
           }
         }
       }
+    } else if (name === 'storm-eagle-combat') {
+      // Stormwing Drone ranged lightning QA — pre-spawned minion with a grunt in
+      // attack range. Reachable normally by earning the reward card and deploying.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const anchorX = player.x;
+      const anchorZ = player.z;
+      player.x = anchorX - DETECTION_RADIUS - 1;
+      state.enemies = [];
+      const enemy = spawnEnemy(anchorX + 5, anchorZ, 'grunt');
+      enemy.hp = 500;
+      enemy.maxHp = 500;
+      enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+      enemy.attackState = 'idle';
+      state.minions = [{
+        id: crypto.randomUUID(),
+        ownerId: player.id,
+        type: 'storm_eagle',
+        x: anchorX + 1,
+        z: anchorZ,
+        hp: 45,
+        maxHp: 45,
+        attackRange: 7,
+        attackDamage: 13,
+        attackIntervalMs: 1500,
+        lastAttackAt: 0,
+        maxTtl: 30,
+        ttl: 30,
+      }];
+      if (!player.hand.some(c => c && c.id === 'storm_eagle')) {
+        const replaceSlot = player.hand.findIndex(c => c && c.type !== 'creature');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = { id: 'storm_eagle', name: 'Stormwing Drone', type: 'creature', charges: 1, remainingCharges: 1 };
+        }
+      }
+    } else if (name === 'thunderbird-combat') {
+      // Thunderbird chain-lightning QA — pre-spawned minion with two grunts in
+      // range for a full chain. Reachable by evolving storm_eagle and deploying.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const anchorX = player.x;
+      const anchorZ = player.z;
+      player.x = anchorX - DETECTION_RADIUS - 1;
+      state.enemies = [];
+      const primary = spawnEnemy(anchorX + 6, anchorZ, 'grunt');
+      primary.hp = 500;
+      primary.maxHp = 500;
+      primary.wanderTarget = { x: primary.x, z: primary.z };
+      primary.attackState = 'idle';
+      const chained = spawnEnemy(anchorX + 8, anchorZ, 'grunt');
+      chained.hp = 500;
+      chained.maxHp = 500;
+      chained.wanderTarget = { x: chained.x, z: chained.z };
+      chained.attackState = 'idle';
+      state.minions = [{
+        id: crypto.randomUUID(),
+        ownerId: player.id,
+        type: 'thunderbird',
+        x: anchorX + 1,
+        z: anchorZ,
+        hp: 68,
+        maxHp: 68,
+        attackRange: 11,
+        attackDamage: 20,
+        attackIntervalMs: 1500,
+        chainRadius: 5,
+        maxChainTargets: 2,
+        lastAttackAt: 0,
+        maxTtl: 30,
+        ttl: 30,
+      }];
+      if (!player.hand.some(c => c && c.id === 'thunderbird')) {
+        const replaceSlot = player.hand.findIndex(c => c && c.type !== 'creature');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = { id: 'thunderbird', name: 'Thunderbird', type: 'creature', charges: 1, remainingCharges: 1 };
+        }
+      }
     } else if (name === 'archive-wyrm-combat') {
       // Archive Wyrm fire-breath QA — same layout as minion-combat but with the
       // evolved wyrm. Reachable normally by evolving dungeon_drake to ancient_wyrm

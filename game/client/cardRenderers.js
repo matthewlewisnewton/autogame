@@ -207,6 +207,7 @@ function renderUndeadCommander(data, ctx) {
 }
 
 const CHAIN_LIGHTNING_ARC_STYLE = { color: 0x38bdf8, emissive: 0x0ea5e9 };
+const STORM_EAGLE_ARC_STYLE = { color: 0x67e8f9, emissive: 0x22d3ee };
 
 function spawnChainSegmentArcs(data, ctx) {
 	const segments = data.chainSegments;
@@ -233,12 +234,60 @@ function renderChainLightningArcs(data, ctx) {
  * future cards reusing the chain_lightning effect inherit the visual.
  */
 function renderChainLightning(data, ctx) {
-	if (!data.origin) return;
+	if (!data.origin || !data.hits?.length) return;
 	if (!spawnChainSegmentArcs(data, ctx)) {
-		ctx.spawnChainLightningEffect(data.origin, { x: 1, z: 0 });
+		ctx.spawnChainLightningEffect(data.origin, directionOf(data));
 	}
 	ctx.playSound('enemyHit');
 	ctx.spawnAttackEffect(data.origin, directionOf(data));
+}
+
+/**
+ * Stormwing Drone deploy: soft cyan summon flourish (lighter than Thunderbird).
+ */
+function renderStormEagleSummon(data, ctx) {
+	if (!data.minionId || data.hits?.length) return;
+	if (!ctx.spawnMinionSummonInEffect) return;
+	ctx.spawnMinionSummonInEffect(originOf(data), {
+		color: 0x93c5fd,
+		emissive: 0x7dd3fc,
+		burstCount: 10,
+		burstSpread: 1.2,
+	});
+}
+
+/**
+ * Stormwing Drone ranged strike: single cyan arc to the primary target plus
+ * an impact spark burst at the enemy.
+ */
+function renderStormEagleStrike(data, ctx) {
+	if (!data.origin || !data.hits?.length) return;
+	const target = data.strikeTarget
+		|| pointAlong(originOf(data), directionOf(data), data.attackRange || 7);
+	ctx.spawnLightningArc(originOf(data), target, STORM_EAGLE_ARC_STYLE);
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(target, {
+			color: 0x67e8f9,
+			emissive: 0x22d3ee,
+			count: 8,
+			spread: 0.85,
+		});
+	}
+}
+
+/**
+ * Thunderbird deploy: vivid sky-blue summon ring distinct from Stormwing Drone.
+ */
+function renderThunderbirdSummon(data, ctx) {
+	if (!data.minionId || data.hits?.length) return;
+	if (!ctx.spawnMinionSummonInEffect) return;
+	ctx.spawnMinionSummonInEffect(originOf(data), {
+		color: 0x38bdf8,
+		emissive: 0x0ea5e9,
+		radius: 1.2,
+		burstCount: 14,
+		burstSpread: 1.8,
+	});
 }
 
 const WYRM_SUMMON_STYLES = {
@@ -453,7 +502,8 @@ const CARD_RENDERERS = {
 
 	// Creatures
 	undead_commander: renderUndeadCommander,
-	thunderbird: renderChainLightning,
+	storm_eagle: [renderStormEagleSummon, renderStormEagleStrike],
+	thunderbird: [renderThunderbirdSummon, renderChainLightning],
 	dungeon_drake: [renderWyrmSummon, renderWyrmAttack],
 	ancient_wyrm: [renderWyrmSummon, renderWyrmAttack],
 	null_crawler: renderPhaseBeam,

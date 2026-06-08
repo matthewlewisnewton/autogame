@@ -2891,9 +2891,22 @@ function updateMinions() {
         if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
           if (nearestDist <= attackRange) {
             if (now - lastAttackAt >= attackIntervalMs) {
+              const cardId = minion.type;
+              const dist = nearestDist || 1;
+              const dirX = (nearestEnemy.x - minion.x) / dist;
+              const dirZ = (nearestEnemy.z - minion.z) / dist;
+              const hits = [];
+              const chainSegments = [];
+
               nearestEnemy.lastDamagedBy = minion.ownerId;
               damageEnemy(nearestEnemy, attackDamage);
+              hits.push({ enemyId: nearestEnemy.id, hp: nearestEnemy.hp });
+
               if (minion.type === 'thunderbird') {
+                chainSegments.push({
+                  from: { x: minion.x, z: minion.z },
+                  to: { x: nearestEnemy.x, z: nearestEnemy.z },
+                });
                 const chainRadius = minion.chainRadius || 5;
                 const maxChainTargets = minion.maxChainTargets || 2;
                 const hitIds = new Set([nearestEnemy.id]);
@@ -2904,19 +2917,44 @@ function updateMinions() {
                   let nextDist = Infinity;
                   for (const enemy of _gameState.enemies) {
                     if (hitIds.has(enemy.id) || enemy.hp <= 0) continue;
-                    const dist = Math.hypot(enemy.x - current.x, enemy.z - current.z);
-                    if (dist <= chainRadius && dist < nextDist) {
-                      nextDist = dist;
+                    const distToNext = Math.hypot(enemy.x - current.x, enemy.z - current.z);
+                    if (distToNext <= chainRadius && distToNext < nextDist) {
+                      nextDist = distToNext;
                       next = enemy;
                     }
                   }
                   if (!next) break;
                   next.lastDamagedBy = minion.ownerId;
                   damageEnemy(next, attackDamage);
+                  hits.push({ enemyId: next.id, hp: next.hp });
+                  chainSegments.push({
+                    from: { x: current.x, z: current.z },
+                    to: { x: next.x, z: next.z },
+                  });
                   hitIds.add(next.id);
                   current = next;
                   chains++;
                 }
+                _gameState._pendingMinionBreaths.push({
+                  playerId: minion.ownerId,
+                  cardId,
+                  minionId: minion.id,
+                  specialEffect: 'chain_lightning',
+                  origin: { x: minion.x, z: minion.z },
+                  direction: { x: dirX, z: dirZ },
+                  hits,
+                  chainSegments,
+                });
+              } else {
+                _gameState._pendingMinionBreaths.push({
+                  playerId: minion.ownerId,
+                  cardId,
+                  minionId: minion.id,
+                  origin: { x: minion.x, z: minion.z },
+                  direction: { x: dirX, z: dirZ },
+                  hits,
+                  strikeTarget: { x: nearestEnemy.x, z: nearestEnemy.z },
+                });
               }
               minion.lastAttackAt = now;
             }

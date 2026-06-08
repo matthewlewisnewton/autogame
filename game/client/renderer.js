@@ -5685,15 +5685,17 @@ export function animate(timestamp) {
 						}
 					}
 					const fromThunderbird = nearestMinion && nearestMinion.type === 'thunderbird';
+					const fromStormEagle = nearestMinion && nearestMinion.type === 'storm_eagle';
 					const fromAncientWyrm = nearestMinion && nearestMinion.type === 'ancient_wyrm';
 					const fromNullCrawler = nearestMinion && nearestMinion.type === 'null_crawler';
 					const fromBulkheadMauler = nearestMinion && nearestMinion.type === 'bulkhead_mauler';
 					flashMesh(
 						enemiesMeshes[enemy.id],
 						fromThunderbird ? 0x38bdf8
-							: (fromAncientWyrm ? 0xfb923c
-								: (fromNullCrawler ? 0x22d3ee
-									: (fromBulkheadMauler ? 0xf59e0b : 0xff4444))),
+							: (fromStormEagle ? 0x67e8f9
+								: (fromAncientWyrm ? 0xfb923c
+									: (fromNullCrawler ? 0x22d3ee
+										: (fromBulkheadMauler ? 0xf59e0b : 0xff4444)))),
 						150
 					);
 					if (fromThunderbird) {
@@ -5706,6 +5708,12 @@ export function animate(timestamp) {
 						spawnChainLightningEffect(
 							{ x: nearestMinion.x, z: nearestMinion.z },
 							sparkDir
+						);
+					} else if (fromStormEagle) {
+						spawnLightningArc(
+							{ x: nearestMinion.x, z: nearestMinion.z },
+							{ x: enemy.x, z: enemy.z },
+							{ color: 0x67e8f9, emissive: 0x22d3ee },
 						);
 					} else if (fromAncientWyrm) {
 						const breathDir = nearestMinion
@@ -5772,9 +5780,10 @@ export function animate(timestamp) {
 						flashMesh(
 							minionsMeshes[nearestMinion.id],
 							fromThunderbird ? 0x7dd3fc
-								: (fromAncientWyrm ? 0xfb923c
-									: (fromNullCrawler ? 0x67e8f9
-										: (fromBulkheadMauler ? 0xfbbf24 : 0x88ff88))),
+								: (fromStormEagle ? 0x93c5fd
+									: (fromAncientWyrm ? 0xfb923c
+										: (fromNullCrawler ? 0x67e8f9
+											: (fromBulkheadMauler ? 0xfbbf24 : 0x88ff88)))),
 							200
 						);
 					}

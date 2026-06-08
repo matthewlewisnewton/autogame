@@ -55,7 +55,8 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('purifying_pulse')).toHaveLength(1);
 		expect(resolveRenderers('spike_trap')).toHaveLength(1);
 		expect(resolveRenderers('undead_commander')).toHaveLength(1);
-		expect(resolveRenderers('thunderbird')).toHaveLength(1);
+		expect(resolveRenderers('thunderbird')).toHaveLength(2);
+		expect(resolveRenderers('storm_eagle')).toHaveLength(2);
 	});
 
 	it('returns the composed renderer list for cards with multiple visuals', () => {
@@ -835,6 +836,51 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(skeletonFlourishes[0][2]).toMatchObject({ color: 0xa1a1aa });
 	});
 
+	it('storm_eagle summon renders a soft cyan minion flourish', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'storm_eagle',
+			minionId: 'eagle-1',
+			origin: { x: 2, z: 3 },
+			hits: [],
+		}, ctx);
+		const flourishes = ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(flourishes).toHaveLength(1);
+		expect(flourishes[0][1]).toEqual({ x: 2, z: 3 });
+		expect(flourishes[0][2]).toMatchObject({ color: 0x93c5fd, emissive: 0x7dd3fc });
+		expect(ctx._calls.some((c) => c[0] === 'spawnLightningArc')).toBe(false);
+	});
+
+	it('storm_eagle attack renders a cyan arc and impact burst', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'storm_eagle',
+			minionId: 'eagle-1',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			strikeTarget: { x: 6, z: 0 },
+			hits: [{ enemyId: 'e1', hp: 27 }],
+		}, ctx);
+		const arcs = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
+		expect(arcs).toHaveLength(1);
+		expect(arcs[0][1]).toEqual({ x: 0, z: 0 });
+		expect(arcs[0][2]).toEqual({ x: 6, z: 0 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(true);
+	});
+
+	it('thunderbird summon renders a sky-blue flourish distinct from storm_eagle', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'thunderbird',
+			minionId: 'bird-1',
+			origin: { x: 1, z: 2 },
+			hits: [],
+		}, ctx);
+		const flourishes = ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(flourishes).toHaveLength(1);
+		expect(flourishes[0][2]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9, radius: 1.2 });
+	});
+
 	it('thunderbird (chain_lightning) renders zap + enemy-hit cue + follow-up attack', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
@@ -842,12 +888,34 @@ describe('renderCardUsed() — creature dispatch', () => {
 			origin: { x: 3, z: 4 },
 			direction: { x: 1, z: 0 },
 			specialEffect: 'chain_lightning',
-			hits: [],
+			hits: [{ enemyId: 'e1', hp: 30 }],
 		}, ctx);
 		expect(ctx._calls.some((c) => c[0] === 'spawnChainLightningEffect')).toBe(true);
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 		const hitSounds = ctx._calls.filter((c) => c[0] === 'playSound' && c[1] === 'enemyHit');
-		expect(hitSounds).toHaveLength(1);
+		expect(hitSounds).toHaveLength(2);
+	});
+
+	it('thunderbird chain_lightning with chainSegments invokes spawnLightningArc per hop', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'thunderbird',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			specialEffect: 'chain_lightning',
+			chainSegments: [
+				{ from: { x: 0, z: 0 }, to: { x: 6, z: 0 } },
+				{ from: { x: 6, z: 0 }, to: { x: 8, z: 0 } },
+			],
+			hits: [
+				{ enemyId: 'e1', hp: 30 },
+				{ enemyId: 'e2', hp: 10 },
+			],
+		}, ctx);
+		const arcs = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
+		expect(arcs).toHaveLength(2);
+		expect(ctx._calls.some((c) => c[0] === 'spawnChainLightningEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 
 	it('chain_lightning with two chainSegments invokes spawnLightningArc twice', () => {
