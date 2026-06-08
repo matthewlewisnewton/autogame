@@ -128,7 +128,9 @@ const windupFlashing = new Set(); // enemy ids currently showing windup emissive
 const minionsMeshes = {};
 const lootMeshes = {};
 const iceBallMeshes = {}; // ice-ball projectile id → giant icy sphere mesh (glacial thrower)
-let telepipeMesh = null;
+let telepipeMesh = null; // Group: cylinder + 2 torus rings + particle children
+const telepipeParticles = []; // pool of rising particle spheres for the portal column
+let telepipeShimmerPhase = 0; // accumulated phase for emissive oscillation
 const activeEffects = []; // { mesh, origin, direction, createdAt, duration }
 
 // ── Player local state ──
@@ -5158,6 +5160,8 @@ export function updateCollectingLoot() {
 
 /**
  * Sync the shared telepipe portal mesh with gameState.telepipe.
+ * Creates an animated group: shimmer cylinder, two orbiting torus rings,
+ * and a rising particle column.
  */
 export function syncTelepipeMesh() {
 	const scene = getScene();
@@ -5166,17 +5170,20 @@ export function syncTelepipeMesh() {
 	const telepipe = gameStateRef && gameStateRef.telepipe;
 	if (!telepipe) {
 		if (telepipeMesh) {
-			scene.remove(telepipeMesh);
-			telepipeMesh.geometry.dispose();
-			telepipeMesh.material.dispose();
+			disposeTelepipeMesh();
 			telepipeMesh = null;
+			telepipeParticles.length = 0;
+			telepipeShimmerPhase = 0;
 		}
 		return;
 	}
 
 	if (!telepipeMesh) {
-		const geo = new THREE.CylinderGeometry(0.9, 1.2, 6, 16, 1, true);
-		const mat = new THREE.MeshStandardMaterial({
+		telepipeMesh = new THREE.Group();
+
+		// --- Cylinder (shimmer body) ---
+		const cylGeo = new THREE.CylinderGeometry(0.9, 1.2, 6, 16, 1, true);
+		const cylMat = new THREE.MeshStandardMaterial({
 			color: 0x67e8f9,
 			emissive: 0x22d3ee,
 			emissiveIntensity: 0.85,
@@ -5184,22 +5191,112 @@ export function syncTelepipeMesh() {
 			opacity: 0.55,
 			side: THREE.DoubleSide,
 		});
-		telepipeMesh = new THREE.Mesh(geo, mat);
-		scene.add(telepipeMesh);
+		const cylinder = new THREE.Mesh(cylGeo, cylMat);
+		cylinder.userData.isTelepipeCylinder = true;
+		telepipeMesh.add(cylinder);
 
-		const ringGeo = new THREE.TorusGeometry(1.3, 0.08, 8, 24);
-		const ringMat = new THREE.MeshStandardMaterial({
-			color: 0xa5f3fc,
-			emissive: 0x06b6d4,
-			emissiveIntensity: 1,
-		});
-		const ring = new THREE.Mesh(ringGeo, ringMat);
-		ring.rotation.x = Math.PI / 2;
-		ring.position.y = 0.05;
-		telepipeMesh.add(ring);
+		// --- Two orbiting torus rings at different speeds ---
+		const ringConfigs = [
+			{ radius: 1.3, tube: 0.08, y: 0.05, speed: 1.2, color: 0xa5f3fc, emissive: 0x06b6d4 },
+			{ radius: 1.5, tube: 0.06, y: -0.4, speed: -0.9, color: 0x67e8f9, emissive: 0x22d3ee },
+		];
+		for (const rc of ringConfigs) {
+			const rGeo = new THREE.TorusGeometry(rc.radius, rc.tube, 8, 24);
+			const rMat = new THREE.MeshStandardMaterial({
+				color: rc.color,
+				emissive: rc.emissive,
+				emissiveIntensity: 1,
+			});
+			const ring = new THREE.Mesh(rGeo, rMat);
+			ring.rotation.x = Math.PI / 2;
+			ring.position.y = rc.y;
+			ring.userData.isTelepipeRing = true;
+			ring.userData.orbitSpeed = rc.speed;
+			ring.userData.orbitAngle = Math.random() * Math.PI * 2;
+			telepipeMesh.add(ring);
+		}
+
+		// --- Rising particle column (persistent pool) ---
+		const particleCount = 12;
+		const pGeo = new THREE.SphereGeometry(0.06, 4, 4);
+		for (let i = 0; i < particleCount; i += 1) {
+			const pMat = new THREE.MeshStandardMaterial({
+				color: 0xa5f3fc,
+				emissive: 0x22d3ee,
+				emissiveIntensity: 1.2,
+				transparent: true,
+				opacity: 0.8,
+			});
+			const p = new THREE.Mesh(pGeo, pMat);
+			p.userData.isTelepipeParticle = true;
+			resetTelepipeParticle(p, 3); // half cylinder height
+			telepipeMesh.add(p);
+			telepipeParticles.push(p);
+		}
+
+		scene.add(telepipeMesh);
 	}
 
 	telepipeMesh.position.set(telepipe.x, 3, telepipe.z);
+}
+
+/** Dispose all geometry/material on the telepipe portal group. */
+function disposeTelepipeMesh() {
+	const scene = getScene();
+	if (scene && telepipeMesh) scene.remove(telepipeMesh);
+	if (!telepipeMesh) return;
+
+	telepipeMesh.traverse((child) => {
+		if (child.geometry) child.geometry.dispose();
+		if (child.material) child.material.dispose();
+	});
+	telepipeMesh.children.length = 0;
+}
+
+/** Reset a particle to the bottom of the portal with random offset. */
+function resetTelepipeParticle(p, halfH) {
+	const angle = Math.random() * Math.PI * 2;
+	const r = Math.random() * 0.6;
+	p.position.set(Math.cos(angle) * r, -halfH + Math.random() * 0.5, Math.sin(angle) * r);
+	p.material.opacity = 0.5 + Math.random() * 0.5;
+}
+
+/**
+ * Animate the telepipe portal: shimmer cylinder emissive, orbit rings,
+ * and rising particles. Driven each frame from the main render loop.
+ */
+export function animateTelepipePortal(delta) {
+	if (!telepipeMesh) return;
+
+	// Shimmer: ~1 Hz emissive oscillation on the cylinder
+	telepipeShimmerPhase += delta * 2 * Math.PI; // 1 full cycle per second
+	const cylinder = telepipeMesh.children.find((c) => c.userData?.isTelepipeCylinder);
+	if (cylinder && cylinder.material) {
+		cylinder.material.emissiveIntensity = 0.55 + 0.5 * Math.sin(telepipeShimmerPhase);
+	}
+
+	// Orbiting rings: rotate around Y axis at different speeds
+	for (const child of telepipeMesh.children) {
+		if (child.userData?.isTelepipeRing) {
+			child.userData.orbitAngle += child.userData.orbitSpeed * delta;
+			const a = child.userData.orbitAngle;
+			const radius = child.geometry?.parameters?.radius ?? 1.3;
+			child.position.x = Math.cos(a) * radius * 0.15;
+			child.position.z = Math.sin(a) * radius * 0.15;
+			child.rotation.z = a;
+		}
+	}
+
+	// Rising particles: drift upward, recycle when they exit the top
+	const halfH = 3; // half cylinder height
+	for (const p of telepipeParticles) {
+		p.position.y += delta * 2.5; // rise speed
+		if (p.position.y > halfH) {
+			resetTelepipeParticle(p, halfH);
+		}
+		// Fade out near top
+		p.material.opacity = Math.max(0, 0.8 * (1 - (p.position.y + halfH) / (halfH * 2)));
+	}
 }
 
 /**
@@ -5866,6 +5963,9 @@ export function animate(timestamp) {
 
 	// Animate loot coins (outside gameState guard)
 	animateLootMeshes();
+
+	// Animate telepipe portal (outside gameState guard — mesh may outlive snapshot)
+	animateTelepipePortal(delta);
 
 	if (myId != null && playersMeshes[myId]) {
 		const playerPos = playersMeshes[myId].position;
