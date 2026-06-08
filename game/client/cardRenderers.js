@@ -229,6 +229,107 @@ function renderWeaponSwing(data, ctx) {
 }
 
 /**
+ * Per-weapon styling for the heavy wind-up greatswords (`steel_claymore`,
+ * `magma_greatsword`, `excalibur_photon`). These carry a `windUpMs` lockout, so
+ * the 315 charge telegraph already plays during the wind-up; the entries here
+ * make the *resulting* hit feel proportionally heavy: a wider/larger cone arc
+ * plus a pronounced impact — a larger-radius decal and a high-`count` debris/
+ * spark burst — so the blow reads as a big committed swing. Each differs from
+ * the others (color + shape/impact params) and hits harder than the lighter
+ * blades in sub-tickets 01/02 (bigger decal radius, higher particle count).
+ */
+const HEAVY_GREATSWORD_STYLES = {
+	// Alloy Greatblade: a heavy slate cleave that shatters the ground on impact.
+	steel_claymore: {
+		color: 0x94a3b8,
+		emissive: 0x64748b,
+		coneAngle: Math.PI / 2.2,
+		range: 7,
+		fillOpacity: 0.5,
+		edgeOpacity: 0.92,
+		decalRadius: 3.2,
+		debrisCount: 18,
+		debrisSpread: 2.4,
+	},
+	// Corebreaker Greatsword: a wide magma swing that erupts molten debris.
+	magma_greatsword: {
+		color: 0xf97316,
+		emissive: 0xff3b00,
+		coneAngle: Math.PI / 1.8,
+		range: 7,
+		fillOpacity: 0.46,
+		edgeOpacity: 0.88,
+		decalRadius: 3.8,
+		debrisCount: 24,
+		debrisSpread: 2.8,
+	},
+	// Excalibur Photon: a magenta photon greatslash bursting with light shards.
+	excalibur_photon: {
+		color: 0xe879f9,
+		emissive: 0xc026d3,
+		coneAngle: Math.PI / 2.5,
+		range: 6,
+		fillOpacity: 0.48,
+		edgeOpacity: 0.95,
+		decalRadius: 3.0,
+		debrisCount: 20,
+		debrisSpread: 2.2,
+	},
+};
+
+/**
+ * Heavy wind-up greatsword swing. Composes the 315 primitives — a wide cone
+ * swing plus a larger-radius `spawnImpactDecal` and a high-`count`
+ * `spawnParticleBurst` at the impact point — into one weighty, committed blow.
+ * Honors `swingCount` and the `photon_barrage` stagger like `renderConeSwings`
+ * so the multi-swing greatswords still read correctly, then lays the heavy
+ * impact down once at the strike point. Each ctx call is guarded so the swing
+ * degrades gracefully when a primitive is absent.
+ */
+function renderHeavyGreatsword(data, ctx) {
+	const style = HEAVY_GREATSWORD_STYLES[data.cardId];
+	if (!style) {
+		renderConeSwings(data, ctx);
+		return;
+	}
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex(data.cardId) ?? style.color;
+	const emissive = style.emissive;
+	const swingCount = data.swingCount || 1;
+	const delayPerSwing = data.specialEffect === 'photon_barrage' ? 80 : 0;
+
+	const swing = () => ctx.spawnAttackEffect(origin, direction, {
+		color,
+		emissive,
+		coneAngle: style.coneAngle,
+		range: style.range,
+		fillOpacity: style.fillOpacity,
+		edgeOpacity: style.edgeOpacity,
+	});
+	for (let i = 0; i < swingCount; i++) {
+		const delay = delayPerSwing * i;
+		if (delay > 0) ctx.scheduleAfter(delay, swing);
+		else swing();
+	}
+
+	// Pronounced impact at the blade's strike point — a wide ground decal plus a
+	// heavy debris/spark shower, both far larger than the lighter blades.
+	const impactAt = pointAlong(origin, direction, style.range);
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(impactAt, { color, emissive, radius: style.decalRadius });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(impactAt, {
+			color,
+			emissive,
+			count: style.debrisCount,
+			spread: style.debrisSpread,
+		});
+	}
+}
+
+/**
  * Resonance Edge: a magenta slash that "rings" twice. The cut lands, then a
  * resonant double pulse — two expanding telegraph rings (the second delayed via
  * scheduleAfter) with a magenta spark burst — radiates out from the arc. Reuses
@@ -609,6 +710,10 @@ const CARD_RENDERERS = {
 	resonance_edge: renderResonantDoublePulse,
 	echo_blade: renderEchoSlash,
 	infinite_disk: renderTripleReturning,
+	// Heavy wind-up greatswords — weighty committed-hit slash + impact.
+	steel_claymore: renderHeavyGreatsword,
+	magma_greatsword: renderHeavyGreatsword,
+	excalibur_photon: renderHeavyGreatsword,
 	fireball: renderFireball,
 
 	// Spells

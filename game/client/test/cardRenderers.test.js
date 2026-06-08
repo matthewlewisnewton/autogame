@@ -4,6 +4,7 @@ import {
 	resolveRenderers,
 	getAccentHex,
 } from '../cardRenderers.js';
+import { CARD_DEFS } from '../cards.js';
 
 /**
  * Build a fresh context object whose helper functions record every call.
@@ -62,8 +63,8 @@ describe('resolveRenderers()', () => {
 	});
 
 	it('falls back to the weapon default for plain weapon cards', () => {
-		expect(resolveRenderers('steel_claymore')).toHaveLength(1);
-		expect(resolveRenderers('excalibur_photon')).toHaveLength(1);
+		expect(resolveRenderers('reapers_scythe')).toHaveLength(1);
+		expect(resolveRenderers('deck_sifter')).toHaveLength(1);
 	});
 
 	it('returns the card-specific weapon swing for the styled standard blades', () => {
@@ -71,15 +72,26 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('flame_blade')).toHaveLength(1);
 		expect(resolveRenderers('harvesting_scythe')).toHaveLength(1);
 		// Distinct from the plain cone-swing default.
-		expect(resolveRenderers('iron_sword')[0]).not.toBe(resolveRenderers('steel_claymore')[0]);
+		expect(resolveRenderers('iron_sword')[0]).not.toBe(resolveRenderers('reapers_scythe')[0]);
 	});
 
 	it('returns card-specific renderers for the energy/photon blades (not the cone default)', () => {
-		const plain = resolveRenderers('steel_claymore')[0];
+		const plain = resolveRenderers('reapers_scythe')[0];
 		for (const cardId of ['saber_of_light', 'photon_slicer', 'arcane_bolt', 'resonance_edge', 'echo_blade']) {
 			expect(resolveRenderers(cardId)).toHaveLength(1);
 			expect(resolveRenderers(cardId)[0]).not.toBe(plain);
 		}
+	});
+
+	it('returns the heavy greatsword renderer for the wind-up greatswords (not the cone default)', () => {
+		const plain = resolveRenderers('reapers_scythe')[0];
+		for (const cardId of ['steel_claymore', 'magma_greatsword', 'excalibur_photon']) {
+			expect(resolveRenderers(cardId)).toHaveLength(1);
+			expect(resolveRenderers(cardId)[0]).not.toBe(plain);
+		}
+		// All three share the same heavy-greatsword renderer.
+		expect(resolveRenderers('steel_claymore')[0]).toBe(resolveRenderers('magma_greatsword')[0]);
+		expect(resolveRenderers('steel_claymore')[0]).toBe(resolveRenderers('excalibur_photon')[0]);
 	});
 
 	it('falls back to the spell default for plain spell cards', () => {
@@ -279,7 +291,7 @@ describe('renderCardUsed() — weapon dispatch', () => {
 	it('spawns a single attack effect for a standard one-swing weapon', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
-			cardId: 'steel_claymore',
+			cardId: 'reapers_scythe',
 			origin: { x: 1, z: 2 },
 			direction: { x: 0, z: 1 },
 			hits: [],
@@ -293,7 +305,7 @@ describe('renderCardUsed() — weapon dispatch', () => {
 	it('spawns swingCount attack effects for multi-swing weapons', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
-			cardId: 'steel_claymore',
+			cardId: 'reapers_scythe',
 			origin: { x: 0, z: 0 },
 			direction: { x: 1, z: 0 },
 			swingCount: 3,
@@ -637,6 +649,102 @@ describe('renderCardUsed() — energy & photon blade slashes', () => {
 		}
 		// Each blade's core cone swing still fired.
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+	});
+});
+
+describe('renderCardUsed() — heavy wind-up greatswords', () => {
+	function fire(cardId, ctx, extra = {}) {
+		renderCardUsed({ cardId, origin: { x: 0, z: 0 }, direction: { x: 1, z: 0 }, hits: [], ...extra }, ctx);
+	}
+	function swingStyle(ctx) {
+		const attack = ctx._calls.find((c) => c[0] === 'spawnAttackEffect');
+		expect(attack).toBeDefined();
+		return attack[3];
+	}
+	function impactDecal(ctx) {
+		return ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+	}
+	function debrisBurst(ctx) {
+		return ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+	}
+
+	it('Alloy Greatblade cleaves a wide slate arc with a large decal and heavy debris', () => {
+		const ctx = makeCtx();
+		fire('steel_claymore', ctx);
+		const style = swingStyle(ctx);
+		expect(style).toMatchObject({ color: 0x94a3b8, coneAngle: Math.PI / 2.2, range: 7 });
+		// Larger-radius decal + high-count debris burst at the strike point (range = 7).
+		const decal = impactDecal(ctx);
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 7, z: 0 });
+		expect(decal[2]).toMatchObject({ color: 0x94a3b8, radius: 3.2 });
+		const burst = debrisBurst(ctx);
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 7, z: 0 });
+		expect(burst[2]).toMatchObject({ color: 0x94a3b8, count: 18 });
+	});
+
+	it('Corebreaker Greatsword erupts a wide magma swing with the biggest decal/debris', () => {
+		const ctx = makeCtx();
+		fire('magma_greatsword', ctx);
+		const style = swingStyle(ctx);
+		expect(style).toMatchObject({ color: 0xf97316, emissive: 0xff3b00, coneAngle: Math.PI / 1.8, range: 7 });
+		const decal = impactDecal(ctx);
+		expect(decal[2]).toMatchObject({ color: 0xf97316, radius: 3.8 });
+		const burst = debrisBurst(ctx);
+		expect(burst[2]).toMatchObject({ color: 0xf97316, count: 24 });
+	});
+
+	it('Excalibur Photon greatslashes magenta with a light-shard burst, honoring the photon_barrage stagger', () => {
+		const ctx = makeCtx();
+		fire('excalibur_photon', ctx, { swingCount: 2, specialEffect: 'photon_barrage' });
+		const style = swingStyle(ctx);
+		expect(style).toMatchObject({ color: 0xe879f9, coneAngle: Math.PI / 2.5, range: 6 });
+		// Two staggered swings (first immediate, second delayed 80ms).
+		expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(2);
+		expect(ctx._calls.filter((c) => c[0] === 'scheduleAfter').map((c) => c[1])).toEqual([80]);
+		const decal = impactDecal(ctx);
+		expect(decal[1]).toEqual({ x: 6, z: 0 });
+		expect(decal[2]).toMatchObject({ color: 0xe879f9, radius: 3.0 });
+		expect(debrisBurst(ctx)[2]).toMatchObject({ color: 0xe879f9, count: 20 });
+	});
+
+	it('the three greatswords use mutually distinct accent colors and an impact param', () => {
+		const read = (cardId) => {
+			const ctx = makeCtx();
+			fire(cardId, ctx);
+			return { color: swingStyle(ctx).color, decalRadius: impactDecal(ctx)[2].radius, count: debrisBurst(ctx)[2].count };
+		};
+		const rows = ['steel_claymore', 'magma_greatsword', 'excalibur_photon'].map(read);
+		expect(new Set(rows.map((r) => r.color)).size).toBe(3);
+		// Differ from each other by at least one impact param too (decal radius).
+		expect(new Set(rows.map((r) => r.decalRadius)).size).toBe(3);
+	});
+
+	it('hit harder than the lighter sub-ticket 01/02 blades (bigger decal + more particles)', () => {
+		// Lighter blades top out around 12 sparks and use the default ~0.8 decal radius.
+		for (const cardId of ['steel_claymore', 'magma_greatsword', 'excalibur_photon']) {
+			const ctx = makeCtx();
+			fire(cardId, ctx);
+			expect(impactDecal(ctx)[2].radius).toBeGreaterThan(2);
+			expect(debrisBurst(ctx)[2].count).toBeGreaterThan(12);
+		}
+	});
+
+	it('greatsword swings degrade gracefully when the optional impact primitives are absent', () => {
+		const ctx = makeCtx({ spawnImpactDecal: undefined, spawnParticleBurst: undefined });
+		for (const cardId of ['steel_claymore', 'magma_greatsword', 'excalibur_photon']) {
+			expect(() => fire(cardId, ctx)).not.toThrow();
+		}
+		// The core heavy cone swing still fires.
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+	});
+
+	it('each greatsword carries a positive windUpMs so the 315 charge telegraph fires', () => {
+		for (const cardId of ['steel_claymore', 'magma_greatsword', 'excalibur_photon']) {
+			expect(CARD_DEFS[cardId]).toBeDefined();
+			expect(CARD_DEFS[cardId].windUpMs).toBeGreaterThan(0);
+		}
 	});
 });
 

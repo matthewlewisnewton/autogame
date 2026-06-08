@@ -2363,6 +2363,38 @@ function applyDebugScenario(socket, name) {
         e.maxHp = 120;
         e.wanderTarget = { x: e.x, z: e.z };
       }
+    } else if (name === 'heavy-greatsword-slash-ready') {
+      // Playing phase holding the three heavy wind-up greatswords — Alloy
+      // Greatblade (steel_claymore, slate cleave), Corebreaker Greatsword
+      // (magma_greatsword, magma erupt), and Excalibur Photon (excalibur_photon,
+      // magenta photon greatslash) — at full Magic Stones with sturdy grunts
+      // lined up along +X so each heavy slash + impact can be swung back-to-back
+      // to compare the weighty visuals (and the 315 charge telegraph during each
+      // wind-up). The same state is reachable normally: all three are evolved
+      // reward weapons; this only skips the grind to acquire and evolve them.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const greatswords = [
+        { id: 'steel_claymore', name: 'Alloy Greatblade', charges: 5 },
+        { id: 'magma_greatsword', name: 'Corebreaker Greatsword', charges: 4 },
+        { id: 'excalibur_photon', name: 'Excalibur Photon', charges: 4 },
+      ];
+      player.hand = greatswords.slice(0, MAX_HAND_SLOTS).map((b) => ({
+        id: b.id,
+        name: b.name,
+        type: 'weapon',
+        charges: b.charges,
+        remainingCharges: b.charges,
+      }));
+      player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+      state.enemies = [];
+      for (const dx of [3, 5, 7]) {
+        const e = spawnEnemy(player.x + dx, player.z, 'grunt');
+        e.hp = 200;
+        e.maxHp = 200;
+        e.wanderTarget = { x: e.x, z: e.z };
+      }
     }
 
     syncRunObjectiveToEnemies();
