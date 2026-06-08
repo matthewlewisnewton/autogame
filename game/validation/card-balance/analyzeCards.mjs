@@ -96,7 +96,11 @@ function computeDerivedMetrics(merged) {
 	const perUseDamage = effectiveBurst * swingsPerUse;
 	const damagePerCharge = merged.charges > 0 ? perUseDamage / merged.charges : perUseDamage;
 	const cooldownMs = merged.cooldownMs ?? DEFAULT_COOLDOWN_MS;
-	const damagePerMs = cooldownMs > 0 ? perUseDamage / cooldownMs : null;
+	const windUpMs = merged.windUpMs ?? 0;
+	const effectiveCycleMs =
+		windUpMs > 0 ? cooldownMs + windUpMs : cooldownMs;
+	const damagePerMs =
+		effectiveCycleMs > 0 ? perUseDamage / effectiveCycleMs : null;
 	const utilityScore = resolveUtilityScore(merged, merged.type);
 
 	return {
@@ -104,6 +108,8 @@ function computeDerivedMetrics(merged) {
 		effectiveBurst,
 		damagePerCharge,
 		damagePerMs,
+		effectiveCycleMs,
+		windUpMs: windUpMs > 0 ? windUpMs : null,
 		utilityScore,
 	};
 }
@@ -135,6 +141,8 @@ export function buildCardMetrics(cardId, identity, stats, cardSellValues) {
 		effectiveBurst: derived.effectiveBurst,
 		damagePerCharge: derived.damagePerCharge,
 		damagePerMs: derived.damagePerMs,
+		effectiveCycleMs: derived.effectiveCycleMs,
+		windUpMs: derived.windUpMs,
 		utilityScore: derived.utilityScore,
 		serverStatOverlayKeys: overlayKeys,
 	};
