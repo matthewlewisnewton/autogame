@@ -502,6 +502,7 @@ const DEBUG_SCENARIOS = new Set([
   'quest-objective-near-complete',
   'collect-prisms-progress',
   'telepipe-ready',
+  'fire-telepipe-ready',
   'extracted-in-hub',
   'suspended-run-hub',
   'sloped-dungeon',

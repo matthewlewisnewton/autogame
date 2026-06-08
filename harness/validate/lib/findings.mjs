@@ -9,6 +9,8 @@ const FLOOR_ALIGNMENT_STEPS = [
 	['bossActive', 'Boss active'],
 ];
 
+const FIRE_CAVERN_BANDS = new Set(['rim', 'ramp', 'basin']);
+
 const FLOOR_ALIGNMENT_THRESHOLD = 0.5;
 
 function formatAssertion(name, passed, detail = '') {
@@ -32,10 +34,132 @@ function resolvePresetCopy(run) {
 	};
 }
 
-function renderFloorAlignmentSection(floorAlignment) {
+function renderAssertionSection(run) {
+	const lines = ['', '## Assertions', ''];
+	const objectiveType = run.objectiveType ?? 'stage_boss';
+
+	if (objectiveType === 'defeat_enemies') {
+		lines.push(formatAssertion('layoutDeployed', run.assertions?.layoutDeployed === true));
+		lines.push(formatAssertion('enemiesCleared', run.assertions?.enemiesCleared === true));
+		lines.push(formatAssertion('victoryFired', run.assertions?.victoryFired === true));
+		if (Object.prototype.hasOwnProperty.call(run.assertions ?? {}, 'emberBurnApplied')) {
+			lines.push(formatAssertion('emberBurnApplied', run.assertions?.emberBurnApplied === true));
+		}
+		if (Object.prototype.hasOwnProperty.call(run.assertions ?? {}, 'cardMechanicsOk')) {
+			lines.push(formatAssertion('cardMechanicsOk', run.assertions?.cardMechanicsOk === true));
+		}
+		if (Object.prototype.hasOwnProperty.call(run.assertions ?? {}, 'telepipeVitalsPreserved')) {
+			lines.push(formatAssertion('telepipeVitalsPreserved', run.assertions?.telepipeVitalsPreserved === true));
+		}
+		if (Object.prototype.hasOwnProperty.call(run.assertions ?? {}, 'cardChargesResetOnFreshSortie')) {
+			lines.push(formatAssertion(
+				'cardChargesResetOnFreshSortie',
+				run.assertions?.cardChargesResetOnFreshSortie === true,
+			));
+		}
+		return lines;
+	}
+
+	const { bossSpawnLabel } = resolvePresetCopy(run);
+	lines.push(formatAssertion(`bossSpawned (${bossSpawnLabel})`, run.assertions?.bossSpawned === true));
+	lines.push(formatAssertion('encounterActivated', run.assertions?.encounterActivated === true));
+	lines.push(formatAssertion('bossDefeated', run.assertions?.bossDefeated === true));
+	lines.push(formatAssertion('victoryFired', run.assertions?.victoryFired === true));
+	return lines;
+}
+
+function renderEmberBurnSection(emberBurn) {
+	const lines = ['', '## Ember burn', ''];
+	if (!emberBurn || typeof emberBurn !== 'object') {
+		lines.push('No ember-burn probes recorded (sub-ticket 02/03 wiring).');
+		return lines;
+	}
+
+	const applied = emberBurn.emberBurnApplied === true;
+	lines.push(`- **emberBurnApplied**: ${applied ? 'PASS' : 'FAIL'}`);
+	if (emberBurn.playerBurningUntil != null) {
+		lines.push(`- player.burningUntil: ${emberBurn.playerBurningUntil}`);
+	}
+	if (emberBurn.enemyBurningUntil != null) {
+		lines.push(`- enemy.burningUntil: ${emberBurn.enemyBurningUntil}`);
+	}
+	if (emberBurn.hpDelta != null) {
+		lines.push(`- HP delta across burn ticks: ${emberBurn.hpDelta}`);
+	}
+	if (emberBurn.screenshot) {
+		lines.push(`- Screenshot: \`${emberBurn.screenshot}\``);
+	}
+	return lines;
+}
+
+function renderCardMechanicsSection(cardMechanics) {
+	const lines = ['', '## Card mechanics', ''];
+	if (!cardMechanics || typeof cardMechanics !== 'object') {
+		lines.push('No card-mechanics probes recorded (sub-ticket 03 wiring).');
+		return lines;
+	}
+
+	lines.push(`- **cardMechanicsOk**: ${cardMechanics.ok === true ? 'PASS' : 'FAIL'}`);
+	const probes = cardMechanics.probes;
+	if (probes && typeof probes === 'object') {
+		for (const [key, value] of Object.entries(probes)) {
+			if (value && typeof value === 'object' && Object.prototype.hasOwnProperty.call(value, 'ok')) {
+				lines.push(`- **${key}**: ${value.ok === true ? 'PASS' : 'FAIL'}`);
+			}
+		}
+	}
+	return lines;
+}
+
+function renderStageBossGapSection(run) {
+	const lines = ['', '## Stage boss gap', ''];
+	const objectiveType = run.objectiveType ?? 'stage_boss';
+	if (objectiveType === 'defeat_enemies' || run.preset === 'fire') {
+		lines.push(
+			'`ember_descent` tier 1 has **no stage boss** — encounter UI and distinct boss visuals are N/A '
+			+ '(tickets 283/284). Victory is driven by the `defeat_enemies` objective only.',
+		);
+	} else {
+		lines.push('Stage-boss encounter flow applies to this preset.');
+	}
+	return lines;
+}
+
+function renderTelepipeSection(telepipeReset) {
+	const lines = ['', '## Telepipe reset', ''];
+	if (!telepipeReset || typeof telepipeReset !== 'object') {
+		lines.push('No telepipe-reset probes recorded.');
+		return lines;
+	}
+
+	const pre = telepipeReset.preSuspend;
+	const post = telepipeReset.postDeploy;
+	if (pre) {
+		lines.push(`- preSuspend: HP=${pre.hp}, MS=${pre.magicStones}, runId=${pre.runId ?? '(none)'}`);
+	}
+	if (post) {
+		lines.push(`- postDeploy: HP=${post.hp}, MS=${post.magicStones}, runId=${post.runId ?? '(none)'}`);
+	}
+	if (telepipeReset.telepipeVitalsPreserved != null) {
+		lines.push(`- **telepipeVitalsPreserved**: ${telepipeReset.telepipeVitalsPreserved ? 'PASS' : 'FAIL'}`);
+	}
+	if (telepipeReset.cardChargesResetOnFreshSortie != null) {
+		lines.push(`- **cardChargesResetOnFreshSortie**: ${telepipeReset.cardChargesResetOnFreshSortie ? 'PASS' : 'FAIL'}`);
+	}
+	return lines;
+}
+
+function renderFloorAlignmentSection(floorAlignment, { preset, objectiveType } = {}) {
 	const lines = ['', '## Floor alignment', ''];
 	const probes = floorAlignment && typeof floorAlignment === 'object' ? floorAlignment : {};
 	let hasProbe = false;
+
+	if (preset === 'fire' || objectiveType === 'defeat_enemies') {
+		lines.push(
+			'Fire-cavern layout uses **rim**, **ramp**, and **basin** elevation bands; probes record the band at each step.',
+		);
+		lines.push('');
+	}
 
 	for (const [key, label] of FLOOR_ALIGNMENT_STEPS) {
 		const probe = probes[key];
@@ -51,6 +175,9 @@ function renderFloorAlignmentSection(floorAlignment) {
 		if (Number.isFinite(delta) && Math.abs(delta) > FLOOR_ALIGNMENT_THRESHOLD) {
 			lines.push(`  - Note: |delta| > ${FLOOR_ALIGNMENT_THRESHOLD} — player may be floating or sunken.`);
 		}
+		if (band !== '(none)' && !FIRE_CAVERN_BANDS.has(band) && (preset === 'fire' || profile === 'fire-cavern')) {
+			lines.push(`  - Note: unexpected band "${band}" for fire-cavern (expected rim, ramp, or basin).`);
+		}
 	}
 
 	if (!hasProbe) {
@@ -64,11 +191,15 @@ function renderFloorAlignmentSection(floorAlignment) {
  * @param {{
  *   ok: boolean,
  *   preset: string,
+ *   objectiveType?: string,
  *   findingsTitle?: string,
  *   bossSpawnLabel?: string,
  *   bossType?: string,
  *   assertions: Record<string, boolean>,
  *   floorAlignment?: Record<string, object>,
+ *   emberBurn?: object | null,
+ *   cardMechanics?: object | null,
+ *   telepipeReset?: object | null,
  *   consoleErrors?: string[],
  *   screenshots?: string[],
  *   visualNotes?: string[],
@@ -77,23 +208,27 @@ function renderFloorAlignmentSection(floorAlignment) {
  * @returns {string}
  */
 export function renderFindings(run) {
-	const { title, bossSpawnLabel } = resolvePresetCopy(run);
+	const { title } = resolvePresetCopy(run);
+	const objectiveType = run.objectiveType ?? 'stage_boss';
 	const lines = [
 		`# ${title}`,
 		'',
 		`**Outcome:** ${run.ok ? 'PASS' : 'FAIL'}`,
 		`**Preset:** ${run.preset}`,
 		'',
-		'## Assertions',
-		'',
-		formatAssertion(`bossSpawned (${bossSpawnLabel})`, run.assertions?.bossSpawned === true),
-		formatAssertion('encounterActivated', run.assertions?.encounterActivated === true),
-		formatAssertion('bossDefeated', run.assertions?.bossDefeated === true),
-		formatAssertion('victoryFired', run.assertions?.victoryFired === true),
 	];
+
+	lines.push(...renderAssertionSection(run));
 
 	if (run.error) {
 		lines.push('', '## Failure', '', run.error);
+	}
+
+	if (objectiveType === 'defeat_enemies' || run.preset === 'fire') {
+		lines.push(...renderEmberBurnSection(run.emberBurn));
+		lines.push(...renderCardMechanicsSection(run.cardMechanics));
+		lines.push(...renderStageBossGapSection(run));
+		lines.push(...renderTelepipeSection(run.telepipeReset));
 	}
 
 	const consoleErrors = (run.consoleErrors || []).filter((e) => e.includes('[pageerror]') || e.includes('[console:error]'));
@@ -116,7 +251,10 @@ export function renderFindings(run) {
 		}
 	}
 
-	lines.push(...renderFloorAlignmentSection(run.floorAlignment));
+	lines.push(...renderFloorAlignmentSection(run.floorAlignment, {
+		preset: run.preset,
+		objectiveType,
+	}));
 
 	lines.push('', '## Screenshots', '');
 	for (const shot of run.screenshots || []) {

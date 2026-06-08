@@ -1564,6 +1564,27 @@ describe('debugScenario — fire-cavern', () => {
 		const allowedTypes = new Set(getEnemyPool(EMBER_DESCENT_ID, EMBER_DESCENT_TIER_1).map((e) => e.type));
 		expect(stateUpdate.enemies.every((e) => allowedTypes.has(e.type))).toBe(true);
 	});
+
+	it('stays in lobby with ember_descent tier-1 fire-cavern quest for telepipe-reset QA', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'fire-telepipe-ready' });
+		const result = await debugResultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('fire-telepipe-ready');
+
+		const state = testGameState();
+		const player = playerForSocket(socket);
+
+		expect(state.gamePhase).toBe('lobby');
+		expect(state.selectedQuestId).toBe(EMBER_DESCENT_ID);
+		expect(state.selectedQuestTier).toBe(EMBER_DESCENT_TIER_1);
+		expect(state.layout.profile).toBe('fire-cavern');
+		expect(player.ready).toBe(false);
+		expect(player.hand?.some((c) => c && c.id === 'telepipe')).not.toBe(true);
+	});
 });
 
 describe('debugScenario — ember-descent harness shortcuts', () => {

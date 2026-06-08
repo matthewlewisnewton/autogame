@@ -3265,7 +3265,7 @@ function checkAllReadyInner() {
         player.lastMoveTime = Date.now();
         createDrawDeckFromSelectedDeck(player);
         initPlayerHand(player);
-        if (player.debugScenario === 'telepipe-ready') {
+        if (player.debugScenario === 'telepipe-ready' || player.debugScenario === 'fire-telepipe-ready') {
           applyTelepipeReadyHand(player);
         }
         player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);

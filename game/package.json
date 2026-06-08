@@ -36,6 +36,7 @@
     "validate:spire-ascent": "node ../harness/validate/playthrough.mjs --preset spire-ascent --steps full --out game/validation/spire-ascent",
     "validate:spire-ascent:check": "node ../harness/validate/verify-spire-ascent-artifacts.mjs",
     "validate:fire": "node ../harness/validate/playthrough.mjs --preset fire --steps full --out game/validation/fire",
+    "validate:fire:check": "node ../harness/validate/verify-fire-artifacts.mjs",
     "cleanup:vitest": "bash scripts/kill-vitest.sh"
   },
   "keywords": [],

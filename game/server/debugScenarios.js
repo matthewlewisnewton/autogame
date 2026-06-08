@@ -291,6 +291,27 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
+    if (name === 'fire-telepipe-ready') {
+      // ember_descent Tier 1 with fire-cavern layout; telepipe injected on ready-up
+      // (see checkAllReady). Mirrors telepipe-ready for harness telepipe-reset on fire.
+      // Reachable normally by earning Telepipe, selecting Ember Descent, and deploying.
+      const questId = 'ember_descent';
+      const tier = 1;
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+      player.ready = false;
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
     if (name === 'lobby-partial-vitals') {
       // Lobby after a prior run with reduced HP and spent magic stones, ready to
       // redeploy. The same state is reachable normally by finishing or abandoning

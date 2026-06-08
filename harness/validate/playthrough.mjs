@@ -954,11 +954,18 @@ function buildAssertions(summary, preset) {
 		const victoryFired = victoryProbe?.runStatus === 'victory'
 			&& victoryProbe?.runObjectiveComplete === true
 			&& victoryProbe?.lastRunSummaryStatus === 'victory';
-		return {
+		const assertions = {
 			layoutDeployed,
 			enemiesCleared,
 			victoryFired,
 		};
+		if (preset.telepipeScenario || summary.telepipeReset || preset.questId === 'ember_descent') {
+			assertions.emberBurnApplied = summary.emberBurn?.emberBurnApplied === true;
+			assertions.cardMechanicsOk = summary.cardMechanics?.ok === true;
+			assertions.telepipeVitalsPreserved = summary.telepipeReset?.telepipeVitalsPreserved === true;
+			assertions.cardChargesResetOnFreshSortie = summary.telepipeReset?.cardChargesResetOnFreshSortie === true;
+		}
+		return assertions;
 	}
 
 	const bossSpawned = Array.isArray(summary.hub?.bossTypes)
@@ -1001,6 +1008,8 @@ function collectScreenshots(summary) {
 	if (summary.victory?.objectiveCompleteScreenshot) shots.push(summary.victory.objectiveCompleteScreenshot);
 	if (summary.victory?.bossDefeatedScreenshot) shots.push(summary.victory.bossDefeatedScreenshot);
 	if (summary.victory?.victoryScreenshot) shots.push(summary.victory.victoryScreenshot);
+	if (summary.telepipeReset?.beforeScreenshot) shots.push(summary.telepipeReset.beforeScreenshot);
+	if (summary.telepipeReset?.afterScreenshot) shots.push(summary.telepipeReset.afterScreenshot);
 	return shots;
 }
 
@@ -1066,15 +1075,29 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
 		probes = {
 			...stageProbes,
 			...(summary.victory?.probes || {}),
+			...(summary.emberBurn ? { emberBurn: summary.emberBurn } : {}),
+			...(summary.cardMechanics ? { cardMechanics: summary.cardMechanics } : {}),
+			...(summary.telepipeReset ? {
+				telepipeReset: {
+					preSuspend: summary.telepipeReset.preSuspend ?? null,
+					postDeploy: summary.telepipeReset.postDeploy ?? null,
+					telepipeVitalsPreserved: summary.telepipeReset.telepipeVitalsPreserved ?? null,
+					cardChargesResetOnFreshSortie: summary.telepipeReset.cardChargesResetOnFreshSortie ?? null,
+				},
+			} : {}),
 		};
 		findings = renderFindings({
 			ok: summary.ok === true,
 			preset: summary.preset,
+			objectiveType: preset?.objectiveType ?? 'stage_boss',
 			findingsTitle: preset?.findingsTitle,
 			bossSpawnLabel: preset?.bossSpawnLabel,
 			bossType: preset?.bossType,
 			assertions: summary.assertions || {},
 			floorAlignment,
+			emberBurn: summary.emberBurn || null,
+			cardMechanics: summary.cardMechanics || null,
+			telepipeReset: summary.telepipeReset || null,
 			consoleErrors: consoleEntries || [],
 			screenshots: collectScreenshots(summary),
 			error: summary.error || null,
@@ -1102,6 +1125,7 @@ async function main() {
 	let runsHubWalk = false;
 	let runsBooth = false;
 	let runsTelepipeReset = false;
+	let runsFireTelepipeReset = false;
 	const summary = {
 		ok: true,
 		preset: opts.preset,
@@ -1127,6 +1151,7 @@ async function main() {
 			&& (opts.steps === 'booth' || runsHubFull);
 		runsTelepipeReset = opts.preset === 'hub'
 			&& (opts.steps === 'telepipe-reset' || runsHubFull);
+		runsFireTelepipeReset = opts.preset === 'fire' && opts.steps === 'full';
 		const serverLogPath = path.join(outDirAbs, 'server.log');
 		game = await startGame({ serverLogPath });
 		summary.serverPort = game.serverPort;
@@ -1245,6 +1270,25 @@ async function main() {
 
 		if (runsRoomsFull && page) {
 			summary.victory = await runVictoryStep({ page, preset, outDirAbs });
+		}
+
+		if (runsFireTelepipeReset && page) {
+			await assertGameProcessAlive({
+				serverUrl: game.serverUrl,
+				serverChild: game.serverChild,
+				serverLogPath: game.serverLogPath,
+			});
+			summary.telepipeReset = await runTelepipeResetStep({
+				page,
+				preset,
+				outDirAbs,
+				repoRoot: REPO_ROOT,
+				serverLogPath: game.serverLogPath,
+				gameProcess: game,
+			});
+		}
+
+		if (runsRoomsFull) {
 			summary.assertions = buildAssertions(summary, preset);
 			summary.ok = Object.values(summary.assertions).every((value) => value === true);
 			if (!summary.ok) {

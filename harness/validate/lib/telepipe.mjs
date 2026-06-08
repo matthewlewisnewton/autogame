@@ -48,7 +48,7 @@ export function probesMatchVitalsPreserved(pre, post, msTolerance = VITALS_MS_TO
 	return hpMatch && msMatch;
 }
 
-function probesMatchFreshDeploy(probe, startingMs = STARTING_MAGIC_STONES) {
+export function probesMatchFreshDeploy(probe, startingMs = STARTING_MAGIC_STONES) {
 	const ms = probe?.magicStones;
 	const msReset = Number.isFinite(ms)
 		&& ms >= startingMs
@@ -372,7 +372,9 @@ export async function runTelepipeResetStep({
 	}
 	await assertServerAlive(gameProcess, serverLogPath);
 
-	const beforeScreenshotPath = await writeScreenshot(page, outDirAbs, '07-telepipe-before');
+	const beforeShotName = preset.telepipeBeforeScreenshot ?? '07-telepipe-before';
+	const afterShotName = preset.telepipeAfterScreenshot ?? '08-telepipe-after';
+	const beforeScreenshotPath = await writeScreenshot(page, outDirAbs, beforeShotName);
 
 	const logSliceStart = serverLogPath && fs.existsSync(serverLogPath)
 		? fs.statSync(serverLogPath).size
@@ -409,7 +411,7 @@ export async function runTelepipeResetStep({
 		);
 	}
 
-	const afterScreenshotPath = await writeScreenshot(page, outDirAbs, '08-telepipe-after');
+	const afterScreenshotPath = await writeScreenshot(page, outDirAbs, afterShotName);
 	const checkpointRestoredInLog = readServerLogForbidden(
 		serverLogPath,
 		logSliceStart,
@@ -421,6 +423,7 @@ export async function runTelepipeResetStep({
 		);
 	}
 
+	const cardChargesResetOnFreshSortie = probesMatchFreshDeploy(postDeploy);
 	const telepipeVitalsPreserved = probesMatchDepletion(preSuspend)
 		&& probesMatchVitalsPreserved(preSuspend, postDeploy)
 		&& freshRunIdConfirmed
@@ -431,6 +434,7 @@ export async function runTelepipeResetStep({
 		preSuspend,
 		postDeploy,
 		telepipeVitalsPreserved,
+		cardChargesResetOnFreshSortie,
 		telepipeUpReset: false,
 		freshRunIdConfirmed,
 		checkpointRestoredInLog,
