@@ -1167,6 +1167,26 @@ function renderShockwaveSweep(data, ctx) {
 	}
 }
 
+const CINDER_SNARE_COLOR = 0xf97316;
+const CINDER_SNARE_EMISSIVE = 0xff3b00;
+
+/**
+ * Cinder Snare: cinder/fire placement telegraph at the trap radius. Split from
+ * the shared hostile-red ground enchantment path so later polish targets only
+ * this card without touching Spike Trap.
+ */
+function renderCinderSnare(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = getAccentHex('cinder_snare') ?? CINDER_SNARE_COLOR;
+	const emissive = CINDER_SNARE_EMISSIVE;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	} else if (ctx.spawnSummonEffect) {
+		ctx.spawnSummonEffect(origin, data.radius, { color, emissive });
+	}
+}
+
 /**
  * Spike Trap (and any ground-targeted enchantment): show the trap radius
  * with a hostile-red AoE preview at the placement point.
@@ -1372,7 +1392,7 @@ const CARD_RENDERERS = {
 	// Enchantments
 	spike_trap: renderGroundEnchantment,
 	mirror_ward: renderSelfEnchantment,
-	cinder_snare: renderGroundEnchantment,
+	cinder_snare: renderCinderSnare,
 };
 
 // Type-level defaults — used when no card-specific renderer is registered.
