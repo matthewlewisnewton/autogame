@@ -5476,3 +5476,26 @@ PASS. The round-3 capture used the existing `telepipe-ready` debug scenario. It 
 
 None.
 
+
+## v0.307 — 307-card-windup-commitment-input-lock-mechanic  (2026-06-07 18:54:36)
+
+### Client shows wind-up animation and input-lock feedback
+
+Satisfied. The server snapshots expose `cardUseState`, `cardWindupUntil`, and `cardWindupCardId`. The client uses those fields to block card-slot input, discard, key-item input, movement packets, and rotation-only movement packets while committed. The hand UI toggles `#card-hand.input-locked`, dimming and disabling card slots, and the renderer shows a sky-blue player wind-up ring plus emissive avatar flash while `cardUseState === "windup"`.
+
+### Server tests cover input-lock, deferred resolution, normal-card regression, and card types
+
+Satisfied. `coverage.log` reports all tests passing: 137 test files and 2179 tests. The added wind-up tests cover state snapshot fields, movement/card/key-item/discard rejection, lock persistence until pending resolution, deferred weapon damage, cancellation on death, telepipe suspend cleanup, no-regression instant cards, and wind-up behavior for spell, creature, and enchantment card types. Coverage visibility includes the changed client/server files, with no threshold failures.
+
+## Design and requirements consistency
+
+The implementation is consistent with `game/docs/design.md`: it keeps combat card-based, adds a risk/reward commitment window for heavy cards, mirrors the existing enemy wind-up style, and leaves the lobby/dungeon loop intact. It does not regress `game/docs/requirements.md`: the captured run renders a Three.js scene, connects frontend to backend via websocket, shows two players in a squad/run, and movement input updates state during normal play.
+
+## Debug scenarios
+
+This ticket adds `magma-windup-ready`. It remains behind the existing debug-scenario path and is requested only through the `debugScenario` socket/URL mechanism on localhost; normal gameplay does not enter it. The scenario places `magma_greatsword` in hand with a nearby enemy for QA, but the same end state is reachable normally by evolving `flame_blade` into `magma_greatsword` and entering a run. It does not bypass the production card-use or server validation path: tests still emit normal `useCard` and rely on the same wind-up, lockout, and deferred-resolution code used by real play.
+
+## Remaining gaps
+
+None.
+

@@ -1,0 +1,3 @@
+1. `discardCard` is still accepted during card wind-up commitment, so a committed player can mutate hand state despite the server-authoritative input lock and can break deferred creature-card resolution by discarding the pending source slot.
+   Files: `game/server/socketHandlers/runHandlers.js`, `game/client/main.js`, `game/server/test/card_windup_lock.test.js`
+   Fix: reject `DISCARD_CARD` when `isPlayerCardCommitted(player)` is true, have client `discardCard()` return while locally committed, and add a regression test proving committed discard does not mutate the hand or break pending creature resolution.

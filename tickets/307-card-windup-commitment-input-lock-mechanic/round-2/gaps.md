@@ -1,0 +1,3 @@
+1. Wind-up commitment does not block key-item/dodge activation, so players can escape vulnerability with `dodge_roll` or other key items while a `windUpMs` card is pending.
+   Files: `game/server/keyItemEffects.js`, `game/server/socketHandlers/keyItemHandlers.js`, `game/client/main.js`, `game/server/test/card_windup_lock.test.js`, `game/client/test/main.test.js`
+   Fix: Add a server-authoritative `isPlayerCardCommitted(player)` rejection before any key-item cooldown/effect resolves, gate client `useKeyItem` input during commitment, and add server/client tests proving committed dodge/key-item use is rejected until the pending card resolves.

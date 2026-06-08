@@ -1,0 +1,5 @@
+Wrote `round-3/review.md` and `round-3/gaps.md`.
+
+Verdict is `VERDICT: FAIL`. The captured game run is healthy, but there’s a blocking robustness gap: `discardCard` is not blocked during card wind-up commitment, so hand state can still mutate outside the server-authoritative lock and can break deferred creature-card resolution.
+
+No `nits.md` was created.

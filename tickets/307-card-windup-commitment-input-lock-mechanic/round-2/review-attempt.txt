@@ -1,0 +1,8 @@
+Reviewed and wrote:
+
+- `tickets/307-card-windup-commitment-input-lock-mechanic/round-2/review.md`
+- `tickets/307-card-windup-commitment-input-lock-mechanic/round-2/gaps.md`
+
+VERDICT: FAIL
+
+Blocking gap: wind-up commitment blocks movement and card use, but does not block `useKeyItem`, so players can still `dodge_roll` or use other key items during the committed wind-up window. The captured game run itself was healthy: `ok: true`, no page errors, no fatal console errors.

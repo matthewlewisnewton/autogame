@@ -1,0 +1,7 @@
+VERDICT: FAIL
+
+Wrote:
+- `tickets/307-card-windup-commitment-input-lock-mechanic/round-1/review.md`
+- `tickets/307-card-windup-commitment-input-lock-mechanic/round-1/gaps.md`
+
+No `nits.md` was created.

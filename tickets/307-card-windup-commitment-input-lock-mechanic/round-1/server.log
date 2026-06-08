@@ -1,0 +1,13 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/307-card-windup-commitment-input-lock-mechanic/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/307-card-windup-commitment-input-lock-mechanic/game/data
+Server listening on port 3003
+Player connected: socket=X9bnGXWbXW8BrrvaAAAB, playerId=3a28ef59-2602-41a2-9232-f5807cd5fee5
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=ThU9bI-DErkelgIyAAAD, playerId=1a83ef72-1f85-4fe7-a56a-9e0c35401a0e
+Player disconnected: X9bnGXWbXW8BrrvaAAAB
+Player disconnected: ThU9bI-DErkelgIyAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
