@@ -2634,10 +2634,12 @@ export function triggerHealPulseVFX(position, healRadius) {
 
 const MEDIC_BEAD_COLOR = 0x2dd4bf;
 const MEDIC_BEAD_EMISSIVE = 0x14b8a6;
+const MEDIC_HEAL_COLOR = 0x34d399;
 const MEDIC_HEAL_DEFAULT_RADIUS = 6;
 
 /**
- * Ally-heal pulse at the medic position (wraps the Field Medic Kit ring VFX).
+ * Ally-heal pulse at the medic position — mint/teal telegraph ring and burst
+ * distinct from the bright-green Field Medic Kit pulse and null_crawler cyan.
  *
  * @param {{ x: number, y?: number, z: number }} position
  * @param {number} [healRadius] — metres; matches server ENEMY_DEFS.field_medic.healRadius
@@ -2648,7 +2650,22 @@ export function triggerMedicAllyHealVFX(position, healRadius) {
 	const radius = Number.isFinite(healRadius) && healRadius > 0
 		? healRadius
 		: MEDIC_HEAL_DEFAULT_RADIUS;
-	triggerHealPulseVFX(position, radius);
+	const origin = { x: position.x, z: position.z };
+	spawnTelegraphRing(origin, radius, {
+		color: MEDIC_HEAL_COLOR,
+		emissive: MEDIC_BEAD_COLOR,
+		duration: HEAL_PULSE_DURATION,
+	});
+	spawnParticleBurst(
+		{ x: position.x, y: position.y ?? 0.5, z: position.z },
+		{
+			color: MEDIC_HEAL_COLOR,
+			emissive: MEDIC_BEAD_EMISSIVE,
+			count: 12,
+			spread: 1.6,
+			duration: HEAL_PULSE_DURATION,
+		},
+	);
 }
 
 /**
@@ -2663,17 +2680,39 @@ export function triggerMedicEnergyBeadVFX(record) {
 	if (!Number.isFinite(origin.x) || !Number.isFinite(origin.z)) return;
 	if (!Number.isFinite(direction.x) || !Number.isFinite(direction.z)) return;
 
+	const range = Number.isFinite(beadRange) ? beadRange : 8;
+	const dirLen = Math.hypot(direction.x, direction.z) || 1;
+	const nx = direction.x / dirLen;
+	const nz = direction.z / dirLen;
+
 	spawnAttackEffect(
 		{ x: origin.x, z: origin.z },
 		{ x: direction.x, z: direction.z },
 		{
 			effect: 'returning_projectile',
 			returnPasses: 0,
-			range: Number.isFinite(beadRange) ? beadRange : 8,
+			range,
 			projectileHitWidth: Number.isFinite(hitWidth) ? hitWidth : 0.5,
 			color: MEDIC_BEAD_COLOR,
 			emissive: MEDIC_BEAD_EMISSIVE,
 		},
+	);
+
+	spawnProjectileTrail(
+		{ x: origin.x, z: origin.z },
+		{ x: nx, z: nz },
+		{ range, color: MEDIC_BEAD_COLOR, emissive: MEDIC_BEAD_EMISSIVE, y: 0.85 },
+	);
+
+	const terminus = { x: origin.x + nx * range, z: origin.z + nz * range };
+	spawnImpactDecal(terminus, {
+		color: MEDIC_BEAD_COLOR,
+		emissive: MEDIC_BEAD_EMISSIVE,
+		radius: 0.65,
+	});
+	spawnParticleBurst(
+		{ x: terminus.x, y: 0.5, z: terminus.z },
+		{ color: MEDIC_BEAD_COLOR, emissive: MEDIC_BEAD_EMISSIVE, count: 8, spread: 1.0 },
 	);
 
 	if (!hits?.length) return;
