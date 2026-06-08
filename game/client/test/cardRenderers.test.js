@@ -70,7 +70,13 @@ describe('resolveRenderers()', () => {
 	});
 
 	it('falls back to the spell default for plain spell cards', () => {
+		expect(resolveRenderers('mana_prism')).toHaveLength(1);
+	});
+
+	it('returns bespoke renderers for arcane radial spells', () => {
 		expect(resolveRenderers('battle_familiar')).toHaveLength(1);
+		expect(resolveRenderers('mana_leach')).toHaveLength(1);
+		expect(resolveRenderers('soul_drain')).toHaveLength(1);
 	});
 
 	it('does not fall back to the spell default for frost_nova and permafrost_lance', () => {
@@ -474,7 +480,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 	it('spawns a generic accent-tinted ring for plain spell cards', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
-			cardId: 'battle_familiar',
+			cardId: 'mana_prism',
 			origin: { x: 0, z: 0 },
 			radius: 4,
 			hits: [],
@@ -482,6 +488,87 @@ describe('renderCardUsed() — spell dispatch', () => {
 		const ring = ctx._calls.find((c) => c[0] === 'spawnSummonEffect');
 		expect(ring).toBeDefined();
 		expect(ring[2]).toBe(4);
+	});
+
+	it('battle_familiar adds an indigo arcane telegraph and spark burst at the cast origin', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'battle_familiar',
+			origin: { x: 2, z: 3 },
+			radius: 4,
+			hits: [],
+		}, ctx);
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 2, z: 3 });
+		expect(ring[2]).toBe(4);
+		expect(ring[3]).toMatchObject({ color: 0x818cf8, emissive: 0x6366f1 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 2, z: 3 });
+		expect(burst[2]).toMatchObject({ color: 0x818cf8, count: 14, spread: 2.0 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('mana_leach adds a purple drain telegraph and siphon burst at AoE radius', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'mana_leach',
+			origin: { x: 1, z: 2 },
+			radius: 4,
+			specialEffect: 'mana_drain',
+			hits: [],
+		}, ctx);
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 1, z: 2 });
+		expect(ring[2]).toBe(4);
+		expect(ring[3]).toMatchObject({ color: 0xa855f7, emissive: 0x9333ea });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[2]).toMatchObject({ color: 0xa855f7, count: 16, spread: 2.2 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('soul_drain adds pink drain telegraph, primary burst, and heal flourish decal', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'soul_drain',
+			origin: { x: 0, z: 0 },
+			radius: 4,
+			specialEffect: 'soul_drain',
+			hpHealed: 12,
+			hits: [],
+		}, ctx);
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[3]).toMatchObject({ color: 0xe879f9, emissive: 0xd946ef });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[2]).toMatchObject({ color: 0xe879f9, count: 14, spread: 2.4 });
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 0, z: 0 });
+		expect(decal[2]).toMatchObject({ color: 0xd946ef, emissive: 0xf0abfc });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
+	});
+
+	it('arcane radial spells still render without throwing when new ctx primitives are absent', () => {
+		const minimalCtx = makeCtx({
+			spawnTelegraphRing: undefined,
+			spawnParticleBurst: undefined,
+			spawnImpactDecal: undefined,
+		});
+		for (const cardId of ['battle_familiar', 'mana_leach', 'soul_drain']) {
+			const ctx = { ...minimalCtx, _calls: [] };
+			expect(() => renderCardUsed({
+				cardId,
+				origin: { x: 0, z: 0 },
+				radius: 4,
+				hits: [],
+			}, ctx)).not.toThrow();
+		}
 	});
 
 	it('frost_nova adds an icy telegraph ring and radial frost burst at the cast origin', () => {
@@ -990,6 +1077,7 @@ describe('renderCardUsed() — creature dispatch', () => {
 			cardId: 'chain_lightning',
 			origin: { x: 0, z: 0 },
 			direction: { x: 1, z: 0 },
+			chainRadius: 5,
 			chainSegments: [
 				{ from: { x: 0, z: 0 }, to: { x: 5, z: 0 } },
 				{ from: { x: 5, z: 0 }, to: { x: 8, z: 0 } },
@@ -1005,8 +1093,50 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(arcs[0][2]).toEqual({ x: 5, z: 0 });
 		expect(arcs[1][1]).toEqual({ x: 5, z: 0 });
 		expect(arcs[1][2]).toEqual({ x: 8, z: 0 });
+		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(telegraph).toBeDefined();
+		expect(telegraph[1]).toEqual({ x: 0, z: 0 });
+		expect(telegraph[2]).toBe(5);
+		expect(telegraph[3]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+		const endpointBursts = ctx._calls.filter(
+			(c) => c[0] === 'spawnParticleBurst' && (c[1].x === 5 || c[1].x === 8),
+		);
+		expect(endpointBursts).toHaveLength(2);
+		expect(endpointBursts[0][1]).toEqual({ x: 5, z: 0 });
+		expect(endpointBursts[1][1]).toEqual({ x: 8, z: 0 });
 		expect(ctx._calls.some((c) => c[0] === 'spawnChainLightningEffect')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'enemyHit')).toBe(true);
+	});
+
+	it('chain_lightning without chainSegments still uses legacy spawnChainLightningEffect', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'chain_lightning',
+			origin: { x: 1, z: 2 },
+			direction: { x: 0, z: 1 },
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnChainLightningEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnLightningArc')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+	});
+
+	it('chain_lightning segment path still renders without throwing when new ctx primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnTelegraphRing: undefined,
+			spawnParticleBurst: undefined,
+			spawnImpactDecal: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'chain_lightning',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			chainSegments: [
+				{ from: { x: 0, z: 0 }, to: { x: 5, z: 0 } },
+			],
+			hits: [{ enemyId: 'e1', hp: 50 }],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnLightningArc')).toBe(true);
 	});
 });
 

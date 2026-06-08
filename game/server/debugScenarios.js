@@ -2423,6 +2423,56 @@ function applyDebugScenario(socket, name) {
       far.hp = 80;
       far.maxHp = 80;
       far.wanderTarget = { x: far.x, z: far.z };
+    } else if (name === 'arcane-radial-ready') {
+      // Playing phase with Signal Familiar, Ether Siphon, and Soul Drain in hand,
+      // full Magic Stones, and clustered grunts inside radial AoE. The same state
+      // is reachable by earning reward/evolved arcane spells in a dungeon run.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const filledSlots = player.hand
+        .map((c, i) => (c != null ? i : -1))
+        .filter((i) => i >= 0);
+      if (filledSlots[0] !== undefined) {
+        player.hand[filledSlots[0]] = {
+          id: 'battle_familiar',
+          name: 'Signal Familiar',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      if (filledSlots[1] !== undefined) {
+        player.hand[filledSlots[1]] = {
+          id: 'mana_leach',
+          name: 'Ether Siphon',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      if (filledSlots[2] !== undefined) {
+        player.hand[filledSlots[2]] = {
+          id: 'soul_drain',
+          name: 'Soul Drain',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      state.enemies = [];
+      const near = spawnEnemy(player.x + 3, player.z, 'grunt');
+      near.hp = 80;
+      near.maxHp = 80;
+      near.wanderTarget = { x: near.x, z: near.z };
+      const mid = spawnEnemy(player.x + 4, player.z + 1, 'grunt');
+      mid.hp = 80;
+      mid.maxHp = 80;
+      mid.wanderTarget = { x: mid.x, z: mid.z };
+      const far = spawnEnemy(player.x + 5, player.z - 1, 'grunt');
+      far.hp = 80;
+      far.maxHp = 80;
+      far.wanderTarget = { x: far.x, z: far.z };
     } else if (name === 'magma-windup-ready') {
       // Playing phase with Corebreaker Greatsword (windUpMs) in hand and a grunt
       // in melee range so commitment entry and input lock are exercisable without

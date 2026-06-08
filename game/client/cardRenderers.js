@@ -318,6 +318,12 @@ function renderUndeadCommander(data, ctx) {
 }
 
 const CHAIN_LIGHTNING_ARC_STYLE = { color: 0x38bdf8, emissive: 0x0ea5e9 };
+const ARCANE_FAMILIAR_COLOR = 0x818cf8;
+const ARCANE_FAMILIAR_EMISSIVE = 0x6366f1;
+const MANA_LEACH_COLOR = 0xa855f7;
+const MANA_LEACH_EMISSIVE = 0x9333ea;
+const SOUL_DRAIN_COLOR = 0xe879f9;
+const SOUL_DRAIN_EMISSIVE = 0xd946ef;
 
 function spawnChainSegmentArcs(data, ctx) {
 	const segments = data.chainSegments;
@@ -329,13 +335,91 @@ function spawnChainSegmentArcs(data, ctx) {
 }
 
 /**
- * Voltaic Chain spell: one cyan arc per server chain segment, or a legacy
- * directional bolt when segments are absent.
+ * Voltaic Chain spell: one cyan arc per server chain segment with cast
+ * telegraph and endpoint impacts, or a legacy directional bolt when segments
+ * are absent.
  */
 function renderChainLightningArcs(data, ctx) {
-	if (spawnChainSegmentArcs(data, ctx)) return;
+	if (spawnChainSegmentArcs(data, ctx)) {
+		const origin = originOf(data);
+		if (ctx.spawnTelegraphRing) {
+			ctx.spawnTelegraphRing(origin, data.chainRadius ?? 2, CHAIN_LIGHTNING_ARC_STYLE);
+		}
+		for (const seg of data.chainSegments) {
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(seg.to, {
+					...CHAIN_LIGHTNING_ARC_STYLE,
+					count: 8,
+					spread: 1.0,
+				});
+			} else if (ctx.spawnImpactDecal) {
+				ctx.spawnImpactDecal(seg.to, CHAIN_LIGHTNING_ARC_STYLE);
+			}
+		}
+		return;
+	}
 	if (!data.origin) return;
 	ctx.spawnChainLightningEffect(data.origin, directionOf(data));
+}
+
+/**
+ * Signal Familiar: indigo arcane telegraph and spark burst at the cast origin.
+ */
+function renderBattleFamiliar(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = getAccentHex(data.cardId) ?? ARCANE_FAMILIAR_COLOR;
+	const emissive = ARCANE_FAMILIAR_EMISSIVE;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.0 });
+	}
+}
+
+/**
+ * Ether Siphon: purple drain telegraph at AoE radius plus a siphon burst.
+ */
+function renderManaLeach(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = getAccentHex(data.cardId) ?? MANA_LEACH_COLOR;
+	const emissive = MANA_LEACH_EMISSIVE;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 16, spread: 2.2 });
+	}
+}
+
+/**
+ * Soul Drain: pink evolved drain telegraph, primary burst, and a smaller
+ * heal-adjacent flourish at the origin. No extra sounds — heal audio stays in
+ * common post-effects when applicable.
+ */
+function renderSoulDrain(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = getAccentHex(data.cardId) ?? SOUL_DRAIN_COLOR;
+	const emissive = SOUL_DRAIN_EMISSIVE;
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.4 });
+	}
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(origin, { color: SOUL_DRAIN_EMISSIVE, emissive: 0xf0abfc });
+	} else if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, {
+			color: SOUL_DRAIN_EMISSIVE,
+			emissive: 0xf0abfc,
+			count: 6,
+			spread: 1.0,
+		});
+	}
 }
 
 /**
@@ -530,6 +614,9 @@ const CARD_RENDERERS = {
 
 	// Spells
 	chain_lightning: renderChainLightningArcs,
+	battle_familiar: renderBattleFamiliar,
+	mana_leach: renderManaLeach,
+	soul_drain: renderSoulDrain,
 	frost_nova: renderFrostNova,
 	permafrost_lance: renderPermafrostLance,
 	ice_ball: renderIceBall,

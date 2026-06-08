@@ -554,6 +554,7 @@ const DEBUG_SCENARIOS = new Set([
   'field-medic-spawn',
   'ember-wraith',
   'chain-lightning-ready',
+  'arcane-radial-ready',
   'fireball-ready',
   'glacial-thrower',
   'ice-ball-ready',
