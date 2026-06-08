@@ -6,12 +6,18 @@ import {
 	spawnProjectileTrail,
 	spawnImpactDecal,
 	spawnTelegraphRing,
+	spawnAttackEffect,
 	spawnDivineGraceEffect,
 	spawnDivineGraceColumn,
 	spawnSpikeTrapEffect,
+	spawnMirrorWardShellEffect,
+	dismissMirrorWardShellEffect,
+	spawnMirrorWardReflectBurst,
+	spawnInfernoPillarEffect,
 	updateAttackEffects,
 	getActiveEffects,
 } from '../renderer.js';
+import { ATTACK_EFFECT_DURATION, SUMMON_EFFECT_DURATION } from '../config.js';
 
 // Each primitive should: add exactly one entry to activeEffects on spawn, and be
 // removed (and its mesh's geometry/material disposed) once updateAttackEffects()
@@ -193,10 +199,142 @@ describe('shared VFX primitives', () => {
 		expect(spikeDispose).toHaveBeenCalled();
 	});
 
+	it('spawnInfernoPillarEffect pushes a fire scorch ring + rising thermal column', () => {
+		const before = getActiveEffects().length;
+		spawnInfernoPillarEffect({ x: 1, z: -2 }, 3.5);
+		expect(getActiveEffects().length).toBe(before + 2);
+
+		const effects = getActiveEffects();
+		const ring = effects[before];
+		const column = effects[before + 1];
+
+		expect(ring.radius).toBe(3.5);
+		expect(ring.duration).toBe(2250);
+		expect(column.isThermalColumn).toBe(true);
+		expect(column.duration).toBe(2250);
+		expect(column.mesh.material.color.getHex()).toBe(0xef4444);
+		expect(column.mesh.material.emissive.getHex()).toBe(0xdc2626);
+
+		const ringDisposeSpy = vi.spyOn(ring.mesh.geometry, 'dispose');
+		const columnDisposeSpy = vi.spyOn(column.mesh.geometry, 'dispose');
+		ring.createdAt = performance.now() - ring.duration - 100;
+		column.createdAt = performance.now() - column.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(ringDisposeSpy).toHaveBeenCalled();
+		expect(columnDisposeSpy).toHaveBeenCalled();
+	});
+
 	it('primitives honor color/emissive accent overrides on the mesh material', () => {
 		spawnImpactDecal({ x: 0, z: 0 }, { color: 0x123456, emissive: 0x654321 });
 		const fx = lastEffect();
 		expect(fx.mesh.material.color.getHex()).toBe(0x123456);
 		expect(fx.mesh.material.emissive.getHex()).toBe(0x654321);
+	});
+
+	it('spawnMirrorWardShellEffect adds a flagged shell with mirror palette and cleans it up', () => {
+		const before = getActiveEffects().length;
+		spawnMirrorWardShellEffect({ x: 0, z: 0 }, 11);
+		expect(getActiveEffects().length).toBe(before + 1);
+
+		const fx = lastEffect();
+		expect(fx.isMirrorWardShell).toBe(true);
+		expect(fx.wardRadius).toBe(11);
+		expect(fx.duration).toBe(SUMMON_EFFECT_DURATION);
+		expect(Number.isFinite(fx.duration)).toBe(true);
+		expect(fx.mesh.children.length).toBeGreaterThanOrEqual(3);
+
+		const ring = fx.mesh.children.find((c) => c.userData.isMirrorWardRing);
+		expect(ring).toBeDefined();
+		expect(ring.material.emissive.getHex()).toBe(0x2dd4bf);
+		expect(ring.material.color.getHex()).toBe(0x5eead4);
+
+		const disposeSpy = vi.spyOn(ring.geometry, 'dispose');
+		fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(disposeSpy).toHaveBeenCalled();
+	});
+
+	it('spawnMirrorWardShellEffect honors style.duration override', () => {
+		spawnMirrorWardShellEffect({ x: 1, z: 2 }, 5, { duration: 900 });
+		const fx = lastEffect();
+		expect(fx.duration).toBe(900);
+	});
+
+	it('dismissMirrorWardShellEffect removes tracked shell by playerId immediately', () => {
+		const before = getActiveEffects().length;
+		spawnMirrorWardShellEffect({ x: 0, z: 0 }, 11, { playerId: 'p1' });
+		expect(getActiveEffects().length).toBe(before + 1);
+
+		const fx = lastEffect();
+		expect(fx.isMirrorWardShell).toBe(true);
+		expect(fx.playerId).toBe('p1');
+
+		const ring = fx.mesh.children.find((c) => c.userData.isMirrorWardRing);
+		const disposeSpy = vi.spyOn(ring.geometry, 'dispose');
+		dismissMirrorWardShellEffect('p1');
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(getActiveEffects().some((e) => e.isMirrorWardShell && e.playerId === 'p1')).toBe(false);
+		expect(disposeSpy).toHaveBeenCalled();
+	});
+
+	it('spawnMirrorWardReflectBurst adds flagged trail, decal, and burst with mirror palette', () => {
+		const before = getActiveEffects().length;
+		spawnMirrorWardReflectBurst({ x: 0, z: 0 }, { x: 1, z: 0 }, { range: 6 });
+		expect(getActiveEffects().length).toBe(before + 3);
+
+		const effects = getActiveEffects().slice(before);
+		expect(effects.every((fx) => fx.isMirrorWardReflect)).toBe(true);
+		expect(effects.some((fx) => fx.isProjectileTrail)).toBe(true);
+		expect(effects.some((fx) => fx.isImpactDecal)).toBe(true);
+		expect(effects.some((fx) => fx.isParticleBurst)).toBe(true);
+
+		const trail = effects.find((fx) => fx.isProjectileTrail);
+		expect(trail.duration).toBe(ATTACK_EFFECT_DURATION);
+		expect(trail.mesh.material.emissive.getHex()).toBe(0x2dd4bf);
+
+		const decal = effects.find((fx) => fx.isImpactDecal);
+		expect(decal.mesh.material.color.getHex()).toBe(0x5eead4);
+
+		for (const fx of effects) {
+			const disposeSpy = vi.spyOn(
+				fx.isParticleBurst ? fx.mesh.children[0].geometry : fx.mesh.geometry,
+				'dispose',
+			);
+			fx.createdAt = performance.now() - fx.duration - 100;
+		}
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+	});
+
+	it('spawnAttackEffect permafrost_lance adds a flagged lance projectile and cleans it up', () => {
+		const before = getActiveEffects().length;
+		spawnAttackEffect(
+			{ x: 0, z: 0 },
+			{ x: 1, z: 0 },
+			{ effect: 'permafrost_lance', range: 6, color: 0x67e8f9, emissive: 0x38bdf8 },
+		);
+		expect(getActiveEffects().length).toBe(before + 1);
+
+		const fx = lastEffect();
+		expect(fx.effect).toBe('permafrost_lance');
+		expect(fx.range).toBe(6);
+		expect(fx.mesh.geometry._name).toBe('ConeGeometry');
+		const { height, radius } = fx.mesh.geometry.parameters;
+		expect(height / radius).toBeGreaterThan(5);
+		expect(fx.mesh.material.color.getHex()).toBe(0x67e8f9);
+		expect(fx.mesh.material.emissive.getHex()).toBe(0x38bdf8);
+
+		const disposeSpy = vi.spyOn(fx.mesh.geometry, 'dispose');
+		fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(disposeSpy).toHaveBeenCalled();
 	});
 });

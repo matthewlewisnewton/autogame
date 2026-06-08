@@ -2369,6 +2369,18 @@ function damagePlayer(playerId, amount, options = {}) {
     }
   }
   const mirrorResult = triggerMirrorWard(playerId, remaining, options.attackerEnemyId);
+  if (mirrorResult?.hits?.length) {
+    if (!_gameState._pendingMirrorReflects) _gameState._pendingMirrorReflects = [];
+    _gameState._pendingMirrorReflects.push({
+      cardId: 'mirror_ward',
+      playerId,
+      origin: { x: player.x, z: player.z },
+      reflectTriggered: true,
+      direction: mirrorResult.direction,
+      hits: mirrorResult.hits,
+      reflectDamage: mirrorResult.reflectDamage,
+    });
+  }
 
   if (player.hp <= 0 && !player.dead) {
     player.dead = true;

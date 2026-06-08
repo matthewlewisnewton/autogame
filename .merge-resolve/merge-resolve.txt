@@ -1,8 +1,15 @@
-`LOGBOOK.md` is resolved. Both sides were competing for the same tail of the log after the v0.322 entry.
+All six conflicted files are resolved and marker-free. Summary of how each was merged:
 
-**Resolution:** Kept both version entries in chronological order (newest-last, per the logbook convention):
+**`game/client/cardRenderers.js`** — Kept the spike-trap dedicated renderer (`renderSpikeTrap`) from the branch and main’s dedicated Mirror Ward renderer (`renderMirrorWard`).
 
-1. **v0.326 — 339-anim-excalibur-photon** (from `main`) with its review sections and `## Remaining gaps / None.`
-2. **v0.327 — 350-anim-sanctum-pulse** (from this ticket) with its review sections and `## Remaining gaps / None.`
+**`game/client/renderer.js`** — Used main’s `disposeEffectObject()` helper for summon AoE cleanup (handles grouped meshes; aligns with Fireball/Mirror Ward refactors).
 
-All conflict markers are removed. The harness can continue the merge and run tests.
+**`game/client/test/cardRenderers.test.js`** — Combined mock context entries: `spawnSpikeTrapEffect` plus all three Mirror Ward helpers.
+
+**`game/client/test/vfx-primitives.test.js`** — Merged imports and kept both test cases as separate `it()` blocks (spike trap eruption + inferno pillar).
+
+**`game/server/test/enchantment.test.js`** — Imported both `stateSnapshot` (spike-trap snapshot tests) and `runGameLoopTick` / `serverIo` (mirror-ward reflect event tests).
+
+**`LOGBOOK.md`** — Appended all review entries in version order: v0.328 (permafrost), v0.329 (fireball), v0.331 (thermal column), v0.332 (mirror ward), v0.333 (spike trap).
+
+All 185 tests in the three affected test files pass. The harness can proceed with commit and merge.

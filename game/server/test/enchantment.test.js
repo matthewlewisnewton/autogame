@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
 	gameState,
 	CARD_DEFS,
@@ -8,7 +8,11 @@ import {
 	updateEnchantments,
 	updateMinions,
 	stateSnapshot,
+	runGameLoopTick,
+	io as serverIo,
 } from '../index.js';
+
+const { createLobby, resetAllLobbies } = require('../lobbies.js');
 
 function resetState() {
 	gameState.players = {};
@@ -20,10 +24,16 @@ function resetState() {
 	gameState.lobby = [];
 	gameState.gamePhase = 'playing';
 	gameState.run = { status: 'playing' };
+	gameState._pendingMirrorReflects = [];
 }
 
 describe('enchantment cards', () => {
 	beforeEach(resetState);
+
+	afterEach(() => {
+		resetAllLobbies();
+		vi.restoreAllMocks();
+	});
 
 	it('spike_trap triggers when an enemy enters radius', () => {
 		gameState.players.p1 = {
@@ -178,6 +188,51 @@ describe('enchantment cards', () => {
 		expect(result).toBeTruthy();
 		expect(result.reflectDamage).toBeGreaterThanOrEqual(15);
 		expect(gameState.enemies[0].hp).toBeLessThan(50);
+		expect(gameState._pendingMirrorReflects).toHaveLength(1);
+		expect(gameState._pendingMirrorReflects[0]).toMatchObject({
+			cardId: 'mirror_ward',
+			playerId: 'p1',
+			origin: { x: 0, z: 0 },
+			reflectTriggered: true,
+			direction: { x: 1, z: 0 },
+			reflectDamage: result.reflectDamage,
+		});
+		expect(gameState._pendingMirrorReflects[0].hits).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ enemyId: 'e1', damage: result.reflectDamage }),
+			]),
+		);
+	});
+
+	it('mirror_ward pending reflect drains as cardUsed on game loop tick', () => {
+		resetAllLobbies();
+		const lobby = createLobby('Mirror Ward Reflect');
+		lobby.state.gamePhase = 'playing';
+		lobby.state.run = { status: 'playing' };
+		lobby.state._pendingMirrorReflects = [{
+			cardId: 'mirror_ward',
+			playerId: 'p1',
+			origin: { x: 0, z: 0 },
+			reflectTriggered: true,
+			direction: { x: 1, z: 0 },
+			hits: [{ enemyId: 'e1', damage: 17 }],
+			reflectDamage: 17,
+		}];
+
+		const roomEmit = vi.fn();
+		vi.spyOn(serverIo, 'to').mockReturnValue({ emit: roomEmit });
+
+		runGameLoopTick();
+
+		expect(serverIo.to).toHaveBeenCalledWith(lobby.id);
+		expect(roomEmit).toHaveBeenCalledWith('cardUsed', expect.objectContaining({
+			cardId: 'mirror_ward',
+			playerId: 'p1',
+			reflectTriggered: true,
+			hits: [{ enemyId: 'e1', damage: 17 }],
+			reflectDamage: 17,
+		}));
+		expect(lobby.state._pendingMirrorReflects).toHaveLength(0);
 	});
 
 	it('mirror_ward expires when ttl elapses without taking damage', () => {

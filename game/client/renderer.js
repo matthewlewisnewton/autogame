@@ -4200,29 +4200,52 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 	}
 
 	if (effect === 'fireball') {
-		// Fiery sphere projectile — same travel/cleanup shape as `projectile`
-		// but with warm fire colors and a stronger glow so it reads as flame.
-		const geometry = new THREE.SphereGeometry(0.35, 12, 12);
-		const material = new THREE.MeshStandardMaterial({
-			color: style.color ?? 0xff7a18,
-			emissive: style.emissive ?? 0xff3b00,
-			emissiveIntensity: 1.6,
-			roughness: 0.5,
+		// Fiery orb: ember core + outer flame shell — visually distinct from
+		// generic `projectile`/`throw_rock` and cool-toned `ice_ball`.
+		const fireColor = style.color ?? 0xff7a18;
+		const fireEmissive = style.emissive ?? 0xff3b00;
+		const group = new THREE.Group();
+
+		const coreMat = new THREE.MeshStandardMaterial({
+			color: fireColor,
+			emissive: fireEmissive,
+			emissiveIntensity: 2.2,
+			roughness: 0.4,
 			metalness: 0.0,
 			transparent: true,
-			opacity: 1.0,
+			opacity: 0.95,
 		});
-		const mesh = new THREE.Mesh(geometry, material);
-		mesh.position.set(origin.x, 1.0, origin.z);
-		targetScene.add(mesh);
+		const coreMesh = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 12), coreMat);
+		coreMesh.position.y = 1.0;
+		group.add(coreMesh);
+
+		const haloMat = new THREE.MeshStandardMaterial({
+			color: fireColor,
+			emissive: fireEmissive,
+			emissiveIntensity: 1.4,
+			roughness: 0.6,
+			metalness: 0.0,
+			transparent: true,
+			opacity: 0.48,
+			depthWrite: false,
+		});
+		const haloMesh = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 10), haloMat);
+		haloMesh.position.y = 1.0;
+		group.add(haloMesh);
+
+		group.position.set(origin.x, 0, origin.z);
+		targetScene.add(group);
 
 		activeEffects.push({
-			mesh,
+			mesh: group,
+			coreMesh,
+			haloMesh,
 			origin: { x: origin.x, z: origin.z },
 			direction: { x: direction.x, z: direction.z },
 			range,
 			createdAt: performance.now(),
-			duration: ATTACK_EFFECT_DURATION,
+			duration: style.projectileTravelMs ?? ATTACK_EFFECT_DURATION,
+			isFireballProjectile: true,
 		});
 		return;
 	}
@@ -4251,6 +4274,44 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 			range,
 			createdAt: performance.now(),
 			duration: style.projectileTravelMs ?? 1200,
+		});
+		return;
+	}
+
+	if (effect === 'permafrost_lance') {
+		// Elongated crystalline ice spear — travels like `fireball` / `ice_ball` but
+		// reads as a forward-thrusting lance rather than a sphere or ground cone.
+		const dir = direction || { x: 1, z: 0 };
+		const len = Math.hypot(dir.x, dir.z) || 1;
+		const nx = dir.x / len;
+		const nz = dir.z / len;
+		const lanceColor = style.color ?? 0x67e8f9;
+		const lanceEmissive = style.emissive ?? 0x38bdf8;
+		const geometry = new THREE.ConeGeometry(0.12, 1.5, 8);
+		const material = new THREE.MeshStandardMaterial({
+			color: lanceColor,
+			emissive: lanceEmissive,
+			emissiveIntensity: 1.1,
+			roughness: 0.25,
+			metalness: 0.15,
+			transparent: true,
+			opacity: 1.0,
+		});
+		const mesh = new THREE.Mesh(geometry, material);
+		mesh.position.set(origin.x, 1.0, origin.z);
+		mesh.rotation.x = Math.PI / 2;
+		mesh.rotation.y = Math.atan2(nx, nz);
+		targetScene.add(mesh);
+
+		activeEffects.push({
+			mesh,
+			_scene: targetScene,
+			origin: { x: origin.x, z: origin.z },
+			direction: { x: nx, z: nz },
+			range,
+			effect: 'permafrost_lance',
+			createdAt: performance.now(),
+			duration: style.duration ?? ATTACK_EFFECT_DURATION,
 		});
 		return;
 	}
@@ -4546,16 +4607,37 @@ export function spawnFireTrailEffect(origin, direction, style = {}) {
 	});
 }
 
+const THERMAL_COLUMN_COLOR = 0xef4444;
+const THERMAL_COLUMN_EMISSIVE = 0xdc2626;
+const THERMAL_COLUMN_HEIGHT = 4.5;
+const THERMAL_COLUMN_OPACITY = 0.75;
+const THERMAL_COLUMN_BASE_Y = 0.1;
+const THERMAL_COLUMN_DEFAULT_DOT_TICKS = 4;
+const THERMAL_COLUMN_DEFAULT_DOT_INTERVAL_MS = 500;
+const THERMAL_COLUMN_EMISSIVE_INTENSITY = 1.4;
+
+function thermalColumnDuration(style = {}) {
+	if (style.duration !== undefined) return style.duration;
+	const dotTicks = style.dotTicks ?? THERMAL_COLUMN_DEFAULT_DOT_TICKS;
+	const dotIntervalMs = style.dotIntervalMs ?? THERMAL_COLUMN_DEFAULT_DOT_INTERVAL_MS;
+	return dotTicks * dotIntervalMs + 250;
+}
+
 /**
- * Spawn a full radial fire burst on the ground (Inferno Pillar).
+ * Expanding ground scorch ring for Thermal Column (attack-range AoE footprint).
  * @param {object} origin - { x, z }
  * @param {number} radius
+ * @param {object} style
  */
-export function spawnInfernoPillarEffect(origin, radius) {
+function spawnThermalColumnScorchRing(origin, radius, style = {}) {
+	const color = style.color ?? THERMAL_COLUMN_COLOR;
+	const emissive = style.emissive ?? THERMAL_COLUMN_EMISSIVE;
+	const duration = thermalColumnDuration(style);
+
 	const geometry = new THREE.RingGeometry(0.1, 0.5, 48);
 	const material = new THREE.MeshStandardMaterial({
-		color: 0xef4444,
-		emissive: 0xdc2626,
+		color,
+		emissive,
 		emissiveIntensity: 1.2,
 		transparent: true,
 		opacity: 1.0,
@@ -4574,8 +4656,8 @@ export function spawnInfernoPillarEffect(origin, radius) {
 		origin: { x: origin.x, z: origin.z },
 		radius,
 		createdAt: performance.now(),
-		duration: SUMMON_EFFECT_DURATION,
-		infernoBurst: true,
+		duration,
+		_scene: targetScene,
 	});
 }
 
@@ -4722,6 +4804,56 @@ export function createSpikeTrapHazardMesh(enc) {
 
 	group.position.set(enc.x, 0, enc.z);
 	return group;
+}
+
+/**
+ * Vertical rising fire shaft for Thermal Column. Rises and fades via the
+ * `isThermalColumn` branch in updateAttackEffects (no per-frame allocation).
+ * @param {object} origin - { x, z }
+ * @param {object} style
+ */
+export function spawnThermalColumnShaft(origin, style = {}) {
+	const color = style.color ?? THERMAL_COLUMN_COLOR;
+	const emissive = style.emissive ?? THERMAL_COLUMN_EMISSIVE;
+	const duration = thermalColumnDuration(style);
+
+	const geometry = new THREE.CylinderGeometry(0.3, 0.55, THERMAL_COLUMN_HEIGHT, 16, 1, true);
+	const material = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: THERMAL_COLUMN_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: THERMAL_COLUMN_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.scale.y = 0.001;
+	mesh.position.set(origin.x, THERMAL_COLUMN_BASE_Y, origin.z);
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (targetScene) targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration,
+		isThermalColumn: true,
+		_baseEmissiveIntensity: THERMAL_COLUMN_EMISSIVE_INTENSITY,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Thermal Column: a rising vertical fire shaft plus an expanding ground scorch
+ * ring scaled to attack range (Inferno Pillar / evolved Dragons Breath).
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ * @param {object} [style]
+ */
+export function spawnInfernoPillarEffect(origin, radius, style = {}) {
+	spawnThermalColumnScorchRing(origin, radius, style);
+	spawnThermalColumnShaft(origin, style);
 }
 
 /**
@@ -4895,6 +5027,160 @@ export function spawnChainLightningEffect(origin, direction) {
 		duration: ATTACK_EFFECT_DURATION,
 		isChainLightning: true,
 	});
+}
+
+const MIRROR_WARD_COLOR = 0x5eead4;
+const MIRROR_WARD_EMISSIVE = 0x2dd4bf;
+const MIRROR_WARD_SILVER = 0xe2e8f0;
+const mirrorWardShellsByPlayer = new Map();
+
+/**
+ * Immediately dispose a tracked Mirror Ward shell for `playerId`.
+ * @param {string} playerId
+ */
+export function dismissMirrorWardShellEffect(playerId) {
+	if (!playerId) return;
+	const fx = mirrorWardShellsByPlayer.get(playerId);
+	if (!fx) return;
+
+	const idx = activeEffects.indexOf(fx);
+	if (idx !== -1) {
+		disposeEffectObject(fx.mesh, fx._scene || scene);
+		activeEffects.splice(idx, 1);
+	} else {
+		disposeEffectObject(fx.mesh, fx._scene || scene);
+	}
+	mirrorWardShellsByPlayer.delete(playerId);
+}
+
+/**
+ * Mirror Ward protective shell: pulsing ground ring at `radius` plus vertical
+ * mirror-like facets in the teal/silver palette.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ * @param {object} [style]
+ */
+export function spawnMirrorWardShellEffect(origin, radius, style = {}) {
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	if (style.playerId) {
+		dismissMirrorWardShellEffect(style.playerId);
+	}
+
+	const r = radius ?? 1.5;
+	const color = style.color ?? MIRROR_WARD_COLOR;
+	const emissive = style.emissive ?? MIRROR_WARD_EMISSIVE;
+	const duration = style.duration ?? SUMMON_EFFECT_DURATION;
+	const group = new THREE.Group();
+	group.position.set(origin.x, 0, origin.z);
+
+	const ringGeometry = new THREE.RingGeometry(0.82, 1.0, 48);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.1,
+		transparent: true,
+		opacity: 0.85,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	ringMesh.position.y = GROUND_OVERLAY_Y;
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(0.001);
+	ringMesh.userData.isMirrorWardRing = true;
+	group.add(ringMesh);
+
+	const facetHeight = Math.min(r * 1.15, 2.6);
+	const facetWidth = Math.min(r * 0.75, 1.6);
+	const facetAngles = [Math.PI * 0.22, -Math.PI * 0.22];
+	const facetPalette = [
+		{ color, emissive },
+		{ color: MIRROR_WARD_SILVER, emissive: MIRROR_WARD_SILVER },
+	];
+	for (let i = 0; i < facetAngles.length; i += 1) {
+		const palette = facetPalette[i];
+		const facetGeometry = new THREE.PlaneGeometry(facetWidth, facetHeight);
+		const facetMaterial = new THREE.MeshStandardMaterial({
+			color: palette.color,
+			emissive: palette.emissive,
+			emissiveIntensity: 1.25,
+			transparent: true,
+			opacity: 0.62,
+			side: THREE.DoubleSide,
+			depthWrite: false,
+		});
+		const facetMesh = new THREE.Mesh(facetGeometry, facetMaterial);
+		facetMesh.position.y = facetHeight * 0.5;
+		facetMesh.rotation.y = facetAngles[i];
+		facetMesh.userData.isMirrorWardFacet = true;
+		group.add(facetMesh);
+	}
+
+	targetScene.add(group);
+
+	const effect = {
+		mesh: group,
+		_scene: targetScene,
+		origin: { x: origin.x, z: origin.z },
+		wardRadius: r,
+		isMirrorWardShell: true,
+		playerId: style.playerId,
+		createdAt: performance.now(),
+		duration,
+	};
+	activeEffects.push(effect);
+	if (style.playerId) {
+		mirrorWardShellsByPlayer.set(style.playerId, effect);
+	}
+}
+
+/**
+ * Mirror Ward reflect impact: projectile streak, ground decal, and sparkle burst
+ * along `direction` using the mirror palette.
+ * @param {object} origin - { x, z }
+ * @param {object} direction - { x, z }
+ * @param {object} [style]
+ */
+export function spawnMirrorWardReflectBurst(origin, direction, style = {}) {
+	const duration = style.duration ?? ATTACK_EFFECT_DURATION;
+	const travelMs = style.travelMs ?? duration;
+	const range = style.range ?? ATTACK_RANGE;
+	const color = style.color ?? MIRROR_WARD_COLOR;
+	const emissive = style.emissive ?? MIRROR_WARD_EMISSIVE;
+
+	const dir = direction || { x: 1, z: 0 };
+	const len = Math.hypot(dir.x, dir.z) || 1;
+	const nx = dir.x / len;
+	const nz = dir.z / len;
+	const terminus = { x: origin.x + nx * range, z: origin.z + nz * range };
+
+	const before = activeEffects.length;
+	spawnProjectileTrail(
+		{ x: origin.x, z: origin.z },
+		{ x: nx, z: nz },
+		{ range, travelMs, duration: travelMs, color, emissive, y: 0.9 },
+	);
+	spawnImpactDecal(terminus, {
+		color,
+		emissive,
+		radius: style.impactRadius ?? 0.75,
+		duration,
+	});
+	spawnParticleBurst(
+		{ x: terminus.x, y: 0.55, z: terminus.z },
+		{
+			color: MIRROR_WARD_SILVER,
+			emissive,
+			count: style.count ?? 8,
+			spread: style.spread ?? 1.1,
+			duration,
+		},
+	);
+	for (let i = before; i < activeEffects.length; i += 1) {
+		activeEffects[i].isMirrorWardReflect = true;
+	}
 }
 
 // ── Shared accent-themeable VFX primitives ──
@@ -5113,9 +5399,7 @@ export function updateAttackEffects() {
 			}
 
 			if (elapsed >= fx.duration) {
-				(fx._scene || scene)?.remove(fx.mesh);
-				fx.mesh.geometry.dispose();
-				fx.mesh.material.dispose();
+				disposeEffectObject(fx.mesh, fx._scene || scene);
 				activeEffects.splice(i, 1);
 			}
 			continue;
@@ -5148,6 +5432,26 @@ export function updateAttackEffects() {
 			// Keep the base on the ground as the centered cylinder scales up.
 			fx.mesh.position.y = DIVINE_GRACE_COLUMN_BASE_Y + (DIVINE_GRACE_COLUMN_HEIGHT * s) / 2;
 			fx.mesh.material.opacity = Math.max(0.01, DIVINE_GRACE_COLUMN_OPACITY * (1.0 - t));
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Rising thermal fire column (Thermal Column) ──
+		if (fx.isThermalColumn) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.35, 1.0);
+			const s = Math.max(0.001, riseT);
+			fx.mesh.scale.y = s;
+			fx.mesh.position.y = THERMAL_COLUMN_BASE_Y + (THERMAL_COLUMN_HEIGHT * s) / 2;
+			const fade = Math.max(0.01, THERMAL_COLUMN_OPACITY * (1.0 - t));
+			fx.mesh.material.opacity = fade;
+			const baseIntensity = fx._baseEmissiveIntensity ?? THERMAL_COLUMN_EMISSIVE_INTENSITY;
+			const flicker = 1.0 + 0.25 * Math.sin(elapsed * 0.02);
+			fx.mesh.material.emissiveIntensity = baseIntensity * flicker * fade;
 
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, fx._scene || scene);
@@ -5245,6 +5549,31 @@ export function updateAttackEffects() {
 			continue;
 		}
 
+		// ── Mirror Ward protective shell (ring + mirror facets) ──
+		if (fx.isMirrorWardShell) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const expandT = Math.min(t / 0.35, 1.0);
+			const pulse = 0.5 + 0.32 * Math.abs(Math.sin(elapsed / 280));
+			for (let c = 0; c < fx.mesh.children.length; c += 1) {
+				const child = fx.mesh.children[c];
+				if (child.userData.isMirrorWardRing) {
+					child.scale.setScalar(Math.max(0.001, fx.wardRadius * expandT));
+					child.material.opacity = Math.max(0.01, pulse * (1.0 - t * 0.85));
+				} else if (child.userData.isMirrorWardFacet) {
+					const facetPulse = 0.55 + 0.25 * Math.abs(Math.sin(elapsed / 320));
+					child.material.opacity = Math.max(0.01, facetPulse * (1.0 - t));
+				}
+			}
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+				if (fx.playerId) {
+					mirrorWardShellsByPlayer.delete(fx.playerId);
+				}
+			}
+			continue;
+		}
+
 		// ── Ground fire trail (Magma Greatsword lingering cone) ──
 		if (fx.isFireTrail) {
 			const lifeRatio = 1.0 - (elapsed / fx.duration);
@@ -5303,6 +5632,39 @@ export function updateAttackEffects() {
 			continue;
 		}
 
+		// ── Fireball projectile (grouped core + flame halo) ──
+		if (fx.isFireballProjectile) {
+			const travelRange = fx.range ?? ATTACK_RANGE;
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const travel = travelRange * t;
+			fx.mesh.position.x = fx.origin.x + fx.direction.x * travel;
+			fx.mesh.position.z = fx.origin.z + fx.direction.z * travel;
+
+			const pulse = 0.9 + 0.14 * Math.sin(elapsed / 45);
+			const flicker = 1.0 + 0.28 * Math.sin(elapsed / 28 + 1.3);
+			if (fx.coreMesh) {
+				fx.coreMesh.scale.setScalar(pulse);
+				fx.coreMesh.material.emissiveIntensity = 2.0 * flicker;
+			}
+			if (fx.haloMesh) {
+				const haloPulse = 1.0 + 0.2 * Math.sin(elapsed / 60 + 0.7);
+				fx.haloMesh.scale.setScalar(haloPulse);
+				fx.haloMesh.material.emissiveIntensity = 1.3 * flicker;
+				fx.haloMesh.material.opacity = Math.max(0.2, 0.48 + 0.14 * Math.sin(elapsed / 35));
+			}
+
+			const lifeRatio = 1.0 - t;
+			if (fx.coreMesh?.material) {
+				fx.coreMesh.material.opacity = Math.max(0.01, 0.95 * lifeRatio);
+			}
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
 		// ── Returning projectile corridor + traveling head ──
 		if (fx.returning) {
 			const totalPasses = 1 + (fx.returnPasses || 1);
@@ -5344,7 +5706,7 @@ export function updateAttackEffects() {
 		fx.mesh.material.opacity = Math.max(0.01, lifeRatio);
 
 		if (elapsed >= fx.duration) {
-			scene.remove(fx.mesh);
+			(fx._scene || scene).remove(fx.mesh);
 			fx.mesh.geometry.dispose();
 			fx.mesh.material.dispose();
 			activeEffects.splice(i, 1);

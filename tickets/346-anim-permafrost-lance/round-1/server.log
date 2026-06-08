@@ -1,0 +1,14 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/346-anim-permafrost-lance/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/346-anim-permafrost-lance/game/data
+Server listening on port 3003
+Player connected: socket=iQu4BuSgclxhGGMEAAAB, playerId=42875265-ca83-48ab-a7a6-0b5201d3935e
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=bAfzSo-yHl24ksfwAAAD, playerId=d9bc81f4-e5a7-46ef-9de3-0eea432c885b
+[loot] spawned id=1e465790-dc8b-475b-a67a-c9ab740ce54f value=10
+Player disconnected: iQu4BuSgclxhGGMEAAAB
+Player disconnected: bAfzSo-yHl24ksfwAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

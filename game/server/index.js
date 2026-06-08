@@ -535,6 +535,7 @@ const DEBUG_SCENARIOS = new Set([
   'evolution-ready',
   'deck-viewer-instances',
   'cinder-snare-ready',
+  'mirror-ward-ready',
   'quest-tier-2-unlocked',
   'arena-trials-tier-2',
   'arena-trials-near-adds',
@@ -1404,6 +1405,13 @@ function runGameLoopTick() {
               io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, event);
             }
             state._pendingMinionBreaths.length = 0;
+          }
+
+          if (state._pendingMirrorReflects?.length) {
+            for (const event of state._pendingMirrorReflects) {
+              io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, event);
+            }
+            state._pendingMirrorReflects.length = 0;
           }
 
           if (state._pendingVolatileExplosions?.length) {

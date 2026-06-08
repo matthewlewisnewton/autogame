@@ -1,0 +1,6 @@
+Reviewed the live codebase and capture artifacts. I wrote:
+
+- `tickets/366-anim-mirror-ward/round-1/review.md`
+- `tickets/366-anim-mirror-ward/round-1/gaps.md`
+
+Verdict is `FAIL`: the game runs cleanly, but Mirror Ward’s shell remains visible for the full TTL after the server consumes the ward on reflect, so the visual timing can diverge from the actual server-side effect. No `nits.md` was created.

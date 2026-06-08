@@ -5814,6 +5814,94 @@ PASS. This ticket did not add or modify a `?debugScenario=...` shortcut. Existin
 
 None.
 
+## v0.328 — 346-anim-permafrost-lance  (2026-06-08 11:25:24)
+
+## Per-Criterion Findings
+
+### Runtime health
+PASS. The captured run is healthy: `metrics.json` reports `"ok": true`, no harness server-start failure, and an empty `pageerrors` array. `console.log` contains only normal Vite connection and scene initialization messages, with no `pageerror` or `[fatal]` entries from game code. Client/server logs show the game reached lobby and playing states; the only client-log noise is the allowed THREE.Clock deprecation warning and Vite websocket `EPIPE` on shutdown.
+
+### Permafrost Lance visual identity
+PASS. `game/client/cardRenderers.js` registers a dedicated `permafrost_lance` renderer instead of falling through to the generic spell/frost nova visual. The card now composes a narrower icy telegraph, a forward `permafrost_lance` attack effect, a cyan frost trail, an impact decal, and an ice particle burst at the lance tip. `game/client/renderer.js` backs that style with an elongated crystalline cone projectile, so the visual reads as a lance rather than a radial Cryo Burst clone.
+
+### Timing and server-effect sync
+PASS. Permafrost Lance has no positive `windUpMs`, and the renderer treats it as an instant spell: no delayed schedule, no wind-up telegraph dependency, and no lingering DoT. The projectile/trail use `ATTACK_EFFECT_DURATION`, while the impact decal and burst spawn with the `cardUsed` event, matching the server's immediate `frost_nova`-branch resolution rather than implying delayed damage.
+
+### Scope, integration, and regressions
+PASS. The implementation is limited to the card renderer, the shared attack-effect primitive, and client tests. It does not alter server mechanics, card stats, debug-scenario entry points, movement, networking, or lobby flow, so it remains consistent with `game/docs/design.md` and does not regress the foundation requirements for rendering, websocket connectivity, multiplayer visualization, or movement synchronization.
+
+### Test and coverage evidence
+PASS. The round coverage run completed successfully with `32` client test files and `506` tests passing. Focused coverage includes `cardRenderers.test.js` assertions that Permafrost Lance resolves to a distinct renderer from Frost Nova, emits the lance/trail/decal/burst helper calls, and has no wind-up; `vfx-primitives.test.js` verifies the new `spawnAttackEffect` branch creates and cleans up the lance projectile. The fallback browser capture did not include a Permafrost Lance-specific screenshot, but the live game run is clean and the renderer contract is directly tested.
+
+## Remaining gaps
+
+None.
+
+## v0.329 — 343-anim-fireball  (2026-06-08 11:33:50)
+
+### No performance regression
+
+PASS. The new Fireball projectile uses a small group with two sphere meshes and existing active-effect cleanup. The added primitives are short-lived and follow existing VFX patterns; grouped meshes are disposed through the existing recursive effect disposal helper.
+
+### Client test coverage where feasible
+
+PASS. `coverage.log` shows the vitest run completed successfully: 32 test files and 504 tests passed. The Fireball-specific tests cover renderer registration, projectile style payload, cast/trail/impact timing, absence of wind-up, per-hit ignite feedback, and graceful fallback when optional VFX primitives are unavailable.
+
+### Design and foundation consistency
+
+PASS. The change stays within the active card-combat/VFX architecture described in `game/docs/design.md`: Fireball remains a weapon card, server-authoritative hit/burn logic is unchanged, and the client only renders the `cardUsed` event. The core requirements in `game/docs/requirements.md` are preserved by the clean capture: 3D scene rendering, WebSocket connection, multiplayer presence, and movement/gameplay progression all worked.
+
+### Debug scenarios
+
+PASS. This ticket did not add or modify any `?debugScenario=` shortcut. The captured run used normal lobby create/join and ready-up flow, with `debugScenario: null`.
+
+## Remaining gaps
+
+None.
+
+## v0.331 — 363-anim-thermal-column  (2026-06-08 12:38:16)
+
+### Performance and cleanup
+
+PASS. The new effect adds two active effect meshes plus scheduled primitive pulses, all handled through the existing `activeEffects` lifecycle. The thermal shaft has a dedicated update branch with no per-frame mesh allocation, and tests verify both the scorch ring and shaft are disposed when expired.
+
+### Tests and coverage
+
+PASS. The round's `coverage.log` shows the full client suite passed: 32 files, 527 tests. New coverage exercises renderer registration, removal of the generic summon fallback, cast-time eruption feedback, DoT pulse scheduling, per-hit ignite bursts, absence of wind-up for this instant spell, and primitive lifecycle/disposal. Coverage output contains expected modeled-asset fallback noise from unrelated renderer tests, not failures.
+
+### Design and requirements consistency
+
+PASS. The change is visual-only on the client and does not alter the card combat model, server-client architecture, multiplayer state, movement synchronization, or core dungeon loop described in the design and requirements documents.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=` shortcut. The existing `fire-spells-ready` scenario remains a QA shortcut only; normal reachability remains through reward/evolution progression and the same server card-use path.
+
+## Remaining gaps
+
+None.
+
+## v0.332 — 366-anim-mirror-ward  (2026-06-08 13:23:46)
+
+### Reflect consumption sync
+
+Pass. The renderer tracks one shell per `playerId`, dismisses any prior shell on recast, and calls `dismissMirrorWardShellEffect(playerId)` before spawning the reflect burst. Natural TTL expiry still cleans up through `updateAttackEffects()`. This keeps the client shell from lingering after the server has consumed the active enchantment.
+
+### Scope, performance, and code quality
+
+Pass. The implementation is focused on the card renderer, renderer primitives, minimal context wiring, the reflect event bridge, tests, and a debug scenario. The VFX primitives are active-effect records cleaned by the existing update loop, with no per-frame allocation patterns beyond iterating child meshes/material opacity. I did not find dead or broken code paths that would block the ticket.
+
+### Debug scenario review
+
+Pass. The added `mirror-ward-ready` scenario is only entered through `?debugScenario=mirror-ward-ready`; normal gameplay does not call it. Client-side debug scenario requests are localhost-gated, and server-side scenario application remains behind the existing debug-scenario allowance. The same end state is reachable through normal progression because `mirror_ward` is a standard reward card (`rewardOrder: 25`) and normal casting still goes through the real server card-use validation, Magic Stone cost, active-enchantment guard, state update, and card-used broadcast. The scenario does not replace or weaken the production path.
+
+### Design and foundation consistency
+
+Pass. Mirror Ward remains an enchantment, consistent with the design document's "lingering magical effect" model. The changes do not affect the required foundations: the captured run confirms 3D rendering, WebSocket connectivity, multiplayer presence, and movement/update flow still work.
+
+## Remaining gaps
+
+No blocking gaps remain.
 
 ## v0.333 — 365-anim-spike-trap  (2026-06-08 13:31:46)
 
@@ -5836,4 +5924,3 @@ PASS. The round-3 coverage log reports `137 passed` test files and `2219 passed`
 ## Remaining gaps
 
 None.
-
