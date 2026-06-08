@@ -44,7 +44,12 @@ import {
 	stagePaidAppearanceConfirm,
 	completePaidAppearanceConfirm,
 } from './lib/booth.mjs';
-import { runTelepipeResetStep } from './lib/telepipe.mjs';
+import {
+	runSlowBurnExercise,
+	runPurifyingPulseExercise,
+	runWindupCardExercise,
+} from './lib/cardExercise.mjs';
+import { runCanyonTelepipeNewSortieStep, runTelepipeResetStep } from './lib/telepipe.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
@@ -710,7 +715,32 @@ async function runHubStep({ page, preset, outDirAbs }) {
 	};
 }
 
-async function runBossEncounterStep({ page, preset, outDirAbs }) {
+async function runSunkenCanyonMidCombatProbeStep({ page, preset, outDirAbs }) {
+	const { bossType, nearAddsScenario, addTypes } = preset;
+
+	await enableGodmode(page);
+	if (nearAddsScenario) {
+		await requestScenario(page, nearAddsScenario);
+	}
+
+	const preCombatHarness = await readHarness(page);
+	if (liveAdds(preCombatHarness, bossType, addTypes).length === 0) {
+		throw new Error(`No live adds for mid-combat capture (nearAddsScenario=${nearAddsScenario ?? 'none'}): ${JSON.stringify(preCombatHarness)}`);
+	}
+
+	const shotPath = await writeScreenshot(page, outDirAbs, '03-mid-combat');
+	const midCombatScreenshot = path.relative(REPO_ROOT, shotPath);
+	const floorAlignment = {};
+	const midCombatFloor = await captureFloorAlignmentProbe(page);
+	if (midCombatFloor) floorAlignment.midCombat = midCombatFloor;
+
+	return {
+		midCombatScreenshot,
+		probes: Object.keys(floorAlignment).length > 0 ? { floorAlignment } : {},
+	};
+}
+
+async function runBossEncounterStep({ page, preset, outDirAbs, skipMidCombatCapture = false }) {
 	const {
 		bossType,
 		nearAddsScenario,
@@ -726,29 +756,30 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 
 	const preCombatHarness = await readHarness(page);
 	if (liveAdds(preCombatHarness, bossType, addTypes).length === 0) {
-		throw new Error(`No live adds for mid-combat capture (nearAddsScenario=${nearAddsScenario ?? 'none'}): ${JSON.stringify(preCombatHarness)}`);
+		throw new Error(`No live adds for boss encounter (nearAddsScenario=${nearAddsScenario ?? 'none'}): ${JSON.stringify(preCombatHarness)}`);
 	}
 
 	let midCombatScreenshot = null;
 	const floorAlignment = {};
+	const onMidCombat = skipMidCombatCapture ? null : async () => {
+		const midHarness = await readHarness(page);
+		if (liveAdds(midHarness, bossType, addTypes).length === 0) {
+			throw new Error('onMidCombat requested with zero live adds');
+		}
+		const shotPath = await writeScreenshot(page, outDirAbs, '03-mid-combat');
+		midCombatScreenshot = path.relative(REPO_ROOT, shotPath);
+		const midCombatFloor = await captureFloorAlignmentProbe(page);
+		if (midCombatFloor) floorAlignment.midCombat = midCombatFloor;
+	};
 	const afterAddsHarness = await defeatAdds(page, {
 		bossType,
 		timeoutMs: preset.addsTimeoutMs ?? 90000,
 		minAddsLeft: 0,
 		addTypes,
-		onMidCombat: async () => {
-			const midHarness = await readHarness(page);
-			if (liveAdds(midHarness, bossType, addTypes).length === 0) {
-				throw new Error('onMidCombat requested with zero live adds');
-			}
-			const shotPath = await writeScreenshot(page, outDirAbs, '03-mid-combat');
-			midCombatScreenshot = path.relative(REPO_ROOT, shotPath);
-			const midCombatFloor = await captureFloorAlignmentProbe(page);
-			if (midCombatFloor) floorAlignment.midCombat = midCombatFloor;
-		},
+		onMidCombat,
 	});
 
-	if (!midCombatScreenshot) {
+	if (!skipMidCombatCapture && !midCombatScreenshot) {
 		throw new Error('defeatAdds finished without capturing mid-combat screenshot');
 	}
 
@@ -875,6 +906,10 @@ async function runVictoryStep({ page, preset, outDirAbs }) {
 	};
 }
 
+function isSunkenCanyonPreset(preset, summary) {
+	return preset?.layoutProfile === 'sunken-canyon' || summary?.preset === 'sunken-canyon';
+}
+
 function buildAssertions(summary, preset) {
 	const bossSpawned = Array.isArray(summary.hub?.bossTypes)
 		&& summary.hub.bossTypes.includes(preset.bossType);
@@ -888,12 +923,58 @@ function buildAssertions(summary, preset) {
 		&& victoryProbe?.runObjectiveComplete === true
 		&& victoryProbe?.bossDefeated === true
 		&& victoryProbe?.lastRunSummaryStatus === 'victory';
-	return {
+	const base = {
 		bossSpawned,
 		encounterActivated,
 		bossDefeated,
 		victoryFired,
 	};
+	if (!isSunkenCanyonPreset(preset, summary)) {
+		return base;
+	}
+	const bossEncounterUi = summary.bossEncounter?.probes?.bossEncounterUi;
+	const bossVisualIdentity = summary.bossEncounter?.probes?.bossVisualIdentity;
+	return {
+		...base,
+		bossEncounterUiVisible: bossEncounterUi?.hudVisible === true
+			&& typeof bossEncounterUi?.bossName === 'string'
+			&& bossEncounterUi.bossName.length > 0
+			&& bossEncounterUi?.encounterLocked === true
+			&& bossEncounterUi?.encounterPhase === 'active',
+		bossDistinctFromAdds: bossVisualIdentity?.bossDistinctFromAdds === true,
+		slowBurnMutuallyExclusive: summary.cardExercises?.slowBurn?.slowBurnMutuallyExclusive === true,
+		healCleanseApplied: summary.cardExercises?.purifyingPulse?.healCleanseApplied === true,
+		windupTelegraphActive: summary.cardExercises?.windup?.windupTelegraphActive === true,
+		telepipeVitalsPreserved: summary.canyonTelepipe?.telepipeVitalsPreserved === true,
+		cardChargesResetOnNewSortie: summary.canyonTelepipe?.cardChargesResetOnNewSortie === true,
+	};
+}
+
+function buildAssertionFailureDetail(summary, preset) {
+	const assertions = summary.assertions || {};
+	const failed = Object.entries(assertions).filter(([, value]) => value !== true).map(([key]) => key);
+	if (failed.length === 0) return 'One or more assertions failed';
+	const details = [];
+	if (failed.includes('bossEncounterUiVisible')) {
+		details.push(`bossEncounterUi=${JSON.stringify(summary.bossEncounter?.probes?.bossEncounterUi)}`);
+	}
+	if (failed.includes('bossDistinctFromAdds')) {
+		details.push(`bossVisualIdentity=${JSON.stringify(summary.bossEncounter?.probes?.bossVisualIdentity)}`);
+	}
+	if (failed.includes('slowBurnMutuallyExclusive')) {
+		details.push(`slowBurn=${JSON.stringify(summary.cardExercises?.slowBurn)}`);
+	}
+	if (failed.includes('healCleanseApplied')) {
+		details.push(`purifyingPulse=${JSON.stringify(summary.cardExercises?.purifyingPulse)}`);
+	}
+	if (failed.includes('windupTelegraphActive')) {
+		details.push(`windup=${JSON.stringify(summary.cardExercises?.windup)}`);
+	}
+	if (failed.includes('telepipeVitalsPreserved') || failed.includes('cardChargesResetOnNewSortie')) {
+		details.push(`canyonTelepipe=${JSON.stringify(summary.canyonTelepipe)}`);
+	}
+	const base = `Assertion(s) failed: ${failed.join(', ')}`;
+	return details.length > 0 ? `${base} — ${details.join('; ')}` : base;
 }
 
 function buildHubAssertions(summary) {
@@ -914,6 +995,11 @@ function collectScreenshots(summary) {
 	if (summary.bossEncounter?.activeScreenshot) shots.push(summary.bossEncounter.activeScreenshot);
 	if (summary.victory?.bossDefeatedScreenshot) shots.push(summary.victory.bossDefeatedScreenshot);
 	if (summary.victory?.victoryScreenshot) shots.push(summary.victory.victoryScreenshot);
+	if (summary.cardExercises?.slowBurn?.screenshot) shots.push(summary.cardExercises.slowBurn.screenshot);
+	if (summary.cardExercises?.purifyingPulse?.screenshot) shots.push(summary.cardExercises.purifyingPulse.screenshot);
+	if (summary.cardExercises?.windup?.screenshot) shots.push(summary.cardExercises.windup.screenshot);
+	if (summary.canyonTelepipe?.beforeScreenshot) shots.push(summary.canyonTelepipe.beforeScreenshot);
+	if (summary.canyonTelepipe?.afterScreenshot) shots.push(summary.canyonTelepipe.afterScreenshot);
 	return shots;
 }
 
@@ -977,6 +1063,15 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
 		probes = {
 			...bossProbes,
 			...(summary.victory?.probes || {}),
+			...(summary.cardExercises ? { cardExercises: summary.cardExercises } : {}),
+			...(summary.canyonTelepipe ? {
+				canyonTelepipe: {
+					preSuspend: summary.canyonTelepipe.preSuspend ?? null,
+					postDeploy: summary.canyonTelepipe.postDeploy ?? null,
+					telepipeVitalsPreserved: summary.canyonTelepipe.telepipeVitalsPreserved ?? null,
+					cardChargesResetOnNewSortie: summary.canyonTelepipe.cardChargesResetOnNewSortie ?? null,
+				},
+			} : {}),
 		};
 		findings = renderFindings({
 			ok: summary.ok === true,
@@ -987,6 +1082,8 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
 			assertions: summary.assertions || {},
 			bossEncounterUi: summary.bossEncounter?.probes?.bossEncounterUi ?? null,
 			bossVisualIdentity: summary.bossEncounter?.probes?.bossVisualIdentity ?? null,
+			cardExercises: summary.cardExercises ?? null,
+			canyonTelepipe: summary.canyonTelepipe ?? null,
 			floorAlignment,
 			consoleErrors: consoleEntries || [],
 			screenshots: collectScreenshots(summary),
@@ -1147,16 +1244,68 @@ async function main() {
 			summary.hub = await runHubStep({ page, preset, outDirAbs });
 		}
 
-		if (runsBossEncounter && page) {
+		const runsSunkenCanyonFull = opts.preset === 'sunken-canyon' && runsRoomsFull;
+
+		if (runsBossEncounter && page && !runsSunkenCanyonFull) {
 			summary.bossEncounter = await runBossEncounterStep({ page, preset, outDirAbs });
 		}
 
-		if (runsRoomsFull && page) {
+		if (runsSunkenCanyonFull && page) {
+			const midCombatPart = await runSunkenCanyonMidCombatProbeStep({ page, preset, outDirAbs });
+			summary.bossEncounter = { ...midCombatPart };
+
+			const cardExerciseOpts = { outDir: outDirAbs, repoRoot: REPO_ROOT };
+			summary.cardExercises = {
+				slowBurn: await runSlowBurnExercise(page, cardExerciseOpts),
+				purifyingPulse: await runPurifyingPulseExercise(page, cardExerciseOpts),
+				windup: await runWindupCardExercise(page, {
+					...cardExerciseOpts,
+					cardId: preset.windupCardId ?? 'magma_greatsword',
+					scenario: preset.windupScenario ?? 'magma-windup-ready',
+				}),
+			};
+
+			summary.canyonTelepipe = await runCanyonTelepipeNewSortieStep({
+				page,
+				preset,
+				outDirAbs,
+				repoRoot: REPO_ROOT,
+				serverLogPath: game.serverLogPath,
+				gameProcess: game,
+				fromPlaying: true,
+			});
+
+			const bossPart = await runBossEncounterStep({
+				page,
+				preset,
+				outDirAbs,
+				skipMidCombatCapture: true,
+			});
+			summary.bossEncounter = {
+				...bossPart,
+				midCombatScreenshot: midCombatPart.midCombatScreenshot,
+				probes: {
+					...(bossPart.probes || {}),
+					floorAlignment: {
+						...(midCombatPart.probes?.floorAlignment || {}),
+						...(bossPart.probes?.floorAlignment || {}),
+					},
+				},
+			};
+
 			summary.victory = await runVictoryStep({ page, preset, outDirAbs });
 			summary.assertions = buildAssertions(summary, preset);
 			summary.ok = Object.values(summary.assertions).every((value) => value === true);
 			if (!summary.ok) {
-				summary.error = summary.error || 'One or more assertions failed';
+				summary.error = summary.error || buildAssertionFailureDetail(summary, preset);
+				exitCode = 1;
+			}
+		} else if (runsRoomsFull && page) {
+			summary.victory = await runVictoryStep({ page, preset, outDirAbs });
+			summary.assertions = buildAssertions(summary, preset);
+			summary.ok = Object.values(summary.assertions).every((value) => value === true);
+			if (!summary.ok) {
+				summary.error = summary.error || buildAssertionFailureDetail(summary, preset);
 				exitCode = 1;
 			}
 		}
@@ -1190,6 +1339,7 @@ async function main() {
 					? buildHubAssertions(summary)
 					: buildAssertions(summary, preset);
 			}
+			summary.screenshots = collectScreenshots(summary);
 			writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset });
 		} else if (summary.bossEncounter?.probes) {
 			const probesPath = path.join(outDirAbs, 'probes.json');

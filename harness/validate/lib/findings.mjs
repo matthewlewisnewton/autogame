@@ -55,6 +55,96 @@ function renderBossEncounterUiSection(probe) {
 	return lines;
 }
 
+function renderSlowBurnSection(exercise) {
+	const lines = ['', '## Slow / burn mutual exclusivity', ''];
+	if (!exercise || typeof exercise !== 'object') {
+		lines.push('No slow/burn card exercise recorded.');
+		return lines;
+	}
+	lines.push(`- **targetEnemyId**: ${exercise.targetEnemyId ?? '(missing)'}`);
+	lines.push(`- **afterSlow**: slowActive=${exercise.afterSlow?.slowActive === true ? 'yes' : 'no'}, burnActive=${exercise.afterSlow?.burnActive === true ? 'yes' : 'no'}`);
+	lines.push(`- **afterBurn**: slowActive=${exercise.afterBurn?.slowActive === true ? 'yes' : 'no'}, burnActive=${exercise.afterBurn?.burnActive === true ? 'yes' : 'no'}`);
+	lines.push(`- **slowBurnMutuallyExclusive**: ${exercise.slowBurnMutuallyExclusive === true ? 'yes' : 'no'}`);
+	if (exercise.slowBurnMutuallyExclusive !== true) {
+		lines.push('  - Note: enemy had both slow and burn active, or status did not match ticket 301 exclusivity.');
+	}
+	return lines;
+}
+
+function renderPurifyingPulseSection(exercise) {
+	const lines = ['', '## Heal / cleanse (Purifying Pulse)', ''];
+	if (!exercise || typeof exercise !== 'object') {
+		lines.push('No Purifying Pulse exercise recorded.');
+		return lines;
+	}
+	lines.push(`- **preCast hp**: ${exercise.preCast?.hp ?? '(missing)'}`);
+	lines.push(`- **postCast hp**: ${exercise.postCast?.hp ?? '(missing)'}`);
+	lines.push(`- **preCast debuffs**: slow=${exercise.preCast?.slowActive === true ? 'yes' : 'no'}, burn=${exercise.preCast?.burnActive === true ? 'yes' : 'no'}`);
+	lines.push(`- **postCast debuffs**: slow=${exercise.postCast?.slowActive === true ? 'yes' : 'no'}, burn=${exercise.postCast?.burnActive === true ? 'yes' : 'no'}`);
+	lines.push(`- **healCleanseApplied**: ${exercise.healCleanseApplied === true ? 'yes' : 'no'}`);
+	if (exercise.healCleanseApplied !== true) {
+		lines.push('  - Note: HP did not rise or slow/burn debuffs were not cleared.');
+	}
+	return lines;
+}
+
+function renderWindupSection(exercise) {
+	const lines = ['', '## Wind-up telegraph', ''];
+	if (!exercise || typeof exercise !== 'object') {
+		lines.push('No wind-up card exercise recorded.');
+		return lines;
+	}
+	lines.push(`- **cardId**: ${exercise.cardId ?? '(missing)'}`);
+	lines.push(`- **cardUseState**: ${exercise.duringWindup?.cardUseState ?? '(missing)'}`);
+	lines.push(`- **cardWindupCardId**: ${exercise.duringWindup?.cardWindupCardId ?? '(missing)'}`);
+	lines.push(`- **inputLocked**: ${exercise.domProbe?.inputLocked === true ? 'yes' : 'no'}`);
+	lines.push(`- **telegraphVisible**: ${exercise.domProbe?.telegraphVisible === true ? 'yes' : 'no'}`);
+	lines.push(`- **windupTelegraphActive**: ${exercise.windupTelegraphActive === true ? 'yes' : 'no'}`);
+	if (exercise.windupTelegraphActive !== true) {
+		lines.push('  - Note: harness wind-up state and DOM telegraph did not agree.');
+	}
+	return lines;
+}
+
+function renderCanyonTelepipeSection(telepipe) {
+	const lines = ['', '## Telepipe vitals and new-sortie charges', ''];
+	if (!telepipe || typeof telepipe !== 'object') {
+		lines.push('No canyon telepipe exercise recorded.');
+		return lines;
+	}
+	const pre = telepipe.preSuspend;
+	const post = telepipe.postDeploy;
+	if (pre) {
+		lines.push(`- **preSuspend**: hp=${pre.hp}, magicStones=${pre.magicStones}, runId=${pre.runId ?? '(missing)'}`);
+	}
+	if (post) {
+		lines.push(`- **postDeploy**: hp=${post.hp}, magicStones=${post.magicStones}, runId=${post.runId ?? '(missing)'}`);
+	}
+	lines.push(`- **telepipeVitalsPreserved**: ${telepipe.telepipeVitalsPreserved === true ? 'yes' : 'no'}`);
+	lines.push(`- **cardChargesResetOnNewSortie**: ${telepipe.cardChargesResetOnNewSortie === true ? 'yes' : 'no'}`);
+	if (telepipe.telepipeVitalsPreserved !== true) {
+		lines.push('  - Note: HP or magic stones changed across suspend → abandon → redeploy.');
+	}
+	if (telepipe.cardChargesResetOnNewSortie !== true) {
+		lines.push('  - Note: hand charges did not reset on fresh sortie after telepipe abandon.');
+	}
+	return lines;
+}
+
+function renderNewContentExerciseSection(screenshots) {
+	const lines = ['', '## New content exercise', ''];
+	const exerciseShots = (screenshots || []).filter((shot) => /0[89]-|10-|11-|12-/.test(shot));
+	if (exerciseShots.length === 0) {
+		lines.push('No new-content exercise screenshots recorded.');
+		return lines;
+	}
+	for (const shot of exerciseShots) {
+		const filename = shot.split('/').pop() || shot;
+		lines.push(`- \`${filename}\` — see Screenshots list (\`${shot}\`)`);
+	}
+	return lines;
+}
+
 function renderBossVisualIdentitySection(probe) {
 	const lines = ['', '## Boss visual identity', ''];
 	if (!probe || typeof probe !== 'object') {
@@ -117,6 +207,8 @@ function renderFloorAlignmentSection(floorAlignment) {
  *   floorAlignment?: Record<string, object>,
  *   bossEncounterUi?: object | null,
  *   bossVisualIdentity?: object | null,
+ *   cardExercises?: { slowBurn?: object, purifyingPulse?: object, windup?: object } | null,
+ *   canyonTelepipe?: object | null,
  *   consoleErrors?: string[],
  *   screenshots?: string[],
  *   visualNotes?: string[],
@@ -139,6 +231,17 @@ export function renderFindings(run) {
 		formatAssertion('bossDefeated', run.assertions?.bossDefeated === true),
 		formatAssertion('victoryFired', run.assertions?.victoryFired === true),
 	];
+	if (run.preset === 'sunken-canyon') {
+		lines.push(
+			formatAssertion('bossEncounterUiVisible', run.assertions?.bossEncounterUiVisible === true),
+			formatAssertion('bossDistinctFromAdds', run.assertions?.bossDistinctFromAdds === true),
+			formatAssertion('slowBurnMutuallyExclusive', run.assertions?.slowBurnMutuallyExclusive === true),
+			formatAssertion('healCleanseApplied', run.assertions?.healCleanseApplied === true),
+			formatAssertion('windupTelegraphActive', run.assertions?.windupTelegraphActive === true),
+			formatAssertion('telepipeVitalsPreserved', run.assertions?.telepipeVitalsPreserved === true),
+			formatAssertion('cardChargesResetOnNewSortie', run.assertions?.cardChargesResetOnNewSortie === true),
+		);
+	}
 
 	if (run.error) {
 		lines.push('', '## Failure', '', run.error);
@@ -167,6 +270,11 @@ export function renderFindings(run) {
 	lines.push(...renderFloorAlignmentSection(run.floorAlignment));
 	lines.push(...renderBossEncounterUiSection(run.bossEncounterUi));
 	lines.push(...renderBossVisualIdentitySection(run.bossVisualIdentity));
+	lines.push(...renderSlowBurnSection(run.cardExercises?.slowBurn));
+	lines.push(...renderPurifyingPulseSection(run.cardExercises?.purifyingPulse));
+	lines.push(...renderWindupSection(run.cardExercises?.windup));
+	lines.push(...renderCanyonTelepipeSection(run.canyonTelepipe));
+	lines.push(...renderNewContentExerciseSection(run.screenshots));
 
 	lines.push('', '## Screenshots', '');
 	for (const shot of run.screenshots || []) {

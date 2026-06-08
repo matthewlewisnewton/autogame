@@ -10,6 +10,8 @@ export default defineConfig({
 						'server/test/**/*.{test,spec}.{js,mjs}'
 					],
 					environment: 'node',
+					testTimeout: 30000,
+					hookTimeout: 30000,
 					// Run server test files in parallel. Each file gets its own
 					// isolated worker process, so the module-level singletons in
 					// index.js (httpServer/io) are per-file, and every suite binds

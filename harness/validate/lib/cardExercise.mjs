@@ -1,6 +1,7 @@
 /**
  * Playwright card-exercise helpers for validation playthroughs.
  */
+import path from 'path';
 import { readHarness } from './harnessState.mjs';
 import { writeScreenshot } from './screenshot.mjs';
 
@@ -112,9 +113,9 @@ export function assertSlowBurnMutualExclusive(probes) {
  * Cast ice_ball then fireball on the same grunt and assert ticket 301 exclusivity.
  *
  * @param {import('playwright').Page} page
- * @param {{ outDir?: string }} [opts]
+ * @param {{ outDir?: string, repoRoot?: string }} [opts]
  */
-export async function runSlowBurnExercise(page, { outDir } = {}) {
+export async function runSlowBurnExercise(page, { outDir, repoRoot } = {}) {
 	await page.waitForFunction(() => {
 		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
 		return harness?.phase === 'playing' && harness?.layout?.profile === 'sunken-canyon';
@@ -165,14 +166,17 @@ export async function runSlowBurnExercise(page, { outDir } = {}) {
 	const afterBurn = probeEnemyStatus(harness, targetEnemyId);
 	const assertion = assertSlowBurnMutualExclusive({ afterSlow, afterBurn, targetEnemyId });
 
+	let screenshot = null;
 	if (outDir) {
-		await writeScreenshot(page, outDir, '08-slow-burn-mutual-exclusive');
+		const shotPath = await writeScreenshot(page, outDir, '08-slow-burn-mutual-exclusive');
+		screenshot = repoRoot ? path.relative(repoRoot, shotPath) : shotPath;
 	}
 
 	return {
 		targetEnemyId,
 		afterSlow,
 		afterBurn,
+		screenshot,
 		...assertion,
 	};
 }
@@ -235,9 +239,9 @@ export async function probeWindupTelegraphDom(page) {
  * Cast Purifying Pulse after purifying-pulse-ready and assert heal + cleanse.
  *
  * @param {import('playwright').Page} page
- * @param {{ outDir?: string }} [opts]
+ * @param {{ outDir?: string, repoRoot?: string }} [opts]
  */
-export async function runPurifyingPulseExercise(page, { outDir } = {}) {
+export async function runPurifyingPulseExercise(page, { outDir, repoRoot } = {}) {
 	await page.waitForFunction(() => {
 		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
 		return harness?.phase === 'playing' && harness?.layout?.profile === 'sunken-canyon';
@@ -271,14 +275,17 @@ export async function runPurifyingPulseExercise(page, { outDir } = {}) {
 		throw new Error(`Purifying Pulse heal/cleanse failed: pre=${JSON.stringify(preCast)} post=${JSON.stringify(postCast)} enemies=${JSON.stringify(harness?.enemyHp)}`);
 	}
 
+	let screenshot = null;
 	if (outDir) {
-		await writeScreenshot(page, outDir, '09-purifying-pulse');
+		const shotPath = await writeScreenshot(page, outDir, '09-purifying-pulse');
+		screenshot = repoRoot ? path.relative(repoRoot, shotPath) : shotPath;
 	}
 
 	return {
 		preCast,
 		postCast,
 		healCleanseApplied,
+		screenshot,
 	};
 }
 
@@ -286,10 +293,11 @@ export async function runPurifyingPulseExercise(page, { outDir } = {}) {
  * Press a wind-up weapon once and capture harness + DOM probes during lockout.
  *
  * @param {import('playwright').Page} page
- * @param {{ outDir?: string, cardId?: string, scenario?: string }} [opts]
+ * @param {{ outDir?: string, repoRoot?: string, cardId?: string, scenario?: string }} [opts]
  */
 export async function runWindupCardExercise(page, {
 	outDir,
+	repoRoot,
 	cardId = 'magma_greatsword',
 	scenario = 'magma-windup-ready',
 } = {}) {
@@ -348,8 +356,10 @@ export async function runWindupCardExercise(page, {
 		throw new Error(`Wind-up telegraph mismatch: probe=${JSON.stringify(duringWindup)} dom=${JSON.stringify(domProbe)}`);
 	}
 
+	let screenshot = null;
 	if (outDir) {
-		await writeScreenshot(page, outDir, '10-windup-charge');
+		const shotPath = await writeScreenshot(page, outDir, '10-windup-charge');
+		screenshot = repoRoot ? path.relative(repoRoot, shotPath) : shotPath;
 	}
 
 	return {
@@ -358,5 +368,6 @@ export async function runWindupCardExercise(page, {
 		duringWindup,
 		domProbe,
 		windupTelegraphActive,
+		screenshot,
 	};
 }

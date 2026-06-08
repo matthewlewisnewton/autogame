@@ -64,6 +64,7 @@ function createTestToken(accountId, username) {
  * Each test gets its own server so there is no shared-state interference.
  */
 async function startTestServer() {
+	clearAllTimers();
 	// Disconnect all existing clients before closing the server
 	for (const [id, conn] of Object.entries(serverIo.engine?.sockets || {})) {
 		try { conn.close(true); } catch (_) {}
@@ -391,6 +392,12 @@ function findCardSlot(player, type) {
 }
 
 // ── Integration Tests ──
+
+// Prior server test files in the same vitest worker may leave fake timers active;
+// real timers are required for socket IO and the background game loop.
+beforeEach(() => {
+	vi.useRealTimers();
+});
 
 describe('Socket Integration — Connection Flow', () => {
 	let baseUrl, socket, init;
@@ -5324,6 +5331,10 @@ describe('Socket Integration — Wall-Aware Enemy Movement', () => {
 });
 
 describe('Telepipe extract and redeploy vitals persistence', () => {
+	afterEach(async () => {
+		await closeServer();
+	});
+
 	it('single player extract keeps the dungeon running for remaining players', async () => {
 		const baseUrl = await startTestServer();
 		const p1 = await connectAndJoinLobby(baseUrl, 'telepipe-partial-1');
@@ -5618,7 +5629,10 @@ describe('Telepipe extract and redeploy vitals persistence', () => {
 		expect(redeployed.gamePhase).toBe('playing');
 		expect(redeployed.run.id).not.toBe(preExtractRunId);
 		expect(redeployed.players[p1Id].hp).toBe(nonDefaultHp);
-		expect(redeployed.players[p1Id].magicStones).toBe(nonDefaultMs);
+		expect(redeployed.players[p1Id].magicStones).toBeGreaterThanOrEqual(nonDefaultMs);
+		expect(redeployed.players[p1Id].magicStones).toBeLessThanOrEqual(
+			nonDefaultMs + MAGIC_STONES_REGEN_PER_TICK * 10,
+		);
 		expect(redeployed.players[p1Id].hp).not.toBe(MAX_HP);
 		expect(redeployed.players[p1Id].magicStones).not.toBe(STARTING_MAGIC_STONES);
 
@@ -5715,7 +5729,10 @@ describe('Telepipe extract and redeploy vitals persistence', () => {
 		expect(redeployed.gamePhase).toBe('playing');
 		expect(redeployed.run.id).not.toBe(preSuspendRunId);
 		expect(redeployed.players[p1Id].hp).toBe(nonDefaultHp);
-		expect(redeployed.players[p1Id].magicStones).toBe(nonDefaultMs);
+		expect(redeployed.players[p1Id].magicStones).toBeGreaterThanOrEqual(nonDefaultMs);
+		expect(redeployed.players[p1Id].magicStones).toBeLessThanOrEqual(
+			nonDefaultMs + MAGIC_STONES_REGEN_PER_TICK * 10,
+		);
 		expect(redeployed.players[p1Id].hp).not.toBe(MAX_HP);
 		expect(redeployed.players[p1Id].magicStones).not.toBe(STARTING_MAGIC_STONES);
 

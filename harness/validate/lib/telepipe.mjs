@@ -460,7 +460,7 @@ const CANYON_TELEPIPE_READY_SCENARIO = 'canyon-descent-telepipe-ready';
  * Distinct from hub `runTelepipeResetStep`: abandons suspended checkpoint before redeploy.
  *
  * @param {import('playwright').Page} page
- * @param {{ preset: object, outDirAbs: string, repoRoot: string, serverLogPath?: string | null, gameProcess?: object | null }} opts
+ * @param {{ preset: object, outDirAbs: string, repoRoot: string, serverLogPath?: string | null, gameProcess?: object | null, fromPlaying?: boolean }} opts
  */
 export async function runCanyonTelepipeNewSortieStep({
 	page,
@@ -469,16 +469,29 @@ export async function runCanyonTelepipeNewSortieStep({
 	repoRoot,
 	serverLogPath = null,
 	gameProcess = null,
+	fromPlaying = false,
 }) {
 	await assertServerAlive(gameProcess, serverLogPath);
 
 	const telepipeScenario = preset.telepipeScenario ?? CANYON_TELEPIPE_READY_SCENARIO;
 	const deployScenario = preset.telepipeDeployScenario ?? preset.deployScenario ?? 'canyon-descent-tier-2';
 
-	await createLobby(page, preset.lobbyName ?? 'Canyon Telepipe New Sortie');
-	await waitForHubLobby(page);
-	await requestScenario(page, telepipeScenario);
-	await deployViaLaunchBooth(page);
+	if (!fromPlaying) {
+		await createLobby(page, preset.lobbyName ?? 'Canyon Telepipe New Sortie');
+		await waitForHubLobby(page);
+		await requestScenario(page, telepipeScenario);
+		await deployViaLaunchBooth(page);
+	} else {
+		let harness = await readHarness(page);
+		const hasTelepipe = (harness?.hand || []).some((card) => card?.id === 'telepipe');
+		if (!hasTelepipe) {
+			await requestScenario(page, telepipeScenario);
+			harness = await readHarness(page);
+		}
+		if (harness?.phase !== 'playing') {
+			throw new Error(`Expected sunken-canyon playing phase before telepipe exercise: ${JSON.stringify(harness)}`);
+		}
+	}
 
 	const deployedHarness = await readHarness(page);
 	const telepipeInHand = (deployedHarness?.hand || []).some((card) => card?.id === 'telepipe');
