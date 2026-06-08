@@ -1182,8 +1182,12 @@ function renderCinderSnare(data, ctx) {
 	const emissive = CINDER_SNARE_EMISSIVE;
 	if (ctx.spawnTelegraphRing) {
 		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
-	} else if (ctx.spawnSummonEffect) {
-		ctx.spawnSummonEffect(origin, data.radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.2 });
+	}
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(origin, { color, emissive });
 	}
 }
 

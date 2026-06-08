@@ -2081,7 +2081,7 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 		expect(resolveRenderers('cinder_snare')[0]).not.toBe(resolveRenderers('spike_trap')[0]);
 	});
 
-	it('cinder_snare renders a cinder-accent placement telegraph at the trap radius', () => {
+	it('cinder_snare renders telegraph ring, ember burst, and scorch decal at the trap radius', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'cinder_snare',
@@ -2094,6 +2094,21 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 		expect(telegraph[1]).toEqual({ x: 2, z: 3 });
 		expect(telegraph[2]).toBe(2.5);
 		expect(telegraph[3]).toMatchObject({ color: 0xf97316, emissive: 0xff3b00 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 2, z: 3 });
+		expect(burst[2]).toMatchObject({
+			color: 0xf97316,
+			emissive: 0xff3b00,
+			count: 14,
+			spread: 2.2,
+		});
+		expect(burst[2].count).toBeGreaterThanOrEqual(12);
+		expect(burst[2].spread).toBeGreaterThanOrEqual(2.0);
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 2, z: 3 });
+		expect(decal[2]).toMatchObject({ color: 0xf97316, emissive: 0xff3b00 });
 		expect(ctx._calls.some(
 			(c) => c[0] === 'spawnSummonEffect' && c[3] && c[3].color === 0xf87171,
 		)).toBe(false);
@@ -2107,7 +2122,37 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 			hits: [],
 		}, ctx);
 		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('cinder_snare still renders without throwing when optional ctx primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnTelegraphRing: undefined,
+			spawnParticleBurst: undefined,
+			spawnImpactDecal: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'cinder_snare',
+			origin: { x: 2, z: 3 },
+			radius: 2.5,
+			hits: [],
+		}, ctx)).not.toThrow();
+	});
+
+	it('spike_trap does not emit telegraph ring, particle burst, or impact decal', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'spike_trap',
+			origin: { x: 2, z: 3 },
+			radius: 2.5,
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
 	});
 });
 
