@@ -340,6 +340,30 @@ function findWeaponSlot(player) {
 }
 
 /**
+ * Find the slot index of a weapon that strikes immediately (no server wind-up
+ * lockout). Heavy weapons (e.g. flame_blade, the greatswords) carry a positive
+ * `windUpMs` and resolve their hit a game-loop tick later, which synchronous
+ * weapon-kill assertions don't model. Since the opening hand is drawn from a
+ * shuffled deck, a light weapon is not guaranteed — if none is in hand, swap the
+ * first weapon slot for a light iron_sword so the strike lands in the same tick.
+ * Returns the slot index, or -1 if the hand holds no weapon at all.
+ */
+function findImmediateWeaponSlot(player) {
+	if (!player.hand) return -1;
+	const lightSlot = player.hand.findIndex(
+		c => c && c.type === 'weapon' && !(getCardDef(c.id)?.windUpMs > 0)
+	);
+	if (lightSlot >= 0) return lightSlot;
+	const weaponSlot = player.hand.findIndex(c => c && c.type === 'weapon');
+	if (weaponSlot < 0) return -1;
+	player.hand[weaponSlot] = {
+		id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon',
+		charges: 5, remainingCharges: 5, grind: 0,
+	};
+	return weaponSlot;
+}
+
+/**
  * Find the slot index of a card of the given type in a player's hand.
  * Returns -1 if not found.
  */
@@ -2175,8 +2199,9 @@ describe('dungeon run objective', () => {
 			wanderTarget: { x: player.x + 3, z: player.z }
 		}];
 
-		// Find a weapon card in hand
-		const weaponSlot = player.hand.findIndex(c => c && c.type === 'weapon');
+		// Use an immediate-strike weapon so the kill resolves in the same tick
+		// (heavy wind-up weapons like flame_blade land a tick later).
+		const weaponSlot = findImmediateWeaponSlot(player);
 		expect(weaponSlot).toBeGreaterThanOrEqual(0);
 		const weaponCard = player.hand[weaponSlot];
 
@@ -4074,12 +4099,13 @@ describe('killing skirmisher via weapon card (integration)', () => {
 		skirmisher.x = player.x + 3;
 		skirmisher.z = player.z;
 
-		// Find a weapon card in hand
-		const weaponSlot = findWeaponSlot(player);
+		// Use an immediate-strike weapon so a single swing kills the skirmisher this
+		// tick (heavy wind-up weapons like flame_blade land their hit a tick later).
+		const weaponSlot = findImmediateWeaponSlot(player);
 		expect(weaponSlot).toBeGreaterThanOrEqual(0);
 		const weaponCard = player.hand[weaponSlot];
 
-		// Wait for stateUpdate after the kill
+		// Wait for stateUpdate after the swing is initiated
 		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
 
 		socket.emit('useCard', { cardId: weaponCard.id, slotIndex: weaponSlot });

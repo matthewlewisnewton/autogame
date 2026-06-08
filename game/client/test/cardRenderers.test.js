@@ -746,6 +746,11 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 			expect(CARD_DEFS[cardId].windUpMs).toBeGreaterThan(0);
 		}
 	});
+
+	it('Solar Edge (flame_blade) carries a positive windUpMs so the 315 charge telegraph fires', () => {
+		expect(CARD_DEFS['flame_blade']).toBeDefined();
+		expect(CARD_DEFS['flame_blade'].windUpMs).toBeGreaterThan(0);
+	});
 });
 
 describe('renderCardUsed() — spell dispatch', () => {
