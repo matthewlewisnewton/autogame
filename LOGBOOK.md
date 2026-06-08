@@ -5564,3 +5564,26 @@ This ticket changed the Arena Trials boss-approach debug scenario logic. It rema
 
 None.
 
+
+## v0.315 — 310-apply-3-optional-newcard-balance-tunes  (2026-06-08 00:14:45)
+
+
+PASS. The relevant assertions were updated:
+
+- `server/test/ice_ball_card.test.js` now expects `slowChance: 0.65`.
+- `server/test/card_balance_metrics.test.js` now expects `chain_lightning.magicStoneCost: 37` and `purifying_pulse.utilityScore: 20`.
+
+`coverage.log` shows the full suite passed: 22 test files and 446 tests. Coverage thresholds were disabled, but coverage completed successfully for the files under visibility.
+
+### Design and requirements consistency
+
+PASS. The changes are data-only numeric tuning within the existing card combat model described in `game/docs/design.md`: spells remain card-based combat actions, and no new flow or mechanic is introduced. The foundation in `game/docs/requirements.md` is not regressed; the capture confirms rendering, client/server connectivity, multiplayer presence, and movement synchronization still work.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change any development `?debugScenario=` URL shortcut. The existing `ice-ball-ready` server test setup is unchanged by the implementation and remains test-only setup, so there is no new debug-path acceptance risk.
+
+## Remaining gaps
+
+None.
+
