@@ -5541,3 +5541,26 @@ The change stays within the card-combat model described in `game/docs/design.md`
 
 None.
 
+
+## v0.316 — 314-ether-scythe-evolution-gold-health-on-kill  (2026-06-08 00:18:31)
+
+### Evolution data and card definitions are complete
+
+PASS. `cardEconomy.json` maps `harvesting_scythe` to `reapers_scythe`; `cardDefs.json`, `cardStats.json`, server stat overlays, client card ID sets, and balance metrics all include the evolved card. This matches the existing evolution pattern for other cards and keeps the evolved variant reachable through normal gameplay evolution rather than a debug-only path.
+
+### Tests and coverage visibility
+
+PASS. The latest coverage run reports `65 passed` test files and `1602 passed` tests. Relevant passing tests include `server/test/card_evolution.test.js`, `server/test/collect_cone_kill_rewards.test.js`, `server/test/integration.test.js`, `server/test/card_balance_metrics.test.js`, and `client/test/cards.test.js`. Coverage thresholds are disabled, but the changed behavior has focused and integration coverage.
+
+## Design and requirements consistency
+
+PASS. The change fits the documented card-combat and loot/economy loop: enemies can reward currency, HP restoration exists through combat effects, and the scythe evolution reinforces the harvest/reap fantasy without changing movement, rendering, lobby, or multiplayer foundations. The smoke capture confirms the foundation requirements still hold: the 3D scene renders, the client connects to the server, players are present in multiplayer, and movement/dodge gameplay remains functional.
+
+## Debug scenarios
+
+PASS. This ticket did not add or modify a `?debugScenario=...` URL shortcut. The tests use existing socket-level debug scenarios for setup only; normal gameplay reachability is provided by the existing card evolution transform from base Ether Scythe to Reaper's Scythe.
+
+## Remaining gaps
+
+None.
+
