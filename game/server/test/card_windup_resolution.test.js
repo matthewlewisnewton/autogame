@@ -109,6 +109,23 @@ describe('card wind-up deferred resolution', () => {
 		return { state, player, enemy };
 	}
 
+	async function startFlameBladeWindupScenario() {
+		({ socket } = await connectClient(baseUrl));
+		const startGamePromise = waitForEvent(socket, 'startGame');
+		socket.emit('playerReady', true);
+		await startGamePromise;
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'flame-blade-windup-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		const state = lobbyGameState(socket._lobbyId);
+		const player = state.players[socket._playerId];
+		const enemy = state.enemies[0];
+		return { state, player, enemy };
+	}
+
 	it('magma_greatsword applies damage and CARD_USED only after windUpMs', async () => {
 		const { state, player } = await startMagmaWindupScenario();
 		const target = () => state.enemies[0];
@@ -135,6 +152,57 @@ describe('card wind-up deferred resolution', () => {
 		setProgressionGameState(state);
 		expect(state._lobbyId).toBeDefined();
 		// Pin wind-up so the live game loop cannot resolve under us (see key-items echo tests).
+		player.cardWindupStartTime = Date.now() + 100000;
+		processPendingCardWindups();
+		expect(target().hp).toBe(hpBefore);
+		expect(player.cardUseState).toBe('windup');
+
+		expect(state.enemies).toHaveLength(1);
+		const { originX, originZ } = player.pendingCardUse;
+		expect(originX).toBe(0);
+		expect(originZ).toBe(0);
+		target().x = originX + 2;
+		target().z = originZ;
+
+		const cardUsedPromise = waitForEvent(socket, 'cardUsed');
+		player.cardWindupStartTime = Date.now() - windUpMs - 50;
+		runGameLoopTick();
+		const cardUsedPayload = await cardUsedPromise;
+
+		expect(player.cardUseState).toBeUndefined();
+		expect(target().hp).toBeLessThan(hpBefore);
+		expect(cardUsedPayload.hits?.length).toBeGreaterThan(0);
+		expect(isPlayerCardCommitted(player)).toBe(false);
+		expect(player.pendingCardUse).toBeUndefined();
+	});
+
+	it('flame_blade applies damage and CARD_USED only after windUpMs (600 ms)', async () => {
+		const { state, player } = await startFlameBladeWindupScenario();
+		const target = () => state.enemies[0];
+		const hpBefore = target().hp;
+		const windUpMs = getCardDef('flame_blade').windUpMs;
+		expect(windUpMs).toBe(600);
+		const slotIndex = player.hand.findIndex((c) => c && c.id === 'flame_blade');
+		expect(slotIndex).toBeGreaterThanOrEqual(0);
+
+		player.x = 0;
+		player.z = 0;
+		player.rotation = 0;
+		target().x = 2;
+		target().z = 0;
+		target().wanderTarget = { x: target().x, z: target().z };
+
+		const commitUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('useCard', { cardId: 'flame_blade', slotIndex, rotation: 0 });
+		await commitUpdatePromise;
+
+		expect(target().hp).toBe(hpBefore);
+		expect(isPlayerCardCommitted(player)).toBe(true);
+
+		setSimGameState(state, {});
+		setProgressionGameState(state);
+		expect(state._lobbyId).toBeDefined();
+		// Pin wind-up so the live game loop cannot resolve under us.
 		player.cardWindupStartTime = Date.now() + 100000;
 		processPendingCardWindups();
 		expect(target().hp).toBe(hpBefore);

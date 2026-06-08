@@ -27,13 +27,14 @@ describe('CARD_DEFS', () => {
 		});
 	});
 
-	it('contains flame_blade with correct type and charges', () => {
+	it('contains flame_blade with correct type, charges, and wind-up', () => {
 		expect(CARD_DEFS.flame_blade).toMatchObject({
 			id: 'flame_blade',
 			name: 'Solar Edge',
 			type: 'weapon',
 			charges: 3,
 		});
+		expect(CARD_DEFS.flame_blade.windUpMs).toBe(600);
 	});
 
 	it('contains magma_greatsword evolved weapon with fire trail', () => {

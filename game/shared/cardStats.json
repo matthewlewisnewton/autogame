@@ -1,6 +1,6 @@
 {
   "iron_sword": { "damage": 17 },
-  "flame_blade": { "damage": 28 },
+  "flame_blade": { "damage": 28, "windUpMs": 600 },
   "battle_familiar": { "magicStoneCost": 50, "damage": 44 },
   "dungeon_drake": {
     "windUpMs": 600,

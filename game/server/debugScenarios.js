@@ -2274,6 +2274,28 @@ function applyDebugScenario(socket, name) {
       target.hp = 200;
       target.maxHp = 200;
       target.wanderTarget = { x: target.x, z: target.z };
+    } else if (name === 'flame-blade-windup-ready') {
+      // Playing phase with Solar Edge (flame_blade, windUpMs: 600) in hand and a
+      // grunt in melee range so wind-up commitment is exercisable. flame_blade is
+      // in the starting deck so this state is reachable through normal gameplay.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'flame_blade',
+          name: 'Solar Edge',
+          type: 'weapon',
+          charges: 3,
+          remainingCharges: 3,
+        };
+      }
+      state.enemies = [];
+      const target = spawnEnemy(player.x + 2.5, player.z, 'grunt');
+      target.hp = 200;
+      target.maxHp = 200;
+      target.wanderTarget = { x: target.x, z: target.z };
     }
 
     syncRunObjectiveToEnemies();
