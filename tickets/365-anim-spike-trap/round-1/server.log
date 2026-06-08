@@ -1,0 +1,14 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/365-anim-spike-trap/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/365-anim-spike-trap/game/data
+Server listening on port 3000
+Player connected: socket=ipH3o4NGCUVxqWQYAAAB, playerId=df278519-ab6f-4473-8244-6019f4510311
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=hTttaGa3Y3fIdokBAAAD, playerId=0be7532e-b993-44cb-9417-12c12330896d
+[loot] spawned id=ba1b66c2-a30a-4d27-a7be-59b33c47709e value=16
+Player disconnected: ipH3o4NGCUVxqWQYAAAB
+Player disconnected: hTttaGa3Y3fIdokBAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

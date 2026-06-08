@@ -5814,3 +5814,26 @@ PASS. This ticket did not add or modify a `?debugScenario=...` shortcut. Existin
 
 None.
 
+
+## v0.333 — 365-anim-spike-trap  (2026-06-08 13:31:46)
+
+
+### Timing and server-effect synchronization
+PASS. The renderer fires from the normal `CARD_USED` event, which the server emits after Spike Trap's 500ms wind-up commit, so the initial placement VFX aligns with the server-side arming point and still benefits from the existing 307/315 wind-up telegraph. The server now exposes armed ground enchantments in snapshots, emits `SPIKE_TRAP_TRIGGERED` when proximity damage actually resolves, and the client plays the eruption VFX at that reported position/radius. The persistent mesh is reconciled from server state and removed when the server drops/disarms the trap, so lingering visuals follow actual server state rather than a client timer.
+
+### Scope, quality, and performance
+PASS. The implementation is localized to the Spike Trap renderer/VFX, snapshot/event plumbing needed for armed traps, and focused tests. Persistent trap meshes are keyed by enchantment id and reused across frames, stale meshes are disposed through the existing mesh-map cleanup path, and the hit eruption remains short-lived active-effect geometry. I did not find dead/broken code, obvious leaks, or unrelated gameplay changes.
+
+### Design and requirements consistency
+PASS. The behavior remains consistent with the design doc's enchantment definition: Spike Trap leaves a lingering magical ground hazard that triggers when an enemy enters it. The foundation requirements are not regressed: the captured run shows 3D rendering, server-client connection, player visualization, and movement in active gameplay.
+
+### Debug scenarios
+PASS. This ticket touched the existing `canyon-descent-boss-low-hp` debug scenario as a snapshot correctness fix, not as a new gameplay path. It remains behind the existing debug socket gate (`ALLOW_DEBUG_SCENARIOS`, localhost, non-production) and the client URL shortcut path. The scenario requires an already-running canyon_descent Tier 2 stage-boss run with an encounter, matching a state reachable through normal progression by deploying Canyon Descent Tier 2, clearing adds, and engaging the miniboss; it does not replace normal validation, persistence, or encounter activation for real players.
+
+### Verification
+PASS. The round-3 coverage log reports `137 passed` test files and `2219 passed` tests. Relevant added/covered checks include Spike Trap renderer dispatch/timing, the spike VFX primitive, persistent hazard reconciliation and cleanup, server enchantment snapshot fields, trap trigger event queuing, and the canyon low-HP debug-scenario snapshot regression.
+
+## Remaining gaps
+
+None.
+
