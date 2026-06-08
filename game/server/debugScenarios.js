@@ -2274,6 +2274,73 @@ function applyDebugScenario(socket, name) {
       far.hp = 80;
       far.maxHp = 80;
       far.wanderTarget = { x: far.x, z: far.z };
+    } else if (name === 'frost-spells-ready') {
+      // Playing phase with Cryo Burst and Permafrost Lance in hand, full Magic
+      // Stones, and clustered grunts so both AoE freeze casts are exercisable.
+      // The same state is reachable by earning early reward spells in a dungeon run.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const filledSlots = player.hand
+        .map((c, i) => (c != null ? i : -1))
+        .filter((i) => i >= 0);
+      if (filledSlots[0] !== undefined) {
+        player.hand[filledSlots[0]] = {
+          id: 'frost_nova',
+          name: 'Cryo Burst',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      if (filledSlots[1] !== undefined) {
+        player.hand[filledSlots[1]] = {
+          id: 'permafrost_lance',
+          name: 'Permafrost Lance',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      state.enemies = [];
+      const near = spawnEnemy(player.x + 3, player.z, 'grunt');
+      near.hp = 80;
+      near.maxHp = 80;
+      near.wanderTarget = { x: near.x, z: near.z };
+      const mid = spawnEnemy(player.x + 5, player.z + 1, 'grunt');
+      mid.hp = 80;
+      mid.maxHp = 80;
+      mid.wanderTarget = { x: mid.x, z: mid.z };
+      const far = spawnEnemy(player.x + 6, player.z - 1, 'grunt');
+      far.hp = 80;
+      far.maxHp = 80;
+      far.wanderTarget = { x: far.x, z: far.z };
+    } else if (name === 'glacier-collapse-ready') {
+      // Playing phase with Glacier Rupture in hand, full Magic Stones, and
+      // grunts in AoE range so the wind-up shatter cast is exercisable without
+      // evolving frost_nova first. The same state is reachable via evolution.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'glacier_collapse',
+          name: 'Glacier Rupture',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      state.enemies = [];
+      const near = spawnEnemy(player.x + 3, player.z, 'grunt');
+      near.hp = 80;
+      near.maxHp = 80;
+      near.wanderTarget = { x: near.x, z: near.z };
+      const mid = spawnEnemy(player.x + 5, player.z + 1, 'grunt');
+      mid.hp = 80;
+      mid.maxHp = 80;
+      mid.wanderTarget = { x: mid.x, z: mid.z };
     } else if (name === 'magma-windup-ready') {
       // Playing phase with Corebreaker Greatsword (windUpMs) in hand and a grunt
       // in melee range so commitment entry and input lock are exercisable without

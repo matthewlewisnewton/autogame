@@ -68,7 +68,29 @@ describe('resolveRenderers()', () => {
 
 	it('falls back to the spell default for plain spell cards', () => {
 		expect(resolveRenderers('battle_familiar')).toHaveLength(1);
-		expect(resolveRenderers('frost_nova')).toHaveLength(1);
+	});
+
+	it('does not fall back to the spell default for frost_nova and permafrost_lance', () => {
+		const frostCtx = makeCtx();
+		renderCardUsed({
+			cardId: 'frost_nova',
+			origin: { x: 0, z: 0 },
+			radius: 4,
+			hits: [],
+		}, frostCtx);
+		expect(frostCtx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+		expect(frostCtx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(true);
+
+		const lanceCtx = makeCtx();
+		renderCardUsed({
+			cardId: 'permafrost_lance',
+			origin: { x: 0, z: 0 },
+			radius: 6,
+			direction: { x: 1, z: 0 },
+			hits: [],
+		}, lanceCtx);
+		expect(lanceCtx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+		expect(lanceCtx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(true);
 	});
 
 	it('returns an empty list for creature/enchantment cards without an override', () => {
@@ -401,13 +423,55 @@ describe('renderCardUsed() — weapon dispatch', () => {
 			projectileTravelMs: 1200,
 		});
 	});
+
+	it('ice_ball adds an accent-tinted projectile trail, impact decal and frost burst', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'ice_ball',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			attackRange: 9,
+			projectileTravelMs: 1200,
+			hits: [],
+		}, ctx);
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail).toBeDefined();
+		expect(trail[1]).toEqual({ x: 1, z: 2 });
+		expect(trail[2]).toEqual({ x: 1, z: 0 });
+		expect(trail[3]).toMatchObject({ range: 9, color: 0x67e8f9 });
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 10, z: 2 });
+		expect(decal[2]).toMatchObject({ color: 0x67e8f9 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 10, z: 2 });
+		expect(burst[2]).toMatchObject({ color: 0x67e8f9 });
+	});
+
+	it('ice_ball still renders without throwing when the new ctx primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnProjectileTrail: undefined,
+			spawnImpactDecal: undefined,
+			spawnParticleBurst: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'ice_ball',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			attackRange: 9,
+			projectileTravelMs: 1200,
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+	});
 });
 
 describe('renderCardUsed() — spell dispatch', () => {
 	it('spawns a generic accent-tinted ring for plain spell cards', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
-			cardId: 'frost_nova',
+			cardId: 'battle_familiar',
 			origin: { x: 0, z: 0 },
 			radius: 4,
 			hits: [],
@@ -415,8 +479,49 @@ describe('renderCardUsed() — spell dispatch', () => {
 		const ring = ctx._calls.find((c) => c[0] === 'spawnSummonEffect');
 		expect(ring).toBeDefined();
 		expect(ring[2]).toBe(4);
-		// frost_nova accent color is 0x67e8f9
-		expect(ring[3]).toEqual({ color: 0x67e8f9, emissive: 0x67e8f9 });
+	});
+
+	it('frost_nova adds an icy telegraph ring and radial frost burst at the cast origin', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'frost_nova',
+			origin: { x: 2, z: 3 },
+			radius: 4,
+			hits: [],
+		}, ctx);
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 2, z: 3 });
+		expect(ring[2]).toBe(4);
+		expect(ring[3]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 2, z: 3 });
+		expect(burst[2]).toMatchObject({ color: 0x67e8f9 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('permafrost_lance uses a narrower telegraph, directional shard trail, and tip burst', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'permafrost_lance',
+			origin: { x: 0, z: 0 },
+			radius: 6,
+			direction: { x: 1, z: 0 },
+			hits: [],
+		}, ctx);
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[2]).toBeCloseTo(3.3, 5);
+		expect(ring[3]).toMatchObject({ color: 0x67e8f9 });
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail).toBeDefined();
+		expect(trail[2]).toEqual({ x: 1, z: 0 });
+		expect(trail[3]).toMatchObject({ range: 6, color: 0x67e8f9 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 6, z: 0 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
 	});
 
 	it('uses the fixed glacier palette for glacier_collapse (not the accent)', () => {
@@ -429,6 +534,25 @@ describe('renderCardUsed() — spell dispatch', () => {
 		}, ctx);
 		const ring = ctx._calls.find((c) => c[0] === 'spawnSummonEffect');
 		expect(ring[3]).toEqual({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+	});
+
+	it('glacier_collapse adds a glacier telegraph ring and shatter burst at the rupture point', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'glacier_collapse',
+			origin: { x: 1, z: 2 },
+			radius: 5,
+			hits: [],
+		}, ctx);
+		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(telegraph).toBeDefined();
+		expect(telegraph[1]).toEqual({ x: 1, z: 2 });
+		expect(telegraph[2]).toBe(5);
+		expect(telegraph[3]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 1, z: 2 });
+		expect(burst[2]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9 });
 	});
 
 	it('healing_font renders the heal ring and plays heal sound when hpGained > 0', () => {
