@@ -13,6 +13,7 @@
     "gravity_well": "event_horizon",
     "echo_blade": "resonance_edge",
     "mana_leach": "soul_drain",
+    "harvesting_scythe": "soul_reaper",
     "dragons_breath": "inferno_pillar"
   },
   "cardSellValues": {
@@ -32,6 +33,7 @@
     "thunderbird": 18,
     "mana_prism": 10,
     "harvesting_scythe": 6,
+    "soul_reaper": 10,
     "sacrificial_altar": 14,
     "battery_automaton": 12,
     "chrono_trigger": 16,

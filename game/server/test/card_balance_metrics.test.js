@@ -20,7 +20,7 @@ describe('card balance metrics harness', () => {
 
 	it('covers every cardDefs id with a metrics row', () => {
 		expect(Object.keys(report.cards).sort()).toEqual(cardIds);
-		expect(report.cardCount).toBe(47);
+		expect(report.cardCount).toBe(48);
 	});
 
 	it('has cardStats entries for every card id', () => {
@@ -42,6 +42,7 @@ describe('card balance metrics harness', () => {
 			'dragons_breath',
 			'dungeon_drake',
 			'harvesting_scythe',
+			'soul_reaper',
 		]);
 		for (const [cardId, keys] of Object.entries(SERVER_STAT_OVERLAY)) {
 			expect(report.cards[cardId].serverStatOverlayKeys).toEqual(keys);

@@ -165,6 +165,7 @@ export const CARD_ACCENT_STYLE = {
   resonance_edge: { color: '#e879f9', icon: '≋' },
   mana_leach: { color: '#a855f7', icon: '◈' },
   soul_drain: { color: '#e879f9', icon: '☠' },
+  soul_reaper: { color: '#a855f7', icon: '☠' },
   dragons_breath: { color: '#fb923c', icon: '🔥' },
   magma_greatsword: { color: '#f97316', icon: '🗡' },
   inferno_pillar: { color: '#ef4444', icon: '🌋' },

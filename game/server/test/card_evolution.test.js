@@ -212,6 +212,35 @@ describe('card evolution', () => {
 		expect(player.ownedCards.resonance_edge).toBe(1);
 	});
 
+	it('evolves Ether Scythe +10 into Soul Reaper', () => {
+		const player = {
+			inventory: [
+				createCardInstance('harvesting_scythe', {
+					instanceId: 'scythe-1',
+					grind: EVOLUTION_GRIND_REQUIRED,
+				}),
+			],
+			ownedCards: { harvesting_scythe: 1 },
+			selectedDeck: ['scythe-1'],
+		};
+
+		const result = evolveCard(player, 'scythe-1');
+
+		expect(result.ok).toBe(true);
+		expect(result.fromCardId).toBe('harvesting_scythe');
+		expect(result.toCardId).toBe('soul_reaper');
+		expect(player.inventory[0].cardId).toBe('soul_reaper');
+		expect(player.inventory[0].isEvolved).toBe(true);
+		expect(CARD_DEFS.soul_reaper).toMatchObject({
+			isEvolved: true,
+			damage: 12,
+			magicStoneOnHit: 5,
+			magicStoneOnKill: 15,
+			goldOnKill: 3,
+			healOnKill: 5,
+		});
+	});
+
 	it('evolves Ether Siphon +10 into Soul Drain', () => {
 		const player = {
 			inventory: [

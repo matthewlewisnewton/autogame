@@ -93,6 +93,24 @@ describe('CARD_DEFS', () => {
 			type: 'weapon',
 			charges: 3,
 		});
+		expect(CARD_DEFS.soul_reaper).toMatchObject({
+			id: 'soul_reaper',
+			name: 'Soul Reaper',
+			type: 'weapon',
+			charges: 3,
+			isEvolved: true,
+			specialEffect: 'soul_reap',
+			damage: 12,
+			magicStoneOnHit: 5,
+			magicStoneOnKill: 15,
+			goldOnKill: 3,
+			healOnKill: 5,
+		});
+		expect(EVOLUTION_TRANSFORMS.harvesting_scythe).toBe('soul_reaper');
+		expect(CARD_ACCENT_STYLE.soul_reaper).toMatchObject({
+			color: '#a855f7',
+			icon: '☠',
+		});
 		expect(CARD_DEFS.sacrificial_altar).toMatchObject({
 			id: 'sacrificial_altar',
 			name: 'Offering Terminal',
@@ -359,6 +377,7 @@ describe('card ID sets', () => {
 		expect(weaponCardIds.has('steel_claymore')).toBe(true);
 		expect(weaponCardIds.has('magma_greatsword')).toBe(true);
 		expect(weaponCardIds.has('harvesting_scythe')).toBe(true);
+		expect(weaponCardIds.has('soul_reaper')).toBe(true);
 		expect(weaponCardIds.has('saber_of_light')).toBe(true);
 		expect(weaponCardIds.has('photon_slicer')).toBe(true);
 		expect(weaponCardIds.has('arcane_bolt')).toBe(true);
@@ -369,7 +388,7 @@ describe('card ID sets', () => {
 		expect(weaponCardIds.has('battle_familiar')).toBe(false);
 		expect(weaponCardIds.has('dungeon_drake')).toBe(false);
 		expect(weaponCardIds.has('fireball')).toBe(true);
-		expect(weaponCardIds.size).toBe(17);
+		expect(weaponCardIds.size).toBe(18);
 	});
 
 	it('spellCardIds contains base, evolved, and synergistic spell card IDs', () => {
@@ -432,6 +451,7 @@ describe('card ID sets', () => {
 			'glacier_collapse',
 			'inferno_pillar',
 			'soul_drain',
+			'soul_reaper',
 			'aegis_sentinel',
 		];
 		for (const cardId of packIds) {

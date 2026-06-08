@@ -12,6 +12,7 @@
   "ancient_wyrm": { "id": "ancient_wyrm", "name": "Archive Wyrm", "type": "creature", "charges": 1 },
   "mana_prism": { "id": "mana_prism", "name": "Mana Prism", "type": "spell", "charges": 1, "acquisition": "reward", "rewardOrder": 18 },
   "harvesting_scythe": { "id": "harvesting_scythe", "name": "Ether Scythe", "type": "weapon", "charges": 3, "acquisition": "reward", "rewardOrder": 19 },
+  "soul_reaper": { "id": "soul_reaper", "name": "Soul Reaper", "type": "weapon", "charges": 3 },
   "deck_sifter": { "id": "deck_sifter", "name": "Deck Sifter", "type": "weapon", "charges": 3, "acquisition": "reward", "rewardOrder": 20 },
   "sacrificial_altar": { "id": "sacrificial_altar", "name": "Offering Terminal", "type": "spell", "charges": 1, "acquisition": "reward", "rewardOrder": 21 },
   "battery_automaton": { "id": "battery_automaton", "name": "Battery Automaton", "type": "creature", "charges": 1, "acquisition": "reward", "rewardOrder": 22 },

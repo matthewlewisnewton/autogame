@@ -100,6 +100,15 @@
     "magicStoneOnHit": 5,
     "magicStoneOnKill": 15
   },
+  "soul_reaper": {
+    "damage": 12,
+    "magicStoneOnHit": 5,
+    "magicStoneOnKill": 15,
+    "goldOnKill": 3,
+    "healOnKill": 5,
+    "isEvolved": true,
+    "specialEffect": "soul_reap"
+  },
   "deck_sifter": {
     "effect": "draw_card",
     "magicStoneCost": 0,
