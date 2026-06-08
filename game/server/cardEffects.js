@@ -351,6 +351,8 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       const swingsPerUse = cardDef.swingsPerUse || 1;
       let hits = [];
       let magicStonesGained = 0;
+      let totalHpHealed = 0;
+      let totalCurrencyGained = 0;
 
       for (let swing = 0; swing < swingsPerUse; swing++) {
         let swingResult;
@@ -374,6 +376,8 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           swingResult = collectConeHits(originX, originZ, dirX, dirZ, attackRange, attackConeAngle, damage, {
             magicStoneOnHit: cardDef.magicStoneOnHit,
             magicStoneOnKill: cardDef.magicStoneOnKill,
+            healOnKill: cardDef.healOnKill,
+            currencyOnKill: cardDef.currencyOnKill,
             attackerId: socket.playerId,
           });
         }
@@ -381,6 +385,8 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           hits.push({ ...hit, swing: swing + 1 });
         }
         magicStonesGained += swingResult.magicStonesGained;
+        totalHpHealed += swingResult.hpHealed || 0;
+        totalCurrencyGained += swingResult.currencyGained || 0;
       }
 
       // Fireball: every enemy struck by the projectile catches fire (BURNING).
@@ -462,6 +468,11 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       }
 
       const appliedMagicStones = addMagicStones(player, magicStonesGained);
+      const appliedHpHealed = totalHpHealed > 0 ? healPlayer(socket.playerId, totalHpHealed) : 0;
+      if (totalCurrencyGained > 0) {
+        player.currency = (player.currency || 0) + totalCurrencyGained;
+        player.currencyEarnedThisRun = (player.currencyEarnedThisRun || 0) + totalCurrencyGained;
+      }
       cleanupAfterDamage();
 
       if (!fromWindup) {
@@ -490,6 +501,8 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
         magicStonesGained: appliedMagicStones,
         swingCount: swingsPerUse,
         comboCount: player.weaponComboCounts ? player.weaponComboCounts[data.cardId] : undefined,
+        ...(appliedHpHealed > 0 ? { hpHealed: appliedHpHealed } : {}),
+        ...(totalCurrencyGained > 0 ? { currencyGained: totalCurrencyGained } : {}),
         ...(cardDef.specialEffect === 'fire_trail' ? {
           dotTicks: cardDef.dotTicks || 4,
           dotIntervalMs: cardDef.dotIntervalMs || 500,
