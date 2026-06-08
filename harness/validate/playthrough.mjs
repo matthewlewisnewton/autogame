@@ -30,6 +30,7 @@ import { readHarness } from './lib/harnessState.mjs';
 import { writeScreenshot } from './lib/screenshot.mjs';
 import { probeBossUi } from './lib/bossUiProbe.mjs';
 import { probeStatusCards } from './lib/statusCardsProbe.mjs';
+import { probeWindUp } from './lib/windUpProbe.mjs';
 import { walkToZone } from './lib/hubMovement.mjs';
 import {
 	waitForHubLobby,
@@ -737,6 +738,19 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 		});
 	}
 
+	// Wind-up card input-lock + charge-telegraph probe (ticket 308), gated behind
+	// the preset flag so other presets are unaffected. Runs last in the boss
+	// phase; the grant is additive so the boss encounter stays intact for the
+	// victory step.
+	let windUpResult = null;
+	if (preset.probeWindUp) {
+		windUpResult = await probeWindUp(page, {
+			outDir: outDirAbs,
+			repoRoot: REPO_ROOT,
+			windUpScenario: preset.windUpScenario,
+		});
+	}
+
 	return {
 		midCombatScreenshot,
 		dormantScreenshot,
@@ -753,6 +767,10 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 			healCleanse: statusCardsResult.healCleanse,
 			statusCardsScreenshot: statusCardsResult.screenshot,
 		} : {}),
+		...(windUpResult ? {
+			windUp: windUpResult.windUp,
+			windUpScreenshot: windUpResult.screenshot,
+		} : {}),
 		probes: {
 			dormant: dormantProbe,
 			active: activeProbe,
@@ -761,6 +779,7 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 				statusCards: statusCardsResult.statusCards,
 				healCleanse: statusCardsResult.healCleanse,
 			} : {}),
+			...(windUpResult ? { windUp: windUpResult.windUp } : {}),
 			...(Object.keys(floorAlignment).length > 0 ? { floorAlignment } : {}),
 		},
 	};
@@ -882,6 +901,7 @@ function collectScreenshots(summary) {
 	if (summary.bossEncounter?.activeScreenshot) shots.push(summary.bossEncounter.activeScreenshot);
 	if (summary.bossEncounter?.bossUiScreenshot) shots.push(summary.bossEncounter.bossUiScreenshot);
 	if (summary.bossEncounter?.statusCardsScreenshot) shots.push(summary.bossEncounter.statusCardsScreenshot);
+	if (summary.bossEncounter?.windUpScreenshot) shots.push(summary.bossEncounter.windUpScreenshot);
 	if (summary.victory?.bossDefeatedScreenshot) shots.push(summary.victory.bossDefeatedScreenshot);
 	if (summary.victory?.victoryScreenshot) shots.push(summary.victory.victoryScreenshot);
 	return shots;

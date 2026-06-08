@@ -45,6 +45,7 @@ const {
   stateSnapshot,
   assignRunSpawnPositions,
   suspendRunToLobby,
+  getCardDef,
 } = require('./progression');
 const { unlockHat: unlockHatForAccount, unlockQuestTier } = require('./users');
 const { backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
@@ -2341,6 +2342,45 @@ function applyDebugScenario(socket, name) {
         slowedUntil: target.slowedUntil || 0,
         burningUntil: target.burningUntil || 0,
         slowFactor: target.slowFactor || 1,
+      };
+    } else if (name === 'spire-ascent-windup-ready') {
+      // Live-run wind-up input-lock + charge-telegraph probe (ticket 308).
+      // ADDITIVE, like spire-ascent-status-cards: it injects the Corebreaker
+      // Greatsword (magma_greatsword, windUpMs 800) into the CURRENT spire run's
+      // hand at full Magic Stones WITHOUT resetting enemies, position, or the run,
+      // so the boss encounter stays intact for the subsequent victory step. The
+      // same state is reachable in normal play — magma_greatsword is an
+      // earnable/evolvable heavy weapon and playing it commits the identical
+      // wind-up lock through the same tryBeginCardWindup() code path.
+      player.magicStones = MAX_MAGIC_STONES;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot < 0) {
+        return { ok: false, reason: 'spire-ascent-windup-ready: no hand slot to grant the wind-up card' };
+      }
+      player.hand[replaceSlot] = {
+        id: 'magma_greatsword',
+        name: 'Corebreaker Greatsword',
+        type: 'weapon',
+        charges: 2,
+        remainingCharges: 2,
+      };
+      // Clear any pending commitment / slot cooldown so the probe can play the
+      // granted card immediately and observe the wind-up lock cleanly.
+      delete player.cardUseState;
+      delete player.cardWindupStartTime;
+      delete player.cardWindupMs;
+      delete player.pendingCardUse;
+      if (Array.isArray(player.slotCooldowns)) {
+        player.slotCooldowns[replaceSlot] = null;
+      }
+      const windUpMs = getCardDef('magma_greatsword')?.windUpMs || 0;
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        cardSlot: replaceSlot,
+        cardId: 'magma_greatsword',
+        windUpMs,
       };
     } else if (name === 'heal-spell-ready') {
       // Low-HP player with Restoration Beacon and Sanctum Pulse in hand so heal

@@ -22,4 +22,9 @@ export default {
 	statusSlowScenario: 'spire-ascent-status-cards',
 	statusBurnScenario: 'spire-ascent-status-burn',
 	healCleanseScenario: 'purifying-pulse-ready',
+	// Run the wind-up card input-lock + charge-telegraph probe during the active
+	// boss phase (ticket 308). The grant scenario is additive so the boss
+	// encounter stays intact for the victory step. Gated; other presets unaffected.
+	probeWindUp: true,
+	windUpScenario: 'spire-ascent-windup-ready',
 };

@@ -20,7 +20,7 @@ import {
 import { io } from 'socket.io-client';
 import { CARD_DEFS, CARD_TYPE_STYLE, CARD_ACCENT_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, getCardSellValue, getGrindCost, getCardDef, getForgeAttunePreview, weaponCardIds, spellCardIds, creatureCardIds, enchantmentCardIds } from './cards.js';
 import { buildLoadoutDeckDisplay } from './deck-loadout.js';
-import { drawCard, initHand as initHandFromModule, hand, deck, desperationDeck, slotCooldowns, canUseSlot, setDrawPile, setDesperationDrawPile, inDesperation, setInDesperation, canDrawIntoHandLocal, MAX_HAND_SLOTS, setHandInputLockChecker } from './hand.js';
+import { drawCard, initHand as initHandFromModule, hand, deck, desperationDeck, slotCooldowns, canUseSlot, setDrawPile, setDesperationDrawPile, inDesperation, setInDesperation, canDrawIntoHandLocal, MAX_HAND_SLOTS, setHandInputLockChecker, isHandInputLocked } from './hand.js';
 import { renderCardUsed } from './cardRenderers.js';
 import {
 	buildDeckMiniEntries,
@@ -4880,6 +4880,36 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 			burningUntil: me.burningUntil ?? 0,
 			slowFactor: me.slowFactor ?? 1,
 		} : null,
+		// Read-only wind-up instrumentation for the input-lock + charge-telegraph
+		// probe (ticket 308): expose the active wind-up card's windUpMs, the
+		// handInputLocked flag (from isHandInputLocked() in hand.js), and whether
+		// the holding slot still renders its wind-up telegraph hint. Pure reads —
+		// the input-lock and telegraph logic itself is unchanged.
+		windUp: (() => {
+			const handInputLocked = isHandInputLocked();
+			const activeCardId = me?.cardWindupCardId ?? null;
+			// Slot holding the active wind-up card, or — when idle — the first slot
+			// carrying any wind-up-capable card, so the telegraph read is stable
+			// both before and during the commitment window.
+			let telegraphSlot = -1;
+			for (let i = 0; i < hand.length; i++) {
+				const c = hand[i];
+				if (!c) continue;
+				const matches = activeCardId ? c.id === activeCardId : (CARD_DEFS[c.id]?.windUpMs || 0) > 0;
+				if (matches) { telegraphSlot = i; break; }
+			}
+			const slotEl = telegraphSlot >= 0 ? getCardSlotEl(telegraphSlot) : null;
+			const telegraphCardId = activeCardId ?? (telegraphSlot >= 0 ? hand[telegraphSlot]?.id ?? null : null);
+			return {
+				handInputLocked,
+				cardUseState: me?.cardUseState ?? null,
+				activeCardId,
+				windUpMs: (telegraphCardId && CARD_DEFS[telegraphCardId]?.windUpMs) ?? null,
+				cardWindupUntil: me?.cardWindupUntil ?? null,
+				telegraphSlot: telegraphSlot >= 0 ? telegraphSlot : null,
+				telegraphPresent: !!slotEl?.querySelector('.card-windup-hint'),
+			};
+		})(),
 		keyItemIndicatorOnCooldown: (() => {
 			const el = document.getElementById('key-item-indicator');
 			return !!el && el.classList.contains('cooldown');

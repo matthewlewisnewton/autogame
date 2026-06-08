@@ -556,6 +556,7 @@ const DEBUG_SCENARIOS = new Set([
   'spire-ascent-boss-low-hp',
   'spire-ascent-status-cards',
   'spire-ascent-status-burn',
+  'spire-ascent-windup-ready',
   'stage-boss-dormant',
   'stage-boss-active',
   'annex-overseer-ready',
