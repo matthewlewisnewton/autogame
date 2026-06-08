@@ -8,6 +8,7 @@ import cardEconomy from '../../shared/cardEconomy.json';
 import {
 	analyzeCards,
 	assertCompleteMetrics,
+	effectiveCycleMs,
 	SERVER_STAT_OVERLAY,
 } from '../../validation/card-balance/analyzeCards.mjs';
 
@@ -106,6 +107,21 @@ describe('card balance metrics harness', () => {
 			sellValue: cardEconomy.cardSellValues.dungeon_drake,
 			serverStatOverlayKeys: ['breathConeAngle'],
 		});
+	});
+
+	it('excalibur_photon DPM uses effective cycle (cooldownMs + windUpMs) with unchanged burst', () => {
+		const stats = cardStats.excalibur_photon;
+		const merged = { ...cardDefs.excalibur_photon, ...stats };
+		const cycleMs = effectiveCycleMs(merged);
+		// damagePerMs = (14 × swingsPerUse 2) / (200 ms cooldown + 600 ms wind-up)
+		expect(cycleMs).toBe(stats.cooldownMs + stats.windUpMs);
+		expect(report.cards.excalibur_photon).toMatchObject({
+			damage: 14,
+			effectiveBurst: 14,
+		});
+		expect(report.cards.excalibur_photon.damagePerMs).toBeCloseTo(28 / cycleMs);
+		expect(report.cards.excalibur_photon.damagePerMs).toBeGreaterThanOrEqual(0.03);
+		expect(report.cards.excalibur_photon.damagePerMs).toBeLessThanOrEqual(0.046);
 	});
 
 	it('runs as a standalone node script', () => {

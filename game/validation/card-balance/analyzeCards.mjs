@@ -14,6 +14,14 @@ const SHARED_DIR = path.resolve(__dirname, '../../shared');
 export const DEFAULT_COOLDOWN_MS = 800;
 
 /**
+ * Sustained DPM cycle: slot cooldown plus optional wind-up lock before damage.
+ * damagePerMs = (effectiveBurst × (swingsPerUse ?? 1)) / effectiveCycleMs
+ */
+export function effectiveCycleMs(merged) {
+	return (merged.cooldownMs ?? DEFAULT_COOLDOWN_MS) + (merged.windUpMs ?? 0);
+}
+
+/**
  * Server-only fields injected in progression.js CARD_STAT_OVERLAY (not in shared JSON).
  * Metrics omit computed values; this documents which cards receive overlay keys.
  */
@@ -95,8 +103,8 @@ function computeDerivedMetrics(merged) {
 	const effectiveBurst = primaryDamage + dotContribution;
 	const perUseDamage = effectiveBurst * swingsPerUse;
 	const damagePerCharge = merged.charges > 0 ? perUseDamage / merged.charges : perUseDamage;
-	const cooldownMs = merged.cooldownMs ?? DEFAULT_COOLDOWN_MS;
-	const damagePerMs = cooldownMs > 0 ? perUseDamage / cooldownMs : null;
+	const cycleMs = effectiveCycleMs(merged);
+	const damagePerMs = cycleMs > 0 ? perUseDamage / cycleMs : null;
 	const utilityScore = resolveUtilityScore(merged, merged.type);
 
 	return {
