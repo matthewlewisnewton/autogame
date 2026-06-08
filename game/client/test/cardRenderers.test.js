@@ -142,28 +142,28 @@ describe('renderCardUsed() — common post-effects', () => {
 		expect(triggerCalls[0][2]).toBe(3);
 	});
 
-	it('plays the loot sound when the local player gained magic stones from Restoration Beacon', () => {
+	it('plays the heal sound when the local player gained HP from Healing Font', () => {
 		const ctx = makeCtx({ myId: 'me' });
 		renderCardUsed({
 			cardId: 'healing_font',
 			origin: { x: 0, z: 0 },
 			radius: 4,
-			magicStonesGained: 6,
+			hpGained: 6,
 			playerId: 'me',
 		}, ctx);
-		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'loot')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(true);
 	});
 
-	it('does not play the loot sound when another player used Restoration Beacon', () => {
+	it('does not play the heal sound when another player used Healing Font', () => {
 		const ctx = makeCtx({ myId: 'me' });
 		renderCardUsed({
 			cardId: 'healing_font',
 			origin: { x: 0, z: 0 },
 			radius: 4,
-			magicStonesGained: 6,
+			hpGained: 6,
 			playerId: 'someone-else',
 		}, ctx);
-		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'loot')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
 	});
 
 	it('plays a single enemyHit sound for multi-hit events (throttle)', () => {
@@ -384,30 +384,56 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ring[3]).toEqual({ color: 0x38bdf8, emissive: 0x0ea5e9 });
 	});
 
-	it('divine_grace renders the MS restore ring and plays loot when magicStonesGained > 0', () => {
+	it('healing_font renders the heal ring and plays heal sound when hpGained > 0', () => {
+		const ctx = makeCtx({ myId: 'me' });
+		renderCardUsed({
+			cardId: 'healing_font',
+			origin: { x: 0, z: 0 },
+			radius: 3,
+			hpGained: 6,
+			playerId: 'me',
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnDivineGraceEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(true);
+	});
+
+	it('healing_font does not play heal sound when no HP was gained', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'healing_font',
+			origin: { x: 0, z: 0 },
+			radius: 3,
+			hpGained: 0,
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
+	});
+
+	it('divine_grace renders the heal ring and plays heal sound when hpGained > 0', () => {
 		const ctx = makeCtx({ myId: 'me' });
 		renderCardUsed({
 			cardId: 'divine_grace',
 			origin: { x: 0, z: 0 },
 			radius: 3,
-			magicStonesGained: 8,
+			hpGained: 10,
 			playerId: 'me',
 			hits: [],
 		}, ctx);
 		expect(ctx._calls.some((c) => c[0] === 'spawnDivineGraceEffect')).toBe(true);
-		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'loot')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(true);
 	});
 
-	it('divine_grace does not play loot when no magic stones were gained', () => {
+	it('divine_grace does not play heal sound when no HP was gained', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'divine_grace',
 			origin: { x: 0, z: 0 },
 			radius: 3,
-			magicStonesGained: 0,
+			hpGained: 0,
 			hits: [],
 		}, ctx);
-		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'loot')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
 	});
 
 	it('purifying_pulse renders heal ring and cleanse burst with heal sound', () => {
