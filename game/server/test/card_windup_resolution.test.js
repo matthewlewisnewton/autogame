@@ -184,6 +184,102 @@ describe('card wind-up deferred resolution', () => {
 		expect(isPlayerCardCommitted(player)).toBe(false);
 	});
 
+	async function startExcaliburWindupScenario() {
+		({ socket } = await connectClient(baseUrl));
+		const startGamePromise = waitForEvent(socket, 'startGame');
+		socket.emit('playerReady', true);
+		await startGamePromise;
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'excalibur-windup-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		const state = lobbyGameState(socket._lobbyId);
+		const player = state.players[socket._playerId];
+		const enemy = state.enemies[0];
+		return { state, player, enemy };
+	}
+
+	it('excalibur_photon enters windup on useCard with no immediate damage or cardUsed', async () => {
+		const { state, player } = await startExcaliburWindupScenario();
+		const target = () => state.enemies[0];
+		const hpBefore = target().hp;
+		const perSwingDamage = getCardDef('excalibur_photon').damage;
+		expect(perSwingDamage).toBe(14);
+		const slotIndex = player.hand.findIndex((c) => c && c.id === 'excalibur_photon');
+		expect(slotIndex).toBeGreaterThanOrEqual(0);
+
+		player.x = 0;
+		player.z = 0;
+		player.rotation = 0;
+		target().x = 2;
+		target().z = 0;
+		target().wanderTarget = { x: target().x, z: target().z };
+
+		let cardUsed = false;
+		socket.on('cardUsed', () => { cardUsed = true; });
+
+		const commitUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('useCard', { cardId: 'excalibur_photon', slotIndex, rotation: 0 });
+		await commitUpdatePromise;
+
+		expect(player.cardUseState).toBe('windup');
+		expect(player.pendingCardUse?.cardId).toBe('excalibur_photon');
+		expect(target().hp).toBe(hpBefore);
+		expect(cardUsed).toBe(false);
+		expect(isPlayerCardCommitted(player)).toBe(true);
+	});
+
+	it('excalibur_photon applies 28 total damage and CARD_USED only after windUpMs', async () => {
+		const { state, player } = await startExcaliburWindupScenario();
+		const target = () => state.enemies[0];
+		const hpBefore = target().hp;
+		const cardDef = getCardDef('excalibur_photon');
+		const windUpMs = cardDef.windUpMs;
+		const perSwingDamage = cardDef.damage;
+		const swingsPerUse = cardDef.swingsPerUse;
+		expect(perSwingDamage).toBe(14);
+		expect(swingsPerUse).toBe(2);
+		const slotIndex = player.hand.findIndex((c) => c && c.id === 'excalibur_photon');
+		expect(slotIndex).toBeGreaterThanOrEqual(0);
+
+		player.x = 0;
+		player.z = 0;
+		player.rotation = 0;
+		target().x = 2;
+		target().z = 0;
+		target().wanderTarget = { x: target().x, z: target().z };
+
+		const commitUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('useCard', { cardId: 'excalibur_photon', slotIndex, rotation: 0 });
+		await commitUpdatePromise;
+
+		expect(target().hp).toBe(hpBefore);
+		expect(isPlayerCardCommitted(player)).toBe(true);
+
+		setSimGameState(state, {});
+		setProgressionGameState(state);
+		expect(state._lobbyId).toBeDefined();
+		player.cardWindupStartTime = Date.now() + 100000;
+		processPendingCardWindups();
+		expect(target().hp).toBe(hpBefore);
+		expect(player.cardUseState).toBe('windup');
+
+		const cardUsedPromise = waitForEvent(socket, 'cardUsed');
+		player.cardWindupStartTime = Date.now() - windUpMs - 50;
+		runGameLoopTick();
+		const cardUsedPayload = await cardUsedPromise;
+
+		expect(player.cardUseState).toBeUndefined();
+		expect(target().hp).toBe(hpBefore - perSwingDamage * swingsPerUse);
+		expect(cardUsedPayload.hits?.length).toBe(swingsPerUse);
+		expect(cardUsedPayload.swingCount).toBe(swingsPerUse);
+		expect(cardUsedPayload.hits.map((h) => h.swing).sort()).toEqual([1, 2]);
+		expect(isPlayerCardCommitted(player)).toBe(false);
+		expect(player.pendingCardUse).toBeUndefined();
+	});
+
 	it('iron_sword without windUpMs still resolves instantly', async () => {
 		({ socket } = await connectClient(baseUrl));
 		const startGamePromise = waitForEvent(socket, 'startGame');

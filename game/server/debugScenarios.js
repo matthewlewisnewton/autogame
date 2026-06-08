@@ -2274,6 +2274,29 @@ function applyDebugScenario(socket, name) {
       target.hp = 200;
       target.maxHp = 200;
       target.wanderTarget = { x: target.x, z: target.z };
+    } else if (name === 'excalibur-windup-ready') {
+      // Playing phase with Excalibur Photon (windUpMs, double swing) in hand and a
+      // grunt in melee range so commitment entry and deferred resolution are
+      // exercisable without evolving saber_of_light first. The same state is
+      // reachable via normal evolution.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'excalibur_photon',
+          name: 'Excalibur Photon',
+          type: 'weapon',
+          charges: 6,
+          remainingCharges: 6,
+        };
+      }
+      state.enemies = [];
+      const target = spawnEnemy(player.x + 2.5, player.z, 'grunt');
+      target.hp = 200;
+      target.maxHp = 200;
+      target.wanderTarget = { x: target.x, z: target.z };
     }
 
     syncRunObjectiveToEnemies();

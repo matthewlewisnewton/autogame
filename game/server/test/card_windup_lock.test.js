@@ -51,6 +51,56 @@ describe('card wind-up input lock until resolution', () => {
 		return { state, player };
 	}
 
+	it('excalibur_photon keeps movement and useCard blocked after windUpMs until resolution', async () => {
+		({ socket } = await connectClient(baseUrl));
+		const startGamePromise = waitForEvent(socket, 'startGame');
+		socket.emit('playerReady', true);
+		await startGamePromise;
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'excalibur-windup-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		const state = lobbyGameState(socket._lobbyId);
+		const player = state.players[socket._playerId];
+		const windUpMs = getCardDef('excalibur_photon').windUpMs;
+		const slotIndex = player.hand.findIndex((c) => c && c.id === 'excalibur_photon');
+		expect(slotIndex).toBeGreaterThanOrEqual(0);
+
+		const startX = player.x;
+		const startZ = player.z;
+
+		await waitForEvent(socket, 'stateUpdate');
+		socket.emit('useCard', { cardId: 'excalibur_photon', slotIndex, rotation: 0 });
+		await waitForEvent(socket, 'stateUpdate');
+
+		player.cardWindupStartTime = Date.now() - windUpMs - 50;
+		setSimGameState(state, {});
+		setProgressionGameState(state);
+
+		expect(isPlayerCardCommitted(player)).toBe(true);
+		expect(player.pendingCardUse?.cardId).toBe('excalibur_photon');
+
+		player.inputDx = 1;
+		player.inputDz = 0;
+		player.inputActive = true;
+		player.lastInputTime = Date.now();
+		applyPlayerMovement(state, buildMovementContext(state));
+		expect(player.x).toBe(startX);
+		expect(player.z).toBe(startZ);
+
+		const cardErrorPromise = waitForEvent(socket, 'cardError');
+		socket.emit('useCard', { cardId: 'excalibur_photon', slotIndex, rotation: 0 });
+		const cardError = await cardErrorPromise;
+		expect(cardError.reason).toBe('Card commitment in progress');
+
+		processPendingCardWindups();
+
+		expect(isPlayerCardCommitted(player)).toBe(false);
+		expect(player.pendingCardUse).toBeUndefined();
+	});
+
 	it('keeps movement and useCard blocked after windUpMs until processPendingCardWindups', async () => {
 		const { state, player } = await startMagmaWindupScenario();
 		const windUpMs = getCardDef('magma_greatsword').windUpMs;
