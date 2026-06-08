@@ -81,6 +81,16 @@ function setCallbacks(deps) {
   DEBUG_SCENARIOS = deps.DEBUG_SCENARIOS;
 }
 
+/** Drop in-progress card wind-up so the next debug scenario can cast immediately. */
+function clearPlayerCardCommitment(player) {
+  delete player.cardUseState;
+  delete player.cardWindupUntil;
+  delete player.cardWindupStartTime;
+  delete player.cardWindupMs;
+  delete player.cardWindupCardId;
+  delete player.pendingCardUse;
+}
+
 function setupFrostCrossingTier1Deploy(lobby, state, player) {
   const questId = 'frost_crossing';
   const tier = 1;
@@ -272,6 +282,7 @@ function applyDebugScenario(socket, name) {
     player.dead = false;
     player.firstMoveAfterSpawn = false;
     player.lastMoveTime = Date.now();
+    clearPlayerCardCommitment(player);
     player.debugScenario = name;
     if (!player.pendingSummons) {
       player.pendingSummons = new Set();
@@ -1037,16 +1048,56 @@ function applyDebugScenario(socket, name) {
       if (state.run.encounter.phase !== 'dormant') {
         return { ok: false, reason: 'Encounter must be dormant' };
       }
-      const anchor = resolveEncounterAnchor(state.run, state);
-      if (!anchor) {
-        return { ok: false, reason: 'No encounter anchor for boss approach' };
+      const bossId = state.run.encounter.bossEnemyId;
+      const boss = state.enemies.find((e) => e.id === bossId);
+      if (!boss || boss.type !== 'miniboss') {
+        return { ok: false, reason: 'Canyon miniboss not found' };
       }
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
-      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 1;
-      player.z = anchor.z;
+      repositionNearEnemy(player, boss, ENCOUNTER_TRIGGER_RADIUS + 1);
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       player.debugScenarioNudgeAfter = Date.now() + 1500;
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'canyon-descent-encounter-trigger') {
+      // Debug QA: activate the dormant canyon miniboss after boss-approach without
+      // keyboard walking across elevation bands. Same transition is reachable by
+      // walking into the encounter trigger in normal play.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'canyon_descent'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires canyon_descent Tier 2 stage-boss run' };
+      }
+      const bossId = state.run.encounter.bossEnemyId;
+      for (const enemy of state.enemies || []) {
+        if (enemy.id !== bossId) enemy.hp = 0;
+      }
+      state.enemies = (state.enemies || []).filter((e) => e.hp > 0);
+      syncRunObjectiveToEnemies();
+      const boss = state.enemies.find((e) => e.id === bossId);
+      if (!boss || boss.type !== 'miniboss') {
+        return { ok: false, reason: 'Canyon miniboss not found' };
+      }
+      player.debugScenarioNudgeAfter = 0;
+      repositionNearEnemy(player, boss, ENCOUNTER_TRIGGER_RADIUS - 1);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      if (isEncounterDormant(state.run)) {
+        activateEncounter(state.run);
+      }
+      if (!state.run.encounter.locked) {
+        lockEncounter(state.run);
+      }
+      // Harness bossVisualIdentity probe needs a live non-boss enemy beside the
+      // active miniboss (adds are cleared before activation in normal play).
+      const visualAdd = spawnEnemy(boss.x + 2.5, boss.z, 'grunt');
+      visualAdd.hp = 1;
+      visualAdd.y = resolveFloorY(sampleFloorY(state.layout, visualAdd.x, visualAdd.z));
+      visualAdd.wanderTarget = { x: visualAdd.x, z: visualAdd.z };
       broadcastLobbyUpdate(lobby);
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return { ok: true, scenario: name };
@@ -2558,6 +2609,9 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       player.rotation = 0;
+      // Harness casts via keyboard (client rotation), not server-only useCard; force
+      // the next slow roll so playthrough validation is deterministic (65% is flaky).
+      player.debugForceStatusRoll = 'slow';
       const replaceSlot = player.hand.findIndex(c => c != null);
       if (replaceSlot >= 0) {
         player.hand[replaceSlot] = {
@@ -2983,7 +3037,11 @@ function nudgeDebugBossApproachPlayers(state) {
     const dx = anchor.x - player.x;
     const dz = anchor.z - player.z;
     const dist = Math.hypot(dx, dz);
-    if (dist <= ENCOUNTER_TRIGGER_RADIUS || dist < 0.01) continue;
+    if (dist <= ENCOUNTER_TRIGGER_RADIUS) {
+      tryActivateEncounter(state);
+      continue;
+    }
+    if (dist < 0.01) continue;
     const step = Math.min(2, dist - ENCOUNTER_TRIGGER_RADIUS + 0.5);
     if (step <= 0) continue;
     player.x += (dx / dist) * step;

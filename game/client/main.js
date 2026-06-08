@@ -125,6 +125,7 @@ import {
 	isPlayerMoving,
 	getPlayerRotation,
 	setPlayerRotation,
+	alignAttackFacing,
 	getPlayerFacingDirection,
 	getWasDead,
 	setWasDead,
@@ -1474,6 +1475,9 @@ function bindSocketHandlers(s) {
 					const me = gameState.players[myId];
 					setPlayerPosition(me.x, me.z);
 					clearAllLockOnState();
+					if (Number.isFinite(me.rotation)) {
+						alignAttackFacing(me.rotation);
+					}
 				}
 			}, 0);
 			// Debug-only: the `hats-unlocked` scenario persists hat unlocks on the

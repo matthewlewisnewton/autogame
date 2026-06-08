@@ -931,6 +931,15 @@ function clampToDungeon(x, z, movementContext) {
 function nearbySpawnPosition(x, z, radius) {
   const bounds = _gameState.dungeonBounds;
 
+  const clampRadius = (pos) => {
+    const dx = pos.x - x;
+    const dz = pos.z - z;
+    const d = Math.hypot(dx, dz);
+    if (d <= radius) return pos;
+    const scale = radius / d;
+    return { x: x + dx * scale, z: z + dz * scale };
+  };
+
   // Try up to 8 random candidates within the circle
   for (let i = 0; i < 8; i++) {
     const angle = Math.random() * Math.PI * 2;
@@ -941,7 +950,9 @@ function nearbySpawnPosition(x, z, radius) {
     };
     candidate.x = Math.max(bounds.minX, Math.min(bounds.maxX, candidate.x));
     candidate.z = Math.max(bounds.minZ, Math.min(bounds.maxZ, candidate.z));
-    if (Math.hypot(candidate.x - x, candidate.z - z) <= radius) return candidate;
+    if (Math.hypot(candidate.x - x, candidate.z - z) <= radius) {
+      return clampRadius(candidate);
+    }
   }
 
   // All attempts exceeded radius after clamping (near dungeon edge).
@@ -950,10 +961,10 @@ function nearbySpawnPosition(x, z, radius) {
   const dx = clamped.x - x;
   const dz = clamped.z - z;
   const d = Math.hypot(dx, dz);
-  if (d <= radius) return clamped;
+  if (d <= radius) return clampRadius(clamped);
   // Clamp to radius
   const scale = radius / d;
-  return { x: x + dx * scale, z: z + dz * scale };
+  return clampRadius({ x: x + dx * scale, z: z + dz * scale });
 }
 
 /**

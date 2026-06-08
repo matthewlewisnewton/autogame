@@ -628,24 +628,14 @@ async function runHubStep({ page, preset, outDirAbs }) {
 		document.getElementById('create-lobby-btn')?.click();
 	}, lobbyName);
 
-	await page.waitForFunction(() => {
-		const lobby = document.getElementById('lobby');
-		return lobby && !lobby.classList.contains('hidden');
-	}, { timeout: 15000 }).catch(async () => {
-		await failWithHarness(page, '#lobby not visible after create channel');
-	});
-
-	await page.waitForFunction(() => {
-		const h = window.__AUTOGAME_HARNESS_STATE__?.();
-		return h
-			&& h.phase === 'lobby'
-			&& h.hasCanvas === true
-			&& h.layout?.profile === 'hub';
-	}, { timeout: 20000 }).catch(async () => {
-		await failWithHarness(page, 'Ship hub lobby not ready');
+	await waitForHubLobby(page).catch(async () => {
+		await failWithHarness(page, 'Ship hub lobby not ready after create channel');
 	});
 
 	await page.evaluate(() => {
+		if (typeof window.showGameLobby === 'function') {
+			window.showGameLobby();
+		}
 		if (typeof window.openCharacterBooth !== 'function') {
 			throw new Error('openCharacterBooth missing');
 		}
@@ -796,11 +786,17 @@ async function runBossEncounterStep({ page, preset, outDirAbs, skipMidCombatCapt
 		assertDormantBoss(approachHarness, bossType);
 	}
 
-	const activeHarness = await activateEncounter(page, {
-		bossType,
-		triggerRadius: encounterTriggerRadius,
-		timeoutMs: preset.encounterTimeoutMs ?? 60000,
-	});
+	let activeHarness;
+	if (bossApproachScenario === 'canyon-descent-boss-approach') {
+		await requestScenario(page, 'canyon-descent-encounter-trigger');
+		activeHarness = await readHarness(page);
+	} else {
+		activeHarness = await activateEncounter(page, {
+			bossType,
+			triggerRadius: encounterTriggerRadius,
+			timeoutMs: preset.encounterTimeoutMs ?? 60000,
+		});
+	}
 	if (activeHarness?.encounter?.phase !== 'active' || activeHarness?.encounter?.locked !== true) {
 		throw new Error(`Encounter did not reach active/locked: ${JSON.stringify(activeHarness?.encounter)}`);
 	}

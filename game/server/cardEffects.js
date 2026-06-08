@@ -956,16 +956,21 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
 
         const slowChance = cardDef.slowChance ?? 1;
         const slowDurationMs = cardDef.slowDurationMs || 0;
+        const forceSlowRoll = process.env.ALLOW_DEBUG_SCENARIOS === '1'
+          && player.debugForceStatusRoll === 'slow';
         if (slowDurationMs > 0 && slowChance > 0) {
           const slowed = new Set();
           for (const hit of hits) {
             if (!hit.enemyId || slowed.has(hit.enemyId)) continue;
             const enemy = state.enemies.find(e => e.id === hit.enemyId);
-            if (enemy && Math.random() < slowChance) {
+            if (enemy && (forceSlowRoll || Math.random() < slowChance)) {
               applySlow(enemy, slowDurationMs, cardDef.slowFactor);
               slowed.add(hit.enemyId);
             }
           }
+        }
+        if (forceSlowRoll) {
+          player.debugForceStatusRoll = null;
         }
 
         cleanupAfterDamage();

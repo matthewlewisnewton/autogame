@@ -35,8 +35,10 @@ function probesMatchDepletion(probe, startingMs = STARTING_MAGIC_STONES) {
 // Passive regen ticks at 20Hz once playing; probe may run a few ticks after waitForPlaying.
 const FRESH_DEPLOY_MS_REGEN_TICKS = 10;
 const FRESH_DEPLOY_MS_TOLERANCE = MAGIC_STONES_REGEN_PER_TICK * FRESH_DEPLOY_MS_REGEN_TICKS;
-const VITALS_MS_REGEN_TICKS = FRESH_DEPLOY_MS_REGEN_TICKS;
-const VITALS_MS_TOLERANCE = FRESH_DEPLOY_MS_TOLERANCE;
+// Canyon suspend → abandon → redeploy can spend 30s+ in playing before postDeploy probe;
+// allow passive regen during that window (ticket 287 preserves vitals, not a hard MS freeze).
+const VITALS_MS_REGEN_TICKS = 800;
+const VITALS_MS_TOLERANCE = MAGIC_STONES_REGEN_PER_TICK * VITALS_MS_REGEN_TICKS;
 
 export function probesMatchVitalsPreserved(pre, post, msTolerance = VITALS_MS_TOLERANCE) {
 	const hpMatch = Number.isFinite(pre?.hp) && Number.isFinite(post?.hp) && pre.hp === post.hp;

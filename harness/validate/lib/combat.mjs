@@ -134,6 +134,11 @@ async function swingAtTarget(page, attackKey, bossType, { minAddsLeft = 0, addTy
  * @param {import('playwright').Page} page
  */
 export async function enableGodmode(page) {
+	const alreadyOn = await readHarness(page);
+	if (alreadyOn?.player?.debugGodmode === true) {
+		return alreadyOn;
+	}
+
 	await page.evaluate(() => {
 		if (typeof window.__toggleDebugGodmodeForTest !== 'function') {
 			throw new Error('__toggleDebugGodmodeForTest missing');

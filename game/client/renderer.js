@@ -88,6 +88,7 @@ import {
 	resetLockOnTracking,
 	normalizeAngle,
 	cameraYawFromToTarget,
+	cameraYawBehindFacing,
 } from './lockOn.js';
 import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
 import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled, getAccountProfile } from './settings.js';
@@ -1313,6 +1314,13 @@ export function getPlayerFacingDirection() {
  */
 export function setPlayerRotation(rot) {
 	playerRotation = rot;
+}
+
+/** Align local attack facing and orbit camera behind a server rotation (debug QA). */
+export function alignAttackFacing(rotation) {
+	if (!Number.isFinite(rotation)) return;
+	setPlayerRotation(rotation);
+	cameraYaw = normalizeAngle(cameraYawBehindFacing(rotation));
 }
 
 /**
