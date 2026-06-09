@@ -128,6 +128,8 @@ let phaseStepTargetId = null;
 let phaseStepAllyRing = null;
 const windupFlashing = new Set(); // enemy ids currently showing windup emissive
 const minionsMeshes = {};
+/** Persistent ground-hazard meshes for armed spike_trap enchantments, keyed by enc.id. */
+const spikeTrapMeshes = {};
 /** First-seen minion ids — avoids re-playing spawn scale-in after resync/reconnect. */
 const seenMinionIds = new Set();
 /** Minion id → performance.now() when scale-in began (cleared once settled). */
@@ -1222,6 +1224,7 @@ export function getMeshMaps() {
 		telegraphMeshes,
 		minionTelegraphMeshes,
 		minionsMeshes,
+		spikeTrapMeshes,
 		lootMeshes,
 		iceBallMeshes,
 		playerCardWindupMarkers,
@@ -4688,6 +4691,151 @@ function spawnThermalColumnScorchRing(origin, radius, style = {}) {
 	});
 }
 
+// Spike Trap palette: a hostile steel-spike hazard, coherent with the card's red
+// accent (#f87171) yet clearly distinct from cinder_snare's fiery inferno burst —
+// brushed-steel spikes lit by a blood-red emissive glow rather than orange fire.
+const SPIKE_TRAP_SPIKE_COLOR = 0x9ca3af; // brushed steel grey
+const SPIKE_TRAP_EMISSIVE = 0xdc2626; // blood-red hazard glow on the iron
+const SPIKE_TRAP_RING_COLOR = 0xb91c1c; // dark blood-red hazard ring
+const SPIKE_TRAP_RING_EMISSIVE = 0xef4444; // red ring glow
+const SPIKE_TRAP_SPIKE_COUNT = 6; // spikes erupting in a ring around the trap
+const SPIKE_TRAP_SPIKE_HEIGHT = 0.75; // height of each iron spike
+const SPIKE_TRAP_SPIKE_RADIUS = 0.13; // base radius of each cone spike
+
+/**
+ * Spawn the erupting-spikes VFX for a Spike Trap: a cluster of vertical
+ * iron/steel cones bursting up out of the ground inside a blood-red hazard ring.
+ * Modeled on spawnInfernoPillarEffect's ring lifecycle, but the upward elements
+ * are vertical spike geometry (apex-up ConeGeometry) instead of a fire column, and
+ * the palette is hostile steel + blood-red rather than orange fire. Pure additive
+ * VFX: no network traffic, no state beyond activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ */
+export function spawnSpikeTrapEffect(origin, radius) {
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+
+	// Ground hazard ring — rides the shared radius-based expand→fade lifecycle in
+	// updateAttackEffects, exactly like spawnInfernoPillarEffect's ring.
+	const ringGeometry = new THREE.RingGeometry(0.1, 0.5, 48);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color: SPIKE_TRAP_RING_COLOR,
+		emissive: SPIKE_TRAP_RING_EMISSIVE,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+	ring.position.set(origin.x, 0.15, origin.z);
+	ring.rotation.x = -Math.PI / 2;
+	ring.scale.setScalar(0.001);
+	if (targetScene) targetScene.add(ring);
+
+	activeEffects.push({
+		mesh: ring,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration: SUMMON_EFFECT_DURATION,
+		spikeTrapRing: true,
+		_scene: targetScene,
+	});
+
+	// Erupting spikes — vertical apex-up cones clustered around the trap point,
+	// within `radius`. Each starts flattened (scale.y ≈ 0) so the dedicated
+	// isSpikeTrapSpike branch in updateAttackEffects lifts/scales it out of the
+	// ground while the base stays pinned to the floor.
+	const spikeOffset = radius * 0.55; // how far out the spikes erupt from center
+	for (let s = 0; s < SPIKE_TRAP_SPIKE_COUNT; s++) {
+		const angle = (s / SPIKE_TRAP_SPIKE_COUNT) * Math.PI * 2;
+		const geometry = new THREE.ConeGeometry(SPIKE_TRAP_SPIKE_RADIUS, SPIKE_TRAP_SPIKE_HEIGHT, 6);
+		const material = new THREE.MeshStandardMaterial({
+			color: SPIKE_TRAP_SPIKE_COLOR,
+			emissive: SPIKE_TRAP_EMISSIVE,
+			emissiveIntensity: 0.9,
+			transparent: true,
+			opacity: 1.0,
+		});
+		const spike = new THREE.Mesh(geometry, material);
+		// ConeGeometry's apex already points up (+Y); rotation.x = 0 keeps it
+		// standing vertically out of the ground rather than lying flat.
+		spike.rotation.x = 0;
+		const sx = origin.x + Math.cos(angle) * spikeOffset;
+		const sz = origin.z + Math.sin(angle) * spikeOffset;
+		spike.position.set(sx, 0, sz);
+		spike.scale.y = 0.001;
+		if (targetScene) targetScene.add(spike);
+
+		activeEffects.push({
+			mesh: spike,
+			origin: { x: sx, z: sz },
+			createdAt: performance.now(),
+			duration: SUMMON_EFFECT_DURATION,
+			isSpikeTrapSpike: true,
+			spikeHeight: SPIKE_TRAP_SPIKE_HEIGHT,
+			_scene: targetScene,
+		});
+	}
+}
+
+/**
+ * Build the persistent ground-hazard mesh for an armed spike_trap enchantment:
+ * a hostile blood-red ring sized to `enc.radius` plus a small cluster of static
+ * upward steel spikes. Reuses the SPIKE_TRAP_* palette so it reads as an armed
+ * spike trap and stays distinct from cinder_snare's orange fire look. Geometry
+ * and materials are owned by the returned group (like enemy meshes), so
+ * disposeStaleMeshes / disposeMeshMap fully release them; they are allocated once
+ * per trap on first sight and never per frame.
+ * @param {object} enc - { x, z, radius }
+ * @returns {THREE.Group}
+ */
+export function createSpikeTrapHazardMesh(enc) {
+	const radius = Number.isFinite(enc?.radius) ? enc.radius : 2.5;
+	const group = new THREE.Group();
+
+	// Hostile ground ring marking the armed hazard footprint.
+	const ringGeometry = new THREE.RingGeometry(radius * 0.78, radius, 48);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color: SPIKE_TRAP_RING_COLOR,
+		emissive: SPIKE_TRAP_RING_EMISSIVE,
+		emissiveIntensity: 0.85,
+		transparent: true,
+		opacity: 0.6,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+	ring.position.y = 0.06;
+	ring.rotation.x = -Math.PI / 2;
+	group.add(ring);
+
+	// Static cluster of short upward steel spikes signalling the primed trap —
+	// shorter than the eruption VFX cones so the firing burst still reads as a hit.
+	const spikeHeight = SPIKE_TRAP_SPIKE_HEIGHT * 0.5;
+	const spikeOffset = radius * 0.45;
+	for (let s = 0; s < SPIKE_TRAP_SPIKE_COUNT; s++) {
+		const angle = (s / SPIKE_TRAP_SPIKE_COUNT) * Math.PI * 2;
+		const geometry = new THREE.ConeGeometry(SPIKE_TRAP_SPIKE_RADIUS, spikeHeight, 6);
+		const material = new THREE.MeshStandardMaterial({
+			color: SPIKE_TRAP_SPIKE_COLOR,
+			emissive: SPIKE_TRAP_EMISSIVE,
+			emissiveIntensity: 0.6,
+		});
+		const spike = new THREE.Mesh(geometry, material);
+		spike.position.set(
+			Math.cos(angle) * spikeOffset,
+			spikeHeight / 2,
+			Math.sin(angle) * spikeOffset,
+		);
+		group.add(spike);
+	}
+
+	group.position.set(enc.x, 0, enc.z);
+	return group;
+}
+
 /**
  * Vertical rising fire shaft for Thermal Column. Rises and fades via the
  * `isThermalColumn` branch in updateAttackEffects (no per-frame allocation).
@@ -5279,6 +5427,24 @@ export function updateAttackEffects() {
 				const fadeRatio = 1.0 - (elapsed - SUMMON_EXPAND_MS) / (fx.duration - SUMMON_EXPAND_MS);
 				fx.mesh.material.opacity = Math.max(0.01, fadeRatio);
 			}
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Erupting spike (Spike Trap) ──
+		if (fx.isSpikeTrapSpike) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.3, 1.0); // burst upward over the first 30%
+			const s = Math.max(0.001, riseT);
+			fx.mesh.scale.y = s;
+			// Cone is centered on its local origin, so raise position.y in lockstep
+			// with scale.y to keep the spike's base pinned to the ground as it grows.
+			fx.mesh.position.y = (fx.spikeHeight * s) / 2;
+			fx.mesh.material.opacity = Math.max(0.01, 1.0 - t);
 
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, fx._scene || scene);
@@ -6555,6 +6721,23 @@ export function animate(timestamp) {
 				delete minionBaseScales[id];
 			}
 		}
+
+		// Spike trap hazard mesh sync: reconcile a persistent ground-hazard mesh
+		// per armed spike_trap from the snapshot, mirroring the enemy/minion
+		// pattern. Only spike_trap is handled here; other effects (e.g.
+		// cinder_snare) are left to their own handling.
+		const currentSpikeTrapIds = new Set();
+		for (const enc of (gs.enchantments || [])) {
+			if (!enc || enc.effect !== 'spike_trap' || !enc.armed) continue;
+			currentSpikeTrapIds.add(enc.id);
+			if (!spikeTrapMeshes[enc.id]) {
+				const mesh = createSpikeTrapHazardMesh(enc);
+				scene.add(mesh);
+				spikeTrapMeshes[enc.id] = mesh;
+			}
+			spikeTrapMeshes[enc.id].position.set(enc.x, 0, enc.z);
+		}
+		disposeStaleMeshes(spikeTrapMeshes, currentSpikeTrapIds, scene);
 
 		// ── Loot mesh sync ──
 		syncLootMeshes();

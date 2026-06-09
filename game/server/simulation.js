@@ -2218,6 +2218,14 @@ function updateEnchantments() {
         } else {
           enemy.lastDamagedBy = enc.ownerId;
           damageEnemy(enemy, enc.damage);
+          if (!_gameState._pendingSpikeTrapTriggers) {
+            _gameState._pendingSpikeTrapTriggers = [];
+          }
+          _gameState._pendingSpikeTrapTriggers.push({
+            x: enc.x,
+            z: enc.z,
+            radius: enc.radius,
+          });
         }
         enc.armed = false;
         triggered = true;

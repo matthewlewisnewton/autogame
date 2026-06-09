@@ -30,6 +30,7 @@ function makeCtx(overrides = {}) {
 		spawnProjectileTrail: record('spawnProjectileTrail'),
 		spawnImpactDecal: record('spawnImpactDecal'),
 		spawnTelegraphRing: record('spawnTelegraphRing'),
+		spawnSpikeTrapEffect: record('spawnSpikeTrapEffect'),
 		spawnMirrorWardShellEffect: record('spawnMirrorWardShellEffect'),
 		dismissMirrorWardShellEffect: record('dismissMirrorWardShellEffect'),
 		spawnMirrorWardReflectBurst: record('spawnMirrorWardReflectBurst'),
@@ -2342,7 +2343,15 @@ describe('renderCardUsed() — creature dispatch', () => {
 });
 
 describe('renderCardUsed() — enchantment dispatch', () => {
-	it('spike_trap renders a red ground-trap AoE preview at the placement point', () => {
+	it('spike_trap resolves to a different renderer fn than cinder_snare', () => {
+		const spikeFn = resolveRenderers('spike_trap');
+		const snareFn = resolveRenderers('cinder_snare');
+		expect(spikeFn).toHaveLength(1);
+		expect(snareFn).toHaveLength(1);
+		expect(spikeFn[0]).not.toBe(snareFn[0]);
+	});
+
+	it('spike_trap erupts steel/red spikes + telegraph ring at the placement origin/radius', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'spike_trap',
@@ -2350,12 +2359,60 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 			radius: 2.5,
 			hits: [],
 		}, ctx);
-		const rings = ctx._calls.filter(
-			(c) => c[0] === 'spawnSummonEffect' && c[3] && c[3].color === 0xf87171,
-		);
+
+		// Erupting-spikes primitive fires at the placement origin with the radius.
+		const spikes = ctx._calls.filter((c) => c[0] === 'spawnSpikeTrapEffect');
+		expect(spikes).toHaveLength(1);
+		expect(spikes[0][1]).toEqual({ x: 2, z: 3 });
+		expect(spikes[0][2]).toBe(2.5);
+
+		// Hostile-red telegraph ring at the armed proximity radius, steel/red palette.
+		const rings = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
 		expect(rings).toHaveLength(1);
 		expect(rings[0][1]).toEqual({ x: 2, z: 3 });
 		expect(rings[0][2]).toBe(2.5);
+		expect(rings[0][3].color).toBe(0xf87171); // steel/blood-red accent, NOT orange fire
+		expect(rings[0][3].emissive).toBe(0xdc2626);
+
+		// Placement-only: it must NOT use the generic orange ground-enchantment preview.
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('spike_trap skips all VFX when data.radius is undefined', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'spike_trap',
+			origin: { x: 2, z: 3 },
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnSpikeTrapEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+	});
+
+	it('spike_trap gracefully no-ops the spikes when the primitive is absent', () => {
+		const ctx = makeCtx({ spawnSpikeTrapEffect: undefined });
+		expect(() => renderCardUsed({
+			cardId: 'spike_trap',
+			origin: { x: 2, z: 3 },
+			radius: 2.5,
+			hits: [],
+		}, ctx)).not.toThrow();
+		// Telegraph ring still plays even without the spike primitive.
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(true);
+	});
+
+	it('spike_trap invokes the spike primitive synchronously within renderCardUsed (no deferred scheduling)', () => {
+		const ctx = makeCtx();
+		// scheduleAfter would record a ['scheduleAfter', ms] tuple if any work were deferred.
+		renderCardUsed({
+			cardId: 'spike_trap',
+			origin: { x: 2, z: 3 },
+			radius: 2.5,
+			hits: [],
+		}, ctx);
+		// By the time renderCardUsed returns the spikes have already fired — synchronously.
+		expect(ctx._calls.some((c) => c[0] === 'spawnSpikeTrapEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
 	});
 
 	it('mirror_ward spawns shell, telegraph ring, and burst when target=self', () => {

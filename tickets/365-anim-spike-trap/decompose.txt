@@ -1,0 +1,12 @@
+Created one new sub-ticket.
+
+**Sub-ticket created:**
+- `/home/matt/workspace/.autogame-worktrees/365-anim-spike-trap/tickets/365-anim-spike-trap/subtickets/05-canyon-low-hp-snapshot-fix/ticket.md`
+
+**Reasoning:**
+- Sub-tickets 01–04 (eruption VFX, renderer/timing, server trigger state, persistent hazard render) all carry `.passed` markers — the Spike Trap animation work itself is fully delivered, so I left those untouched.
+- The single open gap in `review-feedback.md` is unrelated to Spike Trap rendering: the full vitest coverage gate fails on `canyon-descent-boss-low-hp`, where the emitted `stateUpdate` reports the miniboss at 300 HP instead of 1. Since the harness requires green vitest for the ticket to pass, this must be fixed.
+- I inspected the code: the canyon low-HP branch uniquely calls `activateEncounter`/`lockEncounter` after setting `boss.hp = 1`, and its tier-2 leaves the encounter active (game loop emitting periodic `stateUpdate`s) — unlike the passing training/spire/arena scenarios. The sub-ticket points the implementer at both candidate root causes (HP restored on activation vs. stale-snapshot race) and confines the diff to `debugScenarios.js` + the test.
+- Verification mode is `code`: every criterion is about server state, test outcomes, and snapshot timing — nothing screenshot-observable.
+
+No existing folders needed deletion (all passed; none mis-scoped).
