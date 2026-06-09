@@ -5,6 +5,9 @@ import path from 'path';
 import { readHarness } from './harnessState.mjs';
 import { writeScreenshot } from './screenshot.mjs';
 
+// Must stay in sync with game/server/simulation.js BURN_TICK_INTERVAL_MS.
+const BURN_TICK_INTERVAL_MS = 500;
+
 async function focusCanvas(page) {
 	await page.evaluate(() => {
 		document.querySelector('canvas:not(.cosmetic-preview-canvas)')?.focus();
@@ -110,6 +113,8 @@ export async function runEmberBurnStep({ page, preset, outDirAbs, repoRoot }) {
 
 	await requestScenario(page, scenario);
 	await page.evaluate(() => {
+		const overlay = document.getElementById('run-summary-overlay');
+		if (overlay) overlay.style.display = 'none';
 		if (typeof window.__toggleDebugGodmodeForTest === 'function') {
 			const h = window.__AUTOGAME_HARNESS_STATE__?.();
 			if (h?.player?.debugGodmode) {
@@ -118,33 +123,59 @@ export async function runEmberBurnStep({ page, preset, outDirAbs, repoRoot }) {
 		}
 	});
 
-	const hpBefore = (await readHarness(page))?.player?.hp ?? null;
+	const afterGodmodeHarness = await readHarness(page);
+	const debugGodmodeOff = afterGodmodeHarness?.player?.debugGodmode !== true;
+	const hpBefore = afterGodmodeHarness?.player?.hp ?? null;
 	const deadline = Date.now() + 60000;
 	let burningApplied = false;
+	let hpAtBurnStart = hpBefore;
 	while (Date.now() < deadline) {
 		const harness = await readHarness(page);
 		const now = Date.now();
 		const burningUntil = harness?.player?.burningUntil ?? 0;
 		if (burningUntil > now) {
 			burningApplied = true;
+			hpAtBurnStart = harness?.player?.hp ?? hpBefore;
 			break;
 		}
-		await page.waitForTimeout(500);
+		await page.waitForTimeout(BURN_TICK_INTERVAL_MS);
 	}
 
-	await page.waitForTimeout(1500);
+	// Poll past the burn-tick arming delay so at least one tick can apply damage.
+	let hpAfterTicks = hpAtBurnStart;
+	let burnTickDamageApplied = false;
+	const tickDeadline = Date.now() + 10000;
+	while (Date.now() < tickDeadline) {
+		await page.waitForTimeout(BURN_TICK_INTERVAL_MS);
+		const harness = await readHarness(page);
+		const hp = harness?.player?.hp ?? null;
+		if (Number.isFinite(hp)) {
+			hpAfterTicks = hp;
+			if (Number.isFinite(hpAtBurnStart) && hp < hpAtBurnStart) {
+				burnTickDamageApplied = true;
+				break;
+			}
+		}
+	}
+
 	const midHarness = await readHarness(page);
-	const hpAfterTicks = midHarness?.player?.hp ?? null;
+	const hpDelta = Number.isFinite(hpBefore) && Number.isFinite(hpAfterTicks)
+		? hpAfterTicks - hpBefore
+		: null;
+	if (!burnTickDamageApplied && Number.isFinite(hpDelta) && hpDelta < 0) {
+		burnTickDamageApplied = true;
+	}
+
 	const screenshotPath = await writeScreenshot(page, outDirAbs, '04-ember-burn');
 
 	return {
-		emberBurnApplied: burningApplied,
+		emberBurnApplied: burningApplied && burnTickDamageApplied,
+		burnTickDamageApplied,
+		debugGodmodeOff,
 		playerBurningUntil: midHarness?.player?.burningUntil ?? 0,
 		hpBefore,
 		hpAfterTicks,
-		hpDelta: Number.isFinite(hpBefore) && Number.isFinite(hpAfterTicks)
-			? hpAfterTicks - hpBefore
-			: null,
+		hpDelta,
 		screenshot: path.relative(repoRoot, screenshotPath),
 	};
 }

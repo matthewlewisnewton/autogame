@@ -350,3 +350,45 @@
 [console:log] [debugGodmode] enabled
 [console:log] [debugScenario] applied fire-telepipe-ready
 [console:log] [launchBooth] ready-up via booth
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:log] [debugScenario] applied fire-cavern
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied ember-descent-near-adds
+[console:log] [debugGodmode] disabled
+[console:log] [debugScenario] applied ember-descent-ember-wraith-burn
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied fireball-ready
+[console:log] [debugScenario] applied status-mutual-exclusion-ready
+[console:log] [debugScenario] applied purifying-pulse-ready
+[console:log] [debugScenario] applied magma-windup-ready
+[console:log] [debugScenario] applied ember-descent-last-enemy
+[console:log] [debugScenario] applied fire-telepipe-ready
+[console:log] [launchBooth] ready-up via booth
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied fire-telepipe-ready
+[console:log] [launchBooth] ready-up via booth
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:log] [debugScenario] applied fire-cavern
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied ember-descent-near-adds
+[console:log] [debugGodmode] disabled
+[console:log] [debugScenario] applied ember-descent-ember-wraith-burn
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied fireball-ready
+[console:log] [debugScenario] applied status-mutual-exclusion-ready
+[console:log] [debugScenario] applied purifying-pulse-ready
+[console:log] [debugScenario] applied magma-windup-ready
+[console:log] [debugScenario] applied ember-descent-last-enemy
+[console:log] [debugScenario] applied fire-telepipe-ready
+[console:log] [launchBooth] ready-up via booth
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied fire-telepipe-ready
+[console:log] [launchBooth] ready-up via booth

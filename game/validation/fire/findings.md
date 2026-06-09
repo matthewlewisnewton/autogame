@@ -16,9 +16,11 @@
 
 ## Ember burn
 
+- **burnTickDamageApplied**: PASS
 - **emberBurnApplied**: PASS
-- player.burningUntil: 1780955675600
-- HP delta across burn ticks: 0
+- **debugGodmodeOff**: PASS
+- player.burningUntil: 1780969988360
+- HP delta across burn ticks: -13
 - Screenshot: `game/validation/fire/04-ember-burn.png`
 
 ## Card mechanics
@@ -35,8 +37,8 @@
 
 ## Telepipe reset
 
-- preSuspend: HP=60, MS=20, runId=39e828a8-ec25-4a4b-8bec-dd9044256058
-- postDeploy: HP=60, MS=20, runId=9b7c730d-30ca-40b2-9503-a08bdd43a761
+- preSuspend: HP=60, MS=20, runId=0f781ee6-5f8f-4522-a729-9599ef65fac1
+- postDeploy: HP=60, MS=20, runId=b25dfae9-6e48-4bec-9832-25b5fc2a1b1b
 - **telepipeVitalsPreserved**: PASS
 - **cardChargesResetOnFreshSortie**: PASS
 

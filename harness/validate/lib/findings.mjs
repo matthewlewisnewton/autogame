@@ -75,8 +75,13 @@ function renderEmberBurnSection(emberBurn) {
 		return lines;
 	}
 
+	const tickDamage = emberBurn.burnTickDamageApplied === true;
+	lines.push(`- **burnTickDamageApplied**: ${tickDamage ? 'PASS' : 'FAIL'}`);
 	const applied = emberBurn.emberBurnApplied === true;
 	lines.push(`- **emberBurnApplied**: ${applied ? 'PASS' : 'FAIL'}`);
+	if (emberBurn.debugGodmodeOff != null) {
+		lines.push(`- **debugGodmodeOff**: ${emberBurn.debugGodmodeOff ? 'PASS' : 'FAIL'}`);
+	}
 	if (emberBurn.playerBurningUntil != null) {
 		lines.push(`- player.burningUntil: ${emberBurn.playerBurningUntil}`);
 	}

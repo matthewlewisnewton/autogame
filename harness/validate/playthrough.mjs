@@ -961,7 +961,7 @@ function buildAssertions(summary, preset) {
 			victoryFired,
 		};
 		if (preset.telepipeScenario || summary.telepipeReset || preset.questId === 'ember_descent') {
-			assertions.emberBurnApplied = summary.emberBurn?.emberBurnApplied === true;
+			assertions.emberBurnApplied = summary.emberBurn?.burnTickDamageApplied === true;
 			assertions.cardMechanicsOk = summary.cardMechanics?.ok === true;
 			assertions.telepipeVitalsPreserved = summary.telepipeReset?.telepipeVitalsPreserved === true;
 			assertions.cardChargesResetOnFreshSortie = summary.telepipeReset?.cardChargesResetOnFreshSortie === true;

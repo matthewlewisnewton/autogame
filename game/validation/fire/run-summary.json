@@ -29,10 +29,10 @@
     "bossDefeatTimeoutMs": 180000,
     "victoryTimeoutMs": 30000
   },
-  "serverPort": 3252,
-  "clientPort": 5278,
+  "serverPort": 3237,
+  "clientPort": 5283,
   "auth": {
-    "username": "playthrough-1780955660424",
+    "username": "playthrough-1780969976022",
     "connected": true,
     "lobbyBrowserVisible": true,
     "harnessPhase": "unknown",
@@ -83,10 +83,12 @@
   },
   "emberBurn": {
     "emberBurnApplied": true,
-    "playerBurningUntil": 1780955675600,
+    "burnTickDamageApplied": true,
+    "debugGodmodeOff": true,
+    "playerBurningUntil": 1780969988360,
     "hpBefore": 100,
-    "hpAfterTicks": 100,
-    "hpDelta": 0,
+    "hpAfterTicks": 87,
+    "hpDelta": -13,
     "screenshot": "game/validation/fire/04-ember-burn.png"
   },
   "cardMechanics": {
@@ -100,7 +102,7 @@
           "hp": 80
         },
         "after": {
-          "burningUntil": 1780955677806,
+          "burningUntil": 1780969989257,
           "slowedUntil": 0,
           "hp": 62
         },
@@ -109,22 +111,23 @@
       "slow": {
         "ok": true,
         "afterBurn": {
-          "burningUntil": 1780955678948,
+          "burningUntil": 1780969990034,
           "slowedUntil": 0,
           "hp": 182
         },
         "afterSlow": {
           "burningUntil": 0,
-          "slowedUntil": 1780955686533,
-          "hp": 166
+          "slowedUntil": 1780969997513,
+          "hp": 171
         },
         "burnCleared": true
       },
       "cleanse": {
         "ok": true,
+        "seededStatus": "burn",
         "before": {
-          "burningUntil": 1780955682109,
-          "slowedUntil": 1780955682109,
+          "burningUntil": 1780969992958,
+          "slowedUntil": 0,
           "cardUseState": null,
           "hp": 40,
           "x": -9,
@@ -216,10 +219,10 @@
           "charges": 5
         },
         {
-          "id": "iron_sword",
-          "type": "weapon",
-          "remainingCharges": 5,
-          "charges": 5
+          "id": "battle_familiar",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
         },
         {
           "id": "battle_familiar",
@@ -234,7 +237,7 @@
       "extracted": false,
       "suspendedRunSummary": null,
       "layoutSeed": 1023983957,
-      "runId": "39e828a8-ec25-4a4b-8bec-dd9044256058"
+      "runId": "0f781ee6-5f8f-4522-a729-9599ef65fac1"
     },
     "postDeploy": {
       "hp": 60,
@@ -260,16 +263,16 @@
           "charges": 5
         },
         {
-          "id": "battle_familiar",
-          "type": "spell",
-          "remainingCharges": 1,
-          "charges": 1
+          "id": "iron_sword",
+          "type": "weapon",
+          "remainingCharges": 5,
+          "charges": 5
         },
         {
-          "id": "dungeon_drake",
-          "type": "creature",
-          "remainingCharges": 1,
-          "charges": 1
+          "id": "flame_blade",
+          "type": "weapon",
+          "remainingCharges": 2,
+          "charges": 2
         },
         null
       ],
@@ -278,7 +281,7 @@
       "extracted": false,
       "suspendedRunSummary": null,
       "layoutSeed": 1023983957,
-      "runId": "9b7c730d-30ca-40b2-9503-a08bdd43a761"
+      "runId": "b25dfae9-6e48-4bec-9832-25b5fc2a1b1b"
     },
     "telepipeVitalsPreserved": true,
     "cardChargesResetOnFreshSortie": true,

@@ -90,6 +90,44 @@ function readRunSummary(errors) {
 	return summary;
 }
 
+function checkEmberBurnConsistency(summary, errors) {
+	const ember = summary?.emberBurn;
+	if (!ember || typeof ember !== 'object' || Array.isArray(ember)) {
+		fail(errors, 'run-summary.json missing emberBurn object');
+		return;
+	}
+
+	if (ember.burnTickDamageApplied !== true) {
+		fail(errors, 'emberBurn.burnTickDamageApplied must be true (burn ticks must reduce HP)');
+	}
+	if (ember.debugGodmodeOff !== true) {
+		fail(errors, 'emberBurn.debugGodmodeOff must be true');
+	}
+	if (!(Number.isFinite(ember.hpDelta) && ember.hpDelta < 0)) {
+		fail(errors, `emberBurn.hpDelta must be negative, got ${ember.hpDelta}`);
+	}
+	if (ember.emberBurnApplied === true && ember.burnTickDamageApplied !== true) {
+		fail(errors, 'emberBurn.emberBurnApplied is true but burnTickDamageApplied is not');
+	}
+	if (summary.assertions?.emberBurnApplied === true && ember.burnTickDamageApplied !== true) {
+		fail(errors, 'assertions.emberBurnApplied is true but emberBurn.burnTickDamageApplied is not');
+	}
+	if (ember.burnTickDamageApplied === true && !(Number.isFinite(ember.hpDelta) && ember.hpDelta < 0)) {
+		fail(errors, 'emberBurn.burnTickDamageApplied is true but hpDelta is not negative');
+	}
+
+	const findingsPath = path.join(FIRE_DIR, 'findings.md');
+	if (fs.existsSync(findingsPath)) {
+		const findings = fs.readFileSync(findingsPath, 'utf8');
+		if (!findings.includes('burnTickDamageApplied**: PASS')) {
+			fail(errors, 'findings.md Ember burn section missing burnTickDamageApplied: PASS');
+		}
+		if (!findings.includes('emberBurnApplied**: PASS')) {
+			fail(errors, 'findings.md Ember burn section missing emberBurnApplied: PASS');
+		}
+	}
+}
+
 function checkTelepipeRunIdSanity(summary, errors) {
 	const reset = summary?.telepipeReset;
 	if (!reset) return;
@@ -143,6 +181,7 @@ function main() {
 	} else {
 		const summary = readRunSummary(errors);
 		if (summary) {
+			checkEmberBurnConsistency(summary, errors);
 			checkTelepipeRunIdSanity(summary, errors);
 		}
 		checkRequiredFiles(errors);
