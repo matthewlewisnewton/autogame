@@ -122,3 +122,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [317-cleanup-distinct-weapon-card-animations](tickets/317-cleanup-distinct-weapon-card-animations/)
 - [ ] [364-cleanup-anim-thermal-column](tickets/364-cleanup-anim-thermal-column/)
 - [ ] [367-cleanup-anim-mirror-ward](tickets/367-cleanup-anim-mirror-ward/)
+- [ ] [371-cleanup-playthrough-revalidate-sunken-canyon](tickets/371-cleanup-playthrough-revalidate-sunken-canyon/)

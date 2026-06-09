@@ -1,0 +1,7 @@
+Completed the holistic review.
+
+Wrote:
+- `tickets/370-playthrough-revalidate-sunken-canyon/round-2/review.md`
+- `tickets/370-playthrough-revalidate-sunken-canyon/round-2/nits.md`
+
+No `gaps.md` was created because the verdict is `VERDICT: PASS`.
