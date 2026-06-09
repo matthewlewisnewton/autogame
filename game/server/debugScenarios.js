@@ -2437,18 +2437,19 @@ function applyDebugScenario(socket, name) {
       player.equippedKeyItemId = 'field_medic_kit';
       player.keyItemCooldownUntil = 0;
     } else if (name === 'purifying-pulse-ready') {
-      // Low-HP player with Purifying Pulse in hand and active negative statuses.
-      // Same state is reachable by earning the reward card deep in a dungeon run
-      // and casting while slowed, burning, or debuffed.
+      // Low-HP player with Purifying Pulse in hand and a single active burn
+      // status (burn/slow are mutually exclusive in normal play). Same state is
+      // reachable by earning the reward card deep in a dungeon run and casting
+      // while burning.
       resumePlayingRunForCardProbe(state, player);
       const statusNow = Date.now();
       player.hp = Math.floor(MAX_HP * 0.4);
       player.magicStones = MAX_MAGIC_STONES;
-      player.slowedUntil = statusNow + 5000;
-      player.slowFactor = 0.5;
+      player.slowedUntil = 0;
+      player.slowFactor = 1;
       player.burningUntil = statusNow + 5000;
       player.lastBurnTickAt = statusNow;
-      player.debuffs = [{ type: 'slow', expiresAt: statusNow + 5000 }];
+      player.debuffs = [{ type: 'burn', expiresAt: statusNow + 5000 }];
       player.hand[0] = {
         id: 'purifying_pulse',
         name: 'Purifying Pulse',

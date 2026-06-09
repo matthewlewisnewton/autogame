@@ -195,7 +195,7 @@ describe('useCard — purifying_pulse (socket integration)', () => {
 		const player = playerForSocket(socket);
 		const slotIndex = player.hand.findIndex(c => c && c.id === 'purifying_pulse');
 		expect(slotIndex).toBeGreaterThanOrEqual(0);
-		expect(isSlowed(player)).toBe(true);
+		expect(isSlowed(player)).toBe(false);
 		expect(isBurning(player)).toBe(true);
 		const hpBefore = player.hp;
 

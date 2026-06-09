@@ -209,23 +209,36 @@ export async function runCardMechanicsStep({ page, preset, outDirAbs, repoRoot }
 		await requestScenario(page, scenarios.cleanse);
 		await prepareCardMechanicsPage(page);
 		const before = playerStatusProbe(await readHarness(page));
+		const now = Date.now();
+		const burningBefore = (before.burningUntil ?? 0) > now;
+		const slowedBefore = (before.slowedUntil ?? 0) > now;
+		if (burningBefore && slowedBefore) {
+			throw new Error(`Cleanse probe before state has mutually exclusive burn+slow: ${JSON.stringify(before)}`);
+		}
+		const seededStatus = burningBefore ? 'burn' : slowedBefore ? 'slow' : null;
+		if (!seededStatus) {
+			throw new Error(`Cleanse probe before state missing seeded debuff: ${JSON.stringify(before)}`);
+		}
 		const hpBeforeCleanse = before.hp ?? 0;
 		await castCardSlot(page, 0, 'purifying_pulse', 2500);
-		await page.waitForFunction((hpBefore) => {
+		await page.waitForFunction(({ hpBefore, status }) => {
 			const h = window.__AUTOGAME_HARNESS_STATE__?.();
 			const p = h?.player;
-			return (p?.burningUntil ?? 0) <= Date.now()
-				&& (p?.slowedUntil ?? 0) <= Date.now()
-				&& (p?.hp ?? 0) > hpBefore;
-		}, hpBeforeCleanse, { timeout: 10000 }).catch(async () => {
+			const burning = (p?.burningUntil ?? 0) > Date.now();
+			const slowed = (p?.slowedUntil ?? 0) > Date.now();
+			const statusCleared = status === 'burn' ? !burning : !slowed;
+			return statusCleared && (p?.hp ?? 0) > hpBefore;
+		}, { hpBefore: hpBeforeCleanse, status: seededStatus }, { timeout: 10000 }).catch(async () => {
 			const harness = await readHarness(page);
 			throw new Error(`Cleanse probe timed out: ${JSON.stringify(harness)}`);
 		});
 		const after = playerStatusProbe(await readHarness(page));
-		const cleanseOk = (after.burningUntil ?? 0) <= Date.now()
-			&& (after.slowedUntil ?? 0) <= Date.now()
-			&& (after.hp ?? 0) > (before.hp ?? 0);
-		probes.cleanse = { ok: cleanseOk, before, after };
+		const afterNow = Date.now();
+		const seededCleared = seededStatus === 'burn'
+			? (after.burningUntil ?? 0) <= afterNow
+			: (after.slowedUntil ?? 0) <= afterNow;
+		const cleanseOk = seededCleared && (after.hp ?? 0) > (before.hp ?? 0);
+		probes.cleanse = { ok: cleanseOk, seededStatus, before, after };
 		if (!cleanseOk) allOk = false;
 	}
 
