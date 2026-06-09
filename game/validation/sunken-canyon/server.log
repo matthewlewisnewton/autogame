@@ -1,0 +1,254 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/370-playthrough-revalidate-sunken-canyon/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3296
+Player connected: socket=mFe5VwRnBPc8pZ32AAAB, playerId=ce8a8e34-7067-4424-95b0-44d789d26382
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: mFe5VwRnBPc8pZ32AAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/370-playthrough-revalidate-sunken-canyon/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3254
+Player connected: socket=Zyez_x8_33LlZwEmAAAB, playerId=f623368c-c2e8-4be9-a209-694a77a38000
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] spawned id=47522ade-3cf7-4f9e-b46a-9e8976192af2 value=20
+Player disconnected: Zyez_x8_33LlZwEmAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 5 user record(s) from /home/matt/workspace/.autogame-worktrees/370-playthrough-revalidate-sunken-canyon/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3239
+Player connected: socket=CLUYFimj88wNTIfIAAAB, playerId=23de85f1-e722-43bb-bd54-1389a5ccb43f
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] spawned id=7b25c186-ece0-4405-9bf3-77ea55ab8cc2 value=5
+Player disconnected: CLUYFimj88wNTIfIAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 6 user record(s) from /home/matt/workspace/.autogame-worktrees/370-playthrough-revalidate-sunken-canyon/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3278
+Player connected: socket=TIcuDB1chsfTw6s8AAAB, playerId=b6bba6a7-a604-44a3-b525-da433ec0d3c7
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] spawned id=9c3b54ad-9059-4fa0-a8ae-14f22b392c51 value=18
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+Player disconnected: TIcuDB1chsfTw6s8AAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 7 user record(s) from /home/matt/workspace/.autogame-worktrees/370-playthrough-revalidate-sunken-canyon/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3229
+Player connected: socket=_d_1cTVIzHwWYYC2AAAB, playerId=f86cbdb2-2542-4e80-8ecc-3e69efd0efb4
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] spawned id=7529080d-a95d-4030-8f8b-3469e50f1110 value=5
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] magic stone drop id=d5552f30-93ab-480d-be7b-0de8bd69cc3d value=20 at (-1.5, -47.2)
+[loot] magic stone drop id=e25f1af9-3c7d-4c6b-9f00-998faa9771c8 value=15 at (3.0, -44.2)
+[loot] currency drop id=e27aebe7-9706-4127-9993-ace2d1016c6d value=11 at (3.0, -44.2)
+[loot] picked up id=d5552f30-93ab-480d-be7b-0de8bd69cc3d (magic stone) value=20 by _d_1cTVIzHwWYYC2AAAB (currency=0, ms=69.005)
+[loot] picked up id=e25f1af9-3c7d-4c6b-9f00-998faa9771c8 (magic stone) value=15 by _d_1cTVIzHwWYYC2AAAB (currency=0, ms=84.36499999999967)
+[loot] picked up id=e27aebe7-9706-4127-9993-ace2d1016c6d value=11 by _d_1cTVIzHwWYYC2AAAB (currency=11, ms=84.36999999999966)
+[telepipe] placed at (3.7, -25.2) by f86cbdb2-2542-4e80-8ecc-3e69efd0efb4
+[telepipe] player f86cbdb2-2542-4e80-8ecc-3e69efd0efb4 extracted
+[run] checkpoint captured
+[run] extracted to hub: Canyon Descent — Tier II
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+Player disconnected: _d_1cTVIzHwWYYC2AAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 8 user record(s) from /home/matt/workspace/.autogame-worktrees/370-playthrough-revalidate-sunken-canyon/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3265
+Player connected: socket=x6lYyL8eJnC7Vls9AAAB, playerId=609d8852-7eb3-4fed-9e28-d8a7e92cdadb
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] spawned id=a9dab66d-99bc-4f05-8c6e-a75b71fce82c value=14
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] magic stone drop id=7758eeab-6321-4201-8057-170f3abdda5a value=20 at (-1.5, -47.2)
+[loot] picked up id=7758eeab-6321-4201-8057-170f3abdda5a (magic stone) value=20 by x6lYyL8eJnC7Vls9AAAB (currency=0, ms=99)
+[loot] magic stone drop id=e9e504f2-5ca9-4869-951c-647a40f2c9a4 value=15 at (3.0, -44.2)
+[loot] picked up id=e9e504f2-5ca9-4869-951c-647a40f2c9a4 (magic stone) value=15 by x6lYyL8eJnC7Vls9AAAB (currency=0, ms=64.72000000000037)
+[telepipe] placed at (13.3, -34.6) by 609d8852-7eb3-4fed-9e28-d8a7e92cdadb
+[telepipe] player 609d8852-7eb3-4fed-9e28-d8a7e92cdadb extracted
+[run] checkpoint captured
+[run] extracted to hub: Canyon Descent — Tier II
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] magic stone drop id=6cb6e61e-f6a5-4fa7-ac56-0c2c69ee0a09 value=20 at (-1.9, -49.9)
+[loot] magic stone drop id=0a956939-6dd6-4837-9963-2028b6eacc3b value=15 at (-1.9, -43.2)
+[loot] magic stone drop id=be6e7e16-dad6-4f46-a64d-e960001a41fe value=20 at (4.0, -46.5)
+[loot] currency drop id=3f1c7f4d-40e9-4157-aacd-f3d9fe78f67d value=16 at (4.0, -46.5)
+Player disconnected: x6lYyL8eJnC7Vls9AAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 9 user record(s) from /home/matt/workspace/.autogame-worktrees/370-playthrough-revalidate-sunken-canyon/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3243
+Player connected: socket=kfqUqjavHynU5taoAAAB, playerId=5f78954e-0c16-41ab-9f8c-4ee5fb3931be
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] spawned id=7881301e-c304-48ed-8b59-a550628f91dd value=17
+[loot] magic stone drop id=d8ecec55-d546-40a2-aef0-2680edb06c20 value=20 at (-1.5, -47.2)
+[loot] picked up id=d8ecec55-d546-40a2-aef0-2680edb06c20 (magic stone) value=20 by kfqUqjavHynU5taoAAAB (currency=0, ms=99)
+[loot] magic stone drop id=46b4c9c5-eea0-460c-b54d-bfa9e4692c62 value=15 at (3.0, -44.2)
+[telepipe] placed at (-5.8, -52.3) by 5f78954e-0c16-41ab-9f8c-4ee5fb3931be
+[telepipe] player 5f78954e-0c16-41ab-9f8c-4ee5fb3931be extracted
+[run] checkpoint captured
+[run] extracted to hub: Canyon Descent — Tier II
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] magic stone drop id=a7d9a4c5-cb82-48c6-b7b3-25a04e0b5c60 value=15 at (-1.9, -43.2)
+[loot] currency drop id=d43a273c-ec2d-4010-9d1f-e021c44d7751 value=11 at (-1.9, -43.2)
+[loot] picked up id=d43a273c-ec2d-4010-9d1f-e021c44d7751 value=11 by kfqUqjavHynU5taoAAAB (currency=11, ms=99)
+[loot] magic stone drop id=f6e426ea-347e-4e2b-bf2c-ab060113a1af value=20 at (-1.9, -49.9)
+[loot] magic stone drop id=018ddc28-bea6-4bd4-87dc-7d7dcdaea973 value=20 at (4.0, -46.5)
+[loot] currency drop id=339a97d0-cb8b-4c52-9718-443aba432da7 value=11 at (4.0, -46.5)
+Player disconnected: kfqUqjavHynU5taoAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 10 user record(s) from /home/matt/workspace/.autogame-worktrees/370-playthrough-revalidate-sunken-canyon/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3297
+Player connected: socket=Hity0So7kQCDUCJEAAAB, playerId=80de163d-a13d-48a5-9a34-e980f5875ea1
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] spawned id=bbf5f7c9-e9e8-425b-9766-f170b34523b0 value=15
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] magic stone drop id=8497f053-78e0-45b2-bb7f-11ea9d426cbe value=20 at (-1.5, -47.2)
+[loot] currency drop id=2b5b906e-2083-480b-9b7b-1b4d91a7eb58 value=8 at (-1.5, -47.2)
+[loot] picked up id=2b5b906e-2083-480b-9b7b-1b4d91a7eb58 value=8 by Hity0So7kQCDUCJEAAAB (currency=8, ms=99)
+[loot] picked up id=8497f053-78e0-45b2-bb7f-11ea9d426cbe (magic stone) value=20 by Hity0So7kQCDUCJEAAAB (currency=8, ms=99)
+[loot] magic stone drop id=2f9f9bb0-dc80-494b-9516-0387d899920f value=15 at (3.0, -44.2)
+[loot] currency drop id=3ff55db1-e610-4e0e-9fb5-ef61dad99f03 value=13 at (3.0, -44.2)
+[telepipe] placed at (-5.8, -52.3) by 80de163d-a13d-48a5-9a34-e980f5875ea1
+[telepipe] player 80de163d-a13d-48a5-9a34-e980f5875ea1 extracted
+[run] checkpoint captured
+[run] extracted to hub: Canyon Descent — Tier II
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] magic stone drop id=ba52f7d7-6f01-41f5-a893-9e7814ef3b22 value=20 at (-1.9, -49.9)
+[loot] currency drop id=2cff7f70-2242-46be-9f86-74360dadd943 value=8 at (-1.9, -49.9)
+[loot] magic stone drop id=436a6c24-19c8-4a01-9382-c50579ea5c6f value=15 at (-1.9, -43.2)
+[loot] currency drop id=d476075b-d9a2-4297-9a9b-bdfd109b266d value=10 at (-1.9, -43.2)
+[loot] picked up id=d476075b-d9a2-4297-9a9b-bdfd109b266d value=10 by Hity0So7kQCDUCJEAAAB (currency=18, ms=99)
+[loot] magic stone drop id=4e3965ac-1f24-4769-8609-bca5a521ea54 value=20 at (4.0, -46.5)
+[loot] currency drop id=d7097493-1983-4750-8381-079e1ffdc4c2 value=10 at (4.0, -46.5)
+Player disconnected: Hity0So7kQCDUCJEAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 11 user record(s) from /home/matt/workspace/.autogame-worktrees/370-playthrough-revalidate-sunken-canyon/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3259
+Player connected: socket=a9ELm7jaZVWiwjkyAAAB, playerId=1dead5fe-ec87-4b54-b04d-7f42cffaee08
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] spawned id=af4f62c0-b71c-4db8-a9f9-c77716680273 value=20
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] magic stone drop id=d650071a-3185-45ee-a326-189415cc1ff1 value=20 at (-1.5, -47.2)
+[loot] currency drop id=188cc042-6b6e-4252-879e-6c6001a7a562 value=16 at (-1.5, -47.2)
+[loot] picked up id=188cc042-6b6e-4252-879e-6c6001a7a562 value=16 by a9ELm7jaZVWiwjkyAAAB (currency=16, ms=99)
+[loot] picked up id=d650071a-3185-45ee-a326-189415cc1ff1 (magic stone) value=20 by a9ELm7jaZVWiwjkyAAAB (currency=16, ms=99)
+[loot] magic stone drop id=13ba0d09-4aca-434f-835b-f92ce77dd05f value=15 at (3.0, -44.2)
+[loot] currency drop id=be032089-9c37-4f81-8db1-cb2f18095160 value=14 at (3.0, -44.2)
+[telepipe] placed at (-5.8, -52.3) by 1dead5fe-ec87-4b54-b04d-7f42cffaee08
+[telepipe] player 1dead5fe-ec87-4b54-b04d-7f42cffaee08 extracted
+[run] checkpoint captured
+[run] extracted to hub: Canyon Descent — Tier II
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] magic stone drop id=0f3183eb-6b6f-4e2c-8d43-cfb5c51270bf value=15 at (-1.9, -43.2)
+[loot] currency drop id=083355ed-043f-484f-a608-c32ddc7237a8 value=13 at (-1.9, -43.2)
+[loot] picked up id=083355ed-043f-484f-a608-c32ddc7237a8 value=13 by a9ELm7jaZVWiwjkyAAAB (currency=29, ms=99)
+[loot] magic stone drop id=b66af951-1811-455a-a0c7-99314eabbcbd value=20 at (-1.9, -49.9)
+[loot] currency drop id=0a0b5fe1-ab54-4bd6-b3f1-bb1fe38e7a64 value=12 at (-1.9, -49.9)
+[loot] magic stone drop id=0c4791a9-56a9-4482-ab0e-089cf2664372 value=20 at (4.0, -46.5)
+Player disconnected: a9ELm7jaZVWiwjkyAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 12 user record(s) from /home/matt/workspace/.autogame-worktrees/370-playthrough-revalidate-sunken-canyon/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3297
+Player connected: socket=bh9e_KGl4zROIP3MAAAB, playerId=a555cfce-2558-42f3-94ee-6156eaded06d
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] spawned id=6deced94-6b47-4650-87e9-20759a87de5d value=20
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] magic stone drop id=4930629f-b895-482b-9882-c62cf2525955 value=15 at (3.0, -44.2)
+[loot] currency drop id=292e2300-36c1-4078-a9c5-152424733374 value=14 at (3.0, -44.2)
+[loot] magic stone drop id=7a328059-3025-4ca8-a772-ec2981c99d1c value=20 at (-1.5, -47.2)
+[loot] picked up id=7a328059-3025-4ca8-a772-ec2981c99d1c (magic stone) value=20 by bh9e_KGl4zROIP3MAAAB (currency=0, ms=70.05500000000055)
+[telepipe] placed at (-5.8, -46.5) by a555cfce-2558-42f3-94ee-6156eaded06d
+[telepipe] player a555cfce-2558-42f3-94ee-6156eaded06d extracted
+[run] checkpoint captured
+[run] extracted to hub: Canyon Descent — Tier II
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] magic stone drop id=5801478e-da9c-4b13-b79a-e6526150b7dc value=15 at (-1.9, -43.2)
+[loot] magic stone drop id=6da04971-093d-490f-82b0-8f3886e2b89d value=20 at (-1.9, -49.9)
+[loot] magic stone drop id=91c1d9ea-4de5-412c-9b84-bd30683189c1 value=20 at (4.0, -46.5)
+[loot] magic stone drop id=52d6d861-7a45-44c5-b300-a9ca90f17faf value=50 at (7.3, -13.7)
+[loot] currency drop id=9fa3e87c-28b8-4b78-9d09-28e78d5d0955 value=36 at (7.3, -13.7)
+Player disconnected: bh9e_KGl4zROIP3MAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 13 user record(s) from /home/matt/workspace/.autogame-worktrees/370-playthrough-revalidate-sunken-canyon/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3257
+Player connected: socket=jfUWSkr-dXRXYEIoAAAB, playerId=220fbaaa-c36c-4538-a9c1-986fcea08a20
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] spawned id=5e8215e7-5bcf-45e4-8c36-5ef36cca7cfd value=11
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] spawned id=f31a82a7-349b-48a9-ad9a-bce248e37eed value=17
+[loot] magic stone drop id=8be9f1d9-93f1-4509-b047-683b2b2e368c value=20 at (-1.5, -47.2)
+[loot] currency drop id=2931666d-b7cc-4aea-813d-d6cc739ec406 value=9 at (-1.5, -47.2)
+[loot] picked up id=2931666d-b7cc-4aea-813d-d6cc739ec406 value=9 by jfUWSkr-dXRXYEIoAAAB (currency=9, ms=99)
+[loot] picked up id=8be9f1d9-93f1-4509-b047-683b2b2e368c (magic stone) value=20 by jfUWSkr-dXRXYEIoAAAB (currency=9, ms=99)
+[loot] magic stone drop id=39f9e12c-bdbc-4d1c-b2ed-ffbef8114e60 value=15 at (3.0, -44.2)
+[telepipe] placed at (-5.8, -52.3) by 220fbaaa-c36c-4538-a9c1-986fcea08a20
+[telepipe] player 220fbaaa-c36c-4538-a9c1-986fcea08a20 extracted
+[run] checkpoint captured
+[run] extracted to hub: Canyon Descent — Tier II
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] magic stone drop id=1dafc0f4-b899-480a-97ed-49799399db8f value=20 at (-1.9, -49.9)
+[loot] currency drop id=4d2131bf-bfe8-483d-950e-fc2a7221776e value=14 at (-1.9, -49.9)
+[loot] magic stone drop id=8e70528b-4c43-472b-a92c-d692a2ce7060 value=15 at (-1.9, -43.2)
+[loot] magic stone drop id=c49a200d-6254-4430-a874-869368b375d3 value=20 at (4.0, -46.5)
+[loot] magic stone drop id=59257b52-7783-4595-9199-1ea7207ec38d value=50 at (7.3, -13.7)
+[loot] currency drop id=9cdb203a-5119-48d2-a3d3-1d346148d0cf value=24 at (7.3, -13.7)
+Player disconnected: jfUWSkr-dXRXYEIoAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

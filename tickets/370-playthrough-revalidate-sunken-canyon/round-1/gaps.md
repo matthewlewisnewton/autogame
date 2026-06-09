@@ -1,0 +1,3 @@
+1. The supplied vitest coverage run is red: `coverage.log` reports `3 failed | 2051 passed`, so the required server/client verification has not passed.
+   Files: `game/server/cardEffects.js`, `game/server/debugScenarios.js`, `game/server/index.js`, `game/server/simulation.js`, `game/server/test/card_windup_resolution.test.js`, `game/server/test/debug-scenarios.test.js`, `game/server/test/persistence_save_triggers.test.js`
+   Fix: make `pnpm test` pass by restoring `soul_drain` wind-up commitment, ensuring `arena-trials-tier-2` emits a state update with `run`, and preserving batched movement save behavior.
