@@ -1,0 +1,20 @@
+Round 5 remediation decomposed the two failed sub-tickets (`10`, `11`) into a tighter pair that separates the **root cause** from **artifact landing**.
+
+### Retired (failed, no `.passed`)
+- `10-ember-burn-harness-probe` — probe/wiring code was largely correct, but `validate:fire` was never re-run and burn ticks showed `hpDelta: 0` (godmode still blocking damage).
+- `11-ember-burn-harness-wiring-and-artifacts` — assertions/findings/verifier code passed QA, but stale `game/validation/fire/` artifacts never updated.
+
+### New sub-tickets
+
+**`12-ember-burn-godmode-sync-and-tick-damage`** — Game-side fix. The ember-burn scenario clears server godmode, but the client re-pins `debugGodmode: true` from stale `debugGodmodeResult` on every `stateUpdate`, so `damagePlayer` skips burn ticks. Emit `DEBUG_GODMODE_RESULT` with `enabled: false`, add server/client tests proving HP drops from burn ticks with godmode off.
+
+**`13-fire-burn-strict-validation-artifacts`** — Artifact pass. First action: `pnpm validate:fire`. Land `game/validation/fire/` with `burnTickDamageApplied: true`, `hpDelta < 0`, matching `findings.md`, and `validate:fire:check` exit 0. Harness edits only if validate:fire still fails after 12.
+
+Both use **Verification: code**.
+
+### Created folder paths
+
+```
+/home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/tickets/373-playthrough-validate-fire-level/subtickets/12-ember-burn-godmode-sync-and-tick-damage/ticket.md
+/home/matt/workspace/.autogame-worktrees/373-playthrough-validate-fire-level/tickets/373-playthrough-validate-fire-level/subtickets/13-fire-burn-strict-validation-artifacts/ticket.md
+```

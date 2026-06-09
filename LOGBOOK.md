@@ -5858,3 +5858,26 @@ PASS. This ticket did not add or modify any `?debugScenario=` shortcut. The capt
 ## Remaining gaps
 
 None.
+
+## v0.337 — 373-playthrough-validate-fire-level  (2026-06-08 19:18:06)
+
+### Telepipe vitals persistence and fresh-sortie charge reset
+
+PASS. The fire telepipe step depletes run resources, places Telepipe, suspends to hub, abandons/restores into a fresh sortie, and confirms HP/MS persistence plus full card-charge reset. `run-summary.json` shows HP 60 and MS 20 before and after, a new run id after deploy, and full post-deploy hand charges.
+
+### Debug-scenario requirements
+
+PASS. The new fire scenarios are gated by the server-side `ALLOW_DEBUG_SCENARIOS` check before `debugScenario` or debug godmode can mutate state. They are QA shortcuts over real quest/card/combat systems: `fire-cavern` uses the same quest/layout/run machinery as normal deployment, follow-on scenarios require an active `ember_descent` defeat-enemies run, and the card probes still use normal `useCard` resolution, damage/status application, and telepipe/run state. The equivalent end states are reachable through normal play by selecting Ember Descent, encountering Ember Wraiths, earning/using the relevant cards, and using Telepipe.
+
+### Design and foundation consistency
+
+PASS. The implementation stays within the documented lobby -> dungeon -> card-combat loop, preserves server-authoritative combat and state transitions, and does not regress the foundational requirements: the captured run connects over WebSockets, initializes the scene/canvas, renders the player and dungeon state, and keeps movement/combat state synchronized through server snapshots.
+
+### Code quality and validation
+
+PASS. The live code paths are covered by focused tests plus the full validation artifacts. `round-5/coverage.log` shows `137` test files and `2080` tests passed with coverage reporting enabled. `git diff --check` reported no whitespace errors. I did not find dead or broken ticket code that affects the acceptance criteria.
+
+## Remaining gaps
+
+None.
+

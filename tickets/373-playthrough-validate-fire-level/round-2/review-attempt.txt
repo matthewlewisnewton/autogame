@@ -1,0 +1,7 @@
+Review complete: `VERDICT: FAIL`.
+
+I wrote:
+- `tickets/373-playthrough-validate-fire-level/round-2/review.md`
+- `tickets/373-playthrough-validate-fire-level/round-2/gaps.md`
+
+Main blockers: fire burn validation does not prove ticking damage/animation, and the cleanse debug scenario seeds an impossible burn+slow state. No game code was edited.
