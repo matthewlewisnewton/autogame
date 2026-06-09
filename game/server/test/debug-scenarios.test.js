@@ -836,6 +836,25 @@ describe('debugScenario — canyon-descent-tier-2', () => {
 		}
 	});
 
+	it('canyon-descent-telepipe-ready deploys Tier 2 with telepipe in hand', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('debugScenario', { name: 'canyon-descent-telepipe-ready' });
+		const result = await debugResultPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('canyon-descent-telepipe-ready');
+		expect(stateUpdate.gamePhase).toBe('playing');
+		expect(stateUpdate.selectedQuestId).toBe(CANYON_DESCENT_ID);
+		expect(stateUpdate.selectedQuestTier).toBe(CANYON_DESCENT_TIER_2);
+
+		const player = playerForSocket(socket);
+		expect(player.hand.some((card) => card && card.id === 'telepipe')).toBe(true);
+	});
+
 	it('deploys canyon_descent Tier 2 stage-boss run with encounter and rigid layout', async () => {
 		const { socket } = await connectClient(baseUrl);
 
@@ -1001,10 +1020,8 @@ describe('debugScenario — canyon-descent-tier-2', () => {
 		await tier2Promise;
 
 		const lowHpPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
 		socket.emit('debugScenario', { name: 'canyon-descent-boss-low-hp' });
 		const lowHpResult = await lowHpPromise;
-		const stateUpdate = await stateUpdatePromise;
 
 		expect(lowHpResult.ok).toBe(true);
 		expect(lowHpResult.scenario).toBe('canyon-descent-boss-low-hp');
@@ -1025,6 +1042,11 @@ describe('debugScenario — canyon-descent-tier-2', () => {
 		expect(dist).toBeGreaterThanOrEqual(2);
 		expect(dist).toBeLessThanOrEqual(5.5);
 
+		// The canyon encounter is active, so the game loop emits periodic stateUpdates and the
+		// pre-mutation full-HP boss can race ahead of the scenario's own snapshot. Read the boss
+		// HP from a stateUpdate captured AFTER the scenario result resolves: the boss is pinned at
+		// 1 HP by then and is never healed, so every post-result snapshot reports hp === 1.
+		const stateUpdate = await waitForEvent(socket, 'stateUpdate');
 		const bossUpdate = stateUpdate.enemies.find((e) => e.id === bossId);
 		expect(bossUpdate?.hp).toBe(1);
 		expect(bossUpdate?.type).toBe('miniboss');

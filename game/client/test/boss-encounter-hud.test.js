@@ -111,8 +111,19 @@ describe('buildBossEncounterModel', () => {
       encounter: activeEncounter(),
       enemies: [makeBoss()],
       catalog,
+      questId: 'training_caverns',
     });
     expect(model.name).toBe('Annex Overseer');
+  });
+
+  it('shows Canyon Warden for canyon_descent stage-boss encounters', () => {
+    const model = buildBossEncounterModel({
+      encounter: activeEncounter(),
+      enemies: [makeBoss({ type: 'miniboss' })],
+      catalog,
+      questId: 'canyon_descent',
+    });
+    expect(model.name).toBe('Canyon Warden');
   });
 
   it('prefers the variant name when the boss has a catalog variant', () => {

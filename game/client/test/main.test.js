@@ -4511,6 +4511,44 @@ describe('updateObjectiveHud()', () => {
 	});
 });
 
+describe('__getEnemyRenderScaleForTest', () => {
+	const requiredIds = [
+		'status', 'vanguard-hud', 'character-id', 'player-level',
+		'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+		'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+		'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+		'currency-display', 'objective-hud', 'ui', 'card-hand',
+		'lobby', 'lobby-browser', 'lobby-player-list',
+		'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+		'summary-currency', 'summary-rewards', 'return-to-lobby-btn',
+	];
+
+	beforeEach(() => {
+		vi.resetModules();
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+	});
+
+	it('returns scale and type for a live enemy from harness state', async () => {
+		await import('../main.js');
+		window.__setGameState({
+			gamePhase: 'playing',
+			players: {},
+			enemies: [{ id: 'e1', type: 'miniboss', hp: 100, maxHp: 300, x: 0, z: 0 }],
+			run: null,
+		}, 'me');
+		expect(window.__getEnemyRenderScaleForTest('e1')).toEqual({ scale: 2.2, type: 'miniboss' });
+		expect(window.__getEnemyRenderScaleForTest('missing')).toBeNull();
+	});
+});
+
 describe('__AUTOGAME_HARNESS_STATE__ encounter and godmode fields', () => {
 	const requiredIds = [
 		'status', 'vanguard-hud', 'character-id', 'player-level',
@@ -4597,6 +4635,95 @@ describe('__AUTOGAME_HARNESS_STATE__ encounter and godmode fields', () => {
 		expect(noEncounter.encounter).toBeNull();
 		expect(noEncounter.objective.bossDefeated).toBeUndefined();
 		expect(noEncounter.player.debugGodmode).toBe(false);
+	});
+
+	it('player mirrors card wind-up and slow/burn fields for harness probes', async () => {
+		await import('../main.js');
+
+		const statusNow = Date.now();
+		window.__setGameState({
+			gamePhase: 'playing',
+			run: { status: 'playing' },
+			players: {
+				p1: {
+					hp: 42,
+					magicStones: 40,
+					x: 0,
+					z: 0,
+					cardUseState: 'windup',
+					cardWindupUntil: statusNow + 800,
+					cardWindupCardId: 'magma_greatsword',
+					slowedUntil: statusNow + 3000,
+					burningUntil: statusNow + 4000,
+				},
+			},
+			enemies: [],
+		}, 'p1');
+
+		const harness = window.__AUTOGAME_HARNESS_STATE__();
+		expect(harness.player).toEqual(expect.objectContaining({
+			hp: 42,
+			cardUseState: 'windup',
+			cardWindupUntil: statusNow + 800,
+			cardWindupCardId: 'magma_greatsword',
+			slowedUntil: statusNow + 3000,
+			burningUntil: statusNow + 4000,
+			slowActive: true,
+			burnActive: true,
+		}));
+	});
+
+	it('enemyHp includes slowedUntil, burningUntil, and slowFactor for status probes', async () => {
+		await import('../main.js');
+
+		const statusNow = Date.now();
+		window.__setGameState({
+			gamePhase: 'playing',
+			run: { status: 'playing' },
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+			enemies: [
+				{
+					id: 'e-slow',
+					type: 'grunt',
+					hp: 50,
+					maxHp: 80,
+					x: 4,
+					z: 0,
+					slowedUntil: statusNow + 3000,
+					slowFactor: 0.4,
+					burningUntil: 0,
+				},
+				{
+					id: 'e-burn',
+					type: 'grunt',
+					hp: 50,
+					maxHp: 80,
+					x: 7,
+					z: 0,
+					slowedUntil: 0,
+					burningUntil: statusNow + 4000,
+				},
+			],
+		}, 'p1');
+
+		const harness = window.__AUTOGAME_HARNESS_STATE__();
+		expect(harness.enemyHp).toEqual([
+			expect.objectContaining({
+				id: 'e-slow',
+				slowedUntil: statusNow + 3000,
+				burningUntil: 0,
+				slowActive: true,
+				burnActive: false,
+				slowFactor: 0.4,
+			}),
+			expect.objectContaining({
+				id: 'e-burn',
+				slowedUntil: 0,
+				burningUntil: statusNow + 4000,
+				slowActive: false,
+				burnActive: true,
+			}),
+		]);
 	});
 
 	it('runObjectiveComplete is true only when stage_boss bossDefeated is true', async () => {
@@ -4942,6 +5069,11 @@ describe('suspended run resume/abandon UI', () => {
 		expect(resumeBtn.classList.contains('hidden')).toBe(false);
 		expect(abandonBtn.classList.contains('hidden')).toBe(false);
 		expect(abandonBtn.textContent).toBe('Abort Sortie');
+
+		const harness = window.__AUTOGAME_HARNESS_STATE__();
+		expect(harness.resumeBtnUsable).toBe(true);
+		expect(harness.abandonRunBtnUsable).toBe(true);
+		expect(harness.suspendedRunSummary).toEqual(suspendedSummary);
 	});
 
 	it('emits abandonRun and clears suspended UI when abort is clicked', async () => {
@@ -4969,6 +5101,22 @@ describe('suspended run resume/abandon UI', () => {
 		});
 
 		expect(document.getElementById('suspended-run-banner').classList.contains('hidden')).toBe(true);
+		expect(window.__AUTOGAME_HARNESS_STATE__().suspendedRunSummary).toBeNull();
+	});
+
+	it('__abandonSuspendedRunForTest emits abandonRun when suspended', async () => {
+		await import('../main.js');
+
+		window.__triggerSocketEvent('runSuspended', suspendedSummary);
+		window.__triggerSocketEvent('stateUpdate', lobbyStateUpdate());
+		window.__clearSocketEmitLog();
+
+		const result = window.__abandonSuspendedRunForTest();
+		expect(result).toEqual({ ok: true });
+
+		const abandonEmits = window.__socketEmitLog().filter((entry) => entry.event === 'abandonRun');
+		expect(abandonEmits).toHaveLength(1);
+		expect(window.__AUTOGAME_HARNESS_STATE__().abandonRunBtnUsable).toBe(false);
 		expect(window.__AUTOGAME_HARNESS_STATE__().suspendedRunSummary).toBeNull();
 	});
 

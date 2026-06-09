@@ -154,6 +154,142 @@ function renderTelepipeSection(telepipeReset) {
 	return lines;
 }
 
+function renderBossEncounterUiSection(probe) {
+	const lines = ['', '## Boss encounter UI', ''];
+	if (!probe || typeof probe !== 'object') {
+		lines.push('No boss encounter UI probe recorded.');
+		return lines;
+	}
+	const encounterActive = probe.encounterLocked === true && probe.encounterPhase === 'active';
+	lines.push(`- **hudVisible**: ${probe.hudVisible === true ? 'yes' : 'no'}`);
+	lines.push(`- **bossName**: ${probe.bossName || '(empty)'}`);
+	lines.push(`- **hpFillWidthPct**: ${probe.hpFillWidthPct ?? '(missing)'}`);
+	lines.push(`- **encounterLocked / phase**: ${probe.encounterLocked === true ? 'locked' : 'unlocked'} / ${probe.encounterPhase ?? '(unknown)'}`);
+	if (probe.hudVisible !== true) {
+		lines.push('  - Note: boss encounter HUD missing or hidden during boss-active capture.');
+	}
+	if (!probe.bossName) {
+		lines.push('  - Note: boss display name is empty.');
+	}
+	if (!encounterActive) {
+		lines.push('  - Note: encounter was not active/locked when probed.');
+	}
+	return lines;
+}
+
+function renderSlowBurnSection(exercise) {
+	const lines = ['', '## Slow / burn mutual exclusivity', ''];
+	if (!exercise || typeof exercise !== 'object') {
+		lines.push('No slow/burn card exercise recorded.');
+		return lines;
+	}
+	lines.push(`- **targetEnemyId**: ${exercise.targetEnemyId ?? '(missing)'}`);
+	lines.push(`- **afterSlow**: slowActive=${exercise.afterSlow?.slowActive === true ? 'yes' : 'no'}, burnActive=${exercise.afterSlow?.burnActive === true ? 'yes' : 'no'}`);
+	lines.push(`- **afterBurn**: slowActive=${exercise.afterBurn?.slowActive === true ? 'yes' : 'no'}, burnActive=${exercise.afterBurn?.burnActive === true ? 'yes' : 'no'}`);
+	lines.push(`- **slowBurnMutuallyExclusive**: ${exercise.slowBurnMutuallyExclusive === true ? 'yes' : 'no'}`);
+	if (exercise.slowBurnMutuallyExclusive !== true) {
+		lines.push('  - Note: enemy had both slow and burn active, or status did not match ticket 301 exclusivity.');
+	}
+	return lines;
+}
+
+function renderPurifyingPulseSection(exercise) {
+	const lines = ['', '## Heal / cleanse (Purifying Pulse)', ''];
+	if (!exercise || typeof exercise !== 'object') {
+		lines.push('No Purifying Pulse exercise recorded.');
+		return lines;
+	}
+	lines.push(`- **preCast hp**: ${exercise.preCast?.hp ?? '(missing)'}`);
+	lines.push(`- **postCast hp**: ${exercise.postCast?.hp ?? '(missing)'}`);
+	lines.push(`- **preCast debuffs**: slow=${exercise.preCast?.slowActive === true ? 'yes' : 'no'}, burn=${exercise.preCast?.burnActive === true ? 'yes' : 'no'}`);
+	lines.push(`- **postCast debuffs**: slow=${exercise.postCast?.slowActive === true ? 'yes' : 'no'}, burn=${exercise.postCast?.burnActive === true ? 'yes' : 'no'}`);
+	lines.push(`- **healCleanseApplied**: ${exercise.healCleanseApplied === true ? 'yes' : 'no'}`);
+	if (exercise.healCleanseApplied !== true) {
+		lines.push('  - Note: HP did not rise or slow/burn debuffs were not cleared.');
+	}
+	return lines;
+}
+
+function renderWindupSection(exercise) {
+	const lines = ['', '## Wind-up telegraph', ''];
+	if (!exercise || typeof exercise !== 'object') {
+		lines.push('No wind-up card exercise recorded.');
+		return lines;
+	}
+	lines.push(`- **cardId**: ${exercise.cardId ?? '(missing)'}`);
+	lines.push(`- **cardUseState**: ${exercise.duringWindup?.cardUseState ?? '(missing)'}`);
+	lines.push(`- **cardWindupCardId**: ${exercise.duringWindup?.cardWindupCardId ?? '(missing)'}`);
+	lines.push(`- **inputLocked**: ${exercise.domProbe?.inputLocked === true ? 'yes' : 'no'}`);
+	lines.push(`- **telegraphVisible**: ${exercise.domProbe?.telegraphVisible === true ? 'yes' : 'no'}`);
+	lines.push(`- **windupTelegraphActive**: ${exercise.windupTelegraphActive === true ? 'yes' : 'no'}`);
+	if (exercise.windupTelegraphActive !== true) {
+		lines.push('  - Note: harness wind-up state and DOM telegraph did not agree.');
+	}
+	return lines;
+}
+
+function renderCanyonTelepipeSection(telepipe) {
+	const lines = ['', '## Telepipe vitals and new-sortie charges', ''];
+	if (!telepipe || typeof telepipe !== 'object') {
+		lines.push('No canyon telepipe exercise recorded.');
+		return lines;
+	}
+	const pre = telepipe.preSuspend;
+	const post = telepipe.postDeploy;
+	if (pre) {
+		lines.push(`- **preSuspend**: hp=${pre.hp}, magicStones=${pre.magicStones}, runId=${pre.runId ?? '(missing)'}`);
+	}
+	if (post) {
+		lines.push(`- **postDeploy**: hp=${post.hp}, magicStones=${post.magicStones}, runId=${post.runId ?? '(missing)'}`);
+	}
+	lines.push(`- **telepipeVitalsPreserved**: ${telepipe.telepipeVitalsPreserved === true ? 'yes' : 'no'}`);
+	lines.push(`- **cardChargesResetOnNewSortie**: ${telepipe.cardChargesResetOnNewSortie === true ? 'yes' : 'no'}`);
+	if (telepipe.telepipeVitalsPreserved !== true) {
+		lines.push('  - Note: HP or magic stones changed across suspend → abandon → redeploy.');
+	}
+	if (telepipe.cardChargesResetOnNewSortie !== true) {
+		lines.push('  - Note: hand charges did not reset on fresh sortie after telepipe abandon.');
+	}
+	return lines;
+}
+
+function renderNewContentExerciseSection(screenshots) {
+	const lines = ['', '## New content exercise', ''];
+	const exerciseShots = (screenshots || []).filter((shot) => /0[89]-|10-|11-|12-/.test(shot));
+	if (exerciseShots.length === 0) {
+		lines.push('No new-content exercise screenshots recorded.');
+		return lines;
+	}
+	for (const shot of exerciseShots) {
+		const filename = shot.split('/').pop() || shot;
+		lines.push(`- \`${filename}\` — see Screenshots list (\`${shot}\`)`);
+	}
+	return lines;
+}
+
+function renderBossVisualIdentitySection(probe) {
+	const lines = ['', '## Boss visual identity', ''];
+	if (!probe || typeof probe !== 'object') {
+		lines.push('No boss visual identity probe recorded.');
+		return lines;
+	}
+	lines.push(`- **bossType**: ${probe.bossType ?? '(missing)'}`);
+	lines.push(`- **bossEnemyId**: ${probe.bossEnemyId ?? '(missing)'}`);
+	lines.push(`- **nearestAddType**: ${probe.nearestAddType ?? '(none)'}`);
+	lines.push(`- **bossDistinctFromAdds**: ${probe.bossDistinctFromAdds === true ? 'yes' : 'no'}`);
+	if (probe.bossRenderScale != null || probe.addRenderScale != null) {
+		lines.push(`- **bossRenderScale / addRenderScale**: ${probe.bossRenderScale ?? '?'} / ${probe.addRenderScale ?? '?'}`);
+	}
+	if (probe.bossDistinctFromAdds !== true) {
+		lines.push('  - Note: boss type or maxHp is not clearly distinct from the nearest live add.');
+	}
+	if (probe.bossRenderScale != null && probe.addRenderScale != null
+		&& !(probe.bossRenderScale > probe.addRenderScale)) {
+		lines.push('  - Note: boss render scale is not larger than the nearest add.');
+	}
+	return lines;
+}
+
 function renderFloorAlignmentSection(floorAlignment, { preset, objectiveType } = {}) {
 	const lines = ['', '## Floor alignment', ''];
 	const probes = floorAlignment && typeof floorAlignment === 'object' ? floorAlignment : {};
@@ -205,6 +341,10 @@ function renderFloorAlignmentSection(floorAlignment, { preset, objectiveType } =
  *   emberBurn?: object | null,
  *   cardMechanics?: object | null,
  *   telepipeReset?: object | null,
+ *   bossEncounterUi?: object | null,
+ *   bossVisualIdentity?: object | null,
+ *   cardExercises?: { slowBurn?: object, purifyingPulse?: object, windup?: object } | null,
+ *   canyonTelepipe?: object | null,
  *   consoleErrors?: string[],
  *   screenshots?: string[],
  *   visualNotes?: string[],
@@ -224,6 +364,18 @@ export function renderFindings(run) {
 	];
 
 	lines.push(...renderAssertionSection(run));
+
+	if (run.preset === 'sunken-canyon') {
+		lines.push(
+			formatAssertion('bossEncounterUiVisible', run.assertions?.bossEncounterUiVisible === true),
+			formatAssertion('bossDistinctFromAdds', run.assertions?.bossDistinctFromAdds === true),
+			formatAssertion('slowBurnMutuallyExclusive', run.assertions?.slowBurnMutuallyExclusive === true),
+			formatAssertion('healCleanseApplied', run.assertions?.healCleanseApplied === true),
+			formatAssertion('windupTelegraphActive', run.assertions?.windupTelegraphActive === true),
+			formatAssertion('telepipeVitalsPreserved', run.assertions?.telepipeVitalsPreserved === true),
+			formatAssertion('cardChargesResetOnNewSortie', run.assertions?.cardChargesResetOnNewSortie === true),
+		);
+	}
 
 	if (run.error) {
 		lines.push('', '## Failure', '', run.error);
@@ -260,6 +412,13 @@ export function renderFindings(run) {
 		preset: run.preset,
 		objectiveType,
 	}));
+	lines.push(...renderBossEncounterUiSection(run.bossEncounterUi));
+	lines.push(...renderBossVisualIdentitySection(run.bossVisualIdentity));
+	lines.push(...renderSlowBurnSection(run.cardExercises?.slowBurn));
+	lines.push(...renderPurifyingPulseSection(run.cardExercises?.purifyingPulse));
+	lines.push(...renderWindupSection(run.cardExercises?.windup));
+	lines.push(...renderCanyonTelepipeSection(run.canyonTelepipe));
+	lines.push(...renderNewContentExerciseSection(run.screenshots));
 
 	lines.push('', '## Screenshots', '');
 	for (const shot of run.screenshots || []) {

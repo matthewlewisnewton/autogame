@@ -7,6 +7,14 @@ import { getHpBarTier } from './vanguard-hud.js';
 /** Generic label used when the catalog lacks the boss's display entry. */
 const GENERIC_BOSS_NAME = 'Boss';
 
+/** Per-quest stage-boss display names (title case for the encounter HUD). */
+const QUEST_STAGE_BOSS_NAMES = {
+  canyon_descent: 'Canyon Warden',
+  spire_ascent: 'Summit Warden',
+  training_caverns: 'Annex Overseer',
+  arena_trials: 'Trial Warden',
+};
+
 /**
  * Build the boss-encounter HUD view-model from the live encounter, the enemy
  * list, and the server display catalog. Returns null when the encounter is not
@@ -15,10 +23,11 @@ const GENERIC_BOSS_NAME = 'Boss';
  * @param {{
  *   encounter?: { phase?: string, locked?: boolean, bossEnemyId?: string|null }|null,
  *   enemies?: Array<{ id?: string, type?: string, variant?: string, hp?: number, maxHp?: number }>,
- *   catalog?: { types?: object, variants?: object }
+ *   catalog?: { types?: object, variants?: object },
+ *   questId?: string|null,
  * }} args
  */
-export function buildBossEncounterModel({ encounter, enemies, catalog } = {}) {
+export function buildBossEncounterModel({ encounter, enemies, catalog, questId = null } = {}) {
   if (!encounter) return null;
   if (encounter.phase !== 'active' && encounter.locked !== true) return null;
 
@@ -35,7 +44,7 @@ export function buildBossEncounterModel({ encounter, enemies, catalog } = {}) {
     : 0;
 
   return {
-    name: resolveBossName(boss, catalog),
+    name: resolveBossName(boss, catalog, questId),
     hp,
     maxHp,
     hpPct,
@@ -44,10 +53,13 @@ export function buildBossEncounterModel({ encounter, enemies, catalog } = {}) {
 }
 
 /** Resolve a boss's display name from the catalog, with a generic fallback. */
-function resolveBossName(enemy, catalog) {
+function resolveBossName(enemy, catalog, questId = null) {
   if (enemy.variant) {
     const variantEntry = catalog?.variants?.[enemy.variant];
     if (variantEntry?.name) return variantEntry.name;
+  }
+  if (questId && QUEST_STAGE_BOSS_NAMES[questId]) {
+    return QUEST_STAGE_BOSS_NAMES[questId];
   }
   const typeEntry = catalog?.types?.[enemy.type];
   if (typeEntry?.name) return typeEntry.name;

@@ -36,7 +36,9 @@ function probesMatchDepletion(probe, startingMs = STARTING_MAGIC_STONES) {
 // portal walk, suspend, abandon, and waitForPlaying before postDeploy probe.
 const FRESH_DEPLOY_MS_REGEN_TICKS = 10;
 const FRESH_DEPLOY_MS_TOLERANCE = MAGIC_STONES_REGEN_PER_TICK * FRESH_DEPLOY_MS_REGEN_TICKS;
-const VITALS_MS_REGEN_TICKS = 100;
+// Canyon suspend → abandon → redeploy can spend 30s+ in playing before postDeploy probe;
+// allow passive regen during that window (ticket 287 preserves vitals, not a hard MS freeze).
+const VITALS_MS_REGEN_TICKS = 800;
 const VITALS_MS_TOLERANCE = MAGIC_STONES_REGEN_PER_TICK * VITALS_MS_REGEN_TICKS;
 
 export function probesMatchVitalsPreserved(pre, post, msTolerance = VITALS_MS_TOLERANCE) {
@@ -49,15 +51,24 @@ export function probesMatchVitalsPreserved(pre, post, msTolerance = VITALS_MS_TO
 	return hpMatch && msMatch;
 }
 
-export function probesMatchFreshDeploy(probe, startingMs = STARTING_MAGIC_STONES) {
+/** Occupied hand slots have full charges (ticket 289 — no MS reset required for canyon). */
+export function probesMatchCardChargesReset(probe) {
+	const occupied = (probe?.hand || []).filter(Boolean);
+	return occupied.length > 0
+		&& occupied.every((card) => card.remainingCharges === card.charges);
+}
+
+function probesMatchFreshDeployWithMsReset(probe, startingMs = STARTING_MAGIC_STONES) {
 	const ms = probe?.magicStones;
 	const msReset = Number.isFinite(ms)
 		&& ms >= startingMs
 		&& ms <= startingMs + FRESH_DEPLOY_MS_TOLERANCE;
-	const occupied = (probe?.hand || []).filter(Boolean);
-	const chargesFull = occupied.length > 0
-		&& occupied.every((card) => card.remainingCharges === card.charges);
-	return msReset && chargesFull;
+	return msReset && probesMatchCardChargesReset(probe);
+}
+
+/** Hub telepipe fresh deploy: full charges plus MS near run-start (ticket 281). */
+export function probesMatchFreshDeploy(probe, startingMs = STARTING_MAGIC_STONES) {
+	return probesMatchFreshDeployWithMsReset(probe, startingMs);
 }
 
 /** Fresh sortie after telepipe abandon — card charges only (vitals preserved per ticket 287). */
@@ -69,6 +80,11 @@ export function probesMatchFreshSortieCharges(probe) {
 
 function probesMatchFreshRunId(pre, post) {
 	return pre?.runId != null && post?.runId != null && pre.runId !== post.runId;
+}
+
+export function probesMatchNewSortie(preSuspend, postDeploy) {
+	return probesMatchCardChargesReset(postDeploy)
+		&& probesMatchFreshRunId(preSuspend, postDeploy);
 }
 
 /**
@@ -448,6 +464,137 @@ export async function runTelepipeResetStep({
 		cardChargesResetOnFreshSortie,
 		telepipeUpReset: false,
 		freshRunIdConfirmed,
+		checkpointRestoredInLog,
+		beforeScreenshot: path.relative(repoRoot, beforeScreenshotPath),
+		afterScreenshot: path.relative(repoRoot, afterScreenshotPath),
+	};
+}
+
+const CANYON_TELEPIPE_READY_SCENARIO = 'canyon-descent-telepipe-ready';
+
+/**
+ * Sunken-canyon telepipe suspend → abandon → fresh redeploy (tickets 287 + 289).
+ * Distinct from hub `runTelepipeResetStep`: abandons suspended checkpoint before redeploy.
+ *
+ * @param {import('playwright').Page} page
+ * @param {{ preset: object, outDirAbs: string, repoRoot: string, serverLogPath?: string | null, gameProcess?: object | null, fromPlaying?: boolean }} opts
+ */
+export async function runCanyonTelepipeNewSortieStep({
+	page,
+	preset,
+	outDirAbs,
+	repoRoot,
+	serverLogPath = null,
+	gameProcess = null,
+	fromPlaying = false,
+}) {
+	await assertServerAlive(gameProcess, serverLogPath);
+
+	const telepipeScenario = preset.telepipeScenario ?? CANYON_TELEPIPE_READY_SCENARIO;
+	const deployScenario = preset.telepipeDeployScenario ?? preset.deployScenario ?? 'canyon-descent-tier-2';
+
+	if (!fromPlaying) {
+		await createLobby(page, preset.lobbyName ?? 'Canyon Telepipe New Sortie');
+		await waitForHubLobby(page);
+		await requestScenario(page, telepipeScenario);
+		await deployViaLaunchBooth(page);
+	} else {
+		let harness = await readHarness(page);
+		const hasTelepipe = (harness?.hand || []).some((card) => card?.id === 'telepipe');
+		if (!hasTelepipe) {
+			await requestScenario(page, telepipeScenario);
+			harness = await readHarness(page);
+		}
+		if (harness?.phase !== 'playing') {
+			throw new Error(`Expected sunken-canyon playing phase before telepipe exercise: ${JSON.stringify(harness)}`);
+		}
+	}
+
+	const deployedHarness = await readHarness(page);
+	const telepipeInHand = (deployedHarness?.hand || []).some((card) => card?.id === 'telepipe');
+	if (!telepipeInHand) {
+		throw new Error(`Expected telepipe in hand after canyon deploy: ${JSON.stringify(deployedHarness?.hand)}`);
+	}
+	if (deployedHarness?.phase !== 'playing') {
+		throw new Error(`Expected sunken-canyon playing phase: ${JSON.stringify(deployedHarness)}`);
+	}
+
+	const preSuspend = await depleteRunResources(page);
+	if (!probesMatchDepletion(preSuspend)) {
+		throw new Error(`preSuspend probes failed depletion criteria: ${JSON.stringify(preSuspend)}`);
+	}
+	if (preSuspend.runId == null) {
+		throw new Error(`preSuspend missing runId: ${JSON.stringify(preSuspend)}`);
+	}
+	await assertServerAlive(gameProcess, serverLogPath);
+
+	const beforeScreenshotPath = await writeScreenshot(page, outDirAbs, '11-telepipe-before');
+
+	const logSliceStart = serverLogPath && fs.existsSync(serverLogPath)
+		? fs.statSync(serverLogPath).size
+		: 0;
+
+	await suspendViaTelepipe(page);
+	await assertServerAlive(gameProcess, serverLogPath);
+	const hubHarness = await readHarness(page);
+	const hubReturned = hubHarness?.phase === 'lobby'
+		&& (hubHarness?.runStatus === 'suspended'
+			|| !!hubHarness?.suspendedRunSummary
+			|| hubHarness?.runId == null);
+	if (!hubReturned) {
+		throw new Error(`Expected hub lobby after canyon telepipe UP: ${JSON.stringify(hubHarness)}`);
+	}
+
+	await abandonSuspendedRun(page);
+	await assertServerAlive(gameProcess, serverLogPath);
+
+	await deployViaLaunchBooth(page, deployScenario);
+	await assertServerAlive(gameProcess, serverLogPath);
+
+	const postDeploy = await probeHandAndMs(page);
+	const postHarness = await readHarness(page);
+	if (postHarness?.suspendedRunSummary || postHarness?.runStatus === 'suspended') {
+		throw new Error(`Fresh deploy still shows suspended checkpoint: ${JSON.stringify(postHarness)}`);
+	}
+	if (postHarness?.abandonRunBtnUsable) {
+		throw new Error(`abandonRunBtnUsable still true after fresh deploy: ${JSON.stringify(postHarness)}`);
+	}
+
+	const telepipeVitalsPreserved = probesMatchVitalsPreserved(preSuspend, postDeploy);
+	if (!telepipeVitalsPreserved) {
+		throw new Error(
+			`postDeploy probes failed vitals-preservation: pre=${JSON.stringify({ hp: preSuspend.hp, magicStones: preSuspend.magicStones })} `
+			+ `post=${JSON.stringify({ hp: postDeploy.hp, magicStones: postDeploy.magicStones })}`,
+		);
+	}
+
+	const cardChargesResetOnNewSortie = probesMatchNewSortie(preSuspend, postDeploy);
+	if (!cardChargesResetOnNewSortie) {
+		throw new Error(
+			`card charges not reset on new sortie: preRunId=${preSuspend.runId} postRunId=${postDeploy.runId} `
+			+ `hand=${JSON.stringify(postDeploy.hand)}`,
+		);
+	}
+
+	const afterScreenshotPath = await writeScreenshot(page, outDirAbs, '12-telepipe-after');
+	const checkpointRestoredInLog = readServerLogForbidden(
+		serverLogPath,
+		logSliceStart,
+		'[run] checkpoint restored',
+	);
+	if (checkpointRestoredInLog) {
+		throw new Error(
+			'canyon telepipe slice contains forbidden "[run] checkpoint restored" — resume path ran instead of abandon+fresh deploy',
+		);
+	}
+
+	return {
+		telepipeScenario,
+		deployScenario,
+		preSuspend,
+		postDeploy,
+		telepipeVitalsPreserved,
+		cardChargesResetOnNewSortie,
 		checkpointRestoredInLog,
 		beforeScreenshot: path.relative(repoRoot, beforeScreenshotPath),
 		afterScreenshot: path.relative(repoRoot, afterScreenshotPath),

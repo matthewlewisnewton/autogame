@@ -83,6 +83,16 @@ function setCallbacks(deps) {
   DEBUG_SCENARIOS = deps.DEBUG_SCENARIOS;
 }
 
+/** Drop in-progress card wind-up so the next debug scenario can cast immediately. */
+function clearPlayerCardCommitment(player) {
+  delete player.cardUseState;
+  delete player.cardWindupUntil;
+  delete player.cardWindupStartTime;
+  delete player.cardWindupMs;
+  delete player.cardWindupCardId;
+  delete player.pendingCardUse;
+}
+
 function setupFrostCrossingTier1Deploy(lobby, state, player) {
   const questId = 'frost_crossing';
   const tier = 1;
@@ -305,6 +315,7 @@ function applyDebugScenario(socket, name) {
     player.dead = false;
     player.firstMoveAfterSpawn = false;
     player.lastMoveTime = Date.now();
+    clearPlayerCardCommitment(player);
     player.debugScenario = name;
     if (!player.pendingSummons) {
       player.pendingSummons = new Set();
@@ -343,6 +354,26 @@ function applyDebugScenario(socket, name) {
         layout: state.layout,
       });
       broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'fireball-hand-ready') {
+      // Swap Fireball into hand without resetting enemies or status — for sequential
+      // card exercises (e.g. slow then burn on the same target after ice-ball-ready).
+      // The same card is reachable normally by earning or drawing Fireball mid-run.
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'fireball',
+          name: 'Fireball',
+          type: 'weapon',
+          charges: 4,
+          remainingCharges: 4,
+        };
+      }
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return { ok: true, scenario: name };
     }
@@ -585,54 +616,10 @@ function applyDebugScenario(socket, name) {
 
     if (name === 'arena-trials-tier-2') {
       // arena_trials Tier 2 with rigid open-plaza layout and cover-aware spawns.
-      // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
-      // snapshots the correct run.questTier/objective and spawnEnemy variant rolls.
       // Reachable normally by clearing Arena Trials Tier 1, unlocking Tier 2, and
       // deploying; this scenario is a shortcut into that state.
-      const questId = 'arena_trials';
-      const tier = 2;
-      unlockQuestTier(player.accountId, questId, tier);
-      state.selectedQuestId = questId;
-      state.selectedQuestTier = tier;
-      applyLayoutForQuest(state, questId, tier);
-
-      player.ready = true;
-      player.hp = MAX_HP;
-      player.magicStones = MAX_MAGIC_STONES;
-      const plazaSpawn = firstRoomPosition();
-      player.x = plazaSpawn.x;
-      player.z = plazaSpawn.z;
-      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-
-      enterPlayingPhase(lobby);
-
-      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
-        createDrawDeckFromSelectedDeck(player);
-        initPlayerHand(player);
-        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
-        if (!player.pendingSummons) {
-          player.pendingSummons = new Set();
-        }
-      }
-
-      state.enemies = [];
-      state.loot = [];
-      delete state.run;
-      delete state._pendingEncounterBossId;
-      spawnEnemies();
-      startDungeonRun();
-
-      emitLobbyQuestUpdate(lobby, state, {
-        layoutSeed: state.layoutSeed,
-        layout: state.layout,
-      });
-      broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-      return {
-        ok: true,
-        scenario: name,
-        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
-      };
+      setupArenaTrialsTier2StageBossDebug(lobby, state, player);
+      return finishStageBossDebugScenario(lobby, state, player, name);
     }
 
     if (name === 'stage-boss-dormant') {
@@ -1047,7 +1034,7 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
-    if (name === 'canyon-descent-tier-2') {
+    if (name === 'canyon-descent-tier-2' || name === 'canyon-descent-telepipe-ready') {
       // canyon_descent Tier 2 with rigid sunken-canyon layout and band-aware spawns.
       // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
       // snapshots the correct run.questTier/objective and spawnEnemy variant rolls.
@@ -1061,8 +1048,19 @@ function applyDebugScenario(socket, name) {
       applyLayoutForQuest(state, questId, tier);
 
       player.ready = true;
-      player.hp = MAX_HP;
-      player.magicStones = MAX_MAGIC_STONES;
+      const deployHp = Number.isFinite(player.hp) ? player.hp : null;
+      const deployMagicStones = Number.isFinite(player.magicStones) ? player.magicStones : null;
+      if (deployHp != null) {
+        player.hp = deployHp;
+      } else {
+        player.hp = MAX_HP;
+        player.dead = false;
+      }
+      if (deployMagicStones != null) {
+        player.magicStones = deployMagicStones;
+      } else {
+        player.magicStones = MAX_MAGIC_STONES;
+      }
       const plateauSpawn = firstRoomPosition();
       player.x = plateauSpawn.x;
       player.z = plateauSpawn.z;
@@ -1070,12 +1068,14 @@ function applyDebugScenario(socket, name) {
 
       enterPlayingPhase(lobby);
 
-      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+      if (state.gamePhase === 'playing') {
         createDrawDeckFromSelectedDeck(player);
         initPlayerHand(player);
         player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
         if (!player.pendingSummons) {
           player.pendingSummons = new Set();
+        } else {
+          player.pendingSummons.clear();
         }
       }
 
@@ -1085,6 +1085,24 @@ function applyDebugScenario(socket, name) {
       delete state._pendingEncounterBossId;
       spawnEnemies();
       startDungeonRun();
+
+      if (name === 'canyon-descent-telepipe-ready') {
+        // Debug QA shortcut: telepipe in hand for canyon telepipe harness exercises.
+        // Same card is reachable normally by purchasing Telepipe from the shop before deploy.
+        const telepipeDef = CARD_DEFS.telepipe;
+        const replaceSlot = player.hand.findIndex((c) => c);
+        if (telepipeDef && replaceSlot >= 0) {
+          player.hand[replaceSlot] = {
+            id: 'telepipe',
+            name: telepipeDef.name,
+            type: telepipeDef.type,
+            charges: 1,
+            remainingCharges: 1,
+            magicStoneCost: telepipeDef.magicStoneCost || 0,
+            effect: 'telepipe',
+          };
+        }
+      }
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
@@ -1175,16 +1193,56 @@ function applyDebugScenario(socket, name) {
       if (state.run.encounter.phase !== 'dormant') {
         return { ok: false, reason: 'Encounter must be dormant' };
       }
-      const anchor = resolveEncounterAnchor(state.run, state);
-      if (!anchor) {
-        return { ok: false, reason: 'No encounter anchor for boss approach' };
+      const bossId = state.run.encounter.bossEnemyId;
+      const boss = state.enemies.find((e) => e.id === bossId);
+      if (!boss || boss.type !== 'miniboss') {
+        return { ok: false, reason: 'Canyon miniboss not found' };
       }
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
-      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 1;
-      player.z = anchor.z;
+      repositionNearEnemy(player, boss, ENCOUNTER_TRIGGER_RADIUS + 1);
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       player.debugScenarioNudgeAfter = Date.now() + 1500;
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'canyon-descent-encounter-trigger') {
+      // Debug QA: activate the dormant canyon miniboss after boss-approach without
+      // keyboard walking across elevation bands. Same transition is reachable by
+      // walking into the encounter trigger in normal play.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'canyon_descent'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires canyon_descent Tier 2 stage-boss run' };
+      }
+      const bossId = state.run.encounter.bossEnemyId;
+      for (const enemy of state.enemies || []) {
+        if (enemy.id !== bossId) enemy.hp = 0;
+      }
+      state.enemies = (state.enemies || []).filter((e) => e.hp > 0);
+      syncRunObjectiveToEnemies();
+      const boss = state.enemies.find((e) => e.id === bossId);
+      if (!boss || boss.type !== 'miniboss') {
+        return { ok: false, reason: 'Canyon miniboss not found' };
+      }
+      player.debugScenarioNudgeAfter = 0;
+      repositionNearEnemy(player, boss, ENCOUNTER_TRIGGER_RADIUS - 1);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      if (isEncounterDormant(state.run)) {
+        activateEncounter(state.run);
+      }
+      if (!state.run.encounter.locked) {
+        lockEncounter(state.run);
+      }
+      // Harness bossVisualIdentity probe needs a live non-boss enemy beside the
+      // active miniboss (adds are cleared before activation in normal play).
+      const visualAdd = spawnEnemy(boss.x + 2.5, boss.z, 'grunt');
+      visualAdd.hp = 1;
+      visualAdd.y = resolveFloorY(sampleFloorY(state.layout, visualAdd.x, visualAdd.z));
+      visualAdd.wanderTarget = { x: visualAdd.x, z: visualAdd.z };
       broadcastLobbyUpdate(lobby);
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return { ok: true, scenario: name };
@@ -1226,6 +1284,10 @@ function applyDebugScenario(socket, name) {
       if (!state.run.encounter.locked) {
         lockEncounter(state.run);
       }
+      // Re-pin the boss to 1 HP immediately before the snapshot so activation/lock (or any
+      // game-loop tick they enable on this active canyon encounter) cannot leak a full-HP boss
+      // into the emitted state. The final stateSnapshot() is built strictly after this pin.
+      boss.hp = 1;
       broadcastLobbyUpdate(lobby);
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return { ok: true, scenario: name };
@@ -2611,6 +2673,27 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       const grunt = spawnEnemy(player.x + 4, player.z, 'grunt');
       grunt.wanderTarget = { x: grunt.x, z: grunt.z };
+    } else if (name === 'mirror-ward-ready') {
+      // Playing phase with Mirror Ward in hand, full Magic Stones, and a grunt
+      // nearby so QA can self-cast and see the instant shell + lingering ward VFX
+      // (and later test reflect on hit). Same state is reachable by earning the
+      // reward card deep in a dungeon run and casting in combat.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'mirror_ward',
+          name: 'Mirror Ward',
+          type: 'enchantment',
+          charges: 1,
+          remainingCharges: 1,
+          effect: 'mirror_ward',
+        };
+      }
+      state.enemies = [];
+      const grunt = spawnEnemy(player.x + 4, player.z, 'grunt');
+      grunt.wanderTarget = { x: grunt.x, z: grunt.z };
     } else if (name === 'chain-lightning-ready') {
       // Playing phase with Voltaic Chain in hand, full Magic Stones, and three
       // grunts lined up along +X so a cast chains primary → two half-damage hops.
@@ -2716,6 +2799,9 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       player.rotation = 0;
+      // Harness casts via keyboard (client rotation), not server-only useCard; force
+      // the next slow roll so playthrough validation is deterministic (65% is flaky).
+      player.debugForceStatusRoll = 'slow';
       const replaceSlot = player.hand.findIndex(c => c != null);
       if (replaceSlot >= 0) {
         player.hand[replaceSlot] = {
@@ -3147,7 +3233,11 @@ function nudgeDebugBossApproachPlayers(state) {
     const dx = anchor.x - player.x;
     const dz = anchor.z - player.z;
     const dist = Math.hypot(dx, dz);
-    if (dist <= ENCOUNTER_TRIGGER_RADIUS || dist < 0.01) continue;
+    if (dist <= ENCOUNTER_TRIGGER_RADIUS) {
+      tryActivateEncounter(state);
+      continue;
+    }
+    if (dist < 0.01) continue;
     const step = Math.min(2, dist - ENCOUNTER_TRIGGER_RADIUS + 0.5);
     if (step <= 0) continue;
     player.x += (dx / dist) * step;

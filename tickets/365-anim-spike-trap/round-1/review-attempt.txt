@@ -1,0 +1,5 @@
+Final review is written to `tickets/365-anim-spike-trap/round-1/review.md`.
+
+Verdict is `VERDICT: FAIL`. Runtime is clean, but Spike Trap’s visual is only a short placement flourish while the server keeps the trap armed for up to 30s with no persistent ground visual or synced trigger feedback.
+
+Remediation is written to `tickets/365-anim-spike-trap/round-1/gaps.md`. No `nits.md` was created.

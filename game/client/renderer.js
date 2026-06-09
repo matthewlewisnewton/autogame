@@ -88,6 +88,7 @@ import {
 	resetLockOnTracking,
 	normalizeAngle,
 	cameraYawFromToTarget,
+	cameraYawBehindFacing,
 } from './lockOn.js';
 import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
 import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled, getAccountProfile } from './settings.js';
@@ -127,6 +128,8 @@ let phaseStepTargetId = null;
 let phaseStepAllyRing = null;
 const windupFlashing = new Set(); // enemy ids currently showing windup emissive
 const minionsMeshes = {};
+/** Persistent ground-hazard meshes for armed spike_trap enchantments, keyed by enc.id. */
+const spikeTrapMeshes = {};
 /** First-seen minion ids — avoids re-playing spawn scale-in after resync/reconnect. */
 const seenMinionIds = new Set();
 /** Minion id → performance.now() when scale-in began (cleared once settled). */
@@ -1221,6 +1224,7 @@ export function getMeshMaps() {
 		telegraphMeshes,
 		minionTelegraphMeshes,
 		minionsMeshes,
+		spikeTrapMeshes,
 		lootMeshes,
 		iceBallMeshes,
 		playerCardWindupMarkers,
@@ -1313,6 +1317,13 @@ export function getPlayerFacingDirection() {
  */
 export function setPlayerRotation(rot) {
 	playerRotation = rot;
+}
+
+/** Align local attack facing and orbit camera behind a server rotation (debug QA). */
+export function alignAttackFacing(rotation) {
+	if (!Number.isFinite(rotation)) return;
+	setPlayerRotation(rotation);
+	cameraYaw = normalizeAngle(cameraYawBehindFacing(rotation));
 }
 
 /**
@@ -3062,6 +3073,28 @@ export function enemyMeshHalfHeight(type) {
 }
 
 /**
+ * Harness-safe read of an enemy's rendered world height (or geometry preset when
+ * the mesh has not synced yet). Used by playthrough visual-identity probes.
+ * @param {string} enemyId
+ * @param {string} [enemyType]
+ * @returns {{ scale: number } | null}
+ */
+export function getEnemyRenderScaleForTest(enemyId, enemyType) {
+	const mesh = enemiesMeshes[enemyId];
+	if (mesh) {
+		const box = new THREE.Box3().setFromObject(mesh);
+		const size = new THREE.Vector3();
+		box.getSize(size);
+		const scale = Math.max(size.x, size.y, size.z);
+		if (scale > 0) return { scale };
+	}
+	const def = ENEMY_GEOMETRY[enemyType] || null;
+	if (!def) return null;
+	const scale = def.type === 'octahedron' ? def.radius * 2 : def.height;
+	return { scale };
+}
+
+/**
  * Create a Three.js mesh for an enemy based on its type.
  * @param {string} type - 'grunt', 'skirmisher', 'miniboss', or 'spawner'
  * @returns {THREE.Mesh}
@@ -4612,16 +4645,37 @@ export function spawnFireTrailEffect(origin, direction, style = {}) {
 	});
 }
 
+const THERMAL_COLUMN_COLOR = 0xef4444;
+const THERMAL_COLUMN_EMISSIVE = 0xdc2626;
+const THERMAL_COLUMN_HEIGHT = 4.5;
+const THERMAL_COLUMN_OPACITY = 0.75;
+const THERMAL_COLUMN_BASE_Y = 0.1;
+const THERMAL_COLUMN_DEFAULT_DOT_TICKS = 4;
+const THERMAL_COLUMN_DEFAULT_DOT_INTERVAL_MS = 500;
+const THERMAL_COLUMN_EMISSIVE_INTENSITY = 1.4;
+
+function thermalColumnDuration(style = {}) {
+	if (style.duration !== undefined) return style.duration;
+	const dotTicks = style.dotTicks ?? THERMAL_COLUMN_DEFAULT_DOT_TICKS;
+	const dotIntervalMs = style.dotIntervalMs ?? THERMAL_COLUMN_DEFAULT_DOT_INTERVAL_MS;
+	return dotTicks * dotIntervalMs + 250;
+}
+
 /**
- * Spawn a full radial fire burst on the ground (Inferno Pillar).
+ * Expanding ground scorch ring for Thermal Column (attack-range AoE footprint).
  * @param {object} origin - { x, z }
  * @param {number} radius
+ * @param {object} style
  */
-export function spawnInfernoPillarEffect(origin, radius) {
+function spawnThermalColumnScorchRing(origin, radius, style = {}) {
+	const color = style.color ?? THERMAL_COLUMN_COLOR;
+	const emissive = style.emissive ?? THERMAL_COLUMN_EMISSIVE;
+	const duration = thermalColumnDuration(style);
+
 	const geometry = new THREE.RingGeometry(0.1, 0.5, 48);
 	const material = new THREE.MeshStandardMaterial({
-		color: 0xef4444,
-		emissive: 0xdc2626,
+		color,
+		emissive,
 		emissiveIntensity: 1.2,
 		transparent: true,
 		opacity: 1.0,
@@ -4640,9 +4694,204 @@ export function spawnInfernoPillarEffect(origin, radius) {
 		origin: { x: origin.x, z: origin.z },
 		radius,
 		createdAt: performance.now(),
-		duration: SUMMON_EFFECT_DURATION,
-		infernoBurst: true,
+		duration,
+		_scene: targetScene,
 	});
+}
+
+// Spike Trap palette: a hostile steel-spike hazard, coherent with the card's red
+// accent (#f87171) yet clearly distinct from cinder_snare's fiery inferno burst —
+// brushed-steel spikes lit by a blood-red emissive glow rather than orange fire.
+const SPIKE_TRAP_SPIKE_COLOR = 0x9ca3af; // brushed steel grey
+const SPIKE_TRAP_EMISSIVE = 0xdc2626; // blood-red hazard glow on the iron
+const SPIKE_TRAP_RING_COLOR = 0xb91c1c; // dark blood-red hazard ring
+const SPIKE_TRAP_RING_EMISSIVE = 0xef4444; // red ring glow
+const SPIKE_TRAP_SPIKE_COUNT = 6; // spikes erupting in a ring around the trap
+const SPIKE_TRAP_SPIKE_HEIGHT = 0.75; // height of each iron spike
+const SPIKE_TRAP_SPIKE_RADIUS = 0.13; // base radius of each cone spike
+
+/**
+ * Spawn the erupting-spikes VFX for a Spike Trap: a cluster of vertical
+ * iron/steel cones bursting up out of the ground inside a blood-red hazard ring.
+ * Modeled on spawnInfernoPillarEffect's ring lifecycle, but the upward elements
+ * are vertical spike geometry (apex-up ConeGeometry) instead of a fire column, and
+ * the palette is hostile steel + blood-red rather than orange fire. Pure additive
+ * VFX: no network traffic, no state beyond activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ */
+export function spawnSpikeTrapEffect(origin, radius) {
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+
+	// Ground hazard ring — rides the shared radius-based expand→fade lifecycle in
+	// updateAttackEffects, exactly like spawnInfernoPillarEffect's ring.
+	const ringGeometry = new THREE.RingGeometry(0.1, 0.5, 48);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color: SPIKE_TRAP_RING_COLOR,
+		emissive: SPIKE_TRAP_RING_EMISSIVE,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+	ring.position.set(origin.x, 0.15, origin.z);
+	ring.rotation.x = -Math.PI / 2;
+	ring.scale.setScalar(0.001);
+	if (targetScene) targetScene.add(ring);
+
+	activeEffects.push({
+		mesh: ring,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration: SUMMON_EFFECT_DURATION,
+		spikeTrapRing: true,
+		_scene: targetScene,
+	});
+
+	// Erupting spikes — vertical apex-up cones clustered around the trap point,
+	// within `radius`. Each starts flattened (scale.y ≈ 0) so the dedicated
+	// isSpikeTrapSpike branch in updateAttackEffects lifts/scales it out of the
+	// ground while the base stays pinned to the floor.
+	const spikeOffset = radius * 0.55; // how far out the spikes erupt from center
+	for (let s = 0; s < SPIKE_TRAP_SPIKE_COUNT; s++) {
+		const angle = (s / SPIKE_TRAP_SPIKE_COUNT) * Math.PI * 2;
+		const geometry = new THREE.ConeGeometry(SPIKE_TRAP_SPIKE_RADIUS, SPIKE_TRAP_SPIKE_HEIGHT, 6);
+		const material = new THREE.MeshStandardMaterial({
+			color: SPIKE_TRAP_SPIKE_COLOR,
+			emissive: SPIKE_TRAP_EMISSIVE,
+			emissiveIntensity: 0.9,
+			transparent: true,
+			opacity: 1.0,
+		});
+		const spike = new THREE.Mesh(geometry, material);
+		// ConeGeometry's apex already points up (+Y); rotation.x = 0 keeps it
+		// standing vertically out of the ground rather than lying flat.
+		spike.rotation.x = 0;
+		const sx = origin.x + Math.cos(angle) * spikeOffset;
+		const sz = origin.z + Math.sin(angle) * spikeOffset;
+		spike.position.set(sx, 0, sz);
+		spike.scale.y = 0.001;
+		if (targetScene) targetScene.add(spike);
+
+		activeEffects.push({
+			mesh: spike,
+			origin: { x: sx, z: sz },
+			createdAt: performance.now(),
+			duration: SUMMON_EFFECT_DURATION,
+			isSpikeTrapSpike: true,
+			spikeHeight: SPIKE_TRAP_SPIKE_HEIGHT,
+			_scene: targetScene,
+		});
+	}
+}
+
+/**
+ * Build the persistent ground-hazard mesh for an armed spike_trap enchantment:
+ * a hostile blood-red ring sized to `enc.radius` plus a small cluster of static
+ * upward steel spikes. Reuses the SPIKE_TRAP_* palette so it reads as an armed
+ * spike trap and stays distinct from cinder_snare's orange fire look. Geometry
+ * and materials are owned by the returned group (like enemy meshes), so
+ * disposeStaleMeshes / disposeMeshMap fully release them; they are allocated once
+ * per trap on first sight and never per frame.
+ * @param {object} enc - { x, z, radius }
+ * @returns {THREE.Group}
+ */
+export function createSpikeTrapHazardMesh(enc) {
+	const radius = Number.isFinite(enc?.radius) ? enc.radius : 2.5;
+	const group = new THREE.Group();
+
+	// Hostile ground ring marking the armed hazard footprint.
+	const ringGeometry = new THREE.RingGeometry(radius * 0.78, radius, 48);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color: SPIKE_TRAP_RING_COLOR,
+		emissive: SPIKE_TRAP_RING_EMISSIVE,
+		emissiveIntensity: 0.85,
+		transparent: true,
+		opacity: 0.6,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+	ring.position.y = 0.06;
+	ring.rotation.x = -Math.PI / 2;
+	group.add(ring);
+
+	// Static cluster of short upward steel spikes signalling the primed trap —
+	// shorter than the eruption VFX cones so the firing burst still reads as a hit.
+	const spikeHeight = SPIKE_TRAP_SPIKE_HEIGHT * 0.5;
+	const spikeOffset = radius * 0.45;
+	for (let s = 0; s < SPIKE_TRAP_SPIKE_COUNT; s++) {
+		const angle = (s / SPIKE_TRAP_SPIKE_COUNT) * Math.PI * 2;
+		const geometry = new THREE.ConeGeometry(SPIKE_TRAP_SPIKE_RADIUS, spikeHeight, 6);
+		const material = new THREE.MeshStandardMaterial({
+			color: SPIKE_TRAP_SPIKE_COLOR,
+			emissive: SPIKE_TRAP_EMISSIVE,
+			emissiveIntensity: 0.6,
+		});
+		const spike = new THREE.Mesh(geometry, material);
+		spike.position.set(
+			Math.cos(angle) * spikeOffset,
+			spikeHeight / 2,
+			Math.sin(angle) * spikeOffset,
+		);
+		group.add(spike);
+	}
+
+	group.position.set(enc.x, 0, enc.z);
+	return group;
+}
+
+/**
+ * Vertical rising fire shaft for Thermal Column. Rises and fades via the
+ * `isThermalColumn` branch in updateAttackEffects (no per-frame allocation).
+ * @param {object} origin - { x, z }
+ * @param {object} style
+ */
+export function spawnThermalColumnShaft(origin, style = {}) {
+	const color = style.color ?? THERMAL_COLUMN_COLOR;
+	const emissive = style.emissive ?? THERMAL_COLUMN_EMISSIVE;
+	const duration = thermalColumnDuration(style);
+
+	const geometry = new THREE.CylinderGeometry(0.3, 0.55, THERMAL_COLUMN_HEIGHT, 16, 1, true);
+	const material = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: THERMAL_COLUMN_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: THERMAL_COLUMN_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.scale.y = 0.001;
+	mesh.position.set(origin.x, THERMAL_COLUMN_BASE_Y, origin.z);
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (targetScene) targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration,
+		isThermalColumn: true,
+		_baseEmissiveIntensity: THERMAL_COLUMN_EMISSIVE_INTENSITY,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Thermal Column: a rising vertical fire shaft plus an expanding ground scorch
+ * ring scaled to attack range (Inferno Pillar / evolved Dragons Breath).
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ * @param {object} [style]
+ */
+export function spawnInfernoPillarEffect(origin, radius, style = {}) {
+	spawnThermalColumnScorchRing(origin, radius, style);
+	spawnThermalColumnShaft(origin, style);
 }
 
 /**
@@ -4816,6 +5065,160 @@ export function spawnChainLightningEffect(origin, direction) {
 		duration: ATTACK_EFFECT_DURATION,
 		isChainLightning: true,
 	});
+}
+
+const MIRROR_WARD_COLOR = 0x5eead4;
+const MIRROR_WARD_EMISSIVE = 0x2dd4bf;
+const MIRROR_WARD_SILVER = 0xe2e8f0;
+const mirrorWardShellsByPlayer = new Map();
+
+/**
+ * Immediately dispose a tracked Mirror Ward shell for `playerId`.
+ * @param {string} playerId
+ */
+export function dismissMirrorWardShellEffect(playerId) {
+	if (!playerId) return;
+	const fx = mirrorWardShellsByPlayer.get(playerId);
+	if (!fx) return;
+
+	const idx = activeEffects.indexOf(fx);
+	if (idx !== -1) {
+		disposeEffectObject(fx.mesh, fx._scene || scene);
+		activeEffects.splice(idx, 1);
+	} else {
+		disposeEffectObject(fx.mesh, fx._scene || scene);
+	}
+	mirrorWardShellsByPlayer.delete(playerId);
+}
+
+/**
+ * Mirror Ward protective shell: pulsing ground ring at `radius` plus vertical
+ * mirror-like facets in the teal/silver palette.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ * @param {object} [style]
+ */
+export function spawnMirrorWardShellEffect(origin, radius, style = {}) {
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	if (style.playerId) {
+		dismissMirrorWardShellEffect(style.playerId);
+	}
+
+	const r = radius ?? 1.5;
+	const color = style.color ?? MIRROR_WARD_COLOR;
+	const emissive = style.emissive ?? MIRROR_WARD_EMISSIVE;
+	const duration = style.duration ?? SUMMON_EFFECT_DURATION;
+	const group = new THREE.Group();
+	group.position.set(origin.x, 0, origin.z);
+
+	const ringGeometry = new THREE.RingGeometry(0.82, 1.0, 48);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.1,
+		transparent: true,
+		opacity: 0.85,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	ringMesh.position.y = GROUND_OVERLAY_Y;
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(0.001);
+	ringMesh.userData.isMirrorWardRing = true;
+	group.add(ringMesh);
+
+	const facetHeight = Math.min(r * 1.15, 2.6);
+	const facetWidth = Math.min(r * 0.75, 1.6);
+	const facetAngles = [Math.PI * 0.22, -Math.PI * 0.22];
+	const facetPalette = [
+		{ color, emissive },
+		{ color: MIRROR_WARD_SILVER, emissive: MIRROR_WARD_SILVER },
+	];
+	for (let i = 0; i < facetAngles.length; i += 1) {
+		const palette = facetPalette[i];
+		const facetGeometry = new THREE.PlaneGeometry(facetWidth, facetHeight);
+		const facetMaterial = new THREE.MeshStandardMaterial({
+			color: palette.color,
+			emissive: palette.emissive,
+			emissiveIntensity: 1.25,
+			transparent: true,
+			opacity: 0.62,
+			side: THREE.DoubleSide,
+			depthWrite: false,
+		});
+		const facetMesh = new THREE.Mesh(facetGeometry, facetMaterial);
+		facetMesh.position.y = facetHeight * 0.5;
+		facetMesh.rotation.y = facetAngles[i];
+		facetMesh.userData.isMirrorWardFacet = true;
+		group.add(facetMesh);
+	}
+
+	targetScene.add(group);
+
+	const effect = {
+		mesh: group,
+		_scene: targetScene,
+		origin: { x: origin.x, z: origin.z },
+		wardRadius: r,
+		isMirrorWardShell: true,
+		playerId: style.playerId,
+		createdAt: performance.now(),
+		duration,
+	};
+	activeEffects.push(effect);
+	if (style.playerId) {
+		mirrorWardShellsByPlayer.set(style.playerId, effect);
+	}
+}
+
+/**
+ * Mirror Ward reflect impact: projectile streak, ground decal, and sparkle burst
+ * along `direction` using the mirror palette.
+ * @param {object} origin - { x, z }
+ * @param {object} direction - { x, z }
+ * @param {object} [style]
+ */
+export function spawnMirrorWardReflectBurst(origin, direction, style = {}) {
+	const duration = style.duration ?? ATTACK_EFFECT_DURATION;
+	const travelMs = style.travelMs ?? duration;
+	const range = style.range ?? ATTACK_RANGE;
+	const color = style.color ?? MIRROR_WARD_COLOR;
+	const emissive = style.emissive ?? MIRROR_WARD_EMISSIVE;
+
+	const dir = direction || { x: 1, z: 0 };
+	const len = Math.hypot(dir.x, dir.z) || 1;
+	const nx = dir.x / len;
+	const nz = dir.z / len;
+	const terminus = { x: origin.x + nx * range, z: origin.z + nz * range };
+
+	const before = activeEffects.length;
+	spawnProjectileTrail(
+		{ x: origin.x, z: origin.z },
+		{ x: nx, z: nz },
+		{ range, travelMs, duration: travelMs, color, emissive, y: 0.9 },
+	);
+	spawnImpactDecal(terminus, {
+		color,
+		emissive,
+		radius: style.impactRadius ?? 0.75,
+		duration,
+	});
+	spawnParticleBurst(
+		{ x: terminus.x, y: 0.55, z: terminus.z },
+		{
+			color: MIRROR_WARD_SILVER,
+			emissive,
+			count: style.count ?? 8,
+			spread: style.spread ?? 1.1,
+			duration,
+		},
+	);
+	for (let i = before; i < activeEffects.length; i += 1) {
+		activeEffects[i].isMirrorWardReflect = true;
+	}
 }
 
 // ── Shared accent-themeable VFX primitives ──
@@ -5034,9 +5437,25 @@ export function updateAttackEffects() {
 			}
 
 			if (elapsed >= fx.duration) {
-				scene.remove(fx.mesh);
-				fx.mesh.geometry.dispose();
-				fx.mesh.material.dispose();
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Erupting spike (Spike Trap) ──
+		if (fx.isSpikeTrapSpike) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.3, 1.0); // burst upward over the first 30%
+			const s = Math.max(0.001, riseT);
+			fx.mesh.scale.y = s;
+			// Cone is centered on its local origin, so raise position.y in lockstep
+			// with scale.y to keep the spike's base pinned to the ground as it grows.
+			fx.mesh.position.y = (fx.spikeHeight * s) / 2;
+			fx.mesh.material.opacity = Math.max(0.01, 1.0 - t);
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
 				activeEffects.splice(i, 1);
 			}
 			continue;
@@ -5051,6 +5470,26 @@ export function updateAttackEffects() {
 			// Keep the base on the ground as the centered cylinder scales up.
 			fx.mesh.position.y = DIVINE_GRACE_COLUMN_BASE_Y + (DIVINE_GRACE_COLUMN_HEIGHT * s) / 2;
 			fx.mesh.material.opacity = Math.max(0.01, DIVINE_GRACE_COLUMN_OPACITY * (1.0 - t));
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Rising thermal fire column (Thermal Column) ──
+		if (fx.isThermalColumn) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.35, 1.0);
+			const s = Math.max(0.001, riseT);
+			fx.mesh.scale.y = s;
+			fx.mesh.position.y = THERMAL_COLUMN_BASE_Y + (THERMAL_COLUMN_HEIGHT * s) / 2;
+			const fade = Math.max(0.01, THERMAL_COLUMN_OPACITY * (1.0 - t));
+			fx.mesh.material.opacity = fade;
+			const baseIntensity = fx._baseEmissiveIntensity ?? THERMAL_COLUMN_EMISSIVE_INTENSITY;
+			const flicker = 1.0 + 0.25 * Math.sin(elapsed * 0.02);
+			fx.mesh.material.emissiveIntensity = baseIntensity * flicker * fade;
 
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, fx._scene || scene);
@@ -5144,6 +5583,31 @@ export function updateAttackEffects() {
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, fx._scene || scene);
 				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Mirror Ward protective shell (ring + mirror facets) ──
+		if (fx.isMirrorWardShell) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const expandT = Math.min(t / 0.35, 1.0);
+			const pulse = 0.5 + 0.32 * Math.abs(Math.sin(elapsed / 280));
+			for (let c = 0; c < fx.mesh.children.length; c += 1) {
+				const child = fx.mesh.children[c];
+				if (child.userData.isMirrorWardRing) {
+					child.scale.setScalar(Math.max(0.001, fx.wardRadius * expandT));
+					child.material.opacity = Math.max(0.01, pulse * (1.0 - t * 0.85));
+				} else if (child.userData.isMirrorWardFacet) {
+					const facetPulse = 0.55 + 0.25 * Math.abs(Math.sin(elapsed / 320));
+					child.material.opacity = Math.max(0.01, facetPulse * (1.0 - t));
+				}
+			}
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+				if (fx.playerId) {
+					mirrorWardShellsByPlayer.delete(fx.playerId);
+				}
 			}
 			continue;
 		}
@@ -6265,6 +6729,23 @@ export function animate(timestamp) {
 				delete minionBaseScales[id];
 			}
 		}
+
+		// Spike trap hazard mesh sync: reconcile a persistent ground-hazard mesh
+		// per armed spike_trap from the snapshot, mirroring the enemy/minion
+		// pattern. Only spike_trap is handled here; other effects (e.g.
+		// cinder_snare) are left to their own handling.
+		const currentSpikeTrapIds = new Set();
+		for (const enc of (gs.enchantments || [])) {
+			if (!enc || enc.effect !== 'spike_trap' || !enc.armed) continue;
+			currentSpikeTrapIds.add(enc.id);
+			if (!spikeTrapMeshes[enc.id]) {
+				const mesh = createSpikeTrapHazardMesh(enc);
+				scene.add(mesh);
+				spikeTrapMeshes[enc.id] = mesh;
+			}
+			spikeTrapMeshes[enc.id].position.set(enc.x, 0, enc.z);
+		}
+		disposeStaleMeshes(spikeTrapMeshes, currentSpikeTrapIds, scene);
 
 		// ── Loot mesh sync ──
 		syncLootMeshes();

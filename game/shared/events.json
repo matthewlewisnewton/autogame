@@ -46,6 +46,7 @@
     "RUN_FAILED": "runFailed",
     "RUN_SUSPENDED": "runSuspended",
     "SHIELD_BREAK": "shieldBreak",
+    "SPIKE_TRAP_TRIGGERED": "spikeTrapTriggered",
     "START_GAME": "startGame",
     "STATE_UPDATE": "stateUpdate",
     "TRADE_OFFER": "tradeOffer",

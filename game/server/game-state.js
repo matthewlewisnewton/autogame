@@ -34,6 +34,8 @@ function createGameState() {
     pendingEchoes: [],
     // Per-tick queue of minion cardUsed payloads; flushed after updateMinions each tick.
     _pendingMinionBreaths: [],
+    // Per-tick queue of mirror-ward reflect cardUsed payloads; drained in runGameLoopTick.
+    _pendingMirrorReflects: [],
     // Per-tick queue of volatile-enemy detonations ({ x, z, radius }); drained
     // in runGameLoopTick to emit 'volatileExplosion' to the lobby room.
     _pendingVolatileExplosions: [],

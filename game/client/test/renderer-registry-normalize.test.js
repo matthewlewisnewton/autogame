@@ -6,6 +6,9 @@ import {
 	getRegistryHostVerticalOffset,
 	normalizeLoadedRegistryModel,
 	enemyMeshHalfHeight,
+	getEnemyRenderScaleForTest,
+	getMeshMaps,
+	createEnemyMesh,
 	ENEMY_GEOMETRY,
 } from '../renderer.js';
 
@@ -211,5 +214,20 @@ describe('ENEMY_GEOMETRY export', () => {
 		// Half-height helper resolves to its own geometry, not the grunt fallback.
 		expect(enemyMeshHalfHeight('arena_champion')).toBe(champ.height / 2);
 		expect(enemyMeshHalfHeight('arena_champion')).not.toBe(enemyMeshHalfHeight('grunt'));
+	});
+});
+
+describe('getEnemyRenderScaleForTest()', () => {
+	it('falls back to geometry preset height when no mesh is synced', () => {
+		expect(getEnemyRenderScaleForTest('missing', 'miniboss')).toEqual({ scale: 2.2 });
+		expect(getEnemyRenderScaleForTest('missing', 'grunt')).toEqual({ scale: 1 });
+	});
+
+	it('reads world-space height from a live enemy mesh', () => {
+		const mesh = createEnemyMesh('miniboss');
+		getMeshMaps().enemiesMeshes['boss-1'] = mesh;
+		const result = getEnemyRenderScaleForTest('boss-1', 'miniboss');
+		expect(result?.scale).toBeGreaterThan(1.5);
+		delete getMeshMaps().enemiesMeshes['boss-1'];
 	});
 });

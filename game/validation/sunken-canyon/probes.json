@@ -2,16 +2,31 @@
   "dormant": {
     "encounterPhase": "dormant",
     "encounterLocked": false,
-    "bossEnemyId": "442bd37c-47ec-407c-835d-f11a47b00bd3",
+    "bossEnemyId": "8078b176-e5ce-47f0-bb7f-a4ab13af0670",
     "bossHp": 300,
     "liveAddCount": 0
   },
   "active": {
     "encounterPhase": "active",
     "encounterLocked": true,
-    "bossEnemyId": "442bd37c-47ec-407c-835d-f11a47b00bd3",
+    "bossEnemyId": "8078b176-e5ce-47f0-bb7f-a4ab13af0670",
     "bossHp": 300,
-    "liveAddCount": 0
+    "liveAddCount": 1
+  },
+  "bossEncounterUi": {
+    "hudVisible": true,
+    "bossName": "Canyon Warden",
+    "hpFillWidthPct": 100,
+    "encounterLocked": true,
+    "encounterPhase": "active"
+  },
+  "bossVisualIdentity": {
+    "bossType": "miniboss",
+    "bossEnemyId": "8078b176-e5ce-47f0-bb7f-a4ab13af0670",
+    "nearestAddType": "grunt",
+    "bossDistinctFromAdds": true,
+    "bossRenderScale": 2.6107042077237326,
+    "addRenderScale": 1.0250146946789034
   },
   "floorAlignment": {
     "levelEntry": {
@@ -54,5 +69,156 @@
     "runObjectiveComplete": true,
     "bossDefeated": true,
     "lastRunSummaryStatus": "victory"
+  },
+  "cardExercises": {
+    "slowBurn": {
+      "targetEnemyId": "06de46a7-661c-45ba-8a87-15b6d3149df6",
+      "afterSlow": {
+        "targetEnemyId": "06de46a7-661c-45ba-8a87-15b6d3149df6",
+        "found": true,
+        "slowedUntil": 1780959343715,
+        "burningUntil": 0,
+        "slowActive": true,
+        "burnActive": false
+      },
+      "afterBurn": {
+        "targetEnemyId": "06de46a7-661c-45ba-8a87-15b6d3149df6",
+        "found": true,
+        "slowedUntil": 0,
+        "burningUntil": 1780959346157,
+        "slowActive": false,
+        "burnActive": true
+      },
+      "screenshot": "game/validation/sunken-canyon/08-slow-burn-mutual-exclusive.png",
+      "slowBurnMutuallyExclusive": true
+    },
+    "purifyingPulse": {
+      "preCast": {
+        "found": true,
+        "hp": 40,
+        "slowedUntil": 1780959349984,
+        "burningUntil": 1780959349984,
+        "slowActive": true,
+        "burnActive": true
+      },
+      "postCast": {
+        "found": true,
+        "hp": 60,
+        "slowedUntil": 0,
+        "burningUntil": 0,
+        "slowActive": false,
+        "burnActive": false
+      },
+      "healCleanseApplied": true,
+      "screenshot": "game/validation/sunken-canyon/09-purifying-pulse.png"
+    },
+    "windup": {
+      "cardId": "magma_greatsword",
+      "scenario": "magma-windup-ready",
+      "duringWindup": {
+        "cardUseState": "windup",
+        "cardWindupUntil": 1780959347937,
+        "cardWindupCardId": "magma_greatsword",
+        "inputLocked": true,
+        "activatingSlot": true,
+        "windupIndicatorWidth": 0,
+        "telegraphVisible": true
+      },
+      "domProbe": {
+        "inputLocked": true,
+        "activatingSlot": true,
+        "windupIndicatorWidth": 0,
+        "telegraphVisible": true
+      },
+      "windupTelegraphActive": true,
+      "screenshot": "game/validation/sunken-canyon/10-windup-charge.png"
+    }
+  },
+  "canyonTelepipe": {
+    "preSuspend": {
+      "hp": 100,
+      "magicStones": 2.7400000000017295,
+      "msText": "2/99",
+      "hand": [
+        {
+          "id": "telepipe",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        {
+          "id": "throw_rock",
+          "type": "weapon",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        {
+          "id": "dungeon_drake",
+          "type": "creature",
+          "remainingCharges": 0,
+          "charges": 1
+        },
+        {
+          "id": "dungeon_drake",
+          "type": "creature",
+          "remainingCharges": 0,
+          "charges": 1
+        },
+        null,
+        {
+          "id": "battle_familiar",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        }
+      ],
+      "phase": "playing",
+      "runStatus": "playing",
+      "extracted": false,
+      "suspendedRunSummary": null,
+      "layoutSeed": 1080928427,
+      "runId": "2c662e48-6fe1-4c75-82e6-22e6af6bdacb"
+    },
+    "postDeploy": {
+      "hp": 100,
+      "magicStones": 3.005000000001724,
+      "msText": "3/99",
+      "hand": [
+        {
+          "id": "battle_familiar",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        {
+          "id": "flame_blade",
+          "type": "weapon",
+          "remainingCharges": 2,
+          "charges": 2
+        },
+        null,
+        {
+          "id": "iron_sword",
+          "type": "weapon",
+          "remainingCharges": 5,
+          "charges": 5
+        },
+        {
+          "id": "battle_familiar",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        null
+      ],
+      "phase": "playing",
+      "runStatus": "playing",
+      "extracted": false,
+      "suspendedRunSummary": null,
+      "layoutSeed": 1080928427,
+      "runId": "2676e5be-a7d0-406d-a5b7-9a829ae4da89"
+    },
+    "telepipeVitalsPreserved": true,
+    "cardChargesResetOnNewSortie": true
   }
 }

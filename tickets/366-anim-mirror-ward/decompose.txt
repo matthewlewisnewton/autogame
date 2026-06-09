@@ -1,0 +1,13 @@
+## Remediation Round 2 Plan
+
+All three original sub-tickets (`01`–`03`) have `.passed` markers and are left untouched. The review feedback identifies **one** remaining gap: the cast shell outlives server-side consumption when Mirror Ward reflects.
+
+### New sub-ticket
+
+**`04-mirror-ward-shell-dismiss-on-reflect`** — Track the lingering ward shell by `playerId` on cast, and call a new `dismissMirrorWardShellEffect(playerId)` on the `reflectTriggered` `CARD_USED` path before the reflect burst. This is client-only (server already emits `playerId` on both cast and reflect events). Verification mode is `code` because the fix involves tracking, dismiss handlers, effect cleanup, and tests — not purely visual appearance.
+
+### Created folder paths
+
+```
+/home/matt/workspace/.autogame-worktrees/366-anim-mirror-ward/tickets/366-anim-mirror-ward/subtickets/04-mirror-ward-shell-dismiss-on-reflect/
+```

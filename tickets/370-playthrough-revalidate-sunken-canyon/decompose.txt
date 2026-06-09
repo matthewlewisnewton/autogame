@@ -1,0 +1,9 @@
+Remediation round 2 has a single open gap: the vitest suite is red with three server test failures. Sub-tickets **01–06** already have `.passed` markers and were left untouched.
+
+Three new sub-tickets (numbered after **06**) map one-to-one to those failures:
+
+- `/home/matt/workspace/.autogame-worktrees/370-playthrough-revalidate-sunken-canyon/tickets/370-playthrough-revalidate-sunken-canyon/subtickets/07-restore-soul-drain-windup-commitment/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/370-playthrough-revalidate-sunken-canyon/tickets/370-playthrough-revalidate-sunken-canyon/subtickets/08-fix-arena-trials-tier-2-run-snapshot/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/370-playthrough-revalidate-sunken-canyon/tickets/370-playthrough-revalidate-sunken-canyon/subtickets/09-restore-batched-movement-persistence-saves/ticket.md`
+
+**07** restores `soul_drain` wind-up commitment (`cardEffects.js`). **08** fixes the `arena-trials-tier-2` debug scenario so `stateUpdate.run` is populated (`debugScenarios.js` / `index.js`). **09** restores batched movement `savePlayer` flushing (`runHandlers.js`, `simulation.js`, `index.js`). All use **Verification: code** since every criterion is test/log/state driven. No revalidation run sub-ticket is needed — round-1 playthrough artifacts are already green.

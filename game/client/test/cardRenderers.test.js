@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { CARD_DEFS } from '../cards.js';
-import { ATTACK_EFFECT_DURATION, PHOTON_BARRAGE_SWING_DELAY_MS } from '../config.js';
+import { CARD_DEFS, getCardDef } from '../cards.js';
+import { ATTACK_EFFECT_DURATION, PHOTON_BARRAGE_SWING_DELAY_MS, SUMMON_EFFECT_DURATION } from '../config.js';
 import {
 	renderCardUsed,
 	resolveRenderers,
@@ -30,6 +30,10 @@ function makeCtx(overrides = {}) {
 		spawnProjectileTrail: record('spawnProjectileTrail'),
 		spawnImpactDecal: record('spawnImpactDecal'),
 		spawnTelegraphRing: record('spawnTelegraphRing'),
+		spawnSpikeTrapEffect: record('spawnSpikeTrapEffect'),
+		spawnMirrorWardShellEffect: record('spawnMirrorWardShellEffect'),
+		dismissMirrorWardShellEffect: record('dismissMirrorWardShellEffect'),
+		spawnMirrorWardReflectBurst: record('spawnMirrorWardReflectBurst'),
 		spawnMinionSummonInEffect: record('spawnMinionSummonInEffect'),
 		flashMesh: record('flashMesh'),
 		spawnHitSpark: record('spawnHitSpark'),
@@ -73,7 +77,9 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('thunderbird')).toHaveLength(2);
 		expect(resolveRenderers('storm_eagle')).toHaveLength(2);
 		expect(resolveRenderers('dragons_breath')).toHaveLength(1);
-		expect(resolveRenderers('inferno_pillar')).toHaveLength(1);
+		const infernoRenderers = resolveRenderers('inferno_pillar');
+		expect(infernoRenderers).toHaveLength(1);
+		expect(infernoRenderers[0].name).toBe('renderInfernoPillar');
 		expect(resolveRenderers('gravity_well')).toHaveLength(1);
 		expect(resolveRenderers('deck_sifter')).toHaveLength(1);
 		expect(resolveRenderers('chrono_trigger')).toHaveLength(1);
@@ -1574,7 +1580,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
 	});
 
-	it('inferno_pillar adds an accent telegraph ring and ember burst at the eruption point', () => {
+	it('inferno_pillar dispatches spawnInfernoPillarEffect with server-synced timing style', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'inferno_pillar',
@@ -1582,27 +1588,122 @@ describe('renderCardUsed() — spell dispatch', () => {
 			radius: 7,
 			hits: [],
 		}, ctx);
-		// inferno_pillar accent color is 0xef4444
+		const pillar = ctx._calls.find((c) => c[0] === 'spawnInfernoPillarEffect');
+		expect(pillar).toBeDefined();
+		expect(pillar[1]).toEqual({ x: 4, z: 5 });
+		expect(pillar[2]).toBe(7);
+		expect(pillar[3]).toMatchObject({
+			color: 0xef4444,
+			emissive: 0xff3b00,
+			dotTicks: 4,
+			dotIntervalMs: 500,
+			duration: 2250,
+		});
+	});
+
+	it('inferno_pillar fires eruption telegraph, burst, and decal synchronously at cast', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'inferno_pillar',
+			origin: { x: 4, z: 5 },
+			radius: 7,
+			hits: [],
+		}, ctx);
 		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
 		expect(ring).toBeDefined();
 		expect(ring[1]).toEqual({ x: 4, z: 5 });
 		expect(ring[2]).toBe(7);
-		expect(ring[3]).toMatchObject({ color: 0xef4444 });
-		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
-		expect(burst).toBeDefined();
-		expect(burst[1]).toEqual({ x: 4, z: 5 });
-		expect(burst[2]).toMatchObject({ color: 0xef4444 });
+		expect(ring[3]).toMatchObject({ color: 0xef4444, emissive: 0xff3b00 });
+		const castBurst = ctx._calls.find(
+			(c) => c[0] === 'spawnParticleBurst' && c[2].count === 14,
+		);
+		expect(castBurst).toBeDefined();
+		expect(castBurst[1]).toEqual({ x: 4, z: 5 });
+		expect(castBurst[2]).toMatchObject({ color: 0xef4444, emissive: 0xff3b00, spread: 2.2 });
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 4, z: 5 });
+		expect(decal[2]).toMatchObject({ color: 0xef4444, emissive: 0xff3b00 });
+		// DoT tick pulses are deferred — only the cast ring exists before scheduling runs.
+		expect(ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing' && c[2] === 7 * 0.65)).toHaveLength(0);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst' && c[2].count === 8)).toHaveLength(0);
 	});
 
-	it('inferno_pillar still renders without throwing when the new ctx primitives are absent', () => {
-		const ctx = makeCtx({ spawnTelegraphRing: undefined, spawnParticleBurst: undefined });
-		expect(() => renderCardUsed({
+	it('inferno_pillar schedules four DoT tick pulses at 500ms intervals', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
 			cardId: 'inferno_pillar',
 			origin: { x: 0, z: 0 },
 			radius: 7,
 			hits: [],
+		}, ctx);
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(schedules.map((c) => c[1])).toEqual([500, 1000, 1500, 2000]);
+		expect(ctx._scheduled).toHaveLength(4);
+		for (const entry of ctx._scheduled) expect(entry.invoked).toBe(false);
+		ctx.runScheduled();
+		const tickRings = ctx._calls.filter(
+			(c) => c[0] === 'spawnTelegraphRing' && c[2] === 7 * 0.65,
+		);
+		expect(tickRings).toHaveLength(4);
+		for (const r of tickRings) {
+			expect(r[3]).toMatchObject({ color: 0xef4444, emissive: 0xff3b00 });
+		}
+		const tickBursts = ctx._calls.filter(
+			(c) => c[0] === 'spawnParticleBurst' && c[2].count === 8,
+		);
+		expect(tickBursts).toHaveLength(4);
+	});
+
+	it('inferno_pillar spawns immediate per-hit ignite bursts at enemy mesh positions', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 4, y: 0, z: 2 } },
+				e2: { position: { x: 7, y: 0, z: 2 } },
+			}),
+		});
+		renderCardUsed({
+			cardId: 'inferno_pillar',
+			origin: { x: 1, z: 2 },
+			radius: 7,
+			hits: [{ enemyId: 'e1' }, { enemyId: 'e2' }, { enemyId: 'missing' }],
+		}, ctx);
+		const hitSparks = ctx._calls.filter((c) => c[0] === 'spawnHitSpark');
+		expect(hitSparks).toHaveLength(2);
+		expect(hitSparks[0][1]).toEqual({ x: 4, y: 0.6, z: 2 });
+		expect(hitSparks[1][1]).toEqual({ x: 7, y: 0.6, z: 2 });
+		expect(hitSparks[0][2]).toMatchObject({ color: 0xef4444, emissive: 0xff3b00, count: 5 });
+		const igniteBursts = ctx._calls.filter(
+			(c) => c[0] === 'spawnParticleBurst' && c[2].count === 6,
+		);
+		expect(igniteBursts).toHaveLength(2);
+		expect(igniteBursts[0][1]).toEqual({ x: 4, y: 0.6, z: 2 });
+		expect(igniteBursts[1][1]).toEqual({ x: 7, y: 0.6, z: 2 });
+	});
+
+	it('inferno_pillar has no positive windUpMs (instant cast; 315 charge telegraph absent)', () => {
+		expect(CARD_DEFS.inferno_pillar).toBeDefined();
+		expect(CARD_DEFS.inferno_pillar.windUpMs ?? 0).toBeLessThanOrEqual(0);
+	});
+
+	it('inferno_pillar still renders without throwing when the new ctx primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnTelegraphRing: undefined,
+			spawnParticleBurst: undefined,
+			spawnImpactDecal: undefined,
+			spawnHitSpark: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'inferno_pillar',
+			origin: { x: 0, z: 0 },
+			radius: 7,
+			hits: [{ enemyId: 'e1' }],
 		}, ctx)).not.toThrow();
 		expect(ctx._calls.some((c) => c[0] === 'spawnInfernoPillarEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+		expect(ctx._calls.filter((c) => c[0] === 'scheduleAfter').map((c) => c[1])).toEqual([
+			500, 1000, 1500, 2000,
+		]);
 	});
 
 	it('dragons_breath renders a forward fire cone, trail, and tip embers', () => {
@@ -2242,7 +2343,15 @@ describe('renderCardUsed() — creature dispatch', () => {
 });
 
 describe('renderCardUsed() — enchantment dispatch', () => {
-	it('spike_trap renders a red ground-trap AoE preview at the placement point', () => {
+	it('spike_trap resolves to a different renderer fn than cinder_snare', () => {
+		const spikeFn = resolveRenderers('spike_trap');
+		const snareFn = resolveRenderers('cinder_snare');
+		expect(spikeFn).toHaveLength(1);
+		expect(snareFn).toHaveLength(1);
+		expect(spikeFn[0]).not.toBe(snareFn[0]);
+	});
+
+	it('spike_trap erupts steel/red spikes + telegraph ring at the placement origin/radius', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'spike_trap',
@@ -2250,27 +2359,102 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 			radius: 2.5,
 			hits: [],
 		}, ctx);
-		const rings = ctx._calls.filter(
-			(c) => c[0] === 'spawnSummonEffect' && c[3] && c[3].color === 0xf87171,
-		);
+
+		// Erupting-spikes primitive fires at the placement origin with the radius.
+		const spikes = ctx._calls.filter((c) => c[0] === 'spawnSpikeTrapEffect');
+		expect(spikes).toHaveLength(1);
+		expect(spikes[0][1]).toEqual({ x: 2, z: 3 });
+		expect(spikes[0][2]).toBe(2.5);
+
+		// Hostile-red telegraph ring at the armed proximity radius, steel/red palette.
+		const rings = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
 		expect(rings).toHaveLength(1);
 		expect(rings[0][1]).toEqual({ x: 2, z: 3 });
 		expect(rings[0][2]).toBe(2.5);
+		expect(rings[0][3].color).toBe(0xf87171); // steel/blood-red accent, NOT orange fire
+		expect(rings[0][3].emissive).toBe(0xdc2626);
+
+		// Placement-only: it must NOT use the generic orange ground-enchantment preview.
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
 	});
 
-	it('mirror_ward renders a teal self ring only when target=self', () => {
+	it('spike_trap skips all VFX when data.radius is undefined', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'spike_trap',
+			origin: { x: 2, z: 3 },
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnSpikeTrapEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+	});
+
+	it('spike_trap gracefully no-ops the spikes when the primitive is absent', () => {
+		const ctx = makeCtx({ spawnSpikeTrapEffect: undefined });
+		expect(() => renderCardUsed({
+			cardId: 'spike_trap',
+			origin: { x: 2, z: 3 },
+			radius: 2.5,
+			hits: [],
+		}, ctx)).not.toThrow();
+		// Telegraph ring still plays even without the spike primitive.
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(true);
+	});
+
+	it('spike_trap invokes the spike primitive synchronously within renderCardUsed (no deferred scheduling)', () => {
+		const ctx = makeCtx();
+		// scheduleAfter would record a ['scheduleAfter', ms] tuple if any work were deferred.
+		renderCardUsed({
+			cardId: 'spike_trap',
+			origin: { x: 2, z: 3 },
+			radius: 2.5,
+			hits: [],
+		}, ctx);
+		// By the time renderCardUsed returns the spikes have already fired — synchronously.
+		expect(ctx._calls.some((c) => c[0] === 'spawnSpikeTrapEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('mirror_ward spawns shell, telegraph ring, and burst when target=self', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'mirror_ward',
+			playerId: 'p1',
 			origin: { x: 0, z: 0 },
 			target: 'self',
 			hits: [],
 		}, ctx);
-		const rings = ctx._calls.filter(
-			(c) => c[0] === 'spawnSummonEffect' && c[3] && c[3].color === 0x5eead4,
-		);
+		const def = CARD_DEFS.mirror_ward;
+		const shells = ctx._calls.filter((c) => c[0] === 'spawnMirrorWardShellEffect');
+		expect(shells).toHaveLength(1);
+		expect(shells[0][1]).toEqual({ x: 0, z: 0 });
+		expect(shells[0][2]).toBe(def.reflectRange);
+		expect(shells[0][3]).toMatchObject({
+			duration: def.ttlMs,
+			color: 0x5eead4,
+			emissive: 0x2dd4bf,
+			playerId: 'p1',
+		});
+
+		const rings = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
 		expect(rings).toHaveLength(1);
-		expect(rings[0][2]).toBe(2);
+		expect(rings[0][2]).toBe(def.reflectRange);
+		expect(rings[0][3]).toMatchObject({
+			duration: SUMMON_EFFECT_DURATION,
+			color: 0x5eead4,
+			emissive: 0x2dd4bf,
+		});
+
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		expect(bursts).toHaveLength(1);
+		expect(bursts[0][1]).toEqual({ x: 0, y: 1.0, z: 0 });
+		expect(bursts[0][2]).toMatchObject({
+			color: 0x5eead4,
+			emissive: 0x2dd4bf,
+			count: 12,
+			spread: 1.6,
+		});
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
 	});
 
 	it('mirror_ward does nothing when target is not self', () => {
@@ -2281,7 +2465,56 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 			target: 'ground',
 			hits: [],
 		}, ctx);
-		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnMirrorWardShellEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
+	});
+
+	it('mirror_ward reflect path spawns reflect burst once without a new shell', () => {
+		const ctx = makeCtx();
+		const def = CARD_DEFS.mirror_ward;
+		renderCardUsed({
+			cardId: 'mirror_ward',
+			playerId: 'p1',
+			origin: { x: 1, z: 2 },
+			reflectTriggered: true,
+			direction: { x: 0, z: 1 },
+			hits: [{ enemyId: 'e1', damage: 17 }],
+			reflectDamage: 17,
+		}, ctx);
+
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnMirrorWardReflectBurst');
+		expect(bursts).toHaveLength(1);
+		expect(bursts[0][1]).toEqual({ x: 1, z: 2 });
+		expect(bursts[0][2]).toEqual({ x: 0, z: 1 });
+		expect(bursts[0][3]).toMatchObject({
+			range: def.reflectRange,
+			color: 0x5eead4,
+			emissive: 0x2dd4bf,
+		});
+
+		const dismissCalls = ctx._calls.filter((c) => c[0] === 'dismissMirrorWardShellEffect');
+		expect(dismissCalls).toHaveLength(1);
+		expect(dismissCalls[0][1]).toBe('p1');
+		const dismissIdx = ctx._calls.findIndex((c) => c[0] === 'dismissMirrorWardShellEffect');
+		const burstIdx = ctx._calls.findIndex((c) => c[0] === 'spawnMirrorWardReflectBurst');
+		expect(dismissIdx).toBeLessThan(burstIdx);
+
+		expect(ctx._calls.some((c) => c[0] === 'spawnMirrorWardShellEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+	});
+
+	it('mirror_ward resolves to renderMirrorWard, distinct from ground enchantments', () => {
+		const mirror = resolveRenderers('mirror_ward');
+		const ground = resolveRenderers('spike_trap');
+		expect(mirror).toHaveLength(1);
+		expect(ground).toHaveLength(1);
+		expect(mirror[0]).not.toBe(ground[0]);
+	});
+
+	it('mirror_ward has no positive windUpMs', () => {
+		const windUp = getCardDef('mirror_ward').windUpMs;
+		expect(windUp === undefined || windUp === 0).toBe(true);
 	});
 });
 

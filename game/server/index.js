@@ -539,6 +539,7 @@ const DEBUG_SCENARIOS = new Set([
   'evolution-ready',
   'deck-viewer-instances',
   'cinder-snare-ready',
+  'mirror-ward-ready',
   'quest-tier-2-unlocked',
   'arena-trials-tier-2',
   'arena-trials-near-adds',
@@ -550,8 +551,10 @@ const DEBUG_SCENARIOS = new Set([
   'training-caverns-boss-low-hp',
   'crystal-rescue-tier-2',
   'canyon-descent-tier-2',
+  'canyon-descent-telepipe-ready',
   'canyon-descent-near-adds',
   'canyon-descent-boss-approach',
+  'canyon-descent-encounter-trigger',
   'canyon-descent-boss-low-hp',
   'spire-ascent-tier-2',
   'spire-ascent-near-adds',
@@ -567,6 +570,7 @@ const DEBUG_SCENARIOS = new Set([
   'arcane-radial-ready',
   'status-mutual-exclusion-ready',
   'fireball-ready',
+  'fireball-hand-ready',
   'glacial-thrower',
   'ice-ball-ready',
   'frost-spells-ready',
@@ -754,8 +758,10 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'training-caverns-boss-low-hp',
   'crystal-rescue-tier-2',
   'canyon-descent-tier-2',
+  'canyon-descent-telepipe-ready',
   'canyon-descent-near-adds',
   'canyon-descent-boss-approach',
+  'canyon-descent-encounter-trigger',
   'canyon-descent-boss-low-hp',
   'spire-ascent-tier-2',
   'spire-ascent-near-adds',
@@ -1414,11 +1420,25 @@ function runGameLoopTick() {
             state._pendingMinionBreaths.length = 0;
           }
 
+          if (state._pendingMirrorReflects?.length) {
+            for (const event of state._pendingMirrorReflects) {
+              io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, event);
+            }
+            state._pendingMirrorReflects.length = 0;
+          }
+
           if (state._pendingVolatileExplosions?.length) {
             for (const record of state._pendingVolatileExplosions) {
               io.to(lobby.id).emit(SERVER_TO_CLIENT.VOLATILE_EXPLOSION, record);
             }
             state._pendingVolatileExplosions.length = 0;
+          }
+
+          if (state._pendingSpikeTrapTriggers?.length) {
+            for (const record of state._pendingSpikeTrapTriggers) {
+              io.to(lobby.id).emit(SERVER_TO_CLIENT.SPIKE_TRAP_TRIGGERED, record);
+            }
+            state._pendingSpikeTrapTriggers.length = 0;
           }
 
           if (state._pendingLeechHeals?.length) {

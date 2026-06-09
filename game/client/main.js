@@ -125,6 +125,7 @@ import {
 	isPlayerMoving,
 	getPlayerRotation,
 	setPlayerRotation,
+	alignAttackFacing,
 	getPlayerFacingDirection,
 	getWasDead,
 	setWasDead,
@@ -133,6 +134,7 @@ import {
 	spawnHitSpark as rendererSpawnHitSpark,
 	createEnemyMesh as rendererCreateEnemyMesh,
 	enemyMeshHalfHeight as rendererEnemyMeshHalfHeight,
+	getEnemyRenderScaleForTest as rendererGetEnemyRenderScaleForTest,
 	healthBarColor as rendererHealthBarColor,
 	createHealthBarMesh as rendererCreateHealthBarMesh,
 	updateHealthBarMesh as rendererUpdateHealthBarMesh,
@@ -147,12 +149,16 @@ import {
 	spawnChainLightningEffect as rendererSpawnChainLightningEffect,
 	spawnLightningArc as rendererSpawnLightningArc,
 	spawnInfernoPillarEffect as rendererSpawnInfernoPillarEffect,
+	spawnSpikeTrapEffect as rendererSpawnSpikeTrapEffect,
 	spawnVolatileExplosionEffect as rendererSpawnVolatileExplosionEffect,
 	spawnFireTrailEffect as rendererSpawnFireTrailEffect,
 	spawnParticleBurst as rendererSpawnParticleBurst,
 	spawnProjectileTrail as rendererSpawnProjectileTrail,
 	spawnImpactDecal as rendererSpawnImpactDecal,
 	spawnTelegraphRing as rendererSpawnTelegraphRing,
+	spawnMirrorWardShellEffect as rendererSpawnMirrorWardShellEffect,
+	dismissMirrorWardShellEffect as rendererDismissMirrorWardShellEffect,
+	spawnMirrorWardReflectBurst as rendererSpawnMirrorWardReflectBurst,
 	spawnMinionSummonInEffect as rendererSpawnMinionSummonInEffect,
 	markLootCollected as rendererMarkLootCollected,
 	markCardHitEnemies as rendererMarkCardHitEnemies,
@@ -1127,6 +1133,7 @@ const cardRenderCtx = {
 	spawnPurifyingPulseHealRing: rendererSpawnPurifyingPulseHealRing,
 	spawnCleanseBurstEffect: rendererSpawnCleanseBurstEffect,
 	spawnInfernoPillarEffect: rendererSpawnInfernoPillarEffect,
+	spawnSpikeTrapEffect: rendererSpawnSpikeTrapEffect,
 	spawnVolatileExplosionEffect: rendererSpawnVolatileExplosionEffect,
 	spawnChainLightningEffect: rendererSpawnChainLightningEffect,
 	spawnLightningArc: rendererSpawnLightningArc,
@@ -1137,6 +1144,9 @@ const cardRenderCtx = {
 	spawnProjectileTrail: rendererSpawnProjectileTrail,
 	spawnImpactDecal: rendererSpawnImpactDecal,
 	spawnTelegraphRing: rendererSpawnTelegraphRing,
+	spawnMirrorWardShellEffect: rendererSpawnMirrorWardShellEffect,
+	dismissMirrorWardShellEffect: rendererDismissMirrorWardShellEffect,
+	spawnMirrorWardReflectBurst: rendererSpawnMirrorWardReflectBurst,
 	enemyMeshes: () => getMeshMaps().enemiesMeshes,
 	playSound,
 	scheduleAfter: (ms, fn) => setTimeout(fn, ms),
@@ -1507,6 +1517,9 @@ function bindSocketHandlers(s) {
 						applyInRunDeckPayload({ hand: me.hand });
 						renderHand();
 					}
+					if (Number.isFinite(me.rotation)) {
+						alignAttackFacing(me.rotation);
+					}
 				}
 			}, 0);
 			// Debug-only: the `hats-unlocked` scenario persists hat unlocks on the
@@ -1571,6 +1584,19 @@ function bindSocketHandlers(s) {
 		rendererSpawnVolatileExplosionEffect(
 			{ x, z },
 			Number.isFinite(radius) ? radius : 5,
+		);
+	});
+
+	// Synced hit feedback: erupt the spike VFX where the server reports a trap
+	// firing. Purely additive — no new network traffic or server payload.
+	s.on(SERVER_TO_CLIENT.SPIKE_TRAP_TRIGGERED, (data) => {
+		if (!data || !getScene()) return;
+		const { x, z, radius } = data;
+		if (!Number.isFinite(x) || !Number.isFinite(z)) return;
+		if (typeof rendererSpawnSpikeTrapEffect !== 'function') return;
+		rendererSpawnSpikeTrapEffect(
+			{ x, z },
+			Number.isFinite(radius) ? radius : 2.5,
 		);
 	});
 
@@ -1960,6 +1986,7 @@ function bindSocketHandlers(s) {
 			rendererDisposeMeshMap(maps.telegraphMeshes, sc);
 			rendererDisposeMeshMap(maps.minionTelegraphMeshes, sc);
 			rendererDisposeMeshMap(maps.minionsMeshes, sc);
+			rendererDisposeMeshMap(maps.spikeTrapMeshes, sc);
 			rendererDisposeMeshMap(maps.iceBallMeshes, sc);
 			rendererDisposeAllLootMeshes();
 		}
@@ -2227,6 +2254,18 @@ window.__requestDebugShopBoothOpenForTest = requestDebugShopBoothOpen;
 // reaches the playing phase without re-introducing the retired 2D #ready-btn.
 // Idempotent — launchBoothReadyUp() bails when the player is already ready.
 window.__launchReadyUpForTest = () => launchBoothReadyUp();
+window.__abandonSuspendedRunForTest = () => {
+	if (!suspendedRunSummary) {
+		return { ok: false, reason: 'not suspended' };
+	}
+	if (!socket) {
+		return { ok: false, reason: 'no socket' };
+	}
+	socket.emit(CLIENT_TO_SERVER.ABANDON_RUN);
+	suspendedRunSummary = null;
+	clearSuspendedRunUi();
+	return { ok: true };
+};
 /** Localhost-only `?booth=<id>` — open a booth once in hub lobby. */
 function requestBoothDebugOpen() {
 	if (!debugScenarioAllowed || boothDebugRequested) return;
@@ -2616,6 +2655,7 @@ function updateBossEncounterHud() {
 		encounter: gameState?.run?.encounter,
 		enemies: gameState?.enemies,
 		catalog: enemyDisplayCatalog,
+		questId: gameState?.run?.questId ?? null,
 	});
 	const dom = getBossEncounterHudDom();
 	if (dom) syncBossEncounterHud(bossEncounterModel, dom);
@@ -4778,6 +4818,12 @@ window.renderQuestBoard = renderQuestBoard;
 window.__windupFlashing = () => getWindupFlashing();
 window.__pickedUpLootIds = () => getPickedUpLootIds();
 window.__enemiesMeshes = () => getMeshMaps().enemiesMeshes;
+window.__getEnemyRenderScaleForTest = (enemyId) => {
+	const enemy = gameState?.enemies?.find((e) => e && e.id === enemyId);
+	if (!enemy) return null;
+	const info = rendererGetEnemyRenderScaleForTest(enemyId, enemy.type);
+	return info ? { scale: info.scale, type: enemy.type } : null;
+};
 window.__iceBallMeshes = () => getMeshMaps().iceBallMeshes;
 window.applyWindupFlash = rendererApplyWindupFlash;
 window.applyRevealHighlight = rendererApplyRevealHighlight;
@@ -4910,6 +4956,12 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		&& !!summaryStatusEl
 		&& getComputedStyle(runSummaryOverlay).display !== 'none'
 		&& summaryStatusEl.textContent.trim() === THEME.run.sortieComplete;
+	const resumeBtnUsable = !!resumeRunBtnEl
+		&& !resumeRunBtnEl.classList.contains('hidden')
+		&& !!suspendedRunSummary;
+	const abandonRunBtnUsable = !!abandonRunBtnEl
+		&& !abandonRunBtnEl.classList.contains('hidden')
+		&& !!suspendedRunSummary;
 
 	return {
 		debugScenario,
@@ -4954,28 +5006,39 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		characterBoothOpen: isCharacterBoothOpen(),
 		deckEditorVisible,
 		runId,
+		resumeBtnUsable,
+		abandonRunBtnUsable,
 		cardHandVisible,
 		status: statusEl ? statusEl.innerText : '',
 		hpText: hpText ? hpText.textContent : '',
 		msText: msText ? msText.textContent : '',
 		currencyText: currencyDisplayEl ? currencyDisplayEl.textContent : '',
 		currency: Number.isFinite(myCurrency) ? myCurrency : (me?.currency ?? null),
-		player: me ? {
-			hp: me.hp,
-			magicStones: me.magicStones,
-			currency: Number.isFinite(me.currency) ? me.currency : myCurrency,
-			debugScenario: me.debugScenario,
-			debugGodmode: !!me.debugGodmode,
-			dead: me.dead,
-			x: me.x,
-			y: me.y,
-			z: me.z,
-			burningUntil: me.burningUntil ?? 0,
-			slowedUntil: me.slowedUntil ?? 0,
-			cardUseState: me.cardUseState ?? null,
-			equippedKeyItemId: me.equippedKeyItemId ?? null,
-			keyItemCooldownRemaining: getKeyItemCooldownRemainingMs(me),
-		} : null,
+		player: me ? (() => {
+			const statusNow = Date.now();
+			const slowedUntil = me.slowedUntil ?? 0;
+			const burningUntil = me.burningUntil ?? 0;
+			return {
+				hp: me.hp,
+				magicStones: me.magicStones,
+				currency: Number.isFinite(me.currency) ? me.currency : myCurrency,
+				debugScenario: me.debugScenario,
+				debugGodmode: !!me.debugGodmode,
+				dead: me.dead,
+				x: me.x,
+				y: me.y,
+				z: me.z,
+				equippedKeyItemId: me.equippedKeyItemId ?? null,
+				keyItemCooldownRemaining: getKeyItemCooldownRemainingMs(me),
+				cardUseState: me.cardUseState ?? null,
+				cardWindupUntil: me.cardWindupUntil ?? 0,
+				cardWindupCardId: me.cardWindupCardId ?? null,
+				slowedUntil,
+				burningUntil,
+				slowActive: slowedUntil > statusNow,
+				burnActive: burningUntil > statusNow,
+			};
+		})() : null,
 		windupFlashing: !!(myId && getPlayerCardWindupFlashing().has(myId)),
 		keyItemIndicatorOnCooldown: (() => {
 			const el = document.getElementById('key-item-indicator');
@@ -4996,19 +5059,27 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 				}))
 			: [],
 		enemies: gameState ? gameState.enemies.length : 0,
-		enemyHp: gameState ? gameState.enemies.map((enemy) => ({
-			id: enemy.id,
-			hp: enemy.hp,
-			maxHp: enemy.maxHp,
-			revealedUntil: enemy.revealedUntil ?? undefined,
-			burningUntil: enemy.burningUntil ?? 0,
-			slowedUntil: enemy.slowedUntil ?? 0,
-			frozenUntil: enemy.frozenUntil ?? 0,
-			type: enemy.type,
-			spawnedBy: enemy.spawnedBy ?? null,
-			x: enemy.x,
-			z: enemy.z,
-		})) : [],
+		enemyHp: gameState ? gameState.enemies.map((enemy) => {
+			const statusNow = Date.now();
+			const slowedUntil = enemy.slowedUntil ?? 0;
+			const burningUntil = enemy.burningUntil ?? 0;
+			return {
+				id: enemy.id,
+				hp: enemy.hp,
+				maxHp: enemy.maxHp,
+				revealedUntil: enemy.revealedUntil ?? undefined,
+				type: enemy.type,
+				spawnedBy: enemy.spawnedBy ?? null,
+				x: enemy.x,
+				z: enemy.z,
+				slowedUntil,
+				burningUntil,
+				frozenUntil: enemy.frozenUntil ?? 0,
+				slowActive: slowedUntil > statusNow,
+				burnActive: burningUntil > statusNow,
+				...(enemy.slowFactor != null ? { slowFactor: enemy.slowFactor } : {}),
+			};
+		}) : [],
 		minions: gameState && gameState.minions ? gameState.minions.map((m) => ({
 			id: m.id,
 			type: m.type,

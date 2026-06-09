@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
 	gameState,
 	CARD_DEFS,
@@ -7,7 +7,12 @@ import {
 	armSelfEnchantment,
 	updateEnchantments,
 	updateMinions,
+	stateSnapshot,
+	runGameLoopTick,
+	io as serverIo,
 } from '../index.js';
+
+const { createLobby, resetAllLobbies } = require('../lobbies.js');
 
 function resetState() {
 	gameState.players = {};
@@ -19,10 +24,16 @@ function resetState() {
 	gameState.lobby = [];
 	gameState.gamePhase = 'playing';
 	gameState.run = { status: 'playing' };
+	gameState._pendingMirrorReflects = [];
 }
 
 describe('enchantment cards', () => {
 	beforeEach(resetState);
+
+	afterEach(() => {
+		resetAllLobbies();
+		vi.restoreAllMocks();
+	});
 
 	it('spike_trap triggers when an enemy enters radius', () => {
 		gameState.players.p1 = {
@@ -177,6 +188,51 @@ describe('enchantment cards', () => {
 		expect(result).toBeTruthy();
 		expect(result.reflectDamage).toBeGreaterThanOrEqual(15);
 		expect(gameState.enemies[0].hp).toBeLessThan(50);
+		expect(gameState._pendingMirrorReflects).toHaveLength(1);
+		expect(gameState._pendingMirrorReflects[0]).toMatchObject({
+			cardId: 'mirror_ward',
+			playerId: 'p1',
+			origin: { x: 0, z: 0 },
+			reflectTriggered: true,
+			direction: { x: 1, z: 0 },
+			reflectDamage: result.reflectDamage,
+		});
+		expect(gameState._pendingMirrorReflects[0].hits).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ enemyId: 'e1', damage: result.reflectDamage }),
+			]),
+		);
+	});
+
+	it('mirror_ward pending reflect drains as cardUsed on game loop tick', () => {
+		resetAllLobbies();
+		const lobby = createLobby('Mirror Ward Reflect');
+		lobby.state.gamePhase = 'playing';
+		lobby.state.run = { status: 'playing' };
+		lobby.state._pendingMirrorReflects = [{
+			cardId: 'mirror_ward',
+			playerId: 'p1',
+			origin: { x: 0, z: 0 },
+			reflectTriggered: true,
+			direction: { x: 1, z: 0 },
+			hits: [{ enemyId: 'e1', damage: 17 }],
+			reflectDamage: 17,
+		}];
+
+		const roomEmit = vi.fn();
+		vi.spyOn(serverIo, 'to').mockReturnValue({ emit: roomEmit });
+
+		runGameLoopTick();
+
+		expect(serverIo.to).toHaveBeenCalledWith(lobby.id);
+		expect(roomEmit).toHaveBeenCalledWith('cardUsed', expect.objectContaining({
+			cardId: 'mirror_ward',
+			playerId: 'p1',
+			reflectTriggered: true,
+			hits: [{ enemyId: 'e1', damage: 17 }],
+			reflectDamage: 17,
+		}));
+		expect(lobby.state._pendingMirrorReflects).toHaveLength(0);
 	});
 
 	it('mirror_ward expires when ttl elapses without taking damage', () => {
@@ -191,5 +247,101 @@ describe('enchantment cards', () => {
 		gameState.players.p1.activeEnchantment.expiresAt = Date.now() - 1;
 		updateMinions();
 		expect(gameState.players.p1.activeEnchantment).toBeNull();
+	});
+
+	it('world snapshot exposes an armed spike_trap with the fields the client needs', () => {
+		gameState.players.p1 = {
+			x: 0,
+			z: 0,
+			hp: 100,
+			dead: false,
+			activeEnchantment: null,
+		};
+		spawnGroundEnchantment(0, 0, CARD_DEFS.spike_trap, 'p1');
+		const enc = gameState.enchantments[0];
+
+		const snapshot = stateSnapshot();
+		expect(Array.isArray(snapshot.enchantments)).toBe(true);
+		const synced = snapshot.enchantments.find((e) => e.id === enc.id);
+		expect(synced).toBeTruthy();
+		expect(synced).toMatchObject({
+			id: enc.id,
+			effect: 'spike_trap',
+			x: 0,
+			z: 0,
+			radius: enc.radius,
+			expiresAt: enc.expiresAt,
+			armed: true,
+		});
+	});
+
+	it('world snapshot omits disarmed and self enchantments', () => {
+		gameState.players.p1 = {
+			x: 0,
+			z: 0,
+			hp: 100,
+			dead: false,
+			activeEnchantment: null,
+		};
+		spawnGroundEnchantment(0, 0, CARD_DEFS.spike_trap, 'p1');
+		gameState.enchantments[0].armed = false;
+		armSelfEnchantment(gameState.players.p1, CARD_DEFS.mirror_ward);
+
+		const snapshot = stateSnapshot();
+		expect(snapshot.enchantments).toHaveLength(0);
+	});
+
+	it('spike_trap trigger queues exactly one _pendingSpikeTrapTriggers record', () => {
+		gameState.players.p1 = {
+			x: 0,
+			z: 0,
+			hp: 100,
+			dead: false,
+			activeEnchantment: null,
+		};
+		gameState.enemies.push({
+			id: 'e1',
+			type: 'grunt',
+			x: 0.5,
+			z: 0,
+			hp: 50,
+			attackState: 'idle',
+		});
+		spawnGroundEnchantment(0, 0, CARD_DEFS.spike_trap, 'p1');
+		const enc = gameState.enchantments[0];
+		gameState._pendingSpikeTrapTriggers = [];
+
+		updateEnchantments();
+
+		expect(gameState._pendingSpikeTrapTriggers).toHaveLength(1);
+		expect(gameState._pendingSpikeTrapTriggers[0]).toEqual({
+			x: enc.x,
+			z: enc.z,
+			radius: enc.radius,
+		});
+	});
+
+	it('cinder_snare trigger does NOT queue a _pendingSpikeTrapTriggers record', () => {
+		gameState.players.p1 = {
+			x: 0,
+			z: 0,
+			hp: 100,
+			dead: false,
+			activeEnchantment: null,
+		};
+		gameState.enemies.push({
+			id: 'e1',
+			type: 'grunt',
+			x: 0.5,
+			z: 0,
+			hp: 50,
+			attackState: 'idle',
+		});
+		spawnGroundEnchantment(0, 0, CARD_DEFS.cinder_snare, 'p1');
+		gameState._pendingSpikeTrapTriggers = [];
+
+		updateEnchantments();
+
+		expect(gameState._pendingSpikeTrapTriggers).toHaveLength(0);
 	});
 });

@@ -5877,7 +5877,86 @@ PASS. The implementation stays within the documented lobby -> dungeon -> card-co
 
 PASS. The live code paths are covered by focused tests plus the full validation artifacts. `round-5/coverage.log` shows `137` test files and `2080` tests passed with coverage reporting enabled. `git diff --check` reported no whitespace errors. I did not find dead or broken ticket code that affects the acceptance criteria.
 
+## v0.331 — 363-anim-thermal-column  (2026-06-08 12:38:16)
+
+### Performance and cleanup
+
+PASS. The new effect adds two active effect meshes plus scheduled primitive pulses, all handled through the existing `activeEffects` lifecycle. The thermal shaft has a dedicated update branch with no per-frame mesh allocation, and tests verify both the scorch ring and shaft are disposed when expired.
+
+### Tests and coverage
+
+PASS. The round's `coverage.log` shows the full client suite passed: 32 files, 527 tests. New coverage exercises renderer registration, removal of the generic summon fallback, cast-time eruption feedback, DoT pulse scheduling, per-hit ignite bursts, absence of wind-up for this instant spell, and primitive lifecycle/disposal. Coverage output contains expected modeled-asset fallback noise from unrelated renderer tests, not failures.
+
+### Design and requirements consistency
+
+PASS. The change is visual-only on the client and does not alter the card combat model, server-client architecture, multiplayer state, movement synchronization, or core dungeon loop described in the design and requirements documents.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=` shortcut. The existing `fire-spells-ready` scenario remains a QA shortcut only; normal reachability remains through reward/evolution progression and the same server card-use path.
+
+## v0.332 — 366-anim-mirror-ward  (2026-06-08 13:23:46)
+
+### Reflect consumption sync
+
+Pass. The renderer tracks one shell per `playerId`, dismisses any prior shell on recast, and calls `dismissMirrorWardShellEffect(playerId)` before spawning the reflect burst. Natural TTL expiry still cleans up through `updateAttackEffects()`. This keeps the client shell from lingering after the server has consumed the active enchantment.
+
+### Scope, performance, and code quality
+
+Pass. The implementation is focused on the card renderer, renderer primitives, minimal context wiring, the reflect event bridge, tests, and a debug scenario. The VFX primitives are active-effect records cleaned by the existing update loop, with no per-frame allocation patterns beyond iterating child meshes/material opacity. I did not find dead or broken code paths that would block the ticket.
+
+### Debug scenario review
+
+Pass. The added `mirror-ward-ready` scenario is only entered through `?debugScenario=mirror-ward-ready`; normal gameplay does not call it. Client-side debug scenario requests are localhost-gated, and server-side scenario application remains behind the existing debug-scenario allowance. The same end state is reachable through normal progression because `mirror_ward` is a standard reward card (`rewardOrder: 25`) and normal casting still goes through the real server card-use validation, Magic Stone cost, active-enchantment guard, state update, and card-used broadcast. The scenario does not replace or weaken the production path.
+
+### Design and foundation consistency
+
+Pass. Mirror Ward remains an enchantment, consistent with the design document's "lingering magical effect" model. The changes do not affect the required foundations: the captured run confirms 3D rendering, WebSocket connectivity, multiplayer presence, and movement/update flow still work.
+
+## Remaining gaps
+
+No blocking gaps remain.
+
+## v0.333 — 365-anim-spike-trap  (2026-06-08 13:31:46)
+
+
+### Timing and server-effect synchronization
+PASS. The renderer fires from the normal `CARD_USED` event, which the server emits after Spike Trap's 500ms wind-up commit, so the initial placement VFX aligns with the server-side arming point and still benefits from the existing 307/315 wind-up telegraph. The server now exposes armed ground enchantments in snapshots, emits `SPIKE_TRAP_TRIGGERED` when proximity damage actually resolves, and the client plays the eruption VFX at that reported position/radius. The persistent mesh is reconciled from server state and removed when the server drops/disarms the trap, so lingering visuals follow actual server state rather than a client timer.
+
+### Scope, quality, and performance
+PASS. The implementation is localized to the Spike Trap renderer/VFX, snapshot/event plumbing needed for armed traps, and focused tests. Persistent trap meshes are keyed by enchantment id and reused across frames, stale meshes are disposed through the existing mesh-map cleanup path, and the hit eruption remains short-lived active-effect geometry. I did not find dead/broken code, obvious leaks, or unrelated gameplay changes.
+
+### Design and requirements consistency
+PASS. The behavior remains consistent with the design doc's enchantment definition: Spike Trap leaves a lingering magical ground hazard that triggers when an enemy enters it. The foundation requirements are not regressed: the captured run shows 3D rendering, server-client connection, player visualization, and movement in active gameplay.
+
+### Debug scenarios
+PASS. This ticket touched the existing `canyon-descent-boss-low-hp` debug scenario as a snapshot correctness fix, not as a new gameplay path. It remains behind the existing debug socket gate (`ALLOW_DEBUG_SCENARIOS`, localhost, non-production) and the client URL shortcut path. The scenario requires an already-running canyon_descent Tier 2 stage-boss run with an encounter, matching a state reachable through normal progression by deploying Canyon Descent Tier 2, clearing adds, and engaging the miniboss; it does not replace normal validation, persistence, or encounter activation for real players.
+
+### Verification
+PASS. The round-3 coverage log reports `137 passed` test files and `2219 passed` tests. Relevant added/covered checks include Spike Trap renderer dispatch/timing, the spike VFX primitive, persistent hazard reconciliation and cleanup, server enchantment snapshot fields, trap trigger event queuing, and the canyon low-HP debug-scenario snapshot regression.
+
 ## Remaining gaps
 
 None.
 
+## v0.336 — 370-playthrough-revalidate-sunken-canyon  (2026-06-08 18:17:33)
+
+PASS. The ticket asked for a Sunken Canyon re-validation playthrough using the validation driver, with screenshots and findings for boss UI/visuals, slow/burn exclusivity, heal/cleanse, wind-up input lock/telegraph, Telepipe vitals persistence, and new-sortie charge reset. The live artifacts in `game/validation/sunken-canyon` include `run-summary.json`, `probes.json`, `findings.md`, console/server logs, and the expected screenshots from hub through victory plus the new-content exercises.
+
+The full playthrough summary is green: `ok: true`, `preset: "sunken-canyon"`, `steps: "full"`, Sunken Canyon Tier II selected, boss spawned/activated/defeated, victory fired, boss HUD visible with `Canyon Warden`, boss render scale distinct from adds, slow and burn mutually exclusive, Purifying Pulse healed and cleansed, wind-up input lock/telegraph active, Telepipe vitals preserved, and fresh sortie card charges reset. The findings file records the assertions, screenshots, floor alignment probes across plateau/canyon bands, and console/page-error status.
+
+## Design and requirements consistency
+
+PASS. The implementation remains consistent with `game/docs/design.md`: Sunken Canyon floor alignment is validated through `sampleFloorY`-based probes with zero delta in both plateau and canyon bands; stage boss behavior remains a normal active encounter with a boss HUD; card exercises validate the documented active card-combat loop; Telepipe behavior matches the documented suspend/new-sortie durability rules. The baseline requirements are preserved: the captured run renders a Three.js scene, connects client/server over sockets, shows the player, and exercises live movement/combat state.
+
+## Debug scenarios
+
+PASS. The new/changed Sunken Canyon and card exercise scenarios are gated behind the existing debug/dev path (`ALLOW_DEBUG_SCENARIOS`, localhost debug capture, and `?debugScenario`/Playwright harness entry points). Normal gameplay does not invoke them. The scenario comments and code map each shortcut back to a normally reachable state: unlocking/deploying Canyon Tier II, walking to adds/boss trigger, earning or evolving the relevant cards, purchasing Telepipe, taking damage/statuses, and defeating the boss normally. The shortcuts do not replace server-side card use, encounter activation, Telepipe suspend/abandon, or victory logic; they only set up deterministic QA state.
+
+## Code quality and tests
+
+PASS. The changed live code is scoped to validation harness support, debug-only setup, boss HUD modeling, and targeted game fixes needed for deterministic validation. I did not find dead/broken code or normal-game regressions in the reviewed paths. The coverage run in `round-2/coverage.log` shows `131` test files and `2054` tests passing with coverage collected.
+
+## Remaining gaps
+
+None.

@@ -1,0 +1,13 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/366-anim-mirror-ward/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/366-anim-mirror-ward/game/data
+Server listening on port 3003
+Player connected: socket=tsopkX8C3T2UJozCAAAB, playerId=e1b79006-aecb-4b24-bb76-3005f835387c
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=2XK5Gr2-lxSe9VjsAAAD, playerId=f957844c-a2fe-4e92-866f-b72caf73bf71
+Player disconnected: tsopkX8C3T2UJozCAAAB
+Player disconnected: 2XK5Gr2-lxSe9VjsAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

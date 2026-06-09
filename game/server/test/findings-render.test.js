@@ -56,4 +56,95 @@ describe('renderFindings preset copy', () => {
 		expect(md).toMatch(/^# Open Plaza validation findings/m);
 		expect(md).toContain('**bossSpawned (arena_champion)**: PASS');
 	});
+
+	it('renders boss encounter UI and visual identity probe sections', () => {
+		const md = renderFindings({
+			...baseRun,
+			preset: 'sunken-canyon',
+			findingsTitle: 'Sunken Canyon validation findings',
+			bossSpawnLabel: 'miniboss (Canyon Warden)',
+			bossEncounterUi: {
+				hudVisible: true,
+				bossName: 'Canyon Warden',
+				hpFillWidthPct: 100,
+				encounterLocked: true,
+				encounterPhase: 'active',
+			},
+			bossVisualIdentity: {
+				bossType: 'miniboss',
+				bossEnemyId: 'boss-1',
+				nearestAddType: 'grunt',
+				bossDistinctFromAdds: true,
+				bossRenderScale: 2.2,
+				addRenderScale: 1,
+			},
+		});
+		expect(md).toContain('## Boss encounter UI');
+		expect(md).toContain('**bossName**: Canyon Warden');
+		expect(md).toContain('## Boss visual identity');
+		expect(md).toContain('**bossDistinctFromAdds**: yes');
+	});
+
+	it('renders sunken-canyon new-content exercise sections and assertions', () => {
+		const md = renderFindings({
+			...baseRun,
+			preset: 'sunken-canyon',
+			findingsTitle: 'Sunken Canyon validation findings',
+			assertions: {
+				...baseRun.assertions,
+				bossEncounterUiVisible: true,
+				bossDistinctFromAdds: true,
+				slowBurnMutuallyExclusive: true,
+				healCleanseApplied: true,
+				windupTelegraphActive: true,
+				telepipeVitalsPreserved: true,
+				cardChargesResetOnNewSortie: true,
+			},
+			cardExercises: {
+				slowBurn: { slowBurnMutuallyExclusive: true, targetEnemyId: 'grunt-1' },
+				purifyingPulse: { healCleanseApplied: true, preCast: { hp: 40 }, postCast: { hp: 80 } },
+				windup: { windupTelegraphActive: true, cardId: 'magma_greatsword' },
+			},
+			canyonTelepipe: {
+				telepipeVitalsPreserved: true,
+				cardChargesResetOnNewSortie: true,
+				preSuspend: { hp: 100, magicStones: 3, runId: 'a' },
+				postDeploy: { hp: 100, magicStones: 3, runId: 'b' },
+			},
+			screenshots: [
+				'game/validation/sunken-canyon/08-slow-burn-mutual-exclusive.png',
+				'game/validation/sunken-canyon/12-telepipe-after.png',
+			],
+		});
+		expect(md).toContain('**bossEncounterUiVisible**: PASS');
+		expect(md).toContain('**cardChargesResetOnNewSortie**: PASS');
+		expect(md).toContain('## Slow / burn mutual exclusivity');
+		expect(md).toContain('## Heal / cleanse (Purifying Pulse)');
+		expect(md).toContain('## Wind-up telegraph');
+		expect(md).toContain('## Telepipe vitals and new-sortie charges');
+		expect(md).toContain('## New content exercise');
+		expect(md).toContain('08-slow-burn-mutual-exclusive.png');
+	});
+
+	it('flags missing boss HUD in findings', () => {
+		const md = renderFindings({
+			...baseRun,
+			bossEncounterUi: {
+				hudVisible: false,
+				bossName: '',
+				hpFillWidthPct: null,
+				encounterLocked: false,
+				encounterPhase: 'dormant',
+			},
+			bossVisualIdentity: {
+				bossType: 'miniboss',
+				bossEnemyId: 'boss-1',
+				nearestAddType: 'miniboss',
+				bossDistinctFromAdds: false,
+			},
+		});
+		expect(md).toContain('boss encounter HUD missing or hidden');
+		expect(md).toContain('boss display name is empty');
+		expect(md).toContain('not clearly distinct from the nearest live add');
+	});
 });

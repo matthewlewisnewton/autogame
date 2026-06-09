@@ -18,21 +18,23 @@
 //   spawnPurifyingPulseHealRing(origin, radius)
 //   spawnCleanseBurstEffect(origin)
 //   spawnPurifyingPulseEffect(origin, radius)
-//   spawnInfernoPillarEffect(origin, radius)
+//   spawnInfernoPillarEffect(origin, radius, style?) — style: { color, emissive, dotTicks, dotIntervalMs, duration }
 //   spawnChainLightningEffect(origin, direction)
 //   spawnLightningArc(from, to, style?)
 //   spawnParticleBurst(position, style?)       — multi-particle spark/ember burst
 //   spawnProjectileTrail(origin, direction, style?) — fading streak along a path
 //   spawnImpactDecal(origin, style?)           — lingering ground flash/decal ring
 //   spawnTelegraphRing(origin, radius, style?) — expanding/pulsing AoE telegraph ring
+//   spawnMirrorWardShellEffect(origin, radius, style?) — lingering mirror ward shell
+//   spawnMirrorWardReflectBurst(origin, direction, style?) — mirror reflect impact VFX
 //   flashMesh(mesh, color, durationMs)
 //   enemyMeshes()      → { [enemyId]: Three.js mesh }
 //   playSound(name)
 //   myId               → local player id (string|null)
 //   scheduleAfter(ms, fn) — wrapper around setTimeout used for delayed swings
 
-import { CARD_ACCENT_STYLE, CARD_DEFS } from './cards.js';
-import { ATTACK_EFFECT_DURATION, MINION_SUMMON_IN_MS, PHOTON_BARRAGE_SWING_DELAY_MS } from './config.js';
+import { CARD_ACCENT_STYLE, CARD_DEFS, getCardDef } from './cards.js';
+import { ATTACK_EFFECT_DURATION, MINION_SUMMON_IN_MS, PHOTON_BARRAGE_SWING_DELAY_MS, SUMMON_EFFECT_DURATION } from './config.js';
 
 const NULL_CRAWLER_SUMMON_COLOR = 0x22d3ee;
 const NULL_CRAWLER_SUMMON_EMISSIVE = 0x67e8f9;
@@ -711,21 +713,61 @@ function renderDragonsBreath(data, ctx) {
 }
 
 /**
- * Inferno Pillar: tall fiery pillar effect plus accent telegraph ring and
- * ember burst at the eruption point.
+ * Thermal Column (inferno_pillar): instant radial eruption plus a lingering
+ * burning column whose tick pulses align with server area-effect intervals.
  */
 function renderInfernoPillar(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
-	ctx.spawnInfernoPillarEffect(origin, data.radius);
-	// Accent-themed AoE telegraph ring + ember burst at the eruption point.
-	const color = getAccentHex(data.cardId) ?? 0xff7a18;
+	const color = getAccentHex(data.cardId) ?? 0xef4444;
 	const emissive = 0xff3b00;
+	const dotTicks = data.dotTicks ?? 4;
+	const dotIntervalMs = data.dotIntervalMs ?? 500;
+	const duration = dotTicks * dotIntervalMs + 250;
+
+	ctx.spawnInfernoPillarEffect(origin, data.radius, {
+		color,
+		emissive,
+		dotTicks,
+		dotIntervalMs,
+		duration,
+	});
+
+	// Instant eruption (t = 0): mirrors server immediate collectRadialHits burst.
 	if (ctx.spawnTelegraphRing) {
 		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
 	}
 	if (ctx.spawnParticleBurst) {
 		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.2 });
+	}
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(origin, { color, emissive });
+	}
+
+	if (data.hits?.length) {
+		const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(pos, { color, emissive, count: 5, spread: 0.55 });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pos, { color, emissive, count: 6, spread: 0.7 });
+			}
+		}
+	}
+
+	for (let tick = 1; tick <= dotTicks; tick += 1) {
+		ctx.scheduleAfter(dotIntervalMs * tick, () => {
+			if (ctx.spawnTelegraphRing) {
+				ctx.spawnTelegraphRing(origin, data.radius * 0.65, { color, emissive });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(origin, { color, emissive, count: 8, spread: 1.4 });
+			}
+		});
 	}
 }
 
@@ -1212,21 +1254,100 @@ function renderShockwaveSweep(data, ctx) {
 }
 
 /**
- * Spike Trap (and any ground-targeted enchantment): show the trap radius
- * with a hostile-red AoE preview at the placement point.
+ * Generic ground-targeted enchantment (e.g. cinder_snare): show the trap
+ * radius with a hostile AoE preview at the placement point.
  */
 function renderGroundEnchantment(data, ctx) {
 	if (data.radius === undefined) return;
 	ctx.spawnSummonEffect(originOf(data), data.radius, { color: 0xf87171, emissive: 0xef4444 });
 }
 
+const SPIKE_TRAP_COLOR = 0xf87171; // steel/blood-red hazard accent (card accent)
+const SPIKE_TRAP_EMISSIVE = 0xdc2626; // blood-red telegraph glow
+
 /**
- * Mirror Ward (and any self-targeted enchantment): teal ring around the
- * caster. Range is fixed since self-enchantments don't report a radius.
+ * Spike Trap: erupting steel/blood-red spikes at the placement origin plus an
+ * armed hostile-red telegraph ring at the proximity-hazard radius. Distinct from
+ * the generic orange ground-enchantment preview used by cinder_snare.
+ *
+ * Placement-only and synced to the server: the server emits CARD_USED only after
+ * the 500ms windUpMs commit (the 307/315 charge telegraph plays during wind-up),
+ * then arms the trap server-side for its ttlMs and resolves the single
+ * proximity_hazard burst. So this renderer fires synchronously at cast — no
+ * setTimeout/projectile delay — and adds no network traffic or payload changes.
+ */
+function renderSpikeTrap(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const color = getAccentHex('spike_trap') ?? SPIKE_TRAP_COLOR;
+	const emissive = SPIKE_TRAP_EMISSIVE;
+	if (ctx.spawnSpikeTrapEffect) ctx.spawnSpikeTrapEffect(origin, data.radius);
+	if (ctx.spawnTelegraphRing) ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+}
+
+/**
+ * Future self-targeted enchantments: teal ring around the caster. Range is
+ * fixed since self-enchantments don't report a radius.
  */
 function renderSelfEnchantment(data, ctx) {
 	if (data.target !== 'self') return;
 	ctx.spawnSummonEffect(originOf(data), 2, { color: 0x5eead4, emissive: 0x2dd4bf });
+}
+
+const MIRROR_WARD_COLOR = 0x5eead4;
+const MIRROR_WARD_EMISSIVE = 0x2dd4bf;
+
+/**
+ * Mirror Ward: instant self-cast shell at reflect range plus a short cast
+ * flourish. Reflect-trigger VFX is owned by sub-ticket 03.
+ */
+function renderMirrorWard(data, ctx) {
+	if (data.reflectTriggered) {
+		const origin = originOf(data);
+		const direction = directionOf(data);
+		const def = getCardDef('mirror_ward');
+		const color = getAccentHex('mirror_ward') ?? MIRROR_WARD_COLOR;
+		const emissive = MIRROR_WARD_EMISSIVE;
+		ctx.dismissMirrorWardShellEffect?.(data.playerId);
+		if (ctx.spawnMirrorWardReflectBurst) {
+			ctx.spawnMirrorWardReflectBurst(origin, direction, {
+				range: def.reflectRange,
+				color,
+				emissive,
+			});
+		}
+		return;
+	}
+	if (data.target !== 'self' || !data.origin) return;
+
+	const origin = originOf(data);
+	const def = getCardDef('mirror_ward');
+	const radius = def.reflectRange;
+	const lingerMs = def.ttlMs;
+	const color = getAccentHex('mirror_ward') ?? MIRROR_WARD_COLOR;
+	const emissive = MIRROR_WARD_EMISSIVE;
+
+	if (ctx.spawnMirrorWardShellEffect) {
+		ctx.spawnMirrorWardShellEffect(origin, radius, {
+			duration: lingerMs,
+			color,
+			emissive,
+			playerId: data.playerId,
+		});
+	}
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, radius, {
+			duration: SUMMON_EFFECT_DURATION,
+			color,
+			emissive,
+		});
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(
+			{ x: origin.x, y: 1.0, z: origin.z },
+			{ color, emissive, count: 12, spread: 1.6 },
+		);
+	}
 }
 
 /**
@@ -1414,8 +1535,8 @@ const CARD_RENDERERS = {
 	bulkhead_mauler: renderShockwaveSweep,
 
 	// Enchantments
-	spike_trap: renderGroundEnchantment,
-	mirror_ward: renderSelfEnchantment,
+	spike_trap: renderSpikeTrap,
+	mirror_ward: renderMirrorWard,
 	cinder_snare: renderGroundEnchantment,
 };
 
