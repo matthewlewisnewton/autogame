@@ -554,54 +554,10 @@ function applyDebugScenario(socket, name) {
 
     if (name === 'arena-trials-tier-2') {
       // arena_trials Tier 2 with rigid open-plaza layout and cover-aware spawns.
-      // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
-      // snapshots the correct run.questTier/objective and spawnEnemy variant rolls.
       // Reachable normally by clearing Arena Trials Tier 1, unlocking Tier 2, and
       // deploying; this scenario is a shortcut into that state.
-      const questId = 'arena_trials';
-      const tier = 2;
-      unlockQuestTier(player.accountId, questId, tier);
-      state.selectedQuestId = questId;
-      state.selectedQuestTier = tier;
-      applyLayoutForQuest(state, questId, tier);
-
-      player.ready = true;
-      player.hp = MAX_HP;
-      player.magicStones = MAX_MAGIC_STONES;
-      const plazaSpawn = firstRoomPosition();
-      player.x = plazaSpawn.x;
-      player.z = plazaSpawn.z;
-      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-
-      enterPlayingPhase(lobby);
-
-      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
-        createDrawDeckFromSelectedDeck(player);
-        initPlayerHand(player);
-        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
-        if (!player.pendingSummons) {
-          player.pendingSummons = new Set();
-        }
-      }
-
-      state.enemies = [];
-      state.loot = [];
-      delete state.run;
-      delete state._pendingEncounterBossId;
-      spawnEnemies();
-      startDungeonRun();
-
-      emitLobbyQuestUpdate(lobby, state, {
-        layoutSeed: state.layoutSeed,
-        layout: state.layout,
-      });
-      broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-      return {
-        ok: true,
-        scenario: name,
-        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
-      };
+      setupArenaTrialsTier2StageBossDebug(lobby, state, player);
+      return finishStageBossDebugScenario(lobby, state, player, name);
     }
 
     if (name === 'stage-boss-dormant') {
