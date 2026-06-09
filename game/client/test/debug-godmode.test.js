@@ -142,6 +142,32 @@ describe('debug godmode toggle (main.js)', () => {
 		expect(harness.debugGodmodeResult).toEqual({ ok: true, enabled: true });
 	});
 
+	it('keeps debugGodmode false across stateUpdate after godmode-off debugGodmodeResult', async () => {
+		stubLocation('localhost');
+		await import('../main.js');
+		window.__setGameState({
+			gamePhase: 'playing',
+			players: {
+				p1: { hp: 80, magicStones: 40, x: 0, z: 0, debugGodmode: true },
+			},
+			enemies: [],
+		}, 'p1');
+		window.__triggerSocketEvent('debugGodmodeResult', { ok: true, enabled: true });
+		expect(window.__AUTOGAME_HARNESS_STATE__().player.debugGodmode).toBe(true);
+
+		window.__triggerSocketEvent('debugGodmodeResult', { ok: true, enabled: false });
+		expect(window.__AUTOGAME_HARNESS_STATE__().player.debugGodmode).toBe(false);
+
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'playing',
+			players: {
+				p1: { hp: 80, magicStones: 40, x: 0, z: 0 },
+			},
+			enemies: [{ id: 'w1', type: 'ember_wraith', hp: 50, x: 3, z: 0 }],
+		});
+		expect(window.__AUTOGAME_HARNESS_STATE__().player.debugGodmode).toBe(false);
+	});
+
 	it('stores debugGodmodeResult in harness state and logs success/failure', async () => {
 		stubLocation('localhost');
 		const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});

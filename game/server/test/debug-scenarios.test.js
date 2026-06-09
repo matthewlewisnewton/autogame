@@ -1,4 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+const sim = require('../simulation.js');
+const { setGameState: setProgressionGameState } = require('../progression.js');
+const { _timeouts } = require('../index.js');
 import { generateLayout, questLayoutSeed, sampleFloorY, resolveFloorY } from '../dungeon.js';
 import {
 	getQuest,
@@ -13,7 +19,7 @@ import {
 	clearNonBossEnemies,
 	resolveEncounterAnchor,
 } from '../encounters.js';
-import { resetGameState, gameState, runGameLoopTick } from '../index.js';
+import { resetGameState, gameState, runGameLoopTick, applyBurning, updateBurning } from '../index.js';
 import { APPEARANCE_CHANGE_COST, MAX_MAGIC_STONES } from '../config.js';
 import { spawnEnemies, setGameState } from '../progression.js';
 import {
@@ -1663,12 +1669,14 @@ describe('debugScenario — ember-descent harness shortcuts', () => {
 
 		playerForSocket(socket).debugGodmode = true;
 
+		const godmodePromise = waitForEvent(socket, 'debugGodmodeResult');
 		const burnPromise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'ember-descent-ember-wraith-burn' });
-		const burnResult = await burnPromise;
+		const [godmodeResult, burnResult] = await Promise.all([godmodePromise, burnPromise]);
 
 		expect(burnResult.ok).toBe(true);
 		expect(burnResult.scenario).toBe('ember-descent-ember-wraith-burn');
+		expect(godmodeResult).toEqual({ ok: true, enabled: false });
 
 		const state = testGameState();
 		const player = playerForSocket(socket);
@@ -1677,6 +1685,44 @@ describe('debugScenario — ember-descent harness shortcuts', () => {
 		expect(state.enemies[0].type).toBe('ember_wraith');
 		expect(state.enemies[0].hp).toBeGreaterThan(0);
 		expect(player.hp).toBeGreaterThan(30);
+	});
+
+	it('ember-descent-ember-wraith-burn allows burn tick damage after clearing godmode', async () => {
+		vi.useFakeTimers();
+		const START = 1_000_000;
+		vi.setSystemTime(START);
+
+		try {
+			const { socket } = await connectClient(baseUrl);
+
+			const deployPromise = waitForEvent(socket, 'debugScenarioResult');
+			socket.emit('debugScenario', { name: 'fire-cavern' });
+			await deployPromise;
+
+			playerForSocket(socket).debugGodmode = true;
+
+			const godmodePromise = waitForEvent(socket, 'debugGodmodeResult');
+			const burnPromise = waitForEvent(socket, 'debugScenarioResult');
+			socket.emit('debugScenario', { name: 'ember-descent-ember-wraith-burn' });
+			await Promise.all([godmodePromise, burnPromise]);
+
+			const state = testGameState();
+			const player = playerForSocket(socket);
+			expect(player.debugGodmode).toBe(false);
+
+			sim.setGameState(state, _timeouts);
+			setProgressionGameState(state);
+
+			const hpBeforeBurn = player.hp;
+			applyBurning(player, 5000);
+			updateBurning();
+			vi.setSystemTime(START + 500);
+			updateBurning();
+
+			expect(player.hp).toBeLessThan(hpBeforeBurn);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('status-mutual-exclusion-ready pins fireball and permafrost_lance with one grunt in cast range', async () => {

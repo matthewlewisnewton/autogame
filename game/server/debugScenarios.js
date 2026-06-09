@@ -994,6 +994,7 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       player.debugGodmode = false;
+      socket.emit(SERVER_TO_CLIENT.DEBUG_GODMODE_RESULT, { ok: true, enabled: false });
       state.enemies = [];
       const wraith = spawnEnemy(player.x + 3, player.z, 'ember_wraith');
       wraith.y = resolveFloorY(sampleFloorY(state.layout, wraith.x, wraith.z));
