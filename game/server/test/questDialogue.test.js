@@ -19,7 +19,6 @@ import {
 
 const require = createRequire(import.meta.url);
 const progression = require('../progression');
-const { QUEST_DEFS } = require('../quests');
 
 function createMockIo() {
   const emitted = [];
@@ -116,28 +115,25 @@ describe('quest dialogue progression hooks', () => {
     expect(dialogueEvents[0].payload.speaker).toBe('Rewa');
   });
 
-  describe('crystal_rescue itemCollected stub dialogue', () => {
-    let originalDialogue;
-
+  describe('crystal_rescue itemCollected dialogue', () => {
     beforeEach(() => {
-      originalDialogue = QUEST_DEFS.crystal_rescue.tiers[1].dialogue;
-      QUEST_DEFS.crystal_rescue.tiers[1].dialogue = [
-        { trigger: 'run_start', text: 'Salvage channel open.' },
-        { trigger: { itemCollected: 1 }, text: 'First prism secured.' },
-        { trigger: { itemCollected: 2 }, text: 'Second prism locked.' },
-        { trigger: { itemCollected: 3 }, text: 'Final prism in hand.' },
-        { trigger: 'objective_complete', text: 'Lattice stable — extract.' },
-      ];
       gameState.selectedQuestId = 'crystal_rescue';
-    });
-
-    afterEach(() => {
-      QUEST_DEFS.crystal_rescue.tiers[1].dialogue = originalDialogue;
     });
 
     it('emits sequential itemCollected beats via recordCrystalCollected', () => {
       const io = createMockIo();
       progressionInitWithIo(io);
+      const quest = getQuest('crystal_rescue', 1);
+      const runStart = quest.dialogue.find((entry) => entry.trigger === 'run_start')?.text;
+      const itemTexts = [1, 2, 3].map(
+        (index) =>
+          quest.dialogue.find(
+            (entry) =>
+              entry.trigger
+              && typeof entry.trigger === 'object'
+              && entry.trigger.itemCollected === index,
+          )?.text,
+      );
 
       startDungeonRun();
       progression.recordCrystalCollected(1);
@@ -148,18 +144,18 @@ describe('quest dialogue progression hooks', () => {
         .filter((e) => e.event === SERVER_TO_CLIENT.QUEST_DIALOGUE)
         .map((e) => e.payload);
 
-      expect(payloads.map((p) => p.text)).toEqual([
-        'Salvage channel open.',
-        'First prism secured.',
-        'Second prism locked.',
-        'Final prism in hand.',
-      ]);
+      expect(payloads.map((p) => p.text)).toEqual([runStart, ...itemTexts]);
+      expect(new Set(payloads.map((p) => p.text)).size).toBe(4);
       expect(payloads.every((p) => p.questId === 'crystal_rescue')).toBe(true);
+      expect(payloads.every((p) => p.speaker === 'Lysa')).toBe(true);
     });
 
     it('emits objective_complete once when the run objective completes', () => {
       const io = createMockIo();
       progressionInitWithIo(io);
+      const completeText = getQuest('crystal_rescue', 1).dialogue.find(
+        (entry) => entry.trigger === 'objective_complete',
+      )?.text;
 
       startDungeonRun();
       const total = getQuest('crystal_rescue', 1).itemCount;
@@ -175,7 +171,7 @@ describe('quest dialogue progression hooks', () => {
         .filter((p) => p.trigger === 'objective_complete');
 
       expect(completePayloads).toHaveLength(1);
-      expect(completePayloads[0].text).toBe('Lattice stable — extract.');
+      expect(completePayloads[0].text).toBe(completeText);
 
       checkRunTerminalState();
       const afterRepeat = io.emitted
@@ -190,12 +186,6 @@ describe('quest dialogue progression hooks', () => {
     const io = createMockIo();
     progressionInitWithIo(io);
     gameState.selectedQuestId = 'training_caverns';
-
-    const originalTrainingDialogue = QUEST_DEFS.training_caverns.tiers[1].dialogue;
-    QUEST_DEFS.training_caverns.tiers[1].dialogue = [
-      ...(originalTrainingDialogue ?? []),
-      { trigger: 'objective_complete', text: 'Annex clear — good work.' },
-    ];
 
     gameState.enemies = [
       { id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
@@ -217,7 +207,10 @@ describe('quest dialogue progression hooks', () => {
 
     expect(completePayloads).toHaveLength(1);
     expect(completePayloads[0].speaker).toBe('Rewa');
-
-    QUEST_DEFS.training_caverns.tiers[1].dialogue = originalTrainingDialogue;
+    expect(completePayloads[0].text).toBe(
+      getQuest('training_caverns', 1).dialogue.find(
+        (entry) => entry.trigger === 'objective_complete',
+      )?.text,
+    );
   });
 });

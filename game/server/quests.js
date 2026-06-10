@@ -58,6 +58,10 @@ const QUEST_DEFS = {
             trigger: 'run_start',
             text: 'Rewa here. Radio check — sweep the annex and report when the sector is clear.',
           },
+          {
+            trigger: 'objective_complete',
+            text: 'Annex sector is clear. Your reward stones are transferring — solid work out there.',
+          },
         ],
       },
       2: {
@@ -93,6 +97,33 @@ const QUEST_DEFS = {
         enemyCount: 4,
         rewardCurrency: 12,
         layoutProfile: 'open',
+        client: {
+          name: 'Lysa',
+          briefing:
+            'Prism salvage contract. Three resonance prisms remain in the collapsed lattice — recover them intact and your twelve reward stones are already earmarked.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Lysa on salvage channel. Three prisms still resonate in the lattice — bring them back intact.',
+          },
+          {
+            trigger: { itemCollected: 1 },
+            text: 'First prism reads stable. Two more signatures on my scope.',
+          },
+          {
+            trigger: { itemCollected: 2 },
+            text: 'Second prism locked. One resonance left — stay sharp, hostiles will press.',
+          },
+          {
+            trigger: { itemCollected: 3 },
+            text: 'Final prism secured. All signatures accounted for.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Lattice harmonics stabilizing. Telepipe is hot — extract now.',
+          },
+        ],
       },
       2: {
         tier: 2,
@@ -123,6 +154,21 @@ const QUEST_DEFS = {
         enemyCount: 6,
         rewardCurrency: 15,
         layoutProfile: 'open-plaza',
+        client: {
+          name: 'Venn',
+          briefing:
+            'Arena trial contract. Six wardens hold the open plaza — rout them and claim the fifteen stones posted to this listing.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Venn monitoring the trials. Six wardens in the plaza — show them why you took this contract.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Plaza clear. Trial passed — your stones are released.',
+          },
+        ],
       },
       2: {
         tier: 2,
@@ -161,6 +207,21 @@ const QUEST_DEFS = {
         enemyCount: 6,
         rewardCurrency: 14,
         layoutProfile: 'ice-cavern',
+        client: {
+          name: 'Cairn',
+          briefing:
+            'Frost crossing escort. Six hostiles block the ice field — clear them and I release fourteen stones from the research fund.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Cairn here. Hostiles are clustered on the ice field — clear a path so my survey team can follow.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Crossing is secure. Research fund transfer pending — well done.',
+          },
+        ],
       },
     },
   },
@@ -180,6 +241,21 @@ const QUEST_DEFS = {
         enemyCount: 6,
         rewardCurrency: 14,
         layoutProfile: 'sunken-canyon',
+        client: {
+          name: 'Torvek',
+          briefing:
+            'Canyon descent sweep. Hostiles infest the sunken canyon below the plateau — purge six of them for fourteen reward stones.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Torvek on overwatch. Hostiles are thick on the canyon floor — sweep them before they flank the plateau.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Canyon floor is quiet. Fourteen stones are yours — extract when ready.',
+          },
+        ],
       },
       2: {
         tier: 2,
@@ -214,6 +290,21 @@ const QUEST_DEFS = {
         enemyCount: 6,
         rewardCurrency: 14,
         layoutProfile: 'fire-cavern',
+        client: {
+          name: 'Ashvelle',
+          briefing:
+            'Ember rim clearance. Six hostiles patrol the volcanic overlook — neutralize them and collect fourteen stones from my basin survey account.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Ashvelle on the rim feed. Hostiles are circling the basin edge — keep them off my survey lines.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Rim is clear. Basin survey proceeds — your stones are transferring now.',
+          },
+        ],
       },
     },
   },
@@ -233,6 +324,21 @@ const QUEST_DEFS = {
         enemyCount: 6,
         rewardCurrency: 16,
         layoutProfile: 'spire-ascent',
+        client: {
+          name: 'Sela',
+          briefing:
+            'Spire ascent contract. Fight through six hostiles on the tower tiers — summit treasure aside, sixteen stones are queued for you.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Sela tracking your ascent. Six hostiles between you and the upper tiers — push through.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Upper tiers are clear. Sixteen stones released — good climbing.',
+          },
+        ],
       },
       2: {
         tier: 2,
@@ -266,6 +372,25 @@ const QUEST_DEFS = {
         minibossCount: 2,
         rewardCurrency: 20,
         layoutProfile: 'open-plaza',
+        client: {
+          name: 'Marshal Koss',
+          briefing:
+            'Endless siege hold. Outlast ten staggered attackers including two wardens — hold the line and twenty stones are already on the manifest.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Marshal Koss on command. Waves are inbound — hold your ground until every attacker falls.',
+          },
+          {
+            trigger: { waveCleared: 5 },
+            text: 'Half the assault spent. Keep the line — wardens are still in the rotation.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Siege broken. All hostiles down — twenty stones to the victors.',
+          },
+        ],
       },
     },
   },
