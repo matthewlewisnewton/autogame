@@ -27,6 +27,7 @@ import {
 	closeServer,
 	connectClient,
 	waitForEvent,
+	waitForStateUpdateWithRun,
 	lobbyStateForSocket,
 	playerForSocket,
 	testGameState,
@@ -240,7 +241,7 @@ describe('debugScenario — arena-trials-tier-2', () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
 		socket.emit('debugScenario', { name: 'arena-trials-tier-2' });
 		const result = await debugResultPromise;
 		const stateUpdate = await stateUpdatePromise;
@@ -456,7 +457,7 @@ describe('debugScenario — stage-boss-dormant', () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
 		socket.emit('debugScenario', { name: 'stage-boss-dormant' });
 		const result = await debugResultPromise;
 		const stateUpdate = await stateUpdatePromise;
@@ -515,7 +516,7 @@ describe('debugScenario — stage-boss-active', () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
 		socket.emit('debugScenario', { name: 'stage-boss-active' });
 		const result = await debugResultPromise;
 		const stateUpdate = await stateUpdatePromise;
@@ -563,7 +564,7 @@ describe('debugScenario — training-caverns-tier-2', () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
 		socket.emit('debugScenario', { name: 'training-caverns-tier-2' });
 		const result = await debugResultPromise;
 		const stateUpdate = await stateUpdatePromise;
@@ -859,7 +860,7 @@ describe('debugScenario — canyon-descent-tier-2', () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
 		socket.emit('debugScenario', { name: 'canyon-descent-tier-2' });
 		const result = await debugResultPromise;
 		const stateUpdate = await stateUpdatePromise;
@@ -1248,7 +1249,7 @@ describe('debugScenario — spire-ascent-tier-2', () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
 		socket.emit('debugScenario', { name: 'spire-ascent-tier-2' });
 		const result = await debugResultPromise;
 		const stateUpdate = await stateUpdatePromise;
@@ -1557,7 +1558,7 @@ describe('debugScenario — fire-cavern', () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
 		socket.emit('debugScenario', { name: 'fire-cavern' });
 		const result = await debugResultPromise;
 		const stateUpdate = await stateUpdatePromise;

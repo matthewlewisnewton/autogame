@@ -141,8 +141,12 @@ export function buildLockOnPanelModel(enemy, catalog) {
     }
   }
 
+  const displayName = typeof enemy.displayName === 'string' && enemy.displayName.trim()
+    ? enemy.displayName.trim()
+    : typeEntry.name;
+
   return {
-    name: typeEntry.name,
+    name: displayName,
     variantName,
     description,
     hpText,

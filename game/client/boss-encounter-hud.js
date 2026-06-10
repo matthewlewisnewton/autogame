@@ -54,6 +54,9 @@ export function buildBossEncounterModel({ encounter, enemies, catalog, questId =
 
 /** Resolve a boss's display name from the catalog, with a generic fallback. */
 function resolveBossName(enemy, catalog, questId = null) {
+  if (typeof enemy.displayName === 'string' && enemy.displayName.trim()) {
+    return enemy.displayName.trim();
+  }
   if (enemy.variant) {
     const variantEntry = catalog?.variants?.[enemy.variant];
     if (variantEntry?.name) return variantEntry.name;

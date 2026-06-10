@@ -1,7 +1,8 @@
 /**
- * Objective type registry. To add a fourth (or later) objective kind, append one
- * entry to OBJECTIVE_DEFS with objectiveType, createObjective, isComplete, and
- * any optional hooks (skipBulkCombatSpawn, spawnQuestEntities, tickSpawns, …).
+ * Objective type registry. Registered kinds: defeat_enemies, collect_items,
+ * survive, stage_boss, escort. To add another objective kind, append one entry
+ * to OBJECTIVE_DEFS with objectiveType, createObjective, isComplete, and any
+ * optional hooks (skipBulkCombatSpawn, spawnQuestEntities, tickSpawns, …).
  * Quests reference the type via quest.objectiveType in quests.js; progression
  * dispatches through getObjectiveDef — no type switches elsewhere.
  */
@@ -12,6 +13,8 @@ const {
   countScriptedEnemies,
   pickWeightedEnemyType,
 } = require('./quests');
+const { isScriptedQuest, countAuthoredScriptedEnemies } = require('./scriptedEncounters');
+const { formatEscortDestinationLabel } = require('./escort');
 const { setEncounterBoss } = require('./encounters');
 const { DIFFICULTY_SPAWN_RATE_PER_PLAYER, difficultyScaleFactor, runPlayerCount } = require('./config');
 
@@ -59,17 +62,20 @@ const OBJECTIVE_DEFS = {
   defeat_enemies: {
     objectiveType: 'defeat_enemies',
     skipBulkCombatSpawn(quest) {
-      return getQuestScript(quest) != null;
+      return isScriptedQuest(quest) || getQuestScript(quest) != null;
     },
     preferNearestEnemySpawns() {
       return false;
     },
     createObjective(quest, ctx) {
       const objectiveLabel = `${quest.name}: ${quest.description}`;
+      let totalEnemies = ctx.enemyCount;
       const script = getQuestScript(quest);
-      const totalEnemies = script != null
-        ? countScriptedEnemies(script)
-        : ctx.enemyCount;
+      if (script != null) {
+        totalEnemies = countScriptedEnemies(script);
+      } else if (isScriptedQuest(quest)) {
+        totalEnemies = countAuthoredScriptedEnemies(quest);
+      }
       return {
         type: 'defeat_enemies',
         label: objectiveLabel,
@@ -94,8 +100,8 @@ const OBJECTIVE_DEFS = {
   },
   collect_items: {
     objectiveType: 'collect_items',
-    skipBulkCombatSpawn() {
-      return false;
+    skipBulkCombatSpawn(quest) {
+      return isScriptedQuest(quest);
     },
     preferNearestEnemySpawns() {
       return true;
@@ -106,22 +112,39 @@ const OBJECTIVE_DEFS = {
     },
     createObjective(quest) {
       const totalItems = Number.isFinite(quest.itemCount) ? quest.itemCount : 1;
-      return {
+      const objective = {
         type: 'collect_items',
         label: `${quest.name}: recover ${totalItems} prisms`,
         totalItems,
         collectedItems: 0,
       };
+      if (isScriptedQuest(quest)) {
+        objective.totalEnemies = countAuthoredScriptedEnemies(quest);
+        objective.defeatedEnemies = 0;
+      }
+      return objective;
     },
     isComplete(objective) {
-      return objective.collectedItems >= objective.totalItems;
+      if (objective.collectedItems < objective.totalItems) return false;
+      if (Number.isFinite(objective.totalEnemies)) {
+        return objective.defeatedEnemies >= objective.totalEnemies;
+      }
+      return true;
     },
     clampProgress(run) {
       clampCollectedItems(run.objective);
+      if (Number.isFinite(run.objective.totalEnemies)) {
+        clampDefeatedEnemies(run.objective);
+      }
     },
     onCrystalCollected(run, count) {
       run.objective.collectedItems += count;
       clampCollectedItems(run.objective);
+    },
+    onEnemyDefeated(run, count) {
+      if (!Number.isFinite(run.objective.totalEnemies)) return;
+      run.objective.defeatedEnemies += count;
+      clampDefeatedEnemies(run.objective);
     },
   },
   survive: {
@@ -274,6 +297,45 @@ const OBJECTIVE_DEFS = {
     },
     onBossDefeated(run) {
       run.objective.bossDefeated = true;
+    },
+  },
+  escort: {
+    objectiveType: 'escort',
+    skipBulkCombatSpawn() {
+      return true;
+    },
+    preferNearestEnemySpawns() {
+      return false;
+    },
+    createObjective(quest, ctx) {
+      const npcName = quest.escortNpc?.name || 'VIP';
+      const destinationLabel = formatEscortDestinationLabel(quest);
+      const totalEnemies = isScriptedQuest(quest)
+        ? countAuthoredScriptedEnemies(quest)
+        : ctx.enemyCount;
+      return {
+        type: 'escort',
+        label: `${quest.name}: escort ${npcName} to ${destinationLabel}`,
+        totalEnemies,
+        defeatedEnemies: 0,
+        reachedDestination: false,
+      };
+    },
+    isComplete(objective, run) {
+      if (!objective.reachedDestination && !run?.escort?.atDestination) return false;
+      if (run?.escort?.failed) return false;
+      return objective.defeatedEnemies >= objective.totalEnemies;
+    },
+    clampProgress(run) {
+      clampDefeatedEnemies(run.objective);
+    },
+    onEnemyDefeated(run, count) {
+      run.objective.defeatedEnemies += count;
+      clampDefeatedEnemies(run.objective);
+    },
+    syncToEnemyCount(run, enemyCount) {
+      run.objective.totalEnemies = enemyCount;
+      clampDefeatedEnemies(run.objective);
     },
   },
 };

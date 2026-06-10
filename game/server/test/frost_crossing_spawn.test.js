@@ -4,7 +4,8 @@ import {
 	getLayoutProfileForQuest,
 	getLayoutGenerationOptions,
 } from '../quests.js';
-import { resetGameState, gameState, spawnEnemies, startDungeonRun } from '../index.js';
+import { resetGameState, gameState, spawnEnemies, startDungeonRun, setGameState } from '../index.js';
+import { setGameState as setSimulationGameState } from '../simulation.js';
 
 const QUEST_ID = 'frost_crossing';
 const TIER = 1;
@@ -28,10 +29,27 @@ describe('frost_crossing quest deploy layout', () => {
 		gameState.layoutSeed = SEED;
 		gameState.enemies = [];
 		gameState.loot = [];
+		gameState.gamePhase = 'playing';
+		gameState.players = {
+			p1: {
+				id: 'p1',
+				x: gameState.layout.rooms[0].x,
+				y: 0.5,
+				z: gameState.layout.rooms[0].z,
+				hp: 100,
+				dead: false,
+				extracted: false,
+				ready: true,
+				connected: true,
+			},
+		};
+		setGameState(gameState);
+		setSimulationGameState(gameState);
 		spawnEnemies();
 		startDungeonRun();
 
 		expect(gameState.layout.profile).toBe('ice-cavern');
+		expect(gameState.run.waveScript).toBeDefined();
 		expect(gameState.enemies.length).toBeGreaterThan(0);
 		const iceRoom = gameState.layout.rooms.find((r) => r.band === 'ice');
 		expect(iceRoom.floorSurface).toBe('slippery');

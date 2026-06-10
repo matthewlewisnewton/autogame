@@ -1,0 +1,6 @@
+Done. Wrote:
+
+- `round-2/review.md` with `VERDICT: PASS`
+- `round-2/nits.md` for one non-blocking tier-2 support-dialogue follow-up
+
+No `gaps.md` was created because the verdict is PASS.

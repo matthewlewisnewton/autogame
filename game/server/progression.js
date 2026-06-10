@@ -10,6 +10,7 @@ const {
   MAX_HP,
   MEDIC_HEAL_COST,
   APPEARANCE_CHANGE_COST,
+  LOBBY_REVIVE_HP,
   MAX_MAGIC_STONES,
   STARTING_MAGIC_STONES,
   SPAWN_PADDING,
@@ -57,7 +58,13 @@ const {
 } = require('./simulation');
 
 const HUB_LAYOUT = generateHub(0);
-const { applyVariant, getVariantBonusDrop, resolveVariantRollTier, VARIANT_DEFS } = require('./enemyVariants');
+const {
+  applyVariant,
+  applyForcedVariant,
+  getVariantBonusDrop,
+  resolveVariantRollTier,
+  VARIANT_DEFS,
+} = require('./enemyVariants');
 const {
   applyNamedRareVariant,
   claimNamedRareDrop,
@@ -83,6 +90,22 @@ const {
 } = require('./questScript');
 const { unlockQuestTier, isQuestTierUnlocked } = require('./users');
 const { getObjectiveDef } = require('./objectives');
+const {
+  initScriptedEncounter,
+  tickScriptedEncounters,
+  onScriptedEnemyDefeated,
+  relinkScriptedEncounterEnemyIds,
+  isScriptedQuest,
+  setWaveClearedCallback,
+} = require('./scriptedEncounters');
+const {
+  fireQuestDialogue,
+  resetDialogueState,
+  initDialogueState,
+  evaluateDialogueBeacons,
+  emitQuestDialoguePayloads,
+  tickDialogueRoomEntry,
+} = require('./questDialogue');
 const { THEME } = require('./theme');
 const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
 const CARD_IDENTITY = require('../shared/cardDefs.json');
@@ -463,12 +486,13 @@ function ensureShopOffer(state = _gameState) {
   return state.shopOffer;
 }
 
-/** Clear dead flag for hub UI; HP is unchanged — use healAtMedic() to restore health. */
+/** Clear dead flag and restore HP for hub UI so players can redeploy. */
 function revivePlayerInLobby(player) {
   if (!player) return;
   const hp = Number.isFinite(player.hp) ? player.hp : 0;
   if (!player.dead && hp > 0) return;
   player.dead = false;
+  player.hp = LOBBY_REVIVE_HP;
 }
 
 function healAtMedic(playerId, state = _gameState) {
@@ -952,17 +976,28 @@ function createRunState() {
     });
   }
 
+  initDialogueState(run);
+
   return run;
 }
 
 function startDungeonRun() {
   _gameState.run = createRunState();
+  resetDialogueState(_gameState.run);
   const quest = getSelectedQuest(_gameState);
   if (getQuestScript(quest)) {
     initQuestScript(_gameState.run, quest, _gameState.layout);
     const seed = _gameState.layoutSeed || 42;
     const rng = mulberry32(seed + 1000);
     fireRunStartWaves(_gameState, { ...buildObjectiveSpawnCtx(), layout: _gameState.layout, rng });
+  } else if (isScriptedQuest(quest)) {
+    initScriptedEncounter(
+      _gameState.run,
+      quest,
+      _gameState.layout,
+      _gameState,
+      buildObjectiveSpawnCtx(),
+    );
   }
   if (_gameState._pendingEncounterBossId != null && _gameState.run.encounter) {
     setEncounterBoss(_gameState.run, _gameState._pendingEncounterBossId);
@@ -971,6 +1006,12 @@ function startDungeonRun() {
   if (_gameState.run.encounter) {
     ensureEncounterSpawnAnchor(_gameState.run, _gameState.enemies);
   }
+  if (_gameState.run.passageLocks?.length) {
+    _rebuildWallColliders();
+  }
+  if (quest.objectiveType === 'escort') {
+    require('./escort').spawnEscortNpc(_gameState, quest, _gameState.layout);
+  }
   for (const p of Object.values(_gameState.players)) {
     p.currencyEarnedThisRun = 0;
     p.runRewards = null;
@@ -978,6 +1019,12 @@ function startDungeonRun() {
     p.pendingCardChoices = null;
     p.claimedCardRewardId = null;
   }
+}
+
+function emitRunStartDialogue(io) {
+  const target = io || getIoTarget();
+  if (!target) return [];
+  return fireQuestDialogue(target, _gameState, 'run_start');
 }
 
 function applyTelepipeReadyHand(player) {
@@ -1324,6 +1371,10 @@ function recordEnemyDefeated(count = 1) {
   const def = getObjectiveDef(_gameState.run.objective.type);
   if (!def?.onEnemyDefeated) return;
   def.onEnemyDefeated(_gameState.run, count);
+  if (_gameState.run.objective.type === 'survive') {
+    const io = getIoTarget();
+    fireQuestDialogue(io, _gameState, { waveCleared: _gameState.run.objective.defeatedEnemies });
+  }
 }
 
 function recordCrystalCollected(count = 1) {
@@ -1331,7 +1382,40 @@ function recordCrystalCollected(count = 1) {
   const def = getObjectiveDef(_gameState.run.objective.type);
   if (!def?.onCrystalCollected) return;
   def.onCrystalCollected(_gameState.run, count);
+  const run = _gameState.run;
+  const collected = run.objective.collectedItems;
+  const io = getIoTarget();
+  fireQuestDialogue(io, _gameState, { itemCollected: collected });
+  const quest = getQuest(run.questId, run.questTier);
+  if (!quest) return;
+  const payloads = evaluateDialogueBeacons(
+    run,
+    quest,
+    'onCrystalCollected',
+    { collectedCount: run.objective.collectedItems },
+  );
+  if (io) {
+    emitQuestDialoguePayloads(io, null, payloads);
+  }
 }
+
+function handleQuestDialogueWaveCleared(run, gameState, ctx) {
+  const quest = getQuest(run.questId, run.questTier);
+  if (!quest) return;
+  const payloads = evaluateDialogueBeacons(run, quest, 'onWaveCleared', ctx);
+  const io = getIoTarget();
+  if (io) {
+    emitQuestDialoguePayloads(io, null, payloads);
+  }
+}
+
+function updateQuestDialogueRoomEntry() {
+  const io = getIoTarget();
+  if (!io || !_gameState?.run) return;
+  tickDialogueRoomEntry(_gameState, io, getQuest);
+}
+
+setWaveClearedCallback(handleQuestDialogueWaveCleared);
 
 function isRunObjectiveComplete(objective) {
   const def = getObjectiveDef(objective.type);
@@ -1379,6 +1463,14 @@ function grantCard(player, cardId) {
   return true;
 }
 
+function resolveSignatureRewardCardId(quest) {
+  const cardId = quest?.rewardCardId;
+  if (typeof cardId !== 'string') return null;
+  const def = CARD_IDENTITY[cardId];
+  if (!def || def.acquisition !== 'reward') return null;
+  return cardId;
+}
+
 function grantRunRewards(playerId, summary) {
   const player = _gameState.players[playerId];
   if (!player) return;
@@ -1399,8 +1491,6 @@ function grantRunRewards(playerId, summary) {
     if (cardChoices.length === 0) {
       if (!_gameState._victoryCounters) _gameState._victoryCounters = {};
       const idx = _gameState._victoryCounters[playerId] || 0;
-      // Signature quests rotate through their own reward pool; everything else
-      // keeps the global rotation.
       const run = _gameState.run;
       const pool = getQuestRewardCards(run?.questId, run?.questTier) || VICTORY_REWARD_ROTATION;
       const cardId = pool[idx % pool.length];
@@ -1478,7 +1568,14 @@ function previewReturnRewards(playerId) {
     const cardChoices = buildCardChoices(playerId);
     const cards = [];
     if (cardChoices.length === 0) {
-      cards.push({ id: null, name: 'Bonus card' });
+      const signatureCardId = getSignatureCardId(run.questId, run.questTier)
+        ?? resolveSignatureRewardCardId(quest);
+      if (signatureCardId) {
+        const cardDef = CARD_IDENTITY[signatureCardId];
+        cards.push({ id: signatureCardId, name: cardDef.name });
+      } else {
+        cards.push({ id: null, name: 'Bonus card' });
+      }
     }
     return {
       ...base,
@@ -2286,13 +2383,14 @@ function restoreHandCharges(player, amount, options = {}) {
 }
 
 function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
-  const def = enemyDefFor(type);
+  const resolvedType = typeof opts.enemyType === 'string' ? opts.enemyType : type;
+  const def = enemyDefFor(resolvedType);
   const { hp, name, description, surfacedStats, ...statFieldsFromDef } = def;
   const enemy = {
     id: crypto.randomUUID(),
     x,
     z,
-    type,
+    type: resolvedType,
     ...statFieldsFromDef,
     hp: def.hp,
     maxHp: def.hp,
@@ -2300,21 +2398,34 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
     attackState: 'idle',
     wanderTarget: { x, z }
   };
-  if (type === 'spawner') {
+  if (resolvedType === 'spawner') {
     enemy.lastSpawnTime = Date.now();
   }
   if (spawnedBy !== undefined) {
     enemy.spawnedBy = spawnedBy;
   }
+  if (typeof opts.displayName === 'string' && opts.displayName.trim()) {
+    enemy.displayName = opts.displayName.trim();
+  }
+  if (typeof opts.namedRareId === 'string' && opts.namedRareId.trim()) {
+    enemy.namedRareId = opts.namedRareId.trim();
+  }
   // Variant seam, centralized so every spawned enemy exposes `variant` (a tag or
   // null — never undefined). Callers pass the spawn room's encounterTier via
   // opts.tier; quest-tier scaling is resolved here from the active run (or lobby
-  // selection). Ad-hoc spawns with no room default encounterTier 0. Rolled once.
+  // selection). Ad-hoc spawns with no room default encounterTier 0. Rolled once
+  // unless opts.skipVariantRoll is set (forced variant or explicit null).
   const encounterTier = Number.isFinite(opts.tier) ? opts.tier : 0;
   const questTier = _gameState.run?.questTier ?? _gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER;
   const namedRareVariant = opts.namedRareVariant ?? null;
   if (namedRareVariant) {
     applyNamedRareVariant(enemy, namedRareVariant, { questTier });
+  } else if (opts.skipVariantRoll) {
+    if (opts.forceVariant) {
+      applyForcedVariant(enemy, opts.forceVariant);
+    } else if (enemy.variant === undefined) {
+      enemy.variant = null;
+    }
   } else {
     const rollTier = resolveVariantRollTier(questTier, encounterTier);
     applyVariant(enemy, rollTier, opts.rng);
@@ -2322,7 +2433,7 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
   // Difficulty scaling: miniboss-tier bosses get more HP the larger the party is at spawn.
   // Fixed once here from the live player count — never re-applied retroactively
   // when players later join or leave. 1–4 players stay at baseline (factor 1.0).
-  if (type === 'miniboss' || type === 'annex_overseer' || type === 'spire_warden') {
+  if (resolvedType === 'miniboss' || resolvedType === 'annex_overseer' || resolvedType === 'spire_warden') {
     const factor = difficultyScaleFactor(runPlayerCount(_gameState), DIFFICULTY_MINIBOSS_HP_PER_PLAYER);
     enemy.hp = Math.round(enemy.hp * factor);
     enemy.maxHp = Math.round(enemy.maxHp * factor);
@@ -2333,6 +2444,7 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
 
 function removeDeadEnemies() {
   const dying = _gameState.enemies.filter((e) => e.hp <= 0);
+  const spawnCtx = buildObjectiveSpawnCtx();
   for (const enemy of dying) {
     recordEnemyCardDrop(enemy);
     spawnMagicStoneDrop(enemy);
@@ -2342,6 +2454,9 @@ function removeDeadEnemies() {
     const variantDef = enemy.variant ? VARIANT_DEFS[enemy.variant] : null;
     if (variantDef && variantDef.id === 'volatile') {
       spawnVolatileExplosion(enemy.x, enemy.z, variantDef);
+    }
+    if (enemy.scriptedWave && _gameState.run?.scriptedEncounter) {
+      onScriptedEnemyDefeated(_gameState.run, enemy.id, _gameState, spawnCtx);
     }
   }
 
@@ -2673,6 +2788,17 @@ function updateSurviveSpawns(now = Date.now()) {
   def.tickSpawns(now, _gameState, buildObjectiveSpawnCtx());
 }
 
+function updateScriptedEncounters(now = Date.now()) {
+  if (!isPlayingPhase(_gameState)) return;
+  if (isEncounterLocked(_gameState.run)) return;
+  tickScriptedEncounters(now, _gameState, buildObjectiveSpawnCtx());
+}
+
+function tickEscort(gameState = _gameState) {
+  if (!gameState) return;
+  require('./escort').tickEscort(gameState);
+}
+
 function updateEncounterTriggers() {
   if (!isPlayingPhase(_gameState)) return;
   tryActivateEncounter(_gameState);
@@ -2819,6 +2945,24 @@ function captureCardCheckpoint() {
   if (run.encounter) {
     checkpoint.run.encounter = deepCloneJson(run.encounter);
   }
+  if (run.scriptedEncounter) {
+    checkpoint.run.scriptedEncounter = deepCloneJson(run.scriptedEncounter);
+  }
+  if (run._scriptedEncounterConfig) {
+    checkpoint.run._scriptedEncounterConfig = deepCloneJson(run._scriptedEncounterConfig);
+  }
+  if (run.escort) {
+    checkpoint.run.escort = deepCloneJson(run.escort);
+  }
+  if (run.passageLocks) {
+    checkpoint.run.passageLocks = deepCloneJson(run.passageLocks);
+  }
+  if (run.dialogueFired) {
+    checkpoint.run.dialogueFired = [...run.dialogueFired];
+  }
+  if (run._dialogueRoomsEntered) {
+    checkpoint.run._dialogueRoomsEntered = [...run._dialogueRoomsEntered];
+  }
 
   for (const [playerId, player] of Object.entries(_gameState.players)) {
     checkpoint.playerStates[playerId] = capturePlayerCardState(player);
@@ -2842,6 +2986,7 @@ function restoreCardCheckpoint() {
   if (!checkpoint?.run) return;
 
   _gameState.run = JSON.parse(JSON.stringify(checkpoint.run));
+  initDialogueState(_gameState.run);
 
   const all = Object.values(_gameState.players);
   for (const [playerId, player] of Object.entries(_gameState.players)) {
@@ -2884,6 +3029,9 @@ function restoreCardCheckpoint() {
     assignRunSpawnPositions(all);
 
     _gameState.enemies = deepCloneJson(world.enemies ?? []);
+    if (_gameState.run.scriptedEncounter) {
+      relinkScriptedEncounterEnemyIds(_gameState.run, _gameState.enemies);
+    }
     _gameState.minions = deepCloneJson(world.minions ?? []);
     _gameState.loot = deepCloneJson(world.loot ?? []);
     _gameState.areaEffects = deepCloneJson(world.areaEffects ?? []);
@@ -3058,7 +3206,13 @@ function checkRunTerminalState() {
   let status = null;
 
   if (isRunObjectiveComplete(_gameState.run.objective)) {
+    const io = getIoTarget();
+    fireQuestDialogue(io, _gameState, 'objective_complete');
     status = 'victory';
+  }
+
+  if (!status && _gameState.run.escort?.failed) {
+    status = 'failed';
   }
 
   if (!status) {
@@ -3465,6 +3619,7 @@ function checkAllReadyInner() {
       const io = getIoTarget();
       emitLobbyDeploy(io, SERVER_TO_CLIENT.START_GAME);
       emitLobbyDeploy(io, SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      emitRunStartDialogue(io);
     } catch (err) {
       console.error('[checkAllReady] deploy failed:', err && err.stack ? err.stack : err);
     }
@@ -3549,6 +3704,7 @@ module.exports = {
   saveAllPlayers,
   createRunState,
   startDungeonRun,
+  emitRunStartDialogue,
   initQuestScript,
   fireRunStartWaves,
   clampObjectiveProgress,
@@ -3588,6 +3744,9 @@ module.exports = {
   spawnEnemies,
   spawnCombatEnemies,
   updateSurviveSpawns,
+  updateScriptedEncounters,
+  tickEscort,
+  updateQuestDialogueRoomEntry,
   updateEncounterTriggers,
   updateQuestScriptTriggers,
   recordCrystalCollected,
@@ -3615,3 +3774,5 @@ module.exports = {
   buildPlayerDeckUpdatePayload,
   buildPlayerHotSnapshot,
 };
+
+require('./escort').setEscortCallbacks({ checkRunTerminalState });

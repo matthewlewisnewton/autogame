@@ -6028,6 +6028,73 @@ PASS. This ticket did not add or change a renderer debug scenario entry point. E
 None.
 
 
+## v0.350 — Server: death soft-lock — players return to lobby at 0 HP with 0 money (LOBBY_REVIVE_HP is dead code), redeploy = instant Signal Lost  (2026-06-10 03:24:04)
+
+
+Ticket-specific tests pass when run in isolation:
+
+- `revivePlayerInLobby` unit tests (3/3)
+- Death-at-0-money integration test (1/1)
+
+Harness `coverage.log` shows the full server suite ran with one unrelated flaky failure (`cleanupStalePlayers` boundary) and pre-existing debug-scenario failures; neither touches changed revive logic. Changed files are exercised by the updated unit and integration tests.
+
+### Harness capture vs. ticket scenario
+
+The round-1 capture used the **fallback** smoke plan (generic lobby → deploy → movement), not a death/revive scenario. Screenshots show a healthy in-run state at 100 HP. Visual QA therefore does not independently demonstrate the soft-lock fix, but the dedicated integration test and code paths provide strong functional proof. Runtime health is clean.
+
+## Remaining gaps
+
+None. All acceptance criteria are satisfied; the game runs without browser errors.
+
+## Nits (non-blocking)
+
+See `nits.md` for follow-up items on mid-run reconnect revive scope and design-doc alignment.
+
+## v0.349 — Quest briefings + mid-run radio dialogue: named client NPC, reward shown upfront, scripted progress beats  (2026-06-10 02:54:49)
+
+
+### Selecting a quest on the board shows client name, briefing, reward before ready-up
+PASS. The quest payload now carries `client`, `dialogue`, reward currency, and optional signature-card metadata through `buildSharedQuestUpdatePayload()` / `buildQuestUpdatePayload()`. The client quest board renders a selected-quest briefing panel with Client, Briefing, and Reward fields, and the server `selectQuest` handler emits updated quest payloads while still enforcing lobby phase, suspended-run lockout, valid quest/tier, and tier unlock rules.
+
+### During `crystal_rescue`, collecting each prism fires a distinct radio line; completing the objective fires an extraction line
+PASS. `crystal_rescue` tier 1 defines distinct Lysa lines for prism collections 1, 2, and 3, plus an `objective_complete` extraction line. The live pickup flow removes crystal loot, calls `recordCrystalCollected(1)`, and then calls `checkRunTerminalState()` for completion, so collection and extraction dialogue are driven by the same server objective path that completes the run.
+
+### Dialogue events are driven by server triggers so all squad members see them
+PASS. `questDialogue.fireQuestDialogue()` dedupes fired triggers per run and emits `questDialogue` from the server. Run-start dialogue fires after `START_GAME` and the playing `stateUpdate`; prism collection, survive wave progress, and objective completion fire from progression hooks. In normal lobby context, `getIoTarget()` scopes the emit target to `io.to(lobbyId)`, so every socket in the squad room receives the same server event without relying on client timers.
+
+### Quest content and design consistency
+PASS. All existing tier-1 quests have named clients, pre-run briefing copy, reward copy, run-start dialogue, and completion dialogue; collect-item quests additionally define per-item beats. This fits the PSO-style guild-counter briefing and in-run radio direction in `game/docs/design.md`, and it does not regress the foundation requirements: the captured run still connects client/server, renders the 3D scene, displays multiplayer state, and synchronizes movement.
+
+### Debug scenarios
+PASS. This ticket adds/changes debug scenario support for quest-comms and wave-progress QA. The URL parameter remains the only client entry point, gated to localhost in the client and local/dev sockets on the server. The new scenario comments trace equivalent normal gameplay paths, and the shortcuts still use server-side quest/run state, layout application, progression hooks, and lobby-scoped state updates rather than client-only state.
+
+## Remaining gaps
+
+None.
+
+## v0.348 — Epic: PSO-style quest identity rework — scripted encounters, briefings, named rares, signature rewards  (2026-06-10 02:51:14)
+
+
+- `training_caverns` / Initiate Vault is a scripted annex sweep with a passage lock, wave-clear dialogue, Vault Stalker named rare, and Saber of Light reward.
+- `crystal_rescue` / Prism Salvage keeps prism collection but requires scripted guard waves and fires collection dialogue for each prism, with Mana Prism as the stated reward.
+- `frost_crossing` has ice-band waves, glacial throwers, Rimecast the Slow as a named rare, room-entry ice-band dialogue, and Cryo Burst as the reward.
+
+The design doc's Quest identity section matches this implementation, and the original foundation requirements still hold: the captured run renders 3D, connects over WebSocket, shows multiplayer state, and synchronizes movement.
+
+### Debug scenarios
+
+PASS. This ticket added tier-1 deploy shortcuts for the reworked quests. They are debug/dev gated: the client only auto-requests them from the `?debugScenario=` URL on localhost, and the server rejects debug scenarios outside localhost/dev or `ALLOW_DEBUG_SCENARIOS=1`. Equivalent states remain reachable through normal gameplay by selecting the quest, readying/deploying, and then progressing through authored waves/items/escort objectives. The shortcuts mutate QA state only after the debug event and do not replace the normal validation path.
+
+## Verification
+
+- Captured run: `metrics.json` ok, `pageerrors: []`, no fatal browser page errors.
+- Harness probes: lobby deploy to playing, objective visible, two players present, enemies spawned, card hand visible, key-item cooldown probe succeeded.
+- Coverage log: 155 test files passed, 2368 tests passed; coverage report present with thresholds disabled.
+
+## Remaining gaps
+
+No blocking gaps.
+
 ## v0.347 — Quest scripting foundation: data-driven hand-placed waves + room triggers (replaces random bulk spawn for scripted quests)  (2026-06-10 01:14:31)
 
 

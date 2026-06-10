@@ -19,6 +19,51 @@
  */
 
 /**
+ * Guild-counter client copy shown on the quest board before deploy.
+ * @typedef {Object} QuestClientConfig
+ * @property {string} name - Named client NPC for this contract.
+ * @property {string} briefing - Short mission briefing shown before ready-up.
+ */
+
+/**
+ * Dialogue trigger for mid-run radio lines (fired server-side in a later sub-ticket).
+ * @typedef {'run_start' | 'objective_complete' | { itemCollected: number } | { waveCleared: number }} DialogueTrigger
+ */
+
+/**
+ * Scripted dialogue beat keyed by trigger.
+ * @typedef {Object} DialogueEntry
+ * @property {DialogueTrigger} trigger
+ * @property {string} text
+ */
+
+/**
+ * Hand-authored scripted wave encounter metadata on a quest tier.
+ * @typedef {import('./scriptedEncounters').ScriptedEncounterConfig} ScriptedEncounterConfig
+ */
+
+/**
+ * Escort NPC metadata on a quest tier using `objectiveType: 'escort'`.
+ * @typedef {Object} EscortNpcConfig
+ * @property {string} name - Display name for the escort NPC.
+ * @property {number} [maxHp] - Escort minion HP (default 80).
+ */
+
+/**
+ * Escort extraction target on a quest tier.
+ * @typedef {Object} EscortDestinationConfig
+ * @property {string} [landmark] - Layout landmark type (e.g. `vault_dais`).
+ * @property {string} [roomRole] - Room role fallback (e.g. `treasure`).
+ */
+
+/**
+ * Optional escort objective fields on a quest tier.
+ * @property {EscortNpcConfig} [escortNpc] - Friendly NPC to protect and extract.
+ * @property {EscortDestinationConfig} [escortDestination] - Extraction landmark or room role.
+ * @property {boolean} [escortFailOnDeath=true] - Fail the run when the escort dies.
+ */
+
+/**
  * Hand-placed spawn entry for a scripted quest wave.
  * @typedef {Object} QuestScriptSpawn
  * @property {string} type - Enemy type id.
@@ -243,12 +288,84 @@ const QUEST_DEFS = {
     tiers: {
       1: {
         name: 'Initiate Vault',
-        description: 'Purge hostiles from the derelict annex sector.',
+        description: 'Sweep annex holding pens in scripted waves and breach the vault mouth.',
+        clientNpc: 'Annex Liaison Kade',
+        briefing:
+          'Salvage crews have barricaded the annex holding pens. '
+          + 'Clear each wave, break through the sealed passage, and purge the vault stalker.',
         objectiveType: 'defeat_enemies',
-        enemyCount: 6,
         rewardCurrency: 10,
+        rewardCardId: 'saber_of_light',
         layoutProfile: 'crowded',
         script: buildTrainingCavernsTier1Script(),
+        scriptedEncounters: {
+          rooms: [
+            {
+              roomIndex: 0,
+              waves: [
+                { spawns: [{ type: 'grunt', count: 2 }] },
+                {
+                  spawns: [
+                    { type: 'skirmisher', count: 1 },
+                    {
+                      type: 'grunt',
+                      count: 1,
+                      namedRare: {
+                        id: 'annex_vault_stalker',
+                        displayName: 'Vault Stalker',
+                        variantId: 'warded',
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              roomIndex: 1,
+              waves: [
+                { spawns: [{ type: 'skirmisher', count: 2 }] },
+              ],
+            },
+          ],
+          passageLocks: [
+            {
+              afterWave: { roomIndex: 0, waveIndex: 0 },
+              fromRoomIndex: 0,
+            },
+          ],
+        },
+        dialogueBeacons: [
+          {
+            beaconId: 'training_start_room',
+            trigger: 'onRoomEntered',
+            roomIndex: 0,
+            speaker: 'Annex Liaison Kade',
+            line: 'Contract accepted. Sweep the annex — I will mark your progress on the channel.',
+          },
+          {
+            beaconId: 'training_wave0_clear',
+            trigger: 'onWaveCleared',
+            roomIndex: 0,
+            waveIndex: 0,
+            speaker: 'Annex Liaison Kade',
+            line: 'First pen cleared — push deeper before the salvage crews regroup.',
+          },
+        ],
+        client: {
+          name: 'Rewa',
+          briefing:
+            'Annex clearance contract. Five hostiles remain in the vault sector — neutralize them and I will release your reward stones.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Rewa here. Radio check — sweep the annex and report when the sector is clear.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Annex sector is clear. Your reward stones are transferring — solid work out there.',
+          },
+        ],
       },
       2: {
         tier: 2,
@@ -264,6 +381,25 @@ const QUEST_DEFS = {
           landmark: 'vault_dais',
           addCount: 4,
         },
+        client: {
+          name: 'Rewa',
+          briefing:
+            'Annex overseer contract — Tier II. The vault dais holds an annex overseer with four marked supports; drop them all and your ten reward stones stay on the manifest.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Rewa on annex channel. Overseer signature on the vault dais — clear the supports before you engage.',
+          },
+          {
+            trigger: { waveCleared: 2 },
+            text: 'Half the marked supports are down. Overseer is still broadcasting — finish the sweep.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Overseer neutralized and annex secure. Stones transferring — Tier II clearance logged.',
+          },
+        ],
       },
     },
   },
@@ -277,15 +413,84 @@ const QUEST_DEFS = {
     tiers: {
       1: {
         name: 'Prism Salvage',
-        description: 'Recover resonance prisms from the collapsed lattice.',
+        description: 'Recover resonance prisms while clearing scripted guard waves.',
+        clientNpc: 'Lattice Custodian Mira',
+        briefing:
+          'Resonance prisms are still singing in the collapsed lattice. '
+          + 'Recover every prism and clear the guard swarms holding each chamber.',
         objectiveType: 'collect_items',
         itemCount: 3,
-        enemyCount: 4,
         rewardCurrency: 12,
+        rewardCardId: 'mana_prism',
         layoutProfile: 'open',
-        // Utility-theme signature rewards (see frost_crossing tier 1 for field docs).
+        scriptedEncounters: {
+          rooms: [
+            {
+              roomIndex: 0,
+              waves: [{ spawns: [{ type: 'skirmisher', count: 2 }] }],
+            },
+            {
+              roomIndex: 1,
+              waves: [{ spawns: [{ type: 'grunt', count: 2 }] }],
+            },
+            {
+              roomIndex: 2,
+              waves: [{ spawns: [{ type: 'skirmisher', count: 1 }, { type: 'grunt', count: 1 }] }],
+            },
+          ],
+        },
+        dialogueBeacons: [
+          {
+            beaconId: 'prism_first',
+            trigger: 'onCrystalCollected',
+            crystalIndex: 1,
+            speaker: 'Lattice Custodian Mira',
+            line: 'First prism secured — the lattice hum is stabilizing.',
+          },
+          {
+            beaconId: 'prism_second',
+            trigger: 'onCrystalCollected',
+            crystalIndex: 2,
+            speaker: 'Lattice Custodian Mira',
+            line: 'Two down. One more resonance knot and we can seal the breach.',
+          },
+          {
+            beaconId: 'prism_third',
+            trigger: 'onCrystalCollected',
+            crystalIndex: 3,
+            speaker: 'Lattice Custodian Mira',
+            line: 'All prisms accounted for. Extraction channel is open.',
+          },
+        ],
         signatureCardId: 'mana_prism',
         rewardCards: ['mana_prism', 'harvesting_scythe'],
+        client: {
+          name: 'Lysa',
+          briefing:
+            'Prism salvage contract. Three resonance prisms remain in the collapsed lattice — recover them intact and your twelve reward stones are already earmarked.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Lysa on salvage channel. Three prisms still resonate in the lattice — bring them back intact.',
+          },
+          {
+            trigger: { itemCollected: 1 },
+            text: 'First prism reads stable. Two more signatures on my scope.',
+          },
+          {
+            trigger: { itemCollected: 2 },
+            text: 'Second prism locked. One resonance left — stay sharp, hostiles will press.',
+          },
+          {
+            trigger: { itemCollected: 3 },
+            text: 'Final prism secured. All signatures accounted for.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Lattice harmonics stabilizing. Telepipe is hot — extract now.',
+          },
+        ],
       },
       2: {
         tier: 2,
@@ -300,6 +505,41 @@ const QUEST_DEFS = {
         unlockRequires: { questId: 'crystal_rescue', tier: 1 },
         signatureCardId: 'mana_prism',
         rewardCards: ['mana_prism', 'harvesting_scythe'],
+        client: {
+          name: 'Lysa',
+          briefing:
+            'Deep prism salvage — Tier II. Five resonance prisms remain in the rigid lattice — recover each intact and eighteen stones are reserved on my ledger.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Lysa on salvage channel. Five prisms in the rigid lattice — each one must come back clean.',
+          },
+          {
+            trigger: { itemCollected: 1 },
+            text: 'First prism reads stable. Four more signatures on my scope.',
+          },
+          {
+            trigger: { itemCollected: 2 },
+            text: 'Second prism locked. Three left — hostiles are pressing the lattice.',
+          },
+          {
+            trigger: { itemCollected: 3 },
+            text: 'Third prism secured. Half the haul accounted for — stay sharp.',
+          },
+          {
+            trigger: { itemCollected: 4 },
+            text: 'Fourth prism harmonized. One resonance left in the collapse zone.',
+          },
+          {
+            trigger: { itemCollected: 5 },
+            text: 'Final prism secured. All five signatures accounted for.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Lattice harmonics stabilizing. Telepipe is live — extract on my mark.',
+          },
+        ],
       },
     },
   },
@@ -318,6 +558,21 @@ const QUEST_DEFS = {
         enemyCount: 6,
         rewardCurrency: 15,
         layoutProfile: 'open-plaza',
+        client: {
+          name: 'Venn',
+          briefing:
+            'Arena trial contract. Six wardens hold the open plaza — rout them and claim the fifteen stones posted to this listing.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Venn monitoring the trials. Six wardens in the plaza — show them why you took this contract.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Plaza clear. Trial passed — your stones are released.',
+          },
+        ],
       },
       2: {
         tier: 2,
@@ -333,6 +588,25 @@ const QUEST_DEFS = {
           landmark: 'arena_dais',
           addCount: 4,
         },
+        client: {
+          name: 'Venn',
+          briefing:
+            'Trial grounds contract — Tier II. Face the arena champion on the dais with four twisted supports; fifteen stones post to the winner.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Venn on trial feed. Champion and four marked wardens on the dais — earn your tier.',
+          },
+          {
+            trigger: { waveCleared: 2 },
+            text: 'Two supports spent. Champion is still circling the dais — keep pressure on.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Champion down. Trial grounds acknowledge the win — stones released.',
+          },
+        ],
       },
     },
   },
@@ -351,19 +625,71 @@ const QUEST_DEFS = {
     tiers: {
       1: {
         name: 'Frost Crossing',
-        description: 'Cross the frozen cavern and purge hostiles from the ice field.',
+        description: 'Cross the frozen cavern and purge scripted waves from the ice field.',
+        clientNpc: 'Ice-Watch Courier Sela',
+        briefing:
+          'The ice band is slick with rimecast ambushes. '
+          + 'Cross the ramps, clear the thrower waves, and bring down Rimecast the Slow.',
         objectiveType: 'defeat_enemies',
-        enemyCount: 6,
         rewardCurrency: 14,
+        rewardCardId: 'frost_nova',
         layoutProfile: 'ice-cavern',
-        // Signature reward card: always offered as the first post-victory card
-        // choice. rewardCards is the quest's pool for the empty-choices victory
-        // fallback (replaces the global VICTORY_REWARD_ROTATION). Both fields are
-        // optional and tier-scoped; quests without them keep global behavior.
-        // Ids must be acquisition: 'reward' cards in shared/cardDefs.json.
+        scriptedEncounters: {
+          rooms: [
+            {
+              roomIndex: 0,
+              waves: [{ spawns: [{ type: 'grunt', count: 2 }] }],
+            },
+            {
+              band: 'ice',
+              waves: [
+                { spawns: [{ type: 'glacial_thrower', count: 1 }, { type: 'grunt', count: 2 }] },
+                {
+                  spawns: [
+                    {
+                      type: 'glacial_thrower',
+                      count: 1,
+                      namedRare: {
+                        id: 'frost_rimecast',
+                        displayName: 'Rimecast the Slow',
+                        variantId: 'frenzied',
+                        enemyType: 'glacial_thrower',
+                      },
+                    },
+                    { type: 'skirmisher', count: 1 },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        dialogueBeacons: [
+          {
+            beaconId: 'frost_ice_band_enter',
+            trigger: 'onRoomEntered',
+            band: 'ice',
+            speaker: 'Ice-Watch Courier Sela',
+            line: 'You are on the ice band — watch your footing and clear the throwers.',
+          },
+        ],
         signatureCardId: 'ice_ball',
         rewardCards: ['ice_ball', 'frost_nova', 'permafrost_lance'],
         script: buildFrostCrossingTier1Script(),
+        client: {
+          name: 'Cairn',
+          briefing:
+            'Frost crossing escort. Six hostiles block the ice field — clear them and I release fourteen stones from the research fund.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Cairn here. Hostiles are clustered on the ice field — clear a path so my survey team can follow.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Crossing is secure. Research fund transfer pending — well done.',
+          },
+        ],
       },
     },
   },
@@ -383,6 +709,21 @@ const QUEST_DEFS = {
         enemyCount: 6,
         rewardCurrency: 14,
         layoutProfile: 'sunken-canyon',
+        client: {
+          name: 'Torvek',
+          briefing:
+            'Canyon descent sweep. Hostiles infest the sunken canyon below the plateau — purge six of them for fourteen reward stones.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Torvek on overwatch. Hostiles are thick on the canyon floor — sweep them before they flank the plateau.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Canyon floor is quiet. Fourteen stones are yours — extract when ready.',
+          },
+        ],
       },
       2: {
         tier: 2,
@@ -399,6 +740,25 @@ const QUEST_DEFS = {
           landmark: 'canyon_monolith',
           addCount: 4,
         },
+        client: {
+          name: 'Torvek',
+          briefing:
+            'Canyon warden contract — Tier II. A canyon warden holds the monolith with four marked hostiles; purge the nest for fourteen stones from my survey fund.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Torvek on overwatch. Warden signature at the canyon monolith — thin the supports first.',
+          },
+          {
+            trigger: { waveCleared: 2 },
+            text: 'Canyon floor is thinning. Warden is still anchored at the monolith.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Warden down and canyon secure. Fourteen stones heading your way.',
+          },
+        ],
       },
     },
   },
@@ -417,10 +777,24 @@ const QUEST_DEFS = {
         enemyCount: 6,
         rewardCurrency: 14,
         layoutProfile: 'fire-cavern',
-        // Burn-theme signature rewards (see frost_crossing tier 1 for field docs).
         signatureCardId: 'fireball',
         rewardCards: ['fireball', 'dragons_breath'],
         script: buildEmberDescentTier1Script(),
+        client: {
+          name: 'Ashvelle',
+          briefing:
+            'Ember rim clearance. Six hostiles patrol the volcanic overlook — neutralize them and collect fourteen stones from my basin survey account.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Ashvelle on the rim feed. Hostiles are circling the basin edge — keep them off my survey lines.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Rim is clear. Basin survey proceeds — your stones are transferring now.',
+          },
+        ],
       },
     },
   },
@@ -440,9 +814,23 @@ const QUEST_DEFS = {
         enemyCount: 6,
         rewardCurrency: 16,
         layoutProfile: 'spire-ascent',
-        // Pull/edge-control signature rewards (see frost_crossing tier 1 for field docs).
         signatureCardId: 'gravity_well',
         rewardCards: ['gravity_well'],
+        client: {
+          name: 'Sela',
+          briefing:
+            'Spire ascent contract. Fight through six hostiles on the tower tiers — summit treasure aside, sixteen stones are queued for you.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Sela tracking your ascent. Six hostiles between you and the upper tiers — push through.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Upper tiers are clear. Sixteen stones released — good climbing.',
+          },
+        ],
       },
       2: {
         tier: 2,
@@ -460,6 +848,69 @@ const QUEST_DEFS = {
           landmark: 'spire_summit',
           addCount: 5,
         },
+        client: {
+          name: 'Sela',
+          briefing:
+            'Spire summit contract — Tier II. The summit warden commands five twisted supports across the fixed tiers; sixteen stones queue for a full ascent.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Sela tracking your climb. Summit warden and five marked hostiles between you and the top.',
+          },
+          {
+            trigger: { waveCleared: 3 },
+            text: 'Three supports cleared. Summit warden is still holding the upper tier.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Summit warden defeated. Ascent logged — sixteen stones released.',
+          },
+        ],
+      },
+    },
+  },
+  annex_escort: {
+    id: 'annex_escort',
+    enemyPool: [
+      { type: 'grunt', weight: 2 },
+      { type: 'skirmisher', weight: 1 },
+    ],
+    tiers: {
+      1: {
+        name: 'Annex Evacuation',
+        description: 'Escort the archivist to the annex treasure vault through ambush lanes.',
+        clientNpc: 'Annex Liaison Kade',
+        briefing:
+          'Archivist Vale carries the annex registry codes. '
+          + 'Escort them to the treasure vault and clear every ambush wave along the route.',
+        objectiveType: 'escort',
+        escortNpc: { name: 'Archivist Vale', maxHp: 70 },
+        escortDestination: { roomRole: 'treasure' },
+        rewardCurrency: 14,
+        rewardCardId: 'echo_blade',
+        layoutProfile: 'crowded',
+        scriptedEncounters: {
+          rooms: [
+            {
+              roomIndex: 0,
+              waves: [{ spawns: [{ type: 'grunt', count: 2 }] }],
+            },
+            {
+              roomIndex: 1,
+              waves: [{ spawns: [{ type: 'skirmisher', count: 2 }] }],
+            },
+          ],
+        },
+        dialogueBeacons: [
+          {
+            beaconId: 'escort_start',
+            trigger: 'onRoomEntered',
+            roomIndex: 0,
+            speaker: 'Annex Liaison Kade',
+            line: 'Vale is on channel. Keep them alive and reach the vault.',
+          },
+        ],
       },
     },
   },
@@ -478,6 +929,25 @@ const QUEST_DEFS = {
         minibossCount: 2,
         rewardCurrency: 20,
         layoutProfile: 'open-plaza',
+        client: {
+          name: 'Marshal Koss',
+          briefing:
+            'Endless siege hold. Outlast ten staggered attackers including two wardens — hold the line and twenty stones are already on the manifest.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Marshal Koss on command. Waves are inbound — hold your ground until every attacker falls.',
+          },
+          {
+            trigger: { waveCleared: 5 },
+            text: 'Half the assault spent. Keep the line — wardens are still in the rotation.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Siege broken. All hostiles down — twenty stones to the victors.',
+          },
+        ],
       },
     },
   },
@@ -532,6 +1002,7 @@ function getQuest(questId, tier) {
     questId,
     tier: normalizedTier,
     ...tierDef,
+    dialogue: tierDef.dialogue ?? [],
     signatureCardId,
     signatureCardName: signatureCardId ? CARD_DEFS[signatureCardId]?.name ?? null : null,
   };
@@ -543,7 +1014,16 @@ function getDefaultQuestId() {
 
 function listQuests() {
   return Object.keys(QUEST_DEFS)
-    .map((questId) => getQuest(questId, DEFAULT_QUEST_TIER))
+    .map((questId) => {
+      const resolved = getQuest(questId, DEFAULT_QUEST_TIER);
+      if (!resolved) return null;
+      return {
+        ...resolved,
+        objectiveSummary: formatObjectiveSummary(resolved),
+        rewardSummary: formatRewardSummary(resolved),
+        ...questBriefingFields(resolved),
+      };
+    })
     .filter(Boolean);
 }
 
@@ -552,9 +1032,18 @@ function formatObjectiveSummary(quest) {
     return '';
   }
   if (quest.objectiveType === 'collect_items') {
-    return `Recover ${quest.itemCount ?? 0} prisms`;
+    const itemCount = quest.itemCount ?? 0;
+    const guardCount = countScriptedEnemiesInQuest(quest);
+    if (guardCount > 0) {
+      return `Recover ${itemCount} prisms and clear ${guardCount} guards`;
+    }
+    return `Recover ${itemCount} prisms`;
   }
   if (quest.objectiveType === 'defeat_enemies') {
+    const scriptedCount = countScriptedEnemiesInQuest(quest);
+    if (scriptedCount > 0) {
+      return `Clear ${scriptedCount} scripted hostiles`;
+    }
     return `Neutralize ${quest.enemyCount ?? 0} hostiles`;
   }
   if (quest.objectiveType === 'survive') {
@@ -595,6 +1084,13 @@ function formatObjectiveSummary(quest) {
       ? THEME.objectives.defeatAnnexOverseer
       : THEME.objectives.defeatTrialWarden;
   }
+  if (quest.objectiveType === 'escort') {
+    const npc = quest.escortNpc?.name || 'VIP';
+    const dest = quest.escortDestination?.landmark
+      || quest.escortDestination?.roomRole
+      || 'extraction';
+    return `Escort ${npc} to ${String(dest).replace(/_/g, ' ')}`;
+  }
   return quest.description || '';
 }
 
@@ -603,6 +1099,101 @@ function getEncounterConfig(quest) {
     return null;
   }
   return quest.encounter;
+}
+
+/** Test/debug fixture quest def — not registered in QUEST_DEFS. */
+const ESCORT_OBJECTIVE_FIXTURE_DEF = {
+  id: 'escort_objective_fixture',
+  enemyPool: [{ type: 'grunt', weight: 1 }],
+  tiers: {
+    1: {
+      name: 'Escort Objective Fixture',
+      description: 'Test-only escort objective with scripted ambush waves.',
+      clientNpc: 'Extraction Handler',
+      briefing: 'Escort the archivist to the arena dais while clearing ambush waves.',
+      objectiveType: 'escort',
+      escortNpc: { name: 'Archivist Vale', maxHp: 60 },
+      escortDestination: { landmark: 'arena_dais' },
+      rewardCurrency: 1,
+      layoutProfile: 'open-plaza',
+      scriptedEncounters: {
+        rooms: [
+          {
+            roomIndex: 0,
+            waves: [
+              { spawns: [{ type: 'grunt', count: 1 }] },
+            ],
+          },
+        ],
+      },
+    },
+  },
+};
+
+/** Test/debug fixture quest def — not registered in QUEST_DEFS. */
+const SCRIPTED_ENCOUNTER_FIXTURE_DEF = {
+  id: 'scripted_encounter_fixture',
+  enemyPool: [{ type: 'grunt', weight: 1 }],
+  tiers: {
+    1: {
+      name: 'Scripted Encounter Fixture',
+      description: 'Test-only scripted wave sequencing.',
+      clientNpc: 'Test Handler',
+      briefing: 'Fixture contract for scripted wave and dialogue beacon QA.',
+      objectiveType: 'defeat_enemies',
+      rewardCurrency: 1,
+      layoutProfile: 'crowded',
+      scriptedEncounters: {
+        rooms: [
+          {
+            roomIndex: 0,
+            waves: [
+              { spawns: [{ type: 'grunt', count: 2 }] },
+              { spawns: [{ type: 'skirmisher', count: 1 }] },
+            ],
+          },
+        ],
+      },
+      dialogueBeacons: [
+        {
+          beaconId: 'fixture_wave0_clear',
+          trigger: 'onWaveCleared',
+          roomIndex: 0,
+          waveIndex: 0,
+          speaker: 'Test Handler',
+          line: 'Wave zero cleared — advance to the next group.',
+        },
+      ],
+    },
+  },
+};
+
+function getScriptedEncounterConfig(quest) {
+  if (!quest || !quest.scriptedEncounters || typeof quest.scriptedEncounters !== 'object') {
+    return null;
+  }
+  const rooms = quest.scriptedEncounters.rooms;
+  if (!Array.isArray(rooms) || rooms.length === 0) {
+    return null;
+  }
+  return quest.scriptedEncounters;
+}
+
+function countScriptedEnemiesInQuest(quest) {
+  const config = getScriptedEncounterConfig(quest);
+  if (!config) return 0;
+  let total = 0;
+  for (const roomDef of config.rooms) {
+    if (!Array.isArray(roomDef.waves)) continue;
+    for (const wave of roomDef.waves) {
+      if (!Array.isArray(wave.spawns)) continue;
+      for (const spawn of wave.spawns) {
+        const count = Number.isFinite(spawn?.count) ? spawn.count : 1;
+        total += Math.max(1, Math.floor(count));
+      }
+    }
+  }
+  return total;
 }
 
 function normalizeQuestScriptSpawn(spawn) {
@@ -684,15 +1275,60 @@ function countScriptedEnemies(script) {
 }
 
 function formatRewardSummary(quest) {
-  if (!quest || quest.rewardCurrency == null) {
+  if (!quest) {
     return 'Reward: —';
   }
-  const signatureCardName = quest.signatureCardName
-    ?? (quest.signatureCardId ? CARD_DEFS[quest.signatureCardId]?.name ?? null : null);
-  if (signatureCardName) {
-    return `Reward: ${quest.rewardCurrency} stones + ${signatureCardName}`;
+
+  const rewardCardName = typeof quest.rewardCardId === 'string' && CARD_DEFS[quest.rewardCardId]
+    ? CARD_DEFS[quest.rewardCardId].name
+    : null;
+  const signatureCardName = !rewardCardName
+    ? (quest.signatureCardName
+      ?? (quest.signatureCardId ? CARD_DEFS[quest.signatureCardId]?.name ?? null : null))
+    : null;
+  const cardName = rewardCardName || signatureCardName;
+
+  if (rewardCardName && quest.rewardCurrency != null) {
+    return `Reward: ${rewardCardName} + ${quest.rewardCurrency} stones`;
   }
-  return `Reward: ${quest.rewardCurrency} stones`;
+  if (quest.rewardCurrency != null && cardName) {
+    return `Reward: ${quest.rewardCurrency} stones + ${cardName}`;
+  }
+  if (quest.rewardCurrency != null) {
+    return `Reward: ${quest.rewardCurrency} stones`;
+  }
+  if (cardName) {
+    return `Reward: ${cardName}`;
+  }
+  return 'Reward: —';
+}
+
+function formatBriefingSummary(quest) {
+  if (!quest) return '';
+  const body = typeof quest.briefing === 'string' ? quest.briefing.trim() : '';
+  if (!body) return quest.description || '';
+  const npc = typeof quest.clientNpc === 'string' ? quest.clientNpc.trim() : '';
+  if (npc) return `${npc}: ${body}`;
+  return body;
+}
+
+function formatBriefingRewardLine(quest) {
+  if (!quest) return formatRewardSummary(quest);
+  if (typeof quest.briefingRewardLine === 'string' && quest.briefingRewardLine.trim()) {
+    return quest.briefingRewardLine.trim();
+  }
+  return formatRewardSummary(quest);
+}
+
+function questBriefingFields(quest) {
+  if (!quest) return {};
+  return {
+    clientNpc: quest.clientNpc || null,
+    briefing: quest.briefing || null,
+    briefingSummary: formatBriefingSummary(quest),
+    briefingRewardLine: quest.briefingRewardLine || null,
+    briefingRewardText: formatBriefingRewardLine(quest),
+  };
 }
 
 function listQuestVariants() {
@@ -716,8 +1352,13 @@ function listQuestVariants() {
         objectiveType: resolved.objectiveType,
         objectiveSummary: formatObjectiveSummary(resolved),
         rewardSummary: formatRewardSummary(resolved),
+        rewardCurrency: resolved.rewardCurrency,
         isTier2: tier === 2,
         unlockRequires: resolved.unlockRequires || null,
+        ...(resolved.client ? { client: resolved.client } : {}),
+        ...(resolved.rewardSignatureCard ? { rewardSignatureCard: resolved.rewardSignatureCard } : {}),
+        dialogue: resolved.dialogue ?? [],
+        ...questBriefingFields(resolved),
       });
     }
   }
@@ -849,6 +1490,8 @@ function pickWeightedEnemyType(pool, rng = Math.random) {
 
 module.exports = {
   QUEST_DEFS,
+  SCRIPTED_ENCOUNTER_FIXTURE_DEF,
+  ESCORT_OBJECTIVE_FIXTURE_DEF,
   DEFAULT_QUEST_ID,
   DEFAULT_QUEST_TIER,
   isValidQuestId,
@@ -865,7 +1508,12 @@ module.exports = {
   buildQuestUpdatePayload,
   formatObjectiveSummary,
   formatRewardSummary,
+  formatBriefingSummary,
+  formatBriefingRewardLine,
+  questBriefingFields,
   getEncounterConfig,
+  getScriptedEncounterConfig,
+  countScriptedEnemiesInQuest,
   getQuestScript,
   countScriptedEnemies,
   getEnemyPool,

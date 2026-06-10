@@ -6,7 +6,9 @@ import {
 	formatObjectiveSummary,
 	formatRewardSummary,
 	formatQuestTierLabel,
+	findQuestBoardEntry,
 	renderQuestBoard,
+	renderQuestBriefing,
 } from './questBoard.js';
 import {
 	THEME,
@@ -110,6 +112,7 @@ import { clearAllLockOnState, getLockedEnemyId } from './lockOn.js';
 import {
 	initScene as rendererInitScene,
 	rebuildDungeonLayout,
+	syncPassageLockColliders,
 	setGameStateRef,
 	setMyId as rendererSetMyId,
 	setSocketRef,
@@ -201,6 +204,8 @@ const boothPromptEl = document.getElementById('booth-prompt');
 const lobbyPlayerList = document.getElementById('lobby-player-list');
 const questBoardEl = document.getElementById('quest-board');
 const questBoardWrapperEl = document.getElementById('quest-board-wrapper');
+const questBriefingPanelEl = document.getElementById('quest-briefing-panel');
+const questBriefingEl = document.getElementById('quest-briefing');
 const questErrorEl = document.getElementById('quest-error');
 const suspendedRunBannerEl = document.getElementById('suspended-run-banner');
 const resumeRunBtnEl = document.getElementById('resume-run-btn');
@@ -575,6 +580,7 @@ function syncLevelSettingsRewards() {
 
 /** Switch UI from in-dungeon play back to the guild lobby. */
 function returnToGuildLobby(state, { refreshCollection = false, rebuildHub = false } = {}) {
+	syncQuestCommsPhase('lobby');
 	closeLevelSettingsOverlay();
 	showLevelSettingsError('');
 	if (giveUpBtnEl) giveUpBtnEl.disabled = false;
@@ -965,6 +971,12 @@ const deckEnchantmentCountEl = document.getElementById('deck-enchantment-count')
 const deckStatsPanelEl = document.getElementById('deck-stats-panel');
 const deckViewerPanelEl = document.getElementById('deck-viewer-panel');
 const objectiveHudEl = document.getElementById('objective-hud');
+const questCommsLogEl = document.getElementById('quest-comms-log');
+const QUEST_COMMS_LOG_MAX = 20;
+const QUEST_COMMS_TOAST_MS = 4000;
+let questCommsLineSeq = 0;
+/** @type {Array<{ speaker: string, text: string }>} */
+let pendingQuestDialogue = [];
 const runSummaryOverlay = document.getElementById('run-summary-overlay');
 const summaryStatusEl = document.getElementById('summary-status');
 const summaryQuestEl = document.getElementById('summary-quest');
@@ -1302,6 +1314,9 @@ function bindSocketHandlers(s) {
 		gameState = state;
 		suspendedRunSummary = cloneSuspendedRunSummary(state.suspendedRunSummary ?? null);
 		setGameStateRef(state);
+		if (state.gamePhase === 'playing' && currentLayout) {
+			syncPassageLockColliders(state.run?.passageLocks);
+		}
 		// Server snapshots omit debugGodmode; re-apply the last toggle so harness
 		// probes and local handlers stay consistent across stateUpdate.
 		if (myId && debugGodmodeResult?.ok && gameState.players?.[myId]) {
@@ -1339,6 +1354,11 @@ function bindSocketHandlers(s) {
 		if (enteringLobby) {
 			_lastReturnRewardsPreview = null;
 			extractedLobbyOverlayActive = false;
+			syncQuestCommsPhase('lobby');
+		} else if (enteringPlaying) {
+			clearQuestCommsLog();
+			setQuestCommsUiVisible(true);
+			flushPendingQuestDialogue();
 		} else if (me && state.gamePhase === 'playing') {
 			if (enteringPlaying) {
 				extractedLobbyOverlayActive = false;
@@ -1608,6 +1628,10 @@ function bindSocketHandlers(s) {
 	s.on(SERVER_TO_CLIENT.SHIELD_BREAK, (data) => {
 		if (!data) return;
 		playSound('shieldBreak');
+	});
+
+	s.on(SERVER_TO_CLIENT.QUEST_DIALOGUE, (payload) => {
+		handleQuestDialogue(payload);
 	});
 
 	s.on(SERVER_TO_CLIENT.CARD_ERROR, (data) => {
@@ -1935,9 +1959,16 @@ function bindSocketHandlers(s) {
 		applyQuestLayoutFromServer(data);
 	});
 
+	s.on(SERVER_TO_CLIENT.QUEST_DIALOGUE, (data) => {
+		if (!data || typeof data.line !== 'string') return;
+		showQuestDialogueToast(data.line, data.speaker);
+	});
+
 	s.on(SERVER_TO_CLIENT.START_GAME, () => {
 		claimedCardRewardId = null;
 		currentCardChoices = [];
+		clearQuestCommsLog();
+		setQuestCommsUiVisible(true);
 		if (lobbyEl) lobbyEl.classList.add('hidden');
 		setLobbyHudVisible(false);
 		uiEl.style.display = 'block';
@@ -2205,8 +2236,17 @@ function renderQuestBoardState() {
 			unlockedQuestTiers,
 			questVariants,
 			selectionLocked: !!suspendedRunSummary,
+			briefingPanelEl: questBriefingPanelEl,
 		},
 	);
+	const selectedQuest = findQuestBoardEntry(
+		selectedQuestId,
+		selectedQuestTier,
+		availableQuests,
+		questVariants,
+	);
+	renderQuestBriefing(questBriefingEl, selectedQuest);
+
 	if (questErrorEl) {
 		questErrorEl.style.display = 'none';
 		questErrorEl.textContent = '';
@@ -4229,30 +4269,169 @@ if (accountSaveBtnEl) {
 
 // ── Toast helper ──
 
+const TRANSIENT_TOAST_BASE_STYLE = `
+	position: fixed;
+	top: 20px;
+	left: 50%;
+	transform: translateX(-50%);
+	padding: 8px 16px;
+	border-radius: 6px;
+	font-size: 14px;
+	font-family: sans-serif;
+	z-index: 9999;
+	pointer-events: none;
+	opacity: 1;
+	transition: opacity 0.3s;
+`;
+
+function showTransientToast(content, options = {}) {
+	const {
+		durationMs = 2000,
+		fadeMs = 300,
+		className = '',
+		background = '#dc2626',
+		color = '#fff',
+	} = options;
+
+	const toast = typeof content === 'string' ? document.createElement('div') : content;
+	if (typeof content === 'string') {
+		toast.textContent = content;
+	}
+	if (className) {
+		toast.classList.add(...className.split(/\s+/).filter(Boolean));
+	}
+	const existingStyle = toast.style.cssText || '';
+	toast.style.cssText = `${existingStyle}${TRANSIENT_TOAST_BASE_STYLE}`;
+	if (typeof content === 'string') {
+		toast.style.background = background;
+		toast.style.color = color;
+	}
+
+	document.body.appendChild(toast);
+	setTimeout(() => {
+		toast.style.opacity = '0';
+		setTimeout(() => toast.remove(), fadeMs);
+	}, durationMs);
+}
+
 function showCardErrorToast(message) {
+	showTransientToast(message, { durationMs: 2000, background: '#dc2626', color: '#fff' });
+}
+
+function isValidQuestDialoguePayload(payload) {
+	return !!(payload
+		&& typeof payload.speaker === 'string' && payload.speaker.trim()
+		&& typeof payload.text === 'string' && payload.text.trim());
+}
+
+function clearQuestCommsLog() {
+	questCommsLineSeq = 0;
+	if (questCommsLogEl) questCommsLogEl.replaceChildren();
+}
+
+function setQuestCommsUiVisible(visible) {
+	if (!questCommsLogEl) return;
+	questCommsLogEl.classList.toggle('hidden', !visible);
+	questCommsLogEl.setAttribute('aria-hidden', visible ? 'false' : 'true');
+}
+
+function syncQuestCommsPhase(phase) {
+	const inRun = phase === 'playing';
+	if (!inRun) {
+		pendingQuestDialogue = [];
+		clearQuestCommsLog();
+	}
+	setQuestCommsUiVisible(inRun);
+}
+
+function showQuestCommsToast(speaker, text) {
 	const toast = document.createElement('div');
-	toast.textContent = message;
-	toast.style.cssText = `
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #dc2626;
-    color: #fff;
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-family: sans-serif;
-    z-index: 9999;
-    pointer-events: none;
-    opacity: 1;
-    transition: opacity 0.3s;
-  `;
+	const speakerEl = document.createElement('strong');
+	speakerEl.textContent = `${speaker}: `;
+	const bodyEl = document.createElement('span');
+	bodyEl.textContent = text;
+	toast.appendChild(speakerEl);
+	toast.appendChild(bodyEl);
+	showTransientToast(toast, { durationMs: QUEST_COMMS_TOAST_MS, className: 'quest-comms-toast' });
+}
+
+function appendQuestCommsLog(speaker, text) {
+	if (!questCommsLogEl) return;
+
+	questCommsLineSeq += 1;
+	const line = document.createElement('div');
+	line.className = 'quest-comms-line';
+
+	const seqEl = document.createElement('span');
+	seqEl.className = 'quest-comms-line-seq';
+	seqEl.textContent = String(questCommsLineSeq).padStart(2, '0');
+
+	const bodyEl = document.createElement('div');
+	bodyEl.className = 'quest-comms-line-body';
+
+	const speakerEl = document.createElement('span');
+	speakerEl.className = 'quest-comms-line-speaker';
+	speakerEl.textContent = `${speaker}:`;
+
+	const textEl = document.createElement('span');
+	textEl.className = 'quest-comms-line-text';
+	textEl.textContent = ` ${text}`;
+
+	bodyEl.appendChild(speakerEl);
+	bodyEl.appendChild(textEl);
+	line.appendChild(seqEl);
+	line.appendChild(bodyEl);
+	questCommsLogEl.appendChild(line);
+
+	while (questCommsLogEl.children.length > QUEST_COMMS_LOG_MAX) {
+		questCommsLogEl.removeChild(questCommsLogEl.firstChild);
+	}
+}
+
+function renderQuestDialoguePayload(payload) {
+	const speaker = payload.speaker.trim();
+	const text = payload.text.trim();
+	showQuestCommsToast(speaker, text);
+	appendQuestCommsLog(speaker, text);
+}
+
+function flushPendingQuestDialogue() {
+	if (!gameState || gameState.gamePhase !== 'playing' || pendingQuestDialogue.length === 0) return;
+	const queued = pendingQuestDialogue;
+	pendingQuestDialogue = [];
+	for (const payload of queued) {
+		if (isValidQuestDialoguePayload(payload)) {
+			renderQuestDialoguePayload(payload);
+		}
+	}
+}
+
+function handleQuestDialogue(payload) {
+	if (!isValidQuestDialoguePayload(payload)) return;
+	if (!gameState || gameState.gamePhase !== 'playing') {
+		pendingQuestDialogue.push(payload);
+		return;
+	}
+	renderQuestDialoguePayload(payload);
+}
+
+function showQuestDialogueToast(line, speaker) {
+	const toast = document.createElement('div');
+	toast.className = 'quest-dialogue-toast';
+	if (speaker) {
+		const speakerEl = document.createElement('span');
+		speakerEl.className = 'quest-dialogue-speaker';
+		speakerEl.textContent = speaker;
+		toast.appendChild(speakerEl);
+	}
+	const lineEl = document.createElement('span');
+	lineEl.textContent = line;
+	toast.appendChild(lineEl);
 	document.body.appendChild(toast);
 	setTimeout(() => {
 		toast.style.opacity = '0';
 		setTimeout(() => toast.remove(), 300);
-	}, 2000);
+	}, 3500);
 }
 
 // ── Lobby event wiring ──
@@ -4775,6 +4954,10 @@ window.___test_scene = undefined;
 window.__playSoundCallLog = () => _playSoundCallLog;
 window.__clearPlaySoundLog = () => { _playSoundCallLog.length = 0; };
 window.__setGameState = (gs, id) => { gameState = gs; myId = id; setGameStateRef(gs); rendererSetMyId(id); };
+window.__showQuestDialogueForTest = (payload) => handleQuestDialogue(payload);
+window.__clearQuestCommsLogForTest = () => clearQuestCommsLog();
+window.__syncQuestCommsPhaseForTest = (phase) => syncQuestCommsPhase(phase);
+window.__getQuestCommsLogLineCountForTest = () => (questCommsLogEl ? questCommsLogEl.children.length : 0);
 window.__setHarnessSceneForTest = (ctx = {}) => {
 	if (ctx.hubLayout !== undefined) hubLayout = ctx.hubLayout;
 	if (ctx.currentLayout !== undefined) currentLayout = ctx.currentLayout;

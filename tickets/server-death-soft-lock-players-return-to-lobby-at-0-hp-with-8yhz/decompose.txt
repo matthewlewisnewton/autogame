@@ -1,0 +1,17 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 3 sub-tickets:
+
+```
+tickets/server-death-soft-lock-players-return-to-lobby-at-0-hp-with-8yhz/subtickets/
+├── 01-wire-lobby-revive-hp/ticket.md
+├── 02-update-tests-revive-behavior/ticket.md
+└── 03-integration-test-death-redeploy/ticket.md
+```
+
+**Breakdown:**
+
+1. **01-wire-lobby-revive-hp** — The core fix: import `LOBBY_REVIVE_HP` from `config.js` into `progression.js` and set `player.hp = LOBBY_REVIVE_HP` in `revivePlayerInLobby()` when reviving dead/0-HP players. Single-file change, ~3 lines.
+
+2. **02-update-tests-revive-behavior** — Update existing tests in `server.test.js` and `integration.test.js` that assert `hp: 0` after revive to expect `LOBBY_REVIVE_HP` (10) instead.
+
+3. **03-integration-test-death-redeploy** — Add a new end-to-end integration test covering the full soft-lock repro: die at 0 money → return to lobby → verify HP=10 → redeploy → verify run starts without immediate failure.

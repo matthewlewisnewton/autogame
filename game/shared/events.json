@@ -38,6 +38,7 @@
     "PLAYER_DISCONNECTED": "playerDisconnected",
     "PLAYER_EXTRACTED": "playerExtracted",
     "PLAYER_RECONNECTED": "playerReconnected",
+    "QUEST_DIALOGUE": "questDialogue",
     "QUEST_ERROR": "questError",
     "QUEST_UPDATE": "questUpdate",
     "RUN_ABANDONED": "runAbandoned",

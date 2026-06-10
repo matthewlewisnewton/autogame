@@ -1,10 +1,15 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
+	formatClientBriefing,
 	formatObjectiveSummary,
+	formatRewardDetail,
 	formatRewardSummary,
+	formatBriefingRewardLine,
 	formatQuestTierLabel,
+	findQuestBoardEntry,
 	isQuestTierUnlocked,
 	renderQuestBoard,
+	renderQuestBriefing,
 } from '../questBoard.js';
 
 const SAMPLE_QUESTS = [
@@ -12,9 +17,13 @@ const SAMPLE_QUESTS = [
 		id: 'training_caverns',
 		name: 'Initiate Vault',
 		description: 'Purge hostiles from the derelict annex sector.',
+		clientNpc: 'Annex Liaison Kade',
+		briefing: 'Clear the annex sector and hold the vault mouth.',
 		objectiveType: 'defeat_enemies',
 		enemyCount: 5,
 		rewardCurrency: 10,
+		objectiveSummary: 'Neutralize 5 hostiles',
+		rewardSummary: 'Reward: 10 money',
 	},
 	{
 		id: 'crystal_rescue',
@@ -134,10 +143,92 @@ describe('formatRewardSummary()', () => {
 		expect(formatRewardSummary(SAMPLE_QUESTS[0])).toBe('Reward: 10 money');
 	});
 
+	it('shows signature card name plus currency when rewardCardId is set', () => {
+		expect(formatRewardSummary({
+			rewardCardId: 'saber_of_light',
+			rewardCurrency: 12,
+		})).toBe('Reward: Saber of Light + 12 money');
+	});
+
 	it('appends the signature card name when present', () => {
 		expect(
 			formatRewardSummary({ rewardCurrency: 14, signatureCardName: 'Glacial Orb' }),
 		).toBe('Reward: 14 money + Glacial Orb');
+	});
+});
+
+describe('formatBriefingRewardLine()', () => {
+	it('prefers briefingRewardText from the server payload', () => {
+		expect(formatBriefingRewardLine({
+			briefingRewardText: 'Reward: Signature blade',
+			rewardCurrency: 10,
+		})).toBe('Reward: Signature blade');
+	});
+
+	it('uses briefingRewardLine override when provided', () => {
+		expect(formatBriefingRewardLine({
+			briefingRewardLine: 'Reward: Named rare card',
+			rewardCurrency: 10,
+		})).toBe('Reward: Named rare card');
+	});
+});
+
+describe('findQuestBoardEntry()', () => {
+	it('resolves tier-1 quests from the quests list', () => {
+		const entry = findQuestBoardEntry('training_caverns', 1, SAMPLE_QUESTS, []);
+		expect(entry?.clientNpc).toBe('Annex Liaison Kade');
+	});
+
+	it('resolves tier-2 quests from quest variants', () => {
+		const entry = findQuestBoardEntry('training_caverns', 2, SAMPLE_QUESTS, [TRAINING_TIER2_VARIANT]);
+		expect(entry?.name).toContain('Tier II');
+	});
+});
+
+describe('formatRewardDetail()', () => {
+	it('formats currency without the card prefix', () => {
+		expect(formatRewardDetail(SAMPLE_QUESTS[0])).toBe('10 money');
+	});
+
+	it('appends signature card display name when defined', () => {
+		expect(
+			formatRewardDetail({
+				rewardCurrency: 10,
+				rewardSignatureCard: 'iron_sword',
+			}),
+		).toBe('10 money + Rust-Forged Saber');
+	});
+
+	it('falls back to card id when display name is unavailable', () => {
+		expect(
+			formatRewardDetail({
+				rewardCurrency: 8,
+				rewardSignatureCard: 'unknown_signature_card',
+			}),
+		).toBe('8 money + unknown_signature_card');
+	});
+});
+
+describe('formatClientBriefing()', () => {
+	it('returns client name and briefing when present', () => {
+		expect(
+			formatClientBriefing({
+				client: {
+					name: 'Rewa',
+					briefing: 'Sweep the annex and report when clear.',
+				},
+			}),
+		).toEqual({
+			clientName: 'Rewa',
+			briefing: 'Sweep the annex and report when clear.',
+		});
+	});
+
+	it('uses fallback copy when client is missing', () => {
+		expect(formatClientBriefing(SAMPLE_QUESTS[1])).toEqual({
+			clientName: 'Contract issuer unknown',
+			briefing: '',
+		});
 	});
 });
 
@@ -163,12 +254,39 @@ describe('isQuestTierUnlocked()', () => {
 	});
 });
 
-describe('renderQuestBoard()', () => {
+describe('renderQuestBriefing()', () => {
 	let container;
 
 	beforeEach(() => {
 		container = document.createElement('div');
 		document.body.appendChild(container);
+	});
+
+	it('renders NPC, briefing body, objective, and reward for the selected quest', () => {
+		renderQuestBriefing(container, SAMPLE_QUESTS[0]);
+
+		expect(container.classList.contains('hidden')).toBe(false);
+		expect(container.querySelector('.quest-briefing-npc').textContent).toBe('Annex Liaison Kade');
+		expect(container.querySelector('.quest-briefing-body').textContent).toContain('annex sector');
+		expect(container.querySelector('.quest-briefing-objective').textContent).toBe('Neutralize 5 hostiles');
+		expect(container.querySelector('.quest-briefing-reward').textContent).toBe('Reward: 10 money');
+	});
+
+	it('hides the panel when the quest has no briefing content', () => {
+		renderQuestBriefing(container, { id: 'plain', description: 'No briefing' });
+		expect(container.classList.contains('hidden')).toBe(true);
+	});
+});
+
+describe('renderQuestBoard()', () => {
+	let container;
+	let briefingPanel;
+
+	beforeEach(() => {
+		container = document.createElement('div');
+		briefingPanel = document.createElement('div');
+		document.body.appendChild(container);
+		document.body.appendChild(briefingPanel);
 	});
 
 	it('renders quest cards and highlights the selected quest', () => {
@@ -270,5 +388,117 @@ describe('renderQuestBoard()', () => {
 
 		expect(tier1Card.classList.contains('selected')).toBe(false);
 		expect(tier2Card.classList.contains('selected')).toBe(true);
+	});
+
+	it('renders briefing panel content for the selected quest', () => {
+		const questsWithClient = [
+			{
+				...SAMPLE_QUESTS[0],
+				client: {
+					name: 'Rewa',
+					briefing: 'Annex clearance contract. Neutralize the hostiles.',
+				},
+			},
+			SAMPLE_QUESTS[1],
+		];
+
+		renderQuestBoard(container, questsWithClient, 'training_caverns', null, {
+			briefingPanelEl: briefingPanel,
+		});
+
+		expect(briefingPanel.classList.contains('hidden')).toBe(false);
+		expect(briefingPanel.querySelector('.quest-briefing-client').textContent).toBe('Rewa');
+		expect(briefingPanel.querySelector('.quest-briefing-text').textContent).toBe(
+			'Annex clearance contract. Neutralize the hostiles.',
+		);
+		expect(briefingPanel.querySelector('.quest-briefing-reward').textContent).toBe('10 money');
+	});
+
+	it('shows client fallback in briefing panel when client is absent', () => {
+		renderQuestBoard(container, SAMPLE_QUESTS, 'crystal_rescue', null, {
+			briefingPanelEl: briefingPanel,
+		});
+
+		expect(briefingPanel.querySelector('.quest-briefing-client').textContent).toBe(
+			'Contract issuer unknown',
+		);
+		expect(briefingPanel.querySelector('.quest-briefing-text').textContent).toBe('—');
+	});
+
+	it('updates briefing panel when only selectedQuestId changes', () => {
+		const questsWithClient = [
+			{
+				...SAMPLE_QUESTS[0],
+				client: { name: 'Rewa', briefing: 'Vault briefing.' },
+			},
+			SAMPLE_QUESTS[1],
+		];
+
+		renderQuestBoard(container, questsWithClient, 'training_caverns', null, {
+			briefingPanelEl: briefingPanel,
+		});
+		renderQuestBoard(container, questsWithClient, 'crystal_rescue', null, {
+			briefingPanelEl: briefingPanel,
+		});
+
+		expect(briefingPanel.querySelector('.quest-briefing-client').textContent).toBe(
+			'Contract issuer unknown',
+		);
+		expect(briefingPanel.querySelector('.quest-briefing-reward').textContent).toBe('12 money');
+	});
+
+	it('renders tier-2 briefing panel with authored client copy from questVariants', () => {
+		const tier2Variant = {
+			questId: 'training_caverns',
+			tier: 2,
+			id: 'training_caverns',
+			name: 'Initiate Vault — Tier II',
+			description: 'Advanced clearance of the derelict annex sector.',
+			objectiveType: 'stage_boss',
+			objectiveSummary: 'Defeat the annex overseer and 4 supports',
+			rewardSummary: 'Reward: 10 money',
+			rewardCurrency: 10,
+			isTier2: true,
+			client: {
+				name: 'Rewa',
+				briefing:
+					'Annex overseer contract — Tier II. The vault dais holds an annex overseer with four marked supports; drop them all and your ten reward stones stay on the manifest.',
+			},
+		};
+
+		renderQuestBoard(container, SAMPLE_QUESTS, 'training_caverns', null, {
+			questVariants: [tier2Variant],
+			unlockedQuestTiers: { training_caverns: [2] },
+			selectedQuestTier: 2,
+			briefingPanelEl: briefingPanel,
+		});
+
+		expect(briefingPanel.querySelector('.quest-briefing-client').textContent).toBe('Rewa');
+		expect(briefingPanel.querySelector('.quest-briefing-client').textContent).not.toBe(
+			'Contract issuer unknown',
+		);
+		expect(briefingPanel.querySelector('.quest-briefing-text').textContent).toContain(
+			'Annex overseer contract',
+		);
+	});
+
+	it('names signature-card rewards in the briefing panel', () => {
+		renderQuestBoard(
+			container,
+			[
+				{
+					...SAMPLE_QUESTS[0],
+					client: { name: 'Rewa', briefing: 'Recover the signature blade.' },
+					rewardSignatureCard: 'iron_sword',
+				},
+			],
+			'training_caverns',
+			null,
+			{ briefingPanelEl: briefingPanel },
+		);
+
+		expect(briefingPanel.querySelector('.quest-briefing-reward').textContent).toBe(
+			'10 money + Rust-Forged Saber',
+		);
 	});
 });

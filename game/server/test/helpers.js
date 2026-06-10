@@ -50,6 +50,23 @@ export function waitForEvent(socket, event, timeout = 10000) {
 	});
 }
 
+/** Ignore lobby tick snapshots; wait for a playing-run payload. */
+export function waitForStateUpdateWithRun(socket, timeout = 10000) {
+	return new Promise((resolve, reject) => {
+		const timer = setTimeout(
+			() => reject(new Error('Timed out waiting for stateUpdate with run')),
+			timeout,
+		);
+		function onStateUpdate(data) {
+			if (!data?.run) return;
+			clearTimeout(timer);
+			socket.off('stateUpdate', onStateUpdate);
+			resolve(data);
+		}
+		socket.on('stateUpdate', onStateUpdate);
+	});
+}
+
 export function testGameState() {
 	const { getPrimaryLobbyStateForTests } = require('../lobbies.js');
 	return getPrimaryLobbyStateForTests();

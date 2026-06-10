@@ -335,6 +335,29 @@ describe('Frost Crossing guaranteed glacial_thrower spawn', () => {
 		expect(types.filter((type) => type === 'skirmisher').length).toBe(2);
 	});
 
+	it('authored ice-band scripted waves include glacial_thrower spawns', () => {
+		const quest = getQuest('frost_crossing', 1);
+		const iceRoom = quest.scriptedEncounters.rooms.find((room) => room.band === 'ice');
+		const types = iceRoom.waves.flatMap((wave) => wave.spawns.map((spawn) => spawn.type));
+		expect(types).toContain('glacial_thrower');
+		expect(iceRoom.waves.some((wave) => wave.spawns.some((spawn) => spawn.namedRare))).toBe(true);
+	});
+
+	it('still uses grunt and skirmisher in non-ice scripted waves', () => {
+		const quest = getQuest('frost_crossing', 1);
+		const entryRoom = quest.scriptedEncounters.rooms.find((room) => room.roomIndex === 0);
+		const types = entryRoom.waves.flatMap((wave) => wave.spawns.map((spawn) => spawn.type));
+		expect(types).toContain('grunt');
+		expect(types).not.toContain('glacial_thrower');
+	});
+
+	it('keeps glacial_thrower out of bulk spawns because scripted waves replace enemyCount', () => {
+		for (const seed of SEEDS) {
+			const types = spawnTypesForQuest('frost_crossing', seed);
+			expect(types.length).toBe(0);
+		}
+	});
+
 	it('does not force the signature foe onto non-ice quests', () => {
 		// A quest with no declared guaranteed type is unaffected.
 		expect(getGuaranteedEnemyType('training_caverns')).toBeNull();

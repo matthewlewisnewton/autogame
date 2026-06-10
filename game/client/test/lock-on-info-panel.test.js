@@ -89,6 +89,18 @@ describe('buildLockOnPanelModel', () => {
     ).toBeNull();
   });
 
+  it('prefers enemy.displayName over the catalog type name', () => {
+    const enemy = {
+      type: 'grunt',
+      displayName: 'Vault Stalker',
+      hp: 80,
+      maxHp: 100,
+      attackDamage: 10,
+    };
+    const model = buildLockOnPanelModel(enemy, catalog);
+    expect(model.name).toBe('Vault Stalker');
+  });
+
   it('builds a base grunt panel with live HP and type stats', () => {
     const enemy = {
       type: 'grunt',

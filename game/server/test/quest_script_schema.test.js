@@ -138,7 +138,7 @@ describe('defeat_enemies scripted bypass', () => {
     expect(def.skipBulkCombatSpawn(scriptedQuest())).toBe(true);
   });
 
-  it('does not skip bulk combat spawn for unscripted production quests', () => {
+  it('does not skip bulk combat spawn for quests without script.waves or scriptedEncounters', () => {
     expect(def.skipBulkCombatSpawn(getQuest('arena_trials', 1))).toBe(false);
     expect(def.skipBulkCombatSpawn(getQuest('canyon_descent', 1))).toBe(false);
   });
@@ -158,6 +158,12 @@ describe('defeat_enemies scripted bypass', () => {
     const quest = getQuest('arena_trials', 1);
     const objective = def.createObjective(quest, { enemyCount: quest.enemyCount });
     expect(objective.totalEnemies).toBe(quest.enemyCount);
+    expect(objective.totalEnemies).toBe(6);
+  });
+
+  it('createObjective uses scriptedEncounters counts for authored tiers', () => {
+    const quest = getQuest('training_caverns', 1);
+    const objective = def.createObjective(quest, { enemyCount: 99 });
     expect(objective.totalEnemies).toBe(6);
   });
 });

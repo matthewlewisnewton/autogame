@@ -1355,13 +1355,66 @@ export function buildDungeon(scene, layout) {
 	return { meshes, spawnPosition };
 }
 
+const PASSAGE_LOCK_BARRIER_DEPTH = 1.0;
+
+function footprintToAABB(footprint) {
+	return {
+		minX: footprint.x - footprint.width / 2,
+		maxX: footprint.x + footprint.width / 2,
+		minZ: footprint.z - footprint.depth / 2,
+		maxZ: footprint.z + footprint.depth / 2,
+	};
+}
+
+/**
+ * Compute a full-gap doorway barrier AABB for a locked passage index.
+ * Mirrors server/simulation.js so client prediction matches authoritative movement.
+ */
+export function computePassageBarrierAABBs(layout, passageIndex) {
+	if (!layout?.passages?.[passageIndex]) return [];
+
+	const passage = layout.passages[passageIndex];
+	const passageWidth = layout.passageWidth ?? 4;
+	const gapW = passageWidth + 0.5;
+	const dx = passage.x2 - passage.x1;
+	const dz = passage.z2 - passage.z1;
+
+	if (Math.abs(dx) >= Math.abs(dz)) {
+		return [footprintToAABB({
+			x: (passage.x1 + passage.x2) / 2,
+			z: passage.z1,
+			width: PASSAGE_LOCK_BARRIER_DEPTH,
+			depth: gapW,
+		})];
+	}
+
+	return [footprintToAABB({
+		x: passage.x1,
+		z: (passage.z1 + passage.z2) / 2,
+		width: gapW,
+		depth: PASSAGE_LOCK_BARRIER_DEPTH,
+	})];
+}
+
+function collectLockedPassageBarrierAABBs(layout, passageLocks = []) {
+	const colliders = [];
+	if (!layout || !Array.isArray(passageLocks)) return colliders;
+
+	for (const lock of passageLocks) {
+		if (!lock?.locked) continue;
+		colliders.push(...computePassageBarrierAABBs(layout, lock.passageIndex));
+	}
+	return colliders;
+}
+
 /**
  * Build an array of wall AABB colliders from a server layout.
  *
  * @param {object} layout - { rooms, passages } from server
+ * @param {object[]} [passageLocks] - Optional run.passageLocks runtime state
  * @returns {{ minX: number, maxX: number, minZ: number, maxZ: number }[]}
  */
-export function buildWallColliders(layout) {
+export function buildWallColliders(layout, passageLocks = []) {
 	const colliders = [];
 	if (!layout || !layout.rooms || !layout.passages) return colliders;
 
@@ -1387,6 +1440,8 @@ export function buildWallColliders(layout) {
 			maxZ: c.z + c.depth / 2,
 		});
 	}
+
+	colliders.push(...collectLockedPassageBarrierAABBs(layout, passageLocks));
 
 	return colliders;
 }
