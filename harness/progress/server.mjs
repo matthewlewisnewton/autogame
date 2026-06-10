@@ -2,9 +2,12 @@
 import { createServer } from 'http';
 import { spawnSync } from 'child_process';
 import {
+  closeSync,
   existsSync,
   mkdirSync,
+  openSync,
   readFileSync,
+  readSync,
   readdirSync,
   statSync,
   writeFileSync,
@@ -505,13 +508,36 @@ function scanFiles() {
   for (const file of files) scanFile(file);
 }
 
+function readTailSync(file, size, maxBytes) {
+  // Last maxBytes of the file, trimmed to whole lines (drop the partial first).
+  const fd = openSync(file, 'r');
+  try {
+    const start = Math.max(0, size - maxBytes);
+    const buf = Buffer.alloc(size - start);
+    readSync(fd, buf, 0, buf.length, start);
+    const text = buf.toString('utf8');
+    if (start === 0) return text;
+    const nl = text.indexOf('\n');
+    return nl >= 0 ? text.slice(nl + 1) : '';
+  } finally {
+    closeSync(fd);
+  }
+}
+
 function scanFile(file) {
   let text;
   let st;
   try {
     st = statSync(file);
-    if (st.size > 5 * 1024 * 1024) return;
-    text = readFileSync(file, 'utf8');
+    if (st.size > 5 * 1024 * 1024) {
+      // A long-lived events.ndjson grows past the cap and the view went BLIND
+      // to all dispatcher events (observed at 9.5MB). Ingest the tail instead
+      // of skipping — scanExplicitEvents dedupes, so re-reads are idempotent.
+      if (!file.endsWith('events.ndjson')) return;
+      text = readTailSync(file, st.size, 1024 * 1024);
+    } else {
+      text = readFileSync(file, 'utf8');
+    }
   } catch {
     return;
   }
