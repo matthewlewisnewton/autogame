@@ -1,0 +1,7 @@
+VERDICT: FAIL
+
+Wrote:
+- `tickets/client-attack-cast-hint-is-static-wrong-for-controllers-and-mxbc/round-2/review.md`
+- `tickets/client-attack-cast-hint-is-static-wrong-for-controllers-and-mxbc/round-2/gaps.md`
+
+Runtime capture was healthy, but I found a blocking acceptance gap: 8BitDo 64 remapped hand-slot bindings are honored by input but not reflected in the hand badges or attack/cast hint, so live bindings are not fully supported. No `nits.md` was created.

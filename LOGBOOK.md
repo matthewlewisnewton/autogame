@@ -6818,3 +6818,26 @@ The changed code is scoped to lock-on height resolution, renderer reticle/camera
 ## Remaining gaps
 
 None.
+
+## v0.385 — Client: attack/cast hint is static — wrong for controllers and shown forever  (2026-06-10 15:23:15)
+
+### Fresh Profiles and Same-Profile Memory
+
+PASS. The localStorage key is scoped by stored player id, so a profile that has seen the hint keeps it hidden on later runs while a different/new profile with no matching flag sees it again. Storage and timer access are guarded to avoid breaking gameplay if localStorage is unavailable.
+
+### Design and Requirements Consistency
+
+PASS. The change is limited to client HUD/input affordance behavior and does not alter the documented lobby/dungeon/card-combat loop, server-client architecture, multiplayer state, movement synchronization, combat simulation, or progression systems. The captured run still demonstrates auth/lobby entry, deploy into gameplay, movement, card hand visibility, and HUD state.
+
+### Debug Scenarios
+
+PASS. This ticket did not add or change any `?debugScenario=...` shortcut. No debug-scenario capture was used in `metrics.json`, and the normal lobby-to-gameplay path remains the exercised route.
+
+### Test and Coverage Evidence
+
+PASS. The round-3 coverage log shows the client suite ran successfully, including the new `attack-cast-hint`, `attack-hint-dismiss`, `attack-hint-dismiss-action`, and expanded `input` coverage. The tests cover keyboard text, standard gamepad text, 8BitDo 64 text, remapped 8BitDo 64 labels, timeout dismissal, attack-plus-cast dismissal, persistence across runs, fresh-profile reappearance, and rejected-action gating.
+
+## Remaining gaps
+
+None.
+

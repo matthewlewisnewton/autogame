@@ -1,0 +1,6 @@
+Created one new sub-ticket that closes the single open gap from round 2.
+
+**Created:**
+- `tickets/client-attack-cast-hint-is-static-wrong-for-controllers-and-mxbc/subtickets/04-8bitdo64-remap-aware-hints/ticket.md`
+
+**Why just one:** Sub-tickets 01–03 all carry `.passed` markers (device-aware text, auto-dismiss policy, dismiss-on-success), so they're done and untouched. The only open gap in `review-feedback.md` is that the 8BitDo 64 branch of `getHandSlotInputHints()` consults the static `EIGHTBITDO_64_SLOT_HINTS[action]` map *before* the binding-resolution helper (via `??`), so remapped `useSlotN` bindings are silently overwritten by default A/B/C labels — affecting both the hand badges and the attack/cast hint. The fix is a one-spot inversion (call the `describe…` helpers binding-first; they already fall back to the static labels when no binding is set) plus tests in both named test files. Verification is `code` (logic + tests, not a render-only check).
