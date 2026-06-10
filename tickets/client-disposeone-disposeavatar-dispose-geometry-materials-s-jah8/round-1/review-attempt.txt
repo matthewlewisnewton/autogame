@@ -1,0 +1,8 @@
+Wrote the final review artifacts:
+
+- `tickets/client-disposeone-disposeavatar-dispose-geometry-materials-s-jah8/round-1/review.md`
+- `tickets/client-disposeone-disposeavatar-dispose-geometry-materials-s-jah8/round-1/gaps.md`
+
+Verdict is `VERDICT: FAIL` due to a blocking material-disposal bug: cloned avatar glTF materials can inherit the model-cache shared flag from Three.js `Material.clone()`, so `disposeAvatar()` skips per-instance materials and leaks them on avatar/cosmetic preview rebuilds.
+
+No `nits.md` was created. No game code was edited.

@@ -5983,3 +5983,26 @@ PASS. The implementation is localized to the expected combat/server paths plus a
 
 None.
 
+
+## v0.342 — Client: disposeOne/disposeAvatar dispose geometry/materials shared with the glTF model cache  (2026-06-09 21:48:49)
+
+
+PASS. The ticket added focused client tests for model-cache shared marking and disposal behavior:
+
+- `game/client/test/model-cache-shared.test.js` verifies successful `loadModel()` clones are marked and failed/null loads are unchanged.
+- `game/client/test/model-dispose.test.js` verifies modeled enemy disposal preserves shared resources, survivor clones remain valid, and player avatar disposal only disposes the per-avatar cloned material.
+
+`coverage.log` shows the test run passed: 35 files, 405 tests passing. Coverage thresholds were disabled, but the changed behavior has direct regression coverage.
+
+### Design and requirements consistency
+
+PASS. The changes are client-side resource-lifecycle plumbing only. They preserve the documented Three.js rendering foundation, multiplayer flow, and lobby/dungeon loop in `game/docs/design.md`, and do not regress the baseline requirements for 3D rendering, websocket connection, multiplayer visualization, or movement synchronization.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change any `?debugScenario=` shortcut, and the captured run used no debug scenario. No debug-scenario gating or normal-path equivalence issue applies.
+
+## Remaining gaps
+
+None.
+

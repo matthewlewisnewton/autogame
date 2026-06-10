@@ -1,0 +1,7 @@
+Remediation round 2 has one open gap from `review-feedback.md`: per-avatar cloned body materials inherit `__modelCacheShared` from Three.js `Material.clone()`, so `disposeAvatar()` skips disposing them. Sub-tickets 01–03 already passed and were left untouched.
+
+**Created sub-ticket:**
+
+- `/home/matt/workspace/.autogame-worktrees/client-disposeone-disposeavatar-dispose-geometry-materials-s-jah8/tickets/client-disposeone-disposeavatar-dispose-geometry-materials-s-jah8/subtickets/04-clear-cloned-avatar-material-flag/ticket.md`
+
+**`04-clear-cloned-avatar-material-flag`** — export `clearModelCacheShared()` in `models.js`, call it on cloned body materials in `retargetPlayerBodyMesh()`, and update `model-dispose.test.js` so material `clone()` copies `userData` like real Three.js (so the test catches the leak if the fix is reverted). Verification: `code`.
