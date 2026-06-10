@@ -351,6 +351,41 @@ describe('renderQuestBoard()', () => {
 		expect(briefingPanel.querySelector('.quest-briefing-reward').textContent).toBe('12 money');
 	});
 
+	it('renders tier-2 briefing panel with authored client copy from questVariants', () => {
+		const tier2Variant = {
+			questId: 'training_caverns',
+			tier: 2,
+			id: 'training_caverns',
+			name: 'Initiate Vault — Tier II',
+			description: 'Advanced clearance of the derelict annex sector.',
+			objectiveType: 'stage_boss',
+			objectiveSummary: 'Defeat the annex overseer and 4 supports',
+			rewardSummary: 'Reward: 10 money',
+			rewardCurrency: 10,
+			isTier2: true,
+			client: {
+				name: 'Rewa',
+				briefing:
+					'Annex overseer contract — Tier II. The vault dais holds an annex overseer with four marked supports; drop them all and your ten reward stones stay on the manifest.',
+			},
+		};
+
+		renderQuestBoard(container, SAMPLE_QUESTS, 'training_caverns', null, {
+			questVariants: [tier2Variant],
+			unlockedQuestTiers: { training_caverns: [2] },
+			selectedQuestTier: 2,
+			briefingPanelEl: briefingPanel,
+		});
+
+		expect(briefingPanel.querySelector('.quest-briefing-client').textContent).toBe('Rewa');
+		expect(briefingPanel.querySelector('.quest-briefing-client').textContent).not.toBe(
+			'Contract issuer unknown',
+		);
+		expect(briefingPanel.querySelector('.quest-briefing-text').textContent).toContain(
+			'Annex overseer contract',
+		);
+	});
+
 	it('names signature-card rewards in the briefing panel', () => {
 		renderQuestBoard(
 			container,

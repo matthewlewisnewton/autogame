@@ -78,6 +78,25 @@ const QUEST_DEFS = {
           landmark: 'vault_dais',
           addCount: 4,
         },
+        client: {
+          name: 'Rewa',
+          briefing:
+            'Annex overseer contract — Tier II. The vault dais holds an annex overseer with four marked supports; drop them all and your ten reward stones stay on the manifest.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Rewa on annex channel. Overseer signature on the vault dais — clear the supports before you engage.',
+          },
+          {
+            trigger: { waveCleared: 2 },
+            text: 'Half the marked supports are down. Overseer is still broadcasting — finish the sweep.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Overseer neutralized and annex secure. Stones transferring — Tier II clearance logged.',
+          },
+        ],
       },
     },
   },
@@ -136,6 +155,41 @@ const QUEST_DEFS = {
         layoutProfile: 'open',
         layoutMode: 'rigid',
         unlockRequires: { questId: 'crystal_rescue', tier: 1 },
+        client: {
+          name: 'Lysa',
+          briefing:
+            'Deep prism salvage — Tier II. Five resonance prisms remain in the rigid lattice — recover each intact and eighteen stones are reserved on my ledger.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Lysa on salvage channel. Five prisms in the rigid lattice — each one must come back clean.',
+          },
+          {
+            trigger: { itemCollected: 1 },
+            text: 'First prism reads stable. Four more signatures on my scope.',
+          },
+          {
+            trigger: { itemCollected: 2 },
+            text: 'Second prism locked. Three left — hostiles are pressing the lattice.',
+          },
+          {
+            trigger: { itemCollected: 3 },
+            text: 'Third prism secured. Half the haul accounted for — stay sharp.',
+          },
+          {
+            trigger: { itemCollected: 4 },
+            text: 'Fourth prism harmonized. One resonance left in the collapse zone.',
+          },
+          {
+            trigger: { itemCollected: 5 },
+            text: 'Final prism secured. All five signatures accounted for.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Lattice harmonics stabilizing. Telepipe is live — extract on my mark.',
+          },
+        ],
       },
     },
   },
@@ -184,6 +238,25 @@ const QUEST_DEFS = {
           landmark: 'arena_dais',
           addCount: 4,
         },
+        client: {
+          name: 'Venn',
+          briefing:
+            'Trial grounds contract — Tier II. Face the arena champion on the dais with four twisted supports; fifteen stones post to the winner.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Venn on trial feed. Champion and four marked wardens on the dais — earn your tier.',
+          },
+          {
+            trigger: { waveCleared: 2 },
+            text: 'Two supports spent. Champion is still circling the dais — keep pressure on.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Champion down. Trial grounds acknowledge the win — stones released.',
+          },
+        ],
       },
     },
   },
@@ -272,6 +345,25 @@ const QUEST_DEFS = {
           landmark: 'canyon_monolith',
           addCount: 4,
         },
+        client: {
+          name: 'Torvek',
+          briefing:
+            'Canyon warden contract — Tier II. A canyon warden holds the monolith with four marked hostiles; purge the nest for fourteen stones from my survey fund.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Torvek on overwatch. Warden signature at the canyon monolith — thin the supports first.',
+          },
+          {
+            trigger: { waveCleared: 2 },
+            text: 'Canyon floor is thinning. Warden is still anchored at the monolith.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Warden down and canyon secure. Fourteen stones heading your way.',
+          },
+        ],
       },
     },
   },
@@ -354,6 +446,25 @@ const QUEST_DEFS = {
           landmark: 'spire_summit',
           addCount: 5,
         },
+        client: {
+          name: 'Sela',
+          briefing:
+            'Spire summit contract — Tier II. The summit warden commands five twisted supports across the fixed tiers; sixteen stones queue for a full ascent.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Sela tracking your climb. Summit warden and five marked hostiles between you and the top.',
+          },
+          {
+            trigger: { waveCleared: 3 },
+            text: 'Three supports cleared. Summit warden is still holding the upper tier.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Summit warden defeated. Ascent logged — sixteen stones released.',
+          },
+        ],
       },
     },
   },
