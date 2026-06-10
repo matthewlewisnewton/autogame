@@ -80,6 +80,7 @@ const {
   pickWeightedEnemyType,
   getQuestScript,
   DEFAULT_QUEST_TIER,
+  DEFAULT_QUEST_ID,
 } = require('./quests');
 const {
   initQuestScript,
@@ -131,6 +132,7 @@ let _gameState = null;
 let _getIo = () => null;
 let _broadcastLobbyUpdate = () => {};
 let _rebuildWallColliders = () => {};
+let _applyLayoutForQuest = () => {};
 let provider = null;
 
 function initProgression(deps) {
@@ -211,6 +213,10 @@ function setBroadcastLobbyUpdate(fn) {
 
 function setRebuildWallColliders(fn) {
   _rebuildWallColliders = fn;
+}
+
+function setApplyLayoutForQuest(fn) {
+  _applyLayoutForQuest = fn;
 }
 
 function setTestProvider(p) {
@@ -3574,6 +3580,17 @@ function checkAllReadyInner() {
 
       setGamePhase(_gameState, PHASES.PLAYING);
 
+      // Fresh deploy: SELECT_QUEST only previews the layout (no live mutation),
+      // so apply the selected quest's layout into _gameState now — regenerating
+      // dungeonBounds/walkableAABBs and rebuilding colliders — before spawning
+      // players. The suspended-checkpoint resume path returns early above and
+      // restores its own saved layout, so this never runs for resumes.
+      _applyLayoutForQuest(
+        _gameState,
+        _gameState.selectedQuestId || DEFAULT_QUEST_ID,
+        _gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER,
+      );
+
       assignRunSpawnPositions(all);
       for (const player of all) {
         const deployHp = Number.isFinite(player.hp) ? player.hp : null;
@@ -3632,6 +3649,7 @@ module.exports = {
   getGameState,
   setBroadcastLobbyUpdate,
   setRebuildWallColliders,
+  setApplyLayoutForQuest,
   setTestProvider,
   getProvider,
   CARD_DEFS,

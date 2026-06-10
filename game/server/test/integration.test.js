@@ -2006,7 +2006,10 @@ describe('Socket Integration — Quest Selection', () => {
 		expect(u1.layout).toBeDefined();
 		expect(u1.layout.profile).toBe('open');
 		expect(testGameState().selectedQuestId).toBe('crystal_rescue');
-		expect(testGameState().layout.profile).toBe('open');
+		// The selected quest's layout rides on the broadcast preview only — the
+		// live lobby layout swap is deferred to deploy, so the live state still
+		// holds the default hub/quest layout ('crowded'), not 'open'.
+		expect(testGameState().layout.profile).not.toBe('open');
 	});
 
 	it('rejects unknown quest ids without changing the selected quest', async () => {

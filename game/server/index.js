@@ -388,6 +388,7 @@ const sim = require('./simulation');
 sim.setGameState(gameState, _timeouts);
 progression.initProgression({ gameState, getIo: () => io });
 progression.setRebuildWallColliders(() => rebuildWallColliders());
+progression.setApplyLayoutForQuest((state, questId, tier) => applyLayoutForQuest(state, questId, tier));
 require('./scriptedEncounters').setPassageLocksChangedCallback(() => rebuildWallColliders());
 ensureShopOffer();
 
@@ -420,6 +421,18 @@ function applyLayoutForQuest(state, questId, tier = DEFAULT_QUEST_TIER) {
   // inside withLobbyContext, because this helper is also invoked at startup/reset with bare state.
   withLobbyContext({ state }, () => rebuildWallColliders());
   console.log(`[server] Layout for quest "${questId}" tier ${normalizedTier}: seed=${seed}, profile=${profile}, rooms=${state.layout.rooms.length}`);
+}
+
+// Non-mutating sibling of applyLayoutForQuest: computes the deterministic
+// { layoutSeed, layout } for a questId+tier (same inputs the real run will use)
+// without touching any live `state`. Used by SELECT_QUEST to send a preview the
+// client can cache for deploy, while the lobby keeps rendering the hub.
+function previewLayoutForQuest(questId, tier = DEFAULT_QUEST_TIER) {
+  const normalizedTier = normalizeQuestTier(tier);
+  const profile = getLayoutProfileForQuest(questId, normalizedTier);
+  const layoutSeed = questLayoutSeed(questId, normalizedTier);
+  const layout = generateLayout(layoutSeed, profile, getLayoutGenerationOptions(questId, normalizedTier));
+  return { layoutSeed, layout };
 }
 
 // Generate dungeon layout for the default quest at startup (legacy unit-test gameState)
@@ -1676,6 +1689,7 @@ function startServer(port) {
       lobbies,
       withLobbyContext,
       applyLayoutForQuest,
+      previewLayoutForQuest,
       ensureShopOffer,
       joinPlayerToLobby,
       joinLobbyWithPhasePolicy,
