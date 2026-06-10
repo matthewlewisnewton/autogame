@@ -1,0 +1,19 @@
+Broke the top-level ticket into **4 sub-tickets** in dependency order. Root cause: every spawn room shares the global green `roleTints.start`, and ice/fire entry rooms use neutral bands (`stone` / `rim`) that don't read as biome-specific on first deploy.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/theme-quest-entry-rooms-per-biome-first-30-seconds-of-every-o0vv.8/tickets/theme-quest-entry-rooms-per-biome-first-30-seconds-of-every-o0vv.8/subtickets/01-entry-palette-client-tinting/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/theme-quest-entry-rooms-per-biome-first-30-seconds-of-every-o0vv.8/tickets/theme-quest-entry-rooms-per-biome-first-30-seconds-of-every-o0vv.8/subtickets/02-server-entry-room-bands/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/theme-quest-entry-rooms-per-biome-first-30-seconds-of-every-o0vv.8/tickets/theme-quest-entry-rooms-per-biome-first-30-seconds-of-every-o0vv.8/subtickets/03-entry-decor-scatter/ticket.md`
+4. `/home/matt/workspace/.autogame-worktrees/theme-quest-entry-rooms-per-biome-first-30-seconds-of-every-o0vv.8/tickets/theme-quest-entry-rooms-per-biome-first-30-seconds-of-every-o0vv.8/subtickets/04-entry-distinguishability-tests/ticket.md`
+
+**Plan summary:**
+
+| # | Focus | Delivers |
+|---|--------|----------|
+| 01 | Theme + client tinting | Per-profile `entryFloor`/`entryWall`; start-room materials bypass generic green tint |
+| 02 | Server band tags | `entry` band on ice/fire spawn rooms; `vault-entry` on crowded start |
+| 03 | Visual dressing | Visual-only `entryDecor` scatter (icicles, embers, vault rubble) — no collision changes |
+| 04 | Regression tests | Vitest proving frost_crossing, ember_descent, and training_caverns entry rooms are pairwise distinct |
+
+All sub-tickets use **code** verification (diff + unit tests). No existing sub-tickets with `.passed` markers were present.

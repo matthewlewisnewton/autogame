@@ -6162,3 +6162,26 @@ PASS. The provided coverage run reports 148 test files passed and 1991 tests pas
 
 None.
 
+
+## v0.356 — Theme quest entry rooms per biome — first 30 seconds of every level currently look identical  (2026-06-10 05:24:36)
+
+---
+
+## Test & coverage summary
+
+- Harness `coverage.log`: **1737 / 1737** server tests passed.
+- Targeted ticket test `cross-quest entry room distinguishability`: **pass**.
+- Independent `pnpm test:quick` run: 3132 passed, 2 failed — failures are in unrelated `arena-trials-boss-low-hp` and `smoke_bomb` tests, not in entry-room code.
+
+---
+
+## Remaining gaps
+
+None blocking. The implementation fully satisfies both acceptance criteria; runtime capture is healthy.
+
+---
+
+## Nits (non-blocking)
+
+See `nits.md` for harness capture-plan and follow-up theming items.
+
