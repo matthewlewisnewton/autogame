@@ -36,14 +36,14 @@ No visual glitches recorded by the driver.
 ## Boss visual identity
 
 - **bossType**: arena_champion
-- **bossEnemyId**: 16db9282-9b25-4230-a5e1-caf31f1321e3
+- **bossEnemyId**: 69e809ce-6778-41cd-911b-81d108347dd5
 - **nearestAddType**: grunt
 - **bossDistinctFromAdds**: yes
 - **bossRenderScale / addRenderScale**: 3 / 1.025014694678903
 
 ## Slow / burn mutual exclusivity
 
-- **targetEnemyId**: 165ec049-04b4-45b5-a414-54f0a0a87217
+- **targetEnemyId**: 67141058-da65-479d-97c4-8b5a0583eabb
 - **afterSlow**: slowActive=yes, burnActive=no
 - **afterBurn**: slowActive=no, burnActive=yes
 - **slowBurnMutuallyExclusive**: yes
@@ -67,8 +67,8 @@ No visual glitches recorded by the driver.
 
 ## Telepipe vitals and new-sortie charges
 
-- **preSuspend**: hp=100, magicStones=20, runId=192f7538-3c11-4315-8ec1-8a0d57dbea94
-- **postDeploy**: hp=100, magicStones=20, runId=05f238fa-3cff-4631-9482-246982b0c80b
+- **preSuspend**: hp=100, magicStones=20, runId=d27b86b0-ec0b-4fc9-a933-683137456524
+- **postDeploy**: hp=100, magicStones=20, runId=ce8f036e-3574-470a-9d74-ca34b3d29f72
 - **telepipeVitalsPreserved**: yes
 - **cardChargesResetOnNewSortie**: yes
 
@@ -126,6 +126,34 @@ this run, so these blockers only surfaced now.
 (`arena-trials-encounter-trigger` and the other arena scenarios from sub-ticket 01 were already
 correct — the trigger scenario already spawns the visual add the `bossDistinctFromAdds` probe
 needs; it simply was not being invoked for this preset. See harness wiring below.)
+
+### Console / resource oddities (sub-ticket 05)
+
+The `## Console / page errors` section above ("None observed") is now accurate against the
+freshly regenerated `console.log` — it contains only `[console:debug]`/`[console:log]` lines, with
+no `[console:error]`, `[console:warning]`, or `[pageerror]` entries. The two oddities the prior
+capture surfaced are gone, for concrete reasons rather than by hiding them:
+
+- **`[models] failed to load model "/models/arena-champion.glb"`** no longer occurs. The live
+  `game/client/models.js` already maps `arena_champion: null` (procedural-only), so
+  `modelPathFor('arena_champion')` returns `null` and `loadModel(null)` resolves without any
+  network fetch — there is no `.glb` to 404/HTML-fallback into a GLTFLoader parse warning. No code
+  change to `models.js` was needed; the prior warning was emitted by an earlier run captured before
+  that mapping landed.
+- **Repeated `Failed to load resource: 502 (Bad Gateway)`** no longer occurs. These were transient
+  Vite dev-proxy noise from a run whose game server had not finished booting when the page issued
+  its first requests; with the server up before the page loads, the fresh run logs zero 502s.
+
+Root cause of the stale/inconsistent capture: `console.log`
+(`harness/validate/lib/consoleLog.mjs` → `appendFileSync`) and `server.log`
+(`harness/validate/lib/gameProcess.mjs` → `createWriteStream({ flags: 'a' })`) are both opened in
+**append** mode and were never truncated between runs, so they accumulated entries from older,
+pre-fix runs while `findings.md` was regenerated each run from only the current run's console
+entries — hence "None observed" alongside a `console.log` still showing old warnings/502s. Fix
+(in `game/`): **`game/scripts/reset-open-plaza-validation.mjs`** removes these two append-only logs
+before the playthrough, wired as the first step of `validate:open-plaza` in `game/package.json`.
+Every run now writes a `console.log` that reflects only that run, keeping it consistent with
+`findings.md`.
 
 ### Harness-side wiring (outside `game/`, documented per ticket)
 

@@ -28,10 +28,10 @@
     "addsTimeoutMs": 90000,
     "encounterTimeoutMs": 60000
   },
-  "serverPort": 3241,
-  "clientPort": 5284,
+  "serverPort": 3287,
+  "clientPort": 5212,
   "auth": {
-    "username": "playthrough-1781128763718",
+    "username": "playthrough-1781133105463",
     "connected": true,
     "lobbyBrowserVisible": true,
     "harnessPhase": "unknown",
@@ -71,14 +71,14 @@
       "dormant": {
         "encounterPhase": "dormant",
         "encounterLocked": false,
-        "bossEnemyId": "16db9282-9b25-4230-a5e1-caf31f1321e3",
+        "bossEnemyId": "69e809ce-6778-41cd-911b-81d108347dd5",
         "bossHp": 420,
         "liveAddCount": 0
       },
       "active": {
         "encounterPhase": "active",
         "encounterLocked": true,
-        "bossEnemyId": "16db9282-9b25-4230-a5e1-caf31f1321e3",
+        "bossEnemyId": "69e809ce-6778-41cd-911b-81d108347dd5",
         "bossHp": 420,
         "liveAddCount": 1
       },
@@ -91,7 +91,7 @@
       },
       "bossVisualIdentity": {
         "bossType": "arena_champion",
-        "bossEnemyId": "16db9282-9b25-4230-a5e1-caf31f1321e3",
+        "bossEnemyId": "69e809ce-6778-41cd-911b-81d108347dd5",
         "nearestAddType": "grunt",
         "bossDistinctFromAdds": true,
         "bossRenderScale": 3,
@@ -124,20 +124,20 @@
   },
   "cardExercises": {
     "slowBurn": {
-      "targetEnemyId": "165ec049-04b4-45b5-a414-54f0a0a87217",
+      "targetEnemyId": "67141058-da65-479d-97c4-8b5a0583eabb",
       "afterSlow": {
-        "targetEnemyId": "165ec049-04b4-45b5-a414-54f0a0a87217",
+        "targetEnemyId": "67141058-da65-479d-97c4-8b5a0583eabb",
         "found": true,
-        "slowedUntil": 1781128769786,
+        "slowedUntil": 1781133111413,
         "burningUntil": 0,
         "slowActive": true,
         "burnActive": false
       },
       "afterBurn": {
-        "targetEnemyId": "165ec049-04b4-45b5-a414-54f0a0a87217",
+        "targetEnemyId": "67141058-da65-479d-97c4-8b5a0583eabb",
         "found": true,
         "slowedUntil": 0,
-        "burningUntil": 1781128772182,
+        "burningUntil": 1781133113809,
         "slowActive": false,
         "burnActive": true
       },
@@ -149,7 +149,7 @@
         "found": true,
         "hp": 40,
         "slowedUntil": 0,
-        "burningUntil": 1781128775971,
+        "burningUntil": 1781133117663,
         "slowActive": false,
         "burnActive": true
       },
@@ -169,7 +169,7 @@
       "scenario": "magma-windup-ready",
       "duringWindup": {
         "cardUseState": "windup",
-        "cardWindupUntil": 1781128774141,
+        "cardWindupUntil": 1781133115566,
         "cardWindupCardId": "magma_greatsword",
         "inputLocked": true,
         "activatingSlot": true,
@@ -216,7 +216,7 @@
       "extracted": false,
       "suspendedRunSummary": null,
       "layoutSeed": 365288573,
-      "runId": "192f7538-3c11-4315-8ec1-8a0d57dbea94"
+      "runId": "d27b86b0-ec0b-4fc9-a933-683137456524"
     },
     "postDeploy": {
       "hp": 100,
@@ -224,10 +224,10 @@
       "msText": "20/99",
       "hand": [
         {
-          "id": "iron_sword",
-          "type": "weapon",
-          "remainingCharges": 5,
-          "charges": 5
+          "id": "battle_familiar",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
         },
         {
           "id": "flame_blade",
@@ -243,10 +243,10 @@
           "charges": 1
         },
         {
-          "id": "dungeon_drake",
-          "type": "creature",
-          "remainingCharges": 1,
-          "charges": 1
+          "id": "iron_sword",
+          "type": "weapon",
+          "remainingCharges": 5,
+          "charges": 5
         },
         null
       ],
@@ -255,7 +255,7 @@
       "extracted": false,
       "suspendedRunSummary": null,
       "layoutSeed": 365288573,
-      "runId": "05f238fa-3cff-4631-9482-246982b0c80b"
+      "runId": "ce8f036e-3574-470a-9d74-ca34b3d29f72"
     },
     "telepipeVitalsPreserved": true,
     "cardChargesResetOnNewSortie": true,

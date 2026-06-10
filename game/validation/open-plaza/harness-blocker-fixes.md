@@ -29,6 +29,34 @@ this run, so these blockers only surfaced now.
 correct — the trigger scenario already spawns the visual add the `bossDistinctFromAdds` probe
 needs; it simply was not being invoked for this preset. See harness wiring below.)
 
+### Console / resource oddities (sub-ticket 05)
+
+The `## Console / page errors` section above ("None observed") is now accurate against the
+freshly regenerated `console.log` — it contains only `[console:debug]`/`[console:log]` lines, with
+no `[console:error]`, `[console:warning]`, or `[pageerror]` entries. The two oddities the prior
+capture surfaced are gone, for concrete reasons rather than by hiding them:
+
+- **`[models] failed to load model "/models/arena-champion.glb"`** no longer occurs. The live
+  `game/client/models.js` already maps `arena_champion: null` (procedural-only), so
+  `modelPathFor('arena_champion')` returns `null` and `loadModel(null)` resolves without any
+  network fetch — there is no `.glb` to 404/HTML-fallback into a GLTFLoader parse warning. No code
+  change to `models.js` was needed; the prior warning was emitted by an earlier run captured before
+  that mapping landed.
+- **Repeated `Failed to load resource: 502 (Bad Gateway)`** no longer occurs. These were transient
+  Vite dev-proxy noise from a run whose game server had not finished booting when the page issued
+  its first requests; with the server up before the page loads, the fresh run logs zero 502s.
+
+Root cause of the stale/inconsistent capture: `console.log`
+(`harness/validate/lib/consoleLog.mjs` → `appendFileSync`) and `server.log`
+(`harness/validate/lib/gameProcess.mjs` → `createWriteStream({ flags: 'a' })`) are both opened in
+**append** mode and were never truncated between runs, so they accumulated entries from older,
+pre-fix runs while `findings.md` was regenerated each run from only the current run's console
+entries — hence "None observed" alongside a `console.log` still showing old warnings/502s. Fix
+(in `game/`): **`game/scripts/reset-open-plaza-validation.mjs`** removes these two append-only logs
+before the playthrough, wired as the first step of `validate:open-plaza` in `game/package.json`.
+Every run now writes a `console.log` that reflects only that run, keeping it consistent with
+`findings.md`.
+
 ### Harness-side wiring (outside `game/`, documented per ticket)
 
 - **`harness/validate/lib/cardExercise.mjs`**: the slow/burn, heal-cleanse and wind-up card
