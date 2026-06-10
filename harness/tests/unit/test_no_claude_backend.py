@@ -68,17 +68,20 @@ def test_review_primary_is_non_claude_but_fallback_is_claude():
             f"review for {diff!r} should fall back to claude; got {[a.name for a in role.fallbacks]}"
 
 
-def test_recovery_roles_primary_composer_fallback_claude():
-    """repair (self-healing) and split (restructure) keep a non-claude PRIMARY
-    (composer — always-on cost guard) but now fall back to claude so they survive
-    a composer quota outage."""
+def test_recovery_roles_primary_fable_fallback_non_claude():
+    """repair (self-healing) and split (restructure) are OWNER-OPTED (2026-06-10)
+    onto fable-5 @ xhigh as PRIMARY — recovery is rare and gets the strongest
+    reasoning. The fallback must be NON-claude (composer): fable and opus share
+    one Anthropic quota pool, so a claude fallback would be out exactly when the
+    primary is."""
     roster = Roster.load(_ROLES_YAML, None)
     for role_name in ("repair", "split"):
         role = roster.role(role_name)
-        assert "claude" not in role.primary.name.lower(), \
-            f"role '{role_name}' primary is claude: {role.primary.name}"
-        assert any(a.name.startswith("claude/") for a in role.fallbacks), \
-            f"role '{role_name}' should fall back to claude; got {[a.name for a in role.fallbacks]}"
+        assert role.primary.name == "claude/claude-fable-5@xhigh", \
+            f"role '{role_name}' primary should be fable xhigh: {role.primary.name}"
+        assert role.fallbacks and all(
+            not a.name.startswith("claude/") for a in role.fallbacks), \
+            f"role '{role_name}' needs a non-claude fallback; got {[a.name for a in role.fallbacks]}"
 
 
 def test_claude_agent_is_available_for_the_factory():
