@@ -1,0 +1,212 @@
+import { createRequire } from 'node:module';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { generateLayout } from '../dungeon.js';
+import {
+  spawnEnemies,
+  startDungeonRun,
+  removeDeadEnemies,
+  updateScriptedEncounters,
+  gameState,
+  resetGameState,
+  setGameState,
+} from '../index.js';
+import {
+  buildWallColliders,
+  checkWallCollision,
+  getWallColliders,
+  rebuildWallColliders,
+  setGameState as setSimulationGameState,
+} from '../simulation.js';
+import { findPassageIndexFromRoom } from '../scriptedEncounters.js';
+
+const require = createRequire(import.meta.url);
+const {
+  QUEST_DEFS,
+  SCRIPTED_ENCOUNTER_FIXTURE_DEF,
+  getLayoutProfileForQuest,
+} = require('../quests.js');
+
+const FIXTURE_QUEST_ID = 'scripted_encounter_fixture';
+// Seed 1 yields room 0 → room 1 → room 2 along resolved passage indices.
+const SEED = 1;
+
+function buildPassageLockChainFixtureDef(layout) {
+  const passageIndex0 = findPassageIndexFromRoom(layout, 0);
+  const passageIndex1 = findPassageIndexFromRoom(layout, 1);
+  const baseTier = SCRIPTED_ENCOUNTER_FIXTURE_DEF.tiers[1];
+
+  const passageLocks = [];
+  if (passageIndex0 >= 0) {
+    passageLocks.push({
+      afterWave: { roomIndex: 0, waveIndex: 0 },
+      passageIndex: passageIndex0,
+    });
+  }
+  if (passageIndex1 >= 0) {
+    passageLocks.push({
+      afterWave: { roomIndex: 1, waveIndex: 0 },
+      passageIndex: passageIndex1,
+    });
+  }
+
+  return {
+    ...SCRIPTED_ENCOUNTER_FIXTURE_DEF,
+    tiers: {
+      1: {
+        ...baseTier,
+        scriptedEncounters: {
+          ...baseTier.scriptedEncounters,
+          passageLocks,
+        },
+      },
+    },
+  };
+}
+
+function registerPassageLockChainFixture(layout) {
+  QUEST_DEFS[FIXTURE_QUEST_ID] = buildPassageLockChainFixtureDef(layout);
+}
+
+function deployPassageLockChainFixture(seed = SEED) {
+  const layout = generateLayout(seed, getLayoutProfileForQuest(FIXTURE_QUEST_ID, 1));
+  registerPassageLockChainFixture(layout);
+
+  gameState.selectedQuestId = FIXTURE_QUEST_ID;
+  gameState.selectedQuestTier = 1;
+  gameState.layout = layout;
+  gameState.layoutSeed = seed;
+  gameState.enemies = [];
+  gameState.loot = [];
+  gameState.gamePhase = 'playing';
+  gameState.players = {
+    p1: {
+      id: 'p1',
+      x: layout.rooms[0].x,
+      y: 0.5,
+      z: layout.rooms[0].z,
+      rotation: 0,
+      hp: 100,
+      dead: false,
+      extracted: false,
+      ready: true,
+      connected: true,
+      hand: [{
+        id: 'iron_sword',
+        charges: 10,
+        remainingCharges: 4,
+      }],
+    },
+  };
+  setGameState(gameState);
+  setSimulationGameState(gameState);
+  spawnEnemies();
+  startDungeonRun();
+  rebuildWallColliders();
+  return { layout, gameState };
+}
+
+function passageTargetRoom(layout, passageIndex) {
+  const passage = layout.passages[passageIndex];
+  return layout.rooms.find((room) => room.x === passage.x2 && room.z === passage.z2);
+}
+
+function stepToward(fromX, fromZ, toX, toZ, distance = 0.5) {
+  const dx = toX - fromX;
+  const dz = toZ - fromZ;
+  const len = Math.hypot(dx, dz) || 1;
+  return {
+    x: fromX + (dx / len) * distance,
+    z: fromZ + (dz / len) * distance,
+  };
+}
+
+function killScriptedWave(roomIndex, waveIndex) {
+  const roomKey = `room:${roomIndex}`;
+  for (const enemy of [...gameState.enemies]) {
+    if (
+      enemy.scriptedWave?.roomKey === roomKey
+      && enemy.scriptedWave?.waveIndex === waveIndex
+    ) {
+      enemy.hp = 0;
+    }
+  }
+  removeDeadEnemies();
+  rebuildWallColliders();
+}
+
+function enterRoom(player, room) {
+  player.x = room.x;
+  player.z = room.z;
+  updateScriptedEncounters();
+  rebuildWallColliders();
+}
+
+beforeAll(() => {
+  const layout = generateLayout(SEED, getLayoutProfileForQuest(FIXTURE_QUEST_ID, 1));
+  registerPassageLockChainFixture(layout);
+});
+
+afterAll(() => {
+  delete QUEST_DEFS[FIXTURE_QUEST_ID];
+});
+
+describe('chained passage lock progression', () => {
+  beforeEach(() => {
+    resetGameState();
+    setSimulationGameState(gameState);
+  });
+
+  it('walks A → B → end room with two wave-gated passages', () => {
+    const { layout } = deployPassageLockChainFixture();
+    const passageIndex0 = findPassageIndexFromRoom(layout, 0);
+    const passageIndex1 = findPassageIndexFromRoom(layout, 1);
+    expect(passageIndex0).toBeGreaterThanOrEqual(0);
+    expect(passageIndex1).toBeGreaterThanOrEqual(0);
+
+    const roomB = passageTargetRoom(layout, passageIndex0);
+    const endRoom = passageTargetRoom(layout, passageIndex1);
+    expect(roomB).toBe(layout.rooms[1]);
+    expect(endRoom).toBe(layout.rooms[2]);
+
+    expect(gameState.run.passageLocks).toEqual([
+      {
+        passageIndex: passageIndex0,
+        afterWave: { roomIndex: 0, waveIndex: 0 },
+        locked: true,
+      },
+      {
+        passageIndex: passageIndex1,
+        afterWave: { roomIndex: 1, waveIndex: 0 },
+        locked: true,
+      },
+    ]);
+    expect(getWallColliders().length).toBeGreaterThan(buildWallColliders(layout, []).length);
+
+    const startRoom = layout.rooms[0];
+    const towardRoomB = stepToward(startRoom.x, startRoom.z, roomB.x, roomB.z, 9);
+    expect(checkWallCollision(towardRoomB.x, towardRoomB.z, getWallColliders())).toBe(true);
+
+    killScriptedWave(0, 0);
+
+    expect(gameState.run.passageLocks[0].locked).toBe(false);
+    expect(gameState.run.passageLocks[1].locked).toBe(true);
+    expect(checkWallCollision(towardRoomB.x, towardRoomB.z, getWallColliders())).toBe(false);
+
+    const player = gameState.players.p1;
+    enterRoom(player, roomB);
+    expect(gameState.run.scriptedEncounter.rooms['room:1'].waveIndex).toBe(0);
+    expect(gameState.enemies.some((enemy) => enemy.scriptedWave?.roomKey === 'room:1')).toBe(true);
+
+    const towardEndRoom = stepToward(roomB.x, roomB.z, endRoom.x, endRoom.z, 9);
+    expect(checkWallCollision(towardEndRoom.x, towardEndRoom.z, getWallColliders())).toBe(true);
+
+    killScriptedWave(1, 0);
+
+    expect(gameState.run.passageLocks[0].locked).toBe(false);
+    expect(gameState.run.passageLocks[1].locked).toBe(false);
+    expect(checkWallCollision(towardEndRoom.x, towardEndRoom.z, getWallColliders())).toBe(false);
+
+    enterRoom(player, endRoom);
+    expect(gameState.run.scriptedEncounter.rooms['room:2'].started).toBe(false);
+  });
+});

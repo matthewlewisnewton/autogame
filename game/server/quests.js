@@ -687,6 +687,26 @@ const SCRIPTED_ENCOUNTER_FIXTURE_DEF = {
               { spawns: [{ type: 'skirmisher', count: 1 }] },
             ],
           },
+          {
+            roomIndex: 1,
+            waves: [
+              { spawns: [{ type: 'grunt', count: 1 }] },
+            ],
+          },
+          {
+            roomIndex: 2,
+            waves: [],
+          },
+        ],
+        passageLocks: [
+          {
+            afterWave: { roomIndex: 0, waveIndex: 0 },
+            fromRoomIndex: 0,
+          },
+          {
+            afterWave: { roomIndex: 1, waveIndex: 0 },
+            fromRoomIndex: 1,
+          },
         ],
       },
       dialogueBeacons: [

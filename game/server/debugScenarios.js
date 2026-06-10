@@ -130,6 +130,39 @@ function ensurePassageLockFixtureQuest(layout) {
   };
 }
 
+function ensurePassageLockChainFixtureQuest(layout) {
+  ensureScriptedEncounterFixtureQuest();
+  const questId = SCRIPTED_ENCOUNTER_FIXTURE_DEF.id;
+  const passageIndex0 = findPassageIndexFromRoom(layout, 0);
+  const passageIndex1 = findPassageIndexFromRoom(layout, 1);
+  const baseTier = SCRIPTED_ENCOUNTER_FIXTURE_DEF.tiers[1];
+  const passageLocks = [];
+  if (passageIndex0 >= 0) {
+    passageLocks.push({
+      afterWave: { roomIndex: 0, waveIndex: 0 },
+      passageIndex: passageIndex0,
+    });
+  }
+  if (passageIndex1 >= 0) {
+    passageLocks.push({
+      afterWave: { roomIndex: 1, waveIndex: 0 },
+      passageIndex: passageIndex1,
+    });
+  }
+  QUEST_DEFS[questId] = {
+    ...SCRIPTED_ENCOUNTER_FIXTURE_DEF,
+    tiers: {
+      1: {
+        ...baseTier,
+        scriptedEncounters: {
+          ...baseTier.scriptedEncounters,
+          passageLocks,
+        },
+      },
+    },
+  };
+}
+
 function ensureEscortObjectiveFixtureQuest() {
   const questId = ESCORT_OBJECTIVE_FIXTURE_DEF.id;
   if (!QUEST_DEFS[questId]) {
@@ -961,6 +994,58 @@ function applyDebugScenario(socket, name) {
       state.selectedQuestTier = tier;
       applyLayoutForQuest(state, questId, tier);
       ensurePassageLockFixtureQuest(state.layout);
+
+      player.ready = true;
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const startSpawn = firstRoomPosition();
+      player.x = startSpawn.x;
+      player.z = startSpawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      enterPlayingPhase(lobby);
+
+      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+        createDrawDeckFromSelectedDeck(player);
+        initPlayerHand(player);
+        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+        if (!player.pendingSummons) {
+          player.pendingSummons = new Set();
+        }
+      }
+
+      state.enemies = state.enemies || [];
+      state.loot = state.loot || [];
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
+    if (name === 'passage-lock-chain') {
+      // Scripted Encounter Fixture with two chained wave-gated passages (rooms 0 and 1).
+      // Reachable normally by deploying the chained fixture quest tier;
+      // this scenario is a shortcut into the first locked passage with both gates sealed.
+      const questId = SCRIPTED_ENCOUNTER_FIXTURE_DEF.id;
+      const tier = 1;
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+      const profile = getLayoutProfileForQuest(questId, tier);
+      const chainSeed = 1;
+      state.layoutSeed = chainSeed;
+      state.layout = generateLayout(chainSeed, profile);
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      ensurePassageLockChainFixtureQuest(state.layout);
 
       player.ready = true;
       player.hp = MAX_HP;

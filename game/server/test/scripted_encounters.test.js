@@ -84,7 +84,7 @@ describe('scripted encounter quest config', () => {
       SCRIPTED_ENCOUNTER_FIXTURE_DEF.tiers[1].scriptedEncounters,
     );
     expect(isScriptedQuest(quest)).toBe(true);
-    expect(countAuthoredScriptedEnemies(quest)).toBe(3);
+    expect(countAuthoredScriptedEnemies(quest)).toBe(4);
   });
 });
 
@@ -103,7 +103,7 @@ describe('scripted wave sequencing', () => {
     expect(roomState.enemyIds).toHaveLength(2);
     expect(gameState.enemies).toHaveLength(2);
     expect(gameState.enemies.every((enemy) => enemy.type === 'grunt')).toBe(true);
-    expect(gameState.run.objective.totalEnemies).toBe(3);
+    expect(gameState.run.objective.totalEnemies).toBe(4);
     expect(gameState.run.objective.defeatedEnemies).toBe(0);
   });
 
