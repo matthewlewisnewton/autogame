@@ -169,7 +169,7 @@ describe('new card combat helpers', () => {
 
 	it('Cryo Burst freezes enemies in radius', () => {
 		gameState.enemies = [{ id: 'e1', type: 'grunt', x: 2, z: 0, hp: 40 }];
-		const hits = applyFreezeInRadius(0, 0, SUMMON_RADIUS, 2000, CARD_DEFS.frost_nova.damage);
+		const hits = applyFreezeInRadius(0, null, 0, SUMMON_RADIUS, 2000, CARD_DEFS.frost_nova.damage);
 		expect(hits).toHaveLength(1);
 		expect(isEnemyFrozen(gameState.enemies[0])).toBe(true);
 	});
@@ -184,6 +184,7 @@ describe('new card combat helpers', () => {
 		];
 		const hits = applyFreezeInRadius(
 			0,
+			null,
 			0,
 			SUMMON_RADIUS,
 			def.freezeDurationMs,
@@ -200,7 +201,7 @@ describe('new card combat helpers', () => {
 	it('Permafrost Lance freezes enemy in range with its specific radius and damage', () => {
 		gameState.enemies = [{ id: 'e1', type: 'grunt', x: 3, z: 0, hp: 40 }];
 		const def = CARD_DEFS.permafrost_lance;
-		const hits = applyFreezeInRadius(0, 0, def.radius, def.freezeDurationMs, def.damage);
+		const hits = applyFreezeInRadius(0, null, 0, def.radius, def.freezeDurationMs, def.damage);
 		expect(hits).toHaveLength(1);
 		expect(hits[0].enemyId).toBe('e1');
 		expect(gameState.enemies[0].hp).toBe(40 - def.damage);
@@ -279,7 +280,7 @@ describe('new card combat helpers', () => {
 	it('Gravity Well pulls enemies toward the origin', () => {
 		gameState.enemies = [{ id: 'e1', type: 'grunt', x: 8, z: 0, hp: 40 }];
 		const before = gameState.enemies[0].x;
-		pullEnemiesToward(0, 0, CARD_DEFS.gravity_well.pullRadius, CARD_DEFS.gravity_well.pullStrength);
+		pullEnemiesToward(0, null, 0, CARD_DEFS.gravity_well.pullRadius, CARD_DEFS.gravity_well.pullStrength);
 		expect(gameState.enemies[0].x).toBeLessThan(before);
 	});
 
@@ -291,7 +292,7 @@ describe('new card combat helpers', () => {
 		];
 		const edgeBefore = gameState.enemies[0].x;
 		const coreHpBefore = gameState.enemies[1].hp;
-		const { pulled, crushed } = applyEventHorizon(0, 0, CARD_DEFS.event_horizon, 'p1');
+		const { pulled, crushed } = applyEventHorizon(0, null, 0, CARD_DEFS.event_horizon, 'p1');
 		expect(gameState.enemies[0].x).toBeLessThan(edgeBefore);
 		expect(CARD_DEFS.event_horizon.pullStrength).toBeGreaterThan(CARD_DEFS.gravity_well.pullStrength);
 		expect(pulled.length).toBeGreaterThan(0);
@@ -303,7 +304,7 @@ describe('new card combat helpers', () => {
 
 	it('Phase Echo shockwave hits radially on the configured combo count', () => {
 		gameState.enemies = [{ id: 'e1', type: 'grunt', x: 4, z: 0, hp: 40 }];
-		const result = collectRadialHits(0, 0, CARD_DEFS.echo_blade.shockwaveRadius, CARD_DEFS.echo_blade.shockwaveDamage);
+		const result = collectRadialHits(0, null, 0, CARD_DEFS.echo_blade.shockwaveRadius, CARD_DEFS.echo_blade.shockwaveDamage);
 		expect(result.hits).toHaveLength(1);
 		expect(CARD_DEFS.echo_blade.shockwaveEvery).toBe(3);
 	});
@@ -311,7 +312,7 @@ describe('new card combat helpers', () => {
 	it('Resonance Edge inherits buffed shockwave stats and triggers every second hit', () => {
 		gameState.enemies = [{ id: 'e1', type: 'grunt', x: 4, z: 0, hp: 40 }];
 		const def = CARD_DEFS.resonance_edge;
-		const result = collectRadialHits(0, 0, def.shockwaveRadius, def.shockwaveDamage);
+		const result = collectRadialHits(0, null, 0, def.shockwaveRadius, def.shockwaveDamage);
 		expect(result.hits).toHaveLength(1);
 		expect(def).toMatchObject({
 			damage: 23,
@@ -328,7 +329,7 @@ describe('new card combat helpers', () => {
 			{ id: 'e1', type: 'grunt', x: 1, z: 0, hp: 40 },
 			{ id: 'e2', type: 'grunt', x: -2, z: 0, hp: 40 },
 		];
-		const result = collectRadialHits(0, 0, SUMMON_RADIUS, CARD_DEFS.mana_leach.damage, {
+		const result = collectRadialHits(0, null, 0, SUMMON_RADIUS, CARD_DEFS.mana_leach.damage, {
 			magicStoneOnHit: CARD_DEFS.mana_leach.magicStoneOnHit,
 		});
 		addMagicStones(gameState.players.p1, result.magicStonesGained);
@@ -345,7 +346,7 @@ describe('new card combat helpers', () => {
 		const def = CARD_DEFS.soul_drain;
 		expect(def.healOnHit).toBe(12);
 		expect(def.healOnKill).toBe(18);
-		const result = collectRadialHits(0, 0, SUMMON_RADIUS, def.damage, {
+		const result = collectRadialHits(0, null, 0, SUMMON_RADIUS, def.damage, {
 			magicStoneOnHit: def.magicStoneOnHit,
 			healOnHit: def.healOnHit,
 			healOnKill: def.healOnKill,
@@ -389,7 +390,7 @@ describe('new card combat helpers', () => {
 
 	it('Thermal Column radial burst hits enemies behind the caster', () => {
 		gameState.enemies = [{ id: 'e1', type: 'grunt', x: -3, z: 0, hp: 40 }];
-		const result = collectRadialHits(0, 0, CARD_DEFS.inferno_pillar.attackRange, CARD_DEFS.inferno_pillar.damage);
+		const result = collectRadialHits(0, null, 0, CARD_DEFS.inferno_pillar.attackRange, CARD_DEFS.inferno_pillar.damage);
 		expect(result.hits).toHaveLength(1);
 		expect(gameState.enemies[0].hp).toBe(40 - CARD_DEFS.inferno_pillar.damage);
 	});
@@ -545,6 +546,81 @@ describe('new card combat helpers', () => {
 				expect.objectContaining({ enemyId: 'e2' }),
 			]),
 		);
+		expect(gameState._pendingMinionBreaths[0].chainSegments).toEqual([
+			{ from: { x: 0, z: 0 }, to: { x: 6, z: 0 } },
+			{ from: { x: 6, z: 0 }, to: { x: 8, z: 0 } },
+		]);
+	});
+
+	it('Thunderbird chains to an elevated enemy inside the 3D sphere and skips an XZ-near enemy above it', () => {
+		addPlayer('p1', { x: 0, z: 0 });
+		gameState.enemies = [
+			{
+				id: 'e1',
+				type: 'grunt',
+				x: 6,
+				z: 0,
+				hp: 50,
+				state: 'idle',
+				attackState: 'idle',
+				wanderTarget: { x: 6, z: 0 },
+			},
+			{
+				// 3D distance from e1 (floor Y 0.5): √(2² + 3²) ≈ 3.61 ≤ chainRadius (5)
+				id: 'elevated',
+				type: 'grunt',
+				x: 8,
+				y: 3.5,
+				z: 0,
+				hp: 50,
+				state: 'idle',
+				attackState: 'idle',
+				wanderTarget: { x: 8, z: 0 },
+			},
+			{
+				// XZ distance from e1 ≈ 1.12 (inside chainRadius) but 3D ≈ √(0.5² + 10² + 1²) ≈ 10.1,
+				// and still ≈ 7.23 from the elevated enemy after the first hop — never eligible
+				id: 'too-high',
+				type: 'grunt',
+				x: 6.5,
+				y: 10.5,
+				z: 1,
+				hp: 50,
+				state: 'idle',
+				attackState: 'idle',
+				wanderTarget: { x: 6.5, z: 1 },
+			},
+		];
+		gameState.minions = [{
+			id: 'bird',
+			ownerId: 'p1',
+			type: 'thunderbird',
+			x: 0,
+			z: 0,
+			hp: 68,
+			attackRange: 11,
+			attackDamage: 20,
+			chainRadius: 5,
+			maxChainTargets: 2,
+			ttl: 30,
+		}];
+		gameState.run = { status: 'playing' };
+
+		updateMinions();
+		cleanupAfterDamage();
+
+		const byId = (id) => gameState.enemies.find((e) => e.id === id);
+		expect(byId('e1').hp).toBeLessThan(50);
+		expect(byId('elevated').hp).toBeLessThan(50);
+		expect(byId('too-high').hp).toBe(50);
+		expect(gameState._pendingMinionBreaths).toHaveLength(1);
+		expect(gameState._pendingMinionBreaths[0].hits).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ enemyId: 'e1' }),
+				expect.objectContaining({ enemyId: 'elevated' }),
+			]),
+		);
+		expect(gameState._pendingMinionBreaths[0].hits).toHaveLength(2);
 		expect(gameState._pendingMinionBreaths[0].chainSegments).toEqual([
 			{ from: { x: 0, z: 0 }, to: { x: 6, z: 0 } },
 			{ from: { x: 6, z: 0 }, to: { x: 8, z: 0 } },

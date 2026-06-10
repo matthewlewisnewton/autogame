@@ -174,6 +174,43 @@ describe('useKeyItem — field_medic_kit', () => {
 		expect(p3MsAfter).toBeCloseTo(p3MsBefore, 1);
 	});
 
+	it('spherical radius: elevated in-sphere ally healed, XZ-inside out-of-sphere ally not', async () => {
+		const players = await connectThreeAndStartRun();
+
+		const p1 = playerForSocket(players[0].socket);
+		const p2 = playerForSocket(players[1].socket);
+		const p3 = playerForSocket(players[2].socket);
+
+		// p2 is on elevated ground but inside the 5m sphere:
+		// XZ dist 2, Y delta 3 → 3D dist √(4+9) ≈ 3.61 ≤ 5.
+		// p3 is XZ-inside (3m ≤ 5m, so 2D code would heal it) but far above:
+		// Y delta 10 → 3D dist √(9+100) ≈ 10.44 > 5.
+		p1.x = 0; p1.z = 0;
+		p2.x = 2; p2.z = 0; p2.y = p1.y + 3;
+		p3.x = 3; p3.z = 0; p3.y = p1.y + 10;
+
+		const p1HpBefore = 20;
+		const p2HpBefore = 30;
+		const p3HpBefore = 50;
+		p1.hp = p1HpBefore;
+		p2.hp = p2HpBefore;
+		p3.hp = p3HpBefore;
+
+		p1.keyItemCooldownUntil = 0;
+
+		const resultPromise = waitForEvent(players[0].socket, 'keyItemUsed');
+		players[0].socket.emit('useKeyItem', { keyItemId: 'field_medic_kit' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.alliesRestored).toBe(2); // caster + elevated in-sphere ally
+
+		expect(playerForSocket(players[0].socket).hp).toBe(p1HpBefore + 8);
+		expect(playerForSocket(players[1].socket).hp).toBe(p2HpBefore + 8);
+		// XZ-inside but out-of-sphere ally untouched
+		expect(playerForSocket(players[2].socket).hp).toBe(p3HpBefore);
+	});
+
 	it('dead players skipped', async () => {
 		const players = await connectTwoAndStartRun();
 

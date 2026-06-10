@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { KEY_ITEM_DEFS, resetGameState, gameState, updateEnemies, isPlayerConcealed } from '../index.js';
+import { getEntityWorldY } from '../simulation.js';
 import {
 	startTestServer,
 	closeServer,
@@ -92,6 +93,9 @@ describe('useKeyItem — smoke_bomb (socket integration)', () => {
 		expect(player.smokeBombRadius).toBe(def.radius);
 		expect(player.smokeBombX).toBe(5);
 		expect(player.smokeBombZ).toBe(-3);
+		// Caster world Y is recorded at cast time so the zone is a 3D sphere
+		expect(Number.isFinite(player.smokeBombY)).toBe(true);
+		expect(player.smokeBombY).toBe(getEntityWorldY(player));
 		expect(player.keyItemCooldownUntil).toBeGreaterThan(now);
 		expect(persistenceDirtyOnCast).toBe(true);
 

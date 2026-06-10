@@ -1,0 +1,11 @@
+Decomposition complete. I surveyed every `Math.hypot` radius check in `game/server/simulation.js` and its callers before splitting the work. Key findings that shaped the plan: the codebase already has `getEntityWorldY()` and 3D aim helpers (projectiles and storm-eagle minions are already 3D), so the conversion is mechanical; the AoE surface splits cleanly into instant card helpers, persistent area-effect ticks, enemy attack resolution, and defensive zones; and three existing test files call the old 2D helper signatures and must be updated with them.
+
+Created 5 sub-tickets (all `Verification: code` — every criterion is about logic, signatures, and server state):
+
+1. `tickets/374-spherical-3d-aoe-for-all-radius-effects/subtickets/01-spherical-core-instant-aoe/ticket.md` — shared 3D-distance helper + convert `applyFreezeInRadius`, `healPlayersInRadius`, `pullEnemiesToward`, `applyEventHorizon`, `collectRadialHits` and all their callers (frost_nova, glacier_collapse, purifying_pulse, gravity_well, event_horizon, inferno_pillar burst).
+2. `…/subtickets/02-area-effects-cone-spherical/ticket.md` — spawners record `originY`/`dirY`; `updateAreaEffects` (inferno_pillar, dragons_breath, fire_trail, volatile_explosion incl. its minion/player loops) and `collectConeHits` go 3D.
+3. `…/subtickets/03-enemy-aoe-spherical/ticket.md` — enemy symmetry: `isEntityInEnemyAttack` (radial shockwave + cone) and field-medic heal radius become spheres; detection AI explicitly left alone.
+4. `…/subtickets/04-zone-effects-spherical/ticket.md` — barrier_dome block checks and smoke_bomb concealment become spheres, recording cast Y in `keyItemEffects.js`.
+5. `…/subtickets/05-aoe-card-verification-suite/ticket.md` — the ticket's explicit "VERIFY ALL AoE CARDS" deliverable: one suite enumerating all eight named cards plus enemy-side cases, each asserting in-sphere-at-height inclusion and XZ-close-but-out-of-sphere exclusion using real card stats.
+
+Dependency order is 01 → 02 → 03 → 04 → 05 (02 needs 01's `collectRadialHits` signature; 03/04 need 01's exported helper; 05 needs 01–03). There were no prior failed sub-tickets to retire — this is round 1.

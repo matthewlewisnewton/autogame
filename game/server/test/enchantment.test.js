@@ -159,6 +159,95 @@ describe('enchantment cards', () => {
 		expect(gameState.enchantments).toHaveLength(0);
 	});
 
+	it('spawnGroundEnchantment stores the cast origin Y, falling back to floor height', () => {
+		spawnGroundEnchantment(0, 0, CARD_DEFS.spike_trap, 'p1');
+		// No origin Y and no layout → default floor height.
+		expect(gameState.enchantments[0].y).toBe(0.5);
+
+		spawnGroundEnchantment(0, 0, CARD_DEFS.spike_trap, 'p1', 3);
+		expect(gameState.enchantments[1].y).toBe(3);
+	});
+
+	it('spike_trap triggers on an elevated enemy within 3D spherical radius', () => {
+		gameState.enemies.push({
+			id: 'e1',
+			type: 'grunt',
+			x: 0.5,
+			z: 0,
+			y: 2.4, // trap y is 0.5 → dist ≈ √(0.5² + 1.9²) ≈ 1.96 ≤ 2.5
+			hp: 50,
+			attackState: 'idle',
+		});
+
+		spawnGroundEnchantment(0, 0, CARD_DEFS.spike_trap, 'p1');
+		updateEnchantments();
+
+		expect(gameState.enchantments).toHaveLength(0);
+		expect(gameState.enemies[0].hp).toBe(11);
+	});
+
+	it('spike_trap does NOT trigger on an XZ-inside enemy outside the 3D sphere', () => {
+		gameState.enemies.push({
+			id: 'e1',
+			type: 'grunt',
+			x: 0.5,
+			z: 0,
+			y: 5.5, // XZ dist 0.5 but 3D dist ≈ √(0.5² + 5²) ≈ 5.02 > 2.5
+			hp: 50,
+			attackState: 'idle',
+		});
+
+		spawnGroundEnchantment(0, 0, CARD_DEFS.spike_trap, 'p1');
+		gameState._pendingSpikeTrapTriggers = [];
+		updateEnchantments();
+
+		expect(gameState.enchantments).toHaveLength(1);
+		expect(gameState.enchantments[0].armed).toBe(true);
+		expect(gameState.enemies[0].hp).toBe(50);
+		expect(gameState._pendingSpikeTrapTriggers).toHaveLength(0);
+	});
+
+	it('cinder_snare triggers on an elevated enemy within 3D spherical radius', () => {
+		gameState.enemies.push({
+			id: 'e1',
+			type: 'grunt',
+			x: 0.5,
+			z: 0,
+			y: 2.4,
+			hp: 50,
+			attackState: 'idle',
+		});
+
+		spawnGroundEnchantment(0, 0, CARD_DEFS.cinder_snare, 'p1');
+		updateEnchantments();
+
+		expect(gameState.enchantments).toHaveLength(0);
+		expect(gameState.areaEffects).toHaveLength(1);
+		expect(gameState.areaEffects[0].type).toBe('inferno_pillar');
+		expect(gameState.areaEffects[0].originX).toBe(0);
+		expect(gameState.areaEffects[0].originZ).toBe(0);
+	});
+
+	it('cinder_snare does NOT trigger on an XZ-inside enemy outside the 3D sphere', () => {
+		gameState.enemies.push({
+			id: 'e1',
+			type: 'grunt',
+			x: 0.5,
+			z: 0,
+			y: 5.5,
+			hp: 50,
+			attackState: 'idle',
+		});
+
+		spawnGroundEnchantment(0, 0, CARD_DEFS.cinder_snare, 'p1');
+		updateEnchantments();
+
+		expect(gameState.enchantments).toHaveLength(1);
+		expect(gameState.enchantments[0].armed).toBe(true);
+		expect(gameState.areaEffects).toHaveLength(0);
+		expect(gameState.enemies[0].hp).toBe(50);
+	});
+
 	it('mirror_ward reflectRange matches balance target', () => {
 		expect(CARD_DEFS.mirror_ward.reflectRange).toBe(11);
 	});
