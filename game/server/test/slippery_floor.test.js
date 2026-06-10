@@ -244,6 +244,77 @@ describe('applyPlayerMovement() — slippery floors', () => {
     expect(slipperyDrift).toBeGreaterThan(normalDrift);
     expect(normalDrift).toBeCloseTo(0, 5);
   });
+
+  it('post-release coasting speed exceeds normal floor (playthrough momentumAfterRelease probe)', () => {
+    const slipperyState = state;
+    slipperyState.players.p1 = makePlayer({
+      inputActive: true,
+      inputDx: 1,
+      inputDz: 0,
+      lastInputTime: Date.now(),
+    });
+    tickMovement(slipperyState, 12, movementContext);
+    slipperyState.players.p1.inputActive = false;
+    slipperyState.players.p1.lastInputTime = staleInputTime();
+    tickMovement(slipperyState, 5, movementContext);
+    const slipperyCoastSpeed = playerSpeed(slipperyState.players.p1);
+
+    const { state: normalState, movementContext: normalContext } = setupPlayingState(buildSurfaceLayout('normal'));
+    normalState.players.p1 = makePlayer({
+      inputActive: true,
+      inputDx: 1,
+      inputDz: 0,
+      lastInputTime: Date.now(),
+    });
+    tickMovement(normalState, 12, normalContext);
+    normalState.players.p1.inputActive = false;
+    normalState.players.p1.lastInputTime = staleInputTime();
+    tickMovement(normalState, 5, normalContext);
+    const normalCoastSpeed = playerSpeed(normalState.players.p1);
+
+    expect(slipperyCoastSpeed).toBeGreaterThan(normalCoastSpeed);
+    expect(normalCoastSpeed).toBeCloseTo(0, 5);
+  });
+
+  it('coasts on generated ice-cavern layout when movementContext omits dungeonBounds', () => {
+    const layout = generateLayout(42, 'ice-cavern');
+    const iceRoom = layout.rooms.find((r) => r.floorSurface === 'slippery');
+    expect(iceRoom).toBeDefined();
+
+    const iceState = createGameState();
+    iceState.gamePhase = 'playing';
+    iceState.layout = layout;
+    iceState.walkableAABBs = computeWalkableAABBs(layout);
+    setGameState(iceState, {});
+    rebuildWallColliders();
+
+    const strippedContext = {
+      layout,
+      walkableAABBs: iceState.walkableAABBs,
+      colliders: buildMovementContext(iceState).colliders,
+    };
+
+    iceState.players.p1 = makePlayer({
+      x: iceRoom.x,
+      z: iceRoom.z,
+      inputActive: true,
+      inputDx: 1,
+      inputDz: 0,
+      lastInputTime: Date.now(),
+    });
+
+    tickMovement(iceState, 12, strippedContext);
+    const xAfterInput = iceState.players.p1.x;
+    iceState.players.p1.inputActive = false;
+    iceState.players.p1.lastInputTime = staleInputTime();
+    tickMovement(iceState, 5, strippedContext);
+
+    expect(sampleFloorSurface(layout, iceState.players.p1.x, iceState.players.p1.z)).toBe('slippery');
+    expect(iceState.players.p1.x).toBeGreaterThan(xAfterInput);
+    expect(playerSpeed(iceState.players.p1)).toBeGreaterThan(0);
+
+    setGameState(null, null);
+  });
 });
 
 describe('slippery floor — deceleration curve', () => {
