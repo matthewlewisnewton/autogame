@@ -200,6 +200,21 @@ roles:
     prompt_template: harness/prompts/merge_resolve.md
     acceptance: { kind: ok_rc }
     usage_kind: merge_resolve
+  # Post-rebase semantic-conflict fixer: the branch rebased CLEANLY onto main but
+  # the combined tree fails verification. One bounded attempt to fix the
+  # integrated tree in place (preserving both intents) before the merge queue
+  # rejects and the whole passed ticket re-runs from scratch. Same whole-tree
+  # scope rationale as merge_resolve: the tree legitimately contains all of
+  # main's changes; correctness is gated by the mandatory post-fix re-verify.
+  merge_fix:
+    primary: composer_write
+    fallbacks: [claude]
+    timeout_s: 1800
+    out_file: "merge-fix.txt"
+    prompt_template: harness/prompts/merge_fix.md
+    acceptance: { kind: ok_rc }
+    usage_kind: merge_resolve
+    scope: { allow: ["**"], deny: [] }
     # Scope is the WHOLE tree (allow ["**"]), deliberately. This role runs while
     # the worktree is mid-`git merge main`, so the uncommitted state legitimately
     # contains ALL of main's changes — a narrow scope would make scope_audit

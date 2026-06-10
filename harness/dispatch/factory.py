@@ -19,6 +19,7 @@ from harness.dispatch.dispatcher import Dispatcher
 from harness.dispatch.merge_queue import (
     MERGED_UNCLOSED,
     MergeQueue,
+    _default_fix,
     _default_resolve,
     read_pending,
     resolve_pending,
@@ -299,6 +300,10 @@ def build_factory(main_root, *, workers: Optional[int] = None,
         from harness.roles import Roster
         _roster = Roster.load(main_root / "harness" / "roles.yaml", None)
         mq.resolve = lambda h: _default_resolve(main_repo, _roster, h)
+        # Post-rebase semantic-conflict fixer: a passed branch whose clean rebase
+        # breaks verification gets one agent fix attempt (+ mandatory re-verify)
+        # instead of being rejected and re-run from scratch.
+        mq.fix = lambda h: _default_fix(main_repo, _roster, h)
     except Exception as e:
         log(f"[factory] merge_resolve roster unavailable ({e!r}); "
             f"rebase conflicts will reject + requeue as before")

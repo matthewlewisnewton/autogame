@@ -304,6 +304,66 @@ def _abort_merge(wt) -> None:
         pass
 
 
+def _verify_log_tail(wt, *, max_chars: int = 3000) -> str:
+    """Tail of the merge-verify vitest log (written by _default_verify)."""
+    try:
+        text = (Path(wt.root) / "game" / ".merge-verify.log").read_text(errors="replace")
+    except OSError:
+        return "(verify log unavailable)"
+    return text[-max_chars:] if text else "(verify log empty)"
+
+
+def _default_fix(main_repo: Repo, roster, h: WorkerHandle) -> bool:
+    """One bounded attempt to repair a SEMANTIC conflict: the branch rebased
+    cleanly onto main but the combined tree fails verification. Hand the
+    `merge_fix` agent the verify-log tail + the branch's intent, let it edit
+    the integrated tree in place, then commit its edits. Returns True iff the
+    agent was accepted AND actually changed something (a no-op "fix" can't
+    make the re-verify pass, so it's reported as failure and the caller
+    rejects). The caller ALWAYS re-verifies before anything lands on main."""
+    if roster is None:
+        return False
+    wt = h.worktree
+    review = _find_review_md(main_repo.root, h.ticket_name)
+    art = Path(wt.root) / ".merge-fix"
+    try:
+        art.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
+    try:
+        role = roster.role("merge_fix")
+        chain = role.execute(
+            workspace=wt,
+            prompt_vars={
+                "CHANGE_COMMITS": _branch_commit_subjects(wt, main_repo.branch),
+                "REVIEW_FILE": str(review) if review else "(no review.md found)",
+                "VERIFY_LOG": str(Path(wt.root) / "game" / ".merge-verify.log"),
+                "VERIFY_TAIL": _verify_log_tail(wt),
+            },
+            artifacts_dir=art,
+            telemetry=None,
+        )
+    except Exception as e:
+        log(f"[merge] fix: merge_fix agent raised {e!r}")
+        return False
+    if chain.accepted_by is None:
+        log(f"[merge] fix: {h.ticket_id} fixer tier exhausted")
+        return False
+    try:
+        if not wt.run_git("status", "--porcelain").strip():
+            log(f"[merge] fix: {h.ticket_id} agent made no changes")
+            return False
+        wt.run_git("add", "-A", capture=False)
+        wt.run_git("commit", "-m",
+                   "merge-fix: reconcile with main after clean rebase broke verification",
+                   capture=False)
+    except Exception as e:
+        log(f"[merge] fix: committing fix failed ({e!r})")
+        return False
+    log(f"[merge] fix: {h.ticket_id} integrated-tree fix by {chain.accepted_by.name}")
+    return True
+
+
 @dataclass
 class MergeQueue:
     main_repo: Repo
@@ -318,6 +378,12 @@ class MergeQueue:
     # falls straight to reject (the pre-resolver behavior). factory wires the real
     # one (it needs the roster); unit tests inject a fake.
     resolve: Optional[Callable[[WorkerHandle], bool]] = None
+    # Post-rebase SEMANTIC-conflict fixer: the branch rebased cleanly but the
+    # combined tree fails verification. One bounded agent attempt to fix the
+    # integrated tree in place (then mandatory re-verify) before we reject and
+    # throw away a whole passed ticket run. None = reject immediately (the
+    # pre-fixer behavior). factory wires the real one; unit tests inject fakes.
+    fix: Optional[Callable[[WorkerHandle], bool]] = None
     # Called when a PASSED branch fails to integrate (rebase conflict or, the
     # common case, post-rebase verification failure). The dispatcher's breaker
     # uses this to COUNT merge-integration failures — the dominant churn mode the
@@ -392,6 +458,7 @@ class MergeQueue:
              never reaches main. Out of attempts / no resolver → safe reject."""
         verified_against: Optional[str] = None
         integrated_via_resolve = False
+        fix_attempted = False
         for attempt in range(MERGE_FF_ATTEMPTS):
             if integrated_via_resolve:
                 # A prior resolve already merged main into the branch; main has
@@ -414,7 +481,24 @@ class MergeQueue:
             main_head = self._main_head()
             if main_head is None or main_head != verified_against:
                 if not self.verify(h.worktree.root):
-                    return self._reject(h, "post-rebase verification failed")
+                    # The branch integrated cleanly but the COMBINED tree fails —
+                    # a semantic conflict with what landed on main. Before
+                    # throwing away a whole passed ticket run, give the fixer
+                    # agent ONE shot (per merge transaction) at repairing the
+                    # integrated tree, then demand a clean re-verify.
+                    if self.fix is None or fix_attempted:
+                        return self._reject(h, "post-rebase verification failed")
+                    fix_attempted = True
+                    log(f"[merge] {h.ticket_id} post-rebase verification failed — "
+                        f"attempting integrated-tree fix (preserving passed work)")
+                    emit_progress_event("merge_fix_start", {"ticket": h.ticket_id})
+                    if not self.fix(h):
+                        return self._reject(
+                            h, "post-rebase verification failed; fix attempt unsuccessful")
+                    if not self.verify(h.worktree.root):
+                        return self._reject(
+                            h, "post-rebase verification failed even after fix")
+                    emit_progress_event("merge_fixed", {"ticket": h.ticket_id})
                 verified_against = main_head
             if self.merge(h):
                 self._close_merged(h)

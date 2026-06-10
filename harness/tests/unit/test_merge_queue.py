@@ -538,3 +538,66 @@ def test_default_merge_ff_genuine_non_ff_still_fails():
     repo = _FfRepo(["fatal: Not possible to fast-forward, aborting."] * 3)
     assert mqmod._default_merge_ff(repo, _handle("t1")) is False
     assert repo.merges == 1               # no pointless retry for a real non-ff
+
+
+# --- post-rebase verification fixer ------------------------------------- #
+def _mq_with_fix(queue, *, verify_results, fix_result):
+    """MergeQueue whose verify returns scripted results and whose fix is a fake."""
+    calls = {"verify": 0, "fix": 0, "merge": 0}
+    results = list(verify_results)
+
+    def _v(root):
+        calls["verify"] += 1
+        return results.pop(0) if results else True
+
+    def _f(h):
+        calls["fix"] += 1
+        return fix_result
+
+    mq = MergeQueue(
+        main_repo=_HeadRepo(["sha1", "sha1", "sha1"]), queue=queue,
+        rebase=lambda h: True,
+        verify=_v,
+        merge=lambda h: (calls.__setitem__("merge", calls["merge"] + 1) or True),
+        fix=_f,
+    )
+    return mq, calls
+
+
+def test_verify_failure_fixed_then_merges():
+    q = FakeQueue()
+    mq, calls = _mq_with_fix(q, verify_results=[False, True], fix_result=True)
+    mq.enqueue(_handle("t1"), record=False)
+    mq.drain_one()
+    assert q.closed == ["t1"] and q.requeued == []   # work preserved, landed
+    assert calls["fix"] == 1
+    assert calls["verify"] == 2                      # failed, fixed, re-verified
+    assert calls["merge"] == 1
+
+
+def test_verify_failure_fix_unsuccessful_rejects():
+    q = FakeQueue()
+    mq, calls = _mq_with_fix(q, verify_results=[False], fix_result=False)
+    mq.enqueue(_handle("t1"), record=False)
+    mq.drain_one()
+    assert q.closed == [] and q.requeued == ["t1"]
+    assert calls["fix"] == 1
+    assert calls["merge"] == 0                       # never reached the ff
+
+
+def test_verify_still_failing_after_fix_rejects_without_second_fix():
+    q = FakeQueue()
+    mq, calls = _mq_with_fix(q, verify_results=[False, False], fix_result=True)
+    mq.enqueue(_handle("t1"), record=False)
+    mq.drain_one()
+    assert q.requeued == ["t1"]
+    assert calls["fix"] == 1                         # one bounded attempt only
+    assert calls["merge"] == 0
+
+
+def test_no_fix_wired_keeps_old_reject_behavior():
+    q = FakeQueue()
+    mq, calls = _mq(q, verify=False)
+    mq.enqueue(_handle("t1"))
+    mq.drain_one()
+    assert q.requeued == ["t1"]
