@@ -871,8 +871,7 @@ function applyDebugScenario(socket, name) {
         || !state.run?.encounter) {
         return { ok: false, reason: 'Requires arena_trials Tier 2 stage-boss run' };
       }
-      const bossId = state.run.encounter.bossEnemyId;
-      if (!areAllNonBossEnemiesDefeated(state, bossId)) {
+      if (liveArenaTrialsAdds(state).length > 0) {
         return { ok: false, reason: 'Adds must be cleared before boss approach' };
       }
       if (state.run.encounter.phase !== 'dormant') {
@@ -3670,13 +3669,16 @@ function nudgeDebugBossApproachPlayers(state) {
   if (!state || state.gamePhase !== 'playing' || !state.run?.encounter) return;
   if (!isEncounterDormant(state.run)) return;
   const bossId = state.run.encounter.bossEnemyId;
-  if (!bossId || !areAllNonBossEnemiesDefeated(state, bossId)) return;
   const anchor = resolveEncounterAnchor(state.run, state);
   if (!anchor) return;
 
   const now = Date.now();
   for (const player of Object.values(state.players)) {
     if (!player || !BOSS_APPROACH_NUDGE_SCENARIOS.has(player.debugScenario)) continue;
+    const addsCleared = player.debugScenario === 'arena-trials-boss-approach'
+      ? liveArenaTrialsAdds(state).length === 0
+      : bossId && areAllNonBossEnemiesDefeated(state, bossId);
+    if (!addsCleared) continue;
     if (player.debugScenarioNudgeAfter && now < player.debugScenarioNudgeAfter) continue;
     const dx = anchor.x - player.x;
     const dz = anchor.z - player.z;
