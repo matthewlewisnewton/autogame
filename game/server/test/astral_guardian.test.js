@@ -12,7 +12,7 @@ import {
 	spawnEnemy,
 	updateMinions,
 } from '../index.js';
-import { ATTACK_RANGE, DETECTION_RADIUS, TICK_RATE } from '../config.js';
+import { ATTACK_RANGE, DETECTION_RADIUS } from '../config.js';
 import {
 	connectAndJoinLobby,
 	startTestServer,
@@ -156,7 +156,7 @@ describe('Astral Guardian gameplay', () => {
 			hp: 60,
 			maxHp: 60,
 			attackDamage: 11,
-			attackIntervalMs: Math.floor(1000 / TICK_RATE),
+			attackIntervalMs: 1500,
 		});
 		expect(cardUsed.minionId).toBe(ownerMinions[0].id);
 	});
@@ -177,7 +177,7 @@ describe('Astral Guardian gameplay', () => {
 			maxHp: 60,
 			ttl: 30,
 			attackDamage: 11,
-			attackIntervalMs: Math.floor(1000 / TICK_RATE),
+			attackIntervalMs: 1500,
 			lastAttackAt: 0,
 		});
 

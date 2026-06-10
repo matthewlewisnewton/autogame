@@ -336,3 +336,70 @@ describe('Bulkhead Mauler (bulkhead_mauler)', () => {
 		expect(gameState.enemies[0].hp).toBe(191);
 	});
 });
+
+describe('Astral Guardian (astral_guardian)', () => {
+	beforeEach(resetState);
+
+	it('defines 1500ms attack interval in card definition', () => {
+		expect(CARD_DEFS.astral_guardian.attackIntervalMs).toBe(1500);
+	});
+
+	it('attacks at most once per attackIntervalMs window', () => {
+		gameState.enemies.push({
+			id: 'e1',
+			x: 2,
+			z: 0,
+			hp: 200,
+			state: 'idle',
+			wanderTarget: { x: 2, z: 0 },
+		});
+		gameState.minions.push({
+			id: 'guardian-1',
+			ownerId: 'p1',
+			type: 'astral_guardian',
+			x: 0,
+			z: 0,
+			hp: 60,
+			ttl: 30,
+			attackDamage: 11,
+			lastAttackAt: 0,
+		});
+
+		updateMinions();
+		expect(gameState.enemies[0].hp).toBe(189);
+
+		// Second tick within the interval should not produce another attack
+		updateMinions();
+		expect(gameState.enemies[0].hp).toBe(189);
+	});
+
+	it('uses default 1500ms interval when attackIntervalMs is missing from minion', () => {
+		gameState.enemies.push({
+			id: 'e1',
+			x: 2,
+			z: 0,
+			hp: 200,
+			state: 'idle',
+			wanderTarget: { x: 2, z: 0 },
+		});
+		gameState.minions.push({
+			id: 'guardian-2',
+			ownerId: 'p1',
+			type: 'aegis_sentinel',
+			x: 0,
+			z: 0,
+			hp: 160,
+			ttl: 30,
+			attackDamage: 0,
+			lastAttackAt: 0,
+		});
+
+		updateMinions();
+		// aegis_sentinel has attackDamage 0, so hp should not change
+		expect(gameState.enemies[0].hp).toBe(200);
+
+		// Second tick should also not attack (interval gate)
+		updateMinions();
+		expect(gameState.enemies[0].hp).toBe(200);
+	});
+});
