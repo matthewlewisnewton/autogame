@@ -2804,10 +2804,20 @@ function setCardSlotHint(hintEl, hintLabel, hintMarkup) {
 	hintEl.innerHTML = hintMarkup;
 }
 
+function slotSignature(card, playerMs, layoutMode) {
+	if (!card) {
+		return `__empty__|${layoutMode}`;
+	}
+	const cardCost = getCardMagicStoneCost(card);
+	const affordable = !(cardCost > 0 && playerMs < cardCost);
+	return `${card.id}|${card.remainingCharges}|${card.charges}|${card.activeMinionId ?? ''}|${card.isEvolved}|${card.isDesperation}|${card.isEcho}|${card.grind}|${card.specialEffect ?? ''}|${affordable}|${layoutMode}`;
+}
+
 function renderHand() {
 	const playerMs = (gameState && myId && gameState.players[myId])
 		? gameState.players[myId].magicStones
 		: 0;
+	const layoutMode = resolveHandLayoutMode();
 
 	clearAdjacentCardHighlights();
 	const handHasDesperation = hand.some((card) => card && card.isDesperation);
@@ -2823,6 +2833,22 @@ function renderHand() {
 		const slot = getCardSlotEl(i);
 		if (!slot) continue;
 		const card = hand[i];
+		const sig = slotSignature(card, playerMs, layoutMode);
+		const cachedSig = slot.dataset._sig;
+
+		// Always update charge-pct so burning-creature meters animate
+		if (card) {
+			slot.style.setProperty('--charge-pct', String(getCardChargePercent(card)));
+		} else {
+			slot.style.removeProperty('--charge-pct');
+		}
+
+		// Skip full DOM rebuild when signature is unchanged
+		if (cachedSig === sig) {
+			continue;
+		}
+		slot.dataset._sig = sig;
+
 		const hintLabel = inputHints.hintLabels?.[i]
 			?? (inputHints.mode === 'keyboard' ? `Key ${inputHints.hints[i]}` : `Gamepad ${inputHints.hints[i]}`);
 		const { meter, hint, content } = getCardSlotParts(slot);
@@ -2832,7 +2858,6 @@ function renderHand() {
 			meter.hidden = false;
 			const style = CARD_ACCENT_STYLE[card.id] || CARD_TYPE_STYLE[card.type] || CARD_TYPE_STYLE.weapon;
 			slot.style.setProperty('--slot-color', style.color);
-			slot.style.setProperty('--charge-pct', String(getCardChargePercent(card)));
 			const evolvedBadge = card.isEvolved ? `<span class="evolved-badge">${THEME.progression.ascended}</span>` : '';
 			const grindBadge = (card.grind || 0) > 0 ? `<span class="grind-badge">+${card.grind}</span>` : '';
 			const effectText = (!card.isDesperation && card.specialEffect)
@@ -2884,9 +2909,8 @@ function renderHand() {
 			}
 		} else {
 			slot.style.removeProperty('--slot-color');
-			slot.style.removeProperty('--charge-pct');
 			meter.hidden = true;
-			const n64Layout = resolveHandLayoutMode() === 'n64';
+			const n64Layout = layoutMode === 'n64';
 			if (n64Layout) {
 				setCardSlotHint(hint, hintLabel, inputHints.hints[i]);
 			} else {
