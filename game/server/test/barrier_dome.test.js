@@ -82,6 +82,7 @@ describe('useKeyItem — barrier_dome (socket integration)', () => {
 		expect(player.barrierDomeUntil).toBeGreaterThan(now);
 		expect(player.barrierDomeRadius).toBe(def.radius);
 		expect(player.barrierDomeX).toBe(4);
+		expect(player.barrierDomeY).toBe(player.y ?? 0.5);
 		expect(player.barrierDomeZ).toBe(-2);
 		expect(player.keyItemCooldownUntil).toBeGreaterThan(now);
 
@@ -257,5 +258,55 @@ describe('damagePlayer — barrier dome blocks ranged/projectile', () => {
 		damagePlayer('v', 30, { ranged: true, attackerEnemyId: 'e1' });
 
 		expect(victim.hp).toBe(70);
+	});
+
+	it('elevated victim inside the 3D sphere at same XZ is protected from outside ranged damage', () => {
+		const victim = makePlayer('v', {
+			x: 0, z: 0, y: 2, hp: 100,
+			barrierDomeUntil: FUTURE(), barrierDomeRadius: 3,
+			barrierDomeX: 0, barrierDomeY: 0.5, barrierDomeZ: 0,
+		});
+		setupState({
+			players: { v: victim },
+			enemies: [{ id: 'e1', x: 10, z: 0, y: 0, hp: 50 }],
+		});
+
+		const result = damagePlayer('v', 30, { ranged: true, attackerEnemyId: 'e1' });
+
+		expect(result).toBeNull();
+		expect(victim.hp).toBe(100);
+	});
+
+	it('elevated victim beyond vertical radius at same XZ is not protected', () => {
+		const victim = makePlayer('v', {
+			x: 0, z: 0, y: 4, hp: 100,
+			barrierDomeUntil: FUTURE(), barrierDomeRadius: 3,
+			barrierDomeX: 0, barrierDomeY: 0.5, barrierDomeZ: 0,
+		});
+		setupState({
+			players: { v: victim },
+			enemies: [{ id: 'e1', x: 10, z: 0, y: 0, hp: 50 }],
+		});
+
+		damagePlayer('v', 30, { ranged: true, attackerEnemyId: 'e1' });
+
+		expect(victim.hp).toBe(70);
+	});
+
+	it('attacker elevated outside vertical radius at same XZ is treated as outside (damage blocked)', () => {
+		const victim = makePlayer('v', {
+			x: 0, z: 0, y: 0.5, hp: 100,
+			barrierDomeUntil: FUTURE(), barrierDomeRadius: 3,
+			barrierDomeX: 0, barrierDomeY: 0.5, barrierDomeZ: 0,
+		});
+		setupState({
+			players: { v: victim },
+			enemies: [{ id: 'e1', x: 0, z: 0, y: 4, hp: 50 }],
+		});
+
+		const result = damagePlayer('v', 30, { ranged: true, attackerEnemyId: 'e1' });
+
+		expect(result).toBeNull();
+		expect(victim.hp).toBe(100);
 	});
 });

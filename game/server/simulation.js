@@ -2483,13 +2483,26 @@ function damagePlayer(playerId, amount, options = {}) {
       if (!dome.barrierDomeUntil || now >= dome.barrierDomeUntil) continue;
       const radius = dome.barrierDomeRadius || 0;
       if (radius <= 0) continue;
-      const victimDist = Math.hypot(player.x - dome.barrierDomeX, player.z - dome.barrierDomeZ);
+      const domeY = Number.isFinite(dome.barrierDomeY)
+        ? dome.barrierDomeY
+        : resolveRadialOriginY(dome.barrierDomeX, dome.barrierDomeZ, {});
+      const victimDist = distance3D(dome.barrierDomeX, domeY, dome.barrierDomeZ, player);
       if (victimDist > radius) continue; // victim not inside this dome
       // Victim is inside an active dome. Block unless the attacker is also inside
       // it (outside→inside is blocked; inside→inside is not). Unknown attacker
       // position is treated as outside and blocked.
       if (attackerPos) {
-        const attackerDist = Math.hypot(attackerPos.x - dome.barrierDomeX, attackerPos.z - dome.barrierDomeZ);
+        let attackerEntity = attackerPos;
+        if (options.attackerEnemyId) {
+          const enemy = findEnemyById(options.attackerEnemyId);
+          if (enemy) attackerEntity = enemy;
+        } else if (options.attackerId && _gameState.minions) {
+          const minion = _gameState.minions.find(
+            (m) => m.id === options.attackerId && m.hp > 0
+          );
+          if (minion) attackerEntity = minion;
+        }
+        const attackerDist = distance3D(dome.barrierDomeX, domeY, dome.barrierDomeZ, attackerEntity);
         if (attackerDist <= radius) continue; // attacker inside same dome → not blocked
       }
       return null; // fully blocked

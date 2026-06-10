@@ -155,6 +155,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.barrierDomeUntil = now + durationMs;
       player.barrierDomeRadius = radius;
       player.barrierDomeX = player.x;
+      player.barrierDomeY = getEntityWorldY(player);
       player.barrierDomeZ = player.z;
       player.keyItemCooldownUntil = now + (def.cooldownMs || 14000);
       player.persistenceDirty = true;
