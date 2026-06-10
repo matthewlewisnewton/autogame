@@ -1407,6 +1407,65 @@ describe('renderHand()', () => {
 		expect(slot.classList.contains('empty')).toBe(true);
 		expect(slot.querySelector('.card-name')).toBeNull();
 	});
+
+	it('skips DOM rebuild when slot signature is unchanged', async () => {
+		await import('../main.js');
+
+		resetHandState();
+		hand[0] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 };
+
+		window.__setGameState({
+			players: { player1: { magicStones: 90 } },
+			gamePhase: 'playing',
+		}, 'player1');
+
+		window.renderHand();
+		const slot = document.querySelector('.card-slot[data-slot-index="0"]');
+		const content = slot.querySelector('.card-slot-content');
+		const childCountAfterFirst = content.childNodes.length;
+
+		// Second call with identical state — signature should match, skipping DOM rebuild
+		window.renderHand();
+		expect(content.childNodes.length).toBe(childCountAfterFirst);
+	});
+
+	it('still updates --charge-pct on consecutive calls with same card', async () => {
+		await import('../main.js');
+
+		resetHandState();
+		const burningCard = {
+			id: 'dungeon_drake',
+			name: 'Vault Wyrm',
+			type: 'creature',
+			charges: 1,
+			remainingCharges: 0,
+			activeMinionId: 'minion-1',
+			burnMaxTtl: 30,
+		};
+		hand[0] = burningCard;
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			minions: [{ id: 'minion-1', ownerId: 'player1', ttl: 30, hp: 50 }],
+			players: { player1: { magicStones: 0 } },
+		}, 'player1');
+
+		window.renderHand();
+		const slot = document.querySelector('.card-slot[data-slot-index="0"]');
+		const chargePct1 = slot.style.getPropertyValue('--charge-pct');
+		expect(chargePct1).toBe('100');
+
+		// Mutate minion TTL via __setGameState — structural signature stays the same
+		// (activeMinionId unchanged) but --charge-pct should still update because
+		// it's updated before the skip guard in renderHand()
+		window.__setGameState({
+			gamePhase: 'playing',
+			minions: [{ id: 'minion-1', ownerId: 'player1', ttl: 15, hp: 50 }],
+			players: { player1: { magicStones: 0 } },
+		}, 'player1');
+		window.renderHand();
+		expect(slot.style.getPropertyValue('--charge-pct')).toBe('50');
+	});
 });
 
 // ── playSound / mute toggle ──
