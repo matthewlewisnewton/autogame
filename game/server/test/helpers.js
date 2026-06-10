@@ -67,6 +67,24 @@ export function waitForStateUpdateWithRun(socket, timeout = 10000) {
 	});
 }
 
+/** Ignore lobby tick snapshots until player currency meets the threshold. */
+export function waitForStateUpdateWithPlayerCurrency(socket, minCurrency, timeout = 10000) {
+	return new Promise((resolve, reject) => {
+		const timer = setTimeout(
+			() => reject(new Error(`Timed out waiting for stateUpdate with currency >= ${minCurrency}`)),
+			timeout,
+		);
+		function onStateUpdate(data) {
+			const currency = data?.players?.[socket._playerId]?.currency;
+			if (currency == null || currency < minCurrency) return;
+			clearTimeout(timer);
+			socket.off('stateUpdate', onStateUpdate);
+			resolve(data);
+		}
+		socket.on('stateUpdate', onStateUpdate);
+	});
+}
+
 export function testGameState() {
 	const { getPrimaryLobbyStateForTests } = require('../lobbies.js');
 	return getPrimaryLobbyStateForTests();

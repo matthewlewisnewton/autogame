@@ -28,6 +28,7 @@ import {
 	connectClient,
 	waitForEvent,
 	waitForStateUpdateWithRun,
+	waitForStateUpdateWithPlayerCurrency,
 	lobbyStateForSocket,
 	playerForSocket,
 	testGameState,
@@ -1830,7 +1831,7 @@ describe('debugScenario — hat-shop-currency', () => {
 		const player = playerForSocket(socket);
 		player.currency = 0;
 
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const stateUpdatePromise = waitForStateUpdateWithPlayerCurrency(socket, APPEARANCE_CHANGE_COST);
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'hat-shop-currency' });
 		const [result, snapshot] = await Promise.all([debugResultPromise, stateUpdatePromise]);
