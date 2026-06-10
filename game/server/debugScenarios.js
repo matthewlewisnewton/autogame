@@ -1012,6 +1012,28 @@ function applyDebugScenario(socket, name) {
       return finishStageBossDebugScenario(lobby, state, player, name);
     }
 
+    if (name === 'arena-trials-telepipe-ready') {
+      // arena_trials Tier 2 deploy with a Telepipe in hand for the open-plaza telepipe
+      // harness exercises. Mirrors canyon-descent-telepipe-ready (same vitals/charge
+      // setup) but anchored to the arena_trials quest / arena-trials-tier-2 deploy.
+      // Reachable normally by purchasing Telepipe from the shop before deploying Tier 2.
+      setupArenaTrialsTier2StageBossDebug(lobby, state, player);
+      const telepipeDef = CARD_DEFS.telepipe;
+      const replaceSlot = player.hand.findIndex((c) => c);
+      if (telepipeDef && replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'telepipe',
+          name: telepipeDef.name,
+          type: telepipeDef.type,
+          charges: 1,
+          remainingCharges: 1,
+          magicStoneCost: telepipeDef.magicStoneCost || 0,
+          effect: 'telepipe',
+        };
+      }
+      return finishStageBossDebugScenario(lobby, state, player, name);
+    }
+
     if (name === 'stage-boss-dormant') {
       // arena_trials Tier 2 stage_boss encounter left dormant for QA.
       // Reachable normally by unlocking Arena Trials Tier 2 and deploying.
@@ -1130,6 +1152,47 @@ function applyDebugScenario(socket, name) {
       player.z = anchor.z;
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       player.debugScenarioNudgeAfter = Date.now() + 1500;
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'arena-trials-encounter-trigger') {
+      // Debug QA: activate the dormant arena_champion after arena-trials-boss-approach
+      // without keyboard walking across the open plaza. Same transition is reachable by
+      // walking into the encounter trigger in normal play. Mirrors
+      // canyon-descent-encounter-trigger.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'arena_trials'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires arena_trials Tier 2 stage-boss run' };
+      }
+      const bossId = state.run.encounter.bossEnemyId;
+      for (const enemy of state.enemies || []) {
+        if (enemy.id !== bossId) enemy.hp = 0;
+      }
+      state.enemies = (state.enemies || []).filter((e) => e.hp > 0);
+      syncRunObjectiveToEnemies();
+      const boss = state.enemies.find((e) => e.id === bossId);
+      if (!boss || boss.type !== 'arena_champion') {
+        return { ok: false, reason: 'Arena champion not found' };
+      }
+      player.debugScenarioNudgeAfter = 0;
+      repositionNearEnemy(player, boss, ENCOUNTER_TRIGGER_RADIUS - 1);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      if (isEncounterDormant(state.run)) {
+        activateEncounter(state.run);
+      }
+      if (!state.run.encounter.locked) {
+        lockEncounter(state.run);
+      }
+      // Harness bossDistinctFromAdds probe needs a live non-boss enemy beside the
+      // active arena_champion (adds are cleared before activation in normal play).
+      const visualAdd = spawnEnemy(boss.x + 2.5, boss.z, 'grunt');
+      visualAdd.hp = 1;
+      visualAdd.y = resolveFloorY(sampleFloorY(state.layout, visualAdd.x, visualAdd.z));
+      visualAdd.wanderTarget = { x: visualAdd.x, z: visualAdd.z };
       broadcastLobbyUpdate(lobby);
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return { ok: true, scenario: name };
