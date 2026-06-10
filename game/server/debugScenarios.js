@@ -1003,6 +1003,44 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
+    if (name === 'training-caverns-encounter-trigger') {
+      // Debug QA: activate the dormant annex_overseer after boss-approach without
+      // keyboard walking across the vault. Same transition is reachable by walking
+      // into the encounter trigger in normal play.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'training_caverns'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires training_caverns Tier 2 stage-boss run' };
+      }
+      const bossId = state.run.encounter.bossEnemyId;
+      for (const enemy of state.enemies || []) {
+        if (enemy.id !== bossId) enemy.hp = 0;
+      }
+      state.enemies = (state.enemies || []).filter((e) => e.hp > 0);
+      syncRunObjectiveToEnemies();
+      const boss = state.enemies.find((e) => e.id === bossId);
+      if (!boss || boss.type !== 'annex_overseer') {
+        return { ok: false, reason: 'Annex overseer boss not found' };
+      }
+      player.debugScenarioNudgeAfter = 0;
+      repositionNearEnemy(player, boss, ENCOUNTER_TRIGGER_RADIUS - 1);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      if (isEncounterDormant(state.run)) {
+        activateEncounter(state.run);
+      }
+      if (!state.run.encounter.locked) {
+        lockEncounter(state.run);
+      }
+      const visualAdd = spawnEnemy(boss.x + 2.5, boss.z, 'grunt');
+      visualAdd.hp = 1;
+      visualAdd.y = resolveFloorY(sampleFloorY(state.layout, visualAdd.x, visualAdd.z));
+      visualAdd.wanderTarget = { x: visualAdd.x, z: visualAdd.z };
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
     if (name === 'training-caverns-boss-low-hp') {
       // Training Caverns Tier 2 annex_overseer beside the player at 1 HP for fast
       // harness victory. Reachable normally by clearing adds and engaging the boss;
@@ -4731,6 +4769,28 @@ const BOSS_APPROACH_NUDGE_SCENARIOS = new Set([
 ]);
 
 /**
+ * Debug-only: after encounter activation, spawn a nearby grunt so harness
+ * bossVisualIdentity probes can compare boss vs add scale (adds are cleared on
+ * activation in normal play). Gated on an active boss-approach debug scenario.
+ */
+function spawnHarnessBossVisualAddIfNeeded(gameState, boss) {
+  if (process.env.ALLOW_DEBUG_SCENARIOS !== '1' || !boss || !gameState?.layout) return;
+  if (boss.type !== 'annex_overseer') return;
+  const hasApproachPlayer = Object.values(gameState.players || {}).some(
+    (player) => player && BOSS_APPROACH_NUDGE_SCENARIOS.has(player.debugScenario),
+  );
+  if (!hasApproachPlayer) return;
+  const hasLiveAdd = (gameState.enemies || []).some(
+    (enemy) => enemy.hp > 0 && enemy.id !== boss.id && enemy.type !== boss.type,
+  );
+  if (hasLiveAdd) return;
+  const visualAdd = spawnEnemy(boss.x + 2.5, boss.z, 'grunt');
+  visualAdd.hp = 1;
+  visualAdd.y = resolveFloorY(sampleFloorY(gameState.layout, visualAdd.x, visualAdd.z));
+  visualAdd.wanderTarget = { x: visualAdd.x, z: visualAdd.z };
+}
+
+/**
  * Debug-only: while a boss-approach scenario is active, inch the player toward
  * the encounter anchor each tick so headless harness walks can enter the trigger radius.
  * Nudging is deferred briefly after setup so dormant probes can read stable state.
@@ -4770,4 +4830,5 @@ module.exports = {
   setCallbacks,
   applyDebugScenario,
   nudgeDebugBossApproachPlayers,
+  spawnHarnessBossVisualAddIfNeeded,
 };

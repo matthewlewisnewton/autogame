@@ -362,6 +362,7 @@ const keyItemEffects = require('./keyItemEffects');
 // Debug-scenario setup lives in its own module; wired up via setCallbacks()
 // below once io, the index.js-local helpers it needs, and DEBUG_SCENARIOS exist.
 const debugScenarios = require('./debugScenarios');
+const { registerEncounterActivationHook } = require('./encounters');
 
 const _lobbyContextStack = [];
 
@@ -604,6 +605,7 @@ const DEBUG_SCENARIOS = new Set([
   'training-caverns-telepipe-ready',
   'training-caverns-near-adds',
   'training-caverns-boss-approach',
+  'training-caverns-encounter-trigger',
   'training-caverns-boss-low-hp',
   'crystal-rescue-tier-2',
   'canyon-descent-tier-2',
@@ -664,6 +666,7 @@ debugScenarios.setCallbacks({
   emitQuestPayloadToLobby,
   DEBUG_SCENARIOS,
 });
+registerEncounterActivationHook(debugScenarios.spawnHarnessBossVisualAddIfNeeded);
 
 // Helper: build a compact player list for lobbyUpdate payloads
 function lobbyPlayerList(state) {
@@ -813,6 +816,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'training-caverns-telepipe-ready',
   'training-caverns-near-adds',
   'training-caverns-boss-approach',
+  'training-caverns-encounter-trigger',
   'training-caverns-boss-low-hp',
   'crystal-rescue-tier-2',
   'canyon-descent-tier-2',

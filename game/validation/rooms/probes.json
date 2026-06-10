@@ -2,16 +2,61 @@
   "dormant": {
     "encounterPhase": "dormant",
     "encounterLocked": false,
-    "bossEnemyId": "e8a52661-2d38-4fce-8010-3e63bf7d93e6",
+    "bossEnemyId": "4b4ba0a4-0e79-4437-bb6d-c3ee9cfbe788",
     "bossHp": 320,
     "liveAddCount": 0
   },
   "active": {
     "encounterPhase": "active",
     "encounterLocked": true,
-    "bossEnemyId": "e8a52661-2d38-4fce-8010-3e63bf7d93e6",
+    "bossEnemyId": "4b4ba0a4-0e79-4437-bb6d-c3ee9cfbe788",
     "bossHp": 320,
-    "liveAddCount": 0
+    "liveAddCount": 1
+  },
+  "bossEncounterUi": {
+    "hudVisible": true,
+    "bossName": "Annex Overseer",
+    "hpFillWidthPct": 100,
+    "encounterLocked": true,
+    "encounterPhase": "active"
+  },
+  "bossVisualIdentity": {
+    "bossType": "annex_overseer",
+    "bossEnemyId": "4b4ba0a4-0e79-4437-bb6d-c3ee9cfbe788",
+    "nearestAddType": "grunt",
+    "bossDistinctFromAdds": true,
+    "bossRenderScale": 2.4000000953674316,
+    "addRenderScale": 1.0250146946789052
+  },
+  "floorAlignment": {
+    "levelEntry": {
+      "playerY": 0.5,
+      "floorY": 0.5,
+      "delta": 0,
+      "layoutProfile": "crowded",
+      "band": "vault-entry"
+    },
+    "midCombat": {
+      "playerY": 0.5,
+      "floorY": 0.5,
+      "delta": 0,
+      "layoutProfile": "crowded",
+      "band": "vault-entry"
+    },
+    "bossDormant": {
+      "playerY": 0.5,
+      "floorY": 0.5,
+      "delta": 0,
+      "layoutProfile": "crowded",
+      "band": "vault-entry"
+    },
+    "bossActive": {
+      "playerY": 0.5,
+      "floorY": 0.5,
+      "delta": 0,
+      "layoutProfile": "crowded",
+      "band": null
+    }
   },
   "afterBoss": {
     "runStatus": "victory",
@@ -24,5 +69,141 @@
     "runObjectiveComplete": true,
     "bossDefeated": true,
     "lastRunSummaryStatus": "victory"
+  },
+  "cardExercises": {
+    "slowBurn": {
+      "targetEnemyId": "71fe6838-3a92-4f56-aaff-f5777f891bba",
+      "afterSlow": {
+        "targetEnemyId": "71fe6838-3a92-4f56-aaff-f5777f891bba",
+        "found": true,
+        "slowedUntil": 1781130521719,
+        "burningUntil": 0,
+        "slowActive": true,
+        "burnActive": false
+      },
+      "afterBurn": {
+        "targetEnemyId": "71fe6838-3a92-4f56-aaff-f5777f891bba",
+        "found": true,
+        "slowedUntil": 0,
+        "burningUntil": 1781130524174,
+        "slowActive": false,
+        "burnActive": true
+      },
+      "screenshot": "game/validation/rooms/08-slow-burn-mutual-exclusive.png",
+      "slowBurnMutuallyExclusive": true
+    },
+    "purifyingPulse": {
+      "preCast": {
+        "found": true,
+        "hp": 40,
+        "slowedUntil": 0,
+        "burningUntil": 1781130528017,
+        "slowActive": false,
+        "burnActive": true
+      },
+      "postCast": {
+        "found": true,
+        "hp": 60,
+        "slowedUntil": 0,
+        "burningUntil": 0,
+        "slowActive": false,
+        "burnActive": false
+      },
+      "healCleanseApplied": true,
+      "screenshot": "game/validation/rooms/09-purifying-pulse.png"
+    },
+    "windup": {
+      "cardId": "magma_greatsword",
+      "scenario": "magma-windup-ready",
+      "duringWindup": {
+        "cardUseState": "windup",
+        "cardWindupUntil": 1781130526154,
+        "cardWindupCardId": "magma_greatsword",
+        "inputLocked": true,
+        "activatingSlot": true,
+        "windupIndicatorWidth": 0,
+        "telegraphVisible": true
+      },
+      "domProbe": {
+        "inputLocked": true,
+        "activatingSlot": true,
+        "windupIndicatorWidth": 0,
+        "telegraphVisible": true
+      },
+      "windupTelegraphActive": true,
+      "screenshot": "game/validation/rooms/10-windup-charge.png"
+    }
+  },
+  "roomsTelepipe": {
+    "preSuspend": {
+      "hp": 100,
+      "magicStones": 25.80500000000165,
+      "msText": "25/99",
+      "hand": [
+        {
+          "id": "telepipe",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        null,
+        null,
+        null,
+        {
+          "id": "dungeon_drake",
+          "type": "creature",
+          "remainingCharges": 0,
+          "charges": 1
+        },
+        null
+      ],
+      "phase": "playing",
+      "runStatus": "playing",
+      "extracted": false,
+      "suspendedRunSummary": null,
+      "layoutSeed": 352369971,
+      "runId": "a5777f95-dd3d-4eed-94f8-30cf2f2ca78c"
+    },
+    "postDeploy": {
+      "hp": 100,
+      "magicStones": 26.235000000001566,
+      "msText": "26/99",
+      "hand": [
+        {
+          "id": "battle_familiar",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        {
+          "id": "battle_familiar",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        null,
+        {
+          "id": "flame_blade",
+          "type": "weapon",
+          "remainingCharges": 2,
+          "charges": 2
+        },
+        {
+          "id": "dungeon_drake",
+          "type": "creature",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        null
+      ],
+      "phase": "playing",
+      "runStatus": "playing",
+      "extracted": false,
+      "suspendedRunSummary": null,
+      "layoutSeed": 352369971,
+      "runId": "d63edef4-33d2-4b6a-8052-3222f98c5d7f"
+    },
+    "telepipeVitalsPreserved": true,
+    "cardChargesResetOnNewSortie": true
   }
 }
