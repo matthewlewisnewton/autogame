@@ -96,29 +96,48 @@ import { MODEL_REGISTRY, loadModel, modelPathFor } from './models.js';
 import { getCardDef } from './cards.js';
 import { getAccentHex } from './cardRenderers.js';
 import eventsCatalog from '../shared/events.json' with { type: 'json' };
+import { syncMeshMap, disposeStaleMeshes, disposeOne, disposeMeshMap } from './renderer/meshSync.js';
+import {
+	getScene,
+	setScene,
+	playersMeshes,
+	playerShadows,
+	playerNameplates,
+	enemiesMeshes,
+	enemyHealthBars,
+	enemyShieldBars,
+	enemyHitboxMeshes,
+	enemyShadows,
+	telegraphMeshes,
+	minionTelegraphMeshes,
+	enemyLockOnRings,
+	variantMarkerMeshes,
+	frenziedTelegraphMeshes,
+	enemySlowMarkers,
+	playerSlowMarkers,
+	enemyBurnMarkers,
+	playerBurnMarkers,
+	minionsMeshes,
+	minionShadows,
+	spikeTrapMeshes,
+	lootMeshes,
+	iceBallMeshes,
+} from './renderer/rendererState.js';
+
+// Re-export the relocated helpers + scene accessor so existing importers that
+// reference them from './renderer.js' keep working unchanged.
+export { syncMeshMap, disposeStaleMeshes, disposeOne, disposeMeshMap, getScene };
 
 const { clientToServer: CLIENT_TO_SERVER } = eventsCatalog;
 
 // ── Three.js scene references ──
+// Shared keyed mesh-map stores + the scene accessor now live in
+// ./renderer/rendererState.js so the per-domain sync modules read/mutate the
+// same references; they are imported above. Scene-local rendering state that is
+// not shared (camera/renderer/clock, nameplate offsets, card-windup markers,
+// phase-step targeting, etc.) stays here.
 let scene, camera, renderer, clock;
-const playersMeshes = {};
-const playerShadows = {}; // flying player id → ground shadow decal (no entry for grounded players)
-const playerNameplates = {}; // playerId → THREE.Sprite (username label)
 const NAMEPLATE_OFFSET_Y = 1.0; // Units above avatar group Y position
-const enemiesMeshes = {};
-const enemyHealthBars = {}; // enemy id → health bar mesh
-const enemyShieldBars = {}; // enemy id → shield absorb bar mesh
-const enemyHitboxMeshes = {}; // enemy id → pulsing hitbox group
-const enemyShadows = {}; // flying enemy id → ground shadow decal (no entry for grounded enemies)
-const telegraphMeshes = {}; // enemy id → warning ring mesh (ground circle during windup)
-const minionTelegraphMeshes = {}; // minion id → beam telegraph during windup
-const enemyLockOnRings = {}; // enemy id → lock-on reticle ring
-const variantMarkerMeshes = {}; // enemy id → floating badge for variant ("elite") enemies
-const frenziedTelegraphMeshes = {}; // enemy id → pulsing red ring (pre-enrage telegraph)
-const enemySlowMarkers = {}; // enemy id → icy ground ring shown while slowed
-const playerSlowMarkers = {}; // player id → icy ground ring shown while slowed
-const enemyBurnMarkers = {}; // enemy id → flickering flame shown while burning
-const playerBurnMarkers = {}; // player id → flickering flame shown while burning
 const playerCardWindupMarkers = {}; // player id → ground ring during card wind-up
 const playerCardWindupFlashing = new Set(); // player ids showing card-windup emissive
 
@@ -129,18 +148,12 @@ const PHASE_STEP_RANGE = 6; // metres — must match server KEY_ITEM_DEFS.phase_
 let phaseStepTargetId = null;
 let phaseStepAllyRing = null;
 const windupFlashing = new Set(); // enemy ids currently showing windup emissive
-const minionsMeshes = {};
-const minionShadows = {}; // flying minion id → ground shadow decal (no entry for grounded minions)
-/** Persistent ground-hazard meshes for armed spike_trap enchantments, keyed by enc.id. */
-const spikeTrapMeshes = {};
 /** First-seen minion ids — avoids re-playing spawn scale-in after resync/reconnect. */
 const seenMinionIds = new Set();
 /** Minion id → performance.now() when scale-in began (cleared once settled). */
 const minionSpawnTimes = {};
 /** Minion id → target uniform scale while scale-in is active. */
 const minionBaseScales = {};
-const lootMeshes = {};
-const iceBallMeshes = {}; // ice-ball projectile id → giant icy sphere mesh (glacial thrower)
 let telepipeMesh = null; // Group: cylinder + 2 torus rings + particle children
 const telepipeParticles = []; // pool of rising particle spheres for the portal column
 let telepipeShimmerPhase = 0; // accumulated phase for emissive oscillation
@@ -1187,17 +1200,7 @@ function refreshLockOnInfoPanel() {
 	});
 }
 
-/**
- * Get the current scene.
- * @returns {THREE.Scene|null}
- */
-export function getScene() {
-	// Check test-scene override first (set via window.__setScene in tests)
-	if (typeof window !== 'undefined' && window.___test_scene) {
-		return window.___test_scene;
-	}
-	return scene;
-}
+// getScene() moved to ./renderer/rendererState.js (imported + re-exported above).
 
 /**
  * Get the camera.
@@ -1543,6 +1546,7 @@ export function initScene(layout, spawnPos) {
 
 	// Scene
 	scene = new THREE.Scene();
+	setScene(scene); // share the live scene with rendererState.js (getScene() consumers)
 	scene.background = new THREE.Color(DEFAULT_SCENE_BACKGROUND);
 
 	// Camera
@@ -5830,88 +5834,9 @@ export function updateAttackEffects() {
 	}
 }
 
-// ── Mesh disposal helpers ──
-
-/**
- * Remove and optionally dispose a single mesh from a mesh map.
- * @param {Object} map
- * @param {string} id
- * @param {THREE.Scene} targetScene
- * @param {boolean} [skipDispose]
- */
-export function disposeOne(map, id, targetScene, skipDispose) {
-	const mesh = map[id];
-	if (!mesh) return;
-	if (targetScene) targetScene.remove(mesh);
-	if (!skipDispose) {
-		if (mesh.traverse) {
-			mesh.traverse((child) => {
-				if (child.geometry) child.geometry.dispose();
-				if (child.material) child.material.dispose();
-			});
-		} else {
-			if (mesh.geometry) mesh.geometry.dispose();
-			if (mesh.material) mesh.material.dispose();
-		}
-	}
-	delete map[id];
-}
-
-/**
- * Iterate a mesh map, remove each mesh from the scene, optionally dispose, and clear.
- * @param {Object} map
- * @param {THREE.Scene} targetScene
- * @param {boolean} [skipDispose]
- */
-export function disposeMeshMap(map, targetScene, skipDispose) {
-	for (const id of Object.keys(map)) {
-		disposeOne(map, id, targetScene, skipDispose);
-	}
-}
-
-/**
- * Find and dispose meshes in a map whose ids are no longer present in currentIds.
- * @param {Object} map
- * @param {Set<string>} currentIds
- * @param {THREE.Scene} targetScene
- */
-export function disposeStaleMeshes(map, currentIds, targetScene) {
-	for (const id of Object.keys(map)) {
-		if (!currentIds.has(id)) {
-			disposeOne(map, id, targetScene);
-		}
-	}
-}
-
-/**
- * Generic keyed-mesh-map reconcile: for each item create-if-missing (adding the
- * new mesh to the scene and storing it in `map`), run `update(mesh, item)` for
- * every item, then dispose meshes whose id has left `items` via
- * disposeStaleMeshes. Encapsulates the create/update/disposeStale pattern that
- * is otherwise inlined across animate().
- * @param {Object} map - id → mesh store, mutated in place
- * @param {Array} items - current snapshot records
- * @param {Object} handlers
- * @param {(item) => string} [handlers.key] - item → id (defaults to item.id)
- * @param {(item) => THREE.Object3D} handlers.create - build a mesh for a new id
- * @param {(mesh, item) => void} handlers.update - update an existing/created mesh
- * @param {THREE.Scene} [targetScene=scene] - scene to add/remove meshes from
- */
-export function syncMeshMap(map, items, { key = (item) => item.id, create, update }, targetScene = scene) {
-	const currentIds = new Set();
-	for (const item of items) {
-		const id = key(item);
-		currentIds.add(id);
-		let mesh = map[id];
-		if (!mesh) {
-			mesh = create(item);
-			targetScene.add(mesh);
-			map[id] = mesh;
-		}
-		update(mesh, item);
-	}
-	disposeStaleMeshes(map, currentIds, targetScene);
-}
+// ── Mesh disposal + sync helpers ──
+// disposeOne / disposeMeshMap / disposeStaleMeshes / syncMeshMap moved verbatim
+// to ./renderer/meshSync.js (imported + re-exported near the top of this file).
 
 // ── Loot mesh sync & animation ──
 
