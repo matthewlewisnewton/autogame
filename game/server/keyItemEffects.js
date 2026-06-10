@@ -27,6 +27,7 @@ const {
   ENTITY_RADIUS,
   PLAYER_RADIUS,
   healPlayer,
+  getEntityWorldY,
 } = require('./simulation');
 const {
   sampleFloorY,
@@ -104,12 +105,13 @@ function handleUseKeyItem(socket, state, lobby, data) {
       const healRadius = def.healRadius != null ? def.healRadius : 5;
       const hpRestore = def.hpRestore != null ? def.hpRestore : 8;
       const casterX = player.x;
+      const casterY = getEntityWorldY(player);
       const casterZ = player.z;
       let alliesHealed = 0;
 
       for (const p of Object.values(state.players)) {
         if (!p || p.dead || p.extracted) continue;
-        const dist = Math.hypot(p.x - casterX, p.z - casterZ);
+        const dist = Math.hypot(p.x - casterX, getEntityWorldY(p) - casterY, p.z - casterZ);
         if (dist <= healRadius) {
           healPlayer(p.id, hpRestore);
           alliesHealed++;

@@ -52,6 +52,7 @@ const {
   clearPlayerCardCommitment,
   healPlayer,
   healPlayersInRadius,
+  getEntityWorldY,
   spawnGroundEnchantment,
   armSelfEnchantment,
   countGroundEnchantmentsForPlayer,
@@ -207,10 +208,12 @@ function applyAstralShieldCast(ctx) {
   const summonDamage = handCard.echoDamage != null
     ? handCard.echoDamage
     : scaledGrindStat(cardDef.damage || 0, grind, data.cardId);
+  const originY = getEntityWorldY({ ...player, x: originX, z: originZ });
   const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, summonDamage, {
     magicStoneOnHit: cardDef.magicStoneOnHit,
     magicStoneOnKill: cardDef.magicStoneOnKill,
     attackerId: socket.playerId,
+    originY,
   });
   const hits = radial.hits;
   const appliedMagicStones = addMagicStones(player, radial.magicStonesGained);
@@ -339,6 +342,10 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       : precomputed.handCard;
     const originX = fromWindup ? options.originX : precomputed.originX;
     const originZ = fromWindup ? options.originZ : precomputed.originZ;
+    const radialCaster = fromWindup
+      ? { ...player, x: originX, z: originZ }
+      : player;
+    const originY = getEntityWorldY(radialCaster);
 
     // ── Weapon branch (forward cone attack) ──
     if (cardDef.type === 'weapon') {
@@ -480,7 +487,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
             originZ,
             cardDef.shockwaveRadius || SUMMON_RADIUS,
             cardDef.shockwaveDamage || damage,
-            { attackerId: socket.playerId }
+            { attackerId: socket.playerId, originY }
           );
           shockwaveHits = shockwave.hits;
         }
@@ -639,7 +646,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
             originZ,
             SUMMON_RADIUS,
             fallbackDamage,
-            { attackerId: socket.playerId }
+            { attackerId: socket.playerId, originY }
           );
           cleanupAfterDamage();
           replaceConsumedCard(player, data.slotIndex, handCard);
@@ -743,7 +750,8 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           radius,
           freezeDurationMs,
           cardDef.damage || 0,
-          cardDef.frozenBonusDamage || 0
+          cardDef.frozenBonusDamage || 0,
+          { originY }
         );
         cleanupAfterDamage();
 
@@ -808,7 +816,8 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           originX,
           originZ,
           radius,
-          cardDef.healAmount || 0
+          cardDef.healAmount || 0,
+          { originY }
         );
 
         consumeSpellSlot();
@@ -829,7 +838,13 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
 
       if (cardDef.effect === 'gravity_well') {
         const radius = cardDef.pullRadius || SUMMON_RADIUS;
-        const pulled = pullEnemiesToward(originX, originZ, radius, cardDef.pullStrength || 4);
+        const pulled = pullEnemiesToward(
+          originX,
+          originZ,
+          radius,
+          cardDef.pullStrength || 4,
+          { originY }
+        );
 
         consumeSpellSlot();
 
@@ -853,7 +868,8 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           originX,
           originZ,
           cardDef,
-          socket.playerId
+          socket.playerId,
+          { originY }
         );
         cleanupAfterDamage();
 
@@ -924,7 +940,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           originZ,
           range,
           cardDef.damage || 12,
-          { attackerId: socket.playerId }
+          { attackerId: socket.playerId, originY }
         );
         spawnInfernoPillarEffect(originX, originZ, cardDef, socket.playerId);
         cleanupAfterDamage();
@@ -1133,6 +1149,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
         healOnHit: cardDef.healOnHit,
         healOnKill: cardDef.healOnKill,
         attackerId: socket.playerId,
+        originY,
       });
       const hits = radial.hits;
       const appliedMagicStones = addMagicStones(player, radial.magicStonesGained);
