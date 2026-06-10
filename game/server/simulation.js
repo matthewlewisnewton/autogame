@@ -1268,11 +1268,12 @@ function clearNegativeStatuses(entity) {
   entity.debuffs = [];
 }
 
-function healPlayersInRadius(originX, originZ, radius, healAmount) {
+function healPlayersInRadius(originX, originZ, radius, healAmount, options = {}) {
+  const originY = resolveRadialOriginY(originX, originZ, options);
   const healedTargets = [];
   for (const [playerId, player] of Object.entries(_gameState.players)) {
     if (!player || player.dead || player.extracted) continue;
-    if (Math.hypot(player.x - originX, player.z - originZ) > radius) continue;
+    if (distance3D(originX, originY, originZ, player) > radius) continue;
     const hpGained = healPlayer(playerId, healAmount);
     clearNegativeStatuses(player);
     if (hpGained > 0) {
@@ -1302,6 +1303,20 @@ function getEntityWorldY(entity) {
     return resolveFloorY(sampleFloorY(layout, entity.x, entity.z));
   }
   return resolveFloorY(DEFAULT_FLOOR_Y);
+}
+
+function distance3D(originX, originY, originZ, entity) {
+  const targetY = getEntityWorldY(entity);
+  return Math.hypot(entity.x - originX, targetY - originY, entity.z - originZ);
+}
+
+function resolveRadialOriginY(originX, originZ, options = {}) {
+  if (Number.isFinite(options.originY)) return options.originY;
+  const layout = _gameState && _gameState.layout;
+  if (layout) {
+    return resolveFloorY(sampleFloorY(layout, originX, originZ));
+  }
+  return 0;
 }
 
 function computeAimDirection3D(from, to) {
@@ -1396,10 +1411,10 @@ function collectRadialHits(originX, originZ, radius, damage, options = {}) {
   const healOnHit = options.healOnHit || 0;
   const healOnKill = options.healOnKill || 0;
   const attackerId = options.attackerId;
+  const originY = resolveRadialOriginY(originX, originZ, options);
 
   for (const enemy of _gameState.enemies) {
-    const dist = Math.hypot(enemy.x - originX, enemy.z - originZ);
-    if (dist > radius) continue;
+    if (distance3D(originX, originY, originZ, enemy) > radius) continue;
 
     if (attackerId) enemy.lastDamagedBy = attackerId;
     const { killed } = damageEnemy(enemy, damage);
@@ -1787,14 +1802,14 @@ function collectReturningProjectileHits(originX, originZ, dirX, dirZ, range, dam
   return { hits, magicStonesGained };
 }
 
-function applyFreezeInRadius(originX, originZ, radius, durationMs, damage = 0, frozenBonusDamage = 0) {
+function applyFreezeInRadius(originX, originZ, radius, durationMs, damage = 0, frozenBonusDamage = 0, options = {}) {
   const now = Date.now();
   const frozenUntil = now + durationMs;
   const hits = [];
+  const originY = resolveRadialOriginY(originX, originZ, options);
 
   for (const enemy of _gameState.enemies) {
-    const dist = Math.hypot(enemy.x - originX, enemy.z - originZ);
-    if (dist > radius) continue;
+    if (distance3D(originX, originY, originZ, enemy) > radius) continue;
     const wasFrozen = enemy.frozenUntil != null && enemy.frozenUntil > now;
     let hitDamage = damage;
     if (wasFrozen && frozenBonusDamage > 0) {
@@ -3455,6 +3470,7 @@ module.exports = {
 
   // Card combat helpers
   getEntityWorldY,
+  distance3D,
   computeAimDirection3D,
   collectConeHits,
   collectRadialHits,
