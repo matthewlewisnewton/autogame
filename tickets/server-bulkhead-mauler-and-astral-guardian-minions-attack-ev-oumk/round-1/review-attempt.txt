@@ -1,0 +1,27 @@
+## Review complete
+
+**VERDICT: FAIL**
+
+Written to `round-1/review.md`, `round-1/gaps.md`, and `round-1/nits.md`.
+
+### Runtime
+Game capture is healthy: `metrics.json` has `ok: true`, empty `pageerrors`, no fatal console errors. Smoke flow (auth → lobby → gameplay → dodge) completed.
+
+### What passed
+The **bulkhead_mauler** fix is solid:
+- 1500ms `lastAttackAt` / `attackIntervalMs` gating in `simulation.js`
+- `attackIntervalMs: 1500` in `cardStats.json`
+- Updated tests plus a double-tick regression test
+- Stops ~20 CARD_USED broadcasts/sec per mauler
+
+### Blocking gap
+The top-level ticket also requires **guardian-type minions** (`astral_guardian`, `aegis_sentinel`) to attack at **≥1000ms**, not every tick. Only sub-ticket `01-mauler-attack-interval` landed. Guardians still default to `Math.floor(1000 / TICK_RATE)` (~50ms) via:
+- `cardEffects.js` spawn default
+- `progression.js` `CARD_STAT_OVERLAY.astral_guardian`
+- Missing `attackIntervalMs` in `cardStats.json` for guardian entries
+- `simulation.js` guardian-branch fallback
+
+`astral_guardian` still deals **11 dmg × 20/s** in melee range.
+
+### Next round
+`gaps.md` has two actionable items: fix astral guardian interval end-to-end, and align aegis_sentinel spawn defaults for consistency.

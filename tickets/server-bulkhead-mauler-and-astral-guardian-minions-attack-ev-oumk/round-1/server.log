@@ -1,0 +1,14 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/server-bulkhead-mauler-and-astral-guardian-minions-attack-ev-oumk/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/server-bulkhead-mauler-and-astral-guardian-minions-attack-ev-oumk/game/data
+Server listening on port 3004
+Player connected: socket=zhdXTMDVFqL0YR_SAAAB, playerId=5b3d553c-0c17-4d64-84e5-a118eb8d7477
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=xJGuBJpemYFx1NbOAAAD, playerId=1b40eb3c-d858-457f-9b4a-410dc8a49530
+[loot] spawned id=0629d27e-aeb8-453a-9df2-f03752ed4b65 value=12
+Player disconnected: zhdXTMDVFqL0YR_SAAAB
+Player disconnected: xJGuBJpemYFx1NbOAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

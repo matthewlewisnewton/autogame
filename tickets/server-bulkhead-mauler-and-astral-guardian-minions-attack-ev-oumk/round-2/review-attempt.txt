@@ -1,0 +1,25 @@
+## Review complete
+
+Holistic review written to `tickets/server-bulkhead-mauler-and-astral-guardian-minions-attack-ev-oumk/round-2/review.md`.
+
+### Runtime health
+- `metrics.json`: `ok: true`, empty `pageerrors`
+- `console.log`: no `pageerror` or `[fatal]` lines (benign Vite/409 noise only)
+- Game loads and plays through the smoke capture
+
+### Acceptance criteria
+| Criterion | Status |
+|-----------|--------|
+| Mauler attacks at >=1000ms interval | **Met** — 1500ms gate in `simulation.js`, `cardStats.json`, tests |
+| Guardian-type minions attack at >=1000ms interval | **Met** — round-2 commit `ae108bdb` fixes the gap that caused round-1 FAIL |
+| CARD_USED breath events at most once per attack | **Met** — mauler breaths gated inside interval; guardians don't emit breath events |
+| Minion tests updated/passing | **Met** — 1862 tests in harness coverage, 2911 in full quick run |
+
+### Verdict: **PASS**
+
+Round-1 failed because only the mauler sub-ticket landed. Round-2 adds the guardian interval fix (cardStats, removed one-tick overlay, `cardEffects`/`simulation` defaults, updated tests).
+
+### Files written
+- `round-2/review.md` — full assessment
+- `round-2/nits.md` — two non-blocking follow-ups (mauler spawn path consistency, aegis_sentinel interval assertion)
+- No `gaps.md` (PASS — no blocking gaps)

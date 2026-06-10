@@ -1,0 +1,13 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Done. Here's the sub-ticket state:
+
+**Sub-tickets:**
+- `subtickets/01-mauler-attack-interval/` — **.passed** (committed 7aaa8882, review confirmed satisfied)
+- `subtickets/02-guardian-default-interval/` — **deleted** (empty folder, never implemented)
+- `subtickets/03-guardian-attack-interval/` — **new**, closes both review gaps:
+  - Adds `"attackIntervalMs": 1500` to `astral_guardian` and `aegis_sentinel` in `cardStats.json`
+  - Removes the one-tick `CARD_STAT_OVERLAY.astral_guardian` in `progression.js`
+  - Changes the generic spawn default in `cardEffects.js` from `Math.floor(1000 / TICK_RATE)` to `1500`
+  - Changes the guardian-branch fallback in `simulation.js` from one-tick to `1500`
+  - Updates `astral_guardian.test.js` with correct interval expectations and a double-tick regression test
+  - Verification: **code**

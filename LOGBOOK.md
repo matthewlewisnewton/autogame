@@ -5960,3 +5960,26 @@ PASS. The changed live code is scoped to validation harness support, debug-only 
 ## Remaining gaps
 
 None.
+
+## v0.341 — Server: bulkhead_mauler and astral guardian minions attack every tick; mauler broadcasts CARD_USED 20x/sec  (2026-06-09 20:54:01)
+
+- Guardian spawn via `applyAstralShieldCast` explicitly sets `attackIntervalMs` and `lastAttackAt: 0` on the minion object (stronger than mauler's generic creature spawn path).
+
+## Test & coverage
+
+- Changed server files exercised by `creature_minions.test.js` (bulkhead mauler) and `astral_guardian.test.js` (guardian interval).
+- `aegis_sentinel.test.js` continues to pass; taunt behavior unchanged.
+- Harness coverage completed without failures on changed paths.
+
+## Debug scenarios
+
+No new or modified `?debugScenario=` shortcuts in this ticket.
+
+## Remaining gaps
+
+None. Round-1 blocking gaps (guardian per-tick melee and incomplete ticket scope) are resolved in commit `ae108bdb`.
+
+## Nits (non-blocking)
+
+See `nits.md` for follow-up polish on spawn-path consistency and test coverage for `aegis_sentinel` interval inheritance.
+
