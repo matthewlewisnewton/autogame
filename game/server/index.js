@@ -317,6 +317,7 @@ const {
   updateSurviveSpawns,
   updateScriptedEncounters,
   tickEscort,
+  tickCollectItemsExtraction,
   updateQuestDialogueRoomEntry,
   updateEncounterTriggers,
   updateQuestScriptTriggers,
@@ -559,6 +560,7 @@ const DEBUG_SCENARIOS = new Set([
   'frost-crossing-frostmaw',
   'training-caverns-tier-1',
   'crystal-rescue-tier-1',
+  'crystal-rescue-extraction-phase',
   'annex-escort-tier-1',
   'scripted-wave-combat',
   'passage-lock-gated',
@@ -829,6 +831,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'frost-crossing-frostmaw',
   'training-caverns-tier-1',
   'crystal-rescue-tier-1',
+  'crystal-rescue-extraction-phase',
   'annex-escort-tier-1',
 ]);
 
@@ -1497,6 +1500,7 @@ function runGameLoopTick() {
           updateSurviveSpawns();
           updateScriptedEncounters();
           tickEscort(state);
+          tickCollectItemsExtraction(state);
 
           const now = Date.now();
           processPassiveDraws(now);
@@ -1855,6 +1859,7 @@ if (typeof module !== 'undefined' && module.exports) {
     startDungeonRun,
     recordEnemyDefeated,
     recordCrystalCollected,
+    tickCollectItemsExtraction,
     isRunObjectiveComplete,
     getEnemyCardDrop,
     recordEnemyCardDrop,

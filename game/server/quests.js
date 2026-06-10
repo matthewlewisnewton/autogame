@@ -400,6 +400,13 @@ const QUEST_DEFS = {
             },
           ],
         },
+        finalAmbush: {
+          spawns: [
+            { type: 'skirmisher', count: 2 },
+            { type: 'grunt', count: 1 },
+          ],
+        },
+        extractionDestination: { roomRole: 'start' },
         dialogueBeacons: [
           {
             beaconId: 'prism_first',
@@ -420,7 +427,19 @@ const QUEST_DEFS = {
             trigger: 'onCrystalCollected',
             crystalIndex: 3,
             speaker: 'Lattice Custodian Mira',
-            line: 'All prisms accounted for. Extraction channel is open.',
+            line: 'Final prism locked — lattice swarms are converging on your position.',
+          },
+          {
+            beaconId: 'prism_extraction_start',
+            trigger: 'onExtractionStart',
+            speaker: 'Lattice Custodian Mira',
+            line: 'Ambush broken. Fall back to the entry dock — I will hold the channel open.',
+          },
+          {
+            beaconId: 'prism_extraction_dock',
+            trigger: 'onExtractionComplete',
+            speaker: 'Lattice Custodian Mira',
+            line: 'Entry dock secured. Telepipe is hot — step through on my mark.',
           },
         ],
         signatureCardId: 'mana_prism',
@@ -445,11 +464,15 @@ const QUEST_DEFS = {
           },
           {
             trigger: { itemCollected: 3 },
-            text: 'Final prism secured. All signatures accounted for.',
+            text: 'Final prism secured — brace for a lattice ambush at your position.',
+          },
+          {
+            trigger: 'extraction_start',
+            text: 'Ambush cleared. Get back to the entry dock before the breach seals.',
           },
           {
             trigger: 'objective_complete',
-            text: 'Lattice harmonics stabilizing. Telepipe is hot — extract now.',
+            text: 'Dock secured. Lattice harmonics stabilizing — extract on my mark.',
           },
         ],
       },
@@ -995,6 +1018,9 @@ function formatObjectiveSummary(quest) {
   if (quest.objectiveType === 'collect_items') {
     const itemCount = quest.itemCount ?? 0;
     const guardCount = countScriptedEnemiesInQuest(quest);
+    if (quest.extractionDestination && quest.finalAmbush) {
+      return `Recover ${itemCount} prisms, clear guards and the ambush, extract to entry dock`;
+    }
     if (guardCount > 0) {
       return `Recover ${itemCount} prisms and clear ${guardCount} guards`;
     }
@@ -1173,6 +1199,17 @@ function countScriptedEnemiesInQuest(quest) {
         total += Math.max(1, Math.floor(count));
       }
     }
+  }
+  return total;
+}
+
+function countFinalAmbushEnemies(quest) {
+  const spawns = quest?.finalAmbush?.spawns;
+  if (!Array.isArray(spawns) || spawns.length === 0) return 0;
+  let total = 0;
+  for (const spawn of spawns) {
+    const count = Number.isFinite(spawn?.count) ? spawn.count : 1;
+    total += Math.max(1, Math.floor(count));
   }
   return total;
 }
@@ -1495,6 +1532,7 @@ module.exports = {
   getEncounterConfig,
   getScriptedEncounterConfig,
   countScriptedEnemiesInQuest,
+  countFinalAmbushEnemies,
   getQuestScript,
   countScriptedEnemies,
   getEnemyPool,

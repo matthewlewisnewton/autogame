@@ -491,6 +491,79 @@ function relinkScriptedEncounterEnemyIds(run, enemies) {
   }
 }
 
+function countAmbushSpawnEntries(spawns) {
+  if (!Array.isArray(spawns)) return 0;
+  let total = 0;
+  for (const spawnDef of spawns) {
+    total += spawnCount(spawnDef);
+  }
+  return total;
+}
+
+/**
+ * Spawn a one-shot ambush wave around the collecting player's current room.
+ * @returns {string[]} spawned enemy ids
+ */
+function spawnAmbushAtPlayer(run, gameState, spawns, ctx) {
+  if (!run || !gameState || !Array.isArray(spawns) || spawns.length === 0) return [];
+  if (run.finalAmbush?.spawned) return run.finalAmbush.enemyIds || [];
+
+  const layout = gameState.layout;
+  const activePlayers = Object.values(gameState.players || {}).filter(isPlayerActive);
+  const anchorPlayer = activePlayers[0] || null;
+
+  let anchorRoom = null;
+  if (anchorPlayer && layout?.rooms) {
+    for (const room of layout.rooms) {
+      if (playerInRoom(anchorPlayer.x, anchorPlayer.z, room)) {
+        anchorRoom = room;
+        break;
+      }
+    }
+  }
+  if (!anchorRoom && layout?.rooms?.length) {
+    anchorRoom = layout.rooms[getStartRoomIndex(layout)];
+  }
+
+  const layoutSeed = gameState.layoutSeed || 42;
+  const rng = mulberry32(layoutSeed + 9200);
+  const enemyIds = [];
+  let spawnIndex = 0;
+
+  for (const spawnDef of spawns) {
+    const count = spawnCount(spawnDef);
+    for (let i = 0; i < count; i++) {
+      const pos = resolveSpawnPosition(layout, anchorRoom, spawnDef, spawnIndex, rng);
+      const enemy = ctx.spawnEnemy(pos.x, pos.z, spawnDef.type, undefined, {
+        tier: ctx.roomTierAt(layout, pos.x, pos.z),
+        rng,
+      });
+      enemy.wanderTarget = ctx.randomWanderTarget();
+      enemy.finalAmbush = true;
+      enemyIds.push(enemy.id);
+      spawnIndex += 1;
+    }
+  }
+
+  run.finalAmbush = {
+    spawned: true,
+    cleared: false,
+    enemyIds,
+  };
+
+  return enemyIds;
+}
+
+function onFinalAmbushEnemyDefeated(run, enemyId) {
+  if (!run?.finalAmbush?.spawned || run.finalAmbush.cleared) return false;
+  const idx = run.finalAmbush.enemyIds.indexOf(enemyId);
+  if (idx < 0) return false;
+  run.finalAmbush.enemyIds.splice(idx, 1);
+  if (run.finalAmbush.enemyIds.length > 0) return false;
+  run.finalAmbush.cleared = true;
+  return true;
+}
+
 module.exports = {
   getScriptedEncounterDef,
   isScriptedQuest,
@@ -509,4 +582,7 @@ module.exports = {
   isWaveRequirementMet,
   roomKeyForDef,
   resolveRoomDef,
+  countAmbushSpawnEntries,
+  spawnAmbushAtPlayer,
+  onFinalAmbushEnemyDefeated,
 };

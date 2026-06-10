@@ -1171,6 +1171,40 @@ function applyDebugScenario(socket, name) {
       };
     }
 
+    if (name === 'crystal-rescue-extraction-phase') {
+      // crystal_rescue Tier 1 after final ambush cleared: extraction phase active,
+      // player seated away from the entry dock. Reachable normally by collecting
+      // all prisms, surviving the ambush, and starting the return leg.
+      setupCrystalRescueTier1Deploy(lobby, state, player);
+
+      const objective = state.run.objective;
+      const questTier = QUEST_DEFS.crystal_rescue.tiers[1];
+      objective.collectedItems = questTier.itemCount;
+      objective.defeatedEnemies = objective.totalEnemies ?? 0;
+      state.enemies = [];
+      state.run.finalAmbush = { spawned: true, cleared: true, enemyIds: [] };
+      objective.extractionPhase = true;
+      objective.extractionReached = false;
+      objective.label = `${questTier.name}: return to the entry dock`;
+
+      const awayRoom = deepestCombatRoom(state.layout) || state.layout.rooms[1] || state.layout.rooms[0];
+      player.x = awayRoom.x;
+      player.z = awayRoom.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
     if (name === 'annex-escort-tier-1') {
       // annex_escort Tier 1 escort objective with Archivist Vale and ambush waves.
       // Reachable normally by selecting Annex Evacuation and deploying.
