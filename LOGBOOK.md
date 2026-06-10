@@ -6468,3 +6468,26 @@ Not applicable — no new or modified `?debugScenario=` shortcuts in this ticket
 
 None. The direct-per-tick damage bug is fixed, regression-tested, and the game runs cleanly in capture.
 
+
+## v0.376 — Server: USE_KEY_ITEM/EQUIP_KEY_ITEM never checks equipped/owned key item (any client can use any key item)  (2026-06-10 12:49:14)
+
+
+## Code quality
+
+- Minimal, focused diff (~180 lines, mostly test fixture updates).
+- Checks reuse existing patterns (`getKeyItemDef`, `isKeyItemUnlocked`, `SERVER_TO_CLIENT` error shapes).
+- Test override is scoped (`setTestKeyItemUnlockOverride(null)` in `finally`) and exported only for test access via `index.js`, consistent with other server test hooks.
+- No dead code, no client changes required (client already emits `me.equippedKeyItemId` in `main.js`).
+
+## Debug scenarios
+
+This ticket did not add or modify `?debugScenario=` shortcuts. Existing debug scenarios (e.g. `summon-recall`) set `equippedKeyItemId` explicitly before key-item use — compatible with the new guard. No debug-scenario blocking issues.
+
+## Capture alignment
+
+Fallback smoke capture exercised the real player path: auth → lobby → ready → WASD movement → dodge roll (E). Probes confirm `equippedKeyItemId: "dodge_roll"`, successful dodge cooldown activation, and clean reconnect to ready state. Screenshots show lobby and in-run HUD with Dodge Roll indicator.
+
+## Remaining gaps
+
+None. All acceptance criteria are fully met; runtime capture is clean; test suite is green.
+
