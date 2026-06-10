@@ -87,6 +87,51 @@ function setTerminalCheckCallback(fn) { _onTerminalCheck = fn; }
 function setFindSocketCallback(fn) { _findSocketByPlayerId = fn; }
 function setSavePlayerCallback(fn) { _savePlayerData = fn; }
 
+// ── Debug time-scale (slow-mo / pause) ──────────────────────────────────────
+// Sub-ticket 01 added a per-lobby `debugTimeScale` (default 1). The enemy-side
+// simulation — enemy AI, enemy projectiles, minions, combat windups, and
+// DoT/slow status timers — advances at this scaled rate, while player movement
+// and input stay at full speed. scale = 0.25 → enemies 4x slower; scale = 0 →
+// enemies frozen; scale = 1 → normal play. The fast path below makes scale = 1
+// a branch-cheap no-op so the default game loop is byte-for-byte unchanged.
+
+// Clamp the active lobby's debugTimeScale to [0, 1]. Reused everywhere so the
+// clamp lives in one place.
+function debugTimeScale() {
+  const raw = _gameState && _gameState.debugTimeScale;
+  if (raw == null || raw === 1) return 1;
+  return Math.max(0, Math.min(1, raw));
+}
+
+// Per-tick simulation delta-time, scaled by the debug time-scale. Every
+// enemy/minion/projectile movement integrator multiplies by this single value
+// instead of hand-multiplying `1 / TICK_RATE` in scattered ways.
+function debugScaledDt() {
+  return debugTimeScale() / TICK_RATE;
+}
+
+// Scaled simulation clock. Time-based windups / cooldowns / status timers
+// compare against simNow() instead of Date.now() so they slow with the world.
+// The wall-clock time the scale "skips" accumulates in
+// `_gameState._debugTimeOffsetMs` (advanced once per tick by advanceDebugClock).
+// At scale = 1 the offset never grows, so simNow() === Date.now() exactly and
+// behaviour is unchanged.
+function simNow() {
+  return Date.now() - ((_gameState && _gameState._debugTimeOffsetMs) || 0);
+}
+
+// Advance the scaled simulation clock by one tick. Accumulates the portion of a
+// real tick the scale skips: (1 - scale) * dt. Called once per playing tick at
+// the top of updateEnemies, before any enemy/minion/status update reads simNow.
+// No-op at scale = 1.
+function advanceDebugClock() {
+  if (!_gameState) return;
+  const scale = debugTimeScale();
+  if (scale === 1) return;
+  _gameState._debugTimeOffsetMs =
+    (_gameState._debugTimeOffsetMs || 0) + ((1 - scale) / TICK_RATE) * 1000;
+}
+
 // ── Collision System ──
 
 const PLAYER_RADIUS = 0.5;
@@ -1401,7 +1446,7 @@ function isPlayerConcealed(player, now) {
 }
 
 function isEnemyFrozen(enemy) {
-  return enemy.frozenUntil != null && Date.now() < enemy.frozenUntil;
+  return enemy.frozenUntil != null && simNow() < enemy.frozenUntil;
 }
 
 // SLOW status effect: a timed movement-speed debuff that mirrors the
@@ -1410,7 +1455,8 @@ function isEnemyFrozen(enemy) {
 // sub-tickets; this only manages the status state + helpers.
 function applySlow(entity, durationMs, factor) {
   if (!entity) return;
-  const now = Date.now();
+  // Status timers ride the scaled sim clock so slow expiry slows with the world.
+  const now = simNow();
   // BURNING and SLOW are mutually exclusive (fire vs ice): applying slow
   // extinguishes any active/lingering burn first, and resets its tick clock so
   // a later re-ignition does not dump a burst of catch-up damage ticks.
@@ -1424,7 +1470,7 @@ function applySlow(entity, durationMs, factor) {
 }
 
 function isSlowed(entity) {
-  return entity != null && entity.slowedUntil != null && Date.now() < entity.slowedUntil;
+  return entity != null && entity.slowedUntil != null && simNow() < entity.slowedUntil;
 }
 
 // BURNING status effect: a timed damage-over-time mark that mirrors the
@@ -1442,7 +1488,8 @@ const BURN_EXTRA_FIRE_DAMAGE = 1;
 
 function applyBurning(entity, durationMs) {
   if (!entity) return;
-  const now = Date.now();
+  // Status timers ride the scaled sim clock so burn expiry slows with the world.
+  const now = simNow();
   // BURNING and SLOW/freeze are mutually exclusive (fire vs ice): igniting clears
   // any active/lingering slow or freeze first so isSlowed/isEnemyFrozen become false.
   entity.slowedUntil = 0;
@@ -1455,7 +1502,7 @@ function applyBurning(entity, durationMs) {
 }
 
 function isBurning(entity) {
-  return entity != null && entity.burningUntil != null && Date.now() < entity.burningUntil;
+  return entity != null && entity.burningUntil != null && simNow() < entity.burningUntil;
 }
 
 // Burn-tick pass: runs every game-loop tick during the playing phase and damages
@@ -1466,7 +1513,8 @@ function isBurning(entity) {
 // damageEnemy. Damage continues while isBurning() is true and stops once the
 // burn has expired.
 function updateBurning() {
-  const now = Date.now();
+  // Burn-tick cadence rides the scaled sim clock so DoT ticks slow with the world.
+  const now = simNow();
   const amount = BURN_BASE_TICK_DAMAGE + BURN_EXTRA_FIRE_DAMAGE;
 
   for (const [playerId, player] of Object.entries(_gameState.players)) {
@@ -1962,7 +2010,8 @@ function applyWyrmBreathTick(minion, cardId, config, breathPhase) {
 }
 
 function updateWyrmMinionAI(minion, nearestEnemy, nearestDist, dt, config) {
-  const now = Date.now();
+  // Breath windup/cadence are minion behaviour → scaled clock (dt is already scaled).
+  const now = simNow();
   const cardId = config.cardId;
 
   if (minion.breathState === 'breathing') {
@@ -2072,7 +2121,8 @@ function collectReturningProjectileHits(originX, originZ, dirX, dirZ, range, dam
 }
 
 function applyFreezeInRadius(originX, originY, originZ, radius, durationMs, damage = 0, frozenBonusDamage = 0) {
-  const now = Date.now();
+  // Freeze expiry rides the scaled sim clock so the lock slows with the world.
+  const now = simNow();
   const frozenUntil = now + durationMs;
   const hits = [];
   const oy = resolveAoeOriginY(originX, originY, originZ);
@@ -2978,9 +3028,14 @@ function updateFieldMedicEnemy(enemy, players, dt, now, encounterLocked) {
 // ── Enemy AI Tick ──
 
 function updateEnemies() {
+	// Advance the scaled simulation clock once per playing tick before any
+	// enemy/minion/status update reads simNow(). No-op at scale = 1.
+	advanceDebugClock();
+
 	if (_gameState.run && (_gameState.run.status === 'victory' || _gameState.run.status === 'failed')) return;
 
-	const dt = 1 / TICK_RATE;
+	// Scaled per-tick dt: movement/chase/wander advance at the debug time-scale.
+	const dt = debugScaledDt();
 	const players = Object.values(_gameState.players).filter(p => !p.dead && !p.extracted);
 	const encounterBossId = getEncounterBossId(_gameState.run);
 	const encounterDormant = isEncounterDormant(_gameState.run);
@@ -3014,7 +3069,7 @@ function updateEnemies() {
 
 		// ── Recovery: wait out cooldown, then return to chasing or idle ──
 		if (enemy.attackState === 'recovering') {
-			if (Date.now() >= enemy.recoverUntil) {
+			if (simNow() >= enemy.recoverUntil) {
 				enemy.attackState = 'chasing';
 			} else {
 				continue; // do not move while recovering
@@ -3024,7 +3079,7 @@ function updateEnemies() {
 
 		// ── Wind-up: wait, then revalidate range before striking ──
 		if (enemy.attackState === 'windup') {
-			const elapsed = Date.now() - enemy.windupStartTime;
+			const elapsed = simNow() - enemy.windupStartTime;
 			if (elapsed >= attackWindupMs) {
 				// Ranged ice-ball throwers launch a slow traveling projectile in the
 				// locked wind-up direction instead of dealing instant melee/cone damage.
@@ -3032,7 +3087,7 @@ function updateEnemies() {
 				if (enemy.attackStyle === 'ice_ball') {
 					spawnIceBall(enemy);
 					enemy.attackState = 'recovering';
-					enemy.recoverUntil = Date.now() + ENEMY_ATTACK_RECOVERY_MS;
+					enemy.recoverUntil = simNow() + ENEMY_ATTACK_RECOVERY_MS;
 					continue;
 				}
 				const target = resolveWindupTarget(enemy);
@@ -3057,7 +3112,7 @@ function updateEnemies() {
 						}
 					}
 					enemy.attackState = 'recovering';
-					enemy.recoverUntil = Date.now() + ENEMY_ATTACK_RECOVERY_MS;
+					enemy.recoverUntil = simNow() + ENEMY_ATTACK_RECOVERY_MS;
 					continue;
 				}
 				// Target out of range or dead — cancel attack, return to chasing
@@ -3073,7 +3128,8 @@ function updateEnemies() {
 			const spawnInterval = enemy.spawnIntervalMs || 4000;
 			const spawnMaxAlive = enemy.spawnMaxAlive || 3;
 			const spawnType = enemy.spawnType || 'skirmisher';
-			const now = Date.now();
+			// Spawn cadence is enemy behaviour → scaled clock (slows/freezes with the world).
+			const now = simNow();
 
 			if (now - enemy.lastSpawnTime >= spawnInterval) {
 				// Count living adds belonging to this spawner
@@ -3104,7 +3160,7 @@ function updateEnemies() {
 					enemy.attackState = 'windup';
 					enemy.windupTargetType = 'minion';
 					enemy.windupTargetId = tauntMinion.id;
-					enemy.windupStartTime = Date.now();
+					enemy.windupStartTime = simNow();
 					lockWindupDirection(enemy, tauntMinion);
 				}
 				// When attackState is 'windup' or 'recovering', fall through
@@ -3117,7 +3173,8 @@ function updateEnemies() {
 		}
 
 		if (enemy.type === 'field_medic') {
-			updateFieldMedicEnemy(enemy, players, dt, Date.now(), encounterLocked);
+			// Heal/bead cooldowns are enemy attack cadence → scaled clock.
+			updateFieldMedicEnemy(enemy, players, dt, simNow(), encounterLocked);
 			continue;
 		}
 
@@ -3164,7 +3221,7 @@ function updateEnemies() {
 					enemy.attackState = 'windup';
 					enemy.windupTargetType = nearestTargetType;
 					enemy.windupTargetId = nearestTarget.id;
-					enemy.windupStartTime = Date.now();
+					enemy.windupStartTime = simNow();
 					lockWindupDirection(enemy, nearestTarget);
 					continue; // do not move during wind-up
 				}
@@ -3259,7 +3316,8 @@ function spawnIceBall(enemy) {
 function updateEnemyProjectiles() {
 	if (!_gameState.iceBalls || _gameState.iceBalls.length === 0) return;
 
-	const dt = 1 / TICK_RATE;
+	// Projectile travel advances at the scaled rate (slows/freezes with the world).
+	const dt = debugScaledDt();
 	const players = Object.values(_gameState.players).filter(p => !p.dead && !p.extracted);
 	const survivors = [];
 
@@ -3299,9 +3357,10 @@ function updateEnemyProjectiles() {
 // ── Minion AI Tick ──
 
 function updateMinions() {
-  const dt = 1 / TICK_RATE;
+  // Minion movement/chase/wander + attack cadence advance at the scaled rate.
+  const dt = debugScaledDt();
   const runTerminal = _gameState.run && (_gameState.run.status === 'victory' || _gameState.run.status === 'failed');
-  const now = Date.now();
+  const now = simNow();
 
   for (const minion of _gameState.minions) {
     const owner = _gameState.players[minion.ownerId];
@@ -3822,6 +3881,12 @@ module.exports = {
   setTerminalCheckCallback,
   setFindSocketCallback,
   setSavePlayerCallback,
+
+  // Debug time-scale (slow-mo / pause)
+  debugTimeScale,
+  debugScaledDt,
+  simNow,
+  advanceDebugClock,
 
   // Collision
   buildWallColliders,
