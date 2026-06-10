@@ -201,6 +201,7 @@ const boothPromptEl = document.getElementById('booth-prompt');
 const lobbyPlayerList = document.getElementById('lobby-player-list');
 const questBoardEl = document.getElementById('quest-board');
 const questBoardWrapperEl = document.getElementById('quest-board-wrapper');
+const questBriefingPanelEl = document.getElementById('quest-briefing-panel');
 const questErrorEl = document.getElementById('quest-error');
 const suspendedRunBannerEl = document.getElementById('suspended-run-banner');
 const resumeRunBtnEl = document.getElementById('resume-run-btn');
@@ -2205,6 +2206,7 @@ function renderQuestBoardState() {
 			unlockedQuestTiers,
 			questVariants,
 			selectionLocked: !!suspendedRunSummary,
+			briefingPanelEl: questBriefingPanelEl,
 		},
 	);
 	if (questErrorEl) {

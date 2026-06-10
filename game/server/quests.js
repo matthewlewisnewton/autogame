@@ -15,6 +15,12 @@
  */
 
 /**
+ * Optional signature-card reward on a quest tier (card id string).
+ * @typedef {Object} QuestTierDef
+ * @property {string} [rewardSignatureCard] - Card id granted as a named reward line on the board.
+ */
+
+/**
  * Dialogue trigger for mid-run radio lines (fired server-side in a later sub-ticket).
  * @typedef {'run_start' | 'objective_complete' | { itemCollected: number } | { waveCleared: number }} DialogueTrigger
  */
@@ -412,9 +418,11 @@ function listQuestVariants() {
         objectiveType: resolved.objectiveType,
         objectiveSummary: formatObjectiveSummary(resolved),
         rewardSummary: formatRewardSummary(resolved),
+        rewardCurrency: resolved.rewardCurrency,
         isTier2: tier === 2,
         unlockRequires: resolved.unlockRequires || null,
         ...(resolved.client ? { client: resolved.client } : {}),
+        ...(resolved.rewardSignatureCard ? { rewardSignatureCard: resolved.rewardSignatureCard } : {}),
         dialogue: resolved.dialogue ?? [],
       });
     }

@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
+	formatClientBriefing,
 	formatObjectiveSummary,
+	formatRewardDetail,
 	formatRewardSummary,
 	formatQuestTierLabel,
 	isQuestTierUnlocked,
@@ -135,6 +137,53 @@ describe('formatRewardSummary()', () => {
 	});
 });
 
+describe('formatRewardDetail()', () => {
+	it('formats currency without the card prefix', () => {
+		expect(formatRewardDetail(SAMPLE_QUESTS[0])).toBe('10 money');
+	});
+
+	it('appends signature card display name when defined', () => {
+		expect(
+			formatRewardDetail({
+				rewardCurrency: 10,
+				rewardSignatureCard: 'iron_sword',
+			}),
+		).toBe('10 money + Rust-Forged Saber');
+	});
+
+	it('falls back to card id when display name is unavailable', () => {
+		expect(
+			formatRewardDetail({
+				rewardCurrency: 8,
+				rewardSignatureCard: 'unknown_signature_card',
+			}),
+		).toBe('8 money + unknown_signature_card');
+	});
+});
+
+describe('formatClientBriefing()', () => {
+	it('returns client name and briefing when present', () => {
+		expect(
+			formatClientBriefing({
+				client: {
+					name: 'Rewa',
+					briefing: 'Sweep the annex and report when clear.',
+				},
+			}),
+		).toEqual({
+			clientName: 'Rewa',
+			briefing: 'Sweep the annex and report when clear.',
+		});
+	});
+
+	it('uses fallback copy when client is missing', () => {
+		expect(formatClientBriefing(SAMPLE_QUESTS[1])).toEqual({
+			clientName: 'Contract issuer unknown',
+			briefing: '',
+		});
+	});
+});
+
 describe('formatQuestTierLabel()', () => {
 	it('appends (Tier 2) for tier-2 contracts', () => {
 		expect(formatQuestTierLabel('Initiate Vault — Tier II', 2)).toBe('Initiate Vault (Tier 2)');
@@ -159,10 +208,13 @@ describe('isQuestTierUnlocked()', () => {
 
 describe('renderQuestBoard()', () => {
 	let container;
+	let briefingPanel;
 
 	beforeEach(() => {
 		container = document.createElement('div');
+		briefingPanel = document.createElement('div');
 		document.body.appendChild(container);
+		document.body.appendChild(briefingPanel);
 	});
 
 	it('renders quest cards and highlights the selected quest', () => {
@@ -240,5 +292,82 @@ describe('renderQuestBoard()', () => {
 
 		expect(tier1Card.classList.contains('selected')).toBe(false);
 		expect(tier2Card.classList.contains('selected')).toBe(true);
+	});
+
+	it('renders briefing panel content for the selected quest', () => {
+		const questsWithClient = [
+			{
+				...SAMPLE_QUESTS[0],
+				client: {
+					name: 'Rewa',
+					briefing: 'Annex clearance contract. Neutralize the hostiles.',
+				},
+			},
+			SAMPLE_QUESTS[1],
+		];
+
+		renderQuestBoard(container, questsWithClient, 'training_caverns', null, {
+			briefingPanelEl: briefingPanel,
+		});
+
+		expect(briefingPanel.classList.contains('hidden')).toBe(false);
+		expect(briefingPanel.querySelector('.quest-briefing-client').textContent).toBe('Rewa');
+		expect(briefingPanel.querySelector('.quest-briefing-text').textContent).toBe(
+			'Annex clearance contract. Neutralize the hostiles.',
+		);
+		expect(briefingPanel.querySelector('.quest-briefing-reward').textContent).toBe('10 money');
+	});
+
+	it('shows client fallback in briefing panel when client is absent', () => {
+		renderQuestBoard(container, SAMPLE_QUESTS, 'crystal_rescue', null, {
+			briefingPanelEl: briefingPanel,
+		});
+
+		expect(briefingPanel.querySelector('.quest-briefing-client').textContent).toBe(
+			'Contract issuer unknown',
+		);
+		expect(briefingPanel.querySelector('.quest-briefing-text').textContent).toBe('—');
+	});
+
+	it('updates briefing panel when only selectedQuestId changes', () => {
+		const questsWithClient = [
+			{
+				...SAMPLE_QUESTS[0],
+				client: { name: 'Rewa', briefing: 'Vault briefing.' },
+			},
+			SAMPLE_QUESTS[1],
+		];
+
+		renderQuestBoard(container, questsWithClient, 'training_caverns', null, {
+			briefingPanelEl: briefingPanel,
+		});
+		renderQuestBoard(container, questsWithClient, 'crystal_rescue', null, {
+			briefingPanelEl: briefingPanel,
+		});
+
+		expect(briefingPanel.querySelector('.quest-briefing-client').textContent).toBe(
+			'Contract issuer unknown',
+		);
+		expect(briefingPanel.querySelector('.quest-briefing-reward').textContent).toBe('12 money');
+	});
+
+	it('names signature-card rewards in the briefing panel', () => {
+		renderQuestBoard(
+			container,
+			[
+				{
+					...SAMPLE_QUESTS[0],
+					client: { name: 'Rewa', briefing: 'Recover the signature blade.' },
+					rewardSignatureCard: 'iron_sword',
+				},
+			],
+			'training_caverns',
+			null,
+			{ briefingPanelEl: briefingPanel },
+		);
+
+		expect(briefingPanel.querySelector('.quest-briefing-reward').textContent).toBe(
+			'10 money + Rust-Forged Saber',
+		);
 	});
 });
