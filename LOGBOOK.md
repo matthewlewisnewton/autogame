@@ -6140,6 +6140,94 @@ None blocking. All acceptance criteria are implemented and covered by tests; the
 See `nits.md` for one follow-up on tier-1 vs tier-2 currency label wording on the quest board.
 
 
+## v0.358 — Client: disposeOne/disposeAvatar dispose geometry/materials shared with the glTF model cache  (2026-06-10 06:30:33)
+
+PASS. Cosmetic preview behavior is covered through its existing `disposeAvatar()` path, so preview rebuilds avoid re-uploading shared glTF buffers without adding a separate disposal policy.
+
+## Design and requirements
+
+PASS. The change is client-side rendering resource management only. It does not alter the documented lobby/dungeon/combat loop, server-client state flow, multiplayer visualization, or movement synchronization requirements.
+
+## Code quality
+
+PASS. The implementation is scoped to the model loader and disposal helpers, keeps the model cache behavior intact, and avoids broad renderer refactors. The safe disposer preserves the previous cleanup behavior for procedural meshes and material arrays while protecting shared glTF resources.
+
+Coverage visibility shows `39` test files and `428` tests passing. The log includes expected mocked-model-load warnings in jsdom tests, but the live capture console is clean.
+
+## Debug scenarios
+
+No development `?debugScenario=` shortcut was added or changed by this ticket.
+
+## Remaining gaps
+
+None.
+
+
+## v0.357 — Wave-gated doors: blocking gates in passages that unlock when a scripted wave is cleared  (2026-06-10 06:06:37)
+
+### A scripted quest can chain room A wave -> gate to room B opens -> room B wave -> gate to treasure room.
+
+Pass. `training_caverns` tier 1 now defines two scripted passage locks: room 0 wave 0 opens the passage to room 1, and room 1 wave 0 opens the passage to room 2. The chained passage-lock test walks this exact A -> B -> end-room progression, verifies each gate's locked/unlocked state, confirms room B wave spawning after entry, and confirms the final end room remains a no-wave treasure/end room.
+
+### No gates in non-scripted quests; telepipe escape still works while gated.
+
+Pass. Passage locks are initialized only from scripted encounter config; tests verify a non-scripted open-plaza deploy has no passage locks and no extra gate colliders. Telepipe suspend/resume is preserved: checkpoint capture stores passage lock state, scripted encounter state, dialogue state, objective progress, world state, and card state; restore rehydrates the run and relinks scripted enemy ids. The round-4 browser capture specifically exercised telepipe suspend/resume and verified the run layout, enemy ids, enemy HP, objective active enemy count, and run status survive the cycle.
+
+## Design and foundation consistency
+
+The implementation matches the PSO-style pacing described by the ticket and the design document's quest identity section: Initiate Vault is now a scripted annex sweep with passage locks and wave-clear radio lines. The changes do not conflict with the foundation requirements: the game renders, connects over WebSockets, represents the player, and continues to synchronize movement through the existing server-authoritative movement path.
+
+## Debug scenarios
+
+The new passage-lock debug shortcuts are gated through the existing `?debugScenario=` client URL path on localhost, with the server also requiring local/test allowance. They are QA shortcuts into states reachable through normal quest selection and deploy: `passage-lock-chain` maps to `training_caverns` tier 1, and `passage-lock-gated` maps to the scripted fixture path used by tests. They use the normal deploy/setup path rather than bypassing collision, objective, or state replication invariants.
+
+
+## v0.356 — Theme quest entry rooms per biome — first 30 seconds of every level currently look identical  (2026-06-10 05:24:36)
+
+---
+
+## Test & coverage summary
+
+- Harness `coverage.log`: **1737 / 1737** server tests passed.
+- Targeted ticket test `cross-quest entry room distinguishability`: **pass**.
+- Independent `pnpm test:quick` run: 3132 passed, 2 failed — failures are in unrelated `arena-trials-boss-low-hp` and `smoke_bomb` tests, not in entry-room code.
+
+---
+
+## Remaining gaps
+
+None blocking. The implementation fully satisfies both acceptance criteria; runtime capture is healthy.
+
+---
+
+## Nits (non-blocking)
+
+See `nits.md` for harness capture-plan and follow-up theming items.
+
+
+## v0.355 — Client: quest board panel flashes open then is re-hidden by the lobby render loop (F at Quest Board unusable)  (2026-06-10 05:18:34)
+
+
+**No regressions.** Change is lobby UI visibility only; multiplayer, movement, and server-authoritative quest selection are untouched. Aligns with the design doc's lobby quest-selection flow.
+
+### Code quality
+
+**Good.** Small, focused diff (11 lines in `main.js`); flag lifecycle is symmetric (set on open, cleared on dismiss). Test export `__isQuestPanelOpen` is consistent with existing harness hooks. No dead code or console errors introduced.
+
+### Debug scenarios (`?booth=quest`)
+
+**No issues.** Pre-existing localhost-only `?booth=quest` hook calls `openQuestPanel()` once via `requestBoothDebugOpen()`. It is gated by `debugScenarioAllowed` (localhost hosts only), does not bypass server validation, and the normal path (walk to Quest Board booth, press F / `booth:action`) reaches the same UI state. No new debug scenario was added by this ticket.
+
+## Test & coverage notes
+
+- Changed-files vitest run: **14 files, 282 tests, all passed**.
+- Coverage report in `coverage.log` covers shared modules from the harness diff baseline; the changed `main.js` paths are exercised by `questBooth.test.js`.
+
+## Remaining gaps
+
+None blocking. The implementation fully addresses the reported flash-close bug with appropriate tests and clean runtime capture.
+
+
 ## v0.354 — 374-spherical-3d-aoe-for-all-radius-effects  (2026-06-10 04:37:38)
 
 **Scope: game/server/simulation.js + game/server + test.** Respected. Diff touches only `game/server/*.js` and `game/server/test/*` (plus subticket bookkeeping files). No client/shared edits.
@@ -6204,10 +6292,6 @@ PASS. The implementation preserves the documented lobby -> ready/deploy -> dunge
 ### Tests and Coverage
 PASS. The captured coverage run completed successfully: 117 test files passed, 1589 tests passed. The changed behavior is covered by `game/server/test/defer_quest_layout_swap.test.js`, updated quest selection integration coverage, and quest-tier gating assertions that selection previews without mutating the live layout.
 
-## Remaining gaps
-
-None.
-
 
 ## v0.351 — Named rare enemy variants per quest (PSO 'The Fake in Yellow' style) with unique drops  (2026-06-10 03:48:03)
 
@@ -6230,72 +6314,3 @@ PASS. The provided coverage run reports 148 test files passed and 1991 tests pas
 ## Remaining gaps
 
 None.
-
-
-## v0.356 — Theme quest entry rooms per biome — first 30 seconds of every level currently look identical  (2026-06-10 05:24:36)
-
----
-
-## Test & coverage summary
-
-- Harness `coverage.log`: **1737 / 1737** server tests passed.
-- Targeted ticket test `cross-quest entry room distinguishability`: **pass**.
-- Independent `pnpm test:quick` run: 3132 passed, 2 failed — failures are in unrelated `arena-trials-boss-low-hp` and `smoke_bomb` tests, not in entry-room code.
-
----
-
-## Remaining gaps
-
-None blocking. The implementation fully satisfies both acceptance criteria; runtime capture is healthy.
-
----
-
-## Nits (non-blocking)
-
-See `nits.md` for harness capture-plan and follow-up theming items.
-
-
-## v0.355 — Client: quest board panel flashes open then is re-hidden by the lobby render loop (F at Quest Board unusable)  (2026-06-10 05:18:34)
-
-
-**No regressions.** Change is lobby UI visibility only; multiplayer, movement, and server-authoritative quest selection are untouched. Aligns with the design doc's lobby quest-selection flow.
-
-### Code quality
-
-**Good.** Small, focused diff (11 lines in `main.js`); flag lifecycle is symmetric (set on open, cleared on dismiss). Test export `__isQuestPanelOpen` is consistent with existing harness hooks. No dead code or console errors introduced.
-
-### Debug scenarios (`?booth=quest`)
-
-**No issues.** Pre-existing localhost-only `?booth=quest` hook calls `openQuestPanel()` once via `requestBoothDebugOpen()`. It is gated by `debugScenarioAllowed` (localhost hosts only), does not bypass server validation, and the normal path (walk to Quest Board booth, press F / `booth:action`) reaches the same UI state. No new debug scenario was added by this ticket.
-
-## Test & coverage notes
-
-- Changed-files vitest run: **14 files, 282 tests, all passed**.
-- Coverage report in `coverage.log` covers shared modules from the harness diff baseline; the changed `main.js` paths are exercised by `questBooth.test.js`.
-
-## Remaining gaps
-
-None blocking. The implementation fully addresses the reported flash-close bug with appropriate tests and clean runtime capture.
-
-## v0.358 — Client: disposeOne/disposeAvatar dispose geometry/materials shared with the glTF model cache  (2026-06-10 06:30:33)
-
-PASS. Cosmetic preview behavior is covered through its existing `disposeAvatar()` path, so preview rebuilds avoid re-uploading shared glTF buffers without adding a separate disposal policy.
-
-## Design and requirements
-
-PASS. The change is client-side rendering resource management only. It does not alter the documented lobby/dungeon/combat loop, server-client state flow, multiplayer visualization, or movement synchronization requirements.
-
-## Code quality
-
-PASS. The implementation is scoped to the model loader and disposal helpers, keeps the model cache behavior intact, and avoids broad renderer refactors. The safe disposer preserves the previous cleanup behavior for procedural meshes and material arrays while protecting shared glTF resources.
-
-Coverage visibility shows `39` test files and `428` tests passing. The log includes expected mocked-model-load warnings in jsdom tests, but the live capture console is clean.
-
-## Debug scenarios
-
-No development `?debugScenario=` shortcut was added or changed by this ticket.
-
-## Remaining gaps
-
-None.
-

@@ -1580,6 +1580,7 @@ describe('debugScenario — fire-cavern', () => {
 		expect(stateUpdate.run.questName).toBe(tier1Quest.name);
 		expect(stateUpdate.run.objective.type).toBe('defeat_enemies');
 		expect(stateUpdate.run.objective.label).toContain(tier1Quest.name);
+		expect(stateUpdate.run.objective.totalEnemies).toBe(tier1Quest.enemyCount);
 		expect(state.layout.profile).toBe('fire-cavern');
 		expect(getLayoutGenerationOptions(EMBER_DESCENT_ID, EMBER_DESCENT_TIER_1)).toEqual({
 			slopes: true,

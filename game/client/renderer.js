@@ -15,10 +15,13 @@ import { clampDelta } from './delta.js';
 import {
 	buildDungeon,
 	clearDungeon,
+	buildPassageGateMesh,
+	getPassageGateWorldPosition,
 	buildWallColliders,
 	computeWalkableAABBs,
 	computeDungeonBounds,
 	tryPlayerMove,
+	getProfileMaterials,
 	WALL_HEIGHT,
 	WALL_THICKNESS,
 	FLOOR_Y,
@@ -265,6 +268,9 @@ let dungeonBounds = null;
 let dungeonMeshes = []; // meshes created by buildDungeon()
 let activeLayout = null;
 let activePassageLocksKey = '';
+let activePassageGateLocksKey = '';
+/** @type {Record<number, THREE.Group>} */
+const passageGateMeshes = {};
 
 // ── Camera orbit state ──
 let cameraYaw = 0;
@@ -348,6 +354,34 @@ export const lootPickupAttempts = new Map();
 
 // ── Scene init flag ──
 let sceneInitialized = false;
+let animateActive = false;
+/** @type {(() => void) | null} */
+let resizeHandler = null;
+
+function onWebGLContextLost(event) {
+	event.preventDefault();
+	console.warn('[renderer] WebGL context lost — recoverable; awaiting contextrestore');
+}
+
+/**
+ * Tear down the main WebGL renderer and stop the render loop. Idempotent.
+ * Called before re-init and when replacing the renderer on reconnect paths.
+ */
+export function disposeRenderer() {
+	animateActive = false;
+	if (resizeHandler) {
+		window.removeEventListener('resize', resizeHandler);
+		resizeHandler = null;
+	}
+	if (renderer) {
+		const canvas = renderer.domElement;
+		canvas?.removeEventListener('webglcontextlost', onWebGLContextLost);
+		renderer.dispose();
+		if (canvas?.parentNode) canvas.parentNode.removeChild(canvas);
+		renderer = null;
+	}
+	sceneInitialized = false;
+}
 
 // ── Layout height atmosphere (spire-ascent, fire-cavern) ──
 /** @type {string|null} */
@@ -1293,6 +1327,7 @@ export function getMeshMaps() {
 		minionTelegraphMeshes,
 		minionsMeshes,
 		spikeTrapMeshes,
+		passageGateMeshes,
 		lootMeshes,
 		iceBallMeshes,
 		playerCardWindupMarkers,
@@ -1425,6 +1460,40 @@ function passageLocksCacheKey(passageLocks = []) {
 		.join('|');
 }
 
+function parsePassageLocksKey(key = '') {
+	const lockedByIndex = new Map();
+	if (!key) return lockedByIndex;
+	for (const part of key.split('|')) {
+		const [idx, locked] = part.split(':');
+		if (idx === undefined || locked === undefined) continue;
+		lockedByIndex.set(Number(idx), locked === '1');
+	}
+	return lockedByIndex;
+}
+
+function collectNewlyUnlockedPassages(prevKey, locks) {
+	const prevLockedByIndex = parsePassageLocksKey(prevKey);
+	const newlyUnlocked = new Set();
+	for (const lock of locks) {
+		if (!lock?.locked && prevLockedByIndex.get(lock.passageIndex) === true) {
+			newlyUnlocked.add(lock.passageIndex);
+		}
+	}
+	for (const [passageIndex, wasLocked] of prevLockedByIndex) {
+		if (!wasLocked) continue;
+		if (!locks.some((lock) => lock.passageIndex === passageIndex && lock.locked)) {
+			newlyUnlocked.add(passageIndex);
+		}
+	}
+	return newlyUnlocked;
+}
+
+const PASSAGE_UNLOCK_EFFECT_DURATION = 650;
+const PASSAGE_UNLOCK_RING_COLOR = 0x5eead4;
+const PASSAGE_UNLOCK_RING_EMISSIVE = 0x14b8a6;
+const PASSAGE_UNLOCK_BURST_COLOR = 0xa7f3d0;
+const PASSAGE_UNLOCK_BURST_EMISSIVE = 0x2dd4bf;
+
 function resolvePassageLocks(passageLocks) {
 	if (Array.isArray(passageLocks)) return passageLocks;
 	return gameStateRef?.run?.passageLocks || [];
@@ -1441,6 +1510,143 @@ export function syncPassageLockColliders(passageLocks) {
 	if (nextKey === activePassageLocksKey) return;
 	activePassageLocksKey = nextKey;
 	wallColliders = buildWallColliders(activeLayout, locks);
+}
+
+function disposePassageGateMesh(mesh) {
+	if (!mesh) return;
+	if (scene) scene.remove(mesh);
+	mesh.traverse((child) => {
+		if (child.geometry) child.geometry.dispose();
+		if (child.material) child.material.dispose();
+	});
+}
+
+function clearPassageGateMeshes() {
+	for (const key of Object.keys(passageGateMeshes)) {
+		disposePassageGateMesh(passageGateMeshes[key]);
+		delete passageGateMeshes[key];
+	}
+	activePassageGateLocksKey = '';
+}
+
+/**
+ * Brief cosmetic unlock feedback at a passage gate: emissive flash on the gate
+ * mesh plus a small particle burst. Does not block movement or input.
+ * @param {number} passageIndex
+ * @param {object} [layout]
+ * @param {THREE.Group|null} [gateMesh]
+ */
+export function playPassageUnlockEffect(passageIndex, layout, gateMesh = null) {
+	const targetLayout = layout || activeLayout;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	let origin = gateMesh
+		? { x: gateMesh.position.x, y: gateMesh.position.y, z: gateMesh.position.z }
+		: getPassageGateWorldPosition(targetLayout, passageIndex);
+	if (!origin) return;
+
+	if (gateMesh) {
+		targetScene.remove(gateMesh);
+		gateMesh.traverse((child) => {
+			if (!child.material) return;
+			child.material = child.material.clone();
+			if (child.material.emissive?.setHex) {
+				child.material.emissive.setHex(PASSAGE_UNLOCK_BURST_EMISSIVE);
+			} else if (child.material.emissive?.set) {
+				child.material.emissive.set(PASSAGE_UNLOCK_BURST_EMISSIVE);
+			} else {
+				child.material.emissive = PASSAGE_UNLOCK_BURST_EMISSIVE;
+			}
+			child.material.emissiveIntensity = 1.8;
+			child.material.transparent = true;
+		});
+		activeEffects.push({
+			mesh: gateMesh,
+			_scene: targetScene,
+			isPassageUnlockGate: true,
+			createdAt: performance.now(),
+			duration: PASSAGE_UNLOCK_EFFECT_DURATION,
+		});
+	}
+
+	const ringGeometry = new THREE.RingGeometry(0.1, 0.45, 32);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color: PASSAGE_UNLOCK_RING_COLOR,
+		emissive: PASSAGE_UNLOCK_RING_EMISSIVE,
+		emissiveIntensity: 1.4,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	ringMesh.position.set(origin.x, FLOOR_Y + 0.12, origin.z);
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(0.001);
+	targetScene.add(ringMesh);
+	activeEffects.push({
+		mesh: ringMesh,
+		_scene: targetScene,
+		origin: { x: origin.x, z: origin.z },
+		radius: 2.2,
+		createdAt: performance.now(),
+		duration: PASSAGE_UNLOCK_EFFECT_DURATION,
+	});
+
+	spawnParticleBurst(
+		{ x: origin.x, y: origin.y * 0.55, z: origin.z },
+		{
+			color: PASSAGE_UNLOCK_BURST_COLOR,
+			emissive: PASSAGE_UNLOCK_BURST_EMISSIVE,
+			count: 10,
+			spread: 1.6,
+			duration: PASSAGE_UNLOCK_EFFECT_DURATION,
+		},
+	);
+}
+
+/**
+ * Reconcile visible passage gate meshes when run.passageLocks changes.
+ * @param {object[]} [passageLocks]
+ * @param {object} [layout]
+ */
+export function syncPassageLockGates(passageLocks, layout) {
+	const targetLayout = layout || activeLayout;
+	if (!scene || !targetLayout) return;
+
+	const locks = resolvePassageLocks(passageLocks);
+	const nextKey = passageLocksCacheKey(locks);
+	if (nextKey === activePassageGateLocksKey) return;
+
+	const newlyUnlocked = collectNewlyUnlockedPassages(activePassageGateLocksKey, locks);
+	const lockedIndices = new Set(
+		locks.filter((lock) => lock?.locked).map((lock) => lock.passageIndex),
+	);
+
+	for (const key of Object.keys(passageGateMeshes)) {
+		const passageIndex = Number(key);
+		if (!lockedIndices.has(passageIndex)) {
+			const mesh = passageGateMeshes[key];
+			if (mesh && newlyUnlocked.has(passageIndex)) {
+				playPassageUnlockEffect(passageIndex, targetLayout, mesh);
+			} else {
+				disposePassageGateMesh(mesh);
+			}
+			delete passageGateMeshes[key];
+		}
+	}
+
+	const materials = getProfileMaterials(targetLayout.profile);
+	for (const passageIndex of lockedIndices) {
+		if (passageGateMeshes[passageIndex]) continue;
+		const gate = buildPassageGateMesh(targetLayout, passageIndex, materials);
+		if (!gate) continue;
+		scene.add(gate);
+		passageGateMeshes[passageIndex] = gate;
+	}
+
+	activePassageGateLocksKey = nextKey;
 }
 
 /**
@@ -1564,6 +1770,7 @@ export function getPlayerCardWindupFlashing() {
  */
 export function initScene(layout, spawnPos) {
 	console.log('[initScene] Initializing Three.js scene...');
+	disposeRenderer();
 
 	// Scene
 	scene = new THREE.Scene();
@@ -1586,11 +1793,16 @@ export function initScene(layout, spawnPos) {
 		: DEFAULT_FLOOR_Y;
 	camera.lookAt(spawnPosition.x, spawnFloorY, spawnPosition.z);
 
-	// Renderer
-	renderer = new THREE.WebGLRenderer({ antialias: true });
+	// Renderer — low-power + no perf caveat so headless Chromium survives startup
+	renderer = new THREE.WebGLRenderer({
+		antialias: true,
+		powerPreference: 'low-power',
+		failIfMajorPerformanceCaveat: false,
+	});
 	renderer.setSize(window.innerWidth, window.innerHeight);
 	document.body.appendChild(renderer.domElement);
 	renderer.domElement.style.pointerEvents = currentGamePhase === 'playing' ? 'auto' : 'none';
+	renderer.domElement.addEventListener('webglcontextlost', onWebGLContextLost, false);
 
 	// Lighting
 	const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -1602,6 +1814,7 @@ export function initScene(layout, spawnPos) {
 	// Build dungeon geometry from server layout
 	if (layout) {
 		activeLayout = layout;
+		clearPassageGateMeshes();
 		clearDungeon(scene, dungeonMeshes);
 		const { meshes, spawnPosition: spawn } = buildDungeon(scene, layout);
 		dungeonMeshes.push(...meshes);
@@ -1610,6 +1823,7 @@ export function initScene(layout, spawnPos) {
 		const passageLocks = resolvePassageLocks();
 		activePassageLocksKey = passageLocksCacheKey(passageLocks);
 		wallColliders = buildWallColliders(layout, passageLocks);
+		syncPassageLockGates(passageLocks, layout);
 		walkableAABBs = computeWalkableAABBs(layout);
 		dungeonBounds = computeDungeonBounds(layout);
 		cameraYaw = 0;
@@ -1671,14 +1885,17 @@ export function initScene(layout, spawnPos) {
 
 	// Frame timer & render loop
 	clock = new THREE.Clock();
+	animateActive = true;
 	requestAnimationFrame(animate);
 
-	// Resize handler
-	window.addEventListener('resize', () => {
+	// Resize handler (single listener per renderer lifetime)
+	resizeHandler = () => {
+		if (!camera || !renderer) return;
 		camera.aspect = window.innerWidth / window.innerHeight;
 		camera.updateProjectionMatrix();
 		renderer.setSize(window.innerWidth, window.innerHeight);
-	});
+	};
+	window.addEventListener('resize', resizeHandler);
 
 	sceneInitialized = true;
 }
@@ -1693,6 +1910,7 @@ export function rebuildDungeonLayout(layout, passageLocks) {
 	if (!scene || !layout) return;
 
 	activeLayout = layout;
+	clearPassageGateMeshes();
 	clearDungeon(scene, dungeonMeshes);
 	const { meshes, spawnPosition: spawn } = buildDungeon(scene, layout);
 	dungeonMeshes.push(...meshes);
@@ -1701,6 +1919,7 @@ export function rebuildDungeonLayout(layout, passageLocks) {
 	const locks = resolvePassageLocks(passageLocks);
 	activePassageLocksKey = passageLocksCacheKey(locks);
 	wallColliders = buildWallColliders(layout, locks);
+	syncPassageLockGates(locks, layout);
 	walkableAABBs = computeWalkableAABBs(layout);
 	dungeonBounds = computeDungeonBounds(layout);
 	myX = spawnPosition.x;
@@ -5073,6 +5292,24 @@ export function updateAttackEffects() {
 			continue;
 		}
 
+		// ── Passage gate unlock flash (scale + emissive fade) ──
+		if (fx.isPassageUnlockGate) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const scale = 1.0 + t * 0.35;
+			fx.mesh.scale.setScalar(scale);
+			fx.mesh.traverse((child) => {
+				if (!child.material) return;
+				child.material.opacity = Math.max(0.01, 1.0 - t);
+				child.material.emissiveIntensity = Math.max(0.01, 1.8 * (1.0 - t));
+			});
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
 		// ── Hit spark effect ──
 		if (fx.isHitSpark) {
 			const sparkT = Math.min(elapsed / HIT_SPARK_DURATION, 1.0);
@@ -5389,7 +5626,9 @@ function applyLocalPlayerRespawnReset(gs, myId) {
  * Reads gameState from the shared reference set by setGameStateRef().
  */
 export function animate(timestamp) {
+	if (!animateActive) return;
 	requestAnimationFrame(animate);
+	if (!renderer || !scene || !camera || !clock) return;
 
 	const delta = clampDelta(clock.getDelta());
 	updateMyPlayer(delta);

@@ -13,7 +13,11 @@ const {
   countScriptedEnemies,
   pickWeightedEnemyType,
 } = require('./quests');
-const { isScriptedQuest, countAuthoredScriptedEnemies } = require('./scriptedEncounters');
+const {
+  isScriptedQuest,
+  countAuthoredScriptedEnemies,
+  usesScriptedEncounterRuntime,
+} = require('./scriptedEncounters');
 const { formatEscortDestinationLabel } = require('./escort');
 const { setEncounterBoss } = require('./encounters');
 const { DIFFICULTY_SPAWN_RATE_PER_PLAYER, difficultyScaleFactor, runPlayerCount } = require('./config');
@@ -24,6 +28,15 @@ function clampDefeatedEnemies(objective) {
 
 function clampCollectedItems(objective) {
   objective.collectedItems = Math.min(objective.collectedItems, objective.totalItems);
+}
+
+function countLiveNonSpawnerEnemies(enemies) {
+  return (enemies || []).filter((enemy) => enemy.hp > 0 && !enemy.spawnedBy).length;
+}
+
+function syncScriptedDefeatEnemiesActiveCount(run, enemies) {
+  if (!run?.scriptedEncounter || run.objective?.type !== 'defeat_enemies') return;
+  run.objective.activeEnemyCount = countLiveNonSpawnerEnemies(enemies);
 }
 
 // Interval (ms) between staggered survive spawns. The first enemy spawns on the
@@ -70,18 +83,26 @@ const OBJECTIVE_DEFS = {
     createObjective(quest, ctx) {
       const objectiveLabel = `${quest.name}: ${quest.description}`;
       let totalEnemies = ctx.enemyCount;
-      const script = getQuestScript(quest);
-      if (script != null) {
-        totalEnemies = countScriptedEnemies(script);
-      } else if (isScriptedQuest(quest)) {
+      if (usesScriptedEncounterRuntime(quest)) {
         totalEnemies = countAuthoredScriptedEnemies(quest);
+      } else {
+        const script = getQuestScript(quest);
+        if (script != null) {
+          totalEnemies = countScriptedEnemies(script);
+        } else if (isScriptedQuest(quest)) {
+          totalEnemies = countAuthoredScriptedEnemies(quest);
+        }
       }
-      return {
+      const objective = {
         type: 'defeat_enemies',
         label: objectiveLabel,
         totalEnemies,
         defeatedEnemies: 0,
       };
+      if (usesScriptedEncounterRuntime(quest)) {
+        objective.activeEnemyCount = 0;
+      }
+      return objective;
     },
     isComplete(objective) {
       return objective.defeatedEnemies >= objective.totalEnemies;
@@ -93,7 +114,16 @@ const OBJECTIVE_DEFS = {
       run.objective.defeatedEnemies += count;
       clampDefeatedEnemies(run.objective);
     },
-    syncToEnemyCount(run, enemyCount) {
+    syncToEnemyCount(run, enemiesOrCount) {
+      const enemies = Array.isArray(enemiesOrCount) ? enemiesOrCount : null;
+      const enemyCount = enemies
+        ? countLiveNonSpawnerEnemies(enemies)
+        : enemiesOrCount;
+      if (run.scriptedEncounter) {
+        run.objective.activeEnemyCount = enemyCount;
+        return;
+      }
+      delete run.objective.activeEnemyCount;
       run.objective.totalEnemies = enemyCount;
       clampDefeatedEnemies(run.objective);
     },
@@ -354,4 +384,6 @@ module.exports = {
   SURVIVE_REGULAR_TYPES,
   isValidObjectiveType,
   getObjectiveDef,
+  countLiveNonSpawnerEnemies,
+  syncScriptedDefeatEnemiesActiveCount,
 };

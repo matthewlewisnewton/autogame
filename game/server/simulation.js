@@ -255,11 +255,15 @@ function hubSpawnPosition(hubLayout) {
 
 function resolveMovementContext(movementContext) {
   if (movementContext && movementContext.dungeonBounds) {
+    const useLiveColliders = _gameState
+      && movementContext.layout === _gameState.layout;
     return {
       layout: movementContext.layout,
       walkableAABBs: movementContext.walkableAABBs,
       dungeonBounds: movementContext.dungeonBounds,
-      colliders: movementContext.colliders || buildWallColliders(movementContext.layout),
+      colliders: useLiveColliders
+        ? getWallColliders()
+        : (movementContext.colliders || buildWallColliders(movementContext.layout)),
     };
   }
   return {

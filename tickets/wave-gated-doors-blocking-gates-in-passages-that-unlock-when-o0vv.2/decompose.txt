@@ -1,0 +1,7 @@
+Remediation round 4 has a single open gap: the round-3 review capture died with `page.goto: Page crashed` before any gameplay proof. Sub-tickets 01–09 already passed (`.passed` markers) and were left untouched.
+
+**Created sub-ticket:**
+
+- `/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/tickets/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/subtickets/10-client-browser-capture-stability`
+
+**10 — Client browser capture stability** targets the runtime-health blocker by hardening `initScene()` / WebGL lifecycle in `renderer.js` (dispose leaked renderers, headless-stable context options, context-loss handling) and auditing `main.js` hub→quest transitions so Playwright can complete a capture with `metrics.json` `"ok": true`. Verification mode is `code` because success depends on capture artifacts, handler behavior, and canvas counts—not purely on-screen appearance.

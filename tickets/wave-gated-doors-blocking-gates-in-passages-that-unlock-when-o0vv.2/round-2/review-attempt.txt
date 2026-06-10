@@ -1,0 +1,7 @@
+Wrote the final review artifacts:
+
+- `round-2/review.md` with `VERDICT: FAIL`
+- `round-2/gaps.md` with the blocking remediation items
+- No `nits.md` created, since I didn’t identify separate non-blocking nits
+
+Primary blockers: captured run has `"ok": false`, the passage-lock movement regression test is red, and a changed debug-scenario path has a red coverage test.

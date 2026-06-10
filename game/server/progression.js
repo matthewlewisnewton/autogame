@@ -90,13 +90,14 @@ const {
   fireWaveClearedTriggers,
 } = require('./questScript');
 const { unlockQuestTier, isQuestTierUnlocked } = require('./users');
-const { getObjectiveDef } = require('./objectives');
+const { getObjectiveDef, syncScriptedDefeatEnemiesActiveCount } = require('./objectives');
 const {
   initScriptedEncounter,
   tickScriptedEncounters,
   onScriptedEnemyDefeated,
   relinkScriptedEncounterEnemyIds,
   isScriptedQuest,
+  usesScriptedEncounterRuntime,
   setWaveClearedCallback,
 } = require('./scriptedEncounters');
 const {
@@ -991,7 +992,19 @@ function startDungeonRun() {
   _gameState.run = createRunState();
   resetDialogueState(_gameState.run);
   const quest = getSelectedQuest(_gameState);
-  if (getQuestScript(quest)) {
+  if (usesScriptedEncounterRuntime(quest)) {
+    initScriptedEncounter(
+      _gameState.run,
+      quest,
+      _gameState.layout,
+      _gameState,
+      buildObjectiveSpawnCtx(),
+    );
+    syncScriptedDefeatEnemiesActiveCount(_gameState.run, _gameState.enemies);
+    if (getQuestScript(quest)) {
+      initQuestScript(_gameState.run, quest, _gameState.layout);
+    }
+  } else if (getQuestScript(quest)) {
     initQuestScript(_gameState.run, quest, _gameState.layout);
     const seed = _gameState.layoutSeed || 42;
     const rng = mulberry32(seed + 1000);
@@ -1004,6 +1017,7 @@ function startDungeonRun() {
       _gameState,
       buildObjectiveSpawnCtx(),
     );
+    syncScriptedDefeatEnemiesActiveCount(_gameState.run, _gameState.enemies);
   }
   if (_gameState._pendingEncounterBossId != null && _gameState.run.encounter) {
     setEncounterBoss(_gameState.run, _gameState._pendingEncounterBossId);
@@ -1369,7 +1383,7 @@ function syncRunObjectiveToEnemies() {
   if (!_gameState.run) return;
   const def = getObjectiveDef(_gameState.run.objective.type);
   if (!def?.syncToEnemyCount) return;
-  def.syncToEnemyCount(_gameState.run, _gameState.enemies.length);
+  def.syncToEnemyCount(_gameState.run, _gameState.enemies);
 }
 
 function recordEnemyDefeated(count = 1) {
@@ -2480,6 +2494,7 @@ function removeDeadEnemies() {
   if (removed > 0) {
     recordEnemyDefeated(removed);
   }
+  syncScriptedDefeatEnemiesActiveCount(_gameState.run, _gameState.enemies);
   return removed;
 }
 

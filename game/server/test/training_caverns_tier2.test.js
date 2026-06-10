@@ -267,11 +267,12 @@ describe('training_caverns Tier 2 deploy spawns', () => {
     expect(tagged).toBeGreaterThan(0);
   });
 
-  it('spawns run-start scripted enemies un-tagged on Tier 1 for the same seed', () => {
+  it('spawns room-0 wave-0 scripted encounter grunts un-tagged on Tier 1 for the same seed', () => {
     deployTrainingTier(TIER_1, SEED);
     startDungeonRun();
-    expect(gameState.enemies.length).toBe(4);
+    expect(gameState.enemies.length).toBe(2);
     expect(gameState.run.waveScript).toBeDefined();
+    expect(gameState.run.scriptedEncounter).toBeDefined();
     expect(gameState.run.objective.totalEnemies).toBe(6);
     expect(gameState.enemies.every((e) => e.variant === null)).toBe(true);
   });

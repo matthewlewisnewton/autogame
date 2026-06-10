@@ -562,6 +562,7 @@ const DEBUG_SCENARIOS = new Set([
   'annex-escort-tier-1',
   'scripted-wave-combat',
   'passage-lock-gated',
+  'passage-lock-chain',
   'escort-objective',
   'fire-cavern',
   'ember-descent-cinderghast',

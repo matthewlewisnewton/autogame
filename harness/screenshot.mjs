@@ -1178,7 +1178,12 @@ async function executeRecipe(browser, recipe) {
         const objective = data?.harnessState?.suspendedRunSummary?.objective || null;
         const entry = telepipeRunBaseline.get(player) || {};
         entry.objective = objective
-          ? { type: objective.type, totalEnemies: objective.totalEnemies, defeatedEnemies: objective.defeatedEnemies }
+          ? {
+            type: objective.type,
+            totalEnemies: objective.totalEnemies,
+            activeEnemyCount: objective.activeEnemyCount,
+            defeatedEnemies: objective.defeatedEnemies,
+          }
           : null;
         telepipeRunBaseline.set(player, entry);
       }
@@ -1287,7 +1292,12 @@ async function executeRecipe(browser, recipe) {
         addedEnemies,
         addedAllSpawnerAdds,
         objective: objective
-          ? { type: objective.type, totalEnemies: objective.totalEnemies, defeatedEnemies: objective.defeatedEnemies }
+          ? {
+            type: objective.type,
+            totalEnemies: objective.totalEnemies,
+            activeEnemyCount: objective.activeEnemyCount,
+            defeatedEnemies: objective.defeatedEnemies,
+          }
           : null,
       };
 
@@ -1317,8 +1327,14 @@ async function executeRecipe(browser, recipe) {
         if (objective.defeatedEnemies !== 0) {
           failures.push(`objective.defeatedEnemies expected 0, got ${objective.defeatedEnemies}`);
         }
-        if (objective.totalEnemies !== originalPreSuspendEnemies.length) {
-          failures.push(`objective.totalEnemies (${objective.totalEnemies}) !== original pre-suspend enemy count (${originalPreSuspendEnemies.length})`);
+        const liveEnemyCount = Number.isFinite(objective.activeEnemyCount)
+          ? objective.activeEnemyCount
+          : objective.totalEnemies;
+        const liveEnemyCountField = Number.isFinite(objective.activeEnemyCount)
+          ? 'activeEnemyCount'
+          : 'totalEnemies';
+        if (liveEnemyCount !== originalPreSuspendEnemies.length) {
+          failures.push(`objective.${liveEnemyCountField} (${liveEnemyCount}) !== original pre-suspend enemy count (${originalPreSuspendEnemies.length})`);
         }
       }
       if (failures.length) {

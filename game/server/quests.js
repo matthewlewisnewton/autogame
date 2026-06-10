@@ -288,11 +288,11 @@ const QUEST_DEFS = {
     tiers: {
       1: {
         name: 'Initiate Vault',
-        description: 'Sweep annex holding pens in scripted waves and breach the vault mouth.',
+        description: 'Sweep annex holding pens in scripted waves and breach the deeper vault wing.',
         clientNpc: 'Annex Liaison Kade',
         briefing:
           'Salvage crews have barricaded the annex holding pens. '
-          + 'Clear each wave, break through the sealed passage, and purge the vault stalker.',
+          + 'Clear each wave, break through the sealed passages, and reach the sealed vault wing.',
         objectiveType: 'defeat_enemies',
         rewardCurrency: 10,
         rewardCardId: 'saber_of_light',
@@ -326,11 +326,19 @@ const QUEST_DEFS = {
                 { spawns: [{ type: 'skirmisher', count: 2 }] },
               ],
             },
+            {
+              roomIndex: 2,
+              waves: [],
+            },
           ],
           passageLocks: [
             {
               afterWave: { roomIndex: 0, waveIndex: 0 },
               fromRoomIndex: 0,
+            },
+            {
+              afterWave: { roomIndex: 1, waveIndex: 0 },
+              fromRoomIndex: 1,
             },
           ],
         },
@@ -348,7 +356,15 @@ const QUEST_DEFS = {
             roomIndex: 0,
             waveIndex: 0,
             speaker: 'Annex Liaison Kade',
-            line: 'First pen cleared — push deeper before the salvage crews regroup.',
+            line: 'Bulkhead released — push deeper before the salvage crews regroup.',
+          },
+          {
+            beaconId: 'training_wave1_clear',
+            trigger: 'onWaveCleared',
+            roomIndex: 1,
+            waveIndex: 0,
+            speaker: 'Annex Liaison Kade',
+            line: 'Inner vault seal broken — the wing is yours if you can hold it.',
           },
         ],
         client: {
@@ -1152,6 +1168,26 @@ const SCRIPTED_ENCOUNTER_FIXTURE_DEF = {
               { spawns: [{ type: 'skirmisher', count: 1 }] },
             ],
           },
+          {
+            roomIndex: 1,
+            waves: [
+              { spawns: [{ type: 'grunt', count: 1 }] },
+            ],
+          },
+          {
+            roomIndex: 2,
+            waves: [],
+          },
+        ],
+        passageLocks: [
+          {
+            afterWave: { roomIndex: 0, waveIndex: 0 },
+            fromRoomIndex: 0,
+          },
+          {
+            afterWave: { roomIndex: 1, waveIndex: 0 },
+            fromRoomIndex: 1,
+          },
         ],
       },
       dialogueBeacons: [
@@ -1161,7 +1197,7 @@ const SCRIPTED_ENCOUNTER_FIXTURE_DEF = {
           roomIndex: 0,
           waveIndex: 0,
           speaker: 'Test Handler',
-          line: 'Wave zero cleared — advance to the next group.',
+          line: 'Bulkhead released — move up.',
         },
       ],
     },

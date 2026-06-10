@@ -1,0 +1,8 @@
+[A:debug] [vite] connecting...
+[A:debug] [vite] connected.
+[A:error] Failed to load resource: the server responded with a status of 409 (Conflict)
+[A:log] [initScene] Initializing Three.js scene...
+[A:log] [debugScenario] applied telepipe-ready
+[A:log] [launchBooth] ready-up via booth
+[A:log] [launchBooth] ready-up via booth
+[capture:error] Telepipe run-preservation assertion failed: objective.totalEnemies (6) !== original pre-suspend enemy count (2)

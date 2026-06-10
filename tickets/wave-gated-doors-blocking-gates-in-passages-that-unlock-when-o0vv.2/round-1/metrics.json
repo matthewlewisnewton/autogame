@@ -1,0 +1,23 @@
+{
+  "ok": false,
+  "failure_kind": "capture_failed",
+  "capture_diagnosis": {
+    "detected": [],
+    "client_log_tail": "[vite] Proxying /api and /socket.io \u2192 http://127.0.0.1:3001\n[vite] Game server ready at http://127.0.0.1:3001\n\n  VITE v8.0.13  ready in 692 ms\n\n  \u279c  Local:   http://localhost:5174/\n  \u279c  Network: use --host to expose\n3:57:03 AM [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.",
+    "server_log_tail": "    at listOnTimeout (node:internal/timers:588:17)\n    at process.processTimers (node:internal/timers:523:7)\nPlayer disconnected: saehSy_bRpzjwJ8XAAAB\n[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function\n    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)\n    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)\n    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11\n    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)\n    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)\n    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)\n    at listOnTimeout (node:internal/timers:588:17)\n    at process.processTimers (node:internal/timers:523:7)\n[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function\n    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)\n    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)\n    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11\n    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)\n    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)\n    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)\n    at listOnTimeout (node:internal/timers:588:17)\n    at process.processTimers (node:internal/timers:523:7)\n[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function\n    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)\n    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)\n    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11\n    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)\n    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)\n    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)\n    at listOnTimeout (node:internal/timers:588:17)\n    at process.processTimers (node:internal/timers:523:7)",
+    "port_holders": {
+      "5174": [
+        {
+          "pid": 3024240,
+          "cmdline": "node /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/client/node_modules/.bin/../vite/bin/vite.js --port 5174 --strictPort"
+        }
+      ],
+      "3001": [
+        {
+          "pid": 3024196,
+          "cmdline": "node game/server/index.js"
+        }
+      ]
+    }
+  }
+}

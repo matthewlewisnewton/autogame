@@ -113,6 +113,7 @@ import {
 	initScene as rendererInitScene,
 	rebuildDungeonLayout,
 	syncPassageLockColliders,
+	syncPassageLockGates,
 	setGameStateRef,
 	setMyId as rendererSetMyId,
 	setSocketRef,
@@ -869,6 +870,7 @@ function applyLobbyJoinedData(data) {
 	// never reuses (or rebuilds into) the quest geometry, and a run join never
 	// deploys the player into the hub geometry.
 	if (joinPhase === 'playing') {
+		if (isCharacterBoothOpen()) closeCharacterBooth();
 		if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 		const seedChanged = receivedSeed !== undefined && receivedSeed !== currentLayoutSeed;
 		if (receivedSeed !== undefined) currentLayoutSeed = receivedSeed;
@@ -1319,6 +1321,7 @@ function bindSocketHandlers(s) {
 		setGameStateRef(state);
 		if (state.gamePhase === 'playing' && currentLayout) {
 			syncPassageLockColliders(state.run?.passageLocks);
+			syncPassageLockGates(state.run?.passageLocks);
 		}
 		// Server snapshots omit debugGodmode; re-apply the last toggle so harness
 		// probes and local handlers stay consistent across stateUpdate.
@@ -1968,6 +1971,7 @@ function bindSocketHandlers(s) {
 	});
 
 	s.on(SERVER_TO_CLIENT.START_GAME, () => {
+		if (isCharacterBoothOpen()) closeCharacterBooth();
 		claimedCardRewardId = null;
 		currentCardChoices = [];
 		clearQuestCommsLog();
@@ -5124,6 +5128,9 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 	const objective = runObjective ? {
 		type: runObjective.type,
 		totalEnemies: runObjective.totalEnemies,
+		...(Number.isFinite(runObjective.activeEnemyCount)
+			? { activeEnemyCount: runObjective.activeEnemyCount }
+			: {}),
 		defeatedEnemies: runObjective.defeatedEnemies,
 		totalItems: runObjective.totalItems,
 		collectedItems: runObjective.collectedItems,

@@ -92,7 +92,12 @@ export function openPreview(canvasEl, cosmetic) {
 	camera.position.set(0, 0.4, 3.2);
 	camera.lookAt(0, 0.2, 0);
 
-	renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+	renderer = new THREE.WebGLRenderer({
+		canvas,
+		antialias: true,
+		powerPreference: 'low-power',
+		failIfMajorPerformanceCaveat: false,
+	});
 	renderer.setPixelRatio(window.devicePixelRatio || 1);
 	renderer.setSize(width, height, false);
 

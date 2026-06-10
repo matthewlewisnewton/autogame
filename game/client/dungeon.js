@@ -1506,6 +1506,92 @@ export function buildDungeon(scene, layout) {
 
 const PASSAGE_LOCK_BARRIER_DEPTH = 1.0;
 
+/**
+ * Build a themed energy gate spanning a locked passage doorway gap.
+ * Position and footprint match {@link computePassageBarrierAABBs} collider math.
+ *
+ * @param {object} layout
+ * @param {number} passageIndex
+ * @param {{ accent: THREE.MeshStandardMaterial, passageWall: THREE.MeshStandardMaterial }} materials
+ * @returns {THREE.Group|null}
+ */
+export function buildPassageGateMesh(layout, passageIndex, materials) {
+	if (!layout?.passages?.[passageIndex] || !materials) return null;
+
+	const passage = layout.passages[passageIndex];
+	const passageWidth = layout.passageWidth ?? PASSAGE_WIDTH;
+	const gapW = passageWidth + 0.5;
+	const dx = passage.x2 - passage.x1;
+	const dz = passage.z2 - passage.z1;
+	const alongX = Math.abs(dx) >= Math.abs(dz);
+
+	const midX = alongX ? (passage.x1 + passage.x2) / 2 : passage.x1;
+	const midZ = alongX ? passage.z1 : (passage.z1 + passage.z2) / 2;
+	const gateHeight = PASSAGE_WALL_HEIGHT;
+
+	const group = new THREE.Group();
+	group.userData.isPassageGate = true;
+	group.userData.passageIndex = passageIndex;
+
+	const accentMat = materials.accent;
+	const frameColor = materials.passageWall?.color ?? accentMat.color;
+	const fieldMat = new THREE.MeshStandardMaterial({
+		color: accentMat.color,
+		emissive: accentMat.emissive,
+		emissiveIntensity: 0.85,
+		transparent: true,
+		opacity: 0.55,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const frameMat = new THREE.MeshStandardMaterial({
+		color: frameColor,
+		emissive: accentMat.emissive,
+		emissiveIntensity: 0.35,
+		roughness: 0.5,
+	});
+
+	let fieldGeo;
+	let frameGeo;
+	if (alongX) {
+		fieldGeo = new THREE.BoxGeometry(PASSAGE_LOCK_BARRIER_DEPTH * 0.65, gateHeight * 0.92, gapW * 0.96);
+		frameGeo = new THREE.BoxGeometry(PASSAGE_LOCK_BARRIER_DEPTH, gateHeight, gapW);
+	} else {
+		fieldGeo = new THREE.BoxGeometry(gapW * 0.96, gateHeight * 0.92, PASSAGE_LOCK_BARRIER_DEPTH * 0.65);
+		frameGeo = new THREE.BoxGeometry(gapW, gateHeight, PASSAGE_LOCK_BARRIER_DEPTH);
+	}
+
+	const frame = new THREE.Mesh(frameGeo, frameMat);
+	const field = new THREE.Mesh(fieldGeo, fieldMat);
+	frame.userData.isPassageGatePart = true;
+	field.userData.isPassageGatePart = true;
+	group.add(frame);
+	group.add(field);
+
+	group.position.set(midX, FLOOR_Y + gateHeight / 2, midZ);
+	return group;
+}
+
+/**
+ * World-space center of a passage gate mesh (for unlock VFX when no live mesh).
+ * @param {object} layout
+ * @param {number} passageIndex
+ * @returns {{ x: number, y: number, z: number }|null}
+ */
+export function getPassageGateWorldPosition(layout, passageIndex) {
+	if (!layout?.passages?.[passageIndex]) return null;
+
+	const passage = layout.passages[passageIndex];
+	const dx = passage.x2 - passage.x1;
+	const dz = passage.z2 - passage.z1;
+	const alongX = Math.abs(dx) >= Math.abs(dz);
+	const midX = alongX ? (passage.x1 + passage.x2) / 2 : passage.x1;
+	const midZ = alongX ? passage.z1 : (passage.z1 + passage.z2) / 2;
+	const gateHeight = PASSAGE_WALL_HEIGHT;
+
+	return { x: midX, y: FLOOR_Y + gateHeight / 2, z: midZ };
+}
+
 function footprintToAABB(footprint) {
 	return {
 		minX: footprint.x - footprint.width / 2,
