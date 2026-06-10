@@ -6253,3 +6253,26 @@ None.
 ## Remaining gaps
 
 None blocking. The implementation fully addresses the reported flash-close bug with appropriate tests and clean runtime capture.
+
+## v0.360 — Server: bulkhead_mauler and astral guardian minions attack every tick; mauler broadcasts CARD_USED 20x/sec  (2026-06-10 07:09:48)
+
+## Debug scenarios
+
+This ticket did not add or change `?debugScenario=` shortcuts. Nothing to gate-check.
+
+## Code quality
+
+Implementation is focused, consistent with neighboring minion branches, and covered by targeted unit tests. No dead code or obvious logic bugs found in the changed paths.
+
+Minor stale comments/docs remain in validation/sync helpers (see nits backlog); none affect behavior.
+
+## Integration notes
+
+Two sub-tickets landed cleanly with no merge conflicts in `game/`. Changes are limited to server simulation, card spawn defaults, shared card stats, and tests — no client/renderer edits required for this server-side cadence fix.
+
+The round-6 capture exercises generic gameplay (lobby → deploy → movement → dodge) rather than spawning mauler/guardian minions, but unit tests directly prove the interval gates. Combined with a clean runtime capture, that is sufficient evidence for this ticket scope.
+
+## Remaining gaps
+
+None. All acceptance criteria are satisfied and the captured run is healthy.
+

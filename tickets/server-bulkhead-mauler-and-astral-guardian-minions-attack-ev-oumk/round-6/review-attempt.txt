@@ -1,0 +1,14 @@
+## Review complete
+
+Holistic senior review written to `tickets/server-bulkhead-mauler-and-astral-guardian-minions-attack-ev-oumk/round-6/review.md`.
+
+**Runtime:** `metrics.json` reports `ok: true`, empty `pageerrors`, and `console.log` has no fatal/page errors. Game loads and runs cleanly.
+
+**Acceptance criteria:** Both commits implement the fix:
+- `bulkhead_mauler` — 1500 ms `lastAttackAt`/`attackIntervalMs` gating in `updateMinions`; `_pendingMinionBreaths` (and thus `CARD_USED`) at most once per gated swing
+- `astral_guardian` / `aegis_sentinel` — default interval raised from ~50 ms (one tick) to 1500 ms in simulation, spawn, and `cardStats.json`
+- Tests updated and passing (3218/3218 in capture; re-verified minion suites)
+
+**Verdict:** `VERDICT: PASS`
+
+No `gaps.md` (FAIL-only). Minor follow-ups logged in `round-6/nits.md` (stale analyzer overlay comment, bulkhead_mauler spawn could copy interval explicitly, misleading test title). None block the ticket.

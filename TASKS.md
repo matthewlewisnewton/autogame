@@ -132,3 +132,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [380-cleanup-spherical-3d-aoe-for-all-radius-effects](tickets/380-cleanup-spherical-3d-aoe-for-all-radius-effects/)
 - [ ] [380-cleanup-server-quest-objective-crystals-despawn-after-loot-lifetime-19vg](tickets/380-cleanup-server-quest-objective-crystals-despawn-after-loot-lifetime-19vg/)
 - [ ] [381-cleanup-client-quest-board-panel-flashes-open-then-is-re-hidden-by-t-yb1m](tickets/381-cleanup-client-quest-board-panel-flashes-open-then-is-re-hidden-by-t-yb1m/)
+- [ ] [382-cleanup-server-bulkhead-mauler-and-astral-guardian-minions-attack-ev-oumk](tickets/382-cleanup-server-bulkhead-mauler-and-astral-guardian-minions-attack-ev-oumk/)
