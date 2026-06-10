@@ -9,6 +9,7 @@ import {
 	clearUsers,
 	setTestFilePath,
 	unlockQuestTier,
+	completeQuestTier,
 	hasCompletedQuestTier,
 	areUnlockPrereqsMet,
 	isQuestTierUnlocked,
@@ -20,12 +21,12 @@ import {
 	waitForEvent,
 	testGameState,
 } from './helpers.js';
-import { setTestProvider } from '../index.js';
+import { setTestProvider, checkRunTerminalState, _timeouts } from '../index.js';
 import { InMemoryProvider } from '../providers.js';
 
 const require = createRequire(import.meta.url);
 const users = require('../users.js');
-const { QUEST_DEFS, buildQuestUpdatePayload } = require('../quests.js');
+const { QUEST_DEFS, buildQuestUpdatePayload, getQuest } = require('../quests.js');
 
 const QUEST_A = 'training_caverns';
 const QUEST_B = 'crystal_rescue';
@@ -36,8 +37,67 @@ const MULTI_PREREQ_UNLOCK_REQUIRES = [
 	{ questId: QUEST_A, tier: TIER_1 },
 	{ questId: QUEST_B, tier: TIER_1 },
 ];
+const MULTI_PREREQ_TIER2_UNLOCK_REQUIRES = [
+	{ questId: QUEST_A, tier: TIER_2 },
+	{ questId: QUEST_B, tier: TIER_2 },
+];
 
-function installMultiPrereqFixtureQuest() {
+function runSimulationInPrimaryLobby(fn) {
+	const state = testGameState();
+	if (!state) throw new Error('runSimulationInPrimaryLobby: no active lobby state');
+	const sim = require('../simulation');
+	const progression = require('../progression');
+	sim.setGameState(state, _timeouts);
+	progression.setGameState(state);
+	return fn(state);
+}
+
+function simulateQuestTierVictory(questId, tier) {
+	const quest = getQuest(questId, tier);
+	if (!quest) throw new Error(`simulateQuestTierVictory: unknown ${questId} tier ${tier}`);
+
+	runSimulationInPrimaryLobby((state) => {
+		state.enemies = [];
+		if (!state.run) {
+			state.run = { startedAt: Date.now() };
+		}
+		state.run.status = 'playing';
+		state.run.questId = questId;
+		state.run.questTier = tier;
+		state.run.objective = { type: quest.objectiveType };
+
+		switch (quest.objectiveType) {
+			case 'defeat_enemies':
+				state.run.objective.totalEnemies = 1;
+				state.run.objective.defeatedEnemies = 1;
+				break;
+			case 'collect_items': {
+				const total = quest.itemCount ?? 1;
+				state.run.objective.totalItems = total;
+				state.run.objective.collectedItems = total;
+				if (quest.scriptedEncounters) {
+					state.run.objective.totalEnemies = 1;
+					state.run.objective.defeatedEnemies = 1;
+				}
+				if (quest.extractionDestination) {
+					state.run.objective.requiresExtraction = true;
+					state.run.objective.extractionPhase = true;
+					state.run.objective.extractionReached = true;
+				}
+				break;
+			}
+			case 'stage_boss':
+				state.run.objective.bossDefeated = true;
+				break;
+			default:
+				throw new Error(`simulateQuestTierVictory: unsupported objective ${quest.objectiveType}`);
+		}
+
+		checkRunTerminalState();
+	});
+}
+
+function installMultiPrereqFixtureQuest(unlockRequires = MULTI_PREREQ_UNLOCK_REQUIRES) {
 	QUEST_DEFS[MULTI_PREREQ_FIXTURE_ID] = {
 		id: MULTI_PREREQ_FIXTURE_ID,
 		enemyPool: [{ type: 'grunt', weight: 1 }],
@@ -58,10 +118,14 @@ function installMultiPrereqFixtureQuest() {
 				enemyCount: 1,
 				rewardCurrency: 1,
 				layoutProfile: 'crowded',
-				unlockRequires: MULTI_PREREQ_UNLOCK_REQUIRES,
+				unlockRequires,
 			},
 		},
 	};
+}
+
+function installMultiPrereqTier2FixtureQuest() {
+	installMultiPrereqFixtureQuest(MULTI_PREREQ_TIER2_UNLOCK_REQUIRES);
 }
 
 function removeMultiPrereqFixtureQuest() {
@@ -99,6 +163,11 @@ describe('hasCompletedQuestTier', () => {
 	it('returns true after unlockQuestTier records tier 2 (tier 1 victory)', () => {
 		unlockQuestTier(accountId, QUEST_A, TIER_2);
 		expect(hasCompletedQuestTier(accountId, QUEST_A, TIER_1)).toBe(true);
+	});
+
+	it('returns true when tier completion is recorded explicitly', () => {
+		completeQuestTier(accountId, QUEST_A, TIER_2);
+		expect(hasCompletedQuestTier(accountId, QUEST_A, TIER_2)).toBe(true);
 	});
 
 	it('returns false for unknown accounts and invalid quest/tier pairs', () => {
@@ -224,6 +293,71 @@ describe('isQuestTierUnlocked multi-prereq AND gating', () => {
 	it('still gates single-object unlockRequires the same as before', () => {
 		unlockQuestTier(accountId, QUEST_A, TIER_2);
 		expect(isQuestTierUnlocked(accountId, QUEST_A, TIER_2)).toBe(true);
+	});
+});
+
+describe('isQuestTierUnlocked tier-2 multi-prereq normal flow', () => {
+	let tmpFile;
+	let baseUrl;
+	let accountId;
+	let socket;
+
+	beforeEach(async () => {
+		installMultiPrereqTier2FixtureQuest();
+		tmpFile = path.join(
+			os.tmpdir(),
+			`unlock-prereqs-tier2-flow-${Date.now()}-${Math.random().toString(36).slice(2)}.json`,
+		);
+		users.setTestFilePath(tmpFile);
+		users.clearUsers();
+		baseUrl = await startTestServer();
+		users.createUser('tier2_flow_player', 'pass');
+		accountId = users.findUserByUsername('tier2_flow_player').accountId;
+		setTestProvider(new InMemoryProvider());
+		const connected = await connectClient(baseUrl, accountId, { name: 'Tier 2 Flow Room' });
+		socket = connected.socket;
+	});
+
+	afterEach(async () => {
+		if (socket && socket.connected) socket.disconnect();
+		await closeServer();
+		setTestProvider(null);
+		removeMultiPrereqFixtureQuest();
+		try {
+			fs.unlinkSync(tmpFile);
+		} catch {}
+		try {
+			fs.unlinkSync(tmpFile + '.tmp');
+		} catch {}
+	});
+
+	it('unlocks fixture tier 2 after tier-1 and tier-2 victories on prerequisites', async () => {
+		users.unlockQuestTier(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2);
+		expect(users.isQuestTierUnlocked(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2)).toBe(false);
+
+		const startGamePromise = waitForEvent(socket, 'startGame');
+		socket.emit('playerReady', true);
+		await startGamePromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		simulateQuestTierVictory(QUEST_A, TIER_1);
+		expect(users.hasCompletedQuestTier(accountId, QUEST_A, TIER_1)).toBe(true);
+		expect(users.isQuestTierUnlocked(accountId, QUEST_A, TIER_2)).toBe(true);
+		expect(users.hasCompletedQuestTier(accountId, QUEST_A, TIER_2)).toBe(false);
+
+		simulateQuestTierVictory(QUEST_B, TIER_1);
+		expect(users.hasCompletedQuestTier(accountId, QUEST_B, TIER_1)).toBe(true);
+		expect(users.isQuestTierUnlocked(accountId, QUEST_B, TIER_2)).toBe(true);
+		expect(users.hasCompletedQuestTier(accountId, QUEST_B, TIER_2)).toBe(false);
+		expect(users.isQuestTierUnlocked(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2)).toBe(false);
+
+		simulateQuestTierVictory(QUEST_A, TIER_2);
+		expect(users.hasCompletedQuestTier(accountId, QUEST_A, TIER_2)).toBe(true);
+		expect(users.isQuestTierUnlocked(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2)).toBe(false);
+
+		simulateQuestTierVictory(QUEST_B, TIER_2);
+		expect(users.hasCompletedQuestTier(accountId, QUEST_B, TIER_2)).toBe(true);
+		expect(users.isQuestTierUnlocked(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2)).toBe(true);
 	});
 });
 

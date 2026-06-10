@@ -9,7 +9,9 @@ import {
 	loadUsers,
 	setTestFilePath,
 	unlockQuestTier,
+	completeQuestTier,
 	isQuestTierUnlocked,
+	hasCompletedQuestTier,
 	getUnlockedQuestTiers,
 } from '../users.js';
 
@@ -37,13 +39,15 @@ describe('quest tier unlock persistence', () => {
 		} catch {}
 	});
 
-	it('new users include an empty unlockedQuestTiers map', () => {
+	it('new users include empty unlockedQuestTiers and completedQuestTiers maps', () => {
 		createUser('tier_player', 'pass');
 		const user = findUserByUsername('tier_player');
 		expect(user.unlockedQuestTiers).toEqual({});
+		expect(user.completedQuestTiers).toEqual({});
 
 		const onDisk = JSON.parse(fs.readFileSync(tmpFile, 'utf-8'));
 		expect(onDisk[0].unlockedQuestTiers).toEqual({});
+		expect(onDisk[0].completedQuestTiers).toEqual({});
 	});
 
 	it('loadUsers backfills missing or invalid unlockedQuestTiers to {}', () => {
@@ -140,5 +144,57 @@ describe('quest tier unlock persistence', () => {
 
 		const onDisk = JSON.parse(fs.readFileSync(tmpFile, 'utf-8'));
 		expect(onDisk[0].unlockedQuestTiers).toEqual({});
+	});
+
+	it('loadUsers backfills missing or invalid completedQuestTiers to {}', () => {
+		const legacy = [
+			{
+				username: 'legacy_complete_a',
+				passwordHash: 'x',
+				accountId: 'legacy-complete-a-id',
+				completedQuestTiers: null,
+			},
+			{
+				username: 'legacy_complete_b',
+				passwordHash: 'x',
+				accountId: 'legacy-complete-b-id',
+				completedQuestTiers: { bogus_quest: [2], [QUEST_ID]: [0, 2, 'x'] },
+			},
+		];
+		fs.writeFileSync(tmpFile, JSON.stringify(legacy), 'utf-8');
+		clearUsers();
+		loadUsers();
+
+		expect(findUserByUsername('legacy_complete_a').completedQuestTiers).toEqual({});
+		expect(findUserByUsername('legacy_complete_b').completedQuestTiers).toEqual({
+			[QUEST_ID]: [TIER_2],
+		});
+	});
+
+	it('completeQuestTier persists tier 2 and is idempotent', () => {
+		createUser('completer', 'pass');
+		const { accountId } = findUserByUsername('completer');
+
+		expect(hasCompletedQuestTier(accountId, QUEST_ID, TIER_2)).toBe(false);
+
+		const first = completeQuestTier(accountId, QUEST_ID, TIER_2);
+		expect(first).toEqual({
+			ok: true,
+			completedQuestTiers: { [QUEST_ID]: [TIER_2] },
+		});
+		expect(hasCompletedQuestTier(accountId, QUEST_ID, TIER_2)).toBe(true);
+
+		const onDiskAfterFirst = JSON.parse(fs.readFileSync(tmpFile, 'utf-8'));
+		expect(onDiskAfterFirst[0].completedQuestTiers).toEqual({ [QUEST_ID]: [TIER_2] });
+
+		const second = completeQuestTier(accountId, QUEST_ID, TIER_2);
+		expect(second).toEqual({
+			ok: true,
+			completedQuestTiers: { [QUEST_ID]: [TIER_2] },
+		});
+
+		clearUsers();
+		loadUsers();
+		expect(hasCompletedQuestTier(accountId, QUEST_ID, TIER_2)).toBe(true);
 	});
 });
