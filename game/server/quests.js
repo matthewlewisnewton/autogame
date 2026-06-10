@@ -1435,11 +1435,20 @@ function buildSharedQuestUpdatePayload(gameState) {
   };
 }
 
+function listQuestVariantsForAccount(accountId) {
+  const { isQuestTierUnlocked } = require('./users');
+  return listQuestVariants().map((variant) => ({
+    ...variant,
+    tierUnlocked: isQuestTierUnlocked(accountId, variant.questId, variant.tier),
+  }));
+}
+
 function buildQuestUpdatePayload(gameState, playerAccountId) {
   const payload = buildSharedQuestUpdatePayload(gameState);
   if (playerAccountId) {
     const { getUnlockedQuestTiers } = require('./users');
     payload.unlockedQuestTiers = getUnlockedQuestTiers(playerAccountId) || {};
+    payload.questVariants = listQuestVariantsForAccount(playerAccountId);
   }
   return payload;
 }

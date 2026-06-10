@@ -25,7 +25,7 @@ import { InMemoryProvider } from '../providers.js';
 
 const require = createRequire(import.meta.url);
 const users = require('../users.js');
-const { QUEST_DEFS } = require('../quests.js');
+const { QUEST_DEFS, buildQuestUpdatePayload } = require('../quests.js');
 
 const QUEST_A = 'training_caverns';
 const QUEST_B = 'crystal_rescue';
@@ -224,6 +224,71 @@ describe('isQuestTierUnlocked multi-prereq AND gating', () => {
 	it('still gates single-object unlockRequires the same as before', () => {
 		unlockQuestTier(accountId, QUEST_A, TIER_2);
 		expect(isQuestTierUnlocked(accountId, QUEST_A, TIER_2)).toBe(true);
+	});
+});
+
+describe('buildQuestUpdatePayload multi-prereq tierUnlocked', () => {
+	let tmpFile;
+	let accountId;
+
+	beforeEach(() => {
+		installMultiPrereqFixtureQuest();
+		tmpFile = path.join(
+			os.tmpdir(),
+			`unlock-prereqs-payload-${Date.now()}-${Math.random().toString(36).slice(2)}.json`,
+		);
+		users.setTestFilePath(tmpFile);
+		users.clearUsers();
+		users.createUser('multi_prereq_payload', 'pass');
+		accountId = users.findUserByUsername('multi_prereq_payload').accountId;
+	});
+
+	afterEach(() => {
+		removeMultiPrereqFixtureQuest();
+		try {
+			fs.unlinkSync(tmpFile);
+		} catch {}
+		try {
+			fs.unlinkSync(tmpFile + '.tmp');
+		} catch {}
+	});
+
+	function fixtureTier2Variant(payload) {
+		return payload.questVariants.find(
+			(v) => v.questId === MULTI_PREREQ_FIXTURE_ID && v.tier === TIER_2,
+		);
+	}
+
+	it('reports tierUnlocked false with one prereq completed and persisted tier-2 unlock', () => {
+		users.unlockQuestTier(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2);
+		users.unlockQuestTier(accountId, QUEST_A, TIER_2);
+
+		const payload = buildQuestUpdatePayload({}, accountId);
+		const tier2 = fixtureTier2Variant(payload);
+
+		expect(tier2.tierUnlocked).toBe(false);
+		expect(tier2.unlockRequires).toEqual(MULTI_PREREQ_UNLOCK_REQUIRES);
+		expect(users.getUnlockedQuestTiers(accountId)).toEqual({
+			[MULTI_PREREQ_FIXTURE_ID]: [TIER_2],
+			[QUEST_A]: [TIER_2],
+		});
+		expect(payload.unlockedQuestTiers).toEqual(users.getUnlockedQuestTiers(accountId));
+	});
+
+	it('reports tierUnlocked true when both prerequisites are met and tier-2 is persisted', () => {
+		users.unlockQuestTier(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2);
+		users.unlockQuestTier(accountId, QUEST_A, TIER_2);
+		users.unlockQuestTier(accountId, QUEST_B, TIER_2);
+
+		const payload = buildQuestUpdatePayload({}, accountId);
+		const tier2 = fixtureTier2Variant(payload);
+
+		expect(tier2.tierUnlocked).toBe(true);
+		expect(payload.unlockedQuestTiers).toEqual({
+			[MULTI_PREREQ_FIXTURE_ID]: [TIER_2],
+			[QUEST_A]: [TIER_2],
+			[QUEST_B]: [TIER_2],
+		});
 	});
 });
 

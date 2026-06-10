@@ -1,4 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { createRequire } from 'module';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 import {
   QUEST_DEFS,
   DEFAULT_QUEST_ID,
@@ -14,6 +18,9 @@ import {
   normalizeUnlockRequires,
 } from '../quests.js';
 import { questLayoutSeed } from '../dungeon.js';
+
+const require = createRequire(import.meta.url);
+const users = require('../users.js');
 
 const TIER_1_QUEST_IDS = [
   'training_caverns',
@@ -371,9 +378,13 @@ describe('quest tier catalog', () => {
       (v) => v.questId === 'training_caverns' && v.tier === 1,
     );
     expect(trainingVariant.client?.name).toBe('Rewa');
+    expect(trainingVariant.tierUnlocked).toBeUndefined();
 
     const playerPayload = buildQuestUpdatePayload({});
     expect(playerPayload.quests.find((q) => q.id === 'training_caverns').client.name).toBe('Rewa');
+    expect(
+      playerPayload.questVariants.every((variant) => variant.tierUnlocked === undefined),
+    ).toBe(true);
   });
 
   it('listQuestVariants includes every quest/tier pair with summaries', () => {
@@ -552,5 +563,66 @@ describe('quest tier catalog', () => {
       slopes: true,
       layoutMode: 'default',
     });
+  });
+});
+
+describe('buildQuestUpdatePayload tierUnlocked', () => {
+  let tmpFile;
+  let accountId;
+
+  beforeEach(() => {
+    tmpFile = path.join(
+      os.tmpdir(),
+      `quests-payload-tier-${Date.now()}-${Math.random().toString(36).slice(2)}.json`,
+    );
+    users.setTestFilePath(tmpFile);
+    users.clearUsers();
+    users.createUser('payload_tier_player', 'pass');
+    accountId = users.findUserByUsername('payload_tier_player').accountId;
+  });
+
+  afterEach(() => {
+    try {
+      fs.unlinkSync(tmpFile);
+    } catch {}
+    try {
+      fs.unlinkSync(tmpFile + '.tmp');
+    } catch {}
+  });
+
+  it('does not add tierUnlocked on shared or account-less payloads', () => {
+    const shared = buildSharedQuestUpdatePayload({});
+    expect(shared.questVariants.every((variant) => variant.tierUnlocked === undefined)).toBe(
+      true,
+    );
+
+    const noAccount = buildQuestUpdatePayload({});
+    expect(noAccount.unlockedQuestTiers).toBeUndefined();
+    expect(noAccount.questVariants.every((variant) => variant.tierUnlocked === undefined)).toBe(
+      true,
+    );
+  });
+
+  it('exposes tierUnlocked false for locked tier 2 and true after prerequisite unlock', () => {
+    const lockedPayload = buildQuestUpdatePayload({}, accountId);
+    const lockedTier2 = lockedPayload.questVariants.find(
+      (v) => v.questId === 'training_caverns' && v.tier === 2,
+    );
+    const tier1 = lockedPayload.questVariants.find(
+      (v) => v.questId === 'training_caverns' && v.tier === 1,
+    );
+
+    expect(lockedTier2.tierUnlocked).toBe(false);
+    expect(tier1.tierUnlocked).toBe(true);
+    expect(lockedPayload.unlockedQuestTiers).toEqual({});
+
+    users.unlockQuestTier(accountId, 'training_caverns', 2);
+    const unlockedPayload = buildQuestUpdatePayload({}, accountId);
+    const unlockedTier2 = unlockedPayload.questVariants.find(
+      (v) => v.questId === 'training_caverns' && v.tier === 2,
+    );
+
+    expect(unlockedTier2.tierUnlocked).toBe(true);
+    expect(unlockedPayload.unlockedQuestTiers).toEqual({ training_caverns: [2] });
   });
 });
