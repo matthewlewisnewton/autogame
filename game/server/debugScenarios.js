@@ -186,6 +186,26 @@ function setupVaultOnslaughtBossDebug(lobby, state, player) {
   deployQuestDebugRun(lobby, state, { clearEncounterBoss: true });
 }
 
+function setupRiftConvergenceBossDebug(lobby, state, player) {
+  const questId = 'rift_convergence';
+  const tier = 1;
+  completeQuestTier(player.accountId, 'frost_crossing', 2);
+  completeQuestTier(player.accountId, 'ember_descent', 2);
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+
+  player.ready = true;
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  const startSpawn = firstRoomPosition();
+  player.x = startSpawn.x;
+  player.z = startSpawn.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+  deployQuestDebugRun(lobby, state, { clearEncounterBoss: true });
+}
+
 function setupEscortObjectiveDeploy(lobby, state, player) {
   ensureEscortObjectiveFixtureQuest();
   const questId = ESCORT_OBJECTIVE_FIXTURE_DEF.id;
@@ -804,6 +824,52 @@ function applyDebugScenario(socket, name) {
       };
     }
 
+    if (name === 'rift-convergence-unlocked') {
+      // Lobby with BOTH rift_convergence prerequisites (frost_crossing Tier 2 and
+      // ember_descent Tier 2) completed and Rift Convergence selected, so the
+      // level map shows the boss node unlocked with both prerequisite edges
+      // satisfied. Reachable normally by clearing both quest lines through Tier 2.
+      setPhase(lobby, PHASES.LOBBY);
+      player.ready = false;
+      player.hp = MAX_HP;
+      completeQuestTier(player.accountId, 'frost_crossing', 2);
+      completeQuestTier(player.accountId, 'ember_descent', 2);
+      const questId = 'rift_convergence';
+      const tier = 1;
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+      assignRunSpawnPositions(Object.values(state.players));
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      return {
+        ok: true,
+        scenario: name,
+        levelUnlockGraph: buildQuestUpdatePayload(state, player.accountId).levelUnlockGraph,
+      };
+    }
+
+    if (name === 'rift-convergence-one-prereq') {
+      // Lobby with ONLY frost_crossing Tier 2 completed: the Rift Convergence
+      // node stays locked on the level map, demonstrating the AND gate across
+      // both prerequisite edges. Reachable normally by clearing the frost line
+      // through Tier 2 before touching the ember line.
+      setPhase(lobby, PHASES.LOBBY);
+      player.ready = false;
+      player.hp = MAX_HP;
+      completeQuestTier(player.accountId, 'frost_crossing', 2);
+      emitLobbyQuestUpdate(lobby, state);
+      broadcastLobbyUpdate(lobby);
+      return {
+        ok: true,
+        scenario: name,
+        levelUnlockGraph: buildQuestUpdatePayload(state, player.accountId).levelUnlockGraph,
+      };
+    }
+
     if (name === 'training-caverns-vault-stalker') {
       // training_caverns Tier 1 with annex waves cleared and Vault Stalker spawned
       // in the vault wing for named-rare QA. Reachable normally by clearing both
@@ -1068,6 +1134,20 @@ function applyDebugScenario(socket, name) {
       // Reachable normally by completing Crucible Duel, selecting Vault Onslaught,
       // and deploying; this scenario is a shortcut into that dormant encounter state.
       setupVaultOnslaughtBossDebug(lobby, state, player);
+      const anchor = resolveArenaDaisAnchor(state);
+      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 2;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      return finishStageBossDebugScenario(lobby, state, player, name);
+    }
+
+    if (name === 'rift-convergence-boss') {
+      // rift_convergence boss-level run with dormant Riftbound Colossus and four
+      // ice/fire supports on the boss arena. Reachable normally by completing
+      // Frost Crossing Tier 2 AND Ember Descent Tier 2, selecting Rift
+      // Convergence, and deploying; this scenario is a shortcut into that
+      // dormant encounter state.
+      setupRiftConvergenceBossDebug(lobby, state, player);
       const anchor = resolveArenaDaisAnchor(state);
       player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 2;
       player.z = anchor.z;
