@@ -603,6 +603,14 @@ export const MINION_VISUAL = {
 		emissive: 0xf59e0b,
 		emissiveIntensity: 0.25,
 	},
+	escort_npc: {
+		shape: 'cylinder',
+		radius: 0.45,
+		height: 1.1,
+		color: 0xfbbf24,
+		emissive: 0x38bdf8,
+		emissiveIntensity: 0.45,
+	},
 };
 
 /**

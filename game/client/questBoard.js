@@ -59,6 +59,14 @@ export function formatObjectiveSummary(quest) {
 			: THEME.objectives.defeatTrialWarden;
 	}
 
+	if (quest.objectiveType === 'escort') {
+		const npc = quest.escortNpc?.name || 'VIP';
+		const dest = quest.escortDestination?.landmark
+			|| quest.escortDestination?.roomRole
+			|| 'extraction';
+		return `Escort ${npc} to ${String(dest).replace(/_/g, ' ')}`;
+	}
+
 	return quest.description || '';
 }
 

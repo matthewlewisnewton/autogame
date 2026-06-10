@@ -983,6 +983,9 @@ function startDungeonRun() {
   if (_gameState.run.passageLocks?.length) {
     _rebuildWallColliders();
   }
+  if (quest.objectiveType === 'escort') {
+    require('./escort').spawnEscortNpc(_gameState, quest, _gameState.layout);
+  }
   for (const p of Object.values(_gameState.players)) {
     p.currencyEarnedThisRun = 0;
     p.runRewards = null;
@@ -2675,6 +2678,11 @@ function updateScriptedEncounters(now = Date.now()) {
   tickScriptedEncounters(now, _gameState, buildObjectiveSpawnCtx());
 }
 
+function tickEscort(gameState = _gameState) {
+  if (!gameState) return;
+  require('./escort').tickEscort(gameState);
+}
+
 function updateEncounterTriggers() {
   if (!isPlayingPhase(_gameState)) return;
   tryActivateEncounter(_gameState);
@@ -2818,6 +2826,9 @@ function captureCardCheckpoint() {
   }
   if (run._scriptedEncounterConfig) {
     checkpoint.run._scriptedEncounterConfig = deepCloneJson(run._scriptedEncounterConfig);
+  }
+  if (run.escort) {
+    checkpoint.run.escort = deepCloneJson(run.escort);
   }
   if (run.passageLocks) {
     checkpoint.run.passageLocks = deepCloneJson(run.passageLocks);
@@ -3072,6 +3083,10 @@ function checkRunTerminalState() {
 
   if (isRunObjectiveComplete(_gameState.run.objective)) {
     status = 'victory';
+  }
+
+  if (!status && _gameState.run.escort?.failed) {
+    status = 'failed';
   }
 
   if (!status) {
@@ -3600,6 +3615,7 @@ module.exports = {
   spawnCombatEnemies,
   updateSurviveSpawns,
   updateScriptedEncounters,
+  tickEscort,
   updateQuestDialogueRoomEntry,
   updateEncounterTriggers,
   recordCrystalCollected,
@@ -3627,3 +3643,5 @@ module.exports = {
   buildPlayerDeckUpdatePayload,
   buildPlayerHotSnapshot,
 };
+
+require('./escort').setEscortCallbacks({ checkRunTerminalState });

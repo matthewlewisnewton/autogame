@@ -311,6 +311,7 @@ const {
   spawnCombatEnemies,
   updateSurviveSpawns,
   updateScriptedEncounters,
+  tickEscort,
   updateQuestDialogueRoomEntry,
   updateEncounterTriggers,
   spawnLoot,
@@ -535,6 +536,7 @@ const DEBUG_SCENARIOS = new Set([
   'frost-crossing-tier-1',
   'scripted-wave-combat',
   'passage-lock-gated',
+  'escort-objective',
   'fire-cavern',
   'ember-descent-near-adds',
   'ember-descent-ember-wraith-burn',
@@ -1454,6 +1456,7 @@ function runGameLoopTick() {
           updateEncounterTriggers();
           updateSurviveSpawns();
           updateScriptedEncounters();
+          tickEscort(state);
 
           const now = Date.now();
           processPassiveDraws(now);

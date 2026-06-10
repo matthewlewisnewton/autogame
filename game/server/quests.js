@@ -12,6 +12,27 @@
  * @typedef {import('./scriptedEncounters').ScriptedEncounterConfig} ScriptedEncounterConfig
  */
 
+/**
+ * Escort NPC metadata on a quest tier using `objectiveType: 'escort'`.
+ * @typedef {Object} EscortNpcConfig
+ * @property {string} name - Display name for the escort NPC.
+ * @property {number} [maxHp] - Escort minion HP (default 80).
+ */
+
+/**
+ * Escort extraction target on a quest tier.
+ * @typedef {Object} EscortDestinationConfig
+ * @property {string} [landmark] - Layout landmark type (e.g. `vault_dais`).
+ * @property {string} [roomRole] - Room role fallback (e.g. `treasure`).
+ */
+
+/**
+ * Optional escort objective fields on a quest tier.
+ * @property {EscortNpcConfig} [escortNpc] - Friendly NPC to protect and extract.
+ * @property {EscortDestinationConfig} [escortDestination] - Extraction landmark or room role.
+ * @property {boolean} [escortFailOnDeath=true] - Fail the run when the escort dies.
+ */
+
 const QUEST_DEFS = {
   training_caverns: {
     id: 'training_caverns',
@@ -398,6 +419,13 @@ function formatObjectiveSummary(quest) {
       ? THEME.objectives.defeatAnnexOverseer
       : THEME.objectives.defeatTrialWarden;
   }
+  if (quest.objectiveType === 'escort') {
+    const npc = quest.escortNpc?.name || 'VIP';
+    const dest = quest.escortDestination?.landmark
+      || quest.escortDestination?.roomRole
+      || 'extraction';
+    return `Escort ${npc} to ${String(dest).replace(/_/g, ' ')}`;
+  }
   return quest.description || '';
 }
 
@@ -407,6 +435,35 @@ function getEncounterConfig(quest) {
   }
   return quest.encounter;
 }
+
+/** Test/debug fixture quest def — not registered in QUEST_DEFS. */
+const ESCORT_OBJECTIVE_FIXTURE_DEF = {
+  id: 'escort_objective_fixture',
+  enemyPool: [{ type: 'grunt', weight: 1 }],
+  tiers: {
+    1: {
+      name: 'Escort Objective Fixture',
+      description: 'Test-only escort objective with scripted ambush waves.',
+      clientNpc: 'Extraction Handler',
+      briefing: 'Escort the archivist to the arena dais while clearing ambush waves.',
+      objectiveType: 'escort',
+      escortNpc: { name: 'Archivist Vale', maxHp: 60 },
+      escortDestination: { landmark: 'arena_dais' },
+      rewardCurrency: 1,
+      layoutProfile: 'open-plaza',
+      scriptedEncounters: {
+        rooms: [
+          {
+            roomIndex: 0,
+            waves: [
+              { spawns: [{ type: 'grunt', count: 1 }] },
+            ],
+          },
+        ],
+      },
+    },
+  },
+};
 
 /** Test/debug fixture quest def — not registered in QUEST_DEFS. */
 const SCRIPTED_ENCOUNTER_FIXTURE_DEF = {
@@ -619,6 +676,7 @@ function pickWeightedEnemyType(pool, rng = Math.random) {
 module.exports = {
   QUEST_DEFS,
   SCRIPTED_ENCOUNTER_FIXTURE_DEF,
+  ESCORT_OBJECTIVE_FIXTURE_DEF,
   DEFAULT_QUEST_ID,
   DEFAULT_QUEST_TIER,
   isValidQuestId,

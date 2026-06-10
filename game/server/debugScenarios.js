@@ -23,6 +23,7 @@ const {
   getLayoutProfileForQuest,
   buildQuestUpdatePayload,
   SCRIPTED_ENCOUNTER_FIXTURE_DEF,
+  ESCORT_OBJECTIVE_FIXTURE_DEF,
 } = require('./quests');
 const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS, MEDIC_HEAL_COST } = require('./config');
 const CARD_DEFS = require('../shared/cardDefs.json');
@@ -127,6 +128,49 @@ function ensurePassageLockFixtureQuest(layout) {
       },
     },
   };
+}
+
+function ensureEscortObjectiveFixtureQuest() {
+  const questId = ESCORT_OBJECTIVE_FIXTURE_DEF.id;
+  if (!QUEST_DEFS[questId]) {
+    QUEST_DEFS[questId] = ESCORT_OBJECTIVE_FIXTURE_DEF;
+  }
+}
+
+function setupEscortObjectiveDeploy(lobby, state, player) {
+  ensureEscortObjectiveFixtureQuest();
+  const questId = ESCORT_OBJECTIVE_FIXTURE_DEF.id;
+  const tier = 1;
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+
+  player.ready = true;
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  const startSpawn = firstRoomPosition();
+  player.x = startSpawn.x;
+  player.z = startSpawn.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+  enterPlayingPhase(lobby);
+
+  if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+    createDrawDeckFromSelectedDeck(player);
+    initPlayerHand(player);
+    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+    if (!player.pendingSummons) {
+      player.pendingSummons = new Set();
+    }
+  }
+
+  state.enemies = [];
+  state.loot = [];
+  state.minions = [];
+  delete state.run;
+  delete state._pendingEncounterBossId;
+  spawnEnemies();
+  startDungeonRun();
 }
 
 function setupScriptedWaveCombatDeploy(lobby, state, player) {
@@ -859,6 +903,25 @@ function applyDebugScenario(socket, name) {
       // Reachable normally by selecting Scripted Encounter Fixture and deploying;
       // this scenario is a shortcut into wave-0 combat.
       setupScriptedWaveCombatDeploy(lobby, state, player);
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
+    if (name === 'escort-objective') {
+      // escort_objective_fixture Tier 1 with Archivist Vale and wave-0 grunt ambush.
+      // Reachable normally by deploying the escort fixture quest; this scenario is
+      // a shortcut into escort wave-0 combat with the NPC already spawned.
+      setupEscortObjectiveDeploy(lobby, state, player);
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,

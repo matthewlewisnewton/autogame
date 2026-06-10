@@ -140,7 +140,8 @@ export function syncMinionMeshes(gs) {
 
 	for (const minion of (gs.minions || [])) {
 		if (!minionsMeshes[minion.id]) {
-			const mesh = createMinionMesh(minion.type);
+			const visualKey = minion.isEscort ? 'escort_npc' : minion.type;
+			const mesh = createMinionMesh(visualKey);
 			scene.add(mesh);
 			minionsMeshes[minion.id] = mesh;
 			if (!seenMinionIds.has(minion.id)) {

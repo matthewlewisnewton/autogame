@@ -2229,6 +2229,9 @@ function damageMinion(minion, amount) {
   minion.hp = Math.max(0, minion.hp - amount);
   const ttlBurn = (amount * maxTtl / maxHp) * 0.25;
   minion.ttl = Math.max(0, minion.ttl - ttlBurn);
+  if (minion.isEscort) {
+    require('./escort').onEscortDamaged(minion, _gameState);
+  }
 }
 
 // ── Player Damage / Respawn ──
@@ -3073,6 +3076,46 @@ function updateMinions() {
     for (const minion of _gameState.minions) {
       if (minion.type === 'mana_prism') continue;
 
+      if (minion.isEscort) {
+        let nearestDist = Infinity;
+        let nearestEnemy = null;
+
+        for (const enemy of _gameState.enemies) {
+          const dx = enemy.x - minion.x;
+          const dz = enemy.z - minion.z;
+          const dist = Math.hypot(dx, dz);
+          if (dist < nearestDist) {
+            nearestDist = dist;
+            nearestEnemy = enemy;
+          }
+        }
+
+        const underAttack = nearestEnemy && nearestDist < DETECTION_RADIUS;
+        if (!underAttack) {
+          let nearestPlayer = null;
+          let nearestPlayerDist = Infinity;
+          for (const player of Object.values(_gameState.players)) {
+            if (!player || player.dead || player.extracted) continue;
+            const dx = player.x - minion.x;
+            const dz = player.z - minion.z;
+            const dist = Math.hypot(dx, dz);
+            if (dist < nearestPlayerDist) {
+              nearestPlayerDist = dist;
+              nearestPlayer = player;
+            }
+          }
+          if (nearestPlayer && nearestPlayerDist > MINION_FOLLOW_DISTANCE) {
+            moveEntityToward(
+              minion,
+              nearestPlayer,
+              MINION_FOLLOW_SPEED * dt,
+              { stopDistance: MINION_FOLLOW_DISTANCE },
+            );
+          }
+        }
+        continue;
+      }
+
       let nearestDist = Infinity;
       let nearestEnemy = null;
 
@@ -3437,9 +3480,13 @@ function updateMinions() {
       survivingMinions.push(minion);
       continue;
     }
-    const owner = _gameState.players[minion.ownerId];
-    if (owner) {
-      progression.releaseBurningCreatureCard(owner, minion);
+    if (minion.isEscort && minion.hp <= 0) {
+      require('./escort').onEscortDeath(minion, _gameState);
+    } else {
+      const owner = _gameState.players[minion.ownerId];
+      if (owner) {
+        progression.releaseBurningCreatureCard(owner, minion);
+      }
     }
   }
   _gameState.minions = survivingMinions;
