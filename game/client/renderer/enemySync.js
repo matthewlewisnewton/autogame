@@ -60,7 +60,22 @@ import {
 	createEnemyNameplate,
 	disposeEnemyNameplate,
 	NAMEPLATE_OFFSET_Y,
+	resolveBodyMesh,
 } from '../renderer.js';
+
+/** Read `_orig*` bookkeeping from the body mesh when retargeted, else the host. */
+function enemyOrigBookkeeping(host) {
+	const body = resolveBodyMesh(host);
+	const source = body && body !== host ? body : host;
+	return {
+		color: source._origColor ?? host._origColor,
+		emissive: source._origEmissive ?? host._origEmissive ?? 0x000000,
+		emissiveIntensity:
+			source._origEmissiveIntensity != null
+				? source._origEmissiveIntensity
+				: (host._origEmissiveIntensity != null ? host._origEmissiveIntensity : 0),
+	};
+}
 
 /** enemyId → hp from previous frame (private enemy-sync state). */
 const previousEnemyHp = {};
@@ -235,19 +250,21 @@ export function updateEnemyShieldBarMesh(enemyId, enemy) {
  * @param {boolean} isWindup
  */
 export function applyWindupFlash(enemyId, isWindup) {
-	const mesh = enemiesMeshes[enemyId];
-	if (!mesh || !mesh.material || !mesh.material.emissive) return;
+	const host = enemiesMeshes[enemyId];
+	const target = resolveBodyMesh(host);
+	if (!target || !target.material || !target.material.emissive) return;
 
 	if (isWindup) {
 		if (!windupFlashing.has(enemyId)) {
-			mesh.material.emissive.set(0xff3333);
-			mesh.material.emissiveIntensity = 1.5;
+			target.material.emissive.set(0xff3333);
+			target.material.emissiveIntensity = 1.5;
 			windupFlashing.add(enemyId);
 		}
 	} else {
 		if (windupFlashing.has(enemyId)) {
-			mesh.material.emissive.set(0x000000);
-			mesh.material.emissiveIntensity = 0;
+			const orig = enemyOrigBookkeeping(host);
+			target.material.emissive.set(orig.emissive);
+			target.material.emissiveIntensity = orig.emissiveIntensity;
 			windupFlashing.delete(enemyId);
 		}
 	}
@@ -265,16 +282,17 @@ const REVEAL_GLOW_INTENSITY = 1.0;
  * @param {object} enemy - { revealedUntil }
  */
 export function applyRevealHighlight(enemyId, enemy) {
-	const mesh = enemiesMeshes[enemyId];
-	if (!mesh || !mesh.material || !mesh.material.emissive) return;
+	const host = enemiesMeshes[enemyId];
+	const target = resolveBodyMesh(host);
+	if (!target || !target.material || !target.material.emissive) return;
 
 	if (enemy.revealedUntil && Date.now() < enemy.revealedUntil) {
-		mesh.material.emissive.set(REVEAL_GLOW_COLOR);
-		mesh.material.emissiveIntensity = REVEAL_GLOW_INTENSITY;
+		target.material.emissive.set(REVEAL_GLOW_COLOR);
+		target.material.emissiveIntensity = REVEAL_GLOW_INTENSITY;
 	} else {
-		mesh.material.emissive.set(mesh._origEmissive || 0x000000);
-		mesh.material.emissiveIntensity =
-			(mesh._origEmissiveIntensity != null ? mesh._origEmissiveIntensity : 0);
+		const orig = enemyOrigBookkeeping(host);
+		target.material.emissive.set(orig.emissive);
+		target.material.emissiveIntensity = orig.emissiveIntensity;
 	}
 }
 
@@ -299,14 +317,18 @@ export function parseNamedRareTintHex(tint) {
  * @param {object} enemy - { namedRare }
  */
 export function applyNamedRareTint(enemyId, enemy) {
-	const mesh = enemiesMeshes[enemyId];
-	if (!mesh || !mesh.material || !mesh.material.color) return;
+	const host = enemiesMeshes[enemyId];
+	const target = resolveBodyMesh(host);
+	if (!target || !target.material || !target.material.color) return;
 
 	const tintHex = enemy?.namedRare?.tint ? parseNamedRareTintHex(enemy.namedRare.tint) : null;
 	if (tintHex != null) {
-		mesh.material.color.setHex(tintHex);
-	} else if (mesh._origColor != null) {
-		mesh.material.color.setHex(mesh._origColor);
+		target.material.color.setHex(tintHex);
+	} else {
+		const orig = enemyOrigBookkeeping(host);
+		if (orig.color != null) {
+			target.material.color.setHex(orig.color);
+		}
 	}
 }
 
@@ -420,15 +442,19 @@ export function variantMarkerColor(variant) {
  * @param {object} enemy - { variant }
  */
 export function applyEnemyVariantTint(enemyId, enemy) {
-	const mesh = enemiesMeshes[enemyId];
-	if (!mesh || !mesh.material || !mesh.material.color) return;
+	const host = enemiesMeshes[enemyId];
+	const target = resolveBodyMesh(host);
+	if (!target || !target.material || !target.material.color) return;
 
 	if (enemy && enemy.variant === 'warded') {
-		mesh.material.color.setHex(WARDED_TINT);
+		target.material.color.setHex(WARDED_TINT);
 	} else if (enemy && enemy.variant === 'frenzied') {
-		mesh.material.color.setHex(FRENZIED_TINT);
-	} else if (mesh._origColor != null) {
-		mesh.material.color.setHex(mesh._origColor);
+		target.material.color.setHex(FRENZIED_TINT);
+	} else {
+		const orig = enemyOrigBookkeeping(host);
+		if (orig.color != null) {
+			target.material.color.setHex(orig.color);
+		}
 	}
 }
 
@@ -489,8 +515,9 @@ export function applyVariantMarker(enemyId, enemy) {
  * @param {object} enemy - { variant, revealedUntil, attackState }
  */
 export function applyVariantEmissiveTint(enemyId, enemy) {
-	const mesh = enemiesMeshes[enemyId];
-	if (!mesh || !mesh.material || !mesh.material.emissive) return;
+	const host = enemiesMeshes[enemyId];
+	const target = resolveBodyMesh(host);
+	if (!target || !target.material || !target.material.emissive) return;
 
 	const revealed = enemy.revealedUntil && Date.now() < enemy.revealedUntil;
 	const windup = enemy.attackState === 'windup' || windupFlashing.has(enemyId);
@@ -498,12 +525,12 @@ export function applyVariantEmissiveTint(enemyId, enemy) {
 
 	const tint = enemy.variant ? VARIANT_MESH_TINTS[enemy.variant] : null;
 	if (tint) {
-		mesh.material.emissive.set(tint.color);
-		mesh.material.emissiveIntensity = tint.intensity;
+		target.material.emissive.set(tint.color);
+		target.material.emissiveIntensity = tint.intensity;
 	} else {
-		mesh.material.emissive.set(mesh._origEmissive || 0x000000);
-		mesh.material.emissiveIntensity =
-			(mesh._origEmissiveIntensity != null ? mesh._origEmissiveIntensity : 0);
+		const orig = enemyOrigBookkeeping(host);
+		target.material.emissive.set(orig.emissive);
+		target.material.emissiveIntensity = orig.emissiveIntensity;
 	}
 }
 

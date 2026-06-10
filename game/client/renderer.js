@@ -794,6 +794,8 @@ export function attachRegistryModel(key, host) {
 				// Seat the equipped key-item prop on a spine bone, built here AFTER
 				// the procedural snapshot so the body-bone prop is left visible.
 				attachGltfKeyItemProp(host, model);
+			} else if (ENEMY_GEOMETRY[key]) {
+				retargetEnemyBodyMesh(host, model);
 			}
 		})
 		.catch((err) => {
@@ -849,6 +851,83 @@ function retargetPlayerBodyMesh(host, model) {
 	if (mat && mat.color && mat.color.getHex) {
 		host.userData.baseColor = mat.color.getHex();
 	}
+}
+
+/**
+ * Locate the body mesh inside a loaded enemy glTF — preferring `SkinnedMesh`,
+ * else the first mesh with a material — so runtime tint/flash land on the
+ * visible model surface.
+ * @param {THREE.Object3D} model
+ * @returns {THREE.Mesh|null}
+ */
+function findEnemyBodyMesh(model) {
+	let skinned = null;
+	let anyMesh = null;
+	model.traverse((node) => {
+		if (!node.isMesh || !node.material) return;
+		if (!anyMesh) anyMesh = node;
+		if (node.isSkinnedMesh && !skinned) skinned = node;
+	});
+	return skinned || anyMesh;
+}
+
+/**
+ * Point an enemy host's `userData.bodyMesh` at the loaded glTF body mesh so
+ * tint/flash VFX act on the visible model instead of the hidden procedural
+ * primitive. The body material is cloned per instance. `_orig*` bookkeeping is
+ * taken from the loaded material when present, otherwise from the procedural
+ * snapshot (type palette emissive defaults).
+ * @param {THREE.Object3D} host
+ * @param {THREE.Object3D} model
+ */
+function retargetEnemyBodyMesh(host, model) {
+	const bodyMesh = findEnemyBodyMesh(model);
+	if (!bodyMesh) return;
+
+	const paletteColor = host._origColor;
+	const paletteEmissive = host._origEmissive != null ? host._origEmissive : 0x000000;
+	const paletteEmissiveIntensity =
+		host._origEmissiveIntensity != null ? host._origEmissiveIntensity : 0;
+
+	if (bodyMesh.material) {
+		bodyMesh.material = Array.isArray(bodyMesh.material)
+			? bodyMesh.material.map((m) => m.clone())
+			: bodyMesh.material.clone();
+	}
+
+	host.userData.bodyMesh = bodyMesh;
+
+	const mat = Array.isArray(bodyMesh.material) ? bodyMesh.material[0] : bodyMesh.material;
+	if (!mat) return;
+
+	if (mat.color && mat.color.getHex) {
+		bodyMesh._origColor = mat.color.getHex();
+	} else if (paletteColor != null) {
+		bodyMesh._origColor = paletteColor;
+	}
+
+	const loadedEmissive =
+		mat.emissive && mat.emissive.getHex ? mat.emissive.getHex() : 0x000000;
+	const loadedIntensity = mat.emissiveIntensity ?? 0;
+	const hasLoadedEmissive =
+		mat.emissive != null && (loadedEmissive !== 0x000000 || loadedIntensity > 0);
+
+	if (hasLoadedEmissive) {
+		bodyMesh._origEmissive = loadedEmissive;
+		bodyMesh._origEmissiveIntensity = loadedIntensity;
+	} else {
+		bodyMesh._origEmissive = paletteEmissive;
+		bodyMesh._origEmissiveIntensity = paletteEmissiveIntensity;
+		if (mat.emissive && mat.emissive.set) {
+			mat.emissive.set(paletteEmissive);
+		}
+		mat.emissiveIntensity = paletteEmissiveIntensity;
+	}
+
+	// Keep host-level bookkeeping in sync for restore paths that still read the host.
+	host._origColor = bodyMesh._origColor;
+	host._origEmissive = bodyMesh._origEmissive;
+	host._origEmissiveIntensity = bodyMesh._origEmissiveIntensity;
 }
 
 // Desired world-space scale and seating for a hat worn on the loaded glTF head.
@@ -2652,7 +2731,7 @@ export const __testOnly = {
  * @param {THREE.Object3D|null|undefined} obj
  * @returns {THREE.Mesh|null}
  */
-function resolveBodyMesh(obj) {
+export function resolveBodyMesh(obj) {
 	if (!obj) return null;
 	if (obj.userData && obj.userData.bodyMesh) return obj.userData.bodyMesh;
 	return obj;
