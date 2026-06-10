@@ -468,7 +468,7 @@ describe('new card combat helpers', () => {
 			gameState.enemies[0].z - gameState.minions[0].z
 		);
 		updateMinions();
-		cleanupAfterDamage();
+		cleanupAfterDamage(gameState);
 		expect(gameState.enemies[0].hp).toBeLessThan(40);
 		const distAfter = Math.hypot(
 			gameState.enemies[0].x - gameState.minions[0].x,
@@ -527,7 +527,7 @@ describe('new card combat helpers', () => {
 		gameState.run = { status: 'playing' };
 
 		updateMinions();
-		cleanupAfterDamage();
+		cleanupAfterDamage(gameState);
 		expect(gameState.enemies[0].hp).toBeLessThan(50);
 		expect(gameState.enemies[1].hp).toBeLessThan(50);
 		expect(gameState._pendingMinionBreaths).toHaveLength(1);

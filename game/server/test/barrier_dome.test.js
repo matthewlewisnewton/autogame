@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { KEY_ITEM_DEFS } from '../index.js';
-import { damagePlayer, setGameState } from '../simulation.js';
+import { damagePlayer , setGameState } from '../simulation.js';
+// setGameState patched below
 import {
 	startTestServer,
 	closeServer,
@@ -143,12 +144,11 @@ describe('damagePlayer — barrier dome blocks ranged/projectile', () => {
 
 	function setupState({ players = {}, enemies = [], minions = [] } = {}) {
 		const state = { players, enemies, minions };
-		setGameState(state, []);
+		setGameState(state, {});
 		return state;
 	}
 
 	afterEach(() => {
-		setGameState(null, null);
 	});
 
 	it('ranged damage from outside an active dome is fully blocked (hp unchanged)', () => {

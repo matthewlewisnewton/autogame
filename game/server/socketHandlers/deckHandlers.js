@@ -256,7 +256,7 @@ function register(socket, ctx) {
     player.ready = !!ready;
     broadcastLobbyUpdate(lobby);
     if (isLobbyPhase(state)) {
-      checkAllReady();
+      checkAllReady(state);
     }
     });
   });

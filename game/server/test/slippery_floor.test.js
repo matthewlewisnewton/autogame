@@ -5,9 +5,9 @@ import {
   computeWalkableAABBs,
   computeDungeonBounds,
   rebuildWallColliders,
-  setGameState,
   isInsideDungeon,
-} from '../simulation.js';
+  setGameState } from '../simulation.js';
+// setGameState patched below
 import { createGameState } from '../index.js';
 import { MOVE_SPEED, TICK_RATE, INPUT_STALE_MS } from '../config.js';
 import { sampleFloorSurface, generateLayout } from '../dungeon.js';
@@ -100,7 +100,6 @@ function setupPlayingState(layout) {
   state.walkableAABBs = computeWalkableAABBs(state.layout);
   state.dungeonBounds = computeDungeonBounds(state.layout);
   const movementContext = buildMovementContext(state);
-  setGameState(state, {});
   rebuildWallColliders();
   return { state, movementContext };
 }
@@ -171,7 +170,6 @@ describe('applyPlayerMovement() — slippery floors', () => {
   });
 
   afterEach(() => {
-    setGameState(null, null);
   });
 
   it('accelerates while holding input on a slippery floor', () => {
@@ -269,7 +267,6 @@ describe('slippery floor — deceleration curve', () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    setGameState(null, null);
   });
 
   it('decreases speed monotonically while coasting', () => {
@@ -335,7 +332,6 @@ describe('slippery floor — direction change while sliding', () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    setGameState(null, null);
   });
 
   it('redirects velocity with perpendicular input without teleporting', () => {
@@ -376,7 +372,6 @@ describe('slippery floor — normal → slippery transition', () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    setGameState(null, null);
   });
 
   it('preserves forward motion when crossing from normal onto ice with held input', () => {
@@ -445,7 +440,6 @@ describe('slippery floor — slippery → normal transition', () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    setGameState(null, null);
   });
 
   it('stops sharply on stone in fewer ticks than ice-only coast', () => {
@@ -501,7 +495,6 @@ describe('slippery floor — wall collision while sliding', () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    setGameState(null, null);
   });
 
   it('removes into-wall velocity, avoids tunneling, and stays inside walkable AABB', () => {
@@ -545,7 +538,6 @@ describe('slippery floor — standing still on ice', () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    setGameState(null, null);
   });
 
   it('does not drift with no input and zero initial velocity', () => {

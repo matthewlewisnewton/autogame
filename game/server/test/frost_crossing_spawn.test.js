@@ -28,7 +28,7 @@ describe('frost_crossing quest deploy layout', () => {
 		gameState.layoutSeed = SEED;
 		gameState.enemies = [];
 		gameState.loot = [];
-		spawnEnemies();
+		spawnEnemies(gameState);
 
 		expect(gameState.layout.profile).toBe('ice-cavern');
 		expect(gameState.enemies.length).toBeGreaterThan(0);

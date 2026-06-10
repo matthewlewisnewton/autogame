@@ -10,7 +10,7 @@ import { PASSAGE_WIDTH } from '../dungeon.js';
 
 // ── Helpers ──
 
-function resetGameStateLocal() {
+function reLocal() {
   Object.assign(gameState, createGameState());
 }
 
@@ -35,7 +35,7 @@ function buildMockLayout() {
 // ── computeWalkableAABBs ──
 
 describe('computeWalkableAABBs(layout)', () => {
-  beforeEach(() => resetGameStateLocal());
+  beforeEach(() => reLocal());
 
   it('returns an empty array when layout is null or undefined', () => {
     expect(computeWalkableAABBs(null)).toEqual([]);
@@ -128,7 +128,7 @@ describe('computeWalkableAABBs(layout)', () => {
 // ── isInsideDungeon ──
 
 describe('isInsideDungeon(x, z)', () => {
-  beforeEach(() => resetGameStateLocal());
+  beforeEach(() => reLocal());
 
   it('returns true for positions inside a room', () => {
     gameState.walkableAABBs = [
@@ -204,7 +204,7 @@ describe('isInsideDungeon(x, z)', () => {
 
 describe('tryPlayerMove', () => {
   beforeEach(() => {
-    resetGameStateLocal();
+    reLocal();
     const layout = buildMockLayout();
     gameState.layout = layout;
     gameState.walkableAABBs = computeWalkableAABBs(layout);

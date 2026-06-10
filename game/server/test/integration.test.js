@@ -23,7 +23,6 @@ import {
 	updateMinions,
 	damagePlayer,
 	checkRunTerminalState,
-	setGameState,
 	tryEnterTelepipe,
 	checkTelepipeProximity,
 	PORTAL_RADIUS,
@@ -211,16 +210,13 @@ function withPrimaryLobby(fn) {
 	const progression = require('../progression');
 	const { _timeouts } = require('../index.js');
 	sim.setGameState(lobby.state, _timeouts);
-	progression.setGameState(lobby.state);
 	try {
 		return fn(lobby.state, lobby);
 	} finally {
 		if (_lobbies.has(lobby.id)) {
 			sim.setGameState(lobby.state, _timeouts);
-			progression.setGameState(lobby.state);
 		} else {
 			sim.setGameState(gameState, _timeouts);
-			progression.setGameState(gameState);
 		}
 	}
 }
@@ -231,7 +227,6 @@ function savePlayerInPrimaryLobby(playerId) {
 	const sim = require('../simulation');
 	const progression = require('../progression');
 	sim.setGameState(state, _timeouts);
-	progression.setGameState(state);
 	savePlayerData(state, playerId);
 }
 
@@ -241,7 +236,6 @@ function runSimulationInPrimaryLobby(fn) {
 	const sim = require('../simulation');
 	const progression = require('../progression');
 	sim.setGameState(state, _timeouts);
-	progression.setGameState(state);
 	return fn(state);
 }
 
@@ -1053,7 +1047,6 @@ describe('Socket Integration — useCard Event', () => {
 		const sim = require('../simulation');
 		const progression = require('../progression');
 		sim.setGameState(state, _timeouts);
-		progression.setGameState(state);
 		player.cardWindupStartTime = Date.now() - windUpMs - 50;
 
 		const cardUsedPromise = waitForEvent(socket, 'cardUsed');
@@ -1108,7 +1101,6 @@ describe('Socket Integration — useCard Event', () => {
 			const sim = require('../simulation');
 			const progression = require('../progression');
 			sim.setGameState(state, _timeouts);
-			progression.setGameState(state);
 			updateMinions();
 
 			expect(state.minions.some((m) => m.id === newMinion.id)).toBe(false);
@@ -1371,7 +1363,6 @@ describe('Socket Integration — useCard Event', () => {
 			const sim = require('../simulation');
 			const progression = require('../progression');
 			sim.setGameState(state, _timeouts);
-			progression.setGameState(state);
 			updateMinions();
 
 			const distAfter = Math.hypot(
@@ -2543,7 +2534,7 @@ describe('Rewards in run complete payload', () => {
 		testGameState()._victoryCounters[socket1._playerId] = 0;
 
 		const runCompletePromise = waitForEvent(socket1, 'runComplete');
-		runSimulationInPrimaryLobby(() => checkRunTerminalState());
+		runSimulationInPrimaryLobby((state) => checkRunTerminalState(state));
 		const summary = await runCompletePromise;
 
 		expect(summary.status).toBe('victory');
@@ -2785,7 +2776,7 @@ describe('Reward state persistence across runs', () => {
 		testGameState()._victoryCounters[socket1._playerId] = 0;
 
 		const runCompletePromise = waitForEvent(socket1, 'runComplete');
-		runSimulationInPrimaryLobby(() => checkRunTerminalState());
+		runSimulationInPrimaryLobby((state) => checkRunTerminalState(state));
 		await runCompletePromise;
 
 		// Verify rewards were granted
@@ -2826,7 +2817,7 @@ describe('Reward state persistence across runs', () => {
 		testGameState()._victoryCounters[socket1._playerId] = 0;
 
 		const runComplete1 = waitForEvent(socket1, 'runComplete');
-		runSimulationInPrimaryLobby(() => checkRunTerminalState());
+		runSimulationInPrimaryLobby((state) => checkRunTerminalState(state));
 		await runComplete1;
 
 		const currencyAfterRun1 = player.currency;
@@ -2855,7 +2846,7 @@ describe('Reward state persistence across runs', () => {
 		testGameState().minions = [];
 
 		const runComplete2 = waitForEvent(socket1, 'runComplete');
-		runSimulationInPrimaryLobby(() => checkRunTerminalState());
+		runSimulationInPrimaryLobby((state) => checkRunTerminalState(state));
 		await runComplete2;
 
 		// Verify currency accumulated (second victory bonus on top of first)
@@ -2891,7 +2882,7 @@ describe('Reward state persistence across runs', () => {
 		testGameState()._victoryCounters[socket1._playerId] = 0;
 
 		const runCompletePromise = waitForEvent(socket1, 'runComplete');
-		runSimulationInPrimaryLobby(() => checkRunTerminalState());
+		runSimulationInPrimaryLobby((state) => checkRunTerminalState(state));
 		await runCompletePromise;
 
 		// Capture state before returnToLobby
@@ -4040,9 +4031,8 @@ describe('magic stone drops — any player can pick up', () => {
 		expect(grunt).toBeDefined();
 
 		grunt.hp = 0;
-		const { setGameState, cleanupAfterDamage } = require('../progression');
-		setGameState(state);
-		cleanupAfterDamage();
+		const { cleanupAfterDamage } = require('../progression');
+		cleanupAfterDamage(state);
 
 		const msLoot = state.loot.filter((l) => l.kind === 'magic_stone');
 		const moneyLoot = state.loot.filter((l) => l.kind === 'currency');
@@ -4111,7 +4101,7 @@ describe('killing skirmisher via weapon card (integration)', () => {
 		const player = testGameState().players[socket._playerId];
 		let skirmisher;
 		runSimulationInPrimaryLobby((state) => {
-			spawnEnemy(player.x + 3, player.z, 'skirmisher');
+			spawnEnemy(state, player.x + 3, player.z, 'skirmisher');
 			skirmisher = state.enemies[state.enemies.length - 1];
 		});
 		expect(skirmisher.type).toBe('skirmisher');
@@ -4173,7 +4163,7 @@ describe('killing miniboss via weapon card (integration)', () => {
 		const player = testGameState().players[socket._playerId];
 		let miniboss;
 		runSimulationInPrimaryLobby((state) => {
-			spawnEnemy(player.x + 3, player.z, 'miniboss');
+			spawnEnemy(state, player.x + 3, player.z, 'miniboss');
 			miniboss = state.enemies[state.enemies.length - 1];
 		});
 		expect(miniboss.type).toBe('miniboss');
@@ -5308,7 +5298,7 @@ describe('Socket Integration — Wall-Aware Enemy Movement', () => {
 		let enemyStartSide;
 		runSimulationInPrimaryLobby((state) => {
 			state.enemies = [];
-			spawnEnemy(enemySide.x, enemySide.z, 'grunt');
+			spawnEnemy(state, enemySide.x, enemySide.z, 'grunt');
 			state.enemies[0].wanderTarget = { x: enemySide.x, z: enemySide.z };
 			enemyStartSide = wall.axis === 'x'
 				? (state.enemies[0].x < wall.x ? 'left' : 'right')
@@ -5356,12 +5346,11 @@ describe('Telepipe extract and redeploy vitals persistence', () => {
 			placedBy: p1Id,
 			placedAt: Date.now() - 3000,
 		};
-		setGameState(state);
 
 		let suspended = false;
 		p2.socket.on('runSuspended', () => { suspended = true; });
 
-		expect(tryEnterTelepipe(p1Id).ok).toBe(true);
+		expect(tryEnterTelepipe(state, p1Id).ok).toBe(true);
 		expect(testGameState().gamePhase).toBe('playing');
 		expect(testGameState().run.status).toBe('playing');
 		expect(testGameState().players[p1Id].extracted).toBe(true);
@@ -5405,18 +5394,17 @@ describe('Telepipe extract and redeploy vitals persistence', () => {
 			attackState: 'idle',
 			wanderTarget: { x: state.players[p1Id].x + 2, z: state.players[p1Id].z },
 		});
-		setGameState(state);
 
 		const portalX = state.telepipe.x;
 		const portalZ = state.telepipe.z;
 
-		expect(tryEnterTelepipe(p1Id).ok).toBe(true);
+		expect(tryEnterTelepipe(state, p1Id).ok).toBe(true);
 		expect(testGameState().gamePhase).toBe('playing');
 
 		const live = testGameState();
 		live.players[p2Id].x = portalX;
 		live.players[p2Id].z = portalZ;
-		expect(tryEnterTelepipe(p2Id).ok).toBe(true);
+		expect(tryEnterTelepipe(state, p2Id).ok).toBe(true);
 
 		expect(testGameState().gamePhase).toBe('lobby');
 		expect(testGameState().run).toBeUndefined();
@@ -5523,12 +5511,12 @@ describe('Telepipe extract and redeploy vitals persistence', () => {
 		const portalX = portalState.telepipe.x;
 		const portalZ = portalState.telepipe.z;
 
-		expect(tryEnterTelepipe(p1Id).ok).toBe(true);
+		expect(tryEnterTelepipe(state, p1Id).ok).toBe(true);
 		runSimulationInPrimaryLobby((afterP1Extract) => {
 			afterP1Extract.players[p2Id].x = portalX;
 			afterP1Extract.players[p2Id].z = portalZ;
 		});
-		expect(tryEnterTelepipe(p2Id).ok).toBe(true);
+		expect(tryEnterTelepipe(state, p2Id).ok).toBe(true);
 
 		const hub = testGameState();
 		expect(hub.gamePhase).toBe('lobby');
@@ -5600,12 +5588,12 @@ describe('Telepipe extract and redeploy vitals persistence', () => {
 		const portalX = portalState.telepipe.x;
 		const portalZ = portalState.telepipe.z;
 
-		expect(tryEnterTelepipe(p1Id).ok).toBe(true);
+		expect(tryEnterTelepipe(state, p1Id).ok).toBe(true);
 		runSimulationInPrimaryLobby((afterP1Extract) => {
 			afterP1Extract.players[p2Id].x = portalX;
 			afterP1Extract.players[p2Id].z = portalZ;
 		});
-		expect(tryEnterTelepipe(p2Id).ok).toBe(true);
+		expect(tryEnterTelepipe(state, p2Id).ok).toBe(true);
 
 		expect(testGameState().gamePhase).toBe('lobby');
 		expect(testGameState().suspendedCheckpoint).not.toBeNull();
@@ -5702,12 +5690,12 @@ describe('Telepipe extract and redeploy vitals persistence', () => {
 		const portalX = portalState.telepipe.x;
 		const portalZ = portalState.telepipe.z;
 
-		expect(tryEnterTelepipe(p1Id).ok).toBe(true);
+		expect(tryEnterTelepipe(state, p1Id).ok).toBe(true);
 		runSimulationInPrimaryLobby((afterP1Extract) => {
 			afterP1Extract.players[p2Id].x = portalX;
 			afterP1Extract.players[p2Id].z = portalZ;
 		});
-		expect(tryEnterTelepipe(p2Id).ok).toBe(true);
+		expect(tryEnterTelepipe(state, p2Id).ok).toBe(true);
 
 		expect(testGameState().gamePhase).toBe('lobby');
 		expect(testGameState().suspendedCheckpoint).not.toBeNull();

@@ -55,7 +55,6 @@ function runSimulationInPrimaryLobby(fn) {
   const sim = require('../simulation');
   const progression = require('../progression');
   sim.setGameState(state, _timeouts);
-  progression.setGameState(state);
   return fn(state);
 }
 
@@ -101,10 +100,9 @@ function deployCanyonTierStageBoss(tier, seed = SEED) {
       accountId: 'test',
     };
   }
-  progression.setGameState(gameState);
   sim.setGameState(gameState);
-  spawnEnemies();
-  startDungeonRun();
+  spawnEnemies(gameState);
+  startDungeonRun(gameState);
   return layout;
 }
 
@@ -205,7 +203,7 @@ describe('canyon_descent Tier 2 deploy spawns', () => {
     gameState.enemies = [];
     gameState.loot = [];
     gameState.run = { questTier: tier };
-    spawnEnemies();
+    spawnEnemies(gameState);
     return layout;
   }
 
@@ -265,22 +263,22 @@ describe('canyon_descent Tier 2 stage-boss encounter flow', () => {
 
   it('recordEnemyDefeated does not complete the stage_boss objective', () => {
     const before = { ...gameState.run.objective };
-    recordEnemyDefeated(5);
+    recordEnemyDefeated(gameState, 5);
     expect(gameState.run.objective.bossDefeated).toBe(false);
     expect(gameState.run.objective.defeatedEnemies).toBeGreaterThan(before.defeatedEnemies);
-    expect(isRunObjectiveComplete(gameState.run.objective)).toBe(false);
+    expect(isRunObjectiveComplete(gameState, gameState.run.objective)).toBe(false);
   });
 
   it('defeating the boss while active completes the run with victory', () => {
     activateEncounterForTest(gameState);
     bossEnemy(gameState).hp = 0;
-    removeDeadEnemies();
+    removeDeadEnemies(gameState);
     expect(isEncounterCleared(gameState.run)).toBe(true);
     expect(gameState.run.objective.bossDefeated).toBe(true);
-    expect(isRunObjectiveComplete(gameState.run.objective)).toBe(true);
+    expect(isRunObjectiveComplete(gameState, gameState.run.objective)).toBe(true);
 
-    cleanupAfterDamage();
-    checkRunTerminalState();
+    cleanupAfterDamage(gameState);
+    checkRunTerminalState(gameState);
     expect(gameState.run.status).toBe('victory');
   });
 });
@@ -338,7 +336,7 @@ describe('canyon_descent Tier 1 victory unlocks Tier 2', () => {
     state.run.objective.defeatedEnemies = 1;
 
     const runCompletePromise = waitForEvent(socket, 'runComplete');
-    runSimulationInPrimaryLobby(() => checkRunTerminalState());
+    runSimulationInPrimaryLobby(() => checkRunTerminalState(gameState));
     const summary = await runCompletePromise;
 
     expect(summary.status).toBe('victory');

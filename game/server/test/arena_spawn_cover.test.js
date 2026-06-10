@@ -76,7 +76,7 @@ describe('spawnCrystals on open-plaza routes through the cover-aware helper', ()
 	it('places every objective crystal on walkable floor, clear of cover', () => {
 		const layout = openPlazaLayout();
 		gameState.loot = [];
-		spawnCrystals(layout, mulberry32(SEED), 5);
+		spawnCrystals(gameState, layout, mulberry32(SEED), 5);
 		const crystals = gameState.loot.filter(l => l.kind === 'crystal');
 		expect(crystals.length).toBe(5);
 		for (const c of crystals) assertOnFloor(layout, c);
@@ -85,10 +85,10 @@ describe('spawnCrystals on open-plaza routes through the cover-aware helper', ()
 	it('is deterministic: same seed yields identical crystal positions', () => {
 		const layout = openPlazaLayout();
 		gameState.loot = [];
-		spawnCrystals(layout, mulberry32(SEED), 5);
+		spawnCrystals(gameState, layout, mulberry32(SEED), 5);
 		const first = gameState.loot.filter(l => l.kind === 'crystal').map(c => ({ x: c.x, z: c.z }));
 		gameState.loot = [];
-		spawnCrystals(layout, mulberry32(SEED), 5);
+		spawnCrystals(gameState, layout, mulberry32(SEED), 5);
 		const second = gameState.loot.filter(l => l.kind === 'crystal').map(c => ({ x: c.x, z: c.z }));
 		expect(second).toEqual(first);
 	});
@@ -103,7 +103,7 @@ describe('spawnLoot on open-plaza routes through the cover-aware helper', () => 
 		vi.spyOn(Math, 'random').mockReturnValue(config.LOOT_SPAWN_CHANCE - 0.1);
 		const layout = openPlazaLayout();
 		gameState.loot = [];
-		spawnLoot(layout, mulberry32(SEED));
+		spawnLoot(gameState, layout, mulberry32(SEED));
 		expect(gameState.loot.length).toBe(1);
 		assertOnFloor(layout, gameState.loot[0]);
 	});
@@ -112,10 +112,10 @@ describe('spawnLoot on open-plaza routes through the cover-aware helper', () => 
 		vi.spyOn(Math, 'random').mockReturnValue(config.LOOT_SPAWN_CHANCE - 0.1);
 		const layout = openPlazaLayout();
 		gameState.loot = [];
-		spawnLoot(layout, mulberry32(SEED));
+		spawnLoot(gameState, layout, mulberry32(SEED));
 		const a = { x: gameState.loot[0].x, z: gameState.loot[0].z };
 		gameState.loot = [];
-		spawnLoot(layout, mulberry32(SEED));
+		spawnLoot(gameState, layout, mulberry32(SEED));
 		const b = { x: gameState.loot[0].x, z: gameState.loot[0].z };
 		expect(b).toEqual(a);
 	});
@@ -130,7 +130,7 @@ describe('spawnEnemies on the arena_trials open-plaza stage', () => {
 		gameState.layoutSeed = seed;
 		gameState.enemies = [];
 		gameState.loot = [];
-		spawnEnemies();
+		spawnEnemies(gameState);
 	}
 
 	it('places every spawned enemy on walkable floor, clear of cover and walls', () => {
@@ -159,7 +159,7 @@ describe('normal rooms-and-passages stages are unaffected', () => {
 		vi.spyOn(Math, 'random').mockReturnValue(config.LOOT_SPAWN_CHANCE - 0.1);
 		const layout = generateLayout(42); // default crowded profile, has combat/treasure rooms
 		gameState.loot = [];
-		spawnLoot(layout, mulberry32(99));
+		spawnLoot(gameState, layout, mulberry32(99));
 		const loot = gameState.loot[0];
 		const inStart = layout.rooms
 			.filter(r => r.role === 'start')

@@ -164,7 +164,7 @@ describe('Astral Guardian gameplay', () => {
 	it('astral guardian minion deals more damage per tick than default minions', () => {
 		resetGameState();
 		gameState.players.p1 = { id: 'p1', hp: 100, dead: false, x: 0, z: 0 };
-		const enemy = spawnEnemy(2, 0, 'grunt');
+		const enemy = spawnEnemy(gameState, 2, 0, 'grunt');
 		enemy.hp = 100;
 
 		gameState.minions.push({

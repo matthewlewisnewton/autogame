@@ -134,7 +134,7 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 		await patchCosmetic(baseUrl, token, customCosmetic);
 
 		gameState.players['p3'] = buildPlayerRecord('p3', accountId, 'bob', null);
-		const snapshot = stateSnapshot();
+		const snapshot = stateSnapshot(gameState);
 		expect(snapshot.players['p3'].cosmetic).toEqual(customCosmetic);
 		expect(Object.keys(snapshot.players['p3'].cosmetic).sort()).toEqual(
 			['accentColor', 'bodyColor', 'bodyShape', 'hat', 'modelId', 'proportions']
@@ -145,7 +145,7 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 		const player = buildPlayerRecord('p4', 'no-such-account', 'anon', null);
 		delete player.cosmetic;
 		gameState.players['p4'] = player;
-		const snapshot = stateSnapshot();
+		const snapshot = stateSnapshot(gameState);
 		expect(snapshot.players['p4'].cosmetic).toEqual(DEFAULT_COSMETIC);
 	});
 
@@ -155,14 +155,14 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 		await patchCosmetic(baseUrl, token, { bodyShape: 'capsule', bodyColor: '#00ff00' });
 
 		gameState.players['p5'] = buildPlayerRecord('p5', accountId, 'carol', null);
-		const snapshot = stateSnapshot();
+		const snapshot = stateSnapshot(gameState);
 		expect(snapshot.players['p5'].cosmetic.bodyShape).toBe('capsule');
 		expect(snapshot.players['p5'].cosmetic.bodyColor).toBe('#00ff00');
 		expect(snapshot.players['p5'].cosmetic.accentColor).toBe(DEFAULT_COSMETIC.accentColor);
 	});
 
 	it('PATCH profile cosmetic syncs an existing live player record and snapshot', async () => {
-		const { gameState: liveState, setGameState, stateSnapshot, buildPlayerRecord: buildPlayer } = require('../index.js');
+		const { gameState: liveState, stateSnapshot, buildPlayerRecord: buildPlayer } = require('../index.js');
 		const { PHASES } = require('../lobbies.js');
 		const { accountId, token } = await registerUser(baseUrl, 'dave');
 		liveState.players[accountId] = buildPlayer(accountId, accountId, 'dave', null);
@@ -175,14 +175,12 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 		expect(liveState.players[accountId].cosmetic.bodyColor).toBe(customCosmetic.bodyColor);
 		expect(liveState.players[accountId].cosmetic.hat).toBe(customCosmetic.hat);
 		expect(liveState.players[accountId].cosmetic.proportions.height).toBe(customCosmetic.proportions.height);
-
-		setGameState(liveState);
-		const snapshot = stateSnapshot();
+		const snapshot = stateSnapshot(liveState);
 		expect(snapshot.players[accountId].cosmetic).toEqual(customCosmetic);
 	});
 
 	it('applyAppearanceChange syncs a joined lobby player for the next snapshot', async () => {
-		const { setGameState, stateSnapshot } = require('../index.js');
+		const { stateSnapshot } = require('../index.js');
 		const { getLobbyById } = require('../lobbies.js');
 		const { accountId } = await registerUser(baseUrl, 'erin');
 		const { socket, lobbyId } = await connectAndJoinLobby(baseUrl, accountId);
@@ -199,9 +197,7 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 		expect(lobby.state.players[accountId].cosmetic.bodyColor).toBe(customCosmetic.bodyColor);
 		expect(lobby.state.players[accountId].cosmetic.hat).toBe(customCosmetic.hat);
 		expect(lobby.state.players[accountId].cosmetic.proportions.height).toBe(customCosmetic.proportions.height);
-
-		setGameState(lobby.state);
-		const snapshot = stateSnapshot();
+		const snapshot = stateSnapshot(lobby.state);
 		expect(snapshot.players[accountId].cosmetic).toEqual(customCosmetic);
 
 		socket.disconnect();

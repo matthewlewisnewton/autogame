@@ -69,7 +69,7 @@ describe('damagePlayer — leeching heal on player damage', () => {
 
   function setupState({ players = {}, enemies = [] } = {}) {
     const state = { players, enemies, minions: [] };
-    setGameState(state, []);
+    setGameState(state, {});
     return state;
   }
 
@@ -80,7 +80,6 @@ describe('damagePlayer — leeching heal on player damage', () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    setGameState(null, null);
   });
 
   it('heals the leeching attacker by floor(fraction * damage applied to HP)', () => {

@@ -309,27 +309,27 @@ describe('Overclock run-end lifecycle', () => {
 	});
 
 	it('checkRunTerminalState clears overclockChargesRemaining on victory', () => {
-		startDungeonRun();
+		startDungeonRun(gameState);
 		addPlayer('p1', { overclockChargesRemaining: 2 });
 		gameState.enemies.push({ id: 'e1', type: 'grunt', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } });
-		recordEnemyDefeated(1);
-		checkRunTerminalState();
+		recordEnemyDefeated(gameState, 1);
+		checkRunTerminalState(gameState);
 		expect(gameState.players.p1.overclockChargesRemaining).toBe(0);
 	});
 
 	it('checkRunTerminalState clears overclockChargesRemaining on failure', () => {
-		startDungeonRun();
+		startDungeonRun(gameState);
 		addPlayer('p1', { hp: 0, dead: true, overclockChargesRemaining: 2 });
-		checkRunTerminalState();
+		checkRunTerminalState(gameState);
 		expect(gameState.players.p1.overclockChargesRemaining).toBe(0);
 	});
 
 	it('returnPlayersToLobby clears overclockChargesRemaining', () => {
 		gameState._lobbyId = 'test-lobby';
-		startDungeonRun();
+		startDungeonRun(gameState);
 		addPlayer('p1', { overclockChargesRemaining: 2 });
 		const { restore } = mockIoEmit();
-		returnPlayersToLobby();
+		returnPlayersToLobby(gameState);
 		restore();
 		expect(gameState.players.p1.overclockChargesRemaining).toBe(0);
 	});
@@ -337,10 +337,10 @@ describe('Overclock run-end lifecycle', () => {
 	it('giveUpRun clears overclockChargesRemaining', () => {
 		gameState._lobbyId = 'test-lobby';
 		gameState.gamePhase = 'playing';
-		startDungeonRun();
+		startDungeonRun(gameState);
 		addPlayer('p1', { overclockChargesRemaining: 2 });
 		const { restore } = mockIoEmit();
-		giveUpRun();
+		giveUpRun(gameState);
 		restore();
 		expect(gameState.players.p1.overclockChargesRemaining).toBe(0);
 	});
@@ -349,7 +349,7 @@ describe('Overclock run-end lifecycle', () => {
 		gameState._lobbyId = 'test-lobby';
 		addPlayer('p1', { ready: true, overclockChargesRemaining: 2, selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'] });
 		const { restore } = mockIoEmit();
-		checkAllReady();
+		checkAllReady(gameState);
 		restore();
 		expect(gameState.players.p1.overclockChargesRemaining).toBe(0);
 	});

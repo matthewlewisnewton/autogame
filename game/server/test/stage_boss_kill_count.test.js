@@ -8,7 +8,6 @@ import {
   tryActivateEncounter,
 } from '../encounters.js';
 import {
-  setGameState,
   spawnEnemies,
   startDungeonRun,
   removeDeadEnemies,
@@ -58,10 +57,9 @@ function deployStageBossRun(state, { seed = SEED, partySize = 1 } = {}) {
   state.enemies = [];
   state.loot = [];
   state.gamePhase = 'playing';
-  setGameState(state);
   setSimulationGameState(state);
-  spawnEnemies();
-  startDungeonRun();
+  spawnEnemies(state);
+  startDungeonRun(state);
   return state;
 }
 
@@ -122,7 +120,7 @@ describe('stage boss hostiles-purged count (ticket 282)', () => {
     for (const enemy of state.enemies) {
       if (enemy.id !== bossId) enemy.hp = 0;
     }
-    removeDeadEnemies();
+    removeDeadEnemies(state);
 
     expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
     expect(state.enemies.some((e) => e.id === bossId)).toBe(true);
@@ -131,14 +129,14 @@ describe('stage boss hostiles-purged count (ticket 282)', () => {
     expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
 
     bossEnemy(state).hp = 0;
-    cleanupAfterDamage();
-    checkRunTerminalState();
+    cleanupAfterDamage(state);
+    checkRunTerminalState(state);
 
     expect(state.run.status).toBe('victory');
     expect(state.run.objective.bossDefeated).toBe(true);
-    expect(isRunObjectiveComplete(state.run.objective)).toBe(true);
+    expect(isRunObjectiveComplete(state, state.run.objective)).toBe(true);
 
     expect(state.run.objective.defeatedEnemies).toBe(expectedDefeated);
-    expect(buildRunSummary('victory').defeatedEnemies).toBe(expectedDefeated);
+    expect(buildRunSummary(state, 'victory').defeatedEnemies).toBe(expectedDefeated);
   });
 });

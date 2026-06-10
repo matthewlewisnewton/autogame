@@ -58,7 +58,7 @@ describe('spire_warden enemy type', () => {
 
 	it('spawnEnemy succeeds and exposes type plus baseline combat stats', () => {
 		setPartySize(2);
-		const warden = spawnEnemy(3, 4, 'spire_warden');
+		const warden = spawnEnemy(gameState, 3, 4, 'spire_warden');
 		expect(warden.type).toBe('spire_warden');
 		expect(warden.hp).toBe(BASE_SPIRE_WARDEN_HP);
 		expect(warden.maxHp).toBe(BASE_SPIRE_WARDEN_HP);
@@ -84,7 +84,7 @@ describe('spire_warden HP scaling with party size at spawn', () => {
 		for (const count of [1, 2, 3, 4]) {
 			gameState.enemies.length = 0;
 			setPartySize(count);
-			const warden = spawnEnemy(0, 0, 'spire_warden');
+			const warden = spawnEnemy(gameState, 0, 0, 'spire_warden');
 			expect(warden.hp).toBe(BASE_SPIRE_WARDEN_HP);
 			expect(warden.maxHp).toBe(BASE_SPIRE_WARDEN_HP);
 		}
@@ -97,7 +97,7 @@ describe('spire_warden HP scaling with party size at spawn', () => {
 			const expected = Math.round(
 				BASE_SPIRE_WARDEN_HP * difficultyScaleFactor(count, DIFFICULTY_MINIBOSS_HP_PER_PLAYER),
 			);
-			const warden = spawnEnemy(0, 0, 'spire_warden');
+			const warden = spawnEnemy(gameState, 0, 0, 'spire_warden');
 			expect(warden.hp).toBeGreaterThan(BASE_SPIRE_WARDEN_HP);
 			expect(warden.hp).toBe(expected);
 			expect(warden.maxHp).toBe(expected);
@@ -106,7 +106,7 @@ describe('spire_warden HP scaling with party size at spawn', () => {
 
 	it('HP is fixed at spawn when party size changes after spawn', () => {
 		setPartySize(4);
-		const warden = spawnEnemy(0, 0, 'spire_warden');
+		const warden = spawnEnemy(gameState, 0, 0, 'spire_warden');
 		expect(warden.hp).toBe(BASE_SPIRE_WARDEN_HP);
 
 		setPartySize(16);

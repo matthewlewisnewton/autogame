@@ -260,7 +260,7 @@ describe('enchantment cards', () => {
 		spawnGroundEnchantment(0, 0, CARD_DEFS.spike_trap, 'p1');
 		const enc = gameState.enchantments[0];
 
-		const snapshot = stateSnapshot();
+		const snapshot = stateSnapshot(gameState);
 		expect(Array.isArray(snapshot.enchantments)).toBe(true);
 		const synced = snapshot.enchantments.find((e) => e.id === enc.id);
 		expect(synced).toBeTruthy();
@@ -287,7 +287,7 @@ describe('enchantment cards', () => {
 		gameState.enchantments[0].armed = false;
 		armSelfEnchantment(gameState.players.p1, CARD_DEFS.mirror_ward);
 
-		const snapshot = stateSnapshot();
+		const snapshot = stateSnapshot(gameState);
 		expect(snapshot.enchantments).toHaveLength(0);
 	});
 

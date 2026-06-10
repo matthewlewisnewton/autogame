@@ -5,8 +5,8 @@ import {
   findSpireEdgeHazardAt,
   buildMovementContext,
   flushDirtyPlayerSaves,
-  setGameState,
   setSavePlayerCallback,
+  setGameState,
   rebuildWallColliders,
   computeWalkableAABBs,
   computeDungeonBounds,
@@ -61,7 +61,6 @@ describe('applyPlayerMovement()', () => {
 
   afterEach(() => {
     setSavePlayerCallback(null);
-    setGameState(null, null);
   });
 
   it('moves an active player one fixed tick step along input', () => {
@@ -151,7 +150,6 @@ describe('flushDirtyPlayerSaves()', () => {
 
   afterEach(() => {
     setSavePlayerCallback(null);
-    setGameState(null, null);
   });
 
   it('persists rotation-only updates flagged by the move handler once per tick', () => {
@@ -232,7 +230,6 @@ describe('applyPlayerMovement() — slope movement', () => {
 
   afterEach(() => {
     setSavePlayerCallback(null);
-    setGameState(null, null);
   });
 
   it('sets player.y from sampleFloorY when moving on a ramp', () => {
@@ -348,8 +345,7 @@ describe('spire-ascent edge hazards', () => {
     rebuildWallColliders();
   });
 
-  afterEach(() => {
-    setGameState(null, null);
+  afterEach(() => {(null, null);
   });
 
   it('repositions and chips HP when standing inside a hazard strip', () => {
@@ -403,8 +399,7 @@ describe('sunken-canyon cliff hazards', () => {
     rebuildWallColliders();
   });
 
-  afterEach(() => {
-    setGameState(null, null);
+  afterEach(() => {(null, null);
   });
 
   it('repositions and chips HP when standing inside a plateau cliff hazard strip', () => {

@@ -38,7 +38,7 @@ describe('sunken-canyon quest spawns', () => {
 		gameState.layoutSeed = seed;
 		gameState.enemies = [];
 		gameState.loot = [];
-		spawnEnemies();
+		spawnEnemies(gameState);
 	}
 
 	it('spawns at least one enemy on plateau and a majority on canyon', () => {
@@ -71,7 +71,7 @@ describe('sunken-canyon quest spawns', () => {
 	it('places collect-objective crystals only in the canyon band', () => {
 		const layout = sunkenCanyonLayout();
 		gameState.loot = [];
-		spawnCrystals(layout, mulberry32(SEED), 3);
+		spawnCrystals(gameState, layout, mulberry32(SEED), 3);
 		const crystals = gameState.loot.filter(l => l.kind === 'crystal');
 		expect(crystals.length).toBe(3);
 		for (const c of crystals) {
@@ -83,7 +83,7 @@ describe('sunken-canyon quest spawns', () => {
 		vi.spyOn(Math, 'random').mockReturnValue(config.LOOT_SPAWN_CHANCE - 0.1);
 		const layout = sunkenCanyonLayout();
 		gameState.loot = [];
-		spawnLoot(layout, mulberry32(SEED));
+		spawnLoot(gameState, layout, mulberry32(SEED));
 		expect(gameState.loot.length).toBe(1);
 		expect(bandAt(layout, gameState.loot[0])).toBe('canyon');
 		vi.restoreAllMocks();

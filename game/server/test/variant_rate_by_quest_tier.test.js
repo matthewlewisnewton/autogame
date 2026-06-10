@@ -52,7 +52,7 @@ describe('spawn wiring respects quest-tier variant scaling', () => {
     const rng = mulberry32(SEED);
     let tagged = 0;
     for (let i = 0; i < BATCH_SIZE; i++) {
-      const enemy = spawnEnemy(0, 0, 'grunt', undefined, { tier: 0, rng });
+      const enemy = spawnEnemy(gameState, 0, 0, 'grunt', undefined, { tier: 0, rng });
       if (enemy.variant) tagged++;
     }
     expect(tagged).toBeGreaterThan(50);
@@ -63,7 +63,7 @@ describe('spawn wiring respects quest-tier variant scaling', () => {
     gameState.run = { questTier: 1 };
     const rng = mulberry32(SEED);
     for (let i = 0; i < BATCH_SIZE; i++) {
-      const enemy = spawnEnemy(0, 0, 'grunt', undefined, { tier: 0.9, rng });
+      const enemy = spawnEnemy(gameState, 0, 0, 'grunt', undefined, { tier: 0.9, rng });
       expect(enemy.variant).toBeNull();
     }
   });
@@ -77,7 +77,7 @@ describe('spawn wiring respects quest-tier variant scaling', () => {
     gameState.layoutSeed = SEED;
     gameState.enemies = [];
     gameState.run = { questTier: 2 };
-    spawnEnemies();
+    spawnEnemies(gameState);
 
     const tagged = gameState.enemies.filter((e) => e.variant).length;
     expect(gameState.enemies.length).toBeGreaterThan(0);
@@ -91,7 +91,7 @@ describe('spawn wiring respects quest-tier variant scaling', () => {
     gameState.layoutSeed = SEED;
     gameState.enemies = [];
     gameState.run = { questTier: 1 };
-    spawnEnemies();
+    spawnEnemies(gameState);
 
     expect(gameState.enemies.length).toBeGreaterThan(0);
     expect(gameState.enemies.every((e) => e.variant === null)).toBe(true);

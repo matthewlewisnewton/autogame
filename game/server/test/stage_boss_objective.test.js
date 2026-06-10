@@ -5,7 +5,6 @@ import { getObjectiveDef, isValidObjectiveType } from '../objectives.js';
 import { activateEncounter, clearEncounter } from '../encounters.js';
 import { createGameState } from '../game-state.js';
 import {
-  setGameState,
   spawnEnemies,
   startDungeonRun,
   spawnEnemy,
@@ -14,7 +13,7 @@ import {
 // Progression and simulation load shared modules via require(); tests must too.
 const require = createRequire(import.meta.url);
 const { QUEST_DEFS } = require('../quests.js');
-const { ENEMY_DEFS, setGameState: setSimulationGameState } = require('../simulation.js');
+const { setGameState: setSimulationGameState, ENEMY_DEFS } = require('../simulation.js');
 import {
   DIFFICULTY_MINIBOSS_HP_PER_PLAYER,
   difficultyScaleFactor,
@@ -76,10 +75,9 @@ function deployStageBossRun(state, { seed = SEED, partySize = 1, encounterOverri
   state.enemies = [];
   state.loot = [];
   state.gamePhase = 'playing';
-  setGameState(state);
   setSimulationGameState(state);
-  spawnEnemies();
-  startDungeonRun();
+  spawnEnemies(state);
+  startDungeonRun(state);
 
   if (Object.keys(encounterOverrides).length > 0) {
     tierDef.encounter = savedEncounter;
@@ -156,7 +154,7 @@ describe('stage_boss objective registry', () => {
     const state = createGameState();
     deployStageBossRun(state);
     state.run.objective.defeatedEnemies = 99;
-    expect(isRunObjectiveComplete(state.run.objective)).toBe(false);
+    expect(isRunObjectiveComplete(state, state.run.objective)).toBe(false);
   });
 });
 
@@ -201,10 +199,9 @@ describe('stage_boss spawnQuestEntities', () => {
     const savedLandmark = tierDef.encounter.landmark;
     tierDef.encounter.landmark = 'missing_landmark';
     setPartySize(state, 1);
-    setGameState(state);
     setSimulationGameState(state);
-    spawnEnemies();
-    startDungeonRun();
+    spawnEnemies(state);
+    startDungeonRun(state);
     tierDef.encounter.landmark = savedLandmark;
 
     const plaza = layout.rooms[0];
@@ -249,7 +246,6 @@ describe('stage_boss spawnQuestEntities direct harness', () => {
   beforeEach(() => {
     state = createGameState();
     setPartySize(state, 4);
-    setGameState(state);
     setSimulationGameState(state);
   });
 
@@ -264,7 +260,7 @@ describe('stage_boss spawnQuestEntities direct harness', () => {
     setPartySize(state, 6);
     const def = getObjectiveDef('stage_boss');
     def.spawnQuestEntities(layout, rng, quest, state, {
-      spawnEnemy,
+      spawnEnemy: (x, z, type, spawnedBy, opts) => spawnEnemy(state, x, z, type, spawnedBy, opts),
       pickEnemySpawnPosition: () => ({ x: 5, z: 5 }),
       roomTierAt: () => 0,
       randomWanderTarget: () => ({ x: 0, z: 0 }),

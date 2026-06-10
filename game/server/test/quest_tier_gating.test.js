@@ -49,7 +49,6 @@ function runSimulationInPrimaryLobby(fn) {
 	const sim = require('../simulation');
 	const progression = require('../progression');
 	sim.setGameState(state, _timeouts);
-	progression.setGameState(state);
 	return fn(state);
 }
 
@@ -134,7 +133,7 @@ describe('quest tier gating (socket + persistence)', () => {
 		state.run.objective.defeatedEnemies = 1;
 
 		const runCompletePromise = waitForEvent(socket, 'runComplete');
-		runSimulationInPrimaryLobby(() => checkRunTerminalState());
+		runSimulationInPrimaryLobby((state) => checkRunTerminalState(state));
 		const summary = await runCompletePromise;
 
 		expect(summary.status).toBe('victory');
@@ -272,7 +271,7 @@ describe('Tier 2 squad ready/deploy gate', () => {
 			const state = testGameState();
 			state.players[accountA].ready = true;
 			state.players[accountB].ready = true;
-			progression.checkAllReady();
+			progression.checkAllReady(state);
 		});
 
 		const state = testGameState();

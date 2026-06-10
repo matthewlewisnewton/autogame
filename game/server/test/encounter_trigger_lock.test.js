@@ -10,7 +10,6 @@ import {
   isEncounterLocked,
 } from '../encounters.js';
 import {
-  setGameState,
   spawnEnemies,
   startDungeonRun,
   updateSurviveSpawns,
@@ -20,7 +19,7 @@ import {
 
 const require = createRequire(import.meta.url);
 const { QUEST_DEFS } = require('../quests.js');
-const { updateEnemies, ENEMY_DEFS, setGameState: setSimulationGameState } = require('../simulation.js');
+const { updateEnemies, setGameState: setSimulationGameState, ENEMY_DEFS } = require('../simulation.js');
 
 const SEED = 5151;
 const FIXTURE_QUEST_ID = 'stage_boss_trigger_fixture';
@@ -53,10 +52,9 @@ function deployStageBossRun(state, { seed = SEED, partySize = 1, playerPosition 
   state.enemies = [];
   state.loot = [];
   state.gamePhase = 'playing';
-  setGameState(state);
   setSimulationGameState(state);
-  spawnEnemies();
-  startDungeonRun();
+  spawnEnemies(state);
+  startDungeonRun(state);
   return state;
 }
 
@@ -216,7 +214,7 @@ describe('dormant boss AI and spawner suppression', () => {
   it('suppresses spawner output while the encounter is locked', () => {
     const bossId = state.run.encounter.bossEnemyId;
     state.enemies = state.enemies.filter((e) => e.id === bossId);
-    const spawner = spawnEnemy(4, 0, 'spawner');
+    const spawner = spawnEnemy(state, 4, 0, 'spawner');
     spawner.lastSpawnTime = Date.now() - ENEMY_DEFS.spawner.spawnIntervalMs - 500;
 
     state.run.encounter.phase = ENCOUNTER_PHASES.ACTIVE;
@@ -244,7 +242,7 @@ describe('dormant boss AI and spawner suppression', () => {
     state.run.encounter.locked = true;
 
     const before = state.enemies.length;
-    updateSurviveSpawns(Date.now() + 60_000);
+    updateSurviveSpawns(state, Date.now() + 60_000);
     expect(state.enemies.length).toBe(before);
   });
 
@@ -259,7 +257,7 @@ describe('dormant boss AI and spawner suppression', () => {
     state.players.p1.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS - 1;
     state.players.p1.z = anchor.z;
 
-    updateEncounterTriggers();
+    updateEncounterTriggers(state);
 
     expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
     expect(isEncounterLocked(state.run)).toBe(true);

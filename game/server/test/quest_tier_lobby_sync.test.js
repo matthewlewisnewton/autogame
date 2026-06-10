@@ -78,7 +78,6 @@ function runSimulationInPrimaryLobby(fn) {
 	const sim = require('../simulation');
 	const progression = require('../progression');
 	sim.setGameState(state, _timeouts);
-	progression.setGameState(state);
 	return fn(state);
 }
 
@@ -152,7 +151,7 @@ describe('per-account quest unlock lobby sync', () => {
 		state.run.objective.defeatedEnemies = 1;
 
 		const runCompletePromise = waitForEvent(socket, 'runComplete');
-		runSimulationInPrimaryLobby(() => checkRunTerminalState());
+		runSimulationInPrimaryLobby((state) => checkRunTerminalState(state));
 		await runCompletePromise;
 		expect(users.isQuestTierUnlocked(accountId, QUEST_ID, TIER_2)).toBe(true);
 

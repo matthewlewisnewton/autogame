@@ -3,7 +3,6 @@ import {
 	clearAllTimers,
 	getCardDef,
 	tryEnterTelepipe,
-	setGameState,
 } from '../index.js';
 import {
 	isPlayerCardCommitted,
@@ -197,11 +196,10 @@ describe('card wind-up suspend cleanup', () => {
 			z: livePlayer.z,
 			placedBy: socket._playerId,
 			placedAt: Date.now(),
-		};
-		setGameState(liveState);
+		}; 
 
 		const suspendedPromise = waitForEvent(socket, 'runSuspended');
-		expect(tryEnterTelepipe(socket._playerId).ok).toBe(true);
+		expect(tryEnterTelepipe(liveState, socket._playerId).ok).toBe(true);
 		await suspendedPromise;
 
 		const hubState = testGameState();

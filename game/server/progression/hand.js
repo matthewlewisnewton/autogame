@@ -304,38 +304,38 @@ function drawCardFromDeck(player) {
   return card;
 }
 
-function drawCardIntoHand(player) {
+function drawCardIntoHand(state, player) {
   ensureHandSlots(player);
   const slotIndex = findFirstEmptyHandSlot(player);
   if (slotIndex < 0) return null;
   const card = drawCardFromDeck(player) || drawCardFromDesperationDeck(player);
   if (!card) {
-    _onTerminalCheck();
+    _onTerminalCheck(state);
     return null;
   }
   player.hand[slotIndex] = card;
-  _onTerminalCheck();
-  _onDeckUpdate(player);
+  _onTerminalCheck(state);
+  _onDeckUpdate(state, player);
   return card;
 }
 
-function exhaustHandSlot(player, slotIndex, consumedCard) {
+function exhaustHandSlot(state, player, slotIndex, consumedCard) {
   ensureHandSlots(player);
   if (consumedCard && !consumedCard.isDesperation && !consumedCard.isEcho) {
     recordExhaustedCard(player, consumedCard);
   }
   player.hand[slotIndex] = null;
   ensurePassiveDrawScheduled(player);
-  _onTerminalCheck();
-  _onDeckUpdate(player);
+  _onTerminalCheck(state);
+  _onDeckUpdate(state, player);
 }
 
-function discardHandSlot(player, slotIndex) {
+function discardHandSlot(state, player, slotIndex) {
   ensureHandSlots(player);
   player.hand[slotIndex] = null;
   ensurePassiveDrawScheduled(player);
-  _onTerminalCheck();
-  _onDeckUpdate(player);
+  _onTerminalCheck(state);
+  _onDeckUpdate(state, player);
 }
 
 function processPassiveDraws(state, now) {
@@ -351,7 +351,7 @@ function processPassiveDraws(state, now) {
       continue;
     }
     if (now >= player.nextDrawAt) {
-      const drew = drawCardIntoHand(player);
+      const drew = drawCardIntoHand(state, player);
       if (drew && canDrawIntoHand(player)) {
         player.nextDrawAt = now + PASSIVE_DRAW_INTERVAL_MS;
       } else {
@@ -361,8 +361,8 @@ function processPassiveDraws(state, now) {
   }
 }
 
-function replaceConsumedCard(player, slotIndex, consumedCard) {
-  exhaustHandSlot(player, slotIndex, consumedCard);
+function replaceConsumedCard(state, player, slotIndex, consumedCard) {
+  exhaustHandSlot(state, player, slotIndex, consumedCard);
 }
 
 function beginCreatureBurnDown(player, slotIndex, handCard, minion) {
@@ -382,17 +382,17 @@ function findBurningHandCardForMinion(player, minion) {
   return { slotIndex, card };
 }
 
-function releaseBurningCreatureCard(player, minion) {
+function releaseBurningCreatureCard(state, player, minion) {
   const match = findBurningHandCardForMinion(player, minion);
   if (!match) return false;
   const { slotIndex, card } = match;
   delete card.activeMinionId;
   delete card.burnMaxTtl;
-  replaceConsumedCard(player, slotIndex, card);
+  replaceConsumedCard(state, player, slotIndex, card);
   return true;
 }
 
-function initPlayerHand(player) {
+function initPlayerHand(state, player) {
   resetPlayerDesperationState(player);
   player.hand = new Array(MAX_HAND_SLOTS).fill(null);
   player.nextDrawAt = null;
@@ -406,7 +406,7 @@ function initPlayerHand(player) {
     }
   }
   ensurePassiveDrawScheduled(player);
-  _onDeckUpdate(player);
+  _onDeckUpdate(state, player);
   return player.hand;
 }
 
@@ -417,7 +417,7 @@ function isPlayerOutOfCards(player) {
   return handEmpty && isDeckEmpty(player) && isDesperationDeckEmpty(player);
 }
 
-function drawReplacementCard(player, slotIndex) {
+function drawReplacementCard(state, player, slotIndex) {
   ensureHandSlots(player);
   const card = drawCardFromDeck(player) || drawCardFromDesperationDeck(player);
   if (card) {
@@ -425,8 +425,8 @@ function drawReplacementCard(player, slotIndex) {
   } else {
     player.hand[slotIndex] = null;
   }
-  _onTerminalCheck();
-  _onDeckUpdate(player);
+  _onTerminalCheck(state);
+  _onDeckUpdate(state, player);
 }
 
 function validateUseCardHand(player, slotIndex, cardId) {
@@ -473,11 +473,11 @@ function validateDiscardHand(player, slotIndex, cardId) {
   return { valid: true, handCard };
 }
 
-function discardCardFromHand(player, slotIndex, cardId) {
+function discardCardFromHand(state, player, slotIndex, cardId) {
   const validation = validateDiscardHand(player, slotIndex, cardId);
   if (!validation.valid) return validation;
 
-  discardHandSlot(player, slotIndex);
+  discardHandSlot(state, player, slotIndex);
   return { valid: true };
 }
 

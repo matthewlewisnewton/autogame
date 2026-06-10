@@ -9,7 +9,6 @@ import {
 } from '../encounters.js';
 import { getObjectiveDef } from '../objectives.js';
 import {
-  setGameState,
   spawnEnemies,
   startDungeonRun,
   removeDeadEnemies,
@@ -58,10 +57,9 @@ function deployStageBossRun(state, { seed = SEED, partySize = 1 } = {}) {
   state.enemies = [];
   state.loot = [];
   state.gamePhase = 'playing';
-  setGameState(state);
   setSimulationGameState(state);
-  spawnEnemies();
-  startDungeonRun();
+  spawnEnemies(state);
+  startDungeonRun(state);
   return state;
 }
 
@@ -126,21 +124,21 @@ describe('stage boss defeat hook', () => {
       if (enemy.id !== bossId) enemy.hp = 0;
     }
 
-    removeDeadEnemies();
+    removeDeadEnemies(state);
 
     expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
     expect(state.run.objective.bossDefeated).toBe(false);
-    expect(isRunObjectiveComplete(state.run.objective)).toBe(false);
+    expect(isRunObjectiveComplete(state, state.run.objective)).toBe(false);
     expect(state.run.status).toBe('playing');
     expect(state.enemies.some((e) => e.id === bossId)).toBe(true);
   });
 
   it('recordEnemyDefeated does not complete the stage_boss objective', () => {
     const before = { ...state.run.objective };
-    recordEnemyDefeated(5);
+    recordEnemyDefeated(state, 5);
     expect(state.run.objective.bossDefeated).toBe(false);
     expect(state.run.objective.defeatedEnemies).toBeGreaterThan(before.defeatedEnemies);
-    expect(isRunObjectiveComplete(state.run.objective)).toBe(false);
+    expect(isRunObjectiveComplete(state, state.run.objective)).toBe(false);
   });
 
   it('killing the boss while active clears the encounter and completes the objective', () => {
@@ -149,11 +147,11 @@ describe('stage boss defeat hook', () => {
     expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
 
     boss.hp = 0;
-    removeDeadEnemies();
+    removeDeadEnemies(state);
 
     expect(isEncounterCleared(state.run)).toBe(true);
     expect(state.run.objective.bossDefeated).toBe(true);
-    expect(isRunObjectiveComplete(state.run.objective)).toBe(true);
+    expect(isRunObjectiveComplete(state, state.run.objective)).toBe(true);
     expect(rewardHookCalls).toHaveLength(1);
     expect(rewardHookCalls[0].bossEnemy.id).toBe(boss.id);
   });
@@ -162,10 +160,10 @@ describe('stage boss defeat hook', () => {
     activateEncounterForTest(state);
     bossEnemy(state).hp = 0;
 
-    cleanupAfterDamage();
+    cleanupAfterDamage(state);
 
     expect(state.run.status).toBe('victory');
-    expect(isRunObjectiveComplete(state.run.objective)).toBe(true);
+    expect(isRunObjectiveComplete(state, state.run.objective)).toBe(true);
   });
 
   it('does not clear the encounter when the boss dies before activation', () => {
@@ -173,7 +171,7 @@ describe('stage boss defeat hook', () => {
     expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
 
     boss.hp = 0;
-    removeDeadEnemies();
+    removeDeadEnemies(state);
 
     expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
     expect(state.run.objective.bossDefeated).toBe(false);
@@ -195,7 +193,7 @@ describe('stage boss defeat hook', () => {
     };
     state.enemies.push(extraBoss);
 
-    removeDeadEnemies();
+    removeDeadEnemies(state);
 
     expect(rewardHookCalls).toHaveLength(0);
     expect(state.run.objective.bossDefeated).toBe(true);
@@ -207,7 +205,7 @@ describe('stage boss defeat hook', () => {
     const lootBefore = state.loot.length;
 
     boss.hp = 0;
-    removeDeadEnemies();
+    removeDeadEnemies(state);
 
     expect(isEncounterCleared(state.run)).toBe(true);
     expect(state.loot.length).toBeGreaterThanOrEqual(lootBefore);

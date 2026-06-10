@@ -9,9 +9,8 @@ import {
 	applyPlayerMovement,
 	buildMovementContext,
 	processPendingCardWindups,
-	setGameState as setSimGameState,
+  setGameState as setSimGameState,
 } from '../simulation.js';
-import { setGameState as setProgressionGameState } from '../progression.js';
 import { MAX_MAGIC_STONES } from '../config.js';
 import {
 	connectClient,
@@ -66,7 +65,6 @@ describe('card wind-up input lock until resolution', () => {
 
 		player.cardWindupStartTime = Date.now() - windUpMs - 50;
 		setSimGameState(state, {});
-		setProgressionGameState(state);
 
 		expect(isPlayerCardCommitted(player)).toBe(true);
 		expect(player.pendingCardUse?.cardId).toBe('magma_greatsword');
@@ -136,7 +134,6 @@ describe('card wind-up input lock until resolution', () => {
 
 		player.cardWindupStartTime = Date.now() - windUpMs - 50;
 		setSimGameState(state, {});
-		setProgressionGameState(state);
 
 		expect(isPlayerCardCommitted(player)).toBe(true);
 
@@ -212,7 +209,6 @@ describe('card wind-up input lock until resolution', () => {
 
 		player.cardWindupStartTime = Date.now() - windUpMs - 50;
 		setSimGameState(state, {});
-		setProgressionGameState(state);
 
 		expect(isPlayerCardCommitted(player)).toBe(true);
 		expect(player.pendingCardUse?.cardId).toBe('dungeon_drake');

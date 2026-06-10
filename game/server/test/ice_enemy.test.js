@@ -65,7 +65,7 @@ describe('glacial_thrower ice-ball projectile', () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(NOW);
 		resetGameState();
-		// Wire a big open room into the live game-state (resetGameState already
+		// Wire a big open room into the live game-state (re already
 		// pointed the simulation at `gameState`, so mutating it in place is enough).
 		const layout = buildOpenLayout();
 		gameState.layout = layout;
@@ -196,7 +196,7 @@ describe('run-exit cleanup clears in-flight ice balls', () => {
 		resetGameState();
 	});
 
-	it('resetTransientRunState() empties iceBalls, so the world snapshot has none', () => {
+	it('resetTransientRunState(gameState) empties iceBalls, so the world snapshot has none', () => {
 		// Seed a live projectile (mirrors what spawnIceBall leaves behind mid-run).
 		gameState.iceBalls.push({
 			id: 'ice-1',
@@ -209,14 +209,14 @@ describe('run-exit cleanup clears in-flight ice balls', () => {
 		});
 		expect(gameState.iceBalls).toHaveLength(1);
 		// Pre-cleanup the snapshot still carries the stale projectile.
-		expect(buildWorldSnapshot().iceBalls).toHaveLength(1);
+		expect(buildWorldSnapshot(gameState).iceBalls).toHaveLength(1);
 
 		// Run-exit cleanup path (shared by suspend/return-to-lobby/give-up).
-		resetTransientRunState();
+		resetTransientRunState(gameState);
 
 		expect(gameState.iceBalls).toEqual([]);
 		// No stale projectiles leak into the broadcast snapshot.
-		expect(buildWorldSnapshot().iceBalls).toEqual([]);
+		expect(buildWorldSnapshot(gameState).iceBalls).toEqual([]);
 	});
 });
 
@@ -252,7 +252,7 @@ function spawnTypesForQuest(questId, seed) {
 	gameState.enemies = [];
 	gameState.run = { status: 'playing', questId, questTier: 1 };
 	const quest = getQuest(questId, 1);
-	spawnCombatEnemies(buildCombatLayout(), makeRng(seed), quest);
+	spawnCombatEnemies(gameState, buildCombatLayout(), makeRng(seed), quest);
 	return gameState.enemies.map((e) => e.type);
 }
 

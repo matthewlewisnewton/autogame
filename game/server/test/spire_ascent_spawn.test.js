@@ -98,7 +98,7 @@ describe('spire-ascent quest spawns', () => {
 		gameState.enemies = [];
 		gameState.loot = [];
 		gameState.run = { questTier: tier };
-		spawnEnemies();
+		spawnEnemies(gameState);
 	}
 
 	it('spawns enemies across bottom, middle, and top tiers (not all on one tier)', () => {
@@ -134,7 +134,7 @@ describe('spire-ascent quest spawns', () => {
 		const layout = spireAscentLayout();
 		const maxTier = maxTierIndex(layout);
 		gameState.loot = [];
-		spawnCrystals(layout, mulberry32(SEED), 3);
+		spawnCrystals(gameState, layout, mulberry32(SEED), 3);
 		const crystals = gameState.loot.filter(l => l.kind === 'crystal');
 		expect(crystals.length).toBe(3);
 		for (const c of crystals) {
@@ -146,7 +146,7 @@ describe('spire-ascent quest spawns', () => {
 		vi.spyOn(Math, 'random').mockReturnValue(config.LOOT_SPAWN_CHANCE - 0.1);
 		const layout = spireAscentLayout();
 		gameState.loot = [];
-		spawnLoot(layout, mulberry32(SEED));
+		spawnLoot(gameState, layout, mulberry32(SEED));
 		expect(gameState.loot.length).toBe(1);
 		expect(tierAt(layout, gameState.loot[0])).toBe(maxTierIndex(layout));
 		vi.restoreAllMocks();

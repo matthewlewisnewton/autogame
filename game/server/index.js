@@ -330,8 +330,6 @@ const {
   isPlayerActive,
   hasActivePlayers,
   abandonSuspendedRun,
-  setGameState: setProgressionGameState,
-  getGameState: getProgressionGameState,
   setRebuildWallColliders: setProgressionRebuildWallColliders,
 } = progression;
 
@@ -351,10 +349,14 @@ const debugScenarios = require('./debugScenarios');
 
 const _lobbyContextStack = [];
 
+function getActiveLobbyState() {
+  const parentLobby = _lobbyContextStack[_lobbyContextStack.length - 1];
+  return parentLobby ? parentLobby.state : gameState;
+}
+
 function withLobbyContext(lobby, fn) {
   if (!lobby || !lobby.state) return fn();
   sim.setGameState(lobby.state, _timeouts);
-  setProgressionGameState(lobby.state);
   _lobbyContextStack.push(lobby);
   try {
     return fn();
@@ -363,7 +365,6 @@ function withLobbyContext(lobby, fn) {
     const parentLobby = _lobbyContextStack[_lobbyContextStack.length - 1];
     const restoreState = parentLobby ? parentLobby.state : gameState;
     sim.setGameState(restoreState, _timeouts);
-    setProgressionGameState(restoreState);
   }
 }
 
@@ -383,7 +384,7 @@ progression.setRebuildWallColliders(() => rebuildWallColliders());
 ensureShopOffer(gameState);
 
 // Wire simulation callbacks (so simulation.js can call back into progression).
-setTerminalCheckCallback(checkRunTerminalState);
+setTerminalCheckCallback((state) => checkRunTerminalState(state));
 setFindSocketCallback(findSocketByPlayerId);
 setSavePlayerCallback(savePlayerData);
 
@@ -466,7 +467,6 @@ function resetGameState() {
   delete gameState.run;
   delete gameState._victoryCounters;
   sim.setGameState(gameState, _timeouts);
-  setProgressionGameState(gameState);
   ensureShopOffer(gameState);
 }
 
@@ -635,7 +635,7 @@ function emitQuestPayloadToLobby(lobby, { event = SERVER_TO_CLIENT.QUEST_UPDATE,
 
 // Helper: broadcast lobbyUpdate to clients in a lobby room
 function broadcastLobbyUpdate(lobby) {
-  const activeState = getProgressionGameState();
+  const activeState = getActiveLobbyState();
   if (!lobby && activeState && activeState._lobbyId) {
     lobby = lobbies.getLobbyById(activeState._lobbyId);
   }
@@ -724,7 +724,7 @@ function ensureNearbyEnemy(state, x, z) {
   const nearby = state.enemies.some(enemy => Math.hypot(enemy.x - x, enemy.z - z) < 6);
   if (nearby) return;
 
-  const enemy = spawnEnemy(x + 3, z, 'grunt');
+  const enemy = spawnEnemy(state, x + 3, z, 'grunt');
   enemy.wanderTarget = { x: x + 3, z };
 }
 
@@ -793,13 +793,13 @@ function enterPlayingPhase(lobby) {
     for (const player of Object.values(state.players)) {
       if (!player.hand || player.hand.length === 0) {
         createDrawDeckFromSelectedDeck(player);
-        initPlayerHand(player);
+        initPlayerHand(state, player);
       }
     }
     if (!shouldSkipDefaultEnemySpawn(state)) {
-      spawnEnemies();
+      spawnEnemies(state);
     }
-    startDungeonRun();
+    startDungeonRun(state);
     io.to(lobby.id).emit(SERVER_TO_CLIENT.START_GAME);
     broadcastLobbyList();
   }
@@ -813,7 +813,7 @@ function applyDebugScenario(socket, name) {
 }
 
 function findSacrificeTarget(playerId, x, z, radius) {
-  const state = getProgressionGameState() || gameState;
+  const state = getActiveLobbyState();
   return state.minions
     .map((minion, index) => ({ minion, index }))
     .filter(({ minion }) => {
@@ -1089,10 +1089,10 @@ function loadSavedPlayerData(loadKey) {
   }
 }
 
-function initializePlayerForActiveRun(player) {
+function initializePlayerForActiveRun(state, player) {
   if (!player.hand || player.hand.length === 0) {
     createDrawDeckFromSelectedDeck(player);
-    initPlayerHand(player);
+    initPlayerHand(state, player);
   }
   player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
   if (!Number.isFinite(player.magicStones)) {
@@ -1125,7 +1125,7 @@ function allowDropInJoin(lobby) {
 function handleDropInJoin(socket, lobby) {
   const player = lobby.state.players[socket.playerId];
   if (!player) return;
-  withLobbyContext(lobby, () => initializePlayerForActiveRun(player));
+  withLobbyContext(lobby, () => initializePlayerForActiveRun(lobby.state, player));
 }
 
 function joinLobbyWithPhasePolicy(socket, lobby) {
@@ -1286,7 +1286,7 @@ function notifyPlayerRemoved(lobby, { playerId, result, emitDisconnect = false }
 
   withLobbyContext(lobby, () => {
     if (isPlayingPhase(lobby.state)) {
-      checkRunTerminalState();
+      checkRunTerminalState(lobby.state);
     } else {
       broadcastLobbyUpdate(lobby);
       if (isLobbyPhase(lobby.state) && playerId) {
@@ -1400,17 +1400,16 @@ function runGameLoopTick() {
         } else if (isPlayingPhase(state)) {
           processPendingCardWindups();
           applyPlayerMovement(state, buildMovementContext(state));
-          checkTelepipeProximity();
+          checkTelepipeProximity(state);
           flushDirtyPlayerSaves();
           updateEnemies();
           updateEnemyProjectiles();
           updateMinions();
           updateBurning();
           debugScenarios.nudgeDebugBossApproachPlayers(state);
-          updateEncounterTriggers();
-          updateSurviveSpawns();
-
+          updateEncounterTriggers(state);
           const now = Date.now();
+          updateSurviveSpawns(state, now);
           processPassiveDraws(state, now);
 
           if (state._pendingMinionBreaths?.length) {
@@ -1474,7 +1473,7 @@ function runGameLoopTick() {
           state.loot = state.loot.filter(l => (now - l.createdAt) < LOOT_LIFETIME_MS);
         }
 
-        const snapshot = hotStateSnapshot();
+        const snapshot = hotStateSnapshot(state);
         io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, snapshot);
       });
     } catch (err) {
@@ -1740,7 +1739,7 @@ if (typeof module !== 'undefined' && module.exports) {
     createGameState,
     resetGameState,
     gameState,
-    setGameState: setProgressionGameState,
+    setGameState: (state) => sim.setGameState(state, _timeouts),
     startServer,
     runGameLoopTick,
     cleanupStalePlayers,

@@ -826,7 +826,7 @@ describe('updateEnemies()', () => {
 
 		// Clear run (simulating returnToLobby) and start a new one
 		delete gameState.run;
-		startDungeonRun();
+		startDungeonRun(gameState);
 		expect(gameState.run.status).toBe('playing');
 
 		// AI should resume — enemy should chase player
@@ -1302,7 +1302,7 @@ describe('updateMinions()', () => {
 
 		// Clear run and start a new one
 		delete gameState.run;
-		startDungeonRun();
+		startDungeonRun(gameState);
 
 		// AI should resume — minion should attack enemy
 		updateMinions();
@@ -1415,7 +1415,7 @@ describe('updateMinions()', () => {
 
 // ── spawnLoot ──
 
-describe('spawnLoot(layout, rng)', () => {
+describe('spawnLoot(gameState, layout, rng)', () => {
 	beforeEach(() => resetState());
 
 	it('creates loot with correct structure when it spawns', () => {
@@ -1423,7 +1423,7 @@ describe('spawnLoot(layout, rng)', () => {
 
 		const layout = generateLayout(42);
 		const rng = mulberry32(99);
-		spawnLoot(layout, rng);
+		spawnLoot(gameState, layout, rng);
 
 		expect(gameState.loot.length).toBe(1);
 		const loot = gameState.loot[0];
@@ -1444,7 +1444,7 @@ describe('spawnLoot(layout, rng)', () => {
 
 		const layout = generateLayout(42);
 		const rng = mulberry32(99);
-		spawnLoot(layout, rng);
+		spawnLoot(gameState, layout, rng);
 		expect(gameState.loot[0].value).toBeGreaterThanOrEqual(5);
 		expect(gameState.loot[0].value).toBeLessThan(20);
 
@@ -1456,7 +1456,7 @@ describe('spawnLoot(layout, rng)', () => {
 
 		const layout = generateLayout(42);
 		const rng = mulberry32(99);
-		spawnLoot(layout, rng);
+		spawnLoot(gameState, layout, rng);
 
 		expect(gameState.loot.length).toBe(0);
 
@@ -1469,7 +1469,7 @@ describe('spawnLoot(layout, rng)', () => {
 		const layout = generateLayout(42);
 		const rng = mulberry32(99);
 		const before = Date.now();
-		spawnLoot(layout, rng);
+		spawnLoot(gameState, layout, rng);
 		const after = Date.now();
 
 		expect(gameState.loot[0].createdAt).toBeGreaterThanOrEqual(before);
@@ -1483,7 +1483,7 @@ describe('spawnLoot(layout, rng)', () => {
 
 		const layout = generateLayout(42);
 		const rng = mulberry32(99);
-		spawnLoot(layout, rng);
+		spawnLoot(gameState, layout, rng);
 
 		const loot = gameState.loot[0];
 		const treasureRooms = layout.rooms.filter(r => r.role === 'treasure');
@@ -1509,7 +1509,7 @@ describe('spawnLoot(layout, rng)', () => {
 			if (r.role === 'treasure') r.role = 'combat';
 		});
 		const rng = mulberry32(99);
-		spawnLoot(layout, rng);
+		spawnLoot(gameState, layout, rng);
 
 		const loot = gameState.loot[0];
 		const startRooms = layout.rooms.filter(r => r.role === 'start');
@@ -1681,7 +1681,7 @@ describe('enemy magic stone drops and discard', () => {
 			hp: 0,
 		}];
 
-		removeDeadEnemies();
+		removeDeadEnemies(gameState);
 
 		expect(gameState.loot).toHaveLength(1);
 		expect(gameState.loot[0].kind).toBe('magic_stone');
@@ -1700,7 +1700,7 @@ describe('enemy magic stone drops and discard', () => {
 		}];
 		addPlayer('p1');
 
-		removeDeadEnemies();
+		removeDeadEnemies(gameState);
 
 		expect(gameState.enemies).toHaveLength(0);
 		expect(gameState.loot).toHaveLength(2);
@@ -1733,7 +1733,7 @@ describe('enemy magic stone drops and discard', () => {
 			],
 		});
 
-		const result = discardCardFromHand(gameState.players['p1'], 0, 'iron_sword');
+		const result = discardCardFromHand(gameState, gameState.players['p1'], 0, 'iron_sword');
 
 		expect(result.valid).toBe(true);
 		expect(gameState.players['p1'].hand[0]).toBeNull();
@@ -1745,7 +1745,7 @@ describe('enemy magic stone drops and discard', () => {
 		gameState.enemies = [
 			{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
 		];
-		startDungeonRun();
+		startDungeonRun(gameState);
 		addPlayer('p1', {
 			deck: ['flame_blade', 'arcane_bolt'],
 			hand: [
@@ -1760,7 +1760,7 @@ describe('enemy magic stone drops and discard', () => {
 		const originalEmit = serverIo.emit;
 		serverIo.emit = (event, data) => emitCalls.push({ event, data });
 
-		discardCardFromHand(gameState.players['p1'], 0, 'iron_sword');
+		discardCardFromHand(gameState, gameState.players['p1'], 0, 'iron_sword');
 
 		serverIo.emit = originalEmit;
 
@@ -1774,7 +1774,7 @@ describe('enemy magic stone drops and discard', () => {
 		gameState.enemies = [
 			{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
 		];
-		startDungeonRun();
+		startDungeonRun(gameState);
 		addPlayer('p1', {
 			deck: [],
 			desperationDeck: [],
@@ -1784,7 +1784,7 @@ describe('enemy magic stone drops and discard', () => {
 			],
 		});
 
-		discardCardFromHand(gameState.players['p1'], 0, 'iron_sword');
+		discardCardFromHand(gameState, gameState.players['p1'], 0, 'iron_sword');
 
 		expect(gameState.run.status).toBe('failed');
 	});
@@ -2208,7 +2208,7 @@ describe('run state', () => {
 		delete gameState.run;
 	});
 
-	describe('createRunState()', () => {
+	describe('createRunState(gameState)', () => {
 		it('produces an object with all required fields', () => {
 			// Set a known number of enemies
 			gameState.enemies = [
@@ -2217,7 +2217,7 @@ describe('run state', () => {
 				{ id: 'e3', x: 10, z: 10, hp: 50, state: 'idle', wanderTarget: { x: 10, z: 10 } },
 			];
 
-			const run = createRunState();
+			const run = createRunState(gameState);
 
 			expect(run).toHaveProperty('id');
 			expect(typeof run.id).toBe('string');
@@ -2235,7 +2235,7 @@ describe('run state', () => {
 
 		it('creates a collect-items objective for crystal rescue', () => {
 			gameState.selectedQuestId = 'crystal_rescue';
-			const run = createRunState();
+			const run = createRunState(gameState);
 
 			expect(run.questId).toBe('crystal_rescue');
 			expect(run.objective.type).toBe('collect_items');
@@ -2245,7 +2245,7 @@ describe('run state', () => {
 
 		it('creates a survive objective for the endless siege quest', () => {
 			gameState.selectedQuestId = 'endless_siege';
-			const run = createRunState();
+			const run = createRunState(gameState);
 
 			const quest = getQuest('endless_siege');
 			expect(run.questId).toBe('endless_siege');
@@ -2263,14 +2263,14 @@ describe('run state', () => {
 	describe('survive objective completion', () => {
 		function makeSurviveRun() {
 			gameState.selectedQuestId = 'endless_siege';
-			gameState.run = createRunState();
+			gameState.run = createRunState(gameState);
 			return gameState.run;
 		}
 
 		it('recordEnemyDefeated increments a survive objective', () => {
 			makeSurviveRun();
-			recordEnemyDefeated(1);
-			recordEnemyDefeated(2);
+			recordEnemyDefeated(gameState, 1);
+			recordEnemyDefeated(gameState, 2);
 			expect(gameState.run.objective.defeatedEnemies).toBe(3);
 		});
 
@@ -2278,30 +2278,30 @@ describe('run state', () => {
 			const run = makeSurviveRun();
 			const total = run.objective.totalSpawns;
 
-			recordEnemyDefeated(total - 1);
-			expect(isRunObjectiveComplete(run.objective)).toBe(false);
+			recordEnemyDefeated(gameState, total - 1);
+			expect(isRunObjectiveComplete(gameState, run.objective)).toBe(false);
 
-			recordEnemyDefeated(1);
-			expect(isRunObjectiveComplete(run.objective)).toBe(true);
+			recordEnemyDefeated(gameState, 1);
+			expect(isRunObjectiveComplete(gameState, run.objective)).toBe(true);
 		});
 
 		it('does not affect a different objective type', () => {
 			gameState.selectedQuestId = 'crystal_rescue';
-			gameState.run = createRunState();
-			recordEnemyDefeated(1);
+			gameState.run = createRunState(gameState);
+			recordEnemyDefeated(gameState, 1);
 			expect(gameState.run.objective.collectedItems).toBe(0);
 			expect(gameState.run.objective.defeatedEnemies).toBeUndefined();
 		});
 	});
 
-	describe('updateSurviveSpawns()', () => {
+	describe('updateSurviveSpawns(gameState)', () => {
 		function startSurviveRun() {
 			resetState();
 			gameState.selectedQuestId = 'endless_siege';
 			gameState.layoutSeed = 42;
 			gameState.gamePhase = 'playing';
 			gameState.enemies = [];
-			startDungeonRun();
+			startDungeonRun(gameState);
 			return gameState.run;
 		}
 
@@ -2312,7 +2312,7 @@ describe('run state', () => {
 			const guard = run.objective.totalSpawns + 50;
 			let iterations = 0;
 			while (run.objective.spawnedEnemies < run.objective.totalSpawns && iterations < guard) {
-				updateSurviveSpawns(now);
+				updateSurviveSpawns(gameState, now);
 				now += 60_000;
 				iterations++;
 			}
@@ -2320,7 +2320,7 @@ describe('run state', () => {
 
 		it('skips the up-front bulk combat spawn for survive runs', () => {
 			startSurviveRun();
-			spawnEnemies();
+			spawnEnemies(gameState);
 			expect(gameState.enemies.length).toBe(0);
 		});
 
@@ -2329,17 +2329,17 @@ describe('run state', () => {
 			expect(run.objective.spawnedEnemies).toBe(0);
 
 			// First tick spawns immediately.
-			updateSurviveSpawns(1_000_000);
+			updateSurviveSpawns(gameState, 1_000_000);
 			expect(run.objective.spawnedEnemies).toBe(1);
 			expect(gameState.enemies.length).toBe(1);
 
 			// A second tick within the interval is throttled.
-			updateSurviveSpawns(1_000_100);
+			updateSurviveSpawns(gameState, 1_000_100);
 			expect(run.objective.spawnedEnemies).toBe(1);
 			expect(gameState.enemies.length).toBe(1);
 
 			// After the interval elapses, the next enemy spawns.
-			updateSurviveSpawns(1_060_000);
+			updateSurviveSpawns(gameState, 1_060_000);
 			expect(run.objective.spawnedEnemies).toBe(2);
 			expect(gameState.enemies.length).toBe(2);
 		});
@@ -2364,7 +2364,7 @@ describe('run state', () => {
 			drainSpawns(run);
 			const count = gameState.enemies.length;
 
-			updateSurviveSpawns(99_000_000);
+			updateSurviveSpawns(gameState, 99_000_000);
 			expect(run.objective.spawnedEnemies).toBe(run.objective.totalSpawns);
 			expect(gameState.enemies.length).toBe(count);
 		});
@@ -2372,7 +2372,7 @@ describe('run state', () => {
 		it('does not spawn outside the playing phase', () => {
 			const run = startSurviveRun();
 			gameState.gamePhase = 'lobby';
-			updateSurviveSpawns(1_000_000);
+			updateSurviveSpawns(gameState, 1_000_000);
 			expect(run.objective.spawnedEnemies).toBe(0);
 			expect(gameState.enemies.length).toBe(0);
 		});
@@ -2382,8 +2382,8 @@ describe('run state', () => {
 			gameState.selectedQuestId = DEFAULT_QUEST_ID;
 			gameState.gamePhase = 'playing';
 			gameState.enemies = [];
-			startDungeonRun();
-			updateSurviveSpawns(1_000_000);
+			startDungeonRun(gameState);
+			updateSurviveSpawns(gameState, 1_000_000);
 			expect(gameState.enemies.length).toBe(0);
 		});
 	});
@@ -2402,7 +2402,7 @@ describe('run state', () => {
 				startedAt: Date.now()
 			};
 
-			recordEnemyDefeated(3);
+			recordEnemyDefeated(gameState, 3);
 
 			expect(gameState.run.objective.defeatedEnemies).toBe(3);
 		});
@@ -2420,13 +2420,13 @@ describe('run state', () => {
 				startedAt: Date.now()
 			};
 
-			recordEnemyDefeated(10);
+			recordEnemyDefeated(gameState, 10);
 
 			expect(gameState.run.objective.defeatedEnemies).toBe(5);
 		});
 
 		it('is a no-op when gameState.run is undefined', () => {
-			expect(() => recordEnemyDefeated(1)).not.toThrow();
+			expect(() => recordEnemyDefeated(gameState, 1)).not.toThrow();
 			expect(gameState.run).toBeUndefined();
 		});
 	});
@@ -2479,18 +2479,18 @@ describe('run state', () => {
 		});
 
 		it('returns null when gameState.run is undefined', () => {
-			expect(buildRunSummary('victory')).toBeNull();
+			expect(buildRunSummary(gameState, 'victory')).toBeNull();
 		});
 
 		it('returns an object with all required fields', () => {
 			gameState.enemies = [
 				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
 			];
-			startDungeonRun();
+			startDungeonRun(gameState);
 			addPlayer('p1', { hp: 80, currency: 15 });
-			recordEnemyDefeated(1);
+			recordEnemyDefeated(gameState, 1);
 
-			const summary = buildRunSummary('victory');
+			const summary = buildRunSummary(gameState, 'victory');
 
 			expect(summary).toHaveProperty('runId');
 			expect(summary).toHaveProperty('status', 'victory');
@@ -2512,20 +2512,20 @@ describe('run state', () => {
 		});
 
 		it('sums currencyCollected from multiple players', () => {
-			startDungeonRun();
+			startDungeonRun(gameState);
 			addPlayer('p1', { currency: 10 });
 			addPlayer('p2', { currency: 25 });
 
-			const summary = buildRunSummary('failed');
+			const summary = buildRunSummary(gameState, 'failed');
 
 			expect(summary.currencyCollected).toBe(35);
 		});
 
 		it('handles zero currency', () => {
-			startDungeonRun();
+			startDungeonRun(gameState);
 			addPlayer('p1', { currency: 0 });
 
-			const summary = buildRunSummary('victory');
+			const summary = buildRunSummary(gameState, 'victory');
 
 			expect(summary.currencyCollected).toBe(0);
 		});
@@ -2546,12 +2546,12 @@ describe('run state', () => {
 				{ id: 'a', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
 				{ id: 'b', x: 4, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 4, z: 0 } },
 			];
-			startDungeonRun();
+			startDungeonRun(gameState);
 			addPlayer('p1', { x: 2, z: 0, hp: 60 });
 
 			// Apply the scenario's near-complete setup.
 			gameState.enemies = [];
-			const enemy = spawnEnemy(5, 0, 'grunt');
+			const enemy = spawnEnemy(gameState, 5, 0, 'grunt');
 			enemy.hp = 1;
 			enemy.maxHp = ENEMY_DEFS.grunt.hp;
 			gameState.run.objective.totalEnemies = 1;
@@ -2560,21 +2560,21 @@ describe('run state', () => {
 			expect(gameState.run.objective.type).toBe('defeat_enemies');
 			expect(gameState.enemies.length).toBe(1);
 			expect(gameState.run.objective.totalEnemies).toBe(1);
-			expect(isRunObjectiveComplete(gameState.run.objective)).toBe(false);
+			expect(isRunObjectiveComplete(gameState, gameState.run.objective)).toBe(false);
 
 			// Defeat the one enemy through the real removal → recordEnemyDefeated path.
 			enemy.hp = 0;
-			removeDeadEnemies();
+			removeDeadEnemies(gameState);
 
 			expect(gameState.enemies.length).toBe(0);
-			expect(isRunObjectiveComplete(gameState.run.objective)).toBe(true);
+			expect(isRunObjectiveComplete(gameState, gameState.run.objective)).toBe(true);
 
-			checkRunTerminalState();
+			checkRunTerminalState(gameState);
 			expect(gameState.run.status).toBe('victory');
 		});
 	});
 
-	describe('checkRunTerminalState()', () => {
+	describe('checkRunTerminalState(gameState)', () => {
 		beforeEach(() => {
 			resetState();
 			delete gameState.run;
@@ -2586,14 +2586,14 @@ describe('run state', () => {
 		});
 
 		it('is a no-op when gameState.run is undefined', () => {
-			expect(() => checkRunTerminalState()).not.toThrow();
+			expect(() => checkRunTerminalState(gameState)).not.toThrow();
 		});
 
 		it('is a no-op when run.status is not playing', () => {
-			startDungeonRun();
+			startDungeonRun(gameState);
 			gameState.run.status = 'victory';
 
-			checkRunTerminalState();
+			checkRunTerminalState(gameState);
 
 			expect(gameState.run.status).toBe('victory');
 		});
@@ -2602,12 +2602,12 @@ describe('run state', () => {
 			gameState.enemies = [
 				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
 			];
-			startDungeonRun();
+			startDungeonRun(gameState);
 			addPlayer('p1');
 
-			recordEnemyDefeated(1);
+			recordEnemyDefeated(gameState, 1);
 
-			checkRunTerminalState();
+			checkRunTerminalState(gameState);
 
 			expect(gameState.run.status).toBe('victory');
 		});
@@ -2616,10 +2616,10 @@ describe('run state', () => {
 			gameState.enemies = [
 				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
 			];
-			startDungeonRun();
+			startDungeonRun(gameState);
 			addPlayer('p1', { hp: 0, dead: true });
 
-			checkRunTerminalState();
+			checkRunTerminalState(gameState);
 
 			expect(gameState.run.status).toBe('failed');
 		});
@@ -2628,11 +2628,11 @@ describe('run state', () => {
 			gameState.enemies = [
 				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
 			];
-			startDungeonRun();
+			startDungeonRun(gameState);
 			addPlayer('p1', { hp: 0, dead: true });
 			addPlayer('p2', { hp: 50, dead: false, hand: [{ id: 'iron_sword' }], deck: ['flame_blade'] });
 
-			checkRunTerminalState();
+			checkRunTerminalState(gameState);
 
 			expect(gameState.run.status).toBe('playing');
 		});
@@ -2641,9 +2641,9 @@ describe('run state', () => {
 			gameState.enemies = [
 				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
 			];
-			startDungeonRun();
+			startDungeonRun(gameState);
 
-			checkRunTerminalState();
+			checkRunTerminalState(gameState);
 
 			expect(gameState.run.status).toBe('playing');
 		});
@@ -2652,17 +2652,17 @@ describe('run state', () => {
 			gameState.enemies = [
 				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
 			];
-			startDungeonRun();
+			startDungeonRun(gameState);
 			addPlayer('p1');
-			recordEnemyDefeated(1);
+			recordEnemyDefeated(gameState, 1);
 
 			// Track io.emit calls
 			const emitCalls = [];
 			const originalEmit = serverIo.emit;
 			serverIo.emit = (event, data) => emitCalls.push({ event, data });
 
-			checkRunTerminalState();
-			checkRunTerminalState(); // second call — should be a no-op
+			checkRunTerminalState(gameState);
+			checkRunTerminalState(gameState); // second call — should be a no-op
 
 			serverIo.emit = originalEmit;
 
@@ -2676,15 +2676,15 @@ describe('run state', () => {
 			gameState.enemies = [
 				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
 			];
-			startDungeonRun();
+			startDungeonRun(gameState);
 			addPlayer('p1', { hp: 80, currency: 10 });
-			recordEnemyDefeated(1);
+			recordEnemyDefeated(gameState, 1);
 
 			const emitCalls = [];
 			const originalEmit = serverIo.emit;
 			serverIo.emit = (event, data) => emitCalls.push({ event, data });
 
-			checkRunTerminalState();
+			checkRunTerminalState(gameState);
 
 			serverIo.emit = originalEmit;
 
@@ -2703,14 +2703,14 @@ describe('run state', () => {
 			gameState.enemies = [
 				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
 			];
-			startDungeonRun();
+			startDungeonRun(gameState);
 			addPlayer('p1', { hp: 0, dead: true, currency: 5 });
 
 			const emitCalls = [];
 			const originalEmit = serverIo.emit;
 			serverIo.emit = (event, data) => emitCalls.push({ event, data });
 
-			checkRunTerminalState();
+			checkRunTerminalState(gameState);
 
 			serverIo.emit = originalEmit;
 
@@ -2724,10 +2724,10 @@ describe('run state', () => {
 			gameState.enemies = [
 				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
 			];
-			startDungeonRun();
+			startDungeonRun(gameState);
 			addPlayer('p1', { hp: 80, dead: false, hand: [], deck: [] });
 
-			checkRunTerminalState();
+			checkRunTerminalState(gameState);
 
 			expect(gameState.run.status).toBe('failed');
 		});
@@ -2736,22 +2736,22 @@ describe('run state', () => {
 			gameState.enemies = [
 				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
 			];
-			startDungeonRun();
+			startDungeonRun(gameState);
 			addPlayer('p1', { hp: 80, hand: [], deck: [] });
 			addPlayer('p2', { hp: 80, hand: [{ id: 'iron_sword' }], deck: ['flame_blade'] });
 
-			checkRunTerminalState();
+			checkRunTerminalState(gameState);
 
 			expect(gameState.run.status).toBe('playing');
 		});
 
 		it('does not fail on deck depletion when the objective is already complete', () => {
 			gameState.enemies = [];
-			startDungeonRun();
+			startDungeonRun(gameState);
 			recordEnemyDefeated(gameState.run.objective.totalEnemies);
 			addPlayer('p1', { hp: 80, hand: [], deck: [] });
 
-			checkRunTerminalState();
+			checkRunTerminalState(gameState);
 
 			expect(gameState.run.status).toBe('victory');
 		});
@@ -2760,7 +2760,7 @@ describe('run state', () => {
 			gameState.enemies = [
 				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
 			];
-			startDungeonRun();
+			startDungeonRun(gameState);
 			const player = {
 				hp: 80,
 				dead: false,
@@ -2770,7 +2770,7 @@ describe('run state', () => {
 			initDesperationDeck(player);
 			gameState.players.p1 = player;
 
-			drawReplacementCard(player, 0);
+			drawReplacementCard(gameState, player, 0);
 
 			expect(player.hand[0].isDesperation).toBe(true);
 			expect(DESPERATION_CARD_DEFS[player.hand[0].id]).toBeDefined();
@@ -2779,7 +2779,7 @@ describe('run state', () => {
 		});
 	});
 
-	describe('resetTransientRunState()', () => {
+	describe('resetTransientRunState(gameState)', () => {
 		beforeEach(() => {
 			resetState();
 		});
@@ -2790,7 +2790,7 @@ describe('run state', () => {
 			gameState.loot.push({ id: 'l1', x: 0, z: 0, value: 10, createdAt: Date.now() });
 			gameState.telepipe = { x: 1, z: 2, placedBy: 'p1', placedAt: Date.now() };
 
-			resetTransientRunState();
+			resetTransientRunState(gameState);
 
 			expect(gameState.enemies.length).toBe(0);
 			expect(gameState.minions.length).toBe(0);
@@ -2802,7 +2802,7 @@ describe('run state', () => {
 			addPlayer('p1', { currency: 42 });
 			gameState.gamePhase = 'playing';
 
-			resetTransientRunState();
+			resetTransientRunState(gameState);
 
 			expect(gameState.players['p1']).toBeDefined();
 			expect(gameState.players['p1'].currency).toBe(42);
@@ -2810,10 +2810,10 @@ describe('run state', () => {
 		});
 
 		it('preserves the run object', () => {
-			startDungeonRun();
+			startDungeonRun(gameState);
 			const runId = gameState.run.id;
 
-			resetTransientRunState();
+			resetTransientRunState(gameState);
 
 			expect(gameState.run).toBeDefined();
 			expect(gameState.run.id).toBe(runId);
@@ -2824,7 +2824,7 @@ describe('run state', () => {
 		beforeEach(() => {
 			resetState();
 			gameState._lobbyId = 'test-lobby';
-			startDungeonRun();
+			startDungeonRun(gameState);
 			gameState.gamePhase = 'playing';
 			addPlayer('p1', {
 				x: 5,
@@ -2857,7 +2857,7 @@ describe('run state', () => {
 		});
 
 		it('tryEnterTelepipe extracts one player while another remains active', () => {
-			const result = tryEnterTelepipe('p1');
+			const result = tryEnterTelepipe(gameState, 'p1');
 			expect(result.ok).toBe(true);
 			expect(gameState.players.p1.extracted).toBe(true);
 			expect(gameState.gamePhase).toBe('playing');
@@ -2868,7 +2868,7 @@ describe('run state', () => {
 		it('rejects telepipe entry when player is too far', () => {
 			gameState.players.p2.x = 100;
 			gameState.players.p2.z = 100;
-			const result = tryEnterTelepipe('p2');
+			const result = tryEnterTelepipe(gameState, 'p2');
 			expect(result.ok).toBe(false);
 			expect(result.reason).toBe('too_far');
 		});
@@ -2882,10 +2882,10 @@ describe('run state', () => {
 			gameState.players.p2.magicStones = 22;
 			gameState.players.p2.hand[0].remainingCharges = 0;
 
-			tryEnterTelepipe('p1');
+			tryEnterTelepipe(gameState, 'p1');
 			gameState.players.p2.x = 5;
 			gameState.players.p2.z = 5;
-			tryEnterTelepipe('p2');
+			tryEnterTelepipe(gameState, 'p2');
 
 			expect(gameState.gamePhase).toBe('lobby');
 			expect(gameState.run).toBeUndefined();
@@ -2905,7 +2905,7 @@ describe('run state', () => {
 			gameState.suspendedCheckpoint.playerStates.p1.hand[0].remainingCharges = 99;
 			expect(gameState.players.p1.hand).toEqual([]);
 
-			const snapshot = stateSnapshot();
+			const snapshot = stateSnapshot(gameState);
 			expect(snapshot.suspendedRunSummary).toEqual({
 				questId: gameState.selectedQuestId,
 				questName: gameState.suspendedCheckpoint.run.questName,
@@ -2959,7 +2959,7 @@ describe('run state', () => {
 				defeatedEnemies: 0,
 				label: 'Purge hostiles',
 			};
-			recordEnemyDefeated(1);
+			recordEnemyDefeated(gameState, 1);
 
 			const preSuspendObjective = {
 				type: gameState.run.objective.type,
@@ -2969,10 +2969,10 @@ describe('run state', () => {
 			};
 			const preSuspendTelepipe = { ...gameState.telepipe };
 
-			tryEnterTelepipe('p1');
+			tryEnterTelepipe(gameState, 'p1');
 			gameState.players.p2.x = 5;
 			gameState.players.p2.z = 5;
-			tryEnterTelepipe('p2');
+			tryEnterTelepipe(gameState, 'p2');
 
 			expect(gameState.enemies).toHaveLength(0);
 			expect(gameState.minions).toHaveLength(0);
@@ -3056,14 +3056,14 @@ describe('run state', () => {
 			const preSuspendTelepipe = { ...gameState.telepipe };
 			const preSuspendEnemyIds = gameState.enemies.map((e) => e.id);
 
-			tryEnterTelepipe('p1');
+			tryEnterTelepipe(gameState, 'p1');
 			gameState.players.p2.x = 5;
 			gameState.players.p2.z = 5;
-			tryEnterTelepipe('p2');
+			tryEnterTelepipe(gameState, 'p2');
 
 			gameState.players.p1.ready = true;
 			gameState.players.p2.ready = true;
-			checkAllReady();
+			checkAllReady(gameState);
 
 			expect(gameState.enemies.map((e) => e.id)).toEqual(preSuspendEnemyIds);
 			expect(gameState.enemies[0].hp).toBe(22);
@@ -3093,21 +3093,21 @@ describe('run state', () => {
 				: null;
 			const preSuspendTelepipe = { ...gameState.telepipe };
 
-			tryEnterTelepipe('p1');
+			tryEnterTelepipe(gameState, 'p1');
 			gameState.players.p2.x = 5;
 			gameState.players.p2.z = 5;
-			tryEnterTelepipe('p2');
+			tryEnterTelepipe(gameState, 'p2');
 
 			gameState.players.p1.ready = true;
 			gameState.players.p2.ready = true;
-			checkAllReady();
+			checkAllReady(gameState);
 
 			expect(gameState.gamePhase).toBe('playing');
 			expect(gameState.run).toBeDefined();
 			expect(gameState.run.id).toBe(preExtractRunId);
 			expect(gameState.run.status).toBe('playing');
 			expect(gameState.suspendedCheckpoint).toBeNull();
-			expect(stateSnapshot().suspendedRunSummary).toBeNull();
+			expect(stateSnapshot(gameState).suspendedRunSummary).toBeNull();
 
 			const restoredEnemy = gameState.enemies.find((e) => e.id === 'e1');
 			expect(restoredEnemy).toBeDefined();
@@ -3146,25 +3146,25 @@ describe('run state', () => {
 			gameState.players.p1.hand[0].remainingCharges = 0;
 			gameState.players.p2.hand[0].remainingCharges = 0;
 
-			tryEnterTelepipe('p1');
+			tryEnterTelepipe(gameState, 'p1');
 			gameState.players.p2.x = 5;
 			gameState.players.p2.z = 5;
-			tryEnterTelepipe('p2');
+			tryEnterTelepipe(gameState, 'p2');
 
 			expect(gameState.suspendedCheckpoint).not.toBeNull();
 			expect(gameState.suspendedCheckpoint.run.id).toBe(preSuspendRunId);
 			expect(gameState.suspendedCheckpoint.playerStates.p1.hand[0].remainingCharges).toBe(0);
 
-			const abandonResult = abandonSuspendedRun();
+			const abandonResult = abandonSuspendedRun(gameState);
 			expect(abandonResult.ok).toBe(true);
 			expect(gameState.suspendedCheckpoint).toBeNull();
 			expect(gameState.players.p1.ready).toBe(false);
 			expect(gameState.players.p2.ready).toBe(false);
-			expect(stateSnapshot().suspendedRunSummary).toBeNull();
+			expect(stateSnapshot(gameState).suspendedRunSummary).toBeNull();
 
 			gameState.players.p1.ready = true;
 			gameState.players.p2.ready = true;
-			checkAllReady();
+			checkAllReady(gameState);
 
 			expect(gameState.gamePhase).toBe('playing');
 			expect(gameState.run).toBeDefined();
@@ -3192,7 +3192,7 @@ describe('run state', () => {
 				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
 			});
 
-			checkAllReady();
+			checkAllReady(gameState);
 
 			expect(gameState.gamePhase).toBe('playing');
 			expect(gameState.players.p1.hp).toBe(42);
@@ -3208,7 +3208,7 @@ describe('run state', () => {
 				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
 			});
 
-			checkAllReady();
+			checkAllReady(gameState);
 
 			expect(gameState.gamePhase).toBe('playing');
 			expect(gameState.players.p1.hp).toBe(100);
@@ -3226,7 +3226,7 @@ describe('run state', () => {
 				pendingSummons: new Set(),
 			};
 
-			initializePlayerForActiveRun(player);
+			initializePlayerForActiveRun(gameState, player);
 
 			expect(player.hp).toBe(42);
 			expect(player.magicStones).toBe(15);
@@ -3243,7 +3243,7 @@ describe('run state', () => {
 				pendingSummons: new Set(),
 			};
 
-			initializePlayerForActiveRun(player);
+			initializePlayerForActiveRun(gameState, player);
 
 			expect(player.hp).toBe(100);
 			expect(player.magicStones).toBe(STARTING_MAGIC_STONES);
@@ -3260,7 +3260,7 @@ describe('run state', () => {
 				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
 			});
 
-			checkAllReady();
+			checkAllReady(gameState);
 			const preExtractRunId = gameState.run.id;
 
 			gameState.players.p1.hp = 42;
@@ -3280,12 +3280,12 @@ describe('run state', () => {
 				placedBy: 'p1',
 				placedAt: Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1,
 			};
-			expect(tryEnterTelepipe('p1').ok).toBe(true);
+			expect(tryEnterTelepipe(gameState, 'p1').ok).toBe(true);
 			expect(gameState.gamePhase).toBe('lobby');
 			expect(gameState.run).toBeUndefined();
 
 			gameState.players.p1.ready = true;
-			checkAllReady();
+			checkAllReady(gameState);
 
 			expect(gameState.run.id).toBe(preExtractRunId);
 			const preservedMagicStones = STARTING_MAGIC_STONES - 5;
@@ -3306,7 +3306,7 @@ describe('run state', () => {
 				}
 			}
 			expect(gameState.suspendedCheckpoint).toBeNull();
-			expect(stateSnapshot().suspendedRunSummary).toBeNull();
+			expect(stateSnapshot(gameState).suspendedRunSummary).toBeNull();
 		});
 		it('checkAllReady does not start when a disconnected player has stale ready', () => {
 			resetState();
@@ -3321,7 +3321,7 @@ describe('run state', () => {
 				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
 			});
 
-			checkAllReady();
+			checkAllReady(gameState);
 
 			expect(gameState.gamePhase).toBe('lobby');
 		});
@@ -3334,7 +3334,7 @@ describe('run state', () => {
 				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
 			});
 
-			checkAllReady();
+			checkAllReady(gameState);
 
 			expect(gameState.gamePhase).toBe('playing');
 			expect(gameState.players.p1.hand.some((c) => c && c.id === 'telepipe')).toBe(true);
@@ -3352,7 +3352,7 @@ describe('run state', () => {
 				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
 			});
 
-			checkAllReady();
+			checkAllReady(gameState);
 
 			expect(gameState.players.p1.x).not.toBe(gameState.players.p2.x);
 			expect(Math.hypot(
@@ -3364,17 +3364,17 @@ describe('run state', () => {
 		it('portal proximity grace prevents immediate extraction after placement', () => {
 			resetState();
 			gameState._lobbyId = 'test-lobby';
-			startDungeonRun();
+			startDungeonRun(gameState);
 			gameState.gamePhase = 'playing';
 			addPlayer('p1', { x: 5, z: 5, hand: [], deck: [], slotCooldowns: [null, null, null, null], pendingSummons: new Set() });
 			addPlayer('p2', { x: 10, z: 10, hand: [], deck: [], slotCooldowns: [null, null, null, null], pendingSummons: new Set() });
 			gameState.telepipe = { x: 5, z: 5, placedBy: 'p1', placedAt: Date.now() };
 
-			checkTelepipeProximity();
+			checkTelepipeProximity(gameState);
 			expect(gameState.players.p1.extracted).toBeUndefined();
 
 			gameState.telepipe.placedAt = Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1;
-			checkTelepipeProximity();
+			checkTelepipeProximity(gameState);
 			expect(gameState.players.p1.extracted).toBe(true);
 			expect(gameState.gamePhase).toBe('playing');
 		});
@@ -3382,13 +3382,13 @@ describe('run state', () => {
 		it('single extract keeps dungeon running until all players leave', () => {
 			resetState();
 			gameState._lobbyId = 'test-lobby';
-			startDungeonRun();
+			startDungeonRun(gameState);
 			gameState.gamePhase = 'playing';
 			addPlayer('p1', { x: 5, z: 5, hand: [], deck: [], slotCooldowns: [null, null, null, null], pendingSummons: new Set() });
 			addPlayer('p2', { x: 10, z: 10, hand: [], deck: [], slotCooldowns: [null, null, null, null], pendingSummons: new Set() });
 			gameState.telepipe = { x: 5, z: 5, placedBy: 'p1', placedAt: Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1 };
 
-			expect(tryEnterTelepipe('p1').ok).toBe(true);
+			expect(tryEnterTelepipe(gameState, 'p1').ok).toBe(true);
 			expect(gameState.gamePhase).toBe('playing');
 			expect(gameState.run.status).toBe('playing');
 			expect(isPlayerActive(gameState.players.p2)).toBe(true);
@@ -3401,7 +3401,7 @@ describe('run state', () => {
 		function setupTwoPlayerRun() {
 			resetState();
 			gameState._lobbyId = 'test-lobby';
-			startDungeonRun();
+			startDungeonRun(gameState);
 			gameState.gamePhase = 'playing';
 			addPlayer('p1', {
 				x: 5,
@@ -3430,10 +3430,10 @@ describe('run state', () => {
 		}
 
 		function extractAllPlayers() {
-			tryEnterTelepipe('p1');
+			tryEnterTelepipe(gameState, 'p1');
 			gameState.players.p2.x = 5;
 			gameState.players.p2.z = 5;
-			tryEnterTelepipe('p2');
+			tryEnterTelepipe(gameState, 'p2');
 		}
 
 		it('telepipe-resume: spend charges → full extract → redeploy preserves remainingCharges, hp, and magicStones', () => {
@@ -3462,7 +3462,7 @@ describe('run state', () => {
 
 			gameState.players.p1.ready = true;
 			gameState.players.p2.ready = true;
-			checkAllReady();
+			checkAllReady(gameState);
 
 			expect(gameState.run.id).toBe(preExtractRunId);
 			expect(gameState.players.p1.hp).toBe(nonDefaultHp);
@@ -3498,13 +3498,13 @@ describe('run state', () => {
 			expect(gameState.suspendedCheckpoint).not.toBeNull();
 			expect(gameState.suspendedCheckpoint.playerStates.p1.hand[0].remainingCharges).toBe(0);
 
-			const abandonResult = abandonSuspendedRun();
+			const abandonResult = abandonSuspendedRun(gameState);
 			expect(abandonResult.ok).toBe(true);
 			expect(gameState.suspendedCheckpoint).toBeNull();
 
 			gameState.players.p1.ready = true;
 			gameState.players.p2.ready = true;
-			checkAllReady();
+			checkAllReady(gameState);
 
 			expect(gameState.gamePhase).toBe('playing');
 			expect(gameState.run.id).not.toBe(preSuspendRunId);
@@ -3534,7 +3534,7 @@ describe('run state', () => {
 
 			gameState.players.p1.ready = true;
 			gameState.players.p2.ready = true;
-			checkAllReady();
+			checkAllReady(gameState);
 
 			expect(gameState.players.p1.hp).toBe(nonDefaultHp);
 			expect(gameState.players.p1.magicStones).toBe(nonDefaultMs);
@@ -3547,11 +3547,11 @@ describe('run state', () => {
 			gameState.players.p1.magicStones = nonDefaultMs;
 			gameState.players.p1.hand[0].remainingCharges = 0;
 			extractAllPlayers();
-			abandonSuspendedRun();
+			abandonSuspendedRun(gameState);
 
 			gameState.players.p1.ready = true;
 			gameState.players.p2.ready = true;
-			checkAllReady();
+			checkAllReady(gameState);
 
 			expect(gameState.players.p1.hp).toBe(nonDefaultHp);
 			expect(gameState.players.p1.magicStones).toBe(nonDefaultMs);
@@ -3560,7 +3560,7 @@ describe('run state', () => {
 		});
 	});
 
-	describe('returnPlayersToLobby()', () => {
+	describe('returnPlayersToLobby(gameState)', () => {
 		function mockRoomEmit() {
 			const emitCalls = [];
 			const originalTo = serverIo.to;
@@ -3607,16 +3607,16 @@ describe('run state', () => {
 
 		it('throws when called outside lobby context', () => {
 			delete gameState._lobbyId;
-			expect(() => returnPlayersToLobby()).toThrow('returnPlayersToLobby requires lobby context');
+			expect(() => returnPlayersToLobby(gameState)).toThrow('returnPlayersToLobby requires lobby context');
 		});
 
 		it('resets gamePhase to lobby', () => {
 			gameState.gamePhase = 'playing';
-			startDungeonRun();
+			startDungeonRun(gameState);
 
 			const { restore } = mockRoomEmit();
 
-			returnPlayersToLobby();
+			returnPlayersToLobby(gameState);
 
 			restore();
 
@@ -3627,7 +3627,7 @@ describe('run state', () => {
 			addPlayer('p1', { hp: 0, dead: true });
 
 			const { restore } = mockRoomEmit();
-			returnPlayersToLobby();
+			returnPlayersToLobby(gameState);
 			restore();
 
 			expect(gameState.players.p1.hp).toBe(0);
@@ -3637,10 +3637,10 @@ describe('run state', () => {
 		it('preserves partial-HP for living player on run-failure return', () => {
 			addPlayer('p1', { hp: 42, dead: false });
 			gameState.gamePhase = 'playing';
-			startDungeonRun();
+			startDungeonRun(gameState);
 
 			const { restore } = mockRoomEmit();
-			returnPlayersToLobby();
+			returnPlayersToLobby(gameState);
 			restore();
 
 			expect(gameState.players.p1.hp).toBe(42);
@@ -3648,11 +3648,11 @@ describe('run state', () => {
 		});
 
 		it('clears gameState.run', () => {
-			startDungeonRun();
+			startDungeonRun(gameState);
 
 			const { restore } = mockRoomEmit();
 
-			returnPlayersToLobby();
+			returnPlayersToLobby(gameState);
 
 			restore();
 
@@ -3666,7 +3666,7 @@ describe('run state', () => {
 
 			const { restore } = mockRoomEmit();
 
-			returnPlayersToLobby();
+			returnPlayersToLobby(gameState);
 
 			restore();
 
@@ -3685,7 +3685,7 @@ describe('run state', () => {
 
 			const { restore } = mockRoomEmit();
 
-			returnPlayersToLobby();
+			returnPlayersToLobby(gameState);
 
 			restore();
 
@@ -3697,7 +3697,7 @@ describe('run state', () => {
 
 			const { restore } = mockRoomEmit();
 
-			returnPlayersToLobby();
+			returnPlayersToLobby(gameState);
 
 			restore();
 
@@ -3710,11 +3710,11 @@ describe('run state', () => {
 
 		it('emits stateUpdate to lobby room', () => {
 			addPlayer('p1');
-			startDungeonRun();
+			startDungeonRun(gameState);
 
 			const { emitCalls, restore } = mockRoomEmit();
 
-			returnPlayersToLobby();
+			returnPlayersToLobby(gameState);
 
 			restore();
 
@@ -3727,7 +3727,7 @@ describe('run state', () => {
 
 			const { emitCalls, restore } = mockRoomEmit();
 
-			returnPlayersToLobby();
+			returnPlayersToLobby(gameState);
 
 			restore();
 
@@ -3742,7 +3742,7 @@ describe('run state', () => {
 
 			const { restore } = mockRoomEmit();
 
-			returnPlayersToLobby();
+			returnPlayersToLobby(gameState);
 
 			restore();
 
@@ -3847,7 +3847,7 @@ describe('run state', () => {
 		it('rejects when not in lobby phase', () => {
 			addPlayer('p1', { hp: 40, currency: 25 });
 			gameState.gamePhase = 'playing';
-			startDungeonRun();
+			startDungeonRun(gameState);
 			expect(healAtMedic('p1', gameState)).toEqual({ ok: false, reason: 'not_in_lobby' });
 		});
 
@@ -3859,7 +3859,7 @@ describe('run state', () => {
 		});
 	});
 
-	describe('previewReturnRewards()', () => {
+	describe('previewReturnRewards(gameState)', () => {
 		beforeEach(() => {
 			resetState();
 			gameState._lobbyId = 'test-lobby';
@@ -3867,17 +3867,17 @@ describe('run state', () => {
 
 		it('returns null when not in a run', () => {
 			addPlayer('p1');
-			expect(previewReturnRewards('p1')).toBeNull();
+			expect(previewReturnRewards(gameState, 'p1')).toBeNull();
 		});
 
 		it('previews victory payout when the objective is complete', () => {
 			addPlayer('p1');
 			gameState.gamePhase = 'playing';
-			startDungeonRun();
+			startDungeonRun(gameState);
 			gameState.players.p1.currencyEarnedThisRun = 12;
 			gameState.run.objective.defeatedEnemies = gameState.run.objective.totalEnemies;
 
-			const preview = previewReturnRewards('p1');
+			const preview = previewReturnRewards(gameState, 'p1');
 			expect(preview.lootCurrency).toBe(12);
 			expect(preview.objectiveComplete).toBe(true);
 			expect(preview.currency).toBe(22);
@@ -3886,16 +3886,16 @@ describe('run state', () => {
 		it('uses granted runRewards when already awarded', () => {
 			addPlayer('p1', { currencyEarnedThisRun: 5 });
 			gameState.gamePhase = 'playing';
-			startDungeonRun();
-			grantRunRewards('p1', { status: 'victory' });
+			startDungeonRun(gameState);
+			grantRunRewards(gameState, 'p1', { status: 'victory' });
 
-			const preview = previewReturnRewards('p1');
+			const preview = previewReturnRewards(gameState, 'p1');
 			expect(preview.granted).toBe(true);
 			expect(preview.currency).toBe(gameState.players.p1.runRewards.currency);
 		});
 	});
 
-	describe('giveUpRun()', () => {
+	describe('giveUpRun(gameState)', () => {
 		function mockRoomEmit() {
 			const emitCalls = [];
 			const originalTo = serverIo.to;
@@ -3941,17 +3941,17 @@ describe('run state', () => {
 		});
 
 		it('returns no_active_run when not playing', () => {
-			expect(giveUpRun()).toEqual({ ok: false, reason: 'no_active_run' });
+			expect(giveUpRun(gameState)).toEqual({ ok: false, reason: 'no_active_run' });
 		});
 
 		it('allows give up after objective complete (run status victory)', () => {
 			addPlayer('p1', { hp: 55 });
 			gameState.gamePhase = 'playing';
-			startDungeonRun();
+			startDungeonRun(gameState);
 			gameState.run.status = 'victory';
 
 			const { restore } = mockRoomEmit();
-			const result = giveUpRun();
+			const result = giveUpRun(gameState);
 			restore();
 
 			expect(result).toEqual({ ok: true });
@@ -3962,13 +3962,13 @@ describe('run state', () => {
 		it('returns to lobby, strips run loot, and preserves HP damage', () => {
 			addPlayer('p1', { x: 50, z: 50, hp: 42, ready: true, currency: 100 });
 			gameState.gamePhase = 'playing';
-			startDungeonRun();
+			startDungeonRun(gameState);
 			gameState.players['p1'].currencyEarnedThisRun = 25;
 			gameState.enemies.push({ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } });
 			gameState.loot.push({ id: 'l1', x: 0, z: 0, value: 10, createdAt: Date.now() });
 
 			const { restore } = mockRoomEmit();
-			const result = giveUpRun();
+			const result = giveUpRun(gameState);
 			restore();
 
 			expect(result).toEqual({ ok: true });
@@ -4122,7 +4122,7 @@ describe('run state', () => {
 
 	// ── grantRunRewards ──
 
-	describe('grantRunRewards(playerId, summary)', () => {
+	describe('grantRunRewards(gameState, playerId, summary)', () => {
 		beforeEach(() => {
 			resetState();
 			delete gameState._victoryCounters;
@@ -4130,13 +4130,13 @@ describe('run state', () => {
 
 		it('on victory: adds currency bonus', () => {
 			addPlayer('p1', { currency: 0, ownedCards: {} });
-			grantRunRewards('p1', { status: 'victory' });
+			grantRunRewards(gameState, 'p1', { status: 'victory' });
 			expect(gameState.players['p1'].currency).toBe(10);
 		});
 
 		it('on victory: grants at least one card reward', () => {
 			addPlayer('p1', { currency: 0, ownedCards: {} });
-			grantRunRewards('p1', { status: 'victory' });
+			grantRunRewards(gameState, 'p1', { status: 'victory' });
 			const cards = gameState.players['p1'].ownedCards;
 			const granted = Object.values(cards).reduce((s, c) => s + c, 0);
 			expect(granted).toBeGreaterThan(0);
@@ -4144,7 +4144,7 @@ describe('run state', () => {
 
 		it('on victory: sets player.runRewards summary', () => {
 			addPlayer('p1', { currency: 0, ownedCards: {} });
-			grantRunRewards('p1', { status: 'victory' });
+			grantRunRewards(gameState, 'p1', { status: 'victory' });
 			const rewards = gameState.players['p1'].runRewards;
 			expect(rewards).toBeDefined();
 			expect(rewards.currency).toBe(10);
@@ -4157,15 +4157,15 @@ describe('run state', () => {
 
 		it('on victory: first reward is flame_blade', () => {
 			addPlayer('p1', { currency: 0, ownedCards: {} });
-			grantRunRewards('p1', { status: 'victory' });
+			grantRunRewards(gameState, 'p1', { status: 'victory' });
 			expect(gameState.players['p1'].ownedCards['flame_blade']).toBe(1);
 		});
 
 		it('on victory: subsequent victories rotate through card ids', () => {
 			addPlayer('p1', { currency: 0, ownedCards: {} });
-			grantRunRewards('p1', { status: 'victory' }); // flame_blade
-			grantRunRewards('p1', { status: 'victory' }); // battle_familiar
-			grantRunRewards('p1', { status: 'victory' }); // dungeon_drake
+			grantRunRewards(gameState, 'p1', { status: 'victory' }); // flame_blade
+			grantRunRewards(gameState, 'p1', { status: 'victory' }); // battle_familiar
+			grantRunRewards(gameState, 'p1', { status: 'victory' }); // dungeon_drake
 			expect(gameState.players['p1'].ownedCards['flame_blade']).toBe(1);
 			expect(gameState.players['p1'].ownedCards['battle_familiar']).toBe(1);
 			expect(gameState.players['p1'].ownedCards['dungeon_drake']).toBe(1);
@@ -4173,25 +4173,25 @@ describe('run state', () => {
 
 		it('on failure: does not add currency bonus', () => {
 			addPlayer('p1', { currency: 5, ownedCards: {} });
-			grantRunRewards('p1', { status: 'failed' });
+			grantRunRewards(gameState, 'p1', { status: 'failed' });
 			expect(gameState.players['p1'].currency).toBe(5);
 		});
 
 		it('on failure: does not grant a victory card', () => {
 			addPlayer('p1', { currency: 5, ownedCards: {} });
-			grantRunRewards('p1', { status: 'failed' });
+			grantRunRewards(gameState, 'p1', { status: 'failed' });
 			expect(Object.keys(gameState.players['p1'].ownedCards).length).toBe(0);
 		});
 
 		it('on failure: preserves existing currency', () => {
 			addPlayer('p1', { currency: 42, ownedCards: { iron_sword: 1 } });
-			grantRunRewards('p1', { status: 'failed' });
+			grantRunRewards(gameState, 'p1', { status: 'failed' });
 			expect(gameState.players['p1'].currency).toBe(42);
 			expect(gameState.players['p1'].ownedCards['iron_sword']).toBe(1);
 		});
 
 		it('does nothing for unknown player', () => {
-			grantRunRewards('nonexistent', { status: 'victory' });
+			grantRunRewards(gameState, 'nonexistent', { status: 'victory' });
 			expect(gameState.players['nonexistent']).toBeUndefined();
 		});
 	});
@@ -4221,30 +4221,30 @@ describe('run state', () => {
 		it('records card drops for the killing player and builds up to three choices', () => {
 			addPlayer('p1', { ownedCards: {} });
 			addPlayer('p2', { ownedCards: {} });
-			gameState.run = createRunState();
+			gameState.run = createRunState(gameState);
 
-			recordEnemyCardDrop({
+			recordEnemyCardDrop(gameState, {
 				type: 'grunt',
 				lastDamagedBy: 'p1',
 			});
-			recordEnemyCardDrop({
+			recordEnemyCardDrop(gameState, {
 				type: 'skirmisher',
 				lastDamagedBy: 'p1',
 			});
-			recordEnemyCardDrop({
+			recordEnemyCardDrop(gameState, {
 				type: 'miniboss',
 				lastDamagedBy: 'p1',
 			});
-			recordEnemyCardDrop({
+			recordEnemyCardDrop(gameState, {
 				type: 'spawner',
 				lastDamagedBy: 'p1',
 			});
-			recordEnemyCardDrop({
+			recordEnemyCardDrop(gameState, {
 				type: 'grunt',
 				lastDamagedBy: 'p2',
 			});
 
-			const p1Choices = buildCardChoices('p1');
+			const p1Choices = buildCardChoices(gameState, 'p1');
 			expect(p1Choices).toHaveLength(3);
 			expect(p1Choices.map((choice) => choice.id)).toEqual([
 				'iron_sword',
@@ -4257,7 +4257,7 @@ describe('run state', () => {
 				type: 'weapon',
 			}));
 
-			const p2Choices = buildCardChoices('p2');
+			const p2Choices = buildCardChoices(gameState, 'p2');
 			expect(p2Choices).toEqual([
 				expect.objectContaining({ id: 'iron_sword' }),
 			]);
@@ -4265,10 +4265,10 @@ describe('run state', () => {
 
 		it('offers draft choices on victory when drops exist instead of auto-granting rotation cards', () => {
 			addPlayer('p1', { currency: 0, ownedCards: {} });
-			gameState.run = createRunState();
+			gameState.run = createRunState(gameState);
 			gameState.players.p1.runCardDropIds = ['dungeon_drake'];
 
-			grantRunRewards('p1', { status: 'victory' });
+			grantRunRewards(gameState, 'p1', { status: 'victory' });
 
 			expect(gameState.players.p1.pendingCardChoices).toEqual([
 				expect.objectContaining({ id: 'dungeon_drake', name: 'Vault Wyrm', type: 'creature' }),
@@ -4279,16 +4279,16 @@ describe('run state', () => {
 
 		it('claimCardReward grants exactly one copy and rejects duplicate claims', () => {
 			addPlayer('p1', { currency: 0, ownedCards: {} });
-			gameState.run = createRunState();
+			gameState.run = createRunState(gameState);
 			gameState.players.p1.pendingCardChoices = [
 				{ id: 'dungeon_drake', name: 'Vault Wyrm', type: 'creature', description: 'Spawns a minion' },
 			];
 
-			const first = claimCardReward('p1', 'dungeon_drake');
+			const first = claimCardReward(gameState, 'p1', 'dungeon_drake');
 			expect(first.ok).toBe(true);
 			expect(gameState.players.p1.ownedCards.dungeon_drake).toBe(1);
 
-			const second = claimCardReward('p1', 'dungeon_drake');
+			const second = claimCardReward(gameState, 'p1', 'dungeon_drake');
 			expect(second.ok).toBe(false);
 			expect(second.reason).toBe('already_claimed');
 			expect(gameState.players.p1.ownedCards.dungeon_drake).toBe(1);
@@ -4300,7 +4300,7 @@ describe('run state', () => {
 				{ id: 'dungeon_drake', name: 'Vault Wyrm', type: 'creature', description: 'Spawns a minion' },
 			];
 
-			const result = claimCardReward('p1', 'flame_blade');
+			const result = claimCardReward(gameState, 'p1', 'flame_blade');
 			expect(result.ok).toBe(false);
 			expect(result.reason).toBe('invalid_choice');
 			expect(gameState.players.p1.ownedCards.flame_blade).toBeUndefined();
@@ -4314,9 +4314,9 @@ describe('run state', () => {
 
 		it('records a guaranteed bonus card for a variant enemy on top of the normal one', () => {
 			addPlayer('p1', { ownedCards: {} });
-			gameState.run = createRunState();
+			gameState.run = createRunState(gameState);
 
-			recordEnemyCardDrop({ type: 'grunt', variant: 'test', lastDamagedBy: 'p1' });
+			recordEnemyCardDrop(gameState, { type: 'grunt', variant: 'test', lastDamagedBy: 'p1' });
 
 			// Normal drop + guaranteed variant bonus = two copies of the mapped card.
 			expect(gameState.players.p1.runCardDropIds).toEqual(['iron_sword', 'iron_sword']);
@@ -4324,9 +4324,9 @@ describe('run state', () => {
 
 		it('does not record a bonus card for a non-variant enemy', () => {
 			addPlayer('p1', { ownedCards: {} });
-			gameState.run = createRunState();
+			gameState.run = createRunState(gameState);
 
-			recordEnemyCardDrop({ type: 'grunt', variant: null, lastDamagedBy: 'p1' });
+			recordEnemyCardDrop(gameState, { type: 'grunt', variant: null, lastDamagedBy: 'p1' });
 
 			expect(gameState.players.p1.runCardDropIds).toEqual(['iron_sword']);
 		});
@@ -4334,7 +4334,7 @@ describe('run state', () => {
 		it('spawns an extra magic-stone loot entry for a variant enemy', () => {
 			const enemy = { id: 'e1', type: 'grunt', x: 4, z: -2, variant: 'test' };
 
-			spawnMagicStoneDrop(enemy);
+			spawnMagicStoneDrop(gameState, enemy);
 
 			const stones = gameState.loot.filter((l) => l.kind === 'magic_stone');
 			expect(stones).toHaveLength(2);
@@ -4346,7 +4346,7 @@ describe('run state', () => {
 		it('spawns only the normal magic-stone loot entry for a non-variant enemy', () => {
 			const enemy = { id: 'e1', type: 'grunt', x: 4, z: -2, variant: null };
 
-			spawnMagicStoneDrop(enemy);
+			spawnMagicStoneDrop(gameState, enemy);
 
 			const stones = gameState.loot.filter((l) => l.kind === 'magic_stone');
 			expect(stones).toHaveLength(1);
@@ -4355,19 +4355,19 @@ describe('run state', () => {
 
 	// ── buildPlayerRewardSummary ──
 
-	describe('buildPlayerRewardSummary(playerId)', () => {
+	describe('buildPlayerRewardSummary(gameState, playerId)', () => {
 		beforeEach(() => resetState());
 
 		it('returns correct structure', () => {
 			addPlayer('p1', { runRewards: { currency: 10, cards: [{ id: 'flame_blade', name: 'Solar Edge', count: 1 }] } });
-			const summary = buildPlayerRewardSummary('p1');
+			const summary = buildPlayerRewardSummary(gameState, 'p1');
 			expect(summary.currency).toBe(10);
 			expect(Array.isArray(summary.cards)).toBe(true);
 		});
 
 		it('maps card ids to names via CARD_DEFS', () => {
 			addPlayer('p1', { runRewards: { currency: 0, cards: [{ id: 'iron_sword', name: 'Rust-Forged Saber', count: 1 }] } });
-			const summary = buildPlayerRewardSummary('p1');
+			const summary = buildPlayerRewardSummary(gameState, 'p1');
 			const cardEntry = summary.cards.find(c => c.id === 'iron_sword');
 			expect(cardEntry).toBeDefined();
 			expect(cardEntry.name).toBe('Rust-Forged Saber');
@@ -4385,12 +4385,12 @@ describe('run state', () => {
 					]
 				}
 			});
-			const summary = buildPlayerRewardSummary('p1');
+			const summary = buildPlayerRewardSummary(gameState, 'p1');
 			expect(summary.cards.length).toBe(3);
 		});
 
 		it('returns empty cards array for unknown player', () => {
-			const summary = buildPlayerRewardSummary('nonexistent');
+			const summary = buildPlayerRewardSummary(gameState, 'nonexistent');
 			expect(summary.currency).toBe(0);
 			expect(summary.cards.length).toBe(0);
 		});
@@ -4744,7 +4744,7 @@ describe('server hand management', () => {
 			deck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
 		};
 
-		const hand = initPlayerHand(player);
+		const hand = initPlayerHand(gameState, player);
 
 		expect(hand).toHaveLength(6);
 		expect(hand.filter(Boolean)).toHaveLength(4);
@@ -4782,11 +4782,11 @@ describe('server hand management', () => {
 		};
 		initDesperationDeck(player);
 
-		drawReplacementCard(player, 0);
+		drawReplacementCard(gameState, player, 0);
 		expect(player.hand[0].id).toBe('battle_familiar');
 		expect(player.deck).toHaveLength(0);
 
-		drawReplacementCard(player, 1);
+		drawReplacementCard(gameState, player, 1);
 		expect(player.hand[1].isDesperation).toBe(true);
 		expect(player.inDesperation).toBe(true);
 		expect(player.desperationDeck).toHaveLength(DESPERATION_DECK_TEMPLATE.length - 1);
@@ -4799,7 +4799,7 @@ describe('server hand management', () => {
 			desperationDeck: [],
 		};
 
-		drawReplacementCard(player, 0);
+		drawReplacementCard(gameState, player, 0);
 
 		expect(player.hand[0]).toBeNull();
 	});
@@ -4910,7 +4910,7 @@ describe('server hand management', () => {
 			hp: 0,
 		};
 
-		expect(releaseBurningCreatureCard(gameState.players.p1, minion)).toBe(true);
+		expect(releaseBurningCreatureCard(gameState, gameState.players.p1, minion)).toBe(true);
 		expect(gameState.players.p1.hand[0]).toBeNull();
 		expect(gameState.players.p1.exhaustedCards.some((card) => card.id === 'dungeon_drake')).toBe(true);
 		expect(gameState.players.p1.nextDrawAt).toBeTypeOf('number');
@@ -4979,7 +4979,7 @@ describe('server hand management', () => {
 		gameState.enemies = [
 			{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
 		];
-		startDungeonRun();
+		startDungeonRun(gameState);
 		const player = {
 			hand: [{ id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 1, remainingCharges: 0 }],
 			deck: [],
@@ -4988,7 +4988,7 @@ describe('server hand management', () => {
 		initDesperationDeck(player);
 		gameState.players.p1 = player;
 
-		replaceConsumedCard(player, 0, player.hand[0]);
+		replaceConsumedCard(gameState, player, 0, player.hand[0]);
 
 		expect(player.exhaustedCards).toEqual([
 			expect.objectContaining({ id: 'iron_sword' }),
@@ -5008,7 +5008,7 @@ describe('server hand management', () => {
 			exhaustedCards: [],
 		};
 
-		exhaustHandSlot(player, 0, player.hand[0]);
+		exhaustHandSlot(gameState, player, 0, player.hand[0]);
 
 		expect(player.hand[0]).toBeNull();
 		expect(player.deck).toEqual(['flame_blade']);
@@ -5048,7 +5048,7 @@ describe('server hand management', () => {
 			exhaustedCards: [],
 		};
 
-		const result = discardCardFromHand(player, 0, 'iron_sword');
+		const result = discardCardFromHand(gameState, player, 0, 'iron_sword');
 
 		expect(result.valid).toBe(true);
 		expect(player.hand[0]).toBeNull();
@@ -5098,7 +5098,7 @@ describe('server hand management', () => {
 
 		const sifter = player.hand[0];
 		sifter.remainingCharges -= 1;
-		const drawn = drawCardIntoHand(player);
+		const drawn = drawCardIntoHand(gameState, player);
 		expect(drawn.id).toBe('chrono_trigger');
 		expect(player.hand[5].id).toBe('chrono_trigger');
 		expect(sifter.remainingCharges).toBe(2);
@@ -5114,7 +5114,7 @@ describe('server hand management', () => {
 		normalizePlayerInventory(player);
 
 		createDrawDeckFromSelectedDeck(player);
-		initPlayerHand(player);
+		initPlayerHand(gameState, player);
 
 		expect(player.hand).toHaveLength(6);
 		expect(player.hand.filter(Boolean)).toHaveLength(4);
@@ -5129,7 +5129,7 @@ describe('server hand management', () => {
 	});
 });
 
-describe('stateSnapshot() — explicit public snapshot', () => {
+describe('stateSnapshot(gameState) — explicit public snapshot', () => {
 	beforeEach(() => {
 		resetState();
 		// Ensure gameState has layout and dungeonBounds (set by module init, but resetState clears them)
@@ -5140,7 +5140,7 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 
 	it('includes players with public sub-fields', () => {
 		addPlayer('p1', { hp: 80, magicStones: 50, currency: 10, deck: ['iron_sword'] });
-		const snapshot = stateSnapshot();
+		const snapshot = stateSnapshot(gameState);
 
 		expect(snapshot.players['p1']).toEqual({
 			x: 0,
@@ -5198,7 +5198,7 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 		gameState.run = { id: 'run-1', status: 'playing' };
 		gameState.lobby = [];
 
-		const snapshot = stateSnapshot();
+		const snapshot = stateSnapshot(gameState);
 
 		expect(snapshot.enemies).toEqual(gameState.enemies);
 		expect(snapshot.minions).toEqual(gameState.minions);
@@ -5213,33 +5213,33 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 
 	it('does not include layout', () => {
 		addPlayer('p1');
-		const snapshot = stateSnapshot();
+		const snapshot = stateSnapshot(gameState);
 		expect(snapshot.layout).toBeUndefined();
 	});
 
 	it('does not include _victoryCounters', () => {
 		addPlayer('p1');
 		gameState._victoryCounters = { p1: 3 };
-		const snapshot = stateSnapshot();
+		const snapshot = stateSnapshot(gameState);
 		expect(snapshot._victoryCounters).toBeUndefined();
 	});
 
 	it('strips pendingSummons (Set) from player objects', () => {
 		addPlayer('p1');
 		gameState.players['p1'].pendingSummons.add('0:iron_sword');
-		const snapshot = stateSnapshot();
+		const snapshot = stateSnapshot(gameState);
 		expect(snapshot.players['p1'].pendingSummons).toBeUndefined();
 	});
 
 	it('strips lastActivity from player objects', () => {
 		addPlayer('p1');
-		const snapshot = stateSnapshot();
+		const snapshot = stateSnapshot(gameState);
 		expect(snapshot.players['p1'].lastActivity).toBeUndefined();
 	});
 
 	it('includes username in snapshot when player record has one', () => {
 		addPlayer('p1', { username: 'TestPlayer' });
-		const snapshot = stateSnapshot();
+		const snapshot = stateSnapshot(gameState);
 		expect(snapshot.players['p1'].username).toBe('TestPlayer');
 	});
 
@@ -5256,7 +5256,7 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 			runRewards: { currency: 10, cards: [] },
 			currencyEarnedThisRun: 5
 		});
-		const snapshot = stateSnapshot();
+		const snapshot = stateSnapshot(gameState);
 		const p = snapshot.players['p1'];
 
 		expect(p.hp).toBe(75);
@@ -5277,8 +5277,8 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 
 	it('returns independent player objects per call (no shared mutation)', () => {
 		addPlayer('p1');
-		const a = stateSnapshot();
-		const b = stateSnapshot();
+		const a = stateSnapshot(gameState);
+		const b = stateSnapshot(gameState);
 		a.players['p1'].hp = 0;
 		expect(b.players['p1'].hp).toBe(100);
 	});
@@ -5286,15 +5286,15 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 	it('reuses the same inventory array reference across consecutive snapshots when unchanged', () => {
 		const inventory = createInventoryFromOwnedCards({ iron_sword: 1 });
 		addPlayer('p1', { inventory });
-		const a = stateSnapshot();
-		const b = stateSnapshot();
+		const a = stateSnapshot(gameState);
+		const b = stateSnapshot(gameState);
 		expect(a.players['p1'].inventory).toBe(inventory);
 		expect(b.players['p1'].inventory).toBe(inventory);
 		expect(a.players['p1'].inventory).toBe(b.players['p1'].inventory);
 	});
 });
 
-describe('hotStateSnapshot() — slim per-tick payload', () => {
+describe('hotStateSnapshot(gameState) — slim per-tick payload', () => {
 	const COLD_PLAYER_FIELDS = [
 		'deck',
 		'desperationDeck',
@@ -5340,7 +5340,7 @@ describe('hotStateSnapshot() — slim per-tick payload', () => {
 		gameState.run = { id: 'run-1', status: 'playing' };
 		gameState.lobby = [];
 
-		const snapshot = hotStateSnapshot();
+		const snapshot = hotStateSnapshot(gameState);
 		const p = snapshot.players['p1'];
 
 		expect(p).toEqual(expect.objectContaining({
@@ -5398,7 +5398,7 @@ describe('hotStateSnapshot() — slim per-tick payload', () => {
 			debugScenario: 'summon-low-mana',
 		});
 
-		const snapshot = stateSnapshot();
+		const snapshot = stateSnapshot(gameState);
 		const p = snapshot.players['p1'];
 
 		expect(p.deck).toEqual(['iron_sword']);
@@ -5545,15 +5545,15 @@ describe('ENEMY_DEFS', () => {
 
 	it('spawnEnemy does not copy display metadata onto spawned enemies', () => {
 		resetState();
-		const enemy = spawnEnemy(0, 0, 'grunt');
+		const enemy = spawnEnemy(gameState, 0, 0, 'grunt');
 		for (const key of DISPLAY_ONLY_KEYS) {
 			expect(enemy).not.toHaveProperty(key);
 		}
 	});
 
-	it('spawnEnemy(field_medic) spreads combat stats but omits display metadata', () => {
+	it('spawnEnemy(gameState, field_medic) spreads combat stats but omits display metadata', () => {
 		resetState();
-		const enemy = spawnEnemy(0, 0, 'field_medic');
+		const enemy = spawnEnemy(gameState, 0, 0, 'field_medic');
 		expect(enemy.type).toBe('field_medic');
 		expect(enemy.hp).toBe(ENEMY_DEFS.field_medic.hp);
 		expect(enemy.maxHp).toBe(ENEMY_DEFS.field_medic.hp);
@@ -5566,9 +5566,9 @@ describe('ENEMY_DEFS', () => {
 		}
 	});
 
-	it('spawnEnemy(ember_wraith) spreads combat stats including burnDurationMs but omits display metadata', () => {
+	it('spawnEnemy(gameState, ember_wraith) spreads combat stats including burnDurationMs but omits display metadata', () => {
 		resetState();
-		const enemy = spawnEnemy(0, 0, 'ember_wraith');
+		const enemy = spawnEnemy(gameState, 0, 0, 'ember_wraith');
 		expect(enemy.type).toBe('ember_wraith');
 		expect(enemy.hp).toBe(ENEMY_DEFS.ember_wraith.hp);
 		expect(enemy.maxHp).toBe(ENEMY_DEFS.ember_wraith.hp);
@@ -5611,39 +5611,39 @@ describe('enemyDefFor / updateEnemies unknown type', () => {
 
 // ── spawnEnemy type validation ──
 
-describe('spawnEnemy() type validation', () => {
+describe('spawnEnemy(gameState) type validation', () => {
 	beforeEach(() => resetState());
 
 	it('throws on unknown enemy type', () => {
-		expect(() => spawnEnemy(0, 0, 'dragon')).toThrow(/Unknown enemy type/);
+		expect(() => spawnEnemy(gameState, 0, 0, 'dragon')).toThrow(/Unknown enemy type/);
 	});
 
 	it('does not push to gameState.enemies when type is unknown', () => {
 		gameState.enemies = [];
-		expect(() => spawnEnemy(0, 0, 'dragon')).toThrow();
+		expect(() => spawnEnemy(gameState, 0, 0, 'dragon')).toThrow();
 		expect(gameState.enemies.length).toBe(0);
 	});
 
 	it('accepts valid types without throwing', () => {
 		gameState.enemies = [];
-		expect(() => spawnEnemy(0, 0, 'grunt')).not.toThrow();
-		expect(() => spawnEnemy(0, 0, 'skirmisher')).not.toThrow();
-		expect(() => spawnEnemy(0, 0, 'miniboss')).not.toThrow();
-		expect(() => spawnEnemy(0, 0, 'annex_overseer')).not.toThrow();
-		expect(() => spawnEnemy(0, 0, 'spire_warden')).not.toThrow();
-		expect(() => spawnEnemy(0, 0, 'spawner')).not.toThrow();
-		expect(() => spawnEnemy(0, 0, 'field_medic')).not.toThrow();
-		expect(() => spawnEnemy(0, 0, 'ember_wraith')).not.toThrow();
+		expect(() => spawnEnemy(gameState, 0, 0, 'grunt')).not.toThrow();
+		expect(() => spawnEnemy(gameState, 0, 0, 'skirmisher')).not.toThrow();
+		expect(() => spawnEnemy(gameState, 0, 0, 'miniboss')).not.toThrow();
+		expect(() => spawnEnemy(gameState, 0, 0, 'annex_overseer')).not.toThrow();
+		expect(() => spawnEnemy(gameState, 0, 0, 'spire_warden')).not.toThrow();
+		expect(() => spawnEnemy(gameState, 0, 0, 'spawner')).not.toThrow();
+		expect(() => spawnEnemy(gameState, 0, 0, 'field_medic')).not.toThrow();
+		expect(() => spawnEnemy(gameState, 0, 0, 'ember_wraith')).not.toThrow();
 		expect(gameState.enemies.length).toBe(8);
 	});
 });
 
-describe('spawnEnemy() spreads combat stats from def', () => {
+describe('spawnEnemy(gameState) spreads combat stats from def', () => {
 	beforeEach(() => resetState());
 
 	it('copies cone attack and chase stats for skirmisher', () => {
 		gameState.enemies = [];
-		const enemy = spawnEnemy(0, 0, 'skirmisher');
+		const enemy = spawnEnemy(gameState, 0, 0, 'skirmisher');
 		expect(enemy.attackStyle).toBe('cone');
 		expect(enemy.attackConeAngle).toBe(ENEMY_DEFS.skirmisher.attackConeAngle);
 		expect(enemy.chaseSpeed).toBe(4.5);
@@ -5651,7 +5651,7 @@ describe('spawnEnemy() spreads combat stats from def', () => {
 
 	it('copies spawner add config onto spawner entity', () => {
 		gameState.enemies = [];
-		const enemy = spawnEnemy(0, 0, 'spawner');
+		const enemy = spawnEnemy(gameState, 0, 0, 'spawner');
 		expect(enemy.spawnIntervalMs).toBe(4000);
 		expect(enemy.spawnMaxAlive).toBe(3);
 	});
@@ -5659,7 +5659,7 @@ describe('spawnEnemy() spreads combat stats from def', () => {
 	it('does not overwrite runtime-only fields with def spread', () => {
 		gameState.enemies = [];
 		const before = Date.now();
-		const enemy = spawnEnemy(5, 7, 'spawner');
+		const enemy = spawnEnemy(gameState, 5, 7, 'spawner');
 		expect(enemy.id).toBeDefined();
 		expect(enemy.x).toBe(5);
 		expect(enemy.z).toBe(7);
@@ -5674,17 +5674,17 @@ describe('spawnEnemy() spreads combat stats from def', () => {
 
 // ── spawnEnemy centralizes variant init ──
 
-describe('spawnEnemy() variant field', () => {
+describe('spawnEnemy(gameState) variant field', () => {
 	beforeEach(() => resetState());
 
 	it('exposes variant: null for direct and spawner-add tier-0 spawns', () => {
 		gameState.enemies = [];
 		// Direct ad-hoc spawn: no tier/rng → tier 0 → no roll → null.
-		const direct = spawnEnemy(0, 0, 'grunt');
+		const direct = spawnEnemy(gameState, 0, 0, 'grunt');
 		expect(direct.variant).toBe(null);
 
 		// Spawner-add path (spawnedBy set, no opts) also defaults to tier 0.
-		const add = spawnEnemy(1, 1, 'skirmisher', 'parent123');
+		const add = spawnEnemy(gameState, 1, 1, 'skirmisher', 'parent123');
 		expect(add.variant).toBe(null);
 
 		// Field is always present (never undefined) on every spawned enemy.
@@ -5699,7 +5699,7 @@ describe('spawnEnemy() variant field', () => {
 		gameState.run = { questTier: 2 };
 		// rng always returns 0.1: first call is the variant roll (< chance at
 		// tier 1), the second is the id pick → index 0 of the registry.
-		const enemy = spawnEnemy(0, 0, 'grunt', undefined, { tier: 1, rng: () => 0.1 });
+		const enemy = spawnEnemy(gameState, 0, 0, 'grunt', undefined, { tier: 1, rng: () => 0.1 });
 		const ids = Object.keys(VARIANT_DEFS);
 		expect(ids).toContain(enemy.variant);
 		expect(enemy.variant).toBe(ids[0]);
@@ -5708,7 +5708,7 @@ describe('spawnEnemy() variant field', () => {
 	it('produces variant (tag or null) on every combat spawn', () => {
 		resetGameState();
 		gameState.enemies = [];
-		spawnEnemies();
+		spawnEnemies(gameState);
 		expect(gameState.enemies.length).toBeGreaterThan(0);
 		const ids = Object.keys(VARIANT_DEFS);
 		for (const e of gameState.enemies) {
@@ -5720,14 +5720,14 @@ describe('spawnEnemy() variant field', () => {
 
 // ── spawnEnemies mixed pack ──
 
-describe('spawnEnemies() mixed pack', () => {
+describe('spawnEnemies(gameState) mixed pack', () => {
 	beforeEach(() => {
 		resetGameState();
 	});
 
 	it('produces quest.enemyCount enemies drawn from the default quest pool', () => {
 		gameState.enemies = [];
-		spawnEnemies();
+		spawnEnemies(gameState);
 		// Bulk spawning now draws each type from the selected quest's enemyPool.
 		const quest = getQuest(DEFAULT_QUEST_ID);
 		expect(gameState.enemies.length).toBe(quest.enemyCount);
@@ -5745,7 +5745,7 @@ describe('spawnEnemies() mixed pack', () => {
 		gameState.selectedQuestId = 'crystal_rescue';
 		gameState.enemies = [];
 		gameState.loot = [];
-		spawnEnemies();
+		spawnEnemies(gameState);
 		expect(gameState.enemies.length).toBe(getQuest('crystal_rescue').enemyCount);
 		expect(gameState.loot.filter(l => l.kind === 'crystal').length).toBe(getQuest('crystal_rescue').itemCount);
 	});
@@ -5754,7 +5754,7 @@ describe('spawnEnemies() mixed pack', () => {
 		gameState.selectedQuestId = 'crystal_rescue';
 		gameState.enemies = [];
 		gameState.loot = [];
-		spawnEnemies();
+		spawnEnemies(gameState);
 		const start = gameState.layout.rooms.find(r => r.role === 'start');
 		const nearestCombat = gameState.layout.rooms
 			.filter(r => r.role === 'combat')
@@ -6102,26 +6102,26 @@ describe('Spawner periodic spawn', () => {
 
 	it('spawnEnemy sets lastSpawnTime on spawner type', () => {
 		gameState.enemies = [];
-		spawnEnemy(0, 0, 'spawner');
+		spawnEnemy(gameState, 0, 0, 'spawner');
 		expect(gameState.enemies[0].lastSpawnTime).toBeDefined();
 		expect(typeof gameState.enemies[0].lastSpawnTime).toBe('number');
 	});
 
 	it('spawnEnemy does not set lastSpawnTime on non-spawner types', () => {
 		gameState.enemies = [];
-		spawnEnemy(0, 0, 'grunt');
+		spawnEnemy(gameState, 0, 0, 'grunt');
 		expect(gameState.enemies[0].lastSpawnTime).toBeUndefined();
 	});
 
 	it('spawnEnemy sets spawnedBy when provided', () => {
 		gameState.enemies = [];
-		spawnEnemy(0, 0, 'skirmisher', 'parent123');
+		spawnEnemy(gameState, 0, 0, 'skirmisher', 'parent123');
 		expect(gameState.enemies[0].spawnedBy).toBe('parent123');
 	});
 
 	it('spawnEnemy does not set spawnedBy when omitted', () => {
 		gameState.enemies = [];
-		spawnEnemy(0, 0, 'skirmisher');
+		spawnEnemy(gameState, 0, 0, 'skirmisher');
 		expect(gameState.enemies[0].spawnedBy).toBeUndefined();
 	});
 });
@@ -6164,7 +6164,7 @@ describe('Role-aware spawning constraints', () => {
 		expect(combatRooms.length).toBeGreaterThan(0); // precondition
 
 		gameState.enemies = [];
-		spawnEnemies();
+		spawnEnemies(gameState);
 
 		const startRoom = gameState.layout.rooms.find(r => r.role === 'start');
 		for (const enemy of gameState.enemies) {

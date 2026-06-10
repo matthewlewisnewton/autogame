@@ -4,7 +4,6 @@ import { generateLayout, sampleFloorY } from '../dungeon.js';
 import { ENCOUNTER_PHASES } from '../encounters.js';
 import { createGameState } from '../game-state.js';
 import {
-  setGameState,
   spawnEnemies,
   startDungeonRun,
 } from '../progression.js';
@@ -58,10 +57,9 @@ function deployCanyonStageBossRun(state, { seed = SEED } = {}) {
   state.enemies = [];
   state.loot = [];
   state.gamePhase = 'playing';
-  setGameState(state);
   setSimulationGameState(state);
-  spawnEnemies();
-  startDungeonRun();
+  spawnEnemies(state);
+  startDungeonRun(state);
   return state;
 }
 

@@ -60,7 +60,7 @@ describe('Miniboss HP scaling with party size at spawn', () => {
 		for (const count of [1, 2, 3, 4]) {
 			gameState.enemies.length = 0;
 			setPartySize(count);
-			const miniboss = spawnEnemy(0, 0, 'miniboss');
+			const miniboss = spawnEnemy(gameState, 0, 0, 'miniboss');
 			expect(miniboss.hp).toBe(BASE_MINIBOSS_HP);
 			expect(miniboss.maxHp).toBe(BASE_MINIBOSS_HP);
 		}
@@ -73,7 +73,7 @@ describe('Miniboss HP scaling with party size at spawn', () => {
 			const expected = Math.round(
 				BASE_MINIBOSS_HP * difficultyScaleFactor(count, DIFFICULTY_MINIBOSS_HP_PER_PLAYER),
 			);
-			const miniboss = spawnEnemy(0, 0, 'miniboss');
+			const miniboss = spawnEnemy(gameState, 0, 0, 'miniboss');
 			expect(miniboss.hp).toBeGreaterThan(BASE_MINIBOSS_HP);
 			expect(miniboss.hp).toBe(expected);
 			expect(miniboss.maxHp).toBe(expected);
@@ -82,9 +82,9 @@ describe('Miniboss HP scaling with party size at spawn', () => {
 
 	it('a higher-count spawn yields a higher-HP miniboss than a lower-count spawn', () => {
 		setPartySize(6);
-		const small = spawnEnemy(0, 0, 'miniboss');
+		const small = spawnEnemy(gameState, 0, 0, 'miniboss');
 		setPartySize(14);
-		const big = spawnEnemy(5, 0, 'miniboss');
+		const big = spawnEnemy(gameState, 5, 0, 'miniboss');
 		expect(big.hp).toBeGreaterThan(small.hp);
 		expect(big.maxHp).toBeGreaterThan(small.maxHp);
 	});
@@ -94,7 +94,7 @@ describe('Miniboss HP scaling with party size at spawn', () => {
 		for (const type of ['grunt', 'skirmisher', 'spawner']) {
 			gameState.enemies.length = 0;
 			const baseHp = ENEMY_DEFS[type].hp;
-			const enemy = spawnEnemy(0, 0, type);
+			const enemy = spawnEnemy(gameState, 0, 0, type);
 			expect(enemy.hp).toBe(baseHp);
 			expect(enemy.maxHp).toBe(baseHp);
 		}
@@ -103,7 +103,7 @@ describe('Miniboss HP scaling with party size at spawn', () => {
 	it('HP is fixed at spawn: a mid-run JOIN/LEAVE does not rescale an existing miniboss', () => {
 		// Spawn at a baseline party → unscaled HP.
 		setPartySize(4);
-		const miniboss = spawnEnemy(0, 0, 'miniboss');
+		const miniboss = spawnEnemy(gameState, 0, 0, 'miniboss');
 		expect(miniboss.hp).toBe(BASE_MINIBOSS_HP);
 		expect(miniboss.maxHp).toBe(BASE_MINIBOSS_HP);
 
@@ -114,7 +114,7 @@ describe('Miniboss HP scaling with party size at spawn', () => {
 
 		// A newly spawned miniboss at the larger party IS scaled, proving the count is live —
 		// only the already-spawned one is frozen.
-		const scaled = spawnEnemy(5, 0, 'miniboss');
+		const scaled = spawnEnemy(gameState, 5, 0, 'miniboss');
 		expect(scaled.hp).toBeGreaterThan(BASE_MINIBOSS_HP);
 
 		// LEAVE: party shrinks. Neither existing miniboss is retroactively rescaled.

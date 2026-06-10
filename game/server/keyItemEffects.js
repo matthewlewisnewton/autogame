@@ -126,7 +126,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
         z: casterZ,
         healRadius,
       });
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return;
     }
 
@@ -139,7 +139,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.persistenceDirty = true;
 
       socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, blockingUntil: player.blockingUntil, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return;
     }
 
@@ -157,7 +157,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.persistenceDirty = true;
 
       socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, barrierDomeUntil: player.barrierDomeUntil, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return;
     }
 
@@ -176,7 +176,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.persistenceDirty = true;
 
       socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, smokeBombUntil: player.smokeBombUntil, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return;
     }
 
@@ -199,7 +199,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
         player.shieldHitsRemaining = 1;
         socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, shielded: true, cooldownUntil: player.keyItemCooldownUntil });
       }
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return;
     }
 
@@ -213,7 +213,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.persistenceDirty = true;
 
       socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, echoStrikePending: true, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return;
     }
 
@@ -243,7 +243,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.persistenceDirty = true;
 
       socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, rallyUntil, cooldownUntil: player.keyItemCooldownUntil, affected });
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return;
     }
 
@@ -260,7 +260,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.persistenceDirty = true;
 
       socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, anchorUntil: player.anchorUntil, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return;
     }
 
@@ -284,7 +284,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.persistenceDirty = true;
 
       socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, revealed, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return;
     }
 
@@ -328,7 +328,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
           if (isMagicStone) {
             addMagicStones(player, loot.value);
           } else if (isCrystal) {
-            recordCrystalCollected(1);
+            recordCrystalCollected(state, 1);
           } else {
             player.currency += loot.value;
             player.currencyEarnedThisRun += loot.value;
@@ -337,7 +337,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
           collected++;
 
           if (isCrystal) {
-            checkRunTerminalState();
+            checkRunTerminalState(state);
           }
         }
       }
@@ -347,7 +347,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
       savePlayerData(state, socket.playerId);
 
       socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, pulled, collected, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return;
     }
 
@@ -431,7 +431,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.persistenceDirty = true;
 
       socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, recalled: myMinions.length });
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return;
     }
 
@@ -443,7 +443,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.persistenceDirty = true;
 
       socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, charges: player.overclockChargesRemaining, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return;
     }
 
@@ -519,7 +519,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
         z: player.z,
         cooldownUntil: player.keyItemCooldownUntil,
       });
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return;
     }
 
@@ -560,7 +560,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
     player.persistenceDirty = true;
 
     socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, invulnerableUntil: player.invulnerableUntil, x: player.x, y: player.y, z: player.z });
-    io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+    io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
 }
 
 module.exports = {

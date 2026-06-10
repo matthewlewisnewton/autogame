@@ -61,11 +61,11 @@ describe('ENEMY_DEFS.annex_overseer', () => {
 	});
 });
 
-describe('spawnEnemy(annex_overseer)', () => {
+describe('spawnEnemy(gameState, annex_overseer)', () => {
 	beforeEach(() => resetState());
 
 	it('spawns without throwing and copies combat stats from the def', () => {
-		const overseer = spawnEnemy(2, 3, 'annex_overseer');
+		const overseer = spawnEnemy(gameState, 2, 3, 'annex_overseer');
 		expect(overseer.type).toBe('annex_overseer');
 		expect(overseer.x).toBe(2);
 		expect(overseer.z).toBe(3);
@@ -80,7 +80,7 @@ describe('spawnEnemy(annex_overseer)', () => {
 		const expected = Math.round(
 			BASE_OVERSEER_HP * difficultyScaleFactor(8, DIFFICULTY_MINIBOSS_HP_PER_PLAYER),
 		);
-		const overseer = spawnEnemy(0, 0, 'annex_overseer');
+		const overseer = spawnEnemy(gameState, 0, 0, 'annex_overseer');
 		expect(overseer.hp).toBe(expected);
 		expect(overseer.maxHp).toBe(expected);
 		expect(overseer.hp).toBeGreaterThan(BASE_OVERSEER_HP);

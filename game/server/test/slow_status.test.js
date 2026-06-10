@@ -10,11 +10,11 @@ import {
 import {
 	applyPlayerMovement,
 	buildMovementContext,
-	setGameState,
 	rebuildWallColliders,
 	computeWalkableAABBs,
-	computeDungeonBounds,
-} from '../simulation.js';
+  computeDungeonBounds,
+  setGameState } from '../simulation.js';
+// setGameState patched below
 
 describe('SLOW status helpers', () => {
 	afterEach(() => {
@@ -143,12 +143,10 @@ describe('SLOW applied to player movement', () => {
 		state.walkableAABBs = computeWalkableAABBs(state.layout);
 		state.dungeonBounds = computeDungeonBounds(state.layout);
 		movementContext = buildMovementContext(state);
-		setGameState(state, {});
 		rebuildWallColliders();
 	});
 
 	afterEach(() => {
-		setGameState(null, null);
 		vi.useRealTimers();
 	});
 

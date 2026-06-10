@@ -8,9 +8,8 @@ import {
 	isPlayerCardCommitted,
 	collectConeHits,
 	processPendingCardWindups,
-	setGameState as setSimGameState,
+  setGameState as setSimGameState,
 } from '../simulation.js';
-import { setGameState as setProgressionGameState } from '../progression.js';
 import { MAX_MAGIC_STONES } from '../config.js';
 import {
 	connectClient,
@@ -64,7 +63,6 @@ describe('processPendingCardWindups (unit)', () => {
 			};
 
 			setSimGameState(state, {});
-			setProgressionGameState(state);
 			expect(collectConeHits(0, 0, 1, 0, 5, Math.PI / 2, 42, { attackerId: socket._playerId }).hits.length).toBe(1);
 
 			processPendingCardWindups();
@@ -210,7 +208,6 @@ describe('card wind-up deferred resolution', () => {
 		expect(isPlayerCardCommitted(player)).toBe(true);
 
 		setSimGameState(state, {});
-		setProgressionGameState(state);
 		player.cardWindupStartTime = Date.now() + 100000;
 		processPendingCardWindups();
 		expect(target().hp).toBe(hpBefore);
@@ -261,7 +258,6 @@ describe('card wind-up deferred resolution', () => {
 		expect(isPlayerCardCommitted(player)).toBe(true);
 
 		setSimGameState(state, {});
-		setProgressionGameState(state);
 		player.cardWindupStartTime = Date.now() + 100000;
 		processPendingCardWindups();
 		expect(target().hp).toBe(hpBefore);
@@ -304,7 +300,6 @@ describe('card wind-up deferred resolution', () => {
 		expect(isPlayerCardCommitted(player)).toBe(true);
 
 		setSimGameState(state, {});
-		setProgressionGameState(state);
 		player.cardWindupStartTime = Date.now() + 100000;
 		processPendingCardWindups();
 		expect(target().hp).toBe(hpBefore);
@@ -345,7 +340,6 @@ describe('card wind-up deferred resolution', () => {
 		expect(isPlayerCardCommitted(player)).toBe(true);
 
 		setSimGameState(state, {});
-		setProgressionGameState(state);
 		expect(state._lobbyId).toBeDefined();
 		// Pin wind-up so the live game loop cannot resolve under us (see key-items echo tests).
 		player.cardWindupStartTime = Date.now() + 100000;
@@ -388,7 +382,6 @@ describe('card wind-up deferred resolution', () => {
 		player.dead = true;
 		player.cardWindupStartTime = Date.now() - windUpMs;
 		setSimGameState(state, {});
-		setProgressionGameState(state);
 		processPendingCardWindups();
 
 		expect(cardUsed).toBe(false);

@@ -10,7 +10,7 @@ import {
 	clearNegativeStatuses,
 	healPlayersInRadius,
 } from '../index.js';
-import { addDebuff, setGameState } from '../simulation.js';
+import { addDebuff } from '../simulation.js';
 import {
 	startTestServer,
 	closeServer,
@@ -72,8 +72,7 @@ describe('healPlayersInRadius', () => {
 	const def = CARD_DEFS.purifying_pulse;
 
 	beforeEach(() => {
-		resetState();
-		setGameState(gameState, {});
+		resetState();(gameState, {});
 	});
 
 	it('heals two in-range allies and skips an out-of-range third player', () => {

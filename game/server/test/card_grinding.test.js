@@ -91,7 +91,7 @@ describe('card grinding', () => {
 		player.selectedDeck = [instance.instanceId];
 
 		createDrawDeckFromSelectedDeck(player);
-		const hand = initPlayerHand(player);
+		const hand = initPlayerHand(gameState, player);
 
 		expect(player.deck).toEqual([]);
 		expect(hand[1]).toMatchObject({
@@ -144,7 +144,7 @@ describe('card grinding', () => {
 		expect(persistent.inventory.find((card) => card.instanceId === instance.instanceId).grind).toBe(1);
 		expect(persistent.currency).toBe(400);
 
-		const snapshot = stateSnapshot();
+		const snapshot = stateSnapshot(gameState);
 		expect(snapshot.players.p1.inventory.find((card) => card.instanceId === instance.instanceId).grind).toBe(1);
 	});
 

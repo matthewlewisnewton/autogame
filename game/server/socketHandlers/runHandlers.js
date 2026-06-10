@@ -87,7 +87,7 @@ function register(socket, ctx) {
     if (!state.run || state.run.status === 'playing') return;
     if (!data || typeof data.cardId !== 'string') return;
 
-    const result = claimCardReward(socket.playerId, data.cardId, state);
+    const result = claimCardReward(state, socket.playerId, data.cardId);
     if (!result.ok) return;
 
     savePlayerData(state, socket.playerId);
@@ -170,13 +170,13 @@ function register(socket, ctx) {
       return;
     }
 
-    const result = discardCardFromHand(player, data.slotIndex, data.cardId);
+    const result = discardCardFromHand(state, player, data.slotIndex, data.cardId);
     if (!result.valid) {
       socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: result.reason });
       return;
     }
 
-    io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+    io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
     });
   });
 
@@ -201,7 +201,7 @@ function register(socket, ctx) {
     if (isMagicStone) {
       addMagicStones(player, loot.value);
     } else if (isCrystal) {
-      recordCrystalCollected(1);
+      recordCrystalCollected(state, 1);
     } else {
       player.currency += loot.value;
       player.currencyEarnedThisRun += loot.value;
@@ -214,7 +214,7 @@ function register(socket, ctx) {
     savePlayerData(state, socket.playerId);
 
     if (isCrystal) {
-      checkRunTerminalState();
+      checkRunTerminalState(state);
     }
     });
   });

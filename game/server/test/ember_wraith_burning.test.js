@@ -36,7 +36,7 @@ function addPlayer(id, overrides = {}) {
 function makeExpiredWindup(type, targetId, overrides = {}) {
 	const def = ENEMY_DEFS[type];
 	const now = Date.now();
-	const enemy = spawnEnemy(0, 0, type);
+	const enemy = spawnEnemy(gameState, 0, 0, type);
 	Object.assign(enemy, {
 		attackState: 'windup',
 		windupTargetId: targetId,

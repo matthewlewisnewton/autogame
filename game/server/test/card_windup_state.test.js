@@ -46,7 +46,7 @@ describe('buildPlayerHotSnapshot commitment fields', () => {
 			cardWindupMs: 800,
 			pendingCardUse: { cardId: 'magma_greatsword', slotIndex: 0 },
 		};
-		const hot = hotStateSnapshot().players.p1;
+		const hot = hotStateSnapshot(gameState).players.p1;
 		expect(hot.cardUseState).toBe('windup');
 		expect(hot.cardWindupCardId).toBe('magma_greatsword');
 		expect(hot.cardWindupUntil).toBe(now + 800);
@@ -68,7 +68,7 @@ describe('buildPlayerHotSnapshot commitment fields', () => {
 			pendingCardUse: { cardId: 'magma_greatsword', slotIndex: 0 },
 		};
 		const snapshotTime = Date.now();
-		const hot = hotStateSnapshot().players.p1;
+		const hot = hotStateSnapshot(gameState).players.p1;
 		expect(hot.cardUseState).toBe('windup');
 		expect(hot.cardWindupCardId).toBe('magma_greatsword');
 		expect(hot.cardWindupUntil).toBeGreaterThan(originalWindupEnd);

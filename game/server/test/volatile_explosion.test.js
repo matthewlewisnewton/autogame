@@ -46,7 +46,7 @@ describe('volatile enemy on-death explosion', () => {
     });
 
     // Death removes the enemy and queues/spawns the detonation.
-    const removed = removeDeadEnemies();
+    const removed = removeDeadEnemies(gameState);
     expect(removed).toBe(1);
     expect(gameState.enemies).toHaveLength(0);
     expect(gameState.areaEffects.some((e) => e.type === 'volatile_explosion')).toBe(true);
@@ -65,7 +65,7 @@ describe('volatile enemy on-death explosion', () => {
     gameState.enemies.push({ id: 'bystander', type: 'grunt', x: 1, z: 1, hp: 40 });
     gameState.enemies.push({ id: 'dead', type: 'grunt', x: 0, z: 0, hp: 0, variant: 'volatile' });
 
-    removeDeadEnemies();
+    removeDeadEnemies(gameState);
     updateAreaEffects();
 
     expect(gameState.minions[0].hp).toBe(50 - VOLATILE.damage);
@@ -76,7 +76,7 @@ describe('volatile enemy on-death explosion', () => {
   it('records the detonation on the per-lobby pending queue', () => {
     gameState.enemies.push({ id: 'e1', type: 'grunt', x: 3, z: -4, hp: 0, variant: 'volatile' });
 
-    removeDeadEnemies();
+    removeDeadEnemies(gameState);
 
     expect(gameState._pendingVolatileExplosions).toHaveLength(1);
     const record = gameState._pendingVolatileExplosions[0];
@@ -87,7 +87,7 @@ describe('volatile enemy on-death explosion', () => {
     gameState.players.p1 = { x: 0, z: 0, hp: 100, dead: false };
     gameState.enemies.push({ id: 'e1', type: 'grunt', x: 0, z: 0, hp: 0, variant: null });
 
-    removeDeadEnemies();
+    removeDeadEnemies(gameState);
     updateAreaEffects();
 
     expect(gameState.players.p1.hp).toBe(100);

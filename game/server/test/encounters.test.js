@@ -13,7 +13,6 @@ import {
 import { createGameState } from '../game-state.js';
 import {
   createRunState,
-  setGameState,
   stateSnapshot,
 } from '../progression.js';
 const { QUEST_DEFS } = require('../quests.js');
@@ -97,7 +96,6 @@ describe('createRunState encounter wiring', () => {
   beforeEach(() => {
     state = createGameState();
     state.enemies = [];
-    setGameState(state);
     savedEncounter = tierDef.encounter;
   });
 
@@ -110,7 +108,7 @@ describe('createRunState encounter wiring', () => {
   });
 
   it('leaves encounter undefined when quest has no encounter metadata', () => {
-    const run = createRunState();
+    const run = createRunState(state);
     expect(run.encounter).toBeUndefined();
   });
 
@@ -122,7 +120,7 @@ describe('createRunState encounter wiring', () => {
     state.selectedQuestId = 'training_caverns';
     state.selectedQuestTier = 2;
 
-    const run = createRunState();
+    const run = createRunState(state);
     expect(run.encounter).toEqual({
       phase: 'dormant',
       bossEnemyId: null,
@@ -141,16 +139,15 @@ describe('stateSnapshot encounter visibility', () => {
     state.layoutSeed = 1;
     state.layout = { rooms: [{ x: 0, z: 0, width: 10, depth: 10 }] };
     state.dungeonBounds = { minX: -10, maxX: 10, minZ: -10, maxZ: 10 };
-    setGameState(state);
   });
 
   it('includes run.encounter phase and lock in snapshots', () => {
-    state.run = createRunState();
+    state.run = createRunState(state);
     state.run.encounter = createEncounterState({ spawnAnchor: { x: 1, z: 2 } });
     activateEncounter(state.run);
     lockEncounter(state.run);
 
-    const snapshot = stateSnapshot();
+    const snapshot = stateSnapshot(state);
     expect(snapshot.run.encounter).toEqual({
       phase: 'active',
       bossEnemyId: null,
@@ -196,11 +193,10 @@ describe('suspended checkpoint encounter preservation', () => {
     state.minions = [];
     state.loot = [];
     state.areaEffects = [];
-    setGameState(state);
   });
 
   it('stateSnapshot includes encounter on active run', () => {
-    const snapshot = stateSnapshot();
+    const snapshot = stateSnapshot(state);
     expect(snapshot.run.encounter).toEqual(state.run.encounter);
   });
 });

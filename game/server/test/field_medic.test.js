@@ -24,7 +24,7 @@ describe('field_medic AI', () => {
 	});
 
 	it('retreats from an approaching player within fleeRadius', () => {
-		const medic = spawnEnemy(0, 0, 'field_medic');
+		const medic = spawnEnemy(gameState, 0, 0, 'field_medic');
 		medic.wanderTarget = { x: medic.x, z: medic.z };
 		gameState.players.p1 = {
 			id: 'p1',
@@ -42,8 +42,8 @@ describe('field_medic AI', () => {
 	});
 
 	it('heals the lowest-HP wounded ally after healCooldownMs', () => {
-		const medic = spawnEnemy(0, 0, 'field_medic');
-		const grunt = spawnEnemy(3, 0, 'grunt');
+		const medic = spawnEnemy(gameState, 0, 0, 'field_medic');
+		const grunt = spawnEnemy(gameState, 3, 0, 'grunt');
 		grunt.hp = Math.floor(grunt.maxHp * 0.3);
 		medic.lastHealAt = Date.now() - ENEMY_DEFS.field_medic.healCooldownMs - 100;
 		medic.wanderTarget = { x: medic.x, z: medic.z };
@@ -64,7 +64,7 @@ describe('field_medic AI', () => {
 	});
 
 	it('fires an energy bead that damages a player within beadRange', () => {
-		const medic = spawnEnemy(0, 0, 'field_medic');
+		const medic = spawnEnemy(gameState, 0, 0, 'field_medic');
 		medic.lastBeadAt = Date.now() - ENEMY_DEFS.field_medic.beadCooldownMs - 100;
 		medic.wanderTarget = { x: medic.x, z: medic.z };
 		gameState.players.p1 = {
@@ -83,7 +83,7 @@ describe('field_medic AI', () => {
 	});
 
 	it('energy bead does not damage the firing medic', () => {
-		const medic = spawnEnemy(0, 0, 'field_medic');
+		const medic = spawnEnemy(gameState, 0, 0, 'field_medic');
 		medic.lastBeadAt = Date.now() - ENEMY_DEFS.field_medic.beadCooldownMs - 100;
 		medic.wanderTarget = { x: medic.x, z: medic.z };
 		const medicHpBefore = medic.hp;
@@ -102,8 +102,8 @@ describe('field_medic AI', () => {
 	});
 
 	it('energy bead does not damage allies between medic and target player', () => {
-		const medic = spawnEnemy(0, 0, 'field_medic');
-		const grunt = spawnEnemy(2.5, 0, 'grunt');
+		const medic = spawnEnemy(gameState, 0, 0, 'field_medic');
+		const grunt = spawnEnemy(gameState, 2.5, 0, 'grunt');
 		grunt.hp = Math.floor(grunt.maxHp * 0.5);
 		medic.lastHealAt = Date.now();
 		medic.lastBeadAt = Date.now() - ENEMY_DEFS.field_medic.beadCooldownMs - 100;
@@ -125,7 +125,7 @@ describe('field_medic AI', () => {
 	});
 
 	it('does not close distance to a player beyond beadRange (no chase)', () => {
-		const medic = spawnEnemy(0, 0, 'field_medic');
+		const medic = spawnEnemy(gameState, 0, 0, 'field_medic');
 		medic.wanderTarget = { x: -10, z: 0 };
 		gameState.players.p1 = {
 			id: 'p1',

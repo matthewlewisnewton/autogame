@@ -151,14 +151,14 @@ function register(socket, ctx) {
     state.selectedQuestId = questId;
     state.selectedQuestTier = tier;
     applyLayoutForQuest(state, questId, tier);
-    assignRunSpawnPositions(Object.values(state.players));
+    assignRunSpawnPositions(state, Object.values(state.players));
     emitQuestPayloadToLobby(lobby, {
       extraFields: {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       },
     });
-    io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+    io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
     broadcastLobbyUpdate(lobby);
     });
   });
@@ -273,7 +273,7 @@ function register(socket, ctx) {
       const finishSuccess = (cost) => {
         const user = findUserByAccountId(player.accountId);
         syncLivePlayerCosmetic(player.accountId, user.cosmetic);
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(lobby.state));
         socket.emit(SERVER_TO_CLIENT.APPEARANCE_CHANGED, {
           cosmetic: user.cosmetic,
           currency: player.currency,
@@ -336,7 +336,7 @@ function register(socket, ctx) {
         currency: player.currency,
         cost: result.cost,
       });
-      io.to(state._lobbyId).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(state._lobbyId).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
     });
   });
 

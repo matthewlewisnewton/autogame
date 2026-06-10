@@ -7,9 +7,8 @@ import {
 import {
 	isPlayerCardCommitted,
 	processPendingCardWindups,
-	setGameState as setSimGameState,
+  setGameState as setSimGameState,
 } from '../simulation.js';
-import { setGameState as setProgressionGameState } from '../progression.js';
 import { MAX_MAGIC_STONES } from '../config.js';
 import {
 	connectClient,
@@ -115,7 +114,6 @@ describe('card wind-up by card type', () => {
 		const cooldownAfterCommit = player.slotCooldowns[0];
 
 		setSimGameState(state, {});
-		setProgressionGameState(state);
 		player.cardWindupStartTime = Date.now() + 100000;
 		processPendingCardWindups();
 		expect(cardUsed).toBe(false);

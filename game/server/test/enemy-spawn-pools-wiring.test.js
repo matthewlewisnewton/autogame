@@ -18,7 +18,7 @@ function deployQuest(questId, seed = 123, tier = 1) {
 	gameState.layoutSeed = seed;
 	gameState.enemies = [];
 	gameState.loot = [];
-	spawnEnemies();
+	spawnEnemies(gameState);
 }
 
 function poolTypes(questId, tier = 1) {
@@ -157,7 +157,7 @@ describe('survive regular spawns draw from the quest pool', () => {
 		gameState.layoutSeed = seed;
 		gameState.gamePhase = 'playing';
 		gameState.enemies = [];
-		startDungeonRun();
+		startDungeonRun(gameState);
 		return gameState.run;
 	}
 
@@ -166,7 +166,7 @@ describe('survive regular spawns draw from the quest pool', () => {
 		const guard = run.objective.totalSpawns + 50;
 		let iterations = 0;
 		while (run.objective.spawnedEnemies < run.objective.totalSpawns && iterations < guard) {
-			updateSurviveSpawns(now);
+			updateSurviveSpawns(gameState, now);
 			now += 60_000;
 			iterations++;
 		}

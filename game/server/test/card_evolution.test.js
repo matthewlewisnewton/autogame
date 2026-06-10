@@ -127,7 +127,7 @@ describe('card evolution', () => {
 		});
 		expect(persistent.ownedCards.astral_guardian).toBe(1);
 
-		const snapshot = stateSnapshot();
+		const snapshot = stateSnapshot(gameState);
 		expect(snapshot.players.p1.inventory).toEqual(player.inventory);
 	});
 

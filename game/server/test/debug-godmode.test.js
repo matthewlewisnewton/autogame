@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { damagePlayer, setGameState } from '../simulation.js';
+import { damagePlayer , setGameState } from '../simulation.js';
+// setGameState patched below
 import { MAX_HP } from '../config.js';
 import {
 	damagePlayer as damagePlayerFromIndex,
@@ -35,8 +36,8 @@ function makePlayer(id, overrides = {}) {
 
 function setupState(players) {
 	const state = { players, enemies: {}, minions: {} };
-	setGameState(state, []);
-	return state;
+	setGameState(state, {});
+		return state;
 }
 
 describe('damagePlayer — debugGodmode', () => {
@@ -123,8 +124,8 @@ describe('debugGodmode — client snapshots', () => {
 
 	it('is omitted from hotStateSnapshot and stateSnapshot', () => {
 		gameState.players.p1 = makePlayer('p1', { debugGodmode: true });
-		const hot = hotStateSnapshot();
-		const full = stateSnapshot();
+		const hot = hotStateSnapshot(gameState);
+		const full = stateSnapshot(gameState);
 		expect(hot.players.p1.debugGodmode).toBeUndefined();
 		expect(full.players.p1.debugGodmode).toBeUndefined();
 	});
@@ -183,7 +184,6 @@ describe('toggleDebugGodmode — socket integration', () => {
 		const hpBefore = player.hp;
 
 		const state = lobbyStateForSocket(socket);
-		setGameState(state, []);
 		expect(damagePlayer(socket._playerId, 9999)).toBeNull();
 		expect(player.hp).toBe(hpBefore);
 		expect(player.dead).toBe(false);

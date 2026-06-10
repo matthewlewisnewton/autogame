@@ -112,7 +112,7 @@ function setupFrostCrossingTier1Deploy(lobby, state, player) {
 
   if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
     createDrawDeckFromSelectedDeck(player);
-    initPlayerHand(player);
+    initPlayerHand(state, player);
     player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
     if (!player.pendingSummons) {
       player.pendingSummons = new Set();
@@ -123,8 +123,8 @@ function setupFrostCrossingTier1Deploy(lobby, state, player) {
   state.loot = [];
   delete state.run;
   delete state._pendingEncounterBossId;
-  spawnEnemies();
-  startDungeonRun();
+  spawnEnemies(state);
+  startDungeonRun(state);
 }
 
 function setupArenaTrialsTier2StageBossDebug(lobby, state, player) {
@@ -147,7 +147,7 @@ function setupArenaTrialsTier2StageBossDebug(lobby, state, player) {
 
   if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
     createDrawDeckFromSelectedDeck(player);
-    initPlayerHand(player);
+    initPlayerHand(state, player);
     player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
     if (!player.pendingSummons) {
       player.pendingSummons = new Set();
@@ -158,8 +158,8 @@ function setupArenaTrialsTier2StageBossDebug(lobby, state, player) {
   state.loot = [];
   delete state.run;
   delete state._pendingEncounterBossId;
-  spawnEnemies();
-  startDungeonRun();
+  spawnEnemies(state);
+  startDungeonRun(state);
 }
 
 function resolveArenaDaisAnchor(state) {
@@ -250,7 +250,7 @@ function finishStageBossDebugScenario(lobby, state, player, name) {
     layout: state.layout,
   });
   broadcastLobbyUpdate(lobby);
-  io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+  io.to(lobby.id).emit('stateUpdate', stateSnapshot(state));
   return {
     ok: true,
     scenario: name,
@@ -258,8 +258,8 @@ function finishStageBossDebugScenario(lobby, state, player, name) {
   };
 }
 
-function syncCardProbeHand(player) {
-  if (player?.id) emitPlayerDeckUpdate(player.id);
+function syncCardProbeHand(state, player) {
+  if (player?.id) emitPlayerDeckUpdate(state, player.id);
 }
 
 function resumePlayingRunForCardProbe(state, player) {
@@ -354,7 +354,7 @@ function applyDebugScenario(socket, name) {
         layout: state.layout,
       });
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return { ok: true, scenario: name };
     }
 
@@ -374,7 +374,7 @@ function applyDebugScenario(socket, name) {
           remainingCharges: 4,
         };
       }
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return { ok: true, scenario: name };
     }
 
@@ -386,7 +386,7 @@ function applyDebugScenario(socket, name) {
       player.ready = false;
       player.hp = 42;
       player.magicStones = 15;
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return { ok: true, scenario: name, hp: player.hp, magicStones: player.magicStones };
     }
 
@@ -398,7 +398,7 @@ function applyDebugScenario(socket, name) {
       player.ready = false;
       player.hp = 42;
       player.currency = Math.max(player.currency || 0, MEDIC_HEAL_COST + 15);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return { ok: true, scenario: name, hp: player.hp, currency: player.currency };
     }
 
@@ -411,7 +411,7 @@ function applyDebugScenario(socket, name) {
       player.ready = false;
       player.hp = MAX_HP;
       player.currency = Math.max(player.currency || 0, APPEARANCE_CHANGE_COST, 1000);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return { ok: true, scenario: name, currency: player.currency };
     }
 
@@ -428,7 +428,7 @@ function applyDebugScenario(socket, name) {
       state.selectedQuestId = questId;
       state.selectedQuestTier = tier;
       applyLayoutForQuest(state, questId, tier);
-      assignRunSpawnPositions(Object.values(state.players));
+      assignRunSpawnPositions(state, Object.values(state.players));
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
@@ -466,7 +466,7 @@ function applyDebugScenario(socket, name) {
 
       if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
         createDrawDeckFromSelectedDeck(player);
-        initPlayerHand(player);
+        initPlayerHand(state, player);
         player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
         if (!player.pendingSummons) {
           player.pendingSummons = new Set();
@@ -477,15 +477,15 @@ function applyDebugScenario(socket, name) {
       state.loot = [];
       delete state.run;
       delete state._pendingEncounterBossId;
-      spawnEnemies();
-      startDungeonRun();
+      spawnEnemies(state);
+      startDungeonRun(state);
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return {
         ok: true,
         scenario: name,
@@ -551,7 +551,7 @@ function applyDebugScenario(socket, name) {
       repositionNearEnemy(player, nearest);
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return { ok: true, scenario: name };
     }
 
@@ -578,7 +578,7 @@ function applyDebugScenario(socket, name) {
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       player.debugScenarioNudgeAfter = Date.now() + 1500;
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return { ok: true, scenario: name };
     }
 
@@ -610,7 +610,7 @@ function applyDebugScenario(socket, name) {
       boss.shieldHp = 0;
       boss.maxShieldHp = 0;
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return { ok: true, scenario: name };
     }
 
@@ -711,7 +711,7 @@ function applyDebugScenario(socket, name) {
       repositionNearEnemy(player, nearest);
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return { ok: true, scenario: name };
     }
 
@@ -742,7 +742,7 @@ function applyDebugScenario(socket, name) {
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       player.debugScenarioNudgeAfter = Date.now() + 1500;
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return { ok: true, scenario: name };
     }
 
@@ -783,7 +783,7 @@ function applyDebugScenario(socket, name) {
         lockEncounter(state.run);
       }
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return { ok: true, scenario: name };
     }
 
@@ -799,7 +799,7 @@ function applyDebugScenario(socket, name) {
         layout: state.layout,
       });
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return {
         ok: true,
         scenario: name,
@@ -832,7 +832,7 @@ function applyDebugScenario(socket, name) {
 
       if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
         createDrawDeckFromSelectedDeck(player);
-        initPlayerHand(player);
+        initPlayerHand(state, player);
         player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
         if (!player.pendingSummons) {
           player.pendingSummons = new Set();
@@ -841,15 +841,15 @@ function applyDebugScenario(socket, name) {
 
       state.enemies = [];
       state.loot = [];
-      spawnEnemies();
-      syncRunObjectiveToEnemies();
+      spawnEnemies(state);
+      syncRunObjectiveToEnemies(state);
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return {
         ok: true,
         scenario: name,
@@ -881,7 +881,7 @@ function applyDebugScenario(socket, name) {
 
       if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
         createDrawDeckFromSelectedDeck(player);
-        initPlayerHand(player);
+        initPlayerHand(state, player);
         player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
         if (!player.pendingSummons) {
           player.pendingSummons = new Set();
@@ -892,15 +892,15 @@ function applyDebugScenario(socket, name) {
       state.loot = [];
       delete state.run;
       delete state._pendingEncounterBossId;
-      spawnEnemies();
-      startDungeonRun();
+      spawnEnemies(state);
+      startDungeonRun(state);
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return {
         ok: true,
         scenario: name,
@@ -965,7 +965,7 @@ function applyDebugScenario(socket, name) {
       repositionNearEnemy(player, nearest);
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return { ok: true, scenario: name };
     }
 
@@ -983,12 +983,12 @@ function applyDebugScenario(socket, name) {
       player.debugGodmode = false;
       socket.emit(SERVER_TO_CLIENT.DEBUG_GODMODE_RESULT, { ok: true, enabled: false });
       state.enemies = [];
-      const wraith = spawnEnemy(player.x + 3, player.z, 'ember_wraith');
+      const wraith = spawnEnemy(state, player.x + 3, player.z, 'ember_wraith');
       wraith.y = resolveFloorY(sampleFloorY(state.layout, wraith.x, wraith.z));
       wraith.wanderTarget = { x: wraith.x, z: wraith.z };
-      syncRunObjectiveToEnemies();
+      syncRunObjectiveToEnemies(state);
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return { ok: true, scenario: name };
     }
 
@@ -1007,7 +1007,7 @@ function applyDebugScenario(socket, name) {
       const defeated = Math.max(0, total - 1);
       state.enemies = [];
       const enemyType = 'grunt';
-      const enemy = spawnEnemy(player.x + 2, player.z, enemyType);
+      const enemy = spawnEnemy(state, player.x + 2, player.z, enemyType);
       enemy.hp = 1;
       enemy.maxHp = ENEMY_DEFS[enemyType]?.hp ?? enemy.maxHp;
       enemy.y = resolveFloorY(sampleFloorY(state.layout, enemy.x, enemy.z));
@@ -1030,7 +1030,7 @@ function applyDebugScenario(socket, name) {
         }
       }
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return { ok: true, scenario: name };
     }
 
@@ -1070,7 +1070,7 @@ function applyDebugScenario(socket, name) {
 
       if (state.gamePhase === 'playing') {
         createDrawDeckFromSelectedDeck(player);
-        initPlayerHand(player);
+        initPlayerHand(state, player);
         player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
         if (!player.pendingSummons) {
           player.pendingSummons = new Set();
@@ -1083,8 +1083,8 @@ function applyDebugScenario(socket, name) {
       state.loot = [];
       delete state.run;
       delete state._pendingEncounterBossId;
-      spawnEnemies();
-      startDungeonRun();
+      spawnEnemies(state);
+      startDungeonRun(state);
 
       if (name === 'canyon-descent-telepipe-ready') {
         // Debug QA shortcut: telepipe in hand for canyon telepipe harness exercises.
@@ -1109,7 +1109,7 @@ function applyDebugScenario(socket, name) {
         layout: state.layout,
       });
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return {
         ok: true,
         scenario: name,
@@ -1174,7 +1174,7 @@ function applyDebugScenario(socket, name) {
       repositionNearEnemy(player, nearest);
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return { ok: true, scenario: name };
     }
 
@@ -1204,7 +1204,7 @@ function applyDebugScenario(socket, name) {
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       player.debugScenarioNudgeAfter = Date.now() + 1500;
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return { ok: true, scenario: name };
     }
 
@@ -1223,7 +1223,7 @@ function applyDebugScenario(socket, name) {
         if (enemy.id !== bossId) enemy.hp = 0;
       }
       state.enemies = (state.enemies || []).filter((e) => e.hp > 0);
-      syncRunObjectiveToEnemies();
+      syncRunObjectiveToEnemies(state);
       const boss = state.enemies.find((e) => e.id === bossId);
       if (!boss || boss.type !== 'miniboss') {
         return { ok: false, reason: 'Canyon miniboss not found' };
@@ -1239,12 +1239,12 @@ function applyDebugScenario(socket, name) {
       }
       // Harness bossVisualIdentity probe needs a live non-boss enemy beside the
       // active miniboss (adds are cleared before activation in normal play).
-      const visualAdd = spawnEnemy(boss.x + 2.5, boss.z, 'grunt');
+      const visualAdd = spawnEnemy(state, boss.x + 2.5, boss.z, 'grunt');
       visualAdd.hp = 1;
       visualAdd.y = resolveFloorY(sampleFloorY(state.layout, visualAdd.x, visualAdd.z));
       visualAdd.wanderTarget = { x: visualAdd.x, z: visualAdd.z };
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return { ok: true, scenario: name };
     }
 
@@ -1286,10 +1286,10 @@ function applyDebugScenario(socket, name) {
       }
       // Re-pin the boss to 1 HP immediately before the snapshot so activation/lock (or any
       // game-loop tick they enable on this active canyon encounter) cannot leak a full-HP boss
-      // into the emitted state. The final stateSnapshot() is built strictly after this pin.
+      // into the emitted state. The final stateSnapshot(state) is built strictly after this pin.
       boss.hp = 1;
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return { ok: true, scenario: name };
     }
 
@@ -1318,7 +1318,7 @@ function applyDebugScenario(socket, name) {
 
       if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
         createDrawDeckFromSelectedDeck(player);
-        initPlayerHand(player);
+        initPlayerHand(state, player);
         player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
         if (!player.pendingSummons) {
           player.pendingSummons = new Set();
@@ -1329,15 +1329,15 @@ function applyDebugScenario(socket, name) {
       state.loot = [];
       delete state.run;
       delete state._pendingEncounterBossId;
-      spawnEnemies();
-      startDungeonRun();
+      spawnEnemies(state);
+      startDungeonRun(state);
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return {
         ok: true,
         scenario: name,
@@ -1397,7 +1397,7 @@ function applyDebugScenario(socket, name) {
       repositionNearEnemy(player, nearest);
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return { ok: true, scenario: name };
     }
 
@@ -1424,7 +1424,7 @@ function applyDebugScenario(socket, name) {
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       player.debugScenarioNudgeAfter = Date.now() + 1500;
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return { ok: true, scenario: name };
     }
 
@@ -1456,7 +1456,7 @@ function applyDebugScenario(socket, name) {
       boss.shieldHp = 0;
       boss.maxShieldHp = 0;
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return { ok: true, scenario: name };
     }
 
@@ -1537,7 +1537,7 @@ function applyDebugScenario(socket, name) {
         layout: state.layout,
       });
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return {
         ok: true,
         scenario: name,
@@ -1553,7 +1553,7 @@ function applyDebugScenario(socket, name) {
 
     if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
       createDrawDeckFromSelectedDeck(player);
-      initPlayerHand(player);
+      initPlayerHand(state, player);
       player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
       if (!player.pendingSummons) {
         player.pendingSummons = new Set();
@@ -1686,7 +1686,7 @@ function applyDebugScenario(socket, name) {
       // extracting every squadmate through it.
       player.hp = 42;
       player.magicStones = 15;
-      suspendRunToLobby();
+      suspendRunToLobby(state);
       return { ok: true, scenario: name };
     } else if (name === 'deck-viewer-instances') {
       // Enter a normal run whose draw pile is built entirely from owned-card
@@ -1704,7 +1704,7 @@ function applyDebugScenario(socket, name) {
       normalizePlayerInventory(player);
       player.selectedDeck = player.inventory.map((instance) => instance.instanceId);
       createDrawDeckFromSelectedDeck(player);
-      initPlayerHand(player);
+      initPlayerHand(state, player);
       player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
     } else if (name === 'custom-avatar-demo') {
       // Enter a normal run with a distinctive non-default cosmetic so the
@@ -1762,10 +1762,10 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       state.enemies = [];
-      spawnEnemy(player.x + 3, player.z, 'grunt');
-      spawnEnemy(player.x - 3, player.z, 'skirmisher');
-      spawnEnemy(player.x, player.z + 4, 'miniboss');
-      spawnEnemy(player.x, player.z - 4, 'spawner');
+      spawnEnemy(state, player.x + 3, player.z, 'grunt');
+      spawnEnemy(state, player.x - 3, player.z, 'skirmisher');
+      spawnEnemy(state, player.x, player.z + 4, 'miniboss');
+      spawnEnemy(state, player.x, player.z - 4, 'spawner');
       for (const e of state.enemies) {
         e.wanderTarget = { x: e.x + (Math.random() * 4 - 2), z: e.z + (Math.random() * 4 - 2) };
       }
@@ -1775,7 +1775,7 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       state.enemies = [];
-      const overseer = spawnEnemy(player.x + 4, player.z, 'annex_overseer');
+      const overseer = spawnEnemy(state, player.x + 4, player.z, 'annex_overseer');
       overseer.wanderTarget = { x: overseer.x, z: overseer.z };
     } else if (name === 'field-medic') {
       // Field Medic with a wounded grunt ally for heal/flee/bead QA. Same enemies
@@ -1783,8 +1783,8 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       state.enemies = [];
-      const medic = spawnEnemy(player.x + 3, player.z, 'field_medic');
-      const grunt = spawnEnemy(player.x + 1, player.z + 2, 'grunt');
+      const medic = spawnEnemy(state, player.x + 3, player.z, 'field_medic');
+      const grunt = spawnEnemy(state, player.x + 1, player.z + 2, 'grunt');
       grunt.hp = Math.max(1, Math.floor(grunt.maxHp * 0.4));
       medic.wanderTarget = { x: medic.x, z: medic.z };
       grunt.wanderTarget = { x: grunt.x, z: grunt.z };
@@ -1795,7 +1795,7 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       state.enemies = [];
-      const medic = spawnEnemy(player.x + 4, player.z, 'field_medic');
+      const medic = spawnEnemy(state, player.x + 4, player.z, 'field_medic');
       medic.wanderTarget = { x: medic.x, z: medic.z };
     } else if (name === 'glacial-thrower') {
       // Spawn a Glacial Thrower in front of the player so QA can watch it lob a
@@ -1806,7 +1806,7 @@ function applyDebugScenario(socket, name) {
       player.magicStones = MAX_MAGIC_STONES;
       state.enemies = [];
       state.iceBalls = [];
-      const thrower = spawnEnemy(player.x + 6, player.z, 'glacial_thrower');
+      const thrower = spawnEnemy(state, player.x + 6, player.z, 'glacial_thrower');
       thrower.wanderTarget = { x: thrower.x, z: thrower.z };
     } else if (name === 'ember-wraith') {
       // One Ember Wraith in cone-strike range for burning-on-hit QA. The same
@@ -1814,7 +1814,7 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       state.enemies = [];
-      const wraith = spawnEnemy(player.x + 3, player.z, 'ember_wraith');
+      const wraith = spawnEnemy(state, player.x + 3, player.z, 'ember_wraith');
       wraith.wanderTarget = { x: wraith.x, z: wraith.z };
     } else if (name === 'variant-enemy') {
       // Spawn one variant ("elite") enemy beside a plain one of the same type so
@@ -1824,9 +1824,9 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       state.enemies = [];
-      const variant = spawnEnemy(player.x + 3, player.z, 'grunt');
+      const variant = spawnEnemy(state, player.x + 3, player.z, 'grunt');
       variant.variant = 'test';
-      spawnEnemy(player.x - 3, player.z, 'grunt');
+      spawnEnemy(state, player.x - 3, player.z, 'grunt');
       for (const e of state.enemies) {
         e.wanderTarget = { x: e.x, z: e.z };
       }
@@ -1839,11 +1839,11 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       state.enemies = [];
-      const volatileEnemy = spawnEnemy(player.x + 3, player.z, 'grunt');
+      const volatileEnemy = spawnEnemy(state, player.x + 3, player.z, 'grunt');
       volatileEnemy.variant = 'volatile';
       volatileEnemy.hp = 1;
       volatileEnemy.maxHp = ENEMY_DEFS.grunt.hp;
-      spawnEnemy(player.x - 3, player.z, 'grunt');
+      spawnEnemy(state, player.x - 3, player.z, 'grunt');
       for (const e of state.enemies) {
         e.wanderTarget = { x: e.x, z: e.z };
       }
@@ -1861,10 +1861,10 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       state.enemies = [];
-      const warded = spawnEnemy(player.x + 3, player.z, 'grunt');
+      const warded = spawnEnemy(state, player.x + 3, player.z, 'grunt');
       warded.variant = 'warded';
       VARIANT_DEFS.warded.apply(warded);
-      spawnEnemy(player.x - 3, player.z, 'grunt');
+      spawnEnemy(state, player.x - 3, player.z, 'grunt');
       for (const e of state.enemies) {
         e.wanderTarget = { x: e.x, z: e.z };
       }
@@ -1874,9 +1874,9 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       state.enemies = [];
-      const leeching = spawnEnemy(player.x + 3, player.z, 'grunt');
+      const leeching = spawnEnemy(state, player.x + 3, player.z, 'grunt');
       leeching.variant = 'leeching';
-      spawnEnemy(player.x - 3, player.z, 'grunt');
+      spawnEnemy(state, player.x - 3, player.z, 'grunt');
       for (const e of state.enemies) {
         e.wanderTarget = { x: e.x, z: e.z };
       }
@@ -1886,9 +1886,9 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       state.enemies = [];
-      const frenzied = spawnEnemy(player.x + 3, player.z, 'grunt');
+      const frenzied = spawnEnemy(state, player.x + 3, player.z, 'grunt');
       frenzied.variant = 'frenzied';
-      spawnEnemy(player.x - 3, player.z, 'grunt');
+      spawnEnemy(state, player.x - 3, player.z, 'grunt');
       for (const e of state.enemies) {
         e.wanderTarget = { x: e.x, z: e.z };
       }
@@ -1899,11 +1899,11 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       state.enemies = [];
-      const full = spawnEnemy(player.x + 3, player.z, 'grunt');
+      const full = spawnEnemy(state, player.x + 3, player.z, 'grunt');
       full.variant = 'frenzied';
       full.maxHp = ENEMY_DEFS.grunt.hp;
       full.hp = full.maxHp;
-      const enraged = spawnEnemy(player.x - 3, player.z, 'grunt');
+      const enraged = spawnEnemy(state, player.x - 3, player.z, 'grunt');
       enraged.variant = 'frenzied';
       enraged.maxHp = ENEMY_DEFS.grunt.hp;
       enraged.hp = Math.floor(enraged.maxHp * 0.4);
@@ -1914,7 +1914,7 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       state.enemies = [];
-      const spawner = spawnEnemy(player.x + 4, player.z, 'spawner');
+      const spawner = spawnEnemy(state, player.x + 4, player.z, 'spawner');
       spawner.lastSpawnTime = Date.now() - ENEMY_DEFS.spawner.spawnIntervalMs - 500;
     } else if (name === 'monster-card') {
       player.hp = MAX_HP;
@@ -1954,7 +1954,7 @@ function applyDebugScenario(socket, name) {
       // Keep the player out of aggro range while a pre-spawned minion brawls nearby.
       player.x = anchorX - DETECTION_RADIUS - 1;
       state.enemies = [];
-      const enemy = spawnEnemy(anchorX + 2, anchorZ, 'grunt');
+      const enemy = spawnEnemy(state, anchorX + 2, anchorZ, 'grunt');
       enemy.hp = 500;
       enemy.maxHp = 500;
       enemy.wanderTarget = { x: enemy.x, z: enemy.z };
@@ -1998,7 +1998,7 @@ function applyDebugScenario(socket, name) {
       const anchorZ = player.z;
       player.x = anchorX - DETECTION_RADIUS - 1;
       state.enemies = [];
-      const enemy = spawnEnemy(anchorX + 5, anchorZ, 'grunt');
+      const enemy = spawnEnemy(state, anchorX + 5, anchorZ, 'grunt');
       enemy.hp = 500;
       enemy.maxHp = 500;
       enemy.wanderTarget = { x: enemy.x, z: enemy.z };
@@ -2033,12 +2033,12 @@ function applyDebugScenario(socket, name) {
       const anchorZ = player.z;
       player.x = anchorX - DETECTION_RADIUS - 1;
       state.enemies = [];
-      const primary = spawnEnemy(anchorX + 6, anchorZ, 'grunt');
+      const primary = spawnEnemy(state, anchorX + 6, anchorZ, 'grunt');
       primary.hp = 500;
       primary.maxHp = 500;
       primary.wanderTarget = { x: primary.x, z: primary.z };
       primary.attackState = 'idle';
-      const chained = spawnEnemy(anchorX + 8, anchorZ, 'grunt');
+      const chained = spawnEnemy(state, anchorX + 8, anchorZ, 'grunt');
       chained.hp = 500;
       chained.maxHp = 500;
       chained.wanderTarget = { x: chained.x, z: chained.z };
@@ -2075,7 +2075,7 @@ function applyDebugScenario(socket, name) {
       const anchorZ = player.z;
       player.x = anchorX - DETECTION_RADIUS - 1;
       state.enemies = [];
-      const enemy = spawnEnemy(anchorX + 8, anchorZ, 'grunt');
+      const enemy = spawnEnemy(state, anchorX + 8, anchorZ, 'grunt');
       enemy.hp = 500;
       enemy.maxHp = 500;
       enemy.wanderTarget = { x: enemy.x, z: enemy.z };
@@ -2143,7 +2143,7 @@ function applyDebugScenario(socket, name) {
       const anchorZ = player.z;
       player.x = anchorX - DETECTION_RADIUS - 1;
       state.enemies = [];
-      const enemy = spawnEnemy(anchorX + 7, anchorZ, 'grunt');
+      const enemy = spawnEnemy(state, anchorX + 7, anchorZ, 'grunt');
       enemy.hp = 500;
       enemy.maxHp = 500;
       enemy.wanderTarget = { x: enemy.x, z: enemy.z };
@@ -2179,7 +2179,7 @@ function applyDebugScenario(socket, name) {
         p.dead = true;
       }
       state.minions = [];
-      checkRunTerminalState();
+      checkRunTerminalState(state);
     } else if (name === 'run-exhausted') {
       for (const p of Object.values(state.players)) {
         p.deck = [];
@@ -2197,7 +2197,7 @@ function applyDebugScenario(socket, name) {
       }];
       state.run.objective.totalEnemies = 1;
       state.run.objective.defeatedEnemies = 0;
-      checkRunTerminalState();
+      checkRunTerminalState(state);
     } else if (name === 'collect-prisms-progress') {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
@@ -2222,7 +2222,7 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       state.enemies = [];
-      const enemy = spawnEnemy(player.x + 2, player.z, 'grunt');
+      const enemy = spawnEnemy(state, player.x + 2, player.z, 'grunt');
       enemy.hp = 1;
       enemy.maxHp = ENEMY_DEFS.grunt.hp;
       enemy.wanderTarget = { x: enemy.x, z: enemy.z };
@@ -2446,7 +2446,7 @@ function applyDebugScenario(socket, name) {
       // the same spawn that runs when deploying into arena_trials normally.
       state.enemies = [];
       state.loot = [];
-      spawnEnemies();
+      spawnEnemies(state);
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
@@ -2464,7 +2464,7 @@ function applyDebugScenario(socket, name) {
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       state.enemies = [];
       state.loot = [];
-      spawnEnemies();
+      spawnEnemies(state);
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
@@ -2482,7 +2482,7 @@ function applyDebugScenario(socket, name) {
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       state.enemies = [];
       state.loot = [];
-      spawnEnemies();
+      spawnEnemies(state);
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
@@ -2522,7 +2522,7 @@ function applyDebugScenario(socket, name) {
         magicStoneCost: 0,
         specialEffect: 'heal_and_cleanse',
       };
-      syncCardProbeHand(player);
+      syncCardProbeHand(state, player);
     } else if (name === 'heal-spell-ready') {
       // Low-HP player with Restoration Beacon and Sanctum Pulse in hand so heal
       // cast/impact VFX can be compared without earning reward cards in a run.
@@ -2572,8 +2572,8 @@ function applyDebugScenario(socket, name) {
       player.keyItemCooldownUntil = 0;
       // Ensure a few enemies are nearby to reveal
       ensureNearbyEnemy(state, player.x, player.z);
-      spawnEnemy(player.x + 5, player.z + 3, 'skirmisher');
-      spawnEnemy(player.x - 4, player.z - 2, 'grunt');
+      spawnEnemy(state, player.x + 5, player.z + 3, 'skirmisher');
+      spawnEnemy(state, player.x - 4, player.z - 2, 'grunt');
     } else if (name === 'loot-magnet-ready') {
       // Put player with loot_magnet equipped and scattered ground loot to test pull/collect.
       player.hp = MAX_HP;
@@ -2626,7 +2626,7 @@ function applyDebugScenario(socket, name) {
       }
       // Tanky enemy straight ahead (rotation 0 → +x) that survives both packets.
       state.enemies = [];
-      spawnEnemy(player.x + 2.5, player.z, 'grunt');
+      spawnEnemy(state, player.x + 2.5, player.z, 'grunt');
     } else if (name === 'smoke-bomb-ready') {
       // Equip smoke_bomb with no cooldown and place a couple of enemies in
       // attack range so QA can cast the bomb and observe enemies losing their
@@ -2638,8 +2638,8 @@ function applyDebugScenario(socket, name) {
       player.equippedKeyItemId = 'smoke_bomb';
       player.keyItemCooldownUntil = 0;
       state.enemies = [];
-      spawnEnemy(player.x + 3, player.z, 'grunt');
-      spawnEnemy(player.x - 3, player.z + 1, 'skirmisher');
+      spawnEnemy(state, player.x + 3, player.z, 'grunt');
+      spawnEnemy(state, player.x - 3, player.z + 1, 'skirmisher');
     } else if (name === 'rally-cry-ready') {
       // Equip rally_cry with no cooldown so QA can cast the party move-speed buff
       // and observe the caster (and any allies in radius) speed up for ~4s. The
@@ -2671,7 +2671,7 @@ function applyDebugScenario(socket, name) {
         };
       }
       state.enemies = [];
-      const grunt = spawnEnemy(player.x + 4, player.z, 'grunt');
+      const grunt = spawnEnemy(state, player.x + 4, player.z, 'grunt');
       grunt.wanderTarget = { x: grunt.x, z: grunt.z };
     } else if (name === 'mirror-ward-ready') {
       // Playing phase with Mirror Ward in hand, full Magic Stones, and a grunt
@@ -2692,7 +2692,7 @@ function applyDebugScenario(socket, name) {
         };
       }
       state.enemies = [];
-      const grunt = spawnEnemy(player.x + 4, player.z, 'grunt');
+      const grunt = spawnEnemy(state, player.x + 4, player.z, 'grunt');
       grunt.wanderTarget = { x: grunt.x, z: grunt.z };
     } else if (name === 'chain-lightning-ready') {
       // Playing phase with Voltaic Chain in hand, full Magic Stones, and three
@@ -2712,15 +2712,15 @@ function applyDebugScenario(socket, name) {
         };
       }
       state.enemies = [];
-      const primary = spawnEnemy(player.x + 5, player.z, 'grunt');
+      const primary = spawnEnemy(state, player.x + 5, player.z, 'grunt');
       primary.hp = 80;
       primary.maxHp = 80;
       primary.wanderTarget = { x: primary.x, z: primary.z };
-      const chain1 = spawnEnemy(player.x + 8, player.z, 'grunt');
+      const chain1 = spawnEnemy(state, player.x + 8, player.z, 'grunt');
       chain1.hp = 80;
       chain1.maxHp = 80;
       chain1.wanderTarget = { x: chain1.x, z: chain1.z };
-      const chain2 = spawnEnemy(player.x + 11, player.z, 'grunt');
+      const chain2 = spawnEnemy(state, player.x + 11, player.z, 'grunt');
       chain2.hp = 80;
       chain2.maxHp = 80;
       chain2.wanderTarget = { x: chain2.x, z: chain2.z };
@@ -2753,12 +2753,12 @@ function applyDebugScenario(socket, name) {
         null,
       ];
       state.enemies = [];
-      const target = spawnEnemy(player.x + 4, player.z, 'grunt');
+      const target = spawnEnemy(state, player.x + 4, player.z, 'grunt');
       target.hp = 200;
       target.maxHp = 200;
       target.wanderTarget = { x: target.x, z: target.z };
       player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
-      syncCardProbeHand(player);
+      syncCardProbeHand(state, player);
     } else if (name === 'fireball-ready') {
       // Playing phase with Fireball in hand, full Magic Stones, and two grunts
       // lined up along +X so a single cast pierces both, deals impact damage,
@@ -2783,15 +2783,15 @@ function applyDebugScenario(socket, name) {
         null,
       ];
       state.enemies = [];
-      const near = spawnEnemy(player.x + 4, player.z, 'grunt');
+      const near = spawnEnemy(state, player.x + 4, player.z, 'grunt');
       near.hp = 80;
       near.maxHp = 80;
       near.wanderTarget = { x: near.x, z: near.z };
-      const far = spawnEnemy(player.x + 7, player.z, 'grunt');
+      const far = spawnEnemy(state, player.x + 7, player.z, 'grunt');
       far.hp = 80;
       far.maxHp = 80;
       far.wanderTarget = { x: far.x, z: far.z };
-      syncCardProbeHand(player);
+      syncCardProbeHand(state, player);
     } else if (name === 'ice-ball-ready') {
       // Playing phase with Glacial Orb in hand, full Magic Stones, and grunts
       // lined up along +X so a cast hits the nearest and can roll SLOW. The same
@@ -2813,11 +2813,11 @@ function applyDebugScenario(socket, name) {
         };
       }
       state.enemies = [];
-      const near = spawnEnemy(player.x + 4, player.z, 'grunt');
+      const near = spawnEnemy(state, player.x + 4, player.z, 'grunt');
       near.hp = 80;
       near.maxHp = 80;
       near.wanderTarget = { x: near.x, z: near.z };
-      const far = spawnEnemy(player.x + 7, player.z, 'grunt');
+      const far = spawnEnemy(state, player.x + 7, player.z, 'grunt');
       far.hp = 80;
       far.maxHp = 80;
       far.wanderTarget = { x: far.x, z: far.z };
@@ -2850,15 +2850,15 @@ function applyDebugScenario(socket, name) {
         };
       }
       state.enemies = [];
-      const near = spawnEnemy(player.x + 3, player.z, 'grunt');
+      const near = spawnEnemy(state, player.x + 3, player.z, 'grunt');
       near.hp = 80;
       near.maxHp = 80;
       near.wanderTarget = { x: near.x, z: near.z };
-      const mid = spawnEnemy(player.x + 5, player.z + 1, 'grunt');
+      const mid = spawnEnemy(state, player.x + 5, player.z + 1, 'grunt');
       mid.hp = 80;
       mid.maxHp = 80;
       mid.wanderTarget = { x: mid.x, z: mid.z };
-      const far = spawnEnemy(player.x + 6, player.z - 1, 'grunt');
+      const far = spawnEnemy(state, player.x + 6, player.z - 1, 'grunt');
       far.hp = 80;
       far.maxHp = 80;
       far.wanderTarget = { x: far.x, z: far.z };
@@ -2880,11 +2880,11 @@ function applyDebugScenario(socket, name) {
         };
       }
       state.enemies = [];
-      const near = spawnEnemy(player.x + 3, player.z, 'grunt');
+      const near = spawnEnemy(state, player.x + 3, player.z, 'grunt');
       near.hp = 80;
       near.maxHp = 80;
       near.wanderTarget = { x: near.x, z: near.z };
-      const mid = spawnEnemy(player.x + 5, player.z + 1, 'grunt');
+      const mid = spawnEnemy(state, player.x + 5, player.z + 1, 'grunt');
       mid.hp = 80;
       mid.maxHp = 80;
       mid.wanderTarget = { x: mid.x, z: mid.z };
@@ -2917,15 +2917,15 @@ function applyDebugScenario(socket, name) {
         };
       }
       state.enemies = [];
-      const breathNear = spawnEnemy(player.x + 4, player.z, 'grunt');
+      const breathNear = spawnEnemy(state, player.x + 4, player.z, 'grunt');
       breathNear.hp = 80;
       breathNear.maxHp = 80;
       breathNear.wanderTarget = { x: breathNear.x, z: breathNear.z };
-      const breathFar = spawnEnemy(player.x + 6, player.z, 'grunt');
+      const breathFar = spawnEnemy(state, player.x + 6, player.z, 'grunt');
       breathFar.hp = 80;
       breathFar.maxHp = 80;
       breathFar.wanderTarget = { x: breathFar.x, z: breathFar.z };
-      const pillarMid = spawnEnemy(player.x + 3, player.z + 1.5, 'grunt');
+      const pillarMid = spawnEnemy(state, player.x + 3, player.z + 1.5, 'grunt');
       pillarMid.hp = 80;
       pillarMid.maxHp = 80;
       pillarMid.wanderTarget = { x: pillarMid.x, z: pillarMid.z };
@@ -2958,15 +2958,15 @@ function applyDebugScenario(socket, name) {
         };
       }
       state.enemies = [];
-      const near = spawnEnemy(player.x + 4, player.z, 'grunt');
+      const near = spawnEnemy(state, player.x + 4, player.z, 'grunt');
       near.hp = 80;
       near.maxHp = 80;
       near.wanderTarget = { x: near.x, z: near.z };
-      const mid = spawnEnemy(player.x + 6, player.z + 1, 'grunt');
+      const mid = spawnEnemy(state, player.x + 6, player.z + 1, 'grunt');
       mid.hp = 80;
       mid.maxHp = 80;
       mid.wanderTarget = { x: mid.x, z: mid.z };
-      const far = spawnEnemy(player.x + 7, player.z - 1, 'grunt');
+      const far = spawnEnemy(state, player.x + 7, player.z - 1, 'grunt');
       far.hp = 80;
       far.maxHp = 80;
       far.wanderTarget = { x: far.x, z: far.z };
@@ -3008,15 +3008,15 @@ function applyDebugScenario(socket, name) {
         };
       }
       state.enemies = [];
-      const near = spawnEnemy(player.x + 3, player.z, 'grunt');
+      const near = spawnEnemy(state, player.x + 3, player.z, 'grunt');
       near.hp = 80;
       near.maxHp = 80;
       near.wanderTarget = { x: near.x, z: near.z };
-      const mid = spawnEnemy(player.x + 4, player.z + 1, 'grunt');
+      const mid = spawnEnemy(state, player.x + 4, player.z + 1, 'grunt');
       mid.hp = 80;
       mid.maxHp = 80;
       mid.wanderTarget = { x: mid.x, z: mid.z };
-      const far = spawnEnemy(player.x + 5, player.z - 1, 'grunt');
+      const far = spawnEnemy(state, player.x + 5, player.z - 1, 'grunt');
       far.hp = 80;
       far.maxHp = 80;
       far.wanderTarget = { x: far.x, z: far.z };
@@ -3061,11 +3061,11 @@ function applyDebugScenario(socket, name) {
         createdAt: Date.now(),
       }];
       state.enemies = [];
-      const near = spawnEnemy(player.x + 3, player.z, 'grunt');
+      const near = spawnEnemy(state, player.x + 3, player.z, 'grunt');
       near.hp = 80;
       near.maxHp = 80;
       near.wanderTarget = { x: near.x, z: near.z };
-      const mid = spawnEnemy(player.x + 4, player.z + 1, 'grunt');
+      const mid = spawnEnemy(state, player.x + 4, player.z + 1, 'grunt');
       mid.hp = 80;
       mid.maxHp = 80;
       mid.wanderTarget = { x: mid.x, z: mid.z };
@@ -3092,11 +3092,11 @@ function applyDebugScenario(socket, name) {
         null,
       ];
       state.enemies = [];
-      const target = spawnEnemy(player.x + 2.5, player.z, 'grunt');
+      const target = spawnEnemy(state, player.x + 2.5, player.z, 'grunt');
       target.hp = 200;
       target.maxHp = 200;
       target.wanderTarget = { x: target.x, z: target.z };
-      syncCardProbeHand(player);
+      syncCardProbeHand(state, player);
     } else if (name === 'weapon-slash-ready') {
       // Playing phase with the three distinct-slash blades — Rust-Forged Saber
       // (iron_sword, steely arc), Solar Edge (flame_blade, fiery arc + trail),
@@ -3124,7 +3124,7 @@ function applyDebugScenario(socket, name) {
       }
       state.enemies = [];
       for (const dx of [3, 5, 7]) {
-        const e = spawnEnemy(player.x + dx, player.z, 'grunt');
+        const e = spawnEnemy(state, player.x + dx, player.z, 'grunt');
         e.hp = 120;
         e.maxHp = 120;
         e.wanderTarget = { x: e.x, z: e.z };
@@ -3159,7 +3159,7 @@ function applyDebugScenario(socket, name) {
       player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
       state.enemies = [];
       for (const dx of [3, 5, 7]) {
-        const e = spawnEnemy(player.x + dx, player.z, 'grunt');
+        const e = spawnEnemy(state, player.x + dx, player.z, 'grunt');
         e.hp = 120;
         e.maxHp = 120;
         e.wanderTarget = { x: e.x, z: e.z };
@@ -3191,17 +3191,17 @@ function applyDebugScenario(socket, name) {
       player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
       state.enemies = [];
       for (const dx of [3, 5, 7]) {
-        const e = spawnEnemy(player.x + dx, player.z, 'grunt');
+        const e = spawnEnemy(state, player.x + dx, player.z, 'grunt');
         e.hp = 200;
         e.maxHp = 200;
         e.wanderTarget = { x: e.x, z: e.z };
       }
     }
 
-    syncRunObjectiveToEnemies();
+    syncRunObjectiveToEnemies(state);
 
     broadcastLobbyUpdate(lobby);
-    io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+    io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
     return { ok: true, scenario: name };
   });
 }

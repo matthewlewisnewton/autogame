@@ -44,7 +44,6 @@ function runSimulationInPrimaryLobby(fn) {
   const sim = require('../simulation');
   const progression = require('../progression');
   sim.setGameState(state, _timeouts);
-  progression.setGameState(state);
   return fn(state);
 }
 
@@ -168,7 +167,7 @@ describe('crystal_rescue Tier 2 deploy spawns', () => {
     gameState.enemies = [];
     gameState.loot = [];
     gameState.run = { questTier: tier };
-    spawnEnemies();
+    spawnEnemies(gameState);
   }
 
   it('places Tier 2 enemies and prisms on walkable floor clear of cover/platforms/hazards', () => {
@@ -249,7 +248,7 @@ describe('crystal_rescue Tier 1 victory unlocks Tier 2', () => {
     state.run.objective.collectedItems = state.run.objective.totalItems;
 
     const runCompletePromise = waitForEvent(socket, 'runComplete');
-    runSimulationInPrimaryLobby(() => checkRunTerminalState());
+    runSimulationInPrimaryLobby(() => checkRunTerminalState(gameState));
     const summary = await runCompletePromise;
 
     expect(summary.status).toBe('victory');

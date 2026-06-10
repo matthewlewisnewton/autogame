@@ -3,11 +3,11 @@ import {
   applyPlayerMovement,
   applyPlayerKnockback,
   buildMovementContext,
-  setGameState,
   rebuildWallColliders,
   computeWalkableAABBs,
   computeDungeonBounds,
-} from '../simulation.js';
+  setGameState } from '../simulation.js';
+// setGameState patched below
 import { createGameState, KEY_ITEM_DEFS } from '../index.js';
 import { MOVE_SPEED, TICK_RATE } from '../config.js';
 
@@ -56,13 +56,12 @@ describe('applyPlayerKnockback()', () => {
     state.layout = buildOpenLayout();
     state.walkableAABBs = computeWalkableAABBs(state.layout);
     state.dungeonBounds = computeDungeonBounds(state.layout);
-    setGameState(state, {});
     rebuildWallColliders();
+    setGameState(state);
   });
 
   afterEach(() => {
     vi.useRealTimers();
-    setGameState(null, null);
   });
 
   it('moves a non-anchored player along the knockback direction', () => {
@@ -122,12 +121,11 @@ describe('ground_anchor movement slow', () => {
     state.layout = buildOpenLayout();
     state.walkableAABBs = computeWalkableAABBs(state.layout);
     state.dungeonBounds = computeDungeonBounds(state.layout);
-    setGameState(state, {});
     rebuildWallColliders();
+    setGameState(state);
   });
 
   afterEach(() => {
-    setGameState(null, null);
   });
 
   it('multiplies the per-tick step by 0.7 while the anchor is active', () => {

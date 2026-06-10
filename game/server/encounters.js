@@ -199,7 +199,7 @@ function tryActivateEncounter(gameState) {
   ).length;
   if (deadAddCount > 0) {
     const { recordEnemyDefeated } = require('./progression');
-    recordEnemyDefeated(deadAddCount);
+    recordEnemyDefeated(gameState, deadAddCount);
   }
   clearNonBossEnemies(gameState, bossId);
   return true;

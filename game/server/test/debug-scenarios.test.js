@@ -3,7 +3,6 @@ import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
 const sim = require('../simulation.js');
-const { setGameState: setProgressionGameState } = require('../progression.js');
 const { _timeouts } = require('../index.js');
 import { generateLayout, questLayoutSeed, sampleFloorY, resolveFloorY } from '../dungeon.js';
 import {
@@ -21,7 +20,7 @@ import {
 } from '../encounters.js';
 import { resetGameState, gameState, runGameLoopTick, applyBurning, updateBurning } from '../index.js';
 import { APPEARANCE_CHANGE_COST, MAX_MAGIC_STONES } from '../config.js';
-import { spawnEnemies, setGameState } from '../progression.js';
+import { spawnEnemies } from '../progression.js';
 import {
 	startTestServer,
 	closeServer,
@@ -295,8 +294,7 @@ describe('debugScenario — arena-trials-tier-2', () => {
 		gameState.loot = [];
 		gameState.gamePhase = 'playing';
 		gameState.run = { questTier: ARENA_TRIALS_TIER_2 };
-		setGameState(gameState);
-		spawnEnemies();
+		spawnEnemies(gameState);
 		expect(gameState.enemies.some((e) => e.variant)).toBe(true);
 		expect(gameState.enemies.filter((e) => e.type === 'arena_champion')).toHaveLength(1);
 	});
@@ -737,8 +735,7 @@ describe('debugScenario — training-caverns-tier-2', () => {
 		gameState.enemies = [];
 		gameState.loot = [];
 		gameState.run = { questTier: TRAINING_CAVERNS_TIER_2 };
-		setGameState(gameState);
-		spawnEnemies();
+		spawnEnemies(gameState);
 		expect(gameState.enemies.some((e) => e.variant)).toBe(true);
 	});
 });
@@ -811,8 +808,7 @@ describe('debugScenario — crystal-rescue-tier-2', () => {
 		gameState.enemies = [];
 		gameState.loot = [];
 		gameState.run = { questTier: CRYSTAL_RESCUE_TIER_2 };
-		setGameState(gameState);
-		spawnEnemies();
+		spawnEnemies(gameState);
 		expect(gameState.enemies.some((e) => e.variant)).toBe(true);
 	});
 });
@@ -913,8 +909,7 @@ describe('debugScenario — canyon-descent-tier-2', () => {
 		gameState.enemies = [];
 		gameState.loot = [];
 		gameState.run = { questTier: CANYON_DESCENT_TIER_2 };
-		setGameState(gameState);
-		spawnEnemies();
+		spawnEnemies(gameState);
 		expect(gameState.enemies.some((e) => e.variant)).toBe(true);
 		expect(gameState.enemies.filter((e) => e.type === 'miniboss')).toHaveLength(1);
 	});
@@ -1306,8 +1301,7 @@ describe('debugScenario — spire-ascent-tier-2', () => {
 		gameState.loot = [];
 		gameState.gamePhase = 'playing';
 		gameState.run = { questTier: SPIRE_ASCENT_TIER_2 };
-		setGameState(gameState);
-		spawnEnemies();
+		spawnEnemies(gameState);
 		expect(gameState.enemies.some((e) => e.variant)).toBe(true);
 		expect(gameState.enemies.filter((e) => e.type === 'spire_warden')).toHaveLength(1);
 	});
@@ -1733,7 +1727,6 @@ describe('debugScenario — ember-descent harness shortcuts', () => {
 			expect(player.debugGodmode).toBe(false);
 
 			sim.setGameState(state, _timeouts);
-			setProgressionGameState(state);
 
 			const hpBeforeBurn = player.hp;
 			applyBurning(player, 5000);

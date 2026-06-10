@@ -1941,7 +1941,7 @@ function updateAreaEffects() {
   _gameState.areaEffects = _gameState.areaEffects.filter(
     effect => effect.ticksRemaining > 0 && now < effect.expiresAt
   );
-  _progression().cleanupAfterDamage();
+  _progression().cleanupAfterDamage(_gameState);
 }
 
 /**
@@ -1968,7 +1968,7 @@ function processPendingEchoes() {
     echo.done = true;
   }
 
-  if (applied) _progression().cleanupAfterDamage();
+  if (applied) _progression().cleanupAfterDamage(_gameState);
   _gameState.pendingEchoes = pending.filter(echo => !echo.done);
 }
 
@@ -2190,7 +2190,7 @@ function triggerMirrorWard(playerId, damageTaken, attackerEnemyId) {
   }
 
   player.activeEnchantment = null;
-  _progression().cleanupAfterDamage();
+  _progression().cleanupAfterDamage(_gameState);
 
   return { hits, direction, reflectDamage };
 }
@@ -2249,7 +2249,7 @@ function updateEnchantments() {
   }
 
   if (triggered) {
-    _progression().cleanupAfterDamage();
+    _progression().cleanupAfterDamage(_gameState);
   }
 }
 
@@ -2402,7 +2402,7 @@ function damagePlayer(playerId, amount, options = {}) {
     clearPlayerCardCommitment(player);
 
     if (_onTerminalCheck) {
-      _onTerminalCheck();
+      _onTerminalCheck(_gameState);
     }
   }
 
@@ -2653,7 +2653,7 @@ function updateEnemies() {
 				if (aliveAdds < spawnMaxAlive) {
 					// Place add within ~3 units of spawner
 					const addPos = nearbySpawnPosition(enemy.x, enemy.z, 3);
-					const add = _progression().spawnEnemy(addPos.x, addPos.z, spawnType, enemy.id);
+					const add = _progression().spawnEnemy(_gameState, addPos.x, addPos.z, spawnType, enemy.id);
 					add.wanderTarget = randomWanderTarget();
 					enemy.lastSpawnTime = now;
 				}
@@ -3185,7 +3185,7 @@ function updateMinions() {
   updateEnchantments();
 
   // Cleanup dead enemies after minion attacks
-  _progression().cleanupAfterDamage();
+  _progression().cleanupAfterDamage(_gameState);
 
   // Cleanup expired revealedUntil on enemies (flare_beacon)
   const nowTick = Date.now();
@@ -3209,7 +3209,7 @@ function updateMinions() {
     }
     const owner = _gameState.players[minion.ownerId];
     if (owner) {
-      progression.releaseBurningCreatureCard(owner, minion);
+      progression.releaseBurningCreatureCard(_gameState, owner, minion);
     }
   }
   _gameState.minions = survivingMinions;
