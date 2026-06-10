@@ -1048,8 +1048,10 @@ async function runVictoryStep({ page, preset, outDirAbs }) {
 	};
 }
 
-function isSunkenCanyonPreset(preset, summary) {
-	return preset?.layoutProfile === 'sunken-canyon' || summary?.preset === 'sunken-canyon';
+function isNewContentPreset(preset, summary) {
+	return preset?.newContentFull === true
+		|| preset?.layoutProfile === 'sunken-canyon'
+		|| summary?.preset === 'sunken-canyon';
 }
 
 function buildAssertions(summary, preset) {
@@ -1108,7 +1110,7 @@ function buildAssertions(summary, preset) {
 		bossDefeated,
 		victoryFired,
 	};
-	if (!isSunkenCanyonPreset(preset, summary)) {
+	if (!isNewContentPreset(preset, summary)) {
 		return base;
 	}
 	const bossEncounterUi = summary.bossEncounter?.probes?.bossEncounterUi;
@@ -1471,13 +1473,13 @@ async function main() {
 			});
 		}
 
-		const runsSunkenCanyonFull = opts.preset === 'sunken-canyon' && runsRoomsFull;
+		const runsNewContentFull = preset.newContentFull === true && runsRoomsFull;
 
 		if (runsBossEncounter && page) {
 			const objectiveType = preset.objectiveType ?? 'stage_boss';
 			if (objectiveType === 'defeat_enemies') {
 				summary.defeatEnemiesCombat = await runDefeatEnemiesCombatStep({ page, preset, outDirAbs });
-			} else if (!runsSunkenCanyonFull) {
+			} else if (!runsNewContentFull) {
 				summary.bossEncounter = await runBossEncounterStep({ page, preset, outDirAbs });
 			}
 		}
@@ -1509,11 +1511,11 @@ async function main() {
 			});
 		}
 
-		if (runsRoomsFull && page && !runsSunkenCanyonFull) {
+		if (runsRoomsFull && page && !runsNewContentFull) {
 			summary.victory = await runVictoryStep({ page, preset, outDirAbs });
 		}
 
-		if (runsSunkenCanyonFull && page) {
+		if (runsNewContentFull && page) {
 			const midCombatPart = await runSunkenCanyonMidCombatProbeStep({ page, preset, outDirAbs });
 			summary.bossEncounter = { ...midCombatPart };
 
