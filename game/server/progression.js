@@ -392,8 +392,17 @@ function getUnlockedKeyItems() {
 }
 
 /** Check if a key item is unlocked for the given player. All 14 are unlocked at start. */
+let _testKeyItemUnlockOverride = null;
 function isKeyItemUnlocked(player, keyItemId) {
+  if (_testKeyItemUnlockOverride) {
+    return _testKeyItemUnlockOverride(player, keyItemId);
+  }
   return keyItemId in KEY_ITEM_DEFS;
+}
+
+/** @param {Function|null} fn */
+function setTestKeyItemUnlockOverride(fn) {
+  _testKeyItemUnlockOverride = fn;
 }
 
 // Starting deck card ids — mirrors createStartingDeck() in client/cards.js.
@@ -3759,6 +3768,7 @@ module.exports = {
   getKeyItemDef,
   getUnlockedKeyItems,
   isKeyItemUnlocked,
+  setTestKeyItemUnlockOverride,
   DESPERATION_CARD_DEFS,
   DESPERATION_DECK_TEMPLATE,
   getCardDef,

@@ -219,6 +219,7 @@ const {
   KEY_ITEM_DEFS,
   getKeyItemDef,
   getUnlockedKeyItems,
+  setTestKeyItemUnlockOverride,
   DESPERATION_CARD_DEFS,
   DESPERATION_DECK_TEMPLATE,
   drawCardFromDesperationDeck,
@@ -2021,6 +2022,7 @@ if (typeof module !== 'undefined' && module.exports) {
     KEY_ITEM_DEFS,
     getKeyItemDef,
     getUnlockedKeyItems,
+    setTestKeyItemUnlockOverride,
     // Persistence
     extractPersistentData,
     savePlayerData,

@@ -11,6 +11,7 @@ import {
 	ENTITY_RADIUS,
 	wallAABB,
 	MAX_MAGIC_STONES,
+	setTestKeyItemUnlockOverride,
 } from '../index.js';
 import { setGameState as setSimGameState, processPendingEchoes, updateMinions, applyPlayerMovement, buildMovementContext } from '../simulation.js';
 import { InMemoryProvider } from '../providers.js';
@@ -165,6 +166,31 @@ describe('equipKeyItem socket handler', () => {
 		const player = playerForSocket(socket);
 		// equippedKeyItemId should remain at default, not change
 		expect(player.equippedKeyItemId).not.toBe('nonexistent_item');
+	});
+
+	it('equipping a locked key item is rejected with not_unlocked reason', async () => {
+		// Mock isKeyItemUnlocked to return false for 'summon_recall'
+		setTestKeyItemUnlockOverride((player, keyItemId) => {
+			if (keyItemId === 'summon_recall') return false;
+			return true;
+		});
+
+		try {
+			const { socket } = await connectClient(baseUrl);
+			const player = playerForSocket(socket);
+			const originalEquipped = player.equippedKeyItemId;
+
+			const errorPromise = waitForEvent(socket, 'keyItemError');
+			socket.emit('equipKeyItem', { keyItemId: 'summon_recall' });
+			const error = await errorPromise;
+
+			expect(error.reason).toBe('not_unlocked');
+			// equippedKeyItemId should not have changed
+			expect(player.equippedKeyItemId).toBe(originalEquipped);
+			expect(player.equippedKeyItemId).not.toBe('summon_recall');
+		} finally {
+			setTestKeyItemUnlockOverride(null);
+		}
 	});
 });
 
