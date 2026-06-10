@@ -1119,7 +1119,7 @@ describe('Socket Integration — useCard Event', () => {
 			expect(playerAfterExpiry.exhaustedCards.length).toBe(exhaustedBefore + 1);
 			expect(playerAfterExpiry.exhaustedCards.some((card) => card.id === monsterCardId)).toBe(true);
 
-			processPassiveDraws(playerAfterExpiry.nextDrawAt);
+			processPassiveDraws(state, playerAfterExpiry.nextDrawAt);
 			const slotCard = playerAfterExpiry.hand[monsterSlot];
 			expect(slotCard).toBeTruthy();
 			// Draw pile can contain duplicate card ids; assert fresh draw semantics, not identity.

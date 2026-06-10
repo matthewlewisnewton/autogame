@@ -4997,7 +4997,7 @@ describe('server hand management', () => {
 		expect(player.nextDrawAt).toBeTypeOf('number');
 
 		gameState.gamePhase = 'playing';
-		processPassiveDraws(player.nextDrawAt);
+		processPassiveDraws(gameState, player.nextDrawAt);
 		expect(player.hand[1].isDesperation).toBe(true);
 	});
 
@@ -5026,10 +5026,10 @@ describe('server hand management', () => {
 		};
 		gameState.players.p1 = player;
 
-		processPassiveDraws(player.nextDrawAt - 1);
+		processPassiveDraws(gameState, player.nextDrawAt - 1);
 		expect(player.hand[0]).toBeNull();
 
-		processPassiveDraws(player.nextDrawAt);
+		processPassiveDraws(gameState, player.nextDrawAt);
 		expect(player.hand[1].id).toBe('flame_blade');
 		expect(player.deck).toEqual(['iron_sword']);
 	});

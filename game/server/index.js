@@ -1411,7 +1411,7 @@ function runGameLoopTick() {
           updateSurviveSpawns();
 
           const now = Date.now();
-          processPassiveDraws(now);
+          processPassiveDraws(state, now);
 
           if (state._pendingMinionBreaths?.length) {
             for (const event of state._pendingMinionBreaths) {
