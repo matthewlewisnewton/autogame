@@ -553,6 +553,8 @@ const QUEST_DEFS = {
       // Ice-level signature foe — a ranged thrower that lobs slow ice balls.
       // Level-exclusive: do not add to non-ice quests.
       { type: 'glacial_thrower', weight: 2 },
+      // Rare flier — kept at the pool minimum so frost drifters stay sparse.
+      { type: 'rime_drifter', weight: 1 },
     ],
     tiers: {
       1: {
@@ -665,6 +667,8 @@ const QUEST_DEFS = {
       { type: 'skirmisher', weight: 2 },
       { type: 'grunt', weight: 2 },
       { type: 'miniboss', weight: 1 },
+      // Rare flier — kept at the pool minimum so void seraphs stay sparse.
+      { type: 'void_seraph', weight: 1 },
     ],
     tier2EnemyPool: [{ type: 'field_medic', weight: 1 }],
     tiers: {
@@ -771,6 +775,8 @@ const QUEST_DEFS = {
       { type: 'skirmisher', weight: 1 },
       { type: 'miniboss', weight: 1 },
       { type: 'spawner', weight: 2 },
+      // Rare flier — kept at the pool minimum so void seraphs stay sparse.
+      { type: 'void_seraph', weight: 1 },
     ],
     tiers: {
       1: {
