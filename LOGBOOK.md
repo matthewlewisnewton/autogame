@@ -5960,3 +5960,26 @@ PASS. The changed live code is scoped to validation harness support, debug-only 
 ## Remaining gaps
 
 None.
+
+## v0.339 — Client: split renderer.js (6,800 lines) — extract per-domain sync modules and a generic mesh-map reconciler  (2026-06-09 20:38:03)
+
+## Code quality
+
+The extracted modules match coherent rendering domains:
+
+- `avatarSync.js` owns cosmetic/avatar rebuild and key-item prop refresh.
+- `playerSync.js` owns player positioning, nameplates, status markers, HP drop feedback, smoke/shield follow, and phase-step highlight.
+- `enemySync.js` owns enemy meshes, health/shield bars, variants, attack telegraphs, lock-on rings, status markers, and the minion HP-drop VFX table.
+- `effectsSync.js` owns minions, telepipe portal sync/animation, and atmosphere updates.
+- `lootSync.js` owns pickup emission, loot mesh sync, bob/collect animation, and loot cleanup.
+
+I did not find dead/broken exports, missing module initialization, or cleanup regressions in the paths touched by the ticket. The minion HP-drop attribution ladder has been replaced by a data table with a default fallback.
+
+## Debug scenarios
+
+This ticket did not add or change any `?debugScenario=NAME` development shortcut. Existing localhost-only debug hooks are outside the changed files.
+
+## Remaining gaps
+
+None.
+

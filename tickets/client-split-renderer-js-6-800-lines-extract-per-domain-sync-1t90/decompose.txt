@@ -1,0 +1,25 @@
+Split the top-level renderer refactor into **6 sub-tickets** in dependency order. Each is scoped for one focused implementation pass, uses **code** verification (tests, structure, line counts), and maps to the modules named in the parent ticket.
+
+### Sub-ticket plan
+
+| # | Folder | Focus |
+|---|--------|--------|
+| 01 | `01-sync-mesh-map` | Generic `syncMeshMap` helper; migrate ice balls + spike traps |
+| 02 | `02-loot-sync` | Loot pickup, mesh sync, bob/collect animations |
+| 03 | `03-avatar-sync` | Cosmetic signature rebuild, key-item props |
+| 04 | `04-player-sync` | Positioning, nameplates, status VFX, smoke/phase-step |
+| 05 | `05-enemy-sync` | Enemy reconcile + minion-attribution data table |
+| 06 | `06-effects-orchestrator` | Minions, telepipe, atmosphere; `animate()` &lt; 150 lines |
+
+### Created sub-ticket paths
+
+```
+/home/matt/workspace/.autogame-worktrees/client-split-renderer-js-6-800-lines-extract-per-domain-sync-1t90/tickets/client-split-renderer-js-6-800-lines-extract-per-domain-sync-1t90/subtickets/01-sync-mesh-map/ticket.md
+/home/matt/workspace/.autogame-worktrees/client-split-renderer-js-6-800-lines-extract-per-domain-sync-1t90/tickets/client-split-renderer-js-6-800-lines-extract-per-domain-sync-1t90/subtickets/02-loot-sync/ticket.md
+/home/matt/workspace/.autogame-worktrees/client-split-renderer-js-6-800-lines-extract-per-domain-sync-1t90/tickets/client-split-renderer-js-6-800-lines-extract-per-domain-sync-1t90/subtickets/03-avatar-sync/ticket.md
+/home/matt/workspace/.autogame-worktrees/client-split-renderer-js-6-800-lines-extract-per-domain-sync-1t90/tickets/client-split-renderer-js-6-800-lines-extract-per-domain-sync-1t90/subtickets/04-player-sync/ticket.md
+/home/matt/workspace/.autogame-worktrees/client-split-renderer-js-6-800-lines-extract-per-domain-sync-1t90/tickets/client-split-renderer-js-6-800-lines-extract-per-domain-sync-1t90/subtickets/05-enemy-sync/ticket.md
+/home/matt/workspace/.autogame-worktrees/client-split-renderer-js-6-800-lines-extract-per-domain-sync-1t90/tickets/client-split-renderer-js-6-800-lines-extract-per-domain-sync-1t90/subtickets/06-effects-orchestrator/ticket.md
+```
+
+No prior sub-ticket folders existed, so nothing was deleted or renumbered. New modules land under `game/client/renderer/` with `renderer.js` kept as the public entry point and re-export surface for existing tests.
