@@ -45,6 +45,7 @@ const {
   spawnEnemy,
   spawnEnemies,
   startDungeonRun,
+  updateQuestScriptTriggers,
   emitRunStartDialogue,
   syncRunObjectiveToEnemies,
   checkRunTerminalState,
@@ -238,6 +239,10 @@ function setupQuestTier1Deploy(lobby, state, player, questId) {
   startDungeonRun();
 }
 
+function setupEmberDescentTier1Deploy(lobby, state, player) {
+  setupQuestTier1Deploy(lobby, state, player, 'ember_descent');
+}
+
 function setupFrostCrossingTier1Deploy(lobby, state, player) {
   setupQuestTier1Deploy(lobby, state, player, 'frost_crossing');
 }
@@ -252,6 +257,13 @@ function setupCrystalRescueTier1Deploy(lobby, state, player) {
 
 function setupAnnexEscortTier1Deploy(lobby, state, player) {
   setupQuestTier1Deploy(lobby, state, player, 'annex_escort');
+}
+
+function deepestCombatRoom(layout) {
+  return layout.rooms
+    .filter((room) => room.role === 'combat')
+    .sort((a, b) => a.x - b.x || a.z - b.z)
+    .pop();
 }
 
 function ensurePlayerCombatHand(player) {
@@ -584,6 +596,61 @@ function applyDebugScenario(socket, name) {
         scenario: name,
         unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
       };
+    }
+
+    if (name === 'training-caverns-vault-marauder') {
+      // training_caverns Tier 1 with run-start grunts cleared and Vault Marauder
+      // spawned in the deepest vault room for named-rare QA. Reachable normally by
+      // clearing the annex and entering the deep vault; this scenario is a shortcut.
+      setupTrainingCavernsTier1Deploy(lobby, state, player);
+
+      const vaultRoom = deepestCombatRoom(state.layout);
+      const runStartWave = state.run?.waveScript?.waves?.find((wave) => wave.id === 'wave_run_start');
+      if (runStartWave) {
+        for (const enemyId of runStartWave.spawnedEnemyIds) {
+          const enemy = state.enemies.find((entry) => entry.id === enemyId);
+          if (enemy) enemy.hp = 0;
+        }
+        state.enemies = state.enemies.filter((enemy) => enemy.hp > 0);
+        runStartWave.status = 'cleared';
+        if (state.run?.objective) {
+          state.run.objective.defeatedEnemies = runStartWave.spawnedEnemyIds.length;
+        }
+      }
+
+      player.x = vaultRoom?.x ?? 0;
+      player.z = vaultRoom?.z ?? 0;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      updateQuestScriptTriggers();
+
+      const marauder = state.enemies.find((enemy) => enemy.namedRare?.name === 'Vault Marauder');
+      if (marauder) {
+        marauder.wanderTarget = { x: marauder.x, z: marauder.z };
+        repositionNearEnemy(player, marauder);
+        player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      }
+
+      if (!player.hand.some((c) => c && c.type === 'weapon' && (c.remainingCharges == null || c.remainingCharges > 0))) {
+        const replaceSlot = player.hand.findIndex((c) => c && c.type !== 'weapon');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = {
+            id: 'iron_sword',
+            name: 'Rust-Forged Saber',
+            type: 'weapon',
+            charges: 5,
+            remainingCharges: 5,
+            grind: 0,
+          };
+        }
+      }
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
     }
 
     if (name === 'training-caverns-tier-2') {
@@ -1132,6 +1199,61 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
+    if (name === 'frost-crossing-frostmaw') {
+      // frost_crossing Tier 1 with run-start grunts cleared and Frostmaw spawned on
+      // the ice field for named-rare QA. Reachable normally by crossing to the ice
+      // sheet; this scenario is a shortcut into that encounter.
+      setupFrostCrossingTier1Deploy(lobby, state, player);
+
+      const iceRoom = state.layout.rooms.find((room) => room.band === 'ice');
+      const runStartWave = state.run?.waveScript?.waves?.find((wave) => wave.id === 'wave_run_start');
+      if (runStartWave) {
+        for (const enemyId of runStartWave.spawnedEnemyIds) {
+          const enemy = state.enemies.find((entry) => entry.id === enemyId);
+          if (enemy) enemy.hp = 0;
+        }
+        state.enemies = state.enemies.filter((enemy) => enemy.hp > 0);
+        runStartWave.status = 'cleared';
+        if (state.run?.objective) {
+          state.run.objective.defeatedEnemies = runStartWave.spawnedEnemyIds.length;
+        }
+      }
+
+      player.x = iceRoom?.x ?? 0;
+      player.z = iceRoom?.z ?? 0;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      updateQuestScriptTriggers();
+
+      const frostmaw = state.enemies.find((enemy) => enemy.namedRare?.name === 'Frostmaw');
+      if (frostmaw) {
+        frostmaw.wanderTarget = { x: frostmaw.x, z: frostmaw.z };
+        repositionNearEnemy(player, frostmaw);
+        player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      }
+
+      if (!player.hand.some((c) => c && c.type === 'weapon' && (c.remainingCharges == null || c.remainingCharges > 0))) {
+        const replaceSlot = player.hand.findIndex((c) => c && c.type !== 'weapon');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = {
+            id: 'iron_sword',
+            name: 'Rust-Forged Saber',
+            type: 'weapon',
+            charges: 5,
+            remainingCharges: 5,
+            grind: 0,
+          };
+        }
+      }
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
     if (name === 'crystal-rescue-tier-2') {
       // crystal_rescue Tier 2 with rigid open layout, prism collect_items objective,
       // and cover/platform/hazard-aware spawns. Quest/tier and layout must be set
@@ -1184,8 +1306,6 @@ function applyDebugScenario(socket, name) {
 
     if (name === 'fire-cavern') {
       // ember_descent Tier 1 with fire-cavern layout and rim spawn.
-      // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
-      // snapshots the correct run.questTier/objective and spawnEnemy variant rolls.
       // Reachable normally by selecting Ember Descent tier 1 and deploying;
       // this scenario is a shortcut into that state.
       const questId = 'ember_descent';
@@ -1216,6 +1336,61 @@ function applyDebugScenario(socket, name) {
         ok: true,
         scenario: name,
       };
+    }
+
+    if (name === 'ember-descent-cinderghast') {
+      // ember_descent Tier 1 with run-start rim grunts cleared and Cinderghast
+      // spawned in the inner basin for named-rare QA. Reachable normally by
+      // descending into the volcanic basin; this scenario is a shortcut.
+      setupEmberDescentTier1Deploy(lobby, state, player);
+
+      const basinRoom = state.layout.rooms.find((room) => room.band === 'basin');
+      const runStartWave = state.run?.waveScript?.waves?.find((wave) => wave.id === 'wave_run_start');
+      if (runStartWave) {
+        for (const enemyId of runStartWave.spawnedEnemyIds) {
+          const enemy = state.enemies.find((entry) => entry.id === enemyId);
+          if (enemy) enemy.hp = 0;
+        }
+        state.enemies = state.enemies.filter((enemy) => enemy.hp > 0);
+        runStartWave.status = 'cleared';
+        if (state.run?.objective) {
+          state.run.objective.defeatedEnemies = runStartWave.spawnedEnemyIds.length;
+        }
+      }
+
+      player.x = basinRoom?.x ?? 0;
+      player.z = basinRoom?.z ?? 0;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      updateQuestScriptTriggers();
+
+      const cinderghast = state.enemies.find((enemy) => enemy.namedRare?.name === 'Cinderghast');
+      if (cinderghast) {
+        cinderghast.wanderTarget = { x: cinderghast.x, z: cinderghast.z };
+        repositionNearEnemy(player, cinderghast);
+        player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      }
+
+      if (!player.hand.some((c) => c && c.type === 'weapon' && (c.remainingCharges == null || c.remainingCharges > 0))) {
+        const replaceSlot = player.hand.findIndex((c) => c && c.type !== 'weapon');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = {
+            id: 'iron_sword',
+            name: 'Rust-Forged Saber',
+            type: 'weapon',
+            charges: 5,
+            remainingCharges: 5,
+            grind: 0,
+          };
+        }
+      }
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
     }
 
     if (name === 'ember-descent-near-adds') {
@@ -2160,21 +2335,23 @@ function applyDebugScenario(socket, name) {
         e.wanderTarget = { x: e.x, z: e.z };
       }
     } else if (name === 'named-rare-enemy') {
-      // Quest-named rare beside a plain grunt: custom displayName + forced warded
-      // variant via spawnEnemy opts (same path scripted wave namedRare uses).
-      // Reachable normally on quests that declare namedRare spawns; shortcut only.
+      // Spawn a scripted named-rare grunt beside a plain grunt for tint/scale/
+      // nameplate QA. The same state is reachable on quests with inline named-rare
+      // spawns (e.g. frost_crossing); this is a deterministic shortcut.
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       state.enemies = [];
-      const rare = spawnEnemy(player.x + 3, player.z, 'grunt', undefined, {
-        displayName: 'Vault Stalker',
-        namedRareId: 'debug_vault_stalker',
-        forceVariant: 'warded',
-        skipVariantRoll: true,
-      });
-      rare.wanderTarget = { x: rare.x, z: rare.z };
       const plain = spawnEnemy(player.x - 3, player.z, 'grunt');
       plain.wanderTarget = { x: plain.x, z: plain.z };
+      const rare = spawnEnemy(player.x + 3, player.z, 'grunt', undefined, {
+        namedRareVariant: {
+          name: 'The Fake in Yellow',
+          tint: '#ffdd00',
+          scaleMult: 1.25,
+          drop: { currency: 50 },
+        },
+      });
+      rare.wanderTarget = { x: rare.x, z: rare.z };
     } else if (name === 'volatile-enemy') {
       // Spawn a `volatile`-variant grunt (hot-orange badge) at 1 HP beside a
       // plain grunt, so the QA can confirm the distinct volatile tint and then

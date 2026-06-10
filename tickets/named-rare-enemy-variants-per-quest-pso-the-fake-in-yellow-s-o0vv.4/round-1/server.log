@@ -1,0 +1,14 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/named-rare-enemy-variants-per-quest-pso-the-fake-in-yellow-s-o0vv.4/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/named-rare-enemy-variants-per-quest-pso-the-fake-in-yellow-s-o0vv.4/game/data
+Server listening on port 3002
+Player connected: socket=t0wL4B2KGMSu79fxAAAB, playerId=e14b6078-c8dd-43f5-a435-a8d66a11d0df
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=C90hjXieaamnfXbDAAAD, playerId=bb9e7303-39d6-4dfe-8cbd-5b2f57e6c550
+[loot] spawned id=dac41520-c07a-4f9b-8a8a-bc6556084cc4 value=6
+Player disconnected: t0wL4B2KGMSu79fxAAAB
+Player disconnected: C90hjXieaamnfXbDAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

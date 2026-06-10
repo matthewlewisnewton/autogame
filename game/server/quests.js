@@ -8,6 +8,17 @@
  */
 
 /**
+ * Inline named-rare variant on a scripted quest spawn.
+ * @typedef {Object} QuestScriptNamedRareVariant
+ * @property {string} name
+ * @property {number} [hpMult]
+ * @property {number} [damageMult]
+ * @property {string} [tint]
+ * @property {number} [scaleMult]
+ * @property {{ cardId?: string, currency?: number }} drop
+ */
+
+/**
  * Guild-counter client copy shown on the quest board before deploy.
  * @typedef {Object} QuestClientConfig
  * @property {string} name - Named client NPC for this contract.
@@ -58,6 +69,7 @@
  * @property {string} type - Enemy type id.
  * @property {number} x - World X coordinate.
  * @property {number} z - World Z coordinate.
+ * @property {QuestScriptNamedRareVariant} [variant] - Optional named-rare override.
  */
 
 /**
@@ -80,6 +92,191 @@
  * @property {QuestScriptWave[]} waves
  */
 
+const { normalizeNamedRareVariant } = require('./namedRareVariants');
+const { generateLayout, questLayoutSeed } = require('./dungeon');
+
+function roundSpawnCoord(value) {
+  return Math.round(value * 10) / 10;
+}
+
+function spawnOffsetsInRoom(room, count, radiusFrac = 0.22) {
+  const radius = Math.min(room.width, room.depth) * radiusFrac;
+  const positions = [];
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2;
+    positions.push({
+      x: roundSpawnCoord(room.x + Math.cos(angle) * radius),
+      z: roundSpawnCoord(room.z + Math.sin(angle) * radius),
+    });
+  }
+  return positions;
+}
+
+/**
+ * Authored wave script for training_caverns tier 1. Spawn coords are derived
+ * from the canonical crowded layout seed so hand-placed enemies stay stable.
+ */
+function buildTrainingCavernsTier1Script() {
+  const questId = 'training_caverns';
+  const tier = 1;
+  const seed = questLayoutSeed(questId, tier);
+  const layout = generateLayout(seed, 'crowded', { slopes: true, layoutMode: 'default' });
+  const startRoom = layout.rooms.find((room) => room.role === 'start') || layout.rooms[0];
+  const vaultRoom = layout.rooms
+    .filter((room) => room.role === 'combat')
+    .sort((a, b) => a.x - b.x || a.z - b.z)
+    .pop();
+  const startPositions = spawnOffsetsInRoom(startRoom, 4);
+  const runStartTypes = ['grunt', 'grunt', 'skirmisher', 'skirmisher'];
+  const runStartSpawns = runStartTypes.map((type, index) => ({
+    type,
+    x: startPositions[index].x,
+    z: startPositions[index].z,
+  }));
+  const vaultPositions = spawnOffsetsInRoom(vaultRoom, 2);
+  const marauderX = roundSpawnCoord(vaultRoom.x);
+  const marauderZ = roundSpawnCoord(vaultRoom.z + vaultRoom.depth * 0.12);
+
+  return {
+    waves: [
+      {
+        id: 'wave_run_start',
+        trigger: 'run_start',
+        spawns: runStartSpawns,
+      },
+      {
+        id: 'wave_vault_room',
+        trigger: 'enter_room',
+        room: { x: vaultRoom.x, z: vaultRoom.z },
+        spawns: [
+          {
+            type: 'grunt',
+            x: marauderX,
+            z: marauderZ,
+            variant: {
+              name: 'Vault Marauder',
+              hpMult: 1.5,
+              damageMult: 1.25,
+              tint: '#c9a227',
+              scaleMult: 1.12,
+              drop: { cardId: 'dungeon_drake' },
+            },
+          },
+          {
+            type: 'skirmisher',
+            x: vaultPositions[1].x,
+            z: vaultPositions[1].z,
+          },
+        ],
+      },
+    ],
+  };
+}
+
+/**
+ * Authored wave script for ember_descent tier 1. Spawn coords are derived from
+ * the canonical fire-cavern layout seed so hand-placed enemies stay stable.
+ */
+function buildEmberDescentTier1Script() {
+  const questId = 'ember_descent';
+  const tier = 1;
+  const seed = questLayoutSeed(questId, tier);
+  const layout = generateLayout(seed, 'fire-cavern', { slopes: true, layoutMode: 'default' });
+  const rimRoom = layout.rooms.find((room) => room.band === 'rim') || layout.rooms[0];
+  const basinRoom = layout.rooms.find((room) => room.band === 'basin');
+  const startPositions = spawnOffsetsInRoom(rimRoom, 5);
+  const runStartTypes = ['grunt', 'grunt', 'grunt', 'skirmisher', 'skirmisher'];
+  const runStartSpawns = runStartTypes.map((type, index) => ({
+    type,
+    x: startPositions[index].x,
+    z: startPositions[index].z,
+  }));
+  const cinderghastX = roundSpawnCoord(basinRoom.x);
+  const cinderghastZ = roundSpawnCoord(basinRoom.z + basinRoom.depth * 0.15);
+
+  return {
+    waves: [
+      {
+        id: 'wave_run_start',
+        trigger: 'run_start',
+        spawns: runStartSpawns,
+      },
+      {
+        id: 'wave_inner_cavern',
+        trigger: 'enter_room',
+        room: { x: basinRoom.x, z: basinRoom.z },
+        spawns: [
+          {
+            type: 'ember_wraith',
+            x: cinderghastX,
+            z: cinderghastZ,
+            variant: {
+              name: 'Cinderghast',
+              hpMult: 1.5,
+              damageMult: 1.25,
+              tint: '#f97316',
+              scaleMult: 1.1,
+              drop: { cardId: 'dragons_breath' },
+            },
+          },
+        ],
+      },
+    ],
+  };
+}
+
+/**
+ * Authored wave script for frost_crossing tier 1. Spawn coords are derived from
+ * the canonical layout seed so hand-placed enemies stay stable across runs.
+ */
+function buildFrostCrossingTier1Script() {
+  const questId = 'frost_crossing';
+  const tier = 1;
+  const seed = questLayoutSeed(questId, tier);
+  const layout = generateLayout(seed, 'ice-cavern', { slopes: true, layoutMode: 'default' });
+  const startRoom = layout.rooms.find((room) => room.role === 'start') || layout.rooms[0];
+  const iceRoom = layout.rooms.find((room) => room.band === 'ice');
+  const startPositions = spawnOffsetsInRoom(startRoom, 5);
+  const runStartTypes = ['grunt', 'grunt', 'grunt', 'skirmisher', 'skirmisher'];
+  const runStartSpawns = runStartTypes.map((type, index) => ({
+    type,
+    x: startPositions[index].x,
+    z: startPositions[index].z,
+  }));
+  const frostmawX = roundSpawnCoord(iceRoom.x);
+  const frostmawZ = roundSpawnCoord(iceRoom.z + iceRoom.depth * 0.15);
+
+  return {
+    waves: [
+      {
+        id: 'wave_run_start',
+        trigger: 'run_start',
+        spawns: runStartSpawns,
+      },
+      {
+        id: 'wave_ice_field',
+        trigger: 'enter_room',
+        room: { x: iceRoom.x, z: iceRoom.z },
+        spawns: [
+          {
+            type: 'glacial_thrower',
+            x: frostmawX,
+            z: frostmawZ,
+            variant: {
+              name: 'Frostmaw',
+              hpMult: 1.6,
+              damageMult: 1.3,
+              tint: '#7dd3fc',
+              scaleMult: 1.15,
+              drop: { cardId: 'permafrost_lance' },
+            },
+          },
+        ],
+      },
+    ],
+  };
+}
+
 const QUEST_DEFS = {
   training_caverns: {
     id: 'training_caverns',
@@ -100,6 +297,7 @@ const QUEST_DEFS = {
         rewardCurrency: 10,
         rewardCardId: 'saber_of_light',
         layoutProfile: 'crowded',
+        script: buildTrainingCavernsTier1Script(),
         scriptedEncounters: {
           rooms: [
             {
@@ -476,6 +674,7 @@ const QUEST_DEFS = {
         ],
         signatureCardId: 'ice_ball',
         rewardCards: ['ice_ball', 'frost_nova', 'permafrost_lance'],
+        script: buildFrostCrossingTier1Script(),
         client: {
           name: 'Cairn',
           briefing:
@@ -580,6 +779,7 @@ const QUEST_DEFS = {
         layoutProfile: 'fire-cavern',
         signatureCardId: 'fireball',
         rewardCards: ['fireball', 'dragons_breath'],
+        script: buildEmberDescentTier1Script(),
         client: {
           name: 'Ashvelle',
           briefing:
@@ -1006,7 +1206,12 @@ function normalizeQuestScriptSpawn(spawn) {
   if (!Number.isFinite(spawn.x) || !Number.isFinite(spawn.z)) {
     return null;
   }
-  return { type: spawn.type, x: spawn.x, z: spawn.z };
+  const normalized = { type: spawn.type, x: spawn.x, z: spawn.z };
+  const variant = normalizeNamedRareVariant(spawn.variant);
+  if (variant) {
+    normalized.variant = variant;
+  }
+  return normalized;
 }
 
 function normalizeQuestScriptWave(wave) {

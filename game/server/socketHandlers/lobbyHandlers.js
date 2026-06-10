@@ -31,7 +31,6 @@ const {
   unlockHatForPlayer,
   chargeAppearanceChangeForPlayer,
   healAtMedic,
-  assignRunSpawnPositions,
   stateSnapshot,
   savePlayerData,
 } = require('../progression');
@@ -43,6 +42,7 @@ function register(socket, ctx) {
     lobbies,
     withLobbyContext,
     applyLayoutForQuest,
+    previewLayoutForQuest,
     ensureShopOffer,
     joinPlayerToLobby,
     joinLobbyWithPhasePolicy,
@@ -150,15 +150,19 @@ function register(socket, ctx) {
 
     state.selectedQuestId = questId;
     state.selectedQuestTier = tier;
-    applyLayoutForQuest(state, questId, tier);
-    assignRunSpawnPositions(Object.values(state.players));
+    // Record the selection only. The real layout swap + spawn teleport are
+    // deferred to deploy (checkAllReadyInner) so the lobby stays on the live hub
+    // and players keep moving/interacting. Emit a non-destructive preview the
+    // client can cache for deploy (applyQuestLayoutFromServer reads
+    // data.layout/data.layoutSeed) — deterministic for this questId+tier, the
+    // same seed the run will use.
+    const { layoutSeed, layout } = previewLayoutForQuest(questId, tier);
     emitQuestPayloadToLobby(lobby, {
       extraFields: {
-        layoutSeed: state.layoutSeed,
-        layout: state.layout,
+        layoutSeed,
+        layout,
       },
     });
-    io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
     broadcastLobbyUpdate(lobby);
     });
   });

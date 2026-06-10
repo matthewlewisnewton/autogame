@@ -115,7 +115,10 @@ describe('quest tier gating (socket + persistence)', () => {
 		expect(payload.questVariants.some((v) => v.questId === QUEST_ID && v.tier === TIER_2)).toBe(true);
 		expect(payload.unlockedQuestTiers).toEqual({ [QUEST_ID]: [TIER_2] });
 		expect(testGameState().selectedQuestTier).toBe(TIER_2);
-		expect(testGameState().layoutSeed).toBe(questLayoutSeed(QUEST_ID, TIER_2));
+		// Layout swap is deferred to deploy: SELECT_QUEST emits a non-destructive
+		// preview (carried on the payload) and leaves the live layout untouched.
+		expect(payload.layoutSeed).toBe(questLayoutSeed(QUEST_ID, TIER_2));
+		expect(testGameState().layoutSeed).not.toBe(questLayoutSeed(QUEST_ID, TIER_2));
 	});
 
 	it('victory on Tier 1 unlocks Tier 2 on disk for in-run players', async () => {

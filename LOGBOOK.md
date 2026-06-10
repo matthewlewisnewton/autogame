@@ -6140,7 +6140,6 @@ None blocking. All acceptance criteria are implemented and covered by tests; the
 See `nits.md` for one follow-up on tier-1 vs tier-2 currency label wording on the quest board.
 
 
-
 ## v0.353 — Server: quest-objective crystals despawn after LOOT_LIFETIME_MS — collect_items runs unwinnable after 2 minutes  (2026-06-10 04:29:31)
 
 
@@ -6162,4 +6161,50 @@ No new debug scenarios were added; existing crystal debug shortcuts deploy throu
 ## Remaining gaps
 
 None blocking. All acceptance criteria are satisfied; runtime capture is clean.
+
+
+## v0.352 — Server: SELECT_QUEST swaps layout and teleports players while lobby still renders the hub (movement freeze, booths dead)  (2026-06-10 04:27:42)
+
+
+### Layout Swap and Spawn Teleport Happen at Deploy
+PASS. Fresh deploy now applies the selected quest layout inside `checkAllReadyInner()` before assigning run spawn positions and starting the dungeon run. Existing suspended-checkpoint resume flow returns before this fresh-deploy path, so resume continues to restore its saved layout instead of regenerating.
+
+### Players Can Still Move and Use Hub Booths After Selection
+PASS. Server-side selection no longer changes player positions, and booth validation continues to use the hub anchors while requiring lobby phase. On the client, quest layout payloads received during lobby phase are cached for deployment while `gameState.layout` is kept on the hub layout and rendered geometry is not rebuilt until `startGame`.
+
+### Normal Quest Flow Still Reaches the Selected Run
+PASS. Existing socket integration coverage still launches a selected `crystal_rescue` run and verifies the run objective/loot match that quest. The new focused regression test verifies no selection-time teleport/layout swap and confirms deploy applies the selected quest seed and moves the player to a run spawn.
+
+### Design and Requirements Consistency
+PASS. The implementation preserves the documented lobby -> ready/deploy -> dungeon core loop in `game/docs/design.md`, keeps quest selection as a lobby activity, and does not regress the foundation requirements for rendering, WebSocket connection, multiplayer representation, or WASD movement synchronization. No development debug scenario was added or changed by this ticket.
+
+### Tests and Coverage
+PASS. The captured coverage run completed successfully: 117 test files passed, 1589 tests passed. The changed behavior is covered by `game/server/test/defer_quest_layout_swap.test.js`, updated quest selection integration coverage, and quest-tier gating assertions that selection previews without mutating the live layout.
+
+## Remaining gaps
+
+None.
+
+
+## v0.351 — Named rare enemy variants per quest (PSO 'The Fake in Yellow' style) with unique drops  (2026-06-10 03:48:03)
+
+### Stats Scale Per Variant Config; Regular Spawns Unaffected
+
+PASS. `spawnEnemy` applies `applyNamedRareVariant` only when a scripted spawn passes `namedRareVariant`; otherwise it follows the existing random affix variant path. Named rares set `enemy.variant = null`, scale HP/max HP and attack damage from the base enemy definition, and preserve the base enemy's other behavior fields, including Cinderghast's flying/altitude behavior. Tests verify HP/damage multipliers for all three authored variants and that normal enemies still roll affix variants when no named-rare config is supplied.
+
+### Design And Foundation Consistency
+
+PASS. The implementation fits the PSO-inspired quest identity goal in the ticket and stays within the documented multiplayer lobby/dungeon/loot loop. It does not regress the foundation requirements: the captured run rendered a Three.js scene, connected to the backend via WebSockets, showed multiplayer state, and exercised movement synchronization.
+
+### Debug Scenarios
+
+PASS. This ticket added named-rare debug shortcuts for Frostmaw, Vault Marauder, and Cinderghast. They remain behind the existing debug scenario socket gate and the client `?debugScenario=NAME` localhost path; normal gameplay does not invoke them. Each shortcut is a QA accelerator for a state reachable through normal quest selection, deployment, room traversal, and the same quest-script trigger path. The shortcuts use real quest setup, `spawnEnemies`, `startDungeonRun`, and `updateQuestScriptTriggers`; they do not replace the real quest script or drop/reward logic.
+
+### Tests And Coverage
+
+PASS. The provided coverage run reports 148 test files passed and 1991 tests passed. Coverage includes focused server tests for named-rare plumbing and all three authored quests, client visual tests, quest script schema/objective behavior, debug scenarios, and broader integration coverage.
+
+## Remaining gaps
+
+None.
 

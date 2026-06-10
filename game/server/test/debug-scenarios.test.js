@@ -28,6 +28,7 @@ import {
 	connectClient,
 	waitForEvent,
 	waitForStateUpdateWithRun,
+	waitForStateUpdateWithPlayerCurrency,
 	lobbyStateForSocket,
 	playerForSocket,
 	testGameState,
@@ -1589,7 +1590,7 @@ describe('debugScenario — fire-cavern', () => {
 		expect(player.x).toBe(startRoom.x);
 		expect(player.z).toBe(startRoom.z);
 		expect(player.y).toBe(resolveFloorY(sampleFloorY(state.layout, player.x, player.z)));
-		expect(stateUpdate.enemies.length).toBe(tier1Quest.enemyCount);
+		expect(stateUpdate.enemies.length).toBe(5);
 		const allowedTypes = new Set(getEnemyPool(EMBER_DESCENT_ID, EMBER_DESCENT_TIER_1).map((e) => e.type));
 		expect(stateUpdate.enemies.every((e) => allowedTypes.has(e.type))).toBe(true);
 	});
@@ -1830,7 +1831,7 @@ describe('debugScenario — hat-shop-currency', () => {
 		const player = playerForSocket(socket);
 		player.currency = 0;
 
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const stateUpdatePromise = waitForStateUpdateWithPlayerCurrency(socket, APPEARANCE_CHANGE_COST);
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'hat-shop-currency' });
 		const [result, snapshot] = await Promise.all([debugResultPromise, stateUpdatePromise]);

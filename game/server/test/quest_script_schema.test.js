@@ -111,7 +111,7 @@ describe('getQuestScript', () => {
   });
 
   it('returns null when script or waves are absent', () => {
-    expect(getQuestScript(getQuest('training_caverns', 1))).toBeNull();
+    expect(getQuestScript(getQuest('arena_trials', 1))).toBeNull();
     expect(getQuestScript(null)).toBeNull();
     expect(getQuestScript({ name: 'No script' })).toBeNull();
     expect(getQuestScript({ script: {} })).toBeNull();
@@ -143,9 +143,10 @@ describe('defeat_enemies scripted bypass', () => {
     expect(def.skipBulkCombatSpawn(getQuest('canyon_descent', 1))).toBe(false);
   });
 
-  it('skips bulk combat spawn for scriptedEncounters tiers without script.waves', () => {
-    expect(def.skipBulkCombatSpawn(getQuest('training_caverns', 1))).toBe(true);
+  it('skips bulk combat spawn for scripted production quest tiers', () => {
     expect(def.skipBulkCombatSpawn(getQuest('frost_crossing', 1))).toBe(true);
+    expect(def.skipBulkCombatSpawn(getQuest('training_caverns', 1))).toBe(true);
+    expect(def.skipBulkCombatSpawn(getQuest('ember_descent', 1))).toBe(true);
   });
 
   it('createObjective uses scripted spawn count and ignores enemyCount', () => {

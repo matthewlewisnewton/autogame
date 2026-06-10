@@ -1,0 +1,11 @@
+I created one sub-ticket. The fix is a single tightly-coupled change (you can't remove the layout swap + teleport from `SELECT_QUEST` without simultaneously adding the layout swap to the deploy path, or runs would generate into a stale dungeon), so splitting it would only create an intermediate broken state.
+
+Sub-ticket folder created:
+
+- `tickets/server-select-quest-swaps-layout-and-teleports-players-while-7uv1/subtickets/01-defer-quest-layout-swap-to-deploy/ticket.md`
+
+**Scope summary:**
+- `SELECT_QUEST` (`lobbyHandlers.js`) stops calling `assignRunSpawnPositions` (no teleport) and stops mutating live `state.layout` — it only records `selectedQuestId`/`Tier` and emits a non-destructive `{layout, layoutSeed}` preview (the client already caches this and keeps the hub rendered during lobby, per `applyQuestLayoutFromServer`).
+- The deploy path (`checkAllReadyInner` in `progression.js`) regenerates the quest layout before `assignRunSpawnPositions`, wired via a new `setApplyLayoutForQuest` callback (mirroring the existing `setRebuildWallColliders` pattern), guarded to the fresh-deploy branch (not the suspended-checkpoint resume).
+
+**Verification: code** — every criterion is about handler behavior, server state, call removal, and timing (whether layout/positions mutate on select vs. deploy), none of which a single happy-path screenshot run could confirm.

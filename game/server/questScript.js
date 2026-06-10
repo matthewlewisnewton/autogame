@@ -110,6 +110,7 @@ function spawnWaveEntries(waveState, scriptWave, ctx) {
     const enemy = ctx.spawnEnemy(spawn.x, spawn.z, spawn.type, undefined, {
       tier: ctx.roomTierAt(layout, spawn.x, spawn.z),
       rng: ctx.rng,
+      namedRareVariant: spawn.variant ?? undefined,
     });
     if (ctx.randomWanderTarget) {
       enemy.wanderTarget = ctx.randomWanderTarget();

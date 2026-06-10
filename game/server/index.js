@@ -388,6 +388,7 @@ const sim = require('./simulation');
 sim.setGameState(gameState, _timeouts);
 progression.initProgression({ gameState, getIo: () => io });
 progression.setRebuildWallColliders(() => rebuildWallColliders());
+progression.setApplyLayoutForQuest((state, questId, tier) => applyLayoutForQuest(state, questId, tier));
 require('./scriptedEncounters').setPassageLocksChangedCallback(() => rebuildWallColliders());
 ensureShopOffer();
 
@@ -420,6 +421,18 @@ function applyLayoutForQuest(state, questId, tier = DEFAULT_QUEST_TIER) {
   // inside withLobbyContext, because this helper is also invoked at startup/reset with bare state.
   withLobbyContext({ state }, () => rebuildWallColliders());
   console.log(`[server] Layout for quest "${questId}" tier ${normalizedTier}: seed=${seed}, profile=${profile}, rooms=${state.layout.rooms.length}`);
+}
+
+// Non-mutating sibling of applyLayoutForQuest: computes the deterministic
+// { layoutSeed, layout } for a questId+tier (same inputs the real run will use)
+// without touching any live `state`. Used by SELECT_QUEST to send a preview the
+// client can cache for deploy, while the lobby keeps rendering the hub.
+function previewLayoutForQuest(questId, tier = DEFAULT_QUEST_TIER) {
+  const normalizedTier = normalizeQuestTier(tier);
+  const profile = getLayoutProfileForQuest(questId, normalizedTier);
+  const layoutSeed = questLayoutSeed(questId, normalizedTier);
+  const layout = generateLayout(layoutSeed, profile, getLayoutGenerationOptions(questId, normalizedTier));
+  return { layoutSeed, layout };
 }
 
 // Generate dungeon layout for the default quest at startup (legacy unit-test gameState)
@@ -539,6 +552,7 @@ const DEBUG_SCENARIOS = new Set([
   'sunken-canyon-cliff-hazard',
   'frost-crossing-tier-1',
   'frost-crossing-last-enemy',
+  'frost-crossing-frostmaw',
   'training-caverns-tier-1',
   'crystal-rescue-tier-1',
   'annex-escort-tier-1',
@@ -546,6 +560,7 @@ const DEBUG_SCENARIOS = new Set([
   'passage-lock-gated',
   'escort-objective',
   'fire-cavern',
+  'ember-descent-cinderghast',
   'ember-descent-near-adds',
   'ember-descent-ember-wraith-burn',
   'ember-descent-last-enemy',
@@ -565,6 +580,7 @@ const DEBUG_SCENARIOS = new Set([
   'arena-trials-near-adds',
   'arena-trials-boss-approach',
   'arena-trials-boss-low-hp',
+  'training-caverns-vault-marauder',
   'training-caverns-tier-2',
   'training-caverns-near-adds',
   'training-caverns-boss-approach',
@@ -776,6 +792,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'arena-trials-near-adds',
   'arena-trials-boss-approach',
   'arena-trials-boss-low-hp',
+  'training-caverns-vault-marauder',
   'training-caverns-tier-2',
   'training-caverns-near-adds',
   'training-caverns-boss-approach',
@@ -797,12 +814,14 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'field-medic',
   'field-medic-spawn',
   'ember-wraith',
+  'ember-descent-cinderghast',
   'ember-descent-near-adds',
   'ember-descent-ember-wraith-burn',
   'ember-descent-last-enemy',
   'slippery-floor-lab',
   'frost-crossing-tier-1',
   'frost-crossing-last-enemy',
+  'frost-crossing-frostmaw',
   'training-caverns-tier-1',
   'crystal-rescue-tier-1',
   'annex-escort-tier-1',
@@ -1670,6 +1689,7 @@ function startServer(port) {
       lobbies,
       withLobbyContext,
       applyLayoutForQuest,
+      previewLayoutForQuest,
       ensureShopOffer,
       joinPlayerToLobby,
       joinLobbyWithPhasePolicy,

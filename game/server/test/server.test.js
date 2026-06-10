@@ -2584,6 +2584,7 @@ describe('run state', () => {
 	describe('checkRunTerminalState()', () => {
 		beforeEach(() => {
 			resetState();
+			gameState.selectedQuestId = 'arena_trials';
 			delete gameState.run;
 			vi.useFakeTimers();
 		});
@@ -5742,18 +5743,33 @@ describe('spawnEnemies() mixed pack', () => {
 		resetGameState();
 	});
 
-	it('skips bulk combat spawns for scripted default quest and spawns wave 0 on run start', () => {
+	it('produces quest.enemyCount enemies drawn from unscripted quest pools', () => {
+		gameState.selectedQuestId = 'arena_trials';
+		gameState.enemies = [];
+		spawnEnemies();
+		const quest = getQuest('arena_trials');
+		expect(gameState.enemies.length).toBe(quest.enemyCount);
+
+		const allowed = new Set(QUEST_DEFS.arena_trials.enemyPool.map(entry => entry.type));
+		for (const e of gameState.enemies) {
+			expect(allowed.has(e.type)).toBe(true);
+		}
+		expect(gameState.enemies.some(e => e.type === 'spawner')).toBe(false);
+	});
+
+	it('skips bulk combat spawns for scripted default quest and spawns run-start script wave', () => {
 		gameState.enemies = [];
 		spawnEnemies();
 		expect(gameState.enemies.length).toBe(0);
 		startDungeonRun();
-		expect(gameState.enemies.length).toBe(2);
+		expect(gameState.enemies.length).toBe(4);
 		const allowed = new Set(QUEST_DEFS[DEFAULT_QUEST_ID].enemyPool.map(entry => entry.type));
 		for (const e of gameState.enemies) {
 			expect(allowed.has(e.type)).toBe(true);
 		}
 		expect(gameState.enemies.some(e => e.type === 'miniboss')).toBe(false);
 		expect(gameState.enemies.some(e => e.type === 'spawner')).toBe(false);
+		expect(gameState.run.objective.totalEnemies).toBe(6);
 	});
 
 	it('spawns crystals without bulk combat enemies for crystal rescue', () => {
