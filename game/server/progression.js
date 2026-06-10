@@ -3516,6 +3516,7 @@ function buildWorldSnapshot(shopOffer) {
       })),
     lobby: _gameState.lobby,
     gamePhase: _gameState.gamePhase,
+    debugTimeScale: _gameState.debugTimeScale ?? 1,
     selectedQuestId: _gameState.selectedQuestId,
     selectedQuestTier: _gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER,
     run: _gameState.run,
