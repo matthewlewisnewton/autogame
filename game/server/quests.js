@@ -603,6 +603,51 @@ const QUEST_DEFS = {
       },
     },
   },
+  vault_onslaught: {
+    id: 'vault_onslaught',
+    enemyPool: [
+      { type: 'grunt', weight: 2 },
+      { type: 'skirmisher', weight: 2 },
+    ],
+    tiers: {
+      1: {
+        name: 'Vault Onslaught',
+        description: 'Face the Annex Overseer on the boss arena with two marked supports.',
+        objectiveType: 'stage_boss',
+        levelKind: 'boss_level',
+        layoutProfile: 'boss-arena',
+        unlockRequires: { questId: 'crucible_duel', tier: 1 },
+        encounter: {
+          bossType: 'annex_overseer',
+          landmark: 'arena_dais',
+          addCount: 2,
+        },
+        rewardCurrency: 16,
+        signatureCardId: 'dungeon_drake',
+        rewardCards: ['dungeon_drake', 'mana_leach'],
+        client: {
+          name: 'Rewa',
+          briefing:
+            'Vault onslaught contract. The Annex Overseer holds the boss-arena dais with two '
+            + 'marked supports — drop all three and claim sixteen stones plus the Vault Wyrm uplink.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Rewa on vault feed. Overseer and two supports on the dais — clear the marked pair before you engage.',
+          },
+          {
+            trigger: { waveCleared: 1 },
+            text: 'One support spent. Overseer is still broadcasting — finish the sweep.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Overseer down. Vault onslaught acknowledged — stones and uplink released.',
+          },
+        ],
+      },
+    },
+  },
   frost_crossing: {
     id: 'frost_crossing',
     // Signature foe that must always appear in this level's combat spawn set.

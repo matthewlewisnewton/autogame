@@ -172,6 +172,17 @@ describe('formatObjectiveSummary()', () => {
 			}),
 		).toBe('Defeat Crucible Sovereign and 2 supports');
 	});
+
+	it('summarizes vault_onslaught boss-level quests with shared templates and supports', () => {
+		expect(
+			formatObjectiveSummary({
+				id: 'vault_onslaught',
+				levelKind: 'boss_level',
+				objectiveType: 'stage_boss',
+				encounter: { bossType: 'annex_overseer', addCount: 2 },
+			}),
+		).toBe('Defeat Annex Overseer and 2 supports');
+	});
 });
 
 describe('formatRewardSummary()', () => {
