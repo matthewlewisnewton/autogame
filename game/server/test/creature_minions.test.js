@@ -302,4 +302,37 @@ describe('Bulkhead Mauler (bulkhead_mauler)', () => {
 		expect(gameState.enemies[0].hp).toBe(50);
 		expect(gameState._pendingMinionBreaths).toHaveLength(0);
 	});
+
+	it('attacks at most once per attackIntervalMs window', () => {
+		gameState.enemies.push({
+			id: 'e1',
+			x: 3,
+			z: 0,
+			hp: 200,
+			state: 'idle',
+			wanderTarget: { x: 3, z: 0 },
+		});
+		gameState.minions.push({
+			id: 'mauler-1',
+			ownerId: 'p1',
+			type: 'bulkhead_mauler',
+			x: 0,
+			z: 0,
+			hp: 100,
+			ttl: 30,
+			attackRange: 4,
+			attackConeAngle: (Math.PI * 2) / 3,
+			attackDamage: 9,
+			attackIntervalMs: 1500,
+		});
+
+		updateMinions();
+		expect(gameState._pendingMinionBreaths).toHaveLength(1);
+		expect(gameState.enemies[0].hp).toBe(191);
+
+		// Second tick within the interval should not produce another attack
+		updateMinions();
+		expect(gameState._pendingMinionBreaths).toHaveLength(1);
+		expect(gameState.enemies[0].hp).toBe(191);
+	});
 });
