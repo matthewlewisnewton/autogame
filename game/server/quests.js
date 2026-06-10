@@ -1719,7 +1719,8 @@ function listQuestVariants() {
  * `require('./users')` is resolved lazily here (mirroring
  * `listQuestVariantsForAccount` / `buildQuestUpdatePayload`) to avoid a circular
  * import at module load. A falsy/unknown `accountId` yields unlocked tier-1 nodes
- * and locked higher tiers, with no node cleared.
+ * without prerequisites, locked tier-1 nodes whose prerequisites are unmet, and
+ * locked higher tiers, with no node cleared.
  *
  * @param {string} [accountId]
  * @returns {{ nodes: Array<{ questId: string, tier: number, name: string,
