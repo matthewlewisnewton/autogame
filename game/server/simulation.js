@@ -34,6 +34,7 @@ const {
   runPlayerCount,
   SPIRE_EDGE_HAZARD_DAMAGE,
   SPIRE_EDGE_HAZARD_COOLDOWN_MS,
+  PLAYER_MOVEMENT_SAVE_DEBOUNCE_MS,
 } = require('./config');
 const { PASSAGE_WIDTH, sampleFloorY, sampleFloorSurface, DEFAULT_FLOOR_Y, resolveFloorY } = require('./dungeon');
 const { applyLeechHeal, getFrenziedCombatMultipliers, checkFrenziedTelegraph } = require('./enemyVariants');
@@ -700,14 +701,17 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
   }
 }
 
-/** Flush at most one persistence write per dirty player (called once per tick). */
+/** Flush dirty players at most once per debounce window (called once per tick). */
 function flushDirtyPlayerSaves() {
   if (!_gameState || !_savePlayerData) return;
+  const now = Date.now();
   for (const [playerId, player] of Object.entries(_gameState.players)) {
-    if (player?.persistenceDirty) {
-      player.persistenceDirty = false;
-      _savePlayerData(playerId);
-    }
+    if (!player?.persistenceDirty) continue;
+    const lastSavedAt = player.persistenceLastSavedAt || 0;
+    if (now - lastSavedAt < PLAYER_MOVEMENT_SAVE_DEBOUNCE_MS) continue;
+    player.persistenceDirty = false;
+    player.persistenceLastSavedAt = now;
+    _savePlayerData(playerId);
   }
 }
 
@@ -3205,7 +3209,7 @@ function updateMinions() {
 
       if (minion.type === 'astral_guardian' || minion.type === 'aegis_sentinel') {
         const attackDamage = minion.attackDamage != null ? minion.attackDamage : 10;
-        const attackIntervalMs = minion.attackIntervalMs || Math.floor(1000 / TICK_RATE);
+        const attackIntervalMs = minion.attackIntervalMs || 1500;
         const lastAttackAt = minion.lastAttackAt || 0;
 
         if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
@@ -3421,34 +3425,39 @@ function updateMinions() {
         const attackRange = minion.attackRange || 4;
         const attackConeAngle = minion.attackConeAngle || ((Math.PI * 2) / 3);
         const attackDamage = minion.attackDamage || 9;
+        const attackIntervalMs = minion.attackIntervalMs || 1500;
+        const lastAttackAt = minion.lastAttackAt ?? 0;
 
         if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
           if (nearestDist <= attackRange) {
-            const dist = nearestDist || 1;
-            const dirX = (nearestEnemy.x - minion.x) / dist;
-            const dirZ = (nearestEnemy.z - minion.z) / dist;
-            const { hits } = collectConeHits(
-              minion.x,
-              minion.z,
-              dirX,
-              dirZ,
-              attackRange,
-              attackConeAngle,
-              attackDamage,
-              { attackerId: minion.ownerId, originY: getEntityWorldY(minion) }
-            );
-            if (hits.length > 0) {
-              _gameState._pendingMinionBreaths.push({
-                playerId: minion.ownerId,
-                cardId: 'bulkhead_mauler',
-                specialEffect: 'shockwave_sweep',
-                origin: { x: minion.x, z: minion.z },
-                direction: { x: dirX, z: dirZ },
+            if (now - lastAttackAt >= attackIntervalMs) {
+              const dist = nearestDist || 1;
+              const dirX = (nearestEnemy.x - minion.x) / dist;
+              const dirZ = (nearestEnemy.z - minion.z) / dist;
+              const { hits } = collectConeHits(
+                minion.x,
+                minion.z,
+                dirX,
+                dirZ,
                 attackRange,
                 attackConeAngle,
-                hits,
-                minionId: minion.id,
-              });
+                attackDamage,
+                { attackerId: minion.ownerId, originY: getEntityWorldY(minion) }
+              );
+              if (hits.length > 0) {
+                minion.lastAttackAt = now;
+                _gameState._pendingMinionBreaths.push({
+                  playerId: minion.ownerId,
+                  cardId: 'bulkhead_mauler',
+                  specialEffect: 'shockwave_sweep',
+                  origin: { x: minion.x, z: minion.z },
+                  direction: { x: dirX, z: dirZ },
+                  attackRange,
+                  attackConeAngle,
+                  hits,
+                  minionId: minion.id,
+                });
+              }
             }
           } else {
             moveEntityToward(minion, nearestEnemy, MINION_CHASE_SPEED_GRUNT * 0.75 * dt);

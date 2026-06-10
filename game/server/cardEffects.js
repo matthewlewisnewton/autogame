@@ -237,7 +237,7 @@ function applyAstralShieldCast(ctx) {
     maxTtl: minionTtl,
     createdAt: now,
     attackDamage: cardDef.attackDamage != null ? cardDef.attackDamage : 10,
-    attackIntervalMs: cardDef.attackIntervalMs || Math.floor(1000 / TICK_RATE),
+    attackIntervalMs: cardDef.attackIntervalMs || 1500,
     lastAttackAt: 0,
   };
   if (cardDef.taunt) {

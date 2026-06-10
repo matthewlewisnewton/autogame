@@ -3,6 +3,7 @@
 // (id → THREE.Object3D). Shared by renderer.js and the per-domain sync modules.
 // Moved verbatim from renderer.js — logic unchanged.
 
+import { disposeMeshTreeSafe } from '../models.js';
 import { getScene } from './rendererState.js';
 
 /**
@@ -17,15 +18,7 @@ export function disposeOne(map, id, targetScene, skipDispose) {
 	if (!mesh) return;
 	if (targetScene) targetScene.remove(mesh);
 	if (!skipDispose) {
-		if (mesh.traverse) {
-			mesh.traverse((child) => {
-				if (child.geometry) child.geometry.dispose();
-				if (child.material) child.material.dispose();
-			});
-		} else {
-			if (mesh.geometry) mesh.geometry.dispose();
-			if (mesh.material) mesh.material.dispose();
-		}
+		disposeMeshTreeSafe(mesh);
 	}
 	delete map[id];
 }

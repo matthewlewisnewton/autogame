@@ -1,0 +1,5 @@
+Completed the senior review and wrote it to `tickets/client-enemy-windup-damage-reveal-variant-emissive-vfx-are-n-9f8q/round-1/review.md`.
+
+Final verdict: `VERDICT: PASS`
+
+No blocking gaps or nits were found, so I did not create `gaps.md` or `nits.md`.

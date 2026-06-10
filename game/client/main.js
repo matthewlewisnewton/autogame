@@ -144,6 +144,7 @@ import {
 	updateHealthBarMesh as rendererUpdateHealthBarMesh,
 	applyWindupFlash as rendererApplyWindupFlash,
 	applyRevealHighlight as rendererApplyRevealHighlight,
+	resolveEnemyEmissive as rendererResolveEnemyEmissive,
 	spawnAttackEffect as rendererSpawnAttackEffect,
 	spawnSummonEffect as rendererSpawnSummonEffect,
 	spawnDivineGraceEffect as rendererSpawnDivineGraceEffect,
@@ -176,6 +177,7 @@ import {
 	getPickedUpLootIds,
 	pruneLootPickupAttempts,
 	getWindupFlashing,
+	getEnemyDamageFlash,
 	getPlayerCardWindupFlashing,
 	triggerDashVFX,
 	triggerHealPulseVFX,
@@ -5009,6 +5011,7 @@ window.formatObjectiveSummary = formatObjectiveSummary;
 window.formatRewardSummary = formatRewardSummary;
 window.renderQuestBoard = renderQuestBoard;
 window.__windupFlashing = () => getWindupFlashing();
+window.__enemyDamageFlash = () => getEnemyDamageFlash();
 window.__pickedUpLootIds = () => getPickedUpLootIds();
 window.__enemiesMeshes = () => getMeshMaps().enemiesMeshes;
 window.__getEnemyRenderScaleForTest = (enemyId) => {
@@ -5020,6 +5023,7 @@ window.__getEnemyRenderScaleForTest = (enemyId) => {
 window.__iceBallMeshes = () => getMeshMaps().iceBallMeshes;
 window.applyWindupFlash = rendererApplyWindupFlash;
 window.applyRevealHighlight = rendererApplyRevealHighlight;
+window.resolveEnemyEmissive = rendererResolveEnemyEmissive;
 window.__useCardForTest = useCard;
 window.__emitUseCardForTest = (cardId, slotIndex = null) => {
 	if (!socket || !cardId) return false;

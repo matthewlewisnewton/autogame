@@ -1,0 +1,13 @@
+Broke the top-level ticket into **3 sub-tickets** in dependency order:
+
+1. **01-debounce-flush-dirty-saves** — Core debounce in `flushDirtyPlayerSaves()` plus config constant and unit test updates
+2. **02-lifecycle-and-shutdown-saves** — Immediate saves on disconnect/leave, `persistenceLastSavedAt` on direct `savePlayerData`, and full flush on SIGTERM/SIGINT
+3. **03-debounce-persistence-tests** — Integration tests proving bounded writes under continuous movement and updated save-trigger tests
+
+All use **code** verification (timing, save counts, shutdown behavior — not purely visual).
+
+**Created sub-ticket paths:**
+
+- `/home/matt/workspace/.autogame-worktrees/server-player-movement-triggers-up-to-20-synchronous-disk-wr-hlbd/tickets/server-player-movement-triggers-up-to-20-synchronous-disk-wr-hlbd/subtickets/01-debounce-flush-dirty-saves/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/server-player-movement-triggers-up-to-20-synchronous-disk-wr-hlbd/tickets/server-player-movement-triggers-up-to-20-synchronous-disk-wr-hlbd/subtickets/02-lifecycle-and-shutdown-saves/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/server-player-movement-triggers-up-to-20-synchronous-disk-wr-hlbd/tickets/server-player-movement-triggers-up-to-20-synchronous-disk-wr-hlbd/subtickets/03-debounce-persistence-tests/ticket.md`

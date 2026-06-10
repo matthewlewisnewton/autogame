@@ -6140,6 +6140,29 @@ None blocking. All acceptance criteria are implemented and covered by tests; the
 See `nits.md` for one follow-up on tier-1 vs tier-2 currency label wording on the quest board.
 
 
+## v0.358 — Client: disposeOne/disposeAvatar dispose geometry/materials shared with the glTF model cache  (2026-06-10 06:30:33)
+
+PASS. Cosmetic preview behavior is covered through its existing `disposeAvatar()` path, so preview rebuilds avoid re-uploading shared glTF buffers without adding a separate disposal policy.
+
+## Design and requirements
+
+PASS. The change is client-side rendering resource management only. It does not alter the documented lobby/dungeon/combat loop, server-client state flow, multiplayer visualization, or movement synchronization requirements.
+
+## Code quality
+
+PASS. The implementation is scoped to the model loader and disposal helpers, keeps the model cache behavior intact, and avoids broad renderer refactors. The safe disposer preserves the previous cleanup behavior for procedural meshes and material arrays while protecting shared glTF resources.
+
+Coverage visibility shows `39` test files and `428` tests passing. The log includes expected mocked-model-load warnings in jsdom tests, but the live capture console is clean.
+
+## Debug scenarios
+
+No development `?debugScenario=` shortcut was added or changed by this ticket.
+
+## Remaining gaps
+
+None.
+
+
 ## v0.357 — Wave-gated doors: blocking gates in passages that unlock when a scripted wave is cleared  (2026-06-10 06:06:37)
 
 ### A scripted quest can chain room A wave -> gate to room B opens -> room B wave -> gate to treasure room.
@@ -6291,6 +6314,73 @@ PASS. The provided coverage run reports 148 test files passed and 1991 tests pas
 ## Remaining gaps
 
 None.
+
+## v0.359 — Client: enemy windup/damage/reveal/variant emissive VFX are no-ops on modeled enemies and self-cancelling on procedural ones  (2026-06-10 07:01:40)
+
+Criterion: Windup flash, damage flash, reveal glow, and variant tints are visible on modeled `.glb` enemies.
+
+Finding: PASS. `attachRegistryModel()` now retargets enemy hosts after successful glTF load by hiding the procedural material, adding the loaded model, and assigning `host.userData.bodyMesh` to a cloned visible glTF body material. Enemy color/emissive bookkeeping is copied from the loaded body material or the procedural palette fallback, so the existing VFX paths resolve through `resolveBodyMesh()` onto the visible model instead of the hidden procedural mesh. The shipped enemy models (`grunt`, `skirmisher`, `miniboss`, `spawner`) load as skinned meshes with normal single `MeshStandardMaterial` surfaces, matching the resolver's material expectations.
+
+Criterion: A windup flash is not cleared by the reveal-highlight pass.
+
+Finding: PASS. `applyWindupFlash()`, `applyRevealHighlight()`, and `applyVariantEmissiveTint()` no longer compete through direct emissive writes. `resolveEnemyEmissive()` is called once per enemy sync and applies priority in the requested order: damage flash, windup, reveal, variant tint, then base emissive. The added tests cover windup surviving a non-reveal pass, damage flash beating windup, reveal beating leeching tint, and windup restoration after damage flash expiry.
+
+Criterion: Tests cover the priority resolver.
+
+Finding: PASS. `client/test/renderer-enemy-emissive-priority.test.js` directly exercises the new resolver priorities, and `client/test/models-registry.test.js` covers successful enemy glTF retargeting and failure fallback. The provided coverage run reports `41` test files and `587` tests passing.
+
+## Design and requirements consistency
+
+The implementation is client-renderer-only and preserves the documented multiplayer dungeon loop, active combat model, and foundational requirements for Three.js rendering, WebSocket connectivity, player visualization, and movement synchronization. It does not add or change a `?debugScenario=` shortcut, server validation, persistence, or net-replication behavior.
+
+## Remaining gaps
+
+None blocking. The implementation fully addresses the reported flash-close bug with appropriate tests and clean runtime capture.
+
+## v0.360 — Server: bulkhead_mauler and astral guardian minions attack every tick; mauler broadcasts CARD_USED 20x/sec  (2026-06-10 07:09:48)
+
+## Debug scenarios
+
+This ticket did not add or change `?debugScenario=` shortcuts. Nothing to gate-check.
+
+## Code quality
+
+Implementation is focused, consistent with neighboring minion branches, and covered by targeted unit tests. No dead code or obvious logic bugs found in the changed paths.
+
+Minor stale comments/docs remain in validation/sync helpers (see nits backlog); none affect behavior.
+
+## Integration notes
+
+Two sub-tickets landed cleanly with no merge conflicts in `game/`. Changes are limited to server simulation, card spawn defaults, shared card stats, and tests — no client/renderer edits required for this server-side cadence fix.
+
+The round-6 capture exercises generic gameplay (lobby → deploy → movement → dodge) rather than spawning mauler/guardian minions, but unit tests directly prove the interval gates. Combined with a clean runtime capture, that is sufficient evidence for this ticket scope.
+
+## Remaining gaps
+
+None. All acceptance criteria are satisfied and the captured run is healthy.
+
+
+## v0.361 — Server: player movement triggers up to 20 synchronous disk writes/sec per player on the game-loop thread  (2026-06-10 07:39:47)
+
+### Disconnect, leave, periodic, and shutdown persistence
+
+PASS. The lifecycle paths still bypass the movement debounce by calling `savePlayerData()` directly for soft disconnect, eviction, and explicit lobby leave. The existing 30s periodic save interval still calls `saveAllPlayersInAllLobbies()`, and SIGINT/SIGTERM shutdown now invokes the same all-lobby save before closing the HTTP server, so dirty players inside the debounce window are persisted on clean shutdown.
+
+### Test coverage
+
+PASS. The ticket adds focused debounce coverage in `persistence_save_debounce.test.js`, updates movement/persistence trigger coverage for the debounce window, and adds a shutdown flush regression test. The captured coverage run reports `133` test files and `1973` tests passed, including the new persistence debounce and shutdown cases.
+
+### Design and foundation consistency
+
+PASS. The change is server-side persistence plumbing only. It does not alter the documented lobby/dungeon core loop, multiplayer rendering, WebSocket movement synchronization, combat, floor sampling, or foundation requirements. The fallback smoke capture exercised lobby join, ready/deploy, movement, and key-item cooldown without visual or runtime regression.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=NAME` URL shortcut. Existing test-only socket debug scenario usage remains outside normal captured gameplay; the capture itself used `debugScenario: null`.
+
+## Remaining gaps
+
+No blocking gaps found.
 
 ## v0.362 — Content: rework crystal_rescue, frost_crossing, training_caverns as scripted PSO-style scenarios  (2026-06-10 08:30:15)
 

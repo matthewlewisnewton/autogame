@@ -56,11 +56,33 @@ import {
 	spawnLightningArc,
 	spawnChainLightningEffect,
 	windupFlashing,
+	enemyDamageFlash,
 	lastCardHitTime,
 	createEnemyNameplate,
 	disposeEnemyNameplate,
 	NAMEPLATE_OFFSET_Y,
+	resolveBodyMesh,
 } from '../renderer.js';
+
+const WINDUP_EMISSIVE_COLOR = 0xff3333;
+const WINDUP_EMISSIVE_INTENSITY = 1.5;
+
+/** Last per-enemy snapshot used when the resolver runs outside syncEnemyMeshes. */
+const lastEnemyEmissiveContext = {};
+
+/** Read `_orig*` bookkeeping from the body mesh when retargeted, else the host. */
+function enemyOrigBookkeeping(host) {
+	const body = resolveBodyMesh(host);
+	const source = body && body !== host ? body : host;
+	return {
+		color: source._origColor ?? host._origColor,
+		emissive: source._origEmissive ?? host._origEmissive ?? 0x000000,
+		emissiveIntensity:
+			source._origEmissiveIntensity != null
+				? source._origEmissiveIntensity
+				: (host._origEmissiveIntensity != null ? host._origEmissiveIntensity : 0),
+	};
+}
 
 /** enemyId → hp from previous frame (private enemy-sync state). */
 const previousEnemyHp = {};
@@ -230,26 +252,22 @@ export function updateEnemyShieldBarMesh(enemyId, enemy) {
 }
 
 /**
- * Apply or remove the windup emissive flash on an enemy mesh.
+ * Track windup emissive state for an enemy (actual emissive is applied by
+ * `resolveEnemyEmissive` each frame).
  * @param {string} enemyId
  * @param {boolean} isWindup
  */
 export function applyWindupFlash(enemyId, isWindup) {
-	const mesh = enemiesMeshes[enemyId];
-	if (!mesh || !mesh.material || !mesh.material.emissive) return;
+	const host = enemiesMeshes[enemyId];
+	const target = resolveBodyMesh(host);
+	if (!target || !target.material || !target.material.emissive) return;
 
 	if (isWindup) {
 		if (!windupFlashing.has(enemyId)) {
-			mesh.material.emissive.set(0xff3333);
-			mesh.material.emissiveIntensity = 1.5;
 			windupFlashing.add(enemyId);
 		}
-	} else {
-		if (windupFlashing.has(enemyId)) {
-			mesh.material.emissive.set(0x000000);
-			mesh.material.emissiveIntensity = 0;
-			windupFlashing.delete(enemyId);
-		}
+	} else if (windupFlashing.has(enemyId)) {
+		windupFlashing.delete(enemyId);
 	}
 }
 
@@ -259,23 +277,69 @@ const REVEAL_GLOW_COLOR = 0xffaa00;
 const REVEAL_GLOW_INTENSITY = 1.0;
 
 /**
- * Apply or remove the amber emissive glow on a revealed enemy mesh.
- * Reveal glow takes priority over windup flash and damage flash.
+ * Record reveal eligibility for the emissive resolver (no direct material writes).
  * @param {string} enemyId
  * @param {object} enemy - { revealedUntil }
  */
 export function applyRevealHighlight(enemyId, enemy) {
-	const mesh = enemiesMeshes[enemyId];
-	if (!mesh || !mesh.material || !mesh.material.emissive) return;
-
-	if (enemy.revealedUntil && Date.now() < enemy.revealedUntil) {
-		mesh.material.emissive.set(REVEAL_GLOW_COLOR);
-		mesh.material.emissiveIntensity = REVEAL_GLOW_INTENSITY;
-	} else {
-		mesh.material.emissive.set(mesh._origEmissive || 0x000000);
-		mesh.material.emissiveIntensity =
-			(mesh._origEmissiveIntensity != null ? mesh._origEmissiveIntensity : 0);
+	if (enemy) {
+		lastEnemyEmissiveContext[enemyId] = enemy;
 	}
+}
+
+/**
+ * Pick the highest-priority active emissive effect for an enemy mesh.
+ * Priority: damage flash > windup > reveal > variant emissive tint > base.
+ * @param {string} enemyId
+ * @param {object | null} enemy - current enemy snapshot (optional outside sync)
+ */
+export function resolveEnemyEmissive(enemyId, enemy) {
+	if (enemy) {
+		lastEnemyEmissiveContext[enemyId] = enemy;
+	} else {
+		enemy = lastEnemyEmissiveContext[enemyId];
+	}
+
+	const host = enemiesMeshes[enemyId];
+	const target = resolveBodyMesh(host);
+	if (!target || !target.material || !target.material.emissive) return;
+
+	const orig = enemyOrigBookkeeping(host);
+	const now = performance.now();
+
+	const damageSlot = enemyDamageFlash.get(enemyId);
+	if (damageSlot && now < damageSlot.until) {
+		target.material.emissive.set(damageSlot.color);
+		target.material.emissiveIntensity = 1.5;
+		return;
+	}
+	if (damageSlot && now >= damageSlot.until) {
+		enemyDamageFlash.delete(enemyId);
+	}
+
+	const windup = windupFlashing.has(enemyId) || enemy?.attackState === 'windup';
+	if (windup) {
+		target.material.emissive.set(WINDUP_EMISSIVE_COLOR);
+		target.material.emissiveIntensity = WINDUP_EMISSIVE_INTENSITY;
+		return;
+	}
+
+	const revealed = enemy?.revealedUntil && Date.now() < enemy.revealedUntil;
+	if (revealed) {
+		target.material.emissive.set(REVEAL_GLOW_COLOR);
+		target.material.emissiveIntensity = REVEAL_GLOW_INTENSITY;
+		return;
+	}
+
+	const tint = enemy?.variant ? VARIANT_MESH_TINTS[enemy.variant] : null;
+	if (tint) {
+		target.material.emissive.set(tint.color);
+		target.material.emissiveIntensity = tint.intensity;
+		return;
+	}
+
+	target.material.emissive.set(orig.emissive);
+	target.material.emissiveIntensity = orig.emissiveIntensity;
 }
 
 // ── Named-rare visuals (body tint, scale, floating nameplate) ──
@@ -299,14 +363,18 @@ export function parseNamedRareTintHex(tint) {
  * @param {object} enemy - { namedRare }
  */
 export function applyNamedRareTint(enemyId, enemy) {
-	const mesh = enemiesMeshes[enemyId];
-	if (!mesh || !mesh.material || !mesh.material.color) return;
+	const host = enemiesMeshes[enemyId];
+	const target = resolveBodyMesh(host);
+	if (!target || !target.material || !target.material.color) return;
 
 	const tintHex = enemy?.namedRare?.tint ? parseNamedRareTintHex(enemy.namedRare.tint) : null;
 	if (tintHex != null) {
-		mesh.material.color.setHex(tintHex);
-	} else if (mesh._origColor != null) {
-		mesh.material.color.setHex(mesh._origColor);
+		target.material.color.setHex(tintHex);
+	} else {
+		const orig = enemyOrigBookkeeping(host);
+		if (orig.color != null) {
+			target.material.color.setHex(orig.color);
+		}
 	}
 }
 
@@ -420,15 +488,19 @@ export function variantMarkerColor(variant) {
  * @param {object} enemy - { variant }
  */
 export function applyEnemyVariantTint(enemyId, enemy) {
-	const mesh = enemiesMeshes[enemyId];
-	if (!mesh || !mesh.material || !mesh.material.color) return;
+	const host = enemiesMeshes[enemyId];
+	const target = resolveBodyMesh(host);
+	if (!target || !target.material || !target.material.color) return;
 
 	if (enemy && enemy.variant === 'warded') {
-		mesh.material.color.setHex(WARDED_TINT);
+		target.material.color.setHex(WARDED_TINT);
 	} else if (enemy && enemy.variant === 'frenzied') {
-		mesh.material.color.setHex(FRENZIED_TINT);
-	} else if (mesh._origColor != null) {
-		mesh.material.color.setHex(mesh._origColor);
+		target.material.color.setHex(FRENZIED_TINT);
+	} else {
+		const orig = enemyOrigBookkeeping(host);
+		if (orig.color != null) {
+			target.material.color.setHex(orig.color);
+		}
 	}
 }
 
@@ -482,28 +554,13 @@ export function applyVariantMarker(enemyId, enemy) {
 }
 
 /**
- * Apply or remove a per-variant emissive tint on the enemy mesh. Reveal glow and
- * windup flash take priority; when neither is active, leeching enemies get a
- * subtle teal tint and all others restore `_origEmissive` bookkeeping.
+ * Record variant emissive tint eligibility for the resolver (no direct writes).
  * @param {string} enemyId
  * @param {object} enemy - { variant, revealedUntil, attackState }
  */
 export function applyVariantEmissiveTint(enemyId, enemy) {
-	const mesh = enemiesMeshes[enemyId];
-	if (!mesh || !mesh.material || !mesh.material.emissive) return;
-
-	const revealed = enemy.revealedUntil && Date.now() < enemy.revealedUntil;
-	const windup = enemy.attackState === 'windup' || windupFlashing.has(enemyId);
-	if (revealed || windup) return;
-
-	const tint = enemy.variant ? VARIANT_MESH_TINTS[enemy.variant] : null;
-	if (tint) {
-		mesh.material.emissive.set(tint.color);
-		mesh.material.emissiveIntensity = tint.intensity;
-	} else {
-		mesh.material.emissive.set(mesh._origEmissive || 0x000000);
-		mesh.material.emissiveIntensity =
-			(mesh._origEmissiveIntensity != null ? mesh._origEmissiveIntensity : 0);
+	if (enemy) {
+		lastEnemyEmissiveContext[enemyId] = enemy;
 	}
 }
 
@@ -833,7 +890,7 @@ export function syncEnemyMeshes(gs) {
 						z: enemy.z - nearestMinion.z,
 					}
 					: { x: 1, z: 0 };
-				flashMesh(enemiesMeshes[enemy.id], vfx.enemyFlash, 150);
+				flashMesh(enemiesMeshes[enemy.id], vfx.enemyFlash, 150, enemy.id);
 				vfx.spawn({ minion: nearestMinion, enemy, renderY, dir });
 
 				if (nearestMinion && minionsMeshes[nearestMinion.id]) {
@@ -886,6 +943,8 @@ export function syncEnemyMeshes(gs) {
 			applyVariantEmissiveTint(enemy.id, enemy);
 		}
 
+		resolveEnemyEmissive(enemy.id, enemy);
+
 		// ── Frenzied enrage telegraph ring ──
 		applyFrenziedTelegraphRing(enemy.id, enemy);
 
@@ -926,6 +985,16 @@ export function syncEnemyMeshes(gs) {
 	for (const id of [...windupFlashing]) {
 		if (!currentEnemyIds.has(id)) {
 			windupFlashing.delete(id);
+		}
+	}
+	for (const id of enemyDamageFlash.keys()) {
+		if (!currentEnemyIds.has(id)) {
+			enemyDamageFlash.delete(id);
+		}
+	}
+	for (const id of Object.keys(lastEnemyEmissiveContext)) {
+		if (!currentEnemyIds.has(id)) {
+			delete lastEnemyEmissiveContext[id];
 		}
 	}
 }

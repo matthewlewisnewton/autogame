@@ -1,0 +1,9 @@
+Broke the top-level ticket into **2 sub-tickets** in dependency order:
+
+1. `/home/matt/workspace/.autogame-worktrees/client-enemy-windup-damage-reveal-variant-emissive-vfx-are-n-9f8q/tickets/client-enemy-windup-damage-reveal-variant-emissive-vfx-are-n-9f8q/subtickets/01-enemy-gltf-body-retarget/ticket.md`
+   - Retarget enemy `userData.bodyMesh` to the loaded glTF mesh (mirroring the player fix) and route all tint/flash helpers through `resolveBodyMesh` so VFX hit the visible model.
+
+2. `/home/matt/workspace/.autogame-worktrees/client-enemy-windup-damage-reveal-variant-emissive-vfx-are-n-9f8q/tickets/client-enemy-windup-damage-reveal-variant-emissive-vfx-are-n-9f8q/subtickets/02-enemy-emissive-priority-resolver/ticket.md`
+   - Replace competing per-frame emissive writers with a single priority resolver (damage flash > windup > reveal > variant tint > base) and add unit tests for the ordering.
+
+Both use **code** verification. No existing sub-ticket folders were present to retire.

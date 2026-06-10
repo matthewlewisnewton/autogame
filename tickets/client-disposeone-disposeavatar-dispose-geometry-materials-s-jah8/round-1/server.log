@@ -1,0 +1,14 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/client-disposeone-disposeavatar-dispose-geometry-materials-s-jah8/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/client-disposeone-disposeavatar-dispose-geometry-materials-s-jah8/game/data
+Server listening on port 3002
+Player connected: socket=TtFDS8NyH3d3GtFNAAAB, playerId=620b56d6-034b-448a-b9a5-9da22e3fe6fd
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=tLug2JovrExqGmwxAAAD, playerId=3e141bb5-b4a5-4f52-b764-6570aa53b0d9
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: TtFDS8NyH3d3GtFNAAAB
+Player disconnected: tLug2JovrExqGmwxAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

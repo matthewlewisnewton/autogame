@@ -94,7 +94,7 @@ import {
 } from './lockOn.js';
 import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
 import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled, getAccountProfile } from './settings.js';
-import { MODEL_REGISTRY, loadModel, modelPathFor } from './models.js';
+import { MODEL_REGISTRY, loadModel, modelPathFor, disposeMeshTreeSafe } from './models.js';
 import { getCardDef } from './cards.js';
 import { getAccentHex } from './cardRenderers.js';
 import eventsCatalog from '../shared/events.json' with { type: 'json' };
@@ -150,6 +150,7 @@ import {
 	applyNamedRareTint,
 	applyNamedRareScale,
 	applyEnemyNameplate,
+	resolveEnemyEmissive,
 } from './renderer/enemySync.js';
 
 // Re-export the relocated helpers + scene accessor so existing importers that
@@ -181,6 +182,7 @@ export {
 	applyNamedRareTint,
 	applyNamedRareScale,
 	applyEnemyNameplate,
+	resolveEnemyEmissive,
 };
 import {
 	syncMinionMeshes,
@@ -250,6 +252,8 @@ const PHASE_STEP_RANGE = 6; // metres — must match server KEY_ITEM_DEFS.phase_
 let phaseStepTargetId = null;
 let phaseStepAllyRing = null;
 export const windupFlashing = new Set(); // enemy ids currently showing windup emissive (read by enemySync.js)
+/** @type {Map<string, { until: number, color: number }>} enemy damage-flash slots for emissive resolver */
+export const enemyDamageFlash = new Map();
 // Minion summon-in scale state (seenMinionIds / minionSpawnTimes /
 // minionBaseScales) now lives in ./renderer/minionSync.js.
 // Telepipe portal state (telepipeMesh / telepipeParticles / telepipeShimmerPhase)
@@ -794,6 +798,8 @@ export function attachRegistryModel(key, host) {
 				// Seat the equipped key-item prop on a spine bone, built here AFTER
 				// the procedural snapshot so the body-bone prop is left visible.
 				attachGltfKeyItemProp(host, model);
+			} else if (ENEMY_GEOMETRY[key]) {
+				retargetEnemyBodyMesh(host, model);
 			}
 		})
 		.catch((err) => {
@@ -849,6 +855,83 @@ function retargetPlayerBodyMesh(host, model) {
 	if (mat && mat.color && mat.color.getHex) {
 		host.userData.baseColor = mat.color.getHex();
 	}
+}
+
+/**
+ * Locate the body mesh inside a loaded enemy glTF — preferring `SkinnedMesh`,
+ * else the first mesh with a material — so runtime tint/flash land on the
+ * visible model surface.
+ * @param {THREE.Object3D} model
+ * @returns {THREE.Mesh|null}
+ */
+function findEnemyBodyMesh(model) {
+	let skinned = null;
+	let anyMesh = null;
+	model.traverse((node) => {
+		if (!node.isMesh || !node.material) return;
+		if (!anyMesh) anyMesh = node;
+		if (node.isSkinnedMesh && !skinned) skinned = node;
+	});
+	return skinned || anyMesh;
+}
+
+/**
+ * Point an enemy host's `userData.bodyMesh` at the loaded glTF body mesh so
+ * tint/flash VFX act on the visible model instead of the hidden procedural
+ * primitive. The body material is cloned per instance. `_orig*` bookkeeping is
+ * taken from the loaded material when present, otherwise from the procedural
+ * snapshot (type palette emissive defaults).
+ * @param {THREE.Object3D} host
+ * @param {THREE.Object3D} model
+ */
+function retargetEnemyBodyMesh(host, model) {
+	const bodyMesh = findEnemyBodyMesh(model);
+	if (!bodyMesh) return;
+
+	const paletteColor = host._origColor;
+	const paletteEmissive = host._origEmissive != null ? host._origEmissive : 0x000000;
+	const paletteEmissiveIntensity =
+		host._origEmissiveIntensity != null ? host._origEmissiveIntensity : 0;
+
+	if (bodyMesh.material) {
+		bodyMesh.material = Array.isArray(bodyMesh.material)
+			? bodyMesh.material.map((m) => m.clone())
+			: bodyMesh.material.clone();
+	}
+
+	host.userData.bodyMesh = bodyMesh;
+
+	const mat = Array.isArray(bodyMesh.material) ? bodyMesh.material[0] : bodyMesh.material;
+	if (!mat) return;
+
+	if (mat.color && mat.color.getHex) {
+		bodyMesh._origColor = mat.color.getHex();
+	} else if (paletteColor != null) {
+		bodyMesh._origColor = paletteColor;
+	}
+
+	const loadedEmissive =
+		mat.emissive && mat.emissive.getHex ? mat.emissive.getHex() : 0x000000;
+	const loadedIntensity = mat.emissiveIntensity ?? 0;
+	const hasLoadedEmissive =
+		mat.emissive != null && (loadedEmissive !== 0x000000 || loadedIntensity > 0);
+
+	if (hasLoadedEmissive) {
+		bodyMesh._origEmissive = loadedEmissive;
+		bodyMesh._origEmissiveIntensity = loadedIntensity;
+	} else {
+		bodyMesh._origEmissive = paletteEmissive;
+		bodyMesh._origEmissiveIntensity = paletteEmissiveIntensity;
+		if (mat.emissive && mat.emissive.set) {
+			mat.emissive.set(paletteEmissive);
+		}
+		mat.emissiveIntensity = paletteEmissiveIntensity;
+	}
+
+	// Keep host-level bookkeeping in sync for restore paths that still read the host.
+	host._origColor = bodyMesh._origColor;
+	host._origEmissive = bodyMesh._origEmissive;
+	host._origEmissiveIntensity = bodyMesh._origEmissiveIntensity;
 }
 
 // Desired world-space scale and seating for a hat worn on the loaded glTF head.
@@ -1752,6 +1835,14 @@ export function getWindupFlashing() {
 }
 
 /**
+ * Enemy ids with an active damage-flash emissive slot (read by tests / harness).
+ * @returns {Map<string, { until: number, color: number }>}
+ */
+export function getEnemyDamageFlash() {
+	return enemyDamageFlash;
+}
+
+/**
  * Player ids currently showing card-windup emissive (weapon charge telegraph).
  * @returns {Set<string>}
  */
@@ -2652,7 +2743,7 @@ export const __testOnly = {
  * @param {THREE.Object3D|null|undefined} obj
  * @returns {THREE.Mesh|null}
  */
-function resolveBodyMesh(obj) {
+export function resolveBodyMesh(obj) {
 	if (!obj) return null;
 	if (obj.userData && obj.userData.bodyMesh) return obj.userData.bodyMesh;
 	return obj;
@@ -2664,13 +2755,7 @@ function resolveBodyMesh(obj) {
  * @param {THREE.Object3D} obj
  */
 export function disposeAvatar(obj) {
-	if (!obj) return;
-	obj.traverse((node) => {
-		if (node.isMesh) {
-			if (node.geometry) node.geometry.dispose();
-			if (node.material) node.material.dispose();
-		}
-	});
+	disposeMeshTreeSafe(obj);
 }
 
 // ── Nameplate sprite helpers ──
@@ -2789,23 +2874,53 @@ export function disposeEnemyNameplate(enemyId) {
 // ── Flash mesh helper ──
 
 /**
+ * Resolve an enemy id from a host mesh reference (for damage-flash routing).
+ * @param {THREE.Object3D} mesh
+ * @returns {string | null}
+ */
+function findEnemyIdForMesh(mesh) {
+	if (!mesh) return null;
+	for (const [id, host] of Object.entries(enemiesMeshes)) {
+		if (host === mesh || resolveBodyMesh(host) === mesh) return id;
+	}
+	return null;
+}
+
+/**
  * Flash a mesh by setting its material emissive to a bright color,
  * then restoring the original emissive/intensity after `durationMs`.
+ * Enemy meshes route through the per-enemy emissive resolver instead of
+ * capturing/restoring emissive directly (avoids racing windup/reveal).
  * @param {THREE.Mesh} mesh
  * @param {number} color - hex color (e.g. 0xffffff)
  * @param {number} durationMs - how long the flash lasts
+ * @param {string} [enemyId] - when flashing an enemy, registers damage-flash priority
  */
-export function flashMesh(mesh, color, durationMs) {
+export function flashMesh(mesh, color, durationMs, enemyId) {
 	// Accept either an avatar group (flash its body mesh) or a bare mesh.
 	const target = resolveBodyMesh(mesh);
 	if (!target || !target.material) return;
 
-	// Save original emissive state
+	const resolvedEnemyId = enemyId ?? findEnemyIdForMesh(mesh);
+	if (resolvedEnemyId != null) {
+		const until = performance.now() + durationMs;
+		enemyDamageFlash.set(resolvedEnemyId, { until, color });
+		resolveEnemyEmissive(resolvedEnemyId, null);
+		setTimeout(() => {
+			const slot = enemyDamageFlash.get(resolvedEnemyId);
+			if (slot && performance.now() >= slot.until) {
+				enemyDamageFlash.delete(resolvedEnemyId);
+			}
+			resolveEnemyEmissive(resolvedEnemyId, null);
+		}, durationMs);
+		return;
+	}
+
+	// Non-enemy meshes: legacy direct flash + restore
 	const mat = target.material;
 	const origEmissive = mat.emissive ? (mat.emissive.getHex ? mat.emissive.getHex() : 0x000000) : 0x000000;
 	const origIntensity = mat.emissiveIntensity || 0;
 
-	// Apply flash
 	if (mat.emissive && mat.emissive.set) {
 		mat.emissive.set(color);
 	} else {
@@ -2813,7 +2928,6 @@ export function flashMesh(mesh, color, durationMs) {
 	}
 	mat.emissiveIntensity = 1.5;
 
-	// Restore after duration
 	setTimeout(() => {
 		if (mat.emissive && mat.emissive.set) {
 			mat.emissive.set(origEmissive);

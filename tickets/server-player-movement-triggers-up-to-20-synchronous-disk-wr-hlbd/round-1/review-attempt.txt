@@ -1,0 +1,5 @@
+Wrote the final review to `tickets/server-player-movement-triggers-up-to-20-synchronous-disk-wr-hlbd/round-1/review.md`.
+
+Verdict: `VERDICT: PASS`
+
+No blocking gaps found, so I did not create `gaps.md`. No nits backlog was needed.

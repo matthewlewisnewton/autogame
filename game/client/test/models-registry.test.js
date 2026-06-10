@@ -19,11 +19,20 @@ const PROCEDURAL_ONLY_BOSSES = ['annex_overseer', 'arena_champion', 'spire_warde
 const gltfLoadMock = vi.hoisted(() => vi.fn());
 
 /** Material stub with a tintable color and a clone() (mirrors GLTF material). */
-function makeFakeMaterial(hex) {
+function makeFakeMaterial(hex, emissiveHex = 0x000000, emissiveIntensity = 0) {
 	return {
 		visible: undefined,
 		color: { _v: hex, getHex() { return this._v; }, setHex(v) { this._v = v; } },
-		clone() { return makeFakeMaterial(this.color._v); },
+		emissive: {
+			_v: emissiveHex,
+			getHex() { return this._v; },
+			set(v) { this._v = typeof v === 'number' ? v : v; },
+			setHex(v) { this._v = v; },
+		},
+		emissiveIntensity,
+		clone() {
+			return makeFakeMaterial(this.color._v, this.emissive._v, this.emissiveIntensity);
+		},
 	};
 }
 
@@ -54,6 +63,30 @@ function makeFakePlayerScene(bodyHex = 0x123456) {
 		userData: {},
 		traverse(cb) { cb(this); for (const c of this.children) c.traverse(cb); },
 		clone() { return makeFakePlayerScene(bodyHex); },
+	};
+}
+
+/** Minimal stand-in for a parsed enemy glTF scene with one skinned body mesh. */
+function makeFakeEnemyScene(bodyHex = 0xabcdef, emissiveHex = 0x000000, emissiveIntensity = 0) {
+	const makeVec = () => ({ x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; } });
+	const makeScale = () => ({ x: 1, y: 1, z: 1, multiplyScalar(s) { this.x *= s; this.y *= s; this.z *= s; } });
+	const body = {
+		isMesh: true,
+		isSkinnedMesh: true,
+		name: 'EnemyBody',
+		material: makeFakeMaterial(bodyHex, emissiveHex, emissiveIntensity),
+		position: makeVec(),
+		scale: makeScale(),
+		userData: {},
+		traverse(cb) { cb(this); },
+	};
+	return {
+		children: [body],
+		position: makeVec(),
+		scale: makeScale(),
+		userData: {},
+		traverse(cb) { cb(this); for (const c of this.children) c.traverse(cb); },
+		clone() { return makeFakeEnemyScene(bodyHex, emissiveHex, emissiveIntensity); },
 	};
 }
 
@@ -190,5 +223,29 @@ describe('registry attach fallback (renderer)', () => {
 
 		expect(mesh.userData.modelOverride).toBeUndefined();
 		expect(mesh.material.visible).not.toBe(false);
+	});
+
+	it('createEnemyMesh swaps in loaded glTF body mesh and hides procedural', async () => {
+		gltfLoadMock.mockImplementation((_path, onLoad) => {
+			onLoad({ scene: makeFakeEnemyScene(0xabcdef) });
+		});
+
+		const { createEnemyMesh, ENEMY_GEOMETRY } = await import('../renderer.js');
+		const mesh = createEnemyMesh('grunt');
+		const proceduralMaterial = mesh.material;
+
+		await vi.waitFor(() => {
+			expect(mesh.userData.modelOverride).toBeTruthy();
+		});
+
+		expect(mesh.userData.bodyMesh).toBeTruthy();
+		expect(mesh.userData.bodyMesh.name).toBe('EnemyBody');
+		expect(mesh.userData.bodyMesh.material).not.toBe(proceduralMaterial);
+		expect(proceduralMaterial.visible).toBe(false);
+		expect(mesh.userData.bodyMesh._origColor).toBe(0xabcdef);
+		expect(mesh.userData.bodyMesh._origEmissive).toBe(0x000000);
+		expect(mesh.userData.bodyMesh._origEmissiveIntensity).toBe(0);
+		expect(mesh._origColor).toBe(0xabcdef);
+		expect(mesh._origEmissive).toBe(ENEMY_GEOMETRY.grunt.emissive ?? 0x000000);
 	});
 });

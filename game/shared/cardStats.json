@@ -32,6 +32,7 @@
     "minionTtl": 30,
     "attackRange": 4,
     "attackDamage": 9,
+    "attackIntervalMs": 1500,
     "specialEffect": "shockwave_sweep"
   },
   "steel_claymore": {
@@ -62,6 +63,7 @@
     "minionHp": 160,
     "minionTtl": 30,
     "attackDamage": 0,
+    "attackIntervalMs": 1500,
     "taunt": true
   },
   "astral_guardian": {
@@ -74,7 +76,8 @@
     "shieldDurationMs": 8000,
     "minionHp": 60,
     "minionTtl": 30,
-    "attackDamage": 11
+    "attackDamage": 11,
+    "attackIntervalMs": 1500
   },
   "ancient_wyrm": {
     "minionHp": 90,

@@ -237,9 +237,8 @@ function getProvider() {
 //     ../shared/cardDefs.json
 //   - full per-card stat objects from ../shared/cardStats.json
 // A thin server overlay supplies ONLY the fields that require runtime
-// computation and cannot be JSON-encoded (Math.PI-based cone/breath angles and
-// astral_guardian's tick-derived attack interval). Everything else lives in the
-// shared JSON so the server no longer hand-maintains per-card stats.
+// computation and cannot be JSON-encoded (Math.PI-based cone/breath angles).
+// Everything else lives in the shared JSON so the server no longer hand-maintains per-card stats.
 const CARD_STAT_OVERLAY = {
   dungeon_drake: { breathConeAngle: Math.PI / 4 },
   bulkhead_mauler: { attackConeAngle: (Math.PI * 2) / 3 },
@@ -247,8 +246,6 @@ const CARD_STAT_OVERLAY = {
   harvesting_scythe: { attackConeAngle: Math.PI },
   reapers_scythe: { attackConeAngle: Math.PI },
   dragons_breath: { attackConeAngle: Math.PI / 3 },
-  // One attack per sim tick at most (TICK_RATE Hz); sub-tick intervals cannot fire faster.
-  astral_guardian: { attackIntervalMs: Math.floor(1000 / TICK_RATE) },
 };
 
 const CARD_DEFS = Object.fromEntries(
@@ -944,6 +941,7 @@ function savePlayerData(playerId) {
   try {
     const key = persistenceKey(playerId);
     provider.savePlayer(key, extractPersistentData(player));
+    player.persistenceLastSavedAt = Date.now();
     return true;
   } catch (err) {
     console.error(`[persistence] savePlayerData failed for ${playerId}:`, err.message);
