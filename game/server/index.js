@@ -311,6 +311,7 @@ const {
   spawnCombatEnemies,
   updateSurviveSpawns,
   updateEncounterTriggers,
+  updateQuestScriptTriggers,
   spawnLoot,
   spawnCrystals,
   recordCrystalCollected,
@@ -1444,6 +1445,7 @@ function runGameLoopTick() {
           updateBurning();
           debugScenarios.nudgeDebugBossApproachPlayers(state);
           updateEncounterTriggers();
+          updateQuestScriptTriggers();
           updateSurviveSpawns();
 
           const now = Date.now();

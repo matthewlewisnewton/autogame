@@ -70,6 +70,7 @@ const {
 const {
   initQuestScript,
   fireRunStartWaves,
+  updateEnterRoomTriggers,
 } = require('./questScript');
 const { unlockQuestTier, isQuestTierUnlocked } = require('./users');
 const { getObjectiveDef } = require('./objectives');
@@ -2583,6 +2584,18 @@ function updateEncounterTriggers() {
   tryActivateEncounter(_gameState);
 }
 
+function updateQuestScriptTriggers(now = Date.now(), gameState = _gameState) {
+  if (!isPlayingPhase(gameState)) return;
+  if (!gameState?.run?.waveScript) return;
+  const seed = gameState.layoutSeed || 42;
+  const rng = mulberry32(seed + 1000);
+  updateEnterRoomTriggers(gameState, {
+    ...buildObjectiveSpawnCtx(),
+    layout: gameState.layout,
+    rng,
+  });
+}
+
 function spawnLoot(layout, rng) {
   if (Math.random() >= LOOT_SPAWN_CHANCE) return;
 
@@ -3486,6 +3499,7 @@ module.exports = {
   spawnCombatEnemies,
   updateSurviveSpawns,
   updateEncounterTriggers,
+  updateQuestScriptTriggers,
   recordCrystalCollected,
   isRunObjectiveComplete,
   checkRunTerminalState,
