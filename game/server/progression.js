@@ -79,6 +79,7 @@ const {
   getQuestRewardCards,
   pickWeightedEnemyType,
   getQuestScript,
+  isBossLevelQuest,
   DEFAULT_QUEST_TIER,
   DEFAULT_QUEST_ID,
 } = require('./quests');
@@ -994,32 +995,34 @@ function startDungeonRun() {
   _gameState.run = createRunState();
   resetDialogueState(_gameState.run);
   const quest = getSelectedQuest(_gameState);
-  if (usesScriptedEncounterRuntime(quest)) {
-    initScriptedEncounter(
-      _gameState.run,
-      quest,
-      _gameState.layout,
-      _gameState,
-      buildObjectiveSpawnCtx(),
-    );
-    syncScriptedDefeatEnemiesActiveCount(_gameState.run, _gameState.enemies);
-    if (getQuestScript(quest)) {
+  if (!isBossLevelQuest(quest)) {
+    if (usesScriptedEncounterRuntime(quest)) {
+      initScriptedEncounter(
+        _gameState.run,
+        quest,
+        _gameState.layout,
+        _gameState,
+        buildObjectiveSpawnCtx(),
+      );
+      syncScriptedDefeatEnemiesActiveCount(_gameState.run, _gameState.enemies);
+      if (getQuestScript(quest)) {
+        initQuestScript(_gameState.run, quest, _gameState.layout);
+      }
+    } else if (getQuestScript(quest)) {
       initQuestScript(_gameState.run, quest, _gameState.layout);
+      const seed = _gameState.layoutSeed || 42;
+      const rng = mulberry32(seed + 1000);
+      fireRunStartWaves(_gameState, { ...buildObjectiveSpawnCtx(), layout: _gameState.layout, rng });
+    } else if (isScriptedQuest(quest)) {
+      initScriptedEncounter(
+        _gameState.run,
+        quest,
+        _gameState.layout,
+        _gameState,
+        buildObjectiveSpawnCtx(),
+      );
+      syncScriptedDefeatEnemiesActiveCount(_gameState.run, _gameState.enemies);
     }
-  } else if (getQuestScript(quest)) {
-    initQuestScript(_gameState.run, quest, _gameState.layout);
-    const seed = _gameState.layoutSeed || 42;
-    const rng = mulberry32(seed + 1000);
-    fireRunStartWaves(_gameState, { ...buildObjectiveSpawnCtx(), layout: _gameState.layout, rng });
-  } else if (isScriptedQuest(quest)) {
-    initScriptedEncounter(
-      _gameState.run,
-      quest,
-      _gameState.layout,
-      _gameState,
-      buildObjectiveSpawnCtx(),
-    );
-    syncScriptedDefeatEnemiesActiveCount(_gameState.run, _gameState.enemies);
   }
   if (_gameState._pendingEncounterBossId != null && _gameState.run.encounter) {
     setEncounterBoss(_gameState.run, _gameState._pendingEncounterBossId);

@@ -23,6 +23,7 @@ const {
   getLayoutProfileForQuest,
   buildQuestUpdatePayload,
   SCRIPTED_ENCOUNTER_FIXTURE_DEF,
+  BOSS_LEVEL_FIXTURE_DEF,
   ESCORT_OBJECTIVE_FIXTURE_DEF,
   countScriptedEnemiesInQuest,
   countFinalAmbushEnemies,
@@ -144,6 +145,31 @@ function ensureEscortObjectiveFixtureQuest() {
   if (!QUEST_DEFS[questId]) {
     QUEST_DEFS[questId] = ESCORT_OBJECTIVE_FIXTURE_DEF;
   }
+}
+
+function ensureBossLevelFixtureQuest() {
+  const questId = BOSS_LEVEL_FIXTURE_DEF.id;
+  if (!QUEST_DEFS[questId]) {
+    QUEST_DEFS[questId] = BOSS_LEVEL_FIXTURE_DEF;
+  }
+}
+
+function setupBossLevelFixtureDeploy(lobby, state, player, tier = 2) {
+  ensureBossLevelFixtureQuest();
+  const questId = BOSS_LEVEL_FIXTURE_DEF.id;
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+
+  player.ready = true;
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  const startSpawn = firstRoomPosition();
+  player.x = startSpawn.x;
+  player.z = startSpawn.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+  deployQuestDebugRun(lobby, state, { clearEncounterBoss: true });
 }
 
 function setupEscortObjectiveDeploy(lobby, state, player) {
@@ -1008,6 +1034,18 @@ function applyDebugScenario(socket, name) {
       // Reachable normally by clearing Arena Trials Tier 1, unlocking Tier 2, and
       // deploying; this scenario is a shortcut into that state.
       setupArenaTrialsTier2StageBossDebug(lobby, state, player);
+      return finishStageBossDebugScenario(lobby, state, player, name);
+    }
+
+    if (name === 'boss-level-dormant') {
+      // boss_level_fixture Tier 2 on boss-arena with a lone dormant miniboss.
+      // Reachable normally by selecting the boss-level fixture quest and deploying;
+      // this scenario is a shortcut into that dormant encounter state.
+      setupBossLevelFixtureDeploy(lobby, state, player, 2);
+      const anchor = resolveArenaDaisAnchor(state);
+      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 2;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       return finishStageBossDebugScenario(lobby, state, player, name);
     }
 
