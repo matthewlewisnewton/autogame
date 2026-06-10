@@ -6755,3 +6755,26 @@ Fallback smoke capture exercised the real player path: auth → lobby → ready 
 ## Remaining gaps
 
 None. All acceptance criteria are fully met; runtime capture is clean; test suite is green.
+
+## v0.389 — 371-playthrough-revalidate-spire-ascent  (2026-06-10 16:26:06)
+
+
+### Telepipe vitals persistence and new-sortie card charge reset
+
+PASS. The full validation output includes Spire Ascent telepipe-new-sortie coverage: pre-suspend and post-deploy HP/MS are preserved within the harness comparison, the run id changes for the fresh sortie, suspended state is cleared, and card charges reset to full in the new sortie. The round-2 capture separately confirms the live suspend/resume path: the same layout seed/profile and enemy ids are restored after re-deploy from the suspended lobby.
+
+### Debug scenarios
+
+PASS. The added/changed debug scenarios are only reachable through the debug-scenario socket path used by the harness and guarded by the existing debug allowance logic. The Spire Ascent shortcuts are documented as QA shortcuts for states reachable through normal quest unlock/deploy, add clearing, encounter trigger movement, boss combat, or Telepipe acquisition. They still use the real quest layout/run setup, enemy spawning, encounter state, card casting, suspend/abandon/deploy flow, and server-side assertions rather than replacing the normal gameplay path as the only proof.
+
+### Design and foundation consistency
+
+PASS. The implementation remains consistent with `game/docs/design.md`: Spire Ascent remains a stage-boss dungeon with the Summit Warden, card combat remains based on hand slots and charges, and Telepipe behavior preserves vitals while distinguishing suspend/resume from fresh sortie charge reset. The foundation requirements are not regressed: the captured runs render Three.js scenes, authenticate/connect through client/server, show the player in 3D, and continue receiving state updates.
+
+### Code quality and tests
+
+PASS. The live changes are scoped to validation harness behavior, debug scenarios, small client synchronization after debug scenarios, and validation artifacts. `coverage.log` reports 133 test files and 1995 tests passing, with visibility coverage for changed files. The coverage log contains noisy stderr from existing synthetic integration paths, but the ticket's captured browser runs have no page errors or fatal game-code logs.
+
+## Remaining gaps
+
+None.
