@@ -78,6 +78,18 @@
  */
 
 /**
+ * Prerequisite quest tier required before a tier is unlocked.
+ * @typedef {Object} UnlockRequiresEntry
+ * @property {string} questId - Quest id that must be completed.
+ * @property {number} tier - Positive integer tier that must be completed.
+ */
+
+/**
+ * Unlock prerequisites for a quest tier: one entry (legacy) or an array (AND semantics).
+ * @typedef {UnlockRequiresEntry | UnlockRequiresEntry[]} UnlockRequires
+ */
+
+/**
  * One authored wave in a quest script.
  * @typedef {Object} QuestScriptWave
  * @property {string} id - Stable wave id for chaining (`waveCleared` triggers).
@@ -933,6 +945,43 @@ function normalizeQuestTier(tier) {
   return Number.isInteger(n) && n > 0 ? n : DEFAULT_QUEST_TIER;
 }
 
+function normalizeUnlockRequiresEntry(entry) {
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+    return null;
+  }
+  if (typeof entry.questId !== 'string' || !entry.questId) {
+    return null;
+  }
+  const tier = Number(entry.tier);
+  if (!Number.isInteger(tier) || tier <= 0) {
+    return null;
+  }
+  return { questId: entry.questId, tier };
+}
+
+/**
+ * Normalizes authored `unlockRequires` to a prerequisite list, or `null` when absent.
+ * Single objects become a one-element array; arrays keep AND order with invalid entries dropped.
+ * @param {UnlockRequires | null | undefined} raw
+ * @returns {UnlockRequiresEntry[] | null}
+ */
+function normalizeUnlockRequires(raw) {
+  if (raw == null) {
+    return null;
+  }
+  if (Array.isArray(raw)) {
+    const normalized = raw
+      .map(normalizeUnlockRequiresEntry)
+      .filter(Boolean);
+    return normalized.length > 0 ? normalized : null;
+  }
+  if (typeof raw !== 'object') {
+    return null;
+  }
+  const entry = normalizeUnlockRequiresEntry(raw);
+  return entry ? [entry] : null;
+}
+
 function getQuestTierDef(questId, tier) {
   const quest = QUEST_DEFS[questId];
   if (!quest || !quest.tiers) {
@@ -1501,6 +1550,7 @@ module.exports = {
   isValidQuestId,
   isValidQuestSelection,
   normalizeQuestTier,
+  normalizeUnlockRequires,
   getQuest,
   getDefaultQuestId,
   listQuests,
