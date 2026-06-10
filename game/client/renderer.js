@@ -12,6 +12,10 @@
 
 import * as THREE from 'three';
 import { clampDelta } from './delta.js';
+import { disposeOne, disposeMeshMap, disposeStaleMeshes } from './renderer/disposeMesh.js';
+import { syncMeshMap } from './renderer/syncMeshMap.js';
+
+export { disposeOne, disposeMeshMap, disposeStaleMeshes };
 import {
 	buildDungeon,
 	clearDungeon,
@@ -5768,57 +5772,6 @@ export function updateAttackEffects() {
 
 // ── Mesh disposal helpers ──
 
-/**
- * Remove and optionally dispose a single mesh from a mesh map.
- * @param {Object} map
- * @param {string} id
- * @param {THREE.Scene} targetScene
- * @param {boolean} [skipDispose]
- */
-export function disposeOne(map, id, targetScene, skipDispose) {
-	const mesh = map[id];
-	if (!mesh) return;
-	if (targetScene) targetScene.remove(mesh);
-	if (!skipDispose) {
-		if (mesh.traverse) {
-			mesh.traverse((child) => {
-				if (child.geometry) child.geometry.dispose();
-				if (child.material) child.material.dispose();
-			});
-		} else {
-			if (mesh.geometry) mesh.geometry.dispose();
-			if (mesh.material) mesh.material.dispose();
-		}
-	}
-	delete map[id];
-}
-
-/**
- * Iterate a mesh map, remove each mesh from the scene, optionally dispose, and clear.
- * @param {Object} map
- * @param {THREE.Scene} targetScene
- * @param {boolean} [skipDispose]
- */
-export function disposeMeshMap(map, targetScene, skipDispose) {
-	for (const id of Object.keys(map)) {
-		disposeOne(map, id, targetScene, skipDispose);
-	}
-}
-
-/**
- * Find and dispose meshes in a map whose ids are no longer present in currentIds.
- * @param {Object} map
- * @param {Set<string>} currentIds
- * @param {THREE.Scene} targetScene
- */
-export function disposeStaleMeshes(map, currentIds, targetScene) {
-	for (const id of Object.keys(map)) {
-		if (!currentIds.has(id)) {
-			disposeOne(map, id, targetScene);
-		}
-	}
-}
-
 // ── Loot mesh sync & animation ──
 
 /**
@@ -6107,20 +6060,38 @@ export function syncIceBallMeshes() {
 	if (!gs || !scene) return;
 
 	const balls = Array.isArray(gs.iceBalls) ? gs.iceBalls : [];
-	const currentIds = new Set(balls.map((b) => b.id));
 
-	for (const ball of balls) {
-		let mesh = iceBallMeshes[ball.id];
-		if (!mesh) {
-			mesh = createIceBallMesh(ball);
-			scene.add(mesh);
-			iceBallMeshes[ball.id] = mesh;
-		}
-		mesh.position.set(ball.x, ICE_BALL_HEIGHT, ball.z);
-	}
+	syncMeshMap(
+		iceBallMeshes,
+		balls,
+		(ball) => ball.id,
+		(ball) => createIceBallMesh(ball),
+		(mesh, ball) => mesh.position.set(ball.x, ICE_BALL_HEIGHT, ball.z),
+		scene,
+	);
+}
 
-	// Remove projectiles that have left the broadcast state (hit, expired, run ended).
-	disposeStaleMeshes(iceBallMeshes, currentIds, scene);
+/**
+ * Sync persistent ground-hazard meshes for armed spike_trap enchantments.
+ * Only spike_trap is handled here; other effects (e.g. cinder_snare) are left
+ * to their own handling.
+ */
+export function syncSpikeTrapMeshes() {
+	const gs = gameStateRef;
+	if (!gs || !scene) return;
+
+	const traps = (gs.enchantments || []).filter(
+		(enc) => enc && enc.effect === 'spike_trap' && enc.armed,
+	);
+
+	syncMeshMap(
+		spikeTrapMeshes,
+		traps,
+		(enc) => enc.id,
+		(enc) => createSpikeTrapHazardMesh(enc),
+		(mesh, enc) => mesh.position.set(enc.x, 0, enc.z),
+		scene,
+	);
 }
 
 /**
@@ -6744,22 +6715,7 @@ export function animate(timestamp) {
 			}
 		}
 
-		// Spike trap hazard mesh sync: reconcile a persistent ground-hazard mesh
-		// per armed spike_trap from the snapshot, mirroring the enemy/minion
-		// pattern. Only spike_trap is handled here; other effects (e.g.
-		// cinder_snare) are left to their own handling.
-		const currentSpikeTrapIds = new Set();
-		for (const enc of (gs.enchantments || [])) {
-			if (!enc || enc.effect !== 'spike_trap' || !enc.armed) continue;
-			currentSpikeTrapIds.add(enc.id);
-			if (!spikeTrapMeshes[enc.id]) {
-				const mesh = createSpikeTrapHazardMesh(enc);
-				scene.add(mesh);
-				spikeTrapMeshes[enc.id] = mesh;
-			}
-			spikeTrapMeshes[enc.id].position.set(enc.x, 0, enc.z);
-		}
-		disposeStaleMeshes(spikeTrapMeshes, currentSpikeTrapIds, scene);
+		syncSpikeTrapMeshes();
 
 		// ── Loot mesh sync ──
 		syncLootMeshes();
