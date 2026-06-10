@@ -5,7 +5,13 @@
  * Quests reference the type via quest.objectiveType in quests.js; progression
  * dispatches through getObjectiveDef — no type switches elsewhere.
  */
-const { getEnemyPool, getEncounterConfig, pickWeightedEnemyType } = require('./quests');
+const {
+  getEnemyPool,
+  getEncounterConfig,
+  getQuestScript,
+  countScriptedEnemies,
+  pickWeightedEnemyType,
+} = require('./quests');
 const { setEncounterBoss } = require('./encounters');
 const { DIFFICULTY_SPAWN_RATE_PER_PLAYER, difficultyScaleFactor, runPlayerCount } = require('./config');
 
@@ -52,18 +58,22 @@ function wireEncounterBoss(gameState, bossEnemyId) {
 const OBJECTIVE_DEFS = {
   defeat_enemies: {
     objectiveType: 'defeat_enemies',
-    skipBulkCombatSpawn() {
-      return false;
+    skipBulkCombatSpawn(quest) {
+      return getQuestScript(quest) != null;
     },
     preferNearestEnemySpawns() {
       return false;
     },
     createObjective(quest, ctx) {
       const objectiveLabel = `${quest.name}: ${quest.description}`;
+      const script = getQuestScript(quest);
+      const totalEnemies = script != null
+        ? countScriptedEnemies(script)
+        : ctx.enemyCount;
       return {
         type: 'defeat_enemies',
         label: objectiveLabel,
-        totalEnemies: ctx.enemyCount,
+        totalEnemies,
         defeatedEnemies: 0,
       };
     },

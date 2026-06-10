@@ -7,6 +7,34 @@
  * @property {{ x: number, z: number }} [spawnAnchor] - Encounter state anchor override.
  */
 
+/**
+ * Hand-placed spawn entry for a scripted quest wave.
+ * @typedef {Object} QuestScriptSpawn
+ * @property {string} type - Enemy type id.
+ * @property {number} x - World X coordinate.
+ * @property {number} z - World Z coordinate.
+ */
+
+/**
+ * Room binding for a scripted wave trigger (center coords or layout landmark).
+ * @typedef {{ x: number, z: number } | { landmark: string }} QuestScriptRoom
+ */
+
+/**
+ * One authored wave in a quest script.
+ * @typedef {Object} QuestScriptWave
+ * @property {string} id - Stable wave id for chaining (`waveCleared` triggers).
+ * @property {QuestScriptRoom} [room] - Room the wave is bound to.
+ * @property {'run_start' | 'enter_room' | { waveCleared: string }} trigger
+ * @property {QuestScriptSpawn[]} spawns - Hand-placed enemies for this wave.
+ */
+
+/**
+ * Normalized quest script returned by `getQuestScript`.
+ * @typedef {Object} QuestScript
+ * @property {QuestScriptWave[]} waves
+ */
+
 const QUEST_DEFS = {
   training_caverns: {
     id: 'training_caverns',
@@ -353,6 +381,79 @@ function getEncounterConfig(quest) {
   return quest.encounter;
 }
 
+function normalizeQuestScriptSpawn(spawn) {
+  if (!spawn || typeof spawn !== 'object') {
+    return null;
+  }
+  if (typeof spawn.type !== 'string' || !spawn.type) {
+    return null;
+  }
+  if (!Number.isFinite(spawn.x) || !Number.isFinite(spawn.z)) {
+    return null;
+  }
+  return { type: spawn.type, x: spawn.x, z: spawn.z };
+}
+
+function normalizeQuestScriptWave(wave) {
+  if (!wave || typeof wave !== 'object') {
+    return null;
+  }
+  if (typeof wave.id !== 'string' || !wave.id) {
+    return null;
+  }
+  if (!Array.isArray(wave.spawns)) {
+    return null;
+  }
+  const spawns = wave.spawns
+    .map(normalizeQuestScriptSpawn)
+    .filter(Boolean);
+  const normalized = {
+    id: wave.id,
+    trigger: wave.trigger,
+    spawns,
+  };
+  if (wave.room != null && typeof wave.room === 'object') {
+    normalized.room = wave.room;
+  }
+  return normalized;
+}
+
+/**
+ * Returns normalized `script.waves` for a quest tier, or `null` when absent.
+ * @param {ReturnType<typeof getQuest> | null | undefined} quest
+ * @returns {QuestScript | null}
+ */
+function getQuestScript(quest) {
+  if (!quest || !quest.script || typeof quest.script !== 'object') {
+    return null;
+  }
+  if (!Array.isArray(quest.script.waves) || quest.script.waves.length === 0) {
+    return null;
+  }
+  const waves = quest.script.waves
+    .map(normalizeQuestScriptWave)
+    .filter(Boolean);
+  if (waves.length === 0) {
+    return null;
+  }
+  return { waves };
+}
+
+/**
+ * Sums authored spawn entries across all scripted waves (objective total).
+ * @param {QuestScript | null | undefined} script
+ * @returns {number}
+ */
+function countScriptedEnemies(script) {
+  if (!script || !Array.isArray(script.waves)) {
+    return 0;
+  }
+  return script.waves.reduce(
+    (sum, wave) => sum + (Array.isArray(wave.spawns) ? wave.spawns.length : 0),
+    0,
+  );
+}
+
 function formatRewardSummary(quest) {
   if (!quest || quest.rewardCurrency == null) {
     return 'Reward: —';
@@ -491,6 +592,8 @@ module.exports = {
   formatObjectiveSummary,
   formatRewardSummary,
   getEncounterConfig,
+  getQuestScript,
+  countScriptedEnemies,
   getEnemyPool,
   getGuaranteedEnemyType,
   pickWeightedEnemyType,
