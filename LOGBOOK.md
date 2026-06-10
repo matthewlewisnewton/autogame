@@ -6773,3 +6773,26 @@ Fallback smoke capture exercised the real player path: auth → lobby → ready 
 ## Remaining gaps
 
 None. All acceptance criteria are fully met; runtime capture is clean; test suite is green.
+
+## v0.388 — 369-playthrough-revalidate-open-plaza  (2026-06-10 16:24:35)
+
+Pass. `game/validation/open-plaza/findings.md` lists the assertion results, console/page-error status, visual notes, floor alignment, boss UI/visual identity, card exercises, telepipe checks, and screenshot inventory. The required screenshot references and probes are present in `run-summary.json`/`probes.json`.
+
+## Design and foundation consistency
+
+The implementation is consistent with `game/docs/design.md`: the lobby-to-dungeon loop, stage-boss flow, card combat interactions, and telepipe persistence/reset behavior match the documented design. It does not regress the foundation requirements in `game/docs/requirements.md`: the captured run renders a 3D scene, connects client/server, shows the player, and continues to provide synchronized gameplay state.
+
+## Debug scenarios
+
+Pass. The added arena debug scenarios are entered only through the debug scenario socket path, which is gated by `ALLOW_DEBUG_SCENARIOS`, non-production localhost/private access, or explicit dev conditions. Normal gameplay does not call these paths.
+
+The same end states are reachable through normal play: Arena Trials Tier 2 is reached by clearing/unlocking/deploying, add combat is reached by traversing the plaza, the boss approach/activation is reached by clearing adds and moving into the encounter trigger, low boss HP is reached by fighting the boss, and the telepipe state is reached by bringing a Telepipe and spending vitals/charges during a sortie. The shortcuts still use server-side state, encounter, objective, floor sampling, and snapshot/broadcast paths rather than bypassing client-only invariants.
+
+## Code quality and validation
+
+No blocking code-quality issues found in the live codebase. The changed debug scenarios have unit/integration coverage in `game/server/test/debug-scenarios.test.js`, and coverage output reports the test suite green: 119 files passed, 1720 tests passed. The open-plaza artifact verifier checks the full-run summary, required assertion keys, required files, and distinct victory screenshots.
+
+## Remaining gaps
+
+None.
+
