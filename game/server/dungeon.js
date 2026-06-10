@@ -54,6 +54,12 @@ const BOSS_ARENA = {
   coverTargetCount: 3,      // sparse cover (open-plaza targets 8)
 };
 
+// Rift arena theme (arenaTheme: 'rift'): cosmetic floor-band decals only.
+const RIFT_THEME = {
+  bandInnerX: 4,            // band inner edge — clear of the center_ring (outerRadius 3.2)
+  bandWallInset: 0.6,       // keep decals fully inside the arena walls
+};
+
 // Hub ship-interior: three zone rooms (Operations, Commerce, Salon) in a compact row.
 const HUB_ROOM_WIDTH = 12;
 const HUB_ROOM_DEPTH = 12;
@@ -2395,9 +2401,31 @@ function generateOpenPlaza(seed, options = {}) {
 }
 
 /**
+ * Rift-theme floor bands: an ice decal over the west half of the arena and an
+ * ember decal over the east half. Cosmetic floor markings only — flat
+ * rectangles (centre x/z plus width/depth extents) that add no walls or
+ * cover. Inset from the arena walls and stopped short of the centre ring so
+ * the decals lie fully inside bounds and never overlap the center_ring
+ * marking.
+ */
+function buildRiftFloorMarkings(half) {
+  const innerX = RIFT_THEME.bandInnerX;
+  const outerX = half - RIFT_THEME.bandWallInset;
+  const width = outerX - innerX;
+  const depth = (half - RIFT_THEME.bandWallInset) * 2;
+  const centerX = (innerX + outerX) / 2;
+  return [
+    { type: 'rift_ice_band', x: -centerX, z: 0, width, depth },
+    { type: 'rift_ember_band', x: centerX, z: 0, width, depth },
+  ];
+}
+
+/**
  * Build the boss-arena layout: one compact walkable room with a centre
  * `arena_dais` landmark and sparse cover. Deterministic for a given seed in
  * `layoutMode: 'default'`; rigid mode uses seed-independent cover placement.
+ * `options.arenaTheme: 'rift'` appends ice/ember floor-band markings (cosmetic
+ * decals only); any other value leaves the layout untouched.
  *
  * Returns { rooms: [arena], passages: [], cover, floorMarkings, landmarks,
  *           passageWidth, cellSpacing, profile: 'boss-arena' }.
@@ -2464,6 +2492,10 @@ function generateBossArena(seed, options = {}) {
     cellSpacing: size,
     profile: 'boss-arena',
   };
+
+  if (options.arenaTheme === 'rift') {
+    layout.floorMarkings.push(...buildRiftFloorMarkings(half));
+  }
 
   assignRoomRoles(layout);
 
