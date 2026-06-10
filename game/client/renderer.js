@@ -108,6 +108,7 @@ const enemiesMeshes = {};
 const enemyHealthBars = {}; // enemy id → health bar mesh
 const enemyShieldBars = {}; // enemy id → shield absorb bar mesh
 const enemyHitboxMeshes = {}; // enemy id → pulsing hitbox group
+const enemyShadows = {}; // flying enemy id → ground shadow decal (no entry for grounded enemies)
 const telegraphMeshes = {}; // enemy id → warning ring mesh (ground circle during windup)
 const minionTelegraphMeshes = {}; // minion id → beam telegraph during windup
 const enemyLockOnRings = {}; // enemy id → lock-on reticle ring
@@ -128,6 +129,7 @@ let phaseStepTargetId = null;
 let phaseStepAllyRing = null;
 const windupFlashing = new Set(); // enemy ids currently showing windup emissive
 const minionsMeshes = {};
+const minionShadows = {}; // flying minion id → ground shadow decal (no entry for grounded minions)
 /** Persistent ground-hazard meshes for armed spike_trap enchantments, keyed by enc.id. */
 const spikeTrapMeshes = {};
 /** First-seen minion ids — avoids re-playing spawn scale-in after resync/reconnect. */
@@ -3647,6 +3649,51 @@ function syncLockOnRing(enemyId, enemyX, enemyZ) {
 	}
 }
 
+// ── Airborne render helpers ──
+// Render-space altitude (world units above the floor) for a flying entity.
+// Prefer the explicit server `altitude`; otherwise derive it from the
+// server-authoritative world Y (`entity.y - FLOOR_Y`). Grounded entities (no
+// `flying` flag) always return 0, so grounded placement is byte-for-byte
+// unchanged. Symmetric across flying enemies and flying minions.
+function flyingAltitude(entity) {
+	if (!entity || !entity.flying) return 0;
+	if (Number.isFinite(entity.altitude)) return entity.altitude;
+	if (Number.isFinite(entity.y)) return Math.max(0, entity.y - FLOOR_Y);
+	return 0;
+}
+
+// Flat dark disc lying in the XZ plane, used as a ground shadow beneath a flier
+// so its floor position stays readable while the body renders at altitude.
+function createFlyingShadow() {
+	const geo = new THREE.CircleGeometry(0.55, 24);
+	const mat = new THREE.MeshBasicMaterial({
+		color: 0x000000,
+		transparent: true,
+		opacity: 0.32,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geo, mat);
+	mesh.rotation.x = -Math.PI / 2;
+	return mesh;
+}
+
+// Create/update a ground shadow beneath a flying entity, or dispose it if the
+// entity is grounded. `shadowMap` is keyed by entity id (separate maps for
+// enemies vs minions so each disposes with its own mesh-cleanup path). Shadows
+// sit at GROUND_OVERLAY_Y like other ground overlays and only exist for fliers.
+function syncFlyingShadow(shadowMap, entity) {
+	if (entity.flying) {
+		if (!shadowMap[entity.id]) {
+			shadowMap[entity.id] = createFlyingShadow();
+			scene.add(shadowMap[entity.id]);
+		}
+		shadowMap[entity.id].position.set(entity.x, GROUND_OVERLAY_Y, entity.z);
+	} else if (shadowMap[entity.id]) {
+		disposeOne(shadowMap, entity.id, scene);
+	}
+}
+
 function createPhaseStepAllyRing() {
 	// Cyan ground ring, distinct from the amber lock-on reticle, to mark the
 	// ally that phase_step would swap with.
@@ -6446,18 +6493,22 @@ export function animate(timestamp) {
 				scene.add(enemyHitboxMeshes[enemy.id]);
 			}
 			const halfHeight = enemyMeshHalfHeight(enemy.type);
-			enemiesMeshes[enemy.id].position.set(enemy.x, halfHeight, enemy.z);
+			// Flying enemies render at floor height + altitude; grounded enemies
+			// keep their exact prior placement (flyingAltitude() returns 0).
+			const renderY = halfHeight + flyingAltitude(enemy);
+			enemiesMeshes[enemy.id].position.set(enemy.x, renderY, enemy.z);
+			syncFlyingShadow(enemyShadows, enemy);
 
 			ensureEnemyHealthBar(enemy.id, enemy);
 			const healthBar = enemyHealthBars[enemy.id];
 			if (healthBar) {
-				healthBar.position.set(enemy.x, halfHeight + 0.5, enemy.z);
+				healthBar.position.set(enemy.x, renderY + 0.5, enemy.z);
 				updateHealthBarMesh(enemy.id, enemy);
 			}
 			ensureEnemyShieldBar(enemy.id, enemy);
 			const shieldBar = enemyShieldBars[enemy.id];
 			if (shieldBar) {
-				shieldBar.position.set(enemy.x, halfHeight + 0.65, enemy.z);
+				shieldBar.position.set(enemy.x, renderY + 0.65, enemy.z);
 				updateEnemyShieldBarMesh(enemy.id, enemy);
 			}
 			if (enemyHitboxMeshes[enemy.id]) {
@@ -6528,7 +6579,7 @@ export function animate(timestamp) {
 							}
 						);
 						spawnParticleBurst(
-							{ x: enemy.x, y: halfHeight, z: enemy.z },
+							{ x: enemy.x, y: renderY, z: enemy.z },
 							{ color: 0xef4444, emissive: 0xff3b00, count: 8, spread: 0.85 },
 						);
 					} else if (fromNullCrawler) {
@@ -6568,7 +6619,7 @@ export function animate(timestamp) {
 							}
 						);
 					} else {
-						spawnHitSpark({ x: enemy.x, y: halfHeight, z: enemy.z });
+						spawnHitSpark({ x: enemy.x, y: renderY, z: enemy.z });
 					}
 
 					if (nearestMinion && minionsMeshes[nearestMinion.id]) {
@@ -6630,6 +6681,7 @@ export function animate(timestamp) {
 		disposeStaleMeshes(enemyHealthBars, currentEnemyIds, scene);
 		disposeStaleMeshes(enemyShieldBars, currentEnemyIds, scene);
 		disposeStaleMeshes(enemyHitboxMeshes, currentEnemyIds, scene);
+		disposeStaleMeshes(enemyShadows, currentEnemyIds, scene);
 		disposeStaleMeshes(enemyLockOnRings, currentEnemyIds, scene);
 		disposeStaleMeshes(variantMarkerMeshes, currentEnemyIds, scene);
 		disposeStaleMeshes(frenziedTelegraphMeshes, currentEnemyIds, scene);
@@ -6671,7 +6723,11 @@ export function animate(timestamp) {
 				}
 			}
 			const minionMesh = minionsMeshes[minion.id];
-			minionMesh.position.set(minion.x, 0.5, minion.z);
+			// Flying minions (storm_eagle, thunderbird) hover at their base height
+			// + altitude; grounded minions keep the fixed 0.5 (flyingAltitude → 0).
+			const minionRenderY = 0.5 + flyingAltitude(minion);
+			minionMesh.position.set(minion.x, minionRenderY, minion.z);
+			syncFlyingShadow(minionShadows, minion);
 
 			const spawnAt = minionSpawnTimes[minion.id];
 			if (spawnAt !== undefined) {
@@ -6724,12 +6780,13 @@ export function animate(timestamp) {
 			if (previousMinionHp[minion.id] !== undefined && minion.hp < previousMinionHp[minion.id]) {
 				const damageAmount = previousMinionHp[minion.id] - minion.hp;
 				flashMesh(minionsMeshes[minion.id], 0xff4444, 150);
-				spawnDamageNumber(minion.x, 1.2, minion.z, damageAmount, '#ff4444');
+				spawnDamageNumber(minion.x, 1.2 + flyingAltitude(minion), minion.z, damageAmount, '#ff4444');
 			}
 			previousMinionHp[minion.id] = minion.hp;
 		}
 
 		disposeStaleMeshes(minionsMeshes, currentMinionIds, scene);
+		disposeStaleMeshes(minionShadows, currentMinionIds, scene);
 		disposeStaleMeshes(minionTelegraphMeshes, currentMinionIds, scene);
 		for (const id of Object.keys(previousMinionHp)) {
 			if (!currentMinionIds.has(id)) {
