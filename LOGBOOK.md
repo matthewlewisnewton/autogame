@@ -6027,3 +6027,26 @@ PASS. This ticket did not add or change a renderer debug scenario entry point. E
 
 None.
 
+
+## v0.348 — Epic: PSO-style quest identity rework — scripted encounters, briefings, named rares, signature rewards  (2026-06-10 02:51:14)
+
+
+- `training_caverns` / Initiate Vault is a scripted annex sweep with a passage lock, wave-clear dialogue, Vault Stalker named rare, and Saber of Light reward.
+- `crystal_rescue` / Prism Salvage keeps prism collection but requires scripted guard waves and fires collection dialogue for each prism, with Mana Prism as the stated reward.
+- `frost_crossing` has ice-band waves, glacial throwers, Rimecast the Slow as a named rare, room-entry ice-band dialogue, and Cryo Burst as the reward.
+
+The design doc's Quest identity section matches this implementation, and the original foundation requirements still hold: the captured run renders 3D, connects over WebSocket, shows multiplayer state, and synchronizes movement.
+
+### Debug scenarios
+
+PASS. This ticket added tier-1 deploy shortcuts for the reworked quests. They are debug/dev gated: the client only auto-requests them from the `?debugScenario=` URL on localhost, and the server rejects debug scenarios outside localhost/dev or `ALLOW_DEBUG_SCENARIOS=1`. Equivalent states remain reachable through normal gameplay by selecting the quest, readying/deploying, and then progressing through authored waves/items/escort objectives. The shortcuts mutate QA state only after the debug event and do not replace the normal validation path.
+
+## Verification
+
+- Captured run: `metrics.json` ok, `pageerrors: []`, no fatal browser page errors.
+- Harness probes: lobby deploy to playing, objective visible, two players present, enemies spawned, card hand visible, key-item cooldown probe succeeded.
+- Coverage log: 155 test files passed, 2368 tests passed; coverage report present with thresholds disabled.
+
+## Remaining gaps
+
+No blocking gaps.
