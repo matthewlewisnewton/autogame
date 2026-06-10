@@ -1133,6 +1133,13 @@ const ENEMY_DEFS = {
 		hp: 420, chaseSpeed: 1.0, wanderSpeed: 0.5, attackDamage: 22, attackWindupMs: 1400,
 		attackStyle: 'cone', attackConeAngle: Math.PI / 2, attackRange: 6,
 	},
+	permafrost_warden: {
+		name: 'Permafrost Warden',
+		description: 'Ice-cavern guardian that erupts in a radial frost shockwave — close-range area pressure, not a lobbed projectile.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 360, chaseSpeed: 1.0, wanderSpeed: 0.5, attackDamage: 20, attackWindupMs: 1300,
+		attackStyle: 'radial', attackRange: 4.5,
+	},
 	spawner: {
 		name: 'Brood Node',
 		description: 'Radial attacker that periodically summons skirmishers.',
