@@ -139,3 +139,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [383-cleanup-server-patch-api-me-settings-persists-arbitrary-unvalidated-tkit](tickets/383-cleanup-server-patch-api-me-settings-persists-arbitrary-unvalidated-tkit/)
 - [ ] [383-cleanup-playthrough-validate-ice-level](tickets/383-cleanup-playthrough-validate-ice-level/)
 - [ ] [392-cleanup-ice-l1-miniboss-permafrost-warden](tickets/392-cleanup-ice-l1-miniboss-permafrost-warden/)
+- [ ] [393-cleanup-boss-level-framework](tickets/393-cleanup-boss-level-framework/)

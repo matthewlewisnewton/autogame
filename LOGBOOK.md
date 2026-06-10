@@ -6654,3 +6654,26 @@ Verification observed:
 
 None.
 
+
+## v0.384 — 385-boss-level-framework  (2026-06-10 14:13:18)
+
+### Client Presentation
+
+PASS. The quest board receives boss-level metadata, resolves proper boss display names, shows boss-level objective templates, includes tier lock state for tier-1 prerequisite-gated quests, and renders the new Crucible Sovereign enemy visual/telegraph definitions.
+
+### Debug Scenarios
+
+PASS. The retired fixture-only `boss-level-dormant` shortcut is rejected, and the live shortcuts (`crucible-duel-boss`, `vault-onslaught-boss`) are only entered through the existing localhost `?debugScenario=` path. They use the normal server deployment pipeline, preserve encounter state, and their comments/tests tie each shortcut to a normal progression path: complete prerequisites, select the quest, deploy, clear supports where applicable, then engage the boss.
+
+### Design and Foundation Compatibility
+
+PASS. The implementation fits the design doc's lobby-to-dungeon quest loop, card-combat enemy framework, and stage boss HP-band guidance. It does not regress the baseline requirements: the captured run renders 3D, connects over sockets, displays the player, and accepts movement.
+
+### Tests and Coverage
+
+PASS. Round-2 coverage shows `199` test files and `2875` tests passing. The added tests cover schema/default layout behavior, spawn pipeline, Crucible Duel flow, reusable second boss level, dormant boss damage immunity, quest-board copy, unlock gating, and debug scenario retirement.
+
+## Remaining gaps
+
+None.
+

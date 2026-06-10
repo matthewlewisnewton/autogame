@@ -1,0 +1,13 @@
+VERDICT: FAIL
+
+Wrote:
+
+- `tickets/385-boss-level-framework/round-1/review.md`
+- `tickets/385-boss-level-framework/round-1/gaps.md`
+
+Blocking gaps found:
+
+- `boss-level-dormant` is a fixture-only debug scenario, not reachable through normal gameplay.
+- Dormant encounter bosses can still be damaged/killed before activation, which can softlock stage-boss victory.
+
+No `nits.md` was created.
