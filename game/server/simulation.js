@@ -1222,6 +1222,16 @@ const ENEMY_DEFS = {
 		iceBallRadius: 1.2,
 		iceBallMaxRange: 22,
 	},
+	riftbound_colossus: {
+		name: 'Riftbound Colossus',
+		description: 'Apex tyrant of the rift where the ice and fire stages converge — its radial rift shockwave ignites (BURNING) everything it strikes.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange', 'burnDurationMs'],
+		// HP capped at 460: design.md records that a 500 HP boss could not be
+		// defeated inside the 180s defeatBoss validation window.
+		hp: 460, chaseSpeed: 1.1, wanderSpeed: 0.5, attackDamage: 28, attackWindupMs: 1200,
+		attackStyle: 'radial', attackRange: 5.5,
+		burnDurationMs: 3000,
+	},
 	spawner: {
 		name: 'Brood Node',
 		description: 'Radial attacker that periodically summons skirmishers.',
