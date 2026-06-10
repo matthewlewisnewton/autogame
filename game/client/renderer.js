@@ -5883,6 +5883,36 @@ export function disposeStaleMeshes(map, currentIds, targetScene) {
 	}
 }
 
+/**
+ * Generic keyed-mesh-map reconcile: for each item create-if-missing (adding the
+ * new mesh to the scene and storing it in `map`), run `update(mesh, item)` for
+ * every item, then dispose meshes whose id has left `items` via
+ * disposeStaleMeshes. Encapsulates the create/update/disposeStale pattern that
+ * is otherwise inlined across animate().
+ * @param {Object} map - id → mesh store, mutated in place
+ * @param {Array} items - current snapshot records
+ * @param {Object} handlers
+ * @param {(item) => string} [handlers.key] - item → id (defaults to item.id)
+ * @param {(item) => THREE.Object3D} handlers.create - build a mesh for a new id
+ * @param {(mesh, item) => void} handlers.update - update an existing/created mesh
+ * @param {THREE.Scene} [targetScene=scene] - scene to add/remove meshes from
+ */
+export function syncMeshMap(map, items, { key = (item) => item.id, create, update }, targetScene = scene) {
+	const currentIds = new Set();
+	for (const item of items) {
+		const id = key(item);
+		currentIds.add(id);
+		let mesh = map[id];
+		if (!mesh) {
+			mesh = create(item);
+			targetScene.add(mesh);
+			map[id] = mesh;
+		}
+		update(mesh, item);
+	}
+	disposeStaleMeshes(map, currentIds, targetScene);
+}
+
 // ── Loot mesh sync & animation ──
 
 /**
@@ -6171,20 +6201,13 @@ export function syncIceBallMeshes() {
 	if (!gs || !scene) return;
 
 	const balls = Array.isArray(gs.iceBalls) ? gs.iceBalls : [];
-	const currentIds = new Set(balls.map((b) => b.id));
 
-	for (const ball of balls) {
-		let mesh = iceBallMeshes[ball.id];
-		if (!mesh) {
-			mesh = createIceBallMesh(ball);
-			scene.add(mesh);
-			iceBallMeshes[ball.id] = mesh;
-		}
-		mesh.position.set(ball.x, ICE_BALL_HEIGHT, ball.z);
-	}
-
-	// Remove projectiles that have left the broadcast state (hit, expired, run ended).
-	disposeStaleMeshes(iceBallMeshes, currentIds, scene);
+	// Reconcile via the generic helper; meshes whose projectile has left the
+	// broadcast state (hit, expired, run ended) are disposed by syncMeshMap.
+	syncMeshMap(iceBallMeshes, balls, {
+		create: createIceBallMesh,
+		update: (mesh, ball) => mesh.position.set(ball.x, ICE_BALL_HEIGHT, ball.z),
+	});
 }
 
 /**
@@ -6853,18 +6876,13 @@ export function animate(timestamp) {
 		// per armed spike_trap from the snapshot, mirroring the enemy/minion
 		// pattern. Only spike_trap is handled here; other effects (e.g.
 		// cinder_snare) are left to their own handling.
-		const currentSpikeTrapIds = new Set();
-		for (const enc of (gs.enchantments || [])) {
-			if (!enc || enc.effect !== 'spike_trap' || !enc.armed) continue;
-			currentSpikeTrapIds.add(enc.id);
-			if (!spikeTrapMeshes[enc.id]) {
-				const mesh = createSpikeTrapHazardMesh(enc);
-				scene.add(mesh);
-				spikeTrapMeshes[enc.id] = mesh;
-			}
-			spikeTrapMeshes[enc.id].position.set(enc.x, 0, enc.z);
-		}
-		disposeStaleMeshes(spikeTrapMeshes, currentSpikeTrapIds, scene);
+		const armedSpikeTraps = (gs.enchantments || []).filter(
+			(enc) => enc && enc.effect === 'spike_trap' && enc.armed,
+		);
+		syncMeshMap(spikeTrapMeshes, armedSpikeTraps, {
+			create: createSpikeTrapHazardMesh,
+			update: (mesh, enc) => mesh.position.set(enc.x, 0, enc.z),
+		});
 
 		// ── Loot mesh sync ──
 		syncLootMeshes();
