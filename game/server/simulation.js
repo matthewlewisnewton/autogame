@@ -1180,6 +1180,13 @@ const ENEMY_DEFS = {
 		hp: 390, chaseSpeed: 1.2, wanderSpeed: 0.55, attackDamage: 24, attackWindupMs: 1200,
 		attackStyle: 'radial', attackRange: 4.5,
 	},
+	citadel_sovereign: {
+		name: 'Citadel Sovereign',
+		description: 'Capstone citadel tyrant whose sweeping strikes hit harder and reach farther than any lesser stage sovereign.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 420, chaseSpeed: 1.3, wanderSpeed: 0.6, attackDamage: 28, attackWindupMs: 1150,
+		attackStyle: 'cone', attackConeAngle: (2 * Math.PI) / 3, attackRange: 6.5,
+	},
 	spire_warden: {
 		name: 'Summit Warden',
 		description: 'Spire summit guardian with crushing reach and tide-like pressure.',
