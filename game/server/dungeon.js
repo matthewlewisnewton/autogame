@@ -181,6 +181,13 @@ const ICE_CAVERN = {
   interiorMargin: OPEN_PLAZA.interiorMargin,
   rampXOffsets: [-3, 0, 3], // centres must stay inside stonePadSize with rampWidth
   treasureGapWidth: 8,
+  /** Fixed geometry for `layoutMode: 'rigid'` — seed-independent. */
+  rigidRampCount: 2,
+  rigidCoverPerStonePad: 2,
+  rigidEntryDecorCount: 2,
+  // The 13×13 stone pads cannot fit cover outside the full spawnClearRadius (6)
+  // yet inside the interior margin, so rigid pad cover uses a tighter circle.
+  rigidPadSpawnClear: 3,
 };
 
 // Fire-cavern stage tuning. Rim (north / high Y) overlooks a large volcanic basin
@@ -1834,6 +1841,47 @@ function scatterEntryDecor(rng, {
 }
 
 /**
+ * Accept entry decor from ENTRY_DECOR_CANDIDATE_OFFSETS in declaration order
+ * (no RNG shuffle, fixed yaw). Mirrors `scatterEntryDecor` margin and
+ * spawn-clear rules. Used by `layoutMode: 'rigid'` — decor is seed-independent.
+ */
+function placeEntryDecorOrdered({
+  half,
+  centerX = 0,
+  centerZ = 0,
+  spawnClear,
+  type,
+  count = 3,
+  interiorMargin = OPEN_PLAZA.interiorMargin,
+  avoid = [],
+}) {
+  const placed = [];
+  const interiorMax = half - interiorMargin;
+  const decorSpawnClear = Math.max(2.5, Math.min(spawnClear, interiorMax - 0.5));
+  const targetCount = Math.max(2, Math.min(4, count));
+
+  for (const offset of ENTRY_DECOR_CANDIDATE_OFFSETS) {
+    if (placed.length >= targetCount) break;
+    const cand = {
+      x: centerX + offset.x,
+      z: centerZ + offset.z,
+      width: ENTRY_DECOR_RADIUS * 2,
+      depth: ENTRY_DECOR_RADIUS * 2,
+    };
+    if (Math.abs(cand.x - centerX) + ENTRY_DECOR_RADIUS > interiorMax) continue;
+    if (Math.abs(cand.z - centerZ) + ENTRY_DECOR_RADIUS > interiorMax) continue;
+    if (overlapsSpawnClearPoint(cand.x, cand.z, decorSpawnClear, centerX, centerZ)) continue;
+    if (avoid.some(c => footprintsOverlap(cand, c, 0))) continue;
+    if (placed.some(d =>
+      Math.abs(d.x - cand.x) < ENTRY_DECOR_RADIUS * 2 + 0.5 &&
+      Math.abs(d.z - cand.z) < ENTRY_DECOR_RADIUS * 2 + 0.5
+    )) continue;
+    placed.push({ type, x: cand.x, z: cand.z, yaw: 0 });
+  }
+  return placed;
+}
+
+/**
  * Accept cover from candidatePool in declaration order (no RNG shuffle).
  * Used by open-plaza `layoutMode: 'rigid'` — cover placement is seed-independent.
  */
@@ -2509,10 +2557,15 @@ function generateSunkenCanyon(seed, options = {}) {
  * sheet with a stone treasure pad to the south. One or two flat stone ramps
  * bridge entry ↔ ice; the treasure pad opens through a centred wall gap.
  *
+ * In `layoutMode: 'default'`, ramp count (1–2), cover scatter and entry-decor
+ * scatter are seed-driven. In `layoutMode: 'rigid'`, geometry is fixed and
+ * seed-independent: 2 outer ramps, declaration-order pad cover, fixed decor.
+ *
  * Returns { rooms, passages, cover, passageWidth, cellSpacing,
  *           profile: 'ice-cavern' }.
  */
 function generateIceCavern(seed, options = {}) {
+  const layoutMode = normalizeLayoutMode(options.layoutMode);
   const rng = mulberry32(seed);
   const {
     stonePadSize,
@@ -2523,6 +2576,10 @@ function generateIceCavern(seed, options = {}) {
     interiorMargin,
     rampXOffsets,
     treasureGapWidth,
+    rigidRampCount,
+    rigidCoverPerStonePad,
+    rigidEntryDecorCount,
+    rigidPadSpawnClear,
   } = ICE_CAVERN;
 
   const y = DEFAULT_FLOOR_Y;
@@ -2540,7 +2597,7 @@ function generateIceCavern(seed, options = {}) {
   const treasureZ = iceSouthZ + stoneHalf;
 
   const sortedOffsets = [...rampXOffsets].sort((a, b) => a - b);
-  const numRamps = 1 + Math.floor(rng() * 2);
+  const numRamps = layoutMode === 'rigid' ? rigidRampCount : 1 + Math.floor(rng() * 2);
   const rampCenters = numRamps === 1
     ? [sortedOffsets[1]]
     : [sortedOffsets[0], sortedOffsets[sortedOffsets.length - 1]];
@@ -2638,35 +2695,72 @@ function generateIceCavern(seed, options = {}) {
     { x: 3, z: -3, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },
   ];
 
-  const entryCover = scatterCoverInArena(rng, {
-    half: stoneHalf,
-    centerX: entry.x,
-    centerZ: entry.z,
-    spawnClear: spawnClearRadius,
-    candidatePool: stoneCandidatePool,
-    targetCount: 2,
-    interiorMargin,
-  });
+  // Rigid mode anchors the pool to each pad centre so cover lands on the pads;
+  // default mode must keep passing the pool untranslated (scatterCoverInArena
+  // reads candidate coordinates as absolute) so its output stays bit-identical.
+  const padCandidatePool = pad =>
+    stoneCandidatePool.map(c => ({ ...c, x: pad.x + c.x, z: pad.z + c.z }));
 
-  const treasureCover = scatterCoverInArena(rng, {
-    half: stoneHalf,
-    centerX: treasure.x,
-    centerZ: treasure.z,
-    spawnClear: spawnClearRadius,
-    candidatePool: stoneCandidatePool,
-    targetCount: 2,
-    interiorMargin,
-  });
+  const entryCover = layoutMode === 'rigid'
+    ? placeCoverInArenaOrdered({
+      half: stoneHalf,
+      centerX: entry.x,
+      centerZ: entry.z,
+      spawnClear: rigidPadSpawnClear,
+      candidatePool: padCandidatePool(entry),
+      targetCount: rigidCoverPerStonePad,
+      interiorMargin,
+    })
+    : scatterCoverInArena(rng, {
+      half: stoneHalf,
+      centerX: entry.x,
+      centerZ: entry.z,
+      spawnClear: spawnClearRadius,
+      candidatePool: stoneCandidatePool,
+      targetCount: 2,
+      interiorMargin,
+    });
 
-  const entryDecor = scatterEntryDecor(rng, {
-    half: stoneHalf,
-    centerX: entry.x,
-    centerZ: entry.z,
-    spawnClear: spawnClearRadius,
-    type: 'icicle_cluster',
-    count: 2 + Math.floor(rng() * 3),
-    interiorMargin,
-  });
+  const treasureCover = layoutMode === 'rigid'
+    ? placeCoverInArenaOrdered({
+      half: stoneHalf,
+      centerX: treasure.x,
+      centerZ: treasure.z,
+      spawnClear: rigidPadSpawnClear,
+      candidatePool: padCandidatePool(treasure),
+      targetCount: rigidCoverPerStonePad,
+      interiorMargin,
+    })
+    : scatterCoverInArena(rng, {
+      half: stoneHalf,
+      centerX: treasure.x,
+      centerZ: treasure.z,
+      spawnClear: spawnClearRadius,
+      candidatePool: stoneCandidatePool,
+      targetCount: 2,
+      interiorMargin,
+    });
+
+  const entryDecor = layoutMode === 'rigid'
+    ? placeEntryDecorOrdered({
+      half: stoneHalf,
+      centerX: entry.x,
+      centerZ: entry.z,
+      spawnClear: spawnClearRadius,
+      type: 'icicle_cluster',
+      count: rigidEntryDecorCount,
+      interiorMargin,
+      avoid: entryCover,
+    })
+    : scatterEntryDecor(rng, {
+      half: stoneHalf,
+      centerX: entry.x,
+      centerZ: entry.z,
+      spawnClear: spawnClearRadius,
+      type: 'icicle_cluster',
+      count: 2 + Math.floor(rng() * 3),
+      interiorMargin,
+    });
 
   const passages = ramps.map((ramp) => ({
     x1: entry.x,
@@ -3388,6 +3482,7 @@ module.exports = {
   scatterCoverInArena,
   scatterEntryDecor,
   placeCoverInArenaOrdered,
+  placeEntryDecorOrdered,
   OPEN_PLAZA_RIGID_HAZARDS,
   scatterCoverInRoom,
   decorateCrowdedLayout,
