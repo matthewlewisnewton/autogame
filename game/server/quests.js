@@ -665,6 +665,8 @@ const QUEST_DEFS = {
         objectiveType: 'stage_boss',
         levelKind: 'boss_level',
         layoutProfile: 'boss-arena',
+        // Cosmetic arena identity: ice/ember floor bands on the boss arena.
+        arenaTheme: 'rift',
         unlockRequires: [
           { questId: 'frost_crossing', tier: 2 },
           { questId: 'ember_descent', tier: 2 },
@@ -1871,13 +1873,18 @@ function getLayoutProfileForQuest(questId, tier) {
 
 /**
  * Layout generation options for a quest tier: slopes always enabled for quest
- * layouts; optional `layoutMode` on the tier def (defaults to 'default').
+ * layouts; optional `layoutMode` on the tier def (defaults to 'default');
+ * optional `arenaTheme` on the tier def passed through only when declared.
  */
 function getLayoutGenerationOptions(questId, tier) {
   const quest = getQuest(questId, tier);
   const rawMode = quest && quest.layoutMode;
   const layoutMode = rawMode === 'rigid' ? 'rigid' : 'default';
-  return { slopes: true, layoutMode };
+  const options = { slopes: true, layoutMode };
+  if (quest && typeof quest.arenaTheme === 'string') {
+    options.arenaTheme = quest.arenaTheme;
+  }
+  return options;
 }
 
 // Returns the enemy spawn pool for a quest, falling back to the default quest's

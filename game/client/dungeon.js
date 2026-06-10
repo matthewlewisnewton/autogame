@@ -1154,21 +1154,56 @@ export function buildEntryDecorMesh(type, materials) {
 	return group;
 }
 
+// Rift arena floor-band decal materials: frost-blue ice half vs ember-orange
+// fire half — clearly distinct so the converging quest lines read at a glance.
+const riftIceBandMaterial = new THREE.MeshStandardMaterial({
+	color: 0xbae6fd,
+	emissive: 0x38bdf8,
+	emissiveIntensity: 0.45,
+	roughness: 0.55,
+});
+
+const riftEmberBandMaterial = new THREE.MeshStandardMaterial({
+	color: 0xfdba74,
+	emissive: 0xf97316,
+	emissiveIntensity: 0.45,
+	roughness: 0.55,
+});
+
 /**
- * Build a visual-only floor marking mesh (no collision).
+ * Build a visual-only floor marking mesh (no collision). Unknown marking
+ * types return null.
  *
- * @param {{ type: string, innerRadius?: number, outerRadius?: number }} marking
+ * @param {{ type: string, innerRadius?: number, outerRadius?: number,
+ *           width?: number, depth?: number }} marking
  * @param {{ accent: THREE.Material }} materials
  * @returns {THREE.Mesh | null}
  */
 export function buildFloorMarkingMesh(marking, materials) {
-	if (marking.type !== 'center_ring') return null;
-	const geo = new THREE.RingGeometry(marking.innerRadius, marking.outerRadius, 64);
-	const mesh = new THREE.Mesh(geo, materials.accent);
-	mesh.rotation.x = -Math.PI / 2;
-	mesh.userData.floorMarking = true;
-	mesh.userData.floorMarkingType = 'center_ring';
-	return mesh;
+	switch (marking.type) {
+		case 'center_ring': {
+			const geo = new THREE.RingGeometry(marking.innerRadius, marking.outerRadius, 64);
+			const mesh = new THREE.Mesh(geo, materials.accent);
+			mesh.rotation.x = -Math.PI / 2;
+			mesh.userData.floorMarking = true;
+			mesh.userData.floorMarkingType = 'center_ring';
+			return mesh;
+		}
+		case 'rift_ice_band':
+		case 'rift_ember_band': {
+			const geo = new THREE.PlaneGeometry(marking.width, marking.depth);
+			const material = marking.type === 'rift_ice_band'
+				? riftIceBandMaterial
+				: riftEmberBandMaterial;
+			const mesh = new THREE.Mesh(geo, material);
+			mesh.rotation.x = -Math.PI / 2;
+			mesh.userData.floorMarking = true;
+			mesh.userData.floorMarkingType = marking.type;
+			return mesh;
+		}
+		default:
+			return null;
+	}
 }
 
 /**
