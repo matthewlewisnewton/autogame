@@ -6276,3 +6276,26 @@ See `nits.md` for harness capture-plan and follow-up theming items.
 ## Remaining gaps
 
 None blocking. The implementation fully addresses the reported flash-close bug with appropriate tests and clean runtime capture.
+
+## v0.358 — Client: disposeOne/disposeAvatar dispose geometry/materials shared with the glTF model cache  (2026-06-10 06:30:33)
+
+PASS. Cosmetic preview behavior is covered through its existing `disposeAvatar()` path, so preview rebuilds avoid re-uploading shared glTF buffers without adding a separate disposal policy.
+
+## Design and requirements
+
+PASS. The change is client-side rendering resource management only. It does not alter the documented lobby/dungeon/combat loop, server-client state flow, multiplayer visualization, or movement synchronization requirements.
+
+## Code quality
+
+PASS. The implementation is scoped to the model loader and disposal helpers, keeps the model cache behavior intact, and avoids broad renderer refactors. The safe disposer preserves the previous cleanup behavior for procedural meshes and material arrays while protecting shared glTF resources.
+
+Coverage visibility shows `39` test files and `428` tests passing. The log includes expected mocked-model-load warnings in jsdom tests, but the live capture console is clean.
+
+## Debug scenarios
+
+No development `?debugScenario=` shortcut was added or changed by this ticket.
+
+## Remaining gaps
+
+None.
+
