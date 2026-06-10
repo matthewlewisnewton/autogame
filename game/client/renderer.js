@@ -91,7 +91,7 @@ import {
 } from './lockOn.js';
 import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
 import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled, getAccountProfile } from './settings.js';
-import { MODEL_REGISTRY, loadModel, modelPathFor } from './models.js';
+import { MODEL_REGISTRY, loadModel, modelPathFor, disposeMeshTreeSafe } from './models.js';
 import { getCardDef } from './cards.js';
 import { getAccentHex } from './cardRenderers.js';
 import eventsCatalog from '../shared/events.json' with { type: 'json' };
@@ -2445,13 +2445,7 @@ function resolveBodyMesh(obj) {
  * @param {THREE.Object3D} obj
  */
 export function disposeAvatar(obj) {
-	if (!obj) return;
-	obj.traverse((node) => {
-		if (node.isMesh) {
-			if (node.geometry) node.geometry.dispose();
-			if (node.material) node.material.dispose();
-		}
-	});
+	disposeMeshTreeSafe(obj);
 }
 
 // ── Nameplate sprite helpers ──
