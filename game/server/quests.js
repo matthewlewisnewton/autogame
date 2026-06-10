@@ -648,6 +648,59 @@ const QUEST_DEFS = {
       },
     },
   },
+  rift_convergence: {
+    id: 'rift_convergence',
+    // Ice+fire convergence pool: encounter adds draw ONLY from the two stages'
+    // signature foes so the arena reads as both quest lines meeting.
+    enemyPool: [
+      { type: 'glacial_thrower', weight: 2 },
+      { type: 'ember_wraith', weight: 2 },
+    ],
+    tiers: {
+      1: {
+        name: 'Rift Convergence',
+        description:
+          'Face the Riftbound Colossus on the boss arena where the ice and fire '
+          + 'stages converge, with four marked supports.',
+        objectiveType: 'stage_boss',
+        levelKind: 'boss_level',
+        layoutProfile: 'boss-arena',
+        unlockRequires: [
+          { questId: 'frost_crossing', tier: 2 },
+          { questId: 'ember_descent', tier: 2 },
+        ],
+        encounter: {
+          bossType: 'riftbound_colossus',
+          landmark: 'arena_dais',
+          addCount: 4,
+        },
+        rewardCurrency: 22,
+        signatureCardId: 'glacier_collapse',
+        rewardCards: ['glacier_collapse', 'inferno_pillar'],
+        client: {
+          name: 'Maren',
+          briefing:
+            'Rift convergence contract. The Riftbound Colossus holds the boss-arena dais '
+            + 'where the ice and fire stages meet, with four marked supports off the rift — '
+            + 'drop all five and claim twenty-two stones, the richest boss purse on the board.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Maren on rift feed. Colossus and four marked supports on the dais — frost and ember signatures mixed, watch for both.',
+          },
+          {
+            trigger: { waveCleared: 2 },
+            text: 'Two supports spent. The Colossus is still anchored to the dais — keep the pressure on.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Colossus down and the rift is quiet. Convergence acknowledged — twenty-two stones released.',
+          },
+        ],
+      },
+    },
+  },
   frost_crossing: {
     id: 'frost_crossing',
     // Signature foe that must always appear in this level's combat spawn set.
