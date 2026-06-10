@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -46,6 +47,25 @@ class WorkerHandle:
 
     def poll(self) -> Optional[int]:
         return self.proc.poll()
+
+
+# Historical ticket names ("373-fix-foo") are already valid branch/dir
+# components; operator-created beads have prose titles ("Server: fix X, Y")
+# that git rejects as branch names ("auto/<title>") and that make terrible
+# directory names. A clean title passes through verbatim (hand-authored
+# tickets/<title>/ticket.md keep matching); anything else is slugified with
+# the bead-id suffix appended for uniqueness.
+_VALID_TICKET_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
+
+
+def ticket_dir_name(bead_id: str, title: str) -> str:
+    t = (title or "").strip()
+    if _VALID_TICKET_NAME.match(t) and ".." not in t and not t.endswith(".lock"):
+        return t
+    slug = re.sub(r"-+", "-", re.sub(r"[^a-z0-9]+", "-", t.lower())).strip("-")
+    slug = slug[:60].rstrip("-")
+    suffix = (bead_id or "").strip().split("-")[-1] or "ticket"
+    return f"{slug}-{suffix}" if slug else suffix
 
 
 # spawn(ticket_id, agent, worktree, ports) -> a process handle with .poll()
@@ -380,6 +400,7 @@ class Dispatcher:
         failure the ticket is requeued and the slot/agent reclaimed; returns
         False so tick() backs off this lane (no hot-retry on persistent infra
         failure)."""
+        ticket_name = ticket_dir_name(bead_id, ticket_name)
         ports = self._free_ports.pop()
         try:
             wt = self.worktree_factory(ticket_name, ports)
@@ -388,6 +409,9 @@ class Dispatcher:
             self._free_ports.append(ports)
             self.registry.release(agent)
             self.queue.requeue(bead_id, note=f"worktree create failed: {e!r}")
+            # Spawn failures repeat fast (no worker ran) — back off like any
+            # other failure so a persistent infra error can't hot-loop the claim.
+            self._note_backoff(bead_id, self._attempts.get(bead_id, 0) + 1)
             return False
         # Best-effort: materialize a ticket.md from the bead when one isn't
         # already committed on disk (an on-disk hand-authored spec always wins).
@@ -407,6 +431,7 @@ class Dispatcher:
             self._free_ports.append(ports)
             self.registry.release(agent)
             self.queue.requeue(bead_id, note=f"spawn failed: {e!r}")
+            self._note_backoff(bead_id, self._attempts.get(bead_id, 0) + 1)
             return False
         self._workers[bead_id] = WorkerHandle(
             bead_id, ticket_name, agent, difficulty, wt, proc,

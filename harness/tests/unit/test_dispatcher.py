@@ -543,3 +543,52 @@ def test_watchdog_off_by_default_leaves_worker_alone(monkeypatch):
     monkeypatch.setattr(_os, "killpg", lambda pgid, sig: sent.append(sig))
     d.tick()
     assert sent == []
+
+
+# --- ticket_dir_name: prose bead titles → valid branch/dir names -------- #
+def test_ticket_dir_name_passes_clean_legacy_slugs_through():
+    from harness.dispatch.dispatcher import ticket_dir_name
+    assert ticket_dir_name("autogame-x1", "373-playthrough-validate-fire-level") \
+        == "373-playthrough-validate-fire-level"
+
+
+def test_ticket_dir_name_slugifies_prose_titles_with_id_suffix():
+    import re as _re
+    from harness.dispatch.dispatcher import ticket_dir_name
+    name = ticket_dir_name(
+        "autogame-oumk",
+        "Server: bulkhead_mauler minions attack every tick; mauler broadcasts CARD_USED 20x/sec")
+    assert _re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", name), name
+    assert name.endswith("-oumk")          # bead id keeps collisions impossible
+    assert ".." not in name and len(name) <= 80
+
+
+def test_ticket_dir_name_empty_title_falls_back_to_id():
+    from harness.dispatch.dispatcher import ticket_dir_name
+    assert ticket_dir_name("autogame-zz9", "") == "zz9"
+
+
+def test_spawned_worker_uses_sanitized_name():
+    q = FakeQueue({"medium": ["t1"]})
+    q._ready["medium"] = ["t1"]
+    # claim returns a prose title — the worktree/branch name must be sanitized
+    orig = q.claim_ready
+    def claim(**kw):
+        issue = orig(**kw)
+        if issue:
+            issue["title"] = "Fix: a thing / another (badly: named)"
+        return issue
+    q.claim_ready = claim
+    d, procs, wts = _dispatcher(q, _registry())
+    d.tick()
+    assert wts and " " not in wts[0].name and ":" not in wts[0].name and "/" not in wts[0].name
+
+
+def test_worktree_create_failure_backs_off():
+    q = FakeQueue({"medium": ["t1"]})
+    d, procs, wts = _dispatcher(q, _registry())
+    d.requeue_backoff_s = 60.0
+    d.worktree_factory = lambda name, ports: (_ for _ in ()).throw(RuntimeError("boom"))
+    d.tick()
+    assert q.requeued == ["t1"]
+    assert d._not_before.get("t1", 0) > time.time()
