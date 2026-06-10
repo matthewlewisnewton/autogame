@@ -15,6 +15,23 @@ import { clampDelta } from './delta.js';
 import { disposeOne, disposeMeshMap, disposeStaleMeshes } from './renderer/disposeMesh.js';
 import { syncMeshMap } from './renderer/syncMeshMap.js';
 import { createLootSync } from './renderer/lootSync.js';
+import {
+	createAvatarSync,
+	attachGltfHat,
+	attachGltfKeyItemProp,
+	createPlayerAvatar as avatarSyncCreatePlayerAvatar,
+	disposeAvatar,
+	applyAvatarProportions,
+	__testOnly,
+	resolveBodyMeshForVfx,
+} from './renderer/avatarSync.js';
+
+export { disposeAvatar, applyAvatarProportions, __testOnly };
+
+export function createPlayerAvatar(...args) {
+	getAvatarSync();
+	return avatarSyncCreatePlayerAvatar(...args);
+}
 
 export { disposeOne, disposeMeshMap, disposeStaleMeshes };
 import {
@@ -686,215 +703,6 @@ function retargetPlayerBodyMesh(host, model) {
 	const mat = Array.isArray(bodyMesh.material) ? bodyMesh.material[0] : bodyMesh.material;
 	if (mat && mat.color && mat.color.getHex) {
 		host.userData.baseColor = mat.color.getHex();
-	}
-}
-
-// Desired world-space scale and seating for a hat worn on the loaded glTF head.
-// `buildHatMesh` sizes meshes for the ~1-unit procedural body (crown/brim radius
-// ~0.4–0.58); the glTF is normalized to ~1.8 units with a much smaller head
-// (center y ≈ 1.62, radius ≈ 0.13 per MODEL_SPIKE.md). HAT_HEAD_WORLD_SCALE
-// shrinks the built hat to read as worn on that head without being undersized,
-// and HAT_HEAD_WORLD_OFFSET lifts it just above the head bone's origin.
-const HAT_HEAD_WORLD_SCALE = 0.45;
-const HAT_HEAD_WORLD_OFFSET = 0.18;
-// World-space y anchor used only when the `Head` bone is missing: top-of-head of
-// the ~1.8-unit normalized model (head center ≈ 1.62, crown ≈ 1.8).
-const HAT_FALLBACK_WORLD_Y = 1.72;
-
-/**
- * Build the equipped hat (from `host.userData.hatId`) and seat it on the loaded
- * glTF avatar's head so it renders attached to the head and follows it. Called
- * from the player branch of `attachRegistryModel` AFTER the procedural-mesh
- * snapshot is taken, so the head-bone hat is never hidden by the hiding loop.
- *
- * Resilience: a `none`/unknown hat adds nothing; a missing `Head` bone falls
- * back to a top-of-head anchor on the host so the hat still renders; the whole
- * routine is best-effort and never throws (caught by the caller).
- * @param {THREE.Object3D} host - the avatar group.
- * @param {THREE.Object3D} model - the loaded, normalized glTF model.
- */
-function attachGltfHat(host, model) {
-	// Remove any prior glTF hat (e.g. a cosmetic hat swap on the same host) so the
-	// head bone never carries a stale duplicate.
-	const existing = host.userData.gltfHatMesh;
-	if (existing) {
-		if (existing.parent) existing.parent.remove(existing);
-		disposeAvatar(existing);
-		host.userData.gltfHatMesh = null;
-	}
-
-	const hatId = host.userData.hatId;
-	const hat = buildHatMesh(hatId);
-	if (!hat) return; // `none`/unknown → bare head, nothing to attach.
-
-	const headBone = model.getObjectByName('Head');
-	if (headBone) {
-		// Parent to the head bone so the hat inherits the head's world position and
-		// orientation. Compensate for the bone's world transform so the hat keeps a
-		// sensible world scale and stays upright (+Y up) instead of inheriting the
-		// bone's rest tilt — while still yawing with the avatar (host) rotation.
-		headBone.add(hat);
-
-		const boneScale = new THREE.Vector3();
-		headBone.getWorldScale(boneScale);
-		const sFactor = HAT_HEAD_WORLD_SCALE / (boneScale.x || 1);
-		hat.scale.setScalar(sFactor);
-
-		// hatLocal = inverse(boneWorldQuat) * hostWorldQuat. The host rotation
-		// cancels out of both terms, leaving the inverse of the bone's rotation
-		// relative to the host — constant across frames, so the hat reads upright
-		// and rotates with the avatar rather than drifting as the player turns.
-		const boneQuat = new THREE.Quaternion();
-		headBone.getWorldQuaternion(boneQuat);
-		const hostQuat = new THREE.Quaternion();
-		host.getWorldQuaternion(hostQuat);
-		hat.quaternion.copy(boneQuat).invert().multiply(hostQuat);
-
-		// Seat the hat just above the head, along the (now-upright) world up axis.
-		// Express that world offset in the bone's local space: the local up is the
-		// world up rotated by the hat's compensating quaternion; divide the world
-		// distance by the bone's world scale to land at the intended world height.
-		const localUp = new THREE.Vector3(0, 1, 0).applyQuaternion(hat.quaternion);
-		hat.position.copy(localUp.multiplyScalar(HAT_HEAD_WORLD_OFFSET / (boneScale.x || 1)));
-	} else {
-		// No head bone: anchor at the top of the head in the host's world space so
-		// the hat still renders and never floats at the group origin.
-		host.add(hat);
-		hat.scale.setScalar(HAT_HEAD_WORLD_SCALE);
-		hat.position.set(0, HAT_FALLBACK_WORLD_Y, 0);
-	}
-
-	host.userData.gltfHatMesh = hat;
-}
-
-// Desired world-space scale and seating for a key-item prop worn on the loaded
-// glTF torso, analogous to the HAT_HEAD_WORLD_* constants. `buildKeyItemProp`
-// sizes props for the ~1-unit procedural body; the glTF is normalized to ~1.8
-// units, so KEY_ITEM_BODY_WORLD_SCALE shrinks the prop to read as a chest badge.
-// KEY_ITEM_BODY_WORLD_OFFSET pushes it just forward of the spine bone (+Z chest).
-const KEY_ITEM_BODY_WORLD_SCALE = 0.5;
-const KEY_ITEM_BODY_WORLD_OFFSET = 0.16;
-// World-space y/z anchor used only when no spine bone exists: mid-chest of the
-// ~1.8-unit normalized model, nudged forward so the prop sits on the torso front.
-const KEY_ITEM_FALLBACK_WORLD_Y = 1.25;
-const KEY_ITEM_FALLBACK_WORLD_Z = 0.22;
-
-// Local chest seating for the procedural primitive avatar (~1-unit body): mid
-// torso, nudged forward (+Z) so the prop reads as worn on the chest front.
-const KEY_ITEM_PROC_CHEST_Y = 0.18;
-const KEY_ITEM_PROC_CHEST_Z = 0.45;
-
-/**
- * Build the equipped key-item prop (from `host.userData.keyItemId`) and seat it
- * on the loaded glTF avatar's torso so it renders attached to the body and
- * follows it. Mirrors attachGltfHat but targets a spine bone (preferring
- * `spine_03`, then `spine_02`, then `spine_01`). Called from the player branch
- * of `attachRegistryModel` AFTER the procedural-mesh snapshot, so the bone prop
- * is never hidden by the hiding loop.
- *
- * Resilience: a `none`/unknown key item adds nothing; a missing spine bone falls
- * back to a host-local chest anchor so the prop still renders; the whole routine
- * is best-effort and never throws (caught by the caller).
- * @param {THREE.Object3D} host - the avatar group.
- * @param {THREE.Object3D} model - the loaded, normalized glTF model.
- */
-function attachGltfKeyItemProp(host, model) {
-	// Remove any prior prop (e.g. a procedural one seated before the glTF resolved)
-	// so the body bone never carries a stale duplicate.
-	const existing = host.userData.keyItemPropMesh;
-	if (existing) {
-		if (existing.parent) existing.parent.remove(existing);
-		disposeAvatar(existing);
-		host.userData.keyItemPropMesh = null;
-	}
-
-	const prop = buildKeyItemProp(host.userData.keyItemId);
-	if (!prop) return; // `none`/unknown → no prop to attach.
-
-	const spineBone = model.getObjectByName('spine_03')
-		|| model.getObjectByName('spine_02')
-		|| model.getObjectByName('spine_01');
-	if (spineBone) {
-		// Parent to the spine bone so the prop inherits the torso's world position
-		// and orientation. Compensate for the bone's world transform so the prop
-		// keeps a sensible world scale and stays upright while yawing with the
-		// avatar (host) — same pattern as attachGltfHat.
-		spineBone.add(prop);
-
-		const boneScale = new THREE.Vector3();
-		spineBone.getWorldScale(boneScale);
-		const sFactor = KEY_ITEM_BODY_WORLD_SCALE / (boneScale.x || 1);
-		prop.scale.setScalar(sFactor);
-
-		const boneQuat = new THREE.Quaternion();
-		spineBone.getWorldQuaternion(boneQuat);
-		const hostQuat = new THREE.Quaternion();
-		host.getWorldQuaternion(hostQuat);
-		prop.quaternion.copy(boneQuat).invert().multiply(hostQuat);
-
-		// Seat the prop just forward of the spine, along the (now-upright) world
-		// forward axis (+Z). Express that world offset in the bone's local space:
-		// rotate world +Z by the prop's compensating quaternion, then divide by the
-		// bone's world scale to land at the intended world distance.
-		const localFwd = new THREE.Vector3(0, 0, 1).applyQuaternion(prop.quaternion);
-		prop.position.copy(localFwd.multiplyScalar(KEY_ITEM_BODY_WORLD_OFFSET / (boneScale.x || 1)));
-	} else {
-		// No spine bone: anchor at mid-chest in the host's world space so the prop
-		// still renders and never floats at the group origin.
-		host.add(prop);
-		prop.scale.setScalar(KEY_ITEM_BODY_WORLD_SCALE);
-		prop.position.set(0, KEY_ITEM_FALLBACK_WORLD_Y, KEY_ITEM_FALLBACK_WORLD_Z);
-	}
-
-	host.userData.keyItemPropMesh = prop;
-}
-
-/**
- * Build the equipped key-item prop (from `host.userData.keyItemId`) and seat it
- * on the procedural primitive avatar's torso, recording it on
- * `host.userData.keyItemPropMesh`. Used both when the avatar is first built and
- * when the equip changes while the procedural fallback is still in use.
- * Best-effort: `none`/unknown adds nothing.
- * @param {THREE.Object3D} host - the avatar group.
- */
-function attachProceduralKeyItemProp(host) {
-	const prop = buildKeyItemProp(host.userData.keyItemId);
-	if (!prop) return;
-	prop.position.set(0, KEY_ITEM_PROC_CHEST_Y, KEY_ITEM_PROC_CHEST_Z);
-	host.add(prop);
-	host.userData.keyItemPropMesh = prop;
-}
-
-/**
- * Apply a key-item equip change to a rendered avatar WITHOUT a page reload: when
- * the equipped id differs from the currently-shown one, remove + dispose the old
- * prop and build/attach the new one (to the glTF spine bone when a model is
- * loaded, else to the procedural torso). Tracks the shown id on
- * `host.userData.keyItemId`. Best-effort and caught so a bad id never crashes the
- * render loop or removes the avatar.
- * @param {THREE.Object3D} host - the avatar group.
- * @param {string} equippedKeyItemId - the snapshot's per-player key item id.
- */
-function updateKeyItemProp(host, equippedKeyItemId) {
-	const newId = equippedKeyItemId || 'none';
-	if (!host || !host.userData) return;
-	if (host.userData.keyItemId === newId) return; // unchanged → nothing to do.
-
-	try {
-		const old = host.userData.keyItemPropMesh;
-		if (old) {
-			if (old.parent) old.parent.remove(old);
-			disposeAvatar(old);
-			host.userData.keyItemPropMesh = null;
-		}
-		host.userData.keyItemId = newId;
-		if (host.userData.modelOverride) {
-			attachGltfKeyItemProp(host, host.userData.modelOverride);
-		} else {
-			attachProceduralKeyItemProp(host);
-		}
-	} catch (err) {
-		console.warn('[renderer] failed to update key-item prop:', err);
 	}
 }
 
@@ -1735,46 +1543,11 @@ export function updateMyPlayer(delta) {
 
 // ── Player avatar (cosmetic-driven) ──
 
-// Defaults used when a cosmetic field is missing/invalid. Mirrors the server's
-// DEFAULT_COSMETIC in game/server/cosmetic.js.
-const DEFAULT_AVATAR_BODY_COLOR = 0x4f9dde;
-const DEFAULT_AVATAR_ACCENT_COLOR = 0xf2c94c;
 const DEAD_AVATAR_COLOR = 0x808080;
 
 // Standing height (world units) the glTF player avatar is normalized to. Matches
 // the spike contract in game/docs/MODEL_SPIKE.md (1.8, feet at y=0).
 const PLAYER_MODEL_HEIGHT = 1.8;
-
-// Body-shape vocabulary, kept in sync with the server's BODY_SHAPES.
-const AVATAR_BODY_SHAPES = new Set(['box', 'cylinder', 'cone', 'capsule']);
-const HEX_COLOR_RE = /^#[0-9a-f]{6}$/i;
-
-// Proportion morph-target vocabulary — the SAME case-sensitive strings used by
-// the server's cosmetic.proportions{}, the glTF morph targets, and the UI
-// sliders. There is NO alias/rename layer (see game/docs/MODEL_SPIKE.md):
-// proportions[key] maps 1:1 onto morphTargetInfluences[morphTargetDictionary[key]].
-const PROPORTION_MORPH_KEYS = [
-	'height',
-	'headSize',
-	'torsoWidth',
-	'armLength',
-	'legLength',
-	'shoulderWidth',
-];
-
-// Hat catalog ids, kept in sync with the server's HAT_CATALOG in
-// game/server/cosmetic.js. 'none' (and any unknown id) renders no hat.
-const AVATAR_HAT_IDS = new Set(['none', 'cap', 'wizard', 'crown', 'bandana', 'beanie']);
-
-// Base mesh variant ids, kept in sync with MODEL_IDS in game/server/cosmetic.js.
-const AVATAR_MODEL_IDS = new Set(['player']);
-
-// Per-hat colors, distinct from one another and from the default body/accent.
-const HAT_CAP_COLOR = 0x2e7d32; // forest green
-const HAT_WIZARD_COLOR = 0x5b3a8a; // deep purple
-const HAT_CROWN_COLOR = 0xffd700; // gold
-const HAT_BANDANA_COLOR = 0xc62828; // crimson red
-const HAT_BEANIE_COLOR = 0x00695c; // slate teal
 
 // Per-key-item prop colors (worn as a small torso badge). Ids match the server's
 // KEY_ITEM_DEFS in game/server/progression.js. Each defined prop gets a distinct
@@ -1791,126 +1564,6 @@ const KEY_ITEM_SMOKE_COLOR = 0x64748b; // slate grey
 const KEY_ITEM_OVERCLOCK_COLOR = 0xfacc15; // electric yellow
 const KEY_ITEM_ANCHOR_COLOR = 0x78716c; // iron brown
 const KEY_ITEM_PHASE_COLOR = 0xa855f7; // phase purple
-
-/**
- * Build the ~1-unit-tall body geometry for a given body shape.
- * Unknown/missing shapes fall back to a box.
- * @param {string} shape
- * @returns {THREE.BufferGeometry}
- */
-function buildBodyGeometry(shape) {
-	switch (shape) {
-		case 'cylinder':
-			return new THREE.CylinderGeometry(0.5, 0.5, 1, 24);
-		case 'cone':
-			return new THREE.ConeGeometry(0.55, 1, 24);
-		case 'capsule':
-			return new THREE.CapsuleGeometry(0.4, 0.5, 8, 16);
-		case 'box':
-		default:
-			return new THREE.BoxGeometry(1, 1, 1);
-	}
-}
-
-/**
- * Approximate Y coordinate of the top of the ~1-unit-tall body for a given
- * shape, used to seat the hat on the head regardless of bodyShape. The body
- * geometries are centered at the group origin; the capsule is taller than the
- * others (radius 0.4 + half-length 0.25).
- * @param {string} shape
- * @returns {number}
- */
-function bodyTopY(shape) {
-	switch (shape) {
-		case 'capsule':
-			return 0.65; // 0.4 radius + 0.25 half-length
-		case 'box':
-		case 'cylinder':
-		case 'cone':
-		default:
-			return 0.5;
-	}
-}
-
-/**
- * Build a hat child object for a catalog hat id, seated so its base sits at the
- * group origin (the caller positions it at the body's top). Returns null for
- * `none` or any unknown id so no hat mesh is added. Each catalog hat gets a
- * distinct, recognizable shape and color.
- * @param {string} hatId
- * @returns {THREE.Object3D|null}
- */
-function buildHatMesh(hatId) {
-	switch (hatId) {
-		case 'cap': {
-			// A low cap: a short dome-ish cylinder with a thin brim.
-			const hat = new THREE.Group();
-			const crownGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.22, 20);
-			const crownMat = new THREE.MeshStandardMaterial({ color: HAT_CAP_COLOR });
-			const crown = new THREE.Mesh(crownGeo, crownMat);
-			crown.position.y = 0.13;
-			hat.add(crown);
-			const brimGeo = new THREE.CylinderGeometry(0.58, 0.58, 0.05, 20);
-			const brimMat = new THREE.MeshStandardMaterial({ color: HAT_CAP_COLOR });
-			const brim = new THREE.Mesh(brimGeo, brimMat);
-			brim.position.y = 0.025;
-			hat.add(brim);
-			return hat;
-		}
-		case 'wizard': {
-			// A tall pointed cone.
-			const geo = new THREE.ConeGeometry(0.42, 0.85, 20);
-			const mat = new THREE.MeshStandardMaterial({ color: HAT_WIZARD_COLOR });
-			const cone = new THREE.Mesh(geo, mat);
-			cone.position.y = 0.425; // half-height so the base sits at the origin
-			return cone;
-		}
-		case 'crown': {
-			// A gold ring crown sitting flat on the head.
-			const geo = new THREE.TorusGeometry(0.34, 0.09, 12, 24);
-			const mat = new THREE.MeshStandardMaterial({
-				color: HAT_CROWN_COLOR,
-				metalness: 0.6,
-				roughness: 0.3
-			});
-			const ring = new THREE.Mesh(geo, mat);
-			ring.rotation.x = Math.PI / 2; // lay the torus flat to read as a ring
-			ring.position.y = 0.1;
-			return ring;
-		}
-		case 'bandana': {
-			// A thin flat band hugging the head, lower-profile than the crown
-			// and a non-gold red. A small knotted tail reads as a tied bandana.
-			const hat = new THREE.Group();
-			const mat = new THREE.MeshStandardMaterial({ color: HAT_BANDANA_COLOR });
-			const bandGeo = new THREE.TorusGeometry(0.4, 0.05, 10, 24);
-			const band = new THREE.Mesh(bandGeo, mat);
-			band.rotation.x = Math.PI / 2; // lay flat to wrap around the head
-			band.position.y = 0.06;
-			hat.add(band);
-			const knotGeo = new THREE.ConeGeometry(0.08, 0.18, 8);
-			const knot = new THREE.Mesh(knotGeo, mat);
-			knot.position.set(-0.4, 0.06, 0);
-			knot.rotation.z = Math.PI / 2; // point the tail outward to the side
-			hat.add(knot);
-			return hat;
-		}
-		case 'beanie': {
-			// A small snug dome: a low half-sphere clipped to the upper hemisphere
-			// so its base sits at the group origin.
-			const geo = new THREE.SphereGeometry(0.44, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2);
-			const mat = new THREE.MeshStandardMaterial({
-				color: HAT_BEANIE_COLOR,
-				roughness: 0.9
-			});
-			const dome = new THREE.Mesh(geo, mat);
-			return dome;
-		}
-		case 'none':
-		default:
-			return null;
-	}
-}
 
 /**
  * Build a key-item prop child object for a catalog key item id, centered at the
@@ -2045,241 +1698,24 @@ export function buildKeyItemProp(keyItemId) {
 	}
 }
 
-/**
- * Resolve a #RRGGBB hex string into a numeric hex, falling back to `fallbackHex`
- * when the value is missing or invalid.
- * @param {*} hex
- * @param {number} fallbackHex
- * @returns {number}
- */
-function avatarColorHex(hex, fallbackHex) {
-	if (typeof hex === 'string' && HEX_COLOR_RE.test(hex)) return parseInt(hex.slice(1), 16);
-	return fallbackHex;
-}
+// ── Avatar sync (extracted module; thin re-exports at top of file) ──
 
-/**
- * Resolve the MODEL_REGISTRY key for a cosmetic's base mesh variant.
- * Mirrors server MODEL_IDS validation; unknown/absent ids fall back to 'player'.
- * @param {*} modelId
- * @returns {string}
- */
-function resolveAvatarModelKey(modelId) {
-	return (typeof modelId === 'string' && AVATAR_MODEL_IDS.has(modelId)) ? modelId : 'player';
-}
+let _avatarSync = null;
 
-/**
- * Stable signature string for a cosmetic, used to detect when an avatar needs
- * to be rebuilt. Only the fields that affect geometry/material are included.
- * @param {*} cosmetic
- * @returns {string}
- */
-function cosmeticSignature(cosmetic) {
-	const c = (cosmetic && typeof cosmetic === 'object' && !Array.isArray(cosmetic)) ? cosmetic : {};
-	const shape = AVATAR_BODY_SHAPES.has(c.bodyShape) ? c.bodyShape : 'box';
-	const body = (typeof c.bodyColor === 'string' && HEX_COLOR_RE.test(c.bodyColor)) ? c.bodyColor.toLowerCase() : 'default';
-	const accent = (typeof c.accentColor === 'string' && HEX_COLOR_RE.test(c.accentColor)) ? c.accentColor.toLowerCase() : 'default';
-	const hat = AVATAR_HAT_IDS.has(c.hat) ? c.hat : 'none';
-	const modelKey = resolveAvatarModelKey(c.modelId);
-	return `${shape}|${body}|${accent}|${hat}|${modelKey}`;
-}
-
-/**
- * Build a player avatar as a THREE.Group from a cosmetic profile. The body mesh
- * geometry is chosen by `bodyShape` and tinted by `bodyColor`; a smaller accent
- * band is tinted by `accentColor`. A missing/invalid cosmetic falls back to the
- * default colors and box shape rather than crashing.
- *
- * The returned group stores on `userData`:
- *   - `bodyMesh`: the body Mesh (target for color/flash/transparency)
- *   - `accentMesh`: the accent Mesh
- *   - `baseColor`: numeric hex of the alive body color
- *   - `cosmeticKey`: signature for change detection
- *   - `isAvatar`: marker flag
- *
- * @param {object} cosmetic - { bodyColor, accentColor, bodyShape }
- * @param {boolean} isSelf - whether this avatar is the local player
- * @param {string} [equippedKeyItemId] - the player's equipped key item id; its
- *   prop is seated on the torso (omitted/`none`/unknown → no prop).
- * @returns {THREE.Group}
- */
-export function createPlayerAvatar(cosmetic, isSelf, equippedKeyItemId) {
-	const c = (cosmetic && typeof cosmetic === 'object' && !Array.isArray(cosmetic)) ? cosmetic : {};
-	const shape = AVATAR_BODY_SHAPES.has(c.bodyShape) ? c.bodyShape : 'box';
-
-	const group = new THREE.Group();
-
-	// Body mesh — colored from bodyColor (numeric hex so material.color exposes
-	// setHex for later state recoloring, matching the rest of the renderer).
-	const bodyHex = avatarColorHex(c.bodyColor, DEFAULT_AVATAR_BODY_COLOR);
-	const bodyGeo = buildBodyGeometry(shape);
-	const bodyMat = new THREE.MeshStandardMaterial({ color: bodyHex });
-	const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
-	group.add(bodyMesh);
-
-	// Accent band — a thin ring around the body tinted from accentColor.
-	const accentHex = avatarColorHex(c.accentColor, DEFAULT_AVATAR_ACCENT_COLOR);
-	const accentGeo = new THREE.CylinderGeometry(0.56, 0.56, 0.18, 24);
-	const accentMat = new THREE.MeshStandardMaterial({ color: accentHex });
-	const accentMesh = new THREE.Mesh(accentGeo, accentMat);
-	accentMesh.position.y = 0.18;
-	group.add(accentMesh);
-
-	// Hat — a child mesh seated on top of the body so it reads as worn on the
-	// head and inherits the group's rotation. `none`/unknown adds no mesh.
-	const hatId = AVATAR_HAT_IDS.has(c.hat) ? c.hat : 'none';
-	const hat = buildHatMesh(hatId);
-	if (hat) {
-		hat.position.y = bodyTopY(shape);
-		group.add(hat);
-		group.userData.hatMesh = hat;
+function getAvatarSync() {
+	if (!_avatarSync) {
+		_avatarSync = createAvatarSync({
+			getScene: () => scene,
+			getPlayersMeshes: () => playersMeshes,
+			attachRegistryModel,
+			buildKeyItemProp,
+		});
 	}
-	// Record the resolved hat id so the async glTF load callback can rebuild the
-	// hat and seat it on the loaded model's head bone (the procedural group-level
-	// hat above is hidden alongside the body when the glTF resolves).
-	group.userData.hatId = hatId;
-
-	// Key-item prop — a child mesh seated on the torso so it reads as worn on the
-	// chest and inherits the group's rotation. Added BEFORE attachRegistryModel so
-	// it is captured by the procedural snapshot and hidden alongside the body when
-	// the glTF resolves (a fresh prop is then seated on the spine bone). `none` /
-	// unknown / undefined adds no mesh.
-	const keyItemId = equippedKeyItemId || 'none';
-	group.userData.keyItemId = keyItemId;
-	attachProceduralKeyItemProp(group);
-
-	group.userData.isAvatar = true;
-	group.userData.bodyMesh = bodyMesh;
-	group.userData.accentMesh = accentMesh;
-	group.userData.baseColor = bodyHex;
-	group.userData.cosmeticKey = cosmeticSignature(c);
-
-	const modelKey = resolveAvatarModelKey(c.modelId);
-	attachRegistryModel(modelKey, group);
-
-	return group;
+	return _avatarSync;
 }
 
-/**
- * Drive a loaded glTF body mesh's proportion morph-target influences from a
- * cosmetic `proportions{}` object, mapping each of the six keys 1:1 by IDENTICAL
- * name (no alias/translation table — see game/docs/MODEL_SPIKE.md):
- *   morphTargetInfluences[morphTargetDictionary[key]] = proportions[key].
- *
- * Absent keys and non-finite values are skipped so that target keeps its current
- * (rest) influence rather than becoming `undefined`. Safe no-op when the mesh
- * carries no morph targets (procedural primitive fallback in use).
- *
- * @param {THREE.Mesh|null|undefined} skinnedMesh
- * @param {*} proportions
- */
-function applyProportionMorphs(skinnedMesh, proportions) {
-	const dict = skinnedMesh && skinnedMesh.morphTargetDictionary;
-	const influences = skinnedMesh && skinnedMesh.morphTargetInfluences;
-	if (!dict || !influences) return; // no morph targets → procedural fallback, no-op
-	if (!proportions || typeof proportions !== 'object' || Array.isArray(proportions)) return;
-
-	for (const key of PROPORTION_MORPH_KEYS) {
-		if (!Object.prototype.hasOwnProperty.call(proportions, key)) continue;
-		const value = proportions[key];
-		if (!Number.isFinite(value)) continue;
-		const idx = dict[key];
-		if (idx === undefined) continue; // model lacks this morph → skip, leave at rest
-		influences[idx] = value;
-	}
-}
-
-/**
- * (Re)apply cosmetic proportions + body/accent tint to a player's LOADED glTF
- * avatar each update, so a broadcast cosmetic change takes effect WITHOUT a page
- * reload (proportions are not part of cosmeticSignature, so the avatar is not
- * rebuilt for proportion-only changes — we re-apply influences on the existing
- * mesh instead).
- *
- * Body tint flows through `userData.baseColor` so the dead/flash/invuln recolor
- * paths from sub-ticket 01 still win when active (they recolor the same cloned
- * body material this routes through). Accent tint applies only when the body
- * mesh exposes a distinguishable accent material (a material array); the
- * committed player.glb body mesh (`SuperHero_Male`) carries a single material,
- * so accent currently has no separate surface and is left untinted — we do not
- * invent a second mesh (MODEL_SPIKE.md).
- *
- * Safe no-op when the procedural primitive is in use (no `modelOverride`).
- *
- * @param {THREE.Object3D} host - the avatar group from createPlayerAvatar
- * @param {*} cosmetic
- */
-function applyLoadedModelCosmetic(host, cosmetic) {
-	if (!host || !host.userData || !host.userData.modelOverride) return; // procedural fallback → no-op
-	const bodyMesh = host.userData.bodyMesh;
-	if (!bodyMesh) return;
-
-	const c = (cosmetic && typeof cosmetic === 'object' && !Array.isArray(cosmetic)) ? cosmetic : {};
-
-	applyProportionMorphs(bodyMesh, c.proportions);
-
-	// Body tint: route through baseColor so the dead/flash/invuln recolor paths
-	// restore the cosmetic body color rather than the model's intrinsic color.
-	host.userData.baseColor = avatarColorHex(c.bodyColor, DEFAULT_AVATAR_BODY_COLOR);
-
-	// Accent tint: only when the body mesh exposes a separate accent material.
-	// Single-material bodies (current player.glb) have no accent surface.
-	if (Array.isArray(bodyMesh.material) && bodyMesh.material.length > 1) {
-		const accentMat = bodyMesh.material[1];
-		if (accentMat && accentMat.color && accentMat.color.setHex) {
-			accentMat.color.setHex(avatarColorHex(c.accentColor, DEFAULT_AVATAR_ACCENT_COLOR));
-		}
-	}
-}
-
-/**
- * Apply proportion morph-target influences to a preview/avatar group by
- * resolving its body mesh (`userData.bodyMesh`, else the object itself) and
- * reusing `applyProportionMorphs`. Keeps the 1:1 identical-name mapping with no
- * alias layer, and inherits its no-op guards: a missing morph dictionary (the
- * procedural primitive, or the glTF body not yet loaded) is a safe no-op with no
- * thrown errors. This lets callers re-apply the current proportions every frame
- * so a change made before the async model loads still lands once it is ready.
- *
- * @param {THREE.Object3D|null|undefined} host - avatar group or bare body mesh
- * @param {*} proportions - cosmetic.proportions{} (six identical-name keys)
- */
-export function applyAvatarProportions(host, proportions) {
-	if (!host) return;
-	applyProportionMorphs(resolveBodyMesh(host), proportions);
-}
-
-/** @internal Test-only exports for avatar cosmetic morph/tint/hat unit coverage. */
-export const __testOnly = {
-	applyProportionMorphs,
-	applyLoadedModelCosmetic,
-	attachGltfHat,
-};
-
-/**
- * Resolve the body mesh from an avatar group (via `userData.bodyMesh`), or
- * return the object itself if it's already a bare mesh. Returns null for falsy.
- * @param {THREE.Object3D|null|undefined} obj
- * @returns {THREE.Mesh|null}
- */
 function resolveBodyMesh(obj) {
-	if (!obj) return null;
-	if (obj.userData && obj.userData.bodyMesh) return obj.userData.bodyMesh;
-	return obj;
-}
-
-/**
- * Dispose every mesh geometry/material under an avatar group (or bare mesh) so
- * it can be safely removed from the scene without leaking GPU resources.
- * @param {THREE.Object3D} obj
- */
-export function disposeAvatar(obj) {
-	if (!obj) return;
-	obj.traverse((node) => {
-		if (node.isMesh) {
-			if (node.geometry) node.geometry.dispose();
-			if (node.material) node.material.dispose();
-		}
-	});
+	return resolveBodyMeshForVfx(obj);
 }
 
 // ── Nameplate sprite helpers ──
@@ -5916,28 +5352,7 @@ export function animate(timestamp) {
 
 	if (gs) {
 		for (const [id, pData] of Object.entries(gs.players)) {
-			// Build the cosmetic-driven avatar, or rebuild it when the player's
-			// broadcast cosmetic changes (signature differs from the rendered one).
-			const sig = cosmeticSignature(pData.cosmetic);
-			if (!playersMeshes[id] || playersMeshes[id].userData.cosmeticKey !== sig) {
-				if (playersMeshes[id]) {
-					disposeAvatar(playersMeshes[id]);
-					scene.remove(playersMeshes[id]);
-				}
-				const avatar = createPlayerAvatar(pData.cosmetic, id === myId, pData.equippedKeyItemId);
-				scene.add(avatar);
-				playersMeshes[id] = avatar;
-			}
-
-			// (Re)apply proportion morphs + body/accent tint from the broadcast
-			// cosmetic every update (local + remote) so changes take effect without
-			// a reload; safe no-op on the procedural fallback. Runs before either
-			// recolor path below reads userData.baseColor.
-			applyLoadedModelCosmetic(playersMeshes[id], pData.cosmetic);
-
-			// (Re)seat the equipped key-item prop when it changes between snapshots
-			// (local + remote), so an equip swap takes effect without a reload.
-			updateKeyItemProp(playersMeshes[id], pData.equippedKeyItemId);
+			getAvatarSync().syncPlayerAvatar(id, pData, { isLocal: id === myId });
 
 			// Slow status ring (local + remote) — driven by the broadcast slowedUntil.
 			// For the local player, anchor the ring to the predicted myX/myZ (the
