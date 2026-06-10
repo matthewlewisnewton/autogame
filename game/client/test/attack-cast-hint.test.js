@@ -49,6 +49,28 @@ describe('getAttackCastHint', () => {
 		expect(hint.text).not.toContain('c-button-mark');
 	});
 
+	it('8BitDo 64 reflects remapped slot-0 attack and cast-range labels', () => {
+		patchSettings({
+			gamepad: {
+				profile: '8bitdo-64',
+				bindings: {
+					// Remap the attack slot (default A) to face B.
+					useSlot0: { type: 'button', index: 1 },
+					// Remap the last cast slot (default C right) to C up.
+					useSlot5: { type: 'cButton', direction: 'up' },
+				},
+			},
+		});
+		const hint = getAttackCastHint();
+		expect(hint.mode).toBe('gamepad');
+		// Attack verb follows the remapped slot 0 (B); cast range first–last
+		// now spans the remapped B (slot 0) through C up (slot 5).
+		expect(hint.text).toBe('Press B to attack · press B–C up to cast cards');
+		expect(hint.text).not.toContain('Press A to attack');
+		expect(hint.text).not.toContain('C right');
+		expect(hint.text).not.toContain('c-button-mark');
+	});
+
 	it('auto profile switches to gamepad copy once a controller is connected', () => {
 		patchSettings({ gamepad: { profile: 'auto' } });
 		expect(getAttackCastHint().mode).toBe('keyboard');

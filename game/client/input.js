@@ -429,14 +429,11 @@ export function getHandSlotInputHints() {
 		const action = `useSlot${i}`;
 		const binding = getBindingForAction(action, gp);
 		if (profile.id === '8bitdo-64') {
-			hints.push(
-				EIGHTBITDO_64_SLOT_HINTS[action]
-				?? describe8BitDo64HandSlotBindingHint(binding, i),
-			);
-			hintLabels.push(
-				EIGHTBITDO_64_SLOT_HINT_LABELS[action]
-				?? describe8BitDo64HandSlotBindingHintLabel(binding, i),
-			);
+			// Resolve the (possibly remapped) binding first; the helpers fall
+			// back to EIGHTBITDO_64_SLOT_HINTS / _HINT_LABELS only when no
+			// binding is set, so the default profile stays unchanged.
+			hints.push(describe8BitDo64HandSlotBindingHint(binding, i));
+			hintLabels.push(describe8BitDo64HandSlotBindingHintLabel(binding, i));
 		} else {
 			hints.push(describeStandardHandSlotBindingHint(binding, i));
 			hintLabels.push(hints[hints.length - 1]);
