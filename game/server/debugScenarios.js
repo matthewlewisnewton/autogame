@@ -24,6 +24,8 @@ const {
   buildQuestUpdatePayload,
   SCRIPTED_ENCOUNTER_FIXTURE_DEF,
   ESCORT_OBJECTIVE_FIXTURE_DEF,
+  countScriptedEnemiesInQuest,
+  countFinalAmbushEnemies,
 } = require('./quests');
 const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS, MEDIC_HEAL_COST } = require('./config');
 const CARD_DEFS = require('../shared/cardDefs.json');
@@ -1179,9 +1181,18 @@ function applyDebugScenario(socket, name) {
 
       const objective = state.run.objective;
       const questTier = QUEST_DEFS.crystal_rescue.tiers[1];
+      const fullEnemyTotal = countScriptedEnemiesInQuest(questTier) + countFinalAmbushEnemies(questTier);
       objective.collectedItems = questTier.itemCount;
-      objective.defeatedEnemies = objective.totalEnemies ?? 0;
+      objective.totalEnemies = fullEnemyTotal;
+      objective.defeatedEnemies = fullEnemyTotal;
       state.enemies = [];
+      if (state.run.scriptedEncounter?.rooms) {
+        for (const roomState of Object.values(state.run.scriptedEncounter.rooms)) {
+          roomState.cleared = true;
+          roomState.started = true;
+          roomState.enemyIds = [];
+        }
+      }
       state.run.finalAmbush = { spawned: true, cleared: true, enemyIds: [] };
       objective.extractionPhase = true;
       objective.extractionReached = false;
