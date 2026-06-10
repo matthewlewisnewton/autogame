@@ -6359,3 +6359,26 @@ The round-6 capture exercises generic gameplay (lobby → deploy → movement �
 
 None. All acceptance criteria are satisfied and the captured run is healthy.
 
+
+## v0.363 — Client: persistent in-run key item HUD slot (icon, name, keybind, cooldown) — currently invisible when ready  (2026-06-10 08:58:01)
+
+
+### Hidden when unequipped or outside a run
+PASS. `renderKeyItemHud()` calls `clearKeyItemCooldownHud()` when there is no equipped key item, no matching definition, or the phase is not `playing`; this removes ready/cooldown classes, clears the `data-key-item-id`, and empties the HUD child text. Focused tests cover both unequipped and non-playing states.
+
+### Existing key item flash feedback preserved
+PASS. `flashKeyItemIndicator()` still applies success, cooldown, and soft-fail flash classes without replacing the structured HUD children. The `keyItemUsed` socket handling still triggers the same success/cooldown/soft-fail cues and keeps VFX hooks intact.
+
+### Client test coverage
+PASS. `coverage.log` shows the client suite passed: 14 test files and 284 tests. The focused key item tests cover ready, cooldown, unequipped/non-playing, and flash preservation states.
+
+### Design and foundation consistency
+PASS. The change is client-HUD only and does not alter combat, server validation, persistence, networking, movement, or the documented lobby/dungeon loop. It remains consistent with `game/docs/design.md` and does not regress the foundational rendering/client-server requirements.
+
+### Debug scenarios
+PASS. This ticket did not add or modify any `?debugScenario=` shortcut. The capture used the fallback full-flow smoke path, not a debug scenario.
+
+## Remaining gaps
+
+None.
+
