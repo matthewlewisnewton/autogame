@@ -1,0 +1,16 @@
+## Review complete
+
+**Verdict: PASS** — written to `tickets/.../round-1/review.md`.
+
+### Runtime health
+- `metrics.json`: `"ok": true`, empty `pageerrors`
+- `console.log`: no `pageerror` or `[fatal]` lines
+- Game loads and reaches gameplay cleanly
+
+### Acceptance criteria
+The `questPanelOpen` flag fix in `game/client/main.js` addresses the root cause: `showGameLobby()` no longer re-hides `#quest-board-wrapper` on every lobby-phase `STATE_UPDATE` after the quest booth opens it. `dismissGameLobby()` resets the flag. All 18 quest-booth unit tests pass.
+
+### Files written
+- `round-1/review.md` — full assessment
+- `round-1/nits.md` — two non-blocking follow-ups (harness capture gap, STATE_UPDATE integration test)
+- No `gaps.md` (PASS only)

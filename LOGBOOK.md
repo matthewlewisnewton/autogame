@@ -6208,3 +6208,26 @@ PASS. The provided coverage run reports 148 test files passed and 1991 tests pas
 
 None.
 
+
+## v0.355 — Client: quest board panel flashes open then is re-hidden by the lobby render loop (F at Quest Board unusable)  (2026-06-10 05:18:34)
+
+
+**No regressions.** Change is lobby UI visibility only; multiplayer, movement, and server-authoritative quest selection are untouched. Aligns with the design doc's lobby quest-selection flow.
+
+### Code quality
+
+**Good.** Small, focused diff (11 lines in `main.js`); flag lifecycle is symmetric (set on open, cleared on dismiss). Test export `__isQuestPanelOpen` is consistent with existing harness hooks. No dead code or console errors introduced.
+
+### Debug scenarios (`?booth=quest`)
+
+**No issues.** Pre-existing localhost-only `?booth=quest` hook calls `openQuestPanel()` once via `requestBoothDebugOpen()`. It is gated by `debugScenarioAllowed` (localhost hosts only), does not bypass server validation, and the normal path (walk to Quest Board booth, press F / `booth:action`) reaches the same UI state. No new debug scenario was added by this ticket.
+
+## Test & coverage notes
+
+- Changed-files vitest run: **14 files, 282 tests, all passed**.
+- Coverage report in `coverage.log` covers shared modules from the harness diff baseline; the changed `main.js` paths are exercised by `questBooth.test.js`.
+
+## Remaining gaps
+
+None blocking. The implementation fully addresses the reported flash-close bug with appropriate tests and clean runtime capture.
+
