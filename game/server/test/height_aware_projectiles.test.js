@@ -1,7 +1,9 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
 	ATTACK_RANGE,
 	CARD_DEFS,
+	ENEMY_DEFS,
+	TICK_RATE,
 	createGameState,
 	gameState,
 	getEntityWorldY,
@@ -12,6 +14,9 @@ import {
 	collectChainLightningHits,
 	collectPhaseBeamHits,
 	collectConeHits,
+	spawnIceBall,
+	updateEnemyProjectiles,
+	updateMinions,
 } from '../index.js';
 import { handleUseCard, setCallbacks as setCardEffectCallbacks } from '../cardEffects.js';
 import { setGameState as setSimGameState } from '../simulation.js';
@@ -337,5 +342,179 @@ describe('player lock-on projectile aim (useCard integration)', () => {
 		expect(aim.dirY).toBeGreaterThan(0);
 		expect(aim.dirX).toBeCloseTo(0, 5);
 		expect(aim.dirZ).toBeCloseTo(0, 5);
+	});
+});
+
+describe('enemy and minion symmetric height-aware aim', () => {
+	const GLACIAL_DEF = ENEMY_DEFS.glacial_thrower;
+
+	beforeEach(() => {
+		resetState();
+		setSimGameState(gameState, {});
+		gameState.run = { status: 'playing' };
+		gameState._pendingMinionBreaths = [];
+		gameState.iceBalls = [];
+		gameState.players.p1 = {
+			id: 'p1',
+			x: 0,
+			z: 0,
+			y: 0,
+			hp: 100,
+			dead: false,
+		};
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('(a) glacial_thrower ice ball hits a player elevated on the same (x, z)', () => {
+		const thrower = {
+			id: 'thrower',
+			type: 'glacial_thrower',
+			x: 0,
+			z: 0,
+			y: 0,
+			attackDamage: GLACIAL_DEF.attackDamage,
+			iceBallSpeed: GLACIAL_DEF.iceBallSpeed,
+			iceBallRadius: GLACIAL_DEF.iceBallRadius,
+			iceBallSlowDurationMs: GLACIAL_DEF.iceBallSlowDurationMs,
+			iceBallSlowFactor: GLACIAL_DEF.iceBallSlowFactor,
+			iceBallMaxRange: GLACIAL_DEF.iceBallMaxRange,
+			windupDirX: 0,
+			windupDirY: 1,
+			windupDirZ: 0,
+		};
+		const ball = spawnIceBall(thrower);
+		expect(ball.y).toBe(0);
+		expect(ball.dirY).toBe(1);
+
+		const step = GLACIAL_DEF.iceBallSpeed / TICK_RATE;
+		gameState.players.p1.y = ball.y + step;
+		gameState.players.p1.x = 0;
+		gameState.players.p1.z = 0;
+
+		updateEnemyProjectiles();
+
+		expect(gameState.players.p1.hp).toBe(100 - GLACIAL_DEF.attackDamage);
+		expect(gameState.iceBalls).toHaveLength(0);
+	});
+
+	it('(b) null_crawler phase beam hits an elevated enemy on the same (x, z)', () => {
+		const now = 1_000_000;
+		vi.useFakeTimers();
+		vi.setSystemTime(now);
+
+		gameState.enemies.push({
+			id: 'elevated',
+			type: 'grunt',
+			x: 0,
+			z: 0,
+			y: 5,
+			hp: 100,
+			state: 'idle',
+			wanderTarget: { x: 0, z: 0 },
+		});
+		gameState.minions.push({
+			id: 'crawler',
+			ownerId: 'p1',
+			type: 'null_crawler',
+			x: 0,
+			z: 0,
+			y: 0,
+			hp: 40,
+			ttl: 30,
+			attackRange: 14,
+			attackDamage: 22,
+			attackIntervalMs: 2000,
+			attackWindupMs: 1000,
+			projectileHitWidth: 0.8,
+			attackState: 'windup',
+			windupStartTime: now,
+			windupDirX: 0,
+			windupDirY: 1,
+			windupDirZ: 0,
+		});
+
+		vi.setSystemTime(now + 1001);
+		updateMinions();
+
+		expect(gameState.enemies[0].hp).toBe(78);
+		expect(gameState._pendingMinionBreaths).toHaveLength(1);
+		expect(gameState._pendingMinionBreaths[0].direction).toMatchObject({ x: 0, y: 1, z: 0 });
+	});
+
+	it('(c) storm_eagle strike hits an elevated enemy on the same (x, z)', () => {
+		gameState.enemies.push({
+			id: 'elevated',
+			type: 'grunt',
+			x: 0,
+			z: 0,
+			y: 5,
+			hp: 40,
+			state: 'idle',
+			wanderTarget: { x: 0, z: 0 },
+		});
+		gameState.minions.push({
+			id: 'eagle',
+			ownerId: 'p1',
+			type: 'storm_eagle',
+			x: 0,
+			z: 0,
+			y: 0,
+			hp: 45,
+			attackRange: 7,
+			attackDamage: 13,
+			attackIntervalMs: 1500,
+			ttl: 30,
+		});
+
+		updateMinions();
+
+		expect(gameState.enemies[0].hp).toBe(27);
+		expect(gameState._pendingMinionBreaths).toHaveLength(1);
+		expect(gameState._pendingMinionBreaths[0].direction.y).toBeGreaterThan(0);
+	});
+
+	it('(d) wyrm breath cone hits an elevated enemy when aimed upward', () => {
+		const now = 1_000_000;
+		vi.useFakeTimers();
+		vi.setSystemTime(now);
+
+		gameState.enemies.push({
+			id: 'elevated',
+			type: 'grunt',
+			x: 4,
+			z: 0,
+			y: 5,
+			hp: 50,
+			state: 'idle',
+			wanderTarget: { x: 4, z: 0 },
+		});
+		gameState.minions.push({
+			id: 'drake',
+			ownerId: 'p1',
+			type: 'dungeon_drake',
+			x: 0,
+			z: 0,
+			y: 0,
+			hp: 20,
+			ttl: 30,
+			breathRange: 8,
+			breathHoldDistance: 3.5,
+			breathConeAngle: Math.PI / 2,
+			breathDamage: 2,
+			burnDurationMs: 2000,
+			breathDurationMs: 2000,
+			breathTickMs: 500,
+			breathIntervalMs: 2500,
+			lastBreathAt: 0,
+		});
+
+		updateMinions();
+
+		expect(gameState.enemies[0].hp).toBe(48);
+		expect(gameState.minions[0].breathDirY).toBeGreaterThan(0);
+		expect(gameState._pendingMinionBreaths[0].direction.y).toBeGreaterThan(0);
 	});
 });
