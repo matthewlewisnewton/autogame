@@ -457,21 +457,23 @@ function updateFactory(payload) {
   if (!agents.length && !locks.length) return;
   factoryEl.hidden = false;
 
-  factoryAgentsEl.innerHTML = agents.map((a) => {
+  // One chip PER RUNNING TICKET (not per agent): an agent at cap 3 used to
+  // pack all three ticket names into a single ellipsized chip, hiding and
+  // un-clickifying everything after the first.
+  factoryAgentsEl.innerHTML = agents.flatMap((a) => {
     const running = Array.isArray(a.running) ? a.running : [];
-    const busy = running.length > 0;
     const disabled = a.health && a.health !== 'available';
-    const state = disabled ? 'disabled' : busy ? 'running' : 'idle';
-    const runningHtml = running
-      .map((t) => `<button class="chip-ticket" type="button" data-ticket="${escapeHtml(t)}" title="Show the bead ${escapeHtml(t)} is working on">${escapeHtml(t)}</button>`)
-      .join(', ');
-    const detail = disabled
-      ? escapeHtml(a.health)
-      : busy
-        ? `${running.length}/${a.cap} · ${runningHtml}`
-        : `idle (0/${a.cap})`;
-    return `<span class="chip chip-${state}" title="${escapeHtml(a.name)}">`
-      + `<strong>${escapeHtml(a.name)}</strong> ${detail}</span>`;
+    if (disabled) {
+      return [`<span class="chip chip-disabled" title="${escapeHtml(a.name)}: ${escapeHtml(a.health)}">`
+        + `<strong>${escapeHtml(a.name)}</strong> ${escapeHtml(a.health)}</span>`];
+    }
+    if (!running.length) {
+      return [`<span class="chip chip-idle" title="${escapeHtml(a.name)}: idle">`
+        + `<strong>${escapeHtml(a.name)}</strong> idle (0/${a.cap})</span>`];
+    }
+    return running.map((t, i) => `<span class="chip chip-running" title="${escapeHtml(a.name)} slot ${i + 1}/${a.cap}: ${escapeHtml(t)}">`
+      + `<strong>${escapeHtml(a.name)}</strong> `
+      + `<button class="chip-ticket" type="button" data-ticket="${escapeHtml(t)}" title="Show the bead ${escapeHtml(t)} is working on">${escapeHtml(t)}</button></span>`);
   }).join('');
   factoryAgentsEl.querySelectorAll('.chip-ticket').forEach((btn) => {
     btn.addEventListener('click', (event) => {

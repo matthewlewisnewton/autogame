@@ -970,6 +970,10 @@ h1 {
   cursor: pointer;
   text-decoration: underline dotted;
   text-underline-offset: 2px;
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .factory-chips .chip-ticket:hover {
