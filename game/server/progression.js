@@ -68,6 +68,7 @@ const {
 } = require('./quests');
 const { unlockQuestTier, isQuestTierUnlocked } = require('./users');
 const { getObjectiveDef } = require('./objectives');
+const { fireQuestDialogue, resetDialogueState } = require('./questDialogue');
 const { THEME } = require('./theme');
 const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
 const CARD_IDENTITY = require('../shared/cardDefs.json');
@@ -941,6 +942,7 @@ function createRunState() {
 
 function startDungeonRun() {
   _gameState.run = createRunState();
+  resetDialogueState(_gameState.run);
   if (_gameState._pendingEncounterBossId != null && _gameState.run.encounter) {
     setEncounterBoss(_gameState.run, _gameState._pendingEncounterBossId);
     delete _gameState._pendingEncounterBossId;
@@ -955,6 +957,8 @@ function startDungeonRun() {
     p.pendingCardChoices = null;
     p.claimedCardRewardId = null;
   }
+  const io = getIoTarget();
+  fireQuestDialogue(io, _gameState, 'run_start');
 }
 
 function applyTelepipeReadyHand(player) {
@@ -1250,6 +1254,9 @@ function recordCrystalCollected(count = 1) {
   const def = getObjectiveDef(_gameState.run.objective.type);
   if (!def?.onCrystalCollected) return;
   def.onCrystalCollected(_gameState.run, count);
+  const collected = _gameState.run.objective.collectedItems;
+  const io = getIoTarget();
+  fireQuestDialogue(io, _gameState, { itemCollected: collected });
 }
 
 function isRunObjectiveComplete(objective) {
@@ -2943,6 +2950,8 @@ function checkRunTerminalState() {
   let status = null;
 
   if (isRunObjectiveComplete(_gameState.run.objective)) {
+    const io = getIoTarget();
+    fireQuestDialogue(io, _gameState, 'objective_complete');
     status = 'victory';
   }
 

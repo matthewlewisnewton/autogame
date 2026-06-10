@@ -208,6 +208,7 @@ const {
 
 const { buildEnemyDisplayCatalog } = require('./enemyDisplay');
 const progression = require('./progression');
+const questDialogue = require('./questDialogue');
 const {
   CARD_DEFS,
   getCardDef,
@@ -1793,6 +1794,7 @@ if (typeof module !== 'undefined' && module.exports) {
     createRunState,
     startDungeonRun,
     recordEnemyDefeated,
+    recordCrystalCollected,
     isRunObjectiveComplete,
     getEnemyCardDrop,
     recordEnemyCardDrop,
@@ -1968,6 +1970,9 @@ if (typeof module !== 'undefined' && module.exports) {
     isDebugScenarioAllowed,
     // Quests
     QUEST_DEFS,
+    fireQuestDialogue: questDialogue.fireQuestDialogue,
+    matchDialogueTrigger: questDialogue.matchDialogueTrigger,
+    resetDialogueState: questDialogue.resetDialogueState,
     DEFAULT_QUEST_ID,
     isValidQuestId,
     buildQuestUpdatePayload,
