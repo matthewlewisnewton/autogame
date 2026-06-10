@@ -1295,6 +1295,45 @@ function addDebuff(player, type, expiresAt) {
   return debuff;
 }
 
+function getEntityWorldY(entity) {
+  if (!entity) return resolveFloorY(DEFAULT_FLOOR_Y);
+  if (Number.isFinite(entity.y)) return entity.y;
+  const layout = _gameState && _gameState.layout;
+  if (layout) {
+    return resolveFloorY(sampleFloorY(layout, entity.x, entity.z));
+  }
+  return resolveFloorY(DEFAULT_FLOOR_Y);
+}
+
+function computeAimDirection3D(from, to) {
+  const dx = to.x - from.x;
+  const dy = (to.y ?? 0) - (from.y ?? 0);
+  const dz = to.z - from.z;
+  const len = Math.hypot(dx, dy, dz);
+  if (len <= 0) return { dirX: 1, dirY: 0, dirZ: 0 };
+  return { dirX: dx / len, dirY: dy / len, dirZ: dz / len };
+}
+
+function resolveRayVertical(options = {}) {
+  return {
+    originY: options.originY ?? 0,
+    dirY: options.dirY ?? 0,
+  };
+}
+
+function proximityToSample(px, py, pz, entity, use3D) {
+  const entityY = getEntityWorldY(entity);
+  if (use3D) {
+    return Math.hypot(entity.x - px, entityY - py, entity.z - pz);
+  }
+  const xzDist = Math.hypot(entity.x - px, entity.z - pz);
+  const yDist = Math.abs(entityY - py);
+  if (yDist > PROJECTILE_HIT_WIDTH) {
+    return Math.max(xzDist, yDist);
+  }
+  return xzDist;
+}
+
 function collectConeHits(originX, originZ, dirX, dirZ, range, coneAngle, damage, options = {}) {
   const hits = [];
   let magicStonesGained = 0;
@@ -1305,17 +1344,28 @@ function collectConeHits(originX, originZ, dirX, dirZ, range, coneAngle, damage,
   const healOnKill = options.healOnKill || 0;
   const currencyOnKill = options.currencyOnKill || 0;
   const attackerId = options.attackerId;
+  const { originY, dirY } = resolveRayVertical(options);
+  const use3D = dirY !== 0;
+  const halfCos = Math.cos(coneAngle / 2);
 
   for (const enemy of _gameState.enemies) {
+    const enemyY = getEntityWorldY(enemy);
     const dx = enemy.x - originX;
+    const dy = enemyY - originY;
     const dz = enemy.z - originZ;
-    const dist = Math.hypot(dx, dz);
+    const dist = use3D ? Math.hypot(dx, dy, dz) : Math.hypot(dx, dz);
     if (dist > range) continue;
+    if (!use3D && Math.abs(dy) > PROJECTILE_HIT_WIDTH) continue;
 
-    const enemyDirX = dist > 0 ? dx / dist : dirX;
-    const enemyDirZ = dist > 0 ? dz / dist : dirZ;
-    const dot = dirX * enemyDirX + dirZ * enemyDirZ;
-    if (dot < Math.cos(coneAngle / 2)) continue;
+    let dot;
+    if (use3D) {
+      dot = dist > 0 ? (dirX * dx + dirY * dy + dirZ * dz) / dist : 1;
+    } else {
+      const enemyDirX = dist > 0 ? dx / dist : dirX;
+      const enemyDirZ = dist > 0 ? dz / dist : dirZ;
+      dot = dirX * enemyDirX + dirZ * enemyDirZ;
+    }
+    if (dot < halfCos) continue;
 
     if (attackerId) enemy.lastDamagedBy = attackerId;
     const { killed } = damageEnemy(enemy, damage);
@@ -1367,15 +1417,18 @@ function collectProjectileHits(originX, originZ, dirX, dirZ, range, damage, opti
   const hitWidth = options.hitWidth ?? PROJECTILE_HIT_WIDTH;
   const sampleCount = Math.max(4, Math.ceil(range * 2));
   const hitEnemyIds = new Set();
+  const { originY, dirY } = resolveRayVertical(options);
+  const use3D = dirY !== 0;
 
   for (let i = 0; i <= sampleCount; i++) {
     const t = range * (i / sampleCount);
     const px = originX + dirX * t;
+    const py = originY + dirY * t;
     const pz = originZ + dirZ * t;
 
     for (const enemy of _gameState.enemies) {
       if (hitEnemyIds.has(enemy.id)) continue;
-      const dist = Math.hypot(enemy.x - px, enemy.z - pz);
+      const dist = proximityToSample(px, py, pz, enemy, use3D);
       if (dist > hitWidth) continue;
 
       if (attackerId) enemy.lastDamagedBy = attackerId;
@@ -1405,9 +1458,12 @@ function collectChainLightningHits(originX, originZ, dirX, dirZ, range, damage, 
   const chainDamage = Math.round(damage * 0.5);
   const hitWidth = options.hitWidth ?? PROJECTILE_HIT_WIDTH;
   const hitEnemyIds = new Set();
+  const { originY, dirY } = resolveRayVertical(options);
+  const use3D = dirY !== 0;
 
   function recordHit(enemy, hitDamage) {
     const hitX = enemy.x;
+    const hitY = getEntityWorldY(enemy);
     const hitZ = enemy.z;
     if (attackerId) enemy.lastDamagedBy = attackerId;
     const { killed } = damageEnemy(enemy, hitDamage);
@@ -1423,7 +1479,7 @@ function collectChainLightningHits(originX, originZ, dirX, dirZ, range, damage, 
       z: hitZ,
       magicStonesGained: hitGain + killGain,
     });
-    return { x: hitX, z: hitZ };
+    return { x: hitX, y: hitY, z: hitZ };
   }
 
   const sampleCount = Math.max(4, Math.ceil(range * 2));
@@ -1431,11 +1487,12 @@ function collectChainLightningHits(originX, originZ, dirX, dirZ, range, damage, 
   for (let i = 0; i <= sampleCount && !primary; i++) {
     const t = range * (i / sampleCount);
     const px = originX + dirX * t;
+    const py = originY + dirY * t;
     const pz = originZ + dirZ * t;
 
     for (const enemy of _gameState.enemies) {
       if (hitEnemyIds.has(enemy.id) || enemy.hp <= 0) continue;
-      const dist = Math.hypot(enemy.x - px, enemy.z - pz);
+      const dist = proximityToSample(px, py, pz, enemy, use3D);
       if (dist > hitWidth) continue;
       primary = enemy;
       break;
@@ -1454,7 +1511,10 @@ function collectChainLightningHits(originX, originZ, dirX, dirZ, range, damage, 
     let nextDist = Infinity;
     for (const enemy of _gameState.enemies) {
       if (hitEnemyIds.has(enemy.id) || enemy.hp <= 0) continue;
-      const dist = Math.hypot(enemy.x - currentPos.x, enemy.z - currentPos.z);
+      const enemyY = getEntityWorldY(enemy);
+      const dist = use3D
+        ? Math.hypot(enemy.x - currentPos.x, enemyY - currentPos.y, enemy.z - currentPos.z)
+        : Math.hypot(enemy.x - currentPos.x, enemy.z - currentPos.z);
       if (dist <= chainRadius && dist < nextDist) {
         nextDist = dist;
         next = enemy;
@@ -1478,16 +1538,19 @@ function collectPhaseBeamHits(originX, originZ, dirX, dirZ, range, damage, optio
   const hitEnemyIds = new Set();
   const hitMinionIds = new Set();
   const hitPlayerIds = new Set();
+  const { originY, dirY } = resolveRayVertical(options);
+  const use3D = dirY !== 0;
 
   for (let i = 0; i <= sampleCount; i++) {
     const t = range * (i / sampleCount);
     const px = originX + dirX * t;
+    const py = originY + dirY * t;
     const pz = originZ + dirZ * t;
 
     if (!playersOnly) {
       for (const enemy of _gameState.enemies) {
         if (hitEnemyIds.has(enemy.id)) continue;
-        const dist = Math.hypot(enemy.x - px, enemy.z - pz);
+        const dist = proximityToSample(px, py, pz, enemy, use3D);
         if (dist > hitWidth) continue;
 
         if (attackerId) enemy.lastDamagedBy = attackerId;
@@ -1498,7 +1561,7 @@ function collectPhaseBeamHits(originX, originZ, dirX, dirZ, range, damage, optio
 
       for (const ally of _gameState.minions) {
         if (ally.id === excludeMinionId || hitMinionIds.has(ally.id) || ally.hp <= 0) continue;
-        const dist = Math.hypot(ally.x - px, ally.z - pz);
+        const dist = proximityToSample(px, py, pz, ally, use3D);
         if (dist > hitWidth) continue;
 
         damageMinion(ally, damage);
@@ -1509,7 +1572,7 @@ function collectPhaseBeamHits(originX, originZ, dirX, dirZ, range, damage, optio
 
     for (const [playerId, player] of Object.entries(_gameState.players)) {
       if (hitPlayerIds.has(playerId) || player.dead) continue;
-      const dist = Math.hypot(player.x - px, player.z - pz);
+      const dist = proximityToSample(px, py, pz, player, use3D);
       if (dist > hitWidth) continue;
 
       // Phase beam is a ranged/projectile attack — taggable so an active
@@ -1668,6 +1731,9 @@ function collectReturningProjectileHits(originX, originZ, dirX, dirZ, range, dam
   const returnPasses = Math.max(1, options.returnPasses || 1);
   const totalPasses = 1 + returnPasses;
   const sampleCount = Math.max(4, Math.ceil(range * 2));
+  const hitWidth = options.hitWidth ?? PROJECTILE_HIT_WIDTH;
+  const { originY, dirY } = resolveRayVertical(options);
+  const use3D = dirY !== 0;
 
   for (let pass = 0; pass < totalPasses; pass++) {
     const hitEnemyIds = new Set();
@@ -1677,12 +1743,13 @@ function collectReturningProjectileHits(originX, originZ, dirX, dirZ, range, dam
     for (let i = 0; i <= sampleCount; i++) {
       const t = start + (end - start) * (i / sampleCount);
       const px = originX + dirX * t;
+      const py = originY + dirY * t;
       const pz = originZ + dirZ * t;
 
       for (const enemy of _gameState.enemies) {
         if (hitEnemyIds.has(enemy.id)) continue;
-        const dist = Math.hypot(enemy.x - px, enemy.z - pz);
-        if (dist > PROJECTILE_HIT_WIDTH) continue;
+        const dist = proximityToSample(px, py, pz, enemy, use3D);
+        if (dist > hitWidth) continue;
 
         if (attackerId) enemy.lastDamagedBy = attackerId;
         const { killed } = damageEnemy(enemy, damage);
@@ -3337,6 +3404,8 @@ module.exports = {
   addDebuff,
 
   // Card combat helpers
+  getEntityWorldY,
+  computeAimDirection3D,
   collectConeHits,
   collectRadialHits,
   collectProjectileHits,
