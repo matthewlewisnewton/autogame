@@ -1257,6 +1257,10 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       if (cardDef.effect === 'storm_eagle' || cardDef.effect === 'thunderbird') {
         minion.attackRange = cardDef.attackRange || 7;
         minion.attackDamage = cardDef.attackDamage || 12;
+        // Aerial minions hover: resolveEntityY() lifts them to floorY + altitude
+        // each tick. The thunderbird flies a touch higher than the storm eagle.
+        minion.flying = true;
+        minion.altitude = cardDef.altitude || (cardDef.effect === 'thunderbird' ? 4.5 : 3.5);
         if (cardDef.effect === 'thunderbird') {
           minion.chainRadius = cardDef.chainRadius || 5;
           minion.maxChainTargets = cardDef.maxChainTargets || 2;

@@ -40,6 +40,29 @@ const { applyLeechHeal, getFrenziedCombatMultipliers, checkFrenziedTelegraph } =
 const { isPlayingPhase, isLobbyPhase } = require('./lobbies');
 const { getEncounterBossId, isEncounterDormant, isEncounterLocked } = require('./encounters');
 
+// ── Airborne / altitude model ──
+// Default hover height (world units above the sampled floor) for any entity
+// flagged `flying` that does not carry its own explicit `altitude`.
+const DEFAULT_FLY_ALTITUDE = 3;
+
+/**
+ * Resolve the world Y for ANY entity. A grounded entity is floor-snapped to the
+ * sampled floor height at its (x, z); a flying entity hovers at
+ * `floorY + altitude` (falling back to DEFAULT_FLY_ALTITUDE when no explicit
+ * altitude is set). General and symmetric — it takes the entity as an argument
+ * so players, enemies, minions, and a future fly/hover card can all reuse it.
+ *
+ * @param {object} entity - any entity with x/z and optional flying/altitude
+ * @param {object} layout - dungeon layout used for floor sampling
+ * @returns {number} resolved world Y
+ */
+function resolveEntityY(entity, layout) {
+  const floorY = resolveFloorY(sampleFloorY(layout, entity.x, entity.z));
+  if (!entity.flying) return floorY;
+  const altitude = Number.isFinite(entity.altitude) ? entity.altitude : DEFAULT_FLY_ALTITUDE;
+  return floorY + altitude;
+}
+
 // ── Circular-dependency resolution ──
 // simulation.js must not require('./index') (circular). Instead, index.js
 // calls setGameState() / setCallbacks() after both modules are loaded.
@@ -548,7 +571,7 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
         player.vz = 0;
       }
 
-      player.y = resolveFloorY(sampleFloorY(ctx.layout, player.x, player.z));
+      player.y = resolveEntityY(player, ctx.layout);
 
       if (inputFresh && Number.isFinite(player.inputRotation)) {
         player.rotation = player.inputRotation;
@@ -582,7 +605,7 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
           const result = tryPlayerMove(player.x, player.z, dx, dz, playerStep, ctx);
           player.x = result.x;
           player.z = result.z;
-          player.y = resolveFloorY(sampleFloorY(ctx.layout, result.x, result.z));
+          player.y = resolveEntityY(player, ctx.layout);
           if (Number.isFinite(player.inputRotation)) {
             player.rotation = player.inputRotation;
           }
@@ -596,7 +619,7 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
 
     if (inPlaying && (ctx.layout?.profile === 'spire-ascent' || ctx.layout?.profile === 'sunken-canyon')) {
       if (applyEdgeHazardResponse(playerId, player, ctx.layout)) {
-        player.y = resolveFloorY(sampleFloorY(ctx.layout, player.x, player.z));
+        player.y = resolveEntityY(player, ctx.layout);
         player.persistenceDirty = true;
       }
     }
@@ -1058,6 +1081,10 @@ const ENEMY_DEFS = {
 		hp: 55, chaseSpeed: 4.2, wanderSpeed: 1.4, attackDamage: 8, attackWindupMs: 450,
 		attackStyle: 'cone', attackConeAngle: Math.PI / 3,
 		burnDurationMs: 2800,
+		// Airborne: ember wraiths drift above the floor. The flying flag + altitude
+		// flow onto each spawned enemy via the `...statFieldsFromDef` spread, so
+		// resolveEntityY() hovers them at floorY + altitude each tick.
+		flying: true, altitude: 2.5,
 	},
 };
 
@@ -2755,6 +2782,14 @@ function updateEnemies() {
 			enemy.blockedTicks = 0;
 		}
 	}
+
+	// Resolve world Y for every enemy after its AI/movement this tick. Grounded
+	// enemies sit at floor height; flying enemies (e.g. ember_wraith) hover at
+	// floorY + altitude and are never re-grounded. Planar X/Z targeting math is
+	// untouched, so airborne enemies stay targetable.
+	for (const enemy of _gameState.enemies) {
+		enemy.y = resolveEntityY(enemy, _gameState.layout);
+	}
 }
 
 // ── Enemy Projectiles (ice balls) ──
@@ -3175,6 +3210,14 @@ function updateMinions() {
     }
   }
 
+  // Resolve world Y for every minion after its AI/movement this tick. Grounded
+  // minions sit at floor height; flying minions (storm_eagle, thunderbird)
+  // hover at floorY + altitude. Runs even when the AI loop is skipped (terminal
+  // run) so minion Y stays consistent.
+  for (const minion of _gameState.minions) {
+    minion.y = resolveEntityY(minion, _gameState.layout);
+  }
+
   // Process lingering area effects (e.g. Dragon's Breath DoT)
   updateAreaEffects();
 
@@ -3309,6 +3352,10 @@ module.exports = {
   clampToDungeon,
   nearbySpawnPosition,
   randomWanderTarget,
+
+  // Altitude / airborne model
+  resolveEntityY,
+  DEFAULT_FLY_ALTITUDE,
 
   // Enemy definitions
   ENEMY_DEFS,
