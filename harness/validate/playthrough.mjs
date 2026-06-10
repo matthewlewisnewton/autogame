@@ -7,7 +7,8 @@
  * When --out is omitted, output defaults to game/validation/<preset>/ (e.g. --preset open-plaza
  * → game/validation/open-plaza/). Explicit --out overrides the preset default.
  *
- * Rooms / stage preset steps: auth, hub | deploy, boss-encounter, full.
+ * Rooms / stage preset steps: auth, hub | deploy, boss-encounter, full,
+ *   telepipe-new-sortie (stage presets with telepipeScenario).
  * Hub preset steps: auth, hub-walk, booth, telepipe-reset, full.
  */
 import { chromium } from 'playwright';
@@ -106,15 +107,15 @@ function parseArgs(argv) {
 	return opts;
 }
 
-function assertStepsForPreset(preset, steps) {
-	if (preset === 'hub') {
+function assertStepsForPreset(presetName, steps, presetConfig = null) {
+	if (presetName === 'hub') {
 		if (!HUB_PRESET_STEPS.has(steps)) {
 			throw new Error(`Unknown --steps value "${steps}" for preset hub — expected: ${[...HUB_PRESET_STEPS].join(', ')}`);
 		}
 		return;
 	}
-	if (!STAGE_PRESETS.has(preset)) {
-		throw new Error(`Unknown preset "${preset}"`);
+	if (!STAGE_PRESETS.has(presetName)) {
+		throw new Error(`Unknown preset "${presetName}"`);
 	}
 	const stageSteps = new Set([
 		'auth',
@@ -122,8 +123,11 @@ function assertStepsForPreset(preset, steps) {
 		...ROOMS_BOSS_ENCOUNTER_STEPS,
 		...ROOMS_FULL_STEPS,
 	]);
+	if (presetConfig?.telepipeScenario) {
+		stageSteps.add('telepipe-new-sortie');
+	}
 	if (!stageSteps.has(steps)) {
-		throw new Error(`Unknown --steps value "${steps}" for preset ${preset} — expected: ${[...stageSteps].join(', ')}`);
+		throw new Error(`Unknown --steps value "${steps}" for preset ${presetName} — expected: ${[...stageSteps].join(', ')}`);
 	}
 }
 
@@ -1360,6 +1364,7 @@ async function main() {
 	let runsBooth = false;
 	let runsTelepipeReset = false;
 	let runsQuestTelepipeReset = false;
+	let runsSpireTelepipeNewSortie = false;
 	const summary = {
 		ok: true,
 		preset: opts.preset,
@@ -1368,8 +1373,8 @@ async function main() {
 	};
 
 	try {
-		assertStepsForPreset(opts.preset, opts.steps);
 		preset = await loadPreset(opts.preset);
+		assertStepsForPreset(opts.preset, opts.steps, preset);
 		summary.presetConfig = preset;
 		const isStagePreset = STAGE_PRESETS.has(opts.preset);
 		runsRoomsHub = isStagePreset
@@ -1388,6 +1393,8 @@ async function main() {
 		runsQuestTelepipeReset = runsRoomsFull
 			&& (opts.preset === 'fire' || opts.preset === 'ice')
 			&& !!preset.telepipeScenario;
+		runsSpireTelepipeNewSortie = opts.preset === 'spire-ascent'
+			&& opts.steps === 'telepipe-new-sortie';
 		const serverLogPath = path.join(outDirAbs, 'server.log');
 		game = await startGame({ serverLogPath });
 		summary.serverPort = game.serverPort;
@@ -1473,6 +1480,31 @@ async function main() {
 					summary.error = summary.error || 'telepipeVitalsPreserved assertion failed';
 					exitCode = 1;
 				}
+			}
+		}
+
+		if (runsSpireTelepipeNewSortie && page) {
+			await assertGameProcessAlive({
+				serverUrl: game.serverUrl,
+				serverChild: game.serverChild,
+				serverLogPath: game.serverLogPath,
+			});
+			summary.spireTelepipe = await runSpireAscentTelepipeNewSortieStep({
+				page,
+				preset,
+				outDirAbs,
+				repoRoot: REPO_ROOT,
+				serverLogPath: game.serverLogPath,
+				gameProcess: game,
+			});
+			summary.assertions = {
+				telepipeVitalsPreserved: summary.spireTelepipe.telepipeVitalsPreserved === true,
+				cardChargesResetOnNewSortie: summary.spireTelepipe.cardChargesResetOnNewSortie === true,
+			};
+			summary.ok = Object.values(summary.assertions).every((value) => value === true);
+			if (!summary.ok) {
+				summary.error = summary.error || 'One or more telepipe-new-sortie assertions failed';
+				exitCode = 1;
 			}
 		}
 
