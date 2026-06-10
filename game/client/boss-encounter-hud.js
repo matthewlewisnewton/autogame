@@ -10,6 +10,7 @@ const GENERIC_BOSS_NAME = 'Boss';
 /** Per-quest stage-boss display names (title case for the encounter HUD). */
 const QUEST_STAGE_BOSS_NAMES = {
   canyon_descent: 'Canyon Warden',
+  frost_crossing: 'Permafrost Warden',
   spire_ascent: 'Summit Warden',
   training_caverns: 'Annex Overseer',
   arena_trials: 'Trial Warden',

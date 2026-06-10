@@ -1,0 +1,15 @@
+[vite] Proxying /api and /socket.io → http://127.0.0.1:3002
+[vite] Game server ready at http://127.0.0.1:3002
+
+  VITE v8.0.13  ready in 628 ms
+
+  ➜  Local:   http://localhost:5175/
+  ➜  Network: use --host to expose
+11:40:00 AM [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.
+11:40:15 AM [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.
+11:40:34 AM [vite] ws proxy error:
+Error: read ECONNRESET
+    at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+11:40:34 AM [vite] ws proxy socket error:
+Error: read ECONNRESET
+    at TCP.onStreamRead (node:internal/stream_base_commons:216:20)

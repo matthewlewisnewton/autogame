@@ -6510,7 +6510,6 @@ PASS. This ticket did not add or modify a `?debugScenario=NAME` shortcut. The ca
 
 None.
 
-
 ## v0.368 — 372-playthrough-validate-ice-level  (2026-06-10 10:15:26)
 
 debug-scenario socket path behind `isDebugScenarioAllowed()`. They seed state but do not
@@ -6557,7 +6556,6 @@ The provided `coverage.log` shows the escort objective test suite and escort HP-
 
 None.
 
-
 ## v0.370 — 392-investigate-ice-telepipe-vitals-not-preserved  (2026-06-10 11:12:35)
 
 ### Fresh sortie after Telepipe abandon on ICE
@@ -6579,6 +6577,78 @@ PASS. The changes are scoped to scenario/capture routing and regression coverage
 ## Remaining gaps
 
 None.
+
+## v0.371 — 390-fix-slippery-floor-no-momentum  (2026-06-10 11:28:08)
+
+Pass. Normal-floor walking now seeds `vx`/`vz` from the direct walk step, so crossing from normal into slippery terrain carries forward speed instead of arriving with zero momentum. Sliding from ice back onto normal floor is still damped to a stop by normal-floor friction. Both server and client prediction tests cover normal-to-slippery velocity seeding and slippery-to-normal stopping behavior.
+
+### Server test coverage for the regression
+
+Pass. `game/server/test/slippery_floor.test.js` contains explicit regression coverage for the original playthrough failures: momentum after release, direction change while sliding, generated ice-cavern behavior when the movement context omits bounds, and both normal-to-ice and ice-to-normal transitions. The client prediction tests were updated to mirror the same transition expectations.
+
+## Design and requirements consistency
+
+The changes stay within the documented server-authoritative dungeon movement model in `game/docs/design.md`: floor sampling still comes from `sampleFloorSurface()`/layout data, and player movement remains resolved in `applyPlayerMovement()`. The foundation requirements are not regressed: the captured run shows the game renders, connects over sockets, represents multiplayer players, and accepts WASD movement during gameplay.
+
+## Code quality and validation
+
+The implementation is small and localized to movement physics and prediction parity. The `resolveMovementContext()` fallback improvement also addresses the validation-style stripped-context path without weakening normal live-collider behavior. I did not find dead code, broken exports, or console/runtime defects.
+
+Validation observed in `coverage.log`: 86 test files passed, 1593 tests passed. Coverage was collected for visibility with thresholds disabled.
+
+## v0.372 — 380-ice-l1-miniboss-permafrost-warden  (2026-06-10 11:44:26)
+
+### Defeat objective and rewards
+
+PASS. The stage-boss objective does not complete from add kill counts; it completes when the active encounter boss is defeated and the encounter clears. Existing reward-card metadata for Frost Crossing remains in place, and the debug last-enemy shortcut was updated to use a 1-HP Permafrost Warden while preserving the same normal post-victory path.
+
+### Design and foundation compatibility
+
+PASS. The implementation is consistent with `game/docs/design.md`: Frost Crossing remains an ice-band thrower/Rimecast level, now culminating in a single stage boss. It does not regress the foundational requirements: the captured run demonstrates server/client startup, websocket connectivity, scene initialization, multiplayer presence, and movement/dodge HUD behavior.
+
+### Debug scenarios
+
+PASS. The changed Frost Crossing debug scenarios remain gated behind `debugScenario` names; normal gameplay does not enter them. The new/updated shortcuts mirror reachable end states from normal play, such as deploying Frost Crossing, clearing scripted hostiles, approaching the cairn, and fighting the boss. They do not bypass persistent account progression, server-side objective code, or the live encounter state machine in normal gameplay.
+
+### Tests and coverage
+
+PASS. The provided `coverage.log` shows the full suite passing: 191 test files and 2702 tests. Coverage includes targeted server tests for `permafrost_warden` and `frost_crossing_stage_boss`, plus updated client tests for quest-board copy, model registration, lock-on panel metadata, render registry normalization, and boss HUD naming.
+
+## v0.373 — 381-fire-l1-miniboss-cinder-warden  (2026-06-10 11:57:40)
+
+The lock-on metadata panel and boss HUD remain generic and server-catalog driven, so the new surfaced metadata reaches the panel without bespoke client panel code. This is consistent with the existing design and does not regress the generic enemy-catalog contract.
+
+### Debug scenario review
+
+PASS. The new `ember-descent-tier-2` debug scenario is registered only in the normal debug-scenario path and is requested by the client exclusively from the localhost `?debugScenario=` URL parameter. The equivalent state is reachable through normal gameplay by clearing Ember Descent Tier I, unlocking Tier II, selecting Ember Descent Tier II, and deploying.
+
+The shortcut does not replace the encounter implementation with a fake state: it sets the quest/tier and layout, then uses the same `enterPlayingPhase`, `spawnEnemies()`, and `startDungeonRun()` flow that regular deployment uses. It unlocks the tier for the debug account so the QA shortcut can select the state, but the quest definition still preserves the normal `unlockRequires` gate.
+
+### Design and foundation consistency
+
+PASS. The implementation follows the existing stage-boss framework described in `game/docs/design.md`: one stage-boss encounter, server-authored enemy metadata, defeat objective, supporting adds, and generic lock-on panel data. It does not weaken the base setup requirements in `game/docs/requirements.md`; the captured run confirms rendering, client-server connection, multiplayer representation, and synchronized movement still work.
+
+## Verification
+
+The provided coverage log shows the full vitest coverage run passed: `188` test files and `2652` tests passed. New relevant coverage includes `server/test/cinder_warden.test.js`, `server/test/ember_descent_stage_boss.test.js`, `server/test/enemy_display_catalog.test.js`, and `client/test/renderer-cinder-warden.test.js`.
+
+## v0.374 — 384-extend-unlockrequires-multi-prereq-and  (2026-06-10 12:18:37)
+
+PASS. The changes stay within the lobby/quest progression model described in `game/docs/design.md`: players select quests in the lobby, ready up, deploy, and progression is awarded after successful dungeon objectives. The foundation requirements are not regressed; the captured run confirms WebSocket connection, multiplayer visualization/state, 3D rendering, and movement in an active run.
+
+### Debug Scenarios
+
+PASS. This ticket did not add or change a development `?debugScenario=` shortcut. The changed behavior is exercised through normal account progression, quest selection, readiness, and run-completion paths rather than relying on a debug-only entry point.
+
+## Code Quality And Verification
+
+The live codebase is coherent with the ticket scope. The implementation is server-authoritative for selection/readiness gating, keeps account-specific payloads isolated per socket, and updates the client lock UI without trusting the raw legacy unlock map when evaluated `tierUnlocked` is available.
+
+Verification observed:
+
+- Round-3 runtime capture: `ok: true`, empty `pageerrors`, no fatal console entries.
+- `coverage.log`: 151 test files passed, 2328 tests passed.
+- Changed code inspected from `git diff 00815f732b26c7eecfaa2d64a1ffd2a8cf8c37a4 HEAD`.
 
 ## v0.375 — 378-introduce-few-flying-enemies  (2026-06-10 12:27:01)
 

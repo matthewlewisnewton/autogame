@@ -410,6 +410,43 @@ function liveFrostCrossingAdds(state) {
   );
 }
 
+function liveFrostCrossingNonBossHostiles(state) {
+  const bossId = state.run?.encounter?.bossEnemyId;
+  return (state.enemies || []).filter((e) => e.hp > 0 && e.id !== bossId);
+}
+
+function isFrostCrossingTier1StageBossRun(state) {
+  return state.gamePhase === 'playing'
+    && state.selectedQuestId === 'frost_crossing'
+    && state.selectedQuestTier === 1
+    && state.run?.objective?.type === 'stage_boss'
+    && state.layout?.profile === 'ice-cavern';
+}
+
+function clearFrostCrossingScriptedHostiles(state) {
+  const bossId = state.run?.encounter?.bossEnemyId;
+  for (const enemy of [...(state.enemies || [])]) {
+    if (enemy.id !== bossId) enemy.hp = 0;
+  }
+  removeDeadEnemies();
+  if (state.run?.passageLocks) {
+    for (const lock of state.run.passageLocks) {
+      lock.locked = false;
+    }
+  }
+  rebuildWallColliders();
+  if (state.run?.scriptedEncounter?.rooms) {
+    for (const roomState of Object.values(state.run.scriptedEncounter.rooms)) {
+      roomState.enemyIds = [];
+      roomState.cleared = true;
+      if (Number.isFinite(roomState.waveIndex)) {
+        roomState.waveIndex = roomState.waves?.length ?? roomState.waveIndex;
+      }
+    }
+  }
+  syncRunObjectiveToEnemies();
+}
+
 function liveArenaTrialsAdds(state, bossType = 'arena_champion') {
   const bossId = state.run?.encounter?.bossEnemyId;
   return (state.enemies || []).filter(
@@ -1425,24 +1462,33 @@ function applyDebugScenario(socket, name) {
     }
 
     if (name === 'frost-crossing-last-enemy') {
-      // frost_crossing Tier 1 run one 1-HP enemy from victory: one hit wins and the
-      // post-victory reward panel shows the quest's signature card (Ice Ball) as the
-      // first choice. Reachable normally by selecting Frost Crossing and clearing all
-      // but the last hostile; this scenario is a shortcut into that state.
+      // frost_crossing Tier 1 stage-boss run with the Permafrost Warden at 1 HP:
+      // one hit wins and the post-victory reward panel shows the quest's signature
+      // card (Ice Ball) as the first choice. Reachable normally by clearing the ice
+      // band and engaging the boss; this scenario is a shortcut into that state.
       setupFrostCrossingTier1Deploy(lobby, state, player);
 
-      const total = state.run.objective.totalEnemies ?? 6;
-      state.enemies = [];
-      const enemyType = 'grunt';
-      const enemy = spawnEnemy(player.x + 2, player.z, enemyType);
-      enemy.hp = 1;
-      enemy.maxHp = ENEMY_DEFS[enemyType]?.hp ?? enemy.maxHp;
-      enemy.y = resolveFloorY(sampleFloorY(state.layout, enemy.x, enemy.z));
-      enemy.wanderTarget = { x: enemy.x, z: enemy.z };
-      repositionNearEnemy(player, enemy);
+      clearFrostCrossingScriptedHostiles(state);
+      const bossId = state.run.encounter.bossEnemyId;
+      const boss = state.enemies.find((e) => e.id === bossId);
+      if (!boss || boss.type !== 'permafrost_warden') {
+        return { ok: false, reason: 'Permafrost Warden boss not found' };
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      repositionNearEnemy(player, boss, 4);
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      state.run.objective.totalEnemies = total;
-      state.run.objective.defeatedEnemies = Math.max(0, total - 1);
+      boss.hp = 1;
+      boss.maxHp = boss.maxHp || boss.hp;
+      boss.shieldHp = 0;
+      boss.maxShieldHp = 0;
+      if (isEncounterDormant(state.run)) {
+        activateEncounter(state.run);
+      }
+      if (!state.run.encounter.locked) {
+        lockEncounter(state.run);
+      }
+      boss.hp = 1;
       if (!player.hand.some((c) => c && c.type === 'weapon' && (c.remainingCharges == null || c.remainingCharges > 0))) {
         const replaceSlot = player.hand.findIndex((c) => c && c.type !== 'weapon');
         if (replaceSlot >= 0) {
@@ -1534,12 +1580,8 @@ function applyDebugScenario(socket, name) {
     if (name === 'frost-crossing-near-adds') {
       // Reposition beside live Frost Crossing Tier 1 support adds for harness add-combat QA.
       // Reachable normally by traversing entry/stone/ice/ramp bands toward wandering adds.
-      if (state.gamePhase !== 'playing'
-        || state.selectedQuestId !== 'frost_crossing'
-        || state.selectedQuestTier !== 1
-        || state.run?.objective?.type !== 'defeat_enemies'
-        || state.layout?.profile !== 'ice-cavern') {
-        return { ok: false, reason: 'Requires frost_crossing Tier 1 defeat_enemies run on ice-cavern' };
+      if (!isFrostCrossingTier1StageBossRun(state)) {
+        return { ok: false, reason: 'Requires frost_crossing Tier 1 stage_boss run on ice-cavern' };
       }
       let supportAdds = liveFrostCrossingAdds(state);
       let liveEnemies = (state.enemies || []).filter((e) => e.hp > 0);
@@ -1620,12 +1662,8 @@ function applyDebugScenario(socket, name) {
     if (name === 'frost-crossing-glacial-thrower-slow') {
       // One Glacial Thrower in ice-ball range with godmode off for slow-on-hit QA.
       // Reachable normally on frost_crossing runs when a glacial_thrower attacks the player.
-      if (state.gamePhase !== 'playing'
-        || state.selectedQuestId !== 'frost_crossing'
-        || state.selectedQuestTier !== 1
-        || state.run?.objective?.type !== 'defeat_enemies'
-        || state.layout?.profile !== 'ice-cavern') {
-        return { ok: false, reason: 'Requires frost_crossing Tier 1 defeat_enemies run on ice-cavern' };
+      if (!isFrostCrossingTier1StageBossRun(state)) {
+        return { ok: false, reason: 'Requires frost_crossing Tier 1 stage_boss run on ice-cavern' };
       }
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
@@ -1655,12 +1693,8 @@ function applyDebugScenario(socket, name) {
     if (name === 'frost-crossing-surface-transition') {
       // Seat on the stone→ice boundary with forward momentum toward the slippery band.
       // Reachable normally by walking from the stone treasure pad onto the ice field.
-      if (state.gamePhase !== 'playing'
-        || state.selectedQuestId !== 'frost_crossing'
-        || state.selectedQuestTier !== 1
-        || state.run?.objective?.type !== 'defeat_enemies'
-        || state.layout?.profile !== 'ice-cavern') {
-        return { ok: false, reason: 'Requires frost_crossing Tier 1 defeat_enemies run on ice-cavern' };
+      if (!isFrostCrossingTier1StageBossRun(state)) {
+        return { ok: false, reason: 'Requires frost_crossing Tier 1 stage_boss run on ice-cavern' };
       }
       const iceRoom = state.layout.rooms.find((r) => r.band === 'ice');
       const stoneRoom = state.layout.rooms.find((r) => r.band === 'stone');
@@ -1698,6 +1732,34 @@ function applyDebugScenario(socket, name) {
       player.vx = (dx / dist) * launchSpeed;
       player.vz = (dz / dist) * launchSpeed;
 
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'frost-crossing-boss-approach') {
+      // Place the player just outside the dormant Permafrost Warden trigger after
+      // scripted ice-band waves are cleared. Reachable normally by clearing the
+      // dock and ice-band arc, then walking to the south cairn anchor.
+      if (!isFrostCrossingTier1StageBossRun(state) || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires frost_crossing Tier 1 stage-boss run' };
+      }
+      if (liveFrostCrossingNonBossHostiles(state).length > 0) {
+        return { ok: false, reason: 'Scripted hostiles must be cleared before boss approach' };
+      }
+      if (state.run.encounter.phase !== 'dormant') {
+        return { ok: false, reason: 'Encounter must be dormant' };
+      }
+      const bossId = state.run.encounter.bossEnemyId;
+      const boss = state.enemies.find((e) => e.id === bossId);
+      if (!boss || boss.type !== 'permafrost_warden') {
+        return { ok: false, reason: 'Permafrost Warden boss not found' };
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      repositionNearEnemy(player, boss, ENCOUNTER_TRIGGER_RADIUS + 1);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      player.debugScenarioNudgeAfter = Date.now() + 1500;
       broadcastLobbyUpdate(lobby);
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return { ok: true, scenario: name };
@@ -2372,6 +2434,59 @@ function applyDebugScenario(socket, name) {
       };
     }
 
+    if (name === 'ember-descent-tier-2') {
+      // ember_descent Tier 2 with the rigid fire-cavern layout and the dormant
+      // cinder_warden stage-boss encounter. Quest/tier and layout must be set
+      // before enterPlayingPhase so startDungeonRun snapshots the correct
+      // run.questTier/objective and spawnEnemy variant rolls. Reachable normally
+      // by clearing Ember Descent Tier 1, unlocking Tier 2, and deploying; this
+      // scenario is a shortcut into that state.
+      const questId = 'ember_descent';
+      const tier = 2;
+      unlockQuestTier(player.accountId, questId, tier);
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+
+      player.ready = true;
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const startSpawn = firstRoomPosition();
+      player.x = startSpawn.x;
+      player.z = startSpawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      enterPlayingPhase(lobby);
+
+      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+        createDrawDeckFromSelectedDeck(player);
+        initPlayerHand(player);
+        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+        if (!player.pendingSummons) {
+          player.pendingSummons = new Set();
+        }
+      }
+
+      state.enemies = [];
+      state.loot = [];
+      delete state.run;
+      delete state._pendingEncounterBossId;
+      spawnEnemies();
+      startDungeonRun();
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
     if (name === 'spire-ascent-near-adds') {
       // Reposition beside live Spire Ascent Tier 2 adds for harness add-combat QA.
       // Reachable normally by traversing combat tiers toward wandering adds.
@@ -2853,6 +2968,16 @@ function applyDebugScenario(socket, name) {
       state.iceBalls = [];
       const thrower = spawnEnemy(player.x + 6, player.z, 'glacial_thrower');
       thrower.wanderTarget = { x: thrower.x, z: thrower.z };
+    } else if (name === 'permafrost-warden') {
+      // Spawn a Permafrost Warden beside the player for ice-cavern boss mesh,
+      // radial telegraph, and lock-on catalog QA. The same enemy is reachable
+      // normally as the frost_crossing Tier 1 stage boss once the encounter is
+      // wired; this is a deterministic shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const warden = spawnEnemy(player.x + 5, player.z, 'permafrost_warden');
+      warden.wanderTarget = { x: warden.x, z: warden.z };
     } else if (name === 'ember-wraith') {
       // One Ember Wraith in cone-strike range for burning-on-hit QA. The same
       // enemy is reachable on ember_descent runs (or via fire-cavern); shortcut only.
@@ -4400,6 +4525,7 @@ const BOSS_APPROACH_NUDGE_SCENARIOS = new Set([
   'canyon-descent-boss-approach',
   'arena-trials-boss-approach',
   'spire-ascent-boss-approach',
+  'frost-crossing-boss-approach',
 ]);
 
 /**

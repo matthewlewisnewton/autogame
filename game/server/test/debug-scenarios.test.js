@@ -1963,6 +1963,35 @@ describe('debugScenario — frost-crossing harness shortcuts', () => {
 		expect(onIce || speed > 0).toBe(true);
 	});
 
+	it('places player outside dormant boss trigger after scripted clears', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const deployPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'frost-crossing-tier-1' });
+		await deployPromise;
+
+		const state = testGameState();
+		const bossId = state.run.encounter.bossEnemyId;
+		for (const enemy of state.enemies) {
+			if (enemy.id !== bossId) enemy.hp = 0;
+		}
+		state.enemies = state.enemies.filter((e) => e.hp > 0);
+
+		const approachPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'frost-crossing-boss-approach' });
+		const approachResult = await approachPromise;
+
+		expect(approachResult.ok).toBe(true);
+		expect(approachResult.scenario).toBe('frost-crossing-boss-approach');
+
+		const player = playerForSocket(socket);
+		const anchor = resolveEncounterAnchor(state.run, state);
+		const distFromAnchor = Math.hypot(anchor.x - player.x, anchor.z - player.z);
+		expect(distFromAnchor).toBeGreaterThan(ENCOUNTER_TRIGGER_RADIUS);
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
+		expect(state.enemies.some((e) => e.type === 'permafrost_warden')).toBe(true);
+	});
+
 	it('frost-crossing-telepipe-ready deploys playing frost_crossing with telepipe and partial vitals', async () => {
 		const { socket } = await connectClient(baseUrl);
 
@@ -1990,7 +2019,7 @@ describe('debugScenario — frost-crossing harness shortcuts', () => {
 		const state = testGameState();
 		expect(state.gamePhase).toBe('playing');
 		expect(state.selectedQuestId).toBe(FROST_CROSSING_ID);
-		expect(state.run?.objective?.type).toBe('defeat_enemies');
+		expect(state.run?.objective?.type).toBe('stage_boss');
 		expect(player.hand.some((c) => c && c.id === 'telepipe')).toBe(true);
 		expect(player.hp).toBe(60);
 		expect(player.magicStones).toBe(20);

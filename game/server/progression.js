@@ -89,7 +89,7 @@ const {
   checkWaveCleared,
   fireWaveClearedTriggers,
 } = require('./questScript');
-const { unlockQuestTier, isQuestTierUnlocked } = require('./users');
+const { unlockQuestTier, completeQuestTier, isQuestTierUnlocked } = require('./users');
 const { getObjectiveDef, syncScriptedDefeatEnemiesActiveCount } = require('./objectives');
 const {
   initScriptedEncounter,
@@ -2539,7 +2539,7 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
   // Difficulty scaling: miniboss-tier bosses get more HP the larger the party is at spawn.
   // Fixed once here from the live player count — never re-applied retroactively
   // when players later join or leave. 1–4 players stay at baseline (factor 1.0).
-  if (resolvedType === 'miniboss' || resolvedType === 'annex_overseer' || resolvedType === 'spire_warden') {
+  if (resolvedType === 'miniboss' || resolvedType === 'annex_overseer' || resolvedType === 'spire_warden' || resolvedType === 'cinder_warden' || resolvedType === 'permafrost_warden') {
     const factor = difficultyScaleFactor(runPlayerCount(_gameState), DIFFICULTY_MINIBOSS_HP_PER_PLAYER);
     enemy.hp = Math.round(enemy.hp * factor);
     enemy.maxHp = Math.round(enemy.maxHp * factor);
@@ -3378,6 +3378,18 @@ function checkRunTerminalState() {
       for (const player of Object.values(_gameState.players)) {
         if (player && player.accountId) {
           unlockQuestTier(player.accountId, questId, 2);
+          completeQuestTier(player.accountId, questId, 1);
+        }
+      }
+    }
+  }
+
+  if (status === 'victory' && (_gameState.run.questTier ?? DEFAULT_QUEST_TIER) === 2) {
+    const questId = _gameState.run.questId;
+    if (questId) {
+      for (const player of Object.values(_gameState.players)) {
+        if (player && player.accountId) {
+          completeQuestTier(player.accountId, questId, 2);
         }
       }
     }

@@ -1524,6 +1524,13 @@ describe('profile landmark rendering', () => {
 		expect(vaultDais.children.filter(c => c.material === crowded.accent).length).toBeGreaterThanOrEqual(3);
 		const vaultMaxY = Math.max(...vaultDais.children.map(c => c.position.y + (c.geometry?.parameters?.height ?? 0) / 2));
 		expect(vaultMaxY).toBeGreaterThan(1.4);
+		const ice = getProfileMaterials('ice-cavern');
+		const cairn = buildLandmarkMesh('ice_cairn', ice);
+		expect(cairn).toBeInstanceOf(THREE.Group);
+		expect(cairn.userData.landmarkType).toBe('ice_cairn');
+		expect(cairn.children.length).toBeGreaterThan(0);
+		expect(cairn.children.some(c => c.material === ice.wall)).toBe(true);
+		expect(cairn.children.some(c => c.material === ice.accent)).toBe(true);
 	});
 
 	it('buildDungeon adds one landmark group per server landmark entry', () => {
@@ -1918,5 +1925,25 @@ describe('ice-cavern profile & slippery floors', () => {
 		expect(marker).toBeDefined();
 		const floorY = resolveFloorY(sampleFloorY(layout, treasure.x, treasure.z));
 		expect(marker.position.y).toBeCloseTo(floorY + 0.75, 4);
+	});
+
+	it('renders one ice_cairn landmark group at treasure room centre for seed 42', () => {
+		const layout = generateLayout(42, 'ice-cavern');
+		expect(layout.landmarks).toHaveLength(1);
+		expect(layout.landmarks[0].type).toBe('ice_cairn');
+		const scene = mockScene();
+		const { meshes } = buildDungeon(scene, layout);
+		const cairnGroups = scene.added.filter(o => o.userData?.landmarkType === 'ice_cairn');
+		expect(cairnGroups).toHaveLength(1);
+		const lm = layout.landmarks[0];
+		const treasure = layout.rooms.find(r => r.role === 'treasure');
+		expect(lm.x).toBe(treasure.x);
+		expect(lm.z).toBe(treasure.z);
+		const floorY = resolveFloorY(sampleFloorY(layout, lm.x, lm.z));
+		expect(cairnGroups[0].position.x).toBe(lm.x);
+		expect(cairnGroups[0].position.z).toBe(lm.z);
+		expect(cairnGroups[0].position.y).toBeCloseTo(floorY, 4);
+		expect(cairnGroups[0].children.length).toBeGreaterThan(0);
+		expect(meshes.some(m => cairnGroups[0].children.includes(m))).toBe(true);
 	});
 });

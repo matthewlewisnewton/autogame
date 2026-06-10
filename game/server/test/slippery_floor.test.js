@@ -244,6 +244,77 @@ describe('applyPlayerMovement() — slippery floors', () => {
     expect(slipperyDrift).toBeGreaterThan(normalDrift);
     expect(normalDrift).toBeCloseTo(0, 5);
   });
+
+  it('post-release coasting speed exceeds normal floor (playthrough momentumAfterRelease probe)', () => {
+    const slipperyState = state;
+    slipperyState.players.p1 = makePlayer({
+      inputActive: true,
+      inputDx: 1,
+      inputDz: 0,
+      lastInputTime: Date.now(),
+    });
+    tickMovement(slipperyState, 12, movementContext);
+    slipperyState.players.p1.inputActive = false;
+    slipperyState.players.p1.lastInputTime = staleInputTime();
+    tickMovement(slipperyState, 5, movementContext);
+    const slipperyCoastSpeed = playerSpeed(slipperyState.players.p1);
+
+    const { state: normalState, movementContext: normalContext } = setupPlayingState(buildSurfaceLayout('normal'));
+    normalState.players.p1 = makePlayer({
+      inputActive: true,
+      inputDx: 1,
+      inputDz: 0,
+      lastInputTime: Date.now(),
+    });
+    tickMovement(normalState, 12, normalContext);
+    normalState.players.p1.inputActive = false;
+    normalState.players.p1.lastInputTime = staleInputTime();
+    tickMovement(normalState, 5, normalContext);
+    const normalCoastSpeed = playerSpeed(normalState.players.p1);
+
+    expect(slipperyCoastSpeed).toBeGreaterThan(normalCoastSpeed);
+    expect(normalCoastSpeed).toBeCloseTo(0, 5);
+  });
+
+  it('coasts on generated ice-cavern layout when movementContext omits dungeonBounds', () => {
+    const layout = generateLayout(42, 'ice-cavern');
+    const iceRoom = layout.rooms.find((r) => r.floorSurface === 'slippery');
+    expect(iceRoom).toBeDefined();
+
+    const iceState = createGameState();
+    iceState.gamePhase = 'playing';
+    iceState.layout = layout;
+    iceState.walkableAABBs = computeWalkableAABBs(layout);
+    setGameState(iceState, {});
+    rebuildWallColliders();
+
+    const strippedContext = {
+      layout,
+      walkableAABBs: iceState.walkableAABBs,
+      colliders: buildMovementContext(iceState).colliders,
+    };
+
+    iceState.players.p1 = makePlayer({
+      x: iceRoom.x,
+      z: iceRoom.z,
+      inputActive: true,
+      inputDx: 1,
+      inputDz: 0,
+      lastInputTime: Date.now(),
+    });
+
+    tickMovement(iceState, 12, strippedContext);
+    const xAfterInput = iceState.players.p1.x;
+    iceState.players.p1.inputActive = false;
+    iceState.players.p1.lastInputTime = staleInputTime();
+    tickMovement(iceState, 5, strippedContext);
+
+    expect(sampleFloorSurface(layout, iceState.players.p1.x, iceState.players.p1.z)).toBe('slippery');
+    expect(iceState.players.p1.x).toBeGreaterThan(xAfterInput);
+    expect(playerSpeed(iceState.players.p1)).toBeGreaterThan(0);
+
+    setGameState(null, null);
+  });
 });
 
 describe('slippery floor — deceleration curve', () => {
@@ -344,23 +415,78 @@ describe('slippery floor — direction change while sliding', () => {
     const eastDir = { x: 1, z: 0 };
     const speedBefore = playerSpeed(player);
     const dotBefore = (player.vx * eastDir.x + player.vz * eastDir.z) / (speedBefore || 1);
+    const perTickStep = MOVE_SPEED / TICK_RATE;
+    const maxStepDisp = perTickStep * 8;
 
     player.inputActive = true;
     player.inputDx = 0;
     player.inputDz = 1;
     player.lastInputTime = freshInputTime();
-    tickMovement(state, 6, movementContext);
+
+    for (let i = 0; i < 6; i++) {
+      const px = player.x;
+      const pz = player.z;
+      applyPlayerMovement(state, movementContext);
+      const stepDisp = Math.hypot(player.x - px, player.z - pz);
+      expect(stepDisp).toBeLessThan(maxStepDisp);
+      expect(playerSpeed(player)).toBeGreaterThan(0);
+    }
 
     const displacement = Math.hypot(player.x - before.x, player.z - before.z);
-    const perTickStep = MOVE_SPEED / TICK_RATE;
-    expect(displacement).toBeLessThan(perTickStep * 8);
+    expect(displacement).toBeLessThan(maxStepDisp);
     expect(displacement).toBeGreaterThan(0);
 
     const speedAfter = playerSpeed(player);
-    expect(speedAfter).toBeGreaterThan(0);
     const dotAfter = (player.vx * eastDir.x + player.vz * eastDir.z) / (speedAfter || 1);
     expect(dotAfter).toBeLessThan(dotBefore);
     expect(player.vz).toBeGreaterThan(0);
+  });
+
+  it('redirects with perpendicular input when movementContext omits dungeonBounds (playthrough directionChangeWhileSliding probe)', () => {
+    const layout = makeSlipperyLabLayout();
+    const strippedState = createGameState();
+    strippedState.gamePhase = 'playing';
+    strippedState.layout = layout;
+    strippedState.walkableAABBs = computeWalkableAABBs(layout);
+    setGameState(strippedState, {});
+    rebuildWallColliders();
+
+    const strippedContext = {
+      layout,
+      walkableAABBs: strippedState.walkableAABBs,
+      colliders: buildMovementContext(strippedState).colliders,
+    };
+
+    strippedState.players.p1 = makePlayer({
+      x: -8,
+      z: 0,
+      inputActive: true,
+      inputDx: 1,
+      inputDz: 0,
+      lastInputTime: freshInputTime(),
+    });
+    tickMovement(strippedState, 20, strippedContext);
+    strippedState.players.p1.inputActive = false;
+    strippedState.players.p1.lastInputTime = staleInputTime();
+    tickMovement(strippedState, 3, strippedContext);
+
+    const player = strippedState.players.p1;
+    const eastDir = { x: 1, z: 0 };
+    const speedBefore = playerSpeed(player);
+    const dotBefore = (player.vx * eastDir.x + player.vz * eastDir.z) / (speedBefore || 1);
+
+    player.inputActive = true;
+    player.inputDx = 0;
+    player.inputDz = 1;
+    player.lastInputTime = freshInputTime();
+    tickMovement(strippedState, 6, strippedContext);
+
+    expect(player.vz).toBeGreaterThan(0);
+    expect(playerSpeed(player)).toBeGreaterThan(0);
+    const dotAfter = (player.vx * eastDir.x + player.vz * eastDir.z) / playerSpeed(player);
+    expect(dotAfter).toBeLessThan(dotBefore);
+
+    setGameState(null, null);
   });
 });
 
@@ -425,11 +551,73 @@ describe('slippery floor — normal → slippery transition', () => {
     }
 
     const beforeCross = { ...state.players.p1 };
+    expect(playerSpeed(beforeCross)).toBeGreaterThan(0);
     applyPlayerMovement(state, movementContext);
     const afterCross = state.players.p1;
 
     expect(afterCross.z).toBeGreaterThan(beforeCross.z);
     expect(playerSpeed(afterCross)).toBeGreaterThan(0);
+  });
+
+  it('seeds stone-walking velocity before ice entry (playthrough surfaceTransition probe)', () => {
+    state.players.p1 = makePlayer({
+      x: 0,
+      z: 4,
+      inputActive: true,
+      inputDx: 0,
+      inputDz: 1,
+      lastInputTime: freshInputTime(),
+    });
+
+    while (sampleFloorSurface(state.layout, state.players.p1.x, state.players.p1.z) !== 'slippery') {
+      applyPlayerMovement(state, movementContext);
+    }
+
+    expect(sampleFloorSurface(state.layout, state.players.p1.x, state.players.p1.z)).toBe('slippery');
+    expect(state.players.p1.vz).toBeGreaterThan(0);
+    expect(playerSpeed(state.players.p1)).toBeGreaterThan(MOVE_SPEED * 0.5);
+  });
+
+  it('preserves forward motion across normal→ice when movementContext omits dungeonBounds', () => {
+    const layout = makeTransitionLayout();
+    const strippedState = createGameState();
+    strippedState.gamePhase = 'playing';
+    strippedState.layout = layout;
+    strippedState.walkableAABBs = computeWalkableAABBs(layout);
+    setGameState(strippedState, {});
+    rebuildWallColliders();
+
+    const strippedContext = {
+      layout,
+      walkableAABBs: strippedState.walkableAABBs,
+      colliders: buildMovementContext(strippedState).colliders,
+    };
+
+    strippedState.players.p1 = makePlayer({
+      x: 0,
+      z: 4,
+      inputActive: true,
+      inputDx: 0,
+      inputDz: 1,
+      lastInputTime: freshInputTime(),
+    });
+
+    const zSamples = [strippedState.players.p1.z];
+    for (let i = 0; i < 24; i++) {
+      applyPlayerMovement(strippedState, strippedContext);
+      zSamples.push(strippedState.players.p1.z);
+    }
+
+    for (let i = 1; i < zSamples.length; i++) {
+      expect(zSamples[i]).toBeGreaterThanOrEqual(zSamples[i - 1] - 1e-9);
+    }
+
+    const player = strippedState.players.p1;
+    expect(sampleFloorSurface(layout, player.x, player.z)).toBe('slippery');
+    expect(player.z).toBeGreaterThan(12);
+    expect(playerSpeed(player)).toBeGreaterThan(0);
+
+    setGameState(null, null);
   });
 });
 
@@ -486,6 +674,25 @@ describe('slippery floor — slippery → normal transition', () => {
 
     expect(transitionDrift).toBeLessThan(iceDrift);
     expect(playerSpeed(iceOnlyState.players.p1)).toBeGreaterThan(1);
+  });
+
+  it('zeros ice slide speed on stone without input (playthrough surfaceTransition probe)', () => {
+    const coastSpeed = 10;
+    state.players.p1 = makePlayer({
+      x: 0,
+      z: 13.5,
+      vx: 0,
+      vz: -coastSpeed,
+      inputActive: false,
+      lastInputTime: staleInputTime(),
+    });
+
+    for (let i = 0; i < 10; i++) {
+      applyPlayerMovement(state, movementContext);
+    }
+
+    expect(sampleFloorSurface(state.layout, state.players.p1.x, state.players.p1.z)).toBe('normal');
+    expect(playerSpeed(state.players.p1)).toBeLessThan(1e-3);
   });
 });
 
