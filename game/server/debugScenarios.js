@@ -1872,6 +1872,28 @@ function applyDebugScenario(socket, name) {
       for (const e of state.enemies) {
         e.wanderTarget = { x: e.x, z: e.z };
       }
+    } else if (name === 'named-rare-enemy') {
+      // Spawn a scripted named-rare grunt beside a plain grunt for tint/scale/
+      // nameplate QA. The same state is reachable on quests with inline named-rare
+      // spawns (e.g. frost_crossing); this is a deterministic shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      spawnEnemy(player.x - 3, player.z, 'grunt');
+      const rare = spawnEnemy(player.x + 3, player.z, 'grunt', undefined, {
+        namedRareVariant: {
+          name: 'The Fake in Yellow',
+          tint: '#ffdd00',
+          scaleMult: 1.25,
+          drop: { currency: 50 },
+        },
+      });
+      rare.wanderTarget = { x: rare.x, z: rare.z };
+      for (const e of state.enemies) {
+        if (!e.wanderTarget) {
+          e.wanderTarget = { x: e.x, z: e.z };
+        }
+      }
     } else if (name === 'volatile-enemy') {
       // Spawn a `volatile`-variant grunt (hot-orange badge) at 1 HP beside a
       // plain grunt, so the QA can confirm the distinct volatile tint and then

@@ -34,6 +34,7 @@ export function getScene() {
 export const playersMeshes = {};
 export const playerShadows = {}; // flying player id → ground shadow decal (no entry for grounded players)
 export const playerNameplates = {}; // playerId → THREE.Sprite (username label)
+export const enemyNameplates = {}; // enemyId → THREE.Sprite (named-rare label)
 export const enemiesMeshes = {};
 export const enemyHealthBars = {}; // enemy id → health bar mesh
 export const enemyShieldBars = {}; // enemy id → shield absorb bar mesh
