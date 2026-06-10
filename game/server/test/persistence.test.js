@@ -458,6 +458,39 @@ describe('savePlayerData', () => {
 		expect(() => savePlayerData('anyone')).not.toThrow();
 	});
 
+	it('sets persistenceLastSavedAt after a successful save', () => {
+		vi.useFakeTimers();
+		const now = 1_700_000_000_000;
+		vi.setSystemTime(now);
+
+		gameState.players['p1'] = { currency: 10, ownedCards: {}, selectedDeck: [] };
+
+		savePlayerData('p1');
+
+		expect(gameState.players['p1'].persistenceLastSavedAt).toBe(now);
+		vi.useRealTimers();
+	});
+
+	it('does not set persistenceLastSavedAt when provider.savePlayer throws', () => {
+		const throwingProvider = {
+			savePlayer: () => { throw new Error('disk full'); },
+		};
+		setTestProvider(throwingProvider);
+
+		const player = {
+			currency: 10,
+			ownedCards: {},
+			selectedDeck: [],
+			persistenceLastSavedAt: 123,
+		};
+		gameState.players['errPlayer'] = player;
+
+		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		savePlayerData('errPlayer');
+		expect(player.persistenceLastSavedAt).toBe(123);
+		consoleErrorSpy.mockRestore();
+	});
+
 	it('catches and logs errors without rethrowing when provider.savePlayer throws', () => {
 		const throwingProvider = {
 			savePlayer: () => { throw new Error('disk full'); },

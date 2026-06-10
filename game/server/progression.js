@@ -937,6 +937,7 @@ function savePlayerData(playerId) {
   try {
     const key = persistenceKey(playerId);
     provider.savePlayer(key, extractPersistentData(player));
+    player.persistenceLastSavedAt = Date.now();
     return true;
   } catch (err) {
     console.error(`[persistence] savePlayerData failed for ${playerId}:`, err.message);

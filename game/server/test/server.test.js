@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import config, { MAX_HP, LOBBY_REVIVE_HP } from '../config.js';
+import config, { MAX_HP, LOBBY_REVIVE_HP, PLAYER_MOVEMENT_SAVE_DEBOUNCE_MS } from '../config.js';
 import { getQuest, countScriptedEnemiesInQuest, QUEST_DEFS } from '../quests.js';
 import { DEFAULT_COSMETIC } from '../cosmetic.js';
 import { createLobbyGameState } from '../lobbies.js';
@@ -124,6 +124,7 @@ import {
 	ENEMY_ATTACK_RECOVERY_MS,
 	ENEMY_DEFS,
 	savePlayerData,
+	saveAllPlayersInAllLobbies,
 	setTestProvider,
 	ENTITY_RADIUS,
 	PLAYER_RADIUS,
@@ -2050,6 +2051,49 @@ describe('cleanupStalePlayers', () => {
 
 		// Restore
 		serverIo.sockets.sockets = originalSockets;
+	});
+});
+
+describe('saveAllPlayersInAllLobbies (shutdown flush)', () => {
+	beforeEach(() => {
+		resetAllLobbies();
+		resetState();
+	});
+
+	afterEach(() => {
+		resetAllLobbies();
+		setTestProvider(null);
+		vi.useRealTimers();
+	});
+
+	it('persists dirty players inside the movement debounce window', () => {
+		vi.useFakeTimers();
+		const now = 1_700_000_000_000;
+		vi.setSystemTime(now);
+
+		const mockProvider = {
+			savePlayer: vi.fn(),
+			loadPlayer: vi.fn().mockReturnValue(null),
+		};
+		setTestProvider(mockProvider);
+
+		const lobby = createLobby('Shutdown Flush');
+		lobby.state.players['p1'] = {
+			currency: 99,
+			ownedCards: {},
+			selectedDeck: [],
+			persistenceDirty: true,
+			persistenceLastSavedAt: now - (PLAYER_MOVEMENT_SAVE_DEBOUNCE_MS - 500),
+		};
+
+		saveAllPlayersInAllLobbies();
+
+		expect(mockProvider.savePlayer).toHaveBeenCalledTimes(1);
+		expect(mockProvider.savePlayer).toHaveBeenCalledWith(
+			'p1',
+			expect.objectContaining({ currency: 99 }),
+		);
+		expect(lobby.state.players['p1'].persistenceLastSavedAt).toBe(now);
 	});
 });
 
