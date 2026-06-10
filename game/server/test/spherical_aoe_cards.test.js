@@ -389,6 +389,37 @@ describe('dragons_breath spherical height integration', () => {
 
 		expect(gameState.enemies[0].hp).toBe(hpBefore);
 	});
+
+	it('DoT tick damages an elevated in-sphere target with tilted aim', () => {
+		const def = CARD_DEFS.dragons_breath;
+		addEnemy('in-sphere', H_OFFSET, 0, 100, IN_SPHERE_Y);
+
+		const caster = setupCardCaster('dragons_breath', { y: CASTER_Y });
+		caster.cast({ lockTargetId: 'in-sphere' });
+		const hpAfterBurst = gameState.enemies[0].hp;
+
+		expect(gameState.areaEffects).toHaveLength(1);
+		gameState.areaEffects[0].lastTickAt = Date.now() - def.dotIntervalMs;
+		updateAreaEffects();
+
+		expect(gameState.enemies[0].hp).toBe(hpAfterBurst - def.damage);
+	});
+
+	it('DoT tick skips an elevated out-of-sphere target with flat aim', () => {
+		const def = CARD_DEFS.dragons_breath;
+		addEnemy('out-sphere', H_OFFSET, 0, 100, OUT_SPHERE_Y);
+		const hpBefore = gameState.enemies[0].hp;
+
+		const caster = setupCardCaster('dragons_breath', { y: CASTER_Y });
+		caster.cast({ rotation: 0 });
+
+		expect(gameState.enemies[0].hp).toBe(hpBefore);
+		expect(gameState.areaEffects).toHaveLength(1);
+		gameState.areaEffects[0].lastTickAt = Date.now() - def.dotIntervalMs;
+		updateAreaEffects();
+
+		expect(gameState.enemies[0].hp).toBe(hpBefore);
+	});
 });
 
 describe('field_medic_kit spherical height integration', () => {

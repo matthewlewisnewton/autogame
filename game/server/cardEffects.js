@@ -911,7 +911,10 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
             ...projectileCollectorVertical(aim),
           }
         );
-        spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, socket.playerId);
+        spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, socket.playerId, {
+          originY: getEntityWorldY(player),
+          dirY: aim.dirY,
+        });
         cleanupAfterDamage();
 
         consumeSpellSlot();

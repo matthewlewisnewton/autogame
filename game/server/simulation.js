@@ -1930,19 +1930,23 @@ function spawnFireTrailEffect(originX, originZ, dirX, dirZ, cardDef, ownerId) {
   });
 }
 
-function spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, ownerId) {
+function spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, ownerId, options = {}) {
   if (!_gameState.areaEffects) _gameState.areaEffects = [];
   const now = Date.now();
   const ticks = cardDef.dotTicks || 4;
   const intervalMs = cardDef.dotIntervalMs || 500;
+  const originY = resolveRadialOriginY(originX, originZ, options);
+  const dirY = Number.isFinite(options.dirY) ? options.dirY : 0;
   _gameState.areaEffects.push({
     id: crypto.randomUUID(),
     type: 'dragons_breath',
     ownerId,
     originX,
     originZ,
+    originY,
     dirX,
     dirZ,
+    dirY,
     coneAngle: cardDef.attackConeAngle || Math.PI / 3,
     range: cardDef.attackRange || 7,
     damagePerTick: cardDef.damage || 8,
@@ -2052,6 +2056,21 @@ function updateAreaEffects() {
         effect.range,
         effect.damagePerTick,
         { attackerId: effect.ownerId, originY }
+      ));
+    } else if (effect.type === 'dragons_breath') {
+      const originY = Number.isFinite(effect.originY)
+        ? effect.originY
+        : resolveRadialOriginY(effect.originX, effect.originZ, {});
+      const dirY = Number.isFinite(effect.dirY) ? effect.dirY : 0;
+      ({ hits } = collectConeHits(
+        effect.originX,
+        effect.originZ,
+        effect.dirX,
+        effect.dirZ,
+        effect.range,
+        effect.coneAngle,
+        effect.damagePerTick,
+        { attackerId: effect.ownerId, originY, dirY }
       ));
     } else {
       ({ hits } = collectConeHits(
