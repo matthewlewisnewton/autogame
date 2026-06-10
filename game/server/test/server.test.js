@@ -3821,7 +3821,7 @@ describe('run state', () => {
 
 		it('heals dead-or-zero-HP hub player to MAX_HP', () => {
 			addPlayer('p1', { hp: 0, dead: true, currency: 25 });
-			const result = healAtMedic('p1');
+			const result = healAtMedic('p1', gameState);
 			expect(result).toEqual({ ok: true, hp: 100, currency: 15, cost: 10 });
 			expect(gameState.players.p1.hp).toBe(100);
 			expect(gameState.players.p1.dead).toBe(false);
@@ -3829,26 +3829,26 @@ describe('run state', () => {
 
 		it('heals to full and charges 10 currency', () => {
 			addPlayer('p1', { hp: 40, currency: 25 });
-			const result = healAtMedic('p1');
+			const result = healAtMedic('p1', gameState);
 			expect(result).toEqual({ ok: true, hp: 100, currency: 15, cost: 10 });
 			expect(gameState.players.p1.hp).toBe(100);
 		});
 
 		it('rejects when already at full health', () => {
 			addPlayer('p1', { hp: 100, currency: 25 });
-			expect(healAtMedic('p1')).toEqual({ ok: false, reason: 'already_full' });
+			expect(healAtMedic('p1', gameState)).toEqual({ ok: false, reason: 'already_full' });
 		});
 
 		it('rejects when player cannot afford the heal', () => {
 			addPlayer('p1', { hp: 40, currency: 5 });
-			expect(healAtMedic('p1')).toEqual({ ok: false, reason: 'insufficient_gold' });
+			expect(healAtMedic('p1', gameState)).toEqual({ ok: false, reason: 'insufficient_gold' });
 		});
 
 		it('rejects when not in lobby phase', () => {
 			addPlayer('p1', { hp: 40, currency: 25 });
 			gameState.gamePhase = 'playing';
 			startDungeonRun();
-			expect(healAtMedic('p1')).toEqual({ ok: false, reason: 'not_in_lobby' });
+			expect(healAtMedic('p1', gameState)).toEqual({ ok: false, reason: 'not_in_lobby' });
 		});
 
 		it('healing_font and divine_grace define healAmount for HP restoration', () => {

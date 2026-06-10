@@ -380,7 +380,7 @@ const sim = require('./simulation');
 sim.setGameState(gameState, _timeouts);
 progression.initProgression({ gameState, getIo: () => io });
 progression.setRebuildWallColliders(() => rebuildWallColliders());
-ensureShopOffer();
+ensureShopOffer(gameState);
 
 // Wire simulation callbacks (so simulation.js can call back into progression).
 setTerminalCheckCallback(checkRunTerminalState);
@@ -467,7 +467,7 @@ function resetGameState() {
   delete gameState._victoryCounters;
   sim.setGameState(gameState, _timeouts);
   setProgressionGameState(gameState);
-  ensureShopOffer();
+  ensureShopOffer(gameState);
 }
 
 const DEBUG_SCENARIOS = new Set([
@@ -642,7 +642,7 @@ function broadcastLobbyUpdate(lobby) {
   if (!lobby) {
     if (!activeState || Object.keys(activeState.players).length === 0) return;
     withLobbyContext({ state: activeState }, () => {
-      ensureShopOffer();
+      ensureShopOffer(activeState);
       const shared = {
         players: lobbyPlayerList(activeState),
         gamePhase: activeState.gamePhase,
@@ -662,7 +662,7 @@ function broadcastLobbyUpdate(lobby) {
     return;
   }
   withLobbyContext(lobby, () => {
-    ensureShopOffer();
+    ensureShopOffer(lobby.state);
     const shared = {
       lobbyId: lobby.id,
       players: lobbyPlayerList(lobby.state),

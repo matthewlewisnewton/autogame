@@ -76,7 +76,7 @@ function register(socket, ctx) {
         lobby.state.selectedQuestId,
         lobby.state.selectedQuestTier ?? DEFAULT_QUEST_TIER,
       );
-      ensureShopOffer();
+      ensureShopOffer(lobby.state);
     });
     joinPlayerToLobby(socket, lobby);
   });

@@ -4,16 +4,8 @@ const crypto = require('crypto');
 const { DECK_MIN_SIZE, DECK_MAX_SIZE } = require('../config');
 const CARD_IDENTITY = require('../../shared/cardDefs.json');
 
-const LEGACY_EVOLVED_CARD_IDS = {
-  steel_broadsword: 'steel_claymore',
-  inferno_edge: 'magma_greatsword',
-  guardian_familiar: 'astral_guardian',
-  ancient_drake: 'ancient_wyrm',
-};
-
 function migrateCardId(cardId) {
-  if (!cardId || typeof cardId !== 'string') return cardId;
-  return LEGACY_EVOLVED_CARD_IDS[cardId] || cardId;
+  return require('./economy').migrateCardId(cardId);
 }
 
 function isValidCardId(cardId) {
