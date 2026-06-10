@@ -311,6 +311,7 @@ const {
   spawnCombatEnemies,
   updateSurviveSpawns,
   updateScriptedEncounters,
+  updateQuestDialogueRoomEntry,
   updateEncounterTriggers,
   spawnLoot,
   spawnCrystals,
@@ -1440,6 +1441,7 @@ function runGameLoopTick() {
         } else if (isPlayingPhase(state)) {
           processPendingCardWindups();
           applyPlayerMovement(state, buildMovementContext(state));
+          updateQuestDialogueRoomEntry();
           checkTelepipeProximity();
           flushDirtyPlayerSaves();
           updateEnemies();

@@ -112,9 +112,14 @@ function roomKeyForDef(roomDef) {
 }
 
 let _onPassageLocksChanged = () => {};
+let _onWaveCleared = () => {};
 
 function setPassageLocksChangedCallback(fn) {
   _onPassageLocksChanged = typeof fn === 'function' ? fn : () => {};
+}
+
+function setWaveClearedCallback(fn) {
+  _onWaveCleared = typeof fn === 'function' ? fn : () => {};
 }
 
 function findPassageIndexFromRoom(layout, roomIndex) {
@@ -291,6 +296,10 @@ function tryAdvanceScriptedWave(run, gameState, roomKey, ctx) {
   const clearedWaveIndex = roomState.waveIndex;
   if (clearedWaveIndex >= 0) {
     unlockPassagesForWave(run, roomState.roomIndex, clearedWaveIndex);
+    _onWaveCleared(run, gameState, {
+      roomIndex: roomState.roomIndex,
+      waveIndex: clearedWaveIndex,
+    });
   }
 
   const nextWaveIndex = roomState.waveIndex + 1;
@@ -433,6 +442,7 @@ module.exports = {
   onScriptedEnemyDefeated,
   relinkScriptedEncounterEnemyIds,
   setPassageLocksChangedCallback,
+  setWaveClearedCallback,
   findPassageIndexFromRoom,
   isWaveRequirementMet,
   roomKeyForDef,

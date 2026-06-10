@@ -905,6 +905,80 @@ body[data-phase="lobby"] #lobby-hud {
   margin: 0;
 }
 
+.quest-briefing {
+  width: 100%;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+
+.quest-briefing.hidden {
+  display: none;
+}
+
+.quest-briefing-npc {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #93c5fd;
+  margin: 0;
+}
+
+.quest-briefing-body {
+  font-size: 13px;
+  line-height: 1.45;
+  color: #e2e8f0;
+  margin: 0;
+}
+
+.quest-briefing-objective,
+.quest-briefing-reward {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.quest-briefing-reward {
+  color: #fbbf24;
+}
+
+.quest-dialogue-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(30, 58, 138, 0.95);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: sans-serif;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.3s;
+  max-width: min(520px, 92vw);
+  text-align: center;
+  border: 1px solid rgba(147, 197, 253, 0.45);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.45);
+}
+
+.quest-dialogue-toast .quest-dialogue-speaker {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #bfdbfe;
+  margin-bottom: 4px;
+}
+
 .quest-card {
   display: flex;
   flex-direction: column;

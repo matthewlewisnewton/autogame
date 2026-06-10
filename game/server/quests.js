@@ -24,10 +24,23 @@ const QUEST_DEFS = {
       1: {
         name: 'Initiate Vault',
         description: 'Purge hostiles from the derelict annex sector.',
+        clientNpc: 'Annex Liaison Kade',
+        briefing:
+          'The annex sector is crawling with salvage crews turned hostile. '
+          + 'Clear every wave and hold the vault mouth until extraction arrives.',
         objectiveType: 'defeat_enemies',
         enemyCount: 5,
         rewardCurrency: 10,
         layoutProfile: 'crowded',
+        dialogueBeacons: [
+          {
+            beaconId: 'training_start_room',
+            trigger: 'onRoomEntered',
+            roomIndex: 0,
+            speaker: 'Annex Liaison Kade',
+            line: 'Contract accepted. Sweep the annex — I will mark your progress on the channel.',
+          },
+        ],
       },
       2: {
         tier: 2,
@@ -57,11 +70,38 @@ const QUEST_DEFS = {
       1: {
         name: 'Prism Salvage',
         description: 'Recover resonance prisms from the collapsed lattice.',
+        clientNpc: 'Lattice Custodian Mira',
+        briefing:
+          'Resonance prisms are still singing in the collapsed lattice. '
+          + 'Recover every prism while the guard swarms keep the sector locked down.',
         objectiveType: 'collect_items',
         itemCount: 3,
         enemyCount: 4,
         rewardCurrency: 12,
         layoutProfile: 'open',
+        dialogueBeacons: [
+          {
+            beaconId: 'prism_first',
+            trigger: 'onCrystalCollected',
+            crystalIndex: 1,
+            speaker: 'Lattice Custodian Mira',
+            line: 'First prism secured — the lattice hum is stabilizing.',
+          },
+          {
+            beaconId: 'prism_second',
+            trigger: 'onCrystalCollected',
+            crystalIndex: 2,
+            speaker: 'Lattice Custodian Mira',
+            line: 'Two down. One more resonance knot and we can seal the breach.',
+          },
+          {
+            beaconId: 'prism_third',
+            trigger: 'onCrystalCollected',
+            crystalIndex: 3,
+            speaker: 'Lattice Custodian Mira',
+            line: 'All prisms accounted for. Extraction channel is open.',
+          },
+        ],
       },
       2: {
         tier: 2,
@@ -296,7 +336,16 @@ function getDefaultQuestId() {
 
 function listQuests() {
   return Object.keys(QUEST_DEFS)
-    .map((questId) => getQuest(questId, DEFAULT_QUEST_TIER))
+    .map((questId) => {
+      const resolved = getQuest(questId, DEFAULT_QUEST_TIER);
+      if (!resolved) return null;
+      return {
+        ...resolved,
+        objectiveSummary: formatObjectiveSummary(resolved),
+        rewardSummary: formatRewardSummary(resolved),
+        ...questBriefingFields(resolved),
+      };
+    })
     .filter(Boolean);
 }
 
@@ -366,6 +415,8 @@ const SCRIPTED_ENCOUNTER_FIXTURE_DEF = {
     1: {
       name: 'Scripted Encounter Fixture',
       description: 'Test-only scripted wave sequencing.',
+      clientNpc: 'Test Handler',
+      briefing: 'Fixture contract for scripted wave and dialogue beacon QA.',
       objectiveType: 'defeat_enemies',
       rewardCurrency: 1,
       layoutProfile: 'crowded',
@@ -380,6 +431,16 @@ const SCRIPTED_ENCOUNTER_FIXTURE_DEF = {
           },
         ],
       },
+      dialogueBeacons: [
+        {
+          beaconId: 'fixture_wave0_clear',
+          trigger: 'onWaveCleared',
+          roomIndex: 0,
+          waveIndex: 0,
+          speaker: 'Test Handler',
+          line: 'Wave zero cleared — advance to the next group.',
+        },
+      ],
     },
   },
 };
@@ -400,6 +461,34 @@ function formatRewardSummary(quest) {
     return 'Reward: —';
   }
   return `Reward: ${quest.rewardCurrency} stones`;
+}
+
+function formatBriefingSummary(quest) {
+  if (!quest) return '';
+  const body = typeof quest.briefing === 'string' ? quest.briefing.trim() : '';
+  if (!body) return quest.description || '';
+  const npc = typeof quest.clientNpc === 'string' ? quest.clientNpc.trim() : '';
+  if (npc) return `${npc}: ${body}`;
+  return body;
+}
+
+function formatBriefingRewardLine(quest) {
+  if (!quest) return formatRewardSummary(quest);
+  if (typeof quest.briefingRewardLine === 'string' && quest.briefingRewardLine.trim()) {
+    return quest.briefingRewardLine.trim();
+  }
+  return formatRewardSummary(quest);
+}
+
+function questBriefingFields(quest) {
+  if (!quest) return {};
+  return {
+    clientNpc: quest.clientNpc || null,
+    briefing: quest.briefing || null,
+    briefingSummary: formatBriefingSummary(quest),
+    briefingRewardLine: quest.briefingRewardLine || null,
+    briefingRewardText: formatBriefingRewardLine(quest),
+  };
 }
 
 function listQuestVariants() {
@@ -425,6 +514,7 @@ function listQuestVariants() {
         rewardSummary: formatRewardSummary(resolved),
         isTier2: tier === 2,
         unlockRequires: resolved.unlockRequires || null,
+        ...questBriefingFields(resolved),
       });
     }
   }
@@ -533,6 +623,9 @@ module.exports = {
   buildQuestUpdatePayload,
   formatObjectiveSummary,
   formatRewardSummary,
+  formatBriefingSummary,
+  formatBriefingRewardLine,
+  questBriefingFields,
   getEncounterConfig,
   getScriptedEncounterConfig,
   getEnemyPool,

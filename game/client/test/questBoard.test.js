@@ -2,9 +2,12 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
 	formatObjectiveSummary,
 	formatRewardSummary,
+	formatBriefingRewardLine,
 	formatQuestTierLabel,
+	findQuestBoardEntry,
 	isQuestTierUnlocked,
 	renderQuestBoard,
+	renderQuestBriefing,
 } from '../questBoard.js';
 
 const SAMPLE_QUESTS = [
@@ -12,9 +15,13 @@ const SAMPLE_QUESTS = [
 		id: 'training_caverns',
 		name: 'Initiate Vault',
 		description: 'Purge hostiles from the derelict annex sector.',
+		clientNpc: 'Annex Liaison Kade',
+		briefing: 'Clear the annex sector and hold the vault mouth.',
 		objectiveType: 'defeat_enemies',
 		enemyCount: 5,
 		rewardCurrency: 10,
+		objectiveSummary: 'Neutralize 5 hostiles',
+		rewardSummary: 'Reward: 10 money',
 	},
 	{
 		id: 'crystal_rescue',
@@ -135,6 +142,34 @@ describe('formatRewardSummary()', () => {
 	});
 });
 
+describe('formatBriefingRewardLine()', () => {
+	it('prefers briefingRewardText from the server payload', () => {
+		expect(formatBriefingRewardLine({
+			briefingRewardText: 'Reward: Signature blade',
+			rewardCurrency: 10,
+		})).toBe('Reward: Signature blade');
+	});
+
+	it('uses briefingRewardLine override when provided', () => {
+		expect(formatBriefingRewardLine({
+			briefingRewardLine: 'Reward: Named rare card',
+			rewardCurrency: 10,
+		})).toBe('Reward: Named rare card');
+	});
+});
+
+describe('findQuestBoardEntry()', () => {
+	it('resolves tier-1 quests from the quests list', () => {
+		const entry = findQuestBoardEntry('training_caverns', 1, SAMPLE_QUESTS, []);
+		expect(entry?.clientNpc).toBe('Annex Liaison Kade');
+	});
+
+	it('resolves tier-2 quests from quest variants', () => {
+		const entry = findQuestBoardEntry('training_caverns', 2, SAMPLE_QUESTS, [TRAINING_TIER2_VARIANT]);
+		expect(entry?.name).toContain('Tier II');
+	});
+});
+
 describe('formatQuestTierLabel()', () => {
 	it('appends (Tier 2) for tier-2 contracts', () => {
 		expect(formatQuestTierLabel('Initiate Vault — Tier II', 2)).toBe('Initiate Vault (Tier 2)');
@@ -154,6 +189,30 @@ describe('isQuestTierUnlocked()', () => {
 		const map = { training_caverns: [2] };
 		expect(isQuestTierUnlocked(map, 'training_caverns', 2)).toBe(true);
 		expect(isQuestTierUnlocked(map, 'training_caverns', 3)).toBe(false);
+	});
+});
+
+describe('renderQuestBriefing()', () => {
+	let container;
+
+	beforeEach(() => {
+		container = document.createElement('div');
+		document.body.appendChild(container);
+	});
+
+	it('renders NPC, briefing body, objective, and reward for the selected quest', () => {
+		renderQuestBriefing(container, SAMPLE_QUESTS[0]);
+
+		expect(container.classList.contains('hidden')).toBe(false);
+		expect(container.querySelector('.quest-briefing-npc').textContent).toBe('Annex Liaison Kade');
+		expect(container.querySelector('.quest-briefing-body').textContent).toContain('annex sector');
+		expect(container.querySelector('.quest-briefing-objective').textContent).toBe('Neutralize 5 hostiles');
+		expect(container.querySelector('.quest-briefing-reward').textContent).toBe('Reward: 10 money');
+	});
+
+	it('hides the panel when the quest has no briefing content', () => {
+		renderQuestBriefing(container, { id: 'plain', description: 'No briefing' });
+		expect(container.classList.contains('hidden')).toBe(true);
 	});
 });
 

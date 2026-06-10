@@ -74,7 +74,14 @@ const {
   onScriptedEnemyDefeated,
   relinkScriptedEncounterEnemyIds,
   isScriptedQuest,
+  setWaveClearedCallback,
 } = require('./scriptedEncounters');
+const {
+  initDialogueState,
+  evaluateDialogueBeacons,
+  emitQuestDialoguePayloads,
+  tickDialogueRoomEntry,
+} = require('./questDialogue');
 const { THEME } = require('./theme');
 const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
 const CARD_IDENTITY = require('../shared/cardDefs.json');
@@ -943,6 +950,8 @@ function createRunState() {
     });
   }
 
+  initDialogueState(run);
+
   return run;
 }
 
@@ -1270,7 +1279,38 @@ function recordCrystalCollected(count = 1) {
   const def = getObjectiveDef(_gameState.run.objective.type);
   if (!def?.onCrystalCollected) return;
   def.onCrystalCollected(_gameState.run, count);
+  const run = _gameState.run;
+  const quest = getQuest(run.questId, run.questTier);
+  if (!quest) return;
+  const payloads = evaluateDialogueBeacons(
+    run,
+    quest,
+    'onCrystalCollected',
+    { collectedCount: run.objective.collectedItems },
+  );
+  const io = getIoTarget();
+  if (io) {
+    emitQuestDialoguePayloads(io, null, payloads);
+  }
 }
+
+function handleQuestDialogueWaveCleared(run, gameState, ctx) {
+  const quest = getQuest(run.questId, run.questTier);
+  if (!quest) return;
+  const payloads = evaluateDialogueBeacons(run, quest, 'onWaveCleared', ctx);
+  const io = getIoTarget();
+  if (io) {
+    emitQuestDialoguePayloads(io, null, payloads);
+  }
+}
+
+function updateQuestDialogueRoomEntry() {
+  const io = getIoTarget();
+  if (!io || !_gameState?.run) return;
+  tickDialogueRoomEntry(_gameState, io, getQuest);
+}
+
+setWaveClearedCallback(handleQuestDialogueWaveCleared);
 
 function isRunObjectiveComplete(objective) {
   const def = getObjectiveDef(objective.type);
@@ -2743,6 +2783,12 @@ function captureCardCheckpoint() {
   if (run.passageLocks) {
     checkpoint.run.passageLocks = deepCloneJson(run.passageLocks);
   }
+  if (run.dialogueFired) {
+    checkpoint.run.dialogueFired = [...run.dialogueFired];
+  }
+  if (run._dialogueRoomsEntered) {
+    checkpoint.run._dialogueRoomsEntered = [...run._dialogueRoomsEntered];
+  }
 
   for (const [playerId, player] of Object.entries(_gameState.players)) {
     checkpoint.playerStates[playerId] = capturePlayerCardState(player);
@@ -2766,6 +2812,7 @@ function restoreCardCheckpoint() {
   if (!checkpoint?.run) return;
 
   _gameState.run = JSON.parse(JSON.stringify(checkpoint.run));
+  initDialogueState(_gameState.run);
 
   const all = Object.values(_gameState.players);
   for (const [playerId, player] of Object.entries(_gameState.players)) {
@@ -3514,6 +3561,7 @@ module.exports = {
   spawnCombatEnemies,
   updateSurviveSpawns,
   updateScriptedEncounters,
+  updateQuestDialogueRoomEntry,
   updateEncounterTriggers,
   recordCrystalCollected,
   isRunObjectiveComplete,

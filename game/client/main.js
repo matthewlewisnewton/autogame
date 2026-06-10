@@ -6,7 +6,9 @@ import {
 	formatObjectiveSummary,
 	formatRewardSummary,
 	formatQuestTierLabel,
+	findQuestBoardEntry,
 	renderQuestBoard,
+	renderQuestBriefing,
 } from './questBoard.js';
 import {
 	THEME,
@@ -202,6 +204,7 @@ const boothPromptEl = document.getElementById('booth-prompt');
 const lobbyPlayerList = document.getElementById('lobby-player-list');
 const questBoardEl = document.getElementById('quest-board');
 const questBoardWrapperEl = document.getElementById('quest-board-wrapper');
+const questBriefingEl = document.getElementById('quest-briefing');
 const questErrorEl = document.getElementById('quest-error');
 const suspendedRunBannerEl = document.getElementById('suspended-run-banner');
 const resumeRunBtnEl = document.getElementById('resume-run-btn');
@@ -1939,6 +1942,11 @@ function bindSocketHandlers(s) {
 		applyQuestLayoutFromServer(data);
 	});
 
+	s.on(SERVER_TO_CLIENT.QUEST_DIALOGUE, (data) => {
+		if (!data || typeof data.line !== 'string') return;
+		showQuestDialogueToast(data.line, data.speaker);
+	});
+
 	s.on(SERVER_TO_CLIENT.START_GAME, () => {
 		claimedCardRewardId = null;
 		currentCardChoices = [];
@@ -2211,6 +2219,14 @@ function renderQuestBoardState() {
 			selectionLocked: !!suspendedRunSummary,
 		},
 	);
+	const selectedQuest = findQuestBoardEntry(
+		selectedQuestId,
+		selectedQuestTier,
+		availableQuests,
+		questVariants,
+	);
+	renderQuestBriefing(questBriefingEl, selectedQuest);
+
 	if (questErrorEl) {
 		questErrorEl.style.display = 'none';
 		questErrorEl.textContent = '';
@@ -4257,6 +4273,25 @@ function showCardErrorToast(message) {
 		toast.style.opacity = '0';
 		setTimeout(() => toast.remove(), 300);
 	}, 2000);
+}
+
+function showQuestDialogueToast(line, speaker) {
+	const toast = document.createElement('div');
+	toast.className = 'quest-dialogue-toast';
+	if (speaker) {
+		const speakerEl = document.createElement('span');
+		speakerEl.className = 'quest-dialogue-speaker';
+		speakerEl.textContent = speaker;
+		toast.appendChild(speakerEl);
+	}
+	const lineEl = document.createElement('span');
+	lineEl.textContent = line;
+	toast.appendChild(lineEl);
+	document.body.appendChild(toast);
+	setTimeout(() => {
+		toast.style.opacity = '0';
+		setTimeout(() => toast.remove(), 300);
+	}, 3500);
 }
 
 // ── Lobby event wiring ──
