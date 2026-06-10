@@ -136,6 +136,23 @@ describe('formatObjectiveSummary()', () => {
 			}),
 		).toBe('Defeat the canyon warden');
 	});
+
+	it('summarizes frost_crossing stage-boss quests with permafrost warden copy', () => {
+		expect(
+			formatObjectiveSummary({
+				questId: 'frost_crossing',
+				objectiveType: 'stage_boss',
+				encounter: { bossType: 'permafrost_warden', addCount: 0 },
+			}),
+		).toBe('Defeat the Permafrost Warden');
+		expect(
+			formatObjectiveSummary({
+				id: 'frost_crossing',
+				objectiveType: 'stage_boss',
+				encounter: { bossType: 'permafrost_warden', addCount: 2 },
+			}),
+		).toBe('Defeat the Permafrost Warden and 2 supports');
+	});
 });
 
 describe('formatRewardSummary()', () => {

@@ -126,3 +126,40 @@ describe('tickMovementPrediction() — slippery floors', () => {
 		expect(normalDrift).toBeCloseTo(0, 5);
 	});
 });
+
+function makeTransitionLayout() {
+	return {
+		passageWidth: 4,
+		rooms: [
+			{ x: 0, z: 0, width: 12, depth: 12, floorSurface: 'normal', walls: [] },
+			{ x: 0, z: 18, width: 12, depth: 12, floorSurface: 'slippery', walls: [] },
+		],
+		passages: [{ x1: 0, z1: 0, x2: 0, z2: 18, walls: [], corridorLength: 18 }],
+	};
+}
+
+describe('tickMovementPrediction() — surface transitions', () => {
+	it('seeds stone-walking velocity before ice entry', () => {
+		const context = makeContext(makeTransitionLayout());
+		const state = { x: 0, z: 4, vx: 0, vz: 0 };
+
+		while (state.z < 12) {
+			tickPrediction(state, context, 1, {
+				inputActive: true,
+				inputDx: 0,
+				inputDz: 1,
+			});
+		}
+
+		expect(state.z).toBeGreaterThanOrEqual(12);
+		expect(state.vz).toBeGreaterThan(0);
+	});
+
+	it('zeros ice slide speed on stone without input', () => {
+		const context = makeContext(makeTransitionLayout());
+		const state = { x: 0, z: 13.5, vx: 0, vz: -10 };
+
+		tickPrediction(state, context, 10, { inputActive: false });
+		expect(Math.hypot(state.vx, state.vz)).toBeLessThan(1e-3);
+	});
+});

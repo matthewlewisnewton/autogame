@@ -114,7 +114,13 @@ describe('tier-1 quest identity wiring', () => {
 
   it('frost_crossing tier 1 has ice-band waves, glacial named rare, and room-entry dialogue', () => {
     const quest = tier1Quest('frost_crossing');
-    expect(quest.objectiveType).toBe('defeat_enemies');
+    expect(quest.objectiveType).toBe('stage_boss');
+    expect(quest.encounter).toMatchObject({
+      bossType: 'permafrost_warden',
+      landmark: 'ice_cairn',
+      addCount: 0,
+    });
+    expect(formatObjectiveSummary(quest).toLowerCase()).toContain('permafrost warden');
     expect(quest.rewardCardId).toBe('frost_nova');
 
     const iceRoom = quest.scriptedEncounters.rooms.find((r) => r.band === 'ice');
@@ -135,6 +141,7 @@ describe('tier-1 quest identity wiring', () => {
     expect(beacons.some((b) => b.beaconId === 'frost_dock_clear')).toBe(true);
     expect(beacons.some((b) => b.beaconId === 'frost_ice_band_enter' && b.band === 'ice')).toBe(true);
     expect(beacons.some((b) => b.beaconId === 'frost_rimecast_wave')).toBe(true);
+    expect(beacons.some((b) => b.beaconId === 'frost_cairn_warden')).toBe(true);
   });
 
   it('annex_escort tier 1 exercises escort objective in live quest content', () => {

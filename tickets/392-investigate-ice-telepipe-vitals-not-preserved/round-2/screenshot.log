@@ -1,0 +1,1007 @@
+{
+  "url": "http://localhost:5177/",
+  "ok": true,
+  "ticketFile": "/home/matt/workspace/.autogame-worktrees/392-investigate-ice-telepipe-vitals-not-preserved/tickets/392-investigate-ice-telepipe-vitals-not-preserved/ticket.md",
+  "capturePlanSource": "fallback",
+  "capturePlanValid": true,
+  "capturePlanAttempts": [],
+  "capturePlanSummary": "Deterministic solo ICE Telepipe vitals-preservation capture: auth, solo lobby + deploy on frost-telepipe-ready (frost_crossing / ice-cavern), place telepipe, suspended lobby, re-emit frost-telepipe-ready to abandon the checkpoint, fresh redeploy, assertVitalsPreserved (HP/MS persist, fresh runId, no checkpoint restore).",
+  "scenarios": [
+    "frost-telepipe-ready"
+  ],
+  "screenshots": [
+    {
+      "file": "01-in-dungeon.png",
+      "player": "A",
+      "description": "Solo player in the dungeon with a telepipe in hand slot 0, before suspending."
+    },
+    {
+      "file": "02-suspended-lobby.png",
+      "player": "A",
+      "description": "Lobby after the solo telepipe extraction suspended the run."
+    },
+    {
+      "file": "03-redeployed-dungeon.png",
+      "player": "A",
+      "description": "Fresh dungeon after hub return and redeploy — player vitals should match pre-telepipe."
+    }
+  ],
+  "probes": [
+    {
+      "player": "A",
+      "description": "PRE-TELEPIPE state: stash player HP, magic stones, and runId before placing the telepipe.",
+      "data": {
+        "harnessState": {
+          "debugScenario": null,
+          "debugScenarioAllowed": true,
+          "debugScenarioResult": {
+            "ok": true,
+            "scenario": "frost-telepipe-ready"
+          },
+          "debugGodmodeResult": null,
+          "objective": {
+            "type": "defeat_enemies",
+            "totalEnemies": 6,
+            "activeEnemyCount": 2,
+            "defeatedEnemies": 0,
+            "label": "Frost Crossing: Clear the stone dock, cross the ice band, and defeat Rimecast the Slow."
+          },
+          "encounter": null,
+          "bossEncounter": null,
+          "runObjectiveComplete": false,
+          "lastRunSummary": null,
+          "sortieCompleteOverlayVisible": false,
+          "myId": "0c2abfb9-627f-4721-bc37-e2953538e6fc",
+          "selectedDeck": [
+            "e465c33e-e639-4724-9430-4800e8b90141",
+            "ef905581-8c06-4dc4-a528-d0004986cf5a",
+            "2b3fdb2d-2e00-49c3-b6c7-9a97043631a7",
+            "05405536-b18b-4669-9f3c-7f1e0194a469",
+            "f3760c99-644f-4471-a202-e2a79008c556",
+            "506a2882-c93f-4b4a-81fc-048135e9600d",
+            "0ecc6f16-cdd5-42ef-a3d6-43b3205962d0",
+            "4b5b7941-b388-404d-a478-3d6472383129",
+            "54b57577-ac9d-4d9a-846b-d2a3e6bd20d4",
+            "b6e25a61-bbed-4b4e-bbe6-2e610fe844f3",
+            "cfcba7a8-7974-4c4a-a1b3-b97db3b4165f",
+            "9d2ffe2b-a970-4310-b466-b7c7d7d8f796"
+          ],
+          "phase": "playing",
+          "runStatus": "playing",
+          "suspendedRunSummary": null,
+          "extracted": false,
+          "telepipe": null,
+          "layout": {
+            "profile": "ice-cavern",
+            "seed": 1081914342,
+            "roomCount": 5,
+            "startRoom": {
+              "x": 0,
+              "z": -32.5,
+              "role": "start"
+            }
+          },
+          "connectionState": "connected",
+          "sceneInitialized": true,
+          "hasCanvas": true,
+          "lobbyVisible": false,
+          "lobbyMenuDismissed": false,
+          "characterBoothOpen": false,
+          "deckEditorVisible": false,
+          "runId": "35c1710d-d99d-44eb-ad24-445f9f2be16c",
+          "resumeBtnUsable": false,
+          "abandonRunBtnUsable": false,
+          "cardHandVisible": true,
+          "status": "Latency: 0ms",
+          "hpText": "40/100",
+          "msText": "20/99",
+          "currencyText": "Money 0",
+          "currency": 0,
+          "player": {
+            "hp": 40,
+            "magicStones": 20,
+            "currency": 0,
+            "debugGodmode": false,
+            "dead": false,
+            "x": 0,
+            "y": 0.5,
+            "z": -32.5,
+            "equippedKeyItemId": "dodge_roll",
+            "keyItemCooldownRemaining": 0,
+            "cardUseState": null,
+            "cardWindupUntil": 0,
+            "cardWindupCardId": null,
+            "slowedUntil": 0,
+            "burningUntil": 0,
+            "slowActive": false,
+            "burnActive": false
+          },
+          "windupFlashing": false,
+          "keyItemIndicatorOnCooldown": false,
+          "keyItemIndicatorText": "",
+          "players": 1,
+          "squadmates": [],
+          "enemies": 2,
+          "enemyHp": [
+            {
+              "id": "792ebc67-e8b3-4507-84fa-ffb336e10de6",
+              "hp": 100,
+              "maxHp": 100,
+              "type": "grunt",
+              "spawnedBy": null,
+              "x": 0,
+              "z": -32.5,
+              "slowedUntil": 0,
+              "burningUntil": 0,
+              "frozenUntil": 0,
+              "slowActive": false,
+              "burnActive": false
+            },
+            {
+              "id": "820999fd-f4f6-4739-bcd3-8b1faee3ff8f",
+              "hp": 100,
+              "maxHp": 100,
+              "type": "grunt",
+              "spawnedBy": null,
+              "x": 0.29394634324125946,
+              "z": -31.95783479535021,
+              "slowedUntil": 0,
+              "burningUntil": 0,
+              "frozenUntil": 0,
+              "slowActive": false,
+              "burnActive": false
+            }
+          ],
+          "minions": [],
+          "hand": [
+            {
+              "id": "telepipe",
+              "name": "Telepipe",
+              "type": "spell",
+              "remainingCharges": 1,
+              "charges": 1,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "1/1",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            {
+              "id": "iron_sword",
+              "name": "Rust-Forged Saber",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "5/5",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            null,
+            {
+              "id": "iron_sword",
+              "name": "Rust-Forged Saber",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "5/5",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            {
+              "id": "battle_familiar",
+              "name": "Signal Familiar",
+              "type": "spell",
+              "remainingCharges": 1,
+              "charges": 1,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "1/1",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            null
+          ],
+          "inventory": [
+            {
+              "instanceId": "e465c33e-e639-4724-9430-4800e8b90141",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "ef905581-8c06-4dc4-a528-d0004986cf5a",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "2b3fdb2d-2e00-49c3-b6c7-9a97043631a7",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "05405536-b18b-4669-9f3c-7f1e0194a469",
+              "cardId": "dungeon_drake",
+              "grind": 0
+            },
+            {
+              "instanceId": "f3760c99-644f-4471-a202-e2a79008c556",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "506a2882-c93f-4b4a-81fc-048135e9600d",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "0ecc6f16-cdd5-42ef-a3d6-43b3205962d0",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "4b5b7941-b388-404d-a478-3d6472383129",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "54b57577-ac9d-4d9a-846b-d2a3e6bd20d4",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "b6e25a61-bbed-4b4e-bbe6-2e610fe844f3",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "cfcba7a8-7974-4c4a-a1b3-b97db3b4165f",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "9d2ffe2b-a970-4310-b466-b7c7d7d8f796",
+              "cardId": "dungeon_drake",
+              "grind": 0
+            }
+          ],
+          "lastEvolutionResult": null
+        },
+        "keyItemIndicatorOnCooldown": false,
+        "keyItemIndicatorText": "",
+        "keyItemCooldownRemaining": 0,
+        "status": "Latency: 0ms",
+        "hasCanvas": true,
+        "canvasCount": 2,
+        "lobbyVisible": false,
+        "cardHandVisible": true,
+        "title": "Void Grimoire",
+        "bodyText": "👤\nLv\n🔊\n⚙\n0C\nLV\n1\nHP\n40/100\nMS\n20/99\nDeck: 8/12\n⟡ 4\n✦ 2\n🐉 2\n✨ 0\nMoney 0\nLatency: 0ms\nFrost Crossing\nPurged 0 / 6 hostiles\n01\nCairn: Cairn on ice-watch channel. Two hostiles guard the stone dock — clear them and Sela will unseal the ramp to the ice band.\nClick to attack · press 1–6 to cast cards\n1\n⬡\nTelepipe\n1/1\n2\n⚔\nRust-Forged Saber\n5/5\n4\n⚔\nRust-Forged Saber\n5/5\n5\n✦\nSignal Familiar\n50 MS\n1/1\nCairn: Cairn on ice-watch channel. Two hostiles guard the stone dock — clear them and Sela will unseal the ramp to the ice band.\nICE-WATCH COURIER SELA\nStone dock is live. Two grunts hold the ramp gate — clear them before you step onto the ice."
+      }
+    },
+    {
+      "player": "A",
+      "description": "HUB state after telepipe UP: record phase, runId, and player vitals in lobby before redeploy.",
+      "data": {
+        "harnessState": {
+          "debugScenario": null,
+          "debugScenarioAllowed": true,
+          "debugScenarioResult": {
+            "ok": true,
+            "scenario": "frost-telepipe-ready"
+          },
+          "debugGodmodeResult": null,
+          "objective": null,
+          "encounter": null,
+          "bossEncounter": null,
+          "runObjectiveComplete": false,
+          "lastRunSummary": null,
+          "sortieCompleteOverlayVisible": false,
+          "myId": "0c2abfb9-627f-4721-bc37-e2953538e6fc",
+          "selectedDeck": [
+            "e465c33e-e639-4724-9430-4800e8b90141",
+            "ef905581-8c06-4dc4-a528-d0004986cf5a",
+            "2b3fdb2d-2e00-49c3-b6c7-9a97043631a7",
+            "05405536-b18b-4669-9f3c-7f1e0194a469",
+            "f3760c99-644f-4471-a202-e2a79008c556",
+            "506a2882-c93f-4b4a-81fc-048135e9600d",
+            "0ecc6f16-cdd5-42ef-a3d6-43b3205962d0",
+            "4b5b7941-b388-404d-a478-3d6472383129",
+            "54b57577-ac9d-4d9a-846b-d2a3e6bd20d4",
+            "b6e25a61-bbed-4b4e-bbe6-2e610fe844f3",
+            "cfcba7a8-7974-4c4a-a1b3-b97db3b4165f",
+            "9d2ffe2b-a970-4310-b466-b7c7d7d8f796"
+          ],
+          "phase": "lobby",
+          "runStatus": "suspended",
+          "suspendedRunSummary": {
+            "questId": "frost_crossing",
+            "questName": "Frost Crossing",
+            "objective": {
+              "type": "defeat_enemies",
+              "label": "Frost Crossing: Clear the stone dock, cross the ice band, and defeat Rimecast the Slow.",
+              "totalEnemies": 6,
+              "defeatedEnemies": 0,
+              "activeEnemyCount": 2
+            }
+          },
+          "extracted": false,
+          "telepipe": null,
+          "layout": {
+            "profile": "hub",
+            "seed": 1081914342,
+            "roomCount": 3,
+            "startRoom": {
+              "x": -20,
+              "z": 0,
+              "role": "start"
+            }
+          },
+          "connectionState": "connected",
+          "sceneInitialized": true,
+          "hasCanvas": true,
+          "lobbyVisible": true,
+          "lobbyMenuDismissed": false,
+          "characterBoothOpen": false,
+          "deckEditorVisible": false,
+          "runId": null,
+          "resumeBtnUsable": true,
+          "abandonRunBtnUsable": true,
+          "cardHandVisible": false,
+          "status": "Latency: 1ms",
+          "hpText": "20/100",
+          "msText": "20/99",
+          "currencyText": "Money 0",
+          "currency": 0,
+          "player": {
+            "hp": 20,
+            "magicStones": 20,
+            "currency": 0,
+            "debugGodmode": false,
+            "dead": false,
+            "x": -20,
+            "y": 0.5,
+            "z": 0,
+            "equippedKeyItemId": "dodge_roll",
+            "keyItemCooldownRemaining": 0,
+            "cardUseState": null,
+            "cardWindupUntil": 0,
+            "cardWindupCardId": null,
+            "slowedUntil": 0,
+            "burningUntil": 0,
+            "slowActive": false,
+            "burnActive": false
+          },
+          "windupFlashing": false,
+          "keyItemIndicatorOnCooldown": false,
+          "keyItemIndicatorText": "",
+          "players": 1,
+          "squadmates": [],
+          "enemies": 0,
+          "enemyHp": [],
+          "minions": [],
+          "hand": [],
+          "inventory": [
+            {
+              "instanceId": "e465c33e-e639-4724-9430-4800e8b90141",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "ef905581-8c06-4dc4-a528-d0004986cf5a",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "2b3fdb2d-2e00-49c3-b6c7-9a97043631a7",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "05405536-b18b-4669-9f3c-7f1e0194a469",
+              "cardId": "dungeon_drake",
+              "grind": 0
+            },
+            {
+              "instanceId": "f3760c99-644f-4471-a202-e2a79008c556",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "506a2882-c93f-4b4a-81fc-048135e9600d",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "0ecc6f16-cdd5-42ef-a3d6-43b3205962d0",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "4b5b7941-b388-404d-a478-3d6472383129",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "54b57577-ac9d-4d9a-846b-d2a3e6bd20d4",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "b6e25a61-bbed-4b4e-bbe6-2e610fe844f3",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "cfcba7a8-7974-4c4a-a1b3-b97db3b4165f",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "9d2ffe2b-a970-4310-b466-b7c7d7d8f796",
+              "cardId": "dungeon_drake",
+              "grind": 0
+            }
+          ],
+          "lastEvolutionResult": null
+        },
+        "keyItemIndicatorOnCooldown": false,
+        "keyItemIndicatorText": "",
+        "keyItemCooldownRemaining": 0,
+        "status": "Latency: 1ms",
+        "hasCanvas": true,
+        "canvasCount": 2,
+        "lobbyVisible": true,
+        "cardHandVisible": false,
+        "title": "Void Grimoire",
+        "bodyText": "👤\n🔊\n⚙\n0C\nLV\n1\nHP\n20/100\nMoney 0\nLatency: 1ms\nResume expedition — Frost Crossing\nResume sortie\nAbort Sortie\nReturn to Registry\nLobby Connection\n×\nPLAYERS\n0c2abfb9-627f-4721-bc37-e2953538e6fc — Standby\nPhoton Forge\nCard Economy\nMedic\nKey Items\nINVENTORY\n⚔\nRust-Forged Saber\n⚔\nSolar Edge\n✦\nSignal Familiar\n🐉\nVault Wyrm\n⚔\nRust-Forged Saber\n⚔\nRust-Forged Saber\n⚔\nRust-Forged Saber\n✦\nSignal Familiar\n✦\nSignal Familiar\n⚔\nSolar Edge\n⚔\nSolar Edge\n🐉\nVault Wyrm\nSELECT A CARD\nChoose an inventory card to preview attune bonuses.\nAttune: — Money\nAttune\nSTAT\tCURRENT\tAFTER ATTUNE"
+      }
+    },
+    {
+      "player": "A",
+      "description": "VERIFY vitals preservation: HP exact match; MS within passive-regen tolerance; runId must differ (fresh run, no checkpoint restore).",
+      "data": {
+        "vitalsPreservation": {
+          "preHp": 20,
+          "postHp": 20,
+          "preMagicStones": 20,
+          "postMagicStones": 20,
+          "preRunId": "35c1710d-d99d-44eb-ad24-445f9f2be16c",
+          "postRunId": "b15b9e8e-8ef9-41e1-9ab1-36e819547d87",
+          "hpPreserved": true,
+          "msPreserved": true,
+          "freshRunId": true,
+          "preserved": true
+        },
+        "harnessState": {
+          "debugScenario": null,
+          "debugScenarioAllowed": true,
+          "debugScenarioResult": {
+            "ok": true,
+            "scenario": "frost-telepipe-ready"
+          },
+          "debugGodmodeResult": null,
+          "objective": {
+            "type": "defeat_enemies",
+            "totalEnemies": 6,
+            "activeEnemyCount": 2,
+            "defeatedEnemies": 0,
+            "label": "Frost Crossing: Clear the stone dock, cross the ice band, and defeat Rimecast the Slow."
+          },
+          "encounter": null,
+          "bossEncounter": null,
+          "runObjectiveComplete": false,
+          "lastRunSummary": null,
+          "sortieCompleteOverlayVisible": false,
+          "myId": "0c2abfb9-627f-4721-bc37-e2953538e6fc",
+          "selectedDeck": [
+            "e465c33e-e639-4724-9430-4800e8b90141",
+            "ef905581-8c06-4dc4-a528-d0004986cf5a",
+            "2b3fdb2d-2e00-49c3-b6c7-9a97043631a7",
+            "05405536-b18b-4669-9f3c-7f1e0194a469",
+            "f3760c99-644f-4471-a202-e2a79008c556",
+            "506a2882-c93f-4b4a-81fc-048135e9600d",
+            "0ecc6f16-cdd5-42ef-a3d6-43b3205962d0",
+            "4b5b7941-b388-404d-a478-3d6472383129",
+            "54b57577-ac9d-4d9a-846b-d2a3e6bd20d4",
+            "b6e25a61-bbed-4b4e-bbe6-2e610fe844f3",
+            "cfcba7a8-7974-4c4a-a1b3-b97db3b4165f",
+            "9d2ffe2b-a970-4310-b466-b7c7d7d8f796"
+          ],
+          "phase": "playing",
+          "runStatus": "playing",
+          "suspendedRunSummary": null,
+          "extracted": false,
+          "telepipe": null,
+          "layout": {
+            "profile": "ice-cavern",
+            "seed": 1081914342,
+            "roomCount": 5,
+            "startRoom": {
+              "x": 0,
+              "z": -32.5,
+              "role": "start"
+            }
+          },
+          "connectionState": "connected",
+          "sceneInitialized": true,
+          "hasCanvas": true,
+          "lobbyVisible": false,
+          "lobbyMenuDismissed": false,
+          "characterBoothOpen": false,
+          "deckEditorVisible": false,
+          "runId": "b15b9e8e-8ef9-41e1-9ab1-36e819547d87",
+          "resumeBtnUsable": false,
+          "abandonRunBtnUsable": false,
+          "cardHandVisible": true,
+          "status": "Latency: 0ms",
+          "hpText": "20/100",
+          "msText": "20/99",
+          "currencyText": "Money 0",
+          "currency": 0,
+          "player": {
+            "hp": 20,
+            "magicStones": 20,
+            "currency": 0,
+            "debugGodmode": false,
+            "dead": false,
+            "x": 0,
+            "y": 0.5,
+            "z": -32.5,
+            "equippedKeyItemId": "dodge_roll",
+            "keyItemCooldownRemaining": 0,
+            "cardUseState": null,
+            "cardWindupUntil": 0,
+            "cardWindupCardId": null,
+            "slowedUntil": 0,
+            "burningUntil": 0,
+            "slowActive": false,
+            "burnActive": false
+          },
+          "windupFlashing": false,
+          "keyItemIndicatorOnCooldown": false,
+          "keyItemIndicatorText": "",
+          "players": 1,
+          "squadmates": [],
+          "enemies": 2,
+          "enemyHp": [
+            {
+              "id": "8c9b763a-5b5a-434c-9ada-48944a0dd772",
+              "hp": 100,
+              "maxHp": 100,
+              "type": "grunt",
+              "spawnedBy": null,
+              "x": 0,
+              "z": -32.5,
+              "slowedUntil": 0,
+              "burningUntil": 0,
+              "frozenUntil": 0,
+              "slowActive": false,
+              "burnActive": false
+            },
+            {
+              "id": "86e5d85a-1434-4b2a-93da-34bf7cfa61e2",
+              "hp": 100,
+              "maxHp": 100,
+              "type": "grunt",
+              "spawnedBy": null,
+              "x": 0.29394634324125946,
+              "z": -31.95783479535021,
+              "slowedUntil": 0,
+              "burningUntil": 0,
+              "frozenUntil": 0,
+              "slowActive": false,
+              "burnActive": false
+            }
+          ],
+          "minions": [],
+          "hand": [
+            {
+              "id": "telepipe",
+              "name": "Telepipe",
+              "type": "spell",
+              "remainingCharges": 1,
+              "charges": 1,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "1/1",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            {
+              "id": "battle_familiar",
+              "name": "Signal Familiar",
+              "type": "spell",
+              "remainingCharges": 1,
+              "charges": 1,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "1/1",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            null,
+            {
+              "id": "iron_sword",
+              "name": "Rust-Forged Saber",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "5/5",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            {
+              "id": "iron_sword",
+              "name": "Rust-Forged Saber",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "5/5",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            null
+          ],
+          "inventory": [
+            {
+              "instanceId": "e465c33e-e639-4724-9430-4800e8b90141",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "ef905581-8c06-4dc4-a528-d0004986cf5a",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "2b3fdb2d-2e00-49c3-b6c7-9a97043631a7",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "05405536-b18b-4669-9f3c-7f1e0194a469",
+              "cardId": "dungeon_drake",
+              "grind": 0
+            },
+            {
+              "instanceId": "f3760c99-644f-4471-a202-e2a79008c556",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "506a2882-c93f-4b4a-81fc-048135e9600d",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "0ecc6f16-cdd5-42ef-a3d6-43b3205962d0",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "4b5b7941-b388-404d-a478-3d6472383129",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "54b57577-ac9d-4d9a-846b-d2a3e6bd20d4",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "b6e25a61-bbed-4b4e-bbe6-2e610fe844f3",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "cfcba7a8-7974-4c4a-a1b3-b97db3b4165f",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "9d2ffe2b-a970-4310-b466-b7c7d7d8f796",
+              "cardId": "dungeon_drake",
+              "grind": 0
+            }
+          ],
+          "lastEvolutionResult": null
+        }
+      }
+    },
+    {
+      "player": "A",
+      "description": "Final capture probe.",
+      "data": {
+        "harnessState": {
+          "debugScenario": null,
+          "debugScenarioAllowed": true,
+          "debugScenarioResult": {
+            "ok": true,
+            "scenario": "frost-telepipe-ready"
+          },
+          "debugGodmodeResult": null,
+          "objective": {
+            "type": "defeat_enemies",
+            "totalEnemies": 6,
+            "activeEnemyCount": 2,
+            "defeatedEnemies": 0,
+            "label": "Frost Crossing: Clear the stone dock, cross the ice band, and defeat Rimecast the Slow."
+          },
+          "encounter": null,
+          "bossEncounter": null,
+          "runObjectiveComplete": false,
+          "lastRunSummary": {
+            "runId": "b15b9e8e-8ef9-41e1-9ab1-36e819547d87",
+            "status": "failed",
+            "durationMs": 826,
+            "questId": "frost_crossing",
+            "questTier": 1,
+            "questName": "Frost Crossing",
+            "objective": {
+              "type": "defeat_enemies",
+              "label": "Frost Crossing: Clear the stone dock, cross the ice band, and defeat Rimecast the Slow.",
+              "totalEnemies": 6,
+              "defeatedEnemies": 0,
+              "activeEnemyCount": 2
+            },
+            "players": [
+              {
+                "id": "0c2abfb9-627f-4721-bc37-e2953538e6fc",
+                "hp": 0,
+                "dead": true,
+                "currency": 0,
+                "rewards": {
+                  "currency": 0,
+                  "cards": [],
+                  "cardChoices": []
+                },
+                "cardChoices": []
+              }
+            ],
+            "defeatedEnemies": 0,
+            "currencyCollected": 0,
+            "rewards": {
+              "currency": 14
+            }
+          },
+          "sortieCompleteOverlayVisible": false,
+          "myId": "0c2abfb9-627f-4721-bc37-e2953538e6fc",
+          "selectedDeck": [
+            "e465c33e-e639-4724-9430-4800e8b90141",
+            "ef905581-8c06-4dc4-a528-d0004986cf5a",
+            "2b3fdb2d-2e00-49c3-b6c7-9a97043631a7",
+            "05405536-b18b-4669-9f3c-7f1e0194a469",
+            "f3760c99-644f-4471-a202-e2a79008c556",
+            "506a2882-c93f-4b4a-81fc-048135e9600d",
+            "0ecc6f16-cdd5-42ef-a3d6-43b3205962d0",
+            "4b5b7941-b388-404d-a478-3d6472383129",
+            "54b57577-ac9d-4d9a-846b-d2a3e6bd20d4",
+            "b6e25a61-bbed-4b4e-bbe6-2e610fe844f3",
+            "cfcba7a8-7974-4c4a-a1b3-b97db3b4165f",
+            "9d2ffe2b-a970-4310-b466-b7c7d7d8f796"
+          ],
+          "phase": "playing",
+          "runStatus": "failed",
+          "suspendedRunSummary": null,
+          "extracted": false,
+          "telepipe": null,
+          "layout": {
+            "profile": "ice-cavern",
+            "seed": 1081914342,
+            "roomCount": 5,
+            "startRoom": {
+              "x": 0,
+              "z": -32.5,
+              "role": "start"
+            }
+          },
+          "connectionState": "connected",
+          "sceneInitialized": true,
+          "hasCanvas": true,
+          "lobbyVisible": false,
+          "lobbyMenuDismissed": false,
+          "characterBoothOpen": false,
+          "deckEditorVisible": false,
+          "runId": "b15b9e8e-8ef9-41e1-9ab1-36e819547d87",
+          "resumeBtnUsable": false,
+          "abandonRunBtnUsable": false,
+          "cardHandVisible": true,
+          "status": "Latency: 0ms",
+          "hpText": "0/100",
+          "msText": "20/99",
+          "currencyText": "Money 0",
+          "currency": 0,
+          "player": {
+            "hp": 0,
+            "magicStones": 20,
+            "currency": 0,
+            "debugGodmode": false,
+            "dead": true,
+            "x": 0,
+            "y": 0.5,
+            "z": -32.5,
+            "equippedKeyItemId": "dodge_roll",
+            "keyItemCooldownRemaining": 0,
+            "cardUseState": null,
+            "cardWindupUntil": 0,
+            "cardWindupCardId": null,
+            "slowedUntil": 0,
+            "burningUntil": 0,
+            "slowActive": false,
+            "burnActive": false
+          },
+          "windupFlashing": false,
+          "keyItemIndicatorOnCooldown": false,
+          "keyItemIndicatorText": "",
+          "players": 1,
+          "squadmates": [],
+          "enemies": 2,
+          "enemyHp": [
+            {
+              "id": "8c9b763a-5b5a-434c-9ada-48944a0dd772",
+              "hp": 100,
+              "maxHp": 100,
+              "type": "grunt",
+              "spawnedBy": null,
+              "x": 0,
+              "z": -32.5,
+              "slowedUntil": 0,
+              "burningUntil": 0,
+              "frozenUntil": 0,
+              "slowActive": false,
+              "burnActive": false
+            },
+            {
+              "id": "86e5d85a-1434-4b2a-93da-34bf7cfa61e2",
+              "hp": 100,
+              "maxHp": 100,
+              "type": "grunt",
+              "spawnedBy": null,
+              "x": 0.29394634324125946,
+              "z": -31.95783479535021,
+              "slowedUntil": 0,
+              "burningUntil": 0,
+              "frozenUntil": 0,
+              "slowActive": false,
+              "burnActive": false
+            }
+          ],
+          "minions": [],
+          "hand": [
+            {
+              "id": "telepipe",
+              "name": "Telepipe",
+              "type": "spell",
+              "remainingCharges": 1,
+              "charges": 1,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "1/1",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            {
+              "id": "battle_familiar",
+              "name": "Signal Familiar",
+              "type": "spell",
+              "remainingCharges": 1,
+              "charges": 1,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "1/1",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            null,
+            {
+              "id": "iron_sword",
+              "name": "Rust-Forged Saber",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "5/5",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            {
+              "id": "iron_sword",
+              "name": "Rust-Forged Saber",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "5/5",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            null
+          ],
+          "inventory": [
+            {
+              "instanceId": "e465c33e-e639-4724-9430-4800e8b90141",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "ef905581-8c06-4dc4-a528-d0004986cf5a",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "2b3fdb2d-2e00-49c3-b6c7-9a97043631a7",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "05405536-b18b-4669-9f3c-7f1e0194a469",
+              "cardId": "dungeon_drake",
+              "grind": 0
+            },
+            {
+              "instanceId": "f3760c99-644f-4471-a202-e2a79008c556",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "506a2882-c93f-4b4a-81fc-048135e9600d",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "0ecc6f16-cdd5-42ef-a3d6-43b3205962d0",
+              "cardId": "iron_sword",
+              "grind": 0
+            },
+            {
+              "instanceId": "4b5b7941-b388-404d-a478-3d6472383129",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "54b57577-ac9d-4d9a-846b-d2a3e6bd20d4",
+              "cardId": "battle_familiar",
+              "grind": 0
+            },
+            {
+              "instanceId": "b6e25a61-bbed-4b4e-bbe6-2e610fe844f3",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "cfcba7a8-7974-4c4a-a1b3-b97db3b4165f",
+              "cardId": "flame_blade",
+              "grind": 0
+            },
+            {
+              "instanceId": "9d2ffe2b-a970-4310-b466-b7c7d7d8f796",
+              "cardId": "dungeon_drake",
+              "grind": 0
+            }
+          ],
+          "lastEvolutionResult": null
+        },
+        "keyItemIndicatorOnCooldown": false,
+        "keyItemIndicatorText": "",
+        "keyItemCooldownRemaining": 0,
+        "status": "Latency: 0ms",
+        "hasCanvas": true,
+        "canvasCount": 2,
+        "lobbyVisible": false,
+        "cardHandVisible": true,
+        "title": "Void Grimoire",
+        "bodyText": "👤\nLv\n🔊\n⚙\n0C\nLV\n1\nHP\n0/100\nMS\n20/99\nDeck: 8/12\n⟡ 4\n✦ 2\n🐉 2\n✨ 0\nMoney 0\nLatency: 0ms\nFrost Crossing\nPurged 0 / 6 hostiles\n01\nCairn: Cairn on ice-watch channel. Two hostiles guard the stone dock — clear them and Sela will unseal the ramp to the ice band.\nClick to attack · press 1–6 to cast cards\n1\n⬡\nTelepipe\n1/1\n2\n✦\nSignal Familiar\n50 MS\n1/1\n4\n⚔\nRust-Forged Saber\n5/5\n5\n⚔\nRust-Forged Saber\n5/5\nSignal Lost\nContract: Frost Crossing\nDuration: 0s\nHostiles purged: 0\nMoney collected: 0\n+0 money earned\nNo card rewards\nReturn to Lobby\nCairn: Cairn on ice-watch channel. Two hostiles guard the stone dock — clear them and Sela will unseal the ramp to the ice band.\nICE-WATCH COURIER SELA\nStone dock is live. Two grunts hold the ramp gate — clear them before you step onto the ice.\n-20"
+      }
+    }
+  ],
+  "pageerrors": []
+}

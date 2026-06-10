@@ -1,8 +1,20 @@
 # Ice level validation findings
 
 **Outcome:** PASS
-**Preset:** ice
+**Preset:** ice (`frost_crossing` / ice-cavern layout)
 
+## Investigation conclusion (ticket 392)
+
+**Validation artifact, not a real bug.** Ticket 372's initial ICE-playthrough
+`telepipeVitalsPreserved` FAIL was a validation artifact — there was no ice
+validation preset/findings and no server test pinned to `frost_crossing`, so the
+ICE FAIL reflected a missing/misconfigured harness path, not a game defect. Vitals
+carry-forward through suspend → hub → redeploy is **level-independent**:
+`restoreCardCheckpoint()` (`game/server/progression.js`) never touches
+`player.hp` / `player.magicStones`, and fresh-deploy carry-forward in
+`checkAllReady` reapplies them regardless of level. No `game/server` fix was
+required. The Playwright `ice` preset (ticket 372) and the server-side regression
+tests below now prove the same behavior end-to-end.
 
 ## Assertions
 
@@ -50,6 +62,22 @@
 - postDeploy: HP=60, MS=20, runId=51b95dd1-500f-4779-bbfe-ab016b6ef6ac
 - **telepipeVitalsPreserved**: PASS
 - **cardChargesResetOnFreshSortie**: PASS
+
+## Reproduction / regression test
+
+- **Test:** `frost_crossing: telepipe extract preserves damage and spent magic
+  stones across hub return and redeploy`
+- **File:** `game/server/test/integration.test.js` (ticket 392 sub-ticket 01)
+- Pinned to the ice level via the `frost-crossing-tier-1` debug scenario
+  (`game/server/debugScenarios.js`); asserts `selectedQuestId === 'frost_crossing'`
+  and an `ice`-band room so it cannot silently pass on the default quest.
+- Drives: deploy → damage HP < MAX_HP → spend MS < starting → place telepipe →
+  both players extract → hub return → redeploy, then asserts vitals persist.
+- **Fresh-sortie test:** `frost-telepipe-ready: solo telepipe extract → re-emit →
+  redeploy is a fresh ice sortie carrying vitals forward` — uses the
+  `frost-telepipe-ready` scenario to abandon the suspended checkpoint and assert
+  HP/MS carry-forward into a new run id.
+- Result: **PASS** under `pnpm test` (from `game/`).
 
 ## Console / page errors
 
@@ -115,7 +143,7 @@ Covered by **Telepipe reset** above (HP/MS preserved; fresh `runId`; card charge
 Minimal debug-scenario and harness-support edits required for a reliable full ice playthrough:
 
 - `game/client/main.js` — dismiss `#lobby` on create-channel join (same as join) so hub/deploy screenshots capture in-run UI.
-- `game/server/debugScenarios.js` — `frost-crossing-near-adds` respawns run-start grunts after surface-transition clears enemies; `frost-crossing-surface-transition` seats on south ice lip with launch momentum; `frost-crossing-glacial-thrower-slow` zeros velocity, seats on stone pad, and emits godmode-off after state sync so ice-ball slow-on-hit is deterministic.
+- `game/server/debugScenarios.js` — `frost-crossing-near-adds` respawns run-start grunts after surface-transition clears enemies; `frost-crossing-surface-transition` seats on south ice lip with launch momentum; `frost-crossing-glacial-thrower-slow` zeros velocity, seats on stone pad, and emits godmode-off after state sync so ice-ball slow-on-hit is deterministic; `frost-telepipe-ready` abandons a suspended checkpoint on re-emit for fresh-sortie vitals capture.
 - `game/server/progression.js` — `frost-crossing-telepipe-ready` deploy suppresses live waves and enables godmode so suspend-walk telepipe QA is not interrupted by Frostmaw.
 - `game/server/test/debug-scenarios.test.js` — expectations for ice-lip seating and glacial-thrower slow QA.
 

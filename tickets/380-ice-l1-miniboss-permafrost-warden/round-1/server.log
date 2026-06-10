@@ -1,0 +1,15 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/380-ice-l1-miniboss-permafrost-warden/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/380-ice-l1-miniboss-permafrost-warden/game/data
+Server listening on port 3002
+Player connected: socket=UR682WQJsUakUaRxAAAB, playerId=cc50f30f-c207-4927-b14b-cdc455930e7d
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=aTEv0NXVqMQ0DSkkAAAD, playerId=c4360920-5c64-4685-980f-1a54ca0ad0d8
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=da20e157-05bd-4493-843f-bbef0fe7c1c7 value=11
+Player disconnected: UR682WQJsUakUaRxAAAB
+Player disconnected: aTEv0NXVqMQ0DSkkAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

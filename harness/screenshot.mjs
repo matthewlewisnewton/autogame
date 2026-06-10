@@ -283,6 +283,10 @@ const HUB_VALIDATE_281_ROUND_RE = /281-playthrough-validate-ship-hub\/round-[^/]
 const HUB_VALIDATION_HUB_DIR_RE = /(?:^|\/)game\/validation\/hub(?:\/|$)/i;
 const HUB_TELEPIPE_ABANDON_VALIDATE_RE = /telepipe-reset|telepipe-abandon|abandon-fresh|abandonSuspendedRun|telepipe[- ]?up|playthrough-validate-ship-hub/i;
 const PERSIST_VITALS_TELEPIPE_RE = /287-persist|persist-player-health|persist.*vitals|harness-telepipe-vitals-capture|no-telepipe-reset/i;
+// ICE persist-vitals path (ticket 392): route the live persist-vitals telepipe
+// capture onto the frost_crossing / ice-cavern layout via the frost-telepipe-ready
+// scenario, with a suspended-lobby re-emit so the redeploy is a fresh sortie.
+const ICE_PERSIST_VITALS_RE = /frost[_-]?crossing|ice[- ]?cavern|ice[- ]?telepipe|frost[- ]?telepipe/i;
 const WALKABLE_HUB_RECAPTURE_RE = /305-recapture-walkable-hub|recapture-walkable-hub|walkable[- ]hub|game\/validation\/hub/i;
 
 function inferSubticketFolder(outDirAbs) {
@@ -320,6 +324,17 @@ function isHubTelepipeAbandonValidateTicket(ticket, outDirAbs) {
 function isPersistVitalsTelepipeTicket(ticket, outDirAbs) {
   return PERSIST_VITALS_TELEPIPE_RE.test(ticket)
     || PERSIST_VITALS_TELEPIPE_RE.test(outDirAbs);
+}
+
+/**
+ * Ticket 392 ICE persist-vitals telepipe capture: same fresh-redeploy
+ * vitals-preservation flow, but on the frost_crossing / ice-cavern layout via
+ * the `frost-telepipe-ready` scenario (sub-ticket 03), with a suspended-lobby
+ * re-emit that abandons the checkpoint so the redeploy is a fresh sortie.
+ */
+function isIcePersistVitalsTelepipeTicket(ticket, outDirAbs) {
+  return ICE_PERSIST_VITALS_RE.test(ticket)
+    || ICE_PERSIST_VITALS_RE.test(outDirAbs);
 }
 
 /**
@@ -447,7 +462,7 @@ function probesMatchVitalsPreserved(pre, post) {
 }
 
 /** Solo deploy → telepipe placement → suspend through the 02-suspended-lobby probe. */
-function buildSoloTelepipeSuspendThroughProbeSteps() {
+function buildSoloTelepipeSuspendThroughProbeSteps(telepipeScenario = 'telepipe-ready') {
   return [
     { action: 'connectPlayer', player: 'A' },
     { action: 'wait', player: 'A', ms: 1000 },
@@ -461,7 +476,7 @@ function buildSoloTelepipeSuspendThroughProbeSteps() {
     // (applyTelepipeReadyHand), so this must precede readyAll — emitting it after
     // deploy would leave the hand without a telepipe and nothing to place. This
     // mirrors the passing sub-ticket 01 smoke (request scenario, then click ready).
-    { action: 'emitScenario', player: 'A', scenario: 'telepipe-ready' },
+    { action: 'emitScenario', player: 'A', scenario: telepipeScenario },
     { action: 'wait', player: 'A', ms: 500 },
     // Ready the single connected player → solo deploy with a telepipe in hand.
     { action: 'readyAll' },
@@ -510,8 +525,8 @@ function buildSoloTelepipeSuspendThroughProbeSteps() {
 }
 
 /** Solo telepipe-up → hub → redeploy with vitals-preservation assertion (ticket 287). */
-function buildSoloTelepipeVitalsPreservationSteps() {
-  const suspendSteps = buildSoloTelepipeSuspendThroughProbeSteps();
+function buildSoloTelepipeVitalsPreservationSteps(telepipeScenario = 'telepipe-ready', { reEmitScenario = false } = {}) {
+  const suspendSteps = buildSoloTelepipeSuspendThroughProbeSteps(telepipeScenario);
   const steps = suspendSteps.map((step) => {
     if (step.action === 'probe' && step.stashBaseline) {
       const { stashBaseline, ...rest } = step;
@@ -523,28 +538,59 @@ function buildSoloTelepipeVitalsPreservationSteps() {
     }
     if (step.action === 'probe' && step.stashObjective) {
       const { stashObjective, ...rest } = step;
-      return {
+      const transformed = {
         ...rest,
         description: 'HUB state after telepipe UP: record phase, runId, and player vitals in lobby before redeploy.',
       };
+      // ICE / fresh-sortie path: the carry-forward baseline is the SUSPENDED-LOBBY
+      // HP/MS (the value locked in at extraction), not the live pre-telepipe sample.
+      // The frost_crossing start room spawns the player on two grunts, so HP keeps
+      // dropping between the pre-telepipe probe and the suspend — meaning the
+      // pre-telepipe HP is NOT what carries forward; the lobby HP is. Re-stash HP/MS
+      // here (the runId stays the live one captured pre-telepipe) so the assertion
+      // verifies the real carry-forward: lobby HP → fresh-sortie redeploy HP.
+      if (reEmitScenario) transformed.stashLobbyVitals = true;
+      return transformed;
     }
     return step;
   });
+  // ICE / fresh-sortie path: re-emit the frost scenario WHILE still in the
+  // suspended lobby — after the 02-suspended-lobby probe and before the redeploy
+  // readyAll — so the server abandons the suspended checkpoint (abandonSuspendedRun)
+  // and the redeploy is a fresh sortie (new runId) with lobby HP/MS carried
+  // forward. The generic telepipe-ready path keeps its single-emit behavior.
+  if (reEmitScenario) {
+    steps.push(
+      { action: 'emitScenario', player: 'A', scenario: telepipeScenario },
+      { action: 'wait', player: 'A', ms: 800 },
+    );
+  }
   steps.push(
     { action: 'readyAll' },
     { action: 'waitForGame', player: 'A', timeoutMs: 12000 },
-    {
-      action: 'screenshot',
-      player: 'A',
-      name: '03-redeployed-dungeon',
-      description: 'Fresh dungeon after hub return and redeploy — player vitals should match pre-telepipe.',
-    },
-    {
-      action: 'assertVitalsPreserved',
-      player: 'A',
-      description: 'VERIFY vitals preservation: HP exact match; MS within passive-regen tolerance; runId must differ (fresh run, no checkpoint restore).',
-    },
   );
+  const redeployScreenshot = {
+    action: 'screenshot',
+    player: 'A',
+    name: '03-redeployed-dungeon',
+    description: 'Fresh dungeon after hub return and redeploy — player vitals should match pre-telepipe.',
+  };
+  const assertVitals = {
+    action: 'assertVitalsPreserved',
+    player: 'A',
+    description: 'VERIFY vitals preservation: HP exact match; MS within passive-regen tolerance; runId must differ (fresh run, no checkpoint restore).',
+  };
+  if (reEmitScenario) {
+    // ICE / fresh-sortie path: the frost_crossing start room ("stone dock") spawns
+    // the redeployed player on top of two grunts, so vitals must be read at the
+    // SPAWN FRAME — before any grunt's ~800ms attack windup resolves — or the
+    // carried-forward HP would be chipped away before the assertion samples it.
+    // Read vitals first, then take the evidence screenshot. The generic
+    // telepipe-ready path (below) keeps its original screenshot-then-assert order.
+    steps.push(assertVitals, redeployScreenshot);
+  } else {
+    steps.push(redeployScreenshot, assertVitals);
+  }
   return steps;
 }
 
@@ -710,8 +756,16 @@ function fallbackRecipe() {
     steps = buildWalkableHubReviewCaptureSteps();
     summary = 'Deterministic walkable-hub review capture: two-player auth, create/join lobby, post-304 hub-ready wait (lobby hidden, menu dismissed, hub canvas), joiner WASD nudge, 01-hub-overview screenshot and assertWalkableHubPresentation.';
   } else if (isPersistVitalsTelepipe) {
-    steps = buildSoloTelepipeVitalsPreservationSteps();
-    summary = 'Deterministic solo Telepipe vitals-preservation capture: auth, solo lobby + deploy, telepipe-ready scenario, place telepipe, hub return, redeploy, assertVitalsPreserved (HP/MS persist, fresh runId, no checkpoint restore).';
+    if (isIcePersistVitalsTelepipeTicket(ticket, outDirAbs)) {
+      // ICE path (ticket 392): deploy on frost_crossing / ice-cavern via
+      // frost-telepipe-ready, then re-emit it in the suspended lobby so the
+      // redeploy abandons the checkpoint → fresh sortie with vitals carried forward.
+      steps = buildSoloTelepipeVitalsPreservationSteps('frost-telepipe-ready', { reEmitScenario: true });
+      summary = 'Deterministic solo ICE Telepipe vitals-preservation capture: auth, solo lobby + deploy on frost-telepipe-ready (frost_crossing / ice-cavern), place telepipe, suspended lobby, re-emit frost-telepipe-ready to abandon the checkpoint, fresh redeploy, assertVitalsPreserved (HP/MS persist, fresh runId, no checkpoint restore).';
+    } else {
+      steps = buildSoloTelepipeVitalsPreservationSteps();
+      summary = 'Deterministic solo Telepipe vitals-preservation capture: auth, solo lobby + deploy, telepipe-ready scenario, place telepipe, hub return, redeploy, assertVitalsPreserved (HP/MS persist, fresh runId, no checkpoint restore).';
+    }
   } else if (isHubTelepipeAbandonValidate) {
     // Hub telepipe-reset / abandon-fresh validation: suspend-only — never re-ready
     // after suspend (no restoreRunCheckpoint, no 03-resumed-dungeon.png).
@@ -1194,6 +1248,21 @@ async function executeRecipe(browser, recipe) {
           hp: playerState?.hp ?? null,
           magicStones: playerState?.magicStones ?? null,
           runId: data?.harnessState?.runId ?? null,
+        };
+        telepipeRunBaseline.set(player, entry);
+      }
+      // ICE / fresh-sortie path: overwrite the carry-forward HP/MS baseline with the
+      // SUSPENDED-LOBBY values (the vitals that actually carry into the fresh sortie),
+      // while preserving the live runId stashed at the pre-telepipe probe so the
+      // freshRunId check still compares original sortie → redeploy.
+      if (step.stashLobbyVitals) {
+        const playerState = data?.harnessState?.player;
+        const entry = telepipeRunBaseline.get(player) || {};
+        const prev = entry.preTelepipeVitals || {};
+        entry.preTelepipeVitals = {
+          ...prev,
+          hp: playerState?.hp ?? prev.hp ?? null,
+          magicStones: playerState?.magicStones ?? prev.magicStones ?? null,
         };
         telepipeRunBaseline.set(player, entry);
       }

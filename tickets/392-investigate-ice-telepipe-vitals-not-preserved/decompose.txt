@@ -1,0 +1,14 @@
+I've broken the top-level investigation ticket into two small, code-verifiable sub-tickets.
+
+## What the ticket actually is
+
+This is an investigate-then-fix ticket. The evidence file it cites (`game/validation/ice/findings.md`) **doesn't exist**, there is **no ice validation preset**, and **no ice telepipe debug scenario** — only `fire`, `sunken-canyon`, etc. Meanwhile the vitals carry-forward in `checkAllReady` (`progression.js:3697-3724`) reads `player.hp`/`player.magicStones` and reapplies them on redeploy in a **level-independent** way, and an existing integration test proves persistence for the default quest. So the strongest, in-scope way to settle "real bug vs validation artifact" is a server-side regression test pinned to the ice level — not rebuilding a Playwright preset (which is `harness/` scope, outside the ticket's stated `game/server + test`).
+
+## Sub-tickets created
+
+- `tickets/392-investigate-ice-telepipe-vitals-not-preserved/subtickets/01-frost-telepipe-vitals-regression-test/ticket.md`
+- `tickets/392-investigate-ice-telepipe-vitals-not-preserved/subtickets/02-ice-telepipe-vitals-findings-doc/ticket.md`
+
+**01** adds a server test driving `frost_crossing`/ice-cavern through telepipe suspend → hub → redeploy, asserting HP+MS persist, and fixes any genuine ice-specific persistence regression it surfaces (the authoritative reproduction). **02** records the evidence-backed conclusion (real bug vs artifact) in `game/validation/ice/findings.md`, grounded in 01's test. Both are `code`-verified (logic, server state, exact value checks, structured doc — none are pure pixel checks).
+
+I deliberately did **not** create a sub-ticket for a new ice telepipe debug scenario + Playwright preset: a scenario with no preset caller would be orphaned dead code, and the preset is `harness/` scope the ticket excludes. 02 lists that as a follow-up if the implementer judges it warranted.

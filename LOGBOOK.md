@@ -6557,6 +6557,64 @@ The provided `coverage.log` shows the escort objective test suite and escort HP-
 
 None.
 
+## v0.370 — 392-investigate-ice-telepipe-vitals-not-preserved  (2026-06-10 11:12:35)
+
+### Fresh sortie after Telepipe abandon on ICE
+
+PASS. The new `frost-telepipe-ready` debug scenario supports the live capture path: first emit selects Frost Crossing and injects Telepipe only on ready-up; re-emitting from the suspended lobby abandons the checkpoint while keeping lobby HP/MS, so the next ready-up starts a new ICE run id with vitals preserved. Round-2 probes confirm `preHp: 20`, `postHp: 20`, `preMagicStones: 20`, `postMagicStones: 20`, and a fresh run id (`35c1710d...` -> `b15b9e8e...`).
+
+### Design and requirements consistency
+
+PASS. This matches `game/docs/design.md`: HP and Magic Stones persist across Telepipe resume and new sortie, while fresh sortie creates a new run id and redeals cards. It does not weaken the foundation requirements: the captured run rendered a Three.js scene, connected to the server, showed the player in 3D gameplay, and exercised server-driven state transitions.
+
+### Debug scenario safeguards
+
+PASS. The new scenario is gated through the existing `debugScenario` socket/URL harness path and is allowlisted in `DEBUG_SCENARIOS`; normal gameplay does not enter it. Its end state is reachable normally by selecting Frost Crossing, having Telepipe available, deploying, extracting, abandoning the suspended run, and redeploying. It does not bypass the server persistence path under review: the scenario uses the normal lobby/run state, normal ready-up deploy, Telepipe hand injection at deploy, `abandonSuspendedRun()`, and `checkAllReady()` fresh-run handling.
+
+### Code quality and validation
+
+PASS. The changes are scoped to scenario/capture routing and regression coverage. `git diff --check` reports no whitespace issues. The provided coverage run passed: 127 test files and 1725 tests, including the new ICE telepipe persistence coverage and the fresh-sortie `frost-telepipe-ready` test.
+
+## Remaining gaps
+
+None.
+
+## v0.371 — 390-fix-slippery-floor-no-momentum  (2026-06-10 11:28:08)
+
+Pass. Normal-floor walking now seeds `vx`/`vz` from the direct walk step, so crossing from normal into slippery terrain carries forward speed instead of arriving with zero momentum. Sliding from ice back onto normal floor is still damped to a stop by normal-floor friction. Both server and client prediction tests cover normal-to-slippery velocity seeding and slippery-to-normal stopping behavior.
+
+### Server test coverage for the regression
+
+Pass. `game/server/test/slippery_floor.test.js` contains explicit regression coverage for the original playthrough failures: momentum after release, direction change while sliding, generated ice-cavern behavior when the movement context omits bounds, and both normal-to-ice and ice-to-normal transitions. The client prediction tests were updated to mirror the same transition expectations.
+
+## Design and requirements consistency
+
+The changes stay within the documented server-authoritative dungeon movement model in `game/docs/design.md`: floor sampling still comes from `sampleFloorSurface()`/layout data, and player movement remains resolved in `applyPlayerMovement()`. The foundation requirements are not regressed: the captured run shows the game renders, connects over sockets, represents multiplayer players, and accepts WASD movement during gameplay.
+
+## Code quality and validation
+
+The implementation is small and localized to movement physics and prediction parity. The `resolveMovementContext()` fallback improvement also addresses the validation-style stripped-context path without weakening normal live-collider behavior. I did not find dead code, broken exports, or console/runtime defects.
+
+Validation observed in `coverage.log`: 86 test files passed, 1593 tests passed. Coverage was collected for visibility with thresholds disabled.
+
+## v0.372 — 380-ice-l1-miniboss-permafrost-warden  (2026-06-10 11:44:26)
+
+### Defeat objective and rewards
+
+PASS. The stage-boss objective does not complete from add kill counts; it completes when the active encounter boss is defeated and the encounter clears. Existing reward-card metadata for Frost Crossing remains in place, and the debug last-enemy shortcut was updated to use a 1-HP Permafrost Warden while preserving the same normal post-victory path.
+
+### Design and foundation compatibility
+
+PASS. The implementation is consistent with `game/docs/design.md`: Frost Crossing remains an ice-band thrower/Rimecast level, now culminating in a single stage boss. It does not regress the foundational requirements: the captured run demonstrates server/client startup, websocket connectivity, scene initialization, multiplayer presence, and movement/dodge HUD behavior.
+
+### Debug scenarios
+
+PASS. The changed Frost Crossing debug scenarios remain gated behind `debugScenario` names; normal gameplay does not enter them. The new/updated shortcuts mirror reachable end states from normal play, such as deploying Frost Crossing, clearing scripted hostiles, approaching the cairn, and fighting the boss. They do not bypass persistent account progression, server-side objective code, or the live encounter state machine in normal gameplay.
+
+### Tests and coverage
+
+PASS. The provided `coverage.log` shows the full suite passing: 191 test files and 2702 tests. Coverage includes targeted server tests for `permafrost_warden` and `frost_crossing_stage_boss`, plus updated client tests for quest-board copy, model registration, lock-on panel metadata, render registry normalization, and boss HUD naming.
+
 ## v0.373 — 381-fire-l1-miniboss-cinder-warden  (2026-06-10 11:57:40)
 
 The lock-on metadata panel and boss HUD remain generic and server-catalog driven, so the new surfaced metadata reaches the panel without bespoke client panel code. This is consistent with the existing design and does not regress the generic enemy-catalog contract.

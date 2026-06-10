@@ -49,9 +49,12 @@ describe('frost_crossing quest deploy layout', () => {
 		startDungeonRun();
 
 		expect(gameState.layout.profile).toBe('ice-cavern');
+		expect(gameState.run.objective.type).toBe('stage_boss');
+		expect(gameState.run.encounter.bossEnemyId).toBeTruthy();
 		expect(gameState.run.scriptedEncounter).toBeDefined();
 		expect(gameState.run.waveScript).toBeUndefined();
-		expect(gameState.enemies).toHaveLength(2);
+		expect(gameState.enemies).toHaveLength(3);
+		expect(gameState.enemies.some((enemy) => enemy.type === 'permafrost_warden')).toBe(true);
 		const iceRoom = gameState.layout.rooms.find((r) => r.band === 'ice');
 		expect(iceRoom.floorSurface).toBe('slippery');
 	});

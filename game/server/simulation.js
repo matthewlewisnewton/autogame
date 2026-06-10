@@ -255,16 +255,21 @@ function hubSpawnPosition(hubLayout) {
 }
 
 function resolveMovementContext(movementContext) {
-  if (movementContext && movementContext.dungeonBounds) {
-    const useLiveColliders = _gameState
-      && movementContext.layout === _gameState.layout;
+  if (movementContext) {
+    const layout = movementContext.layout ?? (_gameState && _gameState.layout);
+    const walkableAABBs = movementContext.walkableAABBs
+      ?? (_gameState && _gameState.walkableAABBs);
+    const dungeonBounds = movementContext.dungeonBounds
+      ?? (_gameState && _gameState.dungeonBounds);
+    const useLiveColliders = _gameState && layout === _gameState.layout;
+    const passageLocks = _gameState?.run?.passageLocks;
     return {
-      layout: movementContext.layout,
-      walkableAABBs: movementContext.walkableAABBs,
-      dungeonBounds: movementContext.dungeonBounds,
+      layout,
+      walkableAABBs,
+      dungeonBounds,
       colliders: useLiveColliders
         ? getWallColliders()
-        : (movementContext.colliders || buildWallColliders(movementContext.layout)),
+        : (movementContext.colliders || buildWallColliders(layout, passageLocks)),
     };
   }
   return {
@@ -656,13 +661,6 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
         player.persistenceDirty = true;
       }
     } else {
-      player.vx *= NORMAL_STOP_FRICTION;
-      player.vz *= NORMAL_STOP_FRICTION;
-      if (NORMAL_STOP_FRICTION === 0) {
-        player.vx = 0;
-        player.vz = 0;
-      }
-
       if (inputFresh) {
         const mag = Math.hypot(player.inputDx || 0, player.inputDz || 0);
         if (mag >= 1e-8) {
@@ -681,6 +679,11 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
           player.x = result.x;
           player.z = result.z;
           player.y = resolveEntityY(player, ctx.layout);
+          // Seed horizontal velocity from stone walking so normal→slippery crossings
+          // inherit forward motion instead of restarting from zero on the first ice tick.
+          const walkSpeed = playerStep * TICK_RATE;
+          player.vx = dx * walkSpeed;
+          player.vz = dz * walkSpeed;
           if (Number.isFinite(player.inputRotation)) {
             player.rotation = player.inputRotation;
           }
@@ -688,6 +691,16 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
           if (result.moved || player.x !== prevX || player.z !== prevZ) {
             player.persistenceDirty = true;
           }
+        } else {
+          player.vx = 0;
+          player.vz = 0;
+        }
+      } else {
+        player.vx *= NORMAL_STOP_FRICTION;
+        player.vz *= NORMAL_STOP_FRICTION;
+        if (NORMAL_STOP_FRICTION === 0) {
+          player.vx = 0;
+          player.vz = 0;
         }
       }
     }
@@ -1139,6 +1152,13 @@ const ENEMY_DEFS = {
 		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
 		hp: 360, chaseSpeed: 1.1, wanderSpeed: 0.55, attackDamage: 21, attackWindupMs: 1300,
 		attackStyle: 'cone', attackConeAngle: (2 * Math.PI) / 3, attackRange: 5.5,
+	},
+	permafrost_warden: {
+		name: 'Permafrost Warden',
+		description: 'Ice-cavern guardian that erupts in a radial frost shockwave — close-range area pressure, not a lobbed projectile.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 360, chaseSpeed: 1.0, wanderSpeed: 0.5, attackDamage: 20, attackWindupMs: 1300,
+		attackStyle: 'radial', attackRange: 4.5,
 	},
 	spawner: {
 		name: 'Brood Node',
