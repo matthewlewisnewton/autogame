@@ -5,6 +5,7 @@ import {
   spawnEnemies,
   startDungeonRun,
   removeDeadEnemies,
+  tryEnterTelepipe,
   gameState,
   resetGameState,
   setGameState,
@@ -14,7 +15,10 @@ import {
   buildMovementContext,
   buildWallColliders,
   checkWallCollision,
+  ENTITY_RADIUS,
   getWallColliders,
+  isEntityPositionBlocked,
+  moveEntityToward,
   rebuildWallColliders,
   setGameState as setSimulationGameState,
 } from '../simulation.js';
@@ -155,7 +159,6 @@ describe('passage lock runtime state', () => {
       enemy.hp = 0;
     }
     removeDeadEnemies();
-    rebuildWallColliders();
 
     expect(gameState.run.passageLocks[0].locked).toBe(false);
     expect(checkWallCollision(towardExit.x, towardExit.z, getWallColliders())).toBe(false);
@@ -216,5 +219,116 @@ describe('passage lock runtime state', () => {
 
     const distAfterClear = Math.hypot(player.x - targetRoom.x, player.z - targetRoom.z);
     expect(distAfterClear).toBeLessThan(distBeforeClear);
+  });
+
+  it('blocks enemy moveEntityToward through a locked passage until wave 0 clears', () => {
+    const { layout } = deployPassageLockFixture();
+    const passageIndex = findPassageIndexFromRoom(layout, 0);
+    const targetRoom = passageTargetRoom(layout, passageIndex);
+    const startRoom = layout.rooms.find((room) => room.role === 'start') || layout.rooms[0];
+
+    const enemy = {
+      id: 'path-test-enemy',
+      x: startRoom.x,
+      z: startRoom.z,
+      wanderTarget: { x: targetRoom.x, z: targetRoom.z },
+    };
+
+    const towardExit = stepToward(startRoom.x, startRoom.z, targetRoom.x, targetRoom.z, 9);
+    expect(isEntityPositionBlocked(towardExit.x, towardExit.z, ENTITY_RADIUS)).toBe(true);
+
+    let sawBlockedMove = false;
+    for (let i = 0; i < 40; i++) {
+      const step = moveEntityToward(enemy, enemy.wanderTarget, 0.5, {});
+      if (step.blocked) sawBlockedMove = true;
+    }
+    expect(sawBlockedMove).toBe(true);
+    const distWhileLocked = Math.hypot(enemy.x - targetRoom.x, enemy.z - targetRoom.z);
+    expect(distWhileLocked).toBeGreaterThan(4);
+
+    for (const waveEnemy of [...gameState.enemies]) {
+      waveEnemy.hp = 0;
+    }
+    removeDeadEnemies();
+
+    expect(gameState.run.passageLocks[0].locked).toBe(false);
+    expect(checkWallCollision(towardExit.x, towardExit.z, getWallColliders())).toBe(false);
+
+    enemy.x = startRoom.x;
+    enemy.z = startRoom.z;
+    for (let i = 0; i < 40; i++) {
+      moveEntityToward(enemy, enemy.wanderTarget, 0.5, {});
+    }
+    const distAfterUnlock = Math.hypot(enemy.x - targetRoom.x, enemy.z - targetRoom.z);
+    expect(distAfterUnlock).toBeLessThan(distWhileLocked);
+    expect(distAfterUnlock).toBeLessThan(4);
+  });
+
+  it('leaves passageLocks absent on non-scripted open-plaza deploy', () => {
+    const layout = generateLayout(SEED, getLayoutProfileForQuest('arena_trials', 1));
+    gameState.selectedQuestId = 'arena_trials';
+    gameState.selectedQuestTier = 1;
+    gameState.layout = layout;
+    gameState.layoutSeed = SEED;
+    gameState.enemies = [];
+    gameState.loot = [];
+    gameState.gamePhase = 'playing';
+    gameState.players = {
+      p1: {
+        id: 'p1',
+        x: layout.rooms[0].x,
+        y: 0.5,
+        z: layout.rooms[0].z,
+        rotation: 0,
+        hp: 100,
+        dead: false,
+        extracted: false,
+        ready: true,
+        connected: true,
+        hand: [],
+      },
+    };
+    setGameState(gameState);
+    setSimulationGameState(gameState);
+    startDungeonRun();
+    rebuildWallColliders();
+
+    expect(gameState.run.passageLocks ?? []).toEqual([]);
+    const baseColliders = buildWallColliders(layout, []);
+    expect(getWallColliders()).toEqual(baseColliders);
+  });
+
+  it('preserves locked passageLocks in checkpoint when extracting via telepipe', () => {
+    const { layout } = deployPassageLockFixture();
+    const startRoom = layout.rooms.find((room) => room.role === 'start') || layout.rooms[0];
+    const player = gameState.players.p1;
+    gameState._lobbyId = 'test-lobby';
+
+    player.x = startRoom.x;
+    player.z = startRoom.z;
+    player.hand = [{
+      id: 'telepipe',
+      name: 'Telepipe',
+      type: 'spell',
+      charges: 1,
+      remainingCharges: 1,
+    }];
+    gameState.telepipe = {
+      x: startRoom.x,
+      z: startRoom.z,
+      placedBy: 'p1',
+      placedAt: Date.now(),
+    };
+
+    const lockedSnapshot = JSON.parse(JSON.stringify(gameState.run.passageLocks));
+    expect(lockedSnapshot[0].locked).toBe(true);
+
+    const result = tryEnterTelepipe('p1');
+    expect(result.ok).toBe(true);
+    expect(gameState.gamePhase).toBe('lobby');
+    expect(gameState.run).toBeUndefined();
+    expect(gameState.suspendedCheckpoint).not.toBeNull();
+    expect(gameState.suspendedCheckpoint.run.passageLocks).toEqual(lockedSnapshot);
+    expect(gameState.suspendedCheckpoint.run.passageLocks[0].locked).toBe(true);
   });
 });
