@@ -59,6 +59,11 @@ const {
 const HUB_LAYOUT = generateHub(0);
 const { applyVariant, getVariantBonusDrop, resolveVariantRollTier, VARIANT_DEFS } = require('./enemyVariants');
 const {
+  applyNamedRareVariant,
+  claimNamedRareDrop,
+  resolveNamedRareDrop,
+} = require('./namedRareVariants');
+const {
   getQuest,
   getSelectedQuest,
   getEnemyPool,
@@ -938,6 +943,7 @@ function createRunState() {
     rewardCurrency: quest.rewardCurrency,
     objective: def.createObjective(quest, { enemyCount: _gameState.enemies.length }),
     startedAt: Date.now(),
+    namedRareDropsClaimed: [],
   };
 
   if (quest.encounter) {
@@ -1101,13 +1107,33 @@ function getEnemyCardDrop(enemy) {
   return cardId && CARD_DEFS[cardId] ? cardId : null;
 }
 
-function recordEnemyCardDrop(enemy) {
-  const cardId = getEnemyCardDrop(enemy);
-  if (!cardId) return;
+function grantNamedRareCardDrop(enemy, player) {
+  const drop = resolveNamedRareDrop(enemy, _gameState.run);
+  if (!drop?.cardId || !CARD_DEFS[drop.cardId]) {
+    return false;
+  }
 
+  if (!claimNamedRareDrop(_gameState.run, enemy.namedRare.id)) {
+    return false;
+  }
+
+  if (!Array.isArray(player.runCardDropIds)) {
+    player.runCardDropIds = [];
+  }
+  player.runCardDropIds.push(drop.cardId);
+  return true;
+}
+
+function recordEnemyCardDrop(enemy) {
   const playerId = enemy.lastDamagedBy;
   const player = playerId ? _gameState.players[playerId] : null;
-  if (!player) return;
+
+  if (player) {
+    grantNamedRareCardDrop(enemy, player);
+  }
+
+  const cardId = getEnemyCardDrop(enemy);
+  if (!cardId || !player) return;
 
   if (!Array.isArray(player.runCardDropIds)) {
     player.runCardDropIds = [];
@@ -1169,7 +1195,35 @@ function spawnMagicStoneDrop(enemy) {
   }
 }
 
+function spawnNamedRareCurrencyDrop(enemy) {
+  const drop = resolveNamedRareDrop(enemy, _gameState.run);
+  if (!drop?.currency || drop.currency <= 0) {
+    return false;
+  }
+
+  if (!claimNamedRareDrop(_gameState.run, enemy.namedRare.id)) {
+    return false;
+  }
+
+  const value = Math.floor(drop.currency);
+  const id = crypto.randomUUID();
+  _gameState.loot.push({
+    id,
+    x: enemy.x + LOOT_DROP_OFFSET_CURRENCY.x,
+    z: enemy.z + LOOT_DROP_OFFSET_CURRENCY.z,
+    value,
+    kind: 'currency',
+    createdAt: Date.now(),
+  });
+  console.log(`[loot] named-rare currency drop id=${id} value=${value} at (${enemy.x.toFixed(1)}, ${enemy.z.toFixed(1)})`);
+  return true;
+}
+
 function spawnCurrencyDrop(enemy) {
+  if (spawnNamedRareCurrencyDrop(enemy)) {
+    return;
+  }
+
   if (Math.random() >= ENEMY_CURRENCY_DROP_CHANCE) return;
 
   const value = getEnemyCurrencyDrop(enemy);
@@ -2258,8 +2312,13 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
   // selection). Ad-hoc spawns with no room default encounterTier 0. Rolled once.
   const encounterTier = Number.isFinite(opts.tier) ? opts.tier : 0;
   const questTier = _gameState.run?.questTier ?? _gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER;
-  const rollTier = resolveVariantRollTier(questTier, encounterTier);
-  applyVariant(enemy, rollTier, opts.rng);
+  const namedRareVariant = opts.namedRareVariant ?? null;
+  if (namedRareVariant) {
+    applyNamedRareVariant(enemy, namedRareVariant, { questTier });
+  } else {
+    const rollTier = resolveVariantRollTier(questTier, encounterTier);
+    applyVariant(enemy, rollTier, opts.rng);
+  }
   // Difficulty scaling: miniboss-tier bosses get more HP the larger the party is at spawn.
   // Fixed once here from the live player count — never re-applied retroactively
   // when players later join or leave. 1–4 players stay at baseline (factor 1.0).

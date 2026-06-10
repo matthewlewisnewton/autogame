@@ -8,11 +8,23 @@
  */
 
 /**
+ * Inline named-rare variant on a scripted quest spawn.
+ * @typedef {Object} QuestScriptNamedRareVariant
+ * @property {string} name
+ * @property {number} [hpMult]
+ * @property {number} [damageMult]
+ * @property {string} [tint]
+ * @property {number} [scaleMult]
+ * @property {{ cardId?: string, currency?: number }} drop
+ */
+
+/**
  * Hand-placed spawn entry for a scripted quest wave.
  * @typedef {Object} QuestScriptSpawn
  * @property {string} type - Enemy type id.
  * @property {number} x - World X coordinate.
  * @property {number} z - World Z coordinate.
+ * @property {QuestScriptNamedRareVariant} [variant] - Optional named-rare override.
  */
 
 /**
@@ -34,6 +46,8 @@
  * @typedef {Object} QuestScript
  * @property {QuestScriptWave[]} waves
  */
+
+const { normalizeNamedRareVariant } = require('./namedRareVariants');
 
 const QUEST_DEFS = {
   training_caverns: {
@@ -415,7 +429,12 @@ function normalizeQuestScriptSpawn(spawn) {
   if (!Number.isFinite(spawn.x) || !Number.isFinite(spawn.z)) {
     return null;
   }
-  return { type: spawn.type, x: spawn.x, z: spawn.z };
+  const normalized = { type: spawn.type, x: spawn.x, z: spawn.z };
+  const variant = normalizeNamedRareVariant(spawn.variant);
+  if (variant) {
+    normalized.variant = variant;
+  }
+  return normalized;
 }
 
 function normalizeQuestScriptWave(wave) {
