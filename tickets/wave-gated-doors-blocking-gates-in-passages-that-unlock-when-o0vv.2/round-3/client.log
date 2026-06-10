@@ -1,0 +1,7 @@
+[vite] Proxying /api and /socket.io → http://127.0.0.1:3001
+[vite] Game server ready at http://127.0.0.1:3001
+
+  VITE v8.0.13  ready in 23584 ms
+
+  ➜  Local:   http://localhost:5174/
+  ➜  Network: use --host to expose

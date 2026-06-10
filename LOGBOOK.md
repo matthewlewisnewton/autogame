@@ -6095,3 +6095,26 @@ None blocking. All acceptance criteria are implemented and covered by tests; the
 
 See `nits.md` for one follow-up on tier-1 vs tier-2 currency label wording on the quest board.
 
+
+## v0.357 — Wave-gated doors: blocking gates in passages that unlock when a scripted wave is cleared  (2026-06-10 06:06:37)
+
+### A scripted quest can chain room A wave -> gate to room B opens -> room B wave -> gate to treasure room.
+
+Pass. `training_caverns` tier 1 now defines two scripted passage locks: room 0 wave 0 opens the passage to room 1, and room 1 wave 0 opens the passage to room 2. The chained passage-lock test walks this exact A -> B -> end-room progression, verifies each gate's locked/unlocked state, confirms room B wave spawning after entry, and confirms the final end room remains a no-wave treasure/end room.
+
+### No gates in non-scripted quests; telepipe escape still works while gated.
+
+Pass. Passage locks are initialized only from scripted encounter config; tests verify a non-scripted open-plaza deploy has no passage locks and no extra gate colliders. Telepipe suspend/resume is preserved: checkpoint capture stores passage lock state, scripted encounter state, dialogue state, objective progress, world state, and card state; restore rehydrates the run and relinks scripted enemy ids. The round-4 browser capture specifically exercised telepipe suspend/resume and verified the run layout, enemy ids, enemy HP, objective active enemy count, and run status survive the cycle.
+
+## Design and foundation consistency
+
+The implementation matches the PSO-style pacing described by the ticket and the design document's quest identity section: Initiate Vault is now a scripted annex sweep with passage locks and wave-clear radio lines. The changes do not conflict with the foundation requirements: the game renders, connects over WebSockets, represents the player, and continues to synchronize movement through the existing server-authoritative movement path.
+
+## Debug scenarios
+
+The new passage-lock debug shortcuts are gated through the existing `?debugScenario=` client URL path on localhost, with the server also requiring local/test allowance. They are QA shortcuts into states reachable through normal quest selection and deploy: `passage-lock-chain` maps to `training_caverns` tier 1, and `passage-lock-gated` maps to the scripted fixture path used by tests. They use the normal deploy/setup path rather than bypassing collision, objective, or state replication invariants.
+
+## Remaining gaps
+
+None.
+

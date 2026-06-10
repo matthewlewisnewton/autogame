@@ -1,0 +1,9 @@
+VERDICT: FAIL
+
+Wrote the review artifacts:
+
+- `tickets/.../round-3/review.md`
+- `tickets/.../round-3/gaps.md`
+- `tickets/.../round-3/nits.md`
+
+Blocking issue: the captured run is not clean. `metrics.json` has `"ok": false` / `failure_kind: "capture_failed"`, and `console.log` shows `page.goto: Page crashed` before screenshots or probes were produced. No game code was edited.
