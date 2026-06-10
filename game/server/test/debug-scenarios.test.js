@@ -379,6 +379,18 @@ describe('debugScenario — arena-trials harness combat shortcuts', () => {
 
 		const state = testGameState();
 		const bossId = state.run.encounter.bossEnemyId;
+		// Open-plaza is a single room that spawns the player at its centre, within
+		// ENCOUNTER_TRIGGER_RADIUS of the central dais boss anchor. Clear the adds only AFTER
+		// moving the player out of the trigger so the live game loop's updateEncounterTriggers
+		// cannot auto-activate the dormant encounter in the window before the boss-approach
+		// scenario runs. This mirrors real play (adds are cleared out in the plaza, not while
+		// standing on the dais); the scenario then repositions to just outside the trigger.
+		const preClearPlayer = playerForSocket(socket);
+		const preClearDais = state.layout.landmarks.find((lm) => lm.type === 'arena_dais');
+		const preClearAnchor = resolveEncounterAnchor(state.run, state)
+			|| (preClearDais ? { x: preClearDais.x, z: preClearDais.z } : { x: preClearPlayer.x, z: preClearPlayer.z });
+		preClearPlayer.x = preClearAnchor.x + ENCOUNTER_TRIGGER_RADIUS + 12;
+		preClearPlayer.z = preClearAnchor.z;
 		for (const enemy of state.enemies) {
 			if (enemy.id !== bossId) enemy.hp = 0;
 		}
@@ -1151,6 +1163,18 @@ describe('debugScenario — arena-trials-*', () => {
 
 		const state = testGameState();
 		const bossId = state.run.encounter.bossEnemyId;
+		// Open-plaza is a single room that spawns the player at its centre, within
+		// ENCOUNTER_TRIGGER_RADIUS of the central dais boss anchor. Clear the adds only AFTER
+		// moving the player out of the trigger so the live game loop's updateEncounterTriggers
+		// cannot auto-activate the dormant encounter in the window before the boss-approach
+		// scenario runs. This mirrors real play (adds are cleared out in the plaza, not while
+		// standing on the dais); the scenario then repositions to just outside the trigger.
+		const preClearPlayer = playerForSocket(socket);
+		const preClearDais = state.layout.landmarks.find((lm) => lm.type === 'arena_dais');
+		const preClearAnchor = resolveEncounterAnchor(state.run, state)
+			|| (preClearDais ? { x: preClearDais.x, z: preClearDais.z } : { x: preClearPlayer.x, z: preClearPlayer.z });
+		preClearPlayer.x = preClearAnchor.x + ENCOUNTER_TRIGGER_RADIUS + 12;
+		preClearPlayer.z = preClearAnchor.z;
 		clearNonBossEnemies(state, bossId);
 
 		const approachPromise = waitForEvent(socket, 'debugScenarioResult');
