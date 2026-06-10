@@ -13,7 +13,7 @@ const {
 	backfillCosmetic,
 	backfillUnlockedHats
 } = require('./cosmetic');
-const { isValidQuestId, isValidQuestSelection, normalizeUnlockRequires } = require('./quests');
+const { isValidQuestId, isValidQuestSelection, normalizeUnlockRequires, getQuest } = require('./quests');
 
 let usersFilePath = process.env.USERS_FILE || path.join(__dirname, '..', 'data', 'users.json');
 
@@ -371,7 +371,8 @@ function getUnlockedQuestTiers(accountId) {
 
 /**
  * Whether a quest tier is available for an account. Tier 1 is always unlocked
- * for valid catalog quests; higher tiers require a persisted unlock.
+ * for valid catalog quests; higher tiers require a persisted unlock and every
+ * `unlockRequires` prerequisite on that tier to be completed.
  *
  * @param {string} accountId
  * @param {string} questId
@@ -392,7 +393,14 @@ function isQuestTierUnlocked(accountId, questId, tier) {
 	}
 	const map = backfillUnlockedQuestTiers(user.unlockedQuestTiers);
 	const tiers = map[questId];
-	return Array.isArray(tiers) && tiers.includes(normalizedTier);
+	if (!Array.isArray(tiers) || !tiers.includes(normalizedTier)) {
+		return false;
+	}
+	const quest = getQuest(questId, normalizedTier);
+	if (!quest) {
+		return false;
+	}
+	return areUnlockPrereqsMet(accountId, quest.unlockRequires);
 }
 
 /**
