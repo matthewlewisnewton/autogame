@@ -290,8 +290,10 @@ const attackHintDismisser = createAttackHintDismisser({
 
 /**
  * Note a per-run attack/cast action so the hint can self-dismiss once the
- * player has done both. Slot activations are casts, except the gamepad's
- * primary attack button (slot 0), which the hint copy frames as the attack.
+ * player has done both. Only call this after the corresponding useCard()
+ * actually accepted and emitted — rejected activations must not count. Slot
+ * activations are casts, except the gamepad's primary attack button (slot 0),
+ * which the hint copy frames as the attack.
  */
 function noteAttackHintSlotAction(slotIndex) {
 	const isGamepadAttack = getHandSlotInputHints().mode === 'gamepad' && slotIndex === 0;
@@ -1124,7 +1126,7 @@ function canUseGameActions() {
 }
 
 initInput({
-	onUseSlot: (slot) => { useCard(slot); noteAttackHintSlotAction(slot); },
+	onUseSlot: (slot) => { if (useCard(slot)) noteAttackHintSlotAction(slot); },
 	onToggleDeck: () => toggleDeckViewer(),
 	onUseKeyItem: () => {
 		if (!socket) return;
@@ -4026,19 +4028,23 @@ function playActivationEffect(slotIndex) {
 	}, 800);
 }
 
+// Returns true when the activation is accepted and a USE_CARD action is emitted,
+// false on every client-side rejection (out-of-range, empty slot, unusable slot,
+// active minion, full hand on draw, or insufficient magic stones). Callers gate
+// attack/cast hint dismissal on this so rejected attempts never count.
 function useCard(slotIndex) {
-	if (slotIndex < 0 || slotIndex >= MAX_HAND_SLOTS) return;
+	if (slotIndex < 0 || slotIndex >= MAX_HAND_SLOTS) return false;
 	const card = hand[slotIndex];
-	if (!card) return;
+	if (!card) return false;
 
-	if (!canUseSlot(slotIndex)) return;
-	if (card.activeMinionId) return;
+	if (!canUseSlot(slotIndex)) return false;
+	if (card.activeMinionId) return false;
 
 	const cardDef = getCardDef(card.id) || {};
 	if (cardDef.effect === 'draw_card' && !canDrawIntoHandLocal()) {
 		lastUsedSlot = slotIndex;
 		showCardErrorToast('Hand full');
-		return;
+		return false;
 	}
 	const playerMs = (gameState && myId && gameState.players[myId])
 		? gameState.players[myId].magicStones
@@ -4049,7 +4055,7 @@ function useCard(slotIndex) {
 		showCardErrorToast(THEME.resource.insufficient);
 		const slot = getCardSlotEl(slotIndex);
 		if (slot) slot.classList.add('no-ms');
-		return;
+		return false;
 	}
 
 	lastUsedSlot = slotIndex;
@@ -4065,23 +4071,24 @@ function useCard(slotIndex) {
 	if (creatureCardIds.has(card.id)) {
 		slotCooldowns[slotIndex] = true;
 		playActivationEffect(slotIndex);
-		return;
+		return true;
 	}
 
 	if (spellCardIds.has(card.id)) {
 		slotCooldowns[slotIndex] = true;
 		playActivationEffect(slotIndex);
-		return;
+		return true;
 	}
 
 	if (cardDef.effect === 'draw_card') {
 		slotCooldowns[slotIndex] = true;
 		playActivationEffect(slotIndex);
-		return;
+		return true;
 	}
 
 	slotCooldowns[slotIndex] = true;
 	playActivationEffect(slotIndex);
+	return true;
 }
 
 function discardCard(slotIndex) {
@@ -4103,8 +4110,10 @@ function discardCard(slotIndex) {
 cardHandEl.addEventListener('click', (e) => {
 	const slot = e.target.closest('.card-slot');
 	if (!slot) return;
-	useCard(parseInt(slot.dataset.slotIndex, 10));
-	attackHintDismisser.noteProgress({ casted: true });
+	// Only count toward hint dismissal when useCard actually accepted and emitted.
+	if (useCard(parseInt(slot.dataset.slotIndex, 10))) {
+		attackHintDismisser.noteProgress({ casted: true });
+	}
 });
 
 cardHandEl.addEventListener('contextmenu', (e) => {
@@ -4140,8 +4149,9 @@ window.addEventListener('pointerdown', (e) => {
 	const canvas = getRenderer()?.domElement;
 	if (!canvas || e.target !== canvas) return;
 	const slot = pickBasicAttackSlot();
-	if (slot >= 0) {
-		useCard(slot);
+	// Only count toward hint dismissal when a usable slot was found AND useCard
+	// accepted it — a rejected basic attack does not advance the hint.
+	if (slot >= 0 && useCard(slot)) {
 		attackHintDismisser.noteProgress({ attacked: true });
 	}
 });
