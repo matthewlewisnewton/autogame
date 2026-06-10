@@ -3540,6 +3540,7 @@ module.exports = {
 
   // Card combat helpers
   getEntityWorldY,
+  resolveRadialOriginY,
   distance3D,
   computeAimDirection3D,
   collectConeHits,

@@ -28,6 +28,7 @@ const {
   PLAYER_RADIUS,
   healPlayer,
   getEntityWorldY,
+  resolveRadialOriginY,
   distance3D,
 } = require('./simulation');
 const {
@@ -45,6 +46,10 @@ const {
 
 // index.js-local handle, injected after both modules are loaded.
 let io = null;
+
+function getLootWorldY(loot) {
+  return Number.isFinite(loot.y) ? loot.y : resolveRadialOriginY(loot.x, loot.z, {});
+}
 
 function setCallbacks(deps) {
   io = deps.io;
@@ -295,13 +300,15 @@ function handleUseKeyItem(socket, state, lobby, data) {
       // --- loot_magnet: pull all uncollected ground loot within attractRadius toward player ---
       const attractRadius = def.attractRadius != null ? def.attractRadius : 8;
       const colliders = getWallColliders();
+      const playerY = getEntityWorldY(player);
       let pulled = 0;
       let collected = 0;
 
       // Iterate backwards so splicing collected loot doesn't mess up indices
       for (let i = state.loot.length - 1; i >= 0; i--) {
         const loot = state.loot[i];
-        const dist = Math.hypot(loot.x - player.x, loot.z - player.z);
+        const lootY = getLootWorldY(loot);
+        const dist = Math.hypot(loot.x - player.x, lootY - playerY, loot.z - player.z);
         if (dist > attractRadius) continue;
 
         // Compute direction toward player
@@ -324,7 +331,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
         pulled++;
 
         // Check if loot is now within pickup radius — auto-collect
-        const finalDist = Math.hypot(loot.x - player.x, loot.z - player.z);
+        const finalLootY = getLootWorldY(loot);
+        const finalDist = Math.hypot(loot.x - player.x, finalLootY - playerY, loot.z - player.z);
         if (finalDist <= LOOT_PICKUP_RADIUS) {
           const isCrystal = loot.kind === 'crystal';
           const isMagicStone = loot.kind === 'magic_stone';

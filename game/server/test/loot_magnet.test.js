@@ -351,4 +351,97 @@ describe('Loot Magnet — pull & collect', () => {
 		expect(state.loot.find((l) => l.id === 'wall-loot')).toBeDefined();
 		expect(result.collected).toBe(0);
 	});
+
+	it('loot at same XZ with small vertical offset within attractRadius is collected', async () => {
+		const { socket } = await connectAndStartRun(baseUrl);
+		const player = playerForSocket(socket);
+		const state = lobbyStateForSocket(socket);
+
+		player.keyItemCooldownUntil = 0;
+		player.y = 0;
+		state.loot.length = 0;
+
+		const loot = testLoot({
+			id: 'vertical-close',
+			x: player.x,
+			z: player.z,
+			y: 2,
+			value: 42,
+		});
+		const origCurrency = player.currency;
+		state.loot.push(loot);
+
+		const resultPromise = waitForLootMagnetUsed(socket);
+		socket.emit('useKeyItem', { keyItemId: 'loot_magnet' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.pulled).toBe(1);
+		expect(result.collected).toBe(1);
+		expect(state.loot.find((l) => l.id === 'vertical-close')).toBeUndefined();
+		expect(player.currency).toBe(origCurrency + 42);
+	});
+
+	it('loot at same XZ with large vertical offset outside attractRadius is untouched', async () => {
+		const { socket } = await connectAndStartRun(baseUrl);
+		const player = playerForSocket(socket);
+		const state = lobbyStateForSocket(socket);
+
+		player.keyItemCooldownUntil = 0;
+		player.y = 0;
+		state.loot.length = 0;
+
+		const loot = testLoot({
+			id: 'vertical-far',
+			x: player.x,
+			z: player.z,
+			y: 10,
+			value: 99,
+		});
+		const origY = loot.y;
+		state.loot.push(loot);
+
+		const resultPromise = waitForLootMagnetUsed(socket);
+		socket.emit('useKeyItem', { keyItemId: 'loot_magnet' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.pulled).toBe(0);
+		expect(result.collected).toBe(0);
+		expect(loot.y).toBe(origY);
+		expect(state.loot.find((l) => l.id === 'vertical-far')).toBeDefined();
+	});
+
+	it('loot within horizontal attract range but outside 3D attract sphere is untouched', async () => {
+		const { socket } = await connectAndStartRun(baseUrl);
+		const player = playerForSocket(socket);
+		const state = lobbyStateForSocket(socket);
+
+		player.keyItemCooldownUntil = 0;
+		player.y = 0;
+		state.loot.length = 0;
+
+		// XZ distance 7m (inside flat 8m attract), but 3D distance sqrt(7^2 + 4^2) ≈ 8.06m.
+		const loot = testLoot({
+			id: 'sphere-edge',
+			x: player.x + 7,
+			z: player.z,
+			y: 4,
+			value: 55,
+		});
+		const origX = loot.x;
+		const origZ = loot.z;
+		state.loot.push(loot);
+
+		const resultPromise = waitForLootMagnetUsed(socket);
+		socket.emit('useKeyItem', { keyItemId: 'loot_magnet' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.pulled).toBe(0);
+		expect(result.collected).toBe(0);
+		expect(loot.x).toBe(origX);
+		expect(loot.z).toBe(origZ);
+		expect(state.loot.find((l) => l.id === 'sphere-edge')).toBeDefined();
+	});
 });

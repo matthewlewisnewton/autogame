@@ -1120,18 +1120,29 @@ function getEnemyCurrencyDrop(enemy) {
   return Math.max(1, Math.floor(msDrop * pct));
 }
 
+function resolveLootSpawnY(x, z, layout) {
+  if (!layout) return undefined;
+  return resolveFloorY(sampleFloorY(layout, x, z));
+}
+
 function spawnMagicStoneDrop(enemy) {
+  const layout = _gameState.layout;
   const value = getEnemyMagicStoneDrop(enemy);
   if (value > 0) {
     const id = crypto.randomUUID();
-    _gameState.loot.push({
+    const x = enemy.x + LOOT_DROP_OFFSET_MS.x;
+    const z = enemy.z + LOOT_DROP_OFFSET_MS.z;
+    const drop = {
       id,
-      x: enemy.x + LOOT_DROP_OFFSET_MS.x,
-      z: enemy.z + LOOT_DROP_OFFSET_MS.z,
+      x,
+      z,
       value,
       kind: 'magic_stone',
       createdAt: Date.now(),
-    });
+    };
+    const y = resolveLootSpawnY(x, z, layout);
+    if (y !== undefined) drop.y = y;
+    _gameState.loot.push(drop);
     console.log(`[loot] magic stone drop id=${id} value=${value} at (${enemy.x.toFixed(1)}, ${enemy.z.toFixed(1)})`);
   }
 
@@ -1141,14 +1152,19 @@ function spawnMagicStoneDrop(enemy) {
   const bonusValue = bonus ? Number(bonus.magicStone) : 0;
   if (bonusValue > 0) {
     const bonusId = crypto.randomUUID();
-    _gameState.loot.push({
+    const x = enemy.x - LOOT_DROP_OFFSET_MS.x;
+    const z = enemy.z - LOOT_DROP_OFFSET_MS.z;
+    const drop = {
       id: bonusId,
-      x: enemy.x - LOOT_DROP_OFFSET_MS.x,
-      z: enemy.z - LOOT_DROP_OFFSET_MS.z,
+      x,
+      z,
       value: bonusValue,
       kind: 'magic_stone',
       createdAt: Date.now(),
-    });
+    };
+    const y = resolveLootSpawnY(x, z, layout);
+    if (y !== undefined) drop.y = y;
+    _gameState.loot.push(drop);
     console.log(`[loot] variant bonus magic stone drop id=${bonusId} value=${bonusValue} at (${enemy.x.toFixed(1)}, ${enemy.z.toFixed(1)})`);
   }
 }
@@ -1160,14 +1176,19 @@ function spawnCurrencyDrop(enemy) {
   if (value <= 0) return;
 
   const id = crypto.randomUUID();
-  _gameState.loot.push({
+  const x = enemy.x + LOOT_DROP_OFFSET_CURRENCY.x;
+  const z = enemy.z + LOOT_DROP_OFFSET_CURRENCY.z;
+  const drop = {
     id,
-    x: enemy.x + LOOT_DROP_OFFSET_CURRENCY.x,
-    z: enemy.z + LOOT_DROP_OFFSET_CURRENCY.z,
+    x,
+    z,
     value,
     kind: 'currency',
     createdAt: Date.now(),
-  });
+  };
+  const y = resolveLootSpawnY(x, z, _gameState.layout);
+  if (y !== undefined) drop.y = y;
+  _gameState.loot.push(drop);
   console.log(`[loot] currency drop id=${id} value=${value} at (${enemy.x.toFixed(1)}, ${enemy.z.toFixed(1)})`);
 }
 
@@ -2623,7 +2644,10 @@ function spawnLoot(layout, rng) {
 
   const value = Math.floor(Math.random() * 16) + 5;
   const id = crypto.randomUUID();
-  _gameState.loot.push({ id, x: pos.x, z: pos.z, value, createdAt: Date.now() });
+  const drop = { id, x: pos.x, z: pos.z, value, createdAt: Date.now() };
+  const y = resolveLootSpawnY(pos.x, pos.z, layout);
+  if (y !== undefined) drop.y = y;
+  _gameState.loot.push(drop);
   console.log(`[loot] spawned id=${id} value=${value}`);
 }
 
