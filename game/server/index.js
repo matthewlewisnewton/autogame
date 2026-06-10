@@ -534,6 +534,7 @@ const DEBUG_SCENARIOS = new Set([
   'endless-siege-wave-five',
   'telepipe-ready',
   'fire-telepipe-ready',
+  'frost-telepipe-ready',
   'extracted-in-hub',
   'suspended-run-hub',
   'sloped-dungeon',

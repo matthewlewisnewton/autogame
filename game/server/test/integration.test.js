@@ -5962,6 +5962,94 @@ describe('Telepipe extract and redeploy vitals persistence', () => {
 		p2.socket.disconnect();
 	});
 
+	it('frost-telepipe-ready: solo telepipe extract → re-emit → redeploy is a fresh ice sortie carrying vitals forward', async () => {
+		// Sub-ticket 03 / ticket 392: the live ICE telepipe-vitals capture needs a
+		// fresh-sortie redeploy (new run id) that still carries lobby HP/MS forward.
+		// Generic telepipe-ready RESUMES the suspended run (same id); frost-telepipe-ready
+		// abandons the checkpoint on redeploy so the run id DIFFERS while HP/MS persist.
+		const baseUrl = await startTestServer();
+		const p1 = await connectAndJoinLobby(baseUrl, 'frost-fresh-sortie-1');
+		const p1Id = p1.socket._playerId;
+
+		// Emit lands on frost_crossing/ice-cavern and stays in the lobby (ready-up injects telepipe).
+		const debug1 = waitForEvent(p1.socket, 'debugScenarioResult');
+		p1.socket.emit('debugScenario', { name: 'frost-telepipe-ready' });
+		expect((await debug1).ok).toBe(true);
+		expect(testGameState().gamePhase).toBe('lobby');
+		expect(testGameState().selectedQuestId).toBe('frost_crossing');
+
+		// Deploy: solo ready-up starts the ice run with the telepipe in hand slot 0.
+		const startPromise = waitForEvent(p1.socket, 'startGame');
+		p1.socket.emit('playerReady', true);
+		await startPromise;
+
+		const deployed = testGameState();
+		expect(deployed.gamePhase).toBe('playing');
+		expect(deployed.selectedQuestId).toBe('frost_crossing');
+		expect(deployed.layout.rooms.some((room) => room.band === 'ice')).toBe(true);
+		expect(deployed.players[p1Id].hand[0]?.id).toBe('telepipe');
+
+		const preSuspendRunId = deployed.run.id;
+		const preSuspendHp = deployed.players[p1Id].hp;
+		const preSuspendMs = deployed.players[p1Id].magicStones;
+		// frost-telepipe-ready seeds partial lobby vitals so the carry-forward is observable.
+		expect(preSuspendHp).toBeLessThan(MAX_HP);
+		expect(preSuspendMs).toBeLessThan(STARTING_MAGIC_STONES);
+
+		// Place the telepipe at the player's feet and solo-extract → run suspends to the hub.
+		runSimulationInPrimaryLobby((liveState) => {
+			liveState.telepipe = {
+				x: liveState.players[p1Id].x,
+				z: liveState.players[p1Id].z,
+				placedBy: p1Id,
+				placedAt: Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1,
+			};
+		});
+		expect(tryEnterTelepipe(p1Id).ok).toBe(true);
+
+		const hub = testGameState();
+		expect(hub.gamePhase).toBe('lobby');
+		expect(hub.run).toBeUndefined();
+		expect(hub.suspendedCheckpoint).not.toBeNull();
+		expect(hub.players[p1Id].hp).toBe(preSuspendHp);
+		expect(hub.players[p1Id].magicStones).toBeCloseTo(preSuspendMs, 0);
+
+		// Re-emit in the suspended lobby: abandons the checkpoint, keeps lobby vitals.
+		const debug2 = waitForEvent(p1.socket, 'debugScenarioResult');
+		p1.socket.emit('debugScenario', { name: 'frost-telepipe-ready' });
+		expect((await debug2).ok).toBe(true);
+		expect(testGameState().gamePhase).toBe('lobby');
+		expect(testGameState().suspendedCheckpoint).toBeNull();
+		expect(testGameState().players[p1Id].hp).toBe(preSuspendHp);
+		expect(testGameState().players[p1Id].magicStones).toBeCloseTo(preSuspendMs, 0);
+
+		// Redeploy by readying up: FRESH sortie (new run id), not a resume.
+		const redeployPromise = waitForEvent(p1.socket, 'startGame');
+		p1.socket.emit('playerReady', true);
+		await redeployPromise;
+
+		const redeployed = testGameState();
+		expect(redeployed.gamePhase).toBe('playing');
+		expect(redeployed.selectedQuestId).toBe('frost_crossing');
+		expect(redeployed.layout.rooms.some((room) => room.band === 'ice')).toBe(true);
+		// Fresh sortie: the run id must DIFFER from the pre-suspend run.
+		expect(redeployed.run.id).not.toBe(preSuspendRunId);
+		expect(redeployed.players[p1Id].hand[0]?.id).toBe('telepipe');
+
+		// HP carries forward exactly (no full-heal); MS preserved (passive regen only,
+		// never reset to starting/full).
+		expect(redeployed.players[p1Id].hp).toBe(preSuspendHp);
+		expect(redeployed.players[p1Id].hp).not.toBe(MAX_HP);
+		expect(redeployed.players[p1Id].magicStones).toBeGreaterThanOrEqual(preSuspendMs);
+		expect(redeployed.players[p1Id].magicStones).toBeLessThanOrEqual(
+			preSuspendMs + MAGIC_STONES_REGEN_PER_TICK * 10,
+		);
+		expect(redeployed.players[p1Id].magicStones).not.toBe(STARTING_MAGIC_STONES);
+		expect(redeployed.players[p1Id].magicStones).not.toBe(MAX_MAGIC_STONES);
+
+		p1.socket.disconnect();
+	});
+
 	it('telepipe-ready debug scenario stays in lobby until ready-up injects telepipe', async () => {
 		const baseUrl = await startTestServer();
 		const p1 = await connectAndJoinLobby(baseUrl, 'telepipe-debug-1');

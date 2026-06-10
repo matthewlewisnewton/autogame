@@ -540,6 +540,40 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
+    if (name === 'frost-telepipe-ready') {
+      // frost_crossing Tier 1 with ice-cavern layout; telepipe injected on ready-up
+      // (see checkAllReady) into the default hand slot 0. Mirrors fire-telepipe-ready
+      // but drives a FRESH sortie on redeploy: re-emitting in a suspended lobby abandons
+      // the checkpoint and carries lobby HP/MS forward into a brand-new run id (the
+      // server-side enabler for the live ICE telepipe-vitals capture).
+      // Reachable normally by earning Telepipe, selecting Frost Crossing, and deploying.
+      const questId = 'frost_crossing';
+      const tier = 1;
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+      player.ready = false;
+      if (state.suspendedCheckpoint) {
+        // Fresh sortie after telepipe suspend: abandon checkpoint, keep lobby vitals so
+        // the subsequent readyAll deploy carries HP/MS forward into a new run id.
+        abandonSuspendedRun(state);
+        player._telepipeFreshSortie = true;
+        player._msRegenGraceUntil = Date.now() + 20000;
+      } else {
+        // Partial vitals so MS regen cannot overshoot STARTING_MAGIC_STONES before the
+        // capture asserts carry-forward.
+        player.hp = 60;
+        player.magicStones = 20;
+      }
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
     if (name === 'fireball-hand-ready') {
       // Swap Fireball into hand without resetting enemies or status — for sequential
       // card exercises (e.g. slow then burn on the same target after ice-ball-ready).

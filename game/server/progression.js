@@ -3701,7 +3701,11 @@ function checkAllReadyInner() {
         player.lastMoveTime = Date.now();
         createDrawDeckFromSelectedDeck(player);
         initPlayerHand(player);
-        if (player.debugScenario === 'telepipe-ready' || player.debugScenario === 'fire-telepipe-ready') {
+        if (
+          player.debugScenario === 'telepipe-ready'
+          || player.debugScenario === 'fire-telepipe-ready'
+          || player.debugScenario === 'frost-telepipe-ready'
+        ) {
           applyTelepipeReadyHand(player);
         }
         player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
@@ -3716,7 +3720,11 @@ function checkAllReadyInner() {
           player.hp = MAX_HP;
           player.dead = false;
         }
-        if (player.debugScenario === 'fire-telepipe-ready' && deployMagicStones != null) {
+        if (
+          (player.debugScenario === 'fire-telepipe-ready'
+            || player.debugScenario === 'frost-telepipe-ready')
+          && deployMagicStones != null
+        ) {
           player._telepipeDeployMagicStones = deployMagicStones;
           player._msRegenGraceUntil = Date.now() + 120000;
         }
