@@ -311,7 +311,11 @@ const {
   spawnEnemies,
   spawnCombatEnemies,
   updateSurviveSpawns,
+  updateScriptedEncounters,
+  tickEscort,
+  updateQuestDialogueRoomEntry,
   updateEncounterTriggers,
+  updateQuestScriptTriggers,
   spawnLoot,
   spawnCrystals,
   recordCrystalCollected,
@@ -384,6 +388,7 @@ const sim = require('./simulation');
 sim.setGameState(gameState, _timeouts);
 progression.initProgression({ gameState, getIo: () => io });
 progression.setRebuildWallColliders(() => rebuildWallColliders());
+require('./scriptedEncounters').setPassageLocksChangedCallback(() => rebuildWallColliders());
 ensureShopOffer();
 
 // Wire simulation callbacks (so simulation.js can call back into progression).
@@ -488,6 +493,7 @@ const DEBUG_SCENARIOS = new Set([
   'avatar-wizard-hat',
   'mixed-enemies',
   'variant-enemy',
+  'named-rare-enemy',
   'volatile-enemy',
   'warded-enemy',
   'variant-leeching',
@@ -532,6 +538,13 @@ const DEBUG_SCENARIOS = new Set([
   'sunken-canyon-stage',
   'sunken-canyon-cliff-hazard',
   'frost-crossing-tier-1',
+  'frost-crossing-last-enemy',
+  'training-caverns-tier-1',
+  'crystal-rescue-tier-1',
+  'annex-escort-tier-1',
+  'scripted-wave-combat',
+  'passage-lock-gated',
+  'escort-objective',
   'fire-cavern',
   'ember-descent-near-adds',
   'ember-descent-ember-wraith-burn',
@@ -745,6 +758,7 @@ function emitCardError(socket, reason) {
 const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'mixed-enemies',
   'variant-enemy',
+  'named-rare-enemy',
   'volatile-enemy',
   'warded-enemy',
   'variant-leeching',
@@ -788,6 +802,10 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'ember-descent-last-enemy',
   'slippery-floor-lab',
   'frost-crossing-tier-1',
+  'frost-crossing-last-enemy',
+  'training-caverns-tier-1',
+  'crystal-rescue-tier-1',
+  'annex-escort-tier-1',
 ]);
 
 function shouldSkipDefaultEnemySpawn(state) {
@@ -1440,6 +1458,7 @@ function runGameLoopTick() {
         } else if (isPlayingPhase(state)) {
           processPendingCardWindups();
           applyPlayerMovement(state, buildMovementContext(state));
+          updateQuestDialogueRoomEntry();
           checkTelepipeProximity();
           flushDirtyPlayerSaves();
           updateEnemies();
@@ -1448,7 +1467,10 @@ function runGameLoopTick() {
           updateBurning();
           debugScenarios.nudgeDebugBossApproachPlayers(state);
           updateEncounterTriggers();
+          updateQuestScriptTriggers();
           updateSurviveSpawns();
+          updateScriptedEncounters();
+          tickEscort(state);
 
           const now = Date.now();
           processPassiveDraws(now);
@@ -1776,6 +1798,7 @@ if (typeof module !== 'undefined' && module.exports) {
     spawnEnemies,
     spawnCombatEnemies,
     updateSurviveSpawns,
+    updateScriptedEncounters,
     firstRoomPosition,
     pickFloorSpawnPosition,
     buildPlayerRecord,

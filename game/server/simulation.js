@@ -91,15 +91,77 @@ function setSavePlayerCallback(fn) { _savePlayerData = fn; }
 const PLAYER_RADIUS = 0.5;
 const WALL_THICKNESS = 0.4;
 const PASSAGE_WALL_THICKNESS = 0.3;
+const PASSAGE_LOCK_BARRIER_DEPTH = 1.0;
 const ENTITY_RADIUS = 0.45;
 let _wallColliders = [];
 let _wallCollidersLayout = null;
+let _wallCollidersPassageLocksKey = '';
+
+function footprintToAABB(footprint) {
+  return {
+    minX: footprint.x - footprint.width / 2,
+    maxX: footprint.x + footprint.width / 2,
+    minZ: footprint.z - footprint.depth / 2,
+    maxZ: footprint.z + footprint.depth / 2,
+  };
+}
+
+/**
+ * Compute a full-gap doorway barrier AABB for a locked passage index.
+ * Reuses passageWidth / doorway gap sizing from dungeon layout generation.
+ */
+function computePassageBarrierAABBs(layout, passageIndex) {
+  if (!layout?.passages?.[passageIndex]) return [];
+
+  const passage = layout.passages[passageIndex];
+  const passageWidth = layout.passageWidth ?? 4;
+  const gapW = passageWidth + 0.5;
+  const dx = passage.x2 - passage.x1;
+  const dz = passage.z2 - passage.z1;
+
+  if (Math.abs(dx) >= Math.abs(dz)) {
+    return [footprintToAABB({
+      x: (passage.x1 + passage.x2) / 2,
+      z: passage.z1,
+      width: PASSAGE_LOCK_BARRIER_DEPTH,
+      depth: gapW,
+    })];
+  }
+
+  return [footprintToAABB({
+    x: passage.x1,
+    z: (passage.z1 + passage.z2) / 2,
+    width: gapW,
+    depth: PASSAGE_LOCK_BARRIER_DEPTH,
+  })];
+}
+
+function collectLockedPassageBarrierAABBs(layout, passageLocks = []) {
+  const colliders = [];
+  if (!layout || !Array.isArray(passageLocks)) return colliders;
+
+  for (const lock of passageLocks) {
+    if (!lock?.locked) continue;
+    colliders.push(...computePassageBarrierAABBs(layout, lock.passageIndex));
+  }
+  return colliders;
+}
+
+function passageLocksCacheKey(passageLocks = []) {
+  if (!Array.isArray(passageLocks) || passageLocks.length === 0) return '';
+  return passageLocks
+    .map((lock) => `${lock.passageIndex}:${lock.locked ? 1 : 0}`)
+    .join('|');
+}
 
 /**
  * Build AABB colliders from the current dungeon layout walls.
  * Returns an array of { minX, maxX, minZ, maxZ } objects.
  */
-function buildWallColliders(layout = _gameState && _gameState.layout) {
+function buildWallColliders(
+  layout = _gameState && _gameState.layout,
+  passageLocks = _gameState?.run?.passageLocks,
+) {
   const colliders = [];
   if (!layout || !layout.rooms || !layout.passages) return colliders;
 
@@ -127,17 +189,25 @@ function buildWallColliders(layout = _gameState && _gameState.layout) {
     }
   }
 
+  colliders.push(...collectLockedPassageBarrierAABBs(layout, passageLocks));
+
   return colliders;
 }
 
 function rebuildWallColliders() {
   _wallColliders = buildWallColliders();
   _wallCollidersLayout = _gameState && _gameState.layout;
+  _wallCollidersPassageLocksKey = passageLocksCacheKey(_gameState?.run?.passageLocks);
   return _wallColliders;
 }
 
 function getWallColliders() {
-  if (!_gameState || _wallCollidersLayout !== _gameState.layout) {
+  const locksKey = passageLocksCacheKey(_gameState?.run?.passageLocks);
+  if (
+    !_gameState
+    || _wallCollidersLayout !== _gameState.layout
+    || _wallCollidersPassageLocksKey !== locksKey
+  ) {
     return rebuildWallColliders();
   }
   return _wallColliders;
@@ -154,7 +224,7 @@ function buildMovementContext(state) {
     layout: state.layout,
     walkableAABBs: state.walkableAABBs,
     dungeonBounds: state.dungeonBounds,
-    colliders: buildWallColliders(state.layout),
+    colliders: buildWallColliders(state.layout, state.run?.passageLocks),
   };
 }
 
@@ -2159,6 +2229,9 @@ function damageMinion(minion, amount) {
   minion.hp = Math.max(0, minion.hp - amount);
   const ttlBurn = (amount * maxTtl / maxHp) * 0.25;
   minion.ttl = Math.max(0, minion.ttl - ttlBurn);
+  if (minion.isEscort) {
+    require('./escort').onEscortDamaged(minion, _gameState);
+  }
 }
 
 // ── Player Damage / Respawn ──
@@ -3003,6 +3076,46 @@ function updateMinions() {
     for (const minion of _gameState.minions) {
       if (minion.type === 'mana_prism') continue;
 
+      if (minion.isEscort) {
+        let nearestDist = Infinity;
+        let nearestEnemy = null;
+
+        for (const enemy of _gameState.enemies) {
+          const dx = enemy.x - minion.x;
+          const dz = enemy.z - minion.z;
+          const dist = Math.hypot(dx, dz);
+          if (dist < nearestDist) {
+            nearestDist = dist;
+            nearestEnemy = enemy;
+          }
+        }
+
+        const underAttack = nearestEnemy && nearestDist < DETECTION_RADIUS;
+        if (!underAttack) {
+          let nearestPlayer = null;
+          let nearestPlayerDist = Infinity;
+          for (const player of Object.values(_gameState.players)) {
+            if (!player || player.dead || player.extracted) continue;
+            const dx = player.x - minion.x;
+            const dz = player.z - minion.z;
+            const dist = Math.hypot(dx, dz);
+            if (dist < nearestPlayerDist) {
+              nearestPlayerDist = dist;
+              nearestPlayer = player;
+            }
+          }
+          if (nearestPlayer && nearestPlayerDist > MINION_FOLLOW_DISTANCE) {
+            moveEntityToward(
+              minion,
+              nearestPlayer,
+              MINION_FOLLOW_SPEED * dt,
+              { stopDistance: MINION_FOLLOW_DISTANCE },
+            );
+          }
+        }
+        continue;
+      }
+
       let nearestDist = Infinity;
       let nearestEnemy = null;
 
@@ -3367,9 +3480,13 @@ function updateMinions() {
       survivingMinions.push(minion);
       continue;
     }
-    const owner = _gameState.players[minion.ownerId];
-    if (owner) {
-      progression.releaseBurningCreatureCard(owner, minion);
+    if (minion.isEscort && minion.hp <= 0) {
+      require('./escort').onEscortDeath(minion, _gameState);
+    } else {
+      const owner = _gameState.players[minion.ownerId];
+      if (owner) {
+        progression.releaseBurningCreatureCard(owner, minion);
+      }
     }
   }
   _gameState.minions = survivingMinions;
@@ -3436,6 +3553,8 @@ module.exports = {
   buildWallColliders,
   rebuildWallColliders,
   getWallColliders,
+  computePassageBarrierAABBs,
+  collectLockedPassageBarrierAABBs,
   buildMovementContext,
   buildHubMovementContext,
   hubSpawnPosition,

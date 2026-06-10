@@ -6,7 +6,9 @@ import {
 	formatObjectiveSummary,
 	formatRewardSummary,
 	formatQuestTierLabel,
+	findQuestBoardEntry,
 	renderQuestBoard,
+	renderQuestBriefing,
 } from './questBoard.js';
 import {
 	THEME,
@@ -110,6 +112,7 @@ import { clearAllLockOnState, getLockedEnemyId } from './lockOn.js';
 import {
 	initScene as rendererInitScene,
 	rebuildDungeonLayout,
+	syncPassageLockColliders,
 	setGameStateRef,
 	setMyId as rendererSetMyId,
 	setSocketRef,
@@ -202,6 +205,7 @@ const lobbyPlayerList = document.getElementById('lobby-player-list');
 const questBoardEl = document.getElementById('quest-board');
 const questBoardWrapperEl = document.getElementById('quest-board-wrapper');
 const questBriefingPanelEl = document.getElementById('quest-briefing-panel');
+const questBriefingEl = document.getElementById('quest-briefing');
 const questErrorEl = document.getElementById('quest-error');
 const suspendedRunBannerEl = document.getElementById('suspended-run-banner');
 const resumeRunBtnEl = document.getElementById('resume-run-btn');
@@ -1310,6 +1314,9 @@ function bindSocketHandlers(s) {
 		gameState = state;
 		suspendedRunSummary = cloneSuspendedRunSummary(state.suspendedRunSummary ?? null);
 		setGameStateRef(state);
+		if (state.gamePhase === 'playing' && currentLayout) {
+			syncPassageLockColliders(state.run?.passageLocks);
+		}
 		// Server snapshots omit debugGodmode; re-apply the last toggle so harness
 		// probes and local handlers stay consistent across stateUpdate.
 		if (myId && debugGodmodeResult?.ok && gameState.players?.[myId]) {
@@ -1952,6 +1959,11 @@ function bindSocketHandlers(s) {
 		applyQuestLayoutFromServer(data);
 	});
 
+	s.on(SERVER_TO_CLIENT.QUEST_DIALOGUE, (data) => {
+		if (!data || typeof data.line !== 'string') return;
+		showQuestDialogueToast(data.line, data.speaker);
+	});
+
 	s.on(SERVER_TO_CLIENT.START_GAME, () => {
 		claimedCardRewardId = null;
 		currentCardChoices = [];
@@ -2227,6 +2239,14 @@ function renderQuestBoardState() {
 			briefingPanelEl: questBriefingPanelEl,
 		},
 	);
+	const selectedQuest = findQuestBoardEntry(
+		selectedQuestId,
+		selectedQuestTier,
+		availableQuests,
+		questVariants,
+	);
+	renderQuestBriefing(questBriefingEl, selectedQuest);
+
 	if (questErrorEl) {
 		questErrorEl.style.display = 'none';
 		questErrorEl.textContent = '';
@@ -4393,6 +4413,25 @@ function handleQuestDialogue(payload) {
 		return;
 	}
 	renderQuestDialoguePayload(payload);
+}
+
+function showQuestDialogueToast(line, speaker) {
+	const toast = document.createElement('div');
+	toast.className = 'quest-dialogue-toast';
+	if (speaker) {
+		const speakerEl = document.createElement('span');
+		speakerEl.className = 'quest-dialogue-speaker';
+		speakerEl.textContent = speaker;
+		toast.appendChild(speakerEl);
+	}
+	const lineEl = document.createElement('span');
+	lineEl.textContent = line;
+	toast.appendChild(lineEl);
+	document.body.appendChild(toast);
+	setTimeout(() => {
+		toast.style.opacity = '0';
+		setTimeout(() => toast.remove(), 300);
+	}, 3500);
 }
 
 // ── Lobby event wiring ──

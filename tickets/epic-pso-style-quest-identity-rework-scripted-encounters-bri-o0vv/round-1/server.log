@@ -1,0 +1,14 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/epic-pso-style-quest-identity-rework-scripted-encounters-bri-o0vv/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/epic-pso-style-quest-identity-rework-scripted-encounters-bri-o0vv/game/data
+Server listening on port 3001
+Player connected: socket=GtQuSV6X53_IMwtqAAAB, playerId=4f7b386c-dc1b-4e9b-8934-eca55c1be122
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=01ii5mY1Mt7-fkURAAAD, playerId=ccf58a46-3393-45b9-a04c-b85863907276
+[loot] spawned id=0ed94dfa-e846-4708-96af-35458de42c69 value=5
+Player disconnected: GtQuSV6X53_IMwtqAAAB
+Player disconnected: 01ii5mY1Mt7-fkURAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

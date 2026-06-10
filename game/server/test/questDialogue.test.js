@@ -175,7 +175,8 @@ describe('quest dialogue progression hooks', () => {
 
       const payloads = io.emitted
         .filter((e) => e.event === SERVER_TO_CLIENT.QUEST_DIALOGUE)
-        .map((e) => e.payload);
+        .map((e) => e.payload)
+        .filter((p) => typeof p.text === 'string');
 
       expect(payloads.map((p) => p.text)).toEqual([runStart, ...itemTexts]);
       expect(new Set(payloads.map((p) => p.text)).size).toBe(4);
@@ -192,9 +193,14 @@ describe('quest dialogue progression hooks', () => {
 
       startDungeonRun();
       progression.emitRunStartDialogue(io);
-      const total = getQuest('crystal_rescue', 1).itemCount;
+      const quest = getQuest('crystal_rescue', 1);
+      const total = quest.itemCount;
       for (let i = 0; i < total; i += 1) {
         progression.recordCrystalCollected(1);
+      }
+      const guardCount = gameState.run.objective.totalEnemies ?? 0;
+      for (let i = 0; i < guardCount; i += 1) {
+        progression.recordEnemyDefeated(1);
       }
 
       checkRunTerminalState();

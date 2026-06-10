@@ -15,12 +15,6 @@
  */
 
 /**
- * Optional signature-card reward on a quest tier (card id string).
- * @typedef {Object} QuestTierDef
- * @property {string} [rewardSignatureCard] - Card id granted as a named reward line on the board.
- */
-
-/**
  * Dialogue trigger for mid-run radio lines (fired server-side in a later sub-ticket).
  * @typedef {'run_start' | 'objective_complete' | { itemCollected: number } | { waveCleared: number }} DialogueTrigger
  */
@@ -30,6 +24,60 @@
  * @typedef {Object} DialogueEntry
  * @property {DialogueTrigger} trigger
  * @property {string} text
+ */
+
+/**
+ * Hand-authored scripted wave encounter metadata on a quest tier.
+ * @typedef {import('./scriptedEncounters').ScriptedEncounterConfig} ScriptedEncounterConfig
+ */
+
+/**
+ * Escort NPC metadata on a quest tier using `objectiveType: 'escort'`.
+ * @typedef {Object} EscortNpcConfig
+ * @property {string} name - Display name for the escort NPC.
+ * @property {number} [maxHp] - Escort minion HP (default 80).
+ */
+
+/**
+ * Escort extraction target on a quest tier.
+ * @typedef {Object} EscortDestinationConfig
+ * @property {string} [landmark] - Layout landmark type (e.g. `vault_dais`).
+ * @property {string} [roomRole] - Room role fallback (e.g. `treasure`).
+ */
+
+/**
+ * Optional escort objective fields on a quest tier.
+ * @property {EscortNpcConfig} [escortNpc] - Friendly NPC to protect and extract.
+ * @property {EscortDestinationConfig} [escortDestination] - Extraction landmark or room role.
+ * @property {boolean} [escortFailOnDeath=true] - Fail the run when the escort dies.
+ */
+
+/**
+ * Hand-placed spawn entry for a scripted quest wave.
+ * @typedef {Object} QuestScriptSpawn
+ * @property {string} type - Enemy type id.
+ * @property {number} x - World X coordinate.
+ * @property {number} z - World Z coordinate.
+ */
+
+/**
+ * Room binding for a scripted wave trigger (center coords or layout landmark).
+ * @typedef {{ x: number, z: number } | { landmark: string }} QuestScriptRoom
+ */
+
+/**
+ * One authored wave in a quest script.
+ * @typedef {Object} QuestScriptWave
+ * @property {string} id - Stable wave id for chaining (`waveCleared` triggers).
+ * @property {QuestScriptRoom} [room] - Room the wave is bound to.
+ * @property {'run_start' | 'enter_room' | { waveCleared: string }} trigger
+ * @property {QuestScriptSpawn[]} spawns - Hand-placed enemies for this wave.
+ */
+
+/**
+ * Normalized quest script returned by `getQuestScript`.
+ * @typedef {Object} QuestScript
+ * @property {QuestScriptWave[]} waves
  */
 
 const QUEST_DEFS = {
@@ -43,11 +91,68 @@ const QUEST_DEFS = {
     tiers: {
       1: {
         name: 'Initiate Vault',
-        description: 'Purge hostiles from the derelict annex sector.',
+        description: 'Sweep annex holding pens in scripted waves and breach the vault mouth.',
+        clientNpc: 'Annex Liaison Kade',
+        briefing:
+          'Salvage crews have barricaded the annex holding pens. '
+          + 'Clear each wave, break through the sealed passage, and purge the vault stalker.',
         objectiveType: 'defeat_enemies',
-        enemyCount: 5,
         rewardCurrency: 10,
+        rewardCardId: 'saber_of_light',
         layoutProfile: 'crowded',
+        scriptedEncounters: {
+          rooms: [
+            {
+              roomIndex: 0,
+              waves: [
+                { spawns: [{ type: 'grunt', count: 2 }] },
+                {
+                  spawns: [
+                    { type: 'skirmisher', count: 1 },
+                    {
+                      type: 'grunt',
+                      count: 1,
+                      namedRare: {
+                        id: 'annex_vault_stalker',
+                        displayName: 'Vault Stalker',
+                        variantId: 'warded',
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              roomIndex: 1,
+              waves: [
+                { spawns: [{ type: 'skirmisher', count: 2 }] },
+              ],
+            },
+          ],
+          passageLocks: [
+            {
+              afterWave: { roomIndex: 0, waveIndex: 0 },
+              fromRoomIndex: 0,
+            },
+          ],
+        },
+        dialogueBeacons: [
+          {
+            beaconId: 'training_start_room',
+            trigger: 'onRoomEntered',
+            roomIndex: 0,
+            speaker: 'Annex Liaison Kade',
+            line: 'Contract accepted. Sweep the annex — I will mark your progress on the channel.',
+          },
+          {
+            beaconId: 'training_wave0_clear',
+            trigger: 'onWaveCleared',
+            roomIndex: 0,
+            waveIndex: 0,
+            speaker: 'Annex Liaison Kade',
+            line: 'First pen cleared — push deeper before the salvage crews regroup.',
+          },
+        ],
         client: {
           name: 'Rewa',
           briefing:
@@ -110,12 +215,57 @@ const QUEST_DEFS = {
     tiers: {
       1: {
         name: 'Prism Salvage',
-        description: 'Recover resonance prisms from the collapsed lattice.',
+        description: 'Recover resonance prisms while clearing scripted guard waves.',
+        clientNpc: 'Lattice Custodian Mira',
+        briefing:
+          'Resonance prisms are still singing in the collapsed lattice. '
+          + 'Recover every prism and clear the guard swarms holding each chamber.',
         objectiveType: 'collect_items',
         itemCount: 3,
-        enemyCount: 4,
         rewardCurrency: 12,
+        rewardCardId: 'mana_prism',
         layoutProfile: 'open',
+        scriptedEncounters: {
+          rooms: [
+            {
+              roomIndex: 0,
+              waves: [{ spawns: [{ type: 'skirmisher', count: 2 }] }],
+            },
+            {
+              roomIndex: 1,
+              waves: [{ spawns: [{ type: 'grunt', count: 2 }] }],
+            },
+            {
+              roomIndex: 2,
+              waves: [{ spawns: [{ type: 'skirmisher', count: 1 }, { type: 'grunt', count: 1 }] }],
+            },
+          ],
+        },
+        dialogueBeacons: [
+          {
+            beaconId: 'prism_first',
+            trigger: 'onCrystalCollected',
+            crystalIndex: 1,
+            speaker: 'Lattice Custodian Mira',
+            line: 'First prism secured — the lattice hum is stabilizing.',
+          },
+          {
+            beaconId: 'prism_second',
+            trigger: 'onCrystalCollected',
+            crystalIndex: 2,
+            speaker: 'Lattice Custodian Mira',
+            line: 'Two down. One more resonance knot and we can seal the breach.',
+          },
+          {
+            beaconId: 'prism_third',
+            trigger: 'onCrystalCollected',
+            crystalIndex: 3,
+            speaker: 'Lattice Custodian Mira',
+            line: 'All prisms accounted for. Extraction channel is open.',
+          },
+        ],
+        signatureCardId: 'mana_prism',
+        rewardCards: ['mana_prism', 'harvesting_scythe'],
         client: {
           name: 'Lysa',
           briefing:
@@ -155,6 +305,8 @@ const QUEST_DEFS = {
         layoutProfile: 'open',
         layoutMode: 'rigid',
         unlockRequires: { questId: 'crystal_rescue', tier: 1 },
+        signatureCardId: 'mana_prism',
+        rewardCards: ['mana_prism', 'harvesting_scythe'],
         client: {
           name: 'Lysa',
           briefing:
@@ -275,11 +427,55 @@ const QUEST_DEFS = {
     tiers: {
       1: {
         name: 'Frost Crossing',
-        description: 'Cross the frozen cavern and purge hostiles from the ice field.',
+        description: 'Cross the frozen cavern and purge scripted waves from the ice field.',
+        clientNpc: 'Ice-Watch Courier Sela',
+        briefing:
+          'The ice band is slick with rimecast ambushes. '
+          + 'Cross the ramps, clear the thrower waves, and bring down Rimecast the Slow.',
         objectiveType: 'defeat_enemies',
-        enemyCount: 6,
         rewardCurrency: 14,
+        rewardCardId: 'frost_nova',
         layoutProfile: 'ice-cavern',
+        scriptedEncounters: {
+          rooms: [
+            {
+              roomIndex: 0,
+              waves: [{ spawns: [{ type: 'grunt', count: 2 }] }],
+            },
+            {
+              band: 'ice',
+              waves: [
+                { spawns: [{ type: 'glacial_thrower', count: 1 }, { type: 'grunt', count: 2 }] },
+                {
+                  spawns: [
+                    {
+                      type: 'glacial_thrower',
+                      count: 1,
+                      namedRare: {
+                        id: 'frost_rimecast',
+                        displayName: 'Rimecast the Slow',
+                        variantId: 'frenzied',
+                        enemyType: 'glacial_thrower',
+                      },
+                    },
+                    { type: 'skirmisher', count: 1 },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        dialogueBeacons: [
+          {
+            beaconId: 'frost_ice_band_enter',
+            trigger: 'onRoomEntered',
+            band: 'ice',
+            speaker: 'Ice-Watch Courier Sela',
+            line: 'You are on the ice band — watch your footing and clear the throwers.',
+          },
+        ],
+        signatureCardId: 'ice_ball',
+        rewardCards: ['ice_ball', 'frost_nova', 'permafrost_lance'],
         client: {
           name: 'Cairn',
           briefing:
@@ -382,6 +578,8 @@ const QUEST_DEFS = {
         enemyCount: 6,
         rewardCurrency: 14,
         layoutProfile: 'fire-cavern',
+        signatureCardId: 'fireball',
+        rewardCards: ['fireball', 'dragons_breath'],
         client: {
           name: 'Ashvelle',
           briefing:
@@ -416,6 +614,8 @@ const QUEST_DEFS = {
         enemyCount: 6,
         rewardCurrency: 16,
         layoutProfile: 'spire-ascent',
+        signatureCardId: 'gravity_well',
+        rewardCards: ['gravity_well'],
         client: {
           name: 'Sela',
           briefing:
@@ -441,6 +641,8 @@ const QUEST_DEFS = {
         layoutProfile: 'spire-ascent',
         layoutMode: 'rigid',
         unlockRequires: { questId: 'spire_ascent', tier: 1 },
+        signatureCardId: 'gravity_well',
+        rewardCards: ['gravity_well'],
         encounter: {
           bossType: 'spire_warden',
           landmark: 'spire_summit',
@@ -463,6 +665,50 @@ const QUEST_DEFS = {
           {
             trigger: 'objective_complete',
             text: 'Summit warden defeated. Ascent logged — sixteen stones released.',
+          },
+        ],
+      },
+    },
+  },
+  annex_escort: {
+    id: 'annex_escort',
+    enemyPool: [
+      { type: 'grunt', weight: 2 },
+      { type: 'skirmisher', weight: 1 },
+    ],
+    tiers: {
+      1: {
+        name: 'Annex Evacuation',
+        description: 'Escort the archivist to the annex treasure vault through ambush lanes.',
+        clientNpc: 'Annex Liaison Kade',
+        briefing:
+          'Archivist Vale carries the annex registry codes. '
+          + 'Escort them to the treasure vault and clear every ambush wave along the route.',
+        objectiveType: 'escort',
+        escortNpc: { name: 'Archivist Vale', maxHp: 70 },
+        escortDestination: { roomRole: 'treasure' },
+        rewardCurrency: 14,
+        rewardCardId: 'echo_blade',
+        layoutProfile: 'crowded',
+        scriptedEncounters: {
+          rooms: [
+            {
+              roomIndex: 0,
+              waves: [{ spawns: [{ type: 'grunt', count: 2 }] }],
+            },
+            {
+              roomIndex: 1,
+              waves: [{ spawns: [{ type: 'skirmisher', count: 2 }] }],
+            },
+          ],
+        },
+        dialogueBeacons: [
+          {
+            beaconId: 'escort_start',
+            trigger: 'onRoomEntered',
+            roomIndex: 0,
+            speaker: 'Annex Liaison Kade',
+            line: 'Vale is on channel. Keep them alive and reach the vault.',
           },
         ],
       },
@@ -508,6 +754,7 @@ const QUEST_DEFS = {
 };
 
 const { THEME } = require('./theme');
+const CARD_DEFS = require('../shared/cardDefs.json');
 
 const DEFAULT_QUEST_ID = 'training_caverns';
 const DEFAULT_QUEST_TIER = 1;
@@ -549,12 +796,15 @@ function getQuest(questId, tier) {
   if (!tierDef) {
     return null;
   }
+  const signatureCardId = getSignatureCardId(questId, normalizedTier);
   return {
     id: questId,
     questId,
     tier: normalizedTier,
     ...tierDef,
     dialogue: tierDef.dialogue ?? [],
+    signatureCardId,
+    signatureCardName: signatureCardId ? CARD_DEFS[signatureCardId]?.name ?? null : null,
   };
 }
 
@@ -564,7 +814,16 @@ function getDefaultQuestId() {
 
 function listQuests() {
   return Object.keys(QUEST_DEFS)
-    .map((questId) => getQuest(questId, DEFAULT_QUEST_TIER))
+    .map((questId) => {
+      const resolved = getQuest(questId, DEFAULT_QUEST_TIER);
+      if (!resolved) return null;
+      return {
+        ...resolved,
+        objectiveSummary: formatObjectiveSummary(resolved),
+        rewardSummary: formatRewardSummary(resolved),
+        ...questBriefingFields(resolved),
+      };
+    })
     .filter(Boolean);
 }
 
@@ -573,9 +832,18 @@ function formatObjectiveSummary(quest) {
     return '';
   }
   if (quest.objectiveType === 'collect_items') {
-    return `Recover ${quest.itemCount ?? 0} prisms`;
+    const itemCount = quest.itemCount ?? 0;
+    const guardCount = countScriptedEnemiesInQuest(quest);
+    if (guardCount > 0) {
+      return `Recover ${itemCount} prisms and clear ${guardCount} guards`;
+    }
+    return `Recover ${itemCount} prisms`;
   }
   if (quest.objectiveType === 'defeat_enemies') {
+    const scriptedCount = countScriptedEnemiesInQuest(quest);
+    if (scriptedCount > 0) {
+      return `Clear ${scriptedCount} scripted hostiles`;
+    }
     return `Neutralize ${quest.enemyCount ?? 0} hostiles`;
   }
   if (quest.objectiveType === 'survive') {
@@ -616,6 +884,13 @@ function formatObjectiveSummary(quest) {
       ? THEME.objectives.defeatAnnexOverseer
       : THEME.objectives.defeatTrialWarden;
   }
+  if (quest.objectiveType === 'escort') {
+    const npc = quest.escortNpc?.name || 'VIP';
+    const dest = quest.escortDestination?.landmark
+      || quest.escortDestination?.roomRole
+      || 'extraction';
+    return `Escort ${npc} to ${String(dest).replace(/_/g, ' ')}`;
+  }
   return quest.description || '';
 }
 
@@ -626,11 +901,229 @@ function getEncounterConfig(quest) {
   return quest.encounter;
 }
 
+/** Test/debug fixture quest def — not registered in QUEST_DEFS. */
+const ESCORT_OBJECTIVE_FIXTURE_DEF = {
+  id: 'escort_objective_fixture',
+  enemyPool: [{ type: 'grunt', weight: 1 }],
+  tiers: {
+    1: {
+      name: 'Escort Objective Fixture',
+      description: 'Test-only escort objective with scripted ambush waves.',
+      clientNpc: 'Extraction Handler',
+      briefing: 'Escort the archivist to the arena dais while clearing ambush waves.',
+      objectiveType: 'escort',
+      escortNpc: { name: 'Archivist Vale', maxHp: 60 },
+      escortDestination: { landmark: 'arena_dais' },
+      rewardCurrency: 1,
+      layoutProfile: 'open-plaza',
+      scriptedEncounters: {
+        rooms: [
+          {
+            roomIndex: 0,
+            waves: [
+              { spawns: [{ type: 'grunt', count: 1 }] },
+            ],
+          },
+        ],
+      },
+    },
+  },
+};
+
+/** Test/debug fixture quest def — not registered in QUEST_DEFS. */
+const SCRIPTED_ENCOUNTER_FIXTURE_DEF = {
+  id: 'scripted_encounter_fixture',
+  enemyPool: [{ type: 'grunt', weight: 1 }],
+  tiers: {
+    1: {
+      name: 'Scripted Encounter Fixture',
+      description: 'Test-only scripted wave sequencing.',
+      clientNpc: 'Test Handler',
+      briefing: 'Fixture contract for scripted wave and dialogue beacon QA.',
+      objectiveType: 'defeat_enemies',
+      rewardCurrency: 1,
+      layoutProfile: 'crowded',
+      scriptedEncounters: {
+        rooms: [
+          {
+            roomIndex: 0,
+            waves: [
+              { spawns: [{ type: 'grunt', count: 2 }] },
+              { spawns: [{ type: 'skirmisher', count: 1 }] },
+            ],
+          },
+        ],
+      },
+      dialogueBeacons: [
+        {
+          beaconId: 'fixture_wave0_clear',
+          trigger: 'onWaveCleared',
+          roomIndex: 0,
+          waveIndex: 0,
+          speaker: 'Test Handler',
+          line: 'Wave zero cleared — advance to the next group.',
+        },
+      ],
+    },
+  },
+};
+
+function getScriptedEncounterConfig(quest) {
+  if (!quest || !quest.scriptedEncounters || typeof quest.scriptedEncounters !== 'object') {
+    return null;
+  }
+  const rooms = quest.scriptedEncounters.rooms;
+  if (!Array.isArray(rooms) || rooms.length === 0) {
+    return null;
+  }
+  return quest.scriptedEncounters;
+}
+
+function countScriptedEnemiesInQuest(quest) {
+  const config = getScriptedEncounterConfig(quest);
+  if (!config) return 0;
+  let total = 0;
+  for (const roomDef of config.rooms) {
+    if (!Array.isArray(roomDef.waves)) continue;
+    for (const wave of roomDef.waves) {
+      if (!Array.isArray(wave.spawns)) continue;
+      for (const spawn of wave.spawns) {
+        const count = Number.isFinite(spawn?.count) ? spawn.count : 1;
+        total += Math.max(1, Math.floor(count));
+      }
+    }
+  }
+  return total;
+}
+
+function normalizeQuestScriptSpawn(spawn) {
+  if (!spawn || typeof spawn !== 'object') {
+    return null;
+  }
+  if (typeof spawn.type !== 'string' || !spawn.type) {
+    return null;
+  }
+  if (!Number.isFinite(spawn.x) || !Number.isFinite(spawn.z)) {
+    return null;
+  }
+  return { type: spawn.type, x: spawn.x, z: spawn.z };
+}
+
+function normalizeQuestScriptWave(wave) {
+  if (!wave || typeof wave !== 'object') {
+    return null;
+  }
+  if (typeof wave.id !== 'string' || !wave.id) {
+    return null;
+  }
+  if (!Array.isArray(wave.spawns)) {
+    return null;
+  }
+  const spawns = wave.spawns
+    .map(normalizeQuestScriptSpawn)
+    .filter(Boolean);
+  const normalized = {
+    id: wave.id,
+    trigger: wave.trigger,
+    spawns,
+  };
+  if (wave.room != null && typeof wave.room === 'object') {
+    normalized.room = wave.room;
+  }
+  return normalized;
+}
+
+/**
+ * Returns normalized `script.waves` for a quest tier, or `null` when absent.
+ * @param {ReturnType<typeof getQuest> | null | undefined} quest
+ * @returns {QuestScript | null}
+ */
+function getQuestScript(quest) {
+  if (!quest || !quest.script || typeof quest.script !== 'object') {
+    return null;
+  }
+  if (!Array.isArray(quest.script.waves) || quest.script.waves.length === 0) {
+    return null;
+  }
+  const waves = quest.script.waves
+    .map(normalizeQuestScriptWave)
+    .filter(Boolean);
+  if (waves.length === 0) {
+    return null;
+  }
+  return { waves };
+}
+
+/**
+ * Sums authored spawn entries across all scripted waves (objective total).
+ * @param {QuestScript | null | undefined} script
+ * @returns {number}
+ */
+function countScriptedEnemies(script) {
+  if (!script || !Array.isArray(script.waves)) {
+    return 0;
+  }
+  return script.waves.reduce(
+    (sum, wave) => sum + (Array.isArray(wave.spawns) ? wave.spawns.length : 0),
+    0,
+  );
+}
+
 function formatRewardSummary(quest) {
-  if (!quest || quest.rewardCurrency == null) {
+  if (!quest) {
     return 'Reward: —';
   }
-  return `Reward: ${quest.rewardCurrency} stones`;
+
+  const rewardCardName = typeof quest.rewardCardId === 'string' && CARD_DEFS[quest.rewardCardId]
+    ? CARD_DEFS[quest.rewardCardId].name
+    : null;
+  const signatureCardName = !rewardCardName
+    ? (quest.signatureCardName
+      ?? (quest.signatureCardId ? CARD_DEFS[quest.signatureCardId]?.name ?? null : null))
+    : null;
+  const cardName = rewardCardName || signatureCardName;
+
+  if (rewardCardName && quest.rewardCurrency != null) {
+    return `Reward: ${rewardCardName} + ${quest.rewardCurrency} stones`;
+  }
+  if (quest.rewardCurrency != null && cardName) {
+    return `Reward: ${quest.rewardCurrency} stones + ${cardName}`;
+  }
+  if (quest.rewardCurrency != null) {
+    return `Reward: ${quest.rewardCurrency} stones`;
+  }
+  if (cardName) {
+    return `Reward: ${cardName}`;
+  }
+  return 'Reward: —';
+}
+
+function formatBriefingSummary(quest) {
+  if (!quest) return '';
+  const body = typeof quest.briefing === 'string' ? quest.briefing.trim() : '';
+  if (!body) return quest.description || '';
+  const npc = typeof quest.clientNpc === 'string' ? quest.clientNpc.trim() : '';
+  if (npc) return `${npc}: ${body}`;
+  return body;
+}
+
+function formatBriefingRewardLine(quest) {
+  if (!quest) return formatRewardSummary(quest);
+  if (typeof quest.briefingRewardLine === 'string' && quest.briefingRewardLine.trim()) {
+    return quest.briefingRewardLine.trim();
+  }
+  return formatRewardSummary(quest);
+}
+
+function questBriefingFields(quest) {
+  if (!quest) return {};
+  return {
+    clientNpc: quest.clientNpc || null,
+    briefing: quest.briefing || null,
+    briefingSummary: formatBriefingSummary(quest),
+    briefingRewardLine: quest.briefingRewardLine || null,
+    briefingRewardText: formatBriefingRewardLine(quest),
+  };
 }
 
 function listQuestVariants() {
@@ -660,6 +1153,7 @@ function listQuestVariants() {
         ...(resolved.client ? { client: resolved.client } : {}),
         ...(resolved.rewardSignatureCard ? { rewardSignatureCard: resolved.rewardSignatureCard } : {}),
         dialogue: resolved.dialogue ?? [],
+        ...questBriefingFields(resolved),
       });
     }
   }
@@ -736,6 +1230,46 @@ function getGuaranteedEnemyType(questId) {
   return def && typeof def.guaranteedEnemyType === 'string' ? def.guaranteedEnemyType : null;
 }
 
+// Returns the tier's signature reward card id (the card always offered as the
+// first post-victory choice), falling back to the first entry of the tier's
+// rewardCards pool. Unknown quests/tiers and quests without either field return
+// null — no signature card is injected for them.
+function getSignatureCardId(questId, tier) {
+  const tierDef = isValidQuestId(questId)
+    ? getQuestTierDef(questId, normalizeQuestTier(tier))
+    : null;
+  if (!tierDef) {
+    return null;
+  }
+  if (typeof tierDef.signatureCardId === 'string') {
+    return tierDef.signatureCardId;
+  }
+  if (Array.isArray(tierDef.rewardCards) && tierDef.rewardCards.length > 0) {
+    return tierDef.rewardCards[0];
+  }
+  return null;
+}
+
+// Returns the tier's reward card pool for the empty-choices victory fallback,
+// falling back to [signatureCardId] when only that is set. Unknown quests/tiers
+// and quests without either field return null so callers use the global
+// VICTORY_REWARD_ROTATION.
+function getQuestRewardCards(questId, tier) {
+  const tierDef = isValidQuestId(questId)
+    ? getQuestTierDef(questId, normalizeQuestTier(tier))
+    : null;
+  if (!tierDef) {
+    return null;
+  }
+  if (Array.isArray(tierDef.rewardCards) && tierDef.rewardCards.length > 0) {
+    return tierDef.rewardCards;
+  }
+  if (typeof tierDef.signatureCardId === 'string') {
+    return [tierDef.signatureCardId];
+  }
+  return null;
+}
+
 // Draws an enemy `type` from a `[{ type, weight }]` pool in proportion to the
 // weights. Deterministic for a given `rng` (defaults to Math.random).
 function pickWeightedEnemyType(pool, rng = Math.random) {
@@ -751,6 +1285,8 @@ function pickWeightedEnemyType(pool, rng = Math.random) {
 
 module.exports = {
   QUEST_DEFS,
+  SCRIPTED_ENCOUNTER_FIXTURE_DEF,
+  ESCORT_OBJECTIVE_FIXTURE_DEF,
   DEFAULT_QUEST_ID,
   DEFAULT_QUEST_TIER,
   isValidQuestId,
@@ -767,8 +1303,17 @@ module.exports = {
   buildQuestUpdatePayload,
   formatObjectiveSummary,
   formatRewardSummary,
+  formatBriefingSummary,
+  formatBriefingRewardLine,
+  questBriefingFields,
   getEncounterConfig,
+  getScriptedEncounterConfig,
+  countScriptedEnemiesInQuest,
+  getQuestScript,
+  countScriptedEnemies,
   getEnemyPool,
   getGuaranteedEnemyType,
+  getSignatureCardId,
+  getQuestRewardCards,
   pickWeightedEnemyType,
 };
