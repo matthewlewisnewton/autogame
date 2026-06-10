@@ -27,7 +27,7 @@ class FakeQueue:
         self.closed = []
         self.requeued = []
 
-    def close(self, tid, reason="done"):
+    def close(self, tid, reason="done", **kw):
         self.closed.append(tid)
 
     def requeue(self, tid, *, note=None):
@@ -238,7 +238,7 @@ class _Repo:
 
 
 class _CloseFailsQueue(FakeQueue):
-    def close(self, tid, reason="done"):
+    def close(self, tid, reason="done", **kw):
         raise RuntimeError("dolt locked")
 
 
@@ -601,3 +601,156 @@ def test_no_fix_wired_keeps_old_reject_behavior():
     mq.enqueue(_handle("t1"))
     mq.drain_one()
     assert q.requeued == ["t1"]
+
+
+# --- Phase A containment: commit gates, quarantine, halt breaker --------- #
+def _mk_repo(tmp_path):
+    """Tiny real repo with main + a conflicting auto/x branch (reuses the
+    conventions of the _default_resolve tests above)."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    r = _RealRepo(repo)
+    r.run_git("init", "-b", "main")
+    r.run_git("config", "user.email", "t@t")
+    r.run_git("config", "user.name", "t")
+    (repo / "shared.txt").write_text("base\n")
+    (repo / "other.txt").write_text("other\n")
+    r.run_git("add", "-A")
+    r.run_git("commit", "-m", "base")
+    r.run_git("checkout", "-b", "auto/x")
+    (repo / "shared.txt").write_text("branch side\n")
+    r.run_git("add", "-A")
+    r.run_git("commit", "-m", "branch change")
+    r.run_git("checkout", "main")
+    (repo / "shared.txt").write_text("main side\n")
+    r.run_git("add", "-A")
+    r.run_git("commit", "-m", "main change")
+    r.run_git("checkout", "auto/x")
+    return repo, r
+
+
+def _start_conflicted_merge(r):
+    import subprocess as sp
+    try:
+        r.run_git("merge", "--no-edit", "main")
+    except sp.CalledProcessError:
+        pass  # expected conflict on shared.txt
+
+
+def test_stage_resolution_accepts_conflict_set_only(tmp_path):
+    from harness.dispatch.merge_queue import _stage_resolution
+    repo, r = _mk_repo(tmp_path)
+    _start_conflicted_merge(r)
+    (repo / "shared.txt").write_text("both sides\n")          # resolve C
+    (repo / ".merge-resolve").mkdir()
+    (repo / ".merge-resolve" / "out.txt").write_text("scratch")  # agent scratch
+    wt = types.SimpleNamespace(root=str(repo), run_git=r.run_git)
+    assert _stage_resolution(wt, ["shared.txt"]) is None
+    # scratch must NOT be staged (the incident that poisoned main)
+    staged = r.run_git("diff", "--cached", "--name-only")
+    assert ".merge-resolve/out.txt" not in staged
+
+
+def test_stage_resolution_rejects_edit_outside_conflict_set(tmp_path):
+    from harness.dispatch.merge_queue import _stage_resolution
+    repo, r = _mk_repo(tmp_path)
+    _start_conflicted_merge(r)
+    (repo / "shared.txt").write_text("both sides\n")
+    (repo / "other.txt").write_text("sneaky edit\n")          # tracked, outside C
+    wt = types.SimpleNamespace(root=str(repo), run_git=r.run_git)
+    err = _stage_resolution(wt, ["shared.txt"])
+    assert err and "other.txt" in err
+
+
+def test_quarantine_moves_untracked_collisions(tmp_path):
+    from harness.dispatch.merge_queue import _quarantine_colliding_untracked
+    repo, r = _mk_repo(tmp_path)
+    # main gains a NEW tracked file; the branch worktree has an untracked one
+    # at the same path (the autogame-mk6a/oumk failure mode)
+    r.run_git("checkout", "main")
+    (repo / "newfile.log").write_text("tracked on main\n")
+    r.run_git("add", "-A")
+    r.run_git("commit", "-m", "main adds newfile")
+    r.run_git("checkout", "auto/x")
+    (repo / "newfile.log").write_text("stale worker artifact\n")
+    wt = types.SimpleNamespace(root=str(repo), run_git=r.run_git)
+    moved = _quarantine_colliding_untracked(wt, "main")
+    assert moved == 1
+    assert not (repo / "newfile.log").exists()
+    quarantined = list((repo / ".merge-quarantine").rglob("newfile.log"))
+    assert len(quarantined) == 1 and quarantined[0].read_text() == "stale worker artifact\n"
+    # and the merge now STARTS where it previously hard-refused: an untracked
+    # collision aborts before MERGE_HEAD exists; a content conflict (fine,
+    # that's the resolver's job) leaves MERGE_HEAD in place.
+    import subprocess as sp
+    try:
+        r.run_git("merge", "--no-edit", "main")
+    except sp.CalledProcessError:
+        pass
+    assert (repo / ".git" / "MERGE_HEAD").exists()
+
+
+def test_stage_fix_scope_and_caps(tmp_path):
+    from harness.dispatch.merge_queue import _stage_fix
+    repo = tmp_path / "fixrepo"
+    (repo / "game").mkdir(parents=True)
+    (repo / "harness").mkdir()
+    r = _RealRepo(repo)
+    r.run_git("init", "-b", "main")
+    r.run_git("config", "user.email", "t@t")
+    r.run_git("config", "user.name", "t")
+    (repo / "game" / "a.js").write_text("a\n")
+    (repo / "harness" / "h.py").write_text("h\n")
+    r.run_git("add", "-A")
+    r.run_git("commit", "-m", "base")
+    wt = types.SimpleNamespace(root=str(repo), run_git=r.run_git)
+    assert _stage_fix(wt) == "fix agent made no changes"
+    (repo / "harness" / "h.py").write_text("hacked\n")
+    err = _stage_fix(wt)
+    assert err and "outside game/" in err
+    r.run_git("checkout", "--", "harness")
+    (repo / "game" / "a.js").write_text("fixed\n")
+    (repo / "game" / "a.test.js").write_text("new test\n")
+    assert _stage_fix(wt) is None
+    staged = r.run_git("diff", "--cached", "--name-only").split()
+    assert "game/a.js" in staged and "game/a.test.js" in staged
+
+
+def test_consecutive_reject_breaker_halts_and_preserves(tmp_path):
+    flag = tmp_path / "merge_halt.flag"
+    q = FakeQueue()
+    mq = MergeQueue(main_repo=None, queue=q, rebase=lambda h: False,
+                    verify=lambda root: True, merge=lambda h: True,
+                    halt_flag=flag, reject_streak_limit=3)
+    for i in range(3):
+        mq.enqueue(_handle(f"t{i}"), record=False)
+        mq.drain_one()                       # rebase fails, no resolver → reject
+    assert flag.exists() and "3 consecutive rejects" in flag.read_text()
+    assert q.requeued == ["t0", "t1", "t2"]
+    h4 = _handle("t4")
+    mq.enqueue(h4, record=False)
+    assert mq.drain_one() is False           # halted: not popped
+    assert mq.pending() == 1
+    assert not h4.worktree.removed           # passed work preserved
+    # operator clears the flag → resumes; a success resets the streak
+    flag.unlink()
+    ok = MergeQueue(main_repo=None, queue=q, rebase=lambda h: True,
+                    verify=lambda root: True, merge=lambda h: True,
+                    halt_flag=flag, reject_streak_limit=3)
+    assert ok._reject_streak == 3            # persisted across instances
+    ok.enqueue(_handle("t5"), record=False)
+    ok.drain_one()
+    assert ok._reject_streak == 0
+
+
+def test_close_merged_uses_force(tmp_path):
+    forced = []
+    class StrictQueue(FakeQueue):
+        def close(self, tid, reason="done", **kw):
+            forced.append(kw.get("force", False))
+            super().close(tid, reason)
+    q = StrictQueue()
+    mq, _ = _mq(q)
+    mq.enqueue(_handle("t1"))
+    mq.drain_one()
+    assert q.closed == ["t1"] and forced == [True]

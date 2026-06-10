@@ -609,6 +609,7 @@ export const ENEMY_GEOMETRY = {
 	miniboss:   { type: 'cone', radius: 1.0, height: 2.2, segments: 12, color: 0x8800cc, emissive: 0x6600aa, emissiveIntensity: 0.3 },
 	annex_overseer: { type: 'cone', radius: 1.1, height: 2.4, segments: 14, color: 0x0d9488, emissive: 0x14b8a6, emissiveIntensity: 0.3 },
 	arena_champion: { type: 'cone', radius: 1.4, height: 3.0, segments: 16, color: 0xffaa00, emissive: 0xcc3300, emissiveIntensity: 0.45 },
+	crucible_sovereign: { type: 'cone', radius: 1.3, height: 2.8, segments: 14, color: 0xd97706, emissive: 0xb45309, emissiveIntensity: 0.42 },
 	spire_warden: { type: 'cone', radius: 1.1, height: 2.4, segments: 12, color: 0x3388cc, emissive: 0x2266aa, emissiveIntensity: 0.3 },
 	cinder_warden: { type: 'cone', radius: 1.2, height: 2.6, segments: 12, color: 0xff5522, emissive: 0xff2200, emissiveIntensity: 0.45 },
 	magma_colossus: { type: 'cone', radius: 1.35, height: 2.9, segments: 14, color: 0xff7711, emissive: 0xff5500, emissiveIntensity: 0.52 },
@@ -617,6 +618,9 @@ export const ENEMY_GEOMETRY = {
 	glacial_thrower: { type: 'cone', radius: 1.0, height: 2.2, segments: 12, color: 0x7dd3fc, emissive: 0x38bdf8, emissiveIntensity: 0.35 },
 	permafrost_warden: { type: 'cone', radius: 1.15, height: 2.5, segments: 14, color: 0x0e7490, emissive: 0x22d3ee, emissiveIntensity: 0.42 },
 	glacial_tyrant: { type: 'cone', radius: 1.3, height: 2.8, segments: 14, color: 0x0c4a6e, emissive: 0x38bdf8, emissiveIntensity: 0.45 },
+	// Largest stage-boss silhouette in the catalog; ice/fire two-tone — deep
+	// ice-blue body with an ember-orange glow for the rift convergence tyrant.
+	riftbound_colossus: { type: 'cone', radius: 1.45, height: 3.2, segments: 16, color: 0x164e63, emissive: 0xf97316, emissiveIntensity: 0.5 },
 	ember_wraith: { type: 'octahedron', radius: 0.35, color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.6 },
 	// Flying types — hovering octahedron bodies (cf. ember_wraith); flying/altitude
 	// arrive per-instance from the server so flyingRenderOffset lifts the body.
@@ -631,6 +635,7 @@ export const ENEMY_ATTACK_VISUAL = {
 	miniboss:   { style: 'cone', coneAngle: Math.PI / 2, range: 5, color: 0xaa44ff, emissive: 0x8800cc },
 	annex_overseer: { style: 'radial', range: 3.5, color: 0x2dd4bf, emissive: 0x0d9488 },
 	arena_champion: { style: 'cone', coneAngle: (2 * Math.PI) / 3, range: 6.5, color: 0xffcc44, emissive: 0xcc3300 },
+	crucible_sovereign: { style: 'radial', range: 4.5, color: 0xfbbf24, emissive: 0xd97706 },
 	spire_warden: { style: 'cone', coneAngle: Math.PI / 2, range: 6, color: 0x55aaff, emissive: 0x3388cc },
 	cinder_warden: { style: 'cone', coneAngle: (2 * Math.PI) / 3, range: 5.5, color: 0xff7733, emissive: 0xff2200 },
 	magma_colossus: { style: 'radial', range: 5, color: 0xffaa33, emissive: 0xff5500 },
@@ -639,6 +644,8 @@ export const ENEMY_ATTACK_VISUAL = {
 	glacial_thrower: { style: 'projectile', range: 7, color: 0x7dd3fc, emissive: 0x38bdf8, hitWidth: 0.9 },
 	permafrost_warden: { style: 'radial', range: 4.5, color: 0x67e8f9, emissive: 0x0891b2 },
 	glacial_tyrant: { style: 'projectile', range: 9, color: 0x7dd3fc, emissive: 0x0ea5e9, hitWidth: 1.2 },
+	// Riftbound Colossus: igniting rift shockwave telegraphed as an ember-orange radial ring (server attackStyle 'radial', range 5.5).
+	riftbound_colossus: { style: 'radial', range: 5.5, color: 0xfb923c, emissive: 0xea580c },
 	ember_wraith: { style: 'cone', coneAngle: Math.PI / 3, color: 0xff4400, emissive: 0xff2200 },
 	// Void Seraph: spherical void burst telegraphed as a radial ring (server attackStyle 'radial').
 	void_seraph: { style: 'radial', range: 4.5, color: 0xa855f7, emissive: 0x7c3aed },

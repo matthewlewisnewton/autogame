@@ -51,6 +51,37 @@ const EMBER_DESCENT_TIER_2 = 2;
 const FROST_CROSSING_ID = 'frost_crossing';
 const FROST_CROSSING_TIER_1 = 1;
 
+describe('debugScenario — retired fixture shortcuts', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('rejects boss-level-dormant (fixture-only shortcut retired)', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const resultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'boss-level-dormant' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(false);
+		expect(result.reason).toMatch(/Unknown debug scenario: boss-level-dormant/);
+	});
+});
+
 describe('debugScenario — key-item-cooldown', () => {
 	let baseUrl;
 	let prevAllowDebug;
@@ -379,6 +410,18 @@ describe('debugScenario — arena-trials harness combat shortcuts', () => {
 
 		const state = testGameState();
 		const bossId = state.run.encounter.bossEnemyId;
+		// Open-plaza is a single room that spawns the player at its centre, within
+		// ENCOUNTER_TRIGGER_RADIUS of the central dais boss anchor. Clear the adds only AFTER
+		// moving the player out of the trigger so the live game loop's updateEncounterTriggers
+		// cannot auto-activate the dormant encounter in the window before the boss-approach
+		// scenario runs. This mirrors real play (adds are cleared out in the plaza, not while
+		// standing on the dais); the scenario then repositions to just outside the trigger.
+		const preClearPlayer = playerForSocket(socket);
+		const preClearDais = state.layout.landmarks.find((lm) => lm.type === 'arena_dais');
+		const preClearAnchor = resolveEncounterAnchor(state.run, state)
+			|| (preClearDais ? { x: preClearDais.x, z: preClearDais.z } : { x: preClearPlayer.x, z: preClearPlayer.z });
+		preClearPlayer.x = preClearAnchor.x + ENCOUNTER_TRIGGER_RADIUS + 12;
+		preClearPlayer.z = preClearAnchor.z;
 		for (const enemy of state.enemies) {
 			if (enemy.id !== bossId) enemy.hp = 0;
 		}
@@ -1260,10 +1303,23 @@ describe('debugScenario — arena-trials-*', () => {
 
 		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'arena-trials-tier-2' });
-		await tier2Promise;
+		const tier2Result = await tier2Promise;
+		expect(tier2Result.ok).toBe(true);
 
-		const state = testGameState();
+		const state = lobbyStateForSocket(socket);
 		const bossId = state.run.encounter.bossEnemyId;
+		// Open-plaza is a single room that spawns the player at its centre, within
+		// ENCOUNTER_TRIGGER_RADIUS of the central dais boss anchor. Clear the adds only AFTER
+		// moving the player out of the trigger so the live game loop's updateEncounterTriggers
+		// cannot auto-activate the dormant encounter in the window before the boss-approach
+		// scenario runs. This mirrors real play (adds are cleared out in the plaza, not while
+		// standing on the dais); the scenario then repositions to just outside the trigger.
+		const preClearPlayer = playerForSocket(socket);
+		const preClearDais = state.layout.landmarks.find((lm) => lm.type === 'arena_dais');
+		const preClearAnchor = resolveEncounterAnchor(state.run, state)
+			|| (preClearDais ? { x: preClearDais.x, z: preClearDais.z } : { x: preClearPlayer.x, z: preClearPlayer.z });
+		preClearPlayer.x = preClearAnchor.x + ENCOUNTER_TRIGGER_RADIUS + 12;
+		preClearPlayer.z = preClearAnchor.z;
 		clearNonBossEnemies(state, bossId);
 
 		const approachPromise = waitForEvent(socket, 'debugScenarioResult');
@@ -1367,6 +1423,25 @@ describe('debugScenario — spire-ascent-tier-2', () => {
 		} else {
 			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
 		}
+	});
+
+	it('spire-ascent-telepipe-ready deploys Tier 2 with telepipe in hand', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
+		socket.emit('debugScenario', { name: 'spire-ascent-telepipe-ready' });
+		const result = await debugResultPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('spire-ascent-telepipe-ready');
+		expect(stateUpdate.gamePhase).toBe('playing');
+		expect(stateUpdate.selectedQuestId).toBe(SPIRE_ASCENT_ID);
+		expect(stateUpdate.selectedQuestTier).toBe(SPIRE_ASCENT_TIER_2);
+
+		const player = playerForSocket(socket);
+		expect(player.hand.some((card) => card && card.id === 'telepipe')).toBe(true);
 	});
 
 	it('deploys spire_ascent Tier 2 stage-boss run with encounter and rigid layout', async () => {
@@ -1548,15 +1623,17 @@ describe('debugScenario — spire-ascent-tier-2 harness shortcuts', () => {
 
 		expect(player.hand[0]?.type).toBe('weapon');
 		expect(player.hand[0]?.remainingCharges).toBeGreaterThan(0);
+		const spireHarnessAddTypes = new Set(['grunt', 'skirmisher', 'miniboss', 'spawner']);
 		expect(
 			state.enemies.filter(
-				(e) => e.hp > 0 && e.type !== 'spire_warden',
+				(e) => e.hp > 0 && e.type !== 'spire_warden' && spireHarnessAddTypes.has(e.type),
 			).every((e) => e.hp === 1 && !e.shieldHp),
 		).toBe(true);
 
-		let nearest = addsBefore[0];
+		const harnessAddsBefore = addsBefore.filter((e) => spireHarnessAddTypes.has(e.type));
+		let nearest = harnessAddsBefore[0] ?? addsBefore[0];
 		let bestDist = Infinity;
-		for (const add of addsBefore) {
+		for (const add of harnessAddsBefore.length > 0 ? harnessAddsBefore : addsBefore) {
 			const dist = Math.hypot(add.x - player.x, add.z - player.z);
 			if (dist < bestDist) {
 				bestDist = dist;
@@ -1600,6 +1677,46 @@ describe('debugScenario — spire-ascent-tier-2 harness shortcuts', () => {
 		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
 		const distAfterTicks = Math.hypot(anchor.x - player.x, anchor.z - player.z);
 		expect(distAfterTicks).toBeGreaterThan(ENCOUNTER_TRIGGER_RADIUS);
+	});
+
+	it('activates Summit Warden and spawns a visual add after boss approach', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'spire-ascent-tier-2' });
+		await tier2Promise;
+
+		const state = testGameState();
+		const bossId = state.run.encounter.bossEnemyId;
+		for (const enemy of state.enemies) {
+			if (enemy.id !== bossId) enemy.hp = 0;
+		}
+		state.enemies = state.enemies.filter((e) => e.hp > 0);
+
+		const approachPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'spire-ascent-boss-approach' });
+		await approachPromise;
+
+		const triggerPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('debugScenario', { name: 'spire-ascent-encounter-trigger' });
+		const triggerResult = await triggerPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(triggerResult.ok).toBe(true);
+		expect(triggerResult.scenario).toBe('spire-ascent-encounter-trigger');
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
+		expect(state.run.encounter.locked).toBe(true);
+
+		const boss = state.enemies.find((e) => e.id === bossId);
+		expect(boss?.type).toBe('spire_warden');
+		const liveAdds = state.enemies.filter(
+			(e) => e.hp > 0 && e.id !== bossId && e.type !== 'spire_warden',
+		);
+		expect(liveAdds.length).toBeGreaterThanOrEqual(1);
+		expect(liveAdds.some((e) => e.type === 'grunt')).toBe(true);
+		expect(stateUpdate.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
+		expect(stateUpdate.run.encounter.locked).toBe(true);
 	});
 
 	it('positions spire_warden at 1 HP beside the player in playing phase', async () => {

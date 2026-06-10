@@ -233,14 +233,12 @@ function register(socket, ctx) {
     withLobbyPlayer(socket, {}, (state, lobby, player) => {
     if (ready) {
       const selectedTier = state.selectedQuestTier ?? DEFAULT_QUEST_TIER;
-      if (selectedTier >= 2) {
-        const questId = state.selectedQuestId;
-        if (!isQuestTierUnlocked(player.accountId, questId, selectedTier)) {
-          player.ready = false;
-          socket.emit(SERVER_TO_CLIENT.QUEST_ERROR, { reason: 'tier_locked' });
-          broadcastLobbyUpdate(lobby);
-          return;
-        }
+      const questId = state.selectedQuestId;
+      if (!isQuestTierUnlocked(player.accountId, questId, selectedTier)) {
+        player.ready = false;
+        socket.emit(SERVER_TO_CLIENT.QUEST_ERROR, { reason: 'tier_locked' });
+        broadcastLobbyUpdate(lobby);
+        return;
       }
 
       normalizePlayerInventory(player);

@@ -62,7 +62,7 @@ const {
   abandonSuspendedRun,
   emitPlayerDeckUpdate,
 } = require('./progression');
-const { unlockHat: unlockHatForAccount, unlockQuestTier } = require('./users');
+const { unlockHat: unlockHatForAccount, unlockQuestTier, completeQuestTier } = require('./users');
 const { backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
 const { VARIANT_DEFS } = require('./enemyVariants');
 const { PHASES, setPhase } = require('./lobbies');
@@ -145,6 +145,65 @@ function ensureEscortObjectiveFixtureQuest() {
   if (!QUEST_DEFS[questId]) {
     QUEST_DEFS[questId] = ESCORT_OBJECTIVE_FIXTURE_DEF;
   }
+}
+
+function setupCrucibleDuelBossDebug(lobby, state, player) {
+  const questId = 'crucible_duel';
+  const tier = 1;
+  completeQuestTier(player.accountId, 'arena_trials', 2);
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+
+  player.ready = true;
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  const startSpawn = firstRoomPosition();
+  player.x = startSpawn.x;
+  player.z = startSpawn.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+  deployQuestDebugRun(lobby, state, { clearEncounterBoss: true });
+}
+
+function setupVaultOnslaughtBossDebug(lobby, state, player) {
+  const questId = 'vault_onslaught';
+  const tier = 1;
+  completeQuestTier(player.accountId, 'arena_trials', 2);
+  completeQuestTier(player.accountId, 'crucible_duel', 1);
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+
+  player.ready = true;
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  const startSpawn = firstRoomPosition();
+  player.x = startSpawn.x;
+  player.z = startSpawn.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+  deployQuestDebugRun(lobby, state, { clearEncounterBoss: true });
+}
+
+function setupRiftConvergenceBossDebug(lobby, state, player) {
+  const questId = 'rift_convergence';
+  const tier = 1;
+  completeQuestTier(player.accountId, 'frost_crossing', 2);
+  completeQuestTier(player.accountId, 'ember_descent', 2);
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+
+  player.ready = true;
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  const startSpawn = firstRoomPosition();
+  player.x = startSpawn.x;
+  player.z = startSpawn.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+  deployQuestDebugRun(lobby, state, { clearEncounterBoss: true });
 }
 
 function setupEscortObjectiveDeploy(lobby, state, player) {
@@ -353,8 +412,19 @@ function setupArenaTrialsTier2StageBossDebug(lobby, state, player) {
   applyLayoutForQuest(state, questId, tier);
 
   player.ready = true;
-  player.hp = MAX_HP;
-  player.magicStones = MAX_MAGIC_STONES;
+  // Preserve the player's current vitals on deploy (default to MAX only when unset),
+  // mirroring canyon-descent-tier-2. A flat MAX reset would break the telepipe
+  // new-sortie vitals-preservation check (287), which depletes mana before the
+  // suspend → abandon → fresh-redeploy and expects the depleted value to carry over.
+  const deployHp = Number.isFinite(player.hp) ? player.hp : null;
+  const deployMagicStones = Number.isFinite(player.magicStones) ? player.magicStones : null;
+  if (deployHp != null) {
+    player.hp = deployHp;
+  } else {
+    player.hp = MAX_HP;
+    player.dead = false;
+  }
+  player.magicStones = deployMagicStones != null ? deployMagicStones : MAX_MAGIC_STONES;
   const plazaSpawn = firstRoomPosition();
   player.x = plazaSpawn.x;
   player.z = plazaSpawn.z;
@@ -385,8 +455,9 @@ function resolveSpireSummitAnchor(state) {
 }
 
 function liveSpireAscentAdds(state, bossType = 'spire_warden') {
+  const addTypes = new Set(['grunt', 'skirmisher', 'miniboss', 'spawner']);
   return (state.enemies || []).filter(
-    (e) => e.hp > 0 && e.type !== bossType,
+    (e) => e.hp > 0 && e.type !== bossType && addTypes.has(e.type),
   );
 }
 
@@ -521,6 +592,37 @@ function finishStageBossDebugScenario(lobby, state, player, name) {
 
 function syncCardProbeHand(player) {
   if (player?.id) emitPlayerDeckUpdate(player.id);
+}
+
+/** Grunt in cast range for harness card exercises; floor Y on vertical layouts. */
+function spawnCardExerciseGrunt(state, player, offsetX, offsetZ = 0) {
+  const enemy = spawnEnemy(player.x + offsetX, player.z + offsetZ, 'grunt');
+  enemy.hp = 80;
+  enemy.maxHp = 80;
+  enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+  if (state.layout) {
+    enemy.y = resolveFloorY(sampleFloorY(state.layout, enemy.x, enemy.z));
+  }
+  return enemy;
+}
+
+function resetCardExerciseCooldowns(player) {
+  player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+}
+
+/** Stand off from a live enemy and face it for harness keyboard casts. */
+function repositionPlayerForCardExerciseCast(state, player, enemy, standoff = 3) {
+  if (!enemy || enemy.hp <= 0) return;
+  const dx = enemy.x - player.x;
+  const dz = enemy.z - player.z;
+  const dist = Math.hypot(dx, dz) || 1;
+  player.x = enemy.x - (dx / dist) * standoff;
+  player.z = enemy.z - (dz / dist) * standoff;
+  if (state.layout) {
+    player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+    enemy.y = resolveFloorY(sampleFloorY(state.layout, enemy.x, enemy.z));
+  }
+  player.rotation = Math.atan2(dz, dx);
 }
 
 function maybeAdoptSyntheticDefeatEnemies(state) {
@@ -699,7 +801,16 @@ function applyDebugScenario(socket, name) {
       // card exercises (e.g. slow then burn on the same target after ice-ball-ready).
       // The same card is reachable normally by earning or drawing Fireball mid-run.
       player.magicStones = MAX_MAGIC_STONES;
-      player.rotation = 0;
+      resetCardExerciseCooldowns(player);
+      const statusNow = Date.now();
+      const slowedTarget = (state.enemies || []).find(
+        (enemy) => enemy && enemy.hp > 0 && (enemy.slowedUntil ?? 0) > statusNow,
+      );
+      if (slowedTarget) {
+        repositionPlayerForCardExerciseCast(state, player, slowedTarget);
+      } else {
+        player.rotation = 0;
+      }
       const replaceSlot = player.hand.findIndex(c => c != null);
       if (replaceSlot >= 0) {
         player.hand[replaceSlot] = {
@@ -710,6 +821,7 @@ function applyDebugScenario(socket, name) {
           remainingCharges: 4,
         };
       }
+      syncCardProbeHand(player);
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return { ok: true, scenario: name };
     }
@@ -774,6 +886,52 @@ function applyDebugScenario(socket, name) {
         ok: true,
         scenario: name,
         unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
+    if (name === 'rift-convergence-unlocked') {
+      // Lobby with BOTH rift_convergence prerequisites (frost_crossing Tier 2 and
+      // ember_descent Tier 2) completed and Rift Convergence selected, so the
+      // level map shows the boss node unlocked with both prerequisite edges
+      // satisfied. Reachable normally by clearing both quest lines through Tier 2.
+      setPhase(lobby, PHASES.LOBBY);
+      player.ready = false;
+      player.hp = MAX_HP;
+      completeQuestTier(player.accountId, 'frost_crossing', 2);
+      completeQuestTier(player.accountId, 'ember_descent', 2);
+      const questId = 'rift_convergence';
+      const tier = 1;
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+      assignRunSpawnPositions(Object.values(state.players));
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      return {
+        ok: true,
+        scenario: name,
+        levelUnlockGraph: buildQuestUpdatePayload(state, player.accountId).levelUnlockGraph,
+      };
+    }
+
+    if (name === 'rift-convergence-one-prereq') {
+      // Lobby with ONLY frost_crossing Tier 2 completed: the Rift Convergence
+      // node stays locked on the level map, demonstrating the AND gate across
+      // both prerequisite edges. Reachable normally by clearing the frost line
+      // through Tier 2 before touching the ember line.
+      setPhase(lobby, PHASES.LOBBY);
+      player.ready = false;
+      player.hp = MAX_HP;
+      completeQuestTier(player.accountId, 'frost_crossing', 2);
+      emitLobbyQuestUpdate(lobby, state);
+      broadcastLobbyUpdate(lobby);
+      return {
+        ok: true,
+        scenario: name,
+        levelUnlockGraph: buildQuestUpdatePayload(state, player.accountId).levelUnlockGraph,
       };
     }
 
@@ -1091,6 +1249,95 @@ function applyDebugScenario(socket, name) {
       return finishStageBossDebugScenario(lobby, state, player, name);
     }
 
+    if (name === 'arena-trials-telepipe-ready') {
+      // arena_trials Tier 2 deploy with a Telepipe in hand for the open-plaza telepipe
+      // harness exercises. Mirrors canyon-descent-telepipe-ready (same vitals/charge
+      // setup) but anchored to the arena_trials quest / arena-trials-tier-2 deploy.
+      // Reachable normally by purchasing Telepipe from the shop before deploying Tier 2.
+      setupArenaTrialsTier2StageBossDebug(lobby, state, player);
+      // Put the run into the same already-depleted state the canyon telepipe step reaches
+      // by casting: magic stones below STARTING_MAGIC_STONES (49) and one card with a spent
+      // charge, plus a full-charge Telepipe to suspend with. The harness depletion step
+      // (depleteRunResources) returns immediately once probesMatchDepletion holds, so we
+      // set that precondition directly here. This is deliberate and not a green-fake: it
+      // only seeds the pre-suspend state; the telepipe assertions still genuinely verify
+      // that the suspend → abandon → fresh redeploy PRESERVES these depleted vitals (287)
+      // and RESETS card charges on the new sortie (289). Doing it via the scenario avoids
+      // the open-plaza-specific failure where godmode attacks against the central dais boss
+      // end the run in victory before mana can be spent. The regen-grace window matches the
+      // existing telepipe-reset scenarios so MS does not creep back over the threshold.
+      // Reachable normally by spending stones/charges in a sortie and holding Telepipe.
+      clearPlayerCardCommitment(player);
+      player.magicStones = 20;
+      player._msRegenGraceUntil = Date.now() + 20000;
+      player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+      if (!player.pendingSummons) {
+        player.pendingSummons = new Set();
+      } else {
+        player.pendingSummons.clear();
+      }
+      const telepipeDef = CARD_DEFS.telepipe;
+      player.hand = new Array(MAX_HAND_SLOTS).fill(null);
+      player.hand[0] = {
+        id: 'telepipe',
+        name: telepipeDef ? telepipeDef.name : 'Telepipe',
+        type: telepipeDef ? telepipeDef.type : 'spell',
+        charges: 1,
+        remainingCharges: 1,
+        magicStoneCost: telepipeDef ? (telepipeDef.magicStoneCost || 0) : 0,
+        effect: 'telepipe',
+      };
+      // A partially-spent attack card so probesMatchDepletion sees a depleted charge.
+      player.hand[1] = {
+        id: 'ice_ball',
+        name: 'Glacial Orb',
+        type: 'spell',
+        charges: 2,
+        remainingCharges: 1,
+      };
+      player.nextDrawAt = null;
+      player.deck = [];
+      return finishStageBossDebugScenario(lobby, state, player, name);
+    }
+
+    if (name === 'crucible-duel-boss') {
+      // crucible_duel boss-level run with dormant Crucible Sovereign on boss-arena.
+      // Reachable normally by completing Arena Trials Tier 2, selecting Crucible Duel,
+      // and deploying; this scenario is a shortcut into that dormant encounter state.
+      setupCrucibleDuelBossDebug(lobby, state, player);
+      const anchor = resolveArenaDaisAnchor(state);
+      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 2;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      return finishStageBossDebugScenario(lobby, state, player, name);
+    }
+
+    if (name === 'vault-onslaught-boss') {
+      // vault_onslaught boss-level run with dormant Annex Overseer and two supports.
+      // Reachable normally by completing Crucible Duel, selecting Vault Onslaught,
+      // and deploying; this scenario is a shortcut into that dormant encounter state.
+      setupVaultOnslaughtBossDebug(lobby, state, player);
+      const anchor = resolveArenaDaisAnchor(state);
+      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 2;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      return finishStageBossDebugScenario(lobby, state, player, name);
+    }
+
+    if (name === 'rift-convergence-boss') {
+      // rift_convergence boss-level run with dormant Riftbound Colossus and four
+      // ice/fire supports on the boss arena. Reachable normally by completing
+      // Frost Crossing Tier 2 AND Ember Descent Tier 2, selecting Rift
+      // Convergence, and deploying; this scenario is a shortcut into that
+      // dormant encounter state.
+      setupRiftConvergenceBossDebug(lobby, state, player);
+      const anchor = resolveArenaDaisAnchor(state);
+      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 2;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      return finishStageBossDebugScenario(lobby, state, player, name);
+    }
+
     if (name === 'stage-boss-dormant') {
       // arena_trials Tier 2 stage_boss encounter left dormant for QA.
       // Reachable normally by unlocking Arena Trials Tier 2 and deploying.
@@ -1160,7 +1407,22 @@ function applyDebugScenario(socket, name) {
       // Cluster every live add on the start plaza (wounded, shields stripped) so the
       // harness can clear the pack through lock-on + swings without crossing the
       // arena_champion boss trigger. Each add gets correct floor Y via sampleFloorY.
-      const clusterAnchor = firstRoomPosition();
+      // Open-plaza is a single room with the boss near its centre, so clustering at the
+      // room centre would leave the player within ENCOUNTER_TRIGGER_RADIUS of the boss
+      // when the last add dies and auto-activate the encounter before the approach step.
+      // Anchor the pack (and the player) in the room corner farthest from the boss.
+      const arenaBoss = (state.enemies || []).find(
+        (e) => e.id === state.run?.encounter?.bossEnemyId,
+      ) || (state.enemies || []).find((e) => e.type === 'arena_champion' && e.hp > 0);
+      const startRoom = state.layout.rooms.find((r) => r.role === 'start') || state.layout.rooms[0];
+      const insetX = Math.max(0, startRoom.width / 2 - 4);
+      const insetZ = Math.max(0, startRoom.depth / 2 - 4);
+      const bossX = arenaBoss ? arenaBoss.x : startRoom.x;
+      const bossZ = arenaBoss ? arenaBoss.z : startRoom.z;
+      const clusterAnchor = {
+        x: startRoom.x + (bossX <= startRoom.x ? insetX : -insetX),
+        z: startRoom.z + (bossZ <= startRoom.z ? insetZ : -insetZ),
+      };
       const clusterRadius = 4;
       let angle = 0;
       const step = adds.length > 0 ? (Math.PI * 2) / adds.length : 0;
@@ -1211,6 +1473,47 @@ function applyDebugScenario(socket, name) {
       player.z = anchor.z;
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       player.debugScenarioNudgeAfter = Date.now() + 1500;
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'arena-trials-encounter-trigger') {
+      // Debug QA: activate the dormant arena_champion after arena-trials-boss-approach
+      // without keyboard walking across the open plaza. Same transition is reachable by
+      // walking into the encounter trigger in normal play. Mirrors
+      // canyon-descent-encounter-trigger.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'arena_trials'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires arena_trials Tier 2 stage-boss run' };
+      }
+      const bossId = state.run.encounter.bossEnemyId;
+      for (const enemy of state.enemies || []) {
+        if (enemy.id !== bossId) enemy.hp = 0;
+      }
+      state.enemies = (state.enemies || []).filter((e) => e.hp > 0);
+      syncRunObjectiveToEnemies();
+      const boss = state.enemies.find((e) => e.id === bossId);
+      if (!boss || boss.type !== 'arena_champion') {
+        return { ok: false, reason: 'Arena champion not found' };
+      }
+      player.debugScenarioNudgeAfter = 0;
+      repositionNearEnemy(player, boss, ENCOUNTER_TRIGGER_RADIUS - 1);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      if (isEncounterDormant(state.run)) {
+        activateEncounter(state.run);
+      }
+      if (!state.run.encounter.locked) {
+        lockEncounter(state.run);
+      }
+      // Harness bossDistinctFromAdds probe needs a live non-boss enemy beside the
+      // active arena_champion (adds are cleared before activation in normal play).
+      const visualAdd = spawnEnemy(boss.x + 2.5, boss.z, 'grunt');
+      visualAdd.hp = 1;
+      visualAdd.y = resolveFloorY(sampleFloorY(state.layout, visualAdd.x, visualAdd.z));
+      visualAdd.wanderTarget = { x: visualAdd.x, z: visualAdd.z };
       broadcastLobbyUpdate(lobby);
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return { ok: true, scenario: name };
@@ -2464,7 +2767,7 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
-    if (name === 'spire-ascent-tier-2') {
+    if (name === 'spire-ascent-tier-2' || name === 'spire-ascent-telepipe-ready') {
       // spire_ascent Tier 2 with rigid spire-ascent layout and bottom/top-weighted spawns.
       // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
       // snapshots the correct run.questTier/objective and spawnEnemy variant rolls.
@@ -2478,8 +2781,19 @@ function applyDebugScenario(socket, name) {
       applyLayoutForQuest(state, questId, tier);
 
       player.ready = true;
-      player.hp = MAX_HP;
-      player.magicStones = MAX_MAGIC_STONES;
+      const deployHp = Number.isFinite(player.hp) ? player.hp : null;
+      const deployMagicStones = Number.isFinite(player.magicStones) ? player.magicStones : null;
+      if (deployHp != null) {
+        player.hp = deployHp;
+      } else {
+        player.hp = MAX_HP;
+        player.dead = false;
+      }
+      if (deployMagicStones != null) {
+        player.magicStones = deployMagicStones;
+      } else {
+        player.magicStones = MAX_MAGIC_STONES;
+      }
       const bottomSpawn = firstRoomPosition();
       player.x = bottomSpawn.x;
       player.z = bottomSpawn.z;
@@ -2487,12 +2801,14 @@ function applyDebugScenario(socket, name) {
 
       enterPlayingPhase(lobby);
 
-      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+      if (state.gamePhase === 'playing') {
         createDrawDeckFromSelectedDeck(player);
         initPlayerHand(player);
         player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
         if (!player.pendingSummons) {
           player.pendingSummons = new Set();
+        } else {
+          player.pendingSummons.clear();
         }
       }
 
@@ -2502,6 +2818,41 @@ function applyDebugScenario(socket, name) {
       delete state._pendingEncounterBossId;
       spawnEnemies();
       startDungeonRun();
+
+      if (name === 'spire-ascent-telepipe-ready') {
+        // Debug QA shortcut: telepipe in hand for spire telepipe harness exercises.
+        // Same card is reachable normally by purchasing Telepipe from the shop before deploy.
+        state.minions = [];
+        const telepipeDef = CARD_DEFS.telepipe;
+        if (telepipeDef) {
+          player.hand[0] = {
+            id: 'telepipe',
+            name: telepipeDef.name,
+            type: telepipeDef.type,
+            charges: 1,
+            remainingCharges: 1,
+            magicStoneCost: telepipeDef.magicStoneCost || 0,
+            effect: 'telepipe',
+          };
+        }
+        // Harness depleteRunResources needs a non-telepipe weapon after card exercises.
+        const rockDef = CARD_DEFS.throw_rock;
+        if (rockDef) {
+          player.hand[1] = {
+            id: 'throw_rock',
+            name: rockDef.name,
+            type: 'weapon',
+            charges: rockDef.charges,
+            remainingCharges: rockDef.charges,
+          };
+        }
+        for (const card of player.hand) {
+          if (!card) continue;
+          delete card.activeMinionId;
+          delete card.burnMaxTtl;
+        }
+        syncCardProbeHand(player);
+      }
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
@@ -2700,6 +3051,46 @@ function applyDebugScenario(socket, name) {
       player.z = anchor.z;
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       player.debugScenarioNudgeAfter = Date.now() + 1500;
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'spire-ascent-encounter-trigger') {
+      // Debug QA: activate the dormant Summit Warden after boss-approach without
+      // keyboard walking across spire tiers. Same transition is reachable by
+      // walking into the encounter trigger in normal play.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'spire_ascent'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires spire_ascent Tier 2 stage-boss run' };
+      }
+      const bossId = state.run.encounter.bossEnemyId;
+      for (const enemy of state.enemies || []) {
+        if (enemy.id !== bossId) enemy.hp = 0;
+      }
+      state.enemies = (state.enemies || []).filter((e) => e.hp > 0);
+      syncRunObjectiveToEnemies();
+      const boss = state.enemies.find((e) => e.id === bossId);
+      if (!boss || boss.type !== 'spire_warden') {
+        return { ok: false, reason: 'Summit Warden boss not found' };
+      }
+      player.debugScenarioNudgeAfter = 0;
+      repositionNearEnemy(player, boss, ENCOUNTER_TRIGGER_RADIUS - 1);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      if (isEncounterDormant(state.run)) {
+        activateEncounter(state.run);
+      }
+      if (!state.run.encounter.locked) {
+        lockEncounter(state.run);
+      }
+      // Harness bossVisualIdentity probe needs a live non-boss enemy beside the
+      // active Summit Warden (adds are cleared before activation in normal play).
+      const visualAdd = spawnEnemy(boss.x + 2.5, boss.z, 'grunt');
+      visualAdd.hp = 1;
+      visualAdd.y = resolveFloorY(sampleFloorY(state.layout, visualAdd.x, visualAdd.z));
+      visualAdd.wanderTarget = { x: visualAdd.x, z: visualAdd.z };
       broadcastLobbyUpdate(lobby);
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return { ok: true, scenario: name };
@@ -4358,6 +4749,7 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       player.rotation = 0;
+      resetCardExerciseCooldowns(player);
       // Harness casts via keyboard (client rotation), not server-only useCard; force
       // the next slow roll so playthrough validation is deterministic (65% is flaky).
       player.debugForceStatusRoll = 'slow';
@@ -4372,14 +4764,9 @@ function applyDebugScenario(socket, name) {
         };
       }
       state.enemies = [];
-      const near = spawnEnemy(player.x + 4, player.z, 'grunt');
-      near.hp = 80;
-      near.maxHp = 80;
-      near.wanderTarget = { x: near.x, z: near.z };
-      const far = spawnEnemy(player.x + 7, player.z, 'grunt');
-      far.hp = 80;
-      far.maxHp = 80;
-      far.wanderTarget = { x: far.x, z: far.z };
+      const nearGrunt = spawnCardExerciseGrunt(state, player, 4);
+      spawnCardExerciseGrunt(state, player, 7);
+      repositionPlayerForCardExerciseCast(state, player, nearGrunt);
       syncCardProbeHand(player);
     } else if (name === 'frost-spells-ready') {
       // Playing phase with Cryo Burst and Permafrost Lance in hand, full Magic

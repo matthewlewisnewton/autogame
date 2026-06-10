@@ -1,0 +1,11 @@
+Remediation round 2 adds two sub-tickets for the open review gaps. Sub-tickets 01–04 (`.passed`) are unchanged.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/385-boss-level-framework/tickets/385-boss-level-framework/subtickets/05-retire-fixture-debug-scenario`
+   - Closes gap 1: remove the fixture-only `boss-level-dormant` debug shortcut; keep `BOSS_LEVEL_FIXTURE_DEF` in unit tests only.
+
+2. `/home/matt/workspace/.autogame-worktrees/385-boss-level-framework/tickets/385-boss-level-framework/subtickets/06-dormant-boss-damage-immunity`
+   - Closes gap 2: block damage to the encounter boss while dormant, with tests for direct, AoE, burn/trap, and minion paths.
+
+Both use `## Verification: code` since acceptance criteria cover handlers, server state, and test coverage—not purely visual rendering.

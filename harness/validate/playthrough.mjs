@@ -7,7 +7,8 @@
  * When --out is omitted, output defaults to game/validation/<preset>/ (e.g. --preset open-plaza
  * → game/validation/open-plaza/). Explicit --out overrides the preset default.
  *
- * Rooms / stage preset steps: auth, hub | deploy, boss-encounter, full.
+ * Rooms / stage preset steps: auth, hub | deploy, boss-encounter, full,
+ *   telepipe-new-sortie (stage presets with telepipeScenario).
  * Hub preset steps: auth, hub-walk, booth, telepipe-reset, full.
  */
 import { chromium } from 'playwright';
@@ -52,7 +53,11 @@ import {
 } from './lib/cardExercise.mjs';
 import { runEmberBurnStep, runGlacialSlowStep, runCardMechanicsStep } from './lib/cardMechanics.mjs';
 import { runSlipperyFloorStep } from './lib/slipperyFloor.mjs';
-import { runStageBossTelepipeNewSortieStep, runTelepipeResetStep } from './lib/telepipe.mjs';
+import {
+	runStageBossTelepipeNewSortieStep,
+	runSpireAscentTelepipeNewSortieStep,
+	runTelepipeResetStep,
+} from './lib/telepipe.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
@@ -102,15 +107,15 @@ function parseArgs(argv) {
 	return opts;
 }
 
-function assertStepsForPreset(preset, steps) {
-	if (preset === 'hub') {
+function assertStepsForPreset(presetName, steps, presetConfig = null) {
+	if (presetName === 'hub') {
 		if (!HUB_PRESET_STEPS.has(steps)) {
 			throw new Error(`Unknown --steps value "${steps}" for preset hub — expected: ${[...HUB_PRESET_STEPS].join(', ')}`);
 		}
 		return;
 	}
-	if (!STAGE_PRESETS.has(preset)) {
-		throw new Error(`Unknown preset "${preset}"`);
+	if (!STAGE_PRESETS.has(presetName)) {
+		throw new Error(`Unknown preset "${presetName}"`);
 	}
 	const stageSteps = new Set([
 		'auth',
@@ -118,8 +123,11 @@ function assertStepsForPreset(preset, steps) {
 		...ROOMS_BOSS_ENCOUNTER_STEPS,
 		...ROOMS_FULL_STEPS,
 	]);
+	if (presetConfig?.telepipeScenario) {
+		stageSteps.add('telepipe-new-sortie');
+	}
 	if (!stageSteps.has(steps)) {
-		throw new Error(`Unknown --steps value "${steps}" for preset ${preset} — expected: ${[...stageSteps].join(', ')}`);
+		throw new Error(`Unknown --steps value "${steps}" for preset ${presetName} — expected: ${[...stageSteps].join(', ')}`);
 	}
 }
 
@@ -866,6 +874,7 @@ async function runStageBossRevalidateFullStep({
 		outDir: outDirAbs,
 		repoRoot: REPO_ROOT,
 		layoutProfile: preset.layoutProfile ?? 'sunken-canyon',
+		preset,
 	};
 	const cardExercises = {
 		slowBurn: await runSlowBurnExercise(page, cardExerciseOpts),
@@ -979,9 +988,19 @@ async function runBossEncounterStep({ page, preset, outDirAbs, skipMidCombatCapt
 		assertDormantBoss(approachHarness, bossType);
 	}
 
+	// Prefer a preset-driven encounter-trigger debug scenario (which activates the dormant
+	// boss AND leaves a live add beside it for the bossDistinctFromAdds probe, since normal
+	// proximity activation clears non-boss enemies). Fall back to the keyboard walk-in for
+	// presets that do not provide one.
+	const encounterTriggerByApproach = {
+		'canyon-descent-boss-approach': 'canyon-descent-encounter-trigger',
+		'spire-ascent-boss-approach': 'spire-ascent-encounter-trigger',
+	};
+	const encounterTriggerScenario = preset.encounterTriggerScenario
+		?? encounterTriggerByApproach[bossApproachScenario];
 	let activeHarness;
-	if (bossApproachScenario === 'canyon-descent-boss-approach') {
-		await requestScenario(page, 'canyon-descent-encounter-trigger');
+	if (encounterTriggerScenario) {
+		await requestScenario(page, encounterTriggerScenario);
 		activeHarness = await readHarness(page);
 	} else {
 		activeHarness = await activateEncounter(page, {
@@ -1157,8 +1176,22 @@ async function runVictoryStep({ page, preset, outDirAbs }) {
 	};
 }
 
-function isSunkenCanyonPreset(preset, summary) {
-	return preset?.layoutProfile === 'sunken-canyon' || summary?.preset === 'sunken-canyon';
+function isNewContentPreset(preset) {
+	return preset?.newContentFull === true;
+}
+
+function isStageRevalidationPreset(preset, summary) {
+	const profile = preset?.layoutProfile ?? summary?.preset;
+	return profile === 'sunken-canyon' || profile === 'spire-ascent'
+		|| summary?.preset === 'sunken-canyon' || summary?.preset === 'spire-ascent';
+}
+
+function telepipeSummaryKey(preset, summary) {
+	if (summary?.preset === 'rooms') return 'roomsTelepipe';
+	const profile = preset?.layoutProfile ?? summary?.preset;
+	return profile === 'spire-ascent' || summary?.preset === 'spire-ascent'
+		? 'spireTelepipe'
+		: 'canyonTelepipe';
 }
 
 function isRoomsPreset(preset, summary) {
@@ -1235,17 +1268,6 @@ function buildAssertions(summary, preset) {
 		bossDefeated,
 		victoryFired,
 	};
-	if (isSunkenCanyonPreset(preset, summary)) {
-		return {
-			...base,
-			...buildBossEncounterUiAssertions(summary),
-			slowBurnMutuallyExclusive: summary.cardExercises?.slowBurn?.slowBurnMutuallyExclusive === true,
-			healCleanseApplied: summary.cardExercises?.purifyingPulse?.healCleanseApplied === true,
-			windupTelegraphActive: summary.cardExercises?.windup?.windupTelegraphActive === true,
-			telepipeVitalsPreserved: summary.canyonTelepipe?.telepipeVitalsPreserved === true,
-			cardChargesResetOnNewSortie: summary.canyonTelepipe?.cardChargesResetOnNewSortie === true,
-		};
-	}
 	if (isRoomsPreset(preset, summary)) {
 		return {
 			...base,
@@ -1257,7 +1279,20 @@ function buildAssertions(summary, preset) {
 			cardChargesResetOnNewSortie: summary.roomsTelepipe?.cardChargesResetOnNewSortie === true,
 		};
 	}
-	return base;
+	if (!isNewContentPreset(preset) && !isStageRevalidationPreset(preset, summary)) {
+		return base;
+	}
+	const telepipeKey = telepipeSummaryKey(preset, summary);
+	const questTelepipe = summary[telepipeKey];
+	return {
+		...base,
+		...buildBossEncounterUiAssertions(summary),
+		slowBurnMutuallyExclusive: summary.cardExercises?.slowBurn?.slowBurnMutuallyExclusive === true,
+		healCleanseApplied: summary.cardExercises?.purifyingPulse?.healCleanseApplied === true,
+		windupTelegraphActive: summary.cardExercises?.windup?.windupTelegraphActive === true,
+		telepipeVitalsPreserved: questTelepipe?.telepipeVitalsPreserved === true,
+		cardChargesResetOnNewSortie: questTelepipe?.cardChargesResetOnNewSortie === true,
+	};
 }
 
 function buildAssertionFailureDetail(summary, preset) {
@@ -1281,7 +1316,8 @@ function buildAssertionFailureDetail(summary, preset) {
 		details.push(`windup=${JSON.stringify(summary.cardExercises?.windup)}`);
 	}
 	if (failed.includes('telepipeVitalsPreserved') || failed.includes('cardChargesResetOnNewSortie')) {
-		details.push(`stageBossTelepipe=${JSON.stringify(summary.canyonTelepipe ?? summary.roomsTelepipe)}`);
+		const telepipeKey = telepipeSummaryKey(preset, summary);
+		details.push(`${telepipeKey}=${JSON.stringify(summary[telepipeKey])}`);
 	}
 	if (failed.includes('slipperyFloorOk')) {
 		details.push(`slipperyFloor=${JSON.stringify(summary.slipperyFloor)}`);
@@ -1326,6 +1362,8 @@ function collectScreenshots(summary) {
 	if (summary.canyonTelepipe?.afterScreenshot) shots.push(summary.canyonTelepipe.afterScreenshot);
 	if (summary.roomsTelepipe?.beforeScreenshot) shots.push(summary.roomsTelepipe.beforeScreenshot);
 	if (summary.roomsTelepipe?.afterScreenshot) shots.push(summary.roomsTelepipe.afterScreenshot);
+	if (summary.spireTelepipe?.beforeScreenshot) shots.push(summary.spireTelepipe.beforeScreenshot);
+	if (summary.spireTelepipe?.afterScreenshot) shots.push(summary.spireTelepipe.afterScreenshot);
 	return shots;
 }
 
@@ -1420,6 +1458,14 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
 					cardChargesResetOnNewSortie: summary.roomsTelepipe.cardChargesResetOnNewSortie ?? null,
 				},
 			} : {}),
+			...(summary.spireTelepipe ? {
+				spireTelepipe: {
+					preSuspend: summary.spireTelepipe.preSuspend ?? null,
+					postDeploy: summary.spireTelepipe.postDeploy ?? null,
+					telepipeVitalsPreserved: summary.spireTelepipe.telepipeVitalsPreserved ?? null,
+					cardChargesResetOnNewSortie: summary.spireTelepipe.cardChargesResetOnNewSortie ?? null,
+				},
+			} : {}),
 		};
 		findings = renderFindings({
 			ok: summary.ok === true,
@@ -1435,6 +1481,7 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
 			cardExercises: summary.cardExercises ?? null,
 			canyonTelepipe: summary.canyonTelepipe ?? null,
 			roomsTelepipe: summary.roomsTelepipe ?? null,
+			spireTelepipe: summary.spireTelepipe ?? null,
 			floorAlignment,
 			emberBurn: summary.emberBurn || null,
 			slipperyFloor: summary.slipperyFloor || null,
@@ -1469,6 +1516,7 @@ async function main() {
 	let runsBooth = false;
 	let runsTelepipeReset = false;
 	let runsQuestTelepipeReset = false;
+	let runsSpireTelepipeNewSortie = false;
 	const summary = {
 		ok: true,
 		preset: opts.preset,
@@ -1477,8 +1525,8 @@ async function main() {
 	};
 
 	try {
-		assertStepsForPreset(opts.preset, opts.steps);
 		preset = await loadPreset(opts.preset);
+		assertStepsForPreset(opts.preset, opts.steps, preset);
 		summary.presetConfig = preset;
 		const isStagePreset = STAGE_PRESETS.has(opts.preset);
 		runsRoomsHub = isStagePreset
@@ -1497,6 +1545,8 @@ async function main() {
 		runsQuestTelepipeReset = runsRoomsFull
 			&& (opts.preset === 'fire' || opts.preset === 'ice')
 			&& !!preset.telepipeScenario;
+		runsSpireTelepipeNewSortie = opts.preset === 'spire-ascent'
+			&& opts.steps === 'telepipe-new-sortie';
 		const serverLogPath = path.join(outDirAbs, 'server.log');
 		game = await startGame({ serverLogPath });
 		summary.serverPort = game.serverPort;
@@ -1585,6 +1635,31 @@ async function main() {
 			}
 		}
 
+		if (runsSpireTelepipeNewSortie && page) {
+			await assertGameProcessAlive({
+				serverUrl: game.serverUrl,
+				serverChild: game.serverChild,
+				serverLogPath: game.serverLogPath,
+			});
+			summary.spireTelepipe = await runSpireAscentTelepipeNewSortieStep({
+				page,
+				preset,
+				outDirAbs,
+				repoRoot: REPO_ROOT,
+				serverLogPath: game.serverLogPath,
+				gameProcess: game,
+			});
+			summary.assertions = {
+				telepipeVitalsPreserved: summary.spireTelepipe.telepipeVitalsPreserved === true,
+				cardChargesResetOnNewSortie: summary.spireTelepipe.cardChargesResetOnNewSortie === true,
+			};
+			summary.ok = Object.values(summary.assertions).every((value) => value === true);
+			if (!summary.ok) {
+				summary.error = summary.error || 'One or more telepipe-new-sortie assertions failed';
+				exitCode = 1;
+			}
+		}
+
 		if (runsHubFull) {
 			summary.assertions = buildHubAssertions(summary);
 			const walkableOk = evaluateWalkablePresentation(summary.hubWalk).ok;
@@ -1613,15 +1688,18 @@ async function main() {
 			});
 		}
 
+		const runsNewContentFull = preset.newContentFull === true && runsRoomsFull;
 		const runsSunkenCanyonFull = opts.preset === 'sunken-canyon' && runsRoomsFull;
+		const runsSpireAscentFull = opts.preset === 'spire-ascent' && runsRoomsFull;
 		const runsRoomsRevalidateFull = opts.preset === 'rooms' && runsRoomsFull;
-		const runsStageBossRevalidateFull = runsSunkenCanyonFull || runsRoomsRevalidateFull;
+		const runsStageBossRevalidateFull = runsSunkenCanyonFull || runsSpireAscentFull || runsRoomsRevalidateFull;
+		const runsExtendedRevalidationFull = runsNewContentFull || runsStageBossRevalidateFull;
 
 		if (runsBossEncounter && page) {
 			const objectiveType = preset.objectiveType ?? 'stage_boss';
 			if (objectiveType === 'defeat_enemies') {
 				summary.defeatEnemiesCombat = await runDefeatEnemiesCombatStep({ page, preset, outDirAbs });
-			} else if (!runsStageBossRevalidateFull) {
+			} else if (!runsExtendedRevalidationFull) {
 				summary.bossEncounter = await runBossEncounterStep({ page, preset, outDirAbs });
 			}
 		}
@@ -1653,11 +1731,39 @@ async function main() {
 			});
 		}
 
-		if (runsRoomsFull && page && !runsStageBossRevalidateFull) {
+		if (runsRoomsFull && page && !runsExtendedRevalidationFull) {
 			summary.victory = await runVictoryStep({ page, preset, outDirAbs });
 		}
 
 		if (runsSunkenCanyonFull && page) {
+			const result = await runStageBossRevalidateFullStep({
+				page,
+				preset,
+				outDirAbs,
+				game,
+				telepipeSummaryKey: 'canyonTelepipe',
+			});
+			summary.bossEncounter = result.bossEncounter;
+			summary.cardExercises = result.cardExercises;
+			summary.canyonTelepipe = result.canyonTelepipe;
+			summary.victory = result.victory;
+		}
+
+		if (runsSpireAscentFull && page) {
+			const result = await runStageBossRevalidateFullStep({
+				page,
+				preset,
+				outDirAbs,
+				game,
+				telepipeSummaryKey: 'spireTelepipe',
+			});
+			summary.bossEncounter = result.bossEncounter;
+			summary.cardExercises = result.cardExercises;
+			summary.spireTelepipe = result.spireTelepipe;
+			summary.victory = result.victory;
+		}
+
+		if (runsNewContentFull && page && !runsSunkenCanyonFull) {
 			const result = await runStageBossRevalidateFullStep({
 				page,
 				preset,

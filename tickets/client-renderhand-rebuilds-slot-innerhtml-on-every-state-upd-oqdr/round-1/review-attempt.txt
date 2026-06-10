@@ -1,0 +1,21 @@
+## Review complete
+
+**VERDICT: PASS**
+
+### Runtime
+- `metrics.json`: `ok: true`, empty `pageerrors`
+- `console.log`: no `pageerror` or `[fatal]` lines
+- Capture shows lobby → gameplay with card hand, movement, and dodge
+
+### Acceptance criteria
+All three are met:
+1. **Signature skip** — `slotSignature()` + `dataset._sig` cache skip `innerHTML`, querySelectors, and class toggles when unchanged
+2. **Charge animation** — `--charge-pct` still updates every call (including on skip); covered by `'still updates --charge-pct on consecutive calls with same card'`
+3. **Tests** — 297/297 harness tests pass; 21/21 `renderHand()` tests pass (6 new)
+
+### Files written
+- `tickets/.../round-1/review.md` — full assessment
+- `tickets/.../round-1/nits.md` — two low-priority test-cleanup items (duplicate skip tests, weak charge-pct test)
+- No `gaps.md` (PASS only)
+
+The implementation is a focused ~30-line change in `main.js` plus solid test coverage. Burning-creature charge **text** does not tick per frame (only the meter bar does), which matches the ticket’s stated scope.

@@ -84,6 +84,8 @@
     "defeatMagmaColossusWithSupports": "Defeat the magma colossus and {addCount} supports",
     "defeatPermafrostWarden": "Defeat the Permafrost Warden",
     "defeatPermafrostWardenWithSupports": "Defeat the Permafrost Warden and {addCount} supports",
+    "defeatBossLevel": "Defeat {bossName}",
+    "defeatBossLevelWithSupports": "Defeat {bossName} and {addCount} supports",
     "defeatGlacialTyrant": "Defeat the Glacial Tyrant",
     "defeatGlacialTyrantWithSupports": "Defeat the Glacial Tyrant and {addCount} supports"
   },

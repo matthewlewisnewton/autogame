@@ -90,6 +90,17 @@ function isEncounterDormant(run) {
   return run?.encounter?.phase === ENCOUNTER_PHASES.DORMANT;
 }
 
+function isDormantEncounterBoss(gameState, enemy) {
+  if (!gameState || !enemy) return false;
+  const bossId = getEncounterBossId(gameState.run);
+  if (!bossId || enemy.id !== bossId) return false;
+  return isEncounterDormant(gameState.run);
+}
+
+function canDamageEnemy(gameState, enemy) {
+  return !isDormantEncounterBoss(gameState, enemy);
+}
+
 function ensureEncounterSpawnAnchor(run, enemies) {
   const encounter = run?.encounter;
   if (!encounter || encounter.spawnAnchor) return;
@@ -227,6 +238,8 @@ module.exports = {
   clearEncounter,
   isEncounterLocked,
   isEncounterDormant,
+  isDormantEncounterBoss,
+  canDamageEnemy,
   getEncounterBossId,
   isEncounterCleared,
   ensureEncounterSpawnAnchor,

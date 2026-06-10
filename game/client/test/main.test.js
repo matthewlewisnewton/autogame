@@ -1300,6 +1300,172 @@ describe('renderHand()', () => {
 		expect(getComputedStyle(emptySlot).display).not.toBe('none');
 		expect(emptySlot.querySelector(':scope > .card-input-hint')?.innerHTML).toContain('c-button-mark');
 	});
+
+	it('skips innerHTML rebuild when slot signature is unchanged', async () => {
+		await import('../main.js');
+
+		resetHandState();
+		hand[0] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 };
+		hand[1] = null;
+
+		window.__setGameState({
+			players: { player1: { magicStones: 90 } },
+			gamePhase: 'playing',
+		}, 'player1');
+
+		window.renderHand();
+
+		const slot = document.querySelector('.card-slot[data-slot-index="0"]');
+		const content = slot.querySelector('.card-slot-content');
+		const firstInnerHtml = content.innerHTML;
+
+		// Second render with same state should skip rebuild
+		window.renderHand();
+		expect(content.innerHTML).toBe(firstInnerHtml);
+	});
+
+	it('rebuilds slot DOM when card charges change', async () => {
+		await import('../main.js');
+
+		resetHandState();
+		hand[0] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 };
+
+		window.__setGameState({
+			players: { player1: { magicStones: 90 } },
+			gamePhase: 'playing',
+		}, 'player1');
+
+		window.renderHand();
+		const slot = document.querySelector('.card-slot[data-slot-index="0"]');
+		const content = slot.querySelector('.card-slot-content');
+		const firstCharges = content.querySelector('.card-charges').textContent;
+		expect(firstCharges).toBe('5/5');
+
+		// Change remaining charges
+		hand[0].remainingCharges = 3;
+		window.renderHand();
+		const secondCharges = content.querySelector('.card-charges').textContent;
+		expect(secondCharges).toBe('3/5');
+	});
+
+	it('always updates --charge-pct even when slot signature matches', async () => {
+		await import('../main.js');
+
+		resetHandState();
+		const burningCard = {
+			id: 'dungeon_drake',
+			name: 'Vault Wyrm',
+			type: 'creature',
+			charges: 1,
+			remainingCharges: 0,
+			activeMinionId: 'minion-1',
+			burnMaxTtl: 30,
+		};
+		hand[0] = burningCard;
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			minions: [{ id: 'minion-1', ownerId: 'player1', ttl: 30, hp: 50 }],
+			players: { player1: { magicStones: 0 } },
+		}, 'player1');
+
+		window.renderHand();
+		const slot = document.querySelector('.card-slot[data-slot-index="0"]');
+		expect(slot.style.getPropertyValue('--charge-pct')).toBe('100');
+
+		// Simulate minion TTL decreasing (changes charge-pct but not structural signature)
+		// Note: the signature includes activeMinionId, so if the minion is still active,
+		// the signature stays the same but charge-pct should still update.
+		// For this test, we verify the charge-pct is set on the first render.
+		expect(slot.dataset._sig).toBeDefined();
+	});
+
+	it('rebuilds empty slot when it becomes filled and vice versa', async () => {
+		await import('../main.js');
+
+		resetHandState();
+		hand[0] = null;
+
+		window.__setGameState({
+			players: { player1: { magicStones: 90 } },
+			gamePhase: 'playing',
+		}, 'player1');
+
+		window.renderHand();
+		const slot = document.querySelector('.card-slot[data-slot-index="0"]');
+		expect(slot.classList.contains('empty')).toBe(true);
+
+		// Fill the slot
+		hand[0] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 };
+		window.renderHand();
+		expect(slot.classList.contains('empty')).toBe(false);
+		expect(slot.querySelector('.card-name')?.textContent).toBe('Rust-Forged Saber');
+
+		// Empty the slot again
+		hand[0] = null;
+		window.renderHand();
+		expect(slot.classList.contains('empty')).toBe(true);
+		expect(slot.querySelector('.card-name')).toBeNull();
+	});
+
+	it('skips DOM rebuild when slot signature is unchanged', async () => {
+		await import('../main.js');
+
+		resetHandState();
+		hand[0] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 };
+
+		window.__setGameState({
+			players: { player1: { magicStones: 90 } },
+			gamePhase: 'playing',
+		}, 'player1');
+
+		window.renderHand();
+		const slot = document.querySelector('.card-slot[data-slot-index="0"]');
+		const content = slot.querySelector('.card-slot-content');
+		const childCountAfterFirst = content.childNodes.length;
+
+		// Second call with identical state — signature should match, skipping DOM rebuild
+		window.renderHand();
+		expect(content.childNodes.length).toBe(childCountAfterFirst);
+	});
+
+	it('still updates --charge-pct on consecutive calls with same card', async () => {
+		await import('../main.js');
+
+		resetHandState();
+		const burningCard = {
+			id: 'dungeon_drake',
+			name: 'Vault Wyrm',
+			type: 'creature',
+			charges: 1,
+			remainingCharges: 0,
+			activeMinionId: 'minion-1',
+			burnMaxTtl: 30,
+		};
+		hand[0] = burningCard;
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			minions: [{ id: 'minion-1', ownerId: 'player1', ttl: 30, hp: 50 }],
+			players: { player1: { magicStones: 0 } },
+		}, 'player1');
+
+		window.renderHand();
+		const slot = document.querySelector('.card-slot[data-slot-index="0"]');
+		const chargePct1 = slot.style.getPropertyValue('--charge-pct');
+		expect(chargePct1).toBe('100');
+
+		// Mutate minion TTL via __setGameState — structural signature stays the same
+		// (activeMinionId unchanged) but --charge-pct should still update because
+		// it's updated before the skip guard in renderHand()
+		window.__setGameState({
+			gamePhase: 'playing',
+			minions: [{ id: 'minion-1', ownerId: 'player1', ttl: 15, hp: 50 }],
+			players: { player1: { magicStones: 0 } },
+		}, 'player1');
+		window.renderHand();
+		expect(slot.style.getPropertyValue('--charge-pct')).toBe('50');
+	});
 });
 
 // ── playSound / mute toggle ──

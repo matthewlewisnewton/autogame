@@ -1,0 +1,5 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 2 sub-tickets:
+
+- `tickets/server-memoize-movement-contexts-wall-colliders-and-walkable-4rtb/subtickets/01-memoize-buildmovementcontext/ticket.md` — Cache the playing-phase movement context by layout reference + passage locks key
+- `tickets/server-memoize-movement-contexts-wall-colliders-and-walkable-4rtb/subtickets/02-memoize-buildhubmovementcontext/ticket.md` — Cache the lobby-phase hub movement context by layout reference (static `HUB_LAYOUT` means one computation forever)

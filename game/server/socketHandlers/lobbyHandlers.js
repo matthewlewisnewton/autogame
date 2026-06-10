@@ -143,7 +143,7 @@ function register(socket, ctx) {
       return;
     }
 
-    if (tier >= 2 && !isQuestTierUnlocked(player.accountId, questId, tier)) {
+    if (!isQuestTierUnlocked(player.accountId, questId, tier)) {
       socket.emit(SERVER_TO_CLIENT.QUEST_ERROR, { reason: 'tier_locked' });
       return;
     }
