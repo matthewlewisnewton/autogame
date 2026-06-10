@@ -6382,3 +6382,26 @@ PASS. This ticket did not add or change a `?debugScenario=NAME` URL shortcut. Ex
 
 No blocking gaps found.
 
+
+## v0.368 — 372-playthrough-validate-ice-level  (2026-06-10 10:15:26)
+
+debug-scenario socket path behind `isDebugScenarioAllowed()`. They seed state but do not
+bypass the live movement, projectile, status, telepipe, or card-resolution code — the same
+end states are reachable through normal Frost Crossing play (deploy, cross to ice band,
+fight scripted glacial-thrower waves, use Telepipe). The `main.js` change that always
+dismisses `#lobby` on join makes a host behave like a joiner; the lobby remains reopenable
+(press `L`, line 4021) and deploy still flows through the launch booth, so normal play is
+not regressed.
+
+### Findings honesty
+PASS. `findings.md` reports a green run with real probe numbers, documents the no-boss gap,
+and lists the out-of-`game/validate` edits it required (main.js lobby dismiss, new debug
+scenarios, telepipe progression). Screenshots `02-level-entry` and `08-victory` confirm
+genuine Frost Crossing ice content, not a stand-in level. "Do not fake green" is satisfied.
+
+## Remaining gaps
+
+None. (One non-blocking nit recorded in `nits.md`: `05-glacial-slow.png` is captured after
+the Sortie Complete overlay appears, weakening its value as visual proof of the slow hit —
+the probe data still proves it.)
+
