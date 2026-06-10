@@ -255,16 +255,21 @@ function hubSpawnPosition(hubLayout) {
 }
 
 function resolveMovementContext(movementContext) {
-  if (movementContext && movementContext.dungeonBounds) {
-    const useLiveColliders = _gameState
-      && movementContext.layout === _gameState.layout;
+  if (movementContext) {
+    const layout = movementContext.layout ?? (_gameState && _gameState.layout);
+    const walkableAABBs = movementContext.walkableAABBs
+      ?? (_gameState && _gameState.walkableAABBs);
+    const dungeonBounds = movementContext.dungeonBounds
+      ?? (_gameState && _gameState.dungeonBounds);
+    const useLiveColliders = _gameState && layout === _gameState.layout;
+    const passageLocks = _gameState?.run?.passageLocks;
     return {
-      layout: movementContext.layout,
-      walkableAABBs: movementContext.walkableAABBs,
-      dungeonBounds: movementContext.dungeonBounds,
+      layout,
+      walkableAABBs,
+      dungeonBounds,
       colliders: useLiveColliders
         ? getWallColliders()
-        : (movementContext.colliders || buildWallColliders(movementContext.layout)),
+        : (movementContext.colliders || buildWallColliders(layout, passageLocks)),
     };
   }
   return {
