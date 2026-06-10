@@ -6840,3 +6840,26 @@ This ticket did not add or modify any `?debugScenario=` shortcuts. No review req
 ## Remaining gaps
 
 None. Runtime proof is clean, acceptance criteria are fully met, and the test suite passes.
+
+## v0.387 — Client: renderHand rebuilds slot innerHTML on every STATE_UPDATE even when the hand is unchanged  (2026-06-10 16:20:11)
+
+- Signature includes `layoutMode` so N64 vs default hint markup stays correct when layout locks change.
+
+No dead code, no obvious logic bugs, no browser page errors.
+
+**Intentional trade-off (in scope):** For burning creatures, only the meter bar (`--charge-pct`) animates per tick; the `.card-charges` text label (e.g. `18s/30s`) is not rewritten on skip. The ticket goal explicitly states that only `--charge-pct` needs per-tick updates — this is correct per spec, not a defect.
+
+---
+
+## Integration notes
+
+`renderHand()` is still invoked unconditionally on every playing-phase STATE_UPDATE (lines ~1446–1449), which is correct: the function is now cheap when the hand is stable. Probes show MS ticking (`50.6` → `51.1`) while hand card entries remain structurally identical — exactly the hot path this fix optimizes.
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are met; the game runs cleanly in capture; tests pass.
+
+---
+
