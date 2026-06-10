@@ -6050,3 +6050,26 @@ None blocking. All acceptance criteria are implemented and covered by tests; the
 
 See `nits.md` for one follow-up on tier-1 vs tier-2 currency label wording on the quest board.
 
+
+## v0.354 — 374-spherical-3d-aoe-for-all-radius-effects  (2026-06-10 04:37:38)
+
+bookkeeping files). No client/shared edits.
+
+## Consistency & quality
+
+- Consistent with `game/docs/design.md`: AoE remains server-authoritative; no gameplay-shape
+  regression — only the height dimension is added to inclusion.
+- No 2D fallback leaks: `resolveAoeOriginY` resolves null Y to the floor sample, so the
+  conversion is total, not partial.
+- Displacement semantics preserved where intended: `pullEnemiesToward`/loot_magnet gate
+  inclusion in 3D but keep the pull/slide on the XZ plane (documented in comments) — correct,
+  enemies/loot don't get yanked vertically.
+- No debug scenarios were added or changed by this ticket.
+- Full server suite: **2065/2065 pass**, including the 164 tests in the spherical-focused
+  files. No regressions.
+
+## Remaining gaps
+
+None blocking. Acceptance criteria are fully and robustly met, the game runs cleanly, and the
+test suite is green. Minor non-blocking polish noted in `nits.md`.
+

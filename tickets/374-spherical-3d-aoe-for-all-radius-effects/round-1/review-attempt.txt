@@ -1,0 +1,8 @@
+Wrote the review artifacts:
+
+- `tickets/374-spherical-3d-aoe-for-all-radius-effects/round-1/review.md`
+- `tickets/374-spherical-3d-aoe-for-all-radius-effects/round-1/gaps.md`
+
+Verdict is `VERDICT: FAIL`.
+
+The captured game run itself was healthy, but the top-level “all radius effects are spherical” criterion is not fully met. Remaining blockers are unconverted XZ-only radii for several key items, ground enchantment triggers, and chain-radius effects. No `nits.md` was created because I did not identify separate non-blocking nits.
