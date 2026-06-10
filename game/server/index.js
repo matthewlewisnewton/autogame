@@ -1536,8 +1536,10 @@ function runGameLoopTick() {
           state.loot = state.loot.filter(l => (now - l.createdAt) < LOOT_LIFETIME_MS);
         }
 
-        const snapshot = hotStateSnapshot();
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, snapshot);
+        if (!state._applyingDebugScenario) {
+          const snapshot = hotStateSnapshot();
+          io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, snapshot);
+        }
       });
     } catch (err) {
       console.error(`[gameLoop] lobby ${lobby.id} tick failed:`, err && err.stack ? err.stack : err);

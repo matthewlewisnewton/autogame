@@ -254,6 +254,36 @@ function setupAnnexEscortTier1Deploy(lobby, state, player) {
   setupQuestTier1Deploy(lobby, state, player, 'annex_escort');
 }
 
+function ensurePlayerCombatHand(player) {
+  if (!player.hand || player.hand.length === 0) {
+    createDrawDeckFromSelectedDeck(player);
+    initPlayerHand(player);
+    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+    if (!player.pendingSummons) {
+      player.pendingSummons = new Set();
+    }
+  }
+}
+
+/** Deploy quest enemies/run before entering playing so ticks never see run missing. */
+function deployQuestDebugRun(lobby, state, { clearEncounterBoss = false } = {}) {
+  for (const p of Object.values(state.players)) {
+    ensurePlayerCombatHand(p);
+  }
+  state.enemies = [];
+  state.loot = [];
+  delete state.run;
+  if (clearEncounterBoss) {
+    delete state._pendingEncounterBossId;
+  }
+  spawnEnemies();
+  startDungeonRun();
+  if (state.gamePhase !== PHASES.PLAYING) {
+    setPhase(lobby, PHASES.PLAYING);
+    io.to(lobby.id).emit(SERVER_TO_CLIENT.START_GAME);
+  }
+}
+
 function setupArenaTrialsTier2StageBossDebug(lobby, state, player) {
   const questId = 'arena_trials';
   const tier = 2;
@@ -270,23 +300,7 @@ function setupArenaTrialsTier2StageBossDebug(lobby, state, player) {
   player.z = plazaSpawn.z;
   player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
 
-  enterPlayingPhase(lobby);
-
-  if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
-    createDrawDeckFromSelectedDeck(player);
-    initPlayerHand(player);
-    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
-    if (!player.pendingSummons) {
-      player.pendingSummons = new Set();
-    }
-  }
-
-  state.enemies = [];
-  state.loot = [];
-  delete state.run;
-  delete state._pendingEncounterBossId;
-  spawnEnemies();
-  startDungeonRun();
+  deployQuestDebugRun(lobby, state, { clearEncounterBoss: true });
 }
 
 function resolveArenaDaisAnchor(state) {
@@ -377,7 +391,9 @@ function finishStageBossDebugScenario(lobby, state, player, name) {
     layout: state.layout,
   });
   broadcastLobbyUpdate(lobby);
-  io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+  const lobbyIo = io.to(lobby.id);
+  lobbyIo.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+  emitRunStartDialogue(lobbyIo);
   return {
     ok: true,
     scenario: name,
@@ -435,6 +451,8 @@ function applyDebugScenario(socket, name) {
   const spawn = firstRoomPosition();
 
   return withLobbyContext(lobby, () => {
+    state._applyingDebugScenario = true;
+    try {
     normalizePlayerInventory(player);
     const result = validateDeck(player.selectedDeck, player.inventory);
     if (!result.valid) return { ok: false, reason: result.reason };
@@ -1184,30 +1202,16 @@ function applyDebugScenario(socket, name) {
       player.z = rimSpawn.z;
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
 
-      enterPlayingPhase(lobby);
-
-      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
-        createDrawDeckFromSelectedDeck(player);
-        initPlayerHand(player);
-        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
-        if (!player.pendingSummons) {
-          player.pendingSummons = new Set();
-        }
-      }
-
-      state.enemies = [];
-      state.loot = [];
-      delete state.run;
-      delete state._pendingEncounterBossId;
-      spawnEnemies();
-      startDungeonRun();
+      deployQuestDebugRun(lobby, state, { clearEncounterBoss: true });
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      const lobbyIo = io.to(lobby.id);
+      lobbyIo.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      emitRunStartDialogue(lobbyIo);
       return {
         ok: true,
         scenario: name,
@@ -3651,6 +3655,9 @@ function applyDebugScenario(socket, name) {
     lobbyIo.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
     emitRunStartDialogue(lobbyIo);
     return { ok: true, scenario: name };
+    } finally {
+      state._applyingDebugScenario = false;
+    }
   });
 }
 
