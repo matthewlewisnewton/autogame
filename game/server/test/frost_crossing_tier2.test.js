@@ -52,7 +52,7 @@ const TIER_1 = 1;
 const TIER_2 = 2;
 const SEED = 4242;
 const ADD_COUNT = 4;
-const TIER_2_POOL_TYPES = ['grunt', 'skirmisher', 'glacial_thrower', 'field_medic'];
+const TIER_2_POOL_TYPES = ['grunt', 'skirmisher', 'glacial_thrower', 'rime_drifter', 'field_medic'];
 
 function runSimulationInPrimaryLobby(fn) {
   const state = testGameState();
@@ -208,6 +208,7 @@ describe('frost_crossing Tier 2 catalog and layout', () => {
       { type: 'grunt', weight: 3 },
       { type: 'skirmisher', weight: 2 },
       { type: 'glacial_thrower', weight: 2 },
+      { type: 'rime_drifter', weight: 1 },
       { type: 'glacial_thrower', weight: 2 },
       { type: 'field_medic', weight: 1 },
     ]);
