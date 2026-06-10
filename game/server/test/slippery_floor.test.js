@@ -551,11 +551,73 @@ describe('slippery floor — normal → slippery transition', () => {
     }
 
     const beforeCross = { ...state.players.p1 };
+    expect(playerSpeed(beforeCross)).toBeGreaterThan(0);
     applyPlayerMovement(state, movementContext);
     const afterCross = state.players.p1;
 
     expect(afterCross.z).toBeGreaterThan(beforeCross.z);
     expect(playerSpeed(afterCross)).toBeGreaterThan(0);
+  });
+
+  it('seeds stone-walking velocity before ice entry (playthrough surfaceTransition probe)', () => {
+    state.players.p1 = makePlayer({
+      x: 0,
+      z: 4,
+      inputActive: true,
+      inputDx: 0,
+      inputDz: 1,
+      lastInputTime: freshInputTime(),
+    });
+
+    while (sampleFloorSurface(state.layout, state.players.p1.x, state.players.p1.z) !== 'slippery') {
+      applyPlayerMovement(state, movementContext);
+    }
+
+    expect(sampleFloorSurface(state.layout, state.players.p1.x, state.players.p1.z)).toBe('slippery');
+    expect(state.players.p1.vz).toBeGreaterThan(0);
+    expect(playerSpeed(state.players.p1)).toBeGreaterThan(MOVE_SPEED * 0.5);
+  });
+
+  it('preserves forward motion across normal→ice when movementContext omits dungeonBounds', () => {
+    const layout = makeTransitionLayout();
+    const strippedState = createGameState();
+    strippedState.gamePhase = 'playing';
+    strippedState.layout = layout;
+    strippedState.walkableAABBs = computeWalkableAABBs(layout);
+    setGameState(strippedState, {});
+    rebuildWallColliders();
+
+    const strippedContext = {
+      layout,
+      walkableAABBs: strippedState.walkableAABBs,
+      colliders: buildMovementContext(strippedState).colliders,
+    };
+
+    strippedState.players.p1 = makePlayer({
+      x: 0,
+      z: 4,
+      inputActive: true,
+      inputDx: 0,
+      inputDz: 1,
+      lastInputTime: freshInputTime(),
+    });
+
+    const zSamples = [strippedState.players.p1.z];
+    for (let i = 0; i < 24; i++) {
+      applyPlayerMovement(strippedState, strippedContext);
+      zSamples.push(strippedState.players.p1.z);
+    }
+
+    for (let i = 1; i < zSamples.length; i++) {
+      expect(zSamples[i]).toBeGreaterThanOrEqual(zSamples[i - 1] - 1e-9);
+    }
+
+    const player = strippedState.players.p1;
+    expect(sampleFloorSurface(layout, player.x, player.z)).toBe('slippery');
+    expect(player.z).toBeGreaterThan(12);
+    expect(playerSpeed(player)).toBeGreaterThan(0);
+
+    setGameState(null, null);
   });
 });
 
@@ -612,6 +674,25 @@ describe('slippery floor — slippery → normal transition', () => {
 
     expect(transitionDrift).toBeLessThan(iceDrift);
     expect(playerSpeed(iceOnlyState.players.p1)).toBeGreaterThan(1);
+  });
+
+  it('zeros ice slide speed on stone without input (playthrough surfaceTransition probe)', () => {
+    const coastSpeed = 10;
+    state.players.p1 = makePlayer({
+      x: 0,
+      z: 13.5,
+      vx: 0,
+      vz: -coastSpeed,
+      inputActive: false,
+      lastInputTime: staleInputTime(),
+    });
+
+    for (let i = 0; i < 10; i++) {
+      applyPlayerMovement(state, movementContext);
+    }
+
+    expect(sampleFloorSurface(state.layout, state.players.p1.x, state.players.p1.z)).toBe('normal');
+    expect(playerSpeed(state.players.p1)).toBeLessThan(1e-3);
   });
 });
 

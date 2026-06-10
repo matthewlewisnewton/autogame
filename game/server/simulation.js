@@ -661,13 +661,6 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
         player.persistenceDirty = true;
       }
     } else {
-      player.vx *= NORMAL_STOP_FRICTION;
-      player.vz *= NORMAL_STOP_FRICTION;
-      if (NORMAL_STOP_FRICTION === 0) {
-        player.vx = 0;
-        player.vz = 0;
-      }
-
       if (inputFresh) {
         const mag = Math.hypot(player.inputDx || 0, player.inputDz || 0);
         if (mag >= 1e-8) {
@@ -686,6 +679,11 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
           player.x = result.x;
           player.z = result.z;
           player.y = resolveEntityY(player, ctx.layout);
+          // Seed horizontal velocity from stone walking so normal→slippery crossings
+          // inherit forward motion instead of restarting from zero on the first ice tick.
+          const walkSpeed = playerStep * TICK_RATE;
+          player.vx = dx * walkSpeed;
+          player.vz = dz * walkSpeed;
           if (Number.isFinite(player.inputRotation)) {
             player.rotation = player.inputRotation;
           }
@@ -693,6 +691,16 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
           if (result.moved || player.x !== prevX || player.z !== prevZ) {
             player.persistenceDirty = true;
           }
+        } else {
+          player.vx = 0;
+          player.vz = 0;
+        }
+      } else {
+        player.vx *= NORMAL_STOP_FRICTION;
+        player.vz *= NORMAL_STOP_FRICTION;
+        if (NORMAL_STOP_FRICTION === 0) {
+          player.vx = 0;
+          player.vz = 0;
         }
       }
     }
