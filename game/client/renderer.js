@@ -6355,6 +6355,277 @@ const MINION_HIT_VFX_DEFAULT = {
  *
  * Reads gameState from the shared reference set by setGameStateRef().
  */
+/**
+ * Per-frame player/avatar reconcile: builds/rebuilds avatars on cosmetic change,
+ * reapplies proportions + tint + key-item prop, positions remote and self
+ * players (airborne height, shadows, shields, HP-drop flashes, nameplates),
+ * runs the smoke-puff loop, and cleans up markers for players who left.
+ * Reads/writes module-scoped renderer state directly (same scope as animate()).
+ */
+export function syncPlayerMeshes(gs, myId) {
+	for (const [id, pData] of Object.entries(gs.players)) {
+		// Build the cosmetic-driven avatar, or rebuild it when the player's
+		// broadcast cosmetic changes (signature differs from the rendered one).
+		const sig = cosmeticSignature(pData.cosmetic);
+		if (!playersMeshes[id] || playersMeshes[id].userData.cosmeticKey !== sig) {
+			if (playersMeshes[id]) {
+				disposeAvatar(playersMeshes[id]);
+				scene.remove(playersMeshes[id]);
+			}
+			const avatar = createPlayerAvatar(pData.cosmetic, id === myId, pData.equippedKeyItemId);
+			scene.add(avatar);
+			playersMeshes[id] = avatar;
+		}
+
+		// (Re)apply proportion morphs + body/accent tint from the broadcast
+		// cosmetic every update (local + remote) so changes take effect without
+		// a reload; safe no-op on the procedural fallback. Runs before either
+		// recolor path below reads userData.baseColor.
+		applyLoadedModelCosmetic(playersMeshes[id], pData.cosmetic);
+
+		// (Re)seat the equipped key-item prop when it changes between snapshots
+		// (local + remote), so an equip swap takes effect without a reload.
+		updateKeyItemProp(playersMeshes[id], pData.equippedKeyItemId);
+
+		// Slow status ring (local + remote) — driven by the broadcast slowedUntil.
+		// For the local player, anchor the ring to the predicted myX/myZ (the
+		// slower predicted avatar position) so it does not lag behind the avatar
+		// while slowed; remote players use their broadcast x/z directly.
+		if (id === myId) {
+			applySlowIndicator(playerSlowMarkers, id, {
+				slowedUntil: pData.slowedUntil,
+				x: myX,
+				z: myZ,
+			});
+		} else {
+			applySlowIndicator(playerSlowMarkers, id, pData);
+		}
+
+		// Burning flame (local + remote) — driven by the broadcast burningUntil.
+		// Local player anchors to the predicted myX/myZ like the slow ring so
+		// the flame tracks the avatar; remote players use broadcast x/z.
+		if (id === myId) {
+			applyBurnIndicator(playerBurnMarkers, id, {
+				burningUntil: pData.burningUntil,
+				x: myX,
+				z: myZ,
+			});
+		} else {
+			applyBurnIndicator(playerBurnMarkers, id, pData);
+		}
+
+		const windupX = id === myId ? myX : pData.x;
+		const windupZ = id === myId ? myZ : pData.z;
+		applyPlayerCardWindupIndicator(id, pData, windupX, windupZ, Date.now());
+
+		if (id === myId) continue;
+
+		const body = playersMeshes[id].userData.bodyMesh;
+		// Floor-aware airborne height: a flying remote player rises to its
+		// broadcast altitude via the shared flyingRenderOffset helper, composed
+		// against DEFAULT_FLOOR_Y exactly like flying minions/enemies — the
+		// helper (preferring the server-resolved pData.y) already bakes in the
+		// floor delta, so DEFAULT_FLOOR_Y + offset resolves to floorY + altitude.
+		// A grounded player keeps its broadcast floor y exactly as before.
+		const remoteY = pData.flying
+			? DEFAULT_FLOOR_Y + flyingRenderOffset(pData, gs.layout)
+			: (pData.y || 0.5);
+		playersMeshes[id].position.set(pData.x, remoteY, pData.z);
+		if (Number.isFinite(pData.rotation)) {
+			playersMeshes[id].rotation.y = pData.rotation - Math.PI / 2;
+		}
+		// Ground shadow beneath a flying remote player (none for grounded).
+		syncFlyingShadow(playerShadows, { id, flying: pData.flying, x: pData.x, z: pData.z }, gs.layout);
+
+		if (pData.dead) {
+			body.material.color.setHex(DEAD_AVATAR_COLOR);
+		} else {
+			body.material.color.setHex(playersMeshes[id].userData.baseColor);
+		}
+
+		// Detect remote player HP drop — flash red
+		if (previousPlayerHp[id] !== undefined && pData.hp < previousPlayerHp[id]) {
+			flashMesh(playersMeshes[id], 0xff0000, 200);
+		}
+		previousPlayerHp[id] = pData.hp;
+
+		// ── Nameplate for remote players (after avatar is positioned) ──
+		const remoteUsername = pData.username;
+		if (remoteUsername) {
+			if (!playerNameplates[id] || playerNameplates[id].userData.username !== remoteUsername) {
+				if (playerNameplates[id]) disposeNameplate(id);
+				const np = createNameplate(remoteUsername);
+				scene.add(np);
+				playerNameplates[id] = np;
+			}
+			const avatar = playersMeshes[id];
+			playerNameplates[id].position.set(
+				avatar.position.x,
+				avatar.position.y + NAMEPLATE_OFFSET_Y,
+				avatar.position.z,
+			);
+		}
+	}
+
+	if (myId != null && playersMeshes[myId]) {
+		const layout = gs && gs.layout;
+		const floorY = layout ? resolveFloorY(sampleFloorY(layout, myX, myZ)) : DEFAULT_FLOOR_Y;
+		const me = gs.players[myId];
+		// Floor-aware airborne height for the local player, using the same shared
+		// helper as enemies/minions/remote players. A grounded player keeps the
+		// sampled floor exactly; a flying player rises to its altitude via
+		// DEFAULT_FLOOR_Y + flyingRenderOffset (the minion composition, where the
+		// helper already bakes in the floor delta → floorY + altitude). Composing
+		// against the sampled floorY here would double-count that delta.
+		const localFlyingEntity = { flying: me?.flying, altitude: me?.altitude, x: myX, z: myZ };
+		const localY = me?.flying
+			? DEFAULT_FLOOR_Y + flyingRenderOffset(localFlyingEntity, layout)
+			: floorY;
+		playersMeshes[myId].position.set(myX, localY, myZ);
+		playersMeshes[myId].rotation.y = playerRotation - Math.PI / 2;
+		// Ground shadow beneath a flying local player (none for grounded).
+		syncFlyingShadow(playerShadows, { id: myId, flying: me?.flying, x: myX, z: myZ }, layout);
+
+		const isDead = me && me.dead;
+
+		// Respawn detection: dead → alive resets local position to spawn
+		if (wasDead && !isDead) {
+			myX = spawnPosition.x;
+			myZ = spawnPosition.z;
+			simX = spawnPosition.x;
+			simZ = spawnPosition.z;
+			prevSimX = spawnPosition.x;
+			prevSimZ = spawnPosition.z;
+			moveAccumulator = 0;
+			resetSimVelocity();
+			playerRotation = 0;
+			lastEmittedRotation = null;
+			clearAllLockOnState();
+			lockOnToTarget = null;
+			lockOnReleaseLookAt = null;
+		}
+		if (isDead) {
+			clearAllLockOnState();
+			lockOnToTarget = null;
+			lockOnReleaseLookAt = null;
+		}
+		wasDead = isDead;
+
+		const selfBody = playersMeshes[myId].userData.bodyMesh;
+		if (isDead) {
+			selfBody.material.color.setHex(DEAD_AVATAR_COLOR);
+		} else {
+			selfBody.material.color.setHex(playersMeshes[myId].userData.baseColor);
+		}
+
+		// Invulnerability shimmer: semi-transparent when i-frames are active (not when dead)
+		if (!isDead && me && me.isInvulnerable) {
+			selfBody.material.transparent = true;
+			selfBody.material.opacity = 0.5;
+			selfBody.material.depthWrite = false;
+		} else {
+			selfBody.material.transparent = false;
+			selfBody.material.opacity = 1;
+			selfBody.material.depthWrite = true;
+		}
+
+		// Shield VFX: ensure visible while blocking (re-trigger if expired)
+		if (!isDead && me && me.isBlocking && !shieldVFX[myId]) {
+			triggerShieldVFX(myId);
+		}
+		// Update shield position to follow player; clean up when blocking ends
+		if (shieldVFX[myId]) {
+			if (!isDead && me && me.isBlocking) {
+				const s = shieldVFX[myId];
+				const yaw = playersMeshes[myId].rotation.y + Math.PI / 2;
+				s.mesh.position.set(
+					playersMeshes[myId].position.x + Math.cos(yaw) * SHIELD_OFFSET_DIST,
+					playersMeshes[myId].position.y + 0.5,
+					playersMeshes[myId].position.z + Math.sin(yaw) * SHIELD_OFFSET_DIST,
+				);
+				s.mesh.rotation.y = playersMeshes[myId].rotation.y;
+			} else if (shieldVFX[myId]) {
+				// Blocking ended — let existing VFX finish its fade, don't re-trigger
+			}
+		}
+
+		// Detect local player HP drop — flash red + spawn damage number
+		if (me && previousPlayerHp[myId] !== undefined && me.hp < previousPlayerHp[myId]) {
+			const damageAmount = previousPlayerHp[myId] - me.hp;
+			flashMesh(playersMeshes[myId], 0xff0000, 200);
+			spawnDamageNumber(myX, 1.5, myZ, damageAmount, '#ff0000');
+		}
+		if (me) {
+			previousPlayerHp[myId] = me.hp;
+		}
+
+		// ── Nameplate for self-player ──
+		const selfUsername = getAccountProfile().username;
+		if (selfUsername) {
+			if (!playerNameplates[myId] || playerNameplates[myId].userData.username !== selfUsername) {
+				if (playerNameplates[myId]) disposeNameplate(myId);
+				const np = createNameplate(selfUsername);
+				scene.add(np);
+				playerNameplates[myId] = np;
+			}
+			const selfAvatar = playersMeshes[myId];
+			playerNameplates[myId].position.set(
+				selfAvatar.position.x,
+				selfAvatar.position.y + NAMEPLATE_OFFSET_Y,
+				selfAvatar.position.z,
+			);
+		}
+	}
+
+	// ── Clean up nameplates for players who left ──
+	for (const id of Object.keys(playerNameplates)) {
+		if (!gs.players[id]) {
+			disposeNameplate(id);
+		}
+	}
+
+	// ── Clean up slow markers for players who left ──
+	for (const id of Object.keys(playerSlowMarkers)) {
+		if (!gs.players[id]) {
+			disposeOne(playerSlowMarkers, id, scene);
+		}
+	}
+
+	// ── Clean up burn markers for players who left ──
+	for (const id of Object.keys(playerBurnMarkers)) {
+		if (!gs.players[id]) {
+			disposeOne(playerBurnMarkers, id, scene);
+		}
+	}
+
+	// ── Clean up card wind-up markers for players who left ──
+	for (const id of Object.keys(playerCardWindupMarkers)) {
+		if (!gs.players[id]) {
+			disposeOne(playerCardWindupMarkers, id, scene);
+			playerCardWindupFlashing.delete(id);
+		}
+	}
+
+	// ── Clean up flying shadows for players who left ──
+	for (const id of Object.keys(playerShadows)) {
+		if (!gs.players[id]) {
+			disposeOne(playerShadows, id, scene);
+		}
+	}
+
+	// ── Smoke Bomb VFX: show a puff at each player's active smoke zone ──
+	// The zone is fixed at the cast point (smokeBombX/Z), so the puff is
+	// re-triggered while the zone is active if its VFX has faded out. Skip
+	// the tail end so a near-expired zone doesn't spawn a fresh 2s puff.
+	const smokeNow = Date.now();
+	for (const [id, pData] of Object.entries(gs.players)) {
+		const remaining = (pData.smokeBombUntil || 0) - smokeNow;
+		if (remaining > 300 && !smokeVFX[id]) {
+			triggerSmokeVFX({ x: pData.smokeBombX, y: 0, z: pData.smokeBombZ }, id);
+		}
+	}
+}
+
 export function animate(timestamp) {
 	requestAnimationFrame(animate);
 
@@ -6381,267 +6652,7 @@ export function animate(timestamp) {
 	}
 
 	if (gs) {
-		for (const [id, pData] of Object.entries(gs.players)) {
-			// Build the cosmetic-driven avatar, or rebuild it when the player's
-			// broadcast cosmetic changes (signature differs from the rendered one).
-			const sig = cosmeticSignature(pData.cosmetic);
-			if (!playersMeshes[id] || playersMeshes[id].userData.cosmeticKey !== sig) {
-				if (playersMeshes[id]) {
-					disposeAvatar(playersMeshes[id]);
-					scene.remove(playersMeshes[id]);
-				}
-				const avatar = createPlayerAvatar(pData.cosmetic, id === myId, pData.equippedKeyItemId);
-				scene.add(avatar);
-				playersMeshes[id] = avatar;
-			}
-
-			// (Re)apply proportion morphs + body/accent tint from the broadcast
-			// cosmetic every update (local + remote) so changes take effect without
-			// a reload; safe no-op on the procedural fallback. Runs before either
-			// recolor path below reads userData.baseColor.
-			applyLoadedModelCosmetic(playersMeshes[id], pData.cosmetic);
-
-			// (Re)seat the equipped key-item prop when it changes between snapshots
-			// (local + remote), so an equip swap takes effect without a reload.
-			updateKeyItemProp(playersMeshes[id], pData.equippedKeyItemId);
-
-			// Slow status ring (local + remote) — driven by the broadcast slowedUntil.
-			// For the local player, anchor the ring to the predicted myX/myZ (the
-			// slower predicted avatar position) so it does not lag behind the avatar
-			// while slowed; remote players use their broadcast x/z directly.
-			if (id === myId) {
-				applySlowIndicator(playerSlowMarkers, id, {
-					slowedUntil: pData.slowedUntil,
-					x: myX,
-					z: myZ,
-				});
-			} else {
-				applySlowIndicator(playerSlowMarkers, id, pData);
-			}
-
-			// Burning flame (local + remote) — driven by the broadcast burningUntil.
-			// Local player anchors to the predicted myX/myZ like the slow ring so
-			// the flame tracks the avatar; remote players use broadcast x/z.
-			if (id === myId) {
-				applyBurnIndicator(playerBurnMarkers, id, {
-					burningUntil: pData.burningUntil,
-					x: myX,
-					z: myZ,
-				});
-			} else {
-				applyBurnIndicator(playerBurnMarkers, id, pData);
-			}
-
-			const windupX = id === myId ? myX : pData.x;
-			const windupZ = id === myId ? myZ : pData.z;
-			applyPlayerCardWindupIndicator(id, pData, windupX, windupZ, Date.now());
-
-			if (id === myId) continue;
-
-			const body = playersMeshes[id].userData.bodyMesh;
-			// Floor-aware airborne height: a flying remote player rises to its
-			// broadcast altitude via the shared flyingRenderOffset helper, composed
-			// against DEFAULT_FLOOR_Y exactly like flying minions/enemies — the
-			// helper (preferring the server-resolved pData.y) already bakes in the
-			// floor delta, so DEFAULT_FLOOR_Y + offset resolves to floorY + altitude.
-			// A grounded player keeps its broadcast floor y exactly as before.
-			const remoteY = pData.flying
-				? DEFAULT_FLOOR_Y + flyingRenderOffset(pData, gs.layout)
-				: (pData.y || 0.5);
-			playersMeshes[id].position.set(pData.x, remoteY, pData.z);
-			if (Number.isFinite(pData.rotation)) {
-				playersMeshes[id].rotation.y = pData.rotation - Math.PI / 2;
-			}
-			// Ground shadow beneath a flying remote player (none for grounded).
-			syncFlyingShadow(playerShadows, { id, flying: pData.flying, x: pData.x, z: pData.z }, gs.layout);
-
-			if (pData.dead) {
-				body.material.color.setHex(DEAD_AVATAR_COLOR);
-			} else {
-				body.material.color.setHex(playersMeshes[id].userData.baseColor);
-			}
-
-			// Detect remote player HP drop — flash red
-			if (previousPlayerHp[id] !== undefined && pData.hp < previousPlayerHp[id]) {
-				flashMesh(playersMeshes[id], 0xff0000, 200);
-			}
-			previousPlayerHp[id] = pData.hp;
-
-			// ── Nameplate for remote players (after avatar is positioned) ──
-			const remoteUsername = pData.username;
-			if (remoteUsername) {
-				if (!playerNameplates[id] || playerNameplates[id].userData.username !== remoteUsername) {
-					if (playerNameplates[id]) disposeNameplate(id);
-					const np = createNameplate(remoteUsername);
-					scene.add(np);
-					playerNameplates[id] = np;
-				}
-				const avatar = playersMeshes[id];
-				playerNameplates[id].position.set(
-					avatar.position.x,
-					avatar.position.y + NAMEPLATE_OFFSET_Y,
-					avatar.position.z,
-				);
-			}
-		}
-
-		if (myId != null && playersMeshes[myId]) {
-			const layout = gs && gs.layout;
-			const floorY = layout ? resolveFloorY(sampleFloorY(layout, myX, myZ)) : DEFAULT_FLOOR_Y;
-			const me = gs.players[myId];
-			// Floor-aware airborne height for the local player, using the same shared
-			// helper as enemies/minions/remote players. A grounded player keeps the
-			// sampled floor exactly; a flying player rises to its altitude via
-			// DEFAULT_FLOOR_Y + flyingRenderOffset (the minion composition, where the
-			// helper already bakes in the floor delta → floorY + altitude). Composing
-			// against the sampled floorY here would double-count that delta.
-			const localFlyingEntity = { flying: me?.flying, altitude: me?.altitude, x: myX, z: myZ };
-			const localY = me?.flying
-				? DEFAULT_FLOOR_Y + flyingRenderOffset(localFlyingEntity, layout)
-				: floorY;
-			playersMeshes[myId].position.set(myX, localY, myZ);
-			playersMeshes[myId].rotation.y = playerRotation - Math.PI / 2;
-			// Ground shadow beneath a flying local player (none for grounded).
-			syncFlyingShadow(playerShadows, { id: myId, flying: me?.flying, x: myX, z: myZ }, layout);
-
-			const isDead = me && me.dead;
-
-			// Respawn detection: dead → alive resets local position to spawn
-			if (wasDead && !isDead) {
-				myX = spawnPosition.x;
-				myZ = spawnPosition.z;
-				simX = spawnPosition.x;
-				simZ = spawnPosition.z;
-				prevSimX = spawnPosition.x;
-				prevSimZ = spawnPosition.z;
-				moveAccumulator = 0;
-				resetSimVelocity();
-				playerRotation = 0;
-				lastEmittedRotation = null;
-				clearAllLockOnState();
-				lockOnToTarget = null;
-				lockOnReleaseLookAt = null;
-			}
-			if (isDead) {
-				clearAllLockOnState();
-				lockOnToTarget = null;
-				lockOnReleaseLookAt = null;
-			}
-			wasDead = isDead;
-
-			const selfBody = playersMeshes[myId].userData.bodyMesh;
-			if (isDead) {
-				selfBody.material.color.setHex(DEAD_AVATAR_COLOR);
-			} else {
-				selfBody.material.color.setHex(playersMeshes[myId].userData.baseColor);
-			}
-
-			// Invulnerability shimmer: semi-transparent when i-frames are active (not when dead)
-			if (!isDead && me && me.isInvulnerable) {
-				selfBody.material.transparent = true;
-				selfBody.material.opacity = 0.5;
-				selfBody.material.depthWrite = false;
-			} else {
-				selfBody.material.transparent = false;
-				selfBody.material.opacity = 1;
-				selfBody.material.depthWrite = true;
-			}
-
-			// Shield VFX: ensure visible while blocking (re-trigger if expired)
-			if (!isDead && me && me.isBlocking && !shieldVFX[myId]) {
-				triggerShieldVFX(myId);
-			}
-			// Update shield position to follow player; clean up when blocking ends
-			if (shieldVFX[myId]) {
-				if (!isDead && me && me.isBlocking) {
-					const s = shieldVFX[myId];
-					const yaw = playersMeshes[myId].rotation.y + Math.PI / 2;
-					s.mesh.position.set(
-						playersMeshes[myId].position.x + Math.cos(yaw) * SHIELD_OFFSET_DIST,
-						playersMeshes[myId].position.y + 0.5,
-						playersMeshes[myId].position.z + Math.sin(yaw) * SHIELD_OFFSET_DIST,
-					);
-					s.mesh.rotation.y = playersMeshes[myId].rotation.y;
-				} else if (shieldVFX[myId]) {
-					// Blocking ended — let existing VFX finish its fade, don't re-trigger
-				}
-			}
-
-			// Detect local player HP drop — flash red + spawn damage number
-			if (me && previousPlayerHp[myId] !== undefined && me.hp < previousPlayerHp[myId]) {
-				const damageAmount = previousPlayerHp[myId] - me.hp;
-				flashMesh(playersMeshes[myId], 0xff0000, 200);
-				spawnDamageNumber(myX, 1.5, myZ, damageAmount, '#ff0000');
-			}
-			if (me) {
-				previousPlayerHp[myId] = me.hp;
-			}
-
-			// ── Nameplate for self-player ──
-			const selfUsername = getAccountProfile().username;
-			if (selfUsername) {
-				if (!playerNameplates[myId] || playerNameplates[myId].userData.username !== selfUsername) {
-					if (playerNameplates[myId]) disposeNameplate(myId);
-					const np = createNameplate(selfUsername);
-					scene.add(np);
-					playerNameplates[myId] = np;
-				}
-				const selfAvatar = playersMeshes[myId];
-				playerNameplates[myId].position.set(
-					selfAvatar.position.x,
-					selfAvatar.position.y + NAMEPLATE_OFFSET_Y,
-					selfAvatar.position.z,
-				);
-			}
-		}
-
-		// ── Clean up nameplates for players who left ──
-		for (const id of Object.keys(playerNameplates)) {
-			if (!gs.players[id]) {
-				disposeNameplate(id);
-			}
-		}
-
-		// ── Clean up slow markers for players who left ──
-		for (const id of Object.keys(playerSlowMarkers)) {
-			if (!gs.players[id]) {
-				disposeOne(playerSlowMarkers, id, scene);
-			}
-		}
-
-		// ── Clean up burn markers for players who left ──
-		for (const id of Object.keys(playerBurnMarkers)) {
-			if (!gs.players[id]) {
-				disposeOne(playerBurnMarkers, id, scene);
-			}
-		}
-
-		// ── Clean up card wind-up markers for players who left ──
-		for (const id of Object.keys(playerCardWindupMarkers)) {
-			if (!gs.players[id]) {
-				disposeOne(playerCardWindupMarkers, id, scene);
-				playerCardWindupFlashing.delete(id);
-			}
-		}
-
-		// ── Clean up flying shadows for players who left ──
-		for (const id of Object.keys(playerShadows)) {
-			if (!gs.players[id]) {
-				disposeOne(playerShadows, id, scene);
-			}
-		}
-
-		// ── Smoke Bomb VFX: show a puff at each player's active smoke zone ──
-		// The zone is fixed at the cast point (smokeBombX/Z), so the puff is
-		// re-triggered while the zone is active if its VFX has faded out. Skip
-		// the tail end so a near-expired zone doesn't spawn a fresh 2s puff.
-		const smokeNow = Date.now();
-		for (const [id, pData] of Object.entries(gs.players)) {
-			const remaining = (pData.smokeBombUntil || 0) - smokeNow;
-			if (remaining > 300 && !smokeVFX[id]) {
-				triggerSmokeVFX({ x: pData.smokeBombX, y: 0, z: pData.smokeBombZ }, id);
-			}
-		}
+		syncPlayerMeshes(gs, myId);
 
 		// ── phase_step ally highlight: recompute nearest in-range ally each frame ──
 		syncPhaseStepAllyHighlight(gs, myId);
