@@ -71,6 +71,8 @@ const {
   initQuestScript,
   fireRunStartWaves,
   updateEnterRoomTriggers,
+  checkWaveCleared,
+  fireWaveClearedTriggers,
 } = require('./questScript');
 const { unlockQuestTier, isQuestTierUnlocked } = require('./users');
 const { getObjectiveDef } = require('./objectives');
@@ -2285,8 +2287,25 @@ function removeDeadEnemies() {
   return removed;
 }
 
+function buildQuestScriptSpawnCtx(gameState = _gameState) {
+  const seed = gameState.layoutSeed || 42;
+  const rng = mulberry32(seed + 1000);
+  return {
+    ...buildObjectiveSpawnCtx(),
+    layout: gameState.layout,
+    rng,
+  };
+}
+
+function processQuestWaveCleared(gameState = _gameState) {
+  if (!gameState?.run?.waveScript) return;
+  checkWaveCleared(gameState);
+  fireWaveClearedTriggers(gameState, buildQuestScriptSpawnCtx(gameState));
+}
+
 function cleanupAfterDamage() {
   if (removeDeadEnemies() > 0) {
+    processQuestWaveCleared();
     checkRunTerminalState();
   }
 }
@@ -2587,13 +2606,9 @@ function updateEncounterTriggers() {
 function updateQuestScriptTriggers(now = Date.now(), gameState = _gameState) {
   if (!isPlayingPhase(gameState)) return;
   if (!gameState?.run?.waveScript) return;
-  const seed = gameState.layoutSeed || 42;
-  const rng = mulberry32(seed + 1000);
-  updateEnterRoomTriggers(gameState, {
-    ...buildObjectiveSpawnCtx(),
-    layout: gameState.layout,
-    rng,
-  });
+  const spawnCtx = buildQuestScriptSpawnCtx(gameState);
+  processQuestWaveCleared(gameState);
+  updateEnterRoomTriggers(gameState, spawnCtx);
 }
 
 function spawnLoot(layout, rng) {

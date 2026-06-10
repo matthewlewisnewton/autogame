@@ -8,6 +8,14 @@ function isEnterRoomTrigger(trigger) {
   return trigger === 'enter_room';
 }
 
+function isWaveClearedTrigger(trigger) {
+  return !!(trigger && typeof trigger === 'object' && typeof trigger.waveCleared === 'string');
+}
+
+function waveClearedPriorId(trigger) {
+  return isWaveClearedTrigger(trigger) ? trigger.waveCleared : null;
+}
+
 function roomAt(layout, x, z) {
   if (!layout?.rooms) return null;
   return layout.rooms.find((room) => {
@@ -106,6 +114,71 @@ function spawnWaveEntries(waveState, scriptWave, ctx) {
 }
 
 /**
+ * Spawn one scripted wave if its trigger conditions are satisfied.
+ * @param {object} waveState - Mutable entry on `run.waveScript`.
+ * @param {import('./quests').QuestScriptWave} scriptWave
+ * @param {object} ctx - Objective spawn context.
+ */
+function trySpawnWave(waveState, scriptWave, ctx) {
+  spawnWaveEntries(waveState, scriptWave, ctx);
+}
+
+/**
+ * Mark spawned waves cleared once every `spawnedEnemyIds` entry is absent from live enemies.
+ * @param {object} gameState
+ * @returns {string[]} Wave ids newly transitioned to `cleared`.
+ */
+function checkWaveCleared(gameState) {
+  const run = gameState?.run;
+  if (!run?.waveScript) return [];
+
+  const liveEnemyIds = new Set((gameState.enemies || []).map((enemy) => enemy.id));
+  const newlyCleared = [];
+
+  for (const waveState of run.waveScript) {
+    if (waveState.status !== 'spawned') continue;
+    const allGone = waveState.spawnedEnemyIds.every((id) => !liveEnemyIds.has(id));
+    if (!allGone) continue;
+    waveState.status = 'cleared';
+    newlyCleared.push(waveState.id);
+  }
+
+  return newlyCleared;
+}
+
+/**
+ * Spawn pending waves whose trigger is `{ waveCleared: '<priorWaveId>' }` once the prior wave clears.
+ * @param {object} gameState
+ * @param {object} ctx - Objective spawn context; `layout` may be supplied or read from gameState.
+ */
+function fireWaveClearedTriggers(gameState, ctx) {
+  const run = gameState?.run;
+  if (!run?.waveScript) return;
+
+  const quest = getQuest(run.questId, run.questTier);
+  const script = getQuestScript(quest);
+  if (!script) return;
+
+  const spawnCtx = {
+    ...ctx,
+    layout: ctx.layout ?? gameState.layout,
+  };
+  const scriptWaveById = new Map(script.waves.map((wave) => [wave.id, wave]));
+  const clearedIds = new Set(
+    run.waveScript.filter((wave) => wave.status === 'cleared').map((wave) => wave.id),
+  );
+
+  for (const waveState of run.waveScript) {
+    if (waveState.status !== 'pending') continue;
+    const priorId = waveClearedPriorId(waveState.trigger);
+    if (!priorId || !clearedIds.has(priorId)) continue;
+    const scriptWave = scriptWaveById.get(waveState.id);
+    if (!scriptWave) continue;
+    trySpawnWave(waveState, scriptWave, spawnCtx);
+  }
+}
+
+/**
  * Fire every `run_start` wave that is still pending.
  * @param {object} gameState
  * @param {object} ctx - Objective spawn context; `layout` may be supplied or read from gameState.
@@ -129,7 +202,7 @@ function fireRunStartWaves(gameState, ctx) {
     if (!isRunStartTrigger(waveState.trigger)) continue;
     const scriptWave = scriptWaveById.get(waveState.id);
     if (!scriptWave) continue;
-    spawnWaveEntries(waveState, scriptWave, spawnCtx);
+    trySpawnWave(waveState, scriptWave, spawnCtx);
   }
 }
 
@@ -165,17 +238,22 @@ function updateEnterRoomTriggers(gameState, ctx) {
     );
     if (!playerEntered) continue;
 
-    spawnWaveEntries(waveState, scriptWave, spawnCtx);
+    trySpawnWave(waveState, scriptWave, spawnCtx);
   }
 }
 
 module.exports = {
   initQuestScript,
   spawnWaveEntries,
+  trySpawnWave,
+  checkWaveCleared,
+  fireWaveClearedTriggers,
   fireRunStartWaves,
   updateEnterRoomTriggers,
   resolveWaveRoom,
   isPlayerInRoom,
   isRunStartTrigger,
   isEnterRoomTrigger,
+  isWaveClearedTrigger,
+  waveClearedPriorId,
 };
