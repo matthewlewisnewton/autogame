@@ -25,7 +25,9 @@ import {
 } from '../escort.js';
 
 const require = createRequire(import.meta.url);
-const { QUEST_DEFS, ESCORT_OBJECTIVE_FIXTURE_DEF, formatObjectiveSummary } = require('../quests.js');
+const {
+  QUEST_DEFS, ESCORT_OBJECTIVE_FIXTURE_DEF, formatObjectiveSummary, getQuest,
+} = require('../quests.js');
 
 const SEED = 5151;
 const FIXTURE_QUEST_ID = 'escort_objective_fixture';
@@ -96,6 +98,17 @@ describe('escort objective registry', () => {
   it('formatObjectiveSummary renders escort line', () => {
     const quest = ESCORT_OBJECTIVE_FIXTURE_DEF.tiers[1];
     expect(formatObjectiveSummary(quest)).toBe('Escort Archivist Vale to arena dais');
+  });
+
+  it('annex_escort tier 1 carries the escort ambush dialogue beacon', () => {
+    const quest = getQuest('annex_escort', 1);
+    expect(quest.dialogueBeacons).toContainEqual({
+      beaconId: 'escort_ambush',
+      trigger: 'onRoomEntered',
+      roomIndex: 1,
+      speaker: 'Archivist Vale',
+      line: 'They found us!',
+    });
   });
 });
 

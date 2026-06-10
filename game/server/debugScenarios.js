@@ -273,6 +273,37 @@ function setupAnnexEscortTier1Deploy(lobby, state, player) {
   setupQuestTier1Deploy(lobby, state, player, 'annex_escort');
 }
 
+/**
+ * Find a staging point in a corridor just outside `roomIndex`, so one step
+ * forward enters the room. Passage endpoints sit at room centres, so the
+ * endpoint inside the target room gives the corridor's approach direction.
+ */
+function corridorStagingOutsideRoom(layout, roomIndex, margin = 2) {
+  const room = layout?.rooms?.[roomIndex];
+  if (!room || !Array.isArray(layout.passages)) return null;
+  const inRoom = (x, z) =>
+    Math.abs(x - room.x) <= room.width / 2 && Math.abs(z - room.z) <= room.depth / 2;
+  for (const passage of layout.passages) {
+    const ends = [
+      [{ x: passage.x1, z: passage.z1 }, { x: passage.x2, z: passage.z2 }],
+      [{ x: passage.x2, z: passage.z2 }, { x: passage.x1, z: passage.z1 }],
+    ];
+    for (const [end, other] of ends) {
+      if (!inRoom(end.x, end.z) || inRoom(other.x, other.z)) continue;
+      const dx = Math.sign(other.x - end.x);
+      const dz = Math.sign(other.z - end.z);
+      const step = Math.max(1, Math.min(margin, passage.corridorLength - 1));
+      return {
+        x: room.x + dx * (room.width / 2 + step),
+        z: room.z + dz * (room.depth / 2 + step),
+        awayX: dx,
+        awayZ: dz,
+      };
+    }
+  }
+  return null;
+}
+
 function deepestCombatRoom(layout) {
   return layout.rooms
     .filter((room) => room.role === 'combat')
@@ -1253,6 +1284,40 @@ function applyDebugScenario(socket, name) {
       // annex_escort Tier 1 escort objective with Archivist Vale and ambush waves.
       // Reachable normally by selecting Annex Evacuation and deploying.
       setupAnnexEscortTier1Deploy(lobby, state, player);
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
+    if (name === 'annex-escort-ambush-room') {
+      // annex_escort Tier 1 staged in the corridor just outside ambush room 1
+      // with Archivist Vale alongside. Step into the room to spring the
+      // skirmisher ambush and fire Vale's escort_ambush dialogue beacon
+      // ('They found us!'). Reachable normally by selecting Annex Evacuation
+      // and escorting Vale from the start room into the ambush room; this
+      // scenario is a shortcut to that doorway.
+      setupAnnexEscortTier1Deploy(lobby, state, player);
+
+      const staging = corridorStagingOutsideRoom(state.layout, 1);
+      if (staging) {
+        player.x = staging.x;
+        player.z = staging.z;
+        player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+        const escort = getEscortMinion(state);
+        if (escort) {
+          escort.x = staging.x + staging.awayX * 1.5;
+          escort.z = staging.z + staging.awayZ * 1.5;
+        }
+      }
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,

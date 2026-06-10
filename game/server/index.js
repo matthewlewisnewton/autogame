@@ -562,6 +562,7 @@ const DEBUG_SCENARIOS = new Set([
   'crystal-rescue-tier-1',
   'crystal-rescue-extraction-phase',
   'annex-escort-tier-1',
+  'annex-escort-ambush-room',
   'scripted-wave-combat',
   'passage-lock-gated',
   'passage-lock-chain',
@@ -834,6 +835,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'crystal-rescue-tier-1',
   'crystal-rescue-extraction-phase',
   'annex-escort-tier-1',
+  'annex-escort-ambush-room',
 ]);
 
 function shouldSkipDefaultEnemySpawn(state) {
