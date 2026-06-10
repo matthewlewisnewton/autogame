@@ -1,4 +1,11 @@
 /**
+ * Quest-tier layout classification. `boss_level` marks a dedicated single-boss
+ * arena quest (distinct from in-dungeon miniboss tiers). Boss-level tiers default
+ * to the `boss-arena` layout profile unless `layoutProfile` is set explicitly.
+ * @typedef {'boss_level'} QuestLevelKind
+ */
+
+/**
  * Optional stage-boss encounter metadata on a quest tier (wired in sub-ticket 05).
  * @typedef {Object} EncounterConfig
  * @property {string} [bossType] - Enemy type for the stage boss (default `miniboss`).
@@ -61,6 +68,7 @@
  * @property {EscortNpcConfig} [escortNpc] - Friendly NPC to protect and extract.
  * @property {EscortDestinationConfig} [escortDestination] - Extraction landmark or room role.
  * @property {boolean} [escortFailOnDeath=true] - Fail the run when the escort dies.
+ * @property {QuestLevelKind} [levelKind] - Quest-tier layout classification (`boss_level` ⇒ boss-arena default).
  */
 
 /**
@@ -1235,6 +1243,39 @@ const ESCORT_OBJECTIVE_FIXTURE_DEF = {
 };
 
 /** Test/debug fixture quest def — not registered in QUEST_DEFS. */
+const BOSS_LEVEL_FIXTURE_DEF = {
+  id: 'boss_level_fixture',
+  enemyPool: [{ type: 'miniboss', weight: 1 }],
+  tiers: {
+    1: {
+      name: 'Boss Level Fixture',
+      description: 'Test-only dedicated boss arena quest.',
+      objectiveType: 'stage_boss',
+      levelKind: 'boss_level',
+      rewardCurrency: 1,
+      encounter: {
+        bossType: 'miniboss',
+        landmark: 'arena_dais',
+        addCount: 2,
+      },
+    },
+    2: {
+      name: 'Boss Level Explicit Profile',
+      description: 'Boss level with explicit boss-arena layout profile.',
+      objectiveType: 'stage_boss',
+      levelKind: 'boss_level',
+      layoutProfile: 'boss-arena',
+      rewardCurrency: 1,
+      encounter: {
+        bossType: 'miniboss',
+        landmark: 'arena_dais',
+        addCount: 0,
+      },
+    },
+  },
+};
+
+/** Test/debug fixture quest def — not registered in QUEST_DEFS. */
 const SCRIPTED_ENCOUNTER_FIXTURE_DEF = {
   id: 'scripted_encounter_fixture',
   enemyPool: [{ type: 'grunt', weight: 1 }],
@@ -1535,10 +1576,22 @@ function buildQuestUpdatePayload(gameState, playerAccountId) {
   return payload;
 }
 
+function isBossLevelQuest(quest) {
+  return !!(quest && quest.levelKind === 'boss_level');
+}
+
 function getLayoutProfileForQuest(questId, tier) {
   const quest = getQuest(questId, tier);
+  if (quest) {
+    if (quest.layoutProfile) {
+      return quest.layoutProfile;
+    }
+    if (isBossLevelQuest(quest)) {
+      return 'boss-arena';
+    }
+  }
   const fallback = getQuest(DEFAULT_QUEST_ID, DEFAULT_QUEST_TIER);
-  return (quest && quest.layoutProfile) || (fallback && fallback.layoutProfile) || 'crowded';
+  return (fallback && fallback.layoutProfile) || 'crowded';
 }
 
 /**
@@ -1634,6 +1687,7 @@ function pickWeightedEnemyType(pool, rng = Math.random) {
 
 module.exports = {
   QUEST_DEFS,
+  BOSS_LEVEL_FIXTURE_DEF,
   SCRIPTED_ENCOUNTER_FIXTURE_DEF,
   ESCORT_OBJECTIVE_FIXTURE_DEF,
   DEFAULT_QUEST_ID,
@@ -1647,6 +1701,7 @@ module.exports = {
   listQuests,
   listQuestVariants,
   getSelectedQuest,
+  isBossLevelQuest,
   getLayoutProfileForQuest,
   getLayoutGenerationOptions,
   buildSharedQuestUpdatePayload,
