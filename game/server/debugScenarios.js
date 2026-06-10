@@ -807,6 +807,48 @@ function applyDebugScenario(socket, name) {
       };
     }
 
+    if (name === 'frost-crossing-last-enemy') {
+      // frost_crossing Tier 1 run one 1-HP enemy from victory: one hit wins and the
+      // post-victory reward panel shows the quest's signature card (Ice Ball) as the
+      // first choice. Reachable normally by selecting Frost Crossing and clearing all
+      // but the last hostile; this scenario is a shortcut into that state.
+      setupFrostCrossingTier1Deploy(lobby, state, player);
+
+      const total = state.run.objective.totalEnemies ?? 6;
+      state.enemies = [];
+      const enemyType = 'grunt';
+      const enemy = spawnEnemy(player.x + 2, player.z, enemyType);
+      enemy.hp = 1;
+      enemy.maxHp = ENEMY_DEFS[enemyType]?.hp ?? enemy.maxHp;
+      enemy.y = resolveFloorY(sampleFloorY(state.layout, enemy.x, enemy.z));
+      enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+      repositionNearEnemy(player, enemy);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      state.run.objective.totalEnemies = total;
+      state.run.objective.defeatedEnemies = Math.max(0, total - 1);
+      if (!player.hand.some((c) => c && c.type === 'weapon' && (c.remainingCharges == null || c.remainingCharges > 0))) {
+        const replaceSlot = player.hand.findIndex((c) => c && c.type !== 'weapon');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = {
+            id: 'iron_sword',
+            name: 'Rust-Forged Saber',
+            type: 'weapon',
+            charges: 5,
+            remainingCharges: 5,
+            grind: 0,
+          };
+        }
+      }
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
     if (name === 'crystal-rescue-tier-2') {
       // crystal_rescue Tier 2 with rigid open layout, prism collect_items objective,
       // and cover/platform/hazard-aware spawns. Quest/tier and layout must be set

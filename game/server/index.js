@@ -530,6 +530,7 @@ const DEBUG_SCENARIOS = new Set([
   'sunken-canyon-stage',
   'sunken-canyon-cliff-hazard',
   'frost-crossing-tier-1',
+  'frost-crossing-last-enemy',
   'fire-cavern',
   'ember-descent-near-adds',
   'ember-descent-ember-wraith-burn',
@@ -785,6 +786,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'ember-descent-last-enemy',
   'slippery-floor-lab',
   'frost-crossing-tier-1',
+  'frost-crossing-last-enemy',
 ]);
 
 function shouldSkipDefaultEnemySpawn(state) {

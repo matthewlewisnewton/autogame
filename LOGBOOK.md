@@ -6050,3 +6050,25 @@ PASS. This ticket did not add or change any `?debugScenario=...` shortcut. Exist
 
 No blocking gaps remain. One limitation of the evidence is that the browser capture exercised an unscripted production quest because no shipped quest tier currently defines `script.waves`; the scripted path is nevertheless covered by focused server fixtures and integration tests, which is sufficient for this foundation ticket.
 
+## v0.346 — Per-quest signature card rewards: replace the single global victory rotation, surface reward on the quest board  (2026-06-10 00:45:49)
+
+| Requirement | Status |
+|-------------|--------|
+| Gated behind debug/dev path only | Yes — registered in `DEBUG_SCENARIOS`; `isDebugScenarioAllowed` requires `ALLOW_DEBUG_SCENARIOS=1` or localhost; URL/socket is the entry point |
+| Same end-state reachable in normal play | Yes — frost_crossing tier 1 with all but one hostile cleared |
+| Does not weaken invariants | Yes — uses `setupFrostCrossingTier1Deploy`, spawns a 1-HP grunt, does not skip victory reward server logic |
+
+Not used in round-1 capture (`debugScenario: null` in probes). Acceptable QA shortcut.
+
+---
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are implemented and covered by tests; the game runs without errors in capture.
+
+---
+
+## Nits (non-blocking)
+
+See `nits.md` for one follow-up on tier-1 vs tier-2 currency label wording on the quest board.
+

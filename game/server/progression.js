@@ -63,6 +63,8 @@ const {
   getSelectedQuest,
   getEnemyPool,
   getGuaranteedEnemyType,
+  getSignatureCardId,
+  getQuestRewardCards,
   pickWeightedEnemyType,
   getQuestScript,
   DEFAULT_QUEST_TIER,
@@ -1196,6 +1198,16 @@ function buildCardChoices(playerId, state = _gameState) {
     if (uniqueIds.length >= MAX_CARD_CHOICES) break;
   }
 
+  // Signature quests always offer their signature card as the first choice,
+  // deduplicated against run drops and still capped at MAX_CARD_CHOICES.
+  const signatureCardId = getSignatureCardId(state.run?.questId, state.run?.questTier);
+  if (signatureCardId && CARD_DEFS[signatureCardId]) {
+    const dupeIdx = uniqueIds.indexOf(signatureCardId);
+    if (dupeIdx !== -1) uniqueIds.splice(dupeIdx, 1);
+    uniqueIds.unshift(signatureCardId);
+    if (uniqueIds.length > MAX_CARD_CHOICES) uniqueIds.length = MAX_CARD_CHOICES;
+  }
+
   return uniqueIds.map((cardId) => {
     const def = CARD_DEFS[cardId];
     return {
@@ -1333,7 +1345,11 @@ function grantRunRewards(playerId, summary) {
     if (cardChoices.length === 0) {
       if (!_gameState._victoryCounters) _gameState._victoryCounters = {};
       const idx = _gameState._victoryCounters[playerId] || 0;
-      const cardId = VICTORY_REWARD_ROTATION[idx % VICTORY_REWARD_ROTATION.length];
+      // Signature quests rotate through their own reward pool; everything else
+      // keeps the global rotation.
+      const run = _gameState.run;
+      const pool = getQuestRewardCards(run?.questId, run?.questTier) || VICTORY_REWARD_ROTATION;
+      const cardId = pool[idx % pool.length];
       _gameState._victoryCounters[playerId] = idx + 1;
 
       if (grantCard(player, cardId)) {

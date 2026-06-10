@@ -1,0 +1,28 @@
+## Review complete
+
+**VERDICT: PASS**
+
+### Runtime
+- `metrics.json`: `"ok": true`, empty `pageerrors`
+- `console.log`: clean (no page errors or fatals)
+- Game starts and runs normally in capture
+
+### Acceptance criteria
+All four are met in the live codebase with solid test coverage:
+
+1. **frost_crossing victory** — `ice_ball` (Glacial Orb) is first in `pendingCardChoices`; quest pool used for empty-choices fallback
+2. **training_caverns victory** — no injected `ice_ball`; global `VICTORY_REWARD_ROTATION` unchanged for non-signature quests
+3. **Quest board** — server sends `signatureCardName`; client renders e.g. `Reward: 14 money + Glacial Orb` (tier-2 via server `rewardSummary`)
+4. **No-signature quests** — behave as before; `config.js` rotation untouched
+
+### Other checks
+- **2972/2972** tests pass
+- New debug scenario `frost-crossing-last-enemy` is properly gated and does not bypass normal victory flow
+- Design matches the PSO-style per-quest reward model
+
+### Files written
+- `round-1/review.md` — full assessment
+- `round-1/nits.md` — one non-blocking nit (tier-1 “money” vs tier-2 “stones” label on quest board)
+- No `gaps.md` (PASS only)
+
+Round-1 capture was generic `training_caverns` smoke, not a quest-board screenshot; ticket behavior is covered by unit tests and sub-ticket QA.
