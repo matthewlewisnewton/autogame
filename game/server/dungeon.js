@@ -2508,7 +2508,7 @@ function generateSunkenCanyon(seed, options = {}) {
  * sheet with a stone treasure pad to the south. One or two flat stone ramps
  * bridge entry ↔ ice; the treasure pad opens through a centred wall gap.
  *
- * Returns { rooms, passages: [], cover, passageWidth, cellSpacing,
+ * Returns { rooms, passages, cover, passageWidth, cellSpacing,
  *           profile: 'ice-cavern' }.
  */
 function generateIceCavern(seed, options = {}) {
@@ -2667,9 +2667,17 @@ function generateIceCavern(seed, options = {}) {
     interiorMargin,
   });
 
+  const passages = ramps.map((ramp) => ({
+    x1: entry.x,
+    z1: entry.z,
+    x2: ramp.x,
+    z2: ramp.z,
+    walls: [],
+  }));
+
   return {
     rooms: [entry, ...ramps, iceField, treasure],
-    passages: [],
+    passages,
     cover: [...entryCover, ...treasureCover],
     entryDecor,
     passageWidth: PASSAGE_WIDTH,

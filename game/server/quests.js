@@ -113,67 +113,6 @@ function spawnOffsetsInRoom(room, count, radiusFrac = 0.22) {
 }
 
 /**
- * Authored wave script for training_caverns tier 1. Spawn coords are derived
- * from the canonical crowded layout seed so hand-placed enemies stay stable.
- */
-function buildTrainingCavernsTier1Script() {
-  const questId = 'training_caverns';
-  const tier = 1;
-  const seed = questLayoutSeed(questId, tier);
-  const layout = generateLayout(seed, 'crowded', { slopes: true, layoutMode: 'default' });
-  const startRoom = layout.rooms.find((room) => room.role === 'start') || layout.rooms[0];
-  const vaultRoom = layout.rooms
-    .filter((room) => room.role === 'combat')
-    .sort((a, b) => a.x - b.x || a.z - b.z)
-    .pop();
-  const startPositions = spawnOffsetsInRoom(startRoom, 4);
-  const runStartTypes = ['grunt', 'grunt', 'skirmisher', 'skirmisher'];
-  const runStartSpawns = runStartTypes.map((type, index) => ({
-    type,
-    x: startPositions[index].x,
-    z: startPositions[index].z,
-  }));
-  const vaultPositions = spawnOffsetsInRoom(vaultRoom, 2);
-  const marauderX = roundSpawnCoord(vaultRoom.x);
-  const marauderZ = roundSpawnCoord(vaultRoom.z + vaultRoom.depth * 0.12);
-
-  return {
-    waves: [
-      {
-        id: 'wave_run_start',
-        trigger: 'run_start',
-        spawns: runStartSpawns,
-      },
-      {
-        id: 'wave_vault_room',
-        trigger: 'enter_room',
-        room: { x: vaultRoom.x, z: vaultRoom.z },
-        spawns: [
-          {
-            type: 'grunt',
-            x: marauderX,
-            z: marauderZ,
-            variant: {
-              name: 'Vault Marauder',
-              hpMult: 1.5,
-              damageMult: 1.25,
-              tint: '#c9a227',
-              scaleMult: 1.12,
-              drop: { cardId: 'dungeon_drake' },
-            },
-          },
-          {
-            type: 'skirmisher',
-            x: vaultPositions[1].x,
-            z: vaultPositions[1].z,
-          },
-        ],
-      },
-    ],
-  };
-}
-
-/**
  * Authored wave script for ember_descent tier 1. Spawn coords are derived from
  * the canonical fire-cavern layout seed so hand-placed enemies stay stable.
  */
@@ -225,58 +164,6 @@ function buildEmberDescentTier1Script() {
   };
 }
 
-/**
- * Authored wave script for frost_crossing tier 1. Spawn coords are derived from
- * the canonical layout seed so hand-placed enemies stay stable across runs.
- */
-function buildFrostCrossingTier1Script() {
-  const questId = 'frost_crossing';
-  const tier = 1;
-  const seed = questLayoutSeed(questId, tier);
-  const layout = generateLayout(seed, 'ice-cavern', { slopes: true, layoutMode: 'default' });
-  const startRoom = layout.rooms.find((room) => room.role === 'start') || layout.rooms[0];
-  const iceRoom = layout.rooms.find((room) => room.band === 'ice');
-  const startPositions = spawnOffsetsInRoom(startRoom, 5);
-  const runStartTypes = ['grunt', 'grunt', 'grunt', 'skirmisher', 'skirmisher'];
-  const runStartSpawns = runStartTypes.map((type, index) => ({
-    type,
-    x: startPositions[index].x,
-    z: startPositions[index].z,
-  }));
-  const frostmawX = roundSpawnCoord(iceRoom.x);
-  const frostmawZ = roundSpawnCoord(iceRoom.z + iceRoom.depth * 0.15);
-
-  return {
-    waves: [
-      {
-        id: 'wave_run_start',
-        trigger: 'run_start',
-        spawns: runStartSpawns,
-      },
-      {
-        id: 'wave_ice_field',
-        trigger: 'enter_room',
-        room: { x: iceRoom.x, z: iceRoom.z },
-        spawns: [
-          {
-            type: 'glacial_thrower',
-            x: frostmawX,
-            z: frostmawZ,
-            variant: {
-              name: 'Frostmaw',
-              hpMult: 1.6,
-              damageMult: 1.3,
-              tint: '#7dd3fc',
-              scaleMult: 1.15,
-              drop: { cardId: 'permafrost_lance' },
-            },
-          },
-        ],
-      },
-    ],
-  };
-}
-
 const QUEST_DEFS = {
   training_caverns: {
     id: 'training_caverns',
@@ -297,16 +184,26 @@ const QUEST_DEFS = {
         rewardCurrency: 10,
         rewardCardId: 'saber_of_light',
         layoutProfile: 'crowded',
-        script: buildTrainingCavernsTier1Script(),
         scriptedEncounters: {
           rooms: [
             {
               roomIndex: 0,
               waves: [
                 { spawns: [{ type: 'grunt', count: 2 }] },
+              ],
+            },
+            {
+              roomIndex: 1,
+              waves: [
+                { spawns: [{ type: 'skirmisher', count: 2 }] },
+              ],
+            },
+            {
+              roomIndex: 2,
+              waves: [
                 {
                   spawns: [
-                    { type: 'skirmisher', count: 1 },
+                    { type: 'grunt', count: 1 },
                     {
                       type: 'grunt',
                       count: 1,
@@ -319,16 +216,6 @@ const QUEST_DEFS = {
                   ],
                 },
               ],
-            },
-            {
-              roomIndex: 1,
-              waves: [
-                { spawns: [{ type: 'skirmisher', count: 2 }] },
-              ],
-            },
-            {
-              roomIndex: 2,
-              waves: [],
             },
           ],
           passageLocks: [
@@ -348,7 +235,7 @@ const QUEST_DEFS = {
             trigger: 'onRoomEntered',
             roomIndex: 0,
             speaker: 'Annex Liaison Kade',
-            line: 'Contract accepted. Sweep the annex — I will mark your progress on the channel.',
+            line: 'Entry annex is live. Close with WASD and strike with your melee weapon — two grunts block the bulkhead.',
           },
           {
             beaconId: 'training_wave0_clear',
@@ -356,26 +243,32 @@ const QUEST_DEFS = {
             roomIndex: 0,
             waveIndex: 0,
             speaker: 'Annex Liaison Kade',
-            line: 'Bulkhead released — push deeper before the salvage crews regroup.',
+            line: 'Bulkhead released. Select a card from your hand and play it on the next pack — spells and creatures hit harder than fists alone.',
           },
           {
-            beaconId: 'training_wave1_clear',
-            trigger: 'onWaveCleared',
+            beaconId: 'training_annex_enter',
+            trigger: 'onRoomEntered',
             roomIndex: 1,
-            waveIndex: 0,
             speaker: 'Annex Liaison Kade',
-            line: 'Inner vault seal broken — the wing is yours if you can hold it.',
+            line: 'Mid annex ahead. Watch enemy attack telegraphs — dodge roll when you see a wind-up before they connect.',
+          },
+          {
+            beaconId: 'training_vault_enter',
+            trigger: 'onRoomEntered',
+            roomIndex: 2,
+            speaker: 'Annex Liaison Kade',
+            line: 'Vault wing unlocked. Vault Stalker is warded — break the shield, then finish the pair.',
           },
         ],
         client: {
           name: 'Rewa',
           briefing:
-            'Annex clearance contract. Five hostiles remain in the vault sector — neutralize them and I will release your reward stones.',
+            'Annex clearance contract. Six hostiles guard the vault sector — neutralize them and I will release your reward stones.',
         },
         dialogue: [
           {
             trigger: 'run_start',
-            text: 'Rewa here. Radio check — sweep the annex and report when the sector is clear.',
+            text: 'Rewa on channel. Move with WASD, close on the opening grunts, and strike with your melee weapon to start the sweep.',
           },
           {
             trigger: 'objective_complete',
@@ -455,6 +348,13 @@ const QUEST_DEFS = {
             },
           ],
         },
+        finalAmbush: {
+          spawns: [
+            { type: 'skirmisher', count: 2 },
+            { type: 'grunt', count: 1 },
+          ],
+        },
+        extractionDestination: { roomRole: 'start' },
         dialogueBeacons: [
           {
             beaconId: 'prism_first',
@@ -475,7 +375,19 @@ const QUEST_DEFS = {
             trigger: 'onCrystalCollected',
             crystalIndex: 3,
             speaker: 'Lattice Custodian Mira',
-            line: 'All prisms accounted for. Extraction channel is open.',
+            line: 'Final prism locked — lattice swarms are converging on your position.',
+          },
+          {
+            beaconId: 'prism_extraction_start',
+            trigger: 'onExtractionStart',
+            speaker: 'Lattice Custodian Mira',
+            line: 'Ambush broken. Fall back to the entry dock — I will hold the channel open.',
+          },
+          {
+            beaconId: 'prism_extraction_dock',
+            trigger: 'onExtractionComplete',
+            speaker: 'Lattice Custodian Mira',
+            line: 'Entry dock secured. Telepipe is hot — step through on my mark.',
           },
         ],
         signatureCardId: 'mana_prism',
@@ -500,11 +412,15 @@ const QUEST_DEFS = {
           },
           {
             trigger: { itemCollected: 3 },
-            text: 'Final prism secured. All signatures accounted for.',
+            text: 'Final prism secured — brace for a lattice ambush at your position.',
+          },
+          {
+            trigger: 'extraction_start',
+            text: 'Ambush cleared. Get back to the entry dock before the breach seals.',
           },
           {
             trigger: 'objective_complete',
-            text: 'Lattice harmonics stabilizing. Telepipe is hot — extract now.',
+            text: 'Dock secured. Lattice harmonics stabilizing — extract on my mark.',
           },
         ],
       },
@@ -641,7 +557,7 @@ const QUEST_DEFS = {
     tiers: {
       1: {
         name: 'Frost Crossing',
-        description: 'Cross the frozen cavern and purge scripted waves from the ice field.',
+        description: 'Clear the stone dock, cross the ice band, and defeat Rimecast the Slow.',
         clientNpc: 'Ice-Watch Courier Sela',
         briefing:
           'The ice band is slick with rimecast ambushes. '
@@ -659,12 +575,18 @@ const QUEST_DEFS = {
             {
               band: 'ice',
               waves: [
-                { spawns: [{ type: 'glacial_thrower', count: 1 }, { type: 'grunt', count: 2 }] },
+                {
+                  spawns: [
+                    { type: 'glacial_thrower', count: 1, offset: { x: -9, z: 8 } },
+                    { type: 'glacial_thrower', count: 1, offset: { x: 9, z: 8 } },
+                  ],
+                },
                 {
                   spawns: [
                     {
                       type: 'glacial_thrower',
                       count: 1,
+                      offset: { x: 0, z: -6 },
                       namedRare: {
                         id: 'frost_rimecast',
                         displayName: 'Rimecast the Slow',
@@ -672,14 +594,35 @@ const QUEST_DEFS = {
                         enemyType: 'glacial_thrower',
                       },
                     },
-                    { type: 'skirmisher', count: 1 },
+                    { type: 'skirmisher', count: 1, offset: { x: 7, z: -3 } },
                   ],
                 },
               ],
             },
           ],
+          passageLocks: [
+            {
+              afterWave: { roomIndex: 0, waveIndex: 0 },
+              fromRoomIndex: 0,
+            },
+          ],
         },
         dialogueBeacons: [
+          {
+            beaconId: 'frost_dock_enter',
+            trigger: 'onRoomEntered',
+            roomIndex: 0,
+            speaker: 'Ice-Watch Courier Sela',
+            line: 'Stone dock is live. Two grunts hold the ramp gate — clear them before you step onto the ice.',
+          },
+          {
+            beaconId: 'frost_dock_clear',
+            trigger: 'onWaveCleared',
+            roomIndex: 0,
+            waveIndex: 0,
+            speaker: 'Ice-Watch Courier Sela',
+            line: 'Ramp gate is open. Cross carefully — glacial throwers have the far side of the sheet.',
+          },
           {
             beaconId: 'frost_ice_band_enter',
             trigger: 'onRoomEntered',
@@ -687,19 +630,26 @@ const QUEST_DEFS = {
             speaker: 'Ice-Watch Courier Sela',
             line: 'You are on the ice band — watch your footing and clear the throwers.',
           },
+          {
+            beaconId: 'frost_rimecast_wave',
+            trigger: 'onWaveCleared',
+            band: 'ice',
+            waveIndex: 0,
+            speaker: 'Ice-Watch Courier Sela',
+            line: 'First thrower line is down. Rimecast the Slow is winding up across the sheet — finish the crossing.',
+          },
         ],
         signatureCardId: 'ice_ball',
         rewardCards: ['ice_ball', 'frost_nova', 'permafrost_lance'],
-        script: buildFrostCrossingTier1Script(),
         client: {
           name: 'Cairn',
           briefing:
-            'Frost crossing escort. Six hostiles block the ice field — clear them and I release fourteen stones from the research fund.',
+            'Frost crossing escort. Clear the stone dock, cross the ice sheet, and bring down Rimecast the Slow for fourteen stones from the research fund.',
         },
         dialogue: [
           {
             trigger: 'run_start',
-            text: 'Cairn here. Hostiles are clustered on the ice field — clear a path so my survey team can follow.',
+            text: 'Cairn on ice-watch channel. Two hostiles guard the stone dock — clear them and Sela will unseal the ramp to the ice band.',
           },
           {
             trigger: 'objective_complete',
@@ -1050,6 +1000,9 @@ function formatObjectiveSummary(quest) {
   if (quest.objectiveType === 'collect_items') {
     const itemCount = quest.itemCount ?? 0;
     const guardCount = countScriptedEnemiesInQuest(quest);
+    if (quest.extractionDestination && quest.finalAmbush) {
+      return `Recover ${itemCount} prisms, clear guards and the ambush, extract to entry dock`;
+    }
     if (guardCount > 0) {
       return `Recover ${itemCount} prisms and clear ${guardCount} guards`;
     }
@@ -1057,6 +1010,10 @@ function formatObjectiveSummary(quest) {
   }
   if (quest.objectiveType === 'defeat_enemies') {
     const scriptedCount = countScriptedEnemiesInQuest(quest);
+    const questId = quest.questId || quest.id;
+    if (questId === 'frost_crossing' && scriptedCount > 0) {
+      return `Cross the ice band and clear ${scriptedCount} scripted hostiles`;
+    }
     if (scriptedCount > 0) {
       return `Clear ${scriptedCount} scripted hostiles`;
     }
@@ -1228,6 +1185,17 @@ function countScriptedEnemiesInQuest(quest) {
         total += Math.max(1, Math.floor(count));
       }
     }
+  }
+  return total;
+}
+
+function countFinalAmbushEnemies(quest) {
+  const spawns = quest?.finalAmbush?.spawns;
+  if (!Array.isArray(spawns) || spawns.length === 0) return 0;
+  let total = 0;
+  for (const spawn of spawns) {
+    const count = Number.isFinite(spawn?.count) ? spawn.count : 1;
+    total += Math.max(1, Math.floor(count));
   }
   return total;
 }
@@ -1550,6 +1518,7 @@ module.exports = {
   getEncounterConfig,
   getScriptedEncounterConfig,
   countScriptedEnemiesInQuest,
+  countFinalAmbushEnemies,
   getQuestScript,
   countScriptedEnemies,
   getEnemyPool,

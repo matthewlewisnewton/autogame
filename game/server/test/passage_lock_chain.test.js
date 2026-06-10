@@ -162,7 +162,9 @@ describe('chained passage lock progression', () => {
     expect(checkWallCollision(towardEndRoom.x, towardEndRoom.z, getWallColliders())).toBe(false);
 
     enterRoom(player, endRoom);
-    expect(gameState.run.scriptedEncounter.rooms['room:2'].started).toBe(false);
+    expect(gameState.run.scriptedEncounter.rooms['room:2'].started).toBe(true);
+    expect(gameState.enemies.some((enemy) => enemy.scriptedWave?.roomKey === 'room:2')).toBe(true);
+    expect(gameState.enemies.some((enemy) => enemy.displayName === 'Vault Stalker')).toBe(true);
   });
 
   it('telepipe suspend/resume preserves authored totalEnemies and live activeEnemyCount mid-wave', () => {

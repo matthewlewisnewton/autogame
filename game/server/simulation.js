@@ -34,6 +34,7 @@ const {
   runPlayerCount,
   SPIRE_EDGE_HAZARD_DAMAGE,
   SPIRE_EDGE_HAZARD_COOLDOWN_MS,
+  PLAYER_MOVEMENT_SAVE_DEBOUNCE_MS,
 } = require('./config');
 const { PASSAGE_WIDTH, sampleFloorY, sampleFloorSurface, DEFAULT_FLOOR_Y, resolveFloorY } = require('./dungeon');
 const { applyLeechHeal, getFrenziedCombatMultipliers, checkFrenziedTelegraph } = require('./enemyVariants');
@@ -700,14 +701,17 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
   }
 }
 
-/** Flush at most one persistence write per dirty player (called once per tick). */
+/** Flush dirty players at most once per debounce window (called once per tick). */
 function flushDirtyPlayerSaves() {
   if (!_gameState || !_savePlayerData) return;
+  const now = Date.now();
   for (const [playerId, player] of Object.entries(_gameState.players)) {
-    if (player?.persistenceDirty) {
-      player.persistenceDirty = false;
-      _savePlayerData(playerId);
-    }
+    if (!player?.persistenceDirty) continue;
+    const lastSavedAt = player.persistenceLastSavedAt || 0;
+    if (now - lastSavedAt < PLAYER_MOVEMENT_SAVE_DEBOUNCE_MS) continue;
+    player.persistenceDirty = false;
+    player.persistenceLastSavedAt = now;
+    _savePlayerData(playerId);
   }
 }
 
