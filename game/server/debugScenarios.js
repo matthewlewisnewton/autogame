@@ -29,6 +29,7 @@ const {
 } = require('./quests');
 const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS, MEDIC_HEAL_COST } = require('./config');
 const CARD_DEFS = require('../shared/cardDefs.json');
+const CARD_STATS = require('../shared/cardStats.json');
 const {
   firstRoomPosition,
   computeDungeonBounds,
@@ -3219,6 +3220,8 @@ function applyDebugScenario(socket, name) {
         z: anchorZ,
         hp: 90,
         maxHp: 90,
+        flying: true,
+        altitude: CARD_STATS.ancient_wyrm.altitude,
         maxTtl: 30,
         ttl: 30,
         breathRange: 10,

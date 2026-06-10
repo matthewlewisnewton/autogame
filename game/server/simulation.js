@@ -3573,8 +3573,9 @@ function updateMinions() {
   }
 
   // Resolve world Y for every minion after its AI/movement this tick. Grounded
-  // minions sit at floor height; flying minions (storm_eagle, thunderbird)
-  // hover at floorY + altitude. Runs even when the AI loop is skipped (terminal
+  // minions sit at floor height; flying minions (storm_eagle, thunderbird,
+  // ancient_wyrm) hover at floorY + altitude. Runs even when the AI loop is
+  // skipped (terminal
   // run) so minion Y stays consistent.
   for (const minion of _gameState.minions) {
     minion.y = resolveEntityY(minion, _gameState.layout);

@@ -84,6 +84,7 @@
     "isEvolved": true,
     "specialEffect": "fire_breath",
     "effect": "ancient_wyrm",
+    "altitude": 4,
     "breathIntervalMs": 3000,
     "breathRange": 10,
     "breathHoldDistance": 5.5,

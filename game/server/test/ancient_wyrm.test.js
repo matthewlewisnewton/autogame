@@ -122,7 +122,13 @@ describe('Ancient Wyrm gameplay', () => {
 		await waitForEvent(socket, 'cardUsed');
 
 		const wyrm = state.minions.find(m => m.ownerId === socket._playerId && m.type === 'ancient_wyrm');
-		expect(wyrm).toMatchObject({ hp: 90, maxHp: 90, lastBreathAt: expect.any(Number) });
+		expect(wyrm).toMatchObject({
+			hp: 90,
+			maxHp: 90,
+			flying: true,
+			altitude: CARD_DEFS.ancient_wyrm.altitude,
+			lastBreathAt: expect.any(Number),
+		});
 	});
 });
 
