@@ -1,0 +1,16 @@
+I broke the top-level ticket into 3 sub-tickets in dependency order. The dependency infrastructure (374 spherical AoE, 375 height-aware projectiles, 376 airborne support) is already implemented, so the work is purely defining the new types and wiring them into the catalog, renderer, and spawn pools.
+
+**Sub-tickets created:**
+
+- `tickets/378-introduce-few-flying-enemies/subtickets/01-flying-enemy-defs-and-ai/ticket.md`
+- `tickets/378-introduce-few-flying-enemies/subtickets/02-flying-enemy-client-rendering/ticket.md`
+- `tickets/378-introduce-few-flying-enemies/subtickets/03-flying-enemy-rare-spawn-weights/ticket.md`
+
+**Plan:**
+1. **01 — Server defs + AI (code):** Two new `ENEMY_DEFS` flying types — `void_seraph` (hover + `radial` spherical AoE, hits across heights) and `rime_drifter` (hover + `ice_ball` height-aware projectile). Display metadata + lock-on entries flow automatically via `buildEnemyDisplayCatalog()` from `name`/`description`/`surfacedStats`. Reuses all existing machinery — no new attack/projectile systems.
+2. **02 — Client rendering (code):** `MODEL_REGISTRY`, `ENEMY_GEOMETRY`, and `ENEMY_ATTACK_VISUAL` entries so both render as hovering bodies with shadows (reusing `flyingRenderOffset`/`flyingShadowY`), mirroring `ember_wraith`.
+3. **03 — Rare spawn weights (code):** `weight: 1` placements — `void_seraph` in `spire_ascent` + `canyon_descent`, `rime_drifter` in `frost_crossing` — strictly the lowest weight in each pool, keeping fliers sparse.
+
+All three are `code` verification since the criteria concern definitions, structures, server attack/projectile behavior, catalog presence, and spawn weights — none are purely visual. 01 is a prerequisite for 02 and 03; 02 and 03 are independent of each other.
+
+No existing sub-ticket folders were present, so nothing was deleted or modified.

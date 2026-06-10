@@ -41,6 +41,8 @@ const TIER_2_QUEST_IDS = [
   'arena_trials',
   'canyon_descent',
   'spire_ascent',
+  'frost_crossing',
+  'ember_descent',
 ];
 
 function assertTier1QuestContent(questId) {
@@ -394,7 +396,7 @@ describe('quest tier catalog', () => {
     const trainingTier2 = variants.find(
       (v) => v.questId === 'training_caverns' && v.tier === 2
     );
-    expect(variants.length).toBe(Object.keys(QUEST_DEFS).length + 6);
+    expect(variants.length).toBe(Object.keys(QUEST_DEFS).length + TIER_2_QUEST_IDS.length);
     expect(trainingTier2).toMatchObject({
       questId: 'training_caverns',
       tier: 2,
@@ -468,7 +470,33 @@ describe('quest tier catalog', () => {
       objectiveType: 'defeat_enemies',
     });
     expect(emberTier1.objectiveSummary).toContain('6');
-    expect(variants.filter((v) => v.isTier2)).toHaveLength(6);
+    const frostTier2 = variants.find(
+      (v) => v.questId === 'frost_crossing' && v.tier === 2
+    );
+    expect(frostTier2).toMatchObject({
+      questId: 'frost_crossing',
+      tier: 2,
+      isTier2: true,
+      objectiveType: 'stage_boss',
+      unlockRequires: { questId: 'frost_crossing', tier: 1 },
+    });
+    expect(frostTier2.objectiveSummary.toLowerCase()).toContain('glacial tyrant');
+    expect(getQuest('frost_crossing', 2).layoutProfile).toBe('ice-cavern');
+    expect(getQuest('frost_crossing', 2).layoutMode).toBe('rigid');
+    const emberTier2 = variants.find(
+      (v) => v.questId === 'ember_descent' && v.tier === 2
+    );
+    expect(emberTier2).toMatchObject({
+      questId: 'ember_descent',
+      tier: 2,
+      isTier2: true,
+      objectiveType: 'stage_boss',
+      unlockRequires: { questId: 'ember_descent', tier: 1 },
+    });
+    expect(emberTier2.objectiveSummary.toLowerCase()).toContain('magma colossus');
+    expect(getQuest('ember_descent', 2).layoutProfile).toBe('fire-cavern');
+    expect(getQuest('ember_descent', 2).layoutMode).toBe('rigid');
+    expect(variants.filter((v) => v.isTier2)).toHaveLength(TIER_2_QUEST_IDS.length);
   });
 
   it('exposes signature reward id and resolved name on quest payloads', () => {
@@ -555,6 +583,10 @@ describe('quest tier catalog', () => {
     expect(getLayoutGenerationOptions('ember_descent', 1)).toEqual({
       slopes: true,
       layoutMode: 'default',
+    });
+    expect(getLayoutGenerationOptions('ember_descent', 2)).toEqual({
+      slopes: true,
+      layoutMode: 'rigid',
     });
     expect(isValidQuestSelection('ember_descent', 1)).toBe(true);
     expect(isValidQuestSelection('ember_descent', 2)).toBe(true);

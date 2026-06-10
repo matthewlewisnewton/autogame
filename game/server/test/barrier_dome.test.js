@@ -65,6 +65,7 @@ describe('useKeyItem — barrier_dome (socket integration)', () => {
 		// Clean state
 		player.keyItemCooldownUntil = 0;
 		player.barrierDomeUntil = 0;
+		player.equippedKeyItemId = 'barrier_dome';
 		player.x = 4;
 		player.z = -2;
 
@@ -105,6 +106,7 @@ describe('useKeyItem — barrier_dome (socket integration)', () => {
 		const player = playerForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'barrier_dome';
 
 		const result1Promise = waitForEvent(socket, 'keyItemUsed');
 		socket.emit('useKeyItem', { keyItemId: 'barrier_dome' });

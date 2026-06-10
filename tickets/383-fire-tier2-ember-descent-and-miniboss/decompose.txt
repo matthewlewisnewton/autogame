@@ -1,0 +1,17 @@
+Created **4 sub-tickets** in dependency order, following the 253–257 tier-2 pattern (rigid layout → boss enemy type → client render → end-to-end quest wiring):
+
+| # | Focus |
+|---|--------|
+| **01** | `fire-cavern` rigid `layoutMode` in `dungeon.js` (currently missing despite Tier II declaring it) |
+| **02** | `magma_colossus` server enemy definition, loot, HP scaling |
+| **03** | `magma_colossus` client geometry + attack telegraph |
+| **04** | Full Tier II wiring — swap placeholder `cinder_warden` for `magma_colossus`, add `tier2EnemyPool`, theme objectives, tests, debug scenario |
+
+**Sub-ticket folder paths created:**
+
+- `/home/matt/workspace/.autogame-worktrees/383-fire-tier2-ember-descent-and-miniboss/tickets/383-fire-tier2-ember-descent-and-miniboss/subtickets/01-fire-cavern-rigid-layout-mode/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/383-fire-tier2-ember-descent-and-miniboss/tickets/383-fire-tier2-ember-descent-and-miniboss/subtickets/02-magma-colossus-enemy-type/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/383-fire-tier2-ember-descent-and-miniboss/tickets/383-fire-tier2-ember-descent-and-miniboss/subtickets/03-magma-colossus-client-render/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/383-fire-tier2-ember-descent-and-miniboss/tickets/383-fire-tier2-ember-descent-and-miniboss/subtickets/04-ember-descent-tier2-end-to-end/ticket.md`
+
+All use **`Verification: code`**. Sub-ticket 04 retargets the existing Tier II scaffold (currently wired to `cinder_warden` from ticket 381) to the Magma Colossus boss specified in the top-level ticket.

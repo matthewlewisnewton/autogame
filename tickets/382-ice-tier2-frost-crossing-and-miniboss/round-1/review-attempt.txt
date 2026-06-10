@@ -1,0 +1,5 @@
+Review written to `tickets/382-ice-tier2-frost-crossing-and-miniboss/round-1/review.md`.
+
+Final verdict: `VERDICT: PASS`.
+
+I also wrote one non-blocking cleanup nit to `round-1/nits.md`. No `gaps.md` was created because there were no blocking gaps.

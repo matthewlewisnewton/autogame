@@ -8,11 +8,14 @@ import {
 	EVOLUTION_GRIND_REQUIRED,
 	createCardInstance,
 	evolveCard,
+	updateEnemies,
 	updateMinions,
 	applyWyrmMinionBreathStats,
 	scaledGrindStat,
 	isBurning,
+	getEntityWorldY,
 } from '../index.js';
+import { sampleFloorY, resolveFloorY } from '../dungeon.js';
 import {
 	connectAndJoinLobby,
 	startTestServer,
@@ -98,6 +101,31 @@ describe('Ancient Wyrm gameplay', () => {
 		await closeServer();
 	});
 
+	it('archive-wyrm-elevated-breath keeps the target airborne after Y resolution', async () => {
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'archive-wyrm-elevated-breath' });
+		const result = await debugResultPromise;
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('archive-wyrm-elevated-breath');
+
+		const state = lobbyGameState(socket._lobbyId);
+		expect(state.enemies).toHaveLength(1);
+		expect(state.minions).toHaveLength(1);
+
+		updateEnemies();
+		updateMinions();
+
+		const enemy = state.enemies[0];
+		const minion = state.minions[0];
+		expect(enemy.flying).toBe(true);
+		expect(enemy.altitude).toBeGreaterThan(CARD_DEFS.ancient_wyrm.altitude);
+		expect(getEntityWorldY(enemy)).toBeGreaterThan(getEntityWorldY(minion));
+		const floorY = resolveFloorY(sampleFloorY(state.layout, enemy.x, enemy.z));
+		expect(enemy.y).not.toBe(floorY);
+		expect(minion.flying).toBe(true);
+		expect(minion.altitude).toBe(CARD_DEFS.ancient_wyrm.altitude);
+	});
+
 	it('spawns a minion with higher HP than base Vault Wyrm', async () => {
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'summon-ready' });
@@ -122,7 +150,13 @@ describe('Ancient Wyrm gameplay', () => {
 		await waitForEvent(socket, 'cardUsed');
 
 		const wyrm = state.minions.find(m => m.ownerId === socket._playerId && m.type === 'ancient_wyrm');
-		expect(wyrm).toMatchObject({ hp: 90, maxHp: 90, lastBreathAt: expect.any(Number) });
+		expect(wyrm).toMatchObject({
+			hp: 90,
+			maxHp: 90,
+			flying: true,
+			altitude: CARD_DEFS.ancient_wyrm.altitude,
+			lastBreathAt: expect.any(Number),
+		});
 	});
 });
 
@@ -255,12 +289,15 @@ describe('Wyrm channeled breath', () => {
 
 	it('Archive Wyrm channels fire breath instead of spamming melee swipes', () => {
 		const now = Date.now();
+		const altitude = CARD_DEFS.ancient_wyrm.altitude;
 		gameState.minions.push({
 			id: 'wyrm-1',
 			ownerId: 'p1',
 			type: 'ancient_wyrm',
 			x: 0,
 			z: 0,
+			flying: true,
+			altitude,
 			hp: 90,
 			ttl: 30,
 			lastBreathAt: now - 3100,
@@ -283,6 +320,7 @@ describe('Wyrm channeled breath', () => {
 
 		updateMinions();
 
+		const airborneY = getEntityWorldY(gameState.minions[0]);
 		expect(gameState.enemies[0].hp).toBe(50 - CARD_DEFS.ancient_wyrm.breathDamage);
 		expect(gameState.minions[0].breathState).toBe('breathing');
 		expect(gameState._pendingMinionBreaths).toHaveLength(1);
@@ -291,6 +329,7 @@ describe('Wyrm channeled breath', () => {
 			specialEffect: 'fire_breath',
 			breathPhase: 'start',
 			hits: [{ enemyId: 'e1', hp: 50 - CARD_DEFS.ancient_wyrm.breathDamage }],
+			origin: { x: 0, z: 0, y: airborneY },
 		});
 	});
 
@@ -309,6 +348,8 @@ describe('Wyrm channeled breath', () => {
 			type: 'ancient_wyrm',
 			x: 0,
 			z: 0,
+			flying: true,
+			altitude: CARD_DEFS.ancient_wyrm.altitude,
 			hp: 90,
 			ttl: 30,
 			lastBreathAt: Date.now(),

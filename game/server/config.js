@@ -67,7 +67,9 @@ const ENEMY_CARD_DROPS = {
   crucible_sovereign: 'dungeon_drake',
   spire_warden: 'dungeon_drake',
   cinder_warden: 'dungeon_drake',
+  magma_colossus: 'dungeon_drake',
   permafrost_warden: 'dungeon_drake',
+  glacial_tyrant: 'dungeon_drake',
   spawner: 'battle_familiar',
 };
 
@@ -83,7 +85,9 @@ const ENEMY_MS_DROPS = {
   crucible_sovereign: 65,
   spire_warden: 55,
   cinder_warden: 52,
+  magma_colossus: 54,
   permafrost_warden: 55,
+  glacial_tyrant: 70,
   spawner: 25,
 };
 

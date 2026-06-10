@@ -142,6 +142,7 @@ const {
   checkSweptCollision,
   tryPlayerMove,
   buildMovementContext,
+  rebuildMovementContext,
   buildHubMovementContext,
   hubSpawnPosition,
   applyPlayerMovement,
@@ -219,6 +220,7 @@ const {
   KEY_ITEM_DEFS,
   getKeyItemDef,
   getUnlockedKeyItems,
+  setTestKeyItemUnlockOverride,
   DESPERATION_CARD_DEFS,
   DESPERATION_DECK_TEMPLATE,
   drawCardFromDesperationDeck,
@@ -491,6 +493,7 @@ function resetGameState() {
   Object.keys(gameState).forEach(k => delete gameState[k]);
   Object.assign(gameState, fresh);
   applyLayoutForQuest(gameState, questId, questTier);
+  rebuildMovementContext(gameState);
   delete gameState.run;
   delete gameState._victoryCounters;
   sim.setGameState(gameState, _timeouts);
@@ -522,6 +525,7 @@ const DEBUG_SCENARIOS = new Set([
   'aegis-sentinel-ready',
   'minion-combat',
   'archive-wyrm-combat',
+  'archive-wyrm-elevated-breath',
   'storm-eagle-combat',
   'thunderbird-combat',
   'phase-stalker-combat',
@@ -564,6 +568,7 @@ const DEBUG_SCENARIOS = new Set([
   'frost-crossing-surface-transition',
   'frost-crossing-boss-approach',
   'frost-crossing-telepipe-ready',
+  'frost-crossing-tier-2',
   'enemy-behind-wall',
   'training-caverns-tier-1',
   'crystal-rescue-tier-1',
@@ -621,6 +626,7 @@ const DEBUG_SCENARIOS = new Set([
   'field-medic',
   'field-medic-spawn',
   'ember-wraith',
+  'flying-enemies',
   'chain-lightning-ready',
   'arcane-radial-ready',
   'status-mutual-exclusion-ready',
@@ -628,6 +634,8 @@ const DEBUG_SCENARIOS = new Set([
   'fireball-hand-ready',
   'glacial-thrower',
   'permafrost-warden',
+  'glacial-tyrant',
+  'magma-colossus',
   'ice-ball-ready',
   'frost-spells-ready',
   'glacier-collapse-ready',
@@ -640,6 +648,8 @@ const DEBUG_SCENARIOS = new Set([
   'energy-blade-slash-ready',
   'heavy-greatsword-slash-ready',
   'lock-on-elevated-projectile',
+  'lock-on-flying-enemy',
+  'lock-on-3d-stack',
   'height-aware-projectile',
 ]);
 
@@ -791,6 +801,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'spawner-active',
   'minion-combat',
   'archive-wyrm-combat',
+  'archive-wyrm-elevated-breath',
   'storm-eagle-combat',
   'thunderbird-combat',
   'run-exhausted',
@@ -825,6 +836,8 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'field-medic',
   'field-medic-spawn',
   'ember-wraith',
+  'magma-colossus',
+  'flying-enemies',
   'ember-descent-cinderghast',
   'ember-descent-near-adds',
   'ember-descent-ember-wraith-burn',
@@ -2032,6 +2045,7 @@ if (typeof module !== 'undefined' && module.exports) {
     KEY_ITEM_DEFS,
     getKeyItemDef,
     getUnlockedKeyItems,
+    setTestKeyItemUnlockOverride,
     // Persistence
     extractPersistentData,
     savePlayerData,

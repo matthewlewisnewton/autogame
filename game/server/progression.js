@@ -393,8 +393,17 @@ function getUnlockedKeyItems() {
 }
 
 /** Check if a key item is unlocked for the given player. All 14 are unlocked at start. */
+let _testKeyItemUnlockOverride = null;
 function isKeyItemUnlocked(player, keyItemId) {
+  if (_testKeyItemUnlockOverride) {
+    return _testKeyItemUnlockOverride(player, keyItemId);
+  }
   return keyItemId in KEY_ITEM_DEFS;
+}
+
+/** @param {Function|null} fn */
+function setTestKeyItemUnlockOverride(fn) {
+  _testKeyItemUnlockOverride = fn;
 }
 
 // Starting deck card ids — mirrors createStartingDeck() in client/cards.js.
@@ -2542,7 +2551,7 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
   // Difficulty scaling: miniboss-tier bosses get more HP the larger the party is at spawn.
   // Fixed once here from the live player count — never re-applied retroactively
   // when players later join or leave. 1–4 players stay at baseline (factor 1.0).
-  if (resolvedType === 'miniboss' || resolvedType === 'annex_overseer' || resolvedType === 'spire_warden' || resolvedType === 'cinder_warden' || resolvedType === 'permafrost_warden') {
+  if (resolvedType === 'miniboss' || resolvedType === 'annex_overseer' || resolvedType === 'spire_warden' || resolvedType === 'cinder_warden' || resolvedType === 'magma_colossus' || resolvedType === 'permafrost_warden' || resolvedType === 'glacial_tyrant') {
     const factor = difficultyScaleFactor(runPlayerCount(_gameState), DIFFICULTY_MINIBOSS_HP_PER_PLAYER);
     enemy.hp = Math.round(enemy.hp * factor);
     enemy.maxHp = Math.round(enemy.maxHp * factor);
@@ -3835,6 +3844,7 @@ module.exports = {
   getKeyItemDef,
   getUnlockedKeyItems,
   isKeyItemUnlocked,
+  setTestKeyItemUnlockOverride,
   DESPERATION_CARD_DEFS,
   DESPERATION_DECK_TEMPLATE,
   getCardDef,

@@ -1,0 +1,9 @@
+Broke ticket 377 into **3 sub-tickets** in dependency order (no existing sub-tickets to preserve or retire):
+
+1. `/home/matt/workspace/.autogame-worktrees/377-lock-on-and-aim-across-heights/tickets/377-lock-on-and-aim-across-heights/subtickets/01-lock-on-3d-target-selection/ticket.md` — client world-Y helper + 3D lock-on selection/tracking in `lockOn.js`
+
+2. `/home/matt/workspace/.autogame-worktrees/377-lock-on-and-aim-across-heights/tickets/377-lock-on-and-aim-across-heights/subtickets/02-elevated-lock-on-camera-and-reticle/ticket.md` — camera lookAt + lock-on ring at enemy altitude
+
+3. `/home/matt/workspace/.autogame-worktrees/377-lock-on-and-aim-across-heights/tickets/377-lock-on-and-aim-across-heights/subtickets/03-flying-lock-on-server-and-regression-tests/ticket.md` — server flying lock-on aim verification, debug scenario, and regression tests
+
+All use **Verification: code** (behavior is testable via unit/integration tests and debug scenarios, not screenshot-only happy-path).

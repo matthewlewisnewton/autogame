@@ -6650,6 +6650,24 @@ Verification observed:
 - `coverage.log`: 151 test files passed, 2328 tests passed.
 - Changed code inspected from `git diff 00815f732b26c7eecfaa2d64a1ffd2a8cf8c37a4 HEAD`.
 
+## v0.375 — 378-introduce-few-flying-enemies  (2026-06-10 12:27:01)
+
+
+### Client Rendering and Telegraphs
+PASS. `game/client/models.js` registers both new enemy ids as procedural-only entries, and `game/client/renderer.js` adds mesh geometry plus attack-visual entries. `void_seraph` maps to a radial telegraph and `rime_drifter` maps to the projectile telegraph style consistent with `glacial_thrower`. The implementation reuses the existing server-provided flying/altitude render path rather than adding per-type Y handling.
+
+### Rare/Sparse Thematic Spawn Weights
+PASS. `rime_drifter` is added only to `frost_crossing` at weight 1. `void_seraph` is added only to `canyon_descent` and `spire_ascent` at weight 1. These are the lowest weights in their pools, and no tier-2 pool or unrelated quest pool gained a flying type. Normal gameplay can reach the same enemy states through those quest pools and stage-boss add pools that draw from `getEnemyPool()`.
+
+### Debug Scenario
+PASS. The added `?debugScenario=flying-enemies` shortcut is only entered through the existing URL-param/client socket route and server-side debug scenario allowlist. It is guarded by the existing localhost or `ALLOW_DEBUG_SCENARIOS=1` checks and is rejected in production/non-local contexts. The shortcut uses the authoritative server `spawnEnemy` path and does not replace the normal gameplay path, which remains available through the rare quest spawn pools.
+
+### Design and Foundation Consistency
+PASS. The change fits the design document's 3D multiplayer dungeon combat direction, uses the established card/enemy combat systems, and does not regress the requirements baseline: the captured run shows a rendered Three.js scene, connected client/server WebSockets, multiplayer presence, and synchronized movement.
+
+### Tests and Coverage
+PASS. The latest coverage run reports 168 test files passed and 2504 tests passed. Focused tests cover flying enemy definitions, hover height, spherical radial hit/miss behavior, height-aware projectile launch/damage, display catalog entries, client render registries, and sparse spawn-pool wiring. Coverage output includes unrelated pre-existing disconnect-handler warnings in older tests, but they did not fail the suite and are not caused by this ticket's changed files.
+
 ## Remaining gaps
 
 None.
@@ -6673,7 +6691,165 @@ PASS. The implementation fits the design doc's lobby-to-dungeon quest loop, card
 
 PASS. Round-2 coverage shows `199` test files and `2875` tests passing. The added tests cover schema/default layout behavior, spawn pipeline, Crucible Duel flow, reusable second boss level, dormant boss damage immunity, quest-board copy, unlock gating, and debug scenario retirement.
 
+## v0.383 — Server: memoize movement contexts — wall colliders and walkable AABBs rebuilt from scratch every tick  (2026-06-10 14:02:45)
+
+- Hub cache is appropriate: `HUB_LAYOUT` is a static constant shared by all lobbies.
+- Minimal diff scope (two production files); no dead code introduced.
+
+**Correctness notes (non-blocking)**
+
+- Caches are module-global, not per-lobby. With multiple concurrent playing lobbies that have different layouts, the singleton cache alternates and may rebuild more often than a per-lobby cache would — but reference/key checks preserve correctness; hub cache still hits on every lobby tick.
+- Cached `walkableAABBs` / `dungeonBounds` are references captured at build time. In practice these are always reassigned together with `state.layout` in `applyLayoutForQuest` and equivalent paths, so stale-reference risk matches pre-ticket behavior.
+
+---
+
+## Debug scenarios
+
+This ticket did not add or modify any `?debugScenario=` shortcuts. No review required.
+
+---
+
+## Remaining gaps
+
+None. Runtime proof is clean, acceptance criteria are fully met, and the test suite passes.
+
+## v0.382 — 389-level-select-tree-map-ui  (2026-06-10 13:55:26)
+
+
+### Quest-board placement and lobby behavior
+
+Pass. The map fronts the existing Contract Terminal/quest board panel and does not replace or alter the lobby finder menu. The quest panel is still opened through the lobby quest booth flow, preserving the design's lobby-browser -> lobby -> quest selection -> dungeon loop.
+
+## Design and requirements fit
+
+Pass. The implementation stays in `game/client` plus client tests, is consistent with the documented lobby selection flow, and does not regress the foundational requirements: the captured run shows the Three.js scene, websocket connection, multiplayer lobby/gameplay state, and movement smoke still work.
+
+## Code quality and tests
+
+Pass. The implementation is reasonably scoped and covered by focused unit tests for layout, edges, state styling, click behavior, empty graphs, and integration tests through `main.js` quest updates. The coverage run reports 16 test files passed and 309 tests passed, including `client/test/levelMap.test.js` and `client/test/levelMapIntegration.test.js`.
+
+## Debug scenarios
+
+No new `?debugScenario=...` shortcut was added by this ticket. The existing debug hooks remain gated by localhost-only URL parameters and are not part of normal gameplay.
+
 ## Remaining gaps
 
 None.
 
+## v0.381 — 377-lock-on-and-aim-across-heights  (2026-06-10 13:54:11)
+
+Camera and reticle tracking for elevated targets is satisfied. The camera look-at uses `resolveLockOnLookAtY()` instead of the player height, death-release eases from the target's actual height, and the lock-on ring is positioned at the enemy render height via `syncEnemyMeshes()`. The renderer ring test specifically covers a flying target, and the implementation remains consistent with the existing render model for flying enemies and floor-aware altitude.
+
+Server-side target resolution for height-aware projectile aiming is satisfied. The client includes `lockTargetId` when locked on, and `game/server/index.js` resolves projectile aim from the player's world Y to the locked enemy's world Y. The server tests cover elevated and flying lock-on hits for projectile/cone-style card paths, including `fireball`, `arcane_bolt`, `photon_slicer`, `infinite_disk`, `ice_ball`, `chain_lightning`, and `dragons_breath`.
+
+The lock-on info panel remains live-code consistent. It already consumes the locked enemy object and catalog data, and the new selection/tracking path does not bypass the panel or introduce stale panel state; dead or missing enemies still hide the panel through the existing model guard.
+
+The new debug scenarios are acceptable. `lock-on-flying-enemy` and `lock-on-3d-stack` are registered as debug scenarios and are reachable through the existing local `?debugScenario=` client path. They set up deterministic QA states that correspond to normal vertical-quest situations with flying enemies and stacked X/Z targets, and they do not weaken combat validation or replace the real play flow.
+
+## Design and requirements consistency
+
+The implementation aligns with `game/docs/design.md` by reusing the shared floor sampling and floor-aware altitude model rather than adding a parallel height system. It does not regress the foundation requirements: the captured run proves the 3D scene renders, client/server communication works, multiplayer state appears, and movement still updates during the smoke capture.
+
+## Code quality and tests
+
+The changed code is scoped to lock-on height resolution, renderer reticle/camera placement, debug scenarios, and tests. I did not find dead code, broken imports, or console/runtime errors. Coverage visibility shows the full suite passing: 163 test files and 2219 tests passed, with coverage reported for the changed server/client surface.
+
+## Remaining gaps
+
+None.
+
+## v0.380 — 382-ice-tier2-frost-crossing-and-miniboss  (2026-06-10 13:37:27)
+
+### Unique In-Level Miniboss
+
+PASS. `glacial_tyrant` is registered in `game/server/simulation.js` as a distinct boss-tier ice-ball enemy with higher HP, longer range, larger/faster slow projectile tuning, boss drops, and party-size HP scaling. The stage-boss spawner anchors exactly one Glacial Tyrant at the `ice_cairn` landmark and keeps it dormant until support adds are cleared and a player approaches. Client rendering and telegraph tables include the new type in `game/client/renderer.js`, with a procedural model registry entry in `game/client/models.js`.
+
+### Debug Scenario Review
+
+PASS. The new `frost-crossing-tier-2` debug scenario is behind the existing debug path: client URL activation is localhost-only via `?debugScenario=...`, and the server handler is restricted to local/dev or `ALLOW_DEBUG_SCENARIOS=1`. It sets the same quest/tier/layout/run state reachable through normal gameplay after clearing Frost Crossing tier 1 and selecting the unlocked Tier II row. It does not weaken the production unlock/deploy path, which remains enforced by `selectQuest` and ready/deploy validation.
+
+### Design And Foundation Consistency
+
+PASS. The implementation matches the design direction for distinct quest identity, lobby-selected dungeon deployment, and stage-boss combat, while preserving the foundation requirements for 3D rendering, websocket connectivity, multiplayer presence, and movement synchronization. The round probes confirm the app still reaches lobby/gameplay with connected players and active movement/HUD state.
+
+### Tests And Coverage
+
+PASS. `coverage.log` reports `192` test files and `2714` tests passing. New coverage includes Glacial Tyrant enemy behavior, rigid ice-cavern generation, Frost Crossing Tier II catalog/deploy/unlock/encounter flow, and the debug scenario.
+
+## v0.379 — 383-fire-tier2-ember-descent-and-miniboss  (2026-06-10 13:13:13)
+
+The objective summary/theme strings reference the Magma Colossus rather than the Cinder Warden, while the older Cinder Warden catalog remains intact for existing enemy/test coverage.
+
+### Debug Scenarios
+
+PASS. The changed `ember-descent-tier-2` scenario is still reached through the debug scenario path only; client automatic entry is driven by `?debugScenario=...` on localhost, and the server checks the registered debug-scenario handler before applying it. The scenario sets quest id/tier and applies the Tier-II layout before entering play, then rebuilds the normal stage-boss spawn/run state. The same end state is covered through normal gameplay by Tier I unlock plus Tier II deploy tests, so the shortcut is QA-only and not a substitute for the real path.
+
+The newly registered `magma-colossus` debug scenario is a local boss visualization shortcut and does not alter normal quest deployment.
+
+### Design and Foundation Requirements
+
+PASS. The implementation stays aligned with the design document's multiplayer lobby-to-dungeon loop and active combat model, and it does not regress the setup requirements: the captured run has a canvas, websocket connection, multiplayer squad state, player movement probes, and live gameplay state.
+
+### Tests and Coverage
+
+PASS. `coverage.log` reports `195` test files and `2732` tests passed. Coverage thresholds are disabled, but the changed areas have focused tests for quest catalog/listing, spawn pools, layout options and rigid geometry, encounter lifecycle, enemy catalog/stats/drops/scaling, debug scenarios, and client render registry.
+
+## v0.378 — 388-level-map-unlock-graph-data-api  (2026-06-10 12:54:45)
+
+`buildLevelUnlockGraph(accountId)` is exported from `game/server/quests.js` and returns `{ nodes: [...] }` with one node per quest tier by iterating the same `QUEST_DEFS` tier order as `listQuestVariants()`. Each node includes `questId`, `tier`, `name`, `objectiveType`, `isBoss`, normalized `unlockRequires`, and a `state` string.
+
+The state calculation matches the requested precedence: `cleared` from `hasCompletedQuestTier`, otherwise `unlocked` from `isQuestTierUnlocked`, otherwise `locked`. Because `isQuestTierUnlocked` treats valid tier-1 quests as unlocked before user lookup and higher tiers require an account plus persisted/prerequisite unlocks, falsy or unknown accounts produce unlocked tier-1 nodes, locked higher-tier nodes, and no cleared nodes.
+
+Boss and prerequisite data are represented correctly. `isBoss` is derived from `objectiveType === 'stage_boss'`, which includes both tier-2 boss variants and tier-1 boss quests such as Frost Crossing, and `unlockRequires` is run through `normalizeUnlockRequires`, preserving single prereqs as one-element arrays and multi-prereq AND arrays as authored.
+
+`buildQuestUpdatePayload(gameState, playerAccountId)` now includes `levelUnlockGraph: buildLevelUnlockGraph(playerAccountId)` in the existing per-account payload block. The same payload is already spread into `questUpdate`, `lobbyUpdate`, and lobby-join payloads, so the client receives the graph in the established quest payload path without a new event or endpoint. Account-less payloads still omit the per-player graph, which matches the subticket allowance and the existing `unlockedQuestTiers` behavior.
+
+## Design and regression check
+
+The change is server-side data exposure only. It does not alter quest selection, tier gating, unlock persistence, combat, movement, rendering, or the lobby/dungeon loop described in `game/docs/design.md`, and it does not regress the foundational requirements for rendering, WebSocket connectivity, multiplayer visualization, or movement synchronization.
+
+## Tests and coverage
+
+The added `game/server/test/level_unlock_graph.test.js` covers graph cardinality, boss flags, normalized prerequisites, default unauthenticated states, cleared/unlocked progression state, payload inclusion for accounts, and omission without an account. The round coverage run passed: 22 test files and 914 tests.
+
+
+## v0.377 — 379-wyrm-evolution-flying-minion  (2026-06-10 12:51:48)
+
+
+### Hovering and 3D movement/rendering
+PASS. The server resolves minion `y` with the generic airborne helper before AI and after movement, so a flying Archive Wyrm follows floor height plus altitude across non-default floors instead of staying on a fixed plane. The client `syncMinionMeshes()` reuses the generic `flyingRenderOffset()` path and creates floor-aware flying shadows, so the Wyrm renders above the floor like the existing airborne minions without changing grounded minion placement.
+
+### Airborne, height-aware Wyrm breath
+PASS. Wyrm breath aim locks a 3D direction from minion world Y to target world Y, applies cone hits with `originY` and `dirY`, and sends the airborne origin/direction in the `cardUsed` payload. Client renderers preserve `origin.y` and `direction.y` for the cone, telegraph ring, and particle burst. Tests cover the Archive Wyrm hitting an elevated enemy at the same X/Z only when aimed upward and verify the client VFX uses the airborne origin.
+
+### Debug scenarios
+PASS. The changed scenarios are registered only through the existing debug-scenario entry points (`archive-wyrm-combat` and `archive-wyrm-elevated-breath`) and are not touched by normal gameplay. Their comments and tests tie the shortcut state back to the normal path: evolve `dungeon_drake` into `ancient_wyrm`, deploy into combat, and fight flying/elevated enemies. They do not bypass server-side combat logic; they seed normal server entities and then rely on `updateEnemies()`, `updateMinions()`, world-Y resolution, and the standard Wyrm breath hit path.
+
+### Design and requirements consistency
+PASS. The implementation stays within the documented card-combat/minion model and the existing airborne/height-aware mechanics. It does not regress the foundation requirements: the round-2 capture shows the 3D scene renders, sockets connect, multiplayer state is visible, and movement/state updates work.
+
+### Tests and coverage
+PASS. The latest coverage run reports `167 passed (167)` test files and `2645 passed (2645)` tests. Ticket-specific coverage includes server airborne/minion/Wyrm breath tests, the elevated-breath debug scenario, height-aware projectile coverage, and client render/VFX tests for airborne Wyrm behavior.
+
+
+## v0.376 — Server: USE_KEY_ITEM/EQUIP_KEY_ITEM never checks equipped/owned key item (any client can use any key item)  (2026-06-10 12:49:14)
+
+
+## Code quality
+
+- Minimal, focused diff (~180 lines, mostly test fixture updates).
+- Checks reuse existing patterns (`getKeyItemDef`, `isKeyItemUnlocked`, `SERVER_TO_CLIENT` error shapes).
+- Test override is scoped (`setTestKeyItemUnlockOverride(null)` in `finally`) and exported only for test access via `index.js`, consistent with other server test hooks.
+- No dead code, no client changes required (client already emits `me.equippedKeyItemId` in `main.js`).
+
+## Debug scenarios
+
+This ticket did not add or modify `?debugScenario=` shortcuts. Existing debug scenarios (e.g. `summon-recall`) set `equippedKeyItemId` explicitly before key-item use — compatible with the new guard. No debug-scenario blocking issues.
+
+## Capture alignment
+
+Fallback smoke capture exercised the real player path: auth → lobby → ready → WASD movement → dodge roll (E). Probes confirm `equippedKeyItemId: "dodge_roll"`, successful dodge cooldown activation, and clean reconnect to ready state. Screenshots show lobby and in-run HUD with Dodge Roll indicator.
+
+## Remaining gaps
+
+None. All acceptance criteria are fully met; runtime capture is clean; test suite is green.

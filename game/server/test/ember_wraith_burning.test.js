@@ -7,6 +7,8 @@ import {
 	updateBurning,
 	isBurning,
 	isPlayerConcealed,
+	getEntityWorldY,
+	computeAimDirection3D,
 	ENEMY_DEFS,
 	ENEMY_ATTACK_RANGE,
 } from '../index.js';
@@ -37,15 +39,34 @@ function makeExpiredWindup(type, targetId, overrides = {}) {
 	const def = ENEMY_DEFS[type];
 	const now = Date.now();
 	const enemy = spawnEnemy(0, 0, type);
+	const { windupDirX, windupDirY, windupDirZ, ...restOverrides } = overrides;
 	Object.assign(enemy, {
 		attackState: 'windup',
 		windupTargetId: targetId,
 		windupTargetType: 'player',
 		windupStartTime: now - def.attackWindupMs - 100,
-		windupDirX: 1,
-		windupDirZ: 0,
-		...overrides,
+		...restOverrides,
 	});
+	// Match production lockWindupDirection for strike tests; lateral-miss cases
+	// pass explicit flat windupDirX/windupDirZ in overrides.
+	if (windupDirX === undefined && windupDirY === undefined && windupDirZ === undefined) {
+		const target = gameState.players[targetId];
+		if (target) {
+			const originY = getEntityWorldY(enemy);
+			const targetY = getEntityWorldY(target);
+			const aim = computeAimDirection3D(
+				{ x: enemy.x, y: originY, z: enemy.z },
+				{ x: target.x, y: targetY, z: target.z },
+			);
+			enemy.windupDirX = aim.dirX;
+			enemy.windupDirY = aim.dirY;
+			enemy.windupDirZ = aim.dirZ;
+		}
+	} else {
+		if (windupDirX !== undefined) enemy.windupDirX = windupDirX;
+		if (windupDirY !== undefined) enemy.windupDirY = windupDirY;
+		if (windupDirZ !== undefined) enemy.windupDirZ = windupDirZ;
+	}
 	return enemy;
 }
 
@@ -76,7 +97,7 @@ describe('ember_wraith burning on windup strike', () => {
 
 	it('cone miss does not ignite the player', () => {
 		const player = addPlayer('p1', { x: 0, z: 3, hp: 100 });
-		const wraith = makeExpiredWindup('ember_wraith', 'p1');
+		const wraith = makeExpiredWindup('ember_wraith', 'p1', { windupDirX: 1, windupDirZ: 0 });
 
 		updateEnemies();
 
@@ -117,7 +138,7 @@ describe('ember_wraith burning on windup strike', () => {
 
 	it('grunt windup hit does not ignite the player', () => {
 		const player = addPlayer('p1', { x: 0, z: 3, hp: 100 });
-		makeExpiredWindup('grunt', 'p1');
+		makeExpiredWindup('grunt', 'p1', { windupDirX: 1, windupDirZ: 0 });
 
 		updateEnemies();
 

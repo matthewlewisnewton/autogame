@@ -98,6 +98,15 @@ let _wallColliders = [];
 let _wallCollidersLayout = null;
 let _wallCollidersPassageLocksKey = '';
 
+// Movement context cache — keyed by layout reference and passage locks
+let _movementContext = null;
+let _movementContextLayout = null;
+let _movementContextPassageLocksKey = '';
+
+// Hub movement context cache — keyed by layout reference (HUB_LAYOUT is static)
+let _hubMovementContext = null;
+let _hubMovementContextLayout = null;
+
 function footprintToAABB(footprint) {
   return {
     minX: footprint.x - footprint.width / 2,
@@ -221,12 +230,31 @@ function getWallColliders() {
 
 function buildMovementContext(state) {
   if (!state) return null;
-  return {
+  const locksKey = passageLocksCacheKey(state.run?.passageLocks);
+  if (
+    _movementContext !== null
+    && _movementContextLayout === state.layout
+    && _movementContextPassageLocksKey === locksKey
+  ) {
+    return _movementContext;
+  }
+  return (_movementContext = {
     layout: state.layout,
     walkableAABBs: state.walkableAABBs,
     dungeonBounds: state.dungeonBounds,
     colliders: buildWallColliders(state.layout, state.run?.passageLocks),
-  };
+  }, _movementContextLayout = state.layout, _movementContextPassageLocksKey = locksKey, _movementContext);
+}
+
+/**
+ * Force-rebuild the movement context cache for the given state.
+ * Call after resetGameState or any layout / passage-locks mutation.
+ */
+function rebuildMovementContext(state) {
+  _movementContext = null;
+  _movementContextLayout = null;
+  _movementContextPassageLocksKey = '';
+  return buildMovementContext(state);
 }
 
 /**
@@ -234,12 +262,18 @@ function buildMovementContext(state) {
  */
 function buildHubMovementContext(hubLayout) {
   if (!hubLayout) return null;
-  return {
+  if (
+    _hubMovementContext !== null
+    && _hubMovementContextLayout === hubLayout
+  ) {
+    return _hubMovementContext;
+  }
+  return (_hubMovementContext = {
     layout: hubLayout,
     walkableAABBs: computeWalkableAABBs(hubLayout),
     dungeonBounds: computeDungeonBounds(hubLayout),
     colliders: buildWallColliders(hubLayout),
-  };
+  }, _hubMovementContextLayout = hubLayout, _hubMovementContext);
 }
 
 /**
@@ -1160,12 +1194,33 @@ const ENEMY_DEFS = {
 		hp: 360, chaseSpeed: 1.1, wanderSpeed: 0.55, attackDamage: 21, attackWindupMs: 1300,
 		attackStyle: 'cone', attackConeAngle: (2 * Math.PI) / 3, attackRange: 5.5,
 	},
+	magma_colossus: {
+		name: 'Magma Colossus',
+		description: 'Tier-II fire stage colossus; erupts in a radial molten shockwave that scorches everything nearby.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 410, chaseSpeed: 0.85, wanderSpeed: 0.4, attackDamage: 23, attackWindupMs: 1500,
+		attackStyle: 'radial', attackRange: 5,
+	},
 	permafrost_warden: {
 		name: 'Permafrost Warden',
 		description: 'Ice-cavern guardian that erupts in a radial frost shockwave — close-range area pressure, not a lobbed projectile.',
 		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
 		hp: 360, chaseSpeed: 1.0, wanderSpeed: 0.5, attackDamage: 20, attackWindupMs: 1300,
 		attackStyle: 'radial', attackRange: 4.5,
+	},
+	glacial_tyrant: {
+		name: 'Glacial Tyrant',
+		description: 'Tier-II tyrant of the frozen crossing — hurls massive glacial spheres that chill (SLOW) and crush whatever they strike.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 440, chaseSpeed: 1.3, wanderSpeed: 0.6, attackDamage: 24, attackWindupMs: 1300,
+		attackStyle: 'ice_ball', attackRange: 9,
+		// Heavier ice-ball tuning than glacial_thrower: faster and bigger, but
+		// still well below player MOVE_SPEED (12) so it stays dodgeable.
+		iceBallSpeed: 7.5,
+		iceBallSlowDurationMs: 3200,
+		iceBallSlowFactor: 0.45,
+		iceBallRadius: 1.2,
+		iceBallMaxRange: 22,
 	},
 	spawner: {
 		name: 'Brood Node',
@@ -1210,6 +1265,40 @@ const ENEMY_DEFS = {
 		// flow onto each spawned enemy via the `...statFieldsFromDef` spread, so
 		// resolveEntityY() hovers them at floorY + altitude each tick.
 		flying: true, altitude: 2.5,
+	},
+	void_seraph: {
+		name: 'Void Seraph',
+		description: 'High-hovering aberration that unleashes a spherical void shockwave — its radial burst reaches across heights, striking grounded and airborne foes alike.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 70, chaseSpeed: 2.8, wanderSpeed: 1.1, attackDamage: 14, attackWindupMs: 1000,
+		// Radial already resolves as a pure 3D sphere in isEntityInEnemyAttack, so a
+		// player who is XZ-close but far above/below (outside attackRange in 3D) is
+		// not hit, while anyone inside the sphere is.
+		attackStyle: 'radial', attackRange: 4.5,
+		// Airborne: hovers high above the floor; flying/altitude flow onto each
+		// spawned instance via ...statFieldsFromDef so resolveEntityY() keeps it at
+		// floorY + altitude (never re-grounded), matching ember_wraith.
+		flying: true, altitude: 3.0,
+	},
+	rime_drifter: {
+		name: 'Rime Drifter',
+		description: 'Frost spirit that glides high overhead and lobs a height-aware ice ball — it angles the shot down (or up) at its target, chilling (SLOW) and battering on impact.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 60, chaseSpeed: 2.2, wanderSpeed: 1.0, attackDamage: 11, attackWindupMs: 1000,
+		// Reuses the existing height-aware projectile path: attackStyle 'ice_ball'
+		// flows through the wind-up resolution branch (spawnIceBall →
+		// updateEnemyProjectiles), and spawnIceBall carries the locked windupDirY so
+		// the ball travels with vertical aim toward a target at a different height.
+		attackStyle: 'ice_ball', attackRange: 8,
+		iceBallSpeed: 6.5,           // units/sec — clearly below the player MOVE_SPEED of 12
+		iceBallRadius: 0.8,          // projectile hit radius (added to PLAYER_RADIUS for contact)
+		iceBallMaxRange: 20,         // travel distance before it dissipates
+		iceBallSlowDurationMs: 2200,
+		iceBallSlowFactor: 0.55,
+		// Airborne: drifts high above the floor; flying/altitude flow onto each
+		// spawned instance via ...statFieldsFromDef so resolveEntityY() keeps it at
+		// floorY + altitude (never re-grounded), matching ember_wraith.
+		flying: true, altitude: 3.5,
 	},
 };
 
@@ -1455,6 +1544,13 @@ function addDebuff(player, type, expiresAt) {
 
 function getEntityWorldY(entity) {
   if (!entity) return resolveFloorY(DEFAULT_FLOOR_Y);
+  if (entity.flying) {
+    const layout = _gameState && _gameState.layout;
+    if (layout) return resolveEntityY(entity, layout);
+    const floorY = resolveFloorY(DEFAULT_FLOOR_Y);
+    const altitude = Number.isFinite(entity.altitude) ? entity.altitude : DEFAULT_FLY_ALTITUDE;
+    return floorY + altitude;
+  }
   if (Number.isFinite(entity.y)) return entity.y;
   const layout = _gameState && _gameState.layout;
   if (layout) {
@@ -1797,11 +1893,15 @@ function lockMinionBreathDirection(minion, target) {
 }
 
 function queueWyrmBreathCardUsed(minion, cardId, options) {
+  const origin = { x: minion.x, z: minion.z };
+  if (minion.flying) {
+    origin.y = getEntityWorldY(minion);
+  }
   _gameState._pendingMinionBreaths.push({
     playerId: minion.ownerId,
     cardId,
     specialEffect: options.specialEffect,
-    origin: { x: minion.x, z: minion.z },
+    origin,
     direction: tiltedDirectionPayload(
       minion.breathDirX,
       minion.breathDirY ?? 0,
@@ -3223,6 +3323,12 @@ function updateMinions() {
     }
   }
 
+  // Resolve world Y before minion AI so breath/attack aim uses the current
+  // airborne height (flying minions hover at floorY + altitude).
+  for (const minion of _gameState.minions) {
+    minion.y = resolveEntityY(minion, _gameState.layout);
+  }
+
   // AI: each living minion seeks nearest enemy, chases, and attacks
   // If no enemy is nearby, follows its owner.
   // Skipped entirely when the run is terminal (victory or failed)
@@ -3598,8 +3704,9 @@ function updateMinions() {
   }
 
   // Resolve world Y for every minion after its AI/movement this tick. Grounded
-  // minions sit at floor height; flying minions (storm_eagle, thunderbird)
-  // hover at floorY + altitude. Runs even when the AI loop is skipped (terminal
+  // minions sit at floor height; flying minions (storm_eagle, thunderbird,
+  // ancient_wyrm) hover at floorY + altitude. Runs even when the AI loop is
+  // skipped (terminal
   // run) so minion Y stays consistent.
   for (const minion of _gameState.minions) {
     minion.y = resolveEntityY(minion, _gameState.layout);
@@ -3713,6 +3820,7 @@ module.exports = {
   computePassageBarrierAABBs,
   collectLockedPassageBarrierAABBs,
   buildMovementContext,
+  rebuildMovementContext,
   buildHubMovementContext,
   hubSpawnPosition,
   wallAABB,

@@ -310,6 +310,7 @@ describe('useKeyItem — guard_block (socket integration)', () => {
 
 		// Ensure clean state
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'guard_block';
 		player.blockingUntil = 0;
 		player.blockingYaw = undefined;
 
@@ -334,6 +335,7 @@ describe('useKeyItem — guard_block (socket integration)', () => {
 
 		// Ensure clean state
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'guard_block';
 
 		// First use — should succeed
 		const result1Promise = waitForEvent(socket, 'keyItemUsed');
@@ -366,6 +368,7 @@ describe('useKeyItem — guard_block (socket integration)', () => {
 
 		// Use guard_block
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'guard_block';
 		const resultPromise = waitForEvent(socket, 'keyItemUsed');
 		socket.emit('useKeyItem', { keyItemId: 'guard_block' });
 		const result = await resultPromise;

@@ -1,0 +1,7 @@
+Remediation round 2 had one open gap from `review-feedback.md`: the `archive-wyrm-elevated-breath` debug scenario seeds an impossible grounded-enemy state. Sub-tickets `01`–`03` already have `.passed` markers and were left untouched.
+
+**Created sub-ticket:**
+
+- `/home/matt/workspace/.autogame-worktrees/379-wyrm-evolution-flying-minion/tickets/379-wyrm-evolution-flying-minion/subtickets/04-fix-elevated-breath-scenario/ticket.md`
+
+**Scope:** Replace the manually raised grounded grunt with a stable flying/altitude target (or legitimate vertical-layout floor height), add a server test that proves Y resolution survives `updateEnemies()` / `updateMinions()`, and use **code** verification.

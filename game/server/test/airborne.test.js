@@ -6,6 +6,8 @@ import {
 	updateMinions,
 	spawnEnemy,
 	ENEMY_DEFS,
+	CARD_DEFS,
+	buildWorldSnapshot,
 } from '../index.js';
 // Pure helpers (no shared module state) — safe to import directly.
 import {
@@ -202,6 +204,55 @@ describe('aerial minions hover', () => {
 		updateMinions();
 		expect(bird.y).toBe(floorY + 4.5);
 		expect(bird.y).not.toBe(floorY);
+	});
+
+	it('hovers a flagged ancient_wyrm at floorY + altitude', () => {
+		const altitude = CARD_DEFS.ancient_wyrm.altitude;
+		const wyrm = {
+			id: 'wyrm-1',
+			ownerId: 'p1',
+			type: 'ancient_wyrm',
+			x: 4,
+			z: -2,
+			hp: 90,
+			maxHp: 90,
+			flying: true,
+			altitude,
+			ttl: 30,
+			breathIntervalMs: 3000,
+			lastBreathAt: 0,
+		};
+		gameState.minions.push(wyrm);
+		const floorY = floorYAt(gameState.layout, wyrm.x, wyrm.z);
+		updateMinions();
+		expect(wyrm.y).toBe(floorY + altitude);
+		expect(wyrm.y).not.toBe(floorY);
+
+		const snapMinion = buildWorldSnapshot().minions.find((m) => m.id === 'wyrm-1');
+		expect(snapMinion.flying).toBe(true);
+		expect(snapMinion.altitude).toBe(altitude);
+		expect(snapMinion.y).toBe(floorY + altitude);
+	});
+
+	it('floor-snaps a dungeon_drake minion without flying fields', () => {
+		const drake = {
+			id: 'drake-1',
+			ownerId: 'p1',
+			type: 'dungeon_drake',
+			x: -3,
+			z: 5,
+			hp: 20,
+			maxHp: 20,
+			ttl: 30,
+			breathIntervalMs: 2500,
+			lastBreathAt: 0,
+		};
+		gameState.minions.push(drake);
+		const floorY = floorYAt(gameState.layout, drake.x, drake.z);
+		updateMinions();
+		expect(drake.flying).toBeFalsy();
+		expect(drake.altitude).toBeFalsy();
+		expect(drake.y).toBe(floorY);
 	});
 
 	it('floor-snaps a grounded minion', () => {

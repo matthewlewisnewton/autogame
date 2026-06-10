@@ -86,6 +86,12 @@ function handleUseKeyItem(socket, state, lobby, data) {
       return;
     }
 
+    // Ownership check: the requested key item must match what the player has equipped
+    if (keyItemId !== player.equippedKeyItemId) {
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: false, reason: 'not_equipped' });
+      return;
+    }
+
     // Cooldown check
     const now = Date.now();
     const cooldownUntil = player.keyItemCooldownUntil || 0;

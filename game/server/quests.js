@@ -659,6 +659,13 @@ const QUEST_DEFS = {
       // Ice-level signature foe — a ranged thrower that lobs slow ice balls.
       // Level-exclusive: do not add to non-ice quests.
       { type: 'glacial_thrower', weight: 2 },
+      // Rare flier — kept at the pool minimum so frost drifters stay sparse.
+      { type: 'rime_drifter', weight: 1 },
+    ],
+    tier2EnemyPool: [
+      // Denser thrower presence plus a support variant on Tier II runs.
+      { type: 'glacial_thrower', weight: 2 },
+      { type: 'field_medic', weight: 1 },
     ],
     tiers: {
       1: {
@@ -784,6 +791,43 @@ const QUEST_DEFS = {
           },
         ],
       },
+      2: {
+        tier: 2,
+        name: 'Frost Crossing — Tier II',
+        description:
+          'Cross the fixed ice sheet where the Glacial Tyrant holds the south cairn with marked support.',
+        objectiveType: 'stage_boss',
+        rewardCurrency: 14,
+        layoutProfile: 'ice-cavern',
+        layoutMode: 'rigid',
+        unlockRequires: { questId: 'frost_crossing', tier: 1 },
+        signatureCardId: 'ice_ball',
+        rewardCards: ['ice_ball', 'frost_nova', 'permafrost_lance'],
+        encounter: {
+          bossType: 'glacial_tyrant',
+          landmark: 'ice_cairn',
+          addCount: 4,
+        },
+        client: {
+          name: 'Cairn',
+          briefing:
+            'Frost crossing contract — Tier II. The Glacial Tyrant has claimed the south cairn with four marked hostiles on the sheet; break them all and fourteen stones release from the research fund.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Cairn on ice-watch channel. Tyrant signature at the south cairn — thin the marked hostiles before you cross the sheet.',
+          },
+          {
+            trigger: { waveCleared: 2 },
+            text: 'Half the marked hostiles are down. The Glacial Tyrant is still winding up at the cairn — keep moving.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Tyrant shattered and the crossing is ours. Research fund transfer pending — Tier II logged.',
+          },
+        ],
+      },
     },
   },
   canyon_descent: {
@@ -792,6 +836,8 @@ const QUEST_DEFS = {
       { type: 'skirmisher', weight: 2 },
       { type: 'grunt', weight: 2 },
       { type: 'miniboss', weight: 1 },
+      // Rare flier — kept at the pool minimum so void seraphs stay sparse.
+      { type: 'void_seraph', weight: 1 },
     ],
     tier2EnemyPool: [{ type: 'field_medic', weight: 1 }],
     tiers: {
@@ -862,6 +908,7 @@ const QUEST_DEFS = {
       { type: 'skirmisher', weight: 2 },
       { type: 'ember_wraith', weight: 2 },
     ],
+    tier2EnemyPool: [{ type: 'field_medic', weight: 1 }],
     tiers: {
       1: {
         name: 'Ember Descent',
@@ -893,7 +940,7 @@ const QUEST_DEFS = {
         tier: 2,
         name: 'Ember Descent — Tier II',
         description:
-          'Descend the fixed ember cavern where a cinder warden stokes the molten basin with marked supports.',
+          'Descend the fixed ember cavern where a magma colossus erupts over the molten basin with marked supports.',
         objectiveType: 'stage_boss',
         rewardCurrency: 14,
         layoutProfile: 'fire-cavern',
@@ -902,26 +949,26 @@ const QUEST_DEFS = {
         signatureCardId: 'fireball',
         rewardCards: ['fireball', 'dragons_breath'],
         encounter: {
-          bossType: 'cinder_warden',
+          bossType: 'magma_colossus',
           addCount: 4,
         },
         client: {
           name: 'Ashvelle',
           briefing:
-            'Ember warden contract — Tier II. A cinder warden has claimed the molten basin with four marked hostiles; quench the nest for fourteen stones from my survey fund.',
+            'Magma colossus contract — Tier II. A magma colossus has claimed the molten basin with four marked hostiles; quench the nest for fourteen stones from my survey fund.',
         },
         dialogue: [
           {
             trigger: 'run_start',
-            text: 'Ashvelle on the rim feed. Cinder warden signature down in the basin — burn through the supports before you face it.',
+            text: 'Ashvelle on the rim feed. Magma colossus signature down in the basin — burn through the supports before you face it.',
           },
           {
             trigger: { waveCleared: 2 },
-            text: 'Basin is thinning out. The cinder warden is still stoking the molten core.',
+            text: 'Basin is thinning out. The magma colossus is still erupting over the molten core.',
           },
           {
             trigger: 'objective_complete',
-            text: 'Cinder warden quenched and the basin is cooling. Fourteen stones heading your way.',
+            text: 'Magma colossus quenched and the basin is cooling. Fourteen stones heading your way.',
           },
         ],
       },
@@ -934,6 +981,8 @@ const QUEST_DEFS = {
       { type: 'skirmisher', weight: 1 },
       { type: 'miniboss', weight: 1 },
       { type: 'spawner', weight: 2 },
+      // Rare flier — kept at the pool minimum so void seraphs stay sparse.
+      { type: 'void_seraph', weight: 1 },
     ],
     tiers: {
       1: {
@@ -1286,21 +1335,24 @@ function formatObjectiveSummary(quest) {
     }
     if (questId === 'ember_descent') {
       if (addCount > 0) {
-        return THEME.objectives.defeatCinderWardenWithSupports.replace(
+        return THEME.objectives.defeatMagmaColossusWithSupports.replace(
           '{addCount}',
           String(addCount),
         );
       }
-      return THEME.objectives.defeatCinderWarden;
+      return THEME.objectives.defeatMagmaColossus;
     }
     if (questId === 'frost_crossing') {
+      const glacialTyrant = encounter?.bossType === 'glacial_tyrant';
       if (addCount > 0) {
-        return THEME.objectives.defeatPermafrostWardenWithSupports.replace(
-          '{addCount}',
-          String(addCount),
-        );
+        const template = glacialTyrant
+          ? THEME.objectives.defeatGlacialTyrantWithSupports
+          : THEME.objectives.defeatPermafrostWardenWithSupports;
+        return template.replace('{addCount}', String(addCount));
       }
-      return THEME.objectives.defeatPermafrostWarden;
+      return glacialTyrant
+        ? THEME.objectives.defeatGlacialTyrant
+        : THEME.objectives.defeatPermafrostWarden;
     }
     const annexOverseer = encounter?.bossType === 'annex_overseer';
     if (addCount > 0) {
@@ -1658,6 +1710,56 @@ function listQuestVariants() {
   return variants;
 }
 
+/**
+ * Builds the full level-select unlock graph: one node per quest tier (every tier
+ * of every quest, matching `listQuestVariants()` cardinality), each carrying its
+ * normalized `unlockRequires` prerequisite array and the account's per-tier
+ * locked/unlocked/cleared state.
+ *
+ * `require('./users')` is resolved lazily here (mirroring
+ * `listQuestVariantsForAccount` / `buildQuestUpdatePayload`) to avoid a circular
+ * import at module load. A falsy/unknown `accountId` yields unlocked tier-1 nodes
+ * and locked higher tiers, with no node cleared.
+ *
+ * @param {string} [accountId]
+ * @returns {{ nodes: Array<{ questId: string, tier: number, name: string,
+ *   objectiveType: string, isBoss: boolean,
+ *   unlockRequires: UnlockRequiresEntry[] | null,
+ *   state: 'locked' | 'unlocked' | 'cleared' }> }}
+ */
+function buildLevelUnlockGraph(accountId) {
+  const { isQuestTierUnlocked, hasCompletedQuestTier } = require('./users');
+  const nodes = [];
+  for (const questId of Object.keys(QUEST_DEFS)) {
+    const quest = QUEST_DEFS[questId];
+    const tierKeys = Object.keys(quest.tiers)
+      .map(Number)
+      .sort((a, b) => a - b);
+    for (const tier of tierKeys) {
+      const resolved = getQuest(questId, tier);
+      if (!resolved) {
+        continue;
+      }
+      let state = 'locked';
+      if (hasCompletedQuestTier(accountId, questId, tier)) {
+        state = 'cleared';
+      } else if (isQuestTierUnlocked(accountId, questId, tier)) {
+        state = 'unlocked';
+      }
+      nodes.push({
+        questId,
+        tier,
+        name: resolved.name,
+        objectiveType: resolved.objectiveType,
+        isBoss: resolved.objectiveType === 'stage_boss',
+        unlockRequires: normalizeUnlockRequires(resolved.unlockRequires),
+        state,
+      });
+    }
+  }
+  return { nodes };
+}
+
 function getSelectedQuest(gameState) {
   const questId = gameState && gameState.selectedQuestId;
   const tier = gameState && gameState.selectedQuestTier;
@@ -1690,6 +1792,7 @@ function buildQuestUpdatePayload(gameState, playerAccountId) {
     payload.unlockedQuestTiers = getUnlockedQuestTiers(playerAccountId) || {};
     payload.questVariants = listQuestVariantsForAccount(playerAccountId);
     payload.quests = listQuestsForAccount(playerAccountId);
+    payload.levelUnlockGraph = buildLevelUnlockGraph(playerAccountId);
   }
   return payload;
 }
@@ -1818,6 +1921,7 @@ module.exports = {
   getDefaultQuestId,
   listQuests,
   listQuestVariants,
+  buildLevelUnlockGraph,
   getSelectedQuest,
   isBossLevelQuest,
   getLayoutProfileForQuest,

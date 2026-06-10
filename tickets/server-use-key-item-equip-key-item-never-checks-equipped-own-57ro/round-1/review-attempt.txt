@@ -1,0 +1,23 @@
+## Review complete
+
+**VERDICT: PASS**
+
+Full write-up: `tickets/server-use-key-item-equip-key-item-never-checks-equipped-own-57ro/round-1/review.md`
+
+### Runtime
+- `metrics.json`: `ok: true`, `pageerrors: []`
+- `console.log`: no `pageerror` or `[fatal]` lines
+- Capture reached gameplay; dodge roll worked with cooldown HUD
+
+### Acceptance criteria
+1. **USE_KEY_ITEM equipped check** — `not_equipped` rejection in `keyItemEffects.js` runs before cooldown/effects; new test in `key-items.test.js`
+2. **EQUIP_KEY_ITEM unlock check** — `not_unlocked` via `isKeyItemUnlocked` in `keyItemHandlers.js`; new test with override hook
+3. **Tests** — 3321/3321 passed (`pnpm test:quick`); existing key-item tests updated with matching `equippedKeyItemId`
+
+### Files changed (2 commits since baseline)
+- `game/server/keyItemEffects.js` — equipped-item guard
+- `game/server/socketHandlers/keyItemHandlers.js` — unlock guard
+- `game/server/progression.js` — `setTestKeyItemUnlockOverride` for tests
+- Multiple server test files — fixture updates + two new rejection tests
+
+No `gaps.md` (PASS). No `nits.md` — nothing worth a follow-up backlog item.
