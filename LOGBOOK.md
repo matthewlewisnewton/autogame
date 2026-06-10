@@ -6732,3 +6732,26 @@ Fallback smoke capture exercised the real player path: auth → lobby → ready 
 ## Remaining gaps
 
 None. All acceptance criteria are fully met; runtime capture is clean; test suite is green.
+
+## v0.382 — 389-level-select-tree-map-ui  (2026-06-10 13:55:26)
+
+
+### Quest-board placement and lobby behavior
+
+Pass. The map fronts the existing Contract Terminal/quest board panel and does not replace or alter the lobby finder menu. The quest panel is still opened through the lobby quest booth flow, preserving the design's lobby-browser -> lobby -> quest selection -> dungeon loop.
+
+## Design and requirements fit
+
+Pass. The implementation stays in `game/client` plus client tests, is consistent with the documented lobby selection flow, and does not regress the foundational requirements: the captured run shows the Three.js scene, websocket connection, multiplayer lobby/gameplay state, and movement smoke still work.
+
+## Code quality and tests
+
+Pass. The implementation is reasonably scoped and covered by focused unit tests for layout, edges, state styling, click behavior, empty graphs, and integration tests through `main.js` quest updates. The coverage run reports 16 test files passed and 309 tests passed, including `client/test/levelMap.test.js` and `client/test/levelMapIntegration.test.js`.
+
+## Debug scenarios
+
+No new `?debugScenario=...` shortcut was added by this ticket. The existing debug hooks remain gated by localhost-only URL parameters and are not part of normal gameplay.
+
+## Remaining gaps
+
+None.

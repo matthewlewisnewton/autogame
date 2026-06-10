@@ -1,0 +1,14 @@
+I broke the top-level ticket into 3 dependency-ordered sub-tickets, all `code`-verified (each involves functions existing, structure, click handlers, and server-payload plumbing — none is a pure pixel-look check).
+
+Created sub-ticket folders:
+
+- `/home/matt/workspace/.autogame-worktrees/389-level-select-tree-map-ui/tickets/389-level-select-tree-map-ui/subtickets/01-level-map-layout-and-nodes/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/389-level-select-tree-map-ui/tickets/389-level-select-tree-map-ui/subtickets/02-level-map-edges/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/389-level-select-tree-map-ui/tickets/389-level-select-tree-map-ui/subtickets/03-integrate-level-map-into-lobby/ticket.md`
+
+**Plan rationale:**
+- **01** builds the new `levelMap.js` pure module: left-to-right layout by prerequisite depth + one styled box per node (level-1/level-2/boss) with locked/unlocked/cleared/boss/selected classes and click-to-select for unlocked nodes only.
+- **02** adds the graph **edges** to the same module (prereq→dependent, with multi-prereq boss convergence) — separated because it's a distinct rendering concern the ticket calls out explicitly.
+- **03** integrates it into the running lobby: captures the `levelUnlockGraph` that 388 ships on `questUpdate`/`lobbyUpdate`, renders the map in the quest panel, syncs selection, and emits `SELECT_QUEST` on node click (reusing the quest board's existing emit/`suspendedRunSummary` guard).
+
+All three stay within scope (`game/client` + `game/client/test`) and build on the 388 payload (`levelUnlockGraph.nodes` with `questId, tier, name, isBoss, unlockRequires, state`).
