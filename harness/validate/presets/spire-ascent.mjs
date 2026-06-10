@@ -12,6 +12,8 @@ export default {
 	purifyingPulseScenario: 'purifying-pulse-ready',
 	windupScenario: 'magma-windup-ready',
 	windupCardId: 'magma_greatsword',
+	telepipeScenario: 'spire-ascent-telepipe-ready',
+	telepipeDeployScenario: 'spire-ascent-tier-2',
 	nearAddsScenario: 'spire-ascent-near-adds',
 	bossApproachScenario: 'spire-ascent-boss-approach',
 	bossLowHpScenario: 'spire-ascent-boss-low-hp',

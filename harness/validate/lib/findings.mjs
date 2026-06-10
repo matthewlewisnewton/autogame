@@ -306,10 +306,10 @@ function renderWindupSection(exercise) {
 	return lines;
 }
 
-function renderCanyonTelepipeSection(telepipe) {
+function renderQuestTelepipeSection(telepipe, { emptyLabel = 'quest telepipe' } = {}) {
 	const lines = ['', '## Telepipe vitals and new-sortie charges', ''];
 	if (!telepipe || typeof telepipe !== 'object') {
-		lines.push('No canyon telepipe exercise recorded.');
+		lines.push(`No ${emptyLabel} exercise recorded.`);
 		return lines;
 	}
 	const pre = telepipe.preSuspend;
@@ -441,6 +441,7 @@ function renderFloorAlignmentSection(floorAlignment, { preset, objectiveType } =
  *   bossVisualIdentity?: object | null,
  *   cardExercises?: { slowBurn?: object, purifyingPulse?: object, windup?: object } | null,
  *   canyonTelepipe?: object | null,
+ *   spireTelepipe?: object | null,
  *   consoleErrors?: string[],
  *   screenshots?: string[],
  *   visualNotes?: string[],
@@ -461,7 +462,7 @@ export function renderFindings(run) {
 
 	lines.push(...renderAssertionSection(run));
 
-	if (run.preset === 'sunken-canyon') {
+	if (run.preset === 'sunken-canyon' || run.preset === 'spire-ascent') {
 		lines.push(
 			formatAssertion('bossEncounterUiVisible', run.assertions?.bossEncounterUiVisible === true),
 			formatAssertion('bossDistinctFromAdds', run.assertions?.bossDistinctFromAdds === true),
@@ -519,8 +520,14 @@ export function renderFindings(run) {
 	lines.push(...renderSlowBurnSection(run.cardExercises?.slowBurn));
 	lines.push(...renderPurifyingPulseSection(run.cardExercises?.purifyingPulse));
 	lines.push(...renderWindupSection(run.cardExercises?.windup));
-	lines.push(...renderCanyonTelepipeSection(run.canyonTelepipe));
-	lines.push(...renderNewContentExerciseSection(run.screenshots));
+	if (run.preset === 'spire-ascent') {
+		lines.push(...renderQuestTelepipeSection(run.spireTelepipe, { emptyLabel: 'spire-ascent telepipe' }));
+	} else {
+		lines.push(...renderQuestTelepipeSection(run.canyonTelepipe, { emptyLabel: 'canyon telepipe' }));
+	}
+	if (run.preset === 'spire-ascent' || run.preset === 'sunken-canyon') {
+		lines.push(...renderNewContentExerciseSection(run.screenshots));
+	}
 
 	lines.push('', '## Screenshots', '');
 	for (const shot of run.screenshots || []) {

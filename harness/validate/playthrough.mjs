@@ -52,7 +52,11 @@ import {
 } from './lib/cardExercise.mjs';
 import { runEmberBurnStep, runGlacialSlowStep, runCardMechanicsStep } from './lib/cardMechanics.mjs';
 import { runSlipperyFloorStep } from './lib/slipperyFloor.mjs';
-import { runCanyonTelepipeNewSortieStep, runTelepipeResetStep } from './lib/telepipe.mjs';
+import {
+	runCanyonTelepipeNewSortieStep,
+	runSpireAscentTelepipeNewSortieStep,
+	runTelepipeResetStep,
+} from './lib/telepipe.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
@@ -1054,8 +1058,17 @@ async function runVictoryStep({ page, preset, outDirAbs }) {
 	};
 }
 
-function isSunkenCanyonPreset(preset, summary) {
-	return preset?.layoutProfile === 'sunken-canyon' || summary?.preset === 'sunken-canyon';
+function isStageRevalidationPreset(preset, summary) {
+	const profile = preset?.layoutProfile ?? summary?.preset;
+	return profile === 'sunken-canyon' || profile === 'spire-ascent'
+		|| summary?.preset === 'sunken-canyon' || summary?.preset === 'spire-ascent';
+}
+
+function telepipeSummaryKey(preset, summary) {
+	const profile = preset?.layoutProfile ?? summary?.preset;
+	return profile === 'spire-ascent' || summary?.preset === 'spire-ascent'
+		? 'spireTelepipe'
+		: 'canyonTelepipe';
 }
 
 function buildAssertions(summary, preset) {
@@ -1114,9 +1127,11 @@ function buildAssertions(summary, preset) {
 		bossDefeated,
 		victoryFired,
 	};
-	if (!isSunkenCanyonPreset(preset, summary)) {
+	if (!isStageRevalidationPreset(preset, summary)) {
 		return base;
 	}
+	const telepipeKey = telepipeSummaryKey(preset, summary);
+	const questTelepipe = summary[telepipeKey];
 	const bossEncounterUi = summary.bossEncounter?.probes?.bossEncounterUi;
 	const bossVisualIdentity = summary.bossEncounter?.probes?.bossVisualIdentity;
 	return {
@@ -1130,8 +1145,8 @@ function buildAssertions(summary, preset) {
 		slowBurnMutuallyExclusive: summary.cardExercises?.slowBurn?.slowBurnMutuallyExclusive === true,
 		healCleanseApplied: summary.cardExercises?.purifyingPulse?.healCleanseApplied === true,
 		windupTelegraphActive: summary.cardExercises?.windup?.windupTelegraphActive === true,
-		telepipeVitalsPreserved: summary.canyonTelepipe?.telepipeVitalsPreserved === true,
-		cardChargesResetOnNewSortie: summary.canyonTelepipe?.cardChargesResetOnNewSortie === true,
+		telepipeVitalsPreserved: questTelepipe?.telepipeVitalsPreserved === true,
+		cardChargesResetOnNewSortie: questTelepipe?.cardChargesResetOnNewSortie === true,
 	};
 }
 
@@ -1156,7 +1171,8 @@ function buildAssertionFailureDetail(summary, preset) {
 		details.push(`windup=${JSON.stringify(summary.cardExercises?.windup)}`);
 	}
 	if (failed.includes('telepipeVitalsPreserved') || failed.includes('cardChargesResetOnNewSortie')) {
-		details.push(`canyonTelepipe=${JSON.stringify(summary.canyonTelepipe)}`);
+		const telepipeKey = telepipeSummaryKey(preset, summary);
+		details.push(`${telepipeKey}=${JSON.stringify(summary[telepipeKey])}`);
 	}
 	if (failed.includes('slipperyFloorOk')) {
 		details.push(`slipperyFloor=${JSON.stringify(summary.slipperyFloor)}`);
@@ -1199,6 +1215,8 @@ function collectScreenshots(summary) {
 	if (summary.cardExercises?.windup?.screenshot) shots.push(summary.cardExercises.windup.screenshot);
 	if (summary.canyonTelepipe?.beforeScreenshot) shots.push(summary.canyonTelepipe.beforeScreenshot);
 	if (summary.canyonTelepipe?.afterScreenshot) shots.push(summary.canyonTelepipe.afterScreenshot);
+	if (summary.spireTelepipe?.beforeScreenshot) shots.push(summary.spireTelepipe.beforeScreenshot);
+	if (summary.spireTelepipe?.afterScreenshot) shots.push(summary.spireTelepipe.afterScreenshot);
 	return shots;
 }
 
@@ -1285,6 +1303,14 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
 					cardChargesResetOnNewSortie: summary.canyonTelepipe.cardChargesResetOnNewSortie ?? null,
 				},
 			} : {}),
+			...(summary.spireTelepipe ? {
+				spireTelepipe: {
+					preSuspend: summary.spireTelepipe.preSuspend ?? null,
+					postDeploy: summary.spireTelepipe.postDeploy ?? null,
+					telepipeVitalsPreserved: summary.spireTelepipe.telepipeVitalsPreserved ?? null,
+					cardChargesResetOnNewSortie: summary.spireTelepipe.cardChargesResetOnNewSortie ?? null,
+				},
+			} : {}),
 		};
 		findings = renderFindings({
 			ok: summary.ok === true,
@@ -1299,6 +1325,7 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
 			bossVisualIdentity: summary.bossEncounter?.probes?.bossVisualIdentity ?? null,
 			cardExercises: summary.cardExercises ?? null,
 			canyonTelepipe: summary.canyonTelepipe ?? null,
+			spireTelepipe: summary.spireTelepipe ?? null,
 			floorAlignment,
 			emberBurn: summary.emberBurn || null,
 			slipperyFloor: summary.slipperyFloor || null,
@@ -1478,12 +1505,14 @@ async function main() {
 		}
 
 		const runsSunkenCanyonFull = opts.preset === 'sunken-canyon' && runsRoomsFull;
+		const runsSpireAscentFull = opts.preset === 'spire-ascent' && runsRoomsFull;
+		const runsStageRevalidationFull = runsSunkenCanyonFull || runsSpireAscentFull;
 
 		if (runsBossEncounter && page) {
 			const objectiveType = preset.objectiveType ?? 'stage_boss';
 			if (objectiveType === 'defeat_enemies') {
 				summary.defeatEnemiesCombat = await runDefeatEnemiesCombatStep({ page, preset, outDirAbs });
-			} else if (!runsSunkenCanyonFull) {
+			} else if (!runsStageRevalidationFull) {
 				summary.bossEncounter = await runBossEncounterStep({ page, preset, outDirAbs });
 			}
 		}
@@ -1515,7 +1544,53 @@ async function main() {
 			});
 		}
 
-		if (runsRoomsFull && page && !runsSunkenCanyonFull) {
+		if (runsRoomsFull && page && !runsStageRevalidationFull) {
+			summary.victory = await runVictoryStep({ page, preset, outDirAbs });
+		}
+
+		if (runsSpireAscentFull && page) {
+			const midCombatPart = await runSunkenCanyonMidCombatProbeStep({ page, preset, outDirAbs });
+			summary.bossEncounter = { ...midCombatPart };
+
+			const cardExerciseOpts = { outDir: outDirAbs, repoRoot: REPO_ROOT };
+			summary.cardExercises = {
+				slowBurn: await runSlowBurnExercise(page, cardExerciseOpts),
+				purifyingPulse: await runPurifyingPulseExercise(page, cardExerciseOpts),
+				windup: await runWindupCardExercise(page, {
+					...cardExerciseOpts,
+					cardId: preset.windupCardId ?? 'magma_greatsword',
+					scenario: preset.windupScenario ?? 'magma-windup-ready',
+				}),
+			};
+
+			summary.spireTelepipe = await runSpireAscentTelepipeNewSortieStep({
+				page,
+				preset,
+				outDirAbs,
+				repoRoot: REPO_ROOT,
+				serverLogPath: game.serverLogPath,
+				gameProcess: game,
+				fromPlaying: true,
+			});
+
+			const bossPart = await runBossEncounterStep({
+				page,
+				preset,
+				outDirAbs,
+				skipMidCombatCapture: true,
+			});
+			summary.bossEncounter = {
+				...bossPart,
+				midCombatScreenshot: midCombatPart.midCombatScreenshot,
+				probes: {
+					...(bossPart.probes || {}),
+					floorAlignment: {
+						...(midCombatPart.probes?.floorAlignment || {}),
+						...(bossPart.probes?.floorAlignment || {}),
+					},
+				},
+			};
+
 			summary.victory = await runVictoryStep({ page, preset, outDirAbs });
 		}
 
