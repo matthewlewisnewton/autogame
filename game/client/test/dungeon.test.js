@@ -33,6 +33,7 @@ import {
 	buildSpireEdgeHazardMesh,
 	buildCanyonCliffLipMesh,
 	buildCoverMesh,
+	buildEntryDecorMesh,
 } from '../dungeon.js';
 import { generateLayout } from '../../server/dungeon.js';
 import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } from '../../shared/floorSampling.esm.js';
@@ -1619,12 +1620,16 @@ describe('open-plaza perimeter decor', () => {
 		);
 	});
 
-	it('layouts without perimeterDecor render unchanged (no decor groups)', () => {
+	it('layouts without perimeterDecor render unchanged (no perimeter decor groups)', () => {
 		const layout = generateLayout(42, 'crowded');
 		expect(layout.perimeterDecor).toBeUndefined();
 		const scene = mockScene();
 		buildDungeon(scene, layout);
-		expect(scene.added.filter(o => o.userData?.decorType)).toHaveLength(0);
+		const perimeterTypes = new Set(['arena_banner', 'arena_tier']);
+		const perimeterDecorGroups = scene.added.filter(o =>
+			o.userData?.decorType && perimeterTypes.has(o.userData.decorType)
+		);
+		expect(perimeterDecorGroups).toHaveLength(0);
 	});
 
 	it('buildWallColliders ignores perimeter decor', () => {
@@ -1703,6 +1708,49 @@ describe('open-plaza center ring floor markings', () => {
 		const withMarkings = buildWallColliders(layout);
 		const withoutMarkings = buildWallColliders({ ...layout, floorMarkings: [] });
 		expect(withMarkings).toEqual(withoutMarkings);
+	});
+});
+
+describe('entry room decor rendering', () => {
+	it('buildEntryDecorMesh sets decorType on each decor kind', () => {
+		const iceMats = { ...getEntryRoomMaterials('ice-cavern'), accent: getProfileMaterials('ice-cavern').accent };
+		const fireMats = { ...getEntryRoomMaterials('fire-cavern'), accent: getProfileMaterials('fire-cavern').accent };
+		const crowdedMats = { ...getEntryRoomMaterials('crowded'), accent: getProfileMaterials('crowded').accent };
+		expect(buildEntryDecorMesh('icicle_cluster', iceMats).userData.decorType).toBe('icicle_cluster');
+		expect(buildEntryDecorMesh('ember_vent', fireMats).userData.decorType).toBe('ember_vent');
+		expect(buildEntryDecorMesh('vault_rubble', crowdedMats).userData.decorType).toBe('vault_rubble');
+	});
+
+	it('buildDungeon decor groups carry decorType matching layout entryDecor (seed 42)', () => {
+		const profiles = [
+			{ profile: 'ice-cavern', type: 'icicle_cluster' },
+			{ profile: 'fire-cavern', type: 'ember_vent' },
+			{ profile: 'crowded', type: 'vault_rubble' },
+		];
+		for (const { profile, type } of profiles) {
+			const layout = generateLayout(42, profile);
+			expect(layout.entryDecor?.length).toBeGreaterThanOrEqual(2);
+			const scene = mockScene();
+			buildDungeon(scene, layout);
+			const decorGroups = scene.added.filter(o => o.userData?.decorType);
+			expect(decorGroups).toHaveLength(layout.entryDecor.length);
+			expect(decorGroups.every(g => g.userData.decorType === type)).toBe(true);
+			for (const d of layout.entryDecor) {
+				const group = decorGroups.find(g =>
+					Math.abs(g.position.x - d.x) < 1e-6 && Math.abs(g.position.z - d.z) < 1e-6
+				);
+				expect(group).toBeDefined();
+				expect(group.userData.decorType).toBe(d.type);
+			}
+		}
+	});
+
+	it('buildWallColliders ignores entry decor', () => {
+		const layout = generateLayout(42, 'crowded');
+		expect(layout.entryDecor?.length).toBeGreaterThanOrEqual(2);
+		const withDecor = buildWallColliders(layout);
+		const withoutDecor = buildWallColliders({ ...layout, entryDecor: [] });
+		expect(withDecor).toEqual(withoutDecor);
 	});
 });
 

@@ -2702,6 +2702,48 @@ describe("generateLayout(seed, 'fire-cavern')", () => {
     }
   });
 });
+
+// ── entry-room decor scatter ──
+
+describe('entry room decor scatter', () => {
+  function decorInsideStartRoom(layout) {
+    const start = layout.rooms.find(r => r.role === 'start');
+    const halfW = start.width / 2;
+    const halfD = start.depth / 2;
+    return (layout.entryDecor || []).every(d =>
+      Math.abs(d.x - start.x) <= halfW && Math.abs(d.z - start.z) <= halfD
+    );
+  }
+
+  it('seed 42: ice-cavern, fire-cavern, and crowded emit ≥2 typed entryDecor pieces', () => {
+    const expected = {
+      'ice-cavern': 'icicle_cluster',
+      'fire-cavern': 'ember_vent',
+      crowded: 'vault_rubble',
+    };
+    for (const [profile, type] of Object.entries(expected)) {
+      const layout = generateLayout(42, profile);
+      expect(layout.entryDecor?.length).toBeGreaterThanOrEqual(2);
+      expect(layout.entryDecor.every(d => d.type === type)).toBe(true);
+      for (const d of layout.entryDecor) {
+        expect(d).toEqual(expect.objectContaining({ type, x: expect.any(Number), z: expect.any(Number) }));
+        expect(d.width).toBeUndefined();
+        expect(d.height).toBeUndefined();
+      }
+      expect(decorInsideStartRoom(layout)).toBe(true);
+    }
+  });
+
+  it('entryDecor does not add cover colliders', () => {
+    for (const profile of ['ice-cavern', 'fire-cavern', 'crowded']) {
+      const layout = generateLayout(42, profile);
+      const withDecor = buildWallColliders(layout);
+      const withoutDecor = buildWallColliders({ ...layout, entryDecor: [] });
+      expect(withDecor).toEqual(withoutDecor);
+    }
+  });
+});
+
 // ── spire-ascent stage layout ──
 
 describe("generateLayout(seed, 'spire-ascent')", () => {

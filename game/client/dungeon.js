@@ -1099,6 +1099,52 @@ export function buildPerimeterDecorMesh(type, materials) {
 }
 
 /**
+ * Build visual-only entry-room decor (icicles, ember vents, vault rubble).
+ *
+ * @param {'icicle_cluster' | 'ember_vent' | 'vault_rubble'} type
+ * @param {{ floor: THREE.Material, wall: THREE.Material, accent: THREE.Material }} materials
+ * @returns {THREE.Group}
+ */
+export function buildEntryDecorMesh(type, materials) {
+	const group = new THREE.Group();
+	group.userData.decorType = type;
+	const { floor, wall, accent } = materials;
+
+	const addMesh = (geo, mat, x, y, z, rotX = 0, rotY = 0) => {
+		const mesh = new THREE.Mesh(geo, mat);
+		mesh.position.set(x, y, z);
+		if (rotX) mesh.rotation.x = rotX;
+		if (rotY) mesh.rotation.y = rotY;
+		group.add(mesh);
+	};
+
+	switch (type) {
+		case 'icicle_cluster': {
+			addMesh(new THREE.ConeGeometry(0.14, 0.9, 6), wall, -0.35, 1.1, 0, Math.PI);
+			addMesh(new THREE.ConeGeometry(0.18, 1.2, 6), wall, 0.1, 1.35, 0.15, Math.PI);
+			addMesh(new THREE.ConeGeometry(0.12, 0.7, 6), accent, 0.4, 0.95, -0.1, Math.PI);
+			break;
+		}
+		case 'ember_vent': {
+			addMesh(new THREE.BoxGeometry(1.4, 0.06, 0.35), floor, 0, 0.03, 0);
+			addMesh(new THREE.BoxGeometry(0.7, 0.1, 0.18), accent, 0, 0.08, 0);
+			addMesh(new THREE.BoxGeometry(0.25, 0.14, 0.25), accent, 0.35, 0.1, 0.12);
+			break;
+		}
+		case 'vault_rubble': {
+			addMesh(new THREE.BoxGeometry(0.9, 0.35, 0.7), wall, -0.25, 0.18, 0.1, 0, 0.4);
+			addMesh(new THREE.BoxGeometry(0.6, 0.28, 0.55), floor, 0.3, 0.14, -0.2, 0.1, -0.3);
+			addMesh(new THREE.BoxGeometry(0.45, 0.22, 0.4), wall, 0.05, 0.32, 0.35, 0.2, 0.8);
+			break;
+		}
+		default:
+			break;
+	}
+
+	return group;
+}
+
+/**
  * Build a visual-only floor marking mesh (no collision).
  *
  * @param {{ type: string, innerRadius?: number, outerRadius?: number }} marking
@@ -1292,6 +1338,26 @@ export function buildDungeon(scene, layout) {
 		for (const marker of buildDoorwayMarkers(room, layout, profileMaterials)) {
 			scene.add(marker);
 			meshes.push(marker);
+		}
+	}
+
+	// ── Entry-room decor (visual only; after room walls) ──
+	const entryDecorMaterials = (() => {
+		const entryMats = getEntryRoomMaterials(layout.profile);
+		return {
+			floor: entryMats?.floor ?? profileFloorMaterial,
+			wall: entryMats?.wall ?? profileWallMaterial,
+			accent: profileMaterials.accent,
+		};
+	})();
+	for (const d of layout.entryDecor || []) {
+		const decorGroup = buildEntryDecorMesh(d.type, entryDecorMaterials);
+		const floorY = resolveFloorY(sampleFloorY(layout, d.x, d.z));
+		decorGroup.position.set(d.x, floorY, d.z);
+		if (d.yaw != null) decorGroup.rotation.y = d.yaw;
+		scene.add(decorGroup);
+		for (const child of decorGroup.children) {
+			meshes.push(child);
 		}
 	}
 

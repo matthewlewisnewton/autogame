@@ -875,6 +875,22 @@ function decorateCrowdedLayout(layout, rng, options = {}) {
         return vault ? [vault] : [];
       })()
     : placeLandmarks(layout, rng, 'crowded');
+
+  const startRoom = layout.rooms.find(r => r.role === 'start');
+  if (startRoom && !isRoomSloped(startRoom)) {
+    const half = Math.min(startRoom.width, startRoom.depth) / 2;
+    layout.entryDecor = scatterEntryDecor(rng, {
+      half,
+      centerX: startRoom.x,
+      centerZ: startRoom.z,
+      spawnClear: OPEN_PLAZA.spawnClearRadius,
+      type: 'vault_rubble',
+      count: 2 + Math.floor(rng() * 3),
+    });
+  } else {
+    layout.entryDecor = [];
+  }
+
   return layout;
 }
 
@@ -1735,6 +1751,87 @@ function scatterCoverInArena(rng, {
   return cover;
 }
 
+/** Virtual footprint radius for entry-decor spawn-clear / margin checks (visual only). */
+const ENTRY_DECOR_RADIUS = 0.5;
+
+/** Interior offset candidates for entry decor (relative to room centre). */
+const ENTRY_DECOR_CANDIDATE_OFFSETS = [
+  { x: -3, z: -3 },
+  { x: 3, z: 3 },
+  { x: -3, z: 3 },
+  { x: 3, z: -3 },
+  { x: 0, z: -4 },
+  { x: -4, z: 0 },
+  { x: 4, z: 0 },
+  { x: 0, z: 4 },
+  { x: -2, z: 2 },
+  { x: 2, z: -2 },
+  { x: 4, z: 3 },
+  { x: -4, z: 3 },
+  { x: 4, z: -3 },
+  { x: -4, z: -3 },
+  { x: 3, z: 4 },
+  { x: -3, z: 4 },
+  { x: 3, z: -4 },
+  { x: -3, z: -4 },
+];
+
+/**
+ * Greedily scatter visual-only entry decor inside a square arena. Mirrors
+ * `scatterCoverInArena` margin and spawn-clear rules but skips reachability and
+ * collision footprint checks.
+ *
+ * @returns {{ type: string, x: number, z: number, yaw?: number }[]}
+ */
+function overlapsSpawnClearPoint(x, z, radius, centerX, centerZ) {
+  const dx = x - centerX;
+  const dz = z - centerZ;
+  return dx * dx + dz * dz < radius * radius;
+}
+
+function scatterEntryDecor(rng, {
+  half,
+  centerX = 0,
+  centerZ = 0,
+  spawnClear,
+  type,
+  count = 3,
+  interiorMargin = OPEN_PLAZA.interiorMargin,
+}) {
+  const placed = [];
+  const interiorMax = half - interiorMargin;
+  // Visual-only decor may use a tighter clear zone in small entry pads so pieces
+  // can sit near walls without colliding with the player spawn circle.
+  const decorSpawnClear = Math.max(2.5, Math.min(spawnClear, interiorMax - 0.5));
+  const targetCount = Math.max(2, Math.min(4, count));
+  const shuffled = ENTRY_DECOR_CANDIDATE_OFFSETS.map(c => ({
+    x: centerX + c.x,
+    z: centerZ + c.z,
+  }));
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  for (const cand of shuffled) {
+    if (placed.length >= targetCount) break;
+    if (Math.abs(cand.x - centerX) + ENTRY_DECOR_RADIUS > interiorMax) continue;
+    if (Math.abs(cand.z - centerZ) + ENTRY_DECOR_RADIUS > interiorMax) continue;
+    if (overlapsSpawnClearPoint(cand.x, cand.z, decorSpawnClear, centerX, centerZ)) continue;
+    if (placed.some(d =>
+      Math.abs(d.x - cand.x) < ENTRY_DECOR_RADIUS * 2 + 0.5 &&
+      Math.abs(d.z - cand.z) < ENTRY_DECOR_RADIUS * 2 + 0.5
+    )) continue;
+    placed.push({
+      type,
+      x: cand.x,
+      z: cand.z,
+      yaw: rng() * Math.PI * 2,
+    });
+  }
+  return placed;
+}
+
 /**
  * Accept cover from candidatePool in declaration order (no RNG shuffle).
  * Used by open-plaza `layoutMode: 'rigid'` — cover placement is seed-independent.
@@ -2560,10 +2657,21 @@ function generateIceCavern(seed, options = {}) {
     interiorMargin,
   });
 
+  const entryDecor = scatterEntryDecor(rng, {
+    half: stoneHalf,
+    centerX: entry.x,
+    centerZ: entry.z,
+    spawnClear: spawnClearRadius,
+    type: 'icicle_cluster',
+    count: 2 + Math.floor(rng() * 3),
+    interiorMargin,
+  });
+
   return {
     rooms: [entry, ...ramps, iceField, treasure],
     passages: [],
     cover: [...entryCover, ...treasureCover],
+    entryDecor,
     passageWidth: PASSAGE_WIDTH,
     cellSpacing: iceSize,
     profile: 'ice-cavern',
@@ -2701,10 +2809,21 @@ function generateFireCavern(seed, options = {}) {
     interiorMargin,
   });
 
+  const entryDecor = scatterEntryDecor(rng, {
+    half: rimHalf,
+    centerX: rim.x,
+    centerZ: rim.z,
+    spawnClear: spawnClearRadius,
+    type: 'ember_vent',
+    count: 2 + Math.floor(rng() * 3),
+    interiorMargin,
+  });
+
   return {
     rooms: [rim, ...ramps, basin],
     passages: [],
     cover,
+    entryDecor,
     passageWidth: PASSAGE_WIDTH,
     cellSpacing: basinSize,
     profile: 'fire-cavern',
@@ -3257,6 +3376,7 @@ module.exports = {
   generateHub,
   buildDescentRampRoom,
   scatterCoverInArena,
+  scatterEntryDecor,
   placeCoverInArenaOrdered,
   OPEN_PLAZA_RIGID_HAZARDS,
   scatterCoverInRoom,
