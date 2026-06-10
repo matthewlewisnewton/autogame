@@ -6404,3 +6404,26 @@ PASS. The changed code is cohesive and keeps the new behavior in the existing qu
 
 None.
 
+
+## v0.370 — 392-investigate-ice-telepipe-vitals-not-preserved  (2026-06-10 11:12:35)
+
+### Fresh sortie after Telepipe abandon on ICE
+
+PASS. The new `frost-telepipe-ready` debug scenario supports the live capture path: first emit selects Frost Crossing and injects Telepipe only on ready-up; re-emitting from the suspended lobby abandons the checkpoint while keeping lobby HP/MS, so the next ready-up starts a new ICE run id with vitals preserved. Round-2 probes confirm `preHp: 20`, `postHp: 20`, `preMagicStones: 20`, `postMagicStones: 20`, and a fresh run id (`35c1710d...` -> `b15b9e8e...`).
+
+### Design and requirements consistency
+
+PASS. This matches `game/docs/design.md`: HP and Magic Stones persist across Telepipe resume and new sortie, while fresh sortie creates a new run id and redeals cards. It does not weaken the foundation requirements: the captured run rendered a Three.js scene, connected to the server, showed the player in 3D gameplay, and exercised server-driven state transitions.
+
+### Debug scenario safeguards
+
+PASS. The new scenario is gated through the existing `debugScenario` socket/URL harness path and is allowlisted in `DEBUG_SCENARIOS`; normal gameplay does not enter it. Its end state is reachable normally by selecting Frost Crossing, having Telepipe available, deploying, extracting, abandoning the suspended run, and redeploying. It does not bypass the server persistence path under review: the scenario uses the normal lobby/run state, normal ready-up deploy, Telepipe hand injection at deploy, `abandonSuspendedRun()`, and `checkAllReady()` fresh-run handling.
+
+### Code quality and validation
+
+PASS. The changes are scoped to scenario/capture routing and regression coverage. `git diff --check` reports no whitespace issues. The provided coverage run passed: 127 test files and 1725 tests, including the new ICE telepipe persistence coverage and the fresh-sortie `frost-telepipe-ready` test.
+
+## Remaining gaps
+
+None.
+

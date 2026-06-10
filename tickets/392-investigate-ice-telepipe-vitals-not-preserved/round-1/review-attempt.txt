@@ -1,0 +1,6 @@
+Wrote the review artifacts:
+
+- `tickets/392-investigate-ice-telepipe-vitals-not-preserved/round-1/review.md`
+- `tickets/392-investigate-ice-telepipe-vitals-not-preserved/round-1/gaps.md`
+
+Verdict is `VERDICT: FAIL` because `metrics.json` is `ok:false` and the live capture failed the telepipe vitals assertion. I did not create `nits.md` because I did not identify non-blocking cleanup worth filing, and I did not edit game code or git state.

@@ -1,0 +1,7 @@
+[A:debug] [vite] connecting...
+[A:debug] [vite] connected.
+[A:log] [initScene] Initializing Three.js scene...
+[A:log] [debugScenario] applied telepipe-ready
+[A:log] [launchBooth] ready-up via booth
+[A:log] [launchBooth] ready-up via booth
+[capture:error] Telepipe vitals-preservation assertion failed: HP mismatch across telepipe redeploy: 80 → 40; magic stones mismatch across telepipe redeploy: 99 → 99; runId must differ after fresh redeploy: pre=b25a08c9-2d71-4a5d-b84a-442e5dbe65d7 post=b25a08c9-2d71-4a5d-b84a-442e5dbe65d7
