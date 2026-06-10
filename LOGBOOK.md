@@ -6422,3 +6422,26 @@ PASS. This ticket did not add or modify any `?debugScenario=` shortcut. The capt
 
 None.
 
+
+## v0.369 — New objective type: escort/NPC partner quest (PSO Guild Quest staple)  (2026-06-10 10:59:09)
+
+
+PASS. `annex_escort` is a new tier-1 quest with `objectiveType: 'escort'`, scripted encounter rooms, Archivist Vale metadata, and the route ambush dialogue beacon `They found us!` on room 1. The normal path is reachable through the quest board by selecting Annex Evacuation and deploying; the debug shortcut only stages that same doorway state.
+
+## Design, requirements, and debug scenarios
+
+PASS. The implementation matches the design direction for a PSO-style Guild Quest escort: it adds a real quest, objective registry support, NPC protection/failure semantics, route ambushes, and UI feedback without weakening the baseline requirements for rendering, websocket play, multiplayer visualization, or movement sync.
+
+The new debug scenarios remain gated through the existing localhost/debug socket path and are only client-triggered from `?debugScenario=...`. They are QA shortcuts into states reachable by normal play: selecting/deploying Annex Evacuation, walking the escort to the ambush room, or escorting to the destination.
+
+## Validation
+
+Focused validation passed:
+
+`pnpm exec vitest run --config vitest.config.js server/test/escort_objective.test.js client/test/escort-hp-bar.test.js --coverage.enabled=false`
+
+The provided `coverage.log` shows the escort objective test suite and escort HP-bar suite passing. It also shows one unrelated full-suite failure in `server/test/debug-scenarios.test.js` for the existing `arena-trials-boss-low-hp` shortcut reporting a boss HP mismatch in `stateUpdate`; this ticket's diff does not touch that arena-trials scenario path, so I am not treating it as a blocking gap for this escort ticket.
+
+## Remaining gaps
+
+None.
