@@ -876,9 +876,17 @@ async function runBossEncounterStep({ page, preset, outDirAbs, skipMidCombatCapt
 		assertDormantBoss(approachHarness, bossType);
 	}
 
+	// Prefer a preset-driven encounter-trigger debug scenario (which activates the dormant
+	// boss AND leaves a live add beside it for the bossDistinctFromAdds probe, since normal
+	// proximity activation clears non-boss enemies). Fall back to the keyboard walk-in for
+	// presets that do not provide one.
+	const encounterTriggerScenario = preset.encounterTriggerScenario
+		?? (bossApproachScenario === 'canyon-descent-boss-approach'
+			? 'canyon-descent-encounter-trigger'
+			: null);
 	let activeHarness;
-	if (bossApproachScenario === 'canyon-descent-boss-approach') {
-		await requestScenario(page, 'canyon-descent-encounter-trigger');
+	if (encounterTriggerScenario) {
+		await requestScenario(page, encounterTriggerScenario);
 		activeHarness = await readHarness(page);
 	} else {
 		activeHarness = await activateEncounter(page, {
@@ -1519,7 +1527,7 @@ async function main() {
 			const midCombatPart = await runSunkenCanyonMidCombatProbeStep({ page, preset, outDirAbs });
 			summary.bossEncounter = { ...midCombatPart };
 
-			const cardExerciseOpts = { outDir: outDirAbs, repoRoot: REPO_ROOT };
+			const cardExerciseOpts = { outDir: outDirAbs, repoRoot: REPO_ROOT, layoutProfile: preset.layoutProfile };
 			summary.cardExercises = {
 				slowBurn: await runSlowBurnExercise(page, cardExerciseOpts),
 				purifyingPulse: await runPurifyingPulseExercise(page, cardExerciseOpts),

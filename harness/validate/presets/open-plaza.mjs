@@ -20,6 +20,7 @@ export default {
 	lobbyName: 'Open Plaza Validation',
 	nearAddsScenario: 'arena-trials-near-adds',
 	bossApproachScenario: 'arena-trials-boss-approach',
+	encounterTriggerScenario: 'arena-trials-encounter-trigger',
 	bossLowHpScenario: 'arena-trials-boss-low-hp',
 	encounterTriggerRadius: 8,
 	addsTimeoutMs: 90000,

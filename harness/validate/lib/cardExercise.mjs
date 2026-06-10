@@ -34,6 +34,22 @@ async function focusCanvas(page) {
 }
 
 /**
+ * Wait until the run is in the playing phase on the expected layout profile.
+ * `layoutProfile` is preset-driven (e.g. 'sunken-canyon', 'open-plaza'); when
+ * omitted only the playing phase is required.
+ *
+ * @param {import('playwright').Page} page
+ * @param {string} [layoutProfile]
+ */
+async function waitForPlayingOnProfile(page, layoutProfile) {
+	await page.waitForFunction((expectedProfile) => {
+		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
+		if (harness?.phase !== 'playing') return false;
+		return !expectedProfile || harness?.layout?.profile === expectedProfile;
+	}, layoutProfile ?? null, { timeout: 60000 });
+}
+
+/**
  * Press the keyboard hint for a 0-based hand slot (1–6).
  *
  * @param {import('playwright').Page} page
@@ -115,11 +131,8 @@ export function assertSlowBurnMutualExclusive(probes) {
  * @param {import('playwright').Page} page
  * @param {{ outDir?: string, repoRoot?: string }} [opts]
  */
-export async function runSlowBurnExercise(page, { outDir, repoRoot } = {}) {
-	await page.waitForFunction(() => {
-		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
-		return harness?.phase === 'playing' && harness?.layout?.profile === 'sunken-canyon';
-	}, { timeout: 60000 });
+export async function runSlowBurnExercise(page, { outDir, repoRoot, layoutProfile } = {}) {
+	await waitForPlayingOnProfile(page, layoutProfile);
 
 	await focusCanvas(page);
 	await requestScenario(page, 'ice-ball-ready');
@@ -241,11 +254,8 @@ export async function probeWindupTelegraphDom(page) {
  * @param {import('playwright').Page} page
  * @param {{ outDir?: string, repoRoot?: string }} [opts]
  */
-export async function runPurifyingPulseExercise(page, { outDir, repoRoot } = {}) {
-	await page.waitForFunction(() => {
-		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
-		return harness?.phase === 'playing' && harness?.layout?.profile === 'sunken-canyon';
-	}, { timeout: 60000 });
+export async function runPurifyingPulseExercise(page, { outDir, repoRoot, layoutProfile } = {}) {
+	await waitForPlayingOnProfile(page, layoutProfile);
 
 	await focusCanvas(page);
 	await requestScenario(page, 'purifying-pulse-ready');
@@ -300,11 +310,9 @@ export async function runWindupCardExercise(page, {
 	repoRoot,
 	cardId = 'magma_greatsword',
 	scenario = 'magma-windup-ready',
+	layoutProfile,
 } = {}) {
-	await page.waitForFunction(() => {
-		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
-		return harness?.phase === 'playing' && harness?.layout?.profile === 'sunken-canyon';
-	}, { timeout: 60000 });
+	await waitForPlayingOnProfile(page, layoutProfile);
 
 	await focusCanvas(page);
 	await requestScenario(page, scenario);
