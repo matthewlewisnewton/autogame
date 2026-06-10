@@ -1434,6 +1434,13 @@ function addDebuff(player, type, expiresAt) {
 
 function getEntityWorldY(entity) {
   if (!entity) return resolveFloorY(DEFAULT_FLOOR_Y);
+  if (entity.flying) {
+    const layout = _gameState && _gameState.layout;
+    if (layout) return resolveEntityY(entity, layout);
+    const floorY = resolveFloorY(DEFAULT_FLOOR_Y);
+    const altitude = Number.isFinite(entity.altitude) ? entity.altitude : DEFAULT_FLY_ALTITUDE;
+    return floorY + altitude;
+  }
   if (Number.isFinite(entity.y)) return entity.y;
   const layout = _gameState && _gameState.layout;
   if (layout) {
@@ -1776,11 +1783,15 @@ function lockMinionBreathDirection(minion, target) {
 }
 
 function queueWyrmBreathCardUsed(minion, cardId, options) {
+  const origin = { x: minion.x, z: minion.z };
+  if (minion.flying) {
+    origin.y = getEntityWorldY(minion);
+  }
   _gameState._pendingMinionBreaths.push({
     playerId: minion.ownerId,
     cardId,
     specialEffect: options.specialEffect,
-    origin: { x: minion.x, z: minion.z },
+    origin,
     direction: tiltedDirectionPayload(
       minion.breathDirX,
       minion.breathDirY ?? 0,
@@ -3196,6 +3207,12 @@ function updateMinions() {
         minion.lastChargePulseAt = lastPulseAt + pulses * interval;
       }
     }
+  }
+
+  // Resolve world Y before minion AI so breath/attack aim uses the current
+  // airborne height (flying minions hover at floorY + altitude).
+  for (const minion of _gameState.minions) {
+    minion.y = resolveEntityY(minion, _gameState.layout);
   }
 
   // AI: each living minion seeks nearest enemy, chases, and attacks

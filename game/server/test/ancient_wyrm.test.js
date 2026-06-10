@@ -12,6 +12,7 @@ import {
 	applyWyrmMinionBreathStats,
 	scaledGrindStat,
 	isBurning,
+	getEntityWorldY,
 } from '../index.js';
 import {
 	connectAndJoinLobby,
@@ -261,12 +262,15 @@ describe('Wyrm channeled breath', () => {
 
 	it('Archive Wyrm channels fire breath instead of spamming melee swipes', () => {
 		const now = Date.now();
+		const altitude = CARD_DEFS.ancient_wyrm.altitude;
 		gameState.minions.push({
 			id: 'wyrm-1',
 			ownerId: 'p1',
 			type: 'ancient_wyrm',
 			x: 0,
 			z: 0,
+			flying: true,
+			altitude,
 			hp: 90,
 			ttl: 30,
 			lastBreathAt: now - 3100,
@@ -289,6 +293,7 @@ describe('Wyrm channeled breath', () => {
 
 		updateMinions();
 
+		const airborneY = getEntityWorldY(gameState.minions[0]);
 		expect(gameState.enemies[0].hp).toBe(50 - CARD_DEFS.ancient_wyrm.breathDamage);
 		expect(gameState.minions[0].breathState).toBe('breathing');
 		expect(gameState._pendingMinionBreaths).toHaveLength(1);
@@ -297,6 +302,7 @@ describe('Wyrm channeled breath', () => {
 			specialEffect: 'fire_breath',
 			breathPhase: 'start',
 			hits: [{ enemyId: 'e1', hp: 50 - CARD_DEFS.ancient_wyrm.breathDamage }],
+			origin: { x: 0, z: 0, y: airborneY },
 		});
 	});
 
@@ -315,6 +321,8 @@ describe('Wyrm channeled breath', () => {
 			type: 'ancient_wyrm',
 			x: 0,
 			z: 0,
+			flying: true,
+			altitude: CARD_DEFS.ancient_wyrm.altitude,
 			hp: 90,
 			ttl: 30,
 			lastBreathAt: Date.now(),
