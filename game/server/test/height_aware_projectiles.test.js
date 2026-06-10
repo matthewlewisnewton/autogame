@@ -1,16 +1,41 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
 	ATTACK_RANGE,
+	CARD_DEFS,
 	createGameState,
 	gameState,
 	getEntityWorldY,
 	computeAimDirection3D,
+	resolveProjectileAim,
 	collectProjectileHits,
 	collectReturningProjectileHits,
 	collectChainLightningHits,
 	collectPhaseBeamHits,
 	collectConeHits,
 } from '../index.js';
+import { handleUseCard, setCallbacks as setCardEffectCallbacks } from '../cardEffects.js';
+import { setGameState as setSimGameState } from '../simulation.js';
+import { setGameState as setProgressionGameState } from '../progression.js';
+
+function mockIo() {
+	return {
+		to: () => ({
+			emit: () => {},
+		}),
+	};
+}
+
+function wireCardEffectCallbacks() {
+	setCardEffectCallbacks({
+		io: mockIo(),
+		emitCardError: () => {},
+		findSacrificeTarget: () => null,
+		resolveAttackRotation: (player, data) => (
+			Number.isFinite(data?.rotation) ? data.rotation : (player.rotation || 0)
+		),
+		resolveProjectileAim,
+	});
+}
 
 function resetState() {
 	Object.assign(gameState, createGameState());
@@ -189,5 +214,128 @@ describe('collectConeHits height awareness', () => {
 
 		const result = collectConeHits(0, 0, 1, 0, range, Math.PI / 2, damage);
 		expect(result.hits).toHaveLength(1);
+	});
+});
+
+const LOCK_ON_PROJECTILE_CARDS = [
+	'fireball',
+	'ice_ball',
+	'arcane_bolt',
+	'chain_lightning',
+	'photon_slicer',
+	'infinite_disk',
+	'dragons_breath',
+];
+
+function setupLockOnProjectileTest(cardId) {
+	resetState();
+	const playerId = 'p1';
+	const enemyId = 'elevated';
+	const cardDef = CARD_DEFS[cardId];
+
+	gameState.gamePhase = 'playing';
+	gameState.run = {
+		status: 'playing',
+		objective: { type: 'defeat_enemies', current: 0, target: 1 },
+	};
+	gameState.enemies = [{
+		id: enemyId,
+		type: 'grunt',
+		x: 0,
+		z: 0,
+		y: 5,
+		hp: 100,
+		maxHp: 100,
+		state: 'idle',
+		attackState: 'idle',
+		wanderTarget: { x: 0, z: 0 },
+	}];
+
+	gameState.players[playerId] = {
+		x: 0,
+		y: 0,
+		z: 0,
+		rotation: 0,
+		hp: 100,
+		dead: false,
+		extracted: false,
+		magicStones: 100,
+		pendingSummons: new Set(),
+		hand: [{
+			id: cardId,
+			name: cardDef.name,
+			type: cardDef.type,
+			remainingCharges: cardDef.charges || 4,
+			grind: 0,
+		}, null, null, null],
+		slotCooldowns: [null, null, null, null],
+	};
+
+	setSimGameState(gameState, {});
+	setProgressionGameState(gameState);
+	wireCardEffectCallbacks();
+
+	const socket = {
+		playerId,
+		emit: () => {},
+	};
+	const lobby = {
+		id: 'lobby1',
+		state: gameState,
+	};
+
+	return {
+		socket,
+		lobby,
+		playerId,
+		enemyId,
+		cardId,
+		cast(extra = {}) {
+			const hpBefore = gameState.enemies[0].hp;
+			handleUseCard(socket, gameState, lobby, {
+				cardId,
+				slotIndex: 0,
+				rotation: 0,
+				...extra,
+			});
+			return { hpBefore, hpAfter: gameState.enemies[0].hp };
+		},
+	};
+}
+
+describe('player lock-on projectile aim (useCard integration)', () => {
+	beforeEach(() => {
+		wireCardEffectCallbacks();
+	});
+
+	for (const cardId of LOCK_ON_PROJECTILE_CARDS) {
+		it(`${cardId} hits an elevated target with lockTargetId and misses with flat rotation only`, () => {
+			const setup = setupLockOnProjectileTest(cardId);
+
+			const miss = setup.cast();
+			expect(miss.hpAfter).toBe(miss.hpBefore);
+
+			resetState();
+			const hitSetup = setupLockOnProjectileTest(cardId);
+			const hit = hitSetup.cast({ lockTargetId: hitSetup.enemyId });
+			expect(hit.hpAfter).toBeLessThan(hit.hpBefore);
+		});
+	}
+
+	it('resolveProjectileAim tilts upward toward a lock-on target above the shooter', () => {
+		resetState();
+		const playerId = 'p1';
+		gameState.players[playerId] = { x: 0, y: 0, z: 0, rotation: 0 };
+		addEnemy('elevated', 0, 0, 100, 5);
+
+		const aim = resolveProjectileAim(
+			gameState.players[playerId],
+			{ lockTargetId: 'elevated', rotation: 0 },
+			gameState,
+		);
+
+		expect(aim.dirY).toBeGreaterThan(0);
+		expect(aim.dirX).toBeCloseTo(0, 5);
+		expect(aim.dirZ).toBeCloseTo(0, 5);
 	});
 });

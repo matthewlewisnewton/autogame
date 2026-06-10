@@ -396,6 +396,7 @@ cardEffects.setCallbacks({
   emitCardError,
   findSacrificeTarget,
   resolveAttackRotation,
+  resolveProjectileAim,
 });
 
 // Wire keyItemEffects with io (the only index.js-local handle its handler needs).
@@ -586,6 +587,7 @@ const DEBUG_SCENARIOS = new Set([
   'weapon-slash-ready',
   'energy-blade-slash-ready',
   'heavy-greatsword-slash-ready',
+  'lock-on-elevated-projectile',
 ]);
 
 // Wire debugScenarios with io, the index.js-local helpers its setup chain needs,
@@ -1391,6 +1393,36 @@ function resolveAttackRotation(player, data) {
 	return Number.isFinite(player.rotation) ? player.rotation : 0;
 }
 
+function resolveProjectileAim(player, data, state) {
+	const originY = getEntityWorldY(player);
+
+	if (data?.lockTargetId && state?.enemies) {
+		const enemy = state.enemies.find((e) => e.id === data.lockTargetId && e.hp > 0);
+		if (enemy) {
+			const aim = computeAimDirection3D(
+				{ x: player.x, y: originY, z: player.z },
+				{ x: enemy.x, y: getEntityWorldY(enemy), z: enemy.z },
+			);
+			return {
+				rotation: Math.atan2(aim.dirZ, aim.dirX),
+				dirX: aim.dirX,
+				dirY: aim.dirY,
+				dirZ: aim.dirZ,
+				originY,
+			};
+		}
+	}
+
+	const rotation = resolveAttackRotation(player, data);
+	return {
+		rotation,
+		dirX: Math.cos(rotation),
+		dirY: 0,
+		dirZ: Math.sin(rotation),
+		originY,
+	};
+}
+
 function runGameLoopTick() {
   for (const lobby of lobbies._lobbies.values()) {
     try {
@@ -1704,6 +1736,7 @@ if (typeof module !== 'undefined' && module.exports) {
     armSelfEnchantment,
     getEntityWorldY,
     computeAimDirection3D,
+    resolveProjectileAim,
     collectConeHits,
     collectRadialHits,
     collectProjectileHits,

@@ -86,12 +86,42 @@ let io = null;
 let emitCardError = null;
 let findSacrificeTarget = null;
 let resolveAttackRotation = null;
+let resolveProjectileAim = null;
 
 function setCallbacks(deps) {
   io = deps.io;
   emitCardError = deps.emitCardError;
   findSacrificeTarget = deps.findSacrificeTarget;
   resolveAttackRotation = deps.resolveAttackRotation;
+  resolveProjectileAim = deps.resolveProjectileAim;
+}
+
+function aimForProjectile(player, data, state) {
+  if (resolveProjectileAim) {
+    return resolveProjectileAim(player, data, state);
+  }
+  const rotation = resolveAttackRotation
+    ? resolveAttackRotation(player, data)
+    : (Number.isFinite(data?.rotation) ? data.rotation : (player.rotation || 0));
+  return {
+    rotation,
+    dirX: Math.cos(rotation),
+    dirY: 0,
+    dirZ: Math.sin(rotation),
+    originY: 0,
+  };
+}
+
+function projectileCollectorVertical(aim) {
+  const opts = { originY: aim.originY };
+  if (aim.dirY !== 0) opts.dirY = aim.dirY;
+  return opts;
+}
+
+function directionPayload(dirX, dirY, dirZ) {
+  const direction = { x: dirX, z: dirZ };
+  if (dirY !== 0) direction.y = dirY;
+  return direction;
 }
 
 // Helper: resolve a card's effective attack reach for a given grind level.
@@ -348,20 +378,20 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
         handCard.remainingCharges -= 1;
       }
 
-      const rotation = fromWindup
-        ? (options.rotation ?? player.rotation ?? 0)
-        : resolveAttackRotation(player, data);
+      const aimPlayer = fromWindup
+        ? { ...player, x: originX, z: originZ }
+        : player;
+      const aim = aimForProjectile(aimPlayer, data, state);
       if (!fromWindup) {
-        player.rotation = rotation;
+        player.rotation = aim.rotation;
       }
+      const { dirX, dirY, dirZ } = aim;
       const attackConeAngle = cardDef.attackConeAngle || ATTACK_CONE_ANGLE;
       const grind = handCard.grind || 0;
       const attackRange = effectiveAttackRange(cardDef, grind);
       const damage = handCard.echoDamage != null
         ? handCard.echoDamage
         : scaledGrindStat(cardDef.damage || 0, grind);
-      const dirX = Math.cos(rotation);
-      const dirZ = Math.sin(rotation);
       const cooldownMs = cardDef.cooldownMs || COOLDOWN_MS;
 
       const swingsPerUse = cardDef.swingsPerUse || 1;
@@ -378,6 +408,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
             magicStoneOnKill: cardDef.magicStoneOnKill,
             attackerId: socket.playerId,
             pierces: cardDef.projectile?.pierces === true,
+            ...projectileCollectorVertical(aim),
           });
         } else if (cardDef.effect === 'returning_projectile' || cardDef.effect === 'triple_returning_projectile') {
           const returnPasses = cardDef.returnPasses
@@ -387,6 +418,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
             magicStoneOnHit: cardDef.magicStoneOnHit,
             magicStoneOnKill: cardDef.magicStoneOnKill,
             attackerId: socket.playerId,
+            ...projectileCollectorVertical(aim),
           });
         } else {
           swingResult = collectConeHits(originX, originZ, dirX, dirZ, attackRange, attackConeAngle, damage, {
@@ -395,6 +427,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
             healOnKill: cardDef.healOnKill,
             currencyOnKill: cardDef.currencyOnKill,
             attackerId: socket.playerId,
+            ...projectileCollectorVertical(aim),
           });
         }
         for (const hit of swingResult.hits) {
@@ -505,7 +538,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
         specialEffect: cardDef.specialEffect,
         effect: cardDef.effect,
         origin: { x: originX, z: originZ },
-        direction: { x: dirX, z: dirZ },
+        direction: directionPayload(dirX, dirY, dirZ),
         attackRange,
         attackConeAngle,
         projectileHitWidth: PROJECTILE_HIT_WIDTH,
@@ -844,10 +877,9 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       }
 
       if (cardDef.effect === 'dragons_breath') {
-        const rotation = resolveAttackRotation(player, data);
-        player.rotation = rotation;
-        const dirX = Math.cos(rotation);
-        const dirZ = Math.sin(rotation);
+        const aim = aimForProjectile(player, data, state);
+        player.rotation = aim.rotation;
+        const { dirX, dirY, dirZ } = aim;
         const range = cardDef.attackRange || 7;
         const coneAngle = cardDef.attackConeAngle || Math.PI / 3;
         const { hits, magicStonesGained } = collectConeHits(
@@ -858,7 +890,10 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           range,
           coneAngle,
           cardDef.damage || 0,
-          { attackerId: socket.playerId }
+          {
+            attackerId: socket.playerId,
+            ...projectileCollectorVertical(aim),
+          }
         );
         spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, socket.playerId);
         cleanupAfterDamage();
@@ -872,7 +907,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           slotIndex: data.slotIndex,
           specialEffect: cardDef.specialEffect,
           origin: { x: originX, z: originZ },
-          direction: { x: dirX, z: dirZ },
+          direction: directionPayload(dirX, dirY, dirZ),
           radius: range,
           hits,
           magicStonesGained,
@@ -954,10 +989,9 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       }
 
       if (cardDef.effect === 'ice_ball') {
-        const rotation = resolveAttackRotation(player, data);
-        player.rotation = rotation;
-        const dirX = Math.cos(rotation);
-        const dirZ = Math.sin(rotation);
+        const aim = aimForProjectile(player, data, state);
+        player.rotation = aim.rotation;
+        const { dirX, dirY, dirZ } = aim;
         const attackRange = cardDef.attackRange || ATTACK_RANGE;
         const grind = handCard.grind || 0;
         const damage = handCard.echoDamage != null
@@ -976,6 +1010,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
             magicStoneOnKill: cardDef.magicStoneOnKill,
             attackerId: socket.playerId,
             pierces: false,
+            ...projectileCollectorVertical(aim),
           }
         );
         const appliedMagicStones = addMagicStones(player, rawMagicStones);
@@ -1011,7 +1046,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           effect: 'ice_ball',
           specialEffect: cardDef.specialEffect,
           origin: { x: originX, z: originZ },
-          direction: { x: dirX, z: dirZ },
+          direction: directionPayload(dirX, dirY, dirZ),
           attackRange,
           hits,
           projectileTravelMs: cardDef.projectileTravelMs,
@@ -1022,10 +1057,9 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       }
 
       if (cardDef.effect === 'chain_lightning') {
-        const rotation = resolveAttackRotation(player, data);
-        player.rotation = rotation;
-        const dirX = Math.cos(rotation);
-        const dirZ = Math.sin(rotation);
+        const aim = aimForProjectile(player, data, state);
+        player.rotation = aim.rotation;
+        const { dirX, dirY, dirZ } = aim;
         const attackRange = cardDef.attackRange || ATTACK_RANGE;
         const chainRadius = cardDef.chainRadius || 5;
         const grind = handCard.grind || 0;
@@ -1046,6 +1080,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
             magicStoneOnHit: cardDef.magicStoneOnHit,
             magicStoneOnKill: cardDef.magicStoneOnKill,
             attackerId: socket.playerId,
+            ...projectileCollectorVertical(aim),
           }
         );
         const appliedMagicStones = addMagicStones(player, rawMagicStones);
@@ -1076,7 +1111,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           slotIndex: data.slotIndex,
           specialEffect: 'chain_lightning',
           origin: { x: originX, z: originZ },
-          direction: { x: dirX, z: dirZ },
+          direction: directionPayload(dirX, dirY, dirZ),
           attackRange,
           chainRadius,
           hits,
