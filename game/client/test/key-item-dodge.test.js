@@ -52,6 +52,13 @@ function ensureSocket() {
 	}
 }
 
+const DODGE_ROLL_DEF = { id: 'dodge_roll', name: 'Dodge Roll', cooldownMs: 800 };
+
+async function loadKeyItemHudMain() {
+	await import('../main.js');
+	window.__setKeyItemDefs({ dodge_roll: DODGE_ROLL_DEF });
+}
+
 describe('key item cooldown HUD', () => {
 	beforeEach(() => {
 		vi.resetModules();
@@ -64,12 +71,65 @@ describe('key item cooldown HUD', () => {
 		vi.useRealTimers();
 	});
 
-	it('updateKeyItemCooldownHud toggles cooldown class and countdown text', async () => {
-		await import('../main.js');
+	it('shows ready state with name and default keybind when equipped and playing with zero cooldown', async () => {
+		await loadKeyItemHudMain();
 
-		window.__setKeyItemDefs({
-			dodge_roll: { id: 'dodge_roll', name: 'Dodge Roll', cooldownMs: 800 },
-		});
+		window.__setGameState(
+			{ gamePhase: 'playing', players: { p1: { equippedKeyItemId: 'dodge_roll' } } },
+			'p1',
+		);
+		window.__renderKeyItemHudForTest(
+			{ equippedKeyItemId: 'dodge_roll' },
+			'playing',
+		);
+
+		const el = document.getElementById('key-item-indicator');
+		expect(el.getAttribute('data-key-item-id')).toBe('dodge_roll');
+		expect(el.classList.contains('ready')).toBe(true);
+		expect(el.classList.contains('cooldown')).toBe(false);
+		expect(el.querySelector('.key-item-hud-name').textContent).toBe('Dodge Roll');
+		expect(el.querySelector('.key-item-hud-keybind').textContent).toBe('E');
+		expect(el.querySelector('.key-item-hud-cooldown').textContent).toBe('');
+	});
+
+	it('clears indicator when unequipped or not in playing phase', async () => {
+		await loadKeyItemHudMain();
+
+		window.__setGameState(
+			{ gamePhase: 'playing', players: { p1: { equippedKeyItemId: 'dodge_roll' } } },
+			'p1',
+		);
+		window.__renderKeyItemHudForTest(
+			{ equippedKeyItemId: 'dodge_roll' },
+			'playing',
+		);
+
+		const el = document.getElementById('key-item-indicator');
+		const cooldownEl = el.querySelector('.key-item-hud-cooldown');
+
+		window.__renderKeyItemHudForTest({ equippedKeyItemId: null }, 'playing');
+		expect(el.getAttribute('data-key-item-id')).toBeNull();
+		expect(el.classList.contains('ready')).toBe(false);
+		expect(el.classList.contains('cooldown')).toBe(false);
+		expect(el.querySelector('.key-item-hud-name').textContent).toBe('');
+		expect(el.querySelector('.key-item-hud-keybind').textContent).toBe('');
+		expect(cooldownEl.textContent).toBe('');
+
+		window.__renderKeyItemHudForTest(
+			{ equippedKeyItemId: 'dodge_roll' },
+			'lobby',
+		);
+		expect(el.getAttribute('data-key-item-id')).toBeNull();
+		expect(el.classList.contains('ready')).toBe(false);
+		expect(el.classList.contains('cooldown')).toBe(false);
+		expect(el.querySelector('.key-item-hud-name').textContent).toBe('');
+		expect(el.querySelector('.key-item-hud-keybind').textContent).toBe('');
+		expect(cooldownEl.textContent).toBe('');
+	});
+
+	it('updateKeyItemCooldownHud toggles cooldown class and countdown text', async () => {
+		await loadKeyItemHudMain();
+
 		window.__setGameState(
 			{ gamePhase: 'playing', players: { p1: { equippedKeyItemId: 'dodge_roll' } } },
 			'p1',
@@ -99,11 +159,8 @@ describe('key item cooldown HUD', () => {
 
 	it('flashKeyItemIndicator adds flash classes without removing HUD children', async () => {
 		vi.useFakeTimers();
-		await import('../main.js');
+		await loadKeyItemHudMain();
 
-		window.__setKeyItemDefs({
-			dodge_roll: { id: 'dodge_roll', name: 'Dodge Roll', cooldownMs: 800 },
-		});
 		window.__renderKeyItemHudForTest(
 			{ equippedKeyItemId: 'dodge_roll' },
 			'playing',
