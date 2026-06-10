@@ -1,12 +1,22 @@
+import { createRequire } from 'node:module';
 import { describe, it, expect } from 'vitest';
-import {
+import { generateLayout, questLayoutSeed } from '../dungeon.js';
+import { createGameState } from '../game-state.js';
+import { getObjectiveDef } from '../objectives.js';
+import { setGameState, spawnEnemies, startDungeonRun } from '../progression.js';
+
+const require = createRequire(import.meta.url);
+const {
   QUEST_DEFS,
   DEFAULT_QUEST_ID,
   getEnemyPool,
+  getLayoutGenerationOptions,
+  getLayoutProfileForQuest,
+  getQuest,
   pickWeightedEnemyType,
-} from '../quests.js';
-import { ENEMY_DEFS } from '../simulation.js';
-import { mulberry32 } from '../dungeon.js';
+} = require('../quests.js');
+const { ENEMY_DEFS, setGameState: setSimulationGameState } = require('../simulation.js');
+const { mulberry32 } = require('../dungeon.js');
 
 // Map of each quest id to its expected pool, as a sorted [type, weight] list so
 // assertions are order-insensitive.
@@ -237,5 +247,60 @@ describe('pickWeightedEnemyType', () => {
   it('defaults rng to Math.random when omitted', () => {
     const pool = [{ type: 'grunt', weight: 1 }];
     expect(pickWeightedEnemyType(pool)).toBe('grunt');
+  });
+});
+
+const TIER1_SCRIPTED_QUESTS = ['training_caverns', 'crystal_rescue', 'frost_crossing'];
+
+function deployTier1ScriptedQuest(questId) {
+  const tier = 1;
+  const seed = questLayoutSeed(questId, tier);
+  const layout = generateLayout(
+    seed,
+    getLayoutProfileForQuest(questId, tier),
+    getLayoutGenerationOptions(questId, tier),
+  );
+  const startRoom = layout.rooms.find((room) => room.role === 'start') || layout.rooms[0];
+  const state = createGameState();
+
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  state.layout = layout;
+  state.layoutSeed = seed;
+  state.enemies = [];
+  state.loot = [];
+  state.gamePhase = 'playing';
+  state.players = {
+    p1: {
+      x: startRoom.x,
+      y: 0.5,
+      z: startRoom.z,
+      hp: 100,
+      dead: false,
+      extracted: false,
+    },
+  };
+  setGameState(state);
+  setSimulationGameState(state);
+  spawnEnemies();
+  startDungeonRun();
+  return state;
+}
+
+describe('tier-1 scripted quest enemy pools', () => {
+  it.each(TIER1_SCRIPTED_QUESTS)('%s keeps enemyPool for tier-2 compatibility', (questId) => {
+    expect(QUEST_DEFS[questId].enemyPool.length).toBeGreaterThan(0);
+    expect(getEnemyPool(questId, 1)).toBe(QUEST_DEFS[questId].enemyPool);
+  });
+
+  it.each(TIER1_SCRIPTED_QUESTS)('%s tier-1 deploy never bulk-spawns from enemyPool', (questId) => {
+    const quest = getQuest(questId, 1);
+    const def = getObjectiveDef(quest.objectiveType);
+    expect(def.skipBulkCombatSpawn(quest)).toBe(true);
+
+    const state = deployTier1ScriptedQuest(questId);
+    expect(state.run.scriptedEncounter).toBeDefined();
+    expect(state.enemies.every((enemy) => enemy.scriptedWave)).toBe(true);
+    expect(state.enemies.length).toBeLessThanOrEqual(3);
   });
 });

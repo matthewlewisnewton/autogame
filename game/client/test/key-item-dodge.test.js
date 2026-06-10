@@ -36,6 +36,12 @@ function ensureMainDom() {
 	if (!document.getElementById('key-item-indicator')) {
 		const indicator = document.createElement('div');
 		indicator.id = 'key-item-indicator';
+		indicator.innerHTML = `
+			<span class="key-item-hud-icon" aria-hidden="true"></span>
+			<span class="key-item-hud-name"></span>
+			<span class="key-item-hud-keybind"></span>
+			<span class="key-item-hud-cooldown" aria-hidden="true"></span>
+		`;
 		document.body.appendChild(indicator);
 	}
 }
@@ -44,6 +50,13 @@ function ensureSocket() {
 	if (!window.__isSocketReady()) {
 		window.createSocket('test-fake-jwt-token');
 	}
+}
+
+const DODGE_ROLL_DEF = { id: 'dodge_roll', name: 'Dodge Roll', cooldownMs: 800 };
+
+async function loadKeyItemHudMain() {
+	await import('../main.js');
+	window.__setKeyItemDefs({ dodge_roll: DODGE_ROLL_DEF });
 }
 
 describe('key item cooldown HUD', () => {
@@ -58,30 +71,115 @@ describe('key item cooldown HUD', () => {
 		vi.useRealTimers();
 	});
 
-	it('updateKeyItemCooldownHud toggles cooldown class and countdown text', async () => {
-		await import('../main.js');
+	it('shows ready state with name and default keybind when equipped and playing with zero cooldown', async () => {
+		await loadKeyItemHudMain();
+
+		window.__setGameState(
+			{ gamePhase: 'playing', players: { p1: { equippedKeyItemId: 'dodge_roll' } } },
+			'p1',
+		);
+		window.__renderKeyItemHudForTest(
+			{ equippedKeyItemId: 'dodge_roll' },
+			'playing',
+		);
 
 		const el = document.getElementById('key-item-indicator');
+		expect(el.getAttribute('data-key-item-id')).toBe('dodge_roll');
+		expect(el.classList.contains('ready')).toBe(true);
+		expect(el.classList.contains('cooldown')).toBe(false);
+		expect(el.querySelector('.key-item-hud-name').textContent).toBe('Dodge Roll');
+		expect(el.querySelector('.key-item-hud-keybind').textContent).toBe('E');
+		expect(el.querySelector('.key-item-hud-cooldown').textContent).toBe('');
+	});
+
+	it('clears indicator when unequipped or not in playing phase', async () => {
+		await loadKeyItemHudMain();
+
+		window.__setGameState(
+			{ gamePhase: 'playing', players: { p1: { equippedKeyItemId: 'dodge_roll' } } },
+			'p1',
+		);
+		window.__renderKeyItemHudForTest(
+			{ equippedKeyItemId: 'dodge_roll' },
+			'playing',
+		);
+
+		const el = document.getElementById('key-item-indicator');
+		const cooldownEl = el.querySelector('.key-item-hud-cooldown');
+
+		window.__renderKeyItemHudForTest({ equippedKeyItemId: null }, 'playing');
+		expect(el.getAttribute('data-key-item-id')).toBeNull();
+		expect(el.classList.contains('ready')).toBe(false);
+		expect(el.classList.contains('cooldown')).toBe(false);
+		expect(el.querySelector('.key-item-hud-name').textContent).toBe('');
+		expect(el.querySelector('.key-item-hud-keybind').textContent).toBe('');
+		expect(cooldownEl.textContent).toBe('');
+
+		window.__renderKeyItemHudForTest(
+			{ equippedKeyItemId: 'dodge_roll' },
+			'lobby',
+		);
+		expect(el.getAttribute('data-key-item-id')).toBeNull();
+		expect(el.classList.contains('ready')).toBe(false);
+		expect(el.classList.contains('cooldown')).toBe(false);
+		expect(el.querySelector('.key-item-hud-name').textContent).toBe('');
+		expect(el.querySelector('.key-item-hud-keybind').textContent).toBe('');
+		expect(cooldownEl.textContent).toBe('');
+	});
+
+	it('updateKeyItemCooldownHud toggles cooldown class and countdown text', async () => {
+		await loadKeyItemHudMain();
+
+		window.__setGameState(
+			{ gamePhase: 'playing', players: { p1: { equippedKeyItemId: 'dodge_roll' } } },
+			'p1',
+		);
+		window.__renderKeyItemHudForTest(
+			{ equippedKeyItemId: 'dodge_roll' },
+			'playing',
+		);
+
+		const el = document.getElementById('key-item-indicator');
+		const nameEl = el.querySelector('.key-item-hud-name');
+		const keybindEl = el.querySelector('.key-item-hud-keybind');
+		const cooldownEl = el.querySelector('.key-item-hud-cooldown');
 		window.__updateKeyItemCooldownHud(700);
 		expect(el.classList.contains('cooldown')).toBe(true);
-		expect(el.textContent).toMatch(/^0\.[0-9]+$/);
-		expect(el.textContent).toBe('0.7');
+		expect(el.classList.contains('ready')).toBe(false);
+		expect(cooldownEl.textContent).toMatch(/^0\.[0-9]+$/);
+		expect(cooldownEl.textContent).toBe('0.7');
+		expect(nameEl.textContent).toBe('Dodge Roll');
+		expect(keybindEl.textContent).toBe('E');
 
 		window.__updateKeyItemCooldownHud(0);
 		expect(el.classList.contains('cooldown')).toBe(false);
-		expect(el.textContent).toBe('');
+		expect(el.classList.contains('ready')).toBe(true);
+		expect(cooldownEl.textContent).toBe('');
 	});
 
-	it('flashKeyItemIndicator adds flash-success then clears after timeout', async () => {
+	it('flashKeyItemIndicator adds flash classes without removing HUD children', async () => {
 		vi.useFakeTimers();
-		await import('../main.js');
+		await loadKeyItemHudMain();
+
+		window.__renderKeyItemHudForTest(
+			{ equippedKeyItemId: 'dodge_roll' },
+			'playing',
+		);
 
 		const el = document.getElementById('key-item-indicator');
-		window.__flashKeyItemIndicator('success');
-		expect(el.classList.contains('flash-success')).toBe(true);
+		const childCount = el.children.length;
 
-		vi.advanceTimersByTime(450);
-		expect(el.classList.contains('flash-success')).toBe(false);
+		for (const [type, cls] of [
+			['success', 'flash-success'],
+			['cooldown', 'flash-cooldown'],
+			['soft-fail', 'flash-soft-fail'],
+		]) {
+			window.__flashKeyItemIndicator(type);
+			expect(el.classList.contains(cls)).toBe(true);
+			expect(el.children.length).toBe(childCount);
+			vi.advanceTimersByTime(450);
+			expect(el.classList.contains(cls)).toBe(false);
+		}
 	});
 });
 

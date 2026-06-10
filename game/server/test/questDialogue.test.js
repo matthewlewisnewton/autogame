@@ -202,6 +202,9 @@ describe('quest dialogue progression hooks', () => {
       for (let i = 0; i < guardCount; i += 1) {
         progression.recordEnemyDefeated(1);
       }
+      gameState.run.finalAmbush = { spawned: true, cleared: true, enemyIds: [] };
+      gameState.run.objective.extractionPhase = true;
+      gameState.run.objective.extractionReached = true;
 
       checkRunTerminalState();
 

@@ -66,8 +66,11 @@ router.patch('/me/settings', (req, res) => {
 	if (!body || typeof body !== 'object' || Array.isArray(body)) {
 		return res.status(400).json({ error: 'Settings body must be a JSON object' });
 	}
-	const settings = updateSettings(req.accountId, body);
-	return res.status(200).json({ settings });
+	const result = updateSettings(req.accountId, body);
+	if (!result.ok) {
+		return res.status(400).json({ error: result.reason });
+	}
+	return res.status(200).json({ settings: result.settings });
 });
 
 /**

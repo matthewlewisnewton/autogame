@@ -1,0 +1,21 @@
+## Review complete
+
+**VERDICT: PASS**
+
+Wrote the full assessment to `tickets/server-enemies-attacking-a-taunt-minion-bypass-the-windup-st-veu1/round-1/review.md`.
+
+### Runtime health
+- `metrics.json`: `"ok": true`, `pageerrors: []`
+- `console.log`: no `pageerror` or `[fatal]` lines
+- Fallback smoke capture succeeded (lobby → gameplay, movement, dodge)
+
+### Acceptance criteria
+Both criteria are met:
+
+1. **Windup cadence** — The taunt branch in `simulation.js` routes through the same windup → strike → recovery state machine as the normal minion path, instead of calling `damageMinion()` every tick.
+2. **Regression test** — `minion_damage.test.js` verifies exactly one strike per attack cycle over 10 cycles; three existing taunt tests were updated to the two-tick windup pattern.
+
+### Tests
+Harness coverage: 1201 passed. Independent full-suite run: 3256 passed.
+
+No `gaps.md` (PASS only). No `nits.md` — nothing worth a follow-up backlog item.

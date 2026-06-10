@@ -318,6 +318,7 @@ const {
   updateSurviveSpawns,
   updateScriptedEncounters,
   tickEscort,
+  tickCollectItemsExtraction,
   updateQuestDialogueRoomEntry,
   updateEncounterTriggers,
   updateQuestScriptTriggers,
@@ -561,6 +562,7 @@ const DEBUG_SCENARIOS = new Set([
   'enemy-behind-wall',
   'training-caverns-tier-1',
   'crystal-rescue-tier-1',
+  'crystal-rescue-extraction-phase',
   'annex-escort-tier-1',
   'scripted-wave-combat',
   'passage-lock-gated',
@@ -587,7 +589,7 @@ const DEBUG_SCENARIOS = new Set([
   'arena-trials-near-adds',
   'arena-trials-boss-approach',
   'arena-trials-boss-low-hp',
-  'training-caverns-vault-marauder',
+  'training-caverns-vault-stalker',
   'training-caverns-tier-2',
   'training-caverns-near-adds',
   'training-caverns-boss-approach',
@@ -799,7 +801,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'arena-trials-near-adds',
   'arena-trials-boss-approach',
   'arena-trials-boss-low-hp',
-  'training-caverns-vault-marauder',
+  'training-caverns-vault-stalker',
   'training-caverns-tier-2',
   'training-caverns-near-adds',
   'training-caverns-boss-approach',
@@ -832,6 +834,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'enemy-behind-wall',
   'training-caverns-tier-1',
   'crystal-rescue-tier-1',
+  'crystal-rescue-extraction-phase',
   'annex-escort-tier-1',
 ]);
 
@@ -1501,6 +1504,7 @@ function runGameLoopTick() {
           updateSurviveSpawns();
           updateScriptedEncounters();
           tickEscort(state);
+          tickCollectItemsExtraction(state);
 
           const now = Date.now();
           processPassiveDraws(now);
@@ -1859,6 +1863,7 @@ if (typeof module !== 'undefined' && module.exports) {
     startDungeonRun,
     recordEnemyDefeated,
     recordCrystalCollected,
+    tickCollectItemsExtraction,
     isRunObjectiveComplete,
     getEnemyCardDrop,
     recordEnemyCardDrop,

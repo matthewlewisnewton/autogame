@@ -105,7 +105,13 @@ function fireQuestDialogue(io, gameState, event) {
 /**
  * Mid-run quest dialogue beacons — PSO-style radio lines fired on scripted progress.
  */
-const TRIGGER_TYPES = new Set(['onWaveCleared', 'onCrystalCollected', 'onRoomEntered']);
+const TRIGGER_TYPES = new Set([
+  'onWaveCleared',
+  'onCrystalCollected',
+  'onRoomEntered',
+  'onExtractionStart',
+  'onExtractionComplete',
+]);
 
 function ensureDialogueFired(run) {
   if (!run.dialogueFired) {
@@ -206,11 +212,18 @@ function matchesRoomEntered(beacon, ctx) {
   return false;
 }
 
+function matchesExtractionBeacon(beacon, trigger) {
+  return beacon.trigger === trigger;
+}
+
 function matchesTrigger(beacon, trigger, ctx) {
   if (beacon.trigger !== trigger) return false;
   if (trigger === 'onWaveCleared') return matchesWaveCleared(beacon, ctx);
   if (trigger === 'onCrystalCollected') return matchesCrystalCollected(beacon, ctx);
   if (trigger === 'onRoomEntered') return matchesRoomEntered(beacon, ctx);
+  if (trigger === 'onExtractionStart' || trigger === 'onExtractionComplete') {
+    return matchesExtractionBeacon(beacon, trigger);
+  }
   return false;
 }
 

@@ -251,6 +251,9 @@ describe('crystal_rescue Tier 1 victory unlocks Tier 2', () => {
 
     state.run.objective.collectedItems = state.run.objective.totalItems;
     state.run.objective.defeatedEnemies = state.run.objective.totalEnemies;
+    state.run.finalAmbush = { spawned: true, cleared: true, enemyIds: [] };
+    state.run.objective.extractionPhase = true;
+    state.run.objective.extractionReached = true;
 
     const runCompletePromise = waitForEvent(socket, 'runComplete');
     runSimulationInPrimaryLobby(() => checkRunTerminalState());
