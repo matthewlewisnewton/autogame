@@ -1,0 +1,15 @@
+Broke the top-level ticket into **5 sub-tickets** in dependency order (no prior sub-tickets existed; all use `code` verification).
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/quest-scripting-foundation-data-driven-hand-placed-waves-roo-o0vv.1/tickets/quest-scripting-foundation-data-driven-hand-placed-waves-roo-o0vv.1/subtickets/01-quest-script-schema-and-bulk-spawn-bypass/ticket.md`
+
+2. `/home/matt/workspace/.autogame-worktrees/quest-scripting-foundation-data-driven-hand-placed-waves-roo-o0vv.1/tickets/quest-scripting-foundation-data-driven-hand-placed-waves-roo-o0vv.1/subtickets/02-run-start-wave-spawn/ticket.md`
+
+3. `/home/matt/workspace/.autogame-worktrees/quest-scripting-foundation-data-driven-hand-placed-waves-roo-o0vv.1/tickets/quest-scripting-foundation-data-driven-hand-placed-waves-roo-o0vv.1/subtickets/03-enter-room-wave-triggers/ticket.md`
+
+4. `/home/matt/workspace/.autogame-worktrees/quest-scripting-foundation-data-driven-hand-placed-waves-roo-o0vv.1/tickets/quest-scripting-foundation-data-driven-hand-placed-waves-roo-o0vv.1/subtickets/04-wave-cleared-chaining/ticket.md`
+
+5. `/home/matt/workspace/.autogame-worktrees/quest-scripting-foundation-data-driven-hand-placed-waves-roo-o0vv.1/tickets/quest-scripting-foundation-data-driven-hand-placed-waves-roo-o0vv.1/subtickets/05-snapshot-and-integration-test/ticket.md`
+
+**Dependency flow:** schema + bulk-spawn bypass → `run_start` positional spawning → `enter_room` triggers → `waveCleared` chaining → snapshot exposure + integration/regression tests.
