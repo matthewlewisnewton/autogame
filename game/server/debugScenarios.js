@@ -2861,6 +2861,21 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       const wraith = spawnEnemy(player.x + 3, player.z, 'ember_wraith');
       wraith.wanderTarget = { x: wraith.x, z: wraith.z };
+    } else if (name === 'flying-enemies') {
+      // One Void Seraph and one Rime Drifter beside the player so QA can verify the
+      // new flying enemy rendering: each hovers at altitude with a ground shadow and
+      // shows its attack telegraph (Seraph radial void burst, Drifter ice-ball
+      // projectile). flying/altitude flow onto each instance from ENEMY_DEFS via
+      // spawnEnemy. These types spawn RARELY in normal play (sparse spawn weights on
+      // thematically appropriate quests), so this is a deterministic shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      state.iceBalls = [];
+      const seraph = spawnEnemy(player.x + 4, player.z - 2, 'void_seraph');
+      const drifter = spawnEnemy(player.x + 4, player.z + 2, 'rime_drifter');
+      seraph.wanderTarget = { x: seraph.x, z: seraph.z };
+      drifter.wanderTarget = { x: drifter.x, z: drifter.z };
     } else if (name === 'variant-enemy') {
       // Spawn one variant ("elite") enemy beside a plain one of the same type so
       // the client variant marker can be verified side-by-side. The same state is

@@ -31,6 +31,8 @@ export const MODEL_REGISTRY = {
 	spawner: '/models/spawner.glb',
 	field_medic: null,
 	ember_wraith: null,
+	void_seraph: null,
+	rime_drifter: null,
 
 	// Minion types (renderer.js MINION_VISUAL)
 	ancient_wyrm: '/models/minion-ancient-wyrm.glb',

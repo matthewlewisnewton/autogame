@@ -612,6 +612,10 @@ export const ENEMY_GEOMETRY = {
 	field_medic: { type: 'octahedron', radius: 0.4, color: 0x10b981, emissive: 0x2dd4bf, emissiveIntensity: 0.55 },
 	glacial_thrower: { type: 'cone', radius: 1.0, height: 2.2, segments: 12, color: 0x7dd3fc, emissive: 0x38bdf8, emissiveIntensity: 0.35 },
 	ember_wraith: { type: 'octahedron', radius: 0.35, color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.6 },
+	// Flying types — hovering octahedron bodies (cf. ember_wraith); flying/altitude
+	// arrive per-instance from the server so flyingRenderOffset lifts the body.
+	void_seraph: { type: 'octahedron', radius: 0.4, color: 0x7c3aed, emissive: 0xa855f7, emissiveIntensity: 0.6 },
+	rime_drifter: { type: 'octahedron', radius: 0.35, color: 0xbae6fd, emissive: 0x60a5fa, emissiveIntensity: 0.55 },
 };
 
 /** Windup telegraph shape per enemy type — mirrors server ENEMY_DEFS attackStyle */
@@ -626,6 +630,10 @@ export const ENEMY_ATTACK_VISUAL = {
 	field_medic: { style: 'projectile', range: 8, color: 0x2dd4bf, emissive: 0x14b8a6, hitWidth: 0.5 },
 	glacial_thrower: { style: 'projectile', range: 7, color: 0x7dd3fc, emissive: 0x38bdf8, hitWidth: 0.9 },
 	ember_wraith: { style: 'cone', coneAngle: Math.PI / 3, color: 0xff4400, emissive: 0xff2200 },
+	// Void Seraph: spherical void burst telegraphed as a radial ring (server attackStyle 'radial').
+	void_seraph: { style: 'radial', range: 4.5, color: 0xa855f7, emissive: 0x7c3aed },
+	// Rime Drifter: height-aware ice ball telegraphed like glacial_thrower's projectile (server attackStyle 'ice_ball').
+	rime_drifter: { style: 'projectile', range: 8, color: 0xbae6fd, emissive: 0x60a5fa, hitWidth: 0.9 },
 };
 
 /** Minion mesh presets keyed by minion.type */
