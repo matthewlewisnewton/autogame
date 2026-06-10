@@ -168,6 +168,7 @@ describe('training_caverns Tier 2 catalog and layout', () => {
     const tier1 = getQuest(QUEST_ID, TIER_1);
     expect(tier1.objectiveType).toBe('defeat_enemies');
     expect(tier1.enemyCount).toBeUndefined();
+    expect(tier1.script).toBeDefined();
     expect(tier1.scriptedEncounters).toBeDefined();
   });
 
@@ -266,10 +267,12 @@ describe('training_caverns Tier 2 deploy spawns', () => {
     expect(tagged).toBeGreaterThan(0);
   });
 
-  it('spawns scripted wave-0 grunts on Tier 1 without variant tags', () => {
+  it('spawns run-start scripted enemies un-tagged on Tier 1 for the same seed', () => {
     deployTrainingTier(TIER_1, SEED);
     startDungeonRun();
-    expect(gameState.enemies.length).toBe(2);
+    expect(gameState.enemies.length).toBe(4);
+    expect(gameState.run.waveScript).toBeDefined();
+    expect(gameState.run.objective.totalEnemies).toBe(6);
     expect(gameState.enemies.every((e) => e.variant === null)).toBe(true);
   });
 });

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { KEY_ITEM_DEFS } from '../index.js';
-import { damagePlayer, setGameState } from '../simulation.js';
+import { damagePlayer, setGameState, getEntityWorldY } from '../simulation.js';
 import {
 	startTestServer,
 	closeServer,
@@ -83,6 +83,9 @@ describe('useKeyItem — barrier_dome (socket integration)', () => {
 		expect(player.barrierDomeRadius).toBe(def.radius);
 		expect(player.barrierDomeX).toBe(4);
 		expect(player.barrierDomeZ).toBe(-2);
+		// Caster world Y is recorded at cast time so the dome is a 3D sphere
+		expect(Number.isFinite(player.barrierDomeY)).toBe(true);
+		expect(player.barrierDomeY).toBe(getEntityWorldY(player));
 		expect(player.keyItemCooldownUntil).toBeGreaterThan(now);
 
 		// Duration roughly matches def. `barrierDomeUntil` was set to castTime +

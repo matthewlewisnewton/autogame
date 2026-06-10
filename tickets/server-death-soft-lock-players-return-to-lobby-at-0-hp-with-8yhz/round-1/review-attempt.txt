@@ -1,0 +1,18 @@
+## Review complete
+
+**VERDICT: PASS**
+
+Wrote:
+- [`round-1/review.md`](tickets/server-death-soft-lock-players-return-to-lobby-at-0-hp-with-8yhz/round-1/review.md) — full assessment
+- [`round-1/nits.md`](tickets/server-death-soft-lock-players-return-to-lobby-at-0-hp-with-8yhz/round-1/nits.md) — two non-blocking follow-ups
+- No `gaps.md` (nothing blocking)
+
+### Summary
+
+**Runtime:** `metrics.json` has `"ok": true`, empty `pageerrors`, and `console.log` has no page errors or fatals. Game loads and plays in the capture.
+
+**Fix:** `revivePlayerInLobby()` now sets `LOBBY_REVIVE_HP` (10) for dead or 0-HP players. That runs on `returnPlayersToLobby`, telepipe suspend, give-up, and reconnect. This breaks the 0 HP → redeploy → instant Signal Lost loop.
+
+**Tests:** New integration test covers death at 0 money → lobby revive → successful redeploy. Unit tests updated. Ticket-specific tests pass.
+
+**Nits (non-blocking):** Mid-run reconnect also revives to 10 HP (possible exploit); `design.md` doesn’t mention `LOBBY_REVIVE_HP` yet.

@@ -175,6 +175,21 @@ describe('buildLockOnPanelModel', () => {
     });
   });
 
+  it('prefers namedRare.name over affix variant for the variant line', () => {
+    const enemy = {
+      type: 'grunt',
+      variant: 'volatile',
+      namedRare: { name: 'The Fake in Yellow', tint: '#ffdd00' },
+      hp: 80,
+      maxHp: 100,
+      attackDamage: 10,
+      attackStyle: 'radial',
+      chaseSpeed: 2.5,
+    };
+    const model = buildLockOnPanelModel(enemy, catalog);
+    expect(model.variantName).toBe('The Fake in Yellow');
+  });
+
   it('appends variant name, stats, and description for volatile grunts', () => {
     const enemy = {
       type: 'grunt',

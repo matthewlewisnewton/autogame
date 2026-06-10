@@ -81,7 +81,7 @@ describe('healPlayersInRadius', () => {
 		addPlayer('p2', { x: 2, z: 0, hp: 60 });
 		addPlayer('p3', { x: 20, z: 0, hp: 40 });
 
-		const healedTargets = healPlayersInRadius(0, 0, def.radius, def.healAmount);
+		const healedTargets = healPlayersInRadius(0, null, 0, def.radius, def.healAmount);
 
 		expect(healedTargets).toEqual([
 			{ playerId: 'p1', hpGained: def.healAmount, cleansed: true },
@@ -100,7 +100,7 @@ describe('healPlayersInRadius', () => {
 		applySlow(gameState.players.p1, 5000, 0.5);
 		expect(isSlowed(gameState.players.p1)).toBe(true);
 
-		healPlayersInRadius(0, 0, def.radius, def.healAmount);
+		healPlayersInRadius(0, null, 0, def.radius, def.healAmount);
 
 		expect(isSlowed(gameState.players.p1)).toBe(false);
 		vi.useRealTimers();
@@ -114,7 +114,7 @@ describe('healPlayersInRadius', () => {
 		applyBurning(gameState.players.p1, 5000);
 		expect(isBurning(gameState.players.p1)).toBe(true);
 
-		healPlayersInRadius(0, 0, def.radius, def.healAmount);
+		healPlayersInRadius(0, null, 0, def.radius, def.healAmount);
 
 		expect(isBurning(gameState.players.p1)).toBe(false);
 		vi.useRealTimers();
@@ -126,7 +126,7 @@ describe('healPlayersInRadius', () => {
 		addDebuff(gameState.players.p1, 'burn', Date.now() + 5000);
 		expect(gameState.players.p1.debuffs).toHaveLength(2);
 
-		healPlayersInRadius(0, 0, def.radius, def.healAmount);
+		healPlayersInRadius(0, null, 0, def.radius, def.healAmount);
 
 		expect(gameState.players.p1.debuffs).toEqual([]);
 	});
@@ -142,7 +142,7 @@ describe('healPlayersInRadius', () => {
 		gameState.players.dead.debuffs = [{ type: 'slow', expiresAt: now + 5000 }];
 		gameState.players.extracted.debuffs = [{ type: 'slow', expiresAt: now + 5000 }];
 
-		const healedTargets = healPlayersInRadius(0, 0, def.radius, def.healAmount);
+		const healedTargets = healPlayersInRadius(0, null, 0, def.radius, def.healAmount);
 
 		expect(healedTargets).toEqual([]);
 		expect(gameState.players.dead.hp).toBe(50);
@@ -157,7 +157,7 @@ describe('healPlayersInRadius', () => {
 	it('includes the caster when standing at the cast origin', () => {
 		addPlayer('caster', { x: 0, z: 0, hp: 45 });
 
-		const healedTargets = healPlayersInRadius(0, 0, def.radius, def.healAmount);
+		const healedTargets = healPlayersInRadius(0, null, 0, def.radius, def.healAmount);
 
 		expect(healedTargets).toEqual([
 			{ playerId: 'caster', hpGained: def.healAmount, cleansed: true },

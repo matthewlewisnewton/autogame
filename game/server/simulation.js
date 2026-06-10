@@ -1182,20 +1182,24 @@ function lockWindupDirection(enemy, target) {
 	enemy.windupDirZ = aim.dirZ;
 }
 
+// Range is true 3D (spherical) distance — a target XZ-close but far above or
+// below the enemy is out of reach. The cone angle check is a 3D dot product
+// against the wind-up direction locked by lockWindupDirection, matching
+// collectConeHits.
 function isEntityInEnemyAttack(enemy, target) {
 	const range = enemy.attackRange ?? ENEMY_ATTACK_RANGE;
 	const dx = target.x - enemy.x;
+	const dy = getEntityWorldY(target) - getEntityWorldY(enemy);
 	const dz = target.z - enemy.z;
-	const dist = Math.hypot(dx, dz);
+	const dist = Math.hypot(dx, dy, dz);
 	if (dist > range) return false;
 
 	if (enemy.attackStyle === 'cone') {
 		const coneAngle = enemy.attackConeAngle ?? ATTACK_CONE_ANGLE;
 		const dirX = enemy.windupDirX ?? 1;
+		const dirY = enemy.windupDirY ?? 0;
 		const dirZ = enemy.windupDirZ ?? 0;
-		const tDirX = dist > 0 ? dx / dist : dirX;
-		const tDirZ = dist > 0 ? dz / dist : dirZ;
-		const dot = dirX * tDirX + dirZ * tDirZ;
+		const dot = dist > 0 ? (dirX * dx + dirY * dy + dirZ * dz) / dist : 1;
 		return dot >= Math.cos(coneAngle / 2);
 	}
 
@@ -1227,9 +1231,10 @@ function resolveWindupTarget(enemy) {
 
 // Returns true if `player` is standing inside any living player's active smoke
 // zone (smoke_bomb key item). Concealed players are skipped by enemy target
-// acquisition and cause in-progress wind-ups to be cancelled. The zone is fixed
-// at the cast point, so a player who walks out — or whose zone expires — becomes
-// targetable again.
+// acquisition and cause in-progress wind-ups to be cancelled. The zone is a 3D
+// sphere fixed at the cast point (smokeBombY recorded at cast; zones persisted
+// without it fall back to the floor Y at the zone's XZ), so a player who walks
+// out, hovers above the sphere, or whose zone expires becomes targetable again.
 function isPlayerConcealed(player, now) {
 	if (!player) return false;
 	for (const owner of Object.values(_gameState.players)) {
@@ -1237,9 +1242,10 @@ function isPlayerConcealed(player, now) {
 		if (!owner.smokeBombUntil || now >= owner.smokeBombUntil) continue;
 		const radius = owner.smokeBombRadius;
 		if (!Number.isFinite(radius) || radius <= 0) continue;
-		const dx = player.x - owner.smokeBombX;
-		const dz = player.z - owner.smokeBombZ;
-		if (Math.hypot(dx, dz) <= radius) return true;
+		const dist = sphericalDistanceToEntity(
+			owner.smokeBombX, owner.smokeBombY, owner.smokeBombZ, player
+		);
+		if (dist <= radius) return true;
 	}
 	return false;
 }
@@ -1369,11 +1375,12 @@ function clearNegativeStatuses(entity) {
   entity.debuffs = [];
 }
 
-function healPlayersInRadius(originX, originZ, radius, healAmount) {
+function healPlayersInRadius(originX, originY, originZ, radius, healAmount) {
+  const oy = resolveAoeOriginY(originX, originY, originZ);
   const healedTargets = [];
   for (const [playerId, player] of Object.entries(_gameState.players)) {
     if (!player || player.dead || player.extracted) continue;
-    if (Math.hypot(player.x - originX, player.z - originZ) > radius) continue;
+    if (sphericalDistanceToEntity(originX, oy, originZ, player) > radius) continue;
     const hpGained = healPlayer(playerId, healAmount);
     clearNegativeStatuses(player);
     if (hpGained > 0) {
@@ -1403,6 +1410,27 @@ function getEntityWorldY(entity) {
     return resolveFloorY(sampleFloorY(layout, entity.x, entity.z));
   }
   return resolveFloorY(DEFAULT_FLOOR_Y);
+}
+
+// Resolve a cast origin's Y for spherical AoE checks. Finite values pass
+// through untouched; null/undefined fall back to the floor height at
+// (originX, originZ) — never to 2D behavior.
+function resolveAoeOriginY(originX, originY, originZ) {
+  if (Number.isFinite(originY)) return originY;
+  const layout = _gameState && _gameState.layout;
+  if (layout) {
+    return resolveFloorY(sampleFloorY(layout, originX, originZ));
+  }
+  return resolveFloorY(DEFAULT_FLOOR_Y);
+}
+
+// True 3D (spherical) distance from an origin point to an entity. The
+// entity's Y resolves via getEntityWorldY; a null/undefined originY falls
+// back to the floor height at (originX, originZ).
+function sphericalDistanceToEntity(originX, originY, originZ, entity) {
+  const oy = resolveAoeOriginY(originX, originY, originZ);
+  const entityY = getEntityWorldY(entity);
+  return Math.hypot(entity.x - originX, entityY - oy, entity.z - originZ);
 }
 
 function computeAimDirection3D(from, to) {
@@ -1450,27 +1478,22 @@ function collectConeHits(originX, originZ, dirX, dirZ, range, coneAngle, damage,
   const healOnKill = options.healOnKill || 0;
   const currencyOnKill = options.currencyOnKill || 0;
   const attackerId = options.attackerId;
-  const { originY, dirY } = resolveRayVertical(options);
-  const use3D = dirY !== 0;
+  const dirY = options.dirY ?? 0;
+  // Range is always true 3D (spherical) distance; a null/missing originY
+  // resolves to the floor at the origin, same as collectRadialHits. The cone
+  // axis may be flat (dirY 0) or tilted — the angle check is a 3D dot product
+  // either way, so a flat cone still rejects targets directly overhead.
+  const originY = resolveAoeOriginY(originX, options.originY, originZ);
   const halfCos = Math.cos(coneAngle / 2);
 
   for (const enemy of _gameState.enemies) {
-    const enemyY = getEntityWorldY(enemy);
     const dx = enemy.x - originX;
-    const dy = enemyY - originY;
+    const dy = getEntityWorldY(enemy) - originY;
     const dz = enemy.z - originZ;
-    const dist = use3D ? Math.hypot(dx, dy, dz) : Math.hypot(dx, dz);
+    const dist = Math.hypot(dx, dy, dz);
     if (dist > range) continue;
-    if (!use3D && Math.abs(dy) > PROJECTILE_HIT_WIDTH) continue;
 
-    let dot;
-    if (use3D) {
-      dot = dist > 0 ? (dirX * dx + dirY * dy + dirZ * dz) / dist : 1;
-    } else {
-      const enemyDirX = dist > 0 ? dx / dist : dirX;
-      const enemyDirZ = dist > 0 ? dz / dist : dirZ;
-      dot = dirX * enemyDirX + dirZ * enemyDirZ;
-    }
+    const dot = dist > 0 ? (dirX * dx + dirY * dy + dirZ * dz) / dist : 1;
     if (dot < halfCos) continue;
 
     if (attackerId) enemy.lastDamagedBy = attackerId;
@@ -1488,7 +1511,7 @@ function collectConeHits(originX, originZ, dirX, dirZ, range, coneAngle, damage,
   return { hits, magicStonesGained, hpHealed, currencyGained };
 }
 
-function collectRadialHits(originX, originZ, radius, damage, options = {}) {
+function collectRadialHits(originX, originY, originZ, radius, damage, options = {}) {
   const hits = [];
   let magicStonesGained = 0;
   let hpHealed = 0;
@@ -1497,9 +1520,10 @@ function collectRadialHits(originX, originZ, radius, damage, options = {}) {
   const healOnHit = options.healOnHit || 0;
   const healOnKill = options.healOnKill || 0;
   const attackerId = options.attackerId;
+  const oy = resolveAoeOriginY(originX, originY, originZ);
 
   for (const enemy of _gameState.enemies) {
-    const dist = Math.hypot(enemy.x - originX, enemy.z - originZ);
+    const dist = sphericalDistanceToEntity(originX, oy, originZ, enemy);
     if (dist > radius) continue;
 
     if (attackerId) enemy.lastDamagedBy = attackerId;
@@ -1618,9 +1642,7 @@ function collectChainLightningHits(originX, originZ, dirX, dirZ, range, damage, 
     for (const enemy of _gameState.enemies) {
       if (hitEnemyIds.has(enemy.id) || enemy.hp <= 0) continue;
       const enemyY = getEntityWorldY(enemy);
-      const dist = use3D
-        ? Math.hypot(enemy.x - currentPos.x, enemyY - currentPos.y, enemy.z - currentPos.z)
-        : Math.hypot(enemy.x - currentPos.x, enemy.z - currentPos.z);
+      const dist = Math.hypot(enemy.x - currentPos.x, enemyY - currentPos.y, enemy.z - currentPos.z);
       if (dist <= chainRadius && dist < nextDist) {
         nextDist = dist;
         next = enemy;
@@ -1888,13 +1910,14 @@ function collectReturningProjectileHits(originX, originZ, dirX, dirZ, range, dam
   return { hits, magicStonesGained };
 }
 
-function applyFreezeInRadius(originX, originZ, radius, durationMs, damage = 0, frozenBonusDamage = 0) {
+function applyFreezeInRadius(originX, originY, originZ, radius, durationMs, damage = 0, frozenBonusDamage = 0) {
   const now = Date.now();
   const frozenUntil = now + durationMs;
   const hits = [];
+  const oy = resolveAoeOriginY(originX, originY, originZ);
 
   for (const enemy of _gameState.enemies) {
-    const dist = Math.hypot(enemy.x - originX, enemy.z - originZ);
+    const dist = sphericalDistanceToEntity(originX, oy, originZ, enemy);
     if (dist > radius) continue;
     const wasFrozen = enemy.frozenUntil != null && enemy.frozenUntil > now;
     let hitDamage = damage;
@@ -1917,13 +1940,17 @@ function applyFreezeInRadius(originX, originZ, radius, durationMs, damage = 0, f
   return hits;
 }
 
-function pullEnemiesToward(originX, originZ, radius, strength) {
+function pullEnemiesToward(originX, originY, originZ, radius, strength) {
   const moved = [];
+  const oy = resolveAoeOriginY(originX, originY, originZ);
   for (const enemy of _gameState.enemies) {
     const dx = originX - enemy.x;
     const dz = originZ - enemy.z;
+    // Inclusion is spherical (3D), but displacement stays horizontal: enemies
+    // are dragged along XZ only, never moved vertically.
+    if (sphericalDistanceToEntity(originX, oy, originZ, enemy) > radius) continue;
     const dist = Math.hypot(dx, dz);
-    if (dist <= 0.01 || dist > radius) continue;
+    if (dist <= 0.01) continue;
 
     const pull = Math.min(strength, dist);
     const result = tryEntityDisplacement(enemy.x, enemy.z, dx / dist, dz / dist, pull);
@@ -1967,11 +1994,13 @@ function applyPlayerKnockback(playerId, dirX, dirZ, strength) {
   return !!result.moved;
 }
 
-function applyEventHorizon(originX, originZ, cardDef, attackerId) {
+function applyEventHorizon(originX, originY, originZ, cardDef, attackerId) {
   const radius = cardDef.pullRadius || 12;
-  const pulled = pullEnemiesToward(originX, originZ, radius, cardDef.pullStrength || 4);
+  const oy = resolveAoeOriginY(originX, originY, originZ);
+  const pulled = pullEnemiesToward(originX, oy, originZ, radius, cardDef.pullStrength || 4);
   const crush = collectRadialHits(
     originX,
+    oy,
     originZ,
     cardDef.centerRadius || 2.5,
     cardDef.centerDamage || 30,
@@ -1980,7 +2009,7 @@ function applyEventHorizon(originX, originZ, cardDef, attackerId) {
   return { pulled, crushed: crush.hits };
 }
 
-function spawnFireTrailEffect(originX, originZ, dirX, dirZ, cardDef, ownerId) {
+function spawnFireTrailEffect(originX, originZ, dirX, dirZ, cardDef, ownerId, vertical = {}) {
   if (!_gameState.areaEffects) _gameState.areaEffects = [];
   const now = Date.now();
   const ticks = cardDef.dotTicks || 4;
@@ -1990,8 +2019,10 @@ function spawnFireTrailEffect(originX, originZ, dirX, dirZ, cardDef, ownerId) {
     type: 'fire_trail',
     ownerId,
     originX,
+    originY: resolveAoeOriginY(originX, vertical.originY, originZ),
     originZ,
     dirX,
+    dirY: vertical.dirY ?? 0,
     dirZ,
     coneAngle: cardDef.attackConeAngle || ATTACK_CONE_ANGLE,
     range: cardDef.attackRange || ATTACK_RANGE,
@@ -2003,7 +2034,7 @@ function spawnFireTrailEffect(originX, originZ, dirX, dirZ, cardDef, ownerId) {
   });
 }
 
-function spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, ownerId) {
+function spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, ownerId, vertical = {}) {
   if (!_gameState.areaEffects) _gameState.areaEffects = [];
   const now = Date.now();
   const ticks = cardDef.dotTicks || 4;
@@ -2013,8 +2044,10 @@ function spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, ownerId
     type: 'dragons_breath',
     ownerId,
     originX,
+    originY: resolveAoeOriginY(originX, vertical.originY, originZ),
     originZ,
     dirX,
+    dirY: vertical.dirY ?? 0,
     dirZ,
     coneAngle: cardDef.attackConeAngle || Math.PI / 3,
     range: cardDef.attackRange || 7,
@@ -2026,7 +2059,7 @@ function spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, ownerId
   });
 }
 
-function spawnInfernoPillarEffect(originX, originZ, cardDef, ownerId) {
+function spawnInfernoPillarEffect(originX, originZ, cardDef, ownerId, originY = null) {
   if (!_gameState.areaEffects) _gameState.areaEffects = [];
   const now = Date.now();
   const ticks = cardDef.dotTicks || 4;
@@ -2036,6 +2069,7 @@ function spawnInfernoPillarEffect(originX, originZ, cardDef, ownerId) {
     type: 'inferno_pillar',
     ownerId,
     originX,
+    originY: resolveAoeOriginY(originX, originY, originZ),
     originZ,
     range: cardDef.attackRange || 7,
     damagePerTick: cardDef.damage || 12,
@@ -2064,6 +2098,9 @@ function spawnVolatileExplosion(x, z, def) {
     id: crypto.randomUUID(),
     type: 'volatile_explosion',
     originX: x,
+    // The blast centers on the floor where the enemy fell; the sphere check
+    // against effect.originY happens in updateAreaEffects.
+    originY: resolveAoeOriginY(x, null, z),
     originZ: z,
     range: radius,
     damagePerTick: damage,
@@ -2086,27 +2123,38 @@ function updateAreaEffects() {
     let hits;
     if (effect.type === 'volatile_explosion') {
       // One-shot radial blast from a dead `volatile` enemy: damages every
-      // living enemy, minion, and player within `range` of the origin.
+      // living enemy, minion, and player within a 3D sphere around the origin.
+      const originY = resolveAoeOriginY(effect.originX, effect.originY, effect.originZ);
       ({ hits } = collectRadialHits(
         effect.originX,
+        originY,
         effect.originZ,
         effect.range,
         effect.damagePerTick
       ));
       for (const minion of _gameState.minions) {
         if (minion.hp <= 0) continue;
-        const dist = Math.hypot(minion.x - effect.originX, minion.z - effect.originZ);
+        const dist = Math.hypot(
+          minion.x - effect.originX,
+          getEntityWorldY(minion) - originY,
+          minion.z - effect.originZ
+        );
         if (dist <= effect.range) damageMinion(minion, effect.damagePerTick);
       }
       for (const [playerId, player] of Object.entries(_gameState.players)) {
         if (player.dead) continue;
-        const dist = Math.hypot(player.x - effect.originX, player.z - effect.originZ);
+        const dist = Math.hypot(
+          player.x - effect.originX,
+          getEntityWorldY(player) - originY,
+          player.z - effect.originZ
+        );
         // Route through damagePlayer so barrier/anchor/shield rules still apply.
         if (dist <= effect.range) damagePlayer(playerId, effect.damagePerTick);
       }
     } else if (effect.type === 'inferno_pillar') {
       ({ hits } = collectRadialHits(
         effect.originX,
+        effect.originY ?? null,
         effect.originZ,
         effect.range,
         effect.damagePerTick,
@@ -2120,7 +2168,8 @@ function updateAreaEffects() {
         effect.dirZ,
         effect.range,
         effect.coneAngle,
-        effect.damagePerTick
+        effect.damagePerTick,
+        { originY: effect.originY ?? null, dirY: effect.dirY ?? 0 }
       ));
     }
     effect.lastTickAt = now;
@@ -2249,7 +2298,7 @@ function countGroundEnchantmentsForPlayer(ownerId) {
   ).length;
 }
 
-function spawnGroundEnchantment(x, z, cardDef, ownerId) {
+function spawnGroundEnchantment(x, z, cardDef, ownerId, originY = null) {
   if (!_gameState.enchantments) _gameState.enchantments = [];
   const now = Date.now();
   _gameState.enchantments.push({
@@ -2259,6 +2308,7 @@ function spawnGroundEnchantment(x, z, cardDef, ownerId) {
     effect: cardDef.effect,
     target: 'ground',
     x,
+    y: resolveAoeOriginY(x, originY, z),
     z,
     radius: cardDef.radius || 2.5,
     damage: cardDef.damage || 35,
@@ -2306,7 +2356,7 @@ function getAttackerPosition(options) {
       const enemy = enemies.find(
         (e) => e.id === options.attackerEnemyId && e.hp > 0
       );
-      if (enemy) return { x: enemy.x, z: enemy.z };
+      if (enemy) return { x: enemy.x, y: enemy.y, z: enemy.z };
     }
   }
   if (options.attackerId) {
@@ -2315,7 +2365,7 @@ function getAttackerPosition(options) {
       const minion = minions.find(
         (m) => m.id === options.attackerId && m.hp > 0
       );
-      if (minion) return { x: minion.x, z: minion.z };
+      if (minion) return { x: minion.x, y: minion.y, z: minion.z };
     }
   }
   return null;
@@ -2365,6 +2415,7 @@ function triggerMirrorWard(playerId, damageTaken, attackerEnemyId) {
   } else {
     const radial = collectRadialHits(
       player.x,
+      getEntityWorldY(player),
       player.z,
       enc.reflectRange,
       reflectDamage,
@@ -2400,7 +2451,7 @@ function updateEnchantments() {
 
     for (const enemy of _gameState.enemies) {
       if (enemy.hp <= 0) continue;
-      const dist = Math.hypot(enemy.x - enc.x, enemy.z - enc.z);
+      const dist = sphericalDistanceToEntity(enc.x, enc.y, enc.z, enemy);
       if (dist <= enc.radius) {
         if (enc.effect === 'cinder_snare') {
           // Instead of a one-shot hit, drop a lingering inferno-pillar DoT
@@ -2515,13 +2566,29 @@ function damagePlayer(playerId, amount, options = {}) {
       if (!dome.barrierDomeUntil || now >= dome.barrierDomeUntil) continue;
       const radius = dome.barrierDomeRadius || 0;
       if (radius <= 0) continue;
-      const victimDist = Math.hypot(player.x - dome.barrierDomeX, player.z - dome.barrierDomeZ);
+      // The dome is a 3D sphere: barrierDomeY is recorded at cast time; domes
+      // persisted without it fall back to the floor Y at the dome's XZ. A
+      // victim hovering above the sphere (XZ-inside, 3D-outside) is NOT
+      // protected.
+      const victimDist = sphericalDistanceToEntity(
+        dome.barrierDomeX, dome.barrierDomeY, dome.barrierDomeZ, player
+      );
       if (victimDist > radius) continue; // victim not inside this dome
       // Victim is inside an active dome. Block unless the attacker is also inside
       // it (outside→inside is blocked; inside→inside is not). Unknown attacker
-      // position is treated as outside and blocked.
+      // position is treated as outside and blocked. The attacker test is also
+      // 3D: attacker Y comes from the attacker position when finite, else the
+      // floor at the attacker's XZ.
       if (attackerPos) {
-        const attackerDist = Math.hypot(attackerPos.x - dome.barrierDomeX, attackerPos.z - dome.barrierDomeZ);
+        const domeY = resolveAoeOriginY(dome.barrierDomeX, dome.barrierDomeY, dome.barrierDomeZ);
+        const attackerY = Number.isFinite(attackerPos.y)
+          ? attackerPos.y
+          : resolveAoeOriginY(attackerPos.x, null, attackerPos.z);
+        const attackerDist = Math.hypot(
+          attackerPos.x - dome.barrierDomeX,
+          attackerY - domeY,
+          attackerPos.z - dome.barrierDomeZ
+        );
         if (attackerDist <= radius) continue; // attacker inside same dome → not blocked
       }
       return null; // fully blocked
@@ -2621,13 +2688,16 @@ function findNearestVisiblePlayer(enemy, maxRadius, players, now) {
 function healFieldMedicAlly(medic, now) {
 	const healRadius = medic.healRadius;
 	const healAmount = medic.healAmount;
+	const medicY = getEntityWorldY(medic);
 	let lowestAlly = null;
 	let lowestHpRatio = 1;
 
 	for (const ally of _gameState.enemies) {
 		if (ally.id === medic.id || ally.hp <= 0) continue;
 		if (ally.hp >= ally.maxHp) continue;
-		const dist = Math.hypot(ally.x - medic.x, ally.z - medic.z);
+		// Heal radius is a 3D sphere — an elevated ally inside it qualifies,
+		// an XZ-close ally far above it does not.
+		const dist = sphericalDistanceToEntity(medic.x, medicY, medic.z, ally);
 		if (dist > healRadius) continue;
 		const ratio = ally.hp / ally.maxHp;
 		if (ratio < lowestHpRatio) {
@@ -3213,9 +3283,7 @@ function updateMinions() {
                       if (hitIds.has(enemy.id) || enemy.hp <= 0) continue;
                       const enemyY = getEntityWorldY(enemy);
                       const currentY = getEntityWorldY(current);
-                      const distToNext = use3D
-                        ? Math.hypot(enemy.x - current.x, enemyY - currentY, enemy.z - current.z)
-                        : Math.hypot(enemy.x - current.x, enemy.z - current.z);
+                      const distToNext = Math.hypot(enemy.x - current.x, enemyY - currentY, enemy.z - current.z);
                       if (distToNext <= chainRadius && distToNext < nextDist) {
                         nextDist = distToNext;
                         next = enemy;
@@ -3367,7 +3435,7 @@ function updateMinions() {
               attackRange,
               attackConeAngle,
               attackDamage,
-              { attackerId: minion.ownerId }
+              { attackerId: minion.ownerId, originY: getEntityWorldY(minion) }
             );
             if (hits.length > 0) {
               _gameState._pendingMinionBreaths.push({
@@ -3608,6 +3676,9 @@ module.exports = {
   updateEnemyProjectiles,
   spawnIceBall,
   isPlayerConcealed,
+  isEntityInEnemyAttack,
+  isPlayerInEnemyAttack,
+  healFieldMedicAlly,
 
   // Minion AI
   updateMinions,
@@ -3625,6 +3696,7 @@ module.exports = {
 
   // Card combat helpers
   getEntityWorldY,
+  sphericalDistanceToEntity,
   computeAimDirection3D,
   collectConeHits,
   collectRadialHits,

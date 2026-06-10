@@ -17,7 +17,20 @@ import {
 	computeDungeonBounds,
 } from '../simulation.js';
 // Pure quest data/accessors (no shared module state) — safe to import directly.
-import { getQuest, getGuaranteedEnemyType } from '../quests.js';
+import { generateLayout, questLayoutSeed } from '../dungeon.js';
+import {
+	setGameState,
+	spawnEnemies,
+	startDungeonRun,
+	updateQuestScriptTriggers,
+} from '../progression.js';
+import { setGameState as setSimulationGameState } from '../simulation.js';
+import {
+	getQuest,
+	getGuaranteedEnemyType,
+	getLayoutProfileForQuest,
+	getLayoutGenerationOptions,
+} from '../quests.js';
 
 const DEF = ENEMY_DEFS.glacial_thrower;
 
@@ -256,11 +269,70 @@ function spawnTypesForQuest(questId, seed) {
 	return gameState.enemies.map((e) => e.type);
 }
 
+function deployScriptedFrostCrossing() {
+	const questId = 'frost_crossing';
+	const tier = 1;
+	const seed = questLayoutSeed(questId, tier);
+	const layout = generateLayout(
+		seed,
+		getLayoutProfileForQuest(questId, tier),
+		getLayoutGenerationOptions(questId, tier),
+	);
+	const startRoom = layout.rooms.find((room) => room.role === 'start') || layout.rooms[0];
+	const iceRoom = layout.rooms.find((room) => room.band === 'ice');
+
+	resetGameState();
+	gameState.selectedQuestId = questId;
+	gameState.selectedQuestTier = tier;
+	gameState.layout = layout;
+	gameState.layoutSeed = seed;
+	gameState.enemies = [];
+	gameState.loot = [];
+	gameState.gamePhase = 'playing';
+	gameState.players = {
+		p1: {
+			x: startRoom.x,
+			y: 0.5,
+			z: startRoom.z,
+			rotation: 0,
+			hp: 100,
+			dead: false,
+			extracted: false,
+		},
+	};
+	setGameState(gameState);
+	setSimulationGameState(gameState);
+	spawnEnemies();
+	startDungeonRun();
+	return { iceRoom };
+}
+
 describe('Frost Crossing guaranteed glacial_thrower spawn', () => {
 	const SEEDS = [1, 7, 42, 123, 2026, 99999];
 
 	it('declares glacial_thrower as the frost_crossing signature foe', () => {
 		expect(getGuaranteedEnemyType('frost_crossing')).toBe('glacial_thrower');
+	});
+
+	it('scripts Frostmaw as a glacial_thrower on the ice field enter_room wave', () => {
+		const { iceRoom } = deployScriptedFrostCrossing();
+		expect(gameState.enemies.map((enemy) => enemy.type)).not.toContain('glacial_thrower');
+
+		gameState.players.p1.x = iceRoom.x;
+		gameState.players.p1.z = iceRoom.z;
+		updateQuestScriptTriggers();
+
+		const types = gameState.enemies.map((enemy) => enemy.type);
+		expect(types).toContain('glacial_thrower');
+		expect(gameState.enemies.some((enemy) => enemy.namedRare?.name === 'Frostmaw')).toBe(true);
+	});
+
+	it('scripts supporting grunts and skirmishers at run start', () => {
+		deployScriptedFrostCrossing();
+		const types = gameState.enemies.map((enemy) => enemy.type);
+		expect(types).toHaveLength(5);
+		expect(types.filter((type) => type === 'grunt').length).toBe(3);
+		expect(types.filter((type) => type === 'skirmisher').length).toBe(2);
 	});
 
 	it('authored ice-band scripted waves include glacial_thrower spawns', () => {

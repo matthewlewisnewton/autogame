@@ -161,6 +161,9 @@ const {
   updateEnemyProjectiles,
   spawnIceBall,
   isPlayerConcealed,
+  isEntityInEnemyAttack,
+  isPlayerInEnemyAttack,
+  healFieldMedicAlly,
   updateMinions,
   processPendingEchoes,
   processPendingCardWindups,
@@ -170,6 +173,7 @@ const {
   clearNegativeStatuses,
   healPlayersInRadius,
   getEntityWorldY,
+  sphericalDistanceToEntity,
   computeAimDirection3D,
   collectConeHits,
   collectRadialHits,
@@ -208,6 +212,7 @@ const {
 
 const { buildEnemyDisplayCatalog } = require('./enemyDisplay');
 const progression = require('./progression');
+const questDialogue = require('./questDialogue');
 const {
   CARD_DEFS,
   getCardDef,
@@ -387,6 +392,7 @@ const sim = require('./simulation');
 sim.setGameState(gameState, _timeouts);
 progression.initProgression({ gameState, getIo: () => io });
 progression.setRebuildWallColliders(() => rebuildWallColliders());
+progression.setApplyLayoutForQuest((state, questId, tier) => applyLayoutForQuest(state, questId, tier));
 require('./scriptedEncounters').setPassageLocksChangedCallback(() => rebuildWallColliders());
 ensureShopOffer();
 
@@ -419,6 +425,18 @@ function applyLayoutForQuest(state, questId, tier = DEFAULT_QUEST_TIER) {
   // inside withLobbyContext, because this helper is also invoked at startup/reset with bare state.
   withLobbyContext({ state }, () => rebuildWallColliders());
   console.log(`[server] Layout for quest "${questId}" tier ${normalizedTier}: seed=${seed}, profile=${profile}, rooms=${state.layout.rooms.length}`);
+}
+
+// Non-mutating sibling of applyLayoutForQuest: computes the deterministic
+// { layoutSeed, layout } for a questId+tier (same inputs the real run will use)
+// without touching any live `state`. Used by SELECT_QUEST to send a preview the
+// client can cache for deploy, while the lobby keeps rendering the hub.
+function previewLayoutForQuest(questId, tier = DEFAULT_QUEST_TIER) {
+  const normalizedTier = normalizeQuestTier(tier);
+  const profile = getLayoutProfileForQuest(questId, normalizedTier);
+  const layoutSeed = questLayoutSeed(questId, normalizedTier);
+  const layout = generateLayout(layoutSeed, profile, getLayoutGenerationOptions(questId, normalizedTier));
+  return { layoutSeed, layout };
 }
 
 // Generate dungeon layout for the default quest at startup (legacy unit-test gameState)
@@ -510,7 +528,9 @@ const DEBUG_SCENARIOS = new Set([
   'run-failed',
   'run-exhausted',
   'quest-objective-near-complete',
+  'quest-comms-run-start',
   'collect-prisms-progress',
+  'endless-siege-wave-five',
   'telepipe-ready',
   'fire-telepipe-ready',
   'extracted-in-hub',
@@ -536,6 +556,7 @@ const DEBUG_SCENARIOS = new Set([
   'sunken-canyon-cliff-hazard',
   'frost-crossing-tier-1',
   'frost-crossing-last-enemy',
+  'frost-crossing-frostmaw',
   'training-caverns-tier-1',
   'crystal-rescue-tier-1',
   'annex-escort-tier-1',
@@ -544,6 +565,7 @@ const DEBUG_SCENARIOS = new Set([
   'passage-lock-chain',
   'escort-objective',
   'fire-cavern',
+  'ember-descent-cinderghast',
   'ember-descent-near-adds',
   'ember-descent-ember-wraith-burn',
   'ember-descent-last-enemy',
@@ -563,6 +585,7 @@ const DEBUG_SCENARIOS = new Set([
   'arena-trials-near-adds',
   'arena-trials-boss-approach',
   'arena-trials-boss-low-hp',
+  'training-caverns-vault-marauder',
   'training-caverns-tier-2',
   'training-caverns-near-adds',
   'training-caverns-boss-approach',
@@ -769,10 +792,12 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'thunderbird-combat',
   'run-exhausted',
   'quest-objective-near-complete',
+  'endless-siege-wave-five',
   'arena-trials-tier-2',
   'arena-trials-near-adds',
   'arena-trials-boss-approach',
   'arena-trials-boss-low-hp',
+  'training-caverns-vault-marauder',
   'training-caverns-tier-2',
   'training-caverns-near-adds',
   'training-caverns-boss-approach',
@@ -794,12 +819,14 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'field-medic',
   'field-medic-spawn',
   'ember-wraith',
+  'ember-descent-cinderghast',
   'ember-descent-near-adds',
   'ember-descent-ember-wraith-burn',
   'ember-descent-last-enemy',
   'slippery-floor-lab',
   'frost-crossing-tier-1',
   'frost-crossing-last-enemy',
+  'frost-crossing-frostmaw',
   'training-caverns-tier-1',
   'crystal-rescue-tier-1',
   'annex-escort-tier-1',
@@ -837,13 +864,13 @@ function applyDebugScenario(socket, name) {
   return debugScenarios.applyDebugScenario(socket, name);
 }
 
-function findSacrificeTarget(playerId, x, z, radius) {
+function findSacrificeTarget(playerId, x, y, z, radius) {
   const state = getProgressionGameState() || gameState;
   return state.minions
     .map((minion, index) => ({ minion, index }))
     .filter(({ minion }) => {
       if (!minion || minion.ownerId !== playerId || minion.hp <= 0) return false;
-      return Math.hypot(minion.x - x, minion.z - z) <= radius;
+      return sphericalDistanceToEntity(x, y, z, minion) <= radius;
     })
     .sort((a, b) => {
       const aCreated = Number.isFinite(a.minion.createdAt) ? a.minion.createdAt : 0;
@@ -1238,9 +1265,11 @@ function joinPlayerToLobby(socket, lobby, options = {}) {
     if (!Array.isArray(player.debuffs)) player.debuffs = [];
   }
 
+  // Always revive dead/zero-HP players on reconnect to prevent soft-locks
+  revivePlayerInLobby(state.players[playerId]);
+
   if (isLobbyPhase(state)) {
     const lobbyPlayer = state.players[playerId];
-    revivePlayerInLobby(lobbyPlayer);
     const hubSpawn = hubSpawnPosition(HUB_LAYOUT);
     lobbyPlayer.x = hubSpawn.x;
     lobbyPlayer.z = hubSpawn.z;
@@ -1530,11 +1559,13 @@ function runGameLoopTick() {
 
           regenMagicStones();
 
-          state.loot = state.loot.filter(l => (now - l.createdAt) < LOOT_LIFETIME_MS);
+          state.loot = state.loot.filter(l => l.questCritical || (now - l.createdAt) < LOOT_LIFETIME_MS);
         }
 
-        const snapshot = hotStateSnapshot();
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, snapshot);
+        if (!state._applyingDebugScenario) {
+          const snapshot = hotStateSnapshot();
+          io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, snapshot);
+        }
       });
     } catch (err) {
       console.error(`[gameLoop] lobby ${lobby.id} tick failed:`, err && err.stack ? err.stack : err);
@@ -1663,6 +1694,7 @@ function startServer(port) {
       lobbies,
       withLobbyContext,
       applyLayoutForQuest,
+      previewLayoutForQuest,
       ensureShopOffer,
       joinPlayerToLobby,
       joinLobbyWithPhasePolicy,
@@ -1759,6 +1791,8 @@ if (typeof module !== 'undefined' && module.exports) {
     spawnGroundEnchantment,
     armSelfEnchantment,
     getEntityWorldY,
+    sphericalDistanceToEntity,
+    findSacrificeTarget,
     computeAimDirection3D,
     resolveProjectileAim,
     collectConeHits,
@@ -1787,6 +1821,9 @@ if (typeof module !== 'undefined' && module.exports) {
     updateEnemyProjectiles,
     spawnIceBall,
     isPlayerConcealed,
+    isEntityInEnemyAttack,
+    isPlayerInEnemyAttack,
+    healFieldMedicAlly,
     updateMinions,
     processPendingEchoes,
     spawnLoot,
@@ -1817,6 +1854,7 @@ if (typeof module !== 'undefined' && module.exports) {
     createRunState,
     startDungeonRun,
     recordEnemyDefeated,
+    recordCrystalCollected,
     isRunObjectiveComplete,
     getEnemyCardDrop,
     recordEnemyCardDrop,
@@ -1992,6 +2030,9 @@ if (typeof module !== 'undefined' && module.exports) {
     isDebugScenarioAllowed,
     // Quests
     QUEST_DEFS,
+    fireQuestDialogue: questDialogue.fireQuestDialogue,
+    matchDialogueTrigger: questDialogue.matchDialogueTrigger,
+    resetDialogueState: questDialogue.resetDialogueState,
     DEFAULT_QUEST_ID,
     isValidQuestId,
     buildQuestUpdatePayload,

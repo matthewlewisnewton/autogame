@@ -1,0 +1,14 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/quest-briefings-mid-run-radio-dialogue-named-client-npc-rewa-o0vv.3/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/quest-briefings-mid-run-radio-dialogue-named-client-npc-rewa-o0vv.3/game/data
+Server listening on port 3003
+Player connected: socket=tkO8IsK19GXi-uuKAAAB, playerId=767db84c-3e10-4e4f-92ac-556237bb3f0c
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=G9Fk7bLPesl3Pb92AAAD, playerId=a1903b24-1f7d-4dc9-9145-3a714f026328
+[loot] spawned id=6c0d3c9a-e1b4-48ef-a39e-5b87ae8235e4 value=20
+Player disconnected: tkO8IsK19GXi-uuKAAAB
+Player disconnected: G9Fk7bLPesl3Pb92AAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

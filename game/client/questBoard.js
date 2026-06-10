@@ -2,8 +2,10 @@
  * Lobby quest board helpers — pure functions for rendering quest selection UI.
  */
 
-import { THEME } from './theme.js';
 import { CARD_DEFS } from './cards.js';
+import { THEME } from './theme.js';
+
+const CLIENT_UNKNOWN = 'Contract issuer unknown';
 
 export function formatObjectiveSummary(quest) {
 	if (!quest) return '';
@@ -174,6 +176,26 @@ export function renderQuestBriefing(container, quest) {
 	container.appendChild(rewardLine);
 }
 
+export function formatRewardDetail(quest) {
+	if (!quest || quest.rewardCurrency == null) return '—';
+	let text = `${quest.rewardCurrency} ${THEME.currency.short.toLowerCase()}`;
+	if (quest.rewardSignatureCard) {
+		const cardName = CARD_DEFS[quest.rewardSignatureCard]?.name || quest.rewardSignatureCard;
+		text += ` + ${cardName}`;
+	}
+	return text;
+}
+
+export function formatClientBriefing(quest) {
+	if (!quest?.client?.name) {
+		return { clientName: CLIENT_UNKNOWN, briefing: '' };
+	}
+	return {
+		clientName: quest.client.name,
+		briefing: quest.client.briefing || '',
+	};
+}
+
 /** Display label for run summaries / HUD when a tier-2 contract is active. */
 export function formatQuestTierLabel(questName, questTier) {
 	if (!questName) return '';
@@ -215,6 +237,8 @@ function buildQuestBoardRows(quests, questVariants) {
 			minibossCount: quest.minibossCount,
 			encounter: quest.encounter,
 			rewardCurrency: quest.rewardCurrency,
+			client: quest.client,
+			rewardSignatureCard: quest.rewardSignatureCard,
 			rewardCardId: quest.rewardCardId,
 			objectiveSummary: quest.objectiveSummary,
 			rewardSummary: quest.rewardSummary,
@@ -236,6 +260,9 @@ function buildQuestBoardRows(quests, questVariants) {
 			description: variant.description,
 			objectiveSummary: variant.objectiveSummary,
 			rewardSummary: variant.rewardSummary,
+			rewardCurrency: variant.rewardCurrency,
+			client: variant.client,
+			rewardSignatureCard: variant.rewardSignatureCard,
 			clientNpc: variant.clientNpc,
 			briefing: variant.briefing,
 			briefingRewardLine: variant.briefingRewardLine,
@@ -244,6 +271,49 @@ function buildQuestBoardRows(quests, questVariants) {
 	}
 
 	return rows;
+}
+
+function findSelectedRow(rows, selectedQuestId, selectedQuestTier) {
+	const tier = selectedQuestTier ?? 1;
+	return rows.find((row) => row.id === selectedQuestId && (row.tier ?? 1) === tier) || null;
+}
+
+function ensureBriefingPanelStructure(panel) {
+	if (panel.dataset.briefingStructured === '1') return;
+	panel.classList.add('quest-briefing-panel');
+	panel.innerHTML = `
+		<div class="quest-briefing-field">
+			<span class="quest-briefing-label">Client</span>
+			<span class="quest-briefing-value quest-briefing-client"></span>
+		</div>
+		<div class="quest-briefing-field">
+			<span class="quest-briefing-label">Briefing</span>
+			<span class="quest-briefing-value quest-briefing-text"></span>
+		</div>
+		<div class="quest-briefing-field">
+			<span class="quest-briefing-label">Reward</span>
+			<span class="quest-briefing-value quest-briefing-reward"></span>
+		</div>
+	`;
+	panel.dataset.briefingStructured = '1';
+}
+
+export function renderQuestBriefingPanel(panel, rows, selectedQuestId, selectedQuestTier) {
+	if (!panel) return;
+
+	const row = findSelectedRow(rows, selectedQuestId, selectedQuestTier);
+	if (!row) {
+		panel.classList.add('hidden');
+		return;
+	}
+
+	ensureBriefingPanelStructure(panel);
+	panel.classList.remove('hidden');
+
+	const { clientName, briefing } = formatClientBriefing(row);
+	panel.querySelector('.quest-briefing-client').textContent = clientName;
+	panel.querySelector('.quest-briefing-text').textContent = briefing || '—';
+	panel.querySelector('.quest-briefing-reward').textContent = formatRewardDetail(row);
 }
 
 function updateQuestSelection(container, selectedQuestId, selectedQuestTier, selectionLocked = false) {
@@ -279,6 +349,7 @@ export function renderQuestBoard(
 		unlockedQuestTiers = {},
 		questVariants = [],
 		selectionLocked = false,
+		briefingPanelEl = null,
 	} = {},
 ) {
 	if (!container) return;
@@ -292,6 +363,11 @@ export function renderQuestBoard(
 		empty.textContent = THEME.run.noContracts;
 		container.appendChild(empty);
 		container.dataset.questBoardKey = '';
+		if (briefingPanelEl) {
+			briefingPanelEl.classList.add('hidden');
+			briefingPanelEl.replaceChildren();
+			delete briefingPanelEl.dataset.briefingStructured;
+		}
 		return;
 	}
 
@@ -312,6 +388,7 @@ export function renderQuestBoard(
 			card.disabled = selectionLocked || tierLocked;
 		});
 		container.dataset.questBoardKey = nextKey;
+		renderQuestBriefingPanel(briefingPanelEl, rows, selectedQuestId, selectedQuestTier);
 		return;
 	}
 
@@ -356,4 +433,5 @@ export function renderQuestBoard(
 	}
 
 	container.dataset.questBoardKey = nextKey;
+	renderQuestBriefingPanel(briefingPanelEl, rows, selectedQuestId, selectedQuestTier);
 }

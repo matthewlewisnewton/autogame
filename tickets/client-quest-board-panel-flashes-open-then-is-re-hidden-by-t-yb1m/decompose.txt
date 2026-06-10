@@ -1,0 +1,5 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 1 sub-ticket. The bug has a single root cause — `showGameLobby()` unconditionally hides `#quest-board-wrapper` on every call, and the lobby-phase state-update loop fires it ~20/sec. One focused fix (flag-based guard) resolves the entire ticket.
+
+**Created:**
+- `tickets/client-quest-board-panel-flashes-open-then-is-re-hidden-by-t-yb1m/subtickets/01-guard-quest-panel-visibility/ticket.md`

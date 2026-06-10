@@ -1,0 +1,25 @@
+## Review complete
+
+**VERDICT: PASS**
+
+Wrote:
+- [`round-1/review.md`](tickets/server-quest-objective-crystals-despawn-after-loot-lifetime-19vg/round-1/review.md) — full assessment
+- [`round-1/nits.md`](tickets/server-quest-objective-crystals-despawn-after-loot-lifetime-19vg/round-1/nits.md) — two non-blocking follow-ups
+- No `gaps.md` (nothing blocking)
+
+### Runtime
+The captured run is healthy: `metrics.json` has `"ok": true` and empty `pageerrors`; `console.log` has no fatal/page errors.
+
+### Implementation
+Two production changes across two commits:
+1. **`spawnCrystals()`** sets `questCritical: true` on every quest crystal.
+2. **Game-loop loot filter** skips `questCritical` entries when purging by `LOOT_LIFETIME_MS`.
+
+All `collect_items` / `crystal_rescue` crystals go through that single spawn path. Ordinary loot still expires after 2 minutes.
+
+### Tests
+`crystal_lifetime.test.js` covers the filter past `LOOT_LIFETIME_MS` (5 cases, all passing). Harness vitest: 1569 tests passed.
+
+### Nits (non-blocking)
+1. Regression test duplicates the filter predicate instead of sharing it with the game loop.
+2. Existing spawn tests don’t assert `questCritical: true` on spawned crystals.

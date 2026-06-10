@@ -1051,6 +1051,49 @@ body[data-phase="lobby"] #lobby-hud {
   pointer-events: none;
 }
 
+.quest-briefing-panel {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.quest-briefing-panel.hidden {
+  display: none;
+}
+
+.quest-briefing-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.quest-briefing-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.quest-briefing-value {
+  font-size: 13px;
+  line-height: 1.45;
+  color: #e2e8f0;
+}
+
+.quest-briefing-text {
+  color: #cbd5e1;
+}
+
+.quest-briefing-reward {
+  color: #93c5fd;
+}
+
 #quest-error {
   width: 100%;
   background: rgba(220, 38, 38, 0.2);
@@ -1392,6 +1435,74 @@ body[data-phase="lobby"] #lobby-hud {
   white-space: pre-line;
   line-height: 1.4;
   display: none;
+}
+
+/* ── Quest comms (radio dialogue) ── */
+
+.quest-comms-toast {
+  background: rgba(15, 23, 42, 0.92);
+  color: #e2e8f0;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  max-width: min(520px, calc(100vw - 32px));
+  line-height: 1.45;
+}
+
+.quest-comms-toast strong {
+  color: #7dd3fc;
+  font-weight: 700;
+}
+
+#quest-comms-log.quest-comms-log {
+  position: absolute;
+  top: 92px;
+  right: 16px;
+  width: min(300px, calc(100vw - 32px));
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  pointer-events: none;
+  z-index: 11;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #cbd5e1;
+}
+
+#quest-comms-log.quest-comms-log.hidden {
+  display: none;
+}
+
+.quest-comms-line {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 6px;
+  align-items: baseline;
+}
+
+.quest-comms-line-seq {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px;
+  color: #64748b;
+}
+
+.quest-comms-line-body {
+  min-width: 0;
+}
+
+.quest-comms-line-speaker {
+  color: #7dd3fc;
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+body[data-phase="lobby"] #quest-comms-log {
+  display: none !important;
 }
 
 /* ── Boss-encounter HUD ── */

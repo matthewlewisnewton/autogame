@@ -9,8 +9,98 @@ import {
   isValidQuestSelection,
   getLayoutProfileForQuest,
   getLayoutGenerationOptions,
+  buildSharedQuestUpdatePayload,
+  buildQuestUpdatePayload,
 } from '../quests.js';
 import { questLayoutSeed } from '../dungeon.js';
+
+const TIER_1_QUEST_IDS = [
+  'training_caverns',
+  'crystal_rescue',
+  'arena_trials',
+  'frost_crossing',
+  'canyon_descent',
+  'ember_descent',
+  'spire_ascent',
+  'endless_siege',
+];
+
+const TIER_2_QUEST_IDS = [
+  'training_caverns',
+  'crystal_rescue',
+  'arena_trials',
+  'canyon_descent',
+  'spire_ascent',
+];
+
+function assertTier1QuestContent(questId) {
+  const quest = getQuest(questId, 1);
+  expect(quest).not.toBeNull();
+  expect(quest.client?.name).toBeTruthy();
+  expect(quest.client?.briefing).toBeTruthy();
+  expect(quest.dialogue.length).toBeGreaterThanOrEqual(2);
+
+  const texts = quest.dialogue.map((entry) => entry.text);
+  expect(new Set(texts).size).toBe(texts.length);
+
+  if (quest.objectiveType === 'collect_items') {
+    expect(quest.dialogue.some((entry) => entry.trigger === 'run_start')).toBe(true);
+    expect(quest.dialogue.some((entry) => entry.trigger === 'objective_complete')).toBe(true);
+    for (let i = 1; i <= quest.itemCount; i += 1) {
+      expect(
+        quest.dialogue.some(
+          (entry) =>
+            entry.trigger
+            && typeof entry.trigger === 'object'
+            && entry.trigger.itemCollected === i,
+        ),
+      ).toBe(true);
+    }
+  } else {
+    expect(quest.dialogue.some((entry) => entry.trigger === 'run_start')).toBe(true);
+    expect(quest.dialogue.some((entry) => entry.trigger === 'objective_complete')).toBe(true);
+  }
+}
+
+function assertTier2QuestContent(questId) {
+  const quest = getQuest(questId, 2);
+  expect(quest).not.toBeNull();
+  expect(quest.client?.name).toBeTruthy();
+  expect(quest.client?.briefing).toBeTruthy();
+  expect(quest.dialogue.length).toBeGreaterThanOrEqual(2);
+
+  const texts = quest.dialogue.map((entry) => entry.text);
+  expect(new Set(texts).size).toBe(texts.length);
+
+  if (quest.objectiveType === 'collect_items') {
+    expect(quest.dialogue.some((entry) => entry.trigger === 'run_start')).toBe(true);
+    expect(quest.dialogue.some((entry) => entry.trigger === 'objective_complete')).toBe(true);
+    for (let i = 1; i <= quest.itemCount; i += 1) {
+      expect(
+        quest.dialogue.some(
+          (entry) =>
+            entry.trigger
+            && typeof entry.trigger === 'object'
+            && entry.trigger.itemCollected === i,
+        ),
+      ).toBe(true);
+    }
+  } else if (quest.objectiveType === 'stage_boss') {
+    expect(quest.dialogue.some((entry) => entry.trigger === 'run_start')).toBe(true);
+    expect(quest.dialogue.some((entry) => entry.trigger === 'objective_complete')).toBe(true);
+    expect(
+      quest.dialogue.some(
+        (entry) =>
+          entry.trigger
+          && typeof entry.trigger === 'object'
+          && Object.prototype.hasOwnProperty.call(entry.trigger, 'waveCleared'),
+      ),
+    ).toBe(true);
+  } else {
+    expect(quest.dialogue.some((entry) => entry.trigger === 'run_start')).toBe(true);
+    expect(quest.dialogue.some((entry) => entry.trigger === 'objective_complete')).toBe(true);
+  }
+}
 
 describe('quest tier catalog', () => {
   it('resolves tier 1 by default when tier is omitted', () => {
@@ -61,6 +151,120 @@ describe('quest tier catalog', () => {
     const quests = listQuests();
     expect(quests.every((q) => q.tier === 1)).toBe(true);
     expect(quests.find((q) => q.id === DEFAULT_QUEST_ID).name).toBe('Initiate Vault');
+  });
+
+  it('exposes client and dialogue on training_caverns tier 1', () => {
+    const quest = getQuest('training_caverns', 1);
+    expect(quest.client).toEqual({
+      name: 'Rewa',
+      briefing: expect.stringContaining('Annex clearance'),
+    });
+    expect(quest.client.name).toBeTruthy();
+    expect(quest.client.briefing).toBeTruthy();
+    expect(quest.dialogue).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          trigger: 'run_start',
+          text: expect.stringContaining('Rewa'),
+        }),
+        expect.objectContaining({
+          trigger: 'objective_complete',
+          text: expect.any(String),
+        }),
+      ]),
+    );
+    expect(quest.dialogue.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('every tier-1 quest has client briefing and dialogue beats', () => {
+    for (const questId of TIER_1_QUEST_IDS) {
+      assertTier1QuestContent(questId);
+    }
+  });
+
+  it('every tier-2 quest has client briefing and dialogue beats', () => {
+    for (const questId of TIER_2_QUEST_IDS) {
+      assertTier2QuestContent(questId);
+    }
+  });
+
+  it('crystal_rescue tier 2 has distinct itemCollected beats through itemCount', () => {
+    const quest = getQuest('crystal_rescue', 2);
+    expect(quest.client?.name).toBe('Lysa');
+    const itemLines = [1, 2, 3, 4, 5].map((index) =>
+      quest.dialogue.find(
+        (entry) =>
+          entry.trigger
+          && typeof entry.trigger === 'object'
+          && entry.trigger.itemCollected === index,
+      )?.text,
+    );
+    const completeLine = quest.dialogue.find(
+      (entry) => entry.trigger === 'objective_complete',
+    )?.text;
+    expect(itemLines.every(Boolean)).toBe(true);
+    expect(completeLine).toBeTruthy();
+    expect(new Set([...itemLines, completeLine]).size).toBe(6);
+  });
+
+  it('crystal_rescue tier 1 has distinct itemCollected and objective_complete lines', () => {
+    const quest = getQuest('crystal_rescue', 1);
+    expect(quest.client?.name).toBe('Lysa');
+    const itemLines = [1, 2, 3].map((index) =>
+      quest.dialogue.find(
+        (entry) =>
+          entry.trigger
+          && typeof entry.trigger === 'object'
+          && entry.trigger.itemCollected === index,
+      )?.text,
+    );
+    const completeLine = quest.dialogue.find(
+      (entry) => entry.trigger === 'objective_complete',
+    )?.text;
+    expect(itemLines.every(Boolean)).toBe(true);
+    expect(completeLine).toBeTruthy();
+    expect(new Set([...itemLines, completeLine]).size).toBe(4);
+  });
+
+  it('includes client and dialogue on every listQuests tier-1 row', () => {
+    for (const questId of TIER_1_QUEST_IDS) {
+      const row = listQuests().find((q) => q.id === questId);
+      expect(row.client?.name).toBeTruthy();
+      expect(row.client?.briefing).toBeTruthy();
+      expect(row.dialogue.length).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it('spreads client and dialogue through listQuestVariants tier-1 rows', () => {
+    for (const questId of TIER_1_QUEST_IDS) {
+      const variant = listQuestVariants().find((v) => v.questId === questId && v.tier === 1);
+      expect(variant.client?.name).toBe(getQuest(questId, 1).client.name);
+      expect(variant.dialogue).toEqual(getQuest(questId, 1).dialogue);
+    }
+  });
+
+  it('spreads client and dialogue through listQuestVariants tier-2 rows', () => {
+    for (const questId of TIER_2_QUEST_IDS) {
+      const variant = listQuestVariants().find((v) => v.questId === questId && v.tier === 2);
+      expect(variant.client?.name).toBe(getQuest(questId, 2).client.name);
+      expect(variant.client?.briefing).toBe(getQuest(questId, 2).client.briefing);
+      expect(variant.dialogue).toEqual(getQuest(questId, 2).dialogue);
+    }
+  });
+
+  it('carries client through buildSharedQuestUpdatePayload and buildQuestUpdatePayload', () => {
+    const shared = buildSharedQuestUpdatePayload({});
+    const trainingRow = shared.quests.find((q) => q.id === 'training_caverns');
+    expect(trainingRow.client).toEqual(getQuest('training_caverns', 1).client);
+    expect(trainingRow.dialogue).toEqual(getQuest('training_caverns', 1).dialogue);
+
+    const trainingVariant = shared.questVariants.find(
+      (v) => v.questId === 'training_caverns' && v.tier === 1,
+    );
+    expect(trainingVariant.client?.name).toBe('Rewa');
+
+    const playerPayload = buildQuestUpdatePayload({});
+    expect(playerPayload.quests.find((q) => q.id === 'training_caverns').client.name).toBe('Rewa');
   });
 
   it('listQuestVariants includes every quest/tier pair with summaries', () => {

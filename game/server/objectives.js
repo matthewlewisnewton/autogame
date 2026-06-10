@@ -79,13 +79,11 @@ const OBJECTIVE_DEFS = {
     createObjective(quest, ctx) {
       const objectiveLabel = `${quest.name}: ${quest.description}`;
       let totalEnemies = ctx.enemyCount;
-      if (isScriptedQuest(quest)) {
+      const script = getQuestScript(quest);
+      if (script != null) {
+        totalEnemies = countScriptedEnemies(script);
+      } else if (isScriptedQuest(quest)) {
         totalEnemies = countAuthoredScriptedEnemies(quest);
-      } else {
-        const script = getQuestScript(quest);
-        if (script != null) {
-          totalEnemies = countScriptedEnemies(script);
-        }
       }
       const objective = {
         type: 'defeat_enemies',

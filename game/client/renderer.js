@@ -105,6 +105,7 @@ import {
 	playersMeshes,
 	playerShadows,
 	playerNameplates,
+	enemyNameplates,
 	enemiesMeshes,
 	enemyHealthBars,
 	enemyShieldBars,
@@ -145,6 +146,10 @@ import {
 	applyVariantMarker,
 	applyVariantEmissiveTint,
 	applyFrenziedTelegraphRing,
+	parseNamedRareTintHex,
+	applyNamedRareTint,
+	applyNamedRareScale,
+	applyEnemyNameplate,
 } from './renderer/enemySync.js';
 
 // Re-export the relocated helpers + scene accessor so existing importers that
@@ -172,6 +177,10 @@ export {
 	applyVariantMarker,
 	applyVariantEmissiveTint,
 	applyFrenziedTelegraphRing,
+	parseNamedRareTintHex,
+	applyNamedRareTint,
+	applyNamedRareScale,
+	applyEnemyNameplate,
 };
 import {
 	syncMinionMeshes,
@@ -539,7 +548,7 @@ export function lerpFireCavernAtmosphere(normalizedDepth) {
  * @returns {{ rimY: number, basinY: number }|null}
  */
 export function computeFireCavernAtmosphereBounds(layout) {
-	const rim = (layout?.rooms ?? []).find((r) => r.band === 'rim');
+	const rim = (layout?.rooms ?? []).find((r) => r.role === 'start' || r.band === 'rim');
 	const basin = (layout?.rooms ?? []).find((r) => r.band === 'basin');
 	if (!rim || !basin) return null;
 	return { rimY: tierFloorY(rim), basinY: tierFloorY(basin) };
@@ -1313,6 +1322,7 @@ export function getMeshMaps() {
 		enemiesMeshes,
 		enemyHealthBars,
 		enemyShieldBars,
+		enemyNameplates,
 		telegraphMeshes,
 		minionTelegraphMeshes,
 		minionsMeshes,
@@ -2741,6 +2751,39 @@ export function disposeNameplate(playerId) {
 		sprite.material.dispose();
 	}
 	delete playerNameplates[playerId];
+}
+
+/**
+ * Create a canvas-texture sprite that displays a named-rare enemy label.
+ * Callers store the sprite in `enemyNameplates` and call `disposeEnemyNameplate()`
+ * on removal.
+ *
+ * @param {string} displayName
+ * @returns {THREE.Sprite}
+ */
+export function createEnemyNameplate(displayName) {
+	const sprite = createNameplate(displayName);
+	sprite.userData.namedRareName = displayName;
+	return sprite;
+}
+
+/**
+ * Remove and dispose the nameplate sprite for a named-rare enemy.
+ *
+ * @param {string} enemyId
+ */
+export function disposeEnemyNameplate(enemyId) {
+	const sprite = enemyNameplates[enemyId];
+	if (!sprite) return;
+
+	if (sprite.parent) {
+		sprite.parent.remove(sprite);
+	}
+	if (sprite.material) {
+		if (sprite.material.map) sprite.material.map.dispose();
+		sprite.material.dispose();
+	}
+	delete enemyNameplates[enemyId];
 }
 
 // ── Flash mesh helper ──

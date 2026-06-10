@@ -1,0 +1,17 @@
+Broke the top-level ticket into **5 sub-tickets** in dependency order:
+
+1. **Server plumbing** — named-rare spawn config, stat scaling, first-kill drops  
+2. **Client visuals** — tint, scale, enemy nameplate, lock-on label  
+3. **Frost Crossing content** — Frostmaw (`glacial_thrower`)  
+4. **Training Caverns content** — vault named rare  
+5. **Ember Descent content** — Cinderghast (`ember_wraith`)
+
+Kill feed/radio on defeat is deferred — it pairs with `autogame-o0vv.3` (not in repo) and isn’t in the acceptance criteria. All sub-tickets use **code** verification.
+
+**Sub-ticket folder paths created:**
+
+- `/home/matt/workspace/.autogame-worktrees/named-rare-enemy-variants-per-quest-pso-the-fake-in-yellow-s-o0vv.4/tickets/named-rare-enemy-variants-per-quest-pso-the-fake-in-yellow-s-o0vv.4/subtickets/01-server-named-rare-variant-plumbing`
+- `/home/matt/workspace/.autogame-worktrees/named-rare-enemy-variants-per-quest-pso-the-fake-in-yellow-s-o0vv.4/tickets/named-rare-enemy-variants-per-quest-pso-the-fake-in-yellow-s-o0vv.4/subtickets/02-client-named-rare-visuals`
+- `/home/matt/workspace/.autogame-worktrees/named-rare-enemy-variants-per-quest-pso-the-fake-in-yellow-s-o0vv.4/tickets/named-rare-enemy-variants-per-quest-pso-the-fake-in-yellow-s-o0vv.4/subtickets/03-frost-crossing-named-rare`
+- `/home/matt/workspace/.autogame-worktrees/named-rare-enemy-variants-per-quest-pso-the-fake-in-yellow-s-o0vv.4/tickets/named-rare-enemy-variants-per-quest-pso-the-fake-in-yellow-s-o0vv.4/subtickets/04-training-caverns-named-rare`
+- `/home/matt/workspace/.autogame-worktrees/named-rare-enemy-variants-per-quest-pso-the-fake-in-yellow-s-o0vv.4/tickets/named-rare-enemy-variants-per-quest-pso-the-fake-in-yellow-s-o0vv.4/subtickets/05-ember-descent-named-rare`
