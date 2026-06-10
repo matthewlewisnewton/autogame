@@ -1,0 +1,11 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 2 sub-tickets:
+
+```
+tickets/server-enemies-attacking-a-taunt-minion-bypass-the-windup-st-veu1/subtickets/01-route-taunt-through-windup/ticket.md
+tickets/server-enemies-attacking-a-taunt-minion-bypass-the-windup-st-veu1/subtickets/02-fix-taunt-tests-and-regression/ticket.md
+```
+
+**01-route-taunt-through-windup** — Guards the taunt branch in `updateEnemies()` with `attackState` checks so enemies transition to `windup` (with `windupTargetType: 'minion'`) instead of calling `damageMinion()` every tick. The existing windup strike block already handles minion targets.
+
+**02-fix-taunt-tests-and-regression** — Updates 2 existing tests (`aegis_sentinel.test.js`, `minion_damage.test.js`) that assert the buggy instant-damage behavior to expect the two-tick windup→strike pattern, plus adds a regression test verifying at most one strike per attack cycle.

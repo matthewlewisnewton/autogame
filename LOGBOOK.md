@@ -6359,3 +6359,26 @@ The round-6 capture exercises generic gameplay (lobby → deploy → movement �
 
 None. All acceptance criteria are satisfied and the captured run is healthy.
 
+
+## v0.365 — Server: enemies attacking a taunt minion bypass the windup state machine and hit every tick  (2026-06-10 09:33:16)
+
+## Design & requirements consistency
+
+- **design.md:** Server-side combat simulation change only; no client or card-definition changes. Taunt minions (Aegis Sentinel, Necroframe Knight) now survive long enough to fulfill their intended tanking role — aligned with creature/taunt design intent.
+- **requirements.md:** No documented regression. Change is narrowly scoped to enemy attack cadence against taunt targets.
+
+## Code quality
+
+- **Focused diff:** 14 lines changed in `simulation.js`; no dead code or unrelated refactors.
+- **State-machine safety:** Guard `attackState === 'chasing' || attackState === 'idle'` prevents restarting windup mid-cycle; windup/recovery blocks short-circuit before the taunt branch on subsequent ticks.
+- **Integration:** Taunt priority (`findTauntMinionNear` before normal target selection) preserved; chase fallback for out-of-range taunt targets unchanged.
+- **No debug scenarios added** — nothing to gate-check for this ticket.
+
+## Debug scenarios
+
+Not applicable — no new or modified `?debugScenario=` shortcuts in this ticket.
+
+## Remaining gaps
+
+None. The direct-per-tick damage bug is fixed, regression-tested, and the game runs cleanly in capture.
+
