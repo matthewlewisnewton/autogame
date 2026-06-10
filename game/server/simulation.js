@@ -1070,16 +1070,15 @@ function enemyDefFor(type) {
 }
 
 function lockWindupDirection(enemy, target) {
-	const dx = target.x - enemy.x;
-	const dz = target.z - enemy.z;
-	const len = Math.hypot(dx, dz);
-	if (len > 0) {
-		enemy.windupDirX = dx / len;
-		enemy.windupDirZ = dz / len;
-	} else {
-		enemy.windupDirX = 1;
-		enemy.windupDirZ = 0;
-	}
+	const originY = getEntityWorldY(enemy);
+	const targetY = getEntityWorldY(target);
+	const aim = computeAimDirection3D(
+		{ x: enemy.x, y: originY, z: enemy.z },
+		{ x: target.x, y: targetY, z: target.z },
+	);
+	enemy.windupDirX = aim.dirX;
+	enemy.windupDirY = aim.dirY;
+	enemy.windupDirZ = aim.dirZ;
 }
 
 function isEntityInEnemyAttack(enemy, target) {
@@ -1319,6 +1318,12 @@ function resolveRayVertical(options = {}) {
     originY: options.originY ?? 0,
     dirY: options.dirY ?? 0,
   };
+}
+
+function tiltedDirectionPayload(dirX, dirY, dirZ) {
+  const direction = { x: dirX, z: dirZ };
+  if (dirY !== 0) direction.y = dirY;
+  return direction;
 }
 
 function proximityToSample(px, py, pz, entity, use3D) {
@@ -1591,23 +1596,29 @@ function collectPhaseBeamHits(originX, originZ, dirX, dirZ, range, damage, optio
 }
 
 function lockMinionWindupDirection(minion, target) {
-  const dx = target.x - minion.x;
-  const dz = target.z - minion.z;
-  const len = Math.hypot(dx, dz);
-  if (len > 0) {
-    minion.windupDirX = dx / len;
-    minion.windupDirZ = dz / len;
-  } else {
-    minion.windupDirX = 1;
-    minion.windupDirZ = 0;
-  }
+  const originY = getEntityWorldY(minion);
+  const targetY = getEntityWorldY(target);
+  const aim = computeAimDirection3D(
+    { x: minion.x, y: originY, z: minion.z },
+    { x: target.x, y: targetY, z: target.z },
+  );
+  minion.windupDirX = aim.dirX;
+  minion.windupDirY = aim.dirY;
+  minion.windupDirZ = aim.dirZ;
 }
 
 function lockMinionBreathDirection(minion, target) {
-  lockMinionWindupDirection(minion, target);
-  minion.breathDirX = minion.windupDirX;
-  minion.breathDirZ = minion.windupDirZ;
+  const originY = getEntityWorldY(minion);
+  const targetY = getEntityWorldY(target);
+  const aim = computeAimDirection3D(
+    { x: minion.x, y: originY, z: minion.z },
+    { x: target.x, y: targetY, z: target.z },
+  );
+  minion.breathDirX = aim.dirX;
+  minion.breathDirY = aim.dirY;
+  minion.breathDirZ = aim.dirZ;
   delete minion.windupDirX;
+  delete minion.windupDirY;
   delete minion.windupDirZ;
 }
 
@@ -1617,7 +1628,11 @@ function queueWyrmBreathCardUsed(minion, cardId, options) {
     cardId,
     specialEffect: options.specialEffect,
     origin: { x: minion.x, z: minion.z },
-    direction: { x: minion.breathDirX, z: minion.breathDirZ },
+    direction: tiltedDirectionPayload(
+      minion.breathDirX,
+      minion.breathDirY ?? 0,
+      minion.breathDirZ,
+    ),
     attackRange: options.breathRange,
     attackConeAngle: options.breathConeAngle,
     hits: options.hits,
@@ -1630,6 +1645,8 @@ function queueWyrmBreathCardUsed(minion, cardId, options) {
 function applyWyrmBreathTick(minion, cardId, config, breathPhase) {
   const dirX = minion.breathDirX ?? 1;
   const dirZ = minion.breathDirZ ?? 0;
+  const dirY = minion.breathDirY ?? 0;
+  const originY = getEntityWorldY(minion);
   const { hits } = collectConeHits(
     minion.x,
     minion.z,
@@ -1638,7 +1655,11 @@ function applyWyrmBreathTick(minion, cardId, config, breathPhase) {
     config.breathRange,
     config.breathConeAngle,
     config.breathDamage,
-    { attackerId: minion.ownerId }
+    {
+      attackerId: minion.ownerId,
+      originY,
+      dirY,
+    }
   );
   if (cardId === 'dungeon_drake' && config.burnDurationMs > 0) {
     for (const hit of hits) {
@@ -1667,6 +1688,7 @@ function updateWyrmMinionAI(minion, nearestEnemy, nearestDist, dt, config) {
       minion.lastBreathAt = now;
       delete minion.breathStartedAt;
       delete minion.breathDirX;
+      delete minion.breathDirY;
       delete minion.breathDirZ;
       delete minion.lastBreathTickAt;
       return;
@@ -2836,14 +2858,16 @@ function spawnIceBall(enemy) {
 	if (!_gameState.iceBalls) _gameState.iceBalls = [];
 	const dirX = enemy.windupDirX ?? 1;
 	const dirZ = enemy.windupDirZ ?? 0;
-	const len = Math.hypot(dirX, dirZ) || 1;
+	const dirY = enemy.windupDirY ?? 0;
 	const ball = {
 		id: crypto.randomUUID(),
 		ownerId: enemy.id,
 		x: enemy.x,
+		y: getEntityWorldY(enemy),
 		z: enemy.z,
-		dirX: dirX / len,
-		dirZ: dirZ / len,
+		dirX,
+		dirY,
+		dirZ,
 		speed: enemy.iceBallSpeed ?? 6,
 		radius: enemy.iceBallRadius ?? 0.9,
 		damage: enemy.attackDamage,
@@ -2872,13 +2896,15 @@ function updateEnemyProjectiles() {
 	for (const ball of _gameState.iceBalls) {
 		const step = ball.speed * dt;
 		ball.x += ball.dirX * step;
+		ball.y = (ball.y ?? 0) + (ball.dirY ?? 0) * step;
 		ball.z += ball.dirZ * step;
 		ball.traveled = (ball.traveled || 0) + step;
 
 		// Contact with a player: chill (SLOW) + damage, then consume the ball.
 		let consumed = false;
 		for (const player of players) {
-			const dist = Math.hypot(player.x - ball.x, player.z - ball.z);
+			const playerY = getEntityWorldY(player);
+			const dist = Math.hypot(player.x - ball.x, playerY - ball.y, player.z - ball.z);
 			if (dist <= ball.radius + PLAYER_RADIUS) {
 				applySlow(player, ball.slowDurationMs, ball.slowFactor);
 				damagePlayer(player.id, ball.damage, { attackerEnemyId: ball.ownerId });
@@ -2991,74 +3017,93 @@ function updateMinions() {
         const lastAttackAt = minion.lastAttackAt ?? 0;
 
         if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
-          if (nearestDist <= attackRange) {
+          const originY = getEntityWorldY(minion);
+          const targetY = getEntityWorldY(nearestEnemy);
+          const aim = computeAimDirection3D(
+            { x: minion.x, y: originY, z: minion.z },
+            { x: nearestEnemy.x, y: targetY, z: nearestEnemy.z },
+          );
+          const dist3D = Math.hypot(
+            nearestEnemy.x - minion.x,
+            targetY - originY,
+            nearestEnemy.z - minion.z,
+          );
+          if (dist3D <= attackRange) {
             if (now - lastAttackAt >= attackIntervalMs) {
               const cardId = minion.type;
-              const dist = nearestDist || 1;
-              const dirX = (nearestEnemy.x - minion.x) / dist;
-              const dirZ = (nearestEnemy.z - minion.z) / dist;
-              const hits = [];
-              const chainSegments = [];
+              const { dirX, dirY, dirZ } = aim;
+              let hits = [];
+              let chainSegments = [];
 
-              nearestEnemy.lastDamagedBy = minion.ownerId;
-              damageEnemy(nearestEnemy, attackDamage);
-              hits.push({ enemyId: nearestEnemy.id, hp: nearestEnemy.hp });
+              const use3D = dirY !== 0;
+              const sampleX = minion.x + dirX * dist3D;
+              const sampleY = originY + dirY * dist3D;
+              const sampleZ = minion.z + dirZ * dist3D;
+              if (proximityToSample(sampleX, sampleY, sampleZ, nearestEnemy, use3D) <= PROJECTILE_HIT_WIDTH) {
+                nearestEnemy.lastDamagedBy = minion.ownerId;
+                damageEnemy(nearestEnemy, attackDamage);
+                hits.push({ enemyId: nearestEnemy.id, hp: nearestEnemy.hp });
 
-              if (minion.type === 'thunderbird') {
-                chainSegments.push({
-                  from: { x: minion.x, z: minion.z },
-                  to: { x: nearestEnemy.x, z: nearestEnemy.z },
-                });
-                const chainRadius = minion.chainRadius || 5;
-                const maxChainTargets = minion.maxChainTargets || 2;
-                const hitIds = new Set([nearestEnemy.id]);
-                let current = nearestEnemy;
-                let chains = 0;
-                while (chains < maxChainTargets) {
-                  let next = null;
-                  let nextDist = Infinity;
-                  for (const enemy of _gameState.enemies) {
-                    if (hitIds.has(enemy.id) || enemy.hp <= 0) continue;
-                    const distToNext = Math.hypot(enemy.x - current.x, enemy.z - current.z);
-                    if (distToNext <= chainRadius && distToNext < nextDist) {
-                      nextDist = distToNext;
-                      next = enemy;
-                    }
-                  }
-                  if (!next) break;
-                  next.lastDamagedBy = minion.ownerId;
-                  damageEnemy(next, attackDamage);
-                  hits.push({ enemyId: next.id, hp: next.hp });
+                if (minion.type === 'thunderbird') {
                   chainSegments.push({
-                    from: { x: current.x, z: current.z },
-                    to: { x: next.x, z: next.z },
+                    from: { x: minion.x, z: minion.z },
+                    to: { x: nearestEnemy.x, z: nearestEnemy.z },
                   });
-                  hitIds.add(next.id);
-                  current = next;
-                  chains++;
+                  const chainRadius = minion.chainRadius || 5;
+                  const maxChainTargets = minion.maxChainTargets || 2;
+                  const hitIds = new Set([nearestEnemy.id]);
+                  let current = nearestEnemy;
+                  let chains = 0;
+                  while (chains < maxChainTargets) {
+                    let next = null;
+                    let nextDist = Infinity;
+                    for (const enemy of _gameState.enemies) {
+                      if (hitIds.has(enemy.id) || enemy.hp <= 0) continue;
+                      const enemyY = getEntityWorldY(enemy);
+                      const currentY = getEntityWorldY(current);
+                      const distToNext = use3D
+                        ? Math.hypot(enemy.x - current.x, enemyY - currentY, enemy.z - current.z)
+                        : Math.hypot(enemy.x - current.x, enemy.z - current.z);
+                      if (distToNext <= chainRadius && distToNext < nextDist) {
+                        nextDist = distToNext;
+                        next = enemy;
+                      }
+                    }
+                    if (!next) break;
+                    next.lastDamagedBy = minion.ownerId;
+                    damageEnemy(next, attackDamage);
+                    hits.push({ enemyId: next.id, hp: next.hp });
+                    chainSegments.push({
+                      from: { x: current.x, z: current.z },
+                      to: { x: next.x, z: next.z },
+                    });
+                    hitIds.add(next.id);
+                    current = next;
+                    chains++;
+                  }
+                  _gameState._pendingMinionBreaths.push({
+                    playerId: minion.ownerId,
+                    cardId,
+                    minionId: minion.id,
+                    specialEffect: 'chain_lightning',
+                    origin: { x: minion.x, z: minion.z },
+                    direction: tiltedDirectionPayload(dirX, dirY, dirZ),
+                    hits,
+                    chainSegments,
+                  });
+                } else {
+                  _gameState._pendingMinionBreaths.push({
+                    playerId: minion.ownerId,
+                    cardId,
+                    minionId: minion.id,
+                    origin: { x: minion.x, z: minion.z },
+                    direction: tiltedDirectionPayload(dirX, dirY, dirZ),
+                    hits,
+                    strikeTarget: { x: nearestEnemy.x, z: nearestEnemy.z },
+                  });
                 }
-                _gameState._pendingMinionBreaths.push({
-                  playerId: minion.ownerId,
-                  cardId,
-                  minionId: minion.id,
-                  specialEffect: 'chain_lightning',
-                  origin: { x: minion.x, z: minion.z },
-                  direction: { x: dirX, z: dirZ },
-                  hits,
-                  chainSegments,
-                });
-              } else {
-                _gameState._pendingMinionBreaths.push({
-                  playerId: minion.ownerId,
-                  cardId,
-                  minionId: minion.id,
-                  origin: { x: minion.x, z: minion.z },
-                  direction: { x: dirX, z: dirZ },
-                  hits,
-                  strikeTarget: { x: nearestEnemy.x, z: nearestEnemy.z },
-                });
+                minion.lastAttackAt = now;
               }
-              minion.lastAttackAt = now;
             }
           } else {
             moveEntityToward(minion, nearestEnemy, MINION_CHASE_SPEED_SKIRMISHER * dt);
@@ -3090,6 +3135,8 @@ function updateMinions() {
           if (elapsed >= attackWindupMs) {
             const dirX = minion.windupDirX ?? 1;
             const dirZ = minion.windupDirZ ?? 0;
+            const dirY = minion.windupDirY ?? 0;
+            const originY = getEntityWorldY(minion);
             const { hits } = collectPhaseBeamHits(
               minion.x,
               minion.z,
@@ -3101,19 +3148,22 @@ function updateMinions() {
                 attackerId: minion.ownerId,
                 hitWidth: projectileHitWidth,
                 excludeMinionId: minion.id,
+                originY,
+                dirY,
               }
             );
             minion.lastAttackAt = now;
             minion.attackState = 'idle';
             delete minion.windupStartTime;
             delete minion.windupDirX;
+            delete minion.windupDirY;
             delete minion.windupDirZ;
             _gameState._pendingMinionBreaths.push({
               playerId: minion.ownerId,
               cardId: 'null_crawler',
               specialEffect: 'phase_beam',
               origin: { x: minion.x, z: minion.z },
-              direction: { x: dirX, z: dirZ },
+              direction: tiltedDirectionPayload(dirX, dirY, dirZ),
               attackRange,
               hitWidth: projectileHitWidth,
               hits,
