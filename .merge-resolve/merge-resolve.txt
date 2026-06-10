@@ -1,29 +1,11 @@
-All merge conflict markers are resolved. Summary of how the two sides were combined:
+Merge conflicts are resolved in both files by combining both sides rather than picking one.
 
-### LOGBOOK.md
-Kept the v0.337 fire-validation entry and the main-side entries (v0.331 thermal column, v0.332 mirror ward, v0.333 spike trap, v0.336 sunken canyon revalidation).
+**`TASKS.md`** — Both cleanup backlog entries are kept, in ticket order:
+- `376-cleanup-height-aware-projectile-aiming` (from `main`)
+- `377-cleanup-airborne-flying-entity-support` (from this branch)
 
-### game/client/main.js
-- Scenario apply: card-probe hand refresh **and** rotation alignment via `alignAttackFacing`
-- Harness probes: main’s `slowActive`/`burnActive`/windup fields **plus** ticket’s top-level `windupFlashing`
-- Enemy probes: main’s status fields **plus** ticket’s `frozenUntil`
+**`LOGBOOK.md`** — Both review log entries are kept, in version order:
+- `v0.338 — 375-height-aware-projectile-aiming` (from `main`)
+- `v0.340 — 376-airborne-flying-entity-support` (from this branch)
 
-### game/server/debugScenarios.js
-- Both `fire-telepipe-ready` and `fireball-hand-ready` as separate scenarios
-- All ember-descent fire scenarios retained
-- Canyon tier-2 handler accepts `canyon-descent-tier-2` **or** `canyon-descent-telepipe-ready`
-
-### harness/validate/lib/telepipe.mjs
-- Main’s `VITALS_MS_REGEN_TICKS = 800` and `probesMatchCardChargesReset` / `probesMatchFreshDeployWithMsReset` split
-
-### harness/validate/lib/findings.mjs
-- Fire sections (ember burn, card mechanics, telepipe reset, stage-boss gap) **and** canyon sections (boss UI, visual identity, slow/burn, purifying pulse, windup, canyon telepipe, new-content exercises)
-- Fire-aware floor alignment with preset/objectiveType params
-
-### harness/validate/playthrough.mjs
-- Imports and drivers for both fire (`cardMechanics.mjs`) and canyon (`cardExercise.mjs`, `runCanyonTelepipeNewSortieStep`)
-- `runDefeatEnemiesCombatStep` for fire **and** `runSunkenCanyonMidCombatProbeStep` for canyon
-- Boss encounter routing: defeat-enemies for fire, sunken-canyon full pipeline when applicable, standard boss encounter otherwise
-- Probes/screenshots include both `telepipeReset` (fire) and `cardExercises`/`canyonTelepipe` (canyon)
-
-All 2909 tests pass (coverage threshold failure is unrelated to the merge). The harness can stage and complete the merge commit.
+Each log entry retains its own "Remaining gaps / None." section. All conflict markers are removed. The harness can proceed with the merge commit and test run.

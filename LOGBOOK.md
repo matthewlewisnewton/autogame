@@ -5961,6 +5961,28 @@ PASS. The changed live code is scoped to validation harness support, debug-only 
 
 None.
 
+## v0.338 — 375-height-aware-projectile-aiming  (2026-06-09 20:11:34)
+
+PASS. Enemy ice-ball windups now store vertical direction, spawned ice balls carry `y`/`dirY`, move through 3D space, and collide against player world Y. Minion windups and breath locks also compute full 3D direction; `storm_eagle`/`thunderbird` use the same ranged-strike branch, `null_crawler` passes vertical aim into phase-beam collection, and `dungeon_drake`/`ancient_wyrm` breath ticks pass vertical aim into cone collection.
+
+The test matrix covers glacial thrower ice balls, `storm_eagle`, `null_crawler`, `dungeon_drake`, and `ancient_wyrm` against elevated targets.
+
+### Debug scenarios
+
+PASS. The added `lock-on-elevated-projectile` and `height-aware-projectile` scenarios are registered through the existing debug-scenario path, with the player-facing shortcut remaining the localhost `?debugScenario=` URL and the server path gated by development/local checks. Both are QA shortcuts for states reachable through normal play: earning/drawing a projectile card, entering vertical dungeon geometry such as Spire Ascent, and fighting enemies on higher elevation. They do not replace server validation, persistence, or normal combat resolution; they only seed player/enemy positions, hand contents, layout, and cooldowns before using the same `useCard` and simulation paths.
+
+### Design and foundation compatibility
+
+PASS. The implementation matches the design document's 3D dungeon/elevation model by using server-resolved floor/sample Y where explicit entity Y is absent. The captured run still satisfies the foundation requirements: Three.js scene renders, client/server socket connectivity works, multiplayer state is visible, and movement synchronization remains active.
+
+### Code quality and validation
+
+PASS. The implementation is localized to the expected combat/server paths plus a focused test file. The full captured coverage run reports `111` test files and `1952` tests passing. No dead or obviously broken code was found in the reviewed paths.
+
+## Remaining gaps
+
+None.
+
 ## v0.340 — 376-airborne-flying-entity-support  (2026-06-09 20:45:46)
 
 PASS. Existing airborne content is wired for both enemies and minions. `ember_wraith` carries `flying: true` plus altitude through the existing enemy-definition spread, and `storm_eagle` / `thunderbird` minions are stamped with `flying` and altitude when summoned. Targeting and attack-range logic remains planar X/Z, so airborne entities remain selectable and able to attack without introducing Y-based range regressions.
@@ -5982,4 +6004,3 @@ PASS. This ticket did not add or change a `?debugScenario=...` shortcut. Existin
 ## Remaining gaps
 
 None.
-

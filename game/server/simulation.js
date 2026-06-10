@@ -1097,16 +1097,15 @@ function enemyDefFor(type) {
 }
 
 function lockWindupDirection(enemy, target) {
-	const dx = target.x - enemy.x;
-	const dz = target.z - enemy.z;
-	const len = Math.hypot(dx, dz);
-	if (len > 0) {
-		enemy.windupDirX = dx / len;
-		enemy.windupDirZ = dz / len;
-	} else {
-		enemy.windupDirX = 1;
-		enemy.windupDirZ = 0;
-	}
+	const originY = getEntityWorldY(enemy);
+	const targetY = getEntityWorldY(target);
+	const aim = computeAimDirection3D(
+		{ x: enemy.x, y: originY, z: enemy.z },
+		{ x: target.x, y: targetY, z: target.z },
+	);
+	enemy.windupDirX = aim.dirX;
+	enemy.windupDirY = aim.dirY;
+	enemy.windupDirZ = aim.dirZ;
 }
 
 function isEntityInEnemyAttack(enemy, target) {
@@ -1322,6 +1321,51 @@ function addDebuff(player, type, expiresAt) {
   return debuff;
 }
 
+function getEntityWorldY(entity) {
+  if (!entity) return resolveFloorY(DEFAULT_FLOOR_Y);
+  if (Number.isFinite(entity.y)) return entity.y;
+  const layout = _gameState && _gameState.layout;
+  if (layout) {
+    return resolveFloorY(sampleFloorY(layout, entity.x, entity.z));
+  }
+  return resolveFloorY(DEFAULT_FLOOR_Y);
+}
+
+function computeAimDirection3D(from, to) {
+  const dx = to.x - from.x;
+  const dy = (to.y ?? 0) - (from.y ?? 0);
+  const dz = to.z - from.z;
+  const len = Math.hypot(dx, dy, dz);
+  if (len <= 0) return { dirX: 1, dirY: 0, dirZ: 0 };
+  return { dirX: dx / len, dirY: dy / len, dirZ: dz / len };
+}
+
+function resolveRayVertical(options = {}) {
+  return {
+    originY: options.originY ?? 0,
+    dirY: options.dirY ?? 0,
+  };
+}
+
+function tiltedDirectionPayload(dirX, dirY, dirZ) {
+  const direction = { x: dirX, z: dirZ };
+  if (dirY !== 0) direction.y = dirY;
+  return direction;
+}
+
+function proximityToSample(px, py, pz, entity, use3D) {
+  const entityY = getEntityWorldY(entity);
+  if (use3D) {
+    return Math.hypot(entity.x - px, entityY - py, entity.z - pz);
+  }
+  const xzDist = Math.hypot(entity.x - px, entity.z - pz);
+  const yDist = Math.abs(entityY - py);
+  if (yDist > PROJECTILE_HIT_WIDTH) {
+    return Math.max(xzDist, yDist);
+  }
+  return xzDist;
+}
+
 function collectConeHits(originX, originZ, dirX, dirZ, range, coneAngle, damage, options = {}) {
   const hits = [];
   let magicStonesGained = 0;
@@ -1332,17 +1376,28 @@ function collectConeHits(originX, originZ, dirX, dirZ, range, coneAngle, damage,
   const healOnKill = options.healOnKill || 0;
   const currencyOnKill = options.currencyOnKill || 0;
   const attackerId = options.attackerId;
+  const { originY, dirY } = resolveRayVertical(options);
+  const use3D = dirY !== 0;
+  const halfCos = Math.cos(coneAngle / 2);
 
   for (const enemy of _gameState.enemies) {
+    const enemyY = getEntityWorldY(enemy);
     const dx = enemy.x - originX;
+    const dy = enemyY - originY;
     const dz = enemy.z - originZ;
-    const dist = Math.hypot(dx, dz);
+    const dist = use3D ? Math.hypot(dx, dy, dz) : Math.hypot(dx, dz);
     if (dist > range) continue;
+    if (!use3D && Math.abs(dy) > PROJECTILE_HIT_WIDTH) continue;
 
-    const enemyDirX = dist > 0 ? dx / dist : dirX;
-    const enemyDirZ = dist > 0 ? dz / dist : dirZ;
-    const dot = dirX * enemyDirX + dirZ * enemyDirZ;
-    if (dot < Math.cos(coneAngle / 2)) continue;
+    let dot;
+    if (use3D) {
+      dot = dist > 0 ? (dirX * dx + dirY * dy + dirZ * dz) / dist : 1;
+    } else {
+      const enemyDirX = dist > 0 ? dx / dist : dirX;
+      const enemyDirZ = dist > 0 ? dz / dist : dirZ;
+      dot = dirX * enemyDirX + dirZ * enemyDirZ;
+    }
+    if (dot < halfCos) continue;
 
     if (attackerId) enemy.lastDamagedBy = attackerId;
     const { killed } = damageEnemy(enemy, damage);
@@ -1394,15 +1449,18 @@ function collectProjectileHits(originX, originZ, dirX, dirZ, range, damage, opti
   const hitWidth = options.hitWidth ?? PROJECTILE_HIT_WIDTH;
   const sampleCount = Math.max(4, Math.ceil(range * 2));
   const hitEnemyIds = new Set();
+  const { originY, dirY } = resolveRayVertical(options);
+  const use3D = dirY !== 0;
 
   for (let i = 0; i <= sampleCount; i++) {
     const t = range * (i / sampleCount);
     const px = originX + dirX * t;
+    const py = originY + dirY * t;
     const pz = originZ + dirZ * t;
 
     for (const enemy of _gameState.enemies) {
       if (hitEnemyIds.has(enemy.id)) continue;
-      const dist = Math.hypot(enemy.x - px, enemy.z - pz);
+      const dist = proximityToSample(px, py, pz, enemy, use3D);
       if (dist > hitWidth) continue;
 
       if (attackerId) enemy.lastDamagedBy = attackerId;
@@ -1432,9 +1490,12 @@ function collectChainLightningHits(originX, originZ, dirX, dirZ, range, damage, 
   const chainDamage = Math.round(damage * 0.5);
   const hitWidth = options.hitWidth ?? PROJECTILE_HIT_WIDTH;
   const hitEnemyIds = new Set();
+  const { originY, dirY } = resolveRayVertical(options);
+  const use3D = dirY !== 0;
 
   function recordHit(enemy, hitDamage) {
     const hitX = enemy.x;
+    const hitY = getEntityWorldY(enemy);
     const hitZ = enemy.z;
     if (attackerId) enemy.lastDamagedBy = attackerId;
     const { killed } = damageEnemy(enemy, hitDamage);
@@ -1450,7 +1511,7 @@ function collectChainLightningHits(originX, originZ, dirX, dirZ, range, damage, 
       z: hitZ,
       magicStonesGained: hitGain + killGain,
     });
-    return { x: hitX, z: hitZ };
+    return { x: hitX, y: hitY, z: hitZ };
   }
 
   const sampleCount = Math.max(4, Math.ceil(range * 2));
@@ -1458,11 +1519,12 @@ function collectChainLightningHits(originX, originZ, dirX, dirZ, range, damage, 
   for (let i = 0; i <= sampleCount && !primary; i++) {
     const t = range * (i / sampleCount);
     const px = originX + dirX * t;
+    const py = originY + dirY * t;
     const pz = originZ + dirZ * t;
 
     for (const enemy of _gameState.enemies) {
       if (hitEnemyIds.has(enemy.id) || enemy.hp <= 0) continue;
-      const dist = Math.hypot(enemy.x - px, enemy.z - pz);
+      const dist = proximityToSample(px, py, pz, enemy, use3D);
       if (dist > hitWidth) continue;
       primary = enemy;
       break;
@@ -1481,7 +1543,10 @@ function collectChainLightningHits(originX, originZ, dirX, dirZ, range, damage, 
     let nextDist = Infinity;
     for (const enemy of _gameState.enemies) {
       if (hitEnemyIds.has(enemy.id) || enemy.hp <= 0) continue;
-      const dist = Math.hypot(enemy.x - currentPos.x, enemy.z - currentPos.z);
+      const enemyY = getEntityWorldY(enemy);
+      const dist = use3D
+        ? Math.hypot(enemy.x - currentPos.x, enemyY - currentPos.y, enemy.z - currentPos.z)
+        : Math.hypot(enemy.x - currentPos.x, enemy.z - currentPos.z);
       if (dist <= chainRadius && dist < nextDist) {
         nextDist = dist;
         next = enemy;
@@ -1505,16 +1570,19 @@ function collectPhaseBeamHits(originX, originZ, dirX, dirZ, range, damage, optio
   const hitEnemyIds = new Set();
   const hitMinionIds = new Set();
   const hitPlayerIds = new Set();
+  const { originY, dirY } = resolveRayVertical(options);
+  const use3D = dirY !== 0;
 
   for (let i = 0; i <= sampleCount; i++) {
     const t = range * (i / sampleCount);
     const px = originX + dirX * t;
+    const py = originY + dirY * t;
     const pz = originZ + dirZ * t;
 
     if (!playersOnly) {
       for (const enemy of _gameState.enemies) {
         if (hitEnemyIds.has(enemy.id)) continue;
-        const dist = Math.hypot(enemy.x - px, enemy.z - pz);
+        const dist = proximityToSample(px, py, pz, enemy, use3D);
         if (dist > hitWidth) continue;
 
         if (attackerId) enemy.lastDamagedBy = attackerId;
@@ -1525,7 +1593,7 @@ function collectPhaseBeamHits(originX, originZ, dirX, dirZ, range, damage, optio
 
       for (const ally of _gameState.minions) {
         if (ally.id === excludeMinionId || hitMinionIds.has(ally.id) || ally.hp <= 0) continue;
-        const dist = Math.hypot(ally.x - px, ally.z - pz);
+        const dist = proximityToSample(px, py, pz, ally, use3D);
         if (dist > hitWidth) continue;
 
         damageMinion(ally, damage);
@@ -1536,7 +1604,7 @@ function collectPhaseBeamHits(originX, originZ, dirX, dirZ, range, damage, optio
 
     for (const [playerId, player] of Object.entries(_gameState.players)) {
       if (hitPlayerIds.has(playerId) || player.dead) continue;
-      const dist = Math.hypot(player.x - px, player.z - pz);
+      const dist = proximityToSample(px, py, pz, player, use3D);
       if (dist > hitWidth) continue;
 
       // Phase beam is a ranged/projectile attack — taggable so an active
@@ -1555,23 +1623,29 @@ function collectPhaseBeamHits(originX, originZ, dirX, dirZ, range, damage, optio
 }
 
 function lockMinionWindupDirection(minion, target) {
-  const dx = target.x - minion.x;
-  const dz = target.z - minion.z;
-  const len = Math.hypot(dx, dz);
-  if (len > 0) {
-    minion.windupDirX = dx / len;
-    minion.windupDirZ = dz / len;
-  } else {
-    minion.windupDirX = 1;
-    minion.windupDirZ = 0;
-  }
+  const originY = getEntityWorldY(minion);
+  const targetY = getEntityWorldY(target);
+  const aim = computeAimDirection3D(
+    { x: minion.x, y: originY, z: minion.z },
+    { x: target.x, y: targetY, z: target.z },
+  );
+  minion.windupDirX = aim.dirX;
+  minion.windupDirY = aim.dirY;
+  minion.windupDirZ = aim.dirZ;
 }
 
 function lockMinionBreathDirection(minion, target) {
-  lockMinionWindupDirection(minion, target);
-  minion.breathDirX = minion.windupDirX;
-  minion.breathDirZ = minion.windupDirZ;
+  const originY = getEntityWorldY(minion);
+  const targetY = getEntityWorldY(target);
+  const aim = computeAimDirection3D(
+    { x: minion.x, y: originY, z: minion.z },
+    { x: target.x, y: targetY, z: target.z },
+  );
+  minion.breathDirX = aim.dirX;
+  minion.breathDirY = aim.dirY;
+  minion.breathDirZ = aim.dirZ;
   delete minion.windupDirX;
+  delete minion.windupDirY;
   delete minion.windupDirZ;
 }
 
@@ -1581,7 +1655,11 @@ function queueWyrmBreathCardUsed(minion, cardId, options) {
     cardId,
     specialEffect: options.specialEffect,
     origin: { x: minion.x, z: minion.z },
-    direction: { x: minion.breathDirX, z: minion.breathDirZ },
+    direction: tiltedDirectionPayload(
+      minion.breathDirX,
+      minion.breathDirY ?? 0,
+      minion.breathDirZ,
+    ),
     attackRange: options.breathRange,
     attackConeAngle: options.breathConeAngle,
     hits: options.hits,
@@ -1594,6 +1672,8 @@ function queueWyrmBreathCardUsed(minion, cardId, options) {
 function applyWyrmBreathTick(minion, cardId, config, breathPhase) {
   const dirX = minion.breathDirX ?? 1;
   const dirZ = minion.breathDirZ ?? 0;
+  const dirY = minion.breathDirY ?? 0;
+  const originY = getEntityWorldY(minion);
   const { hits } = collectConeHits(
     minion.x,
     minion.z,
@@ -1602,7 +1682,11 @@ function applyWyrmBreathTick(minion, cardId, config, breathPhase) {
     config.breathRange,
     config.breathConeAngle,
     config.breathDamage,
-    { attackerId: minion.ownerId }
+    {
+      attackerId: minion.ownerId,
+      originY,
+      dirY,
+    }
   );
   if (cardId === 'dungeon_drake' && config.burnDurationMs > 0) {
     for (const hit of hits) {
@@ -1631,6 +1715,7 @@ function updateWyrmMinionAI(minion, nearestEnemy, nearestDist, dt, config) {
       minion.lastBreathAt = now;
       delete minion.breathStartedAt;
       delete minion.breathDirX;
+      delete minion.breathDirY;
       delete minion.breathDirZ;
       delete minion.lastBreathTickAt;
       return;
@@ -1695,6 +1780,9 @@ function collectReturningProjectileHits(originX, originZ, dirX, dirZ, range, dam
   const returnPasses = Math.max(1, options.returnPasses || 1);
   const totalPasses = 1 + returnPasses;
   const sampleCount = Math.max(4, Math.ceil(range * 2));
+  const hitWidth = options.hitWidth ?? PROJECTILE_HIT_WIDTH;
+  const { originY, dirY } = resolveRayVertical(options);
+  const use3D = dirY !== 0;
 
   for (let pass = 0; pass < totalPasses; pass++) {
     const hitEnemyIds = new Set();
@@ -1704,12 +1792,13 @@ function collectReturningProjectileHits(originX, originZ, dirX, dirZ, range, dam
     for (let i = 0; i <= sampleCount; i++) {
       const t = start + (end - start) * (i / sampleCount);
       const px = originX + dirX * t;
+      const py = originY + dirY * t;
       const pz = originZ + dirZ * t;
 
       for (const enemy of _gameState.enemies) {
         if (hitEnemyIds.has(enemy.id)) continue;
-        const dist = Math.hypot(enemy.x - px, enemy.z - pz);
-        if (dist > PROJECTILE_HIT_WIDTH) continue;
+        const dist = proximityToSample(px, py, pz, enemy, use3D);
+        if (dist > hitWidth) continue;
 
         if (attackerId) enemy.lastDamagedBy = attackerId;
         const { killed } = damageEnemy(enemy, damage);
@@ -2804,14 +2893,16 @@ function spawnIceBall(enemy) {
 	if (!_gameState.iceBalls) _gameState.iceBalls = [];
 	const dirX = enemy.windupDirX ?? 1;
 	const dirZ = enemy.windupDirZ ?? 0;
-	const len = Math.hypot(dirX, dirZ) || 1;
+	const dirY = enemy.windupDirY ?? 0;
 	const ball = {
 		id: crypto.randomUUID(),
 		ownerId: enemy.id,
 		x: enemy.x,
+		y: getEntityWorldY(enemy),
 		z: enemy.z,
-		dirX: dirX / len,
-		dirZ: dirZ / len,
+		dirX,
+		dirY,
+		dirZ,
 		speed: enemy.iceBallSpeed ?? 6,
 		radius: enemy.iceBallRadius ?? 0.9,
 		damage: enemy.attackDamage,
@@ -2840,13 +2931,15 @@ function updateEnemyProjectiles() {
 	for (const ball of _gameState.iceBalls) {
 		const step = ball.speed * dt;
 		ball.x += ball.dirX * step;
+		ball.y = (ball.y ?? 0) + (ball.dirY ?? 0) * step;
 		ball.z += ball.dirZ * step;
 		ball.traveled = (ball.traveled || 0) + step;
 
 		// Contact with a player: chill (SLOW) + damage, then consume the ball.
 		let consumed = false;
 		for (const player of players) {
-			const dist = Math.hypot(player.x - ball.x, player.z - ball.z);
+			const playerY = getEntityWorldY(player);
+			const dist = Math.hypot(player.x - ball.x, playerY - ball.y, player.z - ball.z);
 			if (dist <= ball.radius + PLAYER_RADIUS) {
 				applySlow(player, ball.slowDurationMs, ball.slowFactor);
 				damagePlayer(player.id, ball.damage, { attackerEnemyId: ball.ownerId });
@@ -2959,74 +3052,93 @@ function updateMinions() {
         const lastAttackAt = minion.lastAttackAt ?? 0;
 
         if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
-          if (nearestDist <= attackRange) {
+          const originY = getEntityWorldY(minion);
+          const targetY = getEntityWorldY(nearestEnemy);
+          const aim = computeAimDirection3D(
+            { x: minion.x, y: originY, z: minion.z },
+            { x: nearestEnemy.x, y: targetY, z: nearestEnemy.z },
+          );
+          const dist3D = Math.hypot(
+            nearestEnemy.x - minion.x,
+            targetY - originY,
+            nearestEnemy.z - minion.z,
+          );
+          if (dist3D <= attackRange) {
             if (now - lastAttackAt >= attackIntervalMs) {
               const cardId = minion.type;
-              const dist = nearestDist || 1;
-              const dirX = (nearestEnemy.x - minion.x) / dist;
-              const dirZ = (nearestEnemy.z - minion.z) / dist;
-              const hits = [];
-              const chainSegments = [];
+              const { dirX, dirY, dirZ } = aim;
+              let hits = [];
+              let chainSegments = [];
 
-              nearestEnemy.lastDamagedBy = minion.ownerId;
-              damageEnemy(nearestEnemy, attackDamage);
-              hits.push({ enemyId: nearestEnemy.id, hp: nearestEnemy.hp });
+              const use3D = dirY !== 0;
+              const sampleX = minion.x + dirX * dist3D;
+              const sampleY = originY + dirY * dist3D;
+              const sampleZ = minion.z + dirZ * dist3D;
+              if (proximityToSample(sampleX, sampleY, sampleZ, nearestEnemy, use3D) <= PROJECTILE_HIT_WIDTH) {
+                nearestEnemy.lastDamagedBy = minion.ownerId;
+                damageEnemy(nearestEnemy, attackDamage);
+                hits.push({ enemyId: nearestEnemy.id, hp: nearestEnemy.hp });
 
-              if (minion.type === 'thunderbird') {
-                chainSegments.push({
-                  from: { x: minion.x, z: minion.z },
-                  to: { x: nearestEnemy.x, z: nearestEnemy.z },
-                });
-                const chainRadius = minion.chainRadius || 5;
-                const maxChainTargets = minion.maxChainTargets || 2;
-                const hitIds = new Set([nearestEnemy.id]);
-                let current = nearestEnemy;
-                let chains = 0;
-                while (chains < maxChainTargets) {
-                  let next = null;
-                  let nextDist = Infinity;
-                  for (const enemy of _gameState.enemies) {
-                    if (hitIds.has(enemy.id) || enemy.hp <= 0) continue;
-                    const distToNext = Math.hypot(enemy.x - current.x, enemy.z - current.z);
-                    if (distToNext <= chainRadius && distToNext < nextDist) {
-                      nextDist = distToNext;
-                      next = enemy;
-                    }
-                  }
-                  if (!next) break;
-                  next.lastDamagedBy = minion.ownerId;
-                  damageEnemy(next, attackDamage);
-                  hits.push({ enemyId: next.id, hp: next.hp });
+                if (minion.type === 'thunderbird') {
                   chainSegments.push({
-                    from: { x: current.x, z: current.z },
-                    to: { x: next.x, z: next.z },
+                    from: { x: minion.x, z: minion.z },
+                    to: { x: nearestEnemy.x, z: nearestEnemy.z },
                   });
-                  hitIds.add(next.id);
-                  current = next;
-                  chains++;
+                  const chainRadius = minion.chainRadius || 5;
+                  const maxChainTargets = minion.maxChainTargets || 2;
+                  const hitIds = new Set([nearestEnemy.id]);
+                  let current = nearestEnemy;
+                  let chains = 0;
+                  while (chains < maxChainTargets) {
+                    let next = null;
+                    let nextDist = Infinity;
+                    for (const enemy of _gameState.enemies) {
+                      if (hitIds.has(enemy.id) || enemy.hp <= 0) continue;
+                      const enemyY = getEntityWorldY(enemy);
+                      const currentY = getEntityWorldY(current);
+                      const distToNext = use3D
+                        ? Math.hypot(enemy.x - current.x, enemyY - currentY, enemy.z - current.z)
+                        : Math.hypot(enemy.x - current.x, enemy.z - current.z);
+                      if (distToNext <= chainRadius && distToNext < nextDist) {
+                        nextDist = distToNext;
+                        next = enemy;
+                      }
+                    }
+                    if (!next) break;
+                    next.lastDamagedBy = minion.ownerId;
+                    damageEnemy(next, attackDamage);
+                    hits.push({ enemyId: next.id, hp: next.hp });
+                    chainSegments.push({
+                      from: { x: current.x, z: current.z },
+                      to: { x: next.x, z: next.z },
+                    });
+                    hitIds.add(next.id);
+                    current = next;
+                    chains++;
+                  }
+                  _gameState._pendingMinionBreaths.push({
+                    playerId: minion.ownerId,
+                    cardId,
+                    minionId: minion.id,
+                    specialEffect: 'chain_lightning',
+                    origin: { x: minion.x, z: minion.z },
+                    direction: tiltedDirectionPayload(dirX, dirY, dirZ),
+                    hits,
+                    chainSegments,
+                  });
+                } else {
+                  _gameState._pendingMinionBreaths.push({
+                    playerId: minion.ownerId,
+                    cardId,
+                    minionId: minion.id,
+                    origin: { x: minion.x, z: minion.z },
+                    direction: tiltedDirectionPayload(dirX, dirY, dirZ),
+                    hits,
+                    strikeTarget: { x: nearestEnemy.x, z: nearestEnemy.z },
+                  });
                 }
-                _gameState._pendingMinionBreaths.push({
-                  playerId: minion.ownerId,
-                  cardId,
-                  minionId: minion.id,
-                  specialEffect: 'chain_lightning',
-                  origin: { x: minion.x, z: minion.z },
-                  direction: { x: dirX, z: dirZ },
-                  hits,
-                  chainSegments,
-                });
-              } else {
-                _gameState._pendingMinionBreaths.push({
-                  playerId: minion.ownerId,
-                  cardId,
-                  minionId: minion.id,
-                  origin: { x: minion.x, z: minion.z },
-                  direction: { x: dirX, z: dirZ },
-                  hits,
-                  strikeTarget: { x: nearestEnemy.x, z: nearestEnemy.z },
-                });
+                minion.lastAttackAt = now;
               }
-              minion.lastAttackAt = now;
             }
           } else {
             moveEntityToward(minion, nearestEnemy, MINION_CHASE_SPEED_SKIRMISHER * dt);
@@ -3058,6 +3170,8 @@ function updateMinions() {
           if (elapsed >= attackWindupMs) {
             const dirX = minion.windupDirX ?? 1;
             const dirZ = minion.windupDirZ ?? 0;
+            const dirY = minion.windupDirY ?? 0;
+            const originY = getEntityWorldY(minion);
             const { hits } = collectPhaseBeamHits(
               minion.x,
               minion.z,
@@ -3069,19 +3183,22 @@ function updateMinions() {
                 attackerId: minion.ownerId,
                 hitWidth: projectileHitWidth,
                 excludeMinionId: minion.id,
+                originY,
+                dirY,
               }
             );
             minion.lastAttackAt = now;
             minion.attackState = 'idle';
             delete minion.windupStartTime;
             delete minion.windupDirX;
+            delete minion.windupDirY;
             delete minion.windupDirZ;
             _gameState._pendingMinionBreaths.push({
               playerId: minion.ownerId,
               cardId: 'null_crawler',
               specialEffect: 'phase_beam',
               origin: { x: minion.x, z: minion.z },
-              direction: { x: dirX, z: dirZ },
+              direction: tiltedDirectionPayload(dirX, dirY, dirZ),
               attackRange,
               hitWidth: projectileHitWidth,
               hits,
@@ -3384,6 +3501,8 @@ module.exports = {
   addDebuff,
 
   // Card combat helpers
+  getEntityWorldY,
+  computeAimDirection3D,
   collectConeHits,
   collectRadialHits,
   collectProjectileHits,

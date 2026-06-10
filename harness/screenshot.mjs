@@ -158,7 +158,10 @@ function readText(path, maxChars = 12000) {
 function emitProgressEvent(type, payload = {}) {
   if (process.env.PROGRESS_EVENTS === '0') return;
   try {
-    const dir = join(harnessDir, 'progress');
+    // Factory workers run in worktrees with HARNESS_PROGRESS_DIR pinned to the
+    // MAIN checkout's progress dir — without honoring it, capture events land
+    // in the worktree's own events.ndjson and the live view never sees them.
+    const dir = process.env.HARNESS_PROGRESS_DIR || join(harnessDir, 'progress');
     mkdirSync(dir, { recursive: true });
     appendFileSync(join(dir, 'events.ndjson'), JSON.stringify({
       ts: new Date().toISOString(),
@@ -1408,7 +1411,11 @@ try {
   writeFileSync(join(outDirAbs, 'pageerrors.json'), JSON.stringify(pageerrors, null, 2) + '\n');
   writeFileSync(join(outDirAbs, 'metrics.json'), JSON.stringify(metrics, null, 2));
   emitProgressEvent('capture_metrics', {
-    artifacts: relative(repoRoot, outDirAbs),
+    // Absolute path: in factory mode this repo IS a worktree, so a
+    // repo-relative path would resolve under the MAIN checkout (where these
+    // files don't exist — artifacts are gitignored) and the live view's stage
+    // panel 404s on every screenshot.
+    artifacts: outDirAbs,
     ok: metrics.ok,
     source: metrics.capturePlanSource,
     scenarios: metrics.scenarios,

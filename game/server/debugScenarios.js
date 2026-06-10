@@ -2792,6 +2792,91 @@ function applyDebugScenario(socket, name) {
       far.maxHp = 80;
       far.wanderTarget = { x: far.x, z: far.z };
       syncCardProbeHand(player);
+    } else if (name === 'lock-on-elevated-projectile') {
+      // Playing phase with Fireball in hand and a grunt elevated on the same
+      // (x, z) as the player — flat aim misses; Z-lock + cast should tilt upward
+      // and hit. The same state is reachable in vertical quests (e.g. spire ascent)
+      // with a reward projectile card and an enemy on a higher platform.
+      resumePlayingRunForCardProbe(state, player);
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      player.hand = [
+        {
+          id: 'fireball',
+          name: 'Fireball',
+          type: 'weapon',
+          charges: 4,
+          remainingCharges: 4,
+        },
+        null,
+        null,
+        null,
+        null,
+        null,
+      ];
+      state.enemies = [];
+      const elevated = spawnEnemy(player.x, player.z, 'grunt');
+      elevated.y = (player.y || 0.5) + 5;
+      elevated.hp = 200;
+      elevated.maxHp = 200;
+      elevated.wanderTarget = { x: elevated.x, z: elevated.z };
+      player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+      syncCardProbeHand(player);
+    } else if (name === 'height-aware-projectile') {
+      // Spire-ascent sloped tower: player on the bottom tier, enemy on the top
+      // tier — both Y values from sampleFloorY on real ramp/tier geometry. Fireball
+      // in hand for lock-on height-aim QA. Reachable normally by climbing spire_ascent
+      // with a projectile reward card; this is a deterministic shortcut.
+      resumePlayingRunForCardProbe(state, player);
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const seed = state.layoutSeed || 42;
+      state.layoutSeed = seed;
+      state.layout = generateLayout(seed, 'spire-ascent');
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      rebuildWallColliders();
+      const tiers = state.layout.rooms
+        .filter((r) => r.band === 'tier')
+        .sort((a, b) => (a.tierIndex ?? 0) - (b.tierIndex ?? 0));
+      const bottomTier = tiers[0];
+      const topTier = tiers[tiers.length - 1];
+      if (bottomTier) {
+        player.x = bottomTier.x;
+        player.z = bottomTier.z;
+        player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      }
+      player.hand = [
+        {
+          id: 'fireball',
+          name: 'Fireball',
+          type: 'weapon',
+          charges: 4,
+          remainingCharges: 4,
+        },
+        null,
+        null,
+        null,
+        null,
+        null,
+      ];
+      state.enemies = [];
+      if (topTier) {
+        const elevated = spawnEnemy(topTier.x, topTier.z, 'grunt');
+        elevated.y = resolveFloorY(sampleFloorY(state.layout, elevated.x, elevated.z));
+        elevated.hp = 200;
+        elevated.maxHp = 200;
+        elevated.wanderTarget = { x: elevated.x, z: elevated.z };
+        elevated.attackState = 'idle';
+      }
+      player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+      syncCardProbeHand(player);
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
     } else if (name === 'ice-ball-ready') {
       // Playing phase with Glacial Orb in hand, full Magic Stones, and grunts
       // lined up along +X so a cast hits the nearest and can roll SLOW. The same

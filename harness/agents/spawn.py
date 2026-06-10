@@ -365,7 +365,8 @@ def spawn(
             if telemetry is not None and hasattr(telemetry, "record_agent_usage"):
                 telemetry.record_agent_usage(label=label, result=result, attempt=attempt,
                                              usage_kind=invocation.usage_kind, bucket=bucket,
-                                             prompt=invocation.prompt.body, status="ok")
+                                             prompt=invocation.prompt.body, status="ok",
+                                             outfile=str(invocation.out_file))
             return result
 
         if reason not in _RETRYABLE or attempt > retries:
@@ -376,7 +377,8 @@ def spawn(
             if telemetry is not None and hasattr(telemetry, "record_agent_usage"):
                 telemetry.record_agent_usage(label=label, result=result, attempt=attempt,
                                              usage_kind=invocation.usage_kind, bucket=bucket,
-                                             prompt=invocation.prompt.body, status="tool_failure")
+                                             prompt=invocation.prompt.body, status="tool_failure",
+                                             outfile=str(invocation.out_file))
             return result
 
         if telemetry is not None and hasattr(telemetry, "agent_retry"):
@@ -385,7 +387,8 @@ def spawn(
         if telemetry is not None and hasattr(telemetry, "record_agent_usage"):
             telemetry.record_agent_usage(label=label, result=result, attempt=attempt,
                                          usage_kind=invocation.usage_kind, bucket=bucket,
-                                         prompt=invocation.prompt.body, status="retry")
+                                         prompt=invocation.prompt.body, status="retry",
+                                         outfile=str(invocation.out_file))
         time.sleep(retry_backoff_s)
         attempt += 1
 

@@ -104,7 +104,7 @@ import {
 } from './vanguard-hud.js';
 import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
 import { buildBossEncounterModel, syncBossEncounterHud } from './boss-encounter-hud.js';
-import { clearAllLockOnState } from './lockOn.js';
+import { clearAllLockOnState, getLockedEnemyId } from './lockOn.js';
 
 // ── Renderer module imports ──
 import {
@@ -3856,10 +3856,12 @@ function useCard(slotIndex) {
 
 	lastUsedSlot = slotIndex;
 	const facing = getPlayerFacingDirection();
+	const lockTargetId = getLockedEnemyId();
 	socket.emit(CLIENT_TO_SERVER.USE_CARD, {
 		slotIndex,
 		cardId: card.id,
 		rotation: Math.atan2(facing.z, facing.x),
+		...(lockTargetId ? { lockTargetId } : {}),
 	});
 
 	if (creatureCardIds.has(card.id)) {
@@ -4838,10 +4840,12 @@ window.__emitUseCardForTest = (cardId, slotIndex = null) => {
 	}
 	if (slot < 0 || slot >= MAX_HAND_SLOTS) return false;
 	const facing = getPlayerFacingDirection();
+	const lockTargetId = getLockedEnemyId();
 	socket.emit(CLIENT_TO_SERVER.USE_CARD, {
 		slotIndex: slot,
 		cardId,
 		rotation: Math.atan2(facing.z, facing.x),
+		...(lockTargetId ? { lockTargetId } : {}),
 	});
 	return true;
 };
