@@ -842,7 +842,7 @@ describe('debugScenario — canyon-descent-tier-2', () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
 		socket.emit('debugScenario', { name: 'canyon-descent-telepipe-ready' });
 		const result = await debugResultPromise;
 		const stateUpdate = await stateUpdatePromise;

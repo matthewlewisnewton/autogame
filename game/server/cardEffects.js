@@ -282,6 +282,9 @@ function handleUseCard(socket, state, lobby, data) {
 
   const player = state.players[socket.playerId];
   if (!player || player.dead || player.extracted) return;
+  if (!player.pendingSummons) {
+    player.pendingSummons = new Set();
+  }
 
   const cardProbeActive = CARD_PROBE_DEBUG_SCENARIOS.has(player.debugScenario);
   if (!state.run || (state.run.status !== 'playing' && !cardProbeActive)) return;
