@@ -22,7 +22,12 @@ import {
 	updateLockOnCameraRelease,
 	getLockedEnemyId,
 } from '../lockOn.js';
-import { LOCK_ON_DEATH_RELEASE_DURATION } from '../config.js';
+import { LOCK_ON_DEATH_RELEASE_DURATION, LOCK_ON_BREAK_RANGE } from '../config.js';
+import { DEFAULT_FLOOR_Y } from '../../shared/floorSampling.esm.js';
+import { getEntityWorldY } from '../entityWorldY.js';
+
+const LAYOUT = null;
+const PY = DEFAULT_FLOOR_Y;
 
 const enemies = [
 	{ id: 'a', x: 3, z: 0, hp: 50 },
@@ -52,18 +57,18 @@ describe('filterLockOnEnemies', () => {
 
 describe('findClosestTargetableEnemy', () => {
 	it('returns nearest living enemy within range', () => {
-		const result = findClosestTargetableEnemy(enemies, 0, 0, 8);
+		const result = findClosestTargetableEnemy(enemies, 0, PY, 0, 8, LAYOUT);
 		expect(result.enemy.id).toBe('a');
 		expect(result.dist).toBe(3);
 	});
 
 	it('skips dead enemies', () => {
 		const onlyDead = [{ id: 'c', x: 1, z: 0, hp: 0 }];
-		expect(findClosestTargetableEnemy(onlyDead, 0, 0, 8)).toBeNull();
+		expect(findClosestTargetableEnemy(onlyDead, 0, PY, 0, 8, LAYOUT)).toBeNull();
 	});
 
 	it('excludes a specific enemy id', () => {
-		const result = findClosestTargetableEnemy(enemies, 0, 0, 8, 'a');
+		const result = findClosestTargetableEnemy(enemies, 0, PY, 0, 8, LAYOUT, 'a');
 		expect(result.enemy.id).toBe('b');
 	});
 });
@@ -103,7 +108,7 @@ describe('handleLockOnPress', () => {
 	beforeEach(() => clearAllLockOnState());
 
 	it('locks onto the nearest enemy', () => {
-		const result = handleLockOnPress(enemies, 0, 0, 'unlock', 0);
+		const result = handleLockOnPress(enemies, 0, PY, 0, 'unlock', 0, LAYOUT);
 		expect(result.action).toBe('locked');
 		expect(result.enemy.id).toBe('a');
 		expect(isLockOnActive()).toBe(true);
@@ -115,33 +120,33 @@ describe('handleLockOnPress', () => {
 			{ id: 'a', x: 20, z: 0, hp: 50 },
 			{ id: 'b', x: 0, z: 25, hp: 50 },
 		];
-		const result = handleLockOnPress(farEnemies, 0, 0, 'unlock', Math.PI / 2);
+		const result = handleLockOnPress(farEnemies, 0, PY, 0, 'unlock', Math.PI / 2, LAYOUT);
 		expect(result.action).toBe('snapBehind');
 		expect(result.cameraYaw).toBeCloseTo(cameraYawBehindFacing(Math.PI / 2), 5);
 		expect(isLockOnActive()).toBe(false);
 	});
 
 	it('unlocks on repeat press in unlock mode', () => {
-		handleLockOnPress(enemies, 0, 0, 'unlock', 0);
-		const result = handleLockOnPress(enemies, 0, 0, 'unlock', 0);
+		handleLockOnPress(enemies, 0, PY, 0, 'unlock', 0, LAYOUT);
+		const result = handleLockOnPress(enemies, 0, PY, 0, 'unlock', 0, LAYOUT);
 		expect(result.action).toBe('unlocked');
 		expect(isLockOnActive()).toBe(false);
 	});
 
 	it('cycles to the next closest enemy', () => {
-		handleLockOnPress(enemies, 0, 0, 'unlock', 0);
-		const result = handleLockOnPress(enemies, 0, 0, 'cycle', 0);
+		handleLockOnPress(enemies, 0, PY, 0, 'unlock', 0, LAYOUT);
+		const result = handleLockOnPress(enemies, 0, PY, 0, 'cycle', 0, LAYOUT);
 		expect(result.action).toBe('locked');
 		expect(result.enemy.id).toBe('b');
 	});
 
 	it('reacquires the nearest enemy while locked', () => {
-		handleLockOnPress(enemies, 0, 0, 'unlock', 0);
+		handleLockOnPress(enemies, 0, PY, 0, 'unlock', 0, LAYOUT);
 		const moved = [
 			{ id: 'a', x: 7, z: 0, hp: 50 },
 			{ id: 'b', x: 0, z: 2, hp: 50 },
 		];
-		const result = handleLockOnPress(moved, 0, 0, 'reacquire', 0);
+		const result = handleLockOnPress(moved, 0, PY, 0, 'reacquire', 0, LAYOUT);
 		expect(result.action).toBe('locked');
 		expect(result.enemy.id).toBe('b');
 	});
@@ -151,27 +156,27 @@ describe('updateLockOn', () => {
 	beforeEach(() => clearAllLockOnState());
 
 	it('tracks target facing and camera yaw while locked', () => {
-		handleLockOnPress(enemies, 0, 0, 'unlock', 0);
-		const state = updateLockOn(enemies, 0, 0, 0.1, 0, 0);
+		handleLockOnPress(enemies, 0, PY, 0, 'unlock', 0, LAYOUT);
+		const state = updateLockOn(enemies, 0, PY, 0, 0.1, 0, 0, LAYOUT);
 		expect(state.locked).toBe(true);
 		expect(state.playerRotation).toBeCloseTo(0, 5);
 		expect(state.toTarget.x).toBeCloseTo(1, 5);
 	});
 
 	it('auto-unlocks when target dies and starts a camera release', () => {
-		handleLockOnPress(enemies, 0, 0, 'unlock', 0);
-		updateLockOn(enemies, 0, 0, 0.1, 0, 0);
+		handleLockOnPress(enemies, 0, PY, 0, 'unlock', 0, LAYOUT);
+		updateLockOn(enemies, 0, PY, 0, 0.1, 0, 0, LAYOUT);
 		const dead = [{ id: 'a', x: 3, z: 0, hp: 0 }];
-		const state = updateLockOn(dead, 0, 0, 0.1, 0, 0);
+		const state = updateLockOn(dead, 0, PY, 0, 0.1, 0, 0, LAYOUT);
 		expect(state.locked).toBe(false);
 		expect(state.releasing).toBe(true);
 		expect(isLockOnCameraReleasing()).toBe(true);
 	});
 
 	it('eases camera out after target death', () => {
-		handleLockOnPress(enemies, 0, 0, 'unlock', 0);
-		updateLockOn(enemies, 0, 0, 0.1, 0, 0);
-		updateLockOn([{ id: 'a', x: 3, z: 0, hp: 0 }], 0, 0, 0.1, 0, 0);
+		handleLockOnPress(enemies, 0, PY, 0, 'unlock', 0, LAYOUT);
+		updateLockOn(enemies, 0, PY, 0, 0.1, 0, 0, LAYOUT);
+		updateLockOn([{ id: 'a', x: 3, z: 0, hp: 0 }], 0, PY, 0, 0.1, 0, 0, LAYOUT);
 		expect(isLockOnCameraReleasing()).toBe(true);
 
 		const mid = updateLockOnCameraRelease(
@@ -196,9 +201,9 @@ describe('updateLockOn', () => {
 	});
 
 	it('auto-unlocks when target exceeds break range', () => {
-		handleLockOnPress(enemies, 0, 0, 'unlock', 0);
+		handleLockOnPress(enemies, 0, PY, 0, 'unlock', 0, LAYOUT);
 		const far = [{ id: 'a', x: 15, z: 0, hp: 50 }];
-		const state = updateLockOn(far, 0, 0, 0.1, 0, 0);
+		const state = updateLockOn(far, 0, PY, 0, 0.1, 0, 0, LAYOUT);
 		expect(state.locked).toBe(false);
 	});
 
@@ -206,25 +211,31 @@ describe('updateLockOn', () => {
 		handleLockOnPress(
 			[{ id: 'a', x: 3, z: 0, hp: 50 }],
 			0,
+			PY,
 			0,
 			'unlock',
 			0,
+			LAYOUT,
 		);
 		updateLockOn(
 			[{ id: 'a', x: 3, z: 0, hp: 50 }],
 			0,
+			PY,
 			0,
 			1 / 60,
 			0,
 			0,
+			LAYOUT,
 		);
 		const close = updateLockOn(
 			[{ id: 'a', x: 0.2, z: 0.05, hp: 50 }],
 			0,
+			PY,
 			0,
 			1 / 60,
 			0,
 			0,
+			LAYOUT,
 		);
 		expect(close.locked).toBe(true);
 		expect(Math.hypot(close.liveToTarget.x, close.liveToTarget.z)).toBeCloseTo(1, 5);
@@ -257,19 +268,23 @@ describe('updateLockOn camera tracking', () => {
 		handleLockOnPress(
 			[{ id: 'a', x: -3, z: 0.001, hp: 50 }],
 			0,
+			PY,
 			0,
 			'unlock',
 			0,
+			LAYOUT,
 		);
 		let yaw = 0;
 		let rot = 0;
 		const first = updateLockOn(
 			[{ id: 'a', x: -3, z: 0.001, hp: 50 }],
 			0,
+			PY,
 			0,
 			1 / 60,
 			yaw,
 			rot,
+			LAYOUT,
 		);
 		yaw = first.cameraYaw;
 		rot = first.playerRotation;
@@ -278,10 +293,12 @@ describe('updateLockOn camera tracking', () => {
 			const state = updateLockOn(
 				[{ id: 'a', x: -3, z, hp: 50 }],
 				0,
+				PY,
 				0,
 				1 / 60,
 				yaw,
 				rot,
+				LAYOUT,
 			);
 			expect(state.locked).toBe(true);
 			const step = Math.abs(shortestAngleDelta(yaw, state.cameraYaw));
@@ -295,25 +312,31 @@ describe('updateLockOn camera tracking', () => {
 		handleLockOnPress(
 			[{ id: 'a', x: 3, z: 0, hp: 50 }],
 			0,
+			PY,
 			0,
 			'unlock',
 			0,
+			LAYOUT,
 		);
 		updateLockOn(
 			[{ id: 'a', x: 3, z: 0, hp: 50 }],
 			0,
+			PY,
 			0,
 			1 / 60,
 			0,
 			0,
+			LAYOUT,
 		);
 		const close = updateLockOn(
 			[{ id: 'a', x: 0.2, z: 0.05, hp: 50 }],
 			0,
+			PY,
 			0,
 			1 / 60,
 			0,
 			0,
+			LAYOUT,
 		);
 		expect(close.locked).toBe(true);
 		expect(close.toTarget.x).toBeCloseTo(close.liveToTarget.x, 5);
@@ -326,33 +349,41 @@ describe('updateLockOn camera tracking', () => {
 		handleLockOnPress(
 			[{ id: 'a', x: 3, z: 0, hp: 50 }],
 			0,
+			PY,
 			0,
 			'unlock',
 			0,
+			LAYOUT,
 		);
 		updateLockOn(
 			[{ id: 'a', x: 3, z: 0, hp: 50 }],
 			0,
+			PY,
 			0,
 			1 / 60,
 			0,
 			0,
+			LAYOUT,
 		);
 		const hug = updateLockOn(
 			[{ id: 'a', x: 0.2, z: 0.05, hp: 50 }],
 			0,
+			PY,
 			0,
 			1 / 60,
 			0,
 			0,
+			LAYOUT,
 		);
 		const firstOrbit = updateLockOn(
 			[{ id: 'a', x: 0, z: 0.2, hp: 50 }],
 			0.2,
+			PY,
 			0,
 			1 / 60,
 			hug.cameraYaw,
 			hug.playerRotation,
+			LAYOUT,
 		);
 		expect(firstOrbit.locked).toBe(true);
 		expect(Math.abs(shortestAngleDelta(hug.cameraYaw, firstOrbit.cameraYaw))).toBeGreaterThan(0.01);
@@ -364,10 +395,12 @@ describe('updateLockOn camera tracking', () => {
 			const state = updateLockOn(
 				[{ id: 'a', x: 0, z: 0.2, hp: 50 }],
 				0.2,
+				PY,
 				0,
 				1 / 60,
 				yaw,
 				rot,
+				LAYOUT,
 			);
 			yaw = state.cameraYaw;
 			rot = state.playerRotation;
@@ -379,9 +412,11 @@ describe('updateLockOn camera tracking', () => {
 		handleLockOnPress(
 			[{ id: 'a', x: 2, z: 0, hp: 50 }],
 			0,
+			PY,
 			0,
 			'unlock',
 			0,
+			LAYOUT,
 		);
 		let px = 2;
 		let pz = 0;
@@ -390,10 +425,12 @@ describe('updateLockOn camera tracking', () => {
 		const first = updateLockOn(
 			[{ id: 'a', x: 0, z: 0, hp: 50 }],
 			2,
+			PY,
 			0,
 			1 / 60,
 			yaw,
 			rot,
+			LAYOUT,
 		);
 		yaw = first.cameraYaw;
 		rot = first.playerRotation;
@@ -406,10 +443,12 @@ describe('updateLockOn camera tracking', () => {
 			const state = updateLockOn(
 				[{ id: 'a', x: 0, z: 0, hp: 50 }],
 				px,
+				PY,
 				pz,
 				1 / 60,
 				yaw,
 				rot,
+				LAYOUT,
 			);
 			maxStep = Math.max(maxStep, Math.abs(shortestAngleDelta(yaw, state.cameraYaw)));
 			maxFacingStep = Math.max(
@@ -439,6 +478,57 @@ describe('getDirectionToTarget', () => {
 		const dir = getDirectionToTarget(0, 0, { x: 3, z: 4 });
 		expect(dir.x).toBeCloseTo(0.6, 5);
 		expect(dir.z).toBeCloseTo(0.8, 5);
+	});
+});
+
+describe('3D lock-on target selection', () => {
+	beforeEach(() => clearAllLockOnState());
+
+	it('prefers an elevated enemy with explicit y by 3D distance', () => {
+		const pool = [
+			{ id: 'flat', x: 6, z: 0, hp: 50 },
+			{ id: 'raised', x: 3, z: 0, y: PY + 2, hp: 50 },
+		];
+		const result = findClosestTargetableEnemy(pool, 0, PY, 0, 8, LAYOUT);
+		expect(result.enemy.id).toBe('raised');
+	});
+
+	it('prefers a flying enemy with altitude over a high ground enemy at the same x,z', () => {
+		const stackX = 5;
+		const pool = [
+			{ id: 'ground', x: stackX, z: 0, y: PY + 10, hp: 50 },
+			{ id: 'fly', x: stackX, z: 0, flying: true, altitude: 1, hp: 50 },
+		];
+		const result = handleLockOnPress(pool, 0, PY, 0, 'unlock', 0, LAYOUT);
+		expect(result.enemy.id).toBe('fly');
+		expect(getEntityWorldY(pool[1], LAYOUT)).toBeCloseTo(PY + 1, 5);
+	});
+
+	it('breaks lock when 3D distance exceeds break range despite XZ still inside', () => {
+		handleLockOnPress(
+			[{ id: 'a', x: 6, z: 0, y: PY, hp: 50 }],
+			0,
+			PY,
+			0,
+			'unlock',
+			0,
+			LAYOUT,
+		);
+		const elevated = [{ id: 'a', x: 6, z: 0, y: PY + 12, hp: 50 }];
+		expect(Math.hypot(6, 12)).toBeGreaterThan(LOCK_ON_BREAK_RANGE);
+		const state = updateLockOn(elevated, 0, PY, 0, 0.1, 0, 0, LAYOUT);
+		expect(state.locked).toBe(false);
+	});
+
+	it('cycles to the next closest target by 3D distance, skipping a farther elevated one', () => {
+		const pool = [
+			{ id: 'near', x: 4, z: 0, hp: 50 },
+			{ id: 'high', x: 0, z: 4, y: PY + 6, hp: 50 },
+		];
+		handleLockOnPress(pool, 0, PY, 0, 'unlock', 0, LAYOUT);
+		expect(getLockedEnemyId()).toBe('near');
+		const cycled = handleLockOnPress(pool, 0, PY, 0, 'cycle', 0, LAYOUT);
+		expect(cycled.enemy.id).toBe('high');
 	});
 });
 

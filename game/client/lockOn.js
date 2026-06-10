@@ -8,6 +8,7 @@ import {
 	LOCK_ON_MAX_FACING_SPEED,
 	LOCK_ON_DEATH_RELEASE_DURATION,
 } from './config.js';
+import { getEntityWorldY } from './entityWorldY.js';
 
 /** @typedef {'unlock' | 'cycle' | 'reacquire'} LockOnRepeatAction */
 
@@ -71,20 +72,31 @@ export function unwrapAngle(previous, next, fallback = 0) {
 }
 
 /**
- * @param {Array<{ id: string, x: number, z: number, hp?: number }>} enemies
+ * @param {Array<{ id: string, x: number, z: number, y?: number, flying?: boolean, altitude?: number, hp?: number }>} enemies
  * @param {number} playerX
+ * @param {number} playerY
  * @param {number} playerZ
  * @param {number} maxRange
+ * @param {object | null | undefined} layout
  * @param {string | null} [excludeId]
  * @returns {{ enemy: object, dist: number } | null}
  */
-export function findClosestTargetableEnemy(enemies, playerX, playerZ, maxRange, excludeId = null) {
+export function findClosestTargetableEnemy(
+	enemies,
+	playerX,
+	playerY,
+	playerZ,
+	maxRange,
+	layout,
+	excludeId = null,
+) {
 	let nearest = null;
 	let nearestDist = Infinity;
 	for (const enemy of enemies || []) {
 		if (!enemy || enemy.hp <= 0) continue;
 		if (excludeId && enemy.id === excludeId) continue;
-		const dist = Math.hypot(enemy.x - playerX, enemy.z - playerZ);
+		const enemyY = getEntityWorldY(enemy, layout);
+		const dist = Math.hypot(enemy.x - playerX, enemyY - playerY, enemy.z - playerZ);
 		if (dist > maxRange || dist >= nearestDist) continue;
 		nearestDist = dist;
 		nearest = enemy;
@@ -328,14 +340,24 @@ export function filterLockOnEnemies(enemies, encounter) {
 }
 
 /**
- * @param {Array<{ id: string, x: number, z: number, hp?: number }>} enemies
+ * @param {Array<{ id: string, x: number, z: number, y?: number, flying?: boolean, altitude?: number, hp?: number }>} enemies
  * @param {number} playerX
+ * @param {number} playerY
  * @param {number} playerZ
  * @param {LockOnRepeatAction} repeatAction
  * @param {number} playerRotation
+ * @param {object | null | undefined} layout
  * @returns {{ action: 'locked' | 'unlocked' | 'snapBehind', enemy?: object, cameraYaw?: number }}
  */
-export function handleLockOnPress(enemies, playerX, playerZ, repeatAction, playerRotation) {
+export function handleLockOnPress(
+	enemies,
+	playerX,
+	playerY,
+	playerZ,
+	repeatAction,
+	playerRotation,
+	layout,
+) {
 	const currentlyLocked = lockedEnemyId != null;
 
 	if (currentlyLocked && repeatAction === 'unlock') {
@@ -344,7 +366,15 @@ export function handleLockOnPress(enemies, playerX, playerZ, repeatAction, playe
 	}
 
 	if (currentlyLocked && repeatAction === 'cycle') {
-		const next = findClosestTargetableEnemy(enemies, playerX, playerZ, LOCK_ON_RANGE, lockedEnemyId);
+		const next = findClosestTargetableEnemy(
+			enemies,
+			playerX,
+			playerY,
+			playerZ,
+			LOCK_ON_RANGE,
+			layout,
+			lockedEnemyId,
+		);
 		if (next) {
 			lockOnto(next.enemy.id);
 			const aim = cameraYawBehindTarget(playerX, playerZ, next.enemy.x, next.enemy.z);
@@ -355,7 +385,14 @@ export function handleLockOnPress(enemies, playerX, playerZ, repeatAction, playe
 	}
 
 	if (currentlyLocked && repeatAction === 'reacquire') {
-		const nearest = findClosestTargetableEnemy(enemies, playerX, playerZ, LOCK_ON_RANGE);
+		const nearest = findClosestTargetableEnemy(
+			enemies,
+			playerX,
+			playerY,
+			playerZ,
+			LOCK_ON_RANGE,
+			layout,
+		);
 		if (nearest) {
 			lockOnto(nearest.enemy.id);
 			const aim = cameraYawBehindTarget(playerX, playerZ, nearest.enemy.x, nearest.enemy.z);
@@ -365,7 +402,14 @@ export function handleLockOnPress(enemies, playerX, playerZ, repeatAction, playe
 		return { action: 'snapBehind', cameraYaw: cameraYawBehindFacing(playerRotation) };
 	}
 
-	const nearest = findClosestTargetableEnemy(enemies, playerX, playerZ, LOCK_ON_RANGE);
+	const nearest = findClosestTargetableEnemy(
+		enemies,
+		playerX,
+		playerY,
+		playerZ,
+		LOCK_ON_RANGE,
+		layout,
+	);
 	if (nearest) {
 		lockOnto(nearest.enemy.id);
 		const aim = cameraYawBehindTarget(playerX, playerZ, nearest.enemy.x, nearest.enemy.z);
@@ -377,15 +421,26 @@ export function handleLockOnPress(enemies, playerX, playerZ, repeatAction, playe
 
 /**
  * Per-frame lock-on update: validate target, compute facing/camera/movement basis.
- * @param {Array<{ id: string, x: number, z: number, hp?: number }>} enemies
+ * @param {Array<{ id: string, x: number, z: number, y?: number, flying?: boolean, altitude?: number, hp?: number }>} enemies
  * @param {number} playerX
+ * @param {number} playerY
  * @param {number} playerZ
  * @param {number} delta
  * @param {number} currentCameraYaw
  * @param {number} currentPlayerRotation
+ * @param {object | null | undefined} layout
  * @returns {{ locked: boolean, playerRotation?: number, cameraYaw?: number, toTarget?: { x: number, z: number }, targetCameraYaw?: number } | null}
  */
-export function updateLockOn(enemies, playerX, playerZ, delta, currentCameraYaw, currentPlayerRotation) {
+export function updateLockOn(
+	enemies,
+	playerX,
+	playerY,
+	playerZ,
+	delta,
+	currentCameraYaw,
+	currentPlayerRotation,
+	layout,
+) {
 	if (!lockedEnemyId) return { locked: false };
 
 	const enemy = findEnemyById(enemies, lockedEnemyId);
@@ -399,7 +454,8 @@ export function updateLockOn(enemies, playerX, playerZ, delta, currentCameraYaw,
 		return { locked: false, releasing: isLockOnCameraReleasing() };
 	}
 
-	const dist = Math.hypot(enemy.x - playerX, enemy.z - playerZ);
+	const enemyY = getEntityWorldY(enemy, layout);
+	const dist = Math.hypot(enemy.x - playerX, enemyY - playerY, enemy.z - playerZ);
 	if (dist > LOCK_ON_BREAK_RANGE) {
 		clearLockOn();
 		return { locked: false };

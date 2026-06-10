@@ -4096,6 +4096,22 @@ function applyDebugScenario(socket, name) {
       elevated.wanderTarget = { x: elevated.x, z: elevated.z };
       player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
       syncCardProbeHand(player);
+    } else if (name === 'lock-on-3d-stack') {
+      // Ground grunt and ember_wraith stacked at the same (x, z): 3D lock-on must
+      // pick the closer flier, not treat them as tied in XZ. Reachable in vertical
+      // quests when adds and flying enemies overlap in plan view; this is a shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const stackX = player.x + 5;
+      const stackZ = player.z;
+      const ground = spawnEnemy(stackX, stackZ, 'grunt');
+      ground.y = resolveFloorY(sampleFloorY(state.layout, stackX, stackZ)) + 8;
+      ground.hp = 120;
+      ground.maxHp = 120;
+      ground.wanderTarget = { x: ground.x, z: ground.z };
+      const flier = spawnEnemy(stackX, stackZ, 'ember_wraith');
+      flier.wanderTarget = { x: flier.x, z: flier.z };
     } else if (name === 'height-aware-projectile') {
       // Spire-ascent sloped tower: player on the bottom tier, enemy on the top
       // tier — both Y values from sampleFloorY on real ramp/tier geometry. Fireball

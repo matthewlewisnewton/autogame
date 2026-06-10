@@ -93,6 +93,7 @@ import {
 	cameraYawBehindFacing,
 } from './lockOn.js';
 import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
+import { getEntityWorldY } from './entityWorldY.js';
 import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled, getAccountProfile } from './settings.js';
 import { MODEL_REGISTRY, loadModel, modelPathFor, disposeMeshTreeSafe } from './models.js';
 import { getCardDef } from './cards.js';
@@ -1205,11 +1206,21 @@ function lockOnEnemyPool() {
 
 /** Prefer server-authoritative player coords for lock-on targeting (sim can lag after teleports). */
 function lockOnAnchorCoords() {
+	const layout = gameStateRef?.layout ?? null;
 	const me = myIdRef && gameStateRef?.players?.[myIdRef];
 	if (me && Number.isFinite(me.x) && Number.isFinite(me.z)) {
-		return { x: me.x, z: me.z };
+		return {
+			x: me.x,
+			y: getEntityWorldY(me, layout),
+			z: me.z,
+		};
 	}
-	return { x: simX, z: simZ };
+	const fallbackEntity = { x: simX, z: simZ, y: me?.y, flying: me?.flying, altitude: me?.altitude };
+	return {
+		x: simX,
+		y: getEntityWorldY(fallbackEntity, layout),
+		z: simZ,
+	};
 }
 
 export function applyLockOnPress() {
@@ -1218,12 +1229,15 @@ export function applyLockOnPress() {
 	if (!gs?.enemies) return;
 
 	const anchor = lockOnAnchorCoords();
+	const layout = gameStateRef?.layout ?? null;
 	const result = handleLockOnPress(
 		lockOnEnemyPool(),
 		anchor.x,
+		anchor.y,
 		anchor.z,
 		getLockOnRepeatAction(),
 		playerRotation,
+		layout,
 	);
 
 	if (result.action === 'locked' && result.enemy) {
@@ -2107,13 +2121,16 @@ export function updateMyPlayer(delta) {
 		return;
 	}
 
+	const lockAnchor = lockOnAnchorCoords();
 	const lockState = updateLockOn(
 		lockOnEnemyPool(),
 		simX,
+		lockAnchor.y,
 		simZ,
 		delta,
 		cameraYaw,
 		playerRotation,
+		gameStateRef?.layout ?? null,
 	);
 
 	refreshLockOnInfoPanel();
