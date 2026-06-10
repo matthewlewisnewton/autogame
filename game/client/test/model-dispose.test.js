@@ -12,11 +12,14 @@ const gltfLoadMock = vi.hoisted(() => vi.fn());
 /** Material stub with tintable color, clone(), and a spyable dispose(). */
 function makeFakeMaterial(hex) {
 	return {
+		userData: {},
 		visible: undefined,
 		color: { _v: hex, getHex() { return this._v; }, setHex(v) { this._v = v; } },
 		dispose: vi.fn(),
 		clone() {
-			return makeFakeMaterial(this.color._v);
+			const cloned = makeFakeMaterial(this.color._v);
+			cloned.userData = { ...this.userData };
+			return cloned;
 		},
 	};
 }

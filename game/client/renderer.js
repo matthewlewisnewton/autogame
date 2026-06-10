@@ -92,7 +92,7 @@ import {
 } from './lockOn.js';
 import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
 import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled, getAccountProfile } from './settings.js';
-import { MODEL_REGISTRY, loadModel, modelPathFor, isModelCacheShared } from './models.js';
+import { MODEL_REGISTRY, loadModel, modelPathFor, isModelCacheShared, clearModelCacheShared } from './models.js';
 import { getCardDef } from './cards.js';
 import { getAccentHex } from './cardRenderers.js';
 import eventsCatalog from '../shared/events.json' with { type: 'json' };
@@ -706,9 +706,16 @@ function retargetPlayerBodyMesh(host, model) {
 	// clone(true) shares materials across player instances; give this avatar its
 	// own material so VFX recolors only affect this player.
 	if (bodyMesh.material) {
-		bodyMesh.material = Array.isArray(bodyMesh.material)
-			? bodyMesh.material.map((m) => m.clone())
-			: bodyMesh.material.clone();
+		if (Array.isArray(bodyMesh.material)) {
+			bodyMesh.material = bodyMesh.material.map((m) => {
+				const cloned = m.clone();
+				clearModelCacheShared(cloned);
+				return cloned;
+			});
+		} else {
+			bodyMesh.material = bodyMesh.material.clone();
+			clearModelCacheShared(bodyMesh.material);
+		}
 	}
 
 	host.userData.bodyMesh = bodyMesh;

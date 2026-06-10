@@ -86,6 +86,16 @@ export function isModelCacheShared(resource) {
 }
 
 /**
+ * Remove the model-cache shared marker from a geometry or material so dispose
+ * logic treats it as avatar-owned (e.g. after Material.clone() copies userData).
+ * @param {import('three').BufferGeometry|import('three').Material|{ userData?: object }|null|undefined} resource
+ */
+export function clearModelCacheShared(resource) {
+	if (!resource?.userData) return;
+	delete resource.userData[MODEL_CACHE_SHARED_FLAG];
+}
+
+/**
  * Look up the registry path for an entity key.
  * @param {string} key - e.g. 'player', 'grunt', 'magic_stone'
  * @returns {string|null} the model path, or null when the key is absent/empty.
