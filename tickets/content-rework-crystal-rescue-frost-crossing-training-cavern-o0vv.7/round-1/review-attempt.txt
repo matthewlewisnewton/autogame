@@ -1,0 +1,8 @@
+Wrote the senior review artifacts:
+
+- `tickets/content-rework-crystal-rescue-frost-crossing-training-cavern-o0vv.7/round-1/review.md`
+- `tickets/content-rework-crystal-rescue-frost-crossing-training-cavern-o0vv.7/round-1/gaps.md`
+
+Verdict is `VERDICT: FAIL`.
+
+The game run itself was healthy (`ok: true`, no page errors/fatals), and the normal quest implementations/tests look solid. The fail is from two blocking debug-scenario integrity gaps in `game/server/debugScenarios.js`: `frost-crossing-frostmaw` does not actually spawn Rimecast, and `crystal-rescue-extraction-phase` does not preserve the real post-ambush objective counters.

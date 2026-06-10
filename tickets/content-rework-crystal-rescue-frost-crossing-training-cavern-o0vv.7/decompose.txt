@@ -1,0 +1,11 @@
+Remediation round 2 targets only the two debug-scenario gaps from `review-feedback.md`. Sub-tickets 01–04 already have `.passed` markers and were left untouched. No failed sub-ticket folders needed deletion.
+
+**Created sub-tickets:**
+
+1. `/home/matt/workspace/.autogame-worktrees/content-rework-crystal-rescue-frost-crossing-training-cavern-o0vv.7/tickets/content-rework-crystal-rescue-frost-crossing-training-cavern-o0vv.7/subtickets/05-frost-frostmaw-debug-scenario`
+   - Fixes `frost-crossing-frostmaw` so it clears dock wave 0, spawns and clears ice wave 0, then lands with Rimecast alive.
+
+2. `/home/matt/workspace/.autogame-worktrees/content-rework-crystal-rescue-frost-crossing-training-cavern-o0vv.7/tickets/content-rework-crystal-rescue-frost-crossing-training-cavern-o0vv.7/subtickets/06-crystal-extraction-debug-scenario`
+   - Fixes `crystal-rescue-extraction-phase` so objective counters reflect 9/9 (guard + ambush) at extraction start.
+
+Both use **code** verification (socket integration tests + `pnpm test:quick`), since the acceptance criteria are about scenario state and counters, not pure rendering.
