@@ -626,13 +626,33 @@ function applyBeadsStatToken(token) {
   renderBeadsList();
 }
 
+function activeFilterTerms() {
+  return (beadsFilterEl?.value || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+}
+
 function updateBeadsStatActive() {
-  if (!beadsStatsEl || !beadsFilterEl) return;
-  const terms = beadsFilterEl.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!beadsStatsEl) return;
+  const terms = activeFilterTerms();
   beadsStatsEl.querySelectorAll('.beads-stat-btn').forEach((btn) => {
     const token = (btn.dataset.token || '').toLowerCase();
     btn.classList.toggle('active', Boolean(token) && terms.includes(token));
   });
+}
+
+function updateBeadsBadgeActive() {
+  // Row + detail badges share the same data-token contract as the stat
+  // buttons; reflect the live filter on all of them so the selected state
+  // can't drift from what's actually in the search box.
+  const terms = activeFilterTerms();
+  document.querySelectorAll('.beads-badge-btn').forEach((badge) => {
+    const token = (badge.dataset.token || '').toLowerCase();
+    badge.classList.toggle('active', Boolean(token) && terms.includes(token));
+  });
+}
+
+function refreshBeadsActiveStates() {
+  updateBeadsStatActive();
+  updateBeadsBadgeActive();
 }
 
 function issueLabels(issue) {
@@ -688,7 +708,6 @@ function toggleBeadsFilterToken(token) {
   else terms.push(token);
   beadsFilterEl.value = terms.join(' ');
   renderBeadsList();
-  updateBeadsStatActive();
 }
 
 function renderBeadsList() {
@@ -726,6 +745,7 @@ function renderBeadsList() {
       toggleBeadsFilterToken(badge.dataset.token);
     });
   });
+  refreshBeadsActiveStates();
 }
 
 function beadsField(label, value) {
@@ -766,6 +786,7 @@ function renderBeadsDetail(issue) {
   beadsDetailEl.querySelectorAll('.beads-link').forEach((link) => {
     link.addEventListener('click', () => selectBead(link.dataset.id));
   });
+  refreshBeadsActiveStates();
 }
 
 function selectBead(id) {
@@ -833,10 +854,7 @@ function openBeadForTicket(name) {
 }
 
 if (beadsFilterEl) {
-  beadsFilterEl.addEventListener('input', () => {
-    renderBeadsList();
-    updateBeadsStatActive();
-  });
+  beadsFilterEl.addEventListener('input', renderBeadsList);
 }
 if (beadsRefreshEl) beadsRefreshEl.addEventListener('click', loadBeads);
 
