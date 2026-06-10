@@ -1509,6 +1509,15 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
+    if (name === 'quest-comms-run-start') {
+      // Initiate Vault (training_caverns Tier 1) in-run; startDungeonRun emits Rewa's
+      // run_start questDialogue radio line. Reachable normally by selecting Initiate
+      // Vault and deploying from the lobby.
+      state.selectedQuestId = 'training_caverns';
+      state.selectedQuestTier = 1;
+      applyLayoutForQuest(state, 'training_caverns', 1);
+    }
+
     if (name === 'collect-prisms-progress') {
       // Prism Salvage (collect_items) with partial progress for objective-HUD QA.
       // The same state is reachable by selecting crystal_rescue, deploying, and

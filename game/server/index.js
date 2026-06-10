@@ -505,6 +505,7 @@ const DEBUG_SCENARIOS = new Set([
   'run-failed',
   'run-exhausted',
   'quest-objective-near-complete',
+  'quest-comms-run-start',
   'collect-prisms-progress',
   'telepipe-ready',
   'fire-telepipe-ready',
