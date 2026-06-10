@@ -1,5 +1,15 @@
 # Off-thread merge queue + failure containment — combined design
 
+> **STATUS: DEFERRED (owner decision 2026-06-10).** Not scheduled for
+> implementation yet — current Anthropic/cursor quota may not support the
+> worker-throughput increase that unblocking the tick during merges would
+> drive (more concurrent claims = more agent spend). The single-threaded
+> inline-merge approach is the accepted operating mode for now; the
+> watch-loop treats mid-merge heartbeat stalls as normal. Tracked by a
+> deferred bead ([harness] merge-thread design). Phase A's containment
+> items are throughput-neutral and can be cherry-picked earlier if merge
+> incidents recur.
+
 Two parallel investigations (2026-06-10) into moving the merge queue off the
 dispatcher tick thread, with backpressure and failure recovery. Full designs
 live in the session transcript; this captures the agreed architecture and the

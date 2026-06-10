@@ -142,6 +142,7 @@ const {
   checkSweptCollision,
   tryPlayerMove,
   buildMovementContext,
+  rebuildMovementContext,
   buildHubMovementContext,
   hubSpawnPosition,
   applyPlayerMovement,
@@ -492,6 +493,7 @@ function resetGameState() {
   Object.keys(gameState).forEach(k => delete gameState[k]);
   Object.assign(gameState, fresh);
   applyLayoutForQuest(gameState, questId, questTier);
+  rebuildMovementContext(gameState);
   delete gameState.run;
   delete gameState._victoryCounters;
   sim.setGameState(gameState, _timeouts);
@@ -616,6 +618,8 @@ const DEBUG_SCENARIOS = new Set([
   'spire-ascent-boss-approach',
   'spire-ascent-boss-low-hp',
   'ember-descent-tier-2',
+  'crucible-duel-boss',
+  'vault-onslaught-boss',
   'stage-boss-dormant',
   'stage-boss-active',
   'annex-overseer-ready',
@@ -824,6 +828,8 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'spire-ascent-boss-approach',
   'spire-ascent-boss-low-hp',
   'ember-descent-tier-2',
+  'crucible-duel-boss',
+  'vault-onslaught-boss',
   'stage-boss-dormant',
   'stage-boss-active',
   'annex-overseer-ready',

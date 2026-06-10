@@ -37,7 +37,7 @@ class FakeQueue:
         # back to the front of its (assumed medium) lane for re-pickup
         self._ready.setdefault("medium", []).insert(0, ticket_id)
 
-    def close(self, ticket_id, reason="done"):
+    def close(self, ticket_id, reason="done", **kw):
         self.closed.append((ticket_id, reason))
 
     def set_difficulty(self, ticket_id, difficulty):

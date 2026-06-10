@@ -55,6 +55,8 @@ const SIGNATURE_QUEST_TIERS = [
 	['spire_ascent', 2, 'gravity_well', ['gravity_well']],
 	['crystal_rescue', 1, 'mana_prism', ['mana_prism', 'harvesting_scythe']],
 	['crystal_rescue', 2, 'mana_prism', ['mana_prism', 'harvesting_scythe']],
+	['crucible_duel', 1, 'sacrificial_altar', ['sacrificial_altar', 'chrono_trigger']],
+	['vault_onslaught', 1, 'dungeon_drake', ['dungeon_drake', 'mana_leach']],
 ];
 
 const NON_SIGNATURE_QUEST_IDS = [
