@@ -1291,12 +1291,11 @@ function applyDebugScenario(socket, name) {
       // the ice sheet; this scenario is a shortcut into that encounter.
       setupFrostCrossingTier1Deploy(lobby, state, player);
 
-      const iceRoom = state.layout.rooms.find((room) => room.band === 'ice');
+      const layout = state.layout;
+      const iceRoom = layout.rooms.find((room) => room.band === 'ice');
+
       for (const enemy of [...state.enemies]) {
-        if (
-          enemy.scriptedWave?.roomKey === 'room:0'
-          || (enemy.scriptedWave?.roomKey === 'band:ice' && enemy.scriptedWave?.waveIndex === 0)
-        ) {
+        if (enemy.scriptedWave?.roomKey === 'room:0' && enemy.scriptedWave?.waveIndex === 0) {
           enemy.hp = 0;
         }
       }
@@ -1310,7 +1309,15 @@ function applyDebugScenario(socket, name) {
 
       player.x = iceRoom?.x ?? 0;
       player.z = iceRoom?.z ?? 0;
-      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      player.y = resolveFloorY(sampleFloorY(layout, player.x, player.z));
+      updateScriptedEncounters();
+
+      for (const enemy of [...state.enemies]) {
+        if (enemy.scriptedWave?.roomKey === 'band:ice' && enemy.scriptedWave?.waveIndex === 0) {
+          enemy.hp = 0;
+        }
+      }
+      removeDeadEnemies();
       updateScriptedEncounters();
 
       const rimecast = state.enemies.find((enemy) => enemy.displayName === 'Rimecast the Slow');
