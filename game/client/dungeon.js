@@ -1423,6 +1423,26 @@ export function buildPassageGateMesh(layout, passageIndex, materials) {
 	return group;
 }
 
+/**
+ * World-space center of a passage gate mesh (for unlock VFX when no live mesh).
+ * @param {object} layout
+ * @param {number} passageIndex
+ * @returns {{ x: number, y: number, z: number }|null}
+ */
+export function getPassageGateWorldPosition(layout, passageIndex) {
+	if (!layout?.passages?.[passageIndex]) return null;
+
+	const passage = layout.passages[passageIndex];
+	const dx = passage.x2 - passage.x1;
+	const dz = passage.z2 - passage.z1;
+	const alongX = Math.abs(dx) >= Math.abs(dz);
+	const midX = alongX ? (passage.x1 + passage.x2) / 2 : passage.x1;
+	const midZ = alongX ? passage.z1 : (passage.z1 + passage.z2) / 2;
+	const gateHeight = PASSAGE_WALL_HEIGHT;
+
+	return { x: midX, y: FLOOR_Y + gateHeight / 2, z: midZ };
+}
+
 function footprintToAABB(footprint) {
 	return {
 		minX: footprint.x - footprint.width / 2,
