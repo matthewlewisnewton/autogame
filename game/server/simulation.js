@@ -3087,6 +3087,8 @@ function updateEnemyProjectiles() {
 		ball.traveled = (ball.traveled || 0) + step;
 
 		// Contact with a player: chill (SLOW) + damage, then consume the ball.
+		// SLOW is applied before damage and is not gated on damage succeeding
+		// (god-mode, i-frames, barrier dome, absorb shield all skip HP loss only).
 		let consumed = false;
 		for (const player of players) {
 			const playerY = getEntityWorldY(player);
