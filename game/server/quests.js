@@ -57,6 +57,9 @@ const QUEST_DEFS = {
         enemyCount: 4,
         rewardCurrency: 12,
         layoutProfile: 'open',
+        // Utility-theme signature rewards (see frost_crossing tier 1 for field docs).
+        signatureCardId: 'mana_prism',
+        rewardCards: ['mana_prism', 'harvesting_scythe'],
       },
       2: {
         tier: 2,
@@ -69,6 +72,8 @@ const QUEST_DEFS = {
         layoutProfile: 'open',
         layoutMode: 'rigid',
         unlockRequires: { questId: 'crystal_rescue', tier: 1 },
+        signatureCardId: 'mana_prism',
+        rewardCards: ['mana_prism', 'harvesting_scythe'],
       },
     },
   },
@@ -125,6 +130,13 @@ const QUEST_DEFS = {
         enemyCount: 6,
         rewardCurrency: 14,
         layoutProfile: 'ice-cavern',
+        // Signature reward card: always offered as the first post-victory card
+        // choice. rewardCards is the quest's pool for the empty-choices victory
+        // fallback (replaces the global VICTORY_REWARD_ROTATION). Both fields are
+        // optional and tier-scoped; quests without them keep global behavior.
+        // Ids must be acquisition: 'reward' cards in shared/cardDefs.json.
+        signatureCardId: 'ice_ball',
+        rewardCards: ['ice_ball', 'frost_nova', 'permafrost_lance'],
       },
     },
   },
@@ -178,6 +190,9 @@ const QUEST_DEFS = {
         enemyCount: 6,
         rewardCurrency: 14,
         layoutProfile: 'fire-cavern',
+        // Burn-theme signature rewards (see frost_crossing tier 1 for field docs).
+        signatureCardId: 'fireball',
+        rewardCards: ['fireball', 'dragons_breath'],
       },
     },
   },
@@ -197,6 +212,9 @@ const QUEST_DEFS = {
         enemyCount: 6,
         rewardCurrency: 16,
         layoutProfile: 'spire-ascent',
+        // Pull/edge-control signature rewards (see frost_crossing tier 1 for field docs).
+        signatureCardId: 'gravity_well',
+        rewardCards: ['gravity_well'],
       },
       2: {
         tier: 2,
@@ -207,6 +225,8 @@ const QUEST_DEFS = {
         layoutProfile: 'spire-ascent',
         layoutMode: 'rigid',
         unlockRequires: { questId: 'spire_ascent', tier: 1 },
+        signatureCardId: 'gravity_well',
+        rewardCards: ['gravity_well'],
         encounter: {
           bossType: 'spire_warden',
           landmark: 'spire_summit',
@@ -459,6 +479,46 @@ function getGuaranteedEnemyType(questId) {
   return def && typeof def.guaranteedEnemyType === 'string' ? def.guaranteedEnemyType : null;
 }
 
+// Returns the tier's signature reward card id (the card always offered as the
+// first post-victory choice), falling back to the first entry of the tier's
+// rewardCards pool. Unknown quests/tiers and quests without either field return
+// null — no signature card is injected for them.
+function getSignatureCardId(questId, tier) {
+  const tierDef = isValidQuestId(questId)
+    ? getQuestTierDef(questId, normalizeQuestTier(tier))
+    : null;
+  if (!tierDef) {
+    return null;
+  }
+  if (typeof tierDef.signatureCardId === 'string') {
+    return tierDef.signatureCardId;
+  }
+  if (Array.isArray(tierDef.rewardCards) && tierDef.rewardCards.length > 0) {
+    return tierDef.rewardCards[0];
+  }
+  return null;
+}
+
+// Returns the tier's reward card pool for the empty-choices victory fallback,
+// falling back to [signatureCardId] when only that is set. Unknown quests/tiers
+// and quests without either field return null so callers use the global
+// VICTORY_REWARD_ROTATION.
+function getQuestRewardCards(questId, tier) {
+  const tierDef = isValidQuestId(questId)
+    ? getQuestTierDef(questId, normalizeQuestTier(tier))
+    : null;
+  if (!tierDef) {
+    return null;
+  }
+  if (Array.isArray(tierDef.rewardCards) && tierDef.rewardCards.length > 0) {
+    return tierDef.rewardCards;
+  }
+  if (typeof tierDef.signatureCardId === 'string') {
+    return [tierDef.signatureCardId];
+  }
+  return null;
+}
+
 // Draws an enemy `type` from a `[{ type, weight }]` pool in proportion to the
 // weights. Deterministic for a given `rng` (defaults to Math.random).
 function pickWeightedEnemyType(pool, rng = Math.random) {
@@ -493,5 +553,7 @@ module.exports = {
   getEncounterConfig,
   getEnemyPool,
   getGuaranteedEnemyType,
+  getSignatureCardId,
+  getQuestRewardCards,
   pickWeightedEnemyType,
 };
