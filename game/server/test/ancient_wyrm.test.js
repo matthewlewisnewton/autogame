@@ -8,12 +8,14 @@ import {
 	EVOLUTION_GRIND_REQUIRED,
 	createCardInstance,
 	evolveCard,
+	updateEnemies,
 	updateMinions,
 	applyWyrmMinionBreathStats,
 	scaledGrindStat,
 	isBurning,
 	getEntityWorldY,
 } from '../index.js';
+import { sampleFloorY, resolveFloorY } from '../dungeon.js';
 import {
 	connectAndJoinLobby,
 	startTestServer,
@@ -97,6 +99,31 @@ describe('Ancient Wyrm gameplay', () => {
 		if (socket && socket.connected) socket.disconnect();
 		clearAllTimers();
 		await closeServer();
+	});
+
+	it('archive-wyrm-elevated-breath keeps the target airborne after Y resolution', async () => {
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'archive-wyrm-elevated-breath' });
+		const result = await debugResultPromise;
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('archive-wyrm-elevated-breath');
+
+		const state = lobbyGameState(socket._lobbyId);
+		expect(state.enemies).toHaveLength(1);
+		expect(state.minions).toHaveLength(1);
+
+		updateEnemies();
+		updateMinions();
+
+		const enemy = state.enemies[0];
+		const minion = state.minions[0];
+		expect(enemy.flying).toBe(true);
+		expect(enemy.altitude).toBeGreaterThan(CARD_DEFS.ancient_wyrm.altitude);
+		expect(getEntityWorldY(enemy)).toBeGreaterThan(getEntityWorldY(minion));
+		const floorY = resolveFloorY(sampleFloorY(state.layout, enemy.x, enemy.z));
+		expect(enemy.y).not.toBe(floorY);
+		expect(minion.flying).toBe(true);
+		expect(minion.altitude).toBe(CARD_DEFS.ancient_wyrm.altitude);
 	});
 
 	it('spawns a minion with higher HP than base Vault Wyrm', async () => {

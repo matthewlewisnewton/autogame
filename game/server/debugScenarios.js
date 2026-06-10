@@ -3240,10 +3240,11 @@ function applyDebugScenario(socket, name) {
         }
       }
     } else if (name === 'archive-wyrm-elevated-breath') {
-      // Flying Archive Wyrm vs a grunt elevated on the same (x, z) — breath must
-      // tilt upward to connect. Reachable by evolving dungeon_drake, deploying
-      // into vertical-map combat, and fighting an elevated foe; this shortcuts
-      // straight into the airborne height-aware breath case.
+      // Flying Archive Wyrm vs an airborne enemy on the same (x, z) — breath must
+      // tilt upward to connect. Target uses flying/altitude (not a manual y override)
+      // so updateEnemies() keeps it elevated. Reachable by evolving dungeon_drake,
+      // deploying into vertical-map combat, and fighting a flying foe; this
+      // shortcuts straight into the airborne height-aware breath case.
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       const anchorX = player.x;
@@ -3252,9 +3253,8 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       const wyrmX = anchorX + 1;
       const wyrmZ = anchorZ;
-      const elevated = spawnEnemy(wyrmX, wyrmZ, 'grunt');
-      const floorY = resolveFloorY(sampleFloorY(state.layout, wyrmX, wyrmZ));
-      elevated.y = floorY + 5;
+      const elevated = spawnEnemy(wyrmX, wyrmZ, 'ember_wraith');
+      elevated.altitude = 5;
       elevated.hp = 500;
       elevated.maxHp = 500;
       elevated.wanderTarget = { x: elevated.x, z: elevated.z };
