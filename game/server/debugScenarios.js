@@ -363,6 +363,15 @@ function liveEmberDescentAdds(state) {
   );
 }
 
+function liveFrostCrossingAdds(state) {
+  return (state.enemies || []).filter(
+    (e) => e.hp > 0
+      && e.type !== 'glacial_thrower'
+      && !e.namedRare
+      && (e.type === 'grunt' || e.type === 'skirmisher'),
+  );
+}
+
 function liveArenaTrialsAdds(state, bossType = 'arena_champion') {
   const bossId = state.run?.encounter?.bossEnemyId;
   return (state.enemies || []).filter(
@@ -524,6 +533,33 @@ function applyDebugScenario(socket, name) {
         player._msRegenGraceUntil = Date.now() + 20000;
       } else {
         // Partial vitals so harness depletion probes pass without MS regen overshooting STARTING_MAGIC_STONES.
+        player.hp = 60;
+        player.magicStones = 20;
+      }
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'frost-crossing-telepipe-ready') {
+      // frost_crossing Tier 1 with ice-cavern layout; telepipe injected on ready-up
+      // (see checkAllReady). Mirrors fire-telepipe-ready for harness telepipe-reset on ice.
+      // Reachable normally by earning Telepipe, selecting Frost Crossing, and deploying.
+      const questId = 'frost_crossing';
+      const tier = 1;
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+      player.ready = false;
+      if (state.suspendedCheckpoint) {
+        abandonSuspendedRun(state);
+        player._telepipeFreshSortie = true;
+        player._msRegenGraceUntil = Date.now() + 20000;
+      } else {
         player.hp = 60;
         player.magicStones = 20;
       }
@@ -1288,6 +1324,139 @@ function applyDebugScenario(socket, name) {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'frost-crossing-near-adds') {
+      // Reposition beside live Frost Crossing Tier 1 support adds for harness add-combat QA.
+      // Reachable normally by traversing entry/stone/ice/ramp bands toward wandering adds.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'frost_crossing'
+        || state.selectedQuestTier !== 1
+        || state.run?.objective?.type !== 'defeat_enemies'
+        || state.layout?.profile !== 'ice-cavern') {
+        return { ok: false, reason: 'Requires frost_crossing Tier 1 defeat_enemies run on ice-cavern' };
+      }
+      const supportAdds = liveFrostCrossingAdds(state);
+      const liveEnemies = (state.enemies || []).filter((e) => e.hp > 0);
+      if (supportAdds.length === 0) {
+        return { ok: false, reason: 'No live support adds to approach' };
+      }
+      if (liveEnemies.length === 0) {
+        return { ok: false, reason: 'No live enemies to approach' };
+      }
+      let nearest = supportAdds[0];
+      let bestDist = Infinity;
+      for (const add of supportAdds) {
+        const dist = Math.hypot(add.x - player.x, add.z - player.z);
+        if (dist < bestDist) {
+          bestDist = dist;
+          nearest = add;
+        }
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.hand[0] = {
+        id: 'iron_sword',
+        name: 'Rust-Forged Saber',
+        type: 'weapon',
+        damage: 17,
+        charges: 5,
+        remainingCharges: 5,
+        grind: 0,
+      };
+      const playerBand = bandAt(state.layout, player.x, player.z) || 'entry';
+      const clusterAnchor = clusterAnchorForBand(state.layout, playerBand, player);
+      const clusterRadius = 4;
+      let angle = 0;
+      const step = liveEnemies.length > 0 ? (Math.PI * 2) / liveEnemies.length : 0;
+      for (const enemy of liveEnemies) {
+        enemy.hp = 1;
+        enemy.shieldHp = 0;
+        enemy.maxShieldHp = 0;
+        enemy.x = clusterAnchor.x + Math.cos(angle) * clusterRadius;
+        enemy.z = clusterAnchor.z + Math.sin(angle) * clusterRadius;
+        enemy.y = resolveFloorY(sampleFloorY(state.layout, enemy.x, enemy.z));
+        enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+        angle += step;
+      }
+      player.x = clusterAnchor.x;
+      player.z = clusterAnchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      repositionNearEnemy(player, nearest);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'frost-crossing-glacial-thrower-slow') {
+      // One Glacial Thrower in ice-ball range with godmode off for slow-on-hit QA.
+      // Reachable normally on frost_crossing runs when a glacial_thrower attacks the player.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'frost_crossing'
+        || state.selectedQuestTier !== 1
+        || state.run?.objective?.type !== 'defeat_enemies'
+        || state.layout?.profile !== 'ice-cavern') {
+        return { ok: false, reason: 'Requires frost_crossing Tier 1 defeat_enemies run on ice-cavern' };
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.debugGodmode = false;
+      socket.emit(SERVER_TO_CLIENT.DEBUG_GODMODE_RESULT, { ok: true, enabled: false });
+      state.enemies = [];
+      state.iceBalls = [];
+      const thrower = spawnEnemy(player.x + 5, player.z, 'glacial_thrower');
+      thrower.y = resolveFloorY(sampleFloorY(state.layout, thrower.x, thrower.z));
+      thrower.wanderTarget = { x: thrower.x, z: thrower.z };
+      syncRunObjectiveToEnemies();
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'frost-crossing-surface-transition') {
+      // Seat on the stone→ice boundary with forward momentum toward the slippery band.
+      // Reachable normally by walking from the stone treasure pad onto the ice field.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'frost_crossing'
+        || state.selectedQuestTier !== 1
+        || state.run?.objective?.type !== 'defeat_enemies'
+        || state.layout?.profile !== 'ice-cavern') {
+        return { ok: false, reason: 'Requires frost_crossing Tier 1 defeat_enemies run on ice-cavern' };
+      }
+      const iceRoom = state.layout.rooms.find((r) => r.band === 'ice');
+      const stoneRoom = state.layout.rooms.find((r) => r.band === 'stone');
+      const rampRoom = state.layout.rooms.find((r) => r.band === 'ramp');
+      const targetX = iceRoom?.x ?? 0;
+      const targetZ = iceRoom?.z ?? 0;
+
+      state.enemies = [];
+      state.iceBalls = [];
+
+      if (stoneRoom && iceRoom) {
+        const halfD = stoneRoom.depth / 2;
+        player.x = stoneRoom.x;
+        player.z = stoneRoom.z - halfD + 1.2;
+      } else if (rampRoom) {
+        player.x = rampRoom.x;
+        player.z = rampRoom.z;
+      } else {
+        player.x = targetX;
+        player.z = targetZ + 6;
+      }
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      const dx = targetX - player.x;
+      const dz = targetZ - player.z;
+      const dist = Math.hypot(dx, dz) || 1;
+      player.rotation = Math.atan2(dx, dz);
+      const launchSpeed = 8;
+      player.vx = (dx / dist) * launchSpeed;
+      player.vz = (dz / dist) * launchSpeed;
+
       broadcastLobbyUpdate(lobby);
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return { ok: true, scenario: name };

@@ -615,7 +615,9 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           placedBy: socket.playerId,
           placedAt: now,
         };
-        if (player.debugScenario === 'fire-telepipe-ready' && Number.isFinite(player.magicStones)) {
+        if ((player.debugScenario === 'fire-telepipe-ready'
+          || player.debugScenario === 'frost-crossing-telepipe-ready')
+          && Number.isFinite(player.magicStones)) {
           player._telepipeDeployMagicStones = player.magicStones;
           player._msRegenGraceUntil = now + 60000;
         }
