@@ -1,0 +1,14 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/per-quest-signature-card-rewards-replace-the-single-global-v-o0vv.5/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/per-quest-signature-card-rewards-replace-the-single-global-v-o0vv.5/game/data
+Server listening on port 3004
+Player connected: socket=IzGyvkjes5aA2B1JAAAB, playerId=59ee89ff-d393-4fad-bab8-78035bd3f10a
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=1XGXtBXfppPRvvAIAAAD, playerId=bcaf9e80-7cd7-4d62-9a97-02968fb0f47e
+[loot] spawned id=78931c15-d74f-4927-a664-367ecbf91632 value=10
+Player disconnected: IzGyvkjes5aA2B1JAAAB
+Player disconnected: 1XGXtBXfppPRvvAIAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
