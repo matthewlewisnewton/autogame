@@ -1,0 +1,8 @@
+Wrote the holistic review and remediation:
+
+- `tickets/server-enemies-acquire-players-through-walls-detection-radiu-1btc/round-1/review.md`
+- `tickets/server-enemies-acquire-players-through-walls-detection-radiu-1btc/round-1/gaps.md`
+
+Final verdict: `VERDICT: FAIL`
+
+Blocking gap: the production LOS fix passes, but the added `enemy-behind-wall` debug scenario places the enemy outside the walkable Frost Crossing layout across an exterior start-room wall, so it is not an equivalent normally reachable gameplay state.

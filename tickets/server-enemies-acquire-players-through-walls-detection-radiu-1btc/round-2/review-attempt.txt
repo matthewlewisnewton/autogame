@@ -1,0 +1,5 @@
+Wrote the holistic review to `tickets/server-enemies-acquire-players-through-walls-detection-radiu-1btc/round-2/review.md`.
+
+Final verdict: `VERDICT: PASS`
+
+No `gaps.md` or `nits.md` was created.
