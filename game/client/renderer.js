@@ -4334,9 +4334,11 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 		return;
 	}
 
-	// Forward cone wedge on the ground — exact server collectConeHits footprint
+	// Forward cone wedge on the ground — exact server collectConeHits footprint.
+	// When origin.y is set (airborne breath), lift the cone to that height.
+	const coneY = Number.isFinite(origin.y) ? origin.y : GROUND_OVERLAY_Y;
 	const group = createConeHitboxGroup(direction, range, coneAngle, coneStyle);
-	group.position.set(origin.x, GROUND_OVERLAY_Y, origin.z);
+	group.position.set(origin.x, coneY, origin.z);
 	targetScene.add(group);
 
 	activeEffects.push({
@@ -5308,7 +5310,8 @@ export function spawnTelegraphRing(origin, radius, style = {}) {
 		depthWrite: false,
 	});
 	const mesh = new THREE.Mesh(geometry, material);
-	mesh.position.set(origin.x, GROUND_OVERLAY_Y, origin.z);
+	const ringY = Number.isFinite(origin.y) ? origin.y : GROUND_OVERLAY_Y;
+	mesh.position.set(origin.x, ringY, origin.z);
 	mesh.rotation.x = -Math.PI / 2;
 	mesh.scale.setScalar(0.001);
 	targetScene.add(mesh);
