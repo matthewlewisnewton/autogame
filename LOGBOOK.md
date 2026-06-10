@@ -6509,3 +6509,26 @@ PASS. This ticket did not add or modify a `?debugScenario=NAME` shortcut. The ca
 ## Remaining gaps
 
 None.
+
+## v0.374 — 384-extend-unlockrequires-multi-prereq-and  (2026-06-10 12:18:37)
+
+PASS. The changes stay within the lobby/quest progression model described in `game/docs/design.md`: players select quests in the lobby, ready up, deploy, and progression is awarded after successful dungeon objectives. The foundation requirements are not regressed; the captured run confirms WebSocket connection, multiplayer visualization/state, 3D rendering, and movement in an active run.
+
+### Debug Scenarios
+
+PASS. This ticket did not add or change a development `?debugScenario=` shortcut. The changed behavior is exercised through normal account progression, quest selection, readiness, and run-completion paths rather than relying on a debug-only entry point.
+
+## Code Quality And Verification
+
+The live codebase is coherent with the ticket scope. The implementation is server-authoritative for selection/readiness gating, keeps account-specific payloads isolated per socket, and updates the client lock UI without trusting the raw legacy unlock map when evaluated `tierUnlocked` is available.
+
+Verification observed:
+
+- Round-3 runtime capture: `ok: true`, empty `pageerrors`, no fatal console entries.
+- `coverage.log`: 151 test files passed, 2328 tests passed.
+- Changed code inspected from `git diff 00815f732b26c7eecfaa2d64a1ffd2a8cf8c37a4 HEAD`.
+
+## Remaining gaps
+
+None.
+
