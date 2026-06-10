@@ -68,7 +68,7 @@ describe('quest briefing helpers', () => {
   it('formatBriefingSummary prefixes client NPC when briefing is present', () => {
     const quest = getQuest('training_caverns', 1);
     expect(formatBriefingSummary(quest)).toContain('Annex Liaison Kade');
-    expect(formatBriefingSummary(quest)).toContain('annex sector');
+    expect(formatBriefingSummary(quest)).toContain('holding pens');
   });
 
   it('formatBriefingRewardLine falls back to currency reward summary', () => {

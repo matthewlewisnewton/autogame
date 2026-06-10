@@ -107,6 +107,9 @@ function roomKeyForDef(roomDef) {
   if (Number.isInteger(roomDef.roomIndex) && roomDef.roomIndex >= 0) {
     return `room:${roomDef.roomIndex}`;
   }
+  if (typeof roomDef.band === 'string' && roomDef.band.length > 0) {
+    return `band:${roomDef.band}`;
+  }
   if (typeof roomDef.landmark === 'string' && roomDef.landmark.length > 0) {
     return `landmark:${roomDef.landmark}`;
   }
@@ -149,6 +152,16 @@ function resolveRoomDef(roomDef, layout) {
       room: layout.rooms[roomDef.roomIndex],
       roomIndex: roomDef.roomIndex,
     };
+  }
+
+  if (typeof roomDef.band === 'string' && roomDef.band.length > 0) {
+    const room = layout.rooms.find((candidate) => candidate.band === roomDef.band);
+    if (room) {
+      return {
+        room,
+        roomIndex: layout.rooms.indexOf(room),
+      };
+    }
   }
 
   if (typeof roomDef.landmark === 'string' && Array.isArray(layout.landmarks)) {
@@ -341,7 +354,7 @@ function isWaveRequirementMet(run, afterWave) {
   return roomState.waveIndex > afterWave.waveIndex;
 }
 
-function initPassageLocks(run, quest) {
+function initPassageLocks(run, quest, layout) {
   const config = getScriptedEncounterDef(quest);
   const lockDefs = config?.passageLocks;
   if (!Array.isArray(lockDefs) || lockDefs.length === 0) {
@@ -349,14 +362,23 @@ function initPassageLocks(run, quest) {
     return;
   }
 
-  run.passageLocks = lockDefs.map((lockDef) => ({
-    passageIndex: lockDef.passageIndex,
-    afterWave: {
-      roomIndex: lockDef.afterWave.roomIndex,
-      waveIndex: lockDef.afterWave.waveIndex,
-    },
-    locked: !isWaveRequirementMet(run, lockDef.afterWave),
-  }));
+  run.passageLocks = lockDefs.map((lockDef) => {
+    let passageIndex = lockDef.passageIndex;
+    if (!Number.isInteger(passageIndex) && layout && Number.isInteger(lockDef.fromRoomIndex)) {
+      passageIndex = findPassageIndexFromRoom(layout, lockDef.fromRoomIndex);
+    }
+    if (!Number.isInteger(passageIndex) || passageIndex < 0) {
+      return null;
+    }
+    return {
+      passageIndex,
+      afterWave: {
+        roomIndex: lockDef.afterWave.roomIndex,
+        waveIndex: lockDef.afterWave.waveIndex,
+      },
+      locked: !isWaveRequirementMet(run, lockDef.afterWave),
+    };
+  }).filter(Boolean);
 }
 
 function unlockPassagesForWave(run, roomIndex, waveIndex) {
@@ -386,7 +408,7 @@ function initScriptedEncounter(run, quest, layout, gameState, ctx) {
   run.scriptedEncounter = {
     rooms: buildRoomStates(quest, layout),
   };
-  initPassageLocks(run, quest);
+  initPassageLocks(run, quest, layout);
 
   const startRoomIndex = getStartRoomIndex(layout);
   const startRoomKey = Object.keys(run.scriptedEncounter.rooms).find((key) => {

@@ -204,8 +204,7 @@ function setupScriptedWaveCombatDeploy(lobby, state, player) {
   state.loot = state.loot || [];
 }
 
-function setupFrostCrossingTier1Deploy(lobby, state, player) {
-  const questId = 'frost_crossing';
+function setupQuestTier1Deploy(lobby, state, player, questId) {
   const tier = 1;
   state.selectedQuestId = questId;
   state.selectedQuestTier = tier;
@@ -236,6 +235,22 @@ function setupFrostCrossingTier1Deploy(lobby, state, player) {
   delete state._pendingEncounterBossId;
   spawnEnemies();
   startDungeonRun();
+}
+
+function setupFrostCrossingTier1Deploy(lobby, state, player) {
+  setupQuestTier1Deploy(lobby, state, player, 'frost_crossing');
+}
+
+function setupTrainingCavernsTier1Deploy(lobby, state, player) {
+  setupQuestTier1Deploy(lobby, state, player, 'training_caverns');
+}
+
+function setupCrystalRescueTier1Deploy(lobby, state, player) {
+  setupQuestTier1Deploy(lobby, state, player, 'crystal_rescue');
+}
+
+function setupAnnexEscortTier1Deploy(lobby, state, player) {
+  setupQuestTier1Deploy(lobby, state, player, 'annex_escort');
 }
 
 function setupArenaTrialsTier2StageBossDebug(lobby, state, player) {
@@ -982,8 +997,62 @@ function applyDebugScenario(socket, name) {
       };
     }
 
+    if (name === 'training-caverns-tier-1') {
+      // training_caverns Tier 1 scripted wave combat with passage lock and named rare.
+      // Reachable normally by selecting Initiate Vault and deploying.
+      setupTrainingCavernsTier1Deploy(lobby, state, player);
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
+    if (name === 'crystal-rescue-tier-1') {
+      // crystal_rescue Tier 1 prism collect_items with scripted guard waves.
+      // Reachable normally by selecting Prism Salvage and deploying.
+      setupCrystalRescueTier1Deploy(lobby, state, player);
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
+    if (name === 'annex-escort-tier-1') {
+      // annex_escort Tier 1 escort objective with Archivist Vale and ambush waves.
+      // Reachable normally by selecting Annex Evacuation and deploying.
+      setupAnnexEscortTier1Deploy(lobby, state, player);
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
     if (name === 'frost-crossing-tier-1') {
-      // frost_crossing Tier 1 with ice-cavern layout and defeat_enemies objective.
+      // frost_crossing Tier 1 with ice-cavern layout and scripted ice-band waves.
       // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
       // snapshots the correct run.questTier/objective. Reachable normally by selecting
       // Frost Crossing and deploying; this scenario is a shortcut into that state.

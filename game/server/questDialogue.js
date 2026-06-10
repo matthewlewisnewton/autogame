@@ -81,6 +81,10 @@ function matchesCrystalCollected(beacon, ctx) {
 
 function matchesRoomEntered(beacon, ctx) {
   if (beacon.trigger !== 'onRoomEntered') return false;
+  if (typeof beacon.band === 'string' && beacon.band.length > 0) {
+    const room = ctx.layout?.rooms?.[ctx.roomIndex];
+    return room?.band === beacon.band;
+  }
   if (typeof beacon.landmark === 'string' && beacon.landmark.length > 0) {
     return ctx.landmark === beacon.landmark
       || (ctx.roomIndex != null && ctx.roomIndex === roomIndexForLandmark(ctx.layout, beacon.landmark));
@@ -173,6 +177,10 @@ function tickDialogueRoomEntry(gameState, io, getQuest) {
 
     const ctxBase = { layout, roomIndex };
     const keys = [`room:${roomIndex}`];
+    const room = layout.rooms[roomIndex];
+    if (room?.band) {
+      keys.push(`band:${room.band}`);
+    }
     if (Array.isArray(layout.landmarks)) {
       for (const lm of layout.landmarks) {
         if (findRoomIndexAt(layout, lm.x, lm.z) === roomIndex && lm.type) {

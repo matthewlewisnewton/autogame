@@ -90,8 +90,8 @@ const OBJECTIVE_DEFS = {
   },
   collect_items: {
     objectiveType: 'collect_items',
-    skipBulkCombatSpawn() {
-      return false;
+    skipBulkCombatSpawn(quest) {
+      return isScriptedQuest(quest);
     },
     preferNearestEnemySpawns() {
       return true;
@@ -102,22 +102,39 @@ const OBJECTIVE_DEFS = {
     },
     createObjective(quest) {
       const totalItems = Number.isFinite(quest.itemCount) ? quest.itemCount : 1;
-      return {
+      const objective = {
         type: 'collect_items',
         label: `${quest.name}: recover ${totalItems} prisms`,
         totalItems,
         collectedItems: 0,
       };
+      if (isScriptedQuest(quest)) {
+        objective.totalEnemies = countAuthoredScriptedEnemies(quest);
+        objective.defeatedEnemies = 0;
+      }
+      return objective;
     },
     isComplete(objective) {
-      return objective.collectedItems >= objective.totalItems;
+      if (objective.collectedItems < objective.totalItems) return false;
+      if (Number.isFinite(objective.totalEnemies)) {
+        return objective.defeatedEnemies >= objective.totalEnemies;
+      }
+      return true;
     },
     clampProgress(run) {
       clampCollectedItems(run.objective);
+      if (Number.isFinite(run.objective.totalEnemies)) {
+        clampDefeatedEnemies(run.objective);
+      }
     },
     onCrystalCollected(run, count) {
       run.objective.collectedItems += count;
       clampCollectedItems(run.objective);
+    },
+    onEnemyDefeated(run, count) {
+      if (!Number.isFinite(run.objective.totalEnemies)) return;
+      run.objective.defeatedEnemies += count;
+      clampDefeatedEnemies(run.objective);
     },
   },
   survive: {

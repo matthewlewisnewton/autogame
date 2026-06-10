@@ -263,35 +263,26 @@ describe('Frost Crossing guaranteed glacial_thrower spawn', () => {
 		expect(getGuaranteedEnemyType('frost_crossing')).toBe('glacial_thrower');
 	});
 
-	it('always spawns at least one glacial_thrower across representative seeds', () => {
-		for (const seed of SEEDS) {
-			const types = spawnTypesForQuest('frost_crossing', seed);
-			expect(types.length).toBe(6); // quest enemyCount
-			expect(types).toContain('glacial_thrower');
-		}
+	it('authored ice-band scripted waves include glacial_thrower spawns', () => {
+		const quest = getQuest('frost_crossing', 1);
+		const iceRoom = quest.scriptedEncounters.rooms.find((room) => room.band === 'ice');
+		const types = iceRoom.waves.flatMap((wave) => wave.spawns.map((spawn) => spawn.type));
+		expect(types).toContain('glacial_thrower');
+		expect(iceRoom.waves.some((wave) => wave.spawns.some((spawn) => spawn.namedRare))).toBe(true);
 	});
 
-	it('still draws the remaining enemies from the weighted pool', () => {
-		// Across all seeds, non-guaranteed slots should produce at least one
-		// non-glacial pool type (grunt/skirmisher), proving the pool still draws.
-		const otherTypes = new Set();
-		for (const seed of SEEDS) {
-			const types = spawnTypesForQuest('frost_crossing', seed);
-			for (const t of types) {
-				if (t !== 'glacial_thrower') otherTypes.add(t);
-			}
-		}
-		expect(otherTypes.size).toBeGreaterThan(0);
-		for (const t of otherTypes) {
-			expect(['grunt', 'skirmisher']).toContain(t);
-		}
+	it('still uses grunt and skirmisher in non-ice scripted waves', () => {
+		const quest = getQuest('frost_crossing', 1);
+		const entryRoom = quest.scriptedEncounters.rooms.find((room) => room.roomIndex === 0);
+		const types = entryRoom.waves.flatMap((wave) => wave.spawns.map((spawn) => spawn.type));
+		expect(types).toContain('grunt');
+		expect(types).not.toContain('glacial_thrower');
 	});
 
-	it('is deterministic: same seed yields the same spawn set', () => {
+	it('keeps glacial_thrower out of bulk spawns because scripted waves replace enemyCount', () => {
 		for (const seed of SEEDS) {
-			expect(spawnTypesForQuest('frost_crossing', seed)).toEqual(
-				spawnTypesForQuest('frost_crossing', seed),
-			);
+			const types = spawnTypesForQuest('frost_crossing', seed);
+			expect(types.length).toBe(0);
 		}
 	});
 

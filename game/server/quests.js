@@ -44,15 +44,51 @@ const QUEST_DEFS = {
     tiers: {
       1: {
         name: 'Initiate Vault',
-        description: 'Purge hostiles from the derelict annex sector.',
+        description: 'Sweep annex holding pens in scripted waves and breach the vault mouth.',
         clientNpc: 'Annex Liaison Kade',
         briefing:
-          'The annex sector is crawling with salvage crews turned hostile. '
-          + 'Clear every wave and hold the vault mouth until extraction arrives.',
+          'Salvage crews have barricaded the annex holding pens. '
+          + 'Clear each wave, break through the sealed passage, and purge the vault stalker.',
         objectiveType: 'defeat_enemies',
-        enemyCount: 5,
         rewardCurrency: 10,
+        rewardCardId: 'saber_of_light',
         layoutProfile: 'crowded',
+        scriptedEncounters: {
+          rooms: [
+            {
+              roomIndex: 0,
+              waves: [
+                { spawns: [{ type: 'grunt', count: 2 }] },
+                {
+                  spawns: [
+                    { type: 'skirmisher', count: 1 },
+                    {
+                      type: 'grunt',
+                      count: 1,
+                      namedRare: {
+                        id: 'annex_vault_stalker',
+                        displayName: 'Vault Stalker',
+                        variantId: 'warded',
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              roomIndex: 1,
+              waves: [
+                { spawns: [{ type: 'skirmisher', count: 2 }] },
+              ],
+            },
+          ],
+          passageLocks: [
+            {
+              afterWave: { roomIndex: 0, waveIndex: 0 },
+              fromRoomIndex: 0,
+            },
+          ],
+        },
         dialogueBeacons: [
           {
             beaconId: 'training_start_room',
@@ -60,6 +96,14 @@ const QUEST_DEFS = {
             roomIndex: 0,
             speaker: 'Annex Liaison Kade',
             line: 'Contract accepted. Sweep the annex — I will mark your progress on the channel.',
+          },
+          {
+            beaconId: 'training_wave0_clear',
+            trigger: 'onWaveCleared',
+            roomIndex: 0,
+            waveIndex: 0,
+            speaker: 'Annex Liaison Kade',
+            line: 'First pen cleared — push deeper before the salvage crews regroup.',
           },
         ],
       },
@@ -90,16 +134,32 @@ const QUEST_DEFS = {
     tiers: {
       1: {
         name: 'Prism Salvage',
-        description: 'Recover resonance prisms from the collapsed lattice.',
+        description: 'Recover resonance prisms while clearing scripted guard waves.',
         clientNpc: 'Lattice Custodian Mira',
         briefing:
           'Resonance prisms are still singing in the collapsed lattice. '
-          + 'Recover every prism while the guard swarms keep the sector locked down.',
+          + 'Recover every prism and clear the guard swarms holding each chamber.',
         objectiveType: 'collect_items',
         itemCount: 3,
-        enemyCount: 4,
         rewardCurrency: 12,
+        rewardCardId: 'mana_prism',
         layoutProfile: 'open',
+        scriptedEncounters: {
+          rooms: [
+            {
+              roomIndex: 0,
+              waves: [{ spawns: [{ type: 'skirmisher', count: 2 }] }],
+            },
+            {
+              roomIndex: 1,
+              waves: [{ spawns: [{ type: 'grunt', count: 2 }] }],
+            },
+            {
+              roomIndex: 2,
+              waves: [{ spawns: [{ type: 'skirmisher', count: 1 }, { type: 'grunt', count: 1 }] }],
+            },
+          ],
+        },
         dialogueBeacons: [
           {
             beaconId: 'prism_first',
@@ -186,11 +246,53 @@ const QUEST_DEFS = {
     tiers: {
       1: {
         name: 'Frost Crossing',
-        description: 'Cross the frozen cavern and purge hostiles from the ice field.',
+        description: 'Cross the frozen cavern and purge scripted waves from the ice field.',
+        clientNpc: 'Ice-Watch Courier Sela',
+        briefing:
+          'The ice band is slick with rimecast ambushes. '
+          + 'Cross the ramps, clear the thrower waves, and bring down Rimecast the Slow.',
         objectiveType: 'defeat_enemies',
-        enemyCount: 6,
         rewardCurrency: 14,
+        rewardCardId: 'frost_nova',
         layoutProfile: 'ice-cavern',
+        scriptedEncounters: {
+          rooms: [
+            {
+              roomIndex: 0,
+              waves: [{ spawns: [{ type: 'grunt', count: 2 }] }],
+            },
+            {
+              band: 'ice',
+              waves: [
+                { spawns: [{ type: 'glacial_thrower', count: 1 }, { type: 'grunt', count: 2 }] },
+                {
+                  spawns: [
+                    {
+                      type: 'glacial_thrower',
+                      count: 1,
+                      namedRare: {
+                        id: 'frost_rimecast',
+                        displayName: 'Rimecast the Slow',
+                        variantId: 'frenzied',
+                        enemyType: 'glacial_thrower',
+                      },
+                    },
+                    { type: 'skirmisher', count: 1 },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        dialogueBeacons: [
+          {
+            beaconId: 'frost_ice_band_enter',
+            trigger: 'onRoomEntered',
+            band: 'ice',
+            speaker: 'Ice-Watch Courier Sela',
+            line: 'You are on the ice band — watch your footing and clear the throwers.',
+          },
+        ],
       },
     },
   },
@@ -278,6 +380,50 @@ const QUEST_DEFS = {
           landmark: 'spire_summit',
           addCount: 5,
         },
+      },
+    },
+  },
+  annex_escort: {
+    id: 'annex_escort',
+    enemyPool: [
+      { type: 'grunt', weight: 2 },
+      { type: 'skirmisher', weight: 1 },
+    ],
+    tiers: {
+      1: {
+        name: 'Annex Evacuation',
+        description: 'Escort the archivist to the annex treasure vault through ambush lanes.',
+        clientNpc: 'Annex Liaison Kade',
+        briefing:
+          'Archivist Vale carries the annex registry codes. '
+          + 'Escort them to the treasure vault and clear every ambush wave along the route.',
+        objectiveType: 'escort',
+        escortNpc: { name: 'Archivist Vale', maxHp: 70 },
+        escortDestination: { roomRole: 'treasure' },
+        rewardCurrency: 14,
+        rewardCardId: 'echo_blade',
+        layoutProfile: 'crowded',
+        scriptedEncounters: {
+          rooms: [
+            {
+              roomIndex: 0,
+              waves: [{ spawns: [{ type: 'grunt', count: 2 }] }],
+            },
+            {
+              roomIndex: 1,
+              waves: [{ spawns: [{ type: 'skirmisher', count: 2 }] }],
+            },
+          ],
+        },
+        dialogueBeacons: [
+          {
+            beaconId: 'escort_start',
+            trigger: 'onRoomEntered',
+            roomIndex: 0,
+            speaker: 'Annex Liaison Kade',
+            line: 'Vale is on channel. Keep them alive and reach the vault.',
+          },
+        ],
       },
     },
   },
@@ -376,9 +522,18 @@ function formatObjectiveSummary(quest) {
     return '';
   }
   if (quest.objectiveType === 'collect_items') {
-    return `Recover ${quest.itemCount ?? 0} prisms`;
+    const itemCount = quest.itemCount ?? 0;
+    const guardCount = countScriptedEnemiesInQuest(quest);
+    if (guardCount > 0) {
+      return `Recover ${itemCount} prisms and clear ${guardCount} guards`;
+    }
+    return `Recover ${itemCount} prisms`;
   }
   if (quest.objectiveType === 'defeat_enemies') {
+    const scriptedCount = countScriptedEnemiesInQuest(quest);
+    if (scriptedCount > 0) {
+      return `Clear ${scriptedCount} scripted hostiles`;
+    }
     return `Neutralize ${quest.enemyCount ?? 0} hostiles`;
   }
   if (quest.objectiveType === 'survive') {
@@ -512,6 +667,23 @@ function getScriptedEncounterConfig(quest) {
     return null;
   }
   return quest.scriptedEncounters;
+}
+
+function countScriptedEnemiesInQuest(quest) {
+  const config = getScriptedEncounterConfig(quest);
+  if (!config) return 0;
+  let total = 0;
+  for (const roomDef of config.rooms) {
+    if (!Array.isArray(roomDef.waves)) continue;
+    for (const wave of roomDef.waves) {
+      if (!Array.isArray(wave.spawns)) continue;
+      for (const spawn of wave.spawns) {
+        const count = Number.isFinite(spawn?.count) ? spawn.count : 1;
+        total += Math.max(1, Math.floor(count));
+      }
+    }
+  }
+  return total;
 }
 
 function formatRewardSummary(quest) {
@@ -698,6 +870,7 @@ module.exports = {
   questBriefingFields,
   getEncounterConfig,
   getScriptedEncounterConfig,
+  countScriptedEnemiesInQuest,
   getEnemyPool,
   getGuaranteedEnemyType,
   pickWeightedEnemyType,
