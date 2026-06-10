@@ -449,10 +449,22 @@ function clearFrostCrossingScriptedHostiles(state) {
 }
 
 function liveArenaTrialsAdds(state, bossType = 'arena_champion') {
-  const bossId = state.run?.encounter?.bossEnemyId;
   return (state.enemies || []).filter(
-    (e) => e.hp > 0 && e.id !== bossId && e.type !== bossType,
+    (e) => e.hp > 0 && e.type !== bossType && (e.type === 'grunt' || e.type === 'skirmisher'),
   );
+}
+
+/**
+ * Debug-only: the game loop may activate the encounter between external add-clear
+ * (e.g. clearNonBossEnemies in harness tests) and boss-approach setup. Restore
+ * dormant so dormant-phase probes read stable state.
+ */
+function revertPrematureEncounterActivationForBossApproach(state) {
+  if (process.env.ALLOW_DEBUG_SCENARIOS !== '1') return;
+  const encounter = state.run?.encounter;
+  if (!encounter || encounter.phase !== 'active') return;
+  encounter.phase = 'dormant';
+  encounter.locked = false;
 }
 
 function roomAt(layout, x, z) {
@@ -985,9 +997,11 @@ function applyDebugScenario(socket, name) {
         || !state.run?.encounter) {
         return { ok: false, reason: 'Requires training_caverns Tier 2 stage-boss run' };
       }
-      if (liveTrainingCavernsAdds(state).length > 0) {
+      const trainingBossId = state.run.encounter.bossEnemyId;
+      if (!areAllNonBossEnemiesDefeated(state, trainingBossId)) {
         return { ok: false, reason: 'Adds must be cleared before boss approach' };
       }
+      revertPrematureEncounterActivationForBossApproach(state);
       if (state.run.encounter.phase !== 'dormant') {
         return { ok: false, reason: 'Encounter must be dormant' };
       }
@@ -1183,9 +1197,11 @@ function applyDebugScenario(socket, name) {
         || !state.run?.encounter) {
         return { ok: false, reason: 'Requires arena_trials Tier 2 stage-boss run' };
       }
-      if (liveArenaTrialsAdds(state).length > 0) {
+      const bossId = state.run.encounter.bossEnemyId;
+      if (!areAllNonBossEnemiesDefeated(state, bossId)) {
         return { ok: false, reason: 'Adds must be cleared before boss approach' };
       }
+      revertPrematureEncounterActivationForBossApproach(state);
       if (state.run.encounter.phase !== 'dormant') {
         return { ok: false, reason: 'Encounter must be dormant' };
       }
@@ -4777,7 +4793,7 @@ function spawnHarnessBossVisualAddIfNeeded(gameState, boss) {
   if (process.env.ALLOW_DEBUG_SCENARIOS !== '1' || !boss || !gameState?.layout) return;
   if (boss.type !== 'annex_overseer') return;
   const hasApproachPlayer = Object.values(gameState.players || {}).some(
-    (player) => player && BOSS_APPROACH_NUDGE_SCENARIOS.has(player.debugScenario),
+    (player) => player?.debugScenario === 'training-caverns-boss-approach',
   );
   if (!hasApproachPlayer) return;
   const hasLiveAdd = (gameState.enemies || []).some(
@@ -4805,9 +4821,7 @@ function nudgeDebugBossApproachPlayers(state) {
   const now = Date.now();
   for (const player of Object.values(state.players)) {
     if (!player || !BOSS_APPROACH_NUDGE_SCENARIOS.has(player.debugScenario)) continue;
-    const addsCleared = player.debugScenario === 'arena-trials-boss-approach'
-      ? liveArenaTrialsAdds(state).length === 0
-      : bossId && areAllNonBossEnemiesDefeated(state, bossId);
+    const addsCleared = bossId && areAllNonBossEnemiesDefeated(state, bossId);
     if (!addsCleared) continue;
     if (player.debugScenarioNudgeAfter && now < player.debugScenarioNudgeAfter) continue;
     const dx = anchor.x - player.x;
