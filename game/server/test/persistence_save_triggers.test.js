@@ -16,6 +16,7 @@ import {
 	runGameLoopTick,
 } from '../index.js';
 import { InMemoryProvider } from '../providers.js';
+import { PLAYER_MOVEMENT_SAVE_DEBOUNCE_MS } from '../config.js';
 import { connectClient, waitForEvent, lobbyStateForSocket, playerForSocket } from './helpers.js';
 
 // ── Helpers ──
@@ -133,7 +134,7 @@ describe('savePlayerData triggers on state-changing handlers', () => {
 		socket.disconnect();
 	});
 
-	it('batches savePlayerData to at most once per tick across many move packets', async () => {
+	it('debounces movement saves across ticks within PLAYER_MOVEMENT_SAVE_DEBOUNCE_MS', async () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
@@ -152,8 +153,27 @@ describe('savePlayerData triggers on state-changing handlers', () => {
 		expect(savePlayerSpy).not.toHaveBeenCalled();
 
 		runGameLoopTick();
-
 		expect(savePlayerSpy).toHaveBeenCalledTimes(1);
+
+		for (let i = 0; i < 5; i++) {
+			socket.emit('move', { dx: 1, dz: 0, rotation: 0 });
+			runGameLoopTick();
+		}
+		expect(savePlayerSpy).toHaveBeenCalledTimes(1);
+
+		const player = playerForSocket(socket);
+		const lastSavedAt = player.persistenceLastSavedAt;
+		expect(lastSavedAt).toBeGreaterThan(0);
+
+		vi.useFakeTimers();
+		try {
+			vi.setSystemTime(lastSavedAt + PLAYER_MOVEMENT_SAVE_DEBOUNCE_MS);
+			socket.emit('move', { dx: 1, dz: 0, rotation: 0 });
+			runGameLoopTick();
+			expect(savePlayerSpy).toHaveBeenCalledTimes(2);
+		} finally {
+			vi.useRealTimers();
+		}
 
 		savePlayerSpy.mockRestore();
 		socket.disconnect();
