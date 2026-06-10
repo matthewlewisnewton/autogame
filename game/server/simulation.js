@@ -1133,6 +1133,13 @@ const ENEMY_DEFS = {
 		hp: 420, chaseSpeed: 1.0, wanderSpeed: 0.5, attackDamage: 22, attackWindupMs: 1400,
 		attackStyle: 'cone', attackConeAngle: Math.PI / 2, attackRange: 6,
 	},
+	cinder_warden: {
+		name: 'Cinder Warden',
+		description: 'Smoldering guardian of the first fire stage; sweeps a wide cone of cinders that scorch everything in reach.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 360, chaseSpeed: 1.1, wanderSpeed: 0.55, attackDamage: 21, attackWindupMs: 1300,
+		attackStyle: 'cone', attackConeAngle: (2 * Math.PI) / 3, attackRange: 5.5,
+	},
 	spawner: {
 		name: 'Brood Node',
 		description: 'Radial attacker that periodically summons skirmishers.',

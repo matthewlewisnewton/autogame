@@ -65,6 +65,7 @@ const ENEMY_CARD_DROPS = {
   annex_overseer: 'dungeon_drake',
   arena_champion: 'dungeon_drake',
   spire_warden: 'dungeon_drake',
+  cinder_warden: 'dungeon_drake',
   spawner: 'battle_familiar',
 };
 
@@ -78,6 +79,7 @@ const ENEMY_MS_DROPS = {
   annex_overseer: 50,
   arena_champion: 70,
   spire_warden: 55,
+  cinder_warden: 52,
   spawner: 25,
 };
 
