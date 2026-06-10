@@ -204,7 +204,12 @@ function removePlayerFromLobby(playerId) {
 
   delete lobby.state.players[playerId];
   lobby.state.minions = lobby.state.minions.filter((m) => m.ownerId !== playerId);
-  delete lobby.state.pendingTrades[playerId];
+  // pendingTrades is keyed by tradeId, not playerId — scan for trades involving the player
+  for (const [tradeId, trade] of Object.entries(lobby.state.pendingTrades || {})) {
+    if (trade.fromPlayerId === playerId || trade.toPlayerId === playerId) {
+      delete lobby.state.pendingTrades[tradeId];
+    }
+  }
 
   const remaining = Object.keys(lobby.state.players).length;
   if (remaining === 0) {

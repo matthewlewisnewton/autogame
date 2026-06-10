@@ -262,8 +262,11 @@ export function pollInput() {
 
 		for (const action of POLLABLE_ACTIONS) {
 			const binding = getBindingForAction(action, gp);
-			if (!binding || !bindingMatchesModifier(binding, modifierHeld)) continue;
-			const pressed = isBindingActive(gp, binding);
+			// Always record state, even on modifier mismatch — skipping the
+			// prev write would re-fire a held button when the modifier toggles.
+			const pressed = !!binding
+				&& isBindingActive(gp, binding)
+				&& bindingMatchesModifier(binding, modifierHeld);
 			const wasPressed = !!prev[action];
 			prev[action] = pressed;
 			if (actionsEnabled && pressed && !wasPressed) {

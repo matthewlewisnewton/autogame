@@ -187,6 +187,7 @@ const DEFAULT_SLOW_FACTOR = 0.5;
 let moveAccumulator = 0;
 let moveEmitAccumulator = 0;
 let moveSequence = 0;
+let moveStopPending = false;
 let enemyHitboxPhase = 0;
 /** Fixed-tick simulation position; myX/myZ interpolate between prevSim and sim for smooth rendering. */
 let simX = 0;
@@ -1800,6 +1801,18 @@ export function updateMyPlayer(delta) {
 			: Math.atan2(dirZ, dirX);
 	} else {
 		moveEmitAccumulator = 0;
+		if (moveStopPending && socketRef) {
+			// Tell the server we stopped; otherwise it keeps applying the last
+			// input until INPUT_STALE_MS and the idle reconciler snaps us back.
+			moveStopPending = false;
+			moveSequence += 1;
+			socketRef.emit(CLIENT_TO_SERVER.MOVE, {
+				dx: 0,
+				dz: 0,
+				rotation: lastEmittedRotation ?? playerRotation,
+				sequence: moveSequence,
+			});
+		}
 		if (isCoastingOnSlippery(layout)) {
 			moveAccumulator += delta;
 		}
@@ -1841,6 +1854,7 @@ export function updateMyPlayer(delta) {
 			moveEmitAccumulator -= TICK_DT;
 			moveSequence += 1;
 			lastEmittedRotation = moveRotation;
+			moveStopPending = true;
 			socketRef.emit(CLIENT_TO_SERVER.MOVE, {
 				dx: dirX,
 				dz: dirZ,

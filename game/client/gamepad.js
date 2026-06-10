@@ -112,7 +112,10 @@ export function pollGamepadLook(delta, deadzone = GAMEPAD_DEADZONE) {
 	if (profile.lookSource === 'cStick') {
 		lookX = read8BitDo64CStickHorizontal(pad, deadzone);
 	} else {
-		lookX = applyDeadzone(pad.axes[2] ?? 0, deadzone);
+		// When movement is bound to the right stick, it owns axis 2 — read
+		// look from the left stick instead so one stick never drives both.
+		const lookAxisIndex = cfg.moveStick === 'right' ? 0 : 2;
+		lookX = applyDeadzone(pad.axes[lookAxisIndex] ?? 0, deadzone);
 	}
 	return -lookX * GAMEPAD_LOOK_SENSITIVITY * delta;
 }

@@ -529,9 +529,10 @@ function handleUseKeyItem(socket, state, lobby, data) {
     let dz = player.inputDz || 0;
     const mag = Math.hypot(dx, dz);
     if (mag < 1e-8) {
+      // rotation = atan2(z, x), so facing direction is (cos, sin) — see angleFromPlayerTo
       const yaw = player.rotation || 0;
-      dx = Math.sin(yaw);
-      dz = Math.cos(yaw);
+      dx = Math.cos(yaw);
+      dz = Math.sin(yaw);
     } else {
       dx /= mag;
       dz /= mag;
