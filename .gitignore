@@ -92,3 +92,12 @@ __pycache__/
 *.db
 .beads-credential-key
 .beads/proxieddb/
+
+# Merge-queue runtime artifacts (resolver/fixer scratch + verify log). The
+# resolver runs `git add -A` mid-merge; if these are not ignored it COMMITS
+# them to main, and every later worktree's untracked copy then blocks
+# `git merge main` ("untracked working tree files would be overwritten") —
+# which killed four passed tickets on 2026-06-09.
+.merge-resolve/
+.merge-fix/
+game/.merge-verify.log
