@@ -1225,7 +1225,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       }
 
       if (cardDef.effect === 'spike_trap' || cardDef.effect === 'cinder_snare') {
-        spawnGroundEnchantment(originX, originZ, cardDef, socket.playerId);
+        spawnGroundEnchantment(originX, originZ, cardDef, socket.playerId, originY);
         io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
         io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
           playerId: socket.playerId,

@@ -2223,7 +2223,7 @@ function countGroundEnchantmentsForPlayer(ownerId) {
   ).length;
 }
 
-function spawnGroundEnchantment(x, z, cardDef, ownerId) {
+function spawnGroundEnchantment(x, z, cardDef, ownerId, originY = null) {
   if (!_gameState.enchantments) _gameState.enchantments = [];
   const now = Date.now();
   _gameState.enchantments.push({
@@ -2233,6 +2233,7 @@ function spawnGroundEnchantment(x, z, cardDef, ownerId) {
     effect: cardDef.effect,
     target: 'ground',
     x,
+    y: resolveAoeOriginY(x, originY, z),
     z,
     radius: cardDef.radius || 2.5,
     damage: cardDef.damage || 35,
@@ -2375,7 +2376,7 @@ function updateEnchantments() {
 
     for (const enemy of _gameState.enemies) {
       if (enemy.hp <= 0) continue;
-      const dist = Math.hypot(enemy.x - enc.x, enemy.z - enc.z);
+      const dist = sphericalDistanceToEntity(enc.x, enc.y, enc.z, enemy);
       if (dist <= enc.radius) {
         if (enc.effect === 'cinder_snare') {
           // Instead of a one-shot hit, drop a lingering inferno-pillar DoT
