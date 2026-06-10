@@ -11,6 +11,7 @@ import {
 	ENTITY_RADIUS,
 	wallAABB,
 	MAX_MAGIC_STONES,
+	setTestKeyItemUnlockOverride,
 } from '../index.js';
 import { setGameState as setSimGameState, processPendingEchoes, updateMinions, applyPlayerMovement, buildMovementContext } from '../simulation.js';
 import { InMemoryProvider } from '../providers.js';
@@ -166,6 +167,31 @@ describe('equipKeyItem socket handler', () => {
 		// equippedKeyItemId should remain at default, not change
 		expect(player.equippedKeyItemId).not.toBe('nonexistent_item');
 	});
+
+	it('equipping a locked key item is rejected with not_unlocked reason', async () => {
+		// Mock isKeyItemUnlocked to return false for 'summon_recall'
+		setTestKeyItemUnlockOverride((player, keyItemId) => {
+			if (keyItemId === 'summon_recall') return false;
+			return true;
+		});
+
+		try {
+			const { socket } = await connectClient(baseUrl);
+			const player = playerForSocket(socket);
+			const originalEquipped = player.equippedKeyItemId;
+
+			const errorPromise = waitForEvent(socket, 'keyItemError');
+			socket.emit('equipKeyItem', { keyItemId: 'summon_recall' });
+			const error = await errorPromise;
+
+			expect(error.reason).toBe('not_unlocked');
+			// equippedKeyItemId should not have changed
+			expect(player.equippedKeyItemId).toBe(originalEquipped);
+			expect(player.equippedKeyItemId).not.toBe('summon_recall');
+		} finally {
+			setTestKeyItemUnlockOverride(null);
+		}
+	});
 });
 
 describe('useKeyItem socket handler', () => {
@@ -250,6 +276,25 @@ describe('useKeyItem socket handler', () => {
 		expect(result.reason).toBe('unknown_item');
 	});
 
+	it('useKeyItem is rejected when keyItemId does not match equipped key item with not_equipped reason', async () => {
+		const { socket } = await connectAndStartRun();
+		const player = playerForSocket(socket);
+
+		// Player has dodge_roll equipped (default), try to use overclock instead
+		player.equippedKeyItemId = 'dodge_roll';
+		player.keyItemCooldownUntil = 0;
+
+		const resultPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'overclock' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(false);
+		expect(result.reason).toBe('not_equipped');
+
+		// Cooldown should NOT be burned
+		expect(player.keyItemCooldownUntil).toBe(0);
+	});
+
 	it('useKeyItem for dodge_roll sets keyItemCooldownUntil to a future timestamp', async () => {
 		const { socket } = await connectAndStartRun();
 		const player = playerForSocket(socket);
@@ -296,6 +341,7 @@ describe('useKeyItem socket handler', () => {
 
 		// Ensure no existing cooldown
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'ground_anchor';
 
 		const resultPromise = waitForEvent(socket, 'keyItemUsed');
 		socket.emit('useKeyItem', { keyItemId: 'ground_anchor' });
@@ -317,6 +363,7 @@ describe('useKeyItem socket handler', () => {
 		const player = playerForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'ground_anchor';
 
 		const firstPromise = waitForEvent(socket, 'keyItemUsed');
 		socket.emit('useKeyItem', { keyItemId: 'ground_anchor' });
@@ -363,6 +410,7 @@ describe('useKeyItem — summon_recall', () => {
 
 		// Ensure cooldown is clear
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'summon_recall';
 
 		// Record original minion positions (they should be far from player)
 		const myMinions = state.minions.filter(m => m.ownerId === socket._playerId);
@@ -406,6 +454,7 @@ describe('useKeyItem — summon_recall', () => {
 
 		const player = playerForSocket(socket);
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'summon_recall';
 
 		const state = testGameState();
 		state.minions = [];
@@ -446,6 +495,7 @@ describe('useKeyItem — summon_recall', () => {
 		const otherOrigZ = otherMinion.z;
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'summon_recall';
 
 		const resultPromise = waitForEvent(socket, 'keyItemUsed');
 		socket.emit('useKeyItem', { keyItemId: 'summon_recall' });
@@ -471,6 +521,7 @@ describe('useKeyItem — summon_recall', () => {
 		const ttlBefore = myMinions.map(m => m.ttl);
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'summon_recall';
 
 		const resultPromise = waitForEvent(socket, 'keyItemUsed');
 		socket.emit('useKeyItem', { keyItemId: 'summon_recall' });
@@ -488,6 +539,7 @@ describe('useKeyItem — summon_recall', () => {
 		const player = playerForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'summon_recall';
 
 		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
 		const keyItemPromise = waitForEvent(socket, 'keyItemUsed');
@@ -551,6 +603,7 @@ describe('useKeyItem — summon_recall', () => {
 
 		// Ensure cooldown is clear
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'summon_recall';
 
 		const resultPromise = waitForEvent(socket, 'keyItemUsed');
 		socket.emit('useKeyItem', { keyItemId: 'summon_recall' });
@@ -558,8 +611,6 @@ describe('useKeyItem — summon_recall', () => {
 
 		expect(result.ok).toBe(true);
 		expect(result.recalled).toBe(2);
-
-		// Verify all recalled minions moved and are at valid positions
 		const myMinions = state.minions.filter(m => m.ownerId === socket._playerId);
 		expect(myMinions.length).toBe(2);
 
@@ -619,6 +670,7 @@ describe('useKeyItem — flare_beacon', () => {
 
 		// Ensure clean state
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'flare_beacon';
 		state.enemies.length = 0;
 
 		// Add test enemies: one within radius, one outside
@@ -677,6 +729,7 @@ describe('useKeyItem — flare_beacon', () => {
 		const state = testGameState();
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'flare_beacon';
 		state.enemies.length = 0;
 
 		// Elevated but inside the 25m sphere: XZ dist 5 (3,4), Y delta 10
@@ -725,6 +778,7 @@ describe('useKeyItem — flare_beacon', () => {
 		const state = testGameState();
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'flare_beacon';
 		state.enemies.length = 0;
 
 		// Add a dead enemy within radius
@@ -757,6 +811,7 @@ describe('useKeyItem — flare_beacon', () => {
 		const state = testGameState();
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'flare_beacon';
 		state.enemies.length = 0;
 
 		// Add an enemy to reveal
@@ -799,6 +854,7 @@ describe('useKeyItem — flare_beacon', () => {
 		const state = testGameState();
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'flare_beacon';
 		state.enemies.length = 0;
 
 		state.enemies.push({
@@ -832,6 +888,7 @@ describe('useKeyItem — flare_beacon', () => {
 		const state = testGameState();
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'flare_beacon';
 		state.enemies.length = 0;
 
 		// Add multiple enemies within radius at various distances
@@ -876,6 +933,7 @@ describe('useKeyItem — flare_beacon', () => {
 		const state = testGameState();
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'flare_beacon';
 		state.enemies.length = 0;
 
 		// Enemy exactly at 25m distance
@@ -986,6 +1044,7 @@ describe('useKeyItem — echo_strike', () => {
 		const player = playerForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'echo_strike';
 		player.echoStrikePending = false;
 
 		const before = Date.now();
@@ -1012,6 +1071,7 @@ describe('useKeyItem — echo_strike', () => {
 		const player = playerForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'echo_strike';
 
 		const result1Promise = waitForEvent(socket, 'keyItemUsed');
 		socket.emit('useKeyItem', { keyItemId: 'echo_strike' });
@@ -1034,6 +1094,7 @@ describe('useKeyItem — echo_strike', () => {
 		const player = playerForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'echo_strike';
 
 		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
 		const keyItemPromise = waitForEvent(socket, 'keyItemUsed');
@@ -1339,6 +1400,7 @@ describe('useKeyItem — rally_cry', () => {
 		caster.x = room.x;
 		caster.z = room.z;
 		caster.keyItemCooldownUntil = 0;
+		caster.equippedKeyItemId = 'rally_cry';
 
 		const ally = { ...caster, x: room.x + 2, z: room.z, dead: false, extracted: false, connected: true, inputActive: false };
 		state.players['rally-ally'] = ally;
@@ -1384,6 +1446,7 @@ describe('useKeyItem — rally_cry', () => {
 		caster.x = room.x;
 		caster.z = room.z;
 		caster.keyItemCooldownUntil = 0;
+		caster.equippedKeyItemId = 'rally_cry';
 
 		// Elevated ally inside the 8m sphere: XZ dist 2, Y delta 4
 		// → 3D dist √(4+16) ≈ 4.47 ≤ 8.
@@ -1418,6 +1481,7 @@ describe('useKeyItem — rally_cry', () => {
 		caster.x = room.x;
 		caster.z = room.z;
 		caster.keyItemCooldownUntil = 0;
+		caster.equippedKeyItemId = 'rally_cry';
 
 		// Ally 20m away — well outside the 8m radius.
 		const farAlly = { ...caster, x: room.x + 20, z: room.z, dead: false, extracted: false, connected: true, inputActive: false, rallyUntil: 0, rallySpeedMultiplier: 1 };
@@ -1449,6 +1513,7 @@ describe('useKeyItem — rally_cry', () => {
 		caster.x = room.x;
 		caster.z = room.z;
 		caster.keyItemCooldownUntil = 0;
+		caster.equippedKeyItemId = 'rally_cry';
 
 		const base = oneTickDelta(state, caster);
 
@@ -1472,6 +1537,7 @@ describe('useKeyItem — rally_cry', () => {
 		const state = testGameState();
 		state.enemies.length = 0;
 		caster.keyItemCooldownUntil = 0;
+		caster.equippedKeyItemId = 'rally_cry';
 
 		const first = waitForEvent(socket, 'keyItemUsed');
 		socket.emit('useKeyItem', { keyItemId: 'rally_cry' });
@@ -1495,6 +1561,7 @@ describe('useKeyItem — rally_cry', () => {
 		const state = testGameState();
 		state.enemies.length = 0;
 		caster.keyItemCooldownUntil = 0;
+		caster.equippedKeyItemId = 'rally_cry';
 		caster.hp = Math.floor(caster.hp * 0.5);
 		const hpBefore = caster.hp;
 

@@ -414,10 +414,8 @@ describe('debugScenario — arena-trials harness combat shortcuts', () => {
 		await tier2Promise;
 
 		const lowHpPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
 		socket.emit('debugScenario', { name: 'arena-trials-boss-low-hp' });
 		const lowHpResult = await lowHpPromise;
-		const stateUpdate = await stateUpdatePromise;
 
 		expect(lowHpResult.ok).toBe(true);
 		expect(lowHpResult.scenario).toBe('arena-trials-boss-low-hp');
@@ -433,6 +431,11 @@ describe('debugScenario — arena-trials harness combat shortcuts', () => {
 		expect(dist).toBeGreaterThanOrEqual(2);
 		expect(dist).toBeLessThanOrEqual(5.5);
 
+		// The arena encounter is active, so the game loop emits periodic stateUpdates and the
+		// pre-mutation full-HP boss can race ahead of the scenario's own snapshot. Read the boss
+		// HP from a stateUpdate captured AFTER the scenario result resolves: the boss is pinned at
+		// 1 HP by then and is never healed, so every post-result snapshot reports hp === 1.
+		const stateUpdate = await waitForEvent(socket, 'stateUpdate');
 		const bossUpdate = stateUpdate.enemies.find((e) => e.id === bossId);
 		expect(bossUpdate?.hp).toBe(1);
 		expect(bossUpdate?.type).toBe('arena_champion');
@@ -1190,10 +1193,8 @@ describe('debugScenario — arena-trials-*', () => {
 		await tier2Promise;
 
 		const lowHpPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
 		socket.emit('debugScenario', { name: 'arena-trials-boss-low-hp' });
 		const lowHpResult = await lowHpPromise;
-		const stateUpdate = await stateUpdatePromise;
 
 		expect(lowHpResult.ok).toBe(true);
 		expect(lowHpResult.scenario).toBe('arena-trials-boss-low-hp');
@@ -1214,6 +1215,11 @@ describe('debugScenario — arena-trials-*', () => {
 		expect(dist).toBeGreaterThanOrEqual(2);
 		expect(dist).toBeLessThanOrEqual(5.5);
 
+		// The arena encounter is active, so the game loop emits periodic stateUpdates and the
+		// pre-mutation full-HP boss can race ahead of the scenario's own snapshot. Read the boss
+		// HP from a stateUpdate captured AFTER the scenario result resolves: the boss is pinned at
+		// 1 HP by then and is never healed, so every post-result snapshot reports hp === 1.
+		const stateUpdate = await waitForEvent(socket, 'stateUpdate');
 		const bossUpdate = stateUpdate.enemies.find((e) => e.id === bossId);
 		expect(bossUpdate?.hp).toBe(1);
 		expect(bossUpdate?.type).toBe('arena_champion');

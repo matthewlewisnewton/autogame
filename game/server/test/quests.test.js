@@ -1,4 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { createRequire } from 'module';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 import {
   QUEST_DEFS,
   DEFAULT_QUEST_ID,
@@ -11,8 +15,12 @@ import {
   getLayoutGenerationOptions,
   buildSharedQuestUpdatePayload,
   buildQuestUpdatePayload,
+  normalizeUnlockRequires,
 } from '../quests.js';
 import { questLayoutSeed } from '../dungeon.js';
+
+const require = createRequire(import.meta.url);
+const users = require('../users.js');
 
 const TIER_1_QUEST_IDS = [
   'training_caverns',
@@ -101,6 +109,114 @@ function assertTier2QuestContent(questId) {
     expect(quest.dialogue.some((entry) => entry.trigger === 'objective_complete')).toBe(true);
   }
 }
+
+describe('normalizeUnlockRequires', () => {
+  it('normalizes a single valid object to a one-element array', () => {
+    expect(normalizeUnlockRequires({ questId: 'training_caverns', tier: 1 })).toEqual([
+      { questId: 'training_caverns', tier: 1 },
+    ]);
+  });
+
+  it('coerces numeric tier strings to positive integers', () => {
+    expect(normalizeUnlockRequires({ questId: 'crystal_rescue', tier: '2' })).toEqual([
+      { questId: 'crystal_rescue', tier: 2 },
+    ]);
+  });
+
+  it('normalizes an array of valid entries in order', () => {
+    expect(
+      normalizeUnlockRequires([
+        { questId: 'training_caverns', tier: 1 },
+        { questId: 'crystal_rescue', tier: 1 },
+      ]),
+    ).toEqual([
+      { questId: 'training_caverns', tier: 1 },
+      { questId: 'crystal_rescue', tier: 1 },
+    ]);
+  });
+
+  it('drops invalid or missing entries from arrays', () => {
+    expect(
+      normalizeUnlockRequires([
+        { questId: 'training_caverns', tier: 1 },
+        null,
+        undefined,
+        { tier: 2 },
+        { questId: '' },
+        { questId: 'arena_trials', tier: 0 },
+        { questId: 'spire_ascent', tier: 1.5 },
+        { questId: 'canyon_descent', tier: 1 },
+      ]),
+    ).toEqual([
+      { questId: 'training_caverns', tier: 1 },
+      { questId: 'canyon_descent', tier: 1 },
+    ]);
+  });
+
+  it('returns null for null, undefined, and non-object values', () => {
+    expect(normalizeUnlockRequires(null)).toBeNull();
+    expect(normalizeUnlockRequires(undefined)).toBeNull();
+    expect(normalizeUnlockRequires('training_caverns')).toBeNull();
+    expect(normalizeUnlockRequires(1)).toBeNull();
+    expect(normalizeUnlockRequires(true)).toBeNull();
+  });
+
+  it('returns null for empty arrays and all-invalid arrays', () => {
+    expect(normalizeUnlockRequires([])).toBeNull();
+    expect(normalizeUnlockRequires([null, {}, { questId: 'x' }])).toBeNull();
+  });
+
+  it('returns null for invalid single objects', () => {
+    expect(normalizeUnlockRequires({})).toBeNull();
+    expect(normalizeUnlockRequires({ questId: 'training_caverns' })).toBeNull();
+    expect(normalizeUnlockRequires({ tier: 1 })).toBeNull();
+    expect(normalizeUnlockRequires({ questId: 'training_caverns', tier: 0 })).toBeNull();
+  });
+
+  it('preserves array unlockRequires through getQuest and listQuestVariants', () => {
+    const questId = '__unlock_requires_array_fixture';
+    const unlockRequires = [
+      { questId: 'training_caverns', tier: 1 },
+      { questId: 'crystal_rescue', tier: 1 },
+    ];
+    QUEST_DEFS[questId] = {
+      id: questId,
+      enemyPool: [{ type: 'grunt', weight: 1 }],
+      tiers: {
+        1: {
+          name: 'Fixture Tier I',
+          description: 'Test fixture tier.',
+          objectiveType: 'defeat_enemies',
+          enemyCount: 1,
+          rewardCurrency: 1,
+          layoutProfile: 'crowded',
+        },
+        2: {
+          tier: 2,
+          name: 'Fixture Tier II',
+          description: 'Test fixture tier with multi-prereq unlock.',
+          objectiveType: 'defeat_enemies',
+          enemyCount: 1,
+          rewardCurrency: 1,
+          layoutProfile: 'crowded',
+          unlockRequires,
+        },
+      },
+    };
+
+    try {
+      const quest = getQuest(questId, 2);
+      expect(quest.unlockRequires).toEqual(unlockRequires);
+      expect(Array.isArray(quest.unlockRequires)).toBe(true);
+
+      const variant = listQuestVariants().find((v) => v.questId === questId && v.tier === 2);
+      expect(variant.unlockRequires).toEqual(unlockRequires);
+      expect(Array.isArray(variant.unlockRequires)).toBe(true);
+    } finally {
+      delete QUEST_DEFS[questId];
+    }
+  });
+});
 
 describe('quest tier catalog', () => {
   it('resolves tier 1 by default when tier is omitted', () => {
@@ -262,9 +378,13 @@ describe('quest tier catalog', () => {
       (v) => v.questId === 'training_caverns' && v.tier === 1,
     );
     expect(trainingVariant.client?.name).toBe('Rewa');
+    expect(trainingVariant.tierUnlocked).toBeUndefined();
 
     const playerPayload = buildQuestUpdatePayload({});
     expect(playerPayload.quests.find((q) => q.id === 'training_caverns').client.name).toBe('Rewa');
+    expect(
+      playerPayload.questVariants.every((variant) => variant.tierUnlocked === undefined),
+    ).toBe(true);
   });
 
   it('listQuestVariants includes every quest/tier pair with summaries', () => {
@@ -461,5 +581,66 @@ describe('quest tier catalog', () => {
       slopes: true,
       layoutMode: 'default',
     });
+  });
+});
+
+describe('buildQuestUpdatePayload tierUnlocked', () => {
+  let tmpFile;
+  let accountId;
+
+  beforeEach(() => {
+    tmpFile = path.join(
+      os.tmpdir(),
+      `quests-payload-tier-${Date.now()}-${Math.random().toString(36).slice(2)}.json`,
+    );
+    users.setTestFilePath(tmpFile);
+    users.clearUsers();
+    users.createUser('payload_tier_player', 'pass');
+    accountId = users.findUserByUsername('payload_tier_player').accountId;
+  });
+
+  afterEach(() => {
+    try {
+      fs.unlinkSync(tmpFile);
+    } catch {}
+    try {
+      fs.unlinkSync(tmpFile + '.tmp');
+    } catch {}
+  });
+
+  it('does not add tierUnlocked on shared or account-less payloads', () => {
+    const shared = buildSharedQuestUpdatePayload({});
+    expect(shared.questVariants.every((variant) => variant.tierUnlocked === undefined)).toBe(
+      true,
+    );
+
+    const noAccount = buildQuestUpdatePayload({});
+    expect(noAccount.unlockedQuestTiers).toBeUndefined();
+    expect(noAccount.questVariants.every((variant) => variant.tierUnlocked === undefined)).toBe(
+      true,
+    );
+  });
+
+  it('exposes tierUnlocked false for locked tier 2 and true after prerequisite unlock', () => {
+    const lockedPayload = buildQuestUpdatePayload({}, accountId);
+    const lockedTier2 = lockedPayload.questVariants.find(
+      (v) => v.questId === 'training_caverns' && v.tier === 2,
+    );
+    const tier1 = lockedPayload.questVariants.find(
+      (v) => v.questId === 'training_caverns' && v.tier === 1,
+    );
+
+    expect(lockedTier2.tierUnlocked).toBe(false);
+    expect(tier1.tierUnlocked).toBe(true);
+    expect(lockedPayload.unlockedQuestTiers).toEqual({});
+
+    users.unlockQuestTier(accountId, 'training_caverns', 2);
+    const unlockedPayload = buildQuestUpdatePayload({}, accountId);
+    const unlockedTier2 = unlockedPayload.questVariants.find(
+      (v) => v.questId === 'training_caverns' && v.tier === 2,
+    );
+
+    expect(unlockedTier2.tierUnlocked).toBe(true);
+    expect(unlockedPayload.unlockedQuestTiers).toEqual({ training_caverns: [2] });
   });
 });

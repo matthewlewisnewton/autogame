@@ -52,6 +52,12 @@ function waitForQuestTierSelection(socket, questId, tier, timeout = 5000) {
 	});
 }
 
+function questVariantFor(payload, questId, tier) {
+	return payload?.questVariants?.find(
+		(v) => v.questId === questId && (v.tier ?? 1) === tier,
+	);
+}
+
 function waitForLobbyUnlockMap(socket, questId, tier, timeout = 5000) {
 	return new Promise((resolve, reject) => {
 		const timer = setTimeout(
@@ -130,6 +136,11 @@ describe('per-account quest unlock lobby sync', () => {
 		expect(lockedPayload.unlockedQuestTiers?.[QUEST_ID]).toBeUndefined();
 		expect(unlockedPayload.unlockedQuestTiers).toEqual({ [QUEST_ID]: [TIER_2] });
 
+		const lockedTier2 = questVariantFor(lockedPayload, QUEST_ID, TIER_2);
+		const unlockedTier2 = questVariantFor(unlockedPayload, QUEST_ID, TIER_2);
+		expect(lockedTier2?.tierUnlocked).toBe(false);
+		expect(unlockedTier2?.tierUnlocked).toBe(true);
+
 		socketA.disconnect();
 		socketB.disconnect();
 	});
@@ -162,6 +173,7 @@ describe('per-account quest unlock lobby sync', () => {
 		await stateAfterReturnPromise;
 		const lobbyPayload = await lobbyUnlockPromise;
 		expect(lobbyPayload.unlockedQuestTiers).toEqual({ [QUEST_ID]: [TIER_2] });
+		expect(questVariantFor(lobbyPayload, QUEST_ID, TIER_2)?.tierUnlocked).toBe(true);
 
 		const tier2SelectPromise = waitForQuestTierSelection(socket, QUEST_ID, TIER_2);
 		socket.emit('selectQuest', { questId: QUEST_ID, tier: TIER_2 });
@@ -170,5 +182,30 @@ describe('per-account quest unlock lobby sync', () => {
 		expect(testGameState().selectedQuestTier).toBe(TIER_2);
 
 		socket.disconnect();
+	});
+
+	it('lobbyUpdate questVariants include tierUnlocked consistent with per-account unlock state', async () => {
+		users.createUser('tier_unlock_holder', 'testpass');
+		users.createUser('tier_still_locked', 'testpass');
+		const accountA = users.findUserByUsername('tier_unlock_holder').accountId;
+		const accountB = users.findUserByUsername('tier_still_locked').accountId;
+		users.unlockQuestTier(accountA, QUEST_ID, TIER_2);
+
+		const { socketA, socketB } = await connectTwoClients(baseUrl, accountA, accountB);
+
+		const lobbyUpdateAPromise = waitForEvent(socketA, 'lobbyUpdate');
+		socketA.emit('playerReady', true);
+		const payloadA = await lobbyUpdateAPromise;
+		expect(questVariantFor(payloadA, QUEST_ID, TIER_2)?.tierUnlocked).toBe(true);
+		expect(payloadA.unlockedQuestTiers).toEqual({ [QUEST_ID]: [TIER_2] });
+
+		const lobbyUpdateBPromise = waitForEvent(socketB, 'lobbyUpdate');
+		socketB.emit('playerReady', true);
+		const payloadB = await lobbyUpdateBPromise;
+		expect(questVariantFor(payloadB, QUEST_ID, TIER_2)?.tierUnlocked).toBe(false);
+		expect(payloadB.unlockedQuestTiers?.[QUEST_ID]).toBeUndefined();
+
+		socketA.disconnect();
+		socketB.disconnect();
 	});
 });

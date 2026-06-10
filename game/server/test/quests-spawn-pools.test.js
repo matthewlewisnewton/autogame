@@ -24,9 +24,9 @@ const EXPECTED_POOLS = {
   training_caverns: [['grunt', 3], ['skirmisher', 2]],
   crystal_rescue: [['grunt', 2], ['skirmisher', 3]],
   arena_trials: [['grunt', 2], ['miniboss', 1], ['skirmisher', 2]],
-  canyon_descent: [['grunt', 2], ['miniboss', 1], ['skirmisher', 2]],
+  canyon_descent: [['grunt', 2], ['miniboss', 1], ['skirmisher', 2], ['void_seraph', 1]],
   ember_descent: [['ember_wraith', 2], ['grunt', 3], ['skirmisher', 2]],
-  spire_ascent: [['grunt', 2], ['miniboss', 1], ['skirmisher', 1], ['spawner', 2]],
+  spire_ascent: [['grunt', 2], ['miniboss', 1], ['skirmisher', 1], ['spawner', 2], ['void_seraph', 1]],
   endless_siege: [['grunt', 2], ['skirmisher', 2]],
 };
 

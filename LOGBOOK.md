@@ -6510,7 +6510,6 @@ PASS. This ticket did not add or modify a `?debugScenario=NAME` shortcut. The ca
 
 None.
 
-
 ## v0.368 — 372-playthrough-validate-ice-level  (2026-06-10 10:15:26)
 
 debug-scenario socket path behind `isDebugScenarioAllowed()`. They seed state but do not
@@ -6633,6 +6632,42 @@ PASS. The implementation follows the existing stage-boss framework described in 
 
 The provided coverage log shows the full vitest coverage run passed: `188` test files and `2652` tests passed. New relevant coverage includes `server/test/cinder_warden.test.js`, `server/test/ember_descent_stage_boss.test.js`, `server/test/enemy_display_catalog.test.js`, and `client/test/renderer-cinder-warden.test.js`.
 
+## v0.374 — 384-extend-unlockrequires-multi-prereq-and  (2026-06-10 12:18:37)
+
+PASS. The changes stay within the lobby/quest progression model described in `game/docs/design.md`: players select quests in the lobby, ready up, deploy, and progression is awarded after successful dungeon objectives. The foundation requirements are not regressed; the captured run confirms WebSocket connection, multiplayer visualization/state, 3D rendering, and movement in an active run.
+
+### Debug Scenarios
+
+PASS. This ticket did not add or change a development `?debugScenario=` shortcut. The changed behavior is exercised through normal account progression, quest selection, readiness, and run-completion paths rather than relying on a debug-only entry point.
+
+## Code Quality And Verification
+
+The live codebase is coherent with the ticket scope. The implementation is server-authoritative for selection/readiness gating, keeps account-specific payloads isolated per socket, and updates the client lock UI without trusting the raw legacy unlock map when evaluated `tierUnlocked` is available.
+
+Verification observed:
+
+- Round-3 runtime capture: `ok: true`, empty `pageerrors`, no fatal console entries.
+- `coverage.log`: 151 test files passed, 2328 tests passed.
+- Changed code inspected from `git diff 00815f732b26c7eecfaa2d64a1ffd2a8cf8c37a4 HEAD`.
+
+## v0.375 — 378-introduce-few-flying-enemies  (2026-06-10 12:27:01)
+
+
+### Client Rendering and Telegraphs
+PASS. `game/client/models.js` registers both new enemy ids as procedural-only entries, and `game/client/renderer.js` adds mesh geometry plus attack-visual entries. `void_seraph` maps to a radial telegraph and `rime_drifter` maps to the projectile telegraph style consistent with `glacial_thrower`. The implementation reuses the existing server-provided flying/altitude render path rather than adding per-type Y handling.
+
+### Rare/Sparse Thematic Spawn Weights
+PASS. `rime_drifter` is added only to `frost_crossing` at weight 1. `void_seraph` is added only to `canyon_descent` and `spire_ascent` at weight 1. These are the lowest weights in their pools, and no tier-2 pool or unrelated quest pool gained a flying type. Normal gameplay can reach the same enemy states through those quest pools and stage-boss add pools that draw from `getEnemyPool()`.
+
+### Debug Scenario
+PASS. The added `?debugScenario=flying-enemies` shortcut is only entered through the existing URL-param/client socket route and server-side debug scenario allowlist. It is guarded by the existing localhost or `ALLOW_DEBUG_SCENARIOS=1` checks and is rejected in production/non-local contexts. The shortcut uses the authoritative server `spawnEnemy` path and does not replace the normal gameplay path, which remains available through the rare quest spawn pools.
+
+### Design and Foundation Consistency
+PASS. The change fits the design document's 3D multiplayer dungeon combat direction, uses the established card/enemy combat systems, and does not regress the requirements baseline: the captured run shows a rendered Three.js scene, connected client/server WebSockets, multiplayer presence, and synchronized movement.
+
+### Tests and Coverage
+PASS. The latest coverage run reports 168 test files passed and 2504 tests passed. Focused tests cover flying enemy definitions, hover height, spherical radial hit/miss behavior, height-aware projectile launch/damage, display catalog entries, client render registries, and sparse spawn-pool wiring. Coverage output includes unrelated pre-existing disconnect-handler warnings in older tests, but they did not fail the suite and are not caused by this ticket's changed files.
+
 ## Remaining gaps
 
 None.
@@ -6660,3 +6695,63 @@ PASS. `coverage.log` reports `195` test files and `2732` tests passed. Coverage 
 
 None.
 
+
+## v0.378 — 388-level-map-unlock-graph-data-api  (2026-06-10 12:54:45)
+
+`buildLevelUnlockGraph(accountId)` is exported from `game/server/quests.js` and returns `{ nodes: [...] }` with one node per quest tier by iterating the same `QUEST_DEFS` tier order as `listQuestVariants()`. Each node includes `questId`, `tier`, `name`, `objectiveType`, `isBoss`, normalized `unlockRequires`, and a `state` string.
+
+The state calculation matches the requested precedence: `cleared` from `hasCompletedQuestTier`, otherwise `unlocked` from `isQuestTierUnlocked`, otherwise `locked`. Because `isQuestTierUnlocked` treats valid tier-1 quests as unlocked before user lookup and higher tiers require an account plus persisted/prerequisite unlocks, falsy or unknown accounts produce unlocked tier-1 nodes, locked higher-tier nodes, and no cleared nodes.
+
+Boss and prerequisite data are represented correctly. `isBoss` is derived from `objectiveType === 'stage_boss'`, which includes both tier-2 boss variants and tier-1 boss quests such as Frost Crossing, and `unlockRequires` is run through `normalizeUnlockRequires`, preserving single prereqs as one-element arrays and multi-prereq AND arrays as authored.
+
+`buildQuestUpdatePayload(gameState, playerAccountId)` now includes `levelUnlockGraph: buildLevelUnlockGraph(playerAccountId)` in the existing per-account payload block. The same payload is already spread into `questUpdate`, `lobbyUpdate`, and lobby-join payloads, so the client receives the graph in the established quest payload path without a new event or endpoint. Account-less payloads still omit the per-player graph, which matches the subticket allowance and the existing `unlockedQuestTiers` behavior.
+
+## Design and regression check
+
+The change is server-side data exposure only. It does not alter quest selection, tier gating, unlock persistence, combat, movement, rendering, or the lobby/dungeon loop described in `game/docs/design.md`, and it does not regress the foundational requirements for rendering, WebSocket connectivity, multiplayer visualization, or movement synchronization.
+
+## Tests and coverage
+
+The added `game/server/test/level_unlock_graph.test.js` covers graph cardinality, boss flags, normalized prerequisites, default unauthenticated states, cleared/unlocked progression state, payload inclusion for accounts, and omission without an account. The round coverage run passed: 22 test files and 914 tests.
+
+
+## v0.377 — 379-wyrm-evolution-flying-minion  (2026-06-10 12:51:48)
+
+
+### Hovering and 3D movement/rendering
+PASS. The server resolves minion `y` with the generic airborne helper before AI and after movement, so a flying Archive Wyrm follows floor height plus altitude across non-default floors instead of staying on a fixed plane. The client `syncMinionMeshes()` reuses the generic `flyingRenderOffset()` path and creates floor-aware flying shadows, so the Wyrm renders above the floor like the existing airborne minions without changing grounded minion placement.
+
+### Airborne, height-aware Wyrm breath
+PASS. Wyrm breath aim locks a 3D direction from minion world Y to target world Y, applies cone hits with `originY` and `dirY`, and sends the airborne origin/direction in the `cardUsed` payload. Client renderers preserve `origin.y` and `direction.y` for the cone, telegraph ring, and particle burst. Tests cover the Archive Wyrm hitting an elevated enemy at the same X/Z only when aimed upward and verify the client VFX uses the airborne origin.
+
+### Debug scenarios
+PASS. The changed scenarios are registered only through the existing debug-scenario entry points (`archive-wyrm-combat` and `archive-wyrm-elevated-breath`) and are not touched by normal gameplay. Their comments and tests tie the shortcut state back to the normal path: evolve `dungeon_drake` into `ancient_wyrm`, deploy into combat, and fight flying/elevated enemies. They do not bypass server-side combat logic; they seed normal server entities and then rely on `updateEnemies()`, `updateMinions()`, world-Y resolution, and the standard Wyrm breath hit path.
+
+### Design and requirements consistency
+PASS. The implementation stays within the documented card-combat/minion model and the existing airborne/height-aware mechanics. It does not regress the foundation requirements: the round-2 capture shows the 3D scene renders, sockets connect, multiplayer state is visible, and movement/state updates work.
+
+### Tests and coverage
+PASS. The latest coverage run reports `167 passed (167)` test files and `2645 passed (2645)` tests. Ticket-specific coverage includes server airborne/minion/Wyrm breath tests, the elevated-breath debug scenario, height-aware projectile coverage, and client render/VFX tests for airborne Wyrm behavior.
+
+
+## v0.376 — Server: USE_KEY_ITEM/EQUIP_KEY_ITEM never checks equipped/owned key item (any client can use any key item)  (2026-06-10 12:49:14)
+
+
+## Code quality
+
+- Minimal, focused diff (~180 lines, mostly test fixture updates).
+- Checks reuse existing patterns (`getKeyItemDef`, `isKeyItemUnlocked`, `SERVER_TO_CLIENT` error shapes).
+- Test override is scoped (`setTestKeyItemUnlockOverride(null)` in `finally`) and exported only for test access via `index.js`, consistent with other server test hooks.
+- No dead code, no client changes required (client already emits `me.equippedKeyItemId` in `main.js`).
+
+## Debug scenarios
+
+This ticket did not add or modify `?debugScenario=` shortcuts. Existing debug scenarios (e.g. `summon-recall`) set `equippedKeyItemId` explicitly before key-item use — compatible with the new guard. No debug-scenario blocking issues.
+
+## Capture alignment
+
+Fallback smoke capture exercised the real player path: auth → lobby → ready → WASD movement → dodge roll (E). Probes confirm `equippedKeyItemId: "dodge_roll"`, successful dodge cooldown activation, and clean reconnect to ready state. Screenshots show lobby and in-run HUD with Dodge Roll indicator.
+
+## Remaining gaps
+
+None. All acceptance criteria are fully met; runtime capture is clean; test suite is green.

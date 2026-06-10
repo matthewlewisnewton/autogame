@@ -1211,6 +1211,40 @@ const ENEMY_DEFS = {
 		// resolveEntityY() hovers them at floorY + altitude each tick.
 		flying: true, altitude: 2.5,
 	},
+	void_seraph: {
+		name: 'Void Seraph',
+		description: 'High-hovering aberration that unleashes a spherical void shockwave — its radial burst reaches across heights, striking grounded and airborne foes alike.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 70, chaseSpeed: 2.8, wanderSpeed: 1.1, attackDamage: 14, attackWindupMs: 1000,
+		// Radial already resolves as a pure 3D sphere in isEntityInEnemyAttack, so a
+		// player who is XZ-close but far above/below (outside attackRange in 3D) is
+		// not hit, while anyone inside the sphere is.
+		attackStyle: 'radial', attackRange: 4.5,
+		// Airborne: hovers high above the floor; flying/altitude flow onto each
+		// spawned instance via ...statFieldsFromDef so resolveEntityY() keeps it at
+		// floorY + altitude (never re-grounded), matching ember_wraith.
+		flying: true, altitude: 3.0,
+	},
+	rime_drifter: {
+		name: 'Rime Drifter',
+		description: 'Frost spirit that glides high overhead and lobs a height-aware ice ball — it angles the shot down (or up) at its target, chilling (SLOW) and battering on impact.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 60, chaseSpeed: 2.2, wanderSpeed: 1.0, attackDamage: 11, attackWindupMs: 1000,
+		// Reuses the existing height-aware projectile path: attackStyle 'ice_ball'
+		// flows through the wind-up resolution branch (spawnIceBall →
+		// updateEnemyProjectiles), and spawnIceBall carries the locked windupDirY so
+		// the ball travels with vertical aim toward a target at a different height.
+		attackStyle: 'ice_ball', attackRange: 8,
+		iceBallSpeed: 6.5,           // units/sec — clearly below the player MOVE_SPEED of 12
+		iceBallRadius: 0.8,          // projectile hit radius (added to PLAYER_RADIUS for contact)
+		iceBallMaxRange: 20,         // travel distance before it dissipates
+		iceBallSlowDurationMs: 2200,
+		iceBallSlowFactor: 0.55,
+		// Airborne: drifts high above the floor; flying/altitude flow onto each
+		// spawned instance via ...statFieldsFromDef so resolveEntityY() keeps it at
+		// floorY + altitude (never re-grounded), matching ember_wraith.
+		flying: true, altitude: 3.5,
+	},
 };
 
 function enemyDefFor(type) {
@@ -1455,6 +1489,13 @@ function addDebuff(player, type, expiresAt) {
 
 function getEntityWorldY(entity) {
   if (!entity) return resolveFloorY(DEFAULT_FLOOR_Y);
+  if (entity.flying) {
+    const layout = _gameState && _gameState.layout;
+    if (layout) return resolveEntityY(entity, layout);
+    const floorY = resolveFloorY(DEFAULT_FLOOR_Y);
+    const altitude = Number.isFinite(entity.altitude) ? entity.altitude : DEFAULT_FLY_ALTITUDE;
+    return floorY + altitude;
+  }
   if (Number.isFinite(entity.y)) return entity.y;
   const layout = _gameState && _gameState.layout;
   if (layout) {
@@ -1797,11 +1838,15 @@ function lockMinionBreathDirection(minion, target) {
 }
 
 function queueWyrmBreathCardUsed(minion, cardId, options) {
+  const origin = { x: minion.x, z: minion.z };
+  if (minion.flying) {
+    origin.y = getEntityWorldY(minion);
+  }
   _gameState._pendingMinionBreaths.push({
     playerId: minion.ownerId,
     cardId,
     specialEffect: options.specialEffect,
-    origin: { x: minion.x, z: minion.z },
+    origin,
     direction: tiltedDirectionPayload(
       minion.breathDirX,
       minion.breathDirY ?? 0,
@@ -3219,6 +3264,12 @@ function updateMinions() {
     }
   }
 
+  // Resolve world Y before minion AI so breath/attack aim uses the current
+  // airborne height (flying minions hover at floorY + altitude).
+  for (const minion of _gameState.minions) {
+    minion.y = resolveEntityY(minion, _gameState.layout);
+  }
+
   // AI: each living minion seeks nearest enemy, chases, and attacks
   // If no enemy is nearby, follows its owner.
   // Skipped entirely when the run is terminal (victory or failed)
@@ -3594,8 +3645,9 @@ function updateMinions() {
   }
 
   // Resolve world Y for every minion after its AI/movement this tick. Grounded
-  // minions sit at floor height; flying minions (storm_eagle, thunderbird)
-  // hover at floorY + altitude. Runs even when the AI loop is skipped (terminal
+  // minions sit at floor height; flying minions (storm_eagle, thunderbird,
+  // ancient_wyrm) hover at floorY + altitude. Runs even when the AI loop is
+  // skipped (terminal
   // run) so minion Y stays consistent.
   for (const minion of _gameState.minions) {
     minion.y = resolveEntityY(minion, _gameState.layout);

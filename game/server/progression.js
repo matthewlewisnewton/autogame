@@ -89,7 +89,7 @@ const {
   checkWaveCleared,
   fireWaveClearedTriggers,
 } = require('./questScript');
-const { unlockQuestTier, isQuestTierUnlocked } = require('./users');
+const { unlockQuestTier, completeQuestTier, isQuestTierUnlocked } = require('./users');
 const { getObjectiveDef, syncScriptedDefeatEnemiesActiveCount } = require('./objectives');
 const {
   initScriptedEncounter,
@@ -392,8 +392,17 @@ function getUnlockedKeyItems() {
 }
 
 /** Check if a key item is unlocked for the given player. All 14 are unlocked at start. */
+let _testKeyItemUnlockOverride = null;
 function isKeyItemUnlocked(player, keyItemId) {
+  if (_testKeyItemUnlockOverride) {
+    return _testKeyItemUnlockOverride(player, keyItemId);
+  }
   return keyItemId in KEY_ITEM_DEFS;
+}
+
+/** @param {Function|null} fn */
+function setTestKeyItemUnlockOverride(fn) {
+  _testKeyItemUnlockOverride = fn;
 }
 
 // Starting deck card ids — mirrors createStartingDeck() in client/cards.js.
@@ -3378,6 +3387,18 @@ function checkRunTerminalState() {
       for (const player of Object.values(_gameState.players)) {
         if (player && player.accountId) {
           unlockQuestTier(player.accountId, questId, 2);
+          completeQuestTier(player.accountId, questId, 1);
+        }
+      }
+    }
+  }
+
+  if (status === 'victory' && (_gameState.run.questTier ?? DEFAULT_QUEST_TIER) === 2) {
+    const questId = _gameState.run.questId;
+    if (questId) {
+      for (const player of Object.values(_gameState.players)) {
+        if (player && player.accountId) {
+          completeQuestTier(player.accountId, questId, 2);
         }
       }
     }
@@ -3822,6 +3843,7 @@ module.exports = {
   getKeyItemDef,
   getUnlockedKeyItems,
   isKeyItemUnlocked,
+  setTestKeyItemUnlockOverride,
   DESPERATION_CARD_DEFS,
   DESPERATION_DECK_TEMPLATE,
   getCardDef,

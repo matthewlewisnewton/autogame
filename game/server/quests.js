@@ -78,6 +78,18 @@
  */
 
 /**
+ * Prerequisite quest tier required before a tier is unlocked.
+ * @typedef {Object} UnlockRequiresEntry
+ * @property {string} questId - Quest id that must be completed.
+ * @property {number} tier - Positive integer tier that must be completed.
+ */
+
+/**
+ * Unlock prerequisites for a quest tier: one entry (legacy) or an array (AND semantics).
+ * @typedef {UnlockRequiresEntry | UnlockRequiresEntry[]} UnlockRequires
+ */
+
+/**
  * One authored wave in a quest script.
  * @typedef {Object} QuestScriptWave
  * @property {string} id - Stable wave id for chaining (`waveCleared` triggers).
@@ -553,6 +565,8 @@ const QUEST_DEFS = {
       // Ice-level signature foe — a ranged thrower that lobs slow ice balls.
       // Level-exclusive: do not add to non-ice quests.
       { type: 'glacial_thrower', weight: 2 },
+      // Rare flier — kept at the pool minimum so frost drifters stay sparse.
+      { type: 'rime_drifter', weight: 1 },
     ],
     tiers: {
       1: {
@@ -686,6 +700,8 @@ const QUEST_DEFS = {
       { type: 'skirmisher', weight: 2 },
       { type: 'grunt', weight: 2 },
       { type: 'miniboss', weight: 1 },
+      // Rare flier — kept at the pool minimum so void seraphs stay sparse.
+      { type: 'void_seraph', weight: 1 },
     ],
     tier2EnemyPool: [{ type: 'field_medic', weight: 1 }],
     tiers: {
@@ -829,6 +845,8 @@ const QUEST_DEFS = {
       { type: 'skirmisher', weight: 1 },
       { type: 'miniboss', weight: 1 },
       { type: 'spawner', weight: 2 },
+      // Rare flier — kept at the pool minimum so void seraphs stay sparse.
+      { type: 'void_seraph', weight: 1 },
     ],
     tiers: {
       1: {
@@ -996,6 +1014,43 @@ function normalizeQuestTier(tier) {
   }
   const n = Number(tier);
   return Number.isInteger(n) && n > 0 ? n : DEFAULT_QUEST_TIER;
+}
+
+function normalizeUnlockRequiresEntry(entry) {
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+    return null;
+  }
+  if (typeof entry.questId !== 'string' || !entry.questId) {
+    return null;
+  }
+  const tier = Number(entry.tier);
+  if (!Number.isInteger(tier) || tier <= 0) {
+    return null;
+  }
+  return { questId: entry.questId, tier };
+}
+
+/**
+ * Normalizes authored `unlockRequires` to a prerequisite list, or `null` when absent.
+ * Single objects become a one-element array; arrays keep AND order with invalid entries dropped.
+ * @param {UnlockRequires | null | undefined} raw
+ * @returns {UnlockRequiresEntry[] | null}
+ */
+function normalizeUnlockRequires(raw) {
+  if (raw == null) {
+    return null;
+  }
+  if (Array.isArray(raw)) {
+    const normalized = raw
+      .map(normalizeUnlockRequiresEntry)
+      .filter(Boolean);
+    return normalized.length > 0 ? normalized : null;
+  }
+  if (typeof raw !== 'object') {
+    return null;
+  }
+  const entry = normalizeUnlockRequiresEntry(raw);
+  return entry ? [entry] : null;
 }
 
 function getQuestTierDef(questId, tier) {
@@ -1452,6 +1507,56 @@ function listQuestVariants() {
   return variants;
 }
 
+/**
+ * Builds the full level-select unlock graph: one node per quest tier (every tier
+ * of every quest, matching `listQuestVariants()` cardinality), each carrying its
+ * normalized `unlockRequires` prerequisite array and the account's per-tier
+ * locked/unlocked/cleared state.
+ *
+ * `require('./users')` is resolved lazily here (mirroring
+ * `listQuestVariantsForAccount` / `buildQuestUpdatePayload`) to avoid a circular
+ * import at module load. A falsy/unknown `accountId` yields unlocked tier-1 nodes
+ * and locked higher tiers, with no node cleared.
+ *
+ * @param {string} [accountId]
+ * @returns {{ nodes: Array<{ questId: string, tier: number, name: string,
+ *   objectiveType: string, isBoss: boolean,
+ *   unlockRequires: UnlockRequiresEntry[] | null,
+ *   state: 'locked' | 'unlocked' | 'cleared' }> }}
+ */
+function buildLevelUnlockGraph(accountId) {
+  const { isQuestTierUnlocked, hasCompletedQuestTier } = require('./users');
+  const nodes = [];
+  for (const questId of Object.keys(QUEST_DEFS)) {
+    const quest = QUEST_DEFS[questId];
+    const tierKeys = Object.keys(quest.tiers)
+      .map(Number)
+      .sort((a, b) => a - b);
+    for (const tier of tierKeys) {
+      const resolved = getQuest(questId, tier);
+      if (!resolved) {
+        continue;
+      }
+      let state = 'locked';
+      if (hasCompletedQuestTier(accountId, questId, tier)) {
+        state = 'cleared';
+      } else if (isQuestTierUnlocked(accountId, questId, tier)) {
+        state = 'unlocked';
+      }
+      nodes.push({
+        questId,
+        tier,
+        name: resolved.name,
+        objectiveType: resolved.objectiveType,
+        isBoss: resolved.objectiveType === 'stage_boss',
+        unlockRequires: normalizeUnlockRequires(resolved.unlockRequires),
+        state,
+      });
+    }
+  }
+  return { nodes };
+}
+
 function getSelectedQuest(gameState) {
   const questId = gameState && gameState.selectedQuestId;
   const tier = gameState && gameState.selectedQuestTier;
@@ -1469,11 +1574,21 @@ function buildSharedQuestUpdatePayload(gameState) {
   };
 }
 
+function listQuestVariantsForAccount(accountId) {
+  const { isQuestTierUnlocked } = require('./users');
+  return listQuestVariants().map((variant) => ({
+    ...variant,
+    tierUnlocked: isQuestTierUnlocked(accountId, variant.questId, variant.tier),
+  }));
+}
+
 function buildQuestUpdatePayload(gameState, playerAccountId) {
   const payload = buildSharedQuestUpdatePayload(gameState);
   if (playerAccountId) {
     const { getUnlockedQuestTiers } = require('./users');
     payload.unlockedQuestTiers = getUnlockedQuestTiers(playerAccountId) || {};
+    payload.questVariants = listQuestVariantsForAccount(playerAccountId);
+    payload.levelUnlockGraph = buildLevelUnlockGraph(playerAccountId);
   }
   return payload;
 }
@@ -1584,10 +1699,12 @@ module.exports = {
   isValidQuestId,
   isValidQuestSelection,
   normalizeQuestTier,
+  normalizeUnlockRequires,
   getQuest,
   getDefaultQuestId,
   listQuests,
   listQuestVariants,
+  buildLevelUnlockGraph,
   getSelectedQuest,
   getLayoutProfileForQuest,
   getLayoutGenerationOptions,

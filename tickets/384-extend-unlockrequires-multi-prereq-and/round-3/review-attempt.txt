@@ -1,0 +1,5 @@
+Wrote `tickets/384-extend-unlockrequires-multi-prereq-and/round-3/review.md` with final verdict:
+
+`VERDICT: PASS`
+
+No `gaps.md` or `nits.md` was created.

@@ -15,11 +15,10 @@ const {
   normalizeQuestTier,
   getLayoutProfileForQuest,
   getLayoutGenerationOptions,
-  buildSharedQuestUpdatePayload,
   buildQuestUpdatePayload
 } = require('./quests');
 const { InMemoryProvider, FileProvider } = require('./providers');
-const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked, getUnlockedQuestTiers } = require('./users');
+const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked } = require('./users');
 const { DEFAULT_COSMETIC, backfillCosmetic, backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
 const { verifyToken, initAuth, getJWTSecret } = require('./auth');
 const {
@@ -220,6 +219,7 @@ const {
   KEY_ITEM_DEFS,
   getKeyItemDef,
   getUnlockedKeyItems,
+  setTestKeyItemUnlockOverride,
   DESPERATION_CARD_DEFS,
   DESPERATION_DECK_TEMPLATE,
   drawCardFromDesperationDeck,
@@ -523,6 +523,7 @@ const DEBUG_SCENARIOS = new Set([
   'aegis-sentinel-ready',
   'minion-combat',
   'archive-wyrm-combat',
+  'archive-wyrm-elevated-breath',
   'storm-eagle-combat',
   'thunderbird-combat',
   'phase-stalker-combat',
@@ -620,6 +621,7 @@ const DEBUG_SCENARIOS = new Set([
   'field-medic',
   'field-medic-spawn',
   'ember-wraith',
+  'flying-enemies',
   'chain-lightning-ready',
   'arcane-radial-ready',
   'status-mutual-exclusion-ready',
@@ -666,27 +668,17 @@ function lobbyPlayerList(state) {
   }));
 }
 
-function unlockedQuestTiersForLobbyPlayer(state, playerId) {
-  const player = state.players[playerId];
-  if (!player || !player.accountId) return {};
-  return getUnlockedQuestTiers(player.accountId) || {};
-}
-
 /** Emit questUpdate/lobbyUpdate shared fields to each lobby socket with per-account unlock maps. */
 function emitQuestPayloadToLobby(lobby, { event = SERVER_TO_CLIENT.QUEST_UPDATE, extraFields = {} } = {}) {
   if (!lobby) return;
   const state = lobby.state;
-  const shared = {
-    ...buildSharedQuestUpdatePayload(state),
-    ...extraFields,
-  };
   for (const socket of io.sockets.sockets.values()) {
     if (!socket.rooms.has(lobby.id)) continue;
     const player = state.players[socket.playerId];
     if (!player) continue;
     socket.emit(event, {
-      ...shared,
-      unlockedQuestTiers: unlockedQuestTiersForLobbyPlayer(state, socket.playerId),
+      ...buildQuestUpdatePayload(state, player.accountId),
+      ...extraFields,
     });
   }
 }
@@ -701,18 +693,17 @@ function broadcastLobbyUpdate(lobby) {
     if (!activeState || Object.keys(activeState.players).length === 0) return;
     withLobbyContext({ state: activeState }, () => {
       ensureShopOffer();
-      const shared = {
+      const sharedLobbyFields = {
         players: lobbyPlayerList(activeState),
         gamePhase: activeState.gamePhase,
         shopOffer: activeState.shopOffer,
-        ...buildSharedQuestUpdatePayload(activeState),
       };
       for (const socket of io.sockets.sockets.values()) {
         const player = activeState.players[socket.playerId];
         if (!player) continue;
         socket.emit(SERVER_TO_CLIENT.LOBBY_UPDATE, {
-          ...shared,
-          unlockedQuestTiers: unlockedQuestTiersForLobbyPlayer(activeState, socket.playerId),
+          ...sharedLobbyFields,
+          ...buildQuestUpdatePayload(activeState, player.accountId),
         });
       }
     });
@@ -721,20 +712,19 @@ function broadcastLobbyUpdate(lobby) {
   }
   withLobbyContext(lobby, () => {
     ensureShopOffer();
-    const shared = {
+    const sharedLobbyFields = {
       lobbyId: lobby.id,
       players: lobbyPlayerList(lobby.state),
       gamePhase: lobby.state.gamePhase,
       shopOffer: lobby.state.shopOffer,
-      ...buildSharedQuestUpdatePayload(lobby.state),
     };
     for (const socket of io.sockets.sockets.values()) {
       if (!socket.rooms.has(lobby.id)) continue;
       const player = lobby.state.players[socket.playerId];
       if (!player) continue;
       socket.emit(SERVER_TO_CLIENT.LOBBY_UPDATE, {
-        ...shared,
-        unlockedQuestTiers: unlockedQuestTiersForLobbyPlayer(lobby.state, socket.playerId),
+        ...sharedLobbyFields,
+        ...buildQuestUpdatePayload(lobby.state, player.accountId),
       });
     }
   });
@@ -803,6 +793,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'spawner-active',
   'minion-combat',
   'archive-wyrm-combat',
+  'archive-wyrm-elevated-breath',
   'storm-eagle-combat',
   'thunderbird-combat',
   'run-exhausted',
@@ -836,6 +827,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'field-medic-spawn',
   'ember-wraith',
   'magma-colossus',
+  'flying-enemies',
   'ember-descent-cinderghast',
   'ember-descent-near-adds',
   'ember-descent-ember-wraith-burn',
@@ -2043,6 +2035,7 @@ if (typeof module !== 'undefined' && module.exports) {
     KEY_ITEM_DEFS,
     getKeyItemDef,
     getUnlockedKeyItems,
+    setTestKeyItemUnlockOverride,
     // Persistence
     extractPersistentData,
     savePlayerData,
