@@ -1,0 +1,7 @@
+Review complete. I wrote:
+
+`round-1/review.md` with `VERDICT: FAIL`  
+`round-1/gaps.md` with the blocking remediation  
+`round-1/nits.md` with one non-blocking cleanup item
+
+The captured game run is clean, but the ticket fails because `citadel_siege` is not actually the hardest overall encounter: it is a lone 420 HP boss, while existing Tier-II boss levels have comparable or higher boss durability plus multiple supports. No game code was edited.

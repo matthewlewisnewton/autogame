@@ -1,0 +1,7 @@
+Remediation round 2 has one open gap from `review-feedback.md`: the capstone is not the hardest overall level because it spawns only a lone 420 HP boss while Tier-II prereq levels combine comparable boss HP with 4–5 supports. Sub-tickets 01–03 are done (`.passed`); no failed folders needed removal.
+
+**Created sub-ticket:**
+
+- `/home/matt/workspace/.autogame-worktrees/387-boss-level-citadel-sovereign-capstone-gated/tickets/387-boss-level-citadel-sovereign-capstone-gated/subtickets/04-citadel-siege-encounter-pressure/ticket.md`
+
+**04 — Citadel Siege capstone encounter pressure retune** retunes `citadel_siege` with support adds and a tougher enemy pool (keeping boss HP at 420), updates quest copy and dependent tests, and adds a deploy-based regression test comparing total encounter HP and attack pressure against `spire_ascent:2`, `arena_trials:2`, and `frost_crossing:2`. Verification mode: `code`.
