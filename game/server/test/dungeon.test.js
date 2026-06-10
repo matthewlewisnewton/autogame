@@ -2560,6 +2560,26 @@ describe("generateLayout(seed, 'ice-cavern')", () => {
       expect(onIce).toBe(false);
     }
   });
+
+  it('places exactly one ice_cairn landmark at the treasure room centre', () => {
+    for (const seed of [1, 42, 123, 777, 9999]) {
+      const layout = generateLayout(seed, 'ice-cavern');
+      const treasure = layout.rooms.find((r) => r.role === 'treasure');
+      expect(treasure.band).toBe('stone');
+      expect(layout.landmarks).toHaveLength(1);
+      expect(layout.landmarks[0]).toEqual({
+        x: treasure.x,
+        z: treasure.z,
+        type: 'ice_cairn',
+      });
+    }
+  });
+
+  it('ice_cairn landmark placement is deterministic for seed 42', () => {
+    expect(generateLayout(42, 'ice-cavern').landmarks).toEqual(
+      generateLayout(42, 'ice-cavern').landmarks
+    );
+  });
 });
 
 // ── fire-cavern stage layout ──

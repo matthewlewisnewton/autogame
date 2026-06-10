@@ -1,0 +1,10 @@
+Broke the top-level ticket into **4 sub-tickets** in dependency order, following the spire-ascent / annex-overseer miniboss pattern and accounting for Frost Crossing’s existing scripted wave arc (dock → ice band → Rimecast → Permafrost Warden on the south cairn).
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/380-ice-l1-miniboss-permafrost-warden/tickets/380-ice-l1-miniboss-permafrost-warden/subtickets/01-ice-cairn-landmark`
+2. `/home/matt/workspace/.autogame-worktrees/380-ice-l1-miniboss-permafrost-warden/tickets/380-ice-l1-miniboss-permafrost-warden/subtickets/02-permafrost-warden-enemy`
+3. `/home/matt/workspace/.autogame-worktrees/380-ice-l1-miniboss-permafrost-warden/tickets/380-ice-l1-miniboss-permafrost-warden/subtickets/03-permafrost-warden-client-render`
+4. `/home/matt/workspace/.autogame-worktrees/380-ice-l1-miniboss-permafrost-warden/tickets/380-ice-l1-miniboss-permafrost-warden/subtickets/04-frost-crossing-tier1-stage-boss-wireup`
+
+**Dependency chain:** landmark → server enemy → client render → quest/encounter integration + tests. All use `Verification: code` since every acceptance criterion involves structure, handlers, server state, or encounter behavior—not purely pixel-level rendering.

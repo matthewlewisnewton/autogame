@@ -6510,7 +6510,6 @@ PASS. This ticket did not add or modify a `?debugScenario=NAME` shortcut. The ca
 
 None.
 
-
 ## v0.368 — 372-playthrough-validate-ice-level  (2026-06-10 10:15:26)
 
 debug-scenario socket path behind `isDebugScenarioAllowed()`. They seed state but do not
@@ -6557,7 +6556,6 @@ The provided `coverage.log` shows the escort objective test suite and escort HP-
 
 None.
 
-
 ## v0.370 — 392-investigate-ice-telepipe-vitals-not-preserved  (2026-06-10 11:12:35)
 
 ### Fresh sortie after Telepipe abandon on ICE
@@ -6598,9 +6596,104 @@ The implementation is small and localized to movement physics and prediction par
 
 Validation observed in `coverage.log`: 86 test files passed, 1593 tests passed. Coverage was collected for visibility with thresholds disabled.
 
+## v0.372 — 380-ice-l1-miniboss-permafrost-warden  (2026-06-10 11:44:26)
+
+### Defeat objective and rewards
+
+PASS. The stage-boss objective does not complete from add kill counts; it completes when the active encounter boss is defeated and the encounter clears. Existing reward-card metadata for Frost Crossing remains in place, and the debug last-enemy shortcut was updated to use a 1-HP Permafrost Warden while preserving the same normal post-victory path.
+
+### Design and foundation compatibility
+
+PASS. The implementation is consistent with `game/docs/design.md`: Frost Crossing remains an ice-band thrower/Rimecast level, now culminating in a single stage boss. It does not regress the foundational requirements: the captured run demonstrates server/client startup, websocket connectivity, scene initialization, multiplayer presence, and movement/dodge HUD behavior.
+
+### Debug scenarios
+
+PASS. The changed Frost Crossing debug scenarios remain gated behind `debugScenario` names; normal gameplay does not enter them. The new/updated shortcuts mirror reachable end states from normal play, such as deploying Frost Crossing, clearing scripted hostiles, approaching the cairn, and fighting the boss. They do not bypass persistent account progression, server-side objective code, or the live encounter state machine in normal gameplay.
+
+### Tests and coverage
+
+PASS. The provided `coverage.log` shows the full suite passing: 191 test files and 2702 tests. Coverage includes targeted server tests for `permafrost_warden` and `frost_crossing_stage_boss`, plus updated client tests for quest-board copy, model registration, lock-on panel metadata, render registry normalization, and boss HUD naming.
+
+## v0.373 — 381-fire-l1-miniboss-cinder-warden  (2026-06-10 11:57:40)
+
+The lock-on metadata panel and boss HUD remain generic and server-catalog driven, so the new surfaced metadata reaches the panel without bespoke client panel code. This is consistent with the existing design and does not regress the generic enemy-catalog contract.
+
+### Debug scenario review
+
+PASS. The new `ember-descent-tier-2` debug scenario is registered only in the normal debug-scenario path and is requested by the client exclusively from the localhost `?debugScenario=` URL parameter. The equivalent state is reachable through normal gameplay by clearing Ember Descent Tier I, unlocking Tier II, selecting Ember Descent Tier II, and deploying.
+
+The shortcut does not replace the encounter implementation with a fake state: it sets the quest/tier and layout, then uses the same `enterPlayingPhase`, `spawnEnemies()`, and `startDungeonRun()` flow that regular deployment uses. It unlocks the tier for the debug account so the QA shortcut can select the state, but the quest definition still preserves the normal `unlockRequires` gate.
+
+### Design and foundation consistency
+
+PASS. The implementation follows the existing stage-boss framework described in `game/docs/design.md`: one stage-boss encounter, server-authored enemy metadata, defeat objective, supporting adds, and generic lock-on panel data. It does not weaken the base setup requirements in `game/docs/requirements.md`; the captured run confirms rendering, client-server connection, multiplayer representation, and synchronized movement still work.
+
+## Verification
+
+The provided coverage log shows the full vitest coverage run passed: `188` test files and `2652` tests passed. New relevant coverage includes `server/test/cinder_warden.test.js`, `server/test/ember_descent_stage_boss.test.js`, `server/test/enemy_display_catalog.test.js`, and `client/test/renderer-cinder-warden.test.js`.
+
+## v0.374 — 384-extend-unlockrequires-multi-prereq-and  (2026-06-10 12:18:37)
+
+PASS. The changes stay within the lobby/quest progression model described in `game/docs/design.md`: players select quests in the lobby, ready up, deploy, and progression is awarded after successful dungeon objectives. The foundation requirements are not regressed; the captured run confirms WebSocket connection, multiplayer visualization/state, 3D rendering, and movement in an active run.
+
+### Debug Scenarios
+
+PASS. This ticket did not add or change a development `?debugScenario=` shortcut. The changed behavior is exercised through normal account progression, quest selection, readiness, and run-completion paths rather than relying on a debug-only entry point.
+
+## Code Quality And Verification
+
+The live codebase is coherent with the ticket scope. The implementation is server-authoritative for selection/readiness gating, keeps account-specific payloads isolated per socket, and updates the client lock UI without trusting the raw legacy unlock map when evaluated `tierUnlocked` is available.
+
+Verification observed:
+
+- Round-3 runtime capture: `ok: true`, empty `pageerrors`, no fatal console entries.
+- `coverage.log`: 151 test files passed, 2328 tests passed.
+- Changed code inspected from `git diff 00815f732b26c7eecfaa2d64a1ffd2a8cf8c37a4 HEAD`.
+
+## v0.375 — 378-introduce-few-flying-enemies  (2026-06-10 12:27:01)
+
+
+### Client Rendering and Telegraphs
+PASS. `game/client/models.js` registers both new enemy ids as procedural-only entries, and `game/client/renderer.js` adds mesh geometry plus attack-visual entries. `void_seraph` maps to a radial telegraph and `rime_drifter` maps to the projectile telegraph style consistent with `glacial_thrower`. The implementation reuses the existing server-provided flying/altitude render path rather than adding per-type Y handling.
+
+### Rare/Sparse Thematic Spawn Weights
+PASS. `rime_drifter` is added only to `frost_crossing` at weight 1. `void_seraph` is added only to `canyon_descent` and `spire_ascent` at weight 1. These are the lowest weights in their pools, and no tier-2 pool or unrelated quest pool gained a flying type. Normal gameplay can reach the same enemy states through those quest pools and stage-boss add pools that draw from `getEnemyPool()`.
+
+### Debug Scenario
+PASS. The added `?debugScenario=flying-enemies` shortcut is only entered through the existing URL-param/client socket route and server-side debug scenario allowlist. It is guarded by the existing localhost or `ALLOW_DEBUG_SCENARIOS=1` checks and is rejected in production/non-local contexts. The shortcut uses the authoritative server `spawnEnemy` path and does not replace the normal gameplay path, which remains available through the rare quest spawn pools.
+
+### Design and Foundation Consistency
+PASS. The change fits the design document's 3D multiplayer dungeon combat direction, uses the established card/enemy combat systems, and does not regress the requirements baseline: the captured run shows a rendered Three.js scene, connected client/server WebSockets, multiplayer presence, and synchronized movement.
+
+### Tests and Coverage
+PASS. The latest coverage run reports 168 test files passed and 2504 tests passed. Focused tests cover flying enemy definitions, hover height, spherical radial hit/miss behavior, height-aware projectile launch/damage, display catalog entries, client render registries, and sparse spawn-pool wiring. Coverage output includes unrelated pre-existing disconnect-handler warnings in older tests, but they did not fail the suite and are not caused by this ticket's changed files.
+
 ## Remaining gaps
 
 None.
+
+
+## v0.376 — Server: USE_KEY_ITEM/EQUIP_KEY_ITEM never checks equipped/owned key item (any client can use any key item)  (2026-06-10 12:49:14)
+
+
+## Code quality
+
+- Minimal, focused diff (~180 lines, mostly test fixture updates).
+- Checks reuse existing patterns (`getKeyItemDef`, `isKeyItemUnlocked`, `SERVER_TO_CLIENT` error shapes).
+- Test override is scoped (`setTestKeyItemUnlockOverride(null)` in `finally`) and exported only for test access via `index.js`, consistent with other server test hooks.
+- No dead code, no client changes required (client already emits `me.equippedKeyItemId` in `main.js`).
+
+## Debug scenarios
+
+This ticket did not add or modify `?debugScenario=` shortcuts. Existing debug scenarios (e.g. `summon-recall`) set `equippedKeyItemId` explicitly before key-item use — compatible with the new guard. No debug-scenario blocking issues.
+
+## Capture alignment
+
+Fallback smoke capture exercised the real player path: auth → lobby → ready → WASD movement → dodge roll (E). Probes confirm `equippedKeyItemId: "dodge_roll"`, successful dodge cooldown activation, and clean reconnect to ready state. Screenshots show lobby and in-run HUD with Dodge Roll indicator.
+
+## Remaining gaps
+
+None. All acceptance criteria are fully met; runtime capture is clean; test suite is green.
 
 
 ## v0.377 — 379-wyrm-evolution-flying-minion  (2026-06-10 12:51:48)

@@ -150,6 +150,26 @@ describe('buildLockOnPanelModel', () => {
     });
   });
 
+  it('builds a permafrost_warden panel with catalog name and surfaced stats', () => {
+    const enemy = {
+      type: 'permafrost_warden',
+      hp: 280,
+      maxHp: 360,
+      attackDamage: 20,
+      attackStyle: 'radial',
+      attackRange: 4.5,
+    };
+    const model = buildLockOnPanelModel(enemy, catalog);
+    expect(model.name).toBe('Permafrost Warden');
+    expect(model.description).toContain('radial frost shockwave');
+    expect(model.hpText).toBe('280 / 360');
+    const labels = model.stats.map((s) => s.label);
+    expect(labels).toContain('Attack');
+    expect(labels).toContain('Attack style');
+    expect(model.stats.find((s) => s.label === 'Attack')?.value).toBe('20');
+    expect(model.stats.find((s) => s.label === 'Attack style')?.value).toBe('Radial');
+  });
+
   it('builds an ember_wraith panel with burn duration and description', () => {
     const enemy = {
       type: 'ember_wraith',

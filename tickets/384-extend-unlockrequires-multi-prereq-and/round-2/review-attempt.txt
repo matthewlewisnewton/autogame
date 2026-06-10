@@ -1,0 +1,8 @@
+Wrote the final review and remediation:
+
+- `tickets/384-extend-unlockrequires-multi-prereq-and/round-2/review.md`
+- `tickets/384-extend-unlockrequires-multi-prereq-and/round-2/gaps.md`
+
+VERDICT: FAIL
+
+Blocking gap: tier-2 prerequisite completion cannot be satisfied through normal gameplay because completion is inferred from unlocking a higher tier, and current tier-2 stages have no valid tier 3 / no persisted completion record.

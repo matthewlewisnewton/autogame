@@ -24,9 +24,9 @@ const EXPECTED_POOLS = {
   training_caverns: [['grunt', 3], ['skirmisher', 2]],
   crystal_rescue: [['grunt', 2], ['skirmisher', 3]],
   arena_trials: [['grunt', 2], ['miniboss', 1], ['skirmisher', 2]],
-  canyon_descent: [['grunt', 2], ['miniboss', 1], ['skirmisher', 2]],
+  canyon_descent: [['grunt', 2], ['miniboss', 1], ['skirmisher', 2], ['void_seraph', 1]],
   ember_descent: [['ember_wraith', 2], ['grunt', 3], ['skirmisher', 2]],
-  spire_ascent: [['grunt', 2], ['miniboss', 1], ['skirmisher', 1], ['spawner', 2]],
+  spire_ascent: [['grunt', 2], ['miniboss', 1], ['skirmisher', 1], ['spawner', 2], ['void_seraph', 1]],
   endless_siege: [['grunt', 2], ['skirmisher', 2]],
 };
 
@@ -300,7 +300,14 @@ describe('tier-1 scripted quest enemy pools', () => {
 
     const state = deployTier1ScriptedQuest(questId);
     expect(state.run.scriptedEncounter).toBeDefined();
-    expect(state.enemies.every((enemy) => enemy.scriptedWave)).toBe(true);
-    expect(state.enemies.length).toBeLessThanOrEqual(3);
+    if (questId === 'frost_crossing') {
+      expect(state.run.objective.type).toBe('stage_boss');
+      expect(state.enemies).toHaveLength(3);
+      expect(state.enemies.filter((enemy) => enemy.scriptedWave)).toHaveLength(2);
+      expect(state.enemies.some((enemy) => enemy.type === 'permafrost_warden')).toBe(true);
+    } else {
+      expect(state.enemies.every((enemy) => enemy.scriptedWave)).toBe(true);
+      expect(state.enemies.length).toBeLessThanOrEqual(3);
+    }
   });
 });

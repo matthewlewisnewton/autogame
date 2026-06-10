@@ -1,0 +1,13 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created two sub-tickets:
+
+```
+tickets/server-use-key-item-equip-key-item-never-checks-equipped-own-57ro/subtickets/01-check-use-key-item-equipped/ticket.md
+tickets/server-use-key-item-equip-key-item-never-checks-equipped-own-57ro/subtickets/02-check-equip-key-item-unlocked/ticket.md
+```
+
+**01** adds the `not_equipped` rejection in `handleUseKeyItem` when `keyItemId !== player.equippedKeyItemId`, plus a test for the rejection path.
+
+**02** adds the `not_unlocked` rejection in the `EQUIP_KEY_ITEM` handler using the existing `isKeyItemUnlocked()` guard from `progression.js`, plus a test for the rejection path.
+
+Both are `code` verification — they concern server-side validation logic and unit tests, with no visual/rendering criteria. Existing tests should continue passing since the default `equippedKeyItemId` is `dodge_roll`, which matches the key item ID used in all existing `useKeyItem` test emits.

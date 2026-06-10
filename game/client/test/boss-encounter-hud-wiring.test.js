@@ -139,6 +139,7 @@ describe('boss-encounter HUD wiring in main.js', () => {
 			['arena_champion', 'Trial Warden', 'arena_trials'],
 			['miniboss', 'Canyon Warden', 'canyon_descent'],
 			['spire_warden', 'Summit Warden', 'spire_ascent'],
+			['permafrost_warden', 'Permafrost Warden', 'frost_crossing'],
 		];
 		for (const [type, expectedName, questId] of cases) {
 			const gs = makeGameState({

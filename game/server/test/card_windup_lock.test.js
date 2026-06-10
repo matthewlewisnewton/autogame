@@ -151,6 +151,7 @@ describe('card wind-up input lock until resolution', () => {
 		expect(player.invulnerableUntil || 0).toBe(invulnBefore);
 
 		const blockingBefore = player.blockingUntil || 0;
+		player.equippedKeyItemId = 'guard_block';
 		const guardRejectPromise = waitForEvent(socket, 'keyItemUsed');
 		socket.emit('useKeyItem', { keyItemId: 'guard_block' });
 		const guardReject = await guardRejectPromise;
@@ -162,6 +163,7 @@ describe('card wind-up input lock until resolution', () => {
 		expect(isPlayerCardCommitted(player)).toBe(false);
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'dodge_roll';
 		player.inputDx = 1;
 		player.inputDz = 0;
 
