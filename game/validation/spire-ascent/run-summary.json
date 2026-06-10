@@ -4,10 +4,20 @@
   "steps": "full",
   "outDir": "game/validation/spire-ascent",
   "presetConfig": {
+    "findingsTitle": "Spire Ascent validation findings",
+    "bossSpawnLabel": "spire_warden (Summit Warden)",
+    "layoutProfile": "spire-ascent",
     "questId": "spire_ascent",
     "questTier": 2,
     "bossType": "spire_warden",
     "deployScenario": "spire-ascent-tier-2",
+    "iceBallScenario": "ice-ball-ready",
+    "fireballScenario": "fireball-hand-ready",
+    "purifyingPulseScenario": "purifying-pulse-ready",
+    "windupScenario": "magma-windup-ready",
+    "windupCardId": "magma_greatsword",
+    "telepipeScenario": "spire-ascent-telepipe-ready",
+    "telepipeDeployScenario": "spire-ascent-tier-2",
     "nearAddsScenario": "spire-ascent-near-adds",
     "bossApproachScenario": "spire-ascent-boss-approach",
     "bossLowHpScenario": "spire-ascent-boss-low-hp",
@@ -23,9 +33,9 @@
     "lobbyName": "Spire Ascent Validation"
   },
   "serverPort": 3295,
-  "clientPort": 5291,
+  "clientPort": 5259,
   "auth": {
-    "username": "playthrough-1780748031459",
+    "username": "playthrough-1781131267034",
     "connected": true,
     "lobbyBrowserVisible": true,
     "harnessPhase": "unknown",
@@ -42,10 +52,19 @@
       "spire_warden",
       "grunt",
       "skirmisher",
-      "grunt",
-      "spawner",
+      "skirmisher",
+      "void_seraph",
       "grunt"
-    ]
+    ],
+    "floorAlignment": {
+      "levelEntry": {
+        "playerY": 0.5,
+        "floorY": 0.5,
+        "delta": 0,
+        "layoutProfile": "spire-ascent",
+        "band": "tier"
+      }
+    }
   },
   "bossEncounter": {
     "midCombatScreenshot": "game/validation/spire-ascent/03-mid-combat.png",
@@ -57,18 +76,207 @@
       "dormant": {
         "encounterPhase": "dormant",
         "encounterLocked": false,
-        "bossEnemyId": "94ab460f-249c-49e6-8f75-47e033eac200",
+        "bossEnemyId": "fca3903c-6423-42b5-a18d-7c1ad6f1fedd",
         "bossHp": 420,
         "liveAddCount": 0
       },
       "active": {
         "encounterPhase": "active",
         "encounterLocked": true,
-        "bossEnemyId": "94ab460f-249c-49e6-8f75-47e033eac200",
+        "bossEnemyId": "fca3903c-6423-42b5-a18d-7c1ad6f1fedd",
         "bossHp": 420,
-        "liveAddCount": 0
+        "liveAddCount": 1
+      },
+      "bossEncounterUi": {
+        "hudVisible": true,
+        "bossName": "Summit Warden",
+        "hpFillWidthPct": 100,
+        "encounterLocked": true,
+        "encounterPhase": "active"
+      },
+      "bossVisualIdentity": {
+        "bossType": "spire_warden",
+        "bossEnemyId": "fca3903c-6423-42b5-a18d-7c1ad6f1fedd",
+        "nearestAddType": "grunt",
+        "bossDistinctFromAdds": true,
+        "bossRenderScale": 2.4000000953674316,
+        "addRenderScale": 1.0250146946789016
+      },
+      "floorAlignment": {
+        "midCombat": {
+          "playerY": 0.5,
+          "floorY": 0.5,
+          "delta": 0,
+          "layoutProfile": "spire-ascent",
+          "band": "tier"
+        },
+        "bossDormant": {
+          "playerY": 0.5,
+          "floorY": 0.5,
+          "delta": 0,
+          "layoutProfile": "spire-ascent",
+          "band": "tier"
+        },
+        "bossActive": {
+          "playerY": 10.5,
+          "floorY": 10.5,
+          "delta": 0,
+          "layoutProfile": "spire-ascent",
+          "band": "tier"
+        }
       }
     }
+  },
+  "cardExercises": {
+    "slowBurn": {
+      "targetEnemyId": "15a437ce-27f7-4bad-b10d-c579ae65a8d6",
+      "afterSlow": {
+        "targetEnemyId": "15a437ce-27f7-4bad-b10d-c579ae65a8d6",
+        "found": true,
+        "slowedUntil": 1781131273405,
+        "burningUntil": 0,
+        "slowActive": true,
+        "burnActive": false
+      },
+      "afterBurn": {
+        "targetEnemyId": "15a437ce-27f7-4bad-b10d-c579ae65a8d6",
+        "found": true,
+        "slowedUntil": 0,
+        "burningUntil": 1781131275879,
+        "slowActive": false,
+        "burnActive": true
+      },
+      "screenshot": "game/validation/spire-ascent/08-slow-burn-mutual-exclusive.png",
+      "slowBurnMutuallyExclusive": true
+    },
+    "purifyingPulse": {
+      "preCast": {
+        "found": true,
+        "hp": 40,
+        "slowedUntil": 0,
+        "burningUntil": 1781131279764,
+        "slowActive": false,
+        "burnActive": true
+      },
+      "postCast": {
+        "found": true,
+        "hp": 60,
+        "slowedUntil": 0,
+        "burningUntil": 0,
+        "slowActive": false,
+        "burnActive": false
+      },
+      "healCleanseApplied": true,
+      "screenshot": "game/validation/spire-ascent/09-purifying-pulse.png"
+    },
+    "windup": {
+      "cardId": "magma_greatsword",
+      "scenario": "magma-windup-ready",
+      "duringWindup": {
+        "cardUseState": "windup",
+        "cardWindupUntil": 1781131277927,
+        "cardWindupCardId": "magma_greatsword",
+        "inputLocked": true,
+        "activatingSlot": true,
+        "windupIndicatorWidth": 0,
+        "telegraphVisible": true
+      },
+      "domProbe": {
+        "inputLocked": true,
+        "activatingSlot": true,
+        "windupIndicatorWidth": 0,
+        "telegraphVisible": true
+      },
+      "windupTelegraphActive": true,
+      "screenshot": "game/validation/spire-ascent/10-windup-charge.png"
+    }
+  },
+  "spireTelepipe": {
+    "telepipeScenario": "spire-ascent-telepipe-ready",
+    "deployScenario": "spire-ascent-tier-2",
+    "preSuspend": {
+      "hp": 100,
+      "magicStones": 16.679999999998124,
+      "msText": "16/99",
+      "hand": [
+        {
+          "id": "telepipe",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        {
+          "id": "dungeon_drake",
+          "type": "creature",
+          "remainingCharges": 0,
+          "charges": 1
+        },
+        null,
+        {
+          "id": "dungeon_drake",
+          "type": "creature",
+          "remainingCharges": 0,
+          "charges": 1
+        },
+        {
+          "id": "throw_rock",
+          "type": "weapon",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        null
+      ],
+      "phase": "playing",
+      "runStatus": "playing",
+      "extracted": false,
+      "suspendedRunSummary": null,
+      "layoutSeed": 727116418,
+      "runId": "135ba20e-2834-4d4b-9f70-e1f4940912c2"
+    },
+    "postDeploy": {
+      "hp": 100,
+      "magicStones": 16.939999999998072,
+      "msText": "16/99",
+      "hand": [
+        {
+          "id": "battle_familiar",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        {
+          "id": "iron_sword",
+          "type": "weapon",
+          "remainingCharges": 5,
+          "charges": 5
+        },
+        null,
+        {
+          "id": "iron_sword",
+          "type": "weapon",
+          "remainingCharges": 5,
+          "charges": 5
+        },
+        {
+          "id": "battle_familiar",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        null
+      ],
+      "phase": "playing",
+      "runStatus": "playing",
+      "extracted": false,
+      "suspendedRunSummary": null,
+      "layoutSeed": 727116418,
+      "runId": "cf6a116e-cd4e-48f0-94ac-2540a72151c1"
+    },
+    "telepipeVitalsPreserved": true,
+    "cardChargesResetOnNewSortie": true,
+    "checkpointRestoredInLog": false,
+    "beforeScreenshot": "game/validation/spire-ascent/11-telepipe-before.png",
+    "afterScreenshot": "game/validation/spire-ascent/12-telepipe-after.png"
   },
   "victory": {
     "bossDefeatedScreenshot": "game/validation/spire-ascent/06-boss-defeated.png",
@@ -92,6 +300,28 @@
     "bossSpawned": true,
     "encounterActivated": true,
     "bossDefeated": true,
-    "victoryFired": true
-  }
+    "victoryFired": true,
+    "bossEncounterUiVisible": true,
+    "bossDistinctFromAdds": true,
+    "slowBurnMutuallyExclusive": true,
+    "healCleanseApplied": true,
+    "windupTelegraphActive": true,
+    "telepipeVitalsPreserved": true,
+    "cardChargesResetOnNewSortie": true
+  },
+  "screenshots": [
+    "game/validation/spire-ascent/01-lobby-browser.png",
+    "game/validation/spire-ascent/01-hub.png",
+    "game/validation/spire-ascent/02-level-entry.png",
+    "game/validation/spire-ascent/03-mid-combat.png",
+    "game/validation/spire-ascent/04-boss-dormant.png",
+    "game/validation/spire-ascent/05-boss-active.png",
+    "game/validation/spire-ascent/06-boss-defeated.png",
+    "game/validation/spire-ascent/07-victory.png",
+    "game/validation/spire-ascent/08-slow-burn-mutual-exclusive.png",
+    "game/validation/spire-ascent/09-purifying-pulse.png",
+    "game/validation/spire-ascent/10-windup-charge.png",
+    "game/validation/spire-ascent/11-telepipe-before.png",
+    "game/validation/spire-ascent/12-telepipe-after.png"
+  ]
 }
