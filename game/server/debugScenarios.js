@@ -2978,6 +2978,15 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       const warden = spawnEnemy(player.x + 5, player.z, 'permafrost_warden');
       warden.wanderTarget = { x: warden.x, z: warden.z };
+    } else if (name === 'magma-colossus') {
+      // Spawn a Magma Colossus beside the player for fire-cavern boss mesh,
+      // radial telegraph, and lock-on catalog QA. The same enemy is reachable
+      // normally as the ember_descent Tier 2 stage boss; this is a shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const colossus = spawnEnemy(player.x + 5, player.z, 'magma_colossus');
+      colossus.wanderTarget = { x: colossus.x, z: colossus.z };
     } else if (name === 'ember-wraith') {
       // One Ember Wraith in cone-strike range for burning-on-hit QA. The same
       // enemy is reachable on ember_descent runs (or via fire-cavern); shortcut only.
