@@ -920,6 +920,7 @@ function installMainProcessErrorHandlers() {
     _harnessReady = false;
     logServerFault(`[server] ${signal} received — closing HTTP server`);
     try {
+      saveAllPlayersInAllLobbies();
       if (typeof server.closeAllConnections === 'function') {
         server.closeAllConnections();
       }
@@ -2019,6 +2020,7 @@ if (typeof module !== 'undefined' && module.exports) {
     extractPersistentData,
     savePlayerData,
     saveAllPlayers,
+    saveAllPlayersInAllLobbies,
     setTestProvider,
     getProvider,
     persistenceKey,
