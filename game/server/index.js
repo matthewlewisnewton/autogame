@@ -821,11 +821,12 @@ function applyDebugScenario(socket, name) {
 
 function findSacrificeTarget(playerId, x, z, radius) {
   const state = getProgressionGameState() || gameState;
+  const originY = getEntityWorldY({ x, z });
   return state.minions
     .map((minion, index) => ({ minion, index }))
     .filter(({ minion }) => {
       if (!minion || minion.ownerId !== playerId || minion.hp <= 0) return false;
-      return Math.hypot(minion.x - x, minion.z - z) <= radius;
+      return distance3D(x, originY, z, minion) <= radius;
     })
     .sort((a, b) => {
       const aCreated = Number.isFinite(a.minion.createdAt) ? a.minion.createdAt : 0;
@@ -1744,6 +1745,7 @@ if (typeof module !== 'undefined' && module.exports) {
     collectRadialHits,
     collectProjectileHits,
     collectChainLightningHits,
+    findSacrificeTarget,
     collectPhaseBeamHits,
     collectReturningProjectileHits,
     applyFreezeInRadius,

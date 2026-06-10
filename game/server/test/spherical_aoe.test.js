@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
 	createGameState,
 	gameState,
 	CARD_DEFS,
 	collectRadialHits,
+	collectChainLightningHits,
 	healPlayersInRadius,
 	applyFreezeInRadius,
 	pullEnemiesToward,
@@ -14,6 +15,9 @@ import {
 	updateEnchantments,
 	updateAreaEffects,
 	spawnVolatileExplosion,
+	spawnEnemy,
+	updateEnemies,
+	ENEMY_DEFS,
 	distance3D,
 	getEntityWorldY,
 } from '../index.js';
@@ -335,6 +339,95 @@ describe('enchantment trigger spherical inclusion', () => {
 		updateEnchantments();
 		expect(gameState.enemies[0].hp).toBe(50);
 		expect(gameState.enchantments).toHaveLength(1);
+	});
+});
+
+describe('healFieldMedicAlly spherical inclusion', () => {
+	beforeEach(() => {
+		resetState();
+		vi.useFakeTimers();
+		vi.setSystemTime(2_000_000);
+		gameState.run = { status: 'playing' };
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('heals a wounded ally at the same (x, z) within vertical range', () => {
+		const medic = spawnEnemy(0, 0, 'field_medic');
+		const grunt = spawnEnemy(3, 0, 'grunt');
+		grunt.y = 3;
+		grunt.hp = Math.floor(grunt.maxHp * 0.3);
+		medic.lastHealAt = Date.now() - ENEMY_DEFS.field_medic.healCooldownMs - 100;
+		medic.wanderTarget = { x: medic.x, z: medic.z };
+		grunt.wanderTarget = { x: grunt.x, z: grunt.z };
+
+		const hpBefore = grunt.hp;
+		updateEnemies();
+
+		expect(grunt.hp).toBe(
+			Math.min(grunt.maxHp, hpBefore + ENEMY_DEFS.field_medic.healAmount),
+		);
+	});
+
+	it('skips a wounded ally at the same (x, z) beyond vertical range', () => {
+		const medic = spawnEnemy(0, 0, 'field_medic');
+		const grunt = spawnEnemy(3, 0, 'grunt');
+		grunt.y = 6;
+		grunt.hp = Math.floor(grunt.maxHp * 0.3);
+		medic.lastHealAt = Date.now() - ENEMY_DEFS.field_medic.healCooldownMs - 100;
+		medic.wanderTarget = { x: medic.x, z: medic.z };
+		grunt.wanderTarget = { x: grunt.x, z: grunt.z };
+
+		const hpBefore = grunt.hp;
+		updateEnemies();
+
+		expect(grunt.hp).toBe(hpBefore);
+	});
+});
+
+describe('collectChainLightningHits chain-radius spherical inclusion', () => {
+	beforeEach(resetState);
+
+	const baseDamage = CARD_DEFS.chain_lightning.damage;
+	const chainRadius = CARD_DEFS.chain_lightning.chainRadius;
+	const attackRange = CARD_DEFS.chain_lightning.attackRange;
+
+	function addEnemyWithY(id, x, z, y, hp = 100) {
+		gameState.enemies.push({
+			id,
+			type: 'grunt',
+			x,
+			z,
+			y,
+			hp,
+			maxHp: hp,
+		});
+	}
+
+	it('chains to an elevated neighbor within vertical range on flat primary aim', () => {
+		addEnemyWithY('primary', 5, 0, 0);
+		addEnemyWithY('chain', 8, 0, 3);
+
+		const result = collectChainLightningHits(0, 0, 1, 0, attackRange, baseDamage, {
+			chainRadius,
+			maxChainTargets: 1,
+		});
+
+		expect(result.hits.map((h) => h.enemyId)).toEqual(['primary', 'chain']);
+	});
+
+	it('skips an elevated neighbor beyond vertical range on flat primary aim', () => {
+		addEnemyWithY('primary', 5, 0, 0);
+		addEnemyWithY('too-high', 8, 0, 6);
+
+		const result = collectChainLightningHits(0, 0, 1, 0, attackRange, baseDamage, {
+			chainRadius,
+			maxChainTargets: 1,
+		});
+
+		expect(result.hits.map((h) => h.enemyId)).toEqual(['primary']);
 	});
 });
 

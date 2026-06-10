@@ -28,6 +28,7 @@ const {
   PLAYER_RADIUS,
   healPlayer,
   getEntityWorldY,
+  distance3D,
 } = require('./simulation');
 const {
   sampleFloorY,
@@ -173,6 +174,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.smokeBombUntil = now + durationMs;
       player.smokeBombRadius = radius;
       player.smokeBombX = player.x;
+      player.smokeBombY = getEntityWorldY(player);
       player.smokeBombZ = player.z;
       player.keyItemCooldownUntil = now + (def.cooldownMs || 8000);
       player.persistenceDirty = true;
@@ -228,17 +230,16 @@ function handleUseKeyItem(socket, state, lobby, data) {
       const durationMs = def.durationMs != null ? def.durationMs : 4000;
       const multiplier = def.speedMultiplier != null ? def.speedMultiplier : 1.1;
       const rallyUntil = now + durationMs;
+      const casterY = getEntityWorldY(player);
       let affected = 0;
 
       for (const p of Object.values(state.players)) {
         if (!p || p.dead || p.extracted) continue;
-        const dist = Math.hypot(p.x - player.x, p.z - player.z);
-        if (dist <= radius) {
-          p.rallyUntil = rallyUntil;
-          p.rallySpeedMultiplier = multiplier;
-          p.persistenceDirty = true;
-          affected++;
-        }
+        if (distance3D(player.x, casterY, player.z, p) > radius) continue;
+        p.rallyUntil = rallyUntil;
+        p.rallySpeedMultiplier = multiplier;
+        p.persistenceDirty = true;
+        affected++;
       }
 
       player.keyItemCooldownUntil = now + (def.cooldownMs || 10000);
@@ -271,15 +272,14 @@ function handleUseKeyItem(socket, state, lobby, data) {
       const revealRadius = def.revealRadius != null ? def.revealRadius : 25;
       const revealDurationMs = def.revealDurationMs != null ? def.revealDurationMs : 3000;
       const revealUntil = now + revealDurationMs;
+      const casterY = getEntityWorldY(player);
       let revealed = 0;
 
       for (const enemy of state.enemies) {
         if (enemy.hp <= 0) continue;
-        const dist = Math.hypot(enemy.x - player.x, enemy.z - player.z);
-        if (dist <= revealRadius) {
-          enemy.revealedUntil = revealUntil;
-          revealed++;
-        }
+        if (distance3D(player.x, casterY, player.z, enemy) > revealRadius) continue;
+        enemy.revealedUntil = revealUntil;
+        revealed++;
       }
 
       player.keyItemCooldownUntil = now + (def.cooldownMs || 10000);

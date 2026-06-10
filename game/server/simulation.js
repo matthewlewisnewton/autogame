@@ -1140,9 +1140,10 @@ function isPlayerConcealed(player, now) {
 		if (!owner.smokeBombUntil || now >= owner.smokeBombUntil) continue;
 		const radius = owner.smokeBombRadius;
 		if (!Number.isFinite(radius) || radius <= 0) continue;
-		const dx = player.x - owner.smokeBombX;
-		const dz = player.z - owner.smokeBombZ;
-		if (Math.hypot(dx, dz) <= radius) return true;
+		const smokeY = Number.isFinite(owner.smokeBombY)
+			? owner.smokeBombY
+			: resolveRadialOriginY(owner.smokeBombX, owner.smokeBombZ, {});
+		if (distance3D(owner.smokeBombX, smokeY, owner.smokeBombZ, player) <= radius) return true;
 	}
 	return false;
 }
@@ -1536,9 +1537,11 @@ function collectChainLightningHits(originX, originZ, dirX, dirZ, range, damage, 
     for (const enemy of _gameState.enemies) {
       if (hitEnemyIds.has(enemy.id) || enemy.hp <= 0) continue;
       const enemyY = getEntityWorldY(enemy);
-      const dist = use3D
-        ? Math.hypot(enemy.x - currentPos.x, enemyY - currentPos.y, enemy.z - currentPos.z)
-        : Math.hypot(enemy.x - currentPos.x, enemy.z - currentPos.z);
+      const dist = Math.hypot(
+        enemy.x - currentPos.x,
+        enemyY - currentPos.y,
+        enemy.z - currentPos.z,
+      );
       if (dist <= chainRadius && dist < nextDist) {
         nextDist = dist;
         next = enemy;
@@ -2592,8 +2595,7 @@ function healFieldMedicAlly(medic, now) {
 	for (const ally of _gameState.enemies) {
 		if (ally.id === medic.id || ally.hp <= 0) continue;
 		if (ally.hp >= ally.maxHp) continue;
-		const dist = Math.hypot(ally.x - medic.x, ally.z - medic.z);
-		if (dist > healRadius) continue;
+		if (distance3D(medic.x, getEntityWorldY(medic), medic.z, ally) > healRadius) continue;
 		const ratio = ally.hp / ally.maxHp;
 		if (ratio < lowestHpRatio) {
 			lowestHpRatio = ratio;

@@ -203,6 +203,30 @@ describe('smoke_bomb concealment — enemy targeting', () => {
 		expect(isPlayerConcealed(ally, Date.now())).toBe(true);
 	});
 
+	it('conceals a player at the same (x, z) within vertical range of the smoke center', () => {
+		const caster = makePlayer('c', {
+			x: 0, z: 0, y: 0,
+			smokeBombUntil: FUTURE(), smokeBombRadius: 4,
+			smokeBombX: 0, smokeBombY: 0, smokeBombZ: 0,
+		});
+		const elevated = makePlayer('e', { x: 0, z: 0, y: 3 });
+		setupState({ players: { c: caster, e: elevated } });
+
+		expect(isPlayerConcealed(elevated, Date.now())).toBe(true);
+	});
+
+	it('does not conceal a player at the same (x, z) beyond vertical range', () => {
+		const caster = makePlayer('c', {
+			x: 0, z: 0, y: 0,
+			smokeBombUntil: FUTURE(), smokeBombRadius: 4,
+			smokeBombX: 0, smokeBombY: 0, smokeBombZ: 0,
+		});
+		const tooHigh = makePlayer('e', { x: 0, z: 0, y: 6 });
+		setupState({ players: { c: caster, e: tooHigh } });
+
+		expect(isPlayerConcealed(tooHigh, Date.now())).toBe(false);
+	});
+
 	it('a concealed player is never acquired as an enemy target', () => {
 		const player = makePlayer('p', {
 			x: 2, z: 0,

@@ -14,6 +14,7 @@ import {
 	updateAreaEffects,
 	isEnemyFrozen,
 	resolveProjectileAim,
+	findSacrificeTarget,
 } from '../index.js';
 import { handleUseCard, setCallbacks as setCardEffectCallbacks } from '../cardEffects.js';
 import { handleUseKeyItem, setCallbacks as setKeyItemCallbacks } from '../keyItemEffects.js';
@@ -35,12 +36,12 @@ function mockIo() {
 	};
 }
 
-function wireCallbacks() {
+function wireCallbacks({ sacrificeTarget = () => null } = {}) {
 	const io = mockIo();
 	setCardEffectCallbacks({
 		io,
 		emitCardError: () => {},
-		findSacrificeTarget: () => null,
+		findSacrificeTarget: sacrificeTarget,
 		resolveAttackRotation: (player, data) => (
 			Number.isFinite(data?.rotation) ? data.rotation : (player.rotation || 0)
 		),
@@ -439,6 +440,119 @@ describe('dragons_breath spherical height integration', () => {
 		updateAreaEffects();
 
 		expect(gameState.enemies[0].hp).toBe(hpBefore);
+	});
+});
+
+describe('rally_cry spherical height integration', () => {
+	beforeEach(() => {
+		resetState();
+		wireCallbacks();
+	});
+
+	it('buffs an in-sphere ally at a different height with constant horizontal offset', () => {
+		setupPlayingRun();
+		addPlayer('caster', { x: 0, z: 0, y: CASTER_Y, keyItemCooldownUntil: 0 });
+		addPlayer('ally', { x: H_OFFSET, z: 0, y: IN_SPHERE_Y });
+
+		const socket = { playerId: 'caster', emit: vi.fn() };
+		handleUseKeyItem(socket, gameState, { id: 'lobby1' }, { keyItemId: 'rally_cry' });
+
+		expect(gameState.players.ally.rallyUntil).toBeGreaterThan(Date.now());
+		expect(gameState.players.ally.rallySpeedMultiplier).toBeCloseTo(1.1, 5);
+	});
+
+	it('skips an out-of-sphere ally at the same horizontal offset', () => {
+		setupPlayingRun();
+		addPlayer('caster', { x: 0, z: 0, y: CASTER_Y, keyItemCooldownUntil: 0 });
+		addPlayer('ally', { x: H_OFFSET, z: 0, y: OUT_SPHERE_Y });
+
+		const socket = { playerId: 'caster', emit: vi.fn() };
+		handleUseKeyItem(socket, gameState, { id: 'lobby1' }, { keyItemId: 'rally_cry' });
+
+		expect(gameState.players.ally.rallyUntil).toBeUndefined();
+		expect(gameState.players.caster.rallyUntil).toBeGreaterThan(Date.now());
+	});
+});
+
+describe('flare_beacon spherical height integration', () => {
+	beforeEach(() => {
+		resetState();
+		wireCallbacks();
+	});
+
+	it('reveals an in-sphere enemy at a different height with constant horizontal offset', () => {
+		setupPlayingRun();
+		addPlayer('caster', { x: 0, z: 0, y: CASTER_Y, keyItemCooldownUntil: 0 });
+		addEnemy('in-sphere', H_OFFSET, 0, 100, IN_SPHERE_Y);
+
+		const socket = { playerId: 'caster', emit: vi.fn() };
+		handleUseKeyItem(socket, gameState, { id: 'lobby1' }, { keyItemId: 'flare_beacon' });
+
+		expect(gameState.enemies[0].revealedUntil).toBeGreaterThan(Date.now());
+	});
+
+	it('skips an out-of-sphere enemy at the same horizontal offset', () => {
+		setupPlayingRun();
+		addPlayer('caster', { x: 0, z: 0, y: CASTER_Y, keyItemCooldownUntil: 0 });
+		const revealRadius = KEY_ITEM_DEFS.flare_beacon.revealRadius;
+		const outOfSphereY = Math.ceil(Math.hypot(revealRadius + 1, H_OFFSET));
+		addEnemy('out-sphere', H_OFFSET, 0, 100, outOfSphereY);
+
+		const socket = { playerId: 'caster', emit: vi.fn() };
+		handleUseKeyItem(socket, gameState, { id: 'lobby1' }, { keyItemId: 'flare_beacon' });
+
+		expect(gameState.enemies[0].revealedUntil).toBeUndefined();
+	});
+});
+
+describe('sacrificial_altar spherical height integration', () => {
+	beforeEach(() => {
+		resetState();
+		wireCallbacks({ sacrificeTarget: findSacrificeTarget });
+	});
+
+	it('sacrifices an in-sphere minion at a different height with constant horizontal offset', () => {
+		setupPlayingRun();
+		gameState.minions = [{
+			id: 'in-sphere',
+			ownerId: 'caster',
+			type: 'dungeon_drake',
+			x: H_OFFSET,
+			z: 0,
+			y: IN_SPHERE_Y,
+			hp: 20,
+			createdAt: 1,
+		}];
+
+		const caster = setupCardCaster('sacrificial_altar', { magicStones: 0 });
+		caster.cast();
+
+		expect(gameState.minions).toHaveLength(0);
+		expect(gameState.players.caster.magicStones).toBeGreaterThan(0);
+	});
+
+	it('rejects sacrifice when the only minion is out-of-sphere vertically', () => {
+		setupPlayingRun();
+		gameState.minions = [{
+			id: 'out-sphere',
+			ownerId: 'caster',
+			type: 'dungeon_drake',
+			x: H_OFFSET,
+			z: 0,
+			y: OUT_SPHERE_Y,
+			hp: 20,
+			createdAt: 1,
+		}];
+
+		const emit = vi.fn();
+		const caster = setupCardCaster('sacrificial_altar', { magicStones: 0 });
+		caster.socket.emit = emit;
+		caster.cast();
+
+		expect(gameState.minions).toHaveLength(1);
+		expect(emit).toHaveBeenCalledWith('cardError', {
+			reason: 'No friendly summon to sacrifice',
+		});
 	});
 });
 

@@ -11,15 +11,17 @@ function resetState() {
 	Object.assign(gameState, createGameState());
 }
 
-function addEnemy(id, x, z, hp = 100) {
-	gameState.enemies.push({
+function addEnemy(id, x, z, hp = 100, y = undefined) {
+	const enemy = {
 		id,
 		type: 'grunt',
 		x,
 		z,
 		hp,
 		maxHp: hp,
-	});
+	};
+	if (y !== undefined) enemy.y = y;
+	gameState.enemies.push(enemy);
 }
 
 describe('collectChainLightningHits', () => {
@@ -132,5 +134,29 @@ describe('collectChainLightningHits', () => {
 
 		expect(result.hits.map((h) => h.enemyId)).toEqual(['in-range']);
 		expect(gameState.enemies.find((e) => e.id === 'out-of-range').hp).toBe(100);
+	});
+
+	it('chains to an elevated neighbor within vertical range on flat primary aim', () => {
+		addEnemy('primary', 5, 0);
+		addEnemy('chain', 8, 0, 100, 3);
+
+		const result = collectChainLightningHits(0, 0, 1, 0, attackRange, baseDamage, {
+			chainRadius,
+			maxChainTargets: 1,
+		});
+
+		expect(result.hits.map((h) => h.enemyId)).toEqual(['primary', 'chain']);
+	});
+
+	it('skips an elevated neighbor beyond vertical range on flat primary aim', () => {
+		addEnemy('primary', 5, 0);
+		addEnemy('too-high', 8, 0, 100, 6);
+
+		const result = collectChainLightningHits(0, 0, 1, 0, attackRange, baseDamage, {
+			chainRadius,
+			maxChainTargets: 1,
+		});
+
+		expect(result.hits.map((h) => h.enemyId)).toEqual(['primary']);
 	});
 });
