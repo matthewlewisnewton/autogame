@@ -2507,6 +2507,59 @@ describe('Run terminal state — integration', () => {
 		expect(testGameState().run).toBeDefined();
 		expect(testGameState().run.status).toBe('playing');
 	});
+
+	it('player with 0 currency dies, returns to lobby with LOBBY_REVIVE_HP, and redeploy succeeds', async () => {
+		// 1. Player starts with 0 currency (default for new accounts)
+		const player1 = testGameState().players[socket1._playerId];
+		expect(player1.currency).toBe(0);
+
+		// 2. Start a run
+		const startGame1 = waitForEvent(socket1, 'startGame');
+		const startGame2 = waitForEvent(socket2, 'startGame');
+		socket1.emit('playerReady', true);
+		socket2.emit('playerReady', true);
+		await Promise.all([startGame1, startGame2]);
+		await waitForEvent(socket1, 'stateUpdate');
+
+		// 3. Kill all players via run-failed debug scenario (sets hp:0, dead:true)
+		// Set up event listener BEFORE triggering the scenario
+		const runFailedPromise = waitForEvent(socket1, 'runFailed');
+		const debugResultPromise = waitForEvent(socket1, 'debugScenarioResult');
+		socket1.emit('debugScenario', { name: 'run-failed' });
+		const summary = await runFailedPromise;
+		const debugResult = await debugResultPromise;
+		expect(debugResult.ok).toBe(true);
+
+		// 4. Verify runFailed is emitted
+		expect(summary.status).toBe('failed');
+		expect(testGameState().run.status).toBe('failed');
+
+		// Wait for state update reflecting terminal state
+		await waitForEvent(socket1, 'stateUpdate');
+
+		// 5. Return to lobby
+		const stateUpdatePromise = waitForEvent(socket1, 'stateUpdate');
+		socket1.emit('returnToLobby');
+		await stateUpdatePromise;
+
+		// 6. Verify player HP is LOBBY_REVIVE_HP (10) and dead: false
+		expect(testGameState().gamePhase).toBe('lobby');
+		expect(player1.hp).toBe(LOBBY_REVIVE_HP);
+		expect(player1.dead).toBe(false);
+
+		// 7. Ready up and deploy into a new run
+		const startGame1b = waitForEvent(socket1, 'startGame');
+		const startGame2b = waitForEvent(socket2, 'startGame');
+		socket1.emit('playerReady', true);
+		socket2.emit('playerReady', true);
+		await Promise.all([startGame1b, startGame2b]);
+
+		// 8. Verify new run starts successfully
+		expect(testGameState().gamePhase).toBe('playing');
+		expect(player1.hp).toBeGreaterThan(0);
+		expect(player1.dead).toBe(false);
+		expect(testGameState().run.status).toBe('playing');
+	});
 });
 
 describe('Rewards in run complete payload', () => {
