@@ -167,7 +167,7 @@ describe('training_caverns Tier 2 catalog and layout', () => {
   it('keeps Tier 1 as defeat_enemies with unchanged enemy count', () => {
     const tier1 = getQuest(QUEST_ID, TIER_1);
     expect(tier1.objectiveType).toBe('defeat_enemies');
-    expect(tier1.enemyCount).toBe(5);
+    expect(tier1.enemyCount).toBe(6);
   });
 
   it('resolves crowded rigid layout options for Tier 2 only', () => {
@@ -265,9 +265,21 @@ describe('training_caverns Tier 2 deploy spawns', () => {
     expect(tagged).toBeGreaterThan(0);
   });
 
-  it('leaves all enemies un-tagged on Tier 1 for the same seed', () => {
-    deployTrainingTier(TIER_1, SEED);
-    expect(gameState.enemies.length).toBe(getQuest(QUEST_ID, TIER_1).enemyCount);
+  it('spawns run-start scripted enemies un-tagged on Tier 1 for the same seed', () => {
+    const layout = layoutForTrainingTier(TIER_1, SEED);
+    gameState.selectedQuestId = QUEST_ID;
+    gameState.selectedQuestTier = TIER_1;
+    gameState.layout = layout;
+    gameState.layoutSeed = SEED;
+    gameState.enemies = [];
+    gameState.loot = [];
+    gameState.gamePhase = 'playing';
+    spawnEnemies();
+    startDungeonRun();
+
+    expect(gameState.enemies.length).toBe(4);
+    expect(gameState.run.waveScript).toBeDefined();
+    expect(gameState.run.objective.totalEnemies).toBe(6);
     expect(gameState.enemies.every((e) => e.variant === null)).toBe(true);
   });
 });

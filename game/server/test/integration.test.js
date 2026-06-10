@@ -2084,8 +2084,8 @@ describe('Socket Integration — Quest Selection', () => {
 
 		expect(state.run.questId).toBe('training_caverns');
 		expect(state.run.questName).toBe('Initiate Vault');
-		expect(state.run.objective.totalEnemies).toBe(5);
-		expect(testGameState().enemies.length).toBe(5);
+		expect(state.run.objective.totalEnemies).toBe(6);
+		expect(testGameState().enemies.length).toBe(4);
 	});
 
 	it('runComplete summary includes quest metadata and quest reward data', async () => {

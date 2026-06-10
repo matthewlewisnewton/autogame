@@ -2210,6 +2210,7 @@ describe('run state', () => {
 
 	describe('createRunState()', () => {
 		it('produces an object with all required fields', () => {
+			gameState.selectedQuestId = 'arena_trials';
 			// Set a known number of enemies
 			gameState.enemies = [
 				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
@@ -2222,11 +2223,11 @@ describe('run state', () => {
 			expect(run).toHaveProperty('id');
 			expect(typeof run.id).toBe('string');
 			expect(run).toHaveProperty('status', 'playing');
-			expect(run).toHaveProperty('questId', DEFAULT_QUEST_ID);
-			expect(run).toHaveProperty('questName', getQuest('training_caverns').name);
+			expect(run).toHaveProperty('questId', 'arena_trials');
+			expect(run).toHaveProperty('questName', getQuest('arena_trials').name);
 			expect(run).toHaveProperty('objective');
 			expect(run.objective).toHaveProperty('type', 'defeat_enemies');
-			expect(run.objective.label).toContain(getQuest('training_caverns').name);
+			expect(run.objective.label).toContain(getQuest('arena_trials').name);
 			expect(run.objective).toHaveProperty('totalEnemies', 3);
 			expect(run.objective).toHaveProperty('defeatedEnemies', 0);
 			expect(run).toHaveProperty('startedAt');
@@ -2379,7 +2380,7 @@ describe('run state', () => {
 
 		it('does not spawn for non-survive runs', () => {
 			resetState();
-			gameState.selectedQuestId = DEFAULT_QUEST_ID;
+			gameState.selectedQuestId = 'arena_trials';
 			gameState.gamePhase = 'playing';
 			gameState.enemies = [];
 			startDungeonRun();
@@ -2577,6 +2578,7 @@ describe('run state', () => {
 	describe('checkRunTerminalState()', () => {
 		beforeEach(() => {
 			resetState();
+			gameState.selectedQuestId = 'arena_trials';
 			delete gameState.run;
 			vi.useFakeTimers();
 		});
@@ -5709,6 +5711,7 @@ describe('spawnEnemy() variant field', () => {
 
 	it('produces variant (tag or null) on every combat spawn', () => {
 		resetGameState();
+		gameState.selectedQuestId = 'arena_trials';
 		gameState.enemies = [];
 		spawnEnemies();
 		expect(gameState.enemies.length).toBeGreaterThan(0);
@@ -5728,19 +5731,30 @@ describe('spawnEnemies() mixed pack', () => {
 	});
 
 	it('produces quest.enemyCount enemies drawn from the default quest pool', () => {
+		gameState.selectedQuestId = 'arena_trials';
 		gameState.enemies = [];
 		spawnEnemies();
 		// Bulk spawning now draws each type from the selected quest's enemyPool.
-		const quest = getQuest(DEFAULT_QUEST_ID);
+		const quest = getQuest('arena_trials');
 		expect(gameState.enemies.length).toBe(quest.enemyCount);
 
-		const allowed = new Set(QUEST_DEFS[DEFAULT_QUEST_ID].enemyPool.map(entry => entry.type));
+		const allowed = new Set(QUEST_DEFS.arena_trials.enemyPool.map(entry => entry.type));
 		for (const e of gameState.enemies) {
 			expect(allowed.has(e.type)).toBe(true);
 		}
-		// training_caverns has no miniboss/spawner in its pool, so neither leaks in.
-		expect(gameState.enemies.some(e => e.type === 'miniboss')).toBe(false);
+		// arena_trials miniboss is in-pool; spawner must not leak in.
 		expect(gameState.enemies.some(e => e.type === 'spawner')).toBe(false);
+	});
+
+	it('spawns run-start scripted enemies for training_caverns tier 1 after startDungeonRun', () => {
+		gameState.selectedQuestId = 'training_caverns';
+		gameState.selectedQuestTier = 1;
+		gameState.enemies = [];
+		spawnEnemies();
+		expect(gameState.enemies.length).toBe(0);
+		startDungeonRun();
+		expect(gameState.enemies.length).toBe(4);
+		expect(gameState.run.objective.totalEnemies).toBe(6);
 	});
 
 	it('spawns crystals and combat enemies for crystal rescue', () => {

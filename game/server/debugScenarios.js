@@ -128,6 +128,47 @@ function setupFrostCrossingTier1Deploy(lobby, state, player) {
   startDungeonRun();
 }
 
+function deepestCombatRoom(layout) {
+  return layout.rooms
+    .filter((room) => room.role === 'combat')
+    .sort((a, b) => a.x - b.x || a.z - b.z)
+    .pop();
+}
+
+function setupTrainingCavernsTier1Deploy(lobby, state, player) {
+  const questId = 'training_caverns';
+  const tier = 1;
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+
+  player.ready = true;
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  const startSpawn = firstRoomPosition();
+  player.x = startSpawn.x;
+  player.z = startSpawn.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+  enterPlayingPhase(lobby);
+
+  if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+    createDrawDeckFromSelectedDeck(player);
+    initPlayerHand(player);
+    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+    if (!player.pendingSummons) {
+      player.pendingSummons = new Set();
+    }
+  }
+
+  state.enemies = [];
+  state.loot = [];
+  delete state.run;
+  delete state._pendingEncounterBossId;
+  spawnEnemies();
+  startDungeonRun();
+}
+
 function setupArenaTrialsTier2StageBossDebug(lobby, state, player) {
   const questId = 'arena_trials';
   const tier = 2;
@@ -440,6 +481,61 @@ function applyDebugScenario(socket, name) {
         scenario: name,
         unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
       };
+    }
+
+    if (name === 'training-caverns-vault-marauder') {
+      // training_caverns Tier 1 with run-start grunts cleared and Vault Marauder
+      // spawned in the deepest vault room for named-rare QA. Reachable normally by
+      // clearing the annex and entering the deep vault; this scenario is a shortcut.
+      setupTrainingCavernsTier1Deploy(lobby, state, player);
+
+      const vaultRoom = deepestCombatRoom(state.layout);
+      const runStartWave = state.run?.waveScript?.waves?.find((wave) => wave.id === 'wave_run_start');
+      if (runStartWave) {
+        for (const enemyId of runStartWave.spawnedEnemyIds) {
+          const enemy = state.enemies.find((entry) => entry.id === enemyId);
+          if (enemy) enemy.hp = 0;
+        }
+        state.enemies = state.enemies.filter((enemy) => enemy.hp > 0);
+        runStartWave.status = 'cleared';
+        if (state.run?.objective) {
+          state.run.objective.defeatedEnemies = runStartWave.spawnedEnemyIds.length;
+        }
+      }
+
+      player.x = vaultRoom?.x ?? 0;
+      player.z = vaultRoom?.z ?? 0;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      updateQuestScriptTriggers();
+
+      const marauder = state.enemies.find((enemy) => enemy.namedRare?.name === 'Vault Marauder');
+      if (marauder) {
+        marauder.wanderTarget = { x: marauder.x, z: marauder.z };
+        repositionNearEnemy(player, marauder);
+        player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      }
+
+      if (!player.hand.some((c) => c && c.type === 'weapon' && (c.remainingCharges == null || c.remainingCharges > 0))) {
+        const replaceSlot = player.hand.findIndex((c) => c && c.type !== 'weapon');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = {
+            id: 'iron_sword',
+            name: 'Rust-Forged Saber',
+            type: 'weapon',
+            charges: 5,
+            remainingCharges: 5,
+            grind: 0,
+          };
+        }
+      }
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
     }
 
     if (name === 'training-caverns-tier-2') {

@@ -230,14 +230,14 @@ describe('quest script integration — snapshot and full lifecycle', () => {
 });
 
 describe('unscripted quest regression', () => {
-  it('training_caverns tier 1 has no script and bulk-spawns enemyCount enemies', () => {
-    const quest = getQuest('training_caverns', 1);
+  it('arena_trials tier 1 has no script and bulk-spawns enemyCount enemies', () => {
+    const quest = getQuest('arena_trials', 1);
     expect(getQuestScript(quest)).toBeNull();
 
     const state = createGameState();
-    state.selectedQuestId = 'training_caverns';
+    state.selectedQuestId = 'arena_trials';
     state.selectedQuestTier = 1;
-    state.layout = generateLayout(SEED, getLayoutProfileForQuest('training_caverns', 1));
+    state.layout = generateLayout(SEED, getLayoutProfileForQuest('arena_trials', 1));
     state.layoutSeed = SEED;
     state.enemies = [];
     state.loot = [];

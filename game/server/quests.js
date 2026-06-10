@@ -68,6 +68,67 @@ function spawnOffsetsInRoom(room, count, radiusFrac = 0.22) {
 }
 
 /**
+ * Authored wave script for training_caverns tier 1. Spawn coords are derived
+ * from the canonical crowded layout seed so hand-placed enemies stay stable.
+ */
+function buildTrainingCavernsTier1Script() {
+  const questId = 'training_caverns';
+  const tier = 1;
+  const seed = questLayoutSeed(questId, tier);
+  const layout = generateLayout(seed, 'crowded', { slopes: true, layoutMode: 'default' });
+  const startRoom = layout.rooms.find((room) => room.role === 'start') || layout.rooms[0];
+  const vaultRoom = layout.rooms
+    .filter((room) => room.role === 'combat')
+    .sort((a, b) => a.x - b.x || a.z - b.z)
+    .pop();
+  const startPositions = spawnOffsetsInRoom(startRoom, 4);
+  const runStartTypes = ['grunt', 'grunt', 'skirmisher', 'skirmisher'];
+  const runStartSpawns = runStartTypes.map((type, index) => ({
+    type,
+    x: startPositions[index].x,
+    z: startPositions[index].z,
+  }));
+  const vaultPositions = spawnOffsetsInRoom(vaultRoom, 2);
+  const marauderX = roundSpawnCoord(vaultRoom.x);
+  const marauderZ = roundSpawnCoord(vaultRoom.z + vaultRoom.depth * 0.12);
+
+  return {
+    waves: [
+      {
+        id: 'wave_run_start',
+        trigger: 'run_start',
+        spawns: runStartSpawns,
+      },
+      {
+        id: 'wave_vault_room',
+        trigger: 'enter_room',
+        room: { x: vaultRoom.x, z: vaultRoom.z },
+        spawns: [
+          {
+            type: 'grunt',
+            x: marauderX,
+            z: marauderZ,
+            variant: {
+              name: 'Vault Marauder',
+              hpMult: 1.5,
+              damageMult: 1.25,
+              tint: '#c9a227',
+              scaleMult: 1.12,
+              drop: { cardId: 'dungeon_drake' },
+            },
+          },
+          {
+            type: 'skirmisher',
+            x: vaultPositions[1].x,
+            z: vaultPositions[1].z,
+          },
+        ],
+      },
+    ],
+  };
+}
+
+/**
  * Authored wave script for frost_crossing tier 1. Spawn coords are derived from
  * the canonical layout seed so hand-placed enemies stay stable across runs.
  */
@@ -132,9 +193,10 @@ const QUEST_DEFS = {
         name: 'Initiate Vault',
         description: 'Purge hostiles from the derelict annex sector.',
         objectiveType: 'defeat_enemies',
-        enemyCount: 5,
+        enemyCount: 6,
         rewardCurrency: 10,
         layoutProfile: 'crowded',
+        script: buildTrainingCavernsTier1Script(),
       },
       2: {
         tier: 2,
