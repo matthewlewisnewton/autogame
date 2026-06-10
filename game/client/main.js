@@ -48,10 +48,12 @@ import {
 	initInput,
 	ACTIONS,
 	getHandSlotInputHints,
+	getAttackCastHint,
 	is8BitDo64HandHintsActive,
 	getUseKeyItemBinding,
 	getReservedKeys,
 } from './input.js';
+import { createAttackHintDismisser } from './attackHintDismiss.js';
 import {
 	DECK_MAX_SIZE,
 	MAX_HP,
@@ -250,10 +252,65 @@ const deckStackEl = document.getElementById('deck-stack');
 const attackReticleEl = document.getElementById('attack-reticle');
 const attackHintEl = document.getElementById('attack-hint');
 
+/** Write the device-aware attack/cast hint text, overriding the static HTML. */
+function applyAttackHintText() {
+	if (attackHintEl) attackHintEl.textContent = getAttackCastHint().text;
+}
+
+// How long the fade-out runs before the hint is fully `display:none` (kept in
+// sync with the `#attack-hint` opacity transition in style.css).
+const ATTACK_HINT_FADE_MS = 600;
+
+// Per-run dismissal controller for the hint TEXT line (the reticle is managed
+// separately below and is never auto-dismissed). The profile key is the stored
+// player id so the "seen" flag follows the account, and a fresh profile (empty
+// localStorage) re-shows the hint.
+const attackHintDismisser = createAttackHintDismisser({
+	getPlayerId: () => {
+		try { return localStorage.getItem(STORAGE_KEY_PLAYER_ID); } catch (_) { return null; }
+	},
+	onShow: () => {
+		if (!attackHintEl) return;
+		attackHintEl.classList.remove('attack-hint-dismissed', 'hidden');
+	},
+	onHide: () => {
+		if (!attackHintEl) return;
+		attackHintEl.classList.remove('attack-hint-dismissed');
+		attackHintEl.classList.add('hidden');
+	},
+	onDismiss: () => {
+		if (!attackHintEl) return;
+		// Fade via the opacity class, then remove from layout once it settles.
+		attackHintEl.classList.add('attack-hint-dismissed');
+		window.setTimeout(() => {
+			if (attackHintEl) attackHintEl.classList.add('hidden');
+		}, ATTACK_HINT_FADE_MS);
+	},
+});
+
+/**
+ * Note a per-run attack/cast action so the hint can self-dismiss once the
+ * player has done both. Only call this after the corresponding useCard()
+ * actually accepted and emitted — rejected activations must not count. Slot
+ * activations are casts, except the gamepad's primary attack button (slot 0),
+ * which the hint copy frames as the attack.
+ */
+function noteAttackHintSlotAction(slotIndex) {
+	const isGamepadAttack = getHandSlotInputHints().mode === 'gamepad' && slotIndex === 0;
+	attackHintDismisser.noteProgress(isGamepadAttack ? { attacked: true } : { casted: true });
+}
+
 /** Show/hide the center reticle + attack hint (in-run affordance only). */
 function setAttackAffordanceVisible(visible) {
 	if (attackReticleEl) attackReticleEl.classList.toggle('hidden', !visible);
-	if (attackHintEl) attackHintEl.classList.toggle('hidden', !visible);
+	if (visible) {
+		applyAttackHintText();
+		// arm() is idempotent across the repeated showCardHand() calls during a
+		// run; reset() (on hide) re-arms it for the next run.
+		attackHintDismisser.arm();
+	} else {
+		attackHintDismisser.reset();
+	}
 }
 /** @type {'n64' | 'default' | null} */
 let handLayoutMode = null;
@@ -1069,7 +1126,7 @@ function canUseGameActions() {
 }
 
 initInput({
-	onUseSlot: (slot) => useCard(slot),
+	onUseSlot: (slot) => { if (useCard(slot)) noteAttackHintSlotAction(slot); },
 	onToggleDeck: () => toggleDeckViewer(),
 	onUseKeyItem: () => {
 		if (!socket) return;
@@ -2822,6 +2879,8 @@ function renderHand() {
 	clearAdjacentCardHighlights();
 	const handHasDesperation = hand.some((card) => card && card.isDesperation);
 	const inputHints = getHandSlotInputHints();
+	// Keep the attack/cast hint in sync with the active device's bindings.
+	applyAttackHintText();
 	if (cardHandEl) {
 		cardHandEl.classList.toggle('has-desperation', handHasDesperation);
 		cardHandEl.classList.toggle('show-input-hints', true);
@@ -3993,19 +4052,23 @@ function playActivationEffect(slotIndex) {
 	}, 800);
 }
 
+// Returns true when the activation is accepted and a USE_CARD action is emitted,
+// false on every client-side rejection (out-of-range, empty slot, unusable slot,
+// active minion, full hand on draw, or insufficient magic stones). Callers gate
+// attack/cast hint dismissal on this so rejected attempts never count.
 function useCard(slotIndex) {
-	if (slotIndex < 0 || slotIndex >= MAX_HAND_SLOTS) return;
+	if (slotIndex < 0 || slotIndex >= MAX_HAND_SLOTS) return false;
 	const card = hand[slotIndex];
-	if (!card) return;
+	if (!card) return false;
 
-	if (!canUseSlot(slotIndex)) return;
-	if (card.activeMinionId) return;
+	if (!canUseSlot(slotIndex)) return false;
+	if (card.activeMinionId) return false;
 
 	const cardDef = getCardDef(card.id) || {};
 	if (cardDef.effect === 'draw_card' && !canDrawIntoHandLocal()) {
 		lastUsedSlot = slotIndex;
 		showCardErrorToast('Hand full');
-		return;
+		return false;
 	}
 	const playerMs = (gameState && myId && gameState.players[myId])
 		? gameState.players[myId].magicStones
@@ -4016,7 +4079,7 @@ function useCard(slotIndex) {
 		showCardErrorToast(THEME.resource.insufficient);
 		const slot = getCardSlotEl(slotIndex);
 		if (slot) slot.classList.add('no-ms');
-		return;
+		return false;
 	}
 
 	lastUsedSlot = slotIndex;
@@ -4032,23 +4095,24 @@ function useCard(slotIndex) {
 	if (creatureCardIds.has(card.id)) {
 		slotCooldowns[slotIndex] = true;
 		playActivationEffect(slotIndex);
-		return;
+		return true;
 	}
 
 	if (spellCardIds.has(card.id)) {
 		slotCooldowns[slotIndex] = true;
 		playActivationEffect(slotIndex);
-		return;
+		return true;
 	}
 
 	if (cardDef.effect === 'draw_card') {
 		slotCooldowns[slotIndex] = true;
 		playActivationEffect(slotIndex);
-		return;
+		return true;
 	}
 
 	slotCooldowns[slotIndex] = true;
 	playActivationEffect(slotIndex);
+	return true;
 }
 
 function discardCard(slotIndex) {
@@ -4070,7 +4134,10 @@ function discardCard(slotIndex) {
 cardHandEl.addEventListener('click', (e) => {
 	const slot = e.target.closest('.card-slot');
 	if (!slot) return;
-	useCard(parseInt(slot.dataset.slotIndex, 10));
+	// Only count toward hint dismissal when useCard actually accepted and emitted.
+	if (useCard(parseInt(slot.dataset.slotIndex, 10))) {
+		attackHintDismisser.noteProgress({ casted: true });
+	}
 });
 
 cardHandEl.addEventListener('contextmenu', (e) => {
@@ -4106,7 +4173,11 @@ window.addEventListener('pointerdown', (e) => {
 	const canvas = getRenderer()?.domElement;
 	if (!canvas || e.target !== canvas) return;
 	const slot = pickBasicAttackSlot();
-	if (slot >= 0) useCard(slot);
+	// Only count toward hint dismissal when a usable slot was found AND useCard
+	// accepted it — a rejected basic attack does not advance the hint.
+	if (slot >= 0 && useCard(slot)) {
+		attackHintDismisser.noteProgress({ attacked: true });
+	}
 });
 
 if (deckStackEl) {
@@ -4792,6 +4863,7 @@ window.addEventListener('gamepadconnected', (event) => {
 	resetHandLayoutLock();
 	if (cardHandEl && cardHandEl.style.display !== 'none') showCardHand();
 	renderHand();
+	applyAttackHintText();
 	const me = myId && gameState?.players ? gameState.players[myId] : null;
 	renderKeyItemHud(me, gameState?.gamePhase);
 });
@@ -4800,6 +4872,7 @@ window.addEventListener('gamepaddisconnected', () => {
 	resetHandLayoutLock();
 	if (cardHandEl && cardHandEl.style.display !== 'none') showCardHand();
 	renderHand();
+	applyAttackHintText();
 	const me = myId && gameState?.players ? gameState.players[myId] : null;
 	renderKeyItemHud(me, gameState?.gamePhase);
 });

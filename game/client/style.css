@@ -216,6 +216,14 @@ canvas {
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
   pointer-events: none;
   z-index: 9;
+  opacity: 1;
+  transition: opacity 0.6s ease;
+}
+
+/* Auto-dismiss fade-out: opacity animates here, then JS adds .hidden once the
+   transition (0.6s, see ATTACK_HINT_FADE_MS) has finished to drop it from layout. */
+#attack-hint.attack-hint-dismissed {
+  opacity: 0;
 }
 
 #attack-reticle.hidden,

@@ -21,7 +21,7 @@ class FakeQueue:
     def requeue(self, tid, *, note=None):
         self.requeued.append(tid)
 
-    def close(self, tid, reason="done"):
+    def close(self, tid, reason="done", **kw):
         self.closed.append(tid)
 
 

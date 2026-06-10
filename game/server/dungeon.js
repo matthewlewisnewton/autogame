@@ -46,6 +46,20 @@ const OPEN_PLAZA = {
   interiorMargin: 2,        // cover must stay this far inside the perimeter walls
 };
 
+// Boss-arena tuning: one compact single-room layout for dedicated boss-level quests.
+const BOSS_ARENA = {
+  size: 24,                 // smaller than open-plaza — tight duel floor
+  spawnClearRadius: 5,      // keep cover out of the arena_dais spawn circle
+  interiorMargin: 2,
+  coverTargetCount: 3,      // sparse cover (open-plaza targets 8)
+};
+
+// Rift arena theme (arenaTheme: 'rift'): cosmetic floor-band decals only.
+const RIFT_THEME = {
+  bandInnerX: 4,            // band inner edge — clear of the center_ring (outerRadius 3.2)
+  bandWallInset: 0.6,       // keep decals fully inside the arena walls
+};
+
 // Hub ship-interior: three zone rooms (Operations, Commerce, Salon) in a compact row.
 const HUB_ROOM_WIDTH = 12;
 const HUB_ROOM_DEPTH = 12;
@@ -89,6 +103,11 @@ const LAYOUT_PROFILES = {
   'open-plaza': {
     ...DEFAULT_LAYOUT_PROFILE,
     cellSpacing: OPEN_PLAZA.size,
+  },
+  // Boss-arena is handled by generateBossArena() — see that branch.
+  'boss-arena': {
+    ...DEFAULT_LAYOUT_PROFILE,
+    cellSpacing: BOSS_ARENA.size,
   },
   // Sunken-canyon is handled by generateSunkenCanyon() — see that branch.
   'sunken-canyon': {
@@ -277,6 +296,9 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
   // Open-plaza is a bespoke single-arena layout, not a grid of rooms/passages.
   if (profile === 'open-plaza') {
     return generateOpenPlaza(seed, options);
+  }
+  if (profile === 'boss-arena') {
+    return generateBossArena(seed, options);
   }
   if (profile === 'sunken-canyon') {
     return generateSunkenCanyon(seed, options);
@@ -2378,6 +2400,108 @@ function generateOpenPlaza(seed, options = {}) {
   return layout;
 }
 
+/**
+ * Rift-theme floor bands: an ice decal over the west half of the arena and an
+ * ember decal over the east half. Cosmetic floor markings only — flat
+ * rectangles (centre x/z plus width/depth extents) that add no walls or
+ * cover. Inset from the arena walls and stopped short of the centre ring so
+ * the decals lie fully inside bounds and never overlap the center_ring
+ * marking.
+ */
+function buildRiftFloorMarkings(half) {
+  const innerX = RIFT_THEME.bandInnerX;
+  const outerX = half - RIFT_THEME.bandWallInset;
+  const width = outerX - innerX;
+  const depth = (half - RIFT_THEME.bandWallInset) * 2;
+  const centerX = (innerX + outerX) / 2;
+  return [
+    { type: 'rift_ice_band', x: -centerX, z: 0, width, depth },
+    { type: 'rift_ember_band', x: centerX, z: 0, width, depth },
+  ];
+}
+
+/**
+ * Build the boss-arena layout: one compact walkable room with a centre
+ * `arena_dais` landmark and sparse cover. Deterministic for a given seed in
+ * `layoutMode: 'default'`; rigid mode uses seed-independent cover placement.
+ * `options.arenaTheme: 'rift'` appends ice/ember floor-band markings (cosmetic
+ * decals only); any other value leaves the layout untouched.
+ *
+ * Returns { rooms: [arena], passages: [], cover, floorMarkings, landmarks,
+ *           passageWidth, cellSpacing, profile: 'boss-arena' }.
+ */
+function generateBossArena(seed, options = {}) {
+  const layoutMode = normalizeLayoutMode(options.layoutMode);
+  const rng = mulberry32(seed);
+  const size = BOSS_ARENA.size;
+  const half = size / 2;
+  const spawnClear = BOSS_ARENA.spawnClearRadius;
+
+  const walls = [
+    { x: 0, z: -half, length: size, axis: 'x' },
+    { x: 0, z: half, length: size, axis: 'x' },
+    { x: -half, z: 0, length: size, axis: 'z' },
+    { x: half, z: 0, length: size, axis: 'z' },
+  ];
+
+  const arena = {
+    x: 0,
+    z: 0,
+    width: size,
+    depth: size,
+    walls,
+    floorCorners: {
+      yNW: DEFAULT_FLOOR_Y,
+      yNE: DEFAULT_FLOOR_Y,
+      ySE: DEFAULT_FLOOR_Y,
+      ySW: DEFAULT_FLOOR_Y,
+    },
+  };
+
+  const candidatePool = [
+    { x: -7, z: -7, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: 7, z: -7, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: -7, z: 7, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: 7, z: 7, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: 0, z: -8, width: 3.0, depth: 1.0, height: 1.0, type: 'barricade' },
+    { x: 0, z: 8, width: 3.0, depth: 1.0, height: 1.0, type: 'barricade' },
+  ];
+
+  const cover = [];
+  const scatterOpts = {
+    half,
+    spawnClear,
+    candidatePool,
+    initialCover: cover,
+    targetCount: BOSS_ARENA.coverTargetCount,
+    interiorMargin: BOSS_ARENA.interiorMargin,
+  };
+  const placedCover = layoutMode === 'rigid'
+    ? placeCoverInArenaOrdered(scatterOpts)
+    : scatterCoverInArena(rng, scatterOpts);
+
+  const layout = {
+    rooms: [arena],
+    passages: [],
+    cover: placedCover,
+    floorMarkings: [
+      { type: 'center_ring', x: 0, z: 0, innerRadius: 2.5, outerRadius: 3.2 },
+    ],
+    landmarks: [{ x: 0, z: 0, type: 'arena_dais' }],
+    passageWidth: PASSAGE_WIDTH,
+    cellSpacing: size,
+    profile: 'boss-arena',
+  };
+
+  if (options.arenaTheme === 'rift') {
+    layout.floorMarkings.push(...buildRiftFloorMarkings(half));
+  }
+
+  assignRoomRoles(layout);
+
+  return layout;
+}
+
 // ── Sunken Canyon Stage Generation ──
 
 /**
@@ -3503,6 +3627,7 @@ module.exports = {
   normalizeLayoutMode,
   generateLayout,
   generateOpenPlaza,
+  generateBossArena,
   generateSunkenCanyon,
   generateIceCavern,
   generateFireCavern,

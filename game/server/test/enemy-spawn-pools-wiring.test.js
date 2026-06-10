@@ -73,7 +73,10 @@ describe('ember_wraith cross-level exclusion', () => {
 	beforeEach(() => resetGameState());
 
 	it('never spawns the ember-exclusive `ember_wraith` type for non-ember quests', () => {
-		const nonEmberQuests = Object.keys(QUEST_DEFS).filter(id => id !== 'ember_descent');
+		// rift_convergence pools ember_wraith by design (ice+fire convergence boss level).
+		const nonEmberQuests = Object.keys(QUEST_DEFS).filter(
+			id => id !== 'ember_descent' && id !== 'rift_convergence',
+		);
 		for (const questId of nonEmberQuests) {
 			expect(poolTypes(questId)).not.toContain('ember_wraith');
 			for (const seed of [1, 42, 123, 777]) {

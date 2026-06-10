@@ -1754,6 +1754,50 @@ describe('open-plaza center ring floor markings', () => {
 	});
 });
 
+describe('rift arena floor band markings', () => {
+	const iceMarking = { type: 'rift_ice_band', x: -7.7, z: 0, width: 7.4, depth: 22.8 };
+	const emberMarking = { type: 'rift_ember_band', x: 7.7, z: 0, width: 7.4, depth: 22.8 };
+
+	it('buildFloorMarkingMesh renders flat band meshes with distinct frost/ember materials', () => {
+		const materials = getProfileMaterials('boss-arena');
+		const ice = buildFloorMarkingMesh(iceMarking, materials);
+		const ember = buildFloorMarkingMesh(emberMarking, materials);
+
+		expect(ice).toBeInstanceOf(THREE.Mesh);
+		expect(ember).toBeInstanceOf(THREE.Mesh);
+		expect(ice.geometry).toBeInstanceOf(THREE.PlaneGeometry);
+		expect(ember.geometry).toBeInstanceOf(THREE.PlaneGeometry);
+		expect(ice.rotation.x).toBeCloseTo(-Math.PI / 2);
+		expect(ember.rotation.x).toBeCloseTo(-Math.PI / 2);
+		expect(ice.userData.floorMarkingType).toBe('rift_ice_band');
+		expect(ember.userData.floorMarkingType).toBe('rift_ember_band');
+
+		// Distinct materials: frost-blue (blue-dominant) vs ember-orange (red-dominant).
+		expect(ice.material).not.toBe(ember.material);
+		const iceHex = ice.material.color.getHex();
+		const emberHex = ember.material.color.getHex();
+		expect(iceHex).not.toBe(emberHex);
+		expect(iceHex & 0xff).toBeGreaterThan((iceHex >> 16) & 0xff);
+		expect((emberHex >> 16) & 0xff).toBeGreaterThan(emberHex & 0xff);
+	});
+
+	it('unknown floor marking types still return null', () => {
+		const materials = getProfileMaterials('boss-arena');
+		expect(buildFloorMarkingMesh({ type: 'mystery_glyph', x: 0, z: 0 }, materials)).toBeNull();
+	});
+
+	it('buildDungeon on a rift-themed boss arena emits both band meshes plus the ring', () => {
+		const layout = generateLayout(42, 'boss-arena', { arenaTheme: 'rift' });
+		const { meshes } = buildDungeon(mockScene(), layout);
+		const bandTypes = meshes
+			.filter(m => m.userData?.floorMarkingType?.startsWith('rift_'))
+			.map(m => m.userData.floorMarkingType)
+			.sort();
+		expect(bandTypes).toEqual(['rift_ember_band', 'rift_ice_band']);
+		expect(meshes.filter(m => m.userData?.floorMarkingType === 'center_ring')).toHaveLength(1);
+	});
+});
+
 describe('entry room decor rendering', () => {
 	it('buildEntryDecorMesh sets decorType on each decor kind', () => {
 		const iceMats = { ...getEntryRoomMaterials('ice-cavern'), accent: getProfileMaterials('ice-cavern').accent };

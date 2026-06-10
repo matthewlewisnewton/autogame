@@ -39,7 +39,7 @@ const {
 const { PASSAGE_WIDTH, sampleFloorY, sampleFloorSurface, DEFAULT_FLOOR_Y, resolveFloorY } = require('./dungeon');
 const { applyLeechHeal, getFrenziedCombatMultipliers, checkFrenziedTelegraph } = require('./enemyVariants');
 const { isPlayingPhase, isLobbyPhase } = require('./lobbies');
-const { getEncounterBossId, isEncounterDormant, isEncounterLocked } = require('./encounters');
+const { getEncounterBossId, isEncounterDormant, isEncounterLocked, canDamageEnemy } = require('./encounters');
 
 // ── Airborne / altitude model ──
 // Default hover height (world units above the sampled floor) for any entity
@@ -1173,6 +1173,13 @@ const ENEMY_DEFS = {
 		hp: 420, chaseSpeed: 1.5, wanderSpeed: 0.7, attackDamage: 26, attackWindupMs: 1100,
 		attackStyle: 'cone', attackConeAngle: (2 * Math.PI) / 3, attackRange: 6.5,
 	},
+	crucible_sovereign: {
+		name: 'Crucible Sovereign',
+		description: 'Arena-forged tyrant that erupts in radial crucible shockwaves — close-range pressure on the boss dais.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 390, chaseSpeed: 1.2, wanderSpeed: 0.55, attackDamage: 24, attackWindupMs: 1200,
+		attackStyle: 'radial', attackRange: 4.5,
+	},
 	spire_warden: {
 		name: 'Summit Warden',
 		description: 'Spire summit guardian with crushing reach and tide-like pressure.',
@@ -1214,6 +1221,16 @@ const ENEMY_DEFS = {
 		iceBallSlowFactor: 0.45,
 		iceBallRadius: 1.2,
 		iceBallMaxRange: 22,
+	},
+	riftbound_colossus: {
+		name: 'Riftbound Colossus',
+		description: 'Apex tyrant of the rift where the ice and fire stages converge — its radial rift shockwave ignites (BURNING) everything it strikes.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange', 'burnDurationMs'],
+		// HP capped at 460: design.md records that a 500 HP boss could not be
+		// defeated inside the 180s defeatBoss validation window.
+		hp: 460, chaseSpeed: 1.1, wanderSpeed: 0.5, attackDamage: 28, attackWindupMs: 1200,
+		attackStyle: 'radial', attackRange: 5.5,
+		burnDurationMs: 3000,
 	},
 	spawner: {
 		name: 'Brood Node',
@@ -2644,6 +2661,10 @@ function updateEnchantments() {
 function damageEnemy(enemy, amount) {
   if (!enemy || amount <= 0) {
     return { hpBefore: enemy?.hp ?? 0, killed: false };
+  }
+
+  if (_gameState && !canDamageEnemy(_gameState, enemy)) {
+    return { hpBefore: enemy.hp, killed: false };
   }
 
   const hpBefore = enemy.hp;

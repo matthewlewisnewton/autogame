@@ -1,4 +1,11 @@
 /**
+ * Quest-tier layout classification. `boss_level` marks a dedicated single-boss
+ * arena quest (distinct from in-dungeon miniboss tiers). Boss-level tiers default
+ * to the `boss-arena` layout profile unless `layoutProfile` is set explicitly.
+ * @typedef {'boss_level'} QuestLevelKind
+ */
+
+/**
  * Optional stage-boss encounter metadata on a quest tier (wired in sub-ticket 05).
  * @typedef {Object} EncounterConfig
  * @property {string} [bossType] - Enemy type for the stage boss (default `miniboss`).
@@ -61,6 +68,7 @@
  * @property {EscortNpcConfig} [escortNpc] - Friendly NPC to protect and extract.
  * @property {EscortDestinationConfig} [escortDestination] - Extraction landmark or room role.
  * @property {boolean} [escortFailOnDeath=true] - Fail the run when the escort dies.
+ * @property {QuestLevelKind} [levelKind] - Quest-tier layout classification (`boss_level` ⇒ boss-arena default).
  */
 
 /**
@@ -549,6 +557,147 @@ const QUEST_DEFS = {
           {
             trigger: 'objective_complete',
             text: 'Champion down. Trial grounds acknowledge the win — stones released.',
+          },
+        ],
+      },
+    },
+  },
+  crucible_duel: {
+    id: 'crucible_duel',
+    enemyPool: [
+      { type: 'grunt', weight: 2 },
+      { type: 'skirmisher', weight: 2 },
+    ],
+    tiers: {
+      1: {
+        name: 'Crucible Duel',
+        description: 'Face the Crucible Sovereign alone on the boss arena dais.',
+        objectiveType: 'stage_boss',
+        levelKind: 'boss_level',
+        layoutProfile: 'boss-arena',
+        unlockRequires: { questId: 'arena_trials', tier: 2 },
+        encounter: {
+          bossType: 'crucible_sovereign',
+          landmark: 'arena_dais',
+          addCount: 0,
+        },
+        rewardCurrency: 18,
+        signatureCardId: 'sacrificial_altar',
+        rewardCards: ['sacrificial_altar', 'chrono_trigger'],
+        client: {
+          name: 'Venn',
+          briefing:
+            'Boss-arena contract. The Crucible Sovereign holds the dais alone — '
+            + 'drop them and claim eighteen stones plus the Offering Terminal uplink.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Venn on crucible feed. Sovereign is on the dais — no supports, no second chance.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Sovereign down. Crucible acknowledges the win — stones and uplink released.',
+          },
+        ],
+      },
+    },
+  },
+  vault_onslaught: {
+    id: 'vault_onslaught',
+    enemyPool: [
+      { type: 'grunt', weight: 2 },
+      { type: 'skirmisher', weight: 2 },
+    ],
+    tiers: {
+      1: {
+        name: 'Vault Onslaught',
+        description: 'Face the Annex Overseer on the boss arena with two marked supports.',
+        objectiveType: 'stage_boss',
+        levelKind: 'boss_level',
+        layoutProfile: 'boss-arena',
+        unlockRequires: { questId: 'crucible_duel', tier: 1 },
+        encounter: {
+          bossType: 'annex_overseer',
+          landmark: 'arena_dais',
+          addCount: 2,
+        },
+        rewardCurrency: 16,
+        signatureCardId: 'dungeon_drake',
+        rewardCards: ['dungeon_drake', 'mana_leach'],
+        client: {
+          name: 'Rewa',
+          briefing:
+            'Vault onslaught contract. The Annex Overseer holds the boss-arena dais with two '
+            + 'marked supports — drop all three and claim sixteen stones plus the Vault Wyrm uplink.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Rewa on vault feed. Overseer and two supports on the dais — clear the marked pair before you engage.',
+          },
+          {
+            trigger: { waveCleared: 1 },
+            text: 'One support spent. Overseer is still broadcasting — finish the sweep.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Overseer down. Vault onslaught acknowledged — stones and uplink released.',
+          },
+        ],
+      },
+    },
+  },
+  rift_convergence: {
+    id: 'rift_convergence',
+    // Ice+fire convergence pool: encounter adds draw ONLY from the two stages'
+    // signature foes so the arena reads as both quest lines meeting.
+    enemyPool: [
+      { type: 'glacial_thrower', weight: 2 },
+      { type: 'ember_wraith', weight: 2 },
+    ],
+    tiers: {
+      1: {
+        name: 'Rift Convergence',
+        description:
+          'Face the Riftbound Colossus on the boss arena where the ice and fire '
+          + 'stages converge, with four marked supports.',
+        objectiveType: 'stage_boss',
+        levelKind: 'boss_level',
+        layoutProfile: 'boss-arena',
+        // Cosmetic arena identity: ice/ember floor bands on the boss arena.
+        arenaTheme: 'rift',
+        unlockRequires: [
+          { questId: 'frost_crossing', tier: 2 },
+          { questId: 'ember_descent', tier: 2 },
+        ],
+        encounter: {
+          bossType: 'riftbound_colossus',
+          landmark: 'arena_dais',
+          addCount: 4,
+        },
+        rewardCurrency: 22,
+        signatureCardId: 'glacier_collapse',
+        rewardCards: ['glacier_collapse', 'inferno_pillar'],
+        client: {
+          name: 'Maren',
+          briefing:
+            'Rift convergence contract. The Riftbound Colossus holds the boss-arena dais '
+            + 'where the ice and fire stages meet, with four marked supports off the rift — '
+            + 'drop all five and claim twenty-two stones, the richest boss purse on the board.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Maren on rift feed. Colossus and four marked supports on the dais — frost and ember signatures mixed, watch for both.',
+          },
+          {
+            trigger: { waveCleared: 2 },
+            text: 'Two supports spent. The Colossus is still anchored to the dais — keep the pressure on.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Colossus down and the rift is quiet. Convergence acknowledged — twenty-two stones released.',
           },
         ],
       },
@@ -1047,6 +1196,11 @@ const QUEST_DEFS = {
 const { THEME } = require('./theme');
 const CARD_DEFS = require('../shared/cardDefs.json');
 
+function resolveBossDisplayName(bossType) {
+  const { enemyDefFor } = require('./simulation');
+  return enemyDefFor(bossType).name;
+}
+
 const DEFAULT_QUEST_ID = 'training_caverns';
 const DEFAULT_QUEST_TIER = 1;
 
@@ -1125,11 +1279,19 @@ function getQuest(questId, tier) {
     return null;
   }
   const signatureCardId = getSignatureCardId(questId, normalizedTier);
+  let encounter = tierDef.encounter;
+  if (encounter?.bossType && tierDef.levelKind === 'boss_level') {
+    encounter = {
+      ...encounter,
+      bossDisplayName: resolveBossDisplayName(encounter.bossType),
+    };
+  }
   return {
     id: questId,
     questId,
     tier: normalizedTier,
     ...tierDef,
+    encounter,
     dialogue: tierDef.dialogue ?? [],
     signatureCardId,
     signatureCardName: signatureCardId ? CARD_DEFS[signatureCardId]?.name ?? null : null,
@@ -1153,6 +1315,14 @@ function listQuests() {
       };
     })
     .filter(Boolean);
+}
+
+function listQuestsForAccount(accountId) {
+  const { isQuestTierUnlocked } = require('./users');
+  return listQuests().map((quest) => ({
+    ...quest,
+    tierUnlocked: isQuestTierUnlocked(accountId, quest.id, quest.tier ?? DEFAULT_QUEST_TIER),
+  }));
 }
 
 function formatObjectiveSummary(quest) {
@@ -1189,6 +1359,16 @@ function formatObjectiveSummary(quest) {
   if (quest.objectiveType === 'stage_boss') {
     const encounter = getEncounterConfig(quest);
     const addCount = encounter?.addCount ?? 0;
+    if (quest.levelKind === 'boss_level') {
+      const bossType = encounter?.bossType || 'miniboss';
+      const bossName = resolveBossDisplayName(bossType);
+      if (addCount > 0) {
+        return THEME.objectives.defeatBossLevelWithSupports
+          .replace('{bossName}', bossName)
+          .replace('{addCount}', String(addCount));
+      }
+      return THEME.objectives.defeatBossLevel.replace('{bossName}', bossName);
+    }
     const questId = quest.questId || quest.id;
     if (questId === 'spire_ascent') {
       if (addCount > 0) {
@@ -1281,6 +1461,39 @@ const ESCORT_OBJECTIVE_FIXTURE_DEF = {
             ],
           },
         ],
+      },
+    },
+  },
+};
+
+/** Test/debug fixture quest def — not registered in QUEST_DEFS. */
+const BOSS_LEVEL_FIXTURE_DEF = {
+  id: 'boss_level_fixture',
+  enemyPool: [{ type: 'miniboss', weight: 1 }],
+  tiers: {
+    1: {
+      name: 'Boss Level Fixture',
+      description: 'Test-only dedicated boss arena quest.',
+      objectiveType: 'stage_boss',
+      levelKind: 'boss_level',
+      rewardCurrency: 1,
+      encounter: {
+        bossType: 'miniboss',
+        landmark: 'arena_dais',
+        addCount: 2,
+      },
+    },
+    2: {
+      name: 'Boss Level Explicit Profile',
+      description: 'Boss level with explicit boss-arena layout profile.',
+      objectiveType: 'stage_boss',
+      levelKind: 'boss_level',
+      layoutProfile: 'boss-arena',
+      rewardCurrency: 1,
+      encounter: {
+        bossType: 'miniboss',
+        landmark: 'arena_dais',
+        addCount: 0,
       },
     },
   },
@@ -1561,7 +1774,8 @@ function listQuestVariants() {
  * `require('./users')` is resolved lazily here (mirroring
  * `listQuestVariantsForAccount` / `buildQuestUpdatePayload`) to avoid a circular
  * import at module load. A falsy/unknown `accountId` yields unlocked tier-1 nodes
- * and locked higher tiers, with no node cleared.
+ * without prerequisites, locked tier-1 nodes whose prerequisites are unmet, and
+ * locked higher tiers, with no node cleared.
  *
  * @param {string} [accountId]
  * @returns {{ nodes: Array<{ questId: string, tier: number, name: string,
@@ -1633,26 +1847,44 @@ function buildQuestUpdatePayload(gameState, playerAccountId) {
     const { getUnlockedQuestTiers } = require('./users');
     payload.unlockedQuestTiers = getUnlockedQuestTiers(playerAccountId) || {};
     payload.questVariants = listQuestVariantsForAccount(playerAccountId);
+    payload.quests = listQuestsForAccount(playerAccountId);
     payload.levelUnlockGraph = buildLevelUnlockGraph(playerAccountId);
   }
   return payload;
 }
 
+function isBossLevelQuest(quest) {
+  return !!(quest && quest.levelKind === 'boss_level');
+}
+
 function getLayoutProfileForQuest(questId, tier) {
   const quest = getQuest(questId, tier);
+  if (quest) {
+    if (quest.layoutProfile) {
+      return quest.layoutProfile;
+    }
+    if (isBossLevelQuest(quest)) {
+      return 'boss-arena';
+    }
+  }
   const fallback = getQuest(DEFAULT_QUEST_ID, DEFAULT_QUEST_TIER);
-  return (quest && quest.layoutProfile) || (fallback && fallback.layoutProfile) || 'crowded';
+  return (fallback && fallback.layoutProfile) || 'crowded';
 }
 
 /**
  * Layout generation options for a quest tier: slopes always enabled for quest
- * layouts; optional `layoutMode` on the tier def (defaults to 'default').
+ * layouts; optional `layoutMode` on the tier def (defaults to 'default');
+ * optional `arenaTheme` on the tier def passed through only when declared.
  */
 function getLayoutGenerationOptions(questId, tier) {
   const quest = getQuest(questId, tier);
   const rawMode = quest && quest.layoutMode;
   const layoutMode = rawMode === 'rigid' ? 'rigid' : 'default';
-  return { slopes: true, layoutMode };
+  const options = { slopes: true, layoutMode };
+  if (quest && typeof quest.arenaTheme === 'string') {
+    options.arenaTheme = quest.arenaTheme;
+  }
+  return options;
 }
 
 // Returns the enemy spawn pool for a quest, falling back to the default quest's
@@ -1737,6 +1969,7 @@ function pickWeightedEnemyType(pool, rng = Math.random) {
 
 module.exports = {
   QUEST_DEFS,
+  BOSS_LEVEL_FIXTURE_DEF,
   SCRIPTED_ENCOUNTER_FIXTURE_DEF,
   ESCORT_OBJECTIVE_FIXTURE_DEF,
   DEFAULT_QUEST_ID,
@@ -1751,6 +1984,7 @@ module.exports = {
   listQuestVariants,
   buildLevelUnlockGraph,
   getSelectedQuest,
+  isBossLevelQuest,
   getLayoutProfileForQuest,
   getLayoutGenerationOptions,
   buildSharedQuestUpdatePayload,

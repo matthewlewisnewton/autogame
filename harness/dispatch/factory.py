@@ -233,6 +233,18 @@ def reconcile(queue: BeadsQueue, main_repo: Repo) -> tuple[int, list[tuple[str, 
     merged_unclosed = _read_merged_unclosed(main_repo.root)
     recoverable = _recoverable_pending(main_repo)
     recoverable_ids = {bid for bid, _ in recoverable}
+    # Close ALL merged-but-unclosed beads up front (not just those that happen
+    # to be in_progress), forced (already on main), and KEEP the records whose
+    # close failed — the old code unlinked the whole file even on failure,
+    # stranding beads in_progress forever (autogame-1t90).
+    close_failed: set[str] = set()
+    for iid in merged_unclosed:
+        try:
+            queue.close(iid, "merged to main (recovered by reconcile)", force=True)
+            log(f"[factory] reconcile: closed merged-but-unclosed {iid}")
+        except Exception as e:
+            log(f"[factory] reconcile: close of merged {iid} failed: {e!r} — keeping record")
+            close_failed.add(iid)
     try:
         orphans = queue.in_progress()
     except Exception as e:
@@ -243,12 +255,7 @@ def reconcile(queue: BeadsQueue, main_repo: Repo) -> tuple[int, list[tuple[str, 
         iid = issue["id"]
         label = issue.get("title", iid)
         if iid in merged_unclosed:
-            log(f"[factory] reconcile: {label} was merged but unclosed — closing")
-            try:
-                queue.close(iid, "merged to main (recovered by reconcile)")
-            except Exception as e:
-                log(f"[factory] reconcile: close of merged {iid} failed: {e!r}")
-            continue
+            continue  # handled (or retained on failure) above — never requeue merged work
         if iid in recoverable_ids:
             log(f"[factory] reconcile: {label} passed review — preserving branch for merge recovery")
             continue  # leave in_progress; run_factory re-enqueues its merge
@@ -259,8 +266,12 @@ def reconcile(queue: BeadsQueue, main_repo: Repo) -> tuple[int, list[tuple[str, 
         except Exception as e:
             log(f"[factory] reconcile: requeue failed for {iid}: {e!r}")
     if merged_unclosed:
+        path = Path(main_repo.root) / MERGED_UNCLOSED
         try:
-            (Path(main_repo.root) / MERGED_UNCLOSED).unlink()
+            if close_failed:
+                path.write_text("".join(f"{i}\n" for i in sorted(close_failed)))
+            else:
+                path.unlink()
         except OSError:
             pass
     keep_branches = frozenset(f"auto/{name}" for _, name in recoverable)
@@ -289,7 +300,13 @@ def build_factory(main_root, *, workers: Optional[int] = None,
     registry = AgentRegistry(
         cfg.specs, cfg.order,
         health_file=health_file or main_root / "harness" / "agents_health.json")
-    mq = MergeQueue(main_repo=main_repo, queue=queue)
+    mq = MergeQueue(
+        main_repo=main_repo, queue=queue,
+        # Cross-ticket breaker: 3 consecutive rejects = a systemic merge-path
+        # fault (not three coincidences) — halt and preserve queued passed work.
+        halt_flag=Path(main_root) / "harness" / "tmp" / "merge_halt.flag",
+        reject_streak_limit=3,
+    )
     # Context-aware conflict resolver: when a passed branch's rebase conflicts,
     # merge main in and let the merge_resolve role (with the change's intent)
     # resolve it, instead of discarding the work and re-running the ticket. Needs

@@ -370,6 +370,31 @@ describe('input.js', () => {
 		expect(getHandSlotGamepadHints()?.slice(0, 2)).toEqual(['A', 'B']);
 	});
 
+	it('honors remapped 8BitDo 64 useSlotN bindings in hand slot hints and labels', () => {
+		patchSettings({
+			gamepad: {
+				profile: '8bitdo-64',
+				bindings: {
+					// Remap the attack slot (default A) to face B.
+					useSlot0: { type: 'button', index: 1 },
+					// Remap a default C-button cast slot to a different direction.
+					useSlot2: { type: 'cButton', direction: 'right' },
+				},
+			},
+		});
+		const result = getHandSlotInputHints();
+		expect(result.mode).toBe('gamepad');
+		// Slot 0 now resolves to B, not the default A.
+		expect(result.hints[0]).toBe('B');
+		expect(result.hintLabels[0]).toBe('B');
+		// Slot 2 now resolves to C right, not the default C up.
+		expect(result.hintLabels[2]).toBe('C right');
+		expect(result.hints[2]).toContain('rotate(90 6 6)');
+		// Untouched slots keep their default 8BitDo 64 labels.
+		expect(result.hintLabels[1]).toBe('B');
+		expect(result.hintLabels[5]).toBe('C right');
+	});
+
 	it('exposes standard gamepad face button hints when that profile is selected', () => {
 		patchSettings({ gamepad: { profile: 'standard' } });
 		expect(getHandSlotInputHints()).toEqual({
