@@ -175,18 +175,38 @@ describe('quest booth booth:action hook (main.js)', () => {
 		expect(wrapper.classList.contains('hidden')).toBe(true);
 	});
 
-	it('re-hides the quest panel when the lobby is (re)shown', async () => {
+	it('keeps the quest panel visible when the lobby is (re)shown after booth open', async () => {
 		await import('../main.js');
 		const wrapper = document.getElementById('quest-board-wrapper');
 		wrapper.scrollIntoView = vi.fn();
 
 		window.__setGameState({ gamePhase: 'lobby', players: { p1: {} } }, 'p1');
 
-		// Open it via the booth, then show the lobby again — it must hide.
+		// Open it via the booth — sets questPanelOpen flag.
 		dispatchBoothAction({ boothId: 'quest' });
 		expect(wrapper.classList.contains('hidden')).toBe(false);
+		expect(window.__isQuestPanelOpen()).toBe(true);
 
+		// Re-showing the lobby should NOT re-hide the panel (flag guard).
 		window.showGameLobby();
+		expect(wrapper.classList.contains('hidden')).toBe(false);
+	});
+
+	it('dismissGameLobby resets questPanelOpen and re-hides the wrapper', async () => {
+		await import('../main.js');
+		const wrapper = document.getElementById('quest-board-wrapper');
+		wrapper.scrollIntoView = vi.fn();
+
+		window.__setGameState({ gamePhase: 'lobby', players: { p1: {} } }, 'p1');
+
+		// Open the quest panel.
+		dispatchBoothAction({ boothId: 'quest' });
+		expect(wrapper.classList.contains('hidden')).toBe(false);
+		expect(window.__isQuestPanelOpen()).toBe(true);
+
+		// Dismissing the lobby resets the flag and hides the panel.
+		window.dismissGameLobby();
+		expect(window.__isQuestPanelOpen()).toBe(false);
 		expect(wrapper.classList.contains('hidden')).toBe(true);
 	});
 
