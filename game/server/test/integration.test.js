@@ -44,7 +44,7 @@ import {
 import { hubSpawnPosition } from '../simulation.js';
 import { InMemoryProvider } from '../providers.js';
 import { getQuest } from '../quests.js';
-import { COOLDOWN_MS, MOVE_SPEED, MAX_HP, MAX_HAND_SLOTS, MAX_MAGIC_STONES, STARTING_MAGIC_STONES, MEDIC_HEAL_COST, TICK_RATE, MAGIC_STONES_REGEN_PER_TICK } from '../config.js';
+import { COOLDOWN_MS, MOVE_SPEED, MAX_HP, MAX_HAND_SLOTS, MAX_MAGIC_STONES, STARTING_MAGIC_STONES, MEDIC_HEAL_COST, TICK_RATE, MAGIC_STONES_REGEN_PER_TICK, LOBBY_REVIVE_HP } from '../config.js';
 
 // ── Helpers ──
 
@@ -5183,7 +5183,7 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 		c2Reconnect.socket.disconnect();
 	});
 
-	it('preserves HP and dead flag when reconnecting as dead player during active run', async () => {
+	it('revives dead player with LOBBY_REVIVE_HP on reconnect', async () => {
 		// --- Connect two players and start a run ---
 		const c1 = await connectClient(baseUrl);
 		const c2 = await connectClient(baseUrl, undefined, { joinLobbyId: c1.lobbyId });
@@ -5213,8 +5213,8 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 		const c2Reconnect = await reconnectClient(baseUrl, player2Id, c1.lobbyId);
 
 		const restoredPlayer = testGameState().players[player2Id];
-		expect(restoredPlayer.hp).toBe(0);
-		expect(restoredPlayer.dead).toBe(true);
+		expect(restoredPlayer.hp).toBe(LOBBY_REVIVE_HP);
+		expect(restoredPlayer.dead).toBe(false);
 
 		c1.socket.disconnect();
 		c2Reconnect.socket.disconnect();

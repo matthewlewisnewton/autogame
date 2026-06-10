@@ -1219,9 +1219,11 @@ function joinPlayerToLobby(socket, lobby, options = {}) {
     if (!Array.isArray(player.debuffs)) player.debuffs = [];
   }
 
+  // Always revive dead/zero-HP players on reconnect to prevent soft-locks
+  revivePlayerInLobby(state.players[playerId]);
+
   if (isLobbyPhase(state)) {
     const lobbyPlayer = state.players[playerId];
-    revivePlayerInLobby(lobbyPlayer);
     const hubSpawn = hubSpawnPosition(HUB_LAYOUT);
     lobbyPlayer.x = hubSpawn.x;
     lobbyPlayer.z = hubSpawn.z;

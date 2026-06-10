@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import config, { MAX_HP } from '../config.js';
+import config, { MAX_HP, LOBBY_REVIVE_HP } from '../config.js';
 import { getQuest } from '../quests.js';
 import { DEFAULT_COSMETIC } from '../cosmetic.js';
 import { createLobbyGameState } from '../lobbies.js';
@@ -3630,7 +3630,7 @@ describe('run state', () => {
 			returnPlayersToLobby();
 			restore();
 
-			expect(gameState.players.p1.hp).toBe(10);
+			expect(gameState.players.p1.hp).toBe(LOBBY_REVIVE_HP);
 			expect(gameState.players.p1.dead).toBe(false);
 		});
 
@@ -3800,14 +3800,14 @@ describe('run state', () => {
 		it('clears dead flag and restores HP to LOBBY_REVIVE_HP for dead players', () => {
 			const player = { hp: 0, dead: true };
 			revivePlayerInLobby(player);
-			expect(player.hp).toBe(10);
+			expect(player.hp).toBe(LOBBY_REVIVE_HP);
 			expect(player.dead).toBe(false);
 		});
 
 		it('clears dead flag and restores HP to LOBBY_REVIVE_HP for zero-HP players without dead flag', () => {
 			const player = { hp: 0, dead: false };
 			revivePlayerInLobby(player);
-			expect(player.hp).toBe(10);
+			expect(player.hp).toBe(LOBBY_REVIVE_HP);
 			expect(player.dead).toBe(false);
 		});
 	});
