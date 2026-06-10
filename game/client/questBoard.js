@@ -73,15 +73,27 @@ export function formatObjectiveSummary(quest) {
 export function formatRewardSummary(quest) {
 	if (!quest) return 'Reward: —';
 
-	const parts = [];
-	if (typeof quest.rewardCardId === 'string' && CARD_DEFS[quest.rewardCardId]) {
-		parts.push(CARD_DEFS[quest.rewardCardId].name);
+	const rewardCardName = typeof quest.rewardCardId === 'string' && CARD_DEFS[quest.rewardCardId]
+		? CARD_DEFS[quest.rewardCardId].name
+		: null;
+	const signatureCardName = !rewardCardName
+		? (quest.signatureCardName || null)
+		: null;
+	const cardName = rewardCardName || signatureCardName;
+
+	if (rewardCardName && quest.rewardCurrency != null) {
+		return `Reward: ${rewardCardName} + ${quest.rewardCurrency} ${THEME.currency.short.toLowerCase()}`;
+	}
+	if (quest.rewardCurrency != null && cardName) {
+		return `Reward: ${quest.rewardCurrency} ${THEME.currency.short.toLowerCase()} + ${cardName}`;
 	}
 	if (quest.rewardCurrency != null) {
-		parts.push(`${quest.rewardCurrency} ${THEME.currency.short.toLowerCase()}`);
+		return `Reward: ${quest.rewardCurrency} ${THEME.currency.short.toLowerCase()}`;
 	}
-	if (parts.length === 0) return 'Reward: —';
-	return `Reward: ${parts.join(' + ')}`;
+	if (cardName) {
+		return `Reward: ${cardName}`;
+	}
+	return 'Reward: —';
 }
 
 export function formatBriefingRewardLine(quest) {
@@ -203,12 +215,14 @@ function buildQuestBoardRows(quests, questVariants) {
 			minibossCount: quest.minibossCount,
 			encounter: quest.encounter,
 			rewardCurrency: quest.rewardCurrency,
+			rewardCardId: quest.rewardCardId,
 			objectiveSummary: quest.objectiveSummary,
 			rewardSummary: quest.rewardSummary,
 			clientNpc: quest.clientNpc,
 			briefing: quest.briefing,
 			briefingRewardLine: quest.briefingRewardLine,
 			briefingRewardText: quest.briefingRewardText,
+			signatureCardName: quest.signatureCardName,
 		});
 	}
 

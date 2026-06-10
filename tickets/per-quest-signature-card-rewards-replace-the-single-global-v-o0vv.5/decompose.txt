@@ -1,0 +1,12 @@
+Planning complete. I broke the ticket into two sub-tickets in dependency order — server-side reward selection first, then the quest-board UI that consumes it. Both use `code` verification since every criterion is about data fields, selection logic, payload contents, or DOM structure rather than pixels.
+
+Key decisions baked into the specs:
+
+- **Theme picks use only existing `reward`-acquisition cards** (no new cards, as the ticket allows): `frost_crossing` → `ice_ball` (Glacial Orb), `ember_descent` → `fireball`, `spire_ascent` → `gravity_well` (closest existing pull/edge-control card), `crystal_rescue` → `mana_prism`.
+- **Sub-ticket 01** adds `signatureCardId`/`rewardCards` to the quest tier defs plus `getSignatureCardId`/`getQuestRewardCards` helpers, injects the signature into `buildCardChoices` (which also keeps `previewReturnRewards` consistent for free), and swaps the empty-choices fallback rotation to the quest pool when one exists. `VICTORY_REWARD_ROTATION` and `SHOP_CARD_POOL` stay untouched so quests without a pool behave exactly as today and existing tests keep passing.
+- **Sub-ticket 02** resolves the card name server-side (`signatureCardName` on quest payloads, signature appended to `formatRewardSummary` so tier-2 variant rows get it via `rewardSummary`), and renders it in the client quest card's reward line, with tests on both sides.
+
+Created sub-ticket folders:
+
+- `tickets/per-quest-signature-card-rewards-replace-the-single-global-v-o0vv.5/subtickets/01-server-signature-reward-selection/ticket.md`
+- `tickets/per-quest-signature-card-rewards-replace-the-single-global-v-o0vv.5/subtickets/02-quest-board-signature-display/ticket.md`

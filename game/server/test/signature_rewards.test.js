@@ -33,6 +33,8 @@ const SIGNATURE_FIXTURE_DEF = {
       enemyCount: 1,
       rewardCurrency: 12,
       rewardCardId: 'saber_of_light',
+      signatureCardId: 'saber_of_light',
+      rewardCards: ['saber_of_light'],
       layoutProfile: 'crowded',
     },
   },
@@ -90,21 +92,22 @@ describe('grantRunRewards() signature card path', () => {
     startSignatureRun();
   });
 
-  it('grants quest rewardCardId before VICTORY_REWARD_ROTATION when no run drops', () => {
+  it('offers the signature card in pending choices before global rotation when no run drops', () => {
     grantRunRewards('p1', { status: 'victory' });
-    expect(gameState.players.p1.ownedCards.saber_of_light).toBe(1);
+    expect(gameState.players.p1.pendingCardChoices.map((c) => c.id)).toEqual(['saber_of_light']);
+    expect(gameState.players.p1.ownedCards.saber_of_light).toBeUndefined();
     expect(gameState.players.p1.ownedCards[VICTORY_REWARD_ROTATION[0]]).toBeUndefined();
-    expect(gameState.players.p1.runRewards.cards).toEqual([
-      { id: 'saber_of_light', name: 'Saber of Light', count: 1 },
-    ]);
+    expect(gameState.players.p1.runRewards.cards).toEqual([]);
     expect(gameState.players.p1.currency).toBe(12);
   });
 
-  it('does not advance VICTORY_REWARD_ROTATION counter for signature grants', () => {
+  it('does not advance VICTORY_REWARD_ROTATION counter when signature choices are offered', () => {
     grantRunRewards('p1', { status: 'victory' });
     grantRunRewards('p1', { status: 'victory' });
-    expect(gameState.players.p1.ownedCards.saber_of_light).toBe(2);
+    expect(gameState.players.p1.pendingCardChoices.map((c) => c.id)).toEqual(['saber_of_light']);
+    expect(gameState.players.p1.ownedCards.saber_of_light).toBeUndefined();
     expect(gameState.players.p1.ownedCards.flame_blade).toBeUndefined();
+    expect(gameState._victoryCounters).toBeUndefined();
   });
 });
 
@@ -115,10 +118,11 @@ describe('previewReturnRewards() signature card path', () => {
     gameState.run.objective.defeatedEnemies = gameState.run.objective.totalEnemies;
   });
 
-  it('previews the signature card name instead of a generic bonus card', () => {
+  it('previews the signature card in pending choices instead of a generic bonus card', () => {
     const preview = previewReturnRewards('p1');
     expect(preview.objectiveComplete).toBe(true);
-    expect(preview.cards).toEqual([{ id: 'saber_of_light', name: 'Saber of Light' }]);
+    expect(preview.cardChoices).toEqual([{ id: 'saber_of_light', name: 'Saber of Light' }]);
+    expect(preview.cards).toEqual([]);
     expect(preview.currency).toBe(12);
   });
 });

@@ -6050,3 +6050,48 @@ PASS. This ticket added tier-1 deploy shortcuts for the reworked quests. They ar
 ## Remaining gaps
 
 No blocking gaps.
+
+## v0.347 — Quest scripting foundation: data-driven hand-placed waves + room triggers (replaces random bulk spawn for scripted quests)  (2026-06-10 01:14:31)
+
+
+### `enter_room` waves are delayed, and `waveCleared` chaining works
+PASS. `enter_room` waves remain pending until an active, non-dead, non-extracted player enters the resolved trigger room; room bindings support both explicit room coordinates and landmarks. Spawned waves transition to `cleared` only after every tracked enemy id is absent from live enemies, and pending `{ waveCleared: id }` waves then spawn once. The tests cover delayed entry, no re-spawn on re-entry, dead/extracted-player suppression, landmark resolution, chained waves, and partial-wave clearing.
+
+### Existing non-scripted quests are unchanged
+PASS. Production quest tiers currently have no `script` block, so they continue through the existing spawn path. The implementation gates scripted behavior on `getQuestScript(quest) != null`, and the regression test confirms `training_caverns` tier 1 still bulk-spawns its normal `enemyCount`. The live browser capture also ran `training_caverns` tier 1 with 5 enemies, matching the existing non-scripted behavior.
+
+### Unit/integration coverage and state snapshot exposure
+PASS. The new server tests cover script schema, run-start waves, enter-room triggers, wave-cleared chaining, and a full scripted lifecycle that completes a `defeat_enemies` run. `stateSnapshot()` exposes `run.waveScript` through the existing run snapshot, including wave ids, triggers, statuses, and spawned ids. The captured coverage run reports `109 passed` test files and `1535 passed` tests, including all new quest-script suites.
+
+### Design and foundation consistency
+PASS. The implementation is consistent with the PSO-style room/wave scripting direction in the ticket and does not regress the baseline requirements in `game/docs/requirements.md`: the captured game still renders, connects client/server, visualizes multiplayer, and synchronizes movement. The change is server-authoritative and does not add client-only shortcuts or weaken gameplay invariants.
+
+### Debug scenarios
+PASS. This ticket did not add or change any `?debugScenario=...` shortcut. Existing debug scenario entry points remain gated by URL/debug handling and are not part of normal gameplay.
+
+## Remaining gaps
+
+No blocking gaps remain. One limitation of the evidence is that the browser capture exercised an unscripted production quest because no shipped quest tier currently defines `script.waves`; the scripted path is nevertheless covered by focused server fixtures and integration tests, which is sufficient for this foundation ticket.
+
+## v0.346 — Per-quest signature card rewards: replace the single global victory rotation, surface reward on the quest board  (2026-06-10 00:45:49)
+
+| Requirement | Status |
+|-------------|--------|
+| Gated behind debug/dev path only | Yes — registered in `DEBUG_SCENARIOS`; `isDebugScenarioAllowed` requires `ALLOW_DEBUG_SCENARIOS=1` or localhost; URL/socket is the entry point |
+| Same end-state reachable in normal play | Yes — frost_crossing tier 1 with all but one hostile cleared |
+| Does not weaken invariants | Yes — uses `setupFrostCrossingTier1Deploy`, spawns a 1-HP grunt, does not skip victory reward server logic |
+
+Not used in round-1 capture (`debugScenario: null` in probes). Acceptable QA shortcut.
+
+---
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are implemented and covered by tests; the game runs without errors in capture.
+
+---
+
+## Nits (non-blocking)
+
+See `nits.md` for one follow-up on tier-1 vs tier-2 currency label wording on the quest board.
+

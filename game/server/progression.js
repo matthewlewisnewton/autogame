@@ -69,9 +69,19 @@ const {
   getSelectedQuest,
   getEnemyPool,
   getGuaranteedEnemyType,
+  getSignatureCardId,
+  getQuestRewardCards,
   pickWeightedEnemyType,
+  getQuestScript,
   DEFAULT_QUEST_TIER,
 } = require('./quests');
+const {
+  initQuestScript,
+  fireRunStartWaves,
+  updateEnterRoomTriggers,
+  checkWaveCleared,
+  fireWaveClearedTriggers,
+} = require('./questScript');
 const { unlockQuestTier, isQuestTierUnlocked } = require('./users');
 const { getObjectiveDef } = require('./objectives');
 const {
@@ -973,6 +983,12 @@ function startDungeonRun() {
       buildObjectiveSpawnCtx(),
     );
   }
+  if (getQuestScript(quest)) {
+    initQuestScript(_gameState.run, quest, _gameState.layout);
+    const seed = _gameState.layoutSeed || 42;
+    const rng = mulberry32(seed + 1000);
+    fireRunStartWaves(_gameState, { ...buildObjectiveSpawnCtx(), layout: _gameState.layout, rng });
+  }
   if (_gameState._pendingEncounterBossId != null && _gameState.run.encounter) {
     setEncounterBoss(_gameState.run, _gameState._pendingEncounterBossId);
     delete _gameState._pendingEncounterBossId;
@@ -1219,6 +1235,16 @@ function buildCardChoices(playerId, state = _gameState) {
     if (uniqueIds.length >= MAX_CARD_CHOICES) break;
   }
 
+  // Signature quests always offer their signature card as the first choice,
+  // deduplicated against run drops and still capped at MAX_CARD_CHOICES.
+  const signatureCardId = getSignatureCardId(state.run?.questId, state.run?.questTier);
+  if (signatureCardId && CARD_DEFS[signatureCardId]) {
+    const dupeIdx = uniqueIds.indexOf(signatureCardId);
+    if (dupeIdx !== -1) uniqueIds.splice(dupeIdx, 1);
+    uniqueIds.unshift(signatureCardId);
+    if (uniqueIds.length > MAX_CARD_CHOICES) uniqueIds.length = MAX_CARD_CHOICES;
+  }
+
   return uniqueIds.map((cardId) => {
     const def = CARD_DEFS[cardId];
     return {
@@ -1393,13 +1419,12 @@ function grantRunRewards(playerId, summary) {
 
     const cards = [];
     if (cardChoices.length === 0) {
-      let cardId = resolveSignatureRewardCardId(quest);
-      if (!cardId) {
-        if (!_gameState._victoryCounters) _gameState._victoryCounters = {};
-        const idx = _gameState._victoryCounters[playerId] || 0;
-        cardId = VICTORY_REWARD_ROTATION[idx % VICTORY_REWARD_ROTATION.length];
-        _gameState._victoryCounters[playerId] = idx + 1;
-      }
+      if (!_gameState._victoryCounters) _gameState._victoryCounters = {};
+      const idx = _gameState._victoryCounters[playerId] || 0;
+      const run = _gameState.run;
+      const pool = getQuestRewardCards(run?.questId, run?.questTier) || VICTORY_REWARD_ROTATION;
+      const cardId = pool[idx % pool.length];
+      _gameState._victoryCounters[playerId] = idx + 1;
 
       if (grantCard(player, cardId)) {
         const cardDef = CARD_DEFS[cardId];
@@ -1473,7 +1498,8 @@ function previewReturnRewards(playerId) {
     const cardChoices = buildCardChoices(playerId);
     const cards = [];
     if (cardChoices.length === 0) {
-      const signatureCardId = resolveSignatureRewardCardId(quest);
+      const signatureCardId = getSignatureCardId(run.questId, run.questTier)
+        ?? resolveSignatureRewardCardId(quest);
       if (signatureCardId) {
         const cardDef = CARD_IDENTITY[signatureCardId];
         cards.push({ id: signatureCardId, name: cardDef.name });
@@ -2378,8 +2404,25 @@ function removeDeadEnemies() {
   return removed;
 }
 
+function buildQuestScriptSpawnCtx(gameState = _gameState) {
+  const seed = gameState.layoutSeed || 42;
+  const rng = mulberry32(seed + 1000);
+  return {
+    ...buildObjectiveSpawnCtx(),
+    layout: gameState.layout,
+    rng,
+  };
+}
+
+function processQuestWaveCleared(gameState = _gameState) {
+  if (!gameState?.run?.waveScript) return;
+  checkWaveCleared(gameState);
+  fireWaveClearedTriggers(gameState, buildQuestScriptSpawnCtx(gameState));
+}
+
 function cleanupAfterDamage() {
   if (removeDeadEnemies() > 0) {
+    processQuestWaveCleared();
     checkRunTerminalState();
   }
 }
@@ -2686,6 +2729,14 @@ function tickEscort(gameState = _gameState) {
 function updateEncounterTriggers() {
   if (!isPlayingPhase(_gameState)) return;
   tryActivateEncounter(_gameState);
+}
+
+function updateQuestScriptTriggers(now = Date.now(), gameState = _gameState) {
+  if (!isPlayingPhase(gameState)) return;
+  if (!gameState?.run?.waveScript) return;
+  const spawnCtx = buildQuestScriptSpawnCtx(gameState);
+  processQuestWaveCleared(gameState);
+  updateEnterRoomTriggers(gameState, spawnCtx);
 }
 
 function spawnLoot(layout, rng) {
@@ -3577,6 +3628,8 @@ module.exports = {
   saveAllPlayers,
   createRunState,
   startDungeonRun,
+  initQuestScript,
+  fireRunStartWaves,
   clampObjectiveProgress,
   syncRunObjectiveToEnemies,
   recordEnemyDefeated,
@@ -3618,6 +3671,7 @@ module.exports = {
   tickEscort,
   updateQuestDialogueRoomEntry,
   updateEncounterTriggers,
+  updateQuestScriptTriggers,
   recordCrystalCollected,
   isRunObjectiveComplete,
   checkRunTerminalState,

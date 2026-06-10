@@ -314,6 +314,7 @@ const {
   tickEscort,
   updateQuestDialogueRoomEntry,
   updateEncounterTriggers,
+  updateQuestScriptTriggers,
   spawnLoot,
   spawnCrystals,
   recordCrystalCollected,
@@ -534,6 +535,7 @@ const DEBUG_SCENARIOS = new Set([
   'sunken-canyon-stage',
   'sunken-canyon-cliff-hazard',
   'frost-crossing-tier-1',
+  'frost-crossing-last-enemy',
   'training-caverns-tier-1',
   'crystal-rescue-tier-1',
   'annex-escort-tier-1',
@@ -796,6 +798,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'ember-descent-last-enemy',
   'slippery-floor-lab',
   'frost-crossing-tier-1',
+  'frost-crossing-last-enemy',
   'training-caverns-tier-1',
   'crystal-rescue-tier-1',
   'annex-escort-tier-1',
@@ -1460,6 +1463,7 @@ function runGameLoopTick() {
           updateBurning();
           debugScenarios.nudgeDebugBossApproachPlayers(state);
           updateEncounterTriggers();
+          updateQuestScriptTriggers();
           updateSurviveSpawns();
           updateScriptedEncounters();
           tickEscort(state);

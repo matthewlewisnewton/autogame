@@ -6,7 +6,13 @@
  * Quests reference the type via quest.objectiveType in quests.js; progression
  * dispatches through getObjectiveDef — no type switches elsewhere.
  */
-const { getEnemyPool, getEncounterConfig, pickWeightedEnemyType } = require('./quests');
+const {
+  getEnemyPool,
+  getEncounterConfig,
+  getQuestScript,
+  countScriptedEnemies,
+  pickWeightedEnemyType,
+} = require('./quests');
 const { isScriptedQuest, countAuthoredScriptedEnemies } = require('./scriptedEncounters');
 const { formatEscortDestinationLabel } = require('./escort');
 const { setEncounterBoss } = require('./encounters');
@@ -56,16 +62,22 @@ const OBJECTIVE_DEFS = {
   defeat_enemies: {
     objectiveType: 'defeat_enemies',
     skipBulkCombatSpawn(quest) {
-      return isScriptedQuest(quest);
+      return isScriptedQuest(quest) || getQuestScript(quest) != null;
     },
     preferNearestEnemySpawns() {
       return false;
     },
     createObjective(quest, ctx) {
       const objectiveLabel = `${quest.name}: ${quest.description}`;
-      const totalEnemies = isScriptedQuest(quest)
-        ? countAuthoredScriptedEnemies(quest)
-        : ctx.enemyCount;
+      let totalEnemies = ctx.enemyCount;
+      if (isScriptedQuest(quest)) {
+        totalEnemies = countAuthoredScriptedEnemies(quest);
+      } else {
+        const script = getQuestScript(quest);
+        if (script != null) {
+          totalEnemies = countScriptedEnemies(script);
+        }
+      }
       return {
         type: 'defeat_enemies',
         label: objectiveLabel,

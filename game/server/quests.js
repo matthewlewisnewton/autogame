@@ -33,6 +33,34 @@
  * @property {boolean} [escortFailOnDeath=true] - Fail the run when the escort dies.
  */
 
+/**
+ * Hand-placed spawn entry for a scripted quest wave.
+ * @typedef {Object} QuestScriptSpawn
+ * @property {string} type - Enemy type id.
+ * @property {number} x - World X coordinate.
+ * @property {number} z - World Z coordinate.
+ */
+
+/**
+ * Room binding for a scripted wave trigger (center coords or layout landmark).
+ * @typedef {{ x: number, z: number } | { landmark: string }} QuestScriptRoom
+ */
+
+/**
+ * One authored wave in a quest script.
+ * @typedef {Object} QuestScriptWave
+ * @property {string} id - Stable wave id for chaining (`waveCleared` triggers).
+ * @property {QuestScriptRoom} [room] - Room the wave is bound to.
+ * @property {'run_start' | 'enter_room' | { waveCleared: string }} trigger
+ * @property {QuestScriptSpawn[]} spawns - Hand-placed enemies for this wave.
+ */
+
+/**
+ * Normalized quest script returned by `getQuestScript`.
+ * @typedef {Object} QuestScript
+ * @property {QuestScriptWave[]} waves
+ */
+
 const QUEST_DEFS = {
   training_caverns: {
     id: 'training_caverns',
@@ -183,6 +211,8 @@ const QUEST_DEFS = {
             line: 'All prisms accounted for. Extraction channel is open.',
           },
         ],
+        signatureCardId: 'mana_prism',
+        rewardCards: ['mana_prism', 'harvesting_scythe'],
       },
       2: {
         tier: 2,
@@ -195,6 +225,8 @@ const QUEST_DEFS = {
         layoutProfile: 'open',
         layoutMode: 'rigid',
         unlockRequires: { questId: 'crystal_rescue', tier: 1 },
+        signatureCardId: 'mana_prism',
+        rewardCards: ['mana_prism', 'harvesting_scythe'],
       },
     },
   },
@@ -293,6 +325,8 @@ const QUEST_DEFS = {
             line: 'You are on the ice band — watch your footing and clear the throwers.',
           },
         ],
+        signatureCardId: 'ice_ball',
+        rewardCards: ['ice_ball', 'frost_nova', 'permafrost_lance'],
       },
     },
   },
@@ -346,6 +380,9 @@ const QUEST_DEFS = {
         enemyCount: 6,
         rewardCurrency: 14,
         layoutProfile: 'fire-cavern',
+        // Burn-theme signature rewards (see frost_crossing tier 1 for field docs).
+        signatureCardId: 'fireball',
+        rewardCards: ['fireball', 'dragons_breath'],
       },
     },
   },
@@ -365,6 +402,9 @@ const QUEST_DEFS = {
         enemyCount: 6,
         rewardCurrency: 16,
         layoutProfile: 'spire-ascent',
+        // Pull/edge-control signature rewards (see frost_crossing tier 1 for field docs).
+        signatureCardId: 'gravity_well',
+        rewardCards: ['gravity_well'],
       },
       2: {
         tier: 2,
@@ -375,6 +415,8 @@ const QUEST_DEFS = {
         layoutProfile: 'spire-ascent',
         layoutMode: 'rigid',
         unlockRequires: { questId: 'spire_ascent', tier: 1 },
+        signatureCardId: 'gravity_well',
+        rewardCards: ['gravity_well'],
         encounter: {
           bossType: 'spire_warden',
           landmark: 'spire_summit',
@@ -490,11 +532,14 @@ function getQuest(questId, tier) {
   if (!tierDef) {
     return null;
   }
+  const signatureCardId = getSignatureCardId(questId, normalizedTier);
   return {
     id: questId,
     questId,
     tier: normalizedTier,
     ...tierDef,
+    signatureCardId,
+    signatureCardName: signatureCardId ? CARD_DEFS[signatureCardId]?.name ?? null : null,
   };
 }
 
@@ -686,22 +731,106 @@ function countScriptedEnemiesInQuest(quest) {
   return total;
 }
 
+function normalizeQuestScriptSpawn(spawn) {
+  if (!spawn || typeof spawn !== 'object') {
+    return null;
+  }
+  if (typeof spawn.type !== 'string' || !spawn.type) {
+    return null;
+  }
+  if (!Number.isFinite(spawn.x) || !Number.isFinite(spawn.z)) {
+    return null;
+  }
+  return { type: spawn.type, x: spawn.x, z: spawn.z };
+}
+
+function normalizeQuestScriptWave(wave) {
+  if (!wave || typeof wave !== 'object') {
+    return null;
+  }
+  if (typeof wave.id !== 'string' || !wave.id) {
+    return null;
+  }
+  if (!Array.isArray(wave.spawns)) {
+    return null;
+  }
+  const spawns = wave.spawns
+    .map(normalizeQuestScriptSpawn)
+    .filter(Boolean);
+  const normalized = {
+    id: wave.id,
+    trigger: wave.trigger,
+    spawns,
+  };
+  if (wave.room != null && typeof wave.room === 'object') {
+    normalized.room = wave.room;
+  }
+  return normalized;
+}
+
+/**
+ * Returns normalized `script.waves` for a quest tier, or `null` when absent.
+ * @param {ReturnType<typeof getQuest> | null | undefined} quest
+ * @returns {QuestScript | null}
+ */
+function getQuestScript(quest) {
+  if (!quest || !quest.script || typeof quest.script !== 'object') {
+    return null;
+  }
+  if (!Array.isArray(quest.script.waves) || quest.script.waves.length === 0) {
+    return null;
+  }
+  const waves = quest.script.waves
+    .map(normalizeQuestScriptWave)
+    .filter(Boolean);
+  if (waves.length === 0) {
+    return null;
+  }
+  return { waves };
+}
+
+/**
+ * Sums authored spawn entries across all scripted waves (objective total).
+ * @param {QuestScript | null | undefined} script
+ * @returns {number}
+ */
+function countScriptedEnemies(script) {
+  if (!script || !Array.isArray(script.waves)) {
+    return 0;
+  }
+  return script.waves.reduce(
+    (sum, wave) => sum + (Array.isArray(wave.spawns) ? wave.spawns.length : 0),
+    0,
+  );
+}
+
 function formatRewardSummary(quest) {
   if (!quest) {
     return 'Reward: —';
   }
 
-  const parts = [];
-  if (typeof quest.rewardCardId === 'string' && CARD_DEFS[quest.rewardCardId]) {
-    parts.push(CARD_DEFS[quest.rewardCardId].name);
+  const rewardCardName = typeof quest.rewardCardId === 'string' && CARD_DEFS[quest.rewardCardId]
+    ? CARD_DEFS[quest.rewardCardId].name
+    : null;
+  const signatureCardName = !rewardCardName
+    ? (quest.signatureCardName
+      ?? (quest.signatureCardId ? CARD_DEFS[quest.signatureCardId]?.name ?? null : null))
+    : null;
+  const cardName = rewardCardName || signatureCardName;
+
+  if (rewardCardName && quest.rewardCurrency != null) {
+    return `Reward: ${rewardCardName} + ${quest.rewardCurrency} stones`;
+  }
+  if (quest.rewardCurrency != null && cardName) {
+    return `Reward: ${quest.rewardCurrency} stones + ${cardName}`;
   }
   if (quest.rewardCurrency != null) {
-    parts.push(`${quest.rewardCurrency} stones`);
+    return `Reward: ${quest.rewardCurrency} stones`;
   }
-  if (parts.length === 0) {
-    return 'Reward: —';
+  if (cardName) {
+    return `Reward: ${cardName}`;
   }
-  return `Reward: ${parts.join(' + ')}`;
+  return 'Reward: —';
 }
 
 function formatBriefingSummary(quest) {
@@ -832,6 +961,46 @@ function getGuaranteedEnemyType(questId) {
   return def && typeof def.guaranteedEnemyType === 'string' ? def.guaranteedEnemyType : null;
 }
 
+// Returns the tier's signature reward card id (the card always offered as the
+// first post-victory choice), falling back to the first entry of the tier's
+// rewardCards pool. Unknown quests/tiers and quests without either field return
+// null — no signature card is injected for them.
+function getSignatureCardId(questId, tier) {
+  const tierDef = isValidQuestId(questId)
+    ? getQuestTierDef(questId, normalizeQuestTier(tier))
+    : null;
+  if (!tierDef) {
+    return null;
+  }
+  if (typeof tierDef.signatureCardId === 'string') {
+    return tierDef.signatureCardId;
+  }
+  if (Array.isArray(tierDef.rewardCards) && tierDef.rewardCards.length > 0) {
+    return tierDef.rewardCards[0];
+  }
+  return null;
+}
+
+// Returns the tier's reward card pool for the empty-choices victory fallback,
+// falling back to [signatureCardId] when only that is set. Unknown quests/tiers
+// and quests without either field return null so callers use the global
+// VICTORY_REWARD_ROTATION.
+function getQuestRewardCards(questId, tier) {
+  const tierDef = isValidQuestId(questId)
+    ? getQuestTierDef(questId, normalizeQuestTier(tier))
+    : null;
+  if (!tierDef) {
+    return null;
+  }
+  if (Array.isArray(tierDef.rewardCards) && tierDef.rewardCards.length > 0) {
+    return tierDef.rewardCards;
+  }
+  if (typeof tierDef.signatureCardId === 'string') {
+    return [tierDef.signatureCardId];
+  }
+  return null;
+}
+
 // Draws an enemy `type` from a `[{ type, weight }]` pool in proportion to the
 // weights. Deterministic for a given `rng` (defaults to Math.random).
 function pickWeightedEnemyType(pool, rng = Math.random) {
@@ -871,7 +1040,11 @@ module.exports = {
   getEncounterConfig,
   getScriptedEncounterConfig,
   countScriptedEnemiesInQuest,
+  getQuestScript,
+  countScriptedEnemies,
   getEnemyPool,
   getGuaranteedEnemyType,
+  getSignatureCardId,
+  getQuestRewardCards,
   pickWeightedEnemyType,
 };
