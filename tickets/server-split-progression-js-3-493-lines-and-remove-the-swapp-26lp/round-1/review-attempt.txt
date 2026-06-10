@@ -1,0 +1,5 @@
+Done. `review.md`, `gaps.md`, and `nits.md` are written.
+
+Verdict is `FAIL`: the game capture itself is healthy, but `coverage.log` shows one failing existing test for `arena-trials-boss-low-hp`, where the emitted `stateUpdate` reports the arena champion at `420` HP instead of `1`.
+
+No game code or git state was changed.

@@ -1,0 +1,7 @@
+Remediation round 2 has one open gap from `review-feedback.md`: the `arena-trials-boss-low-hp` debug scenario test fails because a stale `stateUpdate` from the tier-2 deploy (boss at 420 HP) is observed instead of the post-mutation snapshot (boss at 1 HP). Sub-tickets 01–06 are done (all have `.passed`); no failed folders needed removal.
+
+**Created sub-ticket:**
+
+- `/home/matt/workspace/.autogame-worktrees/server-split-progression-js-3-493-lines-and-remove-the-swapp-26lp/tickets/server-split-progression-js-3-493-lines-and-remove-the-swapp-26lp/subtickets/07-fix-arena-trials-boss-low-hp-state-update/ticket.md`
+
+**07-fix-arena-trials-boss-low-hp-state-update** — Fix the `stateUpdate` race in `debugScenarios.js` and/or synchronize the two duplicate tests in `debug-scenarios.test.js` so they wait for a snapshot with boss `hp === 1`, then confirm `pnpm test` passes. Verification: `code`.

@@ -1,0 +1,3 @@
+1. Existing coverage fails for `arena-trials-boss-low-hp`: the `stateUpdate` payload reports the arena champion at full HP (`420`) instead of the required low-HP value (`1`).
+   Files: `game/server/debugScenarios.js`, `game/server/test/debug-scenarios.test.js`
+   Fix: Ensure the scenario/test observes the post-low-HP mutation, not a stale deploy update; either drain the `arena-trials-tier-2` `stateUpdate` before waiting for the low-HP update, or standardize the debug scenario event ordering so `arena-trials-boss-low-hp` emits a state snapshot after the boss is pinned to `hp = 1`. Re-run `pnpm test`.
