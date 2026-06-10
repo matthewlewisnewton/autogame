@@ -6314,3 +6314,26 @@ PASS. The provided coverage run reports 148 test files passed and 1991 tests pas
 ## Remaining gaps
 
 None.
+
+## v0.359 — Client: enemy windup/damage/reveal/variant emissive VFX are no-ops on modeled enemies and self-cancelling on procedural ones  (2026-06-10 07:01:40)
+
+Criterion: Windup flash, damage flash, reveal glow, and variant tints are visible on modeled `.glb` enemies.
+
+Finding: PASS. `attachRegistryModel()` now retargets enemy hosts after successful glTF load by hiding the procedural material, adding the loaded model, and assigning `host.userData.bodyMesh` to a cloned visible glTF body material. Enemy color/emissive bookkeeping is copied from the loaded body material or the procedural palette fallback, so the existing VFX paths resolve through `resolveBodyMesh()` onto the visible model instead of the hidden procedural mesh. The shipped enemy models (`grunt`, `skirmisher`, `miniboss`, `spawner`) load as skinned meshes with normal single `MeshStandardMaterial` surfaces, matching the resolver's material expectations.
+
+Criterion: A windup flash is not cleared by the reveal-highlight pass.
+
+Finding: PASS. `applyWindupFlash()`, `applyRevealHighlight()`, and `applyVariantEmissiveTint()` no longer compete through direct emissive writes. `resolveEnemyEmissive()` is called once per enemy sync and applies priority in the requested order: damage flash, windup, reveal, variant tint, then base emissive. The added tests cover windup surviving a non-reveal pass, damage flash beating windup, reveal beating leeching tint, and windup restoration after damage flash expiry.
+
+Criterion: Tests cover the priority resolver.
+
+Finding: PASS. `client/test/renderer-enemy-emissive-priority.test.js` directly exercises the new resolver priorities, and `client/test/models-registry.test.js` covers successful enemy glTF retargeting and failure fallback. The provided coverage run reports `41` test files and `587` tests passing.
+
+## Design and requirements consistency
+
+The implementation is client-renderer-only and preserves the documented multiplayer dungeon loop, active combat model, and foundational requirements for Three.js rendering, WebSocket connectivity, player visualization, and movement synchronization. It does not add or change a `?debugScenario=` shortcut, server validation, persistence, or net-replication behavior.
+
+## Remaining gaps
+
+None.
+
