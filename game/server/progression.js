@@ -57,7 +57,13 @@ const {
 } = require('./simulation');
 
 const HUB_LAYOUT = generateHub(0);
-const { applyVariant, getVariantBonusDrop, resolveVariantRollTier, VARIANT_DEFS } = require('./enemyVariants');
+const {
+  applyVariant,
+  applyForcedVariant,
+  getVariantBonusDrop,
+  resolveVariantRollTier,
+  VARIANT_DEFS,
+} = require('./enemyVariants');
 const {
   getQuest,
   getSelectedQuest,
@@ -1358,6 +1364,14 @@ function grantCard(player, cardId) {
   return true;
 }
 
+function resolveSignatureRewardCardId(quest) {
+  const cardId = quest?.rewardCardId;
+  if (typeof cardId !== 'string') return null;
+  const def = CARD_IDENTITY[cardId];
+  if (!def || def.acquisition !== 'reward') return null;
+  return cardId;
+}
+
 function grantRunRewards(playerId, summary) {
   const player = _gameState.players[playerId];
   if (!player) return;
@@ -1376,10 +1390,13 @@ function grantRunRewards(playerId, summary) {
 
     const cards = [];
     if (cardChoices.length === 0) {
-      if (!_gameState._victoryCounters) _gameState._victoryCounters = {};
-      const idx = _gameState._victoryCounters[playerId] || 0;
-      const cardId = VICTORY_REWARD_ROTATION[idx % VICTORY_REWARD_ROTATION.length];
-      _gameState._victoryCounters[playerId] = idx + 1;
+      let cardId = resolveSignatureRewardCardId(quest);
+      if (!cardId) {
+        if (!_gameState._victoryCounters) _gameState._victoryCounters = {};
+        const idx = _gameState._victoryCounters[playerId] || 0;
+        cardId = VICTORY_REWARD_ROTATION[idx % VICTORY_REWARD_ROTATION.length];
+        _gameState._victoryCounters[playerId] = idx + 1;
+      }
 
       if (grantCard(player, cardId)) {
         const cardDef = CARD_DEFS[cardId];
@@ -1453,7 +1470,13 @@ function previewReturnRewards(playerId) {
     const cardChoices = buildCardChoices(playerId);
     const cards = [];
     if (cardChoices.length === 0) {
-      cards.push({ id: null, name: 'Bonus card' });
+      const signatureCardId = resolveSignatureRewardCardId(quest);
+      if (signatureCardId) {
+        const cardDef = CARD_IDENTITY[signatureCardId];
+        cards.push({ id: signatureCardId, name: cardDef.name });
+      } else {
+        cards.push({ id: null, name: 'Bonus card' });
+      }
     }
     return {
       ...base,
@@ -2261,13 +2284,14 @@ function restoreHandCharges(player, amount, options = {}) {
 }
 
 function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
-  const def = enemyDefFor(type);
+  const resolvedType = typeof opts.enemyType === 'string' ? opts.enemyType : type;
+  const def = enemyDefFor(resolvedType);
   const { hp, name, description, surfacedStats, ...statFieldsFromDef } = def;
   const enemy = {
     id: crypto.randomUUID(),
     x,
     z,
-    type,
+    type: resolvedType,
     ...statFieldsFromDef,
     hp: def.hp,
     maxHp: def.hp,
@@ -2275,24 +2299,39 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
     attackState: 'idle',
     wanderTarget: { x, z }
   };
-  if (type === 'spawner') {
+  if (resolvedType === 'spawner') {
     enemy.lastSpawnTime = Date.now();
   }
   if (spawnedBy !== undefined) {
     enemy.spawnedBy = spawnedBy;
   }
+  if (typeof opts.displayName === 'string' && opts.displayName.trim()) {
+    enemy.displayName = opts.displayName.trim();
+  }
+  if (typeof opts.namedRareId === 'string' && opts.namedRareId.trim()) {
+    enemy.namedRareId = opts.namedRareId.trim();
+  }
   // Variant seam, centralized so every spawned enemy exposes `variant` (a tag or
   // null — never undefined). Callers pass the spawn room's encounterTier via
   // opts.tier; quest-tier scaling is resolved here from the active run (or lobby
-  // selection). Ad-hoc spawns with no room default encounterTier 0. Rolled once.
-  const encounterTier = Number.isFinite(opts.tier) ? opts.tier : 0;
-  const questTier = _gameState.run?.questTier ?? _gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER;
-  const rollTier = resolveVariantRollTier(questTier, encounterTier);
-  applyVariant(enemy, rollTier, opts.rng);
+  // selection). Ad-hoc spawns with no room default encounterTier 0. Rolled once
+  // unless opts.skipVariantRoll is set (forced variant or explicit null).
+  if (opts.skipVariantRoll) {
+    if (opts.forceVariant) {
+      applyForcedVariant(enemy, opts.forceVariant);
+    } else if (enemy.variant === undefined) {
+      enemy.variant = null;
+    }
+  } else {
+    const encounterTier = Number.isFinite(opts.tier) ? opts.tier : 0;
+    const questTier = _gameState.run?.questTier ?? _gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER;
+    const rollTier = resolveVariantRollTier(questTier, encounterTier);
+    applyVariant(enemy, rollTier, opts.rng);
+  }
   // Difficulty scaling: miniboss-tier bosses get more HP the larger the party is at spawn.
   // Fixed once here from the live player count — never re-applied retroactively
   // when players later join or leave. 1–4 players stay at baseline (factor 1.0).
-  if (type === 'miniboss' || type === 'annex_overseer' || type === 'spire_warden') {
+  if (resolvedType === 'miniboss' || resolvedType === 'annex_overseer' || resolvedType === 'spire_warden') {
     const factor = difficultyScaleFactor(runPlayerCount(_gameState), DIFFICULTY_MINIBOSS_HP_PER_PLAYER);
     enemy.hp = Math.round(enemy.hp * factor);
     enemy.maxHp = Math.round(enemy.maxHp * factor);

@@ -281,6 +281,7 @@ const QUEST_DEFS = {
 };
 
 const { THEME } = require('./theme');
+const CARD_DEFS = require('../shared/cardDefs.json');
 
 const DEFAULT_QUEST_ID = 'training_caverns';
 const DEFAULT_QUEST_TIER = 1;
@@ -457,10 +458,21 @@ function getScriptedEncounterConfig(quest) {
 }
 
 function formatRewardSummary(quest) {
-  if (!quest || quest.rewardCurrency == null) {
+  if (!quest) {
     return 'Reward: —';
   }
-  return `Reward: ${quest.rewardCurrency} stones`;
+
+  const parts = [];
+  if (typeof quest.rewardCardId === 'string' && CARD_DEFS[quest.rewardCardId]) {
+    parts.push(CARD_DEFS[quest.rewardCardId].name);
+  }
+  if (quest.rewardCurrency != null) {
+    parts.push(`${quest.rewardCurrency} stones`);
+  }
+  if (parts.length === 0) {
+    return 'Reward: —';
+  }
+  return `Reward: ${parts.join(' + ')}`;
 }
 
 function formatBriefingSummary(quest) {

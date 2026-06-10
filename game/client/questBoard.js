@@ -3,6 +3,7 @@
  */
 
 import { THEME } from './theme.js';
+import { CARD_DEFS } from './cards.js';
 
 export function formatObjectiveSummary(quest) {
 	if (!quest) return '';
@@ -62,8 +63,17 @@ export function formatObjectiveSummary(quest) {
 }
 
 export function formatRewardSummary(quest) {
-	if (!quest || quest.rewardCurrency == null) return 'Reward: —';
-	return `Reward: ${quest.rewardCurrency} ${THEME.currency.short.toLowerCase()}`;
+	if (!quest) return 'Reward: —';
+
+	const parts = [];
+	if (typeof quest.rewardCardId === 'string' && CARD_DEFS[quest.rewardCardId]) {
+		parts.push(CARD_DEFS[quest.rewardCardId].name);
+	}
+	if (quest.rewardCurrency != null) {
+		parts.push(`${quest.rewardCurrency} ${THEME.currency.short.toLowerCase()}`);
+	}
+	if (parts.length === 0) return 'Reward: —';
+	return `Reward: ${parts.join(' + ')}`;
 }
 
 export function formatBriefingRewardLine(quest) {

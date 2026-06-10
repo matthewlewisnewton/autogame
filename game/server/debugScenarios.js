@@ -1962,6 +1962,22 @@ function applyDebugScenario(socket, name) {
       for (const e of state.enemies) {
         e.wanderTarget = { x: e.x, z: e.z };
       }
+    } else if (name === 'named-rare-enemy') {
+      // Quest-named rare beside a plain grunt: custom displayName + forced warded
+      // variant via spawnEnemy opts (same path scripted wave namedRare uses).
+      // Reachable normally on quests that declare namedRare spawns; shortcut only.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const rare = spawnEnemy(player.x + 3, player.z, 'grunt', undefined, {
+        displayName: 'Vault Stalker',
+        namedRareId: 'debug_vault_stalker',
+        forceVariant: 'warded',
+        skipVariantRoll: true,
+      });
+      rare.wanderTarget = { x: rare.x, z: rare.z };
+      const plain = spawnEnemy(player.x - 3, player.z, 'grunt');
+      plain.wanderTarget = { x: plain.x, z: plain.z };
     } else if (name === 'volatile-enemy') {
       // Spawn a `volatile`-variant grunt (hot-orange badge) at 1 HP beside a
       // plain grunt, so the QA can confirm the distinct volatile tint and then

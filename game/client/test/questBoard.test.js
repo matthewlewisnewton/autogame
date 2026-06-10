@@ -140,6 +140,13 @@ describe('formatRewardSummary()', () => {
 	it('formats quest reward currency', () => {
 		expect(formatRewardSummary(SAMPLE_QUESTS[0])).toBe('Reward: 10 money');
 	});
+
+	it('shows signature card name plus currency when rewardCardId is set', () => {
+		expect(formatRewardSummary({
+			rewardCardId: 'saber_of_light',
+			rewardCurrency: 12,
+		})).toBe('Reward: Saber of Light + 12 money');
+	});
 });
 
 describe('formatBriefingRewardLine()', () => {

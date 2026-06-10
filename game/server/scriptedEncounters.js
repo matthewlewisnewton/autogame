@@ -11,6 +11,8 @@ const { DEFAULT_QUEST_TIER } = require('./quests');
  * @property {number} [count=1] - How many of this type to spawn.
  * @property {{ x: number, z: number }} [offset] - World offset from the spawn anchor.
  * @property {string} [anchor] - Layout landmark type used as spawn anchor (room center when omitted).
+ * @property {{ id: string, displayName: string, variantId?: string, enemyType?: string }} [namedRare]
+ *   Quest-exclusive rare spawn metadata (custom label + optional forced variant/type).
  */
 
 /**
@@ -261,10 +263,27 @@ function spawnScriptedWave(run, gameState, roomKey, waveIndex, ctx) {
     const count = spawnCount(spawnDef);
     for (let i = 0; i < count; i++) {
       const pos = resolveSpawnPosition(layout, resolved.room, spawnDef, spawnIndex, rng);
-      const enemy = ctx.spawnEnemy(pos.x, pos.z, spawnDef.type, undefined, {
+      const spawnOpts = {
         tier: ctx.roomTierAt(layout, pos.x, pos.z),
         rng,
-      });
+      };
+      const namedRare = spawnDef.namedRare;
+      if (namedRare && typeof namedRare === 'object') {
+        if (typeof namedRare.displayName === 'string' && namedRare.displayName.trim()) {
+          spawnOpts.displayName = namedRare.displayName.trim();
+        }
+        if (typeof namedRare.id === 'string' && namedRare.id.trim()) {
+          spawnOpts.namedRareId = namedRare.id.trim();
+        }
+        if (typeof namedRare.enemyType === 'string' && namedRare.enemyType.trim()) {
+          spawnOpts.enemyType = namedRare.enemyType.trim();
+        }
+        if (typeof namedRare.variantId === 'string' && namedRare.variantId.trim()) {
+          spawnOpts.forceVariant = namedRare.variantId.trim();
+          spawnOpts.skipVariantRoll = true;
+        }
+      }
+      const enemy = ctx.spawnEnemy(pos.x, pos.z, spawnDef.type, undefined, spawnOpts);
       enemy.wanderTarget = ctx.randomWanderTarget();
       enemy.scriptedWave = { roomKey, waveIndex };
       enemyIds.push(enemy.id);
