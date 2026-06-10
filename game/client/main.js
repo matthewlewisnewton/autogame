@@ -198,6 +198,7 @@ import { openShopBooth, registerShopBoothListener, createRequestDebugShopBoothOp
 import { isLaunchBoothAction, getBoothDebugHook, LAUNCH_BOOTH_ID, shouldLaunchReadyUp, LAUNCH_READY_EVENT } from './launchBooth.js';
 import { QUEST_BOOTH_ID, isQuestBoothAction } from './questBooth.js';
 import eventsCatalog from '../shared/events.json' with { type: 'json' };
+import { sampleFloorSurface } from '../shared/floorSampling.esm.js';
 
 const { serverToClient: SERVER_TO_CLIENT, clientToServer: CLIENT_TO_SERVER } = eventsCatalog;
 
@@ -338,10 +339,6 @@ let currentLobbyName = '';
 let lobbyMenuDismissed = false;
 /** When true, showGameLobby() skips hiding the quest board (set by openQuestPanel). */
 let questPanelOpen = false;
-/** Set when the user clicks Create Channel; cleared on lobbyJoined to show #lobby for hosts. */
-let pendingShowLobbyOnJoin = false;
-/** True after the first lobbyJoined this session (create or join). */
-let hasCreatedLobbyThisSession = false;
 /** True after the first extracted-waiting overlay setup; avoids re-showing #lobby each tick. */
 let extractedLobbyOverlayActive = false;
 
@@ -924,13 +921,7 @@ function applyLobbyJoinedData(data) {
 	applyLobbyThemeLabels();
 	const lobbyMe = myId && gameState?.players ? gameState.players[myId] : null;
 	syncVanguardHud(lobbyMe, 'lobby');
-	if (pendingShowLobbyOnJoin) {
-		pendingShowLobbyOnJoin = false;
-		showGameLobby();
-	} else {
-		dismissGameLobby();
-	}
-	hasCreatedLobbyThisSession = true;
+	dismissGameLobby();
 	if (suspendedRunSummary) {
 		renderSuspendedRunBanner(suspendedRunSummary);
 	} else {
@@ -4965,7 +4956,6 @@ if (createLobbyBtnEl) {
 			socket.emit(CLIENT_TO_SERVER.LEAVE_LOBBY);
 			await waitForLobbyBrowserVisible();
 		}
-		pendingShowLobbyOnJoin = !hasCreatedLobbyThisSession;
 		socket.emit(CLIENT_TO_SERVER.CREATE_LOBBY, name ? { name } : {});
 	}
 
@@ -5191,6 +5181,11 @@ function activeHarnessLayout() {
 		? hubLayout
 		: (currentLayout || (gameState && gameState.layout) || null);
 }
+window.__sampleFloorSurfaceForHarness = (x, z) => {
+	const layout = activeHarnessLayout();
+	if (!layout || !Number.isFinite(x) || !Number.isFinite(z)) return null;
+	return sampleFloorSurface(layout, x, z);
+};
 window.__sampleFloorAlignmentForHarness = async () => {
 	const { sampleFloorY, resolveFloorY } = await import('../shared/floorSampling.esm.js');
 	const me = gameState && myId ? gameState.players[myId] : null;

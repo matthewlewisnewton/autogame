@@ -1,0 +1,15 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/server-enemies-acquire-players-through-walls-detection-radiu-1btc/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/server-enemies-acquire-players-through-walls-detection-radiu-1btc/game/data
+Server listening on port 3000
+Player connected: socket=FMIvhJJHL7BMC2-cAAAB, playerId=b1e34747-b9e5-487f-b675-254cc8aa12f8
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=HXzLy51ai6adLd6kAAAD, playerId=3ee87934-5ea2-473a-9b66-6c5fd2366dbb
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=71e6cc8d-6209-475e-9d26-bb503cacf50a value=19
+Player disconnected: FMIvhJJHL7BMC2-cAAAB
+Player disconnected: HXzLy51ai6adLd6kAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
