@@ -6490,3 +6490,26 @@ The implementation is narrow and reuses existing collision primitives. It builds
 ## Remaining gaps
 
 None.
+
+## v0.371 — 390-fix-slippery-floor-no-momentum  (2026-06-10 11:28:08)
+
+Pass. Normal-floor walking now seeds `vx`/`vz` from the direct walk step, so crossing from normal into slippery terrain carries forward speed instead of arriving with zero momentum. Sliding from ice back onto normal floor is still damped to a stop by normal-floor friction. Both server and client prediction tests cover normal-to-slippery velocity seeding and slippery-to-normal stopping behavior.
+
+### Server test coverage for the regression
+
+Pass. `game/server/test/slippery_floor.test.js` contains explicit regression coverage for the original playthrough failures: momentum after release, direction change while sliding, generated ice-cavern behavior when the movement context omits bounds, and both normal-to-ice and ice-to-normal transitions. The client prediction tests were updated to mirror the same transition expectations.
+
+## Design and requirements consistency
+
+The changes stay within the documented server-authoritative dungeon movement model in `game/docs/design.md`: floor sampling still comes from `sampleFloorSurface()`/layout data, and player movement remains resolved in `applyPlayerMovement()`. The foundation requirements are not regressed: the captured run shows the game renders, connects over sockets, represents multiplayer players, and accepts WASD movement during gameplay.
+
+## Code quality and validation
+
+The implementation is small and localized to movement physics and prediction parity. The `resolveMovementContext()` fallback improvement also addresses the validation-style stripped-context path without weakening normal live-collider behavior. I did not find dead code, broken exports, or console/runtime defects.
+
+Validation observed in `coverage.log`: 86 test files passed, 1593 tests passed. Coverage was collected for visibility with thresholds disabled.
+
+## Remaining gaps
+
+None.
+
