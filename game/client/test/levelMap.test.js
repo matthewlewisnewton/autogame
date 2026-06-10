@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { computeLevelMapLayout, renderLevelMap } from '../levelMap.js';
+import { computeLevelMapLayout, computeLevelMapEdges, renderLevelMap } from '../levelMap.js';
 
 // Sample graph mirroring the ticket-388 levelUnlockGraph payload shape:
 // a tier-1 node with no prereqs, a tier-2 node requiring it, and a boss node
@@ -84,6 +84,49 @@ describe('computeLevelMapLayout()', () => {
 		expect(computeLevelMapLayout({ nodes: [] })).toEqual([]);
 		expect(computeLevelMapLayout({})).toEqual([]);
 		expect(computeLevelMapLayout(null)).toEqual([]);
+	});
+});
+
+describe('computeLevelMapEdges()', () => {
+	it('emits one edge per unlockRequires entry across all nodes', () => {
+		const edges = computeLevelMapEdges(SAMPLE_GRAPH);
+		const expected = SAMPLE_GRAPH.nodes.reduce(
+			(sum, n) => sum + (Array.isArray(n.unlockRequires) ? n.unlockRequires.length : 0),
+			0,
+		);
+		expect(edges.length).toBe(expected);
+		expect(edges.length).toBe(3);
+	});
+
+	it('points each edge from its prerequisite to the requiring node', () => {
+		const edges = computeLevelMapEdges(SAMPLE_GRAPH);
+		// The tier-2 node requires the tier-1 node.
+		expect(edges).toContainEqual({
+			from: { questId: 'training_caverns', tier: 1 },
+			to: { questId: 'training_caverns', tier: 2 },
+		});
+	});
+
+	it('yields one edge per prerequisite of a multi-prereq boss node', () => {
+		const edges = computeLevelMapEdges(SAMPLE_GRAPH);
+		const bossEdges = edges.filter(
+			(e) => e.to.questId === 'arena_trials' && e.to.tier === 2,
+		);
+		expect(bossEdges.length).toBe(2);
+	});
+
+	it('skips dangling prerequisite references', () => {
+		const graph = {
+			nodes: [
+				{ questId: 'orphan', tier: 1, name: 'Orphan', isBoss: false, unlockRequires: [{ questId: 'ghost', tier: 9 }], state: 'locked' },
+			],
+		};
+		expect(computeLevelMapEdges(graph)).toEqual([]);
+	});
+
+	it('returns an empty array for an empty or missing graph', () => {
+		expect(computeLevelMapEdges({ nodes: [] })).toEqual([]);
+		expect(computeLevelMapEdges(null)).toEqual([]);
 	});
 });
 
@@ -191,5 +234,52 @@ describe('renderLevelMap()', () => {
 		renderLevelMap(container, SAMPLE_GRAPH);
 		renderLevelMap(container, { nodes: [] });
 		expect(container.querySelectorAll('.level-map-node').length).toBe(0);
+	});
+
+	it('renders one edge line per unlockRequires entry, behind the nodes', () => {
+		renderLevelMap(container, SAMPLE_GRAPH);
+		const lines = container.querySelectorAll('.level-map-edges line');
+		expect(lines.length).toBe(3);
+		// The edge layer is the first child so it paints behind the node boxes.
+		expect(container.firstChild.classList.contains('level-map-edges')).toBe(true);
+	});
+
+	it('draws both converging edges ending at a 2-prereq boss node', () => {
+		renderLevelMap(container, SAMPLE_GRAPH);
+		const bossLines = container.querySelectorAll(
+			'.level-map-edges line[data-to="arena_trials:2"]',
+		);
+		expect(bossLines.length).toBe(2);
+		// Each edge points left-to-right (prereq column < boss column).
+		const boss = container.querySelector('[data-quest-id="arena_trials"]');
+		expect(boss.style.gridColumn).toBe('3');
+		bossLines.forEach((line) => {
+			expect(Number(line.getAttribute('x1'))).toBeLessThan(Number(line.getAttribute('x2')));
+		});
+	});
+
+	it('skips dangling prerequisite edges without throwing', () => {
+		const graph = {
+			nodes: [
+				{ questId: 'orphan', tier: 1, name: 'Orphan', isBoss: false, unlockRequires: [{ questId: 'ghost', tier: 9 }], state: 'unlocked' },
+			],
+		};
+		expect(() => renderLevelMap(container, graph)).not.toThrow();
+		expect(container.querySelectorAll('.level-map-edges line').length).toBe(0);
+		expect(container.querySelectorAll('.level-map-node').length).toBe(1);
+	});
+
+	it('edge layer does not capture clicks (nodes stay selectable)', () => {
+		const calls = [];
+		renderLevelMap(container, SAMPLE_GRAPH, {
+			onSelectNode: (questId, tier) => calls.push([questId, tier]),
+		});
+
+		const svg = container.querySelector('.level-map-edges');
+		expect(svg.style.pointerEvents).toBe('none');
+
+		// A node behind/around the edges is still clickable.
+		container.querySelector('[data-quest-id="arena_trials"]').click();
+		expect(calls).toEqual([['arena_trials', 2]]);
 	});
 });

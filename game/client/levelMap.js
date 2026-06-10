@@ -7,8 +7,8 @@
  *               state: 'locked' | 'unlocked' | 'cleared' }] }
  *
  * Layout places each node in a column equal to its prerequisite depth and a
- * distinct row within that column. Edges between nodes are out of scope here
- * (added in sub-ticket 02).
+ * distinct row within that column. Edges connect each prerequisite node to the
+ * node(s) that require it (drawn behind the node boxes as an SVG layer).
  */
 
 const NODE_STATE_CLASS = {
@@ -91,6 +91,94 @@ export function computeLevelMapLayout(graph) {
 	}
 
 	return layout;
+}
+
+/**
+ * Compute the prerequisite edges of the unlock graph.
+ *
+ * For every node, emit one edge `{ from: prereq, to: { questId, tier } }` per
+ * entry in its `unlockRequires`. A prerequisite is matched to a node by
+ * `questId` AND `tier`; entries whose `from` has no matching node (dangling
+ * references) are skipped. The total edge count therefore equals the sum of
+ * `unlockRequires.length` over all nodes, minus any dangling references.
+ *
+ * @param {{ nodes?: Array<object> }} graph
+ * @returns {Array<{ from: { questId: string, tier: number },
+ *   to: { questId: string, tier: number } }>}
+ */
+export function computeLevelMapEdges(graph) {
+	const nodes = graph && Array.isArray(graph.nodes) ? graph.nodes : [];
+	if (nodes.length === 0) return [];
+
+	const byKey = new Map();
+	for (const node of nodes) {
+		byKey.set(nodeKey(node.questId, node.tier), node);
+	}
+
+	const edges = [];
+	for (const node of nodes) {
+		const prereqs = Array.isArray(node.unlockRequires) ? node.unlockRequires : [];
+		for (const prereq of prereqs) {
+			// Skip dangling references — a prereq with no matching node.
+			if (!byKey.has(nodeKey(prereq.questId, prereq.tier))) continue;
+			edges.push({
+				from: { questId: prereq.questId, tier: prereq.tier ?? 1 },
+				to: { questId: node.questId, tier: node.tier ?? 1 },
+			});
+		}
+	}
+
+	return edges;
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+// Schematic layout units per grid cell; the SVG stretches to fill the grid
+// (preserveAspectRatio="none"), so these only need to be internally consistent.
+const CELL = 100;
+
+/**
+ * Build the SVG edge layer for `edges`, positioning endpoints schematically
+ * from each node's `column`/`row` in the layout. Returns an `<svg>` element
+ * with one `<line data-from data-to>` per edge whose endpoints both resolve.
+ */
+function buildEdgeLayer(edges, layout) {
+	const layoutByKey = new Map(
+		layout.map((e) => [nodeKey(e.questId, e.tier), e]),
+	);
+	let maxColumn = 0;
+	let maxRow = 0;
+	for (const e of layout) {
+		if (e.column > maxColumn) maxColumn = e.column;
+		if (e.row > maxRow) maxRow = e.row;
+	}
+
+	const svg = document.createElementNS(SVG_NS, 'svg');
+	svg.setAttribute('class', 'level-map-edges');
+	svg.setAttribute('preserveAspectRatio', 'none');
+	svg.setAttribute('viewBox', `0 0 ${(maxColumn + 1) * CELL} ${(maxRow + 1) * CELL}`);
+	svg.setAttribute('aria-hidden', 'true');
+	// Defensive: edges must never intercept node clicks (also enforced in CSS).
+	svg.style.pointerEvents = 'none';
+
+	for (const edge of edges) {
+		const fromKey = nodeKey(edge.from.questId, edge.from.tier);
+		const toKey = nodeKey(edge.to.questId, edge.to.tier);
+		const fromEntry = layoutByKey.get(fromKey);
+		const toEntry = layoutByKey.get(toKey);
+		// Skip any edge whose endpoint has no laid-out node (dangling reference).
+		if (!fromEntry || !toEntry) continue;
+
+		const line = document.createElementNS(SVG_NS, 'line');
+		line.setAttribute('x1', String(fromEntry.column * CELL + CELL / 2));
+		line.setAttribute('y1', String(fromEntry.row * CELL + CELL / 2));
+		line.setAttribute('x2', String(toEntry.column * CELL + CELL / 2));
+		line.setAttribute('y2', String(toEntry.row * CELL + CELL / 2));
+		line.setAttribute('data-from', fromKey);
+		line.setAttribute('data-to', toKey);
+		svg.appendChild(line);
+	}
+
+	return svg;
 }
 
 function classListForNode(entry, node, selectedQuestId, selectedQuestTier) {
@@ -182,6 +270,10 @@ export function renderLevelMap(
 	}
 
 	container.replaceChildren();
+
+	// Edge layer first so it paints behind the node boxes (and is below them in
+	// the DOM); it carries pointer-events: none so node buttons stay clickable.
+	container.appendChild(buildEdgeLayer(computeLevelMapEdges(graph), layout));
 
 	for (const entry of layout) {
 		const node = nodeByKey.get(nodeKey(entry.questId, entry.tier)) || entry;

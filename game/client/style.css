@@ -1018,6 +1018,7 @@ body[data-phase="lobby"] #lobby-hud {
 }
 
 .level-map {
+  position: relative;
   display: grid;
   grid-auto-columns: minmax(150px, 1fr);
   grid-auto-flow: column;
@@ -1027,7 +1028,26 @@ body[data-phase="lobby"] #lobby-hud {
   padding: 8px;
 }
 
+/* Prerequisite edges, drawn behind the node boxes. Absolutely positioned so it
+   overlays the grid without consuming a track; pointer-events: none keeps the
+   node buttons clickable. */
+.level-map-edges {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.level-map-edges line {
+  stroke: rgba(148, 163, 184, 0.45);
+  stroke-width: 2;
+}
+
 .level-map-node {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
