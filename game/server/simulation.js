@@ -3084,34 +3084,39 @@ function updateMinions() {
         const attackRange = minion.attackRange || 4;
         const attackConeAngle = minion.attackConeAngle || ((Math.PI * 2) / 3);
         const attackDamage = minion.attackDamage || 9;
+        const attackIntervalMs = minion.attackIntervalMs || 1500;
+        const lastAttackAt = minion.lastAttackAt ?? 0;
 
         if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
           if (nearestDist <= attackRange) {
-            const dist = nearestDist || 1;
-            const dirX = (nearestEnemy.x - minion.x) / dist;
-            const dirZ = (nearestEnemy.z - minion.z) / dist;
-            const { hits } = collectConeHits(
-              minion.x,
-              minion.z,
-              dirX,
-              dirZ,
-              attackRange,
-              attackConeAngle,
-              attackDamage,
-              { attackerId: minion.ownerId }
-            );
-            if (hits.length > 0) {
-              _gameState._pendingMinionBreaths.push({
-                playerId: minion.ownerId,
-                cardId: 'bulkhead_mauler',
-                specialEffect: 'shockwave_sweep',
-                origin: { x: minion.x, z: minion.z },
-                direction: { x: dirX, z: dirZ },
+            if (now - lastAttackAt >= attackIntervalMs) {
+              const dist = nearestDist || 1;
+              const dirX = (nearestEnemy.x - minion.x) / dist;
+              const dirZ = (nearestEnemy.z - minion.z) / dist;
+              const { hits } = collectConeHits(
+                minion.x,
+                minion.z,
+                dirX,
+                dirZ,
                 attackRange,
                 attackConeAngle,
-                hits,
-                minionId: minion.id,
-              });
+                attackDamage,
+                { attackerId: minion.ownerId }
+              );
+              if (hits.length > 0) {
+                _gameState._pendingMinionBreaths.push({
+                  playerId: minion.ownerId,
+                  cardId: 'bulkhead_mauler',
+                  specialEffect: 'shockwave_sweep',
+                  origin: { x: minion.x, z: minion.z },
+                  direction: { x: dirX, z: dirZ },
+                  attackRange,
+                  attackConeAngle,
+                  hits,
+                  minionId: minion.id,
+                });
+              }
+              minion.lastAttackAt = now;
             }
           } else {
             moveEntityToward(minion, nearestEnemy, MINION_CHASE_SPEED_GRUNT * 0.75 * dt);

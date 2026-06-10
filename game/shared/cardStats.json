@@ -32,6 +32,7 @@
     "minionTtl": 30,
     "attackRange": 4,
     "attackDamage": 9,
+    "attackIntervalMs": 1500,
     "specialEffect": "shockwave_sweep"
   },
   "steel_claymore": {

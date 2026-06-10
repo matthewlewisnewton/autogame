@@ -235,6 +235,7 @@ describe('Bulkhead Mauler (bulkhead_mauler)', () => {
 			type: 'creature',
 			attackRange: 4,
 			attackDamage: 9,
+			attackIntervalMs: 1500,
 			specialEffect: 'shockwave_sweep',
 		});
 		expect(CARD_DEFS.bulkhead_mauler.attackConeAngle).toBeCloseTo((Math.PI * 2) / 3);
@@ -260,6 +261,7 @@ describe('Bulkhead Mauler (bulkhead_mauler)', () => {
 			attackRange: 4,
 			attackConeAngle: (Math.PI * 2) / 3,
 			attackDamage: 9,
+			lastAttackAt: 0,
 		});
 
 		updateMinions();
@@ -295,11 +297,46 @@ describe('Bulkhead Mauler (bulkhead_mauler)', () => {
 			attackRange: 4,
 			attackConeAngle: ATTACK_CONE_ANGLE,
 			attackDamage: 9,
+			lastAttackAt: 0,
 		});
 
 		updateMinions();
 
 		expect(gameState.enemies[0].hp).toBe(50);
 		expect(gameState._pendingMinionBreaths).toHaveLength(0);
+	});
+
+	it('does not deal double damage when updateMinions is called twice within the same interval', () => {
+		gameState.enemies.push({
+			id: 'e1',
+			x: 3,
+			z: 0,
+			hp: 50,
+			state: 'idle',
+			wanderTarget: { x: 3, z: 0 },
+		});
+		gameState.minions.push({
+			id: 'mauler-1',
+			ownerId: 'p1',
+			type: 'bulkhead_mauler',
+			x: 0,
+			z: 0,
+			hp: 100,
+			ttl: 30,
+			attackRange: 4,
+			attackConeAngle: (Math.PI * 2) / 3,
+			attackDamage: 9,
+			lastAttackAt: 0,
+		});
+
+		updateMinions();
+		const hpAfterFirst = gameState.enemies[0].hp;
+		const breathsAfterFirst = gameState._pendingMinionBreaths.length;
+
+		// Second call in the same tick — interval has not elapsed
+		updateMinions();
+
+		expect(gameState.enemies[0].hp).toBe(hpAfterFirst);
+		expect(gameState._pendingMinionBreaths.length).toBe(breathsAfterFirst);
 	});
 });
