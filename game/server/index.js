@@ -824,13 +824,13 @@ function applyDebugScenario(socket, name) {
   return debugScenarios.applyDebugScenario(socket, name);
 }
 
-function findSacrificeTarget(playerId, x, z, radius) {
+function findSacrificeTarget(playerId, x, y, z, radius) {
   const state = getProgressionGameState() || gameState;
   return state.minions
     .map((minion, index) => ({ minion, index }))
     .filter(({ minion }) => {
       if (!minion || minion.ownerId !== playerId || minion.hp <= 0) return false;
-      return Math.hypot(minion.x - x, minion.z - z) <= radius;
+      return sphericalDistanceToEntity(x, y, z, minion) <= radius;
     })
     .sort((a, b) => {
       const aCreated = Number.isFinite(a.minion.createdAt) ? a.minion.createdAt : 0;
@@ -1743,6 +1743,7 @@ if (typeof module !== 'undefined' && module.exports) {
     armSelfEnchantment,
     getEntityWorldY,
     sphericalDistanceToEntity,
+    findSacrificeTarget,
     computeAimDirection3D,
     resolveProjectileAim,
     collectConeHits,

@@ -12,6 +12,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
 	CARD_DEFS,
 	ENEMY_DEFS,
+	MAX_MAGIC_STONES,
 	SUMMON_RADIUS,
 	createGameState,
 	gameState,
@@ -30,9 +31,13 @@ import {
 	spawnVolatileExplosion,
 	isEntityInEnemyAttack,
 	healFieldMedicAlly,
+	findSacrificeTarget,
+	resolveProjectileAim,
 	computeWalkableAABBs,
 	rebuildWallColliders,
 } from '../index.js';
+import { handleUseCard, setCallbacks as setCardEffectCallbacks } from '../cardEffects.js';
+import { SERVER_TO_CLIENT } from '../../shared/events.js';
 import { VARIANT_DEFS } from '../enemyVariants.js';
 
 // With no layout in gameState, the floor fallback resolves to DEFAULT_FLOOR_Y.
@@ -422,5 +427,126 @@ describe('field medic — healRadius is a 3D sphere', () => {
 
 		expect(healFieldMedicAlly(medic, Date.now())).toBe(false);
 		expect(grunt.hp).toBe(hpBefore);
+	});
+});
+
+describe('sacrificial_altar — sacrificeRadius is a 3D sphere', () => {
+	const def = CARD_DEFS.sacrificial_altar;
+	// Production resolves the sacrifice radius as cardDef.sacrificeRadius ||
+	// SUMMON_RADIUS (cardEffects.js sacrificial_altar branch).
+	const radius = def.sacrificeRadius || SUMMON_RADIUS;
+	const playerId = 'altar-caster';
+
+	let socketEvents;
+	let lobbyEvents;
+	let socket;
+	let lobby;
+
+	beforeEach(() => {
+		resetState();
+		// handleUseCard requires an active run; keep the objective incomplete so
+		// checkRunTerminalState() (triggered by card exhaustion) leaves it alone.
+		gameState.run = {
+			status: 'playing',
+			objective: { type: 'defeat_enemies', current: 0, target: 5 },
+		};
+		addPlayer(playerId, {
+			magicStones: 0,
+			pendingSummons: new Set(),
+			hand: [
+				{ id: 'sacrificial_altar', name: def.name, type: 'spell', charges: def.charges, remainingCharges: 1, grind: 0 },
+				{ id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 1, grind: 0 },
+				null,
+				null,
+			],
+			slotCooldowns: [null, null, null, null],
+		});
+
+		socketEvents = [];
+		lobbyEvents = [];
+		socket = { playerId, emit: (event, payload) => socketEvents.push({ event, payload }) };
+		lobby = { id: 'altar-lobby', state: gameState };
+		// Wire cardEffects with the REAL findSacrificeTarget so the cast path
+		// under test exercises the production 3D sphere check end to end.
+		setCardEffectCallbacks({
+			io: { to: () => ({ emit: (event, payload) => lobbyEvents.push({ event, payload }) }) },
+			emitCardError: (sock, reason) => sock.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason }),
+			findSacrificeTarget,
+			resolveAttackRotation: (player, data) => (
+				Number.isFinite(data?.rotation) ? data.rotation : (player.rotation || 0)
+			),
+			resolveProjectileAim,
+		});
+	});
+
+	function addMinion(id, overrides = {}) {
+		const minion = {
+			id,
+			ownerId: playerId,
+			type: 'dungeon_drake',
+			x: 0,
+			y: FLOOR_Y,
+			z: 0,
+			hp: 20,
+			ttl: 30,
+			createdAt: 10,
+			...overrides,
+		};
+		gameState.minions.push(minion);
+		return minion;
+	}
+
+	function castAltar() {
+		handleUseCard(socket, gameState, lobby, { cardId: 'sacrificial_altar', slotIndex: 0 });
+		return {
+			used: lobbyEvents.find(e => e.event === SERVER_TO_CLIENT.CARD_USED)?.payload || null,
+			errors: socketEvents.filter(e => e.event === SERVER_TO_CLIENT.CARD_ERROR).map(e => e.payload),
+		};
+	}
+
+	it('sacrifices an elevated minion inside the sphere', () => {
+		// 3D distance hypot(0.6r, 0.6r) ≈ 0.85 × radius ≤ radius (8.49 ≤ 10).
+		addMinion('lifted', { x: radius * 0.6, z: 0, y: FLOOR_Y + radius * 0.6 });
+
+		const { used, errors } = castAltar();
+
+		expect(errors).toHaveLength(0);
+		expect(used).not.toBeNull();
+		expect(used.sacrificedMinionId).toBe('lifted');
+		expect(gameState.minions).toHaveLength(0);
+		const player = gameState.players[playerId];
+		const expectedGain = Math.min(MAX_MAGIC_STONES, def.magicStoneGain);
+		expect(used.magicStonesGained).toBe(expectedGain);
+		expect(player.magicStones).toBe(expectedGain);
+		// chargeRestore still flows to the depleted weapon in hand.
+		expect(player.hand[1].remainingCharges).toBe(1 + (def.chargeRestore || 0));
+	});
+
+	it('skips a minion XZ-inside the radius but outside the sphere and errors with no candidates', () => {
+		// XZ distance 0.9 × radius ≤ radius, but 3D distance hypot(0.9r, 0.9r)
+		// ≈ 1.27 × radius > radius (12.73 > 10).
+		addMinion('high', { x: radius * 0.9, z: 0, y: FLOOR_Y + radius * 0.9 });
+
+		const { used, errors } = castAltar();
+
+		expect(used).toBeNull();
+		expect(errors).toEqual([{ reason: 'No friendly summon to sacrifice' }]);
+		expect(gameState.minions.map(m => m.id)).toEqual(['high']);
+		const player = gameState.players[playerId];
+		expect(player.magicStones).toBe(0);
+		// The failed cast must not consume the card.
+		expect(player.hand[0].remainingCharges).toBe(1);
+	});
+
+	it('still sacrifices the oldest same-Y minion inside the radius (regression guard)', () => {
+		// Both minions at the cast origin's Y, XZ distances 1 and 2 ≤ 10.
+		addMinion('old-minion', { x: 1, createdAt: 10 });
+		addMinion('new-minion', { x: 2, createdAt: 20 });
+
+		const { used, errors } = castAltar();
+
+		expect(errors).toHaveLength(0);
+		expect(used.sacrificedMinionId).toBe('old-minion');
+		expect(gameState.minions.map(m => m.id)).toEqual(['new-minion']);
 	});
 });

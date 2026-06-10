@@ -682,7 +682,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
 
       if (cardDef.effect === 'sacrificial_altar') {
         const sacrificeRadius = cardDef.sacrificeRadius || SUMMON_RADIUS;
-        const target = findSacrificeTarget(socket.playerId, originX, originZ, sacrificeRadius);
+        const target = findSacrificeTarget(socket.playerId, originX, originY, originZ, sacrificeRadius);
         if (!target) {
           socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: 'No friendly summon to sacrifice' });
           return;
