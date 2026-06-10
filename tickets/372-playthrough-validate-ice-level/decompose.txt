@@ -1,0 +1,12 @@
+Created **6 sub-tickets** in dependency order, mirroring the fire-level validation harness (373) and adding ice-specific slippery-floor and glacial-thrower probes.
+
+**Sub-ticket folder paths:**
+
+1. `/home/matt/workspace/.autogame-worktrees/372-playthrough-validate-ice-level/tickets/372-playthrough-validate-ice-level/subtickets/01-ice-harness-preset-and-driver-registration`
+2. `/home/matt/workspace/.autogame-worktrees/372-playthrough-validate-ice-level/tickets/372-playthrough-validate-ice-level/subtickets/02-ice-combat-and-debug-scenarios`
+3. `/home/matt/workspace/.autogame-worktrees/372-playthrough-validate-ice-level/tickets/372-playthrough-validate-ice-level/subtickets/03-slippery-floor-playthrough-step`
+4. `/home/matt/workspace/.autogame-worktrees/372-playthrough-validate-ice-level/tickets/372-playthrough-validate-ice-level/subtickets/04-glacial-slow-playthrough-step`
+5. `/home/matt/workspace/.autogame-worktrees/372-playthrough-validate-ice-level/tickets/372-playthrough-validate-ice-level/subtickets/05-ice-card-telepipe-artifacts-and-findings`
+6. `/home/matt/workspace/.autogame-worktrees/372-playthrough-validate-ice-level/tickets/372-playthrough-validate-ice-level/subtickets/06-execute-ice-validation`
+
+**Dependency flow:** preset registration → server debug scenarios → slippery-floor harness step → glacial-thrower slow step → card/telepipe/artifacts/findings wiring → full `pnpm validate:ice` run landing `game/validation/ice/`. All sub-tickets use **code** verification. Frost Crossing has no stage boss (Rimecast named rare only); that gap is documented in sub-ticket 05/06 findings.

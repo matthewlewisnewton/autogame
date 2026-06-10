@@ -788,6 +788,19 @@ function segmentIntersectsAABB(x1, z1, x2, z2, aabb) {
 }
 
 /**
+ * Line-of-sight test between two world points. Returns false when the straight
+ * segment from (x1, z1) to (x2, z2) crosses any wall collider AABB, true when
+ * the line is clear. Doorway openings are gaps between colliders, so a segment
+ * threading a doorway passes. Reuses segmentIntersectsAABB — no new geometry.
+ */
+function hasLineOfSight(x1, z1, x2, z2, colliders = getWallColliders()) {
+  for (const aabb of colliders) {
+    if (segmentIntersectsAABB(x1, z1, x2, z2, aabb)) return false;
+  }
+  return true;
+}
+
+/**
  * Check if a point position overlaps any wall collider expanded by radius.
  * Returns true when overlapping a wall, false otherwise.
  */
@@ -2824,6 +2837,9 @@ function updateEnemies() {
 	const encounterBossId = getEncounterBossId(_gameState.run);
 	const encounterDormant = isEncounterDormant(_gameState.run);
 	const encounterLocked = isEncounterLocked(_gameState.run);
+	// Build wall colliders once per tick for line-of-sight gating (enemies must
+	// actually see a target to acquire/chase it — no aggro through walls).
+	const losColliders = getWallColliders();
 
 	for (const enemy of _gameState.enemies) {
 		ensureEnemyCombatStats(enemy);
@@ -2929,11 +2945,23 @@ function updateEnemies() {
 
 		// ── Find nearest living player or taunt minion ──
 		const tauntMinion = findTauntMinionNear(enemy.x, enemy.z, DETECTION_RADIUS);
-		if (tauntMinion) {
+		if (tauntMinion && hasLineOfSight(enemy.x, enemy.z, tauntMinion.x, tauntMinion.z, losColliders)) {
 			enemy.state = 'chasing';
 			const dist = Math.hypot(tauntMinion.x - enemy.x, tauntMinion.z - enemy.z);
 			if (dist <= ENEMY_ATTACK_RANGE) {
-				damageMinion(tauntMinion, enemy.attackDamage);
+				// Route through windup state machine — only start windup when
+				// not already in a windup/recovery cycle (those phases are
+				// handled by the blocks above and will fall through naturally).
+				if (enemy.attackState === 'chasing' || enemy.attackState === 'idle') {
+					enemy.attackState = 'windup';
+					enemy.windupTargetType = 'minion';
+					enemy.windupTargetId = tauntMinion.id;
+					enemy.windupStartTime = Date.now();
+					lockWindupDirection(enemy, tauntMinion);
+				}
+				// When attackState is 'windup' or 'recovering', fall through
+				// to the existing windup/recovery handling above (the continue
+				// there skips this block on subsequent ticks).
 			} else {
 				moveEntityToward(enemy, tauntMinion, chaseSpeed * dt);
 			}
@@ -2950,7 +2978,11 @@ function updateEnemies() {
 		let nearestDist = Infinity;
 
 		const nearestMinion = findNearestMinionNear(enemy.x, enemy.z, DETECTION_RADIUS);
-		if (nearestMinion && nearestMinion.dist < nearestDist) {
+		if (
+			nearestMinion
+			&& nearestMinion.dist < nearestDist
+			&& hasLineOfSight(enemy.x, enemy.z, nearestMinion.minion.x, nearestMinion.minion.z, losColliders)
+		) {
 			nearestTarget = nearestMinion.minion;
 			nearestTargetType = 'minion';
 			nearestDist = nearestMinion.dist;
@@ -2963,7 +2995,11 @@ function updateEnemies() {
 			const dx = player.x - enemy.x;
 			const dz = player.z - enemy.z;
 			const dist = Math.hypot(dx, dz);
-			if (dist < DETECTION_RADIUS && dist < nearestDist) {
+			if (
+				dist < DETECTION_RADIUS
+				&& dist < nearestDist
+				&& hasLineOfSight(enemy.x, enemy.z, player.x, player.z, losColliders)
+			) {
 				nearestDist = dist;
 				nearestTarget = player;
 				nearestTargetType = 'player';
@@ -3087,6 +3123,8 @@ function updateEnemyProjectiles() {
 		ball.traveled = (ball.traveled || 0) + step;
 
 		// Contact with a player: chill (SLOW) + damage, then consume the ball.
+		// SLOW is applied before damage and is not gated on damage succeeding
+		// (god-mode, i-frames, barrier dome, absorb shield all skip HP loss only).
 		let consumed = false;
 		for (const player of players) {
 			const playerY = getEntityWorldY(player);
@@ -3654,6 +3692,7 @@ module.exports = {
   flushDirtyPlayerSaves,
   segmentAABBEntryT,
   segmentIntersectsAABB,
+  hasLineOfSight,
   isEntityPositionBlocked,
   moveEntityToward,
   ENTITY_RADIUS,

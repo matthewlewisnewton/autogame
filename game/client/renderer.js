@@ -122,6 +122,7 @@ import {
 	playerBurnMarkers,
 	minionsMeshes,
 	minionShadows,
+	escortHealthBars,
 	spikeTrapMeshes,
 	lootMeshes,
 	iceBallMeshes,
@@ -189,6 +190,9 @@ import {
 	syncSpikeTrapMeshes,
 	getMinionSpawnTimes,
 	createSpikeTrapHazardMesh,
+	shouldHaveEscortHealthBar,
+	escortHealthBarFillScale,
+	ESCORT_HEALTH_BAR_OFFSET_Y,
 } from './renderer/minionSync.js';
 
 // Minion-domain + spike-trap-hazard sync now lives in ./renderer/minionSync.js;
@@ -199,6 +203,9 @@ export {
 	syncSpikeTrapMeshes,
 	getMinionSpawnTimes,
 	createSpikeTrapHazardMesh,
+	shouldHaveEscortHealthBar,
+	escortHealthBarFillScale,
+	ESCORT_HEALTH_BAR_OFFSET_Y,
 };
 import {
 	syncLootMeshes,
@@ -1409,6 +1416,7 @@ export function getMeshMaps() {
 		telegraphMeshes,
 		minionTelegraphMeshes,
 		minionsMeshes,
+		escortHealthBars,
 		spikeTrapMeshes,
 		passageGateMeshes,
 		lootMeshes,

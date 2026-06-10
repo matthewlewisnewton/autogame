@@ -6618,33 +6618,24 @@ describe('Wall-aware enemy movement in updateEnemies()', () => {
 	beforeEach(() => resetState());
 
 	it('enemy stops at wall during chase (does not pass through)', () => {
-		// Find a wall to use as a barrier
+		// Place enemy and player inside the start room with a clear line-of-sight
+		// between them (enemies no longer aggro through walls — that is gated by
+		// hasLineOfSight). This exercises wall-aware chase movement and asserts the
+		// chaser never embeds itself in a wall collider.
 		const room = gameState.layout.rooms[0];
-		const wall = room.walls[0];
-
-		// Place player and enemy on opposite sides of the wall (across its thin dimension),
-		// near the wall center so they're within DETECTION_RADIUS
-		const playerSide = wall.axis === 'x'
-			? { x: wall.x, z: wall.z + 2 }
-			: { x: wall.x + 2, z: wall.z };
 
 		addPlayer('p1', {
 			id: 'p1',
-			x: playerSide.x,
-			z: playerSide.z,
+			x: room.x + 3,
+			z: room.z,
 			dead: false
 		});
-
-		// Place enemy on the other side of the wall, within DETECTION_RADIUS
-		const enemySide = wall.axis === 'x'
-			? { x: wall.x, z: wall.z - 2 }
-			: { x: wall.x - 2, z: wall.z };
 
 		gameState.enemies.push({
 			id: 'e1',
 			type: 'grunt',
-			x: enemySide.x,
-			z: enemySide.z,
+			x: room.x - 3,
+			z: room.z,
 			hp: 50,
 			state: 'idle',
 			attackState: 'idle',
@@ -6652,12 +6643,12 @@ describe('Wall-aware enemy movement in updateEnemies()', () => {
 		});
 
 		// Ensure the player is within detection range
-		const dist = Math.hypot(playerSide.x - enemySide.x, playerSide.z - enemySide.z);
+		const dist = Math.hypot(6, 0);
 		expect(dist).toBeLessThan(DETECTION_RADIUS);
 
 		updateEnemies();
 
-		// Enemy should be in chasing state
+		// Enemy should be in chasing state (clear line-of-sight to the player)
 		expect(gameState.enemies[0].state).toBe('chasing');
 
 		// Enemy should not overlap the wall after movement

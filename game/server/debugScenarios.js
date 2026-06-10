@@ -33,6 +33,8 @@ const {
   firstRoomPosition,
   computeDungeonBounds,
   computeWalkableAABBs,
+  buildWallColliders,
+  hasLineOfSight,
   rebuildWallColliders,
   ENEMY_DEFS,
 } = require('./simulation');
@@ -73,6 +75,7 @@ const {
   resolveEncounterAnchor,
 } = require('./encounters');
 const { findPassageIndexFromRoom } = require('./scriptedEncounters');
+const { ESCORT_DESTINATION_RADIUS, getEscortMinion } = require('./escort');
 
 // index.js-local helpers + the DEBUG_SCENARIOS set, injected after modules load.
 let io = null;
@@ -272,6 +275,37 @@ function setupAnnexEscortTier1Deploy(lobby, state, player) {
   setupQuestTier1Deploy(lobby, state, player, 'annex_escort');
 }
 
+/**
+ * Find a staging point in a corridor just outside `roomIndex`, so one step
+ * forward enters the room. Passage endpoints sit at room centres, so the
+ * endpoint inside the target room gives the corridor's approach direction.
+ */
+function corridorStagingOutsideRoom(layout, roomIndex, margin = 2) {
+  const room = layout?.rooms?.[roomIndex];
+  if (!room || !Array.isArray(layout.passages)) return null;
+  const inRoom = (x, z) =>
+    Math.abs(x - room.x) <= room.width / 2 && Math.abs(z - room.z) <= room.depth / 2;
+  for (const passage of layout.passages) {
+    const ends = [
+      [{ x: passage.x1, z: passage.z1 }, { x: passage.x2, z: passage.z2 }],
+      [{ x: passage.x2, z: passage.z2 }, { x: passage.x1, z: passage.z1 }],
+    ];
+    for (const [end, other] of ends) {
+      if (!inRoom(end.x, end.z) || inRoom(other.x, other.z)) continue;
+      const dx = Math.sign(other.x - end.x);
+      const dz = Math.sign(other.z - end.z);
+      const step = Math.max(1, Math.min(margin, passage.corridorLength - 1));
+      return {
+        x: room.x + dx * (room.width / 2 + step),
+        z: room.z + dz * (room.depth / 2 + step),
+        awayX: dx,
+        awayZ: dz,
+      };
+    }
+  }
+  return null;
+}
+
 function deepestCombatRoom(layout) {
   return layout.rooms
     .filter((room) => room.role === 'combat')
@@ -364,6 +398,15 @@ function liveCanyonDescentAdds(state, bossType = 'miniboss') {
 function liveEmberDescentAdds(state) {
   return (state.enemies || []).filter(
     (e) => e.hp > 0 && e.type !== 'ember_wraith' && (e.type === 'grunt' || e.type === 'skirmisher'),
+  );
+}
+
+function liveFrostCrossingAdds(state) {
+  return (state.enemies || []).filter(
+    (e) => e.hp > 0
+      && e.type !== 'glacial_thrower'
+      && !e.namedRare
+      && (e.type === 'grunt' || e.type === 'skirmisher'),
   );
 }
 
@@ -562,6 +605,33 @@ function applyDebugScenario(socket, name) {
       } else {
         // Partial vitals so MS regen cannot overshoot STARTING_MAGIC_STONES before the
         // capture asserts carry-forward.
+        player.hp = 60;
+        player.magicStones = 20;
+      }
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'frost-crossing-telepipe-ready') {
+      // frost_crossing Tier 1 with ice-cavern layout; telepipe injected on ready-up
+      // (see checkAllReady). Mirrors fire-telepipe-ready for harness telepipe-reset on ice.
+      // Reachable normally by earning Telepipe, selecting Frost Crossing, and deploying.
+      const questId = 'frost_crossing';
+      const tier = 1;
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+      player.ready = false;
+      if (state.suspendedCheckpoint) {
+        abandonSuspendedRun(state);
+        player._telepipeFreshSortie = true;
+        player._msRegenGraceUntil = Date.now() + 20000;
+      } else {
         player.hp = 60;
         player.magicStones = 20;
       }
@@ -1106,6 +1176,38 @@ function applyDebugScenario(socket, name) {
       };
     }
 
+    if (name === 'escort-near-destination') {
+      // escort_objective_fixture Tier 1 with Archivist Vale staged just outside
+      // the arena-dais arrival radius while the wave-0 grunt ambush is still
+      // alive in the start room. Reachable normally by escorting the NPC across
+      // the plaza; this scenario is a shortcut to watch arrival trigger victory
+      // with enemies still alive: walk onto the dais and the escort follows in.
+      setupEscortObjectiveDeploy(lobby, state, player);
+
+      const destination = state.run?.escort?.destination;
+      const escort = getEscortMinion(state);
+      if (destination && escort) {
+        const stagingOffset = ESCORT_DESTINATION_RADIUS + 3;
+        player.x = destination.x + stagingOffset;
+        player.z = destination.z;
+        player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+        escort.x = destination.x + stagingOffset + 1.5;
+        escort.z = destination.z;
+      }
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
     if (name === 'passage-lock-gated') {
       // Scripted Encounter Fixture with a wave-0 passage lock on the start-room exit.
       // Reachable normally by deploying the passage-lock fixture quest tier;
@@ -1268,6 +1370,40 @@ function applyDebugScenario(socket, name) {
       };
     }
 
+    if (name === 'annex-escort-ambush-room') {
+      // annex_escort Tier 1 staged in the corridor just outside ambush room 1
+      // with Archivist Vale alongside. Step into the room to spring the
+      // skirmisher ambush and fire Vale's escort_ambush dialogue beacon
+      // ('They found us!'). Reachable normally by selecting Annex Evacuation
+      // and escorting Vale from the start room into the ambush room; this
+      // scenario is a shortcut to that doorway.
+      setupAnnexEscortTier1Deploy(lobby, state, player);
+
+      const staging = corridorStagingOutsideRoom(state.layout, 1);
+      if (staging) {
+        player.x = staging.x;
+        player.z = staging.z;
+        player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+        const escort = getEscortMinion(state);
+        if (escort) {
+          escort.x = staging.x + staging.awayX * 1.5;
+          escort.z = staging.z + staging.awayZ * 1.5;
+        }
+      }
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
     if (name === 'frost-crossing-tier-1') {
       // frost_crossing Tier 1 with ice-cavern layout and scripted ice-band waves.
       // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
@@ -1385,6 +1521,270 @@ function applyDebugScenario(socket, name) {
           };
         }
       }
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'frost-crossing-near-adds') {
+      // Reposition beside live Frost Crossing Tier 1 support adds for harness add-combat QA.
+      // Reachable normally by traversing entry/stone/ice/ramp bands toward wandering adds.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'frost_crossing'
+        || state.selectedQuestTier !== 1
+        || state.run?.objective?.type !== 'defeat_enemies'
+        || state.layout?.profile !== 'ice-cavern') {
+        return { ok: false, reason: 'Requires frost_crossing Tier 1 defeat_enemies run on ice-cavern' };
+      }
+      let supportAdds = liveFrostCrossingAdds(state);
+      let liveEnemies = (state.enemies || []).filter((e) => e.hp > 0);
+      if (supportAdds.length === 0) {
+        // Slippery-floor surface-transition clears enemies for momentum QA; restore
+        // the run-start grunt/skirmisher wave so mid-combat capture still works.
+        const respawnBand = bandAt(state.layout, player.x, player.z) || 'entry';
+        const respawnAnchor = clusterAnchorForBand(state.layout, respawnBand, player);
+        const respawnRadius = 4;
+        const runStartTypes = ['grunt', 'grunt', 'grunt', 'skirmisher', 'skirmisher'];
+        let respawnAngle = 0;
+        const respawnStep = (Math.PI * 2) / runStartTypes.length;
+        for (const type of runStartTypes) {
+          const enemy = spawnEnemy(
+            respawnAnchor.x + Math.cos(respawnAngle) * respawnRadius,
+            respawnAnchor.z + Math.sin(respawnAngle) * respawnRadius,
+            type,
+          );
+          enemy.y = resolveFloorY(sampleFloorY(state.layout, enemy.x, enemy.z));
+          enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+          respawnAngle += respawnStep;
+        }
+        syncRunObjectiveToEnemies();
+        supportAdds = liveFrostCrossingAdds(state);
+        liveEnemies = (state.enemies || []).filter((e) => e.hp > 0);
+      }
+      if (supportAdds.length === 0) {
+        return { ok: false, reason: 'No live support adds to approach' };
+      }
+      if (liveEnemies.length === 0) {
+        return { ok: false, reason: 'No live enemies to approach' };
+      }
+      let nearest = supportAdds[0];
+      let bestDist = Infinity;
+      for (const add of supportAdds) {
+        const dist = Math.hypot(add.x - player.x, add.z - player.z);
+        if (dist < bestDist) {
+          bestDist = dist;
+          nearest = add;
+        }
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.hand[0] = {
+        id: 'iron_sword',
+        name: 'Rust-Forged Saber',
+        type: 'weapon',
+        damage: 17,
+        charges: 5,
+        remainingCharges: 5,
+        grind: 0,
+      };
+      const playerBand = bandAt(state.layout, player.x, player.z) || 'entry';
+      const clusterAnchor = clusterAnchorForBand(state.layout, playerBand, player);
+      const clusterRadius = 4;
+      let angle = 0;
+      const step = liveEnemies.length > 0 ? (Math.PI * 2) / liveEnemies.length : 0;
+      for (const enemy of liveEnemies) {
+        enemy.hp = 1;
+        enemy.shieldHp = 0;
+        enemy.maxShieldHp = 0;
+        enemy.x = clusterAnchor.x + Math.cos(angle) * clusterRadius;
+        enemy.z = clusterAnchor.z + Math.sin(angle) * clusterRadius;
+        enemy.y = resolveFloorY(sampleFloorY(state.layout, enemy.x, enemy.z));
+        enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+        angle += step;
+      }
+      player.x = clusterAnchor.x;
+      player.z = clusterAnchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      repositionNearEnemy(player, nearest);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'frost-crossing-glacial-thrower-slow') {
+      // One Glacial Thrower in ice-ball range with godmode off for slow-on-hit QA.
+      // Reachable normally on frost_crossing runs when a glacial_thrower attacks the player.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'frost_crossing'
+        || state.selectedQuestTier !== 1
+        || state.run?.objective?.type !== 'defeat_enemies'
+        || state.layout?.profile !== 'ice-cavern') {
+        return { ok: false, reason: 'Requires frost_crossing Tier 1 defeat_enemies run on ice-cavern' };
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.vx = 0;
+      player.vz = 0;
+      player.debugGodmode = false;
+      state.enemies = [];
+      state.iceBalls = [];
+      // Seat on the stone treasure pad so slippery momentum from earlier ice QA
+      // cannot drift the avatar out of the thrower's ice-ball path during harness wait.
+      const stoneRoom = state.layout.rooms.find((r) => r.band === 'stone');
+      if (stoneRoom) {
+        player.x = stoneRoom.x;
+        player.z = stoneRoom.z;
+        player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      }
+      const thrower = spawnEnemy(player.x + 4, player.z, 'glacial_thrower');
+      thrower.y = resolveFloorY(sampleFloorY(state.layout, thrower.x, thrower.z));
+      thrower.wanderTarget = { x: thrower.x, z: thrower.z };
+      syncRunObjectiveToEnemies();
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      socket.emit(SERVER_TO_CLIENT.DEBUG_GODMODE_RESULT, { ok: true, enabled: false });
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'frost-crossing-surface-transition') {
+      // Seat on the stone→ice boundary with forward momentum toward the slippery band.
+      // Reachable normally by walking from the stone treasure pad onto the ice field.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'frost_crossing'
+        || state.selectedQuestTier !== 1
+        || state.run?.objective?.type !== 'defeat_enemies'
+        || state.layout?.profile !== 'ice-cavern') {
+        return { ok: false, reason: 'Requires frost_crossing Tier 1 defeat_enemies run on ice-cavern' };
+      }
+      const iceRoom = state.layout.rooms.find((r) => r.band === 'ice');
+      const stoneRoom = state.layout.rooms.find((r) => r.band === 'stone');
+      const rampRoom = state.layout.rooms.find((r) => r.band === 'ramp');
+      const targetX = iceRoom?.x ?? 0;
+      const targetZ = iceRoom?.z ?? 0;
+
+      state.enemies = [];
+      state.iceBalls = [];
+
+      if (iceRoom) {
+        // Normal floors zero vx/vz without displacement; seat on the south ice lip
+        // (slippery) with momentum toward the field centre for harness sampling.
+        const iceHalf = iceRoom.depth / 2;
+        player.x = iceRoom.x;
+        player.z = iceRoom.z + iceHalf - 1.2;
+      } else if (stoneRoom) {
+        const halfD = stoneRoom.depth / 2;
+        player.x = stoneRoom.x;
+        player.z = stoneRoom.z - halfD + 1.2;
+      } else if (rampRoom) {
+        player.x = rampRoom.x;
+        player.z = rampRoom.z;
+      } else {
+        player.x = targetX;
+        player.z = targetZ + 6;
+      }
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      const dx = targetX - player.x;
+      const dz = targetZ - player.z;
+      const dist = Math.hypot(dx, dz) || 1;
+      player.rotation = Math.atan2(dx, dz);
+      const launchSpeed = 14;
+      player.vx = (dx / dist) * launchSpeed;
+      player.vz = (dz / dist) * launchSpeed;
+
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'enemy-behind-wall') {
+      // frost_crossing Tier 1 deploy with the player and a lone grunt parked on
+      // opposite sides of a real INTERIOR wall that has walkable floor on BOTH
+      // sides (e.g. the wall the two ramp connector rooms share), the two well
+      // within DETECTION_RADIUS. Verifies the line-of-sight gate: the enemy must
+      // stay 'idle' and NOT aggro/chase through the wall. Both entities sit in
+      // normally-reachable gameplay space — neither is shoved into the void
+      // outside a perimeter wall. Reachable normally by deploying Frost Crossing
+      // and standing on one side of such a wall with an enemy on the other;
+      // this scenario is a shortcut into that geometry.
+      setupFrostCrossingTier1Deploy(lobby, state, player);
+      state.enemies = [];
+
+      const startRoom = roomAt(state.layout, player.x, player.z)
+        || state.layout.rooms.find((r) => r.role === 'start')
+        || state.layout.rooms[0];
+
+      const offset = 2; // each side of the wall → ~4 units apart (< DETECTION_RADIUS = 8)
+      // Walkable footprint (rooms ∪ passages) and wall colliders, computed once.
+      const walkableAABBs = computeWalkableAABBs(state.layout);
+      const colliders = buildWallColliders(state.layout);
+      const pointInWalkable = (x, z) =>
+        walkableAABBs.some((a) => x >= a.minX && x <= a.maxX && z >= a.minZ && z <= a.maxZ);
+
+      // Project the prospective player + enemy points onto the two sides of a
+      // wall, `offset` units out along its normal (the existing axis logic).
+      const projectWall = (room, wall) => {
+        if (wall.axis === 'z') {
+          const interiorSign = room.x >= wall.x ? 1 : -1;
+          return {
+            px: wall.x + interiorSign * offset,
+            pz: wall.z,
+            ex: wall.x - interiorSign * offset,
+            ez: wall.z,
+          };
+        }
+        const interiorSign = room.z >= wall.z ? 1 : -1;
+        return {
+          px: wall.x,
+          pz: wall.z + interiorSign * offset,
+          ex: wall.x,
+          ez: wall.z - interiorSign * offset,
+        };
+      };
+
+      // Pick the first wall whose two offset points BOTH land inside walkable
+      // space AND whose segment is still wall-occluded (rejects doorway-gap
+      // segments — LOS must stay blocked). Prefer the start room's walls, then
+      // fall back to any room's walls so the scenario works on layouts whose
+      // start room has no interior wall with walkable space on both sides.
+      const candidateRooms = [startRoom, ...state.layout.rooms.filter((r) => r !== startRoom)];
+      let chosen = null;
+      for (const room of candidateRooms) {
+        for (const wall of room.walls) {
+          const pt = projectWall(room, wall);
+          if (pointInWalkable(pt.px, pt.pz) && pointInWalkable(pt.ex, pt.ez)
+              && !hasLineOfSight(pt.ex, pt.ez, pt.px, pt.pz, colliders)) {
+            chosen = pt;
+            break;
+          }
+        }
+        if (chosen) break;
+      }
+
+      // Defensive fallback: anchor on the start room's longest wall (old
+      // behaviour) so the scenario still loads if no interior wall qualifies.
+      if (!chosen) {
+        const wall = [...startRoom.walls].sort((a, b) => b.length - a.length)[0];
+        chosen = projectWall(startRoom, wall);
+      }
+
+      player.x = chosen.px;
+      player.z = chosen.pz;
+      const enemyX = chosen.ex;
+      const enemyZ = chosen.ez;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      const enemy = spawnEnemy(enemyX, enemyZ, 'grunt');
+      enemy.y = resolveFloorY(sampleFloorY(state.layout, enemy.x, enemy.z));
+      enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+      enemy.state = 'idle';
+      enemy.attackState = 'idle';
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
