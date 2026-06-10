@@ -129,3 +129,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [379-cleanup-server-death-soft-lock-players-return-to-lobby-at-0-hp-with-8yhz](tickets/379-cleanup-server-death-soft-lock-players-return-to-lobby-at-0-hp-with-8yhz/)
 - [ ] [379-cleanup-quest-briefings-mid-run-radio-dialogue-named-client-npc-rewa-o0vv.3](tickets/379-cleanup-quest-briefings-mid-run-radio-dialogue-named-client-npc-rewa-o0vv.3/)
 - [ ] [379-cleanup-per-quest-signature-card-rewards-replace-the-single-global-v-o0vv.5](tickets/379-cleanup-per-quest-signature-card-rewards-replace-the-single-global-v-o0vv.5/)
+- [ ] [380-cleanup-server-quest-objective-crystals-despawn-after-loot-lifetime-19vg](tickets/380-cleanup-server-quest-objective-crystals-despawn-after-loot-lifetime-19vg/)

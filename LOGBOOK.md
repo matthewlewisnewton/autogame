@@ -6140,3 +6140,26 @@ None blocking. All acceptance criteria are implemented and covered by tests; the
 See `nits.md` for one follow-up on tier-1 vs tier-2 currency label wording on the quest board.
 
 
+
+## v0.353 — Server: quest-objective crystals despawn after LOOT_LIFETIME_MS — collect_items runs unwinnable after 2 minutes  (2026-06-10 04:29:31)
+
+
+### Code quality
+
+**Good.** Minimal two-file production change plus focused test. The `questCritical` flag is more extensible than hard-coding `kind === 'crystal'` in the filter (future non-crystal quest items could reuse it). Telepipe suspend/resume deep-clones loot (`captureCardCheckpoint`), so `questCritical` survives checkpoint round-trips.
+
+No new debug scenarios were added; existing crystal debug shortcuts deploy through normal quest spawn and inherit the flag.
+
+### Debug scenarios
+
+**N/A — no new or changed debug scenarios in this ticket's diff.**
+
+## Test and coverage notes
+
+- Harness vitest run: all server tests green (`1569` passed).
+- Changed-file coverage snapshot includes `index.js` at ~72% lines; the one-line filter change is exercised indirectly across the suite. `progression.js` `spawnCrystals` is covered by existing spawn/integration tests (crystal count assertions) though none newly assert `questCritical: true` on output.
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are satisfied; runtime capture is clean.
+
