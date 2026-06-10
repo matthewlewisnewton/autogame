@@ -5,6 +5,11 @@
 const { mulberry32 } = require('./dungeon');
 const { DEFAULT_QUEST_TIER } = require('./quests');
 
+function syncScriptedDefeatEnemiesActiveCount(run, enemies) {
+  if (!run?.scriptedEncounter || run.objective?.type !== 'defeat_enemies') return;
+  run.objective.activeEnemyCount = (enemies || []).filter((enemy) => enemy.hp > 0 && !enemy.spawnedBy).length;
+}
+
 /**
  * @typedef {Object} ScriptedSpawnDef
  * @property {string} type - Enemy type id.
@@ -308,6 +313,7 @@ function spawnScriptedWave(run, gameState, roomKey, waveIndex, ctx) {
   roomState.enemyIds = enemyIds;
   roomState.started = true;
   roomState.cleared = false;
+  syncScriptedDefeatEnemiesActiveCount(run, gameState.enemies);
 }
 
 function tryAdvanceScriptedWave(run, gameState, roomKey, ctx) {

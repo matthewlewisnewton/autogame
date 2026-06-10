@@ -397,6 +397,17 @@ function syncCardProbeHand(player) {
   if (player?.id) emitPlayerDeckUpdate(player.id);
 }
 
+function maybeAdoptSyntheticDefeatEnemies(state) {
+  const run = state?.run;
+  if (!run?.scriptedEncounter || run.objective?.type !== 'defeat_enemies') return;
+  const hasScriptedWaveEnemies = (state.enemies || []).some((enemy) => enemy.scriptedWave);
+  if (hasScriptedWaveEnemies) return;
+  delete run.scriptedEncounter;
+  delete run._scriptedEncounterConfig;
+  run.passageLocks = [];
+  delete run.objective.activeEnemyCount;
+}
+
 function resumePlayingRunForCardProbe(state, player) {
   if (!state?.run) return;
   state.run.status = 'playing';
@@ -404,6 +415,7 @@ function resumePlayingRunForCardProbe(state, player) {
     const liveCount = (state.enemies || []).filter((e) => e && e.hp > 0).length;
     state.run.objective.defeatedEnemies = 0;
     state.run.objective.totalEnemies = Math.max(liveCount, 1);
+    delete state.run.objective.activeEnemyCount;
   }
   if (player) {
     player.dead = false;
@@ -3633,6 +3645,7 @@ function applyDebugScenario(socket, name) {
       }
     }
 
+    maybeAdoptSyntheticDefeatEnemies(state);
     syncRunObjectiveToEnemies();
 
     broadcastLobbyUpdate(lobby);

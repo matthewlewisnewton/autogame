@@ -26,6 +26,15 @@ function clampCollectedItems(objective) {
   objective.collectedItems = Math.min(objective.collectedItems, objective.totalItems);
 }
 
+function countLiveNonSpawnerEnemies(enemies) {
+  return (enemies || []).filter((enemy) => enemy.hp > 0 && !enemy.spawnedBy).length;
+}
+
+function syncScriptedDefeatEnemiesActiveCount(run, enemies) {
+  if (!run?.scriptedEncounter || run.objective?.type !== 'defeat_enemies') return;
+  run.objective.activeEnemyCount = countLiveNonSpawnerEnemies(enemies);
+}
+
 // Interval (ms) between staggered survive spawns. The first enemy spawns on the
 // first tick the run is playing; each subsequent enemy waits this long.
 const SURVIVE_SPAWN_INTERVAL_MS = 3000;
@@ -78,12 +87,16 @@ const OBJECTIVE_DEFS = {
           totalEnemies = countScriptedEnemies(script);
         }
       }
-      return {
+      const objective = {
         type: 'defeat_enemies',
         label: objectiveLabel,
         totalEnemies,
         defeatedEnemies: 0,
       };
+      if (isScriptedQuest(quest)) {
+        objective.activeEnemyCount = 0;
+      }
+      return objective;
     },
     isComplete(objective) {
       return objective.defeatedEnemies >= objective.totalEnemies;
@@ -95,7 +108,15 @@ const OBJECTIVE_DEFS = {
       run.objective.defeatedEnemies += count;
       clampDefeatedEnemies(run.objective);
     },
-    syncToEnemyCount(run, enemyCount) {
+    syncToEnemyCount(run, enemiesOrCount) {
+      const enemies = Array.isArray(enemiesOrCount) ? enemiesOrCount : null;
+      const enemyCount = enemies
+        ? countLiveNonSpawnerEnemies(enemies)
+        : enemiesOrCount;
+      if (run.scriptedEncounter) {
+        run.objective.activeEnemyCount = enemyCount;
+        return;
+      }
       run.objective.totalEnemies = enemyCount;
       clampDefeatedEnemies(run.objective);
     },
@@ -356,4 +377,6 @@ module.exports = {
   SURVIVE_REGULAR_TYPES,
   isValidObjectiveType,
   getObjectiveDef,
+  countLiveNonSpawnerEnemies,
+  syncScriptedDefeatEnemiesActiveCount,
 };

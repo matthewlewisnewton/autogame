@@ -1557,10 +1557,8 @@ describe('debugScenario — fire-cavern', () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
 		socket.emit('debugScenario', { name: 'fire-cavern' });
 		const result = await debugResultPromise;
-		const stateUpdate = await stateUpdatePromise;
 
 		expect(result.ok).toBe(true);
 		expect(result.scenario).toBe('fire-cavern');
@@ -1573,11 +1571,11 @@ describe('debugScenario — fire-cavern', () => {
 		expect(state.gamePhase).toBe('playing');
 		expect(state.selectedQuestId).toBe(EMBER_DESCENT_ID);
 		expect(state.selectedQuestTier).toBe(EMBER_DESCENT_TIER_1);
-		expect(stateUpdate.run.questId).toBe(EMBER_DESCENT_ID);
-		expect(stateUpdate.run.questTier).toBe(EMBER_DESCENT_TIER_1);
-		expect(stateUpdate.run.questName).toBe(tier1Quest.name);
-		expect(stateUpdate.run.objective.type).toBe('defeat_enemies');
-		expect(stateUpdate.run.objective.label).toContain(tier1Quest.name);
+		expect(state.run.questId).toBe(EMBER_DESCENT_ID);
+		expect(state.run.questTier).toBe(EMBER_DESCENT_TIER_1);
+		expect(state.run.questName).toBe(tier1Quest.name);
+		expect(state.run.objective.type).toBe('defeat_enemies');
+		expect(state.run.objective.label).toContain(tier1Quest.name);
 		expect(state.layout.profile).toBe('fire-cavern');
 		expect(getLayoutGenerationOptions(EMBER_DESCENT_ID, EMBER_DESCENT_TIER_1)).toEqual({
 			slopes: true,
@@ -1588,9 +1586,9 @@ describe('debugScenario — fire-cavern', () => {
 		expect(player.x).toBe(startRoom.x);
 		expect(player.z).toBe(startRoom.z);
 		expect(player.y).toBe(resolveFloorY(sampleFloorY(state.layout, player.x, player.z)));
-		expect(stateUpdate.enemies.length).toBe(tier1Quest.enemyCount);
+		expect(state.enemies.length).toBe(tier1Quest.enemyCount);
 		const allowedTypes = new Set(getEnemyPool(EMBER_DESCENT_ID, EMBER_DESCENT_TIER_1).map((e) => e.type));
-		expect(stateUpdate.enemies.every((e) => allowedTypes.has(e.type))).toBe(true);
+		expect(state.enemies.every((e) => allowedTypes.has(e.type))).toBe(true);
 	});
 
 	it('stays in lobby with ember_descent tier-1 fire-cavern quest for telepipe-reset QA', async () => {

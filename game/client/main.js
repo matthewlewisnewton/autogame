@@ -4977,6 +4977,9 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 	const objective = runObjective ? {
 		type: runObjective.type,
 		totalEnemies: runObjective.totalEnemies,
+		...(Number.isFinite(runObjective.activeEnemyCount)
+			? { activeEnemyCount: runObjective.activeEnemyCount }
+			: {}),
 		defeatedEnemies: runObjective.defeatedEnemies,
 		totalItems: runObjective.totalItems,
 		collectedItems: runObjective.collectedItems,

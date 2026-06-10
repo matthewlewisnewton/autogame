@@ -6,6 +6,7 @@ import {
   startDungeonRun,
   removeDeadEnemies,
   updateScriptedEncounters,
+  tryEnterTelepipe,
   gameState,
   resetGameState,
   setGameState,
@@ -22,7 +23,10 @@ import { findPassageIndexFromRoom } from '../scriptedEncounters.js';
 const require = createRequire(import.meta.url);
 const {
   getLayoutProfileForQuest,
+  getQuest,
 } = require('../quests.js');
+const { countAuthoredScriptedEnemies } = require('../scriptedEncounters.js');
+const { restoreCardCheckpoint } = require('../progression.js');
 
 const QUEST_ID = 'training_caverns';
 // Seed 1 yields room 0 → room 1 → room 2 along resolved passage indices.
@@ -159,5 +163,56 @@ describe('chained passage lock progression', () => {
 
     enterRoom(player, endRoom);
     expect(gameState.run.scriptedEncounter.rooms['room:2'].started).toBe(false);
+  });
+
+  it('telepipe suspend/resume preserves authored totalEnemies and live activeEnemyCount mid-wave', () => {
+    const { layout } = deployTrainingCavernsPassageLockChain();
+    const quest = getQuest(QUEST_ID, 1);
+    const authoredTotal = countAuthoredScriptedEnemies(quest);
+    const startRoom = layout.rooms[0];
+    const player = gameState.players.p1;
+
+    expect(gameState.run.objective.totalEnemies).toBe(authoredTotal);
+    expect(gameState.run.objective.activeEnemyCount).toBe(2);
+    expect(gameState.enemies.filter((enemy) => !enemy.spawnedBy)).toHaveLength(2);
+
+    const [firstGrunt] = gameState.enemies.filter((enemy) => enemy.type === 'grunt');
+    firstGrunt.hp = 0;
+    removeDeadEnemies();
+
+    expect(gameState.run.objective.totalEnemies).toBe(authoredTotal);
+    expect(gameState.run.objective.activeEnemyCount).toBe(1);
+    expect(gameState.enemies.filter((enemy) => !enemy.spawnedBy)).toHaveLength(1);
+
+    const preSuspendEnemyIds = gameState.enemies.map((enemy) => enemy.id);
+    const preSuspendActiveCount = gameState.run.objective.activeEnemyCount;
+
+    player.x = startRoom.x;
+    player.z = startRoom.z;
+    player.hand = [{
+      id: 'telepipe',
+      name: 'Telepipe',
+      type: 'spell',
+      charges: 1,
+      remainingCharges: 1,
+    }];
+    gameState.telepipe = {
+      x: startRoom.x,
+      z: startRoom.z,
+      placedBy: 'p1',
+      placedAt: Date.now(),
+    };
+
+    const suspendResult = tryEnterTelepipe('p1');
+    expect(suspendResult.ok).toBe(true);
+    expect(gameState.suspendedCheckpoint.run.objective.totalEnemies).toBe(authoredTotal);
+    expect(gameState.suspendedCheckpoint.run.objective.activeEnemyCount).toBe(preSuspendActiveCount);
+
+    restoreCardCheckpoint();
+
+    expect(gameState.run.objective.totalEnemies).toBe(authoredTotal);
+    expect(gameState.run.objective.activeEnemyCount).toBe(preSuspendActiveCount);
+    expect(gameState.enemies.map((enemy) => enemy.id)).toEqual(preSuspendEnemyIds);
+    expect(gameState.enemies.filter((enemy) => !enemy.spawnedBy)).toHaveLength(preSuspendActiveCount);
   });
 });

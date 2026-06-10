@@ -4700,6 +4700,13 @@ describe('Debug scenarios — run objective stays in sync with enemy list', () =
 		};
 	}
 
+	function objectiveLiveEnemyCount(objective) {
+		if (Number.isFinite(objective?.activeEnemyCount)) {
+			return objective.activeEnemyCount;
+		}
+		return objective?.totalEnemies;
+	}
+
 	for (const scenario of [
 		'summon-low-mana',
 		'summon-ready',
@@ -4708,7 +4715,7 @@ describe('Debug scenarios — run objective stays in sync with enemy list', () =
 		'spawner-active',
 		'monster-card',
 	]) {
-		it(`run.objective.totalEnemies matches the authoritative enemy list at scenario time for "${scenario}"`, async () => {
+		it(`run.objective live enemy count matches the authoritative enemy list at scenario time for "${scenario}"`, async () => {
 			const snap = await runScenarioCaptureSnapshot(scenario);
 
 			// At scenario completion, the run objective and the authoritative
@@ -4716,7 +4723,10 @@ describe('Debug scenarios — run objective stays in sync with enemy list', () =
 			// states where run completion is unreachable (totalEnemies >
 			// actual, the pre-fix bug for mixed-enemies and spawner-active)
 			// or trivially satisfied (totalEnemies < actual).
-			expect(snap.run.objective.totalEnemies).toBe(snap.enemies.length);
+			// Scripted multi-wave runs keep authored totalEnemies for HUD while
+			// activeEnemyCount tracks the live wave population.
+			const liveObjectiveCount = objectiveLiveEnemyCount(snap.run.objective);
+			expect(liveObjectiveCount).toBe(snap.enemies.length);
 			expect(snap.run.objective.defeatedEnemies).toBeLessThanOrEqual(
 				snap.run.objective.totalEnemies
 			);
@@ -4727,7 +4737,7 @@ describe('Debug scenarios — run objective stays in sync with enemy list', () =
 	it('"mixed-enemies" produces exactly 4 enemies of distinct types in the objective', async () => {
 		const snap = await runScenarioCaptureSnapshot('mixed-enemies');
 		expect(snap.enemies.length).toBe(4);
-		expect(snap.run.objective.totalEnemies).toBe(4);
+		expect(objectiveLiveEnemyCount(snap.run.objective)).toBe(4);
 		const types = new Set(snap.enemies.map(e => e.type));
 		expect(types.has('grunt')).toBe(true);
 		expect(types.has('skirmisher')).toBe(true);
@@ -4739,7 +4749,7 @@ describe('Debug scenarios — run objective stays in sync with enemy list', () =
 		const snap = await runScenarioCaptureSnapshot('spawner-active');
 		expect(snap.enemies.length).toBe(1);
 		expect(snap.enemies[0].type).toBe('spawner');
-		expect(snap.run.objective.totalEnemies).toBe(1);
+		expect(objectiveLiveEnemyCount(snap.run.objective)).toBe(1);
 	});
 
 	it('"monster-card" guarantees a monster card in hand', async () => {

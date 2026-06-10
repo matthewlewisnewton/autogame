@@ -83,7 +83,7 @@ const {
   fireWaveClearedTriggers,
 } = require('./questScript');
 const { unlockQuestTier, isQuestTierUnlocked } = require('./users');
-const { getObjectiveDef } = require('./objectives');
+const { getObjectiveDef, syncScriptedDefeatEnemiesActiveCount } = require('./objectives');
 const {
   initScriptedEncounter,
   tickScriptedEncounters,
@@ -982,6 +982,7 @@ function startDungeonRun() {
       _gameState,
       buildObjectiveSpawnCtx(),
     );
+    syncScriptedDefeatEnemiesActiveCount(_gameState.run, _gameState.enemies);
   }
   if (getQuestScript(quest)) {
     initQuestScript(_gameState.run, quest, _gameState.layout);
@@ -1299,7 +1300,7 @@ function syncRunObjectiveToEnemies() {
   if (!_gameState.run) return;
   const def = getObjectiveDef(_gameState.run.objective.type);
   if (!def?.syncToEnemyCount) return;
-  def.syncToEnemyCount(_gameState.run, _gameState.enemies.length);
+  def.syncToEnemyCount(_gameState.run, _gameState.enemies);
 }
 
 function recordEnemyDefeated(count = 1) {
@@ -2401,6 +2402,7 @@ function removeDeadEnemies() {
   if (removed > 0) {
     recordEnemyDefeated(removed);
   }
+  syncScriptedDefeatEnemiesActiveCount(_gameState.run, _gameState.enemies);
   return removed;
 }
 
