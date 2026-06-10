@@ -186,6 +186,27 @@ function setupVaultOnslaughtBossDebug(lobby, state, player) {
   deployQuestDebugRun(lobby, state, { clearEncounterBoss: true });
 }
 
+function setupCitadelSiegeBossDebug(lobby, state, player) {
+  const questId = 'citadel_siege';
+  const tier = 1;
+  completeQuestTier(player.accountId, 'canyon_descent', 2);
+  completeQuestTier(player.accountId, 'spire_ascent', 2);
+  completeQuestTier(player.accountId, 'arena_trials', 2);
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+
+  player.ready = true;
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  const startSpawn = firstRoomPosition();
+  player.x = startSpawn.x;
+  player.z = startSpawn.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+  deployQuestDebugRun(lobby, state, { clearEncounterBoss: true });
+}
+
 function setupEscortObjectiveDeploy(lobby, state, player) {
   ensureEscortObjectiveFixtureQuest();
   const questId = ESCORT_OBJECTIVE_FIXTURE_DEF.id;
@@ -1068,6 +1089,18 @@ function applyDebugScenario(socket, name) {
       // Reachable normally by completing Crucible Duel, selecting Vault Onslaught,
       // and deploying; this scenario is a shortcut into that dormant encounter state.
       setupVaultOnslaughtBossDebug(lobby, state, player);
+      const anchor = resolveArenaDaisAnchor(state);
+      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 2;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      return finishStageBossDebugScenario(lobby, state, player, name);
+    }
+
+    if (name === 'citadel-siege-boss') {
+      // citadel_siege capstone boss-level run with dormant Citadel Sovereign on boss-arena.
+      // Reachable normally by clearing canyon_descent, spire_ascent, and arena_trials
+      // Tier II, selecting Citadel Siege, and deploying; shortcut into dormant encounter.
+      setupCitadelSiegeBossDebug(lobby, state, player);
       const anchor = resolveArenaDaisAnchor(state);
       player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 2;
       player.z = anchor.z;

@@ -648,6 +648,51 @@ const QUEST_DEFS = {
       },
     },
   },
+  citadel_siege: {
+    id: 'citadel_siege',
+    enemyPool: [
+      { type: 'grunt', weight: 2 },
+      { type: 'skirmisher', weight: 2 },
+    ],
+    tiers: {
+      1: {
+        name: 'Citadel Siege',
+        description: 'Face the Citadel Sovereign alone on the boss arena dais.',
+        objectiveType: 'stage_boss',
+        levelKind: 'boss_level',
+        layoutProfile: 'boss-arena',
+        unlockRequires: [
+          { questId: 'canyon_descent', tier: 2 },
+          { questId: 'spire_ascent', tier: 2 },
+          { questId: 'arena_trials', tier: 2 },
+        ],
+        encounter: {
+          bossType: 'citadel_sovereign',
+          landmark: 'arena_dais',
+          addCount: 0,
+        },
+        rewardCurrency: 25,
+        signatureCardId: 'gravity_well',
+        rewardCards: ['gravity_well', 'chrono_trigger'],
+        client: {
+          name: 'Venn',
+          briefing:
+            'Capstone siege contract. The Citadel Sovereign holds the boss-arena dais alone — '
+            + 'prove every Tier-II trial and claim twenty-five stones plus the Gravity Well uplink.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Venn on citadel feed. Sovereign holds the dais — three Tier-II clears bought you this shot.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Sovereign down. Citadel siege acknowledged — stones and uplink released.',
+          },
+        ],
+      },
+    },
+  },
   frost_crossing: {
     id: 'frost_crossing',
     // Signature foe that must always appear in this level's combat spawn set.

@@ -183,6 +183,17 @@ describe('formatObjectiveSummary()', () => {
 			}),
 		).toBe('Defeat Annex Overseer and 2 supports');
 	});
+
+	it('summarizes citadel_siege boss-level quests with reusable boss-name copy', () => {
+		expect(
+			formatObjectiveSummary({
+				id: 'citadel_siege',
+				levelKind: 'boss_level',
+				objectiveType: 'stage_boss',
+				encounter: { bossType: 'citadel_sovereign', addCount: 0 },
+			}),
+		).toBe('Defeat Citadel Sovereign');
+	});
 });
 
 describe('formatRewardSummary()', () => {

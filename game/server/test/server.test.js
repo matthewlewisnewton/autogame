@@ -294,7 +294,7 @@ describe('runGameLoopTick()', () => {
 describe('QUEST_DEFS', () => {
 	it('exposes stable quest ids with required metadata', () => {
 		expect(DEFAULT_QUEST_ID).toBe('training_caverns');
-		expect(Object.keys(QUEST_DEFS).sort()).toEqual(['annex_escort', 'arena_trials', 'canyon_descent', 'crucible_duel', 'crystal_rescue', 'ember_descent', 'endless_siege', 'frost_crossing', 'spire_ascent', 'training_caverns', 'vault_onslaught']);
+		expect(Object.keys(QUEST_DEFS).sort()).toEqual(['annex_escort', 'arena_trials', 'canyon_descent', 'citadel_siege', 'crucible_duel', 'crystal_rescue', 'ember_descent', 'endless_siege', 'frost_crossing', 'spire_ascent', 'training_caverns', 'vault_onslaught']);
 
 		for (const [questId, quest] of Object.entries(QUEST_DEFS)) {
 			expect(quest.id).toBe(questId);

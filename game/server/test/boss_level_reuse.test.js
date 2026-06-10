@@ -45,6 +45,13 @@ const BOSS_LEVEL_QUESTS = [
     addCount: 2,
     objectiveSummary: 'Defeat Annex Overseer and 2 supports',
   },
+  {
+    questId: 'citadel_siege',
+    tier: 1,
+    bossType: 'citadel_sovereign',
+    addCount: 0,
+    objectiveSummary: 'Defeat Citadel Sovereign',
+  },
 ];
 
 function bossArenaLayout(seed = SEED) {
@@ -187,5 +194,6 @@ describe('boss-level quest distinctness', () => {
     expect(new Set(bossTypes).size).toBe(bossTypes.length);
     expect(bossTypes).toContain('crucible_sovereign');
     expect(bossTypes).toContain('annex_overseer');
+    expect(bossTypes).toContain('citadel_sovereign');
   });
 });

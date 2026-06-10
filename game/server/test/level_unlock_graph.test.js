@@ -109,6 +109,20 @@ describe('buildLevelUnlockGraph', () => {
 		expect(nodeFor(unknownGraph, QUEST_ID, 2).state).toBe('locked');
 		expect(nodeFor(unknownGraph, 'crucible_duel', 1).state).toBe('locked');
 		expect(nodeFor(unknownGraph, 'vault_onslaught', 1).state).toBe('locked');
+		expect(nodeFor(unknownGraph, 'citadel_siege', 1).state).toBe('locked');
+	});
+
+	it('marks citadel_siege tier 1 with triple Tier-II unlockRequires', () => {
+		const graph = buildLevelUnlockGraph();
+
+		const citadelBoss = nodeFor(graph, 'citadel_siege', 1);
+		expect(citadelBoss.isBoss).toBe(true);
+		expect(citadelBoss.objectiveType).toBe('stage_boss');
+		expect(citadelBoss.unlockRequires).toEqual([
+			{ questId: 'canyon_descent', tier: 2 },
+			{ questId: 'spire_ascent', tier: 2 },
+			{ questId: 'arena_trials', tier: 2 },
+		]);
 	});
 
 	it('reports cleared tiers and unlocks the dependent tier after progression', () => {
