@@ -464,6 +464,9 @@ async function captureBossEncounterUiProbe(page) {
 
 async function captureBossVisualIdentityProbe(page, bossType) {
 	return page.evaluate((expectedBossType) => {
+		if (typeof window.__captureBossVisualIdentityForTest === 'function') {
+			return window.__captureBossVisualIdentityForTest(expectedBossType);
+		}
 		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
 		const bossEnemyId = harness?.encounter?.bossEnemyId ?? null;
 		const boss = (harness?.enemyHp || []).find((e) => e.id === bossEnemyId && e.hp > 0)
@@ -503,6 +506,14 @@ async function captureBossVisualIdentityProbe(page, bossType) {
 			addRenderScale,
 		};
 	}, bossType);
+}
+
+async function waitForBossVisualIdentityProbeReady(page, bossType, timeoutMs = 15000) {
+	await page.waitForFunction((expectedBoss) => {
+		if (typeof window.__captureBossVisualIdentityForTest !== 'function') return false;
+		const probe = window.__captureBossVisualIdentityForTest(expectedBoss);
+		return probe?.bossDistinctFromAdds === true;
+	}, bossType, { timeout: timeoutMs });
 }
 
 async function probeHubLobbyFinder(page) {
@@ -814,9 +825,29 @@ async function runStageBossMidCombatProbeStep({ page, preset, outDirAbs }) {
 	const midCombatFloor = await captureFloorAlignmentProbe(page);
 	if (midCombatFloor) floorAlignment.midCombat = midCombatFloor;
 
+	// Training Caverns clears non-boss enemies on encounter activation; capture
+	// boss-vs-add visuals while dormant boss and live adds still coexist.
+	let bossVisualIdentity = null;
+	if (bossType === 'annex_overseer') {
+		const midHarness = await readHarness(page);
+		if (liveAdds(midHarness, bossType, addTypes).length === 0) {
+			throw new Error('mid-combat boss visual probe requested with zero live adds');
+		}
+		await waitForBossVisualIdentityProbeReady(page, bossType);
+		bossVisualIdentity = await captureBossVisualIdentityProbe(page, bossType);
+		if (!bossVisualIdentity?.bossDistinctFromAdds) {
+			throw new Error(
+				`bossVisualIdentity mid-combat probe missing distinct boss vs add: ${JSON.stringify(bossVisualIdentity)}`,
+			);
+		}
+	}
+
 	return {
 		midCombatScreenshot,
-		probes: Object.keys(floorAlignment).length > 0 ? { floorAlignment } : {},
+		probes: {
+			...(Object.keys(floorAlignment).length > 0 ? { floorAlignment } : {}),
+			...(bossVisualIdentity ? { bossVisualIdentity } : {}),
+		},
 	};
 }
 
@@ -860,11 +891,15 @@ async function runStageBossRevalidateFullStep({
 		outDirAbs,
 		skipMidCombatCapture: true,
 	});
+	const bossVisualIdentity = bossPart.probes?.bossVisualIdentity
+		?? midCombatPart.probes?.bossVisualIdentity
+		?? null;
 	const bossEncounter = {
 		...bossPart,
 		midCombatScreenshot: midCombatPart.midCombatScreenshot,
 		probes: {
 			...(bossPart.probes || {}),
+			bossVisualIdentity,
 			floorAlignment: {
 				...(midCombatPart.probes?.floorAlignment || {}),
 				...(bossPart.probes?.floorAlignment || {}),
@@ -901,6 +936,10 @@ async function runBossEncounterStep({ page, preset, outDirAbs, skipMidCombatCapt
 
 	let midCombatScreenshot = null;
 	const floorAlignment = {};
+	// Training Caverns clears non-boss enemies on encounter activation; capture
+	// boss-vs-add visuals while dormant boss and live adds still coexist.
+	const captureBossVisualAtMidCombat = bossType === 'annex_overseer';
+	let bossVisualIdentity = null;
 	const onMidCombat = skipMidCombatCapture ? null : async () => {
 		const midHarness = await readHarness(page);
 		if (liveAdds(midHarness, bossType, addTypes).length === 0) {
@@ -910,6 +949,10 @@ async function runBossEncounterStep({ page, preset, outDirAbs, skipMidCombatCapt
 		midCombatScreenshot = path.relative(REPO_ROOT, shotPath);
 		const midCombatFloor = await captureFloorAlignmentProbe(page);
 		if (midCombatFloor) floorAlignment.midCombat = midCombatFloor;
+		if (captureBossVisualAtMidCombat) {
+			await waitForBossVisualIdentityProbeReady(page, bossType);
+			bossVisualIdentity = await captureBossVisualIdentityProbe(page, bossType);
+		}
 	};
 	const afterAddsHarness = await defeatAdds(page, {
 		bossType,
@@ -957,7 +1000,13 @@ async function runBossEncounterStep({ page, preset, outDirAbs, skipMidCombatCapt
 	const activeFloor = await captureFloorAlignmentProbe(page);
 	if (activeFloor) floorAlignment.bossActive = activeFloor;
 	const bossEncounterUi = await captureBossEncounterUiProbe(page);
-	const bossVisualIdentity = await captureBossVisualIdentityProbe(page, bossType);
+	if (!captureBossVisualAtMidCombat) {
+		bossVisualIdentity = await captureBossVisualIdentityProbe(page, bossType);
+	} else if (!skipMidCombatCapture && !bossVisualIdentity?.bossDistinctFromAdds) {
+		throw new Error(
+			`bossVisualIdentity mid-combat probe missing distinct boss vs add: ${JSON.stringify(bossVisualIdentity)}`,
+		);
+	}
 
 	return {
 		midCombatScreenshot,

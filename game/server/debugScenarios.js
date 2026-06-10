@@ -1046,10 +1046,6 @@ function applyDebugScenario(socket, name) {
       if (!state.run.encounter.locked) {
         lockEncounter(state.run);
       }
-      const visualAdd = spawnEnemy(boss.x + 2.5, boss.z, 'grunt');
-      visualAdd.hp = 1;
-      visualAdd.y = resolveFloorY(sampleFloorY(state.layout, visualAdd.x, visualAdd.z));
-      visualAdd.wanderTarget = { x: visualAdd.x, z: visualAdd.z };
       broadcastLobbyUpdate(lobby);
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return { ok: true, scenario: name };
@@ -4785,28 +4781,6 @@ const BOSS_APPROACH_NUDGE_SCENARIOS = new Set([
 ]);
 
 /**
- * Debug-only: after encounter activation, spawn a nearby grunt so harness
- * bossVisualIdentity probes can compare boss vs add scale (adds are cleared on
- * activation in normal play). Gated on an active boss-approach debug scenario.
- */
-function spawnHarnessBossVisualAddIfNeeded(gameState, boss) {
-  if (process.env.ALLOW_DEBUG_SCENARIOS !== '1' || !boss || !gameState?.layout) return;
-  if (boss.type !== 'annex_overseer') return;
-  const hasApproachPlayer = Object.values(gameState.players || {}).some(
-    (player) => player?.debugScenario === 'training-caverns-boss-approach',
-  );
-  if (!hasApproachPlayer) return;
-  const hasLiveAdd = (gameState.enemies || []).some(
-    (enemy) => enemy.hp > 0 && enemy.id !== boss.id && enemy.type !== boss.type,
-  );
-  if (hasLiveAdd) return;
-  const visualAdd = spawnEnemy(boss.x + 2.5, boss.z, 'grunt');
-  visualAdd.hp = 1;
-  visualAdd.y = resolveFloorY(sampleFloorY(gameState.layout, visualAdd.x, visualAdd.z));
-  visualAdd.wanderTarget = { x: visualAdd.x, z: visualAdd.z };
-}
-
-/**
  * Debug-only: while a boss-approach scenario is active, inch the player toward
  * the encounter anchor each tick so headless harness walks can enter the trigger radius.
  * Nudging is deferred briefly after setup so dormant probes can read stable state.
@@ -4844,5 +4818,4 @@ module.exports = {
   setCallbacks,
   applyDebugScenario,
   nudgeDebugBossApproachPlayers,
-  spawnHarnessBossVisualAddIfNeeded,
 };

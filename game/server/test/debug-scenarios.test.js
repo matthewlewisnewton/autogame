@@ -634,6 +634,66 @@ describe('debugScenario — training-caverns-tier-2', () => {
 		expect(resolveVariantRollTier(stateUpdate.run.questTier, 0)).toBe(1);
 	});
 
+	function evaluateBossVisualIdentityProbe(state, expectedBossType) {
+		const bossEnemyId = state.run?.encounter?.bossEnemyId ?? null;
+		const enemyHp = (state.enemies || []).map((e) => ({
+			id: e.id,
+			type: e.type,
+			hp: e.hp,
+			maxHp: e.maxHp,
+			x: e.x,
+			z: e.z,
+		}));
+		const boss = enemyHp.find((e) => e.id === bossEnemyId && e.hp > 0)
+			|| enemyHp.find((e) => e.type === expectedBossType && e.hp > 0)
+			|| null;
+		const adds = enemyHp.filter(
+			(e) => e.hp > 0 && e.id !== boss?.id && e.type !== expectedBossType,
+		);
+		let nearestAdd = null;
+		let nearestDist = Infinity;
+		if (boss) {
+			for (const add of adds) {
+				const dist = Math.hypot((add.x ?? 0) - (boss.x ?? 0), (add.z ?? 0) - (boss.z ?? 0));
+				if (dist < nearestDist) {
+					nearestDist = dist;
+					nearestAdd = add;
+				}
+			}
+		}
+		const bossDistinctFromAdds = !!boss
+			&& !!nearestAdd
+			&& boss.type !== nearestAdd?.type
+			&& (boss.maxHp ?? 0) > (nearestAdd.maxHp ?? 0);
+		return {
+			bossType: boss?.type ?? expectedBossType,
+			bossEnemyId: boss?.id ?? bossEnemyId,
+			nearestAddType: nearestAdd?.type ?? null,
+			bossDistinctFromAdds,
+		};
+	}
+
+	it('training-caverns-near-adds keeps dormant boss and adds for bossVisualIdentity probe', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'training-caverns-tier-2' });
+		await tier2Promise;
+
+		const nearAddsPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'training-caverns-near-adds' });
+		const nearAddsResult = await nearAddsPromise;
+
+		expect(nearAddsResult.ok).toBe(true);
+
+		const state = testGameState();
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
+		const probe = evaluateBossVisualIdentityProbe(state, 'annex_overseer');
+		expect(probe.bossType).toBe('annex_overseer');
+		expect(probe.nearestAddType).toMatch(/^(grunt|skirmisher)$/);
+		expect(probe.bossDistinctFromAdds).toBe(true);
+	});
+
 	it('repositions beside live adds after training-caverns-tier-2 deploy', async () => {
 		const { socket } = await connectClient(baseUrl);
 
@@ -713,6 +773,40 @@ describe('debugScenario — training-caverns-tier-2', () => {
 		const distFromAnchor = Math.hypot(anchor.x - player.x, anchor.z - player.z);
 		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
 		expect(distFromAnchor).toBeGreaterThan(ENCOUNTER_TRIGGER_RADIUS);
+	});
+
+	it('training-caverns-encounter-trigger activates boss without spawning debug grunts', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'training-caverns-tier-2' });
+		await tier2Promise;
+
+		const state = testGameState();
+		const bossId = state.run.encounter.bossEnemyId;
+		for (const enemy of state.enemies) {
+			if (enemy.id !== bossId) enemy.hp = 0;
+		}
+		state.enemies = state.enemies.filter((e) => e.hp > 0);
+
+		const approachPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'training-caverns-boss-approach' });
+		await approachPromise;
+
+		const triggerPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('debugScenario', { name: 'training-caverns-encounter-trigger' });
+		const triggerResult = await triggerPromise;
+		await stateUpdatePromise;
+
+		expect(triggerResult.ok).toBe(true);
+		expect(triggerResult.scenario).toBe('training-caverns-encounter-trigger');
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
+		expect(state.run.encounter.locked).toBe(true);
+		const liveEnemies = state.enemies.filter((e) => e.hp > 0);
+		expect(liveEnemies).toHaveLength(1);
+		expect(liveEnemies[0].id).toBe(bossId);
+		expect(liveEnemies[0].type).toBe('annex_overseer');
 	});
 
 	it('positions annex_overseer at 1 HP beside the player in playing phase', async () => {

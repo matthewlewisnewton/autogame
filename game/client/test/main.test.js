@@ -4548,6 +4548,62 @@ describe('updateObjectiveHud()', () => {
 	});
 });
 
+describe('__captureBossVisualIdentityForTest', () => {
+	const requiredIds = [
+		'status', 'vanguard-hud', 'character-id', 'player-level',
+		'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+		'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+		'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+		'currency-display', 'objective-hud', 'ui', 'card-hand',
+		'lobby', 'lobby-browser', 'lobby-player-list',
+		'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+		'summary-currency', 'summary-rewards', 'return-to-lobby-btn',
+	];
+
+	beforeEach(() => {
+		vi.resetModules();
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+	});
+
+	it('reports distinct dormant annex_overseer vs live skirmisher adds', async () => {
+		await import('../main.js');
+		window.__setGameState({
+			gamePhase: 'playing',
+			run: {
+				status: 'playing',
+				encounter: {
+					phase: 'dormant',
+					bossEnemyId: 'boss-1',
+					locked: false,
+				},
+				objective: { type: 'stage_boss', bossDefeated: false },
+			},
+			players: {
+				p1: { hp: 100, magicStones: 50, x: 0, z: 0 },
+			},
+			enemies: [
+				{ id: 'boss-1', type: 'annex_overseer', hp: 320, maxHp: 320, x: 20, z: 0 },
+				{ id: 'add-1', type: 'skirmisher', hp: 1, maxHp: 40, x: 2, z: 0 },
+				{ id: 'add-2', type: 'skirmisher', hp: 1, maxHp: 40, x: -2, z: 1 },
+			],
+		}, 'p1');
+
+		const probe = window.__captureBossVisualIdentityForTest('annex_overseer');
+		expect(probe.bossType).toBe('annex_overseer');
+		expect(probe.nearestAddType).toBe('skirmisher');
+		expect(probe.bossDistinctFromAdds).toBe(true);
+		expect(probe.bossRenderScale).toBeGreaterThan(probe.addRenderScale);
+	});
+});
+
 describe('__getEnemyRenderScaleForTest', () => {
 	const requiredIds = [
 		'status', 'vanguard-hud', 'character-id', 'player-level',

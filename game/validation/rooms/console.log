@@ -59,3 +59,36 @@
 [console:log] [debugScenario] applied training-caverns-near-adds
 [console:log] [debugScenario] applied training-caverns-boss-approach
 [console:log] [debugScenario] applied training-caverns-boss-low-hp
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:log] [debugScenario] applied training-caverns-tier-2
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied training-caverns-near-adds
+[console:log] [debugScenario] applied ice-ball-ready
+[console:log] [debugScenario] applied fireball-hand-ready
+[console:log] [debugScenario] applied purifying-pulse-ready
+[console:log] [debugScenario] applied magma-windup-ready
+[console:log] [debugScenario] applied training-caverns-telepipe-ready
+[console:log] [debugScenario] applied training-caverns-tier-2
+[console:log] [debugScenario] applied training-caverns-near-adds
+[console:log] [debugScenario] applied training-caverns-boss-approach
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:log] [debugScenario] applied training-caverns-tier-2
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied training-caverns-near-adds
+[console:log] [debugScenario] applied ice-ball-ready
+[console:log] [debugScenario] applied fireball-hand-ready
+[console:log] [debugScenario] applied purifying-pulse-ready
+[console:log] [debugScenario] applied magma-windup-ready
+[console:log] [debugScenario] applied training-caverns-telepipe-ready
+[console:log] [debugScenario] applied training-caverns-tier-2
+[console:log] [debugScenario] applied training-caverns-near-adds
+[console:log] [debugScenario] applied training-caverns-boss-approach
+[console:log] [debugScenario] applied training-caverns-boss-low-hp

@@ -362,7 +362,6 @@ const keyItemEffects = require('./keyItemEffects');
 // Debug-scenario setup lives in its own module; wired up via setCallbacks()
 // below once io, the index.js-local helpers it needs, and DEBUG_SCENARIOS exist.
 const debugScenarios = require('./debugScenarios');
-const { registerEncounterActivationHook } = require('./encounters');
 
 const _lobbyContextStack = [];
 
@@ -666,8 +665,6 @@ debugScenarios.setCallbacks({
   emitQuestPayloadToLobby,
   DEBUG_SCENARIOS,
 });
-registerEncounterActivationHook(debugScenarios.spawnHarnessBossVisualAddIfNeeded);
-
 // Helper: build a compact player list for lobbyUpdate payloads
 function lobbyPlayerList(state) {
   return Object.entries(state.players).map(([id, p]) => ({

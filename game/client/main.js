@@ -5099,6 +5099,54 @@ window.__getEnemyRenderScaleForTest = (enemyId) => {
 	const info = rendererGetEnemyRenderScaleForTest(enemyId, enemy.type);
 	return info ? { scale: info.scale, type: enemy.type } : null;
 };
+
+/** Harness probe: compare stage boss vs nearest live add (incl. dormant boss + mid-combat adds). */
+function captureBossVisualIdentityProbeData(expectedBossType) {
+	const harness = typeof window.__AUTOGAME_HARNESS_STATE__ === 'function'
+		? window.__AUTOGAME_HARNESS_STATE__()
+		: null;
+	const enemyHp = Array.isArray(harness?.enemyHp) ? harness.enemyHp : [];
+	const bossEnemyId = harness?.encounter?.bossEnemyId ?? null;
+	const boss = enemyHp.find((e) => e.id === bossEnemyId && e.hp > 0)
+		|| enemyHp.find((e) => e.type === expectedBossType && e.hp > 0)
+		|| null;
+	const adds = enemyHp.filter(
+		(e) => e.hp > 0 && e.id !== boss?.id && e.type !== expectedBossType,
+	);
+	let nearestAdd = null;
+	let nearestDist = Infinity;
+	if (boss) {
+		for (const add of adds) {
+			const dist = Math.hypot((add.x ?? 0) - (boss.x ?? 0), (add.z ?? 0) - (boss.z ?? 0));
+			if (dist < nearestDist) {
+				nearestDist = dist;
+				nearestAdd = add;
+			}
+		}
+	}
+	const nearestAddType = nearestAdd?.type ?? null;
+	const bossMaxHp = boss?.maxHp ?? 0;
+	const addMaxHp = nearestAdd?.maxHp ?? 0;
+	const bossDistinctFromAdds = !!boss
+		&& !!nearestAdd
+		&& boss.type !== nearestAddType
+		&& bossMaxHp > addMaxHp;
+	const bossRenderScale = boss && typeof window.__getEnemyRenderScaleForTest === 'function'
+		? window.__getEnemyRenderScaleForTest(boss.id)?.scale ?? null
+		: null;
+	const addRenderScale = nearestAdd && typeof window.__getEnemyRenderScaleForTest === 'function'
+		? window.__getEnemyRenderScaleForTest(nearestAdd.id)?.scale ?? null
+		: null;
+	return {
+		bossType: boss?.type ?? expectedBossType,
+		bossEnemyId: boss?.id ?? bossEnemyId,
+		nearestAddType,
+		bossDistinctFromAdds,
+		bossRenderScale,
+		addRenderScale,
+	};
+}
+window.__captureBossVisualIdentityForTest = captureBossVisualIdentityProbeData;
 window.__iceBallMeshes = () => getMeshMaps().iceBallMeshes;
 window.applyWindupFlash = rendererApplyWindupFlash;
 window.applyRevealHighlight = rendererApplyRevealHighlight;
@@ -5346,8 +5394,8 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 					z: Number.isFinite(p.z) ? p.z : null,
 				}))
 			: [],
-		enemies: gameState ? gameState.enemies.length : 0,
-		enemyHp: gameState ? gameState.enemies.map((enemy) => {
+		enemies: gameState && Array.isArray(gameState.enemies) ? gameState.enemies.length : 0,
+		enemyHp: gameState && Array.isArray(gameState.enemies) ? gameState.enemies.map((enemy) => {
 			const statusNow = Date.now();
 			const slowedUntil = enemy.slowedUntil ?? 0;
 			const burningUntil = enemy.burningUntil ?? 0;
