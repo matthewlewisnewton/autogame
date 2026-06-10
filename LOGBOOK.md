@@ -6637,3 +6637,26 @@ The provided coverage log shows the full vitest coverage run passed: `188` test 
 
 None.
 
+
+## v0.379 — 383-fire-tier2-ember-descent-and-miniboss  (2026-06-10 13:13:13)
+
+The objective summary/theme strings reference the Magma Colossus rather than the Cinder Warden, while the older Cinder Warden catalog remains intact for existing enemy/test coverage.
+
+### Debug Scenarios
+
+PASS. The changed `ember-descent-tier-2` scenario is still reached through the debug scenario path only; client automatic entry is driven by `?debugScenario=...` on localhost, and the server checks the registered debug-scenario handler before applying it. The scenario sets quest id/tier and applies the Tier-II layout before entering play, then rebuilds the normal stage-boss spawn/run state. The same end state is covered through normal gameplay by Tier I unlock plus Tier II deploy tests, so the shortcut is QA-only and not a substitute for the real path.
+
+The newly registered `magma-colossus` debug scenario is a local boss visualization shortcut and does not alter normal quest deployment.
+
+### Design and Foundation Requirements
+
+PASS. The implementation stays aligned with the design document's multiplayer lobby-to-dungeon loop and active combat model, and it does not regress the setup requirements: the captured run has a canvas, websocket connection, multiplayer squad state, player movement probes, and live gameplay state.
+
+### Tests and Coverage
+
+PASS. `coverage.log` reports `195` test files and `2732` tests passed. Coverage thresholds are disabled, but the changed areas have focused tests for quest catalog/listing, spawn pools, layout options and rigid geometry, encounter lifecycle, enemy catalog/stats/drops/scaling, debug scenarios, and client render registry.
+
+## Remaining gaps
+
+None.
+
