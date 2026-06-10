@@ -113,13 +113,13 @@ export function assertSlowBurnMutualExclusive(probes) {
  * Cast ice_ball then fireball on the same grunt and assert ticket 301 exclusivity.
  *
  * @param {import('playwright').Page} page
- * @param {{ outDir?: string, repoRoot?: string }} [opts]
+ * @param {{ outDir?: string, repoRoot?: string, layoutProfile?: string }} [opts]
  */
-export async function runSlowBurnExercise(page, { outDir, repoRoot } = {}) {
-	await page.waitForFunction(() => {
+export async function runSlowBurnExercise(page, { outDir, repoRoot, layoutProfile = 'sunken-canyon' } = {}) {
+	await page.waitForFunction((profile) => {
 		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
-		return harness?.phase === 'playing' && harness?.layout?.profile === 'sunken-canyon';
-	}, { timeout: 60000 });
+		return harness?.phase === 'playing' && harness?.layout?.profile === profile;
+	}, layoutProfile, { timeout: 60000 });
 
 	await focusCanvas(page);
 	await requestScenario(page, 'ice-ball-ready');
@@ -239,13 +239,13 @@ export async function probeWindupTelegraphDom(page) {
  * Cast Purifying Pulse after purifying-pulse-ready and assert heal + cleanse.
  *
  * @param {import('playwright').Page} page
- * @param {{ outDir?: string, repoRoot?: string }} [opts]
+ * @param {{ outDir?: string, repoRoot?: string, layoutProfile?: string }} [opts]
  */
-export async function runPurifyingPulseExercise(page, { outDir, repoRoot } = {}) {
-	await page.waitForFunction(() => {
+export async function runPurifyingPulseExercise(page, { outDir, repoRoot, layoutProfile = 'sunken-canyon' } = {}) {
+	await page.waitForFunction((profile) => {
 		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
-		return harness?.phase === 'playing' && harness?.layout?.profile === 'sunken-canyon';
-	}, { timeout: 60000 });
+		return harness?.phase === 'playing' && harness?.layout?.profile === profile;
+	}, layoutProfile, { timeout: 60000 });
 
 	await focusCanvas(page);
 	await requestScenario(page, 'purifying-pulse-ready');
@@ -293,18 +293,19 @@ export async function runPurifyingPulseExercise(page, { outDir, repoRoot } = {})
  * Press a wind-up weapon once and capture harness + DOM probes during lockout.
  *
  * @param {import('playwright').Page} page
- * @param {{ outDir?: string, repoRoot?: string, cardId?: string, scenario?: string }} [opts]
+ * @param {{ outDir?: string, repoRoot?: string, cardId?: string, scenario?: string, layoutProfile?: string }} [opts]
  */
 export async function runWindupCardExercise(page, {
 	outDir,
 	repoRoot,
 	cardId = 'magma_greatsword',
 	scenario = 'magma-windup-ready',
+	layoutProfile = 'sunken-canyon',
 } = {}) {
-	await page.waitForFunction(() => {
+	await page.waitForFunction((profile) => {
 		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
-		return harness?.phase === 'playing' && harness?.layout?.profile === 'sunken-canyon';
-	}, { timeout: 60000 });
+		return harness?.phase === 'playing' && harness?.layout?.profile === profile;
+	}, layoutProfile, { timeout: 60000 });
 
 	await focusCanvas(page);
 	await requestScenario(page, scenario);

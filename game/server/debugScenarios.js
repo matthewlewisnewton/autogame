@@ -4273,6 +4273,7 @@ function applyDebugScenario(socket, name) {
       // Playing phase with Glacial Orb in hand, full Magic Stones, and grunts
       // lined up along +X so a cast hits the nearest and can roll SLOW. The same
       // state is reachable normally by earning the reward card and entering combat.
+      resumePlayingRunForCardProbe(state, player);
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       player.rotation = 0;
@@ -4298,6 +4299,7 @@ function applyDebugScenario(socket, name) {
       far.hp = 80;
       far.maxHp = 80;
       far.wanderTarget = { x: far.x, z: far.z };
+      syncCardProbeHand(player);
     } else if (name === 'frost-spells-ready') {
       // Playing phase with Cryo Burst and Permafrost Lance in hand, full Magic
       // Stones, and clustered grunts so both AoE freeze casts are exercisable.
