@@ -21,6 +21,8 @@ import {
 	getSlipperyFloorMaterial,
 	getFireCavernBandFloorHex,
 	getFireCavernBandMaterials,
+	getEntryRoomMaterialColors,
+	getEntryRoomMaterials,
 	LARGE_ROOM_MIN_SIZE,
 	FLOOR_Y,
 	WALL_HEIGHT,
@@ -169,6 +171,68 @@ describe('profile material palette', () => {
 		expect(openWall).toBeDefined();
 		expect(crowdedWall).toBeDefined();
 		expect(openWall.material.color.getHex()).not.toBe(crowdedWall.material.color.getHex());
+	});
+});
+
+describe('entry room palette (per-biome start tinting)', () => {
+	it('getEntryRoomMaterialColors returns three mutually distinct floor hex values', () => {
+		const ice = getEntryRoomMaterialColors('ice-cavern');
+		const fire = getEntryRoomMaterialColors('fire-cavern');
+		const crowded = getEntryRoomMaterialColors('crowded');
+		expect(ice).toEqual({ floor: 0x4a6278, wall: 0xb8d4e8 });
+		expect(fire).toEqual({ floor: 0x2a1818, wall: 0xc45020 });
+		expect(crowded).toEqual({ floor: 0x1e2838, wall: 0x5a6a42 });
+		expect(ice.floor).not.toBe(fire.floor);
+		expect(ice.floor).not.toBe(crowded.floor);
+		expect(fire.floor).not.toBe(crowded.floor);
+	});
+
+	it('caches entry room materials per profile', () => {
+		const a = getEntryRoomMaterials('ice-cavern');
+		const b = getEntryRoomMaterials('ice-cavern');
+		expect(a.floor).toBe(b.floor);
+		expect(a.wall).toBe(b.wall);
+	});
+
+	it('buildDungeon start-room floor hex differs across ice-cavern, fire-cavern, and crowded (seed 42)', () => {
+		const seed = 42;
+		const profiles = ['ice-cavern', 'fire-cavern', 'crowded'];
+		const startFloorHexes = profiles.map((profile) => {
+			const layout = generateLayout(seed, profile);
+			const startRoom = layout.rooms.find(r => r.role === 'start');
+			expect(startRoom).toBeDefined();
+			const { meshes } = buildDungeon(mockScene(), layout);
+			const startFloor = findRoomFloorMesh(meshes, startRoom);
+			expect(startFloor).toBeDefined();
+			return startFloor.material.color.getHex();
+		});
+		expect(new Set(startFloorHexes).size).toBe(3);
+		for (const profile of profiles) {
+			const entryHex = getEntryRoomMaterialColors(profile).floor;
+			const layout = generateLayout(seed, profile);
+			const startRoom = layout.rooms.find(r => r.role === 'start');
+			const { meshes } = buildDungeon(mockScene(), layout);
+			const startFloor = findRoomFloorMesh(meshes, startRoom);
+			expect(startFloor.material.color.getHex()).toBe(entryHex);
+		}
+	});
+
+	it('non-start rooms do not use entry palette on ice-cavern and fire-cavern', () => {
+		const iceLayout = generateLayout(42, 'ice-cavern');
+		const iceStart = iceLayout.rooms.find(r => r.role === 'start');
+		const iceTreasure = iceLayout.rooms.find(r => r.role === 'treasure');
+		const iceResult = buildDungeon(mockScene(), iceLayout);
+		const iceEntryHex = getEntryRoomMaterialColors('ice-cavern').floor;
+		expect(findRoomFloorMesh(iceResult.meshes, iceStart).material.color.getHex()).toBe(iceEntryHex);
+		expect(findRoomFloorMesh(iceResult.meshes, iceTreasure).material.color.getHex()).not.toBe(iceEntryHex);
+
+		const fireLayout = generateLayout(42, 'fire-cavern');
+		const fireStart = fireLayout.rooms.find(r => r.role === 'start');
+		const fireTreasure = fireLayout.rooms.find(r => r.role === 'treasure');
+		const fireResult = buildDungeon(mockScene(), fireLayout);
+		const fireEntryHex = getEntryRoomMaterialColors('fire-cavern').floor;
+		expect(findRoomFloorMesh(fireResult.meshes, fireStart).material.color.getHex()).toBe(fireEntryHex);
+		expect(findRoomFloorMesh(fireResult.meshes, fireTreasure).material.color.getHex()).not.toBe(fireEntryHex);
 	});
 });
 

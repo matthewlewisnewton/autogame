@@ -142,6 +142,57 @@ export function getProfileMaterialColors(profile) {
 	};
 }
 
+// ── Per-profile entry room materials (start spawn rooms) ──
+
+const ENTRY_PALETTE_PROFILES = new Set(['ice-cavern', 'fire-cavern', 'crowded']);
+
+/** @type {Map<string, { floor: THREE.MeshStandardMaterial, wall: THREE.MeshStandardMaterial }>} */
+const entryRoomMaterialsCache = new Map();
+
+function hasEntryPalette(profile) {
+	const key = resolveProfileKey(profile);
+	return ENTRY_PALETTE_PROFILES.has(key)
+		&& dungeonTheme.profiles[key]?.entryFloor
+		&& dungeonTheme.profiles[key]?.entryWall;
+}
+
+/**
+ * Cached floor/wall materials for biome entry (start) rooms.
+ *
+ * @param {string} [profile]
+ * @returns {{ floor: THREE.MeshStandardMaterial, wall: THREE.MeshStandardMaterial } | null}
+ */
+export function getEntryRoomMaterials(profile) {
+	const key = resolveProfileKey(profile);
+	if (!hasEntryPalette(key)) return null;
+	if (!entryRoomMaterialsCache.has(key)) {
+		const themeEntry = dungeonTheme.profiles[key];
+		const floorRoughness = themeEntry.floorRoughness ?? 0.8;
+		const wallRoughness = themeEntry.wallRoughness ?? 0.7;
+		entryRoomMaterialsCache.set(key, {
+			floor: new THREE.MeshStandardMaterial({
+				color: parseHex(themeEntry.entryFloor),
+				roughness: floorRoughness,
+			}),
+			wall: new THREE.MeshStandardMaterial({
+				color: parseHex(themeEntry.entryWall),
+				roughness: wallRoughness,
+			}),
+		});
+	}
+	return entryRoomMaterialsCache.get(key);
+}
+
+/** Hex colors for entry-room materials (for tests). */
+export function getEntryRoomMaterialColors(profile) {
+	const mats = getEntryRoomMaterials(profile);
+	if (!mats) return null;
+	return {
+		floor: materialColorHex(mats.floor),
+		wall: materialColorHex(mats.wall),
+	};
+}
+
 const defaultMaterials = getProfileMaterials('default');
 
 // Backward-compatible exports (legacy default palette)
@@ -411,13 +462,17 @@ function getIceCavernRoleFloorMaterial(band, yT, role) {
 	return iceCavernRoleFloorCache.get(cacheKey);
 }
 
-function resolveIceCavernRoomFloorMaterial(room) {
+function resolveIceCavernRoomMaterials(room) {
+	if (room.role === 'start') {
+		const entryMats = getEntryRoomMaterials('ice-cavern');
+		if (entryMats) return entryMats;
+	}
 	const band = room.band ?? 'ice';
 	const yT = 0.5;
-	if (room.role === 'start' || room.role === 'treasure') {
-		return getIceCavernRoleFloorMaterial(band, yT, room.role);
+	if (room.role === 'treasure') {
+		return { floor: getIceCavernRoleFloorMaterial(band, yT, room.role) };
 	}
-	return getIceCavernBandMaterials(band, yT).floor;
+	return { floor: getIceCavernBandMaterials(band, yT).floor };
 }
 
 // ── Fire-cavern band floor materials (rim / ramp / basin) ──
@@ -503,10 +558,14 @@ function getFireCavernRoleFloorMaterial(band, yT, role) {
 }
 
 function resolveFireCavernRoomMaterials(room, layout) {
+	if (room.role === 'start') {
+		const entryMats = getEntryRoomMaterials('fire-cavern');
+		if (entryMats) return entryMats;
+	}
 	const band = room.band ?? 'basin';
 	const yT = band === 'ramp' ? inferFireCavernRampYT(room, layout) : 0.5;
 	let floor;
-	if (room.role === 'start' || room.role === 'treasure') {
+	if (room.role === 'treasure') {
 		floor = getFireCavernRoleFloorMaterial(band, yT, room.role);
 	} else {
 		floor = getFireCavernBandMaterials(band, yT).floor;
@@ -1136,22 +1195,30 @@ export function buildDungeon(scene, layout) {
 
 	for (const room of layout.rooms) {
 		const spireMats = isSpireAscent ? resolveSpireRoomMaterials(room, layout, spireTierCount) : null;
+		const iceCavernMats = isIceCavern ? resolveIceCavernRoomMaterials(room) : null;
 		const fireCavernMats = isFireCavern ? resolveFireCavernRoomMaterials(room, layout) : null;
+		const entryMats = room.role === 'start' ? getEntryRoomMaterials(layout.profile) : null;
 		// Pick floor material: spire tier/ramp, sunken-canyon/ice/fire band tints, else profile role fallback
 		let floorMat;
 		if (spireMats) {
 			floorMat = spireMats.floor;
 		} else if (isSunkenCanyon) {
 			floorMat = resolveSunkenCanyonRoomFloorMaterial(room, layout);
-		} else if (isIceCavern) {
-			floorMat = resolveIceCavernRoomFloorMaterial(room);
+		} else if (iceCavernMats) {
+			floorMat = iceCavernMats.floor;
 		} else if (fireCavernMats) {
 			floorMat = fireCavernMats.floor;
+		} else if (entryMats) {
+			floorMat = entryMats.floor;
 		} else {
 			floorMat = roleFloors[room.role] || profileFloorMaterial;
 		}
 		floorMat = applySlipperyFloorOverride(floorMat, room.floorSurface);
-		const roomWallMat = spireMats?.wall ?? profileWallMaterial;
+		const roomWallMat = spireMats?.wall
+			?? iceCavernMats?.wall
+			?? fireCavernMats?.wall
+			?? entryMats?.wall
+			?? profileWallMaterial;
 
 		// Room floor: flat (legacy or uniform corners) or sloped
 		let floorMesh;
