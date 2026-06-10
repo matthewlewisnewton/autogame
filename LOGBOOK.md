@@ -6532,3 +6532,26 @@ genuine Frost Crossing ice content, not a stand-in level. "Do not fake green" is
 None. (One non-blocking nit recorded in `nits.md`: `05-glacial-slow.png` is captured after
 the Sortie Complete overlay appears, weakening its value as visual proof of the slow hit —
 the probe data still proves it.)
+
+## v0.372 — 380-ice-l1-miniboss-permafrost-warden  (2026-06-10 11:44:26)
+
+### Defeat objective and rewards
+
+PASS. The stage-boss objective does not complete from add kill counts; it completes when the active encounter boss is defeated and the encounter clears. Existing reward-card metadata for Frost Crossing remains in place, and the debug last-enemy shortcut was updated to use a 1-HP Permafrost Warden while preserving the same normal post-victory path.
+
+### Design and foundation compatibility
+
+PASS. The implementation is consistent with `game/docs/design.md`: Frost Crossing remains an ice-band thrower/Rimecast level, now culminating in a single stage boss. It does not regress the foundational requirements: the captured run demonstrates server/client startup, websocket connectivity, scene initialization, multiplayer presence, and movement/dodge HUD behavior.
+
+### Debug scenarios
+
+PASS. The changed Frost Crossing debug scenarios remain gated behind `debugScenario` names; normal gameplay does not enter them. The new/updated shortcuts mirror reachable end states from normal play, such as deploying Frost Crossing, clearing scripted hostiles, approaching the cairn, and fighting the boss. They do not bypass persistent account progression, server-side objective code, or the live encounter state machine in normal gameplay.
+
+### Tests and coverage
+
+PASS. The provided `coverage.log` shows the full suite passing: 191 test files and 2702 tests. Coverage includes targeted server tests for `permafrost_warden` and `frost_crossing_stage_boss`, plus updated client tests for quest-board copy, model registration, lock-on panel metadata, render registry normalization, and boss HUD naming.
+
+## Remaining gaps
+
+None.
+
