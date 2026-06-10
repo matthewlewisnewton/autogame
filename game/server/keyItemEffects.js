@@ -454,6 +454,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
       // --- phase_step: swap positions with a targeted (or nearest) living ally ---
       const range = def.range != null ? def.range : 6;
       const targetPlayerId = data && typeof data.targetPlayerId === 'string' ? data.targetPlayerId : null;
+      const casterY = getEntityWorldY(player);
 
       // Candidate allies: other living, non-extracted players in the same run.
       const candidates = Object.values(state.players).filter(
@@ -464,10 +465,10 @@ function handleUseKeyItem(socket, state, lobby, data) {
       if (targetPlayerId) {
         ally = candidates.find((p) => p.id === targetPlayerId) || null;
       } else {
-        // Pick the nearest candidate by horizontal distance.
+        // Pick the nearest candidate by 3D distance.
         let bestDist = Infinity;
         for (const p of candidates) {
-          const d = Math.hypot(p.x - player.x, p.z - player.z);
+          const d = distance3D(player.x, casterY, player.z, p);
           if (d < bestDist) {
             bestDist = d;
             ally = p;
@@ -480,7 +481,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
         return; // No cooldown burn on soft-fail
       }
 
-      const dist = Math.hypot(ally.x - player.x, ally.z - player.z);
+      const dist = distance3D(player.x, casterY, player.z, ally);
       if (dist > range) {
         socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: false, reason: 'out_of_range' });
         return; // No cooldown burn on soft-fail

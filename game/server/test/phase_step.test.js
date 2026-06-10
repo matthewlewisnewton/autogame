@@ -291,6 +291,90 @@ describe('useKeyItem — phase_step', () => {
 		expect(after.keyItemCooldownUntil || 0).toBe(0);
 	});
 
+	it('same XZ with ally elevated within vertical range swaps successfully', async () => {
+		const players = await connectTwoAndStartRun();
+		const p1 = playerForSocket(players[0].socket);
+		const p2 = playerForSocket(players[1].socket);
+
+		const baseY = p1.y ?? 0.5;
+		p2.x = p1.x;
+		p2.z = p1.z;
+		p2.y = baseY + 3;
+
+		const p1Before = { x: p1.x, y: p1.y, z: p1.z };
+		const p2Before = { x: p2.x, y: p2.y, z: p2.z };
+		p1.keyItemCooldownUntil = 0;
+
+		const resultPromise = waitForEvent(players[0].socket, 'keyItemUsed');
+		players[0].socket.emit('useKeyItem', { keyItemId: 'phase_step' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.targetPlayerId).toBe(p2.id);
+
+		const p1After = playerForSocket(players[0].socket);
+		const p2After = playerForSocket(players[1].socket);
+		expect(p1After.x).toBeCloseTo(p2Before.x, 5);
+		expect(p1After.y).toBeCloseTo(p2Before.y, 5);
+		expect(p1After.z).toBeCloseTo(p2Before.z, 5);
+		expect(p2After.x).toBeCloseTo(p1Before.x, 5);
+		expect(p2After.y).toBeCloseTo(p1Before.y, 5);
+		expect(p2After.z).toBeCloseTo(p1Before.z, 5);
+		expect(p1After.keyItemCooldownUntil).toBeGreaterThan(Date.now());
+	});
+
+	it('same XZ with ally elevated beyond vertical range fails out_of_range without burning cooldown', async () => {
+		const players = await connectTwoAndStartRun();
+		const p1 = playerForSocket(players[0].socket);
+		const p2 = playerForSocket(players[1].socket);
+
+		const baseY = p1.y ?? 0.5;
+		p2.x = p1.x;
+		p2.z = p1.z;
+		p2.y = baseY + 8;
+
+		const p1Before = { x: p1.x, y: p1.y, z: p1.z };
+		const p2Before = { x: p2.x, y: p2.y, z: p2.z };
+		p1.keyItemCooldownUntil = 0;
+
+		const resultPromise = waitForEvent(players[0].socket, 'keyItemUsed');
+		players[0].socket.emit('useKeyItem', { keyItemId: 'phase_step' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(false);
+		expect(result.reason).toBe('out_of_range');
+
+		const p1After = playerForSocket(players[0].socket);
+		const p2After = playerForSocket(players[1].socket);
+		expect(p1After.x).toBeCloseTo(p1Before.x, 5);
+		expect(p1After.y).toBeCloseTo(p1Before.y, 5);
+		expect(p1After.z).toBeCloseTo(p1Before.z, 5);
+		expect(p2After.x).toBeCloseTo(p2Before.x, 5);
+		expect(p2After.y).toBeCloseTo(p2Before.y, 5);
+		expect(p2After.z).toBeCloseTo(p2Before.z, 5);
+		expect(p1After.keyItemCooldownUntil || 0).toBe(0);
+	});
+
+	it('explicit targetPlayerId beyond vertical range fails out_of_range without burning cooldown', async () => {
+		const players = await connectTwoAndStartRun();
+		const p1 = playerForSocket(players[0].socket);
+		const p2 = playerForSocket(players[1].socket);
+
+		const baseY = p1.y ?? 0.5;
+		p2.x = p1.x;
+		p2.z = p1.z;
+		p2.y = baseY + 8;
+		p1.keyItemCooldownUntil = 0;
+
+		const resultPromise = waitForEvent(players[0].socket, 'keyItemUsed');
+		players[0].socket.emit('useKeyItem', { keyItemId: 'phase_step', targetPlayerId: p2.id });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(false);
+		expect(result.reason).toBe('out_of_range');
+		expect(playerForSocket(players[0].socket).keyItemCooldownUntil || 0).toBe(0);
+	});
+
 	it('cooldown enforced: second use within 12s returns on_cooldown', async () => {
 		const players = await connectTwoAndStartRun();
 		const p1 = playerForSocket(players[0].socket);
