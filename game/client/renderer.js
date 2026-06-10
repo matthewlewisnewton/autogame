@@ -3650,16 +3650,31 @@ function syncLockOnRing(enemyId, enemyX, enemyZ) {
 }
 
 // ── Airborne render helpers ──
-// Render-space altitude (world units above the floor) for a flying entity.
-// Prefer the explicit server `altitude`; otherwise derive it from the
-// server-authoritative world Y (`entity.y - FLOOR_Y`). Grounded entities (no
-// `flying` flag) always return 0, so grounded placement is byte-for-byte
-// unchanged. Symmetric across flying enemies and flying minions.
-function flyingAltitude(entity) {
+// Floor-aware render offset (world units the flier sits above its grounded
+// render base) for a flying entity. The offset is expressed relative to
+// `DEFAULT_FLOOR_Y` so that on the default floor it equals the plain altitude
+// (render Y unchanged from the prior fixed-plane behavior), while on a
+// non-default floor it carries the floor delta so the flier rises/falls with
+// the surface beneath it. Prefer the server-authoritative world Y (`entity.y`),
+// which already encodes `sampleFloorY(layout, x, z) + altitude`; otherwise fall
+// back to combining the bare `entity.altitude` with the sampled floor surface so
+// the fallback is floor-aware too. Grounded entities (no `flying` flag) always
+// return 0, so grounded placement is byte-for-byte unchanged. Symmetric across
+// flying enemies and flying minions.
+export function flyingRenderOffset(entity, layout) {
 	if (!entity || !entity.flying) return 0;
-	if (Number.isFinite(entity.altitude)) return entity.altitude;
-	if (Number.isFinite(entity.y)) return Math.max(0, entity.y - FLOOR_Y);
+	if (Number.isFinite(entity.y)) return entity.y - DEFAULT_FLOOR_Y;
+	const floorY = layout ? resolveFloorY(sampleFloorY(layout, entity.x, entity.z)) : DEFAULT_FLOOR_Y;
+	if (Number.isFinite(entity.altitude)) return (floorY - DEFAULT_FLOOR_Y) + entity.altitude;
 	return 0;
+}
+
+// Y position for a flier's ground shadow: the sampled floor surface directly
+// under the flier plus the same small overlay offset `GROUND_OVERLAY_Y` adds to
+// `FLOOR_Y`, so the shadow sits on the actual floor (not a fixed default plane).
+export function flyingShadowY(layout, x, z) {
+	const floorY = layout ? resolveFloorY(sampleFloorY(layout, x, z)) : DEFAULT_FLOOR_Y;
+	return floorY + (GROUND_OVERLAY_Y - FLOOR_Y);
 }
 
 // Flat dark disc lying in the XZ plane, used as a ground shadow beneath a flier
@@ -3681,14 +3696,15 @@ function createFlyingShadow() {
 // Create/update a ground shadow beneath a flying entity, or dispose it if the
 // entity is grounded. `shadowMap` is keyed by entity id (separate maps for
 // enemies vs minions so each disposes with its own mesh-cleanup path). Shadows
-// sit at GROUND_OVERLAY_Y like other ground overlays and only exist for fliers.
-function syncFlyingShadow(shadowMap, entity) {
+// sit on the sampled floor surface beneath the flier (floor-aware) and only
+// exist for fliers.
+function syncFlyingShadow(shadowMap, entity, layout) {
 	if (entity.flying) {
 		if (!shadowMap[entity.id]) {
 			shadowMap[entity.id] = createFlyingShadow();
 			scene.add(shadowMap[entity.id]);
 		}
-		shadowMap[entity.id].position.set(entity.x, GROUND_OVERLAY_Y, entity.z);
+		shadowMap[entity.id].position.set(entity.x, flyingShadowY(layout, entity.x, entity.z), entity.z);
 	} else if (shadowMap[entity.id]) {
 		disposeOne(shadowMap, entity.id, scene);
 	}
@@ -6493,11 +6509,11 @@ export function animate(timestamp) {
 				scene.add(enemyHitboxMeshes[enemy.id]);
 			}
 			const halfHeight = enemyMeshHalfHeight(enemy.type);
-			// Flying enemies render at floor height + altitude; grounded enemies
-			// keep their exact prior placement (flyingAltitude() returns 0).
-			const renderY = halfHeight + flyingAltitude(enemy);
+			// Flying enemies render at the floor-aware surface + altitude; grounded
+			// enemies keep their exact prior placement (flyingRenderOffset() → 0).
+			const renderY = halfHeight + flyingRenderOffset(enemy, gs.layout);
 			enemiesMeshes[enemy.id].position.set(enemy.x, renderY, enemy.z);
-			syncFlyingShadow(enemyShadows, enemy);
+			syncFlyingShadow(enemyShadows, enemy, gs.layout);
 
 			ensureEnemyHealthBar(enemy.id, enemy);
 			const healthBar = enemyHealthBars[enemy.id];
@@ -6723,11 +6739,12 @@ export function animate(timestamp) {
 				}
 			}
 			const minionMesh = minionsMeshes[minion.id];
-			// Flying minions (storm_eagle, thunderbird) hover at their base height
-			// + altitude; grounded minions keep the fixed 0.5 (flyingAltitude → 0).
-			const minionRenderY = 0.5 + flyingAltitude(minion);
+			// Flying minions (storm_eagle, thunderbird) hover at the floor-aware
+			// surface + altitude; grounded minions keep the fixed 0.5
+			// (flyingRenderOffset → 0).
+			const minionRenderY = 0.5 + flyingRenderOffset(minion, gs.layout);
 			minionMesh.position.set(minion.x, minionRenderY, minion.z);
-			syncFlyingShadow(minionShadows, minion);
+			syncFlyingShadow(minionShadows, minion, gs.layout);
 
 			const spawnAt = minionSpawnTimes[minion.id];
 			if (spawnAt !== undefined) {
@@ -6780,7 +6797,7 @@ export function animate(timestamp) {
 			if (previousMinionHp[minion.id] !== undefined && minion.hp < previousMinionHp[minion.id]) {
 				const damageAmount = previousMinionHp[minion.id] - minion.hp;
 				flashMesh(minionsMeshes[minion.id], 0xff4444, 150);
-				spawnDamageNumber(minion.x, 1.2 + flyingAltitude(minion), minion.z, damageAmount, '#ff4444');
+				spawnDamageNumber(minion.x, 1.2 + flyingRenderOffset(minion, gs.layout), minion.z, damageAmount, '#ff4444');
 			}
 			previousMinionHp[minion.id] = minion.hp;
 		}
