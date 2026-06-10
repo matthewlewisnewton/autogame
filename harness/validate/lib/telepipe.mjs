@@ -470,16 +470,15 @@ export async function runTelepipeResetStep({
 	};
 }
 
-const CANYON_TELEPIPE_READY_SCENARIO = 'canyon-descent-telepipe-ready';
-
 /**
- * Sunken-canyon telepipe suspend → abandon → fresh redeploy (tickets 287 + 289).
+ * Stage-boss telepipe suspend → abandon → fresh redeploy (tickets 287 + 289).
  * Distinct from hub `runTelepipeResetStep`: abandons suspended checkpoint before redeploy.
+ * Preset-driven via `telepipeScenario` and `telepipeDeployScenario` (sunken-canyon or rooms).
  *
  * @param {import('playwright').Page} page
  * @param {{ preset: object, outDirAbs: string, repoRoot: string, serverLogPath?: string | null, gameProcess?: object | null, fromPlaying?: boolean }} opts
  */
-export async function runCanyonTelepipeNewSortieStep({
+export async function runStageBossTelepipeNewSortieStep({
 	page,
 	preset,
 	outDirAbs,
@@ -490,11 +489,17 @@ export async function runCanyonTelepipeNewSortieStep({
 }) {
 	await assertServerAlive(gameProcess, serverLogPath);
 
-	const telepipeScenario = preset.telepipeScenario ?? CANYON_TELEPIPE_READY_SCENARIO;
-	const deployScenario = preset.telepipeDeployScenario ?? preset.deployScenario ?? 'canyon-descent-tier-2';
+	const telepipeScenario = preset.telepipeScenario;
+	const deployScenario = preset.telepipeDeployScenario ?? preset.deployScenario;
+	if (!telepipeScenario) {
+		throw new Error('preset.telepipeScenario is required for stage-boss telepipe exercise');
+	}
+	if (!deployScenario) {
+		throw new Error('preset.telepipeDeployScenario (or deployScenario) is required for stage-boss telepipe exercise');
+	}
 
 	if (!fromPlaying) {
-		await createLobby(page, preset.lobbyName ?? 'Canyon Telepipe New Sortie');
+		await createLobby(page, preset.lobbyName ?? 'Stage Boss Telepipe New Sortie');
 		await waitForHubLobby(page);
 		await requestScenario(page, telepipeScenario);
 		await deployViaLaunchBooth(page);
@@ -506,17 +511,27 @@ export async function runCanyonTelepipeNewSortieStep({
 			harness = await readHarness(page);
 		}
 		if (harness?.phase !== 'playing') {
-			throw new Error(`Expected sunken-canyon playing phase before telepipe exercise: ${JSON.stringify(harness)}`);
+			throw new Error(`Expected playing phase before telepipe exercise: ${JSON.stringify(harness)}`);
+		}
+		if (preset.layoutProfile && harness?.layout?.profile !== preset.layoutProfile) {
+			throw new Error(
+				`Expected layout.profile ${preset.layoutProfile} before telepipe exercise: ${JSON.stringify(harness?.layout)}`,
+			);
 		}
 	}
 
 	const deployedHarness = await readHarness(page);
 	const telepipeInHand = (deployedHarness?.hand || []).some((card) => card?.id === 'telepipe');
 	if (!telepipeInHand) {
-		throw new Error(`Expected telepipe in hand after canyon deploy: ${JSON.stringify(deployedHarness?.hand)}`);
+		throw new Error(`Expected telepipe in hand after deploy (${telepipeScenario}): ${JSON.stringify(deployedHarness?.hand)}`);
 	}
 	if (deployedHarness?.phase !== 'playing') {
-		throw new Error(`Expected sunken-canyon playing phase: ${JSON.stringify(deployedHarness)}`);
+		throw new Error(`Expected playing phase for telepipe exercise: ${JSON.stringify(deployedHarness)}`);
+	}
+	if (preset.layoutProfile && deployedHarness?.layout?.profile !== preset.layoutProfile) {
+		throw new Error(
+			`Expected layout.profile ${preset.layoutProfile} for telepipe exercise: ${JSON.stringify(deployedHarness?.layout)}`,
+		);
 	}
 
 	const preSuspend = await depleteRunResources(page);
@@ -542,7 +557,7 @@ export async function runCanyonTelepipeNewSortieStep({
 			|| !!hubHarness?.suspendedRunSummary
 			|| hubHarness?.runId == null);
 	if (!hubReturned) {
-		throw new Error(`Expected hub lobby after canyon telepipe UP: ${JSON.stringify(hubHarness)}`);
+		throw new Error(`Expected hub lobby after telepipe UP: ${JSON.stringify(hubHarness)}`);
 	}
 
 	await abandonSuspendedRun(page);
@@ -584,7 +599,7 @@ export async function runCanyonTelepipeNewSortieStep({
 	);
 	if (checkpointRestoredInLog) {
 		throw new Error(
-			'canyon telepipe slice contains forbidden "[run] checkpoint restored" — resume path ran instead of abandon+fresh deploy',
+			'telepipe slice contains forbidden "[run] checkpoint restored" — resume path ran instead of abandon+fresh deploy',
 		);
 	}
 
@@ -600,3 +615,6 @@ export async function runCanyonTelepipeNewSortieStep({
 		afterScreenshot: path.relative(repoRoot, afterScreenshotPath),
 	};
 }
+
+/** @deprecated Use runStageBossTelepipeNewSortieStep */
+export const runCanyonTelepipeNewSortieStep = runStageBossTelepipeNewSortieStep;

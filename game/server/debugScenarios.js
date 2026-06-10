@@ -831,7 +831,7 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
-    if (name === 'training-caverns-tier-2') {
+    if (name === 'training-caverns-tier-2' || name === 'training-caverns-telepipe-ready') {
       // training_caverns Tier 2 stage_boss encounter with rigid crowded layout and
       // vault_dais boss spawn. Quest/tier and layout must be set before
       // enterPlayingPhase so startDungeonRun snapshots the correct run.questTier/
@@ -845,8 +845,19 @@ function applyDebugScenario(socket, name) {
       applyLayoutForQuest(state, questId, tier);
 
       player.ready = true;
-      player.hp = MAX_HP;
-      player.magicStones = MAX_MAGIC_STONES;
+      const deployHp = Number.isFinite(player.hp) ? player.hp : null;
+      const deployMagicStones = Number.isFinite(player.magicStones) ? player.magicStones : null;
+      if (deployHp != null) {
+        player.hp = deployHp;
+      } else {
+        player.hp = MAX_HP;
+        player.dead = false;
+      }
+      if (deployMagicStones != null) {
+        player.magicStones = deployMagicStones;
+      } else {
+        player.magicStones = MAX_MAGIC_STONES;
+      }
       const startSpawn = firstRoomPosition();
       player.x = startSpawn.x;
       player.z = startSpawn.z;
@@ -854,12 +865,14 @@ function applyDebugScenario(socket, name) {
 
       enterPlayingPhase(lobby);
 
-      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+      if (state.gamePhase === 'playing') {
         createDrawDeckFromSelectedDeck(player);
         initPlayerHand(player);
         player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
         if (!player.pendingSummons) {
           player.pendingSummons = new Set();
+        } else {
+          player.pendingSummons.clear();
         }
       }
 
@@ -869,6 +882,24 @@ function applyDebugScenario(socket, name) {
       delete state._pendingEncounterBossId;
       spawnEnemies();
       startDungeonRun();
+
+      if (name === 'training-caverns-telepipe-ready') {
+        // Debug QA shortcut: telepipe in hand for training-caverns telepipe harness exercises.
+        // Same card is reachable normally by purchasing Telepipe from the shop before deploy.
+        const telepipeDef = CARD_DEFS.telepipe;
+        const replaceSlot = player.hand.findIndex((c) => c);
+        if (telepipeDef && replaceSlot >= 0) {
+          player.hand[replaceSlot] = {
+            id: 'telepipe',
+            name: telepipeDef.name,
+            type: telepipeDef.type,
+            charges: 1,
+            remainingCharges: 1,
+            magicStoneCost: telepipeDef.magicStoneCost || 0,
+            effect: 'telepipe',
+          };
+        }
+      }
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,

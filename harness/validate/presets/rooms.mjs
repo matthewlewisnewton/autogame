@@ -6,6 +6,8 @@ export default {
 	questTier: 2,
 	bossType: 'annex_overseer',
 	deployScenario: 'training-caverns-tier-2',
+	telepipeScenario: 'training-caverns-telepipe-ready',
+	telepipeDeployScenario: 'training-caverns-tier-2',
 	layoutProfile: 'crowded',
 	lobbyName: 'Rooms Validation',
 	nearAddsScenario: 'training-caverns-near-adds',

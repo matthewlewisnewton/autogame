@@ -52,7 +52,7 @@ import {
 } from './lib/cardExercise.mjs';
 import { runEmberBurnStep, runGlacialSlowStep, runCardMechanicsStep } from './lib/cardMechanics.mjs';
 import { runSlipperyFloorStep } from './lib/slipperyFloor.mjs';
-import { runCanyonTelepipeNewSortieStep, runTelepipeResetStep } from './lib/telepipe.mjs';
+import { runStageBossTelepipeNewSortieStep, runTelepipeResetStep } from './lib/telepipe.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
@@ -1545,7 +1545,7 @@ async function main() {
 				}),
 			};
 
-			summary.canyonTelepipe = await runCanyonTelepipeNewSortieStep({
+			summary.canyonTelepipe = await runStageBossTelepipeNewSortieStep({
 				page,
 				preset,
 				outDirAbs,

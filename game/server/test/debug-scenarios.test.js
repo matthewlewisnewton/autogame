@@ -568,6 +568,25 @@ describe('debugScenario — training-caverns-tier-2', () => {
 		}
 	});
 
+	it('training-caverns-telepipe-ready deploys Tier 2 with telepipe in hand', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
+		socket.emit('debugScenario', { name: 'training-caverns-telepipe-ready' });
+		const result = await debugResultPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('training-caverns-telepipe-ready');
+		expect(stateUpdate.gamePhase).toBe('playing');
+		expect(stateUpdate.selectedQuestId).toBe(TRAINING_CAVERNS_ID);
+		expect(stateUpdate.selectedQuestTier).toBe(TRAINING_CAVERNS_TIER_2);
+
+		const player = playerForSocket(socket);
+		expect(player.hand.some((card) => card && card.id === 'telepipe')).toBe(true);
+	});
+
 	it('deploys training_caverns Tier 2 stage-boss run with encounter and rigid crowded layout', async () => {
 		const { socket } = await connectClient(baseUrl);
 
