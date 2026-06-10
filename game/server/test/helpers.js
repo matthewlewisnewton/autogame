@@ -50,6 +50,24 @@ export function waitForEvent(socket, event, timeout = 10000) {
 	});
 }
 
+/** Resolve on the first stateUpdate whose payload passes `predicate`. */
+export function waitForStateUpdate(socket, predicate, timeout = 10000) {
+	return new Promise((resolve, reject) => {
+		const timer = setTimeout(
+			() => reject(new Error('Timed out waiting for matching stateUpdate')),
+			timeout
+		);
+		const handler = (data) => {
+			if (predicate(data)) {
+				clearTimeout(timer);
+				socket.off('stateUpdate', handler);
+				resolve(data);
+			}
+		};
+		socket.on('stateUpdate', handler);
+	});
+}
+
 export function testGameState() {
 	const { getPrimaryLobbyStateForTests } = require('../lobbies.js');
 	return getPrimaryLobbyStateForTests();

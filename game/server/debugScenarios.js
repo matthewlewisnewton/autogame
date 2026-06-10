@@ -782,6 +782,10 @@ function applyDebugScenario(socket, name) {
       if (!state.run.encounter.locked) {
         lockEncounter(state.run);
       }
+      // Re-pin the boss to 1 HP immediately before the snapshot so activation/lock (or any
+      // game-loop tick they enable on this active encounter) cannot leak a full-HP boss
+      // into the emitted state. The final stateSnapshot(state) is built strictly after this pin.
+      boss.hp = 1;
       broadcastLobbyUpdate(lobby);
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot(state));
       return { ok: true, scenario: name };

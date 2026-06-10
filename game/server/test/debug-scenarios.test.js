@@ -26,6 +26,7 @@ import {
 	closeServer,
 	connectClient,
 	waitForEvent,
+	waitForStateUpdate,
 	lobbyStateForSocket,
 	playerForSocket,
 	testGameState,
@@ -405,8 +406,12 @@ describe('debugScenario — arena-trials harness combat shortcuts', () => {
 		socket.emit('debugScenario', { name: 'arena-trials-tier-2' });
 		await tier2Promise;
 
+		const bossId = testGameState().run.encounter.bossEnemyId;
 		const lowHpPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const stateUpdatePromise = waitForStateUpdate(socket, (update) => {
+			const boss = update.enemies?.find((e) => e.id === bossId);
+			return boss?.hp === 1;
+		});
 		socket.emit('debugScenario', { name: 'arena-trials-boss-low-hp' });
 		const lowHpResult = await lowHpPromise;
 		const stateUpdate = await stateUpdatePromise;
@@ -415,7 +420,6 @@ describe('debugScenario — arena-trials harness combat shortcuts', () => {
 		expect(lowHpResult.scenario).toBe('arena-trials-boss-low-hp');
 
 		const state = testGameState();
-		const bossId = state.run.encounter.bossEnemyId;
 		const boss = state.enemies.find((e) => e.id === bossId);
 		expect(boss?.type).toBe('arena_champion');
 		expect(boss?.hp).toBe(1);
@@ -1178,8 +1182,12 @@ describe('debugScenario — arena-trials-*', () => {
 		socket.emit('debugScenario', { name: 'arena-trials-tier-2' });
 		await tier2Promise;
 
+		const bossId = testGameState().run.encounter.bossEnemyId;
 		const lowHpPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const stateUpdatePromise = waitForStateUpdate(socket, (update) => {
+			const boss = update.enemies?.find((e) => e.id === bossId);
+			return boss?.hp === 1;
+		});
 		socket.emit('debugScenario', { name: 'arena-trials-boss-low-hp' });
 		const lowHpResult = await lowHpPromise;
 		const stateUpdate = await stateUpdatePromise;
@@ -1189,8 +1197,6 @@ describe('debugScenario — arena-trials-*', () => {
 
 		const state = testGameState();
 		expect(state.gamePhase).toBe('playing');
-
-		const bossId = state.run.encounter.bossEnemyId;
 		const boss = state.enemies.find((e) => e.id === bossId);
 		expect(boss).toBeTruthy();
 		expect(boss.type).toBe('arena_champion');
