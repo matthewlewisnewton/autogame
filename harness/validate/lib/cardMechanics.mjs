@@ -184,6 +184,60 @@ export async function runEmberBurnStep({ page, preset, outDirAbs, repoRoot }) {
  * @param {import('playwright').Page} page
  * @param {{ preset: object, outDirAbs: string, repoRoot: string }} opts
  */
+export async function runGlacialSlowStep({ page, preset, outDirAbs, repoRoot }) {
+	const scenario = preset.glacialSlowScenario;
+	if (!scenario) {
+		return { glacialSlowApplied: false, reason: 'glacialSlowScenario not configured' };
+	}
+
+	await requestScenario(page, scenario);
+	await page.evaluate(() => {
+		const overlay = document.getElementById('run-summary-overlay');
+		if (overlay) overlay.style.display = 'none';
+		if (typeof window.__toggleDebugGodmodeForTest === 'function') {
+			const h = window.__AUTOGAME_HARNESS_STATE__?.();
+			if (h?.player?.debugGodmode) {
+				window.__toggleDebugGodmodeForTest();
+			}
+		}
+	});
+
+	const afterGodmodeHarness = await readHarness(page);
+	const debugGodmodeOff = afterGodmodeHarness?.player?.debugGodmode !== true;
+	const hpBefore = afterGodmodeHarness?.player?.hp ?? null;
+	const deadline = Date.now() + 60000;
+	let slowApplied = false;
+	let hpAfterHit = hpBefore;
+	let playerSlowedUntil = 0;
+	while (Date.now() < deadline) {
+		const harness = await readHarness(page);
+		const now = Date.now();
+		const slowedUntil = harness?.player?.slowedUntil ?? 0;
+		if (slowedUntil > now) {
+			slowApplied = true;
+			playerSlowedUntil = slowedUntil;
+			hpAfterHit = harness?.player?.hp ?? hpBefore;
+			break;
+		}
+		await page.waitForTimeout(100);
+	}
+
+	const screenshotPath = await writeScreenshot(page, outDirAbs, '05-glacial-slow');
+
+	return {
+		glacialSlowApplied: slowApplied,
+		debugGodmodeOff,
+		playerSlowedUntil,
+		hpBefore,
+		hpAfterHit,
+		screenshot: path.relative(repoRoot, screenshotPath),
+	};
+}
+
+/**
+ * @param {import('playwright').Page} page
+ * @param {{ preset: object, outDirAbs: string, repoRoot: string }} opts
+ */
 export async function runCardMechanicsStep({ page, preset, outDirAbs, repoRoot }) {
 	const scenarios = preset.cardMechanicsScenarios;
 	if (!scenarios || typeof scenarios !== 'object') {

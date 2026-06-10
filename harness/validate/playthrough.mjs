@@ -50,7 +50,7 @@ import {
 	runPurifyingPulseExercise,
 	runWindupCardExercise,
 } from './lib/cardExercise.mjs';
-import { runEmberBurnStep, runCardMechanicsStep } from './lib/cardMechanics.mjs';
+import { runEmberBurnStep, runGlacialSlowStep, runCardMechanicsStep } from './lib/cardMechanics.mjs';
 import { runSlipperyFloorStep } from './lib/slipperyFloor.mjs';
 import { runCanyonTelepipeNewSortieStep, runTelepipeResetStep } from './lib/telepipe.mjs';
 
@@ -1072,6 +1072,9 @@ function buildAssertions(summary, preset) {
 		if (preset.questId === 'frost_crossing' || preset.slipperyFloorScenario) {
 			assertions.slipperyFloorOk = summary.slipperyFloor?.ok === true;
 		}
+		if (preset.questId === 'frost_crossing') {
+			assertions.glacialSlowApplied = summary.glacialSlow?.glacialSlowApplied === true;
+		}
 		if (preset.telepipeScenario || summary.telepipeReset || preset.questId === 'ember_descent') {
 			assertions.emberBurnApplied = summary.emberBurn?.burnTickDamageApplied === true;
 			assertions.cardMechanicsOk = summary.cardMechanics?.ok === true;
@@ -1146,6 +1149,9 @@ function buildAssertionFailureDetail(summary, preset) {
 	if (failed.includes('slipperyFloorOk')) {
 		details.push(`slipperyFloor=${JSON.stringify(summary.slipperyFloor)}`);
 	}
+	if (failed.includes('glacialSlowApplied')) {
+		details.push(`glacialSlow=${JSON.stringify(summary.glacialSlow)}`);
+	}
 	const base = `Assertion(s) failed: ${failed.join(', ')}`;
 	return details.length > 0 ? `${base} — ${details.join('; ')}` : base;
 }
@@ -1165,6 +1171,7 @@ function collectScreenshots(summary) {
 	if (summary.hub?.entryScreenshot) shots.push(summary.hub.entryScreenshot);
 	if (summary.slipperyFloor?.screenshot) shots.push(summary.slipperyFloor.screenshot);
 	if (summary.defeatEnemiesCombat?.midCombatScreenshot) shots.push(summary.defeatEnemiesCombat.midCombatScreenshot);
+	if (summary.glacialSlow?.screenshot) shots.push(summary.glacialSlow.screenshot);
 	if (summary.emberBurn?.screenshot) shots.push(summary.emberBurn.screenshot);
 	if (summary.cardMechanics?.probes?.burn?.screenshot) shots.push(summary.cardMechanics.probes.burn.screenshot);
 	if (summary.bossEncounter?.midCombatScreenshot) shots.push(summary.bossEncounter.midCombatScreenshot);
@@ -1246,6 +1253,7 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
 			...stageProbes,
 			...(summary.victory?.probes || {}),
 			...(summary.slipperyFloor ? { slipperyFloor: summary.slipperyFloor } : {}),
+			...(summary.glacialSlow ? { glacialSlow: summary.glacialSlow } : {}),
 			...(summary.emberBurn ? { emberBurn: summary.emberBurn } : {}),
 			...(summary.cardMechanics ? { cardMechanics: summary.cardMechanics } : {}),
 			...(summary.telepipeReset ? {
@@ -1465,6 +1473,15 @@ async function main() {
 
 		if (runsRoomsFull && page && preset.emberBurnScenario) {
 			summary.emberBurn = await runEmberBurnStep({
+				page,
+				preset,
+				outDirAbs,
+				repoRoot: REPO_ROOT,
+			});
+		}
+
+		if (runsRoomsFull && page && preset.glacialSlowScenario) {
+			summary.glacialSlow = await runGlacialSlowStep({
 				page,
 				preset,
 				outDirAbs,
