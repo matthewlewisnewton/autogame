@@ -49,6 +49,15 @@ export function formatObjectiveSummary(quest) {
 			}
 			return THEME.objectives.defeatCanyonWarden;
 		}
+		if (questId === 'frost_crossing') {
+			if (addCount > 0) {
+				return THEME.objectives.defeatPermafrostWardenWithSupports.replace(
+					'{addCount}',
+					String(addCount),
+				);
+			}
+			return THEME.objectives.defeatPermafrostWarden;
+		}
 		const annexOverseer = quest.encounter?.bossType === 'annex_overseer';
 		if (addCount > 0) {
 			const template = annexOverseer

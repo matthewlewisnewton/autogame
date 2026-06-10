@@ -557,12 +557,20 @@ const QUEST_DEFS = {
     tiers: {
       1: {
         name: 'Frost Crossing',
-        description: 'Clear the stone dock, cross the ice band, and defeat Rimecast the Slow.',
+        description:
+          'Clear the stone dock, cross the ice band, defeat Rimecast the Slow, '
+          + 'and bring down the Permafrost Warden at the south cairn.',
         clientNpc: 'Ice-Watch Courier Sela',
         briefing:
           'The ice band is slick with rimecast ambushes. '
-          + 'Cross the ramps, clear the thrower waves, and bring down Rimecast the Slow.',
-        objectiveType: 'defeat_enemies',
+          + 'Cross the ramps, clear the thrower waves, bring down Rimecast the Slow, '
+          + 'then defeat the Permafrost Warden guarding the south cairn.',
+        objectiveType: 'stage_boss',
+        encounter: {
+          bossType: 'permafrost_warden',
+          landmark: 'ice_cairn',
+          addCount: 0,
+        },
         rewardCurrency: 14,
         rewardCardId: 'frost_nova',
         layoutProfile: 'ice-cavern',
@@ -638,22 +646,35 @@ const QUEST_DEFS = {
             speaker: 'Ice-Watch Courier Sela',
             line: 'First thrower line is down. Rimecast the Slow is winding up across the sheet — finish the crossing.',
           },
+          {
+            beaconId: 'frost_cairn_warden',
+            trigger: 'onWaveCleared',
+            band: 'ice',
+            waveIndex: 1,
+            speaker: 'Ice-Watch Courier Sela',
+            line: 'Rimecast is down. The Permafrost Warden sleeps at the south cairn — cross the sheet and wake it when you are ready.',
+          },
         ],
         signatureCardId: 'ice_ball',
         rewardCards: ['ice_ball', 'frost_nova', 'permafrost_lance'],
         client: {
           name: 'Cairn',
           briefing:
-            'Frost crossing escort. Clear the stone dock, cross the ice sheet, and bring down Rimecast the Slow for fourteen stones from the research fund.',
+            'Frost crossing escort. Clear the stone dock, cross the ice sheet, bring down Rimecast the Slow, '
+            + 'and defeat the Permafrost Warden at the south cairn for fourteen stones from the research fund.',
         },
         dialogue: [
           {
             trigger: 'run_start',
-            text: 'Cairn on ice-watch channel. Two hostiles guard the stone dock — clear them and Sela will unseal the ramp to the ice band.',
+            text: 'Cairn on ice-watch channel. Two hostiles guard the stone dock — clear them, cross the ice band, and the Permafrost Warden waits at the south cairn.',
+          },
+          {
+            trigger: { waveCleared: 1 },
+            text: 'Ice-band arc is clear. Permafrost Warden signature on the south cairn — engage when you reach the treasure pad.',
           },
           {
             trigger: 'objective_complete',
-            text: 'Crossing is secure. Research fund transfer pending — well done.',
+            text: 'Permafrost Warden down and the crossing is secure. Research fund transfer pending — well done.',
           },
         ],
       },
@@ -1045,6 +1066,15 @@ function formatObjectiveSummary(quest) {
         );
       }
       return THEME.objectives.defeatCanyonWarden;
+    }
+    if (questId === 'frost_crossing') {
+      if (addCount > 0) {
+        return THEME.objectives.defeatPermafrostWardenWithSupports.replace(
+          '{addCount}',
+          String(addCount),
+        );
+      }
+      return THEME.objectives.defeatPermafrostWarden;
     }
     const annexOverseer = encounter?.bossType === 'annex_overseer';
     if (addCount > 0) {

@@ -562,6 +562,7 @@ const DEBUG_SCENARIOS = new Set([
   'frost-crossing-near-adds',
   'frost-crossing-glacial-thrower-slow',
   'frost-crossing-surface-transition',
+  'frost-crossing-boss-approach',
   'frost-crossing-telepipe-ready',
   'enemy-behind-wall',
   'training-caverns-tier-1',

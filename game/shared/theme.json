@@ -77,7 +77,9 @@
     "defeatSummitWarden": "Defeat the summit warden",
     "defeatSummitWardenWithSupports": "Defeat the summit warden and {addCount} supports",
     "defeatCanyonWarden": "Defeat the canyon warden",
-    "defeatCanyonWardenWithSupports": "Defeat the canyon warden and {addCount} supports"
+    "defeatCanyonWardenWithSupports": "Defeat the canyon warden and {addCount} supports",
+    "defeatPermafrostWarden": "Defeat the Permafrost Warden",
+    "defeatPermafrostWardenWithSupports": "Defeat the Permafrost Warden and {addCount} supports"
   },
   "cardDescriptions": {
     "summonAlly": "Channels an invocation",

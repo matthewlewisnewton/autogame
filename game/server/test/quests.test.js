@@ -332,8 +332,9 @@ describe('quest tier catalog', () => {
     expect(frostTier1).toMatchObject({
       questId: 'frost_crossing',
       tier: 1,
-      objectiveType: 'defeat_enemies',
+      objectiveType: 'stage_boss',
     });
+    expect(frostTier1.objectiveSummary.toLowerCase()).toContain('permafrost warden');
     expect(getLayoutProfileForQuest('frost_crossing')).toBe('ice-cavern');
     const emberTier1 = variants.find(
       (v) => v.questId === 'ember_descent' && v.tier === 1
