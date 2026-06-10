@@ -71,13 +71,6 @@ function getEscortMinion(gameState) {
   return gameState.minions.find((minion) => minion.id === minionId) || null;
 }
 
-function areEscortWavesCleared(run) {
-  if (!run?.scriptedEncounter?.rooms) return true;
-  const rooms = Object.values(run.scriptedEncounter.rooms);
-  if (rooms.length === 0) return true;
-  return rooms.every((roomState) => roomState.cleared);
-}
-
 function isEscortAtDestination(run, layout, minionOrGameState) {
   const minion = minionOrGameState?.run ? getEscortMinion(minionOrGameState) : minionOrGameState;
   const destination = run?.escort?.destination;
@@ -199,7 +192,7 @@ function tickEscort(gameState) {
     }
   }
 
-  if (atDestination && areEscortWavesCleared(run)) {
+  if (atDestination) {
     _checkRunTerminalState();
   }
 }
@@ -210,7 +203,6 @@ module.exports = {
   resolveEscortDestination,
   formatEscortDestinationLabel,
   getEscortMinion,
-  areEscortWavesCleared,
   isEscortAtDestination,
   spawnEscortNpc,
   tickEscort,

@@ -4,7 +4,9 @@
 // minion-only helper cluster they drive: minion mesh creation, the null-crawler
 // windup telegraph create/update helpers, the summon-in scale state
 // (seenMinionIds / minionSpawnTimes / minionBaseScales), the per-minion
-// previous-HP table for damage flashes, and the spike-trap hazard mesh builder.
+// previous-HP table for damage flashes, the escort NPC's persistent floating
+// HP bar (escortHealthBars, color via enemySync's healthBarColor), and the
+// spike-trap hazard mesh builder.
 //
 // Scene + keyed mesh-map stores come from ./rendererState.js so this module
 // mutates the same references renderer.js does; generic reconcile/dispose
@@ -19,8 +21,10 @@
 import * as THREE from 'three';
 import { MINION_SUMMON_IN_MS } from '../config.js';
 import { disposeOne, disposeStaleMeshes, syncMeshMap } from './meshSync.js';
+import { healthBarColor } from './enemySync.js';
 import {
 	getScene,
+	escortHealthBars,
 	minionsMeshes,
 	minionShadows,
 	minionTelegraphMeshes,
@@ -97,6 +101,59 @@ function createMinionMesh(minionType) {
 	return mesh;
 }
 
+// ── Escort HP bar helpers ──
+// The escort minion is the only minion with a persistent floating HP bar
+// (ordinary minions keep damage flashes/numbers only). Bar look + color reuse
+// the enemy health-bar pattern: 1.2-wide box scaled by hp fraction, color via
+// enemySync's healthBarColor.
+
+/** Vertical offset above the minion render Y — clears the escort_npc cylinder top. */
+export const ESCORT_HEALTH_BAR_OFFSET_Y = 0.85;
+
+/**
+ * Should-have-bar predicate: only escort minions get a persistent HP bar.
+ * @param {object} minion
+ * @returns {boolean}
+ */
+export function shouldHaveEscortHealthBar(minion) {
+	return Boolean(minion?.isEscort);
+}
+
+/**
+ * Clamped hp/maxHp fill fraction for the escort HP bar.
+ * @param {number} hp
+ * @param {number} maxHp
+ * @returns {number} 0..1 (0 when maxHp is missing/invalid)
+ */
+export function escortHealthBarFillScale(hp, maxHp) {
+	if (!(maxHp > 0)) return 0;
+	return Math.max(0, Math.min(1, hp / maxHp));
+}
+
+function createEscortHealthBarMesh(minion) {
+	const geo = new THREE.BoxGeometry(1.2, 0.1, 0.1);
+	const mat = new THREE.MeshStandardMaterial({ color: healthBarColor(minion.hp, minion.maxHp) });
+	return new THREE.Mesh(geo, mat);
+}
+
+/**
+ * Per-sync escort HP bar reconcile for one minion: create on first sight,
+ * then follow position and rescale/recolor from current hp/maxHp.
+ * @param {object} minion - snapshot minion ({ id, x, z, hp, maxHp, isEscort })
+ * @param {number} renderY - the minion mesh's render Y this frame
+ */
+function syncEscortHealthBar(minion, renderY) {
+	let bar = escortHealthBars[minion.id];
+	if (!bar) {
+		bar = createEscortHealthBarMesh(minion);
+		getScene().add(bar);
+		escortHealthBars[minion.id] = bar;
+	}
+	bar.position.set(minion.x, renderY + ESCORT_HEALTH_BAR_OFFSET_Y, minion.z);
+	bar.scale.x = escortHealthBarFillScale(minion.hp, minion.maxHp);
+	bar.material.color.setHex(healthBarColor(minion.hp, minion.maxHp));
+}
+
 function getMinionWindupDirection(minion) {
 	if (minion.windupDirX != null && minion.windupDirZ != null) {
 		return { x: minion.windupDirX, z: minion.windupDirZ };
@@ -162,6 +219,12 @@ export function syncMinionMeshes(gs) {
 		minionMesh.position.set(minion.x, minionRenderY, minion.z);
 		syncFlyingShadow(minionShadows, minion, gs.layout);
 
+		if (shouldHaveEscortHealthBar(minion)) {
+			syncEscortHealthBar(minion, minionRenderY);
+		} else {
+			disposeOne(escortHealthBars, minion.id, scene);
+		}
+
 		const spawnAt = minionSpawnTimes[minion.id];
 		if (spawnAt !== undefined) {
 			const rawT = Math.min((performance.now() - spawnAt) / MINION_SUMMON_IN_MS, 1);
@@ -221,6 +284,7 @@ export function syncMinionMeshes(gs) {
 	disposeStaleMeshes(minionsMeshes, currentMinionIds, scene);
 	disposeStaleMeshes(minionShadows, currentMinionIds, scene);
 	disposeStaleMeshes(minionTelegraphMeshes, currentMinionIds, scene);
+	disposeStaleMeshes(escortHealthBars, currentMinionIds, scene);
 	for (const id of Object.keys(previousMinionHp)) {
 		if (!currentMinionIds.has(id)) {
 			delete previousMinionHp[id];

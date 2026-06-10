@@ -6533,6 +6533,71 @@ None. (One non-blocking nit recorded in `nits.md`: `05-glacial-slow.png` is capt
 the Sortie Complete overlay appears, weakening its value as visual proof of the slow hit —
 the probe data still proves it.)
 
+
+## v0.369 — New objective type: escort/NPC partner quest (PSO Guild Quest staple)  (2026-06-10 10:59:09)
+
+
+PASS. `annex_escort` is a new tier-1 quest with `objectiveType: 'escort'`, scripted encounter rooms, Archivist Vale metadata, and the route ambush dialogue beacon `They found us!` on room 1. The normal path is reachable through the quest board by selecting Annex Evacuation and deploying; the debug shortcut only stages that same doorway state.
+
+## Design, requirements, and debug scenarios
+
+PASS. The implementation matches the design direction for a PSO-style Guild Quest escort: it adds a real quest, objective registry support, NPC protection/failure semantics, route ambushes, and UI feedback without weakening the baseline requirements for rendering, websocket play, multiplayer visualization, or movement sync.
+
+The new debug scenarios remain gated through the existing localhost/debug socket path and are only client-triggered from `?debugScenario=...`. They are QA shortcuts into states reachable by normal play: selecting/deploying Annex Evacuation, walking the escort to the ambush room, or escorting to the destination.
+
+## Validation
+
+Focused validation passed:
+
+`pnpm exec vitest run --config vitest.config.js server/test/escort_objective.test.js client/test/escort-hp-bar.test.js --coverage.enabled=false`
+
+The provided `coverage.log` shows the escort objective test suite and escort HP-bar suite passing. It also shows one unrelated full-suite failure in `server/test/debug-scenarios.test.js` for the existing `arena-trials-boss-low-hp` shortcut reporting a boss HP mismatch in `stateUpdate`; this ticket's diff does not touch that arena-trials scenario path, so I am not treating it as a blocking gap for this escort ticket.
+
+## Remaining gaps
+
+None.
+
+
+## v0.370 — 392-investigate-ice-telepipe-vitals-not-preserved  (2026-06-10 11:12:35)
+
+### Fresh sortie after Telepipe abandon on ICE
+
+PASS. The new `frost-telepipe-ready` debug scenario supports the live capture path: first emit selects Frost Crossing and injects Telepipe only on ready-up; re-emitting from the suspended lobby abandons the checkpoint while keeping lobby HP/MS, so the next ready-up starts a new ICE run id with vitals preserved. Round-2 probes confirm `preHp: 20`, `postHp: 20`, `preMagicStones: 20`, `postMagicStones: 20`, and a fresh run id (`35c1710d...` -> `b15b9e8e...`).
+
+### Design and requirements consistency
+
+PASS. This matches `game/docs/design.md`: HP and Magic Stones persist across Telepipe resume and new sortie, while fresh sortie creates a new run id and redeals cards. It does not weaken the foundation requirements: the captured run rendered a Three.js scene, connected to the server, showed the player in 3D gameplay, and exercised server-driven state transitions.
+
+### Debug scenario safeguards
+
+PASS. The new scenario is gated through the existing `debugScenario` socket/URL harness path and is allowlisted in `DEBUG_SCENARIOS`; normal gameplay does not enter it. Its end state is reachable normally by selecting Frost Crossing, having Telepipe available, deploying, extracting, abandoning the suspended run, and redeploying. It does not bypass the server persistence path under review: the scenario uses the normal lobby/run state, normal ready-up deploy, Telepipe hand injection at deploy, `abandonSuspendedRun()`, and `checkAllReady()` fresh-run handling.
+
+### Code quality and validation
+
+PASS. The changes are scoped to scenario/capture routing and regression coverage. `git diff --check` reports no whitespace issues. The provided coverage run passed: 127 test files and 1725 tests, including the new ICE telepipe persistence coverage and the fresh-sortie `frost-telepipe-ready` test.
+
+## Remaining gaps
+
+None.
+
+## v0.371 — 390-fix-slippery-floor-no-momentum  (2026-06-10 11:28:08)
+
+Pass. Normal-floor walking now seeds `vx`/`vz` from the direct walk step, so crossing from normal into slippery terrain carries forward speed instead of arriving with zero momentum. Sliding from ice back onto normal floor is still damped to a stop by normal-floor friction. Both server and client prediction tests cover normal-to-slippery velocity seeding and slippery-to-normal stopping behavior.
+
+### Server test coverage for the regression
+
+Pass. `game/server/test/slippery_floor.test.js` contains explicit regression coverage for the original playthrough failures: momentum after release, direction change while sliding, generated ice-cavern behavior when the movement context omits bounds, and both normal-to-ice and ice-to-normal transitions. The client prediction tests were updated to mirror the same transition expectations.
+
+## Design and requirements consistency
+
+The changes stay within the documented server-authoritative dungeon movement model in `game/docs/design.md`: floor sampling still comes from `sampleFloorSurface()`/layout data, and player movement remains resolved in `applyPlayerMovement()`. The foundation requirements are not regressed: the captured run shows the game renders, connects over sockets, represents multiplayer players, and accepts WASD movement during gameplay.
+
+## Code quality and validation
+
+The implementation is small and localized to movement physics and prediction parity. The `resolveMovementContext()` fallback improvement also addresses the validation-style stripped-context path without weakening normal live-collider behavior. I did not find dead code, broken exports, or console/runtime defects.
+
+Validation observed in `coverage.log`: 86 test files passed, 1593 tests passed. Coverage was collected for visibility with thresholds disabled.
+
 ## v0.372 — 380-ice-l1-miniboss-permafrost-warden  (2026-06-10 11:44:26)
 
 ### Defeat objective and rewards

@@ -75,6 +75,7 @@ const {
   resolveEncounterAnchor,
 } = require('./encounters');
 const { findPassageIndexFromRoom } = require('./scriptedEncounters');
+const { ESCORT_DESTINATION_RADIUS, getEscortMinion } = require('./escort');
 
 // index.js-local helpers + the DEBUG_SCENARIOS set, injected after modules load.
 let io = null;
@@ -272,6 +273,37 @@ function setupCrystalRescueTier1Deploy(lobby, state, player) {
 
 function setupAnnexEscortTier1Deploy(lobby, state, player) {
   setupQuestTier1Deploy(lobby, state, player, 'annex_escort');
+}
+
+/**
+ * Find a staging point in a corridor just outside `roomIndex`, so one step
+ * forward enters the room. Passage endpoints sit at room centres, so the
+ * endpoint inside the target room gives the corridor's approach direction.
+ */
+function corridorStagingOutsideRoom(layout, roomIndex, margin = 2) {
+  const room = layout?.rooms?.[roomIndex];
+  if (!room || !Array.isArray(layout.passages)) return null;
+  const inRoom = (x, z) =>
+    Math.abs(x - room.x) <= room.width / 2 && Math.abs(z - room.z) <= room.depth / 2;
+  for (const passage of layout.passages) {
+    const ends = [
+      [{ x: passage.x1, z: passage.z1 }, { x: passage.x2, z: passage.z2 }],
+      [{ x: passage.x2, z: passage.z2 }, { x: passage.x1, z: passage.z1 }],
+    ];
+    for (const [end, other] of ends) {
+      if (!inRoom(end.x, end.z) || inRoom(other.x, other.z)) continue;
+      const dx = Math.sign(other.x - end.x);
+      const dz = Math.sign(other.z - end.z);
+      const step = Math.max(1, Math.min(margin, passage.corridorLength - 1));
+      return {
+        x: room.x + dx * (room.width / 2 + step),
+        z: room.z + dz * (room.depth / 2 + step),
+        awayX: dx,
+        awayZ: dz,
+      };
+    }
+  }
+  return null;
 }
 
 function deepestCombatRoom(layout) {
@@ -576,6 +608,40 @@ function applyDebugScenario(socket, name) {
         player._msRegenGraceUntil = Date.now() + 20000;
       } else {
         // Partial vitals so harness depletion probes pass without MS regen overshooting STARTING_MAGIC_STONES.
+        player.hp = 60;
+        player.magicStones = 20;
+      }
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'frost-telepipe-ready') {
+      // frost_crossing Tier 1 with ice-cavern layout; telepipe injected on ready-up
+      // (see checkAllReady) into the default hand slot 0. Mirrors fire-telepipe-ready
+      // but drives a FRESH sortie on redeploy: re-emitting in a suspended lobby abandons
+      // the checkpoint and carries lobby HP/MS forward into a brand-new run id (the
+      // server-side enabler for the live ICE telepipe-vitals capture).
+      // Reachable normally by earning Telepipe, selecting Frost Crossing, and deploying.
+      const questId = 'frost_crossing';
+      const tier = 1;
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+      player.ready = false;
+      if (state.suspendedCheckpoint) {
+        // Fresh sortie after telepipe suspend: abandon checkpoint, keep lobby vitals so
+        // the subsequent readyAll deploy carries HP/MS forward into a new run id.
+        abandonSuspendedRun(state);
+        player._telepipeFreshSortie = true;
+        player._msRegenGraceUntil = Date.now() + 20000;
+      } else {
+        // Partial vitals so MS regen cannot overshoot STARTING_MAGIC_STONES before the
+        // capture asserts carry-forward.
         player.hp = 60;
         player.magicStones = 20;
       }
@@ -1147,6 +1213,38 @@ function applyDebugScenario(socket, name) {
       };
     }
 
+    if (name === 'escort-near-destination') {
+      // escort_objective_fixture Tier 1 with Archivist Vale staged just outside
+      // the arena-dais arrival radius while the wave-0 grunt ambush is still
+      // alive in the start room. Reachable normally by escorting the NPC across
+      // the plaza; this scenario is a shortcut to watch arrival trigger victory
+      // with enemies still alive: walk onto the dais and the escort follows in.
+      setupEscortObjectiveDeploy(lobby, state, player);
+
+      const destination = state.run?.escort?.destination;
+      const escort = getEscortMinion(state);
+      if (destination && escort) {
+        const stagingOffset = ESCORT_DESTINATION_RADIUS + 3;
+        player.x = destination.x + stagingOffset;
+        player.z = destination.z;
+        player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+        escort.x = destination.x + stagingOffset + 1.5;
+        escort.z = destination.z;
+      }
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
     if (name === 'passage-lock-gated') {
       // Scripted Encounter Fixture with a wave-0 passage lock on the start-room exit.
       // Reachable normally by deploying the passage-lock fixture quest tier;
@@ -1295,6 +1393,40 @@ function applyDebugScenario(socket, name) {
       // annex_escort Tier 1 escort objective with Archivist Vale and ambush waves.
       // Reachable normally by selecting Annex Evacuation and deploying.
       setupAnnexEscortTier1Deploy(lobby, state, player);
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
+    if (name === 'annex-escort-ambush-room') {
+      // annex_escort Tier 1 staged in the corridor just outside ambush room 1
+      // with Archivist Vale alongside. Step into the room to spring the
+      // skirmisher ambush and fire Vale's escort_ambush dialogue beacon
+      // ('They found us!'). Reachable normally by selecting Annex Evacuation
+      // and escorting Vale from the start room into the ambush room; this
+      // scenario is a shortcut to that doorway.
+      setupAnnexEscortTier1Deploy(lobby, state, player);
+
+      const staging = corridorStagingOutsideRoom(state.layout, 1);
+      if (staging) {
+        player.x = staging.x;
+        player.z = staging.z;
+        player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+        const escort = getEscortMinion(state);
+        if (escort) {
+          escort.x = staging.x + staging.awayX * 1.5;
+          escort.z = staging.z + staging.awayZ * 1.5;
+        }
+      }
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,

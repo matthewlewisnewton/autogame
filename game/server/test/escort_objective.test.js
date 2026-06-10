@@ -8,11 +8,13 @@ import {
   setGameState,
   spawnEnemies,
   startDungeonRun,
-  removeDeadEnemies,
   suspendRunToLobby,
   checkAllReady,
   isRunObjectiveComplete,
-  checkRunTerminalState,
+  buildRunSummary,
+  // tickEscort must come from index.js (the wired game-loop path): the
+  // ESM-imported escort.js instance has no checkRunTerminalState callback.
+  tickEscort,
   updateMinions,
   damageMinion,
 } from '../index.js';
@@ -20,11 +22,12 @@ import { setGameState as setSimulationGameState } from '../simulation.js';
 import {
   getEscortMinion,
   isEscortAtDestination,
-  tickEscort,
 } from '../escort.js';
 
 const require = createRequire(import.meta.url);
-const { QUEST_DEFS, ESCORT_OBJECTIVE_FIXTURE_DEF, formatObjectiveSummary } = require('../quests.js');
+const {
+  QUEST_DEFS, ESCORT_OBJECTIVE_FIXTURE_DEF, formatObjectiveSummary, getQuest,
+} = require('../quests.js');
 
 const SEED = 5151;
 const FIXTURE_QUEST_ID = 'escort_objective_fixture';
@@ -96,6 +99,17 @@ describe('escort objective registry', () => {
     const quest = ESCORT_OBJECTIVE_FIXTURE_DEF.tiers[1];
     expect(formatObjectiveSummary(quest)).toBe('Escort Archivist Vale to arena dais');
   });
+
+  it('annex_escort tier 1 carries the escort ambush dialogue beacon', () => {
+    const quest = getQuest('annex_escort', 1);
+    expect(quest.dialogueBeacons).toContainEqual({
+      beaconId: 'escort_ambush',
+      trigger: 'onRoomEntered',
+      roomIndex: 1,
+      speaker: 'Archivist Vale',
+      line: 'They found us!',
+    });
+  });
 });
 
 describe('escort deploy and follow behavior', () => {
@@ -148,6 +162,16 @@ describe('escort death fail', () => {
     expect(gameState.run.objective.label).toContain('Archivist Vale was lost');
     expect(gameState.run.objective.label).toContain('escort failed');
   });
+
+  it('summary payload carries the distinct escort failReason', () => {
+    const escort = getEscortMinion(gameState);
+    damageMinion(escort, escort.maxHp);
+    updateMinions();
+
+    expect(gameState.run.status).toBe('failed');
+    const summary = buildRunSummary('failed');
+    expect(summary.failReason).toBe('Archivist Vale was lost — escort failed');
+  });
 });
 
 describe('escort destination complete', () => {
@@ -157,13 +181,13 @@ describe('escort destination complete', () => {
     deployEscortRun(gameState);
   });
 
-  it('completes when waves are cleared and escort reaches the destination', () => {
+  it('reaches victory on arrival while ambush enemies are still alive', () => {
     const escort = getEscortMinion(gameState);
-    for (const enemy of gameState.enemies) {
-      enemy.hp = 0;
-    }
-    removeDeadEnemies();
-    expect(gameState.run.scriptedEncounter.rooms['room:0'].cleared).toBe(true);
+    expect(gameState.enemies.some((enemy) => enemy.hp > 0)).toBe(true);
+    expect(gameState.run.scriptedEncounter.rooms['room:0'].cleared).toBe(false);
+    expect(gameState.run.objective.defeatedEnemies).toBeLessThan(
+      gameState.run.objective.totalEnemies,
+    );
 
     const dais = gameState.layout.landmarks.find((lm) => lm.type === 'arena_dais');
     escort.x = dais.x;
@@ -174,8 +198,36 @@ describe('escort destination complete', () => {
     expect(gameState.run.objective.reachedDestination).toBe(true);
     expect(isRunObjectiveComplete(gameState.run.objective)).toBe(true);
 
-    checkRunTerminalState();
+    expect(gameState.enemies.some((enemy) => enemy.hp > 0)).toBe(true);
+    expect(gameState.run.scriptedEncounter.rooms['room:0'].cleared).toBe(false);
     expect(gameState.run.status).toBe('victory');
+  });
+
+  it('keeps HUD enemy-progress fields on the objective after arrival victory', () => {
+    const escort = getEscortMinion(gameState);
+    const dais = gameState.layout.landmarks.find((lm) => lm.type === 'arena_dais');
+    escort.x = dais.x;
+    escort.z = dais.z;
+
+    tickEscort(gameState);
+    expect(gameState.run.status).toBe('victory');
+    expect(gameState.run.objective.totalEnemies).toBeGreaterThan(0);
+    expect(gameState.run.objective.defeatedEnemies).toBe(0);
+  });
+
+  it('lobby run summary path reports victory on arrival', () => {
+    const escort = getEscortMinion(gameState);
+    const dais = gameState.layout.landmarks.find((lm) => lm.type === 'arena_dais');
+    escort.x = dais.x;
+    escort.z = dais.z;
+
+    tickEscort(gameState);
+    expect(gameState.run.status).toBe('victory');
+
+    const summary = buildRunSummary(gameState.run.status);
+    expect(summary.status).toBe('victory');
+    expect(summary.objective.reachedDestination).toBe(true);
+    expect(summary.failReason).toBeNull();
   });
 });
 

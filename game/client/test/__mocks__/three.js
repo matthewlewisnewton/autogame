@@ -36,6 +36,15 @@ function stubClass(name) {
 					return this;
 				},
 			};
+			// Per-instance scale (like position/rotation) — real THREE gives every
+			// Object3D its own scale vector; a shared prototype object would let one
+			// mesh's setScalar bleed into every other mesh of the same stub class.
+			this.scale = {
+				x: 1, y: 1, z: 1,
+				set: function(x, y, z) { this.x = x; this.y = y; this.z = z; return this; },
+				setScalar: function(s) { this.x = this.y = this.z = s; return this; },
+				multiplyScalar: function(s) { this.x *= s; this.y *= s; this.z *= s; return this; },
+			};
 			// Mesh constructor: (geometry, material) — store both
 			if (name === 'Mesh' && args.length >= 2) {
 				this.isMesh = true;
@@ -95,11 +104,6 @@ function stubClass(name) {
 			}
 		}
 	}
-	C.prototype.scale = {
-		x: 1, y: 1, z: 1,
-		setScalar: function(s) { this.x = this.y = this.z = s; },
-		multiplyScalar: function(s) { this.x *= s; this.y *= s; this.z *= s; },
-	};
 	C.prototype.material = {
 		color: { setHex: function() {} },
 		emissive: {
@@ -212,6 +216,16 @@ export const THREE = {
 			this.x = x;
 			this.y = y;
 			this.z = z;
+		}
+		set(x, y, z) {
+			this.x = x;
+			this.y = y;
+			this.z = z;
+			return this;
+		}
+		project() {
+			// Stub: leave coordinates as-is (NDC space), like stubClass.project
+			return this;
 		}
 	},
 	Box3: class Box3 {

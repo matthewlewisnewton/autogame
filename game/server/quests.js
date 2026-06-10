@@ -897,6 +897,13 @@ const QUEST_DEFS = {
             speaker: 'Annex Liaison Kade',
             line: 'Vale is on channel. Keep them alive and reach the vault.',
           },
+          {
+            beaconId: 'escort_ambush',
+            trigger: 'onRoomEntered',
+            roomIndex: 1,
+            speaker: 'Archivist Vale',
+            line: 'They found us!',
+          },
         ],
       },
     },

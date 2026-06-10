@@ -535,6 +535,7 @@ const DEBUG_SCENARIOS = new Set([
   'endless-siege-wave-five',
   'telepipe-ready',
   'fire-telepipe-ready',
+  'frost-telepipe-ready',
   'extracted-in-hub',
   'suspended-run-hub',
   'sloped-dungeon',
@@ -569,10 +570,12 @@ const DEBUG_SCENARIOS = new Set([
   'crystal-rescue-tier-1',
   'crystal-rescue-extraction-phase',
   'annex-escort-tier-1',
+  'annex-escort-ambush-room',
   'scripted-wave-combat',
   'passage-lock-gated',
   'passage-lock-chain',
   'escort-objective',
+  'escort-near-destination',
   'fire-cavern',
   'ember-descent-cinderghast',
   'ember-descent-near-adds',
@@ -845,6 +848,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'crystal-rescue-tier-1',
   'crystal-rescue-extraction-phase',
   'annex-escort-tier-1',
+  'annex-escort-ambush-room',
 ]);
 
 function shouldSkipDefaultEnemySpawn(state) {
@@ -1850,6 +1854,7 @@ if (typeof module !== 'undefined' && module.exports) {
     spawnCombatEnemies,
     updateSurviveSpawns,
     updateScriptedEncounters,
+    tickEscort,
     firstRoomPosition,
     pickFloorSpawnPosition,
     buildPlayerRecord,

@@ -977,6 +977,7 @@ let questCommsLineSeq = 0;
 let pendingQuestDialogue = [];
 const runSummaryOverlay = document.getElementById('run-summary-overlay');
 const summaryStatusEl = document.getElementById('summary-status');
+const summaryReasonEl = document.getElementById('summary-reason');
 const summaryQuestEl = document.getElementById('summary-quest');
 const summaryDurationEl = document.getElementById('summary-duration');
 const summaryEnemiesEl = document.getElementById('summary-enemies');
@@ -4824,6 +4825,11 @@ function showRunSummary(data) {
 
 	const statusText = data.status === 'victory' ? THEME.run.sortieComplete : THEME.run.signalLost;
 	summaryStatusEl.textContent = statusText;
+	if (summaryReasonEl) {
+		const failReason = data.failReason || '';
+		summaryReasonEl.textContent = failReason;
+		summaryReasonEl.style.display = failReason ? 'block' : 'none';
+	}
 	if (summaryQuestEl) {
 		const questLabel = formatQuestTierLabel(
 			data.questName || (data.objective && data.objective.label) || '',

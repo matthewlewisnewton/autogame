@@ -1,0 +1,23 @@
+{
+  "ok": false,
+  "failure_kind": "capture_failed",
+  "capture_diagnosis": {
+    "detected": [],
+    "client_log_tail": "[vite] Proxying /api and /socket.io \u2192 http://127.0.0.1:3004\n[vite] Game server ready at http://127.0.0.1:3004\n\n  VITE v8.0.13  ready in 626 ms\n\n  \u279c  Local:   http://localhost:5177/\n  \u279c  Network: use --host to expose\n9:29:29 AM [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.",
+    "server_log_tail": "[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/392-investigate-ice-telepipe-vitals-not-preserved/game/data/users.json\n[server] Layout for quest \"training_caverns\" tier 1: seed=352369970, profile=crowded, rooms=10\n[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]\n[auth] JWT_SECRET not set \u2014 using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.\n[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/392-investigate-ice-telepipe-vitals-not-preserved/game/data\nServer listening on port 3004\nPlayer connected: socket=DWc2CbQhXsMnX3hzAAAB, playerId=ca3a9272-9a2c-48bd-b59b-cc7be4704c60\n[server] Layout for quest \"training_caverns\" tier 1: seed=352369970, profile=crowded, rooms=10\n[server] Layout for quest \"training_caverns\" tier 1: seed=352369970, profile=crowded, rooms=10\n[loot] spawned id=173effd1-5a41-4e0e-9666-20c6ec73a75b value=14\n[telepipe] placed at (-9.0, 27.0) by ca3a9272-9a2c-48bd-b59b-cc7be4704c60\n[telepipe] player ca3a9272-9a2c-48bd-b59b-cc7be4704c60 extracted\n[run] checkpoint captured\n[run] extracted to hub: Initiate Vault\n[run] checkpoint restored\nPlayer disconnected: DWc2CbQhXsMnX3hzAAAB",
+    "port_holders": {
+      "5177": [
+        {
+          "pid": 1199135,
+          "cmdline": "node /home/matt/workspace/.autogame-worktrees/392-investigate-ice-telepipe-vitals-not-preserved/game/client/node_modules/.bin/../vite/bin/vite.js --port 5177 --strictPort"
+        }
+      ],
+      "3004": [
+        {
+          "pid": 1199105,
+          "cmdline": "node game/server/index.js"
+        }
+      ]
+    }
+  }
+}
