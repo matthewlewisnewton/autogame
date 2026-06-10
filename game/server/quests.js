@@ -1506,6 +1506,56 @@ function listQuestVariants() {
   return variants;
 }
 
+/**
+ * Builds the full level-select unlock graph: one node per quest tier (every tier
+ * of every quest, matching `listQuestVariants()` cardinality), each carrying its
+ * normalized `unlockRequires` prerequisite array and the account's per-tier
+ * locked/unlocked/cleared state.
+ *
+ * `require('./users')` is resolved lazily here (mirroring
+ * `listQuestVariantsForAccount` / `buildQuestUpdatePayload`) to avoid a circular
+ * import at module load. A falsy/unknown `accountId` yields unlocked tier-1 nodes
+ * and locked higher tiers, with no node cleared.
+ *
+ * @param {string} [accountId]
+ * @returns {{ nodes: Array<{ questId: string, tier: number, name: string,
+ *   objectiveType: string, isBoss: boolean,
+ *   unlockRequires: UnlockRequiresEntry[] | null,
+ *   state: 'locked' | 'unlocked' | 'cleared' }> }}
+ */
+function buildLevelUnlockGraph(accountId) {
+  const { isQuestTierUnlocked, hasCompletedQuestTier } = require('./users');
+  const nodes = [];
+  for (const questId of Object.keys(QUEST_DEFS)) {
+    const quest = QUEST_DEFS[questId];
+    const tierKeys = Object.keys(quest.tiers)
+      .map(Number)
+      .sort((a, b) => a - b);
+    for (const tier of tierKeys) {
+      const resolved = getQuest(questId, tier);
+      if (!resolved) {
+        continue;
+      }
+      let state = 'locked';
+      if (hasCompletedQuestTier(accountId, questId, tier)) {
+        state = 'cleared';
+      } else if (isQuestTierUnlocked(accountId, questId, tier)) {
+        state = 'unlocked';
+      }
+      nodes.push({
+        questId,
+        tier,
+        name: resolved.name,
+        objectiveType: resolved.objectiveType,
+        isBoss: resolved.objectiveType === 'stage_boss',
+        unlockRequires: normalizeUnlockRequires(resolved.unlockRequires),
+        state,
+      });
+    }
+  }
+  return { nodes };
+}
+
 function getSelectedQuest(gameState) {
   const questId = gameState && gameState.selectedQuestId;
   const tier = gameState && gameState.selectedQuestTier;
@@ -1652,6 +1702,7 @@ module.exports = {
   getDefaultQuestId,
   listQuests,
   listQuestVariants,
+  buildLevelUnlockGraph,
   getSelectedQuest,
   getLayoutProfileForQuest,
   getLayoutGenerationOptions,
