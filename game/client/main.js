@@ -1505,15 +1505,17 @@ function bindSocketHandlers(s) {
 			_prevDashZ = null;
 		}
 
-		// Cooldown HUD indicator
+		// Key item HUD (slot content + cooldown overlay)
 		if (state.gamePhase === 'playing' && myId && gameState.players[myId]) {
 			const meForCooldown = gameState.players[myId];
 			const remaining = getKeyItemCooldownRemainingMs(meForCooldown);
 			meForCooldown.keyItemCooldownRemaining = remaining;
+			renderKeyItemHud(meForCooldown, state.gamePhase);
 			updateKeyItemCooldownHud(remaining);
 			if (remaining <= 0) keyItemCooldownUntilClient = 0;
 		} else if (state.gamePhase !== 'playing') {
 			keyItemCooldownUntilClient = 0;
+			clearKeyItemCooldownHud();
 		}
 	});
 
@@ -1736,6 +1738,8 @@ function bindSocketHandlers(s) {
 			if (me) me.equippedKeyItemId = data.keyItemId;
 		}
 		renderKeyItemList();
+		const me = myId && gameState?.players ? gameState.players[myId] : null;
+		renderKeyItemHud(me, gameState?.gamePhase);
 	});
 
 	s.on(SERVER_TO_CLIENT.KEY_ITEM_ERROR, (data) => {
@@ -3484,6 +3488,73 @@ function showKeyItemError(message) {
 	}
 }
 
+function ensureKeyItemHudChildren(root) {
+	if (!root) return null;
+	let icon = root.querySelector('.key-item-hud-icon');
+	let nameEl = root.querySelector('.key-item-hud-name');
+	let keybindEl = root.querySelector('.key-item-hud-keybind');
+	let cooldownEl = root.querySelector('.key-item-hud-cooldown');
+	if (!icon) {
+		icon = document.createElement('span');
+		icon.className = 'key-item-hud-icon';
+		icon.setAttribute('aria-hidden', 'true');
+		root.appendChild(icon);
+	}
+	if (!nameEl) {
+		nameEl = document.createElement('span');
+		nameEl.className = 'key-item-hud-name';
+		root.appendChild(nameEl);
+	}
+	if (!keybindEl) {
+		keybindEl = document.createElement('span');
+		keybindEl.className = 'key-item-hud-keybind';
+		root.appendChild(keybindEl);
+	}
+	if (!cooldownEl) {
+		cooldownEl = document.createElement('span');
+		cooldownEl.className = 'key-item-hud-cooldown';
+		cooldownEl.setAttribute('aria-hidden', 'true');
+		root.appendChild(cooldownEl);
+	}
+	return { root, icon, nameEl, keybindEl, cooldownEl };
+}
+
+function setKeyItemHudIcon(iconEl, equippedId) {
+	if (!iconEl) return;
+	for (const cls of [...iconEl.classList]) {
+		if (cls.startsWith('key-item-icon--')) iconEl.classList.remove(cls);
+	}
+	if (equippedId) iconEl.classList.add(`key-item-icon--${equippedId}`);
+}
+
+/** Populate the persistent key-item HUD slot (name, icon, keybind) when equipped in-run. */
+function renderKeyItemHud(me, gamePhase) {
+	const root = document.getElementById('key-item-indicator');
+	if (!root) return;
+	const equippedId = me?.equippedKeyItemId || null;
+	const def = equippedId ? keyItemDefs[equippedId] : null;
+	const show = !!(equippedId && gamePhase === 'playing' && def);
+
+	if (!show) {
+		clearKeyItemCooldownHud();
+		return;
+	}
+
+	const { icon, nameEl, keybindEl, cooldownEl } = ensureKeyItemHudChildren(root);
+	root.setAttribute('data-key-item-id', equippedId);
+	setKeyItemHudIcon(icon, equippedId);
+	nameEl.textContent = def.name;
+
+	const binding = getUseKeyItemBinding();
+	const { mode } = getHandSlotInputHints();
+	keybindEl.textContent = mode === 'gamepad' ? binding.gamepadHint : binding.keyboard.toUpperCase();
+
+	const remaining = getKeyItemCooldownRemainingMs(me);
+	const onCooldown = remaining > 0;
+	root.classList.toggle('ready', !onCooldown);
+	if (!onCooldown && cooldownEl) cooldownEl.textContent = '';
+}
+
 /** Briefly flash the key-item HUD indicator (success=green, cooldown=red). */
 function flashKeyItemIndicator(type) {
 	const el = document.getElementById('key-item-indicator');
@@ -3512,25 +3583,31 @@ function getKeyItemCooldownRemainingMs(me) {
 
 /** Update the persistent cooldown state of the key-item HUD indicator. */
 function updateKeyItemCooldownHud(cooldownRemainingMs) {
-	const el = document.getElementById('key-item-indicator');
-	if (!el) return;
+	const root = document.getElementById('key-item-indicator');
+	if (!root || !root.getAttribute('data-key-item-id')) return;
+	const { cooldownEl } = ensureKeyItemHudChildren(root);
 	const onCooldown = (cooldownRemainingMs || 0) > 0;
-	el.classList.toggle('cooldown', onCooldown);
-	if (onCooldown) {
-		const seconds = (cooldownRemainingMs / 1000).toFixed(1);
-		el.textContent = seconds;
-	} else {
-		el.textContent = '';
+	root.classList.toggle('cooldown', onCooldown);
+	root.classList.toggle('ready', !onCooldown);
+	if (onCooldown && cooldownEl) {
+		cooldownEl.textContent = (cooldownRemainingMs / 1000).toFixed(1);
+	} else if (cooldownEl) {
+		cooldownEl.textContent = '';
 	}
 }
 
 /** Clear the key-item cooldown HUD (hide indicator when leaving gameplay). */
 function clearKeyItemCooldownHud() {
 	keyItemCooldownUntilClient = 0;
-	const el = document.getElementById('key-item-indicator');
-	if (!el) return;
-	el.classList.remove('cooldown', 'ready');
-	el.textContent = '';
+	const root = document.getElementById('key-item-indicator');
+	if (!root) return;
+	root.classList.remove('cooldown', 'ready');
+	root.removeAttribute('data-key-item-id');
+	const { icon, nameEl, keybindEl, cooldownEl } = ensureKeyItemHudChildren(root);
+	setKeyItemHudIcon(icon, null);
+	if (nameEl) nameEl.textContent = '';
+	if (keybindEl) keybindEl.textContent = '';
+	if (cooldownEl) cooldownEl.textContent = '';
 }
 
 function renderKeyItemList() {
@@ -4515,6 +4592,8 @@ function syncUseKeyItemBindingUI() {
 	if (useKeyItemGamepadLabelEl) {
 		useKeyItemGamepadLabelEl.textContent = binding.gamepadHint;
 	}
+	const me = myId && gameState?.players ? gameState.players[myId] : null;
+	renderKeyItemHud(me, gameState?.gamePhase);
 }
 
 /** State for keyboard key capture */
@@ -4643,6 +4722,8 @@ onSettingsChange(() => {
 	resetHandLayoutLock();
 	if (cardHandEl && cardHandEl.style.display !== 'none') showCardHand();
 	renderHand();
+	const me = myId && gameState?.players ? gameState.players[myId] : null;
+	renderKeyItemHud(me, gameState?.gamePhase);
 });
 syncSettingsForm();
 
@@ -4673,12 +4754,16 @@ window.addEventListener('gamepadconnected', (event) => {
 	resetHandLayoutLock();
 	if (cardHandEl && cardHandEl.style.display !== 'none') showCardHand();
 	renderHand();
+	const me = myId && gameState?.players ? gameState.players[myId] : null;
+	renderKeyItemHud(me, gameState?.gamePhase);
 });
 window.addEventListener('gamepaddisconnected', () => {
 	onGamepadConnectChange(null);
 	resetHandLayoutLock();
 	if (cardHandEl && cardHandEl.style.display !== 'none') showCardHand();
 	renderHand();
+	const me = myId && gameState?.players ? gameState.players[myId] : null;
+	renderKeyItemHud(me, gameState?.gamePhase);
 });
 
 // On page load: only connect if we have a stored token; otherwise show auth overlay.
@@ -4935,6 +5020,7 @@ window.__syncLockOnInfoPanel = syncLockOnInfoPanel;
 window.__updateBossEncounterHud = updateBossEncounterHud;
 window.__getBossEncounterModel = () => (bossEncounterModel ? { ...bossEncounterModel } : null);
 window.__updateKeyItemCooldownHud = updateKeyItemCooldownHud;
+window.__renderKeyItemHudForTest = renderKeyItemHud;
 window.__flashKeyItemIndicator = flashKeyItemIndicator;
 window.__isSocketReady = () => !!(socket && socket.connected);
 window.setLobbyTab = setLobbyTab;

@@ -36,6 +36,12 @@ function ensureMainDom() {
 	if (!document.getElementById('key-item-indicator')) {
 		const indicator = document.createElement('div');
 		indicator.id = 'key-item-indicator';
+		indicator.innerHTML = `
+			<span class="key-item-hud-icon" aria-hidden="true"></span>
+			<span class="key-item-hud-name"></span>
+			<span class="key-item-hud-keybind"></span>
+			<span class="key-item-hud-cooldown" aria-hidden="true"></span>
+		`;
 		document.body.appendChild(indicator);
 	}
 }
@@ -61,15 +67,28 @@ describe('key item cooldown HUD', () => {
 	it('updateKeyItemCooldownHud toggles cooldown class and countdown text', async () => {
 		await import('../main.js');
 
+		window.__setKeyItemDefs({
+			dodge_roll: { id: 'dodge_roll', name: 'Dodge Roll', cooldownMs: 800 },
+		});
+		window.__setGameState(
+			{ gamePhase: 'playing', players: { p1: { equippedKeyItemId: 'dodge_roll' } } },
+			'p1',
+		);
+		window.__renderKeyItemHudForTest(
+			{ equippedKeyItemId: 'dodge_roll' },
+			'playing',
+		);
+
 		const el = document.getElementById('key-item-indicator');
+		const cooldownEl = el.querySelector('.key-item-hud-cooldown');
 		window.__updateKeyItemCooldownHud(700);
 		expect(el.classList.contains('cooldown')).toBe(true);
-		expect(el.textContent).toMatch(/^0\.[0-9]+$/);
-		expect(el.textContent).toBe('0.7');
+		expect(cooldownEl.textContent).toMatch(/^0\.[0-9]+$/);
+		expect(cooldownEl.textContent).toBe('0.7');
 
 		window.__updateKeyItemCooldownHud(0);
 		expect(el.classList.contains('cooldown')).toBe(false);
-		expect(el.textContent).toBe('');
+		expect(cooldownEl.textContent).toBe('');
 	});
 
 	it('flashKeyItemIndicator adds flash-success then clears after timeout', async () => {
