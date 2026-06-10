@@ -53,6 +53,7 @@ import {
 	getUseKeyItemBinding,
 	getReservedKeys,
 } from './input.js';
+import { createAttackHintDismisser } from './attackHintDismiss.js';
 import {
 	DECK_MAX_SIZE,
 	MAX_HP,
@@ -256,11 +257,58 @@ function applyAttackHintText() {
 	if (attackHintEl) attackHintEl.textContent = getAttackCastHint().text;
 }
 
+// How long the fade-out runs before the hint is fully `display:none` (kept in
+// sync with the `#attack-hint` opacity transition in style.css).
+const ATTACK_HINT_FADE_MS = 600;
+
+// Per-run dismissal controller for the hint TEXT line (the reticle is managed
+// separately below and is never auto-dismissed). The profile key is the stored
+// player id so the "seen" flag follows the account, and a fresh profile (empty
+// localStorage) re-shows the hint.
+const attackHintDismisser = createAttackHintDismisser({
+	getPlayerId: () => {
+		try { return localStorage.getItem(STORAGE_KEY_PLAYER_ID); } catch (_) { return null; }
+	},
+	onShow: () => {
+		if (!attackHintEl) return;
+		attackHintEl.classList.remove('attack-hint-dismissed', 'hidden');
+	},
+	onHide: () => {
+		if (!attackHintEl) return;
+		attackHintEl.classList.remove('attack-hint-dismissed');
+		attackHintEl.classList.add('hidden');
+	},
+	onDismiss: () => {
+		if (!attackHintEl) return;
+		// Fade via the opacity class, then remove from layout once it settles.
+		attackHintEl.classList.add('attack-hint-dismissed');
+		window.setTimeout(() => {
+			if (attackHintEl) attackHintEl.classList.add('hidden');
+		}, ATTACK_HINT_FADE_MS);
+	},
+});
+
+/**
+ * Note a per-run attack/cast action so the hint can self-dismiss once the
+ * player has done both. Slot activations are casts, except the gamepad's
+ * primary attack button (slot 0), which the hint copy frames as the attack.
+ */
+function noteAttackHintSlotAction(slotIndex) {
+	const isGamepadAttack = getHandSlotInputHints().mode === 'gamepad' && slotIndex === 0;
+	attackHintDismisser.noteProgress(isGamepadAttack ? { attacked: true } : { casted: true });
+}
+
 /** Show/hide the center reticle + attack hint (in-run affordance only). */
 function setAttackAffordanceVisible(visible) {
 	if (attackReticleEl) attackReticleEl.classList.toggle('hidden', !visible);
-	if (attackHintEl) attackHintEl.classList.toggle('hidden', !visible);
-	if (visible) applyAttackHintText();
+	if (visible) {
+		applyAttackHintText();
+		// arm() is idempotent across the repeated showCardHand() calls during a
+		// run; reset() (on hide) re-arms it for the next run.
+		attackHintDismisser.arm();
+	} else {
+		attackHintDismisser.reset();
+	}
 }
 /** @type {'n64' | 'default' | null} */
 let handLayoutMode = null;
@@ -1076,7 +1124,7 @@ function canUseGameActions() {
 }
 
 initInput({
-	onUseSlot: (slot) => useCard(slot),
+	onUseSlot: (slot) => { useCard(slot); noteAttackHintSlotAction(slot); },
 	onToggleDeck: () => toggleDeckViewer(),
 	onUseKeyItem: () => {
 		if (!socket) return;
@@ -4056,6 +4104,7 @@ cardHandEl.addEventListener('click', (e) => {
 	const slot = e.target.closest('.card-slot');
 	if (!slot) return;
 	useCard(parseInt(slot.dataset.slotIndex, 10));
+	attackHintDismisser.noteProgress({ casted: true });
 });
 
 cardHandEl.addEventListener('contextmenu', (e) => {
@@ -4091,7 +4140,10 @@ window.addEventListener('pointerdown', (e) => {
 	const canvas = getRenderer()?.domElement;
 	if (!canvas || e.target !== canvas) return;
 	const slot = pickBasicAttackSlot();
-	if (slot >= 0) useCard(slot);
+	if (slot >= 0) {
+		useCard(slot);
+		attackHintDismisser.noteProgress({ attacked: true });
+	}
 });
 
 if (deckStackEl) {
