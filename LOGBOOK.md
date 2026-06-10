@@ -6337,3 +6337,26 @@ The implementation is client-renderer-only and preserves the documented multipla
 
 None.
 
+
+## v0.361 — Server: player movement triggers up to 20 synchronous disk writes/sec per player on the game-loop thread  (2026-06-10 07:39:47)
+
+### Disconnect, leave, periodic, and shutdown persistence
+
+PASS. The lifecycle paths still bypass the movement debounce by calling `savePlayerData()` directly for soft disconnect, eviction, and explicit lobby leave. The existing 30s periodic save interval still calls `saveAllPlayersInAllLobbies()`, and SIGINT/SIGTERM shutdown now invokes the same all-lobby save before closing the HTTP server, so dirty players inside the debounce window are persisted on clean shutdown.
+
+### Test coverage
+
+PASS. The ticket adds focused debounce coverage in `persistence_save_debounce.test.js`, updates movement/persistence trigger coverage for the debounce window, and adds a shutdown flush regression test. The captured coverage run reports `133` test files and `1973` tests passed, including the new persistence debounce and shutdown cases.
+
+### Design and foundation consistency
+
+PASS. The change is server-side persistence plumbing only. It does not alter the documented lobby/dungeon core loop, multiplayer rendering, WebSocket movement synchronization, combat, floor sampling, or foundation requirements. The fallback smoke capture exercised lobby join, ready/deploy, movement, and key-item cooldown without visual or runtime regression.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=NAME` URL shortcut. Existing test-only socket debug scenario usage remains outside normal captured gameplay; the capture itself used `debugScenario: null`.
+
+## Remaining gaps
+
+No blocking gaps found.
+
