@@ -1,0 +1,8 @@
+Wrote the review artifacts:
+
+- `tickets/374-spherical-3d-aoe-for-all-radius-effects/round-2/review.md`
+- `tickets/374-spherical-3d-aoe-for-all-radius-effects/round-2/gaps.md`
+
+Captured game run was clean, but the holistic ticket review failed due to remaining XZ-only radius effects (`barrier_dome`, `phase_step`, `loot_magnet`) and one failing coverage test in `smoke_bomb`.
+
+VERDICT: FAIL

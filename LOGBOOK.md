@@ -5983,3 +5983,26 @@ PASS. The implementation is localized to the expected combat/server paths plus a
 
 None.
 
+
+## v0.344 — 374-spherical-3d-aoe-for-all-radius-effects  (2026-06-09 22:56:18)
+
+### Enemy AoE and non-card radius effects
+
+PASS. Enemy radial attacks, field medic healing, volatile death explosions, smoke concealment, barrier dome protection, rally cry, flare beacon, phase step, field medic kit, and loot magnet now include vertical separation where their gameplay meaning is a radius/sphere. Projectile and cone mechanics keep directional behavior, but their vertical handling is explicit through 3D aim or hit sampling.
+
+### Verification coverage
+
+PASS. `coverage.log` reports `107 passed` test files and `1800 passed` tests. The new focused suites include `server/test/spherical_aoe.test.js` with 30 tests and `server/test/spherical_aoe_cards.test.js` with 27 tests, plus targeted coverage in `barrier_dome`, `phase_step`, `loot_magnet`, `smoke_bomb`, `chain_lightning`, `annex_overseer`, and `volatile_explosion`.
+
+### Design and requirements consistency
+
+PASS. The changes fit the 3D dungeon/floor-height model in `game/docs/design.md`, especially the sloped-floor `sampleFloorY()` foundation. No client/server architecture, multiplayer visualization, movement synchronization, or core lobby/dungeon loop requirement regressed in the captured run.
+
+### Debug scenarios
+
+PASS. This ticket did not add a new `?debugScenario=` shortcut, and the round-3 capture used no scenarios. Existing debug scenario gating remains unrelated to this implementation.
+
+## Remaining gaps
+
+No blocking gaps.
+

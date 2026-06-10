@@ -1,0 +1,13 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/374-spherical-3d-aoe-for-all-radius-effects/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/374-spherical-3d-aoe-for-all-radius-effects/game/data
+Server listening on port 3001
+Player connected: socket=sDbmAsStoiCgm09kAAAB, playerId=a414416e-b561-4e76-a636-bc295c3b50a3
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=Q7iTWjRFS0QgeL1xAAAD, playerId=50bd9a78-b803-44d7-980f-05030bd33133
+Player disconnected: sDbmAsStoiCgm09kAAAB
+Player disconnected: Q7iTWjRFS0QgeL1xAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

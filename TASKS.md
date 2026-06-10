@@ -124,3 +124,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [367-cleanup-anim-mirror-ward](tickets/367-cleanup-anim-mirror-ward/)
 - [ ] [371-cleanup-playthrough-revalidate-sunken-canyon](tickets/371-cleanup-playthrough-revalidate-sunken-canyon/)
 - [ ] [376-cleanup-height-aware-projectile-aiming](tickets/376-cleanup-height-aware-projectile-aiming/)
+- [ ] [377-cleanup-spherical-3d-aoe-for-all-radius-effects](tickets/377-cleanup-spherical-3d-aoe-for-all-radius-effects/)

@@ -1,0 +1,10 @@
+Remediation round 3 adds four sub-tickets for the open gaps from `review-feedback.md`. Sub-tickets 01–07 are already done (`.passed`); none were removed or changed.
+
+**New sub-tickets (dependency order):**
+
+1. `/home/matt/workspace/.autogame-worktrees/374-spherical-3d-aoe-for-all-radius-effects/tickets/374-spherical-3d-aoe-for-all-radius-effects/subtickets/08-barrier-dome-spherical-3d/ticket.md` — `barrierDomeY` + 3D dome membership in `damagePlayer()`
+2. `/home/matt/workspace/.autogame-worktrees/374-spherical-3d-aoe-for-all-radius-effects/tickets/374-spherical-3d-aoe-for-all-radius-effects/subtickets/09-phase-step-spherical-3d/ticket.md` — 3D nearest-ally selection and range gate
+3. `/home/matt/workspace/.autogame-worktrees/374-spherical-3d-aoe-for-all-radius-effects/tickets/374-spherical-3d-aoe-for-all-radius-effects/subtickets/10-loot-magnet-spherical-3d/ticket.md` — 3D attract/collect radii + loot world Y
+4. `/home/matt/workspace/.autogame-worktrees/374-spherical-3d-aoe-for-all-radius-effects/tickets/374-spherical-3d-aoe-for-all-radius-effects/subtickets/11-smoke-bomb-persistence-dirty-fix/ticket.md` — fix `persistenceDirtyOnCast` smoke-bomb test failure
+
+All four use **Verification: code** (behavior, tests, and suite pass — not purely visual).

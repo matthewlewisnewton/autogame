@@ -1,0 +1,8 @@
+Review complete. I wrote:
+
+- `tickets/374-spherical-3d-aoe-for-all-radius-effects/round-1/review.md`
+- `tickets/374-spherical-3d-aoe-for-all-radius-effects/round-1/gaps.md`
+
+Final verdict: `VERDICT: FAIL`
+
+The captured game run is healthy, but the implementation still leaves several live AoE/radius paths horizontal-only, including production paths for `dragons_breath` and `inferno_pillar`. No `nits.md` was created because I did not identify separate non-blocking cleanup worth filing.
