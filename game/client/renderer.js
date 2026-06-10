@@ -171,6 +171,22 @@ export {
 	applyVariantEmissiveTint,
 	applyFrenziedTelegraphRing,
 };
+import {
+	syncMinionMeshes,
+	syncSpikeTrapMeshes,
+	getMinionSpawnTimes,
+	createSpikeTrapHazardMesh,
+} from './renderer/minionSync.js';
+
+// Minion-domain + spike-trap-hazard sync now lives in ./renderer/minionSync.js;
+// re-exported so main.js and tests that import them from './renderer.js' keep
+// working unchanged.
+export {
+	syncMinionMeshes,
+	syncSpikeTrapMeshes,
+	getMinionSpawnTimes,
+	createSpikeTrapHazardMesh,
+};
 
 const { clientToServer: CLIENT_TO_SERVER } = eventsCatalog;
 
@@ -192,12 +208,8 @@ const PHASE_STEP_RANGE = 6; // metres — must match server KEY_ITEM_DEFS.phase_
 let phaseStepTargetId = null;
 let phaseStepAllyRing = null;
 export const windupFlashing = new Set(); // enemy ids currently showing windup emissive (read by enemySync.js)
-/** First-seen minion ids — avoids re-playing spawn scale-in after resync/reconnect. */
-const seenMinionIds = new Set();
-/** Minion id → performance.now() when scale-in began (cleared once settled). */
-const minionSpawnTimes = {};
-/** Minion id → target uniform scale while scale-in is active. */
-const minionBaseScales = {};
+// Minion summon-in scale state (seenMinionIds / minionSpawnTimes /
+// minionBaseScales) now lives in ./renderer/minionSync.js.
 let telepipeMesh = null; // Group: cylinder + 2 torus rings + particle children
 const telepipeParticles = []; // pool of rising particle spheres for the portal column
 let telepipeShimmerPhase = 0; // accumulated phase for emissive oscillation
@@ -314,7 +326,7 @@ export function markCardHitEnemies(hits) {
 		if (hit?.enemyId) lastCardHitTime[hit.enemyId] = now;
 	}
 }
-const previousMinionHp = {}; // minionId → hp from previous frame
+// previousMinionHp (minion damage-flash state) now lives in ./renderer/minionSync.js.
 const previousPlayerHp = {}; // playerId → hp from previous frame
 const lootPickupAttempts = new Map(); // lootId → last emit timestamp (ms)
 
@@ -556,7 +568,9 @@ export const ENEMY_ATTACK_VISUAL = {
 };
 
 /** Minion mesh presets keyed by minion.type */
-const MINION_VISUAL = {
+// Exported so ./renderer/minionSync.js (createMinionMesh) reads the same table;
+// also consumed by the registry-model footprint/offset helpers in this file.
+export const MINION_VISUAL = {
 	ancient_wyrm: {
 		shape: 'cylinder',
 		radius: 0.6,
@@ -988,37 +1002,7 @@ function updateKeyItemProp(host, equippedKeyItemId) {
 	}
 }
 
-function createMinionMesh(minionType) {
-	const visual = MINION_VISUAL[minionType] || {
-		shape: 'cylinder',
-		radius: 0.4,
-		height: 1,
-		color: 0x22c55e,
-		emissive: 0x000000,
-		emissiveIntensity: 0,
-	};
-
-	let geometry;
-	if (visual.shape === 'octahedron') {
-		geometry = new THREE.OctahedronGeometry(visual.radius, 0);
-	} else if (visual.shape === 'box') {
-		geometry = new THREE.BoxGeometry(visual.width, visual.height, visual.depth);
-	} else {
-		geometry = new THREE.CylinderGeometry(visual.radius, visual.radius, visual.height, 8);
-	}
-
-	const material = new THREE.MeshStandardMaterial({
-		color: visual.color,
-		emissive: visual.emissive,
-		emissiveIntensity: visual.emissiveIntensity,
-	});
-	const mesh = new THREE.Mesh(geometry, material);
-	if (visual.scale) {
-		mesh.scale.setScalar(visual.scale);
-	}
-	attachRegistryModel(minionType, mesh);
-	return mesh;
-}
+// createMinionMesh() now lives in ./renderer/minionSync.js.
 
 function resetMovementKeys() {
 	resetInputState();
@@ -1408,10 +1392,7 @@ export function getActiveEffects() {
 	return activeEffects;
 }
 
-/** Test harness: pending minion scale-in start times keyed by minion id. */
-export function getMinionSpawnTimes() {
-	return minionSpawnTimes;
-}
+// getMinionSpawnTimes() now lives in ./renderer/minionSync.js (re-exported above).
 
 /**
  * Get loot IDs with a recent pickup attempt (for test hooks / pruning).
@@ -3667,7 +3648,9 @@ function createProjectileHitboxGroup(direction, range, hitWidth, style) {
 	return { group, head };
 }
 
-function createBeamTelegraphGroup(direction, range, hitWidth, style) {
+// Exported so ./renderer/minionSync.js (createNullCrawlerTelegraph) can build the
+// same beam telegraph corridor without duplicating the geometry.
+export function createBeamTelegraphGroup(direction, range, hitWidth, style) {
 	const group = new THREE.Group();
 	const color = style.color ?? 0x22d3ee;
 	const emissive = style.emissive ?? 0x06b6d4;
@@ -3704,30 +3687,8 @@ function createBeamTelegraphGroup(direction, range, hitWidth, style) {
 	return group;
 }
 
-function getMinionWindupDirection(minion) {
-	if (minion.windupDirX != null && minion.windupDirZ != null) {
-		return { x: minion.windupDirX, z: minion.windupDirZ };
-	}
-	return { x: 1, z: 0 };
-}
-
-function createNullCrawlerTelegraph(minion) {
-	const direction = getMinionWindupDirection(minion);
-	const range = minion.attackRange ?? 14;
-	const hitWidth = minion.projectileHitWidth ?? 0.8;
-	// Windup corridor reads ghostlier than the resolved beam (brighter emissive, lower opacity).
-	const group = createBeamTelegraphGroup(direction, range, hitWidth, {
-		color: 0x67e8f9,
-		emissive: 0xa5f3fc,
-		opacity: 0.38,
-	});
-	group.position.set(minion.x, GROUND_OVERLAY_Y, minion.z);
-	return group;
-}
-
-function updateNullCrawlerTelegraph(minion, telegraph) {
-	telegraph.position.set(minion.x, GROUND_OVERLAY_Y, minion.z);
-}
+// getMinionWindupDirection() + the null-crawler telegraph create/update helpers
+// now live in ./renderer/minionSync.js.
 
 function createRustyShivStabGroup(direction, range, style) {
 	const dirAngle = Math.atan2(direction.z, direction.x);
@@ -4318,13 +4279,16 @@ function spawnThermalColumnScorchRing(origin, radius, style = {}) {
 // Spike Trap palette: a hostile steel-spike hazard, coherent with the card's red
 // accent (#f87171) yet clearly distinct from cinder_snare's fiery inferno burst —
 // brushed-steel spikes lit by a blood-red emissive glow rather than orange fire.
-const SPIKE_TRAP_SPIKE_COLOR = 0x9ca3af; // brushed steel grey
-const SPIKE_TRAP_EMISSIVE = 0xdc2626; // blood-red hazard glow on the iron
-const SPIKE_TRAP_RING_COLOR = 0xb91c1c; // dark blood-red hazard ring
-const SPIKE_TRAP_RING_EMISSIVE = 0xef4444; // red ring glow
-const SPIKE_TRAP_SPIKE_COUNT = 6; // spikes erupting in a ring around the trap
-const SPIKE_TRAP_SPIKE_HEIGHT = 0.75; // height of each iron spike
-const SPIKE_TRAP_SPIKE_RADIUS = 0.13; // base radius of each cone spike
+// Spike-trap palette — shared between the eruption VFX here and the persistent
+// hazard mesh builder (createSpikeTrapHazardMesh) in ./renderer/minionSync.js, so
+// these are exported rather than moved.
+export const SPIKE_TRAP_SPIKE_COLOR = 0x9ca3af; // brushed steel grey
+export const SPIKE_TRAP_EMISSIVE = 0xdc2626; // blood-red hazard glow on the iron
+export const SPIKE_TRAP_RING_COLOR = 0xb91c1c; // dark blood-red hazard ring
+export const SPIKE_TRAP_RING_EMISSIVE = 0xef4444; // red ring glow
+export const SPIKE_TRAP_SPIKE_COUNT = 6; // spikes erupting in a ring around the trap
+export const SPIKE_TRAP_SPIKE_HEIGHT = 0.75; // height of each iron spike
+export const SPIKE_TRAP_SPIKE_RADIUS = 0.13; // base radius of each cone spike
 
 /**
  * Spawn the erupting-spikes VFX for a Spike Trap: a cluster of vertical
@@ -4404,61 +4368,8 @@ export function spawnSpikeTrapEffect(origin, radius) {
 	}
 }
 
-/**
- * Build the persistent ground-hazard mesh for an armed spike_trap enchantment:
- * a hostile blood-red ring sized to `enc.radius` plus a small cluster of static
- * upward steel spikes. Reuses the SPIKE_TRAP_* palette so it reads as an armed
- * spike trap and stays distinct from cinder_snare's orange fire look. Geometry
- * and materials are owned by the returned group (like enemy meshes), so
- * disposeStaleMeshes / disposeMeshMap fully release them; they are allocated once
- * per trap on first sight and never per frame.
- * @param {object} enc - { x, z, radius }
- * @returns {THREE.Group}
- */
-export function createSpikeTrapHazardMesh(enc) {
-	const radius = Number.isFinite(enc?.radius) ? enc.radius : 2.5;
-	const group = new THREE.Group();
-
-	// Hostile ground ring marking the armed hazard footprint.
-	const ringGeometry = new THREE.RingGeometry(radius * 0.78, radius, 48);
-	const ringMaterial = new THREE.MeshStandardMaterial({
-		color: SPIKE_TRAP_RING_COLOR,
-		emissive: SPIKE_TRAP_RING_EMISSIVE,
-		emissiveIntensity: 0.85,
-		transparent: true,
-		opacity: 0.6,
-		side: THREE.DoubleSide,
-		depthWrite: false,
-	});
-	const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-	ring.position.y = 0.06;
-	ring.rotation.x = -Math.PI / 2;
-	group.add(ring);
-
-	// Static cluster of short upward steel spikes signalling the primed trap —
-	// shorter than the eruption VFX cones so the firing burst still reads as a hit.
-	const spikeHeight = SPIKE_TRAP_SPIKE_HEIGHT * 0.5;
-	const spikeOffset = radius * 0.45;
-	for (let s = 0; s < SPIKE_TRAP_SPIKE_COUNT; s++) {
-		const angle = (s / SPIKE_TRAP_SPIKE_COUNT) * Math.PI * 2;
-		const geometry = new THREE.ConeGeometry(SPIKE_TRAP_SPIKE_RADIUS, spikeHeight, 6);
-		const material = new THREE.MeshStandardMaterial({
-			color: SPIKE_TRAP_SPIKE_COLOR,
-			emissive: SPIKE_TRAP_EMISSIVE,
-			emissiveIntensity: 0.6,
-		});
-		const spike = new THREE.Mesh(geometry, material);
-		spike.position.set(
-			Math.cos(angle) * spikeOffset,
-			spikeHeight / 2,
-			Math.sin(angle) * spikeOffset,
-		);
-		group.add(spike);
-	}
-
-	group.position.set(enc.x, 0, enc.z);
-	return group;
-}
+// createSpikeTrapHazardMesh() now lives in ./renderer/minionSync.js (re-exported
+// above); the SPIKE_TRAP_* palette it reuses stays exported from here.
 
 /**
  * Vertical rising fire shaft for Thermal Column. Rises and fades via the
@@ -5989,119 +5900,8 @@ export function syncPlayerMeshes(gs, myId) {
 	}
 }
 
-export function syncMinionMeshes(gs) {
-	// ── Minion mesh sync ──
-	const currentMinionIds = new Set(gs.minions ? gs.minions.map((m) => m.id) : []);
-
-	for (const minion of (gs.minions || [])) {
-		if (!minionsMeshes[minion.id]) {
-			const mesh = createMinionMesh(minion.type);
-			scene.add(mesh);
-			minionsMeshes[minion.id] = mesh;
-			if (!seenMinionIds.has(minion.id)) {
-				seenMinionIds.add(minion.id);
-				minionSpawnTimes[minion.id] = performance.now();
-				minionBaseScales[minion.id] = mesh.scale.x;
-				mesh.scale.setScalar(0.001);
-			} else if (minionSpawnTimes[minion.id] === undefined) {
-				const settledScale = minionBaseScales[minion.id] ?? mesh.scale.x;
-				mesh.scale.setScalar(settledScale);
-			}
-		}
-		const minionMesh = minionsMeshes[minion.id];
-		// Flying minions (storm_eagle, thunderbird) hover at the floor-aware
-		// surface + altitude; grounded minions keep the fixed 0.5
-		// (flyingRenderOffset → 0).
-		const minionRenderY = 0.5 + flyingRenderOffset(minion, gs.layout);
-		minionMesh.position.set(minion.x, minionRenderY, minion.z);
-		syncFlyingShadow(minionShadows, minion, gs.layout);
-
-		const spawnAt = minionSpawnTimes[minion.id];
-		if (spawnAt !== undefined) {
-			const rawT = Math.min((performance.now() - spawnAt) / MINION_SUMMON_IN_MS, 1);
-			const eased = rawT * (2 - rawT);
-			const baseScale = minionBaseScales[minion.id] ?? 1;
-			minionMesh.scale.setScalar(Math.max(0.001, baseScale * eased));
-			if (rawT >= 1) {
-				minionMesh.scale.setScalar(baseScale);
-				delete minionSpawnTimes[minion.id];
-				delete minionBaseScales[minion.id];
-			}
-		}
-
-		if (minion.type === 'null_crawler' && minion.attackState === 'windup') {
-			if (!minionTelegraphMeshes[minion.id]) {
-				const telegraph = createNullCrawlerTelegraph(minion);
-				scene.add(telegraph);
-				minionTelegraphMeshes[minion.id] = telegraph;
-				const windupMs = minion.attackWindupMs ?? 1000;
-				const beamRange = minion.attackRange ?? 14;
-				spawnTelegraphRing(
-					{ x: minion.x, z: minion.z },
-					Math.min(beamRange * 0.32, 3.2),
-					{
-						color: 0x67e8f9,
-						emissive: 0xa5f3fc,
-						duration: windupMs,
-					},
-				);
-			} else {
-				updateNullCrawlerTelegraph(minion, minionTelegraphMeshes[minion.id]);
-			}
-			const mesh = minionsMeshes[minion.id];
-			if (mesh?.material?.emissive) {
-				mesh.material.emissive.setHex(0x67e8f9);
-				mesh.material.emissiveIntensity = 1.0;
-			}
-		} else {
-			disposeOne(minionTelegraphMeshes, minion.id, scene);
-			if (minion.type === 'null_crawler') {
-				const mesh = minionsMeshes[minion.id];
-				if (mesh?.material?.emissive) {
-					mesh.material.emissive.setHex(0x06b6d4);
-					mesh.material.emissiveIntensity = 0.55;
-				}
-			}
-		}
-
-		if (previousMinionHp[minion.id] !== undefined && minion.hp < previousMinionHp[minion.id]) {
-			const damageAmount = previousMinionHp[minion.id] - minion.hp;
-			flashMesh(minionsMeshes[minion.id], 0xff4444, 150);
-			spawnDamageNumber(minion.x, 1.2 + flyingRenderOffset(minion, gs.layout), minion.z, damageAmount, '#ff4444');
-		}
-		previousMinionHp[minion.id] = minion.hp;
-	}
-
-	disposeStaleMeshes(minionsMeshes, currentMinionIds, scene);
-	disposeStaleMeshes(minionShadows, currentMinionIds, scene);
-	disposeStaleMeshes(minionTelegraphMeshes, currentMinionIds, scene);
-	for (const id of Object.keys(previousMinionHp)) {
-		if (!currentMinionIds.has(id)) {
-			delete previousMinionHp[id];
-		}
-	}
-	for (const id of [...seenMinionIds]) {
-		if (!currentMinionIds.has(id)) {
-			seenMinionIds.delete(id);
-			delete minionSpawnTimes[id];
-			delete minionBaseScales[id];
-		}
-	}
-}
-
-export function syncSpikeTrapMeshes(gs) {
-	// Spike trap hazard mesh sync: reconcile a persistent ground-hazard mesh
-	// per armed spike_trap from the snapshot, mirroring the enemy/minion
-	// pattern. Only spike_trap is handled here; other effects (e.g.
-	// cinder_snare) are left to their own handling.
-	const armedSpikeTraps = (gs.enchantments || []).filter(
-		(enc) => enc && enc.effect === 'spike_trap' && enc.armed,
-	);
-	syncMeshMap(spikeTrapMeshes, armedSpikeTraps, {
-		create: createSpikeTrapHazardMesh,
-		update: (mesh, enc) => mesh.position.set(enc.x, 0, enc.z),
-	});
-}
+// syncMinionMeshes() + syncSpikeTrapMeshes() now live in
+// ./renderer/minionSync.js (imported + re-exported near the top of this file).
 
 export function animate(timestamp) {
 	requestAnimationFrame(animate);
