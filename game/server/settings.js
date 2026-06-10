@@ -40,6 +40,20 @@ const C_BUTTON_DIRECTIONS = ['up', 'down', 'left', 'right'];
 const AXIS_DIRECTIONS = ['positive', 'negative'];
 const KEYBOARD_KEY_REGEX = /^[a-z]$/;
 
+/** Maximum UTF-8 byte length of persisted settings JSON (pretty-printed). */
+const SETTINGS_MAX_BYTES = 8192;
+
+/** Test-only override for SETTINGS_MAX_BYTES (null = use default). */
+let settingsMaxBytesOverride = null;
+
+function getSettingsMaxBytes() {
+	return settingsMaxBytesOverride ?? SETTINGS_MAX_BYTES;
+}
+
+function serializedSettingsByteLength(settings) {
+	return Buffer.byteLength(JSON.stringify(settings, null, 2), 'utf-8');
+}
+
 function isPlainObject(val) {
 	return val !== null && typeof val === 'object' && !Array.isArray(val);
 }
@@ -387,7 +401,12 @@ function getSettings(accountId) {
 	const filePath = settingsFilePath(accountId);
 	try {
 		const raw = fs.readFileSync(filePath, 'utf-8');
-		return mergeWithDefaults(JSON.parse(raw));
+		const merged = mergeWithDefaults(JSON.parse(raw));
+		// Oversized on-disk files (legacy or tampered) fall back to defaults on read.
+		if (serializedSettingsByteLength(merged) > getSettingsMaxBytes()) {
+			return getDefaultSettings();
+		}
+		return merged;
 	} catch (err) {
 		if (err.code === 'ENOENT') return getDefaultSettings();
 		throw err;
@@ -408,11 +427,18 @@ function updateSettings(accountId, partial) {
 
 	const current = getSettings(accountId);
 	const merged = backfillSettings(deepMerge(current, validation.value));
+	const serialized = JSON.stringify(merged, null, 2);
+	if (Buffer.byteLength(serialized, 'utf-8') > getSettingsMaxBytes()) {
+		return {
+			ok: false,
+			reason: `Settings exceed maximum size of ${getSettingsMaxBytes()} bytes`,
+		};
+	}
 	const dir = getSettingsDir();
 	fs.mkdirSync(dir, { recursive: true });
 	const finalPath = settingsFilePath(accountId);
 	const tmpPath = finalPath + '.tmp';
-	fs.writeFileSync(tmpPath, JSON.stringify(merged, null, 2), 'utf-8');
+	fs.writeFileSync(tmpPath, serialized, 'utf-8');
 	fs.renameSync(tmpPath, finalPath);
 	return { ok: true, settings: merged };
 }
@@ -420,6 +446,16 @@ function updateSettings(accountId, partial) {
 /** Test-only: reset path and clear settings directory reference */
 function resetSettingsPath() {
 	settingsBasePath = null;
+}
+
+/** Test-only: lower the settings size cap for cap-rejection tests */
+function setSettingsMaxBytesForTests(maxBytes) {
+	settingsMaxBytesOverride = maxBytes;
+}
+
+/** Test-only: restore default settings size cap */
+function resetSettingsMaxBytesForTests() {
+	settingsMaxBytesOverride = null;
 }
 
 /** Test-only: delete all settings files in the configured directory */
@@ -436,6 +472,7 @@ function clearAllSettings() {
 }
 
 module.exports = {
+	SETTINGS_MAX_BYTES,
 	SETTINGS_TOP_LEVEL_KEYS,
 	LOCK_ON_REPEAT_ACTIONS,
 	KEYBOARD_BINDING_ACTIONS,
@@ -452,6 +489,8 @@ module.exports = {
 	validateSettings,
 	backfillSettings,
 	resetSettingsPath,
+	setSettingsMaxBytesForTests,
+	resetSettingsMaxBytesForTests,
 	clearAllSettings,
 	getSettingsDir
 };

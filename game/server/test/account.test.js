@@ -3,6 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import jwt from 'jsonwebtoken';
+import { createRequire } from 'module';
 import {
 	startServer,
 	resetGameState,
@@ -13,8 +14,11 @@ import {
 } from '../index.js';
 import { setServerUsersFilePath, clearServerUsers } from './helpers.js';
 import { initAuth, resetAuthSecret } from '../auth.js';
-import { clearAllSettings, resetSettingsPath } from '../settings.js';
 import { PROPORTION_KEYS, PROPORTION_RANGES } from '../cosmetic.js';
+
+const require = createRequire(import.meta.url);
+// Vitest loads settings.js twice (ESM import vs CJS require); HTTP routes use the CJS instance.
+const serverSettings = require('../settings.js');
 
 async function startTestServer() {
 	if (httpServer.listening) {
@@ -87,14 +91,15 @@ beforeEach(async () => {
 	process.env.PERSISTENCE_PATH = tmpDataDir;
 	setServerUsersFilePath(tmpUserFile);
 	clearServerUsers();
-	resetSettingsPath();
-	clearAllSettings();
+	serverSettings.resetSettingsPath();
+	serverSettings.clearAllSettings();
 	resetAuthSecret();
 	initAuth();
 	baseUrl = await startTestServer();
 });
 
 afterEach(async () => {
+	serverSettings.resetSettingsMaxBytesForTests();
 	await closeTestServer();
 	delete process.env.PERSISTENCE_PATH;
 	try { fs.unlinkSync(tmpUserFile); } catch {}
@@ -176,6 +181,34 @@ describe('PATCH /api/me/settings', () => {
 		const meRes = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
 		const me = await meRes.json();
 		expect(me.settings.lockOnRepeatAction).toBe('unlock');
+	});
+
+	it('returns 400 when settings would exceed the size cap', async () => {
+		const token = await registerAndLogin('settings-cap', 'pass');
+
+		const okRes = await fetch(`${baseUrl}/api/me/settings`, {
+			method: 'PATCH',
+			headers: authHeaders(token),
+			body: JSON.stringify({ soundEnabled: false }),
+		});
+		expect(okRes.status).toBe(200);
+
+		serverSettings.setSettingsMaxBytesForTests(100);
+
+		const patchRes = await fetch(`${baseUrl}/api/me/settings`, {
+			method: 'PATCH',
+			headers: authHeaders(token),
+			body: JSON.stringify({ particlesEnabled: false }),
+		});
+		expect(patchRes.status).toBe(400);
+		const body = await patchRes.json();
+		expect(body.error).toMatch(/exceed maximum size/i);
+
+		serverSettings.resetSettingsMaxBytesForTests();
+		const meRes = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		const me = await meRes.json();
+		expect(me.settings.soundEnabled).toBe(false);
+		expect(me.settings.particlesEnabled).toBe(true);
 	});
 
 	it('does not persist unknown keys from PATCH body', async () => {

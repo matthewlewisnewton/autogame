@@ -13,6 +13,9 @@ import {
 	backfillSettings,
 	getSettingsDir,
 	SETTINGS_TOP_LEVEL_KEYS,
+	SETTINGS_MAX_BYTES,
+	setSettingsMaxBytesForTests,
+	resetSettingsMaxBytesForTests,
 } from '../settings.js';
 
 describe('settings persistence', () => {
@@ -26,6 +29,7 @@ describe('settings persistence', () => {
 	});
 
 	afterEach(() => {
+		resetSettingsMaxBytesForTests();
 		resetSettingsPath();
 		try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
 	});
@@ -113,6 +117,84 @@ describe('settings persistence', () => {
 		const loaded = getSettings(id);
 		expect(loaded.soundEnabled).toBe(true);
 		expect(loaded.particlesEnabled).toBe(false);
+	});
+
+	it('exports SETTINGS_MAX_BYTES as 8192', () => {
+		expect(SETTINGS_MAX_BYTES).toBe(8192);
+	});
+
+	it('persists legitimate full binding/profile overrides under the cap', () => {
+		const id = 'acct-full-profile';
+		const result = updateSettings(id, {
+			soundEnabled: false,
+			particlesEnabled: false,
+			showHitboxes: false,
+			lockOnRepeatAction: 'cycle',
+			keyboard: { bindings: { useKeyItem: 'q' } },
+			gamepad: {
+				bindings: {
+					useSlot0: { type: 'axis', axis: 'cX', direction: 'negative', threshold: 0.35 },
+					useSlot1: { type: 'button', index: 1 },
+					useSlot2: { type: 'cButton', direction: 'up', threshold: 0.2 },
+					useKeyItem: { type: 'button', index: 4, modifier: true },
+				},
+				moveStick: 'right',
+				deadzone: 0.25,
+				profile: '8bitdo-64',
+				modifierButton: 6,
+			},
+		});
+		expect(result.ok).toBe(true);
+		const raw = fs.readFileSync(path.join(getSettingsDir(), `${id}.json`), 'utf-8');
+		expect(Buffer.byteLength(raw, 'utf-8')).toBeLessThanOrEqual(SETTINGS_MAX_BYTES);
+		expect(getSettings(id)).toEqual(result.settings);
+	});
+
+	it('updateSettings rejects merged settings over the cap without writing', () => {
+		const id = 'acct-cap';
+		updateSettings(id, { soundEnabled: false });
+		const before = fs.readFileSync(path.join(getSettingsDir(), `${id}.json`), 'utf-8');
+
+		setSettingsMaxBytesForTests(100);
+		const result = updateSettings(id, { particlesEnabled: false });
+		expect(result.ok).toBe(false);
+		expect(result.reason).toMatch(/exceed maximum size/i);
+		expect(result.reason).toMatch(/100/);
+
+		const after = fs.readFileSync(path.join(getSettingsDir(), `${id}.json`), 'utf-8');
+		expect(after).toBe(before);
+		const onDisk = JSON.parse(after);
+		expect(onDisk.soundEnabled).toBe(false);
+		expect(onDisk.particlesEnabled).toBe(true);
+	});
+
+	it('repeated PATCHes with junk keys do not grow stored byte size', () => {
+		const id = 'acct-junk-growth';
+		updateSettings(id, { soundEnabled: false });
+		const filePath = path.join(getSettingsDir(), `${id}.json`);
+		const baselineSize = Buffer.byteLength(fs.readFileSync(filePath, 'utf-8'), 'utf-8');
+		for (let i = 0; i < 20; i++) {
+			const junk = {};
+			for (let j = 0; j < 50; j++) {
+				junk[`junk_${i}_${j}`] = 'x'.repeat(200);
+			}
+			const result = updateSettings(id, { ...junk });
+			expect(result.ok).toBe(true);
+			const raw = fs.readFileSync(filePath, 'utf-8');
+			expect(Buffer.byteLength(raw, 'utf-8')).toBe(baselineSize);
+			const parsed = JSON.parse(raw);
+			expect(parsed.hackerField).toBeUndefined();
+			expect(Object.keys(parsed).sort()).toEqual([...SETTINGS_TOP_LEVEL_KEYS].sort());
+		}
+	});
+
+	it('getSettings falls back to defaults when on-disk backfilled settings exceed the cap', () => {
+		const id = 'acct-oversized-load';
+		const filePath = path.join(getSettingsDir(), `${id}.json`);
+		fs.writeFileSync(filePath, JSON.stringify(getDefaultSettings(), null, 2), 'utf-8');
+
+		setSettingsMaxBytesForTests(100);
+		expect(getSettings(id)).toEqual(getDefaultSettings());
 	});
 
 	it('getSettings prunes junk keys from manually written files on read', () => {
