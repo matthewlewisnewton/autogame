@@ -1256,6 +1256,25 @@ describe('debugScenario — spire-ascent-tier-2', () => {
 		}
 	});
 
+	it('spire-ascent-telepipe-ready deploys Tier 2 with telepipe in hand', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
+		socket.emit('debugScenario', { name: 'spire-ascent-telepipe-ready' });
+		const result = await debugResultPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('spire-ascent-telepipe-ready');
+		expect(stateUpdate.gamePhase).toBe('playing');
+		expect(stateUpdate.selectedQuestId).toBe(SPIRE_ASCENT_ID);
+		expect(stateUpdate.selectedQuestTier).toBe(SPIRE_ASCENT_TIER_2);
+
+		const player = playerForSocket(socket);
+		expect(player.hand.some((card) => card && card.id === 'telepipe')).toBe(true);
+	});
+
 	it('deploys spire_ascent Tier 2 stage-boss run with encounter and rigid layout', async () => {
 		const { socket } = await connectClient(baseUrl);
 
@@ -1370,15 +1389,17 @@ describe('debugScenario — spire-ascent-tier-2 harness shortcuts', () => {
 
 		expect(player.hand[0]?.type).toBe('weapon');
 		expect(player.hand[0]?.remainingCharges).toBeGreaterThan(0);
+		const spireHarnessAddTypes = new Set(['grunt', 'skirmisher', 'miniboss', 'spawner']);
 		expect(
 			state.enemies.filter(
-				(e) => e.hp > 0 && e.type !== 'spire_warden',
+				(e) => e.hp > 0 && e.type !== 'spire_warden' && spireHarnessAddTypes.has(e.type),
 			).every((e) => e.hp === 1 && !e.shieldHp),
 		).toBe(true);
 
-		let nearest = addsBefore[0];
+		const harnessAddsBefore = addsBefore.filter((e) => spireHarnessAddTypes.has(e.type));
+		let nearest = harnessAddsBefore[0] ?? addsBefore[0];
 		let bestDist = Infinity;
-		for (const add of addsBefore) {
+		for (const add of harnessAddsBefore.length > 0 ? harnessAddsBefore : addsBefore) {
 			const dist = Math.hypot(add.x - player.x, add.z - player.z);
 			if (dist < bestDist) {
 				bestDist = dist;

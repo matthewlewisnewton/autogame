@@ -1523,11 +1523,31 @@ function bindSocketHandlers(s) {
 		if (data && data.ok) {
 			console.log(`[debugScenario] applied ${data.scenario}`);
 			const cardProbeScenarios = new Set([
+				'ice-ball-ready',
+				'fireball-hand-ready',
 				'fireball-ready',
 				'status-mutual-exclusion-ready',
 				'purifying-pulse-ready',
 				'magma-windup-ready',
 			]);
+			// Card exercises cast on the next harness tick; sync facing/cooldowns now
+			// so keyboard useCard is not blocked or mis-aimed before deferred snap.
+			if (cardProbeScenarios.has(data.scenario)
+				&& gameState?.gamePhase === 'playing'
+				&& myId
+				&& gameState.players[myId]) {
+				const me = gameState.players[myId];
+				for (let i = 0; i < slotCooldowns.length; i += 1) {
+					slotCooldowns[i] = false;
+				}
+				if (Array.isArray(me.hand)) {
+					applyInRunDeckPayload({ hand: me.hand });
+					renderHand();
+				}
+				if (Number.isFinite(me.rotation)) {
+					alignAttackFacing(me.rotation);
+				}
+			}
 			// Repositioning scenarios emit stateUpdate before this result; defer one
 			// tick so the client sim snaps after that payload is applied.
 			setTimeout(() => {
@@ -1535,11 +1555,7 @@ function bindSocketHandlers(s) {
 					const me = gameState.players[myId];
 					setPlayerPosition(me.x, me.z);
 					clearAllLockOnState();
-					if (cardProbeScenarios.has(data.scenario) && Array.isArray(me.hand)) {
-						applyInRunDeckPayload({ hand: me.hand });
-						renderHand();
-					}
-					if (Number.isFinite(me.rotation)) {
+					if (cardProbeScenarios.has(data.scenario) && Number.isFinite(me.rotation)) {
 						alignAttackFacing(me.rotation);
 					}
 				}

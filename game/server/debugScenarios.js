@@ -385,8 +385,9 @@ function resolveSpireSummitAnchor(state) {
 }
 
 function liveSpireAscentAdds(state, bossType = 'spire_warden') {
+  const addTypes = new Set(['grunt', 'skirmisher', 'miniboss', 'spawner']);
   return (state.enemies || []).filter(
-    (e) => e.hp > 0 && e.type !== bossType,
+    (e) => e.hp > 0 && e.type !== bossType && addTypes.has(e.type),
   );
 }
 
@@ -509,6 +510,37 @@ function finishStageBossDebugScenario(lobby, state, player, name) {
 
 function syncCardProbeHand(player) {
   if (player?.id) emitPlayerDeckUpdate(player.id);
+}
+
+/** Grunt in cast range for harness card exercises; floor Y on vertical layouts. */
+function spawnCardExerciseGrunt(state, player, offsetX, offsetZ = 0) {
+  const enemy = spawnEnemy(player.x + offsetX, player.z + offsetZ, 'grunt');
+  enemy.hp = 80;
+  enemy.maxHp = 80;
+  enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+  if (state.layout) {
+    enemy.y = resolveFloorY(sampleFloorY(state.layout, enemy.x, enemy.z));
+  }
+  return enemy;
+}
+
+function resetCardExerciseCooldowns(player) {
+  player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+}
+
+/** Stand off from a live enemy and face it for harness keyboard casts. */
+function repositionPlayerForCardExerciseCast(state, player, enemy, standoff = 3) {
+  if (!enemy || enemy.hp <= 0) return;
+  const dx = enemy.x - player.x;
+  const dz = enemy.z - player.z;
+  const dist = Math.hypot(dx, dz) || 1;
+  player.x = enemy.x - (dx / dist) * standoff;
+  player.z = enemy.z - (dz / dist) * standoff;
+  if (state.layout) {
+    player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+    enemy.y = resolveFloorY(sampleFloorY(state.layout, enemy.x, enemy.z));
+  }
+  player.rotation = Math.atan2(dz, dx);
 }
 
 function maybeAdoptSyntheticDefeatEnemies(state) {
@@ -687,7 +719,16 @@ function applyDebugScenario(socket, name) {
       // card exercises (e.g. slow then burn on the same target after ice-ball-ready).
       // The same card is reachable normally by earning or drawing Fireball mid-run.
       player.magicStones = MAX_MAGIC_STONES;
-      player.rotation = 0;
+      resetCardExerciseCooldowns(player);
+      const statusNow = Date.now();
+      const slowedTarget = (state.enemies || []).find(
+        (enemy) => enemy && enemy.hp > 0 && (enemy.slowedUntil ?? 0) > statusNow,
+      );
+      if (slowedTarget) {
+        repositionPlayerForCardExerciseCast(state, player, slowedTarget);
+      } else {
+        player.rotation = 0;
+      }
       const replaceSlot = player.hand.findIndex(c => c != null);
       if (replaceSlot >= 0) {
         player.hand[replaceSlot] = {
@@ -698,6 +739,7 @@ function applyDebugScenario(socket, name) {
           remainingCharges: 4,
         };
       }
+      syncCardProbeHand(player);
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return { ok: true, scenario: name };
     }
@@ -2383,7 +2425,7 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
-    if (name === 'spire-ascent-tier-2') {
+    if (name === 'spire-ascent-tier-2' || name === 'spire-ascent-telepipe-ready') {
       // spire_ascent Tier 2 with rigid spire-ascent layout and bottom/top-weighted spawns.
       // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
       // snapshots the correct run.questTier/objective and spawnEnemy variant rolls.
@@ -2397,8 +2439,19 @@ function applyDebugScenario(socket, name) {
       applyLayoutForQuest(state, questId, tier);
 
       player.ready = true;
-      player.hp = MAX_HP;
-      player.magicStones = MAX_MAGIC_STONES;
+      const deployHp = Number.isFinite(player.hp) ? player.hp : null;
+      const deployMagicStones = Number.isFinite(player.magicStones) ? player.magicStones : null;
+      if (deployHp != null) {
+        player.hp = deployHp;
+      } else {
+        player.hp = MAX_HP;
+        player.dead = false;
+      }
+      if (deployMagicStones != null) {
+        player.magicStones = deployMagicStones;
+      } else {
+        player.magicStones = MAX_MAGIC_STONES;
+      }
       const bottomSpawn = firstRoomPosition();
       player.x = bottomSpawn.x;
       player.z = bottomSpawn.z;
@@ -2406,12 +2459,14 @@ function applyDebugScenario(socket, name) {
 
       enterPlayingPhase(lobby);
 
-      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+      if (state.gamePhase === 'playing') {
         createDrawDeckFromSelectedDeck(player);
         initPlayerHand(player);
         player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
         if (!player.pendingSummons) {
           player.pendingSummons = new Set();
+        } else {
+          player.pendingSummons.clear();
         }
       }
 
@@ -2421,6 +2476,41 @@ function applyDebugScenario(socket, name) {
       delete state._pendingEncounterBossId;
       spawnEnemies();
       startDungeonRun();
+
+      if (name === 'spire-ascent-telepipe-ready') {
+        // Debug QA shortcut: telepipe in hand for spire telepipe harness exercises.
+        // Same card is reachable normally by purchasing Telepipe from the shop before deploy.
+        state.minions = [];
+        const telepipeDef = CARD_DEFS.telepipe;
+        if (telepipeDef) {
+          player.hand[0] = {
+            id: 'telepipe',
+            name: telepipeDef.name,
+            type: telepipeDef.type,
+            charges: 1,
+            remainingCharges: 1,
+            magicStoneCost: telepipeDef.magicStoneCost || 0,
+            effect: 'telepipe',
+          };
+        }
+        // Harness depleteRunResources needs a non-telepipe weapon after card exercises.
+        const rockDef = CARD_DEFS.throw_rock;
+        if (rockDef) {
+          player.hand[1] = {
+            id: 'throw_rock',
+            name: rockDef.name,
+            type: 'weapon',
+            charges: rockDef.charges,
+            remainingCharges: rockDef.charges,
+          };
+        }
+        for (const card of player.hand) {
+          if (!card) continue;
+          delete card.activeMinionId;
+          delete card.burnMaxTtl;
+        }
+        syncCardProbeHand(player);
+      }
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
@@ -4206,6 +4296,7 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       player.rotation = 0;
+      resetCardExerciseCooldowns(player);
       // Harness casts via keyboard (client rotation), not server-only useCard; force
       // the next slow roll so playthrough validation is deterministic (65% is flaky).
       player.debugForceStatusRoll = 'slow';
@@ -4220,14 +4311,10 @@ function applyDebugScenario(socket, name) {
         };
       }
       state.enemies = [];
-      const near = spawnEnemy(player.x + 4, player.z, 'grunt');
-      near.hp = 80;
-      near.maxHp = 80;
-      near.wanderTarget = { x: near.x, z: near.z };
-      const far = spawnEnemy(player.x + 7, player.z, 'grunt');
-      far.hp = 80;
-      far.maxHp = 80;
-      far.wanderTarget = { x: far.x, z: far.z };
+      const nearGrunt = spawnCardExerciseGrunt(state, player, 4);
+      spawnCardExerciseGrunt(state, player, 7);
+      repositionPlayerForCardExerciseCast(state, player, nearGrunt);
+      syncCardProbeHand(player);
     } else if (name === 'frost-spells-ready') {
       // Playing phase with Cryo Burst and Permafrost Lance in hand, full Magic
       // Stones, and clustered grunts so both AoE freeze casts are exercisable.
