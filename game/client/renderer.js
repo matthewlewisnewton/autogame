@@ -6626,6 +6626,142 @@ export function syncPlayerMeshes(gs, myId) {
 	}
 }
 
+export function syncEnemyMeshes(gs) {
+	// ── Enemy mesh sync ──
+	const currentEnemyIds = new Set(gs.enemies.map((e) => e.id));
+
+	for (const enemy of gs.enemies) {
+		if (!enemiesMeshes[enemy.id]) {
+			const mesh = createEnemyMesh(enemy.type);
+			scene.add(mesh);
+			enemiesMeshes[enemy.id] = mesh;
+
+			enemyHitboxMeshes[enemy.id] = createEnemyHitboxGroup(ENTITY_RADIUS);
+			scene.add(enemyHitboxMeshes[enemy.id]);
+		}
+		const halfHeight = enemyMeshHalfHeight(enemy.type);
+		// Flying enemies render at the floor-aware surface + altitude; grounded
+		// enemies keep their exact prior placement (flyingRenderOffset() → 0).
+		const renderY = halfHeight + flyingRenderOffset(enemy, gs.layout);
+		enemiesMeshes[enemy.id].position.set(enemy.x, renderY, enemy.z);
+		syncFlyingShadow(enemyShadows, enemy, gs.layout);
+
+		ensureEnemyHealthBar(enemy.id, enemy);
+		const healthBar = enemyHealthBars[enemy.id];
+		if (healthBar) {
+			healthBar.position.set(enemy.x, renderY + 0.5, enemy.z);
+			updateHealthBarMesh(enemy.id, enemy);
+		}
+		ensureEnemyShieldBar(enemy.id, enemy);
+		const shieldBar = enemyShieldBars[enemy.id];
+		if (shieldBar) {
+			shieldBar.position.set(enemy.x, renderY + 0.65, enemy.z);
+			updateEnemyShieldBarMesh(enemy.id, enemy);
+		}
+		if (enemyHitboxMeshes[enemy.id]) {
+			enemyHitboxMeshes[enemy.id].position.set(enemy.x, GROUND_OVERLAY_Y, enemy.z);
+		}
+		syncLockOnRing(enemy.id, enemy.x, enemy.z);
+
+		// Detect HP drop (minion tick damage) — skip if caused by a recent cardUsed hit
+		if (previousEnemyHp[enemy.id] !== undefined && enemy.hp < previousEnemyHp[enemy.id]) {
+			const cardHit = lastCardHitTime[enemy.id];
+			const withinGrace = cardHit !== undefined && (performance.now() - cardHit) < CARD_HIT_GRACE_MS;
+			if (!withinGrace) {
+				let nearestMinion = null;
+				let nearestMinionDist = Infinity;
+				for (const m of (gs.minions || [])) {
+					const mdist = Math.hypot(m.x - enemy.x, m.z - enemy.z);
+					if (mdist < nearestMinionDist && minionsMeshes[m.id]) {
+						nearestMinionDist = mdist;
+						nearestMinion = m;
+					}
+				}
+				const vfx = MINION_HIT_VFX[nearestMinion?.type] ?? MINION_HIT_VFX_DEFAULT;
+				const dir = nearestMinion
+					? {
+						x: enemy.x - nearestMinion.x,
+						z: enemy.z - nearestMinion.z,
+					}
+					: { x: 1, z: 0 };
+				flashMesh(enemiesMeshes[enemy.id], vfx.enemyFlash, 150);
+				vfx.spawn({ minion: nearestMinion, enemy, renderY, dir });
+
+				if (nearestMinion && minionsMeshes[nearestMinion.id]) {
+					flashMesh(minionsMeshes[nearestMinion.id], vfx.minionFlash, 200);
+				}
+			}
+		}
+		previousEnemyHp[enemy.id] = enemy.hp;
+
+		// ── Telegraph visuals (windup state) ──
+		if (enemy.attackState === 'windup') {
+			applyWindupFlash(enemy.id, true);
+
+			const windupTarget = resolveEnemyWindupTarget(enemy, gs);
+			if (!telegraphMeshes[enemy.id]) {
+				const telegraph = createEnemyAttackTelegraph(enemy, windupTarget);
+				scene.add(telegraph);
+				telegraphMeshes[enemy.id] = telegraph;
+			} else {
+				updateEnemyAttackTelegraph(enemy, telegraphMeshes[enemy.id], windupTarget);
+			}
+		} else {
+			disposeOne(telegraphMeshes, enemy.id, scene);
+			applyWindupFlash(enemy.id, false);
+		}
+
+		// ── Reveal highlight (Flare Beacon) ──
+		applyRevealHighlight(enemy.id, enemy);
+
+		// ── Variant body tint (warded cyan; others use type default) ──
+		applyEnemyVariantTint(enemy.id, enemy);
+
+		// ── Variant marker (elite enemy badge) ──
+		applyVariantMarker(enemy.id, enemy);
+
+		// ── Variant mesh tint (e.g. leeching) ──
+		applyVariantEmissiveTint(enemy.id, enemy);
+
+		// ── Frenzied enrage telegraph ring ──
+		applyFrenziedTelegraphRing(enemy.id, enemy);
+
+		// ── Slow status ring (driven by the broadcast slowedUntil) ──
+		applySlowIndicator(enemySlowMarkers, enemy.id, enemy);
+
+		// ── Burning flame (driven by the broadcast burningUntil) ──
+		applyBurnIndicator(enemyBurnMarkers, enemy.id, enemy);
+	}
+
+	// Clean up removed enemies
+	disposeStaleMeshes(enemiesMeshes, currentEnemyIds, scene);
+	disposeStaleMeshes(enemyHealthBars, currentEnemyIds, scene);
+	disposeStaleMeshes(enemyShieldBars, currentEnemyIds, scene);
+	disposeStaleMeshes(enemyHitboxMeshes, currentEnemyIds, scene);
+	disposeStaleMeshes(enemyShadows, currentEnemyIds, scene);
+	disposeStaleMeshes(enemyLockOnRings, currentEnemyIds, scene);
+	disposeStaleMeshes(variantMarkerMeshes, currentEnemyIds, scene);
+	disposeStaleMeshes(frenziedTelegraphMeshes, currentEnemyIds, scene);
+	disposeStaleMeshes(enemySlowMarkers, currentEnemyIds, scene);
+	disposeStaleMeshes(enemyBurnMarkers, currentEnemyIds, scene);
+	for (const id of Object.keys(previousEnemyHp)) {
+		if (!currentEnemyIds.has(id)) {
+			delete previousEnemyHp[id];
+		}
+	}
+	for (const id of Object.keys(lastCardHitTime)) {
+		if (!currentEnemyIds.has(id)) {
+			delete lastCardHitTime[id];
+		}
+	}
+	disposeStaleMeshes(telegraphMeshes, currentEnemyIds, scene);
+	for (const id of [...windupFlashing]) {
+		if (!currentEnemyIds.has(id)) {
+			windupFlashing.delete(id);
+		}
+	}
+}
+
 export function animate(timestamp) {
 	requestAnimationFrame(animate);
 
@@ -6657,139 +6793,7 @@ export function animate(timestamp) {
 		// ── phase_step ally highlight: recompute nearest in-range ally each frame ──
 		syncPhaseStepAllyHighlight(gs, myId);
 
-		// ── Enemy mesh sync ──
-		const currentEnemyIds = new Set(gs.enemies.map((e) => e.id));
-
-		for (const enemy of gs.enemies) {
-			if (!enemiesMeshes[enemy.id]) {
-				const mesh = createEnemyMesh(enemy.type);
-				scene.add(mesh);
-				enemiesMeshes[enemy.id] = mesh;
-
-				enemyHitboxMeshes[enemy.id] = createEnemyHitboxGroup(ENTITY_RADIUS);
-				scene.add(enemyHitboxMeshes[enemy.id]);
-			}
-			const halfHeight = enemyMeshHalfHeight(enemy.type);
-			// Flying enemies render at the floor-aware surface + altitude; grounded
-			// enemies keep their exact prior placement (flyingRenderOffset() → 0).
-			const renderY = halfHeight + flyingRenderOffset(enemy, gs.layout);
-			enemiesMeshes[enemy.id].position.set(enemy.x, renderY, enemy.z);
-			syncFlyingShadow(enemyShadows, enemy, gs.layout);
-
-			ensureEnemyHealthBar(enemy.id, enemy);
-			const healthBar = enemyHealthBars[enemy.id];
-			if (healthBar) {
-				healthBar.position.set(enemy.x, renderY + 0.5, enemy.z);
-				updateHealthBarMesh(enemy.id, enemy);
-			}
-			ensureEnemyShieldBar(enemy.id, enemy);
-			const shieldBar = enemyShieldBars[enemy.id];
-			if (shieldBar) {
-				shieldBar.position.set(enemy.x, renderY + 0.65, enemy.z);
-				updateEnemyShieldBarMesh(enemy.id, enemy);
-			}
-			if (enemyHitboxMeshes[enemy.id]) {
-				enemyHitboxMeshes[enemy.id].position.set(enemy.x, GROUND_OVERLAY_Y, enemy.z);
-			}
-			syncLockOnRing(enemy.id, enemy.x, enemy.z);
-
-			// Detect HP drop (minion tick damage) — skip if caused by a recent cardUsed hit
-			if (previousEnemyHp[enemy.id] !== undefined && enemy.hp < previousEnemyHp[enemy.id]) {
-				const cardHit = lastCardHitTime[enemy.id];
-				const withinGrace = cardHit !== undefined && (performance.now() - cardHit) < CARD_HIT_GRACE_MS;
-				if (!withinGrace) {
-					let nearestMinion = null;
-					let nearestMinionDist = Infinity;
-					for (const m of (gs.minions || [])) {
-						const mdist = Math.hypot(m.x - enemy.x, m.z - enemy.z);
-						if (mdist < nearestMinionDist && minionsMeshes[m.id]) {
-							nearestMinionDist = mdist;
-							nearestMinion = m;
-						}
-					}
-					const vfx = MINION_HIT_VFX[nearestMinion?.type] ?? MINION_HIT_VFX_DEFAULT;
-					const dir = nearestMinion
-						? {
-							x: enemy.x - nearestMinion.x,
-							z: enemy.z - nearestMinion.z,
-						}
-						: { x: 1, z: 0 };
-					flashMesh(enemiesMeshes[enemy.id], vfx.enemyFlash, 150);
-					vfx.spawn({ minion: nearestMinion, enemy, renderY, dir });
-
-					if (nearestMinion && minionsMeshes[nearestMinion.id]) {
-						flashMesh(minionsMeshes[nearestMinion.id], vfx.minionFlash, 200);
-					}
-				}
-			}
-			previousEnemyHp[enemy.id] = enemy.hp;
-
-			// ── Telegraph visuals (windup state) ──
-			if (enemy.attackState === 'windup') {
-				applyWindupFlash(enemy.id, true);
-
-				const windupTarget = resolveEnemyWindupTarget(enemy, gs);
-				if (!telegraphMeshes[enemy.id]) {
-					const telegraph = createEnemyAttackTelegraph(enemy, windupTarget);
-					scene.add(telegraph);
-					telegraphMeshes[enemy.id] = telegraph;
-				} else {
-					updateEnemyAttackTelegraph(enemy, telegraphMeshes[enemy.id], windupTarget);
-				}
-			} else {
-				disposeOne(telegraphMeshes, enemy.id, scene);
-				applyWindupFlash(enemy.id, false);
-			}
-
-			// ── Reveal highlight (Flare Beacon) ──
-			applyRevealHighlight(enemy.id, enemy);
-
-			// ── Variant body tint (warded cyan; others use type default) ──
-			applyEnemyVariantTint(enemy.id, enemy);
-
-			// ── Variant marker (elite enemy badge) ──
-			applyVariantMarker(enemy.id, enemy);
-
-			// ── Variant mesh tint (e.g. leeching) ──
-			applyVariantEmissiveTint(enemy.id, enemy);
-
-			// ── Frenzied enrage telegraph ring ──
-			applyFrenziedTelegraphRing(enemy.id, enemy);
-
-			// ── Slow status ring (driven by the broadcast slowedUntil) ──
-			applySlowIndicator(enemySlowMarkers, enemy.id, enemy);
-
-			// ── Burning flame (driven by the broadcast burningUntil) ──
-			applyBurnIndicator(enemyBurnMarkers, enemy.id, enemy);
-		}
-
-		// Clean up removed enemies
-		disposeStaleMeshes(enemiesMeshes, currentEnemyIds, scene);
-		disposeStaleMeshes(enemyHealthBars, currentEnemyIds, scene);
-		disposeStaleMeshes(enemyShieldBars, currentEnemyIds, scene);
-		disposeStaleMeshes(enemyHitboxMeshes, currentEnemyIds, scene);
-		disposeStaleMeshes(enemyShadows, currentEnemyIds, scene);
-		disposeStaleMeshes(enemyLockOnRings, currentEnemyIds, scene);
-		disposeStaleMeshes(variantMarkerMeshes, currentEnemyIds, scene);
-		disposeStaleMeshes(frenziedTelegraphMeshes, currentEnemyIds, scene);
-		disposeStaleMeshes(enemySlowMarkers, currentEnemyIds, scene);
-		disposeStaleMeshes(enemyBurnMarkers, currentEnemyIds, scene);
-		for (const id of Object.keys(previousEnemyHp)) {
-			if (!currentEnemyIds.has(id)) {
-				delete previousEnemyHp[id];
-			}
-		}
-		for (const id of Object.keys(lastCardHitTime)) {
-			if (!currentEnemyIds.has(id)) {
-				delete lastCardHitTime[id];
-			}
-		}
-		disposeStaleMeshes(telegraphMeshes, currentEnemyIds, scene);
-		for (const id of [...windupFlashing]) {
-			if (!currentEnemyIds.has(id)) {
-				windupFlashing.delete(id);
-			}
-		}
+		syncEnemyMeshes(gs);
 
 		// ── Minion mesh sync ──
 		const currentMinionIds = new Set(gs.minions ? gs.minions.map((m) => m.id) : []);
