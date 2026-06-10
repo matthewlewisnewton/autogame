@@ -354,3 +354,84 @@ describe('isQuestTierUnlocked multi-prereq socket selectQuest', () => {
 		expect(testGameState().selectedQuestTier).toBe(TIER_2);
 	});
 });
+
+describe('lobby broadcast multi-prereq tierUnlocked', () => {
+	let tmpFile;
+	let baseUrl;
+	let accountId;
+	let socket;
+
+	function fixtureTier2Variant(payload) {
+		return payload.questVariants.find(
+			(v) => v.questId === MULTI_PREREQ_FIXTURE_ID && v.tier === TIER_2,
+		);
+	}
+
+	beforeEach(async () => {
+		installMultiPrereqFixtureQuest();
+		tmpFile = path.join(
+			os.tmpdir(),
+			`unlock-prereqs-broadcast-${Date.now()}-${Math.random().toString(36).slice(2)}.json`,
+		);
+		users.setTestFilePath(tmpFile);
+		users.clearUsers();
+		baseUrl = await startTestServer();
+		users.createUser('multi_prereq_broadcast', 'pass');
+		accountId = users.findUserByUsername('multi_prereq_broadcast').accountId;
+		setTestProvider(new InMemoryProvider());
+	});
+
+	afterEach(async () => {
+		if (socket && socket.connected) socket.disconnect();
+		await closeServer();
+		setTestProvider(null);
+		removeMultiPrereqFixtureQuest();
+		try {
+			fs.unlinkSync(tmpFile);
+		} catch {}
+		try {
+			fs.unlinkSync(tmpFile + '.tmp');
+		} catch {}
+	});
+
+	async function connectWithPartialPrereqs() {
+		users.unlockQuestTier(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2);
+		users.unlockQuestTier(accountId, QUEST_A, TIER_2);
+		expect(users.isQuestTierUnlocked(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2)).toBe(false);
+
+		const connected = await connectClient(baseUrl, accountId, { name: 'Multi Prereq Broadcast' });
+		socket = connected.socket;
+	}
+
+	it('lobbyUpdate includes evaluated tierUnlocked on questVariants', async () => {
+		await connectWithPartialPrereqs();
+
+		const lobbyUpdatePromise = waitForEvent(socket, 'lobbyUpdate');
+		socket.emit('playerReady', true);
+		const payload = await lobbyUpdatePromise;
+
+		const tier2 = fixtureTier2Variant(payload);
+		expect(tier2).toBeDefined();
+		expect(tier2.tierUnlocked).toBe(false);
+		expect(payload.unlockedQuestTiers).toEqual({
+			[MULTI_PREREQ_FIXTURE_ID]: [TIER_2],
+			[QUEST_A]: [TIER_2],
+		});
+	});
+
+	it('questUpdate from emitQuestPayloadToLobby includes evaluated tierUnlocked', async () => {
+		await connectWithPartialPrereqs();
+
+		const questUpdatePromise = waitForEvent(socket, 'questUpdate');
+		socket.emit('selectQuest', { questId: QUEST_A, tier: TIER_1 });
+		const payload = await questUpdatePromise;
+
+		const tier2 = fixtureTier2Variant(payload);
+		expect(tier2).toBeDefined();
+		expect(tier2.tierUnlocked).toBe(false);
+		expect(payload.unlockedQuestTiers).toEqual({
+			[MULTI_PREREQ_FIXTURE_ID]: [TIER_2],
+			[QUEST_A]: [TIER_2],
+		});
+	});
+});
