@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module';
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { generateLayout } from '../dungeon.js';
 import {
   spawnEnemies,
@@ -21,57 +21,17 @@ import { findPassageIndexFromRoom } from '../scriptedEncounters.js';
 
 const require = createRequire(import.meta.url);
 const {
-  QUEST_DEFS,
-  SCRIPTED_ENCOUNTER_FIXTURE_DEF,
   getLayoutProfileForQuest,
 } = require('../quests.js');
 
-const FIXTURE_QUEST_ID = 'scripted_encounter_fixture';
+const QUEST_ID = 'training_caverns';
 // Seed 1 yields room 0 → room 1 → room 2 along resolved passage indices.
 const SEED = 1;
 
-function buildPassageLockChainFixtureDef(layout) {
-  const passageIndex0 = findPassageIndexFromRoom(layout, 0);
-  const passageIndex1 = findPassageIndexFromRoom(layout, 1);
-  const baseTier = SCRIPTED_ENCOUNTER_FIXTURE_DEF.tiers[1];
+function deployTrainingCavernsPassageLockChain(seed = SEED) {
+  const layout = generateLayout(seed, getLayoutProfileForQuest(QUEST_ID, 1));
 
-  const passageLocks = [];
-  if (passageIndex0 >= 0) {
-    passageLocks.push({
-      afterWave: { roomIndex: 0, waveIndex: 0 },
-      passageIndex: passageIndex0,
-    });
-  }
-  if (passageIndex1 >= 0) {
-    passageLocks.push({
-      afterWave: { roomIndex: 1, waveIndex: 0 },
-      passageIndex: passageIndex1,
-    });
-  }
-
-  return {
-    ...SCRIPTED_ENCOUNTER_FIXTURE_DEF,
-    tiers: {
-      1: {
-        ...baseTier,
-        scriptedEncounters: {
-          ...baseTier.scriptedEncounters,
-          passageLocks,
-        },
-      },
-    },
-  };
-}
-
-function registerPassageLockChainFixture(layout) {
-  QUEST_DEFS[FIXTURE_QUEST_ID] = buildPassageLockChainFixtureDef(layout);
-}
-
-function deployPassageLockChainFixture(seed = SEED) {
-  const layout = generateLayout(seed, getLayoutProfileForQuest(FIXTURE_QUEST_ID, 1));
-  registerPassageLockChainFixture(layout);
-
-  gameState.selectedQuestId = FIXTURE_QUEST_ID;
+  gameState.selectedQuestId = QUEST_ID;
   gameState.selectedQuestTier = 1;
   gameState.layout = layout;
   gameState.layoutSeed = seed;
@@ -141,15 +101,6 @@ function enterRoom(player, room) {
   rebuildWallColliders();
 }
 
-beforeAll(() => {
-  const layout = generateLayout(SEED, getLayoutProfileForQuest(FIXTURE_QUEST_ID, 1));
-  registerPassageLockChainFixture(layout);
-});
-
-afterAll(() => {
-  delete QUEST_DEFS[FIXTURE_QUEST_ID];
-});
-
 describe('chained passage lock progression', () => {
   beforeEach(() => {
     resetGameState();
@@ -157,7 +108,7 @@ describe('chained passage lock progression', () => {
   });
 
   it('walks A → B → end room with two wave-gated passages', () => {
-    const { layout } = deployPassageLockChainFixture();
+    const { layout } = deployTrainingCavernsPassageLockChain();
     const passageIndex0 = findPassageIndexFromRoom(layout, 0);
     const passageIndex1 = findPassageIndexFromRoom(layout, 1);
     expect(passageIndex0).toBeGreaterThanOrEqual(0);

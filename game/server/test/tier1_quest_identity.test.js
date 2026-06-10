@@ -70,7 +70,7 @@ describe('tier-1 quest identity wiring', () => {
     const quest = tier1Quest('training_caverns');
     expect(quest.objectiveType).toBe('defeat_enemies');
     expect(quest.rewardCardId).toBe('saber_of_light');
-    expect(quest.scriptedEncounters.passageLocks).toHaveLength(1);
+    expect(quest.scriptedEncounters.passageLocks).toHaveLength(2);
 
     const startWaves = quest.scriptedEncounters.rooms.find((r) => r.roomIndex === 0).waves;
     const namedSpawn = startWaves[1].spawns.find((s) => s.namedRare);
