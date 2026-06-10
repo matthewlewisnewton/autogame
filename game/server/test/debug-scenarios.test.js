@@ -19,7 +19,7 @@ import {
 	clearNonBossEnemies,
 	resolveEncounterAnchor,
 } from '../encounters.js';
-import { resetGameState, gameState, runGameLoopTick, applyBurning, updateBurning } from '../index.js';
+import { resetGameState, gameState, runGameLoopTick, applyBurning, updateBurning, updateEnemies, hasLineOfSight, buildWallColliders } from '../index.js';
 import { APPEARANCE_CHANGE_COST, MAX_MAGIC_STONES } from '../config.js';
 import { spawnEnemies, setGameState } from '../progression.js';
 import {
@@ -1845,5 +1845,63 @@ describe('debugScenario — hat-shop-currency', () => {
 		expect(state.gamePhase).toBe('lobby');
 		expect(player.currency).toBeGreaterThanOrEqual(APPEARANCE_CHANGE_COST);
 		expect(snapshot.players[socket._playerId].currency).toBe(player.currency);
+	});
+});
+
+describe('debugScenario — enemy-behind-wall', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('parks a grunt behind a wall within detection range that does not aggro through it', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'enemy-behind-wall' });
+		const result = await debugResultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('enemy-behind-wall');
+
+		const state = testGameState();
+		expect(state.gamePhase).toBe('playing');
+		expect(state.enemies.length).toBe(1);
+
+		const enemy = state.enemies[0];
+		const player = playerForSocket(socket);
+
+		// Both entities sit inside the walkable layout (rooms ∪ passages) — neither
+		// is shoved into the void outside a perimeter wall.
+		const walkableAABBs = sim.computeWalkableAABBs(state.layout);
+		const inWalkable = (x, z) =>
+			walkableAABBs.some((a) => x >= a.minX && x <= a.maxX && z >= a.minZ && z <= a.maxZ);
+		expect(inWalkable(player.x, player.z)).toBe(true);
+		expect(inWalkable(enemy.x, enemy.z)).toBe(true);
+
+		// Within detection radius (8) but wall-occluded.
+		const dist = Math.hypot(enemy.x - player.x, enemy.z - player.z);
+		expect(dist).toBeLessThan(8);
+		const colliders = buildWallColliders(state.layout);
+		expect(hasLineOfSight(enemy.x, enemy.z, player.x, player.z, colliders)).toBe(false);
+
+		// Several ticks must not promote the enemy to chasing through the wall.
+		enemy.state = 'idle';
+		enemy.attackState = 'idle';
+		for (let i = 0; i < 5; i++) updateEnemies();
+		expect(enemy.state).toBe('idle');
 	});
 });

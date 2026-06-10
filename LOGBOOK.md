@@ -6446,6 +6446,48 @@ PASS. This ticket did not add or change a `?debugScenario=` shortcut. The captur
 None.
 
 
+## v0.365 — Server: enemies attacking a taunt minion bypass the windup state machine and hit every tick  (2026-06-10 09:33:16)
+
+## Design & requirements consistency
+
+- **design.md:** Server-side combat simulation change only; no client or card-definition changes. Taunt minions (Aegis Sentinel, Necroframe Knight) now survive long enough to fulfill their intended tanking role — aligned with creature/taunt design intent.
+- **requirements.md:** No documented regression. Change is narrowly scoped to enemy attack cadence against taunt targets.
+
+## Code quality
+
+- **Focused diff:** 14 lines changed in `simulation.js`; no dead code or unrelated refactors.
+- **State-machine safety:** Guard `attackState === 'chasing' || attackState === 'idle'` prevents restarting windup mid-cycle; windup/recovery blocks short-circuit before the taunt branch on subsequent ticks.
+- **Integration:** Taunt priority (`findTauntMinionNear` before normal target selection) preserved; chase fallback for out-of-range taunt targets unchanged.
+- **No debug scenarios added** — nothing to gate-check for this ticket.
+
+## Debug scenarios
+
+Not applicable — no new or modified `?debugScenario=` shortcuts in this ticket.
+
+## Remaining gaps
+
+None. The direct-per-tick damage bug is fixed, regression-tested, and the game runs cleanly in capture.
+
+
+## v0.366 — Server: enemies acquire players through walls (DETECTION_RADIUS has no line-of-sight) — Frost Crossing spawn room gets swarmed in seconds  (2026-06-10 09:39:21)
+
+The focused test coverage directly matches the reported bug: `game/server/test/enemy_line_of_sight.test.js` verifies an enemy about 6 units away behind a wall remains idle, an unobstructed player is still chased, doorway gaps remain valid line-of-sight, and a chasing enemy reverts to idle once the only target is occluded.
+
+### Acceptance criterion: Frost Crossing spawn room should not be swarmed before the player leaves it
+Satisfied by the acquisition fix. Frost Crossing remains a normal scripted quest deployment through `setupQuestTier1Deploy()` / `spawnEnemies()` / `startDungeonRun()`, but those enemies now use the shared line-of-sight-gated acquisition path. The added `enemy-behind-wall` debug scenario exercises Frost Crossing geometry with both player and enemy in walkable space, within detection radius, separated by a real interior wall, and verifies several enemy ticks do not promote the enemy to chasing.
+
+The fallback visual capture did not specifically deploy Frost Crossing, but the full coverage run passed and includes the focused line-of-sight and debug-scenario tests. Runtime health for the applied build is clean.
+
+### Design and requirements consistency
+The change is consistent with `game/docs/design.md`: it preserves the 3D dungeon combat loop and uses existing dungeon wall geometry rather than introducing a new targeting model or changing quest identity. It does not regress the foundation in `game/docs/requirements.md`; the capture still demonstrates 3D rendering, server-client connection, multiplayer presence, and movement synchronization.
+
+### Debug scenario review
+The new `enemy-behind-wall` scenario is gated through the existing debug-scenario path. The client only auto-requests `?debugScenario=...` on localhost-style hosts, and the server rejects production debug access unless explicitly allowed. Normal gameplay does not touch this scenario; it remains a QA shortcut. Its end state is reachable by normally deploying Frost Crossing and standing on one side of an interior wall while an enemy is on the other, and the scenario still runs the normal quest setup path before narrowing the enemy setup for deterministic validation.
+
+### Code quality and tests
+The implementation is narrow and reuses existing collision primitives. It builds line-of-sight colliders once per enemy tick, which avoids repeated layout work per candidate target. Coverage evidence shows `116` test files and `1878` tests passed, including the new focused tests, with no coverage threshold failures.
+
+
 ## v0.367 — 391-fix-glacial-thrower-slow-not-applied  (2026-06-10 09:53:26)
 
 ### SLOW is independent of HP damage success
@@ -6467,4 +6509,3 @@ PASS. This ticket did not add or modify a `?debugScenario=NAME` shortcut. The ca
 ## Remaining gaps
 
 None.
-

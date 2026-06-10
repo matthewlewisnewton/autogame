@@ -1,0 +1,6 @@
+Created one new sub-ticket to close the single open gap from review round 1. Sub-ticket `01` is `.passed` and left untouched.
+
+**Created:**
+- `tickets/server-enemies-acquire-players-through-walls-detection-radiu-1btc/subtickets/02-enemy-behind-wall-reachable-geometry/ticket.md`
+
+**What it fixes:** The `enemy-behind-wall` debug scenario currently selects the *longest* start-room wall, which on Frost Crossing is the exterior north perimeter wall — so it drops the enemy into the void outside the walkable layout, validating an unreachable state. The new sub-ticket re-anchors the scenario on a real interior/connector wall (using `computeWalkableAABBs` to require both the player and enemy land in walkable space) while keeping them <8 units apart with LOS still blocked, and updates `debug-scenarios.test.js` to assert both entities are in walkable space. Verification mode is `code` (position/state/logic assertions, not a screenshot check).
