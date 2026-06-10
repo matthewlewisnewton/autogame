@@ -446,6 +446,40 @@ export function getHandSlotInputHints() {
 	return { mode: 'gamepad', hints, hintLabels };
 }
 
+/**
+ * Device-aware attack/cast hint text for the in-run HUD affordance.
+ *
+ * Pure (no DOM): built from the same binding machinery as the hand-slot badges
+ * (`getHandSlotInputHints()`), so a gamepad player sees their real attack button
+ * and slot range instead of the keyboard/mouse copy. Uses the plain-text slot
+ * labels (`hintLabels`) so C-buttons survive being written via `textContent`
+ * (the inline-SVG `hints` would not render as text).
+ *
+ * @returns {{ mode: 'keyboard' | 'gamepad', text: string }}
+ */
+export function getAttackCastHint() {
+	const slotHints = getHandSlotInputHints();
+	if (slotHints.mode !== 'gamepad') {
+		// Keyboard / mouse: preserve the original index.html copy verbatim.
+		return {
+			mode: 'keyboard',
+			text: 'Click to attack · press 1–6 to cast cards',
+		};
+	}
+	// Gamepad: slot 0 is the primary attack button (face A on both profiles);
+	// the cast range spans the first–last usable hand-slot labels.
+	const labels = (slotHints.hintLabels && slotHints.hintLabels.length)
+		? slotHints.hintLabels
+		: slotHints.hints;
+	const first = labels[0];
+	const last = labels[labels.length - 1];
+	const castRange = first === last ? first : `${first}–${last}`;
+	return {
+		mode: 'gamepad',
+		text: `Press ${first} to attack · press ${castRange} to cast cards`,
+	};
+}
+
 /** @deprecated Use getHandSlotInputHints() */
 export function getHandSlotGamepadHints() {
 	const result = getHandSlotInputHints();

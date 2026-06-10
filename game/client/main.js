@@ -48,6 +48,7 @@ import {
 	initInput,
 	ACTIONS,
 	getHandSlotInputHints,
+	getAttackCastHint,
 	is8BitDo64HandHintsActive,
 	getUseKeyItemBinding,
 	getReservedKeys,
@@ -250,10 +251,16 @@ const deckStackEl = document.getElementById('deck-stack');
 const attackReticleEl = document.getElementById('attack-reticle');
 const attackHintEl = document.getElementById('attack-hint');
 
+/** Write the device-aware attack/cast hint text, overriding the static HTML. */
+function applyAttackHintText() {
+	if (attackHintEl) attackHintEl.textContent = getAttackCastHint().text;
+}
+
 /** Show/hide the center reticle + attack hint (in-run affordance only). */
 function setAttackAffordanceVisible(visible) {
 	if (attackReticleEl) attackReticleEl.classList.toggle('hidden', !visible);
 	if (attackHintEl) attackHintEl.classList.toggle('hidden', !visible);
+	if (visible) applyAttackHintText();
 }
 /** @type {'n64' | 'default' | null} */
 let handLayoutMode = null;
@@ -2812,6 +2819,8 @@ function renderHand() {
 	clearAdjacentCardHighlights();
 	const handHasDesperation = hand.some((card) => card && card.isDesperation);
 	const inputHints = getHandSlotInputHints();
+	// Keep the attack/cast hint in sync with the active device's bindings.
+	applyAttackHintText();
 	if (cardHandEl) {
 		cardHandEl.classList.toggle('has-desperation', handHasDesperation);
 		cardHandEl.classList.toggle('show-input-hints', true);
@@ -4768,6 +4777,7 @@ window.addEventListener('gamepadconnected', (event) => {
 	resetHandLayoutLock();
 	if (cardHandEl && cardHandEl.style.display !== 'none') showCardHand();
 	renderHand();
+	applyAttackHintText();
 	const me = myId && gameState?.players ? gameState.players[myId] : null;
 	renderKeyItemHud(me, gameState?.gamePhase);
 });
@@ -4776,6 +4786,7 @@ window.addEventListener('gamepaddisconnected', () => {
 	resetHandLayoutLock();
 	if (cardHandEl && cardHandEl.style.display !== 'none') showCardHand();
 	renderHand();
+	applyAttackHintText();
 	const me = myId && gameState?.players ? gameState.players[myId] : null;
 	renderKeyItemHud(me, gameState?.gamePhase);
 });
