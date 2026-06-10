@@ -8,6 +8,8 @@ import {
   isValidQuestSelection,
   getLayoutProfileForQuest,
   getLayoutGenerationOptions,
+  buildSharedQuestUpdatePayload,
+  buildQuestUpdatePayload,
 } from '../quests.js';
 import { questLayoutSeed } from '../dungeon.js';
 
@@ -60,6 +62,66 @@ describe('quest tier catalog', () => {
     const quests = listQuests();
     expect(quests.every((q) => q.tier === 1)).toBe(true);
     expect(quests.find((q) => q.id === DEFAULT_QUEST_ID).name).toBe('Initiate Vault');
+  });
+
+  it('exposes client and dialogue on training_caverns tier 1', () => {
+    const quest = getQuest('training_caverns', 1);
+    expect(quest.client).toEqual({
+      name: 'Rewa',
+      briefing: expect.stringContaining('Annex clearance'),
+    });
+    expect(quest.client.name).toBeTruthy();
+    expect(quest.client.briefing).toBeTruthy();
+    expect(quest.dialogue).toEqual([
+      {
+        trigger: 'run_start',
+        text: expect.stringContaining('Rewa'),
+      },
+    ]);
+    expect(quest.dialogue.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('includes client on listQuests training row and empty dialogue elsewhere', () => {
+    const training = listQuests().find((q) => q.id === 'training_caverns');
+    expect(training.client?.name).toBe('Rewa');
+    expect(training.dialogue.length).toBeGreaterThanOrEqual(1);
+
+    const crystal = listQuests().find((q) => q.id === 'crystal_rescue');
+    expect(crystal.client).toBeUndefined();
+    expect(crystal.dialogue).toEqual([]);
+  });
+
+  it('spreads client and dialogue through listQuestVariants rows', () => {
+    const trainingTier1 = listQuestVariants().find(
+      (v) => v.questId === 'training_caverns' && v.tier === 1,
+    );
+    expect(trainingTier1.client?.name).toBe('Rewa');
+    expect(trainingTier1.dialogue).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ trigger: 'run_start', text: expect.any(String) }),
+      ]),
+    );
+
+    const crystalTier1 = listQuestVariants().find(
+      (v) => v.questId === 'crystal_rescue' && v.tier === 1,
+    );
+    expect(crystalTier1.client).toBeUndefined();
+    expect(crystalTier1.dialogue).toEqual([]);
+  });
+
+  it('carries client through buildSharedQuestUpdatePayload and buildQuestUpdatePayload', () => {
+    const shared = buildSharedQuestUpdatePayload({});
+    const trainingRow = shared.quests.find((q) => q.id === 'training_caverns');
+    expect(trainingRow.client).toEqual(getQuest('training_caverns', 1).client);
+    expect(trainingRow.dialogue).toEqual(getQuest('training_caverns', 1).dialogue);
+
+    const trainingVariant = shared.questVariants.find(
+      (v) => v.questId === 'training_caverns' && v.tier === 1,
+    );
+    expect(trainingVariant.client?.name).toBe('Rewa');
+
+    const playerPayload = buildQuestUpdatePayload({});
+    expect(playerPayload.quests.find((q) => q.id === 'training_caverns').client.name).toBe('Rewa');
   });
 
   it('listQuestVariants includes every quest/tier pair with summaries', () => {

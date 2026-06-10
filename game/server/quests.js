@@ -7,6 +7,25 @@
  * @property {{ x: number, z: number }} [spawnAnchor] - Encounter state anchor override.
  */
 
+/**
+ * Guild-counter client copy shown on the quest board before deploy.
+ * @typedef {Object} QuestClientConfig
+ * @property {string} name - Named client NPC for this contract.
+ * @property {string} briefing - Short mission briefing shown before ready-up.
+ */
+
+/**
+ * Dialogue trigger for mid-run radio lines (fired server-side in a later sub-ticket).
+ * @typedef {'run_start' | 'objective_complete' | { itemCollected: number } | { waveCleared: number }} DialogueTrigger
+ */
+
+/**
+ * Scripted dialogue beat keyed by trigger.
+ * @typedef {Object} DialogueEntry
+ * @property {DialogueTrigger} trigger
+ * @property {string} text
+ */
+
 const QUEST_DEFS = {
   training_caverns: {
     id: 'training_caverns',
@@ -23,6 +42,17 @@ const QUEST_DEFS = {
         enemyCount: 5,
         rewardCurrency: 10,
         layoutProfile: 'crowded',
+        client: {
+          name: 'Rewa',
+          briefing:
+            'Annex clearance contract. Five hostiles remain in the vault sector — neutralize them and I will release your reward stones.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Rewa here. Radio check — sweep the annex and report when the sector is clear.',
+          },
+        ],
       },
       2: {
         tier: 2,
@@ -282,6 +312,7 @@ function getQuest(questId, tier) {
     questId,
     tier: normalizedTier,
     ...tierDef,
+    dialogue: tierDef.dialogue ?? [],
   };
 }
 
@@ -383,6 +414,8 @@ function listQuestVariants() {
         rewardSummary: formatRewardSummary(resolved),
         isTier2: tier === 2,
         unlockRequires: resolved.unlockRequires || null,
+        ...(resolved.client ? { client: resolved.client } : {}),
+        dialogue: resolved.dialogue ?? [],
       });
     }
   }
