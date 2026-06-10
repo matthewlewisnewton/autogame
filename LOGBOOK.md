@@ -6140,6 +6140,75 @@ None blocking. All acceptance criteria are implemented and covered by tests; the
 See `nits.md` for one follow-up on tier-1 vs tier-2 currency label wording on the quest board.
 
 
+## v0.354 — 374-spherical-3d-aoe-for-all-radius-effects  (2026-06-10 04:37:38)
+
+**Scope: game/server/simulation.js + game/server + test.** Respected. Diff touches only `game/server/*.js` and `game/server/test/*` (plus subticket bookkeeping files). No client/shared edits.
+
+## Consistency & quality
+
+- Consistent with `game/docs/design.md`: AoE remains server-authoritative; no gameplay-shape
+  regression — only the height dimension is added to inclusion.
+- No 2D fallback leaks: `resolveAoeOriginY` resolves null Y to the floor sample, so the
+  conversion is total, not partial.
+- Displacement semantics preserved where intended: `pullEnemiesToward`/loot_magnet gate
+  inclusion in 3D but keep the pull/slide on the XZ plane (documented in comments) — correct,
+  enemies/loot don't get yanked vertically.
+- No debug scenarios were added or changed by this ticket.
+- Full server suite: **2065/2065 pass**, including the 164 tests in the spherical-focused
+  files. No regressions.
+
+## Remaining gaps
+
+None blocking. Acceptance criteria are fully and robustly met, the game runs cleanly, and the
+test suite is green. Minor non-blocking polish noted in `nits.md`.
+
+
+## v0.353 — Server: quest-objective crystals despawn after LOOT_LIFETIME_MS — collect_items runs unwinnable after 2 minutes  (2026-06-10 04:29:31)
+
+
+### Code quality
+
+**Good.** Minimal two-file production change plus focused test. The `questCritical` flag is more extensible than hard-coding `kind === 'crystal'` in the filter (future non-crystal quest items could reuse it). Telepipe suspend/resume deep-clones loot (`captureCardCheckpoint`), so `questCritical` survives checkpoint round-trips.
+
+No new debug scenarios were added; existing crystal debug shortcuts deploy through normal quest spawn and inherit the flag.
+
+### Debug scenarios
+
+**N/A — no new or changed debug scenarios in this ticket's diff.**
+
+## Test and coverage notes
+
+- Harness vitest run: all server tests green (`1569` passed).
+- Changed-file coverage snapshot includes `index.js` at ~72% lines; the one-line filter change is exercised indirectly across the suite. `progression.js` `spawnCrystals` is covered by existing spawn/integration tests (crystal count assertions) though none newly assert `questCritical: true` on output.
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are satisfied; runtime capture is clean.
+
+
+## v0.352 — Server: SELECT_QUEST swaps layout and teleports players while lobby still renders the hub (movement freeze, booths dead)  (2026-06-10 04:27:42)
+
+
+### Layout Swap and Spawn Teleport Happen at Deploy
+PASS. Fresh deploy now applies the selected quest layout inside `checkAllReadyInner()` before assigning run spawn positions and starting the dungeon run. Existing suspended-checkpoint resume flow returns before this fresh-deploy path, so resume continues to restore its saved layout instead of regenerating.
+
+### Players Can Still Move and Use Hub Booths After Selection
+PASS. Server-side selection no longer changes player positions, and booth validation continues to use the hub anchors while requiring lobby phase. On the client, quest layout payloads received during lobby phase are cached for deployment while `gameState.layout` is kept on the hub layout and rendered geometry is not rebuilt until `startGame`.
+
+### Normal Quest Flow Still Reaches the Selected Run
+PASS. Existing socket integration coverage still launches a selected `crystal_rescue` run and verifies the run objective/loot match that quest. The new focused regression test verifies no selection-time teleport/layout swap and confirms deploy applies the selected quest seed and moves the player to a run spawn.
+
+### Design and Requirements Consistency
+PASS. The implementation preserves the documented lobby -> ready/deploy -> dungeon core loop in `game/docs/design.md`, keeps quest selection as a lobby activity, and does not regress the foundation requirements for rendering, WebSocket connection, multiplayer representation, or WASD movement synchronization. No development debug scenario was added or changed by this ticket.
+
+### Tests and Coverage
+PASS. The captured coverage run completed successfully: 117 test files passed, 1589 tests passed. The changed behavior is covered by `game/server/test/defer_quest_layout_swap.test.js`, updated quest selection integration coverage, and quest-tier gating assertions that selection previews without mutating the live layout.
+
+## Remaining gaps
+
+None.
+
+
 ## v0.351 — Named rare enemy variants per quest (PSO 'The Fake in Yellow' style) with unique drops  (2026-06-10 03:48:03)
 
 ### Stats Scale Per Variant Config; Regular Spawns Unaffected
@@ -6185,3 +6254,25 @@ None blocking. The implementation fully satisfies both acceptance criteria; runt
 
 See `nits.md` for harness capture-plan and follow-up theming items.
 
+
+## v0.355 — Client: quest board panel flashes open then is re-hidden by the lobby render loop (F at Quest Board unusable)  (2026-06-10 05:18:34)
+
+
+**No regressions.** Change is lobby UI visibility only; multiplayer, movement, and server-authoritative quest selection are untouched. Aligns with the design doc's lobby quest-selection flow.
+
+### Code quality
+
+**Good.** Small, focused diff (11 lines in `main.js`); flag lifecycle is symmetric (set on open, cleared on dismiss). Test export `__isQuestPanelOpen` is consistent with existing harness hooks. No dead code or console errors introduced.
+
+### Debug scenarios (`?booth=quest`)
+
+**No issues.** Pre-existing localhost-only `?booth=quest` hook calls `openQuestPanel()` once via `requestBoothDebugOpen()`. It is gated by `debugScenarioAllowed` (localhost hosts only), does not bypass server validation, and the normal path (walk to Quest Board booth, press F / `booth:action`) reaches the same UI state. No new debug scenario was added by this ticket.
+
+## Test & coverage notes
+
+- Changed-files vitest run: **14 files, 282 tests, all passed**.
+- Coverage report in `coverage.log` covers shared modules from the harness diff baseline; the changed `main.js` paths are exercised by `questBooth.test.js`.
+
+## Remaining gaps
+
+None blocking. The implementation fully addresses the reported flash-close bug with appropriate tests and clean runtime capture.

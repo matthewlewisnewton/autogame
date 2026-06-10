@@ -1,0 +1,9 @@
+Completed senior review.
+
+`review.md` written with `VERDICT: FAIL`.
+
+Blocking gap: `sacrificial_altar` still uses flat XZ distance for `sacrificeRadius` via `findSacrificeTarget`, so elevated/flying minions can be consumed while outside the intended 3D sphere.
+
+Also wrote:
+- `gaps.md` with the actionable remediation
+- `nits.md` for non-blocking coverage stderr noise

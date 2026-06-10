@@ -1,0 +1,17 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The ticket converts every AoE/radius check from flat 2D (`Math.hypot(dx,dz)`) to true 3D spherical distance, and it does so thoroughly and robustly.
+
+**Runtime gate — passed.** The captured run shows `ok: true`, empty `pageerrors`, no `harness_failure`, a live playing scene, and a clean `console.log` (only benign 409 + Vite/WS noise).
+
+**Acceptance criteria — all met:**
+- A single core helper (`sphericalDistanceToEntity` + `resolveAoeOriginY` with floor-Y fallback, never falling back to 2D) backs the whole conversion. Every former XZ gate now routes through 3D: radial hits, freeze, heal, pull/event-horizon, cone hits (the `use3D` branch and flat-cone height shortcut were removed), persistent area effects, ground enchantments, chain lightning, all key items, and sacrificial altar.
+- **Symmetric**: enemy attack resolution, field-medic heal, smoke concealment, and barrier-dome block tests are all 3D for both attacker and victim. Cast origins record Y at cast time with persisted-state fallback.
+- **Every enumerated card** (frost_nova, glacier_collapse, inferno_pillar, purifying_pulse, event_horizon, gravity_well, dragons_breath, heal radius) has height-based include/exclude tests across the new suites.
+- Scope respected (`game/server` + tests only).
+
+**Validation:** full server suite green — **2065/2065 tests pass**, no regressions.
+
+I noted two trivial, non-blocking nits (redundant origin-Y re-resolution; loot_magnet double distance pass) in `nits.md` for later cleanup. No `gaps.md` written since the verdict is PASS.

@@ -181,6 +181,75 @@ describe('Loot Magnet — pull & collect', () => {
 		expect(state.loot.find((l) => l.id === 'far-loot')).toBeDefined();
 	});
 
+	it('spherical radius: elevated loot inside the sphere is pulled (and collected)', async () => {
+		const { socket } = await connectAndStartRun(baseUrl);
+		const player = playerForSocket(socket);
+		const state = lobbyStateForSocket(socket);
+
+		player.keyItemCooldownUntil = 0;
+		state.loot.length = 0;
+
+		// Elevated drop inside the 8m sphere: XZ dist 4, Y delta 3
+		// → 3D dist √(16+9) = 5 ≤ 8. The XZ pull brings it to the player,
+		// within LOOT_PICKUP_RADIUS, so it auto-collects.
+		const loot = testLoot({
+			id: 'high-in-sphere',
+			x: player.x + 4,
+			z: player.z,
+			y: player.y + 3,
+			value: 25,
+		});
+		state.loot.push(loot);
+		const origCurrency = player.currency;
+
+		const resultPromise = waitForLootMagnetUsed(socket);
+		socket.emit('useKeyItem', { keyItemId: 'loot_magnet' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.pulled).toBe(1);
+		expect(result.collected).toBe(1);
+		expect(state.loot.find((l) => l.id === 'high-in-sphere')).toBeUndefined();
+		expect(player.currency).toBe(origCurrency + 25);
+	});
+
+	it('spherical radius: XZ-inside but out-of-sphere elevated loot is left untouched', async () => {
+		const { socket } = await connectAndStartRun(baseUrl);
+		const player = playerForSocket(socket);
+		const state = lobbyStateForSocket(socket);
+
+		player.keyItemCooldownUntil = 0;
+		state.loot.length = 0;
+
+		// XZ dist 4 ≤ 8 (2D code would pull it), but Y delta 8
+		// → 3D dist √(16+64) ≈ 8.94 > 8 — outside the sphere.
+		const skyLoot = testLoot({
+			id: 'sky-loot',
+			x: player.x + 4,
+			z: player.z,
+			y: player.y + 8,
+			value: 25,
+		});
+		const origX = skyLoot.x;
+		const origZ = skyLoot.z;
+		const origY = skyLoot.y;
+		state.loot.push(skyLoot);
+		const origCurrency = player.currency;
+
+		const resultPromise = waitForLootMagnetUsed(socket);
+		socket.emit('useKeyItem', { keyItemId: 'loot_magnet' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.pulled).toBe(0);
+		expect(result.collected).toBe(0);
+		expect(skyLoot.x).toBe(origX);
+		expect(skyLoot.z).toBe(origZ);
+		expect(skyLoot.y).toBe(origY);
+		expect(state.loot.find((l) => l.id === 'sky-loot')).toBeDefined();
+		expect(player.currency).toBe(origCurrency);
+	});
+
 	it('already-collected loot does not error or double-credit', async () => {
 		const { socket } = await connectAndStartRun(baseUrl);
 		const player = playerForSocket(socket);

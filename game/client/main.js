@@ -333,6 +333,8 @@ const TOKEN_KEY = 'autogame_token';
 let currentLobbyName = '';
 /** When true, the dismissible #lobby menu stays hidden until showGameLobby(). */
 let lobbyMenuDismissed = false;
+/** When true, showGameLobby() skips hiding the quest board (set by openQuestPanel). */
+let questPanelOpen = false;
 /** Set when the user clicks Create Channel; cleared on lobbyJoined to show #lobby for hosts. */
 let pendingShowLobbyOnJoin = false;
 /** True after the first lobbyJoined this session (create or join). */
@@ -462,6 +464,7 @@ function isLobbyMenuDismissKeyBlocked(e) {
 function dismissGameLobby() {
 	if (!lobbyEl) return;
 	lobbyMenuDismissed = true;
+	questPanelOpen = false;
 	lobbyEl.classList.add('hidden');
 	if (questBoardWrapperEl) questBoardWrapperEl.classList.add('hidden');
 }
@@ -484,9 +487,9 @@ function showGameLobby() {
 	lobbyMenuDismissed = false;
 	if (lobbyEl) lobbyEl.classList.remove('hidden');
 	setLobbyHudVisible(true);
-	// Quest board only appears via the quest booth, so keep it hidden each time
-	// the lobby is (re)shown.
-	if (questBoardWrapperEl) questBoardWrapperEl.classList.add('hidden');
+	// Quest board only appears via the quest booth; skip hiding when it was
+	// explicitly opened so STATE_UPDATE re-renders don't flash-close the panel.
+	if (!questPanelOpen && questBoardWrapperEl) questBoardWrapperEl.classList.add('hidden');
 	applyLobbyThemeLabels();
 	const me = myId && gameState?.players ? gameState.players[myId] : null;
 	syncVanguardHud(me, 'lobby');
@@ -2214,6 +2217,7 @@ function openQuestPanel() {
 	showGameLobby();
 	// The wrapper is hidden by default; the booth is what reveals it.
 	questBoardWrapperEl?.classList.remove('hidden');
+	questPanelOpen = true;
 	// jsdom lacks scrollIntoView, so guard defensively for tests.
 	questBoardWrapperEl?.scrollIntoView?.({ block: 'nearest' });
 }
@@ -5060,6 +5064,7 @@ window.performLogout = performLogout;
 window.showGameLobby = showGameLobby;
 window.dismissGameLobby = dismissGameLobby;
 window.__getLobbyMenuDismissed = () => lobbyMenuDismissed;
+window.__isQuestPanelOpen = () => questPanelOpen;
 window.renderLobbyList = renderLobbyList;
 window.applyLobbyJoinedData = applyLobbyJoinedData;
 window.applyHubPresence = applyHubPresence;
