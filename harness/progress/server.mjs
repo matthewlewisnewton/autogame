@@ -1192,6 +1192,56 @@ const server = createServer((req, res) => {
     return;
   }
 
+  if (url.pathname === '/summary') {
+    // One-call stall diagnosis: why are there zero merges / is the dispatcher
+    // alive? Aggregates the last hour of dispatcher events (already ingested
+    // into `events` from events.ndjson) plus the tick heartbeat file.
+    const hourAgo = Date.now() - 3600_000;
+    const recent = events.filter((e) => {
+      const t = Date.parse(e.ts);
+      return Number.isFinite(t) && t >= hourAgo;
+    });
+    const tally = (kind, keyFn) => {
+      const out = {};
+      for (const e of recent) {
+        if (e.kind !== kind) continue;
+        const key = String(keyFn ? keyFn(e.payload || {}) : 'count').slice(0, 160);
+        out[key] = (out[key] || 0) + 1;
+      }
+      return out;
+    };
+    let heartbeat = null;
+    try {
+      heartbeat = JSON.parse(readFileSync(join(progressDir, 'heartbeat.json'), 'utf8'));
+    } catch {
+      // no heartbeat file yet (factory not running, or pre-heartbeat version)
+    }
+    const latestStatus = [...events].reverse().find((e) => e.kind === 'factory_status');
+    sendJson(res, 200, {
+      now: nowIso(),
+      heartbeat: heartbeat
+        ? { ...heartbeat, age_s: Math.round((Date.now() - heartbeat.ts) / 1000) }
+        : null,
+      factory_status: latestStatus
+        ? { ts: latestStatus.ts, ...latestStatus.payload }
+        : null,
+      last_hour: {
+        spawns: tally('dispatch_spawn', (p) => p.agent || 'unknown'),
+        passes: Object.values(tally('dispatch_pass')).reduce((a, b) => a + b, 0),
+        merges_done: Object.values(tally('merge_done')).reduce((a, b) => a + b, 0),
+        requeues_by_rc: tally('dispatch_requeue', (p) => `rc=${p.rc}`),
+        merge_rejects_by_reason: tally('merge_rejected', (p) => p.reason || 'unknown'),
+        tickets_escalated: tally('ticket_escalated', (p) => p.ticket || 'unknown'),
+        tickets_abandoned: tally('ticket_abandoned', (p) => p.ticket || 'unknown'),
+        agents_disabled: tally('agent_disabled', (p) => p.agent || 'unknown'),
+        agents_reenabled: tally('agent_reenabled', (p) => p.agent || 'unknown'),
+        worker_timeouts: tally('worker_timeout', (p) => p.ticket || 'unknown'),
+        slots_quarantined: tally('slot_quarantined', (p) => p.ticket || 'unknown'),
+      },
+    });
+    return;
+  }
+
   if (url.pathname === '/gpu/uptime') {
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify(gpuUptimeSnapshot(), null, 2));

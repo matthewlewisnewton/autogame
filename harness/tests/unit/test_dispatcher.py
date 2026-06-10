@@ -454,3 +454,92 @@ def test_merge_breaker_abandons_on_hours():
     d._merge_first_seen["t1"] = time.time() - 2 * 3600
     assert d.note_merge_reject("t1") is True                     # 2h >= 1h -> abandon
     assert any(tid == "t1" for tid, _ in q.closed)
+
+
+# --- requeue backoff + breaker persistence + watchdog ------------------- #
+def test_requeue_backoff_blocks_immediate_reclaim_then_expires():
+    q = FakeQueue({"medium": ["t1"]})
+    d, procs, wts = _dispatcher(q, _registry())
+    d.requeue_backoff_s = 60.0
+    d.tick()                              # spawn t1
+    assert len(wts) == 1
+    procs["t1"].finish(1)                 # non-quota failure
+    d.tick()                              # reap → requeue + backoff stamp; lane head cooling
+    assert q.requeued == ["t1"]
+    assert len(wts) == 1                  # NOT re-claimed this tick
+    d.tick()
+    assert len(wts) == 1                  # still cooling
+    d._not_before["t1"] = time.time() - 1  # force expiry
+    d.tick()
+    assert len(wts) == 2                  # backoff over → re-claimed
+
+
+def test_requeue_backoff_off_by_default_reclaims_next_tick():
+    q = FakeQueue({"medium": ["t1"]})
+    d, procs, wts = _dispatcher(q, _registry())
+    d.tick()
+    procs["t1"].finish(1)
+    d.tick()                              # reap + immediate re-claim (old behaviour)
+    assert len(wts) == 2
+
+
+def test_breaker_state_persists_across_restart(tmp_path):
+    sf = tmp_path / "breaker_state.json"
+    q = FakeQueue({"medium": ["t1"]})
+    d, procs, wts = _dispatcher(q, _registry())
+    d.state_file = sf
+    d.requeue_backoff_s = 60.0
+    d.tick()                              # spawn → attempts=1, persisted
+    procs["t1"].finish(1)
+    d.tick()                              # fail → requeue + not_before persisted
+    assert sf.exists()
+    d2 = Dispatcher(
+        queue=q, registry=_registry(), main_repo=None,
+        ports_pool=[PortAllocation(3100, 5273)], lanes=["medium"],
+        spawn=lambda *a: FakeProc(), state_file=sf)
+    assert d2._attempts.get("t1") == 1
+    assert d2._not_before.get("t1", 0) > time.time()
+
+
+def test_pass_clears_persisted_backoff(tmp_path):
+    sf = tmp_path / "breaker_state.json"
+    q = FakeQueue({"medium": ["t1"]})
+    d, procs, wts = _dispatcher(q, _registry())
+    d.state_file = sf
+    d.tick()
+    procs["t1"].finish(int(PipelineResult.PASS))
+    d.tick()                              # PASS → breaker + backoff cleared
+    import json as _json
+    saved = _json.loads(sf.read_text())
+    assert saved["attempts"] == {} and saved["not_before"] == {}
+
+
+def test_watchdog_sigterms_overdue_worker(monkeypatch):
+    import os as _os
+    q = FakeQueue({"medium": ["t1"]})
+    d, procs, wts = _dispatcher(q, _registry())
+    d.worker_max_s = 1.0
+    d.tick()
+    d._workers["t1"].started_at = int((time.time() - 10) * 1000)  # 10s old, 1s cap
+    procs["t1"].pid = 4242
+    sent = []
+    monkeypatch.setattr(_os, "getpgid", lambda pid: pid)
+    monkeypatch.setattr(_os, "killpg", lambda pgid, sig: sent.append((pgid, sig)))
+    d.tick()
+    assert sent and sent[0][0] == 4242
+    assert "t1" in d._kill_sent
+    d.tick()                              # within the 60s TERM grace — no second signal
+    assert len(sent) == 1
+
+
+def test_watchdog_off_by_default_leaves_worker_alone(monkeypatch):
+    import os as _os
+    q = FakeQueue({"medium": ["t1"]})
+    d, procs, wts = _dispatcher(q, _registry())
+    d.tick()
+    d._workers["t1"].started_at = int((time.time() - 99999) * 1000)
+    procs["t1"].pid = 4242
+    sent = []
+    monkeypatch.setattr(_os, "killpg", lambda pgid, sig: sent.append(sig))
+    d.tick()
+    assert sent == []

@@ -138,6 +138,25 @@ class Dispatcher:
     # decompose failure. 0 = off (default; factory wires real values).
     breaker_merge_escalate: int = 0
     breaker_merge_abandon: int = 0
+    # Requeue backoff: a failed ticket goes back to `open` immediately, but the
+    # very next tick could re-claim it — on a persistent fast failure (e.g. an
+    # agent billing block fast-bailing in seconds) that's a claim/fail hot-loop.
+    # With a base > 0, a requeued ticket is not re-claimed until
+    # base * 2^(attempts-1) seconds have passed (capped below). 0 = off (default
+    # off so existing behaviour/tests are unchanged; the launcher wires a value).
+    requeue_backoff_s: float = 0.0
+    requeue_backoff_max_s: float = 1800.0
+    # Wall-clock ceiling for a RUNNING worker (seconds). A wedged worker (hung
+    # pnpm/vitest that escaped its own guard) otherwise holds its agent slot,
+    # port pair, and worktree forever with zero signal. Past the ceiling it gets
+    # SIGTERM (then SIGKILL a minute later) and flows through the normal failure
+    # path on reap. 0 = off.
+    worker_max_s: float = 0.0
+    # Breaker/backoff state persistence. The attempt counters above are what
+    # abandon a churning ticket — kept only in memory they reset on every factory
+    # restart, so a ticket that should be abandoned can churn indefinitely across
+    # restarts. None = no persistence (tests).
+    state_file: Optional[Path] = None
 
     _workers: dict[str, WorkerHandle] = field(default_factory=dict, init=False)
     _free_ports: list[PortAllocation] = field(default_factory=list, init=False)
@@ -154,9 +173,14 @@ class Dispatcher:
     # →re-run cycle since the worker passes every time).
     _merge_rejects: dict[str, int] = field(default_factory=dict, init=False)
     _merge_first_seen: dict[str, float] = field(default_factory=dict, init=False)
+    # Epoch seconds before which a requeued bead must not be re-claimed.
+    _not_before: dict[str, float] = field(default_factory=dict, init=False)
+    # Epoch seconds at which an over-ceiling worker was SIGTERMed (SIGKILL follows).
+    _kill_sent: dict[str, float] = field(default_factory=dict, init=False)
 
     def __post_init__(self):
         self._free_ports = list(self.ports_pool)
+        self._load_state()
         # NOTE: quota_classifier intentionally left None by default — the
         # built-in path (_hit_quota) is time-window-aware and needs the worker's
         # start timestamp, which a bare (agent)->bool classifier can't see.
@@ -173,6 +197,22 @@ class Dispatcher:
             self._tick_inner()
         finally:
             self._emit_status()
+            self._write_heartbeat()
+
+    def _write_heartbeat(self) -> None:
+        """Stamp progress/heartbeat.json every tick. `factory_status` events are
+        deduped when unchanged, so without this a dispatcher stuck mid-merge for
+        30 minutes looks identical to a healthy-but-quiet one. The file's mtime
+        (and `ts`) is the liveness signal the live view/summary reads."""
+        try:
+            (progress_dir() / "heartbeat.json").write_text(json.dumps({
+                "ts": int(time.time() * 1000),
+                "workers": len(self._workers),
+                "merge_pending": self.merge_pending() if self.merge_pending else 0,
+                "cooling": len(self._not_before),
+            }))
+        except Exception:
+            pass  # liveness telemetry must never break a tick
 
     def _tick_inner(self) -> None:
         self._reap()
@@ -222,6 +262,8 @@ class Dispatcher:
             self._reserve_qwen()
         for difficulty in self.lanes:
             while self._free_ports:
+                if self._lane_head_cooling(difficulty):
+                    break  # head-of-lane ticket is in requeue backoff — skip this tick
                 agent = self.registry.select_and_acquire(difficulty)
                 if agent is None:
                     break  # no eligible/free/healthy agent for this lane right now
@@ -320,6 +362,8 @@ class Dispatcher:
         for lane in ("easy", "medium"):
             if not self.queue.ready(difficulty=lane, limit=1):
                 continue
+            if self._lane_head_cooling(lane):
+                continue
             if not self.registry.try_acquire("qwen", lane):
                 return  # qwen busy/unavailable — nothing to reserve this tick
             issue = self.queue.claim_ready(difficulty=lane, assignee="qwen")
@@ -371,6 +415,7 @@ class Dispatcher:
         # (the wall-clock the ticket FIRST started churning, kept across requeues).
         self._attempts[bead_id] = self._attempts.get(bead_id, 0) + 1
         self._first_seen.setdefault(bead_id, time.time())
+        self._save_state()
         emit_progress_event("dispatch_spawn", {
             "ticket": ticket_name, "agent": agent, "difficulty": difficulty,
             "game_port": ports.game_server, "vite_port": ports.vite,
@@ -381,7 +426,9 @@ class Dispatcher:
         for tid, w in list(self._workers.items()):
             rc = w.poll()
             if rc is None:
+                self._watchdog(tid, w)
                 continue
+            self._kill_sent.pop(tid, None)
             teardown_ok = self._handle_outcome(w, rc)
             del self._workers[tid]
             self.registry.release(w.agent)
@@ -396,6 +443,69 @@ class Dispatcher:
                     "game_port": w.worktree.ports.game_server,
                     "vite_port": w.worktree.ports.vite,
                 })
+
+    def _watchdog(self, tid: str, w: WorkerHandle) -> None:
+        """Bound a RUNNING worker's wall clock. Past `worker_max_s`, SIGTERM its
+        process group (workers start their own session); if it's still alive 60s
+        later, SIGKILL. The killed worker then exits and flows through the normal
+        reap → _handle_outcome failure path next tick. Best-effort: a kill that
+        fails (already-dead pid, fake proc in tests) is logged and retried."""
+        if not self.worker_max_s or not w.started_at:
+            return
+        age_s = time.time() - (w.started_at / 1000.0)
+        if age_s < self.worker_max_s:
+            return
+        import signal
+        first_kill = self._kill_sent.get(tid)
+        sig = signal.SIGTERM if first_kill is None else (
+            signal.SIGKILL if time.time() - first_kill >= 60.0 else None)
+        if sig is None:
+            return  # TERM sent, still within its grace window
+        try:
+            pid = w.proc.pid  # type: ignore[attr-defined]
+            os.killpg(os.getpgid(pid), sig)
+        except Exception as e:
+            log(f"[dispatch] watchdog kill of {w.ticket_name} failed: {e!r}")
+            return
+        if first_kill is None:
+            self._kill_sent[tid] = time.time()
+            log(f"[dispatch] WATCHDOG: {w.ticket_name} ({w.agent}) exceeded "
+                f"{self.worker_max_s / 3600.0:.1f}h — SIGTERM sent")
+            emit_progress_event("worker_timeout", {
+                "ticket": w.ticket_name, "agent": w.agent,
+                "hours": round(age_s / 3600.0, 2)})
+
+    def _lane_head_cooling(self, difficulty: str) -> bool:
+        """True when the lane's next ready ticket is still inside its requeue
+        backoff window — the claim loop skips the lane this tick instead of
+        re-claiming a ticket that just fast-failed. Reads (never claims), so a
+        cooling head never causes beads write churn. Expired entries are pruned
+        here, the only place that consults them."""
+        if not self.requeue_backoff_s or not self._not_before:
+            return False
+        now = time.time()
+        expired = [tid for tid, t in self._not_before.items() if t <= now]
+        for tid in expired:
+            del self._not_before[tid]
+        if expired:
+            self._save_state()
+        if not self._not_before:
+            return False
+        try:
+            rows = self.queue.ready(difficulty=difficulty, limit=1)
+        except Exception:
+            return False
+        return bool(rows) and self._not_before.get(rows[0]["id"], 0) > now
+
+    def _note_backoff(self, tid: str, attempts: int) -> None:
+        """Stamp a requeued bead's no-reclaim-before time: base * 2^(attempts-1),
+        capped. No-op when backoff is off."""
+        if not self.requeue_backoff_s:
+            return
+        delay = min(self.requeue_backoff_s * (2 ** max(attempts - 1, 0)),
+                    self.requeue_backoff_max_s)
+        self._not_before[tid] = time.time() + delay
+        self._save_state()
 
     def _hit_quota(self, w: WorkerHandle) -> bool:
         """True if this worker's agent hit a quota/unavailable failure. An
@@ -432,6 +542,7 @@ class Dispatcher:
         # not the ticket's, so it doesn't count toward abandonment.
         if not self._apply_breaker(w):
             self.queue.requeue(w.ticket_id, note=f"{w.agent} failed (rc={rc})")
+            self._note_backoff(w.ticket_id, self._attempts.get(w.ticket_id, 1))
             emit_progress_event("dispatch_requeue",
                                 {"ticket": w.ticket_name, "agent": w.agent, "rc": rc})
         return w.worktree.remove_worktree()
@@ -439,6 +550,8 @@ class Dispatcher:
     def _clear_breaker(self, tid: str) -> None:
         self._attempts.pop(tid, None)
         self._first_seen.pop(tid, None)
+        self._not_before.pop(tid, None)
+        self._save_state()
 
     def note_merge_reject(self, ticket_id: str, reason: str = "") -> bool:
         """Called by the merge queue when a PASSED branch fails to integrate.
@@ -451,6 +564,7 @@ class Dispatcher:
         n = self._merge_rejects.get(ticket_id, 0) + 1
         self._merge_rejects[ticket_id] = n
         self._merge_first_seen.setdefault(ticket_id, time.time())
+        self._save_state()
         elapsed_h = (time.time() - self._merge_first_seen.get(ticket_id, time.time())) / 3600.0
 
         hit_count = self.breaker_merge_abandon and n >= self.breaker_merge_abandon
@@ -469,6 +583,7 @@ class Dispatcher:
                 "merge_rejects": n, "hours": round(elapsed_h, 1)})
             self._merge_rejects.pop(ticket_id, None)
             self._merge_first_seen.pop(ticket_id, None)
+            self._save_state()
             return True
 
         if self.breaker_merge_escalate and n >= self.breaker_merge_escalate:
@@ -481,6 +596,9 @@ class Dispatcher:
                     "kind": "merge_integration"})
             except Exception as e:
                 log(f"[dispatch] merge-breaker escalate failed for {ticket_id}: {e!r}")
+        # The merge queue requeues this ticket when we return False — give it the
+        # same backoff a worker failure gets so it can't be re-claimed instantly.
+        self._note_backoff(ticket_id, n)
         return False
 
     def _apply_breaker(self, w: WorkerHandle) -> bool:
@@ -532,6 +650,43 @@ class Dispatcher:
             except Exception as e:
                 log(f"[dispatch] breaker escalate failed for {w.ticket_name}: {e!r}")
         return False
+
+    # --- breaker/backoff state persistence ------------------------------ #
+    # The breaker counters decide when a churning ticket is escalated/abandoned;
+    # in-memory only they reset on every factory restart, so a ticket that should
+    # have been abandoned after N attempts can churn indefinitely across restarts.
+    # Same pattern as the registry's agents_health.json: best-effort JSON, never
+    # let persistence break a tick.
+    def _load_state(self) -> None:
+        if not self.state_file or not Path(self.state_file).exists():
+            return
+        try:
+            data = json.loads(Path(self.state_file).read_text())
+        except (OSError, json.JSONDecodeError):
+            return
+        self._attempts.update({k: int(v) for k, v in (data.get("attempts") or {}).items()})
+        self._first_seen.update({k: float(v) for k, v in (data.get("first_seen") or {}).items()})
+        self._merge_rejects.update({k: int(v) for k, v in (data.get("merge_rejects") or {}).items()})
+        self._merge_first_seen.update(
+            {k: float(v) for k, v in (data.get("merge_first_seen") or {}).items()})
+        self._not_before.update({k: float(v) for k, v in (data.get("not_before") or {}).items()})
+
+    def _save_state(self) -> None:
+        if not self.state_file:
+            return
+        try:
+            p = Path(self.state_file)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(json.dumps({
+                "attempts": self._attempts,
+                "first_seen": self._first_seen,
+                "merge_rejects": self._merge_rejects,
+                "merge_first_seen": self._merge_first_seen,
+                "not_before": self._not_before,
+            }, indent=2))
+        except OSError as e:
+            log(f"[dispatch] WARN: could not persist breaker state to "
+                f"{self.state_file}: {e!r}")
 
     # --- run loop ------------------------------------------------------- #
     def run(self, *, max_idle_ticks: int = 0) -> None:

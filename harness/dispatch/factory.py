@@ -91,6 +91,8 @@ def load_factory_config(main_root) -> FactoryConfig:
             continue
         data = _merge_factory_data(data, loaded)
     if not data:
+        log("[factory] config: no factory.yaml found — running on built-in "
+            "DEFAULT_SPECS (these can drift from the real config; check the file)")
         return FactoryConfig()
     try:
         agents = data.get("agents") or {}
@@ -343,6 +345,17 @@ def build_factory(main_root, *, workers: Optional[int] = None,
         # failures, abandon after 4 (or the 8h ceiling above).
         breaker_merge_escalate=2,
         breaker_merge_abandon=4,
+        # Requeue backoff: a requeued ticket can't be re-claimed for
+        # 60s * 2^(attempts-1) (cap 30min) — kills the claim/fast-fail hot-loop
+        # (an agent billing block fast-bailing in seconds used to re-claim the
+        # same ticket every 5s tick).
+        requeue_backoff_s=60.0,
+        # Persist breaker counters + backoff stamps across restarts so an
+        # often-restarted factory can still abandon a churning ticket.
+        state_file=Path(main_root) / "harness" / "tmp" / "breaker_state.json",
+        # Watchdog: SIGTERM (then SIGKILL) any worker running past 4h — a wedged
+        # worker otherwise holds its agent slot, port pair, and worktree forever.
+        worker_max_s=4 * 3600.0,
     )
     # The merge queue reports integration failures back to the breaker (it can't
     # be a constructor arg — disp doesn't exist when mq is built).

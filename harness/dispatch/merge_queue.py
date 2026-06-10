@@ -103,25 +103,62 @@ def _default_rebase(main_repo: Repo, h: WorkerHandle) -> bool:
         return False
 
 
+def _restore_beads_export(main_repo: Repo) -> bool:
+    """Discard local modifications to the passive `.beads/*` export in the main
+    checkout (the continuously-rewritten interactions/issues jsonl). These are
+    derived files — beads's source of truth is the Dolt DB — so restoring them
+    is always safe, and they are the recurring reason `merge --ff-only` refuses
+    with 'local changes would be overwritten'."""
+    try:
+        dirty = main_repo.run_git("status", "--porcelain", "--", ".beads")
+    except Exception:
+        return False
+    if not dirty.strip():
+        return False
+    try:
+        main_repo.run_git("checkout", "--", ".beads", capture=False)
+        log("[merge] restored locally-modified .beads/* export before ff retry")
+        return True
+    except Exception as e:
+        log(f"[merge] could not restore .beads/* export: {e!r}")
+        return False
+
+
 def _default_merge_ff(main_repo: Repo, h: WorkerHandle) -> bool:
     """Fast-forward main to the (already-rebased) worker branch tip.
 
-    On failure, capture git's stderr AND the main checkout's working-tree status
-    — recurring ff-only failures are suspected to be git refusing to overwrite a
-    locally-modified tracked file (the continuously-rewritten `.beads/*.jsonl`
-    export). Logging both confirms the cause before we commit to a fix."""
-    try:
-        main_repo.run_git("merge", "--ff-only", h.worktree.branch)
-        return True
-    except subprocess.CalledProcessError as e:
-        detail = (getattr(e, "stderr", "") or getattr(e, "stdout", "") or "").strip()[-600:]
-        log(f"[merge] ff-only of {h.worktree.branch} FAILED: {detail!r}")
+    Not every ff failure means "main advanced" (the only case the caller's
+    re-rebase loop can fix), so classify before giving up — each False returned
+    here costs the caller one of its MERGE_FF_ATTEMPTS and can ultimately reject
+    a perfectly good branch:
+      - 'local changes would be overwritten' by the passive `.beads/*` export →
+        restore the export and retry (derived data, always safe to discard);
+      - a transient ref/index lock (a worker's concurrent git op in the shared
+        .git) → short sleep and retry, NOT a verify-invalidating event;
+      - anything else (genuine non-ff, unknown) → log + False as before."""
+    for attempt in range(3):
         try:
-            dirty = main_repo.run_git("status", "--porcelain").strip()[:600]
-            log(f"[merge] main working-tree at ff-failure: {dirty!r}")
-        except Exception:
-            pass
-        return False
+            main_repo.run_git("merge", "--ff-only", h.worktree.branch)
+            return True
+        except subprocess.CalledProcessError as e:
+            detail = (getattr(e, "stderr", "") or getattr(e, "stdout", "") or "").strip()[-600:]
+            lowered = detail.lower()
+            if attempt < 2 and ("would be overwritten" in lowered
+                                or "local changes" in lowered):
+                if _restore_beads_export(main_repo):
+                    continue  # blocker was the derived export — retry the ff
+            elif attempt < 2 and (".lock" in lowered or "unable to create" in lowered):
+                log(f"[merge] ff-only hit a transient git lock ({detail!r}) — retrying")
+                time.sleep(1.5)
+                continue
+            log(f"[merge] ff-only of {h.worktree.branch} FAILED: {detail!r}")
+            try:
+                dirty = main_repo.run_git("status", "--porcelain").strip()[:600]
+                log(f"[merge] main working-tree at ff-failure: {dirty!r}")
+            except Exception:
+                pass
+            return False
+    return False
 
 
 def _default_verify(worktree_root: Path) -> bool:

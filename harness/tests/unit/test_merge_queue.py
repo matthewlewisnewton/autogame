@@ -486,3 +486,55 @@ def test_reject_requeues_when_on_reject_returns_false():
     mq.enqueue(h)
     assert mq.drain_one() is True
     assert q.requeued == ["t1"]              # not handled -> requeued as before
+
+
+# --- _default_merge_ff failure classification --------------------------- #
+class _FfRepo:
+    """Fake main repo for _default_merge_ff: scripted merge failures plus a
+    porcelain status / checkout for the .beads-restore path."""
+    root = "/main"
+
+    def __init__(self, merge_errors, *, dirty=""):
+        self._merge_errors = list(merge_errors)  # stderr per failing call; then success
+        self.merges = 0
+        self.checkouts = []
+        self._dirty = dirty
+
+    def run_git(self, *args, **kw):
+        if args[0] == "merge":
+            self.merges += 1
+            if self._merge_errors:
+                err = self._merge_errors.pop(0)
+                raise subprocess.CalledProcessError(1, "git merge", stderr=err)
+            return ""
+        if args[0] == "status":
+            return self._dirty
+        if args[0] == "checkout":
+            self.checkouts.append(args)
+            self._dirty = ""
+            return ""
+        return ""
+
+
+def test_default_merge_ff_retries_transient_ref_lock(monkeypatch):
+    from harness.dispatch import merge_queue as mqmod
+    monkeypatch.setattr(mqmod.time, "sleep", lambda s: None)
+    repo = _FfRepo(["fatal: Unable to create '.git/refs/heads/main.lock': File exists"])
+    assert mqmod._default_merge_ff(repo, _handle("t1")) is True
+    assert repo.merges == 2               # one lock failure absorbed, then success
+
+
+def test_default_merge_ff_restores_dirty_beads_export(monkeypatch):
+    from harness.dispatch import merge_queue as mqmod
+    repo = _FfRepo(
+        ["error: Your local changes to the following files would be overwritten by merge:\n\t.beads/interactions.jsonl"],
+        dirty=" M .beads/interactions.jsonl")
+    assert mqmod._default_merge_ff(repo, _handle("t1")) is True
+    assert repo.checkouts and repo.checkouts[0][:3] == ("checkout", "--", ".beads")
+
+
+def test_default_merge_ff_genuine_non_ff_still_fails():
+    from harness.dispatch import merge_queue as mqmod
+    repo = _FfRepo(["fatal: Not possible to fast-forward, aborting."] * 3)
+    assert mqmod._default_merge_ff(repo, _handle("t1")) is False
+    assert repo.merges == 1               # no pointless retry for a real non-ff
