@@ -8,11 +8,13 @@ import {
   setGameState,
   spawnEnemies,
   startDungeonRun,
-  removeDeadEnemies,
   suspendRunToLobby,
   checkAllReady,
   isRunObjectiveComplete,
-  checkRunTerminalState,
+  buildRunSummary,
+  // tickEscort must come from index.js (the wired game-loop path): the
+  // ESM-imported escort.js instance has no checkRunTerminalState callback.
+  tickEscort,
   updateMinions,
   damageMinion,
 } from '../index.js';
@@ -20,7 +22,6 @@ import { setGameState as setSimulationGameState } from '../simulation.js';
 import {
   getEscortMinion,
   isEscortAtDestination,
-  tickEscort,
 } from '../escort.js';
 
 const require = createRequire(import.meta.url);
@@ -157,13 +158,13 @@ describe('escort destination complete', () => {
     deployEscortRun(gameState);
   });
 
-  it('completes when waves are cleared and escort reaches the destination', () => {
+  it('reaches victory on arrival while ambush enemies are still alive', () => {
     const escort = getEscortMinion(gameState);
-    for (const enemy of gameState.enemies) {
-      enemy.hp = 0;
-    }
-    removeDeadEnemies();
-    expect(gameState.run.scriptedEncounter.rooms['room:0'].cleared).toBe(true);
+    expect(gameState.enemies.some((enemy) => enemy.hp > 0)).toBe(true);
+    expect(gameState.run.scriptedEncounter.rooms['room:0'].cleared).toBe(false);
+    expect(gameState.run.objective.defeatedEnemies).toBeLessThan(
+      gameState.run.objective.totalEnemies,
+    );
 
     const dais = gameState.layout.landmarks.find((lm) => lm.type === 'arena_dais');
     escort.x = dais.x;
@@ -174,8 +175,35 @@ describe('escort destination complete', () => {
     expect(gameState.run.objective.reachedDestination).toBe(true);
     expect(isRunObjectiveComplete(gameState.run.objective)).toBe(true);
 
-    checkRunTerminalState();
+    expect(gameState.enemies.some((enemy) => enemy.hp > 0)).toBe(true);
+    expect(gameState.run.scriptedEncounter.rooms['room:0'].cleared).toBe(false);
     expect(gameState.run.status).toBe('victory');
+  });
+
+  it('keeps HUD enemy-progress fields on the objective after arrival victory', () => {
+    const escort = getEscortMinion(gameState);
+    const dais = gameState.layout.landmarks.find((lm) => lm.type === 'arena_dais');
+    escort.x = dais.x;
+    escort.z = dais.z;
+
+    tickEscort(gameState);
+    expect(gameState.run.status).toBe('victory');
+    expect(gameState.run.objective.totalEnemies).toBeGreaterThan(0);
+    expect(gameState.run.objective.defeatedEnemies).toBe(0);
+  });
+
+  it('lobby run summary path reports victory on arrival', () => {
+    const escort = getEscortMinion(gameState);
+    const dais = gameState.layout.landmarks.find((lm) => lm.type === 'arena_dais');
+    escort.x = dais.x;
+    escort.z = dais.z;
+
+    tickEscort(gameState);
+    expect(gameState.run.status).toBe('victory');
+
+    const summary = buildRunSummary(gameState.run.status);
+    expect(summary.status).toBe('victory');
+    expect(summary.objective.reachedDestination).toBe(true);
   });
 });
 

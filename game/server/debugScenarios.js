@@ -73,6 +73,7 @@ const {
   resolveEncounterAnchor,
 } = require('./encounters');
 const { findPassageIndexFromRoom } = require('./scriptedEncounters');
+const { ESCORT_DESTINATION_RADIUS, getEscortMinion } = require('./escort');
 
 // index.js-local helpers + the DEBUG_SCENARIOS set, injected after modules load.
 let io = null;
@@ -1058,6 +1059,38 @@ function applyDebugScenario(socket, name) {
       // Reachable normally by deploying the escort fixture quest; this scenario is
       // a shortcut into escort wave-0 combat with the NPC already spawned.
       setupEscortObjectiveDeploy(lobby, state, player);
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
+    if (name === 'escort-near-destination') {
+      // escort_objective_fixture Tier 1 with Archivist Vale staged just outside
+      // the arena-dais arrival radius while the wave-0 grunt ambush is still
+      // alive in the start room. Reachable normally by escorting the NPC across
+      // the plaza; this scenario is a shortcut to watch arrival trigger victory
+      // with enemies still alive: walk onto the dais and the escort follows in.
+      setupEscortObjectiveDeploy(lobby, state, player);
+
+      const destination = state.run?.escort?.destination;
+      const escort = getEscortMinion(state);
+      if (destination && escort) {
+        const stagingOffset = ESCORT_DESTINATION_RADIUS + 3;
+        player.x = destination.x + stagingOffset;
+        player.z = destination.z;
+        player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+        escort.x = destination.x + stagingOffset + 1.5;
+        escort.z = destination.z;
+      }
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,

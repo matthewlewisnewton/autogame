@@ -363,7 +363,7 @@ const OBJECTIVE_DEFS = {
     isComplete(objective, run) {
       if (!objective.reachedDestination && !run?.escort?.atDestination) return false;
       if (run?.escort?.failed) return false;
-      return objective.defeatedEnemies >= objective.totalEnemies;
+      return true;
     },
     clampProgress(run) {
       clampDefeatedEnemies(run.objective);
