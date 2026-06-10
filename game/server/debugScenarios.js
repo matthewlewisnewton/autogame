@@ -46,6 +46,8 @@ const {
   spawnEnemies,
   startDungeonRun,
   updateQuestScriptTriggers,
+  updateScriptedEncounters,
+  removeDeadEnemies,
   emitRunStartDialogue,
   syncRunObjectiveToEnemies,
   checkRunTerminalState,
@@ -619,36 +621,47 @@ function applyDebugScenario(socket, name) {
       };
     }
 
-    if (name === 'training-caverns-vault-marauder') {
-      // training_caverns Tier 1 with run-start grunts cleared and Vault Marauder
-      // spawned in the deepest vault room for named-rare QA. Reachable normally by
-      // clearing the annex and entering the deep vault; this scenario is a shortcut.
-      setupTrainingCavernsTier1Deploy(lobby, state, player);
+    if (name === 'training-caverns-vault-stalker') {
+      // training_caverns Tier 1 with annex waves cleared and Vault Stalker spawned
+      // in the vault wing for named-rare QA. Reachable normally by clearing both
+      // passage-locked rooms and entering room 2; this scenario is a shortcut.
+      setupTrainingCavernsTier1Deploy(lobby, state, player, 1);
 
-      const vaultRoom = deepestCombatRoom(state.layout);
-      const runStartWave = state.run?.waveScript?.waves?.find((wave) => wave.id === 'wave_run_start');
-      if (runStartWave) {
-        for (const enemyId of runStartWave.spawnedEnemyIds) {
-          const enemy = state.enemies.find((entry) => entry.id === enemyId);
-          if (enemy) enemy.hp = 0;
-        }
-        state.enemies = state.enemies.filter((enemy) => enemy.hp > 0);
-        runStartWave.status = 'cleared';
-        if (state.run?.objective) {
-          state.run.objective.defeatedEnemies = runStartWave.spawnedEnemyIds.length;
+      const layout = state.layout;
+      const vaultRoom = layout?.rooms?.[2] ?? deepestCombatRoom(layout);
+
+      for (const enemy of [...state.enemies]) {
+        if (enemy.scriptedWave?.roomKey === 'room:0' && enemy.scriptedWave?.waveIndex === 0) {
+          enemy.hp = 0;
         }
       }
+      removeDeadEnemies();
+
+      const annexRoom = layout?.rooms?.[1];
+      if (annexRoom) {
+        player.x = annexRoom.x;
+        player.z = annexRoom.z;
+        player.y = resolveFloorY(sampleFloorY(layout, player.x, player.z));
+        updateScriptedEncounters();
+      }
+
+      for (const enemy of [...state.enemies]) {
+        if (enemy.scriptedWave?.roomKey === 'room:1') {
+          enemy.hp = 0;
+        }
+      }
+      removeDeadEnemies();
 
       player.x = vaultRoom?.x ?? 0;
       player.z = vaultRoom?.z ?? 0;
-      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      updateQuestScriptTriggers();
+      player.y = resolveFloorY(sampleFloorY(layout, player.x, player.z));
+      updateScriptedEncounters();
 
-      const marauder = state.enemies.find((enemy) => enemy.namedRare?.name === 'Vault Marauder');
-      if (marauder) {
-        marauder.wanderTarget = { x: marauder.x, z: marauder.z };
-        repositionNearEnemy(player, marauder);
-        player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      const stalker = state.enemies.find((enemy) => enemy.displayName === 'Vault Stalker');
+      if (stalker) {
+        stalker.wanderTarget = { x: stalker.x, z: stalker.z };
+        repositionNearEnemy(player, stalker);
+        player.y = resolveFloorY(sampleFloorY(layout, player.x, player.z));
       }
 
       if (!player.hand.some((c) => c && c.type === 'weapon' && (c.remainingCharges == null || c.remainingCharges > 0))) {

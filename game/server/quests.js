@@ -113,67 +113,6 @@ function spawnOffsetsInRoom(room, count, radiusFrac = 0.22) {
 }
 
 /**
- * Authored wave script for training_caverns tier 1. Spawn coords are derived
- * from the canonical crowded layout seed so hand-placed enemies stay stable.
- */
-function buildTrainingCavernsTier1Script() {
-  const questId = 'training_caverns';
-  const tier = 1;
-  const seed = questLayoutSeed(questId, tier);
-  const layout = generateLayout(seed, 'crowded', { slopes: true, layoutMode: 'default' });
-  const startRoom = layout.rooms.find((room) => room.role === 'start') || layout.rooms[0];
-  const vaultRoom = layout.rooms
-    .filter((room) => room.role === 'combat')
-    .sort((a, b) => a.x - b.x || a.z - b.z)
-    .pop();
-  const startPositions = spawnOffsetsInRoom(startRoom, 4);
-  const runStartTypes = ['grunt', 'grunt', 'skirmisher', 'skirmisher'];
-  const runStartSpawns = runStartTypes.map((type, index) => ({
-    type,
-    x: startPositions[index].x,
-    z: startPositions[index].z,
-  }));
-  const vaultPositions = spawnOffsetsInRoom(vaultRoom, 2);
-  const marauderX = roundSpawnCoord(vaultRoom.x);
-  const marauderZ = roundSpawnCoord(vaultRoom.z + vaultRoom.depth * 0.12);
-
-  return {
-    waves: [
-      {
-        id: 'wave_run_start',
-        trigger: 'run_start',
-        spawns: runStartSpawns,
-      },
-      {
-        id: 'wave_vault_room',
-        trigger: 'enter_room',
-        room: { x: vaultRoom.x, z: vaultRoom.z },
-        spawns: [
-          {
-            type: 'grunt',
-            x: marauderX,
-            z: marauderZ,
-            variant: {
-              name: 'Vault Marauder',
-              hpMult: 1.5,
-              damageMult: 1.25,
-              tint: '#c9a227',
-              scaleMult: 1.12,
-              drop: { cardId: 'dungeon_drake' },
-            },
-          },
-          {
-            type: 'skirmisher',
-            x: vaultPositions[1].x,
-            z: vaultPositions[1].z,
-          },
-        ],
-      },
-    ],
-  };
-}
-
-/**
  * Authored wave script for ember_descent tier 1. Spawn coords are derived from
  * the canonical fire-cavern layout seed so hand-placed enemies stay stable.
  */
@@ -297,16 +236,26 @@ const QUEST_DEFS = {
         rewardCurrency: 10,
         rewardCardId: 'saber_of_light',
         layoutProfile: 'crowded',
-        script: buildTrainingCavernsTier1Script(),
         scriptedEncounters: {
           rooms: [
             {
               roomIndex: 0,
               waves: [
                 { spawns: [{ type: 'grunt', count: 2 }] },
+              ],
+            },
+            {
+              roomIndex: 1,
+              waves: [
+                { spawns: [{ type: 'skirmisher', count: 2 }] },
+              ],
+            },
+            {
+              roomIndex: 2,
+              waves: [
                 {
                   spawns: [
-                    { type: 'skirmisher', count: 1 },
+                    { type: 'grunt', count: 1 },
                     {
                       type: 'grunt',
                       count: 1,
@@ -319,16 +268,6 @@ const QUEST_DEFS = {
                   ],
                 },
               ],
-            },
-            {
-              roomIndex: 1,
-              waves: [
-                { spawns: [{ type: 'skirmisher', count: 2 }] },
-              ],
-            },
-            {
-              roomIndex: 2,
-              waves: [],
             },
           ],
           passageLocks: [
@@ -348,7 +287,7 @@ const QUEST_DEFS = {
             trigger: 'onRoomEntered',
             roomIndex: 0,
             speaker: 'Annex Liaison Kade',
-            line: 'Contract accepted. Sweep the annex — I will mark your progress on the channel.',
+            line: 'Entry annex is live. Close with WASD and strike with your melee weapon — two grunts block the bulkhead.',
           },
           {
             beaconId: 'training_wave0_clear',
@@ -356,26 +295,32 @@ const QUEST_DEFS = {
             roomIndex: 0,
             waveIndex: 0,
             speaker: 'Annex Liaison Kade',
-            line: 'Bulkhead released — push deeper before the salvage crews regroup.',
+            line: 'Bulkhead released. Select a card from your hand and play it on the next pack — spells and creatures hit harder than fists alone.',
           },
           {
-            beaconId: 'training_wave1_clear',
-            trigger: 'onWaveCleared',
+            beaconId: 'training_annex_enter',
+            trigger: 'onRoomEntered',
             roomIndex: 1,
-            waveIndex: 0,
             speaker: 'Annex Liaison Kade',
-            line: 'Inner vault seal broken — the wing is yours if you can hold it.',
+            line: 'Mid annex ahead. Watch enemy attack telegraphs — dodge roll when you see a wind-up before they connect.',
+          },
+          {
+            beaconId: 'training_vault_enter',
+            trigger: 'onRoomEntered',
+            roomIndex: 2,
+            speaker: 'Annex Liaison Kade',
+            line: 'Vault wing unlocked. Vault Stalker is warded — break the shield, then finish the pair.',
           },
         ],
         client: {
           name: 'Rewa',
           briefing:
-            'Annex clearance contract. Five hostiles remain in the vault sector — neutralize them and I will release your reward stones.',
+            'Annex clearance contract. Six hostiles guard the vault sector — neutralize them and I will release your reward stones.',
         },
         dialogue: [
           {
             trigger: 'run_start',
-            text: 'Rewa here. Radio check — sweep the annex and report when the sector is clear.',
+            text: 'Rewa on channel. Move with WASD, close on the opening grunts, and strike with your melee weapon to start the sweep.',
           },
           {
             trigger: 'objective_complete',

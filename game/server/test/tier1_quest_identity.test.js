@@ -66,19 +66,36 @@ describe('tier-1 quest identity wiring', () => {
     ]);
   });
 
-  it('training_caverns tier 1 has passage lock, named rare, and wave-clear dialogue', () => {
+  it('training_caverns tier 1 has passage lock, named rare, and tutorial dialogue', () => {
     const quest = tier1Quest('training_caverns');
     expect(quest.objectiveType).toBe('defeat_enemies');
     expect(quest.rewardCardId).toBe('saber_of_light');
     expect(quest.scriptedEncounters.passageLocks).toHaveLength(2);
+    expect(quest.scriptedEncounters.rooms).toHaveLength(3);
 
-    const startWaves = quest.scriptedEncounters.rooms.find((r) => r.roomIndex === 0).waves;
-    const namedSpawn = startWaves[1].spawns.find((s) => s.namedRare);
+    const startRoom = quest.scriptedEncounters.rooms.find((r) => r.roomIndex === 0);
+    expect(startRoom.waves).toHaveLength(1);
+    expect(startRoom.waves[0].spawns).toEqual([{ type: 'grunt', count: 2 }]);
+    expect(countAuthoredScriptedEnemies(quest)).toBeGreaterThanOrEqual(6);
+    expect(countAuthoredScriptedEnemies(quest)).toBeLessThanOrEqual(10);
+
+    const vaultRoom = quest.scriptedEncounters.rooms.find((r) => r.roomIndex === 2);
+    const namedSpawn = vaultRoom.waves[0].spawns.find((s) => s.namedRare);
     expect(namedSpawn.namedRare.displayName).toBe('Vault Stalker');
 
     const beacons = getDialogueBeacons(quest);
     expect(beacons.some((b) => b.beaconId === 'training_wave0_clear')).toBe(true);
     expect(beacons.some((b) => b.beaconId === 'training_start_room')).toBe(true);
+    expect(beacons.some((b) => b.beaconId === 'training_annex_enter')).toBe(true);
+    expect(beacons.some((b) => b.beaconId === 'training_vault_enter')).toBe(true);
+
+    const coachingCopy = [
+      ...quest.dialogue.map((entry) => entry.text),
+      ...beacons.map((beacon) => beacon.line),
+    ].join(' ').toLowerCase();
+    expect(coachingCopy).toMatch(/wasd|melee/);
+    expect(coachingCopy).toMatch(/card/);
+    expect(coachingCopy).toMatch(/dodge|telegraph/);
   });
 
   it('crystal_rescue tier 1 keeps collect_items with guard waves and prism dialogue', () => {
