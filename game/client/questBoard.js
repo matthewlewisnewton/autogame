@@ -63,7 +63,8 @@ export function formatObjectiveSummary(quest) {
 
 export function formatRewardSummary(quest) {
 	if (!quest || quest.rewardCurrency == null) return 'Reward: —';
-	return `Reward: ${quest.rewardCurrency} ${THEME.currency.short.toLowerCase()}`;
+	const base = `Reward: ${quest.rewardCurrency} ${THEME.currency.short.toLowerCase()}`;
+	return quest.signatureCardName ? `${base} + ${quest.signatureCardName}` : base;
 }
 
 /** Display label for run summaries / HUD when a tier-2 contract is active. */
@@ -107,6 +108,7 @@ function buildQuestBoardRows(quests, questVariants) {
 			minibossCount: quest.minibossCount,
 			encounter: quest.encounter,
 			rewardCurrency: quest.rewardCurrency,
+			signatureCardName: quest.signatureCardName,
 		});
 	}
 

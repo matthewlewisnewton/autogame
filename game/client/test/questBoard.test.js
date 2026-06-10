@@ -133,6 +133,12 @@ describe('formatRewardSummary()', () => {
 	it('formats quest reward currency', () => {
 		expect(formatRewardSummary(SAMPLE_QUESTS[0])).toBe('Reward: 10 money');
 	});
+
+	it('appends the signature card name when present', () => {
+		expect(
+			formatRewardSummary({ rewardCurrency: 14, signatureCardName: 'Glacial Orb' }),
+		).toBe('Reward: 14 money + Glacial Orb');
+	});
 });
 
 describe('formatQuestTierLabel()', () => {
@@ -177,6 +183,30 @@ describe('renderQuestBoard()', () => {
 		expect(cards[2].querySelector('.quest-objective').textContent).toContain(
 			'Survive 10 hostiles (2 minibosses)',
 		);
+	});
+
+	it('renders the signature card reward next to currency when present', () => {
+		const quests = [
+			...SAMPLE_QUESTS,
+			{
+				id: 'frost_crossing',
+				name: 'Frost Crossing',
+				description: 'Cross the frozen cavern and purge hostiles from the ice field.',
+				objectiveType: 'defeat_enemies',
+				enemyCount: 6,
+				rewardCurrency: 14,
+				signatureCardId: 'ice_ball',
+				signatureCardName: 'Glacial Orb',
+			},
+		];
+		renderQuestBoard(container, quests, 'frost_crossing');
+
+		const frostCard = container.querySelector('[data-quest-id="frost_crossing"]');
+		expect(frostCard.querySelector('.quest-reward').textContent).toBe(
+			'Reward: 14 money + Glacial Orb',
+		);
+		const trainingCard = container.querySelector('[data-quest-id="training_caverns"]');
+		expect(trainingCard.querySelector('.quest-reward').textContent).toBe('Reward: 10 money');
 	});
 
 	it('invokes onSelectQuest when a card is clicked', () => {
