@@ -158,8 +158,12 @@ roles:
       deny:  ["game/**", "harness/**"]
 
   split:
-    primary: composer_write
-    fallbacks: [claude]            # composer primary; claude backstop if composer is out (quota)
+    # Owner-opted 2026-06-10: recovery work (restructuring a stuck ticket) gets
+    # the strongest reasoning — fable-5 @ xhigh. composer stays as the backstop
+    # because fable/opus share one Anthropic quota pool (claude would likely be
+    # out whenever fable is).
+    primary: claude_fable
+    fallbacks: [composer_write]
     timeout_s: 1800
     out_file: "split.txt"
     prompt_template: harness/prompts/split.md
@@ -175,8 +179,10 @@ roles:
   # on acceptance (include_harness=True) so a harness fix persists, and the
   # supervisor re-execs afterward to load it.
   repair:
-    primary: composer_write
-    fallbacks: [claude]            # composer primary; claude backstop if composer is out (quota)
+    # Owner-opted 2026-06-10: self-healing harness/runtime repair gets fable-5 @
+    # xhigh; composer backstop (shared Anthropic quota — see split).
+    primary: claude_fable
+    fallbacks: [composer_write]
     timeout_s: 1800
     out_file: "repair.txt"
     prompt_template: harness/prompts/repair.md

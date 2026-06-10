@@ -17,7 +17,14 @@
 const { SERVER_TO_CLIENT } = require('../shared/events.js');
 const crypto = require('crypto');
 const { generateLayout, questLayoutSeed, sampleFloorY, resolveFloorY } = require('./dungeon');
-const { DEFAULT_QUEST_ID, getLayoutProfileForQuest, buildQuestUpdatePayload } = require('./quests');
+const {
+  QUEST_DEFS,
+  DEFAULT_QUEST_ID,
+  getLayoutProfileForQuest,
+  buildQuestUpdatePayload,
+  SCRIPTED_ENCOUNTER_FIXTURE_DEF,
+  ESCORT_OBJECTIVE_FIXTURE_DEF,
+} = require('./quests');
 const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS, MEDIC_HEAL_COST } = require('./config');
 const CARD_DEFS = require('../shared/cardDefs.json');
 const {
@@ -38,6 +45,7 @@ const {
   spawnEnemy,
   spawnEnemies,
   startDungeonRun,
+  emitRunStartDialogue,
   syncRunObjectiveToEnemies,
   checkRunTerminalState,
   stateSnapshot,
@@ -59,6 +67,7 @@ const {
   areAllNonBossEnemiesDefeated,
   resolveEncounterAnchor,
 } = require('./encounters');
+const { findPassageIndexFromRoom } = require('./scriptedEncounters');
 
 // index.js-local helpers + the DEBUG_SCENARIOS set, injected after modules load.
 let io = null;
@@ -93,8 +102,110 @@ function clearPlayerCardCommitment(player) {
   delete player.pendingCardUse;
 }
 
-function setupFrostCrossingTier1Deploy(lobby, state, player) {
-  const questId = 'frost_crossing';
+function ensureScriptedEncounterFixtureQuest() {
+  const questId = SCRIPTED_ENCOUNTER_FIXTURE_DEF.id;
+  if (!QUEST_DEFS[questId]) {
+    QUEST_DEFS[questId] = SCRIPTED_ENCOUNTER_FIXTURE_DEF;
+  }
+}
+
+function ensurePassageLockFixtureQuest(layout) {
+  ensureScriptedEncounterFixtureQuest();
+  const questId = SCRIPTED_ENCOUNTER_FIXTURE_DEF.id;
+  const startRoomIndex = layout.rooms.findIndex((room) => room.role === 'start');
+  const passageIndex = findPassageIndexFromRoom(layout, startRoomIndex >= 0 ? startRoomIndex : 0);
+  const baseTier = SCRIPTED_ENCOUNTER_FIXTURE_DEF.tiers[1];
+  QUEST_DEFS[questId] = {
+    ...SCRIPTED_ENCOUNTER_FIXTURE_DEF,
+    tiers: {
+      1: {
+        ...baseTier,
+        scriptedEncounters: {
+          ...baseTier.scriptedEncounters,
+          passageLocks: passageIndex >= 0
+            ? [{ afterWave: { roomIndex: startRoomIndex >= 0 ? startRoomIndex : 0, waveIndex: 0 }, passageIndex }]
+            : [],
+        },
+      },
+    },
+  };
+}
+
+function ensureEscortObjectiveFixtureQuest() {
+  const questId = ESCORT_OBJECTIVE_FIXTURE_DEF.id;
+  if (!QUEST_DEFS[questId]) {
+    QUEST_DEFS[questId] = ESCORT_OBJECTIVE_FIXTURE_DEF;
+  }
+}
+
+function setupEscortObjectiveDeploy(lobby, state, player) {
+  ensureEscortObjectiveFixtureQuest();
+  const questId = ESCORT_OBJECTIVE_FIXTURE_DEF.id;
+  const tier = 1;
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+
+  player.ready = true;
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  const startSpawn = firstRoomPosition();
+  player.x = startSpawn.x;
+  player.z = startSpawn.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+  enterPlayingPhase(lobby);
+
+  if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+    createDrawDeckFromSelectedDeck(player);
+    initPlayerHand(player);
+    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+    if (!player.pendingSummons) {
+      player.pendingSummons = new Set();
+    }
+  }
+
+  state.enemies = [];
+  state.loot = [];
+  state.minions = [];
+  delete state.run;
+  delete state._pendingEncounterBossId;
+  spawnEnemies();
+  startDungeonRun();
+}
+
+function setupScriptedWaveCombatDeploy(lobby, state, player) {
+  ensureScriptedEncounterFixtureQuest();
+  const questId = SCRIPTED_ENCOUNTER_FIXTURE_DEF.id;
+  const tier = 1;
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+
+  player.ready = true;
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  const startSpawn = firstRoomPosition();
+  player.x = startSpawn.x;
+  player.z = startSpawn.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+  enterPlayingPhase(lobby);
+
+  if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+    createDrawDeckFromSelectedDeck(player);
+    initPlayerHand(player);
+    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+    if (!player.pendingSummons) {
+      player.pendingSummons = new Set();
+    }
+  }
+
+  state.enemies = state.enemies || [];
+  state.loot = state.loot || [];
+}
+
+function setupQuestTier1Deploy(lobby, state, player, questId) {
   const tier = 1;
   state.selectedQuestId = questId;
   state.selectedQuestTier = tier;
@@ -127,6 +238,52 @@ function setupFrostCrossingTier1Deploy(lobby, state, player) {
   startDungeonRun();
 }
 
+function setupFrostCrossingTier1Deploy(lobby, state, player) {
+  setupQuestTier1Deploy(lobby, state, player, 'frost_crossing');
+}
+
+function setupTrainingCavernsTier1Deploy(lobby, state, player) {
+  setupQuestTier1Deploy(lobby, state, player, 'training_caverns');
+}
+
+function setupCrystalRescueTier1Deploy(lobby, state, player) {
+  setupQuestTier1Deploy(lobby, state, player, 'crystal_rescue');
+}
+
+function setupAnnexEscortTier1Deploy(lobby, state, player) {
+  setupQuestTier1Deploy(lobby, state, player, 'annex_escort');
+}
+
+function ensurePlayerCombatHand(player) {
+  if (!player.hand || player.hand.length === 0) {
+    createDrawDeckFromSelectedDeck(player);
+    initPlayerHand(player);
+    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+    if (!player.pendingSummons) {
+      player.pendingSummons = new Set();
+    }
+  }
+}
+
+/** Deploy quest enemies/run before entering playing so ticks never see run missing. */
+function deployQuestDebugRun(lobby, state, { clearEncounterBoss = false } = {}) {
+  for (const p of Object.values(state.players)) {
+    ensurePlayerCombatHand(p);
+  }
+  state.enemies = [];
+  state.loot = [];
+  delete state.run;
+  if (clearEncounterBoss) {
+    delete state._pendingEncounterBossId;
+  }
+  spawnEnemies();
+  startDungeonRun();
+  if (state.gamePhase !== PHASES.PLAYING) {
+    setPhase(lobby, PHASES.PLAYING);
+    io.to(lobby.id).emit(SERVER_TO_CLIENT.START_GAME);
+  }
+}
+
 function setupArenaTrialsTier2StageBossDebug(lobby, state, player) {
   const questId = 'arena_trials';
   const tier = 2;
@@ -143,23 +300,7 @@ function setupArenaTrialsTier2StageBossDebug(lobby, state, player) {
   player.z = plazaSpawn.z;
   player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
 
-  enterPlayingPhase(lobby);
-
-  if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
-    createDrawDeckFromSelectedDeck(player);
-    initPlayerHand(player);
-    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
-    if (!player.pendingSummons) {
-      player.pendingSummons = new Set();
-    }
-  }
-
-  state.enemies = [];
-  state.loot = [];
-  delete state.run;
-  delete state._pendingEncounterBossId;
-  spawnEnemies();
-  startDungeonRun();
+  deployQuestDebugRun(lobby, state, { clearEncounterBoss: true });
 }
 
 function resolveArenaDaisAnchor(state) {
@@ -250,7 +391,9 @@ function finishStageBossDebugScenario(lobby, state, player, name) {
     layout: state.layout,
   });
   broadcastLobbyUpdate(lobby);
-  io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+  const lobbyIo = io.to(lobby.id);
+  lobbyIo.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+  emitRunStartDialogue(lobbyIo);
   return {
     ok: true,
     scenario: name,
@@ -308,6 +451,8 @@ function applyDebugScenario(socket, name) {
   const spawn = firstRoomPosition();
 
   return withLobbyContext(lobby, () => {
+    state._applyingDebugScenario = true;
+    try {
     normalizePlayerInventory(player);
     const result = validateDeck(player.selectedDeck, player.inventory);
     if (!result.valid) return { ok: false, reason: result.reason };
@@ -787,8 +932,146 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
+    if (name === 'scripted-wave-combat') {
+      // scripted_encounter_fixture Tier 1 with wave 0 grunts in the start room.
+      // Reachable normally by selecting Scripted Encounter Fixture and deploying;
+      // this scenario is a shortcut into wave-0 combat.
+      setupScriptedWaveCombatDeploy(lobby, state, player);
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
+    if (name === 'escort-objective') {
+      // escort_objective_fixture Tier 1 with Archivist Vale and wave-0 grunt ambush.
+      // Reachable normally by deploying the escort fixture quest; this scenario is
+      // a shortcut into escort wave-0 combat with the NPC already spawned.
+      setupEscortObjectiveDeploy(lobby, state, player);
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
+    if (name === 'passage-lock-gated') {
+      // Scripted Encounter Fixture with a wave-0 passage lock on the start-room exit.
+      // Reachable normally by deploying the passage-lock fixture quest tier;
+      // this scenario is a shortcut into locked-passage wave-0 combat.
+      const questId = SCRIPTED_ENCOUNTER_FIXTURE_DEF.id;
+      const tier = 1;
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+      ensurePassageLockFixtureQuest(state.layout);
+
+      player.ready = true;
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const startSpawn = firstRoomPosition();
+      player.x = startSpawn.x;
+      player.z = startSpawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      enterPlayingPhase(lobby);
+
+      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+        createDrawDeckFromSelectedDeck(player);
+        initPlayerHand(player);
+        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+        if (!player.pendingSummons) {
+          player.pendingSummons = new Set();
+        }
+      }
+
+      state.enemies = state.enemies || [];
+      state.loot = state.loot || [];
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
+    if (name === 'training-caverns-tier-1') {
+      // training_caverns Tier 1 scripted wave combat with passage lock and named rare.
+      // Reachable normally by selecting Initiate Vault and deploying.
+      setupTrainingCavernsTier1Deploy(lobby, state, player);
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
+    if (name === 'crystal-rescue-tier-1') {
+      // crystal_rescue Tier 1 prism collect_items with scripted guard waves.
+      // Reachable normally by selecting Prism Salvage and deploying.
+      setupCrystalRescueTier1Deploy(lobby, state, player);
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
+    if (name === 'annex-escort-tier-1') {
+      // annex_escort Tier 1 escort objective with Archivist Vale and ambush waves.
+      // Reachable normally by selecting Annex Evacuation and deploying.
+      setupAnnexEscortTier1Deploy(lobby, state, player);
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
     if (name === 'frost-crossing-tier-1') {
-      // frost_crossing Tier 1 with ice-cavern layout and defeat_enemies objective.
+      // frost_crossing Tier 1 with ice-cavern layout and scripted ice-band waves.
       // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
       // snapshots the correct run.questTier/objective. Reachable normally by selecting
       // Frost Crossing and deploying; this scenario is a shortcut into that state.
@@ -805,6 +1088,48 @@ function applyDebugScenario(socket, name) {
         scenario: name,
         unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
       };
+    }
+
+    if (name === 'frost-crossing-last-enemy') {
+      // frost_crossing Tier 1 run one 1-HP enemy from victory: one hit wins and the
+      // post-victory reward panel shows the quest's signature card (Ice Ball) as the
+      // first choice. Reachable normally by selecting Frost Crossing and clearing all
+      // but the last hostile; this scenario is a shortcut into that state.
+      setupFrostCrossingTier1Deploy(lobby, state, player);
+
+      const total = state.run.objective.totalEnemies ?? 6;
+      state.enemies = [];
+      const enemyType = 'grunt';
+      const enemy = spawnEnemy(player.x + 2, player.z, enemyType);
+      enemy.hp = 1;
+      enemy.maxHp = ENEMY_DEFS[enemyType]?.hp ?? enemy.maxHp;
+      enemy.y = resolveFloorY(sampleFloorY(state.layout, enemy.x, enemy.z));
+      enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+      repositionNearEnemy(player, enemy);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      state.run.objective.totalEnemies = total;
+      state.run.objective.defeatedEnemies = Math.max(0, total - 1);
+      if (!player.hand.some((c) => c && c.type === 'weapon' && (c.remainingCharges == null || c.remainingCharges > 0))) {
+        const replaceSlot = player.hand.findIndex((c) => c && c.type !== 'weapon');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = {
+            id: 'iron_sword',
+            name: 'Rust-Forged Saber',
+            type: 'weapon',
+            charges: 5,
+            remainingCharges: 5,
+            grind: 0,
+          };
+        }
+      }
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
     }
 
     if (name === 'crystal-rescue-tier-2') {
@@ -877,30 +1202,16 @@ function applyDebugScenario(socket, name) {
       player.z = rimSpawn.z;
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
 
-      enterPlayingPhase(lobby);
-
-      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
-        createDrawDeckFromSelectedDeck(player);
-        initPlayerHand(player);
-        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
-        if (!player.pendingSummons) {
-          player.pendingSummons = new Set();
-        }
-      }
-
-      state.enemies = [];
-      state.loot = [];
-      delete state.run;
-      delete state._pendingEncounterBossId;
-      spawnEnemies();
-      startDungeonRun();
+      deployQuestDebugRun(lobby, state, { clearEncounterBoss: true });
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      const lobbyIo = io.to(lobby.id);
+      lobbyIo.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      emitRunStartDialogue(lobbyIo);
       return {
         ok: true,
         scenario: name,
@@ -1509,11 +1820,29 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
+    if (name === 'quest-comms-run-start') {
+      // Initiate Vault (training_caverns Tier 1) in-run; applyDebugScenario emits Rewa's
+      // run_start questDialogue after the playing stateUpdate. Reachable normally by selecting Initiate
+      // Vault and deploying from the lobby.
+      state.selectedQuestId = 'training_caverns';
+      state.selectedQuestTier = 1;
+      applyLayoutForQuest(state, 'training_caverns', 1);
+    }
+
     if (name === 'collect-prisms-progress') {
       // Prism Salvage (collect_items) with partial progress for objective-HUD QA.
       // The same state is reachable by selecting crystal_rescue, deploying, and
       // collecting prisms in the dungeon.
       state.selectedQuestId = 'crystal_rescue';
+    }
+
+    if (name === 'endless-siege-wave-five') {
+      // Endless Siege tier 1 survive run four defeats from the half-siege radio beat.
+      // Reachable normally by selecting endless_siege, deploying, and defeating
+      // five staggered attackers (~30s+ with spawn intervals and combat).
+      state.selectedQuestId = 'endless_siege';
+      state.selectedQuestTier = 1;
+      applyLayoutForQuest(state, 'endless_siege', 1);
     }
 
     if (name === 'slippery-floor-lab') {
@@ -1830,6 +2159,22 @@ function applyDebugScenario(socket, name) {
       for (const e of state.enemies) {
         e.wanderTarget = { x: e.x, z: e.z };
       }
+    } else if (name === 'named-rare-enemy') {
+      // Quest-named rare beside a plain grunt: custom displayName + forced warded
+      // variant via spawnEnemy opts (same path scripted wave namedRare uses).
+      // Reachable normally on quests that declare namedRare spawns; shortcut only.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const rare = spawnEnemy(player.x + 3, player.z, 'grunt', undefined, {
+        displayName: 'Vault Stalker',
+        namedRareId: 'debug_vault_stalker',
+        forceVariant: 'warded',
+        skipVariantRoll: true,
+      });
+      rare.wanderTarget = { x: rare.x, z: rare.z };
+      const plain = spawnEnemy(player.x - 3, player.z, 'grunt');
+      plain.wanderTarget = { x: plain.x, z: plain.z };
     } else if (name === 'volatile-enemy') {
       // Spawn a `volatile`-variant grunt (hot-orange badge) at 1 HP beside a
       // plain grunt, so the QA can confirm the distinct volatile tint and then
@@ -2208,6 +2553,26 @@ function applyDebugScenario(socket, name) {
       const total = Number.isFinite(objective.totalItems) ? objective.totalItems : 3;
       objective.totalItems = total;
       objective.collectedItems = Math.min(2, Math.max(0, total - 1));
+    } else if (name === 'endless-siege-wave-five') {
+      if (!state.run || state.run.status !== 'playing' || state.run.objective?.type !== 'survive') {
+        return { ok: false, reason: 'No active survive run for endless-siege-wave-five' };
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const objective = state.run.objective;
+      objective.defeatedEnemies = 4;
+      objective.spawnedEnemies = Math.max(objective.spawnedEnemies ?? 0, 5);
+      state.enemies = [];
+      const enemy = spawnEnemy(player.x + 2, player.z, 'grunt');
+      enemy.hp = 1;
+      enemy.maxHp = ENEMY_DEFS.grunt.hp;
+      enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+      if (!player.hand.some(c => c && c.type === 'weapon' && (c.remainingCharges == null || c.remainingCharges > 0))) {
+        const replaceSlot = player.hand.findIndex(c => c && c.type !== 'weapon');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5, grind: 0 };
+        }
+      }
     } else if (name === 'quest-objective-near-complete') {
       // Leave a defeat_enemies run one trigger away from victory: a single
       // low-HP grunt stands between the player and an objective-complete win.
@@ -3286,8 +3651,13 @@ function applyDebugScenario(socket, name) {
     syncRunObjectiveToEnemies();
 
     broadcastLobbyUpdate(lobby);
-    io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+    const lobbyIo = io.to(lobby.id);
+    lobbyIo.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+    emitRunStartDialogue(lobbyIo);
     return { ok: true, scenario: name };
+    } finally {
+      state._applyingDebugScenario = false;
+    }
   });
 }
 

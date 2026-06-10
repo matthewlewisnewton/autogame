@@ -141,6 +141,27 @@ function pickVariant(rng, ids) {
  *
  * @returns the (possibly mutated) enemy.
  */
+/**
+ * Force a specific variant id onto `enemy`, skipping random rolls. Invokes the
+ * registry `apply` hook when present (e.g. warded shield setup). Unknown ids
+ * leave `enemy.variant` null.
+ *
+ * @returns the (possibly mutated) enemy.
+ */
+function applyForcedVariant(enemy, variantId) {
+  if (!enemy) return enemy;
+  if (!variantId || !VARIANT_DEFS[variantId]) {
+    enemy.variant = null;
+    return enemy;
+  }
+  enemy.variant = variantId;
+  const def = VARIANT_DEFS[variantId];
+  if (def && typeof def.apply === 'function') {
+    def.apply(enemy);
+  }
+  return enemy;
+}
+
 function applyVariant(enemy, tier, rng) {
   if (!enemy) return enemy;
 
@@ -276,6 +297,7 @@ module.exports = {
   QUEST_TIER_2_VARIANT_BASE,
   resolveVariantRollTier,
   pickVariant,
+  applyForcedVariant,
   applyVariant,
   getVariantBonusDrop,
   getFrenziedCombatMultipliers,

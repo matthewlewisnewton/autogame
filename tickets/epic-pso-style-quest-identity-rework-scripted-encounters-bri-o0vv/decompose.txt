@@ -1,0 +1,23 @@
+Broke the epic into **6 sub-tickets** in dependency order (foundation → content). All use **code** verification.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/epic-pso-style-quest-identity-rework-scripted-encounters-bri-o0vv/tickets/epic-pso-style-quest-identity-rework-scripted-encounters-bri-o0vv/subtickets/01-scripted-wave-encounter-engine`
+2. `/home/matt/workspace/.autogame-worktrees/epic-pso-style-quest-identity-rework-scripted-encounters-bri-o0vv/tickets/epic-pso-style-quest-identity-rework-scripted-encounters-bri-o0vv/subtickets/02-wave-gated-passage-unlocks`
+3. `/home/matt/workspace/.autogame-worktrees/epic-pso-style-quest-identity-rework-scripted-encounters-bri-o0vv/tickets/epic-pso-style-quest-identity-rework-scripted-encounters-bri-o0vv/subtickets/03-quest-briefing-and-run-dialogue`
+4. `/home/matt/workspace/.autogame-worktrees/epic-pso-style-quest-identity-rework-scripted-encounters-bri-o0vv/tickets/epic-pso-style-quest-identity-rework-scripted-encounters-bri-o0vv/subtickets/04-named-rares-and-signature-rewards`
+5. `/home/matt/workspace/.autogame-worktrees/epic-pso-style-quest-identity-rework-scripted-encounters-bri-o0vv/tickets/epic-pso-style-quest-identity-rework-scripted-encounters-bri-o0vv/subtickets/05-escort-objective-type`
+6. `/home/matt/workspace/.autogame-worktrees/epic-pso-style-quest-identity-rework-scripted-encounters-bri-o0vv/tickets/epic-pso-style-quest-identity-rework-scripted-encounters-bri-o0vv/subtickets/06-tier1-quest-identity-content`
+
+**Plan summary:**
+
+| # | Focus |
+|---|--------|
+| 01 | Scripted wave engine — authored spawns per room, wave state, checkpoint-safe |
+| 02 | Passage locks tied to wave clears — server/client colliders |
+| 03 | Lobby briefings + mid-run `questDialogue` beacons |
+| 04 | Named rare spawns + per-quest `rewardCardId` signature rewards |
+| 05 | New `escort` objective type (minion-follow reuse) |
+| 06 | Content pass on `training_caverns`, `crystal_rescue`, `frost_crossing` tier 1 |
+
+No prior sub-tickets existed, so numbering starts at `01`. No game code was written.

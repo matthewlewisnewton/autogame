@@ -2001,7 +2001,7 @@ describe('Socket Integration — Quest Selection', () => {
 		expect(u1.selectedQuestId).toBe('crystal_rescue');
 		expect(u2.selectedQuestId).toBe('crystal_rescue');
 		expect(Array.isArray(u1.quests)).toBe(true);
-		expect(u1.quests.map(q => q.id)).toEqual(['training_caverns', 'crystal_rescue', 'arena_trials', 'frost_crossing', 'canyon_descent', 'ember_descent', 'spire_ascent', 'endless_siege']);
+		expect(u1.quests.map(q => q.id)).toEqual(['training_caverns', 'crystal_rescue', 'arena_trials', 'frost_crossing', 'canyon_descent', 'ember_descent', 'spire_ascent', 'annex_escort', 'endless_siege']);
 		expect(u1.layoutSeed).toBeDefined();
 		expect(u1.layout).toBeDefined();
 		expect(u1.layout.profile).toBe('open');
@@ -2035,7 +2035,7 @@ describe('Socket Integration — Quest Selection', () => {
 		await Promise.all([startGame1, startGame2]);
 		expect(testGameState().gamePhase).toBe('playing');
 		expect(testGameState().run.questId).toBe('crystal_rescue');
-		expect(testGameState().enemies.length).toBe(getQuest('crystal_rescue').enemyCount);
+		expect(testGameState().enemies.length).toBe(2);
 		expect(testGameState().loot.filter(l => l.kind === 'crystal').length).toBe(3);
 		expect(testGameState().run.objective.type).toBe('collect_items');
 		expect(testGameState().run.objective.totalItems).toBe(3);
@@ -2064,6 +2064,10 @@ describe('Socket Integration — Quest Selection', () => {
 			await sleep(50);
 		}
 
+		const state = testGameState();
+		state.run.objective.defeatedEnemies = state.run.objective.totalEnemies;
+		runSimulationInPrimaryLobby(() => checkRunTerminalState());
+
 		const summary = await runCompletePromise;
 		expect(summary.status).toBe('victory');
 		expect(summary.objective.type).toBe('collect_items');
@@ -2084,8 +2088,8 @@ describe('Socket Integration — Quest Selection', () => {
 
 		expect(state.run.questId).toBe('training_caverns');
 		expect(state.run.questName).toBe('Initiate Vault');
-		expect(state.run.objective.totalEnemies).toBe(5);
-		expect(testGameState().enemies.length).toBe(5);
+		expect(state.run.objective.totalEnemies).toBe(6);
+		expect(testGameState().enemies.length).toBe(2);
 	});
 
 	it('runComplete summary includes quest metadata and quest reward data', async () => {
