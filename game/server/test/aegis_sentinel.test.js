@@ -5,6 +5,7 @@ import {
 	clearAllTimers,
 	CARD_DEFS,
 	updateEnemies,
+	ENEMY_DEFS,
 } from '../index.js';
 import { SHOP_CARD_POOL } from '../config.js';
 import {
@@ -102,7 +103,7 @@ describe('Aegis Sentinel gameplay', () => {
 	it('taunt minion draws enemy attacks away from the caster', () => {
 		resetGameState();
 		gameState.players.p1 = { id: 'p1', hp: 100, dead: false, x: 10, z: 0 };
-		gameState.enemies = [{
+		const enemy = {
 			id: 'e1',
 			type: 'grunt',
 			x: 0,
@@ -111,7 +112,8 @@ describe('Aegis Sentinel gameplay', () => {
 			state: 'idle',
 			attackState: 'idle',
 			wanderTarget: { x: 0, z: 0 },
-		}];
+		};
+		gameState.enemies = [enemy];
 		gameState.minions = [{
 			id: 'sentinel',
 			ownerId: 'p1',
@@ -126,7 +128,16 @@ describe('Aegis Sentinel gameplay', () => {
 		}];
 		gameState.run = { status: 'playing' };
 
+		// First tick: enemy transitions from idle to windup targeting the taunt minion
 		updateEnemies();
+		expect(enemy.attackState).toBe('windup');
+		expect(enemy.windupTargetType).toBe('minion');
+		expect(enemy.windupTargetId).toBe('sentinel');
+
+		// Advance windup past its duration so the strike fires on the next tick
+		enemy.windupStartTime = Date.now() - ENEMY_DEFS.grunt.attackWindupMs - 50;
+		updateEnemies();
+
 		expect(gameState.minions[0].hp).toBeLessThan(160);
 		expect(gameState.minions[0].ttl).toBeLessThan(30);
 		expect(gameState.players.p1.hp).toBe(100);

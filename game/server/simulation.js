@@ -2929,7 +2929,19 @@ function updateEnemies() {
 			enemy.state = 'chasing';
 			const dist = Math.hypot(tauntMinion.x - enemy.x, tauntMinion.z - enemy.z);
 			if (dist <= ENEMY_ATTACK_RANGE) {
-				damageMinion(tauntMinion, enemy.attackDamage);
+				// Route through windup state machine — only start windup when
+				// not already in a windup/recovery cycle (those phases are
+				// handled by the blocks above and will fall through naturally).
+				if (enemy.attackState === 'chasing' || enemy.attackState === 'idle') {
+					enemy.attackState = 'windup';
+					enemy.windupTargetType = 'minion';
+					enemy.windupTargetId = tauntMinion.id;
+					enemy.windupStartTime = Date.now();
+					lockWindupDirection(enemy, tauntMinion);
+				}
+				// When attackState is 'windup' or 'recovering', fall through
+				// to the existing windup/recovery handling above (the continue
+				// there skips this block on subsequent ticks).
 			} else {
 				moveEntityToward(enemy, tauntMinion, chaseSpeed * dt);
 			}
