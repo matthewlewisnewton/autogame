@@ -54,6 +54,13 @@ describe('airborne floor-aware render + shadow', () => {
 		expect(flyingRenderOffset(minion, flatLayout)).toBeCloseTo(ALT, 6);
 	});
 
+	it('flying ancient_wyrm minion uses the generic airborne render offset', async () => {
+		const { flyingRenderOffset } = await import('../renderer.js');
+		const minion = { id: 'm-wyrm', type: 'ancient_wyrm', flying: true, x: 0, z: 0, altitude: ALT };
+		expect(flyingRenderOffset(minion, flatLayout)).toBeCloseTo(ALT, 6);
+		expect(flyingRenderOffset(minion, raisedLayout)).toBeCloseTo((RAISED - DEFAULT_FLOOR_Y) + ALT, 6);
+	});
+
 	it('flying shadow Y sits on the sampled floor surface, not a fixed plane', async () => {
 		const { flyingShadowY } = await import('../renderer.js');
 		const flatShadowY = flyingShadowY(flatLayout, 0, 0);

@@ -2721,6 +2721,89 @@ describe("generateLayout(seed, 'fire-cavern')", () => {
       expect(rampCount).toBeLessThanOrEqual(3);
     }
   });
+
+  describe('rigid layoutMode', () => {
+    it('unknown layoutMode values fall back to default scatter behavior', () => {
+      const withDefault = generateLayout(123, 'fire-cavern', { layoutMode: 'default' });
+      const withUnknown = generateLayout(123, 'fire-cavern', { layoutMode: 'chaotic' });
+      expect(withUnknown.rooms).toEqual(withDefault.rooms);
+      expect(withUnknown.cover).toEqual(withDefault.cover);
+      expect(withUnknown.entryDecor).toEqual(withDefault.entryDecor);
+    });
+
+    it('rigid mode produces identical rooms, cover, and entryDecor across different seeds', () => {
+      const seeds = [1, 42, 123, 777, 9999];
+      const layouts = seeds.map((seed) =>
+        generateLayout(seed, 'fire-cavern', { layoutMode: 'rigid' })
+      );
+      for (let i = 1; i < layouts.length; i++) {
+        expect(layouts[i].rooms).toEqual(layouts[0].rooms);
+        expect(layouts[i].cover).toEqual(layouts[0].cover);
+        expect(layouts[i].entryDecor).toEqual(layouts[0].entryDecor);
+      }
+    });
+
+    it('rigid mode still satisfies fire-cavern structural and reachability assertions', () => {
+      const layout = generateLayout(123, 'fire-cavern', { layoutMode: 'rigid' });
+      expect(layout.profile).toBe('fire-cavern');
+      expect(layout.passages).toEqual([]);
+
+      const rim = layout.rooms.find(r => r.role === 'start');
+      const basin = roomsByBand(layout, 'basin')[0];
+      const ramps = roomsByBand(layout, 'ramp');
+      expect(rim.band).toBe('entry');
+      expect(basin.band).toBe('basin');
+      expect(basin.role).toBe('treasure');
+      expect(ramps).toHaveLength(3);
+      for (const ramp of ramps) {
+        expect(ramp.role).toBe('connector');
+        expect(ramp.spawnWeight).toBe(0);
+      }
+
+      const yRim = sampleFloorY(layout, rim.x, rim.z);
+      const yBasin = sampleFloorY(layout, basin.x, basin.z);
+      expect(yRim - yBasin).toBeGreaterThanOrEqual(8);
+
+      expect(layout.cover.length).toBeGreaterThanOrEqual(6);
+      const half = basin.width / 2;
+      for (const c of layout.cover) {
+        expect(['pillar', 'broken_wall']).toContain(c.type);
+        expect(Math.abs(c.x - basin.x) + c.width / 2).toBeLessThanOrEqual(half);
+        expect(Math.abs(c.z - basin.z) + c.depth / 2).toBeLessThanOrEqual(half);
+      }
+
+      expect(layout.entryDecor.length).toBeGreaterThanOrEqual(2);
+      for (const d of layout.entryDecor) {
+        expect(d.type).toBe('ember_vent');
+      }
+
+      expect(basinReachableFromRim(layout)).toBe(true);
+    });
+
+    it('default mode still varies ramp count across seeds', () => {
+      const rampCounts = new Set();
+      for (let seed = 1; seed <= 30; seed++) {
+        const layout = generateLayout(seed, 'fire-cavern', { layoutMode: 'default' });
+        rampCounts.add(roomsByBand(layout, 'ramp').length);
+      }
+      expect(rampCounts.has(2)).toBe(true);
+      expect(rampCounts.has(3)).toBe(true);
+    });
+
+    it('rigid and default modes can diverge for the same seed', () => {
+      const rigid = generateLayout(123, 'fire-cavern', { layoutMode: 'rigid' });
+      const def = generateLayout(123, 'fire-cavern', { layoutMode: 'default' });
+      const rigidAgain = generateLayout(9999, 'fire-cavern', { layoutMode: 'rigid' });
+      expect(rigid.rooms).toEqual(rigidAgain.rooms);
+      expect(rigid.cover).toEqual(rigidAgain.cover);
+      expect(rigid.entryDecor).toEqual(rigidAgain.entryDecor);
+      const geometryDiffers =
+        JSON.stringify(rigid.rooms) !== JSON.stringify(def.rooms) ||
+        JSON.stringify(rigid.cover) !== JSON.stringify(def.cover) ||
+        JSON.stringify(rigid.entryDecor) !== JSON.stringify(def.entryDecor);
+      expect(geometryDiffers).toBe(true);
+    });
+  });
 });
 
 // ── entry-room decor scatter ──

@@ -1187,12 +1187,33 @@ const ENEMY_DEFS = {
 		hp: 360, chaseSpeed: 1.1, wanderSpeed: 0.55, attackDamage: 21, attackWindupMs: 1300,
 		attackStyle: 'cone', attackConeAngle: (2 * Math.PI) / 3, attackRange: 5.5,
 	},
+	magma_colossus: {
+		name: 'Magma Colossus',
+		description: 'Tier-II fire stage colossus; erupts in a radial molten shockwave that scorches everything nearby.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 410, chaseSpeed: 0.85, wanderSpeed: 0.4, attackDamage: 23, attackWindupMs: 1500,
+		attackStyle: 'radial', attackRange: 5,
+	},
 	permafrost_warden: {
 		name: 'Permafrost Warden',
 		description: 'Ice-cavern guardian that erupts in a radial frost shockwave — close-range area pressure, not a lobbed projectile.',
 		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
 		hp: 360, chaseSpeed: 1.0, wanderSpeed: 0.5, attackDamage: 20, attackWindupMs: 1300,
 		attackStyle: 'radial', attackRange: 4.5,
+	},
+	glacial_tyrant: {
+		name: 'Glacial Tyrant',
+		description: 'Tier-II tyrant of the frozen crossing — hurls massive glacial spheres that chill (SLOW) and crush whatever they strike.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 440, chaseSpeed: 1.3, wanderSpeed: 0.6, attackDamage: 24, attackWindupMs: 1300,
+		attackStyle: 'ice_ball', attackRange: 9,
+		// Heavier ice-ball tuning than glacial_thrower: faster and bigger, but
+		// still well below player MOVE_SPEED (12) so it stays dodgeable.
+		iceBallSpeed: 7.5,
+		iceBallSlowDurationMs: 3200,
+		iceBallSlowFactor: 0.45,
+		iceBallRadius: 1.2,
+		iceBallMaxRange: 22,
 	},
 	spawner: {
 		name: 'Brood Node',
@@ -1516,6 +1537,13 @@ function addDebuff(player, type, expiresAt) {
 
 function getEntityWorldY(entity) {
   if (!entity) return resolveFloorY(DEFAULT_FLOOR_Y);
+  if (entity.flying) {
+    const layout = _gameState && _gameState.layout;
+    if (layout) return resolveEntityY(entity, layout);
+    const floorY = resolveFloorY(DEFAULT_FLOOR_Y);
+    const altitude = Number.isFinite(entity.altitude) ? entity.altitude : DEFAULT_FLY_ALTITUDE;
+    return floorY + altitude;
+  }
   if (Number.isFinite(entity.y)) return entity.y;
   const layout = _gameState && _gameState.layout;
   if (layout) {
@@ -1858,11 +1886,15 @@ function lockMinionBreathDirection(minion, target) {
 }
 
 function queueWyrmBreathCardUsed(minion, cardId, options) {
+  const origin = { x: minion.x, z: minion.z };
+  if (minion.flying) {
+    origin.y = getEntityWorldY(minion);
+  }
   _gameState._pendingMinionBreaths.push({
     playerId: minion.ownerId,
     cardId,
     specialEffect: options.specialEffect,
-    origin: { x: minion.x, z: minion.z },
+    origin,
     direction: tiltedDirectionPayload(
       minion.breathDirX,
       minion.breathDirY ?? 0,
@@ -3280,6 +3312,12 @@ function updateMinions() {
     }
   }
 
+  // Resolve world Y before minion AI so breath/attack aim uses the current
+  // airborne height (flying minions hover at floorY + altitude).
+  for (const minion of _gameState.minions) {
+    minion.y = resolveEntityY(minion, _gameState.layout);
+  }
+
   // AI: each living minion seeks nearest enemy, chases, and attacks
   // If no enemy is nearby, follows its owner.
   // Skipped entirely when the run is terminal (victory or failed)
@@ -3655,8 +3693,9 @@ function updateMinions() {
   }
 
   // Resolve world Y for every minion after its AI/movement this tick. Grounded
-  // minions sit at floor height; flying minions (storm_eagle, thunderbird)
-  // hover at floorY + altitude. Runs even when the AI loop is skipped (terminal
+  // minions sit at floor height; flying minions (storm_eagle, thunderbird,
+  // ancient_wyrm) hover at floorY + altitude. Runs even when the AI loop is
+  // skipped (terminal
   // run) so minion Y stays consistent.
   for (const minion of _gameState.minions) {
     minion.y = resolveEntityY(minion, _gameState.layout);

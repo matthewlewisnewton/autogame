@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module';
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { generateLayout } from '../dungeon.js';
 import { createGameState } from '../game-state.js';
 import {
@@ -79,30 +79,33 @@ function activateEncounterForTest(state) {
 describe('ember_descent Tier II stage_boss config', () => {
   const tier2 = QUEST_DEFS.ember_descent.tiers[2];
 
-  it('defines a fire-cavern rigid stage_boss encounter for the cinder warden', () => {
+  it('defines a fire-cavern rigid stage_boss encounter for the magma colossus', () => {
     expect(tier2).toBeDefined();
     expect(tier2.objectiveType).toBe('stage_boss');
     expect(tier2.layoutProfile).toBe('fire-cavern');
     expect(tier2.layoutMode).toBe('rigid');
     expect(tier2.unlockRequires).toEqual({ questId: 'ember_descent', tier: 1 });
-    expect(tier2.encounter.bossType).toBe('cinder_warden');
+    expect(tier2.encounter.bossType).toBe('magma_colossus');
     expect(tier2.encounter.addCount).toBe(ADD_COUNT);
   });
 
   it('has fire-themed briefing and run_start / objective_complete dialogue triggers', () => {
     expect(tier2.client.briefing.length).toBeGreaterThan(0);
+    expect(tier2.client.briefing.toLowerCase()).toContain('magma colossus');
     const triggers = tier2.dialogue.map((d) => d.trigger);
     expect(triggers).toContain('run_start');
     expect(triggers).toContain('objective_complete');
+    const runStart = tier2.dialogue.find((d) => d.trigger === 'run_start');
+    expect(runStart.text.toLowerCase()).toContain('magma colossus');
   });
 
-  it('resolves the cinder warden objective label with the support count', () => {
+  it('resolves the magma colossus objective label with the support count', () => {
     const label = formatObjectiveSummary({
       ...tier2,
       questId: 'ember_descent',
       id: 'ember_descent',
     });
-    expect(label).toBe(`Defeat the cinder warden and ${ADD_COUNT} supports`);
+    expect(label).toBe(`Defeat the magma colossus and ${ADD_COUNT} supports`);
   });
 });
 
@@ -114,9 +117,9 @@ describe('ember_descent Tier II stage_boss spawn + defeat', () => {
     deployEmberStageBossRun(state);
   });
 
-  it('spawns exactly one cinder_warden boss plus addCount adds and no bulk pack', () => {
-    const bosses = state.enemies.filter((e) => e.type === 'cinder_warden');
-    const adds = state.enemies.filter((e) => e.type !== 'cinder_warden');
+  it('spawns exactly one magma_colossus boss plus addCount adds and no bulk pack', () => {
+    const bosses = state.enemies.filter((e) => e.type === 'magma_colossus');
+    const adds = state.enemies.filter((e) => e.type !== 'magma_colossus');
 
     expect(bosses).toHaveLength(1);
     expect(adds).toHaveLength(ADD_COUNT);
@@ -125,7 +128,7 @@ describe('ember_descent Tier II stage_boss spawn + defeat', () => {
 
   it('wires bossEnemyId and starts the encounter dormant on run open', () => {
     const boss = bossEnemy(state);
-    expect(boss.type).toBe('cinder_warden');
+    expect(boss.type).toBe('magma_colossus');
     expect(state.run.encounter.bossEnemyId).toBe(boss.id);
     expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
     expect(state._pendingEncounterBossId).toBeUndefined();

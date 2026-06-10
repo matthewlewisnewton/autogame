@@ -406,6 +406,161 @@ describe('resolveProjectileAim lock-on tilt', () => {
 	});
 });
 
+function addFlyingEnemy(id, x, z, type = 'void_seraph') {
+	const def = ENEMY_DEFS[type];
+	gameState.enemies.push({
+		id,
+		type,
+		x,
+		z,
+		flying: true,
+		altitude: def.altitude,
+		hp: def.hp,
+		maxHp: def.hp,
+		state: 'idle',
+		attackState: 'idle',
+		wanderTarget: { x, z },
+	});
+}
+
+function setupFlyingLockOnProjectileTest(cardId, enemyType = 'void_seraph') {
+	resetState();
+	const playerId = 'p1';
+	const enemyId = 'flier';
+	const cardDef = CARD_DEFS[cardId];
+	const enemyDef = ENEMY_DEFS[enemyType];
+
+	gameState.gamePhase = 'playing';
+	gameState.run = {
+		status: 'playing',
+		objective: { type: 'defeat_enemies', current: 0, target: 1 },
+	};
+	gameState.enemies = [{
+		id: enemyId,
+		type: enemyType,
+		x: 0,
+		z: 0,
+		flying: true,
+		altitude: enemyDef.altitude,
+		hp: enemyDef.hp,
+		maxHp: enemyDef.hp,
+		state: 'idle',
+		attackState: 'idle',
+		wanderTarget: { x: 0, z: 0 },
+	}];
+
+	gameState.players[playerId] = {
+		x: 0,
+		y: 0,
+		z: 0,
+		rotation: 0,
+		hp: 100,
+		dead: false,
+		extracted: false,
+		magicStones: 100,
+		pendingSummons: new Set(),
+		hand: [{
+			id: cardId,
+			name: cardDef.name,
+			type: cardDef.type,
+			remainingCharges: cardDef.charges || 4,
+			grind: 0,
+		}, null, null, null],
+		slotCooldowns: [null, null, null, null],
+	};
+
+	setSimGameState(gameState, {});
+	setProgressionGameState(gameState);
+	wireCardEffectCallbacks();
+
+	const socket = {
+		playerId,
+		emit: () => {},
+	};
+	const lobby = {
+		id: 'lobby1',
+		state: gameState,
+	};
+
+	return {
+		socket,
+		lobby,
+		playerId,
+		enemyId,
+		cardId,
+		cast(extra = {}) {
+			const hpBefore = gameState.enemies[0].hp;
+			handleUseCard(socket, gameState, lobby, {
+				cardId,
+				slotIndex: 0,
+				rotation: 0,
+				...extra,
+			});
+			return { hpBefore, hpAfter: gameState.enemies[0].hp };
+		},
+	};
+}
+
+describe('resolveProjectileAim flying lock-on', () => {
+	beforeEach(resetState);
+
+	it('tilts upward toward a flying lock-on target above the shooter on the same (x, z)', () => {
+		const playerId = 'p1';
+		gameState.players[playerId] = { x: 0, y: 0, z: 0, rotation: 0 };
+		addFlyingEnemy('flier', 0, 0);
+
+		const aim = resolveProjectileAim(
+			gameState.players[playerId],
+			{ lockTargetId: 'flier', rotation: 0 },
+			gameState,
+		);
+
+		expect(aim.dirY).toBeGreaterThan(0);
+		expect(aim.dirX).toBeCloseTo(0, 5);
+		expect(aim.dirZ).toBeCloseTo(0, 5);
+	});
+
+	it('still resolves explicit enemy.y elevation (lock-on-elevated-projectile path)', () => {
+		const playerId = 'p1';
+		gameState.players[playerId] = { x: 0, y: 0, z: 0, rotation: 0 };
+		addEnemy('elevated', 0, 0, 100, 5);
+
+		const aim = resolveProjectileAim(
+			gameState.players[playerId],
+			{ lockTargetId: 'elevated', rotation: 0 },
+			gameState,
+		);
+
+		expect(aim.dirY).toBeGreaterThan(0);
+	});
+});
+
+describe('fireball flying lock-on', () => {
+	beforeEach(() => wireCardEffectCallbacks());
+
+	it('hits a flying target on the same (x, z) with lockTargetId', () => {
+		const missSetup = setupFlyingLockOnProjectileTest('fireball');
+		const miss = missSetup.cast();
+		expect(miss.hpAfter).toBe(miss.hpBefore);
+
+		resetState();
+		const hitSetup = setupFlyingLockOnProjectileTest('fireball');
+		const hit = hitSetup.cast({ lockTargetId: hitSetup.enemyId });
+		expect(hit.hpAfter).toBeLessThan(hit.hpBefore);
+	});
+
+	it('hits a rime_drifter-style airborne target with lockTargetId', () => {
+		const missSetup = setupFlyingLockOnProjectileTest('fireball', 'rime_drifter');
+		const miss = missSetup.cast();
+		expect(miss.hpAfter).toBe(miss.hpBefore);
+
+		resetState();
+		const hitSetup = setupFlyingLockOnProjectileTest('fireball', 'rime_drifter');
+		const hit = hitSetup.cast({ lockTargetId: hitSetup.enemyId });
+		expect(hit.hpAfter).toBeLessThan(hit.hpBefore);
+	});
+});
+
 describe('glacial_thrower', () => {
 	const GLACIAL_DEF = ENEMY_DEFS.glacial_thrower;
 
@@ -587,6 +742,7 @@ describe('dungeon_drake', () => {
 		expect(gameState.enemies[0].hp).toBe(48);
 		expect(gameState.minions[0].breathDirY).toBeGreaterThan(0);
 		expect(gameState._pendingMinionBreaths[0].direction.y).toBeGreaterThan(0);
+		expect(gameState._pendingMinionBreaths[0].origin.y).toBeUndefined();
 	});
 });
 
@@ -599,7 +755,9 @@ describe('ancient_wyrm', () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(now);
 
-		const minionPos = { x: 0, y: 0, z: 0 };
+		const altitude = CARD_DEFS.ancient_wyrm.altitude;
+		const minionWorldY = getEntityWorldY({ flying: true, altitude, x: 0, z: 0 });
+		const minionPos = { x: 0, y: minionWorldY, z: 0 };
 		const enemyPos = { x: 0, y: 5, z: 0 };
 		const aim = computeAimDirection3D(minionPos, enemyPos);
 
@@ -619,7 +777,8 @@ describe('ancient_wyrm', () => {
 			type: 'ancient_wyrm',
 			x: minionPos.x,
 			z: minionPos.z,
-			y: minionPos.y,
+			flying: true,
+			altitude,
 			hp: 90,
 			ttl: 30,
 			breathState: 'breathing',
@@ -644,5 +803,6 @@ describe('ancient_wyrm', () => {
 		expect(gameState.enemies[0].hp).toBe(50 - CARD_DEFS.ancient_wyrm.breathDamage);
 		expect(gameState.minions[0].breathDirY).toBeGreaterThan(0);
 		expect(gameState._pendingMinionBreaths[0].direction.y).toBeGreaterThan(0);
+		expect(gameState._pendingMinionBreaths[0].origin.y).toBe(minionWorldY);
 	});
 });

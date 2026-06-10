@@ -49,6 +49,7 @@ function startRunFor(questId, tier = 1) {
 
 const SIGNATURE_QUEST_TIERS = [
 	['frost_crossing', 1, 'ice_ball', ['ice_ball', 'frost_nova', 'permafrost_lance']],
+	['frost_crossing', 2, 'ice_ball', ['ice_ball', 'frost_nova', 'permafrost_lance']],
 	['ember_descent', 1, 'fireball', ['fireball', 'dragons_breath']],
 	['spire_ascent', 1, 'gravity_well', ['gravity_well']],
 	['spire_ascent', 2, 'gravity_well', ['gravity_well']],
@@ -99,9 +100,9 @@ describe('getSignatureCardId / getQuestRewardCards', () => {
 
 	it('returns null for unknown quests and tiers', () => {
 		expect(getSignatureCardId('missing_quest', 1)).toBeNull();
-		expect(getSignatureCardId('frost_crossing', 2)).toBeNull();
+		expect(getSignatureCardId('frost_crossing', 3)).toBeNull();
 		expect(getQuestRewardCards('missing_quest', 1)).toBeNull();
-		expect(getQuestRewardCards('frost_crossing', 2)).toBeNull();
+		expect(getQuestRewardCards('frost_crossing', 3)).toBeNull();
 	});
 
 	it('falls back to rewardCards[0] / [signatureCardId] when only one field is set', () => {

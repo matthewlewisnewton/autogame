@@ -1,0 +1,15 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/377-lock-on-and-aim-across-heights/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/377-lock-on-and-aim-across-heights/game/data
+Server listening on port 3000
+Player connected: socket=X8YS2oXjGQbNjkSJAAAB, playerId=36223c65-7311-4bf8-b76f-aae0f441e70c
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=pFWQtH3kYkFG8PqyAAAD, playerId=a6e59e48-0fb4-448e-b567-783b76ef1403
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=7ba21a76-4963-48f2-af6f-aa61935f4cfd value=13
+Player disconnected: X8YS2oXjGQbNjkSJAAAB
+Player disconnected: pFWQtH3kYkFG8PqyAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

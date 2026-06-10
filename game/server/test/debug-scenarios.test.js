@@ -47,6 +47,7 @@ const CANYON_DESCENT_ID = 'canyon_descent';
 const CANYON_DESCENT_TIER_2 = 2;
 const EMBER_DESCENT_ID = 'ember_descent';
 const EMBER_DESCENT_TIER_1 = 1;
+const EMBER_DESCENT_TIER_2 = 2;
 const FROST_CROSSING_ID = 'frost_crossing';
 const FROST_CROSSING_TIER_1 = 1;
 
@@ -413,10 +414,8 @@ describe('debugScenario — arena-trials harness combat shortcuts', () => {
 		await tier2Promise;
 
 		const lowHpPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
 		socket.emit('debugScenario', { name: 'arena-trials-boss-low-hp' });
 		const lowHpResult = await lowHpPromise;
-		const stateUpdate = await stateUpdatePromise;
 
 		expect(lowHpResult.ok).toBe(true);
 		expect(lowHpResult.scenario).toBe('arena-trials-boss-low-hp');
@@ -432,6 +431,11 @@ describe('debugScenario — arena-trials harness combat shortcuts', () => {
 		expect(dist).toBeGreaterThanOrEqual(2);
 		expect(dist).toBeLessThanOrEqual(5.5);
 
+		// The arena encounter is active, so the game loop emits periodic stateUpdates and the
+		// pre-mutation full-HP boss can race ahead of the scenario's own snapshot. Read the boss
+		// HP from a stateUpdate captured AFTER the scenario result resolves: the boss is pinned at
+		// 1 HP by then and is never healed, so every post-result snapshot reports hp === 1.
+		const stateUpdate = await waitForEvent(socket, 'stateUpdate');
 		const bossUpdate = stateUpdate.enemies.find((e) => e.id === bossId);
 		expect(bossUpdate?.hp).toBe(1);
 		expect(bossUpdate?.type).toBe('arena_champion');
@@ -1189,10 +1193,8 @@ describe('debugScenario — arena-trials-*', () => {
 		await tier2Promise;
 
 		const lowHpPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
 		socket.emit('debugScenario', { name: 'arena-trials-boss-low-hp' });
 		const lowHpResult = await lowHpPromise;
-		const stateUpdate = await stateUpdatePromise;
 
 		expect(lowHpResult.ok).toBe(true);
 		expect(lowHpResult.scenario).toBe('arena-trials-boss-low-hp');
@@ -1213,6 +1215,11 @@ describe('debugScenario — arena-trials-*', () => {
 		expect(dist).toBeGreaterThanOrEqual(2);
 		expect(dist).toBeLessThanOrEqual(5.5);
 
+		// The arena encounter is active, so the game loop emits periodic stateUpdates and the
+		// pre-mutation full-HP boss can race ahead of the scenario's own snapshot. Read the boss
+		// HP from a stateUpdate captured AFTER the scenario result resolves: the boss is pinned at
+		// 1 HP by then and is never healed, so every post-result snapshot reports hp === 1.
+		const stateUpdate = await waitForEvent(socket, 'stateUpdate');
 		const bossUpdate = stateUpdate.enemies.find((e) => e.id === bossId);
 		expect(bossUpdate?.hp).toBe(1);
 		expect(bossUpdate?.type).toBe('arena_champion');
@@ -1315,6 +1322,71 @@ describe('debugScenario — spire-ascent-tier-2', () => {
 		spawnEnemies();
 		expect(gameState.enemies.some((e) => e.variant)).toBe(true);
 		expect(gameState.enemies.filter((e) => e.type === 'spire_warden')).toHaveLength(1);
+	});
+});
+
+describe('debugScenario — frost-crossing-tier-2', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('deploys frost_crossing Tier 2 stage-boss run with encounter and rigid layout', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
+		socket.emit('debugScenario', { name: 'frost-crossing-tier-2' });
+		const result = await debugResultPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('frost-crossing-tier-2');
+
+		const state = lobbyStateForSocket(socket);
+		const tier2Quest = getQuest(FROST_CROSSING_ID, 2);
+		const addCount = tier2Quest.encounter.addCount;
+
+		expect(state.gamePhase).toBe('playing');
+		expect(state.selectedQuestId).toBe(FROST_CROSSING_ID);
+		expect(state.selectedQuestTier).toBe(2);
+		expect(stateUpdate.run.questId).toBe(FROST_CROSSING_ID);
+		expect(stateUpdate.run.questTier).toBe(2);
+		expect(stateUpdate.run.questName).toBe(tier2Quest.name);
+		expect(stateUpdate.run.objective.type).toBe('stage_boss');
+		expect(stateUpdate.run.objective.label).toContain(tier2Quest.name);
+		expect(stateUpdate.run.encounter).toBeTruthy();
+		expect(stateUpdate.run.encounter.bossEnemyId).toBeTruthy();
+		expect(state.layout.profile).toBe('ice-cavern');
+		expect(getLayoutGenerationOptions(FROST_CROSSING_ID, 2)).toEqual({
+			slopes: true,
+			layoutMode: 'rigid',
+		});
+		expect(state.layoutSeed).toBe(questLayoutSeed(FROST_CROSSING_ID, 2));
+		expect(stateUpdate.enemies.length).toBe(1 + addCount);
+		const boss = stateUpdate.enemies.find(
+			(e) => e.id === stateUpdate.run.encounter.bossEnemyId,
+		);
+		expect(boss).toBeTruthy();
+		expect(boss.type).toBe('glacial_tyrant');
+		const cairn = state.layout.landmarks.find((lm) => lm.type === 'ice_cairn');
+		expect(boss.x).toBe(cairn.x);
+		expect(boss.z).toBe(cairn.z);
+		expect(stateUpdate.enemies.filter((e) => e.type === 'glacial_tyrant')).toHaveLength(1);
+		expect(resolveVariantRollTier(stateUpdate.run.questTier, 0)).toBe(1);
 	});
 });
 
@@ -1618,6 +1690,93 @@ describe('debugScenario — fire-cavern', () => {
 		expect(state.layout.profile).toBe('fire-cavern');
 		expect(player.ready).toBe(false);
 		expect(player.hand?.some((c) => c && c.id === 'telepipe')).not.toBe(true);
+	});
+});
+
+describe('debugScenario — ember-descent-tier-2', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('deploys ember_descent Tier 2 stage-boss run with encounter and rigid layout', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
+		socket.emit('debugScenario', { name: 'ember-descent-tier-2' });
+		const result = await debugResultPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('ember-descent-tier-2');
+
+		const state = lobbyStateForSocket(socket);
+		const tier2Quest = getQuest(EMBER_DESCENT_ID, EMBER_DESCENT_TIER_2);
+		const addCount = tier2Quest.encounter.addCount;
+
+		expect(state.gamePhase).toBe('playing');
+		expect(state.selectedQuestId).toBe(EMBER_DESCENT_ID);
+		expect(state.selectedQuestTier).toBe(EMBER_DESCENT_TIER_2);
+		expect(stateUpdate.run.questId).toBe(EMBER_DESCENT_ID);
+		expect(stateUpdate.run.questTier).toBe(EMBER_DESCENT_TIER_2);
+		expect(stateUpdate.run.questName).toBe(tier2Quest.name);
+		expect(getQuest(EMBER_DESCENT_ID, state.selectedQuestTier).encounter?.addCount).toBe(
+			addCount,
+		);
+		expect(stateUpdate.run.objective.type).toBe('stage_boss');
+		expect(stateUpdate.run.objective.label).toContain(tier2Quest.name);
+		expect(stateUpdate.run.encounter).toBeTruthy();
+		expect(stateUpdate.run.encounter.bossEnemyId).toBeTruthy();
+		expect(state.layout.profile).toBe('fire-cavern');
+		expect(getLayoutGenerationOptions(EMBER_DESCENT_ID, EMBER_DESCENT_TIER_2)).toEqual({
+			slopes: true,
+			layoutMode: 'rigid',
+		});
+		expect(state.layoutSeed).toBe(questLayoutSeed(EMBER_DESCENT_ID, EMBER_DESCENT_TIER_2));
+		expect(stateUpdate.enemies.length).toBe(1 + addCount);
+		expect(
+			stateUpdate.enemies.some((e) => e.id === stateUpdate.run.encounter.bossEnemyId),
+		).toBe(true);
+		expect(
+			stateUpdate.enemies.some((e) => e.type === 'magma_colossus'),
+		).toBe(true);
+		expect(stateUpdate.enemies.every((e) => e.variant !== undefined)).toBe(true);
+		expect(resolveVariantRollTier(stateUpdate.run.questTier, 0)).toBe(1);
+	});
+
+	it('Tier 2 variant rolls tag enemies under fixed seed 4242 (ember_descent_tier2 parity)', () => {
+		const SEED = 4242;
+		resetGameState();
+		const layout = generateLayout(
+			SEED,
+			getLayoutProfileForQuest(EMBER_DESCENT_ID, EMBER_DESCENT_TIER_2),
+			getLayoutGenerationOptions(EMBER_DESCENT_ID, EMBER_DESCENT_TIER_2),
+		);
+		gameState.selectedQuestId = EMBER_DESCENT_ID;
+		gameState.selectedQuestTier = EMBER_DESCENT_TIER_2;
+		gameState.layout = layout;
+		gameState.layoutSeed = SEED;
+		gameState.enemies = [];
+		gameState.loot = [];
+		gameState.run = { questTier: EMBER_DESCENT_TIER_2 };
+		setGameState(gameState);
+		spawnEnemies();
+		expect(gameState.enemies.some((e) => e.variant)).toBe(true);
+		expect(gameState.enemies.filter((e) => e.type === 'magma_colossus')).toHaveLength(1);
 	});
 });
 

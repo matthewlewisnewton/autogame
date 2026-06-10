@@ -867,7 +867,7 @@ export function syncEnemyMeshes(gs) {
 		if (enemyHitboxMeshes[enemy.id]) {
 			enemyHitboxMeshes[enemy.id].position.set(enemy.x, GROUND_OVERLAY_Y, enemy.z);
 		}
-		syncLockOnRing(enemy.id, enemy.x, enemy.z);
+		syncLockOnRing(enemy.id, enemy.x, renderY, enemy.z);
 
 		// Detect HP drop (minion tick damage) — skip if caused by a recent cardUsed hit
 		if (previousEnemyHp[enemy.id] !== undefined && enemy.hp < previousEnemyHp[enemy.id]) {
