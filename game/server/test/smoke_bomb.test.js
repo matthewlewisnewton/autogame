@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { KEY_ITEM_DEFS, resetGameState, gameState, updateEnemies, isPlayerConcealed } from '../index.js';
+import { KEY_ITEM_DEFS, resetGameState, gameState, updateEnemies, isPlayerConcealed, clearAllTimers } from '../index.js';
 import { getEntityWorldY } from '../simulation.js';
 import {
 	startTestServer,
@@ -66,19 +66,11 @@ describe('useKeyItem — smoke_bomb (socket integration)', () => {
 		player.x = 5;
 		player.z = -3;
 
-		let persistenceDirtyOnCast;
-		const resultPromise = new Promise((resolve, reject) => {
-			const timer = setTimeout(
-				() => reject(new Error('Timed out waiting for "keyItemUsed"')),
-				15000
-			);
-			socket.once('keyItemUsed', (payload) => {
-				clearTimeout(timer);
-				// Capture synchronously in the emit handler before a tick can flush.
-				persistenceDirtyOnCast = player.persistenceDirty;
-				resolve(payload);
-			});
-		});
+		// Stop the game-loop flush interval so a tick cannot clear persistenceDirty
+		// before we read it (batched saves landed on main since this test was written).
+		clearAllTimers();
+
+		const resultPromise = waitForEvent(socket, 'keyItemUsed');
 		socket.emit('useKeyItem', { keyItemId: 'smoke_bomb' });
 		const result = await resultPromise;
 
@@ -97,7 +89,7 @@ describe('useKeyItem — smoke_bomb (socket integration)', () => {
 		expect(Number.isFinite(player.smokeBombY)).toBe(true);
 		expect(player.smokeBombY).toBe(getEntityWorldY(player));
 		expect(player.keyItemCooldownUntil).toBeGreaterThan(now);
-		expect(persistenceDirtyOnCast).toBe(true);
+		expect(player.persistenceDirty).toBe(true);
 
 		// Duration roughly matches def (allow a few ms elapsed since `now`)
 		const smokeRemainingMs = player.smokeBombUntil - now;
