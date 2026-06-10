@@ -135,3 +135,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [381-cleanup-client-quest-board-panel-flashes-open-then-is-re-hidden-by-t-yb1m](tickets/381-cleanup-client-quest-board-panel-flashes-open-then-is-re-hidden-by-t-yb1m/)
 - [ ] [382-cleanup-server-bulkhead-mauler-and-astral-guardian-minions-attack-ev-oumk](tickets/382-cleanup-server-bulkhead-mauler-and-astral-guardian-minions-attack-ev-oumk/)
 - [ ] [382-cleanup-content-rework-crystal-rescue-frost-crossing-training-cavern-o0vv.7](tickets/382-cleanup-content-rework-crystal-rescue-frost-crossing-training-cavern-o0vv.7/)
+- [ ] [383-cleanup-server-patch-api-me-settings-persists-arbitrary-unvalidated-tkit](tickets/383-cleanup-server-patch-api-me-settings-persists-arbitrary-unvalidated-tkit/)
