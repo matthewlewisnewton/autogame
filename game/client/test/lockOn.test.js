@@ -21,6 +21,8 @@ import {
 	isLockOnCameraReleasing,
 	updateLockOnCameraRelease,
 	getLockedEnemyId,
+	resolveLockOnLookAtY,
+	LOCK_ON_LOOK_AT_BODY_OFFSET,
 } from '../lockOn.js';
 import { LOCK_ON_DEATH_RELEASE_DURATION, LOCK_ON_BREAK_RANGE } from '../config.js';
 import { DEFAULT_FLOOR_Y } from '../../shared/floorSampling.esm.js';
@@ -182,22 +184,43 @@ describe('updateLockOn', () => {
 		const mid = updateLockOnCameraRelease(
 			LOCK_ON_DEATH_RELEASE_DURATION * 0.5,
 			0,
-			0.5,
+			PY,
 			0,
 		);
 		expect(mid).not.toBeNull();
 		expect(mid.done).toBe(false);
 		expect(mid.lookAtX).toBeCloseTo(0.75, 2);
+		expect(mid.lookAtY).toBeCloseTo(PY + LOCK_ON_LOOK_AT_BODY_OFFSET, 5);
 		expect(Math.abs(shortestAngleDelta(0, mid.cameraYaw))).toBeGreaterThan(0.01);
 
 		const end = updateLockOnCameraRelease(
 			LOCK_ON_DEATH_RELEASE_DURATION * 0.5,
 			0,
-			0.5,
+			PY,
 			0,
 		);
 		expect(end?.done).toBe(true);
 		expect(isLockOnCameraReleasing()).toBe(false);
+	});
+
+	it('eases post-death look-at Y from elevated enemy world Y toward the player', () => {
+		const elevated = [{ id: 'a', x: 3, z: 0, y: PY + 4, hp: 50 }];
+		handleLockOnPress(elevated, 0, PY, 0, 'unlock', 0, LAYOUT);
+		updateLockOn(elevated, 0, PY, 0, 0.1, 0, 0, LAYOUT);
+		updateLockOn([{ id: 'a', x: 3, z: 0, y: PY + 4, hp: 0 }], 0, PY, 0, 0.1, 0, 0, LAYOUT);
+
+		const startY = resolveLockOnLookAtY({ y: PY + 4 }, LAYOUT);
+		const first = updateLockOnCameraRelease(0, 0, PY, 0);
+		expect(first?.lookAtY).toBeCloseTo(startY, 5);
+
+		const mid = updateLockOnCameraRelease(
+			LOCK_ON_DEATH_RELEASE_DURATION * 0.5,
+			0,
+			PY,
+			0,
+		);
+		expect(mid?.lookAtY).toBeGreaterThan(PY + LOCK_ON_LOOK_AT_BODY_OFFSET);
+		expect(mid?.lookAtY).toBeLessThan(startY);
 	});
 
 	it('auto-unlocks when target exceeds break range', () => {
@@ -529,6 +552,21 @@ describe('3D lock-on target selection', () => {
 		expect(getLockedEnemyId()).toBe('near');
 		const cycled = handleLockOnPress(pool, 0, PY, 0, 'cycle', 0, LAYOUT);
 		expect(cycled.enemy.id).toBe('high');
+	});
+});
+
+describe('resolveLockOnLookAtY', () => {
+	it('offsets grounded enemy world Y by the body-center constant', () => {
+		const enemy = { x: 0, z: 0, y: PY + 2 };
+		expect(resolveLockOnLookAtY(enemy, LAYOUT)).toBeCloseTo(PY + 2 + LOCK_ON_LOOK_AT_BODY_OFFSET, 5);
+	});
+
+	it('uses flying altitude for airborne lock-on look-at height', () => {
+		const flying = { x: 0, z: 0, flying: true, altitude: 3 };
+		expect(resolveLockOnLookAtY(flying, LAYOUT)).toBeCloseTo(
+			getEntityWorldY(flying, LAYOUT) + LOCK_ON_LOOK_AT_BODY_OFFSET,
+			5,
+		);
 	});
 });
 

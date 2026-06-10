@@ -91,6 +91,7 @@ import {
 	normalizeAngle,
 	cameraYawFromToTarget,
 	cameraYawBehindFacing,
+	resolveLockOnLookAtY,
 } from './lockOn.js';
 import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
 import { getEntityWorldY } from './entityWorldY.js';
@@ -1329,7 +1330,12 @@ function updateCameraOrbit(playerX, playerY, playerZ, delta) {
 
 	const lockedEnemy = findEnemyById(gameStateRef?.enemies, getLockedEnemyId());
 	if (lockedEnemy) {
-		camera.lookAt(lockedEnemy.x, playerY + 0.5, lockedEnemy.z);
+		const layout = gameStateRef?.layout ?? null;
+		camera.lookAt(
+			lockedEnemy.x,
+			resolveLockOnLookAtY(lockedEnemy, layout),
+			lockedEnemy.z,
+		);
 	} else {
 		camera.lookAt(playerX, playerY, playerZ);
 	}
@@ -1448,6 +1454,7 @@ export function getMeshMaps() {
 		lootMeshes,
 		iceBallMeshes,
 		playerCardWindupMarkers,
+		enemyLockOnRings,
 	};
 }
 
@@ -2142,7 +2149,7 @@ export function updateMyPlayer(delta) {
 		lockOnReleaseLookAt = null;
 	} else if (isLockOnCameraReleasing()) {
 		lockOnToTarget = null;
-		const release = updateLockOnCameraRelease(delta, simX, 0.5, simZ);
+		const release = updateLockOnCameraRelease(delta, simX, lockAnchor.y, simZ);
 		if (release) {
 			cameraYaw = release.cameraYaw;
 			lockOnReleaseLookAt = {
@@ -3676,14 +3683,14 @@ function createLockOnRing() {
 	return mesh;
 }
 
-export function syncLockOnRing(enemyId, enemyX, enemyZ) {
+export function syncLockOnRing(enemyId, enemyX, ringY, enemyZ) {
 	const lockedId = getLockedEnemyId();
 	if (lockedId === enemyId) {
 		if (!enemyLockOnRings[enemyId]) {
 			enemyLockOnRings[enemyId] = createLockOnRing();
 			scene.add(enemyLockOnRings[enemyId]);
 		}
-		enemyLockOnRings[enemyId].position.set(enemyX, GROUND_OVERLAY_Y + 0.02, enemyZ);
+		enemyLockOnRings[enemyId].position.set(enemyX, ringY, enemyZ);
 		enemyLockOnRings[enemyId].visible = true;
 	} else if (enemyLockOnRings[enemyId]) {
 		enemyLockOnRings[enemyId].visible = false;

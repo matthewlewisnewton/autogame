@@ -10,6 +10,19 @@ import {
 } from './config.js';
 import { getEntityWorldY } from './entityWorldY.js';
 
+/** Vertical offset from entity world Y to lock-on camera look-at (body center). */
+export const LOCK_ON_LOOK_AT_BODY_OFFSET = 0.5;
+
+/**
+ * World Y for camera look-at while locked on an enemy.
+ * @param {object | null | undefined} enemy
+ * @param {object | null | undefined} layout
+ * @returns {number}
+ */
+export function resolveLockOnLookAtY(enemy, layout) {
+	return getEntityWorldY(enemy, layout) + LOCK_ON_LOOK_AT_BODY_OFFSET;
+}
+
 /** @typedef {'unlock' | 'cycle' | 'reacquire'} LockOnRepeatAction */
 
 let lockedEnemyId = null;
@@ -31,6 +44,8 @@ let lastLockedPlayerRotation = 0;
  *   duration: number,
  *   lookAtX: number,
  *   lookAtZ: number,
+ *   startLookAtY: number,
+ *   targetLookAtY: number,
  *   startCameraYaw: number,
  *   targetCameraYaw: number,
  * } | null} */
@@ -236,12 +251,14 @@ export function isLockOnCameraReleasing() {
 	return lockOnCameraRelease != null;
 }
 
-function startLockOnDeathRelease(enemyX, enemyZ, playerRotation, cameraYaw) {
+function startLockOnDeathRelease(enemyX, enemyY, enemyZ, playerRotation, cameraYaw, targetLookAtY) {
 	lockOnCameraRelease = {
 		elapsed: 0,
 		duration: LOCK_ON_DEATH_RELEASE_DURATION,
 		lookAtX: enemyX,
 		lookAtZ: enemyZ,
+		startLookAtY: enemyY + LOCK_ON_LOOK_AT_BODY_OFFSET,
+		targetLookAtY,
 		startCameraYaw: cameraYaw,
 		targetCameraYaw: cameraYawBehindFacing(playerRotation),
 	};
@@ -262,7 +279,8 @@ export function updateLockOnCameraRelease(delta, playerX, playerY, playerZ) {
 	const release = lockOnCameraRelease;
 	const t = Math.min(1, release.elapsed / release.duration);
 	const eased = 1 - (1 - t) * (1 - t);
-	const lookAtY = playerY + 0.5;
+	const targetLookAtY = release.targetLookAtY ?? (playerY + LOCK_ON_LOOK_AT_BODY_OFFSET);
+	const lookAtY = release.startLookAtY + (targetLookAtY - release.startLookAtY) * eased;
 	const cameraYaw = normalizeAngle(
 		release.startCameraYaw
 		+ shortestAngleDelta(release.startCameraYaw, release.targetCameraYaw) * eased,
@@ -449,7 +467,14 @@ export function updateLockOn(
 		const deathRotation = lastLockedPlayerRotation;
 		clearLockOn();
 		if (deathPos) {
-			startLockOnDeathRelease(deathPos.x, deathPos.z, deathRotation, currentCameraYaw);
+			startLockOnDeathRelease(
+				deathPos.x,
+				deathPos.y,
+				deathPos.z,
+				deathRotation,
+				currentCameraYaw,
+				playerY + LOCK_ON_LOOK_AT_BODY_OFFSET,
+			);
 		}
 		return { locked: false, releasing: isLockOnCameraReleasing() };
 	}
@@ -477,7 +502,7 @@ export function updateLockOn(
 	const rawCameraYaw = cameraYawFromToTarget(liveToTarget);
 	const cameraYaw = advanceLockOnCameraYaw(currentCameraYaw, rawCameraYaw, delta);
 
-	lastLockedEnemyPosition = { x: enemy.x, z: enemy.z };
+	lastLockedEnemyPosition = { x: enemy.x, y: enemyY, z: enemy.z };
 	lastLockedPlayerRotation = playerRotation;
 
 	return {
