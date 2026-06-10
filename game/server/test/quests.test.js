@@ -5,6 +5,7 @@ import {
   getQuest,
   listQuests,
   listQuestVariants,
+  formatRewardSummary,
   isValidQuestSelection,
   getLayoutProfileForQuest,
   getLayoutGenerationOptions,
@@ -141,6 +142,28 @@ describe('quest tier catalog', () => {
     });
     expect(emberTier1.objectiveSummary).toContain('6');
     expect(variants.filter((v) => v.isTier2)).toHaveLength(5);
+  });
+
+  it('exposes signature reward id and resolved name on quest payloads', () => {
+    const quests = listQuests();
+    const frost = quests.find((q) => q.id === 'frost_crossing');
+    expect(frost.signatureCardId).toBe('ice_ball');
+    expect(frost.signatureCardName).toBe('Glacial Orb');
+    const training = quests.find((q) => q.id === 'training_caverns');
+    expect(training.signatureCardId).toBeNull();
+    expect(training.signatureCardName).toBeNull();
+  });
+
+  it('formatRewardSummary appends the signature card name only when present', () => {
+    expect(formatRewardSummary(getQuest('frost_crossing', 1))).toBe(
+      'Reward: 14 stones + Glacial Orb'
+    );
+    expect(formatRewardSummary(getQuest('training_caverns', 1))).toBe('Reward: 10 stones');
+    expect(formatRewardSummary(null)).toBe('Reward: —');
+    const spireTier2 = listQuestVariants().find(
+      (v) => v.questId === 'spire_ascent' && v.tier === 2
+    );
+    expect(spireTier2.rewardSummary).toBe('Reward: 16 stones + Gravity Well');
   });
 
   it('layout profile and seed accept tier for future divergence', () => {

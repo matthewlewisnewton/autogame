@@ -256,6 +256,7 @@ const QUEST_DEFS = {
 };
 
 const { THEME } = require('./theme');
+const CARD_DEFS = require('../shared/cardDefs.json');
 
 const DEFAULT_QUEST_ID = 'training_caverns';
 const DEFAULT_QUEST_TIER = 1;
@@ -297,11 +298,14 @@ function getQuest(questId, tier) {
   if (!tierDef) {
     return null;
   }
+  const signatureCardId = getSignatureCardId(questId, normalizedTier);
   return {
     id: questId,
     questId,
     tier: normalizedTier,
     ...tierDef,
+    signatureCardId,
+    signatureCardName: signatureCardId ? CARD_DEFS[signatureCardId]?.name ?? null : null,
   };
 }
 
@@ -376,6 +380,11 @@ function getEncounterConfig(quest) {
 function formatRewardSummary(quest) {
   if (!quest || quest.rewardCurrency == null) {
     return 'Reward: —';
+  }
+  const signatureCardName = quest.signatureCardName
+    ?? (quest.signatureCardId ? CARD_DEFS[quest.signatureCardId]?.name ?? null : null);
+  if (signatureCardName) {
+    return `Reward: ${quest.rewardCurrency} stones + ${signatureCardName}`;
   }
   return `Reward: ${quest.rewardCurrency} stones`;
 }
