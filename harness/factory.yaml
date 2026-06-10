@@ -6,7 +6,7 @@
 # repo. If this file is missing/unreadable, the factory falls back to the
 # hardcoded DEFAULT_SPECS / DEFAULT_ORDER in harness/dispatch/factory.py.
 
-workers: 5            # concurrent worktree slots / port pairs (game 3000+, vite 5173+)
+workers: 6            # concurrent worktree slots / port pairs (game 3000+, vite 5173+)
 reserve_qwen: true    # each tick, keep the local GPU (qwen) busy on an easy ticket —
                       # or a medium one when no easy work remains — so it's never idle
 
