@@ -13,7 +13,11 @@ const {
   countScriptedEnemies,
   pickWeightedEnemyType,
 } = require('./quests');
-const { isScriptedQuest, countAuthoredScriptedEnemies } = require('./scriptedEncounters');
+const {
+  isScriptedQuest,
+  countAuthoredScriptedEnemies,
+  usesScriptedEncounterRuntime,
+} = require('./scriptedEncounters');
 const { formatEscortDestinationLabel } = require('./escort');
 const { setEncounterBoss } = require('./encounters');
 const { DIFFICULTY_SPAWN_RATE_PER_PLAYER, difficultyScaleFactor, runPlayerCount } = require('./config');
@@ -79,11 +83,15 @@ const OBJECTIVE_DEFS = {
     createObjective(quest, ctx) {
       const objectiveLabel = `${quest.name}: ${quest.description}`;
       let totalEnemies = ctx.enemyCount;
-      const script = getQuestScript(quest);
-      if (script != null) {
-        totalEnemies = countScriptedEnemies(script);
-      } else if (isScriptedQuest(quest)) {
+      if (usesScriptedEncounterRuntime(quest)) {
         totalEnemies = countAuthoredScriptedEnemies(quest);
+      } else {
+        const script = getQuestScript(quest);
+        if (script != null) {
+          totalEnemies = countScriptedEnemies(script);
+        } else if (isScriptedQuest(quest)) {
+          totalEnemies = countAuthoredScriptedEnemies(quest);
+        }
       }
       const objective = {
         type: 'defeat_enemies',
@@ -91,7 +99,7 @@ const OBJECTIVE_DEFS = {
         totalEnemies,
         defeatedEnemies: 0,
       };
-      if (isScriptedQuest(quest)) {
+      if (usesScriptedEncounterRuntime(quest)) {
         objective.activeEnemyCount = 0;
       }
       return objective;
@@ -115,6 +123,7 @@ const OBJECTIVE_DEFS = {
         run.objective.activeEnemyCount = enemyCount;
         return;
       }
+      delete run.objective.activeEnemyCount;
       run.objective.totalEnemies = enemyCount;
       clampDefeatedEnemies(run.objective);
     },

@@ -5757,16 +5757,13 @@ describe('spawnEnemies() mixed pack', () => {
 		expect(gameState.enemies.some(e => e.type === 'spawner')).toBe(false);
 	});
 
-	it('skips bulk combat spawns for scripted default quest and spawns run-start script wave', () => {
+	it('skips bulk combat spawns for scripted default quest and spawns room-0 wave-0 scripted encounter', () => {
 		gameState.enemies = [];
 		spawnEnemies();
 		expect(gameState.enemies.length).toBe(0);
 		startDungeonRun();
-		expect(gameState.enemies.length).toBe(4);
-		const allowed = new Set(QUEST_DEFS[DEFAULT_QUEST_ID].enemyPool.map(entry => entry.type));
-		for (const e of gameState.enemies) {
-			expect(allowed.has(e.type)).toBe(true);
-		}
+		expect(gameState.enemies.length).toBe(2);
+		expect(gameState.enemies.every((e) => e.type === 'grunt')).toBe(true);
 		expect(gameState.enemies.some(e => e.type === 'miniboss')).toBe(false);
 		expect(gameState.enemies.some(e => e.type === 'spawner')).toBe(false);
 		expect(gameState.run.objective.totalEnemies).toBe(6);

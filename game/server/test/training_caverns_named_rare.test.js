@@ -88,7 +88,9 @@ describe('training_caverns tier 1 scripted named rare — Vault Marauder', () =>
     const state = createGameState();
     deployTrainingCaverns(state);
     expect(state.run.objective.totalEnemies).toBe(6);
-    expect(state.enemies).toHaveLength(4);
+    expect(state.enemies).toHaveLength(2);
+    expect(state.run.waveScript).toBeDefined();
+    expect(state.run.scriptedEncounter).toBeDefined();
   });
 
   it('spawns Vault Marauder in the deepest vault room with namedRare fields in snapshots', () => {

@@ -97,6 +97,7 @@ const {
   onScriptedEnemyDefeated,
   relinkScriptedEncounterEnemyIds,
   isScriptedQuest,
+  usesScriptedEncounterRuntime,
   setWaveClearedCallback,
 } = require('./scriptedEncounters');
 const {
@@ -991,7 +992,19 @@ function startDungeonRun() {
   _gameState.run = createRunState();
   resetDialogueState(_gameState.run);
   const quest = getSelectedQuest(_gameState);
-  if (getQuestScript(quest)) {
+  if (usesScriptedEncounterRuntime(quest)) {
+    initScriptedEncounter(
+      _gameState.run,
+      quest,
+      _gameState.layout,
+      _gameState,
+      buildObjectiveSpawnCtx(),
+    );
+    syncScriptedDefeatEnemiesActiveCount(_gameState.run, _gameState.enemies);
+    if (getQuestScript(quest)) {
+      initQuestScript(_gameState.run, quest, _gameState.layout);
+    }
+  } else if (getQuestScript(quest)) {
     initQuestScript(_gameState.run, quest, _gameState.layout);
     const seed = _gameState.layoutSeed || 42;
     const rng = mulberry32(seed + 1000);

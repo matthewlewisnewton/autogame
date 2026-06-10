@@ -87,6 +87,19 @@ function isScriptedQuest(quest) {
   return getScriptedEncounterDef(quest) != null;
 }
 
+function questHasPassageLocks(quest) {
+  const lockDefs = getScriptedEncounterDef(quest)?.passageLocks;
+  return Array.isArray(lockDefs) && lockDefs.length > 0;
+}
+
+/** True when per-room scripted waves (not questScript) drive runtime spawning. */
+function usesScriptedEncounterRuntime(quest) {
+  if (!isScriptedQuest(quest)) return false;
+  if (questHasPassageLocks(quest)) return true;
+  const { getQuestScript } = require('./quests');
+  return getQuestScript(quest) == null;
+}
+
 function spawnCount(spawnDef) {
   const count = Number.isFinite(spawnDef?.count) ? spawnDef.count : 1;
   return Math.max(1, Math.floor(count));
@@ -481,6 +494,8 @@ function relinkScriptedEncounterEnemyIds(run, enemies) {
 module.exports = {
   getScriptedEncounterDef,
   isScriptedQuest,
+  questHasPassageLocks,
+  usesScriptedEncounterRuntime,
   countAuthoredScriptedEnemies,
   initScriptedEncounter,
   initPassageLocks,
