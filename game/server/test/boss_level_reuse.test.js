@@ -49,8 +49,8 @@ const BOSS_LEVEL_QUESTS = [
     questId: 'citadel_siege',
     tier: 1,
     bossType: 'citadel_sovereign',
-    addCount: 0,
-    objectiveSummary: 'Defeat Citadel Sovereign',
+    addCount: 6,
+    objectiveSummary: 'Defeat Citadel Sovereign and 6 supports',
   },
 ];
 

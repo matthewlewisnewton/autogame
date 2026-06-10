@@ -47,10 +47,16 @@ const { enemyDefFor } = require('../simulation.js');
 const QUEST_ID = 'citadel_siege';
 const TIER = 1;
 const SEED = 38702;
+const ADD_COUNT = 6;
 const UNLOCK_REQUIRES = [
   { questId: 'canyon_descent', tier: 2 },
   { questId: 'spire_ascent', tier: 2 },
   { questId: 'arena_trials', tier: 2 },
+];
+const TIER_II_BENCHMARKS = [
+  { questId: 'spire_ascent', tier: 2 },
+  { questId: 'arena_trials', tier: 2 },
+  { questId: 'frost_crossing', tier: 2 },
 ];
 
 function nodeFor(graph, questId, tier) {
@@ -77,11 +83,12 @@ function setPartySize(state, count, position = { x: -20, z: 0 }) {
   }
 }
 
-function deployCitadelSiegeRun(state, { seed = SEED, partySize = 1, playerPosition } = {}) {
+function deployQuestRun(state, { questId, tier, seed = SEED, partySize = 1, playerPosition } = {}) {
   setPartySize(state, partySize, playerPosition ?? { x: -20, z: 0 });
-  state.selectedQuestId = QUEST_ID;
-  state.selectedQuestTier = TIER;
-  state.layout = bossArenaLayout(seed);
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  const profile = getLayoutProfileForQuest(questId, tier);
+  state.layout = generateLayout(seed, profile);
   state.layoutSeed = seed;
   state.enemies = [];
   state.loot = [];
@@ -92,6 +99,27 @@ function deployCitadelSiegeRun(state, { seed = SEED, partySize = 1, playerPositi
   spawnEnemies();
   startDungeonRun();
   return state;
+}
+
+function deployCitadelSiegeRun(state, options = {}) {
+  return deployQuestRun(state, { questId: QUEST_ID, tier: TIER, ...options });
+}
+
+function measureDeployedEncounterPressure(questId, tier, seed = SEED) {
+  const state = createGameState();
+  deployQuestRun(state, { questId, tier, seed });
+  let totalHp = 0;
+  let totalAttackDamage = 0;
+  for (const enemy of state.enemies) {
+    const def = enemyDefFor(enemy.type);
+    totalHp += def.hp;
+    totalAttackDamage += def.attackDamage;
+  }
+  return {
+    totalHp,
+    totalAttackDamage,
+    enemyCount: state.enemies.length,
+  };
 }
 
 function bossEnemy(state) {
@@ -129,14 +157,19 @@ describe('citadel_siege catalog', () => {
     expect(getEncounterConfig(quest)).toMatchObject({
       bossType: 'citadel_sovereign',
       landmark: 'arena_dais',
-      addCount: 0,
+      addCount: ADD_COUNT,
     });
+    expect(quest.encounter.addCount).toBeGreaterThan(0);
+    expect(quest.encounter.addCount).toBeGreaterThan(4);
     expect(quest.unlockRequires).toEqual(UNLOCK_REQUIRES);
     expect(normalizeUnlockRequires(quest.unlockRequires)).toEqual(UNLOCK_REQUIRES);
 
     const summary = formatObjectiveSummary(quest);
-    expect(summary).toBe('Defeat Citadel Sovereign');
+    expect(summary).toBe('Defeat Citadel Sovereign and 6 supports');
     expect(summary).not.toContain('hostiles');
+    expect(quest.description).toMatch(/supports/i);
+    expect(quest.client.briefing).toMatch(/supports/i);
+    expect(quest.dialogue.find((entry) => entry.trigger === 'run_start')?.text).toMatch(/supports/i);
 
     const boardRow = listQuests().find((entry) => entry.id === QUEST_ID);
     expect(boardRow?.objectiveSummary).toBe(summary);
@@ -160,19 +193,36 @@ describe('citadel_siege deploy and encounter flow', () => {
     state = createGameState();
   });
 
-  it('spawns a lone dormant citadel_sovereign wired to the arena dais', () => {
+  it('spawns a dormant citadel_sovereign with support adds wired to the arena dais', () => {
     deployCitadelSiegeRun(state);
     const dais = state.layout.landmarks.find((lm) => lm.type === 'arena_dais');
     const boss = bossEnemy(state);
 
     expect(state.run.objective.type).toBe('stage_boss');
+    expect(state.run.objective.addCount).toBe(ADD_COUNT);
     expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
     expect(state.run.encounter.bossEnemyId).toBeTruthy();
-    expect(state.enemies).toHaveLength(1);
+    expect(state.enemies).toHaveLength(1 + ADD_COUNT);
     expect(boss.type).toBe('citadel_sovereign');
     expect(boss.x).toBe(dais.x);
     expect(boss.z).toBe(dais.z);
     expect(enemyDefFor('citadel_sovereign').name).toBe('Citadel Sovereign');
+    expect(enemyDefFor('citadel_sovereign').hp).toBe(420);
+  });
+
+  it('citadel_siege exceeds Tier-II prerequisite encounter pressure', () => {
+    const capstone = measureDeployedEncounterPressure(QUEST_ID, TIER, SEED);
+    expect(capstone.enemyCount).toBe(1 + ADD_COUNT);
+
+    for (const benchmark of TIER_II_BENCHMARKS) {
+      const reference = measureDeployedEncounterPressure(
+        benchmark.questId,
+        benchmark.tier,
+        SEED,
+      );
+      expect(capstone.totalHp).toBeGreaterThan(reference.totalHp);
+      expect(capstone.totalAttackDamage).toBeGreaterThan(reference.totalAttackDamage);
+    }
   });
 
   it('activates the encounter when a player enters the trigger radius', () => {

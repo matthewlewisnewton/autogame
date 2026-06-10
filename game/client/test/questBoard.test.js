@@ -190,9 +190,9 @@ describe('formatObjectiveSummary()', () => {
 				id: 'citadel_siege',
 				levelKind: 'boss_level',
 				objectiveType: 'stage_boss',
-				encounter: { bossType: 'citadel_sovereign', addCount: 0 },
+				encounter: { bossType: 'citadel_sovereign', addCount: 6 },
 			}),
-		).toBe('Defeat Citadel Sovereign');
+		).toBe('Defeat Citadel Sovereign and 6 supports');
 	});
 });
 

@@ -651,13 +651,14 @@ const QUEST_DEFS = {
   citadel_siege: {
     id: 'citadel_siege',
     enemyPool: [
-      { type: 'grunt', weight: 2 },
-      { type: 'skirmisher', weight: 2 },
+      { type: 'miniboss', weight: 3 },
+      { type: 'grunt', weight: 1 },
     ],
     tiers: {
       1: {
         name: 'Citadel Siege',
-        description: 'Face the Citadel Sovereign alone on the boss arena dais.',
+        description:
+          'Face the Citadel Sovereign on the boss arena dais with six marked supports.',
         objectiveType: 'stage_boss',
         levelKind: 'boss_level',
         layoutProfile: 'boss-arena',
@@ -669,7 +670,7 @@ const QUEST_DEFS = {
         encounter: {
           bossType: 'citadel_sovereign',
           landmark: 'arena_dais',
-          addCount: 0,
+          addCount: 6,
         },
         rewardCurrency: 25,
         signatureCardId: 'gravity_well',
@@ -677,13 +678,17 @@ const QUEST_DEFS = {
         client: {
           name: 'Venn',
           briefing:
-            'Capstone siege contract. The Citadel Sovereign holds the boss-arena dais alone — '
-            + 'prove every Tier-II trial and claim twenty-five stones plus the Gravity Well uplink.',
+            'Capstone siege contract. The Citadel Sovereign holds the boss-arena dais with six '
+            + 'marked supports — prove every Tier-II trial and claim twenty-five stones plus the Gravity Well uplink.',
         },
         dialogue: [
           {
             trigger: 'run_start',
-            text: 'Venn on citadel feed. Sovereign holds the dais — three Tier-II clears bought you this shot.',
+            text: 'Venn on citadel feed. Sovereign and six marked supports on the dais — three Tier-II clears bought you this shot.',
+          },
+          {
+            trigger: { waveCleared: 3 },
+            text: 'Three supports spent. Sovereign is still holding the dais — keep pressure on.',
           },
           {
             trigger: 'objective_complete',

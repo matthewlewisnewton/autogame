@@ -575,11 +575,11 @@ describe('debugScenario — citadel-siege-boss', () => {
 		expect(stateUpdate.run.questTier).toBe(CITADEL_SIEGE_TIER_1);
 		expect(stateUpdate.run.questName).toBe(quest.name);
 		expect(stateUpdate.run.objective.type).toBe('stage_boss');
-		expect(stateUpdate.run.objective.addCount).toBe(0);
+		expect(stateUpdate.run.objective.addCount).toBe(6);
 		expect(stateUpdate.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
 		expect(stateUpdate.run.encounter.locked).toBe(false);
 		expect(stateUpdate.run.encounter.bossEnemyId).toBeTruthy();
-		expect(stateUpdate.enemies).toHaveLength(1);
+		expect(stateUpdate.enemies).toHaveLength(7);
 		expect(stateUpdate.enemies.every((e) => e.hp > 0)).toBe(true);
 
 		const boss = stateUpdate.enemies.find((e) => e.id === stateUpdate.run.encounter.bossEnemyId);
