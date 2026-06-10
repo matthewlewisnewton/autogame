@@ -125,3 +125,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [371-cleanup-playthrough-revalidate-sunken-canyon](tickets/371-cleanup-playthrough-revalidate-sunken-canyon/)
 - [ ] [376-cleanup-height-aware-projectile-aiming](tickets/376-cleanup-height-aware-projectile-aiming/)
 - [ ] [377-cleanup-airborne-flying-entity-support](tickets/377-cleanup-airborne-flying-entity-support/)
+- [ ] [378-cleanup-client-split-renderer-js-6-800-lines-extract-per-domain-sync-1t90](tickets/378-cleanup-client-split-renderer-js-6-800-lines-extract-per-domain-sync-1t90/)

@@ -1,0 +1,20 @@
+Created 5 new sub-tickets (06–10) that close the open gap. The previous round extracted the `syncX()` functions but left them inside the 6,966-line `renderer.js`; the reviewer wants them moved into **real per-domain module files** imported by `renderer.js`, with the shared reconcile helper applied where the pattern repeats. All 5 existing sub-tickets carry `.passed` markers and were left untouched.
+
+Dependency-ordered plan:
+
+- **06** — foundation: `renderer/meshSync.js` (generic `syncMeshMap`/`disposeStaleMeshes`/`disposeOne`/`disposeMeshMap`) + `renderer/rendererState.js` (shared scene accessor + keyed mesh-map stores). Breaks the import cycles the domain modules would otherwise need.
+- **07** — `renderer/enemySync.js` (`syncEnemyMeshes` + enemy helper cluster + minion-attribution VFX table).
+- **08** — `renderer/minionSync.js` (`syncMinionMeshes` + `syncSpikeTrapMeshes` + minion helpers).
+- **09** — `renderer/lootSync.js` (loot pickup/animation + ice-ball + telepipe).
+- **10** — `renderer/playerSync.js` (`syncPlayerMeshes`), with the local-player **kinematic respawn writes deliberately kept in `renderer.js`** since ES-module imports can't reassign another module's `let`s — the one real hazard in this split, called out explicitly in the ticket.
+
+All five use `## Verification: code` (structural/import/logic + "behavior unchanged, tests pass" — nothing a single happy-path screenshot run could confirm).
+
+Created folders:
+```
+tickets/client-split-renderer-js-6-800-lines-extract-per-domain-sync-1t90/subtickets/06-renderer-state-and-mesh-helpers-module/ticket.md
+tickets/client-split-renderer-js-6-800-lines-extract-per-domain-sync-1t90/subtickets/07-extract-enemy-sync-module/ticket.md
+tickets/client-split-renderer-js-6-800-lines-extract-per-domain-sync-1t90/subtickets/08-extract-minion-hazard-sync-module/ticket.md
+tickets/client-split-renderer-js-6-800-lines-extract-per-domain-sync-1t90/subtickets/09-extract-loot-projectile-sync-module/ticket.md
+tickets/client-split-renderer-js-6-800-lines-extract-per-domain-sync-1t90/subtickets/10-extract-player-sync-module/ticket.md
+```
