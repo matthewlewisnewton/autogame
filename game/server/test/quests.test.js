@@ -26,6 +26,7 @@ const TIER_1_QUEST_IDS = [
   'training_caverns',
   'crystal_rescue',
   'arena_trials',
+  'crucible_duel',
   'frost_crossing',
   'canyon_descent',
   'ember_descent',

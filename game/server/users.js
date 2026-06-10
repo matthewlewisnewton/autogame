@@ -431,6 +431,13 @@ function isQuestTierUnlocked(accountId, questId, tier) {
 		return false;
 	}
 	if (normalizedTier === 1) {
+		const quest = getQuest(questId, normalizedTier);
+		if (!quest) {
+			return false;
+		}
+		if (quest.unlockRequires) {
+			return areUnlockPrereqsMet(accountId, quest.unlockRequires);
+		}
 		return true;
 	}
 	const user = findUserByAccountId(accountId);

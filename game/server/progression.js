@@ -3703,19 +3703,17 @@ function checkAllReadyInner() {
   const noStaleDisconnectReady = all.every(p => p.connected !== false || !p.ready);
   if (allConnectedReady && noStaleDisconnectReady) {
     const selectedTier = _gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER;
-    if (selectedTier >= 2) {
-      const questId = _gameState.selectedQuestId;
-      let clearedAny = false;
-      for (const player of connectedPlayers) {
-        if (player.ready && !isQuestTierUnlocked(player.accountId, questId, selectedTier)) {
-          player.ready = false;
-          clearedAny = true;
-        }
+    const questId = _gameState.selectedQuestId;
+    let clearedAny = false;
+    for (const player of connectedPlayers) {
+      if (player.ready && !isQuestTierUnlocked(player.accountId, questId, selectedTier)) {
+        player.ready = false;
+        clearedAny = true;
       }
-      if (clearedAny) {
-        _broadcastLobbyUpdate();
-        return;
-      }
+    }
+    if (clearedAny) {
+      _broadcastLobbyUpdate();
+      return;
     }
 
     if (!isLobbyPhase(_gameState)) return;

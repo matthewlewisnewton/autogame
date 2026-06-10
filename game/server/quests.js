@@ -562,6 +562,47 @@ const QUEST_DEFS = {
       },
     },
   },
+  crucible_duel: {
+    id: 'crucible_duel',
+    enemyPool: [
+      { type: 'grunt', weight: 2 },
+      { type: 'skirmisher', weight: 2 },
+    ],
+    tiers: {
+      1: {
+        name: 'Crucible Duel',
+        description: 'Face the Crucible Sovereign alone on the boss arena dais.',
+        objectiveType: 'stage_boss',
+        levelKind: 'boss_level',
+        layoutProfile: 'boss-arena',
+        unlockRequires: { questId: 'arena_trials', tier: 2 },
+        encounter: {
+          bossType: 'crucible_sovereign',
+          landmark: 'arena_dais',
+          addCount: 0,
+        },
+        rewardCurrency: 18,
+        signatureCardId: 'sacrificial_altar',
+        rewardCards: ['sacrificial_altar', 'chrono_trigger'],
+        client: {
+          name: 'Venn',
+          briefing:
+            'Boss-arena contract. The Crucible Sovereign holds the dais alone — '
+            + 'drop them and claim eighteen stones plus the Offering Terminal uplink.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Venn on crucible feed. Sovereign is on the dais — no supports, no second chance.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Sovereign down. Crucible acknowledges the win — stones and uplink released.',
+          },
+        ],
+      },
+    },
+  },
   frost_crossing: {
     id: 'frost_crossing',
     // Signature foe that must always appear in this level's combat spawn set.
@@ -1006,6 +1047,11 @@ const QUEST_DEFS = {
 const { THEME } = require('./theme');
 const CARD_DEFS = require('../shared/cardDefs.json');
 
+function resolveBossDisplayName(bossType) {
+  const { enemyDefFor } = require('./simulation');
+  return enemyDefFor(bossType).name;
+}
+
 const DEFAULT_QUEST_ID = 'training_caverns';
 const DEFAULT_QUEST_TIER = 1;
 
@@ -1084,11 +1130,19 @@ function getQuest(questId, tier) {
     return null;
   }
   const signatureCardId = getSignatureCardId(questId, normalizedTier);
+  let encounter = tierDef.encounter;
+  if (encounter?.bossType && tierDef.levelKind === 'boss_level') {
+    encounter = {
+      ...encounter,
+      bossDisplayName: resolveBossDisplayName(encounter.bossType),
+    };
+  }
   return {
     id: questId,
     questId,
     tier: normalizedTier,
     ...tierDef,
+    encounter,
     dialogue: tierDef.dialogue ?? [],
     signatureCardId,
     signatureCardName: signatureCardId ? CARD_DEFS[signatureCardId]?.name ?? null : null,
@@ -1112,6 +1166,14 @@ function listQuests() {
       };
     })
     .filter(Boolean);
+}
+
+function listQuestsForAccount(accountId) {
+  const { isQuestTierUnlocked } = require('./users');
+  return listQuests().map((quest) => ({
+    ...quest,
+    tierUnlocked: isQuestTierUnlocked(accountId, quest.id, quest.tier ?? DEFAULT_QUEST_TIER),
+  }));
 }
 
 function formatObjectiveSummary(quest) {
@@ -1148,6 +1210,16 @@ function formatObjectiveSummary(quest) {
   if (quest.objectiveType === 'stage_boss') {
     const encounter = getEncounterConfig(quest);
     const addCount = encounter?.addCount ?? 0;
+    if (quest.levelKind === 'boss_level') {
+      const bossType = encounter?.bossType || 'miniboss';
+      const bossName = resolveBossDisplayName(bossType);
+      if (addCount > 0) {
+        return THEME.objectives.defeatBossLevelWithSupports
+          .replace('{bossName}', bossName)
+          .replace('{addCount}', String(addCount));
+      }
+      return THEME.objectives.defeatBossLevel.replace('{bossName}', bossName);
+    }
     const questId = quest.questId || quest.id;
     if (questId === 'spire_ascent') {
       if (addCount > 0) {
@@ -1572,6 +1644,7 @@ function buildQuestUpdatePayload(gameState, playerAccountId) {
     const { getUnlockedQuestTiers } = require('./users');
     payload.unlockedQuestTiers = getUnlockedQuestTiers(playerAccountId) || {};
     payload.questVariants = listQuestVariantsForAccount(playerAccountId);
+    payload.quests = listQuestsForAccount(playerAccountId);
   }
   return payload;
 }

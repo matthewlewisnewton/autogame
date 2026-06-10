@@ -1139,6 +1139,13 @@ const ENEMY_DEFS = {
 		hp: 420, chaseSpeed: 1.5, wanderSpeed: 0.7, attackDamage: 26, attackWindupMs: 1100,
 		attackStyle: 'cone', attackConeAngle: (2 * Math.PI) / 3, attackRange: 6.5,
 	},
+	crucible_sovereign: {
+		name: 'Crucible Sovereign',
+		description: 'Arena-forged tyrant that erupts in radial crucible shockwaves — close-range pressure on the boss dais.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 390, chaseSpeed: 1.2, wanderSpeed: 0.55, attackDamage: 24, attackWindupMs: 1200,
+		attackStyle: 'radial', attackRange: 4.5,
+	},
 	spire_warden: {
 		name: 'Summit Warden',
 		description: 'Spire summit guardian with crushing reach and tide-like pressure.',

@@ -62,7 +62,7 @@ const {
   abandonSuspendedRun,
   emitPlayerDeckUpdate,
 } = require('./progression');
-const { unlockHat: unlockHatForAccount, unlockQuestTier } = require('./users');
+const { unlockHat: unlockHatForAccount, unlockQuestTier, completeQuestTier } = require('./users');
 const { backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
 const { VARIANT_DEFS } = require('./enemyVariants');
 const { PHASES, setPhase } = require('./lobbies');
@@ -157,6 +157,25 @@ function ensureBossLevelFixtureQuest() {
 function setupBossLevelFixtureDeploy(lobby, state, player, tier = 2) {
   ensureBossLevelFixtureQuest();
   const questId = BOSS_LEVEL_FIXTURE_DEF.id;
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+
+  player.ready = true;
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  const startSpawn = firstRoomPosition();
+  player.x = startSpawn.x;
+  player.z = startSpawn.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+  deployQuestDebugRun(lobby, state, { clearEncounterBoss: true });
+}
+
+function setupCrucibleDuelBossDebug(lobby, state, player) {
+  const questId = 'crucible_duel';
+  const tier = 1;
+  completeQuestTier(player.accountId, 'arena_trials', 2);
   state.selectedQuestId = questId;
   state.selectedQuestTier = tier;
   applyLayoutForQuest(state, questId, tier);
@@ -1042,6 +1061,18 @@ function applyDebugScenario(socket, name) {
       // Reachable normally by selecting the boss-level fixture quest and deploying;
       // this scenario is a shortcut into that dormant encounter state.
       setupBossLevelFixtureDeploy(lobby, state, player, 2);
+      const anchor = resolveArenaDaisAnchor(state);
+      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 2;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      return finishStageBossDebugScenario(lobby, state, player, name);
+    }
+
+    if (name === 'crucible-duel-boss') {
+      // crucible_duel boss-level run with dormant Crucible Sovereign on boss-arena.
+      // Reachable normally by completing Arena Trials Tier 2, selecting Crucible Duel,
+      // and deploying; this scenario is a shortcut into that dormant encounter state.
+      setupCrucibleDuelBossDebug(lobby, state, player);
       const anchor = resolveArenaDaisAnchor(state);
       player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 2;
       player.z = anchor.z;

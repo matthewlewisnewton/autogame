@@ -153,6 +153,25 @@ describe('formatObjectiveSummary()', () => {
 			}),
 		).toBe('Defeat the Permafrost Warden and 2 supports');
 	});
+
+	it('summarizes boss-level stage-boss quests with reusable boss-name copy', () => {
+		expect(
+			formatObjectiveSummary({
+				id: 'crucible_duel',
+				levelKind: 'boss_level',
+				objectiveType: 'stage_boss',
+				encounter: { bossType: 'crucible_sovereign', addCount: 0 },
+			}),
+		).toBe('Defeat Crucible Sovereign');
+		expect(
+			formatObjectiveSummary({
+				questId: 'crucible_duel',
+				levelKind: 'boss_level',
+				objectiveType: 'stage_boss',
+				encounter: { bossType: 'crucible_sovereign', addCount: 2 },
+			}),
+		).toBe('Defeat Crucible Sovereign and 2 supports');
+	});
 });
 
 describe('formatRewardSummary()', () => {

@@ -81,7 +81,9 @@
     "defeatCinderWarden": "Defeat the cinder warden",
     "defeatCinderWardenWithSupports": "Defeat the cinder warden and {addCount} supports",
     "defeatPermafrostWarden": "Defeat the Permafrost Warden",
-    "defeatPermafrostWardenWithSupports": "Defeat the Permafrost Warden and {addCount} supports"
+    "defeatPermafrostWardenWithSupports": "Defeat the Permafrost Warden and {addCount} supports",
+    "defeatBossLevel": "Defeat {bossName}",
+    "defeatBossLevelWithSupports": "Defeat {bossName} and {addCount} supports"
   },
   "cardDescriptions": {
     "summonAlly": "Channels an invocation",
