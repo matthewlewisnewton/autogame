@@ -48,6 +48,75 @@ export const MODEL_REGISTRY = {
 // failures) are reused so a path is fetched at most once.
 const modelCache = new Map();
 
+/** Module-private tag for geometry/material shared with the glTF model cache. */
+const SHARED_MODEL_RESOURCE = Symbol('sharedModelResource');
+
+/**
+ * @param {import('three').BufferGeometry|import('three').Material|null|undefined} resource
+ * @returns {boolean}
+ */
+export function isSharedModelResource(resource) {
+	return resource != null && resource[SHARED_MODEL_RESOURCE] === true;
+}
+
+function tagSharedModelResource(resource) {
+	if (resource != null) resource[SHARED_MODEL_RESOURCE] = true;
+}
+
+function tagSharedMaterials(material) {
+	if (!material) return;
+	if (Array.isArray(material)) {
+		for (const mat of material) tagSharedModelResource(mat);
+	} else {
+		tagSharedModelResource(material);
+	}
+}
+
+/**
+ * Walk a loaded model clone and tag every geometry/material as cache-shared.
+ * @param {import('three').Object3D} root
+ */
+export function markSharedModelResources(root) {
+	if (!root?.traverse) return;
+	root.traverse((node) => {
+		if (node.geometry) tagSharedModelResource(node.geometry);
+		if (node.material) tagSharedMaterials(node.material);
+	});
+}
+
+function disposeGeometrySafe(geometry) {
+	if (geometry && !isSharedModelResource(geometry)) geometry.dispose();
+}
+
+function disposeMaterialSafe(material) {
+	if (!material) return;
+	if (Array.isArray(material)) {
+		for (const mat of material) {
+			if (mat && !isSharedModelResource(mat)) mat.dispose();
+		}
+	} else if (!isSharedModelResource(material)) {
+		material.dispose();
+	}
+}
+
+/**
+ * Dispose geometry/material under `root`, skipping cache-shared glTF resources.
+ * Procedural (untagged) resources are still disposed.
+ * @param {import('three').Object3D} root
+ */
+export function disposeMeshTreeSafe(root) {
+	if (!root) return;
+	if (root.traverse) {
+		root.traverse((child) => {
+			disposeGeometrySafe(child.geometry);
+			disposeMaterialSafe(child.material);
+		});
+	} else {
+		disposeGeometrySafe(root.geometry);
+		disposeMaterialSafe(root.material);
+	}
+}
+
 /**
  * Look up the registry path for an entity key.
  * @param {string} key - e.g. 'player', 'grunt', 'magic_stone'
@@ -100,8 +169,14 @@ export function loadModel(path) {
 	}
 
 	// Each caller resolves to its own clone so instances are never shared. A
-	// cached null failure stays null.
-	return entry.then((scene) => (scene ? scene.clone(true) : null));
+	// cached null failure stays null. clone(true) still shares geometry/material
+	// with the cache and other clones — tag them so disposal can skip safely.
+	return entry.then((scene) => {
+		if (!scene) return null;
+		const clone = scene.clone(true);
+		markSharedModelResources(clone);
+		return clone;
+	});
 }
 
 /** Clear the model cache (testing/dev helper; not used by gameplay). */
