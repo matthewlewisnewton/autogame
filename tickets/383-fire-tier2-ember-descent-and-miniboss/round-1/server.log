@@ -1,0 +1,15 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/383-fire-tier2-ember-descent-and-miniboss/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/383-fire-tier2-ember-descent-and-miniboss/game/data
+Server listening on port 3003
+Player connected: socket=72cId2aBeQvnUBKQAAAB, playerId=1b94d3e9-283f-4779-a1b3-052b3e823c5e
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=JWoP4NSOGoO-zT2FAAAD, playerId=e7c0ef09-cc75-4b7f-973a-69363139fd81
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=d08db547-428a-4a76-ab64-76737fbdb52d value=8
+Player disconnected: 72cId2aBeQvnUBKQAAAB
+Player disconnected: JWoP4NSOGoO-zT2FAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

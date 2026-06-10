@@ -6673,6 +6673,85 @@ PASS. The latest coverage run reports 168 test files passed and 2504 tests passe
 None.
 
 
+## v0.380 — 382-ice-tier2-frost-crossing-and-miniboss  (2026-06-10 13:37:27)
+
+### Unique In-Level Miniboss
+
+PASS. `glacial_tyrant` is registered in `game/server/simulation.js` as a distinct boss-tier ice-ball enemy with higher HP, longer range, larger/faster slow projectile tuning, boss drops, and party-size HP scaling. The stage-boss spawner anchors exactly one Glacial Tyrant at the `ice_cairn` landmark and keeps it dormant until support adds are cleared and a player approaches. Client rendering and telegraph tables include the new type in `game/client/renderer.js`, with a procedural model registry entry in `game/client/models.js`.
+
+### Debug Scenario Review
+
+PASS. The new `frost-crossing-tier-2` debug scenario is behind the existing debug path: client URL activation is localhost-only via `?debugScenario=...`, and the server handler is restricted to local/dev or `ALLOW_DEBUG_SCENARIOS=1`. It sets the same quest/tier/layout/run state reachable through normal gameplay after clearing Frost Crossing tier 1 and selecting the unlocked Tier II row. It does not weaken the production unlock/deploy path, which remains enforced by `selectQuest` and ready/deploy validation.
+
+### Design And Foundation Consistency
+
+PASS. The implementation matches the design direction for distinct quest identity, lobby-selected dungeon deployment, and stage-boss combat, while preserving the foundation requirements for 3D rendering, websocket connectivity, multiplayer presence, and movement synchronization. The round probes confirm the app still reaches lobby/gameplay with connected players and active movement/HUD state.
+
+### Tests And Coverage
+
+PASS. `coverage.log` reports `192` test files and `2714` tests passing. New coverage includes Glacial Tyrant enemy behavior, rigid ice-cavern generation, Frost Crossing Tier II catalog/deploy/unlock/encounter flow, and the debug scenario.
+
+## v0.379 — 383-fire-tier2-ember-descent-and-miniboss  (2026-06-10 13:13:13)
+
+The objective summary/theme strings reference the Magma Colossus rather than the Cinder Warden, while the older Cinder Warden catalog remains intact for existing enemy/test coverage.
+
+### Debug Scenarios
+
+PASS. The changed `ember-descent-tier-2` scenario is still reached through the debug scenario path only; client automatic entry is driven by `?debugScenario=...` on localhost, and the server checks the registered debug-scenario handler before applying it. The scenario sets quest id/tier and applies the Tier-II layout before entering play, then rebuilds the normal stage-boss spawn/run state. The same end state is covered through normal gameplay by Tier I unlock plus Tier II deploy tests, so the shortcut is QA-only and not a substitute for the real path.
+
+The newly registered `magma-colossus` debug scenario is a local boss visualization shortcut and does not alter normal quest deployment.
+
+### Design and Foundation Requirements
+
+PASS. The implementation stays aligned with the design document's multiplayer lobby-to-dungeon loop and active combat model, and it does not regress the setup requirements: the captured run has a canvas, websocket connection, multiplayer squad state, player movement probes, and live gameplay state.
+
+### Tests and Coverage
+
+PASS. `coverage.log` reports `195` test files and `2732` tests passed. Coverage thresholds are disabled, but the changed areas have focused tests for quest catalog/listing, spawn pools, layout options and rigid geometry, encounter lifecycle, enemy catalog/stats/drops/scaling, debug scenarios, and client render registry.
+
+## Remaining gaps
+
+None.
+
+
+## v0.378 — 388-level-map-unlock-graph-data-api  (2026-06-10 12:54:45)
+
+`buildLevelUnlockGraph(accountId)` is exported from `game/server/quests.js` and returns `{ nodes: [...] }` with one node per quest tier by iterating the same `QUEST_DEFS` tier order as `listQuestVariants()`. Each node includes `questId`, `tier`, `name`, `objectiveType`, `isBoss`, normalized `unlockRequires`, and a `state` string.
+
+The state calculation matches the requested precedence: `cleared` from `hasCompletedQuestTier`, otherwise `unlocked` from `isQuestTierUnlocked`, otherwise `locked`. Because `isQuestTierUnlocked` treats valid tier-1 quests as unlocked before user lookup and higher tiers require an account plus persisted/prerequisite unlocks, falsy or unknown accounts produce unlocked tier-1 nodes, locked higher-tier nodes, and no cleared nodes.
+
+Boss and prerequisite data are represented correctly. `isBoss` is derived from `objectiveType === 'stage_boss'`, which includes both tier-2 boss variants and tier-1 boss quests such as Frost Crossing, and `unlockRequires` is run through `normalizeUnlockRequires`, preserving single prereqs as one-element arrays and multi-prereq AND arrays as authored.
+
+`buildQuestUpdatePayload(gameState, playerAccountId)` now includes `levelUnlockGraph: buildLevelUnlockGraph(playerAccountId)` in the existing per-account payload block. The same payload is already spread into `questUpdate`, `lobbyUpdate`, and lobby-join payloads, so the client receives the graph in the established quest payload path without a new event or endpoint. Account-less payloads still omit the per-player graph, which matches the subticket allowance and the existing `unlockedQuestTiers` behavior.
+
+## Design and regression check
+
+The change is server-side data exposure only. It does not alter quest selection, tier gating, unlock persistence, combat, movement, rendering, or the lobby/dungeon loop described in `game/docs/design.md`, and it does not regress the foundational requirements for rendering, WebSocket connectivity, multiplayer visualization, or movement synchronization.
+
+## Tests and coverage
+
+The added `game/server/test/level_unlock_graph.test.js` covers graph cardinality, boss flags, normalized prerequisites, default unauthenticated states, cleared/unlocked progression state, payload inclusion for accounts, and omission without an account. The round coverage run passed: 22 test files and 914 tests.
+
+
+## v0.377 — 379-wyrm-evolution-flying-minion  (2026-06-10 12:51:48)
+
+
+### Hovering and 3D movement/rendering
+PASS. The server resolves minion `y` with the generic airborne helper before AI and after movement, so a flying Archive Wyrm follows floor height plus altitude across non-default floors instead of staying on a fixed plane. The client `syncMinionMeshes()` reuses the generic `flyingRenderOffset()` path and creates floor-aware flying shadows, so the Wyrm renders above the floor like the existing airborne minions without changing grounded minion placement.
+
+### Airborne, height-aware Wyrm breath
+PASS. Wyrm breath aim locks a 3D direction from minion world Y to target world Y, applies cone hits with `originY` and `dirY`, and sends the airborne origin/direction in the `cardUsed` payload. Client renderers preserve `origin.y` and `direction.y` for the cone, telegraph ring, and particle burst. Tests cover the Archive Wyrm hitting an elevated enemy at the same X/Z only when aimed upward and verify the client VFX uses the airborne origin.
+
+### Debug scenarios
+PASS. The changed scenarios are registered only through the existing debug-scenario entry points (`archive-wyrm-combat` and `archive-wyrm-elevated-breath`) and are not touched by normal gameplay. Their comments and tests tie the shortcut state back to the normal path: evolve `dungeon_drake` into `ancient_wyrm`, deploy into combat, and fight flying/elevated enemies. They do not bypass server-side combat logic; they seed normal server entities and then rely on `updateEnemies()`, `updateMinions()`, world-Y resolution, and the standard Wyrm breath hit path.
+
+### Design and requirements consistency
+PASS. The implementation stays within the documented card-combat/minion model and the existing airborne/height-aware mechanics. It does not regress the foundation requirements: the round-2 capture shows the 3D scene renders, sockets connect, multiplayer state is visible, and movement/state updates work.
+
+### Tests and coverage
+PASS. The latest coverage run reports `167 passed (167)` test files and `2645 passed (2645)` tests. Ticket-specific coverage includes server airborne/minion/Wyrm breath tests, the elevated-breath debug scenario, height-aware projectile coverage, and client render/VFX tests for airborne Wyrm behavior.
+
+
 ## v0.376 — Server: USE_KEY_ITEM/EQUIP_KEY_ITEM never checks equipped/owned key item (any client can use any key item)  (2026-06-10 12:49:14)
 
 
@@ -6694,29 +6773,6 @@ Fallback smoke capture exercised the real player path: auth → lobby → ready 
 ## Remaining gaps
 
 None. All acceptance criteria are fully met; runtime capture is clean; test suite is green.
-
-
-## v0.377 — 379-wyrm-evolution-flying-minion  (2026-06-10 12:51:48)
-
-
-### Hovering and 3D movement/rendering
-PASS. The server resolves minion `y` with the generic airborne helper before AI and after movement, so a flying Archive Wyrm follows floor height plus altitude across non-default floors instead of staying on a fixed plane. The client `syncMinionMeshes()` reuses the generic `flyingRenderOffset()` path and creates floor-aware flying shadows, so the Wyrm renders above the floor like the existing airborne minions without changing grounded minion placement.
-
-### Airborne, height-aware Wyrm breath
-PASS. Wyrm breath aim locks a 3D direction from minion world Y to target world Y, applies cone hits with `originY` and `dirY`, and sends the airborne origin/direction in the `cardUsed` payload. Client renderers preserve `origin.y` and `direction.y` for the cone, telegraph ring, and particle burst. Tests cover the Archive Wyrm hitting an elevated enemy at the same X/Z only when aimed upward and verify the client VFX uses the airborne origin.
-
-### Debug scenarios
-PASS. The changed scenarios are registered only through the existing debug-scenario entry points (`archive-wyrm-combat` and `archive-wyrm-elevated-breath`) and are not touched by normal gameplay. Their comments and tests tie the shortcut state back to the normal path: evolve `dungeon_drake` into `ancient_wyrm`, deploy into combat, and fight flying/elevated enemies. They do not bypass server-side combat logic; they seed normal server entities and then rely on `updateEnemies()`, `updateMinions()`, world-Y resolution, and the standard Wyrm breath hit path.
-
-### Design and requirements consistency
-PASS. The implementation stays within the documented card-combat/minion model and the existing airborne/height-aware mechanics. It does not regress the foundation requirements: the round-2 capture shows the 3D scene renders, sockets connect, multiplayer state is visible, and movement/state updates work.
-
-### Tests and coverage
-PASS. The latest coverage run reports `167 passed (167)` test files and `2645 passed (2645)` tests. Ticket-specific coverage includes server airborne/minion/Wyrm breath tests, the elevated-breath debug scenario, height-aware projectile coverage, and client render/VFX tests for airborne Wyrm behavior.
-
-## Remaining gaps
-
-None.
 
 
 ## v0.381 — 377-lock-on-and-aim-across-heights  (2026-06-10 13:54:11)

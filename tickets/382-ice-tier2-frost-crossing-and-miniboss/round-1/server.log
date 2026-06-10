@@ -1,0 +1,14 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/382-ice-tier2-frost-crossing-and-miniboss/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/382-ice-tier2-frost-crossing-and-miniboss/game/data
+Server listening on port 3002
+Player connected: socket=ZufqzmoZ2D5PwHkvAAAB, playerId=9f878e1d-028e-4fb0-a333-0326d4f0451e
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=SMp3fy-OQhkhK9WJAAAD, playerId=d188bcf9-3b95-4cdf-a565-6b151c21fc20
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: ZufqzmoZ2D5PwHkvAAAB
+Player disconnected: SMp3fy-OQhkhK9WJAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

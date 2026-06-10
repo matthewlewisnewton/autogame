@@ -1,0 +1,13 @@
+Decomposition complete. I broke the top-level ticket into three sub-tickets in dependency order, all `code`-verified:
+
+1. **01-glacial-tyrant-enemy-type** — registers the new `glacial_tyrant` boss everywhere an enemy type must exist: `ENEMY_DEFS` in `simulation.js` (reusing the def-driven `ice_ball` attack style with heavier tuning, making it genuinely distinct from the radial Permafrost Warden), drop tables in `config.js`, party-size HP scaling in `progression.js`, plus client geometry/telegraph/model-registry entries and a dedicated server test.
+2. **02-ice-cavern-rigid-layout** — adds `layoutMode: 'rigid'` support to `generateIceCavern` (currently the only tier-2 profile precursor that ignores the option), following the sunken-canyon/spire-ascent rigid pattern: seed-independent fixed geometry (2 ramps, declaration-order cover, fixed decor) with the default mode left byte-identical, plus a stability test.
+3. **03-frost-crossing-tier2-quest** — wires the Tier II quest entry itself: `unlockRequires` frost_crossing tier 1, rigid ice-cavern layout, denser `tier2EnemyPool` (extra glacial throwers + field medic), the Glacial Tyrant `stage_boss` encounter anchored at the existing `ice_cairn` landmark, new theme objective strings, briefing/dialogue, and an end-to-end tier-2 test modeled on the existing `*_tier2.test.js` files. Depends on 01 and 02.
+
+Notably, no quest-board client work is needed — tier-2 listing, lock state, and unlock flow are already fully generic (`listQuestVariants` + `unlockedQuestTiers`, with tier-1 victory unlocking tier 2 via `unlockQuestTier`).
+
+Created sub-ticket paths:
+
+- `tickets/382-ice-tier2-frost-crossing-and-miniboss/subtickets/01-glacial-tyrant-enemy-type/ticket.md`
+- `tickets/382-ice-tier2-frost-crossing-and-miniboss/subtickets/02-ice-cavern-rigid-layout/ticket.md`
+- `tickets/382-ice-tier2-frost-crossing-and-miniboss/subtickets/03-frost-crossing-tier2-quest/ticket.md`
