@@ -384,6 +384,7 @@ const sim = require('./simulation');
 sim.setGameState(gameState, _timeouts);
 progression.initProgression({ gameState, getIo: () => io });
 progression.setRebuildWallColliders(() => rebuildWallColliders());
+require('./scriptedEncounters').setPassageLocksChangedCallback(() => rebuildWallColliders());
 ensureShopOffer();
 
 // Wire simulation callbacks (so simulation.js can call back into progression).
@@ -531,6 +532,7 @@ const DEBUG_SCENARIOS = new Set([
   'sunken-canyon-cliff-hazard',
   'frost-crossing-tier-1',
   'scripted-wave-combat',
+  'passage-lock-gated',
   'fire-cavern',
   'ember-descent-near-adds',
   'ember-descent-ember-wraith-burn',

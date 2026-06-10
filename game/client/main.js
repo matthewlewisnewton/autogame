@@ -110,6 +110,7 @@ import { clearAllLockOnState, getLockedEnemyId } from './lockOn.js';
 import {
 	initScene as rendererInitScene,
 	rebuildDungeonLayout,
+	syncPassageLockColliders,
 	setGameStateRef,
 	setMyId as rendererSetMyId,
 	setSocketRef,
@@ -1302,6 +1303,9 @@ function bindSocketHandlers(s) {
 		gameState = state;
 		suspendedRunSummary = cloneSuspendedRunSummary(state.suspendedRunSummary ?? null);
 		setGameStateRef(state);
+		if (state.gamePhase === 'playing' && currentLayout) {
+			syncPassageLockColliders(state.run?.passageLocks);
+		}
 		// Server snapshots omit debugGodmode; re-apply the last toggle so harness
 		// probes and local handlers stay consistent across stateUpdate.
 		if (myId && debugGodmodeResult?.ok && gameState.players?.[myId]) {

@@ -254,6 +254,8 @@ let wallColliders = []; // flat array of wall AABBs
 let walkableAABBs = [];
 let dungeonBounds = null;
 let dungeonMeshes = []; // meshes created by buildDungeon()
+let activeLayout = null;
+let activePassageLocksKey = '';
 
 // ── Camera orbit state ──
 let cameraYaw = 0;
@@ -1398,6 +1400,31 @@ export function getWallColliders() {
 	return wallColliders;
 }
 
+function passageLocksCacheKey(passageLocks = []) {
+	if (!Array.isArray(passageLocks) || passageLocks.length === 0) return '';
+	return passageLocks
+		.map((lock) => `${lock.passageIndex}:${lock.locked ? 1 : 0}`)
+		.join('|');
+}
+
+function resolvePassageLocks(passageLocks) {
+	if (Array.isArray(passageLocks)) return passageLocks;
+	return gameStateRef?.run?.passageLocks || [];
+}
+
+/**
+ * Rebuild client wall colliders when run.passageLocks changes.
+ * @param {object[]} [passageLocks]
+ */
+export function syncPassageLockColliders(passageLocks) {
+	if (!activeLayout) return;
+	const locks = resolvePassageLocks(passageLocks);
+	const nextKey = passageLocksCacheKey(locks);
+	if (nextKey === activePassageLocksKey) return;
+	activePassageLocksKey = nextKey;
+	wallColliders = buildWallColliders(activeLayout, locks);
+}
+
 /**
  * Get the active effects array.
  * @returns {object[]}
@@ -1556,12 +1583,15 @@ export function initScene(layout, spawnPos) {
 
 	// Build dungeon geometry from server layout
 	if (layout) {
+		activeLayout = layout;
 		clearDungeon(scene, dungeonMeshes);
 		const { meshes, spawnPosition: spawn } = buildDungeon(scene, layout);
 		dungeonMeshes.push(...meshes);
 		spawnPosition.x = spawn.x;
 		spawnPosition.z = spawn.z;
-		wallColliders = buildWallColliders(layout);
+		const passageLocks = resolvePassageLocks();
+		activePassageLocksKey = passageLocksCacheKey(passageLocks);
+		wallColliders = buildWallColliders(layout, passageLocks);
 		walkableAABBs = computeWalkableAABBs(layout);
 		dungeonBounds = computeDungeonBounds(layout);
 		cameraYaw = 0;
@@ -1641,15 +1671,18 @@ export function initScene(layout, spawnPos) {
  *
  * @param {object} layout - { rooms, passages } from server
  */
-export function rebuildDungeonLayout(layout) {
+export function rebuildDungeonLayout(layout, passageLocks) {
 	if (!scene || !layout) return;
 
+	activeLayout = layout;
 	clearDungeon(scene, dungeonMeshes);
 	const { meshes, spawnPosition: spawn } = buildDungeon(scene, layout);
 	dungeonMeshes.push(...meshes);
 	spawnPosition.x = spawn.x;
 	spawnPosition.z = spawn.z;
-	wallColliders = buildWallColliders(layout);
+	const locks = resolvePassageLocks(passageLocks);
+	activePassageLocksKey = passageLocksCacheKey(locks);
+	wallColliders = buildWallColliders(layout, locks);
 	walkableAABBs = computeWalkableAABBs(layout);
 	dungeonBounds = computeDungeonBounds(layout);
 	myX = spawnPosition.x;

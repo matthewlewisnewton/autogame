@@ -965,6 +965,9 @@ function startDungeonRun() {
   if (_gameState.run.encounter) {
     ensureEncounterSpawnAnchor(_gameState.run, _gameState.enemies);
   }
+  if (_gameState.run.passageLocks?.length) {
+    _rebuildWallColliders();
+  }
   for (const p of Object.values(_gameState.players)) {
     p.currencyEarnedThisRun = 0;
     p.runRewards = null;
@@ -2736,6 +2739,9 @@ function captureCardCheckpoint() {
   }
   if (run._scriptedEncounterConfig) {
     checkpoint.run._scriptedEncounterConfig = deepCloneJson(run._scriptedEncounterConfig);
+  }
+  if (run.passageLocks) {
+    checkpoint.run.passageLocks = deepCloneJson(run.passageLocks);
   }
 
   for (const [playerId, player] of Object.entries(_gameState.players)) {

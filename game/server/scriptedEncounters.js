@@ -26,8 +26,28 @@ const { DEFAULT_QUEST_TIER } = require('./quests');
  */
 
 /**
+ * @typedef {Object} ScriptedWaveRef
+ * @property {number} roomIndex - Layout room index whose wave clear unlocks the passage.
+ * @property {number} waveIndex - Wave index within that room (0-based).
+ */
+
+/**
+ * @typedef {Object} ScriptedPassageLockDef
+ * @property {ScriptedWaveRef} afterWave - Wave that must be cleared before this passage opens.
+ * @property {number} passageIndex - Index into `layout.passages` for the gated doorway.
+ */
+
+/**
  * @typedef {Object} ScriptedEncounterConfig
  * @property {ScriptedRoomDef[]} rooms - Per-room scripted wave definitions.
+ * @property {ScriptedPassageLockDef[]} [passageLocks] - Optional wave-gated passage barriers.
+ */
+
+/**
+ * @typedef {Object} ScriptedPassageLockState
+ * @property {number} passageIndex - Index into `layout.passages`.
+ * @property {ScriptedWaveRef} afterWave - Unlock condition copied from quest config.
+ * @property {boolean} locked - Whether movement is blocked at this passage.
  */
 
 /**
@@ -89,6 +109,19 @@ function roomKeyForDef(roomDef) {
     return `landmark:${roomDef.landmark}`;
   }
   return null;
+}
+
+let _onPassageLocksChanged = () => {};
+
+function setPassageLocksChangedCallback(fn) {
+  _onPassageLocksChanged = typeof fn === 'function' ? fn : () => {};
+}
+
+function findPassageIndexFromRoom(layout, roomIndex) {
+  if (!layout?.passages || !layout?.rooms) return -1;
+  const room = layout.rooms[roomIndex];
+  if (!room) return -1;
+  return layout.passages.findIndex((passage) => passage.x1 === room.x && passage.z1 === room.z);
 }
 
 function getStartRoomIndex(layout) {
@@ -255,6 +288,11 @@ function tryAdvanceScriptedWave(run, gameState, roomKey, ctx) {
 
   if (roomState.enemyIds.length > 0) return;
 
+  const clearedWaveIndex = roomState.waveIndex;
+  if (clearedWaveIndex >= 0) {
+    unlockPassagesForWave(run, roomState.roomIndex, clearedWaveIndex);
+  }
+
   const nextWaveIndex = roomState.waveIndex + 1;
   if (nextWaveIndex >= roomDef.waves.length) {
     roomState.cleared = true;
@@ -262,6 +300,54 @@ function tryAdvanceScriptedWave(run, gameState, roomKey, ctx) {
   }
 
   spawnScriptedWave(run, gameState, roomKey, nextWaveIndex, ctx);
+}
+
+function isWaveRequirementMet(run, afterWave) {
+  if (!afterWave || !Number.isInteger(afterWave.roomIndex) || !Number.isInteger(afterWave.waveIndex)) {
+    return false;
+  }
+  const roomKey = `room:${afterWave.roomIndex}`;
+  const roomState = run.scriptedEncounter?.rooms?.[roomKey];
+  if (!roomState) return false;
+  if (roomState.cleared) return true;
+  return roomState.waveIndex > afterWave.waveIndex;
+}
+
+function initPassageLocks(run, quest) {
+  const config = getScriptedEncounterDef(quest);
+  const lockDefs = config?.passageLocks;
+  if (!Array.isArray(lockDefs) || lockDefs.length === 0) {
+    run.passageLocks = [];
+    return;
+  }
+
+  run.passageLocks = lockDefs.map((lockDef) => ({
+    passageIndex: lockDef.passageIndex,
+    afterWave: {
+      roomIndex: lockDef.afterWave.roomIndex,
+      waveIndex: lockDef.afterWave.waveIndex,
+    },
+    locked: !isWaveRequirementMet(run, lockDef.afterWave),
+  }));
+}
+
+function unlockPassagesForWave(run, roomIndex, waveIndex) {
+  if (!Array.isArray(run?.passageLocks) || run.passageLocks.length === 0) return false;
+
+  let changed = false;
+  for (const lock of run.passageLocks) {
+    if (!lock.locked) continue;
+    const afterWave = lock.afterWave;
+    if (afterWave?.roomIndex === roomIndex && afterWave?.waveIndex === waveIndex) {
+      lock.locked = false;
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    _onPassageLocksChanged();
+  }
+  return changed;
 }
 
 function initScriptedEncounter(run, quest, layout, gameState, ctx) {
@@ -272,6 +358,7 @@ function initScriptedEncounter(run, quest, layout, gameState, ctx) {
   run.scriptedEncounter = {
     rooms: buildRoomStates(quest, layout),
   };
+  initPassageLocks(run, quest);
 
   const startRoomIndex = getStartRoomIndex(layout);
   const startRoomKey = Object.keys(run.scriptedEncounter.rooms).find((key) => {
@@ -340,9 +427,14 @@ module.exports = {
   isScriptedQuest,
   countAuthoredScriptedEnemies,
   initScriptedEncounter,
+  initPassageLocks,
+  unlockPassagesForWave,
   tickScriptedEncounters,
   onScriptedEnemyDefeated,
   relinkScriptedEncounterEnemyIds,
+  setPassageLocksChangedCallback,
+  findPassageIndexFromRoom,
+  isWaveRequirementMet,
   roomKeyForDef,
   resolveRoomDef,
 };

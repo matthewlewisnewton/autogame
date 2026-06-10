@@ -65,6 +65,7 @@ const {
   areAllNonBossEnemiesDefeated,
   resolveEncounterAnchor,
 } = require('./encounters');
+const { findPassageIndexFromRoom } = require('./scriptedEncounters');
 
 // index.js-local helpers + the DEBUG_SCENARIOS set, injected after modules load.
 let io = null;
@@ -104,6 +105,28 @@ function ensureScriptedEncounterFixtureQuest() {
   if (!QUEST_DEFS[questId]) {
     QUEST_DEFS[questId] = SCRIPTED_ENCOUNTER_FIXTURE_DEF;
   }
+}
+
+function ensurePassageLockFixtureQuest(layout) {
+  ensureScriptedEncounterFixtureQuest();
+  const questId = SCRIPTED_ENCOUNTER_FIXTURE_DEF.id;
+  const startRoomIndex = layout.rooms.findIndex((room) => room.role === 'start');
+  const passageIndex = findPassageIndexFromRoom(layout, startRoomIndex >= 0 ? startRoomIndex : 0);
+  const baseTier = SCRIPTED_ENCOUNTER_FIXTURE_DEF.tiers[1];
+  QUEST_DEFS[questId] = {
+    ...SCRIPTED_ENCOUNTER_FIXTURE_DEF,
+    tiers: {
+      1: {
+        ...baseTier,
+        scriptedEncounters: {
+          ...baseTier.scriptedEncounters,
+          passageLocks: passageIndex >= 0
+            ? [{ afterWave: { roomIndex: startRoomIndex >= 0 ? startRoomIndex : 0, waveIndex: 0 }, passageIndex }]
+            : [],
+        },
+      },
+    },
+  };
 }
 
 function setupScriptedWaveCombatDeploy(lobby, state, player) {
@@ -836,6 +859,52 @@ function applyDebugScenario(socket, name) {
       // Reachable normally by selecting Scripted Encounter Fixture and deploying;
       // this scenario is a shortcut into wave-0 combat.
       setupScriptedWaveCombatDeploy(lobby, state, player);
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
+    if (name === 'passage-lock-gated') {
+      // Scripted Encounter Fixture with a wave-0 passage lock on the start-room exit.
+      // Reachable normally by deploying the passage-lock fixture quest tier;
+      // this scenario is a shortcut into locked-passage wave-0 combat.
+      const questId = SCRIPTED_ENCOUNTER_FIXTURE_DEF.id;
+      const tier = 1;
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+      ensurePassageLockFixtureQuest(state.layout);
+
+      player.ready = true;
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const startSpawn = firstRoomPosition();
+      player.x = startSpawn.x;
+      player.z = startSpawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      enterPlayingPhase(lobby);
+
+      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+        createDrawDeckFromSelectedDeck(player);
+        initPlayerHand(player);
+        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+        if (!player.pendingSummons) {
+          player.pendingSummons = new Set();
+        }
+      }
+
+      state.enemies = state.enemies || [];
+      state.loot = state.loot || [];
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
