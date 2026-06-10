@@ -96,14 +96,14 @@ describe('quest script run_start spawn', () => {
     const state = createGameState();
     deployScriptedRun(state);
 
-    expect(state.run.waveScript).toHaveLength(2);
-    expect(state.run.waveScript[0]).toMatchObject({
+    expect(state.run.waveScript.waves).toHaveLength(2);
+    expect(state.run.waveScript.waves[0]).toMatchObject({
       id: 'wave_run_start',
       trigger: 'run_start',
       status: 'spawned',
     });
-    expect(state.run.waveScript[0].spawnedEnemyIds).toHaveLength(RUN_START_SPAWNS.length);
-    expect(state.run.waveScript[1]).toMatchObject({
+    expect(state.run.waveScript.waves[0].spawnedEnemyIds).toHaveLength(RUN_START_SPAWNS.length);
+    expect(state.run.waveScript.waves[1]).toMatchObject({
       id: 'wave_enter_room',
       trigger: 'enter_room',
       status: 'pending',

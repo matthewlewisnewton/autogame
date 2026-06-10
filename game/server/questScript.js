@@ -70,6 +70,11 @@ function isActivePlayer(player) {
   return !!(player && !player.dead && !player.extracted);
 }
 
+/** @param {object} run */
+function waveScriptWaves(run) {
+  return run?.waveScript?.waves ?? [];
+}
+
 /**
  * Initialize per-run wave script state from a quest tier's authored waves.
  * @param {object} run
@@ -82,17 +87,19 @@ function initQuestScript(run, quest, _layout) {
     run.waveScript = null;
     return;
   }
-  run.waveScript = script.waves.map((wave) => ({
-    id: wave.id,
-    trigger: wave.trigger,
-    status: 'pending',
-    spawnedEnemyIds: [],
-  }));
+  run.waveScript = {
+    waves: script.waves.map((wave) => ({
+      id: wave.id,
+      trigger: wave.trigger,
+      status: 'pending',
+      spawnedEnemyIds: [],
+    })),
+  };
 }
 
 /**
  * Spawn hand-placed enemies for one scripted wave entry.
- * @param {object} waveState - Mutable entry on `run.waveScript`.
+ * @param {object} waveState - Mutable entry on `run.waveScript.waves`.
  * @param {import('./quests').QuestScriptWave} scriptWave
  * @param {object} ctx - Objective spawn context (`spawnEnemy`, `roomTierAt`, `layout`, …).
  */
@@ -115,7 +122,7 @@ function spawnWaveEntries(waveState, scriptWave, ctx) {
 
 /**
  * Spawn one scripted wave if its trigger conditions are satisfied.
- * @param {object} waveState - Mutable entry on `run.waveScript`.
+ * @param {object} waveState - Mutable entry on `run.waveScript.waves`.
  * @param {import('./quests').QuestScriptWave} scriptWave
  * @param {object} ctx - Objective spawn context.
  */
@@ -130,12 +137,13 @@ function trySpawnWave(waveState, scriptWave, ctx) {
  */
 function checkWaveCleared(gameState) {
   const run = gameState?.run;
-  if (!run?.waveScript) return [];
+  const waves = waveScriptWaves(run);
+  if (waves.length === 0) return [];
 
   const liveEnemyIds = new Set((gameState.enemies || []).map((enemy) => enemy.id));
   const newlyCleared = [];
 
-  for (const waveState of run.waveScript) {
+  for (const waveState of waves) {
     if (waveState.status !== 'spawned') continue;
     const allGone = waveState.spawnedEnemyIds.every((id) => !liveEnemyIds.has(id));
     if (!allGone) continue;
@@ -153,7 +161,8 @@ function checkWaveCleared(gameState) {
  */
 function fireWaveClearedTriggers(gameState, ctx) {
   const run = gameState?.run;
-  if (!run?.waveScript) return;
+  const waves = waveScriptWaves(run);
+  if (waves.length === 0) return;
 
   const quest = getQuest(run.questId, run.questTier);
   const script = getQuestScript(quest);
@@ -165,10 +174,10 @@ function fireWaveClearedTriggers(gameState, ctx) {
   };
   const scriptWaveById = new Map(script.waves.map((wave) => [wave.id, wave]));
   const clearedIds = new Set(
-    run.waveScript.filter((wave) => wave.status === 'cleared').map((wave) => wave.id),
+    waves.filter((wave) => wave.status === 'cleared').map((wave) => wave.id),
   );
 
-  for (const waveState of run.waveScript) {
+  for (const waveState of waves) {
     if (waveState.status !== 'pending') continue;
     const priorId = waveClearedPriorId(waveState.trigger);
     if (!priorId || !clearedIds.has(priorId)) continue;
@@ -185,7 +194,8 @@ function fireWaveClearedTriggers(gameState, ctx) {
  */
 function fireRunStartWaves(gameState, ctx) {
   const run = gameState?.run;
-  if (!run?.waveScript) return;
+  const waves = waveScriptWaves(run);
+  if (waves.length === 0) return;
 
   const quest = getQuest(run.questId, run.questTier);
   const script = getQuestScript(quest);
@@ -197,7 +207,7 @@ function fireRunStartWaves(gameState, ctx) {
   };
   const scriptWaveById = new Map(script.waves.map((wave) => [wave.id, wave]));
 
-  for (const waveState of run.waveScript) {
+  for (const waveState of waves) {
     if (waveState.status !== 'pending') continue;
     if (!isRunStartTrigger(waveState.trigger)) continue;
     const scriptWave = scriptWaveById.get(waveState.id);
@@ -213,7 +223,8 @@ function fireRunStartWaves(gameState, ctx) {
  */
 function updateEnterRoomTriggers(gameState, ctx) {
   const run = gameState?.run;
-  if (!run?.waveScript) return;
+  const waves = waveScriptWaves(run);
+  if (waves.length === 0) return;
 
   const quest = getQuest(run.questId, run.questTier);
   const script = getQuestScript(quest);
@@ -225,7 +236,7 @@ function updateEnterRoomTriggers(gameState, ctx) {
   };
   const scriptWaveById = new Map(script.waves.map((wave) => [wave.id, wave]));
 
-  for (const waveState of run.waveScript) {
+  for (const waveState of waves) {
     if (waveState.status !== 'pending') continue;
     if (!isEnterRoomTrigger(waveState.trigger)) continue;
     const scriptWave = scriptWaveById.get(waveState.id);
@@ -243,6 +254,7 @@ function updateEnterRoomTriggers(gameState, ctx) {
 }
 
 module.exports = {
+  waveScriptWaves,
   initQuestScript,
   spawnWaveEntries,
   trySpawnWave,

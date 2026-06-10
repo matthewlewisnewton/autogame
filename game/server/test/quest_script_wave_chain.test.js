@@ -60,7 +60,7 @@ function deployScriptedRun(state, { seed = SEED } = {}) {
 }
 
 function waveState(state, waveId) {
-  return state.run.waveScript.find((wave) => wave.id === waveId);
+  return state.run.waveScript.waves.find((wave) => wave.id === waveId);
 }
 
 function enemiesForWave(state, waveId) {

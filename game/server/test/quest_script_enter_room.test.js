@@ -146,7 +146,7 @@ describe('quest script enter_room triggers', () => {
       enterRoomBinding: { x: distantRoom.x, z: distantRoom.z },
     });
 
-    expect(state.run.waveScript[1]).toMatchObject({
+    expect(state.run.waveScript.waves[1]).toMatchObject({
       id: 'wave_enter_room',
       status: 'pending',
       spawnedEnemyIds: [],
@@ -158,15 +158,15 @@ describe('quest script enter_room triggers', () => {
     state.players.p1.z = outside.z;
     updateQuestScriptTriggers();
 
-    expect(state.run.waveScript[1].status).toBe('pending');
+    expect(state.run.waveScript.waves[1].status).toBe('pending');
     expect(state.enemies.some((enemy) => enemy.type === 'miniboss')).toBe(false);
 
     state.players.p1.x = triggerRoom.x;
     state.players.p1.z = triggerRoom.z;
     updateQuestScriptTriggers();
 
-    expect(state.run.waveScript[1].status).toBe('spawned');
-    expect(state.run.waveScript[1].spawnedEnemyIds).toHaveLength(ENTER_ROOM_SPAWNS.length);
+    expect(state.run.waveScript.waves[1].status).toBe('spawned');
+    expect(state.run.waveScript.waves[1].spawnedEnemyIds).toHaveLength(ENTER_ROOM_SPAWNS.length);
     for (const expected of ENTER_ROOM_SPAWNS) {
       const match = state.enemies.find(
         (enemy) => enemy.type === expected.type
@@ -204,7 +204,7 @@ describe('quest script enter_room triggers', () => {
     updateQuestScriptTriggers();
 
     expect(state.enemies.length).toBe(countAfterFirstEnter);
-    expect(state.run.waveScript[1].status).toBe('spawned');
+    expect(state.run.waveScript.waves[1].status).toBe('spawned');
   });
 
   it('ignores dead and extracted players for enter_room activation', () => {
@@ -225,12 +225,12 @@ describe('quest script enter_room triggers', () => {
     state.players.p1.z = triggerRoom.z;
     state.players.p1.dead = true;
     updateQuestScriptTriggers();
-    expect(state.run.waveScript[1].status).toBe('pending');
+    expect(state.run.waveScript.waves[1].status).toBe('pending');
 
     state.players.p1.dead = false;
     state.players.p1.extracted = true;
     updateQuestScriptTriggers();
-    expect(state.run.waveScript[1].status).toBe('pending');
+    expect(state.run.waveScript.waves[1].status).toBe('pending');
   });
 
   it('resolves landmark room bindings via layout.landmarks position', () => {
@@ -276,11 +276,11 @@ describe('quest script enter_room triggers', () => {
     state.players.p1.x = outside.x;
     state.players.p1.z = outside.z;
     updateQuestScriptTriggers();
-    expect(state.run.waveScript[1].status).toBe('pending');
+    expect(state.run.waveScript.waves[1].status).toBe('pending');
 
     state.players.p1.x = dais.x;
     state.players.p1.z = dais.z;
     updateQuestScriptTriggers();
-    expect(state.run.waveScript[1].status).toBe('spawned');
+    expect(state.run.waveScript.waves[1].status).toBe('spawned');
   });
 });
