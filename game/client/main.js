@@ -113,6 +113,7 @@ import {
 	initScene as rendererInitScene,
 	rebuildDungeonLayout,
 	syncPassageLockColliders,
+	syncPassageLockGates,
 	setGameStateRef,
 	setMyId as rendererSetMyId,
 	setSocketRef,
@@ -1308,6 +1309,7 @@ function bindSocketHandlers(s) {
 		setGameStateRef(state);
 		if (state.gamePhase === 'playing' && currentLayout) {
 			syncPassageLockColliders(state.run?.passageLocks);
+			syncPassageLockGates(state.run?.passageLocks);
 		}
 		// Server snapshots omit debugGodmode; re-apply the last toggle so harness
 		// probes and local handlers stay consistent across stateUpdate.

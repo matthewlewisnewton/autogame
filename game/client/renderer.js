@@ -15,10 +15,12 @@ import { clampDelta } from './delta.js';
 import {
 	buildDungeon,
 	clearDungeon,
+	buildPassageGateMesh,
 	buildWallColliders,
 	computeWalkableAABBs,
 	computeDungeonBounds,
 	tryPlayerMove,
+	getProfileMaterials,
 	WALL_HEIGHT,
 	WALL_THICKNESS,
 	FLOOR_Y,
@@ -256,6 +258,9 @@ let dungeonBounds = null;
 let dungeonMeshes = []; // meshes created by buildDungeon()
 let activeLayout = null;
 let activePassageLocksKey = '';
+let activePassageGateLocksKey = '';
+/** @type {Record<number, THREE.Group>} */
+const passageGateMeshes = {};
 
 // ── Camera orbit state ──
 let cameraYaw = 0;
@@ -1283,6 +1288,7 @@ export function getMeshMaps() {
 		minionTelegraphMeshes,
 		minionsMeshes,
 		spikeTrapMeshes,
+		passageGateMeshes,
 		lootMeshes,
 		iceBallMeshes,
 		playerCardWindupMarkers,
@@ -1431,6 +1437,60 @@ export function syncPassageLockColliders(passageLocks) {
 	if (nextKey === activePassageLocksKey) return;
 	activePassageLocksKey = nextKey;
 	wallColliders = buildWallColliders(activeLayout, locks);
+}
+
+function disposePassageGateMesh(mesh) {
+	if (!mesh) return;
+	if (scene) scene.remove(mesh);
+	mesh.traverse((child) => {
+		if (child.geometry) child.geometry.dispose();
+		if (child.material) child.material.dispose();
+	});
+}
+
+function clearPassageGateMeshes() {
+	for (const key of Object.keys(passageGateMeshes)) {
+		disposePassageGateMesh(passageGateMeshes[key]);
+		delete passageGateMeshes[key];
+	}
+	activePassageGateLocksKey = '';
+}
+
+/**
+ * Reconcile visible passage gate meshes when run.passageLocks changes.
+ * @param {object[]} [passageLocks]
+ * @param {object} [layout]
+ */
+export function syncPassageLockGates(passageLocks, layout) {
+	const targetLayout = layout || activeLayout;
+	if (!scene || !targetLayout) return;
+
+	const locks = resolvePassageLocks(passageLocks);
+	const nextKey = passageLocksCacheKey(locks);
+	if (nextKey === activePassageGateLocksKey) return;
+
+	const lockedIndices = new Set(
+		locks.filter((lock) => lock?.locked).map((lock) => lock.passageIndex),
+	);
+
+	for (const key of Object.keys(passageGateMeshes)) {
+		const passageIndex = Number(key);
+		if (!lockedIndices.has(passageIndex)) {
+			disposePassageGateMesh(passageGateMeshes[key]);
+			delete passageGateMeshes[key];
+		}
+	}
+
+	const materials = getProfileMaterials(targetLayout.profile);
+	for (const passageIndex of lockedIndices) {
+		if (passageGateMeshes[passageIndex]) continue;
+		const gate = buildPassageGateMesh(targetLayout, passageIndex, materials);
+		if (!gate) continue;
+		scene.add(gate);
+		passageGateMeshes[passageIndex] = gate;
+	}
+
+	activePassageGateLocksKey = nextKey;
 }
 
 /**
@@ -1592,6 +1652,7 @@ export function initScene(layout, spawnPos) {
 	// Build dungeon geometry from server layout
 	if (layout) {
 		activeLayout = layout;
+		clearPassageGateMeshes();
 		clearDungeon(scene, dungeonMeshes);
 		const { meshes, spawnPosition: spawn } = buildDungeon(scene, layout);
 		dungeonMeshes.push(...meshes);
@@ -1600,6 +1661,7 @@ export function initScene(layout, spawnPos) {
 		const passageLocks = resolvePassageLocks();
 		activePassageLocksKey = passageLocksCacheKey(passageLocks);
 		wallColliders = buildWallColliders(layout, passageLocks);
+		syncPassageLockGates(passageLocks, layout);
 		walkableAABBs = computeWalkableAABBs(layout);
 		dungeonBounds = computeDungeonBounds(layout);
 		cameraYaw = 0;
@@ -1683,6 +1745,7 @@ export function rebuildDungeonLayout(layout, passageLocks) {
 	if (!scene || !layout) return;
 
 	activeLayout = layout;
+	clearPassageGateMeshes();
 	clearDungeon(scene, dungeonMeshes);
 	const { meshes, spawnPosition: spawn } = buildDungeon(scene, layout);
 	dungeonMeshes.push(...meshes);
@@ -1691,6 +1754,7 @@ export function rebuildDungeonLayout(layout, passageLocks) {
 	const locks = resolvePassageLocks(passageLocks);
 	activePassageLocksKey = passageLocksCacheKey(locks);
 	wallColliders = buildWallColliders(layout, locks);
+	syncPassageLockGates(locks, layout);
 	walkableAABBs = computeWalkableAABBs(layout);
 	dungeonBounds = computeDungeonBounds(layout);
 	myX = spawnPosition.x;
