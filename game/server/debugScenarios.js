@@ -31,6 +31,8 @@ const {
   firstRoomPosition,
   computeDungeonBounds,
   computeWalkableAABBs,
+  buildWallColliders,
+  hasLineOfSight,
   rebuildWallColliders,
   ENEMY_DEFS,
 } = require('./simulation');
@@ -1294,38 +1296,80 @@ function applyDebugScenario(socket, name) {
     }
 
     if (name === 'enemy-behind-wall') {
-      // frost_crossing Tier 1 deploy with the player pressed against a solid
-      // start-room wall and a lone grunt parked just on the other side, well
+      // frost_crossing Tier 1 deploy with the player and a lone grunt parked on
+      // opposite sides of a real INTERIOR wall that has walkable floor on BOTH
+      // sides (e.g. the wall the two ramp connector rooms share), the two well
       // within DETECTION_RADIUS. Verifies the line-of-sight gate: the enemy must
-      // stay 'idle' and NOT aggro/chase through the wall. Reachable normally by
-      // deploying Frost Crossing and walking up to a connector wall with an enemy
-      // behind it; this scenario is a shortcut into that geometry.
+      // stay 'idle' and NOT aggro/chase through the wall. Both entities sit in
+      // normally-reachable gameplay space — neither is shoved into the void
+      // outside a perimeter wall. Reachable normally by deploying Frost Crossing
+      // and standing on one side of such a wall with an enemy on the other;
+      // this scenario is a shortcut into that geometry.
       setupFrostCrossingTier1Deploy(lobby, state, player);
       state.enemies = [];
 
-      const room = roomAt(state.layout, player.x, player.z)
+      const startRoom = roomAt(state.layout, player.x, player.z)
         || state.layout.rooms.find((r) => r.role === 'start')
         || state.layout.rooms[0];
-      // The longest perimeter wall is solid (doorway gaps live on shorter
-      // segments), so its midpoint reliably straddles the player→enemy segment.
-      const wall = [...room.walls].sort((a, b) => b.length - a.length)[0];
 
       const offset = 2; // each side of the wall → ~4 units apart (< DETECTION_RADIUS = 8)
-      let enemyX;
-      let enemyZ;
-      if (wall.axis === 'z') {
-        const interiorSign = room.x >= wall.x ? 1 : -1;
-        player.x = wall.x + interiorSign * offset;
-        player.z = wall.z;
-        enemyX = wall.x - interiorSign * offset;
-        enemyZ = wall.z;
-      } else {
+      // Walkable footprint (rooms ∪ passages) and wall colliders, computed once.
+      const walkableAABBs = computeWalkableAABBs(state.layout);
+      const colliders = buildWallColliders(state.layout);
+      const pointInWalkable = (x, z) =>
+        walkableAABBs.some((a) => x >= a.minX && x <= a.maxX && z >= a.minZ && z <= a.maxZ);
+
+      // Project the prospective player + enemy points onto the two sides of a
+      // wall, `offset` units out along its normal (the existing axis logic).
+      const projectWall = (room, wall) => {
+        if (wall.axis === 'z') {
+          const interiorSign = room.x >= wall.x ? 1 : -1;
+          return {
+            px: wall.x + interiorSign * offset,
+            pz: wall.z,
+            ex: wall.x - interiorSign * offset,
+            ez: wall.z,
+          };
+        }
         const interiorSign = room.z >= wall.z ? 1 : -1;
-        player.x = wall.x;
-        player.z = wall.z + interiorSign * offset;
-        enemyX = wall.x;
-        enemyZ = wall.z - interiorSign * offset;
+        return {
+          px: wall.x,
+          pz: wall.z + interiorSign * offset,
+          ex: wall.x,
+          ez: wall.z - interiorSign * offset,
+        };
+      };
+
+      // Pick the first wall whose two offset points BOTH land inside walkable
+      // space AND whose segment is still wall-occluded (rejects doorway-gap
+      // segments — LOS must stay blocked). Prefer the start room's walls, then
+      // fall back to any room's walls so the scenario works on layouts whose
+      // start room has no interior wall with walkable space on both sides.
+      const candidateRooms = [startRoom, ...state.layout.rooms.filter((r) => r !== startRoom)];
+      let chosen = null;
+      for (const room of candidateRooms) {
+        for (const wall of room.walls) {
+          const pt = projectWall(room, wall);
+          if (pointInWalkable(pt.px, pt.pz) && pointInWalkable(pt.ex, pt.ez)
+              && !hasLineOfSight(pt.ex, pt.ez, pt.px, pt.pz, colliders)) {
+            chosen = pt;
+            break;
+          }
+        }
+        if (chosen) break;
       }
+
+      // Defensive fallback: anchor on the start room's longest wall (old
+      // behaviour) so the scenario still loads if no interior wall qualifies.
+      if (!chosen) {
+        const wall = [...startRoom.walls].sort((a, b) => b.length - a.length)[0];
+        chosen = projectWall(startRoom, wall);
+      }
+
+      player.x = chosen.px;
+      player.z = chosen.pz;
+      const enemyX = chosen.ex;
+      const enemyZ = chosen.ez;
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
 
       const enemy = spawnEnemy(enemyX, enemyZ, 'grunt');

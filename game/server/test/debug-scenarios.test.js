@@ -1884,6 +1884,14 @@ describe('debugScenario — enemy-behind-wall', () => {
 		const enemy = state.enemies[0];
 		const player = playerForSocket(socket);
 
+		// Both entities sit inside the walkable layout (rooms ∪ passages) — neither
+		// is shoved into the void outside a perimeter wall.
+		const walkableAABBs = sim.computeWalkableAABBs(state.layout);
+		const inWalkable = (x, z) =>
+			walkableAABBs.some((a) => x >= a.minX && x <= a.maxX && z >= a.minZ && z <= a.maxZ);
+		expect(inWalkable(player.x, player.z)).toBe(true);
+		expect(inWalkable(enemy.x, enemy.z)).toBe(true);
+
 		// Within detection radius (8) but wall-occluded.
 		const dist = Math.hypot(enemy.x - player.x, enemy.z - player.z);
 		expect(dist).toBeLessThan(8);
