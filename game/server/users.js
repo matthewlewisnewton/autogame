@@ -13,7 +13,7 @@ const {
 	backfillCosmetic,
 	backfillUnlockedHats
 } = require('./cosmetic');
-const { isValidQuestId, isValidQuestSelection } = require('./quests');
+const { isValidQuestId, isValidQuestSelection, normalizeUnlockRequires, getQuest } = require('./quests');
 
 let usersFilePath = process.env.USERS_FILE || path.join(__dirname, '..', 'data', 'users.json');
 
@@ -73,6 +73,49 @@ function backfillUnlockedQuestTiers(existing) {
 	return out;
 }
 
+/**
+ * Normalize persisted quest-tier completion map: quest id → deduped completed tier numbers.
+ * Invalid keys/tiers are dropped.
+ *
+ * @param {Record<string, number[]>|undefined|null} existing
+ * @returns {Record<string, number[]>}
+ */
+function backfillCompletedQuestTiers(existing) {
+	const out = {};
+	if (!existing || typeof existing !== 'object' || Array.isArray(existing)) {
+		return out;
+	}
+	for (const questId of Object.keys(existing)) {
+		if (!isValidQuestId(questId)) {
+			continue;
+		}
+		const rawTiers = existing[questId];
+		if (!Array.isArray(rawTiers)) {
+			continue;
+		}
+		const tiers = [];
+		const seen = new Set();
+		for (const tier of rawTiers) {
+			const n = Number(tier);
+			if (!Number.isInteger(n) || n < 1) {
+				continue;
+			}
+			if (!isValidQuestSelection(questId, n)) {
+				continue;
+			}
+			if (!seen.has(n)) {
+				seen.add(n);
+				tiers.push(n);
+			}
+		}
+		if (tiers.length > 0) {
+			tiers.sort((a, b) => a - b);
+			out[questId] = tiers;
+		}
+	}
+	return out;
+}
+
 function normalizeUnlockTier(tier) {
 	const n = Number(tier);
 	return Number.isInteger(n) && n > 0 ? n : null;
@@ -93,6 +136,7 @@ function loadUsers() {
 			// Backfill unlocked hats on legacy records (or missing/invalid values).
 			record.unlockedHats = backfillUnlockedHats(record.unlockedHats);
 			record.unlockedQuestTiers = backfillUnlockedQuestTiers(record.unlockedQuestTiers);
+			record.completedQuestTiers = backfillCompletedQuestTiers(record.completedQuestTiers);
 			users.set(record.username, record);
 		}
 		console.log(`[users] Loaded ${users.size} user record(s) from ${usersFilePath}`);
@@ -180,7 +224,8 @@ function createUser(username, plainPassword) {
 		accountId,
 		cosmetic: { ...DEFAULT_COSMETIC },
 		unlockedHats: [...DEFAULT_UNLOCKED_HATS],
-		unlockedQuestTiers: {}
+		unlockedQuestTiers: {},
+		completedQuestTiers: {}
 	};
 
 	users.set(username, record);
@@ -209,7 +254,8 @@ async function createUserAsync(username, plainPassword) {
 		accountId,
 		cosmetic: { ...DEFAULT_COSMETIC },
 		unlockedHats: [...DEFAULT_UNLOCKED_HATS],
-		unlockedQuestTiers: {}
+		unlockedQuestTiers: {},
+		completedQuestTiers: {}
 	};
 
 	users.set(username, record);
@@ -371,7 +417,8 @@ function getUnlockedQuestTiers(accountId) {
 
 /**
  * Whether a quest tier is available for an account. Tier 1 is always unlocked
- * for valid catalog quests; higher tiers require a persisted unlock.
+ * for valid catalog quests; higher tiers require a persisted unlock and every
+ * `unlockRequires` prerequisite on that tier to be completed.
  *
  * @param {string} accountId
  * @param {string} questId
@@ -392,7 +439,14 @@ function isQuestTierUnlocked(accountId, questId, tier) {
 	}
 	const map = backfillUnlockedQuestTiers(user.unlockedQuestTiers);
 	const tiers = map[questId];
-	return Array.isArray(tiers) && tiers.includes(normalizedTier);
+	if (!Array.isArray(tiers) || !tiers.includes(normalizedTier)) {
+		return false;
+	}
+	const quest = getQuest(questId, normalizedTier);
+	if (!quest) {
+		return false;
+	}
+	return areUnlockPrereqsMet(accountId, quest.unlockRequires);
 }
 
 /**
@@ -430,6 +484,85 @@ function unlockQuestTier(accountId, questId, tier) {
 	}
 
 	return { ok: true, unlockedQuestTiers: user.unlockedQuestTiers };
+}
+
+/**
+ * Record quest-tier completion on an account. Validates catalog ids; idempotent.
+ *
+ * @param {string} accountId
+ * @param {string} questId
+ * @param {number} tier
+ * @returns {{ ok: true, completedQuestTiers: Record<string, number[]> } | { ok: false, reason: string }}
+ */
+function completeQuestTier(accountId, questId, tier) {
+	const user = findUserByAccountId(accountId);
+	if (!user) {
+		return { ok: false, reason: 'Account not found' };
+	}
+	const normalizedTier = normalizeUnlockTier(tier);
+	if (normalizedTier === null || !isValidQuestSelection(questId, normalizedTier)) {
+		return { ok: false, reason: 'Unknown quest or tier' };
+	}
+
+	user.completedQuestTiers = backfillCompletedQuestTiers(user.completedQuestTiers);
+
+	const existing = user.completedQuestTiers[questId] || [];
+	if (!existing.includes(normalizedTier)) {
+		user.completedQuestTiers = {
+			...user.completedQuestTiers,
+			[questId]: [...existing, normalizedTier].sort((a, b) => a - b)
+		};
+		saveUsers();
+	}
+
+	return { ok: true, completedQuestTiers: user.completedQuestTiers };
+}
+
+/**
+ * Whether an account has completed a quest tier. Tier N completion is indicated
+ * by a persisted unlock for tier N+1 (or higher) on the same quest id.
+ *
+ * @param {string} accountId
+ * @param {string} questId
+ * @param {number} tier
+ * @returns {boolean}
+ */
+function hasCompletedQuestTier(accountId, questId, tier) {
+	const normalizedTier = normalizeUnlockTier(tier);
+	if (normalizedTier === null || !isValidQuestSelection(questId, normalizedTier)) {
+		return false;
+	}
+	const user = findUserByAccountId(accountId);
+	if (!user) {
+		return false;
+	}
+	const completedMap = backfillCompletedQuestTiers(user.completedQuestTiers);
+	const completedTiers = completedMap[questId];
+	if (Array.isArray(completedTiers) && completedTiers.includes(normalizedTier)) {
+		return true;
+	}
+	const map = backfillUnlockedQuestTiers(user.unlockedQuestTiers);
+	const tiers = map[questId];
+	if (!Array.isArray(tiers) || tiers.length === 0) {
+		return false;
+	}
+	return tiers.some((unlockedTier) => unlockedTier > normalizedTier);
+}
+
+/**
+ * Whether every normalized unlock prerequisite is completed (AND semantics).
+ * Missing or invalid `unlockRequires` values are treated as no prerequisites.
+ *
+ * @param {string} accountId
+ * @param {import('./quests').UnlockRequires | null | undefined} unlockRequires
+ * @returns {boolean}
+ */
+function areUnlockPrereqsMet(accountId, unlockRequires) {
+	const prereqs = normalizeUnlockRequires(unlockRequires);
+	if (!prereqs) {
+		return true;
+	}
+	return prereqs.every((entry) => hasCompletedQuestTier(accountId, entry.questId, entry.tier));
 }
 
 /**
@@ -489,6 +622,9 @@ module.exports = {
 	getUnlockedQuestTiers,
 	isQuestTierUnlocked,
 	unlockQuestTier,
+	completeQuestTier,
+	hasCompletedQuestTier,
+	areUnlockPrereqsMet,
 	normalizeEmail,
 	getAllUsers,
 	clearUsers,

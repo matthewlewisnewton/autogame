@@ -1,0 +1,14 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/381-fire-l1-miniboss-cinder-warden/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/381-fire-l1-miniboss-cinder-warden/game/data
+Server listening on port 3003
+Player connected: socket=lts5_06S0pVw49RyAAAB, playerId=8d5fea85-5fb8-432d-b800-d1ea49821479
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=sBk8C6-88eHZB5CTAAAD, playerId=c491c2e6-9137-4096-afff-7d4eb00e029d
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: lts5_06S0pVw49RyAAAB
+Player disconnected: sBk8C6-88eHZB5CTAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

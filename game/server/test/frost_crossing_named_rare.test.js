@@ -11,7 +11,13 @@ import {
   stateSnapshot,
   isRunObjectiveComplete,
   removeDeadEnemies,
+  checkRunTerminalState,
 } from '../progression.js';
+import {
+  ENCOUNTER_TRIGGER_RADIUS,
+  tryActivateEncounter,
+  isEncounterCleared,
+} from '../encounters.js';
 const require = createRequire(import.meta.url);
 const {
   getQuest,
@@ -22,6 +28,7 @@ const {
 } = require('../quests.js');
 const { ENEMY_DEFS, setGameState: setSimulationGameState } = require('../simulation.js');
 const { getObjectiveDef } = require('../objectives.js');
+const { getEncounterConfig } = require('../quests.js');
 const {
   countAuthoredScriptedEnemies,
   findPassageIndicesFromRoom,
@@ -90,20 +97,29 @@ function enterRoom(state, room) {
 }
 
 describe('frost_crossing tier 1 scripted named rare — Rimecast the Slow', () => {
-  it('uses scriptedEncounters only, bypasses bulk spawn, and sets defeat_enemies total', () => {
+  it('uses scriptedEncounters with stage_boss objective and dormant cairn warden', () => {
     const quest = getQuest(QUEST_ID, TIER);
-    const def = getObjectiveDef('defeat_enemies');
+    const stageBossDef = getObjectiveDef('stage_boss');
 
     expect(getQuestScript(quest)).toBeNull();
+    expect(quest.objectiveType).toBe('stage_boss');
+    expect(getEncounterConfig(quest)).toMatchObject({
+      bossType: 'permafrost_warden',
+      landmark: 'ice_cairn',
+      addCount: 0,
+    });
     expect(countAuthoredScriptedEnemies(quest)).toBe(6);
     expect(countScriptedEnemiesInQuest(quest)).toBe(6);
-    expect(def.skipBulkCombatSpawn(quest)).toBe(true);
+    expect(stageBossDef.skipBulkCombatSpawn(quest)).toBe(true);
     expect(quest.scriptedEncounters.passageLocks).toHaveLength(1);
 
     const state = createGameState();
     const { layout } = deployFrostCrossing(state);
-    expect(state.run.objective.totalEnemies).toBe(6);
-    expect(state.enemies).toHaveLength(2);
+    expect(state.run.objective.type).toBe('stage_boss');
+    expect(state.run.objective.totalEnemies).toBe(1);
+    expect(state.enemies).toHaveLength(3);
+    expect(state.enemies.some((enemy) => enemy.type === 'permafrost_warden')).toBe(true);
+    expect(state.run.encounter.bossEnemyId).toBeTruthy();
     expect(state.run.scriptedEncounter).toBeDefined();
     expect(state.run.waveScript).toBeUndefined();
 
@@ -174,7 +190,7 @@ describe('frost_crossing tier 1 scripted named rare — Rimecast the Slow', () =
     expect(snapEnemy.variant).toBe('frenzied');
   });
 
-  it('completes the scripted defeat_enemies objective after all waves are cleared', () => {
+  it('completes the stage_boss objective only after the Permafrost Warden is defeated', () => {
     const state = createGameState();
     const { iceRoom } = deployFrostCrossing(state);
 
@@ -184,12 +200,25 @@ describe('frost_crossing tier 1 scripted named rare — Rimecast the Slow', () =
     killScriptedWave(state, 'band:ice', 1);
 
     for (const enemy of [...state.enemies]) {
-      enemy.hp = 0;
+      if (enemy.id !== state.run.encounter.bossEnemyId) enemy.hp = 0;
     }
-    cleanupAfterDamage();
+    removeDeadEnemies();
+    expect(isRunObjectiveComplete(state.run.objective)).toBe(false);
 
-    expect(state.run.objective.defeatedEnemies).toBe(6);
+    const boss = state.enemies.find((enemy) => enemy.id === state.run.encounter.bossEnemyId);
+    const anchor = state.run.encounter.spawnAnchor;
+    state.players.p1.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS - 1;
+    state.players.p1.z = anchor.z;
+    tryActivateEncounter(state);
+    boss.hp = 0;
+    removeDeadEnemies();
+    expect(isEncounterCleared(state.run)).toBe(true);
+    cleanupAfterDamage();
+    checkRunTerminalState();
+
+    expect(state.run.objective.bossDefeated).toBe(true);
     expect(isRunObjectiveComplete(state.run.objective)).toBe(true);
+    expect(state.run.status).toBe('victory');
   });
 
   it('does not author Rimecast the Slow on other quests', () => {

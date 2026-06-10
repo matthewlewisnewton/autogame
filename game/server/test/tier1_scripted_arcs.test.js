@@ -127,9 +127,21 @@ describe('tier-1 scripted arcs — cross-quest validation', () => {
       return Array(Math.max(1, Math.floor(count))).fill(spawn.type);
     }).sort();
 
-    expect(state.enemies).toHaveLength(expectedCount);
-    expect(state.enemies.every((enemy) => enemy.scriptedWave)).toBe(true);
-    expect(state.enemies.map((enemy) => enemy.type).sort()).toEqual(expectedTypes);
+    if (questId === 'frost_crossing') {
+      expect(state.enemies).toHaveLength(expectedCount + 1);
+      expect(state.enemies.filter((enemy) => enemy.scriptedWave)).toHaveLength(expectedCount);
+      expect(state.enemies.some((enemy) => enemy.type === 'permafrost_warden')).toBe(true);
+      expect(
+        state.enemies
+          .filter((enemy) => enemy.scriptedWave)
+          .map((enemy) => enemy.type)
+          .sort(),
+      ).toEqual(expectedTypes);
+    } else {
+      expect(state.enemies).toHaveLength(expectedCount);
+      expect(state.enemies.every((enemy) => enemy.scriptedWave)).toBe(true);
+      expect(state.enemies.map((enemy) => enemy.type).sort()).toEqual(expectedTypes);
+    }
     expect(state.run.scriptedEncounter).toBeDefined();
   });
 
@@ -200,8 +212,10 @@ describe('tier-1 scripted arcs — cross-quest validation', () => {
     const state = createGameState();
     deployQuest(state, 'frost_crossing');
     expect(state.run.passageLocks?.length).toBeGreaterThan(0);
-    expect(state.run.objective.totalEnemies).toBe(6);
-    expect(state.enemies).toHaveLength(2);
+    expect(state.run.objective.type).toBe('stage_boss');
+    expect(state.run.objective.totalEnemies).toBe(1);
+    expect(state.enemies).toHaveLength(3);
+    expect(state.enemies.some((enemy) => enemy.type === 'permafrost_warden')).toBe(true);
   });
 
   it.each(TIER1_QUESTS)('%s stays solo-clearable (≤12 hostiles, no wave >3)', (questId) => {

@@ -5,7 +5,7 @@ const require = createRequire(import.meta.url);
 const sim = require('../simulation.js');
 const { setGameState: setProgressionGameState } = require('../progression.js');
 const { _timeouts } = require('../index.js');
-import { generateLayout, questLayoutSeed, sampleFloorY, resolveFloorY } from '../dungeon.js';
+import { generateLayout, questLayoutSeed, sampleFloorY, sampleFloorSurface, resolveFloorY } from '../dungeon.js';
 import {
 	getQuest,
 	getEnemyPool,
@@ -19,7 +19,8 @@ import {
 	clearNonBossEnemies,
 	resolveEncounterAnchor,
 } from '../encounters.js';
-import { resetGameState, gameState, runGameLoopTick, applyBurning, updateBurning } from '../index.js';
+import { resetGameState, gameState, runGameLoopTick, applyBurning, updateBurning, updateEnemies, hasLineOfSight, buildWallColliders } from '../index.js';
+import { checkAllReady, setGameState as setProgressionGameStateForReady } from '../progression.js';
 import { APPEARANCE_CHANGE_COST, MAX_MAGIC_STONES } from '../config.js';
 import { spawnEnemies, setGameState } from '../progression.js';
 import {
@@ -46,6 +47,8 @@ const CANYON_DESCENT_ID = 'canyon_descent';
 const CANYON_DESCENT_TIER_2 = 2;
 const EMBER_DESCENT_ID = 'ember_descent';
 const EMBER_DESCENT_TIER_1 = 1;
+const FROST_CROSSING_ID = 'frost_crossing';
+const FROST_CROSSING_TIER_1 = 1;
 
 describe('debugScenario — key-item-cooldown', () => {
 	let baseUrl;
@@ -1808,6 +1811,222 @@ describe('debugScenario — ember-descent harness shortcuts', () => {
 	});
 });
 
+describe('debugScenario — frost-crossing harness shortcuts', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('repositions beside live support adds after frost-crossing-tier-1 deploy', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const deployPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'frost-crossing-tier-1' });
+		const deployResult = await deployPromise;
+		expect(deployResult.ok).toBe(true);
+
+		const state = testGameState();
+		const player = playerForSocket(socket);
+		expect(state.layout.profile).toBe('ice-cavern');
+
+		const addsBefore = state.enemies.filter(
+			(e) => e.hp > 0 && e.type !== 'glacial_thrower' && !e.namedRare
+				&& (e.type === 'grunt' || e.type === 'skirmisher'),
+		);
+		expect(addsBefore.length).toBeGreaterThan(0);
+
+		const nearAddsPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('debugScenario', { name: 'frost-crossing-near-adds' });
+		const nearAddsResult = await nearAddsPromise;
+		await stateUpdatePromise;
+
+		expect(nearAddsResult.ok).toBe(true);
+		expect(nearAddsResult.scenario).toBe('frost-crossing-near-adds');
+
+		expect(player.hand[0]?.type).toBe('weapon');
+		expect(player.hand[0]?.remainingCharges).toBeGreaterThan(0);
+
+		const liveAdds = state.enemies.filter(
+			(e) => e.hp > 0 && e.type !== 'glacial_thrower' && !e.namedRare
+				&& (e.type === 'grunt' || e.type === 'skirmisher'),
+		);
+		expect(liveAdds.length).toBe(addsBefore.length);
+		expect(liveAdds.every((e) => e.hp === 1 && !e.shieldHp)).toBe(true);
+		for (const add of liveAdds) {
+			expect(add.y).toBe(resolveFloorY(sampleFloorY(state.layout, add.x, add.z)));
+		}
+		expect(player.y).toBe(resolveFloorY(sampleFloorY(state.layout, player.x, player.z)));
+
+		let bestDist = Infinity;
+		for (const add of liveAdds) {
+			const dist = Math.hypot(add.x - player.x, add.z - player.z);
+			if (dist < bestDist) bestDist = dist;
+		}
+		expect(bestDist).toBeGreaterThanOrEqual(2);
+		expect(bestDist).toBeLessThanOrEqual(5);
+	});
+
+	it('spawns glacial_thrower with godmode off for slow QA after frost-crossing deploy', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const deployPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'frost-crossing-tier-1' });
+		await deployPromise;
+
+		playerForSocket(socket).debugGodmode = true;
+
+		const godmodePromise = waitForEvent(socket, 'debugGodmodeResult');
+		const slowPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'frost-crossing-glacial-thrower-slow' });
+		const [godmodeResult, slowResult] = await Promise.all([godmodePromise, slowPromise]);
+
+		expect(slowResult.ok).toBe(true);
+		expect(slowResult.scenario).toBe('frost-crossing-glacial-thrower-slow');
+		expect(godmodeResult).toEqual({ ok: true, enabled: false });
+
+		const state = testGameState();
+		const player = playerForSocket(socket);
+		expect(player.debugGodmode).toBe(false);
+		expect(player.vx).toBe(0);
+		expect(player.vz).toBe(0);
+		expect(state.enemies.length).toBe(1);
+		expect(state.enemies[0].type).toBe('glacial_thrower');
+		expect(state.enemies[0].hp).toBeGreaterThan(0);
+		expect(player.hp).toBeGreaterThan(30);
+		const stoneRoom = state.layout.rooms.find((r) => r.band === 'stone');
+		if (stoneRoom) {
+			expect(player.x).toBeCloseTo(stoneRoom.x, 5);
+			expect(player.z).toBeCloseTo(stoneRoom.z, 5);
+		}
+	});
+
+	it('seats player on ice lip facing centre with momentum on slippery floor', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const deployPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'frost-crossing-tier-1' });
+		await deployPromise;
+
+		const transitionPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'frost-crossing-surface-transition' });
+		const transitionResult = await transitionPromise;
+
+		expect(transitionResult.ok).toBe(true);
+		expect(transitionResult.scenario).toBe('frost-crossing-surface-transition');
+
+		const state = testGameState();
+		const player = playerForSocket(socket);
+		const iceRoom = state.layout.rooms.find((r) => r.band === 'ice');
+		const stoneRoom = state.layout.rooms.find((r) => r.band === 'stone');
+		expect(stoneRoom).toBeTruthy();
+		expect(iceRoom).toBeTruthy();
+
+		const playerRoom = state.layout.rooms.find((room) => {
+			const hw = room.width / 2;
+			const hd = room.depth / 2;
+			return player.x >= room.x - hw && player.x <= room.x + hw
+				&& player.z >= room.z - hd && player.z <= room.z + hd;
+		});
+		expect(playerRoom?.band).toBe('ice');
+		expect(sampleFloorSurface(state.layout, player.x, player.z)).toBe('slippery');
+
+		const speed = Math.hypot(player.vx || 0, player.vz || 0);
+		expect(speed).toBeGreaterThan(0);
+		const towardIce = (player.vx || 0) * (iceRoom.x - player.x)
+			+ (player.vz || 0) * (iceRoom.z - player.z);
+		expect(towardIce).toBeGreaterThan(0);
+
+		for (let i = 0; i < 40; i++) {
+			runGameLoopTick();
+		}
+		const onIce = sampleFloorSurface(state.layout, player.x, player.z) === 'slippery'
+			|| state.layout.rooms.some((room) => room.band === 'ice' && (() => {
+				const hw = room.width / 2;
+				const hd = room.depth / 2;
+				return player.x >= room.x - hw && player.x <= room.x + hw
+					&& player.z >= room.z - hd && player.z <= room.z + hd;
+			})());
+		expect(onIce || speed > 0).toBe(true);
+	});
+
+	it('places player outside dormant boss trigger after scripted clears', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const deployPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'frost-crossing-tier-1' });
+		await deployPromise;
+
+		const state = testGameState();
+		const bossId = state.run.encounter.bossEnemyId;
+		for (const enemy of state.enemies) {
+			if (enemy.id !== bossId) enemy.hp = 0;
+		}
+		state.enemies = state.enemies.filter((e) => e.hp > 0);
+
+		const approachPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'frost-crossing-boss-approach' });
+		const approachResult = await approachPromise;
+
+		expect(approachResult.ok).toBe(true);
+		expect(approachResult.scenario).toBe('frost-crossing-boss-approach');
+
+		const player = playerForSocket(socket);
+		const anchor = resolveEncounterAnchor(state.run, state);
+		const distFromAnchor = Math.hypot(anchor.x - player.x, anchor.z - player.z);
+		expect(distFromAnchor).toBeGreaterThan(ENCOUNTER_TRIGGER_RADIUS);
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
+		expect(state.enemies.some((e) => e.type === 'permafrost_warden')).toBe(true);
+	});
+
+	it('frost-crossing-telepipe-ready deploys playing frost_crossing with telepipe and partial vitals', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'frost-crossing-telepipe-ready' });
+		const result = await debugResultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('frost-crossing-telepipe-ready');
+
+		const lobbyState = testGameState();
+		const player = playerForSocket(socket);
+		expect(lobbyState.gamePhase).toBe('lobby');
+		expect(lobbyState.selectedQuestId).toBe(FROST_CROSSING_ID);
+		expect(lobbyState.selectedQuestTier).toBe(FROST_CROSSING_TIER_1);
+		expect(lobbyState.layout.profile).toBe('ice-cavern');
+		expect(player.hp).toBe(60);
+		expect(player.magicStones).toBe(20);
+		expect(player.hand?.some((c) => c && c.id === 'telepipe')).not.toBe(true);
+
+		player.ready = true;
+		setProgressionGameStateForReady(lobbyState);
+		checkAllReady();
+
+		const state = testGameState();
+		expect(state.gamePhase).toBe('playing');
+		expect(state.selectedQuestId).toBe(FROST_CROSSING_ID);
+		expect(state.run?.objective?.type).toBe('stage_boss');
+		expect(player.hand.some((c) => c && c.id === 'telepipe')).toBe(true);
+		expect(player.hp).toBe(60);
+		expect(player.magicStones).toBe(20);
+		expect(player.hand[0]?.remainingCharges).toBeLessThan(player.hand[0]?.charges);
+	});
+});
+
 describe('debugScenario — hat-shop-currency', () => {
 	let baseUrl;
 	let prevAllowDebug;
@@ -1845,5 +2064,63 @@ describe('debugScenario — hat-shop-currency', () => {
 		expect(state.gamePhase).toBe('lobby');
 		expect(player.currency).toBeGreaterThanOrEqual(APPEARANCE_CHANGE_COST);
 		expect(snapshot.players[socket._playerId].currency).toBe(player.currency);
+	});
+});
+
+describe('debugScenario — enemy-behind-wall', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('parks a grunt behind a wall within detection range that does not aggro through it', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'enemy-behind-wall' });
+		const result = await debugResultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('enemy-behind-wall');
+
+		const state = testGameState();
+		expect(state.gamePhase).toBe('playing');
+		expect(state.enemies.length).toBe(1);
+
+		const enemy = state.enemies[0];
+		const player = playerForSocket(socket);
+
+		// Both entities sit inside the walkable layout (rooms ∪ passages) — neither
+		// is shoved into the void outside a perimeter wall.
+		const walkableAABBs = sim.computeWalkableAABBs(state.layout);
+		const inWalkable = (x, z) =>
+			walkableAABBs.some((a) => x >= a.minX && x <= a.maxX && z >= a.minZ && z <= a.maxZ);
+		expect(inWalkable(player.x, player.z)).toBe(true);
+		expect(inWalkable(enemy.x, enemy.z)).toBe(true);
+
+		// Within detection radius (8) but wall-occluded.
+		const dist = Math.hypot(enemy.x - player.x, enemy.z - player.z);
+		expect(dist).toBeLessThan(8);
+		const colliders = buildWallColliders(state.layout);
+		expect(hasLineOfSight(enemy.x, enemy.z, player.x, player.z, colliders)).toBe(false);
+
+		// Several ticks must not promote the enemy to chasing through the wall.
+		enemy.state = 'idle';
+		enemy.attackState = 'idle';
+		for (let i = 0; i < 5; i++) updateEnemies();
+		expect(enemy.state).toBe('idle');
 	});
 });

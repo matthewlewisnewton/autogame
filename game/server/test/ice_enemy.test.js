@@ -19,7 +19,8 @@ import {
 // Pure quest data/accessors (no shared module state) — safe to import directly.
 import { generateLayout, questLayoutSeed } from '../dungeon.js';
 import {
-	setGameState,
+	setGameState as setProgressionGameState,
+	spawnEnemy,
 	spawnEnemies,
 	startDungeonRun,
 	updateScriptedEncounters,
@@ -89,6 +90,8 @@ describe('glacial_thrower ice-ball projectile', () => {
 		gameState.enemies = [];
 		gameState.iceBalls = [];
 		gameState.players = {};
+		setProgressionGameState(gameState);
+		setSimulationGameState(gameState);
 	});
 
 	afterEach(() => {
@@ -201,6 +204,91 @@ describe('glacial_thrower ice-ball projectile', () => {
 		for (let i = 0; i < ticks; i++) updateEnemyProjectiles();
 		expect(gameState.iceBalls).toHaveLength(0);
 	});
+
+	// ── (d) spawned thrower: full wind-up → projectile → contact path ──
+
+	it('spawned glacial_thrower wind-up path applies SLOW when the ice ball reaches the player', () => {
+		const thrower = spawnEnemy(0, 0, 'glacial_thrower');
+		gameState.players.p1 = { id: 'p1', x: 4, z: 0, hp: 100, dead: false };
+		expect(isSlowed(gameState.players.p1)).toBe(false);
+
+		updateEnemies();
+		expect(thrower.attackState).toBe('windup');
+		expect(gameState.iceBalls).toHaveLength(0);
+
+		vi.setSystemTime(Date.now() + DEF.attackWindupMs + 50);
+		updateEnemies();
+
+		expect(gameState.iceBalls).toHaveLength(1);
+		expect(gameState.iceBalls[0].slowFactor).toBe(DEF.iceBallSlowFactor);
+		expect(gameState.iceBalls[0].slowDurationMs).toBe(DEF.iceBallSlowDurationMs);
+
+		const maxTicks = Math.ceil(DEF.iceBallMaxRange / (DEF.iceBallSpeed / 20)) + 5;
+		for (let i = 0; i < maxTicks && gameState.iceBalls.length > 0; i++) {
+			updateEnemyProjectiles();
+		}
+
+		expect(isSlowed(gameState.players.p1)).toBe(true);
+		expect(gameState.players.p1.slowedUntil).toBeGreaterThan(Date.now());
+		expect(gameState.players.p1.slowFactor).toBe(DEF.iceBallSlowFactor);
+		expect(gameState.players.p1.hp).toBe(100 - DEF.attackDamage);
+		expect(gameState.iceBalls).toHaveLength(0);
+	});
+
+	it('applies SLOW on ice-ball contact even when debugGodmode skips damage', () => {
+		const thrower = spawnEnemy(0, 0, 'glacial_thrower');
+		gameState.players.p1 = {
+			id: 'p1',
+			x: 4,
+			z: 0,
+			hp: 100,
+			dead: false,
+			debugGodmode: true,
+		};
+
+		updateEnemies();
+		vi.setSystemTime(Date.now() + DEF.attackWindupMs + 50);
+		updateEnemies();
+		expect(gameState.iceBalls).toHaveLength(1);
+
+		const maxTicks = Math.ceil(DEF.iceBallMaxRange / (DEF.iceBallSpeed / 20)) + 5;
+		for (let i = 0; i < maxTicks && gameState.iceBalls.length > 0; i++) {
+			updateEnemyProjectiles();
+		}
+
+		expect(gameState.players.p1.hp).toBe(100);
+		expect(isSlowed(gameState.players.p1)).toBe(true);
+		expect(gameState.players.p1.slowedUntil).toBeGreaterThan(Date.now());
+		expect(gameState.players.p1.slowFactor).toBe(DEF.iceBallSlowFactor);
+		expect(thrower.attackState).toBe('recovering');
+	});
+
+	it('applies SLOW on ice-ball contact even when invulnerableUntil skips damage', () => {
+		const thrower = spawnEnemy(0, 0, 'glacial_thrower');
+		gameState.players.p1 = {
+			id: 'p1',
+			x: 4,
+			z: 0,
+			hp: 100,
+			dead: false,
+			invulnerableUntil: Date.now() + 10_000,
+		};
+
+		updateEnemies();
+		vi.setSystemTime(Date.now() + DEF.attackWindupMs + 50);
+		updateEnemies();
+		expect(gameState.iceBalls).toHaveLength(1);
+
+		const maxTicks = Math.ceil(DEF.iceBallMaxRange / (DEF.iceBallSpeed / 20)) + 5;
+		for (let i = 0; i < maxTicks && gameState.iceBalls.length > 0; i++) {
+			updateEnemyProjectiles();
+		}
+
+		expect(gameState.players.p1.hp).toBe(100);
+		expect(isSlowed(gameState.players.p1)).toBe(true);
+		expect(gameState.players.p1.slowFactor).toBe(DEF.iceBallSlowFactor);
+		expect(thrower.attackState).toBe('recovering');
+	});
 });
 
 // ── run-exit cleanup clears in-flight ice balls ──
@@ -301,7 +389,7 @@ function deployScriptedFrostCrossing() {
 			extracted: false,
 		},
 	};
-	setGameState(gameState);
+	setProgressionGameState(gameState);
 	setSimulationGameState(gameState);
 	spawnEnemies();
 	startDungeonRun();
@@ -318,7 +406,8 @@ describe('Frost Crossing guaranteed glacial_thrower spawn', () => {
 	it('scripts Rimecast the Slow as a glacial_thrower on the final ice-band wave', () => {
 		const { iceRoom } = deployScriptedFrostCrossing();
 		expect(gameState.enemies.map((enemy) => enemy.type)).not.toContain('glacial_thrower');
-		expect(gameState.enemies).toHaveLength(2);
+		expect(gameState.enemies).toHaveLength(3);
+		expect(gameState.enemies.some((enemy) => enemy.type === 'permafrost_warden')).toBe(true);
 
 		for (const enemy of [...gameState.enemies]) {
 			if (enemy.scriptedWave?.roomKey === 'room:0' && enemy.scriptedWave?.waveIndex === 0) {
@@ -346,11 +435,12 @@ describe('Frost Crossing guaranteed glacial_thrower spawn', () => {
 		expect(gameState.enemies.some((enemy) => enemy.displayName === 'Rimecast the Slow')).toBe(true);
 	});
 
-	it('scripts only the dock wave at deploy', () => {
+	it('scripts only the dock wave at deploy plus dormant cairn warden', () => {
 		deployScriptedFrostCrossing();
 		const types = gameState.enemies.map((enemy) => enemy.type);
-		expect(types).toHaveLength(2);
-		expect(types.every((type) => type === 'grunt')).toBe(true);
+		expect(types).toHaveLength(3);
+		expect(types.filter((type) => type === 'grunt')).toHaveLength(2);
+		expect(types).toContain('permafrost_warden');
 	});
 
 	it('authored ice-band scripted waves include ranged glacial_thrower offsets', () => {

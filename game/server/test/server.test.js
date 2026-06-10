@@ -1659,6 +1659,7 @@ describe('enemy magic stone drops and discard', () => {
 		expect(getEnemyMagicStoneDrop({ type: 'grunt' })).toBe(20);
 		expect(getEnemyMagicStoneDrop({ type: 'miniboss' })).toBe(50);
 		expect(getEnemyMagicStoneDrop({ type: 'spire_warden' })).toBe(55);
+		expect(getEnemyMagicStoneDrop({ type: 'permafrost_warden' })).toBe(55);
 		expect(getEnemyMagicStoneDrop({ type: 'unknown' })).toBe(15);
 	});
 
@@ -4266,6 +4267,7 @@ describe('run state', () => {
 			expect(getEnemyCardDrop({ type: 'drake' })).toBe('dungeon_drake');
 			expect(getEnemyCardDrop({ type: 'miniboss' })).toBe('dungeon_drake');
 			expect(getEnemyCardDrop({ type: 'spire_warden' })).toBe('dungeon_drake');
+			expect(getEnemyCardDrop({ type: 'permafrost_warden' })).toBe('dungeon_drake');
 		});
 
 		it('prefers instance cardDrop override over type mapping', () => {
@@ -5476,7 +5478,7 @@ describe('hotStateSnapshot() — slim per-tick payload', () => {
 // ── ENEMY_DEFS ──
 
 describe('ENEMY_DEFS', () => {
-	it('is exported and contains grunt, skirmisher, miniboss, annex_overseer, arena_champion, spire_warden, spawner, field_medic, ember_wraith keys', () => {
+	it('is exported and contains grunt, skirmisher, miniboss, annex_overseer, arena_champion, spire_warden, permafrost_warden, spawner, field_medic, ember_wraith keys', () => {
 		expect(ENEMY_DEFS).toBeDefined();
 		expect(ENEMY_DEFS).toHaveProperty('grunt');
 		expect(ENEMY_DEFS).toHaveProperty('skirmisher');
@@ -5484,6 +5486,7 @@ describe('ENEMY_DEFS', () => {
 		expect(ENEMY_DEFS).toHaveProperty('annex_overseer');
 		expect(ENEMY_DEFS).toHaveProperty('arena_champion');
 		expect(ENEMY_DEFS).toHaveProperty('spire_warden');
+		expect(ENEMY_DEFS).toHaveProperty('permafrost_warden');
 		expect(ENEMY_DEFS).toHaveProperty('spawner');
 		expect(ENEMY_DEFS).toHaveProperty('field_medic');
 		expect(ENEMY_DEFS).toHaveProperty('ember_wraith');
@@ -5526,6 +5529,22 @@ describe('ENEMY_DEFS', () => {
 		expect(ENEMY_DEFS.spire_warden.wanderSpeed).toBe(0.5);
 		expect(ENEMY_DEFS.spire_warden.attackWindupMs).toBe(1400);
 		expect(ENEMY_DEFS.spire_warden.attackStyle).toBe('cone');
+	});
+
+	it('permafrost_warden has distinct ice-cavern radial boss stat values', () => {
+		const def = ENEMY_DEFS.permafrost_warden;
+		expect(def.name).toBe('Permafrost Warden');
+		expect(def.description.length).toBeGreaterThan(0);
+		expect(def.hp).toBeGreaterThanOrEqual(300);
+		expect(def.hp).toBeLessThanOrEqual(420);
+		expect(def.attackStyle).toBe('radial');
+		expect(def.attackStyle).not.toBe(ENEMY_DEFS.miniboss.attackStyle);
+		expect(def.attackStyle).not.toBe(ENEMY_DEFS.glacial_thrower.attackStyle);
+		expect(def.attackDamage).toBeGreaterThanOrEqual(ENEMY_DEFS.miniboss.attackDamage);
+		expect(def.attackRange).toBeGreaterThan(0);
+		expect(def.surfacedStats).toEqual(
+			expect.arrayContaining(['hp', 'attackDamage', 'attackStyle', 'attackRange']),
+		);
 	});
 
 	it('spawner has correct stat and spawning fields', () => {
@@ -5579,7 +5598,7 @@ describe('ENEMY_DEFS', () => {
 		);
 	});
 
-	const ENEMY_TYPES = ['grunt', 'skirmisher', 'miniboss', 'annex_overseer', 'arena_champion', 'spire_warden', 'spawner', 'field_medic', 'ember_wraith'];
+	const ENEMY_TYPES = ['grunt', 'skirmisher', 'miniboss', 'annex_overseer', 'arena_champion', 'spire_warden', 'permafrost_warden', 'spawner', 'field_medic', 'ember_wraith'];
 	const DISPLAY_ONLY_KEYS = ['name', 'description', 'surfacedStats'];
 
 	it('every type has non-empty display metadata with valid surfacedStats keys', () => {
@@ -5692,10 +5711,11 @@ describe('spawnEnemy() type validation', () => {
 		expect(() => spawnEnemy(0, 0, 'miniboss')).not.toThrow();
 		expect(() => spawnEnemy(0, 0, 'annex_overseer')).not.toThrow();
 		expect(() => spawnEnemy(0, 0, 'spire_warden')).not.toThrow();
+		expect(() => spawnEnemy(0, 0, 'permafrost_warden')).not.toThrow();
 		expect(() => spawnEnemy(0, 0, 'spawner')).not.toThrow();
 		expect(() => spawnEnemy(0, 0, 'field_medic')).not.toThrow();
 		expect(() => spawnEnemy(0, 0, 'ember_wraith')).not.toThrow();
-		expect(gameState.enemies.length).toBe(8);
+		expect(gameState.enemies.length).toBe(9);
 	});
 });
 
@@ -6618,33 +6638,24 @@ describe('Wall-aware enemy movement in updateEnemies()', () => {
 	beforeEach(() => resetState());
 
 	it('enemy stops at wall during chase (does not pass through)', () => {
-		// Find a wall to use as a barrier
+		// Place enemy and player inside the start room with a clear line-of-sight
+		// between them (enemies no longer aggro through walls — that is gated by
+		// hasLineOfSight). This exercises wall-aware chase movement and asserts the
+		// chaser never embeds itself in a wall collider.
 		const room = gameState.layout.rooms[0];
-		const wall = room.walls[0];
-
-		// Place player and enemy on opposite sides of the wall (across its thin dimension),
-		// near the wall center so they're within DETECTION_RADIUS
-		const playerSide = wall.axis === 'x'
-			? { x: wall.x, z: wall.z + 2 }
-			: { x: wall.x + 2, z: wall.z };
 
 		addPlayer('p1', {
 			id: 'p1',
-			x: playerSide.x,
-			z: playerSide.z,
+			x: room.x + 3,
+			z: room.z,
 			dead: false
 		});
-
-		// Place enemy on the other side of the wall, within DETECTION_RADIUS
-		const enemySide = wall.axis === 'x'
-			? { x: wall.x, z: wall.z - 2 }
-			: { x: wall.x - 2, z: wall.z };
 
 		gameState.enemies.push({
 			id: 'e1',
 			type: 'grunt',
-			x: enemySide.x,
-			z: enemySide.z,
+			x: room.x - 3,
+			z: room.z,
 			hp: 50,
 			state: 'idle',
 			attackState: 'idle',
@@ -6652,12 +6663,12 @@ describe('Wall-aware enemy movement in updateEnemies()', () => {
 		});
 
 		// Ensure the player is within detection range
-		const dist = Math.hypot(playerSide.x - enemySide.x, playerSide.z - enemySide.z);
+		const dist = Math.hypot(6, 0);
 		expect(dist).toBeLessThan(DETECTION_RADIUS);
 
 		updateEnemies();
 
-		// Enemy should be in chasing state
+		// Enemy should be in chasing state (clear line-of-sight to the player)
 		expect(gameState.enemies[0].state).toBe('chasing');
 
 		// Enemy should not overlap the wall after movement

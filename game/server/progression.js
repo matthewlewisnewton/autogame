@@ -89,7 +89,7 @@ const {
   checkWaveCleared,
   fireWaveClearedTriggers,
 } = require('./questScript');
-const { unlockQuestTier, isQuestTierUnlocked } = require('./users');
+const { unlockQuestTier, completeQuestTier, isQuestTierUnlocked } = require('./users');
 const { getObjectiveDef, syncScriptedDefeatEnemiesActiveCount } = require('./objectives');
 const {
   initScriptedEncounter,
@@ -1103,6 +1103,36 @@ function applyTelepipeReadyHand(player) {
     return;
   }
 
+  if (player.debugScenario === 'frost-crossing-telepipe-ready') {
+    const freshSortie = !!player._telepipeFreshSortie;
+    if (freshSortie) {
+      delete player._telepipeFreshSortie;
+    }
+    const ironCharges = 30;
+    player.hand[0] = {
+      id: 'iron_sword',
+      name: 'Rust-Forged Saber',
+      type: 'weapon',
+      damage: 17,
+      charges: ironCharges,
+      remainingCharges: freshSortie ? ironCharges : 25,
+      grind: 0,
+    };
+    player.hand[1] = telepipeCard;
+    const iceBallCharges = 5;
+    player.hand[2] = {
+      id: 'ice_ball',
+      name: 'Ice Ball',
+      type: 'spell',
+      magicStoneCost: 15,
+      charges: iceBallCharges,
+      remainingCharges: iceBallCharges,
+      grind: 0,
+    };
+    maybeEmitPlayerDeckUpdate(player);
+    return;
+  }
+
   player.hp = MAX_HP;
   player.magicStones = MAX_MAGIC_STONES;
 
@@ -1530,6 +1560,7 @@ function buildRunSummary(status) {
     questTier: run.questTier ?? DEFAULT_QUEST_TIER,
     questName: run.questName,
     objective: { ...run.objective },
+    failReason: status === 'failed' && run.escort?.failed ? run.objective.label : null,
     players,
     defeatedEnemies: run.objective.defeatedEnemies ?? 0,
     currencyCollected: players.reduce((sum, p) => sum + p.currency, 0),
@@ -2517,7 +2548,7 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
   // Difficulty scaling: miniboss-tier bosses get more HP the larger the party is at spawn.
   // Fixed once here from the live player count — never re-applied retroactively
   // when players later join or leave. 1–4 players stay at baseline (factor 1.0).
-  if (resolvedType === 'miniboss' || resolvedType === 'annex_overseer' || resolvedType === 'spire_warden') {
+  if (resolvedType === 'miniboss' || resolvedType === 'annex_overseer' || resolvedType === 'spire_warden' || resolvedType === 'cinder_warden' || resolvedType === 'permafrost_warden') {
     const factor = difficultyScaleFactor(runPlayerCount(_gameState), DIFFICULTY_MINIBOSS_HP_PER_PLAYER);
     enemy.hp = Math.round(enemy.hp * factor);
     enemy.maxHp = Math.round(enemy.maxHp * factor);
@@ -3356,6 +3387,18 @@ function checkRunTerminalState() {
       for (const player of Object.values(_gameState.players)) {
         if (player && player.accountId) {
           unlockQuestTier(player.accountId, questId, 2);
+          completeQuestTier(player.accountId, questId, 1);
+        }
+      }
+    }
+  }
+
+  if (status === 'victory' && (_gameState.run.questTier ?? DEFAULT_QUEST_TIER) === 2) {
+    const questId = _gameState.run.questId;
+    if (questId) {
+      for (const player of Object.values(_gameState.players)) {
+        if (player && player.accountId) {
+          completeQuestTier(player.accountId, questId, 2);
         }
       }
     }
@@ -3710,7 +3753,10 @@ function checkAllReadyInner() {
         player.lastMoveTime = Date.now();
         createDrawDeckFromSelectedDeck(player);
         initPlayerHand(player);
-        if (player.debugScenario === 'telepipe-ready' || player.debugScenario === 'fire-telepipe-ready') {
+        if (player.debugScenario === 'telepipe-ready'
+          || player.debugScenario === 'fire-telepipe-ready'
+          || player.debugScenario === 'frost-telepipe-ready'
+          || player.debugScenario === 'frost-crossing-telepipe-ready') {
           applyTelepipeReadyHand(player);
         }
         player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
@@ -3725,7 +3771,10 @@ function checkAllReadyInner() {
           player.hp = MAX_HP;
           player.dead = false;
         }
-        if (player.debugScenario === 'fire-telepipe-ready' && deployMagicStones != null) {
+        if ((player.debugScenario === 'fire-telepipe-ready'
+          || player.debugScenario === 'frost-telepipe-ready'
+          || player.debugScenario === 'frost-crossing-telepipe-ready')
+          && deployMagicStones != null) {
           player._telepipeDeployMagicStones = deployMagicStones;
           player._msRegenGraceUntil = Date.now() + 120000;
         }
@@ -3733,7 +3782,8 @@ function checkAllReadyInner() {
       }
       spawnEnemies();
       for (const player of connectedPlayers) {
-        if (player.debugScenario === 'fire-telepipe-ready') {
+        if (player.debugScenario === 'fire-telepipe-ready'
+          || player.debugScenario === 'frost-crossing-telepipe-ready') {
           const dummy = spawnEnemy(player.x + 2.5, player.z, 'grunt');
           dummy.hp = 500;
           dummy.maxHp = 500;
@@ -3744,6 +3794,31 @@ function checkAllReadyInner() {
         }
       }
       startDungeonRun();
+      for (const player of connectedPlayers) {
+        if (player.debugScenario === 'frost-crossing-telepipe-ready') {
+          // Telepipe harness walks with 'w' for up to 30s; suppress live waves so
+          // entering the ice band does not spawn Frostmaw and fail the run mid-suspend.
+          const dummy = spawnEnemy(player.x + 2.5, player.z, 'grunt');
+          dummy.hp = 500;
+          dummy.maxHp = 500;
+          dummy.shieldHp = 0;
+          dummy.maxShieldHp = 0;
+          dummy.wanderTarget = { x: dummy.x, z: dummy.z };
+          dummy.y = resolveFloorY(sampleFloorY(_gameState.layout, dummy.x, dummy.z));
+          _gameState.enemies = [dummy];
+          if (_gameState.run?.waveScript?.waves) {
+            for (const wave of _gameState.run.waveScript.waves) {
+              wave.status = 'cleared';
+              wave.spawnedEnemyIds = [];
+            }
+          }
+          syncScriptedDefeatEnemiesActiveCount(_gameState.run, _gameState.enemies);
+          player.debugGodmode = true;
+          player.vx = 0;
+          player.vz = 0;
+          break;
+        }
+      }
       const io = getIoTarget();
       emitLobbyDeploy(io, SERVER_TO_CLIENT.START_GAME);
       emitLobbyDeploy(io, SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());

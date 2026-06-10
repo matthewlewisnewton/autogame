@@ -1,0 +1,18 @@
+Review complete. Verdict: **PASS**.
+
+## Summary
+
+I independently judged the whole ticket holistically against the live working tree and the captured run.
+
+**Runtime health gate — passed.** The round-1 capture has `"ok": true`, no `harness_failure`, and an empty `pageerrors` array. `console.log` is clean (only a benign `409` lobby-create race and the standard THREE.Clock deprecation warning — no `pageerror`/`[fatal]` from game code). The round-1 plan was the Telepipe suspend/resume fallback on `training_caverns`; I used it only for the "loads cleanly" gate and verified the ice-specific work via the committed `game/validation/ice/` bundle and the live code.
+
+**Acceptance criteria — fully and robustly met:**
+- Ice preset + driver registered (`presets/ice.mjs`, `playthrough.mjs`, `validate:ice` scripts).
+- Slippery-floor momentum exercised with real probes (speed 9.75, post-release drift 4.24, direction-change-while-sliding, ice-band entry, delta-0 floor alignment).
+- Glacial-thrower slow-on-hit proven **with godmode off** (HP 100→88, future `slowedUntil`) — not faked.
+- No stage boss exists for Frost Crossing tier 1; the gap is honestly NOTED in `findings.md` (283/284 N/A), and victory is a normal `defeat_enemies` clear.
+- Card mechanics covered: burn, slow-clears-burn mutual exclusivity (301), Purifying Pulse cleanse+heal (299), wind-up input-lock + telegraph (308).
+- Telepipe vitals persist across suspend/redeploy (287) and card charges reset on fresh sortie (289).
+- New debug scenarios are server-gated in `DEBUG_SCENARIOS`/`isDebugScenarioAllowed()`; equivalent states stay reachable via normal play. The `main.js` lobby-dismiss change makes a host behave like a joiner, with the lobby still reopenable (`L` key) — no normal-path regression.
+
+I wrote my independent assessment to `review.md`. No blocking gaps, so no `gaps.md`. One non-blocking nit (the `05-glacial-slow.png` frame shows the Sortie Complete overlay) is already recorded in `nits.md`.

@@ -136,6 +136,23 @@ describe('formatObjectiveSummary()', () => {
 			}),
 		).toBe('Defeat the canyon warden');
 	});
+
+	it('summarizes frost_crossing stage-boss quests with permafrost warden copy', () => {
+		expect(
+			formatObjectiveSummary({
+				questId: 'frost_crossing',
+				objectiveType: 'stage_boss',
+				encounter: { bossType: 'permafrost_warden', addCount: 0 },
+			}),
+		).toBe('Defeat the Permafrost Warden');
+		expect(
+			formatObjectiveSummary({
+				id: 'frost_crossing',
+				objectiveType: 'stage_boss',
+				encounter: { bossType: 'permafrost_warden', addCount: 2 },
+			}),
+		).toBe('Defeat the Permafrost Warden and 2 supports');
+	});
 });
 
 describe('formatRewardSummary()', () => {
@@ -360,6 +377,89 @@ describe('renderQuestBoard()', () => {
 		expect(tier2Card.classList.contains('quest-card-locked')).toBe(true);
 		expect(tier2Card.disabled).toBe(true);
 		expect(tier2Card.querySelector('.quest-tier-badge').textContent).toContain('Locked');
+	});
+
+	it('locks tier-2 row when persisted unlock exists but tierUnlocked is false', () => {
+		const variantWithPartialPrereq = {
+			...TRAINING_TIER2_VARIANT,
+			tierUnlocked: false,
+		};
+		renderQuestBoard(container, SAMPLE_QUESTS, 'training_caverns', null, {
+			questVariants: [variantWithPartialPrereq],
+			unlockedQuestTiers: { training_caverns: [2] },
+			selectedQuestTier: 1,
+		});
+
+		const tier2Card = container.querySelector('[data-quest-id="training_caverns"][data-quest-tier="2"]');
+		expect(tier2Card.classList.contains('quest-card-locked')).toBe(true);
+		expect(tier2Card.classList.contains('quest-card-tier-locked')).toBe(true);
+		expect(tier2Card.disabled).toBe(true);
+		expect(tier2Card.querySelector('.quest-tier-badge').textContent).toContain('Locked');
+	});
+
+	it('renders clickable tier-2 row when tierUnlocked is true even with persisted unlock map', () => {
+		const selected = [];
+		const variantFullyUnlocked = {
+			...TRAINING_TIER2_VARIANT,
+			tierUnlocked: true,
+		};
+		renderQuestBoard(container, SAMPLE_QUESTS, 'training_caverns', (questId, tier) => {
+			selected.push({ questId, tier });
+		}, {
+			questVariants: [variantFullyUnlocked],
+			unlockedQuestTiers: { training_caverns: [2] },
+			selectedQuestTier: 1,
+		});
+
+		const tier2Card = container.querySelector('[data-quest-id="training_caverns"][data-quest-tier="2"]');
+		expect(tier2Card.classList.contains('quest-card-locked')).toBe(false);
+		expect(tier2Card.disabled).toBe(false);
+
+		tier2Card.click();
+		expect(selected).toEqual([{ questId: 'training_caverns', tier: 2 }]);
+	});
+
+	it('updates tier-2 lock badges incrementally when tierUnlocked flips without rebuilding cards', () => {
+		const selected = [];
+		const partiallyUnlocked = {
+			...TRAINING_TIER2_VARIANT,
+			tierUnlocked: false,
+		};
+		renderQuestBoard(container, SAMPLE_QUESTS, 'training_caverns', (questId, tier) => {
+			selected.push({ questId, tier });
+		}, {
+			questVariants: [partiallyUnlocked],
+			unlockedQuestTiers: { training_caverns: [2] },
+			selectedQuestTier: 1,
+		});
+		const tier2Card = container.querySelector('[data-quest-id="training_caverns"][data-quest-tier="2"]');
+		expect(tier2Card.classList.contains('quest-card-tier-locked')).toBe(true);
+
+		renderQuestBoard(container, SAMPLE_QUESTS, 'training_caverns', (questId, tier) => {
+			selected.push({ questId, tier });
+		}, {
+			questVariants: [{ ...partiallyUnlocked, tierUnlocked: true }],
+			unlockedQuestTiers: { training_caverns: [2] },
+			selectedQuestTier: 1,
+		});
+
+		expect(container.querySelector('[data-quest-id="training_caverns"][data-quest-tier="2"]')).toBe(tier2Card);
+		expect(tier2Card.classList.contains('quest-card-tier-locked')).toBe(false);
+		expect(tier2Card.disabled).toBe(false);
+		expect(tier2Card.querySelector('.quest-tier-badge').textContent).toBe('Tier 2');
+		tier2Card.click();
+		expect(selected).toEqual([{ questId: 'training_caverns', tier: 2 }]);
+	});
+
+	it('falls back to unlockedQuestTiers when tierUnlocked is absent on variant', () => {
+		renderQuestBoard(container, SAMPLE_QUESTS, 'training_caverns', null, {
+			questVariants: [TRAINING_TIER2_VARIANT],
+			unlockedQuestTiers: { training_caverns: [2] },
+			selectedQuestTier: 1,
+		});
+
+		const tier2Card = container.querySelector('[data-quest-id="training_caverns"][data-quest-tier="2"]');
+		expect(tier2Card.classList.contains('quest-card-locked')).toBe(false);
 	});
 
 	it('renders a clickable Tier 2 row when unlocked and passes tier on select', () => {

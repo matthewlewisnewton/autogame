@@ -1,0 +1,17 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/372-playthrough-validate-ice-level/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/372-playthrough-validate-ice-level/game/data
+Server listening on port 3002
+Player connected: socket=REqLw0_2cEDFXBz4AAAB, playerId=4b668618-76ed-46e9-ae82-9cfe8e69d7a6
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[telepipe] placed at (-9.0, 27.0) by 4b668618-76ed-46e9-ae82-9cfe8e69d7a6
+[telepipe] player 4b668618-76ed-46e9-ae82-9cfe8e69d7a6 extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault
+[run] checkpoint restored
+Player disconnected: REqLw0_2cEDFXBz4AAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

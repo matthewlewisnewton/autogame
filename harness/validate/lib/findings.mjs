@@ -10,6 +10,7 @@ const FLOOR_ALIGNMENT_STEPS = [
 ];
 
 const FIRE_CAVERN_BANDS = new Set(['rim', 'ramp', 'basin']);
+const ICE_CAVERN_BANDS = new Set(['entry', 'stone', 'ice', 'ramp']);
 
 const FLOOR_ALIGNMENT_THRESHOLD = 0.5;
 
@@ -42,6 +43,12 @@ function renderAssertionSection(run) {
 		lines.push(formatAssertion('layoutDeployed', run.assertions?.layoutDeployed === true));
 		lines.push(formatAssertion('enemiesCleared', run.assertions?.enemiesCleared === true));
 		lines.push(formatAssertion('victoryFired', run.assertions?.victoryFired === true));
+		if (Object.prototype.hasOwnProperty.call(run.assertions ?? {}, 'slipperyFloorOk')) {
+			lines.push(formatAssertion('slipperyFloorOk', run.assertions?.slipperyFloorOk === true));
+		}
+		if (Object.prototype.hasOwnProperty.call(run.assertions ?? {}, 'glacialSlowApplied')) {
+			lines.push(formatAssertion('glacialSlowApplied', run.assertions?.glacialSlowApplied === true));
+		}
 		if (Object.prototype.hasOwnProperty.call(run.assertions ?? {}, 'emberBurnApplied')) {
 			lines.push(formatAssertion('emberBurnApplied', run.assertions?.emberBurnApplied === true));
 		}
@@ -116,10 +123,63 @@ function renderCardMechanicsSection(cardMechanics) {
 	return lines;
 }
 
+function renderSlipperyFloorSection(slipperyFloor) {
+	const lines = ['', '## Slippery floor', ''];
+	if (!slipperyFloor || typeof slipperyFloor !== 'object') {
+		lines.push('No slippery-floor probes recorded.');
+		return lines;
+	}
+	lines.push(`- **ok**: ${slipperyFloor.ok === true ? 'PASS' : 'FAIL'}`);
+	if (slipperyFloor.speedWhileHolding != null) {
+		lines.push(`- speedWhileHolding: ${slipperyFloor.speedWhileHolding}`);
+	}
+	if (slipperyFloor.driftAfterRelease != null) {
+		lines.push(`- driftAfterRelease: ${slipperyFloor.driftAfterRelease}`);
+	}
+	if (slipperyFloor.directionChangeWhileSliding != null) {
+		lines.push(`- **directionChangeWhileSliding**: ${slipperyFloor.directionChangeWhileSliding ? 'PASS' : 'FAIL'}`);
+	}
+	if (slipperyFloor.enteredSlipperyBand != null) {
+		lines.push(`- **enteredSlipperyBand**: ${slipperyFloor.enteredSlipperyBand ? 'PASS' : 'FAIL'}`);
+	}
+	if (slipperyFloor.screenshot) {
+		lines.push(`- Screenshot: \`${slipperyFloor.screenshot}\``);
+	}
+	return lines;
+}
+
+function renderGlacialSlowSection(glacialSlow) {
+	const lines = ['', '## Glacial slow', ''];
+	if (!glacialSlow || typeof glacialSlow !== 'object') {
+		lines.push('No glacial-slow probes recorded.');
+		return lines;
+	}
+	lines.push(`- **glacialSlowApplied**: ${glacialSlow.glacialSlowApplied === true ? 'PASS' : 'FAIL'}`);
+	if (glacialSlow.debugGodmodeOff != null) {
+		lines.push(`- **debugGodmodeOff**: ${glacialSlow.debugGodmodeOff ? 'PASS' : 'FAIL'}`);
+	}
+	if (glacialSlow.playerSlowedUntil != null) {
+		lines.push(`- player.slowedUntil: ${glacialSlow.playerSlowedUntil}`);
+	}
+	if (glacialSlow.hpBefore != null && glacialSlow.hpAfterHit != null) {
+		lines.push(`- HP before/after hit: ${glacialSlow.hpBefore} → ${glacialSlow.hpAfterHit}`);
+	}
+	if (glacialSlow.screenshot) {
+		lines.push(`- Screenshot: \`${glacialSlow.screenshot}\``);
+	}
+	return lines;
+}
+
 function renderStageBossGapSection(run) {
 	const lines = ['', '## Stage boss gap', ''];
 	const objectiveType = run.objectiveType ?? 'stage_boss';
-	if (objectiveType === 'defeat_enemies' || run.preset === 'fire') {
+	if (run.preset === 'ice' || run.questId === 'frost_crossing') {
+		lines.push(
+			'`frost_crossing` tier 1 has **no stage boss** — encounter UI and distinct boss visuals are N/A '
+			+ '(tickets 283/284). The signature encounter is the named rare **Rimecast the Slow** on the ice band; '
+			+ 'victory is driven by the `defeat_enemies` objective only.',
+		);
+	} else if (objectiveType === 'defeat_enemies' || run.preset === 'fire') {
 		lines.push(
 			'`ember_descent` tier 1 has **no stage boss** — encounter UI and distinct boss visuals are N/A '
 			+ '(tickets 283/284). Victory is driven by the `defeat_enemies` objective only.',
@@ -294,8 +354,14 @@ function renderFloorAlignmentSection(floorAlignment, { preset, objectiveType } =
 	const lines = ['', '## Floor alignment', ''];
 	const probes = floorAlignment && typeof floorAlignment === 'object' ? floorAlignment : {};
 	let hasProbe = false;
+	const profile = Object.values(probes).find((p) => p?.layoutProfile)?.layoutProfile ?? null;
 
-	if (preset === 'fire' || objectiveType === 'defeat_enemies') {
+	if (preset === 'ice' || profile === 'ice-cavern') {
+		lines.push(
+			'Ice-cavern layout uses **entry**, **stone**, **ice**, and **ramp** elevation bands; probes record the band at each step.',
+		);
+		lines.push('');
+	} else if (preset === 'fire' || objectiveType === 'defeat_enemies') {
 		lines.push(
 			'Fire-cavern layout uses **rim**, **ramp**, and **basin** elevation bands; probes record the band at each step.',
 		);
@@ -315,6 +381,9 @@ function renderFloorAlignmentSection(floorAlignment, { preset, objectiveType } =
 		);
 		if (Number.isFinite(delta) && Math.abs(delta) > FLOOR_ALIGNMENT_THRESHOLD) {
 			lines.push(`  - Note: |delta| > ${FLOOR_ALIGNMENT_THRESHOLD} — player may be floating or sunken.`);
+		}
+		if (band !== '(none)' && !ICE_CAVERN_BANDS.has(band) && (preset === 'ice' || profile === 'ice-cavern')) {
+			lines.push(`  - Note: unexpected band "${band}" for ice-cavern (expected entry, stone, ice, or ramp).`);
 		}
 		if (band !== '(none)' && !FIRE_CAVERN_BANDS.has(band) && (preset === 'fire' || profile === 'fire-cavern')) {
 			lines.push(`  - Note: unexpected band "${band}" for fire-cavern (expected rim, ramp, or basin).`);
@@ -339,6 +408,9 @@ function renderFloorAlignmentSection(floorAlignment, { preset, objectiveType } =
  *   assertions: Record<string, boolean>,
  *   floorAlignment?: Record<string, object>,
  *   emberBurn?: object | null,
+ *   slipperyFloor?: object | null,
+ *   glacialSlow?: object | null,
+ *   questId?: string,
  *   cardMechanics?: object | null,
  *   telepipeReset?: object | null,
  *   bossEncounterUi?: object | null,
@@ -381,7 +453,13 @@ export function renderFindings(run) {
 		lines.push('', '## Failure', '', run.error);
 	}
 
-	if (objectiveType === 'defeat_enemies' || run.preset === 'fire') {
+	if (run.preset === 'ice' || run.questId === 'frost_crossing') {
+		lines.push(...renderSlipperyFloorSection(run.slipperyFloor));
+		lines.push(...renderGlacialSlowSection(run.glacialSlow));
+		lines.push(...renderCardMechanicsSection(run.cardMechanics));
+		lines.push(...renderStageBossGapSection(run));
+		lines.push(...renderTelepipeSection(run.telepipeReset));
+	} else if (objectiveType === 'defeat_enemies' || run.preset === 'fire') {
 		lines.push(...renderEmberBurnSection(run.emberBurn));
 		lines.push(...renderCardMechanicsSection(run.cardMechanics));
 		lines.push(...renderStageBossGapSection(run));

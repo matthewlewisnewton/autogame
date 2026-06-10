@@ -1,0 +1,18 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/392-investigate-ice-telepipe-vitals-not-preserved/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/392-investigate-ice-telepipe-vitals-not-preserved/game/data
+Server listening on port 3004
+Player connected: socket=DWc2CbQhXsMnX3hzAAAB, playerId=ca3a9272-9a2c-48bd-b59b-cc7be4704c60
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=173effd1-5a41-4e0e-9666-20c6ec73a75b value=14
+[telepipe] placed at (-9.0, 27.0) by ca3a9272-9a2c-48bd-b59b-cc7be4704c60
+[telepipe] player ca3a9272-9a2c-48bd-b59b-cc7be4704c60 extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault
+[run] checkpoint restored
+Player disconnected: DWc2CbQhXsMnX3hzAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

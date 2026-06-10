@@ -1,0 +1,21 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/392-investigate-ice-telepipe-vitals-not-preserved/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/392-investigate-ice-telepipe-vitals-not-preserved/game/data
+Server listening on port 3004
+Player connected: socket=fv-Zl_yWO0HcNraGAAAB, playerId=0c2abfb9-627f-4721-bc37-e2953538e6fc
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[loot] spawned id=fd76ac12-11a9-498b-b874-be32fe776214 value=19
+[telepipe] placed at (0.0, -32.5) by 0c2abfb9-627f-4721-bc37-e2953538e6fc
+[telepipe] player 0c2abfb9-627f-4721-bc37-e2953538e6fc extracted
+[run] checkpoint captured
+[run] extracted to hub: Frost Crossing
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[loot] spawned id=92112505-f811-44d3-b454-e48c31c988fb value=10
+Player disconnected: fv-Zl_yWO0HcNraGAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

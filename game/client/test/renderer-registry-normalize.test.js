@@ -20,6 +20,7 @@ describe('getRegistryTargetFootprint()', () => {
 		expect(getRegistryTargetFootprint('annex_overseer')).toEqual({ targetHeight: 2.4 });
 		expect(getRegistryTargetFootprint('arena_champion')).toEqual({ targetHeight: 3.0 });
 		expect(getRegistryTargetFootprint('spire_warden')).toEqual({ targetHeight: 2.4 });
+		expect(getRegistryTargetFootprint('permafrost_warden')).toEqual({ targetHeight: 2.5 });
 	});
 
 	it('uses diameter for octahedron enemies', () => {
@@ -51,6 +52,7 @@ describe('getRegistryHostVerticalOffset()', () => {
 		expect(getRegistryHostVerticalOffset('annex_overseer')).toBe(enemyMeshHalfHeight('annex_overseer'));
 		expect(getRegistryHostVerticalOffset('arena_champion')).toBe(enemyMeshHalfHeight('arena_champion'));
 		expect(getRegistryHostVerticalOffset('spire_warden')).toBe(enemyMeshHalfHeight('spire_warden'));
+		expect(getRegistryHostVerticalOffset('permafrost_warden')).toBe(enemyMeshHalfHeight('permafrost_warden'));
 		expect(getRegistryHostVerticalOffset('spawner')).toBe(enemyMeshHalfHeight('spawner'));
 		expect(getRegistryHostVerticalOffset('field_medic')).toBe(enemyMeshHalfHeight('field_medic'));
 		expect(getRegistryHostVerticalOffset('ember_wraith')).toBe(enemyMeshHalfHeight('ember_wraith'));
@@ -214,6 +216,19 @@ describe('ENEMY_GEOMETRY export', () => {
 		// Half-height helper resolves to its own geometry, not the grunt fallback.
 		expect(enemyMeshHalfHeight('arena_champion')).toBe(champ.height / 2);
 		expect(enemyMeshHalfHeight('arena_champion')).not.toBe(enemyMeshHalfHeight('grunt'));
+	});
+
+	it('gives permafrost_warden a distinct ice-cyan boss silhouette vs glacial_thrower and miniboss', () => {
+		const warden = ENEMY_GEOMETRY.permafrost_warden;
+		const thrower = ENEMY_GEOMETRY.glacial_thrower;
+		const boss = ENEMY_GEOMETRY.miniboss;
+		expect(warden).toBeTruthy();
+		expect(warden.radius).toBeGreaterThan(thrower.radius);
+		expect(warden.height).toBeGreaterThan(thrower.height);
+		expect(warden.color).not.toBe(thrower.color);
+		expect(warden.color).not.toBe(boss.color);
+		expect(enemyMeshHalfHeight('permafrost_warden')).toBe(warden.height / 2);
+		expect(enemyMeshHalfHeight('permafrost_warden')).not.toBe(enemyMeshHalfHeight('grunt'));
 	});
 });
 

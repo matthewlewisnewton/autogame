@@ -255,16 +255,21 @@ function hubSpawnPosition(hubLayout) {
 }
 
 function resolveMovementContext(movementContext) {
-  if (movementContext && movementContext.dungeonBounds) {
-    const useLiveColliders = _gameState
-      && movementContext.layout === _gameState.layout;
+  if (movementContext) {
+    const layout = movementContext.layout ?? (_gameState && _gameState.layout);
+    const walkableAABBs = movementContext.walkableAABBs
+      ?? (_gameState && _gameState.walkableAABBs);
+    const dungeonBounds = movementContext.dungeonBounds
+      ?? (_gameState && _gameState.dungeonBounds);
+    const useLiveColliders = _gameState && layout === _gameState.layout;
+    const passageLocks = _gameState?.run?.passageLocks;
     return {
-      layout: movementContext.layout,
-      walkableAABBs: movementContext.walkableAABBs,
-      dungeonBounds: movementContext.dungeonBounds,
+      layout,
+      walkableAABBs,
+      dungeonBounds,
       colliders: useLiveColliders
         ? getWallColliders()
-        : (movementContext.colliders || buildWallColliders(movementContext.layout)),
+        : (movementContext.colliders || buildWallColliders(layout, passageLocks)),
     };
   }
   return {
@@ -656,13 +661,6 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
         player.persistenceDirty = true;
       }
     } else {
-      player.vx *= NORMAL_STOP_FRICTION;
-      player.vz *= NORMAL_STOP_FRICTION;
-      if (NORMAL_STOP_FRICTION === 0) {
-        player.vx = 0;
-        player.vz = 0;
-      }
-
       if (inputFresh) {
         const mag = Math.hypot(player.inputDx || 0, player.inputDz || 0);
         if (mag >= 1e-8) {
@@ -681,6 +679,11 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
           player.x = result.x;
           player.z = result.z;
           player.y = resolveEntityY(player, ctx.layout);
+          // Seed horizontal velocity from stone walking so normal→slippery crossings
+          // inherit forward motion instead of restarting from zero on the first ice tick.
+          const walkSpeed = playerStep * TICK_RATE;
+          player.vx = dx * walkSpeed;
+          player.vz = dz * walkSpeed;
           if (Number.isFinite(player.inputRotation)) {
             player.rotation = player.inputRotation;
           }
@@ -688,6 +691,16 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
           if (result.moved || player.x !== prevX || player.z !== prevZ) {
             player.persistenceDirty = true;
           }
+        } else {
+          player.vx = 0;
+          player.vz = 0;
+        }
+      } else {
+        player.vx *= NORMAL_STOP_FRICTION;
+        player.vz *= NORMAL_STOP_FRICTION;
+        if (NORMAL_STOP_FRICTION === 0) {
+          player.vx = 0;
+          player.vz = 0;
         }
       }
     }
@@ -784,6 +797,19 @@ function segmentIntersectsAABB(x1, z1, x2, z2, aabb) {
     if (z1 < aabb.minZ || z1 > aabb.maxZ) return false;
   }
 
+  return true;
+}
+
+/**
+ * Line-of-sight test between two world points. Returns false when the straight
+ * segment from (x1, z1) to (x2, z2) crosses any wall collider AABB, true when
+ * the line is clear. Doorway openings are gaps between colliders, so a segment
+ * threading a doorway passes. Reuses segmentIntersectsAABB — no new geometry.
+ */
+function hasLineOfSight(x1, z1, x2, z2, colliders = getWallColliders()) {
+  for (const aabb of colliders) {
+    if (segmentIntersectsAABB(x1, z1, x2, z2, aabb)) return false;
+  }
   return true;
 }
 
@@ -1120,6 +1146,20 @@ const ENEMY_DEFS = {
 		hp: 420, chaseSpeed: 1.0, wanderSpeed: 0.5, attackDamage: 22, attackWindupMs: 1400,
 		attackStyle: 'cone', attackConeAngle: Math.PI / 2, attackRange: 6,
 	},
+	cinder_warden: {
+		name: 'Cinder Warden',
+		description: 'Smoldering guardian of the first fire stage; sweeps a wide cone of cinders that scorch everything in reach.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 360, chaseSpeed: 1.1, wanderSpeed: 0.55, attackDamage: 21, attackWindupMs: 1300,
+		attackStyle: 'cone', attackConeAngle: (2 * Math.PI) / 3, attackRange: 5.5,
+	},
+	permafrost_warden: {
+		name: 'Permafrost Warden',
+		description: 'Ice-cavern guardian that erupts in a radial frost shockwave — close-range area pressure, not a lobbed projectile.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 360, chaseSpeed: 1.0, wanderSpeed: 0.5, attackDamage: 20, attackWindupMs: 1300,
+		attackStyle: 'radial', attackRange: 4.5,
+	},
 	spawner: {
 		name: 'Brood Node',
 		description: 'Radial attacker that periodically summons skirmishers.',
@@ -1163,6 +1203,40 @@ const ENEMY_DEFS = {
 		// flow onto each spawned enemy via the `...statFieldsFromDef` spread, so
 		// resolveEntityY() hovers them at floorY + altitude each tick.
 		flying: true, altitude: 2.5,
+	},
+	void_seraph: {
+		name: 'Void Seraph',
+		description: 'High-hovering aberration that unleashes a spherical void shockwave — its radial burst reaches across heights, striking grounded and airborne foes alike.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 70, chaseSpeed: 2.8, wanderSpeed: 1.1, attackDamage: 14, attackWindupMs: 1000,
+		// Radial already resolves as a pure 3D sphere in isEntityInEnemyAttack, so a
+		// player who is XZ-close but far above/below (outside attackRange in 3D) is
+		// not hit, while anyone inside the sphere is.
+		attackStyle: 'radial', attackRange: 4.5,
+		// Airborne: hovers high above the floor; flying/altitude flow onto each
+		// spawned instance via ...statFieldsFromDef so resolveEntityY() keeps it at
+		// floorY + altitude (never re-grounded), matching ember_wraith.
+		flying: true, altitude: 3.0,
+	},
+	rime_drifter: {
+		name: 'Rime Drifter',
+		description: 'Frost spirit that glides high overhead and lobs a height-aware ice ball — it angles the shot down (or up) at its target, chilling (SLOW) and battering on impact.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 60, chaseSpeed: 2.2, wanderSpeed: 1.0, attackDamage: 11, attackWindupMs: 1000,
+		// Reuses the existing height-aware projectile path: attackStyle 'ice_ball'
+		// flows through the wind-up resolution branch (spawnIceBall →
+		// updateEnemyProjectiles), and spawnIceBall carries the locked windupDirY so
+		// the ball travels with vertical aim toward a target at a different height.
+		attackStyle: 'ice_ball', attackRange: 8,
+		iceBallSpeed: 6.5,           // units/sec — clearly below the player MOVE_SPEED of 12
+		iceBallRadius: 0.8,          // projectile hit radius (added to PLAYER_RADIUS for contact)
+		iceBallMaxRange: 20,         // travel distance before it dissipates
+		iceBallSlowDurationMs: 2200,
+		iceBallSlowFactor: 0.55,
+		// Airborne: drifts high above the floor; flying/altitude flow onto each
+		// spawned instance via ...statFieldsFromDef so resolveEntityY() keeps it at
+		// floorY + altitude (never re-grounded), matching ember_wraith.
+		flying: true, altitude: 3.5,
 	},
 };
 
@@ -2824,6 +2898,9 @@ function updateEnemies() {
 	const encounterBossId = getEncounterBossId(_gameState.run);
 	const encounterDormant = isEncounterDormant(_gameState.run);
 	const encounterLocked = isEncounterLocked(_gameState.run);
+	// Build wall colliders once per tick for line-of-sight gating (enemies must
+	// actually see a target to acquire/chase it — no aggro through walls).
+	const losColliders = getWallColliders();
 
 	for (const enemy of _gameState.enemies) {
 		ensureEnemyCombatStats(enemy);
@@ -2929,7 +3006,7 @@ function updateEnemies() {
 
 		// ── Find nearest living player or taunt minion ──
 		const tauntMinion = findTauntMinionNear(enemy.x, enemy.z, DETECTION_RADIUS);
-		if (tauntMinion) {
+		if (tauntMinion && hasLineOfSight(enemy.x, enemy.z, tauntMinion.x, tauntMinion.z, losColliders)) {
 			enemy.state = 'chasing';
 			const dist = Math.hypot(tauntMinion.x - enemy.x, tauntMinion.z - enemy.z);
 			if (dist <= ENEMY_ATTACK_RANGE) {
@@ -2962,7 +3039,11 @@ function updateEnemies() {
 		let nearestDist = Infinity;
 
 		const nearestMinion = findNearestMinionNear(enemy.x, enemy.z, DETECTION_RADIUS);
-		if (nearestMinion && nearestMinion.dist < nearestDist) {
+		if (
+			nearestMinion
+			&& nearestMinion.dist < nearestDist
+			&& hasLineOfSight(enemy.x, enemy.z, nearestMinion.minion.x, nearestMinion.minion.z, losColliders)
+		) {
 			nearestTarget = nearestMinion.minion;
 			nearestTargetType = 'minion';
 			nearestDist = nearestMinion.dist;
@@ -2975,7 +3056,11 @@ function updateEnemies() {
 			const dx = player.x - enemy.x;
 			const dz = player.z - enemy.z;
 			const dist = Math.hypot(dx, dz);
-			if (dist < DETECTION_RADIUS && dist < nearestDist) {
+			if (
+				dist < DETECTION_RADIUS
+				&& dist < nearestDist
+				&& hasLineOfSight(enemy.x, enemy.z, player.x, player.z, losColliders)
+			) {
 				nearestDist = dist;
 				nearestTarget = player;
 				nearestTargetType = 'player';
@@ -3099,6 +3184,8 @@ function updateEnemyProjectiles() {
 		ball.traveled = (ball.traveled || 0) + step;
 
 		// Contact with a player: chill (SLOW) + damage, then consume the ball.
+		// SLOW is applied before damage and is not gated on damage succeeding
+		// (god-mode, i-frames, barrier dome, absorb shield all skip HP loss only).
 		let consumed = false;
 		for (const player of players) {
 			const playerY = getEntityWorldY(player);
@@ -3666,6 +3753,7 @@ module.exports = {
   flushDirtyPlayerSaves,
   segmentAABBEntryT,
   segmentIntersectsAABB,
+  hasLineOfSight,
   isEntityPositionBlocked,
   moveEntityToward,
   ENTITY_RADIUS,

@@ -1,0 +1,13 @@
+Created **2 sub-tickets** in dependency order:
+
+1. `/home/matt/workspace/.autogame-worktrees/391-fix-glacial-thrower-slow-not-applied/tickets/391-fix-glacial-thrower-slow-not-applied/subtickets/01-server-test-ice-ball-slow-on-hit/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/391-fix-glacial-thrower-slow-not-applied/tickets/391-fix-glacial-thrower-slow-not-applied/subtickets/02-apply-slow-on-ice-ball-contact/ticket.md`
+
+**Plan summary**
+
+| # | Focus |
+|---|--------|
+| **01** | Regression tests: `spawnEnemy` wind-up → projectile → contact slow; god-mode slow-without-damage; height-aware slow assertion |
+| **02** | `simulation.js` fix/reconcile: `applySlow` on ice-ball contact independent of `damagePlayer` outcome; ball carries slow tuning from thrower def |
+
+Both use **code** verification. Investigation on HEAD shows `applySlow` is already wired and existing unit tests pass, so **02** may be a reconcile/no-op once **01** locks in the integration paths the ICE playthrough probe (`glacialThrowerSlowApplied`) cares about. No prior sub-ticket folders existed to retire.

@@ -1,0 +1,17 @@
+Decomposition complete. This branch was recovered from the prior reaped attempt (`d2f295b8`), so most of the escort feature already exists and passes its 8 tests: the `escort` objective def, NPC spawn/follow/damage/death-fail runtime, enemy targeting of the escort via nearest-minion selection, the `annex_escort` tier-1 quest with scripted ambush waves at authored rooms, client mesh, and checkpointing. I scoped sub-tickets only for the four verified gaps:
+
+1. **Victory semantics** — `objectives.js:366` still requires all enemies dead and `escort.js:202` still gates on waves cleared; arrival-alive must be victory (this was the lost sub-ticket-08 fix; the known `tickEscort` test-wiring gotcha is documented in the ticket so the implementer doesn't burn rounds on it).
+2. **Distinct failure reason** — the summary payload and the client failure screen show only generic "signal lost" today; adds `failReason` server-side and a `#summary-reason` line client-side.
+3. **Escort HP bar** — `minionSync.js` has only damage-flash numbers, no bar; follows the existing `enemyHealthBars` pattern (snapshot already carries `hp`/`maxHp`/`isEscort`).
+4. **Ambush dialogue** — adds the design's "They found us!" beacon spoken by Archivist Vale at the ambush room.
+
+All four are `Verification: code` — none of their criteria are observable in the visual QA happy-path run, which never enters an escort dungeon.
+
+Sub-ticket folders created (under `tickets/new-objective-type-escort-npc-partner-quest-pso-guild-quest-o0vv.6/subtickets/`):
+
+- `01-escort-victory-on-arrival/ticket.md`
+- `02-escort-fail-summary-reason/ticket.md`
+- `03-escort-npc-hp-bar/ticket.md`
+- `04-escort-ambush-dialogue/ticket.md`
+
+I also updated my memory file for this ticket to record that the recovery happened and the old "sub-ticket 08" framing is superseded by this decomposition.

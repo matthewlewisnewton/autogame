@@ -106,13 +106,6 @@ export function tickMovementPrediction({
 			nextVz = 0;
 		}
 	} else {
-		nextVx *= normalStopFriction;
-		nextVz *= normalStopFriction;
-		if (normalStopFriction === 0) {
-			nextVx = 0;
-			nextVz = 0;
-		}
-
 		if (inputActive) {
 			const mag = Math.hypot(inputDx, inputDz);
 			if (mag >= 1e-8) {
@@ -123,18 +116,32 @@ export function tickMovementPrediction({
 					dz /= mag;
 				}
 
+				const playerStep = moveSpeed * tickDt * speedScale;
 				const result = tryPlayerMove(
 					x,
 					z,
 					dx,
 					dz,
-					moveSpeed * tickDt * speedScale,
+					playerStep,
 					colliders,
 					walkableAABBs,
 					bounds,
 				);
 				nextX = result.x;
 				nextZ = result.z;
+				const walkSpeed = playerStep * tickRate;
+				nextVx = dx * walkSpeed;
+				nextVz = dz * walkSpeed;
+			} else {
+				nextVx = 0;
+				nextVz = 0;
+			}
+		} else {
+			nextVx *= normalStopFriction;
+			nextVz *= normalStopFriction;
+			if (normalStopFriction === 0) {
+				nextVx = 0;
+				nextVz = 0;
 			}
 		}
 	}

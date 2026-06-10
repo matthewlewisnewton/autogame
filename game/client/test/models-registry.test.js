@@ -14,7 +14,7 @@ const ENTITY_MODEL_PATHS = {
 };
 
 /** Stage bosses that rely on distinct procedural geometry (ENEMY_GEOMETRY) instead of glTF. */
-const PROCEDURAL_ONLY_BOSSES = ['annex_overseer', 'arena_champion', 'spire_warden'];
+const PROCEDURAL_ONLY_BOSSES = ['annex_overseer', 'arena_champion', 'spire_warden', 'permafrost_warden'];
 
 const gltfLoadMock = vi.hoisted(() => vi.fn());
 

@@ -15,6 +15,7 @@ import {
 	collectPhaseBeamHits,
 	collectConeHits,
 	spawnIceBall,
+	isSlowed,
 	updateEnemyProjectiles,
 	updateMinions,
 } from '../index.js';
@@ -440,6 +441,9 @@ describe('glacial_thrower', () => {
 		updateEnemyProjectiles();
 
 		expect(gameState.players.p1.hp).toBe(100 - GLACIAL_DEF.attackDamage);
+		expect(isSlowed(gameState.players.p1)).toBe(true);
+		expect(gameState.players.p1.slowFactor).toBe(GLACIAL_DEF.iceBallSlowFactor);
+		expect(gameState.players.p1.slowedUntil).toBeGreaterThan(Date.now());
 		expect(gameState.iceBalls).toHaveLength(0);
 	});
 });

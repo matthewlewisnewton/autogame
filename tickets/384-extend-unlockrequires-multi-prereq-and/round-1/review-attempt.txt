@@ -1,0 +1,9 @@
+Completed the holistic review.
+
+Wrote:
+- `tickets/384-extend-unlockrequires-multi-prereq-and/round-1/review.md`
+- `tickets/384-extend-unlockrequires-multi-prereq-and/round-1/gaps.md`
+
+Verdict: `FAIL`
+
+The game run itself was healthy, but there is one blocking integration gap: evaluated multi-prereq unlock state is computed in one payload path but not consistently exposed or consumed, so the client can still treat raw persisted `unlockedQuestTiers` as unlocked while the server rejects the tier. No `nits.md` was created.

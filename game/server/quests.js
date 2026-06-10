@@ -78,6 +78,18 @@
  */
 
 /**
+ * Prerequisite quest tier required before a tier is unlocked.
+ * @typedef {Object} UnlockRequiresEntry
+ * @property {string} questId - Quest id that must be completed.
+ * @property {number} tier - Positive integer tier that must be completed.
+ */
+
+/**
+ * Unlock prerequisites for a quest tier: one entry (legacy) or an array (AND semantics).
+ * @typedef {UnlockRequiresEntry | UnlockRequiresEntry[]} UnlockRequires
+ */
+
+/**
  * One authored wave in a quest script.
  * @typedef {Object} QuestScriptWave
  * @property {string} id - Stable wave id for chaining (`waveCleared` triggers).
@@ -553,16 +565,26 @@ const QUEST_DEFS = {
       // Ice-level signature foe — a ranged thrower that lobs slow ice balls.
       // Level-exclusive: do not add to non-ice quests.
       { type: 'glacial_thrower', weight: 2 },
+      // Rare flier — kept at the pool minimum so frost drifters stay sparse.
+      { type: 'rime_drifter', weight: 1 },
     ],
     tiers: {
       1: {
         name: 'Frost Crossing',
-        description: 'Clear the stone dock, cross the ice band, and defeat Rimecast the Slow.',
+        description:
+          'Clear the stone dock, cross the ice band, defeat Rimecast the Slow, '
+          + 'and bring down the Permafrost Warden at the south cairn.',
         clientNpc: 'Ice-Watch Courier Sela',
         briefing:
           'The ice band is slick with rimecast ambushes. '
-          + 'Cross the ramps, clear the thrower waves, and bring down Rimecast the Slow.',
-        objectiveType: 'defeat_enemies',
+          + 'Cross the ramps, clear the thrower waves, bring down Rimecast the Slow, '
+          + 'then defeat the Permafrost Warden guarding the south cairn.',
+        objectiveType: 'stage_boss',
+        encounter: {
+          bossType: 'permafrost_warden',
+          landmark: 'ice_cairn',
+          addCount: 0,
+        },
         rewardCurrency: 14,
         rewardCardId: 'frost_nova',
         layoutProfile: 'ice-cavern',
@@ -638,22 +660,35 @@ const QUEST_DEFS = {
             speaker: 'Ice-Watch Courier Sela',
             line: 'First thrower line is down. Rimecast the Slow is winding up across the sheet — finish the crossing.',
           },
+          {
+            beaconId: 'frost_cairn_warden',
+            trigger: 'onWaveCleared',
+            band: 'ice',
+            waveIndex: 1,
+            speaker: 'Ice-Watch Courier Sela',
+            line: 'Rimecast is down. The Permafrost Warden sleeps at the south cairn — cross the sheet and wake it when you are ready.',
+          },
         ],
         signatureCardId: 'ice_ball',
         rewardCards: ['ice_ball', 'frost_nova', 'permafrost_lance'],
         client: {
           name: 'Cairn',
           briefing:
-            'Frost crossing escort. Clear the stone dock, cross the ice sheet, and bring down Rimecast the Slow for fourteen stones from the research fund.',
+            'Frost crossing escort. Clear the stone dock, cross the ice sheet, bring down Rimecast the Slow, '
+            + 'and defeat the Permafrost Warden at the south cairn for fourteen stones from the research fund.',
         },
         dialogue: [
           {
             trigger: 'run_start',
-            text: 'Cairn on ice-watch channel. Two hostiles guard the stone dock — clear them and Sela will unseal the ramp to the ice band.',
+            text: 'Cairn on ice-watch channel. Two hostiles guard the stone dock — clear them, cross the ice band, and the Permafrost Warden waits at the south cairn.',
+          },
+          {
+            trigger: { waveCleared: 1 },
+            text: 'Ice-band arc is clear. Permafrost Warden signature on the south cairn — engage when you reach the treasure pad.',
           },
           {
             trigger: 'objective_complete',
-            text: 'Crossing is secure. Research fund transfer pending — well done.',
+            text: 'Permafrost Warden down and the crossing is secure. Research fund transfer pending — well done.',
           },
         ],
       },
@@ -665,6 +700,8 @@ const QUEST_DEFS = {
       { type: 'skirmisher', weight: 2 },
       { type: 'grunt', weight: 2 },
       { type: 'miniboss', weight: 1 },
+      // Rare flier — kept at the pool minimum so void seraphs stay sparse.
+      { type: 'void_seraph', weight: 1 },
     ],
     tier2EnemyPool: [{ type: 'field_medic', weight: 1 }],
     tiers: {
@@ -762,6 +799,42 @@ const QUEST_DEFS = {
           },
         ],
       },
+      2: {
+        tier: 2,
+        name: 'Ember Descent — Tier II',
+        description:
+          'Descend the fixed ember cavern where a cinder warden stokes the molten basin with marked supports.',
+        objectiveType: 'stage_boss',
+        rewardCurrency: 14,
+        layoutProfile: 'fire-cavern',
+        layoutMode: 'rigid',
+        unlockRequires: { questId: 'ember_descent', tier: 1 },
+        signatureCardId: 'fireball',
+        rewardCards: ['fireball', 'dragons_breath'],
+        encounter: {
+          bossType: 'cinder_warden',
+          addCount: 4,
+        },
+        client: {
+          name: 'Ashvelle',
+          briefing:
+            'Ember warden contract — Tier II. A cinder warden has claimed the molten basin with four marked hostiles; quench the nest for fourteen stones from my survey fund.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Ashvelle on the rim feed. Cinder warden signature down in the basin — burn through the supports before you face it.',
+          },
+          {
+            trigger: { waveCleared: 2 },
+            text: 'Basin is thinning out. The cinder warden is still stoking the molten core.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Cinder warden quenched and the basin is cooling. Fourteen stones heading your way.',
+          },
+        ],
+      },
     },
   },
   spire_ascent: {
@@ -771,6 +844,8 @@ const QUEST_DEFS = {
       { type: 'skirmisher', weight: 1 },
       { type: 'miniboss', weight: 1 },
       { type: 'spawner', weight: 2 },
+      // Rare flier — kept at the pool minimum so void seraphs stay sparse.
+      { type: 'void_seraph', weight: 1 },
     ],
     tiers: {
       1: {
@@ -876,6 +951,13 @@ const QUEST_DEFS = {
             speaker: 'Annex Liaison Kade',
             line: 'Vale is on channel. Keep them alive and reach the vault.',
           },
+          {
+            beaconId: 'escort_ambush',
+            trigger: 'onRoomEntered',
+            roomIndex: 1,
+            speaker: 'Archivist Vale',
+            line: 'They found us!',
+          },
         ],
       },
     },
@@ -931,6 +1013,43 @@ function normalizeQuestTier(tier) {
   }
   const n = Number(tier);
   return Number.isInteger(n) && n > 0 ? n : DEFAULT_QUEST_TIER;
+}
+
+function normalizeUnlockRequiresEntry(entry) {
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+    return null;
+  }
+  if (typeof entry.questId !== 'string' || !entry.questId) {
+    return null;
+  }
+  const tier = Number(entry.tier);
+  if (!Number.isInteger(tier) || tier <= 0) {
+    return null;
+  }
+  return { questId: entry.questId, tier };
+}
+
+/**
+ * Normalizes authored `unlockRequires` to a prerequisite list, or `null` when absent.
+ * Single objects become a one-element array; arrays keep AND order with invalid entries dropped.
+ * @param {UnlockRequires | null | undefined} raw
+ * @returns {UnlockRequiresEntry[] | null}
+ */
+function normalizeUnlockRequires(raw) {
+  if (raw == null) {
+    return null;
+  }
+  if (Array.isArray(raw)) {
+    const normalized = raw
+      .map(normalizeUnlockRequiresEntry)
+      .filter(Boolean);
+    return normalized.length > 0 ? normalized : null;
+  }
+  if (typeof raw !== 'object') {
+    return null;
+  }
+  const entry = normalizeUnlockRequiresEntry(raw);
+  return entry ? [entry] : null;
 }
 
 function getQuestTierDef(questId, tier) {
@@ -1045,6 +1164,24 @@ function formatObjectiveSummary(quest) {
         );
       }
       return THEME.objectives.defeatCanyonWarden;
+    }
+    if (questId === 'ember_descent') {
+      if (addCount > 0) {
+        return THEME.objectives.defeatCinderWardenWithSupports.replace(
+          '{addCount}',
+          String(addCount),
+        );
+      }
+      return THEME.objectives.defeatCinderWarden;
+    }
+    if (questId === 'frost_crossing') {
+      if (addCount > 0) {
+        return THEME.objectives.defeatPermafrostWardenWithSupports.replace(
+          '{addCount}',
+          String(addCount),
+        );
+      }
+      return THEME.objectives.defeatPermafrostWarden;
     }
     const annexOverseer = encounter?.bossType === 'annex_overseer';
     if (addCount > 0) {
@@ -1386,11 +1523,20 @@ function buildSharedQuestUpdatePayload(gameState) {
   };
 }
 
+function listQuestVariantsForAccount(accountId) {
+  const { isQuestTierUnlocked } = require('./users');
+  return listQuestVariants().map((variant) => ({
+    ...variant,
+    tierUnlocked: isQuestTierUnlocked(accountId, variant.questId, variant.tier),
+  }));
+}
+
 function buildQuestUpdatePayload(gameState, playerAccountId) {
   const payload = buildSharedQuestUpdatePayload(gameState);
   if (playerAccountId) {
     const { getUnlockedQuestTiers } = require('./users');
     payload.unlockedQuestTiers = getUnlockedQuestTiers(playerAccountId) || {};
+    payload.questVariants = listQuestVariantsForAccount(playerAccountId);
   }
   return payload;
 }
@@ -1501,6 +1647,7 @@ module.exports = {
   isValidQuestId,
   isValidQuestSelection,
   normalizeQuestTier,
+  normalizeUnlockRequires,
   getQuest,
   getDefaultQuestId,
   listQuests,
