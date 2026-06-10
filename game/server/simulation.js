@@ -603,10 +603,24 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
   }
 }
 
+/** Players whose dirty flush is deferred until after key-item ack delivery. */
+const _persistenceFlushDeferred = new Set();
+
+/**
+ * Skip flushDirtyPlayerSaves for this player until the next macrotask so a
+ * game-loop tick cannot clear persistenceDirty before KEY_ITEM_USED is delivered.
+ */
+function deferPersistenceFlush(playerId) {
+  if (!playerId) return;
+  _persistenceFlushDeferred.add(playerId);
+  setImmediate(() => _persistenceFlushDeferred.delete(playerId));
+}
+
 /** Flush at most one persistence write per dirty player (called once per tick). */
 function flushDirtyPlayerSaves() {
   if (!_gameState || !_savePlayerData) return;
   for (const [playerId, player] of Object.entries(_gameState.players)) {
+    if (_persistenceFlushDeferred.has(playerId)) continue;
     if (player?.persistenceDirty) {
       player.persistenceDirty = false;
       _savePlayerData(playerId);
@@ -3492,6 +3506,7 @@ module.exports = {
   circleIntersectsAABB,
   applyPlayerKnockback,
   applyPlayerMovement,
+  deferPersistenceFlush,
   flushDirtyPlayerSaves,
   segmentAABBEntryT,
   segmentIntersectsAABB,

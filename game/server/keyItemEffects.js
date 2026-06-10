@@ -30,6 +30,7 @@ const {
   getEntityWorldY,
   resolveRadialOriginY,
   distance3D,
+  deferPersistenceFlush,
 } = require('./simulation');
 const {
   sampleFloorY,
@@ -184,6 +185,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.smokeBombZ = player.z;
       player.keyItemCooldownUntil = now + (def.cooldownMs || 8000);
       player.persistenceDirty = true;
+      deferPersistenceFlush(socket.playerId);
 
       socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, smokeBombUntil: player.smokeBombUntil, cooldownUntil: player.keyItemCooldownUntil });
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
