@@ -1587,6 +1587,7 @@ function buildQuestUpdatePayload(gameState, playerAccountId) {
     const { getUnlockedQuestTiers } = require('./users');
     payload.unlockedQuestTiers = getUnlockedQuestTiers(playerAccountId) || {};
     payload.questVariants = listQuestVariantsForAccount(playerAccountId);
+    payload.levelUnlockGraph = buildLevelUnlockGraph(playerAccountId);
   }
   return payload;
 }

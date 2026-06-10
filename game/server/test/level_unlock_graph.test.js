@@ -17,7 +17,11 @@ const {
 	completeQuestTier,
 	unlockQuestTier,
 } = require('../users.js');
-const { buildLevelUnlockGraph, listQuestVariants } = require('../quests.js');
+const {
+	buildLevelUnlockGraph,
+	buildQuestUpdatePayload,
+	listQuestVariants,
+} = require('../quests.js');
 
 const QUEST_ID = 'training_caverns';
 
@@ -117,5 +121,61 @@ describe('buildLevelUnlockGraph', () => {
 		const after = buildLevelUnlockGraph(accountId);
 		expect(nodeFor(after, QUEST_ID, 1).state).toBe('cleared');
 		expect(nodeFor(after, QUEST_ID, 2).state).toBe('unlocked');
+	});
+});
+
+describe('buildQuestUpdatePayload levelUnlockGraph', () => {
+	let tmpFile;
+
+	beforeEach(() => {
+		tmpFile = path.join(
+			os.tmpdir(),
+			`payload-graph-users-${Date.now()}-${Math.random().toString(36).slice(2)}.json`,
+		);
+		setTestFilePath(tmpFile);
+		clearUsers();
+	});
+
+	afterEach(() => {
+		try {
+			fs.unlinkSync(tmpFile);
+		} catch {}
+		try {
+			fs.unlinkSync(tmpFile + '.tmp');
+		} catch {}
+	});
+
+	it('attaches the per-player unlock graph when an accountId is provided', () => {
+		createUser('payload_player', 'pass');
+		const { accountId } = findUserByUsername('payload_player');
+
+		const payload = buildQuestUpdatePayload({}, accountId);
+		expect(Array.isArray(payload.levelUnlockGraph.nodes)).toBe(true);
+		expect(payload.levelUnlockGraph.nodes).toHaveLength(
+			listQuestVariants().length,
+		);
+
+		// Field matches a freshly built graph for the same account.
+		expect(payload.levelUnlockGraph).toEqual(buildLevelUnlockGraph(accountId));
+
+		// Every node carries the per-player state and normalized unlockRequires.
+		for (const node of payload.levelUnlockGraph.nodes) {
+			expect(['locked', 'unlocked', 'cleared']).toContain(node.state);
+			expect(
+				node.unlockRequires === null || Array.isArray(node.unlockRequires),
+			).toBe(true);
+		}
+
+		// State reflects progression once a tier is cleared.
+		completeQuestTier(accountId, QUEST_ID, 1);
+		unlockQuestTier(accountId, QUEST_ID, 2);
+		const after = buildQuestUpdatePayload({}, accountId);
+		expect(nodeFor(after.levelUnlockGraph, QUEST_ID, 1).state).toBe('cleared');
+		expect(nodeFor(after.levelUnlockGraph, QUEST_ID, 2).state).toBe('unlocked');
+	});
+
+	it('omits the per-player graph when no accountId is provided', () => {
+		const payload = buildQuestUpdatePayload({});
+		expect(payload.levelUnlockGraph).toBeUndefined();
 	});
 });
