@@ -2542,6 +2542,7 @@ function spawnCrystals(layout, rng, count) {
       z: pos.z,
       value: 0,
       kind: 'crystal',
+      questCritical: true,
       createdAt: Date.now(),
     });
     console.log(`[crystal] spawned id=${id} at (${pos.x.toFixed(1)}, ${pos.z.toFixed(1)})`);
