@@ -28,6 +28,7 @@ const {
   PLAYER_RADIUS,
   healPlayer,
   getEntityWorldY,
+  sphericalDistanceToEntity,
 } = require('./simulation');
 const {
   sampleFloorY,
@@ -105,12 +106,13 @@ function handleUseKeyItem(socket, state, lobby, data) {
       const healRadius = def.healRadius != null ? def.healRadius : 5;
       const hpRestore = def.hpRestore != null ? def.hpRestore : 8;
       const casterX = player.x;
+      const casterY = getEntityWorldY(player);
       const casterZ = player.z;
       let alliesHealed = 0;
 
       for (const p of Object.values(state.players)) {
         if (!p || p.dead || p.extracted) continue;
-        const dist = Math.hypot(p.x - casterX, p.z - casterZ);
+        const dist = sphericalDistanceToEntity(casterX, casterY, casterZ, p);
         if (dist <= healRadius) {
           healPlayer(p.id, hpRestore);
           alliesHealed++;
@@ -229,11 +231,12 @@ function handleUseKeyItem(socket, state, lobby, data) {
       const durationMs = def.durationMs != null ? def.durationMs : 4000;
       const multiplier = def.speedMultiplier != null ? def.speedMultiplier : 1.1;
       const rallyUntil = now + durationMs;
+      const casterY = getEntityWorldY(player);
       let affected = 0;
 
       for (const p of Object.values(state.players)) {
         if (!p || p.dead || p.extracted) continue;
-        const dist = Math.hypot(p.x - player.x, p.z - player.z);
+        const dist = sphericalDistanceToEntity(player.x, casterY, player.z, p);
         if (dist <= radius) {
           p.rallyUntil = rallyUntil;
           p.rallySpeedMultiplier = multiplier;
@@ -272,11 +275,12 @@ function handleUseKeyItem(socket, state, lobby, data) {
       const revealRadius = def.revealRadius != null ? def.revealRadius : 25;
       const revealDurationMs = def.revealDurationMs != null ? def.revealDurationMs : 3000;
       const revealUntil = now + revealDurationMs;
+      const casterY = getEntityWorldY(player);
       let revealed = 0;
 
       for (const enemy of state.enemies) {
         if (enemy.hp <= 0) continue;
-        const dist = Math.hypot(enemy.x - player.x, enemy.z - player.z);
+        const dist = sphericalDistanceToEntity(player.x, casterY, player.z, enemy);
         if (dist <= revealRadius) {
           enemy.revealedUntil = revealUntil;
           revealed++;
@@ -295,14 +299,18 @@ function handleUseKeyItem(socket, state, lobby, data) {
       // --- loot_magnet: pull all uncollected ground loot within attractRadius toward player ---
       const attractRadius = def.attractRadius != null ? def.attractRadius : 8;
       const colliders = getWallColliders();
+      const playerY = getEntityWorldY(player);
       let pulled = 0;
       let collected = 0;
 
       // Iterate backwards so splicing collected loot doesn't mess up indices
       for (let i = state.loot.length - 1; i >= 0; i--) {
         const loot = state.loot[i];
+        // Gate on true 3D distance (loot Y resolves via getEntityWorldY, falling
+        // back to floor sampling when the drop has no y); the pull displacement
+        // below stays on the XZ plane — loot slides along the floor.
+        if (sphericalDistanceToEntity(player.x, playerY, player.z, loot) > attractRadius) continue;
         const dist = Math.hypot(loot.x - player.x, loot.z - player.z);
-        if (dist > attractRadius) continue;
 
         // Compute direction toward player
         let dirX = player.x - loot.x;

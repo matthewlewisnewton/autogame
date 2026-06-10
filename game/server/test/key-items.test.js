@@ -671,6 +671,54 @@ describe('useKeyItem — flare_beacon', () => {
 		expect(player.keyItemCooldownUntil).toBeGreaterThan(Date.now());
 	});
 
+	it('spherical radius: elevated in-sphere enemy revealed, XZ-inside out-of-sphere enemy not', async () => {
+		const { socket } = await connectAndStartRun();
+		const player = playerForSocket(socket);
+		const state = testGameState();
+
+		player.keyItemCooldownUntil = 0;
+		state.enemies.length = 0;
+
+		// Elevated but inside the 25m sphere: XZ dist 5 (3,4), Y delta 10
+		// → 3D dist √(25+100) ≈ 11.18 ≤ 25.
+		const elevatedNear = {
+			id: 'elevated-near',
+			type: 'grunt',
+			x: player.x + 3,
+			z: player.z + 4,
+			y: player.y + 10,
+			hp: 50,
+			maxHp: 50,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: player.x + 3, z: player.z + 4 },
+		};
+		// XZ-inside (20m ≤ 25m, so 2D code would reveal it) but far above:
+		// Y delta 20 → 3D dist √(400+400) ≈ 28.28 > 25.
+		const elevatedFar = {
+			id: 'elevated-far',
+			type: 'grunt',
+			x: player.x + 12,
+			z: player.z + 16,
+			y: player.y + 20,
+			hp: 50,
+			maxHp: 50,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: player.x + 12, z: player.z + 16 },
+		};
+		state.enemies.push(elevatedNear, elevatedFar);
+
+		const resultPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'flare_beacon' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.revealed).toBe(1);
+		expect(elevatedNear.revealedUntil).toBeGreaterThan(Date.now());
+		expect(elevatedFar.revealedUntil).toBeUndefined();
+	});
+
 	it('does not reveal dead enemies', async () => {
 		const { socket } = await connectAndStartRun();
 		const player = playerForSocket(socket);
@@ -1324,6 +1372,40 @@ describe('useKeyItem — rally_cry', () => {
 		expect(buffedAlly).toBeGreaterThan(baseAlly);
 		expect(buffedCaster / baseCaster).toBeCloseTo(1.1, 2);
 		expect(buffedAlly / baseAlly).toBeCloseTo(1.1, 2);
+	});
+
+	it('spherical radius: elevated in-sphere ally buffed, XZ-inside out-of-sphere ally not', async () => {
+		const { socket } = await connectAndStartRun();
+		const caster = playerForSocket(socket);
+		const state = testGameState();
+		state.enemies.length = 0;
+
+		const room = state.layout.rooms[0];
+		caster.x = room.x;
+		caster.z = room.z;
+		caster.keyItemCooldownUntil = 0;
+
+		// Elevated ally inside the 8m sphere: XZ dist 2, Y delta 4
+		// → 3D dist √(4+16) ≈ 4.47 ≤ 8.
+		const highAlly = { ...caster, x: room.x + 2, z: room.z, y: caster.y + 4, dead: false, extracted: false, connected: true, inputActive: false, rallyUntil: 0, rallySpeedMultiplier: 1 };
+		// XZ-inside ally (3m ≤ 8m, so 2D code would buff it) but far above:
+		// Y delta 10 → 3D dist √(9+100) ≈ 10.44 > 8.
+		const skyAlly = { ...caster, x: room.x + 3, z: room.z, y: caster.y + 10, dead: false, extracted: false, connected: true, inputActive: false, rallyUntil: 0, rallySpeedMultiplier: 1 };
+		state.players['rally-high'] = highAlly;
+		state.players['rally-sky'] = skyAlly;
+
+		const resultPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'rally_cry' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.affected).toBe(2); // caster + elevated in-sphere ally
+
+		expect(highAlly.rallyUntil).toBeGreaterThan(Date.now());
+		expect(highAlly.rallySpeedMultiplier).toBeCloseTo(1.1, 5);
+		// XZ-inside but out-of-sphere ally untouched.
+		expect(skyAlly.rallyUntil).toBe(0);
+		expect(skyAlly.rallySpeedMultiplier).toBe(1);
 	});
 
 	it('a player outside the radius is not buffed', async () => {
