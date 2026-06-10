@@ -202,6 +202,8 @@ import { QUEST_BOOTH_ID, isQuestBoothAction } from './questBooth.js';
 import { renderLevelMap } from './levelMap.js';
 import eventsCatalog from '../shared/events.json' with { type: 'json' };
 import { sampleFloorSurface } from '../shared/floorSampling.esm.js';
+import { createSocketHandlerCtx } from './socketHandlers/socketHandlerCtx.js';
+import { bindConnectionHandlers } from './socketHandlers/connectionHandlers.js';
 
 const { serverToClient: SERVER_TO_CLIENT, clientToServer: CLIENT_TO_SERVER } = eventsCatalog;
 
@@ -1223,74 +1225,46 @@ const cardRenderCtx = {
 	get myId() { return myId; },
 };
 
+// Shared ctx for socket handler modules — state fields use getters so handlers
+// always see current values (same pattern as cardRenderCtx above).
+const socketHandlerCtx = createSocketHandlerCtx({
+	state: {
+		get myId() { return myId; },
+		set myId(v) { myId = v; },
+		get gameState() { return gameState; },
+		set gameState(v) { gameState = v; },
+		get connectionState() { return connectionState; },
+		set connectionState(v) { connectionState = v; },
+		get latency() { return latency; },
+		set latency(v) { latency = v; },
+	},
+	clearConnectWatchdog,
+	startConnectWatchdog,
+	startHeartbeat,
+	stopHeartbeat,
+	updateStatus,
+	showLobbyBrowserError,
+	disposeAllLootMeshes: rendererDisposeAllLootMeshes,
+	TOKEN_KEY,
+	setAuthToken,
+	uiEl,
+	cardHandEl,
+	hideCardHand,
+	hideVariantCodex,
+	setDeckStackVisible,
+	lobbyEl,
+	setLobbyHudVisible,
+	lobbyBrowserEl,
+	runSummaryOverlay,
+	showAuthOverlay,
+	showLoginForm,
+});
+
 /** Bind all Socket.IO event listeners to the given socket instance. */
 function bindSocketHandlers(s) {
 	if (!s) return;
 
-	s.on('connect', () => {
-		clearConnectWatchdog();
-		showLobbyBrowserError('');
-		updateStatus('Connected', 'connected');
-		startHeartbeat();
-	});
-
-	s.on('disconnect', () => {
-		stopHeartbeat();
-		updateStatus('Disconnected', 'disconnected');
-		rendererDisposeAllLootMeshes();
-		// A drop after a good connection re-arms the watchdog: reconnection is
-		// configured as infinite, so without this an unrecoverable drop would sit
-		// in transient status forever. Cleared again on `connect`/`reconnect`.
-		startConnectWatchdog();
-	});
-
-	s.io.on('reconnect_attempt', () => {
-		updateStatus('Reconnecting...', 'reconnecting');
-		// Idempotent: the first signal in an episode arms an absolute deadline;
-		// rapid repeated reconnect attempts do NOT postpone it, so a stalled
-		// reconnect loop still escalates to the persistent failure surface.
-		startConnectWatchdog();
-	});
-
-	s.io.on('reconnect', () => {
-		clearConnectWatchdog();
-		showLobbyBrowserError('');
-		updateStatus('Connected', 'connected');
-		startHeartbeat();
-	});
-
-	s.on('connect_error', (err) => {
-		const msg = err?.message || String(err || '');
-		const isAuthError = /jwt|token|unauthorized|authentication/i.test(msg);
-		stopHeartbeat();
-		if (isAuthError) {
-			// Auth recovery wins outright: cancel the connect watchdog so it can
-			// never overwrite the "session expired" surface with a generic
-			// connect-timeout error.
-			clearConnectWatchdog();
-			try { localStorage.removeItem(TOKEN_KEY); } catch (_) {}
-			setAuthToken(null);
-			s.io.disconnect();
-			if (uiEl) uiEl.style.display = 'none';
-			if (cardHandEl) hideCardHand();
-			hideVariantCodex();
-			setDeckStackVisible(false);
-			if (lobbyEl) lobbyEl.classList.add('hidden');
-			setLobbyHudVisible(false);
-			if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
-			if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
-			showAuthOverlay();
-			showLoginForm();
-			updateStatus('Session expired — please log in again', 'disconnected');
-		} else {
-			updateStatus('Connection failed — retrying...', 'reconnecting');
-			// Ensure the watchdog is running so a persistent non-auth connect
-			// failure escalates instead of retrying transiently forever. The
-			// call is idempotent: rapid repeated connect_error events do NOT
-			// reset the absolute deadline armed by the first failure.
-			startConnectWatchdog();
-		}
-	});
+	bindConnectionHandlers(s, socketHandlerCtx);
 
 	s.on(SERVER_TO_CLIENT.INIT, (data) => {
 		myId = data.id;
