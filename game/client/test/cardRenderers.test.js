@@ -308,8 +308,8 @@ describe('renderCardUsed() — common post-effects', () => {
 		}, ctx);
 		const flashes = ctx._calls.filter((c) => c[0] === 'flashMesh');
 		expect(flashes).toHaveLength(2);
-		expect(flashes[0]).toEqual(['flashMesh', meshes.e1, 0xffffff, 200]);
-		expect(flashes[1]).toEqual(['flashMesh', meshes.e2, 0xffffff, 200]);
+		expect(flashes[0]).toEqual(['flashMesh', meshes.e1, 0xffffff, 200, 'e1']);
+		expect(flashes[1]).toEqual(['flashMesh', meshes.e2, 0xffffff, 200, 'e2']);
 	});
 
 	it('uses a longer cyan flash for frozenShatter hits', () => {

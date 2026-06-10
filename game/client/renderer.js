@@ -150,6 +150,7 @@ import {
 	applyNamedRareTint,
 	applyNamedRareScale,
 	applyEnemyNameplate,
+	resolveEnemyEmissive,
 } from './renderer/enemySync.js';
 
 // Re-export the relocated helpers + scene accessor so existing importers that
@@ -181,6 +182,7 @@ export {
 	applyNamedRareTint,
 	applyNamedRareScale,
 	applyEnemyNameplate,
+	resolveEnemyEmissive,
 };
 import {
 	syncMinionMeshes,
@@ -250,6 +252,8 @@ const PHASE_STEP_RANGE = 6; // metres — must match server KEY_ITEM_DEFS.phase_
 let phaseStepTargetId = null;
 let phaseStepAllyRing = null;
 export const windupFlashing = new Set(); // enemy ids currently showing windup emissive (read by enemySync.js)
+/** @type {Map<string, { until: number, color: number }>} enemy damage-flash slots for emissive resolver */
+export const enemyDamageFlash = new Map();
 // Minion summon-in scale state (seenMinionIds / minionSpawnTimes /
 // minionBaseScales) now lives in ./renderer/minionSync.js.
 // Telepipe portal state (telepipeMesh / telepipeParticles / telepipeShimmerPhase)
@@ -1831,6 +1835,14 @@ export function getWindupFlashing() {
 }
 
 /**
+ * Enemy ids with an active damage-flash emissive slot (read by tests / harness).
+ * @returns {Map<string, { until: number, color: number }>}
+ */
+export function getEnemyDamageFlash() {
+	return enemyDamageFlash;
+}
+
+/**
  * Player ids currently showing card-windup emissive (weapon charge telegraph).
  * @returns {Set<string>}
  */
@@ -2862,23 +2874,53 @@ export function disposeEnemyNameplate(enemyId) {
 // ── Flash mesh helper ──
 
 /**
+ * Resolve an enemy id from a host mesh reference (for damage-flash routing).
+ * @param {THREE.Object3D} mesh
+ * @returns {string | null}
+ */
+function findEnemyIdForMesh(mesh) {
+	if (!mesh) return null;
+	for (const [id, host] of Object.entries(enemiesMeshes)) {
+		if (host === mesh || resolveBodyMesh(host) === mesh) return id;
+	}
+	return null;
+}
+
+/**
  * Flash a mesh by setting its material emissive to a bright color,
  * then restoring the original emissive/intensity after `durationMs`.
+ * Enemy meshes route through the per-enemy emissive resolver instead of
+ * capturing/restoring emissive directly (avoids racing windup/reveal).
  * @param {THREE.Mesh} mesh
  * @param {number} color - hex color (e.g. 0xffffff)
  * @param {number} durationMs - how long the flash lasts
+ * @param {string} [enemyId] - when flashing an enemy, registers damage-flash priority
  */
-export function flashMesh(mesh, color, durationMs) {
+export function flashMesh(mesh, color, durationMs, enemyId) {
 	// Accept either an avatar group (flash its body mesh) or a bare mesh.
 	const target = resolveBodyMesh(mesh);
 	if (!target || !target.material) return;
 
-	// Save original emissive state
+	const resolvedEnemyId = enemyId ?? findEnemyIdForMesh(mesh);
+	if (resolvedEnemyId != null) {
+		const until = performance.now() + durationMs;
+		enemyDamageFlash.set(resolvedEnemyId, { until, color });
+		resolveEnemyEmissive(resolvedEnemyId, null);
+		setTimeout(() => {
+			const slot = enemyDamageFlash.get(resolvedEnemyId);
+			if (slot && performance.now() >= slot.until) {
+				enemyDamageFlash.delete(resolvedEnemyId);
+			}
+			resolveEnemyEmissive(resolvedEnemyId, null);
+		}, durationMs);
+		return;
+	}
+
+	// Non-enemy meshes: legacy direct flash + restore
 	const mat = target.material;
 	const origEmissive = mat.emissive ? (mat.emissive.getHex ? mat.emissive.getHex() : 0x000000) : 0x000000;
 	const origIntensity = mat.emissiveIntensity || 0;
 
-	// Apply flash
 	if (mat.emissive && mat.emissive.set) {
 		mat.emissive.set(color);
 	} else {
@@ -2886,7 +2928,6 @@ export function flashMesh(mesh, color, durationMs) {
 	}
 	mat.emissiveIntensity = 1.5;
 
-	// Restore after duration
 	setTimeout(() => {
 		if (mat.emissive && mat.emissive.set) {
 			mat.emissive.set(origEmissive);

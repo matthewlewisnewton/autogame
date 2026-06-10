@@ -1779,6 +1779,7 @@ describe('applyWindupFlash()', () => {
 		expect(flashing.has('enemy1')).toBe(false);
 
 		window.applyWindupFlash('enemy1', true);
+		window.resolveEnemyEmissive('enemy1', { attackState: 'windup' });
 
 		expect(mockMesh.material.emissive._value).toBe(0xff3333);
 		expect(mockMesh.material.emissiveIntensity).toBe(1.5);
@@ -1793,17 +1794,18 @@ describe('applyWindupFlash()', () => {
 		const mockMesh = createMockMesh();
 		const meshes = window.__enemiesMeshes();
 		meshes['enemy2'] = mockMesh;
+		const flashing = window.__windupFlashing();
 
-		// First call — sets emissive
 		window.applyWindupFlash('enemy2', true);
+		window.resolveEnemyEmissive('enemy2', { attackState: 'windup' });
 		expect(mockMesh.material.emissive._value).toBe(0xff3333);
 
-		// Simulate something else corrupting the emissive (shouldn't happen, but verifies idempotency)
 		mockMesh.material.emissive.set(0x999999);
 
-		// Second call — should be a no-op since enemy is already in windupFlashing
+		// Second call only updates windupFlashing bookkeeping (idempotent)
 		window.applyWindupFlash('enemy2', true);
-		expect(mockMesh.material.emissive._value).toBe(0x999999); // unchanged
+		expect(flashing.has('enemy2')).toBe(true);
+		expect(mockMesh.material.emissive._value).toBe(0x999999);
 
 		delete meshes['enemy2'];
 	});
@@ -1815,13 +1817,13 @@ describe('applyWindupFlash()', () => {
 		const meshes = window.__enemiesMeshes();
 		meshes['enemy3'] = mockMesh;
 
-		// Enter windup
 		window.applyWindupFlash('enemy3', true);
+		window.resolveEnemyEmissive('enemy3', { attackState: 'windup' });
 		expect(mockMesh.material.emissive._value).toBe(0xff3333);
 		expect(mockMesh.material.emissiveIntensity).toBe(1.5);
 
-		// Leave windup
 		window.applyWindupFlash('enemy3', false);
+		window.resolveEnemyEmissive('enemy3', {});
 		expect(mockMesh.material.emissive._value).toBe(0x000000);
 		expect(mockMesh.material.emissiveIntensity).toBe(0);
 		expect(window.__windupFlashing().has('enemy3')).toBe(false);
@@ -1836,22 +1838,25 @@ describe('applyWindupFlash()', () => {
 		const meshes = window.__enemiesMeshes();
 		meshes['enemy4'] = mockMesh;
 
-		// Cycle 1
 		window.applyWindupFlash('enemy4', true);
+		window.resolveEnemyEmissive('enemy4', { attackState: 'windup' });
 		expect(mockMesh.material.emissive._value).toBe(0xff3333);
 		window.applyWindupFlash('enemy4', false);
+		window.resolveEnemyEmissive('enemy4', {});
 		expect(mockMesh.material.emissive._value).toBe(0x000000);
 
-		// Cycle 2
 		window.applyWindupFlash('enemy4', true);
+		window.resolveEnemyEmissive('enemy4', { attackState: 'windup' });
 		expect(mockMesh.material.emissive._value).toBe(0xff3333);
 		window.applyWindupFlash('enemy4', false);
+		window.resolveEnemyEmissive('enemy4', {});
 		expect(mockMesh.material.emissive._value).toBe(0x000000);
 
-		// Cycle 3
 		window.applyWindupFlash('enemy4', true);
+		window.resolveEnemyEmissive('enemy4', { attackState: 'windup' });
 		expect(mockMesh.material.emissive._value).toBe(0xff3333);
 		window.applyWindupFlash('enemy4', false);
+		window.resolveEnemyEmissive('enemy4', {});
 		expect(mockMesh.material.emissive._value).toBe(0x000000);
 
 		delete meshes['enemy4'];
@@ -1894,31 +1899,23 @@ describe('applyWindupFlash()', () => {
 		delete meshes['enemy6'];
 	});
 
-	it('calls emissive.set() exactly once even when invoked multiple times (windupFlashing guard)', async () => {
+	it('adds enemy to windupFlashing only once when invoked multiple times', async () => {
 		await import('../main.js');
 
-		let setCallCount = 0;
-		const mockMesh = {
-			material: {
-				emissive: {
-					_value: 0x000000,
-					set: function(c) { setCallCount++; this._value = c; },
-					get: function() { return this._value; },
-				},
-				emissiveIntensity: 0,
-			},
-		};
+		const mockMesh = createMockMesh();
 		const meshes = window.__enemiesMeshes();
 		meshes['enemy7'] = mockMesh;
+		const flashing = window.__windupFlashing();
 
-		// Simulate the animate loop calling applyWindupFlash every frame
 		window.applyWindupFlash('enemy7', true);
 		window.applyWindupFlash('enemy7', true);
 		window.applyWindupFlash('enemy7', true);
 
-		expect(setCallCount).toBe(1);
+		expect(flashing.has('enemy7')).toBe(true);
+		expect([...flashing].filter((id) => id === 'enemy7')).toHaveLength(1);
 
 		delete meshes['enemy7'];
+		flashing.delete('enemy7');
 	});
 
 	it('flashMesh (hit flash) still works independently on an enemy already in windup', async () => {
@@ -1928,18 +1925,17 @@ describe('applyWindupFlash()', () => {
 		const meshes = window.__enemiesMeshes();
 		meshes['enemy8'] = mockMesh;
 
-		// Enter windup — sets emissive to 0xff3333
 		window.applyWindupFlash('enemy8', true);
+		window.resolveEnemyEmissive('enemy8', { attackState: 'windup' });
 		expect(mockMesh.material.emissive._value).toBe(0xff3333);
 
-		// Simulate a hit flash (flashMesh) on the same mesh
-		window.flashMesh(mockMesh, 0xffffff, 100);
+		window.flashMesh(mockMesh, 0xffffff, 100, 'enemy8');
 		expect(mockMesh.material.emissive._value).toBe(0xffffff);
 		expect(mockMesh.material.emissiveIntensity).toBe(1.5);
 
-		// After flashMesh timeout, emissive restores to original (0x000000), not windup color
 		await new Promise(r => setTimeout(r, 150));
-		expect(mockMesh.material.emissive._value).toBe(0x000000);
+		window.resolveEnemyEmissive('enemy8', { attackState: 'windup' });
+		expect(mockMesh.material.emissive._value).toBe(0xff3333);
 
 		// windupFlashing entry should still exist — flashMesh doesn't touch it
 		expect(window.__windupFlashing().has('enemy8')).toBe(true);
@@ -4226,6 +4222,7 @@ describe('applyRevealHighlight()', () => {
 
 		const future = Date.now() + 5000;
 		window.applyRevealHighlight('e1', { revealedUntil: future });
+		window.resolveEnemyEmissive('e1', { revealedUntil: future });
 
 		expect(mockMesh.material.emissive._value).toBe(0xffaa00);
 		expect(mockMesh.material.emissiveIntensity).toBe(1.0);
@@ -4241,6 +4238,7 @@ describe('applyRevealHighlight()', () => {
 		meshes['e2'] = mockMesh;
 
 		window.applyRevealHighlight('e2', {});
+		window.resolveEnemyEmissive('e2', {});
 
 		expect(mockMesh.material.emissive._value).toBe(0x000000);
 		expect(mockMesh.material.emissiveIntensity).toBe(0);
@@ -4256,6 +4254,7 @@ describe('applyRevealHighlight()', () => {
 		meshes['e3'] = mockMesh;
 
 		window.applyRevealHighlight('e3', { revealedUntil: 0 });
+		window.resolveEnemyEmissive('e3', { revealedUntil: 0 });
 
 		expect(mockMesh.material.emissive._value).toBe(0x000000);
 		expect(mockMesh.material.emissiveIntensity).toBe(0);
@@ -4272,6 +4271,7 @@ describe('applyRevealHighlight()', () => {
 
 		const past = Date.now() - 5000;
 		window.applyRevealHighlight('e4', { revealedUntil: past });
+		window.resolveEnemyEmissive('e4', { revealedUntil: past });
 
 		expect(mockMesh.material.emissive._value).toBe(0x000000);
 		expect(mockMesh.material.emissiveIntensity).toBe(0);
@@ -4289,10 +4289,11 @@ describe('applyRevealHighlight()', () => {
 		// First apply reveal
 		const future = Date.now() + 5000;
 		window.applyRevealHighlight('e5', { revealedUntil: future });
+		window.resolveEnemyEmissive('e5', { revealedUntil: future });
 		expect(mockMesh.material.emissive._value).toBe(0xffaa00);
 
-		// Then expire reveal
 		window.applyRevealHighlight('e5', {});
+		window.resolveEnemyEmissive('e5', {});
 		expect(mockMesh.material.emissive._value).toBe(0x00ccaa);
 		expect(mockMesh.material.emissiveIntensity).toBe(0.4);
 
