@@ -2436,7 +2436,7 @@ function applyDebugScenario(socket, name) {
 
     if (name === 'ember-descent-tier-2') {
       // ember_descent Tier 2 with the rigid fire-cavern layout and the dormant
-      // cinder_warden stage-boss encounter. Quest/tier and layout must be set
+      // magma_colossus stage-boss encounter. Quest/tier and layout must be set
       // before enterPlayingPhase so startDungeonRun snapshots the correct
       // run.questTier/objective and spawnEnemy variant rolls. Reachable normally
       // by clearing Ember Descent Tier 1, unlocking Tier 2, and deploying; this

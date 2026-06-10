@@ -346,6 +346,19 @@ describe('quest tier catalog', () => {
       objectiveType: 'defeat_enemies',
     });
     expect(emberTier1.objectiveSummary).toContain('6');
+    const emberTier2 = variants.find(
+      (v) => v.questId === 'ember_descent' && v.tier === 2
+    );
+    expect(emberTier2).toMatchObject({
+      questId: 'ember_descent',
+      tier: 2,
+      isTier2: true,
+      objectiveType: 'stage_boss',
+      unlockRequires: { questId: 'ember_descent', tier: 1 },
+    });
+    expect(emberTier2.objectiveSummary.toLowerCase()).toContain('magma colossus');
+    expect(getQuest('ember_descent', 2).layoutProfile).toBe('fire-cavern');
+    expect(getQuest('ember_descent', 2).layoutMode).toBe('rigid');
     expect(variants.filter((v) => v.isTier2)).toHaveLength(6);
   });
 
@@ -433,6 +446,10 @@ describe('quest tier catalog', () => {
     expect(getLayoutGenerationOptions('ember_descent', 1)).toEqual({
       slopes: true,
       layoutMode: 'default',
+    });
+    expect(getLayoutGenerationOptions('ember_descent', 2)).toEqual({
+      slopes: true,
+      layoutMode: 'rigid',
     });
     expect(isValidQuestSelection('ember_descent', 1)).toBe(true);
     expect(isValidQuestSelection('ember_descent', 2)).toBe(true);

@@ -115,6 +115,15 @@ describe('getEnemyPool', () => {
     expect(tier2Pool.some((entry) => entry.type === 'field_medic')).toBe(true);
   });
 
+  it('merges ember_descent tier2EnemyPool with field_medic for tier 2', () => {
+    const tier2Pool = getEnemyPool('ember_descent', 2);
+    expect(tier2Pool).toEqual([
+      ...QUEST_DEFS.ember_descent.enemyPool,
+      ...QUEST_DEFS.ember_descent.tier2EnemyPool,
+    ]);
+    expect(tier2Pool.some((entry) => entry.type === 'field_medic')).toBe(true);
+  });
+
   it('keeps field_medic out of base enemyPool and tier-2-ineligible quests', () => {
     for (const quest of Object.values(QUEST_DEFS)) {
       expect(quest.enemyPool.some((entry) => entry.type === 'field_medic')).toBe(false);
@@ -132,7 +141,7 @@ describe('getEnemyPool', () => {
       getEnemyPool(questId, 2).some((entry) => entry.type === 'field_medic'),
     );
     expect(questsWithMedic).toEqual(
-      expect.arrayContaining(['training_caverns', 'crystal_rescue', 'canyon_descent']),
+      expect.arrayContaining(['training_caverns', 'crystal_rescue', 'canyon_descent', 'ember_descent']),
     );
     expect(questsWithMedic.length).toBeGreaterThanOrEqual(2);
   });

@@ -756,6 +756,7 @@ const QUEST_DEFS = {
       { type: 'skirmisher', weight: 2 },
       { type: 'ember_wraith', weight: 2 },
     ],
+    tier2EnemyPool: [{ type: 'field_medic', weight: 1 }],
     tiers: {
       1: {
         name: 'Ember Descent',
@@ -787,7 +788,7 @@ const QUEST_DEFS = {
         tier: 2,
         name: 'Ember Descent — Tier II',
         description:
-          'Descend the fixed ember cavern where a cinder warden stokes the molten basin with marked supports.',
+          'Descend the fixed ember cavern where a magma colossus erupts over the molten basin with marked supports.',
         objectiveType: 'stage_boss',
         rewardCurrency: 14,
         layoutProfile: 'fire-cavern',
@@ -796,26 +797,26 @@ const QUEST_DEFS = {
         signatureCardId: 'fireball',
         rewardCards: ['fireball', 'dragons_breath'],
         encounter: {
-          bossType: 'cinder_warden',
+          bossType: 'magma_colossus',
           addCount: 4,
         },
         client: {
           name: 'Ashvelle',
           briefing:
-            'Ember warden contract — Tier II. A cinder warden has claimed the molten basin with four marked hostiles; quench the nest for fourteen stones from my survey fund.',
+            'Magma colossus contract — Tier II. A magma colossus has claimed the molten basin with four marked hostiles; quench the nest for fourteen stones from my survey fund.',
         },
         dialogue: [
           {
             trigger: 'run_start',
-            text: 'Ashvelle on the rim feed. Cinder warden signature down in the basin — burn through the supports before you face it.',
+            text: 'Ashvelle on the rim feed. Magma colossus signature down in the basin — burn through the supports before you face it.',
           },
           {
             trigger: { waveCleared: 2 },
-            text: 'Basin is thinning out. The cinder warden is still stoking the molten core.',
+            text: 'Basin is thinning out. The magma colossus is still erupting over the molten core.',
           },
           {
             trigger: 'objective_complete',
-            text: 'Cinder warden quenched and the basin is cooling. Fourteen stones heading your way.',
+            text: 'Magma colossus quenched and the basin is cooling. Fourteen stones heading your way.',
           },
         ],
       },
@@ -1112,12 +1113,12 @@ function formatObjectiveSummary(quest) {
     }
     if (questId === 'ember_descent') {
       if (addCount > 0) {
-        return THEME.objectives.defeatCinderWardenWithSupports.replace(
+        return THEME.objectives.defeatMagmaColossusWithSupports.replace(
           '{addCount}',
           String(addCount),
         );
       }
-      return THEME.objectives.defeatCinderWarden;
+      return THEME.objectives.defeatMagmaColossus;
     }
     if (questId === 'frost_crossing') {
       if (addCount > 0) {
