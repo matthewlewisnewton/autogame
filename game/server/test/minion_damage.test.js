@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
 	resetGameState,
 	gameState,
@@ -6,6 +6,7 @@ import {
 	updateMinions,
 	damageMinion,
 	ENEMY_DEFS,
+	ENEMY_ATTACK_RECOVERY_MS,
 } from '../index.js';
 
 function resetState() {
@@ -195,5 +196,64 @@ describe('enemy attacks on summons', () => {
 		updateMinions();
 
 		expect(gameState.minions).toHaveLength(0);
+	});
+
+	it('taunt minion takes at most one strike per attack cycle (windup + recovery)', () => {
+		vi.useFakeTimers();
+		try {
+			addPlayer('p1', { x: 10, z: 0 });
+			const enemy = {
+				id: 'e1',
+				type: 'grunt',
+				x: 0,
+				z: 0,
+				hp: 50,
+				state: 'idle',
+				attackState: 'idle',
+				wanderTarget: { x: 0, z: 0 },
+			};
+			gameState.enemies = [enemy];
+			const minion = {
+				id: 'sentinel',
+				ownerId: 'p1',
+				type: 'aegis_sentinel',
+				x: 2,
+				z: 0,
+				hp: 160,
+				maxHp: 160,
+				attackDamage: 0,
+				taunt: true,
+				ttl: 60,
+				maxTtl: 60,
+			};
+			gameState.minions = [minion];
+
+			const cycleMs = ENEMY_DEFS.grunt.attackWindupMs + ENEMY_ATTACK_RECOVERY_MS;
+			const numCycles = 10;
+			let strikes = 0;
+			let hpBefore = minion.hp;
+
+			// Each cycle requires 2 ticks: tick 1 starts windup, tick 2 (after
+			// windup elapsed) fires the strike.  Advance by cycleMs each tick so
+			// recovery always expires before the next cycle begins.
+			for (let c = 0; c < numCycles; c++) {
+				vi.setSystemTime(Date.now() + cycleMs);
+				updateEnemies(); // tick 1: enter windup (or windup from prev recovery)
+
+				vi.setSystemTime(Date.now() + ENEMY_DEFS.grunt.attackWindupMs);
+				updateEnemies(); // tick 2: windup expires -> strike -> recovery
+
+				if (minion.hp < hpBefore) {
+					strikes++;
+					hpBefore = minion.hp;
+				}
+			}
+
+			// Exactly one strike per cycle
+			expect(strikes).toBe(numCycles);
+			expect(minion.hp).toBe(160 - numCycles * ENEMY_DEFS.grunt.attackDamage);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });
