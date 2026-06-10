@@ -2,16 +2,31 @@
   "dormant": {
     "encounterPhase": "dormant",
     "encounterLocked": false,
-    "bossEnemyId": "f08b7105-b8da-4c0b-8150-5b74fad8e768",
-    "bossHp": 500,
+    "bossEnemyId": "16db9282-9b25-4230-a5e1-caf31f1321e3",
+    "bossHp": 420,
     "liveAddCount": 0
   },
   "active": {
     "encounterPhase": "active",
     "encounterLocked": true,
-    "bossEnemyId": "f08b7105-b8da-4c0b-8150-5b74fad8e768",
-    "bossHp": 500,
-    "liveAddCount": 0
+    "bossEnemyId": "16db9282-9b25-4230-a5e1-caf31f1321e3",
+    "bossHp": 420,
+    "liveAddCount": 1
+  },
+  "bossEncounterUi": {
+    "hudVisible": true,
+    "bossName": "Trial Warden",
+    "hpFillWidthPct": 100,
+    "encounterLocked": true,
+    "encounterPhase": "active"
+  },
+  "bossVisualIdentity": {
+    "bossType": "arena_champion",
+    "bossEnemyId": "16db9282-9b25-4230-a5e1-caf31f1321e3",
+    "nearestAddType": "grunt",
+    "bossDistinctFromAdds": true,
+    "bossRenderScale": 3,
+    "addRenderScale": 1.025014694678903
   },
   "floorAlignment": {
     "levelEntry": {
@@ -22,15 +37,15 @@
       "band": null
     },
     "midCombat": {
-      "playerY": 1.3,
-      "floorY": 1.3,
+      "playerY": 1.6,
+      "floorY": 1.6,
       "delta": 0,
       "layoutProfile": "open-plaza",
       "band": null
     },
     "bossDormant": {
-      "playerY": 1.3,
-      "floorY": 1.3,
+      "playerY": 1.6,
+      "floorY": 1.6,
       "delta": 0,
       "layoutProfile": "open-plaza",
       "band": null
@@ -54,5 +69,141 @@
     "runObjectiveComplete": true,
     "bossDefeated": true,
     "lastRunSummaryStatus": "victory"
+  },
+  "cardExercises": {
+    "slowBurn": {
+      "targetEnemyId": "165ec049-04b4-45b5-a414-54f0a0a87217",
+      "afterSlow": {
+        "targetEnemyId": "165ec049-04b4-45b5-a414-54f0a0a87217",
+        "found": true,
+        "slowedUntil": 1781128769786,
+        "burningUntil": 0,
+        "slowActive": true,
+        "burnActive": false
+      },
+      "afterBurn": {
+        "targetEnemyId": "165ec049-04b4-45b5-a414-54f0a0a87217",
+        "found": true,
+        "slowedUntil": 0,
+        "burningUntil": 1781128772182,
+        "slowActive": false,
+        "burnActive": true
+      },
+      "screenshot": "game/validation/open-plaza/08-slow-burn-mutual-exclusive.png",
+      "slowBurnMutuallyExclusive": true
+    },
+    "purifyingPulse": {
+      "preCast": {
+        "found": true,
+        "hp": 40,
+        "slowedUntil": 0,
+        "burningUntil": 1781128775971,
+        "slowActive": false,
+        "burnActive": true
+      },
+      "postCast": {
+        "found": true,
+        "hp": 60,
+        "slowedUntil": 0,
+        "burningUntil": 0,
+        "slowActive": false,
+        "burnActive": false
+      },
+      "healCleanseApplied": true,
+      "screenshot": "game/validation/open-plaza/09-purifying-pulse.png"
+    },
+    "windup": {
+      "cardId": "magma_greatsword",
+      "scenario": "magma-windup-ready",
+      "duringWindup": {
+        "cardUseState": "windup",
+        "cardWindupUntil": 1781128774141,
+        "cardWindupCardId": "magma_greatsword",
+        "inputLocked": true,
+        "activatingSlot": true,
+        "windupIndicatorWidth": 0,
+        "telegraphVisible": true
+      },
+      "domProbe": {
+        "inputLocked": true,
+        "activatingSlot": true,
+        "windupIndicatorWidth": 0,
+        "telegraphVisible": true
+      },
+      "windupTelegraphActive": true,
+      "screenshot": "game/validation/open-plaza/10-windup-charge.png"
+    }
+  },
+  "canyonTelepipe": {
+    "preSuspend": {
+      "hp": 100,
+      "magicStones": 20,
+      "msText": "20/99",
+      "hand": [
+        {
+          "id": "telepipe",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        {
+          "id": "ice_ball",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 2
+        },
+        null,
+        null,
+        null,
+        null
+      ],
+      "phase": "playing",
+      "runStatus": "playing",
+      "extracted": false,
+      "suspendedRunSummary": null,
+      "layoutSeed": 365288573,
+      "runId": "192f7538-3c11-4315-8ec1-8a0d57dbea94"
+    },
+    "postDeploy": {
+      "hp": 100,
+      "magicStones": 20,
+      "msText": "20/99",
+      "hand": [
+        {
+          "id": "iron_sword",
+          "type": "weapon",
+          "remainingCharges": 5,
+          "charges": 5
+        },
+        {
+          "id": "flame_blade",
+          "type": "weapon",
+          "remainingCharges": 2,
+          "charges": 2
+        },
+        null,
+        {
+          "id": "dungeon_drake",
+          "type": "creature",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        {
+          "id": "dungeon_drake",
+          "type": "creature",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        null
+      ],
+      "phase": "playing",
+      "runStatus": "playing",
+      "extracted": false,
+      "suspendedRunSummary": null,
+      "layoutSeed": 365288573,
+      "runId": "05f238fa-3cff-4631-9482-246982b0c80b"
+    },
+    "telepipeVitalsPreserved": true,
+    "cardChargesResetOnNewSortie": true
   }
 }

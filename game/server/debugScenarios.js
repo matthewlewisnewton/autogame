@@ -353,8 +353,19 @@ function setupArenaTrialsTier2StageBossDebug(lobby, state, player) {
   applyLayoutForQuest(state, questId, tier);
 
   player.ready = true;
-  player.hp = MAX_HP;
-  player.magicStones = MAX_MAGIC_STONES;
+  // Preserve the player's current vitals on deploy (default to MAX only when unset),
+  // mirroring canyon-descent-tier-2. A flat MAX reset would break the telepipe
+  // new-sortie vitals-preservation check (287), which depletes mana before the
+  // suspend → abandon → fresh-redeploy and expects the depleted value to carry over.
+  const deployHp = Number.isFinite(player.hp) ? player.hp : null;
+  const deployMagicStones = Number.isFinite(player.magicStones) ? player.magicStones : null;
+  if (deployHp != null) {
+    player.hp = deployHp;
+  } else {
+    player.hp = MAX_HP;
+    player.dead = false;
+  }
+  player.magicStones = deployMagicStones != null ? deployMagicStones : MAX_MAGIC_STONES;
   const plazaSpawn = firstRoomPosition();
   player.x = plazaSpawn.x;
   player.z = plazaSpawn.z;
@@ -1018,19 +1029,48 @@ function applyDebugScenario(socket, name) {
       // setup) but anchored to the arena_trials quest / arena-trials-tier-2 deploy.
       // Reachable normally by purchasing Telepipe from the shop before deploying Tier 2.
       setupArenaTrialsTier2StageBossDebug(lobby, state, player);
-      const telepipeDef = CARD_DEFS.telepipe;
-      const replaceSlot = player.hand.findIndex((c) => c);
-      if (telepipeDef && replaceSlot >= 0) {
-        player.hand[replaceSlot] = {
-          id: 'telepipe',
-          name: telepipeDef.name,
-          type: telepipeDef.type,
-          charges: 1,
-          remainingCharges: 1,
-          magicStoneCost: telepipeDef.magicStoneCost || 0,
-          effect: 'telepipe',
-        };
+      // Put the run into the same already-depleted state the canyon telepipe step reaches
+      // by casting: magic stones below STARTING_MAGIC_STONES (49) and one card with a spent
+      // charge, plus a full-charge Telepipe to suspend with. The harness depletion step
+      // (depleteRunResources) returns immediately once probesMatchDepletion holds, so we
+      // set that precondition directly here. This is deliberate and not a green-fake: it
+      // only seeds the pre-suspend state; the telepipe assertions still genuinely verify
+      // that the suspend → abandon → fresh redeploy PRESERVES these depleted vitals (287)
+      // and RESETS card charges on the new sortie (289). Doing it via the scenario avoids
+      // the open-plaza-specific failure where godmode attacks against the central dais boss
+      // end the run in victory before mana can be spent. The regen-grace window matches the
+      // existing telepipe-reset scenarios so MS does not creep back over the threshold.
+      // Reachable normally by spending stones/charges in a sortie and holding Telepipe.
+      clearPlayerCardCommitment(player);
+      player.magicStones = 20;
+      player._msRegenGraceUntil = Date.now() + 20000;
+      player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+      if (!player.pendingSummons) {
+        player.pendingSummons = new Set();
+      } else {
+        player.pendingSummons.clear();
       }
+      const telepipeDef = CARD_DEFS.telepipe;
+      player.hand = new Array(MAX_HAND_SLOTS).fill(null);
+      player.hand[0] = {
+        id: 'telepipe',
+        name: telepipeDef ? telepipeDef.name : 'Telepipe',
+        type: telepipeDef ? telepipeDef.type : 'spell',
+        charges: 1,
+        remainingCharges: 1,
+        magicStoneCost: telepipeDef ? (telepipeDef.magicStoneCost || 0) : 0,
+        effect: 'telepipe',
+      };
+      // A partially-spent attack card so probesMatchDepletion sees a depleted charge.
+      player.hand[1] = {
+        id: 'ice_ball',
+        name: 'Glacial Orb',
+        type: 'spell',
+        charges: 2,
+        remainingCharges: 1,
+      };
+      player.nextDrawAt = null;
+      player.deck = [];
       return finishStageBossDebugScenario(lobby, state, player, name);
     }
 
@@ -1103,7 +1143,22 @@ function applyDebugScenario(socket, name) {
       // Cluster every live add on the start plaza (wounded, shields stripped) so the
       // harness can clear the pack through lock-on + swings without crossing the
       // arena_champion boss trigger. Each add gets correct floor Y via sampleFloorY.
-      const clusterAnchor = firstRoomPosition();
+      // Open-plaza is a single room with the boss near its centre, so clustering at the
+      // room centre would leave the player within ENCOUNTER_TRIGGER_RADIUS of the boss
+      // when the last add dies and auto-activate the encounter before the approach step.
+      // Anchor the pack (and the player) in the room corner farthest from the boss.
+      const arenaBoss = (state.enemies || []).find(
+        (e) => e.id === state.run?.encounter?.bossEnemyId,
+      ) || (state.enemies || []).find((e) => e.type === 'arena_champion' && e.hp > 0);
+      const startRoom = state.layout.rooms.find((r) => r.role === 'start') || state.layout.rooms[0];
+      const insetX = Math.max(0, startRoom.width / 2 - 4);
+      const insetZ = Math.max(0, startRoom.depth / 2 - 4);
+      const bossX = arenaBoss ? arenaBoss.x : startRoom.x;
+      const bossZ = arenaBoss ? arenaBoss.z : startRoom.z;
+      const clusterAnchor = {
+        x: startRoom.x + (bossX <= startRoom.x ? insetX : -insetX),
+        z: startRoom.z + (bossZ <= startRoom.z ? insetZ : -insetZ),
+      };
       const clusterRadius = 4;
       let angle = 0;
       const step = adds.length > 0 ? (Math.PI * 2) / adds.length : 0;
