@@ -197,6 +197,7 @@ import { openDeckBooth, registerDeckBoothListener, createRequestDebugBoothOpener
 import { openShopBooth, registerShopBoothListener, createRequestDebugShopBoothOpener } from './boothShop.js';
 import { isLaunchBoothAction, getBoothDebugHook, LAUNCH_BOOTH_ID, shouldLaunchReadyUp, LAUNCH_READY_EVENT } from './launchBooth.js';
 import { QUEST_BOOTH_ID, isQuestBoothAction } from './questBooth.js';
+import { renderLevelMap } from './levelMap.js';
 import eventsCatalog from '../shared/events.json' with { type: 'json' };
 import { sampleFloorSurface } from '../shared/floorSampling.esm.js';
 
@@ -207,6 +208,7 @@ const statusEl = document.getElementById('status');
 const boothPromptEl = document.getElementById('booth-prompt');
 const lobbyPlayerList = document.getElementById('lobby-player-list');
 const questBoardEl = document.getElementById('quest-board');
+const levelMapEl = document.getElementById('level-map');
 const questBoardWrapperEl = document.getElementById('quest-board-wrapper');
 const questBriefingPanelEl = document.getElementById('quest-briefing-panel');
 const questBriefingEl = document.getElementById('quest-briefing');
@@ -1946,7 +1948,7 @@ function bindSocketHandlers(s) {
 				isReady = me.ready;
 			}
 		}
-		if (data.quests || data.questVariants || data.selectedQuestId || data.unlockedQuestTiers) {
+		if (data.quests || data.questVariants || data.selectedQuestId || data.unlockedQuestTiers || data.levelUnlockGraph) {
 			applyQuestBoardFromPayload(data);
 		}
 		if ('shopOffer' in data && gameState) {
@@ -1957,7 +1959,7 @@ function bindSocketHandlers(s) {
 
 	s.on(SERVER_TO_CLIENT.QUEST_UPDATE, (data) => {
 		if (!data) return;
-		if (data.quests || data.questVariants || data.selectedQuestId || data.unlockedQuestTiers) {
+		if (data.quests || data.questVariants || data.selectedQuestId || data.unlockedQuestTiers || data.levelUnlockGraph) {
 			applyQuestBoardFromPayload(data);
 		}
 		applyQuestLayoutFromServer(data);
@@ -2106,6 +2108,7 @@ let questVariants = [];
 let unlockedQuestTiers = {};
 let selectedQuestId = 'training_caverns';
 let selectedQuestTier = 1;
+let levelUnlockGraph = null;
 let currentCardChoices = [];
 let claimedCardRewardId = null;
 let myCurrency = 0;
@@ -2160,6 +2163,9 @@ function applyQuestBoardFromPayload(data) {
 	if (typeof data.selectedQuestId === 'string') selectedQuestId = data.selectedQuestId;
 	if (data.selectedQuestTier !== undefined && data.selectedQuestTier !== null) {
 		selectedQuestTier = data.selectedQuestTier;
+	}
+	if (data.levelUnlockGraph && Array.isArray(data.levelUnlockGraph.nodes)) {
+		levelUnlockGraph = data.levelUnlockGraph;
 	}
 	renderQuestBoardState();
 }
@@ -2245,6 +2251,7 @@ function renderQuestBoardState() {
 			briefingPanelEl: questBriefingPanelEl,
 		},
 	);
+	renderLevelMapState();
 	const selectedQuest = findQuestBoardEntry(
 		selectedQuestId,
 		selectedQuestTier,
@@ -2257,6 +2264,24 @@ function renderQuestBoardState() {
 		questErrorEl.style.display = 'none';
 		questErrorEl.textContent = '';
 	}
+}
+
+// Render the level-select tree map alongside the quest board. The map mirrors
+// the quest-board selection (same selectedQuestId/Tier) and reuses the quest
+// board's selection logic so clicking an unlocked node selects that level.
+function renderLevelMapState() {
+	renderLevelMap(levelMapEl, levelUnlockGraph, {
+		selectedQuestId,
+		selectedQuestTier,
+		onSelectNode: (questId, tier) => {
+			if (!socket) return;
+			if (suspendedRunSummary) {
+				showQuestError(THEME.run.questSuspendedLocked);
+				return;
+			}
+			socket.emit(CLIENT_TO_SERVER.SELECT_QUEST, { questId, tier: tier ?? 1 });
+		},
+	});
 }
 
 function showQuestError(message) {
@@ -5086,6 +5111,9 @@ window.__setQuestBoardState = (quests, questId, tier) =>
 	applyQuestBoardFromPayload({ quests, selectedQuestId: questId, selectedQuestTier: tier });
 window.__getSelectedQuestId = () => selectedQuestId;
 window.__getSelectedQuestTier = () => selectedQuestTier;
+window.renderLevelMapState = renderLevelMapState;
+window.__applyQuestBoardFromPayload = (data) => applyQuestBoardFromPayload(data);
+window.__getLevelUnlockGraph = () => levelUnlockGraph;
 window.formatObjectiveSummary = formatObjectiveSummary;
 window.formatRewardSummary = formatRewardSummary;
 window.renderQuestBoard = renderQuestBoard;
