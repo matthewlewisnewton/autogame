@@ -1424,6 +1424,46 @@ describe('debugScenario — spire-ascent-tier-2 harness shortcuts', () => {
 		expect(distAfterTicks).toBeGreaterThan(ENCOUNTER_TRIGGER_RADIUS);
 	});
 
+	it('activates Summit Warden and spawns a visual add after boss approach', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'spire-ascent-tier-2' });
+		await tier2Promise;
+
+		const state = testGameState();
+		const bossId = state.run.encounter.bossEnemyId;
+		for (const enemy of state.enemies) {
+			if (enemy.id !== bossId) enemy.hp = 0;
+		}
+		state.enemies = state.enemies.filter((e) => e.hp > 0);
+
+		const approachPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'spire-ascent-boss-approach' });
+		await approachPromise;
+
+		const triggerPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('debugScenario', { name: 'spire-ascent-encounter-trigger' });
+		const triggerResult = await triggerPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(triggerResult.ok).toBe(true);
+		expect(triggerResult.scenario).toBe('spire-ascent-encounter-trigger');
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
+		expect(state.run.encounter.locked).toBe(true);
+
+		const boss = state.enemies.find((e) => e.id === bossId);
+		expect(boss?.type).toBe('spire_warden');
+		const liveAdds = state.enemies.filter(
+			(e) => e.hp > 0 && e.id !== bossId && e.type !== 'spire_warden',
+		);
+		expect(liveAdds.length).toBeGreaterThanOrEqual(1);
+		expect(liveAdds.some((e) => e.type === 'grunt')).toBe(true);
+		expect(stateUpdate.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
+		expect(stateUpdate.run.encounter.locked).toBe(true);
+	});
+
 	it('positions spire_warden at 1 HP beside the player in playing phase', async () => {
 		const { socket } = await connectClient(baseUrl);
 

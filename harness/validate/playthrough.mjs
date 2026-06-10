@@ -876,9 +876,15 @@ async function runBossEncounterStep({ page, preset, outDirAbs, skipMidCombatCapt
 		assertDormantBoss(approachHarness, bossType);
 	}
 
+	const encounterTriggerByApproach = {
+		'canyon-descent-boss-approach': 'canyon-descent-encounter-trigger',
+		'spire-ascent-boss-approach': 'spire-ascent-encounter-trigger',
+	};
+	const encounterTriggerScenario = encounterTriggerByApproach[bossApproachScenario];
+
 	let activeHarness;
-	if (bossApproachScenario === 'canyon-descent-boss-approach') {
-		await requestScenario(page, 'canyon-descent-encounter-trigger');
+	if (encounterTriggerScenario) {
+		await requestScenario(page, encounterTriggerScenario);
 		activeHarness = await readHarness(page);
 	} else {
 		activeHarness = await activateEncounter(page, {

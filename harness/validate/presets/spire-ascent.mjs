@@ -1,5 +1,8 @@
 /** Spire Ascent preset — Summit Warden / spire_warden validation (ticket 280). */
 export default {
+	findingsTitle: 'Spire Ascent validation findings',
+	bossSpawnLabel: 'spire_warden (Summit Warden)',
+	layoutProfile: 'spire-ascent',
 	questId: 'spire_ascent',
 	questTier: 2,
 	bossType: 'spire_warden',

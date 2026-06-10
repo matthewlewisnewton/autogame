@@ -2571,6 +2571,46 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
+    if (name === 'spire-ascent-encounter-trigger') {
+      // Debug QA: activate the dormant Summit Warden after boss-approach without
+      // keyboard walking across spire tiers. Same transition is reachable by
+      // walking into the encounter trigger in normal play.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'spire_ascent'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires spire_ascent Tier 2 stage-boss run' };
+      }
+      const bossId = state.run.encounter.bossEnemyId;
+      for (const enemy of state.enemies || []) {
+        if (enemy.id !== bossId) enemy.hp = 0;
+      }
+      state.enemies = (state.enemies || []).filter((e) => e.hp > 0);
+      syncRunObjectiveToEnemies();
+      const boss = state.enemies.find((e) => e.id === bossId);
+      if (!boss || boss.type !== 'spire_warden') {
+        return { ok: false, reason: 'Summit Warden boss not found' };
+      }
+      player.debugScenarioNudgeAfter = 0;
+      repositionNearEnemy(player, boss, ENCOUNTER_TRIGGER_RADIUS - 1);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      if (isEncounterDormant(state.run)) {
+        activateEncounter(state.run);
+      }
+      if (!state.run.encounter.locked) {
+        lockEncounter(state.run);
+      }
+      // Harness bossVisualIdentity probe needs a live non-boss enemy beside the
+      // active Summit Warden (adds are cleared before activation in normal play).
+      const visualAdd = spawnEnemy(boss.x + 2.5, boss.z, 'grunt');
+      visualAdd.hp = 1;
+      visualAdd.y = resolveFloorY(sampleFloorY(state.layout, visualAdd.x, visualAdd.z));
+      visualAdd.wanderTarget = { x: visualAdd.x, z: visualAdd.z };
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
     if (name === 'spire-ascent-boss-low-hp') {
       // Spire Ascent Tier 2 spire_warden beside the player at 1 HP for fast
       // harness victory. Reachable normally by clearing adds and engaging the boss;
