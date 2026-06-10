@@ -50,6 +50,8 @@ const EMBER_DESCENT_TIER_1 = 1;
 const EMBER_DESCENT_TIER_2 = 2;
 const FROST_CROSSING_ID = 'frost_crossing';
 const FROST_CROSSING_TIER_1 = 1;
+const CITADEL_SIEGE_ID = 'citadel_siege';
+const CITADEL_SIEGE_TIER_1 = 1;
 
 describe('debugScenario — retired fixture shortcuts', () => {
 	let baseUrl;
@@ -527,6 +529,66 @@ describe('debugScenario — stage-boss-dormant', () => {
 
 		const dais = state.layout.landmarks.find((lm) => lm.type === 'arena_dais');
 		expect(dais).toBeTruthy();
+		const dist = Math.hypot(player.x - dais.x, player.z - dais.z);
+		expect(dist).toBeGreaterThan(ENCOUNTER_TRIGGER_RADIUS);
+	});
+});
+
+describe('debugScenario — citadel-siege-boss', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('deploys citadel_siege Tier 1 dormant stage-boss encounter via normal run path', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
+		socket.emit('debugScenario', { name: 'citadel-siege-boss' });
+		const result = await debugResultPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('citadel-siege-boss');
+
+		const state = lobbyStateForSocket(socket);
+		const player = playerForSocket(socket);
+		const quest = getQuest(CITADEL_SIEGE_ID, CITADEL_SIEGE_TIER_1);
+
+		expect(state.gamePhase).toBe('playing');
+		expect(state.selectedQuestId).toBe(CITADEL_SIEGE_ID);
+		expect(state.selectedQuestTier).toBe(CITADEL_SIEGE_TIER_1);
+		expect(stateUpdate.run.questTier).toBe(CITADEL_SIEGE_TIER_1);
+		expect(stateUpdate.run.questName).toBe(quest.name);
+		expect(stateUpdate.run.objective.type).toBe('stage_boss');
+		expect(stateUpdate.run.objective.addCount).toBe(0);
+		expect(stateUpdate.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
+		expect(stateUpdate.run.encounter.locked).toBe(false);
+		expect(stateUpdate.run.encounter.bossEnemyId).toBeTruthy();
+		expect(stateUpdate.enemies).toHaveLength(1);
+		expect(stateUpdate.enemies.every((e) => e.hp > 0)).toBe(true);
+
+		const boss = stateUpdate.enemies.find((e) => e.id === stateUpdate.run.encounter.bossEnemyId);
+		expect(boss?.type).toBe('citadel_sovereign');
+
+		const dais = state.layout.landmarks.find((lm) => lm.type === 'arena_dais');
+		expect(dais).toBeTruthy();
+		expect(boss.x).toBe(dais.x);
+		expect(boss.z).toBe(dais.z);
 		const dist = Math.hypot(player.x - dais.x, player.z - dais.z);
 		expect(dist).toBeGreaterThan(ENCOUNTER_TRIGGER_RADIUS);
 	});
