@@ -6400,6 +6400,24 @@ PASS. The implementation preserves the foundation in `game/docs/requirements.md`
 
 PASS. The changed code is cohesive and keeps the new behavior in the existing quest/objective/progression boundaries. Objective counters include scripted guard enemies and the final ambush before victory is possible, passage locks rebuild colliders when unlocked, and telepipe/checkpoint serialization preserves scripted encounter state. The debug scenarios added for `crystal-rescue-extraction-phase` and `frost-crossing-frostmaw` are gated through the existing debug-scenario socket path, which is restricted to loopback or `ALLOW_DEBUG_SCENARIOS=1`; normal gameplay does not call them. Their target states remain reachable through the normal scripted quest flow and still rely on the real run objective state for completion.
 
+## v0.363 — Client: persistent in-run key item HUD slot (icon, name, keybind, cooldown) — currently invisible when ready  (2026-06-10 08:58:01)
+
+
+### Hidden when unequipped or outside a run
+PASS. `renderKeyItemHud()` calls `clearKeyItemCooldownHud()` when there is no equipped key item, no matching definition, or the phase is not `playing`; this removes ready/cooldown classes, clears the `data-key-item-id`, and empties the HUD child text. Focused tests cover both unequipped and non-playing states.
+
+### Existing key item flash feedback preserved
+PASS. `flashKeyItemIndicator()` still applies success, cooldown, and soft-fail flash classes without replacing the structured HUD children. The `keyItemUsed` socket handling still triggers the same success/cooldown/soft-fail cues and keeps VFX hooks intact.
+
+### Client test coverage
+PASS. `coverage.log` shows the client suite passed: 14 test files and 284 tests. The focused key item tests cover ready, cooldown, unequipped/non-playing, and flash preservation states.
+
+### Design and foundation consistency
+PASS. The change is client-HUD only and does not alter combat, server validation, persistence, networking, movement, or the documented lobby/dungeon loop. It remains consistent with `game/docs/design.md` and does not regress the foundational rendering/client-server requirements.
+
+### Debug scenarios
+PASS. This ticket did not add or modify any `?debugScenario=` shortcut. The capture used the fallback full-flow smoke path, not a debug scenario.
+
 ## Remaining gaps
 
 None.
