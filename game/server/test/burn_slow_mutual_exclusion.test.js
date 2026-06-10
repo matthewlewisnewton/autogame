@@ -131,7 +131,7 @@ describe('BURNING and SLOW mutual exclusion', () => {
 		applyBurning(enemy, 5000);
 		expect(isBurning(enemy)).toBe(true);
 
-		applyFreezeInRadius(0, 0, 6, 2000, 0);
+		applyFreezeInRadius(0, null, 0, 6, 2000, 0);
 		expect(isBurning(enemy)).toBe(false);
 		expect(isSlowed(enemy)).toBe(true);
 		expect(isEnemyFrozen(enemy)).toBe(true);

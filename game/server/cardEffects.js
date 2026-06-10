@@ -50,6 +50,7 @@ const {
   damagePlayer,
   isPlayerCardCommitted,
   clearPlayerCardCommitment,
+  getEntityWorldY,
   healPlayer,
   healPlayersInRadius,
   spawnGroundEnchantment,
@@ -188,6 +189,7 @@ function tryBeginCardWindup(ctx) {
     cardId: data.cardId,
     rotation,
     originX: player.x,
+    originY: getEntityWorldY(player),
     originZ: player.z,
     grind: handCard.grind || 0,
     echoDamage: handCard.echoDamage,
@@ -200,14 +202,14 @@ function tryBeginCardWindup(ctx) {
 function applyAstralShieldCast(ctx) {
   const {
     socket, state, lobby, data, cardDef, handCard, player,
-    originX, originZ, now, hasOverclock, fromWindup = false,
+    originX, originY = null, originZ, now, hasOverclock, fromWindup = false,
   } = ctx;
 
   const grind = handCard.grind || 0;
   const summonDamage = handCard.echoDamage != null
     ? handCard.echoDamage
     : scaledGrindStat(cardDef.damage || 0, grind, data.cardId);
-  const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, summonDamage, {
+  const radial = collectRadialHits(originX, originY, originZ, SUMMON_RADIUS, summonDamage, {
     magicStoneOnHit: cardDef.magicStoneOnHit,
     magicStoneOnKill: cardDef.magicStoneOnKill,
     attackerId: socket.playerId,
@@ -316,6 +318,7 @@ function handleUseCard(socket, state, lobby, data) {
     player,
     cardDef,
     originX: player.x,
+    originY: getEntityWorldY(player),
     originZ: player.z,
   });
 }
@@ -338,6 +341,9 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       }
       : precomputed.handCard;
     const originX = fromWindup ? options.originX : precomputed.originX;
+    const originY = fromWindup
+      ? (options.originY ?? null)
+      : (precomputed.originY ?? getEntityWorldY(player));
     const originZ = fromWindup ? options.originZ : precomputed.originZ;
 
     // ── Weapon branch (forward cone attack) ──
@@ -477,6 +483,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
         if (nextCount % cardDef.shockwaveEvery === 0) {
           const shockwave = collectRadialHits(
             originX,
+            originY,
             originZ,
             cardDef.shockwaveRadius || SUMMON_RADIUS,
             cardDef.shockwaveDamage || damage,
@@ -636,6 +643,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           const fallbackDamage = cardDef.fallbackDamage || 3;
           const radial = collectRadialHits(
             originX,
+            originY,
             originZ,
             SUMMON_RADIUS,
             fallbackDamage,
@@ -739,6 +747,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
         }
         const hits = applyFreezeInRadius(
           originX,
+          originY,
           originZ,
           radius,
           freezeDurationMs,
@@ -806,6 +815,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
         const radius = cardDef.radius || SUMMON_RADIUS;
         const healedTargets = healPlayersInRadius(
           originX,
+          originY,
           originZ,
           radius,
           cardDef.healAmount || 0
@@ -829,7 +839,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
 
       if (cardDef.effect === 'gravity_well') {
         const radius = cardDef.pullRadius || SUMMON_RADIUS;
-        const pulled = pullEnemiesToward(originX, originZ, radius, cardDef.pullStrength || 4);
+        const pulled = pullEnemiesToward(originX, originY, originZ, radius, cardDef.pullStrength || 4);
 
         consumeSpellSlot();
 
@@ -851,6 +861,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
         const radius = cardDef.pullRadius || SUMMON_RADIUS;
         const { pulled, crushed } = applyEventHorizon(
           originX,
+          originY,
           originZ,
           cardDef,
           socket.playerId
@@ -921,6 +932,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
         const range = cardDef.attackRange || 7;
         const { hits, magicStonesGained } = collectRadialHits(
           originX,
+          originY,
           originZ,
           range,
           cardDef.damage || 12,
@@ -983,7 +995,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       if (cardDef.effect === 'astral_guardian' || cardDef.specialEffect === 'astral_shield') {
         applyAstralShieldCast({
           socket, state, lobby, data, cardDef, handCard, player,
-          originX, originZ, now, hasOverclock, fromWindup,
+          originX, originY, originZ, now, hasOverclock, fromWindup,
         });
         return;
       }
@@ -1127,7 +1139,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       const summonDamage = handCard.echoDamage != null
         ? handCard.echoDamage
         : scaledGrindStat(cardDef.damage || 0, grind, data.cardId);
-      const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, summonDamage, {
+      const radial = collectRadialHits(originX, originY, originZ, SUMMON_RADIUS, summonDamage, {
         magicStoneOnHit: cardDef.magicStoneOnHit,
         magicStoneOnKill: cardDef.magicStoneOnKill,
         healOnHit: cardDef.healOnHit,
@@ -1261,7 +1273,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
         }
         applyAstralShieldCast({
           socket, state, lobby, data, cardDef, handCard, player,
-          originX, originZ, now, hasOverclock, fromWindup,
+          originX, originY, originZ, now, hasOverclock, fromWindup,
         });
         return;
       }
@@ -1396,6 +1408,7 @@ function resolvePendingCardUse(socket, state, lobby, player) {
   }, {
     fromWindupResolution: true,
     originX: pending.originX,
+    originY: pending.originY ?? null,
     originZ: pending.originZ,
     rotation: pending.rotation,
     handCardSnapshot: {

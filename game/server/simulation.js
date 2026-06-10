@@ -1295,11 +1295,12 @@ function clearNegativeStatuses(entity) {
   entity.debuffs = [];
 }
 
-function healPlayersInRadius(originX, originZ, radius, healAmount) {
+function healPlayersInRadius(originX, originY, originZ, radius, healAmount) {
+  const oy = resolveAoeOriginY(originX, originY, originZ);
   const healedTargets = [];
   for (const [playerId, player] of Object.entries(_gameState.players)) {
     if (!player || player.dead || player.extracted) continue;
-    if (Math.hypot(player.x - originX, player.z - originZ) > radius) continue;
+    if (sphericalDistanceToEntity(originX, oy, originZ, player) > radius) continue;
     const hpGained = healPlayer(playerId, healAmount);
     clearNegativeStatuses(player);
     if (hpGained > 0) {
@@ -1329,6 +1330,27 @@ function getEntityWorldY(entity) {
     return resolveFloorY(sampleFloorY(layout, entity.x, entity.z));
   }
   return resolveFloorY(DEFAULT_FLOOR_Y);
+}
+
+// Resolve a cast origin's Y for spherical AoE checks. Finite values pass
+// through untouched; null/undefined fall back to the floor height at
+// (originX, originZ) — never to 2D behavior.
+function resolveAoeOriginY(originX, originY, originZ) {
+  if (Number.isFinite(originY)) return originY;
+  const layout = _gameState && _gameState.layout;
+  if (layout) {
+    return resolveFloorY(sampleFloorY(layout, originX, originZ));
+  }
+  return resolveFloorY(DEFAULT_FLOOR_Y);
+}
+
+// True 3D (spherical) distance from an origin point to an entity. The
+// entity's Y resolves via getEntityWorldY; a null/undefined originY falls
+// back to the floor height at (originX, originZ).
+function sphericalDistanceToEntity(originX, originY, originZ, entity) {
+  const oy = resolveAoeOriginY(originX, originY, originZ);
+  const entityY = getEntityWorldY(entity);
+  return Math.hypot(entity.x - originX, entityY - oy, entity.z - originZ);
 }
 
 function computeAimDirection3D(from, to) {
@@ -1414,7 +1436,7 @@ function collectConeHits(originX, originZ, dirX, dirZ, range, coneAngle, damage,
   return { hits, magicStonesGained, hpHealed, currencyGained };
 }
 
-function collectRadialHits(originX, originZ, radius, damage, options = {}) {
+function collectRadialHits(originX, originY, originZ, radius, damage, options = {}) {
   const hits = [];
   let magicStonesGained = 0;
   let hpHealed = 0;
@@ -1423,9 +1445,10 @@ function collectRadialHits(originX, originZ, radius, damage, options = {}) {
   const healOnHit = options.healOnHit || 0;
   const healOnKill = options.healOnKill || 0;
   const attackerId = options.attackerId;
+  const oy = resolveAoeOriginY(originX, originY, originZ);
 
   for (const enemy of _gameState.enemies) {
-    const dist = Math.hypot(enemy.x - originX, enemy.z - originZ);
+    const dist = sphericalDistanceToEntity(originX, oy, originZ, enemy);
     if (dist > radius) continue;
 
     if (attackerId) enemy.lastDamagedBy = attackerId;
@@ -1814,13 +1837,14 @@ function collectReturningProjectileHits(originX, originZ, dirX, dirZ, range, dam
   return { hits, magicStonesGained };
 }
 
-function applyFreezeInRadius(originX, originZ, radius, durationMs, damage = 0, frozenBonusDamage = 0) {
+function applyFreezeInRadius(originX, originY, originZ, radius, durationMs, damage = 0, frozenBonusDamage = 0) {
   const now = Date.now();
   const frozenUntil = now + durationMs;
   const hits = [];
+  const oy = resolveAoeOriginY(originX, originY, originZ);
 
   for (const enemy of _gameState.enemies) {
-    const dist = Math.hypot(enemy.x - originX, enemy.z - originZ);
+    const dist = sphericalDistanceToEntity(originX, oy, originZ, enemy);
     if (dist > radius) continue;
     const wasFrozen = enemy.frozenUntil != null && enemy.frozenUntil > now;
     let hitDamage = damage;
@@ -1843,13 +1867,17 @@ function applyFreezeInRadius(originX, originZ, radius, durationMs, damage = 0, f
   return hits;
 }
 
-function pullEnemiesToward(originX, originZ, radius, strength) {
+function pullEnemiesToward(originX, originY, originZ, radius, strength) {
   const moved = [];
+  const oy = resolveAoeOriginY(originX, originY, originZ);
   for (const enemy of _gameState.enemies) {
     const dx = originX - enemy.x;
     const dz = originZ - enemy.z;
+    // Inclusion is spherical (3D), but displacement stays horizontal: enemies
+    // are dragged along XZ only, never moved vertically.
+    if (sphericalDistanceToEntity(originX, oy, originZ, enemy) > radius) continue;
     const dist = Math.hypot(dx, dz);
-    if (dist <= 0.01 || dist > radius) continue;
+    if (dist <= 0.01) continue;
 
     const pull = Math.min(strength, dist);
     const result = tryEntityDisplacement(enemy.x, enemy.z, dx / dist, dz / dist, pull);
@@ -1893,11 +1921,13 @@ function applyPlayerKnockback(playerId, dirX, dirZ, strength) {
   return !!result.moved;
 }
 
-function applyEventHorizon(originX, originZ, cardDef, attackerId) {
+function applyEventHorizon(originX, originY, originZ, cardDef, attackerId) {
   const radius = cardDef.pullRadius || 12;
-  const pulled = pullEnemiesToward(originX, originZ, radius, cardDef.pullStrength || 4);
+  const oy = resolveAoeOriginY(originX, originY, originZ);
+  const pulled = pullEnemiesToward(originX, oy, originZ, radius, cardDef.pullStrength || 4);
   const crush = collectRadialHits(
     originX,
+    oy,
     originZ,
     cardDef.centerRadius || 2.5,
     cardDef.centerDamage || 30,
@@ -2015,6 +2045,7 @@ function updateAreaEffects() {
       // living enemy, minion, and player within `range` of the origin.
       ({ hits } = collectRadialHits(
         effect.originX,
+        effect.originY ?? null,
         effect.originZ,
         effect.range,
         effect.damagePerTick
@@ -2033,6 +2064,7 @@ function updateAreaEffects() {
     } else if (effect.type === 'inferno_pillar') {
       ({ hits } = collectRadialHits(
         effect.originX,
+        effect.originY ?? null,
         effect.originZ,
         effect.range,
         effect.damagePerTick,
@@ -2288,6 +2320,7 @@ function triggerMirrorWard(playerId, damageTaken, attackerEnemyId) {
   } else {
     const radial = collectRadialHits(
       player.x,
+      getEntityWorldY(player),
       player.z,
       enc.reflectRange,
       reflectDamage,
@@ -3502,6 +3535,7 @@ module.exports = {
 
   // Card combat helpers
   getEntityWorldY,
+  sphericalDistanceToEntity,
   computeAimDirection3D,
   collectConeHits,
   collectRadialHits,
