@@ -641,6 +641,7 @@ const DEBUG_SCENARIOS = new Set([
   'energy-blade-slash-ready',
   'heavy-greatsword-slash-ready',
   'lock-on-elevated-projectile',
+  'lock-on-flying-enemy',
   'lock-on-3d-stack',
   'height-aware-projectile',
 ]);

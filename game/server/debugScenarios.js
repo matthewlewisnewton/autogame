@@ -4096,6 +4096,36 @@ function applyDebugScenario(socket, name) {
       elevated.wanderTarget = { x: elevated.x, z: elevated.z };
       player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
       syncCardProbeHand(player);
+    } else if (name === 'lock-on-flying-enemy') {
+      // Playing phase with Fireball in hand and a void_seraph hovering on the same
+      // (x, z) as the player — flat aim misses; Z-lock + cast should tilt upward
+      // via flying/altitude (no manual y override) and hit. Reachable in vertical
+      // quests (spire_ascent, canyon_descent) when a projectile reward card is drawn
+      // and a void_seraph or rime_drifter spawns overhead.
+      resumePlayingRunForCardProbe(state, player);
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      player.hand = [
+        {
+          id: 'fireball',
+          name: 'Fireball',
+          type: 'weapon',
+          charges: 4,
+          remainingCharges: 4,
+        },
+        null,
+        null,
+        null,
+        null,
+        null,
+      ];
+      state.enemies = [];
+      const flier = spawnEnemy(player.x, player.z, 'void_seraph');
+      flier.hp = flier.maxHp;
+      flier.wanderTarget = { x: flier.x, z: flier.z };
+      player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+      syncCardProbeHand(player);
     } else if (name === 'lock-on-3d-stack') {
       // Ground grunt and ember_wraith stacked at the same (x, z): 3D lock-on must
       // pick the closer flier, not treat them as tied in XZ. Reachable in vertical
