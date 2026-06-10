@@ -28,11 +28,15 @@ export const MODEL_REGISTRY = {
 	annex_overseer: null,
 	arena_champion: null,
 	spire_warden: null,
+	cinder_warden: null,
+	magma_colossus: null,
 	permafrost_warden: null,
 	glacial_tyrant: null,
 	spawner: '/models/spawner.glb',
 	field_medic: null,
 	ember_wraith: null,
+	void_seraph: null,
+	rime_drifter: null,
 
 	// Minion types (renderer.js MINION_VISUAL)
 	ancient_wyrm: '/models/minion-ancient-wyrm.glb',

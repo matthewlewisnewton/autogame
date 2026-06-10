@@ -61,11 +61,17 @@ function accentSummonStyle(cardId) {
 }
 
 function originOf(data) {
-	return data.origin || { x: 0, z: 0 };
+	const o = data.origin || { x: 0, z: 0 };
+	const origin = { x: o.x, z: o.z };
+	if (Number.isFinite(o.y)) origin.y = o.y;
+	return origin;
 }
 
 function directionOf(data) {
-	return data.direction || { x: 1, z: 0 };
+	const d = data.direction || { x: 1, z: 0 };
+	const direction = { x: d.x, z: d.z };
+	if (Number.isFinite(d.y)) direction.y = d.y;
+	return direction;
 }
 
 /** Point `distance` units from `origin` along (normalized) `direction`. */
@@ -1031,9 +1037,20 @@ function renderWyrmAttack(data, ctx) {
 			ctx.spawnTelegraphRing(origin, breathRange * 0.55, { color, emissive });
 		}
 		if (ctx.spawnParticleBurst) {
-			const along = pointAlong(origin, direction, breathRange * 0.45);
+			const alongDist = breathRange * 0.45;
+			const along = pointAlong(origin, direction, alongDist);
+			const burstPos = { x: along.x, z: along.z };
+			if (Number.isFinite(origin.y)) {
+				burstPos.y = origin.y;
+				if (Number.isFinite(direction.y)) {
+					const len = Math.hypot(direction.x, direction.z, direction.y) || 1;
+					burstPos.y = origin.y + (direction.y / len) * alongDist;
+				}
+			} else {
+				burstPos.y = 0.8;
+			}
 			ctx.spawnParticleBurst(
-				{ x: along.x, y: 0.8, z: along.z },
+				burstPos,
 				{
 					color,
 					emissive,

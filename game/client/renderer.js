@@ -608,12 +608,18 @@ export const ENEMY_GEOMETRY = {
 	annex_overseer: { type: 'cone', radius: 1.1, height: 2.4, segments: 14, color: 0x0d9488, emissive: 0x14b8a6, emissiveIntensity: 0.3 },
 	arena_champion: { type: 'cone', radius: 1.4, height: 3.0, segments: 16, color: 0xffaa00, emissive: 0xcc3300, emissiveIntensity: 0.45 },
 	spire_warden: { type: 'cone', radius: 1.1, height: 2.4, segments: 12, color: 0x3388cc, emissive: 0x2266aa, emissiveIntensity: 0.3 },
+	cinder_warden: { type: 'cone', radius: 1.2, height: 2.6, segments: 12, color: 0xff5522, emissive: 0xff2200, emissiveIntensity: 0.45 },
+	magma_colossus: { type: 'cone', radius: 1.35, height: 2.9, segments: 14, color: 0xff7711, emissive: 0xff5500, emissiveIntensity: 0.52 },
 	spawner:    { type: 'octahedron', radius: 0.6, color: 0x00ccaa, emissive: 0x00ccaa, emissiveIntensity: 0.4 },
 	field_medic: { type: 'octahedron', radius: 0.4, color: 0x10b981, emissive: 0x2dd4bf, emissiveIntensity: 0.55 },
 	glacial_thrower: { type: 'cone', radius: 1.0, height: 2.2, segments: 12, color: 0x7dd3fc, emissive: 0x38bdf8, emissiveIntensity: 0.35 },
 	permafrost_warden: { type: 'cone', radius: 1.15, height: 2.5, segments: 14, color: 0x0e7490, emissive: 0x22d3ee, emissiveIntensity: 0.42 },
 	glacial_tyrant: { type: 'cone', radius: 1.3, height: 2.8, segments: 14, color: 0x0c4a6e, emissive: 0x38bdf8, emissiveIntensity: 0.45 },
 	ember_wraith: { type: 'octahedron', radius: 0.35, color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.6 },
+	// Flying types — hovering octahedron bodies (cf. ember_wraith); flying/altitude
+	// arrive per-instance from the server so flyingRenderOffset lifts the body.
+	void_seraph: { type: 'octahedron', radius: 0.4, color: 0x7c3aed, emissive: 0xa855f7, emissiveIntensity: 0.6 },
+	rime_drifter: { type: 'octahedron', radius: 0.35, color: 0xbae6fd, emissive: 0x60a5fa, emissiveIntensity: 0.55 },
 };
 
 /** Windup telegraph shape per enemy type — mirrors server ENEMY_DEFS attackStyle */
@@ -624,12 +630,18 @@ export const ENEMY_ATTACK_VISUAL = {
 	annex_overseer: { style: 'radial', range: 3.5, color: 0x2dd4bf, emissive: 0x0d9488 },
 	arena_champion: { style: 'cone', coneAngle: (2 * Math.PI) / 3, range: 6.5, color: 0xffcc44, emissive: 0xcc3300 },
 	spire_warden: { style: 'cone', coneAngle: Math.PI / 2, range: 6, color: 0x55aaff, emissive: 0x3388cc },
+	cinder_warden: { style: 'cone', coneAngle: (2 * Math.PI) / 3, range: 5.5, color: 0xff7733, emissive: 0xff2200 },
+	magma_colossus: { style: 'radial', range: 5, color: 0xffaa33, emissive: 0xff5500 },
 	spawner:    { style: 'radial' },
 	field_medic: { style: 'projectile', range: 8, color: 0x2dd4bf, emissive: 0x14b8a6, hitWidth: 0.5 },
 	glacial_thrower: { style: 'projectile', range: 7, color: 0x7dd3fc, emissive: 0x38bdf8, hitWidth: 0.9 },
 	permafrost_warden: { style: 'radial', range: 4.5, color: 0x67e8f9, emissive: 0x0891b2 },
 	glacial_tyrant: { style: 'projectile', range: 9, color: 0x7dd3fc, emissive: 0x0ea5e9, hitWidth: 1.2 },
 	ember_wraith: { style: 'cone', coneAngle: Math.PI / 3, color: 0xff4400, emissive: 0xff2200 },
+	// Void Seraph: spherical void burst telegraphed as a radial ring (server attackStyle 'radial').
+	void_seraph: { style: 'radial', range: 4.5, color: 0xa855f7, emissive: 0x7c3aed },
+	// Rime Drifter: height-aware ice ball telegraphed like glacial_thrower's projectile (server attackStyle 'ice_ball').
+	rime_drifter: { style: 'projectile', range: 8, color: 0xbae6fd, emissive: 0x60a5fa, hitWidth: 0.9 },
 };
 
 /** Minion mesh presets keyed by minion.type */
@@ -4338,9 +4350,11 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 		return;
 	}
 
-	// Forward cone wedge on the ground — exact server collectConeHits footprint
+	// Forward cone wedge on the ground — exact server collectConeHits footprint.
+	// When origin.y is set (airborne breath), lift the cone to that height.
+	const coneY = Number.isFinite(origin.y) ? origin.y : GROUND_OVERLAY_Y;
 	const group = createConeHitboxGroup(direction, range, coneAngle, coneStyle);
-	group.position.set(origin.x, GROUND_OVERLAY_Y, origin.z);
+	group.position.set(origin.x, coneY, origin.z);
 	targetScene.add(group);
 
 	activeEffects.push({
@@ -5312,7 +5326,8 @@ export function spawnTelegraphRing(origin, radius, style = {}) {
 		depthWrite: false,
 	});
 	const mesh = new THREE.Mesh(geometry, material);
-	mesh.position.set(origin.x, GROUND_OVERLAY_Y, origin.z);
+	const ringY = Number.isFinite(origin.y) ? origin.y : GROUND_OVERLAY_Y;
+	mesh.position.set(origin.x, ringY, origin.z);
 	mesh.rotation.x = -Math.PI / 2;
 	mesh.scale.setScalar(0.001);
 	targetScene.add(mesh);

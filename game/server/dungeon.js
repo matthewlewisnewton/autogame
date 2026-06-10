@@ -201,6 +201,10 @@ const FIRE_CAVERN = {
   spawnClearRadius: 6,
   interiorMargin: OPEN_PLAZA.interiorMargin,
   rampXOffsets: [-6, 0, 6], // west / centre / east; width 6 ⇒ footprints [-9,-3], [-3,3], [3,9]
+  /** Fixed geometry for `layoutMode: 'rigid'` — seed-independent. */
+  rigidRampCount: 3,
+  rigidCoverTargetCount: 8,
+  rigidEntryDecorCount: 3,
 };
 
 // Spire-ascent: vertical tower of 3–5 flat tiers linked by ascending ramps along −Z.
@@ -1842,8 +1846,8 @@ function scatterEntryDecor(rng, {
 
 /**
  * Accept entry decor from ENTRY_DECOR_CANDIDATE_OFFSETS in declaration order
- * (no RNG shuffle, fixed yaw). Mirrors `scatterEntryDecor` margin and
- * spawn-clear rules. Used by `layoutMode: 'rigid'` — decor is seed-independent.
+ * (no RNG shuffle). Mirrors `scatterEntryDecor` margin and spawn-clear rules.
+ * Used by ice-cavern and fire-cavern `layoutMode: 'rigid'` — decor is seed-independent.
  */
 function placeEntryDecorOrdered({
   half,
@@ -1854,6 +1858,7 @@ function placeEntryDecorOrdered({
   count = 3,
   interiorMargin = OPEN_PLAZA.interiorMargin,
   avoid = [],
+  yaw = 0,
 }) {
   const placed = [];
   const interiorMax = half - interiorMargin;
@@ -1876,7 +1881,7 @@ function placeEntryDecorOrdered({
       Math.abs(d.x - cand.x) < ENTRY_DECOR_RADIUS * 2 + 0.5 &&
       Math.abs(d.z - cand.z) < ENTRY_DECOR_RADIUS * 2 + 0.5
     )) continue;
-    placed.push({ type, x: cand.x, z: cand.z, yaw: 0 });
+    placed.push({ type, x: cand.x, z: cand.z, yaw });
   }
   return placed;
 }
@@ -2794,6 +2799,7 @@ function generateIceCavern(seed, options = {}) {
  *           profile: 'fire-cavern' }.
  */
 function generateFireCavern(seed, options = {}) {
+  const layoutMode = normalizeLayoutMode(options.layoutMode);
   const rng = mulberry32(seed);
   const {
     rimSize,
@@ -2804,6 +2810,9 @@ function generateFireCavern(seed, options = {}) {
     spawnClearRadius,
     interiorMargin,
     rampXOffsets,
+    rigidRampCount,
+    rigidCoverTargetCount,
+    rigidEntryDecorCount,
   } = FIRE_CAVERN;
 
   const yHigh = DEFAULT_FLOOR_Y + yDrop;
@@ -2821,10 +2830,14 @@ function generateFireCavern(seed, options = {}) {
   const rimSouthZ = rimZ + rimHalf;
 
   const sortedOffsets = [...rampXOffsets].sort((a, b) => a - b);
-  const numRamps = 2 + Math.floor(rng() * 2);
-  const rampCenters = numRamps === 2
-    ? [sortedOffsets[0], sortedOffsets[sortedOffsets.length - 1]]
-    : sortedOffsets;
+  const rampCenters = layoutMode === 'rigid'
+    ? sortedOffsets.slice(0, rigidRampCount)
+    : (() => {
+      const numRamps = 2 + Math.floor(rng() * 2);
+      return numRamps === 2
+        ? [sortedOffsets[0], sortedOffsets[sortedOffsets.length - 1]]
+        : sortedOffsets;
+    })();
   const rampHalfW = rampWidth / 2;
   const rampIntervals = rampCenters.map(cx => ({
     cx,
@@ -2903,25 +2916,45 @@ function generateFireCavern(seed, options = {}) {
     { x: 11, z: 11, width: 1.2, depth: 4.0, height: 1.0, type: 'broken_wall' },
   ];
 
-  const cover = scatterCoverInArena(rng, {
-    half: basinHalf,
-    centerX: basinX,
-    centerZ: basinZ,
-    spawnClear: spawnClearRadius,
-    candidatePool: basinCandidatePool,
-    targetCount: 8,
-    interiorMargin,
-  });
+  const cover = layoutMode === 'rigid'
+    ? placeCoverInArenaOrdered({
+      half: basinHalf,
+      centerX: basinX,
+      centerZ: basinZ,
+      spawnClear: spawnClearRadius,
+      candidatePool: basinCandidatePool,
+      targetCount: rigidCoverTargetCount,
+      interiorMargin,
+    })
+    : scatterCoverInArena(rng, {
+      half: basinHalf,
+      centerX: basinX,
+      centerZ: basinZ,
+      spawnClear: spawnClearRadius,
+      candidatePool: basinCandidatePool,
+      targetCount: 8,
+      interiorMargin,
+    });
 
-  const entryDecor = scatterEntryDecor(rng, {
-    half: rimHalf,
-    centerX: rim.x,
-    centerZ: rim.z,
-    spawnClear: spawnClearRadius,
-    type: 'ember_vent',
-    count: 2 + Math.floor(rng() * 3),
-    interiorMargin,
-  });
+  const entryDecor = layoutMode === 'rigid'
+    ? placeEntryDecorOrdered({
+      half: rimHalf,
+      centerX: rim.x,
+      centerZ: rim.z,
+      spawnClear: spawnClearRadius,
+      type: 'ember_vent',
+      count: rigidEntryDecorCount,
+      interiorMargin,
+    })
+    : scatterEntryDecor(rng, {
+      half: rimHalf,
+      centerX: rim.x,
+      centerZ: rim.z,
+      spawnClear: spawnClearRadius,
+      type: 'ember_vent',
+      count: 2 + Math.floor(rng() * 3),
+      interiorMargin,
+    });
 
   return {
     rooms: [rim, ...ramps, basin],

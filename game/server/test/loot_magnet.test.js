@@ -85,6 +85,7 @@ describe('Loot Magnet — pull & collect', () => {
 		const state = lobbyStateForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'loot_magnet';
 		state.loot.length = 0;
 
 		// Loot 6m away — inside attractRadius (8m). useKeyItem (loot_magnet) does an
@@ -132,6 +133,7 @@ describe('Loot Magnet — pull & collect', () => {
 		const state = lobbyStateForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'loot_magnet';
 		state.loot.length = 0;
 
 		const closeLoot = testLoot({
@@ -159,6 +161,7 @@ describe('Loot Magnet — pull & collect', () => {
 		const state = lobbyStateForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'loot_magnet';
 		state.loot.length = 0;
 
 		const farLoot = testLoot({
@@ -187,6 +190,7 @@ describe('Loot Magnet — pull & collect', () => {
 		const state = lobbyStateForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'loot_magnet';
 		state.loot.length = 0;
 
 		// Elevated drop inside the 8m sphere: XZ dist 4, Y delta 3
@@ -219,6 +223,7 @@ describe('Loot Magnet — pull & collect', () => {
 		const state = lobbyStateForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'loot_magnet';
 		state.loot.length = 0;
 
 		// XZ dist 4 ≤ 8 (2D code would pull it), but Y delta 8
@@ -256,6 +261,7 @@ describe('Loot Magnet — pull & collect', () => {
 		const state = lobbyStateForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'loot_magnet';
 		state.loot.length = 0;
 
 		const closeLoot = testLoot({
@@ -292,6 +298,7 @@ describe('Loot Magnet — pull & collect', () => {
 		const state = lobbyStateForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'loot_magnet';
 		state.loot.length = 0;
 
 		const result1Promise = waitForLootMagnetUsed(socket);
@@ -317,6 +324,7 @@ describe('Loot Magnet — pull & collect', () => {
 		const state = lobbyStateForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'loot_magnet';
 		state.loot.length = 0;
 
 		state.loot.push(
@@ -400,6 +408,7 @@ describe('Loot Magnet — pull & collect', () => {
 		const origLootZ = loot.z;
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'loot_magnet';
 
 		const resultPromise = waitForLootMagnetUsed(socket);
 		socket.emit('useKeyItem', { keyItemId: 'loot_magnet' });

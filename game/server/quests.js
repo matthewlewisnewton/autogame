@@ -78,6 +78,18 @@
  */
 
 /**
+ * Prerequisite quest tier required before a tier is unlocked.
+ * @typedef {Object} UnlockRequiresEntry
+ * @property {string} questId - Quest id that must be completed.
+ * @property {number} tier - Positive integer tier that must be completed.
+ */
+
+/**
+ * Unlock prerequisites for a quest tier: one entry (legacy) or an array (AND semantics).
+ * @typedef {UnlockRequiresEntry | UnlockRequiresEntry[]} UnlockRequires
+ */
+
+/**
  * One authored wave in a quest script.
  * @typedef {Object} QuestScriptWave
  * @property {string} id - Stable wave id for chaining (`waveCleared` triggers).
@@ -553,6 +565,8 @@ const QUEST_DEFS = {
       // Ice-level signature foe — a ranged thrower that lobs slow ice balls.
       // Level-exclusive: do not add to non-ice quests.
       { type: 'glacial_thrower', weight: 2 },
+      // Rare flier — kept at the pool minimum so frost drifters stay sparse.
+      { type: 'rime_drifter', weight: 1 },
     ],
     tier2EnemyPool: [
       // Denser thrower presence plus a support variant on Tier II runs.
@@ -728,6 +742,8 @@ const QUEST_DEFS = {
       { type: 'skirmisher', weight: 2 },
       { type: 'grunt', weight: 2 },
       { type: 'miniboss', weight: 1 },
+      // Rare flier — kept at the pool minimum so void seraphs stay sparse.
+      { type: 'void_seraph', weight: 1 },
     ],
     tier2EnemyPool: [{ type: 'field_medic', weight: 1 }],
     tiers: {
@@ -798,6 +814,7 @@ const QUEST_DEFS = {
       { type: 'skirmisher', weight: 2 },
       { type: 'ember_wraith', weight: 2 },
     ],
+    tier2EnemyPool: [{ type: 'field_medic', weight: 1 }],
     tiers: {
       1: {
         name: 'Ember Descent',
@@ -825,6 +842,42 @@ const QUEST_DEFS = {
           },
         ],
       },
+      2: {
+        tier: 2,
+        name: 'Ember Descent — Tier II',
+        description:
+          'Descend the fixed ember cavern where a magma colossus erupts over the molten basin with marked supports.',
+        objectiveType: 'stage_boss',
+        rewardCurrency: 14,
+        layoutProfile: 'fire-cavern',
+        layoutMode: 'rigid',
+        unlockRequires: { questId: 'ember_descent', tier: 1 },
+        signatureCardId: 'fireball',
+        rewardCards: ['fireball', 'dragons_breath'],
+        encounter: {
+          bossType: 'magma_colossus',
+          addCount: 4,
+        },
+        client: {
+          name: 'Ashvelle',
+          briefing:
+            'Magma colossus contract — Tier II. A magma colossus has claimed the molten basin with four marked hostiles; quench the nest for fourteen stones from my survey fund.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Ashvelle on the rim feed. Magma colossus signature down in the basin — burn through the supports before you face it.',
+          },
+          {
+            trigger: { waveCleared: 2 },
+            text: 'Basin is thinning out. The magma colossus is still erupting over the molten core.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Magma colossus quenched and the basin is cooling. Fourteen stones heading your way.',
+          },
+        ],
+      },
     },
   },
   spire_ascent: {
@@ -834,6 +887,8 @@ const QUEST_DEFS = {
       { type: 'skirmisher', weight: 1 },
       { type: 'miniboss', weight: 1 },
       { type: 'spawner', weight: 2 },
+      // Rare flier — kept at the pool minimum so void seraphs stay sparse.
+      { type: 'void_seraph', weight: 1 },
     ],
     tiers: {
       1: {
@@ -1003,6 +1058,43 @@ function normalizeQuestTier(tier) {
   return Number.isInteger(n) && n > 0 ? n : DEFAULT_QUEST_TIER;
 }
 
+function normalizeUnlockRequiresEntry(entry) {
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+    return null;
+  }
+  if (typeof entry.questId !== 'string' || !entry.questId) {
+    return null;
+  }
+  const tier = Number(entry.tier);
+  if (!Number.isInteger(tier) || tier <= 0) {
+    return null;
+  }
+  return { questId: entry.questId, tier };
+}
+
+/**
+ * Normalizes authored `unlockRequires` to a prerequisite list, or `null` when absent.
+ * Single objects become a one-element array; arrays keep AND order with invalid entries dropped.
+ * @param {UnlockRequires | null | undefined} raw
+ * @returns {UnlockRequiresEntry[] | null}
+ */
+function normalizeUnlockRequires(raw) {
+  if (raw == null) {
+    return null;
+  }
+  if (Array.isArray(raw)) {
+    const normalized = raw
+      .map(normalizeUnlockRequiresEntry)
+      .filter(Boolean);
+    return normalized.length > 0 ? normalized : null;
+  }
+  if (typeof raw !== 'object') {
+    return null;
+  }
+  const entry = normalizeUnlockRequiresEntry(raw);
+  return entry ? [entry] : null;
+}
+
 function getQuestTierDef(questId, tier) {
   const quest = QUEST_DEFS[questId];
   if (!quest || !quest.tiers) {
@@ -1115,6 +1207,15 @@ function formatObjectiveSummary(quest) {
         );
       }
       return THEME.objectives.defeatCanyonWarden;
+    }
+    if (questId === 'ember_descent') {
+      if (addCount > 0) {
+        return THEME.objectives.defeatMagmaColossusWithSupports.replace(
+          '{addCount}',
+          String(addCount),
+        );
+      }
+      return THEME.objectives.defeatMagmaColossus;
     }
     if (questId === 'frost_crossing') {
       const glacialTyrant = encounter?.bossType === 'glacial_tyrant';
@@ -1451,6 +1552,56 @@ function listQuestVariants() {
   return variants;
 }
 
+/**
+ * Builds the full level-select unlock graph: one node per quest tier (every tier
+ * of every quest, matching `listQuestVariants()` cardinality), each carrying its
+ * normalized `unlockRequires` prerequisite array and the account's per-tier
+ * locked/unlocked/cleared state.
+ *
+ * `require('./users')` is resolved lazily here (mirroring
+ * `listQuestVariantsForAccount` / `buildQuestUpdatePayload`) to avoid a circular
+ * import at module load. A falsy/unknown `accountId` yields unlocked tier-1 nodes
+ * and locked higher tiers, with no node cleared.
+ *
+ * @param {string} [accountId]
+ * @returns {{ nodes: Array<{ questId: string, tier: number, name: string,
+ *   objectiveType: string, isBoss: boolean,
+ *   unlockRequires: UnlockRequiresEntry[] | null,
+ *   state: 'locked' | 'unlocked' | 'cleared' }> }}
+ */
+function buildLevelUnlockGraph(accountId) {
+  const { isQuestTierUnlocked, hasCompletedQuestTier } = require('./users');
+  const nodes = [];
+  for (const questId of Object.keys(QUEST_DEFS)) {
+    const quest = QUEST_DEFS[questId];
+    const tierKeys = Object.keys(quest.tiers)
+      .map(Number)
+      .sort((a, b) => a - b);
+    for (const tier of tierKeys) {
+      const resolved = getQuest(questId, tier);
+      if (!resolved) {
+        continue;
+      }
+      let state = 'locked';
+      if (hasCompletedQuestTier(accountId, questId, tier)) {
+        state = 'cleared';
+      } else if (isQuestTierUnlocked(accountId, questId, tier)) {
+        state = 'unlocked';
+      }
+      nodes.push({
+        questId,
+        tier,
+        name: resolved.name,
+        objectiveType: resolved.objectiveType,
+        isBoss: resolved.objectiveType === 'stage_boss',
+        unlockRequires: normalizeUnlockRequires(resolved.unlockRequires),
+        state,
+      });
+    }
+  }
+  return { nodes };
+}
+
 function getSelectedQuest(gameState) {
   const questId = gameState && gameState.selectedQuestId;
   const tier = gameState && gameState.selectedQuestTier;
@@ -1468,11 +1619,21 @@ function buildSharedQuestUpdatePayload(gameState) {
   };
 }
 
+function listQuestVariantsForAccount(accountId) {
+  const { isQuestTierUnlocked } = require('./users');
+  return listQuestVariants().map((variant) => ({
+    ...variant,
+    tierUnlocked: isQuestTierUnlocked(accountId, variant.questId, variant.tier),
+  }));
+}
+
 function buildQuestUpdatePayload(gameState, playerAccountId) {
   const payload = buildSharedQuestUpdatePayload(gameState);
   if (playerAccountId) {
     const { getUnlockedQuestTiers } = require('./users');
     payload.unlockedQuestTiers = getUnlockedQuestTiers(playerAccountId) || {};
+    payload.questVariants = listQuestVariantsForAccount(playerAccountId);
+    payload.levelUnlockGraph = buildLevelUnlockGraph(playerAccountId);
   }
   return payload;
 }
@@ -1583,10 +1744,12 @@ module.exports = {
   isValidQuestId,
   isValidQuestSelection,
   normalizeQuestTier,
+  normalizeUnlockRequires,
   getQuest,
   getDefaultQuestId,
   listQuests,
   listQuestVariants,
+  buildLevelUnlockGraph,
   getSelectedQuest,
   getLayoutProfileForQuest,
   getLayoutGenerationOptions,

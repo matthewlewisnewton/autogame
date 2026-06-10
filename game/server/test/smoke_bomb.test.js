@@ -62,6 +62,7 @@ describe('useKeyItem — smoke_bomb (socket integration)', () => {
 
 		// Clean state
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'smoke_bomb';
 		player.smokeBombUntil = 0;
 		player.x = 5;
 		player.z = -3;
@@ -102,6 +103,7 @@ describe('useKeyItem — smoke_bomb (socket integration)', () => {
 		const player = playerForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'smoke_bomb';
 
 		const result1Promise = waitForEvent(socket, 'keyItemUsed');
 		socket.emit('useKeyItem', { keyItemId: 'smoke_bomb' });

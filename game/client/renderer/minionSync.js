@@ -212,8 +212,8 @@ export function syncMinionMeshes(gs) {
 			}
 		}
 		const minionMesh = minionsMeshes[minion.id];
-		// Flying minions (storm_eagle, thunderbird) hover at the floor-aware
-		// surface + altitude; grounded minions keep the fixed 0.5
+		// Flying minions (storm_eagle, thunderbird, ancient_wyrm) hover at the
+		// floor-aware surface + altitude; grounded minions keep the fixed 0.5
 		// (flyingRenderOffset → 0).
 		const minionRenderY = 0.5 + flyingRenderOffset(minion, gs.layout);
 		minionMesh.position.set(minion.x, minionRenderY, minion.z);
