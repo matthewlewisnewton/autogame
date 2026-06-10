@@ -143,6 +143,12 @@ if (typeof document !== 'undefined') {
 if (typeof window !== 'undefined') {
 	window.__socketEmitLog = () => emitLog;
 	window.__clearSocketEmitLog = () => { emitLog.length = 0; };
+	window.__resetSocketHandlersForTest = () => {
+		for (const key of Object.keys(handlerLog)) delete handlerLog[key];
+		emitLog.length = 0;
+		socketCounter = 0;
+		ioDisconnected = false;
+	};
 	window.__triggerSocketEvent = function(event, data) {
 		// handlerLog is keyed by "socketId:event" — find all matching handlers
 		for (const key of Object.keys(handlerLog)) {

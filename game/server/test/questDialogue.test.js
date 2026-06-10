@@ -12,6 +12,7 @@ import {
   resetGameState,
   gameState,
   startDungeonRun,
+  checkAllReady,
   checkRunTerminalState,
   recordEnemyDefeated,
   isRunObjectiveComplete,
@@ -103,16 +104,47 @@ describe('quest dialogue progression hooks', () => {
     resetGameState();
   });
 
-  it('fires run_start once when startDungeonRun deploys training_caverns', () => {
+  it('does not emit run_start from startDungeonRun alone', () => {
     const io = createMockIo();
     progressionInitWithIo(io);
 
     startDungeonRun();
 
     const dialogueEvents = io.emitted.filter((e) => e.event === SERVER_TO_CLIENT.QUEST_DIALOGUE);
+    expect(dialogueEvents).toHaveLength(0);
+  });
+
+  it('emits run_start after START_GAME and playing STATE_UPDATE on checkAllReady deploy', () => {
+    const io = createMockIo();
+    progressionInitWithIo(io);
+
+    gameState.gamePhase = 'lobby';
+    gameState.selectedQuestId = 'training_caverns';
+    gameState.selectedQuestTier = 1;
+    gameState.players = {
+      p1: {
+        id: 'p1',
+        ready: true,
+        connected: true,
+        selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+      },
+    };
+
+    checkAllReady();
+
+    const startIdx = io.emitted.findIndex((e) => e.event === SERVER_TO_CLIENT.START_GAME);
+    const stateIdx = io.emitted.findIndex((e) => e.event === SERVER_TO_CLIENT.STATE_UPDATE);
+    const dialogueIdx = io.emitted.findIndex((e) => e.event === SERVER_TO_CLIENT.QUEST_DIALOGUE);
+
+    expect(startIdx).toBeGreaterThanOrEqual(0);
+    expect(stateIdx).toBeGreaterThan(startIdx);
+    expect(dialogueIdx).toBeGreaterThan(stateIdx);
+    expect(io.emitted[stateIdx].payload.gamePhase).toBe('playing');
+    expect(io.emitted[dialogueIdx].payload.trigger).toBe('run_start');
+    expect(io.emitted[dialogueIdx].payload.speaker).toBe('Rewa');
+
+    const dialogueEvents = io.emitted.filter((e) => e.event === SERVER_TO_CLIENT.QUEST_DIALOGUE);
     expect(dialogueEvents).toHaveLength(1);
-    expect(dialogueEvents[0].payload.trigger).toBe('run_start');
-    expect(dialogueEvents[0].payload.speaker).toBe('Rewa');
   });
 
   describe('crystal_rescue itemCollected dialogue', () => {
@@ -136,6 +168,7 @@ describe('quest dialogue progression hooks', () => {
       );
 
       startDungeonRun();
+      progression.emitRunStartDialogue(io);
       progression.recordCrystalCollected(1);
       progression.recordCrystalCollected(1);
       progression.recordCrystalCollected(1);
@@ -158,6 +191,7 @@ describe('quest dialogue progression hooks', () => {
       )?.text;
 
       startDungeonRun();
+      progression.emitRunStartDialogue(io);
       const total = getQuest('crystal_rescue', 1).itemCount;
       for (let i = 0; i < total; i += 1) {
         progression.recordCrystalCollected(1);

@@ -971,6 +971,8 @@ const questCommsLogEl = document.getElementById('quest-comms-log');
 const QUEST_COMMS_LOG_MAX = 20;
 const QUEST_COMMS_TOAST_MS = 4000;
 let questCommsLineSeq = 0;
+/** @type {Array<{ speaker: string, text: string }>} */
+let pendingQuestDialogue = [];
 const runSummaryOverlay = document.getElementById('run-summary-overlay');
 const summaryStatusEl = document.getElementById('summary-status');
 const summaryQuestEl = document.getElementById('summary-quest');
@@ -1349,6 +1351,7 @@ function bindSocketHandlers(s) {
 		} else if (enteringPlaying) {
 			clearQuestCommsLog();
 			setQuestCommsUiVisible(true);
+			flushPendingQuestDialogue();
 		} else if (me && state.gamePhase === 'playing') {
 			if (enteringPlaying) {
 				extractedLobbyOverlayActive = false;
@@ -4314,7 +4317,10 @@ function setQuestCommsUiVisible(visible) {
 
 function syncQuestCommsPhase(phase) {
 	const inRun = phase === 'playing';
-	if (!inRun) clearQuestCommsLog();
+	if (!inRun) {
+		pendingQuestDialogue = [];
+		clearQuestCommsLog();
+	}
 	setQuestCommsUiVisible(inRun);
 }
 
@@ -4362,14 +4368,31 @@ function appendQuestCommsLog(speaker, text) {
 	}
 }
 
-function handleQuestDialogue(payload) {
-	if (!isValidQuestDialoguePayload(payload)) return;
-	if (!gameState || gameState.gamePhase !== 'playing') return;
-
+function renderQuestDialoguePayload(payload) {
 	const speaker = payload.speaker.trim();
 	const text = payload.text.trim();
 	showQuestCommsToast(speaker, text);
 	appendQuestCommsLog(speaker, text);
+}
+
+function flushPendingQuestDialogue() {
+	if (!gameState || gameState.gamePhase !== 'playing' || pendingQuestDialogue.length === 0) return;
+	const queued = pendingQuestDialogue;
+	pendingQuestDialogue = [];
+	for (const payload of queued) {
+		if (isValidQuestDialoguePayload(payload)) {
+			renderQuestDialoguePayload(payload);
+		}
+	}
+}
+
+function handleQuestDialogue(payload) {
+	if (!isValidQuestDialoguePayload(payload)) return;
+	if (!gameState || gameState.gamePhase !== 'playing') {
+		pendingQuestDialogue.push(payload);
+		return;
+	}
+	renderQuestDialoguePayload(payload);
 }
 
 // ── Lobby event wiring ──

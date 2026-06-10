@@ -58,6 +58,9 @@ describe('quest dialogue comms UI (main.js)', () => {
 		vi.resetModules();
 		vi.useFakeTimers();
 		document.body.innerHTML = '';
+		if (typeof window.__resetSocketHandlersForTest === 'function') {
+			window.__resetSocketHandlersForTest();
+		}
 		ensureMainDom();
 		try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) { /* ignore */ }
 	});
@@ -171,5 +174,27 @@ describe('quest dialogue comms UI (main.js)', () => {
 
 		expect(document.querySelector('.quest-comms-toast')).toBeNull();
 		expect(window.__getQuestCommsLogLineCountForTest()).toBe(0);
+	});
+
+	it('queues pre-playing questDialogue and flushes when gamePhase becomes playing', async () => {
+		await import('../main.js');
+		window.__setGameState({ gamePhase: 'lobby', players: { p1: { id: 'p1' } } }, 'p1');
+		window.__syncQuestCommsPhaseForTest('lobby');
+
+		window.__triggerSocketEvent(SERVER_TO_CLIENT.QUEST_DIALOGUE, {
+			speaker: 'Rewa',
+			text: 'Queued run-start line.',
+			questId: 'training_caverns',
+			tier: 1,
+			trigger: 'run_start',
+		});
+
+		expect(document.querySelector('.quest-comms-toast')).toBeNull();
+		expect(window.__getQuestCommsLogLineCountForTest()).toBe(0);
+
+		window.__triggerSocketEvent(SERVER_TO_CLIENT.STATE_UPDATE, playingGameState());
+
+		expect(document.querySelector('.quest-comms-toast').textContent).toContain('Queued run-start line.');
+		expect(window.__getQuestCommsLogLineCountForTest()).toBe(1);
 	});
 });

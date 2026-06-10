@@ -957,8 +957,12 @@ function startDungeonRun() {
     p.pendingCardChoices = null;
     p.claimedCardRewardId = null;
   }
-  const io = getIoTarget();
-  fireQuestDialogue(io, _gameState, 'run_start');
+}
+
+function emitRunStartDialogue(io) {
+  const target = io || getIoTarget();
+  if (!target) return [];
+  return fireQuestDialogue(target, _gameState, 'run_start');
 }
 
 function applyTelepipeReadyHand(player) {
@@ -3359,6 +3363,7 @@ function checkAllReadyInner() {
       const io = getIoTarget();
       emitLobbyDeploy(io, SERVER_TO_CLIENT.START_GAME);
       emitLobbyDeploy(io, SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      emitRunStartDialogue(io);
     } catch (err) {
       console.error('[checkAllReady] deploy failed:', err && err.stack ? err.stack : err);
     }
@@ -3443,6 +3448,7 @@ module.exports = {
   saveAllPlayers,
   createRunState,
   startDungeonRun,
+  emitRunStartDialogue,
   clampObjectiveProgress,
   syncRunObjectiveToEnemies,
   recordEnemyDefeated,

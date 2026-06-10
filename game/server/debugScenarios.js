@@ -38,6 +38,7 @@ const {
   spawnEnemy,
   spawnEnemies,
   startDungeonRun,
+  emitRunStartDialogue,
   syncRunObjectiveToEnemies,
   checkRunTerminalState,
   stateSnapshot,
@@ -1510,8 +1511,8 @@ function applyDebugScenario(socket, name) {
     }
 
     if (name === 'quest-comms-run-start') {
-      // Initiate Vault (training_caverns Tier 1) in-run; startDungeonRun emits Rewa's
-      // run_start questDialogue radio line. Reachable normally by selecting Initiate
+      // Initiate Vault (training_caverns Tier 1) in-run; applyDebugScenario emits Rewa's
+      // run_start questDialogue after the playing stateUpdate. Reachable normally by selecting Initiate
       // Vault and deploying from the lobby.
       state.selectedQuestId = 'training_caverns';
       state.selectedQuestTier = 1;
@@ -3295,7 +3296,9 @@ function applyDebugScenario(socket, name) {
     syncRunObjectiveToEnemies();
 
     broadcastLobbyUpdate(lobby);
-    io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+    const lobbyIo = io.to(lobby.id);
+    lobbyIo.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+    emitRunStartDialogue(lobbyIo);
     return { ok: true, scenario: name };
   });
 }
