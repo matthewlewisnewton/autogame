@@ -1108,20 +1108,24 @@ function lockWindupDirection(enemy, target) {
 	enemy.windupDirZ = aim.dirZ;
 }
 
+// Range is true 3D (spherical) distance — a target XZ-close but far above or
+// below the enemy is out of reach. The cone angle check is a 3D dot product
+// against the wind-up direction locked by lockWindupDirection, matching
+// collectConeHits.
 function isEntityInEnemyAttack(enemy, target) {
 	const range = enemy.attackRange ?? ENEMY_ATTACK_RANGE;
 	const dx = target.x - enemy.x;
+	const dy = getEntityWorldY(target) - getEntityWorldY(enemy);
 	const dz = target.z - enemy.z;
-	const dist = Math.hypot(dx, dz);
+	const dist = Math.hypot(dx, dy, dz);
 	if (dist > range) return false;
 
 	if (enemy.attackStyle === 'cone') {
 		const coneAngle = enemy.attackConeAngle ?? ATTACK_CONE_ANGLE;
 		const dirX = enemy.windupDirX ?? 1;
+		const dirY = enemy.windupDirY ?? 0;
 		const dirZ = enemy.windupDirZ ?? 0;
-		const tDirX = dist > 0 ? dx / dist : dirX;
-		const tDirZ = dist > 0 ? dz / dist : dirZ;
-		const dot = dirX * tDirX + dirZ * tDirZ;
+		const dot = dist > 0 ? (dirX * dx + dirY * dy + dirZ * dz) / dist : 1;
 		return dot >= Math.cos(coneAngle / 2);
 	}
 
@@ -2590,13 +2594,16 @@ function findNearestVisiblePlayer(enemy, maxRadius, players, now) {
 function healFieldMedicAlly(medic, now) {
 	const healRadius = medic.healRadius;
 	const healAmount = medic.healAmount;
+	const medicY = getEntityWorldY(medic);
 	let lowestAlly = null;
 	let lowestHpRatio = 1;
 
 	for (const ally of _gameState.enemies) {
 		if (ally.id === medic.id || ally.hp <= 0) continue;
 		if (ally.hp >= ally.maxHp) continue;
-		const dist = Math.hypot(ally.x - medic.x, ally.z - medic.z);
+		// Heal radius is a 3D sphere — an elevated ally inside it qualifies,
+		// an XZ-close ally far above it does not.
+		const dist = sphericalDistanceToEntity(medic.x, medicY, medic.z, ally);
 		if (dist > healRadius) continue;
 		const ratio = ally.hp / ally.maxHp;
 		if (ratio < lowestHpRatio) {
@@ -3531,6 +3538,9 @@ module.exports = {
   updateEnemyProjectiles,
   spawnIceBall,
   isPlayerConcealed,
+  isEntityInEnemyAttack,
+  isPlayerInEnemyAttack,
+  healFieldMedicAlly,
 
   // Minion AI
   updateMinions,
