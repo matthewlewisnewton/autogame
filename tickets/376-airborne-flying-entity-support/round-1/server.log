@@ -1,0 +1,13 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/376-airborne-flying-entity-support/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/376-airborne-flying-entity-support/game/data
+Server listening on port 3000
+Player connected: socket=ZN2xg4xe7rsimNBNAAAB, playerId=4a3b329e-4bf2-4659-bd13-441a1b7544e7
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=jitsmkpW7iejxDx2AAAD, playerId=fabf59f3-f5e1-4896-a473-1d913a46e677
+Player disconnected: ZN2xg4xe7rsimNBNAAAB
+Player disconnected: jitsmkpW7iejxDx2AAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

@@ -1,0 +1,6 @@
+Created one new sub-ticket. The three existing sub-tickets (`01`, `02`, `03`) all carry `.passed` markers and were left untouched.
+
+**Created:**
+- `/home/matt/workspace/.autogame-worktrees/376-airborne-flying-entity-support/tickets/376-airborne-flying-entity-support/subtickets/04-player-airborne-symmetry/ticket.md`
+
+This closes the sole remaining gap from round 2: the player entity path was not symmetric with flying enemies/minions, so a future player fly/hover card wouldn't render the local/remote player airborne or give it a shadow. The sub-ticket wires `flying`/`altitude` into the player snapshot and routes the local and remote player render + a new `playerShadows` map through the **already-existing** generic helpers (`resolveEntityY`, `flyingRenderOffset`, `flyingShadowY`, `syncFlyingShadow`) rather than adding a player-only altitude path. Verification is `code` because the criteria are about snapshot fields, render logic, a shadow path existing, and tests — none observable in a normal happy-path run where no player flies.

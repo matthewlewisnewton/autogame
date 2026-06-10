@@ -1,0 +1,5 @@
+Wrote the holistic review and remediation file.
+
+`VERDICT: FAIL`
+
+Blocking gap: `game/client/renderer.js` renders flying enemies/minions using fixed `altitude` instead of server-authoritative `entity.y`, so airborne visuals are wrong on non-default floor heights. `gaps.md` contains the compact actionable fix.

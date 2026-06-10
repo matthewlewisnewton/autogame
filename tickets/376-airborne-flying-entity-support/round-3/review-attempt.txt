@@ -1,0 +1,7 @@
+Completed the senior review.
+
+Wrote:
+- `tickets/376-airborne-flying-entity-support/round-3/review.md` with `VERDICT: PASS`
+- `tickets/376-airborne-flying-entity-support/round-3/nits.md` with one non-blocking follow-up
+
+No `gaps.md` was created because there are no blocking gaps.
