@@ -11,11 +11,12 @@ function resetState() {
 	Object.assign(gameState, createGameState());
 }
 
-function addEnemy(id, x, z, hp = 100) {
+function addEnemy(id, x, z, hp = 100, y = undefined) {
 	gameState.enemies.push({
 		id,
 		type: 'grunt',
 		x,
+		y,
 		z,
 		hp,
 		maxHp: hp,
@@ -118,6 +119,38 @@ describe('collectChainLightningHits', () => {
 		expect(result.hits).toEqual([]);
 		expect(result.magicStonesGained).toBe(0);
 		expect(gameState.enemies.find((e) => e.id === 'near-caster').hp).toBe(100);
+	});
+
+	it('chains to an elevated enemy inside the 3D sphere and skips an XZ-near enemy above it on a level cast', () => {
+		addEnemy('primary', 5, 0);
+		// 3D distance from primary (floor Y 0.5): √(3² + 3²) ≈ 4.24 ≤ chainRadius (5)
+		addEnemy('elevated', 8, 0, 100, 3.5);
+		// XZ distance from primary ≈ 1.41 (inside chainRadius) but 3D ≈ √(1² + 10² + 1²) ≈ 10.1,
+		// and still ≈ 7.35 from the elevated enemy after the first hop — never eligible
+		addEnemy('too-high', 6, 1, 100, 10.5);
+
+		const result = collectChainLightningHits(0, 0, 1, 0, attackRange, baseDamage, {
+			chainRadius,
+			maxChainTargets: 2,
+		});
+
+		expect(result.hits.map((h) => h.enemyId)).toEqual(['primary', 'elevated']);
+		expect(gameState.enemies.find((e) => e.id === 'too-high').hp).toBe(100);
+	});
+
+	it('orders chain hops by 3D distance, not XZ distance', () => {
+		addEnemy('primary', 5, 0);
+		// XZ-nearest (1.0) but 3D from primary ≈ √(1² + 3.5²) ≈ 3.64
+		addEnemy('xz-near-high', 6, 0, 100, 4);
+		// XZ 3.0 and 3D 3.0 — nearer in 3D than xz-near-high
+		addEnemy('xz-far-flat', 8, 0, 100, 0.5);
+
+		const result = collectChainLightningHits(0, 0, 1, 0, attackRange, baseDamage, {
+			chainRadius,
+			maxChainTargets: 2,
+		});
+
+		expect(result.hits.map((h) => h.enemyId)).toEqual(['primary', 'xz-far-flat', 'xz-near-high']);
 	});
 
 	it('does not hit enemies beyond projectile range on the primary ray', () => {

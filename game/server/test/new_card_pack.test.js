@@ -552,6 +552,81 @@ describe('new card combat helpers', () => {
 		]);
 	});
 
+	it('Thunderbird chains to an elevated enemy inside the 3D sphere and skips an XZ-near enemy above it', () => {
+		addPlayer('p1', { x: 0, z: 0 });
+		gameState.enemies = [
+			{
+				id: 'e1',
+				type: 'grunt',
+				x: 6,
+				z: 0,
+				hp: 50,
+				state: 'idle',
+				attackState: 'idle',
+				wanderTarget: { x: 6, z: 0 },
+			},
+			{
+				// 3D distance from e1 (floor Y 0.5): √(2² + 3²) ≈ 3.61 ≤ chainRadius (5)
+				id: 'elevated',
+				type: 'grunt',
+				x: 8,
+				y: 3.5,
+				z: 0,
+				hp: 50,
+				state: 'idle',
+				attackState: 'idle',
+				wanderTarget: { x: 8, z: 0 },
+			},
+			{
+				// XZ distance from e1 ≈ 1.12 (inside chainRadius) but 3D ≈ √(0.5² + 10² + 1²) ≈ 10.1,
+				// and still ≈ 7.23 from the elevated enemy after the first hop — never eligible
+				id: 'too-high',
+				type: 'grunt',
+				x: 6.5,
+				y: 10.5,
+				z: 1,
+				hp: 50,
+				state: 'idle',
+				attackState: 'idle',
+				wanderTarget: { x: 6.5, z: 1 },
+			},
+		];
+		gameState.minions = [{
+			id: 'bird',
+			ownerId: 'p1',
+			type: 'thunderbird',
+			x: 0,
+			z: 0,
+			hp: 68,
+			attackRange: 11,
+			attackDamage: 20,
+			chainRadius: 5,
+			maxChainTargets: 2,
+			ttl: 30,
+		}];
+		gameState.run = { status: 'playing' };
+
+		updateMinions();
+		cleanupAfterDamage();
+
+		const byId = (id) => gameState.enemies.find((e) => e.id === id);
+		expect(byId('e1').hp).toBeLessThan(50);
+		expect(byId('elevated').hp).toBeLessThan(50);
+		expect(byId('too-high').hp).toBe(50);
+		expect(gameState._pendingMinionBreaths).toHaveLength(1);
+		expect(gameState._pendingMinionBreaths[0].hits).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ enemyId: 'e1' }),
+				expect.objectContaining({ enemyId: 'elevated' }),
+			]),
+		);
+		expect(gameState._pendingMinionBreaths[0].hits).toHaveLength(2);
+		expect(gameState._pendingMinionBreaths[0].chainSegments).toEqual([
+			{ from: { x: 0, z: 0 }, to: { x: 6, z: 0 } },
+			{ from: { x: 6, z: 0 }, to: { x: 8, z: 0 } },
+		]);
+	});
+
 	it('storm_eagle fires on first tick but NOT again within the same attackIntervalMs', () => {
 		addPlayer('p1', { x: 0, z: 0 });
 		const damage = 13;

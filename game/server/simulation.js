@@ -1568,9 +1568,7 @@ function collectChainLightningHits(originX, originZ, dirX, dirZ, range, damage, 
     for (const enemy of _gameState.enemies) {
       if (hitEnemyIds.has(enemy.id) || enemy.hp <= 0) continue;
       const enemyY = getEntityWorldY(enemy);
-      const dist = use3D
-        ? Math.hypot(enemy.x - currentPos.x, enemyY - currentPos.y, enemy.z - currentPos.z)
-        : Math.hypot(enemy.x - currentPos.x, enemy.z - currentPos.z);
+      const dist = Math.hypot(enemy.x - currentPos.x, enemyY - currentPos.y, enemy.z - currentPos.z);
       if (dist <= chainRadius && dist < nextDist) {
         nextDist = dist;
         next = enemy;
@@ -3168,9 +3166,7 @@ function updateMinions() {
                       if (hitIds.has(enemy.id) || enemy.hp <= 0) continue;
                       const enemyY = getEntityWorldY(enemy);
                       const currentY = getEntityWorldY(current);
-                      const distToNext = use3D
-                        ? Math.hypot(enemy.x - current.x, enemyY - currentY, enemy.z - current.z)
-                        : Math.hypot(enemy.x - current.x, enemy.z - current.z);
+                      const distToNext = Math.hypot(enemy.x - current.x, enemyY - currentY, enemy.z - current.z);
                       if (distToNext <= chainRadius && distToNext < nextDist) {
                         nextDist = distToNext;
                         next = enemy;
