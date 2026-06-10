@@ -1251,6 +1251,10 @@ function recordEnemyDefeated(count = 1) {
   const def = getObjectiveDef(_gameState.run.objective.type);
   if (!def?.onEnemyDefeated) return;
   def.onEnemyDefeated(_gameState.run, count);
+  if (_gameState.run.objective.type === 'survive') {
+    const io = getIoTarget();
+    fireQuestDialogue(io, _gameState, { waveCleared: _gameState.run.objective.defeatedEnemies });
+  }
 }
 
 function recordCrystalCollected(count = 1) {

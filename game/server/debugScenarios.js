@@ -1526,6 +1526,15 @@ function applyDebugScenario(socket, name) {
       state.selectedQuestId = 'crystal_rescue';
     }
 
+    if (name === 'endless-siege-wave-five') {
+      // Endless Siege tier 1 survive run four defeats from the half-siege radio beat.
+      // Reachable normally by selecting endless_siege, deploying, and defeating
+      // five staggered attackers (~30s+ with spawn intervals and combat).
+      state.selectedQuestId = 'endless_siege';
+      state.selectedQuestTier = 1;
+      applyLayoutForQuest(state, 'endless_siege', 1);
+    }
+
     if (name === 'slippery-floor-lab') {
       // Frost Crossing tier 1 deploy, then seat the player on a production slippery
       // ice room for momentum physics QA. Reachable normally by deploying Frost
@@ -2218,6 +2227,26 @@ function applyDebugScenario(socket, name) {
       const total = Number.isFinite(objective.totalItems) ? objective.totalItems : 3;
       objective.totalItems = total;
       objective.collectedItems = Math.min(2, Math.max(0, total - 1));
+    } else if (name === 'endless-siege-wave-five') {
+      if (!state.run || state.run.status !== 'playing' || state.run.objective?.type !== 'survive') {
+        return { ok: false, reason: 'No active survive run for endless-siege-wave-five' };
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const objective = state.run.objective;
+      objective.defeatedEnemies = 4;
+      objective.spawnedEnemies = Math.max(objective.spawnedEnemies ?? 0, 5);
+      state.enemies = [];
+      const enemy = spawnEnemy(player.x + 2, player.z, 'grunt');
+      enemy.hp = 1;
+      enemy.maxHp = ENEMY_DEFS.grunt.hp;
+      enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+      if (!player.hand.some(c => c && c.type === 'weapon' && (c.remainingCharges == null || c.remainingCharges > 0))) {
+        const replaceSlot = player.hand.findIndex(c => c && c.type !== 'weapon');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5, grind: 0 };
+        }
+      }
     } else if (name === 'quest-objective-near-complete') {
       // Leave a defeat_enemies run one trigger away from victory: a single
       // low-HP grunt stands between the player and an objective-complete win.

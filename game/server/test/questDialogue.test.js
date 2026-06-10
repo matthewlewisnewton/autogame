@@ -216,6 +216,115 @@ describe('quest dialogue progression hooks', () => {
     });
   });
 
+  describe('endless_siege waveCleared dialogue', () => {
+    beforeEach(() => {
+      gameState.selectedQuestId = 'endless_siege';
+      gameState.selectedQuestTier = 1;
+    });
+
+    it('emits waveCleared:5 after five recordEnemyDefeated calls', () => {
+      const io = createMockIo();
+      progressionInitWithIo(io);
+      const quest = getQuest('endless_siege', 1);
+      const waveText = quest.dialogue.find(
+        (entry) =>
+          entry.trigger
+          && typeof entry.trigger === 'object'
+          && entry.trigger.waveCleared === 5,
+      )?.text;
+
+      startDungeonRun();
+      progression.emitRunStartDialogue(io);
+
+      for (let i = 0; i < 5; i += 1) {
+        recordEnemyDefeated(1);
+      }
+
+      const wavePayloads = io.emitted
+        .filter((e) => e.event === SERVER_TO_CLIENT.QUEST_DIALOGUE)
+        .map((e) => e.payload)
+        .filter(
+          (p) =>
+            p.trigger
+            && typeof p.trigger === 'object'
+            && p.trigger.waveCleared === 5,
+        );
+
+      expect(wavePayloads).toHaveLength(1);
+      expect(wavePayloads[0].text).toBe(waveText);
+      expect(wavePayloads[0].speaker).toBe('Marshal Koss');
+      expect(wavePayloads[0].trigger.waveCleared).toBe(5);
+
+      recordEnemyDefeated(1);
+      const afterSixth = io.emitted
+        .filter((e) => e.event === SERVER_TO_CLIENT.QUEST_DIALOGUE)
+        .map((e) => e.payload)
+        .filter(
+          (p) =>
+            p.trigger
+            && typeof p.trigger === 'object'
+            && p.trigger.waveCleared === 5,
+        );
+      expect(afterSixth).toHaveLength(1);
+    });
+
+    it('does not emit waveCleared before the configured threshold', () => {
+      const io = createMockIo();
+      progressionInitWithIo(io);
+
+      startDungeonRun();
+      progression.emitRunStartDialogue(io);
+
+      for (let i = 0; i < 4; i += 1) {
+        recordEnemyDefeated(1);
+      }
+
+      const wavePayloads = io.emitted
+        .filter((e) => e.event === SERVER_TO_CLIENT.QUEST_DIALOGUE)
+        .map((e) => e.payload)
+        .filter(
+          (p) =>
+            p.trigger
+            && typeof p.trigger === 'object'
+            && Object.prototype.hasOwnProperty.call(p.trigger, 'waveCleared'),
+        );
+      expect(wavePayloads).toHaveLength(0);
+    });
+
+    it('emits objective_complete only when all attackers are defeated', () => {
+      const io = createMockIo();
+      progressionInitWithIo(io);
+      const completeText = getQuest('endless_siege', 1).dialogue.find(
+        (entry) => entry.trigger === 'objective_complete',
+      )?.text;
+
+      startDungeonRun();
+      progression.emitRunStartDialogue(io);
+      const total = getQuest('endless_siege', 1).totalSpawns;
+      for (let i = 0; i < total; i += 1) {
+        recordEnemyDefeated(1);
+      }
+
+      checkRunTerminalState();
+
+      const completePayloads = io.emitted
+        .filter((e) => e.event === SERVER_TO_CLIENT.QUEST_DIALOGUE)
+        .map((e) => e.payload)
+        .filter((p) => p.trigger === 'objective_complete');
+
+      expect(completePayloads).toHaveLength(1);
+      expect(completePayloads[0].text).toBe(completeText);
+      expect(completePayloads[0].speaker).toBe('Marshal Koss');
+
+      checkRunTerminalState();
+      const afterRepeat = io.emitted
+        .filter((e) => e.event === SERVER_TO_CLIENT.QUEST_DIALOGUE)
+        .map((e) => e.payload)
+        .filter((p) => p.trigger === 'objective_complete');
+      expect(afterRepeat).toHaveLength(1);
+    });
+  });
+
   it('fires objective_complete for defeat_enemies quests', () => {
     const io = createMockIo();
     progressionInitWithIo(io);
