@@ -1,0 +1,7 @@
+Review complete: `VERDICT: FAIL`.
+
+I wrote:
+- `tickets/quest-briefings-mid-run-radio-dialogue-named-client-npc-rewa-o0vv.3/round-1/review.md`
+- `tickets/quest-briefings-mid-run-radio-dialogue-named-client-npc-rewa-o0vv.3/round-1/gaps.md`
+
+No `nits.md` was created because I didn’t identify non-blocking cleanup items worth filing separately.

@@ -1,0 +1,15 @@
+Remediation round 2 adds three sub-tickets mapped 1:1 to the open review gaps. Sub-tickets `01`–`05` (all `.passed`) are unchanged.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/quest-briefings-mid-run-radio-dialogue-named-client-npc-rewa-o0vv.3/tickets/quest-briefings-mid-run-radio-dialogue-named-client-npc-rewa-o0vv.3/subtickets/06-run-start-dialogue-timing/`
+2. `/home/matt/workspace/.autogame-worktrees/quest-briefings-mid-run-radio-dialogue-named-client-npc-rewa-o0vv.3/tickets/quest-briefings-mid-run-radio-dialogue-named-client-npc-rewa-o0vv.3/subtickets/07-tier2-quest-briefing-content/`
+3. `/home/matt/workspace/.autogame-worktrees/quest-briefings-mid-run-radio-dialogue-named-client-npc-rewa-o0vv.3/tickets/quest-briefings-mid-run-radio-dialogue-named-client-npc-rewa-o0vv.3/subtickets/08-wave-cleared-dialogue-hook/`
+
+| Sub-ticket | Gap closed |
+|---|---|
+| **06** | `run_start` dialogue dropped because it fires before `gamePhase === 'playing'` |
+| **07** | Tier-2 quest board rows show `Contract issuer unknown` (missing `client`/`dialogue` on 5 tier-2 defs) |
+| **08** | `endless_siege` `{ waveCleared: 5 }` beat never fires (no server hook) |
+
+All three use **code** verification. No failed sub-ticket folders needed deletion — every existing folder already has a `.passed` marker.
