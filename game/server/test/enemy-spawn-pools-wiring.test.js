@@ -1,6 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { generateLayout } from '../dungeon.js';
-import { getLayoutProfileForQuest, getEnemyPool, getQuest, QUEST_DEFS } from '../quests.js';
+import { generateLayout, questLayoutSeed } from '../dungeon.js';
+import {
+	getLayoutProfileForQuest,
+	getLayoutGenerationOptions,
+	getEnemyPool,
+	getQuest,
+	QUEST_DEFS,
+} from '../quests.js';
 import {
 	spawnEnemies,
 	updateSurviveSpawns,
@@ -78,11 +84,51 @@ describe('ember_wraith cross-level exclusion', () => {
 		}
 	});
 
-	it('can spawn `ember_wraith` for an ember_descent run', () => {
+	it('scripts Cinderghast as ember_wraith on ember_descent basin enter_room wave', () => {
 		expect(poolTypes('ember_descent')).toContain('ember_wraith');
+		const questId = 'ember_descent';
+		const tier = 1;
+		const seed = questLayoutSeed(questId, tier);
+		const layout = generateLayout(
+			seed,
+			getLayoutProfileForQuest(questId, tier),
+			getLayoutGenerationOptions(questId, tier),
+		);
+		const startRoom = layout.rooms.find((room) => room.role === 'start') || layout.rooms[0];
+		const basinRoom = layout.rooms.find((room) => room.band === 'basin');
+
 		resetGameState();
-		deployQuest('ember_descent', 1);
+		gameState.selectedQuestId = questId;
+		gameState.selectedQuestTier = tier;
+		gameState.layout = layout;
+		gameState.layoutSeed = seed;
+		gameState.enemies = [];
+		gameState.loot = [];
+		gameState.gamePhase = 'playing';
+		gameState.players = {
+			p1: {
+				x: startRoom.x,
+				y: 0.5,
+				z: startRoom.z,
+				rotation: 0,
+				hp: 100,
+				dead: false,
+				extracted: false,
+				runCardDropIds: [],
+				pendingSummons: new Set(),
+			},
+		};
+		spawnEnemies();
+		startDungeonRun();
+		expect(gameState.enemies.some(e => e.type === 'ember_wraith')).toBe(false);
+
+		gameState.players.p1.x = basinRoom.x;
+		gameState.players.p1.z = basinRoom.z;
+		const { updateQuestScriptTriggers } = require('../progression.js');
+		updateQuestScriptTriggers();
+
 		expect(gameState.enemies.some(e => e.type === 'ember_wraith')).toBe(true);
+		expect(gameState.enemies.some(e => e.namedRare?.name === 'Cinderghast')).toBe(true);
 	});
 });
 

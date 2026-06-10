@@ -121,7 +121,9 @@ export function buildLockOnPanelModel(enemy, catalog) {
   }
 
   let variantName;
-  if (enemy.variant) {
+  if (enemy.namedRare?.name) {
+    variantName = enemy.namedRare.name;
+  } else if (enemy.variant) {
     const variantEntry = catalog.variants?.[enemy.variant];
     if (variantEntry) {
       variantName = variantEntry.name;
@@ -139,8 +141,12 @@ export function buildLockOnPanelModel(enemy, catalog) {
     }
   }
 
+  const displayName = typeof enemy.displayName === 'string' && enemy.displayName.trim()
+    ? enemy.displayName.trim()
+    : typeEntry.name;
+
   return {
-    name: typeEntry.name,
+    name: displayName,
     variantName,
     description,
     hpText,

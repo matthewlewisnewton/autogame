@@ -34,6 +34,7 @@ import {
 	frenziedTelegraphMeshes,
 	enemySlowMarkers,
 	enemyBurnMarkers,
+	enemyNameplates,
 	minionsMeshes,
 } from './rendererState.js';
 import {
@@ -56,6 +57,9 @@ import {
 	spawnChainLightningEffect,
 	windupFlashing,
 	lastCardHitTime,
+	createEnemyNameplate,
+	disposeEnemyNameplate,
+	NAMEPLATE_OFFSET_Y,
 } from '../renderer.js';
 
 /** enemyId → hp from previous frame (private enemy-sync state). */
@@ -271,6 +275,99 @@ export function applyRevealHighlight(enemyId, enemy) {
 		mesh.material.emissive.set(mesh._origEmissive || 0x000000);
 		mesh.material.emissiveIntensity =
 			(mesh._origEmissiveIntensity != null ? mesh._origEmissiveIntensity : 0);
+	}
+}
+
+// ── Named-rare visuals (body tint, scale, floating nameplate) ──
+
+/**
+ * Parse a named-rare tint string (hex) to a Three.js color hex number.
+ * @param {string} [tint]
+ * @returns {number | null}
+ */
+export function parseNamedRareTintHex(tint) {
+	if (!tint || typeof tint !== 'string') return null;
+	let hex = tint.trim();
+	if (hex.startsWith('#')) hex = hex.slice(1);
+	if (!/^[0-9a-fA-F]{6}$/.test(hex)) return null;
+	return parseInt(hex, 16);
+}
+
+/**
+ * Apply or restore the named-rare body tint on an enemy mesh.
+ * @param {string} enemyId
+ * @param {object} enemy - { namedRare }
+ */
+export function applyNamedRareTint(enemyId, enemy) {
+	const mesh = enemiesMeshes[enemyId];
+	if (!mesh || !mesh.material || !mesh.material.color) return;
+
+	const tintHex = enemy?.namedRare?.tint ? parseNamedRareTintHex(enemy.namedRare.tint) : null;
+	if (tintHex != null) {
+		mesh.material.color.setHex(tintHex);
+	} else if (mesh._origColor != null) {
+		mesh.material.color.setHex(mesh._origColor);
+	}
+}
+
+/**
+ * Apply or restore named-rare scale multiplier on an enemy mesh.
+ * @param {string} enemyId
+ * @param {object} enemy - { namedRare }
+ */
+function setEnemyMeshUniformScale(mesh, scaled) {
+	if (typeof mesh.scale.setScalar === 'function') {
+		mesh.scale.setScalar(scaled);
+	} else if (typeof mesh.scale.set === 'function') {
+		mesh.scale.set(scaled, scaled, scaled);
+	} else {
+		mesh.scale.x = scaled;
+		mesh.scale.y = scaled;
+		mesh.scale.z = scaled;
+	}
+}
+
+export function applyNamedRareScale(enemyId, enemy) {
+	const mesh = enemiesMeshes[enemyId];
+	if (!mesh || !mesh.scale) return;
+
+	if (enemy?.namedRare) {
+		if (mesh._origScale == null) {
+			mesh._origScale = mesh.scale.x ?? 1;
+		}
+		const mult = enemy.namedRare.scaleMult ?? 1;
+		setEnemyMeshUniformScale(mesh, mesh._origScale * mult);
+		return;
+	}
+
+	if (mesh._origScale == null) return;
+	setEnemyMeshUniformScale(mesh, mesh._origScale);
+	delete mesh._origScale;
+}
+
+/**
+ * Create, position, or dispose the named-rare nameplate sprite above an enemy.
+ * @param {string} enemyId
+ * @param {object} enemy - { namedRare, x, z }
+ * @param {number} renderY - enemy mesh center Y
+ */
+export function applyEnemyNameplate(enemyId, enemy, renderY) {
+	const scene = getScene();
+	if (enemy?.namedRare?.name) {
+		const label = enemy.namedRare.name;
+		if (!enemyNameplates[enemyId] || enemyNameplates[enemyId].userData.namedRareName !== label) {
+			if (enemyNameplates[enemyId]) disposeEnemyNameplate(enemyId);
+			const np = createEnemyNameplate(label);
+			scene.add(np);
+			enemyNameplates[enemyId] = np;
+		}
+		enemyNameplates[enemyId].position.set(
+			enemy.x,
+			renderY + NAMEPLATE_OFFSET_Y,
+			enemy.z,
+		);
+	} else if (enemyNameplates[enemyId]) {
+		disposeEnemyNameplate(enemyId);
 	}
 }
 
@@ -766,14 +863,28 @@ export function syncEnemyMeshes(gs) {
 		// ── Reveal highlight (Flare Beacon) ──
 		applyRevealHighlight(enemy.id, enemy);
 
-		// ── Variant body tint (warded cyan; others use type default) ──
-		applyEnemyVariantTint(enemy.id, enemy);
+		if (enemy.namedRare) {
+			applyNamedRareTint(enemy.id, enemy);
+			applyNamedRareScale(enemy.id, enemy);
+			applyEnemyNameplate(enemy.id, enemy, renderY);
+			// Named-rare enemies skip affix-variant badge/tint logic.
+			applyEnemyVariantTint(enemy.id, {});
+			applyVariantMarker(enemy.id, {});
+			applyVariantEmissiveTint(enemy.id, {});
+		} else {
+			applyNamedRareTint(enemy.id, enemy);
+			applyNamedRareScale(enemy.id, enemy);
+			applyEnemyNameplate(enemy.id, enemy, renderY);
 
-		// ── Variant marker (elite enemy badge) ──
-		applyVariantMarker(enemy.id, enemy);
+			// ── Variant body tint (warded cyan; others use type default) ──
+			applyEnemyVariantTint(enemy.id, enemy);
 
-		// ── Variant mesh tint (e.g. leeching) ──
-		applyVariantEmissiveTint(enemy.id, enemy);
+			// ── Variant marker (elite enemy badge) ──
+			applyVariantMarker(enemy.id, enemy);
+
+			// ── Variant mesh tint (e.g. leeching) ──
+			applyVariantEmissiveTint(enemy.id, enemy);
+		}
 
 		// ── Frenzied enrage telegraph ring ──
 		applyFrenziedTelegraphRing(enemy.id, enemy);
@@ -793,6 +904,11 @@ export function syncEnemyMeshes(gs) {
 	disposeStaleMeshes(enemyShadows, currentEnemyIds, scene);
 	disposeStaleMeshes(enemyLockOnRings, currentEnemyIds, scene);
 	disposeStaleMeshes(variantMarkerMeshes, currentEnemyIds, scene);
+	for (const id of Object.keys(enemyNameplates)) {
+		if (!currentEnemyIds.has(id)) {
+			disposeEnemyNameplate(id);
+		}
+	}
 	disposeStaleMeshes(frenziedTelegraphMeshes, currentEnemyIds, scene);
 	disposeStaleMeshes(enemySlowMarkers, currentEnemyIds, scene);
 	disposeStaleMeshes(enemyBurnMarkers, currentEnemyIds, scene);

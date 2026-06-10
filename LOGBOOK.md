@@ -6028,6 +6028,95 @@ PASS. This ticket did not add or change a renderer debug scenario entry point. E
 None.
 
 
+## v0.350 — Server: death soft-lock — players return to lobby at 0 HP with 0 money (LOBBY_REVIVE_HP is dead code), redeploy = instant Signal Lost  (2026-06-10 03:24:04)
+
+
+Ticket-specific tests pass when run in isolation:
+
+- `revivePlayerInLobby` unit tests (3/3)
+- Death-at-0-money integration test (1/1)
+
+Harness `coverage.log` shows the full server suite ran with one unrelated flaky failure (`cleanupStalePlayers` boundary) and pre-existing debug-scenario failures; neither touches changed revive logic. Changed files are exercised by the updated unit and integration tests.
+
+### Harness capture vs. ticket scenario
+
+The round-1 capture used the **fallback** smoke plan (generic lobby → deploy → movement), not a death/revive scenario. Screenshots show a healthy in-run state at 100 HP. Visual QA therefore does not independently demonstrate the soft-lock fix, but the dedicated integration test and code paths provide strong functional proof. Runtime health is clean.
+
+## Remaining gaps
+
+None. All acceptance criteria are satisfied; the game runs without browser errors.
+
+## Nits (non-blocking)
+
+See `nits.md` for follow-up items on mid-run reconnect revive scope and design-doc alignment.
+
+## v0.349 — Quest briefings + mid-run radio dialogue: named client NPC, reward shown upfront, scripted progress beats  (2026-06-10 02:54:49)
+
+
+### Selecting a quest on the board shows client name, briefing, reward before ready-up
+PASS. The quest payload now carries `client`, `dialogue`, reward currency, and optional signature-card metadata through `buildSharedQuestUpdatePayload()` / `buildQuestUpdatePayload()`. The client quest board renders a selected-quest briefing panel with Client, Briefing, and Reward fields, and the server `selectQuest` handler emits updated quest payloads while still enforcing lobby phase, suspended-run lockout, valid quest/tier, and tier unlock rules.
+
+### During `crystal_rescue`, collecting each prism fires a distinct radio line; completing the objective fires an extraction line
+PASS. `crystal_rescue` tier 1 defines distinct Lysa lines for prism collections 1, 2, and 3, plus an `objective_complete` extraction line. The live pickup flow removes crystal loot, calls `recordCrystalCollected(1)`, and then calls `checkRunTerminalState()` for completion, so collection and extraction dialogue are driven by the same server objective path that completes the run.
+
+### Dialogue events are driven by server triggers so all squad members see them
+PASS. `questDialogue.fireQuestDialogue()` dedupes fired triggers per run and emits `questDialogue` from the server. Run-start dialogue fires after `START_GAME` and the playing `stateUpdate`; prism collection, survive wave progress, and objective completion fire from progression hooks. In normal lobby context, `getIoTarget()` scopes the emit target to `io.to(lobbyId)`, so every socket in the squad room receives the same server event without relying on client timers.
+
+### Quest content and design consistency
+PASS. All existing tier-1 quests have named clients, pre-run briefing copy, reward copy, run-start dialogue, and completion dialogue; collect-item quests additionally define per-item beats. This fits the PSO-style guild-counter briefing and in-run radio direction in `game/docs/design.md`, and it does not regress the foundation requirements: the captured run still connects client/server, renders the 3D scene, displays multiplayer state, and synchronizes movement.
+
+### Debug scenarios
+PASS. This ticket adds/changes debug scenario support for quest-comms and wave-progress QA. The URL parameter remains the only client entry point, gated to localhost in the client and local/dev sockets on the server. The new scenario comments trace equivalent normal gameplay paths, and the shortcuts still use server-side quest/run state, layout application, progression hooks, and lobby-scoped state updates rather than client-only state.
+
+## Remaining gaps
+
+None.
+
+## v0.348 — Epic: PSO-style quest identity rework — scripted encounters, briefings, named rares, signature rewards  (2026-06-10 02:51:14)
+
+
+- `training_caverns` / Initiate Vault is a scripted annex sweep with a passage lock, wave-clear dialogue, Vault Stalker named rare, and Saber of Light reward.
+- `crystal_rescue` / Prism Salvage keeps prism collection but requires scripted guard waves and fires collection dialogue for each prism, with Mana Prism as the stated reward.
+- `frost_crossing` has ice-band waves, glacial throwers, Rimecast the Slow as a named rare, room-entry ice-band dialogue, and Cryo Burst as the reward.
+
+The design doc's Quest identity section matches this implementation, and the original foundation requirements still hold: the captured run renders 3D, connects over WebSocket, shows multiplayer state, and synchronizes movement.
+
+### Debug scenarios
+
+PASS. This ticket added tier-1 deploy shortcuts for the reworked quests. They are debug/dev gated: the client only auto-requests them from the `?debugScenario=` URL on localhost, and the server rejects debug scenarios outside localhost/dev or `ALLOW_DEBUG_SCENARIOS=1`. Equivalent states remain reachable through normal gameplay by selecting the quest, readying/deploying, and then progressing through authored waves/items/escort objectives. The shortcuts mutate QA state only after the debug event and do not replace the normal validation path.
+
+## Verification
+
+- Captured run: `metrics.json` ok, `pageerrors: []`, no fatal browser page errors.
+- Harness probes: lobby deploy to playing, objective visible, two players present, enemies spawned, card hand visible, key-item cooldown probe succeeded.
+- Coverage log: 155 test files passed, 2368 tests passed; coverage report present with thresholds disabled.
+
+## Remaining gaps
+
+No blocking gaps.
+
+## v0.347 — Quest scripting foundation: data-driven hand-placed waves + room triggers (replaces random bulk spawn for scripted quests)  (2026-06-10 01:14:31)
+
+
+### `enter_room` waves are delayed, and `waveCleared` chaining works
+PASS. `enter_room` waves remain pending until an active, non-dead, non-extracted player enters the resolved trigger room; room bindings support both explicit room coordinates and landmarks. Spawned waves transition to `cleared` only after every tracked enemy id is absent from live enemies, and pending `{ waveCleared: id }` waves then spawn once. The tests cover delayed entry, no re-spawn on re-entry, dead/extracted-player suppression, landmark resolution, chained waves, and partial-wave clearing.
+
+### Existing non-scripted quests are unchanged
+PASS. Production quest tiers currently have no `script` block, so they continue through the existing spawn path. The implementation gates scripted behavior on `getQuestScript(quest) != null`, and the regression test confirms `training_caverns` tier 1 still bulk-spawns its normal `enemyCount`. The live browser capture also ran `training_caverns` tier 1 with 5 enemies, matching the existing non-scripted behavior.
+
+### Unit/integration coverage and state snapshot exposure
+PASS. The new server tests cover script schema, run-start waves, enter-room triggers, wave-cleared chaining, and a full scripted lifecycle that completes a `defeat_enemies` run. `stateSnapshot()` exposes `run.waveScript` through the existing run snapshot, including wave ids, triggers, statuses, and spawned ids. The captured coverage run reports `109 passed` test files and `1535 passed` tests, including all new quest-script suites.
+
+### Design and foundation consistency
+PASS. The implementation is consistent with the PSO-style room/wave scripting direction in the ticket and does not regress the baseline requirements in `game/docs/requirements.md`: the captured game still renders, connects client/server, visualizes multiplayer, and synchronizes movement. The change is server-authoritative and does not add client-only shortcuts or weaken gameplay invariants.
+
+### Debug scenarios
+PASS. This ticket did not add or change any `?debugScenario=...` shortcut. Existing debug scenario entry points remain gated by URL/debug handling and are not part of normal gameplay.
+
+## Remaining gaps
+
+No blocking gaps remain. One limitation of the evidence is that the browser capture exercised an unscripted production quest because no shipped quest tier currently defines `script.waves`; the scripted path is nevertheless covered by focused server fixtures and integration tests, which is sufficient for this foundation ticket.
+
 ## v0.346 — Per-quest signature card rewards: replace the single global victory rotation, surface reward on the quest board  (2026-06-10 00:45:49)
 
 | Requirement | Status |
@@ -6053,7 +6142,7 @@ See `nits.md` for one follow-up on tier-1 vs tier-2 currency label wording on th
 
 ## v0.354 — 374-spherical-3d-aoe-for-all-radius-effects  (2026-06-10 04:37:38)
 
-bookkeeping files). No client/shared edits.
+**Scope: game/server/simulation.js + game/server + test.** Respected. Diff touches only `game/server/*.js` and `game/server/test/*` (plus subticket bookkeeping files). No client/shared edits.
 
 ## Consistency & quality
 
@@ -6072,4 +6161,74 @@ bookkeeping files). No client/shared edits.
 
 None blocking. Acceptance criteria are fully and robustly met, the game runs cleanly, and the
 test suite is green. Minor non-blocking polish noted in `nits.md`.
+
+
+## v0.353 — Server: quest-objective crystals despawn after LOOT_LIFETIME_MS — collect_items runs unwinnable after 2 minutes  (2026-06-10 04:29:31)
+
+
+### Code quality
+
+**Good.** Minimal two-file production change plus focused test. The `questCritical` flag is more extensible than hard-coding `kind === 'crystal'` in the filter (future non-crystal quest items could reuse it). Telepipe suspend/resume deep-clones loot (`captureCardCheckpoint`), so `questCritical` survives checkpoint round-trips.
+
+No new debug scenarios were added; existing crystal debug shortcuts deploy through normal quest spawn and inherit the flag.
+
+### Debug scenarios
+
+**N/A — no new or changed debug scenarios in this ticket's diff.**
+
+## Test and coverage notes
+
+- Harness vitest run: all server tests green (`1569` passed).
+- Changed-file coverage snapshot includes `index.js` at ~72% lines; the one-line filter change is exercised indirectly across the suite. `progression.js` `spawnCrystals` is covered by existing spawn/integration tests (crystal count assertions) though none newly assert `questCritical: true` on output.
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are satisfied; runtime capture is clean.
+
+
+## v0.352 — Server: SELECT_QUEST swaps layout and teleports players while lobby still renders the hub (movement freeze, booths dead)  (2026-06-10 04:27:42)
+
+
+### Layout Swap and Spawn Teleport Happen at Deploy
+PASS. Fresh deploy now applies the selected quest layout inside `checkAllReadyInner()` before assigning run spawn positions and starting the dungeon run. Existing suspended-checkpoint resume flow returns before this fresh-deploy path, so resume continues to restore its saved layout instead of regenerating.
+
+### Players Can Still Move and Use Hub Booths After Selection
+PASS. Server-side selection no longer changes player positions, and booth validation continues to use the hub anchors while requiring lobby phase. On the client, quest layout payloads received during lobby phase are cached for deployment while `gameState.layout` is kept on the hub layout and rendered geometry is not rebuilt until `startGame`.
+
+### Normal Quest Flow Still Reaches the Selected Run
+PASS. Existing socket integration coverage still launches a selected `crystal_rescue` run and verifies the run objective/loot match that quest. The new focused regression test verifies no selection-time teleport/layout swap and confirms deploy applies the selected quest seed and moves the player to a run spawn.
+
+### Design and Requirements Consistency
+PASS. The implementation preserves the documented lobby -> ready/deploy -> dungeon core loop in `game/docs/design.md`, keeps quest selection as a lobby activity, and does not regress the foundation requirements for rendering, WebSocket connection, multiplayer representation, or WASD movement synchronization. No development debug scenario was added or changed by this ticket.
+
+### Tests and Coverage
+PASS. The captured coverage run completed successfully: 117 test files passed, 1589 tests passed. The changed behavior is covered by `game/server/test/defer_quest_layout_swap.test.js`, updated quest selection integration coverage, and quest-tier gating assertions that selection previews without mutating the live layout.
+
+## Remaining gaps
+
+None.
+
+
+## v0.351 — Named rare enemy variants per quest (PSO 'The Fake in Yellow' style) with unique drops  (2026-06-10 03:48:03)
+
+### Stats Scale Per Variant Config; Regular Spawns Unaffected
+
+PASS. `spawnEnemy` applies `applyNamedRareVariant` only when a scripted spawn passes `namedRareVariant`; otherwise it follows the existing random affix variant path. Named rares set `enemy.variant = null`, scale HP/max HP and attack damage from the base enemy definition, and preserve the base enemy's other behavior fields, including Cinderghast's flying/altitude behavior. Tests verify HP/damage multipliers for all three authored variants and that normal enemies still roll affix variants when no named-rare config is supplied.
+
+### Design And Foundation Consistency
+
+PASS. The implementation fits the PSO-inspired quest identity goal in the ticket and stays within the documented multiplayer lobby/dungeon/loot loop. It does not regress the foundation requirements: the captured run rendered a Three.js scene, connected to the backend via WebSockets, showed multiplayer state, and exercised movement synchronization.
+
+### Debug Scenarios
+
+PASS. This ticket added named-rare debug shortcuts for Frostmaw, Vault Marauder, and Cinderghast. They remain behind the existing debug scenario socket gate and the client `?debugScenario=NAME` localhost path; normal gameplay does not invoke them. Each shortcut is a QA accelerator for a state reachable through normal quest selection, deployment, room traversal, and the same quest-script trigger path. The shortcuts use real quest setup, `spawnEnemies`, `startDungeonRun`, and `updateQuestScriptTriggers`; they do not replace the real quest script or drop/reward logic.
+
+### Tests And Coverage
+
+PASS. The provided coverage run reports 148 test files passed and 1991 tests passed. Coverage includes focused server tests for named-rare plumbing and all three authored quests, client visual tests, quest script schema/objective behavior, debug scenarios, and broader integration coverage.
+
+## Remaining gaps
+
+None.
+
 

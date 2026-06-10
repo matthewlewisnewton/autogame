@@ -102,6 +102,7 @@ import {
 	playersMeshes,
 	playerShadows,
 	playerNameplates,
+	enemyNameplates,
 	enemiesMeshes,
 	enemyHealthBars,
 	enemyShieldBars,
@@ -142,6 +143,10 @@ import {
 	applyVariantMarker,
 	applyVariantEmissiveTint,
 	applyFrenziedTelegraphRing,
+	parseNamedRareTintHex,
+	applyNamedRareTint,
+	applyNamedRareScale,
+	applyEnemyNameplate,
 } from './renderer/enemySync.js';
 
 // Re-export the relocated helpers + scene accessor so existing importers that
@@ -169,6 +174,10 @@ export {
 	applyVariantMarker,
 	applyVariantEmissiveTint,
 	applyFrenziedTelegraphRing,
+	parseNamedRareTintHex,
+	applyNamedRareTint,
+	applyNamedRareScale,
+	applyEnemyNameplate,
 };
 import {
 	syncMinionMeshes,
@@ -254,6 +263,8 @@ let wallColliders = []; // flat array of wall AABBs
 let walkableAABBs = [];
 let dungeonBounds = null;
 let dungeonMeshes = []; // meshes created by buildDungeon()
+let activeLayout = null;
+let activePassageLocksKey = '';
 
 // ── Camera orbit state ──
 let cameraYaw = 0;
@@ -600,6 +611,14 @@ export const MINION_VISUAL = {
 		color: 0x78716c,
 		emissive: 0xf59e0b,
 		emissiveIntensity: 0.25,
+	},
+	escort_npc: {
+		shape: 'cylinder',
+		radius: 0.45,
+		height: 1.1,
+		color: 0xfbbf24,
+		emissive: 0x38bdf8,
+		emissiveIntensity: 0.45,
 	},
 };
 
@@ -1269,6 +1288,7 @@ export function getMeshMaps() {
 		enemiesMeshes,
 		enemyHealthBars,
 		enemyShieldBars,
+		enemyNameplates,
 		telegraphMeshes,
 		minionTelegraphMeshes,
 		minionsMeshes,
@@ -1396,6 +1416,31 @@ export function setWasDead(v) {
  */
 export function getWallColliders() {
 	return wallColliders;
+}
+
+function passageLocksCacheKey(passageLocks = []) {
+	if (!Array.isArray(passageLocks) || passageLocks.length === 0) return '';
+	return passageLocks
+		.map((lock) => `${lock.passageIndex}:${lock.locked ? 1 : 0}`)
+		.join('|');
+}
+
+function resolvePassageLocks(passageLocks) {
+	if (Array.isArray(passageLocks)) return passageLocks;
+	return gameStateRef?.run?.passageLocks || [];
+}
+
+/**
+ * Rebuild client wall colliders when run.passageLocks changes.
+ * @param {object[]} [passageLocks]
+ */
+export function syncPassageLockColliders(passageLocks) {
+	if (!activeLayout) return;
+	const locks = resolvePassageLocks(passageLocks);
+	const nextKey = passageLocksCacheKey(locks);
+	if (nextKey === activePassageLocksKey) return;
+	activePassageLocksKey = nextKey;
+	wallColliders = buildWallColliders(activeLayout, locks);
 }
 
 /**
@@ -1556,12 +1601,15 @@ export function initScene(layout, spawnPos) {
 
 	// Build dungeon geometry from server layout
 	if (layout) {
+		activeLayout = layout;
 		clearDungeon(scene, dungeonMeshes);
 		const { meshes, spawnPosition: spawn } = buildDungeon(scene, layout);
 		dungeonMeshes.push(...meshes);
 		spawnPosition.x = spawn.x;
 		spawnPosition.z = spawn.z;
-		wallColliders = buildWallColliders(layout);
+		const passageLocks = resolvePassageLocks();
+		activePassageLocksKey = passageLocksCacheKey(passageLocks);
+		wallColliders = buildWallColliders(layout, passageLocks);
 		walkableAABBs = computeWalkableAABBs(layout);
 		dungeonBounds = computeDungeonBounds(layout);
 		cameraYaw = 0;
@@ -1641,15 +1689,18 @@ export function initScene(layout, spawnPos) {
  *
  * @param {object} layout - { rooms, passages } from server
  */
-export function rebuildDungeonLayout(layout) {
+export function rebuildDungeonLayout(layout, passageLocks) {
 	if (!scene || !layout) return;
 
+	activeLayout = layout;
 	clearDungeon(scene, dungeonMeshes);
 	const { meshes, spawnPosition: spawn } = buildDungeon(scene, layout);
 	dungeonMeshes.push(...meshes);
 	spawnPosition.x = spawn.x;
 	spawnPosition.z = spawn.z;
-	wallColliders = buildWallColliders(layout);
+	const locks = resolvePassageLocks(passageLocks);
+	activePassageLocksKey = passageLocksCacheKey(locks);
+	wallColliders = buildWallColliders(layout, locks);
 	walkableAABBs = computeWalkableAABBs(layout);
 	dungeonBounds = computeDungeonBounds(layout);
 	myX = spawnPosition.x;
@@ -2481,6 +2532,39 @@ export function disposeNameplate(playerId) {
 		sprite.material.dispose();
 	}
 	delete playerNameplates[playerId];
+}
+
+/**
+ * Create a canvas-texture sprite that displays a named-rare enemy label.
+ * Callers store the sprite in `enemyNameplates` and call `disposeEnemyNameplate()`
+ * on removal.
+ *
+ * @param {string} displayName
+ * @returns {THREE.Sprite}
+ */
+export function createEnemyNameplate(displayName) {
+	const sprite = createNameplate(displayName);
+	sprite.userData.namedRareName = displayName;
+	return sprite;
+}
+
+/**
+ * Remove and dispose the nameplate sprite for a named-rare enemy.
+ *
+ * @param {string} enemyId
+ */
+export function disposeEnemyNameplate(enemyId) {
+	const sprite = enemyNameplates[enemyId];
+	if (!sprite) return;
+
+	if (sprite.parent) {
+		sprite.parent.remove(sprite);
+	}
+	if (sprite.material) {
+		if (sprite.material.map) sprite.material.map.dispose();
+		sprite.material.dispose();
+	}
+	delete enemyNameplates[enemyId];
 }
 
 // ── Flash mesh helper ──

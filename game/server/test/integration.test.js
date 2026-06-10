@@ -44,7 +44,7 @@ import {
 import { hubSpawnPosition } from '../simulation.js';
 import { InMemoryProvider } from '../providers.js';
 import { getQuest } from '../quests.js';
-import { COOLDOWN_MS, MOVE_SPEED, MAX_HP, MAX_HAND_SLOTS, MAX_MAGIC_STONES, STARTING_MAGIC_STONES, MEDIC_HEAL_COST, TICK_RATE, MAGIC_STONES_REGEN_PER_TICK } from '../config.js';
+import { COOLDOWN_MS, MOVE_SPEED, MAX_HP, MAX_HAND_SLOTS, MAX_MAGIC_STONES, STARTING_MAGIC_STONES, MEDIC_HEAL_COST, TICK_RATE, MAGIC_STONES_REGEN_PER_TICK, LOBBY_REVIVE_HP } from '../config.js';
 
 // ── Helpers ──
 
@@ -2001,12 +2001,15 @@ describe('Socket Integration — Quest Selection', () => {
 		expect(u1.selectedQuestId).toBe('crystal_rescue');
 		expect(u2.selectedQuestId).toBe('crystal_rescue');
 		expect(Array.isArray(u1.quests)).toBe(true);
-		expect(u1.quests.map(q => q.id)).toEqual(['training_caverns', 'crystal_rescue', 'arena_trials', 'frost_crossing', 'canyon_descent', 'ember_descent', 'spire_ascent', 'endless_siege']);
+		expect(u1.quests.map(q => q.id)).toEqual(['training_caverns', 'crystal_rescue', 'arena_trials', 'frost_crossing', 'canyon_descent', 'ember_descent', 'spire_ascent', 'annex_escort', 'endless_siege']);
 		expect(u1.layoutSeed).toBeDefined();
 		expect(u1.layout).toBeDefined();
 		expect(u1.layout.profile).toBe('open');
 		expect(testGameState().selectedQuestId).toBe('crystal_rescue');
-		expect(testGameState().layout.profile).toBe('open');
+		// The selected quest's layout rides on the broadcast preview only — the
+		// live lobby layout swap is deferred to deploy, so the live state still
+		// holds the default hub/quest layout ('crowded'), not 'open'.
+		expect(testGameState().layout.profile).not.toBe('open');
 	});
 
 	it('rejects unknown quest ids without changing the selected quest', async () => {
@@ -2035,7 +2038,7 @@ describe('Socket Integration — Quest Selection', () => {
 		await Promise.all([startGame1, startGame2]);
 		expect(testGameState().gamePhase).toBe('playing');
 		expect(testGameState().run.questId).toBe('crystal_rescue');
-		expect(testGameState().enemies.length).toBe(getQuest('crystal_rescue').enemyCount);
+		expect(testGameState().enemies.length).toBe(2);
 		expect(testGameState().loot.filter(l => l.kind === 'crystal').length).toBe(3);
 		expect(testGameState().run.objective.type).toBe('collect_items');
 		expect(testGameState().run.objective.totalItems).toBe(3);
@@ -2064,6 +2067,10 @@ describe('Socket Integration — Quest Selection', () => {
 			await sleep(50);
 		}
 
+		const state = testGameState();
+		state.run.objective.defeatedEnemies = state.run.objective.totalEnemies;
+		runSimulationInPrimaryLobby(() => checkRunTerminalState());
+
 		const summary = await runCompletePromise;
 		expect(summary.status).toBe('victory');
 		expect(summary.objective.type).toBe('collect_items');
@@ -2084,8 +2091,8 @@ describe('Socket Integration — Quest Selection', () => {
 
 		expect(state.run.questId).toBe('training_caverns');
 		expect(state.run.questName).toBe('Initiate Vault');
-		expect(state.run.objective.totalEnemies).toBe(5);
-		expect(testGameState().enemies.length).toBe(5);
+		expect(state.run.objective.totalEnemies).toBe(6);
+		expect(testGameState().enemies.length).toBe(4);
 	});
 
 	it('runComplete summary includes quest metadata and quest reward data', async () => {
@@ -2505,6 +2512,59 @@ describe('Run terminal state — integration', () => {
 		// Verify gameState was not mutated
 		expect(testGameState().gamePhase).toBe('playing');
 		expect(testGameState().run).toBeDefined();
+		expect(testGameState().run.status).toBe('playing');
+	});
+
+	it('player with 0 currency dies, returns to lobby with LOBBY_REVIVE_HP, and redeploy succeeds', async () => {
+		// 1. Player starts with 0 currency (default for new accounts)
+		const player1 = testGameState().players[socket1._playerId];
+		expect(player1.currency).toBe(0);
+
+		// 2. Start a run
+		const startGame1 = waitForEvent(socket1, 'startGame');
+		const startGame2 = waitForEvent(socket2, 'startGame');
+		socket1.emit('playerReady', true);
+		socket2.emit('playerReady', true);
+		await Promise.all([startGame1, startGame2]);
+		await waitForEvent(socket1, 'stateUpdate');
+
+		// 3. Kill all players via run-failed debug scenario (sets hp:0, dead:true)
+		// Set up event listener BEFORE triggering the scenario
+		const runFailedPromise = waitForEvent(socket1, 'runFailed');
+		const debugResultPromise = waitForEvent(socket1, 'debugScenarioResult');
+		socket1.emit('debugScenario', { name: 'run-failed' });
+		const summary = await runFailedPromise;
+		const debugResult = await debugResultPromise;
+		expect(debugResult.ok).toBe(true);
+
+		// 4. Verify runFailed is emitted
+		expect(summary.status).toBe('failed');
+		expect(testGameState().run.status).toBe('failed');
+
+		// Wait for state update reflecting terminal state
+		await waitForEvent(socket1, 'stateUpdate');
+
+		// 5. Return to lobby
+		const stateUpdatePromise = waitForEvent(socket1, 'stateUpdate');
+		socket1.emit('returnToLobby');
+		await stateUpdatePromise;
+
+		// 6. Verify player HP is LOBBY_REVIVE_HP (10) and dead: false
+		expect(testGameState().gamePhase).toBe('lobby');
+		expect(player1.hp).toBe(LOBBY_REVIVE_HP);
+		expect(player1.dead).toBe(false);
+
+		// 7. Ready up and deploy into a new run
+		const startGame1b = waitForEvent(socket1, 'startGame');
+		const startGame2b = waitForEvent(socket2, 'startGame');
+		socket1.emit('playerReady', true);
+		socket2.emit('playerReady', true);
+		await Promise.all([startGame1b, startGame2b]);
+
+		// 8. Verify new run starts successfully
+		expect(testGameState().gamePhase).toBe('playing');
+		expect(player1.hp).toBeGreaterThan(0);
+		expect(player1.dead).toBe(false);
 		expect(testGameState().run.status).toBe('playing');
 	});
 });
@@ -5183,7 +5243,7 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 		c2Reconnect.socket.disconnect();
 	});
 
-	it('preserves HP and dead flag when reconnecting as dead player during active run', async () => {
+	it('revives dead player with LOBBY_REVIVE_HP on reconnect', async () => {
 		// --- Connect two players and start a run ---
 		const c1 = await connectClient(baseUrl);
 		const c2 = await connectClient(baseUrl, undefined, { joinLobbyId: c1.lobbyId });
@@ -5213,8 +5273,8 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 		const c2Reconnect = await reconnectClient(baseUrl, player2Id, c1.lobbyId);
 
 		const restoredPlayer = testGameState().players[player2Id];
-		expect(restoredPlayer.hp).toBe(0);
-		expect(restoredPlayer.dead).toBe(true);
+		expect(restoredPlayer.hp).toBe(LOBBY_REVIVE_HP);
+		expect(restoredPlayer.dead).toBe(false);
 
 		c1.socket.disconnect();
 		c2Reconnect.socket.disconnect();

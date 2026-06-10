@@ -89,6 +89,18 @@ describe('buildLockOnPanelModel', () => {
     ).toBeNull();
   });
 
+  it('prefers enemy.displayName over the catalog type name', () => {
+    const enemy = {
+      type: 'grunt',
+      displayName: 'Vault Stalker',
+      hp: 80,
+      maxHp: 100,
+      attackDamage: 10,
+    };
+    const model = buildLockOnPanelModel(enemy, catalog);
+    expect(model.name).toBe('Vault Stalker');
+  });
+
   it('builds a base grunt panel with live HP and type stats', () => {
     const enemy = {
       type: 'grunt',
@@ -161,6 +173,21 @@ describe('buildLockOnPanelModel', () => {
         { label: 'Burn duration', value: '2.8s' },
       ],
     });
+  });
+
+  it('prefers namedRare.name over affix variant for the variant line', () => {
+    const enemy = {
+      type: 'grunt',
+      variant: 'volatile',
+      namedRare: { name: 'The Fake in Yellow', tint: '#ffdd00' },
+      hp: 80,
+      maxHp: 100,
+      attackDamage: 10,
+      attackStyle: 'radial',
+      chaseSpeed: 2.5,
+    };
+    const model = buildLockOnPanelModel(enemy, catalog);
+    expect(model.variantName).toBe('The Fake in Yellow');
   });
 
   it('appends variant name, stats, and description for volatile grunts', () => {

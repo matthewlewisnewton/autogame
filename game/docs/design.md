@@ -50,5 +50,9 @@ Instead of standard weapons, players equip a lobby loadout of 4–24 cards (the 
 ### Playtesting Notes (Spell vs Weapon Overlap)
 Several spell cards (e.g. Signal Familiar, Mana Leach) overlap mechanically with weapons: instant damage at a cost of Magic Stones rather than charges. With the clearer four-type system in place, evaluate after playtesting whether to merge overlapping spells into single-charge weapon variants or keep them for MS-economy variety. No cards have been removed yet — rename-first, cut-later.
 
+## Quest identity
+
+Tier-1 contracts are intentionally distinct: **Initiate Vault** (`training_caverns`) is a scripted annex sweep with passage locks and a named vault stalker; **Prism Salvage** (`crystal_rescue`) pairs prism recovery with per-room guard waves; **Frost Crossing** (`frost_crossing`) stages ice-band thrower waves culminating in the glacial rare Rimecast. **Annex Evacuation** (`annex_escort`) showcases the escort objective with Archivist Vale. Each quest exposes its own briefing NPC, signature reward card, objective summary, and mid-run dialogue beacon set on the quest board.
+
 ## Future Mechanics
 - **PvP Wager Battles**: In a later update, players will be able to challenge each other to PvP deck battles and wager their collected currency.

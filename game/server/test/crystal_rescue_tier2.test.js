@@ -20,6 +20,7 @@ import {
   checkWallCollision,
   setTestProvider,
   _timeouts,
+  startDungeonRun,
 } from '../index.js';
 import {
   startTestServer,
@@ -105,7 +106,8 @@ describe('crystal_rescue Tier 2 catalog and layout', () => {
     expect(tier2.layoutProfile).toBe('open');
     expect(tier2.layoutMode).toBe('rigid');
     expect(tier2.itemCount).toBeGreaterThan(tier1.itemCount);
-    expect(tier2.enemyCount).toBeGreaterThan(tier1.enemyCount);
+    expect(tier1.enemyCount).toBeUndefined();
+    expect(tier2.enemyCount).toBeGreaterThan(0);
     expect(tier2.rewardCurrency).toBeGreaterThan(tier1.rewardCurrency);
     expect(getLayoutGenerationOptions(QUEST_ID, TIER_1)).toEqual({
       slopes: true,
@@ -191,9 +193,10 @@ describe('crystal_rescue Tier 2 deploy spawns', () => {
     expect(tagged).toBeGreaterThan(0);
   });
 
-  it('leaves all enemies un-tagged on Tier 1 for the same seed', () => {
+  it('spawns scripted guard wave 0 on Tier 1 without bulk enemyCount spawns', () => {
     deployCrystalTier(TIER_1, SEED);
-    expect(gameState.enemies.length).toBeGreaterThan(0);
+    startDungeonRun();
+    expect(gameState.enemies.length).toBe(2);
     expect(gameState.enemies.every((e) => e.variant === null)).toBe(true);
   });
 });
@@ -247,6 +250,7 @@ describe('crystal_rescue Tier 1 victory unlocks Tier 2', () => {
     expect(users.isQuestTierUnlocked(accountId, QUEST_ID, TIER_2)).toBe(false);
 
     state.run.objective.collectedItems = state.run.objective.totalItems;
+    state.run.objective.defeatedEnemies = state.run.objective.totalEnemies;
 
     const runCompletePromise = waitForEvent(socket, 'runComplete');
     runSimulationInPrimaryLobby(() => checkRunTerminalState());

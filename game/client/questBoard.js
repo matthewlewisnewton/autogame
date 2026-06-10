@@ -2,7 +2,10 @@
  * Lobby quest board helpers — pure functions for rendering quest selection UI.
  */
 
+import { CARD_DEFS } from './cards.js';
 import { THEME } from './theme.js';
+
+const CLIENT_UNKNOWN = 'Contract issuer unknown';
 
 export function formatObjectiveSummary(quest) {
 	if (!quest) return '';
@@ -58,13 +61,139 @@ export function formatObjectiveSummary(quest) {
 			: THEME.objectives.defeatTrialWarden;
 	}
 
+	if (quest.objectiveType === 'escort') {
+		const npc = quest.escortNpc?.name || 'VIP';
+		const dest = quest.escortDestination?.landmark
+			|| quest.escortDestination?.roomRole
+			|| 'extraction';
+		return `Escort ${npc} to ${String(dest).replace(/_/g, ' ')}`;
+	}
+
 	return quest.description || '';
 }
 
 export function formatRewardSummary(quest) {
-	if (!quest || quest.rewardCurrency == null) return 'Reward: —';
-	const base = `Reward: ${quest.rewardCurrency} ${THEME.currency.short.toLowerCase()}`;
-	return quest.signatureCardName ? `${base} + ${quest.signatureCardName}` : base;
+	if (!quest) return 'Reward: —';
+
+	const rewardCardName = typeof quest.rewardCardId === 'string' && CARD_DEFS[quest.rewardCardId]
+		? CARD_DEFS[quest.rewardCardId].name
+		: null;
+	const signatureCardName = !rewardCardName
+		? (quest.signatureCardName || null)
+		: null;
+	const cardName = rewardCardName || signatureCardName;
+
+	if (rewardCardName && quest.rewardCurrency != null) {
+		return `Reward: ${rewardCardName} + ${quest.rewardCurrency} ${THEME.currency.short.toLowerCase()}`;
+	}
+	if (quest.rewardCurrency != null && cardName) {
+		return `Reward: ${quest.rewardCurrency} ${THEME.currency.short.toLowerCase()} + ${cardName}`;
+	}
+	if (quest.rewardCurrency != null) {
+		return `Reward: ${quest.rewardCurrency} ${THEME.currency.short.toLowerCase()}`;
+	}
+	if (cardName) {
+		return `Reward: ${cardName}`;
+	}
+	return 'Reward: —';
+}
+
+export function formatBriefingRewardLine(quest) {
+	if (!quest) return formatRewardSummary(quest);
+	if (typeof quest.briefingRewardText === 'string' && quest.briefingRewardText) {
+		return quest.briefingRewardText;
+	}
+	if (typeof quest.briefingRewardLine === 'string' && quest.briefingRewardLine.trim()) {
+		return quest.briefingRewardLine.trim();
+	}
+	if (typeof quest.rewardSummary === 'string' && quest.rewardSummary) {
+		return quest.rewardSummary;
+	}
+	return formatRewardSummary(quest);
+}
+
+export function findQuestBoardEntry(questId, tier, quests, questVariants) {
+	const normalizedTier = tier ?? 1;
+	if (normalizedTier >= 2) {
+		return (questVariants || []).find(
+			(variant) => (variant.questId || variant.id) === questId && (variant.tier ?? 2) === normalizedTier,
+		) || null;
+	}
+	return (quests || []).find((quest) => quest.id === questId) || null;
+}
+
+export function renderQuestBriefing(container, quest) {
+	if (!container) return;
+
+	const hasBriefing = quest && (quest.briefing || quest.clientNpc);
+	if (!hasBriefing) {
+		container.classList.add('hidden');
+		container.replaceChildren();
+		return;
+	}
+
+	container.classList.remove('hidden');
+
+	const npc = quest.clientNpc || '';
+	const body = quest.briefing || quest.description || '';
+	const objective = quest.objectiveSummary || formatObjectiveSummary(quest);
+	const reward = formatBriefingRewardLine(quest);
+
+	const npcEl = container.querySelector('.quest-briefing-npc');
+	const bodyEl = container.querySelector('.quest-briefing-body');
+	const objectiveEl = container.querySelector('.quest-briefing-objective');
+	const rewardEl = container.querySelector('.quest-briefing-reward');
+
+	if (npcEl && bodyEl && objectiveEl && rewardEl) {
+		npcEl.textContent = npc;
+		bodyEl.textContent = body;
+		objectiveEl.textContent = objective;
+		rewardEl.textContent = reward;
+		npcEl.style.display = npc ? '' : 'none';
+		return;
+	}
+
+	container.replaceChildren();
+	if (npc) {
+		const heading = document.createElement('p');
+		heading.className = 'quest-briefing-npc';
+		heading.textContent = npc;
+		container.appendChild(heading);
+	}
+	const paragraph = document.createElement('p');
+	paragraph.className = 'quest-briefing-body';
+	paragraph.textContent = body;
+	container.appendChild(paragraph);
+
+	const objectiveLine = document.createElement('p');
+	objectiveLine.className = 'quest-briefing-objective';
+	objectiveLine.textContent = objective;
+	container.appendChild(objectiveLine);
+
+	const rewardLine = document.createElement('p');
+	rewardLine.className = 'quest-briefing-reward';
+	rewardLine.textContent = reward;
+	container.appendChild(rewardLine);
+}
+
+export function formatRewardDetail(quest) {
+	if (!quest || quest.rewardCurrency == null) return '—';
+	let text = `${quest.rewardCurrency} ${THEME.currency.short.toLowerCase()}`;
+	if (quest.rewardSignatureCard) {
+		const cardName = CARD_DEFS[quest.rewardSignatureCard]?.name || quest.rewardSignatureCard;
+		text += ` + ${cardName}`;
+	}
+	return text;
+}
+
+export function formatClientBriefing(quest) {
+	if (!quest?.client?.name) {
+		return { clientName: CLIENT_UNKNOWN, briefing: '' };
+	}
+	return {
+		clientName: quest.client.name,
+		briefing: quest.client.briefing || '',
+	};
 }
 
 /** Display label for run summaries / HUD when a tier-2 contract is active. */
@@ -108,6 +237,15 @@ function buildQuestBoardRows(quests, questVariants) {
 			minibossCount: quest.minibossCount,
 			encounter: quest.encounter,
 			rewardCurrency: quest.rewardCurrency,
+			client: quest.client,
+			rewardSignatureCard: quest.rewardSignatureCard,
+			rewardCardId: quest.rewardCardId,
+			objectiveSummary: quest.objectiveSummary,
+			rewardSummary: quest.rewardSummary,
+			clientNpc: quest.clientNpc,
+			briefing: quest.briefing,
+			briefingRewardLine: quest.briefingRewardLine,
+			briefingRewardText: quest.briefingRewardText,
 			signatureCardName: quest.signatureCardName,
 		});
 	}
@@ -122,10 +260,60 @@ function buildQuestBoardRows(quests, questVariants) {
 			description: variant.description,
 			objectiveSummary: variant.objectiveSummary,
 			rewardSummary: variant.rewardSummary,
+			rewardCurrency: variant.rewardCurrency,
+			client: variant.client,
+			rewardSignatureCard: variant.rewardSignatureCard,
+			clientNpc: variant.clientNpc,
+			briefing: variant.briefing,
+			briefingRewardLine: variant.briefingRewardLine,
+			briefingRewardText: variant.briefingRewardText,
 		});
 	}
 
 	return rows;
+}
+
+function findSelectedRow(rows, selectedQuestId, selectedQuestTier) {
+	const tier = selectedQuestTier ?? 1;
+	return rows.find((row) => row.id === selectedQuestId && (row.tier ?? 1) === tier) || null;
+}
+
+function ensureBriefingPanelStructure(panel) {
+	if (panel.dataset.briefingStructured === '1') return;
+	panel.classList.add('quest-briefing-panel');
+	panel.innerHTML = `
+		<div class="quest-briefing-field">
+			<span class="quest-briefing-label">Client</span>
+			<span class="quest-briefing-value quest-briefing-client"></span>
+		</div>
+		<div class="quest-briefing-field">
+			<span class="quest-briefing-label">Briefing</span>
+			<span class="quest-briefing-value quest-briefing-text"></span>
+		</div>
+		<div class="quest-briefing-field">
+			<span class="quest-briefing-label">Reward</span>
+			<span class="quest-briefing-value quest-briefing-reward"></span>
+		</div>
+	`;
+	panel.dataset.briefingStructured = '1';
+}
+
+export function renderQuestBriefingPanel(panel, rows, selectedQuestId, selectedQuestTier) {
+	if (!panel) return;
+
+	const row = findSelectedRow(rows, selectedQuestId, selectedQuestTier);
+	if (!row) {
+		panel.classList.add('hidden');
+		return;
+	}
+
+	ensureBriefingPanelStructure(panel);
+	panel.classList.remove('hidden');
+
+	const { clientName, briefing } = formatClientBriefing(row);
+	panel.querySelector('.quest-briefing-client').textContent = clientName;
+	panel.querySelector('.quest-briefing-text').textContent = briefing || '—';
+	panel.querySelector('.quest-briefing-reward').textContent = formatRewardDetail(row);
 }
 
 function updateQuestSelection(container, selectedQuestId, selectedQuestTier, selectionLocked = false) {
@@ -161,6 +349,7 @@ export function renderQuestBoard(
 		unlockedQuestTiers = {},
 		questVariants = [],
 		selectionLocked = false,
+		briefingPanelEl = null,
 	} = {},
 ) {
 	if (!container) return;
@@ -174,6 +363,11 @@ export function renderQuestBoard(
 		empty.textContent = THEME.run.noContracts;
 		container.appendChild(empty);
 		container.dataset.questBoardKey = '';
+		if (briefingPanelEl) {
+			briefingPanelEl.classList.add('hidden');
+			briefingPanelEl.replaceChildren();
+			delete briefingPanelEl.dataset.briefingStructured;
+		}
 		return;
 	}
 
@@ -194,6 +388,7 @@ export function renderQuestBoard(
 			card.disabled = selectionLocked || tierLocked;
 		});
 		container.dataset.questBoardKey = nextKey;
+		renderQuestBriefingPanel(briefingPanelEl, rows, selectedQuestId, selectedQuestTier);
 		return;
 	}
 
@@ -238,4 +433,5 @@ export function renderQuestBoard(
 	}
 
 	container.dataset.questBoardKey = nextKey;
+	renderQuestBriefingPanel(briefingPanelEl, rows, selectedQuestId, selectedQuestTier);
 }

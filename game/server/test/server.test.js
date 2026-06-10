@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import config, { MAX_HP } from '../config.js';
-import { getQuest } from '../quests.js';
+import config, { MAX_HP, LOBBY_REVIVE_HP } from '../config.js';
+import { getQuest, countScriptedEnemiesInQuest, QUEST_DEFS } from '../quests.js';
 import { DEFAULT_COSMETIC } from '../cosmetic.js';
 import { createLobbyGameState } from '../lobbies.js';
 import {
@@ -293,7 +293,7 @@ describe('runGameLoopTick()', () => {
 describe('QUEST_DEFS', () => {
 	it('exposes stable quest ids with required metadata', () => {
 		expect(DEFAULT_QUEST_ID).toBe('training_caverns');
-		expect(Object.keys(QUEST_DEFS).sort()).toEqual(['arena_trials', 'canyon_descent', 'crystal_rescue', 'ember_descent', 'endless_siege', 'frost_crossing', 'spire_ascent', 'training_caverns']);
+		expect(Object.keys(QUEST_DEFS).sort()).toEqual(['annex_escort', 'arena_trials', 'canyon_descent', 'crystal_rescue', 'ember_descent', 'endless_siege', 'frost_crossing', 'spire_ascent', 'training_caverns']);
 
 		for (const [questId, quest] of Object.entries(QUEST_DEFS)) {
 			expect(quest.id).toBe(questId);
@@ -304,7 +304,12 @@ describe('QUEST_DEFS', () => {
 			expect(tier1.objectiveType).toBeTruthy();
 			expect(typeof tier1.rewardCurrency).toBe('number');
 			if (tier1.objectiveType === 'defeat_enemies') {
-				expect(typeof tier1.enemyCount).toBe('number');
+				const scriptedCount = countScriptedEnemiesInQuest(tier1);
+				if (scriptedCount > 0) {
+					expect(scriptedCount).toBeGreaterThan(0);
+				} else {
+					expect(typeof tier1.enemyCount).toBe('number');
+				}
 			}
 			if (tier1.objectiveType === 'collect_items') {
 				expect(typeof tier1.itemCount).toBe('number');
@@ -2227,7 +2232,7 @@ describe('run state', () => {
 			expect(run).toHaveProperty('objective');
 			expect(run.objective).toHaveProperty('type', 'defeat_enemies');
 			expect(run.objective.label).toContain(getQuest('training_caverns').name);
-			expect(run.objective).toHaveProperty('totalEnemies', 3);
+			expect(run.objective).toHaveProperty('totalEnemies', countScriptedEnemiesInQuest(getQuest('training_caverns', 1)));
 			expect(run.objective).toHaveProperty('defeatedEnemies', 0);
 			expect(run).toHaveProperty('startedAt');
 			expect(typeof run.startedAt).toBe('number');
@@ -2241,6 +2246,7 @@ describe('run state', () => {
 			expect(run.objective.type).toBe('collect_items');
 			expect(run.objective.totalItems).toBe(getQuest('crystal_rescue').itemCount);
 			expect(run.objective.collectedItems).toBe(0);
+			expect(run.objective.totalEnemies).toBe(countScriptedEnemiesInQuest(getQuest('crystal_rescue', 1)));
 		});
 
 		it('creates a survive objective for the endless siege quest', () => {
@@ -2287,6 +2293,7 @@ describe('run state', () => {
 
 		it('does not affect a different objective type', () => {
 			gameState.selectedQuestId = 'crystal_rescue';
+			gameState.selectedQuestTier = 2;
 			gameState.run = createRunState();
 			recordEnemyDefeated(1);
 			expect(gameState.run.objective.collectedItems).toBe(0);
@@ -2379,7 +2386,7 @@ describe('run state', () => {
 
 		it('does not spawn for non-survive runs', () => {
 			resetState();
-			gameState.selectedQuestId = DEFAULT_QUEST_ID;
+			gameState.selectedQuestId = 'arena_trials';
 			gameState.gamePhase = 'playing';
 			gameState.enemies = [];
 			startDungeonRun();
@@ -2577,6 +2584,7 @@ describe('run state', () => {
 	describe('checkRunTerminalState()', () => {
 		beforeEach(() => {
 			resetState();
+			gameState.selectedQuestId = 'arena_trials';
 			delete gameState.run;
 			vi.useFakeTimers();
 		});
@@ -2603,6 +2611,8 @@ describe('run state', () => {
 				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
 			];
 			startDungeonRun();
+			gameState.run.objective.totalEnemies = 1;
+			gameState.run.objective.defeatedEnemies = 0;
 			addPlayer('p1');
 
 			recordEnemyDefeated(1);
@@ -2653,6 +2663,8 @@ describe('run state', () => {
 				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
 			];
 			startDungeonRun();
+			gameState.run.objective.totalEnemies = 1;
+			gameState.run.objective.defeatedEnemies = 0;
 			addPlayer('p1');
 			recordEnemyDefeated(1);
 
@@ -2677,6 +2689,8 @@ describe('run state', () => {
 				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
 			];
 			startDungeonRun();
+			gameState.run.objective.totalEnemies = 1;
+			gameState.run.objective.defeatedEnemies = 0;
 			addPlayer('p1', { hp: 80, currency: 10 });
 			recordEnemyDefeated(1);
 
@@ -3623,14 +3637,14 @@ describe('run state', () => {
 			expect(gameState.gamePhase).toBe('lobby');
 		});
 
-		it('clears dead flag without raising HP when returning dead player to lobby', () => {
+		it('clears dead flag and restores HP to LOBBY_REVIVE_HP when returning dead player to lobby', () => {
 			addPlayer('p1', { hp: 0, dead: true });
 
 			const { restore } = mockRoomEmit();
 			returnPlayersToLobby();
 			restore();
 
-			expect(gameState.players.p1.hp).toBe(0);
+			expect(gameState.players.p1.hp).toBe(LOBBY_REVIVE_HP);
 			expect(gameState.players.p1.dead).toBe(false);
 		});
 
@@ -3797,17 +3811,17 @@ describe('run state', () => {
 			expect(player.dead).toBe(false);
 		});
 
-		it('clears dead flag without raising HP for dead players', () => {
+		it('clears dead flag and restores HP to LOBBY_REVIVE_HP for dead players', () => {
 			const player = { hp: 0, dead: true };
 			revivePlayerInLobby(player);
-			expect(player.hp).toBe(0);
+			expect(player.hp).toBe(LOBBY_REVIVE_HP);
 			expect(player.dead).toBe(false);
 		});
 
-		it('clears dead flag without raising HP for zero-HP players without dead flag', () => {
+		it('clears dead flag and restores HP to LOBBY_REVIVE_HP for zero-HP players without dead flag', () => {
 			const player = { hp: 0, dead: false };
 			revivePlayerInLobby(player);
-			expect(player.hp).toBe(0);
+			expect(player.hp).toBe(LOBBY_REVIVE_HP);
 			expect(player.dead).toBe(false);
 		});
 	});
@@ -4126,12 +4140,13 @@ describe('run state', () => {
 		beforeEach(() => {
 			resetState();
 			delete gameState._victoryCounters;
+			gameState.selectedQuestId = 'arena_trials';
 		});
 
 		it('on victory: adds currency bonus', () => {
 			addPlayer('p1', { currency: 0, ownedCards: {} });
 			grantRunRewards('p1', { status: 'victory' });
-			expect(gameState.players['p1'].currency).toBe(10);
+			expect(gameState.players['p1'].currency).toBe(getQuest('arena_trials', 1).rewardCurrency);
 		});
 
 		it('on victory: grants at least one card reward', () => {
@@ -4147,7 +4162,7 @@ describe('run state', () => {
 			grantRunRewards('p1', { status: 'victory' });
 			const rewards = gameState.players['p1'].runRewards;
 			expect(rewards).toBeDefined();
-			expect(rewards.currency).toBe(10);
+			expect(rewards.currency).toBe(getQuest('arena_trials', 1).rewardCurrency);
 			expect(Array.isArray(rewards.cards)).toBe(true);
 			expect(rewards.cards.length).toBeGreaterThan(0);
 			expect(rewards.cards[0]).toHaveProperty('id');
@@ -5709,6 +5724,7 @@ describe('spawnEnemy() variant field', () => {
 
 	it('produces variant (tag or null) on every combat spawn', () => {
 		resetGameState();
+		gameState.selectedQuestId = 'arena_trials';
 		gameState.enemies = [];
 		spawnEnemies();
 		expect(gameState.enemies.length).toBeGreaterThan(0);
@@ -5727,43 +5743,55 @@ describe('spawnEnemies() mixed pack', () => {
 		resetGameState();
 	});
 
-	it('produces quest.enemyCount enemies drawn from the default quest pool', () => {
+	it('produces quest.enemyCount enemies drawn from unscripted quest pools', () => {
+		gameState.selectedQuestId = 'arena_trials';
 		gameState.enemies = [];
 		spawnEnemies();
-		// Bulk spawning now draws each type from the selected quest's enemyPool.
-		const quest = getQuest(DEFAULT_QUEST_ID);
+		const quest = getQuest('arena_trials');
 		expect(gameState.enemies.length).toBe(quest.enemyCount);
 
+		const allowed = new Set(QUEST_DEFS.arena_trials.enemyPool.map(entry => entry.type));
+		for (const e of gameState.enemies) {
+			expect(allowed.has(e.type)).toBe(true);
+		}
+		expect(gameState.enemies.some(e => e.type === 'spawner')).toBe(false);
+	});
+
+	it('skips bulk combat spawns for scripted default quest and spawns run-start script wave', () => {
+		gameState.enemies = [];
+		spawnEnemies();
+		expect(gameState.enemies.length).toBe(0);
+		startDungeonRun();
+		expect(gameState.enemies.length).toBe(4);
 		const allowed = new Set(QUEST_DEFS[DEFAULT_QUEST_ID].enemyPool.map(entry => entry.type));
 		for (const e of gameState.enemies) {
 			expect(allowed.has(e.type)).toBe(true);
 		}
-		// training_caverns has no miniboss/spawner in its pool, so neither leaks in.
 		expect(gameState.enemies.some(e => e.type === 'miniboss')).toBe(false);
 		expect(gameState.enemies.some(e => e.type === 'spawner')).toBe(false);
+		expect(gameState.run.objective.totalEnemies).toBe(6);
 	});
 
-	it('spawns crystals and combat enemies for crystal rescue', () => {
+	it('spawns crystals without bulk combat enemies for crystal rescue', () => {
 		gameState.selectedQuestId = 'crystal_rescue';
 		gameState.enemies = [];
 		gameState.loot = [];
 		spawnEnemies();
-		expect(gameState.enemies.length).toBe(getQuest('crystal_rescue').enemyCount);
+		expect(gameState.enemies.length).toBe(0);
 		expect(gameState.loot.filter(l => l.kind === 'crystal').length).toBe(getQuest('crystal_rescue').itemCount);
+		startDungeonRun();
+		expect(gameState.enemies.length).toBe(2);
 	});
 
-	it('places crystal rescue enemies near the start room', () => {
+	it('places scripted crystal rescue guard wave 0 in the start room', () => {
 		gameState.selectedQuestId = 'crystal_rescue';
 		gameState.enemies = [];
 		gameState.loot = [];
 		spawnEnemies();
+		startDungeonRun();
 		const start = gameState.layout.rooms.find(r => r.role === 'start');
-		const nearestCombat = gameState.layout.rooms
-			.filter(r => r.role === 'combat')
-			.sort((a, b) => Math.hypot(a.x - start.x, a.z - start.z) - Math.hypot(b.x - start.x, b.z - start.z))[0];
-		const nearbyThreshold = Math.hypot(nearestCombat.x - start.x, nearestCombat.z - start.z) + 12;
 		const nearbyEnemies = gameState.enemies.filter(
-			e => Math.hypot(e.x - start.x, e.z - start.z) <= nearbyThreshold
+			e => Math.hypot(e.x - start.x, e.z - start.z) <= 12
 		);
 		expect(nearbyEnemies.length).toBeGreaterThanOrEqual(2);
 	});

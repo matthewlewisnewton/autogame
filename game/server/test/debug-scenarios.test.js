@@ -27,6 +27,8 @@ import {
 	closeServer,
 	connectClient,
 	waitForEvent,
+	waitForStateUpdateWithRun,
+	waitForStateUpdateWithPlayerCurrency,
 	lobbyStateForSocket,
 	playerForSocket,
 	testGameState,
@@ -240,7 +242,7 @@ describe('debugScenario — arena-trials-tier-2', () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
 		socket.emit('debugScenario', { name: 'arena-trials-tier-2' });
 		const result = await debugResultPromise;
 		const stateUpdate = await stateUpdatePromise;
@@ -456,7 +458,7 @@ describe('debugScenario — stage-boss-dormant', () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
 		socket.emit('debugScenario', { name: 'stage-boss-dormant' });
 		const result = await debugResultPromise;
 		const stateUpdate = await stateUpdatePromise;
@@ -515,7 +517,7 @@ describe('debugScenario — stage-boss-active', () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
 		socket.emit('debugScenario', { name: 'stage-boss-active' });
 		const result = await debugResultPromise;
 		const stateUpdate = await stateUpdatePromise;
@@ -563,7 +565,7 @@ describe('debugScenario — training-caverns-tier-2', () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
 		socket.emit('debugScenario', { name: 'training-caverns-tier-2' });
 		const result = await debugResultPromise;
 		const stateUpdate = await stateUpdatePromise;
@@ -859,7 +861,7 @@ describe('debugScenario — canyon-descent-tier-2', () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
 		socket.emit('debugScenario', { name: 'canyon-descent-tier-2' });
 		const result = await debugResultPromise;
 		const stateUpdate = await stateUpdatePromise;
@@ -1248,7 +1250,7 @@ describe('debugScenario — spire-ascent-tier-2', () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
 		socket.emit('debugScenario', { name: 'spire-ascent-tier-2' });
 		const result = await debugResultPromise;
 		const stateUpdate = await stateUpdatePromise;
@@ -1557,7 +1559,7 @@ describe('debugScenario — fire-cavern', () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
 		socket.emit('debugScenario', { name: 'fire-cavern' });
 		const result = await debugResultPromise;
 		const stateUpdate = await stateUpdatePromise;
@@ -1588,7 +1590,7 @@ describe('debugScenario — fire-cavern', () => {
 		expect(player.x).toBe(startRoom.x);
 		expect(player.z).toBe(startRoom.z);
 		expect(player.y).toBe(resolveFloorY(sampleFloorY(state.layout, player.x, player.z)));
-		expect(stateUpdate.enemies.length).toBe(tier1Quest.enemyCount);
+		expect(stateUpdate.enemies.length).toBe(5);
 		const allowedTypes = new Set(getEnemyPool(EMBER_DESCENT_ID, EMBER_DESCENT_TIER_1).map((e) => e.type));
 		expect(stateUpdate.enemies.every((e) => allowedTypes.has(e.type))).toBe(true);
 	});
@@ -1829,7 +1831,7 @@ describe('debugScenario — hat-shop-currency', () => {
 		const player = playerForSocket(socket);
 		player.currency = 0;
 
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const stateUpdatePromise = waitForStateUpdateWithPlayerCurrency(socket, APPEARANCE_CHANGE_COST);
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'hat-shop-currency' });
 		const [result, snapshot] = await Promise.all([debugResultPromise, stateUpdatePromise]);

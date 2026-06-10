@@ -1,0 +1,13 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/server-quest-objective-crystals-despawn-after-loot-lifetime-19vg/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/server-quest-objective-crystals-despawn-after-loot-lifetime-19vg/game/data
+Server listening on port 3005
+Player connected: socket=hnDnyWqnYAB94-1LAAAB, playerId=1b6dacb6-3588-4a00-a21d-77ab2d851926
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=tjfjplIB_jZcPE8YAAAD, playerId=e2365927-3f94-44ab-9796-a6f83265763c
+Player disconnected: hnDnyWqnYAB94-1LAAAB
+Player disconnected: tjfjplIB_jZcPE8YAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
