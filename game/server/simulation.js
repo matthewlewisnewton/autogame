@@ -1177,6 +1177,40 @@ const ENEMY_DEFS = {
 		// resolveEntityY() hovers them at floorY + altitude each tick.
 		flying: true, altitude: 2.5,
 	},
+	void_seraph: {
+		name: 'Void Seraph',
+		description: 'High-hovering aberration that unleashes a spherical void shockwave — its radial burst reaches across heights, striking grounded and airborne foes alike.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 70, chaseSpeed: 2.8, wanderSpeed: 1.1, attackDamage: 14, attackWindupMs: 1000,
+		// Radial already resolves as a pure 3D sphere in isEntityInEnemyAttack, so a
+		// player who is XZ-close but far above/below (outside attackRange in 3D) is
+		// not hit, while anyone inside the sphere is.
+		attackStyle: 'radial', attackRange: 4.5,
+		// Airborne: hovers high above the floor; flying/altitude flow onto each
+		// spawned instance via ...statFieldsFromDef so resolveEntityY() keeps it at
+		// floorY + altitude (never re-grounded), matching ember_wraith.
+		flying: true, altitude: 3.0,
+	},
+	rime_drifter: {
+		name: 'Rime Drifter',
+		description: 'Frost spirit that glides high overhead and lobs a height-aware ice ball — it angles the shot down (or up) at its target, chilling (SLOW) and battering on impact.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 60, chaseSpeed: 2.2, wanderSpeed: 1.0, attackDamage: 11, attackWindupMs: 1000,
+		// Reuses the existing height-aware projectile path: attackStyle 'ice_ball'
+		// flows through the wind-up resolution branch (spawnIceBall →
+		// updateEnemyProjectiles), and spawnIceBall carries the locked windupDirY so
+		// the ball travels with vertical aim toward a target at a different height.
+		attackStyle: 'ice_ball', attackRange: 8,
+		iceBallSpeed: 6.5,           // units/sec — clearly below the player MOVE_SPEED of 12
+		iceBallRadius: 0.8,          // projectile hit radius (added to PLAYER_RADIUS for contact)
+		iceBallMaxRange: 20,         // travel distance before it dissipates
+		iceBallSlowDurationMs: 2200,
+		iceBallSlowFactor: 0.55,
+		// Airborne: drifts high above the floor; flying/altitude flow onto each
+		// spawned instance via ...statFieldsFromDef so resolveEntityY() keeps it at
+		// floorY + altitude (never re-grounded), matching ember_wraith.
+		flying: true, altitude: 3.5,
+	},
 };
 
 function enemyDefFor(type) {
