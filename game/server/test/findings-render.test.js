@@ -85,6 +85,41 @@ describe('renderFindings preset copy', () => {
 		expect(md).toContain('**bossDistinctFromAdds**: yes');
 	});
 
+	it('renders rooms boss encounter UI and visual identity assertions', () => {
+		const md = renderFindings({
+			...baseRun,
+			preset: 'rooms',
+			findingsTitle: 'Rooms validation findings',
+			bossSpawnLabel: 'annex_overseer (Annex Overseer)',
+			assertions: {
+				...baseRun.assertions,
+				bossEncounterUiVisible: true,
+				bossDistinctFromAdds: true,
+			},
+			bossEncounterUi: {
+				hudVisible: true,
+				bossName: 'Annex Overseer',
+				hpFillWidthPct: 100,
+				encounterLocked: true,
+				encounterPhase: 'active',
+			},
+			bossVisualIdentity: {
+				bossType: 'annex_overseer',
+				bossEnemyId: 'boss-1',
+				nearestAddType: 'grunt',
+				bossDistinctFromAdds: true,
+				bossRenderScale: 2.4,
+				addRenderScale: 1,
+			},
+		});
+		expect(md).toContain('**bossEncounterUiVisible**: PASS');
+		expect(md).toContain('**bossDistinctFromAdds**: PASS');
+		expect(md).toContain('## Boss encounter UI');
+		expect(md).toContain('**bossName**: Annex Overseer');
+		expect(md).toContain('## Boss visual identity');
+		expect(md).toContain('**bossType**: annex_overseer');
+	});
+
 	it('renders sunken-canyon new-content exercise sections and assertions', () => {
 		const md = renderFindings({
 			...baseRun,

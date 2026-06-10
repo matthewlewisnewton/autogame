@@ -437,6 +437,13 @@ export function renderFindings(run) {
 
 	lines.push(...renderAssertionSection(run));
 
+	if (run.preset === 'rooms') {
+		lines.push(
+			formatAssertion('bossEncounterUiVisible', run.assertions?.bossEncounterUiVisible === true),
+			formatAssertion('bossDistinctFromAdds', run.assertions?.bossDistinctFromAdds === true),
+		);
+	}
+
 	if (run.preset === 'sunken-canyon') {
 		lines.push(
 			formatAssertion('bossEncounterUiVisible', run.assertions?.bossEncounterUiVisible === true),

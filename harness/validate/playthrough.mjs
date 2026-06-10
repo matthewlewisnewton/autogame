@@ -1052,6 +1052,24 @@ function isSunkenCanyonPreset(preset, summary) {
 	return preset?.layoutProfile === 'sunken-canyon' || summary?.preset === 'sunken-canyon';
 }
 
+function isRoomsPreset(preset, summary) {
+	return summary?.preset === 'rooms';
+}
+
+function buildBossEncounterUiAssertions(summary, { requireAnnexOverseer = false } = {}) {
+	const bossEncounterUi = summary.bossEncounter?.probes?.bossEncounterUi;
+	const bossVisualIdentity = summary.bossEncounter?.probes?.bossVisualIdentity;
+	return {
+		bossEncounterUiVisible: bossEncounterUi?.hudVisible === true
+			&& typeof bossEncounterUi?.bossName === 'string'
+			&& bossEncounterUi.bossName.length > 0
+			&& bossEncounterUi?.encounterLocked === true
+			&& bossEncounterUi?.encounterPhase === 'active',
+		bossDistinctFromAdds: bossVisualIdentity?.bossDistinctFromAdds === true
+			&& (!requireAnnexOverseer || bossVisualIdentity?.bossType === 'annex_overseer'),
+	};
+}
+
 function buildAssertions(summary, preset) {
 	const objectiveType = preset.objectiveType ?? 'stage_boss';
 
@@ -1108,25 +1126,24 @@ function buildAssertions(summary, preset) {
 		bossDefeated,
 		victoryFired,
 	};
-	if (!isSunkenCanyonPreset(preset, summary)) {
-		return base;
+	if (isSunkenCanyonPreset(preset, summary)) {
+		return {
+			...base,
+			...buildBossEncounterUiAssertions(summary),
+			slowBurnMutuallyExclusive: summary.cardExercises?.slowBurn?.slowBurnMutuallyExclusive === true,
+			healCleanseApplied: summary.cardExercises?.purifyingPulse?.healCleanseApplied === true,
+			windupTelegraphActive: summary.cardExercises?.windup?.windupTelegraphActive === true,
+			telepipeVitalsPreserved: summary.canyonTelepipe?.telepipeVitalsPreserved === true,
+			cardChargesResetOnNewSortie: summary.canyonTelepipe?.cardChargesResetOnNewSortie === true,
+		};
 	}
-	const bossEncounterUi = summary.bossEncounter?.probes?.bossEncounterUi;
-	const bossVisualIdentity = summary.bossEncounter?.probes?.bossVisualIdentity;
-	return {
-		...base,
-		bossEncounterUiVisible: bossEncounterUi?.hudVisible === true
-			&& typeof bossEncounterUi?.bossName === 'string'
-			&& bossEncounterUi.bossName.length > 0
-			&& bossEncounterUi?.encounterLocked === true
-			&& bossEncounterUi?.encounterPhase === 'active',
-		bossDistinctFromAdds: bossVisualIdentity?.bossDistinctFromAdds === true,
-		slowBurnMutuallyExclusive: summary.cardExercises?.slowBurn?.slowBurnMutuallyExclusive === true,
-		healCleanseApplied: summary.cardExercises?.purifyingPulse?.healCleanseApplied === true,
-		windupTelegraphActive: summary.cardExercises?.windup?.windupTelegraphActive === true,
-		telepipeVitalsPreserved: summary.canyonTelepipe?.telepipeVitalsPreserved === true,
-		cardChargesResetOnNewSortie: summary.canyonTelepipe?.cardChargesResetOnNewSortie === true,
-	};
+	if (isRoomsPreset(preset, summary)) {
+		return {
+			...base,
+			...buildBossEncounterUiAssertions(summary, { requireAnnexOverseer: true }),
+		};
+	}
+	return base;
 }
 
 function buildAssertionFailureDetail(summary, preset) {
