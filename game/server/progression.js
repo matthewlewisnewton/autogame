@@ -10,6 +10,7 @@ const {
   MAX_HP,
   MEDIC_HEAL_COST,
   APPEARANCE_CHANGE_COST,
+  LOBBY_REVIVE_HP,
   MAX_MAGIC_STONES,
   STARTING_MAGIC_STONES,
   SPAWN_PADDING,
@@ -448,12 +449,13 @@ function ensureShopOffer(state = _gameState) {
   return state.shopOffer;
 }
 
-/** Clear dead flag for hub UI; HP is unchanged — use healAtMedic() to restore health. */
+/** Clear dead flag and restore HP for hub UI so players can redeploy. */
 function revivePlayerInLobby(player) {
   if (!player) return;
   const hp = Number.isFinite(player.hp) ? player.hp : 0;
   if (!player.dead && hp > 0) return;
   player.dead = false;
+  player.hp = LOBBY_REVIVE_HP;
 }
 
 function healAtMedic(playerId, state = _gameState) {

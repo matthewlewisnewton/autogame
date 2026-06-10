@@ -3623,14 +3623,14 @@ describe('run state', () => {
 			expect(gameState.gamePhase).toBe('lobby');
 		});
 
-		it('clears dead flag without raising HP when returning dead player to lobby', () => {
+		it('clears dead flag and restores HP to LOBBY_REVIVE_HP when returning dead player to lobby', () => {
 			addPlayer('p1', { hp: 0, dead: true });
 
 			const { restore } = mockRoomEmit();
 			returnPlayersToLobby();
 			restore();
 
-			expect(gameState.players.p1.hp).toBe(0);
+			expect(gameState.players.p1.hp).toBe(10);
 			expect(gameState.players.p1.dead).toBe(false);
 		});
 
@@ -3797,17 +3797,17 @@ describe('run state', () => {
 			expect(player.dead).toBe(false);
 		});
 
-		it('clears dead flag without raising HP for dead players', () => {
+		it('clears dead flag and restores HP to LOBBY_REVIVE_HP for dead players', () => {
 			const player = { hp: 0, dead: true };
 			revivePlayerInLobby(player);
-			expect(player.hp).toBe(0);
+			expect(player.hp).toBe(10);
 			expect(player.dead).toBe(false);
 		});
 
-		it('clears dead flag without raising HP for zero-HP players without dead flag', () => {
+		it('clears dead flag and restores HP to LOBBY_REVIVE_HP for zero-HP players without dead flag', () => {
 			const player = { hp: 0, dead: false };
 			revivePlayerInLobby(player);
-			expect(player.hp).toBe(0);
+			expect(player.hp).toBe(10);
 			expect(player.dead).toBe(false);
 		});
 	});
