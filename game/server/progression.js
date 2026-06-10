@@ -3008,6 +3008,11 @@ function buildPlayerHotSnapshot(id, p) {
     x: p.x,
     y: p.y,
     z: p.z,
+    // Airborne fields (mirrors enemies/minions): a flying player broadcasts its
+    // resolved airborne `y` plus these flags so the client can render it at
+    // altitude with a ground shadow. Grounded players report flying:false.
+    flying: !!p.flying,
+    altitude: Number.isFinite(p.altitude) ? p.altitude : 0,
     rotation: p.rotation,
     hp: p.hp,
     dead: p.dead,
@@ -3490,4 +3495,5 @@ module.exports = {
   previewReturnRewards,
   emitPlayerDeckUpdate,
   buildPlayerDeckUpdatePayload,
+  buildPlayerHotSnapshot,
 };

@@ -102,6 +102,7 @@ const { clientToServer: CLIENT_TO_SERVER } = eventsCatalog;
 // ── Three.js scene references ──
 let scene, camera, renderer, clock;
 const playersMeshes = {};
+const playerShadows = {}; // flying player id → ground shadow decal (no entry for grounded players)
 const playerNameplates = {}; // playerId → THREE.Sprite (username label)
 const NAMEPLATE_OFFSET_Y = 1.0; // Units above avatar group Y position
 const enemiesMeshes = {};
@@ -6319,10 +6320,21 @@ export function animate(timestamp) {
 			if (id === myId) continue;
 
 			const body = playersMeshes[id].userData.bodyMesh;
-			playersMeshes[id].position.set(pData.x, pData.y || 0.5, pData.z);
+			// Floor-aware airborne height: a flying remote player rises to its
+			// broadcast altitude via the shared flyingRenderOffset helper, composed
+			// against DEFAULT_FLOOR_Y exactly like flying minions/enemies — the
+			// helper (preferring the server-resolved pData.y) already bakes in the
+			// floor delta, so DEFAULT_FLOOR_Y + offset resolves to floorY + altitude.
+			// A grounded player keeps its broadcast floor y exactly as before.
+			const remoteY = pData.flying
+				? DEFAULT_FLOOR_Y + flyingRenderOffset(pData, gs.layout)
+				: (pData.y || 0.5);
+			playersMeshes[id].position.set(pData.x, remoteY, pData.z);
 			if (Number.isFinite(pData.rotation)) {
 				playersMeshes[id].rotation.y = pData.rotation - Math.PI / 2;
 			}
+			// Ground shadow beneath a flying remote player (none for grounded).
+			syncFlyingShadow(playerShadows, { id, flying: pData.flying, x: pData.x, z: pData.z }, gs.layout);
 
 			if (pData.dead) {
 				body.material.color.setHex(DEAD_AVATAR_COLOR);
@@ -6357,10 +6369,22 @@ export function animate(timestamp) {
 		if (myId != null && playersMeshes[myId]) {
 			const layout = gs && gs.layout;
 			const floorY = layout ? resolveFloorY(sampleFloorY(layout, myX, myZ)) : DEFAULT_FLOOR_Y;
-			playersMeshes[myId].position.set(myX, floorY, myZ);
-			playersMeshes[myId].rotation.y = playerRotation - Math.PI / 2;
-
 			const me = gs.players[myId];
+			// Floor-aware airborne height for the local player, using the same shared
+			// helper as enemies/minions/remote players. A grounded player keeps the
+			// sampled floor exactly; a flying player rises to its altitude via
+			// DEFAULT_FLOOR_Y + flyingRenderOffset (the minion composition, where the
+			// helper already bakes in the floor delta → floorY + altitude). Composing
+			// against the sampled floorY here would double-count that delta.
+			const localFlyingEntity = { flying: me?.flying, altitude: me?.altitude, x: myX, z: myZ };
+			const localY = me?.flying
+				? DEFAULT_FLOOR_Y + flyingRenderOffset(localFlyingEntity, layout)
+				: floorY;
+			playersMeshes[myId].position.set(myX, localY, myZ);
+			playersMeshes[myId].rotation.y = playerRotation - Math.PI / 2;
+			// Ground shadow beneath a flying local player (none for grounded).
+			syncFlyingShadow(playerShadows, { id: myId, flying: me?.flying, x: myX, z: myZ }, layout);
+
 			const isDead = me && me.dead;
 
 			// Respawn detection: dead → alive resets local position to spawn
@@ -6478,6 +6502,13 @@ export function animate(timestamp) {
 			if (!gs.players[id]) {
 				disposeOne(playerCardWindupMarkers, id, scene);
 				playerCardWindupFlashing.delete(id);
+			}
+		}
+
+		// ── Clean up flying shadows for players who left ──
+		for (const id of Object.keys(playerShadows)) {
+			if (!gs.players[id]) {
+				disposeOne(playerShadows, id, scene);
 			}
 		}
 

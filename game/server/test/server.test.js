@@ -5146,6 +5146,8 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 			x: 0,
 			y: 0.5,
 			z: 0,
+			flying: false,
+			altitude: 0,
 			rotation: 0,
 			deck: ['iron_sword'],
 			hand: undefined,

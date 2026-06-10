@@ -16,6 +16,7 @@ import {
 } from '../simulation.js';
 // Floor oracle: compute the expected grounded Y independently of the helper.
 import { sampleFloorY, resolveFloorY } from '../../shared/floorSampling.js';
+import { buildPlayerHotSnapshot } from '../progression.js';
 
 // A single large open room with an explicit, non-default floor height so a
 // hovering entity's Y is provably `floorY + altitude` (not just the 0.5 default).
@@ -84,6 +85,44 @@ describe('resolveEntityY — general altitude helper', () => {
 		const floorY = floorYAt(layout, 0, 0);
 		expect(DEFAULT_FLY_ALTITUDE).toBeGreaterThan(0);
 		expect(resolveEntityY(entity, layout)).toBe(floorY + DEFAULT_FLY_ALTITUDE);
+	});
+});
+
+describe('player airborne symmetry (snapshot + resolveEntityY)', () => {
+	let layout;
+	beforeEach(() => {
+		layout = buildOpenLayout();
+	});
+
+	it('resolves a flying player object to floorY + altitude (same helper as enemies/minions)', () => {
+		const player = { id: 'p1', flying: true, altitude: 2.5, x: 4, z: -3 };
+		const floorY = floorYAt(layout, 4, -3);
+		expect(resolveEntityY(player, layout)).toBe(floorY + 2.5);
+		expect(resolveEntityY(player, layout)).not.toBe(floorY);
+	});
+
+	it('floor-snaps a grounded player to floorY', () => {
+		const player = { id: 'p1', x: 4, z: -3 };
+		expect(resolveEntityY(player, layout)).toBe(floorYAt(layout, 4, -3));
+	});
+
+	it('hot snapshot carries flying/altitude for a flying player', () => {
+		const floorY = floorYAt(layout, 4, -3);
+		const player = { x: 4, y: floorY + 2.5, z: -3, flying: true, altitude: 2.5 };
+		const snap = buildPlayerHotSnapshot('p1', player);
+		expect(snap.flying).toBe(true);
+		expect(snap.altitude).toBe(2.5);
+		// Still broadcasts the resolved airborne world Y.
+		expect(snap.y).toBe(floorY + 2.5);
+	});
+
+	it('hot snapshot reports a grounded player as flying:false with floor y', () => {
+		const floorY = floorYAt(layout, 4, -3);
+		const player = { x: 4, y: floorY, z: -3 };
+		const snap = buildPlayerHotSnapshot('p1', player);
+		expect(snap.flying).toBe(false);
+		expect(snap.altitude).toBe(0);
+		expect(snap.y).toBe(floorY);
 	});
 });
 
