@@ -6360,6 +6360,46 @@ The round-6 capture exercises generic gameplay (lobby → deploy → movement �
 None. All acceptance criteria are satisfied and the captured run is healthy.
 
 
+## v0.361 — Server: player movement triggers up to 20 synchronous disk writes/sec per player on the game-loop thread  (2026-06-10 07:39:47)
+
+### Disconnect, leave, periodic, and shutdown persistence
+
+PASS. The lifecycle paths still bypass the movement debounce by calling `savePlayerData()` directly for soft disconnect, eviction, and explicit lobby leave. The existing 30s periodic save interval still calls `saveAllPlayersInAllLobbies()`, and SIGINT/SIGTERM shutdown now invokes the same all-lobby save before closing the HTTP server, so dirty players inside the debounce window are persisted on clean shutdown.
+
+### Test coverage
+
+PASS. The ticket adds focused debounce coverage in `persistence_save_debounce.test.js`, updates movement/persistence trigger coverage for the debounce window, and adds a shutdown flush regression test. The captured coverage run reports `133` test files and `1973` tests passed, including the new persistence debounce and shutdown cases.
+
+### Design and foundation consistency
+
+PASS. The change is server-side persistence plumbing only. It does not alter the documented lobby/dungeon core loop, multiplayer rendering, WebSocket movement synchronization, combat, floor sampling, or foundation requirements. The fallback smoke capture exercised lobby join, ready/deploy, movement, and key-item cooldown without visual or runtime regression.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=NAME` URL shortcut. Existing test-only socket debug scenario usage remains outside normal captured gameplay; the capture itself used `debugScenario: null`.
+
+## Remaining gaps
+
+No blocking gaps found.
+
+## v0.362 — Content: rework crystal_rescue, frost_crossing, training_caverns as scripted PSO-style scenarios  (2026-06-10 08:30:15)
+
+### No random bulk spawns remain in these three tiers
+
+PASS. All three Tier 1 quests have `scriptedEncounters`, and their objective definitions skip bulk combat spawning for scripted quests. Runtime deployment spawns only the first authored wave, then `tickScriptedEncounters()` starts later room waves when players enter the corresponding rooms. The scripted enemy counts are authored from the quest config rather than pulled from `enemyPool`, while the legacy enemy pools remain only as catalog/spawn-pool metadata.
+
+### Playtest each start-to-finish on a fresh account without debug tools
+
+PASS. The latest capture is a normal no-debug fallback smoke run through default lobby/deploy/gameplay, and the probes show the game reaches `phase: "playing"` with connected multiplayer, canvas rendering, the scripted Initiate Vault objective, and live authored enemies. Full-flow automated coverage backs the remaining arcs: crystal rescue has a collect -> ambush -> extraction -> victory test, Tier 1 cross-quest tests verify the three authored arcs and solo-friendly wave sizes, and the full coverage run reports 146 test files and 2328 tests passed.
+
+## Design and foundation regression review
+
+PASS. The implementation preserves the foundation in `game/docs/requirements.md`: the captured run renders a Three.js scene, connects via Socket.IO, displays multiple players, and updates movement/HUD state. The quest changes stay server-authoritative: enemy waves, objective counters, passage locks, extraction completion, reward/victory handling, and tier unlocks all flow through existing server progression paths.
+
+## Code quality and integration
+
+PASS. The changed code is cohesive and keeps the new behavior in the existing quest/objective/progression boundaries. Objective counters include scripted guard enemies and the final ambush before victory is possible, passage locks rebuild colliders when unlocked, and telepipe/checkpoint serialization preserves scripted encounter state. The debug scenarios added for `crystal-rescue-extraction-phase` and `frost-crossing-frostmaw` are gated through the existing debug-scenario socket path, which is restricted to loopback or `ALLOW_DEBUG_SCENARIOS=1`; normal gameplay does not call them. Their target states remain reachable through the normal scripted quest flow and still rely on the real run objective state for completion.
+
 ## v0.363 — Client: persistent in-run key item HUD slot (icon, name, keybind, cooldown) — currently invisible when ready  (2026-06-10 08:58:01)
 
 

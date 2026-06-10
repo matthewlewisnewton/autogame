@@ -2068,7 +2068,16 @@ describe('Socket Integration — Quest Selection', () => {
 		}
 
 		const state = testGameState();
+		for (const enemy of state.enemies) {
+			enemy.hp = 0;
+		}
 		state.run.objective.defeatedEnemies = state.run.objective.totalEnemies;
+		state.run.finalAmbush = { spawned: true, cleared: true, enemyIds: [] };
+		state.run.objective.extractionPhase = true;
+		const startRoom = state.layout.rooms.find((room) => room.role === 'start');
+		player.x = startRoom.x;
+		player.z = startRoom.z;
+		state.run.objective.extractionReached = true;
 		runSimulationInPrimaryLobby(() => checkRunTerminalState());
 
 		const summary = await runCompletePromise;

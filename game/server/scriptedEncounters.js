@@ -146,10 +146,21 @@ function setWaveClearedCallback(fn) {
 }
 
 function findPassageIndexFromRoom(layout, roomIndex) {
-  if (!layout?.passages || !layout?.rooms) return -1;
+  const indices = findPassageIndicesFromRoom(layout, roomIndex);
+  return indices.length > 0 ? indices[0] : -1;
+}
+
+function findPassageIndicesFromRoom(layout, roomIndex) {
+  if (!layout?.passages || !layout?.rooms) return [];
   const room = layout.rooms[roomIndex];
-  if (!room) return -1;
-  return layout.passages.findIndex((passage) => passage.x1 === room.x && passage.z1 === room.z);
+  if (!room) return [];
+  const indices = [];
+  layout.passages.forEach((passage, index) => {
+    if (passage.x1 === room.x && passage.z1 === room.z) {
+      indices.push(index);
+    }
+  });
+  return indices;
 }
 
 function getStartRoomIndex(layout) {
@@ -381,23 +392,26 @@ function initPassageLocks(run, quest, layout) {
     return;
   }
 
-  run.passageLocks = lockDefs.map((lockDef) => {
-    let passageIndex = lockDef.passageIndex;
-    if (!Number.isInteger(passageIndex) && layout && Number.isInteger(lockDef.fromRoomIndex)) {
-      passageIndex = findPassageIndexFromRoom(layout, lockDef.fromRoomIndex);
+  const locks = [];
+  for (const lockDef of lockDefs) {
+    let passageIndices = [];
+    if (Number.isInteger(lockDef.passageIndex) && lockDef.passageIndex >= 0) {
+      passageIndices = [lockDef.passageIndex];
+    } else if (layout && Number.isInteger(lockDef.fromRoomIndex)) {
+      passageIndices = findPassageIndicesFromRoom(layout, lockDef.fromRoomIndex);
     }
-    if (!Number.isInteger(passageIndex) || passageIndex < 0) {
-      return null;
+    for (const passageIndex of passageIndices) {
+      locks.push({
+        passageIndex,
+        afterWave: {
+          roomIndex: lockDef.afterWave.roomIndex,
+          waveIndex: lockDef.afterWave.waveIndex,
+        },
+        locked: !isWaveRequirementMet(run, lockDef.afterWave),
+      });
     }
-    return {
-      passageIndex,
-      afterWave: {
-        roomIndex: lockDef.afterWave.roomIndex,
-        waveIndex: lockDef.afterWave.waveIndex,
-      },
-      locked: !isWaveRequirementMet(run, lockDef.afterWave),
-    };
-  }).filter(Boolean);
+  }
+  run.passageLocks = locks;
 }
 
 function unlockPassagesForWave(run, roomIndex, waveIndex) {
@@ -491,6 +505,79 @@ function relinkScriptedEncounterEnemyIds(run, enemies) {
   }
 }
 
+function countAmbushSpawnEntries(spawns) {
+  if (!Array.isArray(spawns)) return 0;
+  let total = 0;
+  for (const spawnDef of spawns) {
+    total += spawnCount(spawnDef);
+  }
+  return total;
+}
+
+/**
+ * Spawn a one-shot ambush wave around the collecting player's current room.
+ * @returns {string[]} spawned enemy ids
+ */
+function spawnAmbushAtPlayer(run, gameState, spawns, ctx) {
+  if (!run || !gameState || !Array.isArray(spawns) || spawns.length === 0) return [];
+  if (run.finalAmbush?.spawned) return run.finalAmbush.enemyIds || [];
+
+  const layout = gameState.layout;
+  const activePlayers = Object.values(gameState.players || {}).filter(isPlayerActive);
+  const anchorPlayer = activePlayers[0] || null;
+
+  let anchorRoom = null;
+  if (anchorPlayer && layout?.rooms) {
+    for (const room of layout.rooms) {
+      if (playerInRoom(anchorPlayer.x, anchorPlayer.z, room)) {
+        anchorRoom = room;
+        break;
+      }
+    }
+  }
+  if (!anchorRoom && layout?.rooms?.length) {
+    anchorRoom = layout.rooms[getStartRoomIndex(layout)];
+  }
+
+  const layoutSeed = gameState.layoutSeed || 42;
+  const rng = mulberry32(layoutSeed + 9200);
+  const enemyIds = [];
+  let spawnIndex = 0;
+
+  for (const spawnDef of spawns) {
+    const count = spawnCount(spawnDef);
+    for (let i = 0; i < count; i++) {
+      const pos = resolveSpawnPosition(layout, anchorRoom, spawnDef, spawnIndex, rng);
+      const enemy = ctx.spawnEnemy(pos.x, pos.z, spawnDef.type, undefined, {
+        tier: ctx.roomTierAt(layout, pos.x, pos.z),
+        rng,
+      });
+      enemy.wanderTarget = ctx.randomWanderTarget();
+      enemy.finalAmbush = true;
+      enemyIds.push(enemy.id);
+      spawnIndex += 1;
+    }
+  }
+
+  run.finalAmbush = {
+    spawned: true,
+    cleared: false,
+    enemyIds,
+  };
+
+  return enemyIds;
+}
+
+function onFinalAmbushEnemyDefeated(run, enemyId) {
+  if (!run?.finalAmbush?.spawned || run.finalAmbush.cleared) return false;
+  const idx = run.finalAmbush.enemyIds.indexOf(enemyId);
+  if (idx < 0) return false;
+  run.finalAmbush.enemyIds.splice(idx, 1);
+  if (run.finalAmbush.enemyIds.length > 0) return false;
+  run.finalAmbush.cleared = true;
+  return true;
+}
+
 module.exports = {
   getScriptedEncounterDef,
   isScriptedQuest,
@@ -506,7 +593,11 @@ module.exports = {
   setPassageLocksChangedCallback,
   setWaveClearedCallback,
   findPassageIndexFromRoom,
+  findPassageIndicesFromRoom,
   isWaveRequirementMet,
   roomKeyForDef,
   resolveRoomDef,
+  countAmbushSpawnEntries,
+  spawnAmbushAtPlayer,
+  onFinalAmbushEnemyDefeated,
 };

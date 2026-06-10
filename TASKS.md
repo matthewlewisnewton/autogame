@@ -134,4 +134,5 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [380-cleanup-server-quest-objective-crystals-despawn-after-loot-lifetime-19vg](tickets/380-cleanup-server-quest-objective-crystals-despawn-after-loot-lifetime-19vg/)
 - [ ] [381-cleanup-client-quest-board-panel-flashes-open-then-is-re-hidden-by-t-yb1m](tickets/381-cleanup-client-quest-board-panel-flashes-open-then-is-re-hidden-by-t-yb1m/)
 - [ ] [382-cleanup-server-bulkhead-mauler-and-astral-guardian-minions-attack-ev-oumk](tickets/382-cleanup-server-bulkhead-mauler-and-astral-guardian-minions-attack-ev-oumk/)
+- [ ] [382-cleanup-content-rework-crystal-rescue-frost-crossing-training-cavern-o0vv.7](tickets/382-cleanup-content-rework-crystal-rescue-frost-crossing-training-cavern-o0vv.7/)
 - [ ] [383-cleanup-client-persistent-in-run-key-item-hud-slot-icon-name-keybind-52lf](tickets/383-cleanup-client-persistent-in-run-key-item-hud-slot-icon-name-keybind-52lf/)

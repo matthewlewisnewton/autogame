@@ -12,7 +12,7 @@ import {
   computeDungeonBounds,
 } from '../simulation.js';
 import { createGameState } from '../index.js';
-import { INPUT_STALE_MS, MOVE_SPEED, TICK_RATE, MAX_HP, SPIRE_EDGE_HAZARD_DAMAGE } from '../config.js';
+import { INPUT_STALE_MS, MOVE_SPEED, TICK_RATE, MAX_HP, SPIRE_EDGE_HAZARD_DAMAGE, PLAYER_MOVEMENT_SAVE_DEBOUNCE_MS } from '../config.js';
 import { generateLayout } from '../dungeon.js';
 import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } from '../dungeon.js';
 
@@ -142,6 +142,7 @@ describe('flushDirtyPlayerSaves()', () => {
   let saveSpy;
 
   beforeEach(() => {
+    vi.useFakeTimers();
     state = createGameState();
     state.gamePhase = 'playing';
     setGameState(state, {});
@@ -150,6 +151,7 @@ describe('flushDirtyPlayerSaves()', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     setSavePlayerCallback(null);
     setGameState(null, null);
   });
@@ -165,15 +167,44 @@ describe('flushDirtyPlayerSaves()', () => {
     expect(saveSpy).toHaveBeenCalledTimes(1);
     expect(saveSpy).toHaveBeenCalledWith('p1');
     expect(state.players.p1.persistenceDirty).toBe(false);
+    expect(state.players.p1.persistenceLastSavedAt).toBe(Date.now());
   });
 
-  it('writes at most once even if persistenceDirty stays true across the flush', () => {
+  it('flushes a never-saved dirty player on the first eligible tick', () => {
     state.players.p1 = makePlayer({ persistenceDirty: true });
 
+    flushDirtyPlayerSaves();
+
+    expect(saveSpy).toHaveBeenCalledTimes(1);
+    expect(state.players.p1.persistenceLastSavedAt).toBe(Date.now());
+  });
+
+  it('writes at most once within the debounce window while persistenceDirty stays true', () => {
+    state.players.p1 = makePlayer({ persistenceDirty: true });
+
+    flushDirtyPlayerSaves();
+    state.players.p1.persistenceDirty = true;
+
+    vi.advanceTimersByTime(PLAYER_MOVEMENT_SAVE_DEBOUNCE_MS - 1);
     flushDirtyPlayerSaves();
     flushDirtyPlayerSaves();
 
     expect(saveSpy).toHaveBeenCalledTimes(1);
+    expect(state.players.p1.persistenceDirty).toBe(true);
+  });
+
+  it('allows a second flush after the debounce window elapses', () => {
+    state.players.p1 = makePlayer({ persistenceDirty: true });
+
+    flushDirtyPlayerSaves();
+    state.players.p1.persistenceDirty = true;
+
+    vi.advanceTimersByTime(PLAYER_MOVEMENT_SAVE_DEBOUNCE_MS);
+    flushDirtyPlayerSaves();
+
+    expect(saveSpy).toHaveBeenCalledTimes(2);
+    expect(state.players.p1.persistenceDirty).toBe(false);
+    expect(state.players.p1.persistenceLastSavedAt).toBe(Date.now());
   });
 });
 
