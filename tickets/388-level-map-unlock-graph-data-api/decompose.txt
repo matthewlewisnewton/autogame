@@ -1,0 +1,13 @@
+I broke the top-level ticket into 2 sub-tickets, in dependency order. Both are pure backend data-API work, so both verify by `code` (nothing visual to observe).
+
+Created:
+
+- `tickets/388-level-map-unlock-graph-data-api/subtickets/01-build-level-unlock-graph/ticket.md`
+- `tickets/388-level-map-unlock-graph-data-api/subtickets/02-expose-graph-in-payload/ticket.md`
+
+**Rationale for the split:**
+
+- **01** adds the pure data builder `buildLevelUnlockGraph(accountId)` in `quests.js` — one node per quest tier (tier-1, tier-2, and stage-boss tiers), each with its normalized `unlockRequires` array (the 384 multi-prereq shape) and a per-player `locked`/`unlocked`/`cleared` state derived from `users.js` (`isQuestTierUnlocked` + `hasCompletedQuestTier`). Plus unit tests. This is self-contained and code-verifiable even before it's consumed.
+- **02** wires that graph into the existing `buildQuestUpdatePayload` under a `levelUnlockGraph` field, so it ships to clients in the **one** `questUpdate` payload the ticket asks for — no new socket event or endpoint, and no edits to the `index.js` emit sites (they already spread the payload).
+
+Both stay inside the ticket's declared scope (`quests.js` + payload + test). No existing sub-ticket folders were present, so nothing was retired.
