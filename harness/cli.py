@@ -176,6 +176,13 @@ def _cmd_worker(name: str, agent: str) -> int:
     from harness.pipelines.ticket import TicketContext, ticket
     from harness.pipelines.result import PipelineResult
     from harness.telemetry.progress import emit_progress_event
+    # Expose the dispatcher-assigned agent (the REGISTRY name, e.g.
+    # composer_write / claude_fable) to telemetry: usage rows carry it as
+    # worker_agent so the dispatcher quota scan can match rows back to the
+    # registry entry even when the CLI label differs (agent/composer-2.5,
+    # claude, ...).
+    import os
+    os.environ["HARNESS_WORKER_AGENT"] = agent
     _write_worker_role_overrides(Path.cwd(), agent)
     workspace = _build_workspace()
     roster = _build_roster()

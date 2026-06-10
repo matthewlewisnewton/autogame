@@ -76,7 +76,7 @@ def _build_agent(name: str, spec: AgentSpec) -> Agent:
     if isinstance(spec, AgySpec):
         return AgyAgent(AgyAgentConfig(model_label=spec.model_label))
     if isinstance(spec, ClaudeSpec):
-        return ClaudeAgent(ClaudeAgentConfig(model=spec.model))
+        return ClaudeAgent(ClaudeAgentConfig(model=spec.model, effort=spec.effort))
     raise ValueError(f"Unsupported agent spec for {name!r}: {type(spec).__name__}")
 
 

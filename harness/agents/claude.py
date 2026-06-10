@@ -30,8 +30,9 @@ from harness.agents.spawn import spawn
 
 @dataclass
 class ClaudeAgentConfig:
-    """YAML row: {backend: claude} or {backend: claude, model: <id>}."""
+    """YAML row: {backend: claude} or {backend: claude, model: <id>, effort: <level>}."""
     model: Optional[str] = None       # None → claude CLI default
+    effort: Optional[str] = None      # None → CLI default; else low|medium|high|xhigh|max
 
 
 class ClaudeAgent(Agent):
@@ -41,12 +42,16 @@ class ClaudeAgent(Agent):
     def __init__(self, cfg: Optional[ClaudeAgentConfig] = None):
         self.cfg = cfg or ClaudeAgentConfig()
         suffix = self.cfg.model or "default"
+        if self.cfg.effort:
+            suffix = f"{suffix}@{self.cfg.effort}"
         self.name = f"claude/{suffix}"
 
     def _build_argv(self, prompt_body: str) -> list[str]:
         argv = ["claude", "-p", "--dangerously-skip-permissions"]
         if self.cfg.model:
             argv += ["--model", self.cfg.model]
+        if self.cfg.effort:
+            argv += ["--effort", self.cfg.effort]
         argv.append(prompt_body)
         return argv
 

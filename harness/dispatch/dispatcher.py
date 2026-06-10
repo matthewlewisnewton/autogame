@@ -757,7 +757,8 @@ def _agent_hit_quota(progress: Path, agent: str, *, lookback: int = 40,
         if since_ms is not None and row.get("ended_ms", 0) < since_ms:
             continue
         model = row.get("model") or row.get("label", "")
-        if agent in (row.get("label", ""), model) and row.get("reason") in quota_reasons:
+        if (agent in (row.get("label", ""), model, row.get("worker_agent"))
+                and row.get("reason") in quota_reasons):
             return True
     return False
 

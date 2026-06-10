@@ -592,3 +592,13 @@ def test_worktree_create_failure_backs_off():
     d.tick()
     assert q.requeued == ["t1"]
     assert d._not_before.get("t1", 0) > time.time()
+
+
+def test_quota_scan_matches_worker_agent_field(tmp_path):
+    import json as _json
+    from harness.dispatch.dispatcher import _agent_hit_quota
+    row = {"label": "claude", "model": "claude", "worker_agent": "claude_fable",
+           "reason": "quota_or_rate_limit", "ended_ms": 2_000}
+    (tmp_path / "agent-usage.ndjson").write_text(_json.dumps(row) + "\n")
+    assert _agent_hit_quota(tmp_path, "claude_fable", since_ms=1_000) is True
+    assert _agent_hit_quota(tmp_path, "composer_write", since_ms=1_000) is False

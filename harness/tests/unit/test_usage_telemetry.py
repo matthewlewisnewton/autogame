@@ -53,3 +53,13 @@ def test_estimates_tokens_when_cli_reports_none(progress):
     p = [e for e in events if e["type"] == "agent_usage"][0]["payload"]
     assert p["totalTokens"] == 1000          # ~4 chars/token estimate
     assert p["estimated"] is True and p["source"] == "per_call_estimate"
+
+
+def test_row_carries_worker_agent_from_env(progress, monkeypatch):
+    monkeypatch.setenv("HARNESS_WORKER_AGENT", "claude_fable")
+    record_agent_usage(
+        label="claude", result=_result(), attempt=1,
+        usage_kind=UsageKind.IMPLEMENTER, bucket="remote",
+        prompt="x", outfile="/wt/round-1/claude.txt")
+    row = json.loads((progress / "agent-usage.ndjson").read_text().splitlines()[0])
+    assert row["worker_agent"] == "claude_fable"

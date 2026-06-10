@@ -15,11 +15,14 @@ reserve_qwen: true    # each tick, keep the local GPU (qwen) busy on an easy tic
 # cap. So qwen (local/free) is preferred wherever eligible, then composer (cheap),
 # then the expensive remotes. gpt-5.5 is last, so it only runs when claude is out
 # of usage (quota-disabled) or every cheaper agent is saturated.
-order: [qwen, composer_write, claude, gpt5_extra_write]
+order: [qwen, composer_write, claude, claude_fable, gpt5_extra_write]
 
 # Per-agent concurrency caps + which difficulties each agent may take.
 agents:
   qwen:             { max_concurrency: 1, eligible: [easy, medium] }
   composer_write:   { max_concurrency: 3, eligible: [easy, medium, hard] }
   claude:           { max_concurrency: 2, eligible: [medium, hard] }
+  # fable-5 @ xhigh effort — hard tickets only, one at a time (premium reasoning
+  # spend on the same Anthropic plan as claude/opus).
+  claude_fable:     { max_concurrency: 1, eligible: [hard] }
   gpt5_extra_write: { max_concurrency: 1, eligible: [hard] }

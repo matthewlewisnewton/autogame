@@ -60,6 +60,8 @@ class AgySpec(_AgentSpecBase):
 class ClaudeSpec(_AgentSpecBase):
     backend: Literal["claude"]
     model: Optional[str] = None
+    # claude CLI --effort level; None omits the flag (CLI default).
+    effort: Optional[Literal["low", "medium", "high", "xhigh", "max"]] = None
 
 
 def _agent_disc(value: Any) -> str:

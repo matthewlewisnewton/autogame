@@ -63,9 +63,14 @@ def record_agent_usage(*, label: str, result: AgentResult, attempt: int,
                        usage_kind: UsageKind, bucket: str, prompt: str,
                        status: str = "ok", outfile: str = "") -> None:
     kind = usage_kind.value if isinstance(usage_kind, UsageKind) else str(usage_kind)
+    import os
     row = {
         "label": label,
         "model": label.split("/", 1)[1] if "/" in label else label,
+        # The dispatcher-assigned registry agent (set by `harness worker`) —
+        # lets the quota scan match rows whose CLI label differs from the
+        # registry name (agent/composer-2.5 vs composer_write).
+        "worker_agent": os.environ.get("HARNESS_WORKER_AGENT") or None,
         "bucket": bucket,
         "usage_kind": kind,
         "outfile": outfile,

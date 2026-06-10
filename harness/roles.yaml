@@ -45,6 +45,10 @@ agents:
   # claude is NOT used by any default role (cost) — it is opted into only by the
   # parallel factory as an explicit medium/hard implementer at concurrency 1.
   claude:                { backend: claude, model: claude-opus-4-8 }
+  # fable-5 at xhigh effort: premium implementer the factory opts into for the
+  # HARD lane only (factory.yaml caps it at 1 and places it late in the cost
+  # order). Never referenced by a default role — same cost guard as claude.
+  claude_fable:          { backend: claude, model: claude-fable-5, effort: xhigh }
 
 # --- Per-family defaults. Roles in a family inherit these unless they
 # override the same field. Phase 3 supports exact-name lookup
