@@ -1346,6 +1346,11 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       }
       if (data.cardId === 'dungeon_drake' || cardDef.effect === 'ancient_wyrm') {
         applyWyrmMinionBreathStats(minion, cardDef, grind, now);
+        if (cardDef.effect === 'ancient_wyrm') {
+          // Archive Wyrm hovers like storm_eagle / thunderbird aerial minions.
+          minion.flying = true;
+          minion.altitude = cardDef.altitude;
+        }
       }
       state.minions.push(minion);
 

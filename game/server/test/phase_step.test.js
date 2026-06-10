@@ -86,6 +86,7 @@ describe('useKeyItem — phase_step', () => {
 		const p2Before = { x: p2.x, y: p2.y, z: p2.z };
 
 		p1.keyItemCooldownUntil = 0;
+		p1.equippedKeyItemId = 'phase_step';
 
 		const resultPromise = waitForEvent(players[0].socket, 'keyItemUsed');
 		players[0].socket.emit('useKeyItem', { keyItemId: 'phase_step' });
@@ -119,6 +120,7 @@ describe('useKeyItem — phase_step', () => {
 		const p1Before = { x: p1.x, y: p1.y, z: p1.z };
 		const p2Before = { x: p2.x, y: p2.y, z: p2.z };
 		p1.keyItemCooldownUntil = 0;
+		p1.equippedKeyItemId = 'phase_step';
 
 		const resultPromise = waitForEvent(players[0].socket, 'keyItemUsed');
 		players[0].socket.emit('useKeyItem', { keyItemId: 'phase_step', targetPlayerId: p2.id });
@@ -140,6 +142,7 @@ describe('useKeyItem — phase_step', () => {
 		const p1Before = { x: p1.x, y: p1.y, z: p1.z };
 		const p2Before = { x: p2.x, y: p2.y, z: p2.z };
 		p1.keyItemCooldownUntil = 0;
+		p1.equippedKeyItemId = 'phase_step';
 
 		const resultPromise = waitForEvent(players[0].socket, 'keyItemUsed');
 		players[0].socket.emit('useKeyItem', { keyItemId: 'phase_step' });
@@ -169,6 +172,7 @@ describe('useKeyItem — phase_step', () => {
 		const p1Before = { x: p1.x, y: p1.y, z: p1.z };
 		const p2Before = { x: p2.x, y: p2.y, z: p2.z };
 		p1.keyItemCooldownUntil = 0;
+		p1.equippedKeyItemId = 'phase_step';
 
 		const resultPromise = waitForEvent(players[0].socket, 'keyItemUsed');
 		players[0].socket.emit('useKeyItem', { keyItemId: 'phase_step' });
@@ -252,6 +256,7 @@ describe('useKeyItem — phase_step', () => {
 		const p1Before = { x: p1.x, y: p1.y, z: p1.z };
 		const p2Before = { x: p2.x, y: p2.y, z: p2.z };
 		p1.keyItemCooldownUntil = 0;
+		p1.equippedKeyItemId = 'phase_step';
 
 		const resultPromise = waitForEvent(players[0].socket, 'keyItemUsed');
 		players[0].socket.emit('useKeyItem', { keyItemId: 'phase_step' });
@@ -277,6 +282,7 @@ describe('useKeyItem — phase_step', () => {
 		const player = playerForSocket(socket);
 		const before = { x: player.x, y: player.y, z: player.z };
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'phase_step';
 
 		const resultPromise = waitForEvent(socket, 'keyItemUsed');
 		socket.emit('useKeyItem', { keyItemId: 'phase_step' });
@@ -298,6 +304,7 @@ describe('useKeyItem — phase_step', () => {
 
 		p2.x = p1.x + 2; p2.z = p1.z;
 		p1.keyItemCooldownUntil = 0;
+		p1.equippedKeyItemId = 'phase_step';
 
 		const r1Promise = waitForEvent(players[0].socket, 'keyItemUsed');
 		players[0].socket.emit('useKeyItem', { keyItemId: 'phase_step' });

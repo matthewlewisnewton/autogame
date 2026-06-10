@@ -1,0 +1,15 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/379-wyrm-evolution-flying-minion/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/379-wyrm-evolution-flying-minion/game/data
+Server listening on port 3000
+Player connected: socket=5uldbTvRj2LPNcIHAAAB, playerId=352772fb-0b1d-4c4d-8a8a-676a2d56d1c5
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=HQbnQNm8xw8ZwpxWAAAD, playerId=12b2dbc5-9916-4c23-ac43-759151f66bae
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=aef7c823-83d8-4a59-a65e-b73de342845a value=6
+Player disconnected: 5uldbTvRj2LPNcIHAAAB
+Player disconnected: HQbnQNm8xw8ZwpxWAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

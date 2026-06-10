@@ -1989,6 +1989,43 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(ctx._calls.filter((c) => c[0] === 'spawnHitSpark')).toHaveLength(1);
 	});
 
+	it('Archive Wyrm airborne fire breath uses origin.y for cone, ring, and burst', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 5, y: 0.5, z: 0 } },
+			}),
+		});
+		const airborneY = 4;
+		const dirY = 0.3;
+		const range = 8;
+		renderCardUsed({
+			cardId: 'ancient_wyrm',
+			specialEffect: 'fire_breath',
+			origin: { x: 0, z: 0, y: airborneY },
+			direction: { x: 1, z: 0, y: dirY },
+			attackRange: range,
+			attackConeAngle: Math.PI / 3,
+			breathPhase: 'start',
+			breathDurationMs: 2500,
+			hits: [{ enemyId: 'e1', hp: 46 }],
+		}, ctx);
+		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
+		expect(attacks).toHaveLength(1);
+		expect(attacks[0][1]).toEqual({ x: 0, z: 0, y: airborneY });
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 0, z: 0, y: airborneY });
+		const alongDist = range * 0.45;
+		const len = Math.hypot(1, 0, dirY);
+		const expectedBurstY = airborneY + (dirY / len) * alongDist;
+		const alongBurst = ctx._calls.find(
+			(c) => c[0] === 'spawnParticleBurst' && c[1].x === alongDist,
+		);
+		expect(alongBurst).toBeDefined();
+		expect(alongBurst[1].y).toBeCloseTo(expectedBurstY, 5);
+		expect(alongBurst[2]).toMatchObject({ color: 0xef4444, emissive: 0x9333ea, count: 14 });
+	});
+
 	it('Vault Wyrm and Archive Wyrm summons use distinct flourish radii', () => {
 		const vaultCtx = makeCtx();
 		renderCardUsed({

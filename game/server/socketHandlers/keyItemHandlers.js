@@ -3,7 +3,7 @@
 
 const { CLIENT_TO_SERVER, SERVER_TO_CLIENT } = require('../../shared/events.js');
 const keyItemEffects = require('../keyItemEffects');
-const { getKeyItemDef, savePlayerData } = require('../progression');
+const { getKeyItemDef, isKeyItemUnlocked, savePlayerData } = require('../progression');
 
 function register(socket, ctx) {
   const { withLobbyPlayer, withLobbyFromSocket } = ctx;
@@ -22,6 +22,11 @@ function register(socket, ctx) {
     const def = getKeyItemDef(keyItemId);
     if (!def) {
       socket.emit(SERVER_TO_CLIENT.KEY_ITEM_ERROR, { reason: 'unknown_item' });
+      return;
+    }
+
+    if (!isKeyItemUnlocked(player, keyItemId)) {
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_ERROR, { reason: 'not_unlocked' });
       return;
     }
 

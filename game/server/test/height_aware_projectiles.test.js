@@ -587,6 +587,7 @@ describe('dungeon_drake', () => {
 		expect(gameState.enemies[0].hp).toBe(48);
 		expect(gameState.minions[0].breathDirY).toBeGreaterThan(0);
 		expect(gameState._pendingMinionBreaths[0].direction.y).toBeGreaterThan(0);
+		expect(gameState._pendingMinionBreaths[0].origin.y).toBeUndefined();
 	});
 });
 
@@ -599,7 +600,9 @@ describe('ancient_wyrm', () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(now);
 
-		const minionPos = { x: 0, y: 0, z: 0 };
+		const altitude = CARD_DEFS.ancient_wyrm.altitude;
+		const minionWorldY = getEntityWorldY({ flying: true, altitude, x: 0, z: 0 });
+		const minionPos = { x: 0, y: minionWorldY, z: 0 };
 		const enemyPos = { x: 0, y: 5, z: 0 };
 		const aim = computeAimDirection3D(minionPos, enemyPos);
 
@@ -619,7 +622,8 @@ describe('ancient_wyrm', () => {
 			type: 'ancient_wyrm',
 			x: minionPos.x,
 			z: minionPos.z,
-			y: minionPos.y,
+			flying: true,
+			altitude,
 			hp: 90,
 			ttl: 30,
 			breathState: 'breathing',
@@ -644,5 +648,6 @@ describe('ancient_wyrm', () => {
 		expect(gameState.enemies[0].hp).toBe(50 - CARD_DEFS.ancient_wyrm.breathDamage);
 		expect(gameState.minions[0].breathDirY).toBeGreaterThan(0);
 		expect(gameState._pendingMinionBreaths[0].direction.y).toBeGreaterThan(0);
+		expect(gameState._pendingMinionBreaths[0].origin.y).toBe(minionWorldY);
 	});
 });

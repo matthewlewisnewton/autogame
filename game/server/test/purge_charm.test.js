@@ -75,6 +75,7 @@ describe('useKeyItem — purge_charm (socket integration)', () => {
 
 		// Clean state with two debuffs, oldest-first.
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'purge_charm';
 		player.debuffs = [];
 		addDebuff(player, 'slow', Date.now() + 5000);
 		addDebuff(player, 'burn', Date.now() + 5000);
@@ -103,6 +104,7 @@ describe('useKeyItem — purge_charm (socket integration)', () => {
 		const player = playerForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'purge_charm';
 		player.debuffs = [];
 		player.shieldHitsRemaining = 0;
 
@@ -123,6 +125,7 @@ describe('useKeyItem — purge_charm (socket integration)', () => {
 		const player = playerForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'purge_charm';
 		player.debuffs = [];
 		player.shieldHitsRemaining = 0;
 		addDebuff(player, 'slow', Date.now() + 5000);
@@ -141,6 +144,7 @@ describe('useKeyItem — purge_charm (socket integration)', () => {
 		const { socket } = await connectAndStartRun();
 		const player = playerForSocket(socket);
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'purge_charm';
 		player.debuffs = [];
 
 		const resultPromise = waitForEvent(socket, 'keyItemUsed');
@@ -155,6 +159,7 @@ describe('useKeyItem — purge_charm (socket integration)', () => {
 		const { socket } = await connectAndStartRun();
 		const player = playerForSocket(socket);
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'purge_charm';
 		player.debuffs = [];
 
 		const result1Promise = waitForEvent(socket, 'keyItemUsed');

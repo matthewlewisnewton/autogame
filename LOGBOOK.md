@@ -6691,7 +6691,44 @@ The change is server-side data exposure only. It does not alter quest selection,
 
 The added `game/server/test/level_unlock_graph.test.js` covers graph cardinality, boss flags, normalized prerequisites, default unauthenticated states, cleared/unlocked progression state, payload inclusion for accounts, and omission without an account. The round coverage run passed: 22 test files and 914 tests.
 
+
+## v0.377 — 379-wyrm-evolution-flying-minion  (2026-06-10 12:51:48)
+
+
+### Hovering and 3D movement/rendering
+PASS. The server resolves minion `y` with the generic airborne helper before AI and after movement, so a flying Archive Wyrm follows floor height plus altitude across non-default floors instead of staying on a fixed plane. The client `syncMinionMeshes()` reuses the generic `flyingRenderOffset()` path and creates floor-aware flying shadows, so the Wyrm renders above the floor like the existing airborne minions without changing grounded minion placement.
+
+### Airborne, height-aware Wyrm breath
+PASS. Wyrm breath aim locks a 3D direction from minion world Y to target world Y, applies cone hits with `originY` and `dirY`, and sends the airborne origin/direction in the `cardUsed` payload. Client renderers preserve `origin.y` and `direction.y` for the cone, telegraph ring, and particle burst. Tests cover the Archive Wyrm hitting an elevated enemy at the same X/Z only when aimed upward and verify the client VFX uses the airborne origin.
+
+### Debug scenarios
+PASS. The changed scenarios are registered only through the existing debug-scenario entry points (`archive-wyrm-combat` and `archive-wyrm-elevated-breath`) and are not touched by normal gameplay. Their comments and tests tie the shortcut state back to the normal path: evolve `dungeon_drake` into `ancient_wyrm`, deploy into combat, and fight flying/elevated enemies. They do not bypass server-side combat logic; they seed normal server entities and then rely on `updateEnemies()`, `updateMinions()`, world-Y resolution, and the standard Wyrm breath hit path.
+
+### Design and requirements consistency
+PASS. The implementation stays within the documented card-combat/minion model and the existing airborne/height-aware mechanics. It does not regress the foundation requirements: the round-2 capture shows the 3D scene renders, sockets connect, multiplayer state is visible, and movement/state updates work.
+
+### Tests and coverage
+PASS. The latest coverage run reports `167 passed (167)` test files and `2645 passed (2645)` tests. Ticket-specific coverage includes server airborne/minion/Wyrm breath tests, the elevated-breath debug scenario, height-aware projectile coverage, and client render/VFX tests for airborne Wyrm behavior.
+
+
+## v0.376 — Server: USE_KEY_ITEM/EQUIP_KEY_ITEM never checks equipped/owned key item (any client can use any key item)  (2026-06-10 12:49:14)
+
+
+## Code quality
+
+- Minimal, focused diff (~180 lines, mostly test fixture updates).
+- Checks reuse existing patterns (`getKeyItemDef`, `isKeyItemUnlocked`, `SERVER_TO_CLIENT` error shapes).
+- Test override is scoped (`setTestKeyItemUnlockOverride(null)` in `finally`) and exported only for test access via `index.js`, consistent with other server test hooks.
+- No dead code, no client changes required (client already emits `me.equippedKeyItemId` in `main.js`).
+
+## Debug scenarios
+
+This ticket did not add or modify `?debugScenario=` shortcuts. Existing debug scenarios (e.g. `summon-recall`) set `equippedKeyItemId` explicitly before key-item use — compatible with the new guard. No debug-scenario blocking issues.
+
+## Capture alignment
+
+Fallback smoke capture exercised the real player path: auth → lobby → ready → WASD movement → dodge roll (E). Probes confirm `equippedKeyItemId: "dodge_roll"`, successful dodge cooldown activation, and clean reconnect to ready state. Screenshots show lobby and in-run HUD with Dodge Roll indicator.
+
 ## Remaining gaps
 
-None.
-
+None. All acceptance criteria are fully met; runtime capture is clean; test suite is green.
