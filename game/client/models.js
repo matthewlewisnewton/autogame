@@ -29,6 +29,7 @@ export const MODEL_REGISTRY = {
 	arena_champion: null,
 	spire_warden: null,
 	permafrost_warden: null,
+	glacial_tyrant: null,
 	spawner: '/models/spawner.glb',
 	field_medic: null,
 	ember_wraith: null,

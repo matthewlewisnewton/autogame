@@ -1153,6 +1153,20 @@ const ENEMY_DEFS = {
 		hp: 360, chaseSpeed: 1.0, wanderSpeed: 0.5, attackDamage: 20, attackWindupMs: 1300,
 		attackStyle: 'radial', attackRange: 4.5,
 	},
+	glacial_tyrant: {
+		name: 'Glacial Tyrant',
+		description: 'Tier-II tyrant of the frozen crossing — hurls massive glacial spheres that chill (SLOW) and crush whatever they strike.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 440, chaseSpeed: 1.3, wanderSpeed: 0.6, attackDamage: 24, attackWindupMs: 1300,
+		attackStyle: 'ice_ball', attackRange: 9,
+		// Heavier ice-ball tuning than glacial_thrower: faster and bigger, but
+		// still well below player MOVE_SPEED (12) so it stays dodgeable.
+		iceBallSpeed: 7.5,
+		iceBallSlowDurationMs: 3200,
+		iceBallSlowFactor: 0.45,
+		iceBallRadius: 1.2,
+		iceBallMaxRange: 22,
+	},
 	spawner: {
 		name: 'Brood Node',
 		description: 'Radial attacker that periodically summons skirmishers.',

@@ -2925,6 +2925,17 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       const warden = spawnEnemy(player.x + 5, player.z, 'permafrost_warden');
       warden.wanderTarget = { x: warden.x, z: warden.z };
+    } else if (name === 'glacial-tyrant') {
+      // Spawn a Glacial Tyrant beside the player for Tier-II boss mesh,
+      // projectile telegraph, and massive slowing ice-ball QA. The same enemy is
+      // reachable normally as the frost_crossing Tier 2 stage boss once the
+      // encounter is wired (sub-ticket 03); this is a deterministic shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      state.iceBalls = [];
+      const tyrant = spawnEnemy(player.x + 6, player.z, 'glacial_tyrant');
+      tyrant.wanderTarget = { x: tyrant.x, z: tyrant.z };
     } else if (name === 'ember-wraith') {
       // One Ember Wraith in cone-strike range for burning-on-hit QA. The same
       // enemy is reachable on ember_descent runs (or via fire-cavern); shortcut only.
