@@ -6556,3 +6556,26 @@ The provided `coverage.log` shows the escort objective test suite and escort HP-
 ## Remaining gaps
 
 None.
+
+## v0.373 — 381-fire-l1-miniboss-cinder-warden  (2026-06-10 11:57:40)
+
+The lock-on metadata panel and boss HUD remain generic and server-catalog driven, so the new surfaced metadata reaches the panel without bespoke client panel code. This is consistent with the existing design and does not regress the generic enemy-catalog contract.
+
+### Debug scenario review
+
+PASS. The new `ember-descent-tier-2` debug scenario is registered only in the normal debug-scenario path and is requested by the client exclusively from the localhost `?debugScenario=` URL parameter. The equivalent state is reachable through normal gameplay by clearing Ember Descent Tier I, unlocking Tier II, selecting Ember Descent Tier II, and deploying.
+
+The shortcut does not replace the encounter implementation with a fake state: it sets the quest/tier and layout, then uses the same `enterPlayingPhase`, `spawnEnemies()`, and `startDungeonRun()` flow that regular deployment uses. It unlocks the tier for the debug account so the QA shortcut can select the state, but the quest definition still preserves the normal `unlockRequires` gate.
+
+### Design and foundation consistency
+
+PASS. The implementation follows the existing stage-boss framework described in `game/docs/design.md`: one stage-boss encounter, server-authored enemy metadata, defeat objective, supporting adds, and generic lock-on panel data. It does not weaken the base setup requirements in `game/docs/requirements.md`; the captured run confirms rendering, client-server connection, multiplayer representation, and synchronized movement still work.
+
+## Verification
+
+The provided coverage log shows the full vitest coverage run passed: `188` test files and `2652` tests passed. New relevant coverage includes `server/test/cinder_warden.test.js`, `server/test/ember_descent_stage_boss.test.js`, `server/test/enemy_display_catalog.test.js`, and `client/test/renderer-cinder-warden.test.js`.
+
+## Remaining gaps
+
+None.
+
