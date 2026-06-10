@@ -1,0 +1,22 @@
+## Review complete
+
+**VERDICT: PASS**
+
+### Runtime
+- `metrics.json`: `"ok": true`, empty `pageerrors`
+- `console.log`: no page errors or fatals
+- Capture exercised lobby → gameplay → WASD movement → dodge roll with cooldown HUD
+
+### Implementation
+Two commits add layout-keyed caches in `simulation.js`:
+- **Playing phase:** `_movementContext` keyed by layout reference + passage-locks key
+- **Hub phase:** `_hubMovementContext` keyed by `HUB_LAYOUT` reference
+- `rebuildMovementContext()` exported and called from `resetGameState()`
+
+### Acceptance criteria
+All met — contexts are reused across ticks, invalidate on layout/lock changes, and **1935/1935** tests pass with unchanged collision behavior.
+
+### Files written
+- `tickets/.../round-1/review.md` — full assessment
+- `tickets/.../round-1/nits.md` — one follow-up: add a focused cache-hit unit test
+- No `gaps.md` (PASS only)

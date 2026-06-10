@@ -6695,3 +6695,26 @@ Fallback smoke capture exercised the real player path: auth → lobby → ready 
 
 None. All acceptance criteria are fully met; runtime capture is clean; test suite is green.
 
+
+## v0.383 — Server: memoize movement contexts — wall colliders and walkable AABBs rebuilt from scratch every tick  (2026-06-10 14:02:45)
+
+- Hub cache is appropriate: `HUB_LAYOUT` is a static constant shared by all lobbies.
+- Minimal diff scope (two production files); no dead code introduced.
+
+**Correctness notes (non-blocking)**
+
+- Caches are module-global, not per-lobby. With multiple concurrent playing lobbies that have different layouts, the singleton cache alternates and may rebuild more often than a per-lobby cache would — but reference/key checks preserve correctness; hub cache still hits on every lobby tick.
+- Cached `walkableAABBs` / `dungeonBounds` are references captured at build time. In practice these are always reassigned together with `state.layout` in `applyLayoutForQuest` and equivalent paths, so stale-reference risk matches pre-ticket behavior.
+
+---
+
+## Debug scenarios
+
+This ticket did not add or modify any `?debugScenario=` shortcuts. No review required.
+
+---
+
+## Remaining gaps
+
+None. Runtime proof is clean, acceptance criteria are fully met, and the test suite passes.
+

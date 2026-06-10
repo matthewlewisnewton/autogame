@@ -1,0 +1,15 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/server-memoize-movement-contexts-wall-colliders-and-walkable-4rtb/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/server-memoize-movement-contexts-wall-colliders-and-walkable-4rtb/game/data
+Server listening on port 3005
+Player connected: socket=xlcsa6oZPLQPNI3oAAAB, playerId=d4307efe-4faa-4eb0-8b22-095a1d989c8f
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=OS3OJDvpcCOQnJ-HAAAD, playerId=3461b730-919f-42e2-a581-9127357f8f50
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=85822d80-0de7-4bd3-bea1-106ff31a2767 value=12
+Player disconnected: xlcsa6oZPLQPNI3oAAAB
+Player disconnected: OS3OJDvpcCOQnJ-HAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
