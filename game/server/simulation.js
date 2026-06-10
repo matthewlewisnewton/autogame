@@ -39,7 +39,7 @@ const {
 const { PASSAGE_WIDTH, sampleFloorY, sampleFloorSurface, DEFAULT_FLOOR_Y, resolveFloorY } = require('./dungeon');
 const { applyLeechHeal, getFrenziedCombatMultipliers, checkFrenziedTelegraph } = require('./enemyVariants');
 const { isPlayingPhase, isLobbyPhase } = require('./lobbies');
-const { getEncounterBossId, isEncounterDormant, isEncounterLocked } = require('./encounters');
+const { getEncounterBossId, isEncounterDormant, isEncounterLocked, canDamageEnemy } = require('./encounters');
 
 // ── Airborne / altitude model ──
 // Default hover height (world units above the sampled floor) for any entity
@@ -2551,6 +2551,10 @@ function updateEnchantments() {
 function damageEnemy(enemy, amount) {
   if (!enemy || amount <= 0) {
     return { hpBefore: enemy?.hp ?? 0, killed: false };
+  }
+
+  if (_gameState && !canDamageEnemy(_gameState, enemy)) {
+    return { hpBefore: enemy.hp, killed: false };
   }
 
   const hpBefore = enemy.hp;
