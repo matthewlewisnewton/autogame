@@ -565,6 +565,7 @@ const DEBUG_SCENARIOS = new Set([
   'frost-crossing-surface-transition',
   'frost-crossing-boss-approach',
   'frost-crossing-telepipe-ready',
+  'frost-crossing-tier-2',
   'enemy-behind-wall',
   'training-caverns-tier-1',
   'crystal-rescue-tier-1',

@@ -1318,6 +1318,71 @@ describe('debugScenario — spire-ascent-tier-2', () => {
 	});
 });
 
+describe('debugScenario — frost-crossing-tier-2', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('deploys frost_crossing Tier 2 stage-boss run with encounter and rigid layout', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
+		socket.emit('debugScenario', { name: 'frost-crossing-tier-2' });
+		const result = await debugResultPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('frost-crossing-tier-2');
+
+		const state = lobbyStateForSocket(socket);
+		const tier2Quest = getQuest(FROST_CROSSING_ID, 2);
+		const addCount = tier2Quest.encounter.addCount;
+
+		expect(state.gamePhase).toBe('playing');
+		expect(state.selectedQuestId).toBe(FROST_CROSSING_ID);
+		expect(state.selectedQuestTier).toBe(2);
+		expect(stateUpdate.run.questId).toBe(FROST_CROSSING_ID);
+		expect(stateUpdate.run.questTier).toBe(2);
+		expect(stateUpdate.run.questName).toBe(tier2Quest.name);
+		expect(stateUpdate.run.objective.type).toBe('stage_boss');
+		expect(stateUpdate.run.objective.label).toContain(tier2Quest.name);
+		expect(stateUpdate.run.encounter).toBeTruthy();
+		expect(stateUpdate.run.encounter.bossEnemyId).toBeTruthy();
+		expect(state.layout.profile).toBe('ice-cavern');
+		expect(getLayoutGenerationOptions(FROST_CROSSING_ID, 2)).toEqual({
+			slopes: true,
+			layoutMode: 'rigid',
+		});
+		expect(state.layoutSeed).toBe(questLayoutSeed(FROST_CROSSING_ID, 2));
+		expect(stateUpdate.enemies.length).toBe(1 + addCount);
+		const boss = stateUpdate.enemies.find(
+			(e) => e.id === stateUpdate.run.encounter.bossEnemyId,
+		);
+		expect(boss).toBeTruthy();
+		expect(boss.type).toBe('glacial_tyrant');
+		const cairn = state.layout.landmarks.find((lm) => lm.type === 'ice_cairn');
+		expect(boss.x).toBe(cairn.x);
+		expect(boss.z).toBe(cairn.z);
+		expect(stateUpdate.enemies.filter((e) => e.type === 'glacial_tyrant')).toHaveLength(1);
+		expect(resolveVariantRollTier(stateUpdate.run.questTier, 0)).toBe(1);
+	});
+});
+
 describe('debugScenario — spire-ascent-tier-2 harness shortcuts', () => {
 	let baseUrl;
 	let prevAllowDebug;

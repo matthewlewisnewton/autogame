@@ -554,6 +554,11 @@ const QUEST_DEFS = {
       // Level-exclusive: do not add to non-ice quests.
       { type: 'glacial_thrower', weight: 2 },
     ],
+    tier2EnemyPool: [
+      // Denser thrower presence plus a support variant on Tier II runs.
+      { type: 'glacial_thrower', weight: 2 },
+      { type: 'field_medic', weight: 1 },
+    ],
     tiers: {
       1: {
         name: 'Frost Crossing',
@@ -675,6 +680,43 @@ const QUEST_DEFS = {
           {
             trigger: 'objective_complete',
             text: 'Permafrost Warden down and the crossing is secure. Research fund transfer pending — well done.',
+          },
+        ],
+      },
+      2: {
+        tier: 2,
+        name: 'Frost Crossing — Tier II',
+        description:
+          'Cross the fixed ice sheet where the Glacial Tyrant holds the south cairn with marked support.',
+        objectiveType: 'stage_boss',
+        rewardCurrency: 14,
+        layoutProfile: 'ice-cavern',
+        layoutMode: 'rigid',
+        unlockRequires: { questId: 'frost_crossing', tier: 1 },
+        signatureCardId: 'ice_ball',
+        rewardCards: ['ice_ball', 'frost_nova', 'permafrost_lance'],
+        encounter: {
+          bossType: 'glacial_tyrant',
+          landmark: 'ice_cairn',
+          addCount: 4,
+        },
+        client: {
+          name: 'Cairn',
+          briefing:
+            'Frost crossing contract — Tier II. The Glacial Tyrant has claimed the south cairn with four marked hostiles on the sheet; break them all and fourteen stones release from the research fund.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Cairn on ice-watch channel. Tyrant signature at the south cairn — thin the marked hostiles before you cross the sheet.',
+          },
+          {
+            trigger: { waveCleared: 2 },
+            text: 'Half the marked hostiles are down. The Glacial Tyrant is still winding up at the cairn — keep moving.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Tyrant shattered and the crossing is ours. Research fund transfer pending — Tier II logged.',
           },
         ],
       },
@@ -1075,13 +1117,16 @@ function formatObjectiveSummary(quest) {
       return THEME.objectives.defeatCanyonWarden;
     }
     if (questId === 'frost_crossing') {
+      const glacialTyrant = encounter?.bossType === 'glacial_tyrant';
       if (addCount > 0) {
-        return THEME.objectives.defeatPermafrostWardenWithSupports.replace(
-          '{addCount}',
-          String(addCount),
-        );
+        const template = glacialTyrant
+          ? THEME.objectives.defeatGlacialTyrantWithSupports
+          : THEME.objectives.defeatPermafrostWardenWithSupports;
+        return template.replace('{addCount}', String(addCount));
       }
-      return THEME.objectives.defeatPermafrostWarden;
+      return glacialTyrant
+        ? THEME.objectives.defeatGlacialTyrant
+        : THEME.objectives.defeatPermafrostWarden;
     }
     const annexOverseer = encounter?.bossType === 'annex_overseer';
     if (addCount > 0) {

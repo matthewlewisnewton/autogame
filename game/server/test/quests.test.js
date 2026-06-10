@@ -31,6 +31,7 @@ const TIER_2_QUEST_IDS = [
   'arena_trials',
   'canyon_descent',
   'spire_ascent',
+  'frost_crossing',
 ];
 
 function assertTier1QuestContent(questId) {
@@ -272,7 +273,7 @@ describe('quest tier catalog', () => {
     const trainingTier2 = variants.find(
       (v) => v.questId === 'training_caverns' && v.tier === 2
     );
-    expect(variants.length).toBe(Object.keys(QUEST_DEFS).length + 5);
+    expect(variants.length).toBe(Object.keys(QUEST_DEFS).length + TIER_2_QUEST_IDS.length);
     expect(trainingTier2).toMatchObject({
       questId: 'training_caverns',
       tier: 2,
@@ -346,7 +347,7 @@ describe('quest tier catalog', () => {
       objectiveType: 'defeat_enemies',
     });
     expect(emberTier1.objectiveSummary).toContain('6');
-    expect(variants.filter((v) => v.isTier2)).toHaveLength(5);
+    expect(variants.filter((v) => v.isTier2)).toHaveLength(TIER_2_QUEST_IDS.length);
   });
 
   it('exposes signature reward id and resolved name on quest payloads', () => {
