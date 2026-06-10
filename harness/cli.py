@@ -116,13 +116,14 @@ def _cmd_backlog() -> int:
 def _cmd_ticket(name: str) -> int:
     from harness.pipelines.ticket import TicketContext, ticket
     from harness.telemetry import progress_server
+    from harness.telemetry.usage import TelemetrySink
     progress_server.start_if_needed()
     workspace = _build_workspace()
     roster = _build_roster()
     tdir = Path(workspace.root) / "tickets" / name
     return ticket(TicketContext(
         workspace=workspace, roster=roster, name=name, tdir=tdir,
-        tunables=roster.tunables,
+        tunables=roster.tunables, telemetry=TelemetrySink(),
     ))
 
 
@@ -202,9 +203,13 @@ def _cmd_worker(name: str, agent: str) -> int:
         return int(PipelineResult.ESCALATE)
 
     def _run():
+        # TelemetrySink wires record_agent_usage into every spawn: without it
+        # factory workers logged NO usage rows — live-view token totals froze
+        # and the dispatcher's quota scan read a dead agent-usage.ndjson.
+        from harness.telemetry.usage import TelemetrySink
         return ticket(TicketContext(
             workspace=workspace, roster=roster, name=name, tdir=tdir,
-            tunables=roster.tunables,
+            tunables=roster.tunables, telemetry=TelemetrySink(),
         ))
 
     # If this ticket declares a shared synchronous resource (e.g. `Resource: blender`

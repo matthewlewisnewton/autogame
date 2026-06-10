@@ -52,20 +52,23 @@ class TelemetrySink:
 
     def record_agent_usage(self, *, label: str, result: AgentResult,
                            attempt: int, usage_kind: UsageKind, bucket: str,
-                           prompt: str, status: str = "ok") -> None:
+                           prompt: str, status: str = "ok",
+                           outfile: str = "") -> None:
         record_agent_usage(label=label, result=result, attempt=attempt,
                             usage_kind=usage_kind, bucket=bucket,
-                            prompt=prompt, status=status)
+                            prompt=prompt, status=status, outfile=outfile)
 
 
 def record_agent_usage(*, label: str, result: AgentResult, attempt: int,
                        usage_kind: UsageKind, bucket: str, prompt: str,
-                       status: str = "ok") -> None:
+                       status: str = "ok", outfile: str = "") -> None:
+    kind = usage_kind.value if isinstance(usage_kind, UsageKind) else str(usage_kind)
     row = {
         "label": label,
         "model": label.split("/", 1)[1] if "/" in label else label,
         "bucket": bucket,
-        "usage_kind": usage_kind.value if isinstance(usage_kind, UsageKind) else str(usage_kind),
+        "usage_kind": kind,
+        "outfile": outfile,
         "attempt": attempt,
         "rc": result.rc,
         "exit_code": result.exit_code,
@@ -79,10 +82,43 @@ def record_agent_usage(*, label: str, result: AgentResult, attempt: int,
         "output_tokens": result.output_tokens,
         "cost_usd": result.cost_usd,
     }
-    from harness.telemetry.progress import locked_append
+    from harness.telemetry.progress import emit_progress_event, locked_append
     try:
         locked_append(_usage_path(), json.dumps(row))
     except OSError:
+        pass
+    # Live-view token totals: the bash harness POSTed an `agent_usage` event per
+    # call; this port only wrote the ndjson row, so the view's local/remote token
+    # counters froze at the cutover. Emit the camelCase payload server.mjs's
+    # normalizeUsagePayload expects (it requires truthy outfile/attempt/
+    # totalTokens and dedupes on `key`). Telemetry must never break a pipeline.
+    try:
+        exact = (result.input_tokens or 0) + (result.output_tokens or 0)
+        estimated = exact <= 0
+        # No CLI-reported counts → same rough estimate the bash harness used
+        # (≈4 chars/token on the prompt), flagged estimated.
+        total = exact if exact > 0 else max(len(prompt or "") // 4, 1)
+        out = outfile or f"{label}@{int(result.ended_at * 1000)}"
+        emit_progress_event("agent_usage", {
+            "key": f"{out}#{attempt}",
+            "agent": label,
+            "model": row["model"],
+            "bucket": bucket,
+            "usageKind": kind,
+            "outfile": out,
+            "attempt": attempt,
+            "rc": result.rc,
+            "status": status,
+            "reason": result.reason.value,
+            "durationMs": int(result.duration_s * 1000),
+            "endedAtMs": int(result.ended_at * 1000),
+            "inputTokens": result.input_tokens or None,
+            "outputTokens": result.output_tokens or None,
+            "totalTokens": total,
+            "estimated": estimated,
+            "source": "per_call_estimate" if estimated else "cli_usage",
+        })
+    except Exception:
         pass
 
 
