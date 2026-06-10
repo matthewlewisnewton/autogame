@@ -354,7 +354,7 @@ function deepMerge(target, source) {
 }
 
 function mergeWithDefaults(stored) {
-	return deepMerge(getDefaultSettings(), stored || {});
+	return backfillSettings(stored);
 }
 
 function getSettingsDir() {
@@ -398,18 +398,23 @@ function getSettings(accountId) {
  * Deep-merge partial settings and persist.
  * @param {string} accountId
  * @param {object} partial
- * @returns {object} merged settings
+ * @returns {{ ok: true, settings: object } | { ok: false, reason: string }}
  */
 function updateSettings(accountId, partial) {
+	const validation = validateSettings(partial);
+	if (!validation.ok) {
+		return validation;
+	}
+
 	const current = getSettings(accountId);
-	const merged = deepMerge(current, partial);
+	const merged = backfillSettings(deepMerge(current, validation.value));
 	const dir = getSettingsDir();
 	fs.mkdirSync(dir, { recursive: true });
 	const finalPath = settingsFilePath(accountId);
 	const tmpPath = finalPath + '.tmp';
 	fs.writeFileSync(tmpPath, JSON.stringify(merged, null, 2), 'utf-8');
 	fs.renameSync(tmpPath, finalPath);
-	return merged;
+	return { ok: true, settings: merged };
 }
 
 /** Test-only: reset path and clear settings directory reference */

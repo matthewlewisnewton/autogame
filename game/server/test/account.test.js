@@ -160,6 +160,42 @@ describe('PATCH /api/me/settings', () => {
 		expect(settings.showHitboxes).toBe(false);
 		expect(settings.soundEnabled).toBe(true);
 	});
+
+	it('returns 400 for invalid settings fields', async () => {
+		const token = await registerAndLogin('settings-invalid', 'pass');
+
+		const patchRes = await fetch(`${baseUrl}/api/me/settings`, {
+			method: 'PATCH',
+			headers: authHeaders(token),
+			body: JSON.stringify({ lockOnRepeatAction: 'teleport' })
+		});
+		expect(patchRes.status).toBe(400);
+		const body = await patchRes.json();
+		expect(body.error).toMatch(/lockOnRepeatAction/);
+
+		const meRes = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		const me = await meRes.json();
+		expect(me.settings.lockOnRepeatAction).toBe('unlock');
+	});
+
+	it('does not persist unknown keys from PATCH body', async () => {
+		const token = await registerAndLogin('settings-prune', 'pass');
+
+		const patchRes = await fetch(`${baseUrl}/api/me/settings`, {
+			method: 'PATCH',
+			headers: authHeaders(token),
+			body: JSON.stringify({ soundEnabled: false, hackerField: 'nope' })
+		});
+		expect(patchRes.status).toBe(200);
+		const { settings } = await patchRes.json();
+		expect(settings.soundEnabled).toBe(false);
+		expect(settings.hackerField).toBeUndefined();
+
+		const meRes = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		const me = await meRes.json();
+		expect(me.settings.soundEnabled).toBe(false);
+		expect(me.settings.hackerField).toBeUndefined();
+	});
 });
 
 describe('PATCH /api/me/profile', () => {

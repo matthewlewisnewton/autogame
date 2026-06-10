@@ -11,6 +11,8 @@ import {
 	resetSettingsPath,
 	validateSettings,
 	backfillSettings,
+	getSettingsDir,
+	SETTINGS_TOP_LEVEL_KEYS,
 } from '../settings.js';
 
 describe('settings persistence', () => {
@@ -46,12 +48,14 @@ describe('settings persistence', () => {
 
 	it('updateSettings persists and deep-merges', () => {
 		const id = 'acct-1';
-		updateSettings(id, { soundEnabled: false });
+		const first = updateSettings(id, { soundEnabled: false });
+		expect(first.ok).toBe(true);
 		const loaded = getSettings(id);
 		expect(loaded.soundEnabled).toBe(false);
 		expect(loaded.particlesEnabled).toBe(true);
 
-		updateSettings(id, { gamepad: { deadzone: 0.2 } });
+		const second = updateSettings(id, { gamepad: { deadzone: 0.2 } });
+		expect(second.ok).toBe(true);
 		const merged = getSettings(id);
 		expect(merged.soundEnabled).toBe(false);
 		expect(merged.gamepad.deadzone).toBe(0.2);
@@ -60,7 +64,8 @@ describe('settings persistence', () => {
 
 	it('updateSettings deep-merges keyboard.bindings.useKeyItem', () => {
 		const id = 'acct-kb';
-		updateSettings(id, { keyboard: { bindings: { useKeyItem: 'u' } } });
+		const result = updateSettings(id, { keyboard: { bindings: { useKeyItem: 'u' } } });
+		expect(result.ok).toBe(true);
 		const s = getSettings(id);
 		expect(s.keyboard.bindings.useKeyItem).toBe('u');
 		expect(s.soundEnabled).toBe(true);
@@ -68,10 +73,63 @@ describe('settings persistence', () => {
 
 	it('updateSettings deep-merges gamepad.bindings.useKeyItem', () => {
 		const id = 'acct-gp';
-		updateSettings(id, { gamepad: { bindings: { useKeyItem: { type: 'button', index: 4 } } } });
+		const result = updateSettings(id, { gamepad: { bindings: { useKeyItem: { type: 'button', index: 4 } } } });
+		expect(result.ok).toBe(true);
 		const s = getSettings(id);
 		expect(s.gamepad.bindings.useKeyItem).toEqual({ type: 'button', index: 4 });
 		expect(s.gamepad.moveStick).toBe('left');
+	});
+
+	it('updateSettings does not persist unknown top-level keys', () => {
+		const id = 'acct-prune';
+		const result = updateSettings(id, { soundEnabled: false, hackerField: 'nope' });
+		expect(result.ok).toBe(true);
+		expect(result.settings.hackerField).toBeUndefined();
+
+		const raw = JSON.parse(fs.readFileSync(path.join(getSettingsDir(), `${id}.json`), 'utf-8'));
+		expect(raw.hackerField).toBeUndefined();
+		expect(Object.keys(raw).sort()).toEqual([...SETTINGS_TOP_LEVEL_KEYS].sort());
+	});
+
+	it('updateSettings rejects invalid lockOnRepeatAction without writing', () => {
+		const id = 'acct-invalid-lock';
+		updateSettings(id, { soundEnabled: false });
+		const result = updateSettings(id, { lockOnRepeatAction: 'teleport' });
+		expect(result.ok).toBe(false);
+		expect(result.reason).toMatch(/lockOnRepeatAction/);
+
+		const loaded = getSettings(id);
+		expect(loaded.lockOnRepeatAction).toBe('unlock');
+		expect(loaded.soundEnabled).toBe(false);
+	});
+
+	it('updateSettings rejects invalid boolean types without writing', () => {
+		const id = 'acct-invalid-bool';
+		updateSettings(id, { particlesEnabled: false });
+		const result = updateSettings(id, { soundEnabled: 'yes' });
+		expect(result.ok).toBe(false);
+		expect(result.reason).toMatch(/soundEnabled/);
+
+		const loaded = getSettings(id);
+		expect(loaded.soundEnabled).toBe(true);
+		expect(loaded.particlesEnabled).toBe(false);
+	});
+
+	it('getSettings prunes junk keys from manually written files on read', () => {
+		const id = 'acct-junk-file';
+		const filePath = path.join(getSettingsDir(), `${id}.json`);
+		fs.writeFileSync(filePath, JSON.stringify({
+			soundEnabled: false,
+			hackerField: 'junk',
+			keyboard: { bindings: { useKeyItem: 'q', bogus: 'x' }, extra: 1 },
+		}, null, 2));
+
+		const loaded = getSettings(id);
+		expect(loaded.hackerField).toBeUndefined();
+		expect(loaded.soundEnabled).toBe(false);
+		expect(loaded.keyboard.bindings).toEqual({ useKeyItem: 'q' });
+		expect(loaded.keyboard.extra).toBeUndefined();
+		expect(Object.keys(loaded).sort()).toEqual([...SETTINGS_TOP_LEVEL_KEYS].sort());
 	});
 });
 
