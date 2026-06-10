@@ -29,7 +29,10 @@ const {
   QUEST_DEFS,
   SCRIPTED_ENCOUNTER_FIXTURE_DEF,
   getLayoutProfileForQuest,
+  getQuest,
 } = require('../quests.js');
+const { tickDialogueRoomEntry } = require('../questDialogue.js');
+const { restoreCardCheckpoint } = require('../progression.js');
 
 const FIXTURE_QUEST_ID = 'scripted_encounter_fixture';
 const SEED = 4242;
@@ -51,6 +54,16 @@ function buildPassageLockFixtureDef(layout) {
             ? [{ afterWave: { roomIndex, waveIndex: 0 }, passageIndex }]
             : [],
         },
+        dialogueBeacons: [
+          ...(baseTier.dialogueBeacons || []),
+          {
+            beaconId: 'fixture_room_enter',
+            trigger: 'onRoomEntered',
+            roomIndex,
+            speaker: 'Test Handler',
+            line: 'Start room entered.',
+          },
+        ],
       },
     },
   };
@@ -330,5 +343,46 @@ describe('passage lock runtime state', () => {
     expect(gameState.suspendedCheckpoint).not.toBeNull();
     expect(gameState.suspendedCheckpoint.run.passageLocks).toEqual(lockedSnapshot);
     expect(gameState.suspendedCheckpoint.run.passageLocks[0].locked).toBe(true);
+  });
+
+  it('telepipe resume rehydrates _dialogueRoomsEntered as Set for room-entry dialogue', () => {
+    const { layout } = deployPassageLockFixture();
+    const startRoom = layout.rooms.find((room) => room.role === 'start') || layout.rooms[0];
+    const player = gameState.players.p1;
+    const io = { emit: () => {}, to: () => ({ emit: () => {} }) };
+
+    player.x = startRoom.x;
+    player.z = startRoom.z;
+
+    tickDialogueRoomEntry(gameState, io, getQuest);
+    expect(gameState.run._dialogueRoomsEntered).toBeInstanceOf(Set);
+    expect(gameState.run._dialogueRoomsEntered.has('room:0')).toBe(true);
+    const enteredBeforeSuspend = [...gameState.run._dialogueRoomsEntered];
+
+    player.hand = [{
+      id: 'telepipe',
+      name: 'Telepipe',
+      type: 'spell',
+      charges: 1,
+      remainingCharges: 1,
+    }];
+    gameState.telepipe = {
+      x: startRoom.x,
+      z: startRoom.z,
+      placedBy: 'p1',
+      placedAt: Date.now(),
+    };
+
+    const result = tryEnterTelepipe('p1');
+    expect(result.ok).toBe(true);
+    expect(Array.isArray(gameState.suspendedCheckpoint.run._dialogueRoomsEntered)).toBe(true);
+    expect(gameState.suspendedCheckpoint.run._dialogueRoomsEntered).toEqual(enteredBeforeSuspend);
+
+    restoreCardCheckpoint();
+
+    expect(gameState.run._dialogueRoomsEntered).toBeInstanceOf(Set);
+    expect(gameState.run._dialogueRoomsEntered.has('room:0')).toBe(true);
+    expect(() => tickDialogueRoomEntry(gameState, io, getQuest)).not.toThrow();
+    expect(gameState.run._dialogueRoomsEntered.has('room:0')).toBe(true);
   });
 });
