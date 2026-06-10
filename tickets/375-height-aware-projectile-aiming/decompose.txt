@@ -1,0 +1,17 @@
+Broke ticket 375 into **4 sub-tickets** in dependency order:
+
+1. `/home/matt/workspace/.autogame-worktrees/375-height-aware-projectile-aiming/tickets/375-height-aware-projectile-aiming/subtickets/01-3d-projectile-ray-and-hit-core/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/375-height-aware-projectile-aiming/tickets/375-height-aware-projectile-aiming/subtickets/02-player-lock-on-projectile-aim/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/375-height-aware-projectile-aiming/tickets/375-height-aware-projectile-aiming/subtickets/03-enemy-minion-symmetric-height-aim/ticket.md`
+4. `/home/matt/workspace/.autogame-worktrees/375-height-aware-projectile-aiming/tickets/375-height-aware-projectile-aiming/subtickets/04-height-aiming-projectile-card-tests/ticket.md`
+
+**Plan summary**
+
+| # | Focus |
+|---|--------|
+| **01** | Shared 3D aim/hit primitives + upgrade all simulation collectors (`collectProjectileHits`, returning, chain, phase beam, cone) |
+| **02** | Player lock-on path: `lockTargetId` on `useCard`, client emit, all player projectile cards |
+| **03** | Symmetric enemy/minion aim: ice balls, storm_eagle, null_crawler beam, wyrm breath |
+| **04** | Full enumeration test matrix + sloped-floor debug scenario for every listed projectile card |
+
+All use **code** verification (logic, handlers, hit results — not screenshot-only QA). No prior sub-tickets existed, so nothing was deleted or renumbered.
