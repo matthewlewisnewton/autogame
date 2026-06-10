@@ -198,6 +198,7 @@ import { openShopBooth, registerShopBoothListener, createRequestDebugShopBoothOp
 import { isLaunchBoothAction, getBoothDebugHook, LAUNCH_BOOTH_ID, shouldLaunchReadyUp, LAUNCH_READY_EVENT } from './launchBooth.js';
 import { QUEST_BOOTH_ID, isQuestBoothAction } from './questBooth.js';
 import eventsCatalog from '../shared/events.json' with { type: 'json' };
+import { sampleFloorSurface } from '../shared/floorSampling.esm.js';
 
 const { serverToClient: SERVER_TO_CLIENT, clientToServer: CLIENT_TO_SERVER } = eventsCatalog;
 
@@ -5102,6 +5103,11 @@ function activeHarnessLayout() {
 		? hubLayout
 		: (currentLayout || (gameState && gameState.layout) || null);
 }
+window.__sampleFloorSurfaceForHarness = (x, z) => {
+	const layout = activeHarnessLayout();
+	if (!layout || !Number.isFinite(x) || !Number.isFinite(z)) return null;
+	return sampleFloorSurface(layout, x, z);
+};
 window.__sampleFloorAlignmentForHarness = async () => {
 	const { sampleFloorY, resolveFloorY } = await import('../shared/floorSampling.esm.js');
 	const me = gameState && myId ? gameState.players[myId] : null;

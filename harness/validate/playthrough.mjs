@@ -51,6 +51,7 @@ import {
 	runWindupCardExercise,
 } from './lib/cardExercise.mjs';
 import { runEmberBurnStep, runCardMechanicsStep } from './lib/cardMechanics.mjs';
+import { runSlipperyFloorStep } from './lib/slipperyFloor.mjs';
 import { runCanyonTelepipeNewSortieStep, runTelepipeResetStep } from './lib/telepipe.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -760,6 +761,7 @@ async function runDefeatEnemiesCombatStep({ page, preset, outDirAbs }) {
 
 	let midCombatScreenshot = null;
 	const floorAlignment = {};
+	const midCombatBasename = preset.slipperyFloorScenario ? '04-mid-combat' : '03-mid-combat';
 	const afterCombatHarness = await defeatAllEnemies(page, {
 		timeoutMs: preset.addsTimeoutMs ?? 90000,
 		minEnemiesLeft: 1,
@@ -769,7 +771,7 @@ async function runDefeatEnemiesCombatStep({ page, preset, outDirAbs }) {
 			if (midLiveCount === 0) {
 				throw new Error('onMidCombat requested with zero live enemies');
 			}
-			const shotPath = await writeScreenshot(page, outDirAbs, '03-mid-combat');
+			const shotPath = await writeScreenshot(page, outDirAbs, midCombatBasename);
 			midCombatScreenshot = path.relative(REPO_ROOT, shotPath);
 			const midCombatFloor = await captureFloorAlignmentProbe(page);
 			if (midCombatFloor) floorAlignment.midCombat = midCombatFloor;
@@ -1067,6 +1069,9 @@ function buildAssertions(summary, preset) {
 			enemiesCleared,
 			victoryFired,
 		};
+		if (preset.questId === 'frost_crossing' || preset.slipperyFloorScenario) {
+			assertions.slipperyFloorOk = summary.slipperyFloor?.ok === true;
+		}
 		if (preset.telepipeScenario || summary.telepipeReset || preset.questId === 'ember_descent') {
 			assertions.emberBurnApplied = summary.emberBurn?.burnTickDamageApplied === true;
 			assertions.cardMechanicsOk = summary.cardMechanics?.ok === true;
@@ -1138,6 +1143,9 @@ function buildAssertionFailureDetail(summary, preset) {
 	if (failed.includes('telepipeVitalsPreserved') || failed.includes('cardChargesResetOnNewSortie')) {
 		details.push(`canyonTelepipe=${JSON.stringify(summary.canyonTelepipe)}`);
 	}
+	if (failed.includes('slipperyFloorOk')) {
+		details.push(`slipperyFloor=${JSON.stringify(summary.slipperyFloor)}`);
+	}
 	const base = `Assertion(s) failed: ${failed.join(', ')}`;
 	return details.length > 0 ? `${base} — ${details.join('; ')}` : base;
 }
@@ -1155,6 +1163,7 @@ function collectScreenshots(summary) {
 	if (summary.auth?.screenshot) shots.push(summary.auth.screenshot);
 	if (summary.hub?.hubScreenshot) shots.push(summary.hub.hubScreenshot);
 	if (summary.hub?.entryScreenshot) shots.push(summary.hub.entryScreenshot);
+	if (summary.slipperyFloor?.screenshot) shots.push(summary.slipperyFloor.screenshot);
 	if (summary.defeatEnemiesCombat?.midCombatScreenshot) shots.push(summary.defeatEnemiesCombat.midCombatScreenshot);
 	if (summary.emberBurn?.screenshot) shots.push(summary.emberBurn.screenshot);
 	if (summary.cardMechanics?.probes?.burn?.screenshot) shots.push(summary.cardMechanics.probes.burn.screenshot);
@@ -1236,6 +1245,7 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
 		probes = {
 			...stageProbes,
 			...(summary.victory?.probes || {}),
+			...(summary.slipperyFloor ? { slipperyFloor: summary.slipperyFloor } : {}),
 			...(summary.emberBurn ? { emberBurn: summary.emberBurn } : {}),
 			...(summary.cardMechanics ? { cardMechanics: summary.cardMechanics } : {}),
 			...(summary.telepipeReset ? {
@@ -1431,6 +1441,15 @@ async function main() {
 
 		if (runsRoomsHub && page) {
 			summary.hub = await runHubStep({ page, preset, outDirAbs });
+		}
+
+		if (runsRoomsFull && page && preset.slipperyFloorScenario) {
+			summary.slipperyFloor = await runSlipperyFloorStep({
+				page,
+				preset,
+				outDirAbs,
+				repoRoot: REPO_ROOT,
+			});
 		}
 
 		const runsSunkenCanyonFull = opts.preset === 'sunken-canyon' && runsRoomsFull;
