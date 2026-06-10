@@ -233,6 +233,7 @@ def _default_resolve(main_repo: Repo, roster, h: WorkerHandle) -> bool:
     Uses a MERGE (not a rebase) so the agent resolves ONE conflict set in place,
     and the branch ends a descendant of main → the subsequent `--ff-only` works."""
     wt = h.worktree
+    _quarantine_colliding_untracked(wt, main_repo.branch)
     try:
         wt.run_git("merge", "--no-edit", main_repo.branch, capture=False)
         return True  # clean merge — main had no overlapping change
@@ -273,14 +274,16 @@ def _default_resolve(main_repo: Repo, roster, h: WorkerHandle) -> bool:
         log(f"[merge] resolve: {h.ticket_id} resolver tier exhausted — aborting merge")
         _abort_merge(wt)
         return False
-    # Stage the agent's resolution (it edited the working tree but won't have
-    # `git add`ed — and we forbid it from running git), THEN validate: the marker
-    # content check is what actually proves the conflict is gone (after `add`,
-    # git's own unmerged list is cleared whether or not markers remain).
-    try:
-        wt.run_git("add", "-A", capture=False)
-    except Exception as e:
-        log(f"[merge] resolve: staging resolution failed ({e!r}) — aborting")
+    # Stage ONLY the conflict set and gate the agent's output (it edited the
+    # working tree but won't have `git add`ed — and we forbid it from running
+    # git), THEN validate: the marker content check is what actually proves the
+    # conflict is gone (after `add`, git's own unmerged list is cleared whether
+    # or not markers remain).
+    gate_err = _stage_resolution(wt, files)
+    if gate_err:
+        log(f"[merge] resolve: {h.ticket_id} REJECTED by commit gate: {gate_err} — aborting")
+        emit_progress_event("merge_gate_rejected", {
+            "ticket": h.ticket_id, "stage": "resolve", "reason": gate_err})
         _abort_merge(wt)
         return False
     if _unmerged_files(wt) or _has_conflict_markers(wt, files):
@@ -302,6 +305,115 @@ def _abort_merge(wt) -> None:
         wt.run_git("merge", "--abort", check=False, capture=False)
     except Exception:
         pass
+
+
+def _quarantine_colliding_untracked(wt, main_branch: str) -> int:
+    """Move aside (NEVER delete) untracked worktree files that collide with
+    paths changed on main — git refuses `merge main` with 'untracked working
+    tree files would be overwritten' otherwise, which used to hard-fail the
+    resolver and throw away the whole passed ticket (autogame-mk6a; killed
+    oumk on 2026-06-09). Worker leftovers (round captures, agent scratch) are
+    the usual culprits; moving them to .merge-quarantine/ preserves them for
+    inspection while unblocking the merge. Returns the number moved."""
+    try:
+        changed = [p for p in wt.run_git(
+            "diff", "--name-only", f"HEAD...{main_branch}").splitlines() if p.strip()]
+        tracked = set(wt.run_git("ls-files").splitlines())
+    except Exception:
+        return 0
+    moved = 0
+    qdir: Optional[Path] = None
+    for rel in changed:
+        if rel in tracked:
+            continue
+        src = Path(wt.root) / rel
+        if not src.exists():
+            continue
+        if qdir is None:
+            qdir = Path(wt.root) / ".merge-quarantine" / str(int(time.time() * 1000))
+        dest = qdir / rel
+        try:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            src.rename(dest)
+            moved += 1
+        except OSError as e:
+            log(f"[merge] quarantine of {rel} failed: {e!r}")
+    if moved:
+        log(f"[merge] quarantined {moved} untracked path(s) colliding with main -> {qdir}")
+    return moved
+
+
+def _stage_resolution(wt, conflict_files: list[str]) -> Optional[str]:
+    """Stage ONLY the conflict set, then reject any worktree edit the agent
+    made outside it. Replaces the old `git add -A`, whose blanket staging once
+    committed the resolver's own scratch dir to main and poisoned every later
+    merge (the .merge-resolve incident). During an in-progress merge, STAGED
+    entries are main's legitimate side — only UNSTAGED (worktree-column M/D)
+    paths outside the conflict set are agent edits. Returns a reject reason or
+    None on success."""
+    try:
+        wt.run_git("add", "--", *conflict_files, capture=False)
+    except Exception as e:
+        return f"staging conflict files failed: {e!r}"
+    try:
+        status = wt.run_git("status", "--porcelain").splitlines()
+    except Exception as e:
+        return f"status after staging failed: {e!r}"
+    cset = set(conflict_files)
+    offenders = []
+    for ln in status:
+        if len(ln) < 4:
+            continue
+        worktree_col, rel = ln[1], ln[3:].strip()
+        if rel in cset or ln[:2] == "??":
+            continue  # untracked scratch is fine — it is never staged now
+        if worktree_col in ("M", "D"):
+            offenders.append(f"{ln[:2]} {rel}")
+    if offenders:
+        return ("resolution edited paths outside the conflict set: "
+                + ", ".join(offenders[:10]))
+    return None
+
+
+# merge_fix repairs the GAME tree; it has no business anywhere else.
+_FIX_SCOPE = "game/"
+
+
+def _stage_fix(wt) -> Optional[str]:
+    """Validate + stage the fixer's output. The tree was clean at fix start
+    (rebased tip), so every status entry is the agent's. Policy: game/** only,
+    bounded deletions and churn — gates runaway rewrites, not real fixes.
+    Returns a reject reason or None after staging."""
+    try:
+        status = wt.run_git("status", "--porcelain").splitlines()
+    except Exception as e:
+        return f"status failed: {e!r}"
+    entries = [(ln[:2], ln[3:].strip()) for ln in status if len(ln) >= 4]
+    if not entries:
+        return "fix agent made no changes"
+    outside = [rel for _, rel in entries if not rel.startswith(_FIX_SCOPE)]
+    if outside:
+        return f"fix touched paths outside {_FIX_SCOPE}: " + ", ".join(outside[:10])
+    deletions = [rel for code, rel in entries if "D" in code]
+    if len(deletions) > 2:
+        return f"fix deletes {len(deletions)} files (max 2): " + ", ".join(deletions[:5])
+    if len(entries) > 30:
+        return f"fix touches {len(entries)} files (max 30)"
+    try:
+        churn = 0
+        for ln in wt.run_git("diff", "--numstat").splitlines():
+            parts = ln.split("\t")
+            if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():
+                churn += int(parts[0]) + int(parts[1])
+        if churn > 2000:
+            return f"fix churns {churn} lines (max 2000)"
+    except Exception:
+        pass  # churn cap is best-effort; the path/file gates above are the hard rules
+    try:
+        wt.run_git("add", "--", _FIX_SCOPE, capture=False)
+    except Exception as e:
+        return f"staging fix failed: {e!r}"
+    return None
 
 
 def _verify_log_tail(wt, *, max_chars: int = 3000) -> str:
@@ -349,11 +461,13 @@ def _default_fix(main_repo: Repo, roster, h: WorkerHandle) -> bool:
     if chain.accepted_by is None:
         log(f"[merge] fix: {h.ticket_id} fixer tier exhausted")
         return False
+    gate_err = _stage_fix(wt)
+    if gate_err:
+        log(f"[merge] fix: {h.ticket_id} REJECTED by commit gate: {gate_err}")
+        emit_progress_event("merge_gate_rejected", {
+            "ticket": h.ticket_id, "stage": "fix", "reason": gate_err})
+        return False
     try:
-        if not wt.run_git("status", "--porcelain").strip():
-            log(f"[merge] fix: {h.ticket_id} agent made no changes")
-            return False
-        wt.run_git("add", "-A", capture=False)
         wt.run_git("commit", "-m",
                    "merge-fix: reconcile with main after clean rebase broke verification",
                    capture=False)
@@ -392,8 +506,21 @@ class MergeQueue:
     # handled the ticket (e.g. abandoned it) and the merge queue must NOT requeue;
     # False/None → requeue as before. factory wires disp.note_merge_reject.
     on_reject: Optional[Callable[[str, str], bool]] = None
+    # Cross-ticket consecutive-reject breaker. The per-bead merge breaker can't
+    # see a SYSTEMIC merge-path fault (the .merge-resolve poisoning rejected
+    # four DIFFERENT beads in a row — no per-bead counter ever trips). After
+    # `reject_streak_limit` consecutive rejects across any beads, write
+    # `halt_flag` and STOP POPPING: queued passed branches, their worktrees,
+    # and PENDING_MERGE records are preserved for after the fault is fixed,
+    # instead of being destroyed one per ~hour. Any successful merge resets the
+    # streak. Operator clears the flag file to resume (it survives restarts on
+    # purpose — never resume merging onto a sick main automatically).
+    # limit 0 = breaker off (default off so existing tests are unchanged).
+    halt_flag: Optional[Path] = None
+    reject_streak_limit: int = 0
 
     _pending: "deque[WorkerHandle]" = field(default_factory=deque, init=False)
+    _reject_streak: int = field(default=0, init=False)
 
     def __post_init__(self):
         if self.rebase is None:
@@ -402,6 +529,54 @@ class MergeQueue:
             self.verify = _default_verify
         if self.merge is None:
             self.merge = lambda h: _default_merge_ff(self.main_repo, h)
+        self._load_streak()
+
+    # --- consecutive-reject breaker persistence -------------------------- #
+    def _streak_path(self) -> Optional[Path]:
+        return self.halt_flag.with_name("merge_reject_streak") if self.halt_flag else None
+
+    def _load_streak(self) -> None:
+        p = self._streak_path()
+        if not p or not p.exists():
+            return
+        try:
+            self._reject_streak = int(p.read_text().strip() or 0)
+        except (OSError, ValueError):
+            pass
+
+    def _save_streak(self) -> None:
+        p = self._streak_path()
+        if not p:
+            return
+        try:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(str(self._reject_streak))
+        except OSError:
+            pass
+
+    def _halted(self) -> bool:
+        return self.halt_flag is not None and self.halt_flag.exists()
+
+    def _note_reject_for_breaker(self, h: WorkerHandle, reason: str) -> None:
+        self._reject_streak += 1
+        self._save_streak()
+        if not self.reject_streak_limit or self._reject_streak < self.reject_streak_limit:
+            return
+        if self.halt_flag is None or self._halted():
+            return
+        msg = (f"merge path HALTED after {self._reject_streak} consecutive rejects "
+               f"(last: {h.ticket_id}: {reason}). Queued passed branches are "
+               f"preserved; fix the fault and delete this file to resume.")
+        try:
+            self.halt_flag.parent.mkdir(parents=True, exist_ok=True)
+            self.halt_flag.write_text(msg + "\n")
+        except OSError as e:
+            log(f"[merge] BREAKER could not write halt flag: {e!r}")
+            return
+        log(f"[merge] *** {msg}")
+        emit_progress_event("merge_halted", {
+            "streak": self._reject_streak, "last_ticket": h.ticket_id,
+            "last_reason": reason, "flag": str(self.halt_flag)})
 
     def enqueue(self, h: WorkerHandle, *, record: bool = True) -> None:
         """Queue a passed branch for merge. `record=True` durably notes it in
@@ -422,6 +597,8 @@ class MergeQueue:
         it's rejected (requeued) and the loop continues."""
         if not self._pending:
             return False
+        if self._halted():
+            return False  # breaker tripped — preserve queued passed work
         h = self._pending.popleft()
         try:
             self._merge_one(h)
@@ -501,6 +678,8 @@ class MergeQueue:
                     emit_progress_event("merge_fixed", {"ticket": h.ticket_id})
                 verified_against = main_head
             if self.merge(h):
+                self._reject_streak = 0
+                self._save_streak()
                 self._close_merged(h)
                 emit_progress_event("merge_done",
                                     {"ticket": h.ticket_id, "branch": h.worktree.branch,
@@ -535,7 +714,9 @@ class MergeQueue:
         last: Optional[Exception] = None
         for attempt in range(3):
             try:
-                self.queue.close(h.ticket_id, "merged to main")
+                # force: the code IS on main; open bead deps must not strand
+                # the record in_progress (the autogame-1t90 incident).
+                self.queue.close(h.ticket_id, "merged to main", force=True)
                 self._clear_pending(h)
                 return
             except Exception as e:
@@ -553,6 +734,7 @@ class MergeQueue:
     def _reject(self, h: WorkerHandle, reason: str) -> None:
         log(f"[merge] {h.ticket_id} NOT merged ({reason}) — main untouched, requeuing")
         emit_progress_event("merge_rejected", {"ticket": h.ticket_id, "reason": reason})
+        self._note_reject_for_breaker(h, reason)
         # Feed the staleness breaker: a passed-but-unmergeable ticket churns by
         # re-running from scratch every reject (the worker keeps passing). Let the
         # dispatcher count it and decide — it may ABANDON the ticket (handled=True),

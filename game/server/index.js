@@ -142,6 +142,7 @@ const {
   checkSweptCollision,
   tryPlayerMove,
   buildMovementContext,
+  rebuildMovementContext,
   buildHubMovementContext,
   hubSpawnPosition,
   applyPlayerMovement,
@@ -492,6 +493,7 @@ function resetGameState() {
   Object.keys(gameState).forEach(k => delete gameState[k]);
   Object.assign(gameState, fresh);
   applyLayoutForQuest(gameState, questId, questTier);
+  rebuildMovementContext(gameState);
   delete gameState.run;
   delete gameState._victoryCounters;
   sim.setGameState(gameState, _timeouts);
@@ -566,6 +568,7 @@ const DEBUG_SCENARIOS = new Set([
   'frost-crossing-surface-transition',
   'frost-crossing-boss-approach',
   'frost-crossing-telepipe-ready',
+  'frost-crossing-tier-2',
   'enemy-behind-wall',
   'training-caverns-tier-1',
   'crystal-rescue-tier-1',
@@ -617,6 +620,11 @@ const DEBUG_SCENARIOS = new Set([
   'spire-ascent-encounter-trigger',
   'spire-ascent-boss-low-hp',
   'ember-descent-tier-2',
+  'crucible-duel-boss',
+  'vault-onslaught-boss',
+  'rift-convergence-boss',
+  'rift-convergence-unlocked',
+  'rift-convergence-one-prereq',
   'stage-boss-dormant',
   'stage-boss-active',
   'annex-overseer-ready',
@@ -631,6 +639,7 @@ const DEBUG_SCENARIOS = new Set([
   'fireball-hand-ready',
   'glacial-thrower',
   'permafrost-warden',
+  'glacial-tyrant',
   'magma-colossus',
   'ice-ball-ready',
   'frost-spells-ready',
@@ -644,6 +653,8 @@ const DEBUG_SCENARIOS = new Set([
   'energy-blade-slash-ready',
   'heavy-greatsword-slash-ready',
   'lock-on-elevated-projectile',
+  'lock-on-flying-enemy',
+  'lock-on-3d-stack',
   'height-aware-projectile',
 ]);
 
@@ -824,6 +835,9 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'spire-ascent-encounter-trigger',
   'spire-ascent-boss-low-hp',
   'ember-descent-tier-2',
+  'crucible-duel-boss',
+  'vault-onslaught-boss',
+  'rift-convergence-boss',
   'stage-boss-dormant',
   'stage-boss-active',
   'annex-overseer-ready',

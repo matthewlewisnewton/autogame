@@ -88,12 +88,16 @@ describe('buildLevelUnlockGraph', () => {
 		}
 	});
 
-	it('defaults to tier-1 unlocked and higher tiers locked when unauthenticated', () => {
+	it('defaults to baseline unlock states when unauthenticated', () => {
 		const graph = buildLevelUnlockGraph();
 		for (const node of graph.nodes) {
 			expect(node.state).not.toBe('cleared');
 			if (node.tier === 1) {
-				expect(node.state).toBe('unlocked');
+				if (node.unlockRequires) {
+					expect(node.state).toBe('locked');
+				} else {
+					expect(node.state).toBe('unlocked');
+				}
 			} else {
 				expect(node.state).toBe('locked');
 			}
@@ -103,6 +107,8 @@ describe('buildLevelUnlockGraph', () => {
 		const unknownGraph = buildLevelUnlockGraph('not-a-real-account');
 		expect(nodeFor(unknownGraph, QUEST_ID, 1).state).toBe('unlocked');
 		expect(nodeFor(unknownGraph, QUEST_ID, 2).state).toBe('locked');
+		expect(nodeFor(unknownGraph, 'crucible_duel', 1).state).toBe('locked');
+		expect(nodeFor(unknownGraph, 'vault_onslaught', 1).state).toBe('locked');
 	});
 
 	it('reports cleared tiers and unlocks the dependent tier after progression', () => {

@@ -1,0 +1,9 @@
+Completed the final review.
+
+Wrote:
+- `tickets/client-attack-cast-hint-is-static-wrong-for-controllers-and-mxbc/round-1/review.md`
+- `tickets/client-attack-cast-hint-is-static-wrong-for-controllers-and-mxbc/round-1/gaps.md`
+
+Verdict: `VERDICT: FAIL`
+
+Blocking gap: dismissal progress is recorded on raw input attempts, not confirmed successful attack/cast actions, so the hint can be permanently dismissed before the player has actually completed both required actions. No nits file was created.

@@ -22,8 +22,11 @@ Each stage culminates in a single stage boss (`ENEMY_DEFS` in `game/server/simul
 | `annex_overseer` (Annex Overseer) | annex | 320 |
 | `spire_warden` (Summit Warden) | spire summit | 420 |
 | `arena_champion` (Plaza Sovereign) | open plaza | 420 |
+| `riftbound_colossus` (Riftbound Colossus) | rift convergence | 460 |
 
 `arena_champion` was previously the outlier at **500 HP** — markedly above every other stage boss. At the driver's sustained attack DPS, 500 HP could not be reduced to 0 inside the 180s `defeatBoss` timeout (even in god-mode), which made the open-plaza validation flaky. It was retuned to **420**, aligning it with `spire_warden` (the next-highest boss) so a real, full-HP defeat is achievable within the window while the open plaza stays the joint-toughest encounter. Only `hp` changed; the boss's identity and pressure profile (higher `attackDamage` 26, widest cone `2π/3`, longest `attackRange` 6.5) are unchanged, so it remains the hardest-hitting, farthest-reaching stage boss.
+
+`riftbound_colossus` is deliberately the top of the band at **460 HP**: as the boss-level capstone it must out-stat every other stage boss (highest `hp` and `attackDamage`, enforced by `rift_convergence_e2e.test.js`) while staying under the ~500 HP mark that made the 180s `defeatBoss` window unachievable.
 
 ## Telepipe Evacuation
 Telepipe is a mid-run evacuation spell that lets squad members leave the dungeon early and return to the hub.

@@ -64,10 +64,13 @@ const ENEMY_CARD_DROPS = {
   miniboss: 'dungeon_drake',
   annex_overseer: 'dungeon_drake',
   arena_champion: 'dungeon_drake',
+  crucible_sovereign: 'dungeon_drake',
   spire_warden: 'dungeon_drake',
   cinder_warden: 'dungeon_drake',
   magma_colossus: 'dungeon_drake',
   permafrost_warden: 'dungeon_drake',
+  glacial_tyrant: 'dungeon_drake',
+  riftbound_colossus: 'dungeon_drake',
   spawner: 'battle_familiar',
 };
 
@@ -80,10 +83,13 @@ const ENEMY_MS_DROPS = {
   miniboss: 50,
   annex_overseer: 50,
   arena_champion: 70,
+  crucible_sovereign: 65,
   spire_warden: 55,
   cinder_warden: 52,
   magma_colossus: 54,
   permafrost_warden: 55,
+  glacial_tyrant: 70,
+  riftbound_colossus: 80,
   spawner: 25,
 };
 

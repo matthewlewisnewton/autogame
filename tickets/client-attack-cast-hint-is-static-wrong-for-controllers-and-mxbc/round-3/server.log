@@ -1,0 +1,14 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/client-attack-cast-hint-is-static-wrong-for-controllers-and-mxbc/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/client-attack-cast-hint-is-static-wrong-for-controllers-and-mxbc/game/data
+Server listening on port 3004
+Player connected: socket=0C1RVMZWs4qx78T-AAAB, playerId=02131177-5ce4-474c-8d59-ae7c68492bad
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=lO_yOgJMpjXQMGSOAAAD, playerId=af40ff32-c913-41e8-ad05-13631d361b21
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: 0C1RVMZWs4qx78T-AAAB
+Player disconnected: lO_yOgJMpjXQMGSOAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

@@ -39,7 +39,7 @@ const {
 const { PASSAGE_WIDTH, sampleFloorY, sampleFloorSurface, DEFAULT_FLOOR_Y, resolveFloorY } = require('./dungeon');
 const { applyLeechHeal, getFrenziedCombatMultipliers, checkFrenziedTelegraph } = require('./enemyVariants');
 const { isPlayingPhase, isLobbyPhase } = require('./lobbies');
-const { getEncounterBossId, isEncounterDormant, isEncounterLocked } = require('./encounters');
+const { getEncounterBossId, isEncounterDormant, isEncounterLocked, canDamageEnemy } = require('./encounters');
 
 // ── Airborne / altitude model ──
 // Default hover height (world units above the sampled floor) for any entity
@@ -97,6 +97,15 @@ const ENTITY_RADIUS = 0.45;
 let _wallColliders = [];
 let _wallCollidersLayout = null;
 let _wallCollidersPassageLocksKey = '';
+
+// Movement context cache — keyed by layout reference and passage locks
+let _movementContext = null;
+let _movementContextLayout = null;
+let _movementContextPassageLocksKey = '';
+
+// Hub movement context cache — keyed by layout reference (HUB_LAYOUT is static)
+let _hubMovementContext = null;
+let _hubMovementContextLayout = null;
 
 function footprintToAABB(footprint) {
   return {
@@ -221,12 +230,31 @@ function getWallColliders() {
 
 function buildMovementContext(state) {
   if (!state) return null;
-  return {
+  const locksKey = passageLocksCacheKey(state.run?.passageLocks);
+  if (
+    _movementContext !== null
+    && _movementContextLayout === state.layout
+    && _movementContextPassageLocksKey === locksKey
+  ) {
+    return _movementContext;
+  }
+  return (_movementContext = {
     layout: state.layout,
     walkableAABBs: state.walkableAABBs,
     dungeonBounds: state.dungeonBounds,
     colliders: buildWallColliders(state.layout, state.run?.passageLocks),
-  };
+  }, _movementContextLayout = state.layout, _movementContextPassageLocksKey = locksKey, _movementContext);
+}
+
+/**
+ * Force-rebuild the movement context cache for the given state.
+ * Call after resetGameState or any layout / passage-locks mutation.
+ */
+function rebuildMovementContext(state) {
+  _movementContext = null;
+  _movementContextLayout = null;
+  _movementContextPassageLocksKey = '';
+  return buildMovementContext(state);
 }
 
 /**
@@ -234,12 +262,18 @@ function buildMovementContext(state) {
  */
 function buildHubMovementContext(hubLayout) {
   if (!hubLayout) return null;
-  return {
+  if (
+    _hubMovementContext !== null
+    && _hubMovementContextLayout === hubLayout
+  ) {
+    return _hubMovementContext;
+  }
+  return (_hubMovementContext = {
     layout: hubLayout,
     walkableAABBs: computeWalkableAABBs(hubLayout),
     dungeonBounds: computeDungeonBounds(hubLayout),
     colliders: buildWallColliders(hubLayout),
-  };
+  }, _hubMovementContextLayout = hubLayout, _hubMovementContext);
 }
 
 /**
@@ -1139,6 +1173,13 @@ const ENEMY_DEFS = {
 		hp: 420, chaseSpeed: 1.5, wanderSpeed: 0.7, attackDamage: 26, attackWindupMs: 1100,
 		attackStyle: 'cone', attackConeAngle: (2 * Math.PI) / 3, attackRange: 6.5,
 	},
+	crucible_sovereign: {
+		name: 'Crucible Sovereign',
+		description: 'Arena-forged tyrant that erupts in radial crucible shockwaves — close-range pressure on the boss dais.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 390, chaseSpeed: 1.2, wanderSpeed: 0.55, attackDamage: 24, attackWindupMs: 1200,
+		attackStyle: 'radial', attackRange: 4.5,
+	},
 	spire_warden: {
 		name: 'Summit Warden',
 		description: 'Spire summit guardian with crushing reach and tide-like pressure.',
@@ -1166,6 +1207,30 @@ const ENEMY_DEFS = {
 		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
 		hp: 360, chaseSpeed: 1.0, wanderSpeed: 0.5, attackDamage: 20, attackWindupMs: 1300,
 		attackStyle: 'radial', attackRange: 4.5,
+	},
+	glacial_tyrant: {
+		name: 'Glacial Tyrant',
+		description: 'Tier-II tyrant of the frozen crossing — hurls massive glacial spheres that chill (SLOW) and crush whatever they strike.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 440, chaseSpeed: 1.3, wanderSpeed: 0.6, attackDamage: 24, attackWindupMs: 1300,
+		attackStyle: 'ice_ball', attackRange: 9,
+		// Heavier ice-ball tuning than glacial_thrower: faster and bigger, but
+		// still well below player MOVE_SPEED (12) so it stays dodgeable.
+		iceBallSpeed: 7.5,
+		iceBallSlowDurationMs: 3200,
+		iceBallSlowFactor: 0.45,
+		iceBallRadius: 1.2,
+		iceBallMaxRange: 22,
+	},
+	riftbound_colossus: {
+		name: 'Riftbound Colossus',
+		description: 'Apex tyrant of the rift where the ice and fire stages converge — its radial rift shockwave ignites (BURNING) everything it strikes.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange', 'burnDurationMs'],
+		// HP capped at 460: design.md records that a 500 HP boss could not be
+		// defeated inside the 180s defeatBoss validation window.
+		hp: 460, chaseSpeed: 1.1, wanderSpeed: 0.5, attackDamage: 28, attackWindupMs: 1200,
+		attackStyle: 'radial', attackRange: 5.5,
+		burnDurationMs: 3000,
 	},
 	spawner: {
 		name: 'Brood Node',
@@ -2598,6 +2663,10 @@ function damageEnemy(enemy, amount) {
     return { hpBefore: enemy?.hp ?? 0, killed: false };
   }
 
+  if (_gameState && !canDamageEnemy(_gameState, enemy)) {
+    return { hpBefore: enemy.hp, killed: false };
+  }
+
   const hpBefore = enemy.hp;
   let remaining = amount;
 
@@ -3761,6 +3830,7 @@ module.exports = {
   computePassageBarrierAABBs,
   collectLockedPassageBarrierAABBs,
   buildMovementContext,
+  rebuildMovementContext,
   buildHubMovementContext,
   hubSpawnPosition,
   wallAABB,

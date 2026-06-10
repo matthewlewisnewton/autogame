@@ -62,7 +62,7 @@ const {
   abandonSuspendedRun,
   emitPlayerDeckUpdate,
 } = require('./progression');
-const { unlockHat: unlockHatForAccount, unlockQuestTier } = require('./users');
+const { unlockHat: unlockHatForAccount, unlockQuestTier, completeQuestTier } = require('./users');
 const { backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
 const { VARIANT_DEFS } = require('./enemyVariants');
 const { PHASES, setPhase } = require('./lobbies');
@@ -145,6 +145,65 @@ function ensureEscortObjectiveFixtureQuest() {
   if (!QUEST_DEFS[questId]) {
     QUEST_DEFS[questId] = ESCORT_OBJECTIVE_FIXTURE_DEF;
   }
+}
+
+function setupCrucibleDuelBossDebug(lobby, state, player) {
+  const questId = 'crucible_duel';
+  const tier = 1;
+  completeQuestTier(player.accountId, 'arena_trials', 2);
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+
+  player.ready = true;
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  const startSpawn = firstRoomPosition();
+  player.x = startSpawn.x;
+  player.z = startSpawn.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+  deployQuestDebugRun(lobby, state, { clearEncounterBoss: true });
+}
+
+function setupVaultOnslaughtBossDebug(lobby, state, player) {
+  const questId = 'vault_onslaught';
+  const tier = 1;
+  completeQuestTier(player.accountId, 'arena_trials', 2);
+  completeQuestTier(player.accountId, 'crucible_duel', 1);
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+
+  player.ready = true;
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  const startSpawn = firstRoomPosition();
+  player.x = startSpawn.x;
+  player.z = startSpawn.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+  deployQuestDebugRun(lobby, state, { clearEncounterBoss: true });
+}
+
+function setupRiftConvergenceBossDebug(lobby, state, player) {
+  const questId = 'rift_convergence';
+  const tier = 1;
+  completeQuestTier(player.accountId, 'frost_crossing', 2);
+  completeQuestTier(player.accountId, 'ember_descent', 2);
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+
+  player.ready = true;
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  const startSpawn = firstRoomPosition();
+  player.x = startSpawn.x;
+  player.z = startSpawn.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+  deployQuestDebugRun(lobby, state, { clearEncounterBoss: true });
 }
 
 function setupEscortObjectiveDeploy(lobby, state, player) {
@@ -807,6 +866,52 @@ function applyDebugScenario(socket, name) {
       };
     }
 
+    if (name === 'rift-convergence-unlocked') {
+      // Lobby with BOTH rift_convergence prerequisites (frost_crossing Tier 2 and
+      // ember_descent Tier 2) completed and Rift Convergence selected, so the
+      // level map shows the boss node unlocked with both prerequisite edges
+      // satisfied. Reachable normally by clearing both quest lines through Tier 2.
+      setPhase(lobby, PHASES.LOBBY);
+      player.ready = false;
+      player.hp = MAX_HP;
+      completeQuestTier(player.accountId, 'frost_crossing', 2);
+      completeQuestTier(player.accountId, 'ember_descent', 2);
+      const questId = 'rift_convergence';
+      const tier = 1;
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+      assignRunSpawnPositions(Object.values(state.players));
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      return {
+        ok: true,
+        scenario: name,
+        levelUnlockGraph: buildQuestUpdatePayload(state, player.accountId).levelUnlockGraph,
+      };
+    }
+
+    if (name === 'rift-convergence-one-prereq') {
+      // Lobby with ONLY frost_crossing Tier 2 completed: the Rift Convergence
+      // node stays locked on the level map, demonstrating the AND gate across
+      // both prerequisite edges. Reachable normally by clearing the frost line
+      // through Tier 2 before touching the ember line.
+      setPhase(lobby, PHASES.LOBBY);
+      player.ready = false;
+      player.hp = MAX_HP;
+      completeQuestTier(player.accountId, 'frost_crossing', 2);
+      emitLobbyQuestUpdate(lobby, state);
+      broadcastLobbyUpdate(lobby);
+      return {
+        ok: true,
+        scenario: name,
+        levelUnlockGraph: buildQuestUpdatePayload(state, player.accountId).levelUnlockGraph,
+      };
+    }
+
     if (name === 'training-caverns-vault-stalker') {
       // training_caverns Tier 1 with annex waves cleared and Vault Stalker spawned
       // in the vault wing for named-rare QA. Reachable normally by clearing both
@@ -1051,6 +1156,44 @@ function applyDebugScenario(socket, name) {
       // Reachable normally by clearing Arena Trials Tier 1, unlocking Tier 2, and
       // deploying; this scenario is a shortcut into that state.
       setupArenaTrialsTier2StageBossDebug(lobby, state, player);
+      return finishStageBossDebugScenario(lobby, state, player, name);
+    }
+
+    if (name === 'crucible-duel-boss') {
+      // crucible_duel boss-level run with dormant Crucible Sovereign on boss-arena.
+      // Reachable normally by completing Arena Trials Tier 2, selecting Crucible Duel,
+      // and deploying; this scenario is a shortcut into that dormant encounter state.
+      setupCrucibleDuelBossDebug(lobby, state, player);
+      const anchor = resolveArenaDaisAnchor(state);
+      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 2;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      return finishStageBossDebugScenario(lobby, state, player, name);
+    }
+
+    if (name === 'vault-onslaught-boss') {
+      // vault_onslaught boss-level run with dormant Annex Overseer and two supports.
+      // Reachable normally by completing Crucible Duel, selecting Vault Onslaught,
+      // and deploying; this scenario is a shortcut into that dormant encounter state.
+      setupVaultOnslaughtBossDebug(lobby, state, player);
+      const anchor = resolveArenaDaisAnchor(state);
+      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 2;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      return finishStageBossDebugScenario(lobby, state, player, name);
+    }
+
+    if (name === 'rift-convergence-boss') {
+      // rift_convergence boss-level run with dormant Riftbound Colossus and four
+      // ice/fire supports on the boss arena. Reachable normally by completing
+      // Frost Crossing Tier 2 AND Ember Descent Tier 2, selecting Rift
+      // Convergence, and deploying; this scenario is a shortcut into that
+      // dormant encounter state.
+      setupRiftConvergenceBossDebug(lobby, state, player);
+      const anchor = resolveArenaDaisAnchor(state);
+      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 2;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       return finishStageBossDebugScenario(lobby, state, player, name);
     }
 
@@ -2525,6 +2668,59 @@ function applyDebugScenario(socket, name) {
       };
     }
 
+    if (name === 'frost-crossing-tier-2') {
+      // frost_crossing Tier 2 with rigid ice-cavern layout: dormant Glacial Tyrant
+      // on the ice_cairn treasure pad plus 4 tier-2-pool adds on the sheet.
+      // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
+      // snapshots the correct run.questTier/objective and spawnEnemy variant rolls.
+      // Reachable normally by clearing Frost Crossing Tier 1, unlocking Tier 2, and
+      // deploying; this scenario is a shortcut into that state.
+      const questId = 'frost_crossing';
+      const tier = 2;
+      unlockQuestTier(player.accountId, questId, tier);
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+
+      player.ready = true;
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const startSpawn = firstRoomPosition();
+      player.x = startSpawn.x;
+      player.z = startSpawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      enterPlayingPhase(lobby);
+
+      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+        createDrawDeckFromSelectedDeck(player);
+        initPlayerHand(player);
+        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+        if (!player.pendingSummons) {
+          player.pendingSummons = new Set();
+        }
+      }
+
+      state.enemies = [];
+      state.loot = [];
+      delete state.run;
+      delete state._pendingEncounterBossId;
+      spawnEnemies();
+      startDungeonRun();
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
     if (name === 'ember-descent-tier-2') {
       // ember_descent Tier 2 with the rigid fire-cavern layout and the dormant
       // magma_colossus stage-boss encounter. Quest/tier and layout must be set
@@ -3109,6 +3305,17 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       const warden = spawnEnemy(player.x + 5, player.z, 'permafrost_warden');
       warden.wanderTarget = { x: warden.x, z: warden.z };
+    } else if (name === 'glacial-tyrant') {
+      // Spawn a Glacial Tyrant beside the player for Tier-II boss mesh,
+      // projectile telegraph, and massive slowing ice-ball QA. The same enemy is
+      // reachable normally as the frost_crossing Tier 2 stage boss once the
+      // encounter is wired (sub-ticket 03); this is a deterministic shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      state.iceBalls = [];
+      const tyrant = spawnEnemy(player.x + 6, player.z, 'glacial_tyrant');
+      tyrant.wanderTarget = { x: tyrant.x, z: tyrant.z };
     } else if (name === 'magma-colossus') {
       // Spawn a Magma Colossus beside the player for fire-cavern boss mesh,
       // radial telegraph, and lock-on catalog QA. The same enemy is reachable
@@ -4235,6 +4442,52 @@ function applyDebugScenario(socket, name) {
       elevated.wanderTarget = { x: elevated.x, z: elevated.z };
       player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
       syncCardProbeHand(player);
+    } else if (name === 'lock-on-flying-enemy') {
+      // Playing phase with Fireball in hand and a void_seraph hovering on the same
+      // (x, z) as the player — flat aim misses; Z-lock + cast should tilt upward
+      // via flying/altitude (no manual y override) and hit. Reachable in vertical
+      // quests (spire_ascent, canyon_descent) when a projectile reward card is drawn
+      // and a void_seraph or rime_drifter spawns overhead.
+      resumePlayingRunForCardProbe(state, player);
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      player.hand = [
+        {
+          id: 'fireball',
+          name: 'Fireball',
+          type: 'weapon',
+          charges: 4,
+          remainingCharges: 4,
+        },
+        null,
+        null,
+        null,
+        null,
+        null,
+      ];
+      state.enemies = [];
+      const flier = spawnEnemy(player.x, player.z, 'void_seraph');
+      flier.hp = flier.maxHp;
+      flier.wanderTarget = { x: flier.x, z: flier.z };
+      player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+      syncCardProbeHand(player);
+    } else if (name === 'lock-on-3d-stack') {
+      // Ground grunt and ember_wraith stacked at the same (x, z): 3D lock-on must
+      // pick the closer flier, not treat them as tied in XZ. Reachable in vertical
+      // quests when adds and flying enemies overlap in plan view; this is a shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const stackX = player.x + 5;
+      const stackZ = player.z;
+      const ground = spawnEnemy(stackX, stackZ, 'grunt');
+      ground.y = resolveFloorY(sampleFloorY(state.layout, stackX, stackZ)) + 8;
+      ground.hp = 120;
+      ground.maxHp = 120;
+      ground.wanderTarget = { x: ground.x, z: ground.z };
+      const flier = spawnEnemy(stackX, stackZ, 'ember_wraith');
+      flier.wanderTarget = { x: flier.x, z: flier.z };
     } else if (name === 'height-aware-projectile') {
       // Spire-ascent sloped tower: player on the bottom tier, enemy on the top
       // tier — both Y values from sampleFloorY on real ramp/tier geometry. Fireball

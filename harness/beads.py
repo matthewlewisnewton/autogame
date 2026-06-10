@@ -116,8 +116,15 @@ class BeadsQueue:
         # the pool entirely, stuck in_progress under a now-disabled agent.
         self._run("update", issue_id, "--status", "open", "--assignee", "", check=True)
 
-    def close(self, issue_id: str, reason: str = "done") -> None:
-        self._run("close", issue_id, "--reason", reason)
+    def close(self, issue_id: str, reason: str = "done", *, force: bool = False) -> None:
+        """`force=True` for work that is ALREADY MERGED to main: bd refuses to
+        close beads with open dependencies/children, but the code being on main
+        is a fact regardless of bead graph state — refusing just strands the
+        record in_progress forever (seen on autogame-1t90/o0vv)."""
+        args = ["close", issue_id, "--reason", reason]
+        if force:
+            args.append("--force")
+        self._run(*args)
 
     # --- writes (migration / setup) ------------------------------------- #
     def create(self, title: str, *, difficulty: Optional[str] = None,

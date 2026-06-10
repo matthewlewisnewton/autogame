@@ -16,7 +16,6 @@ import { resolveVariantRollTier } from '../enemyVariants.js';
 import {
 	ENCOUNTER_PHASES,
 	ENCOUNTER_TRIGGER_RADIUS,
-	clearNonBossEnemies,
 	resolveEncounterAnchor,
 } from '../encounters.js';
 import { resetGameState, gameState, runGameLoopTick, applyBurning, updateBurning, updateEnemies, hasLineOfSight, buildWallColliders } from '../index.js';
@@ -50,6 +49,37 @@ const EMBER_DESCENT_TIER_1 = 1;
 const EMBER_DESCENT_TIER_2 = 2;
 const FROST_CROSSING_ID = 'frost_crossing';
 const FROST_CROSSING_TIER_1 = 1;
+
+describe('debugScenario — retired fixture shortcuts', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('rejects boss-level-dormant (fixture-only shortcut retired)', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const resultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'boss-level-dormant' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(false);
+		expect(result.reason).toMatch(/Unknown debug scenario: boss-level-dormant/);
+	});
+});
 
 describe('debugScenario — key-item-cooldown', () => {
 	let baseUrl;
@@ -1147,11 +1177,15 @@ describe('debugScenario — arena-trials-*', () => {
 
 		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'arena-trials-tier-2' });
-		await tier2Promise;
+		const tier2Result = await tier2Promise;
+		expect(tier2Result.ok).toBe(true);
 
-		const state = testGameState();
+		const state = lobbyStateForSocket(socket);
 		const bossId = state.run.encounter.bossEnemyId;
-		clearNonBossEnemies(state, bossId);
+		for (const enemy of state.enemies) {
+			if (enemy.id !== bossId) enemy.hp = 0;
+		}
+		state.enemies = state.enemies.filter((e) => e.hp > 0);
 
 		const approachPromise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'arena-trials-boss-approach' });
@@ -1341,6 +1375,71 @@ describe('debugScenario — spire-ascent-tier-2', () => {
 		spawnEnemies();
 		expect(gameState.enemies.some((e) => e.variant)).toBe(true);
 		expect(gameState.enemies.filter((e) => e.type === 'spire_warden')).toHaveLength(1);
+	});
+});
+
+describe('debugScenario — frost-crossing-tier-2', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('deploys frost_crossing Tier 2 stage-boss run with encounter and rigid layout', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
+		socket.emit('debugScenario', { name: 'frost-crossing-tier-2' });
+		const result = await debugResultPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('frost-crossing-tier-2');
+
+		const state = lobbyStateForSocket(socket);
+		const tier2Quest = getQuest(FROST_CROSSING_ID, 2);
+		const addCount = tier2Quest.encounter.addCount;
+
+		expect(state.gamePhase).toBe('playing');
+		expect(state.selectedQuestId).toBe(FROST_CROSSING_ID);
+		expect(state.selectedQuestTier).toBe(2);
+		expect(stateUpdate.run.questId).toBe(FROST_CROSSING_ID);
+		expect(stateUpdate.run.questTier).toBe(2);
+		expect(stateUpdate.run.questName).toBe(tier2Quest.name);
+		expect(stateUpdate.run.objective.type).toBe('stage_boss');
+		expect(stateUpdate.run.objective.label).toContain(tier2Quest.name);
+		expect(stateUpdate.run.encounter).toBeTruthy();
+		expect(stateUpdate.run.encounter.bossEnemyId).toBeTruthy();
+		expect(state.layout.profile).toBe('ice-cavern');
+		expect(getLayoutGenerationOptions(FROST_CROSSING_ID, 2)).toEqual({
+			slopes: true,
+			layoutMode: 'rigid',
+		});
+		expect(state.layoutSeed).toBe(questLayoutSeed(FROST_CROSSING_ID, 2));
+		expect(stateUpdate.enemies.length).toBe(1 + addCount);
+		const boss = stateUpdate.enemies.find(
+			(e) => e.id === stateUpdate.run.encounter.bossEnemyId,
+		);
+		expect(boss).toBeTruthy();
+		expect(boss.type).toBe('glacial_tyrant');
+		const cairn = state.layout.landmarks.find((lm) => lm.type === 'ice_cairn');
+		expect(boss.x).toBe(cairn.x);
+		expect(boss.z).toBe(cairn.z);
+		expect(stateUpdate.enemies.filter((e) => e.type === 'glacial_tyrant')).toHaveLength(1);
+		expect(resolveVariantRollTier(stateUpdate.run.questTier, 0)).toBe(1);
 	});
 });
 

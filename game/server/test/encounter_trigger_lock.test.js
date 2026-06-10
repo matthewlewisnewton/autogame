@@ -20,7 +20,14 @@ import {
 
 const require = createRequire(import.meta.url);
 const { QUEST_DEFS } = require('../quests.js');
-const { updateEnemies, ENEMY_DEFS, setGameState: setSimulationGameState } = require('../simulation.js');
+const {
+  updateEnemies,
+  ENEMY_DEFS,
+  setGameState: setSimulationGameState,
+  collectRadialHits,
+  applyBurning,
+  updateBurning,
+} = require('../simulation.js');
 
 const SEED = 5151;
 const FIXTURE_QUEST_ID = 'stage_boss_trigger_fixture';
@@ -263,5 +270,23 @@ describe('dormant boss AI and spawner suppression', () => {
 
     expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
     expect(isEncounterLocked(state.run)).toBe(true);
+  });
+
+  it('AoE and burn cannot kill the dormant boss while adds remain', () => {
+    const boss = bossEnemy(state);
+    const hpStart = boss.hp;
+    expect(state.enemies.length).toBeGreaterThan(1);
+
+    collectRadialHits(boss.x, boss.y, boss.z, 25, 9999);
+    expect(boss.hp).toBe(hpStart);
+
+    applyBurning(boss, 10_000);
+    const now = Date.now();
+    boss.lastBurnTickAt = now - 500;
+    updateBurning();
+    boss.lastBurnTickAt = now;
+    updateBurning();
+    expect(boss.hp).toBe(hpStart);
+    expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
   });
 });

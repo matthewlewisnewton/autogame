@@ -31,6 +31,7 @@ export const MODEL_REGISTRY = {
 	cinder_warden: null,
 	magma_colossus: null,
 	permafrost_warden: null,
+	glacial_tyrant: null,
 	spawner: '/models/spawner.glb',
 	field_medic: null,
 	ember_wraith: null,

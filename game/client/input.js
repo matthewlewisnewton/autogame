@@ -429,14 +429,11 @@ export function getHandSlotInputHints() {
 		const action = `useSlot${i}`;
 		const binding = getBindingForAction(action, gp);
 		if (profile.id === '8bitdo-64') {
-			hints.push(
-				EIGHTBITDO_64_SLOT_HINTS[action]
-				?? describe8BitDo64HandSlotBindingHint(binding, i),
-			);
-			hintLabels.push(
-				EIGHTBITDO_64_SLOT_HINT_LABELS[action]
-				?? describe8BitDo64HandSlotBindingHintLabel(binding, i),
-			);
+			// Resolve the (possibly remapped) binding first; the helpers fall
+			// back to EIGHTBITDO_64_SLOT_HINTS / _HINT_LABELS only when no
+			// binding is set, so the default profile stays unchanged.
+			hints.push(describe8BitDo64HandSlotBindingHint(binding, i));
+			hintLabels.push(describe8BitDo64HandSlotBindingHintLabel(binding, i));
 		} else {
 			hints.push(describeStandardHandSlotBindingHint(binding, i));
 			hintLabels.push(hints[hints.length - 1]);
@@ -444,6 +441,40 @@ export function getHandSlotInputHints() {
 	}
 
 	return { mode: 'gamepad', hints, hintLabels };
+}
+
+/**
+ * Device-aware attack/cast hint text for the in-run HUD affordance.
+ *
+ * Pure (no DOM): built from the same binding machinery as the hand-slot badges
+ * (`getHandSlotInputHints()`), so a gamepad player sees their real attack button
+ * and slot range instead of the keyboard/mouse copy. Uses the plain-text slot
+ * labels (`hintLabels`) so C-buttons survive being written via `textContent`
+ * (the inline-SVG `hints` would not render as text).
+ *
+ * @returns {{ mode: 'keyboard' | 'gamepad', text: string }}
+ */
+export function getAttackCastHint() {
+	const slotHints = getHandSlotInputHints();
+	if (slotHints.mode !== 'gamepad') {
+		// Keyboard / mouse: preserve the original index.html copy verbatim.
+		return {
+			mode: 'keyboard',
+			text: 'Click to attack · press 1–6 to cast cards',
+		};
+	}
+	// Gamepad: slot 0 is the primary attack button (face A on both profiles);
+	// the cast range spans the first–last usable hand-slot labels.
+	const labels = (slotHints.hintLabels && slotHints.hintLabels.length)
+		? slotHints.hintLabels
+		: slotHints.hints;
+	const first = labels[0];
+	const last = labels[labels.length - 1];
+	const castRange = first === last ? first : `${first}–${last}`;
+	return {
+		mode: 'gamepad',
+		text: `Press ${first} to attack · press ${castRange} to cast cards`,
+	};
 }
 
 /** @deprecated Use getHandSlotInputHints() */

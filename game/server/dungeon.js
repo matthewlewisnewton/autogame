@@ -46,6 +46,20 @@ const OPEN_PLAZA = {
   interiorMargin: 2,        // cover must stay this far inside the perimeter walls
 };
 
+// Boss-arena tuning: one compact single-room layout for dedicated boss-level quests.
+const BOSS_ARENA = {
+  size: 24,                 // smaller than open-plaza — tight duel floor
+  spawnClearRadius: 5,      // keep cover out of the arena_dais spawn circle
+  interiorMargin: 2,
+  coverTargetCount: 3,      // sparse cover (open-plaza targets 8)
+};
+
+// Rift arena theme (arenaTheme: 'rift'): cosmetic floor-band decals only.
+const RIFT_THEME = {
+  bandInnerX: 4,            // band inner edge — clear of the center_ring (outerRadius 3.2)
+  bandWallInset: 0.6,       // keep decals fully inside the arena walls
+};
+
 // Hub ship-interior: three zone rooms (Operations, Commerce, Salon) in a compact row.
 const HUB_ROOM_WIDTH = 12;
 const HUB_ROOM_DEPTH = 12;
@@ -89,6 +103,11 @@ const LAYOUT_PROFILES = {
   'open-plaza': {
     ...DEFAULT_LAYOUT_PROFILE,
     cellSpacing: OPEN_PLAZA.size,
+  },
+  // Boss-arena is handled by generateBossArena() — see that branch.
+  'boss-arena': {
+    ...DEFAULT_LAYOUT_PROFILE,
+    cellSpacing: BOSS_ARENA.size,
   },
   // Sunken-canyon is handled by generateSunkenCanyon() — see that branch.
   'sunken-canyon': {
@@ -181,6 +200,13 @@ const ICE_CAVERN = {
   interiorMargin: OPEN_PLAZA.interiorMargin,
   rampXOffsets: [-3, 0, 3], // centres must stay inside stonePadSize with rampWidth
   treasureGapWidth: 8,
+  /** Fixed geometry for `layoutMode: 'rigid'` — seed-independent. */
+  rigidRampCount: 2,
+  rigidCoverPerStonePad: 2,
+  rigidEntryDecorCount: 2,
+  // The 13×13 stone pads cannot fit cover outside the full spawnClearRadius (6)
+  // yet inside the interior margin, so rigid pad cover uses a tighter circle.
+  rigidPadSpawnClear: 3,
 };
 
 // Fire-cavern stage tuning. Rim (north / high Y) overlooks a large volcanic basin
@@ -270,6 +296,9 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
   // Open-plaza is a bespoke single-arena layout, not a grid of rooms/passages.
   if (profile === 'open-plaza') {
     return generateOpenPlaza(seed, options);
+  }
+  if (profile === 'boss-arena') {
+    return generateBossArena(seed, options);
   }
   if (profile === 'sunken-canyon') {
     return generateSunkenCanyon(seed, options);
@@ -1838,8 +1867,9 @@ function scatterEntryDecor(rng, {
 }
 
 /**
- * Place entry decor from candidate offsets in declaration order (no RNG shuffle).
- * Used by fire-cavern `layoutMode: 'rigid'` — decor placement is seed-independent.
+ * Accept entry decor from ENTRY_DECOR_CANDIDATE_OFFSETS in declaration order
+ * (no RNG shuffle). Mirrors `scatterEntryDecor` margin and spawn-clear rules.
+ * Used by ice-cavern and fire-cavern `layoutMode: 'rigid'` — decor is seed-independent.
  */
 function placeEntryDecorOrdered({
   half,
@@ -1849,6 +1879,7 @@ function placeEntryDecorOrdered({
   type,
   count = 3,
   interiorMargin = OPEN_PLAZA.interiorMargin,
+  avoid = [],
   yaw = 0,
 }) {
   const placed = [];
@@ -1858,10 +1889,16 @@ function placeEntryDecorOrdered({
 
   for (const offset of ENTRY_DECOR_CANDIDATE_OFFSETS) {
     if (placed.length >= targetCount) break;
-    const cand = { x: centerX + offset.x, z: centerZ + offset.z };
+    const cand = {
+      x: centerX + offset.x,
+      z: centerZ + offset.z,
+      width: ENTRY_DECOR_RADIUS * 2,
+      depth: ENTRY_DECOR_RADIUS * 2,
+    };
     if (Math.abs(cand.x - centerX) + ENTRY_DECOR_RADIUS > interiorMax) continue;
     if (Math.abs(cand.z - centerZ) + ENTRY_DECOR_RADIUS > interiorMax) continue;
     if (overlapsSpawnClearPoint(cand.x, cand.z, decorSpawnClear, centerX, centerZ)) continue;
+    if (avoid.some(c => footprintsOverlap(cand, c, 0))) continue;
     if (placed.some(d =>
       Math.abs(d.x - cand.x) < ENTRY_DECOR_RADIUS * 2 + 0.5 &&
       Math.abs(d.z - cand.z) < ENTRY_DECOR_RADIUS * 2 + 0.5
@@ -2363,6 +2400,108 @@ function generateOpenPlaza(seed, options = {}) {
   return layout;
 }
 
+/**
+ * Rift-theme floor bands: an ice decal over the west half of the arena and an
+ * ember decal over the east half. Cosmetic floor markings only — flat
+ * rectangles (centre x/z plus width/depth extents) that add no walls or
+ * cover. Inset from the arena walls and stopped short of the centre ring so
+ * the decals lie fully inside bounds and never overlap the center_ring
+ * marking.
+ */
+function buildRiftFloorMarkings(half) {
+  const innerX = RIFT_THEME.bandInnerX;
+  const outerX = half - RIFT_THEME.bandWallInset;
+  const width = outerX - innerX;
+  const depth = (half - RIFT_THEME.bandWallInset) * 2;
+  const centerX = (innerX + outerX) / 2;
+  return [
+    { type: 'rift_ice_band', x: -centerX, z: 0, width, depth },
+    { type: 'rift_ember_band', x: centerX, z: 0, width, depth },
+  ];
+}
+
+/**
+ * Build the boss-arena layout: one compact walkable room with a centre
+ * `arena_dais` landmark and sparse cover. Deterministic for a given seed in
+ * `layoutMode: 'default'`; rigid mode uses seed-independent cover placement.
+ * `options.arenaTheme: 'rift'` appends ice/ember floor-band markings (cosmetic
+ * decals only); any other value leaves the layout untouched.
+ *
+ * Returns { rooms: [arena], passages: [], cover, floorMarkings, landmarks,
+ *           passageWidth, cellSpacing, profile: 'boss-arena' }.
+ */
+function generateBossArena(seed, options = {}) {
+  const layoutMode = normalizeLayoutMode(options.layoutMode);
+  const rng = mulberry32(seed);
+  const size = BOSS_ARENA.size;
+  const half = size / 2;
+  const spawnClear = BOSS_ARENA.spawnClearRadius;
+
+  const walls = [
+    { x: 0, z: -half, length: size, axis: 'x' },
+    { x: 0, z: half, length: size, axis: 'x' },
+    { x: -half, z: 0, length: size, axis: 'z' },
+    { x: half, z: 0, length: size, axis: 'z' },
+  ];
+
+  const arena = {
+    x: 0,
+    z: 0,
+    width: size,
+    depth: size,
+    walls,
+    floorCorners: {
+      yNW: DEFAULT_FLOOR_Y,
+      yNE: DEFAULT_FLOOR_Y,
+      ySE: DEFAULT_FLOOR_Y,
+      ySW: DEFAULT_FLOOR_Y,
+    },
+  };
+
+  const candidatePool = [
+    { x: -7, z: -7, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: 7, z: -7, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: -7, z: 7, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: 7, z: 7, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: 0, z: -8, width: 3.0, depth: 1.0, height: 1.0, type: 'barricade' },
+    { x: 0, z: 8, width: 3.0, depth: 1.0, height: 1.0, type: 'barricade' },
+  ];
+
+  const cover = [];
+  const scatterOpts = {
+    half,
+    spawnClear,
+    candidatePool,
+    initialCover: cover,
+    targetCount: BOSS_ARENA.coverTargetCount,
+    interiorMargin: BOSS_ARENA.interiorMargin,
+  };
+  const placedCover = layoutMode === 'rigid'
+    ? placeCoverInArenaOrdered(scatterOpts)
+    : scatterCoverInArena(rng, scatterOpts);
+
+  const layout = {
+    rooms: [arena],
+    passages: [],
+    cover: placedCover,
+    floorMarkings: [
+      { type: 'center_ring', x: 0, z: 0, innerRadius: 2.5, outerRadius: 3.2 },
+    ],
+    landmarks: [{ x: 0, z: 0, type: 'arena_dais' }],
+    passageWidth: PASSAGE_WIDTH,
+    cellSpacing: size,
+    profile: 'boss-arena',
+  };
+
+  if (options.arenaTheme === 'rift') {
+    layout.floorMarkings.push(...buildRiftFloorMarkings(half));
+  }
+
+  assignRoomRoles(layout);
+
+  return layout;
+}
+
 // ── Sunken Canyon Stage Generation ──
 
 /**
@@ -2547,10 +2686,15 @@ function generateSunkenCanyon(seed, options = {}) {
  * sheet with a stone treasure pad to the south. One or two flat stone ramps
  * bridge entry ↔ ice; the treasure pad opens through a centred wall gap.
  *
+ * In `layoutMode: 'default'`, ramp count (1–2), cover scatter and entry-decor
+ * scatter are seed-driven. In `layoutMode: 'rigid'`, geometry is fixed and
+ * seed-independent: 2 outer ramps, declaration-order pad cover, fixed decor.
+ *
  * Returns { rooms, passages, cover, passageWidth, cellSpacing,
  *           profile: 'ice-cavern' }.
  */
 function generateIceCavern(seed, options = {}) {
+  const layoutMode = normalizeLayoutMode(options.layoutMode);
   const rng = mulberry32(seed);
   const {
     stonePadSize,
@@ -2561,6 +2705,10 @@ function generateIceCavern(seed, options = {}) {
     interiorMargin,
     rampXOffsets,
     treasureGapWidth,
+    rigidRampCount,
+    rigidCoverPerStonePad,
+    rigidEntryDecorCount,
+    rigidPadSpawnClear,
   } = ICE_CAVERN;
 
   const y = DEFAULT_FLOOR_Y;
@@ -2578,7 +2726,7 @@ function generateIceCavern(seed, options = {}) {
   const treasureZ = iceSouthZ + stoneHalf;
 
   const sortedOffsets = [...rampXOffsets].sort((a, b) => a - b);
-  const numRamps = 1 + Math.floor(rng() * 2);
+  const numRamps = layoutMode === 'rigid' ? rigidRampCount : 1 + Math.floor(rng() * 2);
   const rampCenters = numRamps === 1
     ? [sortedOffsets[1]]
     : [sortedOffsets[0], sortedOffsets[sortedOffsets.length - 1]];
@@ -2676,35 +2824,72 @@ function generateIceCavern(seed, options = {}) {
     { x: 3, z: -3, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },
   ];
 
-  const entryCover = scatterCoverInArena(rng, {
-    half: stoneHalf,
-    centerX: entry.x,
-    centerZ: entry.z,
-    spawnClear: spawnClearRadius,
-    candidatePool: stoneCandidatePool,
-    targetCount: 2,
-    interiorMargin,
-  });
+  // Rigid mode anchors the pool to each pad centre so cover lands on the pads;
+  // default mode must keep passing the pool untranslated (scatterCoverInArena
+  // reads candidate coordinates as absolute) so its output stays bit-identical.
+  const padCandidatePool = pad =>
+    stoneCandidatePool.map(c => ({ ...c, x: pad.x + c.x, z: pad.z + c.z }));
 
-  const treasureCover = scatterCoverInArena(rng, {
-    half: stoneHalf,
-    centerX: treasure.x,
-    centerZ: treasure.z,
-    spawnClear: spawnClearRadius,
-    candidatePool: stoneCandidatePool,
-    targetCount: 2,
-    interiorMargin,
-  });
+  const entryCover = layoutMode === 'rigid'
+    ? placeCoverInArenaOrdered({
+      half: stoneHalf,
+      centerX: entry.x,
+      centerZ: entry.z,
+      spawnClear: rigidPadSpawnClear,
+      candidatePool: padCandidatePool(entry),
+      targetCount: rigidCoverPerStonePad,
+      interiorMargin,
+    })
+    : scatterCoverInArena(rng, {
+      half: stoneHalf,
+      centerX: entry.x,
+      centerZ: entry.z,
+      spawnClear: spawnClearRadius,
+      candidatePool: stoneCandidatePool,
+      targetCount: 2,
+      interiorMargin,
+    });
 
-  const entryDecor = scatterEntryDecor(rng, {
-    half: stoneHalf,
-    centerX: entry.x,
-    centerZ: entry.z,
-    spawnClear: spawnClearRadius,
-    type: 'icicle_cluster',
-    count: 2 + Math.floor(rng() * 3),
-    interiorMargin,
-  });
+  const treasureCover = layoutMode === 'rigid'
+    ? placeCoverInArenaOrdered({
+      half: stoneHalf,
+      centerX: treasure.x,
+      centerZ: treasure.z,
+      spawnClear: rigidPadSpawnClear,
+      candidatePool: padCandidatePool(treasure),
+      targetCount: rigidCoverPerStonePad,
+      interiorMargin,
+    })
+    : scatterCoverInArena(rng, {
+      half: stoneHalf,
+      centerX: treasure.x,
+      centerZ: treasure.z,
+      spawnClear: spawnClearRadius,
+      candidatePool: stoneCandidatePool,
+      targetCount: 2,
+      interiorMargin,
+    });
+
+  const entryDecor = layoutMode === 'rigid'
+    ? placeEntryDecorOrdered({
+      half: stoneHalf,
+      centerX: entry.x,
+      centerZ: entry.z,
+      spawnClear: spawnClearRadius,
+      type: 'icicle_cluster',
+      count: rigidEntryDecorCount,
+      interiorMargin,
+      avoid: entryCover,
+    })
+    : scatterEntryDecor(rng, {
+      half: stoneHalf,
+      centerX: entry.x,
+      centerZ: entry.z,
+      spawnClear: spawnClearRadius,
+      type: 'icicle_cluster',
+      count: 2 + Math.floor(rng() * 3),
+      interiorMargin,
+    });
 
   const passages = ramps.map((ramp) => ({
     x1: entry.x,
@@ -3442,6 +3627,7 @@ module.exports = {
   normalizeLayoutMode,
   generateLayout,
   generateOpenPlaza,
+  generateBossArena,
   generateSunkenCanyon,
   generateIceCavern,
   generateFireCavern,
@@ -3454,6 +3640,7 @@ module.exports = {
   scatterCoverInArena,
   scatterEntryDecor,
   placeCoverInArenaOrdered,
+  placeEntryDecorOrdered,
   OPEN_PLAZA_RIGID_HAZARDS,
   scatterCoverInRoom,
   decorateCrowdedLayout,

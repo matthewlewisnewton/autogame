@@ -79,6 +79,7 @@ const {
   getQuestRewardCards,
   pickWeightedEnemyType,
   getQuestScript,
+  isBossLevelQuest,
   DEFAULT_QUEST_TIER,
   DEFAULT_QUEST_ID,
 } = require('./quests');
@@ -1003,32 +1004,34 @@ function startDungeonRun() {
   _gameState.run = createRunState();
   resetDialogueState(_gameState.run);
   const quest = getSelectedQuest(_gameState);
-  if (usesScriptedEncounterRuntime(quest)) {
-    initScriptedEncounter(
-      _gameState.run,
-      quest,
-      _gameState.layout,
-      _gameState,
-      buildObjectiveSpawnCtx(),
-    );
-    syncScriptedDefeatEnemiesActiveCount(_gameState.run, _gameState.enemies);
-    if (getQuestScript(quest)) {
+  if (!isBossLevelQuest(quest)) {
+    if (usesScriptedEncounterRuntime(quest)) {
+      initScriptedEncounter(
+        _gameState.run,
+        quest,
+        _gameState.layout,
+        _gameState,
+        buildObjectiveSpawnCtx(),
+      );
+      syncScriptedDefeatEnemiesActiveCount(_gameState.run, _gameState.enemies);
+      if (getQuestScript(quest)) {
+        initQuestScript(_gameState.run, quest, _gameState.layout);
+      }
+    } else if (getQuestScript(quest)) {
       initQuestScript(_gameState.run, quest, _gameState.layout);
+      const seed = _gameState.layoutSeed || 42;
+      const rng = mulberry32(seed + 1000);
+      fireRunStartWaves(_gameState, { ...buildObjectiveSpawnCtx(), layout: _gameState.layout, rng });
+    } else if (isScriptedQuest(quest)) {
+      initScriptedEncounter(
+        _gameState.run,
+        quest,
+        _gameState.layout,
+        _gameState,
+        buildObjectiveSpawnCtx(),
+      );
+      syncScriptedDefeatEnemiesActiveCount(_gameState.run, _gameState.enemies);
     }
-  } else if (getQuestScript(quest)) {
-    initQuestScript(_gameState.run, quest, _gameState.layout);
-    const seed = _gameState.layoutSeed || 42;
-    const rng = mulberry32(seed + 1000);
-    fireRunStartWaves(_gameState, { ...buildObjectiveSpawnCtx(), layout: _gameState.layout, rng });
-  } else if (isScriptedQuest(quest)) {
-    initScriptedEncounter(
-      _gameState.run,
-      quest,
-      _gameState.layout,
-      _gameState,
-      buildObjectiveSpawnCtx(),
-    );
-    syncScriptedDefeatEnemiesActiveCount(_gameState.run, _gameState.enemies);
   }
   if (_gameState._pendingEncounterBossId != null && _gameState.run.encounter) {
     setEncounterBoss(_gameState.run, _gameState._pendingEncounterBossId);
@@ -2548,7 +2551,7 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
   // Difficulty scaling: miniboss-tier bosses get more HP the larger the party is at spawn.
   // Fixed once here from the live player count — never re-applied retroactively
   // when players later join or leave. 1–4 players stay at baseline (factor 1.0).
-  if (resolvedType === 'miniboss' || resolvedType === 'annex_overseer' || resolvedType === 'spire_warden' || resolvedType === 'cinder_warden' || resolvedType === 'magma_colossus' || resolvedType === 'permafrost_warden') {
+  if (resolvedType === 'miniboss' || resolvedType === 'annex_overseer' || resolvedType === 'spire_warden' || resolvedType === 'cinder_warden' || resolvedType === 'magma_colossus' || resolvedType === 'permafrost_warden' || resolvedType === 'glacial_tyrant') {
     const factor = difficultyScaleFactor(runPlayerCount(_gameState), DIFFICULTY_MINIBOSS_HP_PER_PLAYER);
     enemy.hp = Math.round(enemy.hp * factor);
     enemy.maxHp = Math.round(enemy.maxHp * factor);
@@ -3709,19 +3712,17 @@ function checkAllReadyInner() {
   const noStaleDisconnectReady = all.every(p => p.connected !== false || !p.ready);
   if (allConnectedReady && noStaleDisconnectReady) {
     const selectedTier = _gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER;
-    if (selectedTier >= 2) {
-      const questId = _gameState.selectedQuestId;
-      let clearedAny = false;
-      for (const player of connectedPlayers) {
-        if (player.ready && !isQuestTierUnlocked(player.accountId, questId, selectedTier)) {
-          player.ready = false;
-          clearedAny = true;
-        }
+    const questId = _gameState.selectedQuestId;
+    let clearedAny = false;
+    for (const player of connectedPlayers) {
+      if (player.ready && !isQuestTierUnlocked(player.accountId, questId, selectedTier)) {
+        player.ready = false;
+        clearedAny = true;
       }
-      if (clearedAny) {
-        _broadcastLobbyUpdate();
-        return;
-      }
+    }
+    if (clearedAny) {
+      _broadcastLobbyUpdate();
+      return;
     }
 
     if (!isLobbyPhase(_gameState)) return;

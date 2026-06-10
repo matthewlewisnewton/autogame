@@ -7,6 +7,16 @@ import { THEME } from './theme.js';
 
 const CLIENT_UNKNOWN = 'Contract issuer unknown';
 
+function resolveBossDisplayName(bossType, encounter) {
+	if (typeof encounter?.bossDisplayName === 'string' && encounter.bossDisplayName.trim()) {
+		return encounter.bossDisplayName.trim();
+	}
+	const normalized = typeof bossType === 'string' && bossType.trim() ? bossType.trim() : 'miniboss';
+	return normalized
+		.replace(/_/g, ' ')
+		.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 export function formatObjectiveSummary(quest) {
 	if (!quest) return '';
 
@@ -30,6 +40,16 @@ export function formatObjectiveSummary(quest) {
 
 	if (quest.objectiveType === 'stage_boss') {
 		const addCount = quest.encounter?.addCount ?? 0;
+		if (quest.levelKind === 'boss_level') {
+			const bossType = quest.encounter?.bossType || 'miniboss';
+			const bossName = resolveBossDisplayName(bossType, quest.encounter);
+			if (addCount > 0) {
+				return THEME.objectives.defeatBossLevelWithSupports
+					.replace('{bossName}', bossName)
+					.replace('{addCount}', String(addCount));
+			}
+			return THEME.objectives.defeatBossLevel.replace('{bossName}', bossName);
+		}
 		const questId = quest.questId || quest.id;
 		if (questId === 'spire_ascent') {
 			if (addCount > 0) {
@@ -230,9 +250,13 @@ function findQuestVariant(questVariants, questId, tier) {
 	) || null;
 }
 
-/** Tier-2+ lock state: prefer server-evaluated variant.tierUnlocked when present. */
-export function isQuestBoardTierLocked(unlockedQuestTiers, questVariants, questId, tier) {
-	if (!tier || tier <= 1) return false;
+/** Tier lock state: prefer server-evaluated tierUnlocked when present. */
+export function isQuestBoardTierLocked(unlockedQuestTiers, questVariants, questId, tier, row = null) {
+	const normalizedTier = tier ?? 1;
+	if (normalizedTier === 1 && row && typeof row.tierUnlocked === 'boolean') {
+		return !row.tierUnlocked;
+	}
+	if (normalizedTier <= 1) return false;
 	const variant = findQuestVariant(questVariants, questId, tier);
 	if (variant && typeof variant.tierUnlocked === 'boolean') {
 		return !variant.tierUnlocked;
@@ -275,6 +299,8 @@ function buildQuestBoardRows(quests, questVariants) {
 			briefingRewardLine: quest.briefingRewardLine,
 			briefingRewardText: quest.briefingRewardText,
 			signatureCardName: quest.signatureCardName,
+			levelKind: quest.levelKind,
+			tierUnlocked: quest.tierUnlocked,
 		});
 	}
 
@@ -386,8 +412,8 @@ function questBoardRebuildKey(rows, unlockedQuestTiers) {
 	return `${rowKey}|${unlockKey}`;
 }
 
-function questBoardTierUnlockedKey(questVariants) {
-	return (questVariants || [])
+function questBoardTierUnlockedKey(questVariants, quests = []) {
+	const variantFlags = (questVariants || [])
 		.filter((variant) => (variant.tier ?? 2) >= 2)
 		.map((variant) => {
 			const questId = variant.questId || variant.id;
@@ -398,11 +424,20 @@ function questBoardTierUnlockedKey(questVariants) {
 			return `${questId}:${tier}:${flag}`;
 		})
 		.join('\0');
+	const questFlags = (quests || [])
+		.map((quest) => {
+			const flag = typeof quest.tierUnlocked === 'boolean'
+				? (quest.tierUnlocked ? '1' : '0')
+				: '-';
+			return `${quest.id}:1:${flag}`;
+		})
+		.join('\0');
+	return `${variantFlags}|${questFlags}`;
 }
 
-function questBoardStructureKey(rows, unlockedQuestTiers, questVariants) {
+function questBoardStructureKey(rows, unlockedQuestTiers, questVariants, quests) {
 	const rebuildKey = questBoardRebuildKey(rows, unlockedQuestTiers);
-	const tierUnlockedKey = questBoardTierUnlockedKey(questVariants);
+	const tierUnlockedKey = questBoardTierUnlockedKey(questVariants, quests);
 	return `${rebuildKey}|${tierUnlockedKey}`;
 }
 
@@ -441,7 +476,7 @@ export function renderQuestBoard(
 	}
 
 	const rebuildKey = questBoardRebuildKey(rows, unlockedQuestTiers);
-	const structureKey = questBoardStructureKey(rows, unlockedQuestTiers, questVariants);
+	const structureKey = questBoardStructureKey(rows, unlockedQuestTiers, questVariants, quests);
 	const nextKey = `${structureKey}|${selectedQuestId}|${selectedQuestTier ?? 1}|${selectionLocked ? 'locked' : 'open'}`;
 	const existingCards = container.querySelectorAll('.quest-card');
 	if (
@@ -452,14 +487,19 @@ export function renderQuestBoard(
 		container.querySelectorAll('.quest-card').forEach((card) => {
 			const questId = card.dataset.questId;
 			const tier = Number(card.dataset.questTier) || 1;
-			const tierLocked = isQuestBoardTierLocked(unlockedQuestTiers, questVariants, questId, tier);
+			const row = rows.find((entry) => entry.id === questId && (entry.tier ?? 1) === tier);
+			const tierLocked = isQuestBoardTierLocked(unlockedQuestTiers, questVariants, questId, tier, row);
 			const locked = selectionLocked || tierLocked;
 			card.classList.toggle('quest-card-tier-locked', tierLocked);
 			card.classList.toggle('quest-card-locked', locked);
 			card.disabled = locked;
 			const tierBadge = card.querySelector('.quest-tier-badge');
 			if (tierBadge) {
-				tierBadge.textContent = tierLocked ? 'Tier 2 — Locked' : 'Tier 2';
+				if (tier >= 2) {
+					tierBadge.textContent = tierLocked ? 'Tier 2 — Locked' : 'Tier 2';
+				} else if (tierLocked) {
+					tierBadge.textContent = 'Locked';
+				}
 			}
 		});
 		container.dataset.questBoardKey = nextKey;
@@ -471,7 +511,7 @@ export function renderQuestBoard(
 
 	for (const row of rows) {
 		const tier = row.tier ?? 1;
-		const tierLocked = isQuestBoardTierLocked(unlockedQuestTiers, questVariants, row.id, tier);
+		const tierLocked = isQuestBoardTierLocked(unlockedQuestTiers, questVariants, row.id, tier, row);
 		const locked = selectionLocked || tierLocked;
 
 		const card = document.createElement('button');
@@ -490,7 +530,9 @@ export function renderQuestBoard(
 		const tierBadge =
 			tier >= 2
 				? `<span class="quest-tier-badge">${tierLocked ? 'Tier 2 — Locked' : 'Tier 2'}</span>`
-				: '';
+				: tierLocked
+					? '<span class="quest-tier-badge">Locked</span>'
+					: '';
 
 		card.innerHTML = `
 			<span class="quest-name">${row.name}</span>

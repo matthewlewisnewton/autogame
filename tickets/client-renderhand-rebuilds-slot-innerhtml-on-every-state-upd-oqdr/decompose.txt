@@ -1,0 +1,12 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 2 sub-tickets:
+
+```
+tickets/client-renderhand-rebuilds-slot-innerhtml-on-every-state-upd-oqdr/subtickets/01-add-slot-signature-skip/ticket.md
+tickets/client-renderhand-rebuilds-slot-innerhtml-on-every-state-upd-oqdr/subtickets/02-test-skip-path/ticket.md
+```
+
+**Scope summary:**
+
+- **01** — Implement the per-slot signature (`slotSignature()`) and skip-when-unchanged logic inside `renderHand()`. Stores cached signature on `slot.dataset._sig`; skips `innerHTML` rebuild and class toggling when unchanged; always updates `--charge-pct` for burning-creature animation.
+- **02** — Add tests verifying the skip path: (a) `innerHTML` is not rebuilt on consecutive calls with identical hand state, (b) `--charge-pct` still updates even when structural signature matches.
