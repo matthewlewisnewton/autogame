@@ -1,0 +1,348 @@
+/**
+ * Server-side scripted wave encounters: hand-authored enemy groups per room
+ * instead of bulk enemyPool placement at deploy.
+ */
+const { mulberry32 } = require('./dungeon');
+const { DEFAULT_QUEST_TIER } = require('./quests');
+
+/**
+ * @typedef {Object} ScriptedSpawnDef
+ * @property {string} type - Enemy type id.
+ * @property {number} [count=1] - How many of this type to spawn.
+ * @property {{ x: number, z: number }} [offset] - World offset from the spawn anchor.
+ * @property {string} [anchor] - Layout landmark type used as spawn anchor (room center when omitted).
+ */
+
+/**
+ * @typedef {Object} ScriptedWaveDef
+ * @property {ScriptedSpawnDef[]} spawns - Ordered spawn entries for this wave.
+ */
+
+/**
+ * @typedef {Object} ScriptedRoomDef
+ * @property {number} [roomIndex] - Index into `layout.rooms`.
+ * @property {string} [landmark] - Layout landmark type that resolves the target room.
+ * @property {ScriptedWaveDef[]} waves - Ordered waves cleared sequentially in this room.
+ */
+
+/**
+ * @typedef {Object} ScriptedEncounterConfig
+ * @property {ScriptedRoomDef[]} rooms - Per-room scripted wave definitions.
+ */
+
+/**
+ * @typedef {Object} ScriptedRoomState
+ * @property {string} roomKey - Stable key for this room (`room:N` or `landmark:type`).
+ * @property {number} roomIndex - Resolved layout room index.
+ * @property {number} waveIndex - Index of the active wave (-1 before first spawn).
+ * @property {string[]} enemyIds - Living enemy ids tagged to the active wave.
+ * @property {boolean} cleared - True when every wave in this room is defeated.
+ * @property {boolean} started - True after wave 0 has been spawned for this room.
+ */
+
+/**
+ * @typedef {Object} ScriptedEncounterState
+ * @property {Record<string, ScriptedRoomState>} rooms - Per-room runtime progress.
+ */
+
+function getScriptedEncounterDef(quest) {
+  if (!quest || !quest.scriptedEncounters || typeof quest.scriptedEncounters !== 'object') {
+    return null;
+  }
+  const rooms = quest.scriptedEncounters.rooms;
+  if (!Array.isArray(rooms) || rooms.length === 0) {
+    return null;
+  }
+  return quest.scriptedEncounters;
+}
+
+function isScriptedQuest(quest) {
+  return getScriptedEncounterDef(quest) != null;
+}
+
+function spawnCount(spawnDef) {
+  const count = Number.isFinite(spawnDef?.count) ? spawnDef.count : 1;
+  return Math.max(1, Math.floor(count));
+}
+
+function countAuthoredScriptedEnemies(quest) {
+  const config = getScriptedEncounterDef(quest);
+  if (!config) return 0;
+  let total = 0;
+  for (const roomDef of config.rooms) {
+    if (!Array.isArray(roomDef.waves)) continue;
+    for (const wave of roomDef.waves) {
+      if (!Array.isArray(wave.spawns)) continue;
+      for (const spawn of wave.spawns) {
+        total += spawnCount(spawn);
+      }
+    }
+  }
+  return total;
+}
+
+function roomKeyForDef(roomDef) {
+  if (Number.isInteger(roomDef.roomIndex) && roomDef.roomIndex >= 0) {
+    return `room:${roomDef.roomIndex}`;
+  }
+  if (typeof roomDef.landmark === 'string' && roomDef.landmark.length > 0) {
+    return `landmark:${roomDef.landmark}`;
+  }
+  return null;
+}
+
+function getStartRoomIndex(layout) {
+  if (!layout || !Array.isArray(layout.rooms) || layout.rooms.length === 0) {
+    return 0;
+  }
+  const idx = layout.rooms.findIndex((room) => room.role === 'start');
+  return idx >= 0 ? idx : 0;
+}
+
+function resolveRoomDef(roomDef, layout) {
+  if (!layout || !Array.isArray(layout.rooms) || layout.rooms.length === 0) {
+    return null;
+  }
+
+  if (Number.isInteger(roomDef.roomIndex) && layout.rooms[roomDef.roomIndex]) {
+    return {
+      room: layout.rooms[roomDef.roomIndex],
+      roomIndex: roomDef.roomIndex,
+    };
+  }
+
+  if (typeof roomDef.landmark === 'string' && Array.isArray(layout.landmarks)) {
+    const landmark = layout.landmarks.find((lm) => lm.type === roomDef.landmark);
+    if (landmark && Number.isFinite(landmark.x) && Number.isFinite(landmark.z)) {
+      const room = layout.rooms.find((candidate) => {
+        const halfW = candidate.width / 2;
+        const halfD = candidate.depth / 2;
+        return landmark.x >= candidate.x - halfW
+          && landmark.x <= candidate.x + halfW
+          && landmark.z >= candidate.z - halfD
+          && landmark.z <= candidate.z + halfD;
+      }) || layout.rooms[0];
+      return {
+        room,
+        roomIndex: layout.rooms.indexOf(room),
+        landmark,
+      };
+    }
+  }
+
+  return null;
+}
+
+function resolveSpawnAnchor(layout, room, spawnDef) {
+  if (spawnDef?.anchor && Array.isArray(layout?.landmarks)) {
+    const landmark = layout.landmarks.find((lm) => lm.type === spawnDef.anchor);
+    if (landmark && Number.isFinite(landmark.x) && Number.isFinite(landmark.z)) {
+      return { x: landmark.x, z: landmark.z };
+    }
+  }
+  if (room && Number.isFinite(room.x) && Number.isFinite(room.z)) {
+    return { x: room.x, z: room.z };
+  }
+  return { x: 0, z: 0 };
+}
+
+function resolveSpawnPosition(layout, room, spawnDef, spawnIndex, rng) {
+  const anchor = resolveSpawnAnchor(layout, room, spawnDef);
+  const offset = spawnDef?.offset || { x: 0, z: 0 };
+  const jitterX = spawnIndex > 0 ? (rng() * 2 - 1) * 1.5 : 0;
+  const jitterZ = spawnIndex > 0 ? (rng() * 2 - 1) * 1.5 : 0;
+  return {
+    x: anchor.x + (offset.x || 0) + jitterX,
+    z: anchor.z + (offset.z || 0) + jitterZ,
+  };
+}
+
+function waveRng(layoutSeed, roomKey, waveIndex) {
+  let hash = layoutSeed + 9100;
+  for (let i = 0; i < roomKey.length; i++) {
+    hash = (hash * 31 + roomKey.charCodeAt(i)) | 0;
+  }
+  return mulberry32(hash + waveIndex * 17);
+}
+
+function playerInRoom(x, z, room) {
+  if (!room) return false;
+  const halfW = room.width / 2;
+  const halfD = room.depth / 2;
+  return x >= room.x - halfW
+    && x <= room.x + halfW
+    && z >= room.z - halfD
+    && z <= room.z + halfD;
+}
+
+function buildRoomStates(quest, layout) {
+  const config = getScriptedEncounterDef(quest);
+  const rooms = {};
+  if (!config) return rooms;
+
+  for (const roomDef of config.rooms) {
+    const roomKey = roomKeyForDef(roomDef);
+    const resolved = resolveRoomDef(roomDef, layout);
+    if (!roomKey || !resolved) continue;
+    rooms[roomKey] = {
+      roomKey,
+      roomIndex: resolved.roomIndex,
+      waveIndex: -1,
+      enemyIds: [],
+      cleared: false,
+      started: false,
+    };
+  }
+  return rooms;
+}
+
+function spawnScriptedWave(run, gameState, roomKey, waveIndex, ctx) {
+  const quest = {
+    scriptedEncounters: run._scriptedEncounterConfig,
+    tier: run.questTier ?? DEFAULT_QUEST_TIER,
+    id: run.questId,
+  };
+  const config = getScriptedEncounterDef(quest);
+  if (!config) return;
+
+  const roomDef = config.rooms.find((candidate) => roomKeyForDef(candidate) === roomKey);
+  const roomState = run.scriptedEncounter?.rooms?.[roomKey];
+  const layout = gameState.layout;
+  const resolved = roomDef ? resolveRoomDef(roomDef, layout) : null;
+  if (!roomDef || !roomState || !resolved || !Array.isArray(roomDef.waves)) return;
+
+  const wave = roomDef.waves[waveIndex];
+  if (!wave || !Array.isArray(wave.spawns)) return;
+
+  const layoutSeed = gameState.layoutSeed || 42;
+  const rng = waveRng(layoutSeed, roomKey, waveIndex);
+  const enemyIds = [];
+  let spawnIndex = 0;
+
+  for (const spawnDef of wave.spawns) {
+    const count = spawnCount(spawnDef);
+    for (let i = 0; i < count; i++) {
+      const pos = resolveSpawnPosition(layout, resolved.room, spawnDef, spawnIndex, rng);
+      const enemy = ctx.spawnEnemy(pos.x, pos.z, spawnDef.type, undefined, {
+        tier: ctx.roomTierAt(layout, pos.x, pos.z),
+        rng,
+      });
+      enemy.wanderTarget = ctx.randomWanderTarget();
+      enemy.scriptedWave = { roomKey, waveIndex };
+      enemyIds.push(enemy.id);
+      spawnIndex += 1;
+    }
+  }
+
+  roomState.waveIndex = waveIndex;
+  roomState.enemyIds = enemyIds;
+  roomState.started = true;
+  roomState.cleared = false;
+}
+
+function tryAdvanceScriptedWave(run, gameState, roomKey, ctx) {
+  const quest = {
+    scriptedEncounters: run._scriptedEncounterConfig,
+    tier: run.questTier ?? DEFAULT_QUEST_TIER,
+    id: run.questId,
+  };
+  const config = getScriptedEncounterDef(quest);
+  const roomState = run.scriptedEncounter?.rooms?.[roomKey];
+  if (!config || !roomState || roomState.cleared) return;
+
+  const roomDef = config.rooms.find((candidate) => roomKeyForDef(candidate) === roomKey);
+  if (!roomDef || !Array.isArray(roomDef.waves)) return;
+
+  if (roomState.enemyIds.length > 0) return;
+
+  const nextWaveIndex = roomState.waveIndex + 1;
+  if (nextWaveIndex >= roomDef.waves.length) {
+    roomState.cleared = true;
+    return;
+  }
+
+  spawnScriptedWave(run, gameState, roomKey, nextWaveIndex, ctx);
+}
+
+function initScriptedEncounter(run, quest, layout, gameState, ctx) {
+  if (!isScriptedQuest(quest)) return;
+
+  const config = getScriptedEncounterDef(quest);
+  run._scriptedEncounterConfig = config;
+  run.scriptedEncounter = {
+    rooms: buildRoomStates(quest, layout),
+  };
+
+  const startRoomIndex = getStartRoomIndex(layout);
+  const startRoomKey = Object.keys(run.scriptedEncounter.rooms).find((key) => {
+    return run.scriptedEncounter.rooms[key].roomIndex === startRoomIndex;
+  });
+
+  if (startRoomKey) {
+    spawnScriptedWave(run, gameState, startRoomKey, 0, ctx);
+  }
+}
+
+function onScriptedEnemyDefeated(run, enemyId, gameState, ctx) {
+  if (!run?.scriptedEncounter) return;
+
+  for (const roomState of Object.values(run.scriptedEncounter.rooms)) {
+    const idx = roomState.enemyIds.indexOf(enemyId);
+    if (idx < 0) continue;
+    roomState.enemyIds.splice(idx, 1);
+    tryAdvanceScriptedWave(run, gameState, roomState.roomKey, ctx);
+    return;
+  }
+}
+
+function isPlayerActive(player) {
+  return !!(player && !player.dead && !player.extracted);
+}
+
+function tickScriptedEncounters(now, gameState, ctx) {
+  const run = gameState.run;
+  if (!run?.scriptedEncounter || run.status !== 'playing' || gameState.gamePhase !== 'playing') {
+    return;
+  }
+
+  const config = run._scriptedEncounterConfig;
+  if (!config || !Array.isArray(config.rooms)) return;
+
+  const layout = gameState.layout;
+  const activePlayers = Object.values(gameState.players || {}).filter(isPlayerActive);
+  if (activePlayers.length === 0) return;
+
+  for (const roomDef of config.rooms) {
+    const roomKey = roomKeyForDef(roomDef);
+    const roomState = run.scriptedEncounter.rooms[roomKey];
+    const resolved = resolveRoomDef(roomDef, layout);
+    if (!roomKey || !roomState || roomState.started || roomState.cleared || !resolved) {
+      continue;
+    }
+
+    const occupied = activePlayers.some((player) => playerInRoom(player.x, player.z, resolved.room));
+    if (!occupied) continue;
+
+    spawnScriptedWave(run, gameState, roomKey, 0, ctx);
+  }
+}
+
+function relinkScriptedEncounterEnemyIds(run, enemies) {
+  if (!run?.scriptedEncounter) return;
+  const aliveIds = new Set((enemies || []).filter((enemy) => enemy.hp > 0).map((enemy) => enemy.id));
+  for (const roomState of Object.values(run.scriptedEncounter.rooms)) {
+    roomState.enemyIds = roomState.enemyIds.filter((id) => aliveIds.has(id));
+  }
+}
+
+module.exports = {
+  getScriptedEncounterDef,
+  isScriptedQuest,
+  countAuthoredScriptedEnemies,
+  initScriptedEncounter,
+  tickScriptedEncounters,
+  onScriptedEnemyDefeated,
+  relinkScriptedEncounterEnemyIds,
+  roomKeyForDef,
+  resolveRoomDef,
+};

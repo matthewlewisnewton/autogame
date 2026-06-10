@@ -7,6 +7,11 @@
  * @property {{ x: number, z: number }} [spawnAnchor] - Encounter state anchor override.
  */
 
+/**
+ * Hand-authored scripted wave encounter metadata on a quest tier.
+ * @typedef {import('./scriptedEncounters').ScriptedEncounterConfig} ScriptedEncounterConfig
+ */
+
 const QUEST_DEFS = {
   training_caverns: {
     id: 'training_caverns',
@@ -353,6 +358,43 @@ function getEncounterConfig(quest) {
   return quest.encounter;
 }
 
+/** Test/debug fixture quest def — not registered in QUEST_DEFS. */
+const SCRIPTED_ENCOUNTER_FIXTURE_DEF = {
+  id: 'scripted_encounter_fixture',
+  enemyPool: [{ type: 'grunt', weight: 1 }],
+  tiers: {
+    1: {
+      name: 'Scripted Encounter Fixture',
+      description: 'Test-only scripted wave sequencing.',
+      objectiveType: 'defeat_enemies',
+      rewardCurrency: 1,
+      layoutProfile: 'crowded',
+      scriptedEncounters: {
+        rooms: [
+          {
+            roomIndex: 0,
+            waves: [
+              { spawns: [{ type: 'grunt', count: 2 }] },
+              { spawns: [{ type: 'skirmisher', count: 1 }] },
+            ],
+          },
+        ],
+      },
+    },
+  },
+};
+
+function getScriptedEncounterConfig(quest) {
+  if (!quest || !quest.scriptedEncounters || typeof quest.scriptedEncounters !== 'object') {
+    return null;
+  }
+  const rooms = quest.scriptedEncounters.rooms;
+  if (!Array.isArray(rooms) || rooms.length === 0) {
+    return null;
+  }
+  return quest.scriptedEncounters;
+}
+
 function formatRewardSummary(quest) {
   if (!quest || quest.rewardCurrency == null) {
     return 'Reward: —';
@@ -474,6 +516,7 @@ function pickWeightedEnemyType(pool, rng = Math.random) {
 
 module.exports = {
   QUEST_DEFS,
+  SCRIPTED_ENCOUNTER_FIXTURE_DEF,
   DEFAULT_QUEST_ID,
   DEFAULT_QUEST_TIER,
   isValidQuestId,
@@ -491,6 +534,7 @@ module.exports = {
   formatObjectiveSummary,
   formatRewardSummary,
   getEncounterConfig,
+  getScriptedEncounterConfig,
   getEnemyPool,
   getGuaranteedEnemyType,
   pickWeightedEnemyType,

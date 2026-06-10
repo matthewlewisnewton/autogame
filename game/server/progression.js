@@ -68,6 +68,13 @@ const {
 } = require('./quests');
 const { unlockQuestTier, isQuestTierUnlocked } = require('./users');
 const { getObjectiveDef } = require('./objectives');
+const {
+  initScriptedEncounter,
+  tickScriptedEncounters,
+  onScriptedEnemyDefeated,
+  relinkScriptedEncounterEnemyIds,
+  isScriptedQuest,
+} = require('./scriptedEncounters');
 const { THEME } = require('./theme');
 const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
 const CARD_IDENTITY = require('../shared/cardDefs.json');
@@ -941,6 +948,16 @@ function createRunState() {
 
 function startDungeonRun() {
   _gameState.run = createRunState();
+  const quest = getSelectedQuest(_gameState);
+  if (isScriptedQuest(quest)) {
+    initScriptedEncounter(
+      _gameState.run,
+      quest,
+      _gameState.layout,
+      _gameState,
+      buildObjectiveSpawnCtx(),
+    );
+  }
   if (_gameState._pendingEncounterBossId != null && _gameState.run.encounter) {
     setEncounterBoss(_gameState.run, _gameState._pendingEncounterBossId);
     delete _gameState._pendingEncounterBossId;
@@ -2243,6 +2260,7 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
 
 function removeDeadEnemies() {
   const dying = _gameState.enemies.filter((e) => e.hp <= 0);
+  const spawnCtx = buildObjectiveSpawnCtx();
   for (const enemy of dying) {
     recordEnemyCardDrop(enemy);
     spawnMagicStoneDrop(enemy);
@@ -2252,6 +2270,9 @@ function removeDeadEnemies() {
     const variantDef = enemy.variant ? VARIANT_DEFS[enemy.variant] : null;
     if (variantDef && variantDef.id === 'volatile') {
       spawnVolatileExplosion(enemy.x, enemy.z, variantDef);
+    }
+    if (enemy.scriptedWave && _gameState.run?.scriptedEncounter) {
+      onScriptedEnemyDefeated(_gameState.run, enemy.id, _gameState, spawnCtx);
     }
   }
 
@@ -2566,6 +2587,12 @@ function updateSurviveSpawns(now = Date.now()) {
   def.tickSpawns(now, _gameState, buildObjectiveSpawnCtx());
 }
 
+function updateScriptedEncounters(now = Date.now()) {
+  if (!isPlayingPhase(_gameState)) return;
+  if (isEncounterLocked(_gameState.run)) return;
+  tickScriptedEncounters(now, _gameState, buildObjectiveSpawnCtx());
+}
+
 function updateEncounterTriggers() {
   if (!isPlayingPhase(_gameState)) return;
   tryActivateEncounter(_gameState);
@@ -2704,6 +2731,12 @@ function captureCardCheckpoint() {
   if (run.encounter) {
     checkpoint.run.encounter = deepCloneJson(run.encounter);
   }
+  if (run.scriptedEncounter) {
+    checkpoint.run.scriptedEncounter = deepCloneJson(run.scriptedEncounter);
+  }
+  if (run._scriptedEncounterConfig) {
+    checkpoint.run._scriptedEncounterConfig = deepCloneJson(run._scriptedEncounterConfig);
+  }
 
   for (const [playerId, player] of Object.entries(_gameState.players)) {
     checkpoint.playerStates[playerId] = capturePlayerCardState(player);
@@ -2769,6 +2802,9 @@ function restoreCardCheckpoint() {
     assignRunSpawnPositions(all);
 
     _gameState.enemies = deepCloneJson(world.enemies ?? []);
+    if (_gameState.run.scriptedEncounter) {
+      relinkScriptedEncounterEnemyIds(_gameState.run, _gameState.enemies);
+    }
     _gameState.minions = deepCloneJson(world.minions ?? []);
     _gameState.loot = deepCloneJson(world.loot ?? []);
     _gameState.areaEffects = deepCloneJson(world.areaEffects ?? []);
@@ -3471,6 +3507,7 @@ module.exports = {
   spawnEnemies,
   spawnCombatEnemies,
   updateSurviveSpawns,
+  updateScriptedEncounters,
   updateEncounterTriggers,
   recordCrystalCollected,
   isRunObjectiveComplete,

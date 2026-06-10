@@ -310,6 +310,7 @@ const {
   spawnEnemies,
   spawnCombatEnemies,
   updateSurviveSpawns,
+  updateScriptedEncounters,
   updateEncounterTriggers,
   spawnLoot,
   spawnCrystals,
@@ -529,6 +530,7 @@ const DEBUG_SCENARIOS = new Set([
   'sunken-canyon-stage',
   'sunken-canyon-cliff-hazard',
   'frost-crossing-tier-1',
+  'scripted-wave-combat',
   'fire-cavern',
   'ember-descent-near-adds',
   'ember-descent-ember-wraith-burn',
@@ -1445,6 +1447,7 @@ function runGameLoopTick() {
           debugScenarios.nudgeDebugBossApproachPlayers(state);
           updateEncounterTriggers();
           updateSurviveSpawns();
+          updateScriptedEncounters();
 
           const now = Date.now();
           processPassiveDraws(now);
@@ -1772,6 +1775,7 @@ if (typeof module !== 'undefined' && module.exports) {
     spawnEnemies,
     spawnCombatEnemies,
     updateSurviveSpawns,
+    updateScriptedEncounters,
     firstRoomPosition,
     pickFloorSpawnPosition,
     buildPlayerRecord,

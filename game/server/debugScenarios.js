@@ -17,7 +17,13 @@
 const { SERVER_TO_CLIENT } = require('../shared/events.js');
 const crypto = require('crypto');
 const { generateLayout, questLayoutSeed, sampleFloorY, resolveFloorY } = require('./dungeon');
-const { DEFAULT_QUEST_ID, getLayoutProfileForQuest, buildQuestUpdatePayload } = require('./quests');
+const {
+  QUEST_DEFS,
+  DEFAULT_QUEST_ID,
+  getLayoutProfileForQuest,
+  buildQuestUpdatePayload,
+  SCRIPTED_ENCOUNTER_FIXTURE_DEF,
+} = require('./quests');
 const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS, MEDIC_HEAL_COST } = require('./config');
 const CARD_DEFS = require('../shared/cardDefs.json');
 const {
@@ -91,6 +97,44 @@ function clearPlayerCardCommitment(player) {
   delete player.cardWindupMs;
   delete player.cardWindupCardId;
   delete player.pendingCardUse;
+}
+
+function ensureScriptedEncounterFixtureQuest() {
+  const questId = SCRIPTED_ENCOUNTER_FIXTURE_DEF.id;
+  if (!QUEST_DEFS[questId]) {
+    QUEST_DEFS[questId] = SCRIPTED_ENCOUNTER_FIXTURE_DEF;
+  }
+}
+
+function setupScriptedWaveCombatDeploy(lobby, state, player) {
+  ensureScriptedEncounterFixtureQuest();
+  const questId = SCRIPTED_ENCOUNTER_FIXTURE_DEF.id;
+  const tier = 1;
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+
+  player.ready = true;
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  const startSpawn = firstRoomPosition();
+  player.x = startSpawn.x;
+  player.z = startSpawn.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+  enterPlayingPhase(lobby);
+
+  if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+    createDrawDeckFromSelectedDeck(player);
+    initPlayerHand(player);
+    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+    if (!player.pendingSummons) {
+      player.pendingSummons = new Set();
+    }
+  }
+
+  state.enemies = state.enemies || [];
+  state.loot = state.loot || [];
 }
 
 function setupFrostCrossingTier1Deploy(lobby, state, player) {
@@ -785,6 +829,25 @@ function applyDebugScenario(socket, name) {
       broadcastLobbyUpdate(lobby);
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return { ok: true, scenario: name };
+    }
+
+    if (name === 'scripted-wave-combat') {
+      // scripted_encounter_fixture Tier 1 with wave 0 grunts in the start room.
+      // Reachable normally by selecting Scripted Encounter Fixture and deploying;
+      // this scenario is a shortcut into wave-0 combat.
+      setupScriptedWaveCombatDeploy(lobby, state, player);
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
     }
 
     if (name === 'frost-crossing-tier-1') {
