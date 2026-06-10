@@ -4,7 +4,7 @@ import {
 	getLayoutProfileForQuest,
 	getLayoutGenerationOptions,
 } from '../quests.js';
-import { resetGameState, gameState, spawnEnemies } from '../index.js';
+import { resetGameState, gameState, spawnEnemies, startDungeonRun } from '../index.js';
 
 const QUEST_ID = 'frost_crossing';
 const TIER = 1;
@@ -29,6 +29,7 @@ describe('frost_crossing quest deploy layout', () => {
 		gameState.enemies = [];
 		gameState.loot = [];
 		spawnEnemies();
+		startDungeonRun();
 
 		expect(gameState.layout.profile).toBe('ice-cavern');
 		expect(gameState.enemies.length).toBeGreaterThan(0);

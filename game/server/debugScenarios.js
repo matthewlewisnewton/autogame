@@ -38,6 +38,7 @@ const {
   spawnEnemy,
   spawnEnemies,
   startDungeonRun,
+  updateQuestScriptTriggers,
   syncRunObjectiveToEnemies,
   checkRunTerminalState,
   stateSnapshot,
@@ -826,6 +827,61 @@ function applyDebugScenario(socket, name) {
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       state.run.objective.totalEnemies = total;
       state.run.objective.defeatedEnemies = Math.max(0, total - 1);
+      if (!player.hand.some((c) => c && c.type === 'weapon' && (c.remainingCharges == null || c.remainingCharges > 0))) {
+        const replaceSlot = player.hand.findIndex((c) => c && c.type !== 'weapon');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = {
+            id: 'iron_sword',
+            name: 'Rust-Forged Saber',
+            type: 'weapon',
+            charges: 5,
+            remainingCharges: 5,
+            grind: 0,
+          };
+        }
+      }
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'frost-crossing-frostmaw') {
+      // frost_crossing Tier 1 with run-start grunts cleared and Frostmaw spawned on
+      // the ice field for named-rare QA. Reachable normally by crossing to the ice
+      // sheet; this scenario is a shortcut into that encounter.
+      setupFrostCrossingTier1Deploy(lobby, state, player);
+
+      const iceRoom = state.layout.rooms.find((room) => room.band === 'ice');
+      const runStartWave = state.run?.waveScript?.waves?.find((wave) => wave.id === 'wave_run_start');
+      if (runStartWave) {
+        for (const enemyId of runStartWave.spawnedEnemyIds) {
+          const enemy = state.enemies.find((entry) => entry.id === enemyId);
+          if (enemy) enemy.hp = 0;
+        }
+        state.enemies = state.enemies.filter((enemy) => enemy.hp > 0);
+        runStartWave.status = 'cleared';
+        if (state.run?.objective) {
+          state.run.objective.defeatedEnemies = runStartWave.spawnedEnemyIds.length;
+        }
+      }
+
+      player.x = iceRoom?.x ?? 0;
+      player.z = iceRoom?.z ?? 0;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      updateQuestScriptTriggers();
+
+      const frostmaw = state.enemies.find((enemy) => enemy.namedRare?.name === 'Frostmaw');
+      if (frostmaw) {
+        frostmaw.wanderTarget = { x: frostmaw.x, z: frostmaw.z };
+        repositionNearEnemy(player, frostmaw);
+        player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      }
+
       if (!player.hand.some((c) => c && c.type === 'weapon' && (c.remainingCharges == null || c.remainingCharges > 0))) {
         const replaceSlot = player.hand.findIndex((c) => c && c.type !== 'weapon');
         if (replaceSlot >= 0) {

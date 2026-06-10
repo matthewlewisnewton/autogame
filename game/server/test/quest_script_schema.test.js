@@ -141,7 +141,10 @@ describe('defeat_enemies scripted bypass', () => {
   it('does not skip bulk combat spawn for unscripted production quests', () => {
     expect(def.skipBulkCombatSpawn(getQuest('training_caverns', 1))).toBe(false);
     expect(def.skipBulkCombatSpawn(getQuest('arena_trials', 1))).toBe(false);
-    expect(def.skipBulkCombatSpawn(getQuest('frost_crossing', 1))).toBe(false);
+  });
+
+  it('skips bulk combat spawn for frost_crossing tier 1 scripted waves', () => {
+    expect(def.skipBulkCombatSpawn(getQuest('frost_crossing', 1))).toBe(true);
   });
 
   it('createObjective uses scripted spawn count and ignores enemyCount', () => {

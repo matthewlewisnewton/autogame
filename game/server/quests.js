@@ -48,6 +48,76 @@
  */
 
 const { normalizeNamedRareVariant } = require('./namedRareVariants');
+const { generateLayout, questLayoutSeed } = require('./dungeon');
+
+function roundSpawnCoord(value) {
+  return Math.round(value * 10) / 10;
+}
+
+function spawnOffsetsInRoom(room, count, radiusFrac = 0.22) {
+  const radius = Math.min(room.width, room.depth) * radiusFrac;
+  const positions = [];
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2;
+    positions.push({
+      x: roundSpawnCoord(room.x + Math.cos(angle) * radius),
+      z: roundSpawnCoord(room.z + Math.sin(angle) * radius),
+    });
+  }
+  return positions;
+}
+
+/**
+ * Authored wave script for frost_crossing tier 1. Spawn coords are derived from
+ * the canonical layout seed so hand-placed enemies stay stable across runs.
+ */
+function buildFrostCrossingTier1Script() {
+  const questId = 'frost_crossing';
+  const tier = 1;
+  const seed = questLayoutSeed(questId, tier);
+  const layout = generateLayout(seed, 'ice-cavern', { slopes: true, layoutMode: 'default' });
+  const startRoom = layout.rooms.find((room) => room.role === 'start') || layout.rooms[0];
+  const iceRoom = layout.rooms.find((room) => room.band === 'ice');
+  const startPositions = spawnOffsetsInRoom(startRoom, 5);
+  const runStartTypes = ['grunt', 'grunt', 'grunt', 'skirmisher', 'skirmisher'];
+  const runStartSpawns = runStartTypes.map((type, index) => ({
+    type,
+    x: startPositions[index].x,
+    z: startPositions[index].z,
+  }));
+  const frostmawX = roundSpawnCoord(iceRoom.x);
+  const frostmawZ = roundSpawnCoord(iceRoom.z + iceRoom.depth * 0.15);
+
+  return {
+    waves: [
+      {
+        id: 'wave_run_start',
+        trigger: 'run_start',
+        spawns: runStartSpawns,
+      },
+      {
+        id: 'wave_ice_field',
+        trigger: 'enter_room',
+        room: { x: iceRoom.x, z: iceRoom.z },
+        spawns: [
+          {
+            type: 'glacial_thrower',
+            x: frostmawX,
+            z: frostmawZ,
+            variant: {
+              name: 'Frostmaw',
+              hpMult: 1.6,
+              damageMult: 1.3,
+              tint: '#7dd3fc',
+              scaleMult: 1.15,
+              drop: { cardId: 'permafrost_lance' },
+            },
+          },
+        ],
+      },
+    ],
+  };
+}
 
 const QUEST_DEFS = {
   training_caverns: {
@@ -179,6 +249,7 @@ const QUEST_DEFS = {
         // Ids must be acquisition: 'reward' cards in shared/cardDefs.json.
         signatureCardId: 'ice_ball',
         rewardCards: ['ice_ball', 'frost_nova', 'permafrost_lance'],
+        script: buildFrostCrossingTier1Script(),
       },
     },
   },
