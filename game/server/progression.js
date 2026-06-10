@@ -64,8 +64,13 @@ const {
   getEnemyPool,
   getGuaranteedEnemyType,
   pickWeightedEnemyType,
+  getQuestScript,
   DEFAULT_QUEST_TIER,
 } = require('./quests');
+const {
+  initQuestScript,
+  fireRunStartWaves,
+} = require('./questScript');
 const { unlockQuestTier, isQuestTierUnlocked } = require('./users');
 const { getObjectiveDef } = require('./objectives');
 const { THEME } = require('./theme');
@@ -941,6 +946,13 @@ function createRunState() {
 
 function startDungeonRun() {
   _gameState.run = createRunState();
+  const quest = getSelectedQuest(_gameState);
+  if (getQuestScript(quest)) {
+    initQuestScript(_gameState.run, quest, _gameState.layout);
+    const seed = _gameState.layoutSeed || 42;
+    const rng = mulberry32(seed + 1000);
+    fireRunStartWaves(_gameState, { ...buildObjectiveSpawnCtx(), layout: _gameState.layout, rng });
+  }
   if (_gameState._pendingEncounterBossId != null && _gameState.run.encounter) {
     setEncounterBoss(_gameState.run, _gameState._pendingEncounterBossId);
     delete _gameState._pendingEncounterBossId;
@@ -3434,6 +3446,8 @@ module.exports = {
   saveAllPlayers,
   createRunState,
   startDungeonRun,
+  initQuestScript,
+  fireRunStartWaves,
   clampObjectiveProgress,
   syncRunObjectiveToEnemies,
   recordEnemyDefeated,
