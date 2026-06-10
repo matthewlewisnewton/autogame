@@ -108,6 +108,9 @@ const io = new Server(server, {
 });
 server.setMaxListeners(0);
 
+/** O(1) playerId → live socket; updated on connect/disconnect/eviction. */
+const playerSockets = new Map();
+
 // Game state factory — shared with lobbies.js to keep the canonical shape in one place
 const { createGameState } = require('./game-state');
 
@@ -499,6 +502,7 @@ function resetGameState() {
   sim.setGameState(gameState, _timeouts);
   setProgressionGameState(gameState);
   ensureShopOffer();
+  playerSockets.clear();
 }
 
 const DEBUG_SCENARIOS = new Set([
@@ -746,16 +750,30 @@ function broadcastLobbyUpdate(lobby) {
 
 progression.setBroadcastLobbyUpdate(broadcastLobbyUpdate);
 
+function registerPlayerSocket(playerId, socket) {
+  if (!playerId || !socket) return;
+  playerSockets.set(playerId, socket);
+}
+
+function unregisterPlayerSocket(playerId, socket) {
+  if (!playerId || !socket) return;
+  if (playerSockets.get(playerId) === socket) {
+    playerSockets.delete(playerId);
+  }
+}
+
 // Helper: find a live Socket.IO socket by the stable playerId assigned on connect.
-// Socket.IO keys sockets by socket.id (a random string), not by playerId,
-// so we must iterate and match on socket.playerId.
 function findSocketByPlayerId(playerId, excludeSocketId) {
-  for (const socket of io.sockets.sockets.values()) {
-    if (excludeSocketId && socket.id === excludeSocketId) {
-      continue;
-    }
-    if (socket.playerId === playerId) {
-      return socket;
+  const mapped = playerSockets.get(playerId);
+  if (mapped && (!excludeSocketId || mapped.id !== excludeSocketId)) {
+    return mapped;
+  }
+  if (excludeSocketId) {
+    for (const socket of io.sockets.sockets.values()) {
+      if (socket.id === excludeSocketId) continue;
+      if (socket.playerId === playerId) {
+        return socket;
+      }
     }
   }
   return null;
@@ -1750,6 +1768,7 @@ function startServer(port) {
       applyDebugScenario,
       isDebugScenarioAllowed,
       softDisconnectPlayerFromLobby,
+      unregisterPlayerSocket,
       hubLayout: HUB_LAYOUT,
       syncLivePlayerCosmetic,
     };
@@ -1766,6 +1785,7 @@ function startServer(port) {
     }
 
     socket.playerId = playerId;
+    registerPlayerSocket(playerId, socket);
     console.log(`Player connected: socket=${socket.id}, playerId=${playerId}`);
 
     socket.emit(SERVER_TO_CLIENT.INIT, {
@@ -2020,6 +2040,8 @@ if (typeof module !== 'undefined' && module.exports) {
     server,
     io,
     findSocketByPlayerId,
+    registerPlayerSocket,
+    unregisterPlayerSocket,
     _intervals,
     _timeouts,
     clearAllTimers,
