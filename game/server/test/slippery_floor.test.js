@@ -415,23 +415,78 @@ describe('slippery floor — direction change while sliding', () => {
     const eastDir = { x: 1, z: 0 };
     const speedBefore = playerSpeed(player);
     const dotBefore = (player.vx * eastDir.x + player.vz * eastDir.z) / (speedBefore || 1);
+    const perTickStep = MOVE_SPEED / TICK_RATE;
+    const maxStepDisp = perTickStep * 8;
 
     player.inputActive = true;
     player.inputDx = 0;
     player.inputDz = 1;
     player.lastInputTime = freshInputTime();
-    tickMovement(state, 6, movementContext);
+
+    for (let i = 0; i < 6; i++) {
+      const px = player.x;
+      const pz = player.z;
+      applyPlayerMovement(state, movementContext);
+      const stepDisp = Math.hypot(player.x - px, player.z - pz);
+      expect(stepDisp).toBeLessThan(maxStepDisp);
+      expect(playerSpeed(player)).toBeGreaterThan(0);
+    }
 
     const displacement = Math.hypot(player.x - before.x, player.z - before.z);
-    const perTickStep = MOVE_SPEED / TICK_RATE;
-    expect(displacement).toBeLessThan(perTickStep * 8);
+    expect(displacement).toBeLessThan(maxStepDisp);
     expect(displacement).toBeGreaterThan(0);
 
     const speedAfter = playerSpeed(player);
-    expect(speedAfter).toBeGreaterThan(0);
     const dotAfter = (player.vx * eastDir.x + player.vz * eastDir.z) / (speedAfter || 1);
     expect(dotAfter).toBeLessThan(dotBefore);
     expect(player.vz).toBeGreaterThan(0);
+  });
+
+  it('redirects with perpendicular input when movementContext omits dungeonBounds (playthrough directionChangeWhileSliding probe)', () => {
+    const layout = makeSlipperyLabLayout();
+    const strippedState = createGameState();
+    strippedState.gamePhase = 'playing';
+    strippedState.layout = layout;
+    strippedState.walkableAABBs = computeWalkableAABBs(layout);
+    setGameState(strippedState, {});
+    rebuildWallColliders();
+
+    const strippedContext = {
+      layout,
+      walkableAABBs: strippedState.walkableAABBs,
+      colliders: buildMovementContext(strippedState).colliders,
+    };
+
+    strippedState.players.p1 = makePlayer({
+      x: -8,
+      z: 0,
+      inputActive: true,
+      inputDx: 1,
+      inputDz: 0,
+      lastInputTime: freshInputTime(),
+    });
+    tickMovement(strippedState, 20, strippedContext);
+    strippedState.players.p1.inputActive = false;
+    strippedState.players.p1.lastInputTime = staleInputTime();
+    tickMovement(strippedState, 3, strippedContext);
+
+    const player = strippedState.players.p1;
+    const eastDir = { x: 1, z: 0 };
+    const speedBefore = playerSpeed(player);
+    const dotBefore = (player.vx * eastDir.x + player.vz * eastDir.z) / (speedBefore || 1);
+
+    player.inputActive = true;
+    player.inputDx = 0;
+    player.inputDz = 1;
+    player.lastInputTime = freshInputTime();
+    tickMovement(strippedState, 6, strippedContext);
+
+    expect(player.vz).toBeGreaterThan(0);
+    expect(playerSpeed(player)).toBeGreaterThan(0);
+    const dotAfter = (player.vx * eastDir.x + player.vz * eastDir.z) / playerSpeed(player);
+    expect(dotAfter).toBeLessThan(dotBefore);
+
+    setGameState(null, null);
   });
 });
 

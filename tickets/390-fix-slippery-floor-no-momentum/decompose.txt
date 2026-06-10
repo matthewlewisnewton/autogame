@@ -1,0 +1,17 @@
+Broke ticket 390 into **3 sub-tickets** in dependency order, aligned with the three playthrough validation failures (`momentumAfterRelease`, `directionChangeWhileSliding`, `surfaceTransition`). All use **code** verification since every acceptance criterion is about movement behavior, velocity values, and test outcomes — not purely visual rendering.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/390-fix-slippery-floor-no-momentum/tickets/390-fix-slippery-floor-no-momentum/subtickets/01-fix-ice-momentum-after-release/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/390-fix-slippery-floor-no-momentum/tickets/390-fix-slippery-floor-no-momentum/subtickets/02-fix-direction-change-while-sliding/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/390-fix-slippery-floor-no-momentum/tickets/390-fix-slippery-floor-no-momentum/subtickets/03-fix-ice-surface-transitions/ticket.md`
+
+**Decomposition rationale:**
+
+| Sub-ticket | Maps to | Scope |
+|---|---|---|
+| **01** | Core bug + regression test | Ice coasting after input release; explicit ice-vs-normal drift assertion in `slippery_floor.test.js` |
+| **02** | `directionChangeWhileSliding` | Perpendicular input redirect while coasting |
+| **03** | `surfaceTransition` | Normal→ice momentum preservation; ice→stone sharp stop |
+
+All changes stay within `game/server/simulation.js` and `game/server/test/slippery_floor.test.js` per the parent ticket scope. No existing sub-tickets were present to retire.
