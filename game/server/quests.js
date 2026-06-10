@@ -182,7 +182,7 @@ function buildEmberDescentTier1Script() {
   const tier = 1;
   const seed = questLayoutSeed(questId, tier);
   const layout = generateLayout(seed, 'fire-cavern', { slopes: true, layoutMode: 'default' });
-  const rimRoom = layout.rooms.find((room) => room.band === 'rim') || layout.rooms[0];
+  const rimRoom = layout.rooms.find((room) => room.role === 'start') || layout.rooms[0];
   const basinRoom = layout.rooms.find((room) => room.band === 'basin');
   const startPositions = spawnOffsetsInRoom(rimRoom, 5);
   const runStartTypes = ['grunt', 'grunt', 'grunt', 'skirmisher', 'skirmisher'];

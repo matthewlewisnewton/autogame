@@ -561,6 +561,10 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
   // Assign role metadata to every room
   assignRoomRoles({ rooms, passages: passageObjects });
 
+  if (profileName === 'crowded') {
+    rooms[0].band = 'vault-entry';
+  }
+
   const layout = {
     rooms,
     passages: passageObjects,
@@ -2480,7 +2484,7 @@ function generateIceCavern(seed, options = {}) {
     depth: stonePadSize,
     walls: entryWalls,
     floorCorners: flatFloorCorners(y),
-    band: 'stone',
+    band: 'entry',
     role: 'start',
     spawnWeight: 0,
     encounterTier: 0,
@@ -2650,7 +2654,7 @@ function generateFireCavern(seed, options = {}) {
     depth: rimSize,
     walls: rimWalls,
     floorCorners: { yNW: yHigh, yNE: yHigh, ySE: yHigh, ySW: yHigh },
-    band: 'rim',
+    band: 'entry',
     role: 'start',
     spawnWeight: 0,
     encounterTier: 0,

@@ -514,7 +514,7 @@ export function lerpFireCavernAtmosphere(normalizedDepth) {
  * @returns {{ rimY: number, basinY: number }|null}
  */
 export function computeFireCavernAtmosphereBounds(layout) {
-	const rim = (layout?.rooms ?? []).find((r) => r.band === 'rim');
+	const rim = (layout?.rooms ?? []).find((r) => r.role === 'start' || r.band === 'rim');
 	const basin = (layout?.rooms ?? []).find((r) => r.band === 'basin');
 	if (!rim || !basin) return null;
 	return { rimY: tierFloorY(rim), basinY: tierFloorY(basin) };

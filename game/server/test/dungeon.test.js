@@ -1012,6 +1012,13 @@ describe('floorCorners on rooms', () => {
 // ── crowded interior cover ──
 
 describe('crowded interior cover', () => {
+  it('tags the start room with band vault-entry after assignRoomRoles (seed 42)', () => {
+    const layout = generateLayout(42, 'crowded');
+    const start = layout.rooms.find((r) => r.role === 'start');
+    expect(start).toBe(layout.rooms[0]);
+    expect(start.band).toBe('vault-entry');
+  });
+
   const SEED = 42;
   const MARGIN = 2;
 
@@ -2484,11 +2491,12 @@ describe("generateLayout(seed, 'ice-cavern')", () => {
     return false;
   }
 
-  it('returns profile ice-cavern with stone, ice, and ramp bands', () => {
+  it('returns profile ice-cavern with entry, stone, ice, and ramp bands', () => {
     const layout = generateLayout(42, 'ice-cavern');
     expect(layout.profile).toBe('ice-cavern');
     expect(layout.passages).toEqual([]);
-    expect(roomsByBand(layout, 'stone').length).toBe(2);
+    expect(roomsByBand(layout, 'entry').length).toBe(1);
+    expect(roomsByBand(layout, 'stone').length).toBe(1);
     expect(roomsByBand(layout, 'ice').length).toBe(1);
     const ramps = roomsByBand(layout, 'ramp');
     expect(ramps.length).toBeGreaterThanOrEqual(1);
@@ -2511,11 +2519,12 @@ describe("generateLayout(seed, 'ice-cavern')", () => {
     }
   });
 
-  it('assigns explicit roles: stone start, stone treasure, ramps=connector', () => {
+  it('assigns explicit roles: entry start, stone treasure, ramps=connector', () => {
     const layout = generateLayout(42, 'ice-cavern');
     const start = layout.rooms.find(r => r.role === 'start');
     const treasure = layout.rooms.find(r => r.role === 'treasure');
-    expect(start.band).toBe('stone');
+    expect(start.band).toBe('entry');
+    expect(start.floorSurface).toBe('normal');
     expect(treasure.band).toBe('stone');
     for (const ramp of roomsByBand(layout, 'ramp')) {
       expect(ramp.role).toBe('connector');
@@ -2580,11 +2589,11 @@ describe("generateLayout(seed, 'fire-cavern')", () => {
     return countReachableRooms(layout, aabbs, colliders) === layout.rooms.length;
   }
 
-  it('returns profile fire-cavern with rim, ramps, and basin bands', () => {
+  it('returns profile fire-cavern with entry, ramps, and basin bands', () => {
     const layout = generateLayout(42, 'fire-cavern');
     expect(layout.profile).toBe('fire-cavern');
     expect(layout.passages).toEqual([]);
-    expect(roomsByBand(layout, 'rim').length).toBe(1);
+    expect(roomsByBand(layout, 'entry').length).toBe(1);
     expect(roomsByBand(layout, 'basin').length).toBe(1);
     const ramps = roomsByBand(layout, 'ramp');
     expect(ramps.length).toBeGreaterThanOrEqual(2);
@@ -2593,7 +2602,7 @@ describe("generateLayout(seed, 'fire-cavern')", () => {
 
   it('has a flat rim (~12–15 units) and a basin floor ≥ 4× default room area', () => {
     const layout = generateLayout(42, 'fire-cavern');
-    const rim = roomsByBand(layout, 'rim')[0];
+    const rim = layout.rooms.find(r => r.role === 'start');
     const basin = roomsByBand(layout, 'basin')[0];
     expect(rim.width).toBeGreaterThanOrEqual(12);
     expect(rim.width).toBeLessThanOrEqual(15);
@@ -2607,7 +2616,7 @@ describe("generateLayout(seed, 'fire-cavern')", () => {
   it('Y drop from rim centre to basin centre is ≥ 8 units', () => {
     for (const seed of [1, 42, 123, 777]) {
       const layout = generateLayout(seed, 'fire-cavern');
-      const rim = roomsByBand(layout, 'rim')[0];
+      const rim = layout.rooms.find(r => r.role === 'start');
       const basin = roomsByBand(layout, 'basin')[0];
       const yRim = sampleFloorY(layout, rim.x, rim.z);
       const yBasin = sampleFloorY(layout, basin.x, basin.z);
@@ -2627,12 +2636,14 @@ describe("generateLayout(seed, 'fire-cavern')", () => {
     }
   });
 
-  it('assigns explicit roles: rim=start, basin=treasure, ramps=connector spawnWeight 0', () => {
+  it('assigns explicit roles: entry rim=start, basin=treasure, ramps=connector spawnWeight 0', () => {
     const layout = generateLayout(42, 'fire-cavern');
-    const rim = roomsByBand(layout, 'rim')[0];
+    const rim = layout.rooms.find(r => r.role === 'start');
     const basin = roomsByBand(layout, 'basin')[0];
     expect(rim.role).toBe('start');
+    expect(rim.band).toBe('entry');
     expect(basin.role).toBe('treasure');
+    expect(basin.band).toBe('basin');
     for (const ramp of roomsByBand(layout, 'ramp')) {
       expect(ramp.role).toBe('connector');
       expect(ramp.spawnWeight).toBe(0);
@@ -2653,7 +2664,7 @@ describe("generateLayout(seed, 'fire-cavern')", () => {
 
   it('rim and basin have solid outer perimeter walls (no walk-off gaps)', () => {
     const layout = generateLayout(42, 'fire-cavern');
-    const rim = roomsByBand(layout, 'rim')[0];
+    const rim = layout.rooms.find(r => r.role === 'start');
     const basin = roomsByBand(layout, 'basin')[0];
     const rh = rim.depth / 2;
     const rw = rim.width / 2;

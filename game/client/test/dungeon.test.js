@@ -1077,7 +1077,7 @@ describe('fire-cavern cover, floors & treasure marker', () => {
 
 	it('server-generated seed 42: rim spawn floor Y exceeds treasure marker Y', () => {
 		const layout = generateLayout(42, 'fire-cavern');
-		const rim = layout.rooms.find(r => r.band === 'rim');
+		const rim = layout.rooms.find(r => r.role === 'start');
 		const treasureRoom = layout.rooms.find(r => r.role === 'treasure');
 		const result = buildDungeon(mockScene(), layout);
 		const marker = findTreasureMarker(result.meshes);
@@ -1104,7 +1104,7 @@ describe('fire-cavern cover, floors & treasure marker', () => {
 
 	it('applies distinct rim and basin floor materials on server-generated fire-cavern', () => {
 		const layout = generateLayout(42, 'fire-cavern');
-		const rim = layout.rooms.find(r => r.band === 'rim');
+		const rim = layout.rooms.find(r => r.role === 'start');
 		const basin = layout.rooms.find(r => r.band === 'basin');
 		const result = buildDungeon(mockScene(), layout);
 		const rimFloor = findRoomFloorMesh(result.meshes, rim);

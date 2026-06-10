@@ -421,6 +421,10 @@ function iceCavernIceFloorHex() {
 export function getIceCavernBandFloorHex(band, yT = 0.5) {
 	const stoneHex = iceCavernStoneFloorHex();
 	const iceHex = iceCavernIceFloorHex();
+	if (band === 'entry') {
+		const entryHex = getEntryRoomMaterialColors('ice-cavern')?.floor;
+		if (entryHex != null) return entryHex;
+	}
 	if (band === 'stone') return stoneHex;
 	if (band === 'ice') return iceHex;
 	const t = band === 'ramp' ? yT : 0.5;
@@ -434,6 +438,10 @@ export function getIceCavernBandFloorHex(band, yT = 0.5) {
  * @param {number} [yT] - ramp lerp factor (0 = stone, 1 = ice)
  */
 export function getIceCavernBandMaterials(band, yT = 0.5) {
+	if (band === 'entry') {
+		const entryMats = getEntryRoomMaterials('ice-cavern');
+		if (entryMats) return { floor: entryMats.floor };
+	}
 	const cacheKey = band === 'ramp' ? `ramp-${Math.round(yT * 100)}` : (band || 'ice');
 	if (!iceCavernBandMaterialsCache.has(cacheKey)) {
 		const entry = iceCavernThemeEntry();
@@ -463,7 +471,7 @@ function getIceCavernRoleFloorMaterial(band, yT, role) {
 }
 
 function resolveIceCavernRoomMaterials(room) {
-	if (room.role === 'start') {
+	if (room.role === 'start' || room.band === 'entry') {
 		const entryMats = getEntryRoomMaterials('ice-cavern');
 		if (entryMats) return entryMats;
 	}
@@ -503,6 +511,10 @@ function fireCavernBasinFloorHex() {
 export function getFireCavernBandFloorHex(band, yT = 0.5) {
 	const rimHex = fireCavernRimFloorHex();
 	const basinHex = fireCavernBasinFloorHex();
+	if (band === 'entry') {
+		const entryHex = getEntryRoomMaterialColors('fire-cavern')?.floor;
+		if (entryHex != null) return entryHex;
+	}
 	if (band === 'rim') return rimHex;
 	if (band === 'basin') return basinHex;
 	const t = band === 'ramp' ? yT : 0.5;
@@ -516,6 +528,10 @@ export function getFireCavernBandFloorHex(band, yT = 0.5) {
  * @param {number} [yT] - ramp lerp factor (0 = rim, 1 = basin)
  */
 export function getFireCavernBandMaterials(band, yT = 0.5) {
+	if (band === 'entry') {
+		const entryMats = getEntryRoomMaterials('fire-cavern');
+		if (entryMats) return { floor: entryMats.floor };
+	}
 	const cacheKey = band === 'ramp' ? `ramp-${Math.round(yT * 100)}` : (band || 'basin');
 	if (!fireCavernBandMaterialsCache.has(cacheKey)) {
 		const entry = fireCavernThemeEntry();
@@ -533,7 +549,7 @@ function inferFireCavernRampYT(room, layout) {
 	if (!fc) return 0.5;
 
 	const avgY = (fc.yNW + fc.yNE + fc.ySE + fc.ySW) / 4;
-	const rimRoom = layout.rooms.find(r => r.band === 'rim');
+	const rimRoom = layout.rooms.find(r => r.role === 'start' || r.band === 'rim');
 	const basinRoom = layout.rooms.find(r => r.band === 'basin');
 	const yHigh = rimRoom?.floorCorners?.yNW ?? DEFAULT_FLOOR_Y;
 	const yLow = basinRoom?.floorCorners?.yNW ?? DEFAULT_FLOOR_Y;
@@ -558,7 +574,7 @@ function getFireCavernRoleFloorMaterial(band, yT, role) {
 }
 
 function resolveFireCavernRoomMaterials(room, layout) {
-	if (room.role === 'start') {
+	if (room.role === 'start' || room.band === 'entry') {
 		const entryMats = getEntryRoomMaterials('fire-cavern');
 		if (entryMats) return entryMats;
 	}

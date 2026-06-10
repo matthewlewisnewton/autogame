@@ -1529,7 +1529,7 @@ describe('debugScenario — fire-cavern-stage', () => {
 
 		expect(state.layout.profile).toBe('fire-cavern');
 		expect(startRoom).toBeTruthy();
-		expect(startRoom.band).toBe('rim');
+		expect(startRoom.band).toBe('entry');
 		expect(player.x).toBe(startRoom.x);
 		expect(player.z).toBe(startRoom.z);
 		expect(player.y).toBe(resolveFloorY(sampleFloorY(state.layout, player.x, player.z)));
@@ -1586,7 +1586,7 @@ describe('debugScenario — fire-cavern', () => {
 			layoutMode: 'default',
 		});
 		expect(state.layoutSeed).toBe(questLayoutSeed(EMBER_DESCENT_ID, EMBER_DESCENT_TIER_1));
-		expect(startRoom?.band).toBe('rim');
+		expect(startRoom?.band).toBe('entry');
 		expect(player.x).toBe(startRoom.x);
 		expect(player.z).toBe(startRoom.z);
 		expect(player.y).toBe(resolveFloorY(sampleFloorY(state.layout, player.x, player.z)));
