@@ -48,6 +48,43 @@ export const MODEL_REGISTRY = {
 // failures) are reused so a path is fetched at most once.
 const modelCache = new Map();
 
+/** userData key set on geometries/materials owned by the model cache. */
+const MODEL_CACHE_SHARED_FLAG = '__modelCacheShared';
+
+function markResourceShared(resource) {
+	if (!resource) return;
+	if (!resource.userData) resource.userData = {};
+	resource.userData[MODEL_CACHE_SHARED_FLAG] = true;
+}
+
+/**
+ * Tag every mesh geometry/material under a loadModel clone so dispose logic can
+ * skip cache-owned GPU resources (shared across all live clones of a path).
+ * @param {import('three').Object3D} root
+ */
+function markModelCloneShared(root) {
+	if (!root) return;
+	root.traverse((node) => {
+		if (!node.isMesh) return;
+		markResourceShared(node.geometry);
+		const mat = node.material;
+		if (Array.isArray(mat)) {
+			for (const m of mat) markResourceShared(m);
+		} else {
+			markResourceShared(mat);
+		}
+	});
+}
+
+/**
+ * True when `resource` is a geometry or material tagged by markModelCloneShared.
+ * @param {import('three').BufferGeometry|import('three').Material|{ userData?: object }|null|undefined} resource
+ * @returns {boolean}
+ */
+export function isModelCacheShared(resource) {
+	return resource?.userData?.[MODEL_CACHE_SHARED_FLAG] === true;
+}
+
 /**
  * Look up the registry path for an entity key.
  * @param {string} key - e.g. 'player', 'grunt', 'magic_stone'
@@ -101,7 +138,12 @@ export function loadModel(path) {
 
 	// Each caller resolves to its own clone so instances are never shared. A
 	// cached null failure stays null.
-	return entry.then((scene) => (scene ? scene.clone(true) : null));
+	return entry.then((scene) => {
+		if (!scene) return null;
+		const clone = scene.clone(true);
+		markModelCloneShared(clone);
+		return clone;
+	});
 }
 
 /** Clear the model cache (testing/dev helper; not used by gameplay). */
