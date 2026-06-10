@@ -318,7 +318,7 @@ describe('vitals persistence cold-load', () => {
 			magicStones: 15,
 		};
 
-		savePlayerData('acct-vitals');
+		savePlayerData(gameState, 'acct-vitals');
 
 		const loaded = testProvider.loadPlayer('acct-vitals');
 		expect(loaded.hp).toBe(42);
@@ -343,7 +343,7 @@ describe('vitals persistence cold-load', () => {
 			magicStones: 3,
 		};
 
-		savePlayerData('acct-dead');
+		savePlayerData(gameState, 'acct-dead');
 
 		const loaded = testProvider.loadPlayer('acct-dead');
 		expect(loaded.hp).toBe(0);
@@ -393,7 +393,7 @@ describe('savePlayerData', () => {
 		};
 		gameState.players['testPlayer'] = player;
 
-		savePlayerData('testPlayer');
+		savePlayerData(gameState, 'testPlayer');
 
 		const loaded = testProvider.loadPlayer('testPlayer');
 		expectPersistentData(loaded, {
@@ -428,7 +428,7 @@ describe('savePlayerData', () => {
 		};
 		gameState.players['p1'] = player;
 
-		savePlayerData('p1');
+		savePlayerData(gameState, 'p1');
 
 		const loaded = testProvider.loadPlayer('p1');
 		expectPersistentData(loaded, {
@@ -448,14 +448,14 @@ describe('savePlayerData', () => {
 	});
 
 	it('does nothing when player does not exist in gameState', () => {
-		expect(() => savePlayerData('nonexistent')).not.toThrow();
+		expect(() => savePlayerData(gameState, 'nonexistent')).not.toThrow();
 		expect(testProvider.loadPlayer('nonexistent')).toBeNull();
 	});
 
 	it('does nothing when provider is null', () => {
 		setTestProvider(null);
 		gameState.players['anyone'] = { currency: 10, ownedCards: {}, selectedDeck: [] };
-		expect(() => savePlayerData('anyone')).not.toThrow();
+		expect(() => savePlayerData(gameState, 'anyone')).not.toThrow();
 	});
 
 	it('catches and logs errors without rethrowing when provider.savePlayer throws', () => {
@@ -472,7 +472,7 @@ describe('savePlayerData', () => {
 		gameState.players['errPlayer'] = player;
 
 		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		expect(savePlayerData('errPlayer')).toBe(false);
+		expect(savePlayerData(gameState, 'errPlayer')).toBe(false);
 		expect(consoleErrorSpy).toHaveBeenCalledWith(
 			expect.stringContaining('[persistence] savePlayerData failed for errPlayer'),
 			expect.any(String)
@@ -500,7 +500,7 @@ describe('saveAllPlayers', () => {
 		gameState.players['a'] = { x: 1, y: 0.5, z: 2, rotation: 0, currency: 1, ownedCards: { iron_sword: 1 }, selectedDeck: ['iron_sword'] };
 		gameState.players['b'] = { x: 3, y: 0.5, z: 4, rotation: 1, currency: 2, ownedCards: { flame_blade: 1 }, selectedDeck: ['flame_blade'] };
 
-		saveAllPlayers();
+		saveAllPlayers(gameState);
 
 		expectPersistentData(testProvider.loadPlayer('a'), {
 			x: 1, y: 0.5, z: 2, rotation: 0,
@@ -518,7 +518,7 @@ describe('saveAllPlayers', () => {
 
 	it('is a no-op when there are no players', () => {
 		expect(Object.keys(gameState.players)).toHaveLength(0);
-		expect(() => saveAllPlayers()).not.toThrow();
+		expect(() => saveAllPlayers(gameState)).not.toThrow();
 	});
 
 	it('catches per-player errors without crashing the loop', () => {
@@ -533,7 +533,7 @@ describe('saveAllPlayers', () => {
 		});
 
 		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		expect(() => saveAllPlayers()).not.toThrow();
+		expect(() => saveAllPlayers(gameState)).not.toThrow();
 		// p2 should still have been saved
 		expectPersistentData(testProvider.loadPlayer('p2'), {
 			x: 0, y: 0.5, z: 0, rotation: 0,
@@ -569,7 +569,7 @@ describe('persistenceKey', () => {
 			ownedCards: {},
 			selectedDeck: [],
 		};
-		expect(persistenceKey('player-uuid-1')).toBe('acct-alice');
+		expect(persistenceKey(gameState, 'player-uuid-1')).toBe('acct-alice');
 	});
 
 	it('returns playerId for anonymous players (accountId null)', () => {
@@ -580,7 +580,7 @@ describe('persistenceKey', () => {
 			ownedCards: {},
 			selectedDeck: [],
 		};
-		expect(persistenceKey('anon-uuid-1')).toBe('anon-uuid-1');
+		expect(persistenceKey(gameState, 'anon-uuid-1')).toBe('anon-uuid-1');
 	});
 
 	it('returns playerId for anonymous players (accountId undefined)', () => {
@@ -590,11 +590,11 @@ describe('persistenceKey', () => {
 			ownedCards: {},
 			selectedDeck: [],
 		};
-		expect(persistenceKey('anon-uuid-2')).toBe('anon-uuid-2');
+		expect(persistenceKey(gameState, 'anon-uuid-2')).toBe('anon-uuid-2');
 	});
 
 	it('returns playerId when player does not exist', () => {
-		expect(persistenceKey('nonexistent')).toBe('nonexistent');
+		expect(persistenceKey(gameState, 'nonexistent')).toBe('nonexistent');
 	});
 });
 
@@ -631,7 +631,7 @@ describe('authenticated save/load round-trip by accountId', () => {
 		};
 
 		// Save using playerId (as the server does)
-		savePlayerData(playerId);
+		savePlayerData(gameState, playerId);
 
 		// Verify data is stored under accountId, not playerId
 		expectPersistentData(testProvider.loadPlayer(testAccountId), {
@@ -674,8 +674,8 @@ describe('authenticated save/load round-trip by accountId', () => {
 			selectedDeck: ['flame_blade'],
 		};
 
-		savePlayerData('p1');
-		savePlayerData('p2');
+		savePlayerData(gameState, 'p1');
+		savePlayerData(gameState, 'p2');
 
 		expect(testProvider.loadPlayer('acct-user-a').currency).toBe(100);
 		expect(testProvider.loadPlayer('acct-user-b').currency).toBe(200);
@@ -717,7 +717,7 @@ describe('anonymous save/load round-trip by playerId', () => {
 		};
 
 		// Save using playerId
-		savePlayerData(anonPlayerId);
+		savePlayerData(gameState, anonPlayerId);
 
 		// Verify data is stored under playerId
 		const loaded = testProvider.loadPlayer(anonPlayerId);

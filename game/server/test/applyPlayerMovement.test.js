@@ -163,7 +163,7 @@ describe('flushDirtyPlayerSaves()', () => {
     flushDirtyPlayerSaves();
 
     expect(saveSpy).toHaveBeenCalledTimes(1);
-    expect(saveSpy).toHaveBeenCalledWith('p1');
+    expect(saveSpy).toHaveBeenCalledWith(state, 'p1');
     expect(state.players.p1.persistenceDirty).toBe(false);
   });
 

@@ -93,7 +93,6 @@ let _gameState = null;
 let _getIo = () => null;
 let _broadcastLobbyUpdate = () => {};
 let _rebuildWallColliders = () => {};
-let provider = null;
 
 function initProgression(deps) {
   _gameState = deps.gameState;
@@ -173,14 +172,6 @@ function setBroadcastLobbyUpdate(fn) {
 
 function setRebuildWallColliders(fn) {
   _rebuildWallColliders = fn;
-}
-
-function setTestProvider(p) {
-  provider = p;
-}
-
-function getProvider() {
-  return provider;
 }
 
 // Server-side card definitions, rebuilt from shared single sources:
@@ -479,7 +470,7 @@ function healAtMedic(playerId, state = _gameState) {
   player.currency -= cost;
   player.hp = MAX_HP;
   player.dead = false;
-  savePlayerData(playerId);
+  savePlayerData(state, playerId);
 
   return { ok: true, hp: player.hp, currency: player.currency, cost };
 }
@@ -861,54 +852,6 @@ function createPlayerProgress() {
     equippedKeyItemId: 'dodge_roll',
     keyItemCooldownUntil: 0,
   };
-}
-
-function extractPersistentData(player) {
-  normalizePlayerInventory(player);
-  return {
-    currency: player.currency || 0,
-    inventory: player.inventory.map(instance => ({ ...instance })),
-    ownedCards: inventoryToOwnedCards(player.inventory),
-    selectedDeck: player.selectedDeck || [],
-    x: player.x || 0,
-    y: player.y || 0.5,
-    z: player.z || 0,
-    rotation: player.rotation || 0,
-    equippedKeyItemId: player.equippedKeyItemId || 'dodge_roll',
-    hp: Number.isFinite(player.hp) ? player.hp : MAX_HP,
-    dead: player.dead === true,
-    magicStones: Number.isFinite(player.magicStones) ? player.magicStones : STARTING_MAGIC_STONES,
-  };
-}
-
-function persistenceKey(playerId) {
-  const player = _gameState.players[playerId];
-  if (!player) return playerId;
-  return player.accountId || playerId;
-}
-
-function savePlayerData(playerId) {
-  if (!provider) return true;
-  const player = _gameState.players[playerId];
-  if (!player) return true;
-  try {
-    const key = persistenceKey(playerId);
-    provider.savePlayer(key, extractPersistentData(player));
-    return true;
-  } catch (err) {
-    console.error(`[persistence] savePlayerData failed for ${playerId}:`, err.message);
-    return false;
-  }
-}
-
-function saveAllPlayers() {
-  for (const playerId of Object.keys(_gameState.players)) {
-    try {
-      savePlayerData(playerId);
-    } catch (err) {
-      console.error(`[persistence] saveAllPlayers failed for ${playerId}:`, err.message);
-    }
-  }
 }
 
 function createRunState() {
@@ -2911,7 +2854,7 @@ function tryEnterTelepipe(playerId) {
   player.inputDx = 0;
   player.inputDz = 0;
   clearPlayerCardCommitment(player);
-  savePlayerData(playerId);
+  savePlayerData(_gameState, playerId);
   console.log(`[telepipe] player ${playerId} extracted`);
 
   const io = getIoTarget();
@@ -2984,7 +2927,7 @@ function checkRunTerminalState() {
   }
 
   for (const playerId of Object.keys(_gameState.players)) {
-    savePlayerData(playerId);
+    savePlayerData(_gameState, playerId);
   }
 
   const summary = buildRunSummary(status);
@@ -3169,7 +3112,7 @@ function returnPlayersToLobby(state = _gameState) {
   }
 
   for (const playerId of Object.keys(state.players)) {
-    savePlayerData(playerId);
+    savePlayerData(state, playerId);
   }
 
   const io = getIoTarget();
@@ -3227,7 +3170,7 @@ function giveUpRun(state = _gameState) {
   }
 
   for (const playerId of Object.keys(state.players)) {
-    savePlayerData(playerId);
+    savePlayerData(state, playerId);
   }
 
   refreshShopOffer();
@@ -3350,6 +3293,15 @@ function checkAllReadyInner() {
     }
   }
 }
+
+const {
+  setTestProvider,
+  getProvider,
+  extractPersistentData,
+  persistenceKey,
+  savePlayerData,
+  saveAllPlayers,
+} = require('./progression/persistence');
 
 module.exports = {
   initProgression,

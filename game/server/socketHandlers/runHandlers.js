@@ -90,7 +90,7 @@ function register(socket, ctx) {
     const result = claimCardReward(socket.playerId, data.cardId, state);
     if (!result.ok) return;
 
-    savePlayerData(socket.playerId);
+    savePlayerData(state, socket.playerId);
     socket.emit(SERVER_TO_CLIENT.CARD_REWARD_CLAIMED, {
       cardId: result.cardId,
       ownedCards: result.ownedCards,
@@ -211,7 +211,7 @@ function register(socket, ctx) {
     const lootLabel = isCrystal ? ' (crystal)' : isMagicStone ? ' (magic stone)' : '';
     console.log(`[loot] picked up id=${loot.id}${lootLabel} value=${loot.value} by ${socket.id} (currency=${player.currency}, ms=${player.magicStones})`);
 
-    savePlayerData(socket.playerId);
+    savePlayerData(state, socket.playerId);
 
     if (isCrystal) {
       checkRunTerminalState();

@@ -232,7 +232,7 @@ function savePlayerInPrimaryLobby(playerId) {
 	const progression = require('../progression');
 	sim.setGameState(state, _timeouts);
 	progression.setGameState(state);
-	savePlayerData(playerId);
+	savePlayerData(state, playerId);
 }
 
 function runSimulationInPrimaryLobby(fn) {

@@ -199,7 +199,7 @@ function register(socket, ctx) {
     // Safe ordering: currency first, hat second — a crash after this save but
     // before unlock leaves charged-but-not-unlocked (retryable via unlockHat)
     // instead of unlocked-but-not-charged (free-hat exploit).
-    const saved = savePlayerData(socket.playerId);
+    const saved = savePlayerData(state, socket.playerId);
     if (!saved) {
       player.currency += result.cost;
       socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: 'Failed to save progress' });
@@ -211,7 +211,7 @@ function register(socket, ctx) {
       // Refund in memory and re-save so disk matches RAM; otherwise the first
       // save would leave deducted currency on disk without a hat unlock.
       player.currency += result.cost;
-      savePlayerData(socket.playerId);
+      savePlayerData(state, socket.playerId);
       socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: unlockResult.reason });
       return;
     }
@@ -220,7 +220,7 @@ function register(socket, ctx) {
       unlockedHats: unlockResult.unlockedHats,
       currency: player.currency
     });
-    savePlayerData(socket.playerId);
+    savePlayerData(state, socket.playerId);
     });
   });
 
@@ -279,7 +279,7 @@ function register(socket, ctx) {
           currency: player.currency,
           cost,
         });
-        savePlayerData(socket.playerId);
+        savePlayerData(lobby.state, socket.playerId);
       };
 
       if (!paidChange) {
@@ -301,7 +301,7 @@ function register(socket, ctx) {
       // Safe ordering: currency first, cosmetic second — a crash after this save
       // but before updateProfile leaves charged-but-not-applied (retryable) instead
       // of applied-but-not-charged (free-appearance exploit).
-      const saved = savePlayerData(socket.playerId);
+      const saved = savePlayerData(lobby.state, socket.playerId);
       if (!saved) {
         player.currency += chargeResult.cost;
         socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: 'Failed to save progress' });
@@ -311,7 +311,7 @@ function register(socket, ctx) {
       const profileResult = updateProfile(player.accountId, { cosmetic: proposed });
       if (!profileResult.ok) {
         player.currency += chargeResult.cost;
-        savePlayerData(socket.playerId);
+        savePlayerData(lobby.state, socket.playerId);
         socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: profileResult.reason });
         return;
       }

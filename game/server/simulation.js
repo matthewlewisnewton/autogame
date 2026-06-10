@@ -609,7 +609,7 @@ function flushDirtyPlayerSaves() {
   for (const [playerId, player] of Object.entries(_gameState.players)) {
     if (player?.persistenceDirty) {
       player.persistenceDirty = false;
-      _savePlayerData(playerId);
+      _savePlayerData(_gameState, playerId);
     }
   }
 }
@@ -3249,7 +3249,7 @@ function cleanupStalePlayers() {
     if (Date.now() - player.lastActivity > STALE_THRESHOLD) {
       // Persist latest state before removing
       if (_savePlayerData) {
-        _savePlayerData(playerId);
+        _savePlayerData(_gameState, playerId);
       }
       if (_findSocketByPlayerId) {
         const socket = _findSocketByPlayerId(playerId);
