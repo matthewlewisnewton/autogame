@@ -1153,12 +1153,33 @@ const ENEMY_DEFS = {
 		hp: 360, chaseSpeed: 1.1, wanderSpeed: 0.55, attackDamage: 21, attackWindupMs: 1300,
 		attackStyle: 'cone', attackConeAngle: (2 * Math.PI) / 3, attackRange: 5.5,
 	},
+	magma_colossus: {
+		name: 'Magma Colossus',
+		description: 'Tier-II fire stage colossus; erupts in a radial molten shockwave that scorches everything nearby.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 410, chaseSpeed: 0.85, wanderSpeed: 0.4, attackDamage: 23, attackWindupMs: 1500,
+		attackStyle: 'radial', attackRange: 5,
+	},
 	permafrost_warden: {
 		name: 'Permafrost Warden',
 		description: 'Ice-cavern guardian that erupts in a radial frost shockwave — close-range area pressure, not a lobbed projectile.',
 		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
 		hp: 360, chaseSpeed: 1.0, wanderSpeed: 0.5, attackDamage: 20, attackWindupMs: 1300,
 		attackStyle: 'radial', attackRange: 4.5,
+	},
+	glacial_tyrant: {
+		name: 'Glacial Tyrant',
+		description: 'Tier-II tyrant of the frozen crossing — hurls massive glacial spheres that chill (SLOW) and crush whatever they strike.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 440, chaseSpeed: 1.3, wanderSpeed: 0.6, attackDamage: 24, attackWindupMs: 1300,
+		attackStyle: 'ice_ball', attackRange: 9,
+		// Heavier ice-ball tuning than glacial_thrower: faster and bigger, but
+		// still well below player MOVE_SPEED (12) so it stays dodgeable.
+		iceBallSpeed: 7.5,
+		iceBallSlowDurationMs: 3200,
+		iceBallSlowFactor: 0.45,
+		iceBallRadius: 1.2,
+		iceBallMaxRange: 22,
 	},
 	spawner: {
 		name: 'Brood Node',

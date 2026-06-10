@@ -2085,6 +2085,42 @@ describe('Cooldown Enforcement (useCard)', () => {
 		expect(Number.isFinite(useCardEmits[0].data.rotation)).toBe(true);
 	});
 
+	it('useCard() includes lockTargetId in the emit when lock-on is active', async () => {
+		const { handleLockOnPress, clearAllLockOnState } = await import('../lockOn.js');
+		const { DEFAULT_FLOOR_Y } = await import('../../shared/floorSampling.esm.js');
+		clearAllLockOnState();
+		await import('../main.js');
+
+		hand[0] = { id: 'fireball', name: 'Fireball', type: 'weapon', charges: 4, remainingCharges: 4 };
+		slotCooldowns[0] = false;
+
+		const enemies = [{ id: 'fly1', x: 3, z: 0, flying: true, altitude: 3, hp: 50 }];
+		handleLockOnPress(enemies, 0, DEFAULT_FLOOR_Y, 0, 'unlock', 0, null);
+
+		window.__clearSocketEmitLog();
+		window.__useCardForTest(0);
+
+		const useCardEmits = window.__socketEmitLog().filter((e) => e.event === 'useCard');
+		expect(useCardEmits).toHaveLength(1);
+		expect(useCardEmits[0].data.lockTargetId).toBe('fly1');
+	});
+
+	it('useCard() omits lockTargetId when lock-on is inactive', async () => {
+		const { clearAllLockOnState } = await import('../lockOn.js');
+		clearAllLockOnState();
+		await import('../main.js');
+
+		hand[0] = { id: 'fireball', name: 'Fireball', type: 'weapon', charges: 4, remainingCharges: 4 };
+		slotCooldowns[0] = false;
+
+		window.__clearSocketEmitLog();
+		window.__useCardForTest(0);
+
+		const useCardEmits = window.__socketEmitLog().filter((e) => e.event === 'useCard');
+		expect(useCardEmits).toHaveLength(1);
+		expect(useCardEmits[0].data.lockTargetId).toBeUndefined();
+	});
+
 	it('useCard() on a non-cooling weapon slot emits without optimistic charge drain', async () => {
 		await import('../main.js');
 

@@ -566,6 +566,7 @@ const DEBUG_SCENARIOS = new Set([
   'frost-crossing-surface-transition',
   'frost-crossing-boss-approach',
   'frost-crossing-telepipe-ready',
+  'frost-crossing-tier-2',
   'enemy-behind-wall',
   'training-caverns-tier-1',
   'crystal-rescue-tier-1',
@@ -629,6 +630,8 @@ const DEBUG_SCENARIOS = new Set([
   'fireball-hand-ready',
   'glacial-thrower',
   'permafrost-warden',
+  'glacial-tyrant',
+  'magma-colossus',
   'ice-ball-ready',
   'frost-spells-ready',
   'glacier-collapse-ready',
@@ -641,6 +644,8 @@ const DEBUG_SCENARIOS = new Set([
   'energy-blade-slash-ready',
   'heavy-greatsword-slash-ready',
   'lock-on-elevated-projectile',
+  'lock-on-flying-enemy',
+  'lock-on-3d-stack',
   'height-aware-projectile',
 ]);
 
@@ -825,6 +830,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'field-medic',
   'field-medic-spawn',
   'ember-wraith',
+  'magma-colossus',
   'flying-enemies',
   'ember-descent-cinderghast',
   'ember-descent-near-adds',

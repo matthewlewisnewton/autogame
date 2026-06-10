@@ -2435,9 +2435,62 @@ function applyDebugScenario(socket, name) {
       };
     }
 
+    if (name === 'frost-crossing-tier-2') {
+      // frost_crossing Tier 2 with rigid ice-cavern layout: dormant Glacial Tyrant
+      // on the ice_cairn treasure pad plus 4 tier-2-pool adds on the sheet.
+      // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
+      // snapshots the correct run.questTier/objective and spawnEnemy variant rolls.
+      // Reachable normally by clearing Frost Crossing Tier 1, unlocking Tier 2, and
+      // deploying; this scenario is a shortcut into that state.
+      const questId = 'frost_crossing';
+      const tier = 2;
+      unlockQuestTier(player.accountId, questId, tier);
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+
+      player.ready = true;
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const startSpawn = firstRoomPosition();
+      player.x = startSpawn.x;
+      player.z = startSpawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      enterPlayingPhase(lobby);
+
+      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+        createDrawDeckFromSelectedDeck(player);
+        initPlayerHand(player);
+        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+        if (!player.pendingSummons) {
+          player.pendingSummons = new Set();
+        }
+      }
+
+      state.enemies = [];
+      state.loot = [];
+      delete state.run;
+      delete state._pendingEncounterBossId;
+      spawnEnemies();
+      startDungeonRun();
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
     if (name === 'ember-descent-tier-2') {
       // ember_descent Tier 2 with the rigid fire-cavern layout and the dormant
-      // cinder_warden stage-boss encounter. Quest/tier and layout must be set
+      // magma_colossus stage-boss encounter. Quest/tier and layout must be set
       // before enterPlayingPhase so startDungeonRun snapshots the correct
       // run.questTier/objective and spawnEnemy variant rolls. Reachable normally
       // by clearing Ember Descent Tier 1, unlocking Tier 2, and deploying; this
@@ -2979,6 +3032,26 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       const warden = spawnEnemy(player.x + 5, player.z, 'permafrost_warden');
       warden.wanderTarget = { x: warden.x, z: warden.z };
+    } else if (name === 'glacial-tyrant') {
+      // Spawn a Glacial Tyrant beside the player for Tier-II boss mesh,
+      // projectile telegraph, and massive slowing ice-ball QA. The same enemy is
+      // reachable normally as the frost_crossing Tier 2 stage boss once the
+      // encounter is wired (sub-ticket 03); this is a deterministic shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      state.iceBalls = [];
+      const tyrant = spawnEnemy(player.x + 6, player.z, 'glacial_tyrant');
+      tyrant.wanderTarget = { x: tyrant.x, z: tyrant.z };
+    } else if (name === 'magma-colossus') {
+      // Spawn a Magma Colossus beside the player for fire-cavern boss mesh,
+      // radial telegraph, and lock-on catalog QA. The same enemy is reachable
+      // normally as the ember_descent Tier 2 stage boss; this is a shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const colossus = spawnEnemy(player.x + 5, player.z, 'magma_colossus');
+      colossus.wanderTarget = { x: colossus.x, z: colossus.z };
     } else if (name === 'ember-wraith') {
       // One Ember Wraith in cone-strike range for burning-on-hit QA. The same
       // enemy is reachable on ember_descent runs (or via fire-cavern); shortcut only.
@@ -4096,6 +4169,52 @@ function applyDebugScenario(socket, name) {
       elevated.wanderTarget = { x: elevated.x, z: elevated.z };
       player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
       syncCardProbeHand(player);
+    } else if (name === 'lock-on-flying-enemy') {
+      // Playing phase with Fireball in hand and a void_seraph hovering on the same
+      // (x, z) as the player — flat aim misses; Z-lock + cast should tilt upward
+      // via flying/altitude (no manual y override) and hit. Reachable in vertical
+      // quests (spire_ascent, canyon_descent) when a projectile reward card is drawn
+      // and a void_seraph or rime_drifter spawns overhead.
+      resumePlayingRunForCardProbe(state, player);
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      player.hand = [
+        {
+          id: 'fireball',
+          name: 'Fireball',
+          type: 'weapon',
+          charges: 4,
+          remainingCharges: 4,
+        },
+        null,
+        null,
+        null,
+        null,
+        null,
+      ];
+      state.enemies = [];
+      const flier = spawnEnemy(player.x, player.z, 'void_seraph');
+      flier.hp = flier.maxHp;
+      flier.wanderTarget = { x: flier.x, z: flier.z };
+      player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+      syncCardProbeHand(player);
+    } else if (name === 'lock-on-3d-stack') {
+      // Ground grunt and ember_wraith stacked at the same (x, z): 3D lock-on must
+      // pick the closer flier, not treat them as tied in XZ. Reachable in vertical
+      // quests when adds and flying enemies overlap in plan view; this is a shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const stackX = player.x + 5;
+      const stackZ = player.z;
+      const ground = spawnEnemy(stackX, stackZ, 'grunt');
+      ground.y = resolveFloorY(sampleFloorY(state.layout, stackX, stackZ)) + 8;
+      ground.hp = 120;
+      ground.maxHp = 120;
+      ground.wanderTarget = { x: ground.x, z: ground.z };
+      const flier = spawnEnemy(stackX, stackZ, 'ember_wraith');
+      flier.wanderTarget = { x: flier.x, z: flier.z };
     } else if (name === 'height-aware-projectile') {
       // Spire-ascent sloped tower: player on the bottom tier, enemy on the top
       // tier — both Y values from sampleFloorY on real ramp/tier geometry. Fireball

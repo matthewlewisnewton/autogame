@@ -91,8 +91,10 @@ import {
 	normalizeAngle,
 	cameraYawFromToTarget,
 	cameraYawBehindFacing,
+	resolveLockOnLookAtY,
 } from './lockOn.js';
 import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
+import { getEntityWorldY } from './entityWorldY.js';
 import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled, getAccountProfile } from './settings.js';
 import { MODEL_REGISTRY, loadModel, modelPathFor, disposeMeshTreeSafe } from './models.js';
 import { getCardDef } from './cards.js';
@@ -609,10 +611,12 @@ export const ENEMY_GEOMETRY = {
 	arena_champion: { type: 'cone', radius: 1.4, height: 3.0, segments: 16, color: 0xffaa00, emissive: 0xcc3300, emissiveIntensity: 0.45 },
 	spire_warden: { type: 'cone', radius: 1.1, height: 2.4, segments: 12, color: 0x3388cc, emissive: 0x2266aa, emissiveIntensity: 0.3 },
 	cinder_warden: { type: 'cone', radius: 1.2, height: 2.6, segments: 12, color: 0xff5522, emissive: 0xff2200, emissiveIntensity: 0.45 },
+	magma_colossus: { type: 'cone', radius: 1.35, height: 2.9, segments: 14, color: 0xff7711, emissive: 0xff5500, emissiveIntensity: 0.52 },
 	spawner:    { type: 'octahedron', radius: 0.6, color: 0x00ccaa, emissive: 0x00ccaa, emissiveIntensity: 0.4 },
 	field_medic: { type: 'octahedron', radius: 0.4, color: 0x10b981, emissive: 0x2dd4bf, emissiveIntensity: 0.55 },
 	glacial_thrower: { type: 'cone', radius: 1.0, height: 2.2, segments: 12, color: 0x7dd3fc, emissive: 0x38bdf8, emissiveIntensity: 0.35 },
 	permafrost_warden: { type: 'cone', radius: 1.15, height: 2.5, segments: 14, color: 0x0e7490, emissive: 0x22d3ee, emissiveIntensity: 0.42 },
+	glacial_tyrant: { type: 'cone', radius: 1.3, height: 2.8, segments: 14, color: 0x0c4a6e, emissive: 0x38bdf8, emissiveIntensity: 0.45 },
 	ember_wraith: { type: 'octahedron', radius: 0.35, color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.6 },
 	// Flying types — hovering octahedron bodies (cf. ember_wraith); flying/altitude
 	// arrive per-instance from the server so flyingRenderOffset lifts the body.
@@ -629,10 +633,12 @@ export const ENEMY_ATTACK_VISUAL = {
 	arena_champion: { style: 'cone', coneAngle: (2 * Math.PI) / 3, range: 6.5, color: 0xffcc44, emissive: 0xcc3300 },
 	spire_warden: { style: 'cone', coneAngle: Math.PI / 2, range: 6, color: 0x55aaff, emissive: 0x3388cc },
 	cinder_warden: { style: 'cone', coneAngle: (2 * Math.PI) / 3, range: 5.5, color: 0xff7733, emissive: 0xff2200 },
+	magma_colossus: { style: 'radial', range: 5, color: 0xffaa33, emissive: 0xff5500 },
 	spawner:    { style: 'radial' },
 	field_medic: { style: 'projectile', range: 8, color: 0x2dd4bf, emissive: 0x14b8a6, hitWidth: 0.5 },
 	glacial_thrower: { style: 'projectile', range: 7, color: 0x7dd3fc, emissive: 0x38bdf8, hitWidth: 0.9 },
 	permafrost_warden: { style: 'radial', range: 4.5, color: 0x67e8f9, emissive: 0x0891b2 },
+	glacial_tyrant: { style: 'projectile', range: 9, color: 0x7dd3fc, emissive: 0x0ea5e9, hitWidth: 1.2 },
 	ember_wraith: { style: 'cone', coneAngle: Math.PI / 3, color: 0xff4400, emissive: 0xff2200 },
 	// Void Seraph: spherical void burst telegraphed as a radial ring (server attackStyle 'radial').
 	void_seraph: { style: 'radial', range: 4.5, color: 0xa855f7, emissive: 0x7c3aed },
@@ -1205,11 +1211,21 @@ function lockOnEnemyPool() {
 
 /** Prefer server-authoritative player coords for lock-on targeting (sim can lag after teleports). */
 function lockOnAnchorCoords() {
+	const layout = gameStateRef?.layout ?? null;
 	const me = myIdRef && gameStateRef?.players?.[myIdRef];
 	if (me && Number.isFinite(me.x) && Number.isFinite(me.z)) {
-		return { x: me.x, z: me.z };
+		return {
+			x: me.x,
+			y: getEntityWorldY(me, layout),
+			z: me.z,
+		};
 	}
-	return { x: simX, z: simZ };
+	const fallbackEntity = { x: simX, z: simZ, y: me?.y, flying: me?.flying, altitude: me?.altitude };
+	return {
+		x: simX,
+		y: getEntityWorldY(fallbackEntity, layout),
+		z: simZ,
+	};
 }
 
 export function applyLockOnPress() {
@@ -1218,12 +1234,15 @@ export function applyLockOnPress() {
 	if (!gs?.enemies) return;
 
 	const anchor = lockOnAnchorCoords();
+	const layout = gameStateRef?.layout ?? null;
 	const result = handleLockOnPress(
 		lockOnEnemyPool(),
 		anchor.x,
+		anchor.y,
 		anchor.z,
 		getLockOnRepeatAction(),
 		playerRotation,
+		layout,
 	);
 
 	if (result.action === 'locked' && result.enemy) {
@@ -1315,7 +1334,12 @@ function updateCameraOrbit(playerX, playerY, playerZ, delta) {
 
 	const lockedEnemy = findEnemyById(gameStateRef?.enemies, getLockedEnemyId());
 	if (lockedEnemy) {
-		camera.lookAt(lockedEnemy.x, playerY + 0.5, lockedEnemy.z);
+		const layout = gameStateRef?.layout ?? null;
+		camera.lookAt(
+			lockedEnemy.x,
+			resolveLockOnLookAtY(lockedEnemy, layout),
+			lockedEnemy.z,
+		);
 	} else {
 		camera.lookAt(playerX, playerY, playerZ);
 	}
@@ -1434,6 +1458,7 @@ export function getMeshMaps() {
 		lootMeshes,
 		iceBallMeshes,
 		playerCardWindupMarkers,
+		enemyLockOnRings,
 	};
 }
 
@@ -2107,13 +2132,16 @@ export function updateMyPlayer(delta) {
 		return;
 	}
 
+	const lockAnchor = lockOnAnchorCoords();
 	const lockState = updateLockOn(
 		lockOnEnemyPool(),
 		simX,
+		lockAnchor.y,
 		simZ,
 		delta,
 		cameraYaw,
 		playerRotation,
+		gameStateRef?.layout ?? null,
 	);
 
 	refreshLockOnInfoPanel();
@@ -2125,7 +2153,7 @@ export function updateMyPlayer(delta) {
 		lockOnReleaseLookAt = null;
 	} else if (isLockOnCameraReleasing()) {
 		lockOnToTarget = null;
-		const release = updateLockOnCameraRelease(delta, simX, 0.5, simZ);
+		const release = updateLockOnCameraRelease(delta, simX, lockAnchor.y, simZ);
 		if (release) {
 			cameraYaw = release.cameraYaw;
 			lockOnReleaseLookAt = {
@@ -3659,14 +3687,14 @@ function createLockOnRing() {
 	return mesh;
 }
 
-export function syncLockOnRing(enemyId, enemyX, enemyZ) {
+export function syncLockOnRing(enemyId, enemyX, ringY, enemyZ) {
 	const lockedId = getLockedEnemyId();
 	if (lockedId === enemyId) {
 		if (!enemyLockOnRings[enemyId]) {
 			enemyLockOnRings[enemyId] = createLockOnRing();
 			scene.add(enemyLockOnRings[enemyId]);
 		}
-		enemyLockOnRings[enemyId].position.set(enemyX, GROUND_OVERLAY_Y + 0.02, enemyZ);
+		enemyLockOnRings[enemyId].position.set(enemyX, ringY, enemyZ);
 		enemyLockOnRings[enemyId].visible = true;
 	} else if (enemyLockOnRings[enemyId]) {
 		enemyLockOnRings[enemyId].visible = false;

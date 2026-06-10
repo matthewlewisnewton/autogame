@@ -6673,6 +6673,47 @@ PASS. The latest coverage run reports 168 test files passed and 2504 tests passe
 None.
 
 
+## v0.380 — 382-ice-tier2-frost-crossing-and-miniboss  (2026-06-10 13:37:27)
+
+### Unique In-Level Miniboss
+
+PASS. `glacial_tyrant` is registered in `game/server/simulation.js` as a distinct boss-tier ice-ball enemy with higher HP, longer range, larger/faster slow projectile tuning, boss drops, and party-size HP scaling. The stage-boss spawner anchors exactly one Glacial Tyrant at the `ice_cairn` landmark and keeps it dormant until support adds are cleared and a player approaches. Client rendering and telegraph tables include the new type in `game/client/renderer.js`, with a procedural model registry entry in `game/client/models.js`.
+
+### Debug Scenario Review
+
+PASS. The new `frost-crossing-tier-2` debug scenario is behind the existing debug path: client URL activation is localhost-only via `?debugScenario=...`, and the server handler is restricted to local/dev or `ALLOW_DEBUG_SCENARIOS=1`. It sets the same quest/tier/layout/run state reachable through normal gameplay after clearing Frost Crossing tier 1 and selecting the unlocked Tier II row. It does not weaken the production unlock/deploy path, which remains enforced by `selectQuest` and ready/deploy validation.
+
+### Design And Foundation Consistency
+
+PASS. The implementation matches the design direction for distinct quest identity, lobby-selected dungeon deployment, and stage-boss combat, while preserving the foundation requirements for 3D rendering, websocket connectivity, multiplayer presence, and movement synchronization. The round probes confirm the app still reaches lobby/gameplay with connected players and active movement/HUD state.
+
+### Tests And Coverage
+
+PASS. `coverage.log` reports `192` test files and `2714` tests passing. New coverage includes Glacial Tyrant enemy behavior, rigid ice-cavern generation, Frost Crossing Tier II catalog/deploy/unlock/encounter flow, and the debug scenario.
+
+## v0.379 — 383-fire-tier2-ember-descent-and-miniboss  (2026-06-10 13:13:13)
+
+The objective summary/theme strings reference the Magma Colossus rather than the Cinder Warden, while the older Cinder Warden catalog remains intact for existing enemy/test coverage.
+
+### Debug Scenarios
+
+PASS. The changed `ember-descent-tier-2` scenario is still reached through the debug scenario path only; client automatic entry is driven by `?debugScenario=...` on localhost, and the server checks the registered debug-scenario handler before applying it. The scenario sets quest id/tier and applies the Tier-II layout before entering play, then rebuilds the normal stage-boss spawn/run state. The same end state is covered through normal gameplay by Tier I unlock plus Tier II deploy tests, so the shortcut is QA-only and not a substitute for the real path.
+
+The newly registered `magma-colossus` debug scenario is a local boss visualization shortcut and does not alter normal quest deployment.
+
+### Design and Foundation Requirements
+
+PASS. The implementation stays aligned with the design document's multiplayer lobby-to-dungeon loop and active combat model, and it does not regress the setup requirements: the captured run has a canvas, websocket connection, multiplayer squad state, player movement probes, and live gameplay state.
+
+### Tests and Coverage
+
+PASS. `coverage.log` reports `195` test files and `2732` tests passed. Coverage thresholds are disabled, but the changed areas have focused tests for quest catalog/listing, spawn pools, layout options and rigid geometry, encounter lifecycle, enemy catalog/stats/drops/scaling, debug scenarios, and client render registry.
+
+## Remaining gaps
+
+None.
+
+
 ## v0.378 — 388-level-map-unlock-graph-data-api  (2026-06-10 12:54:45)
 
 `buildLevelUnlockGraph(accountId)` is exported from `game/server/quests.js` and returns `{ nodes: [...] }` with one node per quest tier by iterating the same `QUEST_DEFS` tier order as `listQuestVariants()`. Each node includes `questId`, `tier`, `name`, `objectiveType`, `isBoss`, normalized `unlockRequires`, and a `state` string.
@@ -6751,6 +6792,28 @@ Pass. The implementation is reasonably scoped and covered by focused unit tests 
 ## Debug scenarios
 
 No new `?debugScenario=...` shortcut was added by this ticket. The existing debug hooks remain gated by localhost-only URL parameters and are not part of normal gameplay.
+
+## Remaining gaps
+
+None.
+
+## v0.381 — 377-lock-on-and-aim-across-heights  (2026-06-10 13:54:11)
+
+Camera and reticle tracking for elevated targets is satisfied. The camera look-at uses `resolveLockOnLookAtY()` instead of the player height, death-release eases from the target's actual height, and the lock-on ring is positioned at the enemy render height via `syncEnemyMeshes()`. The renderer ring test specifically covers a flying target, and the implementation remains consistent with the existing render model for flying enemies and floor-aware altitude.
+
+Server-side target resolution for height-aware projectile aiming is satisfied. The client includes `lockTargetId` when locked on, and `game/server/index.js` resolves projectile aim from the player's world Y to the locked enemy's world Y. The server tests cover elevated and flying lock-on hits for projectile/cone-style card paths, including `fireball`, `arcane_bolt`, `photon_slicer`, `infinite_disk`, `ice_ball`, `chain_lightning`, and `dragons_breath`.
+
+The lock-on info panel remains live-code consistent. It already consumes the locked enemy object and catalog data, and the new selection/tracking path does not bypass the panel or introduce stale panel state; dead or missing enemies still hide the panel through the existing model guard.
+
+The new debug scenarios are acceptable. `lock-on-flying-enemy` and `lock-on-3d-stack` are registered as debug scenarios and are reachable through the existing local `?debugScenario=` client path. They set up deterministic QA states that correspond to normal vertical-quest situations with flying enemies and stacked X/Z targets, and they do not weaken combat validation or replace the real play flow.
+
+## Design and requirements consistency
+
+The implementation aligns with `game/docs/design.md` by reusing the shared floor sampling and floor-aware altitude model rather than adding a parallel height system. It does not regress the foundation requirements: the captured run proves the 3D scene renders, client/server communication works, multiplayer state appears, and movement still updates during the smoke capture.
+
+## Code quality and tests
+
+The changed code is scoped to lock-on height resolution, renderer reticle/camera placement, debug scenarios, and tests. I did not find dead code, broken imports, or console/runtime errors. Coverage visibility shows the full suite passing: 163 test files and 2219 tests passed, with coverage reported for the changed server/client surface.
 
 ## Remaining gaps
 

@@ -80,8 +80,12 @@
     "defeatCanyonWardenWithSupports": "Defeat the canyon warden and {addCount} supports",
     "defeatCinderWarden": "Defeat the cinder warden",
     "defeatCinderWardenWithSupports": "Defeat the cinder warden and {addCount} supports",
+    "defeatMagmaColossus": "Defeat the magma colossus",
+    "defeatMagmaColossusWithSupports": "Defeat the magma colossus and {addCount} supports",
     "defeatPermafrostWarden": "Defeat the Permafrost Warden",
-    "defeatPermafrostWardenWithSupports": "Defeat the Permafrost Warden and {addCount} supports"
+    "defeatPermafrostWardenWithSupports": "Defeat the Permafrost Warden and {addCount} supports",
+    "defeatGlacialTyrant": "Defeat the Glacial Tyrant",
+    "defeatGlacialTyrantWithSupports": "Defeat the Glacial Tyrant and {addCount} supports"
   },
   "cardDescriptions": {
     "summonAlly": "Channels an invocation",
