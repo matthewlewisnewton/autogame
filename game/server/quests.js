@@ -129,6 +129,58 @@ function buildTrainingCavernsTier1Script() {
 }
 
 /**
+ * Authored wave script for ember_descent tier 1. Spawn coords are derived from
+ * the canonical fire-cavern layout seed so hand-placed enemies stay stable.
+ */
+function buildEmberDescentTier1Script() {
+  const questId = 'ember_descent';
+  const tier = 1;
+  const seed = questLayoutSeed(questId, tier);
+  const layout = generateLayout(seed, 'fire-cavern', { slopes: true, layoutMode: 'default' });
+  const rimRoom = layout.rooms.find((room) => room.band === 'rim') || layout.rooms[0];
+  const basinRoom = layout.rooms.find((room) => room.band === 'basin');
+  const startPositions = spawnOffsetsInRoom(rimRoom, 5);
+  const runStartTypes = ['grunt', 'grunt', 'grunt', 'skirmisher', 'skirmisher'];
+  const runStartSpawns = runStartTypes.map((type, index) => ({
+    type,
+    x: startPositions[index].x,
+    z: startPositions[index].z,
+  }));
+  const cinderghastX = roundSpawnCoord(basinRoom.x);
+  const cinderghastZ = roundSpawnCoord(basinRoom.z + basinRoom.depth * 0.15);
+
+  return {
+    waves: [
+      {
+        id: 'wave_run_start',
+        trigger: 'run_start',
+        spawns: runStartSpawns,
+      },
+      {
+        id: 'wave_inner_cavern',
+        trigger: 'enter_room',
+        room: { x: basinRoom.x, z: basinRoom.z },
+        spawns: [
+          {
+            type: 'ember_wraith',
+            x: cinderghastX,
+            z: cinderghastZ,
+            variant: {
+              name: 'Cinderghast',
+              hpMult: 1.5,
+              damageMult: 1.25,
+              tint: '#f97316',
+              scaleMult: 1.1,
+              drop: { cardId: 'dragons_breath' },
+            },
+          },
+        ],
+      },
+    ],
+  };
+}
+
+/**
  * Authored wave script for frost_crossing tier 1. Spawn coords are derived from
  * the canonical layout seed so hand-placed enemies stay stable across runs.
  */
@@ -368,6 +420,7 @@ const QUEST_DEFS = {
         // Burn-theme signature rewards (see frost_crossing tier 1 for field docs).
         signatureCardId: 'fireball',
         rewardCards: ['fireball', 'dragons_breath'],
+        script: buildEmberDescentTier1Script(),
       },
     },
   },

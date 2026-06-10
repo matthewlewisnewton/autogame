@@ -146,6 +146,7 @@ describe('defeat_enemies scripted bypass', () => {
   it('skips bulk combat spawn for scripted production quest tiers', () => {
     expect(def.skipBulkCombatSpawn(getQuest('frost_crossing', 1))).toBe(true);
     expect(def.skipBulkCombatSpawn(getQuest('training_caverns', 1))).toBe(true);
+    expect(def.skipBulkCombatSpawn(getQuest('ember_descent', 1))).toBe(true);
   });
 
   it('createObjective uses scripted spawn count and ignores enemyCount', () => {

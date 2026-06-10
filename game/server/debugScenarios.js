@@ -94,6 +94,40 @@ function clearPlayerCardCommitment(player) {
   delete player.pendingCardUse;
 }
 
+function setupEmberDescentTier1Deploy(lobby, state, player) {
+  const questId = 'ember_descent';
+  const tier = 1;
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+
+  player.ready = true;
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  const startSpawn = firstRoomPosition();
+  player.x = startSpawn.x;
+  player.z = startSpawn.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+  enterPlayingPhase(lobby);
+
+  if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+    createDrawDeckFromSelectedDeck(player);
+    initPlayerHand(player);
+    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+    if (!player.pendingSummons) {
+      player.pendingSummons = new Set();
+    }
+  }
+
+  state.enemies = [];
+  state.loot = [];
+  delete state.run;
+  delete state._pendingEncounterBossId;
+  spawnEnemies();
+  startDungeonRun();
+}
+
 function setupFrostCrossingTier1Deploy(lobby, state, player) {
   const questId = 'frost_crossing';
   const tier = 1;
@@ -1053,41 +1087,9 @@ function applyDebugScenario(socket, name) {
 
     if (name === 'fire-cavern') {
       // ember_descent Tier 1 with fire-cavern layout and rim spawn.
-      // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
-      // snapshots the correct run.questTier/objective and spawnEnemy variant rolls.
       // Reachable normally by selecting Ember Descent tier 1 and deploying;
       // this scenario is a shortcut into that state.
-      const questId = 'ember_descent';
-      const tier = 1;
-      state.selectedQuestId = questId;
-      state.selectedQuestTier = tier;
-      applyLayoutForQuest(state, questId, tier);
-
-      player.ready = true;
-      player.hp = MAX_HP;
-      player.magicStones = MAX_MAGIC_STONES;
-      const rimSpawn = firstRoomPosition();
-      player.x = rimSpawn.x;
-      player.z = rimSpawn.z;
-      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-
-      enterPlayingPhase(lobby);
-
-      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
-        createDrawDeckFromSelectedDeck(player);
-        initPlayerHand(player);
-        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
-        if (!player.pendingSummons) {
-          player.pendingSummons = new Set();
-        }
-      }
-
-      state.enemies = [];
-      state.loot = [];
-      delete state.run;
-      delete state._pendingEncounterBossId;
-      spawnEnemies();
-      startDungeonRun();
+      setupEmberDescentTier1Deploy(lobby, state, player);
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
@@ -1099,6 +1101,61 @@ function applyDebugScenario(socket, name) {
         ok: true,
         scenario: name,
       };
+    }
+
+    if (name === 'ember-descent-cinderghast') {
+      // ember_descent Tier 1 with run-start rim grunts cleared and Cinderghast
+      // spawned in the inner basin for named-rare QA. Reachable normally by
+      // descending into the volcanic basin; this scenario is a shortcut.
+      setupEmberDescentTier1Deploy(lobby, state, player);
+
+      const basinRoom = state.layout.rooms.find((room) => room.band === 'basin');
+      const runStartWave = state.run?.waveScript?.waves?.find((wave) => wave.id === 'wave_run_start');
+      if (runStartWave) {
+        for (const enemyId of runStartWave.spawnedEnemyIds) {
+          const enemy = state.enemies.find((entry) => entry.id === enemyId);
+          if (enemy) enemy.hp = 0;
+        }
+        state.enemies = state.enemies.filter((enemy) => enemy.hp > 0);
+        runStartWave.status = 'cleared';
+        if (state.run?.objective) {
+          state.run.objective.defeatedEnemies = runStartWave.spawnedEnemyIds.length;
+        }
+      }
+
+      player.x = basinRoom?.x ?? 0;
+      player.z = basinRoom?.z ?? 0;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      updateQuestScriptTriggers();
+
+      const cinderghast = state.enemies.find((enemy) => enemy.namedRare?.name === 'Cinderghast');
+      if (cinderghast) {
+        cinderghast.wanderTarget = { x: cinderghast.x, z: cinderghast.z };
+        repositionNearEnemy(player, cinderghast);
+        player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      }
+
+      if (!player.hand.some((c) => c && c.type === 'weapon' && (c.remainingCharges == null || c.remainingCharges > 0))) {
+        const replaceSlot = player.hand.findIndex((c) => c && c.type !== 'weapon');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = {
+            id: 'iron_sword',
+            name: 'Rust-Forged Saber',
+            type: 'weapon',
+            charges: 5,
+            remainingCharges: 5,
+            grind: 0,
+          };
+        }
+      }
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
     }
 
     if (name === 'ember-descent-near-adds') {
