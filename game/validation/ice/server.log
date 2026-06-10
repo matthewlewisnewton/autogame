@@ -1,0 +1,10 @@
+[users] No existing user file at /home/matt/workspace/.autogame-worktrees/372-playthrough-validate-ice-level/game/data/users.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3201
+Player connected: socket=a5Nvyql4j5SeR5DiAAAB, playerId=4c55de09-427c-42e5-831d-e6e08f1b0dfd
+Player disconnected: a5Nvyql4j5SeR5DiAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

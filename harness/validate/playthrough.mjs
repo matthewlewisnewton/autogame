@@ -993,7 +993,9 @@ async function runVictoryStep({ page, preset, outDirAbs }) {
 			minEnemiesLeft: 0,
 		});
 		const afterEnemiesProbe = buildDefeatEnemiesVictoryProbe(afterEnemiesHarness);
-		const objectiveCompleteScreenshotPath = await writeScreenshot(page, outDirAbs, '06-objective-complete');
+		const objectiveBasename = preset.objectiveCompleteScreenshot ?? '06-objective-complete';
+		const victoryBasename = preset.victoryScreenshot ?? '07-victory';
+		const objectiveCompleteScreenshotPath = await writeScreenshot(page, outDirAbs, objectiveBasename);
 
 		const victoryHarness = await waitForDefeatEnemiesVictoryState(page, {
 			timeoutMs: preset.victoryTimeoutMs ?? 30000,
@@ -1002,7 +1004,7 @@ async function runVictoryStep({ page, preset, outDirAbs }) {
 			timeoutMs: preset.victoryTimeoutMs ?? 30000,
 		});
 		const victoryProbe = buildDefeatEnemiesVictoryProbe(victoryHarness);
-		const victoryScreenshotPath = await writeScreenshot(page, outDirAbs, '07-victory');
+		const victoryScreenshotPath = await writeScreenshot(page, outDirAbs, victoryBasename);
 
 		return {
 			objectiveCompleteScreenshot: path.relative(REPO_ROOT, objectiveCompleteScreenshotPath),
@@ -1075,9 +1077,13 @@ function buildAssertions(summary, preset) {
 		if (preset.questId === 'frost_crossing') {
 			assertions.glacialSlowApplied = summary.glacialSlow?.glacialSlowApplied === true;
 		}
-		if (preset.telepipeScenario || summary.telepipeReset || preset.questId === 'ember_descent') {
+		if (preset.emberBurnScenario || preset.questId === 'ember_descent') {
 			assertions.emberBurnApplied = summary.emberBurn?.burnTickDamageApplied === true;
+		}
+		if (preset.cardMechanicsScenarios && Object.keys(preset.cardMechanicsScenarios).length > 0) {
 			assertions.cardMechanicsOk = summary.cardMechanics?.ok === true;
+		}
+		if (preset.telepipeScenario || summary.telepipeReset) {
 			assertions.telepipeVitalsPreserved = summary.telepipeReset?.telepipeVitalsPreserved === true;
 			assertions.cardChargesResetOnFreshSortie = summary.telepipeReset?.cardChargesResetOnFreshSortie === true;
 		}
@@ -1277,6 +1283,7 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
 		findings = renderFindings({
 			ok: summary.ok === true,
 			preset: summary.preset,
+			questId: preset?.questId,
 			objectiveType: preset?.objectiveType ?? 'stage_boss',
 			findingsTitle: preset?.findingsTitle,
 			bossSpawnLabel: preset?.bossSpawnLabel,
@@ -1288,6 +1295,8 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
 			canyonTelepipe: summary.canyonTelepipe ?? null,
 			floorAlignment,
 			emberBurn: summary.emberBurn || null,
+			slipperyFloor: summary.slipperyFloor || null,
+			glacialSlow: summary.glacialSlow || null,
 			cardMechanics: summary.cardMechanics || null,
 			telepipeReset: summary.telepipeReset || null,
 			consoleErrors: consoleEntries || [],
@@ -1317,7 +1326,7 @@ async function main() {
 	let runsHubWalk = false;
 	let runsBooth = false;
 	let runsTelepipeReset = false;
-	let runsFireTelepipeReset = false;
+	let runsQuestTelepipeReset = false;
 	const summary = {
 		ok: true,
 		preset: opts.preset,
@@ -1343,7 +1352,9 @@ async function main() {
 			&& (opts.steps === 'booth' || runsHubFull);
 		runsTelepipeReset = opts.preset === 'hub'
 			&& (opts.steps === 'telepipe-reset' || runsHubFull);
-		runsFireTelepipeReset = opts.preset === 'fire' && opts.steps === 'full';
+		runsQuestTelepipeReset = runsRoomsFull
+			&& (opts.preset === 'fire' || opts.preset === 'ice')
+			&& !!preset.telepipeScenario;
 		const serverLogPath = path.join(outDirAbs, 'server.log');
 		game = await startGame({ serverLogPath });
 		summary.serverPort = game.serverPort;
@@ -1498,6 +1509,10 @@ async function main() {
 			});
 		}
 
+		if (runsRoomsFull && page && !runsSunkenCanyonFull) {
+			summary.victory = await runVictoryStep({ page, preset, outDirAbs });
+		}
+
 		if (runsSunkenCanyonFull && page) {
 			const midCombatPart = await runSunkenCanyonMidCombatProbeStep({ page, preset, outDirAbs });
 			summary.bossEncounter = { ...midCombatPart };
@@ -1544,7 +1559,7 @@ async function main() {
 			summary.victory = await runVictoryStep({ page, preset, outDirAbs });
 		}
 
-		if (runsFireTelepipeReset && page) {
+		if (runsQuestTelepipeReset && page) {
 			await assertGameProcessAlive({
 				serverUrl: game.serverUrl,
 				serverChild: game.serverChild,
@@ -1561,14 +1576,6 @@ async function main() {
 		}
 
 		if (runsRoomsFull) {
-			summary.assertions = buildAssertions(summary, preset);
-			summary.ok = Object.values(summary.assertions).every((value) => value === true);
-			if (!summary.ok) {
-				summary.error = summary.error || buildAssertionFailureDetail(summary, preset);
-				exitCode = 1;
-			}
-		} else if (runsRoomsFull && page) {
-			summary.victory = await runVictoryStep({ page, preset, outDirAbs });
 			summary.assertions = buildAssertions(summary, preset);
 			summary.ok = Object.values(summary.assertions).every((value) => value === true);
 			if (!summary.ok) {

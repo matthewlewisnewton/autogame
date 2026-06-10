@@ -263,7 +263,8 @@ export async function runCardMechanicsStep({ page, preset, outDirAbs, repoRoot }
 		const burnOk = (after.burningUntil ?? 0) > Date.now();
 		probes.burn = { ok: burnOk, before, after };
 		if (!burnOk) allOk = false;
-		const burnShot = await writeScreenshot(page, outDirAbs, '05-card-burn');
+		const burnShotName = preset.cardBurnScreenshot ?? '05-card-burn';
+		const burnShot = await writeScreenshot(page, outDirAbs, burnShotName);
 		probes.burn.screenshot = path.relative(repoRoot, burnShot);
 	}
 
