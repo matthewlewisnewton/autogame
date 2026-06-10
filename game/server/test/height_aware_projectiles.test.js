@@ -222,15 +222,9 @@ describe('collectConeHits height awareness', () => {
 	});
 });
 
-const LOCK_ON_PROJECTILE_CARDS = [
-	'fireball',
-	'ice_ball',
-	'arcane_bolt',
-	'chain_lightning',
-	'photon_slicer',
-	'infinite_disk',
-	'dragons_breath',
-];
+// excalibur_photon is out of scope for this matrix: it is a cone weapon (stationary
+// photon sweep), not a traveling projectile. Height-aware cone coverage lives in
+// collectConeHits above; no lock-on projectile regression is required here.
 
 function setupLockOnProjectileTest(cardId) {
 	resetState();
@@ -308,27 +302,93 @@ function setupLockOnProjectileTest(cardId) {
 	};
 }
 
-describe('player lock-on projectile aim (useCard integration)', () => {
-	beforeEach(() => {
-		wireCardEffectCallbacks();
+function expectLockOnHeightHit(cardId) {
+	const missSetup = setupLockOnProjectileTest(cardId);
+	const miss = missSetup.cast();
+	expect(miss.hpAfter).toBe(miss.hpBefore);
+
+	resetState();
+	const hitSetup = setupLockOnProjectileTest(cardId);
+	const hit = hitSetup.cast({ lockTargetId: hitSetup.enemyId });
+	expect(hit.hpAfter).toBeLessThan(hit.hpBefore);
+}
+
+function setupMinionHeightTest() {
+	resetState();
+	setSimGameState(gameState, {});
+	gameState.run = { status: 'playing' };
+	gameState._pendingMinionBreaths = [];
+	gameState.iceBalls = [];
+	gameState.players.p1 = {
+		id: 'p1',
+		x: 0,
+		z: 0,
+		y: 0,
+		hp: 100,
+		dead: false,
+	};
+}
+
+describe('fireball', () => {
+	beforeEach(() => wireCardEffectCallbacks());
+
+	it('hits an elevated target on the same (x, z) with lockTargetId', () => {
+		expectLockOnHeightHit('fireball');
 	});
+});
 
-	for (const cardId of LOCK_ON_PROJECTILE_CARDS) {
-		it(`${cardId} hits an elevated target with lockTargetId and misses with flat rotation only`, () => {
-			const setup = setupLockOnProjectileTest(cardId);
+describe('arcane_bolt', () => {
+	beforeEach(() => wireCardEffectCallbacks());
 
-			const miss = setup.cast();
-			expect(miss.hpAfter).toBe(miss.hpBefore);
+	it('hits an elevated target on the same (x, z) with lockTargetId', () => {
+		expectLockOnHeightHit('arcane_bolt');
+	});
+});
 
-			resetState();
-			const hitSetup = setupLockOnProjectileTest(cardId);
-			const hit = hitSetup.cast({ lockTargetId: hitSetup.enemyId });
-			expect(hit.hpAfter).toBeLessThan(hit.hpBefore);
-		});
-	}
+describe('photon_slicer', () => {
+	beforeEach(() => wireCardEffectCallbacks());
 
-	it('resolveProjectileAim tilts upward toward a lock-on target above the shooter', () => {
-		resetState();
+	it('hits an elevated target on the same (x, z) with lockTargetId', () => {
+		expectLockOnHeightHit('photon_slicer');
+	});
+});
+
+describe('infinite_disk', () => {
+	beforeEach(() => wireCardEffectCallbacks());
+
+	it('hits an elevated target on the same (x, z) with lockTargetId', () => {
+		expectLockOnHeightHit('infinite_disk');
+	});
+});
+
+describe('ice_ball', () => {
+	beforeEach(() => wireCardEffectCallbacks());
+
+	it('hits an elevated target on the same (x, z) with lockTargetId', () => {
+		expectLockOnHeightHit('ice_ball');
+	});
+});
+
+describe('chain_lightning', () => {
+	beforeEach(() => wireCardEffectCallbacks());
+
+	it('hits an elevated target on the same (x, z) with lockTargetId', () => {
+		expectLockOnHeightHit('chain_lightning');
+	});
+});
+
+describe('dragons_breath', () => {
+	beforeEach(() => wireCardEffectCallbacks());
+
+	it('hits an elevated target on the same (x, z) with lockTargetId', () => {
+		expectLockOnHeightHit('dragons_breath');
+	});
+});
+
+describe('resolveProjectileAim lock-on tilt', () => {
+	beforeEach(resetState);
+
+	it('tilts upward toward a lock-on target above the shooter', () => {
 		const playerId = 'p1';
 		gameState.players[playerId] = { x: 0, y: 0, z: 0, rotation: 0 };
 		addEnemy('elevated', 0, 0, 100, 5);
@@ -345,30 +405,13 @@ describe('player lock-on projectile aim (useCard integration)', () => {
 	});
 });
 
-describe('enemy and minion symmetric height-aware aim', () => {
+describe('glacial_thrower', () => {
 	const GLACIAL_DEF = ENEMY_DEFS.glacial_thrower;
 
-	beforeEach(() => {
-		resetState();
-		setSimGameState(gameState, {});
-		gameState.run = { status: 'playing' };
-		gameState._pendingMinionBreaths = [];
-		gameState.iceBalls = [];
-		gameState.players.p1 = {
-			id: 'p1',
-			x: 0,
-			z: 0,
-			y: 0,
-			hp: 100,
-			dead: false,
-		};
-	});
+	beforeEach(setupMinionHeightTest);
+	afterEach(() => vi.useRealTimers());
 
-	afterEach(() => {
-		vi.useRealTimers();
-	});
-
-	it('(a) glacial_thrower ice ball hits a player elevated on the same (x, z)', () => {
+	it('ice ball hits a player elevated on the same (x, z)', () => {
 		const thrower = {
 			id: 'thrower',
 			type: 'glacial_thrower',
@@ -399,8 +442,13 @@ describe('enemy and minion symmetric height-aware aim', () => {
 		expect(gameState.players.p1.hp).toBe(100 - GLACIAL_DEF.attackDamage);
 		expect(gameState.iceBalls).toHaveLength(0);
 	});
+});
 
-	it('(b) null_crawler phase beam hits an elevated enemy on the same (x, z)', () => {
+describe('null_crawler', () => {
+	beforeEach(setupMinionHeightTest);
+	afterEach(() => vi.useRealTimers());
+
+	it('phase beam hits an elevated enemy on the same (x, z)', () => {
 		const now = 1_000_000;
 		vi.useFakeTimers();
 		vi.setSystemTime(now);
@@ -443,8 +491,12 @@ describe('enemy and minion symmetric height-aware aim', () => {
 		expect(gameState._pendingMinionBreaths).toHaveLength(1);
 		expect(gameState._pendingMinionBreaths[0].direction).toMatchObject({ x: 0, y: 1, z: 0 });
 	});
+});
 
-	it('(c) storm_eagle strike hits an elevated enemy on the same (x, z)', () => {
+describe('storm_eagle', () => {
+	beforeEach(setupMinionHeightTest);
+
+	it('strike hits an elevated enemy on the same (x, z)', () => {
 		gameState.enemies.push({
 			id: 'elevated',
 			type: 'grunt',
@@ -475,31 +527,46 @@ describe('enemy and minion symmetric height-aware aim', () => {
 		expect(gameState._pendingMinionBreaths).toHaveLength(1);
 		expect(gameState._pendingMinionBreaths[0].direction.y).toBeGreaterThan(0);
 	});
+});
 
-	it('(d) wyrm breath cone hits an elevated enemy when aimed upward', () => {
+describe('dungeon_drake', () => {
+	beforeEach(setupMinionHeightTest);
+	afterEach(() => vi.useRealTimers());
+
+	it('breath cone hits an elevated enemy on the same (x, z) when aimed upward', () => {
 		const now = 1_000_000;
 		vi.useFakeTimers();
 		vi.setSystemTime(now);
 
+		const minionPos = { x: 0, y: 0, z: 0 };
+		const enemyPos = { x: 0, y: 5, z: 0 };
+		const aim = computeAimDirection3D(minionPos, enemyPos);
+
 		gameState.enemies.push({
 			id: 'elevated',
 			type: 'grunt',
-			x: 4,
-			z: 0,
-			y: 5,
+			x: enemyPos.x,
+			z: enemyPos.z,
+			y: enemyPos.y,
 			hp: 50,
 			state: 'idle',
-			wanderTarget: { x: 4, z: 0 },
+			wanderTarget: { x: enemyPos.x, z: enemyPos.z },
 		});
 		gameState.minions.push({
 			id: 'drake',
 			ownerId: 'p1',
 			type: 'dungeon_drake',
-			x: 0,
-			z: 0,
-			y: 0,
+			x: minionPos.x,
+			z: minionPos.z,
+			y: minionPos.y,
 			hp: 20,
 			ttl: 30,
+			breathState: 'breathing',
+			breathStartedAt: now,
+			lastBreathTickAt: 0,
+			breathDirX: aim.dirX,
+			breathDirY: aim.dirY,
+			breathDirZ: aim.dirZ,
 			breathRange: 8,
 			breathHoldDistance: 3.5,
 			breathConeAngle: Math.PI / 2,
@@ -514,6 +581,63 @@ describe('enemy and minion symmetric height-aware aim', () => {
 		updateMinions();
 
 		expect(gameState.enemies[0].hp).toBe(48);
+		expect(gameState.minions[0].breathDirY).toBeGreaterThan(0);
+		expect(gameState._pendingMinionBreaths[0].direction.y).toBeGreaterThan(0);
+	});
+});
+
+describe('ancient_wyrm', () => {
+	beforeEach(setupMinionHeightTest);
+	afterEach(() => vi.useRealTimers());
+
+	it('breath cone hits an elevated enemy on the same (x, z) when aimed upward', () => {
+		const now = 1_000_000;
+		vi.useFakeTimers();
+		vi.setSystemTime(now);
+
+		const minionPos = { x: 0, y: 0, z: 0 };
+		const enemyPos = { x: 0, y: 5, z: 0 };
+		const aim = computeAimDirection3D(minionPos, enemyPos);
+
+		gameState.enemies.push({
+			id: 'elevated',
+			type: 'grunt',
+			x: enemyPos.x,
+			z: enemyPos.z,
+			y: enemyPos.y,
+			hp: 50,
+			state: 'idle',
+			wanderTarget: { x: enemyPos.x, z: enemyPos.z },
+		});
+		gameState.minions.push({
+			id: 'wyrm',
+			ownerId: 'p1',
+			type: 'ancient_wyrm',
+			x: minionPos.x,
+			z: minionPos.z,
+			y: minionPos.y,
+			hp: 90,
+			ttl: 30,
+			breathState: 'breathing',
+			breathStartedAt: now,
+			lastBreathTickAt: 0,
+			breathDirX: aim.dirX,
+			breathDirY: aim.dirY,
+			breathDirZ: aim.dirZ,
+			breathRange: 10,
+			breathHoldDistance: 5.5,
+			breathConeAngle: CARD_DEFS.ancient_wyrm.breathConeAngle,
+			breathDamage: CARD_DEFS.ancient_wyrm.breathDamage,
+			burnDurationMs: 2000,
+			breathDurationMs: 2500,
+			breathTickMs: 500,
+			breathIntervalMs: 3000,
+			lastBreathAt: 0,
+		});
+
+		updateMinions();
+
+		expect(gameState.enemies[0].hp).toBe(50 - CARD_DEFS.ancient_wyrm.breathDamage);
 		expect(gameState.minions[0].breathDirY).toBeGreaterThan(0);
 		expect(gameState._pendingMinionBreaths[0].direction.y).toBeGreaterThan(0);
 	});

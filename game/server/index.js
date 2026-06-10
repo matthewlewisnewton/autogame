@@ -588,6 +588,7 @@ const DEBUG_SCENARIOS = new Set([
   'energy-blade-slash-ready',
   'heavy-greatsword-slash-ready',
   'lock-on-elevated-projectile',
+  'height-aware-projectile',
 ]);
 
 // Wire debugScenarios with io, the index.js-local helpers its setup chain needs,
