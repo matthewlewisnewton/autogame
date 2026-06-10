@@ -762,6 +762,42 @@ const QUEST_DEFS = {
           },
         ],
       },
+      2: {
+        tier: 2,
+        name: 'Ember Descent — Tier II',
+        description:
+          'Descend the fixed ember cavern where a cinder warden stokes the molten basin with marked supports.',
+        objectiveType: 'stage_boss',
+        rewardCurrency: 14,
+        layoutProfile: 'fire-cavern',
+        layoutMode: 'rigid',
+        unlockRequires: { questId: 'ember_descent', tier: 1 },
+        signatureCardId: 'fireball',
+        rewardCards: ['fireball', 'dragons_breath'],
+        encounter: {
+          bossType: 'cinder_warden',
+          addCount: 4,
+        },
+        client: {
+          name: 'Ashvelle',
+          briefing:
+            'Ember warden contract — Tier II. A cinder warden has claimed the molten basin with four marked hostiles; quench the nest for fourteen stones from my survey fund.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Ashvelle on the rim feed. Cinder warden signature down in the basin — burn through the supports before you face it.',
+          },
+          {
+            trigger: { waveCleared: 2 },
+            text: 'Basin is thinning out. The cinder warden is still stoking the molten core.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Cinder warden quenched and the basin is cooling. Fourteen stones heading your way.',
+          },
+        ],
+      },
     },
   },
   spire_ascent: {
@@ -1052,6 +1088,15 @@ function formatObjectiveSummary(quest) {
         );
       }
       return THEME.objectives.defeatCanyonWarden;
+    }
+    if (questId === 'ember_descent') {
+      if (addCount > 0) {
+        return THEME.objectives.defeatCinderWardenWithSupports.replace(
+          '{addCount}',
+          String(addCount),
+        );
+      }
+      return THEME.objectives.defeatCinderWarden;
     }
     const annexOverseer = encounter?.bossType === 'annex_overseer';
     if (addCount > 0) {
