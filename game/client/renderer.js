@@ -6762,6 +6762,120 @@ export function syncEnemyMeshes(gs) {
 	}
 }
 
+export function syncMinionMeshes(gs) {
+	// ── Minion mesh sync ──
+	const currentMinionIds = new Set(gs.minions ? gs.minions.map((m) => m.id) : []);
+
+	for (const minion of (gs.minions || [])) {
+		if (!minionsMeshes[minion.id]) {
+			const mesh = createMinionMesh(minion.type);
+			scene.add(mesh);
+			minionsMeshes[minion.id] = mesh;
+			if (!seenMinionIds.has(minion.id)) {
+				seenMinionIds.add(minion.id);
+				minionSpawnTimes[minion.id] = performance.now();
+				minionBaseScales[minion.id] = mesh.scale.x;
+				mesh.scale.setScalar(0.001);
+			} else if (minionSpawnTimes[minion.id] === undefined) {
+				const settledScale = minionBaseScales[minion.id] ?? mesh.scale.x;
+				mesh.scale.setScalar(settledScale);
+			}
+		}
+		const minionMesh = minionsMeshes[minion.id];
+		// Flying minions (storm_eagle, thunderbird) hover at the floor-aware
+		// surface + altitude; grounded minions keep the fixed 0.5
+		// (flyingRenderOffset → 0).
+		const minionRenderY = 0.5 + flyingRenderOffset(minion, gs.layout);
+		minionMesh.position.set(minion.x, minionRenderY, minion.z);
+		syncFlyingShadow(minionShadows, minion, gs.layout);
+
+		const spawnAt = minionSpawnTimes[minion.id];
+		if (spawnAt !== undefined) {
+			const rawT = Math.min((performance.now() - spawnAt) / MINION_SUMMON_IN_MS, 1);
+			const eased = rawT * (2 - rawT);
+			const baseScale = minionBaseScales[minion.id] ?? 1;
+			minionMesh.scale.setScalar(Math.max(0.001, baseScale * eased));
+			if (rawT >= 1) {
+				minionMesh.scale.setScalar(baseScale);
+				delete minionSpawnTimes[minion.id];
+				delete minionBaseScales[minion.id];
+			}
+		}
+
+		if (minion.type === 'null_crawler' && minion.attackState === 'windup') {
+			if (!minionTelegraphMeshes[minion.id]) {
+				const telegraph = createNullCrawlerTelegraph(minion);
+				scene.add(telegraph);
+				minionTelegraphMeshes[minion.id] = telegraph;
+				const windupMs = minion.attackWindupMs ?? 1000;
+				const beamRange = minion.attackRange ?? 14;
+				spawnTelegraphRing(
+					{ x: minion.x, z: minion.z },
+					Math.min(beamRange * 0.32, 3.2),
+					{
+						color: 0x67e8f9,
+						emissive: 0xa5f3fc,
+						duration: windupMs,
+					},
+				);
+			} else {
+				updateNullCrawlerTelegraph(minion, minionTelegraphMeshes[minion.id]);
+			}
+			const mesh = minionsMeshes[minion.id];
+			if (mesh?.material?.emissive) {
+				mesh.material.emissive.setHex(0x67e8f9);
+				mesh.material.emissiveIntensity = 1.0;
+			}
+		} else {
+			disposeOne(minionTelegraphMeshes, minion.id, scene);
+			if (minion.type === 'null_crawler') {
+				const mesh = minionsMeshes[minion.id];
+				if (mesh?.material?.emissive) {
+					mesh.material.emissive.setHex(0x06b6d4);
+					mesh.material.emissiveIntensity = 0.55;
+				}
+			}
+		}
+
+		if (previousMinionHp[minion.id] !== undefined && minion.hp < previousMinionHp[minion.id]) {
+			const damageAmount = previousMinionHp[minion.id] - minion.hp;
+			flashMesh(minionsMeshes[minion.id], 0xff4444, 150);
+			spawnDamageNumber(minion.x, 1.2 + flyingRenderOffset(minion, gs.layout), minion.z, damageAmount, '#ff4444');
+		}
+		previousMinionHp[minion.id] = minion.hp;
+	}
+
+	disposeStaleMeshes(minionsMeshes, currentMinionIds, scene);
+	disposeStaleMeshes(minionShadows, currentMinionIds, scene);
+	disposeStaleMeshes(minionTelegraphMeshes, currentMinionIds, scene);
+	for (const id of Object.keys(previousMinionHp)) {
+		if (!currentMinionIds.has(id)) {
+			delete previousMinionHp[id];
+		}
+	}
+	for (const id of [...seenMinionIds]) {
+		if (!currentMinionIds.has(id)) {
+			seenMinionIds.delete(id);
+			delete minionSpawnTimes[id];
+			delete minionBaseScales[id];
+		}
+	}
+}
+
+export function syncSpikeTrapMeshes(gs) {
+	// Spike trap hazard mesh sync: reconcile a persistent ground-hazard mesh
+	// per armed spike_trap from the snapshot, mirroring the enemy/minion
+	// pattern. Only spike_trap is handled here; other effects (e.g.
+	// cinder_snare) are left to their own handling.
+	const armedSpikeTraps = (gs.enchantments || []).filter(
+		(enc) => enc && enc.effect === 'spike_trap' && enc.armed,
+	);
+	syncMeshMap(spikeTrapMeshes, armedSpikeTraps, {
+		create: createSpikeTrapHazardMesh,
+		update: (mesh, enc) => mesh.position.set(enc.x, 0, enc.z),
+	});
+}
+
 export function animate(timestamp) {
 	requestAnimationFrame(animate);
 
@@ -6795,115 +6909,9 @@ export function animate(timestamp) {
 
 		syncEnemyMeshes(gs);
 
-		// ── Minion mesh sync ──
-		const currentMinionIds = new Set(gs.minions ? gs.minions.map((m) => m.id) : []);
+		syncMinionMeshes(gs);
 
-		for (const minion of (gs.minions || [])) {
-			if (!minionsMeshes[minion.id]) {
-				const mesh = createMinionMesh(minion.type);
-				scene.add(mesh);
-				minionsMeshes[minion.id] = mesh;
-				if (!seenMinionIds.has(minion.id)) {
-					seenMinionIds.add(minion.id);
-					minionSpawnTimes[minion.id] = performance.now();
-					minionBaseScales[minion.id] = mesh.scale.x;
-					mesh.scale.setScalar(0.001);
-				} else if (minionSpawnTimes[minion.id] === undefined) {
-					const settledScale = minionBaseScales[minion.id] ?? mesh.scale.x;
-					mesh.scale.setScalar(settledScale);
-				}
-			}
-			const minionMesh = minionsMeshes[minion.id];
-			// Flying minions (storm_eagle, thunderbird) hover at the floor-aware
-			// surface + altitude; grounded minions keep the fixed 0.5
-			// (flyingRenderOffset → 0).
-			const minionRenderY = 0.5 + flyingRenderOffset(minion, gs.layout);
-			minionMesh.position.set(minion.x, minionRenderY, minion.z);
-			syncFlyingShadow(minionShadows, minion, gs.layout);
-
-			const spawnAt = minionSpawnTimes[minion.id];
-			if (spawnAt !== undefined) {
-				const rawT = Math.min((performance.now() - spawnAt) / MINION_SUMMON_IN_MS, 1);
-				const eased = rawT * (2 - rawT);
-				const baseScale = minionBaseScales[minion.id] ?? 1;
-				minionMesh.scale.setScalar(Math.max(0.001, baseScale * eased));
-				if (rawT >= 1) {
-					minionMesh.scale.setScalar(baseScale);
-					delete minionSpawnTimes[minion.id];
-					delete minionBaseScales[minion.id];
-				}
-			}
-
-			if (minion.type === 'null_crawler' && minion.attackState === 'windup') {
-				if (!minionTelegraphMeshes[minion.id]) {
-					const telegraph = createNullCrawlerTelegraph(minion);
-					scene.add(telegraph);
-					minionTelegraphMeshes[minion.id] = telegraph;
-					const windupMs = minion.attackWindupMs ?? 1000;
-					const beamRange = minion.attackRange ?? 14;
-					spawnTelegraphRing(
-						{ x: minion.x, z: minion.z },
-						Math.min(beamRange * 0.32, 3.2),
-						{
-							color: 0x67e8f9,
-							emissive: 0xa5f3fc,
-							duration: windupMs,
-						},
-					);
-				} else {
-					updateNullCrawlerTelegraph(minion, minionTelegraphMeshes[minion.id]);
-				}
-				const mesh = minionsMeshes[minion.id];
-				if (mesh?.material?.emissive) {
-					mesh.material.emissive.setHex(0x67e8f9);
-					mesh.material.emissiveIntensity = 1.0;
-				}
-			} else {
-				disposeOne(minionTelegraphMeshes, minion.id, scene);
-				if (minion.type === 'null_crawler') {
-					const mesh = minionsMeshes[minion.id];
-					if (mesh?.material?.emissive) {
-						mesh.material.emissive.setHex(0x06b6d4);
-						mesh.material.emissiveIntensity = 0.55;
-					}
-				}
-			}
-
-			if (previousMinionHp[minion.id] !== undefined && minion.hp < previousMinionHp[minion.id]) {
-				const damageAmount = previousMinionHp[minion.id] - minion.hp;
-				flashMesh(minionsMeshes[minion.id], 0xff4444, 150);
-				spawnDamageNumber(minion.x, 1.2 + flyingRenderOffset(minion, gs.layout), minion.z, damageAmount, '#ff4444');
-			}
-			previousMinionHp[minion.id] = minion.hp;
-		}
-
-		disposeStaleMeshes(minionsMeshes, currentMinionIds, scene);
-		disposeStaleMeshes(minionShadows, currentMinionIds, scene);
-		disposeStaleMeshes(minionTelegraphMeshes, currentMinionIds, scene);
-		for (const id of Object.keys(previousMinionHp)) {
-			if (!currentMinionIds.has(id)) {
-				delete previousMinionHp[id];
-			}
-		}
-		for (const id of [...seenMinionIds]) {
-			if (!currentMinionIds.has(id)) {
-				seenMinionIds.delete(id);
-				delete minionSpawnTimes[id];
-				delete minionBaseScales[id];
-			}
-		}
-
-		// Spike trap hazard mesh sync: reconcile a persistent ground-hazard mesh
-		// per armed spike_trap from the snapshot, mirroring the enemy/minion
-		// pattern. Only spike_trap is handled here; other effects (e.g.
-		// cinder_snare) are left to their own handling.
-		const armedSpikeTraps = (gs.enchantments || []).filter(
-			(enc) => enc && enc.effect === 'spike_trap' && enc.armed,
-		);
-		syncMeshMap(spikeTrapMeshes, armedSpikeTraps, {
-			create: createSpikeTrapHazardMesh,
-			update: (mesh, enc) => mesh.position.set(enc.x, 0, enc.z),
-		});
+		syncSpikeTrapMeshes(gs);
 
 		// ── Loot mesh sync ──
 		syncLootMeshes();
