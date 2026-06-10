@@ -58,7 +58,13 @@
         <span id="currency-display">Money 0</span>
         <span id="status">Connecting...</span>
       </div>
-      <div id="key-item-indicator"></div>
+      <!-- Key item HUD slot children: .key-item-hud-icon, .key-item-hud-name, .key-item-hud-keybind, .key-item-hud-cooldown -->
+      <div id="key-item-indicator">
+        <span class="key-item-hud-icon" aria-hidden="true"></span>
+        <span class="key-item-hud-name"></span>
+        <span class="key-item-hud-keybind"></span>
+        <span class="key-item-hud-cooldown" aria-hidden="true"></span>
+      </div>
       <div id="objective-hud"></div>
       <div id="quest-comms-log" class="quest-comms-log hidden" aria-hidden="true" aria-live="polite"></div>
       <div id="boss-encounter-hud" class="hidden" aria-hidden="true">

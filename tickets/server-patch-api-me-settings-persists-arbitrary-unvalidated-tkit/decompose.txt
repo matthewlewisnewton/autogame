@@ -1,0 +1,13 @@
+Broke the top-level ticket into **3 sub-tickets** in dependency order:
+
+1. **Schema validation** — `validateSettings` / `backfillSettings` (cosmetic.js pattern), unit-tested but not wired yet  
+2. **Persistence wiring** — hook validation into `updateSettings`, `getSettings`, and `PATCH /api/me/settings`  
+3. **Size cap** — `SETTINGS_MAX_BYTES`, reject oversized writes, integration tests for unbounded-growth fix  
+
+All use **code** verification (handlers, pruning, server state, tests).
+
+**Created sub-ticket folders:**
+
+- `/home/matt/workspace/.autogame-worktrees/server-patch-api-me-settings-persists-arbitrary-unvalidated-tkit/tickets/server-patch-api-me-settings-persists-arbitrary-unvalidated-tkit/subtickets/01-settings-schema-validation/`
+- `/home/matt/workspace/.autogame-worktrees/server-patch-api-me-settings-persists-arbitrary-unvalidated-tkit/tickets/server-patch-api-me-settings-persists-arbitrary-unvalidated-tkit/subtickets/02-wire-settings-persistence/`
+- `/home/matt/workspace/.autogame-worktrees/server-patch-api-me-settings-persists-arbitrary-unvalidated-tkit/tickets/server-patch-api-me-settings-persists-arbitrary-unvalidated-tkit/subtickets/03-settings-size-cap-and-tests/`

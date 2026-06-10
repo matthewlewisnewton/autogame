@@ -2494,7 +2494,7 @@ describe("generateLayout(seed, 'ice-cavern')", () => {
   it('returns profile ice-cavern with entry, stone, ice, and ramp bands', () => {
     const layout = generateLayout(42, 'ice-cavern');
     expect(layout.profile).toBe('ice-cavern');
-    expect(layout.passages).toEqual([]);
+    expect(layout.passages.length).toBeGreaterThanOrEqual(1);
     expect(roomsByBand(layout, 'entry').length).toBe(1);
     expect(roomsByBand(layout, 'stone').length).toBe(1);
     expect(roomsByBand(layout, 'ice').length).toBe(1);

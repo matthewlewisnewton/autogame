@@ -99,6 +99,8 @@ const {
   isScriptedQuest,
   usesScriptedEncounterRuntime,
   setWaveClearedCallback,
+  spawnAmbushAtPlayer,
+  onFinalAmbushEnemyDefeated,
 } = require('./scriptedEncounters');
 const {
   fireQuestDialogue,
@@ -107,6 +109,8 @@ const {
   evaluateDialogueBeacons,
   emitQuestDialoguePayloads,
   tickDialogueRoomEntry,
+  findRoomIndexAt,
+  playerInRoom,
 } = require('./questDialogue');
 const { THEME } = require('./theme');
 const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
@@ -1425,6 +1429,58 @@ function recordEnemyDefeated(count = 1) {
   }
 }
 
+function resolveExtractionDestinationRoom(quest, layout) {
+  const dest = quest?.extractionDestination;
+  if (!dest || !layout) return null;
+
+  if (typeof dest.landmark === 'string' && Array.isArray(layout.landmarks)) {
+    const landmark = layout.landmarks.find((lm) => lm.type === dest.landmark);
+    if (landmark && Number.isFinite(landmark.x) && Number.isFinite(landmark.z)) {
+      const roomIndex = findRoomIndexAt(layout, landmark.x, landmark.z);
+      if (roomIndex >= 0) return layout.rooms[roomIndex];
+    }
+  }
+
+  if (typeof dest.roomRole === 'string') {
+    const rooms = roomsByRole(layout, dest.roomRole);
+    if (rooms.length > 0) return rooms[0];
+  }
+
+  return null;
+}
+
+function onFinalAmbushCleared() {
+  const run = _gameState?.run;
+  if (!run?.finalAmbush?.cleared || run.objective?.extractionPhase) return;
+
+  const quest = getQuest(run.questId, run.questTier);
+  if (!quest?.extractionDestination) return;
+
+  run.objective.extractionPhase = true;
+  run.objective.label = `${quest.name}: return to the entry dock`;
+
+  const io = getIoTarget();
+  fireQuestDialogue(io, _gameState, 'extraction_start');
+  const payloads = evaluateDialogueBeacons(run, quest, 'onExtractionStart', {});
+  if (io) {
+    emitQuestDialoguePayloads(io, null, payloads);
+  }
+}
+
+function maybeSpawnFinalAmbush(run) {
+  if (!run || run.finalAmbush?.spawned) return;
+  if (run.objective.collectedItems < run.objective.totalItems) return;
+
+  const quest = getQuest(run.questId, run.questTier);
+  const spawns = quest?.finalAmbush?.spawns;
+  if (!Array.isArray(spawns) || spawns.length === 0) return;
+
+  const spawnedIds = spawnAmbushAtPlayer(run, _gameState, spawns, buildObjectiveSpawnCtx());
+  if (spawnedIds.length > 0 && Number.isFinite(run.objective.totalEnemies)) {
+    run.objective.totalEnemies += spawnedIds.length;
+  }
+}
+
 function recordCrystalCollected(count = 1) {
   if (!_gameState.run) return;
   const def = getObjectiveDef(_gameState.run.objective.type);
@@ -1445,6 +1501,7 @@ function recordCrystalCollected(count = 1) {
   if (io) {
     emitQuestDialoguePayloads(io, null, payloads);
   }
+  maybeSpawnFinalAmbush(run);
 }
 
 function handleQuestDialogueWaveCleared(run, gameState, ctx) {
@@ -2506,6 +2563,11 @@ function removeDeadEnemies() {
     if (enemy.scriptedWave && _gameState.run?.scriptedEncounter) {
       onScriptedEnemyDefeated(_gameState.run, enemy.id, _gameState, spawnCtx);
     }
+    if (enemy.finalAmbush && _gameState.run?.finalAmbush) {
+      if (onFinalAmbushEnemyDefeated(_gameState.run, enemy.id)) {
+        onFinalAmbushCleared();
+      }
+    }
   }
 
   const bossId = getEncounterBossId(_gameState.run);
@@ -2847,6 +2909,32 @@ function updateScriptedEncounters(now = Date.now()) {
 function tickEscort(gameState = _gameState) {
   if (!gameState) return;
   require('./escort').tickEscort(gameState);
+}
+
+function tickCollectItemsExtraction(gameState = _gameState) {
+  const run = gameState?.run;
+  if (!run?.objective?.extractionPhase || run.objective.extractionReached) return;
+  if (run.status !== 'playing' || gameState.gamePhase !== 'playing') return;
+
+  const quest = getQuest(run.questId, run.questTier);
+  if (!quest?.extractionDestination) return;
+
+  const destRoom = resolveExtractionDestinationRoom(quest, gameState.layout);
+  if (!destRoom) return;
+
+  const activePlayers = Object.values(gameState.players || {}).filter(isPlayerActive);
+  const atDestination = activePlayers.some(
+    (player) => playerInRoom(player.x, player.z, destRoom),
+  );
+  if (!atDestination) return;
+
+  run.objective.extractionReached = true;
+  const io = getIoTarget();
+  const payloads = evaluateDialogueBeacons(run, quest, 'onExtractionComplete', {});
+  if (io) {
+    emitQuestDialoguePayloads(io, null, payloads);
+  }
+  checkRunTerminalState();
 }
 
 function updateEncounterTriggers() {
@@ -3838,6 +3926,7 @@ module.exports = {
   updateSurviveSpawns,
   updateScriptedEncounters,
   tickEscort,
+  tickCollectItemsExtraction,
   updateQuestDialogueRoomEntry,
   updateEncounterTriggers,
   updateQuestScriptTriggers,

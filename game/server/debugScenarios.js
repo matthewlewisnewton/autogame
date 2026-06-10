@@ -24,6 +24,8 @@ const {
   buildQuestUpdatePayload,
   SCRIPTED_ENCOUNTER_FIXTURE_DEF,
   ESCORT_OBJECTIVE_FIXTURE_DEF,
+  countScriptedEnemiesInQuest,
+  countFinalAmbushEnemies,
 } = require('./quests');
 const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS, MEDIC_HEAL_COST } = require('./config');
 const CARD_DEFS = require('../shared/cardDefs.json');
@@ -31,6 +33,8 @@ const {
   firstRoomPosition,
   computeDungeonBounds,
   computeWalkableAABBs,
+  buildWallColliders,
+  hasLineOfSight,
   rebuildWallColliders,
   ENEMY_DEFS,
 } = require('./simulation');
@@ -46,6 +50,8 @@ const {
   spawnEnemies,
   startDungeonRun,
   updateQuestScriptTriggers,
+  updateScriptedEncounters,
+  removeDeadEnemies,
   emitRunStartDialogue,
   syncRunObjectiveToEnemies,
   checkRunTerminalState,
@@ -655,36 +661,47 @@ function applyDebugScenario(socket, name) {
       };
     }
 
-    if (name === 'training-caverns-vault-marauder') {
-      // training_caverns Tier 1 with run-start grunts cleared and Vault Marauder
-      // spawned in the deepest vault room for named-rare QA. Reachable normally by
-      // clearing the annex and entering the deep vault; this scenario is a shortcut.
-      setupTrainingCavernsTier1Deploy(lobby, state, player);
+    if (name === 'training-caverns-vault-stalker') {
+      // training_caverns Tier 1 with annex waves cleared and Vault Stalker spawned
+      // in the vault wing for named-rare QA. Reachable normally by clearing both
+      // passage-locked rooms and entering room 2; this scenario is a shortcut.
+      setupTrainingCavernsTier1Deploy(lobby, state, player, 1);
 
-      const vaultRoom = deepestCombatRoom(state.layout);
-      const runStartWave = state.run?.waveScript?.waves?.find((wave) => wave.id === 'wave_run_start');
-      if (runStartWave) {
-        for (const enemyId of runStartWave.spawnedEnemyIds) {
-          const enemy = state.enemies.find((entry) => entry.id === enemyId);
-          if (enemy) enemy.hp = 0;
-        }
-        state.enemies = state.enemies.filter((enemy) => enemy.hp > 0);
-        runStartWave.status = 'cleared';
-        if (state.run?.objective) {
-          state.run.objective.defeatedEnemies = runStartWave.spawnedEnemyIds.length;
+      const layout = state.layout;
+      const vaultRoom = layout?.rooms?.[2] ?? deepestCombatRoom(layout);
+
+      for (const enemy of [...state.enemies]) {
+        if (enemy.scriptedWave?.roomKey === 'room:0' && enemy.scriptedWave?.waveIndex === 0) {
+          enemy.hp = 0;
         }
       }
+      removeDeadEnemies();
+
+      const annexRoom = layout?.rooms?.[1];
+      if (annexRoom) {
+        player.x = annexRoom.x;
+        player.z = annexRoom.z;
+        player.y = resolveFloorY(sampleFloorY(layout, player.x, player.z));
+        updateScriptedEncounters();
+      }
+
+      for (const enemy of [...state.enemies]) {
+        if (enemy.scriptedWave?.roomKey === 'room:1') {
+          enemy.hp = 0;
+        }
+      }
+      removeDeadEnemies();
 
       player.x = vaultRoom?.x ?? 0;
       player.z = vaultRoom?.z ?? 0;
-      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      updateQuestScriptTriggers();
+      player.y = resolveFloorY(sampleFloorY(layout, player.x, player.z));
+      updateScriptedEncounters();
 
-      const marauder = state.enemies.find((enemy) => enemy.namedRare?.name === 'Vault Marauder');
-      if (marauder) {
-        marauder.wanderTarget = { x: marauder.x, z: marauder.z };
-        repositionNearEnemy(player, marauder);
-        player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      const stalker = state.enemies.find((enemy) => enemy.displayName === 'Vault Stalker');
+      if (stalker) {
+        stalker.wanderTarget = { x: stalker.x, z: stalker.z };
+        repositionNearEnemy(player, stalker);
+        player.y = resolveFloorY(sampleFloorY(layout, player.x, player.z));
       }
 
       if (!player.hand.some((c) => c && c.type === 'weapon' && (c.remainingCharges == null || c.remainingCharges > 0))) {
@@ -1194,6 +1211,49 @@ function applyDebugScenario(socket, name) {
       };
     }
 
+    if (name === 'crystal-rescue-extraction-phase') {
+      // crystal_rescue Tier 1 after final ambush cleared: extraction phase active,
+      // player seated away from the entry dock. Reachable normally by collecting
+      // all prisms, surviving the ambush, and starting the return leg.
+      setupCrystalRescueTier1Deploy(lobby, state, player);
+
+      const objective = state.run.objective;
+      const questTier = QUEST_DEFS.crystal_rescue.tiers[1];
+      const fullEnemyTotal = countScriptedEnemiesInQuest(questTier) + countFinalAmbushEnemies(questTier);
+      objective.collectedItems = questTier.itemCount;
+      objective.totalEnemies = fullEnemyTotal;
+      objective.defeatedEnemies = fullEnemyTotal;
+      state.enemies = [];
+      if (state.run.scriptedEncounter?.rooms) {
+        for (const roomState of Object.values(state.run.scriptedEncounter.rooms)) {
+          roomState.cleared = true;
+          roomState.started = true;
+          roomState.enemyIds = [];
+        }
+      }
+      state.run.finalAmbush = { spawned: true, cleared: true, enemyIds: [] };
+      objective.extractionPhase = true;
+      objective.extractionReached = false;
+      objective.label = `${questTier.name}: return to the entry dock`;
+
+      const awayRoom = deepestCombatRoom(state.layout) || state.layout.rooms[1] || state.layout.rooms[0];
+      player.x = awayRoom.x;
+      player.z = awayRoom.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
     if (name === 'annex-escort-tier-1') {
       // annex_escort Tier 1 escort objective with Archivist Vale and ambush waves.
       // Reachable normally by selecting Annex Evacuation and deploying.
@@ -1275,34 +1335,44 @@ function applyDebugScenario(socket, name) {
     }
 
     if (name === 'frost-crossing-frostmaw') {
-      // frost_crossing Tier 1 with run-start grunts cleared and Frostmaw spawned on
-      // the ice field for named-rare QA. Reachable normally by crossing to the ice
-      // sheet; this scenario is a shortcut into that encounter.
+      // frost_crossing Tier 1 with dock wave cleared, ice-band throwers defeated, and
+      // Rimecast the Slow spawned for named-rare QA. Reachable normally by crossing
+      // the ice sheet; this scenario is a shortcut into that encounter.
       setupFrostCrossingTier1Deploy(lobby, state, player);
 
-      const iceRoom = state.layout.rooms.find((room) => room.band === 'ice');
-      const runStartWave = state.run?.waveScript?.waves?.find((wave) => wave.id === 'wave_run_start');
-      if (runStartWave) {
-        for (const enemyId of runStartWave.spawnedEnemyIds) {
-          const enemy = state.enemies.find((entry) => entry.id === enemyId);
-          if (enemy) enemy.hp = 0;
-        }
-        state.enemies = state.enemies.filter((enemy) => enemy.hp > 0);
-        runStartWave.status = 'cleared';
-        if (state.run?.objective) {
-          state.run.objective.defeatedEnemies = runStartWave.spawnedEnemyIds.length;
+      const layout = state.layout;
+      const iceRoom = layout.rooms.find((room) => room.band === 'ice');
+
+      for (const enemy of [...state.enemies]) {
+        if (enemy.scriptedWave?.roomKey === 'room:0' && enemy.scriptedWave?.waveIndex === 0) {
+          enemy.hp = 0;
         }
       }
+      removeDeadEnemies();
+      if (state.run?.passageLocks) {
+        for (const lock of state.run.passageLocks) {
+          lock.locked = false;
+        }
+      }
+      rebuildWallColliders();
 
       player.x = iceRoom?.x ?? 0;
       player.z = iceRoom?.z ?? 0;
-      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      updateQuestScriptTriggers();
+      player.y = resolveFloorY(sampleFloorY(layout, player.x, player.z));
+      updateScriptedEncounters();
 
-      const frostmaw = state.enemies.find((enemy) => enemy.namedRare?.name === 'Frostmaw');
-      if (frostmaw) {
-        frostmaw.wanderTarget = { x: frostmaw.x, z: frostmaw.z };
-        repositionNearEnemy(player, frostmaw);
+      for (const enemy of [...state.enemies]) {
+        if (enemy.scriptedWave?.roomKey === 'band:ice' && enemy.scriptedWave?.waveIndex === 0) {
+          enemy.hp = 0;
+        }
+      }
+      removeDeadEnemies();
+      updateScriptedEncounters();
+
+      const rimecast = state.enemies.find((enemy) => enemy.displayName === 'Rimecast the Slow');
+      if (rimecast) {
+        rimecast.wanderTarget = { x: rimecast.x, z: rimecast.z };
+        repositionNearEnemy(player, rimecast);
         player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       }
 
@@ -1496,6 +1566,98 @@ function applyDebugScenario(socket, name) {
       player.vx = (dx / dist) * launchSpeed;
       player.vz = (dz / dist) * launchSpeed;
 
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'enemy-behind-wall') {
+      // frost_crossing Tier 1 deploy with the player and a lone grunt parked on
+      // opposite sides of a real INTERIOR wall that has walkable floor on BOTH
+      // sides (e.g. the wall the two ramp connector rooms share), the two well
+      // within DETECTION_RADIUS. Verifies the line-of-sight gate: the enemy must
+      // stay 'idle' and NOT aggro/chase through the wall. Both entities sit in
+      // normally-reachable gameplay space — neither is shoved into the void
+      // outside a perimeter wall. Reachable normally by deploying Frost Crossing
+      // and standing on one side of such a wall with an enemy on the other;
+      // this scenario is a shortcut into that geometry.
+      setupFrostCrossingTier1Deploy(lobby, state, player);
+      state.enemies = [];
+
+      const startRoom = roomAt(state.layout, player.x, player.z)
+        || state.layout.rooms.find((r) => r.role === 'start')
+        || state.layout.rooms[0];
+
+      const offset = 2; // each side of the wall → ~4 units apart (< DETECTION_RADIUS = 8)
+      // Walkable footprint (rooms ∪ passages) and wall colliders, computed once.
+      const walkableAABBs = computeWalkableAABBs(state.layout);
+      const colliders = buildWallColliders(state.layout);
+      const pointInWalkable = (x, z) =>
+        walkableAABBs.some((a) => x >= a.minX && x <= a.maxX && z >= a.minZ && z <= a.maxZ);
+
+      // Project the prospective player + enemy points onto the two sides of a
+      // wall, `offset` units out along its normal (the existing axis logic).
+      const projectWall = (room, wall) => {
+        if (wall.axis === 'z') {
+          const interiorSign = room.x >= wall.x ? 1 : -1;
+          return {
+            px: wall.x + interiorSign * offset,
+            pz: wall.z,
+            ex: wall.x - interiorSign * offset,
+            ez: wall.z,
+          };
+        }
+        const interiorSign = room.z >= wall.z ? 1 : -1;
+        return {
+          px: wall.x,
+          pz: wall.z + interiorSign * offset,
+          ex: wall.x,
+          ez: wall.z - interiorSign * offset,
+        };
+      };
+
+      // Pick the first wall whose two offset points BOTH land inside walkable
+      // space AND whose segment is still wall-occluded (rejects doorway-gap
+      // segments — LOS must stay blocked). Prefer the start room's walls, then
+      // fall back to any room's walls so the scenario works on layouts whose
+      // start room has no interior wall with walkable space on both sides.
+      const candidateRooms = [startRoom, ...state.layout.rooms.filter((r) => r !== startRoom)];
+      let chosen = null;
+      for (const room of candidateRooms) {
+        for (const wall of room.walls) {
+          const pt = projectWall(room, wall);
+          if (pointInWalkable(pt.px, pt.pz) && pointInWalkable(pt.ex, pt.ez)
+              && !hasLineOfSight(pt.ex, pt.ez, pt.px, pt.pz, colliders)) {
+            chosen = pt;
+            break;
+          }
+        }
+        if (chosen) break;
+      }
+
+      // Defensive fallback: anchor on the start room's longest wall (old
+      // behaviour) so the scenario still loads if no interior wall qualifies.
+      if (!chosen) {
+        const wall = [...startRoom.walls].sort((a, b) => b.length - a.length)[0];
+        chosen = projectWall(startRoom, wall);
+      }
+
+      player.x = chosen.px;
+      player.z = chosen.pz;
+      const enemyX = chosen.ex;
+      const enemyZ = chosen.ez;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      const enemy = spawnEnemy(enemyX, enemyZ, 'grunt');
+      enemy.y = resolveFloorY(sampleFloorY(state.layout, enemy.x, enemy.z));
+      enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+      enemy.state = 'idle';
+      enemy.attackState = 'idle';
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
       broadcastLobbyUpdate(lobby);
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return { ok: true, scenario: name };

@@ -152,12 +152,21 @@ const OBJECTIVE_DEFS = {
         objective.totalEnemies = countAuthoredScriptedEnemies(quest);
         objective.defeatedEnemies = 0;
       }
+      if (quest.extractionDestination) {
+        objective.requiresExtraction = true;
+        objective.extractionPhase = false;
+        objective.extractionReached = false;
+      }
       return objective;
     },
     isComplete(objective) {
       if (objective.collectedItems < objective.totalItems) return false;
       if (Number.isFinite(objective.totalEnemies)) {
-        return objective.defeatedEnemies >= objective.totalEnemies;
+        if (objective.defeatedEnemies < objective.totalEnemies) return false;
+      }
+      if (objective.requiresExtraction) {
+        if (!objective.extractionPhase) return false;
+        if (!objective.extractionReached) return false;
       }
       return true;
     },

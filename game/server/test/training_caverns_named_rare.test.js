@@ -4,13 +4,13 @@ import { generateLayout, questLayoutSeed } from '../dungeon.js';
 import { createGameState } from '../game-state.js';
 import {
   setGameState,
-  spawnEnemy,
   spawnEnemies,
   startDungeonRun,
-  updateQuestScriptTriggers,
+  updateScriptedEncounters,
   cleanupAfterDamage,
   stateSnapshot,
   isRunObjectiveComplete,
+  removeDeadEnemies,
 } from '../progression.js';
 const require = createRequire(import.meta.url);
 const {
@@ -18,10 +18,11 @@ const {
   getQuestScript,
   getLayoutProfileForQuest,
   getLayoutGenerationOptions,
-  countScriptedEnemies,
+  countScriptedEnemiesInQuest,
 } = require('../quests.js');
 const { ENEMY_DEFS, setGameState: setSimulationGameState } = require('../simulation.js');
 const { getObjectiveDef } = require('../objectives.js');
+const { countAuthoredScriptedEnemies } = require('../scriptedEncounters.js');
 
 const QUEST_ID = 'training_caverns';
 const TIER = 1;
@@ -35,22 +36,15 @@ function trainingCavernsLayout(seed = SEED) {
   );
 }
 
-function deepestCombatRoom(layout) {
-  return layout.rooms
-    .filter((room) => room.role === 'combat')
-    .sort((a, b) => a.x - b.x || a.z - b.z)
-    .pop();
-}
-
-function deployTrainingCaverns(state) {
-  const layout = trainingCavernsLayout();
+function deployTrainingCaverns(state, seed = SEED) {
+  const layout = trainingCavernsLayout(seed);
   const startRoom = layout.rooms.find((room) => room.role === 'start') || layout.rooms[0];
-  const vaultRoom = deepestCombatRoom(layout);
+  const vaultRoom = layout.rooms[2] ?? layout.rooms[layout.rooms.length - 1];
 
   state.selectedQuestId = QUEST_ID;
   state.selectedQuestTier = TIER;
   state.layout = layout;
-  state.layoutSeed = SEED;
+  state.layoutSeed = seed;
   state.enemies = [];
   state.loot = [];
   state.gamePhase = 'playing';
@@ -74,118 +68,98 @@ function deployTrainingCaverns(state) {
   return { layout, startRoom, vaultRoom };
 }
 
-describe('training_caverns tier 1 scripted named rare — Vault Marauder', () => {
-  it('defines script.waves, bypasses bulk spawn, and sets defeat_enemies total to spawn count', () => {
+function killScriptedWave(state, roomIndex, waveIndex) {
+  const roomKey = `room:${roomIndex}`;
+  for (const enemy of [...state.enemies]) {
+    if (
+      enemy.scriptedWave?.roomKey === roomKey
+      && enemy.scriptedWave?.waveIndex === waveIndex
+    ) {
+      enemy.hp = 0;
+    }
+  }
+  removeDeadEnemies();
+}
+
+function enterRoom(state, room) {
+  state.players.p1.x = room.x;
+  state.players.p1.z = room.z;
+  updateScriptedEncounters();
+}
+
+describe('training_caverns tier 1 scripted named rare — Vault Stalker', () => {
+  it('uses scriptedEncounters only, bypasses bulk spawn, and sets defeat_enemies total', () => {
     const quest = getQuest(QUEST_ID, TIER);
-    const script = getQuestScript(quest);
     const def = getObjectiveDef('defeat_enemies');
 
-    expect(script).not.toBeNull();
-    expect(script.waves).toHaveLength(2);
-    expect(countScriptedEnemies(script)).toBe(6);
+    expect(getQuestScript(quest)).toBeNull();
+    expect(countAuthoredScriptedEnemies(quest)).toBe(6);
+    expect(countScriptedEnemiesInQuest(quest)).toBe(6);
     expect(def.skipBulkCombatSpawn(quest)).toBe(true);
 
     const state = createGameState();
     deployTrainingCaverns(state);
     expect(state.run.objective.totalEnemies).toBe(6);
     expect(state.enemies).toHaveLength(2);
-    expect(state.run.waveScript).toBeDefined();
     expect(state.run.scriptedEncounter).toBeDefined();
+    expect(state.run.waveScript).toBeUndefined();
   });
 
-  it('spawns Vault Marauder in the deepest vault room with namedRare fields in snapshots', () => {
-    const state = createGameState();
-    const { vaultRoom } = deployTrainingCaverns(state);
-    const script = getQuestScript(getQuest(QUEST_ID, TIER));
-    const marauderSpawn = script.waves[1].spawns[0];
+  it('authors Vault Stalker in the final vault room', () => {
+    const quest = getQuest(QUEST_ID, TIER);
+    const vaultRoom = quest.scriptedEncounters.rooms.find((room) => room.roomIndex === 2);
+    const namedSpawn = vaultRoom.waves[0].spawns.find((spawn) => spawn.namedRare);
 
-    expect(marauderSpawn).toMatchObject({
+    expect(namedSpawn).toMatchObject({
       type: 'grunt',
-      variant: {
-        name: 'Vault Marauder',
-        hpMult: 1.5,
-        damageMult: 1.25,
-        tint: '#c9a227',
-        scaleMult: 1.12,
-        drop: { cardId: 'dungeon_drake' },
+      count: 1,
+      namedRare: {
+        id: 'annex_vault_stalker',
+        displayName: 'Vault Stalker',
+        variantId: 'warded',
       },
     });
-    expect(script.waves[1].room).toEqual({ x: vaultRoom.x, z: vaultRoom.z });
-    expect(state.enemies.some((enemy) => enemy.namedRare?.name === 'Vault Marauder')).toBe(false);
+  });
 
-    state.players.p1.x = vaultRoom.x;
-    state.players.p1.z = vaultRoom.z;
-    updateQuestScriptTriggers();
+  it('spawns Vault Stalker when the player enters the vault wing', () => {
+    const state = createGameState();
+    const { layout, vaultRoom } = deployTrainingCaverns(state);
 
-    const marauder = state.enemies.find((enemy) => enemy.namedRare?.name === 'Vault Marauder');
-    expect(marauder).toBeTruthy();
-    expect(marauder.type).toBe('grunt');
-    expect(marauder.variant).toBeNull();
+    expect(state.enemies.some((enemy) => enemy.displayName === 'Vault Stalker')).toBe(false);
 
-    const base = ENEMY_DEFS.grunt;
-    expect(marauder.hp).toBe(Math.round(base.hp * 1.5));
-    expect(marauder.attackDamage).toBe(Math.round(base.attackDamage * 1.25));
+    killScriptedWave(state, 0, 0);
+    enterRoom(state, layout.rooms[1]);
+    killScriptedWave(state, 1, 0);
+    enterRoom(state, vaultRoom);
 
-    const snapEnemy = stateSnapshot().enemies.find((entry) => entry.id === marauder.id);
-    expect(snapEnemy.namedRare).toEqual({
-      id: 'vault-marauder',
-      name: 'Vault Marauder',
-      tint: '#c9a227',
-      scaleMult: 1.12,
-      drop: { cardId: 'dungeon_drake' },
-    });
-    expect(snapEnemy.type).toBe('grunt');
+    const stalker = state.enemies.find((enemy) => enemy.displayName === 'Vault Stalker');
+    expect(stalker).toBeTruthy();
+    expect(stalker.type).toBe('grunt');
+    expect(stalker.namedRareId).toBe('annex_vault_stalker');
+    expect(stalker.variant).toBe('warded');
+    expect(stalker.shieldHp).toBeGreaterThan(0);
+
+    const snapEnemy = stateSnapshot().enemies.find((entry) => entry.id === stalker.id);
+    expect(snapEnemy.displayName).toBe('Vault Stalker');
+    expect(snapEnemy.namedRareId).toBe('annex_vault_stalker');
+    expect(snapEnemy.variant).toBe('warded');
 
     const startPositions = new Set(
-      script.waves[0].spawns.map((spawn) => `${spawn.x},${spawn.z}`),
+      state.enemies
+        .filter((enemy) => enemy.scriptedWave?.roomKey === 'room:0')
+        .map((enemy) => `${enemy.x},${enemy.z}`),
     );
-    expect(startPositions.has(`${marauder.x},${marauder.z}`)).toBe(false);
+    expect(startPositions.has(`${stalker.x},${stalker.z}`)).toBe(false);
   });
 
-  it('grants dungeon_drake on first Vault Marauder kill only once per run', () => {
+  it('completes the scripted defeat_enemies objective after all rooms are cleared', () => {
     const state = createGameState();
-    const { vaultRoom } = deployTrainingCaverns(state);
+    const { layout, vaultRoom } = deployTrainingCaverns(state);
 
-    state.players.p1.x = vaultRoom.x;
-    state.players.p1.z = vaultRoom.z;
-    updateQuestScriptTriggers();
-
-    const marauder = state.enemies.find((enemy) => enemy.namedRare?.name === 'Vault Marauder');
-    marauder.lastDamagedBy = 'p1';
-    marauder.hp = 0;
-    cleanupAfterDamage();
-
-    expect(state.run.namedRareDropsClaimed).toEqual(['vault-marauder']);
-    expect(state.players.p1.runCardDropIds).toContain('dungeon_drake');
-
-    const dropsAfterFirst = state.players.p1.runCardDropIds.filter((id) => id === 'dungeon_drake').length;
-
-    const script = getQuestScript(getQuest(QUEST_ID, TIER));
-    const spawn = script.waves[1].spawns[0];
-    const respawn = spawnEnemy(spawn.x, spawn.z, spawn.type, undefined, {
-      namedRareVariant: spawn.variant,
-    });
-    respawn.lastDamagedBy = 'p1';
-    respawn.hp = 0;
-    cleanupAfterDamage();
-
-    const dropsAfterSecond = state.players.p1.runCardDropIds.filter((id) => id === 'dungeon_drake').length;
-    expect(dropsAfterSecond).toBe(dropsAfterFirst);
-    expect(state.run.namedRareDropsClaimed).toEqual(['vault-marauder']);
-  });
-
-  it('completes the scripted defeat_enemies objective after all waves are cleared', () => {
-    const state = createGameState();
-    const { vaultRoom } = deployTrainingCaverns(state);
-
-    for (const enemy of [...state.enemies]) {
-      enemy.hp = 0;
-    }
-    cleanupAfterDamage();
-
-    state.players.p1.x = vaultRoom.x;
-    state.players.p1.z = vaultRoom.z;
-    updateQuestScriptTriggers();
+    killScriptedWave(state, 0, 0);
+    enterRoom(state, layout.rooms[1]);
+    killScriptedWave(state, 1, 0);
+    enterRoom(state, vaultRoom);
 
     for (const enemy of [...state.enemies]) {
       enemy.hp = 0;
@@ -196,12 +170,12 @@ describe('training_caverns tier 1 scripted named rare — Vault Marauder', () =>
     expect(isRunObjectiveComplete(state.run.objective)).toBe(true);
   });
 
-  it('does not author Vault Marauder on frost_crossing or ember_descent', () => {
+  it('does not author Vault Stalker on frost_crossing or ember_descent', () => {
     for (const questId of ['frost_crossing', 'ember_descent']) {
-      const script = getQuestScript(getQuest(questId, 1));
-      const serialized = JSON.stringify(script ?? {});
-      expect(serialized).not.toContain('Vault Marauder');
-      expect(serialized).not.toContain('vault-marauder');
+      const quest = getQuest(questId, 1);
+      const serialized = JSON.stringify(quest.scriptedEncounters ?? {});
+      expect(serialized).not.toContain('Vault Stalker');
+      expect(serialized).not.toContain('annex_vault_stalker');
     }
   });
 });

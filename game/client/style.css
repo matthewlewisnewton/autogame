@@ -2004,62 +2004,164 @@ body[data-phase="lobby"] #objective-hud {
   text-align: center;
 }
 
-/* ── Key item HUD indicator (flash feedback) ── */
+/* ── Key item HUD indicator (persistent slot + flash feedback) ── */
 
 #key-item-indicator {
   position: absolute;
   top: 36px;
   right: 16px;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 8px;
+  row-gap: 1px;
+  align-items: center;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 5px 10px 5px 5px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background: rgba(30, 30, 46, 0.82);
+  box-sizing: border-box;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.15s ease;
+  transition: opacity 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   z-index: 10;
+  color: #e2e8f0;
+  font-family: 'Exo 2', sans-serif;
+}
+
+.key-item-hud-icon {
+  grid-row: 1 / span 2;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(100, 116, 139, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  flex-shrink: 0;
+}
+
+.key-item-hud-name {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.key-item-hud-keybind {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.1;
+  color: #94a3b8;
+  font-family: 'Roboto Mono', monospace;
+  letter-spacing: 0.02em;
+}
+
+.key-item-hud-cooldown {
+  display: none;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  background: rgba(15, 15, 24, 0.55);
+  color: #f87171;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Roboto Mono', monospace;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Per-key-item icon badge colors (aligned with renderer.js KEY_ITEM_*_COLOR) */
+#key-item-indicator[data-key-item-id="dodge_roll"] .key-item-hud-icon,
+.key-item-hud-icon.key-item-icon--dodge_roll {
+  background: #06b6d4;
+  border-color: rgba(6, 182, 212, 0.65);
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.35);
+}
+
+#key-item-indicator[data-key-item-id="guard_block"] .key-item-hud-icon,
+.key-item-hud-icon.key-item-icon--guard_block {
+  background: #3b82f6;
+  border-color: rgba(59, 130, 246, 0.65);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.35);
+}
+
+#key-item-indicator[data-key-item-id="field_medic_kit"] .key-item-hud-icon,
+.key-item-hud-icon.key-item-icon--field_medic_kit {
+  background: #f1f5f9;
+  border-color: #dc2626;
+  box-shadow: 0 0 8px rgba(220, 38, 38, 0.25);
+}
+
+#key-item-indicator[data-key-item-id="loot_magnet"] .key-item-hud-icon,
+.key-item-hud-icon.key-item-icon--loot_magnet {
+  background: #dc2626;
+  border-color: rgba(220, 38, 38, 0.65);
+  box-shadow: 0 0 8px rgba(220, 38, 38, 0.35);
+}
+
+#key-item-indicator[data-key-item-id="summon_recall"] .key-item-hud-icon,
+.key-item-hud-icon.key-item-icon--summon_recall {
+  background: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.65);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.35);
 }
 
 #key-item-indicator.flash-success {
   opacity: 1;
-  background: radial-gradient(circle, rgba(34, 197, 94, 0.7), rgba(34, 197, 94, 0.15));
+  background: radial-gradient(circle at 18px 50%, rgba(34, 197, 94, 0.7), rgba(34, 197, 94, 0.15));
   box-shadow: 0 0 14px rgba(34, 197, 94, 0.6);
 }
 
 #key-item-indicator.flash-cooldown {
   opacity: 1;
-  background: radial-gradient(circle, rgba(239, 68, 68, 0.7), rgba(239, 68, 68, 0.15));
+  background: radial-gradient(circle at 18px 50%, rgba(239, 68, 68, 0.7), rgba(239, 68, 68, 0.15));
   box-shadow: 0 0 14px rgba(239, 68, 68, 0.6);
 }
 
 /* Soft-fail (e.g. recall with no minions) — amber, distinct from red cooldown */
 #key-item-indicator.flash-soft-fail {
   opacity: 1;
-  background: radial-gradient(circle, rgba(245, 158, 11, 0.7), rgba(245, 158, 11, 0.15));
+  background: radial-gradient(circle at 18px 50%, rgba(245, 158, 11, 0.7), rgba(245, 158, 11, 0.15));
   box-shadow: 0 0 14px rgba(245, 158, 11, 0.6);
 }
 
-/* Persistent cooldown state — dimmed circle with countdown text */
+/* Persistent cooldown state — dimmed chip with countdown area */
 #key-item-indicator.cooldown {
   opacity: 1;
-  background: rgba(30, 30, 46, 0.85);
-  border: 2px solid rgba(239, 68, 68, 0.5);
+  position: relative;
+  filter: brightness(0.82);
+  background: rgba(30, 30, 46, 0.9);
+  border-color: rgba(239, 68, 68, 0.5);
   box-shadow: 0 0 8px rgba(239, 68, 68, 0.25);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   color: #f87171;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   font-family: 'Roboto Mono', monospace;
   line-height: 1;
 }
 
-/* Ready state — subtle green ring */
+#key-item-indicator.cooldown .key-item-hud-icon,
+#key-item-indicator.cooldown .key-item-hud-name,
+#key-item-indicator.cooldown .key-item-hud-keybind {
+  opacity: 0.4;
+}
+
+#key-item-indicator.cooldown .key-item-hud-cooldown {
+  display: flex;
+}
+
+/* Ready state — green ring, full visibility */
 #key-item-indicator.ready {
-  opacity: 0.7;
-  background: rgba(30, 30, 46, 0.6);
-  border: 2px solid rgba(34, 197, 94, 0.4);
-  box-shadow: 0 0 6px rgba(34, 197, 94, 0.15);
+  opacity: 1;
+  background: rgba(30, 30, 46, 0.88);
+  border-color: rgba(34, 197, 94, 0.55);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.2);
 }
 
 #lobby-tabs {

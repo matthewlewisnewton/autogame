@@ -19,10 +19,12 @@ import {
 // Pure quest data/accessors (no shared module state) — safe to import directly.
 import { generateLayout, questLayoutSeed } from '../dungeon.js';
 import {
-	setGameState,
+	setGameState as setProgressionGameState,
+	spawnEnemy,
 	spawnEnemies,
 	startDungeonRun,
-	updateQuestScriptTriggers,
+	updateScriptedEncounters,
+	removeDeadEnemies,
 } from '../progression.js';
 import { setGameState as setSimulationGameState } from '../simulation.js';
 import {
@@ -88,6 +90,8 @@ describe('glacial_thrower ice-ball projectile', () => {
 		gameState.enemies = [];
 		gameState.iceBalls = [];
 		gameState.players = {};
+		setProgressionGameState(gameState);
+		setSimulationGameState(gameState);
 	});
 
 	afterEach(() => {
@@ -200,6 +204,91 @@ describe('glacial_thrower ice-ball projectile', () => {
 		for (let i = 0; i < ticks; i++) updateEnemyProjectiles();
 		expect(gameState.iceBalls).toHaveLength(0);
 	});
+
+	// ── (d) spawned thrower: full wind-up → projectile → contact path ──
+
+	it('spawned glacial_thrower wind-up path applies SLOW when the ice ball reaches the player', () => {
+		const thrower = spawnEnemy(0, 0, 'glacial_thrower');
+		gameState.players.p1 = { id: 'p1', x: 4, z: 0, hp: 100, dead: false };
+		expect(isSlowed(gameState.players.p1)).toBe(false);
+
+		updateEnemies();
+		expect(thrower.attackState).toBe('windup');
+		expect(gameState.iceBalls).toHaveLength(0);
+
+		vi.setSystemTime(Date.now() + DEF.attackWindupMs + 50);
+		updateEnemies();
+
+		expect(gameState.iceBalls).toHaveLength(1);
+		expect(gameState.iceBalls[0].slowFactor).toBe(DEF.iceBallSlowFactor);
+		expect(gameState.iceBalls[0].slowDurationMs).toBe(DEF.iceBallSlowDurationMs);
+
+		const maxTicks = Math.ceil(DEF.iceBallMaxRange / (DEF.iceBallSpeed / 20)) + 5;
+		for (let i = 0; i < maxTicks && gameState.iceBalls.length > 0; i++) {
+			updateEnemyProjectiles();
+		}
+
+		expect(isSlowed(gameState.players.p1)).toBe(true);
+		expect(gameState.players.p1.slowedUntil).toBeGreaterThan(Date.now());
+		expect(gameState.players.p1.slowFactor).toBe(DEF.iceBallSlowFactor);
+		expect(gameState.players.p1.hp).toBe(100 - DEF.attackDamage);
+		expect(gameState.iceBalls).toHaveLength(0);
+	});
+
+	it('applies SLOW on ice-ball contact even when debugGodmode skips damage', () => {
+		const thrower = spawnEnemy(0, 0, 'glacial_thrower');
+		gameState.players.p1 = {
+			id: 'p1',
+			x: 4,
+			z: 0,
+			hp: 100,
+			dead: false,
+			debugGodmode: true,
+		};
+
+		updateEnemies();
+		vi.setSystemTime(Date.now() + DEF.attackWindupMs + 50);
+		updateEnemies();
+		expect(gameState.iceBalls).toHaveLength(1);
+
+		const maxTicks = Math.ceil(DEF.iceBallMaxRange / (DEF.iceBallSpeed / 20)) + 5;
+		for (let i = 0; i < maxTicks && gameState.iceBalls.length > 0; i++) {
+			updateEnemyProjectiles();
+		}
+
+		expect(gameState.players.p1.hp).toBe(100);
+		expect(isSlowed(gameState.players.p1)).toBe(true);
+		expect(gameState.players.p1.slowedUntil).toBeGreaterThan(Date.now());
+		expect(gameState.players.p1.slowFactor).toBe(DEF.iceBallSlowFactor);
+		expect(thrower.attackState).toBe('recovering');
+	});
+
+	it('applies SLOW on ice-ball contact even when invulnerableUntil skips damage', () => {
+		const thrower = spawnEnemy(0, 0, 'glacial_thrower');
+		gameState.players.p1 = {
+			id: 'p1',
+			x: 4,
+			z: 0,
+			hp: 100,
+			dead: false,
+			invulnerableUntil: Date.now() + 10_000,
+		};
+
+		updateEnemies();
+		vi.setSystemTime(Date.now() + DEF.attackWindupMs + 50);
+		updateEnemies();
+		expect(gameState.iceBalls).toHaveLength(1);
+
+		const maxTicks = Math.ceil(DEF.iceBallMaxRange / (DEF.iceBallSpeed / 20)) + 5;
+		for (let i = 0; i < maxTicks && gameState.iceBalls.length > 0; i++) {
+			updateEnemyProjectiles();
+		}
+
+		expect(gameState.players.p1.hp).toBe(100);
+		expect(isSlowed(gameState.players.p1)).toBe(true);
+		expect(gameState.players.p1.slowFactor).toBe(DEF.iceBallSlowFactor);
+		expect(thrower.attackState).toBe('recovering');
+	});
 });
 
 // ── run-exit cleanup clears in-flight ice balls ──
@@ -300,7 +389,7 @@ function deployScriptedFrostCrossing() {
 			extracted: false,
 		},
 	};
-	setGameState(gameState);
+	setProgressionGameState(gameState);
 	setSimulationGameState(gameState);
 	spawnEnemies();
 	startDungeonRun();
@@ -314,36 +403,54 @@ describe('Frost Crossing guaranteed glacial_thrower spawn', () => {
 		expect(getGuaranteedEnemyType('frost_crossing')).toBe('glacial_thrower');
 	});
 
-	it('scripts Frostmaw as a glacial_thrower on the ice field enter_room wave', () => {
+	it('scripts Rimecast the Slow as a glacial_thrower on the final ice-band wave', () => {
 		const { iceRoom } = deployScriptedFrostCrossing();
 		expect(gameState.enemies.map((enemy) => enemy.type)).not.toContain('glacial_thrower');
+		expect(gameState.enemies).toHaveLength(2);
+
+		for (const enemy of [...gameState.enemies]) {
+			if (enemy.scriptedWave?.roomKey === 'room:0' && enemy.scriptedWave?.waveIndex === 0) {
+				enemy.hp = 0;
+			}
+		}
+		removeDeadEnemies();
 
 		gameState.players.p1.x = iceRoom.x;
 		gameState.players.p1.z = iceRoom.z;
-		updateQuestScriptTriggers();
+		updateScriptedEncounters();
 
-		const types = gameState.enemies.map((enemy) => enemy.type);
-		expect(types).toContain('glacial_thrower');
-		expect(gameState.enemies.some((enemy) => enemy.namedRare?.name === 'Frostmaw')).toBe(true);
+		const throwers = gameState.enemies.filter((enemy) => enemy.type === 'glacial_thrower');
+		expect(throwers.length).toBeGreaterThanOrEqual(2);
+		expect(gameState.enemies.some((enemy) => enemy.displayName === 'Rimecast the Slow')).toBe(false);
+
+		for (const enemy of [...gameState.enemies]) {
+			if (enemy.scriptedWave?.roomKey === 'band:ice' && enemy.scriptedWave?.waveIndex === 0) {
+				enemy.hp = 0;
+			}
+		}
+		removeDeadEnemies();
+		updateScriptedEncounters();
+
+		expect(gameState.enemies.some((enemy) => enemy.displayName === 'Rimecast the Slow')).toBe(true);
 	});
 
-	it('scripts supporting grunts and skirmishers at run start', () => {
+	it('scripts only the dock wave at deploy', () => {
 		deployScriptedFrostCrossing();
 		const types = gameState.enemies.map((enemy) => enemy.type);
-		expect(types).toHaveLength(5);
-		expect(types.filter((type) => type === 'grunt').length).toBe(3);
-		expect(types.filter((type) => type === 'skirmisher').length).toBe(2);
+		expect(types).toHaveLength(2);
+		expect(types.every((type) => type === 'grunt')).toBe(true);
 	});
 
-	it('authored ice-band scripted waves include glacial_thrower spawns', () => {
+	it('authored ice-band scripted waves include ranged glacial_thrower offsets', () => {
 		const quest = getQuest('frost_crossing', 1);
 		const iceRoom = quest.scriptedEncounters.rooms.find((room) => room.band === 'ice');
-		const types = iceRoom.waves.flatMap((wave) => wave.spawns.map((spawn) => spawn.type));
-		expect(types).toContain('glacial_thrower');
+		const throwerSpawns = iceRoom.waves[0].spawns.filter((spawn) => spawn.type === 'glacial_thrower');
+		expect(throwerSpawns.length).toBeGreaterThanOrEqual(2);
+		expect(throwerSpawns.every((spawn) => spawn.offset)).toBe(true);
 		expect(iceRoom.waves.some((wave) => wave.spawns.some((spawn) => spawn.namedRare))).toBe(true);
 	});
 
-	it('still uses grunt and skirmisher in non-ice scripted waves', () => {
+	it('keeps glacial_thrower out of the stone dock scripted wave', () => {
 		const quest = getQuest('frost_crossing', 1);
 		const entryRoom = quest.scriptedEncounters.rooms.find((room) => room.roomIndex === 0);
 		const types = entryRoom.waves.flatMap((wave) => wave.spawns.map((spawn) => spawn.type));

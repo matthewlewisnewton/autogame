@@ -1,0 +1,15 @@
+Broke the top-level ticket into **4 sub-tickets** in dependency order:
+
+1. **01** — HTML/CSS slot structure (icon, name, keybind, cooldown children + ready/cooldown/flash styles)
+2. **02** — Render logic and visibility (equipped + playing shows name/icon/keybind; hidden otherwise)
+3. **03** — Cooldown integration + flash preservation (countdown in child element; existing feedback kept)
+4. **04** — Client vitest coverage (ready, cooldown, unequipped/lobby, flash)
+
+All use **code** verification (structure, handlers, DOM state, tests — not screenshot-only).
+
+### Created sub-ticket folders
+
+- `/home/matt/workspace/.autogame-worktrees/client-persistent-in-run-key-item-hud-slot-icon-name-keybind-52lf/tickets/client-persistent-in-run-key-item-hud-slot-icon-name-keybind-52lf/subtickets/01-key-item-hud-slot-markup-styles/`
+- `/home/matt/workspace/.autogame-worktrees/client-persistent-in-run-key-item-hud-slot-icon-name-keybind-52lf/tickets/client-persistent-in-run-key-item-hud-slot-icon-name-keybind-52lf/subtickets/02-key-item-hud-render-and-visibility/`
+- `/home/matt/workspace/.autogame-worktrees/client-persistent-in-run-key-item-hud-slot-icon-name-keybind-52lf/tickets/client-persistent-in-run-key-item-hud-slot-icon-name-keybind-52lf/subtickets/03-key-item-hud-cooldown-and-flash/`
+- `/home/matt/workspace/.autogame-worktrees/client-persistent-in-run-key-item-hud-slot-icon-name-keybind-52lf/tickets/client-persistent-in-run-key-item-hud-slot-icon-name-keybind-52lf/subtickets/04-key-item-hud-client-tests/`

@@ -1,0 +1,14 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/content-rework-crystal-rescue-frost-crossing-training-cavern-o0vv.7/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/content-rework-crystal-rescue-frost-crossing-training-cavern-o0vv.7/game/data
+Server listening on port 3001
+Player connected: socket=cEgvewb3NozFIBETAAAB, playerId=96e70918-f4cc-479d-89f5-1acaae4f8b88
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=Im7Bw_qktHkhGD6sAAAD, playerId=e9cca30e-1ae4-4240-9c86-e0ad21faa759
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: cEgvewb3NozFIBETAAAB
+Player disconnected: Im7Bw_qktHkhGD6sAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

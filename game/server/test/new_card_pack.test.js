@@ -12,6 +12,7 @@ import {
 	healPlayer,
 	cleanupAfterDamage,
 	updateEnemies,
+	ENEMY_DEFS,
 	updateMinions,
 	collectConeHits,
 	collectRadialHits,
@@ -412,7 +413,7 @@ describe('new card combat helpers', () => {
 
 	it('Necroframe Knight taunt draws enemy attacks toward the minion', () => {
 		addPlayer('p1', { x: 10, z: 0 });
-		gameState.enemies = [{
+		const enemy = {
 			id: 'e1',
 			type: 'grunt',
 			x: 0,
@@ -421,7 +422,8 @@ describe('new card combat helpers', () => {
 			state: 'idle',
 			attackState: 'idle',
 			wanderTarget: { x: 0, z: 0 },
-		}];
+		};
+		gameState.enemies = [enemy];
 		gameState.minions = [{
 			id: 'knight',
 			ownerId: 'p1',
@@ -434,7 +436,16 @@ describe('new card combat helpers', () => {
 		}];
 		gameState.run = { status: 'playing' };
 
+		// First tick: enemy transitions from idle to windup targeting the taunt minion
 		updateEnemies();
+		expect(enemy.attackState).toBe('windup');
+		expect(enemy.windupTargetType).toBe('minion');
+		expect(enemy.windupTargetId).toBe('knight');
+
+		// Advance windup past its duration so the strike fires on the next tick
+		enemy.windupStartTime = Date.now() - ENEMY_DEFS.grunt.attackWindupMs - 50;
+		updateEnemies();
+
 		expect(gameState.minions[0].hp).toBeLessThan(120);
 		expect(gameState.minions[0].ttl).toBeLessThan(30);
 	});
