@@ -6072,3 +6072,26 @@ None blocking. All acceptance criteria are implemented and covered by tests; the
 
 See `nits.md` for one follow-up on tier-1 vs tier-2 currency label wording on the quest board.
 
+
+## v0.351 — Named rare enemy variants per quest (PSO 'The Fake in Yellow' style) with unique drops  (2026-06-10 03:48:03)
+
+### Stats Scale Per Variant Config; Regular Spawns Unaffected
+
+PASS. `spawnEnemy` applies `applyNamedRareVariant` only when a scripted spawn passes `namedRareVariant`; otherwise it follows the existing random affix variant path. Named rares set `enemy.variant = null`, scale HP/max HP and attack damage from the base enemy definition, and preserve the base enemy's other behavior fields, including Cinderghast's flying/altitude behavior. Tests verify HP/damage multipliers for all three authored variants and that normal enemies still roll affix variants when no named-rare config is supplied.
+
+### Design And Foundation Consistency
+
+PASS. The implementation fits the PSO-inspired quest identity goal in the ticket and stays within the documented multiplayer lobby/dungeon/loot loop. It does not regress the foundation requirements: the captured run rendered a Three.js scene, connected to the backend via WebSockets, showed multiplayer state, and exercised movement synchronization.
+
+### Debug Scenarios
+
+PASS. This ticket added named-rare debug shortcuts for Frostmaw, Vault Marauder, and Cinderghast. They remain behind the existing debug scenario socket gate and the client `?debugScenario=NAME` localhost path; normal gameplay does not invoke them. Each shortcut is a QA accelerator for a state reachable through normal quest selection, deployment, room traversal, and the same quest-script trigger path. The shortcuts use real quest setup, `spawnEnemies`, `startDungeonRun`, and `updateQuestScriptTriggers`; they do not replace the real quest script or drop/reward logic.
+
+### Tests And Coverage
+
+PASS. The provided coverage run reports 148 test files passed and 1991 tests passed. Coverage includes focused server tests for named-rare plumbing and all three authored quests, client visual tests, quest script schema/objective behavior, debug scenarios, and broader integration coverage.
+
+## Remaining gaps
+
+None.
+
