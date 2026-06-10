@@ -13,7 +13,7 @@ const {
 	backfillCosmetic,
 	backfillUnlockedHats
 } = require('./cosmetic');
-const { isValidQuestId, isValidQuestSelection } = require('./quests');
+const { isValidQuestId, isValidQuestSelection, normalizeUnlockRequires } = require('./quests');
 
 let usersFilePath = process.env.USERS_FILE || path.join(__dirname, '..', 'data', 'users.json');
 
@@ -433,6 +433,48 @@ function unlockQuestTier(accountId, questId, tier) {
 }
 
 /**
+ * Whether an account has completed a quest tier. Tier N completion is indicated
+ * by a persisted unlock for tier N+1 (or higher) on the same quest id.
+ *
+ * @param {string} accountId
+ * @param {string} questId
+ * @param {number} tier
+ * @returns {boolean}
+ */
+function hasCompletedQuestTier(accountId, questId, tier) {
+	const normalizedTier = normalizeUnlockTier(tier);
+	if (normalizedTier === null || !isValidQuestSelection(questId, normalizedTier)) {
+		return false;
+	}
+	const user = findUserByAccountId(accountId);
+	if (!user) {
+		return false;
+	}
+	const map = backfillUnlockedQuestTiers(user.unlockedQuestTiers);
+	const tiers = map[questId];
+	if (!Array.isArray(tiers) || tiers.length === 0) {
+		return false;
+	}
+	return tiers.some((unlockedTier) => unlockedTier > normalizedTier);
+}
+
+/**
+ * Whether every normalized unlock prerequisite is completed (AND semantics).
+ * Missing or invalid `unlockRequires` values are treated as no prerequisites.
+ *
+ * @param {string} accountId
+ * @param {import('./quests').UnlockRequires | null | undefined} unlockRequires
+ * @returns {boolean}
+ */
+function areUnlockPrereqsMet(accountId, unlockRequires) {
+	const prereqs = normalizeUnlockRequires(unlockRequires);
+	if (!prereqs) {
+		return true;
+	}
+	return prereqs.every((entry) => hasCompletedQuestTier(accountId, entry.questId, entry.tier));
+}
+
+/**
  * Return a snapshot of every in-memory account record as shallow copies.
  * The copies are detached from the live Map values so callers (e.g. the admin
  * roster) cannot mutate stored accounts. The bcrypt `passwordHash` is stripped
@@ -489,6 +531,8 @@ module.exports = {
 	getUnlockedQuestTiers,
 	isQuestTierUnlocked,
 	unlockQuestTier,
+	hasCompletedQuestTier,
+	areUnlockPrereqsMet,
 	normalizeEmail,
 	getAllUsers,
 	clearUsers,
