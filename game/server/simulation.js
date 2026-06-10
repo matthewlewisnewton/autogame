@@ -98,6 +98,11 @@ let _wallColliders = [];
 let _wallCollidersLayout = null;
 let _wallCollidersPassageLocksKey = '';
 
+// Movement context cache — keyed by layout reference and passage locks
+let _movementContext = null;
+let _movementContextLayout = null;
+let _movementContextPassageLocksKey = '';
+
 function footprintToAABB(footprint) {
   return {
     minX: footprint.x - footprint.width / 2,
@@ -221,12 +226,31 @@ function getWallColliders() {
 
 function buildMovementContext(state) {
   if (!state) return null;
-  return {
+  const locksKey = passageLocksCacheKey(state.run?.passageLocks);
+  if (
+    _movementContext !== null
+    && _movementContextLayout === state.layout
+    && _movementContextPassageLocksKey === locksKey
+  ) {
+    return _movementContext;
+  }
+  return (_movementContext = {
     layout: state.layout,
     walkableAABBs: state.walkableAABBs,
     dungeonBounds: state.dungeonBounds,
     colliders: buildWallColliders(state.layout, state.run?.passageLocks),
-  };
+  }, _movementContextLayout = state.layout, _movementContextPassageLocksKey = locksKey, _movementContext);
+}
+
+/**
+ * Force-rebuild the movement context cache for the given state.
+ * Call after resetGameState or any layout / passage-locks mutation.
+ */
+function rebuildMovementContext(state) {
+  _movementContext = null;
+  _movementContextLayout = null;
+  _movementContextPassageLocksKey = '';
+  return buildMovementContext(state);
 }
 
 /**
@@ -3736,6 +3760,7 @@ module.exports = {
   computePassageBarrierAABBs,
   collectLockedPassageBarrierAABBs,
   buildMovementContext,
+  rebuildMovementContext,
   buildHubMovementContext,
   hubSpawnPosition,
   wallAABB,

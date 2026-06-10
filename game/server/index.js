@@ -142,6 +142,7 @@ const {
   checkSweptCollision,
   tryPlayerMove,
   buildMovementContext,
+  rebuildMovementContext,
   buildHubMovementContext,
   hubSpawnPosition,
   applyPlayerMovement,
@@ -492,6 +493,7 @@ function resetGameState() {
   Object.keys(gameState).forEach(k => delete gameState[k]);
   Object.assign(gameState, fresh);
   applyLayoutForQuest(gameState, questId, questTier);
+  rebuildMovementContext(gameState);
   delete gameState.run;
   delete gameState._victoryCounters;
   sim.setGameState(gameState, _timeouts);
