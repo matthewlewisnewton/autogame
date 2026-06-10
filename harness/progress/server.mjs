@@ -462,6 +462,22 @@ function safeRel(urlPath) {
     return { error: 'bad_request' };
   }
   const abs = resolve(repoRoot, decoded);
+  // Factory captures live in git worktrees BESIDE the repo (the artifacts are
+  // gitignored, so they never exist under repoRoot) — serve those too, but
+  // only ticket capture media + capture diagnostics, never source files.
+  const worktreesBase = resolve(repoRoot, '..', '.autogame-worktrees');
+  if (abs.startsWith(worktreesBase + sep)) {
+    const wtRel = relative(worktreesBase, abs).replaceAll(sep, '/');
+    const inTickets = wtRel.split('/').slice(1).join('/').startsWith('tickets/');
+    const ext = extname(wtRel).toLowerCase();
+    const base = wtRel.split('/').pop();
+    const mediaOk = ['.png', '.jpg', '.jpeg', '.gif', '.webp'].includes(ext);
+    const diagOk = base === 'metrics.json' || base === 'console.log';
+    if (inTickets && (mediaOk || diagOk)) {
+      return { abs, rel: `worktrees/${wtRel}` };
+    }
+    return null;
+  }
   if (abs !== repoRoot && !abs.startsWith(repoRoot + sep)) return null;
   const rel = relative(repoRoot, abs).replaceAll(sep, '/');
   const parts = rel.split('/');

@@ -462,14 +462,23 @@ function updateFactory(payload) {
     const busy = running.length > 0;
     const disabled = a.health && a.health !== 'available';
     const state = disabled ? 'disabled' : busy ? 'running' : 'idle';
+    const runningHtml = running
+      .map((t) => `<button class="chip-ticket" type="button" data-ticket="${escapeHtml(t)}" title="Show the bead ${escapeHtml(t)} is working on">${escapeHtml(t)}</button>`)
+      .join(', ');
     const detail = disabled
       ? escapeHtml(a.health)
       : busy
-        ? `${running.length}/${a.cap} · ${escapeHtml(running.join(', '))}`
+        ? `${running.length}/${a.cap} · ${runningHtml}`
         : `idle (0/${a.cap})`;
-    return `<span class="chip chip-${state}" title="${escapeHtml(a.name)}: ${detail}">`
+    return `<span class="chip chip-${state}" title="${escapeHtml(a.name)}">`
       + `<strong>${escapeHtml(a.name)}</strong> ${detail}</span>`;
   }).join('');
+  factoryAgentsEl.querySelectorAll('.chip-ticket').forEach((btn) => {
+    btn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      openBeadForTicket(btn.dataset.ticket);
+    });
+  });
 
   if (!locks.length) {
     factoryLocksEl.innerHTML = '<span class="chip chip-idle">none</span>';
@@ -581,26 +590,74 @@ function slug(value) {
 
 function renderBeadsStats(stats) {
   const s = stats?.summary || {};
+  // Each stat doubles as a filter button: clicking swaps the status:/is:
+  // tokens in the search box for its own (and toggles itself off on
+  // re-click), leaving any free-text terms in place.
   const cells = [
-    ['open', s.open_issues],
-    ['in progress', s.in_progress_issues],
-    ['blocked', s.blocked_issues],
-    ['ready', s.ready_issues],
-    ['closed', s.closed_issues],
-    ['total', s.total_issues],
+    ['open', s.open_issues, 'status:open'],
+    ['in progress', s.in_progress_issues, 'status:in_progress'],
+    ['blocked', s.blocked_issues, 'is:blocked'],
+    ['ready', s.ready_issues, 'is:ready'],
+    ['closed', s.closed_issues, 'status:closed'],
+    ['total', s.total_issues, ''],
   ];
   beadsStatsEl.innerHTML = cells
-    .map(([label, val]) => `<span class="beads-stat"><strong>${formatCount(val)}</strong>${escapeHtml(label)}</span>`)
+    .map(([label, val, token]) => `<button class="beads-stat beads-stat-btn" type="button" data-token="${escapeHtml(token)}"`
+      + ` title="${token ? `Filter list by ${escapeHtml(token)}` : 'Clear status filters'}">`
+      + `<strong>${formatCount(val)}</strong>${escapeHtml(label)}</button>`)
     .join('');
+  beadsStatsEl.querySelectorAll('.beads-stat-btn').forEach((btn) => {
+    btn.addEventListener('click', () => applyBeadsStatToken(btn.dataset.token));
+  });
+  updateBeadsStatActive();
+}
+
+function applyBeadsStatToken(token) {
+  if (!beadsFilterEl) return;
+  const terms = beadsFilterEl.value.trim().split(/\s+/).filter(Boolean);
+  const lower = (token || '').toLowerCase();
+  const wasActive = lower && terms.some((t) => t.toLowerCase() === lower);
+  const kept = terms.filter((t) => {
+    const tl = t.toLowerCase();
+    return !tl.startsWith('status:') && !tl.startsWith('is:');
+  });
+  if (lower && !wasActive) kept.push(token);
+  beadsFilterEl.value = kept.join(' ');
+  renderBeadsList();
+}
+
+function updateBeadsStatActive() {
+  if (!beadsStatsEl || !beadsFilterEl) return;
+  const terms = beadsFilterEl.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  beadsStatsEl.querySelectorAll('.beads-stat-btn').forEach((btn) => {
+    const token = (btn.dataset.token || '').toLowerCase();
+    btn.classList.toggle('active', Boolean(token) && terms.includes(token));
+  });
+}
+
+function issueLabels(issue) {
+  return Array.isArray(issue.labels) ? issue.labels.map((l) => String(l).toLowerCase()) : [];
+}
+
+function issueDifficulty(issue) {
+  const label = issueLabels(issue).find((l) => l.startsWith('difficulty:'));
+  return label ? label.slice('difficulty:'.length) : '';
+}
+
+function issueIsBlocked(issue) {
+  return (issue.status || '') === 'open' && Number(issue.dependency_count) > 0;
 }
 
 function issueMatchesFilter(issue, query) {
   if (!query) return true;
   const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-  const hay = `${issue.id} ${issue.title} ${issue.status} ${issue.issue_type} p${issue.priority}`.toLowerCase();
+  const hay = `${issue.id} ${issue.title} ${issue.status} ${issue.issue_type} p${issue.priority} ${issueLabels(issue).join(' ')}`.toLowerCase();
   return terms.every((term) => {
     if (term.startsWith('status:')) return (issue.status || '').toLowerCase().startsWith(term.slice(7));
     if (term.startsWith('type:')) return (issue.issue_type || '').toLowerCase().startsWith(term.slice(5));
+    if (term.startsWith('difficulty:')) return issueDifficulty(issue).startsWith(term.slice(11));
+    if (term === 'is:blocked') return issueIsBlocked(issue);
+    if (term === 'is:ready') return (issue.status || '') === 'open' && !issueIsBlocked(issue);
     if (/^p[0-4]$/.test(term)) return Number(issue.priority) === Number(term[1]);
     return hay.includes(term);
   });
@@ -613,10 +670,12 @@ function beadsBadge(extraClass, label, token) {
 }
 
 function beadsBadges(issue) {
+  const difficulty = issueDifficulty(issue);
   return `
     ${beadsBadge(`status-${slug(issue.status)}`, issue.status, `status:${String(issue.status || '').toLowerCase()}`)}
     ${beadsBadge(`prio-${slug(priorityLabel(issue.priority))}`, priorityLabel(issue.priority), /^[0-4]$/.test(String(issue.priority)) ? `p${issue.priority}` : '')}
     ${beadsBadge(`type-${slug(issue.issue_type)}`, issue.issue_type, `type:${String(issue.issue_type || '').toLowerCase()}`)}
+    ${difficulty ? beadsBadge(`difficulty-${slug(difficulty)}`, difficulty, `difficulty:${difficulty}`) : ''}
   `;
 }
 
@@ -629,6 +688,7 @@ function toggleBeadsFilterToken(token) {
   else terms.push(token);
   beadsFilterEl.value = terms.join(' ');
   renderBeadsList();
+  updateBeadsStatActive();
 }
 
 function renderBeadsList() {
@@ -721,10 +781,13 @@ function selectBead(id) {
     });
 }
 
+let beadsLoadPromise = null;
+
 function loadBeads() {
-  if (!beadsListEl) return;
+  if (!beadsListEl) return Promise.resolve();
+  if (beadsLoadPromise) return beadsLoadPromise;
   beadsListEl.innerHTML = '<div class="empty">Loading issues…</div>';
-  fetch('/beads')
+  beadsLoadPromise = fetch('/beads')
     .then((r) => (r.ok ? r.json() : r.json().then((body) => Promise.reject(new Error(body.error || `HTTP ${r.status}`)))))
     .then((data) => {
       beadsIssues = Array.isArray(data.issues) ? data.issues : [];
@@ -734,10 +797,47 @@ function loadBeads() {
     })
     .catch((err) => {
       beadsListEl.innerHTML = `<div class="empty">Failed to load beads: ${escapeHtml(err.message)}</div>`;
+    })
+    .finally(() => {
+      beadsLoadPromise = null;
     });
+  return beadsLoadPromise;
 }
 
-if (beadsFilterEl) beadsFilterEl.addEventListener('input', renderBeadsList);
+function beadForTicketName(name) {
+  const lower = String(name || '').toLowerCase();
+  if (!lower) return null;
+  // Legacy slug tickets use the bead title verbatim; sanitized prose titles
+  // end with the bead id's short suffix (ticket_dir_name in the dispatcher).
+  return beadsIssues.find((i) => String(i.title || '').toLowerCase() === lower)
+    || beadsIssues.find((i) => String(i.id || '').toLowerCase() === lower)
+    || beadsIssues.find((i) => {
+      const suffix = String(i.id || '').split('-').pop().toLowerCase();
+      return suffix && lower.endsWith(`-${suffix}`);
+    })
+    || null;
+}
+
+function openBeadForTicket(name) {
+  activateTab('beads');
+  const fresh = beadsIssues.length && Date.now() - beadsFetchedAt <= BEADS_STALE_MS;
+  (fresh ? Promise.resolve() : loadBeads()).then(() => {
+    const issue = beadForTicketName(name);
+    if (issue) {
+      selectBead(issue.id);
+    } else if (beadsFilterEl) {
+      beadsFilterEl.value = String(name || '');
+      renderBeadsList();
+    }
+  });
+}
+
+if (beadsFilterEl) {
+  beadsFilterEl.addEventListener('input', () => {
+    renderBeadsList();
+    updateBeadsStatActive();
+  });
+}
 if (beadsRefreshEl) beadsRefreshEl.addEventListener('click', loadBeads);
 
 const previewUrl = liveGameUrl();
