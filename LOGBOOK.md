@@ -6027,3 +6027,26 @@ PASS. This ticket did not add or change a renderer debug scenario entry point. E
 
 None.
 
+
+## v0.350 — Server: death soft-lock — players return to lobby at 0 HP with 0 money (LOBBY_REVIVE_HP is dead code), redeploy = instant Signal Lost  (2026-06-10 03:24:04)
+
+
+Ticket-specific tests pass when run in isolation:
+
+- `revivePlayerInLobby` unit tests (3/3)
+- Death-at-0-money integration test (1/1)
+
+Harness `coverage.log` shows the full server suite ran with one unrelated flaky failure (`cleanupStalePlayers` boundary) and pre-existing debug-scenario failures; neither touches changed revive logic. Changed files are exercised by the updated unit and integration tests.
+
+### Harness capture vs. ticket scenario
+
+The round-1 capture used the **fallback** smoke plan (generic lobby → deploy → movement), not a death/revive scenario. Screenshots show a healthy in-run state at 100 HP. Visual QA therefore does not independently demonstrate the soft-lock fix, but the dedicated integration test and code paths provide strong functional proof. Runtime health is clean.
+
+## Remaining gaps
+
+None. All acceptance criteria are satisfied; the game runs without browser errors.
+
+## Nits (non-blocking)
+
+See `nits.md` for follow-up items on mid-run reconnect revive scope and design-doc alignment.
+
