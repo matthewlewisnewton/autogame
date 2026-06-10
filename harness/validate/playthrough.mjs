@@ -63,9 +63,10 @@ const PRESET_MODULES = {
 	'open-plaza': () => import('./presets/open-plaza.mjs'),
 	'sunken-canyon': () => import('./presets/sunken-canyon.mjs'),
 	fire: () => import('./presets/fire.mjs'),
+	ice: () => import('./presets/ice.mjs'),
 };
 
-const STAGE_PRESETS = new Set(['rooms', 'open-plaza', 'spire-ascent', 'sunken-canyon', 'fire']);
+const STAGE_PRESETS = new Set(['rooms', 'open-plaza', 'spire-ascent', 'sunken-canyon', 'fire', 'ice']);
 const ROOMS_FULL_STEPS = new Set(['full']);
 const ROOMS_HUB_STEPS = new Set(['hub', 'deploy']);
 const ROOMS_BOSS_ENCOUNTER_STEPS = new Set(['boss-encounter']);
