@@ -92,7 +92,7 @@ import {
 } from './lockOn.js';
 import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
 import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled, getAccountProfile } from './settings.js';
-import { MODEL_REGISTRY, loadModel, modelPathFor } from './models.js';
+import { MODEL_REGISTRY, loadModel, modelPathFor, isModelCacheShared } from './models.js';
 import { getCardDef } from './cards.js';
 import { getAccentHex } from './cardRenderers.js';
 import eventsCatalog from '../shared/events.json' with { type: 'json' };
@@ -2406,6 +2406,26 @@ function resolveBodyMesh(obj) {
 }
 
 /**
+ * Dispose a mesh node's geometry/material only when not owned by the glTF cache.
+ * @param {THREE.Object3D} meshNode
+ */
+function disposeMeshGpuResources(meshNode) {
+	if (!meshNode?.isMesh) return;
+	const { geometry, material } = meshNode;
+	if (geometry && !isModelCacheShared(geometry)) {
+		geometry.dispose();
+	}
+	if (!material) return;
+	if (Array.isArray(material)) {
+		for (const m of material) {
+			if (m && !isModelCacheShared(m)) m.dispose();
+		}
+	} else if (!isModelCacheShared(material)) {
+		material.dispose();
+	}
+}
+
+/**
  * Dispose every mesh geometry/material under an avatar group (or bare mesh) so
  * it can be safely removed from the scene without leaking GPU resources.
  * @param {THREE.Object3D} obj
@@ -2413,10 +2433,7 @@ function resolveBodyMesh(obj) {
 export function disposeAvatar(obj) {
 	if (!obj) return;
 	obj.traverse((node) => {
-		if (node.isMesh) {
-			if (node.geometry) node.geometry.dispose();
-			if (node.material) node.material.dispose();
-		}
+		disposeMeshGpuResources(node);
 	});
 }
 
@@ -5782,12 +5799,10 @@ export function disposeOne(map, id, targetScene, skipDispose) {
 	if (!skipDispose) {
 		if (mesh.traverse) {
 			mesh.traverse((child) => {
-				if (child.geometry) child.geometry.dispose();
-				if (child.material) child.material.dispose();
+				disposeMeshGpuResources(child);
 			});
 		} else {
-			if (mesh.geometry) mesh.geometry.dispose();
-			if (mesh.material) mesh.material.dispose();
+			disposeMeshGpuResources(mesh);
 		}
 	}
 	delete map[id];
