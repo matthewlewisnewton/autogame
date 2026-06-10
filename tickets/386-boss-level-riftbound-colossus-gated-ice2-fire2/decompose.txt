@@ -1,0 +1,10 @@
+Decomposition complete. I split the boss level into four `code`-verified sub-tickets in dependency order, after confirming the groundwork already merged: ticket 384's `unlockRequires` array (AND semantics), ticket 385's boss-level schema/encounter pipeline (`levelKind: 'boss_level'`, dormant-boss immunity, `addCount` adds from the quest enemy pool), and the data-driven level map from 388/389 — so the new quest node appears on the map with both prereq edges automatically, no client map changes needed.
+
+Sub-tickets created:
+
+1. `tickets/386-boss-level-riftbound-colossus-gated-ice2-fire2/subtickets/01-riftbound-colossus-boss-enemy/ticket.md` — the `riftbound_colossus` enemy def (radial rift shockwave that inflicts BURNING via the existing `burnDurationMs` rider), drop-table entries, and client geometry/telegraph visuals. HP is capped at 460 because design.md documents that a 500-HP boss couldn't be killed inside the 180s `defeatBoss` validation window.
+2. `.../02-rift-convergence-quest-and-gate/ticket.md` — the `rift_convergence` quest def with `unlockRequires: [frost_crossing t2, ember_descent t2]` (first real use of the multi-prereq array), an ice+fire add pool (`glacial_thrower` + `ember_wraith`), `addCount: 4` (most adds of any boss level), and gating/graph/spawn tests.
+3. `.../03-rift-arena-identity/ticket.md` — an `arenaTheme: 'rift'` option on `generateBossArena` adding ice-half/fire-half floor markings, wired through `getLayoutGenerationOptions` and rendered client-side with distinct frost/ember materials; default boss arenas stay byte-identical.
+4. `.../04-e2e-unlock-run-difficulty-validation/ticket.md` — an integration test of the full unlock → dormant → activate → defeat → completion-recorded loop, plus difficulty assertions (strictly hardest boss stats, most adds, richest reward) and the design.md stage-boss table row.
+
+All four use `## Verification: code` since every ticket has structural/logic criteria (defs, gating, server state) that screenshots can't check. "Harder overall" is made concretely checkable in 04 by comparing against live defs rather than fixed numbers.
