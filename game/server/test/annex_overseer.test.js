@@ -137,6 +137,34 @@ describe('annex_overseer radial attack style', () => {
 		expect(gameState.players.p1.hp).toBe(100 - ENEMY_DEFS.annex_overseer.attackDamage);
 	});
 
+	it('misses a player at the same (x, z) beyond vertical range', () => {
+		const range = ENEMY_DEFS.annex_overseer.attackRange;
+		const now = Date.now();
+
+		addPlayer('p1', { id: 'p1', x: 0, z: 0, y: range + 1, dead: false, hp: 100 });
+		gameState.enemies.push({
+			id: 'overseer1',
+			x: 0,
+			z: 0,
+			y: 0,
+			type: 'annex_overseer',
+			hp: 100,
+			attackStyle: 'radial',
+			attackRange: range,
+			state: 'chasing',
+			attackState: 'windup',
+			windupTargetId: 'p1',
+			windupStartTime: now - ENEMY_DEFS.annex_overseer.attackWindupMs - 100,
+			windupDirX: 1,
+			windupDirZ: 0,
+			wanderTarget: { x: 0, z: 0 },
+		});
+
+		updateEnemies();
+
+		expect(gameState.players.p1.hp).toBe(100);
+	});
+
 	it('contrasts with miniboss cone missing the same behind-the-back position', () => {
 		const range = ENEMY_DEFS.miniboss.attackRange;
 		const now = Date.now();

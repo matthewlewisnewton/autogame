@@ -1083,17 +1083,21 @@ function lockWindupDirection(enemy, target) {
 
 function isEntityInEnemyAttack(enemy, target) {
 	const range = enemy.attackRange ?? ENEMY_ATTACK_RANGE;
+	const enemyY = getEntityWorldY(enemy);
+	const targetY = getEntityWorldY(target);
 	const dx = target.x - enemy.x;
+	const dy = targetY - enemyY;
 	const dz = target.z - enemy.z;
-	const dist = Math.hypot(dx, dz);
+	const dist = Math.hypot(dx, dy, dz);
 	if (dist > range) return false;
 
 	if (enemy.attackStyle === 'cone') {
 		const coneAngle = enemy.attackConeAngle ?? ATTACK_CONE_ANGLE;
 		const dirX = enemy.windupDirX ?? 1;
 		const dirZ = enemy.windupDirZ ?? 0;
-		const tDirX = dist > 0 ? dx / dist : dirX;
-		const tDirZ = dist > 0 ? dz / dist : dirZ;
+		const horizDist = Math.hypot(dx, dz);
+		const tDirX = horizDist > 0 ? dx / horizDist : dirX;
+		const tDirZ = horizDist > 0 ? dz / horizDist : dirZ;
 		const dot = dirX * tDirX + dirZ * tDirZ;
 		return dot >= Math.cos(coneAngle / 2);
 	}
@@ -1831,13 +1835,16 @@ function applyFreezeInRadius(originX, originZ, radius, durationMs, damage = 0, f
   return hits;
 }
 
-function pullEnemiesToward(originX, originZ, radius, strength) {
+function pullEnemiesToward(originX, originZ, radius, strength, options = {}) {
+  const originY = resolveRadialOriginY(originX, originZ, options);
   const moved = [];
   for (const enemy of _gameState.enemies) {
+    if (distance3D(originX, originY, originZ, enemy) > radius) continue;
+
     const dx = originX - enemy.x;
     const dz = originZ - enemy.z;
     const dist = Math.hypot(dx, dz);
-    if (dist <= 0.01 || dist > radius) continue;
+    if (dist <= 0.01) continue;
 
     const pull = Math.min(strength, dist);
     const result = tryEntityDisplacement(enemy.x, enemy.z, dx / dist, dz / dist, pull);
@@ -1881,15 +1888,21 @@ function applyPlayerKnockback(playerId, dirX, dirZ, strength) {
   return !!result.moved;
 }
 
-function applyEventHorizon(originX, originZ, cardDef, attackerId) {
+function applyEventHorizon(originX, originZ, cardDef, attackerId, options = {}) {
   const radius = cardDef.pullRadius || 12;
-  const pulled = pullEnemiesToward(originX, originZ, radius, cardDef.pullStrength || 4);
+  const pulled = pullEnemiesToward(
+    originX,
+    originZ,
+    radius,
+    cardDef.pullStrength || 4,
+    options
+  );
   const crush = collectRadialHits(
     originX,
     originZ,
     cardDef.centerRadius || 2.5,
     cardDef.centerDamage || 30,
-    { attackerId }
+    { attackerId, ...options }
   );
   return { pulled, crushed: crush.hits };
 }
@@ -1940,17 +1953,19 @@ function spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, ownerId
   });
 }
 
-function spawnInfernoPillarEffect(originX, originZ, cardDef, ownerId) {
+function spawnInfernoPillarEffect(originX, originZ, cardDef, ownerId, options = {}) {
   if (!_gameState.areaEffects) _gameState.areaEffects = [];
   const now = Date.now();
   const ticks = cardDef.dotTicks || 4;
   const intervalMs = cardDef.dotIntervalMs || 500;
+  const originY = resolveRadialOriginY(originX, originZ, options);
   _gameState.areaEffects.push({
     id: crypto.randomUUID(),
     type: 'inferno_pillar',
     ownerId,
     originX,
     originZ,
+    originY,
     range: cardDef.attackRange || 7,
     damagePerTick: cardDef.damage || 12,
     ticksRemaining: ticks,
@@ -1968,17 +1983,19 @@ function spawnInfernoPillarEffect(originX, originZ, cardDef, ownerId) {
  * to clients (mirroring `_pendingMinionBreaths`). `def` is the variant registry
  * entry carrying `radius`/`damage`.
  */
-function spawnVolatileExplosion(x, z, def) {
+function spawnVolatileExplosion(x, z, def, options = {}) {
   if (!_gameState.areaEffects) _gameState.areaEffects = [];
   if (!_gameState._pendingVolatileExplosions) _gameState._pendingVolatileExplosions = [];
   const now = Date.now();
   const radius = Number.isFinite(def?.radius) ? def.radius : 5;
   const damage = Number.isFinite(def?.damage) ? def.damage : 20;
+  const originY = resolveRadialOriginY(x, z, options);
   _gameState.areaEffects.push({
     id: crypto.randomUUID(),
     type: 'volatile_explosion',
     originX: x,
     originZ: z,
+    originY,
     range: radius,
     damagePerTick: damage,
     ticksRemaining: 1,
@@ -2001,30 +2018,40 @@ function updateAreaEffects() {
     if (effect.type === 'volatile_explosion') {
       // One-shot radial blast from a dead `volatile` enemy: damages every
       // living enemy, minion, and player within `range` of the origin.
-      ({ hits } = collectRadialHits(
-        effect.originX,
-        effect.originZ,
-        effect.range,
-        effect.damagePerTick
-      ));
-      for (const minion of _gameState.minions) {
-        if (minion.hp <= 0) continue;
-        const dist = Math.hypot(minion.x - effect.originX, minion.z - effect.originZ);
-        if (dist <= effect.range) damageMinion(minion, effect.damagePerTick);
-      }
-      for (const [playerId, player] of Object.entries(_gameState.players)) {
-        if (player.dead) continue;
-        const dist = Math.hypot(player.x - effect.originX, player.z - effect.originZ);
-        // Route through damagePlayer so barrier/anchor/shield rules still apply.
-        if (dist <= effect.range) damagePlayer(playerId, effect.damagePerTick);
-      }
-    } else if (effect.type === 'inferno_pillar') {
+      const originY = Number.isFinite(effect.originY)
+        ? effect.originY
+        : resolveRadialOriginY(effect.originX, effect.originZ, {});
+      const radialOptions = { originY };
       ({ hits } = collectRadialHits(
         effect.originX,
         effect.originZ,
         effect.range,
         effect.damagePerTick,
-        { attackerId: effect.ownerId }
+        radialOptions
+      ));
+      for (const minion of _gameState.minions) {
+        if (minion.hp <= 0) continue;
+        if (distance3D(effect.originX, originY, effect.originZ, minion) <= effect.range) {
+          damageMinion(minion, effect.damagePerTick);
+        }
+      }
+      for (const [playerId, player] of Object.entries(_gameState.players)) {
+        if (player.dead) continue;
+        // Route through damagePlayer so barrier/anchor/shield rules still apply.
+        if (distance3D(effect.originX, originY, effect.originZ, player) <= effect.range) {
+          damagePlayer(playerId, effect.damagePerTick);
+        }
+      }
+    } else if (effect.type === 'inferno_pillar') {
+      const originY = Number.isFinite(effect.originY)
+        ? effect.originY
+        : resolveRadialOriginY(effect.originX, effect.originZ, {});
+      ({ hits } = collectRadialHits(
+        effect.originX,
+        effect.originZ,
+        effect.range,
+        effect.damagePerTick,
+        { attackerId: effect.ownerId, originY }
       ));
     } else {
       ({ hits } = collectConeHits(
@@ -2274,12 +2301,13 @@ function triggerMirrorWard(playerId, damageTaken, attackerEnemyId) {
     damageEnemy(attacker, reflectDamage);
     hits.push({ enemyId: attacker.id, damage: reflectDamage });
   } else {
+    const playerY = getEntityWorldY(player);
     const radial = collectRadialHits(
       player.x,
       player.z,
       enc.reflectRange,
       reflectDamage,
-      { attackerId: playerId }
+      { attackerId: playerId, originY: playerY }
     );
     hits = radial.hits;
     if (hits.length > 0) {
@@ -2299,6 +2327,11 @@ function triggerMirrorWard(playerId, damageTaken, attackerEnemyId) {
   return { hits, direction, reflectDamage };
 }
 
+function resolveEnchantmentWorldY(enc) {
+  if (Number.isFinite(enc.y)) return enc.y;
+  return resolveRadialOriginY(enc.x, enc.z, {});
+}
+
 function updateEnchantments() {
   if (!_gameState.enchantments) _gameState.enchantments = [];
 
@@ -2309,9 +2342,11 @@ function updateEnchantments() {
     if (!enc.armed || now >= enc.expiresAt) continue;
     if (enc.effect !== 'spike_trap' && enc.effect !== 'cinder_snare') continue;
 
+    const encY = resolveEnchantmentWorldY(enc);
     for (const enemy of _gameState.enemies) {
       if (enemy.hp <= 0) continue;
-      const dist = Math.hypot(enemy.x - enc.x, enemy.z - enc.z);
+      const enemyY = getEntityWorldY(enemy);
+      const dist = Math.hypot(enemy.x - enc.x, enemyY - encY, enemy.z - enc.z);
       if (dist <= enc.radius) {
         if (enc.effect === 'cinder_snare') {
           // Instead of a one-shot hit, drop a lingering inferno-pillar DoT
@@ -2322,7 +2357,7 @@ function updateEnchantments() {
             dotIntervalMs: enc.dotIntervalMs,
             attackRange: enc.radius,
           };
-          spawnInfernoPillarEffect(enc.x, enc.z, syntheticDef, enc.ownerId);
+          spawnInfernoPillarEffect(enc.x, enc.z, syntheticDef, enc.ownerId, { originY: encY });
         } else {
           enemy.lastDamagedBy = enc.ownerId;
           damageEnemy(enemy, enc.damage);
@@ -3450,6 +3485,7 @@ module.exports = {
 
   // Enemy AI
   updateEnemies,
+  isEntityInEnemyAttack,
   updateEnemyProjectiles,
   spawnIceBall,
   isPlayerConcealed,

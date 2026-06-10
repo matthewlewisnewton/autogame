@@ -53,6 +53,7 @@ const {
   pickFloorSpawnPosition,
   randomWanderTarget,
   spawnVolatileExplosion,
+  getEntityWorldY,
   clearPlayerCardCommitment,
 } = require('./simulation');
 
@@ -2251,7 +2252,9 @@ function removeDeadEnemies() {
     // being filtered out of the enemy list.
     const variantDef = enemy.variant ? VARIANT_DEFS[enemy.variant] : null;
     if (variantDef && variantDef.id === 'volatile') {
-      spawnVolatileExplosion(enemy.x, enemy.z, variantDef);
+      spawnVolatileExplosion(enemy.x, enemy.z, variantDef, {
+        originY: getEntityWorldY(enemy),
+      });
     }
   }
 

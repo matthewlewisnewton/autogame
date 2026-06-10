@@ -83,6 +83,26 @@ describe('volatile enemy on-death explosion', () => {
     expect(record).toMatchObject({ x: 3, z: -4, radius: VOLATILE.radius });
   });
 
+  it('spares a player at the same (x, z) beyond vertical blast range', () => {
+    gameState.players.near = { x: 1, z: 0, y: 3, hp: 100, dead: false };
+    gameState.players.tooHigh = { x: 1, z: 0, y: 6, hp: 100, dead: false };
+    gameState.enemies.push({
+      id: 'e1',
+      type: 'grunt',
+      x: 0,
+      z: 0,
+      y: 0,
+      hp: 0,
+      variant: 'volatile',
+    });
+
+    removeDeadEnemies();
+    updateAreaEffects();
+
+    expect(gameState.players.near.hp).toBe(100 - VOLATILE.damage);
+    expect(gameState.players.tooHigh.hp).toBe(100);
+  });
+
   it('does not explode or queue anything for a non-volatile enemy death', () => {
     gameState.players.p1 = { x: 0, z: 0, hp: 100, dead: false };
     gameState.enemies.push({ id: 'e1', type: 'grunt', x: 0, z: 0, hp: 0, variant: null });
