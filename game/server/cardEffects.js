@@ -494,7 +494,11 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
       }
 
       if (cardDef.specialEffect === 'fire_trail') {
-        spawnFireTrailEffect(originX, originZ, dirX, dirZ, cardDef, socket.playerId);
+        // The lingering trail ticks from the same 3D ray as the swing itself.
+        spawnFireTrailEffect(originX, originZ, dirX, dirZ, cardDef, socket.playerId, {
+          originY: aim.originY,
+          dirY: aim.dirY,
+        });
       }
 
       if (cardDef.selfDamage) {
@@ -906,7 +910,10 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
             ...projectileCollectorVertical(aim),
           }
         );
-        spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, socket.playerId);
+        spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, socket.playerId, {
+          originY: aim.originY,
+          dirY,
+        });
         cleanupAfterDamage();
 
         consumeSpellSlot();
@@ -938,7 +945,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           cardDef.damage || 12,
           { attackerId: socket.playerId }
         );
-        spawnInfernoPillarEffect(originX, originZ, cardDef, socket.playerId);
+        spawnInfernoPillarEffect(originX, originZ, cardDef, socket.playerId, originY);
         cleanupAfterDamage();
 
         consumeSpellSlot();

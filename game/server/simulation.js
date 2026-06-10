@@ -1398,27 +1398,22 @@ function collectConeHits(originX, originZ, dirX, dirZ, range, coneAngle, damage,
   const healOnKill = options.healOnKill || 0;
   const currencyOnKill = options.currencyOnKill || 0;
   const attackerId = options.attackerId;
-  const { originY, dirY } = resolveRayVertical(options);
-  const use3D = dirY !== 0;
+  const dirY = options.dirY ?? 0;
+  // Range is always true 3D (spherical) distance; a null/missing originY
+  // resolves to the floor at the origin, same as collectRadialHits. The cone
+  // axis may be flat (dirY 0) or tilted — the angle check is a 3D dot product
+  // either way, so a flat cone still rejects targets directly overhead.
+  const originY = resolveAoeOriginY(originX, options.originY, originZ);
   const halfCos = Math.cos(coneAngle / 2);
 
   for (const enemy of _gameState.enemies) {
-    const enemyY = getEntityWorldY(enemy);
     const dx = enemy.x - originX;
-    const dy = enemyY - originY;
+    const dy = getEntityWorldY(enemy) - originY;
     const dz = enemy.z - originZ;
-    const dist = use3D ? Math.hypot(dx, dy, dz) : Math.hypot(dx, dz);
+    const dist = Math.hypot(dx, dy, dz);
     if (dist > range) continue;
-    if (!use3D && Math.abs(dy) > PROJECTILE_HIT_WIDTH) continue;
 
-    let dot;
-    if (use3D) {
-      dot = dist > 0 ? (dirX * dx + dirY * dy + dirZ * dz) / dist : 1;
-    } else {
-      const enemyDirX = dist > 0 ? dx / dist : dirX;
-      const enemyDirZ = dist > 0 ? dz / dist : dirZ;
-      dot = dirX * enemyDirX + dirZ * enemyDirZ;
-    }
+    const dot = dist > 0 ? (dirX * dx + dirY * dy + dirZ * dz) / dist : 1;
     if (dot < halfCos) continue;
 
     if (attackerId) enemy.lastDamagedBy = attackerId;
@@ -1936,7 +1931,7 @@ function applyEventHorizon(originX, originY, originZ, cardDef, attackerId) {
   return { pulled, crushed: crush.hits };
 }
 
-function spawnFireTrailEffect(originX, originZ, dirX, dirZ, cardDef, ownerId) {
+function spawnFireTrailEffect(originX, originZ, dirX, dirZ, cardDef, ownerId, vertical = {}) {
   if (!_gameState.areaEffects) _gameState.areaEffects = [];
   const now = Date.now();
   const ticks = cardDef.dotTicks || 4;
@@ -1946,8 +1941,10 @@ function spawnFireTrailEffect(originX, originZ, dirX, dirZ, cardDef, ownerId) {
     type: 'fire_trail',
     ownerId,
     originX,
+    originY: resolveAoeOriginY(originX, vertical.originY, originZ),
     originZ,
     dirX,
+    dirY: vertical.dirY ?? 0,
     dirZ,
     coneAngle: cardDef.attackConeAngle || ATTACK_CONE_ANGLE,
     range: cardDef.attackRange || ATTACK_RANGE,
@@ -1959,7 +1956,7 @@ function spawnFireTrailEffect(originX, originZ, dirX, dirZ, cardDef, ownerId) {
   });
 }
 
-function spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, ownerId) {
+function spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, ownerId, vertical = {}) {
   if (!_gameState.areaEffects) _gameState.areaEffects = [];
   const now = Date.now();
   const ticks = cardDef.dotTicks || 4;
@@ -1969,8 +1966,10 @@ function spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, ownerId
     type: 'dragons_breath',
     ownerId,
     originX,
+    originY: resolveAoeOriginY(originX, vertical.originY, originZ),
     originZ,
     dirX,
+    dirY: vertical.dirY ?? 0,
     dirZ,
     coneAngle: cardDef.attackConeAngle || Math.PI / 3,
     range: cardDef.attackRange || 7,
@@ -1982,7 +1981,7 @@ function spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, ownerId
   });
 }
 
-function spawnInfernoPillarEffect(originX, originZ, cardDef, ownerId) {
+function spawnInfernoPillarEffect(originX, originZ, cardDef, ownerId, originY = null) {
   if (!_gameState.areaEffects) _gameState.areaEffects = [];
   const now = Date.now();
   const ticks = cardDef.dotTicks || 4;
@@ -1992,6 +1991,7 @@ function spawnInfernoPillarEffect(originX, originZ, cardDef, ownerId) {
     type: 'inferno_pillar',
     ownerId,
     originX,
+    originY: resolveAoeOriginY(originX, originY, originZ),
     originZ,
     range: cardDef.attackRange || 7,
     damagePerTick: cardDef.damage || 12,
@@ -2020,6 +2020,9 @@ function spawnVolatileExplosion(x, z, def) {
     id: crypto.randomUUID(),
     type: 'volatile_explosion',
     originX: x,
+    // The blast centers on the floor where the enemy fell; the sphere check
+    // against effect.originY happens in updateAreaEffects.
+    originY: resolveAoeOriginY(x, null, z),
     originZ: z,
     range: radius,
     damagePerTick: damage,
@@ -2042,22 +2045,31 @@ function updateAreaEffects() {
     let hits;
     if (effect.type === 'volatile_explosion') {
       // One-shot radial blast from a dead `volatile` enemy: damages every
-      // living enemy, minion, and player within `range` of the origin.
+      // living enemy, minion, and player within a 3D sphere around the origin.
+      const originY = resolveAoeOriginY(effect.originX, effect.originY, effect.originZ);
       ({ hits } = collectRadialHits(
         effect.originX,
-        effect.originY ?? null,
+        originY,
         effect.originZ,
         effect.range,
         effect.damagePerTick
       ));
       for (const minion of _gameState.minions) {
         if (minion.hp <= 0) continue;
-        const dist = Math.hypot(minion.x - effect.originX, minion.z - effect.originZ);
+        const dist = Math.hypot(
+          minion.x - effect.originX,
+          getEntityWorldY(minion) - originY,
+          minion.z - effect.originZ
+        );
         if (dist <= effect.range) damageMinion(minion, effect.damagePerTick);
       }
       for (const [playerId, player] of Object.entries(_gameState.players)) {
         if (player.dead) continue;
-        const dist = Math.hypot(player.x - effect.originX, player.z - effect.originZ);
+        const dist = Math.hypot(
+          player.x - effect.originX,
+          getEntityWorldY(player) - originY,
+          player.z - effect.originZ
+        );
         // Route through damagePlayer so barrier/anchor/shield rules still apply.
         if (dist <= effect.range) damagePlayer(playerId, effect.damagePerTick);
       }
@@ -2078,7 +2090,8 @@ function updateAreaEffects() {
         effect.dirZ,
         effect.range,
         effect.coneAngle,
-        effect.damagePerTick
+        effect.damagePerTick,
+        { originY: effect.originY ?? null, dirY: effect.dirY ?? 0 }
       ));
     }
     effect.lastTickAt = now;
@@ -3283,7 +3296,7 @@ function updateMinions() {
               attackRange,
               attackConeAngle,
               attackDamage,
-              { attackerId: minion.ownerId }
+              { attackerId: minion.ownerId, originY: getEntityWorldY(minion) }
             );
             if (hits.length > 0) {
               _gameState._pendingMinionBreaths.push({
