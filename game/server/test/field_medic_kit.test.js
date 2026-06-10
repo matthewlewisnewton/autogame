@@ -113,6 +113,7 @@ describe('useKeyItem — field_medic_kit', () => {
 
 		// Clear cooldown on caster
 		p1.keyItemCooldownUntil = 0;
+		p1.equippedKeyItemId = 'field_medic_kit';
 
 		// Use field_medic_kit from player 1
 		const resultPromise = waitForEvent(players[0].socket, 'keyItemUsed');
@@ -156,6 +157,7 @@ describe('useKeyItem — field_medic_kit', () => {
 		p3.magicStones = p3MsBefore;
 
 		p1.keyItemCooldownUntil = 0;
+		p1.equippedKeyItemId = 'field_medic_kit';
 
 		const resultPromise = waitForEvent(players[0].socket, 'keyItemUsed');
 		players[0].socket.emit('useKeyItem', { keyItemId: 'field_medic_kit' });
@@ -197,6 +199,7 @@ describe('useKeyItem — field_medic_kit', () => {
 		p3.hp = p3HpBefore;
 
 		p1.keyItemCooldownUntil = 0;
+		p1.equippedKeyItemId = 'field_medic_kit';
 
 		const resultPromise = waitForEvent(players[0].socket, 'keyItemUsed');
 		players[0].socket.emit('useKeyItem', { keyItemId: 'field_medic_kit' });
@@ -231,6 +234,7 @@ describe('useKeyItem — field_medic_kit', () => {
 		p2.dead = true;
 
 		p1.keyItemCooldownUntil = 0;
+		p1.equippedKeyItemId = 'field_medic_kit';
 
 		const resultPromise = waitForEvent(players[0].socket, 'keyItemUsed');
 		players[0].socket.emit('useKeyItem', { keyItemId: 'field_medic_kit' });
@@ -261,6 +265,7 @@ describe('useKeyItem — field_medic_kit', () => {
 		p1.magicStones = 2;
 
 		p1.keyItemCooldownUntil = 0;
+		p1.equippedKeyItemId = 'field_medic_kit';
 
 		// First use — should succeed
 		const result1Promise = waitForEvent(players[0].socket, 'keyItemUsed');
@@ -293,6 +298,7 @@ describe('useKeyItem — field_medic_kit', () => {
 		player.hp = hpBefore;
 		player.magicStones = msBefore;
 		player.keyItemCooldownUntil = 0;
+		player.equippedKeyItemId = 'field_medic_kit';
 
 		const resultPromise = waitForEvent(socket, 'keyItemUsed');
 		socket.emit('useKeyItem', { keyItemId: 'field_medic_kit' });
@@ -320,6 +326,7 @@ describe('useKeyItem — field_medic_kit', () => {
 		p2.x = 12;
 		p2.z = -5;
 		p1.keyItemCooldownUntil = 0;
+		p1.equippedKeyItemId = 'field_medic_kit';
 
 		const casterPulsePromise = waitForEvent(players[0].socket, 'keyItemHealPulse');
 		const allyPulsePromise = waitForEvent(players[1].socket, 'keyItemHealPulse');
@@ -363,6 +370,7 @@ describe('useKeyItem — field_medic_kit', () => {
 		p2.magicStones = p2MsBefore;
 
 		p1.keyItemCooldownUntil = 0;
+		p1.equippedKeyItemId = 'field_medic_kit';
 
 		const resultPromise = waitForEvent(players[0].socket, 'keyItemUsed');
 		players[0].socket.emit('useKeyItem', { keyItemId: 'field_medic_kit' });
