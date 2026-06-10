@@ -259,6 +259,7 @@ function resolveDeckEntry(entry, inventory) {
 }
 
 module.exports = {
+  isValidCardId,
   STARTING_DECK_IDS,
   createCardInstance,
   createInventoryFromCardIds,

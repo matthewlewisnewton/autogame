@@ -1317,7 +1317,7 @@ function softDisconnectPlayerFromLobby(socket) {
 
   withLobbyContext(lobby, () => {
     savePlayerData(lobby.state, playerId);
-    cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
+    cancelTradesForPlayer(lobby.state, lobby.state.pendingTrades, playerId);
 
     player.connected = false;
     player.ready = false;
@@ -1348,7 +1348,7 @@ function evictDisconnectedPlayers() {
     for (const playerId of toEvict) {
       withLobbyContext(lobby, () => {
         savePlayerData(lobby.state, playerId);
-        cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
+        cancelTradesForPlayer(lobby.state, lobby.state.pendingTrades, playerId);
       });
       const result = lobbies.removePlayerFromLobby(playerId);
       notifyPlayerRemoved(lobby, { playerId, result, emitDisconnect: true });
@@ -1368,7 +1368,7 @@ function leaveLobbyForSocket(socket) {
   const playerId = socket.playerId;
   withLobbyContext(lobby, () => {
     savePlayerData(lobby.state, playerId);
-    cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
+    cancelTradesForPlayer(lobby.state, lobby.state.pendingTrades, playerId);
   });
   socket.leave(lobby.id);
 

@@ -24,6 +24,7 @@ function register(socket, ctx) {
     }
 
     const result = offerCardTrade(
+      state,
       state.pendingTrades,
       socket.playerId,
       targetPlayerId,
@@ -69,7 +70,7 @@ function register(socket, ctx) {
 
     const trade = state.pendingTrades[tradeId];
     const offererId = trade ? trade.fromPlayerId : null;
-    const result = respondCardTrade(state.pendingTrades, socket.playerId, tradeId, accepted);
+    const result = respondCardTrade(state, state.pendingTrades, socket.playerId, tradeId, accepted);
     if (!result.ok) {
       socket.emit(SERVER_TO_CLIENT.DECK_ERROR, { reason: result.reason });
       return;

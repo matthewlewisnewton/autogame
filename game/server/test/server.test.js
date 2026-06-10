@@ -4634,7 +4634,7 @@ describe('card sell and trade economy', () => {
 			.filter((instance) => instance.instanceId !== p2Flame[1].instanceId)
 			.map((instance) => instance.instanceId);
 
-		const offer = offerCardTrade(gameState.pendingTrades, 'p1', 'p2', 'iron_sword', 'flame_blade');
+		const offer = offerCardTrade(gameState, gameState.pendingTrades, 'p1', 'p2', 'iron_sword', 'flame_blade');
 		expect(offer.ok).toBe(true);
 
 		const p1IronBefore = p1.ownedCards.iron_sword;
@@ -4642,7 +4642,7 @@ describe('card sell and trade economy', () => {
 		const p2IronBefore = p2.ownedCards.iron_sword || 0;
 		const p2FlameBefore = p2.ownedCards.flame_blade;
 
-		const accepted = respondCardTrade(gameState.pendingTrades, 'p2', offer.tradeId, true);
+		const accepted = respondCardTrade(gameState, gameState.pendingTrades, 'p2', offer.tradeId, true);
 		expect(accepted.ok).toBe(true);
 		expect(p1.ownedCards.iron_sword).toBe(p1IronBefore - 1);
 		expect(p1.ownedCards.flame_blade).toBe(p1FlameBefore + 1);
@@ -4670,8 +4670,8 @@ describe('card sell and trade economy', () => {
 		const p1Snapshot = JSON.stringify(p1.inventory);
 		const p2Snapshot = JSON.stringify(p2.inventory);
 
-		const offer = offerCardTrade(gameState.pendingTrades, 'p1', 'p2', 'iron_sword', 'flame_blade');
-		const rejected = respondCardTrade(gameState.pendingTrades, 'p2', offer.tradeId, false);
+		const offer = offerCardTrade(gameState, gameState.pendingTrades, 'p1', 'p2', 'iron_sword', 'flame_blade');
+		const rejected = respondCardTrade(gameState, gameState.pendingTrades, 'p2', offer.tradeId, false);
 		expect(rejected.ok).toBe(true);
 		expect(rejected.accepted).toBe(false);
 		expect(JSON.stringify(p1.inventory)).toBe(p1Snapshot);
