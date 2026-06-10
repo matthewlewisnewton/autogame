@@ -48,10 +48,12 @@ import {
 	initInput,
 	ACTIONS,
 	getHandSlotInputHints,
+	getAttackCastHint,
 	is8BitDo64HandHintsActive,
 	getUseKeyItemBinding,
 	getReservedKeys,
 } from './input.js';
+import { createAttackHintDismisser } from './attackHintDismiss.js';
 import {
 	DECK_MAX_SIZE,
 	MAX_HP,
@@ -197,6 +199,7 @@ import { openDeckBooth, registerDeckBoothListener, createRequestDebugBoothOpener
 import { openShopBooth, registerShopBoothListener, createRequestDebugShopBoothOpener } from './boothShop.js';
 import { isLaunchBoothAction, getBoothDebugHook, LAUNCH_BOOTH_ID, shouldLaunchReadyUp, LAUNCH_READY_EVENT } from './launchBooth.js';
 import { QUEST_BOOTH_ID, isQuestBoothAction } from './questBooth.js';
+import { renderLevelMap } from './levelMap.js';
 import eventsCatalog from '../shared/events.json' with { type: 'json' };
 import { sampleFloorSurface } from '../shared/floorSampling.esm.js';
 
@@ -207,6 +210,7 @@ const statusEl = document.getElementById('status');
 const boothPromptEl = document.getElementById('booth-prompt');
 const lobbyPlayerList = document.getElementById('lobby-player-list');
 const questBoardEl = document.getElementById('quest-board');
+const levelMapEl = document.getElementById('level-map');
 const questBoardWrapperEl = document.getElementById('quest-board-wrapper');
 const questBriefingPanelEl = document.getElementById('quest-briefing-panel');
 const questBriefingEl = document.getElementById('quest-briefing');
@@ -248,10 +252,65 @@ const deckStackEl = document.getElementById('deck-stack');
 const attackReticleEl = document.getElementById('attack-reticle');
 const attackHintEl = document.getElementById('attack-hint');
 
+/** Write the device-aware attack/cast hint text, overriding the static HTML. */
+function applyAttackHintText() {
+	if (attackHintEl) attackHintEl.textContent = getAttackCastHint().text;
+}
+
+// How long the fade-out runs before the hint is fully `display:none` (kept in
+// sync with the `#attack-hint` opacity transition in style.css).
+const ATTACK_HINT_FADE_MS = 600;
+
+// Per-run dismissal controller for the hint TEXT line (the reticle is managed
+// separately below and is never auto-dismissed). The profile key is the stored
+// player id so the "seen" flag follows the account, and a fresh profile (empty
+// localStorage) re-shows the hint.
+const attackHintDismisser = createAttackHintDismisser({
+	getPlayerId: () => {
+		try { return localStorage.getItem(STORAGE_KEY_PLAYER_ID); } catch (_) { return null; }
+	},
+	onShow: () => {
+		if (!attackHintEl) return;
+		attackHintEl.classList.remove('attack-hint-dismissed', 'hidden');
+	},
+	onHide: () => {
+		if (!attackHintEl) return;
+		attackHintEl.classList.remove('attack-hint-dismissed');
+		attackHintEl.classList.add('hidden');
+	},
+	onDismiss: () => {
+		if (!attackHintEl) return;
+		// Fade via the opacity class, then remove from layout once it settles.
+		attackHintEl.classList.add('attack-hint-dismissed');
+		window.setTimeout(() => {
+			if (attackHintEl) attackHintEl.classList.add('hidden');
+		}, ATTACK_HINT_FADE_MS);
+	},
+});
+
+/**
+ * Note a per-run attack/cast action so the hint can self-dismiss once the
+ * player has done both. Only call this after the corresponding useCard()
+ * actually accepted and emitted — rejected activations must not count. Slot
+ * activations are casts, except the gamepad's primary attack button (slot 0),
+ * which the hint copy frames as the attack.
+ */
+function noteAttackHintSlotAction(slotIndex) {
+	const isGamepadAttack = getHandSlotInputHints().mode === 'gamepad' && slotIndex === 0;
+	attackHintDismisser.noteProgress(isGamepadAttack ? { attacked: true } : { casted: true });
+}
+
 /** Show/hide the center reticle + attack hint (in-run affordance only). */
 function setAttackAffordanceVisible(visible) {
 	if (attackReticleEl) attackReticleEl.classList.toggle('hidden', !visible);
-	if (attackHintEl) attackHintEl.classList.toggle('hidden', !visible);
+	if (visible) {
+		applyAttackHintText();
+		// arm() is idempotent across the repeated showCardHand() calls during a
+		// run; reset() (on hide) re-arms it for the next run.
+		attackHintDismisser.arm();
+	} else {
+		attackHintDismisser.reset();
+	}
 }
 /** @type {'n64' | 'default' | null} */
 let handLayoutMode = null;
@@ -1067,7 +1126,7 @@ function canUseGameActions() {
 }
 
 initInput({
-	onUseSlot: (slot) => useCard(slot),
+	onUseSlot: (slot) => { if (useCard(slot)) noteAttackHintSlotAction(slot); },
 	onToggleDeck: () => toggleDeckViewer(),
 	onUseKeyItem: () => {
 		if (!socket) return;
@@ -1523,11 +1582,31 @@ function bindSocketHandlers(s) {
 		if (data && data.ok) {
 			console.log(`[debugScenario] applied ${data.scenario}`);
 			const cardProbeScenarios = new Set([
+				'ice-ball-ready',
+				'fireball-hand-ready',
 				'fireball-ready',
 				'status-mutual-exclusion-ready',
 				'purifying-pulse-ready',
 				'magma-windup-ready',
 			]);
+			// Card exercises cast on the next harness tick; sync facing/cooldowns now
+			// so keyboard useCard is not blocked or mis-aimed before deferred snap.
+			if (cardProbeScenarios.has(data.scenario)
+				&& gameState?.gamePhase === 'playing'
+				&& myId
+				&& gameState.players[myId]) {
+				const me = gameState.players[myId];
+				for (let i = 0; i < slotCooldowns.length; i += 1) {
+					slotCooldowns[i] = false;
+				}
+				if (Array.isArray(me.hand)) {
+					applyInRunDeckPayload({ hand: me.hand });
+					renderHand();
+				}
+				if (Number.isFinite(me.rotation)) {
+					alignAttackFacing(me.rotation);
+				}
+			}
 			// Repositioning scenarios emit stateUpdate before this result; defer one
 			// tick so the client sim snaps after that payload is applied.
 			setTimeout(() => {
@@ -1535,11 +1614,7 @@ function bindSocketHandlers(s) {
 					const me = gameState.players[myId];
 					setPlayerPosition(me.x, me.z);
 					clearAllLockOnState();
-					if (cardProbeScenarios.has(data.scenario) && Array.isArray(me.hand)) {
-						applyInRunDeckPayload({ hand: me.hand });
-						renderHand();
-					}
-					if (Number.isFinite(me.rotation)) {
+					if (cardProbeScenarios.has(data.scenario) && Number.isFinite(me.rotation)) {
 						alignAttackFacing(me.rotation);
 					}
 				}
@@ -1946,7 +2021,7 @@ function bindSocketHandlers(s) {
 				isReady = me.ready;
 			}
 		}
-		if (data.quests || data.questVariants || data.selectedQuestId || data.unlockedQuestTiers) {
+		if (data.quests || data.questVariants || data.selectedQuestId || data.unlockedQuestTiers || data.levelUnlockGraph) {
 			applyQuestBoardFromPayload(data);
 		}
 		if ('shopOffer' in data && gameState) {
@@ -1957,7 +2032,7 @@ function bindSocketHandlers(s) {
 
 	s.on(SERVER_TO_CLIENT.QUEST_UPDATE, (data) => {
 		if (!data) return;
-		if (data.quests || data.questVariants || data.selectedQuestId || data.unlockedQuestTiers) {
+		if (data.quests || data.questVariants || data.selectedQuestId || data.unlockedQuestTiers || data.levelUnlockGraph) {
 			applyQuestBoardFromPayload(data);
 		}
 		applyQuestLayoutFromServer(data);
@@ -2106,6 +2181,7 @@ let questVariants = [];
 let unlockedQuestTiers = {};
 let selectedQuestId = 'training_caverns';
 let selectedQuestTier = 1;
+let levelUnlockGraph = null;
 let currentCardChoices = [];
 let claimedCardRewardId = null;
 let myCurrency = 0;
@@ -2160,6 +2236,9 @@ function applyQuestBoardFromPayload(data) {
 	if (typeof data.selectedQuestId === 'string') selectedQuestId = data.selectedQuestId;
 	if (data.selectedQuestTier !== undefined && data.selectedQuestTier !== null) {
 		selectedQuestTier = data.selectedQuestTier;
+	}
+	if (data.levelUnlockGraph && Array.isArray(data.levelUnlockGraph.nodes)) {
+		levelUnlockGraph = data.levelUnlockGraph;
 	}
 	renderQuestBoardState();
 }
@@ -2245,6 +2324,7 @@ function renderQuestBoardState() {
 			briefingPanelEl: questBriefingPanelEl,
 		},
 	);
+	renderLevelMapState();
 	const selectedQuest = findQuestBoardEntry(
 		selectedQuestId,
 		selectedQuestTier,
@@ -2257,6 +2337,24 @@ function renderQuestBoardState() {
 		questErrorEl.style.display = 'none';
 		questErrorEl.textContent = '';
 	}
+}
+
+// Render the level-select tree map alongside the quest board. The map mirrors
+// the quest-board selection (same selectedQuestId/Tier) and reuses the quest
+// board's selection logic so clicking an unlocked node selects that level.
+function renderLevelMapState() {
+	renderLevelMap(levelMapEl, levelUnlockGraph, {
+		selectedQuestId,
+		selectedQuestTier,
+		onSelectNode: (questId, tier) => {
+			if (!socket) return;
+			if (suspendedRunSummary) {
+				showQuestError(THEME.run.questSuspendedLocked);
+				return;
+			}
+			socket.emit(CLIENT_TO_SERVER.SELECT_QUEST, { questId, tier: tier ?? 1 });
+		},
+	});
 }
 
 function showQuestError(message) {
@@ -2779,14 +2877,26 @@ function setCardSlotHint(hintEl, hintLabel, hintMarkup) {
 	hintEl.innerHTML = hintMarkup;
 }
 
+function slotSignature(card, playerMs, layoutMode) {
+	if (!card) {
+		return `__empty__|${layoutMode}`;
+	}
+	const cardCost = getCardMagicStoneCost(card);
+	const affordable = !(cardCost > 0 && playerMs < cardCost);
+	return `${card.id}|${card.remainingCharges}|${card.charges}|${card.activeMinionId ?? ''}|${card.isEvolved}|${card.isDesperation}|${card.isEcho}|${card.grind}|${card.specialEffect ?? ''}|${affordable}|${layoutMode}`;
+}
+
 function renderHand() {
 	const playerMs = (gameState && myId && gameState.players[myId])
 		? gameState.players[myId].magicStones
 		: 0;
+	const layoutMode = resolveHandLayoutMode();
 
 	clearAdjacentCardHighlights();
 	const handHasDesperation = hand.some((card) => card && card.isDesperation);
 	const inputHints = getHandSlotInputHints();
+	// Keep the attack/cast hint in sync with the active device's bindings.
+	applyAttackHintText();
 	if (cardHandEl) {
 		cardHandEl.classList.toggle('has-desperation', handHasDesperation);
 		cardHandEl.classList.toggle('show-input-hints', true);
@@ -2798,6 +2908,22 @@ function renderHand() {
 		const slot = getCardSlotEl(i);
 		if (!slot) continue;
 		const card = hand[i];
+		const sig = slotSignature(card, playerMs, layoutMode);
+		const cachedSig = slot.dataset._sig;
+
+		// Always update charge-pct so burning-creature meters animate
+		if (card) {
+			slot.style.setProperty('--charge-pct', String(getCardChargePercent(card)));
+		} else {
+			slot.style.removeProperty('--charge-pct');
+		}
+
+		// Skip full DOM rebuild when signature is unchanged
+		if (cachedSig === sig) {
+			continue;
+		}
+		slot.dataset._sig = sig;
+
 		const hintLabel = inputHints.hintLabels?.[i]
 			?? (inputHints.mode === 'keyboard' ? `Key ${inputHints.hints[i]}` : `Gamepad ${inputHints.hints[i]}`);
 		const { meter, hint, content } = getCardSlotParts(slot);
@@ -2807,7 +2933,6 @@ function renderHand() {
 			meter.hidden = false;
 			const style = CARD_ACCENT_STYLE[card.id] || CARD_TYPE_STYLE[card.type] || CARD_TYPE_STYLE.weapon;
 			slot.style.setProperty('--slot-color', style.color);
-			slot.style.setProperty('--charge-pct', String(getCardChargePercent(card)));
 			const evolvedBadge = card.isEvolved ? `<span class="evolved-badge">${THEME.progression.ascended}</span>` : '';
 			const grindBadge = (card.grind || 0) > 0 ? `<span class="grind-badge">+${card.grind}</span>` : '';
 			const effectText = (!card.isDesperation && card.specialEffect)
@@ -2859,9 +2984,8 @@ function renderHand() {
 			}
 		} else {
 			slot.style.removeProperty('--slot-color');
-			slot.style.removeProperty('--charge-pct');
 			meter.hidden = true;
-			const n64Layout = resolveHandLayoutMode() === 'n64';
+			const n64Layout = layoutMode === 'n64';
 			if (n64Layout) {
 				setCardSlotHint(hint, hintLabel, inputHints.hints[i]);
 			} else {
@@ -3944,19 +4068,23 @@ function playActivationEffect(slotIndex) {
 	}, 800);
 }
 
+// Returns true when the activation is accepted and a USE_CARD action is emitted,
+// false on every client-side rejection (out-of-range, empty slot, unusable slot,
+// active minion, full hand on draw, or insufficient magic stones). Callers gate
+// attack/cast hint dismissal on this so rejected attempts never count.
 function useCard(slotIndex) {
-	if (slotIndex < 0 || slotIndex >= MAX_HAND_SLOTS) return;
+	if (slotIndex < 0 || slotIndex >= MAX_HAND_SLOTS) return false;
 	const card = hand[slotIndex];
-	if (!card) return;
+	if (!card) return false;
 
-	if (!canUseSlot(slotIndex)) return;
-	if (card.activeMinionId) return;
+	if (!canUseSlot(slotIndex)) return false;
+	if (card.activeMinionId) return false;
 
 	const cardDef = getCardDef(card.id) || {};
 	if (cardDef.effect === 'draw_card' && !canDrawIntoHandLocal()) {
 		lastUsedSlot = slotIndex;
 		showCardErrorToast('Hand full');
-		return;
+		return false;
 	}
 	const playerMs = (gameState && myId && gameState.players[myId])
 		? gameState.players[myId].magicStones
@@ -3967,7 +4095,7 @@ function useCard(slotIndex) {
 		showCardErrorToast(THEME.resource.insufficient);
 		const slot = getCardSlotEl(slotIndex);
 		if (slot) slot.classList.add('no-ms');
-		return;
+		return false;
 	}
 
 	lastUsedSlot = slotIndex;
@@ -3983,23 +4111,24 @@ function useCard(slotIndex) {
 	if (creatureCardIds.has(card.id)) {
 		slotCooldowns[slotIndex] = true;
 		playActivationEffect(slotIndex);
-		return;
+		return true;
 	}
 
 	if (spellCardIds.has(card.id)) {
 		slotCooldowns[slotIndex] = true;
 		playActivationEffect(slotIndex);
-		return;
+		return true;
 	}
 
 	if (cardDef.effect === 'draw_card') {
 		slotCooldowns[slotIndex] = true;
 		playActivationEffect(slotIndex);
-		return;
+		return true;
 	}
 
 	slotCooldowns[slotIndex] = true;
 	playActivationEffect(slotIndex);
+	return true;
 }
 
 function discardCard(slotIndex) {
@@ -4021,7 +4150,10 @@ function discardCard(slotIndex) {
 cardHandEl.addEventListener('click', (e) => {
 	const slot = e.target.closest('.card-slot');
 	if (!slot) return;
-	useCard(parseInt(slot.dataset.slotIndex, 10));
+	// Only count toward hint dismissal when useCard actually accepted and emitted.
+	if (useCard(parseInt(slot.dataset.slotIndex, 10))) {
+		attackHintDismisser.noteProgress({ casted: true });
+	}
 });
 
 cardHandEl.addEventListener('contextmenu', (e) => {
@@ -4057,7 +4189,11 @@ window.addEventListener('pointerdown', (e) => {
 	const canvas = getRenderer()?.domElement;
 	if (!canvas || e.target !== canvas) return;
 	const slot = pickBasicAttackSlot();
-	if (slot >= 0) useCard(slot);
+	// Only count toward hint dismissal when a usable slot was found AND useCard
+	// accepted it — a rejected basic attack does not advance the hint.
+	if (slot >= 0 && useCard(slot)) {
+		attackHintDismisser.noteProgress({ attacked: true });
+	}
 });
 
 if (deckStackEl) {
@@ -4743,6 +4879,7 @@ window.addEventListener('gamepadconnected', (event) => {
 	resetHandLayoutLock();
 	if (cardHandEl && cardHandEl.style.display !== 'none') showCardHand();
 	renderHand();
+	applyAttackHintText();
 	const me = myId && gameState?.players ? gameState.players[myId] : null;
 	renderKeyItemHud(me, gameState?.gamePhase);
 });
@@ -4751,6 +4888,7 @@ window.addEventListener('gamepaddisconnected', () => {
 	resetHandLayoutLock();
 	if (cardHandEl && cardHandEl.style.display !== 'none') showCardHand();
 	renderHand();
+	applyAttackHintText();
 	const me = myId && gameState?.players ? gameState.players[myId] : null;
 	renderKeyItemHud(me, gameState?.gamePhase);
 });
@@ -5086,6 +5224,9 @@ window.__setQuestBoardState = (quests, questId, tier) =>
 	applyQuestBoardFromPayload({ quests, selectedQuestId: questId, selectedQuestTier: tier });
 window.__getSelectedQuestId = () => selectedQuestId;
 window.__getSelectedQuestTier = () => selectedQuestTier;
+window.renderLevelMapState = renderLevelMapState;
+window.__applyQuestBoardFromPayload = (data) => applyQuestBoardFromPayload(data);
+window.__getLevelUnlockGraph = () => levelUnlockGraph;
 window.formatObjectiveSummary = formatObjectiveSummary;
 window.formatRewardSummary = formatRewardSummary;
 window.renderQuestBoard = renderQuestBoard;

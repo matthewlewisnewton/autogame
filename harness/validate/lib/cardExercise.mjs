@@ -5,6 +5,24 @@ import path from 'path';
 import { readHarness } from './harnessState.mjs';
 import { writeScreenshot } from './screenshot.mjs';
 
+const CARD_EXERCISE_LAYOUTS = new Set(['sunken-canyon', 'spire-ascent']);
+
+/**
+ * @param {string | undefined | null} profile
+ */
+export function isCardExerciseLayout(profile) {
+	return CARD_EXERCISE_LAYOUTS.has(profile);
+}
+
+async function waitForCardExercisePlaying(page) {
+	await page.waitForFunction(() => {
+		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
+		if (harness?.phase !== 'playing') return false;
+		const profile = harness?.layout?.profile;
+		return profile === 'sunken-canyon' || profile === 'spire-ascent';
+	}, { timeout: 60000 });
+}
+
 function handSlotForCard(harness, cardId) {
 	return (harness?.hand || []).findIndex((card) => card && card.id === cardId);
 }
@@ -129,13 +147,16 @@ export function assertSlowBurnMutualExclusive(probes) {
  * Cast ice_ball then fireball on the same grunt and assert ticket 301 exclusivity.
  *
  * @param {import('playwright').Page} page
- * @param {{ outDir?: string, repoRoot?: string }} [opts]
+ * @param {{ outDir?: string, repoRoot?: string, preset?: { iceBallScenario?: string, fireballScenario?: string } }} [opts]
  */
-export async function runSlowBurnExercise(page, { outDir, repoRoot, layoutProfile } = {}) {
-	await waitForPlayingOnProfile(page, layoutProfile);
+export async function runSlowBurnExercise(page, { outDir, repoRoot, layoutProfile, preset } = {}) {
+	const iceBallScenario = preset?.iceBallScenario ?? 'ice-ball-ready';
+	const fireballScenario = preset?.fireballScenario ?? 'fireball-hand-ready';
+
+	await waitForPlayingOnProfile(page, layoutProfile ?? preset?.layoutProfile);
 
 	await focusCanvas(page);
-	await requestScenario(page, 'ice-ball-ready');
+	await requestScenario(page, iceBallScenario);
 
 	let harness = await readHarness(page);
 	const nearest = nearestLiveGrunt(harness);
@@ -146,7 +167,7 @@ export async function runSlowBurnExercise(page, { outDir, repoRoot, layoutProfil
 
 	const iceSlot = handSlotForCard(harness, 'ice_ball');
 	if (iceSlot < 0) {
-		throw new Error(`ice_ball not in hand after ice-ball-ready: ${JSON.stringify(harness?.hand)}`);
+		throw new Error(`ice_ball not in hand after ${iceBallScenario}: ${JSON.stringify(harness?.hand)}`);
 	}
 
 	await page.evaluate(() => {
@@ -164,12 +185,12 @@ export async function runSlowBurnExercise(page, { outDir, repoRoot, layoutProfil
 	harness = await readHarness(page);
 	const afterSlow = probeEnemyStatus(harness, targetEnemyId);
 
-	await requestScenario(page, 'fireball-hand-ready');
+	await requestScenario(page, fireballScenario);
 
 	harness = await readHarness(page);
 	const fireSlot = handSlotForCard(harness, 'fireball');
 	if (fireSlot < 0) {
-		throw new Error(`fireball not in hand after fireball-hand-ready: ${JSON.stringify(harness?.hand)}`);
+		throw new Error(`fireball not in hand after ${fireballScenario}: ${JSON.stringify(harness?.hand)}`);
 	}
 
 	await castHandSlot(page, fireSlot);
@@ -252,18 +273,20 @@ export async function probeWindupTelegraphDom(page) {
  * Cast Purifying Pulse after purifying-pulse-ready and assert heal + cleanse.
  *
  * @param {import('playwright').Page} page
- * @param {{ outDir?: string, repoRoot?: string }} [opts]
+ * @param {{ outDir?: string, repoRoot?: string, preset?: { purifyingPulseScenario?: string } }} [opts]
  */
-export async function runPurifyingPulseExercise(page, { outDir, repoRoot, layoutProfile } = {}) {
-	await waitForPlayingOnProfile(page, layoutProfile);
+export async function runPurifyingPulseExercise(page, { outDir, repoRoot, layoutProfile, preset } = {}) {
+	const purifyingPulseScenario = preset?.purifyingPulseScenario ?? 'purifying-pulse-ready';
+
+	await waitForPlayingOnProfile(page, layoutProfile ?? preset?.layoutProfile);
 
 	await focusCanvas(page);
-	await requestScenario(page, 'purifying-pulse-ready');
+	await requestScenario(page, purifyingPulseScenario);
 
 	let harness = await readHarness(page);
 	const pulseSlot = handSlotForCard(harness, 'purifying_pulse');
 	if (pulseSlot < 0) {
-		throw new Error(`purifying_pulse not in hand after purifying-pulse-ready: ${JSON.stringify(harness?.hand)}`);
+		throw new Error(`purifying_pulse not in hand after ${purifyingPulseScenario}: ${JSON.stringify(harness?.hand)}`);
 	}
 
 	const preCast = probePlayerStatus(harness);
@@ -303,24 +326,28 @@ export async function runPurifyingPulseExercise(page, { outDir, repoRoot, layout
  * Press a wind-up weapon once and capture harness + DOM probes during lockout.
  *
  * @param {import('playwright').Page} page
- * @param {{ outDir?: string, repoRoot?: string, cardId?: string, scenario?: string }} [opts]
+ * @param {{ outDir?: string, repoRoot?: string, cardId?: string, scenario?: string, preset?: { windupScenario?: string, windupCardId?: string } }} [opts]
  */
 export async function runWindupCardExercise(page, {
 	outDir,
 	repoRoot,
-	cardId = 'magma_greatsword',
-	scenario = 'magma-windup-ready',
+	cardId,
+	scenario,
 	layoutProfile,
+	preset,
 } = {}) {
-	await waitForPlayingOnProfile(page, layoutProfile);
+	const windupCardId = cardId ?? preset?.windupCardId ?? 'magma_greatsword';
+	const windupScenario = scenario ?? preset?.windupScenario ?? 'magma-windup-ready';
+
+	await waitForPlayingOnProfile(page, layoutProfile ?? preset?.layoutProfile);
 
 	await focusCanvas(page);
-	await requestScenario(page, scenario);
+	await requestScenario(page, windupScenario);
 
 	let harness = await readHarness(page);
-	const weaponSlot = handSlotForCard(harness, cardId);
+	const weaponSlot = handSlotForCard(harness, windupCardId);
 	if (weaponSlot < 0) {
-		throw new Error(`${cardId} not in hand after ${scenario}: ${JSON.stringify(harness?.hand)}`);
+		throw new Error(`${windupCardId} not in hand after ${windupScenario}: ${JSON.stringify(harness?.hand)}`);
 	}
 
 	await castHandSlot(page, weaponSlot);
@@ -350,13 +377,13 @@ export async function runWindupCardExercise(page, {
 			windupIndicatorWidth: indicatorWidth,
 			telegraphVisible,
 		};
-	}, cardId, { timeout: 5000 });
+	}, windupCardId, { timeout: 5000 });
 
 	const duringWindup = await windupProbe.jsonValue();
 	const domProbe = await probeWindupTelegraphDom(page);
 	const windupTelegraphActive = duringWindup.cardUseState === 'windup'
 		&& duringWindup.cardWindupUntil > Date.now()
-		&& duringWindup.cardWindupCardId === cardId
+		&& duringWindup.cardWindupCardId === windupCardId
 		&& domProbe.inputLocked
 		&& domProbe.telegraphVisible;
 
@@ -371,8 +398,8 @@ export async function runWindupCardExercise(page, {
 	}
 
 	return {
-		cardId,
-		scenario,
+		cardId: windupCardId,
+		scenario: windupScenario,
 		duringWindup,
 		domProbe,
 		windupTelegraphActive,

@@ -142,6 +142,7 @@ const {
   checkSweptCollision,
   tryPlayerMove,
   buildMovementContext,
+  rebuildMovementContext,
   buildHubMovementContext,
   hubSpawnPosition,
   applyPlayerMovement,
@@ -492,6 +493,7 @@ function resetGameState() {
   Object.keys(gameState).forEach(k => delete gameState[k]);
   Object.assign(gameState, fresh);
   applyLayoutForQuest(gameState, questId, questTier);
+  rebuildMovementContext(gameState);
   delete gameState.run;
   delete gameState._victoryCounters;
   sim.setGameState(gameState, _timeouts);
@@ -614,10 +616,17 @@ const DEBUG_SCENARIOS = new Set([
   'canyon-descent-encounter-trigger',
   'canyon-descent-boss-low-hp',
   'spire-ascent-tier-2',
+  'spire-ascent-telepipe-ready',
   'spire-ascent-near-adds',
   'spire-ascent-boss-approach',
+  'spire-ascent-encounter-trigger',
   'spire-ascent-boss-low-hp',
   'ember-descent-tier-2',
+  'crucible-duel-boss',
+  'vault-onslaught-boss',
+  'rift-convergence-boss',
+  'rift-convergence-unlocked',
+  'rift-convergence-one-prereq',
   'stage-boss-dormant',
   'stage-boss-active',
   'annex-overseer-ready',
@@ -646,6 +655,8 @@ const DEBUG_SCENARIOS = new Set([
   'energy-blade-slash-ready',
   'heavy-greatsword-slash-ready',
   'lock-on-elevated-projectile',
+  'lock-on-flying-enemy',
+  'lock-on-3d-stack',
   'height-aware-projectile',
 ]);
 
@@ -822,10 +833,15 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'canyon-descent-encounter-trigger',
   'canyon-descent-boss-low-hp',
   'spire-ascent-tier-2',
+  'spire-ascent-telepipe-ready',
   'spire-ascent-near-adds',
   'spire-ascent-boss-approach',
+  'spire-ascent-encounter-trigger',
   'spire-ascent-boss-low-hp',
   'ember-descent-tier-2',
+  'crucible-duel-boss',
+  'vault-onslaught-boss',
+  'rift-convergence-boss',
   'stage-boss-dormant',
   'stage-boss-active',
   'annex-overseer-ready',

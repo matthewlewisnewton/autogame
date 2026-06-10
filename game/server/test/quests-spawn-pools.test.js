@@ -62,11 +62,16 @@ describe('QUEST_DEFS enemy pools', () => {
     expect(questsWithSpawner.map((q) => q.id)).toEqual(['spire_ascent']);
   });
 
-  it('keeps ember_wraith level-exclusive to ember_descent', () => {
+  it('keeps ember_wraith level-exclusive to the ember/rift quests', () => {
+    // rift_convergence is the ice+fire convergence boss level, so it is the only
+    // quest besides ember_descent allowed to pool the fire-signature ember_wraith.
     const questsWithEmberWraith = Object.values(QUEST_DEFS).filter((q) =>
       q.enemyPool.some((e) => e.type === 'ember_wraith')
     );
-    expect(questsWithEmberWraith.map((q) => q.id)).toEqual(['ember_descent']);
+    expect(questsWithEmberWraith.map((q) => q.id).sort()).toEqual([
+      'ember_descent',
+      'rift_convergence',
+    ]);
     for (const quest of Object.values(QUEST_DEFS)) {
       const tier2 = quest.tier2EnemyPool;
       if (Array.isArray(tier2)) {
@@ -196,7 +201,8 @@ describe('ember_wraith spawn weighting', () => {
     expect(sawEmberWraith).toBe(true);
 
     for (const questId of Object.keys(QUEST_DEFS)) {
-      if (questId === 'ember_descent') continue;
+      // rift_convergence pools ember_wraith by design (ice+fire convergence).
+      if (questId === 'ember_descent' || questId === 'rift_convergence') continue;
       const pool = getEnemyPool(questId, 1);
       const poolTypes = new Set(pool.map((entry) => entry.type));
       expect(poolTypes.has('ember_wraith')).toBe(false);

@@ -101,3 +101,6 @@ __pycache__/
 .merge-resolve/
 .merge-fix/
 game/.merge-verify.log
+
+# merge-queue quarantine for untracked files colliding with main (moved aside, never deleted)
+.merge-quarantine/

@@ -34,6 +34,7 @@
     "validate:sunken-canyon": "node ../harness/validate/playthrough.mjs --preset sunken-canyon --steps full --out game/validation/sunken-canyon && node scripts/append-sunken-canyon-harness-fixes.mjs",
     "validate:sunken-canyon:check": "node ../harness/validate/verify-sunken-canyon-artifacts.mjs",
     "validate:spire-ascent": "node ../harness/validate/playthrough.mjs --preset spire-ascent --steps full --out game/validation/spire-ascent",
+    "validate:spire-ascent:telepipe-new-sortie": "node ../harness/validate/playthrough.mjs --preset spire-ascent --steps telepipe-new-sortie --out game/validation/spire-ascent-telepipe",
     "validate:spire-ascent:check": "node ../harness/validate/verify-spire-ascent-artifacts.mjs",
     "validate:fire": "node ../harness/validate/playthrough.mjs --preset fire --steps full --out game/validation/fire",
     "validate:fire:check": "node ../harness/validate/verify-fire-artifacts.mjs",

@@ -6673,6 +6673,113 @@ PASS. The latest coverage run reports 168 test files passed and 2504 tests passe
 None.
 
 
+## v0.385 — Client: attack/cast hint is static — wrong for controllers and shown forever  (2026-06-10 15:23:15)
+
+### Fresh Profiles and Same-Profile Memory
+
+PASS. The localStorage key is scoped by stored player id, so a profile that has seen the hint keeps it hidden on later runs while a different/new profile with no matching flag sees it again. Storage and timer access are guarded to avoid breaking gameplay if localStorage is unavailable.
+
+### Design and Requirements Consistency
+
+PASS. The change is limited to client HUD/input affordance behavior and does not alter the documented lobby/dungeon/card-combat loop, server-client architecture, multiplayer state, movement synchronization, combat simulation, or progression systems. The captured run still demonstrates auth/lobby entry, deploy into gameplay, movement, card hand visibility, and HUD state.
+
+### Debug Scenarios
+
+PASS. This ticket did not add or change any `?debugScenario=...` shortcut. No debug-scenario capture was used in `metrics.json`, and the normal lobby-to-gameplay path remains the exercised route.
+
+### Test and Coverage Evidence
+
+PASS. The round-3 coverage log shows the client suite ran successfully, including the new `attack-cast-hint`, `attack-hint-dismiss`, `attack-hint-dismiss-action`, and expanded `input` coverage. The tests cover keyboard text, standard gamepad text, 8BitDo 64 text, remapped 8BitDo 64 labels, timeout dismissal, attack-plus-cast dismissal, persistence across runs, fresh-profile reappearance, and rejected-action gating.
+
+## Remaining gaps
+
+None.
+
+## v0.384 — 385-boss-level-framework  (2026-06-10 14:13:18)
+
+### Client Presentation
+
+PASS. The quest board receives boss-level metadata, resolves proper boss display names, shows boss-level objective templates, includes tier lock state for tier-1 prerequisite-gated quests, and renders the new Crucible Sovereign enemy visual/telegraph definitions.
+
+### Debug Scenarios
+
+PASS. The retired fixture-only `boss-level-dormant` shortcut is rejected, and the live shortcuts (`crucible-duel-boss`, `vault-onslaught-boss`) are only entered through the existing localhost `?debugScenario=` path. They use the normal server deployment pipeline, preserve encounter state, and their comments/tests tie each shortcut to a normal progression path: complete prerequisites, select the quest, deploy, clear supports where applicable, then engage the boss.
+
+### Design and Foundation Compatibility
+
+PASS. The implementation fits the design doc's lobby-to-dungeon quest loop, card-combat enemy framework, and stage boss HP-band guidance. It does not regress the baseline requirements: the captured run renders 3D, connects over sockets, displays the player, and accepts movement.
+
+### Tests and Coverage
+
+PASS. Round-2 coverage shows `199` test files and `2875` tests passing. The added tests cover schema/default layout behavior, spawn pipeline, Crucible Duel flow, reusable second boss level, dormant boss damage immunity, quest-board copy, unlock gating, and debug scenario retirement.
+
+## v0.383 — Server: memoize movement contexts — wall colliders and walkable AABBs rebuilt from scratch every tick  (2026-06-10 14:02:45)
+
+- Hub cache is appropriate: `HUB_LAYOUT` is a static constant shared by all lobbies.
+- Minimal diff scope (two production files); no dead code introduced.
+
+**Correctness notes (non-blocking)**
+
+- Caches are module-global, not per-lobby. With multiple concurrent playing lobbies that have different layouts, the singleton cache alternates and may rebuild more often than a per-lobby cache would — but reference/key checks preserve correctness; hub cache still hits on every lobby tick.
+- Cached `walkableAABBs` / `dungeonBounds` are references captured at build time. In practice these are always reassigned together with `state.layout` in `applyLayoutForQuest` and equivalent paths, so stale-reference risk matches pre-ticket behavior.
+
+---
+
+## Debug scenarios
+
+This ticket did not add or modify any `?debugScenario=` shortcuts. No review required.
+
+---
+
+## Remaining gaps
+
+None. Runtime proof is clean, acceptance criteria are fully met, and the test suite passes.
+
+## v0.382 — 389-level-select-tree-map-ui  (2026-06-10 13:55:26)
+
+
+### Quest-board placement and lobby behavior
+
+Pass. The map fronts the existing Contract Terminal/quest board panel and does not replace or alter the lobby finder menu. The quest panel is still opened through the lobby quest booth flow, preserving the design's lobby-browser -> lobby -> quest selection -> dungeon loop.
+
+## Design and requirements fit
+
+Pass. The implementation stays in `game/client` plus client tests, is consistent with the documented lobby selection flow, and does not regress the foundational requirements: the captured run shows the Three.js scene, websocket connection, multiplayer lobby/gameplay state, and movement smoke still work.
+
+## Code quality and tests
+
+Pass. The implementation is reasonably scoped and covered by focused unit tests for layout, edges, state styling, click behavior, empty graphs, and integration tests through `main.js` quest updates. The coverage run reports 16 test files passed and 309 tests passed, including `client/test/levelMap.test.js` and `client/test/levelMapIntegration.test.js`.
+
+## Debug scenarios
+
+No new `?debugScenario=...` shortcut was added by this ticket. The existing debug hooks remain gated by localhost-only URL parameters and are not part of normal gameplay.
+
+## Remaining gaps
+
+None.
+
+## v0.381 — 377-lock-on-and-aim-across-heights  (2026-06-10 13:54:11)
+
+Camera and reticle tracking for elevated targets is satisfied. The camera look-at uses `resolveLockOnLookAtY()` instead of the player height, death-release eases from the target's actual height, and the lock-on ring is positioned at the enemy render height via `syncEnemyMeshes()`. The renderer ring test specifically covers a flying target, and the implementation remains consistent with the existing render model for flying enemies and floor-aware altitude.
+
+Server-side target resolution for height-aware projectile aiming is satisfied. The client includes `lockTargetId` when locked on, and `game/server/index.js` resolves projectile aim from the player's world Y to the locked enemy's world Y. The server tests cover elevated and flying lock-on hits for projectile/cone-style card paths, including `fireball`, `arcane_bolt`, `photon_slicer`, `infinite_disk`, `ice_ball`, `chain_lightning`, and `dragons_breath`.
+
+The lock-on info panel remains live-code consistent. It already consumes the locked enemy object and catalog data, and the new selection/tracking path does not bypass the panel or introduce stale panel state; dead or missing enemies still hide the panel through the existing model guard.
+
+The new debug scenarios are acceptable. `lock-on-flying-enemy` and `lock-on-3d-stack` are registered as debug scenarios and are reachable through the existing local `?debugScenario=` client path. They set up deterministic QA states that correspond to normal vertical-quest situations with flying enemies and stacked X/Z targets, and they do not weaken combat validation or replace the real play flow.
+
+## Design and requirements consistency
+
+The implementation aligns with `game/docs/design.md` by reusing the shared floor sampling and floor-aware altitude model rather than adding a parallel height system. It does not regress the foundation requirements: the captured run proves the 3D scene renders, client/server communication works, multiplayer state appears, and movement still updates during the smoke capture.
+
+## Code quality and tests
+
+The changed code is scoped to lock-on height resolution, renderer reticle/camera placement, debug scenarios, and tests. I did not find dead code, broken imports, or console/runtime errors. Coverage visibility shows the full suite passing: 163 test files and 2219 tests passed, with coverage reported for the changed server/client surface.
+
+## Remaining gaps
+
+None.
+
 ## v0.380 — 382-ice-tier2-frost-crossing-and-miniboss  (2026-06-10 13:37:27)
 
 ### Unique In-Level Miniboss
@@ -6708,11 +6815,6 @@ PASS. The implementation stays aligned with the design document's multiplayer lo
 ### Tests and Coverage
 
 PASS. `coverage.log` reports `195` test files and `2732` tests passed. Coverage thresholds are disabled, but the changed areas have focused tests for quest catalog/listing, spawn pools, layout options and rigid geometry, encounter lifecycle, enemy catalog/stats/drops/scaling, debug scenarios, and client render registry.
-
-## Remaining gaps
-
-None.
-
 
 ## v0.378 — 388-level-map-unlock-graph-data-api  (2026-06-10 12:54:45)
 
@@ -6792,7 +6894,114 @@ The same end states are reachable through normal play: Arena Trials Tier 2 is re
 
 No blocking code-quality issues found in the live codebase. The changed debug scenarios have unit/integration coverage in `game/server/test/debug-scenarios.test.js`, and coverage output reports the test suite green: 119 files passed, 1720 tests passed. The open-plaza artifact verifier checks the full-run summary, required assertion keys, required files, and distinct victory screenshots.
 
+## v0.389 — 371-playthrough-revalidate-spire-ascent  (2026-06-10 16:26:06)
+
+
+### Telepipe vitals persistence and new-sortie card charge reset
+
+PASS. The full validation output includes Spire Ascent telepipe-new-sortie coverage: pre-suspend and post-deploy HP/MS are preserved within the harness comparison, the run id changes for the fresh sortie, suspended state is cleared, and card charges reset to full in the new sortie. The round-2 capture separately confirms the live suspend/resume path: the same layout seed/profile and enemy ids are restored after re-deploy from the suspended lobby.
+
+### Debug scenarios
+
+PASS. The added/changed debug scenarios are only reachable through the debug-scenario socket path used by the harness and guarded by the existing debug allowance logic. The Spire Ascent shortcuts are documented as QA shortcuts for states reachable through normal quest unlock/deploy, add clearing, encounter trigger movement, boss combat, or Telepipe acquisition. They still use the real quest layout/run setup, enemy spawning, encounter state, card casting, suspend/abandon/deploy flow, and server-side assertions rather than replacing the normal gameplay path as the only proof.
+
+### Design and foundation consistency
+
+PASS. The implementation remains consistent with `game/docs/design.md`: Spire Ascent remains a stage-boss dungeon with the Summit Warden, card combat remains based on hand slots and charges, and Telepipe behavior preserves vitals while distinguishing suspend/resume from fresh sortie charge reset. The foundation requirements are not regressed: the captured runs render Three.js scenes, authenticate/connect through client/server, show the player in 3D, and continue receiving state updates.
+
+### Code quality and tests
+
+PASS. The live changes are scoped to validation harness behavior, debug scenarios, small client synchronization after debug scenarios, and validation artifacts. `coverage.log` reports 133 test files and 1995 tests passing, with visibility coverage for changed files. The coverage log contains noisy stderr from existing synthetic integration paths, but the ticket's captured browser runs have no page errors or fatal game-code logs.
+
 ## Remaining gaps
 
 None.
+
+## v0.386 — 386-boss-level-riftbound-colossus-gated-ice2-fire2  (2026-06-10 16:15:58)
+
+PASS: Dedicated boss level. `rift_convergence` is registered as a tier-1 `stage_boss` quest with `levelKind: 'boss_level'`, `layoutProfile: 'boss-arena'`, `arenaTheme: 'rift'`, and a stage-boss encounter anchored on `arena_dais`.
+
+PASS: Ice-2 AND Fire-2 gate. The quest declares `unlockRequires` as an array containing exactly `{ questId: 'frost_crossing', tier: 2 }` and `{ questId: 'ember_descent', tier: 2 }`. The live unlock path normalizes arrays and checks prerequisites with `every(...)`, so the gate is AND semantics. Targeted tests verify no prerequisites, frost-only, and ember-only all remain locked, and both completed unlocks the level.
+
+PASS: Riftbound Colossus identity and difficulty. `ENEMY_DEFS.riftbound_colossus` is present with the highest stage-boss HP and attack damage in the documented boss band, radial attack style, 5.5 range, and a 3000ms burning rider. The quest spawns exactly one Riftbound Colossus plus four supports drawn only from the ice/fire signature pool (`glacial_thrower`, `ember_wraith`), giving it more boss-level adds and a higher reward purse than the existing boss levels.
+
+PASS: Boss arena and ice/fire theme. The boss arena remains the existing dedicated single-room layout, while `arenaTheme: 'rift'` adds cosmetic-only west/east ice and ember floor bands inside bounds, without changing collision or the unthemed boss-arena layout used by other boss levels. Client rendering supports both new floor-band marking types and the Colossus procedural silhouette/attack telegraph.
+
+PASS: Level map and quest presentation. The server emits the new boss node in `levelUnlockGraph` with both prerequisite edges and account-specific locked/unlocked state. The client level-map renderer consumes that payload, displays boss nodes distinctly, draws one edge per prerequisite, and prevents locked node selection. Quest board rows use the same server-evaluated `tierUnlocked` flags, so the new boss level is visible but not selectable until both prerequisites are complete.
+
+PASS: Normal gameplay path and debug scenarios. The normal path remains intact: clearing Frost Crossing tier 2 and Ember Descent tier 2 unlocks Rift Convergence, deploying starts the same stage-boss lifecycle, the Colossus remains dormant/invulnerable until supports are cleared and the player approaches, then defeating it records completion. Added debug scenarios (`rift-convergence-boss`, `rift-convergence-unlocked`, `rift-convergence-one-prereq`) are reachable only through the existing debug-scenario URL/socket path, are locally/dev gated by the existing `isDebugScenarioAllowed` checks, and use the same quest/layout/run initialization systems rather than weakening normal production entry points.
+
+PASS: Consistency with design and requirements. `game/docs/design.md` now documents the Riftbound Colossus in the stage-boss band at 460 HP, preserving the 180s boss validation constraint while making it the capstone. The foundation requirements are not regressed: the captured run renders Three.js, connects client/server over sockets, shows multiplayer state, and movement/dodge probes update state cleanly.
+
+PASS: Test and coverage evidence. The coverage log reports `212 passed` test files and `2910 passed` tests. New/updated tests cover quest definition, AND-gated unlocks, level unlock graph edges, spawn composition, end-to-end dormant-to-active-to-cleared boss lifecycle, arena theme generation/rendering, Colossus combat/drop behavior, and client render registry wiring.
+
+## Remaining gaps
+
+None.
+
+## v0.381 — 377-lock-on-and-aim-across-heights  (2026-06-10 13:54:11)
+
+Camera and reticle tracking for elevated targets is satisfied. The camera look-at uses `resolveLockOnLookAtY()` instead of the player height, death-release eases from the target's actual height, and the lock-on ring is positioned at the enemy render height via `syncEnemyMeshes()`. The renderer ring test specifically covers a flying target, and the implementation remains consistent with the existing render model for flying enemies and floor-aware altitude.
+
+Server-side target resolution for height-aware projectile aiming is satisfied. The client includes `lockTargetId` when locked on, and `game/server/index.js` resolves projectile aim from the player's world Y to the locked enemy's world Y. The server tests cover elevated and flying lock-on hits for projectile/cone-style card paths, including `fireball`, `arcane_bolt`, `photon_slicer`, `infinite_disk`, `ice_ball`, `chain_lightning`, and `dragons_breath`.
+
+The lock-on info panel remains live-code consistent. It already consumes the locked enemy object and catalog data, and the new selection/tracking path does not bypass the panel or introduce stale panel state; dead or missing enemies still hide the panel through the existing model guard.
+
+The new debug scenarios are acceptable. `lock-on-flying-enemy` and `lock-on-3d-stack` are registered as debug scenarios and are reachable through the existing local `?debugScenario=` client path. They set up deterministic QA states that correspond to normal vertical-quest situations with flying enemies and stacked X/Z targets, and they do not weaken combat validation or replace the real play flow.
+
+## Design and requirements consistency
+
+The implementation aligns with `game/docs/design.md` by reusing the shared floor sampling and floor-aware altitude model rather than adding a parallel height system. It does not regress the foundation requirements: the captured run proves the 3D scene renders, client/server communication works, multiplayer state appears, and movement still updates during the smoke capture.
+
+## Code quality and tests
+
+The changed code is scoped to lock-on height resolution, renderer reticle/camera placement, debug scenarios, and tests. I did not find dead code, broken imports, or console/runtime errors. Coverage visibility shows the full suite passing: 163 test files and 2219 tests passed, with coverage reported for the changed server/client surface.
+
+## Remaining gaps
+
+None.
+
+## v0.383 — Server: memoize movement contexts — wall colliders and walkable AABBs rebuilt from scratch every tick  (2026-06-10 14:02:45)
+
+- Hub cache is appropriate: `HUB_LAYOUT` is a static constant shared by all lobbies.
+- Minimal diff scope (two production files); no dead code introduced.
+
+**Correctness notes (non-blocking)**
+
+- Caches are module-global, not per-lobby. With multiple concurrent playing lobbies that have different layouts, the singleton cache alternates and may rebuild more often than a per-lobby cache would — but reference/key checks preserve correctness; hub cache still hits on every lobby tick.
+- Cached `walkableAABBs` / `dungeonBounds` are references captured at build time. In practice these are always reassigned together with `state.layout` in `applyLayoutForQuest` and equivalent paths, so stale-reference risk matches pre-ticket behavior.
+
+---
+
+## Debug scenarios
+
+This ticket did not add or modify any `?debugScenario=` shortcuts. No review required.
+
+---
+
+## Remaining gaps
+
+None. Runtime proof is clean, acceptance criteria are fully met, and the test suite passes.
+
+## v0.387 — Client: renderHand rebuilds slot innerHTML on every STATE_UPDATE even when the hand is unchanged  (2026-06-10 16:20:11)
+
+- Signature includes `layoutMode` so N64 vs default hint markup stays correct when layout locks change.
+
+No dead code, no obvious logic bugs, no browser page errors.
+
+**Intentional trade-off (in scope):** For burning creatures, only the meter bar (`--charge-pct`) animates per tick; the `.card-charges` text label (e.g. `18s/30s`) is not rewritten on skip. The ticket goal explicitly states that only `--charge-pct` needs per-tick updates — this is correct per spec, not a defect.
+
+---
+
+## Integration notes
+
+`renderHand()` is still invoked unconditionally on every playing-phase STATE_UPDATE (lines ~1446–1449), which is correct: the function is now cheap when the hand is stable. Probes show MS ticking (`50.6` → `51.1`) while hand card entries remain structurally identical — exactly the hot path this fix optimizes.
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are met; the game runs cleanly in capture; tests pass.
+
+---
 

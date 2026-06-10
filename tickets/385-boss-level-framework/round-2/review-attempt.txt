@@ -1,0 +1,5 @@
+VERDICT: PASS
+
+Wrote the final review to `tickets/385-boss-level-framework/round-2/review.md`. No `gaps.md` was created because there are no blocking gaps.
+
+Also wrote one non-blocking polish item to `tickets/385-boss-level-framework/round-2/nits.md` about separating the boss-arena player spawn from the boss dais.
