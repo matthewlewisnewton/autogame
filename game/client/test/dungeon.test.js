@@ -35,7 +35,11 @@ import {
 	buildCoverMesh,
 	buildEntryDecorMesh,
 } from '../dungeon.js';
-import { generateLayout } from '../../server/dungeon.js';
+import { generateLayout, questLayoutSeed } from '../../server/dungeon.js';
+import {
+	getLayoutProfileForQuest,
+	getLayoutGenerationOptions,
+} from '../../server/quests.js';
 import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } from '../../shared/floorSampling.esm.js';
 import * as THREE from 'three';
 
@@ -64,6 +68,38 @@ function findRoomFloorMesh(meshes, room) {
 		m.position.x === room.x && m.position.z === room.z &&
 		m.geometry?.parameters?.height === 0.1
 	);
+}
+
+function findRoomWallMesh(meshes, room) {
+	const walls = room.walls || [];
+	if (walls.length === 0) return undefined;
+	const wall = walls[0];
+	return meshes.find(m =>
+		m.geometry?.parameters?.height === WALL_HEIGHT &&
+		Math.abs(m.position.x - wall.x) < 0.01 &&
+		Math.abs(m.position.z - wall.z) < 0.01
+	);
+}
+
+function layoutForQuestTier(questId, tier = 1) {
+	return generateLayout(
+		questLayoutSeed(questId, tier),
+		getLayoutProfileForQuest(questId, tier),
+		getLayoutGenerationOptions(questId, tier),
+	);
+}
+
+/** @returns {{ floorHex: number, wallHex: number, decorTypes: string[] }} */
+function collectStartRoomAppearance(layout) {
+	const startRoom = layout.rooms.find(r => r.role === 'start');
+	const { meshes } = buildDungeon(mockScene(), layout);
+	const startFloor = findRoomFloorMesh(meshes, startRoom);
+	const startWall = findRoomWallMesh(meshes, startRoom);
+	return {
+		floorHex: startFloor.material.color.getHex(),
+		wallHex: startWall.material.color.getHex(),
+		decorTypes: [...new Set((layout.entryDecor || []).map(d => d.type))],
+	};
 }
 
 describe('profile material palette', () => {
@@ -1751,6 +1787,35 @@ describe('entry room decor rendering', () => {
 		const withDecor = buildWallColliders(layout);
 		const withoutDecor = buildWallColliders({ ...layout, entryDecor: [] });
 		expect(withDecor).toEqual(withoutDecor);
+	});
+});
+
+describe('cross-quest entry room distinguishability (tier 1)', () => {
+	const TIER = 1;
+	const QUEST_CASES = [
+		{ questId: 'frost_crossing', decorType: 'icicle_cluster' },
+		{ questId: 'ember_descent', decorType: 'ember_vent' },
+		{ questId: 'training_caverns', decorType: 'vault_rubble' },
+	];
+
+	it('start-room floor/wall colors and entry decor differ across frost_crossing, ember_descent, and training_caverns', () => {
+		const appearances = Object.fromEntries(
+			QUEST_CASES.map(({ questId }) => [
+				questId,
+				collectStartRoomAppearance(layoutForQuestTier(questId, TIER)),
+			]),
+		);
+
+		const frost = appearances.frost_crossing;
+		const ember = appearances.ember_descent;
+		const vault = appearances.training_caverns;
+
+		expect(new Set([frost.floorHex, ember.floorHex, vault.floorHex]).size).toBe(3);
+		expect(new Set([frost.wallHex, ember.wallHex, vault.wallHex]).size).toBeGreaterThanOrEqual(2);
+
+		for (const { questId, decorType } of QUEST_CASES) {
+			expect(appearances[questId].decorTypes).toEqual([decorType]);
+		}
 	});
 });
 
