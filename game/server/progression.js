@@ -198,8 +198,6 @@ const CARD_STAT_OVERLAY = {
   harvesting_scythe: { attackConeAngle: Math.PI },
   reapers_scythe: { attackConeAngle: Math.PI },
   dragons_breath: { attackConeAngle: Math.PI / 3 },
-  // One attack per sim tick at most (TICK_RATE Hz); sub-tick intervals cannot fire faster.
-  astral_guardian: { attackIntervalMs: Math.floor(1000 / TICK_RATE) },
 };
 
 const CARD_DEFS = Object.fromEntries(

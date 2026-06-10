@@ -2890,7 +2890,7 @@ function updateMinions() {
 
       if (minion.type === 'astral_guardian' || minion.type === 'aegis_sentinel') {
         const attackDamage = minion.attackDamage != null ? minion.attackDamage : 10;
-        const attackIntervalMs = minion.attackIntervalMs || Math.floor(1000 / TICK_RATE);
+        const attackIntervalMs = minion.attackIntervalMs || 1500;
         const lastAttackAt = minion.lastAttackAt || 0;
 
         if (nearestEnemy && nearestDist < DETECTION_RADIUS) {

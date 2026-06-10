@@ -12,7 +12,7 @@ import {
 	spawnEnemy,
 	updateMinions,
 } from '../index.js';
-import { ATTACK_RANGE, DETECTION_RADIUS, TICK_RATE } from '../config.js';
+import { ATTACK_RANGE, DETECTION_RADIUS } from '../config.js';
 import {
 	connectAndJoinLobby,
 	startTestServer,
@@ -156,12 +156,12 @@ describe('Astral Guardian gameplay', () => {
 			hp: 60,
 			maxHp: 60,
 			attackDamage: 11,
-			attackIntervalMs: Math.floor(1000 / TICK_RATE),
+			attackIntervalMs: 1500,
 		});
 		expect(cardUsed.minionId).toBe(ownerMinions[0].id);
 	});
 
-	it('astral guardian minion deals more damage per tick than default minions', () => {
+	it('astral guardian minion deals damage on first tick and respects attack interval', () => {
 		resetGameState();
 		gameState.players.p1 = { id: 'p1', hp: 100, dead: false, x: 0, z: 0 };
 		const enemy = spawnEnemy(2, 0, 'grunt');
@@ -177,7 +177,7 @@ describe('Astral Guardian gameplay', () => {
 			maxHp: 60,
 			ttl: 30,
 			attackDamage: 11,
-			attackIntervalMs: Math.floor(1000 / TICK_RATE),
+			attackIntervalMs: 1500,
 			lastAttackAt: 0,
 		});
 
@@ -185,25 +185,48 @@ describe('Astral Guardian gameplay', () => {
 		expect(dist).toBeLessThanOrEqual(ATTACK_RANGE);
 		expect(dist).toBeLessThan(DETECTION_RADIUS);
 
+		// First updateMinions() should deal 11 damage
 		const hpBefore = enemy.hp;
 		updateMinions();
 		expect(enemy.hp).toBe(hpBefore - 11);
 
-		const defaultMinion = {
-			id: 'default-1',
+		// Second updateMinions() call immediately (same tick, <1500 ms elapsed)
+		// should NOT deal damage again — interval gate prevents it
+		updateMinions();
+		expect(enemy.hp).toBe(hpBefore - 11); // unchanged
+	});
+
+	it('astral guardian minion does NOT attack again within attackIntervalMs', () => {
+		resetGameState();
+		gameState.players.p1 = { id: 'p1', hp: 100, dead: false, x: 0, z: 0 };
+		const enemy = spawnEnemy(2, 0, 'grunt');
+		enemy.hp = 200;
+
+		const now = Date.now();
+		gameState.minions.push({
+			id: 'ag-2',
 			ownerId: 'p1',
-			type: 'dungeon_drake',
+			type: 'astral_guardian',
 			x: 0,
 			z: 0,
-			hp: 50,
-			maxHp: 50,
+			hp: 60,
+			maxHp: 60,
 			ttl: 30,
-		};
-		gameState.minions = [defaultMinion];
-		enemy.x = 4;
-		enemy.z = 0;
-		enemy.hp = 100;
+			attackDamage: 11,
+			attackIntervalMs: 1500,
+			lastAttackAt: now - 2000, // already cooled down
+		});
+
+		// First call — should attack
 		updateMinions();
-		expect(enemy.hp).toBe(98);
+		expect(enemy.hp).toBe(189);
+
+		// Second call immediately — interval not elapsed, no damage
+		updateMinions();
+		expect(enemy.hp).toBe(189);
+
+		// Third call immediately — still no damage
+		updateMinions();
+		expect(enemy.hp).toBe(189);
 	});
 });
