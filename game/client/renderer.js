@@ -16,6 +16,11 @@ import { disposeOne, disposeMeshMap, disposeStaleMeshes } from './renderer/dispo
 import { syncMeshMap } from './renderer/syncMeshMap.js';
 import { createLootSync } from './renderer/lootSync.js';
 import {
+	createPlayerSync,
+	computeWindupChargeRatio,
+	resolveWindupAccentHex,
+} from './renderer/playerSync.js';
+import {
 	createAvatarSync,
 	attachGltfHat,
 	attachGltfKeyItemProp,
@@ -27,6 +32,7 @@ import {
 } from './renderer/avatarSync.js';
 
 export { disposeAvatar, applyAvatarProportions, __testOnly };
+export { computeWindupChargeRatio, resolveWindupAccentHex };
 
 export function createPlayerAvatar(...args) {
 	getAvatarSync();
@@ -112,8 +118,6 @@ import {
 import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
 import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled, getAccountProfile } from './settings.js';
 import { MODEL_REGISTRY, loadModel, modelPathFor } from './models.js';
-import { getCardDef } from './cards.js';
-import { getAccentHex } from './cardRenderers.js';
 import eventsCatalog from '../shared/events.json' with { type: 'json' };
 
 const { clientToServer: CLIENT_TO_SERVER } = eventsCatalog;
@@ -121,8 +125,6 @@ const { clientToServer: CLIENT_TO_SERVER } = eventsCatalog;
 // ── Three.js scene references ──
 let scene, camera, renderer, clock;
 const playersMeshes = {};
-const playerNameplates = {}; // playerId → THREE.Sprite (username label)
-const NAMEPLATE_OFFSET_Y = 1.0; // Units above avatar group Y position
 const enemiesMeshes = {};
 const enemyHealthBars = {}; // enemy id → health bar mesh
 const enemyShieldBars = {}; // enemy id → shield absorb bar mesh
@@ -133,18 +135,7 @@ const enemyLockOnRings = {}; // enemy id → lock-on reticle ring
 const variantMarkerMeshes = {}; // enemy id → floating badge for variant ("elite") enemies
 const frenziedTelegraphMeshes = {}; // enemy id → pulsing red ring (pre-enrage telegraph)
 const enemySlowMarkers = {}; // enemy id → icy ground ring shown while slowed
-const playerSlowMarkers = {}; // player id → icy ground ring shown while slowed
 const enemyBurnMarkers = {}; // enemy id → flickering flame shown while burning
-const playerBurnMarkers = {}; // player id → flickering flame shown while burning
-const playerCardWindupMarkers = {}; // player id → ground ring during card wind-up
-const playerCardWindupFlashing = new Set(); // player ids showing card-windup emissive
-
-// phase_step ally targeting: nearest in-range ally id (or null) recomputed each
-// frame, plus the ground ring that highlights it. Read by main.js via
-// getPhaseStepTargetId() so the useKeyItem payload can carry targetPlayerId.
-const PHASE_STEP_RANGE = 6; // metres — must match server KEY_ITEM_DEFS.phase_step.range
-let phaseStepTargetId = null;
-let phaseStepAllyRing = null;
 const windupFlashing = new Set(); // enemy ids currently showing windup emissive
 const minionsMeshes = {};
 /** Persistent ground-hazard meshes for armed spike_trap enchantments, keyed by enc.id. */
@@ -243,7 +234,6 @@ export function markCardHitEnemies(hits) {
 }
 const previousEnemyHp = {}; // enemyId → hp from previous frame
 const previousMinionHp = {}; // minionId → hp from previous frame
-const previousPlayerHp = {}; // playerId → hp from previous frame
 
 // ── Scene init flag ──
 let sceneInitialized = false;
@@ -1005,7 +995,7 @@ export function getMeshMaps() {
 		spikeTrapMeshes,
 		lootMeshes: getLootSync().getLootMeshes(),
 		iceBallMeshes,
-		playerCardWindupMarkers,
+		...getPlayerSync().getPlayerMeshMaps(),
 	};
 }
 
@@ -1193,7 +1183,7 @@ export function getWindupFlashing() {
  * @returns {Set<string>}
  */
 export function getPlayerCardWindupFlashing() {
-	return playerCardWindupFlashing;
+	return getPlayerSync().getPlayerCardWindupFlashing();
 }
 
 // ── Scene initialization ──
@@ -1543,8 +1533,6 @@ export function updateMyPlayer(delta) {
 
 // ── Player avatar (cosmetic-driven) ──
 
-const DEAD_AVATAR_COLOR = 0x808080;
-
 // Standing height (world units) the glTF player avatar is normalized to. Matches
 // the spike contract in game/docs/MODEL_SPIKE.md (1.8, feet at y=0).
 const PLAYER_MODEL_HEIGHT = 1.8;
@@ -1718,84 +1706,16 @@ function resolveBodyMesh(obj) {
 	return resolveBodyMeshForVfx(obj);
 }
 
-// ── Nameplate sprite helpers ──
+// ── Nameplate sprite helpers (playerSync; thin re-exports) ──
 
-/**
- * Create a canvas-texture sprite that displays a player username as a label.
- * Returns a `THREE.Sprite` ready to be added to the scene or parented to an
- * avatar group. Callers are responsible for positioning and lifecycle (add to
- * `playerNameplates`, call `disposeNameplate()` on removal).
- *
- * @param {string} username
- * @returns {THREE.Sprite}
- */
+/** @param {string} username @returns {THREE.Sprite} */
 export function createNameplate(username) {
-	const canvas = document.createElement('canvas');
-	canvas.width = 512;
-	canvas.height = 128;
-	const ctx = canvas.getContext('2d');
-
-	// Semi-transparent rounded-rect background
-	ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-	const radius = 20;
-	const w = canvas.width;
-	const h = canvas.height;
-	ctx.beginPath();
-	ctx.moveTo(radius, 0);
-	ctx.lineTo(w - radius, 0);
-	ctx.quadraticCurveTo(w, 0, w, radius);
-	ctx.lineTo(w, h - radius);
-	ctx.quadraticCurveTo(w, h, w - radius, h);
-	ctx.lineTo(radius, h);
-	ctx.quadraticCurveTo(0, h, 0, h - radius);
-	ctx.lineTo(0, radius);
-	ctx.quadraticCurveTo(0, 0, radius, 0);
-	ctx.closePath();
-	ctx.fill();
-
-	// Centered text with shadow (matches spawnDamageNumber text-shadow style)
-	ctx.fillStyle = '#ffffff';
-	ctx.font = 'bold 48px sans-serif';
-	ctx.textAlign = 'center';
-	ctx.textBaseline = 'middle';
-	ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-	ctx.shadowBlur = 6;
-	ctx.fillText(username, w / 2, h / 2);
-
-	const texture = new THREE.CanvasTexture(canvas);
-	texture.minFilter = THREE.LinearFilter;
-
-	const material = new THREE.SpriteMaterial({
-		map: texture,
-		transparent: true,
-		depthTest: false,
-	});
-
-	const sprite = new THREE.Sprite(material);
-	sprite.scale.set(1.2, 0.3, 1);
-	sprite.userData.username = username;
-
-	return sprite;
+	return getPlayerSync().createNameplate(username);
 }
 
-/**
- * Remove and dispose the nameplate sprite for a player. Cleans up the texture,
- * material, and registry entry.
- *
- * @param {string} playerId
- */
+/** @param {string} playerId */
 export function disposeNameplate(playerId) {
-	const sprite = playerNameplates[playerId];
-	if (!sprite) return;
-
-	if (sprite.parent) {
-		sprite.parent.remove(sprite);
-	}
-	if (sprite.material) {
-		if (sprite.material.map) sprite.material.map.dispose();
-		sprite.material.dispose();
-	}
-	delete playerNameplates[playerId];
+	return getPlayerSync().disposeNameplate(playerId);
 }
 
 // ── Flash mesh helper ──
@@ -2371,6 +2291,57 @@ export function animateLootMeshes() {
 
 export function disposeAllLootMeshes() {
 	return getLootSync().disposeAllLootMeshes();
+}
+
+// ── Player sync (extracted module; thin re-exports for tests / main.js) ──
+
+let _playerSync = null;
+
+function getPlayerSync() {
+	if (!_playerSync) {
+		_playerSync = createPlayerSync({
+			getScene: () => scene,
+			getPlayersMeshes: () => playersMeshes,
+			getAccountProfile,
+			getGamePhase: () => currentGamePhase,
+			flashMesh,
+			spawnDamageNumber,
+			triggerShieldVFX,
+			getShieldVFX: (id) => shieldVFX[id],
+			hasSmokeVFX: (id) => !!smokeVFX[id],
+			triggerSmokeVFX,
+			getShieldOffsetDist: () => SHIELD_OFFSET_DIST,
+			applySlowIndicator,
+			applyBurnIndicator,
+			getWasDead: () => wasDead,
+			setWasDead: (v) => { wasDead = v; },
+			getSpawnPosition: () => spawnPosition,
+			resetLocalPlayerOnRespawn: () => {
+				myX = spawnPosition.x;
+				myZ = spawnPosition.z;
+				simX = spawnPosition.x;
+				simZ = spawnPosition.z;
+				prevSimX = spawnPosition.x;
+				prevSimZ = spawnPosition.z;
+				moveAccumulator = 0;
+				resetSimVelocity();
+				playerRotation = 0;
+				lastEmittedRotation = null;
+				clearAllLockOnState();
+				lockOnToTarget = null;
+				lockOnReleaseLookAt = null;
+			},
+			clearLockOnOnDeath: () => {
+				clearAllLockOnState();
+				lockOnToTarget = null;
+				lockOnReleaseLookAt = null;
+			},
+			getMyX: () => myX,
+			getMyZ: () => myZ,
+			getPlayerRotation: () => playerRotation,
+		});
+	}
+	return _playerSync;
 }
 
 /**
@@ -2991,65 +2962,9 @@ function syncLockOnRing(enemyId, enemyX, enemyZ) {
 	}
 }
 
-function createPhaseStepAllyRing() {
-	// Cyan ground ring, distinct from the amber lock-on reticle, to mark the
-	// ally that phase_step would swap with.
-	const geo = new THREE.RingGeometry(0.6, 0.85, 28);
-	const mat = new THREE.MeshBasicMaterial({
-		color: 0x22d3ee,
-		transparent: true,
-		opacity: 0.85,
-		side: THREE.DoubleSide,
-		depthWrite: false,
-	});
-	const mesh = new THREE.Mesh(geo, mat);
-	mesh.rotation.x = -Math.PI / 2;
-	return mesh;
-}
-
-/**
- * Recompute the nearest living, non-extracted ally within phase_step range and
- * update the highlight ring. Only active while the local player is playing with
- * phase_step equipped; otherwise the target is cleared and the ring hidden.
- * Mirrors the server's nearest-ally selection in handleUseKeyItem.
- */
-function syncPhaseStepAllyHighlight(gs, myId) {
-	let nearestId = null;
-	const me = myId != null ? gs.players[myId] : null;
-	if (
-		currentGamePhase === 'playing'
-		&& me && !me.dead && !me.extracted
-		&& me.equippedKeyItemId === 'phase_step'
-	) {
-		let bestDist = Infinity;
-		for (const [id, p] of Object.entries(gs.players)) {
-			if (id === myId || !p || p.dead || p.extracted) continue;
-			const d = Math.hypot(p.x - me.x, p.z - me.z);
-			if (d <= PHASE_STEP_RANGE && d < bestDist) {
-				bestDist = d;
-				nearestId = id;
-			}
-		}
-	}
-
-	phaseStepTargetId = nearestId;
-
-	if (nearestId && gs.players[nearestId]) {
-		if (!phaseStepAllyRing) {
-			phaseStepAllyRing = createPhaseStepAllyRing();
-			scene.add(phaseStepAllyRing);
-		}
-		const ally = gs.players[nearestId];
-		phaseStepAllyRing.position.set(ally.x, GROUND_OVERLAY_Y + 0.02, ally.z);
-		phaseStepAllyRing.visible = true;
-	} else if (phaseStepAllyRing) {
-		phaseStepAllyRing.visible = false;
-	}
-}
-
 /** Id of the ally currently highlighted for phase_step, or null when none in range. */
 export function getPhaseStepTargetId() {
-	return phaseStepTargetId;
+	return getPlayerSync().getPhaseStepTargetId();
 }
 
 const HITBOX_FILL_OPACITY = 0.32;
@@ -3146,109 +3061,8 @@ function createEnemyRadialTelegraph(range) {
 	return mesh;
 }
 
-// ── Card wind-up charge telegraph tuning ──
-// The telegraph grows from a small/dim state to a large/bright state as the
-// wind-up charge ratio climbs 0→1, so heavy wind-up cards visibly "charge a
-// big hit". Defaults match the previous static look at full charge.
-const WINDUP_DEFAULT_ACCENT = 0x38bdf8; // sky-blue, used when the card has no accent
-const WINDUP_RING_MIN_SCALE = 0.55;
-const WINDUP_RING_MAX_SCALE = 1.5;
-const WINDUP_RING_MIN_EMISSIVE = 0.4;
-const WINDUP_RING_MAX_EMISSIVE = 2.0;
-const WINDUP_RING_MIN_OPACITY = 0.3;
-const WINDUP_RING_MAX_OPACITY = 0.7;
-const WINDUP_FLASH_MIN_EMISSIVE = 0.35;
-const WINDUP_FLASH_MAX_EMISSIVE = 1.6;
-
-function lerp(a, b, t) {
-	return a + (b - a) * t;
-}
-
-/**
- * Normalized 0→1 charge ratio for a card wind-up, derived from the broadcast
- * `cardWindupUntil` timestamp and the card's wind-up duration (`windUpMs`). The
- * ratio is 0 at the start of the wind-up and reaches 1 exactly when the lockout
- * ends, regardless of the card's individual `windUpMs`. Pure + sceneless so it
- * can be unit tested directly.
- */
-export function computeWindupChargeRatio(now, windupUntil, windUpMs) {
-	if (!Number.isFinite(windUpMs) || windUpMs <= 0) return 1;
-	if (!Number.isFinite(windupUntil) || windupUntil <= 0) return 0;
-	const remaining = windupUntil - now;
-	const ratio = 1 - remaining / windUpMs;
-	if (ratio <= 0) return 0;
-	if (ratio >= 1) return 1;
-	return ratio;
-}
-
-/** Accent tint (hex int) for a wind-up card, falling back to the default blue. */
-export function resolveWindupAccentHex(cardId) {
-	const hex = getAccentHex(cardId);
-	return hex === undefined ? WINDUP_DEFAULT_ACCENT : hex;
-}
-
-/** Ring for player card wind-up — distinct from enemy attack telegraphs. */
-function createPlayerCardWindupTelegraph(accentHex = WINDUP_DEFAULT_ACCENT) {
-	const geo = new THREE.RingGeometry(0.38, 0.58, 32);
-	const mat = new THREE.MeshStandardMaterial({
-		color: accentHex,
-		emissive: accentHex,
-		emissiveIntensity: WINDUP_RING_MIN_EMISSIVE,
-		transparent: true,
-		opacity: WINDUP_RING_MIN_OPACITY,
-		side: THREE.DoubleSide,
-		depthWrite: false,
-	});
-	const mesh = new THREE.Mesh(geo, mat);
-	mesh.rotation.x = -Math.PI / 2;
-	return mesh;
-}
-
-function applyPlayerCardWindupFlash(playerId, isWindup, accentHex = WINDUP_DEFAULT_ACCENT, ratio = 0) {
-	const avatar = playersMeshes[playerId];
-	const body = avatar?.userData?.bodyMesh;
-	if (!body?.material?.emissive) return;
-
-	if (isWindup) {
-		if (!playerCardWindupFlashing.has(playerId)) {
-			body.material.emissive.set(accentHex);
-			playerCardWindupFlashing.add(playerId);
-		}
-		// Brighten the avatar as the charge builds toward the hit.
-		body.material.emissiveIntensity = lerp(WINDUP_FLASH_MIN_EMISSIVE, WINDUP_FLASH_MAX_EMISSIVE, ratio);
-	} else if (playerCardWindupFlashing.has(playerId)) {
-		body.material.emissive.set(0x000000);
-		body.material.emissiveIntensity = 0;
-		playerCardWindupFlashing.delete(playerId);
-	}
-}
-
 export function applyPlayerCardWindupIndicator(id, player, x, z, now = Date.now()) {
-	const windup = isPlayerCardWindup(player);
-	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
-	if (windup) {
-		const accentHex = resolveWindupAccentHex(player.cardWindupCardId);
-		const windUpMs = getCardDef(player.cardWindupCardId)?.windUpMs;
-		const ratio = computeWindupChargeRatio(now, player.cardWindupUntil, windUpMs);
-
-		applyPlayerCardWindupFlash(id, true, accentHex, ratio);
-		if (!playerCardWindupMarkers[id]) {
-			const ring = createPlayerCardWindupTelegraph(accentHex);
-			targetScene.add(ring);
-			playerCardWindupMarkers[id] = ring;
-		}
-		const ring = playerCardWindupMarkers[id];
-		ring.position.set(x, GROUND_OVERLAY_Y + 0.02, z);
-		// Grow + brighten the existing mesh each frame — no per-frame allocation.
-		ring.scale.setScalar(lerp(WINDUP_RING_MIN_SCALE, WINDUP_RING_MAX_SCALE, ratio));
-		if (ring.material) {
-			ring.material.emissiveIntensity = lerp(WINDUP_RING_MIN_EMISSIVE, WINDUP_RING_MAX_EMISSIVE, ratio);
-			ring.material.opacity = lerp(WINDUP_RING_MIN_OPACITY, WINDUP_RING_MAX_OPACITY, ratio);
-		}
-	} else {
-		disposeOne(playerCardWindupMarkers, id, targetScene);
-		applyPlayerCardWindupFlash(id, false);
-	}
+	return getPlayerSync().applyPlayerCardWindupIndicator(id, player, x, z, now);
 }
 
 function getEnemyWindupDirection(enemy, targetPlayer) {
@@ -5353,217 +5167,8 @@ export function animate(timestamp) {
 	if (gs) {
 		for (const [id, pData] of Object.entries(gs.players)) {
 			getAvatarSync().syncPlayerAvatar(id, pData, { isLocal: id === myId });
-
-			// Slow status ring (local + remote) — driven by the broadcast slowedUntil.
-			// For the local player, anchor the ring to the predicted myX/myZ (the
-			// slower predicted avatar position) so it does not lag behind the avatar
-			// while slowed; remote players use their broadcast x/z directly.
-			if (id === myId) {
-				applySlowIndicator(playerSlowMarkers, id, {
-					slowedUntil: pData.slowedUntil,
-					x: myX,
-					z: myZ,
-				});
-			} else {
-				applySlowIndicator(playerSlowMarkers, id, pData);
-			}
-
-			// Burning flame (local + remote) — driven by the broadcast burningUntil.
-			// Local player anchors to the predicted myX/myZ like the slow ring so
-			// the flame tracks the avatar; remote players use broadcast x/z.
-			if (id === myId) {
-				applyBurnIndicator(playerBurnMarkers, id, {
-					burningUntil: pData.burningUntil,
-					x: myX,
-					z: myZ,
-				});
-			} else {
-				applyBurnIndicator(playerBurnMarkers, id, pData);
-			}
-
-			const windupX = id === myId ? myX : pData.x;
-			const windupZ = id === myId ? myZ : pData.z;
-			applyPlayerCardWindupIndicator(id, pData, windupX, windupZ, Date.now());
-
-			if (id === myId) continue;
-
-			const body = playersMeshes[id].userData.bodyMesh;
-			playersMeshes[id].position.set(pData.x, pData.y || 0.5, pData.z);
-			if (Number.isFinite(pData.rotation)) {
-				playersMeshes[id].rotation.y = pData.rotation - Math.PI / 2;
-			}
-
-			if (pData.dead) {
-				body.material.color.setHex(DEAD_AVATAR_COLOR);
-			} else {
-				body.material.color.setHex(playersMeshes[id].userData.baseColor);
-			}
-
-			// Detect remote player HP drop — flash red
-			if (previousPlayerHp[id] !== undefined && pData.hp < previousPlayerHp[id]) {
-				flashMesh(playersMeshes[id], 0xff0000, 200);
-			}
-			previousPlayerHp[id] = pData.hp;
-
-			// ── Nameplate for remote players (after avatar is positioned) ──
-			const remoteUsername = pData.username;
-			if (remoteUsername) {
-				if (!playerNameplates[id] || playerNameplates[id].userData.username !== remoteUsername) {
-					if (playerNameplates[id]) disposeNameplate(id);
-					const np = createNameplate(remoteUsername);
-					scene.add(np);
-					playerNameplates[id] = np;
-				}
-				const avatar = playersMeshes[id];
-				playerNameplates[id].position.set(
-					avatar.position.x,
-					avatar.position.y + NAMEPLATE_OFFSET_Y,
-					avatar.position.z,
-				);
-			}
 		}
-
-		if (myId != null && playersMeshes[myId]) {
-			const layout = gs && gs.layout;
-			const floorY = layout ? resolveFloorY(sampleFloorY(layout, myX, myZ)) : DEFAULT_FLOOR_Y;
-			playersMeshes[myId].position.set(myX, floorY, myZ);
-			playersMeshes[myId].rotation.y = playerRotation - Math.PI / 2;
-
-			const me = gs.players[myId];
-			const isDead = me && me.dead;
-
-			// Respawn detection: dead → alive resets local position to spawn
-			if (wasDead && !isDead) {
-				myX = spawnPosition.x;
-				myZ = spawnPosition.z;
-				simX = spawnPosition.x;
-				simZ = spawnPosition.z;
-				prevSimX = spawnPosition.x;
-				prevSimZ = spawnPosition.z;
-				moveAccumulator = 0;
-				resetSimVelocity();
-				playerRotation = 0;
-				lastEmittedRotation = null;
-				clearAllLockOnState();
-				lockOnToTarget = null;
-				lockOnReleaseLookAt = null;
-			}
-			if (isDead) {
-				clearAllLockOnState();
-				lockOnToTarget = null;
-				lockOnReleaseLookAt = null;
-			}
-			wasDead = isDead;
-
-			const selfBody = playersMeshes[myId].userData.bodyMesh;
-			if (isDead) {
-				selfBody.material.color.setHex(DEAD_AVATAR_COLOR);
-			} else {
-				selfBody.material.color.setHex(playersMeshes[myId].userData.baseColor);
-			}
-
-			// Invulnerability shimmer: semi-transparent when i-frames are active (not when dead)
-			if (!isDead && me && me.isInvulnerable) {
-				selfBody.material.transparent = true;
-				selfBody.material.opacity = 0.5;
-				selfBody.material.depthWrite = false;
-			} else {
-				selfBody.material.transparent = false;
-				selfBody.material.opacity = 1;
-				selfBody.material.depthWrite = true;
-			}
-
-			// Shield VFX: ensure visible while blocking (re-trigger if expired)
-			if (!isDead && me && me.isBlocking && !shieldVFX[myId]) {
-				triggerShieldVFX(myId);
-			}
-			// Update shield position to follow player; clean up when blocking ends
-			if (shieldVFX[myId]) {
-				if (!isDead && me && me.isBlocking) {
-					const s = shieldVFX[myId];
-					const yaw = playersMeshes[myId].rotation.y + Math.PI / 2;
-					s.mesh.position.set(
-						playersMeshes[myId].position.x + Math.cos(yaw) * SHIELD_OFFSET_DIST,
-						playersMeshes[myId].position.y + 0.5,
-						playersMeshes[myId].position.z + Math.sin(yaw) * SHIELD_OFFSET_DIST,
-					);
-					s.mesh.rotation.y = playersMeshes[myId].rotation.y;
-				} else if (shieldVFX[myId]) {
-					// Blocking ended — let existing VFX finish its fade, don't re-trigger
-				}
-			}
-
-			// Detect local player HP drop — flash red + spawn damage number
-			if (me && previousPlayerHp[myId] !== undefined && me.hp < previousPlayerHp[myId]) {
-				const damageAmount = previousPlayerHp[myId] - me.hp;
-				flashMesh(playersMeshes[myId], 0xff0000, 200);
-				spawnDamageNumber(myX, 1.5, myZ, damageAmount, '#ff0000');
-			}
-			if (me) {
-				previousPlayerHp[myId] = me.hp;
-			}
-
-			// ── Nameplate for self-player ──
-			const selfUsername = getAccountProfile().username;
-			if (selfUsername) {
-				if (!playerNameplates[myId] || playerNameplates[myId].userData.username !== selfUsername) {
-					if (playerNameplates[myId]) disposeNameplate(myId);
-					const np = createNameplate(selfUsername);
-					scene.add(np);
-					playerNameplates[myId] = np;
-				}
-				const selfAvatar = playersMeshes[myId];
-				playerNameplates[myId].position.set(
-					selfAvatar.position.x,
-					selfAvatar.position.y + NAMEPLATE_OFFSET_Y,
-					selfAvatar.position.z,
-				);
-			}
-		}
-
-		// ── Clean up nameplates for players who left ──
-		for (const id of Object.keys(playerNameplates)) {
-			if (!gs.players[id]) {
-				disposeNameplate(id);
-			}
-		}
-
-		// ── Clean up slow markers for players who left ──
-		for (const id of Object.keys(playerSlowMarkers)) {
-			if (!gs.players[id]) {
-				disposeOne(playerSlowMarkers, id, scene);
-			}
-		}
-
-		// ── Clean up burn markers for players who left ──
-		for (const id of Object.keys(playerBurnMarkers)) {
-			if (!gs.players[id]) {
-				disposeOne(playerBurnMarkers, id, scene);
-			}
-		}
-
-		// ── Clean up card wind-up markers for players who left ──
-		for (const id of Object.keys(playerCardWindupMarkers)) {
-			if (!gs.players[id]) {
-				disposeOne(playerCardWindupMarkers, id, scene);
-				playerCardWindupFlashing.delete(id);
-			}
-		}
-
-		// ── Smoke Bomb VFX: show a puff at each player's active smoke zone ──
-		// The zone is fixed at the cast point (smokeBombX/Z), so the puff is
-		// re-triggered while the zone is active if its VFX has faded out. Skip
-		// the tail end so a near-expired zone doesn't spawn a fresh 2s puff.
-		const smokeNow = Date.now();
-		for (const [id, pData] of Object.entries(gs.players)) {
-			const remaining = (pData.smokeBombUntil || 0) - smokeNow;
-			if (remaining > 300 && !smokeVFX[id]) {
-				triggerSmokeVFX({ x: pData.smokeBombX, y: 0, z: pData.smokeBombZ }, id);
-			}
-		}
-
-		// ── phase_step ally highlight: recompute nearest in-range ally each frame ──
-		syncPhaseStepAllyHighlight(gs, myId);
+		getPlayerSync().syncPlayersFrame({ gs, myId });
 
 		// ── Enemy mesh sync ──
 		const currentEnemyIds = new Set(gs.enemies.map((e) => e.id));
