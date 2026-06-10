@@ -1,0 +1,5 @@
+Wrote the final review to `tickets/375-height-aware-projectile-aiming/round-1/review.md`.
+
+Verdict: `VERDICT: PASS`
+
+Also wrote one non-blocking cleanup item to `tickets/375-height-aware-projectile-aiming/round-1/nits.md`. No `gaps.md` was created because there are no blocking gaps.
