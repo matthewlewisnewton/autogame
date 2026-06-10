@@ -345,6 +345,34 @@ export const lootPickupAttempts = new Map();
 
 // ── Scene init flag ──
 let sceneInitialized = false;
+let animateActive = false;
+/** @type {(() => void) | null} */
+let resizeHandler = null;
+
+function onWebGLContextLost(event) {
+	event.preventDefault();
+	console.warn('[renderer] WebGL context lost — recoverable; awaiting contextrestore');
+}
+
+/**
+ * Tear down the main WebGL renderer and stop the render loop. Idempotent.
+ * Called before re-init and when replacing the renderer on reconnect paths.
+ */
+export function disposeRenderer() {
+	animateActive = false;
+	if (resizeHandler) {
+		window.removeEventListener('resize', resizeHandler);
+		resizeHandler = null;
+	}
+	if (renderer) {
+		const canvas = renderer.domElement;
+		canvas?.removeEventListener('webglcontextlost', onWebGLContextLost);
+		renderer.dispose();
+		if (canvas?.parentNode) canvas.parentNode.removeChild(canvas);
+		renderer = null;
+	}
+	sceneInitialized = false;
+}
 
 // ── Layout height atmosphere (spire-ascent, fire-cavern) ──
 /** @type {string|null} */
@@ -1732,6 +1760,7 @@ export function getPlayerCardWindupFlashing() {
  */
 export function initScene(layout, spawnPos) {
 	console.log('[initScene] Initializing Three.js scene...');
+	disposeRenderer();
 
 	// Scene
 	scene = new THREE.Scene();
@@ -1754,11 +1783,16 @@ export function initScene(layout, spawnPos) {
 		: DEFAULT_FLOOR_Y;
 	camera.lookAt(spawnPosition.x, spawnFloorY, spawnPosition.z);
 
-	// Renderer
-	renderer = new THREE.WebGLRenderer({ antialias: true });
+	// Renderer — low-power + no perf caveat so headless Chromium survives startup
+	renderer = new THREE.WebGLRenderer({
+		antialias: true,
+		powerPreference: 'low-power',
+		failIfMajorPerformanceCaveat: false,
+	});
 	renderer.setSize(window.innerWidth, window.innerHeight);
 	document.body.appendChild(renderer.domElement);
 	renderer.domElement.style.pointerEvents = currentGamePhase === 'playing' ? 'auto' : 'none';
+	renderer.domElement.addEventListener('webglcontextlost', onWebGLContextLost, false);
 
 	// Lighting
 	const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -1841,14 +1875,17 @@ export function initScene(layout, spawnPos) {
 
 	// Frame timer & render loop
 	clock = new THREE.Clock();
+	animateActive = true;
 	requestAnimationFrame(animate);
 
-	// Resize handler
-	window.addEventListener('resize', () => {
+	// Resize handler (single listener per renderer lifetime)
+	resizeHandler = () => {
+		if (!camera || !renderer) return;
 		camera.aspect = window.innerWidth / window.innerHeight;
 		camera.updateProjectionMatrix();
 		renderer.setSize(window.innerWidth, window.innerHeight);
-	});
+	};
+	window.addEventListener('resize', resizeHandler);
 
 	sceneInitialized = true;
 }
@@ -5552,7 +5589,9 @@ function applyLocalPlayerRespawnReset(gs, myId) {
  * Reads gameState from the shared reference set by setGameStateRef().
  */
 export function animate(timestamp) {
+	if (!animateActive) return;
 	requestAnimationFrame(animate);
+	if (!renderer || !scene || !camera || !clock) return;
 
 	const delta = clampDelta(clock.getDelta());
 	updateMyPlayer(delta);

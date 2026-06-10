@@ -865,6 +865,7 @@ function applyLobbyJoinedData(data) {
 	// never reuses (or rebuilds into) the quest geometry, and a run join never
 	// deploys the player into the hub geometry.
 	if (joinPhase === 'playing') {
+		if (isCharacterBoothOpen()) closeCharacterBooth();
 		if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 		const seedChanged = receivedSeed !== undefined && receivedSeed !== currentLayoutSeed;
 		if (receivedSeed !== undefined) currentLayoutSeed = receivedSeed;
@@ -1950,6 +1951,7 @@ function bindSocketHandlers(s) {
 	});
 
 	s.on(SERVER_TO_CLIENT.START_GAME, () => {
+		if (isCharacterBoothOpen()) closeCharacterBooth();
 		claimedCardRewardId = null;
 		currentCardChoices = [];
 		if (lobbyEl) lobbyEl.classList.add('hidden');
