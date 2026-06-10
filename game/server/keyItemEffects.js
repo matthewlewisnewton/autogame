@@ -27,6 +27,7 @@ const {
   ENTITY_RADIUS,
   PLAYER_RADIUS,
   healPlayer,
+  getEntityWorldY,
 } = require('./simulation');
 const {
   sampleFloorY,
@@ -152,6 +153,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.barrierDomeUntil = now + durationMs;
       player.barrierDomeRadius = radius;
       player.barrierDomeX = player.x;
+      player.barrierDomeY = getEntityWorldY(player);
       player.barrierDomeZ = player.z;
       player.keyItemCooldownUntil = now + (def.cooldownMs || 14000);
       player.persistenceDirty = true;
@@ -171,6 +173,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.smokeBombUntil = now + durationMs;
       player.smokeBombRadius = radius;
       player.smokeBombX = player.x;
+      player.smokeBombY = getEntityWorldY(player);
       player.smokeBombZ = player.z;
       player.keyItemCooldownUntil = now + (def.cooldownMs || 8000);
       player.persistenceDirty = true;

@@ -1157,9 +1157,10 @@ function resolveWindupTarget(enemy) {
 
 // Returns true if `player` is standing inside any living player's active smoke
 // zone (smoke_bomb key item). Concealed players are skipped by enemy target
-// acquisition and cause in-progress wind-ups to be cancelled. The zone is fixed
-// at the cast point, so a player who walks out — or whose zone expires — becomes
-// targetable again.
+// acquisition and cause in-progress wind-ups to be cancelled. The zone is a 3D
+// sphere fixed at the cast point (smokeBombY recorded at cast; zones persisted
+// without it fall back to the floor Y at the zone's XZ), so a player who walks
+// out, hovers above the sphere, or whose zone expires becomes targetable again.
 function isPlayerConcealed(player, now) {
 	if (!player) return false;
 	for (const owner of Object.values(_gameState.players)) {
@@ -1167,9 +1168,10 @@ function isPlayerConcealed(player, now) {
 		if (!owner.smokeBombUntil || now >= owner.smokeBombUntil) continue;
 		const radius = owner.smokeBombRadius;
 		if (!Number.isFinite(radius) || radius <= 0) continue;
-		const dx = player.x - owner.smokeBombX;
-		const dz = player.z - owner.smokeBombZ;
-		if (Math.hypot(dx, dz) <= radius) return true;
+		const dist = sphericalDistanceToEntity(
+			owner.smokeBombX, owner.smokeBombY, owner.smokeBombZ, player
+		);
+		if (dist <= radius) return true;
 	}
 	return false;
 }
@@ -2278,7 +2280,7 @@ function getAttackerPosition(options) {
       const enemy = enemies.find(
         (e) => e.id === options.attackerEnemyId && e.hp > 0
       );
-      if (enemy) return { x: enemy.x, z: enemy.z };
+      if (enemy) return { x: enemy.x, y: enemy.y, z: enemy.z };
     }
   }
   if (options.attackerId) {
@@ -2287,7 +2289,7 @@ function getAttackerPosition(options) {
       const minion = minions.find(
         (m) => m.id === options.attackerId && m.hp > 0
       );
-      if (minion) return { x: minion.x, z: minion.z };
+      if (minion) return { x: minion.x, y: minion.y, z: minion.z };
     }
   }
   return null;
@@ -2488,13 +2490,29 @@ function damagePlayer(playerId, amount, options = {}) {
       if (!dome.barrierDomeUntil || now >= dome.barrierDomeUntil) continue;
       const radius = dome.barrierDomeRadius || 0;
       if (radius <= 0) continue;
-      const victimDist = Math.hypot(player.x - dome.barrierDomeX, player.z - dome.barrierDomeZ);
+      // The dome is a 3D sphere: barrierDomeY is recorded at cast time; domes
+      // persisted without it fall back to the floor Y at the dome's XZ. A
+      // victim hovering above the sphere (XZ-inside, 3D-outside) is NOT
+      // protected.
+      const victimDist = sphericalDistanceToEntity(
+        dome.barrierDomeX, dome.barrierDomeY, dome.barrierDomeZ, player
+      );
       if (victimDist > radius) continue; // victim not inside this dome
       // Victim is inside an active dome. Block unless the attacker is also inside
       // it (outside→inside is blocked; inside→inside is not). Unknown attacker
-      // position is treated as outside and blocked.
+      // position is treated as outside and blocked. The attacker test is also
+      // 3D: attacker Y comes from the attacker position when finite, else the
+      // floor at the attacker's XZ.
       if (attackerPos) {
-        const attackerDist = Math.hypot(attackerPos.x - dome.barrierDomeX, attackerPos.z - dome.barrierDomeZ);
+        const domeY = resolveAoeOriginY(dome.barrierDomeX, dome.barrierDomeY, dome.barrierDomeZ);
+        const attackerY = Number.isFinite(attackerPos.y)
+          ? attackerPos.y
+          : resolveAoeOriginY(attackerPos.x, null, attackerPos.z);
+        const attackerDist = Math.hypot(
+          attackerPos.x - dome.barrierDomeX,
+          attackerY - domeY,
+          attackerPos.z - dome.barrierDomeZ
+        );
         if (attackerDist <= radius) continue; // attacker inside same dome → not blocked
       }
       return null; // fully blocked
