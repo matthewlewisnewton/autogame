@@ -16,7 +16,6 @@ import { resolveVariantRollTier } from '../enemyVariants.js';
 import {
 	ENCOUNTER_PHASES,
 	ENCOUNTER_TRIGGER_RADIUS,
-	clearNonBossEnemies,
 	resolveEncounterAnchor,
 } from '../encounters.js';
 import { resetGameState, gameState, runGameLoopTick, applyBurning, updateBurning, updateEnemies, hasLineOfSight, buildWallColliders } from '../index.js';
@@ -1178,11 +1177,15 @@ describe('debugScenario — arena-trials-*', () => {
 
 		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'arena-trials-tier-2' });
-		await tier2Promise;
+		const tier2Result = await tier2Promise;
+		expect(tier2Result.ok).toBe(true);
 
-		const state = testGameState();
+		const state = lobbyStateForSocket(socket);
 		const bossId = state.run.encounter.bossEnemyId;
-		clearNonBossEnemies(state, bossId);
+		for (const enemy of state.enemies) {
+			if (enemy.id !== bossId) enemy.hp = 0;
+		}
+		state.enemies = state.enemies.filter((e) => e.hp > 0);
 
 		const approachPromise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'arena-trials-boss-approach' });
