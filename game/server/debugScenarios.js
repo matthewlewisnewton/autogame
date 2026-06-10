@@ -1293,6 +1293,56 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
+    if (name === 'enemy-behind-wall') {
+      // frost_crossing Tier 1 deploy with the player pressed against a solid
+      // start-room wall and a lone grunt parked just on the other side, well
+      // within DETECTION_RADIUS. Verifies the line-of-sight gate: the enemy must
+      // stay 'idle' and NOT aggro/chase through the wall. Reachable normally by
+      // deploying Frost Crossing and walking up to a connector wall with an enemy
+      // behind it; this scenario is a shortcut into that geometry.
+      setupFrostCrossingTier1Deploy(lobby, state, player);
+      state.enemies = [];
+
+      const room = roomAt(state.layout, player.x, player.z)
+        || state.layout.rooms.find((r) => r.role === 'start')
+        || state.layout.rooms[0];
+      // The longest perimeter wall is solid (doorway gaps live on shorter
+      // segments), so its midpoint reliably straddles the player→enemy segment.
+      const wall = [...room.walls].sort((a, b) => b.length - a.length)[0];
+
+      const offset = 2; // each side of the wall → ~4 units apart (< DETECTION_RADIUS = 8)
+      let enemyX;
+      let enemyZ;
+      if (wall.axis === 'z') {
+        const interiorSign = room.x >= wall.x ? 1 : -1;
+        player.x = wall.x + interiorSign * offset;
+        player.z = wall.z;
+        enemyX = wall.x - interiorSign * offset;
+        enemyZ = wall.z;
+      } else {
+        const interiorSign = room.z >= wall.z ? 1 : -1;
+        player.x = wall.x;
+        player.z = wall.z + interiorSign * offset;
+        enemyX = wall.x;
+        enemyZ = wall.z - interiorSign * offset;
+      }
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      const enemy = spawnEnemy(enemyX, enemyZ, 'grunt');
+      enemy.y = resolveFloorY(sampleFloorY(state.layout, enemy.x, enemy.z));
+      enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+      enemy.state = 'idle';
+      enemy.attackState = 'idle';
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
     if (name === 'crystal-rescue-tier-2') {
       // crystal_rescue Tier 2 with rigid open layout, prism collect_items objective,
       // and cover/platform/hazard-aware spawns. Quest/tier and layout must be set
