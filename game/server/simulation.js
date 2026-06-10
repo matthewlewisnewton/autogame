@@ -1153,6 +1153,13 @@ const ENEMY_DEFS = {
 		hp: 360, chaseSpeed: 1.1, wanderSpeed: 0.55, attackDamage: 21, attackWindupMs: 1300,
 		attackStyle: 'cone', attackConeAngle: (2 * Math.PI) / 3, attackRange: 5.5,
 	},
+	magma_colossus: {
+		name: 'Magma Colossus',
+		description: 'Tier-II fire stage colossus; erupts in a radial molten shockwave that scorches everything nearby.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 410, chaseSpeed: 0.85, wanderSpeed: 0.4, attackDamage: 23, attackWindupMs: 1500,
+		attackStyle: 'radial', attackRange: 5,
+	},
 	permafrost_warden: {
 		name: 'Permafrost Warden',
 		description: 'Ice-cavern guardian that erupts in a radial frost shockwave — close-range area pressure, not a lobbed projectile.',

@@ -66,6 +66,7 @@ const ENEMY_CARD_DROPS = {
   arena_champion: 'dungeon_drake',
   spire_warden: 'dungeon_drake',
   cinder_warden: 'dungeon_drake',
+  magma_colossus: 'dungeon_drake',
   permafrost_warden: 'dungeon_drake',
   spawner: 'battle_familiar',
 };
@@ -81,6 +82,7 @@ const ENEMY_MS_DROPS = {
   arena_champion: 70,
   spire_warden: 55,
   cinder_warden: 52,
+  magma_colossus: 54,
   permafrost_warden: 55,
   spawner: 25,
 };
