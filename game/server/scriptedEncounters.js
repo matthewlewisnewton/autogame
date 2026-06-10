@@ -146,10 +146,21 @@ function setWaveClearedCallback(fn) {
 }
 
 function findPassageIndexFromRoom(layout, roomIndex) {
-  if (!layout?.passages || !layout?.rooms) return -1;
+  const indices = findPassageIndicesFromRoom(layout, roomIndex);
+  return indices.length > 0 ? indices[0] : -1;
+}
+
+function findPassageIndicesFromRoom(layout, roomIndex) {
+  if (!layout?.passages || !layout?.rooms) return [];
   const room = layout.rooms[roomIndex];
-  if (!room) return -1;
-  return layout.passages.findIndex((passage) => passage.x1 === room.x && passage.z1 === room.z);
+  if (!room) return [];
+  const indices = [];
+  layout.passages.forEach((passage, index) => {
+    if (passage.x1 === room.x && passage.z1 === room.z) {
+      indices.push(index);
+    }
+  });
+  return indices;
 }
 
 function getStartRoomIndex(layout) {
@@ -381,23 +392,26 @@ function initPassageLocks(run, quest, layout) {
     return;
   }
 
-  run.passageLocks = lockDefs.map((lockDef) => {
-    let passageIndex = lockDef.passageIndex;
-    if (!Number.isInteger(passageIndex) && layout && Number.isInteger(lockDef.fromRoomIndex)) {
-      passageIndex = findPassageIndexFromRoom(layout, lockDef.fromRoomIndex);
+  const locks = [];
+  for (const lockDef of lockDefs) {
+    let passageIndices = [];
+    if (Number.isInteger(lockDef.passageIndex) && lockDef.passageIndex >= 0) {
+      passageIndices = [lockDef.passageIndex];
+    } else if (layout && Number.isInteger(lockDef.fromRoomIndex)) {
+      passageIndices = findPassageIndicesFromRoom(layout, lockDef.fromRoomIndex);
     }
-    if (!Number.isInteger(passageIndex) || passageIndex < 0) {
-      return null;
+    for (const passageIndex of passageIndices) {
+      locks.push({
+        passageIndex,
+        afterWave: {
+          roomIndex: lockDef.afterWave.roomIndex,
+          waveIndex: lockDef.afterWave.waveIndex,
+        },
+        locked: !isWaveRequirementMet(run, lockDef.afterWave),
+      });
     }
-    return {
-      passageIndex,
-      afterWave: {
-        roomIndex: lockDef.afterWave.roomIndex,
-        waveIndex: lockDef.afterWave.waveIndex,
-      },
-      locked: !isWaveRequirementMet(run, lockDef.afterWave),
-    };
-  }).filter(Boolean);
+  }
+  run.passageLocks = locks;
 }
 
 function unlockPassagesForWave(run, roomIndex, waveIndex) {
@@ -579,6 +593,7 @@ module.exports = {
   setPassageLocksChangedCallback,
   setWaveClearedCallback,
   findPassageIndexFromRoom,
+  findPassageIndicesFromRoom,
   isWaveRequirementMet,
   roomKeyForDef,
   resolveRoomDef,

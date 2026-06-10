@@ -164,58 +164,6 @@ function buildEmberDescentTier1Script() {
   };
 }
 
-/**
- * Authored wave script for frost_crossing tier 1. Spawn coords are derived from
- * the canonical layout seed so hand-placed enemies stay stable across runs.
- */
-function buildFrostCrossingTier1Script() {
-  const questId = 'frost_crossing';
-  const tier = 1;
-  const seed = questLayoutSeed(questId, tier);
-  const layout = generateLayout(seed, 'ice-cavern', { slopes: true, layoutMode: 'default' });
-  const startRoom = layout.rooms.find((room) => room.role === 'start') || layout.rooms[0];
-  const iceRoom = layout.rooms.find((room) => room.band === 'ice');
-  const startPositions = spawnOffsetsInRoom(startRoom, 5);
-  const runStartTypes = ['grunt', 'grunt', 'grunt', 'skirmisher', 'skirmisher'];
-  const runStartSpawns = runStartTypes.map((type, index) => ({
-    type,
-    x: startPositions[index].x,
-    z: startPositions[index].z,
-  }));
-  const frostmawX = roundSpawnCoord(iceRoom.x);
-  const frostmawZ = roundSpawnCoord(iceRoom.z + iceRoom.depth * 0.15);
-
-  return {
-    waves: [
-      {
-        id: 'wave_run_start',
-        trigger: 'run_start',
-        spawns: runStartSpawns,
-      },
-      {
-        id: 'wave_ice_field',
-        trigger: 'enter_room',
-        room: { x: iceRoom.x, z: iceRoom.z },
-        spawns: [
-          {
-            type: 'glacial_thrower',
-            x: frostmawX,
-            z: frostmawZ,
-            variant: {
-              name: 'Frostmaw',
-              hpMult: 1.6,
-              damageMult: 1.3,
-              tint: '#7dd3fc',
-              scaleMult: 1.15,
-              drop: { cardId: 'permafrost_lance' },
-            },
-          },
-        ],
-      },
-    ],
-  };
-}
-
 const QUEST_DEFS = {
   training_caverns: {
     id: 'training_caverns',
@@ -609,7 +557,7 @@ const QUEST_DEFS = {
     tiers: {
       1: {
         name: 'Frost Crossing',
-        description: 'Cross the frozen cavern and purge scripted waves from the ice field.',
+        description: 'Clear the stone dock, cross the ice band, and defeat Rimecast the Slow.',
         clientNpc: 'Ice-Watch Courier Sela',
         briefing:
           'The ice band is slick with rimecast ambushes. '
@@ -627,12 +575,18 @@ const QUEST_DEFS = {
             {
               band: 'ice',
               waves: [
-                { spawns: [{ type: 'glacial_thrower', count: 1 }, { type: 'grunt', count: 2 }] },
+                {
+                  spawns: [
+                    { type: 'glacial_thrower', count: 1, offset: { x: -9, z: 8 } },
+                    { type: 'glacial_thrower', count: 1, offset: { x: 9, z: 8 } },
+                  ],
+                },
                 {
                   spawns: [
                     {
                       type: 'glacial_thrower',
                       count: 1,
+                      offset: { x: 0, z: -6 },
                       namedRare: {
                         id: 'frost_rimecast',
                         displayName: 'Rimecast the Slow',
@@ -640,14 +594,35 @@ const QUEST_DEFS = {
                         enemyType: 'glacial_thrower',
                       },
                     },
-                    { type: 'skirmisher', count: 1 },
+                    { type: 'skirmisher', count: 1, offset: { x: 7, z: -3 } },
                   ],
                 },
               ],
             },
           ],
+          passageLocks: [
+            {
+              afterWave: { roomIndex: 0, waveIndex: 0 },
+              fromRoomIndex: 0,
+            },
+          ],
         },
         dialogueBeacons: [
+          {
+            beaconId: 'frost_dock_enter',
+            trigger: 'onRoomEntered',
+            roomIndex: 0,
+            speaker: 'Ice-Watch Courier Sela',
+            line: 'Stone dock is live. Two grunts hold the ramp gate — clear them before you step onto the ice.',
+          },
+          {
+            beaconId: 'frost_dock_clear',
+            trigger: 'onWaveCleared',
+            roomIndex: 0,
+            waveIndex: 0,
+            speaker: 'Ice-Watch Courier Sela',
+            line: 'Ramp gate is open. Cross carefully — glacial throwers have the far side of the sheet.',
+          },
           {
             beaconId: 'frost_ice_band_enter',
             trigger: 'onRoomEntered',
@@ -655,19 +630,26 @@ const QUEST_DEFS = {
             speaker: 'Ice-Watch Courier Sela',
             line: 'You are on the ice band — watch your footing and clear the throwers.',
           },
+          {
+            beaconId: 'frost_rimecast_wave',
+            trigger: 'onWaveCleared',
+            band: 'ice',
+            waveIndex: 0,
+            speaker: 'Ice-Watch Courier Sela',
+            line: 'First thrower line is down. Rimecast the Slow is winding up across the sheet — finish the crossing.',
+          },
         ],
         signatureCardId: 'ice_ball',
         rewardCards: ['ice_ball', 'frost_nova', 'permafrost_lance'],
-        script: buildFrostCrossingTier1Script(),
         client: {
           name: 'Cairn',
           briefing:
-            'Frost crossing escort. Six hostiles block the ice field — clear them and I release fourteen stones from the research fund.',
+            'Frost crossing escort. Clear the stone dock, cross the ice sheet, and bring down Rimecast the Slow for fourteen stones from the research fund.',
         },
         dialogue: [
           {
             trigger: 'run_start',
-            text: 'Cairn here. Hostiles are clustered on the ice field — clear a path so my survey team can follow.',
+            text: 'Cairn on ice-watch channel. Two hostiles guard the stone dock — clear them and Sela will unseal the ramp to the ice band.',
           },
           {
             trigger: 'objective_complete',
@@ -1028,6 +1010,10 @@ function formatObjectiveSummary(quest) {
   }
   if (quest.objectiveType === 'defeat_enemies') {
     const scriptedCount = countScriptedEnemiesInQuest(quest);
+    const questId = quest.questId || quest.id;
+    if (questId === 'frost_crossing' && scriptedCount > 0) {
+      return `Cross the ice band and clear ${scriptedCount} scripted hostiles`;
+    }
     if (scriptedCount > 0) {
       return `Clear ${scriptedCount} scripted hostiles`;
     }

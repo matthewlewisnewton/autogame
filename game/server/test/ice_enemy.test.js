@@ -22,7 +22,8 @@ import {
 	setGameState,
 	spawnEnemies,
 	startDungeonRun,
-	updateQuestScriptTriggers,
+	updateScriptedEncounters,
+	removeDeadEnemies,
 } from '../progression.js';
 import { setGameState as setSimulationGameState } from '../simulation.js';
 import {
@@ -314,36 +315,54 @@ describe('Frost Crossing guaranteed glacial_thrower spawn', () => {
 		expect(getGuaranteedEnemyType('frost_crossing')).toBe('glacial_thrower');
 	});
 
-	it('scripts Frostmaw as a glacial_thrower on the ice field enter_room wave', () => {
+	it('scripts Rimecast the Slow as a glacial_thrower on the final ice-band wave', () => {
 		const { iceRoom } = deployScriptedFrostCrossing();
 		expect(gameState.enemies.map((enemy) => enemy.type)).not.toContain('glacial_thrower');
+		expect(gameState.enemies).toHaveLength(2);
+
+		for (const enemy of [...gameState.enemies]) {
+			if (enemy.scriptedWave?.roomKey === 'room:0' && enemy.scriptedWave?.waveIndex === 0) {
+				enemy.hp = 0;
+			}
+		}
+		removeDeadEnemies();
 
 		gameState.players.p1.x = iceRoom.x;
 		gameState.players.p1.z = iceRoom.z;
-		updateQuestScriptTriggers();
+		updateScriptedEncounters();
 
-		const types = gameState.enemies.map((enemy) => enemy.type);
-		expect(types).toContain('glacial_thrower');
-		expect(gameState.enemies.some((enemy) => enemy.namedRare?.name === 'Frostmaw')).toBe(true);
+		const throwers = gameState.enemies.filter((enemy) => enemy.type === 'glacial_thrower');
+		expect(throwers.length).toBeGreaterThanOrEqual(2);
+		expect(gameState.enemies.some((enemy) => enemy.displayName === 'Rimecast the Slow')).toBe(false);
+
+		for (const enemy of [...gameState.enemies]) {
+			if (enemy.scriptedWave?.roomKey === 'band:ice' && enemy.scriptedWave?.waveIndex === 0) {
+				enemy.hp = 0;
+			}
+		}
+		removeDeadEnemies();
+		updateScriptedEncounters();
+
+		expect(gameState.enemies.some((enemy) => enemy.displayName === 'Rimecast the Slow')).toBe(true);
 	});
 
-	it('scripts supporting grunts and skirmishers at run start', () => {
+	it('scripts only the dock wave at deploy', () => {
 		deployScriptedFrostCrossing();
 		const types = gameState.enemies.map((enemy) => enemy.type);
-		expect(types).toHaveLength(5);
-		expect(types.filter((type) => type === 'grunt').length).toBe(3);
-		expect(types.filter((type) => type === 'skirmisher').length).toBe(2);
+		expect(types).toHaveLength(2);
+		expect(types.every((type) => type === 'grunt')).toBe(true);
 	});
 
-	it('authored ice-band scripted waves include glacial_thrower spawns', () => {
+	it('authored ice-band scripted waves include ranged glacial_thrower offsets', () => {
 		const quest = getQuest('frost_crossing', 1);
 		const iceRoom = quest.scriptedEncounters.rooms.find((room) => room.band === 'ice');
-		const types = iceRoom.waves.flatMap((wave) => wave.spawns.map((spawn) => spawn.type));
-		expect(types).toContain('glacial_thrower');
+		const throwerSpawns = iceRoom.waves[0].spawns.filter((spawn) => spawn.type === 'glacial_thrower');
+		expect(throwerSpawns.length).toBeGreaterThanOrEqual(2);
+		expect(throwerSpawns.every((spawn) => spawn.offset)).toBe(true);
 		expect(iceRoom.waves.some((wave) => wave.spawns.some((spawn) => spawn.namedRare))).toBe(true);
 	});
 
-	it('still uses grunt and skirmisher in non-ice scripted waves', () => {
+	it('keeps glacial_thrower out of the stone dock scripted wave', () => {
 		const quest = getQuest('frost_crossing', 1);
 		const entryRoom = quest.scriptedEncounters.rooms.find((room) => room.roomIndex === 0);
 		const types = entryRoom.waves.flatMap((wave) => wave.spawns.map((spawn) => spawn.type));

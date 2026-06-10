@@ -1286,34 +1286,37 @@ function applyDebugScenario(socket, name) {
     }
 
     if (name === 'frost-crossing-frostmaw') {
-      // frost_crossing Tier 1 with run-start grunts cleared and Frostmaw spawned on
-      // the ice field for named-rare QA. Reachable normally by crossing to the ice
-      // sheet; this scenario is a shortcut into that encounter.
+      // frost_crossing Tier 1 with dock wave cleared, ice-band throwers defeated, and
+      // Rimecast the Slow spawned for named-rare QA. Reachable normally by crossing
+      // the ice sheet; this scenario is a shortcut into that encounter.
       setupFrostCrossingTier1Deploy(lobby, state, player);
 
       const iceRoom = state.layout.rooms.find((room) => room.band === 'ice');
-      const runStartWave = state.run?.waveScript?.waves?.find((wave) => wave.id === 'wave_run_start');
-      if (runStartWave) {
-        for (const enemyId of runStartWave.spawnedEnemyIds) {
-          const enemy = state.enemies.find((entry) => entry.id === enemyId);
-          if (enemy) enemy.hp = 0;
-        }
-        state.enemies = state.enemies.filter((enemy) => enemy.hp > 0);
-        runStartWave.status = 'cleared';
-        if (state.run?.objective) {
-          state.run.objective.defeatedEnemies = runStartWave.spawnedEnemyIds.length;
+      for (const enemy of [...state.enemies]) {
+        if (
+          enemy.scriptedWave?.roomKey === 'room:0'
+          || (enemy.scriptedWave?.roomKey === 'band:ice' && enemy.scriptedWave?.waveIndex === 0)
+        ) {
+          enemy.hp = 0;
         }
       }
+      removeDeadEnemies();
+      if (state.run?.passageLocks) {
+        for (const lock of state.run.passageLocks) {
+          lock.locked = false;
+        }
+      }
+      rebuildWallColliders();
 
       player.x = iceRoom?.x ?? 0;
       player.z = iceRoom?.z ?? 0;
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      updateQuestScriptTriggers();
+      updateScriptedEncounters();
 
-      const frostmaw = state.enemies.find((enemy) => enemy.namedRare?.name === 'Frostmaw');
-      if (frostmaw) {
-        frostmaw.wanderTarget = { x: frostmaw.x, z: frostmaw.z };
-        repositionNearEnemy(player, frostmaw);
+      const rimecast = state.enemies.find((enemy) => enemy.displayName === 'Rimecast the Slow');
+      if (rimecast) {
+        rimecast.wanderTarget = { x: rimecast.x, z: rimecast.z };
+        repositionNearEnemy(player, rimecast);
         player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       }
 

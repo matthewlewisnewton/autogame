@@ -125,8 +125,16 @@ describe('tier-1 quest identity wiring', () => {
     expect(namedSpawn.namedRare.displayName).toBe('Rimecast the Slow');
     expect(namedSpawn.namedRare.enemyType).toBe('glacial_thrower');
 
+    expect(quest.scriptedEncounters.passageLocks).toHaveLength(1);
+    const throwerSpawns = iceRoom.waves[0].spawns.filter((spawn) => spawn.type === 'glacial_thrower');
+    expect(throwerSpawns.length).toBeGreaterThanOrEqual(2);
+    expect(throwerSpawns.every((spawn) => spawn.offset)).toBe(true);
+
     const beacons = getDialogueBeacons(quest);
+    expect(beacons.some((b) => b.beaconId === 'frost_dock_enter')).toBe(true);
+    expect(beacons.some((b) => b.beaconId === 'frost_dock_clear')).toBe(true);
     expect(beacons.some((b) => b.beaconId === 'frost_ice_band_enter' && b.band === 'ice')).toBe(true);
+    expect(beacons.some((b) => b.beaconId === 'frost_rimecast_wave')).toBe(true);
   });
 
   it('annex_escort tier 1 exercises escort objective in live quest content', () => {
