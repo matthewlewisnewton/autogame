@@ -120,6 +120,48 @@ describe('renderFindings preset copy', () => {
 		expect(md).toContain('**bossType**: annex_overseer');
 	});
 
+	it('renders rooms new-content exercise sections and assertions', () => {
+		const md = renderFindings({
+			...baseRun,
+			preset: 'rooms',
+			findingsTitle: 'Rooms validation findings',
+			bossSpawnLabel: 'annex_overseer (Annex Overseer)',
+			assertions: {
+				...baseRun.assertions,
+				bossEncounterUiVisible: true,
+				bossDistinctFromAdds: true,
+				slowBurnMutuallyExclusive: true,
+				healCleanseApplied: true,
+				windupTelegraphActive: true,
+				telepipeVitalsPreserved: true,
+				cardChargesResetOnNewSortie: true,
+			},
+			cardExercises: {
+				slowBurn: { slowBurnMutuallyExclusive: true, targetEnemyId: 'grunt-1' },
+				purifyingPulse: { healCleanseApplied: true, preCast: { hp: 40 }, postCast: { hp: 80 } },
+				windup: { windupTelegraphActive: true, cardId: 'magma_greatsword' },
+			},
+			roomsTelepipe: {
+				telepipeVitalsPreserved: true,
+				cardChargesResetOnNewSortie: true,
+				preSuspend: { hp: 100, magicStones: 3, runId: 'a' },
+				postDeploy: { hp: 100, magicStones: 3, runId: 'b' },
+			},
+			screenshots: [
+				'game/validation/rooms/08-slow-burn-mutual-exclusive.png',
+				'game/validation/rooms/12-telepipe-after.png',
+			],
+		});
+		expect(md).toContain('**slowBurnMutuallyExclusive**: PASS');
+		expect(md).toContain('**cardChargesResetOnNewSortie**: PASS');
+		expect(md).toContain('## Slow / burn mutual exclusivity');
+		expect(md).toContain('## Heal / cleanse (Purifying Pulse)');
+		expect(md).toContain('## Wind-up telegraph');
+		expect(md).toContain('## Telepipe vitals and new-sortie charges');
+		expect(md).toContain('## New content exercise');
+		expect(md).toContain('08-slow-burn-mutual-exclusive.png');
+	});
+
 	it('renders sunken-canyon new-content exercise sections and assertions', () => {
 		const md = renderFindings({
 			...baseRun,

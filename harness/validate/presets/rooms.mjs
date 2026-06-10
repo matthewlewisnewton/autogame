@@ -6,6 +6,11 @@ export default {
 	questTier: 2,
 	bossType: 'annex_overseer',
 	deployScenario: 'training-caverns-tier-2',
+	iceBallScenario: 'ice-ball-ready',
+	fireballScenario: 'fireball-hand-ready',
+	purifyingPulseScenario: 'purifying-pulse-ready',
+	windupScenario: 'magma-windup-ready',
+	windupCardId: 'magma_greatsword',
 	telepipeScenario: 'training-caverns-telepipe-ready',
 	telepipeDeployScenario: 'training-caverns-tier-2',
 	layoutProfile: 'crowded',
@@ -16,5 +21,4 @@ export default {
 	encounterTriggerRadius: 8,
 	addsTimeoutMs: 90000,
 	encounterTimeoutMs: 60000,
-	lobbyName: 'Rooms Validation',
 };

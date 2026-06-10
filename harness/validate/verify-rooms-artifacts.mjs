@@ -19,11 +19,26 @@ const REQUIRED_ASSERTION_KEYS = [
 	'encounterActivated',
 	'bossDefeated',
 	'victoryFired',
+	'bossEncounterUiVisible',
+	'bossDistinctFromAdds',
+	'slowBurnMutuallyExclusive',
+	'healCleanseApplied',
+	'windupTelegraphActive',
+	'telepipeVitalsPreserved',
+	'cardChargesResetOnNewSortie',
 ];
 
 const REQUIRED_PNGS = [
 	'06-boss-defeated.png',
 	'07-victory.png',
+];
+
+const OPTIONAL_EXERCISE_PNGS = [
+	'08-slow-burn-mutual-exclusive.png',
+	'09-purifying-pulse.png',
+	'10-windup-charge.png',
+	'11-telepipe-before.png',
+	'12-telepipe-after.png',
 ];
 
 const REQUIRED_FILES = [
@@ -75,6 +90,18 @@ function readRunSummary(errors) {
 	return summary;
 }
 
+function checkOptionalExercisePngs(summary, errors) {
+	const screenshots = Array.isArray(summary?.screenshots) ? summary.screenshots : [];
+	for (const name of OPTIONAL_EXERCISE_PNGS) {
+		const listed = screenshots.some((shot) => typeof shot === 'string' && shot.endsWith(`/${name}`));
+		if (!listed) continue;
+		const filePath = path.join(ROOMS_DIR, name);
+		if (!fs.existsSync(filePath)) {
+			fail(errors, `screenshots list includes ${name} but file is missing`);
+		}
+	}
+}
+
 function checkRequiredFiles(errors) {
 	for (const name of REQUIRED_PNGS) {
 		const filePath = path.join(ROOMS_DIR, name);
@@ -108,12 +135,16 @@ function main() {
 	}
 
 	const errors = [];
+	let summary = null;
 
 	if (!fs.existsSync(ROOMS_DIR)) {
 		errors.push(`missing validation directory: ${ROOMS_REL}/`);
 	} else {
-		readRunSummary(errors);
+		summary = readRunSummary(errors);
 		checkRequiredFiles(errors);
+		if (summary) {
+			checkOptionalExercisePngs(summary, errors);
+		}
 		assertDistinctVictoryScreenshots(ROOMS_DIR, errors, `${ROOMS_REL}/`);
 	}
 

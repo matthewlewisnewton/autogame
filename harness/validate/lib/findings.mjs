@@ -417,6 +417,7 @@ function renderFloorAlignmentSection(floorAlignment, { preset, objectiveType } =
  *   bossVisualIdentity?: object | null,
  *   cardExercises?: { slowBurn?: object, purifyingPulse?: object, windup?: object } | null,
  *   canyonTelepipe?: object | null,
+ *   roomsTelepipe?: object | null,
  *   consoleErrors?: string[],
  *   screenshots?: string[],
  *   visualNotes?: string[],
@@ -441,6 +442,11 @@ export function renderFindings(run) {
 		lines.push(
 			formatAssertion('bossEncounterUiVisible', run.assertions?.bossEncounterUiVisible === true),
 			formatAssertion('bossDistinctFromAdds', run.assertions?.bossDistinctFromAdds === true),
+			formatAssertion('slowBurnMutuallyExclusive', run.assertions?.slowBurnMutuallyExclusive === true),
+			formatAssertion('healCleanseApplied', run.assertions?.healCleanseApplied === true),
+			formatAssertion('windupTelegraphActive', run.assertions?.windupTelegraphActive === true),
+			formatAssertion('telepipeVitalsPreserved', run.assertions?.telepipeVitalsPreserved === true),
+			formatAssertion('cardChargesResetOnNewSortie', run.assertions?.cardChargesResetOnNewSortie === true),
 		);
 	}
 
@@ -502,7 +508,7 @@ export function renderFindings(run) {
 	lines.push(...renderSlowBurnSection(run.cardExercises?.slowBurn));
 	lines.push(...renderPurifyingPulseSection(run.cardExercises?.purifyingPulse));
 	lines.push(...renderWindupSection(run.cardExercises?.windup));
-	lines.push(...renderCanyonTelepipeSection(run.canyonTelepipe));
+	lines.push(...renderCanyonTelepipeSection(run.canyonTelepipe ?? run.roomsTelepipe));
 	lines.push(...renderNewContentExerciseSection(run.screenshots));
 
 	lines.push('', '## Screenshots', '');
