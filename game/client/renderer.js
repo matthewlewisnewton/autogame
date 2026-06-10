@@ -6251,6 +6251,102 @@ export function disposeAllLootMeshes() {
 	lootPickupAttempts.clear();
 }
 
+// ── Minion-attribution hit VFX table ──
+
+/**
+ * Per-minion-type VFX for enemy HP-drop (minion tick damage) attribution.
+ * Keyed by minion `type`. Each entry carries the enemy flash color, the
+ * attacking-minion flash color, and a `spawn(ctx)` that reproduces the exact
+ * effect for that type. `ctx` is `{ minion, enemy, renderY, dir }` where `dir`
+ * is the minion→enemy direction (falling back to `{ x: 1, z: 0 }`).
+ *
+ * The default (no attributable minion, or unknown type) lives in
+ * `MINION_HIT_VFX_DEFAULT`: enemy flash `0xff4444`, minion flash `0x88ff88`,
+ * and a plain hit spark at the enemy.
+ */
+const MINION_HIT_VFX = {
+	thunderbird: {
+		enemyFlash: 0x38bdf8,
+		minionFlash: 0x7dd3fc,
+		spawn: ({ minion, dir }) => {
+			spawnChainLightningEffect({ x: minion.x, z: minion.z }, dir);
+		},
+	},
+	storm_eagle: {
+		enemyFlash: 0x67e8f9,
+		minionFlash: 0x93c5fd,
+		spawn: ({ minion, enemy }) => {
+			spawnLightningArc(
+				{ x: minion.x, z: minion.z },
+				{ x: enemy.x, z: enemy.z },
+				{ color: 0x67e8f9, emissive: 0x22d3ee },
+			);
+		},
+	},
+	ancient_wyrm: {
+		enemyFlash: 0xfb923c,
+		minionFlash: 0xfb923c,
+		spawn: ({ minion, enemy, renderY, dir }) => {
+			spawnAttackEffect(
+				{ x: minion.x, z: minion.z },
+				dir,
+				{
+					range: 8,
+					coneAngle: Math.PI / 2,
+					color: 0xef4444,
+					emissive: 0x9333ea,
+				}
+			);
+			spawnParticleBurst(
+				{ x: enemy.x, y: renderY, z: enemy.z },
+				{ color: 0xef4444, emissive: 0xff3b00, count: 8, spread: 0.85 },
+			);
+		},
+	},
+	null_crawler: {
+		enemyFlash: 0x22d3ee,
+		minionFlash: 0x67e8f9,
+		spawn: ({ minion, dir }) => {
+			spawnAttackEffect(
+				{ x: minion.x, z: minion.z },
+				dir,
+				{
+					effect: 'returning_projectile',
+					returnPasses: 0,
+					range: minion.attackRange ?? 14,
+					projectileHitWidth: minion.projectileHitWidth ?? 0.8,
+					color: 0x22d3ee,
+					emissive: 0x06b6d4,
+				}
+			);
+		},
+	},
+	bulkhead_mauler: {
+		enemyFlash: 0xf59e0b,
+		minionFlash: 0xfbbf24,
+		spawn: ({ minion, dir }) => {
+			spawnAttackEffect(
+				{ x: minion.x, z: minion.z },
+				dir,
+				{
+					range: 4,
+					coneAngle: (Math.PI * 2) / 3,
+					color: 0x78716c,
+					emissive: 0xf59e0b,
+				}
+			);
+		},
+	},
+};
+
+const MINION_HIT_VFX_DEFAULT = {
+	enemyFlash: 0xff4444,
+	minionFlash: 0x88ff88,
+	spawn: ({ enemy, renderY }) => {
+		spawnHitSpark({ x: enemy.x, y: renderY, z: enemy.z });
+	},
+};
+
 // ── Animate loop ──
 
 /**
@@ -6600,108 +6696,18 @@ export function animate(timestamp) {
 							nearestMinion = m;
 						}
 					}
-					const fromThunderbird = nearestMinion && nearestMinion.type === 'thunderbird';
-					const fromStormEagle = nearestMinion && nearestMinion.type === 'storm_eagle';
-					const fromAncientWyrm = nearestMinion && nearestMinion.type === 'ancient_wyrm';
-					const fromNullCrawler = nearestMinion && nearestMinion.type === 'null_crawler';
-					const fromBulkheadMauler = nearestMinion && nearestMinion.type === 'bulkhead_mauler';
-					flashMesh(
-						enemiesMeshes[enemy.id],
-						fromThunderbird ? 0x38bdf8
-							: (fromStormEagle ? 0x67e8f9
-								: (fromAncientWyrm ? 0xfb923c
-									: (fromNullCrawler ? 0x22d3ee
-										: (fromBulkheadMauler ? 0xf59e0b : 0xff4444)))),
-						150
-					);
-					if (fromThunderbird) {
-						const sparkDir = nearestMinion
-							? {
-								x: enemy.x - nearestMinion.x,
-								z: enemy.z - nearestMinion.z,
-							}
-							: { x: 1, z: 0 };
-						spawnChainLightningEffect(
-							{ x: nearestMinion.x, z: nearestMinion.z },
-							sparkDir
-						);
-					} else if (fromStormEagle) {
-						spawnLightningArc(
-							{ x: nearestMinion.x, z: nearestMinion.z },
-							{ x: enemy.x, z: enemy.z },
-							{ color: 0x67e8f9, emissive: 0x22d3ee },
-						);
-					} else if (fromAncientWyrm) {
-						const breathDir = nearestMinion
-							? {
-								x: enemy.x - nearestMinion.x,
-								z: enemy.z - nearestMinion.z,
-							}
-							: { x: 1, z: 0 };
-						spawnAttackEffect(
-							{ x: nearestMinion.x, z: nearestMinion.z },
-							breathDir,
-							{
-								range: 8,
-								coneAngle: Math.PI / 2,
-								color: 0xef4444,
-								emissive: 0x9333ea,
-							}
-						);
-						spawnParticleBurst(
-							{ x: enemy.x, y: renderY, z: enemy.z },
-							{ color: 0xef4444, emissive: 0xff3b00, count: 8, spread: 0.85 },
-						);
-					} else if (fromNullCrawler) {
-						const beamDir = nearestMinion
-							? {
-								x: enemy.x - nearestMinion.x,
-								z: enemy.z - nearestMinion.z,
-							}
-							: { x: 1, z: 0 };
-						spawnAttackEffect(
-							{ x: nearestMinion.x, z: nearestMinion.z },
-							beamDir,
-							{
-								effect: 'returning_projectile',
-								returnPasses: 0,
-								range: nearestMinion.attackRange ?? 14,
-								projectileHitWidth: nearestMinion.projectileHitWidth ?? 0.8,
-								color: 0x22d3ee,
-								emissive: 0x06b6d4,
-							}
-						);
-					} else if (fromBulkheadMauler) {
-						const sweepDir = nearestMinion
-							? {
-								x: enemy.x - nearestMinion.x,
-								z: enemy.z - nearestMinion.z,
-							}
-							: { x: 1, z: 0 };
-						spawnAttackEffect(
-							{ x: nearestMinion.x, z: nearestMinion.z },
-							sweepDir,
-							{
-								range: 4,
-								coneAngle: (Math.PI * 2) / 3,
-								color: 0x78716c,
-								emissive: 0xf59e0b,
-							}
-						);
-					} else {
-						spawnHitSpark({ x: enemy.x, y: renderY, z: enemy.z });
-					}
+					const vfx = MINION_HIT_VFX[nearestMinion?.type] ?? MINION_HIT_VFX_DEFAULT;
+					const dir = nearestMinion
+						? {
+							x: enemy.x - nearestMinion.x,
+							z: enemy.z - nearestMinion.z,
+						}
+						: { x: 1, z: 0 };
+					flashMesh(enemiesMeshes[enemy.id], vfx.enemyFlash, 150);
+					vfx.spawn({ minion: nearestMinion, enemy, renderY, dir });
 
 					if (nearestMinion && minionsMeshes[nearestMinion.id]) {
-						flashMesh(
-							minionsMeshes[nearestMinion.id],
-							fromThunderbird ? 0x7dd3fc
-								: (fromStormEagle ? 0x93c5fd
-									: (fromAncientWyrm ? 0xfb923c
-										: (fromNullCrawler ? 0x67e8f9
-											: (fromBulkheadMauler ? 0xfbbf24 : 0x88ff88)))),
-							200
-						);
+						flashMesh(minionsMeshes[nearestMinion.id], vfx.minionFlash, 200);
 					}
 				}
 			}
