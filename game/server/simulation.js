@@ -103,6 +103,10 @@ let _movementContext = null;
 let _movementContextLayout = null;
 let _movementContextPassageLocksKey = '';
 
+// Hub movement context cache — keyed by layout reference (HUB_LAYOUT is static)
+let _hubMovementContext = null;
+let _hubMovementContextLayout = null;
+
 function footprintToAABB(footprint) {
   return {
     minX: footprint.x - footprint.width / 2,
@@ -258,12 +262,18 @@ function rebuildMovementContext(state) {
  */
 function buildHubMovementContext(hubLayout) {
   if (!hubLayout) return null;
-  return {
+  if (
+    _hubMovementContext !== null
+    && _hubMovementContextLayout === hubLayout
+  ) {
+    return _hubMovementContext;
+  }
+  return (_hubMovementContext = {
     layout: hubLayout,
     walkableAABBs: computeWalkableAABBs(hubLayout),
     dungeonBounds: computeDungeonBounds(hubLayout),
     colliders: buildWallColliders(hubLayout),
-  };
+  }, _hubMovementContextLayout = hubLayout, _hubMovementContext);
 }
 
 /**
