@@ -1521,6 +1521,7 @@ function buildRunSummary(status) {
     questTier: run.questTier ?? DEFAULT_QUEST_TIER,
     questName: run.questName,
     objective: { ...run.objective },
+    failReason: status === 'failed' && run.escort?.failed ? run.objective.label : null,
     players,
     defeatedEnemies: run.objective.defeatedEnemies ?? 0,
     currencyCollected: players.reduce((sum, p) => sum + p.currency, 0),

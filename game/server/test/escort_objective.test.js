@@ -149,6 +149,16 @@ describe('escort death fail', () => {
     expect(gameState.run.objective.label).toContain('Archivist Vale was lost');
     expect(gameState.run.objective.label).toContain('escort failed');
   });
+
+  it('summary payload carries the distinct escort failReason', () => {
+    const escort = getEscortMinion(gameState);
+    damageMinion(escort, escort.maxHp);
+    updateMinions();
+
+    expect(gameState.run.status).toBe('failed');
+    const summary = buildRunSummary('failed');
+    expect(summary.failReason).toBe('Archivist Vale was lost — escort failed');
+  });
 });
 
 describe('escort destination complete', () => {
@@ -204,6 +214,7 @@ describe('escort destination complete', () => {
     const summary = buildRunSummary(gameState.run.status);
     expect(summary.status).toBe('victory');
     expect(summary.objective.reachedDestination).toBe(true);
+    expect(summary.failReason).toBeNull();
   });
 });
 
