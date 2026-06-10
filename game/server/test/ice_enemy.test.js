@@ -406,7 +406,8 @@ describe('Frost Crossing guaranteed glacial_thrower spawn', () => {
 	it('scripts Rimecast the Slow as a glacial_thrower on the final ice-band wave', () => {
 		const { iceRoom } = deployScriptedFrostCrossing();
 		expect(gameState.enemies.map((enemy) => enemy.type)).not.toContain('glacial_thrower');
-		expect(gameState.enemies).toHaveLength(2);
+		expect(gameState.enemies).toHaveLength(3);
+		expect(gameState.enemies.some((enemy) => enemy.type === 'permafrost_warden')).toBe(true);
 
 		for (const enemy of [...gameState.enemies]) {
 			if (enemy.scriptedWave?.roomKey === 'room:0' && enemy.scriptedWave?.waveIndex === 0) {
@@ -434,11 +435,12 @@ describe('Frost Crossing guaranteed glacial_thrower spawn', () => {
 		expect(gameState.enemies.some((enemy) => enemy.displayName === 'Rimecast the Slow')).toBe(true);
 	});
 
-	it('scripts only the dock wave at deploy', () => {
+	it('scripts only the dock wave at deploy plus dormant cairn warden', () => {
 		deployScriptedFrostCrossing();
 		const types = gameState.enemies.map((enemy) => enemy.type);
-		expect(types).toHaveLength(2);
-		expect(types.every((type) => type === 'grunt')).toBe(true);
+		expect(types).toHaveLength(3);
+		expect(types.filter((type) => type === 'grunt')).toHaveLength(2);
+		expect(types).toContain('permafrost_warden');
 	});
 
 	it('authored ice-band scripted waves include ranged glacial_thrower offsets', () => {

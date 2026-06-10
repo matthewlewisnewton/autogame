@@ -199,8 +199,12 @@ roles:
   # why, without re-loading the full review. composer primary, claude backstop —
   # same chain as split/repair (keeps the no-claude-primary guard happy).
   merge_resolve:
-    primary: composer_write
-    fallbacks: [claude]
+    # fast variant: this runs INLINE in the dispatcher's single-threaded merge
+    # queue, so resolver latency directly stalls scheduling. Correctness is
+    # gated by the mandatory post-resolve full re-verify, not model strength —
+    # the slower models are the fallback ladder, not the default.
+    primary: composer_fast_write
+    fallbacks: [composer_write, claude]
     timeout_s: 1800
     out_file: "merge-resolve.txt"
     prompt_template: harness/prompts/merge_resolve.md
@@ -213,8 +217,8 @@ roles:
   # scope rationale as merge_resolve: the tree legitimately contains all of
   # main's changes; correctness is gated by the mandatory post-fix re-verify.
   merge_fix:
-    primary: composer_write
-    fallbacks: [claude]
+    primary: composer_fast_write
+    fallbacks: [composer_write, claude]    # same latency rationale as merge_resolve
     timeout_s: 1800
     out_file: "merge-fix.txt"
     prompt_template: harness/prompts/merge_fix.md

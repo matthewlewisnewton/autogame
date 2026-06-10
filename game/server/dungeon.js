@@ -908,6 +908,7 @@ const LANDMARK_FOOTPRINTS = {
   sun_arch: { width: 3.2, depth: 1.6 },
   canyon_monolith: { width: 2.0, depth: 2.0 },
   vault_dais: { width: 2.4, depth: 2.4 },
+  ice_cairn: { width: 2.0, depth: 2.0 },
 };
 
 const LANDMARK_MARGIN = 2.5;
@@ -2683,6 +2684,7 @@ function generateIceCavern(seed, options = {}) {
     passageWidth: PASSAGE_WIDTH,
     cellSpacing: iceSize,
     profile: 'ice-cavern',
+    landmarks: [{ x: treasure.x, z: treasure.z, type: 'ice_cairn' }],
   };
 }
 

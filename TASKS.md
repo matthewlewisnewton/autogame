@@ -137,3 +137,5 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [382-cleanup-content-rework-crystal-rescue-frost-crossing-training-cavern-o0vv.7](tickets/382-cleanup-content-rework-crystal-rescue-frost-crossing-training-cavern-o0vv.7/)
 - [ ] [383-cleanup-client-persistent-in-run-key-item-hud-slot-icon-name-keybind-52lf](tickets/383-cleanup-client-persistent-in-run-key-item-hud-slot-icon-name-keybind-52lf/)
 - [ ] [383-cleanup-server-patch-api-me-settings-persists-arbitrary-unvalidated-tkit](tickets/383-cleanup-server-patch-api-me-settings-persists-arbitrary-unvalidated-tkit/)
+- [ ] [383-cleanup-playthrough-validate-ice-level](tickets/383-cleanup-playthrough-validate-ice-level/)
+- [ ] [392-cleanup-ice-l1-miniboss-permafrost-warden](tickets/392-cleanup-ice-l1-miniboss-permafrost-warden/)

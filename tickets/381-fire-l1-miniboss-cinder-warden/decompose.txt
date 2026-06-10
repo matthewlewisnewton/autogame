@@ -1,0 +1,11 @@
+I broke the top-level ticket into 3 dependency-ordered sub-tickets, mirroring the established `canyon_descent`/`spire_ascent` Tier II warden pattern. Key finding: the lock-on metadata panel and boss HUD are fully generic (driven by a server-sent enemy catalog), so the boss "metadata + lock-on panel" requirement is satisfied automatically once the server enemy type exists — the only client work is the procedural render geometry.
+
+Sub-ticket folders created:
+
+- `tickets/381-fire-l1-miniboss-cinder-warden/subtickets/01-cinder-warden-enemy-type/ticket.md` — server enemy type (`simulation.js` variant def + `config.js` loot maps + `progression.js` party-size HP scaling); feeds the display catalog/lock-on panel.
+- `tickets/381-fire-l1-miniboss-cinder-warden/subtickets/02-ember-descent-encounter-wiring/ticket.md` — `ember_descent` Tier II `stage_boss` encounter in `quests.js` + `theme.json` objective strings + objective-label branch.
+- `tickets/381-fire-l1-miniboss-cinder-warden/subtickets/03-cinder-warden-client-render/ticket.md` — `renderer.js` geometry + attack telegraph + `models.js` registry entry.
+
+All three are `Verification: code` — each turns on entries-existing/config/spawn-count/objective-state checks across the diff and logs, none of which a single happy-path screenshot run could confirm (the Tier II boss isn't even reachable in the visual smoke run).
+
+No existing `.passed` or failed sub-ticket folders were present, so nothing was modified or deleted.

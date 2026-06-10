@@ -392,7 +392,7 @@ describe('quest tier catalog', () => {
     const trainingTier2 = variants.find(
       (v) => v.questId === 'training_caverns' && v.tier === 2
     );
-    expect(variants.length).toBe(Object.keys(QUEST_DEFS).length + 5);
+    expect(variants.length).toBe(Object.keys(QUEST_DEFS).length + 6);
     expect(trainingTier2).toMatchObject({
       questId: 'training_caverns',
       tier: 2,
@@ -452,8 +452,9 @@ describe('quest tier catalog', () => {
     expect(frostTier1).toMatchObject({
       questId: 'frost_crossing',
       tier: 1,
-      objectiveType: 'defeat_enemies',
+      objectiveType: 'stage_boss',
     });
+    expect(frostTier1.objectiveSummary.toLowerCase()).toContain('permafrost warden');
     expect(getLayoutProfileForQuest('frost_crossing')).toBe('ice-cavern');
     const emberTier1 = variants.find(
       (v) => v.questId === 'ember_descent' && v.tier === 1
@@ -465,7 +466,7 @@ describe('quest tier catalog', () => {
       objectiveType: 'defeat_enemies',
     });
     expect(emberTier1.objectiveSummary).toContain('6');
-    expect(variants.filter((v) => v.isTier2)).toHaveLength(5);
+    expect(variants.filter((v) => v.isTier2)).toHaveLength(6);
   });
 
   it('exposes signature reward id and resolved name on quest payloads', () => {
@@ -554,7 +555,7 @@ describe('quest tier catalog', () => {
       layoutMode: 'default',
     });
     expect(isValidQuestSelection('ember_descent', 1)).toBe(true);
-    expect(isValidQuestSelection('ember_descent', 2)).toBe(false);
+    expect(isValidQuestSelection('ember_descent', 2)).toBe(true);
     expect(isValidQuestSelection('canyon_descent', 2)).toBe(true);
     expect(isValidQuestSelection('arena_trials', 2)).toBe(true);
     expect(isValidQuestSelection('spire_ascent', 2)).toBe(true);

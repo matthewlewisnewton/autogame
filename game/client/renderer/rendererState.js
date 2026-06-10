@@ -51,6 +51,7 @@ export const enemyBurnMarkers = {}; // enemy id → flickering flame shown while
 export const playerBurnMarkers = {}; // player id → flickering flame shown while burning
 export const minionsMeshes = {};
 export const minionShadows = {}; // flying minion id → ground shadow decal (no entry for grounded minions)
+export const escortHealthBars = {}; // escort minion id → persistent floating HP bar mesh
 /** Persistent ground-hazard meshes for armed spike_trap enchantments, keyed by enc.id. */
 export const spikeTrapMeshes = {};
 export const lootMeshes = {};
