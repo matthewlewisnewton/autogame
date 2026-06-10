@@ -14,6 +14,7 @@ import * as THREE from 'three';
 import { clampDelta } from './delta.js';
 import { disposeOne, disposeMeshMap, disposeStaleMeshes } from './renderer/disposeMesh.js';
 import { syncMeshMap } from './renderer/syncMeshMap.js';
+import { createLootSync } from './renderer/lootSync.js';
 
 export { disposeOne, disposeMeshMap, disposeStaleMeshes };
 import {
@@ -47,7 +48,6 @@ import {
 	SUMMON_EFFECT_DURATION,
 	MINION_SUMMON_IN_MS,
 	HIT_SPARK_DURATION,
-	LOOT_COLLECT_DURATION,
 	DAMAGE_NUMBER_DURATION,
 	CAMERA_FOV,
 	CAMERA_NEAR,
@@ -64,8 +64,6 @@ import {
 	ENEMY_ATTACK_RANGE,
 	MAX_HP,
 	MAX_MS,
-	LOOT_PICKUP_RADIUS,
-	LOOT_PICKUP_RETRY_MS,
 } from './config.js';
 import {
 	initGamepadListeners,
@@ -140,7 +138,6 @@ const seenMinionIds = new Set();
 const minionSpawnTimes = {};
 /** Minion id → target uniform scale while scale-in is active. */
 const minionBaseScales = {};
-const lootMeshes = {};
 const iceBallMeshes = {}; // ice-ball projectile id → giant icy sphere mesh (glacial thrower)
 let telepipeMesh = null; // Group: cylinder + 2 torus rings + particle children
 const telepipeParticles = []; // pool of rising particle spheres for the portal column
@@ -214,37 +211,6 @@ function isCoastingOnSlippery(layout) {
 	return Math.hypot(simVx, simVz) >= 1e-4;
 }
 
-// ── Loot state ──
-const lootGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.1, 16);
-const lootMaterial = new THREE.MeshStandardMaterial({
-	color: 0xffd700,
-	emissive: 0xeab308,
-	emissiveIntensity: 0.45,
-	roughness: 0.3,
-	metalness: 0.8,
-});
-const crystalGeometry = new THREE.OctahedronGeometry(0.45, 0);
-const crystalMaterial = new THREE.MeshStandardMaterial({
-	color: 0x88eeff,
-	emissive: 0x2288cc,
-	emissiveIntensity: 0.85,
-	roughness: 0.15,
-	metalness: 0.65,
-});
-const magicStoneGeometry = new THREE.OctahedronGeometry(0.5, 0);
-const magicStoneRingGeometry = new THREE.RingGeometry(0.4, 0.7, 24);
-const magicStoneMaterial = new THREE.MeshStandardMaterial({
-	color: 0xa78bfa,
-	emissive: 0x7c3aed,
-	emissiveIntensity: 1.1,
-	roughness: 0.15,
-	metalness: 0.85,
-});
-const LOOT_FLOAT_COLOR_MONEY = '#ffd700';
-const LOOT_FLOAT_COLOR_MAGIC_STONE = '#a78bfa';
-const collectingLoot = {}; // lootId → { mesh, value, kind, createdAt }
-const previousLootValues = {}; // lootId → { value, kind }
-
 // ── Damage number tracking ──
 const damageNumbers = []; // { element, createdAt, position3d, duration }
 
@@ -261,7 +227,6 @@ export function markCardHitEnemies(hits) {
 const previousEnemyHp = {}; // enemyId → hp from previous frame
 const previousMinionHp = {}; // minionId → hp from previous frame
 const previousPlayerHp = {}; // playerId → hp from previous frame
-const lootPickupAttempts = new Map(); // lootId → last emit timestamp (ms)
 
 // ── Scene init flag ──
 let sceneInitialized = false;
@@ -1230,7 +1195,7 @@ export function getMeshMaps() {
 		minionTelegraphMeshes,
 		minionsMeshes,
 		spikeTrapMeshes,
-		lootMeshes,
+		lootMeshes: getLootSync().getLootMeshes(),
 		iceBallMeshes,
 		playerCardWindupMarkers,
 	};
@@ -1369,100 +1334,6 @@ export function getMinionSpawnTimes() {
 }
 
 /**
- * Get loot IDs with a recent pickup attempt (for test hooks / pruning).
- * @returns {Set}
- */
-export function getPickedUpLootIds() {
-	return new Set(lootPickupAttempts.keys());
-}
-
-/**
- * Drop stale pickup retry timestamps when loot leaves the world.
- * @param {Set<string>} currentLootIds
- */
-export function pruneLootPickupAttempts(currentLootIds) {
-	for (const id of lootPickupAttempts.keys()) {
-		if (!currentLootIds.has(id)) {
-			lootPickupAttempts.delete(id);
-		}
-	}
-}
-
-function cloneLootMaterial(kind) {
-	if (kind === 'crystal') return crystalMaterial.clone();
-	if (kind === 'magic_stone') return magicStoneMaterial.clone();
-	return lootMaterial.clone();
-}
-
-function createLootMesh(item) {
-	const kind = item.kind || 'currency';
-	if (kind === 'magic_stone') {
-		const group = new THREE.Group();
-		group.userData.isMagicStone = true;
-		group.userData.lootKind = kind;
-
-		const gem = new THREE.Mesh(magicStoneGeometry, cloneLootMaterial(kind));
-		gem.position.y = 0.6;
-		group.add(gem);
-		group.userData.gemMesh = gem;
-
-		const ring = new THREE.Mesh(
-			magicStoneRingGeometry,
-			new THREE.MeshBasicMaterial({
-				color: 0x8b5cf6,
-				transparent: true,
-				opacity: 0.45,
-				side: THREE.DoubleSide,
-			}),
-		);
-		ring.rotation.x = -Math.PI / 2;
-		ring.position.y = 0.04;
-		group.add(ring);
-
-		group.position.set(item.x, 0, item.z);
-		attachRegistryModel(kind, group);
-		return group;
-	}
-
-	const isCrystal = kind === 'crystal';
-	const mesh = new THREE.Mesh(
-		isCrystal ? crystalGeometry : lootGeometry,
-		cloneLootMaterial(kind),
-	);
-	const baseY = isCrystal ? 0.65 : 0.5;
-	mesh.position.set(item.x, baseY, item.z);
-	mesh.userData.isCrystal = isCrystal;
-	mesh.userData.lootKind = kind;
-	attachRegistryModel(kind, mesh);
-	return mesh;
-}
-
-function getLootBaseY(mesh) {
-	if (mesh.userData?.isMagicStone) return 0.6;
-	if (mesh.userData?.isCrystal) return 0.65;
-	return 0.5;
-}
-
-/** Dispose per-mesh loot materials (clones / ring mats); shared geometry is kept. */
-function disposeLootMeshMaterials(mesh) {
-	if (mesh.traverse) {
-		mesh.traverse((child) => {
-			if (child.material) child.material.dispose();
-		});
-	} else if (mesh.material) {
-		mesh.material.dispose();
-	}
-}
-
-function tryEmitLootPickup(loot, now) {
-	if (!socketRef || !loot) return;
-	const last = lootPickupAttempts.get(loot.id) || 0;
-	if (now - last < LOOT_PICKUP_RETRY_MS) return;
-	lootPickupAttempts.set(loot.id, now);
-	socketRef.emit(CLIENT_TO_SERVER.LOOT_PICKUP, { lootId: loot.id });
-}
-
-/**
  * Recompute the booth zone the local player stands in. Runs each animate frame.
  * Only the hub layout carries `boothAnchors`, so this is `null` in dungeons.
  * Fires the registered listener (if any) on enter/exit transitions so main.js
@@ -1499,19 +1370,6 @@ export function emitBoothInteract() {
 	if (!socketRef || !currentBoothInRange) return null;
 	socketRef.emit(CLIENT_TO_SERVER.BOOTH_INTERACT, { boothId: currentBoothInRange });
 	return currentBoothInRange;
-}
-
-function findClosestLootInRange(lootList, x, z, radius) {
-	let closest = null;
-	let closestDist = radius;
-	for (const loot of lootList) {
-		const dist = Math.hypot(x - loot.x, z - loot.z);
-		if (dist <= closestDist) {
-			closestDist = dist;
-			closest = loot;
-		}
-	}
-	return closest;
 }
 
 /**
@@ -3031,6 +2889,52 @@ export function spawnDamageNumber(x, y, z, amount, color, positive, suffix = '')
 		position3d: { x, y, z },
 		duration: DAMAGE_NUMBER_DURATION,
 	});
+}
+
+// ── Loot sync (extracted module; thin re-exports for tests / main.js) ──
+
+let _lootSync = null;
+
+function getLootSync() {
+	if (!_lootSync) {
+		_lootSync = createLootSync({
+			getScene: () => scene,
+			getSocket: () => socketRef,
+			attachRegistryModel,
+			spawnDamageNumber,
+		});
+	}
+	return _lootSync;
+}
+
+/** @returns {Set} */
+export function getPickedUpLootIds() {
+	return getLootSync().getPickedUpLootIds();
+}
+
+/** @param {Set<string>} currentLootIds */
+export function pruneLootPickupAttempts(currentLootIds) {
+	return getLootSync().pruneLootPickupAttempts(currentLootIds);
+}
+
+export function markLootCollected(lootId, value, kind = 'currency') {
+	return getLootSync().markLootCollected(lootId, value, kind);
+}
+
+export function updateCollectingLoot() {
+	return getLootSync().updateCollectingLoot();
+}
+
+export function syncLootMeshes() {
+	return getLootSync().syncMeshes(gameStateRef);
+}
+
+export function animateLootMeshes() {
+	return getLootSync().animateMeshes();
+}
+
+export function disposeAllLootMeshes() {
+	return getLootSync().disposeAllLootMeshes();
 }
 
 /**
@@ -5772,81 +5676,6 @@ export function updateAttackEffects() {
 
 // ── Mesh disposal helpers ──
 
-// ── Loot mesh sync & animation ──
-
-/**
- * Play a "collected" animation on a loot mesh: scale-up + fade, then remove.
- * @param {string} lootId
- * @param {number} value - gold amount
- */
-export function markLootCollected(lootId, value, kind = 'currency') {
-	const mesh = lootMeshes[lootId];
-	if (!mesh || !scene) return;
-
-	const px = mesh.position.x;
-	const pz = mesh.position.z;
-	const isMagicStone = kind === 'magic_stone';
-
-	delete lootMeshes[lootId];
-	lootPickupAttempts.delete(lootId);
-	collectingLoot[lootId] = { mesh, value, kind, createdAt: performance.now() };
-
-	if (isMagicStone) playSound('loot');
-
-	if (mesh.traverse) {
-		mesh.traverse((child) => {
-			if (child.material) child.material.transparent = true;
-		});
-	} else if (mesh.material) {
-		mesh.material.transparent = true;
-	}
-
-	spawnDamageNumber(
-		px,
-		1.0,
-		pz,
-		value,
-		isMagicStone ? LOOT_FLOAT_COLOR_MAGIC_STONE : LOOT_FLOAT_COLOR_MONEY,
-		true,
-		isMagicStone ? ' MS' : '',
-	);
-}
-
-/**
- * Update collecting-loot animations: scale up, fade out, then dispose.
- */
-export function updateCollectingLoot() {
-	const now = performance.now();
-	for (const id of Object.keys(collectingLoot)) {
-		const entry = collectingLoot[id];
-		const elapsed = now - entry.createdAt;
-		const t = Math.min(elapsed / LOOT_COLLECT_DURATION, 1.0);
-
-		const scale = t < 0.3 ? 1.0 + (t / 0.3) * 1.0 : 2.0 - (t - 0.3) / 0.7 * 1.9;
-		entry.mesh.scale.setScalar(Math.max(0.01, scale));
-
-		if (t > 0.5) {
-			const fade = Math.max(0.01, 1.0 - (t - 0.5) / 0.5);
-			if (entry.mesh.traverse) {
-				entry.mesh.traverse((child) => {
-					if (child.material) child.material.opacity = fade;
-				});
-			} else if (entry.mesh.material) {
-				entry.mesh.material.opacity = fade;
-			}
-		}
-
-		const liftY = getLootBaseY(entry.mesh);
-		entry.mesh.position.y = liftY + t * 1.5;
-
-		if (elapsed >= LOOT_COLLECT_DURATION) {
-			scene.remove(entry.mesh);
-			disposeLootMeshMaterials(entry.mesh);
-			delete collectingLoot[id];
-		}
-	}
-}
-
 /**
  * Sync the shared telepipe portal mesh with gameState.telepipe.
  * Creates an animated group: shimmer cylinder, two orbiting torus rings,
@@ -5988,40 +5817,6 @@ export function animateTelepipePortal(delta) {
 	}
 }
 
-/**
- * Sync loot meshes with current gameState.loot.
- */
-export function syncLootMeshes() {
-	if (!gameStateRef || !gameStateRef.loot) return;
-
-	const currentLootIds = new Set(gameStateRef.loot.map((l) => l.id));
-
-	for (const item of gameStateRef.loot) {
-		previousLootValues[item.id] = { value: item.value || 1, kind: item.kind || 'currency' };
-	}
-
-	// Add / update new loot
-	for (const item of gameStateRef.loot) {
-		if (!lootMeshes[item.id]) {
-			const mesh = createLootMesh(item);
-			scene.add(mesh);
-			lootMeshes[item.id] = mesh;
-		} else {
-			lootMeshes[item.id].position.x = item.x;
-			lootMeshes[item.id].position.z = item.z;
-		}
-	}
-
-	// Remove stale loot — play collection animation
-	for (const id of Object.keys(lootMeshes)) {
-		if (!currentLootIds.has(id)) {
-			const lootMeta = previousLootValues[id] || { value: 1, kind: 'currency' };
-			delete previousLootValues[id];
-			markLootCollected(id, lootMeta.value, lootMeta.kind);
-		}
-	}
-}
-
 // ── Ice-ball projectile sync (glacial thrower) ──
 
 // Height of an ice ball's centre above the floor. The server simulates the ball
@@ -6094,47 +5889,6 @@ export function syncSpikeTrapMeshes() {
 	);
 }
 
-/**
- * Bob and rotate loot meshes each frame.
- */
-export function animateLootMeshes() {
-	const t = performance.now();
-	for (const mesh of Object.values(lootMeshes)) {
-		const baseY = getLootBaseY(mesh);
-		const bob = Math.sin(t / 280) * 0.18;
-		if (mesh.userData?.isMagicStone) {
-			mesh.position.y = bob * 0.5;
-			mesh.rotation.y += 0.045;
-			const gem = mesh.userData.gemMesh;
-			if (gem) {
-				const pulse = 1 + Math.sin(t / 180) * 0.14;
-				gem.scale.setScalar(pulse);
-				gem.position.y = baseY + bob;
-				if (gem.material?.emissiveIntensity != null) {
-					gem.material.emissiveIntensity = 1.0 + Math.sin(t / 140) * 0.35;
-				}
-			}
-			continue;
-		}
-
-		mesh.position.y = baseY + bob;
-		mesh.rotation.y += mesh.userData.isCrystal ? 0.03 : 0.02;
-	}
-}
-
-/**
- * Dispose all loot meshes (shared geometry — dispose cloned materials only).
- */
-export function disposeAllLootMeshes() {
-	for (const id of Object.keys(lootMeshes)) {
-		const mesh = lootMeshes[id];
-		if (scene) scene.remove(mesh);
-		disposeLootMeshMaterials(mesh);
-		delete lootMeshes[id];
-	}
-	lootPickupAttempts.clear();
-}
-
 // ── Animate loop ──
 
 /**
@@ -6158,15 +5912,7 @@ export function animate(timestamp) {
 	const gs = gameStateRef;
 	const myId = myIdRef;
 
-	// ── Loot proximity check — closest drop in range; any player can grab it ──
-	if (gs && gs.loot && gs.loot.length > 0) {
-		const localPlayer = gs.players[myId];
-		if (localPlayer && !localPlayer.dead) {
-			const now = performance.now();
-			const closest = findClosestLootInRange(gs.loot, myX, myZ, LOOT_PICKUP_RADIUS);
-			if (closest) tryEmitLootPickup(closest, now);
-		}
-	}
+	getLootSync().syncFrame({ gs, myId, myX, myZ, now: performance.now() });
 
 	if (gs) {
 		for (const [id, pData] of Object.entries(gs.players)) {
@@ -6717,15 +6463,13 @@ export function animate(timestamp) {
 
 		syncSpikeTrapMeshes();
 
-		// ── Loot mesh sync ──
-		syncLootMeshes();
+		getLootSync().syncMeshes(gs);
 		// ── Ice-ball projectile sync ──
 		syncIceBallMeshes();
 		syncTelepipeMesh();
 	}
 
-	// Animate loot coins (outside gameState guard)
-	animateLootMeshes();
+	getLootSync().animateMeshes();
 
 	// Animate telepipe portal (outside gameState guard — mesh may outlive snapshot)
 	animateTelepipePortal(delta);
@@ -6760,8 +6504,7 @@ export function animate(timestamp) {
 	// Update floating damage numbers
 	updateDamageNumbers();
 
-	// Update collecting-loot animations
-	updateCollectingLoot();
+	getLootSync().updateCollectingLoot();
 
 	renderer.render(scene, camera);
 }
