@@ -113,6 +113,7 @@ import {
 	initScene as rendererInitScene,
 	rebuildDungeonLayout,
 	syncPassageLockColliders,
+	syncPassageLockGates,
 	setGameStateRef,
 	setMyId as rendererSetMyId,
 	setSocketRef,
@@ -143,6 +144,7 @@ import {
 	updateHealthBarMesh as rendererUpdateHealthBarMesh,
 	applyWindupFlash as rendererApplyWindupFlash,
 	applyRevealHighlight as rendererApplyRevealHighlight,
+	resolveEnemyEmissive as rendererResolveEnemyEmissive,
 	spawnAttackEffect as rendererSpawnAttackEffect,
 	spawnSummonEffect as rendererSpawnSummonEffect,
 	spawnDivineGraceEffect as rendererSpawnDivineGraceEffect,
@@ -175,6 +177,7 @@ import {
 	getPickedUpLootIds,
 	pruneLootPickupAttempts,
 	getWindupFlashing,
+	getEnemyDamageFlash,
 	getPlayerCardWindupFlashing,
 	triggerDashVFX,
 	triggerHealPulseVFX,
@@ -869,6 +872,7 @@ function applyLobbyJoinedData(data) {
 	// never reuses (or rebuilds into) the quest geometry, and a run join never
 	// deploys the player into the hub geometry.
 	if (joinPhase === 'playing') {
+		if (isCharacterBoothOpen()) closeCharacterBooth();
 		if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 		const seedChanged = receivedSeed !== undefined && receivedSeed !== currentLayoutSeed;
 		if (receivedSeed !== undefined) currentLayoutSeed = receivedSeed;
@@ -1319,6 +1323,7 @@ function bindSocketHandlers(s) {
 		setGameStateRef(state);
 		if (state.gamePhase === 'playing' && currentLayout) {
 			syncPassageLockColliders(state.run?.passageLocks);
+			syncPassageLockGates(state.run?.passageLocks);
 		}
 		// Server snapshots omit debugGodmode; re-apply the last toggle so harness
 		// probes and local handlers stay consistent across stateUpdate.
@@ -1968,6 +1973,7 @@ function bindSocketHandlers(s) {
 	});
 
 	s.on(SERVER_TO_CLIENT.START_GAME, () => {
+		if (isCharacterBoothOpen()) closeCharacterBooth();
 		claimedCardRewardId = null;
 		currentCardChoices = [];
 		clearQuestCommsLog();
@@ -5005,6 +5011,7 @@ window.formatObjectiveSummary = formatObjectiveSummary;
 window.formatRewardSummary = formatRewardSummary;
 window.renderQuestBoard = renderQuestBoard;
 window.__windupFlashing = () => getWindupFlashing();
+window.__enemyDamageFlash = () => getEnemyDamageFlash();
 window.__pickedUpLootIds = () => getPickedUpLootIds();
 window.__enemiesMeshes = () => getMeshMaps().enemiesMeshes;
 window.__getEnemyRenderScaleForTest = (enemyId) => {
@@ -5016,6 +5023,7 @@ window.__getEnemyRenderScaleForTest = (enemyId) => {
 window.__iceBallMeshes = () => getMeshMaps().iceBallMeshes;
 window.applyWindupFlash = rendererApplyWindupFlash;
 window.applyRevealHighlight = rendererApplyRevealHighlight;
+window.resolveEnemyEmissive = rendererResolveEnemyEmissive;
 window.__useCardForTest = useCard;
 window.__emitUseCardForTest = (cardId, slotIndex = null) => {
 	if (!socket || !cardId) return false;
@@ -5124,6 +5132,9 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 	const objective = runObjective ? {
 		type: runObjective.type,
 		totalEnemies: runObjective.totalEnemies,
+		...(Number.isFinite(runObjective.activeEnemyCount)
+			? { activeEnemyCount: runObjective.activeEnemyCount }
+			: {}),
 		defeatedEnemies: runObjective.defeatedEnemies,
 		totalItems: runObjective.totalItems,
 		collectedItems: runObjective.collectedItems,

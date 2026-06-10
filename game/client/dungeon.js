@@ -142,6 +142,57 @@ export function getProfileMaterialColors(profile) {
 	};
 }
 
+// ── Per-profile entry room materials (start spawn rooms) ──
+
+const ENTRY_PALETTE_PROFILES = new Set(['ice-cavern', 'fire-cavern', 'crowded']);
+
+/** @type {Map<string, { floor: THREE.MeshStandardMaterial, wall: THREE.MeshStandardMaterial }>} */
+const entryRoomMaterialsCache = new Map();
+
+function hasEntryPalette(profile) {
+	const key = resolveProfileKey(profile);
+	return ENTRY_PALETTE_PROFILES.has(key)
+		&& dungeonTheme.profiles[key]?.entryFloor
+		&& dungeonTheme.profiles[key]?.entryWall;
+}
+
+/**
+ * Cached floor/wall materials for biome entry (start) rooms.
+ *
+ * @param {string} [profile]
+ * @returns {{ floor: THREE.MeshStandardMaterial, wall: THREE.MeshStandardMaterial } | null}
+ */
+export function getEntryRoomMaterials(profile) {
+	const key = resolveProfileKey(profile);
+	if (!hasEntryPalette(key)) return null;
+	if (!entryRoomMaterialsCache.has(key)) {
+		const themeEntry = dungeonTheme.profiles[key];
+		const floorRoughness = themeEntry.floorRoughness ?? 0.8;
+		const wallRoughness = themeEntry.wallRoughness ?? 0.7;
+		entryRoomMaterialsCache.set(key, {
+			floor: new THREE.MeshStandardMaterial({
+				color: parseHex(themeEntry.entryFloor),
+				roughness: floorRoughness,
+			}),
+			wall: new THREE.MeshStandardMaterial({
+				color: parseHex(themeEntry.entryWall),
+				roughness: wallRoughness,
+			}),
+		});
+	}
+	return entryRoomMaterialsCache.get(key);
+}
+
+/** Hex colors for entry-room materials (for tests). */
+export function getEntryRoomMaterialColors(profile) {
+	const mats = getEntryRoomMaterials(profile);
+	if (!mats) return null;
+	return {
+		floor: materialColorHex(mats.floor),
+		wall: materialColorHex(mats.wall),
+	};
+}
+
 const defaultMaterials = getProfileMaterials('default');
 
 // Backward-compatible exports (legacy default palette)
@@ -370,6 +421,10 @@ function iceCavernIceFloorHex() {
 export function getIceCavernBandFloorHex(band, yT = 0.5) {
 	const stoneHex = iceCavernStoneFloorHex();
 	const iceHex = iceCavernIceFloorHex();
+	if (band === 'entry') {
+		const entryHex = getEntryRoomMaterialColors('ice-cavern')?.floor;
+		if (entryHex != null) return entryHex;
+	}
 	if (band === 'stone') return stoneHex;
 	if (band === 'ice') return iceHex;
 	const t = band === 'ramp' ? yT : 0.5;
@@ -383,6 +438,10 @@ export function getIceCavernBandFloorHex(band, yT = 0.5) {
  * @param {number} [yT] - ramp lerp factor (0 = stone, 1 = ice)
  */
 export function getIceCavernBandMaterials(band, yT = 0.5) {
+	if (band === 'entry') {
+		const entryMats = getEntryRoomMaterials('ice-cavern');
+		if (entryMats) return { floor: entryMats.floor };
+	}
 	const cacheKey = band === 'ramp' ? `ramp-${Math.round(yT * 100)}` : (band || 'ice');
 	if (!iceCavernBandMaterialsCache.has(cacheKey)) {
 		const entry = iceCavernThemeEntry();
@@ -411,13 +470,17 @@ function getIceCavernRoleFloorMaterial(band, yT, role) {
 	return iceCavernRoleFloorCache.get(cacheKey);
 }
 
-function resolveIceCavernRoomFloorMaterial(room) {
+function resolveIceCavernRoomMaterials(room) {
+	if (room.role === 'start' || room.band === 'entry') {
+		const entryMats = getEntryRoomMaterials('ice-cavern');
+		if (entryMats) return entryMats;
+	}
 	const band = room.band ?? 'ice';
 	const yT = 0.5;
-	if (room.role === 'start' || room.role === 'treasure') {
-		return getIceCavernRoleFloorMaterial(band, yT, room.role);
+	if (room.role === 'treasure') {
+		return { floor: getIceCavernRoleFloorMaterial(band, yT, room.role) };
 	}
-	return getIceCavernBandMaterials(band, yT).floor;
+	return { floor: getIceCavernBandMaterials(band, yT).floor };
 }
 
 // ── Fire-cavern band floor materials (rim / ramp / basin) ──
@@ -448,6 +511,10 @@ function fireCavernBasinFloorHex() {
 export function getFireCavernBandFloorHex(band, yT = 0.5) {
 	const rimHex = fireCavernRimFloorHex();
 	const basinHex = fireCavernBasinFloorHex();
+	if (band === 'entry') {
+		const entryHex = getEntryRoomMaterialColors('fire-cavern')?.floor;
+		if (entryHex != null) return entryHex;
+	}
 	if (band === 'rim') return rimHex;
 	if (band === 'basin') return basinHex;
 	const t = band === 'ramp' ? yT : 0.5;
@@ -461,6 +528,10 @@ export function getFireCavernBandFloorHex(band, yT = 0.5) {
  * @param {number} [yT] - ramp lerp factor (0 = rim, 1 = basin)
  */
 export function getFireCavernBandMaterials(band, yT = 0.5) {
+	if (band === 'entry') {
+		const entryMats = getEntryRoomMaterials('fire-cavern');
+		if (entryMats) return { floor: entryMats.floor };
+	}
 	const cacheKey = band === 'ramp' ? `ramp-${Math.round(yT * 100)}` : (band || 'basin');
 	if (!fireCavernBandMaterialsCache.has(cacheKey)) {
 		const entry = fireCavernThemeEntry();
@@ -478,7 +549,7 @@ function inferFireCavernRampYT(room, layout) {
 	if (!fc) return 0.5;
 
 	const avgY = (fc.yNW + fc.yNE + fc.ySE + fc.ySW) / 4;
-	const rimRoom = layout.rooms.find(r => r.band === 'rim');
+	const rimRoom = layout.rooms.find(r => r.role === 'start' || r.band === 'rim');
 	const basinRoom = layout.rooms.find(r => r.band === 'basin');
 	const yHigh = rimRoom?.floorCorners?.yNW ?? DEFAULT_FLOOR_Y;
 	const yLow = basinRoom?.floorCorners?.yNW ?? DEFAULT_FLOOR_Y;
@@ -503,10 +574,14 @@ function getFireCavernRoleFloorMaterial(band, yT, role) {
 }
 
 function resolveFireCavernRoomMaterials(room, layout) {
+	if (room.role === 'start' || room.band === 'entry') {
+		const entryMats = getEntryRoomMaterials('fire-cavern');
+		if (entryMats) return entryMats;
+	}
 	const band = room.band ?? 'basin';
 	const yT = band === 'ramp' ? inferFireCavernRampYT(room, layout) : 0.5;
 	let floor;
-	if (room.role === 'start' || room.role === 'treasure') {
+	if (room.role === 'treasure') {
 		floor = getFireCavernRoleFloorMaterial(band, yT, room.role);
 	} else {
 		floor = getFireCavernBandMaterials(band, yT).floor;
@@ -1024,6 +1099,52 @@ export function buildPerimeterDecorMesh(type, materials) {
 }
 
 /**
+ * Build visual-only entry-room decor (icicles, ember vents, vault rubble).
+ *
+ * @param {'icicle_cluster' | 'ember_vent' | 'vault_rubble'} type
+ * @param {{ floor: THREE.Material, wall: THREE.Material, accent: THREE.Material }} materials
+ * @returns {THREE.Group}
+ */
+export function buildEntryDecorMesh(type, materials) {
+	const group = new THREE.Group();
+	group.userData.decorType = type;
+	const { floor, wall, accent } = materials;
+
+	const addMesh = (geo, mat, x, y, z, rotX = 0, rotY = 0) => {
+		const mesh = new THREE.Mesh(geo, mat);
+		mesh.position.set(x, y, z);
+		if (rotX) mesh.rotation.x = rotX;
+		if (rotY) mesh.rotation.y = rotY;
+		group.add(mesh);
+	};
+
+	switch (type) {
+		case 'icicle_cluster': {
+			addMesh(new THREE.ConeGeometry(0.14, 0.9, 6), wall, -0.35, 1.1, 0, Math.PI);
+			addMesh(new THREE.ConeGeometry(0.18, 1.2, 6), wall, 0.1, 1.35, 0.15, Math.PI);
+			addMesh(new THREE.ConeGeometry(0.12, 0.7, 6), accent, 0.4, 0.95, -0.1, Math.PI);
+			break;
+		}
+		case 'ember_vent': {
+			addMesh(new THREE.BoxGeometry(1.4, 0.06, 0.35), floor, 0, 0.03, 0);
+			addMesh(new THREE.BoxGeometry(0.7, 0.1, 0.18), accent, 0, 0.08, 0);
+			addMesh(new THREE.BoxGeometry(0.25, 0.14, 0.25), accent, 0.35, 0.1, 0.12);
+			break;
+		}
+		case 'vault_rubble': {
+			addMesh(new THREE.BoxGeometry(0.9, 0.35, 0.7), wall, -0.25, 0.18, 0.1, 0, 0.4);
+			addMesh(new THREE.BoxGeometry(0.6, 0.28, 0.55), floor, 0.3, 0.14, -0.2, 0.1, -0.3);
+			addMesh(new THREE.BoxGeometry(0.45, 0.22, 0.4), wall, 0.05, 0.32, 0.35, 0.2, 0.8);
+			break;
+		}
+		default:
+			break;
+	}
+
+	return group;
+}
+
+/**
  * Build a visual-only floor marking mesh (no collision).
  *
  * @param {{ type: string, innerRadius?: number, outerRadius?: number }} marking
@@ -1136,22 +1257,30 @@ export function buildDungeon(scene, layout) {
 
 	for (const room of layout.rooms) {
 		const spireMats = isSpireAscent ? resolveSpireRoomMaterials(room, layout, spireTierCount) : null;
+		const iceCavernMats = isIceCavern ? resolveIceCavernRoomMaterials(room) : null;
 		const fireCavernMats = isFireCavern ? resolveFireCavernRoomMaterials(room, layout) : null;
+		const entryMats = room.role === 'start' ? getEntryRoomMaterials(layout.profile) : null;
 		// Pick floor material: spire tier/ramp, sunken-canyon/ice/fire band tints, else profile role fallback
 		let floorMat;
 		if (spireMats) {
 			floorMat = spireMats.floor;
 		} else if (isSunkenCanyon) {
 			floorMat = resolveSunkenCanyonRoomFloorMaterial(room, layout);
-		} else if (isIceCavern) {
-			floorMat = resolveIceCavernRoomFloorMaterial(room);
+		} else if (iceCavernMats) {
+			floorMat = iceCavernMats.floor;
 		} else if (fireCavernMats) {
 			floorMat = fireCavernMats.floor;
+		} else if (entryMats) {
+			floorMat = entryMats.floor;
 		} else {
 			floorMat = roleFloors[room.role] || profileFloorMaterial;
 		}
 		floorMat = applySlipperyFloorOverride(floorMat, room.floorSurface);
-		const roomWallMat = spireMats?.wall ?? profileWallMaterial;
+		const roomWallMat = spireMats?.wall
+			?? iceCavernMats?.wall
+			?? fireCavernMats?.wall
+			?? entryMats?.wall
+			?? profileWallMaterial;
 
 		// Room floor: flat (legacy or uniform corners) or sloped
 		let floorMesh;
@@ -1209,6 +1338,26 @@ export function buildDungeon(scene, layout) {
 		for (const marker of buildDoorwayMarkers(room, layout, profileMaterials)) {
 			scene.add(marker);
 			meshes.push(marker);
+		}
+	}
+
+	// ── Entry-room decor (visual only; after room walls) ──
+	const entryDecorMaterials = (() => {
+		const entryMats = getEntryRoomMaterials(layout.profile);
+		return {
+			floor: entryMats?.floor ?? profileFloorMaterial,
+			wall: entryMats?.wall ?? profileWallMaterial,
+			accent: profileMaterials.accent,
+		};
+	})();
+	for (const d of layout.entryDecor || []) {
+		const decorGroup = buildEntryDecorMesh(d.type, entryDecorMaterials);
+		const floorY = resolveFloorY(sampleFloorY(layout, d.x, d.z));
+		decorGroup.position.set(d.x, floorY, d.z);
+		if (d.yaw != null) decorGroup.rotation.y = d.yaw;
+		scene.add(decorGroup);
+		for (const child of decorGroup.children) {
+			meshes.push(child);
 		}
 	}
 
@@ -1356,6 +1505,92 @@ export function buildDungeon(scene, layout) {
 }
 
 const PASSAGE_LOCK_BARRIER_DEPTH = 1.0;
+
+/**
+ * Build a themed energy gate spanning a locked passage doorway gap.
+ * Position and footprint match {@link computePassageBarrierAABBs} collider math.
+ *
+ * @param {object} layout
+ * @param {number} passageIndex
+ * @param {{ accent: THREE.MeshStandardMaterial, passageWall: THREE.MeshStandardMaterial }} materials
+ * @returns {THREE.Group|null}
+ */
+export function buildPassageGateMesh(layout, passageIndex, materials) {
+	if (!layout?.passages?.[passageIndex] || !materials) return null;
+
+	const passage = layout.passages[passageIndex];
+	const passageWidth = layout.passageWidth ?? PASSAGE_WIDTH;
+	const gapW = passageWidth + 0.5;
+	const dx = passage.x2 - passage.x1;
+	const dz = passage.z2 - passage.z1;
+	const alongX = Math.abs(dx) >= Math.abs(dz);
+
+	const midX = alongX ? (passage.x1 + passage.x2) / 2 : passage.x1;
+	const midZ = alongX ? passage.z1 : (passage.z1 + passage.z2) / 2;
+	const gateHeight = PASSAGE_WALL_HEIGHT;
+
+	const group = new THREE.Group();
+	group.userData.isPassageGate = true;
+	group.userData.passageIndex = passageIndex;
+
+	const accentMat = materials.accent;
+	const frameColor = materials.passageWall?.color ?? accentMat.color;
+	const fieldMat = new THREE.MeshStandardMaterial({
+		color: accentMat.color,
+		emissive: accentMat.emissive,
+		emissiveIntensity: 0.85,
+		transparent: true,
+		opacity: 0.55,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const frameMat = new THREE.MeshStandardMaterial({
+		color: frameColor,
+		emissive: accentMat.emissive,
+		emissiveIntensity: 0.35,
+		roughness: 0.5,
+	});
+
+	let fieldGeo;
+	let frameGeo;
+	if (alongX) {
+		fieldGeo = new THREE.BoxGeometry(PASSAGE_LOCK_BARRIER_DEPTH * 0.65, gateHeight * 0.92, gapW * 0.96);
+		frameGeo = new THREE.BoxGeometry(PASSAGE_LOCK_BARRIER_DEPTH, gateHeight, gapW);
+	} else {
+		fieldGeo = new THREE.BoxGeometry(gapW * 0.96, gateHeight * 0.92, PASSAGE_LOCK_BARRIER_DEPTH * 0.65);
+		frameGeo = new THREE.BoxGeometry(gapW, gateHeight, PASSAGE_LOCK_BARRIER_DEPTH);
+	}
+
+	const frame = new THREE.Mesh(frameGeo, frameMat);
+	const field = new THREE.Mesh(fieldGeo, fieldMat);
+	frame.userData.isPassageGatePart = true;
+	field.userData.isPassageGatePart = true;
+	group.add(frame);
+	group.add(field);
+
+	group.position.set(midX, FLOOR_Y + gateHeight / 2, midZ);
+	return group;
+}
+
+/**
+ * World-space center of a passage gate mesh (for unlock VFX when no live mesh).
+ * @param {object} layout
+ * @param {number} passageIndex
+ * @returns {{ x: number, y: number, z: number }|null}
+ */
+export function getPassageGateWorldPosition(layout, passageIndex) {
+	if (!layout?.passages?.[passageIndex]) return null;
+
+	const passage = layout.passages[passageIndex];
+	const dx = passage.x2 - passage.x1;
+	const dz = passage.z2 - passage.z1;
+	const alongX = Math.abs(dx) >= Math.abs(dz);
+	const midX = alongX ? (passage.x1 + passage.x2) / 2 : passage.x1;
+	const midZ = alongX ? passage.z1 : (passage.z1 + passage.z2) / 2;
+	const gateHeight = PASSAGE_WALL_HEIGHT;
+
+	return { x: midX, y: FLOOR_Y + gateHeight / 2, z: midZ };
+}
 
 function footprintToAABB(footprint) {
 	return {

@@ -1,0 +1,14 @@
+{
+  "url": "http://localhost:5174/",
+  "ok": false,
+  "ticketFile": "/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/tickets/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/ticket.md",
+  "capturePlanSource": "fallback",
+  "capturePlanValid": true,
+  "capturePlanAttempts": [],
+  "capturePlanSummary": "Deterministic solo Telepipe suspend/resume capture: auth, solo lobby + deploy, telepipe-ready scenario, then in-dungeon / suspended-lobby / resumed-dungeon screenshots with before/after probes around the suspendRunToLobby → restoreRunCheckpoint transition.",
+  "scenarios": [],
+  "screenshots": [],
+  "probes": [],
+  "error": "page.goto: Page crashed\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5174/\", waiting until \"load\"\u001b[22m\n",
+  "pageerrors": []
+}

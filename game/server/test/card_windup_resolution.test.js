@@ -127,7 +127,11 @@ describe('card wind-up deferred resolution', () => {
 
 		const state = lobbyGameState(socket._lobbyId);
 		const player = state.players[socket._playerId];
+		state._lobbyId = socket._lobbyId;
 		state.gamePhase = 'playing';
+		if (!state.run) {
+			state.run = { status: 'playing' };
+		}
 		player.x = 0;
 		player.z = 0;
 		player.rotation = 0;
@@ -251,9 +255,8 @@ describe('card wind-up deferred resolution', () => {
 		target().z = 0;
 		target().wanderTarget = { x: target().x, z: target().z };
 
-		const commitUpdatePromise = waitForEvent(socket, 'stateUpdate');
 		socket.emit('useCard', { cardId: 'flame_blade', slotIndex, rotation: 0 });
-		await commitUpdatePromise;
+		await waitForPlayerWindup(player);
 
 		expect(target().hp).toBe(hpBefore);
 		expect(player.cardUseState).toBe('windup');
@@ -294,9 +297,8 @@ describe('card wind-up deferred resolution', () => {
 		const perHitDamage = getCardDef('soul_drain').damage;
 		const slotIndex = 0;
 
-		const commitUpdatePromise = waitForEvent(socket, 'stateUpdate');
 		socket.emit('useCard', { cardId: 'soul_drain', slotIndex, rotation: 0 });
-		await commitUpdatePromise;
+		await waitForPlayerWindup(player);
 
 		expect(target().hp).toBe(hpBefore);
 		expect(player.cardUseState).toBe('windup');

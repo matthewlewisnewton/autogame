@@ -5,6 +5,11 @@
 const { mulberry32 } = require('./dungeon');
 const { DEFAULT_QUEST_TIER } = require('./quests');
 
+function syncScriptedDefeatEnemiesActiveCount(run, enemies) {
+  if (!run?.scriptedEncounter || run.objective?.type !== 'defeat_enemies') return;
+  run.objective.activeEnemyCount = (enemies || []).filter((enemy) => enemy.hp > 0 && !enemy.spawnedBy).length;
+}
+
 /**
  * @typedef {Object} ScriptedSpawnDef
  * @property {string} type - Enemy type id.
@@ -80,6 +85,19 @@ function getScriptedEncounterDef(quest) {
 
 function isScriptedQuest(quest) {
   return getScriptedEncounterDef(quest) != null;
+}
+
+function questHasPassageLocks(quest) {
+  const lockDefs = getScriptedEncounterDef(quest)?.passageLocks;
+  return Array.isArray(lockDefs) && lockDefs.length > 0;
+}
+
+/** True when per-room scripted waves (not questScript) drive runtime spawning. */
+function usesScriptedEncounterRuntime(quest) {
+  if (!isScriptedQuest(quest)) return false;
+  if (questHasPassageLocks(quest)) return true;
+  const { getQuestScript } = require('./quests');
+  return getQuestScript(quest) == null;
 }
 
 function spawnCount(spawnDef) {
@@ -308,6 +326,7 @@ function spawnScriptedWave(run, gameState, roomKey, waveIndex, ctx) {
   roomState.enemyIds = enemyIds;
   roomState.started = true;
   roomState.cleared = false;
+  syncScriptedDefeatEnemiesActiveCount(run, gameState.enemies);
 }
 
 function tryAdvanceScriptedWave(run, gameState, roomKey, ctx) {
@@ -475,6 +494,8 @@ function relinkScriptedEncounterEnemyIds(run, enemies) {
 module.exports = {
   getScriptedEncounterDef,
   isScriptedQuest,
+  questHasPassageLocks,
+  usesScriptedEncounterRuntime,
   countAuthoredScriptedEnemies,
   initScriptedEncounter,
   initPassageLocks,

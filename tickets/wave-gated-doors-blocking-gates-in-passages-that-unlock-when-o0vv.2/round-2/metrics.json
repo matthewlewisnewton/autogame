@@ -1,0 +1,23 @@
+{
+  "ok": false,
+  "failure_kind": "capture_failed",
+  "capture_diagnosis": {
+    "detected": [],
+    "client_log_tail": "[vite] Proxying /api and /socket.io \u2192 http://127.0.0.1:3001\n[vite] Game server ready at http://127.0.0.1:3001\n\n  VITE v8.0.13  ready in 783 ms\n\n  \u279c  Local:   http://localhost:5174/\n  \u279c  Network: use --host to expose\n4:27:31 AM [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.",
+    "server_log_tail": "[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/data/users.json\n[server] Layout for quest \"training_caverns\" tier 1: seed=352369970, profile=crowded, rooms=10\n[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]\n[auth] JWT_SECRET not set \u2014 using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.\n[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/data\nServer listening on port 3001\nPlayer connected: socket=5BsYTOQdrt-ue3P4AAAB, playerId=23dbed0d-a593-45b0-a58f-d0d60cd11cd8\n[server] Layout for quest \"training_caverns\" tier 1: seed=352369970, profile=crowded, rooms=10\n[loot] spawned id=5f5b7ba7-3b22-404d-8fb0-33bdd99a77ac value=6\n[telepipe] placed at (-9.0, 27.0) by 23dbed0d-a593-45b0-a58f-d0d60cd11cd8\n[telepipe] player 23dbed0d-a593-45b0-a58f-d0d60cd11cd8 extracted\n[run] checkpoint captured\n[run] extracted to hub: Initiate Vault\n[run] checkpoint restored\nPlayer disconnected: 5BsYTOQdrt-ue3P4AAAB",
+    "port_holders": {
+      "5174": [
+        {
+          "pid": 3350410,
+          "cmdline": "node /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/client/node_modules/.bin/../vite/bin/vite.js --port 5174 --strictPort"
+        }
+      ],
+      "3001": [
+        {
+          "pid": 3350387,
+          "cmdline": "node game/server/index.js"
+        }
+      ]
+    }
+  }
+}

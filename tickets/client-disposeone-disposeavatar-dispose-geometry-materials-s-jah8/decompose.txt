@@ -1,0 +1,17 @@
+Broke the top-level ticket into **3 sub-tickets** in dependency order. The fix is layered: tag shared glTF resources at clone time, then route `disposeOne` and `disposeAvatar` through a safe disposal helper so entity despawn and avatar teardown stop invalidating the model cache.
+
+**Sub-ticket folder paths created:**
+
+1. `/home/matt/workspace/.autogame-worktrees/client-disposeone-disposeavatar-dispose-geometry-materials-s-jah8/tickets/client-disposeone-disposeavatar-dispose-geometry-materials-s-jah8/subtickets/01-mark-shared-model-resources`
+2. `/home/matt/workspace/.autogame-worktrees/client-disposeone-disposeavatar-dispose-geometry-materials-s-jah8/tickets/client-disposeone-disposeavatar-dispose-geometry-materials-s-jah8/subtickets/02-dispose-one-skips-shared`
+3. `/home/matt/workspace/.autogame-worktrees/client-disposeone-disposeavatar-dispose-geometry-materials-s-jah8/tickets/client-disposeone-disposeavatar-dispose-geometry-materials-s-jah8/subtickets/03-dispose-avatar-skips-shared`
+
+**Plan summary:**
+
+| # | Scope | Why separate |
+|---|--------|--------------|
+| **01** | `markSharedModelResources` + `disposeMeshTreeSafe` in `models.js` | Foundation used by both dispose paths |
+| **02** | `disposeOne` in `meshSync.js` | Fixes enemy/minion despawn; includes the parent ticket's explicit `disposeOne` test |
+| **03** | `disposeAvatar` in `renderer.js` | Fixes player disconnect, avatar rebuild, and cosmetic-preview `updatePreview` cycles |
+
+All three use **code** verification (behavior + vitest), since every acceptance criterion is about resource lifecycle and test assertions, not purely on-screen appearance. No existing sub-ticket folders needed retirement.

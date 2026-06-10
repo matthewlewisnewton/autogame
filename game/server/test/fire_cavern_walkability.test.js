@@ -89,7 +89,7 @@ describe('fire-cavern walkability regressions', () => {
   it('supports bidirectional rim ↔ basin centre via ramps only', () => {
     for (const seed of [1, 42, 123, 777]) {
       const layout = fireCavernLayout(seed);
-      const rim = roomsByBand(layout, 'rim')[0];
+      const rim = layout.rooms.find((r) => r.role === 'start');
       const basin = roomsByBand(layout, 'basin')[0];
       const colliders = buildWallColliders(layout);
       const aabbs = computeWalkableAABBs(layout);

@@ -842,7 +842,7 @@ describe('debugScenario — canyon-descent-tier-2', () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
 		socket.emit('debugScenario', { name: 'canyon-descent-telepipe-ready' });
 		const result = await debugResultPromise;
 		const stateUpdate = await stateUpdatePromise;
@@ -1529,7 +1529,7 @@ describe('debugScenario — fire-cavern-stage', () => {
 
 		expect(state.layout.profile).toBe('fire-cavern');
 		expect(startRoom).toBeTruthy();
-		expect(startRoom.band).toBe('rim');
+		expect(startRoom.band).toBe('entry');
 		expect(player.x).toBe(startRoom.x);
 		expect(player.z).toBe(startRoom.z);
 		expect(player.y).toBe(resolveFloorY(sampleFloorY(state.layout, player.x, player.z)));
@@ -1580,13 +1580,14 @@ describe('debugScenario — fire-cavern', () => {
 		expect(stateUpdate.run.questName).toBe(tier1Quest.name);
 		expect(stateUpdate.run.objective.type).toBe('defeat_enemies');
 		expect(stateUpdate.run.objective.label).toContain(tier1Quest.name);
+		expect(stateUpdate.run.objective.totalEnemies).toBe(tier1Quest.enemyCount);
 		expect(state.layout.profile).toBe('fire-cavern');
 		expect(getLayoutGenerationOptions(EMBER_DESCENT_ID, EMBER_DESCENT_TIER_1)).toEqual({
 			slopes: true,
 			layoutMode: 'default',
 		});
 		expect(state.layoutSeed).toBe(questLayoutSeed(EMBER_DESCENT_ID, EMBER_DESCENT_TIER_1));
-		expect(startRoom?.band).toBe('rim');
+		expect(startRoom?.band).toBe('entry');
 		expect(player.x).toBe(startRoom.x);
 		expect(player.z).toBe(startRoom.z);
 		expect(player.y).toBe(resolveFloorY(sampleFloorY(state.layout, player.x, player.z)));

@@ -1,0 +1,18 @@
+## Review complete
+
+**VERDICT: PASS**
+
+Wrote:
+- [`round-1/review.md`](tickets/theme-quest-entry-rooms-per-biome-first-30-seconds-of-every-o0vv.8/round-1/review.md)
+- [`round-1/nits.md`](tickets/theme-quest-entry-rooms-per-biome-first-30-seconds-of-every-o0vv.8/round-1/nits.md) (non-blocking follow-ups only; no `gaps.md`)
+
+### Runtime
+- `metrics.json`: `ok: true`, `pageerrors: []`
+- `console.log`: clean (no pageerrors or fatals)
+
+### Acceptance criteria
+1. **Distinguishable entry rooms** — Met via integrated implementation across four commits: per-profile `entryFloor`/`entryWall`, server `entry`/`vault-entry` bands, visual-only `entryDecor` (icicles / ember vents / vault rubble), and a cross-quest regression test proving three distinct floor colors, distinct walls, and quest-specific decor for `frost_crossing`, `ember_descent`, and `training_caverns`.
+2. **No gameplay/collision changes** — Met; `entryDecor` does not affect `buildWallColliders`, and spawn/script paths were updated only to follow the `band: 'entry'` rename.
+
+### Caveat (non-blocking)
+Round-1 harness capture used the generic `sunken-canyon-stage` fallback and does not include spawn-room screenshots for the three acceptance quests (PNG files referenced in `metrics.json` are absent from disk). Visual proof comes from tests and sub-ticket QA, not top-level capture artifacts.

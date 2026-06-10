@@ -38,7 +38,7 @@ describe('fire-cavern atmosphere', () => {
 		const { computeFireCavernAtmosphereBounds } = await import('../renderer.js');
 		const layout = generateLayout(42, 'fire-cavern');
 		const bounds = computeFireCavernAtmosphereBounds(layout);
-		const rim = layout.rooms.find((r) => r.band === 'rim');
+		const rim = layout.rooms.find((r) => r.role === 'start');
 		const basin = layout.rooms.find((r) => r.band === 'basin');
 
 		expect(bounds).not.toBeNull();

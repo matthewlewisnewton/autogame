@@ -111,7 +111,7 @@ describe('evaluateDialogueBeacons()', () => {
       tier: 1,
       beaconId: 'fixture_wave0_clear',
       speaker: 'Test Handler',
-      line: expect.stringContaining('Wave zero cleared'),
+      line: expect.stringContaining('Bulkhead released'),
     });
     expect(second).toHaveLength(0);
   });

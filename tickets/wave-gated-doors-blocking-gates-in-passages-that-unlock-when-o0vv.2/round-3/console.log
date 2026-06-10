@@ -1,0 +1,4 @@
+[capture:error] page.goto: Page crashed
+Call log:
+[2m  - navigating to "http://localhost:5174/", waiting until "load"[22m
+

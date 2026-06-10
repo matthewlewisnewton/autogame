@@ -206,11 +206,20 @@ function setupScriptedWaveCombatDeploy(lobby, state, player) {
   state.loot = state.loot || [];
 }
 
-function setupQuestTier1Deploy(lobby, state, player, questId) {
+function setupQuestTier1Deploy(lobby, state, player, questId, layoutSeed = null) {
   const tier = 1;
   state.selectedQuestId = questId;
   state.selectedQuestTier = tier;
   applyLayoutForQuest(state, questId, tier);
+
+  if (Number.isInteger(layoutSeed)) {
+    const profile = getLayoutProfileForQuest(questId, tier);
+    state.layoutSeed = layoutSeed;
+    state.layout = generateLayout(layoutSeed, profile);
+    state.dungeonBounds = computeDungeonBounds(state.layout);
+    state.walkableAABBs = computeWalkableAABBs(state.layout);
+    withLobbyContext({ state }, () => rebuildWallColliders());
+  }
 
   player.ready = true;
   player.hp = MAX_HP;
@@ -247,8 +256,8 @@ function setupFrostCrossingTier1Deploy(lobby, state, player) {
   setupQuestTier1Deploy(lobby, state, player, 'frost_crossing');
 }
 
-function setupTrainingCavernsTier1Deploy(lobby, state, player) {
-  setupQuestTier1Deploy(lobby, state, player, 'training_caverns');
+function setupTrainingCavernsTier1Deploy(lobby, state, player, layoutSeed = null) {
+  setupQuestTier1Deploy(lobby, state, player, 'training_caverns', layoutSeed);
 }
 
 function setupCrystalRescueTier1Deploy(lobby, state, player) {
@@ -417,6 +426,17 @@ function syncCardProbeHand(player) {
   if (player?.id) emitPlayerDeckUpdate(player.id);
 }
 
+function maybeAdoptSyntheticDefeatEnemies(state) {
+  const run = state?.run;
+  if (!run?.scriptedEncounter || run.objective?.type !== 'defeat_enemies') return;
+  const hasScriptedWaveEnemies = (state.enemies || []).some((enemy) => enemy.scriptedWave);
+  if (hasScriptedWaveEnemies) return;
+  delete run.scriptedEncounter;
+  delete run._scriptedEncounterConfig;
+  run.passageLocks = [];
+  delete run.objective.activeEnemyCount;
+}
+
 function resumePlayingRunForCardProbe(state, player) {
   if (!state?.run) return;
   state.run.status = 'playing';
@@ -424,6 +444,7 @@ function resumePlayingRunForCardProbe(state, player) {
     const liveCount = (state.enemies || []).filter((e) => e && e.hp > 0).length;
     state.run.objective.defeatedEnemies = 0;
     state.run.objective.totalEnemies = Math.max(liveCount, 1);
+    delete state.run.objective.activeEnemyCount;
   }
   if (player) {
     player.dead = false;
@@ -936,8 +957,7 @@ function applyDebugScenario(socket, name) {
         || !state.run?.encounter) {
         return { ok: false, reason: 'Requires arena_trials Tier 2 stage-boss run' };
       }
-      const bossId = state.run.encounter.bossEnemyId;
-      if (!areAllNonBossEnemiesDefeated(state, bossId)) {
+      if (liveArenaTrialsAdds(state).length > 0) {
         return { ok: false, reason: 'Adds must be cleared before boss approach' };
       }
       if (state.run.encounter.phase !== 'dormant') {
@@ -1069,6 +1089,25 @@ function applyDebugScenario(socket, name) {
 
       state.enemies = state.enemies || [];
       state.loot = state.loot || [];
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
+    if (name === 'passage-lock-chain') {
+      // training_caverns Initiate Vault with two chained wave-gated passages (rooms 0→1→2).
+      // Reachable normally by selecting Initiate Vault on the quest board and deploying;
+      // seed 1 yields the three-room chain used in passage_lock_chain.test.js.
+      setupTrainingCavernsTier1Deploy(lobby, state, player, 1);
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
@@ -3825,6 +3864,7 @@ function applyDebugScenario(socket, name) {
       }
     }
 
+    maybeAdoptSyntheticDefeatEnemies(state);
     syncRunObjectiveToEnemies();
 
     broadcastLobbyUpdate(lobby);
@@ -3854,13 +3894,16 @@ function nudgeDebugBossApproachPlayers(state) {
   if (!state || state.gamePhase !== 'playing' || !state.run?.encounter) return;
   if (!isEncounterDormant(state.run)) return;
   const bossId = state.run.encounter.bossEnemyId;
-  if (!bossId || !areAllNonBossEnemiesDefeated(state, bossId)) return;
   const anchor = resolveEncounterAnchor(state.run, state);
   if (!anchor) return;
 
   const now = Date.now();
   for (const player of Object.values(state.players)) {
     if (!player || !BOSS_APPROACH_NUDGE_SCENARIOS.has(player.debugScenario)) continue;
+    const addsCleared = player.debugScenario === 'arena-trials-boss-approach'
+      ? liveArenaTrialsAdds(state).length === 0
+      : bossId && areAllNonBossEnemiesDefeated(state, bossId);
+    if (!addsCleared) continue;
     if (player.debugScenarioNudgeAfter && now < player.debugScenarioNudgeAfter) continue;
     const dx = anchor.x - player.x;
     const dz = anchor.z - player.z;

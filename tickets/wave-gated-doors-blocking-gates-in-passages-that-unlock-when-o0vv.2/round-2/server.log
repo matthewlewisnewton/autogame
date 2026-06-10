@@ -1,0 +1,17 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/data
+Server listening on port 3001
+Player connected: socket=5BsYTOQdrt-ue3P4AAAB, playerId=23dbed0d-a593-45b0-a58f-d0d60cd11cd8
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=5f5b7ba7-3b22-404d-8fb0-33bdd99a77ac value=6
+[telepipe] placed at (-9.0, 27.0) by 23dbed0d-a593-45b0-a58f-d0d60cd11cd8
+[telepipe] player 23dbed0d-a593-45b0-a58f-d0d60cd11cd8 extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault
+[run] checkpoint restored
+Player disconnected: 5BsYTOQdrt-ue3P4AAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

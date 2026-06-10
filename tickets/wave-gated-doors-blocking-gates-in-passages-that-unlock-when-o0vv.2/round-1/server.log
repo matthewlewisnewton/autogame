@@ -1,0 +1,529 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/data
+Server listening on port 3001
+Player connected: socket=saehSy_bRpzjwJ8XAAAB, playerId=f1f3696a-9755-46d1-a18f-8fd2d1c23531
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[telepipe] placed at (-9.0, 27.0) by f1f3696a-9755-46d1-a18f-8fd2d1c23531
+[telepipe] player f1f3696a-9755-46d1-a18f-8fd2d1c23531 extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault
+[run] checkpoint restored
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+Player disconnected: saehSy_bRpzjwJ8XAAAB
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[gameLoop] lobby 030200c1 tick failed: TypeError: entered.has is not a function
+    at tickDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/questDialogue.js:193:19)
+    at updateQuestDialogueRoomEntry (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/progression.js:1345:3)
+    at /home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1458:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:367:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:1449:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/wave-gated-doors-blocking-gates-in-passages-that-unlock-when-o0vv.2/game/server/index.js:932:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

@@ -116,10 +116,19 @@ function ensureDialogueFired(run) {
   return run.dialogueFired;
 }
 
+function ensureDialogueRoomsEntered(run) {
+  if (!run._dialogueRoomsEntered) {
+    run._dialogueRoomsEntered = new Set();
+  } else if (Array.isArray(run._dialogueRoomsEntered)) {
+    run._dialogueRoomsEntered = new Set(run._dialogueRoomsEntered);
+  }
+  return run._dialogueRoomsEntered;
+}
+
 function initDialogueState(run) {
   if (!run) return;
   ensureDialogueFired(run);
-  run._dialogueRoomsEntered = run._dialogueRoomsEntered || new Set();
+  ensureDialogueRoomsEntered(run);
 }
 
 function getDialogueBeacons(quest) {

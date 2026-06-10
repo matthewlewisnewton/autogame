@@ -1601,7 +1601,7 @@ function applyHitFlashes(data, ctx, accentHex) {
 		const mesh = meshes[hit.enemyId];
 		if (!mesh) continue;
 		const flashColor = hit.frozenShatter ? 0x7dd3fc : (accentHex ?? 0xffffff);
-		ctx.flashMesh(mesh, flashColor, hit.frozenShatter ? 350 : 200);
+		ctx.flashMesh(mesh, flashColor, hit.frozenShatter ? 350 : 200, hit.enemyId);
 	}
 }
 

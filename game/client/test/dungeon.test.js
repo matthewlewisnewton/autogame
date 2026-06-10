@@ -21,6 +21,8 @@ import {
 	getSlipperyFloorMaterial,
 	getFireCavernBandFloorHex,
 	getFireCavernBandMaterials,
+	getEntryRoomMaterialColors,
+	getEntryRoomMaterials,
 	LARGE_ROOM_MIN_SIZE,
 	FLOOR_Y,
 	WALL_HEIGHT,
@@ -31,8 +33,13 @@ import {
 	buildSpireEdgeHazardMesh,
 	buildCanyonCliffLipMesh,
 	buildCoverMesh,
+	buildEntryDecorMesh,
 } from '../dungeon.js';
-import { generateLayout } from '../../server/dungeon.js';
+import { generateLayout, questLayoutSeed } from '../../server/dungeon.js';
+import {
+	getLayoutProfileForQuest,
+	getLayoutGenerationOptions,
+} from '../../server/quests.js';
 import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } from '../../shared/floorSampling.esm.js';
 import * as THREE from 'three';
 
@@ -61,6 +68,38 @@ function findRoomFloorMesh(meshes, room) {
 		m.position.x === room.x && m.position.z === room.z &&
 		m.geometry?.parameters?.height === 0.1
 	);
+}
+
+function findRoomWallMesh(meshes, room) {
+	const walls = room.walls || [];
+	if (walls.length === 0) return undefined;
+	const wall = walls[0];
+	return meshes.find(m =>
+		m.geometry?.parameters?.height === WALL_HEIGHT &&
+		Math.abs(m.position.x - wall.x) < 0.01 &&
+		Math.abs(m.position.z - wall.z) < 0.01
+	);
+}
+
+function layoutForQuestTier(questId, tier = 1) {
+	return generateLayout(
+		questLayoutSeed(questId, tier),
+		getLayoutProfileForQuest(questId, tier),
+		getLayoutGenerationOptions(questId, tier),
+	);
+}
+
+/** @returns {{ floorHex: number, wallHex: number, decorTypes: string[] }} */
+function collectStartRoomAppearance(layout) {
+	const startRoom = layout.rooms.find(r => r.role === 'start');
+	const { meshes } = buildDungeon(mockScene(), layout);
+	const startFloor = findRoomFloorMesh(meshes, startRoom);
+	const startWall = findRoomWallMesh(meshes, startRoom);
+	return {
+		floorHex: startFloor.material.color.getHex(),
+		wallHex: startWall.material.color.getHex(),
+		decorTypes: [...new Set((layout.entryDecor || []).map(d => d.type))],
+	};
 }
 
 describe('profile material palette', () => {
@@ -169,6 +208,68 @@ describe('profile material palette', () => {
 		expect(openWall).toBeDefined();
 		expect(crowdedWall).toBeDefined();
 		expect(openWall.material.color.getHex()).not.toBe(crowdedWall.material.color.getHex());
+	});
+});
+
+describe('entry room palette (per-biome start tinting)', () => {
+	it('getEntryRoomMaterialColors returns three mutually distinct floor hex values', () => {
+		const ice = getEntryRoomMaterialColors('ice-cavern');
+		const fire = getEntryRoomMaterialColors('fire-cavern');
+		const crowded = getEntryRoomMaterialColors('crowded');
+		expect(ice).toEqual({ floor: 0x4a6278, wall: 0xb8d4e8 });
+		expect(fire).toEqual({ floor: 0x2a1818, wall: 0xc45020 });
+		expect(crowded).toEqual({ floor: 0x1e2838, wall: 0x5a6a42 });
+		expect(ice.floor).not.toBe(fire.floor);
+		expect(ice.floor).not.toBe(crowded.floor);
+		expect(fire.floor).not.toBe(crowded.floor);
+	});
+
+	it('caches entry room materials per profile', () => {
+		const a = getEntryRoomMaterials('ice-cavern');
+		const b = getEntryRoomMaterials('ice-cavern');
+		expect(a.floor).toBe(b.floor);
+		expect(a.wall).toBe(b.wall);
+	});
+
+	it('buildDungeon start-room floor hex differs across ice-cavern, fire-cavern, and crowded (seed 42)', () => {
+		const seed = 42;
+		const profiles = ['ice-cavern', 'fire-cavern', 'crowded'];
+		const startFloorHexes = profiles.map((profile) => {
+			const layout = generateLayout(seed, profile);
+			const startRoom = layout.rooms.find(r => r.role === 'start');
+			expect(startRoom).toBeDefined();
+			const { meshes } = buildDungeon(mockScene(), layout);
+			const startFloor = findRoomFloorMesh(meshes, startRoom);
+			expect(startFloor).toBeDefined();
+			return startFloor.material.color.getHex();
+		});
+		expect(new Set(startFloorHexes).size).toBe(3);
+		for (const profile of profiles) {
+			const entryHex = getEntryRoomMaterialColors(profile).floor;
+			const layout = generateLayout(seed, profile);
+			const startRoom = layout.rooms.find(r => r.role === 'start');
+			const { meshes } = buildDungeon(mockScene(), layout);
+			const startFloor = findRoomFloorMesh(meshes, startRoom);
+			expect(startFloor.material.color.getHex()).toBe(entryHex);
+		}
+	});
+
+	it('non-start rooms do not use entry palette on ice-cavern and fire-cavern', () => {
+		const iceLayout = generateLayout(42, 'ice-cavern');
+		const iceStart = iceLayout.rooms.find(r => r.role === 'start');
+		const iceTreasure = iceLayout.rooms.find(r => r.role === 'treasure');
+		const iceResult = buildDungeon(mockScene(), iceLayout);
+		const iceEntryHex = getEntryRoomMaterialColors('ice-cavern').floor;
+		expect(findRoomFloorMesh(iceResult.meshes, iceStart).material.color.getHex()).toBe(iceEntryHex);
+		expect(findRoomFloorMesh(iceResult.meshes, iceTreasure).material.color.getHex()).not.toBe(iceEntryHex);
+
+		const fireLayout = generateLayout(42, 'fire-cavern');
+		const fireStart = fireLayout.rooms.find(r => r.role === 'start');
+		const fireTreasure = fireLayout.rooms.find(r => r.role === 'treasure');
+		const fireResult = buildDungeon(mockScene(), fireLayout);
+		const fireEntryHex = getEntryRoomMaterialColors('fire-cavern').floor;
+		expect(findRoomFloorMesh(fireResult.meshes, fireStart).material.color.getHex()).toBe(fireEntryHex);
+		expect(findRoomFloorMesh(fireResult.meshes, fireTreasure).material.color.getHex()).not.toBe(fireEntryHex);
 	});
 });
 
@@ -1013,7 +1114,7 @@ describe('fire-cavern cover, floors & treasure marker', () => {
 
 	it('server-generated seed 42: rim spawn floor Y exceeds treasure marker Y', () => {
 		const layout = generateLayout(42, 'fire-cavern');
-		const rim = layout.rooms.find(r => r.band === 'rim');
+		const rim = layout.rooms.find(r => r.role === 'start');
 		const treasureRoom = layout.rooms.find(r => r.role === 'treasure');
 		const result = buildDungeon(mockScene(), layout);
 		const marker = findTreasureMarker(result.meshes);
@@ -1040,7 +1141,7 @@ describe('fire-cavern cover, floors & treasure marker', () => {
 
 	it('applies distinct rim and basin floor materials on server-generated fire-cavern', () => {
 		const layout = generateLayout(42, 'fire-cavern');
-		const rim = layout.rooms.find(r => r.band === 'rim');
+		const rim = layout.rooms.find(r => r.role === 'start');
 		const basin = layout.rooms.find(r => r.band === 'basin');
 		const result = buildDungeon(mockScene(), layout);
 		const rimFloor = findRoomFloorMesh(result.meshes, rim);
@@ -1555,12 +1656,16 @@ describe('open-plaza perimeter decor', () => {
 		);
 	});
 
-	it('layouts without perimeterDecor render unchanged (no decor groups)', () => {
+	it('layouts without perimeterDecor render unchanged (no perimeter decor groups)', () => {
 		const layout = generateLayout(42, 'crowded');
 		expect(layout.perimeterDecor).toBeUndefined();
 		const scene = mockScene();
 		buildDungeon(scene, layout);
-		expect(scene.added.filter(o => o.userData?.decorType)).toHaveLength(0);
+		const perimeterTypes = new Set(['arena_banner', 'arena_tier']);
+		const perimeterDecorGroups = scene.added.filter(o =>
+			o.userData?.decorType && perimeterTypes.has(o.userData.decorType)
+		);
+		expect(perimeterDecorGroups).toHaveLength(0);
 	});
 
 	it('buildWallColliders ignores perimeter decor', () => {
@@ -1639,6 +1744,78 @@ describe('open-plaza center ring floor markings', () => {
 		const withMarkings = buildWallColliders(layout);
 		const withoutMarkings = buildWallColliders({ ...layout, floorMarkings: [] });
 		expect(withMarkings).toEqual(withoutMarkings);
+	});
+});
+
+describe('entry room decor rendering', () => {
+	it('buildEntryDecorMesh sets decorType on each decor kind', () => {
+		const iceMats = { ...getEntryRoomMaterials('ice-cavern'), accent: getProfileMaterials('ice-cavern').accent };
+		const fireMats = { ...getEntryRoomMaterials('fire-cavern'), accent: getProfileMaterials('fire-cavern').accent };
+		const crowdedMats = { ...getEntryRoomMaterials('crowded'), accent: getProfileMaterials('crowded').accent };
+		expect(buildEntryDecorMesh('icicle_cluster', iceMats).userData.decorType).toBe('icicle_cluster');
+		expect(buildEntryDecorMesh('ember_vent', fireMats).userData.decorType).toBe('ember_vent');
+		expect(buildEntryDecorMesh('vault_rubble', crowdedMats).userData.decorType).toBe('vault_rubble');
+	});
+
+	it('buildDungeon decor groups carry decorType matching layout entryDecor (seed 42)', () => {
+		const profiles = [
+			{ profile: 'ice-cavern', type: 'icicle_cluster' },
+			{ profile: 'fire-cavern', type: 'ember_vent' },
+			{ profile: 'crowded', type: 'vault_rubble' },
+		];
+		for (const { profile, type } of profiles) {
+			const layout = generateLayout(42, profile);
+			expect(layout.entryDecor?.length).toBeGreaterThanOrEqual(2);
+			const scene = mockScene();
+			buildDungeon(scene, layout);
+			const decorGroups = scene.added.filter(o => o.userData?.decorType);
+			expect(decorGroups).toHaveLength(layout.entryDecor.length);
+			expect(decorGroups.every(g => g.userData.decorType === type)).toBe(true);
+			for (const d of layout.entryDecor) {
+				const group = decorGroups.find(g =>
+					Math.abs(g.position.x - d.x) < 1e-6 && Math.abs(g.position.z - d.z) < 1e-6
+				);
+				expect(group).toBeDefined();
+				expect(group.userData.decorType).toBe(d.type);
+			}
+		}
+	});
+
+	it('buildWallColliders ignores entry decor', () => {
+		const layout = generateLayout(42, 'crowded');
+		expect(layout.entryDecor?.length).toBeGreaterThanOrEqual(2);
+		const withDecor = buildWallColliders(layout);
+		const withoutDecor = buildWallColliders({ ...layout, entryDecor: [] });
+		expect(withDecor).toEqual(withoutDecor);
+	});
+});
+
+describe('cross-quest entry room distinguishability (tier 1)', () => {
+	const TIER = 1;
+	const QUEST_CASES = [
+		{ questId: 'frost_crossing', decorType: 'icicle_cluster' },
+		{ questId: 'ember_descent', decorType: 'ember_vent' },
+		{ questId: 'training_caverns', decorType: 'vault_rubble' },
+	];
+
+	it('start-room floor/wall colors and entry decor differ across frost_crossing, ember_descent, and training_caverns', () => {
+		const appearances = Object.fromEntries(
+			QUEST_CASES.map(({ questId }) => [
+				questId,
+				collectStartRoomAppearance(layoutForQuestTier(questId, TIER)),
+			]),
+		);
+
+		const frost = appearances.frost_crossing;
+		const ember = appearances.ember_descent;
+		const vault = appearances.training_caverns;
+
+		expect(new Set([frost.floorHex, ember.floorHex, vault.floorHex]).size).toBe(3);
+		expect(new Set([frost.wallHex, ember.wallHex, vault.wallHex]).size).toBeGreaterThanOrEqual(2);
+
+		for (const { questId, decorType } of QUEST_CASES) {
+			expect(appearances[questId].decorTypes).toEqual([decorType]);
+		}
 	});
 });
 
