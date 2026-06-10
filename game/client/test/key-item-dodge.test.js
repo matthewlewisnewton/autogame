@@ -80,27 +80,49 @@ describe('key item cooldown HUD', () => {
 		);
 
 		const el = document.getElementById('key-item-indicator');
+		const nameEl = el.querySelector('.key-item-hud-name');
+		const keybindEl = el.querySelector('.key-item-hud-keybind');
 		const cooldownEl = el.querySelector('.key-item-hud-cooldown');
 		window.__updateKeyItemCooldownHud(700);
 		expect(el.classList.contains('cooldown')).toBe(true);
+		expect(el.classList.contains('ready')).toBe(false);
 		expect(cooldownEl.textContent).toMatch(/^0\.[0-9]+$/);
 		expect(cooldownEl.textContent).toBe('0.7');
+		expect(nameEl.textContent).toBe('Dodge Roll');
+		expect(keybindEl.textContent).toBe('E');
 
 		window.__updateKeyItemCooldownHud(0);
 		expect(el.classList.contains('cooldown')).toBe(false);
+		expect(el.classList.contains('ready')).toBe(true);
 		expect(cooldownEl.textContent).toBe('');
 	});
 
-	it('flashKeyItemIndicator adds flash-success then clears after timeout', async () => {
+	it('flashKeyItemIndicator adds flash classes without removing HUD children', async () => {
 		vi.useFakeTimers();
 		await import('../main.js');
 
-		const el = document.getElementById('key-item-indicator');
-		window.__flashKeyItemIndicator('success');
-		expect(el.classList.contains('flash-success')).toBe(true);
+		window.__setKeyItemDefs({
+			dodge_roll: { id: 'dodge_roll', name: 'Dodge Roll', cooldownMs: 800 },
+		});
+		window.__renderKeyItemHudForTest(
+			{ equippedKeyItemId: 'dodge_roll' },
+			'playing',
+		);
 
-		vi.advanceTimersByTime(450);
-		expect(el.classList.contains('flash-success')).toBe(false);
+		const el = document.getElementById('key-item-indicator');
+		const childCount = el.children.length;
+
+		for (const [type, cls] of [
+			['success', 'flash-success'],
+			['cooldown', 'flash-cooldown'],
+			['soft-fail', 'flash-soft-fail'],
+		]) {
+			window.__flashKeyItemIndicator(type);
+			expect(el.classList.contains(cls)).toBe(true);
+			expect(el.children.length).toBe(childCount);
+			vi.advanceTimersByTime(450);
+			expect(el.classList.contains(cls)).toBe(false);
+		}
 	});
 });
 

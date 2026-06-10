@@ -3540,7 +3540,7 @@ function renderKeyItemHud(me, gamePhase) {
 		return;
 	}
 
-	const { icon, nameEl, keybindEl, cooldownEl } = ensureKeyItemHudChildren(root);
+	const { icon, nameEl, keybindEl } = ensureKeyItemHudChildren(root);
 	root.setAttribute('data-key-item-id', equippedId);
 	setKeyItemHudIcon(icon, equippedId);
 	nameEl.textContent = def.name;
@@ -3549,10 +3549,7 @@ function renderKeyItemHud(me, gamePhase) {
 	const { mode } = getHandSlotInputHints();
 	keybindEl.textContent = mode === 'gamepad' ? binding.gamepadHint : binding.keyboard.toUpperCase();
 
-	const remaining = getKeyItemCooldownRemainingMs(me);
-	const onCooldown = remaining > 0;
-	root.classList.toggle('ready', !onCooldown);
-	if (!onCooldown && cooldownEl) cooldownEl.textContent = '';
+	updateKeyItemCooldownHud(getKeyItemCooldownRemainingMs(me));
 }
 
 /** Briefly flash the key-item HUD indicator (success=green, cooldown=red). */
@@ -5335,7 +5332,8 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		})(),
 		keyItemIndicatorText: (() => {
 			const el = document.getElementById('key-item-indicator');
-			return el ? el.textContent : '';
+			const cooldownEl = el?.querySelector('.key-item-hud-cooldown');
+			return cooldownEl ? cooldownEl.textContent : '';
 		})(),
 		players: gameState ? Object.keys(gameState.players).length : 0,
 		squadmates: gameState && myId

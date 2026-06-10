@@ -2156,19 +2156,6 @@ body[data-phase="lobby"] #objective-hud {
   display: flex;
 }
 
-/* Legacy path: main.js still sets countdown text on the root until render logic lands */
-#key-item-indicator.cooldown:not(:has(.key-item-hud-icon)) {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  min-width: 36px;
-  height: 36px;
-  padding: 0;
-  grid-template-columns: unset;
-  grid-template-rows: unset;
-}
-
 /* Ready state — green ring, full visibility */
 #key-item-indicator.ready {
   opacity: 1;
