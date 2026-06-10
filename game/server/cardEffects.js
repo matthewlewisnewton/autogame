@@ -945,7 +945,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           cardDef.damage || 12,
           { attackerId: socket.playerId, originY }
         );
-        spawnInfernoPillarEffect(originX, originZ, cardDef, socket.playerId);
+        spawnInfernoPillarEffect(originX, originZ, cardDef, socket.playerId, { originY });
         cleanupAfterDamage();
 
         consumeSpellSlot();

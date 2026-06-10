@@ -250,6 +250,26 @@ describe('inferno_pillar spherical height integration', () => {
 
 		expect(gameState.enemies[0].hp).toBe(hpBefore);
 	});
+
+	it('DoT tick from production cast damages in-sphere elevated target and skips out-of-sphere at same offset', () => {
+		const def = CARD_DEFS.inferno_pillar;
+		addEnemy('in-sphere', H_OFFSET, 0, 100, IN_SPHERE_Y);
+		addEnemy('out-sphere', H_OFFSET, 0, 100, OUT_SPHERE_Y);
+
+		const caster = setupCardCaster('inferno_pillar', { y: CASTER_Y });
+		caster.cast();
+
+		const inSphere = gameState.enemies.find((e) => e.id === 'in-sphere');
+		const outSphere = gameState.enemies.find((e) => e.id === 'out-sphere');
+		const inSphereHpAfterBurst = inSphere.hp;
+		const outSphereHpAfterBurst = outSphere.hp;
+
+		gameState.areaEffects[0].lastTickAt = Date.now() - def.dotIntervalMs;
+		updateAreaEffects();
+
+		expect(inSphere.hp).toBe(inSphereHpAfterBurst - def.damage);
+		expect(outSphere.hp).toBe(outSphereHpAfterBurst);
+	});
 });
 
 describe('purifying_pulse spherical height integration', () => {
