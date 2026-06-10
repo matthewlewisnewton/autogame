@@ -12,8 +12,9 @@ function getProvider() {
   return provider;
 }
 
+const { normalizePlayerInventory, inventoryToOwnedCards } = require('./inventory');
+
 function extractPersistentData(player) {
-  const { normalizePlayerInventory, inventoryToOwnedCards } = require('../progression');
   normalizePlayerInventory(player);
   return {
     currency: player.currency || 0,
