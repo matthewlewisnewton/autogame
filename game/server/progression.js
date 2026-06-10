@@ -3682,6 +3682,31 @@ function checkAllReadyInner() {
         }
       }
       startDungeonRun();
+      for (const player of connectedPlayers) {
+        if (player.debugScenario === 'frost-crossing-telepipe-ready') {
+          // Telepipe harness walks with 'w' for up to 30s; suppress live waves so
+          // entering the ice band does not spawn Frostmaw and fail the run mid-suspend.
+          const dummy = spawnEnemy(player.x + 2.5, player.z, 'grunt');
+          dummy.hp = 500;
+          dummy.maxHp = 500;
+          dummy.shieldHp = 0;
+          dummy.maxShieldHp = 0;
+          dummy.wanderTarget = { x: dummy.x, z: dummy.z };
+          dummy.y = resolveFloorY(sampleFloorY(_gameState.layout, dummy.x, dummy.z));
+          _gameState.enemies = [dummy];
+          if (_gameState.run?.waveScript?.waves) {
+            for (const wave of _gameState.run.waveScript.waves) {
+              wave.status = 'cleared';
+              wave.spawnedEnemyIds = [];
+            }
+          }
+          syncScriptedDefeatEnemiesActiveCount(_gameState.run, _gameState.enemies);
+          player.debugGodmode = true;
+          player.vx = 0;
+          player.vz = 0;
+          break;
+        }
+      }
       const io = getIoTarget();
       emitLobbyDeploy(io, SERVER_TO_CLIENT.START_GAME);
       emitLobbyDeploy(io, SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());

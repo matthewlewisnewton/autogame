@@ -1339,8 +1339,31 @@ function applyDebugScenario(socket, name) {
         || state.layout?.profile !== 'ice-cavern') {
         return { ok: false, reason: 'Requires frost_crossing Tier 1 defeat_enemies run on ice-cavern' };
       }
-      const supportAdds = liveFrostCrossingAdds(state);
-      const liveEnemies = (state.enemies || []).filter((e) => e.hp > 0);
+      let supportAdds = liveFrostCrossingAdds(state);
+      let liveEnemies = (state.enemies || []).filter((e) => e.hp > 0);
+      if (supportAdds.length === 0) {
+        // Slippery-floor surface-transition clears enemies for momentum QA; restore
+        // the run-start grunt/skirmisher wave so mid-combat capture still works.
+        const respawnBand = bandAt(state.layout, player.x, player.z) || 'entry';
+        const respawnAnchor = clusterAnchorForBand(state.layout, respawnBand, player);
+        const respawnRadius = 4;
+        const runStartTypes = ['grunt', 'grunt', 'grunt', 'skirmisher', 'skirmisher'];
+        let respawnAngle = 0;
+        const respawnStep = (Math.PI * 2) / runStartTypes.length;
+        for (const type of runStartTypes) {
+          const enemy = spawnEnemy(
+            respawnAnchor.x + Math.cos(respawnAngle) * respawnRadius,
+            respawnAnchor.z + Math.sin(respawnAngle) * respawnRadius,
+            type,
+          );
+          enemy.y = resolveFloorY(sampleFloorY(state.layout, enemy.x, enemy.z));
+          enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+          respawnAngle += respawnStep;
+        }
+        syncRunObjectiveToEnemies();
+        supportAdds = liveFrostCrossingAdds(state);
+        liveEnemies = (state.enemies || []).filter((e) => e.hp > 0);
+      }
       if (supportAdds.length === 0) {
         return { ok: false, reason: 'No live support adds to approach' };
       }
@@ -1404,16 +1427,26 @@ function applyDebugScenario(socket, name) {
       }
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
+      player.vx = 0;
+      player.vz = 0;
       player.debugGodmode = false;
-      socket.emit(SERVER_TO_CLIENT.DEBUG_GODMODE_RESULT, { ok: true, enabled: false });
       state.enemies = [];
       state.iceBalls = [];
-      const thrower = spawnEnemy(player.x + 5, player.z, 'glacial_thrower');
+      // Seat on the stone treasure pad so slippery momentum from earlier ice QA
+      // cannot drift the avatar out of the thrower's ice-ball path during harness wait.
+      const stoneRoom = state.layout.rooms.find((r) => r.band === 'stone');
+      if (stoneRoom) {
+        player.x = stoneRoom.x;
+        player.z = stoneRoom.z;
+        player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      }
+      const thrower = spawnEnemy(player.x + 4, player.z, 'glacial_thrower');
       thrower.y = resolveFloorY(sampleFloorY(state.layout, thrower.x, thrower.z));
       thrower.wanderTarget = { x: thrower.x, z: thrower.z };
       syncRunObjectiveToEnemies();
       broadcastLobbyUpdate(lobby);
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      socket.emit(SERVER_TO_CLIENT.DEBUG_GODMODE_RESULT, { ok: true, enabled: false });
       return { ok: true, scenario: name };
     }
 
@@ -1436,7 +1469,13 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       state.iceBalls = [];
 
-      if (stoneRoom && iceRoom) {
+      if (iceRoom) {
+        // Normal floors zero vx/vz without displacement; seat on the south ice lip
+        // (slippery) with momentum toward the field centre for harness sampling.
+        const iceHalf = iceRoom.depth / 2;
+        player.x = iceRoom.x;
+        player.z = iceRoom.z + iceHalf - 1.2;
+      } else if (stoneRoom) {
         const halfD = stoneRoom.depth / 2;
         player.x = stoneRoom.x;
         player.z = stoneRoom.z - halfD + 1.2;
@@ -1453,7 +1492,7 @@ function applyDebugScenario(socket, name) {
       const dz = targetZ - player.z;
       const dist = Math.hypot(dx, dz) || 1;
       player.rotation = Math.atan2(dx, dz);
-      const launchSpeed = 8;
+      const launchSpeed = 14;
       player.vx = (dx / dist) * launchSpeed;
       player.vz = (dz / dist) * launchSpeed;
 

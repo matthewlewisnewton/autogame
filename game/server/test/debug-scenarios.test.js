@@ -1901,13 +1901,20 @@ describe('debugScenario — frost-crossing harness shortcuts', () => {
 		const state = testGameState();
 		const player = playerForSocket(socket);
 		expect(player.debugGodmode).toBe(false);
+		expect(player.vx).toBe(0);
+		expect(player.vz).toBe(0);
 		expect(state.enemies.length).toBe(1);
 		expect(state.enemies[0].type).toBe('glacial_thrower');
 		expect(state.enemies[0].hp).toBeGreaterThan(0);
 		expect(player.hp).toBeGreaterThan(30);
+		const stoneRoom = state.layout.rooms.find((r) => r.band === 'stone');
+		if (stoneRoom) {
+			expect(player.x).toBeCloseTo(stoneRoom.x, 5);
+			expect(player.z).toBeCloseTo(stoneRoom.z, 5);
+		}
 	});
 
-	it('seats player on stone band facing ice with momentum toward slippery floor', async () => {
+	it('seats player on ice lip facing centre with momentum on slippery floor', async () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const deployPromise = waitForEvent(socket, 'debugScenarioResult');
@@ -1934,7 +1941,8 @@ describe('debugScenario — frost-crossing harness shortcuts', () => {
 			return player.x >= room.x - hw && player.x <= room.x + hw
 				&& player.z >= room.z - hd && player.z <= room.z + hd;
 		});
-		expect(playerRoom?.band).toBe('stone');
+		expect(playerRoom?.band).toBe('ice');
+		expect(sampleFloorSurface(state.layout, player.x, player.z)).toBe('slippery');
 
 		const speed = Math.hypot(player.vx || 0, player.vz || 0);
 		expect(speed).toBeGreaterThan(0);

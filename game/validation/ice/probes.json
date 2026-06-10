@@ -1,70 +1,29 @@
 {
-  "ok": true,
-  "preset": "ice",
-  "steps": "full",
-  "outDir": "game/validation/ice",
-  "presetConfig": {
-    "findingsTitle": "Ice level validation findings",
-    "questId": "frost_crossing",
-    "questTier": 1,
-    "objectiveType": "defeat_enemies",
-    "deployScenario": "frost-crossing-tier-1",
-    "layoutProfile": "ice-cavern",
-    "lobbyName": "Ice Level Validation",
-    "nearAddsScenario": "frost-crossing-near-adds",
-    "slipperyFloorScenario": "slippery-floor-lab",
-    "surfaceTransitionScenario": "frost-crossing-surface-transition",
-    "glacialSlowScenario": "frost-crossing-glacial-thrower-slow",
-    "lastEnemyScenario": "frost-crossing-last-enemy",
-    "cardMechanicsScenarios": {
-      "burn": "fireball-ready",
-      "mutualExclusion": "status-mutual-exclusion-ready",
-      "cleanse": "purifying-pulse-ready",
-      "windup": "magma-windup-ready"
+  "floorAlignment": {
+    "levelEntry": {
+      "playerY": 0.5,
+      "floorY": 0.5,
+      "delta": 0,
+      "layoutProfile": "ice-cavern",
+      "band": "entry"
     },
-    "cardBurnScreenshot": "06-card-burn",
-    "telepipeScenario": "frost-crossing-telepipe-ready",
-    "objectiveCompleteScreenshot": "07-objective-complete",
-    "victoryScreenshot": "08-victory",
-    "telepipeBeforeScreenshot": "09-telepipe-before",
-    "telepipeAfterScreenshot": "10-telepipe-after",
-    "addsTimeoutMs": 90000,
-    "bossDefeatTimeoutMs": 180000,
-    "victoryTimeoutMs": 30000
-  },
-  "serverPort": 3238,
-  "clientPort": 5229,
-  "auth": {
-    "username": "playthrough-1781110092141",
-    "connected": true,
-    "lobbyBrowserVisible": true,
-    "harnessPhase": "unknown",
-    "screenshot": "game/validation/ice/01-lobby-browser.png"
-  },
-  "hub": {
-    "hubScreenshot": "game/validation/ice/01-hub.png",
-    "entryScreenshot": "game/validation/ice/02-level-entry.png",
-    "deployScenario": "frost-crossing-tier-1",
-    "deployOk": true,
-    "objectiveType": "defeat_enemies",
-    "layoutProfile": "ice-cavern",
-    "liveEnemyCount": 5,
-    "enemyTypes": [
-      "grunt",
-      "grunt",
-      "grunt",
-      "skirmisher",
-      "skirmisher"
-    ],
-    "floorAlignment": {
-      "levelEntry": {
-        "playerY": 0.5,
-        "floorY": 0.5,
-        "delta": 0,
-        "layoutProfile": "ice-cavern",
-        "band": "entry"
-      }
+    "midCombat": {
+      "playerY": 0.5,
+      "floorY": 0.5,
+      "delta": 0,
+      "layoutProfile": "ice-cavern",
+      "band": "ice"
     }
+  },
+  "afterEnemies": {
+    "runStatus": "victory",
+    "runObjectiveComplete": true,
+    "lastRunSummaryStatus": "victory"
+  },
+  "victory": {
+    "runStatus": "victory",
+    "runObjectiveComplete": true,
+    "lastRunSummaryStatus": "victory"
   },
   "slipperyFloor": {
     "ok": true,
@@ -75,23 +34,6 @@
     "directionChangeWhileSliding": true,
     "enteredSlipperyBand": true,
     "screenshot": "game/validation/ice/03-slippery-floor.png"
-  },
-  "defeatEnemiesCombat": {
-    "midCombatScreenshot": "game/validation/ice/04-mid-combat.png",
-    "preLiveEnemyCount": 5,
-    "postLiveEnemyCount": 1,
-    "enemiesDefeated": true,
-    "probes": {
-      "floorAlignment": {
-        "midCombat": {
-          "playerY": 0.5,
-          "floorY": 0.5,
-          "delta": 0,
-          "layoutProfile": "ice-cavern",
-          "band": "ice"
-        }
-      }
-    }
   },
   "glacialSlow": {
     "glacialSlowApplied": true,
@@ -187,24 +129,7 @@
       }
     }
   },
-  "victory": {
-    "objectiveCompleteScreenshot": "game/validation/ice/07-objective-complete.png",
-    "victoryScreenshot": "game/validation/ice/08-victory.png",
-    "probes": {
-      "afterEnemies": {
-        "runStatus": "victory",
-        "runObjectiveComplete": true,
-        "lastRunSummaryStatus": "victory"
-      },
-      "victory": {
-        "runStatus": "victory",
-        "runObjectiveComplete": true,
-        "lastRunSummaryStatus": "victory"
-      }
-    }
-  },
   "telepipeReset": {
-    "telepipeScenario": "frost-crossing-telepipe-ready",
     "preSuspend": {
       "hp": 60,
       "magicStones": 20,
@@ -294,34 +219,6 @@
       "runId": "51b95dd1-500f-4779-bbfe-ab016b6ef6ac"
     },
     "telepipeVitalsPreserved": true,
-    "cardChargesResetOnFreshSortie": true,
-    "telepipeUpReset": false,
-    "freshRunIdConfirmed": true,
-    "checkpointRestoredInLog": false,
-    "beforeScreenshot": "game/validation/ice/09-telepipe-before.png",
-    "afterScreenshot": "game/validation/ice/10-telepipe-after.png"
-  },
-  "assertions": {
-    "layoutDeployed": true,
-    "enemiesCleared": true,
-    "victoryFired": true,
-    "slipperyFloorOk": true,
-    "glacialSlowApplied": true,
-    "cardMechanicsOk": true,
-    "telepipeVitalsPreserved": true,
     "cardChargesResetOnFreshSortie": true
-  },
-  "screenshots": [
-    "game/validation/ice/01-lobby-browser.png",
-    "game/validation/ice/01-hub.png",
-    "game/validation/ice/02-level-entry.png",
-    "game/validation/ice/03-slippery-floor.png",
-    "game/validation/ice/04-mid-combat.png",
-    "game/validation/ice/05-glacial-slow.png",
-    "game/validation/ice/06-card-burn.png",
-    "game/validation/ice/07-objective-complete.png",
-    "game/validation/ice/08-victory.png",
-    "game/validation/ice/09-telepipe-before.png",
-    "game/validation/ice/10-telepipe-after.png"
-  ]
+  }
 }

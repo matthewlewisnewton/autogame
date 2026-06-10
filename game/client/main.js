@@ -339,10 +339,6 @@ let currentLobbyName = '';
 let lobbyMenuDismissed = false;
 /** When true, showGameLobby() skips hiding the quest board (set by openQuestPanel). */
 let questPanelOpen = false;
-/** Set when the user clicks Create Channel; cleared on lobbyJoined to show #lobby for hosts. */
-let pendingShowLobbyOnJoin = false;
-/** True after the first lobbyJoined this session (create or join). */
-let hasCreatedLobbyThisSession = false;
 /** True after the first extracted-waiting overlay setup; avoids re-showing #lobby each tick. */
 let extractedLobbyOverlayActive = false;
 
@@ -925,13 +921,7 @@ function applyLobbyJoinedData(data) {
 	applyLobbyThemeLabels();
 	const lobbyMe = myId && gameState?.players ? gameState.players[myId] : null;
 	syncVanguardHud(lobbyMe, 'lobby');
-	if (pendingShowLobbyOnJoin) {
-		pendingShowLobbyOnJoin = false;
-		showGameLobby();
-	} else {
-		dismissGameLobby();
-	}
-	hasCreatedLobbyThisSession = true;
+	dismissGameLobby();
 	if (suspendedRunSummary) {
 		renderSuspendedRunBanner(suspendedRunSummary);
 	} else {
@@ -4878,7 +4868,6 @@ if (createLobbyBtnEl) {
 			socket.emit(CLIENT_TO_SERVER.LEAVE_LOBBY);
 			await waitForLobbyBrowserVisible();
 		}
-		pendingShowLobbyOnJoin = !hasCreatedLobbyThisSession;
 		socket.emit(CLIENT_TO_SERVER.CREATE_LOBBY, name ? { name } : {});
 	}
 
