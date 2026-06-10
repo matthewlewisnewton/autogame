@@ -2721,6 +2721,16 @@ function applyDebugScenario(socket, name) {
       state.iceBalls = [];
       const thrower = spawnEnemy(player.x + 6, player.z, 'glacial_thrower');
       thrower.wanderTarget = { x: thrower.x, z: thrower.z };
+    } else if (name === 'permafrost-warden') {
+      // Spawn a Permafrost Warden beside the player for ice-cavern boss mesh,
+      // radial telegraph, and lock-on catalog QA. The same enemy is reachable
+      // normally as the frost_crossing Tier 1 stage boss once the encounter is
+      // wired; this is a deterministic shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const warden = spawnEnemy(player.x + 5, player.z, 'permafrost_warden');
+      warden.wanderTarget = { x: warden.x, z: warden.z };
     } else if (name === 'ember-wraith') {
       // One Ember Wraith in cone-strike range for burning-on-hit QA. The same
       // enemy is reachable on ember_descent runs (or via fire-cavern); shortcut only.

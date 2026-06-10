@@ -604,6 +604,7 @@ export const ENEMY_GEOMETRY = {
 	spawner:    { type: 'octahedron', radius: 0.6, color: 0x00ccaa, emissive: 0x00ccaa, emissiveIntensity: 0.4 },
 	field_medic: { type: 'octahedron', radius: 0.4, color: 0x10b981, emissive: 0x2dd4bf, emissiveIntensity: 0.55 },
 	glacial_thrower: { type: 'cone', radius: 1.0, height: 2.2, segments: 12, color: 0x7dd3fc, emissive: 0x38bdf8, emissiveIntensity: 0.35 },
+	permafrost_warden: { type: 'cone', radius: 1.15, height: 2.5, segments: 14, color: 0x0e7490, emissive: 0x22d3ee, emissiveIntensity: 0.42 },
 	ember_wraith: { type: 'octahedron', radius: 0.35, color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.6 },
 };
 
@@ -618,6 +619,7 @@ export const ENEMY_ATTACK_VISUAL = {
 	spawner:    { style: 'radial' },
 	field_medic: { style: 'projectile', range: 8, color: 0x2dd4bf, emissive: 0x14b8a6, hitWidth: 0.5 },
 	glacial_thrower: { style: 'projectile', range: 7, color: 0x7dd3fc, emissive: 0x38bdf8, hitWidth: 0.9 },
+	permafrost_warden: { style: 'radial', range: 4.5, color: 0x67e8f9, emissive: 0x0891b2 },
 	ember_wraith: { style: 'cone', coneAngle: Math.PI / 3, color: 0xff4400, emissive: 0xff2200 },
 };
 
