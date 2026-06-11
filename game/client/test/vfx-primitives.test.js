@@ -423,6 +423,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.aegisSentinelShield);
 		expect(fx.isAegisSentinelShield).toBe(true);
 		expect(fx.radius).toBe(1.5);
 		expect(fx.duration).toBe(MINION_SUMMON_IN_MS);
@@ -471,6 +472,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.aegisSentinelDeploy);
 		expect(fx.isAegisSentinelDeploy).toBe(true);
 		expect(fx.radius).toBe(2.0);
 		expect(fx.duration).toBe(MINION_SUMMON_IN_MS);
@@ -689,6 +691,7 @@ describe('shared VFX primitives', () => {
 		expect(scorch.mesh.material.color.getHex()).toBe(0xfb923c);
 		expect(scorch.mesh.material.emissive.getHex()).toBe(0xff3b00);
 
+		expect(cone.kind).toBe(ATTACK_EFFECT_KINDS.dragonsBreathCone);
 		expect(cone.isDragonsBreathCone).toBe(true);
 		expect(cone.range).toBe(7);
 		expect(cone.duration).toBe(2250);
@@ -717,6 +720,7 @@ describe('shared VFX primitives', () => {
 		const inflow = effects.find((fx) => fx.isGravityWellInflow);
 
 		expect(ring).toBeDefined();
+		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.gravityWellPull);
 		expect(ring.isGravityWellPull).toBe(true);
 		expect(ring.pullRadius).toBe(12);
 		expect(ring.duration).toBe(ATTACK_EFFECT_DURATION);
@@ -724,11 +728,13 @@ describe('shared VFX primitives', () => {
 		expect(ring.mesh.material.emissive.getHex()).toBe(0xa855f7);
 
 		expect(voidCore).toBeDefined();
+		expect(voidCore.kind).toBe(ATTACK_EFFECT_KINDS.gravityWellPull);
 		expect(voidCore.isGravityWellPull).toBe(true);
 		expect(voidCore.duration).toBe(ATTACK_EFFECT_DURATION);
 		expect(voidCore.mesh.material.color.getHex()).toBe(0x581c87);
 
 		expect(inflow).toBeDefined();
+		expect(inflow.kind).toBe(ATTACK_EFFECT_KINDS.gravityWellPull);
 		expect(inflow.isGravityWellPull).toBe(true);
 		expect(inflow.duration).toBe(ATTACK_EFFECT_DURATION);
 		expect(inflow.mesh.children.length).toBeGreaterThanOrEqual(2);
@@ -804,6 +810,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.mirrorWardShell);
 		expect(fx.isMirrorWardShell).toBe(true);
 		expect(fx.wardRadius).toBe(11);
 		expect(fx.duration).toBe(SUMMON_EFFECT_DURATION);
@@ -883,6 +890,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.eventHorizonEffect);
 		expect(fx.isEventHorizonEffect).toBe(true);
 		expect(fx.pullRadius).toBe(12);
 		expect(fx.centerRadius).toBe(2.5);
@@ -943,6 +951,7 @@ describe('shared VFX primitives', () => {
 		expect(ring.mesh.material.emissive.getHex()).toBe(0x0ea5e9);
 
 		expect(shards).toBeDefined();
+		expect(shards.kind).toBe(ATTACK_EFFECT_KINDS.glacierRuptureShards);
 		expect(shards.mesh.children.length).toBeGreaterThanOrEqual(3);
 		expect(Number.isFinite(shards.duration)).toBe(true);
 		expect(shards.duration).toBeGreaterThan(0);
@@ -1037,6 +1046,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.solarEdgeImpact);
 		expect(fx.isSolarEdgeImpact).toBe(true);
 		expect(fx.duration).toBe(ATTACK_EFFECT_DURATION);
 		expect(Number.isFinite(fx.duration)).toBe(true);
