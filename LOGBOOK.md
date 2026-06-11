@@ -8158,6 +8158,29 @@ None blocking. One minor nit recorded in nits.md (overlapping per-hit spark
 sources on the shockwave). It does not affect correctness or the verdict.
 
 
+## v0.443 — Shared: sampleFloorY missing null-layout guard and floorCorners fallback (crashes client prediction AND server tick)  (2026-06-11 02:22:26)
+
+## Design & regression check
+
+- **design.md:** Floor geometry section documents `sampleFloorY()` as the canonical walkable-surface height function in `shared/floorSampling.esm.js`. The fix hardens that function without changing its contract for valid layouts.
+- **requirements.md / foundation:** No regressions observed. Change is defensive only; no gameplay, networking, or persistence behavior altered for normal runs.
+- **Integration:** Open-plaza platform precedence, room bilinear interpolation, and `resolveFloorY` null-coalescing remain consistent. Server tick and client prediction paths that call `sampleFloorY(layout, …)` with a possibly-null `layout` are now safe.
+
+## Debug scenarios
+
+Not applicable — this ticket did not add or modify any `?debugScenario=` shortcuts.
+
+## Code quality
+
+- Minimal, focused diff (one production file + mirrored tests).
+- No dead code, no console errors in capture, no page errors.
+- Naming and fallback style match the existing room-branch pattern.
+
+## Remaining gaps
+
+None. All acceptance criteria are fully and robustly satisfied; the captured run proves the game is healthy.
+
+
 ## v0.444 — Client: extract a booth module factory — boothDeck.js and boothShop.js are line-for-line copy-paste  (2026-06-11 02:47:45)
 
 
