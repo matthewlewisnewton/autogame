@@ -1,0 +1,21 @@
+## Review complete
+
+**Verdict: PASS**
+
+### Runtime
+- `metrics.json`: `"ok": true`, empty `pageerrors`
+- `console.log`: clean (no fatals/pageerrors; benign 409 on register)
+
+### Acceptance criteria
+All three collision scenarios are addressed via `#top-right-hud-stack` — a fixed flex column below the toolbar (`--top-right-hud-stack-top: 60px`):
+
+1. **Key-item badge vs toolbar** — confirmed in capture (`02-after-w.png`, `04-after-dodge.png`) and regression tests
+2. **Lock-on panel vs comms log** — vertical stack ordering; covered by `top-right-hud-layout.test.js` at 1280×800 and 1920×1080
+3. **Quest comms toast vs log** — toast inserted into stack above `#quest-comms-log`; tested and visible in capture
+
+332 vitest tests pass, including 12 new layout regression tests.
+
+### Files written
+- `tickets/.../round-1/review.md` — full assessment
+- `tickets/.../round-1/nits.md` — non-blocking harness capture gaps (no lock-on screenshot, no 1920×1080 screenshot)
+- No `gaps.md` (PASS only)

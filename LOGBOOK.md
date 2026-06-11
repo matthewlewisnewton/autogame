@@ -8570,3 +8570,26 @@ the natural-trigger path (server test) and the validation debug-scenario path
 separately.
 
 
+
+## v0.464 — hud: top-right corner collision — key-item badge overlaps toolbar buttons; lock-on panel overlaps comms log  (2026-06-11 10:42:22)
+
+
+## Debug scenarios
+
+No new or modified `?debugScenario=` shortcuts. Existing test hooks (`__showQuestDialogueForTest`, etc.) are dev-only and do not alter normal quest dialogue flow.
+
+---
+
+## Code quality
+
+- Clean separation: stack scaffold (HTML/CSS), toast anchoring (main.js), regression tests (dedicated file).
+- Removed competing absolute positions and z-index arms race between lock-on/comms/key-item.
+- Fallback in `showQuestCommsToast` appends to `document.body` if stack elements missing — defensive, unlikely in production DOM.
+- No dead code or obvious bugs introduced.
+
+---
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are met with automated overlap regression coverage at 1280×800 and 1920×1080, corroborated by in-run capture showing toolbar clearance and comms stacking.
+

@@ -184,3 +184,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [407-cleanup-level-settings-money-this-run-and-return-lines-show-em-dash-zcss](tickets/407-cleanup-level-settings-money-this-run-and-return-lines-show-em-dash-zcss/)
 - [ ] [408-cleanup-medic-heal-button-silently-disabled-when-the-player-cannot-a-y199](tickets/408-cleanup-medic-heal-button-silently-disabled-when-the-player-cannot-a-y199/)
 - [ ] [406-cleanup-encounters-boss-encounter-hud-never-appeared-in-any-tested-f-0xrv](tickets/406-cleanup-encounters-boss-encounter-hud-never-appeared-in-any-tested-f-0xrv/)
+- [ ] [409-cleanup-hud-top-right-corner-collision-key-item-badge-overlaps-toolb-ihb5](tickets/409-cleanup-hud-top-right-corner-collision-key-item-badge-overlaps-toolb-ihb5/)

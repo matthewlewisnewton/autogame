@@ -1,0 +1,15 @@
+Broke the top-level HUD collision ticket into **4 sub-tickets** in dependency order:
+
+1. **01 — Stack scaffold + toolbar clearance** — `#top-right-hud-stack` wrapper; move `#key-item-indicator` below the toolbar band.
+2. **02 — Lock-on + comms log stack** — Move `#lock-on-info-panel` and `#quest-comms-log` into the flex column so they no longer share `top: 44px` / `top: 92px`.
+3. **03 — Quest comms toast anchor** — Anchor `.quest-comms-toast` in the top-right column above the log instead of center-top.
+4. **04 — Regression tests** — Vitest overlap coverage at 1280×800 and 1920×1080 for all three repro scenarios.
+
+All use **code** verification (layout/DOM/logic checks, not screenshot-only QA).
+
+**Created sub-ticket folders:**
+
+- `/home/matt/workspace/.autogame-worktrees/hud-top-right-corner-collision-key-item-badge-overlaps-toolb-ihb5/tickets/hud-top-right-corner-collision-key-item-badge-overlaps-toolb-ihb5/subtickets/01-top-right-hud-stack-and-toolbar-clearance`
+- `/home/matt/workspace/.autogame-worktrees/hud-top-right-corner-collision-key-item-badge-overlaps-toolb-ihb5/tickets/hud-top-right-corner-collision-key-item-badge-overlaps-toolb-ihb5/subtickets/02-lock-on-panel-comms-log-stack`
+- `/home/matt/workspace/.autogame-worktrees/hud-top-right-corner-collision-key-item-badge-overlaps-toolb-ihb5/tickets/hud-top-right-corner-collision-key-item-badge-overlaps-toolb-ihb5/subtickets/03-quest-comms-toast-anchor`
+- `/home/matt/workspace/.autogame-worktrees/hud-top-right-corner-collision-key-item-badge-overlaps-toolb-ihb5/tickets/hud-top-right-corner-collision-key-item-badge-overlaps-toolb-ihb5/subtickets/04-top-right-hud-collision-regression-tests`
