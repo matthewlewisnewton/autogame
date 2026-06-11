@@ -8134,3 +8134,26 @@ Vitest: **303/303 passed** (`coverage.log`). No new unit test for the registrati
 
 None blocking. All acceptance criteria are satisfied; runtime capture is clean.
 
+
+## v0.448 — Server: auth rate-limit buckets grow without bound (slow memory exhaustion)  (2026-06-11 04:19:16)
+
+
+## Design & regression
+
+- **design.md:** No conflict. Server-side auth memory hygiene; no gameplay or client changes.
+- **requirements.md foundation:** No regressions observed. Auth overlay, JWT socket gate, and lobby/deploy flow all exercised in capture.
+- **Debug scenarios:** None added or modified — N/A.
+
+## Code quality
+
+- Focused diff (~90 lines production, ~75 lines tests across `auth.js` and `index.js`).
+- Idempotent start/stop, safe Map iteration during delete, exports scoped for tests (`pruneExpiredBuckets`, `getRateLimitSweepInterval`, `_rateLimitBuckets`).
+- Sub-ticket timer-ordering fix is correct and covered by the interval test.
+- No dead code or obvious bugs in the pruning path.
+
+**Minor observation (non-blocking):** A one-shot unique `action:ip:username` key can linger up to ~window + sweep interval (~120s with defaults) before the timer removes it, since `isRateLimited` only replaces a bucket when the same key recurs. This matches the ticket's 60s sweep cadence example and still bounds memory versus unbounded growth.
+
+## Remaining gaps
+
+None. All acceptance criteria are satisfied; runtime capture and tests confirm the fix.
+

@@ -1,0 +1,12 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Done. Created 2 sub-tickets for round 2:
+
+```
+tickets/server-auth-rate-limit-buckets-grow-without-bound-slow-memor-m5h0/subtickets/01-fix-sweep-timer-ordering/ticket.md
+tickets/server-auth-rate-limit-buckets-grow-without-bound-slow-memor-m5h0/subtickets/02-fix-sweep-interval-test/ticket.md
+```
+
+**What changed:**
+- Deleted the 2 failed round-1 sub-ticket folders (`01-add-expiry-sweep`, `02-test-pruning`) — they implemented the sweep logic but the ordering bug meant it never ran in production
+- **01-fix-sweep-timer-ordering** — moves `startRateLimitSweep()` from line ~1672 (before `clearAllTimers()`) to after `restartBackgroundTimers()` at line ~1730
+- **02-fix-sweep-interval-test** — fixes the interval test to verify the sweep survives `startServer()` instead of manually re-calling `startRateLimitSweep()` (which masked the bug)

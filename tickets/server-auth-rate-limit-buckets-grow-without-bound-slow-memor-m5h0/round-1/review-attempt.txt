@@ -1,0 +1,24 @@
+## Review complete — **VERDICT: FAIL**
+
+The game **runs cleanly** (`metrics.json` `ok: true`, no `pageerrors`, no fatal console errors). Auth and gameplay smoke capture succeeded.
+
+The ticket **does not pass** because of one blocking integration bug:
+
+### Blocking gap
+
+`startRateLimitSweep()` is called in `startServer()` **before** `clearAllTimers()`, which immediately calls `stopRateLimitSweep()`. `restartBackgroundTimers()` does not restart the auth sweep, so the periodic prune **never runs on a live server**. The original unbounded Map growth from expired, never-revisited keys is still present in production.
+
+**Fix:** Move `startRateLimitSweep()` to after `clearAllTimers()` / `restartBackgroundTimers()` in `game/server/index.js`.
+
+### What works
+
+- `pruneExpiredBuckets()` logic is correct and well-tested in isolation (3 unit tests)
+- Active-window rate limiting is unchanged
+- No design/requirements regressions; no debug scenarios touched
+- Full test suite passes (3974 tests)
+
+### Files written
+
+- `round-1/review.md` — full assessment
+- `round-1/gaps.md` — single actionable remediation item
+- `round-1/nits.md` — suggestion to strengthen the interval test so it catches this ordering bug

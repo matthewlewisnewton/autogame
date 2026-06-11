@@ -1,0 +1,11 @@
+## Review complete
+
+**Verdict: PASS**
+
+Wrote the full assessment to `tickets/server-auth-rate-limit-buckets-grow-without-bound-slow-memor-m5h0/round-2/review.md`.
+
+**Runtime:** `metrics.json` has `"ok": true` and empty `pageerrors`; `console.log` has no `pageerror` or `[fatal]` lines. The capture shows a normal two-player lobby → dungeon flow.
+
+**Implementation:** Four commits add a 60s `pruneExpiredBuckets` sweep in `game/server/auth.js`, wire it through `startServer()` after `clearAllTimers()` / `restartBackgroundTimers()`, and cover it with unit tests in `auth.test.js`. Active-window rate limiting is unchanged.
+
+**No `gaps.md`** (PASS only). **No `nits.md`** — nothing worth a separate backlog item.
