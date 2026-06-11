@@ -21,6 +21,7 @@ function makeCtx(overrides = {}) {
 		spawnAttackEffect: record('spawnAttackEffect'),
 		spawnSummonEffect: record('spawnSummonEffect'),
 		spawnDivineGraceEffect: record('spawnDivineGraceEffect'),
+		spawnRestorationBeaconEffect: record('spawnRestorationBeaconEffect'),
 		spawnEventHorizonEffect: record('spawnEventHorizonEffect'),
 		spawnPurifyingPulseHealRing: record('spawnPurifyingPulseHealRing'),
 		spawnCleanseBurstEffect: record('spawnCleanseBurstEffect'),
@@ -1514,7 +1515,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(fontHelpers).not.toEqual(graceHelpers);
 	});
 
-	it('healing_font renders a green telegraph ring and burst without divine grace', () => {
+	it('healing_font spawns the emerald beacon effect (column + heal ring + motes) without divine grace', () => {
 		const ctx = makeCtx({ myId: 'me' });
 		renderCardUsed({
 			cardId: 'healing_font',
@@ -1524,16 +1525,44 @@ describe('renderCardUsed() — spell dispatch', () => {
 			playerId: 'me',
 			hits: [],
 		}, ctx);
-		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
-		expect(ring).toBeDefined();
-		expect(ring[1]).toEqual({ x: 0, z: 0 });
-		expect(ring[2]).toBe(3);
-		expect(ring[3]).toMatchObject({ color: 0x86efac, emissive: 0x4ade80 });
-		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
-		expect(burst).toBeDefined();
-		expect(burst[2]).toMatchObject({ color: 0x86efac, count: 14, spread: 2.0 });
+		const beacon = ctx._calls.find((c) => c[0] === 'spawnRestorationBeaconEffect');
+		expect(beacon).toBeDefined();
+		expect(beacon[1]).toEqual({ x: 0, z: 0 });
+		expect(beacon[2]).toBe(3);
+		// Restoration Beacon must not reuse Sanctum Pulse's gold sanctum effect.
 		expect(ctx._calls.some((c) => c[0] === 'spawnDivineGraceEffect')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(true);
+	});
+
+	it('healing_font does not throw when optional ctx spawners are absent', () => {
+		const ctx = makeCtx({ myId: 'me' });
+		// Strip the optional spawners the beacon path guards for.
+		ctx.spawnRestorationBeaconEffect = undefined;
+		ctx.spawnParticleBurst = undefined;
+		expect(() => renderCardUsed({
+			cardId: 'healing_font',
+			origin: { x: 0, z: 0 },
+			radius: 3,
+			hpGained: 6,
+			playerId: 'me',
+			hits: [],
+		}, ctx)).not.toThrow();
+		// Heal sound still gated to the local caster.
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(true);
+	});
+
+	it('healing_font does not play the heal sound for a non-caster', () => {
+		const ctx = makeCtx({ myId: 'me' });
+		renderCardUsed({
+			cardId: 'healing_font',
+			origin: { x: 0, z: 0 },
+			radius: 3,
+			hpGained: 6,
+			playerId: 'someone-else',
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnRestorationBeaconEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
 	});
 
 	it('healing_font does not play heal sound when no HP was gained', () => {
@@ -1557,7 +1586,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 			playerId: 'me',
 			hits: [],
 		}, ctx);
-		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnRestorationBeaconEffect')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
 	});

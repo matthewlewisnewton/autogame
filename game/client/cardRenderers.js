@@ -672,19 +672,23 @@ const DIVINE_GRACE_COLOR = 0xfde68a;
 const DIVINE_GRACE_EMISSIVE = 0xfbbf24;
 
 /**
- * Restoration Beacon: green telegraph ring plus radial heal spark burst at
- * the cast origin. Distinct from Sanctum Pulse's golden sanctum signature.
+ * Restoration Beacon: a vertical emerald beacon pillar of restorative light
+ * rising from the cast origin, plus an expanding ground heal ring and ascending
+ * heal motes (all inside spawnRestorationBeaconEffect). The server resolves the
+ * heal instantly in a single `cardUsed` (no projectile/DoT/wind-up), so every
+ * primitive fires synchronously here — no setTimeout/scheduleAfter. Distinct
+ * from Sanctum Pulse's golden sanctum column signature.
  */
 function renderHealingFont(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
 	const color = getAccentHex(data.cardId) ?? HEALING_FONT_COLOR;
 	const emissive = HEALING_FONT_EMISSIVE;
-	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
-	}
+	ctx.spawnRestorationBeaconEffect?.(origin, data.radius);
+	// Optional emerald accent burst when the beacon effect is wired but the
+	// caller still supplies the shared particle spawner.
 	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.0 });
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 10, spread: 1.6 });
 	}
 	if (data.hpGained > 0 && data.playerId === ctx.myId) ctx.playSound('heal');
 }
