@@ -16,6 +16,7 @@
 //   spawnLegionMarshalRallyEffect(origin, radius, style?) — undead commander rally ring + column
 //   spawnMinionSummonInEffect(origin, style?) — creature minion summon flourish
 //   spawnBatteryAutomatonDeployEffect(origin, style?) — battery mechanical deploy ring + column
+//   spawnBulkheadMaulerDeployEffect(origin, style?) — heavy stone construct deploy ring + column
 //   spawnDivineGraceEffect(origin, radius)
 //   spawnEventHorizonEffect(origin, pullRadius, centerRadius, style?)
 //   spawnPurifyingPulseHealRing(origin, radius, options?) — options: { wave, waveCount } stagger one concentric heal wave
@@ -1319,6 +1320,8 @@ function renderCreatureSummon(data, ctx) {
 
 const BATTERY_AUTOMATON_COLOR = 0xfbbf24;
 const BATTERY_AUTOMATON_EMISSIVE = 0x38bdf8;
+const BULKHEAD_MAULER_COLOR = 0x78716c;
+const BULKHEAD_MAULER_EMISSIVE = 0xf59e0b;
 
 /**
  * Battery Automaton: mechanical deploy ring + electric column composed with the
@@ -1341,6 +1344,34 @@ function renderBatteryAutomaton(data, ctx) {
 	ctx.spawnMinionSummonInEffect(origin, {
 		color: BATTERY_AUTOMATON_COLOR,
 		emissive: BATTERY_AUTOMATON_EMISSIVE,
+		radius: 1.1,
+		burstCount: 10,
+		burstSpread: 1.4,
+	});
+}
+
+/**
+ * Bulkhead Mauler: heavy stone construct deploy ring + rising slab composed with
+ * the shared minion summon-in flourish. Fires synchronously on CARD_USED when
+ * the server reports a new minion id — no wind-up delay. Every optional helper
+ * is guarded so missing primitives never throw.
+ */
+function renderBulkheadMaulerSummon(data, ctx) {
+	if (!data.minionId || data.specialEffect === 'shockwave_sweep') return;
+	if (!ctx.spawnMinionSummonInEffect) return;
+	const origin = originOf(data);
+	const bulkheadStyle = {
+		color: BULKHEAD_MAULER_COLOR,
+		emissive: BULKHEAD_MAULER_EMISSIVE,
+		duration: MINION_SUMMON_IN_MS,
+		radius: 1.4,
+	};
+	if (ctx.spawnBulkheadMaulerDeployEffect) {
+		ctx.spawnBulkheadMaulerDeployEffect(origin, bulkheadStyle);
+	}
+	ctx.spawnMinionSummonInEffect(origin, {
+		color: BULKHEAD_MAULER_COLOR,
+		emissive: BULKHEAD_MAULER_EMISSIVE,
 		radius: 1.1,
 		burstCount: 10,
 		burstSpread: 1.4,
@@ -2401,7 +2432,7 @@ function renderPhaseBeam(data, ctx) {
  * Bulkhead Mauler: short wide shockwave cone in front of the construct.
  */
 function renderShockwaveSweep(data, ctx) {
-	if (!data.origin) return;
+	if (data.specialEffect !== 'shockwave_sweep' || !data.origin) return;
 	const color = getAccentHex(data.cardId) ?? 0x78716c;
 	const emissive = 0xf59e0b;
 	ctx.spawnAttackEffect(originOf(data), directionOf(data), {
@@ -2867,7 +2898,7 @@ const CARD_RENDERERS = {
 	dungeon_drake: [renderWyrmSummon, renderWyrmAttack],
 	ancient_wyrm: [renderArchiveWyrmSummon, renderArchiveWyrmBreath],
 	null_crawler: [renderNullCrawlerSummon, renderPhaseBeam],
-	bulkhead_mauler: renderShockwaveSweep,
+	bulkhead_mauler: [renderBulkheadMaulerSummon, renderShockwaveSweep],
 	battery_automaton: renderBatteryAutomaton,
 
 	// Enchantments

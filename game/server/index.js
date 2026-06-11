@@ -531,6 +531,7 @@ const DEBUG_SCENARIOS = new Set([
   'spawner-active',
   'monster-card',
   'battery-automaton-ready',
+  'bulkhead-mauler-ready',
   'aegis-sentinel-ready',
   'minion-combat',
   'archive-wyrm-combat',

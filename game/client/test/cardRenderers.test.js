@@ -57,6 +57,7 @@ function makeCtx(overrides = {}) {
 		spawnMirrorWardReflectBurst: record('spawnMirrorWardReflectBurst'),
 		spawnMinionSummonInEffect: record('spawnMinionSummonInEffect'),
 		spawnBatteryAutomatonDeployEffect: record('spawnBatteryAutomatonDeployEffect'),
+		spawnBulkheadMaulerDeployEffect: record('spawnBulkheadMaulerDeployEffect'),
 		spawnLegionMarshalRallyEffect: record('spawnLegionMarshalRallyEffect'),
 		flashMesh: record('flashMesh'),
 		spawnHitSpark: record('spawnHitSpark'),
@@ -241,8 +242,12 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('null_crawler')).toHaveLength(2);
 	});
 
-	it('returns bespoke attack renderer for Bulkhead Mauler', () => {
-		expect(resolveRenderers('bulkhead_mauler')).toHaveLength(1);
+	it('returns composed summon + attack renderers for Bulkhead Mauler', () => {
+		const bulkhead = resolveRenderers('bulkhead_mauler');
+		expect(bulkhead).toHaveLength(2);
+		expect(bulkhead[0].name).toBe('renderBulkheadMaulerSummon');
+		expect(bulkhead[1].name).toBe('renderShockwaveSweep');
+		expect(bulkhead[0]).not.toBe(resolveRenderers('aegis_sentinel')[0]);
 	});
 
 	it('returns the chain_lightning arc renderer for Voltaic Chain', () => {
@@ -3347,6 +3352,64 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect')).toHaveLength(1);
 		const summon = ctx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
 		expect(summon[2]).toMatchObject({ color: 0xfbbf24, emissive: 0x38bdf8 });
+	});
+
+	it('bulkhead_mauler summon uses slate/amber palette, deploy effect, and no scheduleAfter deferral', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'bulkhead_mauler',
+			origin: { x: 2, z: 3 },
+			minionId: 'minion-1',
+			hits: [],
+		}, ctx);
+		const summon = ctx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(summon).toBeDefined();
+		expect(summon[1]).toEqual({ x: 2, z: 3 });
+		expect(summon[2]).toMatchObject({
+			color: 0x78716c,
+			emissive: 0xf59e0b,
+			radius: 1.1,
+			burstCount: 10,
+		});
+		expect(summon[2].color).not.toBe(0x22c55e);
+		const deploy = ctx._calls.find((c) => c[0] === 'spawnBulkheadMaulerDeployEffect');
+		expect(deploy).toBeDefined();
+		expect(deploy[1]).toEqual({ x: 2, z: 3 });
+		expect(deploy[2]).toMatchObject({
+			color: 0x78716c,
+			emissive: 0xf59e0b,
+			radius: 1.4,
+			duration: MINION_SUMMON_IN_MS,
+		});
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+		expect(methodsCalled(ctx)).toContain('playSound');
+	});
+
+	it('bulkhead_mauler summon without minionId stays sound-only (no deploy or summon flourish)', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'bulkhead_mauler',
+			origin: { x: 0, z: 0 },
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnBulkheadMaulerDeployEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
+		expect(methodsCalled(ctx)).toEqual(['playSound']);
+	});
+
+	it('bulkhead_mauler summon degrades gracefully when spawnBulkheadMaulerDeployEffect is absent', () => {
+		const ctx = makeCtx({ spawnBulkheadMaulerDeployEffect: undefined });
+		expect(() => renderCardUsed({
+			cardId: 'bulkhead_mauler',
+			origin: { x: 1, z: 2 },
+			minionId: 'minion-2',
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnBulkheadMaulerDeployEffect')).toBe(false);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect')).toHaveLength(1);
+		const summon = ctx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(summon[2]).toMatchObject({ color: 0x78716c, emissive: 0xf59e0b });
 	});
 
 	it('Vault Wyrm minion breath renders a forward cone hitbox on breath start', () => {

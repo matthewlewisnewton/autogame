@@ -14,6 +14,7 @@ function createCardRenderCtx(ctx) {
 		spawnSummonEffect: ctx.spawnSummonEffect,
 		spawnMinionSummonInEffect: ctx.spawnMinionSummonInEffect,
 		spawnBatteryAutomatonDeployEffect: ctx.spawnBatteryAutomatonDeployEffect,
+		spawnBulkheadMaulerDeployEffect: ctx.spawnBulkheadMaulerDeployEffect,
 		spawnLegionMarshalRallyEffect: ctx.spawnLegionMarshalRallyEffect,
 		spawnDivineGraceEffect: ctx.spawnDivineGraceEffect,
 		spawnEventHorizonEffect: ctx.spawnEventHorizonEffect,
