@@ -7392,3 +7392,26 @@ None blocking. The fallback smoke capture did not cast purifying_pulse itself
 level, the runtime is proven healthy, and the rendering path is fully unit-tested
 — this is a minor coverage observation, not a blocker.
 
+
+## v0.413 — 352-anim-necroframe-knight  (2026-06-10 21:10:16)
+
+- degrades gracefully when optional ctx helpers (`spawnTelegraphRing`,
+  `spawnParticleBurst`, `scheduleAfter`) are absent.
+Plus a `resolveRenderers` assertion that the card uses its bespoke renderer, not
+the generic creature default. Full suite: **193 passed**.
+
+### Scope & integration
+PASS. Diff touches only `game/client/cardRenderers.js` (this card's render fn +
+registration) and its test file — exactly the declared scope. No other per-card
+beads are affected. Every optional helper is guarded, so the renderer is robust
+against a minimal ctx. No debug scenarios added.
+
+### Design consistency
+PASS. Reuses the 315 shared VFX primitives and the per-card registration pattern;
+palette deliberately matched to the evolution chain. No regression to the
+foundation.
+
+## Remaining gaps
+None. The captured run is clean, all acceptance criteria are robustly met, and
+the client tests pass.
+

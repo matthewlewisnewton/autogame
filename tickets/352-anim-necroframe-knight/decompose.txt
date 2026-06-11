@@ -1,0 +1,11 @@
+Created one sub-ticket. Summary:
+
+**Decomposition rationale:** The Necroframe Knight (`skeleton_knight`) is a taunt "wall" minion with no attack/projectile — verified against `simulation.js` (it only draws aggro via `findTauntMinionNear`). The sole player-visible card event is the **summon** (`cardUsed` with `minionId` + `origin`), which today falls through to the generic creature default with a bland bone-gray puff. That makes this a single, tightly-coupled deliverable (renderer + registration + test), matching the established one-sub-ticket pattern for these anim-polish tickets.
+
+**Verification mode = `code`:** acceptance hinges on structural/logic facts QA can't see in a happy-path screenshot — a renderer being *registered* and *distinct from the default*, `resolveRenderers` arity, primitive usage, the `minionId` guard, timing bound to `MINION_SUMMON_IN_MS`, and a passing client test.
+
+Sub-ticket folder created:
+
+```
+tickets/352-anim-necroframe-knight/subtickets/01-necroframe-summon-theme-and-timing/ticket.md
+```
