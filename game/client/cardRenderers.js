@@ -19,6 +19,7 @@
 //   spawnCleanseBurstEffect(origin)
 //   spawnPurifyingPulseEffect(origin, radius)
 //   spawnInfernoPillarEffect(origin, radius, style?) — style: { color, emissive, dotTicks, dotIntervalMs, duration }
+//   spawnEtherSiphonEffect(origin, radius, style?) — style: { color, emissive, duration }
 //   spawnChainLightningEffect(origin, direction)
 //   spawnLightningArc(from, to, style?)
 //   spawnParticleBurst(position, style?)       — multi-particle spark/ember burst
@@ -885,18 +886,52 @@ function renderBattleFamiliar(data, ctx) {
 }
 
 /**
- * Ether Siphon: purple drain telegraph at AoE radius plus a siphon burst.
+ * Ether Siphon: instant radial mana drain — ether-siphon primitive, cast flourish,
+ * per-victim drain arcs, and magic-stone absorption at the caster origin.
  */
 function renderManaLeach(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
 	const color = getAccentHex(data.cardId) ?? MANA_LEACH_COLOR;
 	const emissive = MANA_LEACH_EMISSIVE;
+	const style = { color, emissive };
+
+	if (ctx.spawnEtherSiphonEffect) {
+		ctx.spawnEtherSiphonEffect(origin, data.radius, style);
+	}
 	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+		ctx.spawnTelegraphRing(origin, data.radius, style);
 	}
 	if (ctx.spawnParticleBurst) {
 		ctx.spawnParticleBurst(origin, { color, emissive, count: 16, spread: 2.2 });
+	}
+
+	if (data.hits?.length) {
+		const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+		const arcStyle = { color, emissive, duration: ATTACK_EFFECT_DURATION };
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const enemyPos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnLightningArc) {
+				ctx.spawnLightningArc(enemyPos, origin, arcStyle);
+			}
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(enemyPos, { color, emissive, count: 5, spread: 0.55 });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(enemyPos, { color, emissive, count: 6, spread: 0.7 });
+			}
+		}
+	}
+
+	if (data.magicStonesGained > 0) {
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(origin, { color, emissive, count: 22, spread: 2.6 });
+		}
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(origin, { color, emissive });
+		}
 	}
 }
 
