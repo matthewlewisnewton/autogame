@@ -32,6 +32,7 @@ function createCardRenderCtx(ctx) {
 		spawnProjectileTrail: ctx.spawnProjectileTrail,
 		spawnImpactDecal: ctx.spawnImpactDecal,
 		spawnTelegraphRing: ctx.spawnTelegraphRing,
+		spawnChronoTriggerEffect: ctx.spawnChronoTriggerEffect,
 		spawnMirrorWardShellEffect: ctx.spawnMirrorWardShellEffect,
 		dismissMirrorWardShellEffect: ctx.dismissMirrorWardShellEffect,
 		spawnMirrorWardReflectBurst: ctx.spawnMirrorWardReflectBurst,

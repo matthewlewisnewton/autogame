@@ -30,6 +30,7 @@
 //   spawnImpactDecal(origin, style?)           — lingering ground flash/decal ring
 //   spawnGravityWellEffect(origin, radius, style?) — contracting pull ring, void core, inward inflow
 //   spawnTelegraphRing(origin, radius, style?) — expanding/pulsing AoE telegraph ring
+//   spawnChronoTriggerEffect(origin, radius, style?) — time-ripple + temporal column (style: { color, emissive, duration })
 //   spawnTelepipeCastEffect(origin, radius, style?) — telepipe portal-opening cast flourish
 //   spawnMirrorWardShellEffect(origin, radius, style?) — lingering mirror ward shell
 //   spawnMirrorWardReflectBurst(origin, direction, style?) — mirror reflect impact VFX
@@ -2076,9 +2077,10 @@ const MANA_PRISM_COLOR = 0xa855f7;
 const MANA_PRISM_EMISSIVE = 0x22d3ee;
 const SACRIFICIAL_ALTAR_COLOR = 0xfbbf24;
 const SACRIFICIAL_ALTAR_EMISSIVE = 0xef4444;
-const CHRONO_TRIGGER_COLOR = 0x67e8f9;
-const CHRONO_TRIGGER_EMISSIVE = 0xfbbf24;
+const CHRONO_TRIGGER_COLOR = 0xf59e0b;
+const CHRONO_TRIGGER_EMISSIVE = 0x67e8f9;
 const CHRONO_TRIGGER_TELEGRAPH_RADIUS = 2;
+const CHRONO_TRIGGER_SLOT_SPACING = 1.2;
 
 /**
  * Astral Guardian: indigo shield/summon telegraph at cast radius, spark burst,
@@ -2144,36 +2146,36 @@ function renderSacrificialAltar(data, ctx) {
 }
 
 /**
- * Chrono Trigger: time-ripple utility cast when `restoredCharges` is present;
- * otherwise amber hand-slot bursts for the economy draw path.
+ * Chrono Trigger: instant time-ripple at the caster (t = 0, no wind-up) plus
+ * per-slot charge-restore flares when the server reports `restoredCharges`.
  */
 function renderChronoTrigger(data, ctx) {
 	if (!data.origin) return;
 	const origin = originOf(data);
-	if (data.restoredCharges !== undefined) {
-		const color = CHRONO_TRIGGER_COLOR;
-		const emissive = CHRONO_TRIGGER_EMISSIVE;
-		const radius = data.radius ?? CHRONO_TRIGGER_TELEGRAPH_RADIUS;
-		if (ctx.spawnTelegraphRing) {
-			ctx.spawnTelegraphRing(origin, radius, { color, emissive });
-		}
-		if (ctx.spawnParticleBurst) {
-			ctx.spawnParticleBurst(origin, { color, emissive, count: 12, spread: 2.0 });
-		}
-		return;
+	const color = getAccentHex(data.cardId) ?? CHRONO_TRIGGER_COLOR;
+	const emissive = CHRONO_TRIGGER_EMISSIVE;
+	if (ctx.spawnChronoTriggerEffect) {
+		ctx.spawnChronoTriggerEffect(origin, CHRONO_TRIGGER_TELEGRAPH_RADIUS, { color, emissive });
 	}
+	if (!Array.isArray(data.restoredCharges) || data.restoredCharges.length === 0) return;
+
 	const direction = directionOf(data);
 	const perpX = -direction.z;
 	const perpZ = direction.x;
-	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, 3, { color: 0xfbbf24, emissive: 0xf59e0b });
-	}
-	if (ctx.spawnParticleBurst) {
-		for (const offset of [-1.2, 1.2]) {
-			ctx.spawnParticleBurst(
-				{ x: origin.x + perpX * offset, z: origin.z + perpZ * offset },
-				{ color: 0xfbbf24, emissive: 0xf59e0b, count: 8, spread: 1.0 },
-			);
+	const castSlot = data.slotIndex;
+	for (const entry of data.restoredCharges) {
+		if (!entry || !Number.isFinite(entry.slotIndex) || !Number.isFinite(castSlot)) continue;
+		const slotDelta = entry.slotIndex - castSlot;
+		const offset = slotDelta * CHRONO_TRIGGER_SLOT_SPACING;
+		const slotPos = {
+			x: origin.x + perpX * offset,
+			z: origin.z + perpZ * offset,
+		};
+		if (ctx.spawnLightningArc) {
+			ctx.spawnLightningArc(origin, slotPos, { color, emissive });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(slotPos, { color, emissive, count: 8, spread: 1.0 });
 		}
 	}
 }
