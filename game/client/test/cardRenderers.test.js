@@ -2589,6 +2589,7 @@ describe('renderCardUsed() — creature dispatch', () => {
 		const wingBursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
 		expect(wingBursts).toHaveLength(1);
 		expect(wingBursts[0][1]).toMatchObject({ x: 1, y: 3.5, z: 2 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnChainLightningEffect')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
 	});
 
@@ -2623,11 +2624,12 @@ describe('renderCardUsed() — creature dispatch', () => {
 			hits: [{ enemyId: 'e1', hp: 30 }],
 		}, ctx);
 		expect(ctx._calls.some((c) => c[0] === 'spawnChainLightningEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnLightningArc')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(false);
-		const originFlares = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
-		expect(originFlares).toHaveLength(2);
-		expect(originFlares[0][1]).toEqual({ x: 3, z: 4 });
-		expect(originFlares[1][1]).toEqual({ x: 6, y: 1.2, z: 0 });
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		expect(bursts).toHaveLength(2);
+		expect(bursts.filter((c) => c[1].x === 3 && c[1].z === 4)).toHaveLength(1);
+		expect(bursts[1][1]).toEqual({ x: 6, y: 1.2, z: 0 });
 		const hitSounds = ctx._calls.filter((c) => c[0] === 'playSound' && c[1] === 'enemyHit');
 		expect(hitSounds).toHaveLength(1);
 	});
@@ -2662,9 +2664,18 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(schedules[0][1]).toBe(100);
 		expect(schedules[0][1]).toBeLessThan(ATTACK_EFFECT_DURATION);
 		ctx.runScheduled();
-		expect(ctx._calls.filter((c) => c[0] === 'spawnLightningArc')).toHaveLength(2);
-		const endpointBursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
-		expect(endpointBursts.length).toBeGreaterThanOrEqual(2);
+		const allArcs = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
+		expect(allArcs).toHaveLength(2);
+		expect(allArcs[0][1]).toEqual({ x: 0, z: 0 });
+		expect(allArcs[0][2]).toEqual({ x: 6, z: 0 });
+		expect(allArcs[1][1]).toEqual({ x: 6, z: 0 });
+		expect(allArcs[1][2]).toEqual({ x: 8, z: 0 });
+		const endpointBursts = ctx._calls.filter(
+			(c) => c[0] === 'spawnParticleBurst' && !(c[1].x === 0 && c[1].z === 0),
+		);
+		expect(endpointBursts).toHaveLength(2);
+		expect(endpointBursts[0][1]).toEqual({ x: 6, z: 0 });
+		expect(endpointBursts[1][1]).toEqual({ x: 8, z: 0 });
 	});
 
 	it('thunderbird chain strike without spawnLightningArc does not throw', () => {
