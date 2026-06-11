@@ -7436,3 +7436,26 @@ visually exercise the animation (harness deck limitation, not a code defect);
 correctness is fully established by code inspection against the server payload
 plus the unit suite.
 
+
+## v0.412 — 349-anim-restoration-beacon  (2026-06-10 21:01:39)
+
+PASS. All three sub-effects ride existing `updateAttackEffects` branches and dispose cleanly:
+- Column → `isLightColumn` branch (renderer.js:6213), now reading per-effect `columnHeight/columnBaseY/columnOpacity` that default to the gold constants — a backward-compatible generalization, base stays ground-pinned.
+- Ring → generic `fx.radius !== undefined` expand→fade→dispose branch (renderer.js:6178).
+- Motes → `isParticleBurst` branch (renderer.js:6334).
+
+### 5. No perf regression
+PASS. No per-frame allocation; geometry/material built once per cast, motes built as a single Group, every effect calls `disposeEffectObject` at end of life. Motes guard on `areParticlesEnabled()`. Particle count reduced (14→10 burst). The `isLightColumn` change adds three `??` reads per frame for an already-iterated effect — negligible.
+
+### 6. Client test where feasible
+PASS. `cardRenderers.test.js` updated to assert the beacon effect dispatch, plus new cases for the optional-spawner guard (`?.`) and non-caster sound gating. Full suite green: **199/199 passing**.
+
+## Debug scenarios
+No debug scenario was added or changed by this ticket — the diff touches only `cardRenderers.js`, `main.js`, `renderer.js`, and the client test (the `debugScenarios.js` `healing_font` references are pre-existing). Nothing to verify here.
+
+## Design / regression consistency
+Consistent with `game/docs/design.md`'s per-card VFX-on-shared-primitives model. Scope respected: changes confined to this card's render fn + registration (main.js ctx wiring) + the shared renderer primitives + the client test. No server logic, no other card renderers touched.
+
+## Remaining gaps
+None blocking. The captured smoke run did not happen to cast this card (deck-dependent), so the proof rests on the code path + the dispatch/lifecycle tests + the clean run — which together are sufficient for an additive-VFX polish ticket. Minor polish noted in `nits.md`.
+

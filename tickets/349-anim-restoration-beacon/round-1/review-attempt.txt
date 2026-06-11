@@ -1,0 +1,14 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health — clean.** `metrics.json` shows `ok: true`, empty `pageerrors`, no `harness_failure`. `console.log` has only benign 409 lobby-race and Vite noise — no page errors or fatals from game code.
+
+**The ticket is fully satisfied:**
+- **Theme/name match** — `spawnRestorationBeaconEffect` builds a tall narrow emerald light pillar + expanding ground heal ring + ascending heal motes, in a palette (`#86efac`/`#4ade80`) matching the card's own accent. Reads unmistakably as "Restoration Beacon."
+- **Distinct from neighbors** — deliberately separated from Sanctum Pulse's gold `DIVINE_GRACE_*` column (taller/narrower, emerald vs gold); test asserts `divine_grace` effect is never reused.
+- **Timing** — server resolves `healing_font` instantly in a single `CARD_USED` (no projectile/DoT/wind-up), so the synchronous firing of all primitives is the correct sync.
+- **Shared primitives, no perf regression** — all three sub-effects ride existing `updateAttackEffects` branches (`isLightColumn`, generic `radius` expand, `isParticleBurst`) and dispose properly; no per-frame allocation. The `isLightColumn` generalization to per-effect dims is backward-compatible (defaults to the gold constants).
+- **Tests** — suite green, 199/199, with new cases for the optional-spawner guard and non-caster sound gating.
+
+**Scope respected** (this card's renderer + registration + shared VFX + client test only). No debug scenario added. Two minor, non-blocking nits filed to `nits.md` (a stale comment and mote gravity slightly fighting the "ascent" read).
