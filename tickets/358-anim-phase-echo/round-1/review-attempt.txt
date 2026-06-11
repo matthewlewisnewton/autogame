@@ -1,0 +1,18 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime gate — clean.** `metrics.json` reports `"ok": true`, empty `pageerrors`, no `harness_failure`, scene initialized, both players reached `playing`. `console.log` has zero errors. Client suite: 174/174 pass.
+
+**Acceptance criteria — fully met:**
+- **Theme/visual:** Pink twin-slash (lead swing + fainter 150 ms after-image echo with pink trail) reads clearly as "Phase Echo." On the server's every-3rd-use cadence it layers a distinct, heavier radial shockwave (expanding ring sized to radius + 24-particle burst + larger ×1.4 after-ring).
+- **Timing:** echo_blade has no `windUpMs`, so the client fires immediately, matching the server's synchronous resolution. The shockwave is gated on the server's own `shockwaveHits` signal (`comboCount % 3`), not client arithmetic — consistent with the sibling resonance_edge card.
+- **Primitives/graceful degradation:** Every primitive call guarded; a bare-ctx test confirms no throw.
+- **Perf:** bounded, cadence-gated, no per-frame cost.
+- **Tests:** 3 new focused tests + degradation extension, all green.
+
+**Scope clean:** only `cardRenderers.js` (`renderEchoSlash`) and its test file changed. No debug scenarios added.
+
+**Two non-blocking nits** recorded in `nits.md`: the server never broadcasts `shockwaveRadius` (client always falls back to 6, which is correct but makes the branch dead), and the discharge VFX is suppressed when the cadence beat hits no enemies. Neither blocks the ticket.
+
+No `gaps.md` written (PASS).

@@ -1,0 +1,14 @@
+**Remediation analysis**
+
+`review-feedback.md` lists one open gap: `02-wyrmflare-renderer-and-timing` exhausted MAX_ITER. QA feedback shows the renderer implementation met all functional criteria, but the sub-ticket failed because it excluded test updates while the harness requires `pnpm test:quick` to pass. Sub-ticket 03 later landed those tests and passed.
+
+**Actions taken**
+
+1. **Deleted** the failed `02-wyrmflare-renderer-and-timing` folder (no `.passed` marker).
+2. **Created** a replacement sub-ticket with harness-safe scope: renderer work in `cardRenderers.js` plus an explicit requirement that sub-ticket 03's tests stay green.
+
+Sub-tickets 01 and 03 were left untouched (both passed in harness logs).
+
+**Sub-ticket folder created**
+
+- `/home/matt/workspace/.autogame-worktrees/362-anim-wyrmflare/tickets/362-anim-wyrmflare/subtickets/04-wyrmflare-renderer-timing-sync`

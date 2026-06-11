@@ -7139,49 +7139,93 @@ None blocking.
 
 None blocking. The acceptance criterion is fully and robustly met, the game runs cleanly, and the entire test suite passes. Minor non-blocking observations are recorded in `nits.md`.
 
-## v0.396 — 367-anim-cinder-snare  (2026-06-10 18:06:10)
+## v0.402 — 362-anim-wyrmflare  (2026-06-10 19:10:53)
 
-`updateAttackEffects` with no per-frame allocation, fading/disposing at `ttlMs`.
-Negligible cost even with the 30s lifetime.
+`spawnInfernoPillarEffect` pattern. Changes touch only this card's renderer, the
+vfx primitive, its ctx registration, and tests — no other per-card renderer
+affected.
 
-### "Client test where feasible"
-MET. Five new tests in `game/client/test/cardRenderers.test.js` cover: distinct
-dispatch vs `spike_trap`, themed accent at origin/radius, stat-derived cadence/
-duration, synchronous placement (no wind-up gating), and a no-radius no-op. Full
-file (164 tests) passes; server `enchantment.test.js` (17) passes.
+### No perf regression
+PASS. Effects are pushed to `activeEffects` with a finite `duration` and disposed
+via `disposeEffectObject` once `elapsed >= duration` (renderer.js:5571-5597);
+geometry/material are released. No retained allocations or leaked timers.
 
-### Scope / design consistency
-MET. The diff touches only `game/client/cardRenderers.js` (this card's render fn
-+ registration) and its test — exactly the declared scope. No server, shared, or
-other-card changes; no new debug scenario; no regression to other renderers
-(`renderGroundEnchantment` is retained for other cards). Consistent with
-`design.md` VFX-primitive approach.
+### Client test where feasible
+PASS. Six new targeted tests (dispatch + synced style, synchronous cone burst,
+per-hit ignite at mesh positions, four 500ms tick pulses, no-windUp guard,
+primitive shape) plus the vfx-primitive test. Full suite: 179/179 passing.
 
 ## Remaining gaps
+None blocking. Two minor default-coupling nits filed in `nits.md` (server omits
+`dotIntervalMs`/`attackConeAngle` from the CARD_USED payload; client relies on
+matching hardcoded defaults). These currently agree (500ms / π⁄3) and are
+regression-tested, so they do not affect correctness today.
 
-None blocking. Two minor thematic nits captured in `nits.md`.
+## v0.401 — 359-anim-resonance-edge  (2026-06-10 19:07:44)
 
-## v0.397 — Server: admin password accepted via query parameter and /admin has no rate limit  (2026-06-10 18:13:13)
+### Visual matches name/theme ("Resonance Edge", weapon)
+PASS. Accent is magenta `#e879f9` with icon `≋` (a wave/resonance glyph) in `game/client/cards.js:165`. The renderer lands a magenta cone cut, then "rings" — an immediate telegraph-ring + spark pulse and a harmonic after-ring 130ms later (`pulse(1.6)` then `scheduleAfter(130, () => pulse(2.6))`). The double/harmonic pulse reads unmistakably as a resonant sonic blade. On the shockwave cadence a much larger discharge (radius-6 ring + 1.4× expanding after-ring + 24-particle burst) bursts from the cast origin — a clear "resonance peak." Uses only the 315 primitives (`spawnAttackEffect`, `spawnTelegraphRing`, `spawnParticleBurst`, `scheduleAfter`).
+
+### Timing synced to server effect resolution
+PASS. Server (`game/server/cardEffects.js:480-497`) increments a per-card combo count and, when `nextCount % shockwaveEvery === 0`, collects radial hits and ships them as `shockwaveHits` in the `CARD_USED` payload (line 562); otherwise it ships `[]`. `resonance_edge` has `shockwaveEvery: 2`, `shockwaveRadius: 6` (`game/shared/cardStats.json:310-317`). The renderer keys its discharge on `data.shockwaveHits.length > 0`, so the on-screen resonance peak fires exactly on the every-2nd-use cadence, sized to the server's radius (defaults to 6, matching the card). Base ringing is immediate + 130ms; discharge after-ring at +90ms. No client-side combo arithmetic that could drift from the server. This is a faithful, server-driven sync.
+
+### No perf regression
+PASS. The added work is a handful of extra primitive spawns and only on the every-2nd-use cadence; base swing adds two guarded ring/burst pulses as before. No loops, allocations, or per-frame cost introduced.
+
+### Client test where feasible
+PASS. Two tests added and passing (`npx vitest run -t "Resonance Edge"` → 2 passed): the off-cadence swing (empty `shockwaveHits`) asserts no large discharge ring and only light bursts; the on-cadence swing asserts a ring ≥6 plus a larger after-ring and a ≥20 spark burst. Both assert the magenta accent.
+
+## Robustness
+Every primitive call is now guarded (`if (ctx.spawnAttackEffect)`, `if (ctx.scheduleAfter)`, etc.), so the swing degrades gracefully when a primitive is absent — an improvement over the prior unguarded `spawnAttackEffect`/`scheduleAfter` calls. `shockwaveRadius` is read defensively with a finite-check fallback.
+
+## Remaining gaps
+None blocking. Two minor nits filed to `nits.md`:
+1. `data.shockwaveRadius` is never included in the `CARD_USED` emit, so that branch always falls back to the literal `6`; harmless today (equals the card's radius) but the dynamic-radius intent is unrealized.
+2. The discharge keys off `shockwaveHits` being non-empty, so a cadence use that strikes no enemy in radius shows no discharge VFX even though the server's shockwave "fired." Defensible (no targets = no meaningful effect) but a slight fidelity gap vs. keying off the cadence itself.
+
+## v0.403 — 358-anim-phase-echo  (2026-06-10 19:38:48)
 
 ## Code quality
 
-- Focused diff (~240 lines, mostly tests). No dead code introduced.
-- Security properties preserved: fail-closed when `ADMIN_PASSWORD` unset, constant-time compare, Bearer token still ignored for admin.
-- `auth.js` export surface expanded minimally for reuse; register/login call sites unchanged.
-- Comments in `admin.js` and `auth.js` document the check-then-increment pattern and why check-only uses `>=`.
-
-## Sub-ticket integration
-
-Both sub-tickets integrate cleanly:
-
-1. **01-remove-query-param-password** — query fallback removed; tests inverted from expect-200 to expect-403.
-2. **02-add-admin-rate-limit** — bucket logic reused from auth; middleware wired before password check.
-
-No gaps between sub-ticket scope and top-level acceptance criteria.
+Clean, well-commented, idiomatic with the surrounding styled-blade renderers. No dead/broken
+code beyond the minor `shockwaveRadius` observation below (a nit, not a defect — the fallback
+yields the correct value).
 
 ## Remaining gaps
 
-None. All acceptance criteria are fully and robustly satisfied; runtime capture is clean.
+None blocking.
+
+Two non-blocking nits recorded in `nits.md`:
+1. The server's `CARD_USED` payload never includes `shockwaveRadius`, so the client's
+   `Number.isFinite(data.shockwaveRadius) ? … : 6` branch always takes the fallback. It happens
+   to equal echo_blade's real radius (6), so the visual is correct, but the dynamic branch is
+   effectively unreachable in production.
+2. The shockwave VFX is gated on `shockwaveHits.length > 0`, so on the every-3rd-use beat with
+   no enemy in radius nothing renders even though it is the cadence beat. Acceptable (the
+   server shockwave is a no-op without hits, and this matches the sibling card), but worth a
+   look if a "discharge always shows" feel is desired.
+
+## v0.399 — 361-anim-soul-drain  (2026-06-10 18:46:55)
+
+- **Dev-gated, sole entry**: added only to the `DEBUG_SCENARIOS` set (index.js:648) and the
+  `applyDebugScenario` chain (debugScenarios.js:4970); the `?debugScenario=` path is the only
+  way in. Normal gameplay never references it.
+- **End-state reachable normally**: a damaged caster with full Magic Stones casting an evolved
+  Soul Drain into a grunt cluster is ordinary combat — the scenario only pre-arranges that
+  state; it does not auto-cast.
+- **No invariant bypass**: the scenario only mutates state (hp, magicStones, one hand slot,
+  enemy spawns). The actual cast still flows through the normal `useCard`/`cardEffects`
+  validation, server resolution, and net replication.
+
+## Design consistency
+Consistent with game/docs/design.md: builds on the 315 shared VFX primitives
+(`spawnLightningArc`, `spawnTelegraphRing`, `spawnParticleBurst`, `spawnImpactDecal`) and only
+touches this card's render fn. No foundation regression.
+
+## Remaining gaps
+None blocking. The only out-of-strict-scope change is the server-side debug scenario (ticket
+SCOPE names client paths); it is additive, properly gated, and a legitimate QA enabler — noted
+in nits.md, not blocking.
 
 ## v0.398 — 364-anim-telepipe  (2026-06-10 18:43:25)
 
@@ -7205,27 +7249,49 @@ construction, palette, overrides, and cleanup/disposal. Ran
 
 None blocking. (Minor non-blocking redundancy noted in nits.md.)
 
-## v0.399 — 361-anim-soul-drain  (2026-06-10 18:46:55)
+## v0.397 — Server: admin password accepted via query parameter and /admin has no rate limit  (2026-06-10 18:13:13)
 
-- **Dev-gated, sole entry**: added only to the `DEBUG_SCENARIOS` set (index.js:648) and the
-  `applyDebugScenario` chain (debugScenarios.js:4970); the `?debugScenario=` path is the only
-  way in. Normal gameplay never references it.
-- **End-state reachable normally**: a damaged caster with full Magic Stones casting an evolved
-  Soul Drain into a grunt cluster is ordinary combat — the scenario only pre-arranges that
-  state; it does not auto-cast.
-- **No invariant bypass**: the scenario only mutates state (hp, magicStones, one hand slot,
-  enemy spawns). The actual cast still flows through the normal `useCard`/`cardEffects`
-  validation, server resolution, and net replication.
+## Code quality
 
-## Design consistency
-Consistent with game/docs/design.md: builds on the 315 shared VFX primitives
-(`spawnLightningArc`, `spawnTelegraphRing`, `spawnParticleBurst`, `spawnImpactDecal`) and only
-touches this card's render fn. No foundation regression.
+- Focused diff (~240 lines, mostly tests). No dead code introduced.
+- Security properties preserved: fail-closed when `ADMIN_PASSWORD` unset, constant-time compare, Bearer token still ignored for admin.
+- `auth.js` export surface expanded minimally for reuse; register/login call sites unchanged.
+- Comments in `admin.js` and `auth.js` document the check-then-increment pattern and why check-only uses `>=`.
+
+## Sub-ticket integration
+
+Both sub-tickets integrate cleanly:
+
+1. **01-remove-query-param-password** — query fallback removed; tests inverted from expect-200 to expect-403.
+2. **02-add-admin-rate-limit** — bucket logic reused from auth; middleware wired before password check.
+
+No gaps between sub-ticket scope and top-level acceptance criteria.
 
 ## Remaining gaps
-None blocking. The only out-of-strict-scope change is the server-side debug scenario (ticket
-SCOPE names client paths); it is additive, properly gated, and a legitimate QA enabler — noted
-in nits.md, not blocking.
+
+None. All acceptance criteria are fully and robustly satisfied; runtime capture is clean.
+
+## v0.396 — 367-anim-cinder-snare  (2026-06-10 18:06:10)
+
+`updateAttackEffects` with no per-frame allocation, fading/disposing at `ttlMs`.
+Negligible cost even with the 30s lifetime.
+
+### "Client test where feasible"
+MET. Five new tests in `game/client/test/cardRenderers.test.js` cover: distinct
+dispatch vs `spike_trap`, themed accent at origin/radius, stat-derived cadence/
+duration, synchronous placement (no wind-up gating), and a no-radius no-op. Full
+file (164 tests) passes; server `enchantment.test.js` (17) passes.
+
+### Scope / design consistency
+MET. The diff touches only `game/client/cardRenderers.js` (this card's render fn
++ registration) and its test — exactly the declared scope. No server, shared, or
+other-card changes; no new debug scenario; no regression to other renderers
+(`renderGroundEnchantment` is retained for other cards). Consistent with
+`design.md` VFX-primitive approach.
+
+## Remaining gaps
+
+None blocking. Two minor thematic nits captured in `nits.md`.
 
 ## v0.404 — 357-anim-event-horizon  (2026-06-10 19:41:53)
 
