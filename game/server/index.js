@@ -20,7 +20,7 @@ const {
 const { InMemoryProvider, FileProvider } = require('./providers');
 const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked } = require('./users');
 const { DEFAULT_COSMETIC, backfillCosmetic, backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
-const { verifyToken, initAuth, getJWTSecret } = require('./auth');
+const { verifyToken, initAuth, getJWTSecret, startRateLimitSweep, stopRateLimitSweep } = require('./auth');
 const {
   mulberry32,
   generateLayout,
@@ -466,6 +466,7 @@ function clearAllTimers() {
   _intervals.length = 0;
   for (const id of _timeouts) clearTimeout(id);
   _timeouts.length = 0;
+  stopRateLimitSweep();
 }
 
 function restartBackgroundTimers() {
@@ -1666,6 +1667,9 @@ function startServer(port) {
 
   // Initialize auth — throws if JWT_SECRET is missing (unless NODE_ENV === 'test')
   initAuth();
+
+  // Start periodic sweep to prune expired rate-limit buckets
+  startRateLimitSweep();
 
   // Ensure the data/ directory exists for user records and player persistence
   const dataDir = process.env.PERSISTENCE_PATH || path.resolve(__dirname, '..', 'data');

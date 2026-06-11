@@ -9,7 +9,43 @@ let JWT_SECRET = null;
 const JWT_EXPIRATION = '24h';
 const RATE_LIMIT_WINDOW_MS = Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 60000);
 const RATE_LIMIT_MAX_ATTEMPTS = Number(process.env.AUTH_RATE_LIMIT_MAX_ATTEMPTS || 10);
+const RATE_LIMIT_SWEEP_INTERVAL_MS = 60_000;
 const rateLimitBuckets = new Map();
+let _rateLimitSweepInterval = null;
+
+/**
+ * Iterate `rateLimitBuckets` and delete entries whose window has expired.
+ * Exported so tests can invoke it directly (and assert Map size shrinks).
+ */
+function pruneExpiredBuckets() {
+	const cutoff = Date.now() - RATE_LIMIT_WINDOW_MS;
+	for (const [key, bucket] of rateLimitBuckets) {
+		if (bucket.windowStart <= cutoff) {
+			rateLimitBuckets.delete(key);
+		}
+	}
+}
+
+/**
+ * Start the periodic sweep that prunes expired rate-limit buckets.
+ * Returns the interval ID (stored in `_rateLimitSweepInterval`).
+ * Idempotent — calling again when already started is a no-op.
+ */
+function startRateLimitSweep() {
+	if (_rateLimitSweepInterval) return _rateLimitSweepInterval;
+	_rateLimitSweepInterval = setInterval(pruneExpiredBuckets, RATE_LIMIT_SWEEP_INTERVAL_MS);
+	return _rateLimitSweepInterval;
+}
+
+/**
+ * Stop the periodic sweep.  Exported for test cleanup.
+ */
+function stopRateLimitSweep() {
+	if (_rateLimitSweepInterval) {
+		clearInterval(_rateLimitSweepInterval);
+		_rateLimitSweepInterval = null;
+	}
+}
 
 function rateLimitKey(req, action, username) {
 	const ip = req.ip || req.socket?.remoteAddress || 'unknown';
@@ -225,3 +261,9 @@ module.exports.isRateLimited = isRateLimited;
 module.exports.incrementRateLimit = incrementRateLimit;
 module.exports.RATE_LIMIT_WINDOW_MS = RATE_LIMIT_WINDOW_MS;
 module.exports.RATE_LIMIT_MAX_ATTEMPTS = RATE_LIMIT_MAX_ATTEMPTS;
+module.exports.pruneExpiredBuckets = pruneExpiredBuckets;
+module.exports.startRateLimitSweep = startRateLimitSweep;
+module.exports.stopRateLimitSweep = stopRateLimitSweep;
+Object.defineProperty(module.exports, '_rateLimitSweepInterval', {
+	get() { return _rateLimitSweepInterval; },
+});
