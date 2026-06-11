@@ -34,6 +34,7 @@ const {
   OPENING_HAND_SIZE,
   HAND_SLOT_FILL_ORDER,
   PASSIVE_DRAW_INTERVAL_MS,
+  RUN_EXHAUSTION_GRACE_MS,
   DIFFICULTY_MINIBOSS_HP_PER_PLAYER,
   difficultyScaleFactor,
   runPlayerCount,
@@ -133,6 +134,7 @@ const {
   tryActivateEncounter,
   getEncounterBossId,
   onStageBossDefeated,
+  countStageBossObjectiveKills,
 } = require('./encounters');
 
 let _gameState = null;
@@ -529,12 +531,13 @@ function healAtMedic(playerId, state = _gameState) {
     return { ok: false, reason: 'already_full' };
   }
 
-  const cost = MEDIC_HEAL_COST;
+  let cost = MEDIC_HEAL_COST;
   if ((player.currency || 0) < cost) {
-    return { ok: false, reason: 'insufficient_gold' };
+    cost = 0;
+  } else {
+    player.currency -= cost;
   }
 
-  player.currency -= cost;
   player.hp = MAX_HP;
   player.dead = false;
   savePlayerData(playerId);
@@ -1471,6 +1474,8 @@ function syncRunObjectiveToEnemies() {
 
 function recordEnemyDefeated(count = 1) {
   if (!_gameState.run) return;
+  // stage_boss counts only encounter-scoped kills via removeDeadEnemies / tryActivateEncounter.
+  if (_gameState.run.objective.type === 'stage_boss') return;
   const def = getObjectiveDef(_gameState.run.objective.type);
   if (!def?.onEnemyDefeated) return;
   def.onEnemyDefeated(_gameState.run, count);
@@ -2419,6 +2424,32 @@ function isPlayerOutOfCards(player) {
   return handEmpty && isDeckEmpty(player) && isDesperationDeckEmpty(player);
 }
 
+function canPlayerCastHandCard(player, handCard) {
+  if (!handCard) return false;
+  if (handCard.activeMinionId) return false;
+  if (Number.isFinite(handCard.remainingCharges) && handCard.remainingCharges <= 0) {
+    return false;
+  }
+  const magicStoneCost = handCard.magicStoneCost ?? 0;
+  const magicStones = player?.magicStones ?? 0;
+  if (magicStones < magicStoneCost) {
+    return false;
+  }
+  return true;
+}
+
+function isPlayerCombatExhausted(player) {
+  if (!player) return true;
+  if (canDrawIntoHand(player)) return false;
+  const hand = Array.isArray(player.hand) ? player.hand : [];
+  for (const handCard of hand) {
+    if (handCard && canPlayerCastHandCard(player, handCard)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function drawReplacementCard(player, slotIndex) {
   ensureHandSlots(player);
   const card = drawCardFromDeck(player) || drawCardFromDesperationDeck(player);
@@ -2626,6 +2657,10 @@ function removeDeadEnemies() {
     }
   }
 
+  const stageBossDefeatCount = _gameState.run?.objective?.type === 'stage_boss'
+    ? countStageBossObjectiveKills(dying, _gameState.run)
+    : 0;
+
   const bossId = getEncounterBossId(_gameState.run);
   if (bossId) {
     const bossDying = dying.find((e) => e.id === bossId);
@@ -2638,7 +2673,16 @@ function removeDeadEnemies() {
   _gameState.enemies = _gameState.enemies.filter((e) => e.hp > 0);
   const removed = before - _gameState.enemies.length;
   if (removed > 0) {
-    recordEnemyDefeated(removed);
+    if (_gameState.run?.objective?.type === 'stage_boss') {
+      if (stageBossDefeatCount > 0) {
+        const def = getObjectiveDef('stage_boss');
+        if (def?.onEnemyDefeated) {
+          def.onEnemyDefeated(_gameState.run, stageBossDefeatCount);
+        }
+      }
+    } else {
+      recordEnemyDefeated(removed);
+    }
   }
   syncScriptedDefeatEnemiesActiveCount(_gameState.run, _gameState.enemies);
   return removed;
@@ -3411,6 +3455,32 @@ function checkTelepipeProximity() {
   }
 }
 
+function isPlayerCombatExhaustionFailureReady(player, now = Date.now()) {
+  if (!isPlayerCombatExhausted(player)) return false;
+  if (isPlayerOutOfCards(player)) return true;
+  return player._combatExhaustedSince != null
+    && now - player._combatExhaustedSince >= RUN_EXHAUSTION_GRACE_MS;
+}
+
+function tickCombatExhaustionGrace(now = Date.now()) {
+  if (!_gameState.run || _gameState.run.status !== 'playing') return;
+
+  const inDungeon = Object.values(_gameState.players).filter((p) => p && !p.extracted);
+  for (const player of inDungeon) {
+    if (isPlayerCombatExhausted(player)) {
+      if (player._combatExhaustedSince == null) {
+        player._combatExhaustedSince = now;
+      }
+    } else {
+      delete player._combatExhaustedSince;
+    }
+  }
+
+  if (inDungeon.length > 0 && inDungeon.every((p) => isPlayerCombatExhaustionFailureReady(p, now))) {
+    checkRunTerminalState();
+  }
+}
+
 function checkRunTerminalState() {
   if (!_gameState.run || _gameState.run.status !== 'playing') return;
 
@@ -3434,8 +3504,9 @@ function checkRunTerminalState() {
   }
 
   if (!status) {
+    const now = Date.now();
     const inDungeon = Object.values(_gameState.players).filter((p) => p && !p.extracted);
-    if (inDungeon.length > 0 && inDungeon.every(isPlayerOutOfCards)) {
+    if (inDungeon.length > 0 && inDungeon.every((p) => isPlayerCombatExhaustionFailureReady(p, now))) {
       status = 'failed';
     }
   }
@@ -3443,6 +3514,13 @@ function checkRunTerminalState() {
   if (!status) return;
 
   _gameState.run.status = status;
+
+  for (const p of Object.values(_gameState.players)) {
+    if (!p) continue;
+    p.inputActive = false;
+    p.inputDx = 0;
+    p.inputDz = 0;
+  }
 
   if (status === 'victory' && (_gameState.run.questTier ?? DEFAULT_QUEST_TIER) === 1) {
     const questId = _gameState.run.questId;
@@ -4012,6 +4090,8 @@ module.exports = {
   discardCardFromHand,
   validateDiscardHand,
   isPlayerOutOfCards,
+  canPlayerCastHandCard,
+  isPlayerCombatExhausted,
   validateUseCardHand,
   addMagicStones,
   restoreCardCharges,
@@ -4035,6 +4115,7 @@ module.exports = {
   recordCrystalCollected,
   isRunObjectiveComplete,
   checkRunTerminalState,
+  tickCombatExhaustionGrace,
   resetTransientRunState,
   returnPlayersToLobby,
   giveUpRun,

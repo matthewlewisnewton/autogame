@@ -1,0 +1,13 @@
+Broke the top-level ticket into **2 sub-tickets** in dependency order. The fix path is **input lock when the summary shows** (not live-updating summary lines): server authority first, then client prediction/emit blocking.
+
+### Sub-tickets created
+
+1. `/home/matt/workspace/.autogame-worktrees/run-end-simulation-keeps-running-under-sortie-complete-overl-q3gy/tickets/run-end-simulation-keeps-running-under-sortie-complete-overl-q3gy/subtickets/01-server-freeze-terminal-run-input/ticket.md`
+
+   Stops authoritative sim mutations after `run.status` becomes `victory`/`failed` — movement, loot pickup, key items — and clears stale input in `checkRunTerminalState()`. Fixes wallet vs summary money divergence.
+
+2. `/home/matt/workspace/.autogame-worktrees/run-end-simulation-keeps-running-under-sortie-complete-overl-q3gy/tickets/run-end-simulation-keeps-running-under-sortie-complete-overl-q3gy/subtickets/02-client-block-input-behind-run-summary/ticket.md`
+
+   Blocks client-side movement prediction, loot emits, and game actions while `#run-summary-overlay` is visible. Fixes walking behind the modal and key-item cooldown flashes.
+
+No existing sub-ticket folders were present (nothing to retire). Both use **Verification: code**.

@@ -1,0 +1,14 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/identity-lobby-player-list-and-trade-ui-show-raw-account-uui-imta/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/identity-lobby-player-list-and-trade-ui-show-raw-account-uui-imta/game/data
+Server listening on port 3001
+Player connected: socket=TtgaHSHTCL58JUz0AAAB, playerId=764792b4-26e2-43d7-9186-293bb0ec50ba
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=w7sLEv2X5bQr109wAAAD, playerId=f7f9ac74-6a7e-4a33-b0f8-b574304873aa
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: TtgaHSHTCL58JUz0AAAB
+Player disconnected: w7sLEv2X5bQr109wAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

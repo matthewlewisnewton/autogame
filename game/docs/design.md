@@ -42,6 +42,10 @@ Telepipe is a mid-run evacuation spell that lets squad members leave the dungeon
   - **Magic stones:** Persist across telepipe-resume **and** new sortie.
   - **Card charges:** **Persist** on telepipe-resume; **reset** on new sortie.
 
+### Post-death recovery
+
+Run failure forfeits currency earned during that run. When a squad returns to the hub after a wipe, **lobby revive** restores each dead player to **50% HP** (`LOBBY_REVIVE_HP`, currently 50 of 100) so they are not one grunt hit from dying again on the next deploy. Players who cannot afford the paid medic (**10 money**) receive a **charity medic** full restore at **0 cost**; players with sufficient funds still pay the normal medic fee.
+
 ## Combat Mechanics
 Instead of standard weapons, players equip a lobby loadout of 4–24 cards (the default starter deck has 12). During a run they have six hand slots; four cards are dealt into those slots at run open (the opening hand), and each occupied slot maps to an input button.
 

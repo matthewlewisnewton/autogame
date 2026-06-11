@@ -3,7 +3,7 @@
 
 const { CLIENT_TO_SERVER, SERVER_TO_CLIENT } = require('../../shared/events.js');
 const { LOOT_PICKUP_RADIUS } = require('../config');
-const { isPlayingPhase, isLobbyPhase } = require('../lobbies');
+const { isPlayingPhase, isLobbyPhase, isActiveRun } = require('../lobbies');
 const { isPlayerCardCommitted } = require('../simulation');
 const {
   savePlayerData,
@@ -107,6 +107,7 @@ function register(socket, ctx) {
 
     if (!player) return;
     if (isPlayingPhase(state)) {
+      if (!isActiveRun(state)) return;
       if (player.dead) return;
       if (player.extracted) return;
       if (isPlayerCardCommitted(player)) return;
@@ -183,6 +184,7 @@ function register(socket, ctx) {
   socket.on(CLIENT_TO_SERVER.LOOT_PICKUP, (data) => {
     withLobbyFromSocket(socket, (state, lobby) => {
     if (!data || !data.lootId) return;
+    if (state.run && state.run.status !== 'playing') return;
 
     const player = state.players[socket.playerId];
     if (!player) return;

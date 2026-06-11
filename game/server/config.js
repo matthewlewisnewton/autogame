@@ -39,7 +39,8 @@ const SPIRE_EDGE_HAZARD_DAMAGE = 3;
 const SPIRE_EDGE_HAZARD_COOLDOWN_MS = 500;
 const MEDIC_HEAL_COST = 10;
 const APPEARANCE_CHANGE_COST = 25;
-const LOBBY_REVIVE_HP = 10;
+// 50% of MAX_HP — survives at least two Initiate Vault grunt hits (attackDamage 10)
+const LOBBY_REVIVE_HP = 50;
 const RESPAWN_DELAY_MS = 3000;
 const LOOT_LIFETIME_MS = 120000;
 // Slightly wider than the client walk-over radius (3.25) so pickups succeed after
@@ -122,6 +123,7 @@ const MAX_HAND_SLOTS = 6;
 const OPENING_HAND_SIZE = 4;
 const HAND_SLOT_FILL_ORDER = SHARED_HAND_SLOT_FILL_ORDER;
 const PASSIVE_DRAW_INTERVAL_MS = Number(process.env.PASSIVE_DRAW_INTERVAL_MS) || 5000;
+const RUN_EXHAUSTION_GRACE_MS = 20000; // grace before failing a run stuck on uncastable hand cards
 const MAX_PLAYERS = 16;
 
 // ── Difficulty scaling by live player count ──────────────────────────────────
@@ -221,6 +223,7 @@ module.exports = {
   OPENING_HAND_SIZE,
   HAND_SLOT_FILL_ORDER,
   PASSIVE_DRAW_INTERVAL_MS,
+  RUN_EXHAUSTION_GRACE_MS,
   MAX_PLAYERS,
   DIFFICULTY_SCALE_MIN_PLAYERS,
   DIFFICULTY_SPAWN_RATE_PER_PLAYER,

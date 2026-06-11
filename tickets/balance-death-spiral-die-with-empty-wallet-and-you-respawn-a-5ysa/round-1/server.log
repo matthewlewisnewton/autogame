@@ -1,0 +1,15 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/balance-death-spiral-die-with-empty-wallet-and-you-respawn-a-5ysa/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/balance-death-spiral-die-with-empty-wallet-and-you-respawn-a-5ysa/game/data
+Server listening on port 3003
+Player connected: socket=M0aAQ9bBsYHj_cowAAAB, playerId=85101bae-3212-43a0-bdfa-687fb8ec0907
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=j8Zu3qUh0yVFD-YAAAAD, playerId=703946c2-2a21-41dc-a8a2-da2bb52d52e5
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=a59e504f-206c-48d0-8f5b-a4d6a5423af1 value=11
+Player disconnected: M0aAQ9bBsYHj_cowAAAB
+Player disconnected: j8Zu3qUh0yVFD-YAAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

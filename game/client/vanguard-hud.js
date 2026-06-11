@@ -105,8 +105,8 @@ export function formatPlayerLevel(player) {
 	return Number.isFinite(lvl) && lvl >= 1 ? Math.floor(lvl) : 1;
 }
 
-/** Short label for the portrait frame from a player id. */
-export function formatCharacterId(playerId) {
-	if (!playerId) return '?';
-	return playerId.slice(0, 2).toUpperCase();
+/** Short label for the portrait frame from a display name (username, with a player-id fallback). */
+export function formatCharacterId(displayName) {
+	if (!displayName) return '?';
+	return displayName.slice(0, 2).toUpperCase();
 }
