@@ -585,6 +585,7 @@ const DEBUG_SCENARIOS = new Set([
   'training-caverns-tier-1',
   'crystal-rescue-tier-1',
   'crystal-rescue-extraction-phase',
+  'crystal-rescue-suspended-hub',
   'annex-escort-tier-1',
   'annex-escort-ambush-room',
   'scripted-wave-combat',
@@ -909,6 +910,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'training-caverns-tier-1',
   'crystal-rescue-tier-1',
   'crystal-rescue-extraction-phase',
+  'crystal-rescue-suspended-hub',
   'annex-escort-tier-1',
   'annex-escort-ambush-room',
 ]);
