@@ -7413,3 +7413,26 @@ so tests exercise the real primitive.
 None blocking. One minor cosmetic timing inconsistency noted as a nit (per-hit
 sparks fire at cast while the central crush ring fires at +375 ms).
 
+
+## v0.418 — 348-anim-glacier-rupture  (2026-06-10 22:18:48)
+
+
+### 4. Client test where feasible
+PASS. Strong coverage: dispatch/palette/decal/burst, per-hit positioning, frozenShatter sizing, distinctness
+from frost_nova, the windUpMs contract, and graceful degradation when optional ctx primitives are absent. The
+primitive itself is tested for ring+shard creation, palette/style overrides, and cleanup.
+
+### 5. Scope
+PASS. Changes are confined to `game/client`: the card render fn + registration (cardRenderers.js), the vfx
+primitive (renderer.js), and ctx wiring (main.js, socketHandlers/cardHandlers.js,
+socketHandlers/socketHandlerCtx.js), plus client tests. No server, no debug-scenario, no TASKS.md changes.
+This ticket did not add or modify any `?debugScenario=` shortcut.
+
+### Design/foundation consistency
+PASS. Builds on the 315 shared-primitive + per-card registration pattern; reuses the established palette and
+telegraph/decal/burst helpers. No regression to requirements foundation; touches only this card's path, so it
+will not conflict with sibling per-card animation beads.
+
+## Remaining gaps
+None blocking. One minor nit (palette-constant duplication) recorded in nits.md.
+
