@@ -1,0 +1,18 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/368-playthrough-revalidate-rooms/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/368-playthrough-revalidate-rooms/game/data
+Server listening on port 3000
+Player connected: socket=cYuyH0DCXOIFEl2cAAAB, playerId=bca3177c-df9c-4362-8dbe-8547a54ebf82
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=916c1009-6997-4e60-87b4-24a43f7d5f3d value=10
+[telepipe] placed at (-9.0, 27.0) by bca3177c-df9c-4362-8dbe-8547a54ebf82
+[telepipe] player bca3177c-df9c-4362-8dbe-8547a54ebf82 extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault
+[run] checkpoint restored
+Player disconnected: cYuyH0DCXOIFEl2cAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

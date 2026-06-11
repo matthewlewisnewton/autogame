@@ -23,14 +23,35 @@ describe('renderFindings', () => {
 		expect(md).not.toContain('spire_warden');
 	});
 
-	it('uses spire_warden and Spire Ascent title for spire-ascent preset', () => {
+	it('uses spire preset findingsTitle and bossSpawnLabel', () => {
 		const md = renderFindings({
 			...baseRun,
 			preset: 'spire-ascent',
+			findingsTitle: 'Spire Ascent validation findings',
+			bossSpawnLabel: 'spire_warden (Summit Warden)',
 			bossType: 'spire_warden',
 		});
 		expect(md).toContain('# Spire Ascent validation findings');
-		expect(md).toContain('**bossSpawned (spire_warden)**: PASS');
+		expect(md).toContain('**bossSpawned (spire_warden (Summit Warden))**: PASS');
+		expect(md).not.toContain('annex_overseer');
+		expect(md).not.toContain('Canyon Warden');
+	});
+
+	it('flags wrong boss display name in boss encounter UI section using preset metadata', () => {
+		const md = renderFindings({
+			...baseRun,
+			preset: 'spire-ascent',
+			bossSpawnLabel: 'spire_warden (Summit Warden)',
+			bossType: 'spire_warden',
+			bossEncounterUi: {
+				hudVisible: true,
+				bossName: 'Canyon Warden',
+				hpFillWidthPct: 100,
+				encounterLocked: true,
+				encounterPhase: 'active',
+			},
+		});
+		expect(md).toContain('expected "Summit Warden" display name');
 		expect(md).not.toContain('annex_overseer');
 	});
 });

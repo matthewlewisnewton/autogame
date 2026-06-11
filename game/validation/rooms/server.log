@@ -1,0 +1,156 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/368-playthrough-revalidate-rooms/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3275
+Player connected: socket=OOvFFtMVBEzlcKmNAAAB, playerId=a0f3f3ab-ea1c-40b9-859f-fb094274ce42
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+[loot] spawned id=4bf16de4-9c6f-41bc-8842-838fa1503307 value=18
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+[loot] spawned id=fc189d2c-055f-47fc-991c-a22e3dec06d4 value=18
+[loot] magic stone drop id=c1303efa-73cc-4bce-822c-b740df113d3d value=15 at (-5.6, -12.1)
+[loot] picked up id=c1303efa-73cc-4bce-822c-b740df113d3d (magic stone) value=15 by OOvFFtMVBEzlcKmNAAAB (currency=0, ms=99)
+[telepipe] placed at (-10.3, -20.3) by a0f3f3ab-ea1c-40b9-859f-fb094274ce42
+[telepipe] player a0f3f3ab-ea1c-40b9-859f-fb094274ce42 extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault — Tier II
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+[loot] magic stone drop id=83eacb4f-bdda-424c-9631-3167b3c21da9 value=15 at (-5.0, -9.0)
+[loot] currency drop id=48f579e8-21f6-4200-97fc-1ad732efb592 value=10 at (-5.0, -9.0)
+[loot] magic stone drop id=476187e9-fb3f-4697-8490-a4e532ee11cd value=15 at (-9.0, -5.0)
+[loot] magic stone drop id=09d2cc9f-9df1-4c82-afff-6624b465be2d value=15 at (-13.0, -9.0)
+[loot] currency drop id=be790b4f-38fb-444b-a988-f11cfc1eba12 value=7 at (-13.0, -9.0)
+[loot] magic stone drop id=d9f1d2b1-9f1e-4a18-a213-0a3423381adb value=15 at (-9.0, -13.0)
+[loot] currency drop id=e1251b37-e47e-4c4f-8c6d-342380e9e1a3 value=7 at (-9.0, -13.0)
+[loot] magic stone drop id=996e6b28-ddbb-4d8c-ae6e-26f8b500b699 value=50 at (27.3, -10.0)
+Player disconnected: OOvFFtMVBEzlcKmNAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/368-playthrough-revalidate-rooms/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3221
+Player connected: socket=EUQn7B9gpkgXuQleAAAB, playerId=90d5bcc8-09f6-442c-95d8-16ee0b916531
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+[loot] spawned id=e9f62526-69ec-4c35-9e9e-e76f6a562fca value=15
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+[loot] spawned id=4e299ac4-c5b3-48e1-b16c-50e9a11f1fbc value=5
+[loot] magic stone drop id=2125d0f0-0d80-4518-a633-c7100852aa07 value=15 at (-6.6, -27.1)
+[loot] picked up id=2125d0f0-0d80-4518-a633-c7100852aa07 (magic stone) value=15 by EUQn7B9gpkgXuQleAAAB (currency=0, ms=99)
+[telepipe] placed at (-7.7, -16.2) by 90d5bcc8-09f6-442c-95d8-16ee0b916531
+[telepipe] player 90d5bcc8-09f6-442c-95d8-16ee0b916531 extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault — Tier II
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+[loot] spawned id=351839af-3c69-4381-9cc4-7c2a0863af6d value=18
+[loot] magic stone drop id=bf449c35-99c2-49fb-9efb-5419fbf3c82c value=15 at (-5.0, -9.0)
+[loot] magic stone drop id=089af1ce-8934-4f23-aa8a-66f3d4eed631 value=15 at (-9.0, -5.0)
+[loot] currency drop id=decd8212-7a3f-4d51-ae3a-ee82727f89b6 value=7 at (-9.0, -5.0)
+[loot] magic stone drop id=e4745411-f032-4cf1-8dcc-83cbc74f05fc value=15 at (-13.0, -9.0)
+[loot] currency drop id=881640da-e3d0-4fc8-a7cd-9c23ee512903 value=9 at (-13.0, -9.0)
+[loot] magic stone drop id=e73f1837-7e50-4bf8-807f-f5495390e3e3 value=15 at (-9.0, -13.0)
+[loot] currency drop id=3ae637b3-8db5-4acf-83b4-1c63092a239f value=14 at (-9.0, -13.0)
+[gameLoop] lobby 2861556b tick failed: TypeError: spawnEnemy is not a function
+    at maybeSpawnDebugBossVisualIdentityAdd (/home/matt/workspace/.autogame-worktrees/368-playthrough-revalidate-rooms/game/server/encounters.js:219:21)
+    at tryActivateEncounter (/home/matt/workspace/.autogame-worktrees/368-playthrough-revalidate-rooms/game/server/encounters.js:205:3)
+    at updateEncounterTriggers (/home/matt/workspace/.autogame-worktrees/368-playthrough-revalidate-rooms/game/server/progression.js:2952:3)
+    at /home/matt/workspace/.autogame-worktrees/368-playthrough-revalidate-rooms/game/server/index.js:1519:11
+    at withLobbyContext (/home/matt/workspace/.autogame-worktrees/368-playthrough-revalidate-rooms/game/server/index.js:374:12)
+    at runGameLoopTick (/home/matt/workspace/.autogame-worktrees/368-playthrough-revalidate-rooms/game/server/index.js:1502:7)
+    at Timeout._onTimeout (/home/matt/workspace/.autogame-worktrees/368-playthrough-revalidate-rooms/game/server/index.js:983:7)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[loot] magic stone drop id=1a5d8bed-e7d6-47f2-ba4e-61d2538b422a value=50 at (27.7, -11.1)
+Player disconnected: EUQn7B9gpkgXuQleAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/368-playthrough-revalidate-rooms/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3200
+Player connected: socket=2jZ_9PvGk1-W6V5vAAAB, playerId=95773d9e-1e50-47ab-961c-c1d58366023b
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+[loot] spawned id=6f78de61-6774-4308-97f8-cac3b74668c0 value=17
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+[loot] magic stone drop id=eaeb1516-ae4b-4deb-bc97-5381aaf52203 value=15 at (-6.7, -25.5)
+[loot] picked up id=eaeb1516-ae4b-4deb-bc97-5381aaf52203 (magic stone) value=15 by 2jZ_9PvGk1-W6V5vAAAB (currency=0, ms=72.36000000000428)
+[telepipe] placed at (-7.7, -16.3) by 95773d9e-1e50-47ab-961c-c1d58366023b
+[telepipe] player 95773d9e-1e50-47ab-961c-c1d58366023b extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault — Tier II
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+[loot] spawned id=a2d6651a-071c-483a-8294-a3d7cebb0c1a value=7
+[loot] magic stone drop id=407702ba-b289-4fc3-b56f-e9167c8ee165 value=15 at (-5.0, -9.0)
+[loot] magic stone drop id=5a005d66-2195-4d6c-b9b9-4e0cd42e6784 value=15 at (-9.0, -5.0)
+[loot] magic stone drop id=d1d99104-93e3-433a-8deb-5c9fee0f7d18 value=15 at (-13.0, -9.0)
+[loot] currency drop id=35eec763-c09b-4d84-a236-e2a3fc93d298 value=10 at (-13.0, -9.0)
+[loot] magic stone drop id=ec3e191b-2cc2-4a0b-96c9-3770ff39b6bc value=15 at (-9.0, -13.0)
+[loot] magic stone drop id=459109fe-6e78-4743-85e0-7d5e616a2a81 value=50 at (27.3, -9.8)
+[loot] currency drop id=fff99222-4ad8-4782-a391-08bb45b981a5 value=49 at (27.3, -9.8)
+[loot] picked up id=fff99222-4ad8-4782-a391-08bb45b981a5 value=49 by 2jZ_9PvGk1-W6V5vAAAB (currency=59, ms=99)
+Player disconnected: 2jZ_9PvGk1-W6V5vAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/368-playthrough-revalidate-rooms/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3289
+Player connected: socket=CRv4qFHGGTiHPM2SAAAB, playerId=7a2f61a9-570a-459f-898e-bdc75ccf3beb
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+[loot] spawned id=9f405bae-540b-4d50-8ff9-c9e45e2759dd value=8
+[loot] magic stone drop id=dfe61d69-d2f6-4140-a055-9b93991881a5 value=15 at (-5.5, -12.0)
+[loot] currency drop id=0bbe8d16-126e-4a67-9e24-62b3d0edc05b value=12 at (-5.5, -12.0)
+[loot] picked up id=0bbe8d16-126e-4a67-9e24-62b3d0edc05b value=12 by CRv4qFHGGTiHPM2SAAAB (currency=12, ms=51.43000000000124)
+[loot] picked up id=dfe61d69-d2f6-4140-a055-9b93991881a5 (magic stone) value=15 by CRv4qFHGGTiHPM2SAAAB (currency=12, ms=66.44000000000125)
+[telepipe] placed at (-3.2, -14.8) by 7a2f61a9-570a-459f-898e-bdc75ccf3beb
+[telepipe] player 7a2f61a9-570a-459f-898e-bdc75ccf3beb extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault — Tier II
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+[loot] magic stone drop id=fcd21114-0446-4cb4-890a-f167aa25303a value=15 at (-5.0, -9.0)
+[loot] currency drop id=903f3e2d-65fb-4379-b89c-2bd74ec7167c value=12 at (-5.0, -9.0)
+[loot] magic stone drop id=36e50592-192c-49ed-a5eb-82d8a1f686a1 value=15 at (-9.0, -5.0)
+[loot] magic stone drop id=01f1470a-fb49-4d98-98cc-6ceb071ff8c3 value=15 at (-13.0, -9.0)
+[loot] currency drop id=33fa3de8-446d-417f-a227-9bd23e7e06a0 value=9 at (-13.0, -9.0)
+[loot] magic stone drop id=2386d78c-4d3e-45c8-8e30-472ff29a001a value=15 at (-9.0, -13.0)
+[loot] currency drop id=0ee13b5d-c4e7-4fef-ad85-5c97810171c1 value=8 at (-9.0, -13.0)
+Player disconnected: CRv4qFHGGTiHPM2SAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/368-playthrough-revalidate-rooms/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+Server listening on port 3236
+Player connected: socket=1zJAKH1q-PqUbUk4AAAB, playerId=2fbcd126-c23d-4e19-8609-7b6bc8c5b84f
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+[telepipe] placed at (-10.3, -16.2) by 2fbcd126-c23d-4e19-8609-7b6bc8c5b84f
+[telepipe] player 2fbcd126-c23d-4e19-8609-7b6bc8c5b84f extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault — Tier II
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+[loot] magic stone drop id=a3bcf86c-ea02-4bb0-83e1-0858ce43bd36 value=15 at (-5.0, -9.0)
+[loot] magic stone drop id=e6798f29-f5a8-4f79-ae6d-94cf315d1572 value=15 at (-9.0, -5.0)
+[loot] currency drop id=fd62a904-e5a2-4bf0-acf2-03209040052d value=12 at (-9.0, -5.0)
+[loot] magic stone drop id=44714ed3-f671-4d70-b271-db22ec684247 value=15 at (-13.0, -9.0)
+[loot] magic stone drop id=5978cd62-8e65-409e-aeb9-67a099ae1da5 value=15 at (-9.0, -13.0)
+[loot] currency drop id=30ff7390-1caa-4cae-af11-de5e570086b8 value=8 at (-9.0, -13.0)
+[loot] magic stone drop id=d7b87fad-2e22-48b6-8ef8-a9e9d2b47689 value=50 at (28.5, -11.7)
+Player disconnected: 1zJAKH1q-PqUbUk4AAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

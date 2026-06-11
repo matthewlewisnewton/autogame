@@ -106,8 +106,13 @@ describe('savePlayerData triggers on state-changing handlers', () => {
 		await debugResultPromise;
 		await waitForEvent(socket, 'stateUpdate');
 
+		// Stop background game-loop ticks (batched movement saves landed on main) so only
+		// the explicit runGameLoopTick below integrates movement and flushes the save.
+		clearAllTimers();
+
 		const player = playerForSocket(socket);
 		const xBefore = player.x;
+		player.persistenceLastSavedAt = 0;
 
 		// Spy on the provider's savePlayer to verify savePlayerData is called
 		// (savePlayerData delegates to provider.savePlayer internally)

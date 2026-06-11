@@ -1605,11 +1605,31 @@ function bindSocketHandlers(s) {
 		if (data && data.ok) {
 			console.log(`[debugScenario] applied ${data.scenario}`);
 			const cardProbeScenarios = new Set([
+				'ice-ball-ready',
+				'fireball-hand-ready',
 				'fireball-ready',
 				'status-mutual-exclusion-ready',
 				'purifying-pulse-ready',
 				'magma-windup-ready',
 			]);
+			// Card exercises cast on the next harness tick; sync facing/cooldowns now
+			// so keyboard useCard is not blocked or mis-aimed before deferred snap.
+			if (cardProbeScenarios.has(data.scenario)
+				&& gameState?.gamePhase === 'playing'
+				&& myId
+				&& gameState.players[myId]) {
+				const me = gameState.players[myId];
+				for (let i = 0; i < slotCooldowns.length; i += 1) {
+					slotCooldowns[i] = false;
+				}
+				if (Array.isArray(me.hand)) {
+					applyInRunDeckPayload({ hand: me.hand });
+					renderHand();
+				}
+				if (Number.isFinite(me.rotation)) {
+					alignAttackFacing(me.rotation);
+				}
+			}
 			// Repositioning scenarios emit stateUpdate before this result; defer one
 			// tick so the client sim snaps after that payload is applied.
 			setTimeout(() => {
@@ -1617,11 +1637,7 @@ function bindSocketHandlers(s) {
 					const me = gameState.players[myId];
 					setPlayerPosition(me.x, me.z);
 					clearAllLockOnState();
-					if (cardProbeScenarios.has(data.scenario) && Array.isArray(me.hand)) {
-						applyInRunDeckPayload({ hand: me.hand });
-						renderHand();
-					}
-					if (Number.isFinite(me.rotation)) {
+					if (cardProbeScenarios.has(data.scenario) && Number.isFinite(me.rotation)) {
 						alignAttackFacing(me.rotation);
 					}
 				}
@@ -2928,10 +2944,20 @@ function setCardSlotHint(hintEl, hintLabel, hintMarkup) {
 	hintEl.innerHTML = hintMarkup;
 }
 
+function slotSignature(card, playerMs, layoutMode) {
+	if (!card) {
+		return `__empty__|${layoutMode}`;
+	}
+	const cardCost = getCardMagicStoneCost(card);
+	const affordable = !(cardCost > 0 && playerMs < cardCost);
+	return `${card.id}|${card.remainingCharges}|${card.charges}|${card.activeMinionId ?? ''}|${card.isEvolved}|${card.isDesperation}|${card.isEcho}|${card.grind}|${card.specialEffect ?? ''}|${affordable}|${layoutMode}`;
+}
+
 function renderHand() {
 	const playerMs = (gameState && myId && gameState.players[myId])
 		? gameState.players[myId].magicStones
 		: 0;
+	const layoutMode = resolveHandLayoutMode();
 
 	clearAdjacentCardHighlights();
 	const handHasDesperation = hand.some((card) => card && card.isDesperation);
@@ -2949,6 +2975,22 @@ function renderHand() {
 		const slot = getCardSlotEl(i);
 		if (!slot) continue;
 		const card = hand[i];
+		const sig = slotSignature(card, playerMs, layoutMode);
+		const cachedSig = slot.dataset._sig;
+
+		// Always update charge-pct so burning-creature meters animate
+		if (card) {
+			slot.style.setProperty('--charge-pct', String(getCardChargePercent(card)));
+		} else {
+			slot.style.removeProperty('--charge-pct');
+		}
+
+		// Skip full DOM rebuild when signature is unchanged
+		if (cachedSig === sig) {
+			continue;
+		}
+		slot.dataset._sig = sig;
+
 		const hintLabel = inputHints.hintLabels?.[i]
 			?? (inputHints.mode === 'keyboard' ? `Key ${inputHints.hints[i]}` : `Gamepad ${inputHints.hints[i]}`);
 		const { meter, hint, content } = getCardSlotParts(slot);
@@ -2958,7 +3000,6 @@ function renderHand() {
 			meter.hidden = false;
 			const style = CARD_ACCENT_STYLE[card.id] || CARD_TYPE_STYLE[card.type] || CARD_TYPE_STYLE.weapon;
 			slot.style.setProperty('--slot-color', style.color);
-			slot.style.setProperty('--charge-pct', String(getCardChargePercent(card)));
 			const evolvedBadge = card.isEvolved ? `<span class="evolved-badge">${THEME.progression.ascended}</span>` : '';
 			const grindBadge = (card.grind || 0) > 0 ? `<span class="grind-badge">+${card.grind}</span>` : '';
 			const effectText = (!card.isDesperation && card.specialEffect)
@@ -3010,9 +3051,8 @@ function renderHand() {
 			}
 		} else {
 			slot.style.removeProperty('--slot-color');
-			slot.style.removeProperty('--charge-pct');
 			meter.hidden = true;
-			const n64Layout = resolveHandLayoutMode() === 'n64';
+			const n64Layout = layoutMode === 'n64';
 			if (n64Layout) {
 				setCardSlotHint(hint, hintLabel, inputHints.hints[i]);
 			} else {
@@ -5274,6 +5314,54 @@ window.__getEnemyRenderScaleForTest = (enemyId) => {
 	const info = rendererGetEnemyRenderScaleForTest(enemyId, enemy.type);
 	return info ? { scale: info.scale, type: enemy.type } : null;
 };
+
+/** Harness probe: compare stage boss vs nearest live add (incl. dormant boss + mid-combat adds). */
+function captureBossVisualIdentityProbeData(expectedBossType) {
+	const harness = typeof window.__AUTOGAME_HARNESS_STATE__ === 'function'
+		? window.__AUTOGAME_HARNESS_STATE__()
+		: null;
+	const enemyHp = Array.isArray(harness?.enemyHp) ? harness.enemyHp : [];
+	const bossEnemyId = harness?.encounter?.bossEnemyId ?? null;
+	const boss = enemyHp.find((e) => e.id === bossEnemyId && e.hp > 0)
+		|| enemyHp.find((e) => e.type === expectedBossType && e.hp > 0)
+		|| null;
+	const adds = enemyHp.filter(
+		(e) => e.hp > 0 && e.id !== boss?.id && e.type !== expectedBossType,
+	);
+	let nearestAdd = null;
+	let nearestDist = Infinity;
+	if (boss) {
+		for (const add of adds) {
+			const dist = Math.hypot((add.x ?? 0) - (boss.x ?? 0), (add.z ?? 0) - (boss.z ?? 0));
+			if (dist < nearestDist) {
+				nearestDist = dist;
+				nearestAdd = add;
+			}
+		}
+	}
+	const nearestAddType = nearestAdd?.type ?? null;
+	const bossMaxHp = boss?.maxHp ?? 0;
+	const addMaxHp = nearestAdd?.maxHp ?? 0;
+	const bossDistinctFromAdds = !!boss
+		&& !!nearestAdd
+		&& boss.type !== nearestAddType
+		&& bossMaxHp > addMaxHp;
+	const bossRenderScale = boss && typeof window.__getEnemyRenderScaleForTest === 'function'
+		? window.__getEnemyRenderScaleForTest(boss.id)?.scale ?? null
+		: null;
+	const addRenderScale = nearestAdd && typeof window.__getEnemyRenderScaleForTest === 'function'
+		? window.__getEnemyRenderScaleForTest(nearestAdd.id)?.scale ?? null
+		: null;
+	return {
+		bossType: boss?.type ?? expectedBossType,
+		bossEnemyId: boss?.id ?? bossEnemyId,
+		nearestAddType,
+		bossDistinctFromAdds,
+		bossRenderScale,
+		addRenderScale,
+	};
+}
+window.__captureBossVisualIdentityForTest = captureBossVisualIdentityProbeData;
 window.__iceBallMeshes = () => getMeshMaps().iceBallMeshes;
 window.applyWindupFlash = rendererApplyWindupFlash;
 window.applyRevealHighlight = rendererApplyRevealHighlight;
@@ -5524,8 +5612,8 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 					z: Number.isFinite(p.z) ? p.z : null,
 				}))
 			: [],
-		enemies: gameState ? gameState.enemies.length : 0,
-		enemyHp: gameState ? gameState.enemies.map((enemy) => {
+		enemies: gameState && Array.isArray(gameState.enemies) ? gameState.enemies.length : 0,
+		enemyHp: gameState && Array.isArray(gameState.enemies) ? gameState.enemies.map((enemy) => {
 			const statusNow = Date.now();
 			const slowedUntil = enemy.slowedUntil ?? 0;
 			const burningUntil = enemy.burningUntil ?? 0;

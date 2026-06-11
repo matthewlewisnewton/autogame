@@ -2952,6 +2952,7 @@ function tickCollectItemsExtraction(gameState = _gameState) {
 
 function updateEncounterTriggers() {
   if (!isPlayingPhase(_gameState)) return;
+  if (_gameState._applyingDebugScenario) return;
   tryActivateEncounter(_gameState);
 }
 

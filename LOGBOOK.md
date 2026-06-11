@@ -6876,6 +6876,47 @@ Fallback smoke capture exercised the real player path: auth → lobby → ready 
 
 None. All acceptance criteria are fully met; runtime capture is clean; test suite is green.
 
+## v0.388 — 369-playthrough-revalidate-open-plaza  (2026-06-10 16:24:35)
+
+Pass. `game/validation/open-plaza/findings.md` lists the assertion results, console/page-error status, visual notes, floor alignment, boss UI/visual identity, card exercises, telepipe checks, and screenshot inventory. The required screenshot references and probes are present in `run-summary.json`/`probes.json`.
+
+## Design and foundation consistency
+
+The implementation is consistent with `game/docs/design.md`: the lobby-to-dungeon loop, stage-boss flow, card combat interactions, and telepipe persistence/reset behavior match the documented design. It does not regress the foundation requirements in `game/docs/requirements.md`: the captured run renders a 3D scene, connects client/server, shows the player, and continues to provide synchronized gameplay state.
+
+## Debug scenarios
+
+Pass. The added arena debug scenarios are entered only through the debug scenario socket path, which is gated by `ALLOW_DEBUG_SCENARIOS`, non-production localhost/private access, or explicit dev conditions. Normal gameplay does not call these paths.
+
+The same end states are reachable through normal play: Arena Trials Tier 2 is reached by clearing/unlocking/deploying, add combat is reached by traversing the plaza, the boss approach/activation is reached by clearing adds and moving into the encounter trigger, low boss HP is reached by fighting the boss, and the telepipe state is reached by bringing a Telepipe and spending vitals/charges during a sortie. The shortcuts still use server-side state, encounter, objective, floor sampling, and snapshot/broadcast paths rather than bypassing client-only invariants.
+
+## Code quality and validation
+
+No blocking code-quality issues found in the live codebase. The changed debug scenarios have unit/integration coverage in `game/server/test/debug-scenarios.test.js`, and coverage output reports the test suite green: 119 files passed, 1720 tests passed. The open-plaza artifact verifier checks the full-run summary, required assertion keys, required files, and distinct victory screenshots.
+
+## v0.389 — 371-playthrough-revalidate-spire-ascent  (2026-06-10 16:26:06)
+
+
+### Telepipe vitals persistence and new-sortie card charge reset
+
+PASS. The full validation output includes Spire Ascent telepipe-new-sortie coverage: pre-suspend and post-deploy HP/MS are preserved within the harness comparison, the run id changes for the fresh sortie, suspended state is cleared, and card charges reset to full in the new sortie. The round-2 capture separately confirms the live suspend/resume path: the same layout seed/profile and enemy ids are restored after re-deploy from the suspended lobby.
+
+### Debug scenarios
+
+PASS. The added/changed debug scenarios are only reachable through the debug-scenario socket path used by the harness and guarded by the existing debug allowance logic. The Spire Ascent shortcuts are documented as QA shortcuts for states reachable through normal quest unlock/deploy, add clearing, encounter trigger movement, boss combat, or Telepipe acquisition. They still use the real quest layout/run setup, enemy spawning, encounter state, card casting, suspend/abandon/deploy flow, and server-side assertions rather than replacing the normal gameplay path as the only proof.
+
+### Design and foundation consistency
+
+PASS. The implementation remains consistent with `game/docs/design.md`: Spire Ascent remains a stage-boss dungeon with the Summit Warden, card combat remains based on hand slots and charges, and Telepipe behavior preserves vitals while distinguishing suspend/resume from fresh sortie charge reset. The foundation requirements are not regressed: the captured runs render Three.js scenes, authenticate/connect through client/server, show the player in 3D, and continue receiving state updates.
+
+### Code quality and tests
+
+PASS. The live changes are scoped to validation harness behavior, debug scenarios, small client synchronization after debug scenarios, and validation artifacts. `coverage.log` reports 133 test files and 1995 tests passing, with visibility coverage for changed files. The coverage log contains noisy stderr from existing synthetic integration paths, but the ticket's captured browser runs have no page errors or fatal game-code logs.
+
+## Remaining gaps
+
+None.
+
 ## v0.386 — 386-boss-level-riftbound-colossus-gated-ice2-fire2  (2026-06-10 16:15:58)
 
 PASS: Dedicated boss level. `rift_convergence` is registered as a tier-1 `stage_boss` quest with `levelKind: 'boss_level'`, `layoutProfile: 'boss-arena'`, `arenaTheme: 'rift'`, and a stage-boss encounter anchored on `arena_dais`.
@@ -6898,6 +6939,93 @@ PASS: Test and coverage evidence. The coverage log reports `212 passed` test fil
 
 None.
 
+## v0.381 — 377-lock-on-and-aim-across-heights  (2026-06-10 13:54:11)
+
+Camera and reticle tracking for elevated targets is satisfied. The camera look-at uses `resolveLockOnLookAtY()` instead of the player height, death-release eases from the target's actual height, and the lock-on ring is positioned at the enemy render height via `syncEnemyMeshes()`. The renderer ring test specifically covers a flying target, and the implementation remains consistent with the existing render model for flying enemies and floor-aware altitude.
+
+Server-side target resolution for height-aware projectile aiming is satisfied. The client includes `lockTargetId` when locked on, and `game/server/index.js` resolves projectile aim from the player's world Y to the locked enemy's world Y. The server tests cover elevated and flying lock-on hits for projectile/cone-style card paths, including `fireball`, `arcane_bolt`, `photon_slicer`, `infinite_disk`, `ice_ball`, `chain_lightning`, and `dragons_breath`.
+
+The lock-on info panel remains live-code consistent. It already consumes the locked enemy object and catalog data, and the new selection/tracking path does not bypass the panel or introduce stale panel state; dead or missing enemies still hide the panel through the existing model guard.
+
+The new debug scenarios are acceptable. `lock-on-flying-enemy` and `lock-on-3d-stack` are registered as debug scenarios and are reachable through the existing local `?debugScenario=` client path. They set up deterministic QA states that correspond to normal vertical-quest situations with flying enemies and stacked X/Z targets, and they do not weaken combat validation or replace the real play flow.
+
+## Design and requirements consistency
+
+The implementation aligns with `game/docs/design.md` by reusing the shared floor sampling and floor-aware altitude model rather than adding a parallel height system. It does not regress the foundation requirements: the captured run proves the 3D scene renders, client/server communication works, multiplayer state appears, and movement still updates during the smoke capture.
+
+## Code quality and tests
+
+The changed code is scoped to lock-on height resolution, renderer reticle/camera placement, debug scenarios, and tests. I did not find dead code, broken imports, or console/runtime errors. Coverage visibility shows the full suite passing: 163 test files and 2219 tests passed, with coverage reported for the changed server/client surface.
+
+## Remaining gaps
+
+None.
+
+## v0.383 — Server: memoize movement contexts — wall colliders and walkable AABBs rebuilt from scratch every tick  (2026-06-10 14:02:45)
+
+- Hub cache is appropriate: `HUB_LAYOUT` is a static constant shared by all lobbies.
+- Minimal diff scope (two production files); no dead code introduced.
+
+**Correctness notes (non-blocking)**
+
+- Caches are module-global, not per-lobby. With multiple concurrent playing lobbies that have different layouts, the singleton cache alternates and may rebuild more often than a per-lobby cache would — but reference/key checks preserve correctness; hub cache still hits on every lobby tick.
+- Cached `walkableAABBs` / `dungeonBounds` are references captured at build time. In practice these are always reassigned together with `state.layout` in `applyLayoutForQuest` and equivalent paths, so stale-reference risk matches pre-ticket behavior.
+
+---
+
+## Debug scenarios
+
+This ticket did not add or modify any `?debugScenario=` shortcuts. No review required.
+
+---
+
+## Remaining gaps
+
+None. Runtime proof is clean, acceptance criteria are fully met, and the test suite passes.
+
+## v0.387 — Client: renderHand rebuilds slot innerHTML on every STATE_UPDATE even when the hand is unchanged  (2026-06-10 16:20:11)
+
+- Signature includes `layoutMode` so N64 vs default hint markup stays correct when layout locks change.
+
+No dead code, no obvious logic bugs, no browser page errors.
+
+**Intentional trade-off (in scope):** For burning creatures, only the meter bar (`--charge-pct`) animates per tick; the `.card-charges` text label (e.g. `18s/30s`) is not rewritten on skip. The ticket goal explicitly states that only `--charge-pct` needs per-tick updates — this is correct per spec, not a defect.
+
+---
+
+## Integration notes
+
+`renderHand()` is still invoked unconditionally on every playing-phase STATE_UPDATE (lines ~1446–1449), which is correct: the function is now cheap when the hand is stable. Probes show MS ticking (`50.6` → `51.1`) while hand card entries remain structurally identical — exactly the hot path this fix optimizes.
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are met; the game runs cleanly in capture; tests pass.
+
+---
+
+## v0.391 — 368-playthrough-revalidate-rooms  (2026-06-10 16:50:11)
+
+### Screenshots and findings
+
+PASS. `game/validation/rooms/findings.md` exists and reports `Outcome: PASS` with every relevant assertion listed. The expected screenshots are present in `game/validation/rooms/`, including hub/browser, level entry, mid-combat, dormant/active boss, boss defeated, victory, slow/burn, Purifying Pulse, wind-up, and telepipe before/after captures. The findings file explicitly reports no observed console/page errors or visual glitches.
+
+### Design and requirements consistency
+
+PASS. The result remains aligned with `game/docs/design.md`: the Training Caverns flow still uses lobby deploy into a dungeon, a stage boss encounter, card combat, Telepipe suspend/abandon/new sortie behavior, and preserved vitals with new-sortie card-charge reset. The implementation does not regress the foundation in `game/docs/requirements.md`: rendering, WebSocket connection, player representation, and movement/gameplay synchronization are all exercised by the captured run and rooms validation.
+
+### Debug scenario safety
+
+PASS. The added/changed debug scenarios remain behind the existing debug scenario request path and are not part of normal gameplay entry. The rooms-specific shortcuts document normal-play equivalence in code comments and tests: Tier 2 is reachable by unlocking and deploying Training Caverns, near-adds/boss-approach states are reachable by traversing and clearing adds, encounter activation is reachable by walking into the trigger, low-HP boss is a combat-time shortcut, and Telepipe-in-hand is reachable by purchasing Telepipe before deploy. The scenarios preserve server-side state machinery rather than bypassing it wholesale: they set quest/tier/layout, call deploy/start-run helpers, use the encounter state machine, and the telepipe harness validates abandon-plus-fresh-deploy instead of a checkpoint restore.
+
+### Code quality and tests
+
+PASS. The changed live files are focused on validation harness wiring, rooms artifacts, and narrowly scoped debug/probe support. The earlier accumulated `game/validation/rooms/server.log` includes an old `spawnEnemy is not a function` attempt, but the live `game/server/encounters.js` no longer contains that helper path and the current round capture/server log is clean. `coverage.log` ends with `155 passed` test files and `2165 passed` tests; coverage thresholds are disabled, but the changed paths have direct unit and integration coverage for rooms findings, debug scenarios, and telepipe behavior.
+
+## Remaining gaps
+
+None.
 
 ## v0.393 — Debug tooling: time-scale control (slow-mo/pause) behind ALLOW_DEBUG_SCENARIOS for playtesting and QA  (2026-06-10 17:19:45)
 
