@@ -1,0 +1,16 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health (gate):** Game runs cleanly — `metrics.json` shows `ok: true`, empty `pageerrors`, no `harness_failure`, scene initialized and full lobby→play flow captured. `console.log` has only two benign `409 Conflict` lines from concurrent lobby creation; no page errors or fatals from game code.
+
+**Acceptance criteria — all met:**
+- **Theme match:** Thunderbird summon (`renderThunderbirdSummon`) gets a sky-blue storm-bird flourish — summon ring + aerial wing-lift particle burst at `y:3.5` + sky-pulse telegraph ring, deliberately brighter than Stormwing Drone. Strike (`renderThunderbirdStrike`) renders forked sky-blue chain arcs per server segment with endpoint sparks on live enemy meshes and an origin flare. Reads unmistakably as a lightning bird.
+- **Timing sync:** Server resolves all chain damage instantly in one tick and emits order-aligned `chainSegments`/`hits`; the renderer's 100ms-per-hop cascade is explicitly visual-only, so it never desyncs from authoritative damage. `hits[index]` correctly indexes `segments[index].to`.
+- **No perf regression:** Guarded primitive calls from the 315 foundation; graceful degradation when any primitive is absent.
+- **Tests:** Thorough new coverage; full suite **186/186 pass**.
+- **Scope:** Only `cardRenderers.js` + its test (+ sub-ticket md). Legacy `chain_lightning` spell card unaffected.
+
+**One nit (non-blocking, filed to `nits.md`):** `renderChainLightning` is now dead code — thunderbird moved to `renderThunderbirdStrike` and the `chain_lightning` card uses `renderChainLightningArcs`, leaving the old function unreferenced.
+
+Wrote `review.md` and `nits.md`. No `gaps.md` (PASS).
