@@ -1,0 +1,15 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health (gate):** Passed. `metrics.json` shows `"ok": true`, `pageerrors: []`, servers started, both players reached `playing`. `console.log` has only two benign `409` lobby-network lines — no `pageerror`/`[fatal]` from game code.
+
+**Acceptance criteria — all met:**
+- **Theme:** `cinder_snare` was switched from the generic `renderGroundEnchantment` to a dedicated `renderCinderSnare` — a fiery ground hazard (scorch ring, ember column, telegraph ring, ember burst, decal, per-tick pulses) themed to the card's own `#f97316` accent with a `0xff3b00` emissive, visibly distinct from `spike_trap`.
+- **Timing sync:** Card has no `windUpMs`, so placement VFX fire synchronously at cast (matching server `CARD_USED`), and the lingering smolder cadence/duration/radius are all derived from `cardStats.json` (`dotTicks/dotIntervalMs/ttlMs/radius`), not hardcoded. Pulses align with the server's 500ms × 4 DoT.
+- **No perf regression:** Reuses 315 primitives; only two cheap long-lived meshes with no per-frame allocation.
+- **Tests:** 5 new client tests added; full file (164) and server `enchantment.test.js` (17) pass.
+
+**Scope:** Clean — only `cardRenderers.js` + its test. No debug scenario, no server/shared changes.
+
+I noted two **non-blocking nits** (the tall reused column silhouette reads more like a "pillar" than a low snare; shared emissive with inferno_pillar) in `nits.md`. Wrote `review.md` and `nits.md`; no `gaps.md` since the verdict is PASS.

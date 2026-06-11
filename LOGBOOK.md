@@ -7049,3 +7049,26 @@ Targeted time-scale coverage is present and passing in `round-2/coverage.log`: `
 
 No blocking gaps for this ticket.
 
+
+## v0.396 — 367-anim-cinder-snare  (2026-06-10 18:06:10)
+
+`updateAttackEffects` with no per-frame allocation, fading/disposing at `ttlMs`.
+Negligible cost even with the 30s lifetime.
+
+### "Client test where feasible"
+MET. Five new tests in `game/client/test/cardRenderers.test.js` cover: distinct
+dispatch vs `spike_trap`, themed accent at origin/radius, stat-derived cadence/
+duration, synchronous placement (no wind-up gating), and a no-radius no-op. Full
+file (164 tests) passes; server `enchantment.test.js` (17) passes.
+
+### Scope / design consistency
+MET. The diff touches only `game/client/cardRenderers.js` (this card's render fn
++ registration) and its test — exactly the declared scope. No server, shared, or
+other-card changes; no new debug scenario; no regression to other renderers
+(`renderGroundEnchantment` is retained for other cards). Consistent with
+`design.md` VFX-primitive approach.
+
+## Remaining gaps
+
+None blocking. Two minor thematic nits captured in `nits.md`.
+
