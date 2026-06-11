@@ -175,3 +175,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [404-cleanup-client-extract-a-booth-module-factory-boothdeck-js-and-booth-idbm](tickets/404-cleanup-client-extract-a-booth-module-factory-boothdeck-js-and-booth-idbm/)
 - [ ] [404-cleanup-client-hoist-per-frame-allocations-in-renderer-animate-objec-cgpv](tickets/404-cleanup-client-hoist-per-frame-allocations-in-renderer-animate-objec-cgpv/)
 - [ ] [405-cleanup-lobby-registry-abandoned-lobbies-are-never-cleaned-up-ghost-ducq](tickets/405-cleanup-lobby-registry-abandoned-lobbies-are-never-cleaned-up-ghost-ducq/)
+- [ ] [406-cleanup-progression-lv-1-badge-is-hardcoded-formatplayerlevel-always-nrof](tickets/406-cleanup-progression-lv-1-badge-is-hardcoded-formatplayerlevel-always-nrof/)
