@@ -79,6 +79,7 @@ describe('resolveRenderers()', () => {
 		const arcaneBoltRenderers = resolveRenderers('arcane_bolt');
 		expect(arcaneBoltRenderers).toHaveLength(1);
 		expect(arcaneBoltRenderers[0].name).toBe('renderArcaneBolt');
+		expect(arcaneBoltRenderers[0].name).not.toBe('renderWeaponSwing');
 		expect(resolveRenderers('ice_ball')).toHaveLength(1);
 		expect(resolveRenderers('divine_grace')).toHaveLength(1);
 		expect(resolveRenderers('purifying_pulse')).toHaveLength(1);

@@ -4378,6 +4378,7 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 			mesh: group,
 			coreMesh,
 			glowMesh,
+			_scene: targetScene,
 			origin: { x: origin.x, z: origin.z },
 			direction: { x: nx, z: nz },
 			range,
@@ -6775,7 +6776,7 @@ export function updateAttackEffects() {
 			}
 
 			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, scene);
+				disposeEffectObject(fx.mesh, fx._scene || scene);
 				activeEffects.splice(i, 1);
 			}
 			continue;

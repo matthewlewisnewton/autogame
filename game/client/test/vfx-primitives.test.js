@@ -641,4 +641,34 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before);
 		expect(disposeSpy).toHaveBeenCalled();
 	});
+
+	it('spawnAttackEffect arcane_bolt adds a flagged violet lance projectile and cleans it up', () => {
+		const before = getActiveEffects().length;
+		spawnAttackEffect(
+			{ x: 0, z: 0 },
+			{ x: 1, z: 0 },
+			{
+				effect: 'arcane_bolt',
+				range: 10,
+				color: 0xa78bfa,
+				emissive: 0x7c3aed,
+				projectileTravelMs: ATTACK_EFFECT_DURATION,
+			},
+		);
+		expect(getActiveEffects().length).toBe(before + 1);
+
+		const fx = lastEffect();
+		expect(fx.isArcaneBoltProjectile).toBe(true);
+		expect(fx.range).toBe(10);
+		expect(fx.duration).toBe(ATTACK_EFFECT_DURATION);
+		expect(fx.coreMesh.material.color.getHex()).toBe(0xa78bfa);
+		expect(fx.coreMesh.material.emissive.getHex()).toBe(0x7c3aed);
+
+		const disposeSpy = vi.spyOn(fx.coreMesh.geometry, 'dispose');
+		fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(disposeSpy).toHaveBeenCalled();
+	});
 });
