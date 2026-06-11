@@ -8157,3 +8157,26 @@ card's renderer was touched.
 None blocking. One minor nit recorded in nits.md (overlapping per-hit spark
 sources on the shockwave). It does not affect correctness or the verdict.
 
+
+## v0.444 — Client: extract a booth module factory — boothDeck.js and boothShop.js are line-for-line copy-paste  (2026-06-11 02:47:45)
+
+
+## Code quality
+
+- Factory is small, focused, and testable (no `window`/`socket` in the core logic beyond the listener registration guard).
+- `renderDepKey` dynamic lookup is a reasonable way to parameterize the render callback without changing the deps object shape expected by `main.js`.
+- No dead code or obvious bugs introduced.
+- New `boothCommon.test.js` provides meaningful coverage of the extracted abstraction.
+
+## Debug hooks (`?booth=`)
+
+This ticket refactored existing `?booth=` URL shortcuts; it did not add new `?debugScenario=` entries.
+
+- **Deck/shop:** Still gated to localhost loopback hosts via `DEBUG_BOOTH_ALLOWED_HOSTS` inside the factory. Normal gameplay reaches deck/shop through hub booth interaction (`booth:action` events).
+- **Launch:** `?booth=launch` auto-ready on lobby join (in `lobbyBrowserHandlers.js`) is unchanged from baseline — pre-existing harness convenience, not weakened by this refactor.
+- **Quest:** `getBoothDebugHook` re-export path updated only; quest panel reveal via booth interaction is unchanged.
+
+## Remaining gaps
+
+None. All acceptance criteria are fully met; runtime capture is clean.
+

@@ -1,0 +1,11 @@
+Created **2 sub-tickets** in dependency order:
+
+1. `/home/matt/workspace/.autogame-worktrees/client-extract-a-booth-module-factory-boothdeck-js-and-booth-idbm/tickets/client-extract-a-booth-module-factory-boothdeck-js-and-booth-idbm/subtickets/01-booth-module-factory-and-deck-shop/ticket.md`  
+   Core deliverable: add `createBoothModule` in `boothCommon.js` and refactor the line-for-line `boothDeck.js` / `boothShop.js` copies into thin wrappers with unchanged public exports and passing booth tests.
+
+2. `/home/matt/workspace/.autogame-worktrees/client-extract-a-booth-module-factory-boothdeck-js-and-booth-idbm/tickets/client-extract-a-booth-module-factory-boothdeck-js-and-booth-idbm/subtickets/02-consolidate-launch-quest-debug-hook/ticket.md`  
+   “Ideally” follow-up: move `getBoothDebugHook` into `boothCommon.js` so `questBooth.js` stops re-exporting through `launchBooth.js`; launch/quest booths keep their distinct open behavior (ready-up / quest panel) while sharing the debug-hook primitive.
+
+**Split rationale:** `boothDeck` and `boothShop` are true duplicates (same `showGameLobby` → `setLobbyTab` → `render` pattern). `launchBooth` and `questBooth` only share `getBoothDebugHook` — they do not use the listener/open pattern — so folding them into `createBoothModule` would be the wrong abstraction. Sub-ticket 02 covers the realistic shared piece without bundling unrelated launch-bay logic.
+
+No existing sub-ticket folders were present (nothing to retire). Both tickets use **code** verification.

@@ -171,3 +171,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [403-cleanup-anim-signal-familiar](tickets/403-cleanup-anim-signal-familiar/)
 - [ ] [403-cleanup-anim-vault-wyrm](tickets/403-cleanup-anim-vault-wyrm/)
 - [ ] [403-cleanup-client-registration-success-message-rendered-into-hidden-err-4dy2](tickets/403-cleanup-client-registration-success-message-rendered-into-hidden-err-4dy2/)
+- [ ] [404-cleanup-client-extract-a-booth-module-factory-boothdeck-js-and-booth-idbm](tickets/404-cleanup-client-extract-a-booth-module-factory-boothdeck-js-and-booth-idbm/)
