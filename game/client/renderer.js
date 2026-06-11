@@ -4477,7 +4477,10 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 			returnPasses: style.returnPasses
 				?? (effect === 'triple_returning_projectile' ? 3 : 1),
 			createdAt: performance.now(),
-			duration: ATTACK_EFFECT_DURATION,
+			// Default to the standard travel window, but honor a caller-supplied
+			// short `travelMs`/`duration` so a hitscan-style beam (Phase Stalker's
+			// phase_beam) can resolve near-instantly to match the server hit.
+			duration: style.travelMs ?? style.duration ?? ATTACK_EFFECT_DURATION,
 		});
 		return;
 	}

@@ -3821,17 +3821,60 @@ describe('renderCardUsed() — creature dispatch', () => {
 			projectileHitWidth: 0.8,
 			color: 0x22d3ee,
 		});
+		// Hitscan-tight: the corridor resolves in a single quick flash (short
+		// travelMs) to match the server's instant beam, not the slow ~600ms
+		// projectile window.
+		expect(attacks[0][3].travelMs).toBeGreaterThan(0);
+		expect(attacks[0][3].travelMs).toBeLessThan(300);
 		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
 		expect(trail).toBeDefined();
 		expect(trail[1]).toEqual({ x: 0, z: 0 });
 		expect(trail[2]).toEqual({ x: 1, z: 0 });
 		expect(trail[3]).toMatchObject({ range: 14, color: 0x22d3ee });
+		// The primary cyan trail also rides the tightened travel window.
+		expect(trail[3].travelMs).toBe(attacks[0][3].travelMs);
 		const terminusBurst = ctx._calls.find(
 			(c) => c[0] === 'spawnParticleBurst' && c[1].x === 14 && c[1].z === 0,
 		);
 		expect(terminusBurst).toBeDefined();
 		expect(terminusBurst[2]).toMatchObject({ color: 0x22d3ee, emissive: 0x06b6d4 });
+		// Void-rift accent: a purple phase-rift streak layered beneath the cyan
+		// corridor (lower y) plus a rift-opening burst at the origin, while the cyan
+		// accent stays the primary identity (corridor + leading trail + terminus).
+		const riftTrail = ctx._calls.find(
+			(c) => c[0] === 'spawnProjectileTrail' && c[3].color === 0x7c3aed,
+		);
+		expect(riftTrail).toBeDefined();
+		expect(riftTrail[3]).toMatchObject({ emissive: 0xa855f7 });
+		expect(riftTrail[3].y).toBeLessThan(1.0);
+		const riftBurst = ctx._calls.find(
+			(c) => c[0] === 'spawnParticleBurst' && c[1].x === 0 && c[1].z === 0 && c[2].color === 0x7c3aed,
+		);
+		expect(riftBurst).toBeDefined();
+		// One impact spark per reported hit, aligned with the server damage tick.
 		expect(ctx._calls.filter((c) => c[0] === 'spawnHitSpark')).toHaveLength(1);
+	});
+
+	it('Phase Stalker beam spawns one impact spark per reported hit at each enemy position', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 8, y: 0.5, z: 0 } },
+				e2: { position: { x: 6, y: 0.5, z: 2 } },
+			}),
+		});
+		renderCardUsed({
+			cardId: 'null_crawler',
+			specialEffect: 'phase_beam',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			attackRange: 14,
+			hitWidth: 0.8,
+			hits: [{ enemyId: 'e1', hp: 34 }, { enemyId: 'e2', hp: 12 }],
+		}, ctx);
+		const sparks = ctx._calls.filter((c) => c[0] === 'spawnHitSpark');
+		expect(sparks).toHaveLength(2);
+		const sparkXs = sparks.map((c) => c[1].x).sort();
+		expect(sparkXs).toEqual([6, 8]);
 	});
 
 	it('Phase Stalker beam still renders without throwing when primitive helpers are absent', () => {

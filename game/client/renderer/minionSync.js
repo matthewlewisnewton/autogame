@@ -175,11 +175,29 @@ function createNullCrawlerTelegraph(minion) {
 		opacity: 0.38,
 	});
 	group.position.set(minion.x, GROUND_OVERLAY_Y, minion.z);
+	// Drive the corridor charge from the server wind-up window: remember when the
+	// telegraph appeared and the wind-up length so the per-frame update can ramp
+	// the corridor up to full brightness exactly as the wind-up completes.
+	group.userData.windupMs = minion.attackWindupMs ?? 1000;
+	group.userData.chargeStart = performance.now();
+	group.userData.baseOpacities = group.children.map((c) => c.material?.opacity ?? 1);
 	return group;
 }
 
 function updateNullCrawlerTelegraph(minion, telegraph) {
 	telegraph.position.set(minion.x, GROUND_OVERLAY_Y, minion.z);
+	// Charge the corridor over exactly the server wind-up window so it brightens
+	// from a dim telegraph to a fully-armed beam at the moment the server fires.
+	const windupMs = telegraph.userData.windupMs ?? (minion.attackWindupMs ?? 1000);
+	const start = telegraph.userData.chargeStart ?? performance.now();
+	const charge = Math.max(0, Math.min((performance.now() - start) / windupMs, 1));
+	const ramp = 0.35 + 0.65 * charge;
+	const base = telegraph.userData.baseOpacities;
+	if (base) {
+		telegraph.children.forEach((child, i) => {
+			if (child.material) child.material.opacity = (base[i] ?? 1) * ramp;
+		});
+	}
 }
 
 /**

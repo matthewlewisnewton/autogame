@@ -57,6 +57,16 @@ import {
 
 const NULL_CRAWLER_SUMMON_COLOR = 0x22d3ee;
 const NULL_CRAWLER_SUMMON_EMISSIVE = 0x67e8f9;
+// Phase-beam identity: cyan card accent stays primary; a void-purple rift accent
+// layers behind/along the corridor so the strike reads as a dimensional rift.
+const NULL_CRAWLER_BEAM_COLOR = 0x22d3ee;
+const NULL_CRAWLER_BEAM_EMISSIVE = 0x06b6d4;
+const NULL_CRAWLER_RIFT_COLOR = 0x7c3aed;
+const NULL_CRAWLER_RIFT_EMISSIVE = 0xa855f7;
+// The server resolves the beam as an instant hitscan at wind-up completion, so
+// the visible strike travels in a single quick flash rather than the standard
+// ~600ms projectile window — keeping it in sync with the already-applied damage.
+const NULL_CRAWLER_BEAM_TRAVEL_MS = 140;
 // Beat between the initial telegraph and the second "phase-flicker" pulse so
 // the deploy reads as the stalker blinking in from another dimension.
 const NULL_CRAWLER_PHASE_FLICKER_MS = 180;
@@ -2395,31 +2405,75 @@ function renderNullCrawlerSummon(data, ctx) {
 }
 
 /**
- * Phase Stalker: narrow cyan beam corridor along the projectile path.
+ * Phase Stalker phase-beam: a near-instant hitscan strike matching the server,
+ * which resolves the beam at wind-up completion (`collectPhaseBeamHits`) and has
+ * already applied the damage by the time this breath arrives. The cyan corridor
+ * keeps `returning_projectile` with `returnPasses: 0` but travels in a single
+ * quick flash (`NULL_CRAWLER_BEAM_TRAVEL_MS`) rather than the slow ~600ms
+ * projectile window, so the flash + terminus burst + per-hit sparks all land on
+ * the same beat as the server's damage tick.
+ *
+ * A void-purple rift streak is layered behind/along the corridor (a dimmer,
+ * lower trail plus a rift-opening burst at the origin) so the beam reads as a
+ * dimensional phase/void rift, while the cyan card accent stays the primary
+ * identity (it owns the corridor, the leading trail, and the terminus burst).
+ * Every optional primitive is guarded so the strike degrades gracefully when a
+ * helper is absent, and the whole renderer no-ops when `data.origin` is missing.
  */
 function renderPhaseBeam(data, ctx) {
 	if (!data.origin) return;
 	const origin = originOf(data);
 	const direction = directionOf(data);
 	const accentHex = getAccentHex(data.cardId);
-	const color = accentHex ?? 0x22d3ee;
-	const emissive = 0x06b6d4;
+	const color = accentHex ?? NULL_CRAWLER_BEAM_COLOR;
+	const emissive = NULL_CRAWLER_BEAM_EMISSIVE;
 	const range = data.attackRange;
+	const travelMs = NULL_CRAWLER_BEAM_TRAVEL_MS;
+
+	// Primary cyan corridor — hitscan-tight so the head reaches the terminus in a
+	// single quick flash instead of lagging the already-resolved server hit.
 	ctx.spawnAttackEffect(origin, direction, {
 		effect: 'returning_projectile',
 		returnPasses: 0,
 		range,
 		projectileHitWidth: data.hitWidth ?? 0.8,
+		travelMs,
 		color,
 		emissive,
 	});
+
+	// Primary cyan streak + terminus flash along the corridor (the card identity).
 	if (ctx.spawnProjectileTrail) {
-		ctx.spawnProjectileTrail(origin, direction, { range, color, emissive });
+		ctx.spawnProjectileTrail(origin, direction, { range, travelMs, color, emissive });
 	}
 	const terminus = pointAlong(origin, direction, range ?? 14);
 	if (ctx.spawnParticleBurst) {
 		ctx.spawnParticleBurst(terminus, { color, emissive, count: 10, spread: 1.2 });
 	}
+
+	// Void-rift accent: a dimmer purple phase-rift streak running just beneath the
+	// cyan corridor (lower `y`) plus a rift-opening burst at the origin, so the
+	// strike reads as a dimensional rift while the cyan beam stays primary.
+	if (ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, {
+			range,
+			travelMs,
+			y: 0.7,
+			color: NULL_CRAWLER_RIFT_COLOR,
+			emissive: NULL_CRAWLER_RIFT_EMISSIVE,
+		});
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, {
+			color: NULL_CRAWLER_RIFT_COLOR,
+			emissive: NULL_CRAWLER_RIFT_EMISSIVE,
+			count: 8,
+			spread: 1.0,
+		});
+	}
+
+	// Per-hit impact sparks at each reported enemy position so on-screen impacts
+	// line up with the server's instant damage tick.
 	if (!data.hits?.length) return;
 	const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
 	for (const hit of data.hits) {
