@@ -44,6 +44,9 @@
 
 import { CARD_ACCENT_STYLE, CARD_DEFS, getCardDef } from './cards.js';
 import {
+	ARCHIVE_WYRM_BREATH_DURATION_MS,
+	ARCHIVE_WYRM_BREATH_TICK_COUNT,
+	ARCHIVE_WYRM_BREATH_TICK_MS,
 	ATTACK_EFFECT_DURATION,
 	ATTACK_RANGE,
 	EVENT_HORIZON_CRUSH_DELAY_MS,
@@ -1881,12 +1884,16 @@ function renderThunderbirdSummon(data, ctx) {
 
 const WYRM_SUMMON_STYLES = {
 	dungeon_drake: { radius: 1.0, burstCount: 8, burstSpread: 1.2 },
-	ancient_wyrm: { radius: 1.85, burstCount: 18, burstSpread: 2.5 },
 };
 
+const ARCHIVE_WYRM_SUMMON_STYLE = { radius: 1.85, burstCount: 18, burstSpread: 2.5 };
+const ARCHIVE_WYRM_FIRE_COLOR = 0xef4444;
+const ARCHIVE_WYRM_FIRE_EMISSIVE = 0xff3b00;
+const ARCHIVE_WYRM_PURPLE_EMISSIVE = 0x9333ea;
+
 /**
- * Vault Wyrm / Archive Wyrm deploy: per-card summon-in palettes on top of the
- * shared minion flourish (tight burst vs wide ring + embers).
+ * Vault Wyrm deploy: per-card summon-in palette on top of the shared minion
+ * flourish (tight burst).
  */
 function renderWyrmSummon(data, ctx) {
 	if (!data.minionId || data.breathPhase || !ctx.spawnMinionSummonInEffect) return;
@@ -1898,8 +1905,42 @@ function renderWyrmSummon(data, ctx) {
 }
 
 /**
- * Vault Wyrm / Archive Wyrm minion attacks: ground cone matching server
- * collectConeHits geometry (melee swipe or fire breath).
+ * Archive Wyrm deploy: wide summon-in ring + embers on top of the shared
+ * minion flourish.
+ */
+function renderArchiveWyrmSummon(data, ctx) {
+	if (!data.minionId || data.breathPhase || !ctx.spawnMinionSummonInEffect) return;
+	const origin = originOf(data);
+	const accentHex = getAccentHex('ancient_wyrm') ?? ARCHIVE_WYRM_PURPLE_EMISSIVE;
+	ctx.spawnMinionSummonInEffect(origin, {
+		...accentSummonStyle('ancient_wyrm'),
+		...ARCHIVE_WYRM_SUMMON_STYLE,
+	});
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, ARCHIVE_WYRM_SUMMON_STYLE.radius, {
+			color: accentHex,
+			emissive: accentHex,
+			duration: MINION_SUMMON_IN_MS,
+		});
+	}
+	if (ctx.spawnParticleBurst) {
+		const burstY = Number.isFinite(origin.y) ? origin.y + 0.4 : 0.6;
+		ctx.spawnParticleBurst(
+			{ x: origin.x, y: burstY, z: origin.z },
+			{
+				color: ARCHIVE_WYRM_FIRE_COLOR,
+				emissive: ARCHIVE_WYRM_FIRE_EMISSIVE,
+				count: ARCHIVE_WYRM_SUMMON_STYLE.burstCount,
+				spread: ARCHIVE_WYRM_SUMMON_STYLE.burstSpread,
+				duration: MINION_SUMMON_IN_MS,
+			},
+		);
+	}
+}
+
+/**
+ * Vault Wyrm minion attacks: ground cone matching server collectConeHits
+ * geometry (melee swipe).
  */
 function renderWyrmAttack(data, ctx) {
 	if (!data.origin) return;
@@ -1948,6 +1989,124 @@ function renderWyrmAttack(data, ctx) {
 					spread: isFireBreath ? 2.0 : 1.5,
 				},
 			);
+		}
+	}
+
+	if (!data.hits?.length) return;
+
+	const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+	for (const hit of data.hits) {
+		const mesh = meshes[hit.enemyId];
+		if (!mesh) continue;
+		const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+		if (ctx.spawnHitSpark) {
+			ctx.spawnHitSpark(pos, { color, emissive, count: 5, spread: 0.55 });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(pos, { color, emissive, count: 6, spread: 0.7 });
+		}
+	}
+}
+
+/**
+ * Archive Wyrm minion attacks: ground cone matching server collectConeHits
+ * geometry (fire breath).
+ */
+function renderArchiveWyrmBreath(data, ctx) {
+	if (!data.origin) return;
+	if (data.minionId && !data.breathPhase) return;
+
+	const isFireBreath = data.specialEffect === 'fire_breath';
+	const accentHex = getAccentHex('ancient_wyrm');
+	const color = isFireBreath ? 0xef4444 : (accentHex ?? 0x22c55e);
+	const emissive = isFireBreath ? (accentHex ?? 0x9333ea) : 0x16a34a;
+
+	if (data.breathPhase !== 'tick') {
+		const origin = originOf(data);
+		const direction = directionOf(data);
+		const breathDurationMs = data.breathDurationMs ?? ARCHIVE_WYRM_BREATH_DURATION_MS;
+		ctx.spawnAttackEffect(origin, direction, {
+			range: data.attackRange,
+			coneAngle: data.attackConeAngle,
+			color,
+			emissive,
+			duration: breathDurationMs,
+			fillOpacity: isFireBreath ? 0.38 : 0.48,
+			edgeOpacity: isFireBreath ? 0.72 : 0.85,
+		});
+		const breathRange = data.attackRange ?? 6;
+		const breathBurstPos = (alongDist) => {
+			const along = pointAlong(origin, direction, alongDist);
+			const burstPos = { x: along.x, z: along.z };
+			if (Number.isFinite(origin.y)) {
+				burstPos.y = origin.y;
+				if (Number.isFinite(direction.y)) {
+					const len = Math.hypot(direction.x, direction.z, direction.y) || 1;
+					burstPos.y = origin.y + (direction.y / len) * alongDist;
+				}
+			} else {
+				burstPos.y = 0.8;
+			}
+			return burstPos;
+		};
+		if (ctx.spawnTelegraphRing) {
+			ctx.spawnTelegraphRing(origin, breathRange * 0.55, { color, emissive });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(
+				breathBurstPos(breathRange * 0.45),
+				{
+					color,
+					emissive,
+					count: isFireBreath ? 14 : 10,
+					spread: isFireBreath ? 2.0 : 1.5,
+				},
+			);
+		}
+		if (isFireBreath) {
+			const trailRange = data.attackRange ?? 10;
+			const trailCone = data.attackConeAngle ?? Math.PI / 3;
+			const trailStyle = {
+				color: ARCHIVE_WYRM_FIRE_COLOR,
+				emissive: accentHex ?? ARCHIVE_WYRM_PURPLE_EMISSIVE,
+				range: trailRange,
+				coneAngle: trailCone,
+				duration: breathDurationMs,
+			};
+			const trailY = Number.isFinite(origin.y) ? origin.y : 0.8;
+			if (ctx.spawnFireTrailEffect) {
+				ctx.spawnFireTrailEffect(origin, direction, {
+					...trailStyle,
+					dotTicks: 1,
+					dotIntervalMs: breathDurationMs,
+				});
+			}
+			if (ctx.spawnProjectileTrail) {
+				ctx.spawnProjectileTrail(origin, direction, {
+					...trailStyle,
+					y: trailY,
+				});
+			}
+		}
+		if (ctx.scheduleAfter) {
+			const pulseRingRadius = breathRange * 0.55 * 0.85;
+			for (let n = 1; n <= ARCHIVE_WYRM_BREATH_TICK_COUNT; n++) {
+				ctx.scheduleAfter(ARCHIVE_WYRM_BREATH_TICK_MS * n, () => {
+					const alongDist = breathRange * (0.2 + 0.15 * n);
+					const pulsePos = breathBurstPos(alongDist);
+					if (ctx.spawnTelegraphRing) {
+						ctx.spawnTelegraphRing(pulsePos, pulseRingRadius, { color, emissive });
+					}
+					if (ctx.spawnParticleBurst) {
+						ctx.spawnParticleBurst(pulsePos, {
+							color,
+							emissive,
+							count: isFireBreath ? 8 : 6,
+							spread: isFireBreath ? 1.6 : 1.2,
+						});
+					}
+				});
+			}
 		}
 	}
 
@@ -2567,19 +2726,56 @@ function renderAstralGuardian(data, ctx) {
 }
 
 /**
- * Mana Prism: utility cast telegraph when `radius` is present; otherwise a
- * summon ring plus crystal burst for the economy placement path.
+ * Mana Prism: on the utility cast path (`radius` present) the bespoke
+ * refracting-crystal VFX is the primary read, with the violet/cyan telegraph
+ * ring and particle burst kept as accents. After the cast flourish a finite,
+ * bounded schedule of stone-emission pulses telegraphs the lingering minion:
+ * one flourish per server `magicStonePulse`, timed off the shared card stats
+ * (`pulseIntervalMs` / `durationSeconds`) so the on-screen rhythm stays in
+ * lockstep with the server `addMagicStones` cadence (6 pulses @ 2000ms over
+ * 12s by default) and cannot silently drift. Otherwise a summon ring plus
+ * crystal burst for the economy placement path.
  */
 function renderManaPrism(data, ctx) {
 	const origin = originOf(data);
 	if (data.radius !== undefined) {
 		const color = MANA_PRISM_COLOR;
 		const emissive = MANA_PRISM_EMISSIVE;
+		ctx.spawnManaPrismEffect?.(origin, { color, emissive });
 		if (ctx.spawnTelegraphRing) {
 			ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
 		}
 		if (ctx.spawnParticleBurst) {
 			ctx.spawnParticleBurst(origin, { color, emissive, count: 12, spread: 1.6 });
+		}
+
+		// Pulse cadence + lifetime come straight from the shared card stats the
+		// server consumes, so the telegraph can never drift from the real
+		// addMagicStones emission timing. Safe fallbacks match cardStats.json.
+		const stats = CARD_DEFS.mana_prism;
+		const interval = stats?.pulseIntervalMs ?? 2000;
+		const durationMs = (stats?.durationSeconds ?? 12) * 1000;
+		const pulses = Math.floor(durationMs / interval);
+		for (let n = 1; n <= pulses; n += 1) {
+			ctx.scheduleAfter?.(interval * n, () => {
+				// Stone-gain flourish: small violet/cyan ring + upward mote burst,
+				// distinct from the wide initial cast flourish above. Guarded so a
+				// minimal ctx (no spawn primitives) no-ops gracefully.
+				if (ctx.spawnTelegraphRing) {
+					ctx.spawnTelegraphRing(origin, 0.9, { color, emissive });
+				}
+				if (ctx.spawnParticleBurst) {
+					// spawnParticleBurst already biases motes upward; swapping
+					// color/emissive vs. the cast flourish keeps each pulse a
+					// distinct cyan-cored stone-gain read.
+					ctx.spawnParticleBurst(origin, {
+						color: emissive,
+						emissive: color,
+						count: 8,
+						spread: 0.8,
+					});
+				}
+			});
 		}
 		return;
 	}
@@ -2699,7 +2895,7 @@ const CARD_RENDERERS = {
 	storm_eagle: [renderStormEagleSummon, renderStormEagleStrike],
 	thunderbird: [renderThunderbirdSummon, renderThunderbirdStrike],
 	dungeon_drake: [renderWyrmSummon, renderWyrmAttack],
-	ancient_wyrm: [renderWyrmSummon, renderWyrmAttack],
+	ancient_wyrm: [renderArchiveWyrmSummon, renderArchiveWyrmBreath],
 	null_crawler: [renderNullCrawlerSummon, renderPhaseBeam],
 	bulkhead_mauler: renderShockwaveSweep,
 	battery_automaton: renderBatteryAutomaton,

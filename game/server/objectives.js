@@ -138,7 +138,7 @@ const OBJECTIVE_DEFS = {
     },
     spawnQuestEntities(layout, rng, quest, _gameState, ctx) {
       const crystalCount = Number.isFinite(quest.itemCount) ? quest.itemCount : 1;
-      ctx.spawnCrystals(layout, rng, crystalCount);
+      ctx.spawnCrystals(layout, ctx.objectiveRng, crystalCount);
     },
     createObjective(quest) {
       const totalItems = Number.isFinite(quest.itemCount) ? quest.itemCount : 1;

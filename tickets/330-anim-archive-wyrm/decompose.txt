@@ -1,0 +1,14 @@
+Split ticket **330-anim-archive-wyrm** into **3 sub-tickets** (dependency order), following the per-card animation pattern from tickets 339/338: dedicated renderer → theme VFX → timing + tests. All use **`code`** verification because criteria cover renderer registration, primitive calls, timing constants, and server contract — not purely on-screen appearance.
+
+**Rationale**
+
+- **318** already added shared `renderWyrmSummon` / `renderWyrmAttack` for both wyrms; **330** polishes **Archive Wyrm only**.
+- **01** isolates `ancient_wyrm` from Vault Wyrm so later passes don't risk regressions on `dungeon_drake`.
+- **02** adds archive-purple + fire-breath visual identity (summon seal, fire trail, enemy-sync fallback).
+- **03** syncs the channeled breath to server timing (`breathDurationMs` 2500, `breathTickMs` 500) with scheduled mid-channel pulses and documents no `windUpMs`.
+
+**Sub-ticket folder paths created**
+
+1. `/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/tickets/330-anim-archive-wyrm/subtickets/01-dedicated-archive-wyrm-renderer/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/tickets/330-anim-archive-wyrm/subtickets/02-archive-wyrm-theme-vfx/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/tickets/330-anim-archive-wyrm/subtickets/03-archive-wyrm-breath-timing-and-tests/ticket.md`

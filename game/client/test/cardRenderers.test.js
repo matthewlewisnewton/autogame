@@ -1,6 +1,16 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CARD_DEFS, getCardDef } from '../cards.js';
-import { ATTACK_EFFECT_DURATION, ATTACK_RANGE, EVENT_HORIZON_CRUSH_DELAY_MS, MINION_SUMMON_IN_MS, PHOTON_BARRAGE_SWING_DELAY_MS, SUMMON_EFFECT_DURATION } from '../config.js';
+import {
+	ARCHIVE_WYRM_BREATH_DURATION_MS,
+	ARCHIVE_WYRM_BREATH_TICK_COUNT,
+	ARCHIVE_WYRM_BREATH_TICK_MS,
+	ATTACK_EFFECT_DURATION,
+	ATTACK_RANGE,
+	EVENT_HORIZON_CRUSH_DELAY_MS,
+	MINION_SUMMON_IN_MS,
+	PHOTON_BARRAGE_SWING_DELAY_MS,
+	SUMMON_EFFECT_DURATION,
+} from '../config.js';
 import {
 	renderCardUsed,
 	resolveRenderers,
@@ -28,7 +38,9 @@ function makeCtx(overrides = {}) {
 		spawnCleanseBurstEffect: record('spawnCleanseBurstEffect'),
 		spawnInfernoPillarEffect: record('spawnInfernoPillarEffect'),
 		spawnGlacierRuptureEffect: record('spawnGlacierRuptureEffect'),
+		spawnManaPrismEffect: record('spawnManaPrismEffect'),
 		spawnDragonsBreathEffect: record('spawnDragonsBreathEffect'),
+		spawnFireTrailEffect: record('spawnFireTrailEffect'),
 		spawnChainLightningEffect: record('spawnChainLightningEffect'),
 		spawnLightningArc: record('spawnLightningArc'),
 		spawnParticleBurst: record('spawnParticleBurst'),
@@ -213,8 +225,16 @@ describe('resolveRenderers()', () => {
 	});
 
 	it('returns composed summon + attack renderers for Vault Wyrm and Archive Wyrm', () => {
-		expect(resolveRenderers('dungeon_drake')).toHaveLength(2);
-		expect(resolveRenderers('ancient_wyrm')).toHaveLength(2);
+		const vault = resolveRenderers('dungeon_drake');
+		const archive = resolveRenderers('ancient_wyrm');
+		expect(vault).toHaveLength(2);
+		expect(archive).toHaveLength(2);
+		expect(vault[0].name).toBe('renderWyrmSummon');
+		expect(vault[1].name).toBe('renderWyrmAttack');
+		expect(archive[0].name).toBe('renderArchiveWyrmSummon');
+		expect(archive[1].name).toBe('renderArchiveWyrmBreath');
+		expect(archive[0]).not.toBe(vault[0]);
+		expect(archive[1]).not.toBe(vault[1]);
 	});
 
 	it('returns composed summon + attack renderers for Phase Stalker', () => {
@@ -3159,6 +3179,10 @@ describe('renderCardUsed() — spell dispatch', () => {
 			radius: 1,
 			hits: [],
 		}, ctx);
+		const prism = ctx._calls.find((c) => c[0] === 'spawnManaPrismEffect');
+		expect(prism).toBeDefined();
+		expect(prism[1]).toEqual({ x: 1, z: 2 });
+		expect(prism[2]).toMatchObject({ color: 0xa855f7, emissive: 0x22d3ee });
 		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
 		expect(telegraph).toBeDefined();
 		expect(telegraph[1]).toEqual({ x: 1, z: 2 });
@@ -3168,6 +3192,72 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(burst).toBeDefined();
 		expect(burst[2]).toMatchObject({ color: 0xa855f7, count: 12, spread: 1.6 });
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('mana_prism schedules six stone-emission pulses at the server cadence (2000ms over 12s)', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'mana_prism',
+			origin: { x: 1, z: 2 },
+			radius: 1,
+			hits: [],
+		}, ctx);
+		// Pulse count and interval are derived from CARD_DEFS.mana_prism, so the
+		// telegraph stays locked to the server addMagicStones cadence.
+		const delays = ctx._calls.filter((c) => c[0] === 'scheduleAfter').map((c) => c[1]);
+		expect(delays).toEqual([2000, 4000, 6000, 8000, 10000, 12000]);
+	});
+
+	it('mana_prism each scheduled pulse emits a distinct stone-gain ring + upward burst', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'mana_prism',
+			origin: { x: 1, z: 2 },
+			radius: 1,
+			hits: [],
+		}, ctx);
+		// Before the timers fire only the initial cast flourish has rendered.
+		const ringsBefore = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing').length;
+		const burstsBefore = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst').length;
+		expect(ringsBefore).toBe(1);
+		expect(burstsBefore).toBe(1);
+
+		ctx.runScheduled();
+
+		// Each of the six pulses adds one small ring + one cyan-cored mote burst.
+		const pulseRings = ctx._calls
+			.filter((c) => c[0] === 'spawnTelegraphRing')
+			.slice(ringsBefore);
+		const pulseBursts = ctx._calls
+			.filter((c) => c[0] === 'spawnParticleBurst')
+			.slice(burstsBefore);
+		expect(pulseRings).toHaveLength(6);
+		expect(pulseBursts).toHaveLength(6);
+		expect(pulseRings[0][1]).toEqual({ x: 1, z: 2 });
+		expect(pulseRings[0][2]).toBe(0.9);
+		expect(pulseRings[0][3]).toMatchObject({ color: 0xa855f7, emissive: 0x22d3ee });
+		expect(pulseBursts[0][2]).toMatchObject({
+			color: 0x22d3ee,
+			emissive: 0xa855f7,
+			count: 8,
+			spread: 0.8,
+		});
+	});
+
+	it('mana_prism pulse schedule no-ops gracefully when scheduleAfter and spawn primitives are absent', () => {
+		const ctx = makeCtx({
+			scheduleAfter: undefined,
+			spawnTelegraphRing: undefined,
+			spawnParticleBurst: undefined,
+			spawnManaPrismEffect: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'mana_prism',
+			origin: { x: 0, z: 0 },
+			radius: 1,
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
 	});
 
 	it('sacrificial_altar adds a gold/red ritual telegraph and burst at sacrifice radius', () => {
@@ -3223,6 +3313,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 		const minimalCtx = makeCtx({
 			spawnTelegraphRing: undefined,
 			spawnParticleBurst: undefined,
+			spawnManaPrismEffect: undefined,
 		});
 		for (const payload of [
 			{ cardId: 'astral_guardian', origin: { x: 0, z: 0 }, radius: 4, hits: [] },
@@ -3388,7 +3479,118 @@ describe('renderCardUsed() — creature dispatch', () => {
 		);
 		expect(alongBurst).toBeDefined();
 		expect(alongBurst[2]).toMatchObject({ color: 0xef4444, emissive: 0x9333ea, count: 14 });
+		const fireTrail = ctx._calls.find((c) => c[0] === 'spawnFireTrailEffect');
+		expect(fireTrail).toBeDefined();
+		expect(fireTrail[3]).toMatchObject({
+			color: 0xef4444,
+			emissive: 0x9333ea,
+			range: 8,
+			coneAngle: Math.PI / 3,
+		});
+		const projectileTrail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(projectileTrail).toBeDefined();
+		expect(projectileTrail[3]).toMatchObject({
+			color: 0xef4444,
+			emissive: 0x9333ea,
+			range: 8,
+			y: 0.8,
+		});
 		expect(ctx._calls.filter((c) => c[0] === 'spawnHitSpark')).toHaveLength(1);
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter').map((c) => c[1]);
+		expect(schedules).toHaveLength(ARCHIVE_WYRM_BREATH_TICK_COUNT);
+		expect(schedules).toEqual(
+			Array.from({ length: ARCHIVE_WYRM_BREATH_TICK_COUNT }, (_, i) => ARCHIVE_WYRM_BREATH_TICK_MS * (i + 1)),
+		);
+	});
+
+	describe('ancient_wyrm', () => {
+		it('breath start uses server breath duration and schedules mid-channel tick pulses', () => {
+			const ctx = makeCtx({
+				enemyMeshes: () => ({
+					e1: { position: { x: 5, y: 0.5, z: 0 } },
+				}),
+			});
+			renderCardUsed({
+				cardId: 'ancient_wyrm',
+				specialEffect: 'fire_breath',
+				origin: { x: 0, z: 0 },
+				direction: { x: 1, z: 0 },
+				attackRange: 10,
+				attackConeAngle: Math.PI / 3,
+				breathPhase: 'start',
+				breathDurationMs: ARCHIVE_WYRM_BREATH_DURATION_MS,
+				hits: [{ enemyId: 'e1', hp: 46 }],
+			}, ctx);
+			const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
+			expect(attacks).toHaveLength(1);
+			expect(attacks[0][3].duration).toBe(ARCHIVE_WYRM_BREATH_DURATION_MS);
+			const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter').map((c) => c[1]);
+			expect(schedules).toEqual([500, 1000, 1500, 2000]);
+		});
+
+		it('breath tick emits hit feedback only (no cone or scheduled pulses)', () => {
+			const ctx = makeCtx({
+				enemyMeshes: () => ({
+					e1: { position: { x: 2, y: 0.5, z: 3 } },
+				}),
+			});
+			renderCardUsed({
+				cardId: 'ancient_wyrm',
+				specialEffect: 'fire_breath',
+				origin: { x: 1, z: 2 },
+				direction: { x: 0, z: 1 },
+				attackRange: 10,
+				attackConeAngle: Math.PI / 3,
+				breathPhase: 'tick',
+				breathDurationMs: ARCHIVE_WYRM_BREATH_DURATION_MS,
+				hits: [{ enemyId: 'e1', hp: 44 }],
+			}, ctx);
+			expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(0);
+			expect(ctx._calls.filter((c) => c[0] === 'scheduleAfter')).toHaveLength(0);
+			expect(ctx._calls.filter((c) => c[0] === 'spawnHitSpark')).toHaveLength(1);
+		});
+
+		it('getCardDef documents server breath timing contract (no deploy wind-up)', () => {
+			const def = getCardDef('ancient_wyrm');
+			expect(def.breathDurationMs).toBe(ARCHIVE_WYRM_BREATH_DURATION_MS);
+			expect(def.breathTickMs).toBe(ARCHIVE_WYRM_BREATH_TICK_MS);
+			expect(def.breathRange).toBe(10);
+			expect(def.breathConeAngle ?? Math.PI / 3).toBe(Math.PI / 3);
+			expect(def.windUpMs ?? 0).toBeLessThanOrEqual(0);
+		});
+
+		it('airborne fire breath mid-channel pulses respect origin.y and tilted direction.y', () => {
+			const ctx = makeCtx({
+				enemyMeshes: () => ({
+					e1: { position: { x: 5, y: 0.5, z: 0 } },
+				}),
+			});
+			const airborneY = 4;
+			const dirY = 0.3;
+			const range = 8;
+			renderCardUsed({
+				cardId: 'ancient_wyrm',
+				specialEffect: 'fire_breath',
+				origin: { x: 0, z: 0, y: airborneY },
+				direction: { x: 1, z: 0, y: dirY },
+				attackRange: range,
+				attackConeAngle: Math.PI / 3,
+				breathPhase: 'start',
+				breathDurationMs: ARCHIVE_WYRM_BREATH_DURATION_MS,
+				hits: [{ enemyId: 'e1', hp: 46 }],
+			}, ctx);
+			ctx.runScheduled();
+			const len = Math.hypot(1, 0, dirY);
+			const pulseRings = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
+			const scheduledRings = pulseRings.slice(1);
+			expect(scheduledRings.length).toBeGreaterThanOrEqual(ARCHIVE_WYRM_BREATH_TICK_COUNT);
+			for (let n = 1; n <= ARCHIVE_WYRM_BREATH_TICK_COUNT; n++) {
+				const alongDist = range * (0.2 + 0.15 * n);
+				const expectedY = airborneY + (dirY / len) * alongDist;
+				const ring = scheduledRings[n - 1];
+				expect(ring[1].y).toBeCloseTo(expectedY, 5);
+			}
+		});
 	});
 
 	it('Archive Wyrm airborne fire breath uses origin.y for cone, ring, and burst', () => {
@@ -3426,6 +3628,30 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(alongBurst).toBeDefined();
 		expect(alongBurst[1].y).toBeCloseTo(expectedBurstY, 5);
 		expect(alongBurst[2]).toMatchObject({ color: 0xef4444, emissive: 0x9333ea, count: 14 });
+		const projectileTrail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(projectileTrail).toBeDefined();
+		expect(projectileTrail[3].y).toBeCloseTo(airborneY, 5);
+	});
+
+	it('Vault Wyrm breath start does not emit archive-only fire trail primitives', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 2, y: 0.5, z: 3 } },
+			}),
+		});
+		renderCardUsed({
+			cardId: 'dungeon_drake',
+			origin: { x: 1, z: 2 },
+			direction: { x: 0, z: 1 },
+			attackRange: 4,
+			attackConeAngle: Math.PI / 4,
+			breathPhase: 'start',
+			breathDurationMs: 2000,
+			hits: [{ enemyId: 'e1', hp: 47 }],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnFireTrailEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnDragonsBreathEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
 	});
 
 	it('Vault Wyrm and Archive Wyrm summons use distinct flourish radii', () => {
@@ -3457,6 +3683,20 @@ describe('renderCardUsed() — creature dispatch', () => {
 			emissive: 0x9333ea,
 		});
 		expect(archiveSummon[2].radius).toBeGreaterThan(vaultSummon[2].radius);
+		const archiveRing = archiveCtx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(archiveRing).toBeDefined();
+		expect(archiveRing[1]).toEqual({ x: 3, z: 4 });
+		expect(archiveRing[2]).toBe(1.85);
+		expect(archiveRing[3]).toMatchObject({ color: 0x9333ea, emissive: 0x9333ea });
+		const archiveBurst = archiveCtx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(archiveBurst).toBeDefined();
+		expect(archiveBurst[2]).toMatchObject({
+			color: 0xef4444,
+			emissive: 0xff3b00,
+			count: 18,
+			spread: 2.5,
+		});
+		expect(vaultCtx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
 	});
 
 	it('wyrm summon renderers skip breath payloads and attack renderers skip deploy payloads', () => {

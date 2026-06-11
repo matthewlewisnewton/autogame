@@ -1,0 +1,17 @@
+Broke the parent decision ticket into **3 sub-tickets** (option **b**: deterministic quest geometry + per-run objective placement), ordered by dependency:
+
+1. **01** — Record the design decision in docs (no code).
+2. **02** — Introduce `runSpawnSeed`, wire `collect_items` / `spawnCrystals` to per-run RNG, keep layout/scripted streams on `questLayoutSeed`, add unit tests.
+3. **03** — Harden and test telepipe resume (same crystals) vs abort-sortie redeploy (new crystals, same layout).
+
+All use **code** verification (default).
+
+### Sub-ticket folders created
+
+```
+/home/matt/workspace/.autogame-worktrees/decision-per-quest-layouts-are-fully-deterministic-every-run-xnu8/tickets/decision-per-quest-layouts-are-fully-deterministic-every-run-xnu8/subtickets/01-record-layout-determinism-decision/
+/home/matt/workspace/.autogame-worktrees/decision-per-quest-layouts-are-fully-deterministic-every-run-xnu8/tickets/decision-per-quest-layouts-are-fully-deterministic-every-run-xnu8/subtickets/02-per-run-objective-spawn-seed/
+/home/matt/workspace/.autogame-worktrees/decision-per-quest-layouts-are-fully-deterministic-every-run-xnu8/tickets/decision-per-quest-layouts-are-fully-deterministic-every-run-xnu8/subtickets/03-checkpoint-spawn-seed-lifecycle/
+```
+
+No prior sub-ticket folders existed (nothing to retire or preserve).
