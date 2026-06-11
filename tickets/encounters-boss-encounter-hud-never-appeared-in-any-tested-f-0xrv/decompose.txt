@@ -1,0 +1,13 @@
+Created **3 sub-tickets** in dependency order:
+
+1. `/home/matt/workspace/.autogame-worktrees/encounters-boss-encounter-hud-never-appeared-in-any-tested-f-0xrv/tickets/encounters-boss-encounter-hud-never-appeared-in-any-tested-f-0xrv/subtickets/01-frost-encounter-debug-scenarios/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/encounters-boss-encounter-hud-never-appeared-in-any-tested-f-0xrv/tickets/encounters-boss-encounter-hud-never-appeared-in-any-tested-f-0xrv/subtickets/02-ice-preset-boss-encounter-validation/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/encounters-boss-encounter-hud-never-appeared-in-any-tested-f-0xrv/tickets/encounters-boss-encounter-hud-never-appeared-in-any-tested-f-0xrv/subtickets/03-frost-boss-hud-e2e-regression/ticket.md`
+
+**Rationale (brief):**
+
+- **01** — Server-side gap: Frost Crossing lacks `*-encounter-trigger` and `*-boss-low-hp` scenarios that canyon/spire use; `frost-crossing-last-enemy` likely bypasses the engaged HUD state.
+- **02** — Ice validation preset still declares `objectiveType: 'defeat_enemies'`, so `runBossEncounterStep` never runs and no `bossEncounterUi` probe is recorded.
+- **03** — Regression tests tying `tryActivateEncounter` at `ice_cairn`, debug scenarios, and client `bossEncounter` / HUD visibility; includes room for a minimal client fix if sync is broken.
+
+All sub-tickets use **Verification: code** (assertions involve server state, harness probes, handlers, and structure—not purely pixel appearance in a single screenshot).
