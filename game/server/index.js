@@ -1194,6 +1194,38 @@ function syncLivePlayerCosmetic(accountId, cosmetic) {
   }
 }
 
+/**
+ * Push a saved account username onto every connected in-memory player record for
+ * that account (legacy singleton gameState and all active lobby states), then
+ * re-broadcast the affected lobbies so the PLAYERS list and trade dropdown reflect
+ * the new name without requiring a reconnect/rejoin.
+ */
+function syncLivePlayerUsername(accountId, username) {
+  if (!accountId) return;
+  const affectedLobbies = new Set();
+  let legacyAffected = false;
+  for (const player of Object.values(gameState.players)) {
+    if (player && player.accountId === accountId) {
+      player.username = username;
+      legacyAffected = true;
+    }
+  }
+  for (const lobby of lobbies._lobbies.values()) {
+    for (const player of Object.values(lobby.state.players)) {
+      if (player && player.accountId === accountId) {
+        player.username = username;
+        affectedLobbies.add(lobby);
+      }
+    }
+  }
+  for (const lobby of affectedLobbies) {
+    broadcastLobbyUpdate(lobby);
+  }
+  if (legacyAffected) {
+    broadcastLobbyUpdate();
+  }
+}
+
 /** True when the account has a connected player record in an active lobby hub phase. */
 function hasLiveLobbyPlayerForAccount(accountId) {
   if (!accountId) return false;
@@ -1938,6 +1970,7 @@ if (typeof module !== 'undefined' && module.exports) {
     pickFloorSpawnPosition,
     buildPlayerRecord,
     syncLivePlayerCosmetic,
+    syncLivePlayerUsername,
     hasLiveLobbyPlayerForAccount,
     createGameState,
     resetGameState,
