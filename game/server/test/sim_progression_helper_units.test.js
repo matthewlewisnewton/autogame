@@ -11,6 +11,7 @@ import { createGameState } from '../game-state.js';
 const require = createRequire(import.meta.url);
 const sim = require('../simulation.js');
 const prog = require('../progression.js');
+const { LOBBY_REVIVE_HP } = require('../config.js');
 
 const SEED = 1234;
 
@@ -452,21 +453,23 @@ describe('progression.js helper units', () => {
     const player = activePlayer({ dead: true, hp: 0 });
     prog.revivePlayerInLobby(player);
     expect(player.dead).toBe(false);
-    expect(player.hp).toBeGreaterThan(0);
+    expect(player.hp).toBe(LOBBY_REVIVE_HP);
     const living = activePlayer({ hp: 80 });
     prog.revivePlayerInLobby(living);
     expect(living.hp).toBe(80);
   });
 
-  it('healAtMedic charges gold in the lobby and rejects the broke', () => {
+  it('healAtMedic charges gold in the lobby and provides charity heal when broke', () => {
     state.gamePhase = 'lobby';
     state.players.rich = activePlayer({ hp: 40, currency: 1000 });
     state.players.broke = activePlayer({ hp: 40, currency: 0 });
     const healed = prog.healAtMedic('rich', state);
     expect(healed.ok).toBe(true);
+    expect(healed.cost).toBe(10);
     expect(state.players.rich.hp).toBeGreaterThan(40);
     expect(state.players.rich.currency).toBeLessThan(1000);
-    expect(prog.healAtMedic('broke', state)).toMatchObject({ ok: false, reason: 'insufficient_gold' });
+    expect(prog.healAtMedic('broke', state)).toMatchObject({ ok: true, cost: 0 });
+    expect(state.players.broke.currency).toBe(0);
   });
 
   it('resetTransientRunState clears world arrays and the telepipe', () => {

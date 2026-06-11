@@ -4081,9 +4081,11 @@ describe('run state', () => {
 			expect(healAtMedic('p1')).toEqual({ ok: false, reason: 'already_full' });
 		});
 
-		it('rejects when player cannot afford the heal', () => {
+		it('provides charity heal at zero cost when player cannot afford the medic', () => {
 			addPlayer('p1', { hp: 40, currency: 5 });
-			expect(healAtMedic('p1')).toEqual({ ok: false, reason: 'insufficient_gold' });
+			expect(healAtMedic('p1')).toEqual({ ok: true, hp: 100, currency: 5, cost: 0 });
+			expect(gameState.players.p1.hp).toBe(100);
+			expect(gameState.players.p1.currency).toBe(5);
 		});
 
 		it('rejects when not in lobby phase', () => {

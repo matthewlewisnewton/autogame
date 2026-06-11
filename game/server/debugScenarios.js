@@ -27,7 +27,7 @@ const {
   countScriptedEnemiesInQuest,
   countFinalAmbushEnemies,
 } = require('./quests');
-const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS, MEDIC_HEAL_COST } = require('./config');
+const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS, MEDIC_HEAL_COST, LOBBY_REVIVE_HP } = require('./config');
 const CARD_DEFS = require('../shared/cardDefs.json');
 const CARD_STATS = require('../shared/cardStats.json');
 const {
@@ -1676,6 +1676,20 @@ function setupHubMedBoothReadyDebug({ lobby, state, player, socket, name }) {
         player.currency = Math.max(player.currency || 0, MEDIC_HEAL_COST + 15);
         io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
         return { ok: true, scenario: name, hp: player.hp, currency: player.currency };
+}
+
+function setupPostDeathBrokeLobbyDebug({ lobby, state, player, socket, name }) {
+  // Hub lobby after a wipe with zero currency and post-death revive HP.
+  // The same state is reachable by dying on a run with no earned gold and
+  // returning to the hub via returnToLobby.
+  setPhase(lobby, PHASES.LOBBY);
+  delete state.run;
+  player.ready = false;
+  player.dead = false;
+  player.hp = LOBBY_REVIVE_HP;
+  player.currency = 0;
+  io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+  return { ok: true, scenario: name, hp: player.hp, currency: player.currency };
 }
 
 function setupHatShopCurrencyDebug({ lobby, state, player, socket, name }) {
@@ -4787,6 +4801,7 @@ const DEBUG_SCENARIO_REGISTRY = {
   'fireball-hand-ready': (ctx) => setupFireballHandReadyDebug(ctx),
   'lobby-partial-vitals': (ctx) => setupLobbyPartialVitalsDebug(ctx),
   'hub-med-booth-ready': (ctx) => setupHubMedBoothReadyDebug(ctx),
+  'post-death-broke-lobby': (ctx) => setupPostDeathBrokeLobbyDebug(ctx),
   'hat-shop-currency': (ctx) => setupHatShopCurrencyDebug(ctx),
   'quest-tier-2-unlocked': (ctx) => setupQuestTier2UnlockedDebug(ctx),
   'rift-convergence-unlocked': (ctx) => setupRiftConvergenceUnlockedDebug(ctx),

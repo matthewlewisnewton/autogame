@@ -39,7 +39,8 @@ const SPIRE_EDGE_HAZARD_DAMAGE = 3;
 const SPIRE_EDGE_HAZARD_COOLDOWN_MS = 500;
 const MEDIC_HEAL_COST = 10;
 const APPEARANCE_CHANGE_COST = 25;
-const LOBBY_REVIVE_HP = 10;
+// 50% of MAX_HP — survives at least two Initiate Vault grunt hits (attackDamage 10)
+const LOBBY_REVIVE_HP = 50;
 const RESPAWN_DELAY_MS = 3000;
 const LOOT_LIFETIME_MS = 120000;
 // Slightly wider than the client walk-over radius (3.25) so pickups succeed after

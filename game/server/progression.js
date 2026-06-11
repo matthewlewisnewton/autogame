@@ -530,12 +530,13 @@ function healAtMedic(playerId, state = _gameState) {
     return { ok: false, reason: 'already_full' };
   }
 
-  const cost = MEDIC_HEAL_COST;
+  let cost = MEDIC_HEAL_COST;
   if ((player.currency || 0) < cost) {
-    return { ok: false, reason: 'insufficient_gold' };
+    cost = 0;
+  } else {
+    player.currency -= cost;
   }
 
-  player.currency -= cost;
   player.hp = MAX_HP;
   player.dead = false;
   savePlayerData(playerId);
