@@ -153,6 +153,7 @@ export function createSocketHandlerCtx(deps) {
 		spawnCleanseBurstEffect: deps.spawnCleanseBurstEffect,
 		spawnInfernoPillarEffect: deps.spawnInfernoPillarEffect,
 		spawnDragonsBreathEffect: deps.spawnDragonsBreathEffect,
+		spawnGravityWellEffect: deps.spawnGravityWellEffect,
 		spawnSpikeTrapEffect: deps.spawnSpikeTrapEffect,
 		spawnVolatileExplosionEffect: deps.spawnVolatileExplosionEffect,
 		spawnChainLightningEffect: deps.spawnChainLightningEffect,
