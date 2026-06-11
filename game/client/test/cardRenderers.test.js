@@ -78,7 +78,9 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('divine_grace')).toHaveLength(1);
 		expect(resolveRenderers('purifying_pulse')).toHaveLength(1);
 		expect(resolveRenderers('spike_trap')).toHaveLength(1);
-		expect(resolveRenderers('undead_commander')).toHaveLength(1);
+		const commanderRenderers = resolveRenderers('undead_commander');
+		expect(commanderRenderers).toHaveLength(1);
+		expect(commanderRenderers[0].name).toBe('renderUndeadCommander');
 		expect(resolveRenderers('thunderbird')).toHaveLength(2);
 		expect(resolveRenderers('storm_eagle')).toHaveLength(2);
 		const breathRenderers = resolveRenderers('dragons_breath');
@@ -2655,6 +2657,36 @@ describe('renderCardUsed() — creature dispatch', () => {
 		);
 		expect(groundBursts).toHaveLength(2);
 		expect(groundBursts[0][2]).toMatchObject({ color: 0xe4e4e7, emissive: 0xa855f7 });
+	});
+
+	it('undead_commander has no positive windUpMs (instant cast; 315 charge telegraph absent)', () => {
+		expect(getCardDef('undead_commander').windUpMs ?? 0).toBeLessThanOrEqual(0);
+	});
+
+	it('undead_commander degrades gracefully when Legion Marshal VFX primitives are absent', () => {
+		const payload = {
+			cardId: 'undead_commander',
+			minionId: 'commander-1',
+			origin: { x: 0, z: 0 },
+			summonedMinions: [
+				{ x: 1, z: 0 },
+				{ x: 0, z: 1 },
+			],
+			hits: [],
+		};
+		const ctx = makeCtx({
+			spawnLegionMarshalRallyEffect: undefined,
+			spawnMinionSummonInEffect: undefined,
+			spawnLightningArc: undefined,
+			spawnParticleBurst: undefined,
+		});
+		expect(() => renderCardUsed(payload, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnLegionMarshalRallyEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnLightningArc')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
 	});
 
 	it('storm_eagle summon renders a soft cyan minion flourish', () => {
