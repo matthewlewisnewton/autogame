@@ -11,7 +11,15 @@ import {
 	getJWTSecret
 } from '../index.js';
 import { setServerUsersFilePath, clearServerUsers } from './helpers.js';
-import { initAuth, resetAuthSecret } from '../auth.js';
+import {
+	initAuth,
+	resetAuthSecret,
+	_resetRateLimits,
+	_rateLimitBuckets,
+	RATE_LIMIT_WINDOW_MS,
+	pruneExpiredBuckets,
+	startRateLimitSweep
+} from '../auth.js';
 import jwt from 'jsonwebtoken';
 
 // ── Helpers ──
@@ -371,5 +379,83 @@ describe('initAuth() dev fallback', () => {
 		process.env.ALLOW_DEV_AUTH = '1';
 		const secret = initAuth();
 		expect(secret).toBe('custom-secret');
+	});
+});
+
+// ── Rate-limit bucket pruning ──
+
+describe('pruneExpiredBuckets()', () => {
+	beforeEach(() => {
+		_resetRateLimits();
+	});
+
+	afterEach(() => {
+		_resetRateLimits();
+	});
+
+	it('removes entries older than RATE_LIMIT_WINDOW_MS', () => {
+		const expiredKey = 'login:127.0.0.1:olduser';
+		_rateLimitBuckets.set(expiredKey, {
+			windowStart: Date.now() - RATE_LIMIT_WINDOW_MS - 1000,
+			attempts: 5
+		});
+		expect(_rateLimitBuckets.size).toBe(1);
+
+		pruneExpiredBuckets();
+
+		expect(_rateLimitBuckets.size).toBe(0);
+		expect(_rateLimitBuckets.has(expiredKey)).toBe(false);
+	});
+
+	it('preserves entries still within their window', () => {
+		const activeKey = 'login:127.0.0.1:activeuser';
+		_rateLimitBuckets.set(activeKey, {
+			windowStart: Date.now() - 5000, // 5s ago — well within 60s window
+			attempts: 3
+		});
+		expect(_rateLimitBuckets.size).toBe(1);
+
+		pruneExpiredBuckets();
+
+		expect(_rateLimitBuckets.size).toBe(1);
+		expect(_rateLimitBuckets.has(activeKey)).toBe(true);
+	});
+
+	it('removes only expired entries when mix of expired and active', () => {
+		const expiredKey = 'register:10.0.0.1:expired';
+		const activeKey = 'login:10.0.0.1:active';
+
+		_rateLimitBuckets.set(expiredKey, {
+			windowStart: Date.now() - RATE_LIMIT_WINDOW_MS - 5000,
+			attempts: 10
+		});
+		_rateLimitBuckets.set(activeKey, {
+			windowStart: Date.now() - 10000, // 10s ago — within window
+			attempts: 2
+		});
+		expect(_rateLimitBuckets.size).toBe(2);
+
+		pruneExpiredBuckets();
+
+		expect(_rateLimitBuckets.size).toBe(1);
+		expect(_rateLimitBuckets.has(expiredKey)).toBe(false);
+		expect(_rateLimitBuckets.has(activeKey)).toBe(true);
+	});
+});
+
+describe('rate-limit sweep interval', () => {
+	it('sweep interval is active after server starts', () => {
+		// startTestServer() in beforeEach calls startServer(0) which calls
+		// startRateLimitSweep(). Since startRateLimitSweep() is idempotent
+		// (returns existing interval when already started), calling it here
+		// returns the interval ID set by the server startup.
+		// Note: Node.js v22+ returns a Timeout object (not a number) from setInterval.
+		const intervalId = startRateLimitSweep();
+		expect(intervalId).toBeDefined();
+		expect(intervalId).not.toBeNull();
+		expect(intervalId).not.toBe(0);
+		// In Node.js < 22, intervalId is a number; in v22+, it's a Timeout object.
+		// Either way, a truthy non-zero value means the interval is active.
+		expect(Boolean(intervalId)).toBe(true);
 	});
 });

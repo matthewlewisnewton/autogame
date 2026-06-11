@@ -257,6 +257,7 @@ module.exports.getJWTSecret = function getJWTSecret() { return JWT_SECRET; };
 module.exports.verifyToken = verifyToken;
 module.exports.resetAuthSecret = function resetAuthSecret() { JWT_SECRET = null; };
 module.exports._resetRateLimits = function _resetRateLimits() { rateLimitBuckets.clear(); };
+module.exports._rateLimitBuckets = rateLimitBuckets;
 module.exports.isRateLimited = isRateLimited;
 module.exports.incrementRateLimit = incrementRateLimit;
 module.exports.RATE_LIMIT_WINDOW_MS = RATE_LIMIT_WINDOW_MS;
