@@ -7829,3 +7829,26 @@ PASS. This ticket did not add or change a `?debugScenario=NAME` shortcut. Existi
 
 None.
 
+
+## v0.433 — 327-anim-corebreaker-greatsword  (2026-06-11 01:12:58)
+
+### No performance regression or obvious code-quality issue
+
+PASS. The effect adds a bounded number of visuals: one cone, one impact decal, one burst, one directional fire-zone, and four scheduled pulse beats from the card's current DoT stats. That is small and fixed per cast. Optional VFX primitives are guarded where relevant, tests cover the dedicated renderer, range sync, DoT timing, synchronous impact, heavy-weapon distinction, and graceful degradation of optional trail primitives.
+
+### Client test where feasible
+
+PASS. `coverage.log` shows the full vitest run passed: 59 files and 934 tests. `client/test/cardRenderers.test.js` includes targeted Corebreaker tests for dedicated renderer registration, magma visuals, server-emitted `attackRange` sync, card-def DoT cadence, synchronous swing/impact, and fallback behavior.
+
+## Design and foundation consistency
+
+PASS. The change preserves the documented 3D multiplayer action-RPG/card-combat loop and does not alter lobby flow, combat resolution authority, movement, persistence, or economy rules. The animation remains client-side feedback for a server-authoritative card result, which matches the design foundation.
+
+## Debug scenarios
+
+No development debug scenario was added or changed for this ticket. The round-2 capture also reports no active scenarios.
+
+## Remaining gaps
+
+None.
+
