@@ -1,0 +1,19 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The ticket polishes the Telepipe spell's cast animation. My findings:
+
+**Runtime gate — PASS.** `metrics.json` reports `"ok": true` with an empty `pageerrors` array; the capture ran all five probes plus a preservation check. `console.log` has only one benign 409 resource-race line (not a `pageerror`/`[fatal]`). Screenshot confirms a clean dungeon render.
+
+**Acceptance criteria — all met:**
+- **Theme match:** `renderTelepipe` now fires a portal flourish — expanding cyan ground ring + rising open-ended warp-tube cylinder + particle burst, color-matched (`0x67e8f9`/`0x22d3ee`) to the persistent portal mesh. Reads unmistakably as a teleport portal.
+- **Timing sync:** Server resolves telepipe synchronously on `CARD_USED` with no `windUpMs` and no deferred scheduling; the renderer fires synchronously (no `scheduleAfter`), correctly skipping the 307 wind-up telegraph. Verified against `cardEffects.js` and `cardStats.json`.
+- **No perf regression:** Pure additive VFX, all effects carry finite durations and are disposed on expiry (test-verified).
+- **Client tests:** Added renderer + primitive tests; ran them → 182 passed.
+
+**Scope/regression clean:** Diff touches only `cardRenderers.js`, `renderer.js`, `main.js`, and the two test files — no server changes, so no debug-scenario concern, and the state-driven persistent portal (`syncTelepipeMesh`) is untouched.
+
+I filed one **nit** (non-blocking): the cast spawns two near-identical particle bursts (one inside the primitive, one in `renderTelepipe`) — harmless redundancy worth tidying later.
+
+No `gaps.md` written (PASS).

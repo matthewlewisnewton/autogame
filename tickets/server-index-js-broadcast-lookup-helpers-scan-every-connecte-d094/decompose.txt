@@ -1,0 +1,7 @@
+Broke the top-level ticket into **3 sub-tickets** in dependency order (socket map → room broadcasts → user indexes). All use **code** verification because acceptance is about structure, lookup behavior, and test pass — not purely visual rendering.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/server-index-js-broadcast-lookup-helpers-scan-every-connecte-d094/tickets/server-index-js-broadcast-lookup-helpers-scan-every-connecte-d094/subtickets/01-maintain-player-socket-map/`
+2. `/home/matt/workspace/.autogame-worktrees/server-index-js-broadcast-lookup-helpers-scan-every-connecte-d094/tickets/server-index-js-broadcast-lookup-helpers-scan-every-connecte-d094/subtickets/02-room-based-lobby-broadcasts/`
+3. `/home/matt/workspace/.autogame-worktrees/server-index-js-broadcast-lookup-helpers-scan-every-connecte-d094/tickets/server-index-js-broadcast-lookup-helpers-scan-every-connecte-d094/subtickets/03-user-lookup-indexes/`

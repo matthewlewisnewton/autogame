@@ -4099,6 +4099,42 @@ function setupMagmaWindupReadyDebug({ lobby, state, player, socket, name, spawn 
         syncCardProbeHand(player);
 }
 
+function setupSoulDrainHealReadyDebug({ lobby, state, player, socket, name, spawn }) {
+  // Playing phase with Soul Drain in hand, full Magic Stones, a DAMAGED
+        // caster (so the cast actually heals → life-absorb flourish), and a
+        // cluster of grunts inside radial range so a single cast tears souls out
+        // of every target back into the caster. The same state is reachable
+        // normally by taking damage in combat and then casting an earned/evolved
+        // Soul Drain on nearby enemies.
+        resumePlayingRunForCardProbe(state, player);
+        player.hp = Math.floor(MAX_HP * 0.4);
+        player.magicStones = MAX_MAGIC_STONES;
+        player.rotation = 0;
+        const replaceSlot = player.hand.findIndex(c => c != null);
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = {
+            id: 'soul_drain',
+            name: 'Soul Drain',
+            type: 'spell',
+            charges: 1,
+            remainingCharges: 1,
+          };
+        }
+        state.enemies = [];
+        const drainNear = spawnEnemy(player.x + 3, player.z, 'grunt');
+        drainNear.hp = 80;
+        drainNear.maxHp = 80;
+        drainNear.wanderTarget = { x: drainNear.x, z: drainNear.z };
+        const drainMid = spawnEnemy(player.x + 4, player.z + 1, 'grunt');
+        drainMid.hp = 80;
+        drainMid.maxHp = 80;
+        drainMid.wanderTarget = { x: drainMid.x, z: drainMid.z };
+        const drainFar = spawnEnemy(player.x + 5, player.z - 1, 'grunt');
+        drainFar.hp = 80;
+        drainFar.maxHp = 80;
+        drainFar.wanderTarget = { x: drainFar.x, z: drainFar.z };
+}
+
 function setupWeaponSlashReadyDebug({ lobby, state, player, socket, name, spawn }) {
   // Playing phase with the three distinct-slash blades — Rust-Forged Saber
         // (iron_sword, steely arc), Solar Edge (flame_blade, fiery arc + trail),
@@ -4925,6 +4961,10 @@ const DEBUG_SCENARIO_REGISTRY = {
   'arcane-radial-ready': (ctx) => {
     enterStandardPlayingDebugScenario(ctx);
     setupArcaneRadialReadyDebug(ctx);
+  },
+  'soul-drain-heal-ready': (ctx) => {
+    enterStandardPlayingDebugScenario(ctx);
+    setupSoulDrainHealReadyDebug(ctx);
   },
   'utility-spells-ready': (ctx) => {
     enterStandardPlayingDebugScenario(ctx);

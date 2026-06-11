@@ -5,6 +5,7 @@
 
 const crypto = require('crypto');
 const { getAllUsers } = require('./users');
+const { isRateLimited, incrementRateLimit } = require('./auth');
 
 /**
  * Default key item every account starts with. Mirrors the persistence default
@@ -175,8 +176,9 @@ function safeCompare(a, b) {
 }
 
 /**
- * Read the supplied admin password from the `x-admin-password` header or a
- * `?password=` query param.
+ * Read the supplied admin password from the `x-admin-password` header only.
+ * Query-param passwords are no longer accepted (security: URLs appear in
+ * browser history, proxy logs, and access logs).
  *
  * @param {object} req
  * @returns {string|null}
@@ -188,10 +190,6 @@ function readSuppliedPassword(req) {
 	if (headerValue) {
 		return String(headerValue);
 	}
-	const queryValue = req.query && req.query.password;
-	if (queryValue) {
-		return String(queryValue);
-	}
 	return null;
 }
 
@@ -201,6 +199,11 @@ function readSuppliedPassword(req) {
  * denied with HTTP 403. A wrong or missing supplied password is also denied;
  * only an exact (constant-time) match calls next(). It NEVER consults the
  * player JWT / `Authorization: Bearer` header.
+ *
+ * Rate limiting: only failed auth attempts are counted. After more than
+ * `RATE_LIMIT_MAX_ATTEMPTS` failures from the same IP within the window,
+ * requests return HTTP 429. Successful auth does not increment the counter.
+ * Disabled in tests unless `AUTH_RATE_LIMIT_IN_TESTS=1`.
  */
 function requireAdminPassword(req, res, next) {
 	const expected = process.env.ADMIN_PASSWORD;
@@ -209,8 +212,14 @@ function requireAdminPassword(req, res, next) {
 		return res.status(403).json({ error: 'Admin access disabled' });
 	}
 
+	// Check rate limit (without incrementing — only failures count).
+	if (isRateLimited(req, 'admin', 'admin', false)) {
+		return res.status(429).json({ error: 'Too many admin login attempts. Please try again later.' });
+	}
+
 	const supplied = readSuppliedPassword(req);
 	if (!supplied || !safeCompare(supplied, expected)) {
+		incrementRateLimit(req, 'admin', 'admin');
 		return res.status(403).json({ error: 'Forbidden' });
 	}
 

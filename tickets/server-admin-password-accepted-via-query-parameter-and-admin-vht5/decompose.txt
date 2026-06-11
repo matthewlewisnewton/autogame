@@ -1,0 +1,5 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Sub-tickets created:
+
+- `tickets/server-admin-password-accepted-via-query-parameter-and-admin-vht5/subtickets/01-remove-query-param-password/ticket.md` — Strip `req.query.password` fallback from `readSuppliedPassword()`; update tests to expect rejection
+- `tickets/server-admin-password-accepted-via-query-parameter-and-admin-vht5/subtickets/02-add-admin-rate-limit/ticket.md` — Export `isRateLimited` from `auth.js`, wire it into `requireAdminPassword`, add rate-limit tests

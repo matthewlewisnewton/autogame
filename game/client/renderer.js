@@ -69,6 +69,8 @@ import {
 import {
 	initGamepadListeners,
 	pollGamepadLook,
+	pollGamepadSnapshot,
+	invalidateGamepadSnapshot,
 	resetGamepadState,
 } from './gamepad.js';
 import { pollInput, getMovementDirection, resetInputState } from './input.js';
@@ -4557,6 +4559,89 @@ export function spawnDivineGraceEffect(origin, radius) {
 	spawnDivineGraceColumn(origin);
 }
 
+// Telepipe cast palette — matches cards.js accent and syncTelepipeMesh portal cyan.
+export const TELEPIPE_CAST_COLOR = 0x67e8f9;
+export const TELEPIPE_CAST_EMISSIVE = 0x22d3ee;
+const TELEPIPE_CAST_DEFAULT_RADIUS = 2.5;
+const TELEPIPE_CAST_COLUMN_OPACITY = 0.55;
+const TELEPIPE_CAST_BURST_COUNT = 10;
+const TELEPIPE_CAST_BURST_SPREAD = 1.6;
+
+/**
+ * Brief portal-opening flourish when the Telepipe spell is cast: an expanding
+ * cyan ground ring, a rising open-ended warp-tube cylinder shaft, and an upward
+ * particle burst. Pure additive VFX; no network traffic or persistent portal mesh.
+ * @param {object} origin - { x, z }
+ * @param {number} [radius]
+ * @param {object} [style] - optional { color, emissive, burstCount, burstSpread }
+ */
+export function spawnTelepipeCastEffect(origin, radius, style = {}) {
+	const color = style.color ?? TELEPIPE_CAST_COLOR;
+	const emissive = style.emissive ?? TELEPIPE_CAST_EMISSIVE;
+	const r = radius ?? TELEPIPE_CAST_DEFAULT_RADIUS;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+
+	const ringGeometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.0,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+	ring.position.set(origin.x, 0.1, origin.z);
+	ring.rotation.x = -Math.PI / 2;
+	ring.scale.setScalar(0.001);
+	if (targetScene) targetScene.add(ring);
+
+	activeEffects.push({
+		mesh: ring,
+		origin: { x: origin.x, z: origin.z },
+		radius: r,
+		createdAt: performance.now(),
+		duration: SUMMON_EFFECT_DURATION,
+		_scene: targetScene,
+	});
+
+	const geometry = new THREE.CylinderGeometry(0.35, 0.65, DIVINE_GRACE_COLUMN_HEIGHT, 16, 1, true);
+	const material = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: TELEPIPE_CAST_COLUMN_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.scale.y = 0.001;
+	mesh.position.set(origin.x, DIVINE_GRACE_COLUMN_BASE_Y, origin.z);
+	if (targetScene) targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration: SUMMON_EFFECT_DURATION,
+		isLightColumn: true,
+		_scene: targetScene,
+	});
+
+	spawnParticleBurst(
+		{ x: origin.x, y: 1.0, z: origin.z },
+		{
+			color,
+			emissive,
+			count: style.burstCount ?? TELEPIPE_CAST_BURST_COUNT,
+			spread: style.burstSpread ?? TELEPIPE_CAST_BURST_SPREAD,
+			duration: SUMMON_EFFECT_DURATION,
+		},
+	);
+}
+
 const PURIFYING_HEAL_COLOR = 0x6ee7b7;
 const PURIFYING_HEAL_EMISSIVE = 0x34d399;
 const CLEANSE_BURST_COLOR = 0xffffff;
@@ -5809,6 +5894,12 @@ export function animate(timestamp) {
 	if (!renderer || !scene || !camera || !clock) return;
 
 	const delta = clampDelta(clock.getDelta());
+
+	// Poll the gamepad once per frame into a shared snapshot so the movement,
+	// look, and button readers below all consume the same navigator.getGamepads()
+	// read instead of each re-polling the pad/profile/config.
+	pollGamepadSnapshot();
+
 	updateMyPlayer(delta);
 
 	pollInput();
@@ -5895,4 +5986,8 @@ export function animate(timestamp) {
 	updateCollectingLoot();
 
 	renderer.render(scene, camera);
+
+	// Release the frame snapshot so any out-of-loop reader (e.g. socket-handler
+	// movement checks) re-polls the live pad rather than reusing this frame's.
+	invalidateGamepadSnapshot();
 }

@@ -7027,6 +7027,29 @@ PASS. The changed live files are focused on validation harness wiring, rooms art
 
 None.
 
+## v0.392 — Client: consolidate gamepad polling to one snapshot per frame and delete dead gamepad-layer code  (2026-06-10 17:18:44)
+
+
+### Dead gamepad-layer code and orphan tests
+
+PASS. The confirmed-dead helpers named in the ticket are no longer exported or referenced in `game/client/`: `uses8BitDo64DigitalCButtons`, `get8BitDo64CStickAxes`, `get8BitDo64CAxisPairs`, `readAxisSectorDirections`, `readProfileCStick`, `isGamepadMoving`, `describeGamepadConnectionWithProfile`, and the duplicate `isButtonPressed`. The tests tied only to those removed helpers were deleted, while live 8BitDo C-button, profile, lock-on, and binding behavior remains covered.
+
+### Design and requirements consistency
+
+PASS. The change is limited to client input polling and dead-code cleanup. It does not alter the documented lobby/dungeon/card loop, server simulation, multiplayer flow, or floor/quest/combat systems. The capture and probes confirm the baseline setup requirements remain intact: 3D rendering, server-client connection, multiplayer visualization, and movement synchronization.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=...` shortcut. The capture used the fallback full-flow smoke path with `scenarios: []`, so there is no debug-scenario gating or normal-gameplay reachability issue to review for this ticket.
+
+### Verification evidence
+
+PASS. The round-1 coverage log reports `52` test files passed and `540` tests passed. Coverage thresholds were disabled as expected for visibility only.
+
+## Remaining gaps
+
+No blocking gaps remain.
+
 ## v0.393 — Debug tooling: time-scale control (slow-mo/pause) behind ALLOW_DEBUG_SCENARIOS for playtesting and QA  (2026-06-10 17:19:45)
 
 ### Harness state exposes the current scale for automated tests
@@ -7072,3 +7095,134 @@ None. The acceptance criterion is fully and robustly met, the game runs
 cleanly in the captured registry-dispatched scenario, and the full server test
 suite is green.
 
+## v0.394 — Server: index.js broadcast/lookup helpers scan every connected socket per lobby per event  (2026-06-10 17:39:04)
+
+- **O(1) player→socket lookup.** `playerSockets` Map registered on connect (`registerPlayerSocket` after `socket.playerId = playerId`) and unregistered on disconnect (`unregisterPlayerSocket` in `lobbyHandlers.js` disconnect handler). `findSocketByPlayerId` checks the Map first and **falls back to the linear scan** if absent — so correctness is preserved even if the Map is ever out of sync. The reconnect race is handled correctly: `unregisterPlayerSocket` only deletes when `playerSockets.get(playerId) === socket`, so a late disconnect of a replaced socket cannot evict the live one (covered by the new `unregisterPlayerSocket removes only when the socket still owns the map entry` test).
+
+- **Smaller win — user lookups O(1).** `users.js` adds `accountIdIndex` and `emailIndex`, maintained in `indexUser`/`unindexUser` across `loadUsers`, `createUser`, `createUserAsync`, `updateProfile`, and cleared in `clearUsers`. `findUserByAccountId`/`findUserByEmail` are now Map gets. Email index only stores already-normalized emails — matching the old `record.email === normalized` comparison exactly, so no behavior change for mixed-case stored emails. `updateProfile` correctly removes the stale email entry before reassigning (verified including the email-clear `null` path: `oldEmail` deleted, `indexUser` re-adds only the accountId). New test `keeps email index consistent when email is updated or cleared` exercises set→change→clear.
+
+- **Behavior unchanged / existing tests pass.** Full server suite re-run clean: **179 files, 2571 tests, all pass** (`npx vitest run server/test/`). The lone failure in the harness `coverage.log` (`debug-scenarios … places player outside dormant arena_champion trigger after adds cleared`) is a flake under v8 coverage instrumentation: it passes standalone (`-t`), passes as a full file (57/57), and passes in the full uninstrumented suite. The changed code (socket map, room iteration, user indexes) is orthogonal to arena-champion positioning. Not a regression from this ticket.
+
+## Design / regression check
+
+Pure server-side performance refactor that preserves observable behavior. No change to `game/docs/design.md` surface area, no requirements regression. No debug scenarios added or changed by this ticket (the `?debugScenario` machinery is untouched).
+
+## Code quality
+
+- `resetGameState` clears `playerSockets`; live sockets are not re-registered, but the linear fallback in `findSocketByPlayerId` keeps lookups correct. `resetGameState` is a reset/test path, so harmless. (Nit below.)
+- `broadcastLobbyUpdate`'s active-game branch iterates `Object.keys(activeState.players)` + `findSocketByPlayerId` rather than the room helper — correct (active state can span merged members), just a different pattern from the per-lobby branch. (Nit below.)
+- No dead code, no obvious bugs, no console errors.
+
+## Remaining gaps
+
+None blocking.
+
+## v0.395 — Client: split main.js bindSocketHandlers (~930 lines) into handler registration groups  (2026-06-10 18:03:35)
+
+- No behavior change: the full suite (`260 test files, 3717 tests`) passes, including the server socket integration tests and client main/socket tests.
+- `grep` confirms **zero** remaining `s.on(`/`socket.on(` registrations in main.js — every listener was relocated, no duplicated or dead inline handler left behind.
+
+## Consistency with design / no regression
+
+- This is a pure structural refactor of client socket-handler registration; no gameplay rules, server logic, or `shared/` schema changed. `game/docs/design.md` and `requirements.md` foundations are untouched. The diff is confined to main.js (net −931 lines) plus the new `socketHandlers/` modules and sub-ticket bookkeeping.
+
+## Debug scenarios
+
+- No new `?debugScenario=NAME` URL shortcut was added or changed. `debugHandlers.js` only relocates the existing `DEBUG_SCENARIO_RESULT` / `DEBUG_GODMODE_RESULT` *result* listeners (and re-applies godmode mirroring to keep probes consistent). The debug-shortcut review criteria do not apply; nothing bypasses normal-play invariants.
+
+## Code quality
+
+- Clean, idiomatic split matching the codebase's existing context-object convention. Each module imports only what it needs; `index.js` re-exports the registrars. The STATE_UPDATE extraction preserves comments and edge-case handling (hub-layout floor sampling, desperation deck sync, prediction drift thresholds).
+- No obvious bugs, no broken imports (tests would have failed otherwise), no console errors in the capture.
+
+## Remaining gaps
+
+None blocking. The acceptance criterion is fully and robustly met, the game runs cleanly, and the entire test suite passes. Minor non-blocking observations are recorded in `nits.md`.
+
+## v0.396 — 367-anim-cinder-snare  (2026-06-10 18:06:10)
+
+`updateAttackEffects` with no per-frame allocation, fading/disposing at `ttlMs`.
+Negligible cost even with the 30s lifetime.
+
+### "Client test where feasible"
+MET. Five new tests in `game/client/test/cardRenderers.test.js` cover: distinct
+dispatch vs `spike_trap`, themed accent at origin/radius, stat-derived cadence/
+duration, synchronous placement (no wind-up gating), and a no-radius no-op. Full
+file (164 tests) passes; server `enchantment.test.js` (17) passes.
+
+### Scope / design consistency
+MET. The diff touches only `game/client/cardRenderers.js` (this card's render fn
++ registration) and its test — exactly the declared scope. No server, shared, or
+other-card changes; no new debug scenario; no regression to other renderers
+(`renderGroundEnchantment` is retained for other cards). Consistent with
+`design.md` VFX-primitive approach.
+
+## Remaining gaps
+
+None blocking. Two minor thematic nits captured in `nits.md`.
+
+## v0.397 — Server: admin password accepted via query parameter and /admin has no rate limit  (2026-06-10 18:13:13)
+
+## Code quality
+
+- Focused diff (~240 lines, mostly tests). No dead code introduced.
+- Security properties preserved: fail-closed when `ADMIN_PASSWORD` unset, constant-time compare, Bearer token still ignored for admin.
+- `auth.js` export surface expanded minimally for reuse; register/login call sites unchanged.
+- Comments in `admin.js` and `auth.js` document the check-then-increment pattern and why check-only uses `>=`.
+
+## Sub-ticket integration
+
+Both sub-tickets integrate cleanly:
+
+1. **01-remove-query-param-password** — query fallback removed; tests inverted from expect-200 to expect-403.
+2. **02-add-admin-rate-limit** — bucket logic reused from auth; middleware wired before password check.
+
+No gaps between sub-ticket scope and top-level acceptance criteria.
+
+## Remaining gaps
+
+None. All acceptance criteria are fully and robustly satisfied; runtime capture is clean.
+
+## v0.398 — 364-anim-telepipe  (2026-06-10 18:43:25)
+
+construction, palette, overrides, and cleanup/disposal. Ran
+`vitest run cardRenderers.test.js vfx-primitives.test.js` → **182 passed**.
+
+## Design / regression consistency
+
+- Scope respected: diff touches only `game/client/cardRenderers.js`,
+  `game/client/renderer.js` (new primitive), `game/client/main.js` (ctx
+  wiring), and the two client test files. `git diff … -- game/server/` is empty.
+- The persistent portal marker is unaffected — it is owned by
+  `syncTelepipeMesh`/`animateTelepipePortal` (state-driven), which this ticket
+  does not modify. The old `renderTelepipe` call to `spawnSummonEffect` is
+  replaced by the dedicated cast flourish; the standing portal is still rendered
+  from `state.telepipe`, so no regression to the evac-point marker.
+- No debug scenario was added or changed by this ticket (no server diff);
+  `telepipe-ready` predates the baseline and is used only by the harness capture.
+
+## Remaining gaps
+
+None blocking. (Minor non-blocking redundancy noted in nits.md.)
+
+## v0.399 — 361-anim-soul-drain  (2026-06-10 18:46:55)
+
+- **Dev-gated, sole entry**: added only to the `DEBUG_SCENARIOS` set (index.js:648) and the
+  `applyDebugScenario` chain (debugScenarios.js:4970); the `?debugScenario=` path is the only
+  way in. Normal gameplay never references it.
+- **End-state reachable normally**: a damaged caster with full Magic Stones casting an evolved
+  Soul Drain into a grunt cluster is ordinary combat — the scenario only pre-arranges that
+  state; it does not auto-cast.
+- **No invariant bypass**: the scenario only mutates state (hp, magicStones, one hand slot,
+  enemy spawns). The actual cast still flows through the normal `useCard`/`cardEffects`
+  validation, server resolution, and net replication.
+
+## Design consistency
+Consistent with game/docs/design.md: builds on the 315 shared VFX primitives
+(`spawnLightningArc`, `spawnTelegraphRing`, `spawnParticleBurst`, `spawnImpactDecal`) and only
+touches this card's render fn. No foundation regression.
+
+## Remaining gaps
+None blocking. The only out-of-strict-scope change is the server-side debug scenario (ticket
+SCOPE names client paths); it is additive, properly gated, and a legitimate QA enabler — noted
+in nits.md, not blocking.

@@ -1,0 +1,11 @@
+Created the single sub-ticket that fully delivers the top-level ticket within scope.
+
+**Sub-ticket created:**
+- `/home/matt/workspace/.autogame-worktrees/367-anim-cinder-snare/tickets/367-anim-cinder-snare/subtickets/01-cinder-snare-ember-renderer/ticket.md`
+
+**Why one sub-ticket:** The top-level ticket is a single card's animation polish with an explicit scope clamp ("touch only this card's renderer + its registration"). The whole deliverable — replace the generic `renderGroundEnchantment` mapping with a bespoke, fiery, stat-synced `renderCinderSnare` plus a client test — is one focused pass on one function. Splitting it would only create artificial coordination overhead on the same render fn.
+
+**Key scoping decisions baked into the spec:**
+- cinder_snare has **no `windUpMs`**, so the spec requires the renderer fire synchronously at cast (no 307 wind-up telegraph applies).
+- Timing sync is honest: the server only resolves the DoT on *trigger* (enemy enters radius), and that path emits **no client event** (server out of scope) — so the spec syncs the *lingering smolder duration/cadence* to the card's `ttlMs`/`dotTicks`/`dotIntervalMs` read from the card def (modeled on the existing `renderInfernoPillar`), rather than faking a damage burst.
+- **Verification: code** — the criteria are about registry mapping, primitive calls, accent color, stat-derived cadence, and a no-windup synchronous path. None are pure-render checks, so visual QA (one happy-path run with no cinder_snare cast) could never verify them.

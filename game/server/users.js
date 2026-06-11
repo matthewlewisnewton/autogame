@@ -18,8 +18,30 @@ const { isValidQuestId, isValidQuestSelection, normalizeUnlockRequires, getQuest
 let usersFilePath = process.env.USERS_FILE || path.join(__dirname, '..', 'data', 'users.json');
 
 const users = new Map();
+const accountIdIndex = new Map();
+const emailIndex = new Map();
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function indexUser(record) {
+	if (record.accountId) {
+		accountIdIndex.set(record.accountId, record);
+	}
+	const normalized = normalizeEmail(record.email);
+	if (normalized && record.email === normalized) {
+		emailIndex.set(normalized, record);
+	}
+}
+
+function unindexUser(record) {
+	if (record.accountId) {
+		accountIdIndex.delete(record.accountId);
+	}
+	const normalized = normalizeEmail(record.email);
+	if (normalized && record.email === normalized) {
+		emailIndex.delete(normalized);
+	}
+}
 
 function normalizeEmail(email) {
 	if (email === null || email === undefined || email === '') return null;
@@ -138,6 +160,7 @@ function loadUsers() {
 			record.unlockedQuestTiers = backfillUnlockedQuestTiers(record.unlockedQuestTiers);
 			record.completedQuestTiers = backfillCompletedQuestTiers(record.completedQuestTiers);
 			users.set(record.username, record);
+			indexUser(record);
 		}
 		console.log(`[users] Loaded ${users.size} user record(s) from ${usersFilePath}`);
 	} catch (err) {
@@ -229,6 +252,7 @@ function createUser(username, plainPassword) {
 	};
 
 	users.set(username, record);
+	indexUser(record);
 	saveUsers();
 	return { ok: true };
 }
@@ -259,6 +283,7 @@ async function createUserAsync(username, plainPassword) {
 	};
 
 	users.set(username, record);
+	indexUser(record);
 	saveUsers();
 	return { ok: true, accountId };
 }
@@ -277,10 +302,7 @@ function findUserByUsername(username) {
  * @returns {object|null}
  */
 function findUserByAccountId(accountId) {
-	for (const record of users.values()) {
-		if (record.accountId === accountId) return record;
-	}
-	return null;
+	return accountIdIndex.get(accountId) || null;
 }
 
 /**
@@ -291,10 +313,7 @@ function findUserByAccountId(accountId) {
 function findUserByEmail(email) {
 	const normalized = normalizeEmail(email);
 	if (!normalized) return null;
-	for (const record of users.values()) {
-		if (record.email === normalized) return record;
-	}
-	return null;
+	return emailIndex.get(normalized) || null;
 }
 
 /**
@@ -339,7 +358,12 @@ function updateProfile(accountId, fields) {
 				return { ok: false, reason: 'Email already in use' };
 			}
 		}
+		const oldEmail = normalizeEmail(user.email);
+		if (oldEmail && user.email === oldEmail) {
+			emailIndex.delete(oldEmail);
+		}
 		user.email = normalized;
+		indexUser(user);
 	}
 
 	if (fields.cosmetic !== undefined) {
@@ -592,6 +616,8 @@ function getAllUsers() {
  */
 function clearUsers() {
 	users.clear();
+	accountIdIndex.clear();
+	emailIndex.clear();
 }
 
 /**
@@ -610,7 +636,7 @@ function getUsersFilePath() {
  */
 function setTestFilePath(filePath) {
 	usersFilePath = filePath;
-	users.clear();
+	clearUsers();
 	loadUsers();
 }
 

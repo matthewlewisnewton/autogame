@@ -30,6 +30,7 @@ function makeCtx(overrides = {}) {
 		spawnProjectileTrail: record('spawnProjectileTrail'),
 		spawnImpactDecal: record('spawnImpactDecal'),
 		spawnTelegraphRing: record('spawnTelegraphRing'),
+		spawnTelepipeCastEffect: record('spawnTelepipeCastEffect'),
 		spawnSpikeTrapEffect: record('spawnSpikeTrapEffect'),
 		spawnMirrorWardShellEffect: record('spawnMirrorWardShellEffect'),
 		dismissMirrorWardShellEffect: record('dismissMirrorWardShellEffect'),
@@ -1113,15 +1114,20 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
 	});
 
-	it('soul_drain adds pink drain telegraph, primary burst, and heal flourish decal', () => {
-		const ctx = makeCtx();
+	it('soul_drain adds pink drain telegraph, primary burst, per-hit tethers, and heal flourish decal', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 4, y: 1, z: 2 } },
+				e2: { position: { x: 6, y: 0, z: -1 } },
+			}),
+		});
 		renderCardUsed({
 			cardId: 'soul_drain',
 			origin: { x: 0, z: 0 },
 			radius: 4,
 			specialEffect: 'soul_drain',
 			hpHealed: 12,
-			hits: [],
+			hits: [{ enemyId: 'e1' }, { enemyId: 'e2' }, { enemyId: 'gone' }],
 		}, ctx);
 		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
 		expect(ring).toBeDefined();
@@ -1129,6 +1135,15 @@ describe('renderCardUsed() — spell dispatch', () => {
 		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
 		expect(burst).toBeDefined();
 		expect(burst[2]).toMatchObject({ color: 0xe879f9, count: 14, spread: 2.4 });
+		// One drain tether per hit-with-mesh, each ending at the cast origin; the
+		// hit whose enemy has no mesh ('gone') is skipped.
+		const tethers = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
+		expect(tethers).toHaveLength(2);
+		expect(tethers[0][1]).toEqual({ x: 4, y: 1, z: 2 });
+		expect(tethers[0][2]).toEqual({ x: 0, z: 0 });
+		expect(tethers[0][3]).toMatchObject({ color: 0xe879f9, emissive: 0xd946ef });
+		expect(tethers[1][1]).toEqual({ x: 6, y: 0, z: -1 });
+		expect(tethers[1][2]).toEqual({ x: 0, z: 0 });
 		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
 		expect(decal).toBeDefined();
 		expect(decal[1]).toEqual({ x: 0, z: 0 });
@@ -1137,11 +1152,37 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
 	});
 
+	it('soul_drain skips the heal flourish when hpHealed is 0 or absent', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'soul_drain',
+			origin: { x: 0, z: 0 },
+			radius: 4,
+			specialEffect: 'soul_drain',
+			hpHealed: 0,
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
+
+		const ctxNoHeal = makeCtx();
+		renderCardUsed({
+			cardId: 'soul_drain',
+			origin: { x: 0, z: 0 },
+			radius: 4,
+			specialEffect: 'soul_drain',
+			hits: [],
+		}, ctxNoHeal);
+		expect(ctxNoHeal._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
+		expect(ctxNoHeal._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
+	});
+
 	it('arcane radial spells still render without throwing when new ctx primitives are absent', () => {
 		const minimalCtx = makeCtx({
 			spawnTelegraphRing: undefined,
 			spawnParticleBurst: undefined,
 			spawnImpactDecal: undefined,
+			spawnLightningArc: undefined,
+			enemyMeshes: undefined,
 		});
 		for (const cardId of ['battle_familiar', 'mana_leach', 'soul_drain']) {
 			const ctx = { ...minimalCtx, _calls: [] };
@@ -1149,7 +1190,8 @@ describe('renderCardUsed() — spell dispatch', () => {
 				cardId,
 				origin: { x: 0, z: 0 },
 				radius: 4,
-				hits: [],
+				hpHealed: 8,
+				hits: [{ enemyId: 'e1' }],
 			}, ctx)).not.toThrow();
 		}
 	});
@@ -2452,6 +2494,106 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
 	});
 
+	it('cinder_snare resolves to its own renderCinderSnare, distinct from spike_trap', () => {
+		const snare = resolveRenderers('cinder_snare');
+		expect(snare).toHaveLength(1);
+		expect(snare[0].name).toBe('renderCinderSnare');
+		expect(snare[0]).not.toBe(resolveRenderers('spike_trap')[0]);
+	});
+
+	it('cinder_snare spawns a fiery ember snare at the placement origin/radius with the card accent', () => {
+		const ctx = makeCtx();
+		const def = getCardDef('cinder_snare');
+		renderCardUsed({
+			cardId: 'cinder_snare',
+			origin: { x: 5, z: -2 },
+			radius: def.radius,
+			effect: 'cinder_snare',
+			hits: [],
+		}, ctx);
+
+		// Initial ember snare fired at the placement origin / stat-derived radius.
+		const pillars = ctx._calls.filter((c) => c[0] === 'spawnInfernoPillarEffect');
+		expect(pillars).toHaveLength(1);
+		expect(pillars[0][1]).toEqual({ x: 5, z: -2 });
+		expect(pillars[0][2]).toBe(def.radius);
+
+		// Themed to the card accent (#f97316), NOT the generic 0xf87171/0xef4444 palette.
+		const style = pillars[0][3];
+		expect(style.color).toBe(0xf97316);
+		expect(style.color).toBe(getAccentHex('cinder_snare'));
+		expect(style.color).not.toBe(0xf87171);
+		expect(style.emissive).not.toBe(0xef4444);
+
+		// Ember spark burst at the placement origin, themed orange.
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		expect(bursts.length).toBeGreaterThanOrEqual(1);
+		expect(bursts[0][1]).toEqual({ x: 5, z: -2 });
+		expect(bursts[0][2].color).toBe(0xf97316);
+
+		// Distinct from spike_trap: no steel-spike primitive, no generic preview.
+		expect(ctx._calls.some((c) => c[0] === 'spawnSpikeTrapEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('cinder_snare derives its smolder cadence and duration from the card stats', () => {
+		const ctx = makeCtx();
+		const def = getCardDef('cinder_snare');
+		renderCardUsed({
+			cardId: 'cinder_snare',
+			origin: { x: 0, z: 0 },
+			radius: def.radius,
+			effect: 'cinder_snare',
+			hits: [],
+		}, ctx);
+
+		// Lingering smolder reflects the server stats, not hardcoded numbers.
+		const pillars = ctx._calls.filter((c) => c[0] === 'spawnInfernoPillarEffect');
+		expect(pillars[0][3].dotTicks).toBe(def.dotTicks);
+		expect(pillars[0][3].dotIntervalMs).toBe(def.dotIntervalMs);
+		expect(pillars[0][3].duration).toBe(def.ttlMs);
+
+		// One scheduled smolder pulse per DoT tick, aligned to dotIntervalMs.
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(schedules).toHaveLength(def.dotTicks);
+		for (let i = 0; i < schedules.length; i += 1) {
+			expect(schedules[i][1]).toBe(def.dotIntervalMs * (i + 1));
+		}
+	});
+
+	it('cinder_snare fires the initial placement VFX synchronously (no windUpMs gating)', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'cinder_snare',
+			origin: { x: 0, z: 0 },
+			radius: 2.5,
+			effect: 'cinder_snare',
+			hits: [],
+		}, ctx);
+
+		const pillarIdx = ctx._calls.findIndex((c) => c[0] === 'spawnInfernoPillarEffect');
+		const firstScheduleIdx = ctx._calls.findIndex((c) => c[0] === 'scheduleAfter');
+		expect(pillarIdx).toBeGreaterThanOrEqual(0);
+		// Placement effect resolves before any deferred smolder scheduling.
+		expect(firstScheduleIdx === -1 || pillarIdx < firstScheduleIdx).toBe(true);
+
+		// And the card itself carries no positive windUpMs.
+		const windUp = getCardDef('cinder_snare').windUpMs;
+		expect(windUp === undefined || windUp === 0).toBe(true);
+	});
+
+	it('cinder_snare no-ops on a malformed event with no radius', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'cinder_snare',
+			origin: { x: 0, z: 0 },
+			effect: 'cinder_snare',
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnInfernoPillarEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
 	it('mirror_ward spawns shell, telegraph ring, and burst when target=self', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
@@ -2677,5 +2819,82 @@ describe('renderCardUsed() — economy card VFX', () => {
 			expect(ctx._calls.filter((c) => c[0] === 'spawnSummonEffect')).toHaveLength(1);
 			expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(0);
 		});
+	});
+});
+
+describe('telepipe', () => {
+	const samplePayload = {
+		cardId: 'telepipe',
+		effect: 'telepipe',
+		specialEffect: 'portal',
+		origin: { x: 3, z: -5 },
+	};
+
+	function renderTelepipe(data, ctx) {
+		return resolveRenderers('telepipe')[0](data, ctx);
+	}
+
+	it('resolveRenderers returns a single non-empty renderer named renderTelepipe', () => {
+		const renderers = resolveRenderers('telepipe');
+		expect(renderers.length).toBeGreaterThan(0);
+		expect(renderers).toHaveLength(1);
+		expect(renderers[0].name).toBe('renderTelepipe');
+	});
+
+	it('invokes spawnTelepipeCastEffect, spawnTelegraphRing, and spawnParticleBurst at cast origin with cyan accent palette', () => {
+		const ctx = makeCtx();
+		renderTelepipe(samplePayload, ctx);
+
+		const accent = getAccentHex('telepipe');
+		expect(accent).toBe(0x67e8f9);
+
+		const cast = ctx._calls.find((c) => c[0] === 'spawnTelepipeCastEffect');
+		expect(cast).toBeDefined();
+		expect(cast[1]).toEqual({ x: 3, z: -5 });
+		expect(cast[2]).toBe(2.5);
+		expect(cast[3]).toMatchObject({ color: accent, emissive: 0x22d3ee });
+
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 3, z: -5 });
+		expect(ring[2]).toBe(2.5);
+		expect(ring[3]).toMatchObject({ color: accent, emissive: 0x22d3ee });
+
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 3, y: 1.0, z: -5 });
+		expect(burst[2]).toMatchObject({ color: accent, emissive: 0x22d3ee, count: 10, spread: 1.6 });
+	});
+
+	it('no-ops when data.origin is absent', () => {
+		const ctx = makeCtx();
+		renderTelepipe({
+			cardId: 'telepipe',
+			effect: 'telepipe',
+			specialEffect: 'portal',
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelepipeCastEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
+	});
+
+	it('has no positive windUpMs (instant cast; no 307 charge telegraph expected)', () => {
+		expect(CARD_DEFS.telepipe).toBeDefined();
+		expect(CARD_DEFS.telepipe.windUpMs ?? 0).toBeLessThanOrEqual(0);
+	});
+
+	it('does not call scheduleAfter (synchronous instant cast)', () => {
+		const ctx = makeCtx();
+		renderTelepipe(samplePayload, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('defaults portal radius to 2.5 when data.radius is omitted', () => {
+		const ctx = makeCtx();
+		renderTelepipe(samplePayload, ctx);
+		const cast = ctx._calls.find((c) => c[0] === 'spawnTelepipeCastEffect');
+		expect(cast[2]).toBe(2.5);
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring[2]).toBe(2.5);
 	});
 });
