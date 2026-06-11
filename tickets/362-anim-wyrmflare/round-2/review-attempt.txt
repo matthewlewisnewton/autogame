@@ -1,0 +1,17 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health (gate):** The captured run is clean — `metrics.json` has `"ok": true`, empty `pageerrors`, servers started; `console.log` has only benign Vite/initScene lines plus one harmless 409 resource retry; `server.log` shows a clean lifecycle. The game starts and loads. Gate passes.
+
+**Acceptance criteria — all met:**
+- **Theme:** `renderDragonsBreath` now builds a forward fire breath cone + ground scorch fan in amber/hot-emissive, with instant burst, embers, impact decal and flickering sustain — no generic projectile trail. Reads unmistakably as "Wyrmflare."
+- **Timing sync (exact):** server area-effect lives `4*500 + 250 = 2250ms`; client `duration` computes the same, with four DoT tick pulses at 500/1000/1500/2000ms and an instant per-hit ignite at t=0 from the broadcast `hits[]`. Cone angle `π⁄3` matches the server override.
+- **Wind-up:** `dragons_breath` has no `windUpMs`, so the charge telegraph is correctly absent (with a regression test asserting it).
+- **Scope/primitives:** new `spawnDragonsBreathEffect` primitive wired through main.js → ctx → cardHandlers, mirroring the existing inferno_pillar pattern; only this card's renderer/registration/tests touched.
+- **Perf:** effects dispose on expiry (geometry+material released), no leaked timers.
+- **Tests:** 179/179 client tests passing, including 6 new Wyrmflare-specific cases.
+
+No debug scenario was added by this ticket. No blocking gaps, so no `gaps.md`. I filed one nit (`nits.md`): the server omits `dotIntervalMs`/`attackConeAngle` from the CARD_USED payload, so client/server stay in sync only via matching hardcoded defaults — worth tightening later, not blocking.
+
+The one caveat I noted: the fallback capture plan couldn't deal the Wyrmflare card, so the cast isn't shown on-screen — the animation is proven by the unit suite rather than a screenshot. Acceptable here since the game runs clean and the renderer logic is directly covered.

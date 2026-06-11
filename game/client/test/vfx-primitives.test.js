@@ -15,6 +15,7 @@ import {
 	dismissMirrorWardShellEffect,
 	spawnMirrorWardReflectBurst,
 	spawnInfernoPillarEffect,
+	spawnDragonsBreathEffect,
 	updateAttackEffects,
 	getActiveEffects,
 } from '../renderer.js';
@@ -255,6 +256,38 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before);
 		expect(ringDispose).toHaveBeenCalled();
 		expect(spikeDispose).toHaveBeenCalled();
+	});
+
+	it('spawnDragonsBreathEffect pushes a forward breath cone + ground scorch fan', () => {
+		const before = getActiveEffects().length;
+		spawnDragonsBreathEffect({ x: 1, z: -2 }, { x: 1, z: 0 });
+		expect(getActiveEffects().length).toBe(before + 2);
+
+		const effects = getActiveEffects();
+		const scorch = effects[before];
+		const cone = effects[before + 1];
+
+		expect(scorch.isDragonsBreathScorch).toBe(true);
+		expect(scorch.radius).toBe(7);
+		expect(scorch.duration).toBe(2250);
+		expect(scorch.mesh.material.color.getHex()).toBe(0xfb923c);
+		expect(scorch.mesh.material.emissive.getHex()).toBe(0xff3b00);
+
+		expect(cone.isDragonsBreathCone).toBe(true);
+		expect(cone.range).toBe(7);
+		expect(cone.duration).toBe(2250);
+		expect(cone.mesh.material.color.getHex()).toBe(0xfb923c);
+		expect(cone.mesh.material.emissive.getHex()).toBe(0xff3b00);
+
+		const scorchDisposeSpy = vi.spyOn(scorch.mesh.geometry, 'dispose');
+		const coneDisposeSpy = vi.spyOn(cone.mesh.geometry, 'dispose');
+		scorch.createdAt = performance.now() - scorch.duration - 100;
+		cone.createdAt = performance.now() - cone.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(scorchDisposeSpy).toHaveBeenCalled();
+		expect(coneDisposeSpy).toHaveBeenCalled();
 	});
 
 	it('spawnInfernoPillarEffect pushes a fire scorch ring + rising thermal column', () => {
