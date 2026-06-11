@@ -108,6 +108,9 @@ const io = new Server(server, {
 });
 server.setMaxListeners(0);
 
+/** O(1) playerId → live socket; updated on connect/disconnect/eviction. */
+const playerSockets = new Map();
+
 // Game state factory — shared with lobbies.js to keep the canonical shape in one place
 const { createGameState } = require('./game-state');
 
@@ -502,6 +505,7 @@ function resetGameState() {
   sim.setGameState(gameState, _timeouts);
   setProgressionGameState(gameState);
   ensureShopOffer();
+  playerSockets.clear();
 }
 
 const DEBUG_SCENARIOS = new Set([
@@ -687,19 +691,29 @@ function lobbyPlayerList(state) {
   }));
 }
 
+function forEachSocketInLobby(lobbyId, callback) {
+  const room = io.sockets.adapter.rooms.get(lobbyId);
+  if (!room) return;
+  for (const socketId of room) {
+    if (socketId === lobbyId) continue;
+    const socket = io.sockets.sockets.get(socketId);
+    if (!socket) continue;
+    callback(socket);
+  }
+}
+
 /** Emit questUpdate/lobbyUpdate shared fields to each lobby socket with per-account unlock maps. */
 function emitQuestPayloadToLobby(lobby, { event = SERVER_TO_CLIENT.QUEST_UPDATE, extraFields = {} } = {}) {
   if (!lobby) return;
   const state = lobby.state;
-  for (const socket of io.sockets.sockets.values()) {
-    if (!socket.rooms.has(lobby.id)) continue;
+  forEachSocketInLobby(lobby.id, (socket) => {
     const player = state.players[socket.playerId];
-    if (!player) continue;
+    if (!player) return;
     socket.emit(event, {
       ...buildQuestUpdatePayload(state, player.accountId),
       ...extraFields,
     });
-  }
+  });
 }
 
 // Helper: broadcast lobbyUpdate to clients in a lobby room
@@ -717,9 +731,10 @@ function broadcastLobbyUpdate(lobby) {
         gamePhase: activeState.gamePhase,
         shopOffer: activeState.shopOffer,
       };
-      for (const socket of io.sockets.sockets.values()) {
-        const player = activeState.players[socket.playerId];
-        if (!player) continue;
+      for (const playerId of Object.keys(activeState.players)) {
+        const socket = findSocketByPlayerId(playerId);
+        if (!socket) continue;
+        const player = activeState.players[playerId];
         socket.emit(SERVER_TO_CLIENT.LOBBY_UPDATE, {
           ...sharedLobbyFields,
           ...buildQuestUpdatePayload(activeState, player.accountId),
@@ -737,29 +752,40 @@ function broadcastLobbyUpdate(lobby) {
       gamePhase: lobby.state.gamePhase,
       shopOffer: lobby.state.shopOffer,
     };
-    for (const socket of io.sockets.sockets.values()) {
-      if (!socket.rooms.has(lobby.id)) continue;
+    forEachSocketInLobby(lobby.id, (socket) => {
       const player = lobby.state.players[socket.playerId];
-      if (!player) continue;
+      if (!player) return;
       socket.emit(SERVER_TO_CLIENT.LOBBY_UPDATE, {
         ...sharedLobbyFields,
         ...buildQuestUpdatePayload(lobby.state, player.accountId),
       });
-    }
+    });
   });
   broadcastLobbyList();
 }
 
 progression.setBroadcastLobbyUpdate(broadcastLobbyUpdate);
 
+function registerPlayerSocket(playerId, socket) {
+  if (!playerId || !socket) return;
+  playerSockets.set(playerId, socket);
+}
+
+function unregisterPlayerSocket(playerId, socket) {
+  if (!playerId || !socket) return;
+  if (playerSockets.get(playerId) === socket) {
+    playerSockets.delete(playerId);
+  }
+}
+
 // Helper: find a live Socket.IO socket by the stable playerId assigned on connect.
-// Socket.IO keys sockets by socket.id (a random string), not by playerId,
-// so we must iterate and match on socket.playerId.
 function findSocketByPlayerId(playerId, excludeSocketId) {
+  const mapped = playerSockets.get(playerId);
+  if (mapped && (!excludeSocketId || mapped.id !== excludeSocketId)) {
+    return mapped;
+  }
   for (const socket of io.sockets.sockets.values()) {
-    if (excludeSocketId && socket.id === excludeSocketId) {
-      continue;
-    }
+    if (excludeSocketId && socket.id === excludeSocketId) continue;
     if (socket.playerId === playerId) {
       return socket;
     }
@@ -1760,6 +1786,7 @@ function startServer(port) {
       applyDebugScenario,
       isDebugScenarioAllowed,
       softDisconnectPlayerFromLobby,
+      unregisterPlayerSocket,
       hubLayout: HUB_LAYOUT,
       syncLivePlayerCosmetic,
     };
@@ -1776,6 +1803,7 @@ function startServer(port) {
     }
 
     socket.playerId = playerId;
+    registerPlayerSocket(playerId, socket);
     console.log(`Player connected: socket=${socket.id}, playerId=${playerId}`);
 
     socket.emit(SERVER_TO_CLIENT.INIT, {
@@ -2034,6 +2062,8 @@ if (typeof module !== 'undefined' && module.exports) {
     server,
     io,
     findSocketByPlayerId,
+    registerPlayerSocket,
+    unregisterPlayerSocket,
     _intervals,
     _timeouts,
     clearAllTimers,

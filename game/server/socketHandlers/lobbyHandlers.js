@@ -56,6 +56,7 @@ function register(socket, ctx) {
     applyDebugScenario,
     isDebugScenarioAllowed,
     softDisconnectPlayerFromLobby,
+    unregisterPlayerSocket,
     hubLayout,
     syncLivePlayerCosmetic,
   } = ctx;
@@ -442,6 +443,8 @@ function register(socket, ctx) {
     console.log(`Player disconnected: ${socket.id}`);
 
     if (!socket.playerId) return;
+
+    unregisterPlayerSocket(socket.playerId, socket);
 
     const lobby = lobbies.getLobbyForPlayer(socket.playerId);
     if (lobby && lobby.state.players[socket.playerId]) {

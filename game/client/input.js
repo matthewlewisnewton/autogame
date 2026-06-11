@@ -5,13 +5,14 @@
 //   Secondary:  hold modifier (RT on standard, L on 8BitDo 64) → extended slots
 //   Lock-on:    LT (standard) or Z (8BitDo 64) — handled in gamepad.js
 
-import { pollGamepadMovement, pollGamepadButtons, mergeMovementVectors } from './gamepad.js';
+import { pollGamepadMovement, pollGamepadButtons, mergeMovementVectors, getGamepadSnapshot } from './gamepad.js';
 import { getGamepadConfig, getKeyboardBindings } from './settings.js';
 import { HAND_MODIFIER_GAMEPAD_BUTTON } from './config.js';
 import { renderCButtonMark, getCButtonAccessibleLabel } from './c-button-icons.js';
 import {
 	resolveGamepadProfile,
 	isBindingActive,
+	isGamepadButtonActive,
 	STANDARD_PROFILE,
 	EIGHTBITDO_64_PROFILE,
 	getPrimaryGamepad as getProfilePrimaryGamepad,
@@ -176,14 +177,13 @@ function getActiveProfile(gamepad) {
 	return resolveGamepadProfile(gamepad, cfg.profile ?? 'auto');
 }
 
-function getModifierButtonIndex(gamepad) {
-	const cfg = getGamepadConfig();
+function getModifierButtonIndex(gamepad, profile = getActiveProfile(gamepad), cfg = getGamepadConfig()) {
 	if (Number.isInteger(cfg.modifierButton)) return cfg.modifierButton;
-	return getActiveProfile(gamepad).modifierButton ?? HAND_MODIFIER_GAMEPAD_BUTTON;
+	return profile.modifierButton ?? HAND_MODIFIER_GAMEPAD_BUTTON;
 }
 
-function isHandModifierHeld(gp) {
-	return isButtonPressed(gp, getModifierButtonIndex(gp));
+function isHandModifierHeld(gp, profile, cfg) {
+	return isGamepadButtonActive(gp, getModifierButtonIndex(gp, profile, cfg));
 }
 
 function bindingMatchesModifier(binding, modifierHeld) {
@@ -192,13 +192,11 @@ function bindingMatchesModifier(binding, modifierHeld) {
 	return wantsModifier ? modifierHeld : !modifierHeld;
 }
 
-function getBindingForAction(action, gamepad) {
-	const cfg = getGamepadConfig();
+function getBindingForAction(action, gamepad, profile = getActiveProfile(gamepad), cfg = getGamepadConfig()) {
 	const custom = cfg.bindings && cfg.bindings[action];
 	if (custom && (custom.type === 'button' || custom.type === 'axis' || custom.type === 'cButton')) {
 		return custom;
 	}
-	const profile = getActiveProfile(gamepad);
 	return profile.bindings[action] ?? null;
 }
 
@@ -222,10 +220,8 @@ export function getMovementDirection() {
 	}
 
 	let stickVec = null;
-	const gp = getPrimaryGamepad();
+	const { pad: gp, profile, cfg } = getGamepadSnapshot();
 	if (gp) {
-		const cfg = getGamepadConfig();
-		const profile = getActiveProfile(gp);
 		const deadzone = cfg.deadzone ?? 0.15;
 		const moveStick = cfg.moveStick ?? profile.moveStick ?? 'left';
 		stickVec = pollGamepadMovement(deadzone, moveStick);
@@ -239,18 +235,12 @@ export function getMovementDirection() {
 	return { dx: 0, dz: 0, mag: 0 };
 }
 
-function isButtonPressed(gp, index) {
-	const btn = gp.buttons[index];
-	if (!btn) return false;
-	return btn.pressed || btn.value > 0.5;
-}
-
 /**
  * Poll gamepad buttons for edge-triggered actions. Call each frame.
  */
 export function pollInput() {
 	const actionsEnabled = !callbacks.canUseGameActions || callbacks.canUseGameActions();
-	const gp = getPrimaryGamepad();
+	const { pad: gp, profile, cfg, cState } = getGamepadSnapshot();
 
 	if (gp) {
 		const padKey = gp.index;
@@ -258,14 +248,14 @@ export function pollInput() {
 			prevGamepadButtons.set(padKey, {});
 		}
 		const prev = prevGamepadButtons.get(padKey);
-		const modifierHeld = isHandModifierHeld(gp);
+		const modifierHeld = isHandModifierHeld(gp, profile, cfg);
 
 		for (const action of POLLABLE_ACTIONS) {
-			const binding = getBindingForAction(action, gp);
+			const binding = getBindingForAction(action, gp, profile, cfg);
 			// Always record state, even on modifier mismatch — skipping the
 			// prev write would re-fire a held button when the modifier toggles.
 			const pressed = !!binding
-				&& isBindingActive(gp, binding)
+				&& isBindingActive(gp, binding, cState)
 				&& bindingMatchesModifier(binding, modifierHeld);
 			const wasPressed = !!prev[action];
 			prev[action] = pressed;
