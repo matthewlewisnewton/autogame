@@ -2959,16 +2959,27 @@ function renderGuildMedic() {
 	const hp = Math.max(0, Math.min(MAX_HP, me.hp ?? MAX_HP));
 	const currency = me.currency || 0;
 	const atFull = hp >= MAX_HP && !me.dead;
+	const canAffordMedic = currency >= MEDIC_HEAL_COST;
 
 	if (hpDisplayEl) hpDisplayEl.textContent = `Health: ${hp}/${MAX_HP}`;
 	if (costDisplayEl) {
-		costDisplayEl.textContent = atFull
-			? 'You are already at full health.'
-			: `Full restore: ${formatCurrencyPrice(MEDIC_HEAL_COST)}`;
+		if (atFull) {
+			costDisplayEl.textContent = 'You are already at full health.';
+		} else if (!canAffordMedic) {
+			costDisplayEl.textContent = 'Free triage restore — no money required';
+		} else {
+			costDisplayEl.textContent = `Full restore: ${formatCurrencyPrice(MEDIC_HEAL_COST)}`;
+		}
 	}
 	if (healBtnEl) {
-		healBtnEl.disabled = atFull || currency < MEDIC_HEAL_COST;
-		healBtnEl.textContent = `Heal to full (${MEDIC_HEAL_COST} money)`;
+		healBtnEl.disabled = atFull;
+		if (atFull) {
+			healBtnEl.textContent = `Heal to full (${MEDIC_HEAL_COST} money)`;
+		} else if (!canAffordMedic) {
+			healBtnEl.textContent = 'Heal to full (free triage)';
+		} else {
+			healBtnEl.textContent = `Heal to full (${MEDIC_HEAL_COST} money)`;
+		}
 	}
 	showMedicError('');
 	syncVanguardHud(me, 'lobby');
@@ -4533,6 +4544,7 @@ window.renderDeckEditor = renderDeckEditor;
 window.renderCardShop = renderCardShop;
 window.renderPhotonForge = renderPhotonForge;
 window.renderKeyItemList = renderKeyItemList;
+window.renderGuildMedic = renderGuildMedic;
 window.__setKeyItemDefs = (defs) => { keyItemDefs = defs || {}; };
 window.__getEnemyDisplayCatalog = () => enemyDisplayCatalog;
 window.__setEnemyDisplayCatalog = (catalog) => { enemyDisplayCatalog = catalog; };
