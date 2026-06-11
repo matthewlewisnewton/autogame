@@ -1,0 +1,17 @@
+Broke ticket **328-anim-aegis-sentinel** into **3 sub-tickets** in dependency order:
+
+| # | Focus |
+|---|--------|
+| **01** | Green shield VFX primitives (`spawnAegisSentinelShieldFlourish`, `spawnAegisSentinelDeployEffect`) |
+| **02** | Card renderer, registry, `MINION_VISUAL` preset, timing sync with instant server cast + 750 ms summon-in |
+| **03** | Client test coverage and regression guards |
+
+**Context driving the split:** `aegis_sentinel` today uses the generic `renderCreatureSummon`. It shares the server `applyAstralShieldCast` path with `astral_guardian` but is a defensive green taunt wall (30 shield HP, 0 damage, no `windUpMs`) — distinct from the indigo offensive Astral Guardian spell. The plan mirrors the Battery Automaton pattern (primitives → renderer → tests) without a charge-pulse sub-ticket.
+
+All sub-tickets use **Verification: code** (timing sync, handler existence, palette constants, and test assertions).
+
+**Created sub-ticket folders:**
+
+- `/home/matt/workspace/.autogame-worktrees/328-anim-aegis-sentinel/tickets/328-anim-aegis-sentinel/subtickets/01-aegis-sentinel-cast-vfx-primitive`
+- `/home/matt/workspace/.autogame-worktrees/328-anim-aegis-sentinel/tickets/328-anim-aegis-sentinel/subtickets/02-aegis-sentinel-renderer-and-timing`
+- `/home/matt/workspace/.autogame-worktrees/328-anim-aegis-sentinel/tickets/328-anim-aegis-sentinel/subtickets/03-aegis-sentinel-animation-tests`

@@ -706,6 +706,15 @@ export const MINION_VISUAL = {
 		emissive: 0x38bdf8,
 		emissiveIntensity: 0.4,
 	},
+	aegis_sentinel: {
+		shape: 'box',
+		width: 1.85,
+		height: 2.6,
+		depth: 0.35,
+		color: 0x4ade80,
+		emissive: 0x22c55e,
+		emissiveIntensity: 0.45,
+	},
 };
 
 /**
@@ -4791,6 +4800,196 @@ export function spawnBatteryChargePulseEffect(origin, style = {}) {
 	);
 }
 
+// Aegis Sentinel palette — protective green ward with optional gold trim.
+export const AEGIS_SENTINEL_COLOR = 0x4ade80;
+export const AEGIS_SENTINEL_EMISSIVE = 0x22c55e;
+export const AEGIS_SENTINEL_GOLD = 0xfbbf24;
+const AEGIS_SENTINEL_SHIELD_DEFAULT_RADIUS = 1.5;
+const AEGIS_SENTINEL_DEPLOY_DEFAULT_RADIUS = 2.0;
+const AEGIS_SENTINEL_DOME_HEIGHT = 2.1;
+const AEGIS_SENTINEL_DOME_OPACITY = 0.58;
+const AEGIS_SENTINEL_WALL_HEIGHT = 2.6;
+const AEGIS_SENTINEL_WALL_WIDTH = 1.85;
+const AEGIS_SENTINEL_WALL_DEPTH = 0.18;
+const AEGIS_SENTINEL_WALL_OPACITY = 0.72;
+const AEGIS_SENTINEL_EMISSIVE_INTENSITY = 1.35;
+
+/**
+ * Brief caster shield wrap at cast time: pulsing green ground ring plus a short
+ * translucent shield facet/dome rising around the origin. Pure additive VFX.
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration, radius }
+ */
+export function spawnAegisSentinelShieldFlourish(origin, style = {}) {
+	const color = style.color ?? AEGIS_SENTINEL_COLOR;
+	const emissive = style.emissive ?? AEGIS_SENTINEL_EMISSIVE;
+	const highlight = style.highlight ?? AEGIS_SENTINEL_GOLD;
+	const duration = style.duration ?? MINION_SUMMON_IN_MS;
+	const radius = style.radius ?? AEGIS_SENTINEL_SHIELD_DEFAULT_RADIUS;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const group = new THREE.Group();
+	group.position.set(origin.x, 0, origin.z);
+
+	const ringGeometry = new THREE.RingGeometry(0.78, 1.0, 40);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.15,
+		transparent: true,
+		opacity: 0.88,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	ringMesh.position.y = GROUND_OVERLAY_Y;
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(0.001);
+	ringMesh.userData.isAegisSentinelRing = true;
+	group.add(ringMesh);
+
+	const domeHeight = Math.min(radius * 1.25, AEGIS_SENTINEL_DOME_HEIGHT);
+	const domeRadius = Math.min(radius * 0.72, 1.15);
+	const domeGeometry = new THREE.CylinderGeometry(domeRadius, domeRadius * 1.08, domeHeight, 20, 1, true);
+	const domeMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: AEGIS_SENTINEL_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: AEGIS_SENTINEL_DOME_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const domeMesh = new THREE.Mesh(domeGeometry, domeMaterial);
+	domeMesh.scale.y = 0.001;
+	domeMesh.position.y = domeHeight * 0.5;
+	domeMesh.userData.isAegisSentinelDome = true;
+	group.add(domeMesh);
+
+	const facetWidth = Math.min(radius * 0.55, 1.1);
+	const facetHeight = domeHeight * 0.92;
+	const facetAngles = [Math.PI * 0.25, -Math.PI * 0.25];
+	for (let i = 0; i < facetAngles.length; i += 1) {
+		const facetPalette = i === 0
+			? { color, emissive }
+			: { color: highlight, emissive: highlight };
+		const facetGeometry = new THREE.PlaneGeometry(facetWidth, facetHeight);
+		const facetMaterial = new THREE.MeshStandardMaterial({
+			color: facetPalette.color,
+			emissive: facetPalette.emissive,
+			emissiveIntensity: 1.2,
+			transparent: true,
+			opacity: 0.5,
+			side: THREE.DoubleSide,
+			depthWrite: false,
+		});
+		const facetMesh = new THREE.Mesh(facetGeometry, facetMaterial);
+		facetMesh.position.y = facetHeight * 0.5;
+		facetMesh.rotation.y = facetAngles[i];
+		facetMesh.userData.isAegisSentinelFacet = true;
+		group.add(facetMesh);
+	}
+
+	targetScene.add(group);
+
+	activeEffects.push({
+		mesh: group,
+		_scene: targetScene,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		domeHeight,
+		createdAt: performance.now(),
+		duration,
+		isAegisSentinelShield: true,
+	});
+}
+
+/**
+ * Minion-deploy flourish: expanding green ward ring plus a rising shield-wall
+ * silhouette so the sentinel materialization reads as a taunt wall. Pure
+ * additive VFX.
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration, radius }
+ */
+export function spawnAegisSentinelDeployEffect(origin, style = {}) {
+	const color = style.color ?? AEGIS_SENTINEL_COLOR;
+	const emissive = style.emissive ?? AEGIS_SENTINEL_EMISSIVE;
+	const highlight = style.highlight ?? AEGIS_SENTINEL_GOLD;
+	const duration = style.duration ?? MINION_SUMMON_IN_MS;
+	const radius = style.radius ?? AEGIS_SENTINEL_DEPLOY_DEFAULT_RADIUS;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const group = new THREE.Group();
+	group.position.set(origin.x, 0, origin.z);
+
+	const ringGeometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	ringMesh.position.y = GROUND_OVERLAY_Y;
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(0.001);
+	ringMesh.userData.isAegisSentinelRing = true;
+	group.add(ringMesh);
+
+	const wallWidth = Math.min(radius * 0.95, AEGIS_SENTINEL_WALL_WIDTH);
+	const wallHeight = AEGIS_SENTINEL_WALL_HEIGHT;
+	const wallGeometry = new THREE.BoxGeometry(wallWidth, wallHeight, AEGIS_SENTINEL_WALL_DEPTH);
+	const wallMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: AEGIS_SENTINEL_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: AEGIS_SENTINEL_WALL_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const wallMesh = new THREE.Mesh(wallGeometry, wallMaterial);
+	wallMesh.scale.y = 0.001;
+	wallMesh.position.y = wallHeight * 0.5;
+	wallMesh.userData.isAegisSentinelWall = true;
+	group.add(wallMesh);
+
+	const trimGeometry = new THREE.BoxGeometry(wallWidth * 1.04, 0.12, AEGIS_SENTINEL_WALL_DEPTH * 1.6);
+	const trimMaterial = new THREE.MeshStandardMaterial({
+		color: highlight,
+		emissive: highlight,
+		emissiveIntensity: 1.25,
+		transparent: true,
+		opacity: 0.85,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const trimMesh = new THREE.Mesh(trimGeometry, trimMaterial);
+	trimMesh.scale.y = 0.001;
+	trimMesh.position.y = wallHeight * 0.5;
+	trimMesh.userData.isAegisSentinelWallTrim = true;
+	group.add(trimMesh);
+
+	targetScene.add(group);
+
+	activeEffects.push({
+		mesh: group,
+		_scene: targetScene,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		wallHeight,
+		createdAt: performance.now(),
+		duration,
+		isAegisSentinelDeploy: true,
+		_baseEmissiveIntensity: AEGIS_SENTINEL_EMISSIVE_INTENSITY,
+	});
+}
+
 // Sanctum Pulse palette: a coherent holy-gold so the divine "pulse" reads as
 // radiant sacred light, not the accidental green the ring emissive used to be.
 const DIVINE_GRACE_RING_COLOR = 0xfde68a; // warm gold ground ring
@@ -6811,6 +7010,75 @@ export function updateAttackEffects() {
 			const flicker = 1.0 + 0.25 * Math.sin(elapsed * 0.02);
 			fx.mesh.material.emissiveIntensity = baseIntensity * flicker * fade;
 
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Aegis Sentinel caster shield wrap (ring + dome/facets) ──
+		if (fx.isAegisSentinelShield) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const expandT = Math.min(t / 0.4, 1.0);
+			const pulse = 0.5 + 0.35 * Math.abs(Math.sin(elapsed / 250));
+			for (let c = 0; c < fx.mesh.children.length; c += 1) {
+				const child = fx.mesh.children[c];
+				if (child.userData.isAegisSentinelRing) {
+					child.scale.setScalar(Math.max(0.001, fx.radius * expandT));
+					child.material.opacity = Math.max(0.01, pulse * (1.0 - t * 0.9));
+				} else if (child.userData.isAegisSentinelDome) {
+					const riseT = Math.min(t / 0.45, 1.0);
+					const s = Math.max(0.001, riseT);
+					child.scale.y = s;
+					child.position.y = (fx.domeHeight * s) / 2;
+					child.material.opacity = Math.max(0.01, AEGIS_SENTINEL_DOME_OPACITY * (1.0 - t));
+				} else if (child.userData.isAegisSentinelFacet) {
+					const riseT = Math.min(t / 0.42, 1.0);
+					child.scale.y = Math.max(0.001, riseT);
+					child.material.opacity = Math.max(0.01, 0.5 * (1.0 - t));
+				}
+			}
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Aegis Sentinel deploy ward ring + rising shield wall ──
+		if (fx.isAegisSentinelDeploy) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const expandMs = Math.min(SUMMON_EXPAND_MS, fx.duration * 0.55);
+			const expandT = Math.min(elapsed / expandMs, 1.0);
+			const fade = Math.max(0.01, 1.0 - t);
+			for (let c = 0; c < fx.mesh.children.length; c += 1) {
+				const child = fx.mesh.children[c];
+				if (child.userData.isAegisSentinelRing) {
+					const scale = fx.radius * expandT * 2;
+					child.scale.setScalar(Math.max(0.001, scale));
+					if (elapsed > expandMs) {
+						const fadeRatio = 1.0 - (elapsed - expandMs) / (fx.duration - expandMs);
+						child.material.opacity = Math.max(0.01, fadeRatio);
+					}
+					const flicker = 1.0 + 0.28 * Math.sin(elapsed * 0.026);
+					child.material.emissiveIntensity = 1.2 * flicker;
+				} else if (child.userData.isAegisSentinelWall) {
+					const riseT = Math.min(t / 0.35, 1.0);
+					const s = Math.max(0.001, riseT);
+					child.scale.y = s;
+					child.position.y = (fx.wallHeight * s) / 2;
+					child.material.opacity = Math.max(0.01, AEGIS_SENTINEL_WALL_OPACITY * fade);
+					const baseIntensity = fx._baseEmissiveIntensity ?? AEGIS_SENTINEL_EMISSIVE_INTENSITY;
+					child.material.emissiveIntensity = baseIntensity * fade;
+				} else if (child.userData.isAegisSentinelWallTrim) {
+					const riseT = Math.min(t / 0.35, 1.0);
+					const s = Math.max(0.001, riseT);
+					child.scale.y = s;
+					child.position.y = (fx.wallHeight * s) / 2;
+					child.material.opacity = Math.max(0.01, 0.85 * fade);
+				}
+			}
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, fx._scene || scene);
 				activeEffects.splice(i, 1);

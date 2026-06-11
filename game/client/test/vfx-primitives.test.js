@@ -25,6 +25,11 @@ import {
 	spawnBatteryChargePulseEffect,
 	BATTERY_AUTOMATON_COLOR,
 	BATTERY_AUTOMATON_EMISSIVE,
+	spawnAegisSentinelShieldFlourish,
+	spawnAegisSentinelDeployEffect,
+	AEGIS_SENTINEL_COLOR,
+	AEGIS_SENTINEL_EMISSIVE,
+	AEGIS_SENTINEL_GOLD,
 	spawnChronoTriggerEffect,
 	updateAttackEffects,
 	getActiveEffects,
@@ -380,6 +385,105 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before);
 		expect(ringDispose).toHaveBeenCalled();
 		expect(burstDispose).toHaveBeenCalled();
+	});
+
+	it('spawnAegisSentinelShieldFlourish adds flagged shield wrap with aegis palette and cleans up', () => {
+		const before = getActiveEffects().length;
+		spawnAegisSentinelShieldFlourish({ x: 0, z: 0 }, { radius: 1.5 });
+		expect(getActiveEffects().length).toBe(before + 1);
+
+		const fx = lastEffect();
+		expect(fx.isAegisSentinelShield).toBe(true);
+		expect(fx.radius).toBe(1.5);
+		expect(fx.duration).toBe(MINION_SUMMON_IN_MS);
+		expect(Number.isFinite(fx.duration)).toBe(true);
+		expect(fx.mesh.children.length).toBeGreaterThanOrEqual(3);
+
+		const ring = fx.mesh.children.find((c) => c.userData.isAegisSentinelRing);
+		const dome = fx.mesh.children.find((c) => c.userData.isAegisSentinelDome);
+		expect(ring).toBeDefined();
+		expect(dome).toBeDefined();
+		expect(ring.material.color.getHex()).toBe(AEGIS_SENTINEL_COLOR);
+		expect(ring.material.emissive.getHex()).toBe(AEGIS_SENTINEL_EMISSIVE);
+		expect(dome.material.color.getHex()).toBe(AEGIS_SENTINEL_COLOR);
+		expect(dome.material.emissive.getHex()).toBe(AEGIS_SENTINEL_EMISSIVE);
+
+		const facets = fx.mesh.children.filter((c) => c.userData.isAegisSentinelFacet);
+		expect(facets.length).toBeGreaterThanOrEqual(2);
+		expect(facets.some((f) => f.material.emissive.getHex() === AEGIS_SENTINEL_GOLD)).toBe(true);
+
+		const disposeSpy = vi.spyOn(ring.geometry, 'dispose');
+		fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(disposeSpy).toHaveBeenCalled();
+	});
+
+	it('spawnAegisSentinelShieldFlourish honors color, emissive, and duration overrides', () => {
+		spawnAegisSentinelShieldFlourish({ x: 1, z: 2 }, {
+			color: 0x123456,
+			emissive: 0x654321,
+			duration: 900,
+			radius: 1.8,
+		});
+		const fx = lastEffect();
+		expect(fx.radius).toBe(1.8);
+		expect(fx.duration).toBe(900);
+		const ring = fx.mesh.children.find((c) => c.userData.isAegisSentinelRing);
+		expect(ring.material.color.getHex()).toBe(0x123456);
+		expect(ring.material.emissive.getHex()).toBe(0x654321);
+	});
+
+	it('spawnAegisSentinelDeployEffect adds flagged ward ring + shield wall and cleans up', () => {
+		const before = getActiveEffects().length;
+		spawnAegisSentinelDeployEffect({ x: 1, z: -2 }, { radius: 2.0 });
+		expect(getActiveEffects().length).toBe(before + 1);
+
+		const fx = lastEffect();
+		expect(fx.isAegisSentinelDeploy).toBe(true);
+		expect(fx.radius).toBe(2.0);
+		expect(fx.duration).toBe(MINION_SUMMON_IN_MS);
+		expect(Number.isFinite(fx.duration)).toBe(true);
+
+		const ring = fx.mesh.children.find((c) => c.userData.isAegisSentinelRing);
+		const wall = fx.mesh.children.find((c) => c.userData.isAegisSentinelWall);
+		const trim = fx.mesh.children.find((c) => c.userData.isAegisSentinelWallTrim);
+		expect(ring).toBeDefined();
+		expect(wall).toBeDefined();
+		expect(trim).toBeDefined();
+		expect(ring.material.color.getHex()).toBe(AEGIS_SENTINEL_COLOR);
+		expect(ring.material.emissive.getHex()).toBe(AEGIS_SENTINEL_EMISSIVE);
+		expect(wall.material.color.getHex()).toBe(AEGIS_SENTINEL_COLOR);
+		expect(wall.material.emissive.getHex()).toBe(AEGIS_SENTINEL_EMISSIVE);
+		expect(trim.material.emissive.getHex()).toBe(AEGIS_SENTINEL_GOLD);
+
+		const ringDispose = vi.spyOn(ring.geometry, 'dispose');
+		const wallDispose = vi.spyOn(wall.geometry, 'dispose');
+		fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(ringDispose).toHaveBeenCalled();
+		expect(wallDispose).toHaveBeenCalled();
+	});
+
+	it('spawnAegisSentinelDeployEffect honors color, emissive, duration, and radius overrides', () => {
+		spawnAegisSentinelDeployEffect({ x: 0, z: 0 }, {
+			color: 0xabcdef,
+			emissive: 0xfedcba,
+			duration: 850,
+			radius: 2.4,
+		});
+		const fx = lastEffect();
+		expect(fx.radius).toBe(2.4);
+		expect(fx.duration).toBe(850);
+		const ring = fx.mesh.children.find((c) => c.userData.isAegisSentinelRing);
+		const wall = fx.mesh.children.find((c) => c.userData.isAegisSentinelWall);
+		expect(ring.material.color.getHex()).toBe(0xabcdef);
+		expect(ring.material.emissive.getHex()).toBe(0xfedcba);
+		expect(wall.material.color.getHex()).toBe(0xabcdef);
+		expect(wall.material.emissive.getHex()).toBe(0xfedcba);
 	});
 
 	it('spawnBatteryChargePulseEffect honors style.duration and palette overrides', () => {

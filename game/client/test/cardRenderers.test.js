@@ -17,6 +17,7 @@ import {
 	getAccentHex,
 	SPELL_TYPE_DEFAULT_RENDERER,
 	WEAPON_TYPE_DEFAULT_RENDERER,
+	CREATURE_TYPE_DEFAULT_RENDERER,
 } from '../cardRenderers.js';
 
 /**
@@ -56,6 +57,8 @@ function makeCtx(overrides = {}) {
 		dismissMirrorWardShellEffect: record('dismissMirrorWardShellEffect'),
 		spawnMirrorWardReflectBurst: record('spawnMirrorWardReflectBurst'),
 		spawnMinionSummonInEffect: record('spawnMinionSummonInEffect'),
+		spawnAegisSentinelShieldFlourish: record('spawnAegisSentinelShieldFlourish'),
+		spawnAegisSentinelDeployEffect: record('spawnAegisSentinelDeployEffect'),
 		spawnBatteryAutomatonDeployEffect: record('spawnBatteryAutomatonDeployEffect'),
 		spawnLegionMarshalRallyEffect: record('spawnLegionMarshalRallyEffect'),
 		flashMesh: record('flashMesh'),
@@ -153,12 +156,16 @@ describe('resolveRenderers()', () => {
 		}
 	});
 
-	it('returns the heavy greatsword renderer for alloy/corebreaker (not the cone default)', () => {
+	it('returns a dedicated, non-default renderer for alloy/corebreaker greatswords', () => {
 		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
 			expect(resolveRenderers(cardId)).toHaveLength(1);
 			expect(resolveRenderers(cardId)[0]).not.toBe(WEAPON_TYPE_DEFAULT_RENDERER);
 		}
-		expect(resolveRenderers('steel_claymore')[0]).toBe(resolveRenderers('magma_greatsword')[0]);
+		// Corebreaker now has its own dedicated renderer, distinct from the Alloy
+		// Greatblade's shared heavy renderer (its molten fire-trail diverges).
+		expect(resolveRenderers('magma_greatsword')[0]).not.toBe(resolveRenderers('steel_claymore')[0]);
+		expect(resolveRenderers('magma_greatsword')[0].name).toBe('renderCorebreakerGreatsword');
+		expect(resolveRenderers('steel_claymore')[0].name).toBe('renderHeavyGreatsword');
 	});
 
 	it('returns a dedicated renderer for excalibur_photon (not heavy greatsword or cone default)', () => {
@@ -208,9 +215,25 @@ describe('resolveRenderers()', () => {
 	});
 
 	it('falls back to the creature default for plain creature cards', () => {
-		const creatureDefault = resolveRenderers('aegis_sentinel');
-		expect(creatureDefault).toHaveLength(1);
-		expect(creatureDefault[0].name).toBe('renderCreatureSummon');
+		const ctx = makeCtx();
+		CREATURE_TYPE_DEFAULT_RENDERER({
+			cardId: 'battle_familiar',
+			origin: { x: 1, z: 2 },
+			minionId: 'familiar-1',
+			hits: [],
+		}, ctx);
+		const summon = ctx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(summon).toBeDefined();
+		expect(summon[1]).toEqual({ x: 1, z: 2 });
+		expect(resolveRenderers('aegis_sentinel')[0]).not.toBe(CREATURE_TYPE_DEFAULT_RENDERER);
+	});
+
+	it('returns renderAegisSentinel for aegis_sentinel (not the creature type default)', () => {
+		const aegisRenderers = resolveRenderers('aegis_sentinel');
+		expect(aegisRenderers).toHaveLength(1);
+		expect(aegisRenderers[0].name).toBe('renderAegisSentinel');
+		expect(aegisRenderers[0]).not.toBe(CREATURE_TYPE_DEFAULT_RENDERER);
+		expect(aegisRenderers[0]).not.toBe(resolveRenderers('astral_guardian')[0]);
 	});
 
 	it('returns renderBatteryAutomaton for battery_automaton (not the creature type default)', () => {
@@ -1576,11 +1599,112 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 		const ctx = makeCtx();
 		fire('magma_greatsword', ctx);
 		const style = swingStyle(ctx);
+		// With no payload attackRange the reach falls back to the style default (7).
 		expect(style).toMatchObject({ color: 0xf97316, emissive: 0xff3b00, coneAngle: Math.PI / 1.8, range: 7 });
 		const decal = impactDecal(ctx);
+		expect(decal[1]).toEqual({ x: 7, z: 0 });
 		expect(decal[2]).toMatchObject({ color: 0xf97316, radius: 3.8 });
 		const burst = debrisBurst(ctx);
 		expect(burst[2]).toMatchObject({ color: 0xf97316, count: 24 });
+	});
+
+	it('Corebreaker syncs its cone/impact/trail reach to the server-emitted attackRange', () => {
+		// SYNC CONTRACT: when the payload carries an attackRange (≠ the style default
+		// 7), the cone range, impact placement, fire-trail range and per-tick pulses
+		// all use that derived value — the client VFX never overstate the real reach.
+		const range = 5;
+		const ctx = makeCtx();
+		fire('magma_greatsword', ctx, { attackRange: range });
+		// Cone swing reach tracks the payload, not the hardcoded style default.
+		expect(swingStyle(ctx).range).toBe(range);
+		// Heavy impact decal/debris land at the derived strike point (range along +x).
+		expect(impactDecal(ctx)[1]).toEqual({ x: range, z: 0 });
+		expect(debrisBurst(ctx)[1]).toEqual({ x: range, z: 0 });
+		// Directional fire-trail reach matches the server fire_trail resolution.
+		const breath = ctx._calls.find((c) => c[0] === 'spawnDragonsBreathEffect');
+		expect(breath[3].range).toBe(range);
+		// Per-tick molten pulses sit at range * 0.6 along the swing direction.
+		ctx.runScheduled();
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring[1]).toEqual({ x: range * 0.6, z: 0 });
+	});
+
+	it('Corebreaker falls back to the style default reach when the payload omits attackRange', () => {
+		const ctx = makeCtx();
+		fire('magma_greatsword', ctx, { attackRange: undefined });
+		// The Corebreaker style default reach (7) is the only fallback.
+		const fallbackRange = 7;
+		expect(swingStyle(ctx).range).toBe(fallbackRange);
+		expect(impactDecal(ctx)[1]).toEqual({ x: fallbackRange, z: 0 });
+		const breath = ctx._calls.find((c) => c[0] === 'spawnDragonsBreathEffect');
+		expect(breath[3].range).toBe(fallbackRange);
+	});
+
+	it('Corebreaker uses its own dedicated renderer, distinct from the Alloy Greatblade', () => {
+		expect(resolveRenderers('magma_greatsword')[0]).not.toBe(resolveRenderers('steel_claymore')[0]);
+		expect(resolveRenderers('magma_greatsword')[0].name).toBe('renderCorebreakerGreatsword');
+	});
+
+	it('Corebreaker lays a lingering molten fire-trail synced to the card-def DoT cadence', () => {
+		const def = getCardDef('magma_greatsword');
+		const ctx = makeCtx();
+		fire('magma_greatsword', ctx);
+		// Directional fire-zone primitive carries the derived DoT timing/duration.
+		const breath = ctx._calls.find((c) => c[0] === 'spawnDragonsBreathEffect');
+		expect(breath).toBeDefined();
+		expect(breath[3]).toMatchObject({
+			color: 0xf97316,
+			emissive: 0xff3b00,
+			dotTicks: def.dotTicks,
+			dotIntervalMs: def.dotIntervalMs,
+			duration: def.dotTicks * def.dotIntervalMs,
+		});
+		// One scheduled molten pulse per DoT tick, at the derived interval cadence.
+		const delays = ctx._calls.filter((c) => c[0] === 'scheduleAfter').map((c) => c[1]);
+		const expected = Array.from({ length: def.dotTicks }, (_, i) => def.dotIntervalMs * (i + 1));
+		expect(delays).toEqual(expected);
+		// The pulses only fire their VFX once their timers elapse.
+		const ringsBefore = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing').length;
+		expect(ringsBefore).toBe(0);
+		ctx.runScheduled();
+		const ringsAfter = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing').length;
+		expect(ringsAfter).toBe(def.dotTicks);
+	});
+
+	it('Corebreaker derives its trail cadence from the card def, never hardcodes it', () => {
+		// The number of scheduled pulses tracks the card-def dotTicks value.
+		const def = getCardDef('magma_greatsword');
+		const ctx = makeCtx();
+		fire('magma_greatsword', ctx);
+		const pulses = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(pulses).toHaveLength(def.dotTicks);
+		expect(pulses.every((c) => c[1] % def.dotIntervalMs === 0)).toBe(true);
+	});
+
+	it('Corebreaker fires its swing + impact synchronously, before any DoT tick', () => {
+		const ctx = makeCtx();
+		fire('magma_greatsword', ctx);
+		// Swing + heavy impact land at t=0 (no scheduleAfter gating the first beat).
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(true);
+		const firstSchedule = ctx._calls.findIndex((c) => c[0] === 'scheduleAfter');
+		const firstSwing = ctx._calls.findIndex((c) => c[0] === 'spawnAttackEffect');
+		expect(firstSwing).toBeLessThan(firstSchedule);
+	});
+
+	it('Corebreaker degrades gracefully when the lingering-trail primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnDragonsBreathEffect: undefined,
+			spawnImpactDecal: undefined,
+			spawnParticleBurst: undefined,
+			spawnTelegraphRing: undefined,
+		});
+		expect(() => {
+			fire('magma_greatsword', ctx);
+			ctx.runScheduled();
+		}).not.toThrow();
+		// The core heavy cone swing still fires.
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 
 	it('Excalibur Photon greatslashes magenta with a light-shard burst, honoring the photon_barrage stagger', () => {
@@ -1599,13 +1723,21 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 		expect(debrisBurst(ctx)[2]).toMatchObject({ color: 0xe879f9, count: 20 });
 	});
 
-	it('heavy greatswords (claymore, magma) do not emit photon-only trail or telegraph ring primitives', () => {
+	it('heavy greatswords do not emit a photon-only projectile trail', () => {
 		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
 			const ctx = makeCtx();
 			fire(cardId, ctx);
+			ctx.runScheduled();
 			expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
-			expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
 		}
+	});
+
+	it('Alloy Greatblade stays a pure committed swing (no telegraph ring, no lingering trail)', () => {
+		const ctx = makeCtx();
+		fire('steel_claymore', ctx);
+		ctx.runScheduled();
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnDragonsBreathEffect')).toBe(false);
 	});
 
 	it('the two heavy greatswords use mutually distinct accent colors and an impact param', () => {
@@ -3269,14 +3401,141 @@ describe('renderCardUsed() — spell dispatch', () => {
 			sacrificedMinionId: 'minion-2',
 			hits: [],
 		}, ctx);
+
+		// 1. Dark altar/terminal pillar at origin
+		const summon = ctx._calls.find((c) => c[0] === 'spawnSummonEffect');
+		expect(summon).toBeDefined();
+		expect(summon[1]).toEqual({ x: 0, z: 0 });
+		expect(summon[3]).toMatchObject({ color: 0x1c1917, emissive: 0xfbbf24 });
+
+		// 2. Telegraph ring at sacrifice radius
 		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
 		expect(telegraph).toBeDefined();
 		expect(telegraph[2]).toBe(10);
 		expect(telegraph[3]).toMatchObject({ color: 0xfbbf24, emissive: 0xef4444 });
-		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
-		expect(burst).toBeDefined();
-		expect(burst[2]).toMatchObject({ color: 0xfbbf24, count: 16, spread: 2.4 });
-		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+
+		// 3. Red consumption burst (sacrificedMinionId present)
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		const consumptionBurst = bursts.find(
+			(b) => b[2].color === 0x991b1b && b[2].emissive === 0xef4444
+		);
+		expect(consumptionBurst).toBeDefined();
+		expect(consumptionBurst[1]).toEqual({ x: 0, z: 0 });
+		expect(consumptionBurst[2]).toMatchObject({ count: 10, spread: 1.0 });
+
+		// 4. Gold/red ember burst at origin
+		const emberBurst = bursts.find(
+			(b) => b[2].color === 0xfbbf24 && b[2].count === 16
+		);
+		expect(emberBurst).toBeDefined();
+		expect(emberBurst[1]).toEqual({ x: 0, z: 0 });
+		expect(emberBurst[2]).toMatchObject({ color: 0xfbbf24, emissive: 0xef4444, count: 16, spread: 2.4 });
+	});
+
+	it('sacrificial_altar skips consumption burst when sacrificedMinionId is absent', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'sacrificial_altar',
+			origin: { x: 0, z: 0 },
+			radius: 10,
+			hits: [],
+		}, ctx);
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		const consumptionBurst = bursts.find(
+			(b) => b[2].color === 0x991b1b
+		);
+		expect(consumptionBurst).toBeUndefined();
+
+		// Altar pillar and ember burst should still fire
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(true);
+		const emberBurst = bursts.find((b) => b[2].color === 0xfbbf24);
+		expect(emberBurst).toBeDefined();
+	});
+
+	it('sacrificial_altar spawns golden energy-return effects on successful sacrifice', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'sacrificial_altar',
+			origin: { x: 0, z: 0 },
+			radius: 10,
+			sacrificedMinionId: 'minion-X',
+			magicStonesGained: 100,
+			restoredCharges: 2,
+			hits: [],
+		}, ctx);
+
+		// Golden siphon burst (brighter gold, higher count than ritual ember)
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		const siphonBurst = bursts.find(
+			(b) => b[2].color === 0xfde047 && b[2].emissive === 0xfbbf24 && b[2].count === 20,
+		);
+		expect(siphonBurst).toBeDefined();
+		expect(siphonBurst[1]).toEqual({ x: 0, z: 0 });
+		expect(siphonBurst[2]).toMatchObject({ spread: 2.8 });
+
+		// Vertical projectile trail
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail).toBeDefined();
+		expect(trail[1]).toEqual({ x: 0, z: 0 }); // origin
+		expect(trail[2]).toEqual({ x: 0, z: 0 }); // vertical direction
+		expect(trail[3]).toMatchObject({ color: 0xfde047, emissive: 0xfbbf24, range: 3 });
+
+		// Reward-flash decal at altar base
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 0, z: 0 });
+		expect(decal[2]).toMatchObject({ color: 0xfde047, emissive: 0xfbbf24, radius: 0.8 });
+	});
+
+	it('sacrificial_altar skips golden reward effects when magicStonesGained and restoredCharges are zero or absent', () => {
+		// Case 1: both zero
+		{
+			const ctx = makeCtx();
+			renderCardUsed({
+				cardId: 'sacrificial_altar',
+				origin: { x: 0, z: 0 },
+				radius: 10,
+				sacrificedMinionId: 'minion-X',
+				magicStonesGained: 0,
+				restoredCharges: 0,
+				hits: [],
+			}, ctx);
+			const goldenBursts = ctx._calls.filter(
+				(c) => c[0] === 'spawnParticleBurst' && c[2].color === 0xfde047,
+			);
+			expect(goldenBursts).toHaveLength(0);
+			expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
+		}
+
+		// Case 2: fields absent entirely
+		{
+			const ctx = makeCtx();
+			renderCardUsed({
+				cardId: 'sacrificial_altar',
+				origin: { x: 0, z: 0 },
+				radius: 10,
+				sacrificedMinionId: 'minion-X',
+				hits: [],
+			}, ctx);
+			const goldenBursts = ctx._calls.filter(
+				(c) => c[0] === 'spawnParticleBurst' && c[2].color === 0xfde047,
+			);
+			expect(goldenBursts).toHaveLength(0);
+			expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
+		}
+
+		// Ritual cast (altar pillar, telegraph, ember burst) still fires
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'sacrificial_altar',
+			origin: { x: 0, z: 0 },
+			radius: 10,
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(true);
 	});
 
 	it('chrono_trigger fires spawnChronoTriggerEffect at cast with amber/cyan palette', () => {
@@ -3383,6 +3642,93 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect')).toHaveLength(1);
 		const summon = ctx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
 		expect(summon[2]).toMatchObject({ color: 0xfbbf24, emissive: 0x38bdf8 });
+	});
+
+	it('aegis_sentinel cast fires shield flourish, deploy, and summon-in with aegis palette and no deferral', () => {
+		const origin = { x: 2, z: 3 };
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'aegis_sentinel',
+			origin,
+			shieldGranted: 30,
+			minionId: 'aegis-minion-1',
+			radius: 10,
+			hits: [],
+		}, ctx);
+		const shield = ctx._calls.find((c) => c[0] === 'spawnAegisSentinelShieldFlourish');
+		expect(shield).toBeDefined();
+		expect(shield[1]).toEqual(origin);
+		expect(shield[2]).toMatchObject({
+			color: 0x4ade80,
+			emissive: 0x22c55e,
+			highlight: 0xfbbf24,
+			duration: MINION_SUMMON_IN_MS,
+		});
+		const deploy = ctx._calls.find((c) => c[0] === 'spawnAegisSentinelDeployEffect');
+		expect(deploy).toBeDefined();
+		expect(deploy[1]).toEqual(origin);
+		expect(deploy[2]).toMatchObject({
+			color: 0x4ade80,
+			emissive: 0x22c55e,
+			highlight: 0xfbbf24,
+			radius: 10,
+		});
+		const summon = ctx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(summon).toBeDefined();
+		expect(summon[1]).toEqual(origin);
+		expect(summon[2]).toMatchObject({
+			color: 0x4ade80,
+			emissive: 0x22c55e,
+			highlight: 0xfbbf24,
+			radius: 1.4,
+			burstCount: 10,
+			burstSpread: 1.4,
+		});
+		expect(summon[2].emissive).not.toBe(summon[2].color);
+		expect(summon[2].color).not.toBe(0x818cf8);
+		expect(summon[2].emissive).not.toBe(0x6366f1);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('aegis_sentinel shield-only payload skips deploy and summon-in when minionId is absent', () => {
+		const origin = { x: 0, z: 0 };
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'aegis_sentinel',
+			origin,
+			shieldGranted: 30,
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnAegisSentinelShieldFlourish')).toHaveLength(1);
+		expect(ctx._calls.some((c) => c[0] === 'spawnAegisSentinelDeployEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
+	});
+
+	it('aegis_sentinel with no shieldGranted and no minionId is a no-op for VFX helpers', () => {
+		const ctx = makeCtx();
+		expect(() => renderCardUsed({
+			cardId: 'aegis_sentinel',
+			origin: { x: 1, z: 1 },
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnAegisSentinelShieldFlourish')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnAegisSentinelDeployEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
+	});
+
+	it('aegis_sentinel summon degrades gracefully when spawnAegisSentinelDeployEffect is absent', () => {
+		const ctx = makeCtx({ spawnAegisSentinelDeployEffect: undefined });
+		expect(() => renderCardUsed({
+			cardId: 'aegis_sentinel',
+			origin: { x: 1, z: 2 },
+			minionId: 'aegis-minion-2',
+			radius: 10,
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnAegisSentinelDeployEffect')).toBe(false);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect')).toHaveLength(1);
+		const summon = ctx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(summon[2]).toMatchObject({ color: 0x4ade80, emissive: 0x22c55e, highlight: 0xfbbf24 });
 	});
 
 	it('Vault Wyrm minion breath renders a forward cone hitbox on breath start', () => {
