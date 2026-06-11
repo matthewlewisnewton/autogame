@@ -64,6 +64,10 @@ import {
 // ── Player damage-flash state (private to this module) ──
 const previousPlayerHp = {}; // playerId → hp from previous frame
 
+// Reused each frame for the local player's slow/burn indicators (avoids per-frame literals).
+const _localSlowScratch = { slowedUntil: 0, x: 0, z: 0 };
+const _localBurnScratch = { burningUntil: 0, x: 0, z: 0 };
+
 /**
  * Sync avatar/nameplate/indicator meshes for every player in the snapshot.
  * The local player's kinematic reads come from `localKinematics`; the respawn
@@ -75,16 +79,27 @@ const previousPlayerHp = {}; // playerId → hp from previous frame
 export function syncPlayerMeshes(gs, myId, localKinematics) {
 	const scene = getScene();
 	const { myX, myZ, playerRotation } = localKinematics;
-	for (const [id, pData] of Object.entries(gs.players)) {
+	for (const id of Object.keys(gs.players)) {
+		const pData = gs.players[id];
+		if (!pData) continue;
 		// Build the cosmetic-driven avatar, or rebuild it when the player's
 		// broadcast cosmetic changes (signature differs from the rendered one).
-		const sig = cosmeticSignature(pData.cosmetic);
-		if (!playersMeshes[id] || playersMeshes[id].userData.cosmeticKey !== sig) {
-			if (playersMeshes[id]) {
-				disposeAvatar(playersMeshes[id]);
-				scene.remove(playersMeshes[id]);
+		// Recompute the signature only when the cosmetic snapshot reference changes
+		// (or the avatar is first created); same ref → reuse cached userData.cosmeticKey.
+		const mesh = playersMeshes[id];
+		let sig;
+		if (mesh && mesh.userData.cosmeticRef === pData.cosmetic) {
+			sig = mesh.userData.cosmeticKey;
+		} else {
+			sig = cosmeticSignature(pData.cosmetic);
+		}
+		if (!mesh || mesh.userData.cosmeticKey !== sig) {
+			if (mesh) {
+				disposeAvatar(mesh);
+				scene.remove(mesh);
 			}
 			const avatar = createPlayerAvatar(pData.cosmetic, id === myId, pData.equippedKeyItemId);
+			avatar.userData.cosmeticRef = pData.cosmetic;
 			scene.add(avatar);
 			playersMeshes[id] = avatar;
 		}
@@ -104,11 +119,10 @@ export function syncPlayerMeshes(gs, myId, localKinematics) {
 		// slower predicted avatar position) so it does not lag behind the avatar
 		// while slowed; remote players use their broadcast x/z directly.
 		if (id === myId) {
-			applySlowIndicator(playerSlowMarkers, id, {
-				slowedUntil: pData.slowedUntil,
-				x: myX,
-				z: myZ,
-			});
+			_localSlowScratch.slowedUntil = pData.slowedUntil;
+			_localSlowScratch.x = myX;
+			_localSlowScratch.z = myZ;
+			applySlowIndicator(playerSlowMarkers, id, _localSlowScratch);
 		} else {
 			applySlowIndicator(playerSlowMarkers, id, pData);
 		}
@@ -117,11 +131,10 @@ export function syncPlayerMeshes(gs, myId, localKinematics) {
 		// Local player anchors to the predicted myX/myZ like the slow ring so
 		// the flame tracks the avatar; remote players use broadcast x/z.
 		if (id === myId) {
-			applyBurnIndicator(playerBurnMarkers, id, {
-				burningUntil: pData.burningUntil,
-				x: myX,
-				z: myZ,
-			});
+			_localBurnScratch.burningUntil = pData.burningUntil;
+			_localBurnScratch.x = myX;
+			_localBurnScratch.z = myZ;
+			applyBurnIndicator(playerBurnMarkers, id, _localBurnScratch);
 		} else {
 			applyBurnIndicator(playerBurnMarkers, id, pData);
 		}
@@ -311,7 +324,9 @@ export function syncPlayerMeshes(gs, myId, localKinematics) {
 	// re-triggered while the zone is active if its VFX has faded out. Skip
 	// the tail end so a near-expired zone doesn't spawn a fresh 2s puff.
 	const smokeNow = Date.now();
-	for (const [id, pData] of Object.entries(gs.players)) {
+	for (const id of Object.keys(gs.players)) {
+		const pData = gs.players[id];
+		if (!pData) continue;
 		const remaining = (pData.smokeBombUntil || 0) - smokeNow;
 		if (remaining > 300 && !smokeVFX[id]) {
 			triggerSmokeVFX({ x: pData.smokeBombX, y: 0, z: pData.smokeBombZ }, id);

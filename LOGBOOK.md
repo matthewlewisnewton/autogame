@@ -8135,6 +8135,143 @@ Vitest: **303/303 passed** (`coverage.log`). No new unit test for the registrati
 None blocking. All acceptance criteria are satisfied; runtime capture is clean.
 
 
+## v0.442 — 325-anim-bulkhead-mauler  (2026-06-11 02:18:48)
+
+  normal gameplay never invokes `setupBulkheadMaulerReadyDebug`.
+- Normal path intact: the scenario only tops up hp/mana and inserts the reward
+  creature into hand; `bulkhead_mauler` is `acquisition:"reward", rewardOrder:13`,
+  earnable in normal play, and the actual deploy still goes through
+  `executeUseCard` (server validation, minion spawn, net replication unchanged).
+- No invariant short-circuit: it stocks the hand and clears the stage; it does
+  not bypass cost/validation.
+
+## Consistency with design / foundation
+Uses the 315 shared primitives (`spawnMinionSummonInEffect`, `spawnParticleBurst`,
+`spawnHitSpark`) and the 316-319 per-card registration pattern (Battery Automaton
+is the structural sibling). Scope stayed within this card: cardRenderers.js (its
+fns + registration), renderer.js (its two primitives), the ctx wiring, the
+`enemySync` fallback entry for this minion only, and a debug scenario. No other
+card's renderer was touched.
+
+## Remaining gaps
+None blocking. One minor nit recorded in nits.md (overlapping per-hit spark
+sources on the shockwave). It does not affect correctness or the verdict.
+
+
+## v0.443 — Shared: sampleFloorY missing null-layout guard and floorCorners fallback (crashes client prediction AND server tick)  (2026-06-11 02:22:26)
+
+## Design & regression check
+
+- **design.md:** Floor geometry section documents `sampleFloorY()` as the canonical walkable-surface height function in `shared/floorSampling.esm.js`. The fix hardens that function without changing its contract for valid layouts.
+- **requirements.md / foundation:** No regressions observed. Change is defensive only; no gameplay, networking, or persistence behavior altered for normal runs.
+- **Integration:** Open-plaza platform precedence, room bilinear interpolation, and `resolveFloorY` null-coalescing remain consistent. Server tick and client prediction paths that call `sampleFloorY(layout, …)` with a possibly-null `layout` are now safe.
+
+## Debug scenarios
+
+Not applicable — this ticket did not add or modify any `?debugScenario=` shortcuts.
+
+## Code quality
+
+- Minimal, focused diff (one production file + mirrored tests).
+- No dead code, no console errors in capture, no page errors.
+- Naming and fallback style match the existing room-branch pattern.
+
+## Remaining gaps
+
+None. All acceptance criteria are fully and robustly satisfied; the captured run proves the game is healthy.
+
+
+## v0.444 — Client: extract a booth module factory — boothDeck.js and boothShop.js are line-for-line copy-paste  (2026-06-11 02:47:45)
+
+
+## Code quality
+
+- Factory is small, focused, and testable (no `window`/`socket` in the core logic beyond the listener registration guard).
+- `renderDepKey` dynamic lookup is a reasonable way to parameterize the render callback without changing the deps object shape expected by `main.js`.
+- No dead code or obvious bugs introduced.
+- New `boothCommon.test.js` provides meaningful coverage of the extracted abstraction.
+
+## Debug hooks (`?booth=`)
+
+This ticket refactored existing `?booth=` URL shortcuts; it did not add new `?debugScenario=` entries.
+
+- **Deck/shop:** Still gated to localhost loopback hosts via `DEBUG_BOOTH_ALLOWED_HOSTS` inside the factory. Normal gameplay reaches deck/shop through hub booth interaction (`booth:action` events).
+- **Launch:** `?booth=launch` auto-ready on lobby join (in `lobbyBrowserHandlers.js`) is unchanged from baseline — pre-existing harness convenience, not weakened by this refactor.
+- **Quest:** `getBoothDebugHook` re-export path updated only; quest panel reveal via booth interaction is unchanged.
+
+## Remaining gaps
+
+None. All acceptance criteria are fully met; runtime capture is clean.
+
+
+## v0.445 — Server: multi-swing weapons re-hit same-tick corpses and farm magicStoneOnHit before cleanup  (2026-06-11 03:03:48)
+
+## Debug scenarios
+
+No new or modified `?debugScenario=` shortcuts in this ticket. Nothing to gate-check.
+
+---
+
+## Code quality
+
+- **Scope:** Minimal — two `continue` guards plus focused regression tests. No dead code or unrelated churn.
+- **Integration:** `cardEffects.js` `swingsPerUse` loop unchanged (correct per sub-ticket spec); fix lives at the collector layer where chain-lightning already rejected corpses.
+- **Risk:** Low. Guards are idempotent for living enemies and align with `damageEnemy` / `cleanupAfterDamage` lifecycle.
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are satisfied; runtime capture is clean; tests pass.
+
+---
+
+## v0.446 — Client: hoist per-frame allocations in renderer animate() (Object.entries, Sets, template strings)  (2026-06-11 03:14:53)
+
+- `cosmeticRef` is set on avatar creation/rebuild; `applyLoadedModelCosmetic` still runs every frame for proportion morphs (intentional — proportions are outside `cosmeticSignature`).
+- No debug scenarios added or modified; debug-scenario gating not applicable.
+
+## Sub-ticket integration
+
+All four decomposed sub-tickets are present in the commit history and map cleanly to the changed files:
+
+| Sub-ticket | Files |
+|------------|-------|
+| 01 enemy/minion ID Sets | `enemySync.js`, `minionSync.js` |
+| 02 Object.keys player loops | `playerSync.js`, `renderer.js` (`syncPhaseStepAllyHighlight`) |
+| 03 cosmetic cache + status scratch | `playerSync.js` |
+| 04 damage-number Vector3 | `renderer.js` |
+
+No integration gaps between sub-tickets.
+
+## Remaining gaps
+
+None.
+
+
+## v0.447 — Client: convert updateAttackEffects 330-line boolean-flag dispatch chain to per-effect updaters  (2026-06-11 03:44:25)
+
+### "adding a new effect requires only registering an updater"
+PASS. New VFX path is: set `kind: ATTACK_EFFECT_KINDS.foo` in the spawner +
+`registerAttackEffectUpdater('foo', fn)` (or add to `ATTACK_EFFECT_UPDATERS`).
+`warnUnknownAttackEffectKind` throws under vitest, so a spawner that ships a kind
+with no registered updater is caught by tests rather than silently animating
+nothing.
+
+## Consistency / regressions
+- No `game/docs/design.md` or `requirements.md` behavior is touched; this is a pure
+  internal refactor of client-side VFX dispatch. No server, net-replication, or
+  persistence surface changed.
+- No debug scenario was added or changed by this ticket.
+- Disposal edge cases preserved: `lightningArc`/`hitSpark` route through
+  `disposeLineEffect`; `mirrorWardShell` clears its per-player map entry.
+
+## Remaining gaps
+None blocking. (One documentation nit recorded in `nits.md`: several spawner
+comments still reference the removed `isLightColumn`/`isThermalColumn`/etc.
+"branch in updateAttackEffects".)
+
+
 ## v0.448 — Server: auth rate-limit buckets grow without bound (slow memory exhaustion)  (2026-06-11 04:19:16)
 
 

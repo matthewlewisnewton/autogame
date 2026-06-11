@@ -150,6 +150,8 @@ export function createSocketHandlerCtx(deps) {
 		spawnAegisSentinelShieldFlourish: deps.spawnAegisSentinelShieldFlourish,
 		spawnAegisSentinelDeployEffect: deps.spawnAegisSentinelDeployEffect,
 		spawnBatteryAutomatonDeployEffect: deps.spawnBatteryAutomatonDeployEffect,
+		spawnBulkheadMaulerDeployEffect: deps.spawnBulkheadMaulerDeployEffect,
+		spawnBulkheadMaulerShockwaveEffect: deps.spawnBulkheadMaulerShockwaveEffect,
 		spawnLegionMarshalRallyEffect: deps.spawnLegionMarshalRallyEffect,
 		spawnDivineGraceEffect: deps.spawnDivineGraceEffect,
 		spawnEventHorizonEffect: deps.spawnEventHorizonEffect,

@@ -30,6 +30,19 @@ describe('ESM floorSampling re-export', () => {
 		expect(DEFAULT_FLOOR_Y).toBe(0.5);
 	});
 
+	it('returns DEFAULT_FLOOR_Y for null layout', () => {
+		expect(sampleFloorY(null, 0, 0)).toBe(DEFAULT_FLOOR_Y);
+		expect(sampleFloorY(null, 12.5, -3.25)).toBe(DEFAULT_FLOOR_Y);
+	});
+
+	it('returns DEFAULT_FLOOR_Y for platform lacking floorCorners at platform center', () => {
+		const layout = {
+			rooms: [],
+			platforms: [{ x: 0, z: 0, width: 10, depth: 10 }],
+		};
+		expect(sampleFloorY(layout, 0, 0)).toBe(DEFAULT_FLOOR_Y);
+	});
+
 	it('returns null when there are no rooms', () => {
 		expect(sampleFloorY({ rooms: [] }, 0, 0)).toBeNull();
 	});

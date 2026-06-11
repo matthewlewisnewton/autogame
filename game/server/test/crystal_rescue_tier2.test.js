@@ -167,6 +167,7 @@ describe('crystal_rescue Tier 2 deploy spawns', () => {
     gameState.selectedQuestTier = tier;
     gameState.layout = layout;
     gameState.layoutSeed = seed;
+    gameState.runSpawnSeed = seed;
     gameState.enemies = [];
     gameState.loot = [];
     gameState.run = { questTier: tier };

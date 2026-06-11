@@ -25,6 +25,10 @@ import {
 	spawnBatteryChargePulseEffect,
 	BATTERY_AUTOMATON_COLOR,
 	BATTERY_AUTOMATON_EMISSIVE,
+	spawnBulkheadMaulerDeployEffect,
+	spawnBulkheadMaulerShockwaveEffect,
+	BULKHEAD_MAULER_COLOR,
+	BULKHEAD_MAULER_EMISSIVE,
 	spawnAegisSentinelShieldFlourish,
 	spawnAegisSentinelDeployEffect,
 	AEGIS_SENTINEL_COLOR,
@@ -39,7 +43,16 @@ import {
 	updateAttackEffects,
 	getActiveEffects,
 } from '../renderer.js';
+import { ATTACK_EFFECT_KINDS } from '../renderer/attackEffectUpdaters.js';
 import { ATTACK_EFFECT_DURATION, ATTACK_RANGE, MINION_SUMMON_IN_MS, SUMMON_EFFECT_DURATION } from '../config.js';
+
+function findEffect(effects, kind) {
+	return effects.find((fx) => fx.kind === kind);
+}
+
+function filterEffects(effects, kind) {
+	return effects.filter((fx) => fx.kind === kind);
+}
 
 // Each primitive should: add exactly one entry to activeEffects on spawn, and be
 // removed (and its mesh's geometry/material disposed) once updateAttackEffects()
@@ -71,7 +84,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
-		expect(fx.isParticleBurst).toBe(true);
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.particleBurst);
 		expect(fx.mesh.children.length).toBe(6);
 
 		const disposeSpy = vi.spyOn(fx.mesh.children[0].geometry, 'dispose');
@@ -95,7 +108,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
-		expect(fx.isProjectileTrail).toBe(true);
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.projectileTrail);
 
 		const disposeSpy = vi.spyOn(fx.mesh.geometry, 'dispose');
 		fx.createdAt = performance.now() - fx.duration - 100;
@@ -111,7 +124,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
-		expect(fx.isImpactDecal).toBe(true);
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.impactDecal);
 
 		const disposeSpy = vi.spyOn(fx.mesh.geometry, 'dispose');
 		fx.createdAt = performance.now() - fx.duration - 100;
@@ -127,7 +140,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
-		expect(fx.isTelegraphRing).toBe(true);
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.telegraphRing);
 		expect(fx.telegraphRadius).toBe(2.5);
 
 		const disposeSpy = vi.spyOn(fx.mesh.geometry, 'dispose');
@@ -148,7 +161,8 @@ describe('shared VFX primitives', () => {
 		const ring = effects[before];
 		const column = effects[before + 1];
 
-		// Ring is the radius-based expanding pulse with a gold (NOT green) emissive.
+		// Ring is the expand-fade ground pulse with a gold (NOT green) emissive.
+		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.expandFadeRing);
 		expect(ring.radius).toBe(1.4);
 		expect(Number.isFinite(ring.duration)).toBe(true);
 		expect(ring.duration).toBeGreaterThan(0);
@@ -157,7 +171,7 @@ describe('shared VFX primitives', () => {
 		expect(ring.mesh.material.color.getHex()).toBe(0xfde68a); // warm gold
 
 		// Column is the vertical ascending shaft, also gold and finite-lived.
-		expect(column.isLightColumn).toBe(true);
+		expect(column.kind).toBe(ATTACK_EFFECT_KINDS.lightColumn);
 		expect(Number.isFinite(column.duration)).toBe(true);
 		expect(column.duration).toBeGreaterThan(0);
 		expect(column.mesh.material.emissive.getHex()).toBe(0xfbbf24); // bright gold
@@ -169,11 +183,12 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 3);
 
 		const effects = getActiveEffects().slice(before);
-		const ring = effects.find((fx) => fx.radius !== undefined);
-		const column = effects.find((fx) => fx.isLightColumn);
-		const burst = effects.find((fx) => fx.isParticleBurst);
+		const ring = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.expandFadeRing);
+		const column = findEffect(effects, ATTACK_EFFECT_KINDS.lightColumn);
+		const burst = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.particleBurst);
 
 		expect(ring).toBeDefined();
+		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.expandFadeRing);
 		expect(ring.radius).toBe(2.5);
 		expect(Number.isFinite(ring.duration)).toBe(true);
 		expect(ring.duration).toBeGreaterThan(0);
@@ -181,14 +196,13 @@ describe('shared VFX primitives', () => {
 		expect(ring.mesh.material.emissive.getHex()).toBe(0x22d3ee);
 
 		expect(column).toBeDefined();
-		expect(column.isLightColumn).toBe(true);
+		expect(column.kind).toBe(ATTACK_EFFECT_KINDS.lightColumn);
 		expect(Number.isFinite(column.duration)).toBe(true);
 		expect(column.duration).toBeGreaterThan(0);
 		expect(column.mesh.material.color.getHex()).toBe(0x67e8f9);
 		expect(column.mesh.material.emissive.getHex()).toBe(0x22d3ee);
 
 		expect(burst).toBeDefined();
-		expect(burst.isParticleBurst).toBe(true);
 		expect(Number.isFinite(burst.duration)).toBe(true);
 		expect(burst.duration).toBeGreaterThan(0);
 
@@ -206,14 +220,14 @@ describe('shared VFX primitives', () => {
 
 	it('spawnTelepipeCastEffect defaults radius to 2.5 and honors color overrides', () => {
 		spawnTelepipeCastEffect({ x: 0, z: 0 });
-		const ring = getActiveEffects().find((fx) => fx.radius !== undefined);
+		const ring = getActiveEffects().find((fx) => fx.kind === ATTACK_EFFECT_KINDS.expandFadeRing);
 		expect(ring.radius).toBe(2.5);
 
 		getActiveEffects().length = 0;
 		spawnTelepipeCastEffect({ x: 0, z: 0 }, 1.8, { color: 0x123456, emissive: 0x654321 });
 		const effects = getActiveEffects();
-		const ringFx = effects.find((fx) => fx.radius !== undefined);
-		const columnFx = effects.find((fx) => fx.isLightColumn);
+		const ringFx = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.expandFadeRing);
+		const columnFx = findEffect(effects, ATTACK_EFFECT_KINDS.lightColumn);
 		expect(ringFx.mesh.material.color.getHex()).toBe(0x123456);
 		expect(ringFx.mesh.material.emissive.getHex()).toBe(0x654321);
 		expect(columnFx.mesh.material.color.getHex()).toBe(0x123456);
@@ -226,7 +240,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
-		expect(fx.isLightColumn).toBe(true);
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.lightColumn);
 
 		const disposeSpy = vi.spyOn(fx.mesh.geometry, 'dispose');
 		fx.createdAt = performance.now() - fx.duration - 100;
@@ -241,11 +255,12 @@ describe('shared VFX primitives', () => {
 		spawnSpikeTrapEffect({ x: 5, z: -2 }, 1.4);
 
 		const effects = getActiveEffects().slice(before);
-		const ring = effects.find((fx) => fx.spikeTrapRing);
-		const spikes = effects.filter((fx) => fx.isSpikeTrapSpike);
+		const ring = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.spikeTrapRing);
+		const spikes = filterEffects(effects, ATTACK_EFFECT_KINDS.spikeTrapSpike);
 
 		// One hazard ring plus several upward spike meshes (NOT a flat ring alone).
 		expect(ring).toBeDefined();
+		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.spikeTrapRing);
 		expect(spikes.length).toBeGreaterThanOrEqual(3);
 		expect(effects.length).toBe(spikes.length + 1);
 
@@ -259,6 +274,7 @@ describe('shared VFX primitives', () => {
 		// Spikes: metallic steel grey body with a blood-red emissive glow, each a
 		// vertical cone (height-bearing ConeGeometry) with a finite, lifted lifecycle.
 		for (const spike of spikes) {
+			expect(spike.kind).toBe(ATTACK_EFFECT_KINDS.spikeTrapSpike);
 			expect(spike.mesh.material.color.getHex()).toBe(0x9ca3af); // steel grey
 			expect(spike.mesh.material.emissive.getHex()).toBe(0xdc2626); // blood-red
 			expect(spike.spikeHeight).toBeGreaterThan(0); // vertical spike geometry
@@ -284,10 +300,11 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBeGreaterThanOrEqual(before + 2);
 
 		const effects = getActiveEffects().slice(before);
-		const ring = effects.find((fx) => fx.radius !== undefined);
-		const column = effects.find((fx) => fx.isLegionMarshalColumn);
+		const ring = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.expandFadeRing);
+		const column = findEffect(effects, ATTACK_EFFECT_KINDS.legionMarshalColumn);
 
 		expect(ring).toBeDefined();
+		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.expandFadeRing);
 		expect(ring.radius).toBe(2);
 		expect(Number.isFinite(ring.duration)).toBe(true);
 		expect(ring.duration).toBeGreaterThan(0);
@@ -295,7 +312,7 @@ describe('shared VFX primitives', () => {
 		expect(ring.mesh.material.emissive.getHex()).toBe(0xa855f7);
 
 		expect(column).toBeDefined();
-		expect(column.isLegionMarshalColumn).toBe(true);
+		expect(column.kind).toBe(ATTACK_EFFECT_KINDS.legionMarshalColumn);
 		expect(Number.isFinite(column.duration)).toBe(true);
 		expect(column.duration).toBeGreaterThan(0);
 		expect(column.mesh.material.color.getHex()).toBe(0xe4e4e7);
@@ -317,17 +334,18 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 2);
 
 		const effects = getActiveEffects().slice(before);
-		const ring = effects.find((fx) => fx.isBatteryAutomatonRing);
-		const column = effects.find((fx) => fx.isBatteryAutomatonColumn);
+		const ring = findEffect(effects, ATTACK_EFFECT_KINDS.batteryAutomatonRing);
+		const column = findEffect(effects, ATTACK_EFFECT_KINDS.batteryAutomatonColumn);
 
 		expect(ring).toBeDefined();
+		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.batteryAutomatonRing);
 		expect(ring.radius).toBe(1.4);
 		expect(ring.duration).toBe(MINION_SUMMON_IN_MS);
 		expect(ring.mesh.material.color.getHex()).toBe(BATTERY_AUTOMATON_COLOR);
 		expect(ring.mesh.material.emissive.getHex()).toBe(BATTERY_AUTOMATON_EMISSIVE);
 
 		expect(column).toBeDefined();
-		expect(column.isBatteryAutomatonColumn).toBe(true);
+		expect(column.kind).toBe(ATTACK_EFFECT_KINDS.batteryAutomatonColumn);
 		expect(column.duration).toBe(MINION_SUMMON_IN_MS);
 		expect(column.mesh.material.color.getHex()).toBe(BATTERY_AUTOMATON_COLOR);
 		expect(column.mesh.material.emissive.getHex()).toBe(BATTERY_AUTOMATON_EMISSIVE);
@@ -350,8 +368,8 @@ describe('shared VFX primitives', () => {
 			radius: 1.8,
 		});
 		const effects = getActiveEffects();
-		const ring = effects.find((fx) => fx.isBatteryAutomatonRing);
-		const column = effects.find((fx) => fx.isBatteryAutomatonColumn);
+		const ring = findEffect(effects, ATTACK_EFFECT_KINDS.batteryAutomatonRing);
+		const column = findEffect(effects, ATTACK_EFFECT_KINDS.batteryAutomatonColumn);
 		expect(ring.radius).toBe(1.8);
 		expect(ring.duration).toBe(900);
 		expect(column.duration).toBe(900);
@@ -367,16 +385,16 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 2);
 
 		const effects = getActiveEffects().slice(before);
-		const ring = effects.find((fx) => fx.isBatteryAutomatonRing);
-		const burst = effects.find((fx) => fx.isParticleBurst);
+		const ring = findEffect(effects, ATTACK_EFFECT_KINDS.batteryAutomatonRing);
+		const burst = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.particleBurst);
 
 		expect(ring).toBeDefined();
+		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.batteryAutomatonRing);
 		expect(ring.radius).toBe(1.0);
 		expect(ring.duration).toBe(700);
 		expect(ring.mesh.material.emissive.getHex()).toBe(BATTERY_AUTOMATON_EMISSIVE);
 
 		expect(burst).toBeDefined();
-		expect(burst.isParticleBurst).toBe(true);
 		expect(burst.duration).toBe(700);
 		expect(burst.mesh.children.length).toBeGreaterThanOrEqual(3);
 		expect(burst.mesh.children[0].material.color.getHex()).toBe(BATTERY_AUTOMATON_COLOR);
@@ -398,7 +416,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
-		expect(fx.isAegisSentinelShield).toBe(true);
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.aegisSentinelShield);
 		expect(fx.radius).toBe(1.5);
 		expect(fx.duration).toBe(MINION_SUMMON_IN_MS);
 		expect(Number.isFinite(fx.duration)).toBe(true);
@@ -446,7 +464,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
-		expect(fx.isAegisSentinelDeploy).toBe(true);
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.aegisSentinelDeploy);
 		expect(fx.radius).toBe(2.0);
 		expect(fx.duration).toBe(MINION_SUMMON_IN_MS);
 		expect(Number.isFinite(fx.duration)).toBe(true);
@@ -499,12 +517,116 @@ describe('shared VFX primitives', () => {
 			radius: 1.3,
 		});
 		const effects = getActiveEffects();
-		const ring = effects.find((fx) => fx.isBatteryAutomatonRing);
-		const burst = effects.find((fx) => fx.isParticleBurst);
+		const ring = findEffect(effects, ATTACK_EFFECT_KINDS.batteryAutomatonRing);
+		const burst = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.particleBurst);
 		expect(ring.radius).toBe(1.3);
 		expect(ring.duration).toBe(800);
 		expect(ring.mesh.material.emissive.getHex()).toBe(0xfedcba);
 		expect(burst.duration).toBe(800);
+		expect(burst.mesh.children[0].material.color.getHex()).toBe(0xabcdef);
+		expect(burst.mesh.children[0].material.emissive.getHex()).toBe(0xfedcba);
+	});
+
+	it('spawnBulkheadMaulerDeployEffect pushes slate/amber ring + rising column and cleans up', () => {
+		const before = getActiveEffects().length;
+		spawnBulkheadMaulerDeployEffect({ x: 1, z: -2 }, { radius: 1.4 });
+		expect(getActiveEffects().length).toBe(before + 2);
+
+		const effects = getActiveEffects().slice(before);
+		const ring = findEffect(effects, ATTACK_EFFECT_KINDS.bulkheadMaulerRing);
+		const column = findEffect(effects, ATTACK_EFFECT_KINDS.bulkheadMaulerColumn);
+
+		expect(ring).toBeDefined();
+		expect(ring.radius).toBe(1.4);
+		expect(ring.duration).toBe(MINION_SUMMON_IN_MS);
+		expect(ring.mesh.material.color.getHex()).toBe(BULKHEAD_MAULER_COLOR);
+		expect(ring.mesh.material.emissive.getHex()).toBe(BULKHEAD_MAULER_EMISSIVE);
+
+		expect(column).toBeDefined();
+		expect(column.kind).toBe(ATTACK_EFFECT_KINDS.bulkheadMaulerColumn);
+		expect(column.duration).toBe(MINION_SUMMON_IN_MS);
+		expect(column.mesh.material.color.getHex()).toBe(BULKHEAD_MAULER_COLOR);
+		expect(column.mesh.material.emissive.getHex()).toBe(BULKHEAD_MAULER_EMISSIVE);
+
+		const ringDispose = vi.spyOn(ring.mesh.geometry, 'dispose');
+		const columnDispose = vi.spyOn(column.mesh.geometry, 'dispose');
+		for (const fx of effects) fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(ringDispose).toHaveBeenCalled();
+		expect(columnDispose).toHaveBeenCalled();
+	});
+
+	it('spawnBulkheadMaulerDeployEffect honors color, emissive, duration, and radius overrides', () => {
+		spawnBulkheadMaulerDeployEffect({ x: 0, z: 0 }, {
+			color: 0x123456,
+			emissive: 0x654321,
+			duration: 900,
+			radius: 1.8,
+		});
+		const effects = getActiveEffects();
+		const ring = findEffect(effects, ATTACK_EFFECT_KINDS.bulkheadMaulerRing);
+		const column = findEffect(effects, ATTACK_EFFECT_KINDS.bulkheadMaulerColumn);
+		expect(ring.radius).toBe(1.8);
+		expect(ring.duration).toBe(900);
+		expect(column.duration).toBe(900);
+		expect(ring.mesh.material.color.getHex()).toBe(0x123456);
+		expect(ring.mesh.material.emissive.getHex()).toBe(0x654321);
+		expect(column.mesh.material.color.getHex()).toBe(0x123456);
+		expect(column.mesh.material.emissive.getHex()).toBe(0x654321);
+	});
+
+	it('spawnBulkheadMaulerShockwaveEffect pushes expanding wedge + foot debris burst and cleans up', () => {
+		const before = getActiveEffects().length;
+		spawnBulkheadMaulerShockwaveEffect({ x: 1, z: -2 }, { x: 1, z: 0 });
+		expect(getActiveEffects().length).toBe(before + 2);
+
+		const effects = getActiveEffects().slice(before);
+		const shockwave = findEffect(effects, ATTACK_EFFECT_KINDS.bulkheadMaulerShockwave);
+		const burst = findEffect(effects, ATTACK_EFFECT_KINDS.particleBurst);
+
+		expect(shockwave).toBeDefined();
+		expect(shockwave.range).toBe(4);
+		expect(shockwave.coneAngle).toBeCloseTo((Math.PI * 2) / 3);
+		expect(shockwave.duration).toBe(500);
+		expect(shockwave.mesh.children.length).toBeGreaterThanOrEqual(2);
+		expect(shockwave.mesh.children[0].material.color.getHex()).toBe(BULKHEAD_MAULER_COLOR);
+		expect(shockwave.mesh.children[0].material.emissive.getHex()).toBe(BULKHEAD_MAULER_EMISSIVE);
+
+		expect(burst).toBeDefined();
+		expect(burst.kind).toBe(ATTACK_EFFECT_KINDS.particleBurst);
+		expect(burst.duration).toBe(500);
+		expect(burst.mesh.children[0].material.color.getHex()).toBe(BULKHEAD_MAULER_COLOR);
+		expect(burst.mesh.children[0].material.emissive.getHex()).toBe(BULKHEAD_MAULER_EMISSIVE);
+
+		const wedgeDispose = vi.spyOn(shockwave.mesh.children[0].geometry, 'dispose');
+		const burstDispose = vi.spyOn(burst.mesh.children[0].geometry, 'dispose');
+		for (const fx of effects) fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(wedgeDispose).toHaveBeenCalled();
+		expect(burstDispose).toHaveBeenCalled();
+	});
+
+	it('spawnBulkheadMaulerShockwaveEffect honors style overrides', () => {
+		spawnBulkheadMaulerShockwaveEffect({ x: 0, z: 0 }, { x: 0, z: 1 }, {
+			color: 0xabcdef,
+			emissive: 0xfedcba,
+			duration: 600,
+			range: 5,
+			coneAngle: Math.PI / 2,
+		});
+		const effects = getActiveEffects();
+		const shockwave = findEffect(effects, ATTACK_EFFECT_KINDS.bulkheadMaulerShockwave);
+		const burst = findEffect(effects, ATTACK_EFFECT_KINDS.particleBurst);
+		expect(shockwave.range).toBe(5);
+		expect(shockwave.coneAngle).toBeCloseTo(Math.PI / 2);
+		expect(shockwave.duration).toBe(600);
+		expect(shockwave.mesh.children[0].material.color.getHex()).toBe(0xabcdef);
+		expect(shockwave.mesh.children[0].material.emissive.getHex()).toBe(0xfedcba);
+		expect(burst.duration).toBe(600);
 		expect(burst.mesh.children[0].material.color.getHex()).toBe(0xabcdef);
 		expect(burst.mesh.children[0].material.emissive.getHex()).toBe(0xfedcba);
 	});
@@ -515,11 +637,12 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 3);
 
 		const effects = getActiveEffects().slice(before);
-		const ripples = effects.filter((fx) => fx.isChronoTriggerRipple);
-		const column = effects.find((fx) => fx.isChronoTriggerColumn);
+		const ripples = filterEffects(effects, ATTACK_EFFECT_KINDS.chronoTriggerRipple);
+		const column = findEffect(effects, ATTACK_EFFECT_KINDS.chronoTriggerColumn);
 
 		expect(ripples.length).toBe(2);
 		for (const ripple of ripples) {
+			expect(ripple.kind).toBe(ATTACK_EFFECT_KINDS.chronoTriggerRipple);
 			expect(ripple.radius).toBe(2);
 			expect(Number.isFinite(ripple.duration)).toBe(true);
 			expect(ripple.duration).toBeGreaterThan(0);
@@ -533,7 +656,7 @@ describe('shared VFX primitives', () => {
 		expect(ripples[1].createdAt).toBeGreaterThan(ripples[0].createdAt);
 
 		expect(column).toBeDefined();
-		expect(column.isChronoTriggerColumn).toBe(true);
+		expect(column.kind).toBe(ATTACK_EFFECT_KINDS.chronoTriggerColumn);
 		expect(Number.isFinite(column.duration)).toBe(true);
 		expect(column.duration).toBeGreaterThan(0);
 		expect(column.mesh.material.color.getHex()).toBe(0xf59e0b);
@@ -551,7 +674,7 @@ describe('shared VFX primitives', () => {
 
 	it('spawnChronoTriggerEffect defaults radius to 2 and honors color overrides', () => {
 		spawnChronoTriggerEffect({ x: 0, z: 0 });
-		const ripple = getActiveEffects().find((fx) => fx.isChronoTriggerRipple);
+		const ripple = findEffect(getActiveEffects(), ATTACK_EFFECT_KINDS.chronoTriggerRipple);
 		expect(ripple.radius).toBe(2);
 
 		getActiveEffects().length = 0;
@@ -561,8 +684,8 @@ describe('shared VFX primitives', () => {
 			duration: 900,
 		});
 		const effects = getActiveEffects();
-		const rippleFx = effects.find((fx) => fx.isChronoTriggerRipple);
-		const columnFx = effects.find((fx) => fx.isChronoTriggerColumn);
+		const rippleFx = findEffect(effects, ATTACK_EFFECT_KINDS.chronoTriggerRipple);
+		const columnFx = findEffect(effects, ATTACK_EFFECT_KINDS.chronoTriggerColumn);
 		expect(rippleFx.radius).toBe(1.6);
 		expect(rippleFx.duration).toBe(900);
 		expect(columnFx.duration).toBe(900);
@@ -574,7 +697,7 @@ describe('shared VFX primitives', () => {
 
 	it('spawnLegionMarshalRallyEffect defaults radius to 2 and honors color overrides', () => {
 		spawnLegionMarshalRallyEffect({ x: 0, z: 0 });
-		const ring = getActiveEffects().find((fx) => fx.radius !== undefined);
+		const ring = getActiveEffects().find((fx) => fx.kind === ATTACK_EFFECT_KINDS.expandFadeRing);
 		expect(ring.radius).toBe(2);
 
 		getActiveEffects().length = 0;
@@ -584,8 +707,8 @@ describe('shared VFX primitives', () => {
 			duration: 900,
 		});
 		const effects = getActiveEffects();
-		const ringFx = effects.find((fx) => fx.radius !== undefined);
-		const columnFx = effects.find((fx) => fx.isLegionMarshalColumn);
+		const ringFx = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.expandFadeRing);
+		const columnFx = findEffect(effects, ATTACK_EFFECT_KINDS.legionMarshalColumn);
 		expect(ringFx.radius).toBe(1.6);
 		expect(ringFx.duration).toBe(900);
 		expect(columnFx.duration).toBe(900);
@@ -601,10 +724,11 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 2);
 
 		const effects = getActiveEffects().slice(before);
-		const ring = effects.find((fx) => fx.isEtherSiphonRing);
-		const column = effects.find((fx) => fx.isEtherSiphonColumn);
+		const ring = findEffect(effects, ATTACK_EFFECT_KINDS.etherSiphonRing);
+		const column = findEffect(effects, ATTACK_EFFECT_KINDS.etherSiphonColumn);
 
 		expect(ring).toBeDefined();
+		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.etherSiphonRing);
 		expect(ring.radius).toBe(2.2);
 		expect(Number.isFinite(ring.duration)).toBe(true);
 		expect(ring.duration).toBeGreaterThan(0);
@@ -612,6 +736,7 @@ describe('shared VFX primitives', () => {
 		expect(ring.mesh.material.emissive.getHex()).toBe(0x9333ea);
 
 		expect(column).toBeDefined();
+		expect(column.kind).toBe(ATTACK_EFFECT_KINDS.etherSiphonColumn);
 		expect(Number.isFinite(column.duration)).toBe(true);
 		expect(column.duration).toBeGreaterThan(0);
 		expect(column.mesh.material.color.getHex()).toBe(0xa855f7);
@@ -634,8 +759,8 @@ describe('shared VFX primitives', () => {
 			duration: 900,
 		});
 		const effects = getActiveEffects();
-		const ring = effects.find((fx) => fx.isEtherSiphonRing);
-		const column = effects.find((fx) => fx.isEtherSiphonColumn);
+		const ring = findEffect(effects, ATTACK_EFFECT_KINDS.etherSiphonRing);
+		const column = findEffect(effects, ATTACK_EFFECT_KINDS.etherSiphonColumn);
 		expect(ring.duration).toBe(900);
 		expect(column.duration).toBe(900);
 		expect(ring.mesh.material.color.getHex()).toBe(0x123456);
@@ -653,13 +778,13 @@ describe('shared VFX primitives', () => {
 		const scorch = effects[before];
 		const cone = effects[before + 1];
 
-		expect(scorch.isDragonsBreathScorch).toBe(true);
+		expect(scorch.kind).toBe(ATTACK_EFFECT_KINDS.dragonsBreathScorch);
 		expect(scorch.radius).toBe(7);
 		expect(scorch.duration).toBe(2250);
 		expect(scorch.mesh.material.color.getHex()).toBe(0xfb923c);
 		expect(scorch.mesh.material.emissive.getHex()).toBe(0xff3b00);
 
-		expect(cone.isDragonsBreathCone).toBe(true);
+		expect(cone.kind).toBe(ATTACK_EFFECT_KINDS.dragonsBreathCone);
 		expect(cone.range).toBe(7);
 		expect(cone.duration).toBe(2250);
 		expect(cone.mesh.material.color.getHex()).toBe(0xfb923c);
@@ -682,24 +807,24 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 3);
 
 		const effects = getActiveEffects().slice(before);
-		const ring = effects.find((fx) => fx.isGravityWellRing);
-		const voidCore = effects.find((fx) => fx.isGravityWellVoid);
-		const inflow = effects.find((fx) => fx.isGravityWellInflow);
+		const ring = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.gravityWellRing);
+		const voidCore = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.gravityWellVoid);
+		const inflow = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.gravityWellInflow);
 
 		expect(ring).toBeDefined();
-		expect(ring.isGravityWellPull).toBe(true);
+		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.gravityWellRing);
 		expect(ring.pullRadius).toBe(12);
 		expect(ring.duration).toBe(ATTACK_EFFECT_DURATION);
 		expect(ring.mesh.material.color.getHex()).toBe(0xc084fc);
 		expect(ring.mesh.material.emissive.getHex()).toBe(0xa855f7);
 
 		expect(voidCore).toBeDefined();
-		expect(voidCore.isGravityWellPull).toBe(true);
+		expect(voidCore.kind).toBe(ATTACK_EFFECT_KINDS.gravityWellVoid);
 		expect(voidCore.duration).toBe(ATTACK_EFFECT_DURATION);
 		expect(voidCore.mesh.material.color.getHex()).toBe(0x581c87);
 
 		expect(inflow).toBeDefined();
-		expect(inflow.isGravityWellPull).toBe(true);
+		expect(inflow.kind).toBe(ATTACK_EFFECT_KINDS.gravityWellInflow);
 		expect(inflow.duration).toBe(ATTACK_EFFECT_DURATION);
 		expect(inflow.mesh.children.length).toBeGreaterThanOrEqual(2);
 		const sampleParticle = inflow.mesh.children[0];
@@ -726,7 +851,7 @@ describe('shared VFX primitives', () => {
 			emissive: 0x445566,
 			duration: 900,
 		});
-		const ring = getActiveEffects().find((fx) => fx.isGravityWellRing);
+		const ring = getActiveEffects().find((fx) => fx.kind === ATTACK_EFFECT_KINDS.gravityWellRing);
 		expect(ring.duration).toBe(900);
 		expect(ring.mesh.material.color.getHex()).toBe(0x112233);
 		expect(ring.mesh.material.emissive.getHex()).toBe(0x445566);
@@ -741,9 +866,10 @@ describe('shared VFX primitives', () => {
 		const ring = effects[before];
 		const column = effects[before + 1];
 
+		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.expandFadeRing);
 		expect(ring.radius).toBe(3.5);
 		expect(ring.duration).toBe(2250);
-		expect(column.isThermalColumn).toBe(true);
+		expect(column.kind).toBe(ATTACK_EFFECT_KINDS.thermalColumn);
 		expect(column.duration).toBe(2250);
 		expect(column.mesh.material.color.getHex()).toBe(0xef4444);
 		expect(column.mesh.material.emissive.getHex()).toBe(0xdc2626);
@@ -772,7 +898,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
-		expect(fx.isMirrorWardShell).toBe(true);
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.mirrorWardShell);
 		expect(fx.wardRadius).toBe(11);
 		expect(fx.duration).toBe(SUMMON_EFFECT_DURATION);
 		expect(Number.isFinite(fx.duration)).toBe(true);
@@ -803,7 +929,6 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
-		expect(fx.isMirrorWardShell).toBe(true);
 		expect(fx.playerId).toBe('p1');
 
 		const ring = fx.mesh.children.find((c) => c.userData.isMirrorWardRing);
@@ -811,7 +936,7 @@ describe('shared VFX primitives', () => {
 		dismissMirrorWardShellEffect('p1');
 
 		expect(getActiveEffects().length).toBe(before);
-		expect(getActiveEffects().some((e) => e.isMirrorWardShell && e.playerId === 'p1')).toBe(false);
+		expect(getActiveEffects().some((e) => e.kind === ATTACK_EFFECT_KINDS.mirrorWardShell && e.playerId === 'p1')).toBe(false);
 		expect(disposeSpy).toHaveBeenCalled();
 	});
 
@@ -821,21 +946,21 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 3);
 
 		const effects = getActiveEffects().slice(before);
-		expect(effects.every((fx) => fx.isMirrorWardReflect)).toBe(true);
-		expect(effects.some((fx) => fx.isProjectileTrail)).toBe(true);
-		expect(effects.some((fx) => fx.isImpactDecal)).toBe(true);
-		expect(effects.some((fx) => fx.isParticleBurst)).toBe(true);
+		expect(effects.every((fx) => fx.vfxGroup === 'mirrorWardReflect')).toBe(true);
+		expect(effects.some((fx) => fx.kind === ATTACK_EFFECT_KINDS.projectileTrail)).toBe(true);
+		expect(effects.some((fx) => fx.kind === ATTACK_EFFECT_KINDS.impactDecal)).toBe(true);
+		expect(effects.some((fx) => fx.kind === ATTACK_EFFECT_KINDS.particleBurst)).toBe(true);
 
-		const trail = effects.find((fx) => fx.isProjectileTrail);
+		const trail = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.projectileTrail);
 		expect(trail.duration).toBe(ATTACK_EFFECT_DURATION);
 		expect(trail.mesh.material.emissive.getHex()).toBe(0x2dd4bf);
 
-		const decal = effects.find((fx) => fx.isImpactDecal);
+		const decal = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.impactDecal);
 		expect(decal.mesh.material.color.getHex()).toBe(0x5eead4);
 
 		for (const fx of effects) {
 			const disposeSpy = vi.spyOn(
-				fx.isParticleBurst ? fx.mesh.children[0].geometry : fx.mesh.geometry,
+				fx.kind === ATTACK_EFFECT_KINDS.particleBurst ? fx.mesh.children[0].geometry : fx.mesh.geometry,
 				'dispose',
 			);
 			fx.createdAt = performance.now() - fx.duration - 100;
@@ -851,7 +976,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
-		expect(fx.isEventHorizonEffect).toBe(true);
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.eventHorizonEffect);
 		expect(fx.pullRadius).toBe(12);
 		expect(fx.centerRadius).toBe(2.5);
 		expect(Number.isFinite(fx.duration)).toBe(true);
@@ -899,10 +1024,11 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 2);
 
 		const effects = getActiveEffects().slice(before);
-		const ring = effects.find((fx) => fx.isGlacierRuptureRing);
-		const shards = effects.find((fx) => fx.isGlacierRuptureShards);
+		const ring = findEffect(effects, ATTACK_EFFECT_KINDS.glacierRuptureRing);
+		const shards = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.glacierRuptureShards);
 
 		expect(ring).toBeDefined();
+		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.glacierRuptureRing);
 		expect(ring.radius).toBe(2.2);
 		expect(Number.isFinite(ring.duration)).toBe(true);
 		expect(ring.duration).toBeGreaterThan(0);
@@ -910,6 +1036,7 @@ describe('shared VFX primitives', () => {
 		expect(ring.mesh.material.emissive.getHex()).toBe(0x0ea5e9);
 
 		expect(shards).toBeDefined();
+		expect(shards.kind).toBe(ATTACK_EFFECT_KINDS.glacierRuptureShards);
 		expect(shards.mesh.children.length).toBeGreaterThanOrEqual(3);
 		expect(Number.isFinite(shards.duration)).toBe(true);
 		expect(shards.duration).toBeGreaterThan(0);
@@ -932,8 +1059,8 @@ describe('shared VFX primitives', () => {
 			emissive: 0x654321,
 			duration: 900,
 		});
-		const ring = getActiveEffects().find((fx) => fx.isGlacierRuptureRing);
-		const shards = getActiveEffects().find((fx) => fx.isGlacierRuptureShards);
+		const ring = findEffect(getActiveEffects(), ATTACK_EFFECT_KINDS.glacierRuptureRing);
+		const shards = getActiveEffects().find((fx) => fx.kind === ATTACK_EFFECT_KINDS.glacierRuptureShards);
 		expect(ring.duration).toBe(900);
 		expect(shards.duration).toBe(900);
 		expect(ring.mesh.material.color.getHex()).toBe(0x123456);
@@ -958,7 +1085,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
-		expect(fx.isGlacialOrbProjectile).toBe(true);
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.glacialOrbProjectile);
 		expect(fx.range).toBe(9);
 		expect(fx.duration).toBe(1200);
 		expect(fx.mesh.children.length).toBeGreaterThanOrEqual(2);
@@ -982,6 +1109,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.legacyProjectile);
 		expect(fx.effect).toBe('permafrost_lance');
 		expect(fx.range).toBe(6);
 		expect(fx.mesh.geometry._name).toBe('ConeGeometry');
@@ -1004,7 +1132,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
-		expect(fx.isSolarEdgeImpact).toBe(true);
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.solarEdgeImpact);
 		expect(fx.duration).toBe(ATTACK_EFFECT_DURATION);
 		expect(Number.isFinite(fx.duration)).toBe(true);
 		expect(fx.ringRadius).toBeGreaterThanOrEqual(1.8);
@@ -1074,7 +1202,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
-		expect(fx.isArcaneBoltProjectile).toBe(true);
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.arcaneBoltProjectile);
 		expect(fx.range).toBe(10);
 		expect(fx.duration).toBe(ATTACK_EFFECT_DURATION);
 		expect(fx.coreMesh.material.color.getHex()).toBe(0xa78bfa);

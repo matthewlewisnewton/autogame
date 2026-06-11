@@ -51,6 +51,7 @@ import {
 	applySlowIndicator,
 	applyBurnIndicator,
 	spawnAttackEffect,
+	spawnBulkheadMaulerShockwaveEffect,
 	spawnFireTrailEffect,
 	spawnParticleBurst,
 	spawnHitSpark,
@@ -87,6 +88,8 @@ function enemyOrigBookkeeping(host) {
 
 /** enemyId → hp from previous frame (private enemy-sync state). */
 const previousEnemyHp = {};
+/** Reused each frame for stale-enemy disposal (avoids per-frame Set allocation). */
+const _currentEnemyIds = new Set();
 
 /**
  * Return the half-height for an enemy type.
@@ -805,12 +808,12 @@ const MINION_HIT_VFX = {
 		enemyFlash: 0xf59e0b,
 		minionFlash: 0xfbbf24,
 		spawn: ({ minion, dir }) => {
-			spawnAttackEffect(
+			spawnBulkheadMaulerShockwaveEffect(
 				{ x: minion.x, z: minion.z },
 				dir,
 				{
-					range: 4,
-					coneAngle: (Math.PI * 2) / 3,
+					range: minion.attackRange,
+					coneAngle: minion.attackConeAngle,
 					color: 0x78716c,
 					emissive: 0xf59e0b,
 				}
@@ -841,9 +844,10 @@ const MINION_HIT_VFX_DEFAULT = {
 export function syncEnemyMeshes(gs) {
 	const scene = getScene();
 	// ── Enemy mesh sync ──
-	const currentEnemyIds = new Set(gs.enemies.map((e) => e.id));
+	_currentEnemyIds.clear();
 
 	for (const enemy of gs.enemies) {
+		_currentEnemyIds.add(enemy.id);
 		if (!enemiesMeshes[enemy.id]) {
 			const mesh = createEnemyMesh(enemy.type);
 			scene.add(mesh);
@@ -963,44 +967,44 @@ export function syncEnemyMeshes(gs) {
 	}
 
 	// Clean up removed enemies
-	disposeStaleMeshes(enemiesMeshes, currentEnemyIds, scene);
-	disposeStaleMeshes(enemyHealthBars, currentEnemyIds, scene);
-	disposeStaleMeshes(enemyShieldBars, currentEnemyIds, scene);
-	disposeStaleMeshes(enemyHitboxMeshes, currentEnemyIds, scene);
-	disposeStaleMeshes(enemyShadows, currentEnemyIds, scene);
-	disposeStaleMeshes(enemyLockOnRings, currentEnemyIds, scene);
-	disposeStaleMeshes(variantMarkerMeshes, currentEnemyIds, scene);
+	disposeStaleMeshes(enemiesMeshes, _currentEnemyIds, scene);
+	disposeStaleMeshes(enemyHealthBars, _currentEnemyIds, scene);
+	disposeStaleMeshes(enemyShieldBars, _currentEnemyIds, scene);
+	disposeStaleMeshes(enemyHitboxMeshes, _currentEnemyIds, scene);
+	disposeStaleMeshes(enemyShadows, _currentEnemyIds, scene);
+	disposeStaleMeshes(enemyLockOnRings, _currentEnemyIds, scene);
+	disposeStaleMeshes(variantMarkerMeshes, _currentEnemyIds, scene);
 	for (const id of Object.keys(enemyNameplates)) {
-		if (!currentEnemyIds.has(id)) {
+		if (!_currentEnemyIds.has(id)) {
 			disposeEnemyNameplate(id);
 		}
 	}
-	disposeStaleMeshes(frenziedTelegraphMeshes, currentEnemyIds, scene);
-	disposeStaleMeshes(enemySlowMarkers, currentEnemyIds, scene);
-	disposeStaleMeshes(enemyBurnMarkers, currentEnemyIds, scene);
+	disposeStaleMeshes(frenziedTelegraphMeshes, _currentEnemyIds, scene);
+	disposeStaleMeshes(enemySlowMarkers, _currentEnemyIds, scene);
+	disposeStaleMeshes(enemyBurnMarkers, _currentEnemyIds, scene);
 	for (const id of Object.keys(previousEnemyHp)) {
-		if (!currentEnemyIds.has(id)) {
+		if (!_currentEnemyIds.has(id)) {
 			delete previousEnemyHp[id];
 		}
 	}
 	for (const id of Object.keys(lastCardHitTime)) {
-		if (!currentEnemyIds.has(id)) {
+		if (!_currentEnemyIds.has(id)) {
 			delete lastCardHitTime[id];
 		}
 	}
-	disposeStaleMeshes(telegraphMeshes, currentEnemyIds, scene);
+	disposeStaleMeshes(telegraphMeshes, _currentEnemyIds, scene);
 	for (const id of [...windupFlashing]) {
-		if (!currentEnemyIds.has(id)) {
+		if (!_currentEnemyIds.has(id)) {
 			windupFlashing.delete(id);
 		}
 	}
 	for (const id of enemyDamageFlash.keys()) {
-		if (!currentEnemyIds.has(id)) {
+		if (!_currentEnemyIds.has(id)) {
 			enemyDamageFlash.delete(id);
 		}
 	}
 	for (const id of Object.keys(lastEnemyEmissiveContext)) {
-		if (!currentEnemyIds.has(id)) {
+		if (!_currentEnemyIds.has(id)) {
 			delete lastEnemyEmissiveContext[id];
 		}
 	}

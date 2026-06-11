@@ -62,6 +62,8 @@ function makeCtx(overrides = {}) {
 		spawnAegisSentinelShieldFlourish: record('spawnAegisSentinelShieldFlourish'),
 		spawnAegisSentinelDeployEffect: record('spawnAegisSentinelDeployEffect'),
 		spawnBatteryAutomatonDeployEffect: record('spawnBatteryAutomatonDeployEffect'),
+		spawnBulkheadMaulerDeployEffect: record('spawnBulkheadMaulerDeployEffect'),
+		spawnBulkheadMaulerShockwaveEffect: record('spawnBulkheadMaulerShockwaveEffect'),
 		spawnLegionMarshalRallyEffect: record('spawnLegionMarshalRallyEffect'),
 		flashMesh: record('flashMesh'),
 		spawnHitSpark: record('spawnHitSpark'),
@@ -282,8 +284,16 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('null_crawler')).toHaveLength(2);
 	});
 
-	it('returns bespoke attack renderer for Bulkhead Mauler', () => {
-		expect(resolveRenderers('bulkhead_mauler')).toHaveLength(1);
+	it('returns composed summon + attack renderers for Bulkhead Mauler', () => {
+		const bulkhead = resolveRenderers('bulkhead_mauler');
+		const creatureDefault = resolveRenderers('aegis_sentinel')[0];
+		expect(bulkhead).toHaveLength(2);
+		expect(bulkhead[0].name).toBe('renderBulkheadMaulerSummon');
+		expect(bulkhead[1].name).toBe('renderBulkheadMaulerShockwaveSweep');
+		expect(bulkhead[0]).not.toBe(creatureDefault);
+		expect(bulkhead[1]).not.toBe(creatureDefault);
+		expect(bulkhead[0].name).not.toBe('renderCreatureSummon');
+		expect(bulkhead[1].name).not.toBe('renderCreatureSummon');
 	});
 
 	it('returns the chain_lightning arc renderer for Voltaic Chain', () => {
@@ -3994,6 +4004,107 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(summon[2]).toMatchObject({ color: 0xfbbf24, emissive: 0x38bdf8 });
 	});
 
+	it('bulkhead_mauler summon uses slate/amber palette, deploy effect, and no scheduleAfter deferral', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'bulkhead_mauler',
+			minionId: 'm1',
+			origin: { x: 0, z: 0 },
+			hits: [],
+		}, ctx);
+		const summon = ctx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(summon).toBeDefined();
+		expect(summon[1]).toEqual({ x: 0, z: 0 });
+		expect(summon[2]).toMatchObject({
+			color: 0x78716c,
+			emissive: 0xf59e0b,
+			radius: 1.1,
+			burstCount: 10,
+		});
+		expect(summon[2].color).not.toBe(0x22c55e);
+		const deploy = ctx._calls.find((c) => c[0] === 'spawnBulkheadMaulerDeployEffect');
+		expect(deploy).toBeDefined();
+		expect(deploy[1]).toEqual({ x: 0, z: 0 });
+		expect(deploy[2]).toMatchObject({
+			color: 0x78716c,
+			emissive: 0xf59e0b,
+			radius: 1.4,
+			duration: MINION_SUMMON_IN_MS,
+		});
+		expect(ctx._calls.some((c) => c[0] === 'spawnBulkheadMaulerShockwaveEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+		expect(methodsCalled(ctx)).toContain('playSound');
+	});
+
+	it('bulkhead_mauler real deploy payload (server CARD_USED shape) uses deploy + summon VFX', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'bulkhead_mauler',
+			minionId: 'm1',
+			specialEffect: 'shockwave_sweep',
+			origin: { x: 0, z: 0 },
+		}, ctx);
+		const deploy = ctx._calls.find((c) => c[0] === 'spawnBulkheadMaulerDeployEffect');
+		expect(deploy).toBeDefined();
+		expect(deploy[1]).toEqual({ x: 0, z: 0 });
+		expect(deploy[2]).toMatchObject({
+			color: 0x78716c,
+			emissive: 0xf59e0b,
+		});
+		const summon = ctx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(summon).toBeDefined();
+		expect(summon[1]).toEqual({ x: 0, z: 0 });
+		expect(summon[2]).toMatchObject({
+			color: 0x78716c,
+			emissive: 0xf59e0b,
+		});
+		expect(ctx._calls.some((c) => c[0] === 'spawnBulkheadMaulerShockwaveEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('bulkhead_mauler attack payload does not fire deploy or summon VFX', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'bulkhead_mauler',
+			minionId: 'm1',
+			specialEffect: 'shockwave_sweep',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			attackRange: 4,
+			attackConeAngle: (Math.PI * 2) / 3,
+			hits: [{ enemyId: 'e1', hp: 41 }],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnBulkheadMaulerDeployEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
+	});
+
+	it('bulkhead_mauler summon without minionId stays sound-only (no deploy or summon flourish)', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'bulkhead_mauler',
+			origin: { x: 0, z: 0 },
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnBulkheadMaulerDeployEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
+		expect(methodsCalled(ctx)).toEqual(['playSound']);
+	});
+
+	it('bulkhead_mauler summon degrades gracefully when spawnBulkheadMaulerDeployEffect is absent', () => {
+		const ctx = makeCtx({ spawnBulkheadMaulerDeployEffect: undefined });
+		expect(() => renderCardUsed({
+			cardId: 'bulkhead_mauler',
+			origin: { x: 1, z: 2 },
+			minionId: 'minion-2',
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnBulkheadMaulerDeployEffect')).toBe(false);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect')).toHaveLength(1);
+		const summon = ctx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(summon[2]).toMatchObject({ color: 0x78716c, emissive: 0xf59e0b });
+	});
+
 	it('aegis_sentinel cast fires shield flourish, deploy, and summon-in with aegis palette and no deferral', () => {
 		const origin = { x: 2, z: 3 };
 		const ctx = makeCtx();
@@ -4640,8 +4751,40 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 
+	it('bulkhead_mauler real attack payload (server CARD_USED shape) fires shockwave only', () => {
+		const meshes = {
+			e1: { position: { x: 2, y: 0, z: 0 } },
+		};
+		const ctx = makeCtx({ enemyMeshes: () => meshes });
+		renderCardUsed({
+			cardId: 'bulkhead_mauler',
+			minionId: 'm1',
+			specialEffect: 'shockwave_sweep',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			attackRange: 4,
+			attackConeAngle: (Math.PI * 2) / 3,
+			hits: [{ enemyId: 'e1', hp: 41 }],
+		}, ctx);
+		const shockwaves = ctx._calls.filter((c) => c[0] === 'spawnBulkheadMaulerShockwaveEffect');
+		expect(shockwaves).toHaveLength(1);
+		expect(shockwaves[0][1]).toEqual({ x: 0, z: 0 });
+		expect(shockwaves[0][2]).toEqual({ x: 1, z: 0 });
+		expect(shockwaves[0][3]).toMatchObject({
+			range: 4,
+			coneAngle: (Math.PI * 2) / 3,
+			color: 0x78716c,
+			emissive: 0xf59e0b,
+		});
+		expect(ctx._calls.some((c) => c[0] === 'spawnBulkheadMaulerDeployEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
+	});
+
 	it('Bulkhead Mauler shockwave renders a short wide cone', () => {
-		const ctx = makeCtx();
+		const meshes = {
+			e1: { position: { x: 2, y: 0, z: 0 } },
+		};
+		const ctx = makeCtx({ enemyMeshes: () => meshes });
 		renderCardUsed({
 			cardId: 'bulkhead_mauler',
 			specialEffect: 'shockwave_sweep',
@@ -4651,19 +4794,61 @@ describe('renderCardUsed() — creature dispatch', () => {
 			attackConeAngle: (Math.PI * 2) / 3,
 			hits: [{ enemyId: 'e1', hp: 41 }],
 		}, ctx);
-		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
-		expect(attacks).toHaveLength(1);
-		expect(attacks[0][3]).toMatchObject({
+		const shockwaves = ctx._calls.filter((c) => c[0] === 'spawnBulkheadMaulerShockwaveEffect');
+		expect(shockwaves).toHaveLength(1);
+		expect(shockwaves[0][1]).toEqual({ x: 0, z: 0 });
+		expect(shockwaves[0][2]).toEqual({ x: 1, z: 0 });
+		expect(shockwaves[0][3]).toMatchObject({
 			range: 4,
 			coneAngle: (Math.PI * 2) / 3,
 			color: 0x78716c,
 			emissive: 0xf59e0b,
 		});
+		const hitSparks = ctx._calls.filter((c) => c[0] === 'spawnHitSpark');
+		expect(hitSparks).toHaveLength(1);
+		expect(hitSparks[0][1]).toEqual({ x: 2, y: 0.6, z: 0 });
 		// Accent-tinted debris burst at the construct's feet.
 		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
 		expect(burst).toBeDefined();
 		expect(burst[1]).toEqual({ x: 0, z: 0 });
 		expect(burst[2]).toMatchObject({ color: 0x78716c, emissive: 0xf59e0b });
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('bulkhead_mauler attack guard ignores deploy payloads (no shockwave effect)', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'bulkhead_mauler',
+			minionId: 'm1',
+			specialEffect: 'shockwave_sweep',
+			origin: { x: 0, z: 0 },
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnBulkheadMaulerShockwaveEffect')).toBe(false);
+	});
+
+	it('Bulkhead Mauler shockwave degrades gracefully when spawnBulkheadMaulerShockwaveEffect is absent', () => {
+		const meshes = {
+			e1: { position: { x: 2, y: 0, z: 0 } },
+		};
+		const ctx = makeCtx({
+			enemyMeshes: () => meshes,
+			spawnBulkheadMaulerShockwaveEffect: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'bulkhead_mauler',
+			specialEffect: 'shockwave_sweep',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			attackRange: 4,
+			attackConeAngle: (Math.PI * 2) / 3,
+			hits: [{ enemyId: 'e1', hp: 41 }],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnBulkheadMaulerShockwaveEffect')).toBe(false);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnHitSpark')).toHaveLength(1);
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 0, z: 0 });
 	});
 
 	it('Bulkhead Mauler still renders without throwing when spawnParticleBurst is absent', () => {
@@ -4677,7 +4862,7 @@ describe('renderCardUsed() — creature dispatch', () => {
 			attackConeAngle: (Math.PI * 2) / 3,
 			hits: [{ enemyId: 'e1', hp: 41 }],
 		}, ctx)).not.toThrow();
-		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnBulkheadMaulerShockwaveEffect')).toBe(true);
 	});
 
 	it('undead_commander renders bone-white/purple caster ring and per-skeleton summon flourishes', () => {

@@ -1,0 +1,17 @@
+Remediation round 2 adds two sub-tickets that close the open gaps from `review-feedback.md`. Sub-tickets 01–04 are marked `.passed` and were left untouched.
+
+**Gap analysis**
+
+Round 1 shipped VFX primitives, renderers, and tests, but deploy/attack routing keyed on `specialEffect`, which the server also stamps on deploy (`cardEffects.js` ~1393–1401). That blocked summon VFX and fired a shockwave on deploy. Unit tests used idealized payloads without `specialEffect`, so they missed the bug.
+
+**New sub-tickets**
+
+| # | Folder | Scope |
+|---|--------|-------|
+| 05 | `05-deploy-attack-event-discrimination` | Fix renderer guards to use `direction`/`hits` (wyrm `breathPhase` pattern) |
+| 06 | `06-real-payload-renderer-tests` | Add/update tests with real server deploy and attack payloads |
+
+**Created sub-ticket folder paths:**
+
+- `/home/matt/workspace/.autogame-worktrees/325-anim-bulkhead-mauler/tickets/325-anim-bulkhead-mauler/subtickets/05-deploy-attack-event-discrimination`
+- `/home/matt/workspace/.autogame-worktrees/325-anim-bulkhead-mauler/tickets/325-anim-bulkhead-mauler/subtickets/06-real-payload-renderer-tests`

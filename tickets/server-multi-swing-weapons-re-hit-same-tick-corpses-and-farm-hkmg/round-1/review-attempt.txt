@@ -1,0 +1,9 @@
+## Review complete
+
+Wrote the full assessment to `tickets/server-multi-swing-weapons-re-hit-same-tick-corpses-and-farm-hkmg/round-1/review.md`.
+
+**Runtime:** `metrics.json` has `"ok": true`, empty `pageerrors`, and `console.log` has no `pageerror` or `[fatal]` lines. Capture shows normal gameplay (lobby → deploy → movement/dodge).
+
+**Implementation:** Two-line fix in `collectConeHits` / `collectRadialHits` (`if (enemy.hp <= 0) continue;`), matching chain-lightning behavior. Regression tests in `collect_hit_corpse_rehit.test.js` cover cone and radial corpse re-hit with `magicStoneOnHit`. All 3995 tests pass.
+
+**Verdict:** `VERDICT: PASS` — no `gaps.md` (no blocking gaps). No `nits.md` (nothing worth a follow-up ticket).

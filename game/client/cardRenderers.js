@@ -18,6 +18,8 @@
 //   spawnAegisSentinelShieldFlourish(origin, style?) — caster shield wrap at cast time
 //   spawnAegisSentinelDeployEffect(origin, style?) — shield-wall deploy ward ring + wall
 //   spawnBatteryAutomatonDeployEffect(origin, style?) — battery mechanical deploy ring + column
+//   spawnBulkheadMaulerDeployEffect(origin, style?) — heavy stone construct deploy ring + column
+//   spawnBulkheadMaulerShockwaveEffect(origin, direction, style?) — heavy stone shockwave wedge + foot debris
 //   spawnDivineGraceEffect(origin, radius)
 //   spawnEventHorizonEffect(origin, pullRadius, centerRadius, style?)
 //   spawnPurifyingPulseHealRing(origin, radius, options?) — options: { wave, waveCount } stagger one concentric heal wave
@@ -1616,6 +1618,8 @@ function renderCreatureSummon(data, ctx) {
 
 const BATTERY_AUTOMATON_COLOR = 0xfbbf24;
 const BATTERY_AUTOMATON_EMISSIVE = 0x38bdf8;
+const BULKHEAD_MAULER_COLOR = 0x78716c;
+const BULKHEAD_MAULER_EMISSIVE = 0xf59e0b;
 const AEGIS_SENTINEL_COLOR = 0x4ade80;
 const AEGIS_SENTINEL_EMISSIVE = 0x22c55e;
 const AEGIS_SENTINEL_GOLD = 0xfbbf24;
@@ -1678,6 +1682,34 @@ function renderBatteryAutomaton(data, ctx) {
 	ctx.spawnMinionSummonInEffect(origin, {
 		color: BATTERY_AUTOMATON_COLOR,
 		emissive: BATTERY_AUTOMATON_EMISSIVE,
+		radius: 1.1,
+		burstCount: 10,
+		burstSpread: 1.4,
+	});
+}
+
+/**
+ * Bulkhead Mauler: heavy stone construct deploy ring + rising slab composed with
+ * the shared minion summon-in flourish. Fires synchronously on CARD_USED when
+ * the server reports a new minion id — no wind-up delay. Every optional helper
+ * is guarded so missing primitives never throw.
+ */
+function renderBulkheadMaulerSummon(data, ctx) {
+	if (!data.minionId || data.direction) return;
+	if (!ctx.spawnMinionSummonInEffect) return;
+	const origin = originOf(data);
+	const bulkheadStyle = {
+		color: BULKHEAD_MAULER_COLOR,
+		emissive: BULKHEAD_MAULER_EMISSIVE,
+		duration: MINION_SUMMON_IN_MS,
+		radius: 1.4,
+	};
+	if (ctx.spawnBulkheadMaulerDeployEffect) {
+		ctx.spawnBulkheadMaulerDeployEffect(origin, bulkheadStyle);
+	}
+	ctx.spawnMinionSummonInEffect(origin, {
+		color: BULKHEAD_MAULER_COLOR,
+		emissive: BULKHEAD_MAULER_EMISSIVE,
 		radius: 1.1,
 		burstCount: 10,
 		burstSpread: 1.4,
@@ -2881,20 +2913,36 @@ function renderPhaseBeam(data, ctx) {
 
 /**
  * Bulkhead Mauler: short wide shockwave cone in front of the construct.
+ * Fires synchronously on CARD_USED when the server reports shockwave_sweep —
+ * no wind-up or deferred timing; VFX matches instant server cone resolution.
  */
-function renderShockwaveSweep(data, ctx) {
-	if (!data.origin) return;
-	const color = getAccentHex(data.cardId) ?? 0x78716c;
-	const emissive = 0xf59e0b;
-	ctx.spawnAttackEffect(originOf(data), directionOf(data), {
+function renderBulkheadMaulerShockwaveSweep(data, ctx) {
+	if (data.specialEffect !== 'shockwave_sweep' || !data.origin) return;
+	if (!data.direction && !(Array.isArray(data.hits) && data.hits.length > 0)) return;
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = BULKHEAD_MAULER_COLOR;
+	const emissive = BULKHEAD_MAULER_EMISSIVE;
+	const shockwaveStyle = {
 		range: data.attackRange,
 		coneAngle: data.attackConeAngle,
 		color,
 		emissive,
-	});
-	// Debris spray kicked up at the construct's feet on impact.
+	};
+	if (ctx.spawnBulkheadMaulerShockwaveEffect) {
+		ctx.spawnBulkheadMaulerShockwaveEffect(origin, direction, shockwaveStyle);
+	}
 	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(originOf(data), { color, emissive, count: 10, spread: 1.6 });
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 10, spread: 1.6 });
+	}
+	const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+	for (const hit of data.hits || []) {
+		const mesh = meshes[hit.enemyId];
+		if (!mesh) continue;
+		const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+		if (ctx.spawnHitSpark) {
+			ctx.spawnHitSpark(pos, { color, emissive, count: 5, spread: 0.55 });
+		}
 	}
 }
 
@@ -3434,7 +3482,7 @@ const CARD_RENDERERS = {
 	dungeon_drake: [renderWyrmSummon, renderWyrmAttack],
 	ancient_wyrm: [renderArchiveWyrmSummon, renderArchiveWyrmBreath],
 	null_crawler: [renderNullCrawlerSummon, renderPhaseBeam],
-	bulkhead_mauler: renderShockwaveSweep,
+	bulkhead_mauler: [renderBulkheadMaulerSummon, renderBulkheadMaulerShockwaveSweep],
 	battery_automaton: renderBatteryAutomaton,
 	aegis_sentinel: renderAegisSentinel,
 

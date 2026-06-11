@@ -1,0 +1,19 @@
+Broke the top-level ticket into **6 sub-tickets** in dependency order. Each targets a focused slice of `updateAttackEffects` (~850 lines, 30+ effect branches) and uses **code** verification (tests + structure), since acceptance criteria cover registry existence, kind fields, and test pass—not purely visual rendering.
+
+| # | Focus |
+|---|--------|
+| 01 | Registry scaffold + 7 shared primitives |
+| 02 | Fix positional `fx.radius` catch-all with explicit expand-fade ring kinds |
+| 03 | Column risers + specialized rings (ether siphon, battery, chrono, glacier, spikes) |
+| 04 | Complex multi-child groups (Aegis, Solar Edge, gravity well, etc.) |
+| 05 | Projectiles, weapons, returning/legacy fall-through |
+| 06 | Delete legacy flag chain; kind-only dispatch + registration test |
+
+**Created sub-ticket paths:**
+
+- `/home/matt/workspace/.autogame-worktrees/client-convert-updateattackeffects-330-line-boolean-flag-dis-dfyk/tickets/client-convert-updateattackeffects-330-line-boolean-flag-dis-dfyk/subtickets/01-attack-effect-updater-scaffold/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/client-convert-updateattackeffects-330-line-boolean-flag-dis-dfyk/tickets/client-convert-updateattackeffects-330-line-boolean-flag-dis-dfyk/subtickets/02-explicit-expand-fade-ring-kinds/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/client-convert-updateattackeffects-330-line-boolean-flag-dis-dfyk/tickets/client-convert-updateattackeffects-330-line-boolean-flag-dis-dfyk/subtickets/03-column-and-specialized-ring-updaters/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/client-convert-updateattackeffects-330-line-boolean-flag-dis-dfyk/tickets/client-convert-updateattackeffects-330-line-boolean-flag-dis-dfyk/subtickets/04-complex-group-effect-updaters/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/client-convert-updateattackeffects-330-line-boolean-flag-dis-dfyk/tickets/client-convert-updateattackeffects-330-line-boolean-flag-dis-dfyk/subtickets/05-projectile-weapon-updaters/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/client-convert-updateattackeffects-330-line-boolean-flag-dis-dfyk/tickets/client-convert-updateattackeffects-330-line-boolean-flag-dis-dfyk/subtickets/06-remove-legacy-flag-dispatch/ticket.md`

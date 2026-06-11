@@ -1,0 +1,24 @@
+## Review complete
+
+**VERDICT: PASS**
+
+Wrote `tickets/client-hoist-per-frame-allocations-in-renderer-animate-objec-cgpv/round-1/review.md`.
+
+### Runtime
+- `metrics.json`: `"ok": true`, `pageerrors: []`
+- `console.log`: no page errors or fatal lines; game reached playing phase with movement and dodge
+
+### Acceptance criteria
+All targeted per-frame allocations in the `animate()` entity path are hoisted:
+- Reused `_currentEnemyIds` / `_currentMinionIds` Sets
+- `Object.entries(gs.players)` → `Object.keys` in player sync + phase-step highlight
+- Scratch objects for local slow/burn indicators
+- Hoisted `_damageNumberProjVec` in `updateDamageNumbers`
+- Cosmetic signature cached on stable object identity
+
+**506/506** vitest tests pass; capture probes and screenshots show normal rendering.
+
+### Files written
+- `review.md` — full assessment
+- `nits.md` — two follow-up perf items (cosmetic ref not surviving JSON ticks; `Object.keys` still allocating)
+- No `gaps.md` (PASS only)

@@ -1623,6 +1623,19 @@ describe("generateLayout(seed, 'open') rigid layoutMode", () => {
 // ── sampleFloorY ──
 
 describe('sampleFloorY(layout, x, z)', () => {
+  it('returns DEFAULT_FLOOR_Y for null layout', () => {
+    expect(sampleFloorY(null, 0, 0)).toBe(DEFAULT_FLOOR_Y);
+    expect(sampleFloorY(null, 12.5, -3.25)).toBe(DEFAULT_FLOOR_Y);
+  });
+
+  it('returns DEFAULT_FLOOR_Y for platform lacking floorCorners', () => {
+    const layout = {
+      rooms: [],
+      platforms: [{ x: 0, z: 0, width: 10, depth: 10 }],
+    };
+    expect(sampleFloorY(layout, 0, 0)).toBe(DEFAULT_FLOOR_Y);
+  });
+
   it('returns DEFAULT_FLOOR_Y for any position inside a flat room', () => {
     const layout = generateLayout(1);
     const room = layout.rooms[0];

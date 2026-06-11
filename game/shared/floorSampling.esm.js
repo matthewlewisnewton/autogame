@@ -29,6 +29,8 @@ export function resolveFloorY(sampled) {
  * @returns {number|null} interpolated Y height, or null if outside all rooms
  */
 export function sampleFloorY(layout, x, z) {
+	if (!layout) return DEFAULT_FLOOR_Y;
+
 	// Open-plaza platforms take precedence: a point standing on a platform reads
 	// the raised platform height rather than the flat plaza floor beneath it.
 	// When `platforms` is absent this block is skipped, preserving room behavior.
@@ -45,11 +47,15 @@ export function sampleFloorY(layout, x, z) {
 				const u = (x - (platform.x - halfW)) / platform.width;
 				const v = (z - (platform.z - halfD)) / platform.depth;
 				const fc = platform.floorCorners;
+				const yNW = fc ? fc.yNW : DEFAULT_FLOOR_Y;
+				const yNE = fc ? fc.yNE : DEFAULT_FLOOR_Y;
+				const ySE = fc ? fc.ySE : DEFAULT_FLOOR_Y;
+				const ySW = fc ? fc.ySW : DEFAULT_FLOOR_Y;
 				return (
-					(1 - u) * (1 - v) * fc.yNW +
-					u * (1 - v) * fc.yNE +
-					u * v * fc.ySE +
-					(1 - u) * v * fc.ySW
+					(1 - u) * (1 - v) * yNW +
+					u * (1 - v) * yNE +
+					u * v * ySE +
+					(1 - u) * v * ySW
 				);
 			}
 		}

@@ -1,0 +1,16 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health (gate):** Clean. `metrics.json` reports `ok: true`, `pageerrors: []`, scene initialized, full smoke flow ran (auth → lobby → ready → movement → dodge with cooldown HUD verified). `console.log` shows only benign vite/initScene/launchBooth lines plus a harness-side `409 Conflict` resource race — no `pageerror`/`[fatal]`.
+
+**Acceptance criteria — all met:**
+1. **Table/closure dispatch, no positional flag chain** — The `updateAttackEffects` loop (`renderer.js:7108`) is now fully generic (`runAttackEffectUpdater` → `shouldExpireAttackEffect` → `disposeAttackEffect`). Grep confirms zero remaining `fx.isLightColumn`/`fx.radius !== undefined`/`fx.returning`/etc. branches. The positional-radius mis-dispatch hazard the ticket called out is eliminated via explicit `expandFadeRing`/`spikeTrapRing`/`dragonsBreathScorch` kinds.
+2. **Identical VFX behavior** — Updaters are faithful translations of the old branch bodies. 69/69 targeted VFX/renderer tests pass; full suite 3966/3966 (twice). All 56 `activeEffects.push` sites carry a `kind`, so nothing falls through to the no-updater path.
+3. **New effect = just register an updater** — Centralized `ATTACK_EFFECT_KINDS` + `ATTACK_EFFECT_UPDATERS` + `registerAttackEffectUpdater`, with `warnUnknownAttackEffectKind` throwing under vitest to catch unregistered kinds.
+
+Pure internal client-side refactor — no design/requirements/server/persistence surface touched, no debug scenario involved. One intermediate full-suite run had a single failure in an unrelated `server/test/*` (known pre-existing flake; impossible for a client-renderer-only diff to cause).
+
+**Non-blocking nit** filed to `nits.md`: several spawner comments still reference the now-removed `is*` "branch in updateAttackEffects".
+
+No `gaps.md` written (PASS).
