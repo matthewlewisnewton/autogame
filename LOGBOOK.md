@@ -7594,3 +7594,26 @@ gameplay, server, or shared logic touched, so no foundation regression.
 ## Remaining gaps
 None blocking. Minor visual nits recorded in `nits.md`.
 
+
+## v0.423 — 337-anim-chrono-trigger  (2026-06-10 23:31:38)
+
+### Performance and integration
+
+PASS. The implementation uses the existing `activeEffects` lifecycle and fixed small mesh counts: two ripples, one column, and optional per-restored-slot flares/arcs. `spawnChronoTriggerEffect` adds no network traffic, persistent world state, or per-frame allocations beyond the established effect update loop. The socket handler context and main renderer dependency wiring expose the primitive cleanly to card renderers.
+
+### Tests and coverage
+
+PASS. `coverage.log` reports 50 client test files passing with 708 tests. The added coverage includes Chrono Trigger renderer registration, instant dispatch without delayed scheduling, absent-windup behavior, restored-charge flare placement, distinct utility-spell signatures, primitive palette/defaults, and cleanup through `updateAttackEffects`. Coverage thresholds were disabled, but the changed client files have focused behavioral assertions.
+
+### Design and foundation consistency
+
+PASS. The change is consistent with `game/docs/design.md`: Chrono Trigger remains a spell card whose effect is a single-use utility action, not a new combat system or server-side invariant. The foundation requirements in `game/docs/requirements.md` are preserved; the captured run shows a rendered 3D scene, working client-server connection, multiplayer presence, and movement state updates.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change any `?debugScenario=` shortcut. `metrics.json` also reports no development scenarios used for the capture, so there is no debug-path gating or reachability issue to review for this ticket.
+
+## Remaining gaps
+
+None.
+
