@@ -8340,3 +8340,26 @@ errors.
 ## Remaining gaps
 None blocking.
 
+
+## v0.454 — balance: death spiral — die with empty wallet and you respawn at 10/100 HP with no way to heal  (2026-06-11 07:54:55)
+
+  (lobby phase, `run` cleared, `hp = LOBBY_REVIVE_HP`, `currency = 0`,
+  `dead = false`) that the real `runFailed → returnToLobby` flow produces — and
+  that real flow is what `death_spiral_recovery.test.js` drives, so the shortcut
+  is a faithful QA mirror, not a substitute.
+- **No invariants short-circuited:** it only sets hub-side state; it does not
+  skip server validation, persistence, or replication that normal play uses.
+
+## Code quality
+
+No bugs found. The charity-medic branch is small and correct; currency is only
+deducted on the paid path; `savePlayerData` runs in both cases. No dead code, no
+console errors.
+
+## Remaining gaps
+
+None blocking. One non-blocking observation captured in `nits.md` (the charity
+heal is keyed purely on `currency < 10`, so any low-funds player — not strictly
+a post-death one — gets free heals; harmless and within the ticket's "equivalent
+mitigation" latitude, but worth a deliberate design note later).
+
