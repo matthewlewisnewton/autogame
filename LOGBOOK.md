@@ -8042,3 +8042,26 @@ PASS. `cardRenderers.test.js` + `vfx-primitives.test.js` run green: **312 tests 
 ## Remaining gaps
 None blocking. Minor nits recorded in `nits.md`.
 
+
+## v0.447 — Client: convert updateAttackEffects 330-line boolean-flag dispatch chain to per-effect updaters  (2026-06-11 03:44:25)
+
+### "adding a new effect requires only registering an updater"
+PASS. New VFX path is: set `kind: ATTACK_EFFECT_KINDS.foo` in the spawner +
+`registerAttackEffectUpdater('foo', fn)` (or add to `ATTACK_EFFECT_UPDATERS`).
+`warnUnknownAttackEffectKind` throws under vitest, so a spawner that ships a kind
+with no registered updater is caught by tests rather than silently animating
+nothing.
+
+## Consistency / regressions
+- No `game/docs/design.md` or `requirements.md` behavior is touched; this is a pure
+  internal refactor of client-side VFX dispatch. No server, net-replication, or
+  persistence surface changed.
+- No debug scenario was added or changed by this ticket.
+- Disposal edge cases preserved: `lightningArc`/`hitSpark` route through
+  `disposeLineEffect`; `mirrorWardShell` clears its per-player map entry.
+
+## Remaining gaps
+None blocking. (One documentation nit recorded in `nits.md`: several spawner
+comments still reference the removed `isLightColumn`/`isThermalColumn`/etc.
+"branch in updateAttackEffects".)
+
