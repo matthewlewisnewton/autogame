@@ -1,6 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CARD_DEFS, getCardDef } from '../cards.js';
-import { ATTACK_EFFECT_DURATION, EVENT_HORIZON_CRUSH_DELAY_MS, MINION_SUMMON_IN_MS, PHOTON_BARRAGE_SWING_DELAY_MS, SUMMON_EFFECT_DURATION } from '../config.js';
+import {
+	ARCHIVE_WYRM_BREATH_DURATION_MS,
+	ARCHIVE_WYRM_BREATH_TICK_COUNT,
+	ARCHIVE_WYRM_BREATH_TICK_MS,
+	ATTACK_EFFECT_DURATION,
+	EVENT_HORIZON_CRUSH_DELAY_MS,
+	MINION_SUMMON_IN_MS,
+	PHOTON_BARRAGE_SWING_DELAY_MS,
+	SUMMON_EFFECT_DURATION,
+} from '../config.js';
 import {
 	renderCardUsed,
 	resolveRenderers,
@@ -3063,6 +3072,101 @@ describe('renderCardUsed() — creature dispatch', () => {
 			y: 0.8,
 		});
 		expect(ctx._calls.filter((c) => c[0] === 'spawnHitSpark')).toHaveLength(1);
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter').map((c) => c[1]);
+		expect(schedules).toHaveLength(ARCHIVE_WYRM_BREATH_TICK_COUNT);
+		expect(schedules).toEqual(
+			Array.from({ length: ARCHIVE_WYRM_BREATH_TICK_COUNT }, (_, i) => ARCHIVE_WYRM_BREATH_TICK_MS * (i + 1)),
+		);
+	});
+
+	describe('ancient_wyrm', () => {
+		it('breath start uses server breath duration and schedules mid-channel tick pulses', () => {
+			const ctx = makeCtx({
+				enemyMeshes: () => ({
+					e1: { position: { x: 5, y: 0.5, z: 0 } },
+				}),
+			});
+			renderCardUsed({
+				cardId: 'ancient_wyrm',
+				specialEffect: 'fire_breath',
+				origin: { x: 0, z: 0 },
+				direction: { x: 1, z: 0 },
+				attackRange: 10,
+				attackConeAngle: Math.PI / 3,
+				breathPhase: 'start',
+				breathDurationMs: ARCHIVE_WYRM_BREATH_DURATION_MS,
+				hits: [{ enemyId: 'e1', hp: 46 }],
+			}, ctx);
+			const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
+			expect(attacks).toHaveLength(1);
+			expect(attacks[0][3].duration).toBe(ARCHIVE_WYRM_BREATH_DURATION_MS);
+			const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter').map((c) => c[1]);
+			expect(schedules).toEqual([500, 1000, 1500, 2000]);
+		});
+
+		it('breath tick emits hit feedback only (no cone or scheduled pulses)', () => {
+			const ctx = makeCtx({
+				enemyMeshes: () => ({
+					e1: { position: { x: 2, y: 0.5, z: 3 } },
+				}),
+			});
+			renderCardUsed({
+				cardId: 'ancient_wyrm',
+				specialEffect: 'fire_breath',
+				origin: { x: 1, z: 2 },
+				direction: { x: 0, z: 1 },
+				attackRange: 10,
+				attackConeAngle: Math.PI / 3,
+				breathPhase: 'tick',
+				breathDurationMs: ARCHIVE_WYRM_BREATH_DURATION_MS,
+				hits: [{ enemyId: 'e1', hp: 44 }],
+			}, ctx);
+			expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(0);
+			expect(ctx._calls.filter((c) => c[0] === 'scheduleAfter')).toHaveLength(0);
+			expect(ctx._calls.filter((c) => c[0] === 'spawnHitSpark')).toHaveLength(1);
+		});
+
+		it('getCardDef documents server breath timing contract (no deploy wind-up)', () => {
+			const def = getCardDef('ancient_wyrm');
+			expect(def.breathDurationMs).toBe(ARCHIVE_WYRM_BREATH_DURATION_MS);
+			expect(def.breathTickMs).toBe(ARCHIVE_WYRM_BREATH_TICK_MS);
+			expect(def.breathRange).toBe(10);
+			expect(def.breathConeAngle ?? Math.PI / 3).toBe(Math.PI / 3);
+			expect(def.windUpMs ?? 0).toBeLessThanOrEqual(0);
+		});
+
+		it('airborne fire breath mid-channel pulses respect origin.y and tilted direction.y', () => {
+			const ctx = makeCtx({
+				enemyMeshes: () => ({
+					e1: { position: { x: 5, y: 0.5, z: 0 } },
+				}),
+			});
+			const airborneY = 4;
+			const dirY = 0.3;
+			const range = 8;
+			renderCardUsed({
+				cardId: 'ancient_wyrm',
+				specialEffect: 'fire_breath',
+				origin: { x: 0, z: 0, y: airborneY },
+				direction: { x: 1, z: 0, y: dirY },
+				attackRange: range,
+				attackConeAngle: Math.PI / 3,
+				breathPhase: 'start',
+				breathDurationMs: ARCHIVE_WYRM_BREATH_DURATION_MS,
+				hits: [{ enemyId: 'e1', hp: 46 }],
+			}, ctx);
+			ctx.runScheduled();
+			const len = Math.hypot(1, 0, dirY);
+			const pulseRings = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
+			const scheduledRings = pulseRings.slice(1);
+			expect(scheduledRings.length).toBeGreaterThanOrEqual(ARCHIVE_WYRM_BREATH_TICK_COUNT);
+			for (let n = 1; n <= ARCHIVE_WYRM_BREATH_TICK_COUNT; n++) {
+				const alongDist = range * (0.2 + 0.15 * n);
+				const expectedY = airborneY + (dirY / len) * alongDist;
+				const ring = scheduledRings[n - 1];
+				expect(ring[1].y).toBeCloseTo(expectedY, 5);
+			}
+		});
 	});
 
 	it('Archive Wyrm airborne fire breath uses origin.y for cone, ring, and burst', () => {

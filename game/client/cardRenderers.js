@@ -43,6 +43,9 @@
 
 import { CARD_ACCENT_STYLE, CARD_DEFS, getCardDef } from './cards.js';
 import {
+	ARCHIVE_WYRM_BREATH_DURATION_MS,
+	ARCHIVE_WYRM_BREATH_TICK_COUNT,
+	ARCHIVE_WYRM_BREATH_TICK_MS,
 	ATTACK_EFFECT_DURATION,
 	EVENT_HORIZON_CRUSH_DELAY_MS,
 	MINION_SUMMON_IN_MS,
@@ -1872,21 +1875,18 @@ function renderArchiveWyrmBreath(data, ctx) {
 	if (data.breathPhase !== 'tick') {
 		const origin = originOf(data);
 		const direction = directionOf(data);
+		const breathDurationMs = data.breathDurationMs ?? ARCHIVE_WYRM_BREATH_DURATION_MS;
 		ctx.spawnAttackEffect(origin, direction, {
 			range: data.attackRange,
 			coneAngle: data.attackConeAngle,
 			color,
 			emissive,
-			duration: data.breathDurationMs,
+			duration: breathDurationMs,
 			fillOpacity: isFireBreath ? 0.38 : 0.48,
 			edgeOpacity: isFireBreath ? 0.72 : 0.85,
 		});
 		const breathRange = data.attackRange ?? 6;
-		if (ctx.spawnTelegraphRing) {
-			ctx.spawnTelegraphRing(origin, breathRange * 0.55, { color, emissive });
-		}
-		if (ctx.spawnParticleBurst) {
-			const alongDist = breathRange * 0.45;
+		const breathBurstPos = (alongDist) => {
 			const along = pointAlong(origin, direction, alongDist);
 			const burstPos = { x: along.x, z: along.z };
 			if (Number.isFinite(origin.y)) {
@@ -1898,8 +1898,14 @@ function renderArchiveWyrmBreath(data, ctx) {
 			} else {
 				burstPos.y = 0.8;
 			}
+			return burstPos;
+		};
+		if (ctx.spawnTelegraphRing) {
+			ctx.spawnTelegraphRing(origin, breathRange * 0.55, { color, emissive });
+		}
+		if (ctx.spawnParticleBurst) {
 			ctx.spawnParticleBurst(
-				burstPos,
+				breathBurstPos(breathRange * 0.45),
 				{
 					color,
 					emissive,
@@ -1916,20 +1922,40 @@ function renderArchiveWyrmBreath(data, ctx) {
 				emissive: accentHex ?? ARCHIVE_WYRM_PURPLE_EMISSIVE,
 				range: trailRange,
 				coneAngle: trailCone,
-				duration: data.breathDurationMs,
+				duration: breathDurationMs,
 			};
 			const trailY = Number.isFinite(origin.y) ? origin.y : 0.8;
 			if (ctx.spawnFireTrailEffect) {
 				ctx.spawnFireTrailEffect(origin, direction, {
 					...trailStyle,
 					dotTicks: 1,
-					dotIntervalMs: data.breathDurationMs ?? 2500,
+					dotIntervalMs: breathDurationMs,
 				});
 			}
 			if (ctx.spawnProjectileTrail) {
 				ctx.spawnProjectileTrail(origin, direction, {
 					...trailStyle,
 					y: trailY,
+				});
+			}
+		}
+		if (ctx.scheduleAfter) {
+			const pulseRingRadius = breathRange * 0.55 * 0.85;
+			for (let n = 1; n <= ARCHIVE_WYRM_BREATH_TICK_COUNT; n++) {
+				ctx.scheduleAfter(ARCHIVE_WYRM_BREATH_TICK_MS * n, () => {
+					const alongDist = breathRange * (0.2 + 0.15 * n);
+					const pulsePos = breathBurstPos(alongDist);
+					if (ctx.spawnTelegraphRing) {
+						ctx.spawnTelegraphRing(pulsePos, pulseRingRadius, { color, emissive });
+					}
+					if (ctx.spawnParticleBurst) {
+						ctx.spawnParticleBurst(pulsePos, {
+							color,
+							emissive,
+							count: isFireBreath ? 8 : 6,
+							spread: isFireBreath ? 1.6 : 1.2,
+						});
+					}
 				});
 			}
 		}
