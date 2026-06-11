@@ -7249,3 +7249,26 @@ None blocking. Two minor nits filed to `nits.md`:
 1. `data.shockwaveRadius` is never included in the `CARD_USED` emit, so that branch always falls back to the literal `6`; harmless today (equals the card's radius) but the dynamic-radius intent is unrealized.
 2. The discharge keys off `shockwaveHits` being non-empty, so a cadence use that strikes no enemy in radius shows no discharge VFX even though the server's shockwave "fired." Defensible (no targets = no meaningful effect) but a slight fidelity gap vs. keying off the cadence itself.
 
+
+## v0.403 — 358-anim-phase-echo  (2026-06-10 19:38:48)
+
+## Code quality
+
+Clean, well-commented, idiomatic with the surrounding styled-blade renderers. No dead/broken
+code beyond the minor `shockwaveRadius` observation below (a nit, not a defect — the fallback
+yields the correct value).
+
+## Remaining gaps
+
+None blocking.
+
+Two non-blocking nits recorded in `nits.md`:
+1. The server's `CARD_USED` payload never includes `shockwaveRadius`, so the client's
+   `Number.isFinite(data.shockwaveRadius) ? … : 6` branch always takes the fallback. It happens
+   to equal echo_blade's real radius (6), so the visual is correct, but the dynamic branch is
+   effectively unreachable in production.
+2. The shockwave VFX is gated on `shockwaveHits.length > 0`, so on the every-3rd-use beat with
+   no enemy in radius nothing renders even though it is the cadence beat. Acceptable (the
+   server shockwave is a no-op without hits, and this matches the sibling card), but worth a
+   look if a "discharge always shows" feel is desired.
+

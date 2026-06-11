@@ -149,3 +149,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [396-cleanup-anim-soul-drain](tickets/396-cleanup-anim-soul-drain/)
 - [ ] [396-cleanup-anim-telepipe](tickets/396-cleanup-anim-telepipe/)
 - [ ] [397-cleanup-anim-resonance-edge](tickets/397-cleanup-anim-resonance-edge/)
+- [ ] [398-cleanup-anim-phase-echo](tickets/398-cleanup-anim-phase-echo/)

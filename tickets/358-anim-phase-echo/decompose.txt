@@ -1,0 +1,13 @@
+I created one focused sub-ticket. Here is the path:
+
+```
+/home/matt/workspace/.autogame-worktrees/358-anim-phase-echo/tickets/358-anim-phase-echo/subtickets/01-phase-echo-shockwave-and-timing/ticket.md
+```
+
+**Decomposition rationale:**
+
+The top-level ticket's two demands — visual matches the "Phase Echo" name/theme, and timing syncs to the server effect — both resolve to a single change in one function (`renderEchoSlash` in `game/client/cardRenderers.js`, already registered). Splitting them would force two passes editing the same function, exactly the conflict the ticket warns against.
+
+The real gap I found: the renderer draws the pink twin-slash after-image but **ignores the card's signature mechanic** — the server discharges a radial shockwave on every 3rd use (`shockwaveEvery: 3`) and reports it via `data.shockwaveHits`, which the current renderer never reads. The evolved sibling `resonance_edge` already renders its shockwave this way; the base card just needs to catch up, keeping its distinct pink twin-slash identity. The card has no `windUpMs`, so no 307 wind-up telegraph applies — the shockwave fires immediately, matching the server's synchronous resolution.
+
+Verification is **`code`**: the acceptance criteria hinge on a behavior keyed off server state (`shockwaveHits` present vs. absent), a guard against `comboCount` arithmetic, graceful degradation, and a unit test — none of which a single happy-path visual run can confirm (it would rarely even hit the every-3rd cadence).
