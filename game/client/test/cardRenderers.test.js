@@ -2633,6 +2633,91 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(emberBurst).toBeDefined();
 	});
 
+	it('sacrificial_altar spawns golden energy-return effects on successful sacrifice', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'sacrificial_altar',
+			origin: { x: 0, z: 0 },
+			radius: 10,
+			sacrificedMinionId: 'minion-X',
+			magicStonesGained: 100,
+			restoredCharges: 2,
+			hits: [],
+		}, ctx);
+
+		// Golden siphon burst (brighter gold, higher count than ritual ember)
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		const siphonBurst = bursts.find(
+			(b) => b[2].color === 0xfde047 && b[2].emissive === 0xfbbf24 && b[2].count === 20,
+		);
+		expect(siphonBurst).toBeDefined();
+		expect(siphonBurst[1]).toEqual({ x: 0, z: 0 });
+		expect(siphonBurst[2]).toMatchObject({ spread: 2.8 });
+
+		// Vertical projectile trail
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail).toBeDefined();
+		expect(trail[1]).toEqual({ x: 0, z: 0 }); // origin
+		expect(trail[2]).toEqual({ x: 0, z: 0 }); // vertical direction
+		expect(trail[3]).toMatchObject({ color: 0xfde047, emissive: 0xfbbf24, range: 3 });
+
+		// Reward-flash decal at altar base
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 0, z: 0 });
+		expect(decal[2]).toMatchObject({ color: 0xfde047, emissive: 0xfbbf24, radius: 0.8 });
+	});
+
+	it('sacrificial_altar skips golden reward effects when magicStonesGained and restoredCharges are zero or absent', () => {
+		// Case 1: both zero
+		{
+			const ctx = makeCtx();
+			renderCardUsed({
+				cardId: 'sacrificial_altar',
+				origin: { x: 0, z: 0 },
+				radius: 10,
+				sacrificedMinionId: 'minion-X',
+				magicStonesGained: 0,
+				restoredCharges: 0,
+				hits: [],
+			}, ctx);
+			const goldenBursts = ctx._calls.filter(
+				(c) => c[0] === 'spawnParticleBurst' && c[2].color === 0xfde047,
+			);
+			expect(goldenBursts).toHaveLength(0);
+			expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
+		}
+
+		// Case 2: fields absent entirely
+		{
+			const ctx = makeCtx();
+			renderCardUsed({
+				cardId: 'sacrificial_altar',
+				origin: { x: 0, z: 0 },
+				radius: 10,
+				sacrificedMinionId: 'minion-X',
+				hits: [],
+			}, ctx);
+			const goldenBursts = ctx._calls.filter(
+				(c) => c[0] === 'spawnParticleBurst' && c[2].color === 0xfde047,
+			);
+			expect(goldenBursts).toHaveLength(0);
+			expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
+		}
+
+		// Ritual cast (altar pillar, telegraph, ember burst) still fires
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'sacrificial_altar',
+			origin: { x: 0, z: 0 },
+			radius: 10,
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(true);
+	});
+
 	it('chrono_trigger adds a time-ripple telegraph and burst using a default radius', () => {
 		const ctx = makeCtx();
 		renderCardUsed({

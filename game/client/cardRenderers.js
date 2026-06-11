@@ -2154,10 +2154,16 @@ function renderManaPrism(data, ctx) {
 	}
 }
 
+/** Golden energy-return palette — distinct from the red consumption burst. */
+const OFFERING_ENERGY_COLOR = 0xfde047;
+const OFFERING_ENERGY_EMISSIVE = 0xfbbf24;
+
 /**
  * Sacrificial Altar (Offering Terminal): dark altar pillar at origin, expanding
  * ritual telegraph at sacrifice radius, red implosion burst when a minion is
- * consumed, and a gold/red ember burst at the caster origin.
+ * consumed, a gold/red ember burst at the caster origin, and a golden energy
+ * siphon + reward-flash decal when the sacrifice yields magic stones or charge
+ * restores (success path).
  */
 function renderSacrificialAltar(data, ctx) {
 	if (data.radius === undefined) return;
@@ -2186,6 +2192,37 @@ function renderSacrificialAltar(data, ctx) {
 	// 4. Gold/red ember burst at caster origin
 	if (ctx.spawnParticleBurst) {
 		ctx.spawnParticleBurst(origin, { color, emissive, count: 16, spread: 2.4 });
+	}
+
+	// 5. Golden energy-return siphon — fires only on successful sacrifice
+	//    (magicStonesGained > 0 or restoredCharges > 0). A denser, brighter
+	//    gold burst reads as energy flowing back to the caster, distinct from
+	//    the red consumption implosion.
+	const hasReward = (data.magicStonesGained && data.magicStonesGained > 0) ||
+		(data.restoredCharges && data.restoredCharges > 0);
+	if (hasReward) {
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(origin, {
+				color: OFFERING_ENERGY_COLOR,
+				emissive: OFFERING_ENERGY_EMISSIVE,
+				count: 20,
+				spread: 2.8,
+			});
+		}
+		if (ctx.spawnProjectileTrail) {
+			ctx.spawnProjectileTrail(origin, { x: 0, z: 0 }, {
+				color: OFFERING_ENERGY_COLOR,
+				emissive: OFFERING_ENERGY_EMISSIVE,
+				range: 3,
+			});
+		}
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(origin, {
+				color: OFFERING_ENERGY_COLOR,
+				emissive: OFFERING_ENERGY_EMISSIVE,
+				radius: 0.8,
+			});
+		}
 	}
 }
 
