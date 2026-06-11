@@ -685,19 +685,29 @@ function lobbyPlayerList(state) {
   }));
 }
 
+function forEachSocketInLobby(lobbyId, callback) {
+  const room = io.sockets.adapter.rooms.get(lobbyId);
+  if (!room) return;
+  for (const socketId of room) {
+    if (socketId === lobbyId) continue;
+    const socket = io.sockets.sockets.get(socketId);
+    if (!socket) continue;
+    callback(socket);
+  }
+}
+
 /** Emit questUpdate/lobbyUpdate shared fields to each lobby socket with per-account unlock maps. */
 function emitQuestPayloadToLobby(lobby, { event = SERVER_TO_CLIENT.QUEST_UPDATE, extraFields = {} } = {}) {
   if (!lobby) return;
   const state = lobby.state;
-  for (const socket of io.sockets.sockets.values()) {
-    if (!socket.rooms.has(lobby.id)) continue;
+  forEachSocketInLobby(lobby.id, (socket) => {
     const player = state.players[socket.playerId];
-    if (!player) continue;
+    if (!player) return;
     socket.emit(event, {
       ...buildQuestUpdatePayload(state, player.accountId),
       ...extraFields,
     });
-  }
+  });
 }
 
 // Helper: broadcast lobbyUpdate to clients in a lobby room
@@ -715,9 +725,10 @@ function broadcastLobbyUpdate(lobby) {
         gamePhase: activeState.gamePhase,
         shopOffer: activeState.shopOffer,
       };
-      for (const socket of io.sockets.sockets.values()) {
-        const player = activeState.players[socket.playerId];
-        if (!player) continue;
+      for (const playerId of Object.keys(activeState.players)) {
+        const socket = findSocketByPlayerId(playerId);
+        if (!socket) continue;
+        const player = activeState.players[playerId];
         socket.emit(SERVER_TO_CLIENT.LOBBY_UPDATE, {
           ...sharedLobbyFields,
           ...buildQuestUpdatePayload(activeState, player.accountId),
@@ -735,15 +746,14 @@ function broadcastLobbyUpdate(lobby) {
       gamePhase: lobby.state.gamePhase,
       shopOffer: lobby.state.shopOffer,
     };
-    for (const socket of io.sockets.sockets.values()) {
-      if (!socket.rooms.has(lobby.id)) continue;
+    forEachSocketInLobby(lobby.id, (socket) => {
       const player = lobby.state.players[socket.playerId];
-      if (!player) continue;
+      if (!player) return;
       socket.emit(SERVER_TO_CLIENT.LOBBY_UPDATE, {
         ...sharedLobbyFields,
         ...buildQuestUpdatePayload(lobby.state, player.accountId),
       });
-    }
+    });
   });
   broadcastLobbyList();
 }
@@ -768,12 +778,10 @@ function findSocketByPlayerId(playerId, excludeSocketId) {
   if (mapped && (!excludeSocketId || mapped.id !== excludeSocketId)) {
     return mapped;
   }
-  if (excludeSocketId) {
-    for (const socket of io.sockets.sockets.values()) {
-      if (socket.id === excludeSocketId) continue;
-      if (socket.playerId === playerId) {
-        return socket;
-      }
+  for (const socket of io.sockets.sockets.values()) {
+    if (excludeSocketId && socket.id === excludeSocketId) continue;
+    if (socket.playerId === playerId) {
+      return socket;
     }
   }
   return null;
