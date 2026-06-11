@@ -847,7 +847,7 @@ describe('renderCardUsed() — styled weapon slashes', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
 	});
 
-	it('Reaper\'s Scythe slashes a dark 180° harvest arc using server geometry', () => {
+	it('Reaper\'s Scythe uses the dedicated renderer sweep stack (not the weapon default)', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'reapers_scythe',
@@ -863,11 +863,15 @@ describe('renderCardUsed() — styled weapon slashes', () => {
 			emissive: 0xe7e5e4,
 			coneAngle: Math.PI,
 			range: ATTACK_RANGE,
+			fillOpacity: 0.34,
+			edgeOpacity: 0.82,
 		});
 		expect(style.color).not.toBe(0x86efac);
 		expect(style.emissive).not.toBe(0x8b5cf6);
 		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(true);
 		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnLightningArc')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
 	});
 
@@ -876,13 +880,17 @@ describe('renderCardUsed() — styled weapon slashes', () => {
 			spawnProjectileTrail: undefined,
 			spawnImpactDecal: undefined,
 			spawnParticleBurst: undefined,
+			spawnLightningArc: undefined,
+			enemyMeshes: undefined,
 		});
 		expect(() => renderCardUsed({
 			cardId: 'reapers_scythe',
 			origin: { x: 0, z: 0 },
 			direction: { x: 1, z: 0 },
 			attackConeAngle: Math.PI,
-			hits: [],
+			hits: [{ enemyId: 'e1', hp: 0 }],
+			currencyGained: 6,
+			hpHealed: 8,
 		}, ctx)).not.toThrow();
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
@@ -916,6 +924,110 @@ describe('renderCardUsed() — styled weapon slashes', () => {
 		}, ctx)).not.toThrow();
 		// The core cone swing still fires.
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+	});
+});
+
+describe('renderCardUsed() — Reaper\'s Scythe', () => {
+	it('spawns a soul tether from each killing hit with a live enemy mesh toward the cast origin', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 4, y: 1, z: 2 } },
+				e2: { position: { x: 6, y: 0, z: -1 } },
+			}),
+		});
+		renderCardUsed({
+			cardId: 'reapers_scythe',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			attackConeAngle: Math.PI,
+			hits: [
+				{ enemyId: 'e1', hp: 0 },
+				{ enemyId: 'e2', hp: 0 },
+				{ enemyId: 'gone', hp: 0 },
+			],
+		}, ctx);
+		const tethers = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
+		expect(tethers).toHaveLength(2);
+		expect(tethers[0][1]).toEqual({ x: 4, y: 1, z: 2 });
+		expect(tethers[0][2]).toEqual({ x: 0, z: 0 });
+		expect(tethers[0][3]).toMatchObject({ color: 0x1e293b, emissive: 0xe7e5e4 });
+		expect(tethers[1][1]).toEqual({ x: 6, y: 0, z: -1 });
+		expect(tethers[1][2]).toEqual({ x: 0, z: 0 });
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('spawns a harvest flourish at the origin when currencyGained or hpHealed is positive', () => {
+		const currencyCtx = makeCtx();
+		renderCardUsed({
+			cardId: 'reapers_scythe',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			currencyGained: 6,
+			hits: [],
+		}, currencyCtx);
+		const currencyFlourish = currencyCtx._calls.find(
+			(c) => c[0] === 'spawnImpactDecal' && c[1].x === 0 && c[1].z === 0,
+		);
+		expect(currencyFlourish).toBeDefined();
+		expect(currencyFlourish[2]).toMatchObject({ color: 0xb45309, emissive: 0x4ade80 });
+
+		const healCtx = makeCtx();
+		renderCardUsed({
+			cardId: 'reapers_scythe',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			hpHealed: 8,
+			hits: [],
+		}, healCtx);
+		const healFlourish = healCtx._calls.find(
+			(c) => c[0] === 'spawnImpactDecal' && c[1].x === 0 && c[1].z === 0,
+		);
+		expect(healFlourish).toBeDefined();
+		expect(healFlourish[2]).toMatchObject({ color: 0xb45309, emissive: 0x4ade80 });
+	});
+
+	it('non-killing swings show the sweep only — no tether or harvest flourish', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 4, y: 0, z: 2 } },
+			}),
+		});
+		renderCardUsed({
+			cardId: 'reapers_scythe',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			specialEffect: 'reap',
+			hits: [{ enemyId: 'e1', hp: 40 }],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnLightningArc')).toBe(false);
+		const originFlourish = ctx._calls.find(
+			(c) => c[0] === 'spawnImpactDecal' && c[1].x === 0 && c[1].z === 0
+				&& c[2]?.color === 0xb45309,
+		);
+		expect(originFlourish).toBeUndefined();
+	});
+
+	it('degrades gracefully when spawnLightningArc, enemyMeshes, and flourish primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnLightningArc: undefined,
+			spawnImpactDecal: undefined,
+			spawnParticleBurst: undefined,
+			enemyMeshes: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'reapers_scythe',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			hits: [{ enemyId: 'e1', hp: 0 }],
+			currencyGained: 6,
+			hpHealed: 8,
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+	});
+
+	it('has no positive windUpMs (instant cast; no 307 charge telegraph expected)', () => {
+		expect(CARD_DEFS.reapers_scythe.windUpMs ?? 0).toBeLessThanOrEqual(0);
 	});
 });
 

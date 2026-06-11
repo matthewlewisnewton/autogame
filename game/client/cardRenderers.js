@@ -241,6 +241,9 @@ function renderWeaponSwing(data, ctx) {
 const REAPERS_SCYTHE_COLOR = 0x1e293b;
 const REAPERS_SCYTHE_EMISSIVE = 0xe7e5e4;
 const REAPERS_SCYTHE_EMBER = 0xb45309;
+const REAPERS_SCYTHE_SOUL_GREEN = 0x4ade80;
+const REAPERS_SCYTHE_TETHER_STYLE = { color: REAPERS_SCYTHE_COLOR, emissive: REAPERS_SCYTHE_EMISSIVE };
+const REAPERS_SCYTHE_HARVEST_FLOURISH = { color: REAPERS_SCYTHE_EMBER, emissive: REAPERS_SCYTHE_SOUL_GREEN };
 
 /**
  * Reaper's Scythe: a wide, dark harvest sweep distinct from the ghostly Ether
@@ -284,6 +287,34 @@ function renderReapersScythe(data, ctx) {
 	if (ctx.spawnImpactDecal) {
 		const decalAt = pointAlong(origin, direction, range * 0.55);
 		ctx.spawnImpactDecal(decalAt, { color, emissive });
+	}
+
+	// Kill-reward layer: soul tethers from slain enemies back to the caster.
+	if (data.hits?.length && ctx.spawnLightningArc && ctx.enemyMeshes) {
+		const meshes = ctx.enemyMeshes() || {};
+		for (const hit of data.hits) {
+			if ((hit.hp ?? 1) > 0) continue;
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const enemyPos = { x: mesh.position.x, z: mesh.position.z };
+			if (Number.isFinite(mesh.position.y)) enemyPos.y = mesh.position.y;
+			ctx.spawnLightningArc(enemyPos, origin, REAPERS_SCYTHE_TETHER_STYLE);
+		}
+	}
+
+	// Harvest flourish at the origin when currency or HP was actually gained.
+	const currencyGained = data.currencyGained ?? 0;
+	const hpHealed = data.hpHealed ?? 0;
+	if (currencyGained > 0 || hpHealed > 0) {
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(origin, REAPERS_SCYTHE_HARVEST_FLOURISH);
+		} else if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(origin, {
+				...REAPERS_SCYTHE_HARVEST_FLOURISH,
+				count: 8,
+				spread: 1.2,
+			});
+		}
 	}
 }
 
