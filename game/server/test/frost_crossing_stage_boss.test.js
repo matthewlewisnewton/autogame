@@ -205,12 +205,24 @@ describe('frost_crossing Tier 1 stage-boss encounter flow', () => {
     ({ iceRoom } = deployFrostCrossing(state));
   });
 
-  it('activates the encounter after scripted clears when the player nears the cairn', () => {
+  it('activates via tryActivateEncounter when the player nears ice_cairn after scripted clears', () => {
     clearAllScriptedHostiles(state, iceRoom);
     expect(state.enemies).toHaveLength(1);
-    activateEncounterForTest(state);
+
+    const warden = bossEnemy(state);
+    expect(warden.type).toBe('permafrost_warden');
+    expect(warden.hp).toBeGreaterThan(0);
+
+    const cairn = state.layout.landmarks.find((lm) => lm.type === 'ice_cairn');
+    expect(cairn).toBeDefined();
+    state.players.p1.x = cairn.x + ENCOUNTER_TRIGGER_RADIUS - 1;
+    state.players.p1.z = cairn.z;
+
+    expect(tryActivateEncounter(state)).toBe(true);
     expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
     expect(state.run.encounter.locked).toBe(true);
+    expect(bossEnemy(state).hp).toBeGreaterThan(0);
+    expect(bossEnemy(state).type).toBe('permafrost_warden');
   });
 
   it('completes the run with victory after the boss is defeated while active', () => {

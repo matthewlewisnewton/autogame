@@ -113,6 +113,62 @@ describe('boss-encounter HUD wiring in main.js', () => {
 		expect(document.getElementById('boss-encounter-hp-fill').style.width).toBe('25%');
 	});
 
+	it('shows Permafrost Warden HUD for active locked frost_crossing encounter', async () => {
+		await import('../main.js');
+		window.__setEnemyDisplayCatalog(buildEnemyDisplayCatalog());
+
+		const boss = { id: 'warden-1', type: 'permafrost_warden', hp: 500, maxHp: 2000 };
+		const gs = makeGameState({
+			encounter: { phase: 'active', locked: true, bossEnemyId: 'warden-1' },
+			enemies: [boss],
+		});
+		gs.run.questId = 'frost_crossing';
+		window.__setGameState(gs, 'me');
+
+		const model = window.__updateBossEncounterHud();
+		expect(model).not.toBeNull();
+		expect(model.name).toBe('Permafrost Warden');
+		expect(model.hpPct).toBeGreaterThan(0);
+		expect(window.__getBossEncounterModel()).not.toBeNull();
+
+		const container = document.getElementById('boss-encounter-hud');
+		expect(container.classList.contains('hidden')).toBe(false);
+		expect(container.getAttribute('aria-hidden')).toBe('false');
+		expect(document.getElementById('boss-encounter-name').textContent).toBe('Permafrost Warden');
+	});
+
+	it('populates bossEncounter via stateUpdate for frost-crossing-last-enemy engaged state', async () => {
+		await import('../main.js');
+		window.__setEnemyDisplayCatalog(buildEnemyDisplayCatalog());
+
+		const bossId = 'warden-1';
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'playing',
+			selectedQuestId: 'frost_crossing',
+			players: {
+				me: { hp: 100, magicStones: 99, x: 0, z: 0, hand: [] },
+			},
+			enemies: [{ id: bossId, type: 'permafrost_warden', hp: 1, maxHp: 2000 }],
+			run: {
+				status: 'playing',
+				questId: 'frost_crossing',
+				encounter: { phase: 'active', locked: true, bossEnemyId: bossId },
+				objective: { type: 'stage_boss', bossDefeated: false },
+			},
+		});
+
+		const harness = window.__AUTOGAME_HARNESS_STATE__();
+		expect(harness.encounter).toEqual({
+			phase: 'active',
+			bossEnemyId: bossId,
+			locked: true,
+		});
+		expect(harness.bossEncounter).not.toBeNull();
+		expect(harness.bossEncounter.name).toBe('Permafrost Warden');
+		expect(harness.bossEncounter.hp).toBe(1);
+		expect(document.getElementById('boss-encounter-hud').classList.contains('hidden')).toBe(false);
+	});
+
 	it('shows the HUD while the encounter is locked even if not yet active', async () => {
 		await import('../main.js');
 		window.__setEnemyDisplayCatalog(buildEnemyDisplayCatalog());

@@ -1824,10 +1824,11 @@ describe('debugScenario — spire-ascent-tier-2 harness shortcuts', () => {
 		await approachPromise;
 
 		const triggerPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
 		socket.emit('debugScenario', { name: 'spire-ascent-encounter-trigger' });
 		const triggerResult = await triggerPromise;
-		const stateUpdate = await stateUpdatePromise;
+		// Wait for stateUpdate after the scenario resolves so periodic dormant snapshots
+		// cannot race ahead of the encounter-trigger mutation.
+		const stateUpdate = await waitForEvent(socket, 'stateUpdate');
 
 		expect(triggerResult.ok).toBe(true);
 		expect(triggerResult.scenario).toBe('spire-ascent-encounter-trigger');
@@ -2529,10 +2530,11 @@ describe('debugScenario — frost-crossing harness shortcuts', () => {
 		await approachPromise;
 
 		const triggerPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
 		socket.emit('debugScenario', { name: 'frost-crossing-encounter-trigger' });
 		const triggerResult = await triggerPromise;
-		const stateUpdate = await stateUpdatePromise;
+		// Wait for stateUpdate after the scenario resolves so periodic dormant snapshots
+		// cannot race ahead of the encounter-trigger mutation.
+		const stateUpdate = await waitForEvent(socket, 'stateUpdate');
 
 		expect(triggerResult.ok).toBe(true);
 		expect(triggerResult.scenario).toBe('frost-crossing-encounter-trigger');
