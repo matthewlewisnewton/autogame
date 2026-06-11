@@ -339,6 +339,7 @@ const {
   removeDeadEnemies,
   cleanupAfterDamage,
   checkRunTerminalState,
+  tickCombatExhaustionGrace,
   resetTransientRunState,
   returnPlayersToLobby,
   giveUpRun,
@@ -1648,6 +1649,7 @@ function runGameLoopTick() {
           }
 
           regenMagicStones();
+          tickCombatExhaustionGrace(now);
 
           state.loot = state.loot.filter(l => l.questCritical || (now - l.createdAt) < LOOT_LIFETIME_MS);
         }
@@ -1973,6 +1975,7 @@ if (typeof module !== 'undefined' && module.exports) {
     isRunObjectiveComplete,
     buildRunSummary,
     checkRunTerminalState,
+    tickCombatExhaustionGrace,
     resetTransientRunState,
     returnPlayersToLobby,
     giveUpRun,

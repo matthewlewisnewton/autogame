@@ -34,6 +34,7 @@ const {
   OPENING_HAND_SIZE,
   HAND_SLOT_FILL_ORDER,
   PASSIVE_DRAW_INTERVAL_MS,
+  RUN_EXHAUSTION_GRACE_MS,
   DIFFICULTY_MINIBOSS_HP_PER_PLAYER,
   difficultyScaleFactor,
   runPlayerCount,
@@ -3395,6 +3396,32 @@ function checkTelepipeProximity() {
   }
 }
 
+function isPlayerCombatExhaustionFailureReady(player, now = Date.now()) {
+  if (!isPlayerCombatExhausted(player)) return false;
+  if (isPlayerOutOfCards(player)) return true;
+  return player._combatExhaustedSince != null
+    && now - player._combatExhaustedSince >= RUN_EXHAUSTION_GRACE_MS;
+}
+
+function tickCombatExhaustionGrace(now = Date.now()) {
+  if (!_gameState.run || _gameState.run.status !== 'playing') return;
+
+  const inDungeon = Object.values(_gameState.players).filter((p) => p && !p.extracted);
+  for (const player of inDungeon) {
+    if (isPlayerCombatExhausted(player)) {
+      if (player._combatExhaustedSince == null) {
+        player._combatExhaustedSince = now;
+      }
+    } else {
+      delete player._combatExhaustedSince;
+    }
+  }
+
+  if (inDungeon.length > 0 && inDungeon.every((p) => isPlayerCombatExhaustionFailureReady(p, now))) {
+    checkRunTerminalState();
+  }
+}
+
 function checkRunTerminalState() {
   if (!_gameState.run || _gameState.run.status !== 'playing') return;
 
@@ -3418,8 +3445,9 @@ function checkRunTerminalState() {
   }
 
   if (!status) {
+    const now = Date.now();
     const inDungeon = Object.values(_gameState.players).filter((p) => p && !p.extracted);
-    if (inDungeon.length > 0 && inDungeon.every(isPlayerOutOfCards)) {
+    if (inDungeon.length > 0 && inDungeon.every((p) => isPlayerCombatExhaustionFailureReady(p, now))) {
       status = 'failed';
     }
   }
@@ -4008,6 +4036,7 @@ module.exports = {
   recordCrystalCollected,
   isRunObjectiveComplete,
   checkRunTerminalState,
+  tickCombatExhaustionGrace,
   resetTransientRunState,
   returnPlayersToLobby,
   giveUpRun,
