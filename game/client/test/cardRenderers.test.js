@@ -153,17 +153,17 @@ describe('resolveRenderers()', () => {
 		}
 	});
 
-	it('returns the heavy greatsword renderer for alloy/corebreaker (not the cone default)', () => {
+	it('returns dedicated renderers for alloy greatblade and corebreaker (not the cone default)', () => {
 		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
 			expect(resolveRenderers(cardId)).toHaveLength(1);
 			expect(resolveRenderers(cardId)[0]).not.toBe(WEAPON_TYPE_DEFAULT_RENDERER);
 		}
-		expect(resolveRenderers('steel_claymore')[0]).toBe(resolveRenderers('magma_greatsword')[0]);
+		expect(resolveRenderers('steel_claymore')[0]).not.toBe(resolveRenderers('magma_greatsword')[0]);
 	});
 
 	it('returns a dedicated renderer for excalibur_photon (not heavy greatsword or cone default)', () => {
 		const plain = WEAPON_TYPE_DEFAULT_RENDERER;
-		const heavy = resolveRenderers('steel_claymore')[0];
+		const heavy = resolveRenderers('magma_greatsword')[0];
 		expect(resolveRenderers('excalibur_photon')).toHaveLength(1);
 		expect(resolveRenderers('excalibur_photon')[0]).not.toBe(plain);
 		expect(resolveRenderers('excalibur_photon')[0]).not.toBe(heavy);

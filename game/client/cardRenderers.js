@@ -384,29 +384,72 @@ function renderReapersScythe(data, ctx) {
 	}
 }
 
+/** Alloy Greatblade: a heavy slate cleave that shatters the ground on impact. */
+const ALLOY_GREATBLADE_STYLE = {
+	color: 0x94a3b8,
+	emissive: 0x64748b,
+	coneAngle: Math.PI / 2.2,
+	range: 7,
+	fillOpacity: 0.5,
+	edgeOpacity: 0.92,
+	decalRadius: 3.2,
+	debrisCount: 18,
+	debrisSpread: 2.4,
+};
+
 /**
- * Per-weapon styling for the heavy wind-up greatswords (`steel_claymore`,
- * `magma_greatsword`). These carry a `windUpMs` lockout, so
- * the 315 charge telegraph already plays during the wind-up; the entries here
- * make the *resulting* hit feel proportionally heavy: a wider/larger cone arc
- * plus a pronounced impact — a larger-radius decal and a high-`count` debris/
- * spark burst — so the blow reads as a big committed swing. Each differs from
- * the others (color + shape/impact params) and hits harder than the lighter
- * blades in sub-tickets 01/02 (bigger decal radius, higher particle count).
+ * Alloy Greatblade swing. Composes the 315 primitives — a wide slate cone
+ * cleave plus guarded `spawnImpactDecal` and `spawnParticleBurst` at the strike
+ * point — into one weighty, committed blow. Honors `swingCount` and the
+ * `photon_barrage` stagger like the other heavy greatswords.
+ */
+function renderAlloyGreatblade(data, ctx) {
+	const style = ALLOY_GREATBLADE_STYLE;
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex('steel_claymore') ?? style.color;
+	const emissive = style.emissive;
+	const swingCount = data.swingCount || 1;
+	const delayPerSwing = data.specialEffect === 'photon_barrage' ? PHOTON_BARRAGE_SWING_DELAY_MS : 0;
+
+	const swing = () => ctx.spawnAttackEffect(origin, direction, {
+		color,
+		emissive,
+		coneAngle: style.coneAngle,
+		range: style.range,
+		fillOpacity: style.fillOpacity,
+		edgeOpacity: style.edgeOpacity,
+	});
+	for (let i = 0; i < swingCount; i++) {
+		const delay = delayPerSwing * i;
+		if (delay > 0) ctx.scheduleAfter(delay, swing);
+		else swing();
+	}
+
+	const impactAt = pointAlong(origin, direction, style.range);
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(impactAt, { color, emissive, radius: style.decalRadius });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(impactAt, {
+			color,
+			emissive,
+			count: style.debrisCount,
+			spread: style.debrisSpread,
+		});
+	}
+}
+
+/**
+ * Per-weapon styling for the heavy wind-up greatsword (`magma_greatsword`).
+ * These carry a `windUpMs` lockout, so the 315 charge telegraph already plays
+ * during the wind-up; the entry here makes the *resulting* hit feel
+ * proportionally heavy: a wider/larger cone arc plus a pronounced impact — a
+ * larger-radius decal and a high-`count` debris/spark burst — so the blow
+ * reads as a big committed swing. Hits harder than the lighter blades in
+ * sub-tickets 01/02 (bigger decal radius, higher particle count).
  */
 const HEAVY_GREATSWORD_STYLES = {
-	// Alloy Greatblade: a heavy slate cleave that shatters the ground on impact.
-	steel_claymore: {
-		color: 0x94a3b8,
-		emissive: 0x64748b,
-		coneAngle: Math.PI / 2.2,
-		range: 7,
-		fillOpacity: 0.5,
-		edgeOpacity: 0.92,
-		decalRadius: 3.2,
-		debrisCount: 18,
-		debrisSpread: 2.4,
-	},
 	// Corebreaker Greatsword: a wide magma swing that erupts molten debris.
 	magma_greatsword: {
 		color: 0xf97316,
@@ -2831,7 +2874,7 @@ const CARD_RENDERERS = {
 	echo_blade: renderEchoSlash,
 	infinite_disk: renderTripleReturning,
 	// Heavy wind-up greatswords — weighty committed-hit slash + impact.
-	steel_claymore: renderHeavyGreatsword,
+	steel_claymore: renderAlloyGreatblade,
 	magma_greatsword: renderHeavyGreatsword,
 	excalibur_photon: renderExcaliburPhoton,
 	fireball: renderFireball,
