@@ -25,6 +25,10 @@ const MINION_CHASE_SPEED_GRUNT = 2.5;
 const MINION_CHASE_SPEED_SKIRMISHER = 4.5;
 const STALE_THRESHOLD = 10000; // 10 seconds
 const DISCONNECT_GRACE_MS = 60000; // keep disconnected players in lobby for reconnection
+// How long a lobby may have zero connected players before it is reaped from the
+// registry. Kept distinct from DISCONNECT_GRACE_MS (the per-player reconnection
+// window) even though the value currently matches.
+const EMPTY_LOBBY_TTL_MS = 60000;
 const COOLDOWN_MS = 800; // server-side cooldown between uses of the same slot (milliseconds)
 const BOUNDS_MARGIN = 2;
 const SPAWN_PADDING = 2;
@@ -179,6 +183,7 @@ module.exports = {
   MINION_CHASE_SPEED_SKIRMISHER,
   STALE_THRESHOLD,
   DISCONNECT_GRACE_MS,
+  EMPTY_LOBBY_TTL_MS,
   COOLDOWN_MS,
   BOUNDS_MARGIN,
   SPAWN_PADDING,

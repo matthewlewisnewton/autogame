@@ -38,7 +38,8 @@ const {
 } = require('./config');
 const { PASSAGE_WIDTH, sampleFloorY, sampleFloorSurface, DEFAULT_FLOOR_Y, resolveFloorY } = require('./dungeon');
 const { applyLeechHeal, getFrenziedCombatMultipliers, checkFrenziedTelegraph } = require('./enemyVariants');
-const { isPlayingPhase, isLobbyPhase } = require('./lobbies');
+const lobbies = require('./lobbies');
+const { isPlayingPhase, isLobbyPhase } = lobbies;
 const { getEncounterBossId, isEncounterDormant, isEncounterLocked, canDamageEnemy } = require('./encounters');
 
 // ── Airborne / altitude model ──
@@ -3934,7 +3935,14 @@ function cleanupStalePlayers() {
           socket.disconnect();
         }
       }
-      delete _gameState.players[playerId];
+      // Route the removal through the registry so the player's lobby mapping,
+      // minions, and trades are cleaned up and an emptied lobby is deleted
+      // rather than left orphaned. Falls back to a bare delete for legacy/test
+      // gameState that is not tracked in the lobby registry.
+      const removed = lobbies.removePlayerFromLobby(playerId);
+      if (!removed) {
+        delete _gameState.players[playerId];
+      }
       console.log(`Player disconnected due to inactivity: ${playerId}`);
     }
   }

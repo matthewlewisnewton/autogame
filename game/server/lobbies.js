@@ -134,6 +134,15 @@ function lobbyPlayerSummaries(lobby) {
   }));
 }
 
+/**
+ * Number of players in a lobby that are still connected. Records with
+ * `connected === false` (inside the disconnect grace window, but no longer
+ * present) do not count, so a lobby whose only players have dropped reports 0.
+ */
+function connectedPlayerCount(lobby) {
+  return Object.values(lobby.state.players).filter((p) => p.connected !== false).length;
+}
+
 function lobbySummary(lobby) {
   return {
     id: lobby.id,
@@ -141,13 +150,19 @@ function lobbySummary(lobby) {
     gamePhase: lobby.state.gamePhase,
     selectedQuestId: lobby.state.selectedQuestId,
     selectedQuestTier: lobby.state.selectedQuestTier ?? 1,
-    playerCount: Object.keys(lobby.state.players).length,
+    // Advertise the connected count, not raw records, so the browser never shows
+    // a lobby whose players have all disconnected as "0 player(s) · Drop In".
+    playerCount: connectedPlayerCount(lobby),
     players: lobbyPlayerSummaries(lobby),
   };
 }
 
 function listLobbySummaries() {
-  return Array.from(lobbies.values()).map(lobbySummary);
+  // Exclude ghost lobbies (zero connected players) so they are never advertised
+  // as joinable, even in the window before the reaper deletes them.
+  return Array.from(lobbies.values())
+    .filter((lobby) => connectedPlayerCount(lobby) > 0)
+    .map(lobbySummary);
 }
 
 function getLobbyById(lobbyId) {
@@ -192,6 +207,10 @@ function createLobby(name) {
 
 function assignPlayerToLobby(playerId, lobbyId) {
   playerLobby.set(playerId, lobbyId);
+  // A player joining/reconnecting means the lobby is no longer abandoned; clear
+  // any pending empty-since stamp so the reaper does not evict it.
+  const lobby = lobbies.get(lobbyId);
+  if (lobby && lobby.emptySince) delete lobby.emptySince;
 }
 
 function removePlayerFromLobby(playerId) {
@@ -251,6 +270,7 @@ module.exports = {
   listLobbySummaries,
   lobbySummary,
   lobbyPlayerSummaries,
+  connectedPlayerCount,
   resetAllLobbies,
   getPrimaryLobbyStateForTests,
   _lobbies: lobbies,
