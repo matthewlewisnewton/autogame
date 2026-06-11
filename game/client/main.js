@@ -206,6 +206,7 @@ import { createSocketHandlerCtx } from './socketHandlers/socketHandlerCtx.js';
 import { bindConnectionHandlers } from './socketHandlers/connectionHandlers.js';
 import { bindInitHandlers } from './socketHandlers/initHandlers.js';
 import { bindLobbyBrowserHandlers } from './socketHandlers/lobbyBrowserHandlers.js';
+import { bindStateHandlers } from './socketHandlers/stateHandlers.js';
 
 const { serverToClient: SERVER_TO_CLIENT, clientToServer: CLIENT_TO_SERVER } = eventsCatalog;
 
@@ -1249,7 +1250,71 @@ const socketHandlerCtx = createSocketHandlerCtx({
 		set keyItemDefs(v) { keyItemDefs = v; },
 		get enemyDisplayCatalog() { return enemyDisplayCatalog; },
 		set enemyDisplayCatalog(v) { enemyDisplayCatalog = v; },
+		get suspendedRunSummary() { return suspendedRunSummary; },
+		set suspendedRunSummary(v) { suspendedRunSummary = v; },
+		get currentLayoutSeed() { return currentLayoutSeed; },
+		set currentLayoutSeed(v) { currentLayoutSeed = v; },
+		get currentLayout() { return currentLayout; },
+		set currentLayout(v) { currentLayout = v; },
+		get hubLayout() { return hubLayout; },
+		set hubLayout(v) { hubLayout = v; },
+		get debugGodmodeResult() { return debugGodmodeResult; },
+		set debugGodmodeResult(v) { debugGodmodeResult = v; },
+		get _prevDashX() { return _prevDashX; },
+		set _prevDashX(v) { _prevDashX = v; },
+		get _prevDashZ() { return _prevDashZ; },
+		set _prevDashZ(v) { _prevDashZ = v; },
+		get keyItemCooldownUntilClient() { return keyItemCooldownUntilClient; },
+		set keyItemCooldownUntilClient(v) { keyItemCooldownUntilClient = v; },
+		get _lastReturnRewardsPreview() { return _lastReturnRewardsPreview; },
+		set _lastReturnRewardsPreview(v) { _lastReturnRewardsPreview = v; },
+		get _lastMagicStones() { return _lastMagicStones; },
+		set _lastMagicStones(v) { _lastMagicStones = v; },
+		get extractedLobbyOverlayActive() { return extractedLobbyOverlayActive; },
+		set extractedLobbyOverlayActive(v) { extractedLobbyOverlayActive = v; },
 	},
+	hand,
+	deck,
+	cloneSuspendedRunSummary,
+	syncPassageLockColliders,
+	syncPassageLockGates,
+	applyInRunDeckPayload,
+	renderHand,
+	updateLevelSettingsBtnVisibility,
+	isLevelSettingsOpen,
+	syncLevelSettingsRewards,
+	syncLocalCollectionState,
+	syncQuestCommsPhase,
+	clearQuestCommsLog,
+	setQuestCommsUiVisible,
+	flushPendingQuestDialogue,
+	showExtractedLobbyOverlay,
+	returnToGuildLobby,
+	syncVanguardHud,
+	showCardHand,
+	setDeployButtonVisible,
+	clearSuspendedRunUi,
+	setGamePhase,
+	updateHpBar,
+	updateMsBar,
+	updateDeckStats,
+	updateVanguardPortrait,
+	updateCurrencyHud,
+	updateObjectiveHud,
+	updateBossEncounterHud,
+	setInDesperation,
+	setDesperationDrawPile,
+	updateDeckVisuals,
+	syncDrawPileFromServer,
+	pruneLootPickupAttempts,
+	isPlayerMoving,
+	getPlayerPosition,
+	setPlayerPosition,
+	triggerDashVFX,
+	getKeyItemCooldownRemainingMs,
+	renderKeyItemHud,
+	updateKeyItemCooldownHud,
+	clearKeyItemCooldownHud,
 	clearConnectWatchdog,
 	startConnectWatchdog,
 	startHeartbeat,
@@ -1292,220 +1357,7 @@ function bindSocketHandlers(s) {
 	bindConnectionHandlers(s, socketHandlerCtx);
 	bindInitHandlers(s, socketHandlerCtx);
 	bindLobbyBrowserHandlers(s, socketHandlerCtx);
-
-	s.on(SERVER_TO_CLIENT.STATE_UPDATE, (state) => {
-		const previousPhase = gameState && gameState.gamePhase;
-		if (myId && state?.players?.[myId] && gameState?.players?.[myId]) {
-			const prevHand = gameState.players[myId].hand;
-			if (Array.isArray(prevHand) && !Array.isArray(state.players[myId].hand)) {
-				state.players[myId].hand = prevHand;
-			}
-		}
-		// Verify layout seed consistency on every state update
-		if (currentLayoutSeed !== null && state.layoutSeed !== undefined && state.layoutSeed !== currentLayoutSeed) {
-			console.warn(`[layout] Seed mismatch: local=${currentLayoutSeed} server=${state.layoutSeed}`);
-			currentLayoutSeed = state.layoutSeed;
-		}
-		gameState = state;
-		suspendedRunSummary = cloneSuspendedRunSummary(state.suspendedRunSummary ?? null);
-		setGameStateRef(state);
-		if (state.gamePhase === 'playing' && currentLayout) {
-			syncPassageLockColliders(state.run?.passageLocks);
-			syncPassageLockGates(state.run?.passageLocks);
-		}
-		// Server snapshots omit debugGodmode; re-apply the last toggle so harness
-		// probes and local handlers stay consistent across stateUpdate.
-		if (myId && debugGodmodeResult?.ok && gameState.players?.[myId]) {
-			gameState.players[myId].debugGodmode = !!debugGodmodeResult.enabled;
-		}
-		const me = myId && gameState.players ? gameState.players[myId] : null;
-		const cardProbeScenarios = new Set([
-			'fireball-ready',
-			'status-mutual-exclusion-ready',
-			'purifying-pulse-ready',
-			'magma-windup-ready',
-		]);
-		if (state.gamePhase === 'playing'
-			&& me?.debugScenario
-			&& cardProbeScenarios.has(me.debugScenario)
-			&& Array.isArray(me.hand)) {
-			applyInRunDeckPayload({ hand: me.hand });
-			renderHand();
-		}
-		const isExtracted = !!(me && me.extracted);
-		// The renderer shows the hub during the lobby, and also while the local
-		// player is extracted into the hub mid-run (server still 'playing'), so
-		// floor sampling for the local avatar must use the hub layout in both
-		// cases; an active in-dungeon run uses the quest layout.
-		const inHubScene = state.gamePhase === 'lobby' || isExtracted;
-		const activeLayout = (inHubScene && hubLayout) ? hubLayout : currentLayout;
-		if (gameState && activeLayout) gameState.layout = activeLayout;
-		updateLevelSettingsBtnVisibility();
-		if (isLevelSettingsOpen()) syncLevelSettingsRewards();
-
-		const collectionChanged = syncLocalCollectionState(me);
-		const enteringLobby = previousPhase !== 'lobby' && state.gamePhase === 'lobby';
-		const enteringPlaying = previousPhase !== 'playing' && state.gamePhase === 'playing';
-
-		if (enteringLobby) {
-			_lastReturnRewardsPreview = null;
-			extractedLobbyOverlayActive = false;
-			syncQuestCommsPhase('lobby');
-		} else if (enteringPlaying) {
-			clearQuestCommsLog();
-			setQuestCommsUiVisible(true);
-			flushPendingQuestDialogue();
-		} else if (me && state.gamePhase === 'playing') {
-			if (enteringPlaying) {
-				extractedLobbyOverlayActive = false;
-			}
-			if (me.returnRewardsPreview != null) {
-				_lastReturnRewardsPreview = me.returnRewardsPreview;
-			} else if (_lastReturnRewardsPreview != null) {
-				gameState.players[myId].returnRewardsPreview = _lastReturnRewardsPreview;
-			}
-		}
-
-		if (isExtracted && state.gamePhase === 'playing') {
-			showExtractedLobbyOverlay();
-		} else if (state.gamePhase === 'lobby') {
-			returnToGuildLobby(state, {
-				refreshCollection: enteringLobby || collectionChanged,
-				rebuildHub: enteringLobby,
-			});
-		} else if (me) {
-			syncVanguardHud(me, state.gamePhase);
-		}
-
-		// Entering gameplay: ensure HUD is visible (unless extracted mid-run)
-		if (state.gamePhase === 'playing' && !isExtracted) {
-			showCardHand();
-			setDeckStackVisible(true);
-			if (lobbyEl) lobbyEl.classList.add('hidden');
-			setLobbyHudVisible(false);
-			setDeployButtonVisible(false);
-			clearSuspendedRunUi();
-			setGamePhase('playing');
-			if (enteringPlaying) {
-				_lastMagicStones = undefined;
-			}
-		}
-
-		// Update Vanguard HUD (HP always; MS/deck/portrait in-run only)
-		if (me) {
-			if (state.gamePhase === 'lobby') {
-				syncVanguardHud(me, 'lobby');
-			} else if (state.gamePhase === 'playing') {
-				updateHpBar(me.hp);
-				updateMsBar(me.magicStones);
-				if (Array.isArray(me.deck) || Array.isArray(me.hand)) {
-					updateDeckStats(
-						Array.isArray(me.deck) ? me.deck : deck,
-						Array.isArray(me.hand) ? me.hand : hand,
-						Array.isArray(me.inventory) ? me.inventory : myInventory,
-					);
-				}
-				updateVanguardPortrait();
-			}
-		}
-
-		// Update currency HUD (visible in lobby and during runs)
-		if (me) {
-			updateCurrencyHud(me.currency, { flashOnIncrease: state.gamePhase === 'playing' });
-		}
-
-		// Update objective HUD
-		updateObjectiveHud();
-
-		// Update stage-boss encounter HUD (boss bar shown while the encounter is
-		// active/locked and the boss enemy is alive; hidden otherwise)
-		updateBossEncounterHud();
-
-		// Reconcile hand with server authority + re-render for .no-ms / .empty classes
-		if (state.gamePhase === 'playing' && myId && state.players[myId] && state.players[myId].hand) {
-			const serverPlayer = state.players[myId];
-			const serverHand = serverPlayer.hand;
-			hand.length = 0;
-			for (let i = 0; i < serverHand.length; i++) {
-				hand[i] = serverHand[i] ? { ...serverHand[i] } : null;
-			}
-			if (serverPlayer.inDesperation != null) {
-				setInDesperation(serverPlayer.inDesperation);
-			} else if (Array.isArray(serverPlayer.deck) && serverPlayer.deck.length === 0) {
-				setInDesperation(hand.some((card) => card && card.isDesperation));
-			}
-			if (Array.isArray(serverPlayer.desperationDeck)) {
-				setDesperationDrawPile(serverPlayer.desperationDeck);
-			}
-			renderHand();
-			updateDeckVisuals();
-		} else if (state.gamePhase === 'playing') {
-			renderHand();
-		}
-
-		if (state.gamePhase === 'playing' && myId && state.players[myId]) {
-			const serverPlayer = state.players[myId];
-			if (Array.isArray(serverPlayer.deck)
-				|| Array.isArray(serverPlayer.desperationDeck)
-				|| serverPlayer.inDesperation != null) {
-				syncDrawPileFromServer();
-			}
-		}
-
-		// Prune pickup retry timestamps for loot that left the world
-		if (state.loot && Array.isArray(state.loot)) {
-			pruneLootPickupAttempts(new Set(state.loot.map((l) => l.id)));
-		}
-
-		// Client prediction reconciliation — only correct when idle or badly desynced
-		if (state.gamePhase === 'playing' && myId && gameState.players[myId]) {
-			const serverPlayer = gameState.players[myId];
-			if (!serverPlayer.dead && !isPlayerMoving()) {
-				const pos = getPlayerPosition();
-				const dx = serverPlayer.x - pos.x;
-				const dz = serverPlayer.z - pos.z;
-				const drift = Math.hypot(dx, dz);
-				if (drift > 0.15) {
-					setPlayerPosition(serverPlayer.x, serverPlayer.z);
-				}
-			} else if (!serverPlayer.dead) {
-				const pos = getPlayerPosition();
-				const drift = Math.hypot(serverPlayer.x - pos.x, serverPlayer.z - pos.z);
-				if (drift > 2.5) {
-					setPlayerPosition(serverPlayer.x, serverPlayer.z);
-				}
-			}
-		}
-
-		// Dash VFX detection: large position jump in a single tick
-		if (state.gamePhase === 'playing' && myId && gameState.players[myId]) {
-			const me = gameState.players[myId];
-			if (_prevDashX != null) {
-				const jumpDist = Math.hypot(me.x - _prevDashX, me.z - _prevDashZ);
-				if (jumpDist > (MOVE_SPEED / TICK_RATE) * 2) {
-					triggerDashVFX(myId);
-				}
-			}
-			_prevDashX = me.x;
-			_prevDashZ = me.z;
-		} else if (state.gamePhase !== 'playing') {
-			_prevDashX = null;
-			_prevDashZ = null;
-		}
-
-		// Key item HUD (slot content + cooldown overlay)
-		if (state.gamePhase === 'playing' && myId && gameState.players[myId]) {
-			const meForCooldown = gameState.players[myId];
-			const remaining = getKeyItemCooldownRemainingMs(meForCooldown);
-			meForCooldown.keyItemCooldownRemaining = remaining;
-			renderKeyItemHud(meForCooldown, state.gamePhase);
-			updateKeyItemCooldownHud(remaining);
-			if (remaining <= 0) keyItemCooldownUntilClient = 0;
-		} else if (state.gamePhase !== 'playing') {
-			keyItemCooldownUntilClient = 0;
-			clearKeyItemCooldownHud();
-		}
-	});
+	bindStateHandlers(s, socketHandlerCtx);
 
 	s.on(SERVER_TO_CLIENT.HEARTBEAT_ACK, (data) => {
 		if (connectionState === 'connected') {
