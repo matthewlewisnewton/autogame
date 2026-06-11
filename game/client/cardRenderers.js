@@ -369,10 +369,20 @@ const SABER_OF_LIGHT_STYLE = {
  * pale-gold/near-white cone swing, a bright telegraph-ring flash at the cut, and
  * a halo of holy sparks — into one unmistakable blade-of-light blow. Its
  * near-white emissive and pale-gold accent read as holy light, clearly distinct
- * from `flame_blade`'s orange and `excalibur_photon`'s magenta. Honors
- * `swingCount` and the `photon_barrage` stagger like `renderExcaliburPhoton`, and
- * each ctx call is guarded so the swing degrades gracefully when a primitive is
- * absent.
+ * from `flame_blade`'s orange and `excalibur_photon`'s magenta.
+ *
+ * The on-screen reach tracks the server's actual `attackRange` (which widens
+ * with grind via `aoeGrindScale`) rather than a hardcoded constant: the cone
+ * `range` and the impact flash/spark placement both derive from
+ * `data.attackRange`, falling back to the style default when absent.
+ *
+ * The card is a `swift_slash` fast attack (cooldown 400ms, no wind-up), so the
+ * single swing fires synchronously with the card use — no artificial delay
+ * before the first swing. Only extra swings (`swingCount > 1`) stagger via
+ * `scheduleAfter` like the other multi-swing blades. saber_of_light has
+ * `swingCount === 1`, so its visual lands in one immediate beat aligned to the
+ * server hit resolution. Each ctx call is guarded so the swing degrades
+ * gracefully when a primitive is absent.
  */
 function renderSaberOfLight(data, ctx) {
 	const style = SABER_OF_LIGHT_STYLE;
@@ -381,15 +391,16 @@ function renderSaberOfLight(data, ctx) {
 	const color = getAccentHex('saber_of_light') ?? style.color;
 	const emissive = style.emissive;
 	const swingCount = data.swingCount || 1;
-	const delayPerSwing = data.specialEffect === 'photon_barrage' ? PHOTON_BARRAGE_SWING_DELAY_MS : 0;
-	const impactAt = pointAlong(origin, direction, style.range);
+	// Honor the server's grind-scaled reach; fall back to the style default.
+	const range = data.attackRange || style.range;
+	const impactAt = pointAlong(origin, direction, range);
 
 	const swing = () => {
 		ctx.spawnAttackEffect(origin, direction, {
 			color,
 			emissive,
 			coneAngle: style.coneAngle,
-			range: style.range,
+			range,
 			fillOpacity: style.fillOpacity,
 			edgeOpacity: style.edgeOpacity,
 		});
@@ -405,8 +416,9 @@ function renderSaberOfLight(data, ctx) {
 			});
 		}
 	};
+	// First swing is immediate (swift_slash); only extra swings stagger.
 	for (let i = 0; i < swingCount; i++) {
-		const delay = delayPerSwing * i;
+		const delay = i * PHOTON_BARRAGE_SWING_DELAY_MS;
 		if (delay > 0) ctx.scheduleAfter(delay, swing);
 		else swing();
 	}

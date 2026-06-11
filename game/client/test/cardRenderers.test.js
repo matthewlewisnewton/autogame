@@ -1042,6 +1042,104 @@ describe('renderCardUsed() — energy & photon blade slashes', () => {
 	});
 });
 
+describe('renderCardUsed() — saber_of_light reach + swift_slash timing', () => {
+	function fireSaber(ctx, extra = {}) {
+		renderCardUsed(
+			{
+				cardId: 'saber_of_light',
+				specialEffect: 'swift_slash',
+				origin: { x: 0, z: 0 },
+				direction: { x: 1, z: 0 },
+				swingCount: 1,
+				hits: [],
+				...extra,
+			},
+			ctx,
+		);
+	}
+	function swingStyle(ctx) {
+		const attack = ctx._calls.find((c) => c[0] === 'spawnAttackEffect');
+		expect(attack).toBeDefined();
+		return attack[3];
+	}
+	function impactPoint(ctx) {
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		return ring[1];
+	}
+
+	it('uses a dedicated renderer, distinct from the plain cone default and renderWeaponSwing', () => {
+		const plainCone = resolveRenderers('reapers_scythe')[0]; // weapon type default (renderConeSwings)
+		const weaponSwing = resolveRenderers('iron_sword')[0]; // shared renderWeaponSwing
+		const saber = resolveRenderers('saber_of_light');
+		expect(saber).toHaveLength(1);
+		expect(saber[0]).not.toBe(plainCone);
+		expect(saber[0]).not.toBe(weaponSwing);
+	});
+
+	it('records the light-themed primitives: cone attack, telegraph flash, and spark burst', () => {
+		const ctx = makeCtx();
+		fireSaber(ctx, { attackRange: 5 });
+		const names = methodsCalled(ctx);
+		expect(names).toContain('spawnAttackEffect');
+		expect(names).toContain('spawnTelegraphRing');
+		expect(names).toContain('spawnParticleBurst');
+		// Holy radiant blade, not a flame trail.
+		expect(names).not.toContain('spawnProjectileTrail');
+		// Pale-gold accent on the cone swing.
+		expect(swingStyle(ctx)).toMatchObject({ color: 0xfef08a });
+	});
+
+	it('sizes the cone reach and impact placement from data.attackRange (longer for larger range)', () => {
+		const near = makeCtx();
+		fireSaber(near, { attackRange: 3 });
+		const far = makeCtx();
+		fireSaber(far, { attackRange: 9 });
+
+		// The cone swing range tracks the server attackRange directly.
+		expect(swingStyle(near).range).toBe(3);
+		expect(swingStyle(far).range).toBe(9);
+		expect(swingStyle(far).range).toBeGreaterThan(swingStyle(near).range);
+
+		// The impact flash / sparks are placed proportionally farther along the
+		// facing direction for the larger reach (origin 0,0 facing +x).
+		expect(impactPoint(far).x).toBeGreaterThan(impactPoint(near).x);
+		expect(impactPoint(far).x / impactPoint(near).x).toBeCloseTo(3);
+		// Spark burst rides the same impact point.
+		const nearBurst = near._calls.find((c) => c[0] === 'spawnParticleBurst');
+		const farBurst = far._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(farBurst[1].x).toBeGreaterThan(nearBurst[1].x);
+	});
+
+	it('falls back to a sane default reach when attackRange is absent', () => {
+		const ctx = makeCtx();
+		fireSaber(ctx, { attackRange: undefined });
+		// No hardcoded saber range constant leaks in as 0; a usable default reach.
+		expect(swingStyle(ctx).range).toBeGreaterThan(0);
+		expect(impactPoint(ctx).x).toBeGreaterThan(0);
+	});
+
+	it('fires the single swing immediately with no artificial scheduleAfter delay', () => {
+		const ctx = makeCtx();
+		fireSaber(ctx, { attackRange: 5, swingCount: 1 });
+		// The whole swing — cone, telegraph flash, sparks — lands synchronously.
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(true);
+		// swift_slash, swingCount 1: nothing is deferred.
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('degrades gracefully when optional light primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnTelegraphRing: undefined,
+			spawnParticleBurst: undefined,
+		});
+		expect(() => fireSaber(ctx, { attackRange: 5 })).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+	});
+});
+
 describe('renderCardUsed() — heavy wind-up greatswords', () => {
 	function fire(cardId, ctx, extra = {}) {
 		renderCardUsed({ cardId, origin: { x: 0, z: 0 }, direction: { x: 1, z: 0 }, hits: [], ...extra }, ctx);
