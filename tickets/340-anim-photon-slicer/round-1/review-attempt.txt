@@ -1,0 +1,21 @@
+**VERDICT: PASS**
+
+## Summary
+
+The ticket re-themes Photon Slicer from a mismatched stationary melee cone (`renderWeaponSwing`) into a dedicated returning cyan photon-disc boomerang (`renderReturningDisc`) — matching its name, `⟲` icon, and `returning_projectile` server effect.
+
+**Runtime health (gate):** `metrics.json` is `ok: true` with empty `pageerrors` and no `harness_failure`; `console.log` has no game-code page errors (only a benign auth-race `409` during lobby join). The game starts and loads cleanly.
+
+**Acceptance criteria — all met:**
+- Registered to a new `renderReturningDisc`, not swing/cone.
+- Cyan outbound `spawnAttackEffect` (accent `#22d3ee`).
+- Range driven by payload `attackRange: 8` with finite fallback; forward trail + far-point burst.
+- One boomerang return beat, defaulting to `Math.max(1, … ?? 1)` — **and this exactly matches the server**, which also runs `Math.max(1, returnPasses || 1)` = 1 pass for photon_slicer. This is the key correctness point and it's right.
+- Cadence from `ATTACK_EFFECT_DURATION/3`; no fixed delay. No `windUpMs`, so no telegraph needed.
+- Every optional ctx primitive guarded — graceful degradation holds.
+- Dead `WEAPON_SLASH_STYLES.photon_slicer` removed; others intact.
+- Tests rewritten; **212/212 client tests pass**.
+
+**Scope:** diff limited to `cardRenderers.js` + its test + the subticket md. No debug-scenario changes.
+
+Two non-blocking nits filed (duplicate `RETURNING_DISC_RANGE`/`INFINITE_DISK_RANGE` constant; redundant accent fallback). No `gaps.md` written since the verdict is PASS.

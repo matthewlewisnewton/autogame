@@ -159,3 +159,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [399-cleanup-anim-legion-marshal](tickets/399-cleanup-anim-legion-marshal/)
 - [ ] [400-cleanup-anim-voltaic-chain](tickets/400-cleanup-anim-voltaic-chain/)
 - [ ] [400-cleanup-anim-infinite-disk](tickets/400-cleanup-anim-infinite-disk/)
+- [ ] [401-cleanup-anim-photon-slicer](tickets/401-cleanup-anim-photon-slicer/)

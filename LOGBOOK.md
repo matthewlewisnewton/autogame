@@ -7571,3 +7571,26 @@ Consistent with the 315 VFX foundation and the per-card registration pattern (ma
 ## Remaining gaps
 None blocking. (Minor non-blocking observation captured in `nits.md`: the return beats are cosmetic over the resolution window rather than tied to discrete per-pass server hit timestamps — acceptable, since the server resolves all passes same-tick.)
 
+
+## v0.419 — 340-anim-photon-slicer  (2026-06-10 22:20:51)
+
+Uses `INFINITE_DISK_RETURN_BEAT_MS = round(ATTACK_EFFECT_DURATION/3)` (cardRenderers.js:548) — no fixed multi-second delay; the throw+return flourish resolves within the attack-effect window. No `windUpMs` on photon_slicer, so no charge telegraph is required. PASS.
+
+**Graceful degradation.**
+`spawnProjectileTrail`, `spawnParticleBurst`, and `scheduleAfter` are each guarded; only `spawnAttackEffect` is unconditional (consistent with sibling renderers and the always-present primitive). Calling with all optional primitives absent does not throw. PASS.
+
+**Dead `WEAPON_SLASH_STYLES.photon_slicer` removed.**
+Removed (former lines 182–193); other weapon styles untouched. PASS.
+
+**Tests updated and passing.**
+The old cone-slash assertion is replaced by a returning-disc test asserting the cyan outbound effect, far-point burst at `{x:8,z:0}`, exactly one scheduled return beat, and a reversed return trail after `runScheduled()`. `npx vitest run client/test/cardRenderers.test.js` → 212/212 pass, including the shared distinct-accent / graceful-degradation / card-specific-renderer tests with `photon_slicer` included.
+
+**Scope.**
+`git diff` touches only `game/client/cardRenderers.js`, `game/client/test/cardRenderers.test.js`, and the subticket md — within the declared scope. Server CARD_DEFS unchanged, so server tests referencing photon_slicer (`saber_aoe_grind`, `new_card_pack`) are unaffected.
+
+## Design / regression consistency
+Mirrors the established `renderTripleReturning` (Infinite Disk, photon_slicer's evolution) as its single-disc sibling — visually coherent across the lineage. No new ctx methods, no `renderer.js`/`main.js` changes, no foundation regression. No debug-scenario changes in this ticket.
+
+## Remaining gaps
+None blocking. Minor non-blocking nits filed separately (duplicate range constant, redundant accent fallback).
+
