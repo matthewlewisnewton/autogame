@@ -4663,6 +4663,12 @@ const THERMAL_COLUMN_DEFAULT_DOT_TICKS = 4;
 const THERMAL_COLUMN_DEFAULT_DOT_INTERVAL_MS = 500;
 const THERMAL_COLUMN_EMISSIVE_INTENSITY = 1.4;
 
+export const WYRMFLARE_BREATH_COLOR = 0xfb923c;
+export const WYRMFLARE_BREATH_EMISSIVE = 0xff3b00;
+const WYRMFLARE_BREATH_OPACITY = 0.72;
+const WYRMFLARE_BREATH_EMISSIVE_INTENSITY = 1.5;
+const WYRMFLARE_BREATH_LIFT_Y = 0.55;
+
 function thermalColumnDuration(style = {}) {
 	if (style.duration !== undefined) return style.duration;
 	const dotTicks = style.dotTicks ?? THERMAL_COLUMN_DEFAULT_DOT_TICKS;
@@ -4851,6 +4857,110 @@ export function spawnThermalColumnShaft(origin, style = {}) {
 export function spawnInfernoPillarEffect(origin, radius, style = {}) {
 	spawnThermalColumnScorchRing(origin, radius, style);
 	spawnThermalColumnShaft(origin, style);
+}
+
+function spawnDragonsBreathScorchFan(origin, direction, range, coneAngle, style) {
+	const dirAngle = Math.atan2(direction.z, direction.x);
+	const thetaStart = dirAngle - coneAngle / 2;
+	const geometry = new THREE.CircleGeometry(0.5, 32, thetaStart, coneAngle);
+	const material = new THREE.MeshStandardMaterial({
+		color: style.color,
+		emissive: style.emissive,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.position.set(origin.x, 0.12, origin.z);
+	mesh.rotation.x = -Math.PI / 2;
+	mesh.scale.setScalar(0.001);
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (targetScene) targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		radius: range,
+		coneAngle,
+		createdAt: performance.now(),
+		duration: style.duration,
+		isDragonsBreathScorch: true,
+		_scene: targetScene,
+	});
+}
+
+function spawnDragonsBreathConeSector(origin, direction, range, coneAngle, style) {
+	const baseRadius = range * Math.tan(coneAngle / 2);
+	const geometry = new THREE.CylinderGeometry(
+		0.02,
+		baseRadius,
+		range,
+		24,
+		1,
+		true,
+		Math.PI / 2 - coneAngle / 2,
+		coneAngle,
+	);
+	const material = new THREE.MeshStandardMaterial({
+		color: style.color,
+		emissive: style.emissive,
+		emissiveIntensity: WYRMFLARE_BREATH_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: WYRMFLARE_BREATH_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	const dirAngle = Math.atan2(direction.x, direction.z);
+	mesh.rotation.order = 'YXZ';
+	mesh.rotation.y = dirAngle;
+	mesh.rotation.z = -Math.PI / 2;
+	mesh.scale.setScalar(0.001);
+	mesh.position.set(
+		origin.x + direction.x * range / 2,
+		WYRMFLARE_BREATH_LIFT_Y,
+		origin.z + direction.z * range / 2,
+	);
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (targetScene) targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		direction: { x: direction.x, z: direction.z },
+		range,
+		coneAngle,
+		createdAt: performance.now(),
+		duration: style.duration,
+		isDragonsBreathCone: true,
+		_baseEmissiveIntensity: WYRMFLARE_BREATH_EMISSIVE_INTENSITY,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Wyrmflare lingering breath cone: a forward fire sector plus ground scorch fan
+ * scaled to attack range, lasting through the server's DoT window.
+ * @param {object} origin - { x, z }
+ * @param {object} direction - { x, z }
+ * @param {object} [style]
+ */
+export function spawnDragonsBreathEffect(origin, direction, style = {}) {
+	const dir = direction || { x: 1, z: 0 };
+	const dirLen = Math.hypot(dir.x, dir.z) || 1;
+	const nx = dir.x / dirLen;
+	const nz = dir.z / dirLen;
+	const range = style.range ?? 7;
+	const coneAngle = style.coneAngle ?? Math.PI / 3;
+	const color = style.color ?? WYRMFLARE_BREATH_COLOR;
+	const emissive = style.emissive ?? WYRMFLARE_BREATH_EMISSIVE;
+	const duration = thermalColumnDuration(style);
+	const palette = { color, emissive, duration };
+
+	spawnDragonsBreathScorchFan(origin, { x: nx, z: nz }, range, coneAngle, palette);
+	spawnDragonsBreathConeSector(origin, { x: nx, z: nz }, range, coneAngle, palette);
 }
 
 /**
@@ -5450,6 +5560,35 @@ export function updateAttackEffects() {
 			const baseIntensity = fx._baseEmissiveIntensity ?? THERMAL_COLUMN_EMISSIVE_INTENSITY;
 			const flicker = 1.0 + 0.25 * Math.sin(elapsed * 0.02);
 			fx.mesh.material.emissiveIntensity = baseIntensity * flicker * fade;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Forward dragon breath cone (Wyrmflare) ──
+		if (fx.isDragonsBreathCone) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const expandT = Math.min(t / 0.28, 1.0);
+			const s = Math.max(0.001, expandT);
+			fx.mesh.scale.set(s, s, s);
+			const dir = fx.direction || { x: 1, z: 0 };
+			const reach = (fx.range ?? 7) * s;
+			fx.mesh.position.set(
+				fx.origin.x + dir.x * reach / 2,
+				WYRMFLARE_BREATH_LIFT_Y,
+				fx.origin.z + dir.z * reach / 2,
+			);
+			const sustainFade = t < 0.72
+				? 1.0
+				: Math.max(0.01, 1.0 - (t - 0.72) / 0.28);
+			const fade = Math.max(0.01, WYRMFLARE_BREATH_OPACITY * sustainFade);
+			fx.mesh.material.opacity = fade;
+			const baseIntensity = fx._baseEmissiveIntensity ?? WYRMFLARE_BREATH_EMISSIVE_INTENSITY;
+			const flicker = 1.0 + 0.25 * Math.sin(elapsed * 0.02);
+			fx.mesh.material.emissiveIntensity = baseIntensity * flicker * sustainFade;
 
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, fx._scene || scene);
