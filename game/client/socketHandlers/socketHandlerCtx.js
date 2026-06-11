@@ -149,6 +149,7 @@ export function createSocketHandlerCtx(deps) {
 		spawnMinionSummonInEffect: deps.spawnMinionSummonInEffect,
 		spawnBatteryAutomatonDeployEffect: deps.spawnBatteryAutomatonDeployEffect,
 		spawnBulkheadMaulerDeployEffect: deps.spawnBulkheadMaulerDeployEffect,
+		spawnBulkheadMaulerShockwaveEffect: deps.spawnBulkheadMaulerShockwaveEffect,
 		spawnLegionMarshalRallyEffect: deps.spawnLegionMarshalRallyEffect,
 		spawnDivineGraceEffect: deps.spawnDivineGraceEffect,
 		spawnEventHorizonEffect: deps.spawnEventHorizonEffect,

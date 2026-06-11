@@ -58,6 +58,7 @@ function makeCtx(overrides = {}) {
 		spawnMinionSummonInEffect: record('spawnMinionSummonInEffect'),
 		spawnBatteryAutomatonDeployEffect: record('spawnBatteryAutomatonDeployEffect'),
 		spawnBulkheadMaulerDeployEffect: record('spawnBulkheadMaulerDeployEffect'),
+		spawnBulkheadMaulerShockwaveEffect: record('spawnBulkheadMaulerShockwaveEffect'),
 		spawnLegionMarshalRallyEffect: record('spawnLegionMarshalRallyEffect'),
 		flashMesh: record('flashMesh'),
 		spawnHitSpark: record('spawnHitSpark'),
@@ -246,7 +247,7 @@ describe('resolveRenderers()', () => {
 		const bulkhead = resolveRenderers('bulkhead_mauler');
 		expect(bulkhead).toHaveLength(2);
 		expect(bulkhead[0].name).toBe('renderBulkheadMaulerSummon');
-		expect(bulkhead[1].name).toBe('renderShockwaveSweep');
+		expect(bulkhead[1].name).toBe('renderBulkheadMaulerShockwaveSweep');
 		expect(bulkhead[0]).not.toBe(resolveRenderers('aegis_sentinel')[0]);
 	});
 
@@ -3827,7 +3828,10 @@ describe('renderCardUsed() — creature dispatch', () => {
 	});
 
 	it('Bulkhead Mauler shockwave renders a short wide cone', () => {
-		const ctx = makeCtx();
+		const meshes = {
+			e1: { position: { x: 2, y: 0, z: 0 } },
+		};
+		const ctx = makeCtx({ enemyMeshes: () => meshes });
 		renderCardUsed({
 			cardId: 'bulkhead_mauler',
 			specialEffect: 'shockwave_sweep',
@@ -3837,14 +3841,15 @@ describe('renderCardUsed() — creature dispatch', () => {
 			attackConeAngle: (Math.PI * 2) / 3,
 			hits: [{ enemyId: 'e1', hp: 41 }],
 		}, ctx);
-		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
-		expect(attacks).toHaveLength(1);
-		expect(attacks[0][3]).toMatchObject({
+		const shockwaves = ctx._calls.filter((c) => c[0] === 'spawnBulkheadMaulerShockwaveEffect');
+		expect(shockwaves).toHaveLength(1);
+		expect(shockwaves[0][3]).toMatchObject({
 			range: 4,
 			coneAngle: (Math.PI * 2) / 3,
 			color: 0x78716c,
 			emissive: 0xf59e0b,
 		});
+		expect(ctx._calls.some((c) => c[0] === 'spawnHitSpark')).toBe(true);
 		// Accent-tinted debris burst at the construct's feet.
 		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
 		expect(burst).toBeDefined();
@@ -3863,7 +3868,7 @@ describe('renderCardUsed() — creature dispatch', () => {
 			attackConeAngle: (Math.PI * 2) / 3,
 			hits: [{ enemyId: 'e1', hp: 41 }],
 		}, ctx)).not.toThrow();
-		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnBulkheadMaulerShockwaveEffect')).toBe(true);
 	});
 
 	it('undead_commander renders bone-white/purple caster ring and per-skeleton summon flourishes', () => {

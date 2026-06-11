@@ -51,6 +51,7 @@ import {
 	applySlowIndicator,
 	applyBurnIndicator,
 	spawnAttackEffect,
+	spawnBulkheadMaulerShockwaveEffect,
 	spawnFireTrailEffect,
 	spawnParticleBurst,
 	spawnHitSpark,
@@ -805,12 +806,12 @@ const MINION_HIT_VFX = {
 		enemyFlash: 0xf59e0b,
 		minionFlash: 0xfbbf24,
 		spawn: ({ minion, dir }) => {
-			spawnAttackEffect(
+			spawnBulkheadMaulerShockwaveEffect(
 				{ x: minion.x, z: minion.z },
 				dir,
 				{
-					range: 4,
-					coneAngle: (Math.PI * 2) / 3,
+					range: minion.attackRange,
+					coneAngle: minion.attackConeAngle,
 					color: 0x78716c,
 					emissive: 0xf59e0b,
 				}
