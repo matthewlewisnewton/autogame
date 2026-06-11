@@ -669,6 +669,83 @@ function emitLobbyQuestUpdate(lobby, state, extraFields = {}) {
   });
 }
 
+const CARD_PROBE_DEBUG_SCENARIOS = new Set([
+  'fireball-ready',
+  'status-mutual-exclusion-ready',
+  'purifying-pulse-ready',
+  'magma-windup-ready',
+]);
+
+const TELEPIPE_DEPLOY_DEBUG_SCENARIOS = new Set([
+  'telepipe-ready',
+  'fire-telepipe-ready',
+  'frost-telepipe-ready',
+  'frost-crossing-telepipe-ready',
+]);
+
+const BOSS_APPROACH_NUDGE_DEBUG_SCENARIOS = new Set([
+  'training-caverns-boss-approach',
+  'canyon-descent-boss-approach',
+  'arena-trials-boss-approach',
+  'spire-ascent-boss-approach',
+  'frost-crossing-boss-approach',
+]);
+
+/**
+ * Map a debug scenario name to a nullable hooks object read by gameplay hot paths.
+ * Clears hooks when name is null/undefined.
+ */
+function syncDebugHooksForScenario(player, name) {
+  if (!player) return;
+  if (!name) {
+    player.debugHooks = null;
+    return;
+  }
+
+  const hooks = {};
+
+  if (name === 'summon-low-mana') {
+    hooks.pinMagicStonesZero = true;
+  }
+
+  if (CARD_PROBE_DEBUG_SCENARIOS.has(name)) {
+    hooks.cardProbe = true;
+  }
+
+  if (name === 'status-mutual-exclusion-ready') {
+    hooks.extendedFreezeDurationMs = 10000;
+  }
+
+  if (name === 'ice-ball-ready') {
+    hooks.forceStatusRoll = 'slow';
+  }
+
+  if (BOSS_APPROACH_NUDGE_DEBUG_SCENARIOS.has(name)) {
+    hooks.bossApproachNudge = true;
+  }
+
+  if (TELEPIPE_DEPLOY_DEBUG_SCENARIOS.has(name)) {
+    hooks.telepipeDeploy = true;
+  }
+
+  if (name === 'fire-telepipe-ready') {
+    hooks.telepipeHand = 'fire';
+    hooks.pinMsOnDeploy = true;
+    hooks.pinMsOnTelepipePlace = true;
+    hooks.spawnTelepipeDummy = true;
+  } else if (name === 'frost-telepipe-ready') {
+    hooks.pinMsOnDeploy = true;
+  } else if (name === 'frost-crossing-telepipe-ready') {
+    hooks.telepipeHand = 'frost-crossing';
+    hooks.pinMsOnDeploy = true;
+    hooks.pinMsOnTelepipePlace = true;
+    hooks.spawnTelepipeDummy = true;
+    hooks.suppressWavesAfterDeploy = true;
+  }
+
+  player.debugHooks = Object.keys(hooks).length > 0 ? hooks : null;
+}
+
 function applyDebugScenario(socket, name) {
   const lobby = getLobbyForSocket(socket);
   if (!lobby) return { ok: false, reason: 'Not in a lobby' };
@@ -694,6 +771,7 @@ function applyDebugScenario(socket, name) {
     player.lastMoveTime = Date.now();
     clearPlayerCardCommitment(player);
     player.debugScenario = name;
+    syncDebugHooksForScenario(player, name);
     if (!player.pendingSummons) {
       player.pendingSummons = new Set();
     } else {
@@ -4752,7 +4830,7 @@ function applyDebugScenario(socket, name) {
       resetCardExerciseCooldowns(player);
       // Harness casts via keyboard (client rotation), not server-only useCard; force
       // the next slow roll so playthrough validation is deterministic (65% is flaky).
-      player.debugForceStatusRoll = 'slow';
+      // forceStatusRoll is set via syncDebugHooksForScenario (ice-ball-ready).
       const replaceSlot = player.hand.findIndex(c => c != null);
       if (replaceSlot >= 0) {
         player.hand[replaceSlot] = {
@@ -5159,14 +5237,6 @@ function applyDebugScenario(socket, name) {
   });
 }
 
-const BOSS_APPROACH_NUDGE_SCENARIOS = new Set([
-  'training-caverns-boss-approach',
-  'canyon-descent-boss-approach',
-  'arena-trials-boss-approach',
-  'spire-ascent-boss-approach',
-  'frost-crossing-boss-approach',
-]);
-
 /**
  * Debug-only: while a boss-approach scenario is active, inch the player toward
  * the encounter anchor each tick so headless harness walks can enter the trigger radius.
@@ -5181,7 +5251,7 @@ function nudgeDebugBossApproachPlayers(state) {
 
   const now = Date.now();
   for (const player of Object.values(state.players)) {
-    if (!player || !BOSS_APPROACH_NUDGE_SCENARIOS.has(player.debugScenario)) continue;
+    if (!player?.debugHooks?.bossApproachNudge) continue;
     const addsCleared = bossId && areAllNonBossEnemiesDefeated(state, bossId);
     if (!addsCleared) continue;
     if (player.debugScenarioNudgeAfter && now < player.debugScenarioNudgeAfter) continue;
@@ -5203,6 +5273,7 @@ function nudgeDebugBossApproachPlayers(state) {
 
 module.exports = {
   setCallbacks,
+  syncDebugHooksForScenario,
   applyDebugScenario,
   nudgeDebugBossApproachPlayers,
 };
