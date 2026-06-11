@@ -1944,7 +1944,9 @@ describe('renderCardUsed() — spell dispatch', () => {
 		}, wellCtx);
 		expect(horizonCtx._calls.some((c) => c[0] === 'spawnEventHorizonEffect')).toBe(true);
 		expect(wellCtx._calls.some((c) => c[0] === 'spawnEventHorizonEffect')).toBe(false);
-		expect(wellCtx._calls.some((c) => c[0] === 'spawnTelegraphRing' && c[2] === 12)).toBe(true);
+		expect(wellCtx._calls.some((c) => c[0] === 'spawnGravityWellEffect' && c[2] === 12)).toBe(true);
+		expect(horizonCtx._calls.some((c) => c[0] === 'spawnGravityWellEffect')).toBe(false);
+		expect(wellCtx._calls.some((c) => c[0] === 'spawnTelegraphRing' && c[2] === 12)).toBe(false);
 		expect(horizonCtx._calls.some((c) => c[0] === 'spawnTelegraphRing' && c[2] === 12)).toBe(false);
 		wellCtx.runScheduled();
 		horizonCtx.runScheduled();
