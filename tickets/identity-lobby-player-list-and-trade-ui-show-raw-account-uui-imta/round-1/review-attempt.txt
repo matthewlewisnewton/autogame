@@ -1,0 +1,14 @@
+**VERDICT: PASS**
+
+Review written to `round-1/review.md`. Summary:
+
+- **Runtime gate passes** — `metrics.json` has `ok: true`, `pageerrors` empty, `console.log` clean (only benign Vite/initScene logs). The game starts and runs.
+- **All AC surfaces fixed and verified by code-reading + tests:**
+  - Lobby player list (`main.js:4048`) and the server `lobbyPlayerList` now carrying `username` (`index.js:703`).
+  - Trade target dropdown (`main.js:2864`).
+  - Portrait character-id badge (`main.js:2129`).
+  - Incoming trade-offer text already used `fromUsername`.
+  - Save-name-without-rejoin via `syncLivePlayerUsername` (`index.js:1203`), wired from `account.js:125` — a one-for-one mirror of the proven `syncLivePlayerCosmetic` flow (same lazy-require to dodge the circular dep, same lobby iteration + broadcast).
+- **Tests green:** `vanguard-hud.test.js` (19), `account.test.js` + `cosmetic_runtime.test.js` (20) — including the profile-patch path that triggers the new sync function.
+
+No blocking gaps, so no `gaps.md`. No genuine nits worth a backlog ticket, so no `nits.md`. Per the rules I did not modify game code or git state.
