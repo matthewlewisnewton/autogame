@@ -476,6 +476,7 @@ const SPIRE_TELEPIPE_READY_SCENARIO = 'spire-ascent-telepipe-ready';
 /**
  * Quest-stage telepipe suspend → abandon → fresh redeploy (tickets 287 + 289).
  * Distinct from hub `runTelepipeResetStep`: abandons suspended checkpoint before redeploy.
+ * Preset-driven via `telepipeScenario` and `telepipeDeployScenario` (sunken-canyon, spire-ascent, or rooms).
  *
  * @param {import('playwright').Page} page
  * @param {{ preset: object, outDirAbs: string, repoRoot: string, serverLogPath?: string | null, gameProcess?: object | null, fromPlaying?: boolean, stageLabel?: string, defaultTelepipeScenario?: string, defaultDeployScenario?: string, defaultLobbyName?: string }} opts
@@ -497,6 +498,12 @@ async function runQuestTelepipeNewSortieStep({
 
 	const telepipeScenario = preset.telepipeScenario ?? defaultTelepipeScenario;
 	const deployScenario = preset.telepipeDeployScenario ?? preset.deployScenario ?? defaultDeployScenario;
+	if (!telepipeScenario) {
+		throw new Error(`preset.telepipeScenario is required for ${stageLabel} telepipe exercise`);
+	}
+	if (!deployScenario) {
+		throw new Error(`preset.telepipeDeployScenario (or deployScenario) is required for ${stageLabel} telepipe exercise`);
+	}
 
 	if (!fromPlaying) {
 		await createLobby(page, preset.lobbyName ?? defaultLobbyName);
@@ -513,15 +520,25 @@ async function runQuestTelepipeNewSortieStep({
 		if (harness?.phase !== 'playing') {
 			throw new Error(`Expected ${stageLabel} playing phase before telepipe exercise: ${JSON.stringify(harness)}`);
 		}
+		if (preset.layoutProfile && harness?.layout?.profile !== preset.layoutProfile) {
+			throw new Error(
+				`Expected layout.profile ${preset.layoutProfile} before telepipe exercise: ${JSON.stringify(harness?.layout)}`,
+			);
+		}
 	}
 
 	const deployedHarness = await readHarness(page);
 	const telepipeInHand = (deployedHarness?.hand || []).some((card) => card?.id === 'telepipe');
 	if (!telepipeInHand) {
-		throw new Error(`Expected telepipe in hand after ${stageLabel} deploy: ${JSON.stringify(deployedHarness?.hand)}`);
+		throw new Error(`Expected telepipe in hand after ${stageLabel} deploy (${telepipeScenario}): ${JSON.stringify(deployedHarness?.hand)}`);
 	}
 	if (deployedHarness?.phase !== 'playing') {
 		throw new Error(`Expected ${stageLabel} playing phase: ${JSON.stringify(deployedHarness)}`);
+	}
+	if (preset.layoutProfile && deployedHarness?.layout?.profile !== preset.layoutProfile) {
+		throw new Error(
+			`Expected layout.profile ${preset.layoutProfile} for telepipe exercise: ${JSON.stringify(deployedHarness?.layout)}`,
+		);
 	}
 
 	const preSuspend = await depleteRunResources(page);
@@ -604,6 +621,22 @@ async function runQuestTelepipeNewSortieStep({
 		beforeScreenshot: path.relative(repoRoot, beforeScreenshotPath),
 		afterScreenshot: path.relative(repoRoot, afterScreenshotPath),
 	};
+}
+
+/**
+ * Preset-driven stage-boss telepipe suspend → abandon → fresh redeploy.
+ *
+ * @param {import('playwright').Page} page
+ * @param {{ preset: object, outDirAbs: string, repoRoot: string, serverLogPath?: string | null, gameProcess?: object | null, fromPlaying?: boolean }} opts
+ */
+export async function runStageBossTelepipeNewSortieStep(opts) {
+	return runQuestTelepipeNewSortieStep({
+		...opts,
+		stageLabel: opts.preset?.layoutProfile ?? opts.preset?.questId ?? 'stage-boss',
+		defaultTelepipeScenario: opts.preset?.telepipeScenario,
+		defaultDeployScenario: opts.preset?.telepipeDeployScenario ?? opts.preset?.deployScenario,
+		defaultLobbyName: opts.preset?.lobbyName ?? 'Stage Boss Telepipe New Sortie',
+	});
 }
 
 /**

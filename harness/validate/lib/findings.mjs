@@ -441,6 +441,7 @@ function renderFloorAlignmentSection(floorAlignment, { preset, objectiveType } =
  *   bossVisualIdentity?: object | null,
  *   cardExercises?: { slowBurn?: object, purifyingPulse?: object, windup?: object } | null,
  *   canyonTelepipe?: object | null,
+ *   roomsTelepipe?: object | null,
  *   spireTelepipe?: object | null,
  *   consoleErrors?: string[],
  *   screenshots?: string[],
@@ -461,6 +462,18 @@ export function renderFindings(run) {
 	];
 
 	lines.push(...renderAssertionSection(run));
+
+	if (run.preset === 'rooms') {
+		lines.push(
+			formatAssertion('bossEncounterUiVisible', run.assertions?.bossEncounterUiVisible === true),
+			formatAssertion('bossDistinctFromAdds', run.assertions?.bossDistinctFromAdds === true),
+			formatAssertion('slowBurnMutuallyExclusive', run.assertions?.slowBurnMutuallyExclusive === true),
+			formatAssertion('healCleanseApplied', run.assertions?.healCleanseApplied === true),
+			formatAssertion('windupTelegraphActive', run.assertions?.windupTelegraphActive === true),
+			formatAssertion('telepipeVitalsPreserved', run.assertions?.telepipeVitalsPreserved === true),
+			formatAssertion('cardChargesResetOnNewSortie', run.assertions?.cardChargesResetOnNewSortie === true),
+		);
+	}
 
 	if (run.preset === 'sunken-canyon' || run.preset === 'spire-ascent') {
 		lines.push(
@@ -522,10 +535,12 @@ export function renderFindings(run) {
 	lines.push(...renderWindupSection(run.cardExercises?.windup));
 	if (run.preset === 'spire-ascent') {
 		lines.push(...renderQuestTelepipeSection(run.spireTelepipe, { emptyLabel: 'spire-ascent telepipe' }));
+	} else if (run.preset === 'rooms') {
+		lines.push(...renderQuestTelepipeSection(run.roomsTelepipe, { emptyLabel: 'rooms telepipe' }));
 	} else {
 		lines.push(...renderQuestTelepipeSection(run.canyonTelepipe, { emptyLabel: 'canyon telepipe' }));
 	}
-	if (run.preset === 'spire-ascent' || run.preset === 'sunken-canyon') {
+	if (run.preset === 'spire-ascent' || run.preset === 'sunken-canyon' || run.preset === 'rooms') {
 		lines.push(...renderNewContentExerciseSection(run.screenshots));
 	}
 

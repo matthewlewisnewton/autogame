@@ -29,7 +29,7 @@
     "validate:hub:check": "node ../harness/validate/verify-hub-artifacts.mjs",
     "validate:rooms": "node ../harness/validate/playthrough.mjs --preset rooms --steps full --out game/validation/rooms",
     "validate:rooms:check": "node ../harness/validate/verify-rooms-artifacts.mjs",
-    "validate:open-plaza": "node ../harness/validate/playthrough.mjs --preset open-plaza --steps full --out game/validation/open-plaza",
+    "validate:open-plaza": "node scripts/reset-open-plaza-validation.mjs && node ../harness/validate/playthrough.mjs --preset open-plaza --steps full --out game/validation/open-plaza && node scripts/append-open-plaza-harness-fixes.mjs",
     "validate:open-plaza:check": "node ../harness/validate/verify-open-plaza-artifacts.mjs",
     "validate:sunken-canyon": "node ../harness/validate/playthrough.mjs --preset sunken-canyon --steps full --out game/validation/sunken-canyon && node scripts/append-sunken-canyon-harness-fixes.mjs",
     "validate:sunken-canyon:check": "node ../harness/validate/verify-sunken-canyon-artifacts.mjs",

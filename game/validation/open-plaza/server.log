@@ -1,0 +1,27 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/369-playthrough-revalidate-open-plaza/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3287
+Player connected: socket=GURT-mJu-LSHHCm2AAAB, playerId=f02d70a7-93ab-4803-bdf0-44c8053807a1
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+[loot] spawned id=85f640f3-9faa-4fa6-83c7-96f6c43e9832 value=8
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+[telepipe] placed at (0.0, 0.0) by f02d70a7-93ab-4803-bdf0-44c8053807a1
+[telepipe] player f02d70a7-93ab-4803-bdf0-44c8053807a1 extracted
+[run] checkpoint captured
+[run] extracted to hub: Arena Trials — Tier II
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+[loot] spawned id=926255fa-ae5f-4856-ba22-238665f35718 value=12
+[loot] magic stone drop id=74ab79c0-4096-4380-aa02-a7abb8bb2082 value=20 at (16.0, 12.0)
+[loot] magic stone drop id=9bfe8a1e-d387-4625-82c4-003d74c7c338 value=20 at (12.0, 16.0)
+[loot] currency drop id=d46b19ae-c434-41b8-9992-d94abe1f0395 value=17 at (12.0, 16.0)
+[loot] magic stone drop id=a5adb4ac-680a-4264-8f6b-61af89d9e023 value=20 at (8.0, 12.0)
+[loot] magic stone drop id=e35205d3-41c5-4337-9137-93c225c48264 value=15 at (12.0, 8.0)
+[loot] magic stone drop id=898977b4-ec1b-45ef-88cf-13d2ffc9c781 value=70 at (11.0, 0.0)
+[loot] currency drop id=21f34b67-1a32-455e-86ff-11696f6651ac value=61 at (11.0, 0.0)
+Player disconnected: GURT-mJu-LSHHCm2AAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
