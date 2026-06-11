@@ -4466,6 +4466,95 @@ export function spawnMinionSummonInEffect(origin, style = {}) {
 	);
 }
 
+// Legion Marshal rally palette — bone-white / necrotic purple (undead_commander accent).
+export const LEGION_MARSHAL_COLOR = 0xe4e4e7;
+export const LEGION_MARSHAL_EMISSIVE = 0xa855f7;
+const LEGION_MARSHAL_COLUMN_HEIGHT = 4.5;
+const LEGION_MARSHAL_COLUMN_OPACITY = 0.7;
+const LEGION_MARSHAL_COLUMN_BASE_Y = 0.1;
+const LEGION_MARSHAL_EMISSIVE_INTENSITY = 1.4;
+const LEGION_MARSHAL_DEFAULT_RADIUS = 2;
+const LEGION_MARSHAL_BURST_COUNT = 8;
+const LEGION_MARSHAL_BURST_SPREAD = 1.4;
+
+/**
+ * Undead commander rally: expanding bone-white/purple ground ring plus a short
+ * vertical rising bone-shard / necrotic wisp column. Pure additive VFX; no
+ * network traffic or state beyond activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {number} [radius]
+ * @param {object} [style] - optional { color, emissive, duration }
+ */
+export function spawnLegionMarshalRallyEffect(origin, radius, style = {}) {
+	const color = style.color ?? LEGION_MARSHAL_COLOR;
+	const emissive = style.emissive ?? LEGION_MARSHAL_EMISSIVE;
+	const duration = style.duration ?? SUMMON_EFFECT_DURATION;
+	const r = radius ?? LEGION_MARSHAL_DEFAULT_RADIUS;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const ringGeometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.0,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	ringMesh.position.set(origin.x, 0.1, origin.z);
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(0.001);
+	targetScene.add(ringMesh);
+
+	activeEffects.push({
+		mesh: ringMesh,
+		origin: { x: origin.x, z: origin.z },
+		radius: r,
+		createdAt: performance.now(),
+		duration,
+		_scene: targetScene,
+	});
+
+	const columnGeometry = new THREE.CylinderGeometry(0.3, 0.55, LEGION_MARSHAL_COLUMN_HEIGHT, 16, 1, true);
+	const columnMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: LEGION_MARSHAL_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: LEGION_MARSHAL_COLUMN_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const columnMesh = new THREE.Mesh(columnGeometry, columnMaterial);
+	columnMesh.scale.y = 0.001;
+	columnMesh.position.set(origin.x, LEGION_MARSHAL_COLUMN_BASE_Y, origin.z);
+	targetScene.add(columnMesh);
+
+	activeEffects.push({
+		mesh: columnMesh,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration,
+		isLegionMarshalColumn: true,
+		_baseEmissiveIntensity: LEGION_MARSHAL_EMISSIVE_INTENSITY,
+		_scene: targetScene,
+	});
+
+	spawnParticleBurst(
+		{ x: origin.x, y: 0.5, z: origin.z },
+		{
+			color,
+			emissive,
+			count: LEGION_MARSHAL_BURST_COUNT,
+			spread: LEGION_MARSHAL_BURST_SPREAD,
+			duration,
+		},
+	);
+}
+
 // Sanctum Pulse palette: a coherent holy-gold so the divine "pulse" reads as
 // radiant sacred light, not the accidental green the ring emissive used to be.
 const DIVINE_GRACE_RING_COLOR = 0xfde68a; // warm gold ground ring
@@ -5803,6 +5892,26 @@ export function updateAttackEffects() {
 			fx.mesh.scale.setScalar(Math.max(0.001, fx.radius * scaleFactor));
 			const pulse = 0.55 + 0.35 * Math.abs(Math.sin(elapsed / 110));
 			fx.mesh.material.opacity = Math.max(0.01, pulse * (1.0 - t * 0.6));
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Legion Marshal ascending bone-shard / necrotic wisp column ──
+		if (fx.isLegionMarshalColumn) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.35, 1.0);
+			const s = Math.max(0.001, riseT);
+			fx.mesh.scale.y = s;
+			fx.mesh.position.y = LEGION_MARSHAL_COLUMN_BASE_Y + (LEGION_MARSHAL_COLUMN_HEIGHT * s) / 2;
+			const fade = Math.max(0.01, LEGION_MARSHAL_COLUMN_OPACITY * (1.0 - t));
+			fx.mesh.material.opacity = fade;
+			const baseIntensity = fx._baseEmissiveIntensity ?? LEGION_MARSHAL_EMISSIVE_INTENSITY;
+			const flicker = 1.0 + 0.25 * Math.sin(elapsed * 0.02);
+			fx.mesh.material.emissiveIntensity = baseIntensity * flicker * fade;
 
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, fx._scene || scene);
