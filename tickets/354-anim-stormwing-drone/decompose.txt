@@ -1,0 +1,10 @@
+Created 2 sub-tickets, in dependency order (independent renderers in the same card file; numbered to avoid edit collisions):
+
+- `/home/matt/workspace/.autogame-worktrees/354-anim-stormwing-drone/tickets/354-anim-stormwing-drone/subtickets/01-storm-deploy-flourish/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/354-anim-stormwing-drone/tickets/354-anim-stormwing-drone/subtickets/02-storm-strike-and-timing/ticket.md`
+
+**Decomposition rationale:**
+- **01 — Deploy flourish**: themes the summon-in as an aerial storm drone (cyan storm palette + wing/wind cue), distinct from evolved Thunderbird. Touches `renderStormEagleSummon` + registration only.
+- **02 — Strike + timing**: jagged storm bolt synced to the server strike event — impact lands on `data.strikeTarget`, uses the 3D tilted direction so the bolt reads as fired from the flying drone, fires once per attack tick. Touches `renderStormEagleStrike` + arc style only.
+
+Both verify as **code** (palette values, registration, handler logic, single-fire timing, and structural distinctness — none are pure pixel-look checks). The card has no `windUpMs`, so no charge-telegraph sub-ticket is needed. I kept scope to this card's two render functions plus its client tests, per the ticket's conflict-avoidance constraint.

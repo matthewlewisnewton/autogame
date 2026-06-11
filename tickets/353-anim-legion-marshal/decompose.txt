@@ -1,0 +1,9 @@
+Broke ticket **353-anim-legion-marshal** into **3 sub-tickets** (dependency order), following the same primitive → renderer/timing → tests pattern used by tickets 350, 360, and 362.
+
+**Rationale:** Legion Marshal is an instant creature summon (no `windUpMs`, no projectile, no DoT). The 318 pass added basic bone/purple styling; 353 needs a themed rally primitive, a rewritten renderer that composes commander + skeleton summons with necrotic tether arcs, and test coverage locking timing and composition.
+
+**Sub-ticket folders created:**
+
+1. `/home/matt/workspace/.autogame-worktrees/353-anim-legion-marshal/tickets/353-anim-legion-marshal/subtickets/01-legion-marshal-rally-vfx-primitive/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/353-anim-legion-marshal/tickets/353-anim-legion-marshal/subtickets/02-legion-marshal-renderer-and-timing/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/353-anim-legion-marshal/tickets/353-anim-legion-marshal/subtickets/03-legion-marshal-animation-tests/ticket.md`

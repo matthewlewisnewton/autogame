@@ -17,7 +17,9 @@ import {
 	spawnInfernoPillarEffect,
 	spawnEtherSiphonEffect,
 	spawnDragonsBreathEffect,
+	spawnGravityWellEffect,
 	spawnEventHorizonEffect,
+	spawnLegionMarshalRallyEffect,
 	updateAttackEffects,
 	getActiveEffects,
 } from '../renderer.js';
@@ -260,6 +262,62 @@ describe('shared VFX primitives', () => {
 		expect(spikeDispose).toHaveBeenCalled();
 	});
 
+	it('spawnLegionMarshalRallyEffect pushes bone/purple rally ring + rising column and cleans up', () => {
+		const before = getActiveEffects().length;
+		spawnLegionMarshalRallyEffect({ x: 1, z: -2 }, 2);
+		expect(getActiveEffects().length).toBeGreaterThanOrEqual(before + 2);
+
+		const effects = getActiveEffects().slice(before);
+		const ring = effects.find((fx) => fx.radius !== undefined);
+		const column = effects.find((fx) => fx.isLegionMarshalColumn);
+
+		expect(ring).toBeDefined();
+		expect(ring.radius).toBe(2);
+		expect(Number.isFinite(ring.duration)).toBe(true);
+		expect(ring.duration).toBeGreaterThan(0);
+		expect(ring.mesh.material.color.getHex()).toBe(0xe4e4e7);
+		expect(ring.mesh.material.emissive.getHex()).toBe(0xa855f7);
+
+		expect(column).toBeDefined();
+		expect(column.isLegionMarshalColumn).toBe(true);
+		expect(Number.isFinite(column.duration)).toBe(true);
+		expect(column.duration).toBeGreaterThan(0);
+		expect(column.mesh.material.color.getHex()).toBe(0xe4e4e7);
+		expect(column.mesh.material.emissive.getHex()).toBe(0xa855f7);
+
+		const ringDispose = vi.spyOn(ring.mesh.geometry, 'dispose');
+		const columnDispose = vi.spyOn(column.mesh.geometry, 'dispose');
+		for (const fx of effects) fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(ringDispose).toHaveBeenCalled();
+		expect(columnDispose).toHaveBeenCalled();
+	});
+
+	it('spawnLegionMarshalRallyEffect defaults radius to 2 and honors color overrides', () => {
+		spawnLegionMarshalRallyEffect({ x: 0, z: 0 });
+		const ring = getActiveEffects().find((fx) => fx.radius !== undefined);
+		expect(ring.radius).toBe(2);
+
+		getActiveEffects().length = 0;
+		spawnLegionMarshalRallyEffect({ x: 0, z: 0 }, 1.6, {
+			color: 0x123456,
+			emissive: 0x654321,
+			duration: 900,
+		});
+		const effects = getActiveEffects();
+		const ringFx = effects.find((fx) => fx.radius !== undefined);
+		const columnFx = effects.find((fx) => fx.isLegionMarshalColumn);
+		expect(ringFx.radius).toBe(1.6);
+		expect(ringFx.duration).toBe(900);
+		expect(columnFx.duration).toBe(900);
+		expect(ringFx.mesh.material.color.getHex()).toBe(0x123456);
+		expect(ringFx.mesh.material.emissive.getHex()).toBe(0x654321);
+		expect(columnFx.mesh.material.color.getHex()).toBe(0x123456);
+		expect(columnFx.mesh.material.emissive.getHex()).toBe(0x654321);
+	});
+
 	it('spawnEtherSiphonEffect pushes a contracting violet ring + ascending ether column', () => {
 		const before = getActiveEffects().length;
 		spawnEtherSiphonEffect({ x: 3, z: -1 }, 2.2);
@@ -339,6 +397,62 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before);
 		expect(scorchDisposeSpy).toHaveBeenCalled();
 		expect(coneDisposeSpy).toHaveBeenCalled();
+	});
+
+	it('spawnGravityWellEffect pushes contracting pull ring, void core, and inward inflow', () => {
+		const before = getActiveEffects().length;
+		spawnGravityWellEffect({ x: 2, z: -4 }, 12);
+		expect(getActiveEffects().length).toBe(before + 3);
+
+		const effects = getActiveEffects().slice(before);
+		const ring = effects.find((fx) => fx.isGravityWellRing);
+		const voidCore = effects.find((fx) => fx.isGravityWellVoid);
+		const inflow = effects.find((fx) => fx.isGravityWellInflow);
+
+		expect(ring).toBeDefined();
+		expect(ring.isGravityWellPull).toBe(true);
+		expect(ring.pullRadius).toBe(12);
+		expect(ring.duration).toBe(ATTACK_EFFECT_DURATION);
+		expect(ring.mesh.material.color.getHex()).toBe(0xc084fc);
+		expect(ring.mesh.material.emissive.getHex()).toBe(0xa855f7);
+
+		expect(voidCore).toBeDefined();
+		expect(voidCore.isGravityWellPull).toBe(true);
+		expect(voidCore.duration).toBe(ATTACK_EFFECT_DURATION);
+		expect(voidCore.mesh.material.color.getHex()).toBe(0x581c87);
+
+		expect(inflow).toBeDefined();
+		expect(inflow.isGravityWellPull).toBe(true);
+		expect(inflow.duration).toBe(ATTACK_EFFECT_DURATION);
+		expect(inflow.mesh.children.length).toBeGreaterThanOrEqual(2);
+		const sampleParticle = inflow.mesh.children[0];
+		const sampleVel = sampleParticle.userData.velocity;
+		const samplePos = sampleParticle.position;
+		expect(samplePos.x * sampleVel.x + samplePos.z * sampleVel.z).toBeLessThan(0);
+
+		const ringDisposeSpy = vi.spyOn(ring.mesh.geometry, 'dispose');
+		const coreDisposeSpy = vi.spyOn(voidCore.mesh.geometry, 'dispose');
+		const inflowDisposeSpy = vi.spyOn(inflow.mesh.children[0].geometry, 'dispose');
+		for (const fx of effects) fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(ringDisposeSpy).toHaveBeenCalled();
+		expect(coreDisposeSpy).toHaveBeenCalled();
+		expect(inflowDisposeSpy).toHaveBeenCalled();
+	});
+
+	it('spawnGravityWellEffect honors style.color, style.emissive, and style.duration', () => {
+		getActiveEffects().length = 0;
+		spawnGravityWellEffect({ x: 0, z: 0 }, 8, {
+			color: 0x112233,
+			emissive: 0x445566,
+			duration: 900,
+		});
+		const ring = getActiveEffects().find((fx) => fx.isGravityWellRing);
+		expect(ring.duration).toBe(900);
+		expect(ring.mesh.material.color.getHex()).toBe(0x112233);
+		expect(ring.mesh.material.emissive.getHex()).toBe(0x445566);
 	});
 
 	it('spawnInfernoPillarEffect pushes a fire scorch ring + rising thermal column', () => {

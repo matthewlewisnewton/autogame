@@ -4471,6 +4471,95 @@ export function spawnMinionSummonInEffect(origin, style = {}) {
 	);
 }
 
+// Legion Marshal rally palette — bone-white / necrotic purple (undead_commander accent).
+export const LEGION_MARSHAL_COLOR = 0xe4e4e7;
+export const LEGION_MARSHAL_EMISSIVE = 0xa855f7;
+const LEGION_MARSHAL_COLUMN_HEIGHT = 4.5;
+const LEGION_MARSHAL_COLUMN_OPACITY = 0.7;
+const LEGION_MARSHAL_COLUMN_BASE_Y = 0.1;
+const LEGION_MARSHAL_EMISSIVE_INTENSITY = 1.4;
+const LEGION_MARSHAL_DEFAULT_RADIUS = 2;
+const LEGION_MARSHAL_BURST_COUNT = 8;
+const LEGION_MARSHAL_BURST_SPREAD = 1.4;
+
+/**
+ * Undead commander rally: expanding bone-white/purple ground ring plus a short
+ * vertical rising bone-shard / necrotic wisp column. Pure additive VFX; no
+ * network traffic or state beyond activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {number} [radius]
+ * @param {object} [style] - optional { color, emissive, duration }
+ */
+export function spawnLegionMarshalRallyEffect(origin, radius, style = {}) {
+	const color = style.color ?? LEGION_MARSHAL_COLOR;
+	const emissive = style.emissive ?? LEGION_MARSHAL_EMISSIVE;
+	const duration = style.duration ?? SUMMON_EFFECT_DURATION;
+	const r = radius ?? LEGION_MARSHAL_DEFAULT_RADIUS;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const ringGeometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.0,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	ringMesh.position.set(origin.x, 0.1, origin.z);
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(0.001);
+	targetScene.add(ringMesh);
+
+	activeEffects.push({
+		mesh: ringMesh,
+		origin: { x: origin.x, z: origin.z },
+		radius: r,
+		createdAt: performance.now(),
+		duration,
+		_scene: targetScene,
+	});
+
+	const columnGeometry = new THREE.CylinderGeometry(0.3, 0.55, LEGION_MARSHAL_COLUMN_HEIGHT, 16, 1, true);
+	const columnMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: LEGION_MARSHAL_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: LEGION_MARSHAL_COLUMN_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const columnMesh = new THREE.Mesh(columnGeometry, columnMaterial);
+	columnMesh.scale.y = 0.001;
+	columnMesh.position.set(origin.x, LEGION_MARSHAL_COLUMN_BASE_Y, origin.z);
+	targetScene.add(columnMesh);
+
+	activeEffects.push({
+		mesh: columnMesh,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration,
+		isLegionMarshalColumn: true,
+		_baseEmissiveIntensity: LEGION_MARSHAL_EMISSIVE_INTENSITY,
+		_scene: targetScene,
+	});
+
+	spawnParticleBurst(
+		{ x: origin.x, y: 0.5, z: origin.z },
+		{
+			color,
+			emissive,
+			count: LEGION_MARSHAL_BURST_COUNT,
+			spread: LEGION_MARSHAL_BURST_SPREAD,
+			duration,
+		},
+	);
+}
+
 // Sanctum Pulse palette: a coherent holy-gold so the divine "pulse" reads as
 // radiant sacred light, not the accidental green the ring emissive used to be.
 const DIVINE_GRACE_RING_COLOR = 0xfde68a; // warm gold ground ring
@@ -4562,6 +4651,170 @@ export function spawnDivineGraceColumn(origin) {
 export function spawnDivineGraceEffect(origin, radius) {
 	spawnDivineGracePulseRing(origin, radius);
 	spawnDivineGraceColumn(origin);
+}
+
+// Restoration Beacon palette — emerald restorative light. Aligns with the
+// healing_font accent (#86efac / emissive 0x4ade80). Deliberately green and a
+// taller/narrower shaft than Sanctum Pulse's broad gold column, so the two heal
+// signatures never read alike. Never reuse the DIVINE_GRACE_* gold constants here.
+const RESTORATION_BEACON_RING_COLOR = 0x86efac; // soft emerald ground heal ring
+const RESTORATION_BEACON_RING_EMISSIVE = 0x4ade80; // bright green ring glow
+const RESTORATION_BEACON_COLUMN_COLOR = 0xbbf7d0; // pale mint shaft body
+const RESTORATION_BEACON_COLUMN_EMISSIVE = 0x4ade80; // emerald column glow
+const RESTORATION_BEACON_COLUMN_HEIGHT = 5.6; // taller than the gold column (4.5)
+const RESTORATION_BEACON_COLUMN_OPACITY = 0.78; // brighter peak than the gold shaft
+const RESTORATION_BEACON_COLUMN_BASE_Y = 0.1; // ground offset of the shaft base
+const RESTORATION_BEACON_COLUMN_RADIUS_TOP = 0.12; // narrow tip (vs grace 0.3)
+const RESTORATION_BEACON_COLUMN_RADIUS_BASE = 0.26; // narrow base (vs grace 0.55)
+const RESTORATION_BEACON_MOTE_COLOR = 0x86efac; // emerald heal motes
+const RESTORATION_BEACON_MOTE_EMISSIVE = 0x22c55e; // deeper green mote core
+const RESTORATION_BEACON_MOTE_COUNT = 14; // ascending mote count
+const RESTORATION_BEACON_MOTE_RISE = 2.2; // upward velocity scale of the motes
+const RESTORATION_BEACON_MOTE_DRIFT = 0.5; // lateral drift of the motes
+
+/**
+ * Expanding emerald ground heal ring (the flat base of the Restoration Beacon).
+ * Radius-based, so it rides the shared expand→fade lifecycle in
+ * updateAttackEffects exactly like the other heal-card pulse rings.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ */
+export function spawnRestorationBeaconRing(origin, radius) {
+	const geometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const material = new THREE.MeshStandardMaterial({
+		color: RESTORATION_BEACON_RING_COLOR,
+		emissive: RESTORATION_BEACON_RING_EMISSIVE,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.position.set(origin.x, 0.1, origin.z);
+	mesh.rotation.x = -Math.PI / 2;
+	mesh.scale.setScalar(0.001);
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (targetScene) targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration: SUMMON_EFFECT_DURATION,
+	});
+}
+
+/**
+ * Tall, narrow emerald light beacon rising from the cast origin — the headline
+ * silhouette of Restoration Beacon. Rides the shared `isLightColumn` lifecycle
+ * (same base-pinned grow→fade shaft Sanctum Pulse uses) but in the emerald
+ * palette and a taller/narrower geometry, carrying its own height/opacity via
+ * the fx fields so it never touches the gold column constants. No per-frame
+ * allocation.
+ * @param {object} origin - { x, z }
+ */
+export function spawnRestorationBeaconColumn(origin) {
+	const geometry = new THREE.CylinderGeometry(
+		RESTORATION_BEACON_COLUMN_RADIUS_TOP,
+		RESTORATION_BEACON_COLUMN_RADIUS_BASE,
+		RESTORATION_BEACON_COLUMN_HEIGHT,
+		16,
+		1,
+		true,
+	);
+	const material = new THREE.MeshStandardMaterial({
+		color: RESTORATION_BEACON_COLUMN_COLOR,
+		emissive: RESTORATION_BEACON_COLUMN_EMISSIVE,
+		emissiveIntensity: 1.6,
+		transparent: true,
+		opacity: RESTORATION_BEACON_COLUMN_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.scale.y = 0.001;
+	mesh.position.set(origin.x, RESTORATION_BEACON_COLUMN_BASE_Y, origin.z);
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (targetScene) targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration: SUMMON_EFFECT_DURATION,
+		isLightColumn: true,
+		// Per-effect shaft dims so the shared isLightColumn branch keeps the base
+		// pinned for the taller/brighter green beacon without gold constants.
+		columnHeight: RESTORATION_BEACON_COLUMN_HEIGHT,
+		columnBaseY: RESTORATION_BEACON_COLUMN_BASE_Y,
+		columnOpacity: RESTORATION_BEACON_COLUMN_OPACITY,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Upward-streaming emerald heal motes lifting off the beacon base. Builds a
+ * single Group of particles with strongly upward velocities and rides the
+ * shared `isParticleBurst` update branch (no new per-frame allocation).
+ * @param {object} origin - { x, z }
+ */
+export function spawnRestorationBeaconMotes(origin) {
+	if (!areParticlesEnabled()) return;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const group = new THREE.Group();
+	group.position.set(origin.x, RESTORATION_BEACON_COLUMN_BASE_Y, origin.z);
+
+	for (let i = 0; i < RESTORATION_BEACON_MOTE_COUNT; i += 1) {
+		const geometry = THREE.IcosahedronGeometry
+			? new THREE.IcosahedronGeometry(0.07, 0)
+			: new THREE.SphereGeometry(0.07, 6, 6);
+		const material = new THREE.MeshStandardMaterial({
+			color: RESTORATION_BEACON_MOTE_COLOR,
+			emissive: RESTORATION_BEACON_MOTE_EMISSIVE,
+			emissiveIntensity: 1.5,
+			transparent: true,
+			opacity: 1.0,
+		});
+		const particle = new THREE.Mesh(geometry, material);
+		const angle = Math.random() * Math.PI * 2;
+		const drift = RESTORATION_BEACON_MOTE_DRIFT * Math.random();
+		// Strong upward bias so the motes visibly ascend the beacon shaft.
+		particle.userData.velocity = {
+			x: Math.cos(angle) * drift,
+			y: RESTORATION_BEACON_MOTE_RISE * (0.7 + Math.random() * 0.6),
+			z: Math.sin(angle) * drift,
+		};
+		group.add(particle);
+	}
+	targetScene.add(group);
+
+	activeEffects.push({
+		mesh: group,
+		_scene: targetScene,
+		isParticleBurst: true,
+		createdAt: performance.now(),
+		duration: SUMMON_EFFECT_DURATION,
+	});
+}
+
+/**
+ * Restoration Beacon: an emerald restorative beacon — a tall narrow green light
+ * pillar rising from the origin, an expanding ground heal ring, and ascending
+ * heal motes. Pure additive VFX; every primitive fires synchronously (the server
+ * resolves the heal instantly in one `cardUsed`). Visually distinct from Sanctum
+ * Pulse's broad gold column — never reuses the divine-grace effect or palette.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ */
+export function spawnRestorationBeaconEffect(origin, radius) {
+	if (!origin) return;
+	spawnRestorationBeaconColumn(origin);
+	spawnRestorationBeaconRing(origin, radius);
+	spawnRestorationBeaconMotes(origin);
 }
 
 // Ether Siphon palette — violet ethereal mana-drain (matches cards.js mana_leach accent).
@@ -4908,6 +5161,14 @@ export const WYRMFLARE_BREATH_EMISSIVE = 0xff3b00;
 const WYRMFLARE_BREATH_OPACITY = 0.72;
 const WYRMFLARE_BREATH_EMISSIVE_INTENSITY = 1.5;
 const WYRMFLARE_BREATH_LIFT_Y = 0.55;
+
+export const GRAVITY_WELL_VFX_COLOR = 0xc084fc;
+export const GRAVITY_WELL_VFX_EMISSIVE = 0xa855f7;
+export const GRAVITY_WELL_VOID_CORE = 0x581c87;
+const GRAVITY_WELL_VOID_CORE_RADIUS = 0.32;
+const GRAVITY_WELL_PULL_RING_MIN_SCALE = 0.3;
+const GRAVITY_WELL_VOID_EMISSIVE_INTENSITY = 1.65;
+const GRAVITY_WELL_INFLOW_PARTICLE_COUNT = 10;
 
 function thermalColumnDuration(style = {}) {
 	if (style.duration !== undefined) return style.duration;
@@ -5796,6 +6057,122 @@ export function spawnImpactDecal(origin, style = {}) {
 }
 
 /**
+ * Gravity Well pull VFX: a contracting purple ground ring, a dark void core at
+ * the origin, and optional inward-flowing particle streaks. Honors `color`,
+ * `emissive`, `duration`.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ * @param {object} [style]
+ */
+export function spawnGravityWellEffect(origin, radius, style = {}) {
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const pullRadius = radius ?? 12;
+	const color = style.color ?? GRAVITY_WELL_VFX_COLOR;
+	const emissive = style.emissive ?? GRAVITY_WELL_VFX_EMISSIVE;
+	const duration = style.duration ?? ATTACK_EFFECT_DURATION;
+	const originXZ = { x: origin.x, z: origin.z };
+	const createdAt = performance.now();
+
+	const ringGeometry = new THREE.RingGeometry(0.82, 1.0, 48);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.1,
+		transparent: true,
+		opacity: 0.88,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	const ringY = Number.isFinite(origin.y) ? origin.y : GROUND_OVERLAY_Y;
+	ringMesh.position.set(origin.x, ringY, origin.z);
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(pullRadius);
+	targetScene.add(ringMesh);
+
+	activeEffects.push({
+		mesh: ringMesh,
+		origin: originXZ,
+		pullRadius,
+		isGravityWellPull: true,
+		isGravityWellRing: true,
+		createdAt,
+		duration,
+		_scene: targetScene,
+	});
+
+	const coreGeometry = new THREE.SphereGeometry(GRAVITY_WELL_VOID_CORE_RADIUS, 14, 12);
+	const coreMaterial = new THREE.MeshStandardMaterial({
+		color: GRAVITY_WELL_VOID_CORE,
+		emissive: GRAVITY_WELL_VOID_CORE,
+		emissiveIntensity: GRAVITY_WELL_VOID_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: 0.92,
+		depthWrite: false,
+	});
+	const coreMesh = new THREE.Mesh(coreGeometry, coreMaterial);
+	coreMesh.position.set(origin.x, ringY + 0.22, origin.z);
+	targetScene.add(coreMesh);
+
+	activeEffects.push({
+		mesh: coreMesh,
+		origin: originXZ,
+		isGravityWellPull: true,
+		isGravityWellVoid: true,
+		_baseEmissiveIntensity: GRAVITY_WELL_VOID_EMISSIVE_INTENSITY,
+		createdAt,
+		duration,
+		_scene: targetScene,
+	});
+
+	if (!areParticlesEnabled()) return;
+
+	const inflowGroup = new THREE.Group();
+	inflowGroup.position.set(origin.x, 0, origin.z);
+	for (let i = 0; i < GRAVITY_WELL_INFLOW_PARTICLE_COUNT; i += 1) {
+		const geometry = new THREE.IcosahedronGeometry
+			? new THREE.IcosahedronGeometry(0.07, 0)
+			: new THREE.SphereGeometry(0.07, 6, 6);
+		const material = new THREE.MeshStandardMaterial({
+			color,
+			emissive,
+			emissiveIntensity: 1.35,
+			transparent: true,
+			opacity: 1.0,
+		});
+		const particle = new THREE.Mesh(geometry, material);
+		const angle = (i / GRAVITY_WELL_INFLOW_PARTICLE_COUNT) * Math.PI * 2
+			+ (Math.random() - 0.5) * 0.35;
+		const outerDist = pullRadius * (0.72 + Math.random() * 0.28);
+		const px = Math.cos(angle) * outerDist;
+		const pz = Math.sin(angle) * outerDist;
+		const py = 0.14 + Math.random() * 0.42;
+		particle.position.set(px, py, pz);
+		const inwardSpeed = outerDist * 1.05;
+		particle.userData.velocity = {
+			x: -(px / outerDist) * inwardSpeed,
+			y: -py * 0.35,
+			z: -(pz / outerDist) * inwardSpeed,
+		};
+		inflowGroup.add(particle);
+	}
+	targetScene.add(inflowGroup);
+
+	activeEffects.push({
+		mesh: inflowGroup,
+		origin: originXZ,
+		pullRadius,
+		isGravityWellPull: true,
+		isGravityWellInflow: true,
+		createdAt,
+		duration,
+		_scene: targetScene,
+	});
+}
+
+/**
  * Spawn an expanding/pulsing ground ring used to telegraph an incoming AoE.
  * Expands out to `radius`, pulses, and fades. Honors `color`, `emissive`,
  * `duration`.
@@ -5866,6 +6243,26 @@ export function updateAttackEffects() {
 			continue;
 		}
 
+		// ── Legion Marshal ascending bone-shard / necrotic wisp column ──
+		if (fx.isLegionMarshalColumn) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.35, 1.0);
+			const s = Math.max(0.001, riseT);
+			fx.mesh.scale.y = s;
+			fx.mesh.position.y = LEGION_MARSHAL_COLUMN_BASE_Y + (LEGION_MARSHAL_COLUMN_HEIGHT * s) / 2;
+			const fade = Math.max(0.01, LEGION_MARSHAL_COLUMN_OPACITY * (1.0 - t));
+			fx.mesh.material.opacity = fade;
+			const baseIntensity = fx._baseEmissiveIntensity ?? LEGION_MARSHAL_EMISSIVE_INTENSITY;
+			const flicker = 1.0 + 0.25 * Math.sin(elapsed * 0.02);
+			fx.mesh.material.emissiveIntensity = baseIntensity * flicker * fade;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
 		// ── Ether Siphon ascending violet ether column ──
 		if (fx.isEtherSiphonColumn) {
 			const t = Math.min(elapsed / fx.duration, 1.0);
@@ -5922,15 +6319,20 @@ export function updateAttackEffects() {
 			continue;
 		}
 
-		// ── Ascending holy light column (Sanctum Pulse) ──
+		// ── Ascending holy light column (Sanctum Pulse / Restoration Beacon) ──
 		if (fx.isLightColumn) {
 			const t = Math.min(elapsed / fx.duration, 1.0);
 			const riseT = Math.min(t / 0.35, 1.0); // grow upward over first 35%
 			const s = Math.max(0.001, riseT);
 			fx.mesh.scale.y = s;
+			// Per-effect shaft dims (default to the gold column) so a taller/brighter
+			// green beacon stays base-pinned through the same branch.
+			const colHeight = fx.columnHeight ?? DIVINE_GRACE_COLUMN_HEIGHT;
+			const colBaseY = fx.columnBaseY ?? DIVINE_GRACE_COLUMN_BASE_Y;
+			const colOpacity = fx.columnOpacity ?? DIVINE_GRACE_COLUMN_OPACITY;
 			// Keep the base on the ground as the centered cylinder scales up.
-			fx.mesh.position.y = DIVINE_GRACE_COLUMN_BASE_Y + (DIVINE_GRACE_COLUMN_HEIGHT * s) / 2;
-			fx.mesh.material.opacity = Math.max(0.01, DIVINE_GRACE_COLUMN_OPACITY * (1.0 - t));
+			fx.mesh.position.y = colBaseY + (colHeight * s) / 2;
+			fx.mesh.material.opacity = Math.max(0.01, colOpacity * (1.0 - t));
 
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, fx._scene || scene);
@@ -6125,6 +6527,43 @@ export function updateAttackEffects() {
 			fx.mesh.scale.setScalar(Math.max(0.001, fx.telegraphRadius * expandT));
 			const pulse = 0.55 + 0.35 * Math.abs(Math.sin(elapsed / 120));
 			fx.mesh.material.opacity = Math.max(0.01, pulse * (1.0 - t));
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Gravity Well inward pull (contracting ring, void core, inflow streaks) ──
+		if (fx.isGravityWellPull) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const fade = Math.max(0.01, 1.0 - t);
+
+			if (fx.isGravityWellRing) {
+				const contractT = Math.min(t / 0.4, 1.0);
+				const startScale = fx.pullRadius ?? GRAVITY_WELL_PULL_RING_MIN_SCALE;
+				const endScale = GRAVITY_WELL_PULL_RING_MIN_SCALE;
+				const scale = startScale + (endScale - startScale) * contractT;
+				fx.mesh.scale.setScalar(Math.max(0.001, scale));
+				const pulse = 0.6 + 0.3 * Math.abs(Math.sin(elapsed / 95));
+				fx.mesh.material.opacity = Math.max(0.01, pulse * fade);
+			} else if (fx.isGravityWellVoid) {
+				const pulseT = Math.min(t / 0.12, 1.0);
+				const pulse = 1.0 + (1.0 - pulseT) * 0.9;
+				const baseIntensity = fx._baseEmissiveIntensity ?? GRAVITY_WELL_VOID_EMISSIVE_INTENSITY;
+				fx.mesh.material.emissiveIntensity = baseIntensity * pulse * fade;
+				fx.mesh.material.opacity = Math.max(0.01, 0.92 * fade);
+				const coreScale = 0.85 + 0.2 * (1.0 - pulseT);
+				fx.mesh.scale.setScalar(coreScale);
+			} else if (fx.isGravityWellInflow) {
+				for (let c = 0; c < fx.mesh.children.length; c += 1) {
+					const particle = fx.mesh.children[c];
+					const v = particle.userData.velocity;
+					particle.position.set(v.x * t, v.y * t, v.z * t);
+					particle.material.opacity = fade;
+				}
+			}
+
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, fx._scene || scene);
 				activeEffects.splice(i, 1);
