@@ -7369,3 +7369,26 @@ capture-plan fallback, not a defect; runtime health is proven and the citadel
 path is covered by passing unit + e2e suites. One minor non-blocking redundancy
 is noted in `nits.md`.
 
+
+## v0.407 — 351-anim-purifying-pulse  (2026-06-10 20:24:09)
+
+VFX without sound. Server emits `playerId` + `healedTargets`, matching exactly
+what the client gating reads.
+
+### Scope
+**Respected.** Diff touches only `game/client/cardRenderers.js`,
+`game/client/renderer.js`, and `game/client/test/cardRenderers.test.js` (plus
+ticket bookkeeping) — within the declared scope.
+
+### Design/regression consistency
+Consistent with `game/docs/design.md` (heal/cleanse spell identity, mint palette
+distinct from gold sanctum). No debug scenario added or changed by this ticket
+(the existing `debugScenarios.js` purifying_pulse entry is untouched), so the
+debug-scenario gate does not apply. No foundation regression.
+
+## Remaining gaps
+None blocking. The fallback smoke capture did not cast purifying_pulse itself
+(deck/hand smoke flow), but the card's visual was validated at the sub-ticket
+level, the runtime is proven healthy, and the rendering path is fully unit-tested
+— this is a minor coverage observation, not a blocker.
+
