@@ -1,0 +1,15 @@
+## Review complete
+
+**Verdict: PASS**
+
+Wrote the full assessment to `tickets/test-hooks-opendeckboothfortest-openshopboothfortest-throw-t-uvx1/round-1/review.md`.
+
+### Summary
+
+**Runtime:** `metrics.json` has `"ok": true` and empty `pageerrors`. `console.log` has no `pageerror` or `[fatal]` lines. The game loaded and completed the smoke capture (lobby → deploy → dungeon).
+
+**Implementation:** Two-line fix in `main.js` — test hooks now call `openDeckBooth(deckBoothDeps)` and `openShopBooth(shopBoothDeps)` instead of exposing the raw closures. Reuses the same deps objects as booth listeners and debug openers.
+
+**Acceptance criteria:** Both hooks work with zero arguments. `lobby-menu-dismiss.test.js` asserts lobby visibility, dismissed-flag reset, and the correct booth panel (`#deck-editor` / `#card-shop`). All 321 vitest tests pass.
+
+**No `gaps.md`** (PASS only). **No `nits.md`** — nothing worth a follow-up backlog item for this small, focused fix.

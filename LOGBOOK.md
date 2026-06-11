@@ -8593,3 +8593,26 @@ None. All acceptance criteria are satisfied; runtime capture and unit tests conf
 ---
 
 
+
+## v0.462 — test hooks: __openDeckBoothForTest / __openShopBoothForTest throw TypeError (missing deps argument)  (2026-06-11 09:41:24)
+
+
+## Code quality
+
+- Minimal, correct fix: reuses existing `deckBoothDeps` / `shopBoothDeps` rather than duplicating dep objects.
+- No dead code introduced; no new console errors in capture or tests.
+- Test updated to exercise the documented zero-arg API instead of manually constructing deps (which masked the production bug).
+
+## Debug scenarios
+
+This ticket did not add or change any `?debugScenario=` shortcuts. Existing `?booth=` debug openers already passed deps correctly via `createRequestDebugBoothOpener` / `createRequestDebugShopBoothOpener`; only the window test hooks were broken. No debug-path gating or normal-gameplay bypass concerns apply.
+
+## Integration notes
+
+- Single sub-ticket (`01-bind-booth-test-hook-deps`) covers the full top-level acceptance criteria.
+- Browser capture used the fallback full-flow smoke plan (auth → lobby → deploy → dungeon movement/dodge); it does not invoke the booth test hooks directly, but vitest provides direct hook coverage and the runtime capture confirms the game loads and plays cleanly with the change applied.
+
+## Remaining gaps
+
+None. The TypeError from calling unbound `openDeckBooth` / `openShopBooth` without a deps argument is fixed, covered by unit test, and the game runs cleanly in capture.
+
