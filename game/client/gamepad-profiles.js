@@ -398,18 +398,21 @@ export function readBindingAxisValue(gamepad, binding) {
 /**
  * @param {Gamepad} gamepad
  * @param {GamepadBinding} binding
+ * @param {Record<'up' | 'down' | 'left' | 'right', boolean> | null} [cState]
+ *   Precomputed 8BitDo 64 C-button state (read once per frame at the binding
+ *   threshold). Reused for cButton bindings to avoid re-reading per slot.
  * @returns {boolean}
  */
-export function isBindingActive(gamepad, binding) {
+export function isBindingActive(gamepad, binding, cState = null) {
 	if (binding.type === 'button') {
 		return isGamepadButtonActive(gamepad, binding.index);
 	}
 	if (binding.type === 'cButton') {
-		return is8BitDo64CButtonActive(
-			gamepad,
-			binding.direction,
-			binding.threshold ?? EIGHTBITDO_64_C_BUTTON_THRESHOLD,
-		);
+		const threshold = binding.threshold ?? EIGHTBITDO_64_C_BUTTON_THRESHOLD;
+		if (cState && threshold === EIGHTBITDO_64_C_BUTTON_THRESHOLD) {
+			return cState[binding.direction];
+		}
+		return is8BitDo64CButtonActive(gamepad, binding.direction, threshold);
 	}
 	const threshold = binding.threshold ?? 0.5;
 	const value = readBindingAxisValue(gamepad, binding);
