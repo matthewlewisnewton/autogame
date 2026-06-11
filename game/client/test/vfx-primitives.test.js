@@ -16,6 +16,8 @@ import {
 	spawnMirrorWardReflectBurst,
 	spawnInfernoPillarEffect,
 	spawnEtherSiphonEffect,
+	spawnDragonsBreathEffect,
+	spawnEventHorizonEffect,
 	updateAttackEffects,
 	getActiveEffects,
 } from '../renderer.js';
@@ -307,6 +309,38 @@ describe('shared VFX primitives', () => {
 		expect(column.mesh.material.emissive.getHex()).toBe(0x654321);
 	});
 
+	it('spawnDragonsBreathEffect pushes a forward breath cone + ground scorch fan', () => {
+		const before = getActiveEffects().length;
+		spawnDragonsBreathEffect({ x: 1, z: -2 }, { x: 1, z: 0 });
+		expect(getActiveEffects().length).toBe(before + 2);
+
+		const effects = getActiveEffects();
+		const scorch = effects[before];
+		const cone = effects[before + 1];
+
+		expect(scorch.isDragonsBreathScorch).toBe(true);
+		expect(scorch.radius).toBe(7);
+		expect(scorch.duration).toBe(2250);
+		expect(scorch.mesh.material.color.getHex()).toBe(0xfb923c);
+		expect(scorch.mesh.material.emissive.getHex()).toBe(0xff3b00);
+
+		expect(cone.isDragonsBreathCone).toBe(true);
+		expect(cone.range).toBe(7);
+		expect(cone.duration).toBe(2250);
+		expect(cone.mesh.material.color.getHex()).toBe(0xfb923c);
+		expect(cone.mesh.material.emissive.getHex()).toBe(0xff3b00);
+
+		const scorchDisposeSpy = vi.spyOn(scorch.mesh.geometry, 'dispose');
+		const coneDisposeSpy = vi.spyOn(cone.mesh.geometry, 'dispose');
+		scorch.createdAt = performance.now() - scorch.duration - 100;
+		cone.createdAt = performance.now() - cone.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(scorchDisposeSpy).toHaveBeenCalled();
+		expect(coneDisposeSpy).toHaveBeenCalled();
+	});
+
 	it('spawnInfernoPillarEffect pushes a fire scorch ring + rising thermal column', () => {
 		const before = getActiveEffects().length;
 		spawnInfernoPillarEffect({ x: 1, z: -2 }, 3.5);
@@ -418,6 +452,54 @@ describe('shared VFX primitives', () => {
 		updateAttackEffects();
 
 		expect(getActiveEffects().length).toBe(before);
+	});
+
+	it('spawnEventHorizonEffect adds a singularity group with palette, radii, and cleanup', () => {
+		const before = getActiveEffects().length;
+		spawnEventHorizonEffect({ x: 0, z: 0 }, 12, 2.5);
+		expect(getActiveEffects().length).toBe(before + 1);
+
+		const fx = lastEffect();
+		expect(fx.isEventHorizonEffect).toBe(true);
+		expect(fx.pullRadius).toBe(12);
+		expect(fx.centerRadius).toBe(2.5);
+		expect(Number.isFinite(fx.duration)).toBe(true);
+		expect(fx.duration).toBeGreaterThan(0);
+
+		const core = fx.mesh.children.find((c) => c.userData.isEventHorizonCore);
+		const accretion = fx.mesh.children.find((c) => c.userData.isEventHorizonAccretion);
+		const halo = fx.mesh.children.find((c) => c.userData.isEventHorizonHalo);
+		const particles = fx.mesh.children.filter((c) => c.userData.isEventHorizonParticle);
+
+		expect(core).toBeDefined();
+		expect(accretion).toBeDefined();
+		expect(halo).toBeDefined();
+		expect(particles.length).toBeGreaterThanOrEqual(8);
+
+		expect(core.material.color.getHex()).toBeLessThanOrEqual(0x1a0a2e);
+		expect(accretion.material.color.getHex()).toBe(0x581c87);
+		expect(accretion.material.emissive.getHex()).toBe(0x7c3aed);
+		expect(halo.material.emissive.getHex()).toBe(0x7c3aed);
+
+		const disposeSpy = vi.spyOn(core.geometry, 'dispose');
+		fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(disposeSpy).toHaveBeenCalled();
+	});
+
+	it('spawnEventHorizonEffect honors color/emissive style overrides', () => {
+		spawnEventHorizonEffect({ x: 1, z: -2 }, 8, 1.8, {
+			color: 0x123456,
+			emissive: 0x654321,
+			duration: 850,
+		});
+		const fx = lastEffect();
+		expect(fx.duration).toBe(850);
+		const accretion = fx.mesh.children.find((c) => c.userData.isEventHorizonAccretion);
+		expect(accretion.material.color.getHex()).toBe(0x123456);
+		expect(accretion.material.emissive.getHex()).toBe(0x654321);
 	});
 
 	it('spawnAttackEffect permafrost_lance adds a flagged lance projectile and cleans it up', () => {

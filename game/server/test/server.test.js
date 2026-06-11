@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createRequire } from 'module';
 import config, { MAX_HP, LOBBY_REVIVE_HP, PLAYER_MOVEMENT_SAVE_DEBOUNCE_MS } from '../config.js';
+
+const require = createRequire(import.meta.url);
+const { syncDebugHooksForScenario } = require('../debugScenarios.js');
 import { getQuest, countScriptedEnemiesInQuest, QUEST_DEFS } from '../quests.js';
 import { DEFAULT_COSMETIC } from '../cosmetic.js';
 import { createLobbyGameState } from '../lobbies.js';
@@ -170,10 +174,12 @@ function addPlayer(id, overrides = {}) {
 		magicStones: MAX_MAGIC_STONES,
 		currency: 0,
 		debugScenario: null,
+		debugHooks: null,
 		pendingSummons: new Set(),
 		deck: [],
 		...overrides
 	};
+	syncDebugHooksForScenario(gameState.players[id], gameState.players[id].debugScenario);
 }
 
 function firstRoomSpawn() {

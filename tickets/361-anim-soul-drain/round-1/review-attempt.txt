@@ -1,0 +1,14 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health (gate): clean.** `metrics.json` has `ok: true`, empty `pageerrors`, no `harness_failure`; `console.log`/`server.log`/`pageerrors.json` show no game-code errors. The game starts and loads.
+
+**Acceptance criteria met:**
+- **Theme match** — `renderSoulDrain` now draws a per-hit drain tether pulling souls FROM each struck enemy's mesh TO the caster (`spawnLightningArc`), plus the pink evolved telegraph/burst and a caster-side life-absorb flourish. Reads unmistakably as "Soul Drain."
+- **Timing sync** — effect is driven by the `CARD_USED` resolution broadcast (post-`windUpMs:700` wind-up, which is handled by the shared 307 telegraph). The heal flourish is gated on the *applied* `hpHealed > 0`, and tethers map to the authoritative radial-hit list. Instant drain, so no DoT owed.
+- **Robustness/perf** — despawned-enemy hits skipped, all primitive calls guarded, loop bounded by enemies in radius, reuses 315 primitives.
+- **Tests** — 165 client tests pass, with new coverage for tethers, mesh-skip, and heal gating.
+- **Debug scenario** (`soul-drain-heal-ready`) passes all three checks: dev-gated sole entry, reachable through normal gameplay, and no invariant bypass (just pre-arranges state; cast still goes through normal validation).
+
+**Nits (non-blocking, filed to nits.md):** the QA capture fell back to the smoke plan so the effect was never visually screenshotted (only unit-verified); and the debug scenario lives in `game/server/` while the ticket SCOPE named client paths only — additive and justified, but worth recording.

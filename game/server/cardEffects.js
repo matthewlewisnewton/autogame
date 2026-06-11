@@ -14,12 +14,6 @@
 
 const { SERVER_TO_CLIENT } = require('../shared/events.js');
 
-const CARD_PROBE_DEBUG_SCENARIOS = new Set([
-  'fireball-ready',
-  'status-mutual-exclusion-ready',
-  'purifying-pulse-ready',
-  'magma-windup-ready',
-]);
 const crypto = require('crypto');
 const { isPlayingPhase } = require('./lobbies');
 const { THEME } = require('./theme');
@@ -286,7 +280,7 @@ function handleUseCard(socket, state, lobby, data) {
     player.pendingSummons = new Set();
   }
 
-  const cardProbeActive = CARD_PROBE_DEBUG_SCENARIOS.has(player.debugScenario);
+  const cardProbeActive = !!player.debugHooks?.cardProbe;
   if (!state.run || (state.run.status !== 'playing' && !cardProbeActive)) return;
   if (cardProbeActive && state.run.status !== 'playing') {
     state.run.status = 'playing';
@@ -615,8 +609,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           placedBy: socket.playerId,
           placedAt: now,
         };
-        if ((player.debugScenario === 'fire-telepipe-ready'
-          || player.debugScenario === 'frost-crossing-telepipe-ready')
+        if (player.debugHooks?.pinMsOnTelepipePlace
           && Number.isFinite(player.magicStones)) {
           player._telepipeDeployMagicStones = player.magicStones;
           player._msRegenGraceUntil = now + 60000;
@@ -751,8 +744,8 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
         let freezeDurationMs = cardDef.freezeDurationMs || 2500;
         // Debug-only: headless card-mechanics probes need a longer slow/freeze window
         // than the default 2s because the driver emits by slot before client hand sync.
-        if (player.debugScenario === 'status-mutual-exclusion-ready') {
-          freezeDurationMs = Math.max(freezeDurationMs, 10000);
+        if (player.debugHooks?.extendedFreezeDurationMs) {
+          freezeDurationMs = Math.max(freezeDurationMs, player.debugHooks.extendedFreezeDurationMs);
         }
         const hits = applyFreezeInRadius(
           originX,
@@ -1042,7 +1035,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
         const slowChance = cardDef.slowChance ?? 1;
         const slowDurationMs = cardDef.slowDurationMs || 0;
         const forceSlowRoll = process.env.ALLOW_DEBUG_SCENARIOS === '1'
-          && player.debugForceStatusRoll === 'slow';
+          && player.debugHooks?.forceStatusRoll === 'slow';
         if (slowDurationMs > 0 && slowChance > 0) {
           const slowed = new Set();
           for (const hit of hits) {
@@ -1054,8 +1047,8 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
             }
           }
         }
-        if (forceSlowRoll) {
-          player.debugForceStatusRoll = null;
+        if (forceSlowRoll && player.debugHooks) {
+          player.debugHooks.forceStatusRoll = null;
         }
 
         cleanupAfterDamage();

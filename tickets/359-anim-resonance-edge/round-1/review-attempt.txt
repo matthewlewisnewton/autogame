@@ -1,0 +1,19 @@
+**VERDICT: PASS**
+
+## Summary
+
+The Resonance Edge animation polish ticket is complete and robust.
+
+**Runtime health (gate):** Game runs cleanly — `metrics.json` has `"ok": true`, empty `pageerrors`, no `harness_failure`; scene initialized and gameplay reached. The only `console.log` errors are two benign `409 Conflict` lobby/auth-race lines, not game-code page errors.
+
+**Acceptance criteria — all met:**
+- **Theme/visual:** Magenta (`#e879f9`) sonic blade with a `≋` resonance icon, an immediate cone cut, a double "ringing" pulse + harmonic after-ring, and a large radial discharge on the shockwave cadence. Reads unmistakably as "Resonance Edge."
+- **Timing sync:** Discharge is keyed off `data.shockwaveHits` from the server's `CARD_USED` payload, which fires exactly on the every-2nd-use cadence (`shockwaveEvery: 2`) at the server's `shockwaveRadius: 6`. No client-side combo arithmetic that could drift. Verified against `game/server/cardEffects.js`.
+- **No perf regression:** Only a few extra primitive spawns, gated to the cadence.
+- **Client tests:** Two added tests (off-cadence + on-cadence) pass.
+
+**Scope:** Clean — only `cardRenderers.js` (this card's fn + registration) and its test changed.
+
+**Nits (non-blocking, filed to `nits.md`):** `shockwaveRadius` isn't sent in the emit so its branch always falls back to 6 (harmless, matches the card); and the discharge only shows when the cadence shockwave actually strikes an enemy rather than whenever it fires.
+
+Wrote `review.md` and `nits.md`; no `gaps.md` (PASS).
