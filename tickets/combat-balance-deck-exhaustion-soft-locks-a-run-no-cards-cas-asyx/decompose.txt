@@ -1,0 +1,19 @@
+Broke the top-level ticket into **3 sub-tickets** in dependency order. The approach extends the existing deck-exhaustion fail path (option **b** from the parent ticket) rather than adding a baseline attack: detect when hand cards exist but none are castable, then auto-fail after a short grace period.
+
+**Root cause addressed:** `isPlayerOutOfCards()` only checks empty piles, so a hand with an uncastable MS spell (e.g. Signal Familiar at 25/99 MS) never triggers `checkRunTerminalState()`.
+
+### Sub-tickets created
+
+1. **01-detect-combat-exhaustion** — `canPlayerCastHandCard` + `isPlayerCombatExhausted` helpers and unit tests  
+2. **02-auto-fail-on-combat-exhaustion** — grace timer, `tickCombatExhaustionGrace` in the game loop, wire into `checkRunTerminalState`  
+3. **03-run-exhausted-debug-scenario** — update `run-exhausted` debug scenario to match the real MS stall + integration/regression tests  
+
+### Folder paths
+
+```
+/home/matt/workspace/.autogame-worktrees/combat-balance-deck-exhaustion-soft-locks-a-run-no-cards-cas-asyx/tickets/combat-balance-deck-exhaustion-soft-locks-a-run-no-cards-cas-asyx/subtickets/01-detect-combat-exhaustion/ticket.md
+/home/matt/workspace/.autogame-worktrees/combat-balance-deck-exhaustion-soft-locks-a-run-no-cards-cas-asyx/tickets/combat-balance-deck-exhaustion-soft-locks-a-run-no-cards-cas-asyx/subtickets/02-auto-fail-on-combat-exhaustion/ticket.md
+/home/matt/workspace/.autogame-worktrees/combat-balance-deck-exhaustion-soft-locks-a-run-no-cards-cas-asyx/tickets/combat-balance-deck-exhaustion-soft-locks-a-run-no-cards-cas-asyx/subtickets/03-run-exhausted-debug-scenario/ticket.md
+```
+
+No prior sub-ticket folders existed for this ticket, so nothing was deleted or renumbered. All three use **Verification: code**.

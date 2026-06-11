@@ -25,6 +25,10 @@ const MINION_CHASE_SPEED_GRUNT = 2.5;
 const MINION_CHASE_SPEED_SKIRMISHER = 4.5;
 const STALE_THRESHOLD = 10000; // 10 seconds
 const DISCONNECT_GRACE_MS = 60000; // keep disconnected players in lobby for reconnection
+// How long a lobby may have zero connected players before it is reaped from the
+// registry. Kept distinct from DISCONNECT_GRACE_MS (the per-player reconnection
+// window) even though the value currently matches.
+const EMPTY_LOBBY_TTL_MS = 60000;
 const COOLDOWN_MS = 800; // server-side cooldown between uses of the same slot (milliseconds)
 const BOUNDS_MARGIN = 2;
 const SPAWN_PADDING = 2;
@@ -118,6 +122,7 @@ const MAX_HAND_SLOTS = 6;
 const OPENING_HAND_SIZE = 4;
 const HAND_SLOT_FILL_ORDER = SHARED_HAND_SLOT_FILL_ORDER;
 const PASSIVE_DRAW_INTERVAL_MS = Number(process.env.PASSIVE_DRAW_INTERVAL_MS) || 5000;
+const RUN_EXHAUSTION_GRACE_MS = 20000; // grace before failing a run stuck on uncastable hand cards
 const MAX_PLAYERS = 16;
 
 // ── Difficulty scaling by live player count ──────────────────────────────────
@@ -179,6 +184,7 @@ module.exports = {
   MINION_CHASE_SPEED_SKIRMISHER,
   STALE_THRESHOLD,
   DISCONNECT_GRACE_MS,
+  EMPTY_LOBBY_TTL_MS,
   COOLDOWN_MS,
   BOUNDS_MARGIN,
   SPAWN_PADDING,
@@ -216,6 +222,7 @@ module.exports = {
   OPENING_HAND_SIZE,
   HAND_SLOT_FILL_ORDER,
   PASSIVE_DRAW_INTERVAL_MS,
+  RUN_EXHAUSTION_GRACE_MS,
   MAX_PLAYERS,
   DIFFICULTY_SCALE_MIN_PLAYERS,
   DIFFICULTY_SPAWN_RATE_PER_PLAYER,
