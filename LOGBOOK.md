@@ -7137,3 +7137,26 @@ other-card changes; no new debug scenario; no regression to other renderers
 ## Remaining gaps
 
 None blocking. Two minor thematic nits captured in `nits.md`.
+
+## v0.399 — 361-anim-soul-drain  (2026-06-10 18:46:55)
+
+- **Dev-gated, sole entry**: added only to the `DEBUG_SCENARIOS` set (index.js:648) and the
+  `applyDebugScenario` chain (debugScenarios.js:4970); the `?debugScenario=` path is the only
+  way in. Normal gameplay never references it.
+- **End-state reachable normally**: a damaged caster with full Magic Stones casting an evolved
+  Soul Drain into a grunt cluster is ordinary combat — the scenario only pre-arranges that
+  state; it does not auto-cast.
+- **No invariant bypass**: the scenario only mutates state (hp, magicStones, one hand slot,
+  enemy spawns). The actual cast still flows through the normal `useCard`/`cardEffects`
+  validation, server resolution, and net replication.
+
+## Design consistency
+Consistent with game/docs/design.md: builds on the 315 shared VFX primitives
+(`spawnLightningArc`, `spawnTelegraphRing`, `spawnParticleBurst`, `spawnImpactDecal`) and only
+touches this card's render fn. No foundation regression.
+
+## Remaining gaps
+None blocking. The only out-of-strict-scope change is the server-side debug scenario (ticket
+SCOPE names client paths); it is additive, properly gated, and a legitimate QA enabler — noted
+in nits.md, not blocking.
+
