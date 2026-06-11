@@ -26,6 +26,7 @@ function makeCtx(overrides = {}) {
 		spawnPurifyingPulseHealRing: record('spawnPurifyingPulseHealRing'),
 		spawnCleanseBurstEffect: record('spawnCleanseBurstEffect'),
 		spawnInfernoPillarEffect: record('spawnInfernoPillarEffect'),
+		spawnGlacierRuptureEffect: record('spawnGlacierRuptureEffect'),
 		spawnDragonsBreathEffect: record('spawnDragonsBreathEffect'),
 		spawnChainLightningEffect: record('spawnChainLightningEffect'),
 		spawnLightningArc: record('spawnLightningArc'),
@@ -77,6 +78,10 @@ describe('resolveRenderers()', () => {
 		const fireballRenderers = resolveRenderers('fireball');
 		expect(fireballRenderers).toHaveLength(1);
 		expect(fireballRenderers[0].name).toBe('renderFireball');
+		const arcaneBoltRenderers = resolveRenderers('arcane_bolt');
+		expect(arcaneBoltRenderers).toHaveLength(1);
+		expect(arcaneBoltRenderers[0].name).toBe('renderArcaneBolt');
+		expect(arcaneBoltRenderers[0].name).not.toBe('renderWeaponSwing');
 		const iceBallRenderers = resolveRenderers('ice_ball');
 		expect(iceBallRenderers).toHaveLength(1);
 		expect(iceBallRenderers[0].name).toBe('renderIceBall');
@@ -897,22 +902,112 @@ describe('renderCardUsed() — energy & photon blade slashes', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
 	});
 
-	it('Photon Slicer cuts a wide cyan spin slice with a light trail', () => {
+	it('Photon Slicer throws a returning cyan photon disc to its attackRange', () => {
 		const ctx = makeCtx();
-		fire('photon_slicer', ctx);
-		const style = swingStyle(ctx);
-		expect(style).toMatchObject({ color: 0x22d3ee, coneAngle: Math.PI, range: 4.5 });
-		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(true);
-	});
-
-	it('Arcane Bolt thrusts a tight violet energy lance with a beam streak', () => {
-		const ctx = makeCtx();
-		fire('arcane_bolt', ctx);
-		const style = swingStyle(ctx);
-		expect(style).toMatchObject({ color: 0xa78bfa, coneAngle: Math.PI / 9, range: 7.5 });
+		// Mirror the real payload: attackRange 8, no returnPasses.
+		fire('photon_slicer', ctx, { attackRange: 8 });
+		// A single outbound disc along the firing direction, tinted cyan.
+		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
+		expect(attacks).toHaveLength(1);
+		expect(attacks[0][1]).toEqual({ x: 0, z: 0 }); // thrown from the origin
+		expect(attacks[0][2]).toMatchObject({ x: 1, z: 0 }); // along +x
+		expect(attacks[0][3]).toMatchObject({ color: 0x22d3ee });
+		// A forward trail plus a spark burst at the far point of the throw (range 8).
 		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
 		expect(trail).toBeDefined();
-		expect(trail[3]).toMatchObject({ color: 0xa78bfa, range: 7.5 });
+		expect(trail[3]).toMatchObject({ range: 8, color: 0x22d3ee });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 8, z: 0 });
+		// Exactly one return beat is scheduled even though the payload omits
+		// returnPasses (the base card must still boomerang home).
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(schedules).toHaveLength(1);
+		// Running it sends a return trail back from the far point toward the origin.
+		ctx.runScheduled();
+		const returnTrails = ctx._calls
+			.filter((c) => c[0] === 'spawnProjectileTrail')
+			.slice(1); // first trail is the outbound polish pass
+		expect(returnTrails).toHaveLength(1);
+		expect(returnTrails[0][1]).toEqual({ x: 8, z: 0 }); // starts at far point
+		expect(returnTrails[0][2].x).toBe(-1); // reversed direction
+		expect(returnTrails[0][2].z === 0).toBe(true);
+	});
+
+	it('Arcane Bolt fires a violet arcane_bolt projectile with synced travel timing', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'arcane_bolt',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			attackRange: 10,
+			hits: [],
+		}, ctx);
+		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
+		expect(attacks).toHaveLength(1);
+		expect(attacks[0][3]).toMatchObject({
+			effect: 'arcane_bolt',
+			range: 10,
+			projectileTravelMs: ATTACK_EFFECT_DURATION,
+			color: 0xa78bfa,
+			emissive: 0x7c3aed,
+		});
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 1, z: 2 });
+		expect(ring[3]).toMatchObject({ color: 0xa78bfa, emissive: 0x7c3aed });
+		const castBurst = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.find((c) => c[1].x === 1 && c[1].z === 2 && c[2].count === 8);
+		expect(castBurst).toBeDefined();
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail).toBeDefined();
+		expect(trail[3]).toMatchObject({
+			range: 10,
+			travelMs: ATTACK_EFFECT_DURATION,
+			color: 0xa78bfa,
+			emissive: 0x7c3aed,
+		});
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(schedules).toHaveLength(1);
+		expect(schedules[0][1]).toBe(ATTACK_EFFECT_DURATION);
+		expect(ctx._calls.find((c) => c[0] === 'spawnImpactDecal')).toBeUndefined();
+		expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.some((c) => c[1].x === 11 && c[1].z === 2 && c[2].count === 16)).toBe(false);
+		ctx.runScheduled();
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 11, z: 2 });
+		const terminalBurst = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.find((c) => c[1].x === 11 && c[1].z === 2 && c[2].count === 16);
+		expect(terminalBurst).toBeDefined();
+	});
+
+	it('arcane_bolt has no positive windUpMs (instant cast; 315 charge telegraph absent)', () => {
+		expect(CARD_DEFS.arcane_bolt).toBeDefined();
+		expect(CARD_DEFS.arcane_bolt.windUpMs ?? 0).toBeLessThanOrEqual(0);
+	});
+
+	it('arcane_bolt spawns immediate per-hit pierce bursts at enemy mesh positions', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 4, y: 0, z: 2 } },
+				e2: { position: { x: 7, y: 0, z: 2 } },
+			}),
+		});
+		renderCardUsed({
+			cardId: 'arcane_bolt',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			attackRange: 10,
+			hits: [{ enemyId: 'e1' }, { enemyId: 'e2' }, { enemyId: 'missing' }],
+		}, ctx);
+		const hitSparks = ctx._calls.filter((c) => c[0] === 'spawnHitSpark');
+		expect(hitSparks).toHaveLength(2);
+		expect(hitSparks[0][1]).toEqual({ x: 4, y: 0.6, z: 2 });
+		expect(hitSparks[1][1]).toEqual({ x: 7, y: 0.6, z: 2 });
+		const pierceBursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.filter((c) => c[2].count === 6);
+		expect(pierceBursts).toHaveLength(2);
 	});
 
 	it('Resonance Edge slashes magenta and rings twice via a scheduled second pulse', () => {
@@ -1040,6 +1135,104 @@ describe('renderCardUsed() — energy & photon blade slashes', () => {
 			fire('echo_blade', ctx, { shockwaveHits: [{ enemyId: 'e1' }], shockwaveRadius: 6 }),
 		).not.toThrow();
 		// Each blade's core cone swing still fired.
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+	});
+});
+
+describe('renderCardUsed() — saber_of_light reach + swift_slash timing', () => {
+	function fireSaber(ctx, extra = {}) {
+		renderCardUsed(
+			{
+				cardId: 'saber_of_light',
+				specialEffect: 'swift_slash',
+				origin: { x: 0, z: 0 },
+				direction: { x: 1, z: 0 },
+				swingCount: 1,
+				hits: [],
+				...extra,
+			},
+			ctx,
+		);
+	}
+	function swingStyle(ctx) {
+		const attack = ctx._calls.find((c) => c[0] === 'spawnAttackEffect');
+		expect(attack).toBeDefined();
+		return attack[3];
+	}
+	function impactPoint(ctx) {
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		return ring[1];
+	}
+
+	it('uses a dedicated renderer, distinct from the plain cone default and renderWeaponSwing', () => {
+		const plainCone = resolveRenderers('reapers_scythe')[0]; // weapon type default (renderConeSwings)
+		const weaponSwing = resolveRenderers('iron_sword')[0]; // shared renderWeaponSwing
+		const saber = resolveRenderers('saber_of_light');
+		expect(saber).toHaveLength(1);
+		expect(saber[0]).not.toBe(plainCone);
+		expect(saber[0]).not.toBe(weaponSwing);
+	});
+
+	it('records the light-themed primitives: cone attack, telegraph flash, and spark burst', () => {
+		const ctx = makeCtx();
+		fireSaber(ctx, { attackRange: 5 });
+		const names = methodsCalled(ctx);
+		expect(names).toContain('spawnAttackEffect');
+		expect(names).toContain('spawnTelegraphRing');
+		expect(names).toContain('spawnParticleBurst');
+		// Holy radiant blade, not a flame trail.
+		expect(names).not.toContain('spawnProjectileTrail');
+		// Pale-gold accent on the cone swing.
+		expect(swingStyle(ctx)).toMatchObject({ color: 0xfef08a });
+	});
+
+	it('sizes the cone reach and impact placement from data.attackRange (longer for larger range)', () => {
+		const near = makeCtx();
+		fireSaber(near, { attackRange: 3 });
+		const far = makeCtx();
+		fireSaber(far, { attackRange: 9 });
+
+		// The cone swing range tracks the server attackRange directly.
+		expect(swingStyle(near).range).toBe(3);
+		expect(swingStyle(far).range).toBe(9);
+		expect(swingStyle(far).range).toBeGreaterThan(swingStyle(near).range);
+
+		// The impact flash / sparks are placed proportionally farther along the
+		// facing direction for the larger reach (origin 0,0 facing +x).
+		expect(impactPoint(far).x).toBeGreaterThan(impactPoint(near).x);
+		expect(impactPoint(far).x / impactPoint(near).x).toBeCloseTo(3);
+		// Spark burst rides the same impact point.
+		const nearBurst = near._calls.find((c) => c[0] === 'spawnParticleBurst');
+		const farBurst = far._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(farBurst[1].x).toBeGreaterThan(nearBurst[1].x);
+	});
+
+	it('falls back to a sane default reach when attackRange is absent', () => {
+		const ctx = makeCtx();
+		fireSaber(ctx, { attackRange: undefined });
+		// No hardcoded saber range constant leaks in as 0; a usable default reach.
+		expect(swingStyle(ctx).range).toBeGreaterThan(0);
+		expect(impactPoint(ctx).x).toBeGreaterThan(0);
+	});
+
+	it('fires the single swing immediately with no artificial scheduleAfter delay', () => {
+		const ctx = makeCtx();
+		fireSaber(ctx, { attackRange: 5, swingCount: 1 });
+		// The whole swing — cone, telegraph flash, sparks — lands synchronously.
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(true);
+		// swift_slash, swingCount 1: nothing is deferred.
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('degrades gracefully when optional light primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnTelegraphRing: undefined,
+			spawnParticleBurst: undefined,
+		});
+		expect(() => fireSaber(ctx, { attackRange: 5 })).not.toThrow();
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 });
@@ -1511,7 +1704,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 		}
 	});
 
-	it('frost_nova adds an icy telegraph ring and radial frost burst at the cast origin', () => {
+	it('frost_nova composes an icy shockwave ring, denser radial shard burst, and frozen impact decal at the origin', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'frost_nova',
@@ -1519,16 +1712,73 @@ describe('renderCardUsed() — spell dispatch', () => {
 			radius: 4,
 			hits: [],
 		}, ctx);
+		// Expanding frost shockwave ring sized to the radius.
 		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
 		expect(ring).toBeDefined();
 		expect(ring[1]).toEqual({ x: 2, z: 3 });
 		expect(ring[2]).toBe(4);
 		expect(ring[3]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
+		// Dense radial ice-shard burst — denser/wider than the old count:14, spread:2.0.
 		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
 		expect(burst).toBeDefined();
 		expect(burst[1]).toEqual({ x: 2, z: 3 });
-		expect(burst[2]).toMatchObject({ color: 0x67e8f9 });
+		expect(burst[2]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
+		expect(burst[2].count).toBeGreaterThan(14);
+		expect(burst[2].spread).toBeGreaterThan(2.0);
+		// Frozen ground impact decal at the cast origin.
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 2, z: 3 });
+		expect(decal[2]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
+		// Stays distinct from the generic summon / glacier_collapse look.
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('frost_nova spawns a lingering frost field timed to the 2.5s freeze when the payload is frozen', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'frost_nova',
+			origin: { x: 2, z: 3 },
+			radius: 4,
+			frozen: true,
+			specialEffect: 'freeze',
+			hits: [],
+		}, ctx);
+		const decals = ctx._calls.filter((c) => c[0] === 'spawnImpactDecal');
+		// The lingering frost field is a decal sized to the radius whose lifetime
+		// equals the 2500ms server freeze window (not the default impact lifetime).
+		const linger = decals.find((c) => c[2]?.duration === 2500);
+		expect(linger).toBeDefined();
+		expect(linger[1]).toEqual({ x: 2, z: 3 });
+		expect(linger[2]).toMatchObject({
+			color: 0x67e8f9,
+			emissive: 0x38bdf8,
+			radius: 4,
+			duration: 2500,
+		});
+		// Same frost palette as the cast burst.
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring[3]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
+		// Everything fires synchronously — no async scheduling.
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+		expect(ctx._scheduled).toHaveLength(0);
+	});
+
+	it('frost_nova does not spawn the lingering frost field when the payload is not frozen, but the cast burst still fires', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'frost_nova',
+			origin: { x: 2, z: 3 },
+			radius: 4,
+			hits: [],
+		}, ctx);
+		// No lingering (2.5s) decal without the freeze flag.
+		expect(ctx._calls.filter((c) => c[0] === 'spawnImpactDecal')
+			.some((c) => c[2]?.duration === 2500)).toBe(false);
+		// The immediate cast burst still fires regardless of the freeze gate.
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(true);
 	});
 
 	it('permafrost_lance uses a narrower telegraph, lance projectile, trail, tip decal, and burst', () => {
@@ -1602,19 +1852,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(windUp == null || windUp <= 0).toBe(true);
 	});
 
-	it('uses the fixed glacier palette for glacier_collapse (not the accent)', () => {
-		const ctx = makeCtx();
-		renderCardUsed({
-			cardId: 'glacier_collapse',
-			origin: { x: 0, z: 0 },
-			radius: 5,
-			hits: [],
-		}, ctx);
-		const ring = ctx._calls.find((c) => c[0] === 'spawnSummonEffect');
-		expect(ring[3]).toEqual({ color: 0x38bdf8, emissive: 0x0ea5e9 });
-	});
-
-	it('glacier_collapse adds a glacier telegraph ring and shatter burst at the rupture point', () => {
+	it('glacier_collapse dispatches the polished rupture primitive, telegraph, decal, and radial burst synchronously', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'glacier_collapse',
@@ -1622,15 +1860,111 @@ describe('renderCardUsed() — spell dispatch', () => {
 			radius: 5,
 			hits: [],
 		}, ctx);
+		const rupture = ctx._calls.find((c) => c[0] === 'spawnGlacierRuptureEffect');
+		expect(rupture).toBeDefined();
+		expect(rupture[1]).toEqual({ x: 1, z: 2 });
+		expect(rupture[2]).toBe(5);
+		expect(rupture[3]).toEqual({ color: 0x38bdf8, emissive: 0x0ea5e9 });
 		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
 		expect(telegraph).toBeDefined();
 		expect(telegraph[1]).toEqual({ x: 1, z: 2 });
 		expect(telegraph[2]).toBe(5);
-		expect(telegraph[3]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+		expect(telegraph[3]).toEqual({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 1, z: 2 });
+		expect(decal[2]).toEqual({ color: 0x38bdf8, emissive: 0x0ea5e9 });
 		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
 		expect(burst).toBeDefined();
 		expect(burst[1]).toEqual({ x: 1, z: 2 });
-		expect(burst[2]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+		expect(burst[2]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9, count: 16, spread: 2.4 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('glacier_collapse spawns a per-hit shatter burst at the enemy mesh position', () => {
+		const meshes = { e1: { position: { x: 3, y: 0, z: 4 } } };
+		const ctx = makeCtx({ enemyMeshes: () => meshes });
+		renderCardUsed({
+			cardId: 'glacier_collapse',
+			origin: { x: 0, z: 0 },
+			radius: 5,
+			hits: [{ enemyId: 'e1' }],
+		}, ctx);
+		const hitPos = { x: 3, y: 0.6, z: 4 };
+		const hitSpark = ctx._calls.find((c) => c[0] === 'spawnHitSpark' && c[1].x === 3);
+		const hitBurst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst' && c[1].x === 3);
+		expect(hitSpark ?? hitBurst).toBeDefined();
+		if (hitSpark) {
+			expect(hitSpark[1]).toEqual(hitPos);
+			expect(hitSpark[2]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+		}
+		if (hitBurst) {
+			expect(hitBurst[1]).toEqual(hitPos);
+			expect(hitBurst[2]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+		}
+	});
+
+	it('glacier_collapse uses a larger shatter burst for frozenShatter hits than normal freeze hits', () => {
+		const meshes = { e1: { position: { x: 1, y: 0, z: 1 } } };
+		const normalCtx = makeCtx({ enemyMeshes: () => meshes });
+		renderCardUsed({
+			cardId: 'glacier_collapse',
+			origin: { x: 0, z: 0 },
+			radius: 5,
+			hits: [{ enemyId: 'e1' }],
+		}, normalCtx);
+		const shatterCtx = makeCtx({ enemyMeshes: () => meshes });
+		renderCardUsed({
+			cardId: 'glacier_collapse',
+			origin: { x: 0, z: 0 },
+			radius: 5,
+			hits: [{ enemyId: 'e1', frozenShatter: true }],
+		}, shatterCtx);
+		const normalBurst = normalCtx._calls.find((c) => c[0] === 'spawnParticleBurst' && c[1].x === 1);
+		const shatterBurst = shatterCtx._calls.find((c) => c[0] === 'spawnParticleBurst' && c[1].x === 1);
+		expect(normalBurst).toBeDefined();
+		expect(shatterBurst).toBeDefined();
+		expect(shatterBurst[2].count).toBeGreaterThan(normalBurst[2].count);
+		expect(shatterBurst[2].spread).toBeGreaterThan(normalBurst[2].spread);
+	});
+
+	it('glacier_collapse and frost_nova resolve to different renderer functions and helper signatures', () => {
+		expect(resolveRenderers('glacier_collapse')[0]).not.toBe(resolveRenderers('frost_nova')[0]);
+		const payload = {
+			origin: { x: 0, z: 0 },
+			radius: 6,
+			hits: [],
+		};
+		const glacierCtx = makeCtx();
+		resolveRenderers('glacier_collapse')[0]({ ...payload, cardId: 'glacier_collapse' }, glacierCtx);
+		const novaCtx = makeCtx();
+		resolveRenderers('frost_nova')[0]({ ...payload, cardId: 'frost_nova' }, novaCtx);
+		expect(methodsCalled(glacierCtx)).not.toEqual(methodsCalled(novaCtx));
+		expect(glacierCtx._calls.some((c) => c[0] === 'spawnGlacierRuptureEffect')).toBe(true);
+		expect(novaCtx._calls.some((c) => c[0] === 'spawnGlacierRuptureEffect')).toBe(false);
+	});
+
+	it('Glacier Collapse carries windUpMs 700 so the 307/315 charge telegraph fires during wind-up', () => {
+		expect(getCardDef('glacier_collapse')).toBeDefined();
+		expect(getCardDef('glacier_collapse').windUpMs).toBe(700);
+	});
+
+	it('glacier_collapse degrades gracefully when optional ctx primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnGlacierRuptureEffect: undefined,
+			spawnTelegraphRing: undefined,
+			spawnImpactDecal: undefined,
+			spawnParticleBurst: undefined,
+			spawnHitSpark: undefined,
+			enemyMeshes: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'glacier_collapse',
+			origin: { x: 0, z: 0 },
+			radius: 5,
+			hits: [{ enemyId: 'e1' }],
+		}, ctx)).not.toThrow();
 	});
 
 	it('healing_font and divine_grace resolve to different renderer functions', () => {
@@ -3677,22 +4011,50 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 
 describe('renderCardUsed() — economy card VFX', () => {
 	describe('deck_sifter', () => {
-		it('spawns a parchment/gold particle burst at the caster origin', () => {
+		it('composes a staggered parchment/gold card-riffle flourish at the caster', () => {
 			const ctx = makeCtx();
 			renderCardUsed({
 				cardId: 'deck_sifter',
 				origin: { x: 3, z: 4 },
+				direction: { x: 1, z: 0 },
 				hits: [],
 			}, ctx);
-			const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+
+			// Ground accent ring on the deck_sifter parchment/gold palette.
+			const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+			expect(ring).toBeDefined();
+			expect(ring[1]).toEqual({ x: 3, z: 4 });
+			expect(ring[2]).toBe(1.4);
+			expect(ring[3]).toMatchObject({ color: 0xd4a843, emissive: 0xdaa520 });
+
+			// The centre card puffs immediately so it stays synced to the instant
+			// draw; the flanking cards riffle out via short scheduled beats.
+			let bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
 			expect(bursts).toHaveLength(1);
-			expect(bursts[0][1]).toEqual({ x: 3, z: 4 });
-			expect(bursts[0][2]).toMatchObject({
-				color: 0xf5deb3,
-				emissive: 0xdaa520,
-				count: 10,
-				spread: 1.8,
-			});
+			expect(bursts[0][1]).toEqual({ x: 3, y: 1.0, z: 4 });
+
+			const delays = ctx._calls
+				.filter((c) => c[0] === 'scheduleAfter')
+				.map((c) => c[1]);
+			expect(delays).toEqual([70, 140]);
+			for (const d of delays) expect(d).toBeLessThan(300);
+
+			// After the staggered beats fire, three cards fan out perpendicular to
+			// the cast direction (+x → spread along z), all on the parchment theme.
+			ctx.runScheduled();
+			bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+			expect(bursts).toHaveLength(3);
+			const zs = bursts.map((b) => b[1].z).sort((a, b) => a - b);
+			expect(zs).toEqual([3.3, 4, 4.7]);
+			for (const b of bursts) {
+				expect(b[1]).toMatchObject({ x: 3, y: 1.0 });
+				expect(b[2]).toMatchObject({
+					color: 0xf5deb3,
+					emissive: 0xdaa520,
+					count: 6,
+					spread: 0.8,
+				});
+			}
 		});
 
 		it('does not throw when spawnParticleBurst is absent', () => {
