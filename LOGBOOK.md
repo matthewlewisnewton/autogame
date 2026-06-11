@@ -7958,3 +7958,26 @@ No development debug scenario was added or changed for this ticket. The round-2 
 ## Remaining gaps
 
 None.
+
+## v0.440 — 323-anim-vault-wyrm  (2026-06-11 02:11:27)
+
+unbounded particle growth. No new allocations in hot loops beyond the existing
+pattern. No timers.
+
+### 4. Client test where feasible
+PASS. `cardRenderers.test.js` updated and extended: palette assertions, cone
+duration binding, per-hit ember bursts on tick across multiple enemies, and the
+no-client-timer guarantee. `deck-viewer.test.js` updated for the 🔥 icon. Full
+suite: 277/277 pass.
+
+## Consistency / regressions
+- `renderArchiveWyrmBreath` (ancient_wyrm) is untouched and still keys off
+  `fire_breath` — correct, that is a different card with different server payload.
+- No debug scenarios added or changed.
+- No design.md / requirements.md regressions; this is a cosmetic + timing polish
+  on existing primitives.
+
+## Remaining gaps
+None blocking. One minor doc-accuracy nit (renderer comment says the server emits
+"NO specialEffect" when it actually emits `"burning_breath"`) — filed in nits.md.
+
