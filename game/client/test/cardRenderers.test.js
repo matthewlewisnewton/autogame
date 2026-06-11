@@ -812,7 +812,8 @@ describe('renderCardUsed() — energy & photon blade slashes', () => {
 
 	it('Phase Echo swings pink, then schedules a fainter echo swing', () => {
 		const ctx = makeCtx();
-		fire('echo_blade', ctx);
+		// The common off-cadence swing: server sends an empty shockwaveHits.
+		fire('echo_blade', ctx, { shockwaveHits: [] });
 		const leadAttacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
 		expect(leadAttacks).toHaveLength(1);
 		expect(leadAttacks[0][3]).toMatchObject({ color: 0xf472b6, coneAngle: Math.PI / 4 });
@@ -825,6 +826,39 @@ describe('renderCardUsed() — energy & photon blade slashes', () => {
 		// The echo is fainter than the lead swing.
 		expect(attacks[1][3].fillOpacity).toBeLessThan(attacks[0][3].fillOpacity);
 		expect(attacks[1][3].edgeOpacity).toBeLessThan(attacks[0][3].edgeOpacity);
+		// No phase-shockwave layer off cadence: no large ring near the shockwave
+		// radius and no heavy particle burst.
+		const rings = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
+		expect(rings.some((r) => r[2] >= 6)).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
+	});
+
+	it('Phase Echo layers a radial shockwave on the every-3rd-use cadence', () => {
+		const ctx = makeCtx();
+		// Server collected radial shockwave hits this use (every 3rd use).
+		fire('echo_blade', ctx, { shockwaveHits: [{ enemyId: 'e1' }], shockwaveRadius: 7 });
+		// Still the pink twin-slash: lead swing then a fainter echo.
+		expect(swingStyle(ctx)).toMatchObject({ color: 0xf472b6, coneAngle: Math.PI / 4 });
+		ctx.runScheduled();
+		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
+		expect(attacks).toHaveLength(2);
+		expect(attacks[1][3].fillOpacity).toBeLessThan(attacks[0][3].fillOpacity);
+		// A shockwave ring sized to data.shockwaveRadius (7), far larger than the
+		// twin-slash, plus a still-larger expanding after-ring.
+		const rings = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
+		expect(rings.some((r) => r[2] === 7)).toBe(true);
+		expect(rings.some((r) => r[2] > 7)).toBe(true);
+		for (const r of rings) expect(r[3]).toMatchObject({ color: 0xf472b6 });
+		// A heavy particle burst at the cast origin (well above the base swing).
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		expect(bursts.some((b) => b[2].count >= 20)).toBe(true);
+	});
+
+	it('Phase Echo falls back to a ~6 shockwave radius when none is reported', () => {
+		const ctx = makeCtx();
+		fire('echo_blade', ctx, { shockwaveHits: [{ enemyId: 'e1' }] });
+		const rings = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
+		expect(rings.some((r) => r[2] === 6)).toBe(true);
 	});
 
 	it('the five energy blades use mutually distinct accent colors', () => {
@@ -849,6 +883,14 @@ describe('renderCardUsed() — energy & photon blade slashes', () => {
 		for (const cardId of ['saber_of_light', 'photon_slicer', 'arcane_bolt', 'resonance_edge', 'echo_blade']) {
 			expect(() => fire(cardId, ctx)).not.toThrow();
 		}
+		// The shockwave-cadence path must also degrade gracefully when the ring /
+		// burst primitives are absent (resonance_edge and echo_blade both layer one).
+		expect(() =>
+			fire('resonance_edge', ctx, { shockwaveHits: [{ enemyId: 'e1' }], shockwaveRadius: 6 }),
+		).not.toThrow();
+		expect(() =>
+			fire('echo_blade', ctx, { shockwaveHits: [{ enemyId: 'e1' }], shockwaveRadius: 6 }),
+		).not.toThrow();
 		// Each blade's core cone swing still fired.
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});

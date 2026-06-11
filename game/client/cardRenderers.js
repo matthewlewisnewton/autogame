@@ -470,6 +470,19 @@ function renderResonantDoublePulse(data, ctx) {
  * Phase Echo: a pink twin-slash. The blade swings once, then a fainter echo
  * swing replays a beat later via scheduleAfter so it reads as a phasing
  * after-image. A pink light streak trails both passes.
+ *
+ * On every 3rd use the server discharges a radial shockwave: it only collects
+ * `data.shockwaveHits` when `comboCount % shockwaveEvery === 0`, so that array
+ * is non-empty exactly on the shockwave cadence. When it is, we layer a
+ * distinct, much larger phase-shockwave on top — an expanding ring sized to the
+ * shockwave radius (~6) plus a heavy particle burst bursting outward from the
+ * cast origin — so the on-screen burst lands when the server fires it. echo_blade
+ * has no `windUpMs`, so the shockwave fires immediately alongside the lead swing,
+ * matching the server's synchronous resolution. We never key the discharge off
+ * `comboCount` arithmetic.
+ *
+ * Reuses the same 315 primitives as the styled blades, each guarded so the swing
+ * degrades gracefully when a primitive is absent.
  */
 function renderEchoSlash(data, ctx) {
 	const origin = originOf(data);
@@ -480,14 +493,16 @@ function renderEchoSlash(data, ctx) {
 	const range = 5;
 
 	const swing = (fillOpacity, edgeOpacity) => {
-		ctx.spawnAttackEffect(origin, direction, {
-			color,
-			emissive,
-			coneAngle,
-			range,
-			fillOpacity,
-			edgeOpacity,
-		});
+		if (ctx.spawnAttackEffect) {
+			ctx.spawnAttackEffect(origin, direction, {
+				color,
+				emissive,
+				coneAngle,
+				range,
+				fillOpacity,
+				edgeOpacity,
+			});
+		}
 		if (ctx.spawnProjectileTrail) {
 			ctx.spawnProjectileTrail(origin, direction, { range, color, emissive });
 		}
@@ -495,7 +510,27 @@ function renderEchoSlash(data, ctx) {
 
 	swing(0.42, 0.9);
 	// The echo: a fainter after-image swing a beat later.
-	ctx.scheduleAfter(150, () => swing(0.22, 0.55));
+	if (ctx.scheduleAfter) ctx.scheduleAfter(150, () => swing(0.22, 0.55));
+
+	// Phase shockwave: only on the server's every-3rd-use cadence, signalled by a
+	// non-empty `data.shockwaveHits`. A large expanding ring and heavy particle
+	// burst at the cast origin read as the phasing twin collapsing into a radial
+	// shockwave — clearly larger/heavier than the base twin-slash swing.
+	if (data.shockwaveHits && data.shockwaveHits.length > 0) {
+		const shockAt = originOf(data);
+		const shockRadius = Number.isFinite(data.shockwaveRadius) ? data.shockwaveRadius : 6;
+		if (ctx.spawnTelegraphRing) ctx.spawnTelegraphRing(shockAt, shockRadius, { color, emissive });
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(shockAt, { color, emissive, count: 24, spread: 3.5 });
+		}
+		if (ctx.scheduleAfter) {
+			ctx.scheduleAfter(90, () => {
+				if (ctx.spawnTelegraphRing) {
+					ctx.spawnTelegraphRing(shockAt, shockRadius * 1.4, { color, emissive });
+				}
+			});
+		}
+	}
 }
 
 /**
