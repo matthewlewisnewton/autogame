@@ -6,9 +6,8 @@
 // references so it stays unit-testable like launchBooth.js (main.js itself is
 // v8-ignored UI glue).
 
-// The `?booth=` debug hook is shared across booths; reuse it rather than
-// duplicating (the quest debug hook itself lands in sub-ticket 02).
-export { getBoothDebugHook } from './launchBooth.js';
+// The `?booth=` debug hook is shared across booths via boothCommon.js.
+export { getBoothDebugHook } from './boothCommon.js';
 
 /** The booth id of the hub quest booth, as produced by generateHub. */
 export const QUEST_BOOTH_ID = 'quest';

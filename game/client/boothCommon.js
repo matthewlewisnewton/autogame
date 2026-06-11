@@ -5,6 +5,15 @@ import { BOOTH_ACTION_EVENT } from './boothPrompt.js';
 export const DEBUG_BOOTH_ALLOWED_HOSTS = ['localhost', '127.0.0.1', '::1'];
 
 /**
+ * Parse the `?booth=` debug hook from a location query string.
+ * @param {string} search - e.g. `window.location.search` ("?booth=launch")
+ * @returns {string|null} the `booth` param value, or null when absent
+ */
+export function getBoothDebugHook(search) {
+	return new URLSearchParams(search || '').get('booth');
+}
+
+/**
  * @param {{ boothId: string, tab: string, renderDepKey: string }} config
  */
 export function createBoothModule({ boothId, tab, renderDepKey }) {
