@@ -3090,7 +3090,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 		]);
 	});
 
-	it('astral_guardian adds indigo shield telegraph, burst, and minion spawn ring', () => {
+	it('astral_guardian summons the guardian via minion summon-in at the impact-synced telegraph', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'astral_guardian',
@@ -3108,11 +3108,16 @@ describe('renderCardUsed() — spell dispatch', () => {
 		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
 		expect(burst).toBeDefined();
 		expect(burst[1]).toEqual({ x: 2, z: 3 });
-		const summon = ctx._calls.find(
-			(c) => c[0] === 'spawnSummonEffect' && c[2] === 1.2,
-		);
+		expect(burst[2]).toMatchObject({ color: 0x818cf8, emissive: 0x6366f1 });
+		const summon = ctx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
 		expect(summon).toBeDefined();
-		expect(summon[3]).toMatchObject({ color: 0x818cf8, emissive: 0x6366f1 });
+		expect(summon[1]).toEqual({ x: 2, z: 3 });
+		expect(summon[2]).toMatchObject({ color: 0x818cf8, emissive: 0x6366f1 });
+		// Tight guardian spawn distinct from the wider AoE telegraph at data.radius.
+		expect(summon[2].radius).toBeLessThan(4);
+		// Instant resolution — no wind-up deferral.
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
 	});
 
 	it('mana_prism adds a violet/cyan prism telegraph and arcane burst at radius 1', () => {

@@ -2519,8 +2519,11 @@ const CHRONO_TRIGGER_TELEGRAPH_RADIUS = 2;
 const CHRONO_TRIGGER_SLOT_SPACING = 1.2;
 
 /**
- * Astral Guardian: indigo shield/summon telegraph at cast radius, spark burst,
- * and a tight minion-spawn ring distinct from the generic accent burst.
+ * Astral Guardian: a celestial sentinel materializes at the caster via the
+ * dedicated minion summon-in primitive (tight starlight spawn ring), wrapped by
+ * an impact-synced indigo telegraph at the exact server `SUMMON_RADIUS` and a
+ * starlight spark burst. Fires synchronously — the server resolves instantly
+ * (no `windUpMs`), so the visible AoE lines up with the radial damage.
  */
 function renderAstralGuardian(data, ctx) {
 	if (data.radius === undefined) return;
@@ -2533,7 +2536,15 @@ function renderAstralGuardian(data, ctx) {
 	if (ctx.spawnParticleBurst) {
 		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.0 });
 	}
-	ctx.spawnSummonEffect(origin, 1.2, { color, emissive });
+	if (ctx.spawnMinionSummonInEffect) {
+		ctx.spawnMinionSummonInEffect(origin, {
+			color,
+			emissive,
+			radius: 1.2,
+			burstCount: 12,
+			burstSpread: 1.4,
+		});
+	}
 }
 
 /**
