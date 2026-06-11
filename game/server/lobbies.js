@@ -246,6 +246,12 @@ function resetAllLobbies() {
 }
 
 function getPrimaryLobbyStateForTests() {
+  // Prefer a lobby with connected players. Ghost lobbies (all records disconnected,
+  // waiting for the reaper TTL) remain in the registry but must not shadow the live
+  // lobby that socket integration tests attach to.
+  for (const lobby of lobbies.values()) {
+    if (connectedPlayerCount(lobby) > 0) return lobby.state;
+  }
   const first = lobbies.values().next().value;
   return first ? first.state : null;
 }

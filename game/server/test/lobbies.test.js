@@ -11,6 +11,7 @@ import {
   listLobbySummaries,
   lobbySummary,
   connectedPlayerCount,
+  getPrimaryLobbyStateForTests,
   resetAllLobbies,
   createLobbyGameState,
 } from '../lobbies.js';
@@ -74,6 +75,16 @@ describe('lobbies module', () => {
     const summaries = listLobbySummaries();
     expect(summaries).toHaveLength(1);
     expect(summaries[0].id).toBe(live.id);
+  });
+
+  it('getPrimaryLobbyStateForTests prefers a live lobby over a ghost lobby', () => {
+    const ghost = createLobby('Ghost');
+    ghost.state.players.p1 = { id: 'p1', username: 'Gone', connected: false };
+
+    const live = createLobby('Live');
+    live.state.players.p2 = { id: 'p2', username: 'Here', connected: true };
+
+    expect(getPrimaryLobbyStateForTests()).toBe(live.state);
   });
 
   it('assignPlayerToLobby and getLobbyForPlayer track membership', () => {
