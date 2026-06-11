@@ -263,11 +263,11 @@ describe('canyon_descent Tier 2 stage-boss encounter flow', () => {
     expect(gameState.run.encounter.locked).toBe(true);
   });
 
-  it('recordEnemyDefeated does not complete the stage_boss objective', () => {
-    const before = { ...gameState.run.objective };
+  it('recordEnemyDefeated does not complete or inflate the stage_boss objective', () => {
+    const before = gameState.run.objective.defeatedEnemies;
     recordEnemyDefeated(5);
     expect(gameState.run.objective.bossDefeated).toBe(false);
-    expect(gameState.run.objective.defeatedEnemies).toBeGreaterThan(before.defeatedEnemies);
+    expect(gameState.run.objective.defeatedEnemies).toBe(before);
     expect(isRunObjectiveComplete(gameState.run.objective)).toBe(false);
   });
 

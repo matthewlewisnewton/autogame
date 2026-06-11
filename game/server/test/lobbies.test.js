@@ -10,6 +10,8 @@ import {
   getLobbyById,
   listLobbySummaries,
   lobbySummary,
+  connectedPlayerCount,
+  getPrimaryLobbyStateForTests,
   resetAllLobbies,
   createLobbyGameState,
 } from '../lobbies.js';
@@ -49,6 +51,40 @@ describe('lobbies module', () => {
       { id: 'p1', username: 'Alice', ready: true },
       { id: 'p2', username: 'Bob', ready: false },
     ]);
+  });
+
+  it('connectedPlayerCount and playerCount ignore disconnected records', () => {
+    const lobby = createLobby('Mixed');
+    lobby.state.players.p1 = { id: 'p1', username: 'Alice', connected: true };
+    lobby.state.players.p2 = { id: 'p2', username: 'Bob', connected: false };
+    // Missing `connected` field is treated as connected (legacy records).
+    lobby.state.players.p3 = { id: 'p3', username: 'Carol' };
+
+    expect(connectedPlayerCount(lobby)).toBe(2);
+    expect(lobbySummary(lobby).playerCount).toBe(2);
+  });
+
+  it('listLobbySummaries excludes lobbies with zero connected players', () => {
+    const ghost = createLobby('Ghost');
+    ghost.state.players.p1 = { id: 'p1', username: 'Gone', connected: false };
+    ghost.state.gamePhase = 'playing';
+
+    const live = createLobby('Live');
+    live.state.players.p2 = { id: 'p2', username: 'Here', connected: true };
+
+    const summaries = listLobbySummaries();
+    expect(summaries).toHaveLength(1);
+    expect(summaries[0].id).toBe(live.id);
+  });
+
+  it('getPrimaryLobbyStateForTests prefers a live lobby over a ghost lobby', () => {
+    const ghost = createLobby('Ghost');
+    ghost.state.players.p1 = { id: 'p1', username: 'Gone', connected: false };
+
+    const live = createLobby('Live');
+    live.state.players.p2 = { id: 'p2', username: 'Here', connected: true };
+
+    expect(getPrimaryLobbyStateForTests()).toBe(live.state);
   });
 
   it('assignPlayerToLobby and getLobbyForPlayer track membership', () => {

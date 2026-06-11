@@ -170,7 +170,9 @@ export async function startTestServer() {
 }
 
 export async function closeServer() {
+	clearAllTimers();
 	await teardownServer();
+	resetGameState();
 }
 
 /**

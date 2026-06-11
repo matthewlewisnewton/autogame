@@ -86,6 +86,29 @@ function killScriptedWave(state, roomKey, waveIndex) {
   removeDeadEnemies();
 }
 
+function killSingleScriptedEnemy(state, roomKey, waveIndex) {
+  const target = state.enemies.find(
+    (enemy) =>
+      enemy.scriptedWave?.roomKey === roomKey
+      && enemy.scriptedWave?.waveIndex === waveIndex,
+  );
+  expect(target).toBeDefined();
+  target.hp = 0;
+  removeDeadEnemies();
+  return target;
+}
+
+function expectStageBossCounterUnchanged(state) {
+  expect(state.run.objective).toMatchObject({
+    defeatedEnemies: 0,
+    totalEnemies: 1,
+    bossDefeated: false,
+  });
+  expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
+  expect(state.run.status).toBe('playing');
+  expect(isRunObjectiveComplete(state.run.objective)).toBe(false);
+}
+
 function enterRoom(state, room) {
   state.players.p1.x = room.x;
   state.players.p1.z = room.z;
@@ -202,5 +225,29 @@ describe('frost_crossing Tier 1 stage-boss encounter flow', () => {
     cleanupAfterDamage();
     checkRunTerminalState();
     expect(state.run.status).toBe('victory');
+  });
+});
+
+describe('frost_crossing Tier 1 stage-boss objective counter regression', () => {
+  let state;
+  let iceRoom;
+
+  beforeEach(() => {
+    state = createGameState();
+    ({ iceRoom } = deployFrostCrossing(state));
+  });
+
+  it('does not increment stage_boss defeatedEnemies when a scripted dock grunt is killed', () => {
+    const grunt = killSingleScriptedEnemy(state, 'room:0', 0);
+    expect(grunt.type).toBe('grunt');
+    expectStageBossCounterUnchanged(state);
+  });
+
+  it('does not increment stage_boss defeatedEnemies when a scripted ice-band Glacial Thrower is killed', () => {
+    killScriptedWave(state, 'room:0', 0);
+    enterRoom(state, iceRoom);
+    const thrower = killSingleScriptedEnemy(state, 'band:ice', 0);
+    expect(thrower.type).toBe('glacial_thrower');
+    expectStageBossCounterUnchanged(state);
   });
 });

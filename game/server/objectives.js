@@ -307,6 +307,7 @@ const OBJECTIVE_DEFS = {
           tier: ctx.roomTierAt(layout, pos.x, pos.z),
           rng,
         });
+        add.encounterHostile = true;
         add.wanderTarget = ctx.randomWanderTarget();
       }
     },

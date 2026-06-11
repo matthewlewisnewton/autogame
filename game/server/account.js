@@ -122,6 +122,8 @@ router.patch('/me/profile', (req, res) => {
 	};
 
 	if (result.usernameChanged) {
+		const { syncLivePlayerUsername } = require('./index');
+		syncLivePlayerUsername(req.accountId, user.username);
 		payload.token = jwt.sign(
 			{ accountId: user.accountId, username: user.username },
 			getJwtSecret(),

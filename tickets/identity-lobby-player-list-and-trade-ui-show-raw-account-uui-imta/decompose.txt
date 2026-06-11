@@ -1,0 +1,13 @@
+I broke the top-level ticket into 2 focused, dependency-ordered sub-tickets.
+
+**Root cause:** the `lobbyUpdate` player payload (`lobbyPlayerList` in `server/index.js:700`) only carries `{id, ready}` — no `username` — so the lobby list and trade dropdown fall back to the raw UUID. The portrait char-id derives from `myId`. And the account `PATCH /me/profile` handler syncs cosmetic but not username to live player records.
+
+Sub-tickets created:
+
+- `tickets/identity-lobby-player-list-and-trade-ui-show-raw-account-uui-imta/subtickets/01-render-usernames-not-uuids/ticket.md`
+  Server carries `username` in the lobby payload; client renders it in the PLAYERS list, trade dropdown (already username-aware), and portrait char-id. **Verification: code.**
+
+- `tickets/identity-lobby-player-list-and-trade-ui-show-raw-account-uui-imta/subtickets/02-save-name-reflects-live/ticket.md`
+  Save-name updates live player records and re-broadcasts the lobby so the new name appears without rejoin (mirrors the existing `syncLivePlayerCosmetic` pattern). **Verification: code.**
+
+Both are `code`-verified — every AC concerns payload fields, render logic, server state, and a value-changed condition (none are pure look/animation checks), so `visual` would be wrong here.

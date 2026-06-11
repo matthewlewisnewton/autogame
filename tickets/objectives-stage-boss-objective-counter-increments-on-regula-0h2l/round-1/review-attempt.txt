@@ -1,0 +1,16 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health:** Game runs cleanly — `metrics.json` shows `ok: true`, empty `pageerrors`, servers bound on :5176, no `harness_failure`. `console.log` has only benign 409-conflict lobby-flow noise, no page errors or fatals.
+
+**Acceptance criterion met:** The fix scopes `stage_boss` `defeatedEnemies` to encounter-only hostiles via a new `countStageBossObjectiveKills` helper that counts only the active-phase boss and `encounterHostile`-tagged adds, while skipping `scriptedWave` and non-encounter spawns:
+- `recordEnemyDefeated` early-returns for `stage_boss`, so scripted kills no longer leak.
+- `removeDeadEnemies` and `tryActivateEncounter` both route through the scoped helper.
+- Encounter adds are tagged `encounterHostile`, preserving legitimate `totalEnemies = addCount + 1` counting.
+
+**Test coverage:** A dedicated regression test (`frost_crossing_stage_boss.test.js`) reproduces the exact ticket repro on the real layout — killing a scripted dock grunt and a Glacial Thrower leaves the counter at `0/1`, phase `dormant`, run `playing`. The six tier-2 stage_boss suites were correctly updated to assert the counter is no longer inflated.
+
+**Verification:** Full suite green — server 2651/2651, client 1353/1353. No debug scenarios added, victory path intact, no regressions.
+
+I noted one nit (an awkward JSDoc comment grammar) in `nits.md`; nothing blocking. No `gaps.md` written since the verdict is PASS.

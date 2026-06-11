@@ -1,0 +1,10 @@
+Created **2 sub-tickets** in dependency order:
+
+1. `/home/matt/workspace/.autogame-worktrees/objectives-stage-boss-objective-counter-increments-on-regula-0h2l/tickets/objectives-stage-boss-objective-counter-increments-on-regula-0h2l/subtickets/01-server-encounter-only-stage-boss-kills/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/objectives-stage-boss-objective-counter-increments-on-regula-0h2l/tickets/objectives-stage-boss-objective-counter-increments-on-regula-0h2l/subtickets/02-frost-crossing-objective-counter-regression/ticket.md`
+
+**01** scopes `stage_boss` kill counting to encounter boss + adds (tagged at spawn, filtered in `removeDeadEnemies`), and updates tests that assumed blind `recordEnemyDefeated` increments.
+
+**02** adds the Frost Crossing tier 1 regression test matching the parent ticket repro (scripted grunt/thrower kill must leave `defeatedEnemies: 0` with dormant encounter).
+
+Both use **code** verification — this is server state and logic, not purely visual rendering.
