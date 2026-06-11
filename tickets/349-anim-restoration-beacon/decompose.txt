@@ -1,0 +1,7 @@
+Created 1 sub-ticket. This top-level ticket is a single-card animation polish for an **instant self-heal spell** (no projectile/DoT/wind-up), so the work — new beacon VFX primitive + renderer rewire + ctx wiring + client test — is one cohesive, independently-implementable pass. Splitting "timing" off would be artificial since the server resolves synchronously with a single `cardUsed`.
+
+Sub-ticket folder created:
+
+- `/home/matt/workspace/.autogame-worktrees/349-anim-restoration-beacon/tickets/349-anim-restoration-beacon/subtickets/01-beacon-restoration-pillar/ticket.md`
+
+It makes Restoration Beacon read as its name (an emerald vertical beacon pillar of restorative light rising from the cast origin, distinct from Sanctum Pulse's gold column), keeps timing synced to the instant server resolution, and is `Verification: code` (the criteria cover a primitive/function existing, ctx wiring, palette distinctness, synchronous firing, caster-gated sound, and a vitest test — not purely how one happy-path run looks).
