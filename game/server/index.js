@@ -1668,9 +1668,6 @@ function startServer(port) {
   // Initialize auth — throws if JWT_SECRET is missing (unless NODE_ENV === 'test')
   initAuth();
 
-  // Start periodic sweep to prune expired rate-limit buckets
-  startRateLimitSweep();
-
   // Ensure the data/ directory exists for user records and player persistence
   const dataDir = process.env.PERSISTENCE_PATH || path.resolve(__dirname, '..', 'data');
   fs.mkdirSync(dataDir, { recursive: true });
@@ -1728,6 +1725,9 @@ function startServer(port) {
   // Clear any previously created intervals/timeouts (from prior test runs)
   clearAllTimers();
   restartBackgroundTimers();
+
+  // Restart the rate-limit sweep after clearing all timers
+  startRateLimitSweep();
 
   // ── JWT authentication middleware ──
   // Runs before the 'connection' event. Calling next(new Error(...)) here
