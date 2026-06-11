@@ -1068,6 +1068,11 @@ let debugGodmodeResult = null;
 // DEBUG_TIME_SCALE_RESULT. `debugTimeScaleResult` keeps the raw last result.
 let debugTimeScale = 1;
 let debugTimeScaleResult = null;
+// Server-reported authority for the time-scale debug feature
+// (process.env.ALLOW_DEBUG_SCENARIOS === '1'). The Shift+T keybind and
+// __setDebugTimeScaleForTest hook stay inert until the snapshot reports true —
+// localhost alone is NOT sufficient for this feature.
+let debugTimeScaleAllowed = false;
 // Preset cycle for the Shift+T keybind: full speed → slow-mo steps → paused → full.
 const DEBUG_TIME_SCALE_PRESETS = [1, 0.5, 0.25, 0];
 const debugBooth = new URLSearchParams(window.location.search).get('booth');
@@ -1393,6 +1398,11 @@ function bindSocketHandlers(s) {
 		// (added in sub-ticket 01) is the source of truth when present.
 		if (Number.isFinite(state.debugTimeScale)) {
 			applyDebugTimeScale(state.debugTimeScale);
+		}
+		// Track the server's authority for the time-scale feature so the keybind
+		// and test hook gate on it (see emitSetDebugTimeScale).
+		if (typeof state.debugTimeScaleAllowed === 'boolean') {
+			debugTimeScaleAllowed = state.debugTimeScaleAllowed;
 		}
 		const me = myId && gameState.players ? gameState.players[myId] : null;
 		const cardProbeScenarios = new Set([
@@ -2422,6 +2432,9 @@ function applyDebugTimeScale(scale) {
 }
 
 function emitSetDebugTimeScale(scale) {
+	// Inert unless the server reported the feature as authorized
+	// (ALLOW_DEBUG_SCENARIOS=1). Localhost alone is not sufficient here.
+	if (!debugTimeScaleAllowed) return;
 	if (!socket?.connected) return;
 	socket.emit(CLIENT_TO_SERVER.SET_DEBUG_TIME_SCALE, { scale });
 }
@@ -4252,7 +4265,7 @@ window.__variantCodexKeydownHandler = (e) => {
 		e.preventDefault();
 		emitToggleDebugGodmode();
 	}
-	if (key === 't' && e.shiftKey && debugScenarioAllowed && socket?.connected && !isDebugGodmodeKeyBlocked(e)) {
+	if (key === 't' && e.shiftKey && debugTimeScaleAllowed && socket?.connected && !isDebugGodmodeKeyBlocked(e)) {
 		e.preventDefault();
 		// Cycle to the next preset after the current scale (1 → 0.5 → 0.25 → 0 → 1).
 		const idx = DEBUG_TIME_SCALE_PRESETS.indexOf(debugTimeScale);
@@ -5419,6 +5432,7 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		debugGodmodeResult,
 		debugTimeScale,
 		debugTimeScaleResult,
+		debugTimeScaleAllowed,
 		objective,
 		encounter,
 		bossEncounter: bossEncounterModel ? { ...bossEncounterModel } : null,
