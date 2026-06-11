@@ -598,7 +598,7 @@ describe('renderCardUsed() — weapon dispatch', () => {
 		});
 	});
 
-	it('ice_ball adds a projectile trail, freeze-crystal burst, and frost decal at impact', () => {
+	it('ice_ball adds cast flourish, synced travel timing, and deferred terminal impact', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'ice_ball',
@@ -608,20 +608,72 @@ describe('renderCardUsed() — weapon dispatch', () => {
 			projectileTravelMs: 1200,
 			hits: [],
 		}, ctx);
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 1, z: 2 });
+		expect(ring[3]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
+		const castBurst = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.find((c) => c[1].x === 1 && c[1].z === 2 && c[2].count === 8);
+		expect(castBurst).toBeDefined();
 		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
 		expect(trail).toBeDefined();
 		expect(trail[1]).toEqual({ x: 1, z: 2 });
 		expect(trail[2]).toEqual({ x: 1, z: 0 });
-		expect(trail[3]).toMatchObject({ range: 9, color: 0x67e8f9 });
-		// Impact at origin + direction * range = (10, 2).
+		expect(trail[3]).toMatchObject({
+			range: 9,
+			travelMs: 1200,
+			color: 0x67e8f9,
+		});
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(schedules).toHaveLength(1);
+		expect(schedules[0][1]).toBe(1200);
+		expect(ctx._scheduled).toHaveLength(1);
+		expect(ctx._scheduled[0].invoked).toBe(false);
+		// Terminal impact at (10, 2) is deferred — not fired synchronously at cast.
+		expect(ctx._calls.find((c) => c[0] === 'spawnImpactDecal')).toBeUndefined();
+		expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.some((c) => c[1].x === 10 && c[1].z === 2 && c[2].count === 14)).toBe(false);
+		ctx.runScheduled();
+		expect(ctx._scheduled[0].invoked).toBe(true);
+		// Impact decal + freeze-crystal burst land at origin + direction * range = (10, 2).
 		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
 		expect(decal).toBeDefined();
 		expect(decal[1]).toEqual({ x: 10, z: 2 });
 		expect(decal[2]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
-		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
-		expect(burst).toBeDefined();
-		expect(burst[1]).toEqual({ x: 10, z: 2 });
-		expect(burst[2]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8, count: 14, spread: 1.8 });
+		const terminalBurst = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.find((c) => c[1].x === 10 && c[1].z === 2 && c[2].count === 14);
+		expect(terminalBurst).toBeDefined();
+		expect(terminalBurst[2]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8, spread: 1.8 });
+	});
+
+	it('ice_ball has no positive windUpMs (instant cast; no charge telegraph)', () => {
+		expect(CARD_DEFS.ice_ball).toBeDefined();
+		expect(CARD_DEFS.ice_ball.windUpMs ?? 0).toBeLessThanOrEqual(0);
+	});
+
+	it('ice_ball spawns immediate per-hit frost bursts at enemy mesh positions', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 4, y: 0, z: 2 } },
+				e2: { position: { x: 7, y: 0, z: 2 } },
+			}),
+		});
+		renderCardUsed({
+			cardId: 'ice_ball',
+			effect: 'ice_ball',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			attackRange: 9,
+			projectileTravelMs: 1200,
+			hits: [{ enemyId: 'e1' }, { enemyId: 'e2' }, { enemyId: 'missing' }],
+		}, ctx);
+		const hitSparks = ctx._calls.filter((c) => c[0] === 'spawnHitSpark');
+		expect(hitSparks).toHaveLength(2);
+		expect(hitSparks[0][1]).toEqual({ x: 4, y: 0.6, z: 2 });
+		expect(hitSparks[1][1]).toEqual({ x: 7, y: 0.6, z: 2 });
+		const frostBursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.filter((c) => c[2].count === 6);
+		expect(frostBursts).toHaveLength(2);
 	});
 
 	it('ice_ball still renders without throwing when the new ctx primitives are absent', () => {
@@ -629,6 +681,8 @@ describe('renderCardUsed() — weapon dispatch', () => {
 			spawnProjectileTrail: undefined,
 			spawnImpactDecal: undefined,
 			spawnParticleBurst: undefined,
+			spawnTelegraphRing: undefined,
+			spawnHitSpark: undefined,
 		});
 		expect(() => renderCardUsed({
 			cardId: 'ice_ball',
@@ -639,6 +693,7 @@ describe('renderCardUsed() — weapon dispatch', () => {
 			hits: [],
 		}, ctx)).not.toThrow();
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(true);
 	});
 });
 

@@ -1566,29 +1566,59 @@ function renderIceBall(data, ctx) {
 	if (!data.origin) return;
 	const origin = originOf(data);
 	const direction = directionOf(data);
+	const travelMs = data.projectileTravelMs ?? 1200;
 	const color = getAccentHex(data.cardId) ?? ICE_ACCENT_COLOR;
 	const emissive = ICE_ACCENT_EMISSIVE;
+	const impact = pointAlong(origin, direction, data.attackRange ?? 8);
+
+	// Brief frost channel at cast (instant spell — no wind-up telegraph).
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, 0.45, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 8, spread: 1.0 });
+	}
+
 	ctx.spawnAttackEffect(origin, direction, {
 		effect: 'ice_ball',
 		range: data.attackRange,
-		projectileTravelMs: data.projectileTravelMs,
+		projectileTravelMs: travelMs,
 		color,
 		emissive,
 	});
 	if (ctx.spawnProjectileTrail) {
 		ctx.spawnProjectileTrail(origin, direction, {
 			range: data.attackRange,
+			travelMs,
 			color,
 			emissive,
 		});
 	}
-	// Freeze-crystal burst + frost scorch where the projectile lands.
-	const impact = pointAlong(origin, direction, data.attackRange ?? 8);
-	if (ctx.spawnImpactDecal) {
-		ctx.spawnImpactDecal(impact, { color, emissive });
-	}
-	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(impact, { color, emissive, count: 14, spread: 1.8 });
+
+	const terminalImpact = () => {
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(impact, { color, emissive });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(impact, { color, emissive, count: 14, spread: 1.8 });
+		}
+	};
+	ctx.scheduleAfter(travelMs, terminalImpact);
+
+	// Per-enemy frost bursts align with instant server damage + applySlow.
+	if (data.hits?.length) {
+		const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(pos, { color, emissive, count: 5, spread: 0.55 });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pos, { color, emissive, count: 6, spread: 0.7 });
+			}
+		}
 	}
 }
 
