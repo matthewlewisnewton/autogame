@@ -1,0 +1,8 @@
+Review complete. I wrote:
+
+- `tickets/327-anim-corebreaker-greatsword/round-1/review.md`
+- `tickets/327-anim-corebreaker-greatsword/round-1/gaps.md`
+
+Verdict is `VERDICT: FAIL`.
+
+The game run itself was clean, but the implementation has a blocking sync gap: Corebreaker’s new VFX renders a 7-unit swing/trail while the server resolves the actual hit and fire trail at the default 5-unit range. No `nits.md` was created.

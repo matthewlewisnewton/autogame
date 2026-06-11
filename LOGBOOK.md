@@ -7709,6 +7709,28 @@ None. The captured run is clean, all acceptance criteria are robustly met, and
 the client tests pass.
 
 
+## v0.432 — 335-anim-offering-terminal  (2026-06-11 01:02:00)
+
+### Timing and server synchronization
+
+PASS. The server `sacrificial_altar` branch emits `CARD_USED` immediately after consuming the minion, adding Magic Stones, and restoring charges. The renderer fires all Offering Terminal primitives synchronously inside `renderSacrificialAltar`; there is no `scheduleAfter`, timer, Promise, projectile travel delay, or wind-up mismatch. The card stats do not define `windUpMs`, so no 307 wind-up telegraph is expected.
+
+### Scope, performance, and regressions
+
+PASS. The game-code changes are scoped to `game/client/cardRenderers.js` and `game/client/test/cardRenderers.test.js`. The VFX work is bounded to a handful of one-shot primitives per cast and adds no per-frame loops or persistent unbounded effects. The captured smoke run still satisfies the foundation requirements: 3D scene, client-server connection, multiplayer presence, movement, and HUD rendering are intact.
+
+### Test and coverage visibility
+
+PASS. `coverage.log` shows the full Vitest run passing: 50 files and 704 tests. The new `cardRenderers.test.js` coverage asserts the ritual composition, consumption/no-consumption split, reward/no-reward split, and registration coverage for `sacrificial_altar`.
+
+### Debug scenarios
+
+PASS. This ticket did not add or modify a `?debugScenario=...` entry. The existing utility-spells debug scenario remains a dev-only shortcut, and Offering Terminal remains reachable through normal reward-card gameplay paths such as the Crucible Duel reward.
+
+## Remaining gaps
+
+None.
+
 ## v0.422 — 338-anim-saber-of-light  (2026-06-10 23:23:33)
 
 ### Timing and server-effect sync
@@ -7848,10 +7870,6 @@ PASS. The change preserves the design's active card-combat creature model: Archi
 
 PASS. This ticket did not add or change debug scenario entry points. Existing Archive Wyrm debug helpers remain gated through the localhost `?debugScenario` flow and are documented as shortcuts for states reachable through normal play by evolving `dungeon_drake` to `ancient_wyrm` and deploying it in combat.
 
-## Remaining gaps
-
-None.
-
 
 ## v0.429 — Decision: per-quest layouts are fully deterministic — every run of a level is the identical map. Intentional?  (2026-06-11 00:43:01)
 
@@ -7874,6 +7892,87 @@ None. All acceptance criteria from the three sub-tickets are met; runtime captur
 ## Nits (non-blocking)
 
 See `nits.md` — stale doc tense in `design.md` only.
+
+
+## v0.430 — 329-anim-astral-guardian  (2026-06-11 00:44:45)
+
+### Timing and server-effect sync
+
+PASS. The server `astral_guardian` effect resolves immediately in `applyAstralShieldCast`, emits `radius: SUMMON_RADIUS`, `shieldGranted`, `playerId`, `hits`, and `minionId`, and the renderer consumes those live payload fields synchronously. The client test asserts no `scheduleAfter` deferral, no generic `spawnSummonEffect`, and an AoE telegraph radius exactly equal to `data.radius`, so the visible impact aligns with the instant radial damage and shield-up moment.
+
+### Design and foundation consistency
+
+PASS. The change is consistent with the design doc's card-combat model: Astral Guardian remains a spell with an instant radial effect plus defensive/minion utility, and it does not alter lobby, movement, multiplayer, economy, or server-client foundations from `game/docs/requirements.md`.
+
+### Code quality, tests, and coverage
+
+PASS. The diff is narrow: `game/client/cardRenderers.js` and `game/client/test/cardRenderers.test.js` are the only game files changed. Optional VFX helpers are guarded, the renderer no-ops when `data.radius` is absent, and the tests cover the summon/telegraph/burst path, shield-present path, shield-absent path, and synchronous timing. The recorded coverage run shows `50` test files and `747` tests passing, including `client/test/cardRenderers.test.js`.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=...` development shortcut; no debug-scenario gating or normal-gameplay reachability issue is introduced.
+
+## Remaining gaps
+
+None. The ticket meets the acceptance criteria. The fallback smoke capture did not include a dedicated Astral Guardian cast screenshot, but the game run is clean and the renderer behavior is covered by focused client tests.
+
+
+## v0.431 — 328-anim-aegis-sentinel  (2026-06-11 00:53:30)
+
+The persistent minion visual in `game/client/renderer.js` is also themed as a wide, tall green shield-wall box, so the summoned creature continues to read as a defensive sentinel after the cast flourish ends.
+
+### Timing and server-effect sync
+PASS. The server-side `aegis_sentinel` definition has no `windUpMs`, and the normal creature `CARD_USED` payload is emitted when the effect resolves with `minionId`; the existing server test confirms the card grants 30 shield HP, spawns the taunt minion, and deals zero burst damage. The client renderer fires synchronously from `CARD_USED`, does not use `scheduleAfter` on the main path, keys shield flourish to `shieldGranted`, and keys deploy/summon visuals to `minionId`. VFX duration uses `MINION_SUMMON_IN_MS`, matching the minion scale-in window.
+
+### Shared primitives and performance
+PASS. The Aegis primitives are additive VFX registered in `activeEffects`, use finite durations, clean up through `updateAttackEffects()`, and do not add network traffic or per-frame allocations beyond the existing active-effect update pattern. Optional helper calls are guarded, so partial context exposure will not throw.
+
+### Debug scenario requirements
+PASS. The `aegis-sentinel-ready` scenario is reachable only through the existing `?debugScenario=` path and is gated by the normal localhost/debug scenario flow. It enters the standard playing debug state, then seeds Aegis Sentinel into the player's hand with enough Magic Stones. The same end state is reachable through normal gameplay because `aegis_sentinel` is in the shop/reward card pool, can be acquired, placed in the deck, and used in a run; the shortcut does not replace or weaken the server-side use-card path.
+
+### Design and requirements consistency
+PASS. The change preserves the documented 3D multiplayer action-RPG foundation: it only affects client-side rendering/VFX for one creature card plus test coverage and debug visibility. The captured run confirms the core requirements still hold: Three.js scene renders, client/server connection works, multiplayer avatars appear, and movement/dodge interactions update during play.
+
+### Verification evidence
+PASS. The requested diff/log commands show the ticket's three commits and a scoped change set in `game/client/cardRenderers.js`, `game/client/renderer.js`, `game/client/main.js`, `game/client/socketHandlers/*`, and focused client tests. Coverage visibility shows the client vitest run passing: 50 test files and 748 tests passed. The fallback capture screenshots exercise lobby and baseline gameplay health; they do not specifically show Aegis Sentinel, but the live code and focused tests cover the card renderer and primitive behavior directly.
+
+
+## v0.433 — 327-anim-corebreaker-greatsword  (2026-06-11 01:12:58)
+
+### No performance regression or obvious code-quality issue
+
+PASS. The effect adds a bounded number of visuals: one cone, one impact decal, one burst, one directional fire-zone, and four scheduled pulse beats from the card's current DoT stats. That is small and fixed per cast. Optional VFX primitives are guarded where relevant, tests cover the dedicated renderer, range sync, DoT timing, synchronous impact, heavy-weapon distinction, and graceful degradation of optional trail primitives.
+
+### Client test where feasible
+
+PASS. `coverage.log` shows the full vitest run passed: 59 files and 934 tests. `client/test/cardRenderers.test.js` includes targeted Corebreaker tests for dedicated renderer registration, magma visuals, server-emitted `attackRange` sync, card-def DoT cadence, synchronous swing/impact, and fallback behavior.
+
+## Design and foundation consistency
+
+PASS. The change preserves the documented 3D multiplayer action-RPG/card-combat loop and does not alter lobby flow, combat resolution authority, movement, persistence, or economy rules. The animation remains client-side feedback for a server-authoritative card result, which matches the design foundation.
+
+## Debug scenarios
+
+No development debug scenario was added or changed for this ticket. The round-2 capture also reports no active scenarios.
+
+
+## v0.434 — 324-anim-phase-stalker  (2026-06-11 01:22:20)
+
+### No performance regression
+
+PASS. The added work is bounded: one delayed deploy pulse, two short projectile trails, two small bursts, one attack corridor, and one spark per reported enemy hit. The minion wind-up update adjusts existing telegraph material opacity and reuses the existing keyed telegraph mesh lifecycle. There is no unbounded allocation loop or persistent effect leak apparent in the changed code.
+
+### Client tests where feasible
+
+PASS. Coverage log shows the Vitest suite passed: 50 files, 759 tests. Focused tests were added for Phase Stalker deploy layering, helper absence, beam travel timing, rift accent, per-hit enemy sparks, and null-crawler wind-up telegraph creation/disposal. The coverage report itself is visibility-only and does not enforce thresholds.
+
+## Design and foundation consistency
+
+PASS. The changes remain consistent with the design doc's card-combat model: Phase Stalker is still a creature minion whose attack is represented visually without changing server combat, economy, dungeon, lobby, or persistence behavior. The foundation requirements still hold in the captured run: a Three.js scene loads, clients connect through the server, multiplayer state is visible, and WASD movement updates during gameplay.
+
+## Debug scenarios
+
+PASS. This ticket did not add or modify a `?debugScenario=` shortcut or server debug scenario. The capture also ran with `debugScenario: null`, so normal gameplay remains the entry path exercised by the smoke flow.
 
 
 ## v0.435 — 326-anim-alloy-greatblade  (2026-06-11 01:31:06)

@@ -1,0 +1,7 @@
+Created one new sub-ticket to close the single open gap (the range/sync mismatch). Sub-ticket `01-corebreaker-magma-trail` is `.passed` and was left untouched.
+
+Sub-ticket folder created:
+
+- `/home/matt/workspace/.autogame-worktrees/327-anim-corebreaker-greatsword/tickets/327-anim-corebreaker-greatsword/subtickets/02-corebreaker-range-sync/ticket.md`
+
+**Why this scope:** The round-1 review verdict was FAIL on exactly one gap — the renderer hardcodes range `7` for the cone/impact/trail/pulses, but `magma_greatsword` lacks an `attackRange` stat, so the server resolves its hit cone and `fire_trail` at the default `5`. Sub-ticket 02 closes it on both sides: adds `attackRange: 7` to shared stats (so the server cone + `fire_trail` resolve at 7) and makes `renderCorebreakerGreatsword` derive its reach from the `data.attackRange` payload (so client and server stay in lockstep), with tests asserting the sync contract. Verification is `code` since it covers a JSON stat value, payload-derived logic, and test assertions.

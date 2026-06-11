@@ -1,0 +1,15 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/324-anim-phase-stalker/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/324-anim-phase-stalker/game/data
+Server listening on port 3000
+Player connected: socket=j7QvkpqUjrYhXiTTAAAB, playerId=64b2d04e-4b9e-42a3-946f-baaee680243b
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=bwjDlok0g7KQpn9NAAAD, playerId=87f06817-38f8-45eb-b262-e2a70629fce7
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=c701a54b-36d4-481a-9879-c9b978b0796b value=15
+Player disconnected: j7QvkpqUjrYhXiTTAAAB
+Player disconnected: bwjDlok0g7KQpn9NAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
