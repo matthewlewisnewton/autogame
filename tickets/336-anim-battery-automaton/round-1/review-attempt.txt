@@ -1,0 +1,3 @@
+Wrote `tickets/336-anim-battery-automaton/round-1/review.md` with `VERDICT: PASS`.
+
+No blocking gaps were found, so I did not create `gaps.md`. No nits were worth filing, so I did not create `nits.md`.
