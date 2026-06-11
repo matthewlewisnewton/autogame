@@ -7502,3 +7502,26 @@ Consistent with `game/docs/design.md`'s per-card VFX-on-shared-primitives model.
 ## Remaining gaps
 None blocking. The captured smoke run did not happen to cast this card (deck-dependent), so the proof rests on the code path + the dispatch/lifecycle tests + the clean run — which together are sufficient for an additive-VFX polish ticket. Minor polish noted in `nits.md`.
 
+
+## v0.417 — 345-anim-cryo-burst  (2026-06-10 22:04:35)
+
+cases: (1) shockwave ring + denser burst + frozen decal at origin with no
+summon primitive; (2) lingering 2500ms frost field present and sized to radius
+when `frozen`, all synchronous (no `scheduleAfter`/scheduled effects); (3) no
+2.5s linger when not frozen but the cast burst still fires. Full suite:
+**206/206 pass**.
+
+### Scope / regression
+
+PASS. `git diff 2c595809 HEAD` touches only game/client/cardRenderers.js,
+game/client/test/cardRenderers.test.js, and the two sub-ticket `ticket.md`
+files — within the ticket's stated SCOPE. No server, shared, or other-card
+renderer changes. No debug scenarios added. Consistent with design.md (no
+`frost_nova`-specific constraints there) and no foundation regression.
+
+## Remaining gaps
+
+None blocking. One non-blocking nit recorded in `nits.md` (the 2500ms freeze
+duration is duplicated client-side from cardStats.json behind a manual
+keep-in-sync comment rather than being carried in the payload or imported).
+
