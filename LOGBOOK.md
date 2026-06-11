@@ -7977,3 +7977,26 @@ PASS. This ticket did not add or modify a `?debugScenario=` shortcut or server d
 ## Remaining gaps
 
 None.
+
+## v0.439 — 322-anim-signal-familiar  (2026-06-11 02:07:59)
+
+### "Client test where feasible"
+PASS. Two expanded tests in cardRenderers.test.js cover: the wisp, immediate-vs-scheduled ring
+ordering, distinct increasing ring radii reaching the full AoE radius, the spark burst, and
+per-hit arcs/sparks with correct origin→enemy arg order and y-offset. A second test covers the
+guarded edge cases: missing meshes skipped, empty hits (cast still renders, zero per-hit),
+and missing helper functions (no throw, no per-hit). `npx vitest run client/test/cardRenderers.test.js`
+→ **280 passed**.
+
+## Integration / scope
+- All ctx helpers used by the renderer are really wired in `socketHandlers/cardHandlers.js`
+  (`spawnMinionSummonInEffect`, `spawnLightningArc`, `spawnHitSpark`, `spawnParticleBurst`,
+  `spawnTelegraphRing`, `enemyMeshes`, `scheduleAfter`). No missing-helper risk in production.
+- Diff is tightly scoped to `game/client/cardRenderers.js` + its test (per ticket SCOPE). No
+  server, shared, or other-card renderer changes — no conflict surface with sibling animation beads.
+- No debug scenarios added or changed by this ticket.
+- Consistent with design.md's per-card VFX direction; no regression to requirements foundation.
+
+## Remaining gaps
+None blocking. (See nits.md for optional polish.)
+
