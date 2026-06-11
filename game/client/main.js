@@ -1781,8 +1781,8 @@ function emitSetDebugTimeScale(scale) {
 	socket.emit(CLIENT_TO_SERVER.SET_DEBUG_TIME_SCALE, { scale });
 }
 
-window.__openDeckBoothForTest = openDeckBooth;
-window.__openShopBoothForTest = openShopBooth;
+window.__openDeckBoothForTest = () => openDeckBooth(deckBoothDeps);
+window.__openShopBoothForTest = () => openShopBooth(shopBoothDeps);
 window.__requestDebugBoothOpenForTest = requestDebugBoothOpen;
 window.__requestDebugShopBoothOpenForTest = requestDebugShopBoothOpen;
 // Capture/test hook: ready up via the launch-booth path (no new socket event).
