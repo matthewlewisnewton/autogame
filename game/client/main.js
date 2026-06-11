@@ -278,7 +278,8 @@ const attackHintEl = document.getElementById('attack-hint');
 
 /** Write the device-aware attack/cast hint text, overriding the static HTML. */
 function applyAttackHintText() {
-	if (attackHintEl) attackHintEl.textContent = getAttackCastHint().text;
+	const equippedKeyItemId = gameState?.players?.[myId]?.equippedKeyItemId ?? null;
+	if (attackHintEl) attackHintEl.textContent = getAttackCastHint(equippedKeyItemId).text;
 }
 
 // How long the fade-out runs before the hint is fully `display:none` (kept in

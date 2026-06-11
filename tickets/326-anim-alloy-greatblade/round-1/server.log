@@ -1,0 +1,14 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/326-anim-alloy-greatblade/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/326-anim-alloy-greatblade/game/data
+Server listening on port 3004
+Player connected: socket=mdCUq-NXWoY06jsJAAAB, playerId=0e371fca-f7d3-41bf-aed0-f26d704d810c
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=ud0q3n7UCT_pBF0fAAAD, playerId=cd05812e-1822-4ede-922f-ceebf962cfbc
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: mdCUq-NXWoY06jsJAAAB
+Player disconnected: ud0q3n7UCT_pBF0fAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

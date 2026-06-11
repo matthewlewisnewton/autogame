@@ -1,0 +1,11 @@
+I created 2 sub-tickets that split the top-level ticket along its two acceptance halves (visual theme + server-synced timing), since the Phase Stalker already has a working-but-generic implementation that needs polishing.
+
+**Created sub-ticket folders:**
+- `tickets/324-anim-phase-stalker/subtickets/01-phase-in-deploy/ticket.md`
+- `tickets/324-anim-phase-stalker/subtickets/02-windup-beam-timing/ticket.md`
+
+**01 — Phase-in deploy:** Polishes `renderNullCrawlerSummon` so the creature reads as a predatory stalker phasing in from another dimension (adds a flicker/rift beat to the existing cyan telegraph), confined to that one render function. Code verification.
+
+**02 — Wind-up + beam timing:** Polishes the attack cycle — the wind-up telegraph in `minionSync.js` charges for exactly `attackWindupMs`, and `renderPhaseBeam` is themed as a phase/void rift *and* re-timed to match the server's instant hitscan (the server resolves `collectPhaseBeamHits` at wind-up completion, but the client currently renders a slow traveling projectile, so impacts lag the actual damage). Code verification.
+
+Both default to `code` QA — the criteria involve function existence, registration, guard/no-throw paths, timing derived from a server value, and per-hit logic, none of which a single happy-path screenshot run could confirm. They're ordered so the deploy look lands first, then the attack cycle.

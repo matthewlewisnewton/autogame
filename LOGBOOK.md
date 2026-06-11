@@ -7709,6 +7709,28 @@ None. The captured run is clean, all acceptance criteria are robustly met, and
 the client tests pass.
 
 
+## v0.432 — 335-anim-offering-terminal  (2026-06-11 01:02:00)
+
+### Timing and server synchronization
+
+PASS. The server `sacrificial_altar` branch emits `CARD_USED` immediately after consuming the minion, adding Magic Stones, and restoring charges. The renderer fires all Offering Terminal primitives synchronously inside `renderSacrificialAltar`; there is no `scheduleAfter`, timer, Promise, projectile travel delay, or wind-up mismatch. The card stats do not define `windUpMs`, so no 307 wind-up telegraph is expected.
+
+### Scope, performance, and regressions
+
+PASS. The game-code changes are scoped to `game/client/cardRenderers.js` and `game/client/test/cardRenderers.test.js`. The VFX work is bounded to a handful of one-shot primitives per cast and adds no per-frame loops or persistent unbounded effects. The captured smoke run still satisfies the foundation requirements: 3D scene, client-server connection, multiplayer presence, movement, and HUD rendering are intact.
+
+### Test and coverage visibility
+
+PASS. `coverage.log` shows the full Vitest run passing: 50 files and 704 tests. The new `cardRenderers.test.js` coverage asserts the ritual composition, consumption/no-consumption split, reward/no-reward split, and registration coverage for `sacrificial_altar`.
+
+### Debug scenarios
+
+PASS. This ticket did not add or modify a `?debugScenario=...` entry. The existing utility-spells debug scenario remains a dev-only shortcut, and Offering Terminal remains reachable through normal reward-card gameplay paths such as the Crucible Duel reward.
+
+## Remaining gaps
+
+None.
+
 ## v0.422 — 338-anim-saber-of-light  (2026-06-10 23:23:33)
 
 ### Timing and server-effect sync
@@ -7914,9 +7936,89 @@ PASS. The change preserves the documented 3D multiplayer action-RPG foundation: 
 ### Verification evidence
 PASS. The requested diff/log commands show the ticket's three commits and a scoped change set in `game/client/cardRenderers.js`, `game/client/renderer.js`, `game/client/main.js`, `game/client/socketHandlers/*`, and focused client tests. Coverage visibility shows the client vitest run passing: 50 test files and 748 tests passed. The fallback capture screenshots exercise lobby and baseline gameplay health; they do not specifically show Aegis Sentinel, but the live code and focused tests cover the card renderer and primitive behavior directly.
 
+
+## v0.433 — 327-anim-corebreaker-greatsword  (2026-06-11 01:12:58)
+
+### No performance regression or obvious code-quality issue
+
+PASS. The effect adds a bounded number of visuals: one cone, one impact decal, one burst, one directional fire-zone, and four scheduled pulse beats from the card's current DoT stats. That is small and fixed per cast. Optional VFX primitives are guarded where relevant, tests cover the dedicated renderer, range sync, DoT timing, synchronous impact, heavy-weapon distinction, and graceful degradation of optional trail primitives.
+
+### Client test where feasible
+
+PASS. `coverage.log` shows the full vitest run passed: 59 files and 934 tests. `client/test/cardRenderers.test.js` includes targeted Corebreaker tests for dedicated renderer registration, magma visuals, server-emitted `attackRange` sync, card-def DoT cadence, synchronous swing/impact, and fallback behavior.
+
+## Design and foundation consistency
+
+PASS. The change preserves the documented 3D multiplayer action-RPG/card-combat loop and does not alter lobby flow, combat resolution authority, movement, persistence, or economy rules. The animation remains client-side feedback for a server-authoritative card result, which matches the design foundation.
+
+## Debug scenarios
+
+No development debug scenario was added or changed for this ticket. The round-2 capture also reports no active scenarios.
+
+
+## v0.434 — 324-anim-phase-stalker  (2026-06-11 01:22:20)
+
+### No performance regression
+
+PASS. The added work is bounded: one delayed deploy pulse, two short projectile trails, two small bursts, one attack corridor, and one spark per reported enemy hit. The minion wind-up update adjusts existing telegraph material opacity and reuses the existing keyed telegraph mesh lifecycle. There is no unbounded allocation loop or persistent effect leak apparent in the changed code.
+
+### Client tests where feasible
+
+PASS. Coverage log shows the Vitest suite passed: 50 files, 759 tests. Focused tests were added for Phase Stalker deploy layering, helper absence, beam travel timing, rift accent, per-hit enemy sparks, and null-crawler wind-up telegraph creation/disposal. The coverage report itself is visibility-only and does not enforce thresholds.
+
+## Design and foundation consistency
+
+PASS. The changes remain consistent with the design doc's card-combat model: Phase Stalker is still a creature minion whose attack is represented visually without changing server combat, economy, dungeon, lobby, or persistence behavior. The foundation requirements still hold in the captured run: a Three.js scene loads, clients connect through the server, multiplayer state is visible, and WASD movement updates during gameplay.
+
+## Debug scenarios
+
+PASS. This ticket did not add or modify a `?debugScenario=` shortcut or server debug scenario. The capture also ran with `debugScenario: null`, so normal gameplay remains the entry path exercised by the smoke flow.
+
+
+## v0.435 — 326-anim-alloy-greatblade  (2026-06-11 01:31:06)
+
+
+### Uses shared VFX primitives and stays scoped
+
+PASS. The implementation composes existing client VFX primitives (`spawnAttackEffect`, `spawnProjectileTrail`, `spawnImpactDecal`, `spawnParticleBurst`, `spawnTelegraphRing`) and only changes `game/client/cardRenderers.js` plus targeted renderer tests. No server contract, gameplay rules, or unrelated cards were modified.
+
+### No performance regression
+
+PASS. The effect adds a small bounded number of short-lived primitives per `cardUsed` event: one cone, one trail, one decal, one burst, and optionally one knockback ring plus one burst. There are no new loops over scene state, persistent effects, timers for the normal `steel_claymore` payload, or allocations that scale with enemy count beyond the existing shared hit-flash handling.
+
+### Client test coverage
+
+PASS. `coverage.log` shows the full vitest run passed: 50 files and 763 tests. The new tests cover dedicated renderer dispatch, `windUpMs`/single-swing timing contract, `attackRange`-driven placement, synchronous impact, knockback-gated burst, thematic trail/decal/debris composition, and graceful degradation when optional primitives are unavailable.
+
+## Design and requirements consistency
+
+PASS. The change fits the documented card-combat model: weapons are multi-charge directional attacks, and wind-up commitment remains server-driven. It does not alter the foundation requirements for rendering, socket connection, player visualization, or movement synchronization. No development debug scenario was added or changed.
+
 ## Remaining gaps
 
 None.
+
+## v0.436 — Client: on-screen control hints never mention the key item binding  (2026-06-11 01:54:41)
+
+**PASS.** `game/client/test/attack-cast-hint.test.js` adds four focused cases: default `E`, rebound `Q`, standard gamepad `DPad Down`, and 8BitDo 64 label (no raw `Btn 13`). Full suite: **549/549 tests passed** (`coverage.log`).
+
+## Design & integration
+
+- **Scope:** Single sub-ticket; changes limited to `input.js`, `main.js`, and tests. No server or persistence changes — appropriate for a client HUD hint.
+- **Consistency with `design.md`:** No combat-loop or progression regressions; improves discoverability of a core combat tool already documented in controls/settings.
+- **Existing HUD:** The persistent key-item slot (`Dodge Roll` / `E`) was already present; this ticket correctly fills the gap in the center attack/cast hint line noted in the ticket goal.
+- **Debug scenarios:** None added or modified — N/A.
+
+## Code quality
+
+- Reuses existing `getUseKeyItemBinding()` rather than duplicating resolution logic.
+- `renderHand()` already refreshed attack/cast hint text for hand-slot binding changes; extending the same path for key-item state keeps behavior consistent.
+- No dead code, no new console errors, no pageerrors in capture.
+
+## Remaining gaps
+
+None. All acceptance criteria are met; the captured run proves the game loads and displays the new hint correctly.
+
 
 ## v0.437 — 321-anim-solar-edge  (2026-06-11 01:59:15)
 

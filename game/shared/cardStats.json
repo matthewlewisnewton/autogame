@@ -45,6 +45,7 @@
   },
   "magma_greatsword": {
     "damage": 42,
+    "attackRange": 7,
     "dotTicks": 4,
     "dotIntervalMs": 500,
     "trailDamagePerTick": 11,

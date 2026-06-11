@@ -79,4 +79,40 @@ describe('getAttackCastHint', () => {
 		expect(hint.mode).toBe('gamepad');
 		expect(hint.text).not.toContain('Click');
 	});
+
+	it('no key item fragment when equippedKeyItemId is falsy', () => {
+		const hint = getAttackCastHint(null);
+		expect(hint.text).toBe('Click to attack · press 1–6 to cast cards');
+		expect(hint.text).not.toContain('key item');
+	});
+
+	it('appends key item binding (default E) when equippedKeyItemId is truthy', () => {
+		const hint = getAttackCastHint('some_key_item');
+		expect(hint.mode).toBe('keyboard');
+		expect(hint.text).toBe('Click to attack · press 1–6 to cast cards · E for key item');
+	});
+
+	it('appends rebound keyboard binding when useKeyItem is remapped', () => {
+		patchSettings({ keyboard: { bindings: { useKeyItem: 'q' } } });
+		const hint = getAttackCastHint('some_key_item');
+		expect(hint.text).toBe('Click to attack · press 1–6 to cast cards · Q for key item');
+	});
+
+	it('appends gamepad binding label when equipped and in gamepad mode', () => {
+		patchSettings({ gamepad: { profile: 'standard' } });
+		mockGamepad(0, { id: 'Xbox 360 Controller (XInput)', buttons: [], axes: [0, 0, 0, 0] });
+		const hint = getAttackCastHint('some_key_item');
+		expect(hint.mode).toBe('gamepad');
+		expect(hint.text).toContain('Press A to attack · press A–RB to cast cards');
+		expect(hint.text).toContain('DPad Down for key item');
+	});
+
+	it('appends 8BitDo 64 gamepad binding label when equipped', () => {
+		patchSettings({ gamepad: { profile: '8bitdo-64' } });
+		const hint = getAttackCastHint('some_key_item');
+		expect(hint.mode).toBe('gamepad');
+		expect(hint.text).toContain('for key item');
+		// 8BitDo 64 default useKeyItem is button 13 (DPad Down) — label should not be the raw index
+		expect(hint.text).not.toContain('Btn 13');
+	});
 });

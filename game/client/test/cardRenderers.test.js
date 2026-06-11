@@ -164,17 +164,29 @@ describe('resolveRenderers()', () => {
 		}
 	});
 
-	it('returns the heavy greatsword renderer for alloy/corebreaker (not the cone default)', () => {
+	it('returns a dedicated renderer for alloy greatblade (not heavy greatsword or cone default)', () => {
+		const corebreaker = resolveRenderers('magma_greatsword')[0];
+		expect(resolveRenderers('steel_claymore')).toHaveLength(1);
+		expect(resolveRenderers('steel_claymore')[0]).not.toBe(WEAPON_TYPE_DEFAULT_RENDERER);
+		expect(resolveRenderers('steel_claymore')[0]).not.toBe(corebreaker);
+		expect(resolveRenderers('steel_claymore')[0].name).toBe('renderAlloyGreatblade');
+	});
+
+	it('returns a dedicated, non-default renderer for alloy/corebreaker greatswords', () => {
 		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
 			expect(resolveRenderers(cardId)).toHaveLength(1);
 			expect(resolveRenderers(cardId)[0]).not.toBe(WEAPON_TYPE_DEFAULT_RENDERER);
 		}
-		expect(resolveRenderers('steel_claymore')[0]).toBe(resolveRenderers('magma_greatsword')[0]);
+		// Corebreaker now has its own dedicated renderer, distinct from the Alloy
+		// Greatblade's dedicated renderer (its molten fire-trail diverges).
+		expect(resolveRenderers('magma_greatsword')[0]).not.toBe(resolveRenderers('steel_claymore')[0]);
+		expect(resolveRenderers('magma_greatsword')[0].name).toBe('renderCorebreakerGreatsword');
+		expect(resolveRenderers('steel_claymore')[0].name).toBe('renderAlloyGreatblade');
 	});
 
 	it('returns a dedicated renderer for excalibur_photon (not heavy greatsword or cone default)', () => {
 		const plain = WEAPON_TYPE_DEFAULT_RENDERER;
-		const heavy = resolveRenderers('steel_claymore')[0];
+		const heavy = resolveRenderers('magma_greatsword')[0];
 		expect(resolveRenderers('excalibur_photon')).toHaveLength(1);
 		expect(resolveRenderers('excalibur_photon')[0]).not.toBe(plain);
 		expect(resolveRenderers('excalibur_photon')[0]).not.toBe(heavy);
@@ -1648,6 +1660,127 @@ describe('renderCardUsed() — saber_of_light reach + swift_slash timing', () =>
 	});
 });
 
+describe('renderCardUsed() — steel_claymore / Alloy Greatblade timing + knockback', () => {
+	function fire(ctx, extra = {}) {
+		renderCardUsed({
+			cardId: 'steel_claymore',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			hits: [],
+			...extra,
+		}, ctx);
+	}
+	function swingStyle(ctx) {
+		const attack = ctx._calls.find((c) => c[0] === 'spawnAttackEffect');
+		expect(attack).toBeDefined();
+		return attack[3];
+	}
+	function impactDecal(ctx) {
+		return ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+	}
+	function debrisBurst(ctx) {
+		return ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+	}
+	function knockbackBurst(ctx) {
+		return ctx._calls.filter((c) => c[0] === 'spawnParticleBurst').find(
+			(c) => c[2]?.spread === 3.2,
+		);
+	}
+
+	it('matches server timing contract (windUpMs 600, single swing)', () => {
+		expect(CARD_DEFS.steel_claymore.windUpMs).toBe(600);
+		expect(CARD_DEFS.steel_claymore.swingsPerUse).toBeUndefined();
+	});
+
+	it('cleaves a wide slate arc with metallic trail, large decal, and heavy debris', () => {
+		const ctx = makeCtx();
+		fire(ctx);
+		const style = swingStyle(ctx);
+		expect(style).toMatchObject({ color: 0x94a3b8, coneAngle: Math.PI / 2.2, range: 7 });
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail).toBeDefined();
+		expect(trail[3]).toMatchObject({ color: 0x94a3b8, emissive: 0x64748b, range: 7 });
+		const decal = impactDecal(ctx);
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 7, z: 0 });
+		expect(decal[2]).toMatchObject({ color: 0x94a3b8, emissive: 0x64748b, radius: 3.2 });
+		const burst = debrisBurst(ctx);
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 7, z: 0 });
+		expect(burst[2]).toMatchObject({
+			color: 0x94a3b8,
+			emissive: 0x64748b,
+			count: 18,
+			spread: 2.4,
+		});
+	});
+
+	it('places impact primitives from data.attackRange (not the style default)', () => {
+		const ctx = makeCtx();
+		fire(ctx, { attackRange: 9 });
+		expect(swingStyle(ctx).range).toBe(9);
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail[3].range).toBe(9);
+		expect(impactDecal(ctx)[1]).toEqual({ x: 9, z: 0 });
+		expect(debrisBurst(ctx)[1]).toEqual({ x: 9, z: 0 });
+	});
+
+	it('fires the single cleave synchronously with no scheduleAfter delay', () => {
+		const ctx = makeCtx();
+		fire(ctx, { swingCount: 1 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('emits a knockback burst layer when knockbackMoved is non-empty', () => {
+		const ctx = makeCtx();
+		fire(ctx, {
+			attackRange: 9,
+			knockbackMoved: [{ enemyId: 'e1', fromX: 8, fromZ: 0, toX: 11, toZ: 0 }],
+		});
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 9, z: 0 });
+		expect(ring[2]).toBe(2.8);
+		expect(knockbackBurst(ctx)).toBeDefined();
+		expect(knockbackBurst(ctx)[2]).toMatchObject({ count: 22, spread: 3.2 });
+	});
+
+	it('skips the knockback burst layer when knockbackMoved is empty', () => {
+		const ctx = makeCtx();
+		fire(ctx, { knockbackMoved: [] });
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		expect(knockbackBurst(ctx)).toBeUndefined();
+		expect(debrisBurst(ctx)).toBeDefined();
+	});
+
+	it('emits a metallic trail (distinct from magma greatsword)', () => {
+		const ctx = makeCtx();
+		fire(ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(true);
+	});
+
+	it('hits harder than lighter blades (bigger decal + more particles)', () => {
+		const ctx = makeCtx();
+		fire(ctx);
+		expect(impactDecal(ctx)[2].radius).toBeGreaterThan(2);
+		expect(debrisBurst(ctx)[2].count).toBeGreaterThan(12);
+	});
+
+	it('degrades gracefully when optional impact primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnImpactDecal: undefined,
+			spawnParticleBurst: undefined,
+			spawnTelegraphRing: undefined,
+			spawnProjectileTrail: undefined,
+		});
+		expect(() => fire(ctx, {
+			knockbackMoved: [{ enemyId: 'e1', fromX: 7, fromZ: 0, toX: 10, toZ: 0 }],
+		})).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+	});
+});
+
 describe('renderCardUsed() — heavy wind-up greatswords', () => {
 	function fire(cardId, ctx, extra = {}) {
 		renderCardUsed({ cardId, origin: { x: 0, z: 0 }, direction: { x: 1, z: 0 }, hits: [], ...extra }, ctx);
@@ -1664,31 +1797,116 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 		return ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
 	}
 
-	it('Alloy Greatblade cleaves a wide slate arc with a large decal and heavy debris', () => {
-		const ctx = makeCtx();
-		fire('steel_claymore', ctx);
-		const style = swingStyle(ctx);
-		expect(style).toMatchObject({ color: 0x94a3b8, coneAngle: Math.PI / 2.2, range: 7 });
-		// Larger-radius decal + high-count debris burst at the strike point (range = 7).
-		const decal = impactDecal(ctx);
-		expect(decal).toBeDefined();
-		expect(decal[1]).toEqual({ x: 7, z: 0 });
-		expect(decal[2]).toMatchObject({ color: 0x94a3b8, radius: 3.2 });
-		const burst = debrisBurst(ctx);
-		expect(burst).toBeDefined();
-		expect(burst[1]).toEqual({ x: 7, z: 0 });
-		expect(burst[2]).toMatchObject({ color: 0x94a3b8, count: 18 });
-	});
-
 	it('Corebreaker Greatsword erupts a wide magma swing with the biggest decal/debris', () => {
 		const ctx = makeCtx();
 		fire('magma_greatsword', ctx);
 		const style = swingStyle(ctx);
+		// With no payload attackRange the reach falls back to the style default (7).
 		expect(style).toMatchObject({ color: 0xf97316, emissive: 0xff3b00, coneAngle: Math.PI / 1.8, range: 7 });
 		const decal = impactDecal(ctx);
+		expect(decal[1]).toEqual({ x: 7, z: 0 });
 		expect(decal[2]).toMatchObject({ color: 0xf97316, radius: 3.8 });
 		const burst = debrisBurst(ctx);
 		expect(burst[2]).toMatchObject({ color: 0xf97316, count: 24 });
+	});
+
+	it('Corebreaker syncs its cone/impact/trail reach to the server-emitted attackRange', () => {
+		// SYNC CONTRACT: when the payload carries an attackRange (≠ the style default
+		// 7), the cone range, impact placement, fire-trail range and per-tick pulses
+		// all use that derived value — the client VFX never overstate the real reach.
+		const range = 5;
+		const ctx = makeCtx();
+		fire('magma_greatsword', ctx, { attackRange: range });
+		// Cone swing reach tracks the payload, not the hardcoded style default.
+		expect(swingStyle(ctx).range).toBe(range);
+		// Heavy impact decal/debris land at the derived strike point (range along +x).
+		expect(impactDecal(ctx)[1]).toEqual({ x: range, z: 0 });
+		expect(debrisBurst(ctx)[1]).toEqual({ x: range, z: 0 });
+		// Directional fire-trail reach matches the server fire_trail resolution.
+		const breath = ctx._calls.find((c) => c[0] === 'spawnDragonsBreathEffect');
+		expect(breath[3].range).toBe(range);
+		// Per-tick molten pulses sit at range * 0.6 along the swing direction.
+		ctx.runScheduled();
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring[1]).toEqual({ x: range * 0.6, z: 0 });
+	});
+
+	it('Corebreaker falls back to the style default reach when the payload omits attackRange', () => {
+		const ctx = makeCtx();
+		fire('magma_greatsword', ctx, { attackRange: undefined });
+		// The Corebreaker style default reach (7) is the only fallback.
+		const fallbackRange = 7;
+		expect(swingStyle(ctx).range).toBe(fallbackRange);
+		expect(impactDecal(ctx)[1]).toEqual({ x: fallbackRange, z: 0 });
+		const breath = ctx._calls.find((c) => c[0] === 'spawnDragonsBreathEffect');
+		expect(breath[3].range).toBe(fallbackRange);
+	});
+
+	it('Corebreaker uses its own dedicated renderer, distinct from the Alloy Greatblade', () => {
+		expect(resolveRenderers('magma_greatsword')[0]).not.toBe(resolveRenderers('steel_claymore')[0]);
+		expect(resolveRenderers('magma_greatsword')[0].name).toBe('renderCorebreakerGreatsword');
+	});
+
+	it('Corebreaker lays a lingering molten fire-trail synced to the card-def DoT cadence', () => {
+		const def = getCardDef('magma_greatsword');
+		const ctx = makeCtx();
+		fire('magma_greatsword', ctx);
+		// Directional fire-zone primitive carries the derived DoT timing/duration.
+		const breath = ctx._calls.find((c) => c[0] === 'spawnDragonsBreathEffect');
+		expect(breath).toBeDefined();
+		expect(breath[3]).toMatchObject({
+			color: 0xf97316,
+			emissive: 0xff3b00,
+			dotTicks: def.dotTicks,
+			dotIntervalMs: def.dotIntervalMs,
+			duration: def.dotTicks * def.dotIntervalMs,
+		});
+		// One scheduled molten pulse per DoT tick, at the derived interval cadence.
+		const delays = ctx._calls.filter((c) => c[0] === 'scheduleAfter').map((c) => c[1]);
+		const expected = Array.from({ length: def.dotTicks }, (_, i) => def.dotIntervalMs * (i + 1));
+		expect(delays).toEqual(expected);
+		// The pulses only fire their VFX once their timers elapse.
+		const ringsBefore = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing').length;
+		expect(ringsBefore).toBe(0);
+		ctx.runScheduled();
+		const ringsAfter = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing').length;
+		expect(ringsAfter).toBe(def.dotTicks);
+	});
+
+	it('Corebreaker derives its trail cadence from the card def, never hardcodes it', () => {
+		// The number of scheduled pulses tracks the card-def dotTicks value.
+		const def = getCardDef('magma_greatsword');
+		const ctx = makeCtx();
+		fire('magma_greatsword', ctx);
+		const pulses = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(pulses).toHaveLength(def.dotTicks);
+		expect(pulses.every((c) => c[1] % def.dotIntervalMs === 0)).toBe(true);
+	});
+
+	it('Corebreaker fires its swing + impact synchronously, before any DoT tick', () => {
+		const ctx = makeCtx();
+		fire('magma_greatsword', ctx);
+		// Swing + heavy impact land at t=0 (no scheduleAfter gating the first beat).
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(true);
+		const firstSchedule = ctx._calls.findIndex((c) => c[0] === 'scheduleAfter');
+		const firstSwing = ctx._calls.findIndex((c) => c[0] === 'spawnAttackEffect');
+		expect(firstSwing).toBeLessThan(firstSchedule);
+	});
+
+	it('Corebreaker degrades gracefully when the lingering-trail primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnDragonsBreathEffect: undefined,
+			spawnImpactDecal: undefined,
+			spawnParticleBurst: undefined,
+			spawnTelegraphRing: undefined,
+		});
+		expect(() => {
+			fire('magma_greatsword', ctx);
+			ctx.runScheduled();
+		}).not.toThrow();
+		// The core heavy cone swing still fires.
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 
 	it('Excalibur Photon greatslashes magenta with a light-shard burst, honoring the photon_barrage stagger', () => {
@@ -1707,13 +1925,18 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 		expect(debrisBurst(ctx)[2]).toMatchObject({ color: 0xe879f9, count: 20 });
 	});
 
-	it('heavy greatswords (claymore, magma) do not emit photon-only trail or telegraph ring primitives', () => {
-		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
-			const ctx = makeCtx();
-			fire(cardId, ctx);
-			expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
-			expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
-		}
+	it('magma greatsword does not emit a metallic projectile trail', () => {
+		const magmaCtx = makeCtx();
+		fire('magma_greatsword', magmaCtx);
+		expect(magmaCtx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
+	});
+
+	it('Alloy Greatblade stays a pure committed swing (no telegraph ring, no lingering trail)', () => {
+		const ctx = makeCtx();
+		fire('steel_claymore', ctx);
+		ctx.runScheduled();
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnDragonsBreathEffect')).toBe(false);
 	});
 
 	it('the two heavy greatswords use mutually distinct accent colors and an impact param', () => {
@@ -1728,30 +1951,22 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 		expect(new Set(rows.map((r) => r.decalRadius)).size).toBe(2);
 	});
 
-	it('hit harder than the lighter sub-ticket 01/02 blades (bigger decal + more particles)', () => {
-		// Lighter blades top out around 12 sparks and use the default ~0.8 decal radius.
-		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
-			const ctx = makeCtx();
-			fire(cardId, ctx);
-			expect(impactDecal(ctx)[2].radius).toBeGreaterThan(2);
-			expect(debrisBurst(ctx)[2].count).toBeGreaterThan(12);
-		}
+	it('hits harder than the lighter sub-ticket 01/02 blades (bigger decal + more particles)', () => {
+		const ctx = makeCtx();
+		fire('magma_greatsword', ctx);
+		expect(impactDecal(ctx)[2].radius).toBeGreaterThan(2);
+		expect(debrisBurst(ctx)[2].count).toBeGreaterThan(12);
 	});
 
-	it('greatsword swings degrade gracefully when the optional impact primitives are absent', () => {
+	it('magma greatsword degrades gracefully when optional impact primitives are absent', () => {
 		const ctx = makeCtx({ spawnImpactDecal: undefined, spawnParticleBurst: undefined });
-		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
-			expect(() => fire(cardId, ctx)).not.toThrow();
-		}
-		// The core heavy cone swing still fires.
+		expect(() => fire('magma_greatsword', ctx)).not.toThrow();
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 
-	it('each heavy greatsword carries a positive windUpMs so the 315 charge telegraph fires', () => {
-		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
-			expect(CARD_DEFS[cardId]).toBeDefined();
-			expect(CARD_DEFS[cardId].windUpMs).toBeGreaterThan(0);
-		}
+	it('magma greatsword carries a positive windUpMs so the 315 charge telegraph fires', () => {
+		expect(CARD_DEFS.magma_greatsword).toBeDefined();
+		expect(CARD_DEFS.magma_greatsword.windUpMs).toBeGreaterThan(0);
 	});
 });
 
@@ -3372,14 +3587,141 @@ describe('renderCardUsed() — spell dispatch', () => {
 			sacrificedMinionId: 'minion-2',
 			hits: [],
 		}, ctx);
+
+		// 1. Dark altar/terminal pillar at origin
+		const summon = ctx._calls.find((c) => c[0] === 'spawnSummonEffect');
+		expect(summon).toBeDefined();
+		expect(summon[1]).toEqual({ x: 0, z: 0 });
+		expect(summon[3]).toMatchObject({ color: 0x1c1917, emissive: 0xfbbf24 });
+
+		// 2. Telegraph ring at sacrifice radius
 		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
 		expect(telegraph).toBeDefined();
 		expect(telegraph[2]).toBe(10);
 		expect(telegraph[3]).toMatchObject({ color: 0xfbbf24, emissive: 0xef4444 });
-		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
-		expect(burst).toBeDefined();
-		expect(burst[2]).toMatchObject({ color: 0xfbbf24, count: 16, spread: 2.4 });
-		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+
+		// 3. Red consumption burst (sacrificedMinionId present)
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		const consumptionBurst = bursts.find(
+			(b) => b[2].color === 0x991b1b && b[2].emissive === 0xef4444
+		);
+		expect(consumptionBurst).toBeDefined();
+		expect(consumptionBurst[1]).toEqual({ x: 0, z: 0 });
+		expect(consumptionBurst[2]).toMatchObject({ count: 10, spread: 1.0 });
+
+		// 4. Gold/red ember burst at origin
+		const emberBurst = bursts.find(
+			(b) => b[2].color === 0xfbbf24 && b[2].count === 16
+		);
+		expect(emberBurst).toBeDefined();
+		expect(emberBurst[1]).toEqual({ x: 0, z: 0 });
+		expect(emberBurst[2]).toMatchObject({ color: 0xfbbf24, emissive: 0xef4444, count: 16, spread: 2.4 });
+	});
+
+	it('sacrificial_altar skips consumption burst when sacrificedMinionId is absent', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'sacrificial_altar',
+			origin: { x: 0, z: 0 },
+			radius: 10,
+			hits: [],
+		}, ctx);
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		const consumptionBurst = bursts.find(
+			(b) => b[2].color === 0x991b1b
+		);
+		expect(consumptionBurst).toBeUndefined();
+
+		// Altar pillar and ember burst should still fire
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(true);
+		const emberBurst = bursts.find((b) => b[2].color === 0xfbbf24);
+		expect(emberBurst).toBeDefined();
+	});
+
+	it('sacrificial_altar spawns golden energy-return effects on successful sacrifice', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'sacrificial_altar',
+			origin: { x: 0, z: 0 },
+			radius: 10,
+			sacrificedMinionId: 'minion-X',
+			magicStonesGained: 100,
+			restoredCharges: 2,
+			hits: [],
+		}, ctx);
+
+		// Golden siphon burst (brighter gold, higher count than ritual ember)
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		const siphonBurst = bursts.find(
+			(b) => b[2].color === 0xfde047 && b[2].emissive === 0xfbbf24 && b[2].count === 20,
+		);
+		expect(siphonBurst).toBeDefined();
+		expect(siphonBurst[1]).toEqual({ x: 0, z: 0 });
+		expect(siphonBurst[2]).toMatchObject({ spread: 2.8 });
+
+		// Vertical projectile trail
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail).toBeDefined();
+		expect(trail[1]).toEqual({ x: 0, z: 0 }); // origin
+		expect(trail[2]).toEqual({ x: 0, z: 0 }); // vertical direction
+		expect(trail[3]).toMatchObject({ color: 0xfde047, emissive: 0xfbbf24, range: 3 });
+
+		// Reward-flash decal at altar base
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 0, z: 0 });
+		expect(decal[2]).toMatchObject({ color: 0xfde047, emissive: 0xfbbf24, radius: 0.8 });
+	});
+
+	it('sacrificial_altar skips golden reward effects when magicStonesGained and restoredCharges are zero or absent', () => {
+		// Case 1: both zero
+		{
+			const ctx = makeCtx();
+			renderCardUsed({
+				cardId: 'sacrificial_altar',
+				origin: { x: 0, z: 0 },
+				radius: 10,
+				sacrificedMinionId: 'minion-X',
+				magicStonesGained: 0,
+				restoredCharges: 0,
+				hits: [],
+			}, ctx);
+			const goldenBursts = ctx._calls.filter(
+				(c) => c[0] === 'spawnParticleBurst' && c[2].color === 0xfde047,
+			);
+			expect(goldenBursts).toHaveLength(0);
+			expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
+		}
+
+		// Case 2: fields absent entirely
+		{
+			const ctx = makeCtx();
+			renderCardUsed({
+				cardId: 'sacrificial_altar',
+				origin: { x: 0, z: 0 },
+				radius: 10,
+				sacrificedMinionId: 'minion-X',
+				hits: [],
+			}, ctx);
+			const goldenBursts = ctx._calls.filter(
+				(c) => c[0] === 'spawnParticleBurst' && c[2].color === 0xfde047,
+			);
+			expect(goldenBursts).toHaveLength(0);
+			expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
+		}
+
+		// Ritual cast (altar pillar, telegraph, ember burst) still fires
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'sacrificial_altar',
+			origin: { x: 0, z: 0 },
+			radius: 10,
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(true);
 	});
 
 	it('chrono_trigger fires spawnChronoTriggerEffect at cast with amber/cyan palette', () => {
@@ -3934,6 +4276,59 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
 	});
 
+	it('Phase Stalker deploy adds a delayed phase-flicker pulse layer (second ring + converging cyan rift burst)', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'null_crawler',
+			origin: { x: 2, z: 3 },
+			minionId: 'stalker-1',
+			hits: [],
+		}, ctx);
+		// The flicker beat is deferred behind a scheduleAfter, so only the
+		// initial telegraph ring exists until the scheduled callbacks run.
+		expect(ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing')).toHaveLength(1);
+		const sched = ctx._calls.find((c) => c[0] === 'scheduleAfter');
+		expect(sched).toBeDefined();
+		expect(sched[1]).toBeGreaterThan(0);
+		expect(sched[1]).toBeLessThan(MINION_SUMMON_IN_MS);
+
+		ctx.runScheduled();
+
+		const rings = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
+		expect(rings).toHaveLength(2);
+		// The flicker ring is a tighter pulse than the initial 0.72 telegraph,
+		// and keeps the cyan identity.
+		const flickerRing = rings[1];
+		expect(flickerRing[1]).toEqual({ x: 2, z: 3 });
+		expect(flickerRing[2]).toBeLessThan(0.72);
+		expect(flickerRing[3]).toMatchObject({ color: 0x22d3ee, emissive: 0xa5f3fc });
+
+		// The rift burst snaps in around the body (lifted off the ground, above
+		// the 0.4 ground swirl) and stays on the null_crawler cyan accent.
+		const riftBurst = ctx._calls.find(
+			(c) => c[0] === 'spawnParticleBurst' && c[1].x === 2 && c[1].z === 3 && c[1].y > 0.4,
+		);
+		expect(riftBurst).toBeDefined();
+		expect(riftBurst[2]).toMatchObject({ color: 0x22d3ee, emissive: 0x67e8f9 });
+
+		expect(ctx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
+	});
+
+	it('Phase Stalker deploy still renders without throwing when telegraph/burst helpers are absent', () => {
+		const ctx = makeCtx({
+			spawnTelegraphRing: undefined,
+			spawnParticleBurst: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'null_crawler',
+			origin: { x: 2, z: 3 },
+			minionId: 'stalker-1',
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(() => ctx.runScheduled()).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(true);
+	});
+
 	it('Phase Stalker beam renders a narrow projectile corridor with trail, terminus burst, and hit sparks', () => {
 		const ctx = makeCtx({
 			enemyMeshes: () => ({
@@ -3958,17 +4353,60 @@ describe('renderCardUsed() — creature dispatch', () => {
 			projectileHitWidth: 0.8,
 			color: 0x22d3ee,
 		});
+		// Hitscan-tight: the corridor resolves in a single quick flash (short
+		// travelMs) to match the server's instant beam, not the slow ~600ms
+		// projectile window.
+		expect(attacks[0][3].travelMs).toBeGreaterThan(0);
+		expect(attacks[0][3].travelMs).toBeLessThan(300);
 		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
 		expect(trail).toBeDefined();
 		expect(trail[1]).toEqual({ x: 0, z: 0 });
 		expect(trail[2]).toEqual({ x: 1, z: 0 });
 		expect(trail[3]).toMatchObject({ range: 14, color: 0x22d3ee });
+		// The primary cyan trail also rides the tightened travel window.
+		expect(trail[3].travelMs).toBe(attacks[0][3].travelMs);
 		const terminusBurst = ctx._calls.find(
 			(c) => c[0] === 'spawnParticleBurst' && c[1].x === 14 && c[1].z === 0,
 		);
 		expect(terminusBurst).toBeDefined();
 		expect(terminusBurst[2]).toMatchObject({ color: 0x22d3ee, emissive: 0x06b6d4 });
+		// Void-rift accent: a purple phase-rift streak layered beneath the cyan
+		// corridor (lower y) plus a rift-opening burst at the origin, while the cyan
+		// accent stays the primary identity (corridor + leading trail + terminus).
+		const riftTrail = ctx._calls.find(
+			(c) => c[0] === 'spawnProjectileTrail' && c[3].color === 0x7c3aed,
+		);
+		expect(riftTrail).toBeDefined();
+		expect(riftTrail[3]).toMatchObject({ emissive: 0xa855f7 });
+		expect(riftTrail[3].y).toBeLessThan(1.0);
+		const riftBurst = ctx._calls.find(
+			(c) => c[0] === 'spawnParticleBurst' && c[1].x === 0 && c[1].z === 0 && c[2].color === 0x7c3aed,
+		);
+		expect(riftBurst).toBeDefined();
+		// One impact spark per reported hit, aligned with the server damage tick.
 		expect(ctx._calls.filter((c) => c[0] === 'spawnHitSpark')).toHaveLength(1);
+	});
+
+	it('Phase Stalker beam spawns one impact spark per reported hit at each enemy position', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 8, y: 0.5, z: 0 } },
+				e2: { position: { x: 6, y: 0.5, z: 2 } },
+			}),
+		});
+		renderCardUsed({
+			cardId: 'null_crawler',
+			specialEffect: 'phase_beam',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			attackRange: 14,
+			hitWidth: 0.8,
+			hits: [{ enemyId: 'e1', hp: 34 }, { enemyId: 'e2', hp: 12 }],
+		}, ctx);
+		const sparks = ctx._calls.filter((c) => c[0] === 'spawnHitSpark');
+		expect(sparks).toHaveLength(2);
+		const sparkXs = sparks.map((c) => c[1].x).sort();
+		expect(sparkXs).toEqual([6, 8]);
 	});
 
 	it('Phase Stalker beam still renders without throwing when primitive helpers are absent', () => {

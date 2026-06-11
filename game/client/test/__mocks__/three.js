@@ -303,6 +303,7 @@ export const THREE = {
 	MeshBasicMaterial: stubClass('MeshBasicMaterial'),
 	LineBasicMaterial: stubClass('LineBasicMaterial'),
 	Mesh: stubClass('Mesh'),
+	Line: stubClass('Line'),
 	LineSegments: stubClass('LineSegments'),
 	Group: class Group {
 		constructor() {
@@ -412,6 +413,7 @@ export const MeshBasicMaterial = THREE.MeshBasicMaterial;
 export const LineBasicMaterial = THREE.LineBasicMaterial;
 export const Mesh = THREE.Mesh;
 export const Group = THREE.Group;
+export const Line = THREE.Line;
 export const LineSegments = THREE.LineSegments;
 export const CanvasTexture = THREE.CanvasTexture;
 export const SpriteMaterial = THREE.SpriteMaterial;
