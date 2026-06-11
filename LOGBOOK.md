@@ -8501,3 +8501,26 @@ Round-1 capture used the **fallback** full-flow smoke plan (movement + dodge). I
 
 None. Both sub-ticket fixes integrate correctly; the full ticket acceptance criteria are met with automated test coverage and a clean captured run.
 
+
+## v0.459 — medic: heal button silently disabled when the player cannot afford it  (2026-06-11 09:15:43)
+
+### Code quality
+
+**PASS**
+
+- Minimal, focused diff; uses existing `formatCurrencyPrice` for consistency with paid copy.
+- No dead code, no new console errors.
+- `medicHud.test.js` (3 cases) passes; round-1 `coverage.log` shows full client suite green (315 tests).
+
+### Debug scenarios
+
+**N/A — no new or changed `?debugScenario=` shortcuts in this ticket.**
+
+## Integration check
+
+Sub-ticket `01-medic-affordability-shortfall-message` passed its own QA. Holistic review confirms the single sub-ticket fully covers the parent acceptance criterion; no integration gaps between client HUD and server charity heal logic.
+
+## Remaining gaps
+
+None blocking.
+

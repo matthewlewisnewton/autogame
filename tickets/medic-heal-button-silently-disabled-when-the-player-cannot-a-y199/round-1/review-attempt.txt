@@ -1,0 +1,21 @@
+## Review complete
+
+**Verdict: PASS**
+
+Wrote:
+- [`round-1/review.md`](tickets/medic-heal-button-silently-disabled-when-the-player-cannot-a-y199/round-1/review.md)
+- [`round-1/nits.md`](tickets/medic-heal-button-silently-disabled-when-the-player-cannot-a-y199/round-1/nits.md) (3 non-blocking follow-ups)
+
+No `gaps.md` — nothing blocking.
+
+### Summary
+
+**Runtime:** Game starts cleanly (`metrics.json` `ok: true`, empty `pageerrors`, no fatal console errors).
+
+**Implementation:** One-line change in `renderGuildMedic()` — when `currency < MEDIC_HEAL_COST`, `#medic-cost-display` shows `Need 10 money — you have {currency}. Free triage available.` Paid copy returns when affordable. Covered by `medicHud.test.js` (315 client tests pass).
+
+**Acceptance criterion:** Met. The parent ticket Goal still describes a disabled button from pre–charity-medic UX; the live game enables free triage when broke. The cost line now explains the paid-path shortfall, which matches `design.md` and the decompose scope.
+
+**Nits filed (non-blocking):** live currency refresh while Medic tab stays open, partial-wallet test gap, harness capture doesn’t screenshot the Medic tab.The medic HUD unit tests finished successfully (`pnpm test:quick -- client/test/medicHud.test.js`, exit code 0). All three `renderGuildMedic()` cases passed, including the new shortfall copy assertions.
+
+The senior review is already done: **PASS**, with notes in `round-1/review.md` and `round-1/nits.md`.

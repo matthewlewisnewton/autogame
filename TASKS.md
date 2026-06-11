@@ -181,3 +181,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [406-cleanup-progression-lv-1-badge-is-hardcoded-formatplayerlevel-always-nrof](tickets/406-cleanup-progression-lv-1-badge-is-hardcoded-formatplayerlevel-always-nrof/)
 - [ ] [406-cleanup-hud-no-status-effect-indicators-for-ember-burn-glacial-slow-gwrd](tickets/406-cleanup-hud-no-status-effect-indicators-for-ember-burn-glacial-slow-gwrd/)
 - [ ] [407-cleanup-level-settings-money-this-run-and-return-lines-show-em-dash-zcss](tickets/407-cleanup-level-settings-money-this-run-and-return-lines-show-em-dash-zcss/)
+- [ ] [408-cleanup-medic-heal-button-silently-disabled-when-the-player-cannot-a-y199](tickets/408-cleanup-medic-heal-button-silently-disabled-when-the-player-cannot-a-y199/)
