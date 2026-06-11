@@ -1102,18 +1102,69 @@ function renderStormEagleSummon(data, ctx) {
 }
 
 /**
- * Stormwing Drone ranged strike: single cyan arc to the primary target plus
- * an impact spark burst at the enemy.
+ * Lift the storm bolt's origin to the Stormwing Drone's aerial position. The
+ * minion fires from the air, but the server omits the minion's Y from `origin`,
+ * so resolve the flight height in priority order:
+ *   1. a server-supplied `origin.y` (mirrors how other minion renderers read it),
+ *   2. otherwise derive it from the tilted 3D aim — the drone sits above the
+ *      ground target by |dirY|/|dirXZ| × the horizontal reach to it.
+ * When the aim is level (no finite `direction.y`) or the geometry is degenerate,
+ * keep the current ground-level origin.
+ */
+function stormEagleAerialOrigin(data, direction) {
+	const origin = originOf(data);
+	if (Number.isFinite(origin.y)) return origin;
+	if (!Number.isFinite(direction.y) || direction.y === 0) return origin;
+	const horiz = Math.hypot(direction.x, direction.z);
+	if (horiz <= 0) return origin;
+	const target = data.strikeTarget;
+	if (!target) return origin;
+	const reach = Math.hypot(target.x - origin.x, target.z - origin.z);
+	origin.y = Math.abs(direction.y) * (reach / horiz);
+	return origin;
+}
+
+/**
+ * Fallback strike point along the tilted 3D aim (only used when the server
+ * sends no `strikeTarget`). Mirrors `renderWyrmAttack`'s burst-Y handling so the
+ * bolt terminus follows the downward storm-bolt slant rather than staying flat.
+ */
+function stormEagleStrikePoint(origin, direction, distance) {
+	const point = pointAlong(origin, direction, distance);
+	if (Number.isFinite(direction.y) && direction.y !== 0) {
+		const len = Math.hypot(direction.x, direction.z, direction.y) || 1;
+		const baseY = Number.isFinite(origin.y) ? origin.y : 0;
+		point.y = baseY + (direction.y / len) * distance;
+	}
+	return point;
+}
+
+/** Strike target from the server `strikeTarget`, preserving an optional Y. */
+function strikeTargetPoint(strikeTarget) {
+	const point = { x: strikeTarget.x, z: strikeTarget.z };
+	if (Number.isFinite(strikeTarget.y)) point.y = strikeTarget.y;
+	return point;
+}
+
+/**
+ * Stormwing Drone ranged strike: one jagged cyan storm bolt fired from the
+ * drone's aerial position down onto the resolved hit, plus a single impact spark
+ * burst at the strike target. Fires once per server strike event (origin +
+ * direction + non-empty hits); summon events (minionId + empty hits) are ignored
+ * by the guard, so they emit no arc or burst.
  */
 function renderStormEagleStrike(data, ctx) {
-	if (!data.origin || !data.hits?.length) return;
+	if (!(data.origin && data.hits?.length)) return;
+	const direction = directionOf(data);
+	const origin = stormEagleAerialOrigin(data, direction);
 	const target = data.strikeTarget
-		|| pointAlong(originOf(data), directionOf(data), data.attackRange || 7);
-	ctx.spawnLightningArc(originOf(data), target, STORM_EAGLE_ARC_STYLE);
+		? strikeTargetPoint(data.strikeTarget)
+		: stormEagleStrikePoint(origin, direction, data.attackRange || 7);
+	ctx.spawnLightningArc(origin, target, STORM_EAGLE_ARC_STYLE);
 	if (ctx.spawnParticleBurst) {
 		ctx.spawnParticleBurst(target, {
-			color: 0x67e8f9,
-			emissive: 0x22d3ee,
+			color: STORM_EAGLE_ARC_STYLE.color,
+			emissive: STORM_EAGLE_ARC_STYLE.emissive,
 			count: 8,
 			spread: 0.85,
 		});
