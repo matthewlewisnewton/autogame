@@ -454,8 +454,76 @@ describe('renderCardUsed() — weapon dispatch', () => {
 		expect(trail[3]).toMatchObject({ color: 0xa5f3fc, emissive: 0x22d3ee });
 		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
 		expect(burst).toBeDefined();
-		expect(burst[1]).toEqual({ x: 3.5, z: 0 });
+		// Default disc range is 6, so the spark burst lands at the far point.
+		expect(burst[1]).toEqual({ x: 6, z: 0 });
 		expect(burst[2]).toMatchObject({ color: 0xa5f3fc, emissive: 0x22d3ee });
+	});
+
+	it('infinite_disk sizes the disc trail/spark from data.attackRange', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'infinite_disk',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			attackRange: 10,
+			hits: [],
+		}, ctx);
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail[3]).toMatchObject({ range: 10 });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst[1]).toEqual({ x: 10, z: 0 });
+	});
+
+	it('infinite_disk schedules one return beat per data.returnPasses', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'infinite_disk',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			attackRange: 8,
+			returnPasses: 3,
+			hits: [],
+		}, ctx);
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(schedules).toHaveLength(3);
+		// Beats are staggered and increasing.
+		const delays = schedules.map((c) => c[1]);
+		expect(delays).toEqual([...delays].sort((a, b) => a - b));
+		expect(new Set(delays).size).toBe(3);
+		// Running the scheduled beats sends a return trail back from the far point
+		// toward the origin (reversed direction).
+		ctx.runScheduled();
+		const returnTrails = ctx._calls
+			.filter((c) => c[0] === 'spawnProjectileTrail')
+			.slice(1); // first trail is the outbound polish pass
+		expect(returnTrails).toHaveLength(3);
+		expect(returnTrails[0][1]).toEqual({ x: 8, z: 0 }); // starts at far point
+		expect(returnTrails[0][2].x).toBe(-1); // reversed direction
+		expect(returnTrails[0][2].z === 0).toBe(true);
+	});
+
+	it('infinite_disk follows a returnPasses: 2 payload (not a hardcoded count)', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'infinite_disk',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			returnPasses: 2,
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.filter((c) => c[0] === 'scheduleAfter')).toHaveLength(2);
+	});
+
+	it('infinite_disk degrades gracefully without scheduleAfter (still three discs, no throw)', () => {
+		const ctx = makeCtx({ scheduleAfter: undefined });
+		expect(() => renderCardUsed({
+			cardId: 'infinite_disk',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			returnPasses: 3,
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(3);
 	});
 
 	it('infinite_disk still renders three disks without the new ctx primitives', () => {

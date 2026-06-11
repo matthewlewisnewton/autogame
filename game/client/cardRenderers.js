@@ -549,11 +549,23 @@ function renderEchoSlash(data, ctx) {
 	}
 }
 
+/** Default disc travel range when the payload omits `attackRange`. */
+const INFINITE_DISK_RANGE = 6;
+/**
+ * Cadence between Infinite Disk return beats. Kept on the order of
+ * `ATTACK_EFFECT_DURATION` (a fraction of it) so the full boomerang flourish
+ * resolves quickly and stays in sync with the server's same-tick hit
+ * resolution instead of lagging behind it.
+ */
+const INFINITE_DISK_RETURN_BEAT_MS = Math.round(ATTACK_EFFECT_DURATION / 3);
+
 /**
  * Infinite Disk and any card flagged with `triple_returning_projectile`:
- * spawn three projectile flashes offset along the perpendicular axis so the
- * player can see the three disks fan out, plus a cyan trail/spark polish pass
- * along the disk path so the fan reads richer than three flat flashes.
+ * three spinning cyan photon discs fan out along the perpendicular axis to the
+ * weapon's range, then boomerang home. The outbound throw spawns the three
+ * fanned discs plus a trail/spark polish pass; each server return-pass
+ * (`data.returnPasses`) schedules a short return beat whose trail/burst travels
+ * from the far point back toward the origin so the discs visibly come back.
  */
 function renderTripleReturning(data, ctx) {
 	const origin = originOf(data);
@@ -563,6 +575,10 @@ function renderTripleReturning(data, ctx) {
 	const color = getAccentHex(data.cardId) ?? 0xa5f3fc;
 	const emissive = 0x22d3ee;
 	const style = { color, emissive };
+	// Disc travel distance is driven by the weapon's reach from the payload so
+	// the visual matches the server's actual outbound+return resolution.
+	const range = Number.isFinite(data.attackRange) ? data.attackRange : INFINITE_DISK_RANGE;
+	const farPoint = pointAlong(origin, direction, range);
 	for (const offset of [-0.6, 0, 0.6]) {
 		ctx.spawnAttackEffect(
 			{ x: origin.x + perpX * offset, z: origin.z + perpZ * offset },
@@ -570,18 +586,36 @@ function renderTripleReturning(data, ctx) {
 			style,
 		);
 	}
-	// Spinning-light polish: a cyan streak chasing the lead disk plus a spark
-	// shower out along its path.
+	// Spinning-light polish: a cyan streak chasing the lead disc plus a spark
+	// shower out at the far end of its path.
 	if (ctx.spawnProjectileTrail) {
-		ctx.spawnProjectileTrail(origin, direction, { range: 6, color, emissive });
+		ctx.spawnProjectileTrail(origin, direction, { range, color, emissive });
 	}
 	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(pointAlong(origin, direction, 3.5), {
+		ctx.spawnParticleBurst(farPoint, {
 			color,
 			emissive,
 			count: 10,
 			spread: 1.6,
 		});
+	}
+	// Boomerang return passes: one beat per server return-pass. Each beat sends a
+	// trail/burst back from the far point toward the origin so the discs read as
+	// returning. Beat count follows the payload, never a hardcoded constant.
+	const passes = Math.max(0, data.returnPasses ?? 0);
+	if (passes > 0 && ctx.scheduleAfter) {
+		const returnDir = { x: -direction.x, z: -direction.z };
+		if (Number.isFinite(direction.y)) returnDir.y = -direction.y;
+		for (let i = 0; i < passes; i++) {
+			ctx.scheduleAfter(INFINITE_DISK_RETURN_BEAT_MS * (i + 1), () => {
+				if (ctx.spawnProjectileTrail) {
+					ctx.spawnProjectileTrail(farPoint, returnDir, { range, color, emissive });
+				}
+				if (ctx.spawnParticleBurst) {
+					ctx.spawnParticleBurst(origin, { color, emissive, count: 6, spread: 1.2 });
+				}
+			});
+		}
 	}
 }
 
