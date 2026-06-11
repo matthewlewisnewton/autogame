@@ -700,6 +700,7 @@ debugScenarios.setCallbacks({
 function lobbyPlayerList(state) {
   return Object.entries(state.players).map(([id, p]) => ({
     id,
+    username: p.username || id,
     ready: p.ready
   }));
 }

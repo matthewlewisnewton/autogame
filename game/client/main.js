@@ -2126,7 +2126,7 @@ function updateDeckStats(deckPile, handCards, inventory) {
 }
 
 function updateVanguardPortrait() {
-	if (characterIdEl) characterIdEl.textContent = formatCharacterId(myId);
+	if (characterIdEl) characterIdEl.textContent = formatCharacterId(gameState.players[myId]?.username || myId);
 	if (playerLevelEl) playerLevelEl.textContent = String(formatPlayerLevel());
 }
 
@@ -4045,7 +4045,7 @@ function renderPlayerList(players) {
 	}
 	for (const p of players) {
 		const li = document.createElement('li');
-		li.textContent = `${p.id} — ${p.ready ? THEME.lobby.deployReadyStatus : THEME.lobby.standby}`;
+		li.textContent = `${p.username || p.id} — ${p.ready ? THEME.lobby.deployReadyStatus : THEME.lobby.standby}`;
 		lobbyPlayerList.appendChild(li);
 	}
 }
