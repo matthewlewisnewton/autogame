@@ -1,0 +1,17 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The Glacial Orb (`ice_ball`) animation ticket passes the senior review gate.
+
+**Runtime health (gate):** `metrics.json` is `ok: true` with an empty `pageerrors` array; `console.log` has no fatal/uncaught errors from game code; the world renders cleanly. The fallback smoke deck contains no `ice_ball`, so the capture doesn't show the orb itself — but runtime cleanliness is proven independently, and the orb's visuals are backed by the three already-QA'd sub-tickets, code review, and tests.
+
+**Acceptance criteria — all met:**
+- **Theme/visual:** Rebuilt as a faceted icosahedron crystalline core + translucent frost halo in a cool cyan/sky-blue palette with rotation/shimmer/pulse — distinct from `fireball` and `permafrost_lance`.
+- **Timing sync:** Travel + deferred terminal impact driven off the server's `projectileTravelMs` (1200); per-enemy frost bursts fire immediately to match the server's *instant* hitscan damage + slow; correctly emits **no** wind-up telegraph since `ice_ball` has no `windUpMs`.
+- **No perf regression:** Single Group with two meshes, properly disposed via `traverse` on cleanup (verified `disposeEffectObject` handles the Group → no leak).
+- **Client tests:** Comprehensive new coverage (deferred impact, cast flourish, per-hit bursts, graceful degradation, integration). Ran the suites → **227 passed**.
+
+Scope is clean (only `cardRenderers.js`, the `renderer.js` ice_ball branch, and tests). No debug scenario added.
+
+I recorded two minor, non-blocking visual nits in `nits.md` (core opacity fading to near-invisible right at impact; per-enemy bursts preceding the orb's visual arrival). No `gaps.md` written, per the PASS protocol.

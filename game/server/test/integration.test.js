@@ -1538,9 +1538,19 @@ describe('Socket Integration — in-run deckUpdate', () => {
 		await waitForEvent(socket1, 'stateUpdate');
 
 		const player = state.players[socket1._playerId];
+		const player2 = state.players[socket2._playerId];
 		const weaponSlot = player.hand.findIndex((c) => c && c.type === 'weapon');
 		expect(weaponSlot).toBeGreaterThanOrEqual(0);
 		const weaponCard = player.hand[weaponSlot];
+
+		let socket2DeckUpdateCount = 0;
+		socket2.on('deckUpdate', () => { socket2DeckUpdateCount += 1; });
+
+		// summon-ready starts the run for the whole lobby and may emit deckUpdate to
+		// every initialized hand; under coverage those events can arrive after setup.
+		player2.nextDrawAt = Date.now() + 60_000;
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		const socket2DeckUpdatesBeforeUseCard = socket2DeckUpdateCount;
 
 		state.enemies.push({
 			id: 'e_deck_update_b',
@@ -1554,15 +1564,12 @@ describe('Socket Integration — in-run deckUpdate', () => {
 
 		player.hand[weaponSlot].remainingCharges = 1;
 
-		let socket2DeckUpdate = false;
-		socket2.on('deckUpdate', () => { socket2DeckUpdate = true; });
-
 		const deckUpdatePromise = waitForEvent(socket1, 'deckUpdate');
 		socket1.emit('useCard', { cardId: weaponCard.id, slotIndex: weaponSlot });
 		await deckUpdatePromise;
 
 		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(socket2DeckUpdate).toBe(false);
+		expect(socket2DeckUpdateCount).toBe(socket2DeckUpdatesBeforeUseCard);
 
 		socket1.disconnect();
 		socket2.disconnect();

@@ -1,0 +1,14 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health (gate):** Game runs cleanly — `metrics.json` has `ok: true`, empty `pageerrors`, servers up on :5175; `console.log` shows only benign init lines; screenshots render a live gameplay canvas. Client tests pass (224/224).
+
+**Acceptance criteria — all met:**
+1. **Visual matches theme** — `renderGlacierCollapse` now dispatches a dedicated `spawnGlacierRuptureEffect` (an ice-fracture ground ring + 6 rising/scattering ice-shard cones in icy cyan), replacing the generic summon effect. Verifiably distinct from `frost_nova`.
+2. **Timing synced to server** — fires on resolution; `windUpMs: 700` drives the shared charge telegraph during wind-up; per-hit `frozenShatter` bursts are driven by the server `hits[]` payload, with bigger bursts for shatter hits matching the bonus-damage semantics.
+3. **No perf regression** — exactly two bounded effects, animated and disposed; tests assert geometry cleanup and active-effect count return to baseline.
+4. **Client tests** — extensive coverage including dispatch, palette, per-hit positioning, frozenShatter sizing, frost_nova distinctness, windUp contract, and graceful degradation.
+5. **Scope** — confined to `game/client`; no server/debug-scenario/TASKS.md changes; no debug shortcut added.
+
+One non-blocking nit recorded (glacier palette hex values duplicated across `renderer.js` and `cardRenderers.js`) → `nits.md`. No `gaps.md` written since the verdict is PASS.

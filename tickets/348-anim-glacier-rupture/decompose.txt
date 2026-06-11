@@ -1,0 +1,19 @@
+## Remediation plan
+
+**Root cause:** Sub-ticket `02` failed all 5 iterations because its scope said “do not update tests,” but the harness hard-fails on `local-checks` when stale `cardRenderers.test.js` assertions still expected `spawnSummonEffect`. Sub-ticket `03` (tests) passed afterward and updated those tests — but `02` never got a `.passed` marker.
+
+**Actions taken:**
+- **Deleted** failed `02-glacier-rupture-renderer-and-timing` (no `.passed` marker)
+- **Left untouched** `01` and `03` (both have `.passed`)
+- **Created** replacement sub-ticket `04` with the same renderer/wiring scope but:
+  - Depends on **01** (primitive) and **03** (test contract already merged)
+  - Requires `pnpm test:quick` to pass instead of forbidding test changes
+  - Uses `Verification: code` (timing sync + structure + harness checks)
+
+The renderer implementation appears already present in the working tree from the failed `02` attempts; `04` should be able to verify and pass QA now that tests are green.
+
+## Sub-ticket folder created
+
+```
+/home/matt/workspace/.autogame-worktrees/348-anim-glacier-rupture/tickets/348-anim-glacier-rupture/subtickets/04-glacier-rupture-renderer-and-timing/ticket.md
+```

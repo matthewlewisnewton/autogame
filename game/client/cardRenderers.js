@@ -21,6 +21,7 @@
 //   spawnCleanseBurstEffect(origin) — upward white→mint cleanse rise (column + sparkle)
 //   spawnPurifyingPulseEffect(origin, radius)
 //   spawnInfernoPillarEffect(origin, radius, style?) — style: { color, emissive, dotTicks, dotIntervalMs, duration }
+//   spawnGlacierRuptureEffect(origin, radius, style?) — ice-fracture ring + rising shard burst
 //   spawnEtherSiphonEffect(origin, radius, style?) — style: { color, emissive, duration }
 //   spawnDragonsBreathEffect(origin, direction, style?) — style: { color, emissive, range, coneAngle, dotTicks, dotIntervalMs, duration }
 //   spawnChainLightningEffect(origin, direction)
@@ -178,18 +179,6 @@ const WEAPON_SLASH_STYLES = {
 		edgeOpacity: 0.95,
 		sparkCount: 12,
 		sparkSpread: 1.8,
-	},
-	// Photon Slicer: a near-full cyan spin slice trailing light around the arc.
-	photon_slicer: {
-		color: 0x22d3ee,
-		emissive: 0x06b6d4,
-		coneAngle: Math.PI,
-		range: 4.5,
-		fillOpacity: 0.34,
-		edgeOpacity: 0.8,
-		trail: true,
-		sparkCount: 9,
-		sparkSpread: 1.4,
 	},
 };
 
@@ -537,11 +526,23 @@ function renderEchoSlash(data, ctx) {
 	}
 }
 
+/** Default disc travel range when the payload omits `attackRange`. */
+const INFINITE_DISK_RANGE = 6;
+/**
+ * Cadence between Infinite Disk return beats. Kept on the order of
+ * `ATTACK_EFFECT_DURATION` (a fraction of it) so the full boomerang flourish
+ * resolves quickly and stays in sync with the server's same-tick hit
+ * resolution instead of lagging behind it.
+ */
+const INFINITE_DISK_RETURN_BEAT_MS = Math.round(ATTACK_EFFECT_DURATION / 3);
+
 /**
  * Infinite Disk and any card flagged with `triple_returning_projectile`:
- * spawn three projectile flashes offset along the perpendicular axis so the
- * player can see the three disks fan out, plus a cyan trail/spark polish pass
- * along the disk path so the fan reads richer than three flat flashes.
+ * three spinning cyan photon discs fan out along the perpendicular axis to the
+ * weapon's range, then boomerang home. The outbound throw spawns the three
+ * fanned discs plus a trail/spark polish pass; each server return-pass
+ * (`data.returnPasses`) schedules a short return beat whose trail/burst travels
+ * from the far point back toward the origin so the discs visibly come back.
  */
 function renderTripleReturning(data, ctx) {
 	const origin = originOf(data);
@@ -551,6 +552,10 @@ function renderTripleReturning(data, ctx) {
 	const color = getAccentHex(data.cardId) ?? 0xa5f3fc;
 	const emissive = 0x22d3ee;
 	const style = { color, emissive };
+	// Disc travel distance is driven by the weapon's reach from the payload so
+	// the visual matches the server's actual outbound+return resolution.
+	const range = Number.isFinite(data.attackRange) ? data.attackRange : INFINITE_DISK_RANGE;
+	const farPoint = pointAlong(origin, direction, range);
 	for (const offset of [-0.6, 0, 0.6]) {
 		ctx.spawnAttackEffect(
 			{ x: origin.x + perpX * offset, z: origin.z + perpZ * offset },
@@ -558,18 +563,88 @@ function renderTripleReturning(data, ctx) {
 			style,
 		);
 	}
-	// Spinning-light polish: a cyan streak chasing the lead disk plus a spark
-	// shower out along its path.
+	// Spinning-light polish: a cyan streak chasing the lead disc plus a spark
+	// shower out at the far end of its path.
 	if (ctx.spawnProjectileTrail) {
-		ctx.spawnProjectileTrail(origin, direction, { range: 6, color, emissive });
+		ctx.spawnProjectileTrail(origin, direction, { range, color, emissive });
 	}
 	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(pointAlong(origin, direction, 3.5), {
+		ctx.spawnParticleBurst(farPoint, {
 			color,
 			emissive,
 			count: 10,
 			spread: 1.6,
 		});
+	}
+	// Boomerang return passes: one beat per server return-pass. Each beat sends a
+	// trail/burst back from the far point toward the origin so the discs read as
+	// returning. Beat count follows the payload, never a hardcoded constant.
+	const passes = Math.max(0, data.returnPasses ?? 0);
+	if (passes > 0 && ctx.scheduleAfter) {
+		const returnDir = { x: -direction.x, z: -direction.z };
+		if (Number.isFinite(direction.y)) returnDir.y = -direction.y;
+		for (let i = 0; i < passes; i++) {
+			ctx.scheduleAfter(INFINITE_DISK_RETURN_BEAT_MS * (i + 1), () => {
+				if (ctx.spawnProjectileTrail) {
+					ctx.spawnProjectileTrail(farPoint, returnDir, { range, color, emissive });
+				}
+				if (ctx.spawnParticleBurst) {
+					ctx.spawnParticleBurst(origin, { color, emissive, count: 6, spread: 1.2 });
+				}
+			});
+		}
+	}
+}
+
+/** Default disc travel range when a returning-disc payload omits `attackRange`. */
+const RETURNING_DISC_RANGE = 6;
+
+/**
+ * Photon Slicer (server effect `returning_projectile`): a single spinning cyan
+ * photon disc thrown forward to the weapon's reach that then boomerangs home —
+ * the single-disc sibling of `renderTripleReturning`. The outbound throw spawns
+ * one disc plus a trail/spark polish pass at the far point; each return-pass
+ * schedules a short return beat whose trail/burst travels from the far point
+ * back toward the origin so the disc visibly comes back. Beat count follows the
+ * payload but defaults to 1 (Photon Slicer omits `returnPasses` yet the server
+ * still runs exactly one return pass), so the base card always shows a return.
+ */
+function renderReturningDisc(data, ctx) {
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex(data.cardId) ?? 0x22d3ee;
+	const emissive = 0x06b6d4;
+	// Disc travel distance is driven by the weapon's reach from the payload so
+	// the visual matches the server's actual outbound+return resolution.
+	const range = Number.isFinite(data.attackRange) ? data.attackRange : RETURNING_DISC_RANGE;
+	const farPoint = pointAlong(origin, direction, range);
+	// Outbound throw: a single spinning cyan disc along the firing direction.
+	ctx.spawnAttackEffect(origin, direction, { color, emissive });
+	// Spinning-light polish: a cyan streak chasing the disc plus a spark shower
+	// out at the far end of its path.
+	if (ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, { range, color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(farPoint, { color, emissive, count: 8, spread: 1.4 });
+	}
+	// Boomerang return passes: one beat per server return-pass, defaulting to 1
+	// so the base card always shows the disc coming home. Each beat sends a
+	// trail/burst back from the far point toward the origin.
+	const passes = Math.max(1, data.returnPasses ?? 1);
+	if (ctx.scheduleAfter) {
+		const returnDir = { x: -direction.x, z: -direction.z };
+		if (Number.isFinite(direction.y)) returnDir.y = -direction.y;
+		for (let i = 0; i < passes; i++) {
+			ctx.scheduleAfter(INFINITE_DISK_RETURN_BEAT_MS * (i + 1), () => {
+				if (ctx.spawnProjectileTrail) {
+					ctx.spawnProjectileTrail(farPoint, returnDir, { range, color, emissive });
+				}
+				if (ctx.spawnParticleBurst) {
+					ctx.spawnParticleBurst(origin, { color, emissive, count: 6, spread: 1.2 });
+				}
+			});
+		}
 	}
 }
 
@@ -587,9 +662,23 @@ const ICE_ACCENT_EMISSIVE = 0x38bdf8;
 const GLACIER_COLOR = 0x38bdf8;
 const GLACIER_EMISSIVE = 0x0ea5e9;
 
+// On-screen lifetime of Cryo Burst's lingering frost field. Mirrors the server's
+// `frost_nova` `freezeDurationMs` in game/shared/cardStats.json (2500ms) so the
+// visual persistence reads as the "things are frozen for ~2.5s" window. The
+// CARD_USED payload does not carry the freeze duration, so it is duplicated here;
+// keep in sync with cardStats.json if that value changes.
+const FROST_NOVA_FREEZE_MS = 2500;
+
 /**
- * Cryo Burst: expanding icy telegraph plus a radial frost particle burst at
- * the cast origin. Replaces the generic accent summon ring.
+ * Cryo Burst: an explosive icy radial burst at the cast origin — an expanding
+ * frost shockwave ring sized to `data.radius`, a dense radial ice-shard burst
+ * (denser/wider than the old one-ring look), and a frozen ground impact decal.
+ * When the payload reports a freeze, a slow-fading frost-field ground sheen also
+ * lingers for the full freeze window so the animation persists alongside the
+ * server's 2.5s freeze. All fire synchronously to match the server's instant
+ * frost_nova resolution (no wind-up, no travel). Deliberately avoids
+ * spawnSummonEffect and any projectile/lance primitive so it stays distinct from
+ * glacier_collapse and permafrost_lance.
  */
 function renderFrostNova(data, ctx) {
 	if (data.radius === undefined) return;
@@ -600,7 +689,21 @@ function renderFrostNova(data, ctx) {
 		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
 	}
 	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.0 });
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 28, spread: 3.4 });
+	}
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(origin, { color, emissive });
+	}
+	// Lingering frost field, gated on the freeze path only: a wider ground sheen
+	// sized to the freeze radius that fades over the full 2.5s freeze window.
+	const frozen = data.frozen === true || data.specialEffect === 'freeze';
+	if (frozen && ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(origin, {
+			color,
+			emissive,
+			radius: data.radius,
+			duration: FROST_NOVA_FREEZE_MS,
+		});
 	}
 }
 
@@ -651,12 +754,35 @@ function renderPermafrostLance(data, ctx) {
 function renderGlacierCollapse(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
-	ctx.spawnSummonEffect(origin, data.radius, { color: GLACIER_COLOR, emissive: GLACIER_EMISSIVE });
+	const palette = { color: GLACIER_COLOR, emissive: GLACIER_EMISSIVE };
+	if (ctx.spawnGlacierRuptureEffect) {
+		ctx.spawnGlacierRuptureEffect(origin, data.radius, palette);
+	}
 	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, data.radius, { color: GLACIER_COLOR, emissive: GLACIER_EMISSIVE });
+		ctx.spawnTelegraphRing(origin, data.radius, palette);
+	}
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(origin, palette);
 	}
 	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(origin, { color: GLACIER_COLOR, emissive: GLACIER_EMISSIVE, count: 12, spread: 2.4 });
+		ctx.spawnParticleBurst(origin, { ...palette, count: 16, spread: 2.4 });
+	}
+	if (data.hits?.length && ctx.enemyMeshes) {
+		const meshes = ctx.enemyMeshes() || {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh?.position) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			const burstStyle = hit.frozenShatter
+				? { ...palette, count: 12, spread: 1.4 }
+				: { ...palette, count: 6, spread: 0.7 };
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(pos, burstStyle);
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pos, burstStyle);
+			}
+		}
 	}
 }
 
@@ -1739,29 +1865,59 @@ function renderIceBall(data, ctx) {
 	if (!data.origin) return;
 	const origin = originOf(data);
 	const direction = directionOf(data);
+	const travelMs = data.projectileTravelMs ?? 1200;
 	const color = getAccentHex(data.cardId) ?? ICE_ACCENT_COLOR;
 	const emissive = ICE_ACCENT_EMISSIVE;
+	const impact = pointAlong(origin, direction, data.attackRange ?? 8);
+
+	// Brief frost channel at cast (instant spell — no wind-up telegraph).
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, 0.45, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 8, spread: 1.0 });
+	}
+
 	ctx.spawnAttackEffect(origin, direction, {
 		effect: 'ice_ball',
 		range: data.attackRange,
-		projectileTravelMs: data.projectileTravelMs,
+		projectileTravelMs: travelMs,
 		color,
 		emissive,
 	});
 	if (ctx.spawnProjectileTrail) {
 		ctx.spawnProjectileTrail(origin, direction, {
 			range: data.attackRange,
+			travelMs,
 			color,
 			emissive,
 		});
 	}
-	// Freeze-crystal burst + frost scorch where the projectile lands.
-	const impact = pointAlong(origin, direction, data.attackRange ?? 8);
-	if (ctx.spawnImpactDecal) {
-		ctx.spawnImpactDecal(impact, { color, emissive });
-	}
-	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(impact, { color, emissive, count: 14, spread: 1.8 });
+
+	const terminalImpact = () => {
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(impact, { color, emissive });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(impact, { color, emissive, count: 14, spread: 1.8 });
+		}
+	};
+	ctx.scheduleAfter(travelMs, terminalImpact);
+
+	// Per-enemy frost bursts align with instant server damage + applySlow.
+	if (data.hits?.length) {
+		const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(pos, { color, emissive, count: 5, spread: 0.55 });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pos, { color, emissive, count: 6, spread: 0.7 });
+			}
+		}
 	}
 }
 
@@ -2181,7 +2337,7 @@ const CARD_RENDERERS = {
 	flame_blade: renderWeaponSwing,
 	harvesting_scythe: renderWeaponSwing,
 	saber_of_light: renderWeaponSwing,
-	photon_slicer: renderWeaponSwing,
+	photon_slicer: renderReturningDisc,
 	arcane_bolt: renderArcaneBolt,
 	resonance_edge: renderResonantDoublePulse,
 	echo_blade: renderEchoSlash,

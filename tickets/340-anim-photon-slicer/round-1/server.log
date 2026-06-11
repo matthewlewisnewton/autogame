@@ -1,0 +1,14 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/340-anim-photon-slicer/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/340-anim-photon-slicer/game/data
+Server listening on port 3000
+Player connected: socket=VmbvG5k-QVULIJ2SAAAB, playerId=d49688eb-1cc2-4c1b-820c-d7054dbf93d1
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=Q4GuuzOBgg9DI_JAAAAD, playerId=ae8ccbe6-53fa-4b60-b1fe-7f95ed37c21c
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: VmbvG5k-QVULIJ2SAAAB
+Player disconnected: Q4GuuzOBgg9DI_JAAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
