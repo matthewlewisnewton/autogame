@@ -1410,6 +1410,7 @@ const socketHandlerCtx = createSocketHandlerCtx({
 	spawnGlacierRuptureEffect: rendererSpawnGlacierRuptureEffect,
 	spawnEtherSiphonEffect: rendererSpawnEtherSiphonEffect,
 	spawnDragonsBreathEffect: rendererSpawnDragonsBreathEffect,
+	spawnFireTrailEffect: rendererSpawnFireTrailEffect,
 	spawnGravityWellEffect: rendererSpawnGravityWellEffect,
 	spawnSpikeTrapEffect: rendererSpawnSpikeTrapEffect,
 	spawnVolatileExplosionEffect: rendererSpawnVolatileExplosionEffect,

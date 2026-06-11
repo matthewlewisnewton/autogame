@@ -22,6 +22,8 @@ function createCardRenderCtx(ctx) {
 		spawnInfernoPillarEffect: ctx.spawnInfernoPillarEffect,
 		spawnGlacierRuptureEffect: ctx.spawnGlacierRuptureEffect,
 		spawnEtherSiphonEffect: ctx.spawnEtherSiphonEffect,
+		spawnFireTrailEffect: ctx.spawnFireTrailEffect,
+		spawnDragonsBreathEffect: ctx.spawnDragonsBreathEffect,
 		spawnSpikeTrapEffect: ctx.spawnSpikeTrapEffect,
 		spawnVolatileExplosionEffect: ctx.spawnVolatileExplosionEffect,
 		spawnChainLightningEffect: ctx.spawnChainLightningEffect,

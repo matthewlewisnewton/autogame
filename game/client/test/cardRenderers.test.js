@@ -28,6 +28,7 @@ function makeCtx(overrides = {}) {
 		spawnInfernoPillarEffect: record('spawnInfernoPillarEffect'),
 		spawnGlacierRuptureEffect: record('spawnGlacierRuptureEffect'),
 		spawnDragonsBreathEffect: record('spawnDragonsBreathEffect'),
+		spawnFireTrailEffect: record('spawnFireTrailEffect'),
 		spawnChainLightningEffect: record('spawnChainLightningEffect'),
 		spawnLightningArc: record('spawnLightningArc'),
 		spawnParticleBurst: record('spawnParticleBurst'),
@@ -3045,6 +3046,22 @@ describe('renderCardUsed() — creature dispatch', () => {
 		);
 		expect(alongBurst).toBeDefined();
 		expect(alongBurst[2]).toMatchObject({ color: 0xef4444, emissive: 0x9333ea, count: 14 });
+		const fireTrail = ctx._calls.find((c) => c[0] === 'spawnFireTrailEffect');
+		expect(fireTrail).toBeDefined();
+		expect(fireTrail[3]).toMatchObject({
+			color: 0xef4444,
+			emissive: 0x9333ea,
+			range: 8,
+			coneAngle: Math.PI / 3,
+		});
+		const projectileTrail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(projectileTrail).toBeDefined();
+		expect(projectileTrail[3]).toMatchObject({
+			color: 0xef4444,
+			emissive: 0x9333ea,
+			range: 8,
+			y: 0.8,
+		});
 		expect(ctx._calls.filter((c) => c[0] === 'spawnHitSpark')).toHaveLength(1);
 	});
 
@@ -3083,6 +3100,30 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(alongBurst).toBeDefined();
 		expect(alongBurst[1].y).toBeCloseTo(expectedBurstY, 5);
 		expect(alongBurst[2]).toMatchObject({ color: 0xef4444, emissive: 0x9333ea, count: 14 });
+		const projectileTrail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(projectileTrail).toBeDefined();
+		expect(projectileTrail[3].y).toBeCloseTo(airborneY, 5);
+	});
+
+	it('Vault Wyrm breath start does not emit archive-only fire trail primitives', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 2, y: 0.5, z: 3 } },
+			}),
+		});
+		renderCardUsed({
+			cardId: 'dungeon_drake',
+			origin: { x: 1, z: 2 },
+			direction: { x: 0, z: 1 },
+			attackRange: 4,
+			attackConeAngle: Math.PI / 4,
+			breathPhase: 'start',
+			breathDurationMs: 2000,
+			hits: [{ enemyId: 'e1', hp: 47 }],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnFireTrailEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnDragonsBreathEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
 	});
 
 	it('Vault Wyrm and Archive Wyrm summons use distinct flourish radii', () => {
@@ -3114,6 +3155,20 @@ describe('renderCardUsed() — creature dispatch', () => {
 			emissive: 0x9333ea,
 		});
 		expect(archiveSummon[2].radius).toBeGreaterThan(vaultSummon[2].radius);
+		const archiveRing = archiveCtx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(archiveRing).toBeDefined();
+		expect(archiveRing[1]).toEqual({ x: 3, z: 4 });
+		expect(archiveRing[2]).toBe(1.85);
+		expect(archiveRing[3]).toMatchObject({ color: 0x9333ea, emissive: 0x9333ea });
+		const archiveBurst = archiveCtx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(archiveBurst).toBeDefined();
+		expect(archiveBurst[2]).toMatchObject({
+			color: 0xef4444,
+			emissive: 0xff3b00,
+			count: 18,
+			spread: 2.5,
+		});
+		expect(vaultCtx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
 	});
 
 	it('wyrm summon renderers skip breath payloads and attack renderers skip deploy payloads', () => {

@@ -1735,6 +1735,9 @@ const WYRM_SUMMON_STYLES = {
 };
 
 const ARCHIVE_WYRM_SUMMON_STYLE = { radius: 1.85, burstCount: 18, burstSpread: 2.5 };
+const ARCHIVE_WYRM_FIRE_COLOR = 0xef4444;
+const ARCHIVE_WYRM_FIRE_EMISSIVE = 0xff3b00;
+const ARCHIVE_WYRM_PURPLE_EMISSIVE = 0x9333ea;
 
 /**
  * Vault Wyrm deploy: per-card summon-in palette on top of the shared minion
@@ -1755,10 +1758,32 @@ function renderWyrmSummon(data, ctx) {
  */
 function renderArchiveWyrmSummon(data, ctx) {
 	if (!data.minionId || data.breathPhase || !ctx.spawnMinionSummonInEffect) return;
-	ctx.spawnMinionSummonInEffect(originOf(data), {
+	const origin = originOf(data);
+	const accentHex = getAccentHex('ancient_wyrm') ?? ARCHIVE_WYRM_PURPLE_EMISSIVE;
+	ctx.spawnMinionSummonInEffect(origin, {
 		...accentSummonStyle('ancient_wyrm'),
 		...ARCHIVE_WYRM_SUMMON_STYLE,
 	});
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, ARCHIVE_WYRM_SUMMON_STYLE.radius, {
+			color: accentHex,
+			emissive: accentHex,
+			duration: MINION_SUMMON_IN_MS,
+		});
+	}
+	if (ctx.spawnParticleBurst) {
+		const burstY = Number.isFinite(origin.y) ? origin.y + 0.4 : 0.6;
+		ctx.spawnParticleBurst(
+			{ x: origin.x, y: burstY, z: origin.z },
+			{
+				color: ARCHIVE_WYRM_FIRE_COLOR,
+				emissive: ARCHIVE_WYRM_FIRE_EMISSIVE,
+				count: ARCHIVE_WYRM_SUMMON_STYLE.burstCount,
+				spread: ARCHIVE_WYRM_SUMMON_STYLE.burstSpread,
+				duration: MINION_SUMMON_IN_MS,
+			},
+		);
+	}
 }
 
 /**
@@ -1882,6 +1907,31 @@ function renderArchiveWyrmBreath(data, ctx) {
 					spread: isFireBreath ? 2.0 : 1.5,
 				},
 			);
+		}
+		if (isFireBreath) {
+			const trailRange = data.attackRange ?? 10;
+			const trailCone = data.attackConeAngle ?? Math.PI / 3;
+			const trailStyle = {
+				color: ARCHIVE_WYRM_FIRE_COLOR,
+				emissive: accentHex ?? ARCHIVE_WYRM_PURPLE_EMISSIVE,
+				range: trailRange,
+				coneAngle: trailCone,
+				duration: data.breathDurationMs,
+			};
+			const trailY = Number.isFinite(origin.y) ? origin.y : 0.8;
+			if (ctx.spawnFireTrailEffect) {
+				ctx.spawnFireTrailEffect(origin, direction, {
+					...trailStyle,
+					dotTicks: 1,
+					dotIntervalMs: data.breathDurationMs ?? 2500,
+				});
+			}
+			if (ctx.spawnProjectileTrail) {
+				ctx.spawnProjectileTrail(origin, direction, {
+					...trailStyle,
+					y: trailY,
+				});
+			}
 		}
 	}
 
