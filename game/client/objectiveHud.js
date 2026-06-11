@@ -1,7 +1,7 @@
 /**
  * Pure helpers for the run objective HUD (#objective-hud).
- * Stage-boss and escort formatting live here; other objective types return
- * empty progress so later sub-tickets can extend the same module.
+ * Stage-boss, escort, and survive formatting live here; other objective types
+ * return empty progress so later sub-tickets can extend the same module.
  */
 
 import { formatObjectiveSummary } from './questBoard.js';
@@ -160,6 +160,49 @@ function buildEscortProgressSuffix(run, objective) {
 	return parts.join(' · ');
 }
 
+function resolveQuestForSurviveObjective(run, questMeta) {
+	const questId = run?.questId || questMeta?.questId || questMeta?.id;
+	return {
+		...(questMeta || {}),
+		id: questId || questMeta?.id,
+		questId,
+		name: questMeta?.name || run?.questName,
+		objectiveType: 'survive',
+		totalSpawns: questMeta?.totalSpawns ?? run?.objective?.totalSpawns,
+		minibossCount: questMeta?.minibossCount ?? run?.objective?.minibossCount,
+	};
+}
+
+function buildSurviveGoalLine(quest, objective) {
+	const summary = formatObjectiveSummary(quest);
+	if (summary) return summary;
+
+	const totalSpawns = objective?.totalSpawns ?? objective?.totalEnemies ?? 0;
+	const minibossCount = objective?.minibossCount ?? 0;
+	if (totalSpawns > 0) {
+		return THEME.objectives.surviveHostiles
+			.replace('{count}', String(totalSpawns))
+			.replace('{minibosses}', String(minibossCount));
+	}
+	return '';
+}
+
+function buildSurviveProgressSuffix(objective) {
+	const total = objective?.totalSpawns ?? objective?.totalEnemies ?? 0;
+	if (total <= 0) return '';
+
+	const defeated = Math.min(objective?.defeatedEnemies ?? 0, total);
+	const spawned = objective?.spawnedEnemies ?? 0;
+	const parts = [];
+
+	if (spawned < total) {
+		parts.push(`Wave ${spawned} / ${total} spawned`);
+	}
+	parts.push(`Purged ${defeated} / ${total} hostiles`);
+
+	return parts.join(' — ');
+}
+
 /**
  * @param {{ run?: object, questMeta?: object|null }} args
  * @returns {{ goalLine: string, secondLine: string }}
@@ -182,6 +225,14 @@ export function formatRunObjectiveHudLines({ run, questMeta } = {}) {
 		const quest = resolveQuestForEscortObjective(run, questMeta);
 		const goalLine = buildEscortGoalLine(run, quest, questMeta);
 		const progressSuffix = buildEscortProgressSuffix(run, run.objective);
+		const secondLine = combineGoalAndProgress(goalLine, progressSuffix);
+		return { goalLine, secondLine };
+	}
+
+	if (objectiveType === 'survive') {
+		const quest = resolveQuestForSurviveObjective(run, questMeta);
+		const goalLine = buildSurviveGoalLine(quest, run.objective);
+		const progressSuffix = buildSurviveProgressSuffix(run.objective);
 		const secondLine = combineGoalAndProgress(goalLine, progressSuffix);
 		return { goalLine, secondLine };
 	}

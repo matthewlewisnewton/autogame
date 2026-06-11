@@ -22,7 +22,7 @@ const FROST_CROSSING_TIER1 = {
 };
 
 describe('formatRunObjectiveHudLines()', () => {
-	it('returns empty lines for non-stage_boss objectives', () => {
+	it('returns empty lines for defeat_enemies objectives', () => {
 		expect(formatRunObjectiveHudLines({
 			run: { objective: { type: 'defeat_enemies' } },
 		})).toEqual({ goalLine: '', secondLine: '' });
@@ -216,5 +216,79 @@ describe('formatRunObjectiveHudLines() escort', () => {
 
 		expect(goalLine).toBe('Escort Archivist Vale');
 		expect(secondLine).toContain('ambush 0 / 2 cleared');
+	});
+});
+
+const ENDLESS_SIEGE_TIER1 = {
+	id: 'endless_siege',
+	questId: 'endless_siege',
+	name: 'Endless Siege',
+	objectiveType: 'survive',
+	totalSpawns: 10,
+	minibossCount: 2,
+};
+
+describe('formatRunObjectiveHudLines() survive', () => {
+	it('formats endless_siege tier 1 with goal and purge progress', () => {
+		const { goalLine, secondLine } = formatRunObjectiveHudLines({
+			run: {
+				questId: 'endless_siege',
+				questName: 'Endless Siege',
+				questTier: 1,
+				objective: {
+					type: 'survive',
+					totalSpawns: 10,
+					minibossCount: 2,
+					spawnedEnemies: 10,
+					defeatedEnemies: 3,
+					totalEnemies: 10,
+				},
+			},
+			questMeta: ENDLESS_SIEGE_TIER1,
+		});
+
+		expect(goalLine).toBe('Survive 10 hostiles (2 minibosses)');
+		expect(secondLine).toContain('Survive 10 hostiles (2 minibosses)');
+		expect(secondLine).toContain('Purged 3 / 10 hostiles');
+		expect(secondLine).not.toContain('spawned');
+	});
+
+	it('prefixes spawn wave progress while attackers are still inbound', () => {
+		const { secondLine } = formatRunObjectiveHudLines({
+			run: {
+				questId: 'endless_siege',
+				objective: {
+					type: 'survive',
+					totalSpawns: 10,
+					minibossCount: 2,
+					spawnedEnemies: 4,
+					defeatedEnemies: 2,
+					totalEnemies: 10,
+				},
+			},
+			questMeta: ENDLESS_SIEGE_TIER1,
+		});
+
+		expect(secondLine).toContain('Wave 4 / 10 spawned');
+		expect(secondLine).toContain('Purged 2 / 10 hostiles');
+	});
+
+	it('falls back to objective totals when quest metadata is unavailable', () => {
+		const { goalLine, secondLine } = formatRunObjectiveHudLines({
+			run: {
+				objective: {
+					type: 'survive',
+					totalSpawns: 8,
+					minibossCount: 1,
+					spawnedEnemies: 3,
+					defeatedEnemies: 1,
+					totalEnemies: 8,
+				},
+			},
+		});
+
+		expect(goalLine).toBe('Survive 8 hostiles (1 minibosses)');
+		expect(secondLine).toContain('Wave 3 / 8 spawned');
+		expect(secondLine).toContain('Purged 1 / 8 hostiles');
 	});
 });
