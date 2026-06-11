@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CARD_DEFS, getCardDef } from '../cards.js';
-import { ATTACK_EFFECT_DURATION, EVENT_HORIZON_CRUSH_DELAY_MS, MINION_SUMMON_IN_MS, PHOTON_BARRAGE_SWING_DELAY_MS, SUMMON_EFFECT_DURATION } from '../config.js';
+import { ATTACK_EFFECT_DURATION, ATTACK_RANGE, EVENT_HORIZON_CRUSH_DELAY_MS, MINION_SUMMON_IN_MS, PHOTON_BARRAGE_SWING_DELAY_MS, SUMMON_EFFECT_DURATION } from '../config.js';
 import {
 	renderCardUsed,
 	resolveRenderers,
 	getAccentHex,
 	SPELL_TYPE_DEFAULT_RENDERER,
+	WEAPON_TYPE_DEFAULT_RENDERER,
 } from '../cardRenderers.js';
 
 /**
@@ -113,8 +114,12 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('event_horizon')).toHaveLength(1);
 	});
 
-	it('falls back to the weapon default for plain weapon cards', () => {
-		expect(resolveRenderers('reapers_scythe')).toHaveLength(1);
+	it('registers a dedicated renderer for Reaper\'s Scythe (not the weapon default)', () => {
+		const reaper = resolveRenderers('reapers_scythe');
+		expect(reaper).toHaveLength(1);
+		expect(reaper[0].name).toBe('renderReapersScythe');
+		expect(reaper[0]).not.toBe(WEAPON_TYPE_DEFAULT_RENDERER);
+		expect(reaper[0]).not.toBe(resolveRenderers('harvesting_scythe')[0]);
 		expect(resolveRenderers('deck_sifter')).toHaveLength(1);
 	});
 
@@ -123,28 +128,26 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('flame_blade')).toHaveLength(1);
 		expect(resolveRenderers('harvesting_scythe')).toHaveLength(1);
 		// Distinct from the plain cone-swing default.
-		expect(resolveRenderers('iron_sword')[0]).not.toBe(resolveRenderers('reapers_scythe')[0]);
+		expect(resolveRenderers('iron_sword')[0]).not.toBe(WEAPON_TYPE_DEFAULT_RENDERER);
 	});
 
 	it('returns card-specific renderers for the energy/photon blades (not the cone default)', () => {
-		const plain = resolveRenderers('reapers_scythe')[0];
 		for (const cardId of ['saber_of_light', 'photon_slicer', 'arcane_bolt', 'resonance_edge', 'echo_blade']) {
 			expect(resolveRenderers(cardId)).toHaveLength(1);
-			expect(resolveRenderers(cardId)[0]).not.toBe(plain);
+			expect(resolveRenderers(cardId)[0]).not.toBe(WEAPON_TYPE_DEFAULT_RENDERER);
 		}
 	});
 
 	it('returns the heavy greatsword renderer for alloy/corebreaker (not the cone default)', () => {
-		const plain = resolveRenderers('reapers_scythe')[0];
 		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
 			expect(resolveRenderers(cardId)).toHaveLength(1);
-			expect(resolveRenderers(cardId)[0]).not.toBe(plain);
+			expect(resolveRenderers(cardId)[0]).not.toBe(WEAPON_TYPE_DEFAULT_RENDERER);
 		}
 		expect(resolveRenderers('steel_claymore')[0]).toBe(resolveRenderers('magma_greatsword')[0]);
 	});
 
 	it('returns a dedicated renderer for excalibur_photon (not heavy greatsword or cone default)', () => {
-		const plain = resolveRenderers('reapers_scythe')[0];
+		const plain = WEAPON_TYPE_DEFAULT_RENDERER;
 		const heavy = resolveRenderers('steel_claymore')[0];
 		expect(resolveRenderers('excalibur_photon')).toHaveLength(1);
 		expect(resolveRenderers('excalibur_photon')[0]).not.toBe(plain);
@@ -385,11 +388,9 @@ describe('renderCardUsed() — common post-effects', () => {
 describe('renderCardUsed() — weapon dispatch', () => {
 	it('spawns a single attack effect for a standard one-swing weapon', () => {
 		const ctx = makeCtx();
-		renderCardUsed({
-			cardId: 'reapers_scythe',
+		WEAPON_TYPE_DEFAULT_RENDERER({
 			origin: { x: 1, z: 2 },
 			direction: { x: 0, z: 1 },
-			hits: [],
 		}, ctx);
 		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
 		expect(attacks).toHaveLength(1);
@@ -399,12 +400,10 @@ describe('renderCardUsed() — weapon dispatch', () => {
 
 	it('spawns swingCount attack effects for multi-swing weapons', () => {
 		const ctx = makeCtx();
-		renderCardUsed({
-			cardId: 'reapers_scythe',
+		WEAPON_TYPE_DEFAULT_RENDERER({
 			origin: { x: 0, z: 0 },
 			direction: { x: 1, z: 0 },
 			swingCount: 3,
-			hits: [],
 		}, ctx);
 		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
 		expect(attacks).toHaveLength(3);
@@ -846,6 +845,46 @@ describe('renderCardUsed() — styled weapon slashes', () => {
 		expect(decal[2]).toMatchObject({ color: 0x86efac });
 		// Wide ghostly sweep adds no flame trail.
 		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
+	});
+
+	it('Reaper\'s Scythe slashes a dark 180° harvest arc using server geometry', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'reapers_scythe',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			attackConeAngle: Math.PI,
+			attackRange: 5,
+			hits: [],
+		}, ctx);
+		const style = swingStyle(ctx);
+		expect(style).toMatchObject({
+			color: 0x1e293b,
+			emissive: 0xe7e5e4,
+			coneAngle: Math.PI,
+			range: ATTACK_RANGE,
+		});
+		expect(style.color).not.toBe(0x86efac);
+		expect(style.emissive).not.toBe(0x8b5cf6);
+		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('Reaper\'s Scythe degrades gracefully when optional ctx primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnProjectileTrail: undefined,
+			spawnImpactDecal: undefined,
+			spawnParticleBurst: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'reapers_scythe',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			attackConeAngle: Math.PI,
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 
 	it('the three blades use mutually distinct colors and arc shapes', () => {

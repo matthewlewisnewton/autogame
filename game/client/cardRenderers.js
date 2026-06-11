@@ -43,6 +43,7 @@
 import { CARD_ACCENT_STYLE, CARD_DEFS, getCardDef } from './cards.js';
 import {
 	ATTACK_EFFECT_DURATION,
+	ATTACK_RANGE,
 	EVENT_HORIZON_CRUSH_DELAY_MS,
 	MINION_SUMMON_IN_MS,
 	PHOTON_BARRAGE_SWING_DELAY_MS,
@@ -233,6 +234,55 @@ function renderWeaponSwing(data, ctx) {
 	// Lingering ground decal traced by a wide sweep.
 	if (style.decal && ctx.spawnImpactDecal) {
 		const decalAt = pointAlong(origin, direction, style.range * 0.6);
+		ctx.spawnImpactDecal(decalAt, { color, emissive });
+	}
+}
+
+const REAPERS_SCYTHE_COLOR = 0x1e293b;
+const REAPERS_SCYTHE_EMISSIVE = 0xe7e5e4;
+const REAPERS_SCYTHE_EMBER = 0xb45309;
+
+/**
+ * Reaper's Scythe: a wide, dark harvest sweep distinct from the ghostly Ether
+ * Scythe. Honors server-supplied cone geometry so the visible arc matches the
+ * hit volume; composes soul wisps and harvest sparks along the arc. Fires
+ * synchronously on CARD_USED (no windUpMs, no delayed primary swing).
+ */
+function renderReapersScythe(data, ctx) {
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const coneAngle = data.attackConeAngle ?? Math.PI;
+	const range = data.attackRange ?? ATTACK_RANGE;
+	const color = REAPERS_SCYTHE_COLOR;
+	const emissive = REAPERS_SCYTHE_EMISSIVE;
+
+	if (ctx.spawnAttackEffect) {
+		ctx.spawnAttackEffect(origin, direction, {
+			color,
+			emissive,
+			coneAngle,
+			range,
+			fillOpacity: 0.34,
+			edgeOpacity: 0.82,
+		});
+	}
+
+	if (ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, { range, color, emissive });
+	}
+
+	if (ctx.spawnParticleBurst) {
+		const burstAt = pointAlong(origin, direction, range * 0.65);
+		ctx.spawnParticleBurst(burstAt, {
+			color: REAPERS_SCYTHE_EMBER,
+			emissive: REAPERS_SCYTHE_EMISSIVE,
+			count: 10,
+			spread: 1.8,
+		});
+	}
+
+	if (ctx.spawnImpactDecal) {
+		const decalAt = pointAlong(origin, direction, range * 0.55);
 		ctx.spawnImpactDecal(decalAt, { color, emissive });
 	}
 }
@@ -2336,6 +2386,7 @@ const CARD_RENDERERS = {
 	iron_sword: renderWeaponSwing,
 	flame_blade: renderWeaponSwing,
 	harvesting_scythe: renderWeaponSwing,
+	reapers_scythe: renderReapersScythe,
 	saber_of_light: renderWeaponSwing,
 	photon_slicer: renderReturningDisc,
 	arcane_bolt: renderArcaneBolt,
@@ -2397,6 +2448,9 @@ const TYPE_DEFAULT_RENDERERS = {
 
 /** Alias for coverage tests asserting no spell card still uses the generic burst. */
 export const SPELL_TYPE_DEFAULT_RENDERER = TYPE_DEFAULT_RENDERERS.spell;
+
+/** Alias for tests comparing bespoke weapon renderers against the plain cone default. */
+export const WEAPON_TYPE_DEFAULT_RENDERER = TYPE_DEFAULT_RENDERERS.weapon;
 
 /**
  * Return the renderer(s) responsible for the given cardId, accounting for
