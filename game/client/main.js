@@ -3005,7 +3005,7 @@ function renderGuildMedic() {
 		if (atFull) {
 			costDisplayEl.textContent = 'You are already at full health.';
 		} else if (!canAffordMedic) {
-			costDisplayEl.textContent = 'Free triage restore — no money required';
+			costDisplayEl.textContent = `Need ${formatCurrencyPrice(MEDIC_HEAL_COST)} — you have ${currency}. Free triage available.`;
 		} else {
 			costDisplayEl.textContent = `Full restore: ${formatCurrencyPrice(MEDIC_HEAL_COST)}`;
 		}
