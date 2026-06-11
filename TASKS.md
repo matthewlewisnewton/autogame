@@ -145,3 +145,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [394-cleanup-client-renderhand-rebuilds-slot-innerhtml-on-every-state-upd-oqdr](tickets/394-cleanup-client-renderhand-rebuilds-slot-innerhtml-on-every-state-upd-oqdr/)
 - [ ] [395-cleanup-server-index-js-broadcast-lookup-helpers-scan-every-connecte-d094](tickets/395-cleanup-server-index-js-broadcast-lookup-helpers-scan-every-connecte-d094/)
 - [ ] [395-cleanup-client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0](tickets/395-cleanup-client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/)
+- [ ] [396-cleanup-anim-wyrmflare](tickets/396-cleanup-anim-wyrmflare/)

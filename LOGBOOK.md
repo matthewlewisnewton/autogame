@@ -7115,3 +7115,26 @@ None blocking.
 ## Remaining gaps
 
 None blocking. The acceptance criterion is fully and robustly met, the game runs cleanly, and the entire test suite passes. Minor non-blocking observations are recorded in `nits.md`.
+
+## v0.402 — 362-anim-wyrmflare  (2026-06-10 19:10:53)
+
+`spawnInfernoPillarEffect` pattern. Changes touch only this card's renderer, the
+vfx primitive, its ctx registration, and tests — no other per-card renderer
+affected.
+
+### No perf regression
+PASS. Effects are pushed to `activeEffects` with a finite `duration` and disposed
+via `disposeEffectObject` once `elapsed >= duration` (renderer.js:5571-5597);
+geometry/material are released. No retained allocations or leaked timers.
+
+### Client test where feasible
+PASS. Six new targeted tests (dispatch + synced style, synchronous cone burst,
+per-hit ignite at mesh positions, four 500ms tick pulses, no-windUp guard,
+primitive shape) plus the vfx-primitive test. Full suite: 179/179 passing.
+
+## Remaining gaps
+None blocking. Two minor default-coupling nits filed in `nits.md` (server omits
+`dotIntervalMs`/`attackConeAngle` from the CARD_USED payload; client relies on
+matching hardcoded defaults). These currently agree (500ms / π⁄3) and are
+regression-tested, so they do not affect correctness today.
+
