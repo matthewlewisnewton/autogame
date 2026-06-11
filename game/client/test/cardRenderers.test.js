@@ -7,6 +7,7 @@ import {
 	getAccentHex,
 	SPELL_TYPE_DEFAULT_RENDERER,
 	WEAPON_TYPE_DEFAULT_RENDERER,
+	CREATURE_TYPE_DEFAULT_RENDERER,
 } from '../cardRenderers.js';
 
 /**
@@ -44,6 +45,8 @@ function makeCtx(overrides = {}) {
 		dismissMirrorWardShellEffect: record('dismissMirrorWardShellEffect'),
 		spawnMirrorWardReflectBurst: record('spawnMirrorWardReflectBurst'),
 		spawnMinionSummonInEffect: record('spawnMinionSummonInEffect'),
+		spawnAegisSentinelShieldFlourish: record('spawnAegisSentinelShieldFlourish'),
+		spawnAegisSentinelDeployEffect: record('spawnAegisSentinelDeployEffect'),
 		spawnBatteryAutomatonDeployEffect: record('spawnBatteryAutomatonDeployEffect'),
 		spawnLegionMarshalRallyEffect: record('spawnLegionMarshalRallyEffect'),
 		flashMesh: record('flashMesh'),
@@ -195,12 +198,26 @@ describe('resolveRenderers()', () => {
 		expect(lanceCtx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(true);
 	});
 
+	it('falls back to the creature default for plain creature cards', () => {
+		const ctx = makeCtx();
+		CREATURE_TYPE_DEFAULT_RENDERER({
+			cardId: 'battle_familiar',
+			origin: { x: 1, z: 2 },
+			minionId: 'familiar-1',
+			hits: [],
+		}, ctx);
+		const summon = ctx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(summon).toBeDefined();
+		expect(summon[1]).toEqual({ x: 1, z: 2 });
+		expect(resolveRenderers('aegis_sentinel')[0]).not.toBe(CREATURE_TYPE_DEFAULT_RENDERER);
+	});
+
 	it('returns renderAegisSentinel for aegis_sentinel (not the creature type default)', () => {
 		const aegisRenderers = resolveRenderers('aegis_sentinel');
 		expect(aegisRenderers).toHaveLength(1);
 		expect(aegisRenderers[0].name).toBe('renderAegisSentinel');
-		expect(aegisRenderers[0].name).not.toBe('renderCreatureSummon');
-		expect(aegisRenderers[0].name).not.toBe('renderAstralGuardian');
+		expect(aegisRenderers[0]).not.toBe(CREATURE_TYPE_DEFAULT_RENDERER);
+		expect(aegisRenderers[0]).not.toBe(resolveRenderers('astral_guardian')[0]);
 	});
 
 	it('returns renderBatteryAutomaton for battery_automaton (not the creature type default)', () => {
@@ -3136,6 +3153,93 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect')).toHaveLength(1);
 		const summon = ctx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
 		expect(summon[2]).toMatchObject({ color: 0xfbbf24, emissive: 0x38bdf8 });
+	});
+
+	it('aegis_sentinel cast fires shield flourish, deploy, and summon-in with aegis palette and no deferral', () => {
+		const origin = { x: 2, z: 3 };
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'aegis_sentinel',
+			origin,
+			shieldGranted: 30,
+			minionId: 'aegis-minion-1',
+			radius: 10,
+			hits: [],
+		}, ctx);
+		const shield = ctx._calls.find((c) => c[0] === 'spawnAegisSentinelShieldFlourish');
+		expect(shield).toBeDefined();
+		expect(shield[1]).toEqual(origin);
+		expect(shield[2]).toMatchObject({
+			color: 0x4ade80,
+			emissive: 0x22c55e,
+			highlight: 0xfbbf24,
+			duration: MINION_SUMMON_IN_MS,
+		});
+		const deploy = ctx._calls.find((c) => c[0] === 'spawnAegisSentinelDeployEffect');
+		expect(deploy).toBeDefined();
+		expect(deploy[1]).toEqual(origin);
+		expect(deploy[2]).toMatchObject({
+			color: 0x4ade80,
+			emissive: 0x22c55e,
+			highlight: 0xfbbf24,
+			radius: 10,
+		});
+		const summon = ctx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(summon).toBeDefined();
+		expect(summon[1]).toEqual(origin);
+		expect(summon[2]).toMatchObject({
+			color: 0x4ade80,
+			emissive: 0x22c55e,
+			highlight: 0xfbbf24,
+			radius: 1.4,
+			burstCount: 10,
+			burstSpread: 1.4,
+		});
+		expect(summon[2].emissive).not.toBe(summon[2].color);
+		expect(summon[2].color).not.toBe(0x818cf8);
+		expect(summon[2].emissive).not.toBe(0x6366f1);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('aegis_sentinel shield-only payload skips deploy and summon-in when minionId is absent', () => {
+		const origin = { x: 0, z: 0 };
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'aegis_sentinel',
+			origin,
+			shieldGranted: 30,
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnAegisSentinelShieldFlourish')).toHaveLength(1);
+		expect(ctx._calls.some((c) => c[0] === 'spawnAegisSentinelDeployEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
+	});
+
+	it('aegis_sentinel with no shieldGranted and no minionId is a no-op for VFX helpers', () => {
+		const ctx = makeCtx();
+		expect(() => renderCardUsed({
+			cardId: 'aegis_sentinel',
+			origin: { x: 1, z: 1 },
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnAegisSentinelShieldFlourish')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnAegisSentinelDeployEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
+	});
+
+	it('aegis_sentinel summon degrades gracefully when spawnAegisSentinelDeployEffect is absent', () => {
+		const ctx = makeCtx({ spawnAegisSentinelDeployEffect: undefined });
+		expect(() => renderCardUsed({
+			cardId: 'aegis_sentinel',
+			origin: { x: 1, z: 2 },
+			minionId: 'aegis-minion-2',
+			radius: 10,
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnAegisSentinelDeployEffect')).toBe(false);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect')).toHaveLength(1);
+		const summon = ctx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(summon[2]).toMatchObject({ color: 0x4ade80, emissive: 0x22c55e, highlight: 0xfbbf24 });
 	});
 
 	it('Vault Wyrm minion breath renders a forward cone hitbox on breath start', () => {

@@ -2700,6 +2700,9 @@ export const SPELL_TYPE_DEFAULT_RENDERER = TYPE_DEFAULT_RENDERERS.spell;
 /** Alias for tests comparing bespoke weapon renderers against the plain cone default. */
 export const WEAPON_TYPE_DEFAULT_RENDERER = TYPE_DEFAULT_RENDERERS.weapon;
 
+/** Alias for tests comparing bespoke creature renderers against the generic summon default. */
+export const CREATURE_TYPE_DEFAULT_RENDERER = TYPE_DEFAULT_RENDERERS.creature;
+
 /**
  * Return the renderer(s) responsible for the given cardId, accounting for
  * both the per-card registry and per-type defaults. Always returns an array.
