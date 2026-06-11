@@ -3737,9 +3737,10 @@ describe('renderCardUsed() — creature dispatch', () => {
 				e1: { position: { x: 2, y: 0.5, z: 3 } },
 			}),
 		});
+		// No `specialEffect`: the server sends none for the Vault Wyrm breath, so
+		// the warm fire/ember palette must apply unconditionally for dungeon_drake.
 		renderCardUsed({
 			cardId: 'dungeon_drake',
-			specialEffect: 'burning_breath',
 			origin: { x: 1, z: 2 },
 			direction: { x: 0, z: 1 },
 			attackRange: 4,
@@ -3752,6 +3753,7 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(attacks).toHaveLength(1);
 		expect(attacks[0][1]).toEqual({ x: 1, z: 2 });
 		expect(attacks[0][2]).toEqual({ x: 0, z: 1 });
+		// Cone lifetime is bound to the server breath window (breathDurationMs).
 		expect(attacks[0][3]).toMatchObject({
 			range: 4,
 			coneAngle: Math.PI / 4,
@@ -3769,30 +3771,73 @@ describe('renderCardUsed() — creature dispatch', () => {
 		);
 		expect(alongBurst).toBeDefined();
 		expect(alongBurst[2]).toMatchObject({ color: 0xfb923c, emissive: 0xf97316, count: 14 });
+		// The hit enemy still gets a per-hit ember burst at its mesh position.
+		const hitBurst = ctx._calls.find(
+			(c) => c[0] === 'spawnParticleBurst' && c[1].x === 2 && c[1].z === 3,
+		);
+		expect(hitBurst).toBeDefined();
+		expect(hitBurst[1].y).toBeCloseTo(0.5 + 0.6);
+		expect(hitBurst[2]).toMatchObject({ color: 0xfb923c, emissive: 0xf97316, count: 6 });
 		expect(ctx._calls.filter((c) => c[0] === 'spawnHitSpark')).toHaveLength(1);
 		expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(2);
 	});
 
-	it('Vault Wyrm breath ticks skip duplicate cone visuals but still emit hit particles', () => {
+	it('Vault Wyrm breath ticks emit a per-hit ember burst (burn DoT) but no cone', () => {
 		const ctx = makeCtx({
 			enemyMeshes: () => ({
 				e1: { position: { x: 2, y: 0.5, z: 3 } },
+				e2: { position: { x: -1, y: 0.5, z: 0 } },
 			}),
 		});
+		// Tick payload as the server sends it: no `specialEffect`, no
+		// breathDurationMs (the cone is not redrawn on tick) — just the recurring
+		// hits whose burn is being re-applied this tick.
 		renderCardUsed({
 			cardId: 'dungeon_drake',
-			specialEffect: 'burning_breath',
 			origin: { x: 1, z: 2 },
 			direction: { x: 0, z: 1 },
 			attackRange: 4,
 			attackConeAngle: Math.PI / 4,
 			breathPhase: 'tick',
-			hits: [{ enemyId: 'e1', hp: 44 }],
+			hits: [{ enemyId: 'e1', hp: 44 }, { enemyId: 'e2', hp: 41 }],
 		}, ctx);
+		// Tick never redraws the cone, telegraph ring, or the along-cone burst.
 		expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(0);
-		expect(ctx._calls.filter((c) => c[0] === 'spawnHitSpark')).toHaveLength(1);
-		const hitSpark = ctx._calls.find((c) => c[0] === 'spawnHitSpark');
-		expect(hitSpark[2]).toMatchObject({ color: 0xfb923c, emissive: 0xf97316 });
+		expect(ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing')).toHaveLength(0);
+		// One warm ember burst + spark per currently-hit enemy, at its mesh pos.
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		expect(bursts).toHaveLength(2);
+		const sparks = ctx._calls.filter((c) => c[0] === 'spawnHitSpark');
+		expect(sparks).toHaveLength(2);
+		const e1Burst = bursts.find((c) => c[1].x === 2 && c[1].z === 3);
+		expect(e1Burst).toBeDefined();
+		expect(e1Burst[1].y).toBeCloseTo(0.5 + 0.6);
+		expect(e1Burst[2]).toMatchObject({ color: 0xfb923c, emissive: 0xf97316, count: 6 });
+		const e2Burst = bursts.find((c) => c[1].x === -1 && c[1].z === 0);
+		expect(e2Burst).toBeDefined();
+		expect(e2Burst[2]).toMatchObject({ color: 0xfb923c, emissive: 0xf97316 });
+		for (const spark of sparks) {
+			expect(spark[2]).toMatchObject({ color: 0xfb923c, emissive: 0xf97316 });
+		}
+	});
+
+	it('Vault Wyrm breath never schedules a client-side burn cadence (server-driven only)', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({ e1: { position: { x: 2, y: 0.5, z: 3 } } }),
+		});
+		const base = {
+			cardId: 'dungeon_drake',
+			origin: { x: 1, z: 2 },
+			direction: { x: 0, z: 1 },
+			attackRange: 4,
+			attackConeAngle: Math.PI / 4,
+			hits: [{ enemyId: 'e1', hp: 44 }],
+		};
+		renderCardUsed({ ...base, breathPhase: 'start', breathDurationMs: 2000 }, ctx);
+		renderCardUsed({ ...base, breathPhase: 'tick' }, ctx);
+		// No scheduleAfter timer invents its own burn cadence — every pulse comes
+		// straight from an arriving server start/tick event.
+		expect(ctx._calls.filter((c) => c[0] === 'scheduleAfter')).toHaveLength(0);
 	});
 
 	it('Archive Wyrm fire breath renders a channeled cone hitbox', () => {

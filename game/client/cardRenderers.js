@@ -2090,13 +2090,14 @@ function renderWyrmAttack(data, ctx) {
 	if (!data.origin) return;
 	if (data.minionId && !data.breathPhase) return;
 
-	// Vault Wyrm breath is fiery (burning_breath): derive a warm ember palette
-	// from its accent with a warm fallback — never the old green melee defaults.
-	// fire_breath / burning_breath select the hotter emissive + denser particles.
-	const isFireBreath = data.specialEffect === 'fire_breath' || data.specialEffect === 'burning_breath';
-	const accentHex = getAccentHex(data.cardId);
-	const color = accentHex ?? 0xfb923c;
-	const emissive = isFireBreath ? 0xf97316 : 0xea580c;
+	// renderWyrmAttack only drives the Vault Wyrm (dungeon_drake), a fire/ember
+	// breather after sub-ticket 01's re-skin. The hot ember palette is therefore
+	// unconditional: the server emits NO `specialEffect` for the Vault Wyrm
+	// breath events, so keying the warm look off it would silently fall back to
+	// the dimmer ember in real play. Color still honors the card accent; the
+	// emissive is the hot ember glow and the bursts stay dense.
+	const color = getAccentHex(data.cardId) ?? 0xfb923c;
+	const emissive = 0xf97316;
 
 	if (data.breathPhase !== 'tick') {
 		const origin = originOf(data);
@@ -2106,9 +2107,11 @@ function renderWyrmAttack(data, ctx) {
 			coneAngle: data.attackConeAngle,
 			color,
 			emissive,
+			// Bind the visible cone lifetime to the server breath window so it
+			// persists for the whole channel rather than a default flash.
 			duration: data.breathDurationMs,
-			fillOpacity: isFireBreath ? 0.38 : 0.48,
-			edgeOpacity: isFireBreath ? 0.72 : 0.85,
+			fillOpacity: 0.38,
+			edgeOpacity: 0.72,
 		});
 		const breathRange = data.attackRange ?? 6;
 		if (ctx.spawnTelegraphRing) {
@@ -2132,8 +2135,8 @@ function renderWyrmAttack(data, ctx) {
 				{
 					color,
 					emissive,
-					count: isFireBreath ? 14 : 10,
-					spread: isFireBreath ? 2.0 : 1.5,
+					count: 14,
+					spread: 2.0,
 				},
 			);
 		}
@@ -2141,6 +2144,14 @@ function renderWyrmAttack(data, ctx) {
 
 	if (!data.hits?.length) return;
 
+	// Per-hit burn visualization. The server pushes a breath event on `start`
+	// and again on every `tick` at its `breathTickMs` cadence, re-applying the
+	// burn DoT to each hit enemy. We emit the ember pulse on EVERY such event —
+	// start AND tick — so each server burn (re)application is visible. There is
+	// deliberately no client-side timer/scheduleAfter: the cadence is driven
+	// entirely by the arriving server start/tick events. Per-event bursts are
+	// bounded (one spark + one ember per hit), so repeated ticks add no
+	// unbounded particle growth.
 	const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
 	for (const hit of data.hits) {
 		const mesh = meshes[hit.enemyId];
