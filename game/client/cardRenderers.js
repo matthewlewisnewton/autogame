@@ -2386,14 +2386,17 @@ function renderAstralGuardian(data, ctx) {
 }
 
 /**
- * Mana Prism: utility cast telegraph when `radius` is present; otherwise a
- * summon ring plus crystal burst for the economy placement path.
+ * Mana Prism: on the utility cast path (`radius` present) the bespoke
+ * refracting-crystal VFX is the primary read, with the violet/cyan telegraph
+ * ring and particle burst kept as accents. Otherwise a summon ring plus crystal
+ * burst for the economy placement path.
  */
 function renderManaPrism(data, ctx) {
 	const origin = originOf(data);
 	if (data.radius !== undefined) {
 		const color = MANA_PRISM_COLOR;
 		const emissive = MANA_PRISM_EMISSIVE;
+		ctx.spawnManaPrismEffect?.(origin, { color, emissive });
 		if (ctx.spawnTelegraphRing) {
 			ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
 		}

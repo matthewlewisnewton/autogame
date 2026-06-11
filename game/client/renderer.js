@@ -5508,6 +5508,94 @@ export function spawnGlacierRuptureEffect(origin, radius, style = {}) {
 	spawnGlacierRuptureShards(origin, radius, style);
 }
 
+// ── Mana Prism: signature refracting-crystal cast VFX ──
+// A rising, spinning octahedral prism core that throws rainbow dispersion
+// shards outward across the violet→cyan refraction range so the cast reads as
+// light refraction, not a generic summon ring. Bounded one-shot: the whole
+// group tears down through disposeEffectObject when the lifetime ends, so no
+// geometry/material leaks. Animated by the `isManaPrismEffect` branch in
+// updateAttackEffects (no per-frame allocation).
+export const MANA_PRISM_VFX_COLOR = 0xa855f7;
+export const MANA_PRISM_VFX_EMISSIVE = 0x22d3ee;
+export const MANA_PRISM_EFFECT_DURATION = 1000;
+export const MANA_PRISM_SHARD_COUNT = 7;
+const MANA_PRISM_CORE_BASE_Y = 0.5;
+const MANA_PRISM_CORE_RISE = 1.1; // how high the crystal core floats
+const MANA_PRISM_SHARD_SPREAD = 1.6; // how far refracted shards radiate
+
+/**
+ * Spawn the Mana Prism refracting-crystal cast VFX: a bipyramidal (octahedral)
+ * crystal core that rises and spins while N elongated light shards — each tinted
+ * at a different point along the violet→cyan dispersion — radiate outward. Pure
+ * additive VFX: no network traffic, no state beyond activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - { color, emissive, duration }
+ */
+export function spawnManaPrismEffect(origin, style = {}) {
+	const color = style.color ?? MANA_PRISM_VFX_COLOR;
+	const emissive = style.emissive ?? MANA_PRISM_VFX_EMISSIVE;
+	const duration = style.duration ?? MANA_PRISM_EFFECT_DURATION;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+
+	const group = new THREE.Group();
+	group.position.set(origin.x, 0, origin.z);
+
+	// Bipyramidal crystal core — an octahedron reads as a cut prism, distinct
+	// from the flat summon ring. Starts collapsed; the update branch scales it up.
+	const coreGeometry = new THREE.OctahedronGeometry(0.42, 0);
+	const coreMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.3,
+		transparent: true,
+		opacity: 1.0,
+		flatShading: true,
+	});
+	const core = new THREE.Mesh(coreGeometry, coreMaterial);
+	core.position.y = MANA_PRISM_CORE_BASE_Y;
+	core.scale.setScalar(0.001);
+	core.userData.isPrismCore = true;
+	group.add(core);
+
+	// Refracted light shards — thin elongated crystals radiating outward, each
+	// tinted at a different point along the violet→cyan dispersion so the burst
+	// reads as multi-colored light rather than a single flat tint.
+	const violet = new THREE.Color(color);
+	const cyan = new THREE.Color(emissive);
+	for (let s = 0; s < MANA_PRISM_SHARD_COUNT; s += 1) {
+		const angle = (s / MANA_PRISM_SHARD_COUNT) * Math.PI * 2;
+		const hueT = MANA_PRISM_SHARD_COUNT > 1 ? s / (MANA_PRISM_SHARD_COUNT - 1) : 0;
+		const shardColor = violet.clone().lerp(cyan, hueT);
+		const shardEmissive = cyan.clone().lerp(violet, hueT);
+		const geometry = new THREE.OctahedronGeometry(0.12, 0);
+		const material = new THREE.MeshStandardMaterial({
+			color: shardColor,
+			emissive: shardEmissive,
+			emissiveIntensity: 1.1,
+			transparent: true,
+			opacity: 1.0,
+			flatShading: true,
+		});
+		const shard = new THREE.Mesh(geometry, material);
+		shard.scale.set(0.5, 2.4, 0.5); // elongate the octahedron into a light shard
+		shard.userData.scatterDir = { x: Math.cos(angle), z: Math.sin(angle) };
+		shard.userData.angle = angle;
+		shard.position.set(0, MANA_PRISM_CORE_BASE_Y, 0);
+		group.add(shard);
+	}
+
+	if (targetScene) targetScene.add(group);
+
+	activeEffects.push({
+		mesh: group,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration,
+		isManaPrismEffect: true,
+		_scene: targetScene,
+	});
+}
+
 // createSpikeTrapHazardMesh() now lives in ./renderer/minionSync.js (re-exported
 // above); the SPIKE_TRAP_* palette it reuses stays exported from here.
 
@@ -6524,6 +6612,38 @@ export function updateAttackEffects() {
 				shard.rotation.z = dir.x * scatterT * 0.4;
 				shard.rotation.x = -dir.z * scatterT * 0.4;
 				if (shard.material) shard.material.opacity = fade;
+			}
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Mana Prism refracting crystal (rise + spin → disperse → fade) ──
+		if (fx.isManaPrismEffect) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.35, 1.0);
+			const scatterT = Math.min(t / 0.45, 1.0);
+			const fade = t < 0.55 ? 1.0 : Math.max(0.01, 1.0 - (t - 0.55) / 0.45);
+			const scatterDist = MANA_PRISM_SHARD_SPREAD * scatterT;
+			for (let c = 0; c < fx.mesh.children.length; c += 1) {
+				const child = fx.mesh.children[c];
+				if (child.userData.isPrismCore) {
+					child.scale.setScalar(Math.max(0.001, riseT));
+					child.position.y = MANA_PRISM_CORE_BASE_Y + MANA_PRISM_CORE_RISE * riseT;
+					child.rotation.y = elapsed * 0.006;
+					child.rotation.x = elapsed * 0.003;
+				} else {
+					const dir = child.userData.scatterDir;
+					child.position.x = dir.x * scatterDist;
+					child.position.z = dir.z * scatterDist;
+					child.position.y = MANA_PRISM_CORE_BASE_Y + MANA_PRISM_CORE_RISE * riseT * 0.7;
+					child.rotation.y = child.userData.angle + elapsed * 0.004;
+					child.rotation.z = elapsed * 0.005;
+				}
+				if (child.material) child.material.opacity = fade;
 			}
 
 			if (elapsed >= fx.duration) {

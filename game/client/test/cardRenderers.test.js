@@ -27,6 +27,7 @@ function makeCtx(overrides = {}) {
 		spawnCleanseBurstEffect: record('spawnCleanseBurstEffect'),
 		spawnInfernoPillarEffect: record('spawnInfernoPillarEffect'),
 		spawnGlacierRuptureEffect: record('spawnGlacierRuptureEffect'),
+		spawnManaPrismEffect: record('spawnManaPrismEffect'),
 		spawnDragonsBreathEffect: record('spawnDragonsBreathEffect'),
 		spawnChainLightningEffect: record('spawnChainLightningEffect'),
 		spawnLightningArc: record('spawnLightningArc'),
@@ -2838,6 +2839,10 @@ describe('renderCardUsed() — spell dispatch', () => {
 			radius: 1,
 			hits: [],
 		}, ctx);
+		const prism = ctx._calls.find((c) => c[0] === 'spawnManaPrismEffect');
+		expect(prism).toBeDefined();
+		expect(prism[1]).toEqual({ x: 1, z: 2 });
+		expect(prism[2]).toMatchObject({ color: 0xa855f7, emissive: 0x22d3ee });
 		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
 		expect(telegraph).toBeDefined();
 		expect(telegraph[1]).toEqual({ x: 1, z: 2 });
@@ -2902,6 +2907,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 		const minimalCtx = makeCtx({
 			spawnTelegraphRing: undefined,
 			spawnParticleBurst: undefined,
+			spawnManaPrismEffect: undefined,
 		});
 		for (const payload of [
 			{ cardId: 'astral_guardian', origin: { x: 0, z: 0 }, radius: 4, hits: [] },
