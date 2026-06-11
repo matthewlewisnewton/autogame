@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CARD_DEFS, getCardDef } from '../cards.js';
-import { ATTACK_EFFECT_DURATION, PHOTON_BARRAGE_SWING_DELAY_MS, SUMMON_EFFECT_DURATION } from '../config.js';
+import { ATTACK_EFFECT_DURATION, EVENT_HORIZON_CRUSH_DELAY_MS, PHOTON_BARRAGE_SWING_DELAY_MS, SUMMON_EFFECT_DURATION } from '../config.js';
 import {
 	renderCardUsed,
 	resolveRenderers,
@@ -21,6 +21,7 @@ function makeCtx(overrides = {}) {
 		spawnAttackEffect: record('spawnAttackEffect'),
 		spawnSummonEffect: record('spawnSummonEffect'),
 		spawnDivineGraceEffect: record('spawnDivineGraceEffect'),
+		spawnEventHorizonEffect: record('spawnEventHorizonEffect'),
 		spawnPurifyingPulseHealRing: record('spawnPurifyingPulseHealRing'),
 		spawnCleanseBurstEffect: record('spawnCleanseBurstEffect'),
 		spawnInfernoPillarEffect: record('spawnInfernoPillarEffect'),
@@ -1569,7 +1570,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 		}, ctx)).not.toThrow();
 	});
 
-	it('event_horizon renders outer pull telegraph/burst and inner crush ring at centerRadius', () => {
+	it('event_horizon invokes spawnEventHorizonEffect synchronously with pull/center radii and palette', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'event_horizon',
@@ -1578,36 +1579,133 @@ describe('renderCardUsed() — spell dispatch', () => {
 			centerRadius: 2.5,
 			hits: [],
 		}, ctx);
-		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
-		expect(telegraph).toBeDefined();
-		expect(telegraph[2]).toBe(12);
-		expect(telegraph[3]).toMatchObject({ color: 0x581c87, emissive: 0x7c3aed });
-		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
-		expect(burst).toBeDefined();
-		expect(burst[2]).toMatchObject({ color: 0x581c87, count: 12, spread: 2.4 });
-		const crush = ctx._calls.find((c) => c[0] === 'spawnSummonEffect');
-		expect(crush).toBeDefined();
-		expect(crush[2]).toBe(2.5);
-		expect(crush[3]).toMatchObject({ color: 0x581c87, emissive: 0x7c3aed });
-		const outerSummon = ctx._calls.filter(
-			(c) => c[0] === 'spawnSummonEffect' && c[2] === 12,
-		);
-		expect(outerSummon).toHaveLength(0);
+		const singularity = ctx._calls.find((c) => c[0] === 'spawnEventHorizonEffect');
+		expect(singularity).toBeDefined();
+		expect(singularity[1]).toEqual({ x: 0, z: 0 });
+		expect(singularity[2]).toBe(12);
+		expect(singularity[3]).toBe(2.5);
+		expect(singularity[4]).toMatchObject({ color: 0x581c87, emissive: 0x7c3aed });
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing' && c[2] === 12)).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
 	});
 
-	it('event_horizon still renders without throwing when the new ctx primitives are absent', () => {
+	it('event_horizon schedules crush impact via EVENT_HORIZON_CRUSH_DELAY_MS', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'event_horizon',
+			origin: { x: 1, z: 2 },
+			radius: 12,
+			centerRadius: 2.5,
+			hits: [],
+		}, ctx);
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(schedules).toHaveLength(1);
+		expect(schedules[0][1]).toBe(EVENT_HORIZON_CRUSH_DELAY_MS);
+		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing' && c[2] === 2.5)).toBe(false);
+		ctx.runScheduled();
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 1, z: 2 });
+		expect(decal[2]).toMatchObject({ color: 0x581c87, emissive: 0x7c3aed });
+		const crushRing = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing' && c[2] === 2.5);
+		expect(crushRing).toBeDefined();
+		expect(crushRing[1]).toEqual({ x: 1, z: 2 });
+		const crushBurst = ctx._calls.find(
+			(c) => c[0] === 'spawnParticleBurst' && c[1].x === 1 && c[2].count === 10,
+		);
+		expect(crushBurst).toBeDefined();
+	});
+
+	it('event_horizon is visually distinct from gravity_well (no bare outer telegraph without singularity)', () => {
+		const horizonCtx = makeCtx();
+		renderCardUsed({
+			cardId: 'event_horizon',
+			origin: { x: 0, z: 0 },
+			radius: 12,
+			centerRadius: 2.5,
+			hits: [],
+		}, horizonCtx);
+		const wellCtx = makeCtx();
+		renderCardUsed({
+			cardId: 'gravity_well',
+			origin: { x: 0, z: 0 },
+			radius: 12,
+			pulled: 1,
+			hits: [],
+		}, wellCtx);
+		expect(horizonCtx._calls.some((c) => c[0] === 'spawnEventHorizonEffect')).toBe(true);
+		expect(wellCtx._calls.some((c) => c[0] === 'spawnEventHorizonEffect')).toBe(false);
+		expect(wellCtx._calls.some((c) => c[0] === 'spawnTelegraphRing' && c[2] === 12)).toBe(true);
+		expect(horizonCtx._calls.some((c) => c[0] === 'spawnTelegraphRing' && c[2] === 12)).toBe(false);
+		wellCtx.runScheduled();
+		horizonCtx.runScheduled();
+		expect(wellCtx._calls.some((c) => c[0] === 'spawnTelegraphRing' && c[2] === 2.5)).toBe(false);
+		expect(horizonCtx._calls.some((c) => c[0] === 'spawnTelegraphRing' && c[2] === 2.5)).toBe(true);
+	});
+
+	it('event_horizon spawns per-hit crush bursts at enemy mesh positions', () => {
 		const ctx = makeCtx({
-			spawnTelegraphRing: undefined,
+			enemyMeshes: () => ({
+				e1: { position: { x: 4, y: 0, z: 2 } },
+				e2: { position: { x: 7, y: 0, z: 2 } },
+			}),
+		});
+		renderCardUsed({
+			cardId: 'event_horizon',
+			origin: { x: 1, z: 2 },
+			radius: 12,
+			centerRadius: 2.5,
+			crushed: [{ enemyId: 'e1' }, { enemyId: 'e2' }, { enemyId: 'missing' }],
+		}, ctx);
+		const hitSparks = ctx._calls.filter((c) => c[0] === 'spawnHitSpark');
+		expect(hitSparks).toHaveLength(2);
+		expect(hitSparks[0][1]).toEqual({ x: 4, y: 0.6, z: 2 });
+		expect(hitSparks[1][1]).toEqual({ x: 7, y: 0.6, z: 2 });
+		expect(hitSparks[0][2]).toMatchObject({ color: 0x581c87, emissive: 0x7c3aed, count: 5 });
+		const crushBursts = ctx._calls.filter(
+			(c) => c[0] === 'spawnParticleBurst' && c[2].count === 6,
+		);
+		expect(crushBursts).toHaveLength(2);
+		expect(crushBursts[0][1]).toEqual({ x: 4, y: 0.6, z: 2 });
+		expect(crushBursts[1][1]).toEqual({ x: 7, y: 0.6, z: 2 });
+	});
+
+	it('event_horizon has no positive windUpMs (instant cast; 315 charge telegraph absent)', () => {
+		expect(CARD_DEFS.event_horizon).toBeDefined();
+		expect(CARD_DEFS.event_horizon.windUpMs ?? 0).toBeLessThanOrEqual(0);
+	});
+
+	it('event_horizon skips VFX when radius is absent', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'event_horizon',
+			origin: { x: 0, z: 0 },
+			centerRadius: 2.5,
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnEventHorizonEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('event_horizon still renders without throwing when optional ctx primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnEventHorizonEffect: undefined,
+			spawnImpactDecal: undefined,
 			spawnParticleBurst: undefined,
+			spawnTelegraphRing: undefined,
+			spawnHitSpark: undefined,
 		});
 		expect(() => renderCardUsed({
 			cardId: 'event_horizon',
 			origin: { x: 0, z: 0 },
 			radius: 12,
 			centerRadius: 2.5,
-			hits: [],
+			hits: [{ enemyId: 'e1' }],
 		}, ctx)).not.toThrow();
-		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(true);
+		expect(ctx._calls.filter((c) => c[0] === 'scheduleAfter').map((c) => c[1])).toEqual([
+			EVENT_HORIZON_CRUSH_DELAY_MS,
+		]);
 	});
 
 	it('inferno_pillar renders the pillar without the generic accent summon ring', () => {

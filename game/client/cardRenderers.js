@@ -15,6 +15,7 @@
 //   spawnSummonEffect(origin, radius, styleOrColor?)
 //   spawnMinionSummonInEffect(origin, style?) — creature minion summon flourish
 //   spawnDivineGraceEffect(origin, radius)
+//   spawnEventHorizonEffect(origin, pullRadius, centerRadius, style?)
 //   spawnPurifyingPulseHealRing(origin, radius)
 //   spawnCleanseBurstEffect(origin)
 //   spawnPurifyingPulseEffect(origin, radius)
@@ -35,7 +36,13 @@
 //   scheduleAfter(ms, fn) — wrapper around setTimeout used for delayed swings
 
 import { CARD_ACCENT_STYLE, CARD_DEFS, getCardDef } from './cards.js';
-import { ATTACK_EFFECT_DURATION, MINION_SUMMON_IN_MS, PHOTON_BARRAGE_SWING_DELAY_MS, SUMMON_EFFECT_DURATION } from './config.js';
+import {
+	ATTACK_EFFECT_DURATION,
+	EVENT_HORIZON_CRUSH_DELAY_MS,
+	MINION_SUMMON_IN_MS,
+	PHOTON_BARRAGE_SWING_DELAY_MS,
+	SUMMON_EFFECT_DURATION,
+} from './config.js';
 
 const NULL_CRAWLER_SUMMON_COLOR = 0x22d3ee;
 const NULL_CRAWLER_SUMMON_EMISSIVE = 0x67e8f9;
@@ -663,22 +670,48 @@ function renderGravityWell(data, ctx) {
 }
 
 /**
- * Event Horizon: dark-purple outer pull telegraph + burst, plus a tighter inner
- * crush ring keyed off `data.centerRadius` (distinct helper mix from Gravity Well).
+ * Event Horizon: singularity pull primitive at cast, then a deferred inner crush
+ * impact keyed off `data.centerRadius` (distinct from Gravity Well's telegraph mix).
  */
 function renderEventHorizon(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
 	const color = getAccentHex(data.cardId) ?? EVENT_HORIZON_COLOR;
 	const emissive = EVENT_HORIZON_EMISSIVE;
-	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	const centerRadius = data.centerRadius ?? 2.5;
+
+	if (ctx.spawnEventHorizonEffect) {
+		ctx.spawnEventHorizonEffect(origin, data.radius, centerRadius, { color, emissive });
 	}
-	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(origin, { color, emissive, count: 12, spread: 2.4 });
+
+	if (ctx.scheduleAfter) {
+		ctx.scheduleAfter(EVENT_HORIZON_CRUSH_DELAY_MS, () => {
+			if (ctx.spawnImpactDecal) {
+				ctx.spawnImpactDecal(origin, { color, emissive });
+			}
+			if (ctx.spawnTelegraphRing) {
+				ctx.spawnTelegraphRing(origin, centerRadius, { color, emissive });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(origin, { color, emissive, count: 10, spread: 1.6 });
+			}
+		});
 	}
-	if (data.centerRadius) {
-		ctx.spawnSummonEffect(origin, data.centerRadius, { color, emissive });
+
+	const hitEntries = data.hits?.length ? data.hits : data.crushed;
+	if (hitEntries?.length) {
+		const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+		for (const hit of hitEntries) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(pos, { color, emissive, count: 5, spread: 0.55 });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pos, { color, emissive, count: 6, spread: 0.7 });
+			}
+		}
 	}
 }
 

@@ -14,6 +14,7 @@ function createCardRenderCtx(ctx) {
 		spawnSummonEffect: ctx.spawnSummonEffect,
 		spawnMinionSummonInEffect: ctx.spawnMinionSummonInEffect,
 		spawnDivineGraceEffect: ctx.spawnDivineGraceEffect,
+		spawnEventHorizonEffect: ctx.spawnEventHorizonEffect,
 		spawnPurifyingPulseEffect: ctx.spawnPurifyingPulseEffect,
 		spawnPurifyingPulseHealRing: ctx.spawnPurifyingPulseHealRing,
 		spawnCleanseBurstEffect: ctx.spawnCleanseBurstEffect,
