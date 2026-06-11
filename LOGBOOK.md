@@ -7027,3 +7027,26 @@ PASS. The changed live files are focused on validation harness wiring, rooms art
 
 None.
 
+
+## v0.406 — 387-boss-level-citadel-sovereign-capstone-gated  (2026-06-10 19:50:08)
+
+  lines and deploying. The `citadel_capstone_e2e.test.js` lifecycle test proves
+  the equivalent state is reachable through normal unlock + run flow.
+- No invariants bypassed: the boss stays dormant/invulnerable until adds are
+  cleared and `tryActivateEncounter` succeeds; the unlock gate is enforced via
+  `users.isQuestTierUnlocked`. The shortcut does not skip validation or the
+  encounter machine.
+
+## Tests
+All six relevant suites pass locally: 149 tests green
+(`citadel_sovereign`, `citadel_capstone_quest`, `citadel_arena`,
+`citadel_capstone_e2e`, client `dungeon`, `renderer-citadel-sovereign`).
+Cross-cutting "this boss is the apex" invariants are pinned by assertions, so a
+future boss that out-stats the Sovereign will fail CI.
+
+## Remaining gaps
+None blocking. The capture not visually reaching the citadel arena is a
+capture-plan fallback, not a defect; runtime health is proven and the citadel
+path is covered by passing unit + e2e suites. One minor non-blocking redundancy
+is noted in `nits.md`.
+

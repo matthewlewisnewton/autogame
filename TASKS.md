@@ -143,3 +143,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [393-cleanup-server-memoize-movement-contexts-wall-colliders-and-walkable-4rtb](tickets/393-cleanup-server-memoize-movement-contexts-wall-colliders-and-walkable-4rtb/)
 - [ ] [393-cleanup-ice-tier2-frost-crossing-and-miniboss](tickets/393-cleanup-ice-tier2-frost-crossing-and-miniboss/)
 - [ ] [394-cleanup-client-renderhand-rebuilds-slot-innerhtml-on-every-state-upd-oqdr](tickets/394-cleanup-client-renderhand-rebuilds-slot-innerhtml-on-every-state-upd-oqdr/)
+- [ ] [395-cleanup-boss-level-citadel-sovereign-capstone-gated](tickets/395-cleanup-boss-level-citadel-sovereign-capstone-gated/)

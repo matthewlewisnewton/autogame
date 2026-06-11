@@ -1,0 +1,19 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The capstone ticket is solid across all dimensions:
+
+**Runtime health** — `metrics.json` shows `ok: true`, servers started, `pageerrors: []`. Console only has two benign 409 resource-conflict lines (harness fixture race), no game-code errors. The fallback capture exercised `training_caverns` rather than the citadel, but that's a capture-plan choice — the clean-start proof holds, and the citadel content is verified via the live code + passing suites.
+
+**Acceptance criteria — all met:**
+- Dedicated boss-arena capstone (`stage_boss` / `boss_level` / `boss-arena`), reusing `generateBossArena`
+- Three-way Tier-II AND gate (canyon + spire + arena), with the e2e proving 2 prereqs = locked, 3 = unlocked
+- Citadel Sovereign with full stat block, spawning dormant/invulnerable until the 5 adds clear
+- **Hardest level**: `attackDamage 30` test-enforced as strictly highest; HP ties the 460 `defeatBoss` ceiling (deliberate, documented); most adds (5), longest burn, biggest purse (26)
+- Built on the 385 framework — dormant→active→cleared machine, no parallel logic
+- Auto-surfaced on the level map via the `QUEST_DEFS` iteration
+
+**Debug scenarios** — `citadel-boss/-unlocked/-one-prereq` are properly gated (debug-only entry), reach their end-state through the *real* primitives (`completeQuestTier`, `deployQuestDebugRun`), keep the equivalent state reachable through normal play (proven by e2e), and bypass no invariants.
+
+149 tests across 6 suites pass. One minor non-blocking nit (redundant spawn positioning in `setupCitadelBossDebug`) filed to `nits.md`. No `gaps.md` written.
