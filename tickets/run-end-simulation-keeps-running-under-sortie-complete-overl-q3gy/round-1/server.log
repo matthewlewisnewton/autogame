@@ -1,0 +1,14 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/run-end-simulation-keeps-running-under-sortie-complete-overl-q3gy/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/run-end-simulation-keeps-running-under-sortie-complete-overl-q3gy/game/data
+Server listening on port 3004
+Player connected: socket=ObAeqSn8h7bmPKvuAAAB, playerId=7995d84f-61a6-44e1-995d-7d39051509d2
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=DAmS4bjuqUdXU2ZCAAAD, playerId=6a1db314-5bf9-4b81-89aa-0e1fa9eba5a5
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: ObAeqSn8h7bmPKvuAAAB
+Player disconnected: DAmS4bjuqUdXU2ZCAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

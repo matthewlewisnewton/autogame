@@ -316,6 +316,8 @@ const {
   drawReplacementCard,
   discardCardFromHand,
   isPlayerOutOfCards,
+  canPlayerCastHandCard,
+  isPlayerCombatExhausted,
   validateUseCardHand,
   addMagicStones,
   restoreCardCharges,
@@ -338,6 +340,7 @@ const {
   removeDeadEnemies,
   cleanupAfterDamage,
   checkRunTerminalState,
+  tickCombatExhaustionGrace,
   resetTransientRunState,
   returnPlayersToLobby,
   giveUpRun,
@@ -547,6 +550,7 @@ const DEBUG_SCENARIOS = new Set([
   'phase-stalker-combat',
   'legion-marshal-ready',
   'run-failed',
+  'run-victory',
   'run-exhausted',
   'quest-objective-near-complete',
   'quest-comms-run-start',
@@ -703,6 +707,7 @@ debugScenarios.setCallbacks({
 function lobbyPlayerList(state) {
   return Object.entries(state.players).map(([id, p]) => ({
     id,
+    username: p.username || id,
     ready: p.ready
   }));
 }
@@ -1193,6 +1198,38 @@ function syncLivePlayerCosmetic(accountId, cosmetic) {
     for (const player of Object.values(lobby.state.players)) {
       assign(player);
     }
+  }
+}
+
+/**
+ * Push a saved account username onto every connected in-memory player record for
+ * that account (legacy singleton gameState and all active lobby states), then
+ * re-broadcast the affected lobbies so the PLAYERS list and trade dropdown reflect
+ * the new name without requiring a reconnect/rejoin.
+ */
+function syncLivePlayerUsername(accountId, username) {
+  if (!accountId) return;
+  const affectedLobbies = new Set();
+  let legacyAffected = false;
+  for (const player of Object.values(gameState.players)) {
+    if (player && player.accountId === accountId) {
+      player.username = username;
+      legacyAffected = true;
+    }
+  }
+  for (const lobby of lobbies._lobbies.values()) {
+    for (const player of Object.values(lobby.state.players)) {
+      if (player && player.accountId === accountId) {
+        player.username = username;
+        affectedLobbies.add(lobby);
+      }
+    }
+  }
+  for (const lobby of affectedLobbies) {
+    broadcastLobbyUpdate(lobby);
+  }
+  if (legacyAffected) {
+    broadcastLobbyUpdate();
   }
 }
 
@@ -1700,6 +1737,7 @@ function runGameLoopTick() {
           }
 
           regenMagicStones();
+          tickCombatExhaustionGrace(now);
 
           state.loot = state.loot.filter(l => l.questCritical || (now - l.createdAt) < LOOT_LIFETIME_MS);
         }
@@ -1991,6 +2029,7 @@ if (typeof module !== 'undefined' && module.exports) {
     pickFloorSpawnPosition,
     buildPlayerRecord,
     syncLivePlayerCosmetic,
+    syncLivePlayerUsername,
     hasLiveLobbyPlayerForAccount,
     createGameState,
     resetGameState,
@@ -2026,6 +2065,7 @@ if (typeof module !== 'undefined' && module.exports) {
     isRunObjectiveComplete,
     buildRunSummary,
     checkRunTerminalState,
+    tickCombatExhaustionGrace,
     resetTransientRunState,
     returnPlayersToLobby,
     giveUpRun,
@@ -2072,6 +2112,8 @@ if (typeof module !== 'undefined' && module.exports) {
     DESPERATION_DECK_TEMPLATE,
     discardCardFromHand,
     isPlayerOutOfCards,
+    canPlayerCastHandCard,
+    isPlayerCombatExhausted,
     validateUseCardHand,
     addMagicStones,
     restoreCardCharges,

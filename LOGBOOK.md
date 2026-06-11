@@ -8341,6 +8341,75 @@ errors.
 None blocking.
 
 
+## v0.451 — identity: lobby player list and trade UI show raw account UUIDs instead of player names  (2026-06-11 06:49:07)
+
+- **Trade target dropdown** — `renderTradeForm` (`main.js:2861-2865`) renders `player.username || player.id`, sourced either from the passed lobby player list (now carrying username) or from `gameState.players` (`...username: p.username || id`). The prior bug was that the source data lacked username; the server fix now propagates it. PASS.
+- **Portrait character-id** — `updateVanguardPortrait` (`main.js:2129`) now passes `gameState.players[myId]?.username || myId` into `formatCharacterId`, so the 2-char badge derives from the username rather than the UUID. The local player's `username` is populated from presence sync (`main.js:867`). PASS.
+- **Incoming trade-offer text** — `main.js:2840` uses `fromUsername`, which the server already supplies (`tradeHandlers.js:51`). PASS.
+- **Save name reflected without rejoin** — `syncLivePlayerUsername` (`index.js:1203`) pushes the new username onto every live player record for the account across the legacy singleton `gameState` and all active lobby states, then re-broadcasts the affected lobbies (and legacy lobby). It is invoked from `account.js:125` only on `usernameChanged`. This mirrors the established `syncLivePlayerCosmetic` flow one-for-one (same lazy `require('./index')` to avoid the circular dep, same `lobbies._lobbies.values()` iteration, same broadcast helpers), so it is correct and robust. PASS.
+
+No remaining raw-UUID render paths found: a grep of `textContent`/`option.value`/`.value =` against player identity fields in `main.js` surfaces only the four fixed spots plus `lobby.name || lobby.id` (a lobby name, not a player), which is expected.
+
+## Design / regression check
+
+Consistent with `syncLivePlayerCosmetic` and the lobby-broadcast architecture; no foundation regression. `formatCharacterId` rename is purely cosmetic — its unit tests (`vanguard-hud.test.js`) still pass.
+
+## Validation run
+
+- `client/test/vanguard-hud.test.js` — 19 passed (incl. `formatCharacterId`).
+- `server/test/account.test.js` + `cosmetic_runtime.test.js` — 20 passed, including the `PATCH /me/profile` username-change path that now triggers `syncLivePlayerUsername` (no crash from the lazy require).
+
+## Remaining gaps
+
+None blocking. The acceptance criterion is fully and robustly met, the game runs cleanly, and the change is consistent with existing patterns.
+
+
+## v0.452 — combat/balance: deck exhaustion soft-locks a run — no cards castable, run never ends  (2026-06-11 06:55:14)
+
+- Same end-state reachable through normal play: a real run that empties
+  deck+desperation with MS below every cost hits the identical
+  `tickCombatExhaustionGrace` → `checkRunTerminalState` path each tick. The
+  scenario merely pre-ages `_combatExhaustedSince` to skip the 20 s wait for QA.
+- No invariant short-circuit: failure still routes through the real
+  `isPlayerCombatExhaustionFailureReady` + `checkRunTerminalState`; it does not
+  bypass server validation or the terminal-state emit.
+
+## Code quality
+
+Clean and idiomatic; matches surrounding progression helpers. The previous
+broken/misindented `setupRunExhaustedDebug` body was repaired. No dead code, no
+console errors.
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are met, the game runs cleanly, and the
+fail-state is correctly gated and reachable through normal play. Minor non-
+blocking nits recorded separately in `nits.md`.
+
+
+## v0.453 — run-end: simulation keeps running under 'Sortie Complete' overlay; summary money diverges from wallet  (2026-06-11 07:31:35)
+
+## Design / regression check
+
+Consistent with the run-end / Sortie Complete flow; no foundation regression.
+Full server suite green (438 passed, 0 failed) including movement, key-item,
+loot, and run-terminal integration tests. The four ticket-specific suites pass:
+`run_terminal_input.test.js`, `renderer-run-summary-input.test.js`,
+`run-summary-input-lock.test.js` (11/11). The `Failed to parse URL
+/models/player.glb` line in the client run is benign jsdom asset-fetch noise.
+
+## Code quality
+
+Changes are small, well-commented, and symmetric across client/server. The
+`isActiveRun` helper correctly returns `true` for the no-run (lobby) case so it
+doesn't accidentally freeze lobby movement. No dead code, no console errors.
+
+## Remaining gaps
+
+None. The acceptance criterion is fully and robustly satisfied, the game runs
+cleanly, and the change is well-tested.
+
+
 ## v0.454 — balance: death spiral — die with empty wallet and you respawn at 10/100 HP with no way to heal  (2026-06-11 07:54:55)
 
   (lobby phase, `run` cleared, `hp = LOBBY_REVIVE_HP`, `currency = 0`,

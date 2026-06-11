@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createRequire } from 'module';
-import config, { MAX_HP, LOBBY_REVIVE_HP, PLAYER_MOVEMENT_SAVE_DEBOUNCE_MS } from '../config.js';
+import config, { MAX_HP, LOBBY_REVIVE_HP, PLAYER_MOVEMENT_SAVE_DEBOUNCE_MS, RUN_EXHAUSTION_GRACE_MS } from '../config.js';
 
 const require = createRequire(import.meta.url);
 const { syncDebugHooksForScenario } = require('../debugScenarios.js');
@@ -43,6 +43,7 @@ import {
 	clampObjectiveProgress,
 	buildRunSummary,
 	checkRunTerminalState,
+	tickCombatExhaustionGrace,
 	resetTransientRunState,
 	returnPlayersToLobby,
 	giveUpRun,
@@ -101,6 +102,8 @@ import {
 	DESPERATION_DECK_TEMPLATE,
 	discardCardFromHand,
 	isPlayerOutOfCards,
+	canPlayerCastHandCard,
+	isPlayerCombatExhausted,
 	validateUseCardHand,
 	stateSnapshot,
 	hotStateSnapshot,
@@ -1824,6 +1827,96 @@ describe('enemy magic stone drops and discard', () => {
 	});
 });
 
+describe('combat exhaustion detection', () => {
+	beforeEach(() => {
+		resetState();
+	});
+
+	it('isPlayerCombatExhausted is true when hand, deck, and desperation are empty', () => {
+		addPlayer('p1', {
+			hand: [null, null, null, null, null, null],
+			deck: [],
+			desperationDeck: [],
+		});
+
+		expect(isPlayerCombatExhausted(gameState.players['p1'])).toBe(true);
+	});
+
+	it('isPlayerCombatExhausted is true when hand has only MS-insufficient spells and piles are empty', () => {
+		addPlayer('p1', {
+			magicStones: 25,
+			hand: [
+				{
+					id: 'battle_familiar',
+					type: 'spell',
+					charges: 1,
+					remainingCharges: 1,
+					magicStoneCost: 50,
+				},
+				null,
+				null,
+				null,
+				null,
+				null,
+			],
+			deck: [],
+			desperationDeck: [],
+		});
+
+		expect(isPlayerCombatExhausted(gameState.players['p1'])).toBe(true);
+		expect(canPlayerCastHandCard(gameState.players['p1'], gameState.players['p1'].hand[0])).toBe(false);
+	});
+
+	it('isPlayerCombatExhausted is false when the deck still has drawable cards', () => {
+		addPlayer('p1', {
+			magicStones: 25,
+			hand: [
+				{
+					id: 'battle_familiar',
+					type: 'spell',
+					charges: 1,
+					remainingCharges: 1,
+					magicStoneCost: 50,
+				},
+				null,
+				null,
+				null,
+				null,
+				null,
+			],
+			deck: ['iron_sword'],
+			desperationDeck: [],
+		});
+
+		expect(isPlayerCombatExhausted(gameState.players['p1'])).toBe(false);
+	});
+
+	it('isPlayerCombatExhausted is false when at least one hand card is castable', () => {
+		addPlayer('p1', {
+			magicStones: 25,
+			hand: [
+				{
+					id: 'battle_familiar',
+					type: 'spell',
+					charges: 1,
+					remainingCharges: 1,
+					magicStoneCost: 50,
+				},
+				{ id: 'iron_sword', type: 'weapon', charges: 5, remainingCharges: 5 },
+				null,
+				null,
+				null,
+				null,
+			],
+			deck: [],
+			desperationDeck: [],
+		});
+
+		expect(isPlayerCombatExhausted(gameState.players['p1'])).toBe(false);
+		expect(canPlayerCastHandCard(gameState.players['p1'], gameState.players['p1'].hand[1])).toBe(true);
+	});
+});
+
 describe('synergistic minion pulses', () => {
 	beforeEach(() => {
 		resetState();
@@ -2850,6 +2943,155 @@ describe('run state', () => {
 			checkRunTerminalState();
 
 			expect(gameState.run.status).toBe('victory');
+		});
+
+		it('does not fail immediately when hand has only MS-insufficient cards', () => {
+			gameState.enemies = [
+				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+			];
+			startDungeonRun();
+			addPlayer('p1', {
+				hp: 80,
+				dead: false,
+				magicStones: 25,
+				hand: [{
+					id: 'battle_familiar',
+					type: 'spell',
+					charges: 1,
+					remainingCharges: 1,
+					magicStoneCost: 50,
+				}],
+				deck: [],
+				desperationDeck: [],
+			});
+
+			tickCombatExhaustionGrace(Date.now());
+
+			expect(gameState.run.status).toBe('playing');
+		});
+
+		it('fails after combat exhaustion grace when hand has only MS-insufficient cards', () => {
+			vi.setSystemTime(1000);
+			gameState.enemies = [
+				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+			];
+			startDungeonRun();
+			addPlayer('p1', {
+				hp: 80,
+				dead: false,
+				magicStones: 25,
+				hand: [{
+					id: 'battle_familiar',
+					type: 'spell',
+					charges: 1,
+					remainingCharges: 1,
+					magicStoneCost: 50,
+				}],
+				deck: [],
+				desperationDeck: [],
+			});
+
+			tickCombatExhaustionGrace(Date.now());
+			expect(gameState.run.status).toBe('playing');
+
+			vi.advanceTimersByTime(RUN_EXHAUSTION_GRACE_MS);
+			tickCombatExhaustionGrace(Date.now());
+
+			expect(gameState.run.status).toBe('failed');
+		});
+
+		it('emits runFailed after combat exhaustion grace expires for MS-insufficient stall', () => {
+			vi.setSystemTime(1000);
+			gameState.enemies = [
+				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+			];
+			startDungeonRun();
+			addPlayer('p1', {
+				hp: 80,
+				dead: false,
+				magicStones: 25,
+				hand: [{
+					id: 'battle_familiar',
+					type: 'spell',
+					charges: 1,
+					remainingCharges: 1,
+					magicStoneCost: 50,
+				}],
+				deck: [],
+				desperationDeck: [],
+			});
+
+			const emitCalls = [];
+			const originalEmit = serverIo.emit;
+			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+
+			tickCombatExhaustionGrace(Date.now());
+			vi.advanceTimersByTime(RUN_EXHAUSTION_GRACE_MS);
+			tickCombatExhaustionGrace(Date.now());
+
+			serverIo.emit = originalEmit;
+
+			const emit = emitCalls.find((c) => c.event === 'runFailed');
+			expect(emit).toBeDefined();
+			expect(emit.data.status).toBe('failed');
+		});
+
+		it('does not fail on MS-insufficient stall when desperation deck still has drawable cards', () => {
+			vi.setSystemTime(1000);
+			gameState.enemies = [
+				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+			];
+			startDungeonRun();
+			addPlayer('p1', {
+				hp: 80,
+				dead: false,
+				magicStones: 25,
+				hand: [{
+					id: 'battle_familiar',
+					type: 'spell',
+					charges: 1,
+					remainingCharges: 1,
+					magicStoneCost: 50,
+				}],
+				deck: [],
+				desperationDeck: ['rusty_shiv'],
+			});
+
+			vi.advanceTimersByTime(RUN_EXHAUSTION_GRACE_MS + 1000);
+			tickCombatExhaustionGrace(Date.now());
+
+			expect(gameState.run.status).toBe('playing');
+		});
+
+		it('clears combat exhaustion grace when MS regen makes a hand card castable', () => {
+			vi.setSystemTime(1000);
+			gameState.enemies = [
+				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+			];
+			startDungeonRun();
+			addPlayer('p1', {
+				hp: 80,
+				dead: false,
+				magicStones: 25,
+				hand: [{
+					id: 'battle_familiar',
+					type: 'spell',
+					charges: 1,
+					remainingCharges: 1,
+					magicStoneCost: 50,
+				}],
+				deck: [],
+				desperationDeck: [],
+			});
+
+			tickCombatExhaustionGrace(Date.now());
+			expect(gameState.players.p1._combatExhaustedSince).toBe(1000);
+
+			gameState.players.p1.magicStones = 50;
+			tickCombatExhaustionGrace(Date.now());
+
+			expect(gameState.players.p1._combatExhaustedSince).toBeUndefined();
+			expect(gameState.run.status).toBe('playing');
 		});
 
 		it('drawReplacementCard draws desperation when the deck is empty', () => {
