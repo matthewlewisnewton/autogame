@@ -273,7 +273,7 @@ function setupScriptedWaveCombatDeploy(lobby, state, player) {
   state.loot = state.loot || [];
 }
 
-function setupQuestTier1Deploy(lobby, state, player, questId, layoutSeed = null) {
+function deployQuestTier1(lobby, state, player, questId, layoutSeed = null) {
   const tier = 1;
   state.selectedQuestId = questId;
   state.selectedQuestTier = tier;
@@ -315,24 +315,29 @@ function setupQuestTier1Deploy(lobby, state, player, questId, layoutSeed = null)
   startDungeonRun();
 }
 
+/** @deprecated alias — prefer deployQuestTier1 */
+function setupQuestTier1Deploy(lobby, state, player, questId, layoutSeed = null) {
+  return deployQuestTier1(lobby, state, player, questId, layoutSeed);
+}
+
 function setupEmberDescentTier1Deploy(lobby, state, player) {
-  setupQuestTier1Deploy(lobby, state, player, 'ember_descent');
+  deployQuestTier1(lobby, state, player, 'ember_descent');
 }
 
 function setupFrostCrossingTier1Deploy(lobby, state, player) {
-  setupQuestTier1Deploy(lobby, state, player, 'frost_crossing');
+  deployQuestTier1(lobby, state, player, 'frost_crossing');
 }
 
 function setupTrainingCavernsTier1Deploy(lobby, state, player, layoutSeed = null) {
-  setupQuestTier1Deploy(lobby, state, player, 'training_caverns', layoutSeed);
+  deployQuestTier1(lobby, state, player, 'training_caverns', layoutSeed);
 }
 
 function setupCrystalRescueTier1Deploy(lobby, state, player) {
-  setupQuestTier1Deploy(lobby, state, player, 'crystal_rescue');
+  deployQuestTier1(lobby, state, player, 'crystal_rescue');
 }
 
 function setupAnnexEscortTier1Deploy(lobby, state, player) {
-  setupQuestTier1Deploy(lobby, state, player, 'annex_escort');
+  deployQuestTier1(lobby, state, player, 'annex_escort');
 }
 
 /**
@@ -669,6 +674,169 @@ function emitLobbyQuestUpdate(lobby, state, extraFields = {}) {
   });
 }
 
+function resetPlayerForDebugScenario(player, name) {
+  normalizePlayerInventory(player);
+  const result = validateDeck(player.selectedDeck, player.inventory);
+  if (!result.valid) return { ok: false, reason: result.reason };
+
+  player.dead = false;
+  player.firstMoveAfterSpawn = false;
+  player.lastMoveTime = Date.now();
+  clearPlayerCardCommitment(player);
+  player.debugScenario = name;
+  syncDebugHooksForScenario(player, name);
+  if (!player.pendingSummons) {
+    player.pendingSummons = new Set();
+  } else {
+    player.pendingSummons.clear();
+  }
+  return null;
+}
+
+function prepareTelepipeReadyLobby(lobby, state, player, name, questId, tier = 1) {
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+  player.ready = false;
+  if (state.suspendedCheckpoint) {
+    abandonSuspendedRun(state);
+    player._telepipeFreshSortie = true;
+    player._msRegenGraceUntil = Date.now() + 20000;
+  } else {
+    player.hp = 60;
+    player.magicStones = 20;
+  }
+  emitLobbyQuestUpdate(lobby, state, {
+    layoutSeed: state.layoutSeed,
+    layout: state.layout,
+  });
+  broadcastLobbyUpdate(lobby);
+  io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+  return { ok: true, scenario: name };
+}
+
+function finishQuestTier1DeployDebugScenario(lobby, state, player, name) {
+  emitLobbyQuestUpdate(lobby, state, {
+    layoutSeed: state.layoutSeed,
+    layout: state.layout,
+  });
+  broadcastLobbyUpdate(lobby);
+  io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+  return {
+    ok: true,
+    scenario: name,
+    unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+  };
+}
+
+function setupBossApproachDebugScenario(lobby, state, player, name, setupFn) {
+  setupFn(lobby, state, player);
+  const anchor = resolveArenaDaisAnchor(state);
+  player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 2;
+  player.z = anchor.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+  return finishStageBossDebugScenario(lobby, state, player, name);
+}
+
+function prepareCardProbePlayingRun(state, player) {
+  resumePlayingRunForCardProbe(state, player);
+  syncCardProbeHand(player);
+}
+
+const DEBUG_SCENARIO_REGISTRY = {
+  'telepipe-ready': ({ player, name }) => {
+    player.hp = MAX_HP;
+    player.magicStones = MAX_MAGIC_STONES;
+    return { ok: true, scenario: name };
+  },
+
+  'fire-telepipe-ready': ({ lobby, state, player, name }) => {
+    // ember_descent Tier 1 with fire-cavern layout; telepipe injected on ready-up
+    // (see checkAllReady). Mirrors telepipe-ready for harness telepipe-reset on fire.
+    return prepareTelepipeReadyLobby(lobby, state, player, name, 'ember_descent', 1);
+  },
+
+  'frost-telepipe-ready': ({ lobby, state, player, name }) => {
+    // frost_crossing Tier 1 with ice-cavern layout; telepipe injected on ready-up
+    // (see checkAllReady) into the default hand slot 0. Mirrors fire-telepipe-ready
+    // but drives a FRESH sortie on redeploy.
+    return prepareTelepipeReadyLobby(lobby, state, player, name, 'frost_crossing', 1);
+  },
+
+  'frost-crossing-telepipe-ready': ({ lobby, state, player, name }) => {
+    // frost_crossing Tier 1 with ice-cavern layout; telepipe injected on ready-up
+    // (see checkAllReady). Mirrors fire-telepipe-ready for harness telepipe-reset on ice.
+    return prepareTelepipeReadyLobby(lobby, state, player, name, 'frost_crossing', 1);
+  },
+
+  'crucible-duel-boss': (ctx) => setupBossApproachDebugScenario(
+    ctx.lobby, ctx.state, ctx.player, ctx.name, setupCrucibleDuelBossDebug,
+  ),
+
+  'vault-onslaught-boss': (ctx) => setupBossApproachDebugScenario(
+    ctx.lobby, ctx.state, ctx.player, ctx.name, setupVaultOnslaughtBossDebug,
+  ),
+
+  'rift-convergence-boss': (ctx) => setupBossApproachDebugScenario(
+    ctx.lobby, ctx.state, ctx.player, ctx.name, setupRiftConvergenceBossDebug,
+  ),
+
+  'scripted-wave-combat': ({ lobby, state, player, name }) => {
+    setupScriptedWaveCombatDeploy(lobby, state, player);
+    emitLobbyQuestUpdate(lobby, state, {
+      layoutSeed: state.layoutSeed,
+      layout: state.layout,
+    });
+    broadcastLobbyUpdate(lobby);
+    io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+    return {
+      ok: true,
+      scenario: name,
+      unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+    };
+  },
+
+  'escort-objective': ({ lobby, state, player, name }) => {
+    setupEscortObjectiveDeploy(lobby, state, player);
+    emitLobbyQuestUpdate(lobby, state, {
+      layoutSeed: state.layoutSeed,
+      layout: state.layout,
+    });
+    broadcastLobbyUpdate(lobby);
+    io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+    return {
+      ok: true,
+      scenario: name,
+      unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+    };
+  },
+
+  'frost-crossing-tier-1': ({ lobby, state, player, name }) => {
+    setupFrostCrossingTier1Deploy(lobby, state, player);
+    return finishQuestTier1DeployDebugScenario(lobby, state, player, name);
+  },
+
+  'ember-descent-tier-1': ({ lobby, state, player, name }) => {
+    setupEmberDescentTier1Deploy(lobby, state, player);
+    return finishQuestTier1DeployDebugScenario(lobby, state, player, name);
+  },
+
+  'training-caverns-tier-1': ({ lobby, state, player, name }) => {
+    setupTrainingCavernsTier1Deploy(lobby, state, player);
+    return finishQuestTier1DeployDebugScenario(lobby, state, player, name);
+  },
+
+  'crystal-rescue-tier-1': ({ lobby, state, player, name }) => {
+    setupCrystalRescueTier1Deploy(lobby, state, player);
+    return finishQuestTier1DeployDebugScenario(lobby, state, player, name);
+  },
+
+  'annex-escort-tier-1': ({ lobby, state, player, name }) => {
+    setupAnnexEscortTier1Deploy(lobby, state, player);
+    return finishQuestTier1DeployDebugScenario(lobby, state, player, name);
+  },
+};
+
 const CARD_PROBE_DEBUG_SCENARIOS = new Set([
   'fireball-ready',
   'status-mutual-exclusion-ready',
@@ -762,116 +930,15 @@ function applyDebugScenario(socket, name) {
   return withLobbyContext(lobby, () => {
     state._applyingDebugScenario = true;
     try {
-    normalizePlayerInventory(player);
-    const result = validateDeck(player.selectedDeck, player.inventory);
-    if (!result.valid) return { ok: false, reason: result.reason };
+    const resetError = resetPlayerForDebugScenario(player, name);
+    if (resetError) return resetError;
 
-    player.dead = false;
-    player.firstMoveAfterSpawn = false;
-    player.lastMoveTime = Date.now();
-    clearPlayerCardCommitment(player);
-    player.debugScenario = name;
-    syncDebugHooksForScenario(player, name);
-    if (!player.pendingSummons) {
-      player.pendingSummons = new Set();
-    } else {
-      player.pendingSummons.clear();
-    }
-
-    if (name === 'telepipe-ready') {
-      player.hp = MAX_HP;
-      player.magicStones = MAX_MAGIC_STONES;
-      return { ok: true, scenario: name };
-    }
-
-    if (name === 'fire-telepipe-ready') {
-      // ember_descent Tier 1 with fire-cavern layout; telepipe injected on ready-up
-      // (see checkAllReady). Mirrors telepipe-ready for harness telepipe-reset on fire.
-      // Reachable normally by earning Telepipe, selecting Ember Descent, and deploying.
-      const questId = 'ember_descent';
-      const tier = 1;
-      state.selectedQuestId = questId;
-      state.selectedQuestTier = tier;
-      applyLayoutForQuest(state, questId, tier);
-      player.ready = false;
-      if (state.suspendedCheckpoint) {
-        // Fresh sortie after telepipe suspend: abandon checkpoint, keep lobby vitals.
-        abandonSuspendedRun(state);
-        player._telepipeFreshSortie = true;
-        player._msRegenGraceUntil = Date.now() + 20000;
-      } else {
-        // Partial vitals so harness depletion probes pass without MS regen overshooting STARTING_MAGIC_STONES.
-        player.hp = 60;
-        player.magicStones = 20;
+    const handler = DEBUG_SCENARIO_REGISTRY[name];
+    if (handler) {
+      const handlerResult = handler({ lobby, state, player, socket, name });
+      if (handlerResult !== undefined) {
+        return handlerResult;
       }
-      emitLobbyQuestUpdate(lobby, state, {
-        layoutSeed: state.layoutSeed,
-        layout: state.layout,
-      });
-      broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-      return { ok: true, scenario: name };
-    }
-
-    if (name === 'frost-telepipe-ready') {
-      // frost_crossing Tier 1 with ice-cavern layout; telepipe injected on ready-up
-      // (see checkAllReady) into the default hand slot 0. Mirrors fire-telepipe-ready
-      // but drives a FRESH sortie on redeploy: re-emitting in a suspended lobby abandons
-      // the checkpoint and carries lobby HP/MS forward into a brand-new run id (the
-      // server-side enabler for the live ICE telepipe-vitals capture).
-      // Reachable normally by earning Telepipe, selecting Frost Crossing, and deploying.
-      const questId = 'frost_crossing';
-      const tier = 1;
-      state.selectedQuestId = questId;
-      state.selectedQuestTier = tier;
-      applyLayoutForQuest(state, questId, tier);
-      player.ready = false;
-      if (state.suspendedCheckpoint) {
-        // Fresh sortie after telepipe suspend: abandon checkpoint, keep lobby vitals so
-        // the subsequent readyAll deploy carries HP/MS forward into a new run id.
-        abandonSuspendedRun(state);
-        player._telepipeFreshSortie = true;
-        player._msRegenGraceUntil = Date.now() + 20000;
-      } else {
-        // Partial vitals so MS regen cannot overshoot STARTING_MAGIC_STONES before the
-        // capture asserts carry-forward.
-        player.hp = 60;
-        player.magicStones = 20;
-      }
-      emitLobbyQuestUpdate(lobby, state, {
-        layoutSeed: state.layoutSeed,
-        layout: state.layout,
-      });
-      broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-      return { ok: true, scenario: name };
-    }
-
-    if (name === 'frost-crossing-telepipe-ready') {
-      // frost_crossing Tier 1 with ice-cavern layout; telepipe injected on ready-up
-      // (see checkAllReady). Mirrors fire-telepipe-ready for harness telepipe-reset on ice.
-      // Reachable normally by earning Telepipe, selecting Frost Crossing, and deploying.
-      const questId = 'frost_crossing';
-      const tier = 1;
-      state.selectedQuestId = questId;
-      state.selectedQuestTier = tier;
-      applyLayoutForQuest(state, questId, tier);
-      player.ready = false;
-      if (state.suspendedCheckpoint) {
-        abandonSuspendedRun(state);
-        player._telepipeFreshSortie = true;
-        player._msRegenGraceUntil = Date.now() + 20000;
-      } else {
-        player.hp = 60;
-        player.magicStones = 20;
-      }
-      emitLobbyQuestUpdate(lobby, state, {
-        layoutSeed: state.layoutSeed,
-        layout: state.layout,
-      });
-      broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-      return { ok: true, scenario: name };
     }
 
     if (name === 'fireball-hand-ready') {
@@ -1378,44 +1445,6 @@ function applyDebugScenario(socket, name) {
       return finishStageBossDebugScenario(lobby, state, player, name);
     }
 
-    if (name === 'crucible-duel-boss') {
-      // crucible_duel boss-level run with dormant Crucible Sovereign on boss-arena.
-      // Reachable normally by completing Arena Trials Tier 2, selecting Crucible Duel,
-      // and deploying; this scenario is a shortcut into that dormant encounter state.
-      setupCrucibleDuelBossDebug(lobby, state, player);
-      const anchor = resolveArenaDaisAnchor(state);
-      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 2;
-      player.z = anchor.z;
-      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      return finishStageBossDebugScenario(lobby, state, player, name);
-    }
-
-    if (name === 'vault-onslaught-boss') {
-      // vault_onslaught boss-level run with dormant Annex Overseer and two supports.
-      // Reachable normally by completing Crucible Duel, selecting Vault Onslaught,
-      // and deploying; this scenario is a shortcut into that dormant encounter state.
-      setupVaultOnslaughtBossDebug(lobby, state, player);
-      const anchor = resolveArenaDaisAnchor(state);
-      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 2;
-      player.z = anchor.z;
-      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      return finishStageBossDebugScenario(lobby, state, player, name);
-    }
-
-    if (name === 'rift-convergence-boss') {
-      // rift_convergence boss-level run with dormant Riftbound Colossus and four
-      // ice/fire supports on the boss arena. Reachable normally by completing
-      // Frost Crossing Tier 2 AND Ember Descent Tier 2, selecting Rift
-      // Convergence, and deploying; this scenario is a shortcut into that
-      // dormant encounter state.
-      setupRiftConvergenceBossDebug(lobby, state, player);
-      const anchor = resolveArenaDaisAnchor(state);
-      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 2;
-      player.z = anchor.z;
-      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      return finishStageBossDebugScenario(lobby, state, player, name);
-    }
-
     if (name === 'stage-boss-dormant') {
       // arena_trials Tier 2 stage_boss encounter left dormant for QA.
       // Reachable normally by unlocking Arena Trials Tier 2 and deploying.
@@ -1638,44 +1667,6 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
-    if (name === 'scripted-wave-combat') {
-      // scripted_encounter_fixture Tier 1 with wave 0 grunts in the start room.
-      // Reachable normally by selecting Scripted Encounter Fixture and deploying;
-      // this scenario is a shortcut into wave-0 combat.
-      setupScriptedWaveCombatDeploy(lobby, state, player);
-
-      emitLobbyQuestUpdate(lobby, state, {
-        layoutSeed: state.layoutSeed,
-        layout: state.layout,
-      });
-      broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-      return {
-        ok: true,
-        scenario: name,
-        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
-      };
-    }
-
-    if (name === 'escort-objective') {
-      // escort_objective_fixture Tier 1 with Archivist Vale and wave-0 grunt ambush.
-      // Reachable normally by deploying the escort fixture quest; this scenario is
-      // a shortcut into escort wave-0 combat with the NPC already spawned.
-      setupEscortObjectiveDeploy(lobby, state, player);
-
-      emitLobbyQuestUpdate(lobby, state, {
-        layoutSeed: state.layoutSeed,
-        layout: state.layout,
-      });
-      broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-      return {
-        ok: true,
-        scenario: name,
-        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
-      };
-    }
-
     if (name === 'escort-near-destination') {
       // escort_objective_fixture Tier 1 with Archivist Vale staged just outside
       // the arena-dais arrival radius while the wave-0 grunt ambush is still
@@ -1773,42 +1764,6 @@ function applyDebugScenario(socket, name) {
       };
     }
 
-    if (name === 'training-caverns-tier-1') {
-      // training_caverns Tier 1 scripted wave combat with passage lock and named rare.
-      // Reachable normally by selecting Initiate Vault and deploying.
-      setupTrainingCavernsTier1Deploy(lobby, state, player);
-
-      emitLobbyQuestUpdate(lobby, state, {
-        layoutSeed: state.layoutSeed,
-        layout: state.layout,
-      });
-      broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-      return {
-        ok: true,
-        scenario: name,
-        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
-      };
-    }
-
-    if (name === 'crystal-rescue-tier-1') {
-      // crystal_rescue Tier 1 prism collect_items with scripted guard waves.
-      // Reachable normally by selecting Prism Salvage and deploying.
-      setupCrystalRescueTier1Deploy(lobby, state, player);
-
-      emitLobbyQuestUpdate(lobby, state, {
-        layoutSeed: state.layoutSeed,
-        layout: state.layout,
-      });
-      broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-      return {
-        ok: true,
-        scenario: name,
-        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
-      };
-    }
-
     if (name === 'crystal-rescue-extraction-phase') {
       // crystal_rescue Tier 1 after final ambush cleared: extraction phase active,
       // player seated away from the entry dock. Reachable normally by collecting
@@ -1852,24 +1807,6 @@ function applyDebugScenario(socket, name) {
       };
     }
 
-    if (name === 'annex-escort-tier-1') {
-      // annex_escort Tier 1 escort objective with Archivist Vale and ambush waves.
-      // Reachable normally by selecting Annex Evacuation and deploying.
-      setupAnnexEscortTier1Deploy(lobby, state, player);
-
-      emitLobbyQuestUpdate(lobby, state, {
-        layoutSeed: state.layoutSeed,
-        layout: state.layout,
-      });
-      broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-      return {
-        ok: true,
-        scenario: name,
-        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
-      };
-    }
-
     if (name === 'annex-escort-ambush-room') {
       // annex_escort Tier 1 staged in the corridor just outside ambush room 1
       // with Archivist Vale alongside. Step into the room to spring the
@@ -1890,26 +1827,6 @@ function applyDebugScenario(socket, name) {
           escort.z = staging.z + staging.awayZ * 1.5;
         }
       }
-
-      emitLobbyQuestUpdate(lobby, state, {
-        layoutSeed: state.layoutSeed,
-        layout: state.layout,
-      });
-      broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-      return {
-        ok: true,
-        scenario: name,
-        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
-      };
-    }
-
-    if (name === 'frost-crossing-tier-1') {
-      // frost_crossing Tier 1 with ice-cavern layout and scripted ice-band waves.
-      // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
-      // snapshots the correct run.questTier/objective. Reachable normally by selecting
-      // Frost Crossing and deploying; this scenario is a shortcut into that state.
-      setupFrostCrossingTier1Deploy(lobby, state, player);
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
