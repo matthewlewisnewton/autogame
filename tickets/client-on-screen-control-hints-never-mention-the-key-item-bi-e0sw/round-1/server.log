@@ -1,0 +1,15 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/client-on-screen-control-hints-never-mention-the-key-item-bi-e0sw/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/client-on-screen-control-hints-never-mention-the-key-item-bi-e0sw/game/data
+Server listening on port 3005
+Player connected: socket=bDOKKpNOCRe9JkUkAAAB, playerId=18a456bf-396d-4ce7-8267-29892f5178c9
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=mbo37khNpKKNAXYTAAAD, playerId=725ad194-00f4-4ed9-a45f-f591a6a1eb06
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=6b79e04c-c983-4eab-983c-840f326d0738 value=13
+Player disconnected: bDOKKpNOCRe9JkUkAAAB
+Player disconnected: mbo37khNpKKNAXYTAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

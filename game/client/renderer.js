@@ -706,6 +706,15 @@ export const MINION_VISUAL = {
 		emissive: 0x38bdf8,
 		emissiveIntensity: 0.4,
 	},
+	aegis_sentinel: {
+		shape: 'box',
+		width: 1.85,
+		height: 2.6,
+		depth: 0.35,
+		color: 0x4ade80,
+		emissive: 0x22c55e,
+		emissiveIntensity: 0.45,
+	},
 };
 
 /**
@@ -4477,7 +4486,10 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 			returnPasses: style.returnPasses
 				?? (effect === 'triple_returning_projectile' ? 3 : 1),
 			createdAt: performance.now(),
-			duration: ATTACK_EFFECT_DURATION,
+			// Default to the standard travel window, but honor a caller-supplied
+			// short `travelMs`/`duration` so a hitscan-style beam (Phase Stalker's
+			// phase_beam) can resolve near-instantly to match the server hit.
+			duration: style.travelMs ?? style.duration ?? ATTACK_EFFECT_DURATION,
 		});
 		return;
 	}
@@ -5001,6 +5013,196 @@ export function spawnBulkheadMaulerShockwaveEffect(origin, direction, style = {}
 			duration,
 		},
 	);
+}
+
+// Aegis Sentinel palette — protective green ward with optional gold trim.
+export const AEGIS_SENTINEL_COLOR = 0x4ade80;
+export const AEGIS_SENTINEL_EMISSIVE = 0x22c55e;
+export const AEGIS_SENTINEL_GOLD = 0xfbbf24;
+const AEGIS_SENTINEL_SHIELD_DEFAULT_RADIUS = 1.5;
+const AEGIS_SENTINEL_DEPLOY_DEFAULT_RADIUS = 2.0;
+const AEGIS_SENTINEL_DOME_HEIGHT = 2.1;
+const AEGIS_SENTINEL_DOME_OPACITY = 0.58;
+const AEGIS_SENTINEL_WALL_HEIGHT = 2.6;
+const AEGIS_SENTINEL_WALL_WIDTH = 1.85;
+const AEGIS_SENTINEL_WALL_DEPTH = 0.18;
+const AEGIS_SENTINEL_WALL_OPACITY = 0.72;
+const AEGIS_SENTINEL_EMISSIVE_INTENSITY = 1.35;
+
+/**
+ * Brief caster shield wrap at cast time: pulsing green ground ring plus a short
+ * translucent shield facet/dome rising around the origin. Pure additive VFX.
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration, radius }
+ */
+export function spawnAegisSentinelShieldFlourish(origin, style = {}) {
+	const color = style.color ?? AEGIS_SENTINEL_COLOR;
+	const emissive = style.emissive ?? AEGIS_SENTINEL_EMISSIVE;
+	const highlight = style.highlight ?? AEGIS_SENTINEL_GOLD;
+	const duration = style.duration ?? MINION_SUMMON_IN_MS;
+	const radius = style.radius ?? AEGIS_SENTINEL_SHIELD_DEFAULT_RADIUS;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const group = new THREE.Group();
+	group.position.set(origin.x, 0, origin.z);
+
+	const ringGeometry = new THREE.RingGeometry(0.78, 1.0, 40);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.15,
+		transparent: true,
+		opacity: 0.88,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	ringMesh.position.y = GROUND_OVERLAY_Y;
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(0.001);
+	ringMesh.userData.isAegisSentinelRing = true;
+	group.add(ringMesh);
+
+	const domeHeight = Math.min(radius * 1.25, AEGIS_SENTINEL_DOME_HEIGHT);
+	const domeRadius = Math.min(radius * 0.72, 1.15);
+	const domeGeometry = new THREE.CylinderGeometry(domeRadius, domeRadius * 1.08, domeHeight, 20, 1, true);
+	const domeMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: AEGIS_SENTINEL_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: AEGIS_SENTINEL_DOME_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const domeMesh = new THREE.Mesh(domeGeometry, domeMaterial);
+	domeMesh.scale.y = 0.001;
+	domeMesh.position.y = domeHeight * 0.5;
+	domeMesh.userData.isAegisSentinelDome = true;
+	group.add(domeMesh);
+
+	const facetWidth = Math.min(radius * 0.55, 1.1);
+	const facetHeight = domeHeight * 0.92;
+	const facetAngles = [Math.PI * 0.25, -Math.PI * 0.25];
+	for (let i = 0; i < facetAngles.length; i += 1) {
+		const facetPalette = i === 0
+			? { color, emissive }
+			: { color: highlight, emissive: highlight };
+		const facetGeometry = new THREE.PlaneGeometry(facetWidth, facetHeight);
+		const facetMaterial = new THREE.MeshStandardMaterial({
+			color: facetPalette.color,
+			emissive: facetPalette.emissive,
+			emissiveIntensity: 1.2,
+			transparent: true,
+			opacity: 0.5,
+			side: THREE.DoubleSide,
+			depthWrite: false,
+		});
+		const facetMesh = new THREE.Mesh(facetGeometry, facetMaterial);
+		facetMesh.position.y = facetHeight * 0.5;
+		facetMesh.rotation.y = facetAngles[i];
+		facetMesh.userData.isAegisSentinelFacet = true;
+		group.add(facetMesh);
+	}
+
+	targetScene.add(group);
+
+	activeEffects.push({
+		mesh: group,
+		_scene: targetScene,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		domeHeight,
+		createdAt: performance.now(),
+		duration,
+		isAegisSentinelShield: true,
+	});
+}
+
+/**
+ * Minion-deploy flourish: expanding green ward ring plus a rising shield-wall
+ * silhouette so the sentinel materialization reads as a taunt wall. Pure
+ * additive VFX.
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration, radius }
+ */
+export function spawnAegisSentinelDeployEffect(origin, style = {}) {
+	const color = style.color ?? AEGIS_SENTINEL_COLOR;
+	const emissive = style.emissive ?? AEGIS_SENTINEL_EMISSIVE;
+	const highlight = style.highlight ?? AEGIS_SENTINEL_GOLD;
+	const duration = style.duration ?? MINION_SUMMON_IN_MS;
+	const radius = style.radius ?? AEGIS_SENTINEL_DEPLOY_DEFAULT_RADIUS;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const group = new THREE.Group();
+	group.position.set(origin.x, 0, origin.z);
+
+	const ringGeometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	ringMesh.position.y = GROUND_OVERLAY_Y;
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(0.001);
+	ringMesh.userData.isAegisSentinelRing = true;
+	group.add(ringMesh);
+
+	const wallWidth = Math.min(radius * 0.95, AEGIS_SENTINEL_WALL_WIDTH);
+	const wallHeight = AEGIS_SENTINEL_WALL_HEIGHT;
+	const wallGeometry = new THREE.BoxGeometry(wallWidth, wallHeight, AEGIS_SENTINEL_WALL_DEPTH);
+	const wallMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: AEGIS_SENTINEL_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: AEGIS_SENTINEL_WALL_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const wallMesh = new THREE.Mesh(wallGeometry, wallMaterial);
+	wallMesh.scale.y = 0.001;
+	wallMesh.position.y = wallHeight * 0.5;
+	wallMesh.userData.isAegisSentinelWall = true;
+	group.add(wallMesh);
+
+	const trimGeometry = new THREE.BoxGeometry(wallWidth * 1.04, 0.12, AEGIS_SENTINEL_WALL_DEPTH * 1.6);
+	const trimMaterial = new THREE.MeshStandardMaterial({
+		color: highlight,
+		emissive: highlight,
+		emissiveIntensity: 1.25,
+		transparent: true,
+		opacity: 0.85,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const trimMesh = new THREE.Mesh(trimGeometry, trimMaterial);
+	trimMesh.scale.y = 0.001;
+	trimMesh.position.y = wallHeight * 0.5;
+	trimMesh.userData.isAegisSentinelWallTrim = true;
+	group.add(trimMesh);
+
+	targetScene.add(group);
+
+	activeEffects.push({
+		mesh: group,
+		_scene: targetScene,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		wallHeight,
+		createdAt: performance.now(),
+		duration,
+		isAegisSentinelDeploy: true,
+		_baseEmissiveIntensity: AEGIS_SENTINEL_EMISSIVE_INTENSITY,
+	});
 }
 
 // Sanctum Pulse palette: a coherent holy-gold so the divine "pulse" reads as
@@ -5984,6 +6186,121 @@ export function spawnGlacierRuptureShards(origin, radius, style = {}) {
 export function spawnGlacierRuptureEffect(origin, radius, style = {}) {
 	spawnGlacierRuptureRing(origin, radius, style);
 	spawnGlacierRuptureShards(origin, radius, style);
+}
+
+// Solar Edge impact palette — radiant gold-white core with orange corona.
+export const SOLAR_EDGE_CORE_COLOR = 0xfef08a;
+export const SOLAR_EDGE_CORE_EMISSIVE = 0xfbbf24;
+export const SOLAR_EDGE_CORONA_COLOR = 0xff7a18;
+export const SOLAR_EDGE_CORONA_EMISSIVE = 0xff3b00;
+const SOLAR_EDGE_DEFAULT_RING_RADIUS = 2.0;
+const SOLAR_EDGE_EMBER_COUNT = 12;
+const SOLAR_EDGE_EMBER_SPREAD = 1.15;
+
+function pointAlongXZ(origin, direction, distance) {
+	const len = Math.hypot(direction.x, direction.z) || 1;
+	return {
+		x: origin.x + (direction.x / len) * distance,
+		z: origin.z + (direction.z / len) * distance,
+	};
+}
+
+/**
+ * Solar Edge strike flourish: gold-white solar disc burst, expanding orange
+ * corona ring, and a short scatter of solar embers at the blade impact point.
+ * Pure additive VFX; no network traffic or state beyond activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {object} direction - { x, z }
+ * @param {object} [style]
+ */
+export function spawnSolarEdgeImpactFlourish(origin, direction, style = {}) {
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const dir = direction || { x: 1, z: 0 };
+	const range = style.range ?? ATTACK_RANGE;
+	const impact = pointAlongXZ(origin, dir, range);
+	const duration = style.duration ?? ATTACK_EFFECT_DURATION;
+	const ringRadius = style.ringRadius ?? SOLAR_EDGE_DEFAULT_RING_RADIUS;
+	const coreColor = style.color ?? SOLAR_EDGE_CORE_COLOR;
+	const coreEmissive = style.emissive ?? SOLAR_EDGE_CORE_EMISSIVE;
+	const coronaColor = style.coronaColor ?? SOLAR_EDGE_CORONA_COLOR;
+	const coronaEmissive = style.coronaEmissive ?? SOLAR_EDGE_CORONA_EMISSIVE;
+	const emberCount = style.count ?? SOLAR_EDGE_EMBER_COUNT;
+
+	const group = new THREE.Group();
+	group.position.set(impact.x, 0, impact.z);
+
+	const discGeometry = new THREE.CircleGeometry(0.42, 28);
+	const discMaterial = new THREE.MeshStandardMaterial({
+		color: coreColor,
+		emissive: coreEmissive,
+		emissiveIntensity: 1.5,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const discMesh = new THREE.Mesh(discGeometry, discMaterial);
+	discMesh.position.y = GROUND_OVERLAY_Y + 0.1;
+	discMesh.rotation.x = -Math.PI / 2;
+	discMesh.scale.setScalar(0.001);
+	discMesh.userData.isSolarEdgeDisc = true;
+	group.add(discMesh);
+
+	const coronaGeometry = new THREE.RingGeometry(0.18, 0.36, 40);
+	const coronaMaterial = new THREE.MeshStandardMaterial({
+		color: coronaColor,
+		emissive: coronaEmissive,
+		emissiveIntensity: 1.35,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const coronaMesh = new THREE.Mesh(coronaGeometry, coronaMaterial);
+	coronaMesh.position.y = GROUND_OVERLAY_Y + 0.08;
+	coronaMesh.rotation.x = -Math.PI / 2;
+	coronaMesh.scale.setScalar(0.001);
+	coronaMesh.userData.isSolarEdgeCorona = true;
+	group.add(coronaMesh);
+
+	for (let i = 0; i < emberCount; i += 1) {
+		const geometry = new THREE.IcosahedronGeometry
+			? new THREE.IcosahedronGeometry(0.07, 0)
+			: new THREE.SphereGeometry(0.07, 6, 6);
+		const material = new THREE.MeshStandardMaterial({
+			color: coreColor,
+			emissive: coronaEmissive,
+			emissiveIntensity: 1.4,
+			transparent: true,
+			opacity: 1.0,
+		});
+		const ember = new THREE.Mesh(geometry, material);
+		const angle = (i / emberCount) * Math.PI * 2 + Math.random() * 0.4;
+		const elevation = 0.25 + Math.random() * 0.55;
+		const speed = SOLAR_EDGE_EMBER_SPREAD * (0.45 + Math.random() * 0.55);
+		ember.userData.isSolarEdgeEmber = true;
+		ember.userData.velocity = {
+			x: Math.cos(angle) * speed,
+			y: elevation * speed,
+			z: Math.sin(angle) * speed,
+		};
+		ember.position.y = GROUND_OVERLAY_Y + 0.12;
+		group.add(ember);
+	}
+
+	targetScene.add(group);
+
+	activeEffects.push({
+		mesh: group,
+		_scene: targetScene,
+		origin: { x: impact.x, z: impact.z },
+		ringRadius,
+		createdAt: performance.now(),
+		duration,
+		isSolarEdgeImpact: true,
+	});
 }
 
 // ── Mana Prism: signature refracting-crystal cast VFX ──
@@ -7030,6 +7347,75 @@ export function updateAttackEffects() {
 			continue;
 		}
 
+		// ── Aegis Sentinel caster shield wrap (ring + dome/facets) ──
+		if (fx.isAegisSentinelShield) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const expandT = Math.min(t / 0.4, 1.0);
+			const pulse = 0.5 + 0.35 * Math.abs(Math.sin(elapsed / 250));
+			for (let c = 0; c < fx.mesh.children.length; c += 1) {
+				const child = fx.mesh.children[c];
+				if (child.userData.isAegisSentinelRing) {
+					child.scale.setScalar(Math.max(0.001, fx.radius * expandT));
+					child.material.opacity = Math.max(0.01, pulse * (1.0 - t * 0.9));
+				} else if (child.userData.isAegisSentinelDome) {
+					const riseT = Math.min(t / 0.45, 1.0);
+					const s = Math.max(0.001, riseT);
+					child.scale.y = s;
+					child.position.y = (fx.domeHeight * s) / 2;
+					child.material.opacity = Math.max(0.01, AEGIS_SENTINEL_DOME_OPACITY * (1.0 - t));
+				} else if (child.userData.isAegisSentinelFacet) {
+					const riseT = Math.min(t / 0.42, 1.0);
+					child.scale.y = Math.max(0.001, riseT);
+					child.material.opacity = Math.max(0.01, 0.5 * (1.0 - t));
+				}
+			}
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Aegis Sentinel deploy ward ring + rising shield wall ──
+		if (fx.isAegisSentinelDeploy) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const expandMs = Math.min(SUMMON_EXPAND_MS, fx.duration * 0.55);
+			const expandT = Math.min(elapsed / expandMs, 1.0);
+			const fade = Math.max(0.01, 1.0 - t);
+			for (let c = 0; c < fx.mesh.children.length; c += 1) {
+				const child = fx.mesh.children[c];
+				if (child.userData.isAegisSentinelRing) {
+					const scale = fx.radius * expandT * 2;
+					child.scale.setScalar(Math.max(0.001, scale));
+					if (elapsed > expandMs) {
+						const fadeRatio = 1.0 - (elapsed - expandMs) / (fx.duration - expandMs);
+						child.material.opacity = Math.max(0.01, fadeRatio);
+					}
+					const flicker = 1.0 + 0.28 * Math.sin(elapsed * 0.026);
+					child.material.emissiveIntensity = 1.2 * flicker;
+				} else if (child.userData.isAegisSentinelWall) {
+					const riseT = Math.min(t / 0.35, 1.0);
+					const s = Math.max(0.001, riseT);
+					child.scale.y = s;
+					child.position.y = (fx.wallHeight * s) / 2;
+					child.material.opacity = Math.max(0.01, AEGIS_SENTINEL_WALL_OPACITY * fade);
+					const baseIntensity = fx._baseEmissiveIntensity ?? AEGIS_SENTINEL_EMISSIVE_INTENSITY;
+					child.material.emissiveIntensity = baseIntensity * fade;
+				} else if (child.userData.isAegisSentinelWallTrim) {
+					const riseT = Math.min(t / 0.35, 1.0);
+					const s = Math.max(0.001, riseT);
+					child.scale.y = s;
+					child.position.y = (fx.wallHeight * s) / 2;
+					child.material.opacity = Math.max(0.01, 0.85 * fade);
+				}
+			}
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
 		// ── Battery Automaton expanding ground ring (deploy / charge pulse) ──
 		if (fx.isBatteryAutomatonRing) {
 			const expandMs = Math.min(SUMMON_EXPAND_MS, fx.duration * 0.55);
@@ -7246,6 +7632,44 @@ export function updateAttackEffects() {
 				shard.rotation.z = dir.x * scatterT * 0.4;
 				shard.rotation.x = -dir.z * scatterT * 0.4;
 				if (shard.material) shard.material.opacity = fade;
+			}
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Solar Edge impact flourish (disc pop → corona expand → ember scatter) ──
+		if (fx.isSolarEdgeImpact) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const expandMs = Math.min(fx.duration * 0.45, 280);
+			const expandT = Math.min(elapsed / expandMs, 1.0);
+			const fade = Math.max(0.01, 1.0 - t);
+			const coronaScale = (fx.ringRadius ?? SOLAR_EDGE_DEFAULT_RING_RADIUS) * expandT * 2;
+
+			for (let c = 0; c < fx.mesh.children.length; c += 1) {
+				const child = fx.mesh.children[c];
+				if (child.userData.isSolarEdgeDisc) {
+					const popT = Math.min(t / 0.22, 1.0);
+					child.scale.setScalar(Math.max(0.001, popT * 1.15));
+					child.material.opacity = Math.max(0.01, fade);
+					child.material.emissiveIntensity = 1.5 * fade;
+				} else if (child.userData.isSolarEdgeCorona) {
+					child.scale.setScalar(Math.max(0.001, coronaScale));
+					const pulse = 0.82 + 0.18 * Math.abs(Math.sin(elapsed / 70));
+					child.material.opacity = Math.max(0.01, fade * (1.0 - expandT * 0.25));
+					child.material.emissiveIntensity = 1.35 * pulse * fade;
+				} else if (child.userData.isSolarEdgeEmber) {
+					const v = child.userData.velocity;
+					child.position.set(
+						v.x * t,
+						GROUND_OVERLAY_Y + 0.12 + v.y * t - t * t * 0.55,
+						v.z * t,
+					);
+					child.material.opacity = Math.max(0.01, fade);
+				}
 			}
 
 			if (elapsed >= fx.duration) {

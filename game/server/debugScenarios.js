@@ -2366,6 +2366,17 @@ function setupSuspendedRunHubDebug({ lobby, state, player, socket, name, spawn }
         return { ok: true, scenario: name };
 }
 
+function setupCrystalRescueSuspendedHubDebug({ lobby, state, player }) {
+  // Hub lobby after a Prism Salvage sortie suspended via Telepipe extract.
+  // Checkpoint retains crystal positions and runSpawnSeed for resume/abandon QA.
+  // Same state is reachable by deploying crystal_rescue, placing a Telepipe,
+  // and extracting every squadmate through it.
+  setupCrystalRescueTier1Deploy(lobby, state, player);
+  player.hp = 42;
+  player.magicStones = 15;
+  suspendRunToLobby();
+}
+
 function setupDeckViewerInstancesDebug({ lobby, state, player, socket, name, spawn }) {
   // Enter a normal run whose draw pile is built entirely from owned-card
         // *instances* — the deck/selectedDeck store inventory instance IDs rather
@@ -4765,6 +4776,11 @@ const DEBUG_SCENARIO_REGISTRY = {
 
   'crystal-rescue-extraction-phase': ({ lobby, state, player, name }) => {
     setupCrystalRescueExtractionPhaseDebug(lobby, state, player);
+    return emitQuestDebugState(lobby, state, player, name, { includeUnlockedTiers: true });
+  },
+
+  'crystal-rescue-suspended-hub': ({ lobby, state, player, name }) => {
+    setupCrystalRescueSuspendedHubDebug({ lobby, state, player });
     return emitQuestDebugState(lobby, state, player, name, { includeUnlockedTiers: true });
   },
 

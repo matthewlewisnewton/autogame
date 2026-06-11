@@ -1,0 +1,24 @@
+## Review complete
+
+**VERDICT: PASS**
+
+Wrote:
+- [`round-1/review.md`](tickets/decision-per-quest-layouts-are-fully-deterministic-every-run-xnu8/round-1/review.md) — full assessment
+- [`round-1/nits.md`](tickets/decision-per-quest-layouts-are-fully-deterministic-every-run-xnu8/round-1/nits.md) — one non-blocking doc nit
+- No `gaps.md` (nothing blocking)
+
+### Runtime
+Capture is clean: `metrics.json` has `"ok": true`, empty `pageerrors`, and `console.log` has no fatal/page errors. Game deployed and played normally (Initiate Vault smoke).
+
+### Implementation (3 commits since `654ad2bf`)
+1. **Docs** — Option (b) recorded in `design.md`: fixed geometry per quest+tier, per-run objective placement.
+2. **Per-run spawn seed** — `runSpawnSeed` minted on fresh deploy; `collect_items` crystals use `objectiveRng`; combat/loot/scripted waves stay on `layoutRng`.
+3. **Checkpoint lifecycle** — Telepipe resume preserves crystals + seed; abort + redeploy rolls new positions on the same layout.
+
+### Verification
+- `pnpm test:quick`: **3896/3896** pass (re-run during review)
+- New tests: `quest_per_run_spawn.test.js`, extended `server.test.js`, `integration.test.js`, `debug-scenarios.test.js`
+- Debug scenario `crystal-rescue-suspended-hub` is properly gated and mirrors normal telepipe suspend flow
+
+### Only nit
+`design.md` still says `runSpawnSeed` is “to be introduced in sub-ticket 02” — implementation is already shipped. Filed in `nits.md` for a follow-up doc tweak.

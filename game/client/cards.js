@@ -170,6 +170,7 @@ export const CARD_ACCENT_STYLE = {
   inferno_pillar: { color: '#ef4444', icon: '🌋' },
   aegis_sentinel: { color: '#4ade80', icon: '🛡' },
   astral_guardian: { color: '#818cf8', icon: '✧' },
+  dungeon_drake: { color: '#fb923c', icon: '🔥' },
   ancient_wyrm: { color: '#9333ea', icon: '🔥' },
   null_crawler: { color: '#22d3ee', icon: '◎' },
   bulkhead_mauler: { color: '#78716c', icon: '⬡' },

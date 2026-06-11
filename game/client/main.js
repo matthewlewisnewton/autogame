@@ -169,12 +169,15 @@ import {
 	spawnProjectileTrail as rendererSpawnProjectileTrail,
 	spawnImpactDecal as rendererSpawnImpactDecal,
 	spawnTelegraphRing as rendererSpawnTelegraphRing,
+	spawnSolarEdgeImpactFlourish as rendererSpawnSolarEdgeImpactFlourish,
 	spawnChronoTriggerEffect as rendererSpawnChronoTriggerEffect,
 	spawnTelepipeCastEffect as rendererSpawnTelepipeCastEffect,
 	spawnMirrorWardShellEffect as rendererSpawnMirrorWardShellEffect,
 	dismissMirrorWardShellEffect as rendererDismissMirrorWardShellEffect,
 	spawnMirrorWardReflectBurst as rendererSpawnMirrorWardReflectBurst,
 	spawnMinionSummonInEffect as rendererSpawnMinionSummonInEffect,
+	spawnAegisSentinelShieldFlourish as rendererSpawnAegisSentinelShieldFlourish,
+	spawnAegisSentinelDeployEffect as rendererSpawnAegisSentinelDeployEffect,
 	spawnBatteryAutomatonDeployEffect as rendererSpawnBatteryAutomatonDeployEffect,
 	spawnBulkheadMaulerDeployEffect as rendererSpawnBulkheadMaulerDeployEffect,
 	spawnBulkheadMaulerShockwaveEffect as rendererSpawnBulkheadMaulerShockwaveEffect,
@@ -277,7 +280,8 @@ const attackHintEl = document.getElementById('attack-hint');
 
 /** Write the device-aware attack/cast hint text, overriding the static HTML. */
 function applyAttackHintText() {
-	if (attackHintEl) attackHintEl.textContent = getAttackCastHint().text;
+	const equippedKeyItemId = gameState?.players?.[myId]?.equippedKeyItemId ?? null;
+	if (attackHintEl) attackHintEl.textContent = getAttackCastHint(equippedKeyItemId).text;
 }
 
 // How long the fade-out runs before the hint is fully `display:none` (kept in
@@ -1403,6 +1407,8 @@ const socketHandlerCtx = createSocketHandlerCtx({
 	spawnAttackEffect: rendererSpawnAttackEffect,
 	spawnSummonEffect: rendererSpawnSummonEffect,
 	spawnMinionSummonInEffect: rendererSpawnMinionSummonInEffect,
+	spawnAegisSentinelShieldFlourish: rendererSpawnAegisSentinelShieldFlourish,
+	spawnAegisSentinelDeployEffect: rendererSpawnAegisSentinelDeployEffect,
 	spawnBatteryAutomatonDeployEffect: rendererSpawnBatteryAutomatonDeployEffect,
 	spawnBulkheadMaulerDeployEffect: rendererSpawnBulkheadMaulerDeployEffect,
 	spawnBulkheadMaulerShockwaveEffect: rendererSpawnBulkheadMaulerShockwaveEffect,
@@ -1431,6 +1437,7 @@ const socketHandlerCtx = createSocketHandlerCtx({
 	spawnProjectileTrail: rendererSpawnProjectileTrail,
 	spawnImpactDecal: rendererSpawnImpactDecal,
 	spawnTelegraphRing: rendererSpawnTelegraphRing,
+	spawnSolarEdgeImpactFlourish: rendererSpawnSolarEdgeImpactFlourish,
 	spawnChronoTriggerEffect: rendererSpawnChronoTriggerEffect,
 	spawnTelepipeCastEffect: rendererSpawnTelepipeCastEffect,
 	spawnMirrorWardShellEffect: rendererSpawnMirrorWardShellEffect,
@@ -3662,11 +3669,11 @@ if (registerBtnEl) {
 			});
 			const data = await res.json();
 			if (res.ok) {
-				if (registerErrorEl) {
-					registerErrorEl.textContent = 'Account created — please login';
-					registerErrorEl.style.color = '#4ade80';
-				}
 				showLoginForm();
+				if (loginErrorEl) {
+					loginErrorEl.textContent = 'Account created — please login';
+					loginErrorEl.style.color = '#4ade80';
+				}
 			} else {
 				if (registerErrorEl) registerErrorEl.textContent = data.error || 'Registration failed';
 			}

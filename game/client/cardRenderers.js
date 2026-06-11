@@ -15,6 +15,8 @@
 //   spawnSummonEffect(origin, radius, styleOrColor?)
 //   spawnLegionMarshalRallyEffect(origin, radius, style?) — undead commander rally ring + column
 //   spawnMinionSummonInEffect(origin, style?) — creature minion summon flourish
+//   spawnAegisSentinelShieldFlourish(origin, style?) — caster shield wrap at cast time
+//   spawnAegisSentinelDeployEffect(origin, style?) — shield-wall deploy ward ring + wall
 //   spawnBatteryAutomatonDeployEffect(origin, style?) — battery mechanical deploy ring + column
 //   spawnBulkheadMaulerDeployEffect(origin, style?) — heavy stone construct deploy ring + column
 //   spawnBulkheadMaulerShockwaveEffect(origin, direction, style?) — heavy stone shockwave wedge + foot debris
@@ -31,6 +33,7 @@
 //   spawnLightningArc(from, to, style?)
 //   spawnParticleBurst(position, style?)       — multi-particle spark/ember burst
 //   spawnProjectileTrail(origin, direction, style?) — fading streak along a path
+//   spawnSolarEdgeImpactFlourish(origin, direction, style?) — solar disc + corona + embers at strike
 //   spawnImpactDecal(origin, style?)           — lingering ground flash/decal ring
 //   spawnGravityWellEffect(origin, radius, style?) — contracting pull ring, void core, inward inflow
 //   spawnTelegraphRing(origin, radius, style?) — expanding/pulsing AoE telegraph ring
@@ -49,6 +52,7 @@ import {
 	ARCHIVE_WYRM_BREATH_DURATION_MS,
 	ARCHIVE_WYRM_BREATH_TICK_COUNT,
 	ARCHIVE_WYRM_BREATH_TICK_MS,
+	ATTACK_CONE_ANGLE,
 	ATTACK_EFFECT_DURATION,
 	ATTACK_RANGE,
 	EVENT_HORIZON_CRUSH_DELAY_MS,
@@ -59,6 +63,19 @@ import {
 
 const NULL_CRAWLER_SUMMON_COLOR = 0x22d3ee;
 const NULL_CRAWLER_SUMMON_EMISSIVE = 0x67e8f9;
+// Phase-beam identity: cyan card accent stays primary; a void-purple rift accent
+// layers behind/along the corridor so the strike reads as a dimensional rift.
+const NULL_CRAWLER_BEAM_COLOR = 0x22d3ee;
+const NULL_CRAWLER_BEAM_EMISSIVE = 0x06b6d4;
+const NULL_CRAWLER_RIFT_COLOR = 0x7c3aed;
+const NULL_CRAWLER_RIFT_EMISSIVE = 0xa855f7;
+// The server resolves the beam as an instant hitscan at wind-up completion, so
+// the visible strike travels in a single quick flash rather than the standard
+// ~600ms projectile window — keeping it in sync with the already-applied damage.
+const NULL_CRAWLER_BEAM_TRAVEL_MS = 140;
+// Beat between the initial telegraph and the second "phase-flicker" pulse so
+// the deploy reads as the stalker blinking in from another dimension.
+const NULL_CRAWLER_PHASE_FLICKER_MS = 180;
 const UNDEAD_COMMANDER_COLOR = 0xe4e4e7;
 const UNDEAD_COMMANDER_EMISSIVE = 0xa855f7;
 // Necroframe Knight shares its evolution's bone-white body + necrotic-purple
@@ -142,29 +159,6 @@ function renderConeSwings(data, ctx) {
  * composed primitives.
  */
 const WEAPON_SLASH_STYLES = {
-	// Rust-Forged Saber: a tight, steely arc — a quick clean cut with a few sparks.
-	iron_sword: {
-		color: 0x94a3b8,
-		emissive: 0x64748b,
-		coneAngle: Math.PI / 5,
-		range: 4,
-		fillOpacity: 0.42,
-		edgeOpacity: 0.85,
-		sparkCount: 6,
-		sparkSpread: 0.7,
-	},
-	// Solar Edge: a warm fiery arc with a trailing flame streak and ember burst.
-	flame_blade: {
-		color: 0xff7a18,
-		emissive: 0xff3b00,
-		coneAngle: Math.PI / 4,
-		range: 5,
-		fillOpacity: 0.4,
-		edgeOpacity: 0.8,
-		trail: true,
-		sparkCount: 10,
-		sparkSpread: 1.3,
-	},
 	// Ether Scythe: a wide ghostly ether-green sweep edged in spectral violet,
 	// leaving a lingering spectral decal and reaping soul-wisps off each hit.
 	harvesting_scythe: {
@@ -306,6 +300,139 @@ function renderWeaponSwing(data, ctx) {
 	}
 }
 
+/** Rust-Forged Saber: weathered iron body with oxidized rust emissive accents. */
+const RUST_FORGED_SABER_STYLE = {
+	color: 0x78716c,
+	emissive: 0xb45309,
+	coneAngle: Math.PI / 5,
+	range: 4,
+	fillOpacity: 0.42,
+	edgeOpacity: 0.85,
+	sparkCount: 6,
+	sparkSpread: 0.7,
+	decalRadius: 1.1,
+};
+
+/**
+ * Rust-Forged Saber swing. Composes the 315 primitives — a tight saber slash
+ * arc in warm rust-steel tones plus a metallic spark/rust-flake burst along the
+ * cut — into one weathered forged-blade blow. No projectile trail (that reads
+ * as fire/energy). Optional scored-metal ground mark at the strike point.
+ * Falls through to the uniform hit-flash / sound / shockwave post-effects in
+ * `renderCardUsed`. Each ctx call is guarded so the swing degrades gracefully
+ * when a primitive is absent.
+ */
+function renderRustForgedSaber(data, ctx) {
+	const style = RUST_FORGED_SABER_STYLE;
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex('iron_sword') ?? style.color;
+	const emissive = style.emissive;
+	const swingCount = data.swingCount || 1;
+	const range = Number.isFinite(data.attackRange) ? data.attackRange : style.range;
+	const coneAngle = Number.isFinite(data.attackConeAngle) ? data.attackConeAngle : style.coneAngle;
+	const impactAt = pointAlong(origin, direction, range);
+
+	const swing = () => {
+		if (ctx.spawnAttackEffect) {
+			ctx.spawnAttackEffect(origin, direction, {
+				color,
+				emissive,
+				coneAngle,
+				range,
+				fillOpacity: style.fillOpacity,
+				edgeOpacity: style.edgeOpacity,
+			});
+		}
+		if (ctx.spawnParticleBurst) {
+			const sparkAt = pointAlong(origin, direction, range * 0.6);
+			ctx.spawnParticleBurst(sparkAt, {
+				color,
+				emissive,
+				count: style.sparkCount,
+				spread: style.sparkSpread,
+			});
+		}
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(impactAt, { color, emissive, radius: style.decalRadius });
+		}
+	};
+	for (let i = 0; i < swingCount; i++) {
+		const delay = i * PHOTON_BARRAGE_SWING_DELAY_MS;
+		if (delay > 0 && ctx.scheduleAfter) ctx.scheduleAfter(delay, swing);
+		else swing();
+	}
+}
+
+/** Solar Edge: gold-white radiant blade body with orange corona accents. */
+const SOLAR_EDGE_COLOR = 0xfef08a;
+const SOLAR_EDGE_EMISSIVE = 0xfbbf24;
+const SOLAR_EDGE_CORONA_COLOR = 0xff7a18;
+const SOLAR_EDGE_CORONA_EMISSIVE = 0xff3b00;
+/** Brief corona pulse — smaller than spawnSolarEdgeImpactFlourish's default ring. */
+const SOLAR_EDGE_CORONA_PULSE_RADIUS = 1.35;
+
+/**
+ * Solar Edge swing. Composes the solar impact primitive with 315 VFX helpers —
+ * a gold-white radiant arc driven by server cone geometry, a solar streak along
+ * the reach, the sub-ticket 01 impact flourish, and a brief corona telegraph at
+ * the strike point. Wind-up telegraph is server-side (`windUpMs`); this fires
+ * synchronously on `CARD_USED` with no extra `scheduleAfter` delay.
+ */
+function renderSolarEdge(data, ctx) {
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex(data.cardId) ?? SOLAR_EDGE_COLOR;
+	const emissive = SOLAR_EDGE_EMISSIVE;
+	const coronaColor = SOLAR_EDGE_CORONA_COLOR;
+	const coronaEmissive = SOLAR_EDGE_CORONA_EMISSIVE;
+	const coneAngle = data.attackConeAngle ?? ATTACK_CONE_ANGLE;
+	const range = data.attackRange ?? ATTACK_RANGE;
+	const impactAt = pointAlong(origin, direction, range);
+
+	ctx.spawnAttackEffect(origin, direction, {
+		color,
+		emissive,
+		coneAngle,
+		range,
+		fillOpacity: 0.42,
+		edgeOpacity: 0.88,
+	});
+
+	if (ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, { range, color, emissive });
+	}
+
+	if (ctx.spawnSolarEdgeImpactFlourish) {
+		ctx.spawnSolarEdgeImpactFlourish(origin, direction, {
+			range,
+			color,
+			emissive,
+			coronaColor,
+			coronaEmissive,
+		});
+	}
+
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(impactAt, SOLAR_EDGE_CORONA_PULSE_RADIUS, {
+			color: coronaColor,
+			emissive: coronaEmissive,
+		});
+	}
+
+	if (data.hits?.length && ctx.enemyMeshes) {
+		const meshes = ctx.enemyMeshes() || {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh?.position) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(pos, { color: coronaColor, emissive: coronaEmissive, count: 5, spread: 0.55 });
+			}
+		}
+	}
+}
+
 const REAPERS_SCYTHE_COLOR = 0x1e293b;
 const REAPERS_SCYTHE_EMISSIVE = 0xe7e5e4;
 const REAPERS_SCYTHE_EMBER = 0xb45309;
@@ -386,29 +513,97 @@ function renderReapersScythe(data, ctx) {
 	}
 }
 
+/** Alloy Greatblade: a heavy slate cleave that shatters the ground on impact. */
+const ALLOY_GREATBLADE_STYLE = {
+	color: 0x94a3b8,
+	emissive: 0x64748b,
+	coneAngle: Math.PI / 2.2,
+	range: 7,
+	fillOpacity: 0.5,
+	edgeOpacity: 0.92,
+	decalRadius: 3.2,
+	debrisCount: 18,
+	debrisSpread: 2.4,
+	knockbackRingRadius: 2.8,
+	knockbackBurstCount: 22,
+	knockbackBurstSpread: 3.2,
+};
+
 /**
- * Per-weapon styling for the heavy wind-up greatswords (`steel_claymore`,
- * `magma_greatsword`). These carry a `windUpMs` lockout, so
- * the 315 charge telegraph already plays during the wind-up; the entries here
- * make the *resulting* hit feel proportionally heavy: a wider/larger cone arc
- * plus a pronounced impact — a larger-radius decal and a high-`count` debris/
- * spark burst — so the blow reads as a big committed swing. Each differs from
- * the others (color + shape/impact params) and hits harder than the lighter
- * blades in sub-tickets 01/02 (bigger decal radius, higher particle count).
+ * Alloy Greatblade swing. Composes the 315 primitives — a wide slate cone
+ * cleave, a metallic streak along the arc, and guarded `spawnImpactDecal` plus
+ * `spawnParticleBurst` metal-shard shower at the strike point — into one
+ * weighty, committed blow. The server-side `windUpMs` charge telegraph (315)
+ * covers the wind-up; this renderer fires the cleave synchronously when
+ * `cardUsed` arrives. Strike reach tracks `data.attackRange` from the server
+ * payload. When `knockbackMoved` is non-empty, layers an expanding telegraph
+ * ring plus a heavier outward burst at the strike point.
+ */
+function renderAlloyGreatblade(data, ctx) {
+	const style = ALLOY_GREATBLADE_STYLE;
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex('steel_claymore') ?? style.color;
+	const emissive = style.emissive;
+	const swingCount = data.swingCount || 1;
+	const delayPerSwing = data.specialEffect === 'photon_barrage' ? PHOTON_BARRAGE_SWING_DELAY_MS : 0;
+	const range = data.attackRange ?? style.range;
+	const impactAt = pointAlong(origin, direction, range);
+
+	const swing = () => {
+		ctx.spawnAttackEffect(origin, direction, {
+			color,
+			emissive,
+			coneAngle: style.coneAngle,
+			range,
+			fillOpacity: style.fillOpacity,
+			edgeOpacity: style.edgeOpacity,
+		});
+		if (ctx.spawnProjectileTrail) {
+			ctx.spawnProjectileTrail(origin, direction, { color, emissive, range });
+		}
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(impactAt, { color, emissive, radius: style.decalRadius });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(impactAt, {
+				color,
+				emissive,
+				count: style.debrisCount,
+				spread: style.debrisSpread,
+			});
+		}
+		if (data.knockbackMoved && data.knockbackMoved.length > 0) {
+			if (ctx.spawnTelegraphRing) {
+				ctx.spawnTelegraphRing(impactAt, style.knockbackRingRadius, { color, emissive });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(impactAt, {
+					color,
+					emissive,
+					count: style.knockbackBurstCount,
+					spread: style.knockbackBurstSpread,
+				});
+			}
+		}
+	};
+	for (let i = 0; i < swingCount; i++) {
+		const delay = delayPerSwing * i;
+		if (delay > 0) ctx.scheduleAfter(delay, swing);
+		else swing();
+	}
+}
+
+/**
+ * Per-weapon styling for the heavy wind-up greatsword (`magma_greatsword`).
+ * These carry a `windUpMs` lockout, so the 315 charge telegraph already plays
+ * during the wind-up; the entry here makes the *resulting* hit feel
+ * proportionally heavy: a wider/larger cone arc plus a pronounced impact — a
+ * larger-radius decal and a high-`count` debris/spark burst — so the blow
+ * reads as a big committed swing. Hits harder than the lighter blades in
+ * sub-tickets 01/02 (bigger decal radius, higher particle count).
  */
 const HEAVY_GREATSWORD_STYLES = {
-	// Alloy Greatblade: a heavy slate cleave that shatters the ground on impact.
-	steel_claymore: {
-		color: 0x94a3b8,
-		emissive: 0x64748b,
-		coneAngle: Math.PI / 2.2,
-		range: 7,
-		fillOpacity: 0.5,
-		edgeOpacity: 0.92,
-		decalRadius: 3.2,
-		debrisCount: 18,
-		debrisSpread: 2.4,
-	},
 	// Corebreaker Greatsword: a wide magma swing that erupts molten debris.
 	magma_greatsword: {
 		color: 0xf97316,
@@ -609,6 +804,108 @@ function renderHeavyGreatsword(data, ctx) {
 			emissive,
 			count: style.debrisCount,
 			spread: style.debrisSpread,
+		});
+	}
+}
+
+/**
+ * Corebreaker Greatsword (`magma_greatsword`): a dedicated molten magma
+ * greatsword. Reuses the heavy wind-up swing + pronounced impact of the heavy
+ * greatswords (wide magma cone, the card's biggest ground decal + debris
+ * shower), then lays a lingering molten **fire-trail** along the swing direction
+ * — the card's signature `fire_trail` DoT, finally made visible.
+ *
+ * The trail's tick cadence and total duration are DERIVED from the server card
+ * stats (`dotTicks` / `dotIntervalMs` on `getCardDef('magma_greatsword')`),
+ * never hardcoded, so the on-screen molten pulses stay locked to the server's
+ * `fire_trail` resolution (4 ticks at 500ms; duration = dotTicks * dotIntervalMs).
+ * The directional fire-zone primitive (`spawnDragonsBreathEffect`) carries the
+ * same derived timing, and one molten pulse fires per DoT tick via
+ * `ctx.scheduleAfter`.
+ *
+ * The primary swing + impact fire synchronously on CARD_USED (no projectile
+ * delay); the 800ms wind-up charge telegraph is owned by renderer.js's automatic
+ * wind-up handler, so this renderer never re-implements it. Honors `swingCount`
+ * and the `photon_barrage` stagger like the heavy greatswords. Derives all stats
+ * from getCardDef (no new network/payload fields). Every ctx call is guarded so
+ * the renderer degrades gracefully when an optional primitive is absent.
+ */
+function renderCorebreakerGreatsword(data, ctx) {
+	const style = HEAVY_GREATSWORD_STYLES.magma_greatsword;
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex('magma_greatsword') ?? style.color;
+	const emissive = style.emissive;
+	const swingCount = data.swingCount || 1;
+	const delayPerSwing = data.specialEffect === 'photon_barrage' ? PHOTON_BARRAGE_SWING_DELAY_MS : 0;
+	// Derive the VFX reach from the server-emitted payload so the on-screen cone,
+	// impact and fire-trail always match the server-resolved attackRange; fall
+	// back to the style default when the payload omits it.
+	const range = data.attackRange ?? style.range;
+
+	// Lingering fire-trail cadence/duration derived from the server card stats —
+	// keeps the molten pulses synced to the server `fire_trail` resolution.
+	const def = getCardDef('magma_greatsword') ?? {};
+	const dotTicks = def.dotTicks ?? 4;
+	const dotIntervalMs = def.dotIntervalMs ?? 500;
+	const trailDuration = dotTicks * dotIntervalMs;
+
+	// Heavy magma cone swing — fired synchronously (extra swings stagger).
+	const swing = () => ctx.spawnAttackEffect(origin, direction, {
+		color,
+		emissive,
+		coneAngle: style.coneAngle,
+		range,
+		fillOpacity: style.fillOpacity,
+		edgeOpacity: style.edgeOpacity,
+	});
+	for (let i = 0; i < swingCount; i++) {
+		const delay = delayPerSwing * i;
+		if (delay > 0) ctx.scheduleAfter(delay, swing);
+		else swing();
+	}
+
+	// Pronounced impact at the blade's strike point — the card's biggest ground
+	// decal plus a heavy molten-debris shower.
+	const impactAt = pointAlong(origin, direction, range);
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(impactAt, { color, emissive, radius: style.decalRadius });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(impactAt, {
+			color,
+			emissive,
+			count: style.debrisCount,
+			spread: style.debrisSpread,
+		});
+	}
+
+	// Lingering molten fire-trail along the swing direction: a directional
+	// fire-zone whose derived timing keeps it smoldering for the full DoT window,
+	// themed to the magma accent.
+	if (ctx.spawnDragonsBreathEffect) {
+		ctx.spawnDragonsBreathEffect(origin, direction, {
+			color,
+			emissive,
+			range,
+			coneAngle: style.coneAngle,
+			dotTicks,
+			dotIntervalMs,
+			duration: trailDuration,
+		});
+	}
+
+	// One molten pulse per DoT tick, at the derived dotIntervalMs cadence, so the
+	// trail visibly ticks in lockstep with the server fire_trail damage ticks.
+	for (let tick = 1; tick <= dotTicks; tick += 1) {
+		ctx.scheduleAfter(dotIntervalMs * tick, () => {
+			const pulseAt = pointAlong(origin, direction, range * 0.6);
+			if (ctx.spawnTelegraphRing) {
+				ctx.spawnTelegraphRing(pulseAt, style.decalRadius * 0.6, { color, emissive });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pulseAt, { color, emissive, count: 8, spread: 2.2 });
+			}
 		});
 	}
 }
@@ -1323,6 +1620,46 @@ const BATTERY_AUTOMATON_COLOR = 0xfbbf24;
 const BATTERY_AUTOMATON_EMISSIVE = 0x38bdf8;
 const BULKHEAD_MAULER_COLOR = 0x78716c;
 const BULKHEAD_MAULER_EMISSIVE = 0xf59e0b;
+const AEGIS_SENTINEL_COLOR = 0x4ade80;
+const AEGIS_SENTINEL_EMISSIVE = 0x22c55e;
+const AEGIS_SENTINEL_GOLD = 0xfbbf24;
+
+/**
+ * Aegis Sentinel: green shield wrap at cast time plus shield-wall deploy and
+ * minion summon-in flourish. Fires synchronously on CARD_USED — no wind-up
+ * delay. Shield flourish when `shieldGranted` is present; deploy + summon-in
+ * when the server reports a new minion id. Every optional helper is guarded.
+ */
+function renderAegisSentinel(data, ctx) {
+	const origin = originOf(data);
+	const aegisStyle = {
+		color: AEGIS_SENTINEL_COLOR,
+		emissive: AEGIS_SENTINEL_EMISSIVE,
+		highlight: AEGIS_SENTINEL_GOLD,
+		duration: MINION_SUMMON_IN_MS,
+	};
+	if (data.shieldGranted && ctx.spawnAegisSentinelShieldFlourish) {
+		ctx.spawnAegisSentinelShieldFlourish(origin, aegisStyle);
+	}
+	if (!data.minionId) return;
+	const deployStyle = {
+		...aegisStyle,
+		radius: data.radius ?? 2.0,
+	};
+	if (ctx.spawnAegisSentinelDeployEffect) {
+		ctx.spawnAegisSentinelDeployEffect(origin, deployStyle);
+	}
+	if (ctx.spawnMinionSummonInEffect) {
+		ctx.spawnMinionSummonInEffect(origin, {
+			color: AEGIS_SENTINEL_COLOR,
+			emissive: AEGIS_SENTINEL_EMISSIVE,
+			highlight: AEGIS_SENTINEL_GOLD,
+			radius: 1.4,
+			burstCount: 10,
+			burstSpread: 1.4,
+		});
+	}
+}
 
 /**
  * Battery Automaton: mechanical deploy ring + electric column composed with the
@@ -1489,6 +1826,10 @@ const THUNDERBIRD_CHAIN_HOP_DELAY_MS = 100;
 const STORM_EAGLE_ARC_STYLE = { color: 0x67e8f9, emissive: 0x22d3ee };
 const ARCANE_FAMILIAR_COLOR = 0x818cf8;
 const ARCANE_FAMILIAR_EMISSIVE = 0x6366f1;
+// Concentric "signal" broadcast ping rings, as fractions of the AoE radius
+// (inner → outer), staggered by this cadence for a radar/sonar read.
+const SIGNAL_FAMILIAR_PING_FRACTIONS = [0.5, 0.75, 1.0];
+const SIGNAL_FAMILIAR_PING_DELAY_MS = 110;
 const MANA_LEACH_COLOR = 0xa855f7;
 const MANA_LEACH_EMISSIVE = 0x9333ea;
 const SOUL_DRAIN_COLOR = 0xe879f9;
@@ -1577,18 +1918,69 @@ function renderChainLightningArcs(data, ctx) {
 }
 
 /**
- * Signal Familiar: indigo arcane telegraph and spark burst at the cast origin.
+ * Signal Familiar: an indigo arcane familiar wisp materializes at the cast
+ * origin and emits concentric "signal" broadcast ping rings (radar/sonar feel)
+ * outward to the AoE radius. Instant cast — the first ping fires immediately at
+ * the origin and the remaining rings are merely staggered for cadence (no
+ * wind-up / projectile travel), matching the server's instant resolution.
  */
 function renderBattleFamiliar(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
 	const color = getAccentHex(data.cardId) ?? ARCANE_FAMILIAR_COLOR;
 	const emissive = ARCANE_FAMILIAR_EMISSIVE;
-	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	const style = { color, emissive };
+
+	// Familiar wisp answering the signal — a transient summon-style flourish,
+	// distinct from the generic spark burst below.
+	if (ctx.spawnMinionSummonInEffect) {
+		ctx.spawnMinionSummonInEffect(origin, {
+			color,
+			emissive,
+			radius: 1.1,
+			burstCount: 12,
+			burstSpread: 1.6,
+		});
 	}
+
+	// Concentric broadcast ping rings expanding to the AoE radius. The inner
+	// ring fires at cast time; outer rings are staggered for a sonar cadence.
+	if (ctx.spawnTelegraphRing) {
+		const pingRing = (fraction) =>
+			ctx.spawnTelegraphRing(origin, data.radius * fraction, style);
+		SIGNAL_FAMILIAR_PING_FRACTIONS.forEach((fraction, i) => {
+			if (i === 0 || !ctx.scheduleAfter) {
+				pingRing(fraction);
+			} else {
+				ctx.scheduleAfter(SIGNAL_FAMILIAR_PING_DELAY_MS * i, () => pingRing(fraction));
+			}
+		});
+	}
+
 	if (ctx.spawnParticleBurst) {
 		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.0 });
+	}
+
+	// Per-hit signal delivery: for every struck enemy with a live mesh, the
+	// familiar fires a signal arc OUT from the cast origin to the target plus a
+	// spark at the impact, so on-screen hits line up with the server's instant
+	// radial resolution. Hits whose enemy already despawned have no mesh and are
+	// skipped. Arg order (origin→enemy) is the inverse of Ether Siphon's inward
+	// drain arc, keeping the helper signature distinct.
+	if (data.hits?.length) {
+		const meshes = (ctx.enemyMeshes && ctx.enemyMeshes()) || {};
+		const arcStyle = { color, emissive, duration: ATTACK_EFFECT_DURATION };
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const enemyPos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnLightningArc) {
+				ctx.spawnLightningArc(origin, enemyPos, arcStyle);
+			}
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(enemyPos, { color, emissive, count: 5, spread: 0.55 });
+			}
+		}
 	}
 }
 
@@ -1978,10 +2370,14 @@ function renderWyrmAttack(data, ctx) {
 	if (!data.origin) return;
 	if (data.minionId && !data.breathPhase) return;
 
-	const isFireBreath = data.specialEffect === 'fire_breath';
-	const accentHex = getAccentHex(data.cardId);
-	const color = isFireBreath ? 0xef4444 : (accentHex ?? 0x22c55e);
-	const emissive = isFireBreath ? (accentHex ?? 0x9333ea) : 0x16a34a;
+	// renderWyrmAttack only drives the Vault Wyrm (dungeon_drake), a fire/ember
+	// breather after sub-ticket 01's re-skin. The hot ember palette is therefore
+	// unconditional: the server emits NO `specialEffect` for the Vault Wyrm
+	// breath events, so keying the warm look off it would silently fall back to
+	// the dimmer ember in real play. Color still honors the card accent; the
+	// emissive is the hot ember glow and the bursts stay dense.
+	const color = getAccentHex(data.cardId) ?? 0xfb923c;
+	const emissive = 0xf97316;
 
 	if (data.breathPhase !== 'tick') {
 		const origin = originOf(data);
@@ -1991,9 +2387,11 @@ function renderWyrmAttack(data, ctx) {
 			coneAngle: data.attackConeAngle,
 			color,
 			emissive,
+			// Bind the visible cone lifetime to the server breath window so it
+			// persists for the whole channel rather than a default flash.
 			duration: data.breathDurationMs,
-			fillOpacity: isFireBreath ? 0.38 : 0.48,
-			edgeOpacity: isFireBreath ? 0.72 : 0.85,
+			fillOpacity: 0.38,
+			edgeOpacity: 0.72,
 		});
 		const breathRange = data.attackRange ?? 6;
 		if (ctx.spawnTelegraphRing) {
@@ -2017,8 +2415,8 @@ function renderWyrmAttack(data, ctx) {
 				{
 					color,
 					emissive,
-					count: isFireBreath ? 14 : 10,
-					spread: isFireBreath ? 2.0 : 1.5,
+					count: 14,
+					spread: 2.0,
 				},
 			);
 		}
@@ -2026,6 +2424,14 @@ function renderWyrmAttack(data, ctx) {
 
 	if (!data.hits?.length) return;
 
+	// Per-hit burn visualization. The server pushes a breath event on `start`
+	// and again on every `tick` at its `breathTickMs` cadence, re-applying the
+	// burn DoT to each hit enemy. We emit the ember pulse on EVERY such event —
+	// start AND tick — so each server burn (re)application is visible. There is
+	// deliberately no client-side timer/scheduleAfter: the cadence is driven
+	// entirely by the arriving server start/tick events. Per-event bursts are
+	// bounded (one spark + one ember per hit), so repeated ticks add no
+	// unbounded particle growth.
 	const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
 	for (const hit of data.hits) {
 		const mesh = meshes[hit.enemyId];
@@ -2360,8 +2766,11 @@ function renderIceBall(data, ctx) {
 }
 
 /**
- * Phase Stalker deploy: tight cyan telegraph ring and ground swirl distinct
- * from the generic creature summon flourish.
+ * Phase Stalker deploy: a layered dimensional "phase-in". The first beat is the
+ * tight cyan telegraph ring + ground swirl; a beat later a second, smaller
+ * pulsing ring and a converging rift burst snap in around the body so the
+ * creature reads as a predatory stalker blinking in from another dimension
+ * rather than the generic creature summon flourish.
  */
 function renderNullCrawlerSummon(data, ctx) {
 	if (!data.minionId || data.specialEffect === 'phase_beam') return;
@@ -2389,34 +2798,107 @@ function renderNullCrawlerSummon(data, ctx) {
 			},
 		);
 	}
+
+	// Phase-flicker beat: a quick second pulse that blinks in a beat after the
+	// telegraph, reading as the stalker rifting into phase.
+	const flickerDuration = MINION_SUMMON_IN_MS - NULL_CRAWLER_PHASE_FLICKER_MS;
+	const phaseFlicker = () => {
+		if (ctx.spawnTelegraphRing) {
+			ctx.spawnTelegraphRing(origin, 0.46, {
+				color: NULL_CRAWLER_SUMMON_COLOR,
+				emissive: 0xa5f3fc,
+				duration: flickerDuration,
+			});
+		}
+		if (ctx.spawnParticleBurst) {
+			// Tighter, faster rift burst lifted off the ground so it converges
+			// around the materializing body rather than splaying outward.
+			ctx.spawnParticleBurst(
+				{ x: origin.x, y: 0.9, z: origin.z },
+				{
+					color: NULL_CRAWLER_SUMMON_COLOR,
+					emissive: NULL_CRAWLER_SUMMON_EMISSIVE,
+					count: 12,
+					spread: 1.1,
+					duration: flickerDuration,
+				},
+			);
+		}
+	};
+	if (ctx.scheduleAfter) ctx.scheduleAfter(NULL_CRAWLER_PHASE_FLICKER_MS, phaseFlicker);
+	else phaseFlicker();
 }
 
 /**
- * Phase Stalker: narrow cyan beam corridor along the projectile path.
+ * Phase Stalker phase-beam: a near-instant hitscan strike matching the server,
+ * which resolves the beam at wind-up completion (`collectPhaseBeamHits`) and has
+ * already applied the damage by the time this breath arrives. The cyan corridor
+ * keeps `returning_projectile` with `returnPasses: 0` but travels in a single
+ * quick flash (`NULL_CRAWLER_BEAM_TRAVEL_MS`) rather than the slow ~600ms
+ * projectile window, so the flash + terminus burst + per-hit sparks all land on
+ * the same beat as the server's damage tick.
+ *
+ * A void-purple rift streak is layered behind/along the corridor (a dimmer,
+ * lower trail plus a rift-opening burst at the origin) so the beam reads as a
+ * dimensional phase/void rift, while the cyan card accent stays the primary
+ * identity (it owns the corridor, the leading trail, and the terminus burst).
+ * Every optional primitive is guarded so the strike degrades gracefully when a
+ * helper is absent, and the whole renderer no-ops when `data.origin` is missing.
  */
 function renderPhaseBeam(data, ctx) {
 	if (!data.origin) return;
 	const origin = originOf(data);
 	const direction = directionOf(data);
 	const accentHex = getAccentHex(data.cardId);
-	const color = accentHex ?? 0x22d3ee;
-	const emissive = 0x06b6d4;
+	const color = accentHex ?? NULL_CRAWLER_BEAM_COLOR;
+	const emissive = NULL_CRAWLER_BEAM_EMISSIVE;
 	const range = data.attackRange;
+	const travelMs = NULL_CRAWLER_BEAM_TRAVEL_MS;
+
+	// Primary cyan corridor — hitscan-tight so the head reaches the terminus in a
+	// single quick flash instead of lagging the already-resolved server hit.
 	ctx.spawnAttackEffect(origin, direction, {
 		effect: 'returning_projectile',
 		returnPasses: 0,
 		range,
 		projectileHitWidth: data.hitWidth ?? 0.8,
+		travelMs,
 		color,
 		emissive,
 	});
+
+	// Primary cyan streak + terminus flash along the corridor (the card identity).
 	if (ctx.spawnProjectileTrail) {
-		ctx.spawnProjectileTrail(origin, direction, { range, color, emissive });
+		ctx.spawnProjectileTrail(origin, direction, { range, travelMs, color, emissive });
 	}
 	const terminus = pointAlong(origin, direction, range ?? 14);
 	if (ctx.spawnParticleBurst) {
 		ctx.spawnParticleBurst(terminus, { color, emissive, count: 10, spread: 1.2 });
 	}
+
+	// Void-rift accent: a dimmer purple phase-rift streak running just beneath the
+	// cyan corridor (lower `y`) plus a rift-opening burst at the origin, so the
+	// strike reads as a dimensional rift while the cyan beam stays primary.
+	if (ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, {
+			range,
+			travelMs,
+			y: 0.7,
+			color: NULL_CRAWLER_RIFT_COLOR,
+			emissive: NULL_CRAWLER_RIFT_EMISSIVE,
+		});
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, {
+			color: NULL_CRAWLER_RIFT_COLOR,
+			emissive: NULL_CRAWLER_RIFT_EMISSIVE,
+			count: 8,
+			spread: 1.0,
+		});
+	}
+
+	// Per-hit impact sparks at each reported enemy position so on-screen impacts
+	// line up with the server's instant damage tick.
 	if (!data.hits?.length) return;
 	const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
 	for (const hit of data.hits) {
@@ -2716,6 +3198,10 @@ function renderDeckSifter(data, ctx) {
 
 const ASTRAL_GUARDIAN_COLOR = 0x818cf8;
 const ASTRAL_GUARDIAN_EMISSIVE = 0x6366f1;
+// Visual duration of the astral shield ward shell flourish over the caster.
+const ASTRAL_SHIELD_SHELL_MS = 900;
+// Ward radius hugging the caster — independent of the wider data.radius AoE.
+const ASTRAL_SHIELD_WARD_RADIUS = 1.5;
 const MANA_PRISM_COLOR = 0xa855f7;
 const MANA_PRISM_EMISSIVE = 0x22d3ee;
 const SACRIFICIAL_ALTAR_COLOR = 0xfbbf24;
@@ -2726,8 +3212,11 @@ const CHRONO_TRIGGER_TELEGRAPH_RADIUS = 2;
 const CHRONO_TRIGGER_SLOT_SPACING = 1.2;
 
 /**
- * Astral Guardian: indigo shield/summon telegraph at cast radius, spark burst,
- * and a tight minion-spawn ring distinct from the generic accent burst.
+ * Astral Guardian: a celestial sentinel materializes at the caster via the
+ * dedicated minion summon-in primitive (tight starlight spawn ring), wrapped by
+ * an impact-synced indigo telegraph at the exact server `SUMMON_RADIUS` and a
+ * starlight spark burst. Fires synchronously — the server resolves instantly
+ * (no `windUpMs`), so the visible AoE lines up with the radial damage.
  */
 function renderAstralGuardian(data, ctx) {
 	if (data.radius === undefined) return;
@@ -2740,7 +3229,30 @@ function renderAstralGuardian(data, ctx) {
 	if (ctx.spawnParticleBurst) {
 		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.0 });
 	}
-	ctx.spawnSummonEffect(origin, 1.2, { color, emissive });
+	if (ctx.spawnMinionSummonInEffect) {
+		ctx.spawnMinionSummonInEffect(origin, {
+			color,
+			emissive,
+			radius: 1.2,
+			burstCount: 12,
+			burstSpread: 1.4,
+		});
+	}
+	// "Guardian" half: an astral-tinted protective ward shell over the caster,
+	// gated strictly on a positive server-granted shield. Anchored by playerId so
+	// a re-cast replaces the prior shell rather than stacking.
+	if (
+		ctx.spawnMirrorWardShellEffect &&
+		Number.isFinite(data.shieldGranted) &&
+		data.shieldGranted > 0
+	) {
+		ctx.spawnMirrorWardShellEffect(origin, ASTRAL_SHIELD_WARD_RADIUS, {
+			color: ASTRAL_GUARDIAN_COLOR,
+			emissive: ASTRAL_GUARDIAN_EMISSIVE,
+			duration: ASTRAL_SHIELD_SHELL_MS,
+			...(data.playerId != null ? { playerId: data.playerId } : {}),
+		});
+	}
 }
 
 /**
@@ -2808,20 +3320,75 @@ function renderManaPrism(data, ctx) {
 	}
 }
 
+/** Golden energy-return palette — distinct from the red consumption burst. */
+const OFFERING_ENERGY_COLOR = 0xfde047;
+const OFFERING_ENERGY_EMISSIVE = 0xfbbf24;
+
 /**
- * Sacrificial Altar: large gold/red ritual telegraph at sacrifice radius and
- * an ember burst at the caster origin.
+ * Sacrificial Altar (Offering Terminal): dark altar pillar at origin, expanding
+ * ritual telegraph at sacrifice radius, red implosion burst when a minion is
+ * consumed, a gold/red ember burst at the caster origin, and a golden energy
+ * siphon + reward-flash decal when the sacrifice yields magic stones or charge
+ * restores (success path).
  */
 function renderSacrificialAltar(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
 	const color = SACRIFICIAL_ALTAR_COLOR;
 	const emissive = SACRIFICIAL_ALTAR_EMISSIVE;
+
+	// 1. Dark altar/terminal pillar at cast origin
+	ctx.spawnSummonEffect(origin, 1.2, { color: 0x1c1917, emissive: 0xfbbf24 });
+
+	// 2. Expanding ritual telegraph ring at sacrifice radius
 	if (ctx.spawnTelegraphRing) {
 		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
 	}
+
+	// 3. Red implosion/collapse burst at origin when minion is consumed
+	if (data.sacrificedMinionId && ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, {
+			color: 0x991b1b,
+			emissive: 0xef4444,
+			count: 10,
+			spread: 1.0,
+		});
+	}
+
+	// 4. Gold/red ember burst at caster origin
 	if (ctx.spawnParticleBurst) {
 		ctx.spawnParticleBurst(origin, { color, emissive, count: 16, spread: 2.4 });
+	}
+
+	// 5. Golden energy-return siphon — fires only on successful sacrifice
+	//    (magicStonesGained > 0 or restoredCharges > 0). A denser, brighter
+	//    gold burst reads as energy flowing back to the caster, distinct from
+	//    the red consumption implosion.
+	const hasReward = (data.magicStonesGained && data.magicStonesGained > 0) ||
+		(data.restoredCharges && data.restoredCharges > 0);
+	if (hasReward) {
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(origin, {
+				color: OFFERING_ENERGY_COLOR,
+				emissive: OFFERING_ENERGY_EMISSIVE,
+				count: 20,
+				spread: 2.8,
+			});
+		}
+		if (ctx.spawnProjectileTrail) {
+			ctx.spawnProjectileTrail(origin, { x: 0, z: 0 }, {
+				color: OFFERING_ENERGY_COLOR,
+				emissive: OFFERING_ENERGY_EMISSIVE,
+				range: 3,
+			});
+		}
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(origin, {
+				color: OFFERING_ENERGY_COLOR,
+				emissive: OFFERING_ENERGY_EMISSIVE,
+				radius: 0.8,
+			});
+		}
 	}
 }
 
@@ -2868,8 +3435,8 @@ function renderChronoTrigger(data, ctx) {
 
 const CARD_RENDERERS = {
 	// Weapons
-	iron_sword: renderWeaponSwing,
-	flame_blade: renderWeaponSwing,
+	iron_sword: renderRustForgedSaber,
+	flame_blade: renderSolarEdge,
 	harvesting_scythe: renderWeaponSwing,
 	reapers_scythe: renderReapersScythe,
 	saber_of_light: renderSaberOfLight,
@@ -2879,8 +3446,8 @@ const CARD_RENDERERS = {
 	echo_blade: renderEchoSlash,
 	infinite_disk: renderTripleReturning,
 	// Heavy wind-up greatswords — weighty committed-hit slash + impact.
-	steel_claymore: renderHeavyGreatsword,
-	magma_greatsword: renderHeavyGreatsword,
+	steel_claymore: renderAlloyGreatblade,
+	magma_greatsword: renderCorebreakerGreatsword,
 	excalibur_photon: renderExcaliburPhoton,
 	fireball: renderFireball,
 	deck_sifter: renderDeckSifter,
@@ -2917,6 +3484,7 @@ const CARD_RENDERERS = {
 	null_crawler: [renderNullCrawlerSummon, renderPhaseBeam],
 	bulkhead_mauler: [renderBulkheadMaulerSummon, renderBulkheadMaulerShockwaveSweep],
 	battery_automaton: renderBatteryAutomaton,
+	aegis_sentinel: renderAegisSentinel,
 
 	// Enchantments
 	spike_trap: renderSpikeTrap,
@@ -2937,6 +3505,9 @@ export const SPELL_TYPE_DEFAULT_RENDERER = TYPE_DEFAULT_RENDERERS.spell;
 
 /** Alias for tests comparing bespoke weapon renderers against the plain cone default. */
 export const WEAPON_TYPE_DEFAULT_RENDERER = TYPE_DEFAULT_RENDERERS.weapon;
+
+/** Alias for tests comparing bespoke creature renderers against the generic summon default. */
+export const CREATURE_TYPE_DEFAULT_RENDERER = TYPE_DEFAULT_RENDERERS.creature;
 
 /**
  * Return the renderer(s) responsible for the given cardId, accounting for

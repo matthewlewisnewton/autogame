@@ -29,11 +29,21 @@ import {
 	spawnBulkheadMaulerShockwaveEffect,
 	BULKHEAD_MAULER_COLOR,
 	BULKHEAD_MAULER_EMISSIVE,
+	spawnAegisSentinelShieldFlourish,
+	spawnAegisSentinelDeployEffect,
+	AEGIS_SENTINEL_COLOR,
+	AEGIS_SENTINEL_EMISSIVE,
+	AEGIS_SENTINEL_GOLD,
 	spawnChronoTriggerEffect,
+	spawnSolarEdgeImpactFlourish,
+	SOLAR_EDGE_CORE_COLOR,
+	SOLAR_EDGE_CORE_EMISSIVE,
+	SOLAR_EDGE_CORONA_COLOR,
+	SOLAR_EDGE_CORONA_EMISSIVE,
 	updateAttackEffects,
 	getActiveEffects,
 } from '../renderer.js';
-import { ATTACK_EFFECT_DURATION, MINION_SUMMON_IN_MS, SUMMON_EFFECT_DURATION } from '../config.js';
+import { ATTACK_EFFECT_DURATION, ATTACK_RANGE, MINION_SUMMON_IN_MS, SUMMON_EFFECT_DURATION } from '../config.js';
 
 // Each primitive should: add exactly one entry to activeEffects on spawn, and be
 // removed (and its mesh's geometry/material disposed) once updateAttackEffects()
@@ -384,6 +394,105 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before);
 		expect(ringDispose).toHaveBeenCalled();
 		expect(burstDispose).toHaveBeenCalled();
+	});
+
+	it('spawnAegisSentinelShieldFlourish adds flagged shield wrap with aegis palette and cleans up', () => {
+		const before = getActiveEffects().length;
+		spawnAegisSentinelShieldFlourish({ x: 0, z: 0 }, { radius: 1.5 });
+		expect(getActiveEffects().length).toBe(before + 1);
+
+		const fx = lastEffect();
+		expect(fx.isAegisSentinelShield).toBe(true);
+		expect(fx.radius).toBe(1.5);
+		expect(fx.duration).toBe(MINION_SUMMON_IN_MS);
+		expect(Number.isFinite(fx.duration)).toBe(true);
+		expect(fx.mesh.children.length).toBeGreaterThanOrEqual(3);
+
+		const ring = fx.mesh.children.find((c) => c.userData.isAegisSentinelRing);
+		const dome = fx.mesh.children.find((c) => c.userData.isAegisSentinelDome);
+		expect(ring).toBeDefined();
+		expect(dome).toBeDefined();
+		expect(ring.material.color.getHex()).toBe(AEGIS_SENTINEL_COLOR);
+		expect(ring.material.emissive.getHex()).toBe(AEGIS_SENTINEL_EMISSIVE);
+		expect(dome.material.color.getHex()).toBe(AEGIS_SENTINEL_COLOR);
+		expect(dome.material.emissive.getHex()).toBe(AEGIS_SENTINEL_EMISSIVE);
+
+		const facets = fx.mesh.children.filter((c) => c.userData.isAegisSentinelFacet);
+		expect(facets.length).toBeGreaterThanOrEqual(2);
+		expect(facets.some((f) => f.material.emissive.getHex() === AEGIS_SENTINEL_GOLD)).toBe(true);
+
+		const disposeSpy = vi.spyOn(ring.geometry, 'dispose');
+		fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(disposeSpy).toHaveBeenCalled();
+	});
+
+	it('spawnAegisSentinelShieldFlourish honors color, emissive, and duration overrides', () => {
+		spawnAegisSentinelShieldFlourish({ x: 1, z: 2 }, {
+			color: 0x123456,
+			emissive: 0x654321,
+			duration: 900,
+			radius: 1.8,
+		});
+		const fx = lastEffect();
+		expect(fx.radius).toBe(1.8);
+		expect(fx.duration).toBe(900);
+		const ring = fx.mesh.children.find((c) => c.userData.isAegisSentinelRing);
+		expect(ring.material.color.getHex()).toBe(0x123456);
+		expect(ring.material.emissive.getHex()).toBe(0x654321);
+	});
+
+	it('spawnAegisSentinelDeployEffect adds flagged ward ring + shield wall and cleans up', () => {
+		const before = getActiveEffects().length;
+		spawnAegisSentinelDeployEffect({ x: 1, z: -2 }, { radius: 2.0 });
+		expect(getActiveEffects().length).toBe(before + 1);
+
+		const fx = lastEffect();
+		expect(fx.isAegisSentinelDeploy).toBe(true);
+		expect(fx.radius).toBe(2.0);
+		expect(fx.duration).toBe(MINION_SUMMON_IN_MS);
+		expect(Number.isFinite(fx.duration)).toBe(true);
+
+		const ring = fx.mesh.children.find((c) => c.userData.isAegisSentinelRing);
+		const wall = fx.mesh.children.find((c) => c.userData.isAegisSentinelWall);
+		const trim = fx.mesh.children.find((c) => c.userData.isAegisSentinelWallTrim);
+		expect(ring).toBeDefined();
+		expect(wall).toBeDefined();
+		expect(trim).toBeDefined();
+		expect(ring.material.color.getHex()).toBe(AEGIS_SENTINEL_COLOR);
+		expect(ring.material.emissive.getHex()).toBe(AEGIS_SENTINEL_EMISSIVE);
+		expect(wall.material.color.getHex()).toBe(AEGIS_SENTINEL_COLOR);
+		expect(wall.material.emissive.getHex()).toBe(AEGIS_SENTINEL_EMISSIVE);
+		expect(trim.material.emissive.getHex()).toBe(AEGIS_SENTINEL_GOLD);
+
+		const ringDispose = vi.spyOn(ring.geometry, 'dispose');
+		const wallDispose = vi.spyOn(wall.geometry, 'dispose');
+		fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(ringDispose).toHaveBeenCalled();
+		expect(wallDispose).toHaveBeenCalled();
+	});
+
+	it('spawnAegisSentinelDeployEffect honors color, emissive, duration, and radius overrides', () => {
+		spawnAegisSentinelDeployEffect({ x: 0, z: 0 }, {
+			color: 0xabcdef,
+			emissive: 0xfedcba,
+			duration: 850,
+			radius: 2.4,
+		});
+		const fx = lastEffect();
+		expect(fx.radius).toBe(2.4);
+		expect(fx.duration).toBe(850);
+		const ring = fx.mesh.children.find((c) => c.userData.isAegisSentinelRing);
+		const wall = fx.mesh.children.find((c) => c.userData.isAegisSentinelWall);
+		expect(ring.material.color.getHex()).toBe(0xabcdef);
+		expect(ring.material.emissive.getHex()).toBe(0xfedcba);
+		expect(wall.material.color.getHex()).toBe(0xabcdef);
+		expect(wall.material.emissive.getHex()).toBe(0xfedcba);
 	});
 
 	it('spawnBatteryChargePulseEffect honors style.duration and palette overrides', () => {
@@ -995,6 +1104,66 @@ describe('shared VFX primitives', () => {
 
 		expect(getActiveEffects().length).toBe(before);
 		expect(disposeSpy).toHaveBeenCalled();
+	});
+
+	it('spawnSolarEdgeImpactFlourish adds flagged solar disc, corona, and embers with default palette', () => {
+		const before = getActiveEffects().length;
+		spawnSolarEdgeImpactFlourish({ x: 0, z: 0 }, { x: 1, z: 0 });
+		expect(getActiveEffects().length).toBe(before + 1);
+
+		const fx = lastEffect();
+		expect(fx.isSolarEdgeImpact).toBe(true);
+		expect(fx.duration).toBe(ATTACK_EFFECT_DURATION);
+		expect(Number.isFinite(fx.duration)).toBe(true);
+		expect(fx.ringRadius).toBeGreaterThanOrEqual(1.8);
+		expect(fx.ringRadius).toBeLessThanOrEqual(2.2);
+		expect(fx.origin.x).toBeCloseTo(ATTACK_RANGE);
+		expect(fx.origin.z).toBeCloseTo(0);
+
+		const disc = fx.mesh.children.find((c) => c.userData.isSolarEdgeDisc);
+		const corona = fx.mesh.children.find((c) => c.userData.isSolarEdgeCorona);
+		const embers = fx.mesh.children.filter((c) => c.userData.isSolarEdgeEmber);
+		expect(disc).toBeDefined();
+		expect(corona).toBeDefined();
+		expect(embers.length).toBeGreaterThanOrEqual(10);
+		expect(embers.length).toBeLessThanOrEqual(14);
+		expect(disc.material.color.getHex()).toBe(SOLAR_EDGE_CORE_COLOR);
+		expect(disc.material.emissive.getHex()).toBe(SOLAR_EDGE_CORE_EMISSIVE);
+		expect(corona.material.color.getHex()).toBe(SOLAR_EDGE_CORONA_COLOR);
+		expect(corona.material.emissive.getHex()).toBe(SOLAR_EDGE_CORONA_EMISSIVE);
+		expect(embers[0].material.color.getHex()).toBe(SOLAR_EDGE_CORE_COLOR);
+		expect(embers[0].material.emissive.getHex()).toBe(SOLAR_EDGE_CORONA_EMISSIVE);
+
+		const disposeSpy = vi.spyOn(disc.geometry, 'dispose');
+		fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(disposeSpy).toHaveBeenCalled();
+	});
+
+	it('spawnSolarEdgeImpactFlourish honors color, emissive, corona, range, and duration overrides', () => {
+		spawnSolarEdgeImpactFlourish({ x: 2, z: 3 }, { x: 0, z: 1 }, {
+			color: 0x123456,
+			emissive: 0x654321,
+			coronaColor: 0xabcdef,
+			coronaEmissive: 0xfedcba,
+			range: 4.5,
+			duration: 900,
+			ringRadius: 1.9,
+		});
+		const fx = lastEffect();
+		expect(fx.duration).toBe(900);
+		expect(fx.ringRadius).toBe(1.9);
+		expect(fx.origin.x).toBeCloseTo(2);
+		expect(fx.origin.z).toBeCloseTo(7.5);
+
+		const disc = fx.mesh.children.find((c) => c.userData.isSolarEdgeDisc);
+		const corona = fx.mesh.children.find((c) => c.userData.isSolarEdgeCorona);
+		expect(disc.material.color.getHex()).toBe(0x123456);
+		expect(disc.material.emissive.getHex()).toBe(0x654321);
+		expect(corona.material.color.getHex()).toBe(0xabcdef);
+		expect(corona.material.emissive.getHex()).toBe(0xfedcba);
 	});
 
 	it('spawnAttackEffect arcane_bolt adds a flagged violet lance projectile and cleans it up', () => {

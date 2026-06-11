@@ -1,0 +1,15 @@
+I broke the top-level ticket into two sequential, code-verifiable sub-tickets. The core problem: the Vault Wyrm (`dungeon_drake`) is a fire/burn creature (`burning_breath`, `burnDurationMs: 2000`) but renders as a **green melee swipe** — it has no accent color and its renderer only treats `'fire_breath'` (not `'burning_breath'`) as fiery, while its evolution Archive Wyrm gets full fire treatment.
+
+**Sub-tickets created:**
+
+- `tickets/323-anim-vault-wyrm/subtickets/01-vault-wyrm-fire-theme/ticket.md` — Theme/palette pass: add a warm `dungeon_drake` accent in `cards.js`, make `renderWyrmAttack` treat `burning_breath` as fiery (warm cone/ring/particle palette instead of green), warm summon flourish, update the green-asserting tests.
+- `tickets/323-anim-vault-wyrm/subtickets/02-vault-wyrm-burn-timing-sync/ticket.md` — Timing/DoT pass (builds on 01): bind the start-cone duration to the server `breathDurationMs`, emit per-hit ember bursts on each server-driven breath `tick` to visualize the recurring burn, confirm the `windUpMs` charge telegraph isn't regressed, no client-side cadence timer.
+
+**Scoping decisions:**
+- Both `code` verification — every criterion concerns palette hex values, color-selection logic, scheduling/duration, and per-event behavior, none of which the single happy-path visual run (load + two players join + WASD) could observe.
+- Split into theme (what it looks like) vs. timing/DoT (when things happen) per the ticket's explicit "VISUAL matches name" + "TIMING synced to server" framing. They share `renderWyrmAttack` but run in dependency order, so 02 builds on 01's merged change with no conflict.
+- Confined strictly to this card's render fn + accent + tests, leaving the other per-card animation beads and server logic untouched.
+
+No existing sub-ticket folders to retire (none existed). Created folder paths:
+- `/home/matt/workspace/.autogame-worktrees/323-anim-vault-wyrm/tickets/323-anim-vault-wyrm/subtickets/01-vault-wyrm-fire-theme/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/323-anim-vault-wyrm/tickets/323-anim-vault-wyrm/subtickets/02-vault-wyrm-burn-timing-sync/ticket.md`

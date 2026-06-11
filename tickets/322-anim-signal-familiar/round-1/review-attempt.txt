@@ -1,0 +1,17 @@
+**VERDICT: PASS**
+
+## Summary
+
+The Signal Familiar (`battle_familiar`) animation ticket passes the senior review.
+
+**Runtime gate — clean:** `metrics.json` reports `ok: true`, both dev servers started, scene initialized, `pageerrors: []`, no `harness_failure`. `console.log` has only benign noise (vite connect, a 409 lobby-create race, initScene logs). The game runs.
+
+**Acceptance criteria — fully met:**
+- **Theme:** The old single telegraph ring is replaced with a familiar-wisp flourish + concentric "broadcast ping" rings (radar/sonar read) expanding to the AoE radius — reads unmistakably as a "Signal Familiar," in the established indigo arcane palette.
+- **Timing:** The card is an *instant* radial-AoE spell (no `windUpMs` in `cardStats.json`; HUD shows "50 MS" with no wind-up label). The renderer fires the first ping + wisp + burst immediately and only staggers outer rings for cadence — no fake wind-up. Per-hit arcs are driven by the server's `data.hits[]` (`{enemyId, hp}` from `collectRadialHits`), drawing origin→enemy + impact sparks synced to the server's resolution, skipping despawned enemies.
+- **No perf regression:** bounded use of existing 315 primitives.
+- **Tests:** expanded client tests cover rings/wisp/burst/per-hit arcs and the guarded edge cases (missing meshes, empty hits, missing helpers) — **280 passed**.
+
+**Scope & integration:** Diff is confined to `cardRenderers.js` + its test (per SCOPE); all ctx helpers used are genuinely wired in `cardHandlers.js`; no debug scenarios touched.
+
+One non-blocking nit filed (reuse of the `spawnMinionSummonInEffect` helper name for a non-summon spell). No `gaps.md` written, since the verdict is PASS.

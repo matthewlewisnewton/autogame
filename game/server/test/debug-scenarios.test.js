@@ -169,6 +169,55 @@ describe('debugScenario — quest-objective-near-complete', () => {
 	});
 });
 
+describe('debugScenario — crystal-rescue-suspended-hub', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('drops into hub with suspended crystal_rescue checkpoint retaining runSpawnSeed and crystal positions', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'crystal-rescue-suspended-hub' });
+		const result = await debugResultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('crystal-rescue-suspended-hub');
+
+		const state = testGameState();
+		expect(state.gamePhase).toBe('lobby');
+		expect(state.selectedQuestId).toBe('crystal_rescue');
+		expect(state.run).toBeUndefined();
+		expect(state.loot).toHaveLength(0);
+		expect(state.suspendedCheckpoint).not.toBeNull();
+
+		const world = state.suspendedCheckpoint.worldState;
+		expect(Number.isInteger(world.runSpawnSeed)).toBe(true);
+		const crystals = world.loot
+			.filter((loot) => loot.kind === 'crystal')
+			.map((loot) => ({ x: loot.x, z: loot.z }));
+		expect(crystals.length).toBe(getQuest('crystal_rescue').itemCount);
+
+		const playerId = socket._playerId;
+		expect(state.players[playerId].hp).toBe(42);
+		expect(state.players[playerId].magicStones).toBe(15);
+	});
+});
+
 describe('debugScenario — suspended-run-hub', () => {
 	let baseUrl;
 	let prevAllowDebug;
