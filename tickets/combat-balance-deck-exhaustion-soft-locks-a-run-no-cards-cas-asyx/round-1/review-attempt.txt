@@ -1,0 +1,17 @@
+**VERDICT: PASS**
+
+## Summary
+
+The ticket fixes the deck-exhaustion soft-lock by implementing acceptance-criterion option (b): a server-side auto-fail when a run becomes truly stalled.
+
+**Runtime health (gate passed):** `metrics.json` reports `ok: true`, servers up on :5175, `pageerrors: []`, no `harness_failure`. `console.log` is clean (only benign vite/409/initScene lines). The captured run is live and connected.
+
+**Acceptance criterion met:**
+- `isPlayerCombatExhausted` flags a player only when they cannot draw (deck+desperation empty/hand full) **and** no hand card is castable — `canPlayerCastHandCard` correctly rejects on insufficient MS or spent charges, catching the exact "50‑MS Signal Familiar at 25 MS" stall.
+- `tickCombatExhaustionGrace` runs every game tick, stamps a timer, and fails the run after a 20 s grace only when all in-dungeon players are stuck. The prior out-of-cards immediate-fail behavior is preserved.
+- The 20 s grace is sound against real regen (0.1 MS/s → ~250 s to recover 25→50), and the recoverable case is explicitly handled: a test confirms the grace clears (no fail) when MS regen makes a card castable.
+- Strong server-test coverage; **473/473 tests pass** locally.
+
+**Debug scenario verified:** `run-exhausted` is gated behind `ALLOW_DEBUG_SCENARIOS`, URL is the only entry point, the same fail-state is reachable through the normal game-loop tick, and it doesn't bypass the real terminal-state validation.
+
+Wrote `review.md` (PASS) and two non-blocking nits to `nits.md` (unused `damage` field on the debug stub; explicit `_combatExhaustedSince` cleanup on run reset). No `gaps.md` written, since the verdict is PASS.

@@ -8294,3 +8294,26 @@ comments still reference the removed `isLightColumn`/`isThermalColumn`/etc.
 
 None. All acceptance criteria are satisfied; runtime capture and tests confirm the fix.
 
+
+## v0.452 — combat/balance: deck exhaustion soft-locks a run — no cards castable, run never ends  (2026-06-11 06:55:14)
+
+- Same end-state reachable through normal play: a real run that empties
+  deck+desperation with MS below every cost hits the identical
+  `tickCombatExhaustionGrace` → `checkRunTerminalState` path each tick. The
+  scenario merely pre-ages `_combatExhaustedSince` to skip the 20 s wait for QA.
+- No invariant short-circuit: failure still routes through the real
+  `isPlayerCombatExhaustionFailureReady` + `checkRunTerminalState`; it does not
+  bypass server validation or the terminal-state emit.
+
+## Code quality
+
+Clean and idiomatic; matches surrounding progression helpers. The previous
+broken/misindented `setupRunExhaustedDebug` body was repaired. No dead code, no
+console errors.
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are met, the game runs cleanly, and the
+fail-state is correctly gated and reachable through normal play. Minor non-
+blocking nits recorded separately in `nits.md`.
+
