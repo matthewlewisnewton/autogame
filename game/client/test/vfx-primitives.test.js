@@ -39,6 +39,7 @@ import {
 	updateAttackEffects,
 	getActiveEffects,
 } from '../renderer.js';
+import { ATTACK_EFFECT_KINDS } from '../renderer/attackEffectUpdaters.js';
 import { ATTACK_EFFECT_DURATION, ATTACK_RANGE, MINION_SUMMON_IN_MS, SUMMON_EFFECT_DURATION } from '../config.js';
 
 // Each primitive should: add exactly one entry to activeEffects on spawn, and be
@@ -71,6 +72,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.particleBurst);
 		expect(fx.isParticleBurst).toBe(true);
 		expect(fx.mesh.children.length).toBe(6);
 
@@ -95,6 +97,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.projectileTrail);
 		expect(fx.isProjectileTrail).toBe(true);
 
 		const disposeSpy = vi.spyOn(fx.mesh.geometry, 'dispose');
@@ -111,6 +114,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.impactDecal);
 		expect(fx.isImpactDecal).toBe(true);
 
 		const disposeSpy = vi.spyOn(fx.mesh.geometry, 'dispose');
@@ -127,6 +131,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.telegraphRing);
 		expect(fx.isTelegraphRing).toBe(true);
 		expect(fx.telegraphRadius).toBe(2.5);
 

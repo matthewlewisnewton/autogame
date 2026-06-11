@@ -235,6 +235,12 @@ export {
 	animateTelepipePortal,
 };
 import { syncPlayerMeshes } from './renderer/playerSync.js';
+import {
+	ATTACK_EFFECT_KINDS,
+	runAttackEffectUpdater,
+	shouldExpireAttackEffect,
+	disposeAttackEffect,
+} from './renderer/attackEffectUpdaters.js';
 
 // Player-domain sync now lives in ./renderer/playerSync.js; re-exported so main.js
 // and tests that import it from './renderer.js' keep working unchanged.
@@ -1724,6 +1730,7 @@ export function playPassageUnlockEffect(passageIndex, layout, gateMesh = null) {
 		activeEffects.push({
 			mesh: gateMesh,
 			_scene: targetScene,
+			kind: ATTACK_EFFECT_KINDS.passageUnlockGate,
 			isPassageUnlockGate: true,
 			createdAt: performance.now(),
 			duration: PASSAGE_UNLOCK_EFFECT_DURATION,
@@ -6408,6 +6415,7 @@ export function spawnHitSpark(position, style = {}) {
 			_scene: targetScene,
 			origin: { x: ox, y: oy, z: oz },
 			direction: null,
+			kind: ATTACK_EFFECT_KINDS.hitSpark,
 			isHitSpark: true,
 			createdAt: performance.now(),
 			duration: style.duration ?? HIT_SPARK_DURATION,
@@ -6469,6 +6477,7 @@ export function spawnLightningArc(from, to, style = {}) {
 	activeEffects.push({
 		mesh: line,
 		_scene: targetScene,
+		kind: ATTACK_EFFECT_KINDS.lightningArc,
 		isLightningArc: true,
 		createdAt: performance.now(),
 		duration: style.duration ?? ATTACK_EFFECT_DURATION,
@@ -6832,6 +6841,7 @@ export function spawnParticleBurst(position, style = {}) {
 	activeEffects.push({
 		mesh: group,
 		_scene: targetScene,
+		kind: ATTACK_EFFECT_KINDS.particleBurst,
 		isParticleBurst: true,
 		createdAt: performance.now(),
 		duration: style.duration ?? HIT_SPARK_DURATION,
@@ -6880,6 +6890,7 @@ export function spawnProjectileTrail(origin, direction, style = {}) {
 		origin: { x: origin.x, z: origin.z },
 		direction: { x: nx, z: nz },
 		range,
+		kind: ATTACK_EFFECT_KINDS.projectileTrail,
 		isProjectileTrail: true,
 		createdAt: performance.now(),
 		duration: style.travelMs ?? style.duration ?? ATTACK_EFFECT_DURATION,
@@ -6919,6 +6930,7 @@ export function spawnImpactDecal(origin, style = {}) {
 	activeEffects.push({
 		mesh,
 		_scene: targetScene,
+		kind: ATTACK_EFFECT_KINDS.impactDecal,
 		isImpactDecal: true,
 		createdAt: performance.now(),
 		duration: style.duration ?? HIT_SPARK_DURATION,
@@ -7079,6 +7091,7 @@ export function spawnTelegraphRing(origin, radius, style = {}) {
 		mesh,
 		_scene: targetScene,
 		telegraphRadius: r,
+		kind: ATTACK_EFFECT_KINDS.telegraphRing,
 		isTelegraphRing: true,
 		createdAt: performance.now(),
 		duration: style.duration ?? SUMMON_EFFECT_DURATION,
@@ -7094,6 +7107,13 @@ export function updateAttackEffects() {
 	for (let i = activeEffects.length - 1; i >= 0; i--) {
 		const fx = activeEffects[i];
 		const elapsed = now - fx.createdAt;
+
+		if (fx.kind && runAttackEffectUpdater(fx, elapsed)) {
+			if (shouldExpireAttackEffect(fx, elapsed)) {
+				disposeAttackEffect(fx, activeEffects, i);
+			}
+			continue;
+		}
 
 		// ── Ether Siphon contracting ground ring (inward mana pull) ──
 		if (fx.isEtherSiphonRing) {
