@@ -595,14 +595,23 @@ const ICE_ACCENT_EMISSIVE = 0x38bdf8;
 const GLACIER_COLOR = 0x38bdf8;
 const GLACIER_EMISSIVE = 0x0ea5e9;
 
+// On-screen lifetime of Cryo Burst's lingering frost field. Mirrors the server's
+// `frost_nova` `freezeDurationMs` in game/shared/cardStats.json (2500ms) so the
+// visual persistence reads as the "things are frozen for ~2.5s" window. The
+// CARD_USED payload does not carry the freeze duration, so it is duplicated here;
+// keep in sync with cardStats.json if that value changes.
+const FROST_NOVA_FREEZE_MS = 2500;
+
 /**
  * Cryo Burst: an explosive icy radial burst at the cast origin — an expanding
  * frost shockwave ring sized to `data.radius`, a dense radial ice-shard burst
  * (denser/wider than the old one-ring look), and a frozen ground impact decal.
- * All fire synchronously to match the server's instant frost_nova resolution
- * (no wind-up, no travel). Deliberately avoids spawnSummonEffect and any
- * projectile/lance primitive so it stays distinct from glacier_collapse and
- * permafrost_lance.
+ * When the payload reports a freeze, a slow-fading frost-field ground sheen also
+ * lingers for the full freeze window so the animation persists alongside the
+ * server's 2.5s freeze. All fire synchronously to match the server's instant
+ * frost_nova resolution (no wind-up, no travel). Deliberately avoids
+ * spawnSummonEffect and any projectile/lance primitive so it stays distinct from
+ * glacier_collapse and permafrost_lance.
  */
 function renderFrostNova(data, ctx) {
 	if (data.radius === undefined) return;
@@ -617,6 +626,17 @@ function renderFrostNova(data, ctx) {
 	}
 	if (ctx.spawnImpactDecal) {
 		ctx.spawnImpactDecal(origin, { color, emissive });
+	}
+	// Lingering frost field, gated on the freeze path only: a wider ground sheen
+	// sized to the freeze radius that fades over the full 2.5s freeze window.
+	const frozen = data.frozen === true || data.specialEffect === 'freeze';
+	if (frozen && ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(origin, {
+			color,
+			emissive,
+			radius: data.radius,
+			duration: FROST_NOVA_FREEZE_MS,
+		});
 	}
 }
 

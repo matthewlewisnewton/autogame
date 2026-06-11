@@ -1405,6 +1405,53 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
 	});
 
+	it('frost_nova spawns a lingering frost field timed to the 2.5s freeze when the payload is frozen', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'frost_nova',
+			origin: { x: 2, z: 3 },
+			radius: 4,
+			frozen: true,
+			specialEffect: 'freeze',
+			hits: [],
+		}, ctx);
+		const decals = ctx._calls.filter((c) => c[0] === 'spawnImpactDecal');
+		// The lingering frost field is a decal sized to the radius whose lifetime
+		// equals the 2500ms server freeze window (not the default impact lifetime).
+		const linger = decals.find((c) => c[2]?.duration === 2500);
+		expect(linger).toBeDefined();
+		expect(linger[1]).toEqual({ x: 2, z: 3 });
+		expect(linger[2]).toMatchObject({
+			color: 0x67e8f9,
+			emissive: 0x38bdf8,
+			radius: 4,
+			duration: 2500,
+		});
+		// Same frost palette as the cast burst.
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring[3]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
+		// Everything fires synchronously — no async scheduling.
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+		expect(ctx._scheduled).toHaveLength(0);
+	});
+
+	it('frost_nova does not spawn the lingering frost field when the payload is not frozen, but the cast burst still fires', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'frost_nova',
+			origin: { x: 2, z: 3 },
+			radius: 4,
+			hits: [],
+		}, ctx);
+		// No lingering (2.5s) decal without the freeze flag.
+		expect(ctx._calls.filter((c) => c[0] === 'spawnImpactDecal')
+			.some((c) => c[2]?.duration === 2500)).toBe(false);
+		// The immediate cast burst still fires regardless of the freeze gate.
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(true);
+	});
+
 	it('permafrost_lance uses a narrower telegraph, lance projectile, trail, tip decal, and burst', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
