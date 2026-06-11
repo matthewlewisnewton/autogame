@@ -3056,8 +3056,11 @@ describe('renderCardUsed() — creature dispatch', () => {
 		}, ctx)).not.toThrow();
 	});
 
-	it('chain_lightning with two chainSegments invokes spawnLightningArc twice', () => {
-		const ctx = makeCtx();
+	it('chain_lightning with two chainSegments schedules later hops and uses voltaic arc style', () => {
+		const enemyMesh = { position: { x: 8, y: 1.1, z: 0.2 } };
+		const ctx = makeCtx({
+			enemyMeshes: () => ({ e2: enemyMesh }),
+		});
 		renderCardUsed({
 			cardId: 'chain_lightning',
 			origin: { x: 0, z: 0 },
@@ -3073,22 +3076,42 @@ describe('renderCardUsed() — creature dispatch', () => {
 			],
 		}, ctx);
 		const arcs = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
-		expect(arcs).toHaveLength(2);
-		expect(arcs[0][1]).toEqual({ x: 0, z: 0 });
-		expect(arcs[0][2]).toEqual({ x: 5, z: 0 });
-		expect(arcs[1][1]).toEqual({ x: 5, z: 0 });
-		expect(arcs[1][2]).toEqual({ x: 8, z: 0 });
+		expect(arcs).toHaveLength(1);
+		expect(arcs[0][3]).toMatchObject({
+			color: 0x38bdf8,
+			emissive: 0x0ea5e9,
+			duration: ATTACK_EFFECT_DURATION,
+		});
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(schedules).toHaveLength(1);
+		expect(schedules[0][1]).toBe(100);
+		expect(schedules[0][1]).toBeLessThan(ATTACK_EFFECT_DURATION);
+		ctx.runScheduled();
+		const allArcs = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
+		expect(allArcs).toHaveLength(2);
+		expect(allArcs[0][1]).toEqual({ x: 0, z: 0 });
+		expect(allArcs[0][2]).toEqual({ x: 5, z: 0 });
+		expect(allArcs[1][1]).toEqual({ x: 5, z: 0 });
+		expect(allArcs[1][2]).toEqual({ x: 8, z: 0 });
 		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
 		expect(telegraph).toBeDefined();
 		expect(telegraph[1]).toEqual({ x: 0, z: 0 });
 		expect(telegraph[2]).toBe(5);
-		expect(telegraph[3]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+		expect(telegraph[3]).toMatchObject({
+			color: 0x38bdf8,
+			emissive: 0x0ea5e9,
+			duration: ATTACK_EFFECT_DURATION,
+		});
+		const castBurst = ctx._calls.find(
+			(c) => c[0] === 'spawnParticleBurst' && c[1].x === 0 && c[1].z === 0 && c[2].spread === 1.4,
+		);
+		expect(castBurst).toBeDefined();
 		const endpointBursts = ctx._calls.filter(
 			(c) => c[0] === 'spawnParticleBurst' && (c[1].x === 5 || c[1].x === 8),
 		);
 		expect(endpointBursts).toHaveLength(2);
 		expect(endpointBursts[0][1]).toEqual({ x: 5, z: 0 });
-		expect(endpointBursts[1][1]).toEqual({ x: 8, z: 0 });
+		expect(endpointBursts[1][1]).toEqual({ x: 8, y: 1.1, z: 0.2 });
 		expect(ctx._calls.some((c) => c[0] === 'spawnChainLightningEffect')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'enemyHit')).toBe(true);
 	});
@@ -3103,7 +3126,10 @@ describe('renderCardUsed() — creature dispatch', () => {
 		}, ctx);
 		expect(ctx._calls.some((c) => c[0] === 'spawnChainLightningEffect')).toBe(true);
 		expect(ctx._calls.some((c) => c[0] === 'spawnLightningArc')).toBe(false);
-		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(true);
+		expect(ctx._calls.some(
+			(c) => c[0] === 'spawnParticleBurst' && c[1].x === 1 && c[1].z === 2,
+		)).toBe(true);
 	});
 
 	it('chain_lightning segment path still renders without throwing when new ctx primitives are absent', () => {
