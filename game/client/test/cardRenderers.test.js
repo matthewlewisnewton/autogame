@@ -25,6 +25,7 @@ function makeCtx(overrides = {}) {
 		spawnPurifyingPulseHealRing: record('spawnPurifyingPulseHealRing'),
 		spawnCleanseBurstEffect: record('spawnCleanseBurstEffect'),
 		spawnInfernoPillarEffect: record('spawnInfernoPillarEffect'),
+		spawnGlacierRuptureEffect: record('spawnGlacierRuptureEffect'),
 		spawnDragonsBreathEffect: record('spawnDragonsBreathEffect'),
 		spawnChainLightningEffect: record('spawnChainLightningEffect'),
 		spawnLightningArc: record('spawnLightningArc'),
@@ -1462,19 +1463,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(windUp == null || windUp <= 0).toBe(true);
 	});
 
-	it('uses the fixed glacier palette for glacier_collapse (not the accent)', () => {
-		const ctx = makeCtx();
-		renderCardUsed({
-			cardId: 'glacier_collapse',
-			origin: { x: 0, z: 0 },
-			radius: 5,
-			hits: [],
-		}, ctx);
-		const ring = ctx._calls.find((c) => c[0] === 'spawnSummonEffect');
-		expect(ring[3]).toEqual({ color: 0x38bdf8, emissive: 0x0ea5e9 });
-	});
-
-	it('glacier_collapse adds a glacier telegraph ring and shatter burst at the rupture point', () => {
+	it('glacier_collapse dispatches the polished rupture primitive, telegraph, decal, and radial burst synchronously', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'glacier_collapse',
@@ -1482,15 +1471,111 @@ describe('renderCardUsed() — spell dispatch', () => {
 			radius: 5,
 			hits: [],
 		}, ctx);
+		const rupture = ctx._calls.find((c) => c[0] === 'spawnGlacierRuptureEffect');
+		expect(rupture).toBeDefined();
+		expect(rupture[1]).toEqual({ x: 1, z: 2 });
+		expect(rupture[2]).toBe(5);
+		expect(rupture[3]).toEqual({ color: 0x38bdf8, emissive: 0x0ea5e9 });
 		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
 		expect(telegraph).toBeDefined();
 		expect(telegraph[1]).toEqual({ x: 1, z: 2 });
 		expect(telegraph[2]).toBe(5);
-		expect(telegraph[3]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+		expect(telegraph[3]).toEqual({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 1, z: 2 });
+		expect(decal[2]).toEqual({ color: 0x38bdf8, emissive: 0x0ea5e9 });
 		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
 		expect(burst).toBeDefined();
 		expect(burst[1]).toEqual({ x: 1, z: 2 });
-		expect(burst[2]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+		expect(burst[2]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9, count: 16, spread: 2.4 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('glacier_collapse spawns a per-hit shatter burst at the enemy mesh position', () => {
+		const meshes = { e1: { position: { x: 3, y: 0, z: 4 } } };
+		const ctx = makeCtx({ enemyMeshes: () => meshes });
+		renderCardUsed({
+			cardId: 'glacier_collapse',
+			origin: { x: 0, z: 0 },
+			radius: 5,
+			hits: [{ enemyId: 'e1' }],
+		}, ctx);
+		const hitPos = { x: 3, y: 0.6, z: 4 };
+		const hitSpark = ctx._calls.find((c) => c[0] === 'spawnHitSpark' && c[1].x === 3);
+		const hitBurst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst' && c[1].x === 3);
+		expect(hitSpark ?? hitBurst).toBeDefined();
+		if (hitSpark) {
+			expect(hitSpark[1]).toEqual(hitPos);
+			expect(hitSpark[2]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+		}
+		if (hitBurst) {
+			expect(hitBurst[1]).toEqual(hitPos);
+			expect(hitBurst[2]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+		}
+	});
+
+	it('glacier_collapse uses a larger shatter burst for frozenShatter hits than normal freeze hits', () => {
+		const meshes = { e1: { position: { x: 1, y: 0, z: 1 } } };
+		const normalCtx = makeCtx({ enemyMeshes: () => meshes });
+		renderCardUsed({
+			cardId: 'glacier_collapse',
+			origin: { x: 0, z: 0 },
+			radius: 5,
+			hits: [{ enemyId: 'e1' }],
+		}, normalCtx);
+		const shatterCtx = makeCtx({ enemyMeshes: () => meshes });
+		renderCardUsed({
+			cardId: 'glacier_collapse',
+			origin: { x: 0, z: 0 },
+			radius: 5,
+			hits: [{ enemyId: 'e1', frozenShatter: true }],
+		}, shatterCtx);
+		const normalBurst = normalCtx._calls.find((c) => c[0] === 'spawnParticleBurst' && c[1].x === 1);
+		const shatterBurst = shatterCtx._calls.find((c) => c[0] === 'spawnParticleBurst' && c[1].x === 1);
+		expect(normalBurst).toBeDefined();
+		expect(shatterBurst).toBeDefined();
+		expect(shatterBurst[2].count).toBeGreaterThan(normalBurst[2].count);
+		expect(shatterBurst[2].spread).toBeGreaterThan(normalBurst[2].spread);
+	});
+
+	it('glacier_collapse and frost_nova resolve to different renderer functions and helper signatures', () => {
+		expect(resolveRenderers('glacier_collapse')[0]).not.toBe(resolveRenderers('frost_nova')[0]);
+		const payload = {
+			origin: { x: 0, z: 0 },
+			radius: 6,
+			hits: [],
+		};
+		const glacierCtx = makeCtx();
+		resolveRenderers('glacier_collapse')[0]({ ...payload, cardId: 'glacier_collapse' }, glacierCtx);
+		const novaCtx = makeCtx();
+		resolveRenderers('frost_nova')[0]({ ...payload, cardId: 'frost_nova' }, novaCtx);
+		expect(methodsCalled(glacierCtx)).not.toEqual(methodsCalled(novaCtx));
+		expect(glacierCtx._calls.some((c) => c[0] === 'spawnGlacierRuptureEffect')).toBe(true);
+		expect(novaCtx._calls.some((c) => c[0] === 'spawnGlacierRuptureEffect')).toBe(false);
+	});
+
+	it('Glacier Collapse carries windUpMs 700 so the 307/315 charge telegraph fires during wind-up', () => {
+		expect(getCardDef('glacier_collapse')).toBeDefined();
+		expect(getCardDef('glacier_collapse').windUpMs).toBe(700);
+	});
+
+	it('glacier_collapse degrades gracefully when optional ctx primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnGlacierRuptureEffect: undefined,
+			spawnTelegraphRing: undefined,
+			spawnImpactDecal: undefined,
+			spawnParticleBurst: undefined,
+			spawnHitSpark: undefined,
+			enemyMeshes: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'glacier_collapse',
+			origin: { x: 0, z: 0 },
+			radius: 5,
+			hits: [{ enemyId: 'e1' }],
+		}, ctx)).not.toThrow();
 	});
 
 	it('healing_font and divine_grace resolve to different renderer functions', () => {

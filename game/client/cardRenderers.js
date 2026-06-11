@@ -20,6 +20,7 @@
 //   spawnCleanseBurstEffect(origin) — upward white→mint cleanse rise (column + sparkle)
 //   spawnPurifyingPulseEffect(origin, radius)
 //   spawnInfernoPillarEffect(origin, radius, style?) — style: { color, emissive, dotTicks, dotIntervalMs, duration }
+//   spawnGlacierRuptureEffect(origin, radius, style?) — ice-fracture ring + rising shard burst
 //   spawnEtherSiphonEffect(origin, radius, style?) — style: { color, emissive, duration }
 //   spawnDragonsBreathEffect(origin, direction, style?) — style: { color, emissive, range, coneAngle, dotTicks, dotIntervalMs, duration }
 //   spawnChainLightningEffect(origin, direction)
@@ -657,12 +658,35 @@ function renderPermafrostLance(data, ctx) {
 function renderGlacierCollapse(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
-	ctx.spawnSummonEffect(origin, data.radius, { color: GLACIER_COLOR, emissive: GLACIER_EMISSIVE });
+	const palette = { color: GLACIER_COLOR, emissive: GLACIER_EMISSIVE };
+	if (ctx.spawnGlacierRuptureEffect) {
+		ctx.spawnGlacierRuptureEffect(origin, data.radius, palette);
+	}
 	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, data.radius, { color: GLACIER_COLOR, emissive: GLACIER_EMISSIVE });
+		ctx.spawnTelegraphRing(origin, data.radius, palette);
+	}
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(origin, palette);
 	}
 	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(origin, { color: GLACIER_COLOR, emissive: GLACIER_EMISSIVE, count: 12, spread: 2.4 });
+		ctx.spawnParticleBurst(origin, { ...palette, count: 16, spread: 2.4 });
+	}
+	if (data.hits?.length && ctx.enemyMeshes) {
+		const meshes = ctx.enemyMeshes() || {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh?.position) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			const burstStyle = hit.frozenShatter
+				? { ...palette, count: 12, spread: 1.4 }
+				: { ...palette, count: 6, spread: 0.7 };
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(pos, burstStyle);
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pos, burstStyle);
+			}
+		}
 	}
 }
 

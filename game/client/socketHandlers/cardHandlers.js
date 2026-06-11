@@ -19,6 +19,7 @@ function createCardRenderCtx(ctx) {
 		spawnPurifyingPulseHealRing: ctx.spawnPurifyingPulseHealRing,
 		spawnCleanseBurstEffect: ctx.spawnCleanseBurstEffect,
 		spawnInfernoPillarEffect: ctx.spawnInfernoPillarEffect,
+		spawnGlacierRuptureEffect: ctx.spawnGlacierRuptureEffect,
 		spawnEtherSiphonEffect: ctx.spawnEtherSiphonEffect,
 		spawnSpikeTrapEffect: ctx.spawnSpikeTrapEffect,
 		spawnVolatileExplosionEffect: ctx.spawnVolatileExplosionEffect,
