@@ -1,7 +1,7 @@
 /**
  * Pure helpers for the run objective HUD (#objective-hud).
- * Stage-boss formatting lives here; other objective types return empty progress
- * so later sub-tickets can extend the same module.
+ * Stage-boss and escort formatting live here; other objective types return
+ * empty progress so later sub-tickets can extend the same module.
  */
 
 import { formatObjectiveSummary } from './questBoard.js';
@@ -112,19 +112,79 @@ function combineGoalAndProgress(goal, suffix) {
 	return `${goal} — ${suffix}`;
 }
 
+function resolveQuestForEscortObjective(run, questMeta) {
+	const questId = run?.questId || questMeta?.questId || questMeta?.id;
+	const npcName = questMeta?.escortNpc?.name || run?.escort?.npcName;
+	return {
+		...(questMeta || {}),
+		id: questId || questMeta?.id,
+		questId,
+		name: questMeta?.name || run?.questName,
+		objectiveType: 'escort',
+		escortNpc: npcName ? { ...(questMeta?.escortNpc || {}), name: npcName } : questMeta?.escortNpc,
+		escortDestination: questMeta?.escortDestination,
+	};
+}
+
+function buildEscortGoalLine(run, quest, questMeta) {
+	if (questMeta) {
+		const summary = formatObjectiveSummary(quest);
+		if (summary) return summary;
+	}
+	return `Escort ${run?.escort?.npcName || 'VIP'}`;
+}
+
+function buildEscortProgressSuffix(run, objective) {
+	if (run?.escort?.failed || objective?.escortFailed) {
+		return objective?.label || 'Escort failed';
+	}
+
+	const parts = [];
+	const totalEnemies = objective?.totalEnemies ?? 0;
+	if (totalEnemies > 0) {
+		const defeated = Math.min(objective?.defeatedEnemies ?? 0, totalEnemies);
+		parts.push(
+			THEME.objectives.ambushClearedProgress
+				.replace('{cleared}', String(defeated))
+				.replace('{total}', String(totalEnemies)),
+		);
+	}
+
+	const atDestination = run?.escort?.atDestination || objective?.reachedDestination;
+	if (atDestination) {
+		parts.push(THEME.objectives.escortDestinationReached);
+	} else if (totalEnemies > 0 && (objective?.defeatedEnemies ?? 0) >= totalEnemies) {
+		parts.push(THEME.objectives.escortEnRouteToExtract);
+	}
+
+	return parts.join(' · ');
+}
+
 /**
  * @param {{ run?: object, questMeta?: object|null }} args
  * @returns {{ goalLine: string, secondLine: string }}
  */
 export function formatRunObjectiveHudLines({ run, questMeta } = {}) {
-	if (!run?.objective || run.objective.type !== 'stage_boss') {
+	const objectiveType = run?.objective?.type;
+	if (!run?.objective) {
 		return { goalLine: '', secondLine: '' };
 	}
 
-	const quest = resolveQuestForObjective(run, questMeta);
-	const goalLine = formatObjectiveSummary(quest);
-	const progressSuffix = buildStageBossProgressSuffix(run, run.objective, quest);
-	const secondLine = combineGoalAndProgress(goalLine, progressSuffix);
+	if (objectiveType === 'stage_boss') {
+		const quest = resolveQuestForObjective(run, questMeta);
+		const goalLine = formatObjectiveSummary(quest);
+		const progressSuffix = buildStageBossProgressSuffix(run, run.objective, quest);
+		const secondLine = combineGoalAndProgress(goalLine, progressSuffix);
+		return { goalLine, secondLine };
+	}
 
-	return { goalLine, secondLine };
+	if (objectiveType === 'escort') {
+		const quest = resolveQuestForEscortObjective(run, questMeta);
+		const goalLine = buildEscortGoalLine(run, quest, questMeta);
+		const progressSuffix = buildEscortProgressSuffix(run, run.objective);
+		const secondLine = combineGoalAndProgress(goalLine, progressSuffix);
+		return { goalLine, secondLine };
+	}
+
+	return { goalLine: '', secondLine: '' };
 }

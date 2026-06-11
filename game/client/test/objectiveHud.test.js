@@ -110,3 +110,111 @@ describe('formatRunObjectiveHudLines()', () => {
 		expect(secondLine).toContain('Waves cleared 2 / 3');
 	});
 });
+
+const ANNEX_ESCORT_TIER1 = {
+	id: 'annex_escort',
+	questId: 'annex_escort',
+	name: 'Annex Evacuation',
+	objectiveType: 'escort',
+	escortNpc: { name: 'Archivist Vale', maxHp: 70 },
+	escortDestination: { roomRole: 'treasure' },
+};
+
+describe('formatRunObjectiveHudLines() escort', () => {
+	it('formats annex_escort tier 1 with NPC goal and partial ambush progress', () => {
+		const { goalLine, secondLine } = formatRunObjectiveHudLines({
+			run: {
+				questId: 'annex_escort',
+				questName: 'Annex Evacuation',
+				questTier: 1,
+				escort: { npcName: 'Archivist Vale', atDestination: false, failed: false },
+				objective: {
+					type: 'escort',
+					totalEnemies: 4,
+					defeatedEnemies: 1,
+					reachedDestination: false,
+				},
+			},
+			questMeta: ANNEX_ESCORT_TIER1,
+		});
+
+		expect(goalLine).toBe('Escort Archivist Vale to treasure');
+		expect(secondLine).toContain('Archivist Vale');
+		expect(secondLine).toContain('ambush 1 / 4 cleared');
+	});
+
+	it('appends destination reached when the escort arrives', () => {
+		const { secondLine } = formatRunObjectiveHudLines({
+			run: {
+				questId: 'annex_escort',
+				escort: { npcName: 'Archivist Vale', atDestination: true, failed: false },
+				objective: {
+					type: 'escort',
+					totalEnemies: 4,
+					defeatedEnemies: 2,
+					reachedDestination: true,
+				},
+			},
+			questMeta: ANNEX_ESCORT_TIER1,
+		});
+
+		expect(secondLine).toContain('ambush 2 / 4 cleared');
+		expect(secondLine).toContain('destination reached');
+	});
+
+	it('shows en route to extract when ambushes are cleared but not at destination', () => {
+		const { secondLine } = formatRunObjectiveHudLines({
+			run: {
+				questId: 'annex_escort',
+				escort: { npcName: 'Archivist Vale', atDestination: false, failed: false },
+				objective: {
+					type: 'escort',
+					totalEnemies: 4,
+					defeatedEnemies: 4,
+					reachedDestination: false,
+				},
+			},
+			questMeta: ANNEX_ESCORT_TIER1,
+		});
+
+		expect(secondLine).toContain('ambush 4 / 4 cleared');
+		expect(secondLine).toContain('en route to extract');
+	});
+
+	it('surfaces escort failure instead of ambush progress', () => {
+		const { secondLine } = formatRunObjectiveHudLines({
+			run: {
+				questId: 'annex_escort',
+				escort: { npcName: 'Archivist Vale', failed: true },
+				objective: {
+					type: 'escort',
+					escortFailed: true,
+					label: 'Archivist Vale was lost — escort failed',
+					totalEnemies: 4,
+					defeatedEnemies: 1,
+				},
+			},
+			questMeta: ANNEX_ESCORT_TIER1,
+		});
+
+		expect(secondLine).toContain('Archivist Vale');
+		expect(secondLine).toContain('escort failed');
+		expect(secondLine).not.toContain('ambush');
+	});
+
+	it('falls back to run escort NPC name when quest metadata is unavailable', () => {
+		const { goalLine, secondLine } = formatRunObjectiveHudLines({
+			run: {
+				escort: { npcName: 'Archivist Vale', atDestination: false, failed: false },
+				objective: {
+					type: 'escort',
+					totalEnemies: 2,
+					defeatedEnemies: 0,
+				},
+			},
+		});
+
+		expect(goalLine).toBe('Escort Archivist Vale');
+		expect(secondLine).toContain('ambush 0 / 2 cleared');
+	});
+});

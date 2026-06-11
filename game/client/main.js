@@ -2154,7 +2154,7 @@ function updateObjectiveHud() {
 				.replace('{total}', String(obj.totalItems ?? 0));
 		} else if (obj.type === 'defeat_enemies') {
 			progress = `Purged ${obj.defeatedEnemies ?? 0} / ${obj.totalEnemies ?? 0} hostiles`;
-		} else if (obj.type === 'stage_boss') {
+		} else if (obj.type === 'stage_boss' || obj.type === 'escort') {
 			const questMeta = findQuestBoardEntry(
 				run.questId,
 				run.questTier,

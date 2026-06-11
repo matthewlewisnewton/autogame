@@ -90,7 +90,10 @@
     "defeatGlacialTyrantWithSupports": "Defeat the Glacial Tyrant and {addCount} supports",
     "scriptedWavesCleared": "Waves cleared {cleared} / {total}",
     "supportsClearedProgress": "Supports cleared {cleared} / {total}",
-    "stageBossDefeated": "Warden defeated"
+    "stageBossDefeated": "Warden defeated",
+    "ambushClearedProgress": "ambush {cleared} / {total} cleared",
+    "escortDestinationReached": "destination reached",
+    "escortEnRouteToExtract": "en route to extract"
   },
   "cardDescriptions": {
     "summonAlly": "Channels an invocation",

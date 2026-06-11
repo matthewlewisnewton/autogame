@@ -4781,6 +4781,43 @@ describe('updateObjectiveHud()', () => {
 		expect(hud.textContent).toContain('Defeat the Permafrost Warden');
 		expect(hud.textContent).toContain('Waves cleared 0 / 3');
 	});
+
+	it('shows escort goal and ambush progress for annex_escort tier 1', async () => {
+		await import('../main.js');
+		const hud = document.getElementById('objective-hud');
+
+		window.__setQuestBoardState([
+			{
+				id: 'annex_escort',
+				name: 'Annex Evacuation',
+				objectiveType: 'escort',
+				escortNpc: { name: 'Archivist Vale', maxHp: 70 },
+				escortDestination: { roomRole: 'treasure' },
+			},
+		], 'annex_escort', 1);
+
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'playing',
+			run: {
+				questId: 'annex_escort',
+				questName: 'Annex Evacuation',
+				questTier: 1,
+				escort: { npcName: 'Archivist Vale', atDestination: false, failed: false },
+				objective: {
+					type: 'escort',
+					totalEnemies: 4,
+					defeatedEnemies: 2,
+					reachedDestination: false,
+				},
+			},
+			players: { p1: { hp: 80, magicStones: 40, currency: 0, x: 0, z: 0 } },
+		});
+
+		expect(hud.style.display).toBe('block');
+		expect(hud.textContent).toContain('Annex Evacuation');
+		expect(hud.textContent).toContain('Archivist Vale');
+		expect(hud.textContent).toContain('ambush 2 / 4 cleared');
+	});
 });
 
 describe('__captureBossVisualIdentityForTest', () => {

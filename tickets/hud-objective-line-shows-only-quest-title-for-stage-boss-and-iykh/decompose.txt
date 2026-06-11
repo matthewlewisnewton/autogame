@@ -1,0 +1,17 @@
+Broke the top-level ticket into **3 sub-tickets** (one per missing objective type), in dependency order. Root cause: `updateObjectiveHud()` in `main.js` only handles `collect_items` and `defeat_enemies`; `stage_boss`, `escort`, and `survive` need formatter + wiring.
+
+**Sub-ticket folders created:**
+
+1. `/home/matt/workspace/.autogame-worktrees/hud-objective-line-shows-only-quest-title-for-stage-boss-and-iykh/tickets/hud-objective-line-shows-only-quest-title-for-stage-boss-and-iykh/subtickets/01-stage-boss-objective-hud/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/hud-objective-line-shows-only-quest-title-for-stage-boss-and-iykh/tickets/hud-objective-line-shows-only-quest-title-for-stage-boss-and-iykh/subtickets/02-escort-objective-hud/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/hud-objective-line-shows-only-quest-title-for-stage-boss-and-iykh/tickets/hud-objective-line-shows-only-quest-title-for-stage-boss-and-iykh/subtickets/03-survive-objective-hud/ticket.md`
+
+**Plan summary:**
+
+| # | Focus | Key files |
+|---|--------|-----------|
+| 01 | `stage_boss` goal + progress (Frost Crossing / Permafrost Warden) | New `game/client/objectiveHud.js`, wire in `main.js`, tests |
+| 02 | `escort` goal + ambush progress (Archivist Vale) | Extend `objectiveHud.js` + `main.js`, tests |
+| 03 | `survive` goal + wave progress | Extend `objectiveHud.js` + `main.js`, tests |
+
+All use **code** verification (unit + integration tests). `collect_items` and `defeat_enemies` already work and are left untouched until optional consolidation in 03.
