@@ -954,7 +954,8 @@ async function runBossEncounterStep({ page, preset, outDirAbs, skipMidCombatCapt
 		if (liveAdds(midHarness, bossType, addTypes).length === 0) {
 			throw new Error('onMidCombat requested with zero live adds');
 		}
-		const shotPath = await writeScreenshot(page, outDirAbs, '03-mid-combat');
+		const midCombatBasename = preset.midCombatScreenshot ?? '03-mid-combat';
+		const shotPath = await writeScreenshot(page, outDirAbs, midCombatBasename);
 		midCombatScreenshot = path.relative(REPO_ROOT, shotPath);
 		const midCombatFloor = await captureFloorAlignmentProbe(page);
 		if (midCombatFloor) floorAlignment.midCombat = midCombatFloor;
@@ -977,7 +978,8 @@ async function runBossEncounterStep({ page, preset, outDirAbs, skipMidCombatCapt
 
 	assertDormantBoss(afterAddsHarness, bossType);
 	const dormantProbe = buildEncounterProbe(afterAddsHarness, bossType, addTypes);
-	const dormantScreenshotPath = await writeScreenshot(page, outDirAbs, '04-boss-dormant');
+	const dormantBasename = preset.bossDormantScreenshot ?? '04-boss-dormant';
+	const dormantScreenshotPath = await writeScreenshot(page, outDirAbs, dormantBasename);
 	const dormantScreenshot = path.relative(REPO_ROOT, dormantScreenshotPath);
 	const dormantFloor = await captureFloorAlignmentProbe(page);
 	if (dormantFloor) floorAlignment.bossDormant = dormantFloor;
@@ -995,6 +997,7 @@ async function runBossEncounterStep({ page, preset, outDirAbs, skipMidCombatCapt
 	const encounterTriggerByApproach = {
 		'canyon-descent-boss-approach': 'canyon-descent-encounter-trigger',
 		'spire-ascent-boss-approach': 'spire-ascent-encounter-trigger',
+		'frost-crossing-boss-approach': 'frost-crossing-encounter-trigger',
 	};
 	const encounterTriggerScenario = preset.encounterTriggerScenario
 		?? encounterTriggerByApproach[bossApproachScenario];
@@ -1014,7 +1017,8 @@ async function runBossEncounterStep({ page, preset, outDirAbs, skipMidCombatCapt
 	}
 
 	const activeProbe = buildEncounterProbe(activeHarness, bossType, addTypes);
-	const activeScreenshotPath = await writeScreenshot(page, outDirAbs, '05-boss-active');
+	const activeBasename = preset.bossActiveScreenshot ?? '05-boss-active';
+	const activeScreenshotPath = await writeScreenshot(page, outDirAbs, activeBasename);
 	const activeScreenshot = path.relative(REPO_ROOT, activeScreenshotPath);
 	const activeFloor = await captureFloorAlignmentProbe(page);
 	if (activeFloor) floorAlignment.bossActive = activeFloor;
@@ -1155,7 +1159,8 @@ async function runVictoryStep({ page, preset, outDirAbs }) {
 		timeoutMs: preset.bossDefeatTimeoutMs ?? 180000,
 	});
 	const afterBossProbe = buildVictoryProbe(afterBossHarness);
-	const bossDefeatedScreenshotPath = await writeScreenshot(page, outDirAbs, '06-boss-defeated');
+	const bossDefeatedBasename = preset.bossDefeatedScreenshot ?? '06-boss-defeated';
+	const bossDefeatedScreenshotPath = await writeScreenshot(page, outDirAbs, bossDefeatedBasename);
 
 	const victoryHarness = await waitForVictoryState(page, {
 		timeoutMs: preset.victoryTimeoutMs ?? 30000,
@@ -1164,7 +1169,8 @@ async function runVictoryStep({ page, preset, outDirAbs }) {
 		timeoutMs: preset.victoryTimeoutMs ?? 30000,
 	});
 	const victoryProbe = buildVictoryProbe(victoryHarness);
-	const victoryScreenshotPath = await writeScreenshot(page, outDirAbs, '07-victory');
+	const victoryBasename = preset.victoryScreenshot ?? '07-victory';
+	const victoryScreenshotPath = await writeScreenshot(page, outDirAbs, victoryBasename);
 
 	return {
 		bossDefeatedScreenshot: path.relative(REPO_ROOT, bossDefeatedScreenshotPath),
@@ -1210,6 +1216,11 @@ function buildBossEncounterUiAssertions(summary, { requireAnnexOverseer = false 
 		bossDistinctFromAdds: bossVisualIdentity?.bossDistinctFromAdds === true
 			&& (!requireAnnexOverseer || bossVisualIdentity?.bossType === 'annex_overseer'),
 	};
+}
+
+function isIceStageBossPreset(preset) {
+	return preset?.questId === 'frost_crossing'
+		&& (preset.objectiveType ?? 'stage_boss') === 'stage_boss';
 }
 
 function buildAssertions(summary, preset) {
@@ -1277,6 +1288,18 @@ function buildAssertions(summary, preset) {
 			windupTelegraphActive: summary.cardExercises?.windup?.windupTelegraphActive === true,
 			telepipeVitalsPreserved: summary.roomsTelepipe?.telepipeVitalsPreserved === true,
 			cardChargesResetOnNewSortie: summary.roomsTelepipe?.cardChargesResetOnNewSortie === true,
+		};
+	}
+	if (isIceStageBossPreset(preset)) {
+		const telepipe = summary.telepipeReset;
+		return {
+			...base,
+			...buildBossEncounterUiAssertions(summary),
+			slipperyFloorOk: summary.slipperyFloor?.ok === true,
+			glacialSlowApplied: summary.glacialSlow?.glacialSlowApplied === true,
+			cardMechanicsOk: summary.cardMechanics?.ok === true,
+			telepipeVitalsPreserved: telepipe?.telepipeVitalsPreserved === true,
+			cardChargesResetOnFreshSortie: telepipe?.cardChargesResetOnFreshSortie === true,
 		};
 	}
 	if (!isNewContentPreset(preset) && !isStageRevalidationPreset(preset, summary)) {

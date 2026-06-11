@@ -15,9 +15,11 @@ const ICE_DIR = path.join(REPO_ROOT, 'game', 'validation', 'ice');
 const ICE_REL = path.join('game', 'validation', 'ice');
 
 const REQUIRED_ASSERTION_KEYS = [
-	'layoutDeployed',
-	'enemiesCleared',
+	'bossSpawned',
+	'encounterActivated',
+	'bossDefeated',
 	'victoryFired',
+	'bossEncounterUiVisible',
 	'slipperyFloorOk',
 	'glacialSlowApplied',
 	'cardMechanicsOk',
@@ -30,12 +32,14 @@ const REQUIRED_PNGS = [
 	'02-level-entry.png',
 	'03-slippery-floor.png',
 	'04-mid-combat.png',
-	'05-glacial-slow.png',
-	'06-card-burn.png',
-	'07-objective-complete.png',
-	'08-victory.png',
-	'09-telepipe-before.png',
-	'10-telepipe-after.png',
+	'05-boss-dormant.png',
+	'06-boss-active.png',
+	'07-glacial-slow.png',
+	'08-card-burn.png',
+	'09-boss-defeated.png',
+	'10-victory.png',
+	'11-telepipe-before.png',
+	'12-telepipe-after.png',
 ];
 
 const REQUIRED_FILES = [
@@ -84,6 +88,12 @@ function readRunSummary(errors) {
 		if (Object.prototype.hasOwnProperty.call(summary.assertions, 'emberBurnApplied')) {
 			fail(errors, 'run-summary.json assertions must not include emberBurnApplied for ice preset');
 		}
+		if (Object.prototype.hasOwnProperty.call(summary.assertions, 'layoutDeployed')) {
+			fail(errors, 'run-summary.json assertions must not include layoutDeployed for ice stage_boss preset');
+		}
+		if (Object.prototype.hasOwnProperty.call(summary.assertions, 'enemiesCleared')) {
+			fail(errors, 'run-summary.json assertions must not include enemiesCleared for ice stage_boss preset');
+		}
 	}
 
 	if (!Object.prototype.hasOwnProperty.call(summary, 'victory')) {
@@ -114,6 +124,24 @@ function checkSlipperyFloorConsistency(summary, errors) {
 	}
 	if (summary.assertions?.slipperyFloorOk === true && slippery.ok !== true) {
 		fail(errors, 'assertions.slipperyFloorOk is true but slipperyFloor.ok is not');
+	}
+}
+
+function checkBossEncounterConsistency(summary, errors) {
+	const bossEncounterUi = summary?.bossEncounter?.probes?.bossEncounterUi;
+	if (!bossEncounterUi || typeof bossEncounterUi !== 'object') {
+		fail(errors, 'run-summary.json missing bossEncounter.probes.bossEncounterUi');
+		return;
+	}
+	if (summary.assertions?.bossEncounterUiVisible === true && bossEncounterUi.hudVisible !== true) {
+		fail(errors, 'assertions.bossEncounterUiVisible is true but bossEncounterUi.hudVisible is not');
+	}
+	if (summary.assertions?.encounterActivated === true) {
+		const phase = summary.bossEncounter?.encounterPhase;
+		const locked = summary.bossEncounter?.encounterLocked;
+		if (phase !== 'active' || locked !== true) {
+			fail(errors, 'assertions.encounterActivated is true but bossEncounter phase/lock probes disagree');
+		}
 	}
 }
 
@@ -172,10 +200,14 @@ function main() {
 		if (summary) {
 			checkSlipperyFloorConsistency(summary, errors);
 			checkGlacialSlowConsistency(summary, errors);
+			checkBossEncounterConsistency(summary, errors);
 			checkTelepipeRunIdSanity(summary, errors);
 		}
 		checkRequiredFiles(errors);
-		assertDistinctVictoryScreenshots(ICE_DIR, errors, `${ICE_REL}/`);
+		assertDistinctVictoryScreenshots(ICE_DIR, errors, `${ICE_REL}/`, {
+			bossDefeatedName: '09-boss-defeated.png',
+			victoryName: '10-victory.png',
+		});
 	}
 
 	if (errors.length > 0) {
