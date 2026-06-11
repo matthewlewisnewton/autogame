@@ -2453,6 +2453,106 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
 	});
 
+	it('cinder_snare resolves to its own renderCinderSnare, distinct from spike_trap', () => {
+		const snare = resolveRenderers('cinder_snare');
+		expect(snare).toHaveLength(1);
+		expect(snare[0].name).toBe('renderCinderSnare');
+		expect(snare[0]).not.toBe(resolveRenderers('spike_trap')[0]);
+	});
+
+	it('cinder_snare spawns a fiery ember snare at the placement origin/radius with the card accent', () => {
+		const ctx = makeCtx();
+		const def = getCardDef('cinder_snare');
+		renderCardUsed({
+			cardId: 'cinder_snare',
+			origin: { x: 5, z: -2 },
+			radius: def.radius,
+			effect: 'cinder_snare',
+			hits: [],
+		}, ctx);
+
+		// Initial ember snare fired at the placement origin / stat-derived radius.
+		const pillars = ctx._calls.filter((c) => c[0] === 'spawnInfernoPillarEffect');
+		expect(pillars).toHaveLength(1);
+		expect(pillars[0][1]).toEqual({ x: 5, z: -2 });
+		expect(pillars[0][2]).toBe(def.radius);
+
+		// Themed to the card accent (#f97316), NOT the generic 0xf87171/0xef4444 palette.
+		const style = pillars[0][3];
+		expect(style.color).toBe(0xf97316);
+		expect(style.color).toBe(getAccentHex('cinder_snare'));
+		expect(style.color).not.toBe(0xf87171);
+		expect(style.emissive).not.toBe(0xef4444);
+
+		// Ember spark burst at the placement origin, themed orange.
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		expect(bursts.length).toBeGreaterThanOrEqual(1);
+		expect(bursts[0][1]).toEqual({ x: 5, z: -2 });
+		expect(bursts[0][2].color).toBe(0xf97316);
+
+		// Distinct from spike_trap: no steel-spike primitive, no generic preview.
+		expect(ctx._calls.some((c) => c[0] === 'spawnSpikeTrapEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('cinder_snare derives its smolder cadence and duration from the card stats', () => {
+		const ctx = makeCtx();
+		const def = getCardDef('cinder_snare');
+		renderCardUsed({
+			cardId: 'cinder_snare',
+			origin: { x: 0, z: 0 },
+			radius: def.radius,
+			effect: 'cinder_snare',
+			hits: [],
+		}, ctx);
+
+		// Lingering smolder reflects the server stats, not hardcoded numbers.
+		const pillars = ctx._calls.filter((c) => c[0] === 'spawnInfernoPillarEffect');
+		expect(pillars[0][3].dotTicks).toBe(def.dotTicks);
+		expect(pillars[0][3].dotIntervalMs).toBe(def.dotIntervalMs);
+		expect(pillars[0][3].duration).toBe(def.ttlMs);
+
+		// One scheduled smolder pulse per DoT tick, aligned to dotIntervalMs.
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(schedules).toHaveLength(def.dotTicks);
+		for (let i = 0; i < schedules.length; i += 1) {
+			expect(schedules[i][1]).toBe(def.dotIntervalMs * (i + 1));
+		}
+	});
+
+	it('cinder_snare fires the initial placement VFX synchronously (no windUpMs gating)', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'cinder_snare',
+			origin: { x: 0, z: 0 },
+			radius: 2.5,
+			effect: 'cinder_snare',
+			hits: [],
+		}, ctx);
+
+		const pillarIdx = ctx._calls.findIndex((c) => c[0] === 'spawnInfernoPillarEffect');
+		const firstScheduleIdx = ctx._calls.findIndex((c) => c[0] === 'scheduleAfter');
+		expect(pillarIdx).toBeGreaterThanOrEqual(0);
+		// Placement effect resolves before any deferred smolder scheduling.
+		expect(firstScheduleIdx === -1 || pillarIdx < firstScheduleIdx).toBe(true);
+
+		// And the card itself carries no positive windUpMs.
+		const windUp = getCardDef('cinder_snare').windUpMs;
+		expect(windUp === undefined || windUp === 0).toBe(true);
+	});
+
+	it('cinder_snare no-ops on a malformed event with no radius', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'cinder_snare',
+			origin: { x: 0, z: 0 },
+			effect: 'cinder_snare',
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnInfernoPillarEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
 	it('mirror_ward spawns shell, telegraph ring, and burst when target=self', () => {
 		const ctx = makeCtx();
 		renderCardUsed({

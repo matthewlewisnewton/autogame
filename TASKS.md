@@ -144,4 +144,6 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [393-cleanup-ice-tier2-frost-crossing-and-miniboss](tickets/393-cleanup-ice-tier2-frost-crossing-and-miniboss/)
 - [ ] [394-cleanup-client-renderhand-rebuilds-slot-innerhtml-on-every-state-upd-oqdr](tickets/394-cleanup-client-renderhand-rebuilds-slot-innerhtml-on-every-state-upd-oqdr/)
 - [ ] [395-cleanup-server-index-js-broadcast-lookup-helpers-scan-every-connecte-d094](tickets/395-cleanup-server-index-js-broadcast-lookup-helpers-scan-every-connecte-d094/)
+- [ ] [395-cleanup-client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0](tickets/395-cleanup-client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/)
+- [ ] [395-cleanup-anim-cinder-snare](tickets/395-cleanup-anim-cinder-snare/)
 - [ ] [396-cleanup-anim-telepipe](tickets/396-cleanup-anim-telepipe/)

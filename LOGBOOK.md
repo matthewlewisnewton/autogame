@@ -7094,6 +7094,72 @@ Pure server-side performance refactor that preserves observable behavior. No cha
 
 None blocking.
 
+## v0.395 — Client: split main.js bindSocketHandlers (~930 lines) into handler registration groups  (2026-06-10 18:03:35)
+
+- No behavior change: the full suite (`260 test files, 3717 tests`) passes, including the server socket integration tests and client main/socket tests.
+- `grep` confirms **zero** remaining `s.on(`/`socket.on(` registrations in main.js — every listener was relocated, no duplicated or dead inline handler left behind.
+
+## Consistency with design / no regression
+
+- This is a pure structural refactor of client socket-handler registration; no gameplay rules, server logic, or `shared/` schema changed. `game/docs/design.md` and `requirements.md` foundations are untouched. The diff is confined to main.js (net −931 lines) plus the new `socketHandlers/` modules and sub-ticket bookkeeping.
+
+## Debug scenarios
+
+- No new `?debugScenario=NAME` URL shortcut was added or changed. `debugHandlers.js` only relocates the existing `DEBUG_SCENARIO_RESULT` / `DEBUG_GODMODE_RESULT` *result* listeners (and re-applies godmode mirroring to keep probes consistent). The debug-shortcut review criteria do not apply; nothing bypasses normal-play invariants.
+
+## Code quality
+
+- Clean, idiomatic split matching the codebase's existing context-object convention. Each module imports only what it needs; `index.js` re-exports the registrars. The STATE_UPDATE extraction preserves comments and edge-case handling (hub-layout floor sampling, desperation deck sync, prediction drift thresholds).
+- No obvious bugs, no broken imports (tests would have failed otherwise), no console errors in the capture.
+
+## Remaining gaps
+
+None blocking. The acceptance criterion is fully and robustly met, the game runs cleanly, and the entire test suite passes. Minor non-blocking observations are recorded in `nits.md`.
+
+## v0.396 — 367-anim-cinder-snare  (2026-06-10 18:06:10)
+
+`updateAttackEffects` with no per-frame allocation, fading/disposing at `ttlMs`.
+Negligible cost even with the 30s lifetime.
+
+### "Client test where feasible"
+MET. Five new tests in `game/client/test/cardRenderers.test.js` cover: distinct
+dispatch vs `spike_trap`, themed accent at origin/radius, stat-derived cadence/
+duration, synchronous placement (no wind-up gating), and a no-radius no-op. Full
+file (164 tests) passes; server `enchantment.test.js` (17) passes.
+
+### Scope / design consistency
+MET. The diff touches only `game/client/cardRenderers.js` (this card's render fn
++ registration) and its test — exactly the declared scope. No server, shared, or
+other-card changes; no new debug scenario; no regression to other renderers
+(`renderGroundEnchantment` is retained for other cards). Consistent with
+`design.md` VFX-primitive approach.
+
+## Remaining gaps
+
+None blocking. Two minor thematic nits captured in `nits.md`.
+
+## v0.397 — Server: admin password accepted via query parameter and /admin has no rate limit  (2026-06-10 18:13:13)
+
+## Code quality
+
+- Focused diff (~240 lines, mostly tests). No dead code introduced.
+- Security properties preserved: fail-closed when `ADMIN_PASSWORD` unset, constant-time compare, Bearer token still ignored for admin.
+- `auth.js` export surface expanded minimally for reuse; register/login call sites unchanged.
+- Comments in `admin.js` and `auth.js` document the check-then-increment pattern and why check-only uses `>=`.
+
+## Sub-ticket integration
+
+Both sub-tickets integrate cleanly:
+
+1. **01-remove-query-param-password** — query fallback removed; tests inverted from expect-200 to expect-403.
+2. **02-add-admin-rate-limit** — bucket logic reused from auth; middleware wired before password check.
+
+No gaps between sub-ticket scope and top-level acceptance criteria.
+
+## Remaining gaps
+
+None. All acceptance criteria are fully and robustly satisfied; runtime capture is clean.
+
 ## v0.398 — 364-anim-telepipe  (2026-06-10 18:43:25)
 
 construction, palette, overrides, and cleanup/disposal. Ran
@@ -7115,4 +7181,3 @@ construction, palette, overrides, and cleanup/disposal. Ran
 ## Remaining gaps
 
 None blocking. (Minor non-blocking redundancy noted in nits.md.)
-

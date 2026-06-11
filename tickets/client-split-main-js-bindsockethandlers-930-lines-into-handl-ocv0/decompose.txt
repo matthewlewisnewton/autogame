@@ -1,0 +1,23 @@
+Created **6 sub-tickets** in dependency order, splitting `bindSocketHandlers` (~930 lines) incrementally: scaffold + connection first, then init/lobby-browser, the large `STATE_UPDATE` handler, card/combat feedback, lobby feature handlers, and finally run lifecycle + debug.
+
+**Sub-ticket folder paths created:**
+
+1. `/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/tickets/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/subtickets/01-socket-handler-scaffold-and-connection/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/tickets/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/subtickets/02-init-and-lobby-browser-handlers/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/tickets/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/subtickets/03-extract-state-update-handler/ticket.md`
+4. `/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/tickets/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/subtickets/04-extract-card-combat-handlers/ticket.md`
+5. `/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/tickets/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/subtickets/05-extract-lobby-feature-handlers/ticket.md`
+6. `/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/tickets/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/subtickets/06-extract-run-and-debug-handlers/ticket.md`
+
+**Plan summary:**
+
+| # | Focus | Key modules |
+|---|--------|-------------|
+| 01 | Scaffold + `socketHandlerCtx` + connection/reconnect handlers | `connectionHandlers.js` |
+| 02 | `INIT` + lobby browser (join/leave/list/error) | `initHandlers.js`, `lobbyBrowserHandlers.js` |
+| 03 | `STATE_UPDATE` (~200 lines) | `stateHandlers.js` |
+| 04 | Card use, card errors, combat VFX + `cardRenderCtx` | `cardHandlers.js` |
+| 05 | Squad lobby features (deck, medic, key items, trade, quest, cosmetics) | `lobbyHandlers.js` |
+| 06 | Run lifecycle, heartbeat, debug, disconnect cleanup | `runHandlers.js`, `debugHandlers.js` |
+
+All sub-tickets use **Verification: code** (tests + diff inspection). No existing sub-tickets with `.passed` markers were present, so nothing was deleted or modified.
