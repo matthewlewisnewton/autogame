@@ -187,6 +187,9 @@ describe('rift_convergence end-to-end unlock → run → defeat lifecycle', () =
 });
 
 describe('rift_convergence difficulty validation against live defs', () => {
+  // citadel_sovereign (the citadel_assault capstone apex) is deliberately
+  // absent: it ties the colossus' 460 HP ceiling and exceeds its attackDamage.
+  // Its supremacy is asserted in citadel_capstone_quest.test.js.
   const OTHER_STAGE_BOSS_TYPES = [
     'miniboss',
     'annex_overseer',
@@ -215,7 +218,7 @@ describe('rift_convergence difficulty validation against live defs', () => {
     return entries;
   }
 
-  it('riftbound_colossus out-stats every other stage boss but respects the HP ceiling', () => {
+  it('riftbound_colossus out-stats every other non-capstone stage boss but respects the HP ceiling', () => {
     const colossus = ENEMY_DEFS.riftbound_colossus;
     expect(colossus).toBeDefined();
     for (const type of OTHER_STAGE_BOSS_TYPES) {
@@ -230,9 +233,14 @@ describe('rift_convergence difficulty validation against live defs', () => {
     expect(colossus.hp).toBeLessThanOrEqual(DEFEAT_BOSS_HP_CEILING);
   });
 
-  it('fields strictly more encounter adds than every other boss level', () => {
+  it('fields strictly more encounter adds than every other non-capstone boss level', () => {
     const riftAdds = QUEST_DEFS[QUEST_ID].tiers[TIER].encounter.addCount;
-    const others = bossLevelTiers().filter((entry) => entry.questId !== QUEST_ID);
+    // citadel_assault is the new apex boss level: it strictly out-adds the
+    // rift, so it is excluded here and asserted supreme in
+    // citadel_capstone_quest.test.js.
+    const others = bossLevelTiers().filter(
+      (entry) => entry.questId !== QUEST_ID && entry.questId !== 'citadel_assault',
+    );
     expect(others.length).toBeGreaterThan(0);
     for (const { questId, tier, tierDef } of others) {
       expect(
@@ -242,9 +250,14 @@ describe('rift_convergence difficulty validation against live defs', () => {
     }
   });
 
-  it('pays the highest rewardCurrency of any boss level', () => {
+  it('pays the highest rewardCurrency of any non-capstone boss level', () => {
     const riftPurse = QUEST_DEFS[QUEST_ID].tiers[TIER].rewardCurrency;
-    const others = bossLevelTiers().filter((entry) => entry.questId !== QUEST_ID);
+    // citadel_assault is the new apex boss level: its 26-stone purse strictly
+    // tops the rift's 22, so it is excluded here and asserted supreme in
+    // citadel_capstone_quest.test.js.
+    const others = bossLevelTiers().filter(
+      (entry) => entry.questId !== QUEST_ID && entry.questId !== 'citadel_assault',
+    );
     expect(others.length).toBeGreaterThan(0);
     for (const { questId, tier, tierDef } of others) {
       expect(

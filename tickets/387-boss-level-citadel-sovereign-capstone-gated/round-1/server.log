@@ -1,0 +1,15 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/387-boss-level-citadel-sovereign-capstone-gated/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/387-boss-level-citadel-sovereign-capstone-gated/game/data
+Server listening on port 3000
+Player connected: socket=Lja9Iy23EWVcS-KfAAAB, playerId=de9099d3-e6a6-4fcd-8a98-6b718299b753
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=9D16Aczt3ZH3sfN9AAAD, playerId=27064428-40b1-404e-8809-291ba1eb749a
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=572d3197-7d9b-48e2-be41-ae5df6527bdd value=15
+Player disconnected: Lja9Iy23EWVcS-KfAAAB
+Player disconnected: 9D16Aczt3ZH3sfN9AAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

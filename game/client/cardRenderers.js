@@ -16,16 +16,18 @@
 //   spawnMinionSummonInEffect(origin, style?) — creature minion summon flourish
 //   spawnDivineGraceEffect(origin, radius)
 //   spawnEventHorizonEffect(origin, pullRadius, centerRadius, style?)
-//   spawnPurifyingPulseHealRing(origin, radius)
-//   spawnCleanseBurstEffect(origin)
+//   spawnPurifyingPulseHealRing(origin, radius, options?) — options: { wave, waveCount } stagger one concentric heal wave
+//   spawnCleanseBurstEffect(origin) — upward white→mint cleanse rise (column + sparkle)
 //   spawnPurifyingPulseEffect(origin, radius)
 //   spawnInfernoPillarEffect(origin, radius, style?) — style: { color, emissive, dotTicks, dotIntervalMs, duration }
+//   spawnEtherSiphonEffect(origin, radius, style?) — style: { color, emissive, duration }
 //   spawnDragonsBreathEffect(origin, direction, style?) — style: { color, emissive, range, coneAngle, dotTicks, dotIntervalMs, duration }
 //   spawnChainLightningEffect(origin, direction)
 //   spawnLightningArc(from, to, style?)
 //   spawnParticleBurst(position, style?)       — multi-particle spark/ember burst
 //   spawnProjectileTrail(origin, direction, style?) — fading streak along a path
 //   spawnImpactDecal(origin, style?)           — lingering ground flash/decal ring
+//   spawnGravityWellEffect(origin, radius, style?) — contracting pull ring, void core, inward inflow
 //   spawnTelegraphRing(origin, radius, style?) — expanding/pulsing AoE telegraph ring
 //   spawnTelepipeCastEffect(origin, radius, style?) — telepipe portal-opening cast flourish
 //   spawnMirrorWardShellEffect(origin, radius, style?) — lingering mirror ward shell
@@ -703,39 +705,79 @@ function renderDivineGrace(data, ctx) {
 	if (data.hpGained > 0 && data.playerId === ctx.myId) ctx.playSound('heal');
 }
 
+const PURIFYING_PULSE_WAVE_COUNT = 3;
+
 /**
- * Purifying Pulse: mint AoE heal ring plus a white/teal cleanse sparkle burst.
+ * Purifying Pulse: a cleansing wave that visibly *pulses* outward — several
+ * staggered concentric mint heal rings, each expanding to the card's `radius`
+ * — plus an upward white→mint *purifying rise* (corruption lifted away). The
+ * server resolves `heal_and_cleanse` instantly (one `cardUsed`, no travel
+ * phase), so every primitive fires synchronously within this call: the rings
+ * are sequenced by a per-wave delay baked into each effect's `createdAt`
+ * (inside `spawnPurifyingPulseHealRing`), never via `setTimeout`/`scheduleAfter`.
  */
 function renderPurifyingPulse(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
-	ctx.spawnPurifyingPulseHealRing(origin, data.radius);
+	// Staggered concentric heal waves so the cleanse pulses outward to `radius`.
+	for (let wave = 0; wave < PURIFYING_PULSE_WAVE_COUNT; wave += 1) {
+		ctx.spawnPurifyingPulseHealRing(origin, data.radius, {
+			wave,
+			waveCount: PURIFYING_PULSE_WAVE_COUNT,
+		});
+	}
+	// Distinct upward cleanse rise (white→mint column + sparkle), separate from
+	// the flat ground rings.
 	ctx.spawnCleanseBurstEffect(origin);
-	ctx.playSound('heal');
+	// Heal cue is local-only: the caster or anyone actually healed hears it; a
+	// pure spectator does not.
+	if (
+		data.playerId === ctx.myId ||
+		data.healedTargets?.some((t) => t.playerId === ctx.myId)
+	) {
+		ctx.playSound('heal');
+	}
 }
 
 const GRAVITY_WELL_COLOR = 0xc084fc;
 const GRAVITY_WELL_EMISSIVE = 0xa855f7;
+const GRAVITY_WELL_PULL_STREAK_STYLE = {
+	color: GRAVITY_WELL_COLOR,
+	emissive: GRAVITY_WELL_EMISSIVE,
+	duration: 320,
+};
 const EVENT_HORIZON_COLOR = 0x581c87;
 const EVENT_HORIZON_EMISSIVE = 0x7c3aed;
 
 /**
- * Gravity Well: purple pull telegraph at pull radius, inward-styled particle
- * burst at the origin, and an optional center impact decal.
+ * Gravity Well: instant collapsing singularity (spawnGravityWellEffect), a
+ * brief center impact at t = 0, and inward pull streaks from each pulled enemy.
  */
 function renderGravityWell(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
 	const color = getAccentHex(data.cardId) ?? GRAVITY_WELL_COLOR;
 	const emissive = GRAVITY_WELL_EMISSIVE;
-	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
-	}
-	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(origin, { color, emissive, count: 18, spread: 2.8 });
+	if (ctx.spawnGravityWellEffect) {
+		ctx.spawnGravityWellEffect(origin, data.radius, {
+			color,
+			emissive,
+			duration: ATTACK_EFFECT_DURATION,
+		});
 	}
 	if (ctx.spawnImpactDecal) {
 		ctx.spawnImpactDecal(origin, { color, emissive });
+	}
+	const pulled = Array.isArray(data.pulled) ? data.pulled : [];
+	if (pulled.length && ctx.spawnLightningArc && ctx.enemyMeshes) {
+		const meshes = ctx.enemyMeshes() || {};
+		for (const entry of pulled) {
+			const mesh = meshes[entry.enemyId];
+			if (!mesh) continue;
+			const enemyPos = { x: mesh.position.x, z: mesh.position.z };
+			if (Number.isFinite(mesh.position.y)) enemyPos.y = mesh.position.y;
+			ctx.spawnLightningArc(enemyPos, origin, GRAVITY_WELL_PULL_STREAK_STYLE);
+		}
 	}
 }
 
@@ -1037,18 +1079,52 @@ function renderBattleFamiliar(data, ctx) {
 }
 
 /**
- * Ether Siphon: purple drain telegraph at AoE radius plus a siphon burst.
+ * Ether Siphon: instant radial mana drain — ether-siphon primitive, cast flourish,
+ * per-victim drain arcs, and magic-stone absorption at the caster origin.
  */
 function renderManaLeach(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
 	const color = getAccentHex(data.cardId) ?? MANA_LEACH_COLOR;
 	const emissive = MANA_LEACH_EMISSIVE;
+	const style = { color, emissive };
+
+	if (ctx.spawnEtherSiphonEffect) {
+		ctx.spawnEtherSiphonEffect(origin, data.radius, style);
+	}
 	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+		ctx.spawnTelegraphRing(origin, data.radius, style);
 	}
 	if (ctx.spawnParticleBurst) {
 		ctx.spawnParticleBurst(origin, { color, emissive, count: 16, spread: 2.2 });
+	}
+
+	if (data.hits?.length) {
+		const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+		const arcStyle = { color, emissive, duration: ATTACK_EFFECT_DURATION };
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const enemyPos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnLightningArc) {
+				ctx.spawnLightningArc(enemyPos, origin, arcStyle);
+			}
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(enemyPos, { color, emissive, count: 5, spread: 0.55 });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(enemyPos, { color, emissive, count: 6, spread: 0.7 });
+			}
+		}
+	}
+
+	if (data.magicStonesGained > 0) {
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(origin, { color, emissive, count: 22, spread: 2.6 });
+		}
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(origin, { color, emissive });
+		}
 	}
 }
 
@@ -1190,32 +1266,99 @@ function renderThunderbirdStrike(data, ctx) {
 }
 
 /**
- * Stormwing Drone deploy: soft cyan summon flourish (lighter than Thunderbird).
+ * Stormwing Drone deploy: a tight cyan storm flourish (smaller than Thunderbird)
+ * topped with a wind ripple ring and wing-beat spark burst so the drone reads as
+ * a storm-charged flyer lifting off — distinct from Thunderbird's wider summon.
  */
 function renderStormEagleSummon(data, ctx) {
 	if (!data.minionId || data.hits?.length) return;
 	if (!ctx.spawnMinionSummonInEffect) return;
-	ctx.spawnMinionSummonInEffect(originOf(data), {
+	const origin = originOf(data);
+	ctx.spawnMinionSummonInEffect(origin, {
 		color: 0x93c5fd,
 		emissive: 0x7dd3fc,
+		radius: 0.9,
 		burstCount: 10,
 		burstSpread: 1.2,
 	});
+	// Wing/wind read: an expanding storm ripple plus a low wing-beat spark puff.
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, 1.1, { color: 0x93c5fd, emissive: 0x7dd3fc });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, {
+			color: 0x93c5fd,
+			emissive: 0x7dd3fc,
+			count: 8,
+			spread: 1.6,
+		});
+	}
 }
 
 /**
- * Stormwing Drone ranged strike: single cyan arc to the primary target plus
- * an impact spark burst at the enemy.
+ * Lift the storm bolt's origin to the Stormwing Drone's aerial position. The
+ * minion fires from the air, but the server omits the minion's Y from `origin`,
+ * so resolve the flight height in priority order:
+ *   1. a server-supplied `origin.y` (mirrors how other minion renderers read it),
+ *   2. otherwise derive it from the tilted 3D aim — the drone sits above the
+ *      ground target by |dirY|/|dirXZ| × the horizontal reach to it.
+ * When the aim is level (no finite `direction.y`) or the geometry is degenerate,
+ * keep the current ground-level origin.
+ */
+function stormEagleAerialOrigin(data, direction) {
+	const origin = originOf(data);
+	if (Number.isFinite(origin.y)) return origin;
+	if (!Number.isFinite(direction.y) || direction.y === 0) return origin;
+	const horiz = Math.hypot(direction.x, direction.z);
+	if (horiz <= 0) return origin;
+	const target = data.strikeTarget;
+	if (!target) return origin;
+	const reach = Math.hypot(target.x - origin.x, target.z - origin.z);
+	origin.y = Math.abs(direction.y) * (reach / horiz);
+	return origin;
+}
+
+/**
+ * Fallback strike point along the tilted 3D aim (only used when the server
+ * sends no `strikeTarget`). Mirrors `renderWyrmAttack`'s burst-Y handling so the
+ * bolt terminus follows the downward storm-bolt slant rather than staying flat.
+ */
+function stormEagleStrikePoint(origin, direction, distance) {
+	const point = pointAlong(origin, direction, distance);
+	if (Number.isFinite(direction.y) && direction.y !== 0) {
+		const len = Math.hypot(direction.x, direction.z, direction.y) || 1;
+		const baseY = Number.isFinite(origin.y) ? origin.y : 0;
+		point.y = baseY + (direction.y / len) * distance;
+	}
+	return point;
+}
+
+/** Strike target from the server `strikeTarget`, preserving an optional Y. */
+function strikeTargetPoint(strikeTarget) {
+	const point = { x: strikeTarget.x, z: strikeTarget.z };
+	if (Number.isFinite(strikeTarget.y)) point.y = strikeTarget.y;
+	return point;
+}
+
+/**
+ * Stormwing Drone ranged strike: one jagged cyan storm bolt fired from the
+ * drone's aerial position down onto the resolved hit, plus a single impact spark
+ * burst at the strike target. Fires once per server strike event (origin +
+ * direction + non-empty hits); summon events (minionId + empty hits) are ignored
+ * by the guard, so they emit no arc or burst.
  */
 function renderStormEagleStrike(data, ctx) {
-	if (!data.origin || !data.hits?.length) return;
+	if (!(data.origin && data.hits?.length)) return;
+	const direction = directionOf(data);
+	const origin = stormEagleAerialOrigin(data, direction);
 	const target = data.strikeTarget
-		|| pointAlong(originOf(data), directionOf(data), data.attackRange || 7);
-	ctx.spawnLightningArc(originOf(data), target, STORM_EAGLE_ARC_STYLE);
+		? strikeTargetPoint(data.strikeTarget)
+		: stormEagleStrikePoint(origin, direction, data.attackRange || 7);
+	ctx.spawnLightningArc(origin, target, STORM_EAGLE_ARC_STYLE);
 	if (ctx.spawnParticleBurst) {
 		ctx.spawnParticleBurst(target, {
-			color: 0x67e8f9,
-			emissive: 0x22d3ee,
+			color: STORM_EAGLE_ARC_STYLE.color,
+			emissive: STORM_EAGLE_ARC_STYLE.emissive,
 			count: 8,
 			spread: 0.85,
 		});

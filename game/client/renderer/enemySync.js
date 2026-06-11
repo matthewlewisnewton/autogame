@@ -129,6 +129,9 @@ export function createEnemyMesh(type) {
 	let geo;
 	if (def.type === 'octahedron') {
 		geo = new THREE.OctahedronGeometry(def.radius);
+	} else if (def.type === 'cylinder') {
+		// Crowned tower (citadel_sovereign): radiusTop flares past the base radius.
+		geo = new THREE.CylinderGeometry(def.radiusTop ?? def.radius, def.radius, def.height, def.segments);
 	} else {
 		geo = new THREE.ConeGeometry(def.radius, def.height, def.segments);
 	}

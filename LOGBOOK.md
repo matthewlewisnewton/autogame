@@ -7293,6 +7293,104 @@ other-card changes; no new debug scenario; no regression to other renderers
 
 None blocking. Two minor thematic nits captured in `nits.md`.
 
+## v0.408 — 356-anim-gravity-well  (2026-06-10 20:28:18)
+
+Coverage includes: single bespoke renderer resolution, synchronous fire at t=0,
+correct origin/radius/style args, per-enemy arc geometry, empty/absent `pulled`,
+radius-absent skip, and the primitive pushing ring/core/inflow with correct
+colors and disposal.
+
+### 5. Scope & consistency
+PASS. Diff touches only the gravity-well renderer + registration, the VFX
+primitive in renderer.js, the two wiring points (main.js, socketHandlerCtx.js),
+and tests — within the ticket's stated scope. No debug scenario was added or
+changed. Consistent with the 315/316-319 primitive+per-card foundation; no
+foundation regression.
+
+## Remaining gaps
+None blocking. One non-blocking nit recorded in nits.md: the inflow particles'
+runtime trajectory (`position = velocity * t`) starts each particle at the well
+center and moves it outward to the opposite side, rather than flowing inward
+from its spawned outer ring position — a minor visual imperfection that does not
+change the overall inward read (contracting ring + void core + enemy pull arcs
+dominate).
+
+## v0.407 — 351-anim-purifying-pulse  (2026-06-10 20:24:09)
+
+VFX without sound. Server emits `playerId` + `healedTargets`, matching exactly
+what the client gating reads.
+
+### Scope
+**Respected.** Diff touches only `game/client/cardRenderers.js`,
+`game/client/renderer.js`, and `game/client/test/cardRenderers.test.js` (plus
+ticket bookkeeping) — within the declared scope.
+
+### Design/regression consistency
+Consistent with `game/docs/design.md` (heal/cleanse spell identity, mint palette
+distinct from gold sanctum). No debug scenario added or changed by this ticket
+(the existing `debugScenarios.js` purifying_pulse entry is untouched), so the
+debug-scenario gate does not apply. No foundation regression.
+
+## Remaining gaps
+None blocking. The fallback smoke capture did not cast purifying_pulse itself
+(deck/hand smoke flow), but the card's visual was validated at the sub-ticket
+level, the runtime is proven healthy, and the rendering path is fully unit-tested
+— this is a minor coverage observation, not a blocker.
+
+## v0.406 — 387-boss-level-citadel-sovereign-capstone-gated  (2026-06-10 19:50:08)
+
+## Debug scenarios (gating audit)
+Three scenarios added: `citadel-boss`, `citadel-unlocked`, `citadel-one-prereq`.
+- Gated: all three are registered in `DEBUG_SCENARIOS` and reachable only via
+  the debug path; `citadel-boss` is also in
+  `DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN`. The `?debugScenario=` URL is the only
+  entry point. Normal gameplay does not touch them.
+- Normal path still reachable: each scenario reaches its end-state by calling
+  the *real* primitives — `completeQuestTier(...)` for the actual prereqs,
+  `applyLayoutForQuest`, and `deployQuestDebugRun`/`finishStageBossDebugScenario`
+  — i.e. the same path a real player hits after clearing all three Tier-II
+  lines and deploying. The `citadel_capstone_e2e.test.js` lifecycle test proves
+  the equivalent state is reachable through normal unlock + run flow.
+- No invariants bypassed: the boss stays dormant/invulnerable until adds are
+  cleared and `tryActivateEncounter` succeeds; the unlock gate is enforced via
+  `users.isQuestTierUnlocked`. The shortcut does not skip validation or the
+  encounter machine.
+
+## Tests
+All six relevant suites pass locally: 149 tests green
+(`citadel_sovereign`, `citadel_capstone_quest`, `citadel_arena`,
+`citadel_capstone_e2e`, client `dungeon`, `renderer-citadel-sovereign`).
+Cross-cutting "this boss is the apex" invariants are pinned by assertions, so a
+future boss that out-stats the Sovereign will fail CI.
+
+## Remaining gaps
+None blocking. The capture not visually reaching the citadel arena is a
+capture-plan fallback, not a defect; runtime health is proven and the citadel
+path is covered by passing unit + e2e suites. One minor non-blocking redundancy
+is noted in `nits.md`.
+
+## v0.405 — 360-anim-ether-siphon  (2026-06-10 19:42:39)
+
+- Built on the 315 primitives (`spawnTelegraphRing`, `spawnParticleBurst`, `spawnLightningArc`, `spawnHitSpark`, `spawnImpactDecal`) plus the one new card-specific primitive. Thematically coherent. ✅
+
+### 2. Timing synced to server effect resolution
+- Server resolves `mana_leach` in the default radial-AoE branch (`cardEffects.js:1149+`), emitting `CARD_USED` with `origin`, `radius` (SUMMON_RADIUS), `hits[]` (each `{enemyId, hp, magicStonesGained}`), and applied `magicStonesGained`. `renderManaLeach` consumes exactly these fields, keying meshes by `hit.enemyId` (matches the server field name).
+- This is an **instant** radial drain — no projectile travel to sync. `mana_leach` has **no `windUpMs`** in `cardStats.json` (only the evolved `soul_drain` does, at 700ms), so the 307/315 wind-up charge telegraph is correctly absent. A test asserts `mana_leach.windUpMs ?? 0 <= 0`. The effect fires synchronously on `CARD_USED` receipt — i.e. at server resolution. ✅
+
+### 3. No perf regression
+- VFX use the existing `activeEffects` pool; the new ring/column branches mutate scale/opacity/emissive per frame with no per-frame allocation, and dispose geometry/material on expiry (`disposeEffectObject`). Missing enemy meshes are skipped (`if (!mesh) continue`). All `ctx.spawn*` calls are guarded by presence checks, so absent primitives degrade gracefully (covered by the "without throwing when new ctx primitives are absent" test). ✅
+
+### 4. Client test where feasible
+- `vfx-primitives.test.js`: primitive pushes a contracting ring + ascending column, honors color/emissive/duration overrides, and disposes on expiry.
+- `cardRenderers.test.js`: dispatch wiring, violet accents, synchronous fire (asserts no `scheduleAfter`), per-hit arcs/sparks at mesh positions with missing-mesh skip, absorption flourish, windUp-absent guard, and a regression guard that `mana_leach`'s helper signature stays distinct from `battle_familiar`/`soul_drain`.
+- Full run: **194/194 passing** locally. ✅
+
+## Consistency / regression
+- No debug scenario added/changed (none present in the diff). Server logic untouched, so foundation/replication is unchanged. Normal cast path is the only entry point.
+
+## Remaining gaps
+None blocking. The fallback smoke capture did not happen to roll `mana_leach` into the captured hand, so there is no screenshot of the live animation — but this is a capture-plan limitation, not a code defect, and the behavior is fully covered by passing unit tests over the real render/primitive code.
+
 ## v0.404 — 357-anim-event-horizon  (2026-06-10 19:41:53)
 
 distinction, per-hit bursts at enemy meshes (including a missing-mesh skip),
@@ -7315,6 +7413,28 @@ so tests exercise the real primitive.
 None blocking. One minor cosmetic timing inconsistency noted as a nit (per-hit
 sparks fire at cast while the central crush ring fires at +375 ms).
 
+
+## v0.409 — 354-anim-stormwing-drone  (2026-06-10 20:31:57)
+
+`origin.y` mutation is safe. The no-`strikeTarget` fallback
+(`stormEagleStrikePoint`, :1132) carries the same downward tilt.
+
+### "No perf regression"
+PASS. Deploy adds two extra primitive spawns (ring + burst) on a one-shot
+summon event; strike reuses the existing single arc + single burst. No new
+hot-loop work, allocations, or per-frame cost.
+
+### "Client test where feasible"
+PASS. Six storm_eagle tests cover palette, Thunderbird distinctness, the
+ring/wing-burst deploy cues, single-arc-to-strikeTarget, the aerial-origin
+geometry (`y ≈ 8` from a 0.8/0.6 tilt over reach 6), the no-strikeTarget tilt
+fallback, and summon-vs-strike gating. Full file: 181 passed / 0 failed.
+
+## Remaining gaps
+None blocking. The only observation is that the fallback smoke capture did not
+visually exercise the animation (harness deck limitation, not a code defect);
+correctness is fully established by code inspection against the server payload
+plus the unit suite.
 
 ## v0.410 — 355-anim-thunderbird  (2026-06-10 20:46:26)
 

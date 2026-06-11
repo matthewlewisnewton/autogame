@@ -1,0 +1,15 @@
+Broke the top-level ticket into **3 sub-tickets** in dependency order, matching the sanctum-pulse / thermal-column pattern (VFX primitive → renderer + timing sync → tests). Ether Siphon is an instant radial spell with per-hit MS gain and no `windUpMs`, so all three use **`code`** verification.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/360-anim-ether-siphon/tickets/360-anim-ether-siphon/subtickets/01-ether-siphon-vfx-primitive/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/360-anim-ether-siphon/tickets/360-anim-ether-siphon/subtickets/02-ether-siphon-renderer-timing/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/360-anim-ether-siphon/tickets/360-anim-ether-siphon/subtickets/03-ether-siphon-animation-tests/ticket.md`
+
+**Decomposition summary:**
+
+| # | Focus |
+|---|--------|
+| **01** | New `spawnEtherSiphonEffect` primitive — contracting violet ether ring + wisp column |
+| **02** | `renderManaLeach` polish — instant cast sync, per-hit drain arcs, MS absorption flourish, `main.js` wiring |
+| **03** | Client tests locking timing, per-hit arcs, distinctness from Signal Familiar / Soul Drain |

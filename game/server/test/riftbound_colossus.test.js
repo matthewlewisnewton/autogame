@@ -15,8 +15,10 @@ import { ENEMY_CARD_DROPS, ENEMY_MS_DROPS } from '../config.js';
 
 const START = 2_000_000;
 
-// design.md stage-boss band: every objectiveType-boss def the colossus must
-// strictly out-stat on both hp and attackDamage.
+// design.md stage-boss band: every non-capstone objectiveType-boss def the
+// colossus must strictly out-stat on both hp and attackDamage. The
+// citadel_sovereign capstone is deliberately NOT in this list — it ties the
+// colossus at the 460 HP ceiling and out-damages it.
 const STAGE_BOSS_BAND = [
 	'miniboss',
 	'annex_overseer',
@@ -99,7 +101,7 @@ describe('riftbound_colossus enemy def', () => {
 		}
 	});
 
-	it('strictly out-stats every other stage-boss band def, with hp capped at 460', () => {
+	it('strictly out-stats every non-capstone stage-boss band def, with hp capped at 460', () => {
 		// 500 HP could not be defeated inside the 180s defeatBoss validation
 		// window (design.md), so the cap is a hard ceiling.
 		expect(def.hp).toBeLessThanOrEqual(460);
@@ -118,11 +120,17 @@ describe('riftbound_colossus drop registry', () => {
 		expect(getEnemyCardDrop({ type: 'riftbound_colossus' })).toBe('dungeon_drake');
 	});
 
-	it('drops the highest magic stone value in the table', () => {
+	it('drops the highest magic stone value among non-capstone entries', () => {
 		expect(ENEMY_MS_DROPS.riftbound_colossus).toBe(80);
 		expect(getEnemyMagicStoneDrop({ type: 'riftbound_colossus' })).toBe(80);
 		for (const [type, value] of Object.entries(ENEMY_MS_DROPS)) {
 			if (type === 'riftbound_colossus') continue;
+			if (type === 'citadel_sovereign') {
+				// The citadel capstone now tops the table at 90.
+				expect(value, 'citadel_sovereign tops the table').toBe(90);
+				expect(value).toBeGreaterThan(ENEMY_MS_DROPS.riftbound_colossus);
+				continue;
+			}
 			expect(value, `${type} must drop less than the colossus`).toBeLessThan(80);
 		}
 	});

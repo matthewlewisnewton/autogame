@@ -1,0 +1,12 @@
+Broke ticket **356-anim-gravity-well** into **3 sub-tickets** in dependency order:
+
+1. `/home/matt/workspace/.autogame-worktrees/356-anim-gravity-well/tickets/356-anim-gravity-well/subtickets/01-gravity-well-pull-vfx-primitive/ticket.md`  
+   — Dedicated `spawnGravityWellEffect` primitive (inward-contracting ring, void core, inward particles) + ctx wiring + primitive smoke tests.
+
+2. `/home/matt/workspace/.autogame-worktrees/356-anim-gravity-well/tickets/356-anim-gravity-well/subtickets/02-gravity-well-renderer-timing-sync/ticket.md`  
+   — Rewrite `renderGravityWell` to use the new primitive with instant server-synced pull timing and per-enemy inward streaks.
+
+3. `/home/matt/workspace/.autogame-worktrees/356-anim-gravity-well/tickets/356-anim-gravity-well/subtickets/03-gravity-well-animation-tests/ticket.md`  
+   — Extended `cardRenderers.test.js` coverage for palette, timing, pull arcs, and instant-cast contract.
+
+All three use **Verification: code** (criteria cover primitives, handlers, timing, and structure — not purely on-screen appearance). No existing sub-ticket folders were present to preserve or retire.
