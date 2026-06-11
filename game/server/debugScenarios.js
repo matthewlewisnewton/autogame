@@ -2300,6 +2300,26 @@ function setupSaberGrindMaxDebug({ lobby, state, player, socket, name, spawn }) 
         }
 }
 
+function setupHarvestingScytheCombatDebug({ lobby, state, player, socket, name, spawn }) {
+  // Enter a normal run holding an Ether Scythe (harvesting_scythe) with full HP
+  // and mana so its wide server-driven sweep can be cast immediately against a
+  // nearby enemy. The scythe's server hit geometry is a full 180° cone
+  // (progression.js: attackConeAngle = Math.PI) and an extended range, which the
+  // client now mirrors — this scenario lets that synced sweep be observed
+  // without first earning the reward card. The same state is reachable normally
+  // by acquiring the harvesting_scythe reward card and deploying with it in hand.
+  player.hp = MAX_HP;
+        player.magicStones = MAX_MAGIC_STONES;
+        const scytheCharges = CARD_DEFS.harvesting_scythe.charges;
+        const scytheSlot = player.hand.findIndex(c => c && c.id === 'harvesting_scythe');
+        const scytheCard = { id: 'harvesting_scythe', name: 'Ether Scythe', type: 'weapon', charges: scytheCharges, remainingCharges: scytheCharges, grind: 0 };
+        if (scytheSlot >= 0) {
+          player.hand[scytheSlot].remainingCharges = player.hand[scytheSlot].charges || scytheCharges;
+        } else {
+          player.hand[0] = scytheCard;
+        }
+}
+
 function setupEconomyCardsReadyDebug({ lobby, state, player, socket, name, spawn }) {
   // Enter a normal run with the three economy utility cards (deck_sifter,
         // chrono_trigger, mana_prism) in hand plus an iron_sword filler, full HP
@@ -2890,6 +2910,28 @@ function setupPhaseStalkerCombatDebug({ lobby, state, player, socket, name, spaw
             };
           }
         }
+}
+
+function setupBatteryAutomatonReadyDebug({ lobby, state, player, socket, name, spawn }) {
+  // Battery Automaton deploy QA — full mana and the reward creature in hand.
+        // Reachable by earning the late-run reward card and deploying in combat.
+        player.hp = MAX_HP;
+        player.magicStones = MAX_MAGIC_STONES;
+        if (!player.hand.some(c => c && c.id === 'battery_automaton')) {
+          const replaceSlot = player.hand.findIndex(c => c && c.type !== 'creature');
+          if (replaceSlot >= 0) {
+            player.hand[replaceSlot] = {
+              id: 'battery_automaton',
+              name: 'Battery Automaton',
+              type: 'creature',
+              charges: 1,
+              remainingCharges: 1,
+              magicStoneCost: 50,
+            };
+          }
+        }
+        state.minions = [];
+        state.enemies = [];
 }
 
 function setupLegionMarshalReadyDebug({ lobby, state, player, socket, name, spawn }) {
@@ -4204,6 +4246,31 @@ function setupSoulDrainHealReadyDebug({ lobby, state, player, socket, name, spaw
         drainFar.wanderTarget = { x: drainFar.x, z: drainFar.z };
 }
 
+function setupReapersScytheReadyDebug({ lobby, state, player, socket, name, spawn }) {
+  // Playing phase with Reaper's Scythe (evolved Ether Scythe) in slot 0 at full
+  // Magic Stones and grunts lined along +X for an instant 180° harvest sweep.
+  // The same state is reachable normally by evolving harvesting_scythe; this
+  // only skips the grind.
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  player.rotation = 0;
+  resetCardExerciseCooldowns(player);
+  player.hand[0] = {
+    id: 'reapers_scythe',
+    name: "Reaper's Scythe",
+    type: 'weapon',
+    charges: 4,
+    remainingCharges: 4,
+  };
+  state.enemies = [];
+  for (const dx of [3, 5, 7]) {
+    const e = spawnEnemy(player.x + dx, player.z, 'grunt');
+    e.hp = 120;
+    e.maxHp = 120;
+    e.wanderTarget = { x: e.x, z: e.z };
+  }
+}
+
 function setupWeaponSlashReadyDebug({ lobby, state, player, socket, name, spawn }) {
   // Playing phase with the three distinct-slash blades — Rust-Forged Saber
         // (iron_sword, steely arc), Solar Edge (flame_blade, fiery arc + trail),
@@ -4726,6 +4793,10 @@ const DEBUG_SCENARIO_REGISTRY = {
     enterStandardPlayingDebugScenario(ctx);
     setupSaberGrindMaxDebug(ctx);
   },
+  'harvesting-scythe-combat': (ctx) => {
+    enterStandardPlayingDebugScenario(ctx);
+    setupHarvestingScytheCombatDebug(ctx);
+  },
   'economy-cards-ready': (ctx) => {
     enterStandardPlayingDebugScenario(ctx);
     setupEconomyCardsReadyDebug(ctx);
@@ -4849,6 +4920,10 @@ const DEBUG_SCENARIO_REGISTRY = {
   'phase-stalker-combat': (ctx) => {
     enterStandardPlayingDebugScenario(ctx);
     setupPhaseStalkerCombatDebug(ctx);
+  },
+  'battery-automaton-ready': (ctx) => {
+    enterStandardPlayingDebugScenario(ctx);
+    setupBatteryAutomatonReadyDebug(ctx);
   },
   'legion-marshal-ready': (ctx) => {
     enterStandardPlayingDebugScenario(ctx);
@@ -5051,6 +5126,10 @@ const DEBUG_SCENARIO_REGISTRY = {
   'weapon-slash-ready': (ctx) => {
     enterStandardPlayingDebugScenario(ctx);
     setupWeaponSlashReadyDebug(ctx);
+  },
+  'reapers-scythe-ready': (ctx) => {
+    enterStandardPlayingDebugScenario(ctx);
+    setupReapersScytheReadyDebug(ctx);
   },
   'energy-blade-slash-ready': (ctx) => {
     enterStandardPlayingDebugScenario(ctx);

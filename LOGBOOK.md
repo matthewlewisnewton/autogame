@@ -7750,6 +7750,81 @@ PASS. The change is consistent with `game/docs/design.md`: Chrono Trigger remain
 
 PASS. This ticket did not add or change any `?debugScenario=` shortcut. `metrics.json` also reports no development scenarios used for the capture, so there is no debug-path gating or reachability issue to review for this ticket.
 
+
+## v0.424 — 333-anim-reaper-s-scythe  (2026-06-10 23:50:22)
+
+
+### Timing and server-effect sync
+PASS. The primary sweep fires synchronously on `CARD_USED`, uses `data.attackConeAngle ?? Math.PI` and `data.attackRange ?? ATTACK_RANGE`, and does not call `scheduleAfter` for the primary swing, tethers, or reward flourish. This matches the server-side Reaper's Scythe contract: no positive `windUpMs`, instant cone resolution, kill rewards emitted in the same `CARD_USED` payload as `hpHealed` and `currencyGained`.
+
+### Reap kill-reward visuals
+PASS. Killing hits with live enemy meshes spawn guarded soul tethers back to the cast origin, missing meshes are skipped without throwing, and the harvest flourish is gated on actual positive `currencyGained` or `hpHealed` rather than `specialEffect` alone. Non-killing swings retain only the sweep stack.
+
+### Debug scenarios
+PASS. The added `reapers-scythe-ready` scenario is registered as a debug scenario and the client entry point remains the localhost-only `?debugScenario=...` flow. The scenario only shortcuts setup for QA by placing the evolved card and target enemies after entering a standard playing debug state; the same end-state remains reachable through normal gameplay by evolving `harvesting_scythe` into `reapers_scythe` and deploying with it.
+
+### Design and foundation consistency
+PASS. The implementation stays within the card-animation layer and small debug/test plumbing, preserving the core server-client loop, multiplayer state, movement, and combat foundations described in the design and requirements docs. It uses the existing shared VFX/context primitives rather than adding renderer branches or new gameplay effects.
+
+### Tests and coverage
+PASS with residual unrelated validation noise. `coverage.log` shows the focused client renderer suite passing (`client/test/cardRenderers.test.js`, 229 tests) and the VFX primitives suite passing. The full coverage run has one server failure in `server/test/key-items.test.js` for `flare_beacon` `revealedUntil`; this ticket did not touch key-item code, state snapshots, or that test path, so I do not consider it a Reaper's Scythe blocking gap.
+
+
+## v0.425 — 336-anim-battery-automaton  (2026-06-10 23:52:55)
+
+Battery Automaton now has a card-specific renderer registered for `battery_automaton`, so it no longer falls back to the generic creature summon. The summon uses an amber/gold chassis palette with electric-cyan emissive accents, a mechanical deploy ring, an ascending electric column, and the shared minion summon-in burst. This reads as a battery-powered automaton rather than a plain creature summon.
+
+The timing is aligned with the server-side behavior. The server emits `cardUsed` only after the minion is created, includes `minionId`, and initializes `lastChargePulseAt` at summon time. The client deploy effect fires synchronously with that `cardUsed` event and uses `MINION_SUMMON_IN_MS` rather than a delayed wind-up. Battery Automaton has no card `windUpMs`, projectile travel, impact hit, or DoT requirement to sync. Its ongoing effect is the periodic charge restore; the server advances `lastChargePulseAt` on the same 6s restore cadence, and the client only spawns the charge pulse when that timestamp increases, avoiding a false pulse on first sighting.
+
+The persistent minion mesh is also themed consistently: `MINION_VISUAL.battery_automaton` uses a box chassis with the same amber/cyan palette, while the charge pulse adds a brief electric ring and spark burst at the minion position. Cleanup paths dispose Battery Automaton effects through the shared `activeEffects` lifecycle and prune per-minion pulse state when a minion leaves the snapshot, so there is no obvious effect leak or accumulating stale sync state.
+
+## Design and foundation consistency
+
+The work preserves the documented card-combat model: Battery Automaton remains a creature card that spawns a battlefield ally, and the charge-restore mechanic continues to be server-authoritative. Normal multiplayer, movement, lobby, socket, and 3D-rendering foundations from `requirements.md` are intact in the captured run.
+
+The added `battery-automaton-ready` debug scenario is gated by the existing `?debugScenario=` URL path and server debug-scenario authorization. It sets up mana and a hand card for QA, but the actual deployment still goes through the normal `useCard` socket path; Battery Automaton remains reachable through normal acquisition/deck play as covered by the card acquisition and integration tests.
+
+## Tests and coverage
+
+The recorded vitest run passed: 175 files and 2486 tests. Focused coverage includes renderer dispatch for `battery_automaton`, deploy and charge-pulse VFX primitive lifecycle tests, minion summon mesh behavior, charge-pulse sync, and existing server/integration coverage for Battery Automaton spawning and charge restoration. Coverage is visibility-only; no disabled threshold concern blocks the ticket.
+
+## v0.426 — 332-anim-ether-scythe  (2026-06-11 00:02:39)
+
+### Scope, performance, and integration
+
+PASS. The implementation is narrowly scoped to `game/client/cardRenderers.js`, renderer tests, and a debug scenario registration. The new visual work composes existing primitives (`spawnAttackEffect`, `spawnParticleBurst`, `spawnImpactDecal`) and is guarded for missing optional helpers or missing enemy meshes, so it should degrade cleanly and not introduce broad rendering or performance risk.
+
+### Client test coverage
+
+PASS. `game/client/test/cardRenderers.test.js` covers the scythe theme, server cone/range sync, fallback behavior, sibling blade isolation, hit-wisp behavior, and graceful degradation. The round coverage log shows the full suite passed: 175 test files and 2489 tests.
+
+### Design and foundation consistency
+
+PASS. The change preserves the design document's active card-combat model and the requirements baseline: the game still starts, renders a 3D scene, connects client/server, shows multiplayer state, and accepts synchronized movement in the captured flow. Ether Scythe remains an earnable weapon reward card and no core combat or progression invariant is weakened.
+
+### Debug scenarios
+
+PASS. The added `harvesting-scythe-combat` debug scenario is registered through the existing debug scenario path and remains gated by the existing local/dev `debugScenario` mechanism. It only creates a QA shortcut to a normally reachable state: a player in a normal run with the earnable `harvesting_scythe` in hand. It does not bypass normal `useCard` validation, server hit resolution, net replication, or the client `cardUsed` renderer path.
+
+
+## v0.427 — 331-anim-mana-prism  (2026-06-11 00:22:40)
+
+### Wiring, robustness, and performance
+
+PASS. The new `spawnManaPrismEffect` primitive is threaded through `main.js`, `socketHandlerCtx.js`, and `cardHandlers.js` into the per-card renderer context. The renderer uses a finite group of eight meshes for the cast flourish and a finite six-callback pulse schedule; no intervals, unbounded allocations, or persistent scene objects are introduced. The minimal-context tests also cover graceful no-op behavior when optional primitives are absent.
+
+### Tests and coverage
+
+PASS. The latest coverage run reports `50 passed` test files and `719 passed` tests. `client/test/cardRenderers.test.js` includes targeted assertions for the Mana Prism cast VFX, exact pulse schedule, pulse flourish contents, and missing-primitive graceful degradation. Coverage thresholds were disabled as expected; the relevant changed client renderer behavior is directly covered.
+
+### Design and foundation consistency
+
+PASS. The implementation stays within the documented card-combat model in `game/docs/design.md`: Mana Prism remains a spell/resource effect in the active deck combat system, with no server-client architecture, movement, multiplayer visualization, or foundation requirement regression. The runtime smoke verifies the 3D scene, websocket connection, multiplayer presence, and movement flow remain functional.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=NAME` shortcut. Existing Mana Prism QA shortcuts referenced in sub-ticket handoff material remain pre-existing debug paths, and the captured run used `debugScenario: null`.
+
 ## Remaining gaps
 
 None.

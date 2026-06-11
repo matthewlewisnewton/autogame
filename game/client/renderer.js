@@ -697,6 +697,15 @@ export const MINION_VISUAL = {
 		emissive: 0x38bdf8,
 		emissiveIntensity: 0.45,
 	},
+	battery_automaton: {
+		shape: 'box',
+		width: 0.55,
+		height: 0.7,
+		depth: 0.45,
+		color: 0xfbbf24,
+		emissive: 0x38bdf8,
+		emissiveIntensity: 0.4,
+	},
 };
 
 /**
@@ -4645,6 +4654,140 @@ export function spawnLegionMarshalRallyEffect(origin, radius, style = {}) {
 	);
 }
 
+// Battery Automaton palette — amber/gold chassis with electric cyan sparks.
+export const BATTERY_AUTOMATON_COLOR = 0xfbbf24;
+export const BATTERY_AUTOMATON_EMISSIVE = 0x38bdf8;
+const BATTERY_AUTOMATON_COLUMN_HEIGHT = 2.5;
+const BATTERY_AUTOMATON_COLUMN_OPACITY = 0.75;
+const BATTERY_AUTOMATON_COLUMN_BASE_Y = 0.1;
+const BATTERY_AUTOMATON_EMISSIVE_INTENSITY = 1.5;
+const BATTERY_AUTOMATON_DEFAULT_RADIUS = 1.4;
+const BATTERY_AUTOMATON_CHARGE_PULSE_DURATION = 700;
+const BATTERY_AUTOMATON_CHARGE_BURST_COUNT = 10;
+const BATTERY_AUTOMATON_CHARGE_BURST_SPREAD = 1.6;
+
+/**
+ * Mechanical deploy flourish: expanding amber/gold assembly ring plus a short
+ * rising electric column. Pure additive VFX; no network traffic or state
+ * beyond activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration, radius }
+ */
+export function spawnBatteryAutomatonDeployEffect(origin, style = {}) {
+	const color = style.color ?? BATTERY_AUTOMATON_COLOR;
+	const emissive = style.emissive ?? BATTERY_AUTOMATON_EMISSIVE;
+	const duration = style.duration ?? MINION_SUMMON_IN_MS;
+	const radius = style.radius ?? BATTERY_AUTOMATON_DEFAULT_RADIUS;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const ringGeometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	ringMesh.position.set(origin.x, 0.1, origin.z);
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(0.001);
+	targetScene.add(ringMesh);
+
+	activeEffects.push({
+		mesh: ringMesh,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration,
+		isBatteryAutomatonRing: true,
+		_baseEmissiveIntensity: 1.2,
+		_scene: targetScene,
+	});
+
+	const columnGeometry = new THREE.CylinderGeometry(0.22, 0.42, BATTERY_AUTOMATON_COLUMN_HEIGHT, 16, 1, true);
+	const columnMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: BATTERY_AUTOMATON_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: BATTERY_AUTOMATON_COLUMN_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const columnMesh = new THREE.Mesh(columnGeometry, columnMaterial);
+	columnMesh.scale.y = 0.001;
+	columnMesh.position.set(origin.x, BATTERY_AUTOMATON_COLUMN_BASE_Y, origin.z);
+	targetScene.add(columnMesh);
+
+	activeEffects.push({
+		mesh: columnMesh,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration,
+		isBatteryAutomatonColumn: true,
+		_baseEmissiveIntensity: BATTERY_AUTOMATON_EMISSIVE_INTENSITY,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Brief charge-delivery pulse: quick expanding cyan/amber ring plus an upward
+ * electric spark burst. Pure additive VFX; no network traffic or state beyond
+ * activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration, radius }
+ */
+export function spawnBatteryChargePulseEffect(origin, style = {}) {
+	const color = style.color ?? BATTERY_AUTOMATON_COLOR;
+	const emissive = style.emissive ?? BATTERY_AUTOMATON_EMISSIVE;
+	const duration = style.duration ?? BATTERY_AUTOMATON_CHARGE_PULSE_DURATION;
+	const radius = style.radius ?? 1.0;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const ringGeometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color: emissive,
+		emissive,
+		emissiveIntensity: 1.35,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	ringMesh.position.set(origin.x, 0.12, origin.z);
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(0.001);
+	targetScene.add(ringMesh);
+
+	activeEffects.push({
+		mesh: ringMesh,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration,
+		isBatteryAutomatonRing: true,
+		_baseEmissiveIntensity: 1.35,
+		_scene: targetScene,
+	});
+
+	spawnParticleBurst(
+		{ x: origin.x, y: 0.6, z: origin.z },
+		{
+			color,
+			emissive,
+			count: BATTERY_AUTOMATON_CHARGE_BURST_COUNT,
+			spread: BATTERY_AUTOMATON_CHARGE_BURST_SPREAD,
+			duration,
+		},
+	);
+}
+
 // Sanctum Pulse palette: a coherent holy-gold so the divine "pulse" reads as
 // radiant sacred light, not the accidental green the ring emissive used to be.
 const DIVINE_GRACE_RING_COLOR = 0xfde68a; // warm gold ground ring
@@ -5628,6 +5771,94 @@ export function spawnGlacierRuptureEffect(origin, radius, style = {}) {
 	spawnGlacierRuptureShards(origin, radius, style);
 }
 
+// ── Mana Prism: signature refracting-crystal cast VFX ──
+// A rising, spinning octahedral prism core that throws rainbow dispersion
+// shards outward across the violet→cyan refraction range so the cast reads as
+// light refraction, not a generic summon ring. Bounded one-shot: the whole
+// group tears down through disposeEffectObject when the lifetime ends, so no
+// geometry/material leaks. Animated by the `isManaPrismEffect` branch in
+// updateAttackEffects (no per-frame allocation).
+export const MANA_PRISM_VFX_COLOR = 0xa855f7;
+export const MANA_PRISM_VFX_EMISSIVE = 0x22d3ee;
+export const MANA_PRISM_EFFECT_DURATION = 1000;
+export const MANA_PRISM_SHARD_COUNT = 7;
+const MANA_PRISM_CORE_BASE_Y = 0.5;
+const MANA_PRISM_CORE_RISE = 1.1; // how high the crystal core floats
+const MANA_PRISM_SHARD_SPREAD = 1.6; // how far refracted shards radiate
+
+/**
+ * Spawn the Mana Prism refracting-crystal cast VFX: a bipyramidal (octahedral)
+ * crystal core that rises and spins while N elongated light shards — each tinted
+ * at a different point along the violet→cyan dispersion — radiate outward. Pure
+ * additive VFX: no network traffic, no state beyond activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - { color, emissive, duration }
+ */
+export function spawnManaPrismEffect(origin, style = {}) {
+	const color = style.color ?? MANA_PRISM_VFX_COLOR;
+	const emissive = style.emissive ?? MANA_PRISM_VFX_EMISSIVE;
+	const duration = style.duration ?? MANA_PRISM_EFFECT_DURATION;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+
+	const group = new THREE.Group();
+	group.position.set(origin.x, 0, origin.z);
+
+	// Bipyramidal crystal core — an octahedron reads as a cut prism, distinct
+	// from the flat summon ring. Starts collapsed; the update branch scales it up.
+	const coreGeometry = new THREE.OctahedronGeometry(0.42, 0);
+	const coreMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.3,
+		transparent: true,
+		opacity: 1.0,
+		flatShading: true,
+	});
+	const core = new THREE.Mesh(coreGeometry, coreMaterial);
+	core.position.y = MANA_PRISM_CORE_BASE_Y;
+	core.scale.setScalar(0.001);
+	core.userData.isPrismCore = true;
+	group.add(core);
+
+	// Refracted light shards — thin elongated crystals radiating outward, each
+	// tinted at a different point along the violet→cyan dispersion so the burst
+	// reads as multi-colored light rather than a single flat tint.
+	const violet = new THREE.Color(color);
+	const cyan = new THREE.Color(emissive);
+	for (let s = 0; s < MANA_PRISM_SHARD_COUNT; s += 1) {
+		const angle = (s / MANA_PRISM_SHARD_COUNT) * Math.PI * 2;
+		const hueT = MANA_PRISM_SHARD_COUNT > 1 ? s / (MANA_PRISM_SHARD_COUNT - 1) : 0;
+		const shardColor = violet.clone().lerp(cyan, hueT);
+		const shardEmissive = cyan.clone().lerp(violet, hueT);
+		const geometry = new THREE.OctahedronGeometry(0.12, 0);
+		const material = new THREE.MeshStandardMaterial({
+			color: shardColor,
+			emissive: shardEmissive,
+			emissiveIntensity: 1.1,
+			transparent: true,
+			opacity: 1.0,
+			flatShading: true,
+		});
+		const shard = new THREE.Mesh(geometry, material);
+		shard.scale.set(0.5, 2.4, 0.5); // elongate the octahedron into a light shard
+		shard.userData.scatterDir = { x: Math.cos(angle), z: Math.sin(angle) };
+		shard.userData.angle = angle;
+		shard.position.set(0, MANA_PRISM_CORE_BASE_Y, 0);
+		group.add(shard);
+	}
+
+	if (targetScene) targetScene.add(group);
+
+	activeEffects.push({
+		mesh: group,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration,
+		isManaPrismEffect: true,
+		_scene: targetScene,
+	});
+}
+
 // createSpikeTrapHazardMesh() now lives in ./renderer/minionSync.js (re-exported
 // above); the SPIKE_TRAP_* palette it reuses stays exported from here.
 
@@ -6584,6 +6815,48 @@ export function updateAttackEffects() {
 			continue;
 		}
 
+		// ── Battery Automaton expanding ground ring (deploy / charge pulse) ──
+		if (fx.isBatteryAutomatonRing) {
+			const expandMs = Math.min(SUMMON_EXPAND_MS, fx.duration * 0.55);
+			const expandT = Math.min(elapsed / expandMs, 1.0);
+			const scale = fx.radius * expandT * 2;
+			fx.mesh.scale.setScalar(Math.max(0.001, scale));
+
+			if (elapsed > expandMs) {
+				const fadeRatio = 1.0 - (elapsed - expandMs) / (fx.duration - expandMs);
+				fx.mesh.material.opacity = Math.max(0.01, fadeRatio);
+			}
+			const baseIntensity = fx._baseEmissiveIntensity ?? 1.2;
+			const flicker = 1.0 + 0.3 * Math.sin(elapsed * 0.028);
+			fx.mesh.material.emissiveIntensity = baseIntensity * flicker;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Battery Automaton ascending electric column ──
+		if (fx.isBatteryAutomatonColumn) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.35, 1.0);
+			const s = Math.max(0.001, riseT);
+			fx.mesh.scale.y = s;
+			fx.mesh.position.y = BATTERY_AUTOMATON_COLUMN_BASE_Y + (BATTERY_AUTOMATON_COLUMN_HEIGHT * s) / 2;
+			const fade = Math.max(0.01, BATTERY_AUTOMATON_COLUMN_OPACITY * (1.0 - t));
+			fx.mesh.material.opacity = fade;
+			const baseIntensity = fx._baseEmissiveIntensity ?? BATTERY_AUTOMATON_EMISSIVE_INTENSITY;
+			const flicker = 1.0 + 0.35 * Math.sin(elapsed * 0.03);
+			fx.mesh.material.emissiveIntensity = baseIntensity * flicker * fade;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
 		// ── Ether Siphon ascending violet ether column ──
 		if (fx.isEtherSiphonColumn) {
 			const t = Math.min(elapsed / fx.duration, 1.0);
@@ -6685,6 +6958,38 @@ export function updateAttackEffects() {
 				shard.rotation.z = dir.x * scatterT * 0.4;
 				shard.rotation.x = -dir.z * scatterT * 0.4;
 				if (shard.material) shard.material.opacity = fade;
+			}
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Mana Prism refracting crystal (rise + spin → disperse → fade) ──
+		if (fx.isManaPrismEffect) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.35, 1.0);
+			const scatterT = Math.min(t / 0.45, 1.0);
+			const fade = t < 0.55 ? 1.0 : Math.max(0.01, 1.0 - (t - 0.55) / 0.45);
+			const scatterDist = MANA_PRISM_SHARD_SPREAD * scatterT;
+			for (let c = 0; c < fx.mesh.children.length; c += 1) {
+				const child = fx.mesh.children[c];
+				if (child.userData.isPrismCore) {
+					child.scale.setScalar(Math.max(0.001, riseT));
+					child.position.y = MANA_PRISM_CORE_BASE_Y + MANA_PRISM_CORE_RISE * riseT;
+					child.rotation.y = elapsed * 0.006;
+					child.rotation.x = elapsed * 0.003;
+				} else {
+					const dir = child.userData.scatterDir;
+					child.position.x = dir.x * scatterDist;
+					child.position.z = dir.z * scatterDist;
+					child.position.y = MANA_PRISM_CORE_BASE_Y + MANA_PRISM_CORE_RISE * riseT * 0.7;
+					child.rotation.y = child.userData.angle + elapsed * 0.004;
+					child.rotation.z = elapsed * 0.005;
+				}
+				if (child.material) child.material.opacity = fade;
 			}
 
 			if (elapsed >= fx.duration) {

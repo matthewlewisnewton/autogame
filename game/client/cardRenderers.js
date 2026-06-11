@@ -15,6 +15,7 @@
 //   spawnSummonEffect(origin, radius, styleOrColor?)
 //   spawnLegionMarshalRallyEffect(origin, radius, style?) — undead commander rally ring + column
 //   spawnMinionSummonInEffect(origin, style?) — creature minion summon flourish
+//   spawnBatteryAutomatonDeployEffect(origin, style?) — battery mechanical deploy ring + column
 //   spawnDivineGraceEffect(origin, radius)
 //   spawnEventHorizonEffect(origin, pullRadius, centerRadius, style?)
 //   spawnPurifyingPulseHealRing(origin, radius, options?) — options: { wave, waveCount } stagger one concentric heal wave
@@ -47,6 +48,7 @@ import {
 	ARCHIVE_WYRM_BREATH_TICK_COUNT,
 	ARCHIVE_WYRM_BREATH_TICK_MS,
 	ATTACK_EFFECT_DURATION,
+	ATTACK_RANGE,
 	EVENT_HORIZON_CRUSH_DELAY_MS,
 	MINION_SUMMON_IN_MS,
 	PHOTON_BARRAGE_SWING_DELAY_MS,
@@ -161,7 +163,8 @@ const WEAPON_SLASH_STYLES = {
 		sparkCount: 10,
 		sparkSpread: 1.3,
 	},
-	// Ether Scythe: a wide ghostly sweeping arc with a lingering spectral decal.
+	// Ether Scythe: a wide ghostly ether-green sweep edged in spectral violet,
+	// leaving a lingering spectral decal and reaping soul-wisps off each hit.
 	harvesting_scythe: {
 		color: 0x86efac,
 		emissive: 0x8b5cf6,
@@ -172,6 +175,15 @@ const WEAPON_SLASH_STYLES = {
 		decal: true,
 		sparkCount: 8,
 		sparkSpread: 1.6,
+		// Opt-in: drive the visible sweep from the server's resolved hit geometry
+		// (`data.attackConeAngle` / `data.attackRange`) so the ghostly arc covers
+		// exactly what the server reaps (Math.PI cone for the scythe). Scythe-only;
+		// the other blades keep their authored cones. Falls back to the style
+		// cone/range when the payload omits those fields.
+		syncToServerCone: true,
+		// Opt-in soul-harvest hook: draws ether wisps off each struck enemy,
+		// echoing the card's Magic-Stone-on-hit harvest. Scythe-only.
+		harvestWisps: true,
 	},
 	// Photon Slicer: a near-full cyan spin slice trailing light around the arc.
 	photon_slicer: {
@@ -229,11 +241,24 @@ function renderWeaponSwing(data, ctx) {
 	const color = getAccentHex(data.cardId) ?? style.color;
 	const emissive = style.emissive;
 
+	// When the style opts in, drive the sweep's cone/range from the server's
+	// resolved hit geometry so the arc covers exactly what was reaped; fall back
+	// to the authored style values when the payload omits them. Non-opt-in blades
+	// always render their authored cone/range regardless of payload contents.
+	const coneAngle =
+		style.syncToServerCone && Number.isFinite(data.attackConeAngle)
+			? data.attackConeAngle
+			: style.coneAngle;
+	const range =
+		style.syncToServerCone && Number.isFinite(data.attackRange)
+			? data.attackRange
+			: style.range;
+
 	ctx.spawnAttackEffect(origin, direction, {
 		color,
 		emissive,
-		coneAngle: style.coneAngle,
-		range: style.range,
+		coneAngle,
+		range,
 		fillOpacity: style.fillOpacity,
 		edgeOpacity: style.edgeOpacity,
 	});
@@ -241,7 +266,7 @@ function renderWeaponSwing(data, ctx) {
 	// Optional flame streak chasing the blade's leading edge.
 	if (style.trail && ctx.spawnProjectileTrail) {
 		ctx.spawnProjectileTrail(origin, direction, {
-			range: style.range,
+			range,
 			color,
 			emissive,
 		});
@@ -249,7 +274,7 @@ function renderWeaponSwing(data, ctx) {
 
 	// Spark/ember burst out along the blade's mid-arc reach.
 	if (style.sparkCount && ctx.spawnParticleBurst) {
-		const sparkAt = pointAlong(origin, direction, style.range * 0.6);
+		const sparkAt = pointAlong(origin, direction, range * 0.6);
 		ctx.spawnParticleBurst(sparkAt, {
 			color,
 			emissive,
@@ -260,8 +285,102 @@ function renderWeaponSwing(data, ctx) {
 
 	// Lingering ground decal traced by a wide sweep.
 	if (style.decal && ctx.spawnImpactDecal) {
-		const decalAt = pointAlong(origin, direction, style.range * 0.6);
+		const decalAt = pointAlong(origin, direction, range * 0.6);
 		ctx.spawnImpactDecal(decalAt, { color, emissive });
+	}
+
+	// Soul-harvest: ether-tinted wisps drawn off each struck enemy as its soul
+	// is reaped (mirrors the card's Magic-Stone-on-hit harvest). Opt-in per
+	// style; every optional primitive is guarded so absence is a no-op, and a
+	// hit-free swing simply skips the wisps.
+	if (style.harvestWisps && data.hits?.length && ctx.enemyMeshes && ctx.spawnParticleBurst) {
+		const meshes = ctx.enemyMeshes() || {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh?.position) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			ctx.spawnParticleBurst(pos, { color, emissive, count: 10, spread: 1.1, soulWisp: true });
+		}
+	}
+}
+
+const REAPERS_SCYTHE_COLOR = 0x1e293b;
+const REAPERS_SCYTHE_EMISSIVE = 0xe7e5e4;
+const REAPERS_SCYTHE_EMBER = 0xb45309;
+const REAPERS_SCYTHE_SOUL_GREEN = 0x4ade80;
+const REAPERS_SCYTHE_TETHER_STYLE = { color: REAPERS_SCYTHE_COLOR, emissive: REAPERS_SCYTHE_EMISSIVE };
+const REAPERS_SCYTHE_HARVEST_FLOURISH = { color: REAPERS_SCYTHE_EMBER, emissive: REAPERS_SCYTHE_SOUL_GREEN };
+
+/**
+ * Reaper's Scythe: a wide, dark harvest sweep distinct from the ghostly Ether
+ * Scythe. Honors server-supplied cone geometry so the visible arc matches the
+ * hit volume; composes soul wisps and harvest sparks along the arc. Fires
+ * synchronously on CARD_USED (no windUpMs, no delayed primary swing).
+ */
+function renderReapersScythe(data, ctx) {
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const coneAngle = data.attackConeAngle ?? Math.PI;
+	const range = data.attackRange ?? ATTACK_RANGE;
+	const color = REAPERS_SCYTHE_COLOR;
+	const emissive = REAPERS_SCYTHE_EMISSIVE;
+
+	if (ctx.spawnAttackEffect) {
+		ctx.spawnAttackEffect(origin, direction, {
+			color,
+			emissive,
+			coneAngle,
+			range,
+			fillOpacity: 0.34,
+			edgeOpacity: 0.82,
+		});
+	}
+
+	if (ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, { range, color, emissive });
+	}
+
+	if (ctx.spawnParticleBurst) {
+		const burstAt = pointAlong(origin, direction, range * 0.65);
+		ctx.spawnParticleBurst(burstAt, {
+			color: REAPERS_SCYTHE_EMBER,
+			emissive: REAPERS_SCYTHE_EMISSIVE,
+			count: 10,
+			spread: 1.8,
+		});
+	}
+
+	if (ctx.spawnImpactDecal) {
+		const decalAt = pointAlong(origin, direction, range * 0.55);
+		ctx.spawnImpactDecal(decalAt, { color, emissive });
+	}
+
+	// Kill-reward layer: soul tethers from slain enemies back to the caster.
+	if (data.hits?.length && ctx.spawnLightningArc && ctx.enemyMeshes) {
+		const meshes = ctx.enemyMeshes() || {};
+		for (const hit of data.hits) {
+			if ((hit.hp ?? 1) > 0) continue;
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const enemyPos = { x: mesh.position.x, z: mesh.position.z };
+			if (Number.isFinite(mesh.position.y)) enemyPos.y = mesh.position.y;
+			ctx.spawnLightningArc(enemyPos, origin, REAPERS_SCYTHE_TETHER_STYLE);
+		}
+	}
+
+	// Harvest flourish at the origin when currency or HP was actually gained.
+	const currencyGained = data.currencyGained ?? 0;
+	const hpHealed = data.hpHealed ?? 0;
+	if (currencyGained > 0 || hpHealed > 0) {
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(origin, REAPERS_SCYTHE_HARVEST_FLOURISH);
+		} else if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(origin, {
+				...REAPERS_SCYTHE_HARVEST_FLOURISH,
+				count: 8,
+				spread: 1.2,
+			});
+		}
 	}
 }
 
@@ -1196,6 +1315,36 @@ function renderInfernoPillar(data, ctx) {
 function renderCreatureSummon(data, ctx) {
 	if (!data.minionId || !ctx.spawnMinionSummonInEffect) return;
 	ctx.spawnMinionSummonInEffect(originOf(data), accentSummonStyle(data.cardId));
+}
+
+const BATTERY_AUTOMATON_COLOR = 0xfbbf24;
+const BATTERY_AUTOMATON_EMISSIVE = 0x38bdf8;
+
+/**
+ * Battery Automaton: mechanical deploy ring + electric column composed with the
+ * shared minion summon-in flourish. Fires synchronously on CARD_USED when the
+ * server reports a new minion id — no wind-up delay. Every optional helper is
+ * guarded so missing primitives never throw.
+ */
+function renderBatteryAutomaton(data, ctx) {
+	if (!data.minionId || !ctx.spawnMinionSummonInEffect) return;
+	const origin = originOf(data);
+	const batteryStyle = {
+		color: BATTERY_AUTOMATON_COLOR,
+		emissive: BATTERY_AUTOMATON_EMISSIVE,
+		duration: MINION_SUMMON_IN_MS,
+		radius: 1.4,
+	};
+	if (ctx.spawnBatteryAutomatonDeployEffect) {
+		ctx.spawnBatteryAutomatonDeployEffect(origin, batteryStyle);
+	}
+	ctx.spawnMinionSummonInEffect(origin, {
+		color: BATTERY_AUTOMATON_COLOR,
+		emissive: BATTERY_AUTOMATON_EMISSIVE,
+		radius: 1.1,
+		burstCount: 10,
+		burstSpread: 1.4,
+	});
 }
 
 /**
@@ -2547,19 +2696,56 @@ function renderAstralGuardian(data, ctx) {
 }
 
 /**
- * Mana Prism: utility cast telegraph when `radius` is present; otherwise a
- * summon ring plus crystal burst for the economy placement path.
+ * Mana Prism: on the utility cast path (`radius` present) the bespoke
+ * refracting-crystal VFX is the primary read, with the violet/cyan telegraph
+ * ring and particle burst kept as accents. After the cast flourish a finite,
+ * bounded schedule of stone-emission pulses telegraphs the lingering minion:
+ * one flourish per server `magicStonePulse`, timed off the shared card stats
+ * (`pulseIntervalMs` / `durationSeconds`) so the on-screen rhythm stays in
+ * lockstep with the server `addMagicStones` cadence (6 pulses @ 2000ms over
+ * 12s by default) and cannot silently drift. Otherwise a summon ring plus
+ * crystal burst for the economy placement path.
  */
 function renderManaPrism(data, ctx) {
 	const origin = originOf(data);
 	if (data.radius !== undefined) {
 		const color = MANA_PRISM_COLOR;
 		const emissive = MANA_PRISM_EMISSIVE;
+		ctx.spawnManaPrismEffect?.(origin, { color, emissive });
 		if (ctx.spawnTelegraphRing) {
 			ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
 		}
 		if (ctx.spawnParticleBurst) {
 			ctx.spawnParticleBurst(origin, { color, emissive, count: 12, spread: 1.6 });
+		}
+
+		// Pulse cadence + lifetime come straight from the shared card stats the
+		// server consumes, so the telegraph can never drift from the real
+		// addMagicStones emission timing. Safe fallbacks match cardStats.json.
+		const stats = CARD_DEFS.mana_prism;
+		const interval = stats?.pulseIntervalMs ?? 2000;
+		const durationMs = (stats?.durationSeconds ?? 12) * 1000;
+		const pulses = Math.floor(durationMs / interval);
+		for (let n = 1; n <= pulses; n += 1) {
+			ctx.scheduleAfter?.(interval * n, () => {
+				// Stone-gain flourish: small violet/cyan ring + upward mote burst,
+				// distinct from the wide initial cast flourish above. Guarded so a
+				// minimal ctx (no spawn primitives) no-ops gracefully.
+				if (ctx.spawnTelegraphRing) {
+					ctx.spawnTelegraphRing(origin, 0.9, { color, emissive });
+				}
+				if (ctx.spawnParticleBurst) {
+					// spawnParticleBurst already biases motes upward; swapping
+					// color/emissive vs. the cast flourish keeps each pulse a
+					// distinct cyan-cored stone-gain read.
+					ctx.spawnParticleBurst(origin, {
+						color: emissive,
+						emissive: color,
+						count: 8,
+						spread: 0.8,
+					});
+				}
+			});
 		}
 		return;
 	}
@@ -2637,6 +2823,7 @@ const CARD_RENDERERS = {
 	iron_sword: renderWeaponSwing,
 	flame_blade: renderWeaponSwing,
 	harvesting_scythe: renderWeaponSwing,
+	reapers_scythe: renderReapersScythe,
 	saber_of_light: renderSaberOfLight,
 	photon_slicer: renderReturningDisc,
 	arcane_bolt: renderArcaneBolt,
@@ -2681,6 +2868,7 @@ const CARD_RENDERERS = {
 	ancient_wyrm: [renderArchiveWyrmSummon, renderArchiveWyrmBreath],
 	null_crawler: [renderNullCrawlerSummon, renderPhaseBeam],
 	bulkhead_mauler: renderShockwaveSweep,
+	battery_automaton: renderBatteryAutomaton,
 
 	// Enchantments
 	spike_trap: renderSpikeTrap,
@@ -2698,6 +2886,9 @@ const TYPE_DEFAULT_RENDERERS = {
 
 /** Alias for coverage tests asserting no spell card still uses the generic burst. */
 export const SPELL_TYPE_DEFAULT_RENDERER = TYPE_DEFAULT_RENDERERS.spell;
+
+/** Alias for tests comparing bespoke weapon renderers against the plain cone default. */
+export const WEAPON_TYPE_DEFAULT_RENDERER = TYPE_DEFAULT_RENDERERS.weapon;
 
 /**
  * Return the renderer(s) responsible for the given cardId, accounting for

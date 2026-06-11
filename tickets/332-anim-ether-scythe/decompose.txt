@@ -1,0 +1,13 @@
+Created 2 sub-tickets, in dependency order:
+
+- `/home/matt/workspace/.autogame-worktrees/332-anim-ether-scythe/tickets/332-anim-ether-scythe/subtickets/01-spectral-reaping-theme/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/332-anim-ether-scythe/tickets/332-anim-ether-scythe/subtickets/02-sweep-synced-to-server-cone/ticket.md`
+
+**Decomposition rationale:**
+
+The scope is genuinely narrow — the Ether Scythe is a melee cone weapon (`attackConeAngle: Math.PI`, `damage 12`, Magic-Stone on hit/kill; no projectile, DoT, or `windUpMs`) rendered through the shared `renderWeaponSwing` helper. So I split along the ticket's two stated dimensions:
+
+- **01 — Theme:** Locks in the ethereal soul-reaper look (ghostly green / spectral-violet, lingering decal) and adds an opt-in soul-harvest wisp burst at each struck enemy (reading `data.hits` + `enemyMeshes()`, echoing the Magic-Stone-on-hit economy). Card-scoped via a per-style flag so other blades are untouched.
+- **02 — Timing/geometry sync:** Drives the visible sweep's cone angle and range from the server payload's `attackConeAngle`/`attackRange` (the renderer currently hardcodes 120° vs. the server's 180°), opt-in per card so sibling weapons keep their authored arcs. Confirms the swing fires immediately (no wind-up telegraph, since this card has no `windUpMs`).
+
+Both are **`code`** verification: the criteria assert style values, decal/wisp spawns per hit, server-cone usage, fallbacks, and sibling-blade regression guards — none of which a single happy-path screenshot run could confirm. Each sub-ticket touches only `cardRenderers.js` (this card's style entry + the opt-in hooks in the shared helper) and `cardRenderers.test.js`, staying within the ticket's "this card's renderer + registration + test" scope.

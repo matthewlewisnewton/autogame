@@ -1,0 +1,15 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/332-anim-ether-scythe/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/332-anim-ether-scythe/game/data
+Server listening on port 3000
+Player connected: socket=9E_2FTTHoIlwNrNBAAAB, playerId=ae7ada80-f132-423a-a7de-eba99aa9cce2
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=GamcO-Qpc5g3_lKVAAAD, playerId=bd3e627d-db18-4a8b-a5ab-dc4c4a04bddb
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=eb7a9bca-0d25-4044-87e1-9dc544d377b1 value=20
+Player disconnected: 9E_2FTTHoIlwNrNBAAAB
+Player disconnected: GamcO-Qpc5g3_lKVAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

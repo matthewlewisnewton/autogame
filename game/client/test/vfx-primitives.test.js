@@ -21,11 +21,15 @@ import {
 	spawnEventHorizonEffect,
 	spawnGlacierRuptureEffect,
 	spawnLegionMarshalRallyEffect,
+	spawnBatteryAutomatonDeployEffect,
+	spawnBatteryChargePulseEffect,
+	BATTERY_AUTOMATON_COLOR,
+	BATTERY_AUTOMATON_EMISSIVE,
 	spawnChronoTriggerEffect,
 	updateAttackEffects,
 	getActiveEffects,
 } from '../renderer.js';
-import { ATTACK_EFFECT_DURATION, SUMMON_EFFECT_DURATION } from '../config.js';
+import { ATTACK_EFFECT_DURATION, MINION_SUMMON_IN_MS, SUMMON_EFFECT_DURATION } from '../config.js';
 
 // Each primitive should: add exactly one entry to activeEffects on spawn, and be
 // removed (and its mesh's geometry/material disposed) once updateAttackEffects()
@@ -295,6 +299,105 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before);
 		expect(ringDispose).toHaveBeenCalled();
 		expect(columnDispose).toHaveBeenCalled();
+	});
+
+	it('spawnBatteryAutomatonDeployEffect pushes amber ring + electric column and cleans up', () => {
+		const before = getActiveEffects().length;
+		spawnBatteryAutomatonDeployEffect({ x: 1, z: -2 }, { radius: 1.4 });
+		expect(getActiveEffects().length).toBe(before + 2);
+
+		const effects = getActiveEffects().slice(before);
+		const ring = effects.find((fx) => fx.isBatteryAutomatonRing);
+		const column = effects.find((fx) => fx.isBatteryAutomatonColumn);
+
+		expect(ring).toBeDefined();
+		expect(ring.radius).toBe(1.4);
+		expect(ring.duration).toBe(MINION_SUMMON_IN_MS);
+		expect(ring.mesh.material.color.getHex()).toBe(BATTERY_AUTOMATON_COLOR);
+		expect(ring.mesh.material.emissive.getHex()).toBe(BATTERY_AUTOMATON_EMISSIVE);
+
+		expect(column).toBeDefined();
+		expect(column.isBatteryAutomatonColumn).toBe(true);
+		expect(column.duration).toBe(MINION_SUMMON_IN_MS);
+		expect(column.mesh.material.color.getHex()).toBe(BATTERY_AUTOMATON_COLOR);
+		expect(column.mesh.material.emissive.getHex()).toBe(BATTERY_AUTOMATON_EMISSIVE);
+
+		const ringDispose = vi.spyOn(ring.mesh.geometry, 'dispose');
+		const columnDispose = vi.spyOn(column.mesh.geometry, 'dispose');
+		for (const fx of effects) fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(ringDispose).toHaveBeenCalled();
+		expect(columnDispose).toHaveBeenCalled();
+	});
+
+	it('spawnBatteryAutomatonDeployEffect honors color, emissive, duration, and radius overrides', () => {
+		spawnBatteryAutomatonDeployEffect({ x: 0, z: 0 }, {
+			color: 0x123456,
+			emissive: 0x654321,
+			duration: 900,
+			radius: 1.8,
+		});
+		const effects = getActiveEffects();
+		const ring = effects.find((fx) => fx.isBatteryAutomatonRing);
+		const column = effects.find((fx) => fx.isBatteryAutomatonColumn);
+		expect(ring.radius).toBe(1.8);
+		expect(ring.duration).toBe(900);
+		expect(column.duration).toBe(900);
+		expect(ring.mesh.material.color.getHex()).toBe(0x123456);
+		expect(ring.mesh.material.emissive.getHex()).toBe(0x654321);
+		expect(column.mesh.material.color.getHex()).toBe(0x123456);
+		expect(column.mesh.material.emissive.getHex()).toBe(0x654321);
+	});
+
+	it('spawnBatteryChargePulseEffect pushes cyan/amber pulse ring + upward spark burst and cleans up', () => {
+		const before = getActiveEffects().length;
+		spawnBatteryChargePulseEffect({ x: 2, z: -1 });
+		expect(getActiveEffects().length).toBe(before + 2);
+
+		const effects = getActiveEffects().slice(before);
+		const ring = effects.find((fx) => fx.isBatteryAutomatonRing);
+		const burst = effects.find((fx) => fx.isParticleBurst);
+
+		expect(ring).toBeDefined();
+		expect(ring.radius).toBe(1.0);
+		expect(ring.duration).toBe(700);
+		expect(ring.mesh.material.emissive.getHex()).toBe(BATTERY_AUTOMATON_EMISSIVE);
+
+		expect(burst).toBeDefined();
+		expect(burst.isParticleBurst).toBe(true);
+		expect(burst.duration).toBe(700);
+		expect(burst.mesh.children.length).toBeGreaterThanOrEqual(3);
+		expect(burst.mesh.children[0].material.color.getHex()).toBe(BATTERY_AUTOMATON_COLOR);
+		expect(burst.mesh.children[0].material.emissive.getHex()).toBe(BATTERY_AUTOMATON_EMISSIVE);
+
+		const ringDispose = vi.spyOn(ring.mesh.geometry, 'dispose');
+		const burstDispose = vi.spyOn(burst.mesh.children[0].geometry, 'dispose');
+		for (const fx of effects) fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(ringDispose).toHaveBeenCalled();
+		expect(burstDispose).toHaveBeenCalled();
+	});
+
+	it('spawnBatteryChargePulseEffect honors style.duration and palette overrides', () => {
+		spawnBatteryChargePulseEffect({ x: 0, z: 0 }, {
+			color: 0xabcdef,
+			emissive: 0xfedcba,
+			duration: 800,
+			radius: 1.3,
+		});
+		const effects = getActiveEffects();
+		const ring = effects.find((fx) => fx.isBatteryAutomatonRing);
+		const burst = effects.find((fx) => fx.isParticleBurst);
+		expect(ring.radius).toBe(1.3);
+		expect(ring.duration).toBe(800);
+		expect(ring.mesh.material.emissive.getHex()).toBe(0xfedcba);
+		expect(burst.duration).toBe(800);
+		expect(burst.mesh.children[0].material.color.getHex()).toBe(0xabcdef);
+		expect(burst.mesh.children[0].material.emissive.getHex()).toBe(0xfedcba);
 	});
 
 	it('spawnChronoTriggerEffect pushes staggered time ripples + temporal column with amber/cyan palette', () => {
