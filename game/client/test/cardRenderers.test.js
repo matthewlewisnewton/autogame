@@ -1556,20 +1556,28 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 		return ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
 	}
 
-	it('Alloy Greatblade cleaves a wide slate arc with a large decal and heavy debris', () => {
+	it('Alloy Greatblade cleaves a wide slate arc with metallic trail, large decal, and heavy debris', () => {
 		const ctx = makeCtx();
 		fire('steel_claymore', ctx);
 		const style = swingStyle(ctx);
 		expect(style).toMatchObject({ color: 0x94a3b8, coneAngle: Math.PI / 2.2, range: 7 });
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail).toBeDefined();
+		expect(trail[3]).toMatchObject({ color: 0x94a3b8, emissive: 0x64748b, range: 7 });
 		// Larger-radius decal + high-count debris burst at the strike point (range = 7).
 		const decal = impactDecal(ctx);
 		expect(decal).toBeDefined();
 		expect(decal[1]).toEqual({ x: 7, z: 0 });
-		expect(decal[2]).toMatchObject({ color: 0x94a3b8, radius: 3.2 });
+		expect(decal[2]).toMatchObject({ color: 0x94a3b8, emissive: 0x64748b, radius: 3.2 });
 		const burst = debrisBurst(ctx);
 		expect(burst).toBeDefined();
 		expect(burst[1]).toEqual({ x: 7, z: 0 });
-		expect(burst[2]).toMatchObject({ color: 0x94a3b8, count: 18 });
+		expect(burst[2]).toMatchObject({
+			color: 0x94a3b8,
+			emissive: 0x64748b,
+			count: 18,
+			spread: 2.4,
+		});
 	});
 
 	it('Corebreaker Greatsword erupts a wide magma swing with the biggest decal/debris', () => {
@@ -1599,13 +1607,16 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 		expect(debrisBurst(ctx)[2]).toMatchObject({ color: 0xe879f9, count: 20 });
 	});
 
-	it('heavy greatswords (claymore, magma) do not emit photon-only trail or telegraph ring primitives', () => {
-		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
-			const ctx = makeCtx();
-			fire(cardId, ctx);
-			expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
-			expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
-		}
+	it('alloy greatblade emits a metallic trail; magma greatsword does not', () => {
+		const alloyCtx = makeCtx();
+		fire('steel_claymore', alloyCtx);
+		expect(alloyCtx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(true);
+		expect(alloyCtx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+
+		const magmaCtx = makeCtx();
+		fire('magma_greatsword', magmaCtx);
+		expect(magmaCtx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
+		expect(magmaCtx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
 	});
 
 	it('the two heavy greatswords use mutually distinct accent colors and an impact param', () => {

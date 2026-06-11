@@ -399,9 +399,10 @@ const ALLOY_GREATBLADE_STYLE = {
 
 /**
  * Alloy Greatblade swing. Composes the 315 primitives — a wide slate cone
- * cleave plus guarded `spawnImpactDecal` and `spawnParticleBurst` at the strike
- * point — into one weighty, committed blow. Honors `swingCount` and the
- * `photon_barrage` stagger like the other heavy greatswords.
+ * cleave, a metallic streak along the arc, and guarded `spawnImpactDecal` plus
+ * `spawnParticleBurst` metal-shard shower at the strike point — into one
+ * weighty, committed blow. Honors `swingCount` and the `photon_barrage` stagger
+ * like the other heavy greatswords.
  */
 function renderAlloyGreatblade(data, ctx) {
 	const style = ALLOY_GREATBLADE_STYLE;
@@ -411,32 +412,36 @@ function renderAlloyGreatblade(data, ctx) {
 	const emissive = style.emissive;
 	const swingCount = data.swingCount || 1;
 	const delayPerSwing = data.specialEffect === 'photon_barrage' ? PHOTON_BARRAGE_SWING_DELAY_MS : 0;
+	const impactAt = pointAlong(origin, direction, style.range);
 
-	const swing = () => ctx.spawnAttackEffect(origin, direction, {
-		color,
-		emissive,
-		coneAngle: style.coneAngle,
-		range: style.range,
-		fillOpacity: style.fillOpacity,
-		edgeOpacity: style.edgeOpacity,
-	});
+	const swing = () => {
+		ctx.spawnAttackEffect(origin, direction, {
+			color,
+			emissive,
+			coneAngle: style.coneAngle,
+			range: style.range,
+			fillOpacity: style.fillOpacity,
+			edgeOpacity: style.edgeOpacity,
+		});
+		if (ctx.spawnProjectileTrail) {
+			ctx.spawnProjectileTrail(origin, direction, { color, emissive, range: style.range });
+		}
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(impactAt, { color, emissive, radius: style.decalRadius });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(impactAt, {
+				color,
+				emissive,
+				count: style.debrisCount,
+				spread: style.debrisSpread,
+			});
+		}
+	};
 	for (let i = 0; i < swingCount; i++) {
 		const delay = delayPerSwing * i;
 		if (delay > 0) ctx.scheduleAfter(delay, swing);
 		else swing();
-	}
-
-	const impactAt = pointAlong(origin, direction, style.range);
-	if (ctx.spawnImpactDecal) {
-		ctx.spawnImpactDecal(impactAt, { color, emissive, radius: style.decalRadius });
-	}
-	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(impactAt, {
-			color,
-			emissive,
-			count: style.debrisCount,
-			spread: style.debrisSpread,
-		});
 	}
 }
 
