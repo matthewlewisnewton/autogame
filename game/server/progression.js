@@ -52,6 +52,7 @@ const {
   firstRoomPosition,
   hubSpawnPosition,
   pickFloorSpawnPosition,
+  pickRoomSpawnPosition,
   randomWanderTarget,
   spawnVolatileExplosion,
   clearPlayerCardCommitment,
@@ -2708,12 +2709,7 @@ function spawnCrystals(layout, rng, count) {
       pos = pickFloorSpawnPosition(layout, rng);
     } else {
       const room = roomPool[i % roomPool.length];
-      const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
-      const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
-      pos = {
-        x: room.x + (rng() * 2 - 1) * halfW,
-        z: room.z + (rng() * 2 - 1) * halfD,
-      };
+      pos = pickRoomSpawnPosition(layout, room, rng);
     }
     const id = crypto.randomUUID();
     _gameState.loot.push({
@@ -2729,7 +2725,10 @@ function spawnCrystals(layout, rng, count) {
   }
 }
 
-function randomPositionInRoom(room, rng) {
+function randomPositionInRoom(room, rng, layout = _gameState?.layout) {
+  if (layout) {
+    return pickRoomSpawnPosition(layout, room, rng);
+  }
   const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
   const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
   return {

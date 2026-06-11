@@ -179,6 +179,8 @@ import {
 	spawnAegisSentinelShieldFlourish as rendererSpawnAegisSentinelShieldFlourish,
 	spawnAegisSentinelDeployEffect as rendererSpawnAegisSentinelDeployEffect,
 	spawnBatteryAutomatonDeployEffect as rendererSpawnBatteryAutomatonDeployEffect,
+	spawnBulkheadMaulerDeployEffect as rendererSpawnBulkheadMaulerDeployEffect,
+	spawnBulkheadMaulerShockwaveEffect as rendererSpawnBulkheadMaulerShockwaveEffect,
 	spawnLegionMarshalRallyEffect as rendererSpawnLegionMarshalRallyEffect,
 	markLootCollected as rendererMarkLootCollected,
 	markCardHitEnemies as rendererMarkCardHitEnemies,
@@ -1408,6 +1410,8 @@ const socketHandlerCtx = createSocketHandlerCtx({
 	spawnAegisSentinelShieldFlourish: rendererSpawnAegisSentinelShieldFlourish,
 	spawnAegisSentinelDeployEffect: rendererSpawnAegisSentinelDeployEffect,
 	spawnBatteryAutomatonDeployEffect: rendererSpawnBatteryAutomatonDeployEffect,
+	spawnBulkheadMaulerDeployEffect: rendererSpawnBulkheadMaulerDeployEffect,
+	spawnBulkheadMaulerShockwaveEffect: rendererSpawnBulkheadMaulerShockwaveEffect,
 	spawnLegionMarshalRallyEffect: rendererSpawnLegionMarshalRallyEffect,
 	spawnDivineGraceEffect: rendererSpawnDivineGraceEffect,
 	spawnRestorationBeaconEffect: rendererSpawnRestorationBeaconEffect,
@@ -3665,11 +3669,11 @@ if (registerBtnEl) {
 			});
 			const data = await res.json();
 			if (res.ok) {
-				if (registerErrorEl) {
-					registerErrorEl.textContent = 'Account created — please login';
-					registerErrorEl.style.color = '#4ade80';
-				}
 				showLoginForm();
+				if (loginErrorEl) {
+					loginErrorEl.textContent = 'Account created — please login';
+					loginErrorEl.style.color = '#4ade80';
+				}
 			} else {
 				if (registerErrorEl) registerErrorEl.textContent = data.error || 'Registration failed';
 			}

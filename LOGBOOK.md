@@ -8043,6 +8043,212 @@ PASS. `cardRenderers.test.js` + `vfx-primitives.test.js` run green: **312 tests 
 None blocking. Minor nits recorded in `nits.md`.
 
 
+## v0.438 — 320-anim-rust-forged-saber  (2026-06-11 02:02:50)
+
+`CARD_DEFS.iron_sword.windUpMs` is undefined, that range/cone pass through, that
+spark/decal placement scales with `attackRange` (≈3× at 9 vs 3), and that a
+single swing schedules no delay.
+
+### "No perf regression"
+PASS. Pure VFX composition on a single weapon's render path; no new per-frame
+work, no added allocations in hot loops. Swing count is server-bounded.
+
+### "Client test where feasible"
+PASS. `cardRenderers.test.js` adds renderer-identity assertions
+(`resolveRenderers('iron_sword')[0].name === 'renderRustForgedSaber'`), updated
+the existing styled-slash test to the new rust palette + spark contract, and adds
+a new "iron_sword reach + instant-hit timing" describe block (4 tests). Full
+suite runs green: **292 passed**.
+
+## Remaining gaps
+None blocking. One nit (see `nits.md`): `getAccentHex('iron_sword') ?? style.color`
+is effectively always `style.color` because `iron_sword` has no `CARD_ACCENT_STYLE`
+entry — harmless defensive code, but the accent lookup is dead for this card.
+
+
+## v0.439 — 322-anim-signal-familiar  (2026-06-11 02:07:59)
+
+### "Client test where feasible"
+PASS. Two expanded tests in cardRenderers.test.js cover: the wisp, immediate-vs-scheduled ring
+ordering, distinct increasing ring radii reaching the full AoE radius, the spark burst, and
+per-hit arcs/sparks with correct origin→enemy arg order and y-offset. A second test covers the
+guarded edge cases: missing meshes skipped, empty hits (cast still renders, zero per-hit),
+and missing helper functions (no throw, no per-hit). `npx vitest run client/test/cardRenderers.test.js`
+→ **280 passed**.
+
+## Integration / scope
+- All ctx helpers used by the renderer are really wired in `socketHandlers/cardHandlers.js`
+  (`spawnMinionSummonInEffect`, `spawnLightningArc`, `spawnHitSpark`, `spawnParticleBurst`,
+  `spawnTelegraphRing`, `enemyMeshes`, `scheduleAfter`). No missing-helper risk in production.
+- Diff is tightly scoped to `game/client/cardRenderers.js` + its test (per ticket SCOPE). No
+  server, shared, or other-card renderer changes — no conflict surface with sibling animation beads.
+- No debug scenarios added or changed by this ticket.
+- Consistent with design.md's per-card VFX direction; no regression to requirements foundation.
+
+## Remaining gaps
+None blocking. (See nits.md for optional polish.)
+
+
+## v0.440 — 323-anim-vault-wyrm  (2026-06-11 02:11:27)
+
+unbounded particle growth. No new allocations in hot loops beyond the existing
+pattern. No timers.
+
+### 4. Client test where feasible
+PASS. `cardRenderers.test.js` updated and extended: palette assertions, cone
+duration binding, per-hit ember bursts on tick across multiple enemies, and the
+no-client-timer guarantee. `deck-viewer.test.js` updated for the 🔥 icon. Full
+suite: 277/277 pass.
+
+## Consistency / regressions
+- `renderArchiveWyrmBreath` (ancient_wyrm) is untouched and still keys off
+  `fire_breath` — correct, that is a different card with different server payload.
+- No debug scenarios added or changed.
+- No design.md / requirements.md regressions; this is a cosmetic + timing polish
+  on existing primitives.
+
+## Remaining gaps
+None blocking. One minor doc-accuracy nit (renderer comment says the server emits
+"NO specialEffect" when it actually emits `"burning_breath"`) — filed in nits.md.
+
+
+## v0.441 — Client: registration success message rendered into hidden error field; no auto-login after register  (2026-06-11 02:18:14)
+
+
+### 6. Code quality and tests
+
+**Finding: Met.** Single focused diff (4 lines moved/reordered in `game/client/main.js`). No dead code, no new debug scenarios, no socket/server changes.
+
+Vitest: **303/303 passed** (`coverage.log`). No new unit test for the registration-success path, but existing auth form helpers (`showLoginForm`, `clearAuthForms`) remain covered.
+
+### 7. Debug scenarios
+
+**Finding: N/A.** No `?debugScenario=` or other debug shortcut was added or changed.
+
+## Integration notes
+
+- Sub-ticket `01-show-success-on-login-form` fully addresses the decomposed scope (one sub-ticket for this UI-only fix).
+- Harness round-1 proof confirms the game runs end-to-end but does not visually prove the registration success message; code inspection and handler ordering confirm the fix for the reported repro.
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are satisfied; runtime capture is clean.
+
+
+## v0.442 — 325-anim-bulkhead-mauler  (2026-06-11 02:18:48)
+
+  normal gameplay never invokes `setupBulkheadMaulerReadyDebug`.
+- Normal path intact: the scenario only tops up hp/mana and inserts the reward
+  creature into hand; `bulkhead_mauler` is `acquisition:"reward", rewardOrder:13`,
+  earnable in normal play, and the actual deploy still goes through
+  `executeUseCard` (server validation, minion spawn, net replication unchanged).
+- No invariant short-circuit: it stocks the hand and clears the stage; it does
+  not bypass cost/validation.
+
+## Consistency with design / foundation
+Uses the 315 shared primitives (`spawnMinionSummonInEffect`, `spawnParticleBurst`,
+`spawnHitSpark`) and the 316-319 per-card registration pattern (Battery Automaton
+is the structural sibling). Scope stayed within this card: cardRenderers.js (its
+fns + registration), renderer.js (its two primitives), the ctx wiring, the
+`enemySync` fallback entry for this minion only, and a debug scenario. No other
+card's renderer was touched.
+
+## Remaining gaps
+None blocking. One minor nit recorded in nits.md (overlapping per-hit spark
+sources on the shockwave). It does not affect correctness or the verdict.
+
+
+## v0.443 — Shared: sampleFloorY missing null-layout guard and floorCorners fallback (crashes client prediction AND server tick)  (2026-06-11 02:22:26)
+
+## Design & regression check
+
+- **design.md:** Floor geometry section documents `sampleFloorY()` as the canonical walkable-surface height function in `shared/floorSampling.esm.js`. The fix hardens that function without changing its contract for valid layouts.
+- **requirements.md / foundation:** No regressions observed. Change is defensive only; no gameplay, networking, or persistence behavior altered for normal runs.
+- **Integration:** Open-plaza platform precedence, room bilinear interpolation, and `resolveFloorY` null-coalescing remain consistent. Server tick and client prediction paths that call `sampleFloorY(layout, …)` with a possibly-null `layout` are now safe.
+
+## Debug scenarios
+
+Not applicable — this ticket did not add or modify any `?debugScenario=` shortcuts.
+
+## Code quality
+
+- Minimal, focused diff (one production file + mirrored tests).
+- No dead code, no console errors in capture, no page errors.
+- Naming and fallback style match the existing room-branch pattern.
+
+## Remaining gaps
+
+None. All acceptance criteria are fully and robustly satisfied; the captured run proves the game is healthy.
+
+
+## v0.444 — Client: extract a booth module factory — boothDeck.js and boothShop.js are line-for-line copy-paste  (2026-06-11 02:47:45)
+
+
+## Code quality
+
+- Factory is small, focused, and testable (no `window`/`socket` in the core logic beyond the listener registration guard).
+- `renderDepKey` dynamic lookup is a reasonable way to parameterize the render callback without changing the deps object shape expected by `main.js`.
+- No dead code or obvious bugs introduced.
+- New `boothCommon.test.js` provides meaningful coverage of the extracted abstraction.
+
+## Debug hooks (`?booth=`)
+
+This ticket refactored existing `?booth=` URL shortcuts; it did not add new `?debugScenario=` entries.
+
+- **Deck/shop:** Still gated to localhost loopback hosts via `DEBUG_BOOTH_ALLOWED_HOSTS` inside the factory. Normal gameplay reaches deck/shop through hub booth interaction (`booth:action` events).
+- **Launch:** `?booth=launch` auto-ready on lobby join (in `lobbyBrowserHandlers.js`) is unchanged from baseline — pre-existing harness convenience, not weakened by this refactor.
+- **Quest:** `getBoothDebugHook` re-export path updated only; quest panel reveal via booth interaction is unchanged.
+
+## Remaining gaps
+
+None. All acceptance criteria are fully met; runtime capture is clean.
+
+
+## v0.445 — Server: multi-swing weapons re-hit same-tick corpses and farm magicStoneOnHit before cleanup  (2026-06-11 03:03:48)
+
+## Debug scenarios
+
+No new or modified `?debugScenario=` shortcuts in this ticket. Nothing to gate-check.
+
+---
+
+## Code quality
+
+- **Scope:** Minimal — two `continue` guards plus focused regression tests. No dead code or unrelated churn.
+- **Integration:** `cardEffects.js` `swingsPerUse` loop unchanged (correct per sub-ticket spec); fix lives at the collector layer where chain-lightning already rejected corpses.
+- **Risk:** Low. Guards are idempotent for living enemies and align with `damageEnemy` / `cleanupAfterDamage` lifecycle.
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are satisfied; runtime capture is clean; tests pass.
+
+---
+
+## v0.446 — Client: hoist per-frame allocations in renderer animate() (Object.entries, Sets, template strings)  (2026-06-11 03:14:53)
+
+- `cosmeticRef` is set on avatar creation/rebuild; `applyLoadedModelCosmetic` still runs every frame for proportion morphs (intentional — proportions are outside `cosmeticSignature`).
+- No debug scenarios added or modified; debug-scenario gating not applicable.
+
+## Sub-ticket integration
+
+All four decomposed sub-tickets are present in the commit history and map cleanly to the changed files:
+
+| Sub-ticket | Files |
+|------------|-------|
+| 01 enemy/minion ID Sets | `enemySync.js`, `minionSync.js` |
+| 02 Object.keys player loops | `playerSync.js`, `renderer.js` (`syncPhaseStepAllyHighlight`) |
+| 03 cosmetic cache + status scratch | `playerSync.js` |
+| 04 damage-number Vector3 | `renderer.js` |
+
+No integration gaps between sub-tickets.
+
+## Remaining gaps
+
+None.
+
+
 ## v0.447 — Client: convert updateAttackEffects 330-line boolean-flag dispatch chain to per-effect updaters  (2026-06-11 03:44:25)
 
 ### "adding a new effect requires only registering an updater"

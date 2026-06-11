@@ -34,11 +34,4 @@ export function isLaunchBoothAction(detail) {
 	return !!(detail && detail.boothId === LAUNCH_BOOTH_ID);
 }
 
-/**
- * Parse the `?booth=` debug hook from a location query string.
- * @param {string} search - e.g. `window.location.search` ("?booth=launch")
- * @returns {string|null} the `booth` param value, or null when absent
- */
-export function getBoothDebugHook(search) {
-	return new URLSearchParams(search || '').get('booth');
-}
+export { getBoothDebugHook } from './boothCommon.js';

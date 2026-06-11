@@ -1,0 +1,15 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/server-multi-swing-weapons-re-hit-same-tick-corpses-and-farm-hkmg/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/server-multi-swing-weapons-re-hit-same-tick-corpses-and-farm-hkmg/game/data
+Server listening on port 3003
+Player connected: socket=_r3727sDjxjFrH_mAAAB, playerId=eaba57d4-7a48-48b1-84ac-d24c606dca53
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=yw7FgMPfCZ3mDByQAAAD, playerId=f684d228-ee8d-46ff-97a1-ce0e01c72d7f
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=230ac2b3-5916-4aef-bac6-d9af382bf535 value=20
+Player disconnected: _r3727sDjxjFrH_mAAAB
+Player disconnected: yw7FgMPfCZ3mDByQAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

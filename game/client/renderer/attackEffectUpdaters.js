@@ -48,6 +48,9 @@ export const ATTACK_EFFECT_KINDS = {
 	legacyProjectile: 'legacyProjectile',
 	weaponCone: 'weaponCone',
 	rustyShiv: 'rustyShiv',
+	bulkheadMaulerRing: 'bulkheadMaulerRing',
+	bulkheadMaulerColumn: 'bulkheadMaulerColumn',
+	bulkheadMaulerShockwave: 'bulkheadMaulerShockwave',
 };
 
 // Default shaft dims for lightColumn (Divine Grace / telepipe / cleanse); per-effect
@@ -76,6 +79,12 @@ const BATTERY_AUTOMATON_COLUMN_HEIGHT = 2.5;
 const BATTERY_AUTOMATON_COLUMN_BASE_Y = 0.1;
 const BATTERY_AUTOMATON_COLUMN_OPACITY = 0.75;
 const BATTERY_AUTOMATON_EMISSIVE_INTENSITY = 1.5;
+
+const BULKHEAD_MAULER_COLUMN_HEIGHT = 1.4;
+const BULKHEAD_MAULER_COLUMN_BASE_Y = 0.1;
+const BULKHEAD_MAULER_COLUMN_OPACITY = 0.78;
+const BULKHEAD_MAULER_EMISSIVE_INTENSITY = 1.3;
+const BULKHEAD_MAULER_SHOCKWAVE_RANGE = 4;
 
 const CHRONO_TRIGGER_COLUMN_HEIGHT = 1.4;
 const CHRONO_TRIGGER_COLUMN_BASE_Y = 0.1;
@@ -297,6 +306,58 @@ function updateEtherSiphonRing(fx, elapsed) {
 	fx.mesh.scale.setScalar(Math.max(0.001, fx.radius * scaleFactor));
 	const pulse = 0.55 + 0.35 * Math.abs(Math.sin(elapsed / 110));
 	fx.mesh.material.opacity = Math.max(0.01, pulse * (1.0 - t * 0.6));
+}
+
+function updateBulkheadMaulerRing(fx, elapsed) {
+	const expandMs = Math.min(SUMMON_EXPAND_MS, fx.duration * 0.55);
+	const expandT = Math.min(elapsed / expandMs, 1.0);
+	const scale = fx.radius * expandT * 2;
+	fx.mesh.scale.setScalar(Math.max(0.001, scale));
+
+	if (elapsed > expandMs) {
+		const fadeRatio = 1.0 - (elapsed - expandMs) / (fx.duration - expandMs);
+		fx.mesh.material.opacity = Math.max(0.01, fadeRatio);
+	}
+	const baseIntensity = fx._baseEmissiveIntensity ?? 1.15;
+	const flicker = 1.0 + 0.22 * Math.sin(elapsed * 0.024);
+	fx.mesh.material.emissiveIntensity = baseIntensity * flicker;
+}
+
+function updateBulkheadMaulerColumn(fx, elapsed) {
+	const t = Math.min(elapsed / fx.duration, 1.0);
+	const riseT = Math.min(t / 0.35, 1.0);
+	const s = Math.max(0.001, riseT);
+	fx.mesh.scale.y = s;
+	fx.mesh.position.y = BULKHEAD_MAULER_COLUMN_BASE_Y + (BULKHEAD_MAULER_COLUMN_HEIGHT * s) / 2;
+	const fade = Math.max(0.01, BULKHEAD_MAULER_COLUMN_OPACITY * (1.0 - t));
+	fx.mesh.material.opacity = fade;
+	const baseIntensity = fx._baseEmissiveIntensity ?? BULKHEAD_MAULER_EMISSIVE_INTENSITY;
+	const flicker = 1.0 + 0.28 * Math.sin(elapsed * 0.026);
+	fx.mesh.material.emissiveIntensity = baseIntensity * flicker * fade;
+}
+
+function updateBulkheadMaulerShockwave(fx, elapsed) {
+	const t = Math.min(elapsed / fx.duration, 1.0);
+	const expandT = Math.min(t / 0.32, 1.0);
+	const scale = Math.max(0.001, (fx.range ?? BULKHEAD_MAULER_SHOCKWAVE_RANGE) * 2 * expandT);
+	fx.mesh.scale.setScalar(scale);
+
+	const fadeStart = 0.45;
+	const sustainFade = t < fadeStart
+		? 1.0
+		: Math.max(0.01, 1.0 - (t - fadeStart) / (1.0 - fadeStart));
+	const baseIntensity = fx._baseEmissiveIntensity ?? BULKHEAD_MAULER_EMISSIVE_INTENSITY;
+	const flicker = 1.0 + 0.2 * Math.sin(elapsed * 0.032);
+	for (let c = 0; c < fx.mesh.children.length; c += 1) {
+		const child = fx.mesh.children[c];
+		const baseOpacity = child.userData.baseOpacity ?? 0.5;
+		if (child.material) {
+			child.material.opacity = Math.max(0.01, baseOpacity * sustainFade);
+			if (child.material.emissiveIntensity !== undefined) {
+				child.material.emissiveIntensity = baseIntensity * flicker * sustainFade;
+			}
+		}
+	}
 }
 
 function updateBatteryAutomatonRing(fx, elapsed) {
@@ -784,6 +845,9 @@ export const ATTACK_EFFECT_UPDATERS = {
 	[ATTACK_EFFECT_KINDS.legacyProjectile]: updateLegacyProjectile,
 	[ATTACK_EFFECT_KINDS.weaponCone]: updateWeaponCone,
 	[ATTACK_EFFECT_KINDS.rustyShiv]: updateRustyShiv,
+	[ATTACK_EFFECT_KINDS.bulkheadMaulerRing]: updateBulkheadMaulerRing,
+	[ATTACK_EFFECT_KINDS.bulkheadMaulerColumn]: updateBulkheadMaulerColumn,
+	[ATTACK_EFFECT_KINDS.bulkheadMaulerShockwave]: updateBulkheadMaulerShockwave,
 };
 
 /**

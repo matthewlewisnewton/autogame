@@ -1,0 +1,19 @@
+## Review complete
+
+**Verdict: PASS**
+
+Wrote:
+- [`round-1/review.md`](tickets/client-extract-a-booth-module-factory-boothdeck-js-and-booth-idbm/round-1/review.md)
+- [`round-1/nits.md`](tickets/client-extract-a-booth-module-factory-boothdeck-js-and-booth-idbm/round-1/nits.md) (non-blocking follow-ups)
+- No `gaps.md` (PASS only)
+
+### Summary
+
+**Runtime:** Capture is clean — `metrics.json` has `"ok": true` and empty `pageerrors`; `console.log` has no `pageerror`/`[fatal]` lines. Game reached `playing` with movement and dodge-roll exercised.
+
+**Acceptance criteria:**
+1. **Factory** — `createBoothModule` in `boothCommon.js` backs `boothDeck.js` and `boothShop.js`; `getBoothDebugHook` consolidated for launch/quest re-exports.
+2. **Public API** — All export names and `main.js` imports unchanged.
+3. **Tests** — 329/329 client tests pass, including 7 new `boothCommon.test.js` cases.
+
+**Nits filed (non-blocking):** duplicate `DEBUG_BOOTH_ALLOWED_HOSTS` in `main.js`, stale test describe label in `questBooth.test.js`.

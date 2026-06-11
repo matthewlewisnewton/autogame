@@ -16,6 +16,8 @@ function createCardRenderCtx(ctx) {
 		spawnAegisSentinelShieldFlourish: ctx.spawnAegisSentinelShieldFlourish,
 		spawnAegisSentinelDeployEffect: ctx.spawnAegisSentinelDeployEffect,
 		spawnBatteryAutomatonDeployEffect: ctx.spawnBatteryAutomatonDeployEffect,
+		spawnBulkheadMaulerDeployEffect: ctx.spawnBulkheadMaulerDeployEffect,
+		spawnBulkheadMaulerShockwaveEffect: ctx.spawnBulkheadMaulerShockwaveEffect,
 		spawnLegionMarshalRallyEffect: ctx.spawnLegionMarshalRallyEffect,
 		spawnDivineGraceEffect: ctx.spawnDivineGraceEffect,
 		spawnEventHorizonEffect: ctx.spawnEventHorizonEffect,

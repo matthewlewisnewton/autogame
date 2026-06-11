@@ -18,6 +18,8 @@
 //   spawnAegisSentinelShieldFlourish(origin, style?) — caster shield wrap at cast time
 //   spawnAegisSentinelDeployEffect(origin, style?) — shield-wall deploy ward ring + wall
 //   spawnBatteryAutomatonDeployEffect(origin, style?) — battery mechanical deploy ring + column
+//   spawnBulkheadMaulerDeployEffect(origin, style?) — heavy stone construct deploy ring + column
+//   spawnBulkheadMaulerShockwaveEffect(origin, direction, style?) — heavy stone shockwave wedge + foot debris
 //   spawnDivineGraceEffect(origin, radius)
 //   spawnEventHorizonEffect(origin, pullRadius, centerRadius, style?)
 //   spawnPurifyingPulseHealRing(origin, radius, options?) — options: { wave, waveCount } stagger one concentric heal wave
@@ -157,17 +159,6 @@ function renderConeSwings(data, ctx) {
  * composed primitives.
  */
 const WEAPON_SLASH_STYLES = {
-	// Rust-Forged Saber: a tight, steely arc — a quick clean cut with a few sparks.
-	iron_sword: {
-		color: 0x94a3b8,
-		emissive: 0x64748b,
-		coneAngle: Math.PI / 5,
-		range: 4,
-		fillOpacity: 0.42,
-		edgeOpacity: 0.85,
-		sparkCount: 6,
-		sparkSpread: 0.7,
-	},
 	// Ether Scythe: a wide ghostly ether-green sweep edged in spectral violet,
 	// leaving a lingering spectral decal and reaping soul-wisps off each hit.
 	harvesting_scythe: {
@@ -306,6 +297,70 @@ function renderWeaponSwing(data, ctx) {
 			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
 			ctx.spawnParticleBurst(pos, { color, emissive, count: 10, spread: 1.1, soulWisp: true });
 		}
+	}
+}
+
+/** Rust-Forged Saber: weathered iron body with oxidized rust emissive accents. */
+const RUST_FORGED_SABER_STYLE = {
+	color: 0x78716c,
+	emissive: 0xb45309,
+	coneAngle: Math.PI / 5,
+	range: 4,
+	fillOpacity: 0.42,
+	edgeOpacity: 0.85,
+	sparkCount: 6,
+	sparkSpread: 0.7,
+	decalRadius: 1.1,
+};
+
+/**
+ * Rust-Forged Saber swing. Composes the 315 primitives — a tight saber slash
+ * arc in warm rust-steel tones plus a metallic spark/rust-flake burst along the
+ * cut — into one weathered forged-blade blow. No projectile trail (that reads
+ * as fire/energy). Optional scored-metal ground mark at the strike point.
+ * Falls through to the uniform hit-flash / sound / shockwave post-effects in
+ * `renderCardUsed`. Each ctx call is guarded so the swing degrades gracefully
+ * when a primitive is absent.
+ */
+function renderRustForgedSaber(data, ctx) {
+	const style = RUST_FORGED_SABER_STYLE;
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex('iron_sword') ?? style.color;
+	const emissive = style.emissive;
+	const swingCount = data.swingCount || 1;
+	const range = Number.isFinite(data.attackRange) ? data.attackRange : style.range;
+	const coneAngle = Number.isFinite(data.attackConeAngle) ? data.attackConeAngle : style.coneAngle;
+	const impactAt = pointAlong(origin, direction, range);
+
+	const swing = () => {
+		if (ctx.spawnAttackEffect) {
+			ctx.spawnAttackEffect(origin, direction, {
+				color,
+				emissive,
+				coneAngle,
+				range,
+				fillOpacity: style.fillOpacity,
+				edgeOpacity: style.edgeOpacity,
+			});
+		}
+		if (ctx.spawnParticleBurst) {
+			const sparkAt = pointAlong(origin, direction, range * 0.6);
+			ctx.spawnParticleBurst(sparkAt, {
+				color,
+				emissive,
+				count: style.sparkCount,
+				spread: style.sparkSpread,
+			});
+		}
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(impactAt, { color, emissive, radius: style.decalRadius });
+		}
+	};
+	for (let i = 0; i < swingCount; i++) {
+		const delay = i * PHOTON_BARRAGE_SWING_DELAY_MS;
+		if (delay > 0 && ctx.scheduleAfter) ctx.scheduleAfter(delay, swing);
+		else swing();
 	}
 }
 
@@ -1563,6 +1618,8 @@ function renderCreatureSummon(data, ctx) {
 
 const BATTERY_AUTOMATON_COLOR = 0xfbbf24;
 const BATTERY_AUTOMATON_EMISSIVE = 0x38bdf8;
+const BULKHEAD_MAULER_COLOR = 0x78716c;
+const BULKHEAD_MAULER_EMISSIVE = 0xf59e0b;
 const AEGIS_SENTINEL_COLOR = 0x4ade80;
 const AEGIS_SENTINEL_EMISSIVE = 0x22c55e;
 const AEGIS_SENTINEL_GOLD = 0xfbbf24;
@@ -1625,6 +1682,34 @@ function renderBatteryAutomaton(data, ctx) {
 	ctx.spawnMinionSummonInEffect(origin, {
 		color: BATTERY_AUTOMATON_COLOR,
 		emissive: BATTERY_AUTOMATON_EMISSIVE,
+		radius: 1.1,
+		burstCount: 10,
+		burstSpread: 1.4,
+	});
+}
+
+/**
+ * Bulkhead Mauler: heavy stone construct deploy ring + rising slab composed with
+ * the shared minion summon-in flourish. Fires synchronously on CARD_USED when
+ * the server reports a new minion id — no wind-up delay. Every optional helper
+ * is guarded so missing primitives never throw.
+ */
+function renderBulkheadMaulerSummon(data, ctx) {
+	if (!data.minionId || data.direction) return;
+	if (!ctx.spawnMinionSummonInEffect) return;
+	const origin = originOf(data);
+	const bulkheadStyle = {
+		color: BULKHEAD_MAULER_COLOR,
+		emissive: BULKHEAD_MAULER_EMISSIVE,
+		duration: MINION_SUMMON_IN_MS,
+		radius: 1.4,
+	};
+	if (ctx.spawnBulkheadMaulerDeployEffect) {
+		ctx.spawnBulkheadMaulerDeployEffect(origin, bulkheadStyle);
+	}
+	ctx.spawnMinionSummonInEffect(origin, {
+		color: BULKHEAD_MAULER_COLOR,
+		emissive: BULKHEAD_MAULER_EMISSIVE,
 		radius: 1.1,
 		burstCount: 10,
 		burstSpread: 1.4,
@@ -1741,6 +1826,10 @@ const THUNDERBIRD_CHAIN_HOP_DELAY_MS = 100;
 const STORM_EAGLE_ARC_STYLE = { color: 0x67e8f9, emissive: 0x22d3ee };
 const ARCANE_FAMILIAR_COLOR = 0x818cf8;
 const ARCANE_FAMILIAR_EMISSIVE = 0x6366f1;
+// Concentric "signal" broadcast ping rings, as fractions of the AoE radius
+// (inner → outer), staggered by this cadence for a radar/sonar read.
+const SIGNAL_FAMILIAR_PING_FRACTIONS = [0.5, 0.75, 1.0];
+const SIGNAL_FAMILIAR_PING_DELAY_MS = 110;
 const MANA_LEACH_COLOR = 0xa855f7;
 const MANA_LEACH_EMISSIVE = 0x9333ea;
 const SOUL_DRAIN_COLOR = 0xe879f9;
@@ -1829,18 +1918,69 @@ function renderChainLightningArcs(data, ctx) {
 }
 
 /**
- * Signal Familiar: indigo arcane telegraph and spark burst at the cast origin.
+ * Signal Familiar: an indigo arcane familiar wisp materializes at the cast
+ * origin and emits concentric "signal" broadcast ping rings (radar/sonar feel)
+ * outward to the AoE radius. Instant cast — the first ping fires immediately at
+ * the origin and the remaining rings are merely staggered for cadence (no
+ * wind-up / projectile travel), matching the server's instant resolution.
  */
 function renderBattleFamiliar(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
 	const color = getAccentHex(data.cardId) ?? ARCANE_FAMILIAR_COLOR;
 	const emissive = ARCANE_FAMILIAR_EMISSIVE;
-	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	const style = { color, emissive };
+
+	// Familiar wisp answering the signal — a transient summon-style flourish,
+	// distinct from the generic spark burst below.
+	if (ctx.spawnMinionSummonInEffect) {
+		ctx.spawnMinionSummonInEffect(origin, {
+			color,
+			emissive,
+			radius: 1.1,
+			burstCount: 12,
+			burstSpread: 1.6,
+		});
 	}
+
+	// Concentric broadcast ping rings expanding to the AoE radius. The inner
+	// ring fires at cast time; outer rings are staggered for a sonar cadence.
+	if (ctx.spawnTelegraphRing) {
+		const pingRing = (fraction) =>
+			ctx.spawnTelegraphRing(origin, data.radius * fraction, style);
+		SIGNAL_FAMILIAR_PING_FRACTIONS.forEach((fraction, i) => {
+			if (i === 0 || !ctx.scheduleAfter) {
+				pingRing(fraction);
+			} else {
+				ctx.scheduleAfter(SIGNAL_FAMILIAR_PING_DELAY_MS * i, () => pingRing(fraction));
+			}
+		});
+	}
+
 	if (ctx.spawnParticleBurst) {
 		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.0 });
+	}
+
+	// Per-hit signal delivery: for every struck enemy with a live mesh, the
+	// familiar fires a signal arc OUT from the cast origin to the target plus a
+	// spark at the impact, so on-screen hits line up with the server's instant
+	// radial resolution. Hits whose enemy already despawned have no mesh and are
+	// skipped. Arg order (origin→enemy) is the inverse of Ether Siphon's inward
+	// drain arc, keeping the helper signature distinct.
+	if (data.hits?.length) {
+		const meshes = (ctx.enemyMeshes && ctx.enemyMeshes()) || {};
+		const arcStyle = { color, emissive, duration: ATTACK_EFFECT_DURATION };
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const enemyPos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnLightningArc) {
+				ctx.spawnLightningArc(origin, enemyPos, arcStyle);
+			}
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(enemyPos, { color, emissive, count: 5, spread: 0.55 });
+			}
+		}
 	}
 }
 
@@ -2230,10 +2370,14 @@ function renderWyrmAttack(data, ctx) {
 	if (!data.origin) return;
 	if (data.minionId && !data.breathPhase) return;
 
-	const isFireBreath = data.specialEffect === 'fire_breath';
-	const accentHex = getAccentHex(data.cardId);
-	const color = isFireBreath ? 0xef4444 : (accentHex ?? 0x22c55e);
-	const emissive = isFireBreath ? (accentHex ?? 0x9333ea) : 0x16a34a;
+	// renderWyrmAttack only drives the Vault Wyrm (dungeon_drake), a fire/ember
+	// breather after sub-ticket 01's re-skin. The hot ember palette is therefore
+	// unconditional: the server emits NO `specialEffect` for the Vault Wyrm
+	// breath events, so keying the warm look off it would silently fall back to
+	// the dimmer ember in real play. Color still honors the card accent; the
+	// emissive is the hot ember glow and the bursts stay dense.
+	const color = getAccentHex(data.cardId) ?? 0xfb923c;
+	const emissive = 0xf97316;
 
 	if (data.breathPhase !== 'tick') {
 		const origin = originOf(data);
@@ -2243,9 +2387,11 @@ function renderWyrmAttack(data, ctx) {
 			coneAngle: data.attackConeAngle,
 			color,
 			emissive,
+			// Bind the visible cone lifetime to the server breath window so it
+			// persists for the whole channel rather than a default flash.
 			duration: data.breathDurationMs,
-			fillOpacity: isFireBreath ? 0.38 : 0.48,
-			edgeOpacity: isFireBreath ? 0.72 : 0.85,
+			fillOpacity: 0.38,
+			edgeOpacity: 0.72,
 		});
 		const breathRange = data.attackRange ?? 6;
 		if (ctx.spawnTelegraphRing) {
@@ -2269,8 +2415,8 @@ function renderWyrmAttack(data, ctx) {
 				{
 					color,
 					emissive,
-					count: isFireBreath ? 14 : 10,
-					spread: isFireBreath ? 2.0 : 1.5,
+					count: 14,
+					spread: 2.0,
 				},
 			);
 		}
@@ -2278,6 +2424,14 @@ function renderWyrmAttack(data, ctx) {
 
 	if (!data.hits?.length) return;
 
+	// Per-hit burn visualization. The server pushes a breath event on `start`
+	// and again on every `tick` at its `breathTickMs` cadence, re-applying the
+	// burn DoT to each hit enemy. We emit the ember pulse on EVERY such event —
+	// start AND tick — so each server burn (re)application is visible. There is
+	// deliberately no client-side timer/scheduleAfter: the cadence is driven
+	// entirely by the arriving server start/tick events. Per-event bursts are
+	// bounded (one spark + one ember per hit), so repeated ticks add no
+	// unbounded particle growth.
 	const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
 	for (const hit of data.hits) {
 		const mesh = meshes[hit.enemyId];
@@ -2759,20 +2913,36 @@ function renderPhaseBeam(data, ctx) {
 
 /**
  * Bulkhead Mauler: short wide shockwave cone in front of the construct.
+ * Fires synchronously on CARD_USED when the server reports shockwave_sweep —
+ * no wind-up or deferred timing; VFX matches instant server cone resolution.
  */
-function renderShockwaveSweep(data, ctx) {
-	if (!data.origin) return;
-	const color = getAccentHex(data.cardId) ?? 0x78716c;
-	const emissive = 0xf59e0b;
-	ctx.spawnAttackEffect(originOf(data), directionOf(data), {
+function renderBulkheadMaulerShockwaveSweep(data, ctx) {
+	if (data.specialEffect !== 'shockwave_sweep' || !data.origin) return;
+	if (!data.direction && !(Array.isArray(data.hits) && data.hits.length > 0)) return;
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = BULKHEAD_MAULER_COLOR;
+	const emissive = BULKHEAD_MAULER_EMISSIVE;
+	const shockwaveStyle = {
 		range: data.attackRange,
 		coneAngle: data.attackConeAngle,
 		color,
 		emissive,
-	});
-	// Debris spray kicked up at the construct's feet on impact.
+	};
+	if (ctx.spawnBulkheadMaulerShockwaveEffect) {
+		ctx.spawnBulkheadMaulerShockwaveEffect(origin, direction, shockwaveStyle);
+	}
 	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(originOf(data), { color, emissive, count: 10, spread: 1.6 });
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 10, spread: 1.6 });
+	}
+	const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+	for (const hit of data.hits || []) {
+		const mesh = meshes[hit.enemyId];
+		if (!mesh) continue;
+		const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+		if (ctx.spawnHitSpark) {
+			ctx.spawnHitSpark(pos, { color, emissive, count: 5, spread: 0.55 });
+		}
 	}
 }
 
@@ -3265,7 +3435,7 @@ function renderChronoTrigger(data, ctx) {
 
 const CARD_RENDERERS = {
 	// Weapons
-	iron_sword: renderWeaponSwing,
+	iron_sword: renderRustForgedSaber,
 	flame_blade: renderSolarEdge,
 	harvesting_scythe: renderWeaponSwing,
 	reapers_scythe: renderReapersScythe,
@@ -3312,7 +3482,7 @@ const CARD_RENDERERS = {
 	dungeon_drake: [renderWyrmSummon, renderWyrmAttack],
 	ancient_wyrm: [renderArchiveWyrmSummon, renderArchiveWyrmBreath],
 	null_crawler: [renderNullCrawlerSummon, renderPhaseBeam],
-	bulkhead_mauler: renderShockwaveSweep,
+	bulkhead_mauler: [renderBulkheadMaulerSummon, renderBulkheadMaulerShockwaveSweep],
 	battery_automaton: renderBatteryAutomaton,
 	aegis_sentinel: renderAegisSentinel,
 

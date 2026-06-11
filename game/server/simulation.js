@@ -1084,12 +1084,43 @@ function randomRoomPosition() {
   };
 }
 
+function overlapsFootprint(x, z, { x: cx, z: cz, width, depth }) {
+  const halfW = width / 2;
+  const halfD = depth / 2;
+  return x >= cx - halfW && x <= cx + halfW && z >= cz - halfD && z <= cz + halfD;
+}
+
+function overlapsAnyFootprint(x, z, items) {
+  if (!items || items.length === 0) return false;
+  for (const item of items) {
+    if (overlapsFootprint(x, z, item)) return true;
+  }
+  return false;
+}
+
+/**
+ * True when (x, z) sits on walkable ground floor: no wall/cover collision and no
+ * overlap with raised platforms or pit hazards.
+ */
+function isClearSpawnPoint(layout, x, z, colliders) {
+  if (checkWallCollision(x, z, colliders)) return false;
+  if (overlapsAnyFootprint(x, z, layout.platforms)) return false;
+  if (overlapsAnyFootprint(x, z, layout.hazards)) return false;
+  return true;
+}
+
+function startRoomSpawnFallback(layout) {
+  const startRoom = layout.rooms.find(r => r.role === 'start') || layout.rooms[0];
+  return { x: startRoom.x, z: startRoom.z };
+}
+
 /**
  * Seeded, cover-aware spawn position for single-room / no-role layouts (the
  * open-plaza arena). Samples points inside the walkable plaza floor and rejects
- * any candidate that overlaps a cover piece or wall collider, retrying up to
- * `maxAttempts` before falling back to a known-safe point near the plaza centre
- * (the start-room spawn-clear zone, which generation keeps clear of cover).
+ * any candidate that overlaps a cover piece, wall collider, platform, or hazard,
+ * retrying up to `maxAttempts` before falling back to a known-safe point near
+ * the plaza centre (the start-room spawn-clear zone, which generation keeps clear
+ * of cover, platforms, and hazards).
  *
  * Uses the passed-in seeded `rng` only — never `Math.random()` — so placement is
  * deterministic for a given layout seed. Collision rejection reuses the same
@@ -1105,14 +1136,35 @@ function pickFloorSpawnPosition(layout, rng, { maxAttempts = 24 } = {}) {
   for (let i = 0; i < maxAttempts; i++) {
     const x = startRoom.x + (rng() * 2 - 1) * halfW;
     const z = startRoom.z + (rng() * 2 - 1) * halfD;
-    if (!checkWallCollision(x, z, colliders)) {
+    if (isClearSpawnPoint(layout, x, z, colliders)) {
       return { x, z };
     }
   }
 
   // Exhausted attempts: the plaza centre / start-room spawn-clear zone is kept
   // free of cover at generation time, so it is a known-safe landing point.
-  return { x: startRoom.x, z: startRoom.z };
+  return startRoomSpawnFallback(layout);
+}
+
+/**
+ * Seeded spawn position inside a specific room, rejecting candidates that overlap
+ * walls/cover, platforms, or hazards. Falls back to the start-room spawn-clear
+ * zone when every attempt in the room collides.
+ */
+function pickRoomSpawnPosition(layout, room, rng, { maxAttempts = 24 } = {}) {
+  const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
+  const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
+  const colliders = buildWallColliders(layout);
+
+  for (let i = 0; i < maxAttempts; i++) {
+    const x = room.x + (rng() * 2 - 1) * halfW;
+    const z = room.z + (rng() * 2 - 1) * halfD;
+    if (isClearSpawnPoint(layout, x, z, colliders)) {
+      return { x, z };
+    }
+  }
+
+  return startRoomSpawnFallback(layout);
 }
 
 /**
@@ -1703,6 +1755,8 @@ function collectConeHits(originX, originZ, dirX, dirZ, range, coneAngle, damage,
   const halfCos = Math.cos(coneAngle / 2);
 
   for (const enemy of _gameState.enemies) {
+    if (enemy.hp <= 0) continue;
+
     const dx = enemy.x - originX;
     const dy = getEntityWorldY(enemy) - originY;
     const dz = enemy.z - originZ;
@@ -1739,6 +1793,8 @@ function collectRadialHits(originX, originY, originZ, radius, damage, options = 
   const oy = resolveAoeOriginY(originX, originY, originZ);
 
   for (const enemy of _gameState.enemies) {
+    if (enemy.hp <= 0) continue;
+
     const dist = sphericalDistanceToEntity(originX, oy, originZ, enemy);
     if (dist > radius) continue;
 
@@ -3937,6 +3993,8 @@ module.exports = {
   firstRoomPosition,
   randomRoomPosition,
   pickFloorSpawnPosition,
+  pickRoomSpawnPosition,
+  isClearSpawnPoint,
   clampToDungeon,
   nearbySpawnPosition,
   randomWanderTarget,

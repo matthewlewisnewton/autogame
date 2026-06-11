@@ -2945,6 +2945,28 @@ function setupBatteryAutomatonReadyDebug({ lobby, state, player, socket, name, s
         state.enemies = [];
 }
 
+function setupBulkheadMaulerReadyDebug({ lobby, state, player, socket, name, spawn }) {
+  // Bulkhead Mauler deploy QA — full mana and the reward creature in hand.
+        // Reachable by earning the late-run reward card and deploying in combat.
+        player.hp = MAX_HP;
+        player.magicStones = MAX_MAGIC_STONES;
+        if (!player.hand.some(c => c && c.id === 'bulkhead_mauler')) {
+          const replaceSlot = player.hand.findIndex(c => c && c.type !== 'creature');
+          if (replaceSlot >= 0) {
+            player.hand[replaceSlot] = {
+              id: 'bulkhead_mauler',
+              name: 'Bulkhead Mauler',
+              type: 'creature',
+              charges: 1,
+              remainingCharges: 1,
+              magicStoneCost: 10,
+            };
+          }
+        }
+        state.minions = [];
+        state.enemies = [];
+}
+
 function setupLegionMarshalReadyDebug({ lobby, state, player, socket, name, spawn }) {
   // Legion Marshal skeleton-summon QA — full mana and the evolved card in hand
         // after deploy. Reachable by evolving skeleton_knight and deploying in combat.
@@ -4940,6 +4962,10 @@ const DEBUG_SCENARIO_REGISTRY = {
   'battery-automaton-ready': (ctx) => {
     enterStandardPlayingDebugScenario(ctx);
     setupBatteryAutomatonReadyDebug(ctx);
+  },
+  'bulkhead-mauler-ready': (ctx) => {
+    enterStandardPlayingDebugScenario(ctx);
+    setupBulkheadMaulerReadyDebug(ctx);
   },
   'legion-marshal-ready': (ctx) => {
     enterStandardPlayingDebugScenario(ctx);

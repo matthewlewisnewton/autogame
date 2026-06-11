@@ -25,6 +25,10 @@ import {
 	spawnBatteryChargePulseEffect,
 	BATTERY_AUTOMATON_COLOR,
 	BATTERY_AUTOMATON_EMISSIVE,
+	spawnBulkheadMaulerDeployEffect,
+	spawnBulkheadMaulerShockwaveEffect,
+	BULKHEAD_MAULER_COLOR,
+	BULKHEAD_MAULER_EMISSIVE,
 	spawnAegisSentinelShieldFlourish,
 	spawnAegisSentinelDeployEffect,
 	AEGIS_SENTINEL_COLOR,
@@ -519,6 +523,110 @@ describe('shared VFX primitives', () => {
 		expect(ring.duration).toBe(800);
 		expect(ring.mesh.material.emissive.getHex()).toBe(0xfedcba);
 		expect(burst.duration).toBe(800);
+		expect(burst.mesh.children[0].material.color.getHex()).toBe(0xabcdef);
+		expect(burst.mesh.children[0].material.emissive.getHex()).toBe(0xfedcba);
+	});
+
+	it('spawnBulkheadMaulerDeployEffect pushes slate/amber ring + rising column and cleans up', () => {
+		const before = getActiveEffects().length;
+		spawnBulkheadMaulerDeployEffect({ x: 1, z: -2 }, { radius: 1.4 });
+		expect(getActiveEffects().length).toBe(before + 2);
+
+		const effects = getActiveEffects().slice(before);
+		const ring = findEffect(effects, ATTACK_EFFECT_KINDS.bulkheadMaulerRing);
+		const column = findEffect(effects, ATTACK_EFFECT_KINDS.bulkheadMaulerColumn);
+
+		expect(ring).toBeDefined();
+		expect(ring.radius).toBe(1.4);
+		expect(ring.duration).toBe(MINION_SUMMON_IN_MS);
+		expect(ring.mesh.material.color.getHex()).toBe(BULKHEAD_MAULER_COLOR);
+		expect(ring.mesh.material.emissive.getHex()).toBe(BULKHEAD_MAULER_EMISSIVE);
+
+		expect(column).toBeDefined();
+		expect(column.kind).toBe(ATTACK_EFFECT_KINDS.bulkheadMaulerColumn);
+		expect(column.duration).toBe(MINION_SUMMON_IN_MS);
+		expect(column.mesh.material.color.getHex()).toBe(BULKHEAD_MAULER_COLOR);
+		expect(column.mesh.material.emissive.getHex()).toBe(BULKHEAD_MAULER_EMISSIVE);
+
+		const ringDispose = vi.spyOn(ring.mesh.geometry, 'dispose');
+		const columnDispose = vi.spyOn(column.mesh.geometry, 'dispose');
+		for (const fx of effects) fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(ringDispose).toHaveBeenCalled();
+		expect(columnDispose).toHaveBeenCalled();
+	});
+
+	it('spawnBulkheadMaulerDeployEffect honors color, emissive, duration, and radius overrides', () => {
+		spawnBulkheadMaulerDeployEffect({ x: 0, z: 0 }, {
+			color: 0x123456,
+			emissive: 0x654321,
+			duration: 900,
+			radius: 1.8,
+		});
+		const effects = getActiveEffects();
+		const ring = findEffect(effects, ATTACK_EFFECT_KINDS.bulkheadMaulerRing);
+		const column = findEffect(effects, ATTACK_EFFECT_KINDS.bulkheadMaulerColumn);
+		expect(ring.radius).toBe(1.8);
+		expect(ring.duration).toBe(900);
+		expect(column.duration).toBe(900);
+		expect(ring.mesh.material.color.getHex()).toBe(0x123456);
+		expect(ring.mesh.material.emissive.getHex()).toBe(0x654321);
+		expect(column.mesh.material.color.getHex()).toBe(0x123456);
+		expect(column.mesh.material.emissive.getHex()).toBe(0x654321);
+	});
+
+	it('spawnBulkheadMaulerShockwaveEffect pushes expanding wedge + foot debris burst and cleans up', () => {
+		const before = getActiveEffects().length;
+		spawnBulkheadMaulerShockwaveEffect({ x: 1, z: -2 }, { x: 1, z: 0 });
+		expect(getActiveEffects().length).toBe(before + 2);
+
+		const effects = getActiveEffects().slice(before);
+		const shockwave = findEffect(effects, ATTACK_EFFECT_KINDS.bulkheadMaulerShockwave);
+		const burst = findEffect(effects, ATTACK_EFFECT_KINDS.particleBurst);
+
+		expect(shockwave).toBeDefined();
+		expect(shockwave.range).toBe(4);
+		expect(shockwave.coneAngle).toBeCloseTo((Math.PI * 2) / 3);
+		expect(shockwave.duration).toBe(500);
+		expect(shockwave.mesh.children.length).toBeGreaterThanOrEqual(2);
+		expect(shockwave.mesh.children[0].material.color.getHex()).toBe(BULKHEAD_MAULER_COLOR);
+		expect(shockwave.mesh.children[0].material.emissive.getHex()).toBe(BULKHEAD_MAULER_EMISSIVE);
+
+		expect(burst).toBeDefined();
+		expect(burst.kind).toBe(ATTACK_EFFECT_KINDS.particleBurst);
+		expect(burst.duration).toBe(500);
+		expect(burst.mesh.children[0].material.color.getHex()).toBe(BULKHEAD_MAULER_COLOR);
+		expect(burst.mesh.children[0].material.emissive.getHex()).toBe(BULKHEAD_MAULER_EMISSIVE);
+
+		const wedgeDispose = vi.spyOn(shockwave.mesh.children[0].geometry, 'dispose');
+		const burstDispose = vi.spyOn(burst.mesh.children[0].geometry, 'dispose');
+		for (const fx of effects) fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(wedgeDispose).toHaveBeenCalled();
+		expect(burstDispose).toHaveBeenCalled();
+	});
+
+	it('spawnBulkheadMaulerShockwaveEffect honors style overrides', () => {
+		spawnBulkheadMaulerShockwaveEffect({ x: 0, z: 0 }, { x: 0, z: 1 }, {
+			color: 0xabcdef,
+			emissive: 0xfedcba,
+			duration: 600,
+			range: 5,
+			coneAngle: Math.PI / 2,
+		});
+		const effects = getActiveEffects();
+		const shockwave = findEffect(effects, ATTACK_EFFECT_KINDS.bulkheadMaulerShockwave);
+		const burst = findEffect(effects, ATTACK_EFFECT_KINDS.particleBurst);
+		expect(shockwave.range).toBe(5);
+		expect(shockwave.coneAngle).toBeCloseTo(Math.PI / 2);
+		expect(shockwave.duration).toBe(600);
+		expect(shockwave.mesh.children[0].material.color.getHex()).toBe(0xabcdef);
+		expect(shockwave.mesh.children[0].material.emissive.getHex()).toBe(0xfedcba);
+		expect(burst.duration).toBe(600);
 		expect(burst.mesh.children[0].material.color.getHex()).toBe(0xabcdef);
 		expect(burst.mesh.children[0].material.emissive.getHex()).toBe(0xfedcba);
 	});

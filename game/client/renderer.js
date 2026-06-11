@@ -356,6 +356,7 @@ function isCoastingOnSlippery(layout) {
 
 // ── Damage number tracking ──
 const damageNumbers = []; // { element, createdAt, position3d, duration }
+const _damageNumberProjVec = new THREE.Vector3();
 
 // ── Card hit tracking ──
 export const lastCardHitTime = {}; // enemyId → performance.now() of last card hit (read/pruned by enemySync.js)
@@ -3528,7 +3529,6 @@ export function updateDamageNumbers() {
 	if (!camera || !renderer) return;
 
 	const now = performance.now();
-	const vec = new THREE.Vector3();
 
 	for (let i = damageNumbers.length - 1; i >= 0; i--) {
 		const dn = damageNumbers[i];
@@ -3542,12 +3542,12 @@ export function updateDamageNumbers() {
 
 		// Float upward over time
 		const floatOffset = (elapsed / dn.duration) * 1.5;
-		vec.set(dn.position3d.x, dn.position3d.y + floatOffset, dn.position3d.z);
-		vec.project(camera);
+		_damageNumberProjVec.set(dn.position3d.x, dn.position3d.y + floatOffset, dn.position3d.z);
+		_damageNumberProjVec.project(camera);
 
 		// Convert to screen coordinates
-		const sx = (vec.x * 0.5 + 0.5) * window.innerWidth;
-		const sy = (-vec.y * 0.5 + 0.5) * window.innerHeight;
+		const sx = (_damageNumberProjVec.x * 0.5 + 0.5) * window.innerWidth;
+		const sy = (-_damageNumberProjVec.y * 0.5 + 0.5) * window.innerHeight;
 
 		// Fade out in the last half of the lifetime
 		const opacity = elapsed > dn.duration * 0.5
@@ -3555,7 +3555,7 @@ export function updateDamageNumbers() {
 			: 1.0;
 
 		// Hide if behind camera (vec.z > 1)
-		if (vec.z > 1) {
+		if (_damageNumberProjVec.z > 1) {
 			dn.element.style.display = 'none';
 		} else {
 			dn.element.style.display = 'block';
@@ -3833,7 +3833,8 @@ function syncPhaseStepAllyHighlight(gs, myId) {
 		&& me.equippedKeyItemId === 'phase_step'
 	) {
 		let bestDist = Infinity;
-		for (const [id, p] of Object.entries(gs.players)) {
+		for (const id of Object.keys(gs.players)) {
+			const p = gs.players[id];
 			if (id === myId || !p || p.dead || p.extracted) continue;
 			const d = Math.hypot(p.x - me.x, p.z - me.z);
 			if (d <= PHASE_STEP_RANGE && d < bestDist) {
@@ -4808,6 +4809,221 @@ export function spawnBatteryChargePulseEffect(origin, style = {}) {
 			emissive,
 			count: BATTERY_AUTOMATON_CHARGE_BURST_COUNT,
 			spread: BATTERY_AUTOMATON_CHARGE_BURST_SPREAD,
+			duration,
+		},
+	);
+}
+
+// Bulkhead Mauler palette — slate stone chassis with amber forge glow.
+export const BULKHEAD_MAULER_COLOR = 0x78716c;
+export const BULKHEAD_MAULER_EMISSIVE = 0xf59e0b;
+const BULKHEAD_MAULER_COLUMN_HEIGHT = 1.4;
+const BULKHEAD_MAULER_COLUMN_OPACITY = 0.78;
+const BULKHEAD_MAULER_COLUMN_BASE_Y = 0.1;
+const BULKHEAD_MAULER_EMISSIVE_INTENSITY = 1.3;
+const BULKHEAD_MAULER_DEFAULT_RADIUS = 1.4;
+const BULKHEAD_MAULER_SHOCKWAVE_DURATION = 500;
+const BULKHEAD_MAULER_SHOCKWAVE_RANGE = 4;
+const BULKHEAD_MAULER_SHOCKWAVE_CONE_ANGLE = (Math.PI * 2) / 3;
+const BULKHEAD_MAULER_BURST_COUNT = 10;
+const BULKHEAD_MAULER_BURST_SPREAD = 1.6;
+const BULKHEAD_MAULER_SHOCKWAVE_FILL_OPACITY = 0.55;
+const BULKHEAD_MAULER_SHOCKWAVE_EDGE_OPACITY = 0.85;
+
+function createBulkheadMaulerShockwaveWedge(direction, range, coneAngle, style) {
+	const dirAngle = Math.atan2(direction.z, direction.x);
+	const group = new THREE.Group();
+	const color = style.color ?? BULKHEAD_MAULER_COLOR;
+	const emissive = style.emissive ?? BULKHEAD_MAULER_EMISSIVE;
+	const thetaStart = dirAngle - coneAngle / 2;
+
+	const fillMat = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: BULKHEAD_MAULER_EMISSIVE_INTENSITY * 0.85,
+		roughness: 0.92,
+		metalness: 0.12,
+		transparent: true,
+		opacity: BULKHEAD_MAULER_SHOCKWAVE_FILL_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const fill = new THREE.Mesh(
+		new THREE.CircleGeometry(0.5, 32, thetaStart, coneAngle),
+		fillMat,
+	);
+	fill.rotation.x = -Math.PI / 2;
+	fill.position.y = 0.004;
+	fill.userData.baseOpacity = BULKHEAD_MAULER_SHOCKWAVE_FILL_OPACITY;
+	group.add(fill);
+
+	const boundary = new THREE.LineSegments(
+		new THREE.EdgesGeometry(fill.geometry),
+		new THREE.LineBasicMaterial({
+			color: emissive,
+			transparent: true,
+			opacity: BULKHEAD_MAULER_SHOCKWAVE_EDGE_OPACITY,
+			depthWrite: false,
+		}),
+	);
+	boundary.rotation.copy(fill.rotation);
+	boundary.position.y = 0.008;
+	boundary.userData.baseOpacity = BULKHEAD_MAULER_SHOCKWAVE_EDGE_OPACITY;
+	group.add(boundary);
+
+	const rimMat = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: BULKHEAD_MAULER_EMISSIVE_INTENSITY,
+		roughness: 0.88,
+		metalness: 0.18,
+		transparent: true,
+		opacity: 0.35,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const rim = new THREE.Mesh(
+		new THREE.RingGeometry(0.42, 0.5, 32, 1, thetaStart, coneAngle),
+		rimMat,
+	);
+	rim.rotation.x = -Math.PI / 2;
+	rim.position.y = 0.006;
+	rim.userData.baseOpacity = 0.35;
+	group.add(rim);
+
+	group.scale.setScalar(0.001);
+	return group;
+}
+
+/**
+ * Heavy stone construct deploy: expanding slate/amber assembly ring plus a short
+ * rising tapered bulkhead slab. Pure additive VFX; no network traffic or state
+ * beyond activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration, radius }
+ */
+export function spawnBulkheadMaulerDeployEffect(origin, style = {}) {
+	const color = style.color ?? BULKHEAD_MAULER_COLOR;
+	const emissive = style.emissive ?? BULKHEAD_MAULER_EMISSIVE;
+	const duration = style.duration ?? MINION_SUMMON_IN_MS;
+	const radius = style.radius ?? BULKHEAD_MAULER_DEFAULT_RADIUS;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const ringGeometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.15,
+		roughness: 0.9,
+		metalness: 0.1,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	ringMesh.position.set(origin.x, 0.1, origin.z);
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(0.001);
+	targetScene.add(ringMesh);
+
+	activeEffects.push({
+		mesh: ringMesh,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration,
+		kind: ATTACK_EFFECT_KINDS.bulkheadMaulerRing,
+		_baseEmissiveIntensity: 1.15,
+		_scene: targetScene,
+	});
+
+	const columnGeometry = new THREE.CylinderGeometry(
+		0.32,
+		0.48,
+		BULKHEAD_MAULER_COLUMN_HEIGHT,
+		12,
+		1,
+		true,
+	);
+	const columnMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: BULKHEAD_MAULER_EMISSIVE_INTENSITY,
+		roughness: 0.94,
+		metalness: 0.08,
+		transparent: true,
+		opacity: BULKHEAD_MAULER_COLUMN_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const columnMesh = new THREE.Mesh(columnGeometry, columnMaterial);
+	columnMesh.scale.y = 0.001;
+	columnMesh.position.set(origin.x, BULKHEAD_MAULER_COLUMN_BASE_Y, origin.z);
+	targetScene.add(columnMesh);
+
+	activeEffects.push({
+		mesh: columnMesh,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration,
+		kind: ATTACK_EFFECT_KINDS.bulkheadMaulerColumn,
+		_baseEmissiveIntensity: BULKHEAD_MAULER_EMISSIVE_INTENSITY,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Bulkhead Mauler shockwave: a brief ground-hugging stone wedge expanding along
+ * `direction` plus a foot-level debris burst. Instant cone footprint — no
+ * projectile travel implied.
+ * @param {object} origin - { x, z }
+ * @param {object} direction - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration, range, coneAngle }
+ */
+export function spawnBulkheadMaulerShockwaveEffect(origin, direction, style = {}) {
+	const dir = direction || { x: 1, z: 0 };
+	const dirLen = Math.hypot(dir.x, dir.z) || 1;
+	const nx = dir.x / dirLen;
+	const nz = dir.z / dirLen;
+	const range = style.range ?? BULKHEAD_MAULER_SHOCKWAVE_RANGE;
+	const coneAngle = style.coneAngle ?? BULKHEAD_MAULER_SHOCKWAVE_CONE_ANGLE;
+	const color = style.color ?? BULKHEAD_MAULER_COLOR;
+	const emissive = style.emissive ?? BULKHEAD_MAULER_EMISSIVE;
+	const duration = style.duration ?? BULKHEAD_MAULER_SHOCKWAVE_DURATION;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const wedge = createBulkheadMaulerShockwaveWedge(
+		{ x: nx, z: nz },
+		range,
+		coneAngle,
+		{ color, emissive },
+	);
+	wedge.position.set(origin.x, GROUND_OVERLAY_Y, origin.z);
+	targetScene.add(wedge);
+
+	activeEffects.push({
+		mesh: wedge,
+		origin: { x: origin.x, z: origin.z },
+		direction: { x: nx, z: nz },
+		range,
+		coneAngle,
+		createdAt: performance.now(),
+		duration,
+		kind: ATTACK_EFFECT_KINDS.bulkheadMaulerShockwave,
+		_baseEmissiveIntensity: BULKHEAD_MAULER_EMISSIVE_INTENSITY,
+		_scene: targetScene,
+	});
+
+	spawnParticleBurst(
+		{ x: origin.x, y: 0.35, z: origin.z },
+		{
+			color,
+			emissive,
+			count: style.burstCount ?? BULKHEAD_MAULER_BURST_COUNT,
+			spread: style.burstSpread ?? BULKHEAD_MAULER_BURST_SPREAD,
 			duration,
 		},
 	);
