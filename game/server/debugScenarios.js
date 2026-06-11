@@ -27,7 +27,7 @@ const {
   countScriptedEnemiesInQuest,
   countFinalAmbushEnemies,
 } = require('./quests');
-const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS, MEDIC_HEAL_COST } = require('./config');
+const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS, MEDIC_HEAL_COST, RUN_EXHAUSTION_GRACE_MS } = require('./config');
 const CARD_DEFS = require('../shared/cardDefs.json');
 const CARD_STATS = require('../shared/cardStats.json');
 const {
@@ -3090,23 +3090,37 @@ function setupRunFailedDebug({ lobby, state, player, socket, name, spawn }) {
 }
 
 function setupRunExhaustedDebug({ lobby, state, player, socket, name, spawn }) {
+  const battleFamiliar = {
+    id: 'battle_familiar',
+    name: 'Signal Familiar',
+    type: 'spell',
+    charges: 1,
+    remainingCharges: 1,
+    magicStoneCost: CARD_STATS.battle_familiar?.magicStoneCost ?? 50,
+    damage: CARD_STATS.battle_familiar?.damage ?? 44,
+  };
+  const now = Date.now();
   for (const p of Object.values(state.players)) {
-          p.deck = [];
-          p.hand = [];
-          p.desperationDeck = [];
-        }
-        state.enemies = [{
-          id: 'e_remaining',
-          x: player.x + 5,
-          z: player.z,
-          hp: ENEMY_DEFS.grunt.hp,
-          maxHp: ENEMY_DEFS.grunt.hp,
-          state: 'idle',
-          wanderTarget: { x: player.x + 5, z: player.z },
-        }];
-        state.run.objective.totalEnemies = 1;
-        state.run.objective.defeatedEnemies = 0;
-        checkRunTerminalState();
+    if (!p || p.extracted) continue;
+    p.deck = [];
+    p.desperationDeck = [];
+    p.magicStones = 25;
+    p.hand = Array.from({ length: MAX_HAND_SLOTS }, () => null);
+    p.hand[0] = { ...battleFamiliar };
+    p._combatExhaustedSince = now - RUN_EXHAUSTION_GRACE_MS;
+  }
+  state.enemies = [{
+    id: 'e_remaining',
+    x: player.x + 5,
+    z: player.z,
+    hp: ENEMY_DEFS.grunt.hp,
+    maxHp: ENEMY_DEFS.grunt.hp,
+    state: 'idle',
+    wanderTarget: { x: player.x + 5, z: player.z },
+  }];
+  state.run.objective.totalEnemies = 1;
+  state.run.objective.defeatedEnemies = 0;
+  checkRunTerminalState();
 }
 
 function setupCollectPrismsProgressDebugPost({ lobby, state, player, socket, name, spawn }) {
@@ -5331,4 +5345,5 @@ module.exports = {
   syncDebugHooksForScenario,
   applyDebugScenario,
   nudgeDebugBossApproachPlayers,
+  setupRunExhaustedDebug,
 };
