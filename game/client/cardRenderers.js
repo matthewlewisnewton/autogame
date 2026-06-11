@@ -1302,6 +1302,69 @@ function renderSpikeTrap(data, ctx) {
 	if (ctx.spawnTelegraphRing) ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
 }
 
+const CINDER_SNARE_COLOR = 0xf97316; // fiery-orange card accent (#f97316)
+const CINDER_SNARE_EMISSIVE = 0xff3b00; // inferno-red smolder glow
+
+/**
+ * Cinder Snare: a smoldering ember snare dropped on the ground. Fires
+ * synchronously at cast (the card has no windUpMs) — a low fiery ground
+ * coil/ring plus an ember spark burst at the placement origin — then keeps
+ * smoldering with ticking ember pulses. Themed to the card's fiery-orange
+ * accent and visibly distinct from spike_trap's steel/blood-red look.
+ *
+ * The lingering cadence/duration are DERIVED from the server effect stats
+ * (`dotIntervalMs`/`dotTicks`/`ttlMs`/`radius` from getCardDef), not hardcoded,
+ * so the visual stays in sync if the server stats change. Client-only: it adds
+ * no network traffic and no payload changes, and a missing radius/origin is a
+ * no-op. Modeled on renderInfernoPillar's instant-eruption + scheduled-tick
+ * structure; only `ctx.scheduleAfter` (no projectile delay) gates the lingering
+ * smolder, never the initial placement.
+ */
+function renderCinderSnare(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const def = getCardDef('cinder_snare') ?? {};
+	const color = getAccentHex('cinder_snare') ?? CINDER_SNARE_COLOR;
+	const emissive = CINDER_SNARE_EMISSIVE;
+	const dotTicks = def.dotTicks ?? 4;
+	const dotIntervalMs = def.dotIntervalMs ?? 500;
+	const ttlMs = def.ttlMs ?? 30000;
+	const radius = def.radius ?? 2.5;
+
+	// Initial ember snare (t = 0): low fiery coil + ember burst, fired
+	// synchronously at cast. `duration` reflects the snare's full ttlMs so the
+	// lingering smolder lasts as long as the server-side hazard.
+	ctx.spawnInfernoPillarEffect(origin, radius, {
+		color,
+		emissive,
+		dotTicks,
+		dotIntervalMs,
+		duration: ttlMs,
+	});
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 12, spread: 1.8 });
+	}
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(origin, { color, emissive });
+	}
+
+	// Lingering smolder: an ember pulse per DoT tick, aligned to dotIntervalMs,
+	// so the snare reads as a ticking fiery hazard while it persists.
+	for (let tick = 1; tick <= dotTicks; tick += 1) {
+		ctx.scheduleAfter(dotIntervalMs * tick, () => {
+			if (ctx.spawnTelegraphRing) {
+				ctx.spawnTelegraphRing(origin, radius * 0.6, { color, emissive });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(origin, { color, emissive, count: 6, spread: 1.2 });
+			}
+		});
+	}
+}
+
 /**
  * Future self-targeted enchantments: teal ring around the caster. Range is
  * fixed since self-enchantments don't report a radius.
@@ -1554,7 +1617,7 @@ const CARD_RENDERERS = {
 	// Enchantments
 	spike_trap: renderSpikeTrap,
 	mirror_ward: renderMirrorWard,
-	cinder_snare: renderGroundEnchantment,
+	cinder_snare: renderCinderSnare,
 };
 
 // Type-level defaults — used when no card-specific renderer is registered.
