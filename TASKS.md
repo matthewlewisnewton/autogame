@@ -177,4 +177,8 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [405-cleanup-lobby-registry-abandoned-lobbies-are-never-cleaned-up-ghost-ducq](tickets/405-cleanup-lobby-registry-abandoned-lobbies-are-never-cleaned-up-ghost-ducq/)
 - [ ] [405-cleanup-objectives-stage-boss-objective-counter-increments-on-regula-0h2l](tickets/405-cleanup-objectives-stage-boss-objective-counter-increments-on-regula-0h2l/)
 - [ ] [405-cleanup-combat-balance-deck-exhaustion-soft-locks-a-run-no-cards-cas-asyx](tickets/405-cleanup-combat-balance-deck-exhaustion-soft-locks-a-run-no-cards-cas-asyx/)
+- [ ] [406-cleanup-balance-death-spiral-die-with-empty-wallet-and-you-respawn-a-5ysa](tickets/406-cleanup-balance-death-spiral-die-with-empty-wallet-and-you-respawn-a-5ysa/)
+- [ ] [406-cleanup-progression-lv-1-badge-is-hardcoded-formatplayerlevel-always-nrof](tickets/406-cleanup-progression-lv-1-badge-is-hardcoded-formatplayerlevel-always-nrof/)
+- [ ] [406-cleanup-hud-no-status-effect-indicators-for-ember-burn-glacial-slow-gwrd](tickets/406-cleanup-hud-no-status-effect-indicators-for-ember-burn-glacial-slow-gwrd/)
 - [ ] [406-cleanup-hud-objective-line-shows-only-quest-title-for-stage-boss-and-iykh](tickets/406-cleanup-hud-objective-line-shows-only-quest-title-for-stage-boss-and-iykh/)
+- [ ] [407-cleanup-level-settings-money-this-run-and-return-lines-show-em-dash-zcss](tickets/407-cleanup-level-settings-money-this-run-and-return-lines-show-em-dash-zcss/)

@@ -1570,6 +1570,68 @@ describe('Socket Integration — in-run deckUpdate', () => {
 		}));
 	});
 
+	it('emits deckUpdate with refreshed returnRewardsPreview.lootCurrency after currency loot pickup', async () => {
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		const player = testGameState().players[socket._playerId];
+		const earnedBefore = player.currencyEarnedThisRun || 0;
+
+		// Drain deckUpdate events from run start before asserting on loot pickup.
+		await sleep(100);
+
+		const lootValue = 15;
+		testGameState().loot.push({
+			id: 'loot_deck_update_currency',
+			x: player.x,
+			z: player.z,
+			value: lootValue,
+			createdAt: Date.now(),
+		});
+
+		const deckUpdatePromise = waitForEvent(socket, 'deckUpdate');
+		socket.emit('lootPickup', { lootId: 'loot_deck_update_currency' });
+		const deckUpdate = await deckUpdatePromise;
+
+		expect(player.currencyEarnedThisRun).toBe(earnedBefore + lootValue);
+		expect(deckUpdate.returnRewardsPreview).toEqual(expect.objectContaining({
+			lootCurrency: player.currencyEarnedThisRun,
+		}));
+	});
+
+	it('does not emit deckUpdate for magic stone loot pickup', async () => {
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		const player = testGameState().players[socket._playerId];
+		const earnedBefore = player.currencyEarnedThisRun || 0;
+		player.magicStones = 10;
+
+		await sleep(100);
+
+		testGameState().loot.push({
+			id: 'loot_deck_update_ms',
+			x: player.x,
+			z: player.z,
+			value: 20,
+			kind: 'magic_stone',
+			createdAt: Date.now(),
+		});
+
+		let deckUpdateCount = 0;
+		socket.on('deckUpdate', () => { deckUpdateCount += 1; });
+
+		socket.emit('lootPickup', { lootId: 'loot_deck_update_ms' });
+		await sleep(50);
+
+		expect(player.currencyEarnedThisRun || 0).toBe(earnedBefore);
+		expect(deckUpdateCount).toBe(0);
+	});
+
 	it('does not emit in-run deckUpdate to other players in the lobby', async () => {
 		if (socket && socket.connected) socket.disconnect();
 		const { socket1, socket2, lobbyId } = await connectTwoClients(baseUrl);

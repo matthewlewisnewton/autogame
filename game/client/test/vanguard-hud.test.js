@@ -181,7 +181,20 @@ describe('formatCharacterId()', () => {
 });
 
 describe('formatPlayerLevel()', () => {
-	it('returns the placeholder level', () => {
-		expect(formatPlayerLevel()).toBe(1);
+	it('returns the level from the player snapshot', () => {
+		expect(formatPlayerLevel({ level: 3 })).toBe(3);
+		expect(formatPlayerLevel({ level: 1 })).toBe(1);
+	});
+
+	it('floors fractional levels', () => {
+		expect(formatPlayerLevel({ level: 4.9 })).toBe(4);
+	});
+
+	it('falls back to 1 for missing or invalid levels', () => {
+		expect(formatPlayerLevel(null)).toBe(1);
+		expect(formatPlayerLevel({})).toBe(1);
+		expect(formatPlayerLevel({ level: NaN })).toBe(1);
+		expect(formatPlayerLevel({ level: 0 })).toBe(1);
+		expect(formatPlayerLevel({ level: -2 })).toBe(1);
 	});
 });

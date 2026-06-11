@@ -531,12 +531,13 @@ function healAtMedic(playerId, state = _gameState) {
     return { ok: false, reason: 'already_full' };
   }
 
-  const cost = MEDIC_HEAL_COST;
+  let cost = MEDIC_HEAL_COST;
   if ((player.currency || 0) < cost) {
-    return { ok: false, reason: 'insufficient_gold' };
+    cost = 0;
+  } else {
+    player.currency -= cost;
   }
 
-  player.currency -= cost;
   player.hp = MAX_HP;
   player.dead = false;
   savePlayerData(playerId);
@@ -910,6 +911,40 @@ function evolveCard(player, instanceId) {
   };
 }
 
+// ── Player XP / levels ──
+// Cumulative XP thresholds: reaching level n requires 100 * (n - 1) * n / 2
+// total XP (level 1 at 0, level 2 at 100, level 3 at 300, level 4 at 600, …).
+const XP_LEVEL_STEP = 100;
+const KILL_XP_MIN = 5;
+const KILL_XP_HP_DIVISOR = 6;
+const VICTORY_XP_BONUS = 50;
+
+function xpRequiredForLevel(level) {
+  if (!Number.isFinite(level) || level <= 1) return 0;
+  return XP_LEVEL_STEP * (level - 1) * level / 2;
+}
+
+function levelForXp(xp) {
+  if (!Number.isFinite(xp) || xp <= 0) return 1;
+  let level = 1;
+  while (xp >= xpRequiredForLevel(level + 1)) {
+    level += 1;
+  }
+  return level;
+}
+
+function killXpForEnemy(enemy) {
+  return Math.max(KILL_XP_MIN, Math.round((enemy.maxHp || 30) / KILL_XP_HP_DIVISOR));
+}
+
+function awardXp(player, amount) {
+  if (!player || !Number.isFinite(amount) || amount <= 0) return;
+  player.xp = (Number.isFinite(player.xp) ? player.xp : 0) + amount;
+  // Level only ever increases, even if the curve or XP totals change.
+  player.level = Math.max(player.level || 1, levelForXp(player.xp));
+  player.persistenceDirty = true;
+}
+
 function createPlayerProgress() {
   const inventory = createInventoryFromCardIds(STARTING_DECK_IDS);
   return {
@@ -920,6 +955,8 @@ function createPlayerProgress() {
     currencyEarnedThisRun: 0,
     equippedKeyItemId: 'dodge_roll',
     keyItemCooldownUntil: 0,
+    xp: 0,
+    level: 1,
   };
 }
 
@@ -938,6 +975,8 @@ function extractPersistentData(player) {
     hp: Number.isFinite(player.hp) ? player.hp : MAX_HP,
     dead: player.dead === true,
     magicStones: Number.isFinite(player.magicStones) ? player.magicStones : STARTING_MAGIC_STONES,
+    xp: Number.isFinite(player.xp) ? player.xp : 0,
+    level: Number.isFinite(player.level) ? player.level : 1,
   };
 }
 
@@ -2596,6 +2635,10 @@ function removeDeadEnemies() {
   const spawnCtx = buildObjectiveSpawnCtx();
   for (const enemy of dying) {
     recordEnemyCardDrop(enemy);
+    const killer = enemy.lastDamagedBy ? _gameState.players[enemy.lastDamagedBy] : null;
+    if (killer) {
+      awardXp(killer, killXpForEnemy(enemy));
+    }
     spawnMagicStoneDrop(enemy);
     spawnCurrencyDrop(enemy);
     // Volatile-variant enemies detonate a radial blast where they fall before
@@ -3506,6 +3549,12 @@ function checkRunTerminalState() {
     p.overclockChargesRemaining = 0;
   }
 
+  if (status === 'victory') {
+    for (const player of Object.values(_gameState.players)) {
+      if (player) awardXp(player, VICTORY_XP_BONUS);
+    }
+  }
+
   for (const playerId of Object.keys(_gameState.players)) {
     grantRunRewards(playerId, { status });
   }
@@ -3546,6 +3595,8 @@ function buildPlayerHotSnapshot(id, p) {
     ready: p.ready,
     magicStones: p.magicStones,
     currency: p.currency,
+    xp: Number.isFinite(p.xp) ? p.xp : 0,
+    level: Number.isFinite(p.level) ? p.level : 1,
     extracted: !!p.extracted,
     equippedKeyItemId: p.equippedKeyItemId || 'dodge_roll',
     keyItemCooldownRemaining: Math.max(0, (p.keyItemCooldownUntil || 0) - Date.now()),
@@ -4000,6 +4051,11 @@ module.exports = {
   findAvailableInventoryInstance,
   evolveCard,
   createPlayerProgress,
+  xpRequiredForLevel,
+  levelForXp,
+  killXpForEnemy,
+  awardXp,
+  VICTORY_XP_BONUS,
   extractPersistentData,
   persistenceKey,
   savePlayerData,
@@ -4079,6 +4135,7 @@ module.exports = {
   checkTelepipeProximity,
   previewReturnRewards,
   emitPlayerDeckUpdate,
+  maybeEmitPlayerDeckUpdate,
   buildPlayerDeckUpdatePayload,
   buildPlayerHotSnapshot,
 };

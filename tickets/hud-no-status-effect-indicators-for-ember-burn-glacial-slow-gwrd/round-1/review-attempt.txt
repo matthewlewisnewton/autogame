@@ -1,0 +1,13 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health (gate):** The captured run is clean — `metrics.json` has `"ok": true`, empty `pageerrors`, no `harness_failure`, servers started. `console.log` shows only benign init/vite lines. Game starts and loads.
+
+**Acceptance criterion — MET:**
+- `computeActiveStatusEffects` (`vanguard-hud.js:111`) is a pure, well-guarded derivation that emits a 🔥 Burning / 🐌 Slowed entry only when the expiry timestamp is strictly in the future — so effects appear when active and drop off at expiry.
+- `updateStatusEffectStrip` (`main.js:2113`) rebuilds the strip each HUD sync with `Date.now()`, toggling `.has-effects` (show/hide) and rendering one badge per effect with a remaining-seconds label. It recomputes every frame, so badges clear on their own as timers lapse.
+- The data is real: the server serializes `burningUntil`/`slowedUntil` onto every player snapshot (`progression.js:3502,3504`), set by the burn/slow sim paths (`simulation.js:1530,1565`). Both burn and glacial slow feed the same strip.
+- Coverage: 5/5 unit tests pass, covering burn-only, slow-only, both (stable order), and all the edge/empty cases. The AC explicitly allows "client test **or** capture."
+
+**No blocking gaps.** No new debug scenario was added (diff is client-only, additive). Two nits filed for later: no direct DOM test of the render wiring, and the smoke capture never triggered a live burn/slow so no screenshot shows the badge on screen — both non-blocking.
