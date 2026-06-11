@@ -8546,3 +8546,26 @@ Sub-ticket `01-medic-affordability-shortfall-message` passed its own QA. Holisti
 
 None blocking.
 
+
+## v0.463 — balance: Initiate Vault spawn-camps the player — ~20 HP lost in the first seconds while intro text is up  (2026-06-11 10:09:22)
+
+- Changes are focused: spawn offset helpers, wave-level `aggroGraceMs`, minimal `simulation.js` guard.
+- `simNow()` used consistently for grace timing (matches combat clock).
+- Dead-code / obvious bugs: none found.
+- Vitest: **4085 tests passed** in `coverage.log`; new `training_caverns_spawn_camp.test.js` included.
+- No new `?debugScenario=` shortcuts — nothing to audit on debug gating.
+
+---
+
+## Debug scenarios
+
+Not applicable — this ticket did not add or change development debug scenarios.
+
+---
+
+## Remaining gaps
+
+None blocking. The acceptance criterion is satisfied in code and covered by targeted regression tests. The browser capture does not directly exercise the 3-second standstill check, but runtime evidence plus server simulation on the production layout seed corroborates the fix; the 70 HP first-probe reading is explained by persisted vitals on harness accounts rather than spawn-camp damage.
+
+---
+

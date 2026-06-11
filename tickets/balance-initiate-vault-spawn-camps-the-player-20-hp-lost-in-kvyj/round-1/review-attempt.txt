@@ -1,0 +1,22 @@
+## Review complete
+
+**VERDICT: PASS** — written to `tickets/.../round-1/review.md`
+
+### Runtime
+- Game starts cleanly: `metrics.json` has `"ok": true`, empty `pageerrors`, no fatal console errors.
+
+### Acceptance criteria
+Two server-side fixes land together:
+
+1. **Bulkhead placement** — entry grunts spawn ~4.5 units from deploy (outside melee range), flanking the outbound passage.
+2. **3s aggro grace** — room-0 wave-0 grunts ignore players during intro; combat resumes after grace when the player advances.
+
+`training_caverns_spawn_camp.test.js` passes (4085 tests green). Independent simulation on layout seed `352369970` with two players: **100 HP after 3s+ standing still at spawn**.
+
+### Capture caveat (not blocking)
+First probe shows **70/100 HP** at spawn with intro text up. That matches **persisted HP on deploy** (harness reuses accounts), not spawn-camp chip damage — grunts are out of attack range and simulation shows no damage while idle. After W-key movement, HP drops 70→60, confirming engagement works.
+
+### Files written
+- `round-1/review.md` — full assessment
+- `round-1/nits.md` — harness standstill capture, quest-layout seed in test, `aggroGraceMs` identity assertion
+- No `gaps.md` (PASS only)

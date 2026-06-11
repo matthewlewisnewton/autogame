@@ -183,3 +183,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [406-cleanup-hud-objective-line-shows-only-quest-title-for-stage-boss-and-iykh](tickets/406-cleanup-hud-objective-line-shows-only-quest-title-for-stage-boss-and-iykh/)
 - [ ] [407-cleanup-level-settings-money-this-run-and-return-lines-show-em-dash-zcss](tickets/407-cleanup-level-settings-money-this-run-and-return-lines-show-em-dash-zcss/)
 - [ ] [408-cleanup-medic-heal-button-silently-disabled-when-the-player-cannot-a-y199](tickets/408-cleanup-medic-heal-button-silently-disabled-when-the-player-cannot-a-y199/)
+- [ ] [409-cleanup-balance-initiate-vault-spawn-camps-the-player-20-hp-lost-in-kvyj](tickets/409-cleanup-balance-initiate-vault-spawn-camps-the-player-20-hp-lost-in-kvyj/)
