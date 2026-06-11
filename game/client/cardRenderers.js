@@ -52,6 +52,10 @@ const NULL_CRAWLER_SUMMON_COLOR = 0x22d3ee;
 const NULL_CRAWLER_SUMMON_EMISSIVE = 0x67e8f9;
 const UNDEAD_COMMANDER_COLOR = 0xe4e4e7;
 const UNDEAD_COMMANDER_EMISSIVE = 0xa855f7;
+// Necroframe Knight shares its evolution's bone-white body + necrotic-purple
+// glow so the base taunt-wall reads as the same undead lineage.
+const NECROFRAME_KNIGHT_COLOR = 0xe4e4e7;
+const NECROFRAME_KNIGHT_EMISSIVE = 0xa855f7;
 const LEGION_MARSHAL_TETHER_STYLE = { color: UNDEAD_COMMANDER_COLOR, emissive: UNDEAD_COMMANDER_EMISSIVE };
 
 // ── Accent helpers ──────────────────────────────────────────────────────
@@ -674,19 +678,23 @@ const DIVINE_GRACE_COLOR = 0xfde68a;
 const DIVINE_GRACE_EMISSIVE = 0xfbbf24;
 
 /**
- * Restoration Beacon: green telegraph ring plus radial heal spark burst at
- * the cast origin. Distinct from Sanctum Pulse's golden sanctum signature.
+ * Restoration Beacon: a vertical emerald beacon pillar of restorative light
+ * rising from the cast origin, plus an expanding ground heal ring and ascending
+ * heal motes (all inside spawnRestorationBeaconEffect). The server resolves the
+ * heal instantly in a single `cardUsed` (no projectile/DoT/wind-up), so every
+ * primitive fires synchronously here — no setTimeout/scheduleAfter. Distinct
+ * from Sanctum Pulse's golden sanctum column signature.
  */
 function renderHealingFont(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
 	const color = getAccentHex(data.cardId) ?? HEALING_FONT_COLOR;
 	const emissive = HEALING_FONT_EMISSIVE;
-	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
-	}
+	ctx.spawnRestorationBeaconEffect?.(origin, data.radius);
+	// Optional emerald accent burst when the beacon effect is wired but the
+	// caller still supplies the shared particle spawner.
 	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.0 });
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 10, spread: 1.6 });
 	}
 	if (data.hpGained > 0 && data.playerId === ctx.myId) ctx.playSound('heal');
 }
@@ -1017,6 +1025,52 @@ function renderUndeadCommander(data, ctx) {
 		if (ctx.spawnLightningArc) {
 			ctx.spawnLightningArc(commanderOrigin, skeletonOrigin, LEGION_MARSHAL_TETHER_STYLE);
 		}
+	}
+}
+
+/**
+ * Necroframe Knight: an undead bone-knight rising to guard. Reuses the
+ * `undead_commander` bone-white/necrotic-purple palette so the base taunt-wall
+ * reads as the same lineage. The summon-in flourish is driven through
+ * `spawnMinionSummonInEffect` (bound to MINION_SUMMON_IN_MS), wrapped by a
+ * necrotic telegraph ring and a rising bone-shard burst staggered partway
+ * through — but still well within — the materialize window. Fires only on the
+ * initial summon (guarded on `data.minionId`) and degrades to a no-op when the
+ * minion-summon helper is absent; every optional helper is guarded.
+ */
+function renderNecroframeKnightSummon(data, ctx) {
+	if (!data.minionId || !ctx.spawnMinionSummonInEffect) return;
+	const origin = originOf(data);
+	const knightStyle = {
+		color: NECROFRAME_KNIGHT_COLOR,
+		emissive: NECROFRAME_KNIGHT_EMISSIVE,
+		radius: 1.1,
+		burstCount: 14,
+		burstSpread: 1.6,
+	};
+	ctx.spawnMinionSummonInEffect(origin, knightStyle);
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, 1.6, {
+			color: NECROFRAME_KNIGHT_COLOR,
+			emissive: NECROFRAME_KNIGHT_EMISSIVE,
+		});
+	}
+	// Bone shards heave up from the ground partway through the rise — staggered
+	// but capped well under MINION_SUMMON_IN_MS so the burst lands before the
+	// minion mesh finishes materializing.
+	const emitBoneShards = () => {
+		if (!ctx.spawnParticleBurst) return;
+		ctx.spawnParticleBurst({ x: origin.x, y: 0.35, z: origin.z }, {
+			color: NECROFRAME_KNIGHT_COLOR,
+			emissive: NECROFRAME_KNIGHT_EMISSIVE,
+			count: 12,
+			spread: 1.4,
+		});
+	};
+	if (ctx.scheduleAfter) {
+		ctx.scheduleAfter(Math.round(MINION_SUMMON_IN_MS * 0.4), emitBoneShards);
+	} else {
+		emitBoneShards();
 	}
 }
 
@@ -2107,6 +2161,7 @@ const CARD_RENDERERS = {
 	chrono_trigger: renderChronoTrigger,
 
 	// Creatures
+	skeleton_knight: renderNecroframeKnightSummon,
 	undead_commander: renderUndeadCommander,
 	storm_eagle: [renderStormEagleSummon, renderStormEagleStrike],
 	thunderbird: [renderThunderbirdSummon, renderThunderbirdStrike],

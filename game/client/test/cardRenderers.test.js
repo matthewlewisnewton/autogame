@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CARD_DEFS, getCardDef } from '../cards.js';
-import { ATTACK_EFFECT_DURATION, EVENT_HORIZON_CRUSH_DELAY_MS, PHOTON_BARRAGE_SWING_DELAY_MS, SUMMON_EFFECT_DURATION } from '../config.js';
+import { ATTACK_EFFECT_DURATION, EVENT_HORIZON_CRUSH_DELAY_MS, MINION_SUMMON_IN_MS, PHOTON_BARRAGE_SWING_DELAY_MS, SUMMON_EFFECT_DURATION } from '../config.js';
 import {
 	renderCardUsed,
 	resolveRenderers,
@@ -21,6 +21,7 @@ function makeCtx(overrides = {}) {
 		spawnAttackEffect: record('spawnAttackEffect'),
 		spawnSummonEffect: record('spawnSummonEffect'),
 		spawnDivineGraceEffect: record('spawnDivineGraceEffect'),
+		spawnRestorationBeaconEffect: record('spawnRestorationBeaconEffect'),
 		spawnEventHorizonEffect: record('spawnEventHorizonEffect'),
 		spawnPurifyingPulseHealRing: record('spawnPurifyingPulseHealRing'),
 		spawnCleanseBurstEffect: record('spawnCleanseBurstEffect'),
@@ -79,6 +80,11 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('divine_grace')).toHaveLength(1);
 		expect(resolveRenderers('purifying_pulse')).toHaveLength(1);
 		expect(resolveRenderers('spike_trap')).toHaveLength(1);
+		expect(resolveRenderers('undead_commander')).toHaveLength(1);
+		expect(resolveRenderers('skeleton_knight')).toHaveLength(1);
+		// Necroframe Knight must use its bespoke renderer, not the generic
+		// creature type-default (which battery_automaton falls through to).
+		expect(resolveRenderers('skeleton_knight')[0]).not.toBe(resolveRenderers('battery_automaton')[0]);
 		const commanderRenderers = resolveRenderers('undead_commander');
 		expect(commanderRenderers).toHaveLength(1);
 		expect(commanderRenderers[0].name).toBe('renderUndeadCommander');
@@ -1519,7 +1525,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(fontHelpers).not.toEqual(graceHelpers);
 	});
 
-	it('healing_font renders a green telegraph ring and burst without divine grace', () => {
+	it('healing_font spawns the emerald beacon effect (column + heal ring + motes) without divine grace', () => {
 		const ctx = makeCtx({ myId: 'me' });
 		renderCardUsed({
 			cardId: 'healing_font',
@@ -1529,16 +1535,44 @@ describe('renderCardUsed() — spell dispatch', () => {
 			playerId: 'me',
 			hits: [],
 		}, ctx);
-		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
-		expect(ring).toBeDefined();
-		expect(ring[1]).toEqual({ x: 0, z: 0 });
-		expect(ring[2]).toBe(3);
-		expect(ring[3]).toMatchObject({ color: 0x86efac, emissive: 0x4ade80 });
-		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
-		expect(burst).toBeDefined();
-		expect(burst[2]).toMatchObject({ color: 0x86efac, count: 14, spread: 2.0 });
+		const beacon = ctx._calls.find((c) => c[0] === 'spawnRestorationBeaconEffect');
+		expect(beacon).toBeDefined();
+		expect(beacon[1]).toEqual({ x: 0, z: 0 });
+		expect(beacon[2]).toBe(3);
+		// Restoration Beacon must not reuse Sanctum Pulse's gold sanctum effect.
 		expect(ctx._calls.some((c) => c[0] === 'spawnDivineGraceEffect')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(true);
+	});
+
+	it('healing_font does not throw when optional ctx spawners are absent', () => {
+		const ctx = makeCtx({ myId: 'me' });
+		// Strip the optional spawners the beacon path guards for.
+		ctx.spawnRestorationBeaconEffect = undefined;
+		ctx.spawnParticleBurst = undefined;
+		expect(() => renderCardUsed({
+			cardId: 'healing_font',
+			origin: { x: 0, z: 0 },
+			radius: 3,
+			hpGained: 6,
+			playerId: 'me',
+			hits: [],
+		}, ctx)).not.toThrow();
+		// Heal sound still gated to the local caster.
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(true);
+	});
+
+	it('healing_font does not play the heal sound for a non-caster', () => {
+		const ctx = makeCtx({ myId: 'me' });
+		renderCardUsed({
+			cardId: 'healing_font',
+			origin: { x: 0, z: 0 },
+			radius: 3,
+			hpGained: 6,
+			playerId: 'someone-else',
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnRestorationBeaconEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
 	});
 
 	it('healing_font does not play heal sound when no HP was gained', () => {
@@ -1562,7 +1596,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 			playerId: 'me',
 			hits: [],
 		}, ctx);
-		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnRestorationBeaconEffect')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
 	});
@@ -2796,6 +2830,59 @@ describe('renderCardUsed() — creature dispatch', () => {
 		);
 		expect(groundBursts).toHaveLength(2);
 		expect(groundBursts[0][2]).toMatchObject({ color: 0xe4e4e7, emissive: 0xa855f7 });
+	});
+
+	it('skeleton_knight summon renders a bone-white/necrotic-purple flourish bound to the summon window', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'skeleton_knight',
+			minionId: 'knight-1',
+			origin: { x: 4, z: 5 },
+			hits: [],
+		}, ctx);
+		const flourishes = ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(flourishes).toHaveLength(1);
+		expect(flourishes[0][1]).toEqual({ x: 4, z: 5 });
+		expect(flourishes[0][2]).toMatchObject({ color: 0xe4e4e7, emissive: 0xa855f7 });
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 4, z: 5 });
+		expect(ring[3]).toMatchObject({ color: 0xe4e4e7, emissive: 0xa855f7 });
+		// Bone-shard burst is staggered, but capped well within the summon window.
+		const sched = ctx._calls.find((c) => c[0] === 'scheduleAfter');
+		expect(sched).toBeDefined();
+		expect(sched[1]).toBeLessThan(MINION_SUMMON_IN_MS);
+		ctx.runScheduled();
+		const shardBurst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst' && c[1].y === 0.35);
+		expect(shardBurst).toBeDefined();
+		expect(shardBurst[1]).toMatchObject({ x: 4, z: 5 });
+		expect(shardBurst[2]).toMatchObject({ color: 0xe4e4e7, emissive: 0xa855f7 });
+	});
+
+	it('skeleton_knight summon stays sound-only with no minionId and never throws', () => {
+		const ctx = makeCtx();
+		expect(() => renderCardUsed({
+			cardId: 'skeleton_knight',
+			origin: { x: 0, z: 0 },
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+	});
+
+	it('skeleton_knight summon degrades gracefully when optional ctx helpers are absent', () => {
+		const ctx = makeCtx({
+			spawnTelegraphRing: undefined,
+			spawnParticleBurst: undefined,
+			scheduleAfter: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'skeleton_knight',
+			minionId: 'knight-2',
+			origin: { x: 1, z: 1 },
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect')).toHaveLength(1);
 	});
 
 	it('undead_commander has no positive windUpMs (instant cast; 315 charge telegraph absent)', () => {

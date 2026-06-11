@@ -154,6 +154,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [397-cleanup-anim-event-horizon](tickets/397-cleanup-anim-event-horizon/)
 - [ ] [398-cleanup-anim-phase-echo](tickets/398-cleanup-anim-phase-echo/)
 - [ ] [398-cleanup-anim-gravity-well](tickets/398-cleanup-anim-gravity-well/)
+- [ ] [399-cleanup-anim-restoration-beacon](tickets/399-cleanup-anim-restoration-beacon/)
 - [ ] [399-cleanup-anim-thunderbird](tickets/399-cleanup-anim-thunderbird/)
 - [ ] [399-cleanup-anim-legion-marshal](tickets/399-cleanup-anim-legion-marshal/)
 - [ ] [400-cleanup-anim-voltaic-chain](tickets/400-cleanup-anim-voltaic-chain/)
