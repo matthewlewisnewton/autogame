@@ -1,0 +1,14 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/334-anim-deck-sifter/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/334-anim-deck-sifter/game/data
+Server listening on port 3000
+Player connected: socket=4eZW1dqSlLHvZFc2AAAB, playerId=482c68fc-072b-4c61-bce1-c620647a9c4e
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=2Hazor2T9WPxOwvoAAAD, playerId=6ae7c299-4458-4771-8580-65d48129c488
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: 4eZW1dqSlLHvZFc2AAAB
+Player disconnected: 2Hazor2T9WPxOwvoAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
