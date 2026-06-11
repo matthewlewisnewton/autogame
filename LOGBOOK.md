@@ -7548,3 +7548,26 @@ when new ctx primitives are absent. Full suite: **203/203 pass** (ran locally).
 ## Remaining gaps
 None blocking. One minor nit (duplicate cyan style constant) recorded in nits.md.
 
+
+## v0.420 — 342-anim-arcane-bolt  (2026-06-10 22:50:59)
+
+- **Terminal max-range impact** (`spawnImpactDecal` + 16-particle burst) deferred by `travelMs` via `scheduleAfter`, for visual travel sync only.
+This is a faithful match to instant projectile resolution.
+
+### "No perf regression" — MET
+The projectile effect is registered in `activeEffects` and disposed on expiry (`disposeEffectObject` + array splice once `elapsed >= duration`). A vfx-primitives test confirms the flagged lance is added and cleaned up with geometry disposal. No persistent leaks.
+
+### "Client test where feasible" — MET
+`cardRenderers.test.js` and `vfx-primitives.test.js` add coverage: renderer resolution (`renderArcaneBolt`, explicitly not `renderWeaponSwing`), synced `spawnAttackEffect`/`spawnProjectileTrail` params, deferred terminal impact via `runScheduled`, immediate per-hit pierce bursts at mesh positions (with a missing-mesh guard), no-windUp assertion, and projectile lifecycle/cleanup. Ran `vitest run` on both files: **237 passed (237)**.
+
+### Scope — RESPECTED
+Diff touches only `game/client/cardRenderers.js`, `game/client/renderer.js`, and the two client test files — exactly the declared scope. No server, no other per-card renderers, no debug scenarios added.
+
+## Consistency / regressions
+- Consistent with `design.md` (Weapons = directional projectiles). No foundation regression.
+- No debug-scenario shortcuts introduced.
+- Removed the now-dead `arcane_bolt` entry from `WEAPON_SLASH_STYLES`, avoiding stale config.
+
+## Remaining gaps
+None blocking. The implementation fully and robustly satisfies the ticket.
+
