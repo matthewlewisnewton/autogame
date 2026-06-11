@@ -179,18 +179,6 @@ const WEAPON_SLASH_STYLES = {
 		sparkCount: 12,
 		sparkSpread: 1.8,
 	},
-	// Photon Slicer: a near-full cyan spin slice trailing light around the arc.
-	photon_slicer: {
-		color: 0x22d3ee,
-		emissive: 0x06b6d4,
-		coneAngle: Math.PI,
-		range: 4.5,
-		fillOpacity: 0.34,
-		edgeOpacity: 0.8,
-		trail: true,
-		sparkCount: 9,
-		sparkSpread: 1.4,
-	},
 	// Arcane Bolt: a tight violet energy lance stabbing far forward with a beam streak.
 	arcane_bolt: {
 		color: 0xa78bfa,
@@ -604,6 +592,58 @@ function renderTripleReturning(data, ctx) {
 	// returning. Beat count follows the payload, never a hardcoded constant.
 	const passes = Math.max(0, data.returnPasses ?? 0);
 	if (passes > 0 && ctx.scheduleAfter) {
+		const returnDir = { x: -direction.x, z: -direction.z };
+		if (Number.isFinite(direction.y)) returnDir.y = -direction.y;
+		for (let i = 0; i < passes; i++) {
+			ctx.scheduleAfter(INFINITE_DISK_RETURN_BEAT_MS * (i + 1), () => {
+				if (ctx.spawnProjectileTrail) {
+					ctx.spawnProjectileTrail(farPoint, returnDir, { range, color, emissive });
+				}
+				if (ctx.spawnParticleBurst) {
+					ctx.spawnParticleBurst(origin, { color, emissive, count: 6, spread: 1.2 });
+				}
+			});
+		}
+	}
+}
+
+/** Default disc travel range when a returning-disc payload omits `attackRange`. */
+const RETURNING_DISC_RANGE = 6;
+
+/**
+ * Photon Slicer (server effect `returning_projectile`): a single spinning cyan
+ * photon disc thrown forward to the weapon's reach that then boomerangs home —
+ * the single-disc sibling of `renderTripleReturning`. The outbound throw spawns
+ * one disc plus a trail/spark polish pass at the far point; each return-pass
+ * schedules a short return beat whose trail/burst travels from the far point
+ * back toward the origin so the disc visibly comes back. Beat count follows the
+ * payload but defaults to 1 (Photon Slicer omits `returnPasses` yet the server
+ * still runs exactly one return pass), so the base card always shows a return.
+ */
+function renderReturningDisc(data, ctx) {
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex(data.cardId) ?? 0x22d3ee;
+	const emissive = 0x06b6d4;
+	// Disc travel distance is driven by the weapon's reach from the payload so
+	// the visual matches the server's actual outbound+return resolution.
+	const range = Number.isFinite(data.attackRange) ? data.attackRange : RETURNING_DISC_RANGE;
+	const farPoint = pointAlong(origin, direction, range);
+	// Outbound throw: a single spinning cyan disc along the firing direction.
+	ctx.spawnAttackEffect(origin, direction, { color, emissive });
+	// Spinning-light polish: a cyan streak chasing the disc plus a spark shower
+	// out at the far end of its path.
+	if (ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, { range, color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(farPoint, { color, emissive, count: 8, spread: 1.4 });
+	}
+	// Boomerang return passes: one beat per server return-pass, defaulting to 1
+	// so the base card always shows the disc coming home. Each beat sends a
+	// trail/burst back from the far point toward the origin.
+	const passes = Math.max(1, data.returnPasses ?? 1);
+	if (ctx.scheduleAfter) {
 		const returnDir = { x: -direction.x, z: -direction.z };
 		if (Number.isFinite(direction.y)) returnDir.y = -direction.y;
 		for (let i = 0; i < passes; i++) {
@@ -2160,7 +2200,7 @@ const CARD_RENDERERS = {
 	flame_blade: renderWeaponSwing,
 	harvesting_scythe: renderWeaponSwing,
 	saber_of_light: renderWeaponSwing,
-	photon_slicer: renderWeaponSwing,
+	photon_slicer: renderReturningDisc,
 	arcane_bolt: renderWeaponSwing,
 	resonance_edge: renderResonantDoublePulse,
 	echo_blade: renderEchoSlash,

@@ -836,12 +836,36 @@ describe('renderCardUsed() — energy & photon blade slashes', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
 	});
 
-	it('Photon Slicer cuts a wide cyan spin slice with a light trail', () => {
+	it('Photon Slicer throws a returning cyan photon disc to its attackRange', () => {
 		const ctx = makeCtx();
-		fire('photon_slicer', ctx);
-		const style = swingStyle(ctx);
-		expect(style).toMatchObject({ color: 0x22d3ee, coneAngle: Math.PI, range: 4.5 });
-		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(true);
+		// Mirror the real payload: attackRange 8, no returnPasses.
+		fire('photon_slicer', ctx, { attackRange: 8 });
+		// A single outbound disc along the firing direction, tinted cyan.
+		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
+		expect(attacks).toHaveLength(1);
+		expect(attacks[0][1]).toEqual({ x: 0, z: 0 }); // thrown from the origin
+		expect(attacks[0][2]).toMatchObject({ x: 1, z: 0 }); // along +x
+		expect(attacks[0][3]).toMatchObject({ color: 0x22d3ee });
+		// A forward trail plus a spark burst at the far point of the throw (range 8).
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail).toBeDefined();
+		expect(trail[3]).toMatchObject({ range: 8, color: 0x22d3ee });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 8, z: 0 });
+		// Exactly one return beat is scheduled even though the payload omits
+		// returnPasses (the base card must still boomerang home).
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(schedules).toHaveLength(1);
+		// Running it sends a return trail back from the far point toward the origin.
+		ctx.runScheduled();
+		const returnTrails = ctx._calls
+			.filter((c) => c[0] === 'spawnProjectileTrail')
+			.slice(1); // first trail is the outbound polish pass
+		expect(returnTrails).toHaveLength(1);
+		expect(returnTrails[0][1]).toEqual({ x: 8, z: 0 }); // starts at far point
+		expect(returnTrails[0][2].x).toBe(-1); // reversed direction
+		expect(returnTrails[0][2].z === 0).toBe(true);
 	});
 
 	it('Arcane Bolt thrusts a tight violet energy lance with a beam streak', () => {
