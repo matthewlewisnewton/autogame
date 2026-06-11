@@ -7458,3 +7458,26 @@ None blocking.
 
 Nit (non-blocking, filed to nits.md): `renderChainLightning` (cardRenderers.js:1104) is now dead code — before this ticket it was thunderbird's strike renderer; thunderbird now uses `renderThunderbirdStrike`, and the `chain_lightning` card uses the separate `renderChainLightningArcs`. The function is no longer referenced or exported.
 
+
+## v0.416 — 347-anim-glacial-orb  (2026-06-10 22:02:50)
+
+### AC4 — Client test where feasible
+Met and strong. New/updated tests assert: `resolveRenderers('ice_ball')` →
+`renderIceBall`; cast flourish (telegraph ring + 8-count burst); trail carries
+`travelMs`; terminal impact is **deferred** (not fired at cast) and lands at the
+correct point after `runScheduled()`; immediate per-hit frost bursts at enemy mesh
+positions with missing-mesh skip; instant-cast (no positive `windUpMs`); graceful
+degradation when optional ctx primitives are absent; and a `spawnAttackEffect`
+integration test verifying the glacial-orb group, colors, flag, and cleanup.
+Ran `vitest run cardRenderers.test.js vfx-primitives.test.js` → **227 passed**.
+
+## Consistency / regression
+Consistent with the 315 VFX-primitive + per-card-renderer foundation (uses
+`spawnTelegraphRing`, `spawnParticleBurst`, `spawnProjectileTrail`, `spawnImpactDecal`,
+`spawnHitSpark`, `scheduleAfter`, `enemyMeshes` — all present in the `cardRenderCtx`
+built in `socketHandlers/cardHandlers.js`). No debug scenario added/changed. No
+gameplay, server, or shared logic touched, so no foundation regression.
+
+## Remaining gaps
+None blocking. Minor visual nits recorded in `nits.md`.
+
