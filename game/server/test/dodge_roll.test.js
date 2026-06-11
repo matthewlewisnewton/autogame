@@ -6,6 +6,7 @@ import {
 	tryPlayerMove,
 	computeWalkableAABBs,
 	buildWallColliders,
+	isInsideDungeon,
 	PLAYER_RADIUS,
 	KEY_ITEM_DEFS,
 	MOVE_SPEED,
@@ -178,6 +179,36 @@ describe('Dodge Roll — unit tests', () => {
 		// sin(PI/2) = 1, cos(PI/2) ~ 0
 		expect(result.x).toBeCloseTo(startX + dist, 1);
 		expect(result.z).toBeCloseTo(startZ, 1);
+	});
+
+	// ── Open floor — full distance regression ──
+
+	it('dodge roll on open floor travels full configured dash distance (7.2 units)', () => {
+		// Regression / sanity check: on open floor (no walls in the path), a dodge
+		// roll should travel the full configured dash distance without being
+		// short-clamped by the collision pipeline.
+		//
+		// Layout: buildDashLayout() gives room A centered at (0,0) with 12×12
+		// clearance (AABB: -6..6 on both axes) plus a passage to room B at (20,0).
+		// A 7.2-unit dash from center toward +X lands at (7.2, 0) which sits
+		// inside the passage walkable AABB — no wall collision expected.
+		const startX = 0;
+		const startZ = 0;
+		const dist = dodgeDashDistance(); // MOVE_SPEED * 3 * 0.2s = 7.2
+
+		expect(dist).toBeCloseTo(7.2, 1);
+
+		const result = tryPlayerMove(startX, startZ, 1, 0, dist);
+
+		// Movement succeeded
+		expect(result.moved).toBe(true);
+
+		// Displacement magnitude equals the full dodge dash distance
+		const displacement = Math.hypot(result.x - startX, result.z - startZ);
+		expect(displacement).toBeCloseTo(dist, 1);
+
+		// Final position is still inside the dungeon
+		expect(isInsideDungeon(result.x, result.z)).toBe(true);
 	});
 
 	// ── Dash respects walls ──
