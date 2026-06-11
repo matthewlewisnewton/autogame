@@ -1,0 +1,10 @@
+The spec is accurate — `makeCtx` already records `spawnLightningArc`/`spawnProjectileTrail` and exposes an overridable `enemyMeshes`, so the test additions are straightforward.
+
+## Done
+
+I broke the top-level ticket into **one** focused, independently-implementable sub-ticket. The ticket's other listed concerns don't apply to this card: Soul Drain is an instant radial AoE (no projectile travel, no DoT), and its `windUpMs: 700` wind-up is already telegraphed automatically by the shared 307/315 charge telegraph. The only real polish is the resolution VFX — making it read as souls being torn from struck enemies into the caster — which is a single cohesive change to `renderSoulDrain` plus its test.
+
+Verification is `code`: the criteria are about per-hit tether spawning, heal-flourish gating on `hpHealed`, graceful degradation, and no extra sound — none of which a happy-path screenshot run (which never casts the card) could check.
+
+Created:
+- `tickets/361-anim-soul-drain/subtickets/01-soul-drain-tether-renderer/ticket.md`

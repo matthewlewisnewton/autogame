@@ -1,0 +1,12 @@
+**VERDICT: PASS** — review written to `round-1/review.md`.
+
+Summary of findings:
+
+- **Runtime health**: `metrics.json` shows `ok: true`, `pageerrors: []`, no harness failure. `console.log` is clean. The capture exercised a *registry-dispatched* scenario (`telepipe-ready`) through a full suspend/resume with the preservation probe passing — the refactored dispatch path is proven live.
+- **Registry dispatch**: `applyDebugScenario` now dispatches via `DEBUG_SCENARIO_REGISTRY[name]`. Registry has **159 keys, exactly matching** the 159 `DEBUG_SCENARIOS` entries — no orphans, no missing handlers. The 113-branch if-chain is gone (only 5 legit special-cases remain inside `syncDebugHooksForScenario`).
+- **Shared helpers**: setup factored into named helpers (`deployQuestTier1`, `prepareTelepipeReadyLobby`, `setupQuestNearAdds`, etc.).
+- **Hot paths reduced to one nullable field**: `cardEffects.js`, `simulation.js`, and `progression.js` all now read `player.debugHooks?.x`. `debugHooks` has a single assignment site, set in lockstep with `debugScenario`. The old `debugForceStatusRoll` and `CARD_PROBE_DEBUG_SCENARIOS` (in cardEffects) are fully removed.
+- **Tests**: full server suite green — **182 files, 2587 tests passing**.
+- **New scenario** `ember-descent-tier-1` is benign: gated, reachable via normal ember_descent Tier 1 play, no invariant bypass.
+
+No blocking gaps, no `gaps.md`. No genuine nits worth filing, so no `nits.md`.

@@ -3830,7 +3830,7 @@ function updateMinions() {
 function regenMagicStones() {
   const now = Date.now();
   for (const p of Object.values(_gameState.players)) {
-    if (p.debugScenario === 'summon-low-mana') {
+    if (p.debugHooks?.pinMagicStonesZero) {
       p.magicStones = 0;
     } else if (Number.isFinite(p._telepipeDeployMagicStones)
       && Number.isFinite(p._msRegenGraceUntil)
