@@ -7773,3 +7773,26 @@ PASS with residual unrelated validation noise. `coverage.log` shows the focused 
 
 None.
 
+
+## v0.429 — Decision: per-quest layouts are fully deterministic — every run of a level is the identical map. Intentional?  (2026-06-11 00:43:01)
+
+## Code quality
+
+- **Seed separation is clean:** layout stream and objective stream are explicitly split; only `collect_items` crystal placement consumes `objectiveRng`.
+- **Checkpoint symmetry:** `runSpawnSeed` is captured and restored alongside `layoutSeed` and loot — consistent with telepipe durability rules in `design.md`.
+- **No dead code:** new exports (`generateRunSpawnSeed`, `ensureRunSpawnSeed`) are used by tests and the deploy path.
+- **Test depth:** unit (`quest_per_run_spawn.test.js`), server lifecycle (`server.test.js`), integration socket abandon (`integration.test.js`), and debug-scenario smoke cover the full matrix.
+- **Coverage artifact:** `round-1/coverage.log` reports 1969/1969 tests passed; scoped file report only surfaces `index.js`/`cards.js` (harness diff filter), but changed `progression.js` / `objectives.js` paths are exercised by the new and extended tests above.
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria from the three sub-tickets are met; runtime capture is clean; tests pass.
+
+---
+
+## Nits (non-blocking)
+
+See `nits.md` — stale doc tense in `design.md` only.
+
