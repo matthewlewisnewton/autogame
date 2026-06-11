@@ -395,14 +395,20 @@ const ALLOY_GREATBLADE_STYLE = {
 	decalRadius: 3.2,
 	debrisCount: 18,
 	debrisSpread: 2.4,
+	knockbackRingRadius: 2.8,
+	knockbackBurstCount: 22,
+	knockbackBurstSpread: 3.2,
 };
 
 /**
  * Alloy Greatblade swing. Composes the 315 primitives — a wide slate cone
  * cleave, a metallic streak along the arc, and guarded `spawnImpactDecal` plus
  * `spawnParticleBurst` metal-shard shower at the strike point — into one
- * weighty, committed blow. Honors `swingCount` and the `photon_barrage` stagger
- * like the other heavy greatswords.
+ * weighty, committed blow. The server-side `windUpMs` charge telegraph (315)
+ * covers the wind-up; this renderer fires the cleave synchronously when
+ * `cardUsed` arrives. Strike reach tracks `data.attackRange` from the server
+ * payload. When `knockbackMoved` is non-empty, layers an expanding telegraph
+ * ring plus a heavier outward burst at the strike point.
  */
 function renderAlloyGreatblade(data, ctx) {
 	const style = ALLOY_GREATBLADE_STYLE;
@@ -412,19 +418,20 @@ function renderAlloyGreatblade(data, ctx) {
 	const emissive = style.emissive;
 	const swingCount = data.swingCount || 1;
 	const delayPerSwing = data.specialEffect === 'photon_barrage' ? PHOTON_BARRAGE_SWING_DELAY_MS : 0;
-	const impactAt = pointAlong(origin, direction, style.range);
+	const range = data.attackRange ?? style.range;
+	const impactAt = pointAlong(origin, direction, range);
 
 	const swing = () => {
 		ctx.spawnAttackEffect(origin, direction, {
 			color,
 			emissive,
 			coneAngle: style.coneAngle,
-			range: style.range,
+			range,
 			fillOpacity: style.fillOpacity,
 			edgeOpacity: style.edgeOpacity,
 		});
 		if (ctx.spawnProjectileTrail) {
-			ctx.spawnProjectileTrail(origin, direction, { color, emissive, range: style.range });
+			ctx.spawnProjectileTrail(origin, direction, { color, emissive, range });
 		}
 		if (ctx.spawnImpactDecal) {
 			ctx.spawnImpactDecal(impactAt, { color, emissive, radius: style.decalRadius });
@@ -436,6 +443,19 @@ function renderAlloyGreatblade(data, ctx) {
 				count: style.debrisCount,
 				spread: style.debrisSpread,
 			});
+		}
+		if (data.knockbackMoved && data.knockbackMoved.length > 0) {
+			if (ctx.spawnTelegraphRing) {
+				ctx.spawnTelegraphRing(impactAt, style.knockbackRingRadius, { color, emissive });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(impactAt, {
+					color,
+					emissive,
+					count: style.knockbackBurstCount,
+					spread: style.knockbackBurstSpread,
+				});
+			}
 		}
 	};
 	for (let i = 0; i < swingCount; i++) {

@@ -153,12 +153,18 @@ describe('resolveRenderers()', () => {
 		}
 	});
 
-	it('returns dedicated renderers for alloy greatblade and corebreaker (not the cone default)', () => {
-		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
-			expect(resolveRenderers(cardId)).toHaveLength(1);
-			expect(resolveRenderers(cardId)[0]).not.toBe(WEAPON_TYPE_DEFAULT_RENDERER);
-		}
-		expect(resolveRenderers('steel_claymore')[0]).not.toBe(resolveRenderers('magma_greatsword')[0]);
+	it('returns a dedicated renderer for alloy greatblade (not heavy greatsword or cone default)', () => {
+		const heavy = resolveRenderers('magma_greatsword')[0];
+		expect(resolveRenderers('steel_claymore')).toHaveLength(1);
+		expect(resolveRenderers('steel_claymore')[0]).not.toBe(WEAPON_TYPE_DEFAULT_RENDERER);
+		expect(resolveRenderers('steel_claymore')[0]).not.toBe(heavy);
+	});
+
+	it('returns renderHeavyGreatsword only for magma_greatsword among the heavy greatswords', () => {
+		const heavy = resolveRenderers('magma_greatsword')[0];
+		expect(resolveRenderers('magma_greatsword')).toHaveLength(1);
+		expect(resolveRenderers('magma_greatsword')[0]).not.toBe(WEAPON_TYPE_DEFAULT_RENDERER);
+		expect(resolveRenderers('steel_claymore')[0]).not.toBe(heavy);
 	});
 
 	it('returns a dedicated renderer for excalibur_photon (not heavy greatsword or cone default)', () => {
@@ -1540,6 +1546,127 @@ describe('renderCardUsed() — saber_of_light reach + swift_slash timing', () =>
 	});
 });
 
+describe('renderCardUsed() — steel_claymore / Alloy Greatblade timing + knockback', () => {
+	function fire(ctx, extra = {}) {
+		renderCardUsed({
+			cardId: 'steel_claymore',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			hits: [],
+			...extra,
+		}, ctx);
+	}
+	function swingStyle(ctx) {
+		const attack = ctx._calls.find((c) => c[0] === 'spawnAttackEffect');
+		expect(attack).toBeDefined();
+		return attack[3];
+	}
+	function impactDecal(ctx) {
+		return ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+	}
+	function debrisBurst(ctx) {
+		return ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+	}
+	function knockbackBurst(ctx) {
+		return ctx._calls.filter((c) => c[0] === 'spawnParticleBurst').find(
+			(c) => c[2]?.spread === 3.2,
+		);
+	}
+
+	it('matches server timing contract (windUpMs 600, single swing)', () => {
+		expect(CARD_DEFS.steel_claymore.windUpMs).toBe(600);
+		expect(CARD_DEFS.steel_claymore.swingsPerUse).toBeUndefined();
+	});
+
+	it('cleaves a wide slate arc with metallic trail, large decal, and heavy debris', () => {
+		const ctx = makeCtx();
+		fire(ctx);
+		const style = swingStyle(ctx);
+		expect(style).toMatchObject({ color: 0x94a3b8, coneAngle: Math.PI / 2.2, range: 7 });
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail).toBeDefined();
+		expect(trail[3]).toMatchObject({ color: 0x94a3b8, emissive: 0x64748b, range: 7 });
+		const decal = impactDecal(ctx);
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 7, z: 0 });
+		expect(decal[2]).toMatchObject({ color: 0x94a3b8, emissive: 0x64748b, radius: 3.2 });
+		const burst = debrisBurst(ctx);
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 7, z: 0 });
+		expect(burst[2]).toMatchObject({
+			color: 0x94a3b8,
+			emissive: 0x64748b,
+			count: 18,
+			spread: 2.4,
+		});
+	});
+
+	it('places impact primitives from data.attackRange (not the style default)', () => {
+		const ctx = makeCtx();
+		fire(ctx, { attackRange: 9 });
+		expect(swingStyle(ctx).range).toBe(9);
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail[3].range).toBe(9);
+		expect(impactDecal(ctx)[1]).toEqual({ x: 9, z: 0 });
+		expect(debrisBurst(ctx)[1]).toEqual({ x: 9, z: 0 });
+	});
+
+	it('fires the single cleave synchronously with no scheduleAfter delay', () => {
+		const ctx = makeCtx();
+		fire(ctx, { swingCount: 1 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('emits a knockback burst layer when knockbackMoved is non-empty', () => {
+		const ctx = makeCtx();
+		fire(ctx, {
+			attackRange: 9,
+			knockbackMoved: [{ enemyId: 'e1', fromX: 8, fromZ: 0, toX: 11, toZ: 0 }],
+		});
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 9, z: 0 });
+		expect(ring[2]).toBe(2.8);
+		expect(knockbackBurst(ctx)).toBeDefined();
+		expect(knockbackBurst(ctx)[2]).toMatchObject({ count: 22, spread: 3.2 });
+	});
+
+	it('skips the knockback burst layer when knockbackMoved is empty', () => {
+		const ctx = makeCtx();
+		fire(ctx, { knockbackMoved: [] });
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		expect(knockbackBurst(ctx)).toBeUndefined();
+		expect(debrisBurst(ctx)).toBeDefined();
+	});
+
+	it('emits a metallic trail (distinct from magma greatsword)', () => {
+		const ctx = makeCtx();
+		fire(ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(true);
+	});
+
+	it('hits harder than lighter blades (bigger decal + more particles)', () => {
+		const ctx = makeCtx();
+		fire(ctx);
+		expect(impactDecal(ctx)[2].radius).toBeGreaterThan(2);
+		expect(debrisBurst(ctx)[2].count).toBeGreaterThan(12);
+	});
+
+	it('degrades gracefully when optional impact primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnImpactDecal: undefined,
+			spawnParticleBurst: undefined,
+			spawnTelegraphRing: undefined,
+			spawnProjectileTrail: undefined,
+		});
+		expect(() => fire(ctx, {
+			knockbackMoved: [{ enemyId: 'e1', fromX: 7, fromZ: 0, toX: 10, toZ: 0 }],
+		})).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+	});
+});
+
 describe('renderCardUsed() — heavy wind-up greatswords', () => {
 	function fire(cardId, ctx, extra = {}) {
 		renderCardUsed({ cardId, origin: { x: 0, z: 0 }, direction: { x: 1, z: 0 }, hits: [], ...extra }, ctx);
@@ -1555,30 +1682,6 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 	function debrisBurst(ctx) {
 		return ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
 	}
-
-	it('Alloy Greatblade cleaves a wide slate arc with metallic trail, large decal, and heavy debris', () => {
-		const ctx = makeCtx();
-		fire('steel_claymore', ctx);
-		const style = swingStyle(ctx);
-		expect(style).toMatchObject({ color: 0x94a3b8, coneAngle: Math.PI / 2.2, range: 7 });
-		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
-		expect(trail).toBeDefined();
-		expect(trail[3]).toMatchObject({ color: 0x94a3b8, emissive: 0x64748b, range: 7 });
-		// Larger-radius decal + high-count debris burst at the strike point (range = 7).
-		const decal = impactDecal(ctx);
-		expect(decal).toBeDefined();
-		expect(decal[1]).toEqual({ x: 7, z: 0 });
-		expect(decal[2]).toMatchObject({ color: 0x94a3b8, emissive: 0x64748b, radius: 3.2 });
-		const burst = debrisBurst(ctx);
-		expect(burst).toBeDefined();
-		expect(burst[1]).toEqual({ x: 7, z: 0 });
-		expect(burst[2]).toMatchObject({
-			color: 0x94a3b8,
-			emissive: 0x64748b,
-			count: 18,
-			spread: 2.4,
-		});
-	});
 
 	it('Corebreaker Greatsword erupts a wide magma swing with the biggest decal/debris', () => {
 		const ctx = makeCtx();
@@ -1607,54 +1710,38 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 		expect(debrisBurst(ctx)[2]).toMatchObject({ color: 0xe879f9, count: 20 });
 	});
 
-	it('alloy greatblade emits a metallic trail; magma greatsword does not', () => {
-		const alloyCtx = makeCtx();
-		fire('steel_claymore', alloyCtx);
-		expect(alloyCtx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(true);
-		expect(alloyCtx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
-
+	it('magma greatsword does not emit a metallic trail', () => {
 		const magmaCtx = makeCtx();
 		fire('magma_greatsword', magmaCtx);
 		expect(magmaCtx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
 		expect(magmaCtx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
 	});
 
-	it('the two heavy greatswords use mutually distinct accent colors and an impact param', () => {
-		const read = (cardId) => {
-			const ctx = makeCtx();
-			fire(cardId, ctx);
-			return { color: swingStyle(ctx).color, decalRadius: impactDecal(ctx)[2].radius, count: debrisBurst(ctx)[2].count };
-		};
-		const rows = ['steel_claymore', 'magma_greatsword'].map(read);
-		expect(new Set(rows.map((r) => r.color)).size).toBe(2);
-		// Differ from each other by at least one impact param too (decal radius).
-		expect(new Set(rows.map((r) => r.decalRadius)).size).toBe(2);
+	it('corebreaker uses a distinct accent color and heavy impact params', () => {
+		const ctx = makeCtx();
+		fire('magma_greatsword', ctx);
+		const style = swingStyle(ctx);
+		expect(style).toMatchObject({ color: 0xf97316 });
+		expect(impactDecal(ctx)[2].radius).toBe(3.8);
+		expect(debrisBurst(ctx)[2].count).toBe(24);
 	});
 
-	it('hit harder than the lighter sub-ticket 01/02 blades (bigger decal + more particles)', () => {
-		// Lighter blades top out around 12 sparks and use the default ~0.8 decal radius.
-		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
-			const ctx = makeCtx();
-			fire(cardId, ctx);
-			expect(impactDecal(ctx)[2].radius).toBeGreaterThan(2);
-			expect(debrisBurst(ctx)[2].count).toBeGreaterThan(12);
-		}
+	it('hits harder than the lighter sub-ticket 01/02 blades (bigger decal + more particles)', () => {
+		const ctx = makeCtx();
+		fire('magma_greatsword', ctx);
+		expect(impactDecal(ctx)[2].radius).toBeGreaterThan(2);
+		expect(debrisBurst(ctx)[2].count).toBeGreaterThan(12);
 	});
 
-	it('greatsword swings degrade gracefully when the optional impact primitives are absent', () => {
+	it('magma greatsword degrades gracefully when optional impact primitives are absent', () => {
 		const ctx = makeCtx({ spawnImpactDecal: undefined, spawnParticleBurst: undefined });
-		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
-			expect(() => fire(cardId, ctx)).not.toThrow();
-		}
-		// The core heavy cone swing still fires.
+		expect(() => fire('magma_greatsword', ctx)).not.toThrow();
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 
-	it('each heavy greatsword carries a positive windUpMs so the 315 charge telegraph fires', () => {
-		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
-			expect(CARD_DEFS[cardId]).toBeDefined();
-			expect(CARD_DEFS[cardId].windUpMs).toBeGreaterThan(0);
-		}
+	it('magma greatsword carries a positive windUpMs so the 315 charge telegraph fires', () => {
+		expect(CARD_DEFS.magma_greatsword).toBeDefined();
+		expect(CARD_DEFS.magma_greatsword.windUpMs).toBeGreaterThan(0);
 	});
 
 	it('Solar Edge (flame_blade) carries a positive windUpMs so the 315 charge telegraph fires', () => {
