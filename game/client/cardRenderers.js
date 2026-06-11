@@ -638,6 +638,10 @@ function renderCorebreakerGreatsword(data, ctx) {
 	const emissive = style.emissive;
 	const swingCount = data.swingCount || 1;
 	const delayPerSwing = data.specialEffect === 'photon_barrage' ? PHOTON_BARRAGE_SWING_DELAY_MS : 0;
+	// Derive the VFX reach from the server-emitted payload so the on-screen cone,
+	// impact and fire-trail always match the server-resolved attackRange; fall
+	// back to the style default when the payload omits it.
+	const range = data.attackRange ?? style.range;
 
 	// Lingering fire-trail cadence/duration derived from the server card stats —
 	// keeps the molten pulses synced to the server `fire_trail` resolution.
@@ -651,7 +655,7 @@ function renderCorebreakerGreatsword(data, ctx) {
 		color,
 		emissive,
 		coneAngle: style.coneAngle,
-		range: style.range,
+		range,
 		fillOpacity: style.fillOpacity,
 		edgeOpacity: style.edgeOpacity,
 	});
@@ -663,7 +667,7 @@ function renderCorebreakerGreatsword(data, ctx) {
 
 	// Pronounced impact at the blade's strike point — the card's biggest ground
 	// decal plus a heavy molten-debris shower.
-	const impactAt = pointAlong(origin, direction, style.range);
+	const impactAt = pointAlong(origin, direction, range);
 	if (ctx.spawnImpactDecal) {
 		ctx.spawnImpactDecal(impactAt, { color, emissive, radius: style.decalRadius });
 	}
@@ -683,7 +687,7 @@ function renderCorebreakerGreatsword(data, ctx) {
 		ctx.spawnDragonsBreathEffect(origin, direction, {
 			color,
 			emissive,
-			range: style.range,
+			range,
 			coneAngle: style.coneAngle,
 			dotTicks,
 			dotIntervalMs,
@@ -695,7 +699,7 @@ function renderCorebreakerGreatsword(data, ctx) {
 	// trail visibly ticks in lockstep with the server fire_trail damage ticks.
 	for (let tick = 1; tick <= dotTicks; tick += 1) {
 		ctx.scheduleAfter(dotIntervalMs * tick, () => {
-			const pulseAt = pointAlong(origin, direction, style.range * 0.6);
+			const pulseAt = pointAlong(origin, direction, range * 0.6);
 			if (ctx.spawnTelegraphRing) {
 				ctx.spawnTelegraphRing(pulseAt, style.decalRadius * 0.6, { color, emissive });
 			}

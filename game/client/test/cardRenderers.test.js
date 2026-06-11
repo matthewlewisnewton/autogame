@@ -1561,11 +1561,45 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 		const ctx = makeCtx();
 		fire('magma_greatsword', ctx);
 		const style = swingStyle(ctx);
+		// With no payload attackRange the reach falls back to the style default (7).
 		expect(style).toMatchObject({ color: 0xf97316, emissive: 0xff3b00, coneAngle: Math.PI / 1.8, range: 7 });
 		const decal = impactDecal(ctx);
+		expect(decal[1]).toEqual({ x: 7, z: 0 });
 		expect(decal[2]).toMatchObject({ color: 0xf97316, radius: 3.8 });
 		const burst = debrisBurst(ctx);
 		expect(burst[2]).toMatchObject({ color: 0xf97316, count: 24 });
+	});
+
+	it('Corebreaker syncs its cone/impact/trail reach to the server-emitted attackRange', () => {
+		// SYNC CONTRACT: when the payload carries an attackRange (≠ the style default
+		// 7), the cone range, impact placement, fire-trail range and per-tick pulses
+		// all use that derived value — the client VFX never overstate the real reach.
+		const range = 5;
+		const ctx = makeCtx();
+		fire('magma_greatsword', ctx, { attackRange: range });
+		// Cone swing reach tracks the payload, not the hardcoded style default.
+		expect(swingStyle(ctx).range).toBe(range);
+		// Heavy impact decal/debris land at the derived strike point (range along +x).
+		expect(impactDecal(ctx)[1]).toEqual({ x: range, z: 0 });
+		expect(debrisBurst(ctx)[1]).toEqual({ x: range, z: 0 });
+		// Directional fire-trail reach matches the server fire_trail resolution.
+		const breath = ctx._calls.find((c) => c[0] === 'spawnDragonsBreathEffect');
+		expect(breath[3].range).toBe(range);
+		// Per-tick molten pulses sit at range * 0.6 along the swing direction.
+		ctx.runScheduled();
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring[1]).toEqual({ x: range * 0.6, z: 0 });
+	});
+
+	it('Corebreaker falls back to the style default reach when the payload omits attackRange', () => {
+		const ctx = makeCtx();
+		fire('magma_greatsword', ctx, { attackRange: undefined });
+		// The Corebreaker style default reach (7) is the only fallback.
+		const fallbackRange = 7;
+		expect(swingStyle(ctx).range).toBe(fallbackRange);
+		expect(impactDecal(ctx)[1]).toEqual({ x: fallbackRange, z: 0 });
+		const breath = ctx._calls.find((c) => c[0] === 'spawnDragonsBreathEffect');
+		expect(breath[3].range).toBe(fallbackRange);
 	});
 
 	it('Corebreaker uses its own dedicated renderer, distinct from the Alloy Greatblade', () => {
