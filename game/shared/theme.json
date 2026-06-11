@@ -87,7 +87,10 @@
     "defeatBossLevel": "Defeat {bossName}",
     "defeatBossLevelWithSupports": "Defeat {bossName} and {addCount} supports",
     "defeatGlacialTyrant": "Defeat the Glacial Tyrant",
-    "defeatGlacialTyrantWithSupports": "Defeat the Glacial Tyrant and {addCount} supports"
+    "defeatGlacialTyrantWithSupports": "Defeat the Glacial Tyrant and {addCount} supports",
+    "scriptedWavesCleared": "Waves cleared {cleared} / {total}",
+    "supportsClearedProgress": "Supports cleared {cleared} / {total}",
+    "stageBossDefeated": "Warden defeated"
   },
   "cardDescriptions": {
     "summonAlly": "Channels an invocation",

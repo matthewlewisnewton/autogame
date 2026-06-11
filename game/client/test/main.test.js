@@ -4714,6 +4714,73 @@ describe('updateObjectiveHud()', () => {
 		expect(hud.textContent).toContain('Initiate Vault');
 		expect(hud.textContent).toContain('Purged 1 / 5 hostiles');
 	});
+
+	it('shows stage_boss goal and progress for frost_crossing tier 1', async () => {
+		await import('../main.js');
+		const hud = document.getElementById('objective-hud');
+
+		window.__setQuestBoardState([
+			{
+				id: 'frost_crossing',
+				name: 'Frost Crossing',
+				objectiveType: 'stage_boss',
+				encounter: { bossType: 'permafrost_warden', addCount: 0 },
+				scriptedEncounters: {
+					rooms: [
+						{ roomIndex: 0, waves: [{ spawns: [{ type: 'grunt', count: 2 }] }] },
+						{
+							band: 'ice',
+							waves: [
+								{ spawns: [{ type: 'grunt', count: 1 }] },
+								{ spawns: [{ type: 'grunt', count: 1 }] },
+							],
+						},
+					],
+				},
+			},
+		], 'frost_crossing', 1);
+
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'playing',
+			run: {
+				questId: 'frost_crossing',
+				questName: 'Frost Crossing',
+				questTier: 1,
+				encounter: { phase: 'dormant', bossType: 'permafrost_warden' },
+				objective: {
+					type: 'stage_boss',
+					bossDefeated: false,
+					addCount: 0,
+					totalEnemies: 1,
+					defeatedEnemies: 0,
+				},
+				scriptedEncounter: {
+					rooms: {
+						'room:0': { waveIndex: 0, cleared: false, started: true },
+						'band:ice': { waveIndex: -1, cleared: false, started: false },
+					},
+				},
+				_scriptedEncounterConfig: {
+					rooms: [
+						{ roomIndex: 0, waves: [{ spawns: [{ type: 'grunt', count: 2 }] }] },
+						{
+							band: 'ice',
+							waves: [
+								{ spawns: [{ type: 'grunt', count: 1 }] },
+								{ spawns: [{ type: 'grunt', count: 1 }] },
+							],
+						},
+					],
+				},
+			},
+			players: { p1: { hp: 80, magicStones: 40, currency: 0, x: 0, z: 0 } },
+		});
+
+		expect(hud.style.display).toBe('block');
+		expect(hud.textContent).toContain('Frost Crossing');
+		expect(hud.textContent).toContain('Defeat the Permafrost Warden');
+		expect(hud.textContent).toContain('Waves cleared 0 / 3');
+	});
 });
 
 describe('__captureBossVisualIdentityForTest', () => {
