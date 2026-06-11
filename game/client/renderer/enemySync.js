@@ -51,6 +51,7 @@ import {
 	applySlowIndicator,
 	applyBurnIndicator,
 	spawnAttackEffect,
+	spawnFireTrailEffect,
 	spawnParticleBurst,
 	spawnHitSpark,
 	spawnLightningArc,
@@ -763,20 +764,23 @@ const MINION_HIT_VFX = {
 		enemyFlash: 0xfb923c,
 		minionFlash: 0xfb923c,
 		spawn: ({ minion, enemy, renderY, dir }) => {
-			spawnAttackEffect(
-				{ x: minion.x, z: minion.z },
-				dir,
-				{
-					range: 8,
-					coneAngle: Math.PI / 2,
-					color: 0xef4444,
-					emissive: 0x9333ea,
-				}
-			);
-			spawnParticleBurst(
-				{ x: enemy.x, y: renderY, z: enemy.z },
-				{ color: 0xef4444, emissive: 0xff3b00, count: 8, spread: 0.85 },
-			);
+			const origin = { x: minion.x, z: minion.z };
+			const breathStyle = {
+				range: 8,
+				coneAngle: Math.PI / 2,
+				color: 0xef4444,
+				emissive: 0x9333ea,
+			};
+			spawnAttackEffect(origin, dir, breathStyle);
+			if (typeof spawnFireTrailEffect === 'function') {
+				spawnFireTrailEffect(origin, dir, breathStyle);
+			}
+			if (typeof spawnParticleBurst === 'function') {
+				spawnParticleBurst(
+					{ x: enemy.x, y: renderY, z: enemy.z },
+					{ color: 0xef4444, emissive: 0xff3b00, count: 8, spread: 0.85 },
+				);
+			}
 		},
 	},
 	null_crawler: {

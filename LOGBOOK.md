@@ -7788,9 +7788,111 @@ The added `battery-automaton-ready` debug scenario is gated by the existing `?de
 
 The recorded vitest run passed: 175 files and 2486 tests. Focused coverage includes renderer dispatch for `battery_automaton`, deploy and charge-pulse VFX primitive lifecycle tests, minion summon mesh behavior, charge-pulse sync, and existing server/integration coverage for Battery Automaton spawning and charge restoration. Coverage is visibility-only; no disabled threshold concern blocks the ticket.
 
+## v0.426 — 332-anim-ether-scythe  (2026-06-11 00:02:39)
+
+### Scope, performance, and integration
+
+PASS. The implementation is narrowly scoped to `game/client/cardRenderers.js`, renderer tests, and a debug scenario registration. The new visual work composes existing primitives (`spawnAttackEffect`, `spawnParticleBurst`, `spawnImpactDecal`) and is guarded for missing optional helpers or missing enemy meshes, so it should degrade cleanly and not introduce broad rendering or performance risk.
+
+### Client test coverage
+
+PASS. `game/client/test/cardRenderers.test.js` covers the scythe theme, server cone/range sync, fallback behavior, sibling blade isolation, hit-wisp behavior, and graceful degradation. The round coverage log shows the full suite passed: 175 test files and 2489 tests.
+
+### Design and foundation consistency
+
+PASS. The change preserves the design document's active card-combat model and the requirements baseline: the game still starts, renders a 3D scene, connects client/server, shows multiplayer state, and accepts synchronized movement in the captured flow. Ether Scythe remains an earnable weapon reward card and no core combat or progression invariant is weakened.
+
+### Debug scenarios
+
+PASS. The added `harvesting-scythe-combat` debug scenario is registered through the existing debug scenario path and remains gated by the existing local/dev `debugScenario` mechanism. It only creates a QA shortcut to a normally reachable state: a player in a normal run with the earnable `harvesting_scythe` in hand. It does not bypass normal `useCard` validation, server hit resolution, net replication, or the client `cardUsed` renderer path.
+
+
+## v0.427 — 331-anim-mana-prism  (2026-06-11 00:22:40)
+
+### Wiring, robustness, and performance
+
+PASS. The new `spawnManaPrismEffect` primitive is threaded through `main.js`, `socketHandlerCtx.js`, and `cardHandlers.js` into the per-card renderer context. The renderer uses a finite group of eight meshes for the cast flourish and a finite six-callback pulse schedule; no intervals, unbounded allocations, or persistent scene objects are introduced. The minimal-context tests also cover graceful no-op behavior when optional primitives are absent.
+
+### Tests and coverage
+
+PASS. The latest coverage run reports `50 passed` test files and `719 passed` tests. `client/test/cardRenderers.test.js` includes targeted assertions for the Mana Prism cast VFX, exact pulse schedule, pulse flourish contents, and missing-primitive graceful degradation. Coverage thresholds were disabled as expected; the relevant changed client renderer behavior is directly covered.
+
+### Design and foundation consistency
+
+PASS. The implementation stays within the documented card-combat model in `game/docs/design.md`: Mana Prism remains a spell/resource effect in the active deck combat system, with no server-client architecture, movement, multiplayer visualization, or foundation requirement regression. The runtime smoke verifies the 3D scene, websocket connection, multiplayer presence, and movement flow remain functional.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=NAME` shortcut. Existing Mana Prism QA shortcuts referenced in sub-ticket handoff material remain pre-existing debug paths, and the captured run used `debugScenario: null`.
+
 ## Remaining gaps
 
 None.
+
+
+## v0.428 — 330-anim-archive-wyrm  (2026-06-11 00:23:51)
+
+### Scope, Performance, And Integration
+
+PASS. The implementation stays within client renderer registration/VFX plumbing/tests, with only small ctx wiring for `spawnFireTrailEffect` and an enemy HP-drop fallback update. It reuses existing VFX primitives and does not touch `updateAttackEffects` or add per-frame work. `dungeon_drake` behavior is covered by regression tests and remains on the shared Vault Wyrm renderers.
+
+### Tests And Coverage
+
+PASS. `round-1/coverage.log` shows `62 passed (62)` test files and `1413 passed (1413)` tests with coverage visibility enabled. `client/test/cardRenderers.test.js` includes focused assertions for Archive Wyrm renderer registration, summon palette/primitives, fire-breath composition, tick-only hit feedback, server timing constants, and airborne origin/direction Y handling.
+
+### Design And Requirements Consistency
+
+PASS. The change preserves the design's active card-combat creature model: Archive Wyrm remains a creature/minion with server-authored combat effects and client-side visuals only. The foundation requirements are not regressed; the captured run shows 3D rendering, socket connectivity, multiplayer presence, and movement/dodge gameplay still working.
+
+### Debug Scenarios
+
+PASS. This ticket did not add or change debug scenario entry points. Existing Archive Wyrm debug helpers remain gated through the localhost `?debugScenario` flow and are documented as shortcuts for states reachable through normal play by evolving `dungeon_drake` to `ancient_wyrm` and deploying it in combat.
+
+
+## v0.429 — Decision: per-quest layouts are fully deterministic — every run of a level is the identical map. Intentional?  (2026-06-11 00:43:01)
+
+## Code quality
+
+- **Seed separation is clean:** layout stream and objective stream are explicitly split; only `collect_items` crystal placement consumes `objectiveRng`.
+- **Checkpoint symmetry:** `runSpawnSeed` is captured and restored alongside `layoutSeed` and loot — consistent with telepipe durability rules in `design.md`.
+- **No dead code:** new exports (`generateRunSpawnSeed`, `ensureRunSpawnSeed`) are used by tests and the deploy path.
+- **Test depth:** unit (`quest_per_run_spawn.test.js`), server lifecycle (`server.test.js`), integration socket abandon (`integration.test.js`), and debug-scenario smoke cover the full matrix.
+- **Coverage artifact:** `round-1/coverage.log` reports 1969/1969 tests passed; scoped file report only surfaces `index.js`/`cards.js` (harness diff filter), but changed `progression.js` / `objectives.js` paths are exercised by the new and extended tests above.
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria from the three sub-tickets are met; runtime capture is clean; tests pass.
+
+---
+
+## Nits (non-blocking)
+
+See `nits.md` — stale doc tense in `design.md` only.
+
+
+## v0.430 — 329-anim-astral-guardian  (2026-06-11 00:44:45)
+
+### Timing and server-effect sync
+
+PASS. The server `astral_guardian` effect resolves immediately in `applyAstralShieldCast`, emits `radius: SUMMON_RADIUS`, `shieldGranted`, `playerId`, `hits`, and `minionId`, and the renderer consumes those live payload fields synchronously. The client test asserts no `scheduleAfter` deferral, no generic `spawnSummonEffect`, and an AoE telegraph radius exactly equal to `data.radius`, so the visible impact aligns with the instant radial damage and shield-up moment.
+
+### Design and foundation consistency
+
+PASS. The change is consistent with the design doc's card-combat model: Astral Guardian remains a spell with an instant radial effect plus defensive/minion utility, and it does not alter lobby, movement, multiplayer, economy, or server-client foundations from `game/docs/requirements.md`.
+
+### Code quality, tests, and coverage
+
+PASS. The diff is narrow: `game/client/cardRenderers.js` and `game/client/test/cardRenderers.test.js` are the only game files changed. Optional VFX helpers are guarded, the renderer no-ops when `data.radius` is absent, and the tests cover the summon/telegraph/burst path, shield-present path, shield-absent path, and synchronous timing. The recorded coverage run shows `50` test files and `747` tests passing, including `client/test/cardRenderers.test.js`.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=...` development shortcut; no debug-scenario gating or normal-gameplay reachability issue is introduced.
+
+## Remaining gaps
+
+None. The ticket meets the acceptance criteria. The fallback smoke capture did not include a dedicated Astral Guardian cast screenshot, but the game run is clean and the renderer behavior is covered by focused client tests.
 
 
 ## v0.431 — 328-anim-aegis-sentinel  (2026-06-11 00:53:30)

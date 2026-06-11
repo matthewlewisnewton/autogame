@@ -59,6 +59,15 @@ export const PHOTON_BARRAGE_SWING_DELAY_MS = 80;
 /** Event Horizon crush impact delay after pull VFX — visual pull→crush beat (ms) */
 export const EVENT_HORIZON_CRUSH_DELAY_MS = 375;
 
+/** Archive Wyrm minion breath damage tick interval — matches server breathTickMs */
+export const ARCHIVE_WYRM_BREATH_TICK_MS = 500;
+
+/** Archive Wyrm minion breath channel length — matches server breathDurationMs */
+export const ARCHIVE_WYRM_BREATH_DURATION_MS = 2500;
+
+/** Mid-channel pulse count within one Archive Wyrm breath (follow-up tick intervals) */
+export const ARCHIVE_WYRM_BREATH_TICK_COUNT = 4;
+
 // ── Visual effect durations ──
 
 /** Weapon projectile: ms before auto-removal */
