@@ -155,17 +155,6 @@ function renderConeSwings(data, ctx) {
  * composed primitives.
  */
 const WEAPON_SLASH_STYLES = {
-	// Rust-Forged Saber: a tight, steely arc — a quick clean cut with a few sparks.
-	iron_sword: {
-		color: 0x94a3b8,
-		emissive: 0x64748b,
-		coneAngle: Math.PI / 5,
-		range: 4,
-		fillOpacity: 0.42,
-		edgeOpacity: 0.85,
-		sparkCount: 6,
-		sparkSpread: 0.7,
-	},
 	// Solar Edge: a warm fiery arc with a trailing flame streak and ember burst.
 	flame_blade: {
 		color: 0xff7a18,
@@ -316,6 +305,69 @@ function renderWeaponSwing(data, ctx) {
 			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
 			ctx.spawnParticleBurst(pos, { color, emissive, count: 10, spread: 1.1, soulWisp: true });
 		}
+	}
+}
+
+/** Rust-Forged Saber: weathered iron body with oxidized rust emissive accents. */
+const RUST_FORGED_SABER_STYLE = {
+	color: 0x78716c,
+	emissive: 0xb45309,
+	coneAngle: Math.PI / 5,
+	range: 4,
+	fillOpacity: 0.42,
+	edgeOpacity: 0.85,
+	sparkCount: 6,
+	sparkSpread: 0.7,
+	decalRadius: 1.1,
+};
+
+/**
+ * Rust-Forged Saber swing. Composes the 315 primitives — a tight saber slash
+ * arc in warm rust-steel tones plus a metallic spark/rust-flake burst along the
+ * cut — into one weathered forged-blade blow. No projectile trail (that reads
+ * as fire/energy). Optional scored-metal ground mark at the strike point.
+ * Falls through to the uniform hit-flash / sound / shockwave post-effects in
+ * `renderCardUsed`. Each ctx call is guarded so the swing degrades gracefully
+ * when a primitive is absent.
+ */
+function renderRustForgedSaber(data, ctx) {
+	const style = RUST_FORGED_SABER_STYLE;
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex('iron_sword') ?? style.color;
+	const emissive = style.emissive;
+	const swingCount = data.swingCount || 1;
+	const range = data.attackRange || style.range;
+	const impactAt = pointAlong(origin, direction, range);
+
+	const swing = () => {
+		if (ctx.spawnAttackEffect) {
+			ctx.spawnAttackEffect(origin, direction, {
+				color,
+				emissive,
+				coneAngle: style.coneAngle,
+				range,
+				fillOpacity: style.fillOpacity,
+				edgeOpacity: style.edgeOpacity,
+			});
+		}
+		if (ctx.spawnParticleBurst) {
+			const sparkAt = pointAlong(origin, direction, range * 0.6);
+			ctx.spawnParticleBurst(sparkAt, {
+				color,
+				emissive,
+				count: style.sparkCount,
+				spread: style.sparkSpread,
+			});
+		}
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(impactAt, { color, emissive, radius: style.decalRadius });
+		}
+	};
+	for (let i = 0; i < swingCount; i++) {
+		const delay = i * PHOTON_BARRAGE_SWING_DELAY_MS;
+		if (delay > 0 && ctx.scheduleAfter) ctx.scheduleAfter(delay, swing);
+		else swing();
 	}
 }
 
@@ -3206,7 +3258,7 @@ function renderChronoTrigger(data, ctx) {
 
 const CARD_RENDERERS = {
 	// Weapons
-	iron_sword: renderWeaponSwing,
+	iron_sword: renderRustForgedSaber,
 	flame_blade: renderWeaponSwing,
 	harvesting_scythe: renderWeaponSwing,
 	reapers_scythe: renderReapersScythe,

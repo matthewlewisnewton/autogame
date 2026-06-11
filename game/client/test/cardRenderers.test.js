@@ -147,6 +147,8 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('harvesting_scythe')).toHaveLength(1);
 		// Distinct from the plain cone-swing default.
 		expect(resolveRenderers('iron_sword')[0]).not.toBe(WEAPON_TYPE_DEFAULT_RENDERER);
+		expect(resolveRenderers('iron_sword')[0].name).toBe('renderRustForgedSaber');
+		expect(resolveRenderers('iron_sword')[0].name).not.toBe('renderWeaponSwing');
 	});
 
 	it('returns card-specific renderers for the energy/photon blades (not the cone default)', () => {
@@ -854,7 +856,8 @@ describe('renderCardUsed() — styled weapon slashes', () => {
 		return attack[3];
 	}
 
-	it('Rust-Forged Saber slashes a tight steely arc with a spark burst and no trail/decal', () => {
+	it('Rust-Forged Saber slashes a tight rust-steel arc with a spark burst and no flame trail', () => {
+		expect(resolveRenderers('iron_sword')[0].name).toBe('renderRustForgedSaber');
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'iron_sword',
@@ -863,11 +866,18 @@ describe('renderCardUsed() — styled weapon slashes', () => {
 			hits: [],
 		}, ctx);
 		const style = swingStyle(ctx);
-		expect(style).toMatchObject({ color: 0x94a3b8, coneAngle: Math.PI / 5, range: 4 });
-		// Steel slash kicks up sparks but no flame trail and no ground decal.
-		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(true);
+		// Weathered iron body + oxidized rust emissive — distinct from flame_blade orange
+		// and steel_claymore cool slate.
+		expect(style).toMatchObject({
+			color: 0x78716c,
+			emissive: 0xb45309,
+			coneAngle: Math.PI / 5,
+			range: 4,
+		});
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[2]).toMatchObject({ color: 0x78716c, emissive: 0xb45309, count: 6 });
 		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
-		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
 	});
 
 	it('Solar Edge slashes a warm fiery arc with a flame trail and ember burst', () => {
@@ -1501,7 +1511,7 @@ describe('renderCardUsed() — saber_of_light reach + swift_slash timing', () =>
 
 	it('uses a dedicated renderer, distinct from the plain cone default and renderWeaponSwing', () => {
 		const plainCone = resolveRenderers('reapers_scythe')[0]; // weapon type default (renderConeSwings)
-		const weaponSwing = resolveRenderers('iron_sword')[0]; // shared renderWeaponSwing
+		const weaponSwing = resolveRenderers('flame_blade')[0]; // shared renderWeaponSwing
 		const saber = resolveRenderers('saber_of_light');
 		expect(saber).toHaveLength(1);
 		expect(saber[0]).not.toBe(plainCone);
