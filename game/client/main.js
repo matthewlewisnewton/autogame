@@ -3663,11 +3663,11 @@ if (registerBtnEl) {
 			});
 			const data = await res.json();
 			if (res.ok) {
-				if (registerErrorEl) {
-					registerErrorEl.textContent = 'Account created — please login';
-					registerErrorEl.style.color = '#4ade80';
-				}
 				showLoginForm();
+				if (loginErrorEl) {
+					loginErrorEl.textContent = 'Account created — please login';
+					loginErrorEl.style.color = '#4ade80';
+				}
 			} else {
 				if (registerErrorEl) registerErrorEl.textContent = data.error || 'Registration failed';
 			}
