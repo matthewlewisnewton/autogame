@@ -2789,6 +2789,19 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(flourishes).toHaveLength(1);
 		expect(flourishes[0][1]).toEqual({ x: 2, z: 3 });
 		expect(flourishes[0][2]).toMatchObject({ color: 0x93c5fd, emissive: 0x7dd3fc });
+		// Tighter/smaller than Thunderbird's wider sky-blue summon (radius 1.2).
+		expect(flourishes[0][2].radius).toBeLessThan(1.2);
+		expect(flourishes[0][2]).not.toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+		// Wing/wind cue on top of the base flourish: a storm-palette ripple ring
+		// and a wing-beat spark burst, both in the cyan storm palette.
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 2, z: 3 });
+		expect(ring[3]).toMatchObject({ color: 0x93c5fd, emissive: 0x7dd3fc });
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[2]).toMatchObject({ color: 0x93c5fd, emissive: 0x7dd3fc });
+		// No lightning arc on the deploy event.
 		expect(ctx._calls.some((c) => c[0] === 'spawnLightningArc')).toBe(false);
 	});
 

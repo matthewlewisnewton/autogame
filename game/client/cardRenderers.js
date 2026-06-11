@@ -1181,17 +1181,33 @@ function renderChainLightning(data, ctx) {
 }
 
 /**
- * Stormwing Drone deploy: soft cyan summon flourish (lighter than Thunderbird).
+ * Stormwing Drone deploy: a tight cyan storm flourish (smaller than Thunderbird)
+ * topped with a wind ripple ring and wing-beat spark burst so the drone reads as
+ * a storm-charged flyer lifting off — distinct from Thunderbird's wider summon.
  */
 function renderStormEagleSummon(data, ctx) {
 	if (!data.minionId || data.hits?.length) return;
 	if (!ctx.spawnMinionSummonInEffect) return;
-	ctx.spawnMinionSummonInEffect(originOf(data), {
+	const origin = originOf(data);
+	ctx.spawnMinionSummonInEffect(origin, {
 		color: 0x93c5fd,
 		emissive: 0x7dd3fc,
+		radius: 0.9,
 		burstCount: 10,
 		burstSpread: 1.2,
 	});
+	// Wing/wind read: an expanding storm ripple plus a low wing-beat spark puff.
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, 1.1, { color: 0x93c5fd, emissive: 0x7dd3fc });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, {
+			color: 0x93c5fd,
+			emissive: 0x7dd3fc,
+			count: 8,
+			spread: 1.6,
+		});
+	}
 }
 
 /**
