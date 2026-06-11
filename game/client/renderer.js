@@ -697,6 +697,15 @@ export const MINION_VISUAL = {
 		emissive: 0x38bdf8,
 		emissiveIntensity: 0.45,
 	},
+	battery_automaton: {
+		shape: 'box',
+		width: 0.55,
+		height: 0.7,
+		depth: 0.45,
+		color: 0xfbbf24,
+		emissive: 0x38bdf8,
+		emissiveIntensity: 0.4,
+	},
 };
 
 /**

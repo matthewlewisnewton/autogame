@@ -15,6 +15,7 @@
 //   spawnSummonEffect(origin, radius, styleOrColor?)
 //   spawnLegionMarshalRallyEffect(origin, radius, style?) — undead commander rally ring + column
 //   spawnMinionSummonInEffect(origin, style?) — creature minion summon flourish
+//   spawnBatteryAutomatonDeployEffect(origin, style?) — battery mechanical deploy ring + column
 //   spawnDivineGraceEffect(origin, radius)
 //   spawnEventHorizonEffect(origin, pullRadius, centerRadius, style?)
 //   spawnPurifyingPulseHealRing(origin, radius, options?) — options: { wave, waveCount } stagger one concentric heal wave
@@ -1067,6 +1068,36 @@ function renderInfernoPillar(data, ctx) {
 function renderCreatureSummon(data, ctx) {
 	if (!data.minionId || !ctx.spawnMinionSummonInEffect) return;
 	ctx.spawnMinionSummonInEffect(originOf(data), accentSummonStyle(data.cardId));
+}
+
+const BATTERY_AUTOMATON_COLOR = 0xfbbf24;
+const BATTERY_AUTOMATON_EMISSIVE = 0x38bdf8;
+
+/**
+ * Battery Automaton: mechanical deploy ring + electric column composed with the
+ * shared minion summon-in flourish. Fires synchronously on CARD_USED when the
+ * server reports a new minion id — no wind-up delay. Every optional helper is
+ * guarded so missing primitives never throw.
+ */
+function renderBatteryAutomaton(data, ctx) {
+	if (!data.minionId || !ctx.spawnMinionSummonInEffect) return;
+	const origin = originOf(data);
+	const batteryStyle = {
+		color: BATTERY_AUTOMATON_COLOR,
+		emissive: BATTERY_AUTOMATON_EMISSIVE,
+		duration: MINION_SUMMON_IN_MS,
+		radius: 1.4,
+	};
+	if (ctx.spawnBatteryAutomatonDeployEffect) {
+		ctx.spawnBatteryAutomatonDeployEffect(origin, batteryStyle);
+	}
+	ctx.spawnMinionSummonInEffect(origin, {
+		color: BATTERY_AUTOMATON_COLOR,
+		emissive: BATTERY_AUTOMATON_EMISSIVE,
+		radius: 1.1,
+		burstCount: 10,
+		burstSpread: 1.4,
+	});
 }
 
 /**
@@ -2285,6 +2316,7 @@ const CARD_RENDERERS = {
 	ancient_wyrm: [renderWyrmSummon, renderWyrmAttack],
 	null_crawler: [renderNullCrawlerSummon, renderPhaseBeam],
 	bulkhead_mauler: renderShockwaveSweep,
+	battery_automaton: renderBatteryAutomaton,
 
 	// Enchantments
 	spike_trap: renderSpikeTrap,

@@ -2892,6 +2892,28 @@ function setupPhaseStalkerCombatDebug({ lobby, state, player, socket, name, spaw
         }
 }
 
+function setupBatteryAutomatonReadyDebug({ lobby, state, player, socket, name, spawn }) {
+  // Battery Automaton deploy QA — full mana and the reward creature in hand.
+        // Reachable by earning the late-run reward card and deploying in combat.
+        player.hp = MAX_HP;
+        player.magicStones = MAX_MAGIC_STONES;
+        if (!player.hand.some(c => c && c.id === 'battery_automaton')) {
+          const replaceSlot = player.hand.findIndex(c => c && c.type !== 'creature');
+          if (replaceSlot >= 0) {
+            player.hand[replaceSlot] = {
+              id: 'battery_automaton',
+              name: 'Battery Automaton',
+              type: 'creature',
+              charges: 1,
+              remainingCharges: 1,
+              magicStoneCost: 50,
+            };
+          }
+        }
+        state.minions = [];
+        state.enemies = [];
+}
+
 function setupLegionMarshalReadyDebug({ lobby, state, player, socket, name, spawn }) {
   // Legion Marshal skeleton-summon QA — full mana and the evolved card in hand
         // after deploy. Reachable by evolving skeleton_knight and deploying in combat.
@@ -4849,6 +4871,10 @@ const DEBUG_SCENARIO_REGISTRY = {
   'phase-stalker-combat': (ctx) => {
     enterStandardPlayingDebugScenario(ctx);
     setupPhaseStalkerCombatDebug(ctx);
+  },
+  'battery-automaton-ready': (ctx) => {
+    enterStandardPlayingDebugScenario(ctx);
+    setupBatteryAutomatonReadyDebug(ctx);
   },
   'legion-marshal-ready': (ctx) => {
     enterStandardPlayingDebugScenario(ctx);
