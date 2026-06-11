@@ -101,6 +101,8 @@ import {
 	DESPERATION_DECK_TEMPLATE,
 	discardCardFromHand,
 	isPlayerOutOfCards,
+	canPlayerCastHandCard,
+	isPlayerCombatExhausted,
 	validateUseCardHand,
 	stateSnapshot,
 	hotStateSnapshot,
@@ -1821,6 +1823,96 @@ describe('enemy magic stone drops and discard', () => {
 		});
 
 		expect(isPlayerOutOfCards(gameState.players['p1'])).toBe(false);
+	});
+});
+
+describe('combat exhaustion detection', () => {
+	beforeEach(() => {
+		resetState();
+	});
+
+	it('isPlayerCombatExhausted is true when hand, deck, and desperation are empty', () => {
+		addPlayer('p1', {
+			hand: [null, null, null, null, null, null],
+			deck: [],
+			desperationDeck: [],
+		});
+
+		expect(isPlayerCombatExhausted(gameState.players['p1'])).toBe(true);
+	});
+
+	it('isPlayerCombatExhausted is true when hand has only MS-insufficient spells and piles are empty', () => {
+		addPlayer('p1', {
+			magicStones: 25,
+			hand: [
+				{
+					id: 'battle_familiar',
+					type: 'spell',
+					charges: 1,
+					remainingCharges: 1,
+					magicStoneCost: 50,
+				},
+				null,
+				null,
+				null,
+				null,
+				null,
+			],
+			deck: [],
+			desperationDeck: [],
+		});
+
+		expect(isPlayerCombatExhausted(gameState.players['p1'])).toBe(true);
+		expect(canPlayerCastHandCard(gameState.players['p1'], gameState.players['p1'].hand[0])).toBe(false);
+	});
+
+	it('isPlayerCombatExhausted is false when the deck still has drawable cards', () => {
+		addPlayer('p1', {
+			magicStones: 25,
+			hand: [
+				{
+					id: 'battle_familiar',
+					type: 'spell',
+					charges: 1,
+					remainingCharges: 1,
+					magicStoneCost: 50,
+				},
+				null,
+				null,
+				null,
+				null,
+				null,
+			],
+			deck: ['iron_sword'],
+			desperationDeck: [],
+		});
+
+		expect(isPlayerCombatExhausted(gameState.players['p1'])).toBe(false);
+	});
+
+	it('isPlayerCombatExhausted is false when at least one hand card is castable', () => {
+		addPlayer('p1', {
+			magicStones: 25,
+			hand: [
+				{
+					id: 'battle_familiar',
+					type: 'spell',
+					charges: 1,
+					remainingCharges: 1,
+					magicStoneCost: 50,
+				},
+				{ id: 'iron_sword', type: 'weapon', charges: 5, remainingCharges: 5 },
+				null,
+				null,
+				null,
+				null,
+			],
+			deck: [],
+			desperationDeck: [],
+		});
+
+		expect(isPlayerCombatExhausted(gameState.players['p1'])).toBe(false);
+		expect(canPlayerCastHandCard(gameState.players['p1'], gameState.players['p1'].hand[1])).toBe(true);
 	});
 });
 

@@ -2381,6 +2381,32 @@ function isPlayerOutOfCards(player) {
   return handEmpty && isDeckEmpty(player) && isDesperationDeckEmpty(player);
 }
 
+function canPlayerCastHandCard(player, handCard) {
+  if (!handCard) return false;
+  if (handCard.activeMinionId) return false;
+  if (Number.isFinite(handCard.remainingCharges) && handCard.remainingCharges <= 0) {
+    return false;
+  }
+  const magicStoneCost = handCard.magicStoneCost ?? 0;
+  const magicStones = player?.magicStones ?? 0;
+  if (magicStones < magicStoneCost) {
+    return false;
+  }
+  return true;
+}
+
+function isPlayerCombatExhausted(player) {
+  if (!player) return true;
+  if (canDrawIntoHand(player)) return false;
+  const hand = Array.isArray(player.hand) ? player.hand : [];
+  for (const handCard of hand) {
+    if (handCard && canPlayerCastHandCard(player, handCard)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function drawReplacementCard(player, slotIndex) {
   ensureHandSlots(player);
   const card = drawCardFromDeck(player) || drawCardFromDesperationDeck(player);
@@ -3957,6 +3983,8 @@ module.exports = {
   discardCardFromHand,
   validateDiscardHand,
   isPlayerOutOfCards,
+  canPlayerCastHandCard,
+  isPlayerCombatExhausted,
   validateUseCardHand,
   addMagicStones,
   restoreCardCharges,
