@@ -1,0 +1,6 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 1 sub-ticket:
+
+- `tickets/client-registration-success-message-rendered-into-hidden-err-4dy2/subtickets/01-show-success-on-login-form/ticket.md`
+
+The top-level ticket is a single-line UI fix: move the success message from `registerErrorEl` (hidden after form swap) to `loginErrorEl` (visible after form swap). No server changes, no auto-login needed — just write the message into the element that will actually be on screen.

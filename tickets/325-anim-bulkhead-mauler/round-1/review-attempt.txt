@@ -1,0 +1,19 @@
+No standalone nits worth a separate backlog ticket (the test-realism follow-up is part of the fix in gaps.md #2), so I'm not creating `nits.md`.
+
+## Verdict: FAIL
+
+**The game runs cleanly** — `metrics.json` shows `ok: true`, empty `pageerrors`, no harness failure; console has only benign `409` lobby auth noise; all 305 client tests pass.
+
+**But there's a blocking integration bug the unit tests missed:**
+
+The Bulkhead Mauler's **deploy/summon animation never renders in real gameplay**, and a **spurious attack shockwave fires on deploy** instead. Root cause:
+
+- The card's merged def stamps `specialEffect: "shockwave_sweep"` (`cardStats.json` → `CARD_DEFS`), so the creature **deploy** `CARD_USED` event carries that field (`cardEffects.js:1393`).
+- `renderBulkheadMaulerSummon` early-returns on `data.specialEffect === 'shockwave_sweep'` → deploy ring/slab/flourish never play.
+- `renderBulkheadMaulerShockwaveSweep` passes its `specialEffect` guard on that same deploy event → fires an attack wedge with default direction.
+
+The implementer keyed deploy-vs-attack discrimination on `specialEffect`, which is present on **both** events. The established wyrm renderers correctly key on `breathPhase` (attack-only). The fix is to discriminate on an attack-only field (`direction`/`hits`).
+
+The unit tests passed only because their deploy payloads **omit** `specialEffect`, so they never exercised the real server event.
+
+Wrote `review.md` (per-criterion + gaps) and `gaps.md` (2 actionable items). The attack VFX, timing sync, perf, and the `bulkhead-mauler-ready` debug scenario gating/reachability all check out — only the deploy path is broken.

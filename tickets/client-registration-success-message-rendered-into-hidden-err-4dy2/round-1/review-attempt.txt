@@ -1,0 +1,19 @@
+## Review complete
+
+**Verdict: PASS**
+
+### Runtime
+- `metrics.json`: `ok: true`, `pageerrors: []`
+- `console.log`: no `pageerror` or `[fatal]` lines (only benign HTTP 409 during auth)
+- Game reached squad lobby and gameplay in capture
+
+### Implementation
+One commit (`d88d6808`) moves the registration success message from hidden `#register-error` to visible `#login-error` **after** `showLoginForm()`, which matches the ticket’s “show success on login form after swap” option.
+
+### Acceptance criteria
+All met: visible green success text on the login form, error paths unchanged on the register form, no auth-flow regressions, tests pass (303/303).
+
+### Files written
+- `tickets/.../round-1/review.md` — full assessment
+- `tickets/.../round-1/nits.md` — two non-blocking follow-ups (error color reset after success, optional unit test)
+- No `gaps.md` (PASS only)
