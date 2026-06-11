@@ -265,6 +265,9 @@ module.exports.RATE_LIMIT_MAX_ATTEMPTS = RATE_LIMIT_MAX_ATTEMPTS;
 module.exports.pruneExpiredBuckets = pruneExpiredBuckets;
 module.exports.startRateLimitSweep = startRateLimitSweep;
 module.exports.stopRateLimitSweep = stopRateLimitSweep;
+module.exports.getRateLimitSweepInterval = function getRateLimitSweepInterval() {
+	return _rateLimitSweepInterval;
+};
 Object.defineProperty(module.exports, '_rateLimitSweepInterval', {
 	get() { return _rateLimitSweepInterval; },
 });

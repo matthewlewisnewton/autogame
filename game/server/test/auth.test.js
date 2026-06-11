@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { createRequire } from 'module';
 import {
 	startServer,
 	resetGameState,
@@ -11,15 +12,23 @@ import {
 	getJWTSecret
 } from '../index.js';
 import { setServerUsersFilePath, clearServerUsers } from './helpers.js';
-import {
+
+// Use createRequire to get the same CJS auth instance that index.js uses.
+// Vitest loads CJS modules twice (ESM import vs CJS require), so direct
+// ESM imports of auth.js would read a different module instance than the
+// one index.js manipulates via require('./auth').
+const requireCJS = createRequire(import.meta.url);
+const auth = requireCJS('../auth.js');
+const {
 	initAuth,
 	resetAuthSecret,
 	_resetRateLimits,
 	_rateLimitBuckets,
 	RATE_LIMIT_WINDOW_MS,
 	pruneExpiredBuckets,
-	startRateLimitSweep
-} from '../auth.js';
+	getRateLimitSweepInterval
+} = auth;
+
 import jwt from 'jsonwebtoken';
 
 // ── Helpers ──
@@ -445,17 +454,11 @@ describe('pruneExpiredBuckets()', () => {
 
 describe('rate-limit sweep interval', () => {
 	it('sweep interval is active after server starts', () => {
-		// startTestServer() in beforeEach calls startServer(0) which calls
-		// startRateLimitSweep(). Since startRateLimitSweep() is idempotent
-		// (returns existing interval when already started), calling it here
-		// returns the interval ID set by the server startup.
-		// Note: Node.js v22+ returns a Timeout object (not a number) from setInterval.
-		const intervalId = startRateLimitSweep();
-		expect(intervalId).toBeDefined();
-		expect(intervalId).not.toBeNull();
-		expect(intervalId).not.toBe(0);
-		// In Node.js < 22, intervalId is a number; in v22+, it's a Timeout object.
-		// Either way, a truthy non-zero value means the interval is active.
-		expect(Boolean(intervalId)).toBe(true);
+		// startTestServer() in beforeEach calls startServer(0), which calls
+		// clearAllTimers() (stops any prior sweep) then restartBackgroundTimers()
+		// then startRateLimitSweep(). The sweep interval should be truthy,
+		// proving the sweep survived the full startup sequence.
+		expect(getRateLimitSweepInterval()).toBeDefined();
+		expect(Boolean(getRateLimitSweepInterval())).toBe(true);
 	});
 });
