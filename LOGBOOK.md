@@ -7939,3 +7939,26 @@ PASS. The requested diff/log commands show the ticket's three commits and a scop
 ## Remaining gaps
 
 None.
+
+## v0.436 — Client: on-screen control hints never mention the key item binding  (2026-06-11 01:54:41)
+
+**PASS.** `game/client/test/attack-cast-hint.test.js` adds four focused cases: default `E`, rebound `Q`, standard gamepad `DPad Down`, and 8BitDo 64 label (no raw `Btn 13`). Full suite: **549/549 tests passed** (`coverage.log`).
+
+## Design & integration
+
+- **Scope:** Single sub-ticket; changes limited to `input.js`, `main.js`, and tests. No server or persistence changes — appropriate for a client HUD hint.
+- **Consistency with `design.md`:** No combat-loop or progression regressions; improves discoverability of a core combat tool already documented in controls/settings.
+- **Existing HUD:** The persistent key-item slot (`Dodge Roll` / `E`) was already present; this ticket correctly fills the gap in the center attack/cast hint line noted in the ticket goal.
+- **Debug scenarios:** None added or modified — N/A.
+
+## Code quality
+
+- Reuses existing `getUseKeyItemBinding()` rather than duplicating resolution logic.
+- `renderHand()` already refreshed attack/cast hint text for hand-slot binding changes; extending the same path for key-item state keeps behavior consistent.
+- No dead code, no new console errors, no pageerrors in capture.
+
+## Remaining gaps
+
+None. All acceptance criteria are met; the captured run proves the game loads and displays the new hint correctly.
+
+
