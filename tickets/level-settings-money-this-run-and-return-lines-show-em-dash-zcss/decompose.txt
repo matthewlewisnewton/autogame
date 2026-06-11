@@ -1,0 +1,12 @@
+Broke the top-level ticket into **2 sub-tickets** (dependency order). Root cause: `hotStateSnapshot()` strips `returnRewardsPreview` each tick, and the client never seeds its cache on deploy; loot pickup also doesn't push an updated preview.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/level-settings-money-this-run-and-return-lines-show-em-dash-zcss/tickets/level-settings-money-this-run-and-return-lines-show-em-dash-zcss/subtickets/01-client-cache-return-rewards-preview`
+2. `/home/matt/workspace/.autogame-worktrees/level-settings-money-this-run-and-return-lines-show-em-dash-zcss/tickets/level-settings-money-this-run-and-return-lines-show-em-dash-zcss/subtickets/02-server-deck-update-on-loot-pickup`
+
+**Plan:**
+- **01** — Client caches `returnRewardsPreview` from the deploy snapshot and survives slim hot ticks (fixes em-dash placeholders after the first tick).
+- **02** — Server emits `deckUpdate` with fresh `returnRewardsPreview` when currency loot is picked up (fixes stale/zero amounts after collecting money).
+
+Both use **code** verification (logic, handlers, and tests — not pixel-level screenshot QA).

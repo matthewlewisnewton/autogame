@@ -79,10 +79,10 @@ export function bindStateHandlers(s, ctx) {
 			ctx.clearQuestCommsLog();
 			ctx.setQuestCommsUiVisible(true);
 			ctx.flushPendingQuestDialogue();
-		} else if (me && state.gamePhase === 'playing') {
-			if (enteringPlaying) {
-				ctx.extractedLobbyOverlayActive = false;
+			if (me?.returnRewardsPreview != null) {
+				ctx._lastReturnRewardsPreview = me.returnRewardsPreview;
 			}
+		} else if (me && state.gamePhase === 'playing') {
 			if (me.returnRewardsPreview != null) {
 				ctx._lastReturnRewardsPreview = me.returnRewardsPreview;
 			} else if (ctx._lastReturnRewardsPreview != null) {

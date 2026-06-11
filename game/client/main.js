@@ -4740,6 +4740,7 @@ window.closeSettingsOverlay = closeSettingsOverlay;
 window.openAccountOverlay = openAccountOverlay;
 window.openLevelSettingsOverlay = openLevelSettingsOverlay;
 window.closeLevelSettingsOverlay = closeLevelSettingsOverlay;
+window.__syncLevelSettingsRewardsForTest = syncLevelSettingsRewards;
 window.updateLevelSettingsBtnVisibility = updateLevelSettingsBtnVisibility;
 window.closeAccountOverlay = closeAccountOverlay;
 window.openCharacterBooth = openCharacterBooth;
