@@ -1,0 +1,21 @@
+I created one well-scoped sub-ticket. Here's the decomposition rationale and result.
+
+## Sub-ticket created
+
+```
+/home/matt/workspace/.autogame-worktrees/359-anim-resonance-edge/tickets/359-anim-resonance-edge/subtickets/01-resonance-edge-renderer-and-timing/ticket.md
+```
+
+## Why one sub-ticket
+
+The top-level ticket is deliberately narrow: "touch only this card's renderer + its registration." After tracing the code I confirmed the whole deliverable collapses to one focused pass:
+
+- **Theme** — `renderResonantDoublePulse` already exists (magenta cone + double pulse); it needs re-theming so the resonance *peak* reads on screen.
+- **Timing** — the real timing contract is `data.shockwaveHits`, which the server populates **only every 2nd use** (`shockwaveEvery: 2`). The current renderer ignores it and plays identically on every swing. The fix is to gate a themed "resonance discharge" layer on `shockwaveHits?.length > 0` so the on-screen cadence matches server resolution.
+- **No wind-up / projectile / DoT** — `resonance_edge` has no `windUpMs` and is an instant cone weapon, so the 307 charge telegraph and any travel/DoT sync explicitly do *not* apply. I called this out as a negative requirement so an implementer doesn't add phantom delays.
+- The generic shockwave ring already comes "for free" from the shared `applyShockwave` post-effect, which is out of scope — the ticket says layer on top, don't duplicate or modify it.
+- Tests fold into the same pass (the existing `resonance_edge` test just needs `shockwaveHits: []` plus a new discharge case), matching the completed `soul_drain` sibling's single-sub-ticket pattern.
+
+**Verification: code** — the criteria mix "looks like resonance" with structural/logic checks (discharge fires only when `shockwaveHits` is non-empty, gated not faked, graceful degradation, tests added), which the visual happy-path QA can't see.
+
+No existing sub-ticket folders were present, so nothing was retired.
