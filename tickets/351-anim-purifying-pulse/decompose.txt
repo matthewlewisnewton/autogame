@@ -1,0 +1,5 @@
+I created a single, focused sub-ticket. Purifying Pulse is an instant AoE heal+cleanse spell with no projectile, DoT, or `windUpMs`, so the whole polish (theme + timing) is one coherent pass on this one card's renderer and its VFX helpers — splitting it would only create two passes fighting over the same `renderPurifyingPulse` function and test file. Verification is `code` because every criterion (ring count/structure, sound gating, synchronous resolution, palette, no-op guard) is invisible to the happy-path screenshot QA, which would never even cast the card.
+
+Created sub-ticket folder:
+
+- `/home/matt/workspace/.autogame-worktrees/351-anim-purifying-pulse/tickets/351-anim-purifying-pulse/subtickets/01-pulse-theme-and-timing/ticket.md`

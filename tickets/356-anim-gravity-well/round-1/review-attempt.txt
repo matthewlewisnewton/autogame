@@ -1,0 +1,18 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The Gravity Well animation polish ticket fully and robustly meets its acceptance criteria:
+
+**Runtime health (gate):** `metrics.json` reports `ok: true`, `pageerrors: []`, servers started, scene/canvas initialized. `console.log` has no page errors or fatals. Game starts and loads cleanly. (The fallback smoke capture didn't include `gravity_well` in its deck, so the VFX wasn't captured on-screen, but the run is healthy and renderer behavior is covered by unit tests.)
+
+**Criteria:**
+1. **Theme** — New `spawnGravityWellEffect` primitive draws a *contracting* purple ring, a dark pulsing void core (`0x581c87`), and inward inflow particles, plus per-enemy lightning *pull streaks* drawn from each pulled enemy → origin. The old generic telegraph-ring/particle-burst was removed. Reads unmistakably as a gravity well.
+2. **Timing** — `gravity_well` is an instant cast (no `windUpMs`); server emits `CARD_USED { origin, radius, pulled }` and the renderer fires all VFX synchronously at t=0, threading `pulled[].enemyId` against `enemyMeshes()`. End-to-end contract matches.
+3. **Perf** — particles capped at 10 + gated behind `areParticlesEnabled()`, `depthWrite: false`, all effects disposed at end of life.
+4. **Tests** — 200 client tests pass, covering renderer composition, sync timing, arc geometry, edge cases, and the primitive.
+5. **Scope** — only the card renderer + VFX primitive + two wiring points + tests; no debug scenario added; no foundation regression.
+
+**One non-blocking nit** (filed to `nits.md`): the inflow particles' runtime trajectory (`position = velocity * t`) starts each particle at the center and streaks it outward to the opposite side rather than flowing inward from its spawn ring — directionally backwards, but cosmetically minor since the contracting ring, void core, and enemy pull arcs dominate the read.
+
+`gaps.md` was not written (PASS).

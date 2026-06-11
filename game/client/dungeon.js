@@ -1170,6 +1170,23 @@ const riftEmberBandMaterial = new THREE.MeshStandardMaterial({
 	roughness: 0.55,
 });
 
+// Citadel arena floor-decal materials: violet rampart rings circling the dais
+// and gold banner bands along the walls — the capstone's regal identity,
+// clearly distinct from the rift's ice/ember halves.
+const citadelRampartRingMaterial = new THREE.MeshStandardMaterial({
+	color: 0xa5b4fc,
+	emissive: 0x6366f1,
+	emissiveIntensity: 0.45,
+	roughness: 0.55,
+});
+
+const citadelBannerBandMaterial = new THREE.MeshStandardMaterial({
+	color: 0xfde68a,
+	emissive: 0xfacc15,
+	emissiveIntensity: 0.45,
+	roughness: 0.55,
+});
+
 /**
  * Build a visual-only floor marking mesh (no collision). Unknown marking
  * types return null.
@@ -1196,6 +1213,22 @@ export function buildFloorMarkingMesh(marking, materials) {
 				? riftIceBandMaterial
 				: riftEmberBandMaterial;
 			const mesh = new THREE.Mesh(geo, material);
+			mesh.rotation.x = -Math.PI / 2;
+			mesh.userData.floorMarking = true;
+			mesh.userData.floorMarkingType = marking.type;
+			return mesh;
+		}
+		case 'citadel_rampart_ring': {
+			const geo = new THREE.RingGeometry(marking.innerRadius, marking.outerRadius, 64);
+			const mesh = new THREE.Mesh(geo, citadelRampartRingMaterial);
+			mesh.rotation.x = -Math.PI / 2;
+			mesh.userData.floorMarking = true;
+			mesh.userData.floorMarkingType = marking.type;
+			return mesh;
+		}
+		case 'citadel_banner_band': {
+			const geo = new THREE.PlaneGeometry(marking.width, marking.depth);
+			const mesh = new THREE.Mesh(geo, citadelBannerBandMaterial);
 			mesh.rotation.x = -Math.PI / 2;
 			mesh.userData.floorMarking = true;
 			mesh.userData.floorMarkingType = marking.type;

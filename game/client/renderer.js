@@ -623,6 +623,9 @@ export const ENEMY_GEOMETRY = {
 	// Largest stage-boss silhouette in the catalog; ice/fire two-tone — deep
 	// ice-blue body with an ember-orange glow for the rift convergence tyrant.
 	riftbound_colossus: { type: 'cone', radius: 1.45, height: 3.2, segments: 16, color: 0x164e63, emissive: 0xf97316, emissiveIntensity: 0.5 },
+	// Capstone sovereign: the only cylinder silhouette in the catalog — a tall
+	// crowned tower (radiusTop flares past the base) in deep violet with a gold glow.
+	citadel_sovereign: { type: 'cylinder', radius: 1.1, radiusTop: 1.35, height: 3.4, segments: 16, color: 0x312e81, emissive: 0xfacc15, emissiveIntensity: 0.5 },
 	ember_wraith: { type: 'octahedron', radius: 0.35, color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.6 },
 	// Flying types — hovering octahedron bodies (cf. ember_wraith); flying/altitude
 	// arrive per-instance from the server so flyingRenderOffset lifts the body.
@@ -648,6 +651,8 @@ export const ENEMY_ATTACK_VISUAL = {
 	glacial_tyrant: { style: 'projectile', range: 9, color: 0x7dd3fc, emissive: 0x0ea5e9, hitWidth: 1.2 },
 	// Riftbound Colossus: igniting rift shockwave telegraphed as an ember-orange radial ring (server attackStyle 'radial', range 5.5).
 	riftbound_colossus: { style: 'radial', range: 5.5, color: 0xfb923c, emissive: 0xea580c },
+	// Citadel Sovereign: capstone shockwave telegraphed as a gold radial ring (server attackStyle 'radial', range 6).
+	citadel_sovereign: { style: 'radial', range: 6, color: 0xfde047, emissive: 0xca8a04 },
 	ember_wraith: { style: 'cone', coneAngle: Math.PI / 3, color: 0xff4400, emissive: 0xff2200 },
 	// Void Seraph: spherical void burst telegraphed as a radial ring (server attackStyle 'radial').
 	void_seraph: { style: 'radial', range: 4.5, color: 0xa855f7, emissive: 0x7c3aed },
@@ -4835,18 +4840,31 @@ export function spawnTelepipeCastEffect(origin, radius, style = {}) {
 
 const PURIFYING_HEAL_COLOR = 0x6ee7b7;
 const PURIFYING_HEAL_EMISSIVE = 0x34d399;
+const PURIFYING_HEAL_WAVE_COUNT = 3; // concentric heal waves emitted per cast
+const PURIFYING_HEAL_WAVE_STAGGER_MS = 130; // fixed offset between successive waves
 const CLEANSE_BURST_COLOR = 0xffffff;
 const CLEANSE_BURST_EMISSIVE = 0x5eead4;
 const CLEANSE_BURST_SPARK_COUNT = 10;
 const CLEANSE_BURST_SPARK_SPREAD = 1.2;
 const CLEANSE_BURST_SPARK_DURATION = 450;
+const CLEANSE_RISE_COLOR = 0xffffff; // white core of the purifying rise
+const CLEANSE_RISE_EMISSIVE = 0x6ee7b7; // mint glow (white→mint, never gold)
+const CLEANSE_RISE_OPACITY = 0.6;
 
 /**
- * Mint-green expanding heal ring for Purifying Pulse (distinct from Divine Grace gold).
+ * One mint-green expanding heal ring for Purifying Pulse (distinct from Divine
+ * Grace gold). Rides the shared radius-AoE expand→fade lifecycle in
+ * updateAttackEffects. Pass `options.wave` (0-based) to stagger this ring after
+ * earlier waves: the delay is baked into the effect's `createdAt` so the wave
+ * sequence plays out without any `setTimeout` or extra animation loop, and each
+ * wave still expands out to the full `radius`.
  * @param {object} origin - { x, z }
  * @param {number} radius
+ * @param {object} [options] - { wave, waveCount, staggerMs }
  */
-export function spawnPurifyingPulseHealRing(origin, radius) {
+export function spawnPurifyingPulseHealRing(origin, radius, options = {}) {
+	const wave = options.wave ?? 0;
+	const staggerMs = options.staggerMs ?? PURIFYING_HEAL_WAVE_STAGGER_MS;
 	const geometry = new THREE.RingGeometry(0.1, 0.5, 32);
 	const material = new THREE.MeshStandardMaterial({
 		color: PURIFYING_HEAL_COLOR,
@@ -4868,19 +4886,53 @@ export function spawnPurifyingPulseHealRing(origin, radius) {
 		mesh,
 		origin: { x: origin.x, z: origin.z },
 		radius,
-		createdAt: performance.now(),
+		// Push later waves' start into the future. The radius-AoE branch holds the
+		// ring at ~zero scale until its createdAt arrives, so waves expand in
+		// sequence (a visible outward pulse) with no timer and a bounded lifetime.
+		createdAt: performance.now() + wave * staggerMs,
 		duration: SUMMON_EFFECT_DURATION,
 	});
 }
 
 /**
- * Brief white/teal upward sparkle burst for the cleanse half of Purifying Pulse.
+ * Upward white→mint "purifying rise" for Purifying Pulse: an ascending cleanse
+ * column (corruption lifted away) plus a few white/teal sparkle motes lifting
+ * off it. The column rides the shared `isLightColumn` lifecycle (same shaft
+ * primitive Sanctum Pulse and the telepipe use) but in the purifying mint/white
+ * palette — never gold. Distinct from, and separate from, the flat ground rings.
  * @param {object} origin - { x, z }
  */
 export function spawnCleanseBurstEffect(origin) {
 	if (!origin) return;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	// Ascending cleanse column. Geometry height matches the shared column height
+	// so updateAttackEffects' base-pinning keeps the shaft rooted as it grows.
+	const columnGeo = new THREE.CylinderGeometry(0.18, 0.4, DIVINE_GRACE_COLUMN_HEIGHT, 16, 1, true);
+	const columnMat = new THREE.MeshStandardMaterial({
+		color: CLEANSE_RISE_COLOR,
+		emissive: CLEANSE_RISE_EMISSIVE,
+		emissiveIntensity: 1.3,
+		transparent: true,
+		opacity: CLEANSE_RISE_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const columnMesh = new THREE.Mesh(columnGeo, columnMat);
+	columnMesh.scale.y = 0.001;
+	columnMesh.position.set(origin.x, DIVINE_GRACE_COLUMN_BASE_Y, origin.z);
+	if (targetScene) targetScene.add(columnMesh);
+	activeEffects.push({
+		mesh: columnMesh,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration: SUMMON_EFFECT_DURATION,
+		isLightColumn: true,
+		_scene: targetScene,
+	});
+
+	// White/teal sparkle motes rising with the column.
 	spawnHitSpark(
-		{ x: origin.x, y: 0.35, z: origin.z },
+		{ x: origin.x, y: 0.5, z: origin.z },
 		{
 			color: CLEANSE_BURST_COLOR,
 			emissive: CLEANSE_BURST_EMISSIVE,
@@ -4892,12 +4944,15 @@ export function spawnCleanseBurstEffect(origin) {
 }
 
 /**
- * Purifying Pulse: mint heal ring plus a white/teal cleanse sparkle burst.
+ * Purifying Pulse: staggered concentric mint heal waves that pulse outward to
+ * `radius` plus an upward white→mint cleanse rise.
  * @param {object} origin - { x, z }
  * @param {number} radius
  */
 export function spawnPurifyingPulseEffect(origin, radius) {
-	spawnPurifyingPulseHealRing(origin, radius);
+	for (let wave = 0; wave < PURIFYING_HEAL_WAVE_COUNT; wave += 1) {
+		spawnPurifyingPulseHealRing(origin, radius, { wave, waveCount: PURIFYING_HEAL_WAVE_COUNT });
+	}
 	spawnCleanseBurstEffect(origin);
 }
 
@@ -4942,6 +4997,14 @@ export const WYRMFLARE_BREATH_EMISSIVE = 0xff3b00;
 const WYRMFLARE_BREATH_OPACITY = 0.72;
 const WYRMFLARE_BREATH_EMISSIVE_INTENSITY = 1.5;
 const WYRMFLARE_BREATH_LIFT_Y = 0.55;
+
+export const GRAVITY_WELL_VFX_COLOR = 0xc084fc;
+export const GRAVITY_WELL_VFX_EMISSIVE = 0xa855f7;
+export const GRAVITY_WELL_VOID_CORE = 0x581c87;
+const GRAVITY_WELL_VOID_CORE_RADIUS = 0.32;
+const GRAVITY_WELL_PULL_RING_MIN_SCALE = 0.3;
+const GRAVITY_WELL_VOID_EMISSIVE_INTENSITY = 1.65;
+const GRAVITY_WELL_INFLOW_PARTICLE_COUNT = 10;
 
 function thermalColumnDuration(style = {}) {
 	if (style.duration !== undefined) return style.duration;
@@ -5830,6 +5893,122 @@ export function spawnImpactDecal(origin, style = {}) {
 }
 
 /**
+ * Gravity Well pull VFX: a contracting purple ground ring, a dark void core at
+ * the origin, and optional inward-flowing particle streaks. Honors `color`,
+ * `emissive`, `duration`.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ * @param {object} [style]
+ */
+export function spawnGravityWellEffect(origin, radius, style = {}) {
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const pullRadius = radius ?? 12;
+	const color = style.color ?? GRAVITY_WELL_VFX_COLOR;
+	const emissive = style.emissive ?? GRAVITY_WELL_VFX_EMISSIVE;
+	const duration = style.duration ?? ATTACK_EFFECT_DURATION;
+	const originXZ = { x: origin.x, z: origin.z };
+	const createdAt = performance.now();
+
+	const ringGeometry = new THREE.RingGeometry(0.82, 1.0, 48);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.1,
+		transparent: true,
+		opacity: 0.88,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	const ringY = Number.isFinite(origin.y) ? origin.y : GROUND_OVERLAY_Y;
+	ringMesh.position.set(origin.x, ringY, origin.z);
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(pullRadius);
+	targetScene.add(ringMesh);
+
+	activeEffects.push({
+		mesh: ringMesh,
+		origin: originXZ,
+		pullRadius,
+		isGravityWellPull: true,
+		isGravityWellRing: true,
+		createdAt,
+		duration,
+		_scene: targetScene,
+	});
+
+	const coreGeometry = new THREE.SphereGeometry(GRAVITY_WELL_VOID_CORE_RADIUS, 14, 12);
+	const coreMaterial = new THREE.MeshStandardMaterial({
+		color: GRAVITY_WELL_VOID_CORE,
+		emissive: GRAVITY_WELL_VOID_CORE,
+		emissiveIntensity: GRAVITY_WELL_VOID_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: 0.92,
+		depthWrite: false,
+	});
+	const coreMesh = new THREE.Mesh(coreGeometry, coreMaterial);
+	coreMesh.position.set(origin.x, ringY + 0.22, origin.z);
+	targetScene.add(coreMesh);
+
+	activeEffects.push({
+		mesh: coreMesh,
+		origin: originXZ,
+		isGravityWellPull: true,
+		isGravityWellVoid: true,
+		_baseEmissiveIntensity: GRAVITY_WELL_VOID_EMISSIVE_INTENSITY,
+		createdAt,
+		duration,
+		_scene: targetScene,
+	});
+
+	if (!areParticlesEnabled()) return;
+
+	const inflowGroup = new THREE.Group();
+	inflowGroup.position.set(origin.x, 0, origin.z);
+	for (let i = 0; i < GRAVITY_WELL_INFLOW_PARTICLE_COUNT; i += 1) {
+		const geometry = new THREE.IcosahedronGeometry
+			? new THREE.IcosahedronGeometry(0.07, 0)
+			: new THREE.SphereGeometry(0.07, 6, 6);
+		const material = new THREE.MeshStandardMaterial({
+			color,
+			emissive,
+			emissiveIntensity: 1.35,
+			transparent: true,
+			opacity: 1.0,
+		});
+		const particle = new THREE.Mesh(geometry, material);
+		const angle = (i / GRAVITY_WELL_INFLOW_PARTICLE_COUNT) * Math.PI * 2
+			+ (Math.random() - 0.5) * 0.35;
+		const outerDist = pullRadius * (0.72 + Math.random() * 0.28);
+		const px = Math.cos(angle) * outerDist;
+		const pz = Math.sin(angle) * outerDist;
+		const py = 0.14 + Math.random() * 0.42;
+		particle.position.set(px, py, pz);
+		const inwardSpeed = outerDist * 1.05;
+		particle.userData.velocity = {
+			x: -(px / outerDist) * inwardSpeed,
+			y: -py * 0.35,
+			z: -(pz / outerDist) * inwardSpeed,
+		};
+		inflowGroup.add(particle);
+	}
+	targetScene.add(inflowGroup);
+
+	activeEffects.push({
+		mesh: inflowGroup,
+		origin: originXZ,
+		pullRadius,
+		isGravityWellPull: true,
+		isGravityWellInflow: true,
+		createdAt,
+		duration,
+		_scene: targetScene,
+	});
+}
+
+/**
  * Spawn an expanding/pulsing ground ring used to telegraph an incoming AoE.
  * Expands out to `radius`, pulses, and fades. Honors `color`, `emissive`,
  * `duration`.
@@ -6179,6 +6358,43 @@ export function updateAttackEffects() {
 			fx.mesh.scale.setScalar(Math.max(0.001, fx.telegraphRadius * expandT));
 			const pulse = 0.55 + 0.35 * Math.abs(Math.sin(elapsed / 120));
 			fx.mesh.material.opacity = Math.max(0.01, pulse * (1.0 - t));
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Gravity Well inward pull (contracting ring, void core, inflow streaks) ──
+		if (fx.isGravityWellPull) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const fade = Math.max(0.01, 1.0 - t);
+
+			if (fx.isGravityWellRing) {
+				const contractT = Math.min(t / 0.4, 1.0);
+				const startScale = fx.pullRadius ?? GRAVITY_WELL_PULL_RING_MIN_SCALE;
+				const endScale = GRAVITY_WELL_PULL_RING_MIN_SCALE;
+				const scale = startScale + (endScale - startScale) * contractT;
+				fx.mesh.scale.setScalar(Math.max(0.001, scale));
+				const pulse = 0.6 + 0.3 * Math.abs(Math.sin(elapsed / 95));
+				fx.mesh.material.opacity = Math.max(0.01, pulse * fade);
+			} else if (fx.isGravityWellVoid) {
+				const pulseT = Math.min(t / 0.12, 1.0);
+				const pulse = 1.0 + (1.0 - pulseT) * 0.9;
+				const baseIntensity = fx._baseEmissiveIntensity ?? GRAVITY_WELL_VOID_EMISSIVE_INTENSITY;
+				fx.mesh.material.emissiveIntensity = baseIntensity * pulse * fade;
+				fx.mesh.material.opacity = Math.max(0.01, 0.92 * fade);
+				const coreScale = 0.85 + 0.2 * (1.0 - pulseT);
+				fx.mesh.scale.setScalar(coreScale);
+			} else if (fx.isGravityWellInflow) {
+				for (let c = 0; c < fx.mesh.children.length; c += 1) {
+					const particle = fx.mesh.children[c];
+					const v = particle.userData.velocity;
+					particle.position.set(v.x * t, v.y * t, v.z * t);
+					particle.material.opacity = fade;
+				}
+			}
+
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, fx._scene || scene);
 				activeEffects.splice(i, 1);

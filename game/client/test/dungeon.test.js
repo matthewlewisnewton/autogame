@@ -1798,6 +1798,46 @@ describe('rift arena floor band markings', () => {
 	});
 });
 
+describe('citadel arena floor decal markings', () => {
+	const ringMarking = { type: 'citadel_rampart_ring', x: 0, z: 0, innerRadius: 4.0, outerRadius: 4.6 };
+	const bannerMarking = { type: 'citadel_banner_band', x: 0, z: 10.8, width: 22.8, depth: 1.2 };
+
+	it('buildFloorMarkingMesh renders flat ring/banner meshes with distinct citadel materials', () => {
+		const materials = getProfileMaterials('boss-arena');
+		const ring = buildFloorMarkingMesh(ringMarking, materials);
+		const banner = buildFloorMarkingMesh(bannerMarking, materials);
+
+		expect(ring).toBeInstanceOf(THREE.Mesh);
+		expect(banner).toBeInstanceOf(THREE.Mesh);
+		expect(ring.geometry).toBeInstanceOf(THREE.RingGeometry);
+		expect(banner.geometry).toBeInstanceOf(THREE.PlaneGeometry);
+		expect(ring.rotation.x).toBeCloseTo(-Math.PI / 2);
+		expect(banner.rotation.x).toBeCloseTo(-Math.PI / 2);
+		expect(ring.userData.floorMarkingType).toBe('citadel_rampart_ring');
+		expect(banner.userData.floorMarkingType).toBe('citadel_banner_band');
+
+		// Distinct materials: violet rampart vs gold banner, and neither rift material.
+		expect(ring.material).not.toBe(banner.material);
+		expect(ring.material.color.getHex()).not.toBe(banner.material.color.getHex());
+	});
+
+	it('buildDungeon on a citadel-themed boss arena emits rings + banners plus the center ring', () => {
+		const layout = generateLayout(42, 'boss-arena', { arenaTheme: 'citadel' });
+		const { meshes } = buildDungeon(mockScene(), layout);
+		const citadelTypes = meshes
+			.filter(m => m.userData?.floorMarkingType?.startsWith('citadel_'))
+			.map(m => m.userData.floorMarkingType)
+			.sort();
+		expect(citadelTypes).toEqual([
+			'citadel_banner_band',
+			'citadel_banner_band',
+			'citadel_rampart_ring',
+			'citadel_rampart_ring',
+		]);
+		expect(meshes.filter(m => m.userData?.floorMarkingType === 'center_ring')).toHaveLength(1);
+	});
+});
+
 describe('entry room decor rendering', () => {
 	it('buildEntryDecorMesh sets decorType on each decor kind', () => {
 		const iceMats = { ...getEntryRoomMaterials('ice-cavern'), accent: getProfileMaterials('ice-cavern').accent };

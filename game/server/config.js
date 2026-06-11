@@ -71,6 +71,7 @@ const ENEMY_CARD_DROPS = {
   permafrost_warden: 'dungeon_drake',
   glacial_tyrant: 'dungeon_drake',
   riftbound_colossus: 'dungeon_drake',
+  citadel_sovereign: 'dungeon_drake',
   spawner: 'battle_familiar',
 };
 
@@ -90,6 +91,7 @@ const ENEMY_MS_DROPS = {
   permafrost_warden: 55,
   glacial_tyrant: 70,
   riftbound_colossus: 80,
+  citadel_sovereign: 90,
   spawner: 25,
 };
 

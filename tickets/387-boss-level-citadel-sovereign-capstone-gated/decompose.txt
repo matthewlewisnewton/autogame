@@ -1,0 +1,17 @@
+Decomposition complete. I split the capstone ticket into 4 code-verified sub-tickets in dependency order:
+
+1. `tickets/387-boss-level-citadel-sovereign-capstone-gated/subtickets/01-citadel-sovereign-enemy-def/ticket.md`
+2. `tickets/387-boss-level-citadel-sovereign-capstone-gated/subtickets/02-citadel-capstone-quest-gating/ticket.md`
+3. `tickets/387-boss-level-citadel-sovereign-capstone-gated/subtickets/03-citadel-debug-scenarios-e2e/ticket.md`
+4. `tickets/387-boss-level-citadel-sovereign-capstone-gated/subtickets/04-citadel-arena-theme-boss-visuals/ticket.md`
+
+**What each delivers:**
+- **01** — `ENEMY_DEFS.citadel_sovereign` (HP 460, attackDamage 30, radial + burn) plus model/MS-drop config, unit test, and design.md update.
+- **02** — `QUEST_DEFS.citadel_assault`: boss-level quest gated behind canyon_descent + spire_ascent + arena_trials all at Tier 2, with 5 adds and a 26-stone purse (new apex), appearing on the data-driven level map.
+- **03** — Debug scenarios (`citadel-unlocked`, `citadel-one-prereq`, `citadel-boss`) mirroring the rift trio, plus a full dormant→activate→defeat→reward e2e test.
+- **04** — `arenaTheme: 'citadel'` cosmetic floor decals in dungeon.js and a distinct Sovereign body + radial telegraph in renderer.js, with mirrored server/client tests.
+
+**Key planning decisions, informed by why the last merge likely died ("post-rebase verification failed"):**
+- **HP is pinned at 460, not above.** design.md records that 500 HP can't be killed inside the 180s `defeatBoss` validation window and 460 is the known-good ceiling. The Sovereign ties the colossus on HP and claims "hardest overall" via strictly-highest attackDamage (30), most adds (5), highest purse (26), and the strictest gate (three Tier-II prereqs).
+- **Three enumeration-test landmines are explicitly scoped into the sub-tickets that trip them:** `riftbound_colossus.test.js` asserts the colossus tops the whole MS-drop table (01 reconciles it), `rift_convergence_e2e.test.js` asserts rift has the most adds and highest purse of any boss level (02 reconciles it), and `enemy_display_catalog.test.js` hard-codes the enemy type list that auto-derives from `ENEMY_DEFS` (01 updates it).
+- All four are `code` verification — every sub-ticket includes defs/handlers/tests, and the visual happy-path run can never reach a triple-Tier-II-gated arena.
