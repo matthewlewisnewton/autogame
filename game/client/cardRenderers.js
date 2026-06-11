@@ -2509,6 +2509,10 @@ function renderDeckSifter(data, ctx) {
 
 const ASTRAL_GUARDIAN_COLOR = 0x818cf8;
 const ASTRAL_GUARDIAN_EMISSIVE = 0x6366f1;
+// Visual duration of the astral shield ward shell flourish over the caster.
+const ASTRAL_SHIELD_SHELL_MS = 900;
+// Ward radius hugging the caster — independent of the wider data.radius AoE.
+const ASTRAL_SHIELD_WARD_RADIUS = 1.5;
 const MANA_PRISM_COLOR = 0xa855f7;
 const MANA_PRISM_EMISSIVE = 0x22d3ee;
 const SACRIFICIAL_ALTAR_COLOR = 0xfbbf24;
@@ -2543,6 +2547,21 @@ function renderAstralGuardian(data, ctx) {
 			radius: 1.2,
 			burstCount: 12,
 			burstSpread: 1.4,
+		});
+	}
+	// "Guardian" half: an astral-tinted protective ward shell over the caster,
+	// gated strictly on a positive server-granted shield. Anchored by playerId so
+	// a re-cast replaces the prior shell rather than stacking.
+	if (
+		ctx.spawnMirrorWardShellEffect &&
+		Number.isFinite(data.shieldGranted) &&
+		data.shieldGranted > 0
+	) {
+		ctx.spawnMirrorWardShellEffect(origin, ASTRAL_SHIELD_WARD_RADIUS, {
+			color: ASTRAL_GUARDIAN_COLOR,
+			emissive: ASTRAL_GUARDIAN_EMISSIVE,
+			duration: ASTRAL_SHIELD_SHELL_MS,
+			...(data.playerId != null ? { playerId: data.playerId } : {}),
 		});
 	}
 }

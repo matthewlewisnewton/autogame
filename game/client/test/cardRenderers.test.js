@@ -3097,6 +3097,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 			origin: { x: 2, z: 3 },
 			radius: 4,
 			shieldGranted: 14,
+			playerId: 'p1',
 			minionId: 'minion-1',
 			hits: [],
 		}, ctx);
@@ -3115,9 +3116,39 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(summon[2]).toMatchObject({ color: 0x818cf8, emissive: 0x6366f1 });
 		// Tight guardian spawn distinct from the wider AoE telegraph at data.radius.
 		expect(summon[2].radius).toBeLessThan(4);
+		// Guardian half: astral-tinted ward shell at the caster, anchored by playerId.
+		const shell = ctx._calls.find((c) => c[0] === 'spawnMirrorWardShellEffect');
+		expect(shell).toBeDefined();
+		expect(shell[1]).toEqual({ x: 2, z: 3 });
+		// Ward hugs the caster — narrower than the wider AoE telegraph at data.radius.
+		expect(shell[2]).toBeLessThan(4);
+		expect(shell[3]).toMatchObject({
+			color: 0x818cf8,
+			emissive: 0x6366f1,
+			playerId: 'p1',
+		});
+		// Astral palette, not the default mirror silver/cyan.
+		expect(shell[3].color).not.toBe(0x5eead4);
+		expect(shell[3].emissive).not.toBe(0x2dd4bf);
+		expect(Number.isFinite(shell[3].duration)).toBe(true);
 		// Instant resolution — no wind-up deferral.
 		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('astral_guardian does not spawn a ward shell when shieldGranted is absent', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'astral_guardian',
+			origin: { x: 2, z: 3 },
+			radius: 4,
+			playerId: 'p1',
+			minionId: 'minion-1',
+			hits: [],
+		}, ctx);
+		// Summon visuals still fire, but no shield ⇒ no ward shell.
+		expect(ctx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnMirrorWardShellEffect')).toBe(false);
 	});
 
 	it('mana_prism adds a violet/cyan prism telegraph and arcane burst at radius 1', () => {
