@@ -2,3 +2,92 @@
 [console:debug] [vite] connected.
 [console:debug] [vite] connecting...
 [console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:log] [debugScenario] applied frost-crossing-tier-1
+[console:log] [debugScenario] applied slippery-floor-lab
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied frost-crossing-surface-transition
+[console:log] [debugScenario] applied frost-crossing-near-adds
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:log] [debugScenario] applied frost-crossing-tier-1
+[console:log] [debugScenario] applied slippery-floor-lab
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied frost-crossing-surface-transition
+[console:log] [debugScenario] applied frost-crossing-near-adds
+[console:warning] [debugScenario] Scripted hostiles must be cleared before boss approach
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:log] [debugScenario] applied frost-crossing-tier-1
+[console:log] [debugScenario] applied slippery-floor-lab
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied frost-crossing-surface-transition
+[console:log] [debugScenario] applied frost-crossing-near-adds
+[console:log] [debugScenario] applied frost-crossing-boss-approach
+[console:log] [debugScenario] applied frost-crossing-encounter-trigger
+[console:log] [debugGodmode] disabled
+[console:log] [debugScenario] applied frost-crossing-glacial-thrower-slow
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied fireball-ready
+[console:log] [debugScenario] applied status-mutual-exclusion-ready
+[console:log] [debugScenario] applied purifying-pulse-ready
+[console:log] [debugScenario] applied magma-windup-ready
+[console:warning] [debugScenario] Permafrost Warden boss not found
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:log] [debugScenario] applied frost-crossing-tier-1
+[console:log] [debugScenario] applied slippery-floor-lab
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied frost-crossing-surface-transition
+[console:log] [debugScenario] applied frost-crossing-near-adds
+[console:log] [debugScenario] applied frost-crossing-boss-approach
+[console:log] [debugScenario] applied frost-crossing-encounter-trigger
+[console:log] [debugGodmode] disabled
+[console:log] [debugScenario] applied frost-crossing-glacial-thrower-slow
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied fireball-ready
+[console:log] [debugScenario] applied status-mutual-exclusion-ready
+[console:log] [debugScenario] applied purifying-pulse-ready
+[console:log] [debugScenario] applied magma-windup-ready
+[console:log] [debugScenario] applied frost-crossing-boss-low-hp
+[console:log] [debugScenario] applied frost-crossing-telepipe-ready
+[console:log] [launchBooth] ready-up via booth
+[console:log] [debugScenario] applied frost-crossing-telepipe-ready
+[console:log] [launchBooth] ready-up via booth
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:log] [debugScenario] applied frost-crossing-tier-1
+[console:log] [debugScenario] applied slippery-floor-lab
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied frost-crossing-surface-transition
+[console:log] [debugScenario] applied frost-crossing-near-adds
+[console:log] [debugScenario] applied frost-crossing-boss-approach
+[console:log] [debugScenario] applied frost-crossing-encounter-trigger
+[console:log] [debugGodmode] disabled
+[console:log] [debugScenario] applied frost-crossing-glacial-thrower-slow
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied fireball-ready
+[console:log] [debugScenario] applied status-mutual-exclusion-ready
+[console:log] [debugScenario] applied purifying-pulse-ready
+[console:log] [debugScenario] applied magma-windup-ready
+[console:log] [debugScenario] applied frost-crossing-boss-low-hp
+[console:log] [debugScenario] applied frost-crossing-telepipe-ready
+[console:log] [launchBooth] ready-up via booth
+[console:log] [debugScenario] applied frost-crossing-telepipe-ready
+[console:log] [launchBooth] ready-up via booth

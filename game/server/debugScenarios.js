@@ -1313,6 +1313,14 @@ function setupCrystalRescueExtractionPhaseDebug(lobby, state, player) {
 }
 
 function setupFrostCrossingBossLowHpDebug(lobby, state, player, name) {
+  const bossId = state.run?.encounter?.bossEnemyId;
+  const bossAlive = bossId
+    && (state.enemies || []).some((e) => e.id === bossId && e.hp > 0);
+  if (!isFrostCrossingTier1StageBossRun(state) || !bossAlive) {
+    const error = setupFrostCrossingLastEnemyDebug(lobby, state, player, name);
+    if (error) return error;
+    return emitQuestDebugState(lobby, state, player, name);
+  }
   return setupQuestBossLowHp(lobby, state, player, name, {
     questId: 'frost_crossing',
     tier: 1,
@@ -1378,6 +1386,14 @@ function setupFrostCrossingNearAddsDebug(lobby, state, player, name) {
   if (!isFrostCrossingTier1StageBossRun(state)) {
     return { ok: false, reason: 'Requires frost_crossing Tier 1 stage_boss run on ice-cavern' };
   }
+  // Harness defeatAdds only targets grunts/skirmishers; clear signature/scripted
+  // hostiles (glacial_thrower, named rare) so boss-approach passes afterward.
+  const bossId = state.run?.encounter?.bossEnemyId;
+  for (const enemy of [...(state.enemies || [])]) {
+    if (!bossId || enemy.id !== bossId) enemy.hp = 0;
+  }
+  removeDeadEnemies();
+  syncRunObjectiveToEnemies();
   return setupQuestNearAdds(lobby, state, player, name, {
     questId: 'frost_crossing',
     tier: 1,
@@ -1401,7 +1417,11 @@ function setupFrostCrossingGlacialThrowerSlowDebug(lobby, state, player, socket,
   player.vx = 0;
   player.vz = 0;
   player.debugGodmode = false;
-  state.enemies = [];
+  const bossId = state.run?.encounter?.bossEnemyId;
+  for (const enemy of [...(state.enemies || [])]) {
+    if (!bossId || enemy.id !== bossId) enemy.hp = 0;
+  }
+  removeDeadEnemies();
   state.iceBalls = [];
   const stoneRoom = state.layout.rooms.find((r) => r.band === 'stone');
   if (stoneRoom) {
@@ -1429,7 +1449,13 @@ function setupFrostCrossingSurfaceTransitionDebug(lobby, state, player, name) {
   const targetX = iceRoom?.x ?? 0;
   const targetZ = iceRoom?.z ?? 0;
 
-  state.enemies = [];
+  // Clear scripted adds for a clean slide but keep the dormant stage boss so later
+  // boss-encounter harness steps still find permafrost_warden after this shortcut.
+  const bossId = state.run?.encounter?.bossEnemyId;
+  for (const enemy of [...(state.enemies || [])]) {
+    if (!bossId || enemy.id !== bossId) enemy.hp = 0;
+  }
+  removeDeadEnemies();
   state.iceBalls = [];
 
   if (iceRoom) {

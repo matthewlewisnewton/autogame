@@ -1,4 +1,33 @@
 {
+  "dormant": {
+    "encounterPhase": "dormant",
+    "encounterLocked": false,
+    "bossEnemyId": "178a49d5-6ba7-421d-8949-ab935275c5d5",
+    "bossHp": 1,
+    "liveAddCount": 0
+  },
+  "active": {
+    "encounterPhase": "active",
+    "encounterLocked": true,
+    "bossEnemyId": "178a49d5-6ba7-421d-8949-ab935275c5d5",
+    "bossHp": 1,
+    "liveAddCount": 1
+  },
+  "bossEncounterUi": {
+    "hudVisible": true,
+    "bossName": "Permafrost Warden",
+    "hpFillWidthPct": 0,
+    "encounterLocked": true,
+    "encounterPhase": "active"
+  },
+  "bossVisualIdentity": {
+    "bossType": "permafrost_warden",
+    "bossEnemyId": "178a49d5-6ba7-421d-8949-ab935275c5d5",
+    "nearestAddType": "grunt",
+    "bossDistinctFromAdds": true,
+    "bossRenderScale": 2.5,
+    "addRenderScale": 1.0250146946789034
+  },
   "floorAlignment": {
     "levelEntry": {
       "playerY": 0.5,
@@ -13,16 +42,32 @@
       "delta": 0,
       "layoutProfile": "ice-cavern",
       "band": "ice"
+    },
+    "bossDormant": {
+      "playerY": 0.5,
+      "floorY": 0.5,
+      "delta": 0,
+      "layoutProfile": "ice-cavern",
+      "band": "ice"
+    },
+    "bossActive": {
+      "playerY": 0.5,
+      "floorY": 0.5,
+      "delta": 0,
+      "layoutProfile": "ice-cavern",
+      "band": "ice"
     }
   },
-  "afterEnemies": {
+  "afterBoss": {
     "runStatus": "victory",
     "runObjectiveComplete": true,
+    "bossDefeated": true,
     "lastRunSummaryStatus": "victory"
   },
   "victory": {
     "runStatus": "victory",
     "runObjectiveComplete": true,
+    "bossDefeated": true,
     "lastRunSummaryStatus": "victory"
   },
   "slipperyFloor": {
@@ -30,7 +75,7 @@
     "slipperyFloorScenario": "slippery-floor-lab",
     "surfaceTransitionScenario": "frost-crossing-surface-transition",
     "speedWhileHolding": 9.75,
-    "driftAfterRelease": 4.242086593322766,
+    "driftAfterRelease": 3.358789775350824,
     "directionChangeWhileSliding": true,
     "enteredSlipperyBand": true,
     "screenshot": "game/validation/ice/03-slippery-floor.png"
@@ -38,10 +83,10 @@
   "glacialSlow": {
     "glacialSlowApplied": true,
     "debugGodmodeOff": true,
-    "playerSlowedUntil": 1781110106452,
+    "playerSlowedUntil": 1781193305892,
     "hpBefore": 100,
     "hpAfterHit": 88,
-    "screenshot": "game/validation/ice/05-glacial-slow.png"
+    "screenshot": "game/validation/ice/07-glacial-slow.png"
   },
   "cardMechanics": {
     "ok": true,
@@ -54,22 +99,22 @@
           "hp": 80
         },
         "after": {
-          "burningUntil": 1781110107843,
+          "burningUntil": 1781193306902,
           "slowedUntil": 0,
           "hp": 62
         },
-        "screenshot": "game/validation/ice/06-card-burn.png"
+        "screenshot": "game/validation/ice/08-card-burn.png"
       },
       "slow": {
         "ok": true,
         "afterBurn": {
-          "burningUntil": 1781110108536,
+          "burningUntil": 1781193307589,
           "slowedUntil": 0,
           "hp": 182
         },
         "afterSlow": {
           "burningUntil": 0,
-          "slowedUntil": 1781110115957,
+          "slowedUntil": 1781193315025,
           "hp": 171
         },
         "burnCleared": true
@@ -78,7 +123,7 @@
         "ok": true,
         "seededStatus": "burn",
         "before": {
-          "burningUntil": 1781110111367,
+          "burningUntil": 1781193310429,
           "slowedUntil": 0,
           "cardUseState": null,
           "hp": 40,
@@ -154,16 +199,16 @@
           "charges": 5
         },
         {
-          "id": "flame_blade",
-          "type": "weapon",
-          "remainingCharges": 2,
-          "charges": 2
-        },
-        {
           "id": "iron_sword",
           "type": "weapon",
           "remainingCharges": 5,
           "charges": 5
+        },
+        {
+          "id": "flame_blade",
+          "type": "weapon",
+          "remainingCharges": 2,
+          "charges": 2
         },
         null
       ],
@@ -172,7 +217,7 @@
       "extracted": false,
       "suspendedRunSummary": null,
       "layoutSeed": 1081914342,
-      "runId": "a281f577-ff6b-40b6-8341-dafef7b29b7b"
+      "runId": "26bb7992-15dd-4723-8300-087965ecb480"
     },
     "postDeploy": {
       "hp": 60,
@@ -198,16 +243,16 @@
           "charges": 5
         },
         {
-          "id": "iron_sword",
-          "type": "weapon",
-          "remainingCharges": 5,
-          "charges": 5
+          "id": "dungeon_drake",
+          "type": "creature",
+          "remainingCharges": 1,
+          "charges": 1
         },
         {
-          "id": "iron_sword",
+          "id": "flame_blade",
           "type": "weapon",
-          "remainingCharges": 5,
-          "charges": 5
+          "remainingCharges": 2,
+          "charges": 2
         },
         null
       ],
@@ -216,7 +261,7 @@
       "extracted": false,
       "suspendedRunSummary": null,
       "layoutSeed": 1081914342,
-      "runId": "51b95dd1-500f-4779-bbfe-ab016b6ef6ac"
+      "runId": "5b1df098-c310-4d1d-8fd1-dc5a57e4fc6e"
     },
     "telepipeVitalsPreserved": true,
     "cardChargesResetOnFreshSortie": true

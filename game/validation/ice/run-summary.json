@@ -5,37 +5,45 @@
   "outDir": "game/validation/ice",
   "presetConfig": {
     "findingsTitle": "Ice level validation findings",
+    "bossSpawnLabel": "permafrost_warden (Permafrost Warden)",
     "questId": "frost_crossing",
     "questTier": 1,
-    "objectiveType": "defeat_enemies",
+    "objectiveType": "stage_boss",
+    "bossType": "permafrost_warden",
     "deployScenario": "frost-crossing-tier-1",
     "layoutProfile": "ice-cavern",
     "lobbyName": "Ice Level Validation",
     "nearAddsScenario": "frost-crossing-near-adds",
+    "bossApproachScenario": "frost-crossing-boss-approach",
+    "encounterTriggerScenario": "frost-crossing-encounter-trigger",
+    "bossLowHpScenario": "frost-crossing-boss-low-hp",
     "slipperyFloorScenario": "slippery-floor-lab",
     "surfaceTransitionScenario": "frost-crossing-surface-transition",
     "glacialSlowScenario": "frost-crossing-glacial-thrower-slow",
-    "lastEnemyScenario": "frost-crossing-last-enemy",
     "cardMechanicsScenarios": {
       "burn": "fireball-ready",
       "mutualExclusion": "status-mutual-exclusion-ready",
       "cleanse": "purifying-pulse-ready",
       "windup": "magma-windup-ready"
     },
-    "cardBurnScreenshot": "06-card-burn",
+    "midCombatScreenshot": "04-mid-combat",
+    "bossDormantScreenshot": "05-boss-dormant",
+    "bossActiveScreenshot": "06-boss-active",
+    "glacialSlowScreenshot": "07-glacial-slow",
+    "cardBurnScreenshot": "08-card-burn",
+    "bossDefeatedScreenshot": "09-boss-defeated",
+    "victoryScreenshot": "10-victory",
     "telepipeScenario": "frost-crossing-telepipe-ready",
-    "objectiveCompleteScreenshot": "07-objective-complete",
-    "victoryScreenshot": "08-victory",
-    "telepipeBeforeScreenshot": "09-telepipe-before",
-    "telepipeAfterScreenshot": "10-telepipe-after",
+    "telepipeBeforeScreenshot": "11-telepipe-before",
+    "telepipeAfterScreenshot": "12-telepipe-after",
     "addsTimeoutMs": 90000,
     "bossDefeatTimeoutMs": 180000,
     "victoryTimeoutMs": 30000
   },
-  "serverPort": 3238,
-  "clientPort": 5229,
+  "serverPort": 3290,
+  "clientPort": 5270,
   "auth": {
-    "username": "playthrough-1781110092141",
+    "username": "playthrough-1781193289165",
     "connected": true,
     "lobbyBrowserVisible": true,
     "harnessPhase": "unknown",
@@ -46,15 +54,12 @@
     "entryScreenshot": "game/validation/ice/02-level-entry.png",
     "deployScenario": "frost-crossing-tier-1",
     "deployOk": true,
-    "objectiveType": "defeat_enemies",
-    "layoutProfile": "ice-cavern",
-    "liveEnemyCount": 5,
-    "enemyTypes": [
+    "objectiveType": "stage_boss",
+    "encounterPhase": "dormant",
+    "bossTypes": [
+      "permafrost_warden",
       "grunt",
-      "grunt",
-      "grunt",
-      "skirmisher",
-      "skirmisher"
+      "grunt"
     ],
     "floorAlignment": {
       "levelEntry": {
@@ -71,19 +76,63 @@
     "slipperyFloorScenario": "slippery-floor-lab",
     "surfaceTransitionScenario": "frost-crossing-surface-transition",
     "speedWhileHolding": 9.75,
-    "driftAfterRelease": 4.242086593322766,
+    "driftAfterRelease": 3.358789775350824,
     "directionChangeWhileSliding": true,
     "enteredSlipperyBand": true,
     "screenshot": "game/validation/ice/03-slippery-floor.png"
   },
-  "defeatEnemiesCombat": {
+  "bossEncounter": {
     "midCombatScreenshot": "game/validation/ice/04-mid-combat.png",
-    "preLiveEnemyCount": 5,
-    "postLiveEnemyCount": 1,
-    "enemiesDefeated": true,
+    "dormantScreenshot": "game/validation/ice/05-boss-dormant.png",
+    "activeScreenshot": "game/validation/ice/06-boss-active.png",
+    "encounterPhase": "active",
+    "encounterLocked": true,
     "probes": {
+      "dormant": {
+        "encounterPhase": "dormant",
+        "encounterLocked": false,
+        "bossEnemyId": "178a49d5-6ba7-421d-8949-ab935275c5d5",
+        "bossHp": 1,
+        "liveAddCount": 0
+      },
+      "active": {
+        "encounterPhase": "active",
+        "encounterLocked": true,
+        "bossEnemyId": "178a49d5-6ba7-421d-8949-ab935275c5d5",
+        "bossHp": 1,
+        "liveAddCount": 1
+      },
+      "bossEncounterUi": {
+        "hudVisible": true,
+        "bossName": "Permafrost Warden",
+        "hpFillWidthPct": 0,
+        "encounterLocked": true,
+        "encounterPhase": "active"
+      },
+      "bossVisualIdentity": {
+        "bossType": "permafrost_warden",
+        "bossEnemyId": "178a49d5-6ba7-421d-8949-ab935275c5d5",
+        "nearestAddType": "grunt",
+        "bossDistinctFromAdds": true,
+        "bossRenderScale": 2.5,
+        "addRenderScale": 1.0250146946789034
+      },
       "floorAlignment": {
         "midCombat": {
+          "playerY": 0.5,
+          "floorY": 0.5,
+          "delta": 0,
+          "layoutProfile": "ice-cavern",
+          "band": "ice"
+        },
+        "bossDormant": {
+          "playerY": 0.5,
+          "floorY": 0.5,
+          "delta": 0,
+          "layoutProfile": "ice-cavern",
+          "band": "ice"
+        },
+        "bossActive": {
           "playerY": 0.5,
           "floorY": 0.5,
           "delta": 0,
@@ -96,10 +145,10 @@
   "glacialSlow": {
     "glacialSlowApplied": true,
     "debugGodmodeOff": true,
-    "playerSlowedUntil": 1781110106452,
+    "playerSlowedUntil": 1781193305892,
     "hpBefore": 100,
     "hpAfterHit": 88,
-    "screenshot": "game/validation/ice/05-glacial-slow.png"
+    "screenshot": "game/validation/ice/07-glacial-slow.png"
   },
   "cardMechanics": {
     "ok": true,
@@ -112,22 +161,22 @@
           "hp": 80
         },
         "after": {
-          "burningUntil": 1781110107843,
+          "burningUntil": 1781193306902,
           "slowedUntil": 0,
           "hp": 62
         },
-        "screenshot": "game/validation/ice/06-card-burn.png"
+        "screenshot": "game/validation/ice/08-card-burn.png"
       },
       "slow": {
         "ok": true,
         "afterBurn": {
-          "burningUntil": 1781110108536,
+          "burningUntil": 1781193307589,
           "slowedUntil": 0,
           "hp": 182
         },
         "afterSlow": {
           "burningUntil": 0,
-          "slowedUntil": 1781110115957,
+          "slowedUntil": 1781193315025,
           "hp": 171
         },
         "burnCleared": true
@@ -136,7 +185,7 @@
         "ok": true,
         "seededStatus": "burn",
         "before": {
-          "burningUntil": 1781110111367,
+          "burningUntil": 1781193310429,
           "slowedUntil": 0,
           "cardUseState": null,
           "hp": 40,
@@ -188,17 +237,19 @@
     }
   },
   "victory": {
-    "objectiveCompleteScreenshot": "game/validation/ice/07-objective-complete.png",
-    "victoryScreenshot": "game/validation/ice/08-victory.png",
+    "bossDefeatedScreenshot": "game/validation/ice/09-boss-defeated.png",
+    "victoryScreenshot": "game/validation/ice/10-victory.png",
     "probes": {
-      "afterEnemies": {
+      "afterBoss": {
         "runStatus": "victory",
         "runObjectiveComplete": true,
+        "bossDefeated": true,
         "lastRunSummaryStatus": "victory"
       },
       "victory": {
         "runStatus": "victory",
         "runObjectiveComplete": true,
+        "bossDefeated": true,
         "lastRunSummaryStatus": "victory"
       }
     }
@@ -229,16 +280,16 @@
           "charges": 5
         },
         {
-          "id": "flame_blade",
-          "type": "weapon",
-          "remainingCharges": 2,
-          "charges": 2
-        },
-        {
           "id": "iron_sword",
           "type": "weapon",
           "remainingCharges": 5,
           "charges": 5
+        },
+        {
+          "id": "flame_blade",
+          "type": "weapon",
+          "remainingCharges": 2,
+          "charges": 2
         },
         null
       ],
@@ -247,7 +298,7 @@
       "extracted": false,
       "suspendedRunSummary": null,
       "layoutSeed": 1081914342,
-      "runId": "a281f577-ff6b-40b6-8341-dafef7b29b7b"
+      "runId": "26bb7992-15dd-4723-8300-087965ecb480"
     },
     "postDeploy": {
       "hp": 60,
@@ -273,16 +324,16 @@
           "charges": 5
         },
         {
-          "id": "iron_sword",
-          "type": "weapon",
-          "remainingCharges": 5,
-          "charges": 5
+          "id": "dungeon_drake",
+          "type": "creature",
+          "remainingCharges": 1,
+          "charges": 1
         },
         {
-          "id": "iron_sword",
+          "id": "flame_blade",
           "type": "weapon",
-          "remainingCharges": 5,
-          "charges": 5
+          "remainingCharges": 2,
+          "charges": 2
         },
         null
       ],
@@ -291,20 +342,23 @@
       "extracted": false,
       "suspendedRunSummary": null,
       "layoutSeed": 1081914342,
-      "runId": "51b95dd1-500f-4779-bbfe-ab016b6ef6ac"
+      "runId": "5b1df098-c310-4d1d-8fd1-dc5a57e4fc6e"
     },
     "telepipeVitalsPreserved": true,
     "cardChargesResetOnFreshSortie": true,
     "telepipeUpReset": false,
     "freshRunIdConfirmed": true,
     "checkpointRestoredInLog": false,
-    "beforeScreenshot": "game/validation/ice/09-telepipe-before.png",
-    "afterScreenshot": "game/validation/ice/10-telepipe-after.png"
+    "beforeScreenshot": "game/validation/ice/11-telepipe-before.png",
+    "afterScreenshot": "game/validation/ice/12-telepipe-after.png"
   },
   "assertions": {
-    "layoutDeployed": true,
-    "enemiesCleared": true,
+    "bossSpawned": true,
+    "encounterActivated": true,
+    "bossDefeated": true,
     "victoryFired": true,
+    "bossEncounterUiVisible": true,
+    "bossDistinctFromAdds": true,
     "slipperyFloorOk": true,
     "glacialSlowApplied": true,
     "cardMechanicsOk": true,
@@ -316,12 +370,14 @@
     "game/validation/ice/01-hub.png",
     "game/validation/ice/02-level-entry.png",
     "game/validation/ice/03-slippery-floor.png",
+    "game/validation/ice/07-glacial-slow.png",
+    "game/validation/ice/08-card-burn.png",
     "game/validation/ice/04-mid-combat.png",
-    "game/validation/ice/05-glacial-slow.png",
-    "game/validation/ice/06-card-burn.png",
-    "game/validation/ice/07-objective-complete.png",
-    "game/validation/ice/08-victory.png",
-    "game/validation/ice/09-telepipe-before.png",
-    "game/validation/ice/10-telepipe-after.png"
+    "game/validation/ice/05-boss-dormant.png",
+    "game/validation/ice/06-boss-active.png",
+    "game/validation/ice/09-boss-defeated.png",
+    "game/validation/ice/10-victory.png",
+    "game/validation/ice/11-telepipe-before.png",
+    "game/validation/ice/12-telepipe-after.png"
   ]
 }

@@ -8,3 +8,188 @@ Player connected: socket=a5Nvyql4j5SeR5DiAAAB, playerId=4c55de09-427c-42e5-831d-
 Player disconnected: a5Nvyql4j5SeR5DiAAAB
 [server] SIGTERM received — closing HTTP server undefined
 [server] HTTP server closed after SIGTERM undefined
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/encounters-boss-encounter-hud-never-appeared-in-any-tested-f-0xrv/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3250
+Player connected: socket=qy8pvIZRZYIhiMs0AAAB, playerId=59e0f378-9db8-48c3-8afc-9f34a6d0af17
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[loot] magic stone drop id=55f1c137-0954-4573-a24e-8b067f167d67 value=15 at (1.2, -3.8)
+[loot] picked up id=55f1c137-0954-4573-a24e-8b067f167d67 (magic stone) value=15 by qy8pvIZRZYIhiMs0AAAB (currency=0, ms=99)
+[loot] magic stone drop id=d0ef4350-06bd-412c-89bb-4d0f52b0f7fe value=15 at (-3.2, -2.4)
+[loot] currency drop id=5ab3bcd3-3b78-4b04-9702-b3a411b70649 value=9 at (-3.2, -2.4)
+[loot] picked up id=5ab3bcd3-3b78-4b04-9702-b3a411b70649 value=9 by qy8pvIZRZYIhiMs0AAAB (currency=9, ms=99)
+[loot] magic stone drop id=fca28d9b-2637-4420-a865-429bc2c7d984 value=20 at (2.9, -0.8)
+[loot] currency drop id=69dfef24-c7cc-42cb-a059-9b4286ee5610 value=18 at (2.9, -0.8)
+[loot] magic stone drop id=99296eec-4e71-4f9e-a75a-5194a97d9360 value=20 at (0.6, 0.4)
+[loot] magic stone drop id=16ed9ab8-b24b-4d34-b6e8-aee23000c2ec value=20 at (-1.6, 0.0)
+[loot] currency drop id=76f3e1f6-4fc8-4402-9c2c-97fa3b590075 value=11 at (-1.6, 0.0)
+[loot] picked up id=76f3e1f6-4fc8-4402-9c2c-97fa3b590075 value=11 by qy8pvIZRZYIhiMs0AAAB (currency=20, ms=99)
+Player disconnected: qy8pvIZRZYIhiMs0AAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/encounters-boss-encounter-hud-never-appeared-in-any-tested-f-0xrv/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3272
+Player connected: socket=zmriSzXMFq9Yfw1oAAAB, playerId=3847084a-63d7-4c4d-8635-38f001348277
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[loot] spawned id=cb964176-0fa1-49ae-b402-9343c91648ef value=20
+[loot] magic stone drop id=8c223f57-e992-4207-89f8-ee8495dc7ba0 value=20 at (-0.5, -30.4)
+[loot] currency drop id=8bfd4ec2-12aa-42d0-b3b7-dd75f9fdd0c1 value=16 at (-0.5, -30.4)
+[loot] magic stone drop id=f2db2635-bdbe-4c2f-82e2-aa73a923b7ce value=20 at (-0.6, -30.0)
+[loot] magic stone drop id=c78b0d96-c6f9-48b3-b99a-014a607454d1 value=15 at (-8.7, 6.4)
+[loot] magic stone drop id=4556996b-5c22-4b06-a3c4-f4b0457abd29 value=15 at (7.7, 6.7)
+[loot] magic stone drop id=728928ad-131a-4c87-b922-4fb1f80dbdc2 value=15 at (-2.0, -3.5)
+[loot] currency drop id=2fb41dad-044c-4406-856f-1ea388e99283 value=13 at (-2.0, -3.5)
+[loot] picked up id=2fb41dad-044c-4406-856f-1ea388e99283 value=13 by zmriSzXMFq9Yfw1oAAAB (currency=13, ms=99)
+[loot] picked up id=728928ad-131a-4c87-b922-4fb1f80dbdc2 (magic stone) value=15 by zmriSzXMFq9Yfw1oAAAB (currency=13, ms=99)
+Player disconnected: zmriSzXMFq9Yfw1oAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/encounters-boss-encounter-hud-never-appeared-in-any-tested-f-0xrv/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3222
+Player connected: socket=mxE4iX9Nd0qfBrZ_AAAB, playerId=54c514e9-73cf-42e9-96da-139412583f3c
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[loot] spawned id=08d414ff-3b68-40b7-bc66-f6aceb5cb633 value=11
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[loot] magic stone drop id=d5f3dc88-8065-48a0-97d1-fa27bae4bd5a value=20 at (0.4, -30.4)
+[loot] currency drop id=cb49b4c1-5192-4b15-adcc-78f5d34ed33e value=10 at (0.4, -30.4)
+[loot] magic stone drop id=0e1f19d0-a7d6-40e6-ab27-7ee7c53fb7ae value=20 at (-0.2, -29.9)
+[loot] magic stone drop id=4ec9bd05-cfe0-4fb5-91ce-fbb0760e45b5 value=15 at (-8.0, 9.3)
+[loot] currency drop id=2d4bcabd-f3f4-4f13-b496-16e511c12923 value=11 at (-8.0, 9.3)
+[loot] magic stone drop id=829b7de9-93cb-49ca-93fb-3baa55ac2f07 value=15 at (6.8, 9.5)
+[loot] magic stone drop id=bb8fea1a-0dd1-472e-a8cd-5649a9712d4f value=15 at (-0.1, -6.5)
+[loot] variant bonus magic stone drop id=68335f64-6718-4a40-b761-74d8a3bb1dd5 value=15 at (-0.1, -6.5)
+[loot] magic stone drop id=0085482b-ba3f-4bcd-b4d0-2650ae8f0d56 value=15 at (8.0, -3.7)
+[loot] magic stone drop id=d4c181e4-8a5a-49ac-8cb0-9450143fcc8c value=15 at (2.0, -3.5)
+[loot] picked up id=d4c181e4-8a5a-49ac-8cb0-9450143fcc8c (magic stone) value=15 by mxE4iX9Nd0qfBrZ_AAAB (currency=0, ms=99)
+[loot] magic stone drop id=6a0d88b8-efc4-41c7-8956-a0489d1ace29 value=15 at (-2.0, -3.5)
+[loot] picked up id=6a0d88b8-efc4-41c7-8956-a0489d1ace29 (magic stone) value=15 by mxE4iX9Nd0qfBrZ_AAAB (currency=0, ms=99)
+[loot] magic stone drop id=4a50fb25-228e-4f44-8deb-ab13c37afa40 value=20 at (1.1, 1.0)
+[loot] magic stone drop id=c1dc770a-b84e-437c-810a-cd5196c0f0ce value=20 at (-1.1, 1.0)
+[loot] magic stone drop id=2ab95d74-21a5-44ba-a349-554aadcb2f53 value=20 at (-3.1, -0.5)
+[loot] currency drop id=1e69196b-84e4-4757-b9b8-a763f6a0178d value=10 at (-3.1, -0.5)
+[loot] picked up id=1e69196b-84e4-4757-b9b8-a763f6a0178d value=10 by mxE4iX9Nd0qfBrZ_AAAB (currency=10, ms=99)
+Player disconnected: mxE4iX9Nd0qfBrZ_AAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 5 user record(s) from /home/matt/workspace/.autogame-worktrees/encounters-boss-encounter-hud-never-appeared-in-any-tested-f-0xrv/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3200
+Player connected: socket=CxyDV_iJeYqTey4MAAAB, playerId=0b26d655-b659-412a-a632-0fb82d169845
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[loot] spawned id=33950c96-d9f6-4b99-b938-579cead12224 value=19
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[loot] magic stone drop id=1b4b2849-c242-47a9-81ec-4df7ccaa81b2 value=20 at (0.7, -30.5)
+[loot] magic stone drop id=2aef049a-4e58-4caa-a622-f2fa16fc0028 value=20 at (-0.6, -30.1)
+[loot] magic stone drop id=005465ef-b79a-4736-bd1a-f037cc4ffb4b value=15 at (-8.4, 6.5)
+[loot] magic stone drop id=6040af94-221e-4916-9ef9-2cc6ff05f73b value=15 at (7.3, 9.8)
+[loot] currency drop id=8067b7fd-6c7d-4cf8-9186-341e3face7af value=9 at (7.3, 9.8)
+[loot] magic stone drop id=9aff9ec8-20bc-4283-a753-361cda9dc713 value=15 at (-0.1, -6.5)
+[loot] variant bonus magic stone drop id=56e8cfe7-1f9d-4c90-a78d-eab58dea7dc2 value=15 at (-0.1, -6.5)
+[loot] currency drop id=a262cc10-a430-4d2a-8258-ddb634f53b97 value=6 at (-0.1, -6.5)
+[loot] magic stone drop id=0af16a3b-ae61-4670-a5a7-bfabd8cbc2c9 value=15 at (7.9, -2.0)
+[loot] currency drop id=61df620e-6e48-4be0-8ec3-b6a8abf5c4ec value=13 at (7.9, -2.0)
+[loot] magic stone drop id=a2b7667a-c3a3-4524-8c6d-ca5c4a530f50 value=15 at (2.0, -3.5)
+[loot] picked up id=a2b7667a-c3a3-4524-8c6d-ca5c4a530f50 (magic stone) value=15 by CxyDV_iJeYqTey4MAAAB (currency=0, ms=99)
+[loot] magic stone drop id=95297877-d8ed-4762-9be7-86bfbe4b7eb0 value=15 at (-2.0, -3.5)
+[loot] currency drop id=4a9a782f-37a0-4af1-97ae-cb08dc44b269 value=8 at (-2.0, -3.5)
+[loot] picked up id=4a9a782f-37a0-4af1-97ae-cb08dc44b269 value=8 by CxyDV_iJeYqTey4MAAAB (currency=8, ms=99)
+[loot] picked up id=95297877-d8ed-4762-9be7-86bfbe4b7eb0 (magic stone) value=15 by CxyDV_iJeYqTey4MAAAB (currency=8, ms=99)
+[loot] magic stone drop id=ef53eec8-d7d2-4b93-ac81-acf3169abc45 value=20 at (1.1, 1.3)
+[loot] magic stone drop id=08a711f5-552c-4b52-bd8b-8e7235ab5261 value=20 at (-1.1, 1.3)
+[loot] magic stone drop id=fee89d8f-7603-44b6-8bb5-00a5dab5c72a value=20 at (-3.2, -0.4)
+[loot] currency drop id=6073578b-e3d9-4034-b9ec-604a30668a0e value=8 at (-3.2, -0.4)
+[loot] picked up id=6073578b-e3d9-4034-b9ec-604a30668a0e value=8 by CxyDV_iJeYqTey4MAAAB (currency=16, ms=99)
+[loot] magic stone drop id=cbea6731-b6db-4e2d-aae4-3384a00f3fc4 value=20 at (5.2, -0.5)
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[loot] magic stone drop id=0518de9d-ae92-4c37-be35-2933b83d13e8 value=20 at (0.0, -32.5)
+[loot] currency drop id=87081a9f-d1a3-48f0-8756-6c1353291e49 value=18 at (0.0, -32.5)
+[loot] magic stone drop id=b33ad7ff-5612-4d8f-be07-16a79530a36a value=20 at (0.3, -32.0)
+[loot] magic stone drop id=f30ac738-0a66-4032-8c05-2a9705cb5d1a value=55 at (0.0, 22.5)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[loot] spawned id=6feefa83-89d7-496e-ac90-2975f65edf1e value=10
+[telepipe] placed at (0.0, -32.5) by 0b26d655-b659-412a-a632-0fb82d169845
+[telepipe] player 0b26d655-b659-412a-a632-0fb82d169845 extracted
+[run] checkpoint captured
+[run] extracted to hub: Frost Crossing
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+Player disconnected: CxyDV_iJeYqTey4MAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/encounters-boss-encounter-hud-never-appeared-in-any-tested-f-0xrv/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)
+Server listening on port 3290
+Player connected: socket=rmsqIxYIU68HTy73AAAB, playerId=3bde9f2f-3d28-43a3-84a2-0ac208772be7
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[loot] magic stone drop id=d3e5aa18-353f-4e75-97c6-10f63f7c7c8b value=20 at (0.6, -30.5)
+[loot] magic stone drop id=e1a8514d-022d-4993-ad93-bdd336aff6b4 value=20 at (0.4, -29.9)
+[loot] currency drop id=80076ba0-75fd-474c-9c54-1ad25a99d3ac value=12 at (0.4, -29.9)
+[loot] magic stone drop id=df3c08f7-2d27-4ecf-9fb2-662a26a28be4 value=15 at (-8.7, 6.4)
+[loot] magic stone drop id=262f7537-3306-492b-afc8-d543eab8f3f7 value=15 at (6.4, 8.0)
+[loot] magic stone drop id=58ca742d-c38f-4a7c-870d-fe540720c830 value=15 at (0.3, -5.6)
+[loot] variant bonus magic stone drop id=df56676d-71fb-42e8-b049-0004b1a34ba0 value=15 at (0.3, -5.6)
+[loot] magic stone drop id=08b8ae6b-0920-446b-b37a-de20a307592d value=15 at (8.5, -2.0)
+[loot] picked up id=58ca742d-c38f-4a7c-870d-fe540720c830 (magic stone) value=15 by rmsqIxYIU68HTy73AAAB (currency=0, ms=99)
+[loot] magic stone drop id=eefd7e4d-cc4c-49ba-bb16-784170fb116b value=15 at (2.0, -3.5)
+[loot] currency drop id=3f48e392-e9ca-4d0c-8538-0559285fcbdf value=13 at (2.0, -3.5)
+[loot] picked up id=eefd7e4d-cc4c-49ba-bb16-784170fb116b (magic stone) value=15 by rmsqIxYIU68HTy73AAAB (currency=0, ms=99)
+[loot] picked up id=3f48e392-e9ca-4d0c-8538-0559285fcbdf value=13 by rmsqIxYIU68HTy73AAAB (currency=13, ms=99)
+[loot] magic stone drop id=b81e91c5-0ff2-44f9-a492-cb41795da3ae value=15 at (-2.0, -3.5)
+[loot] currency drop id=6fa01444-a0c7-484a-8e17-5e178f1392e6 value=7 at (-2.0, -3.5)
+[loot] picked up id=6fa01444-a0c7-484a-8e17-5e178f1392e6 value=7 by rmsqIxYIU68HTy73AAAB (currency=20, ms=99)
+[loot] picked up id=b81e91c5-0ff2-44f9-a492-cb41795da3ae (magic stone) value=15 by rmsqIxYIU68HTy73AAAB (currency=20, ms=99)
+[loot] magic stone drop id=f216c0cd-c209-46a2-a4b9-178c8174d0fb value=20 at (1.1, 1.0)
+[loot] currency drop id=da33fd24-8b4c-4e04-b89e-7a8c1854ce21 value=12 at (1.1, 1.0)
+[loot] magic stone drop id=d9baf95c-ebb3-4277-8156-801c50e851e3 value=20 at (-1.1, 1.0)
+[loot] currency drop id=65b3641b-4217-42cb-8eb3-4587db3a7efb value=18 at (-1.1, 1.0)
+[loot] picked up id=65b3641b-4217-42cb-8eb3-4587db3a7efb value=18 by rmsqIxYIU68HTy73AAAB (currency=38, ms=99)
+[loot] magic stone drop id=28da909d-fe62-45e2-806c-cc45f0859390 value=20 at (-3.1, -0.5)
+[loot] currency drop id=b4e2867d-5d3f-427b-93d9-459ff4de68d4 value=16 at (-3.1, -0.5)
+[loot] picked up id=b4e2867d-5d3f-427b-93d9-459ff4de68d4 value=16 by rmsqIxYIU68HTy73AAAB (currency=54, ms=99)
+[loot] magic stone drop id=717e93cb-f6ea-4e42-b5ac-67060aeadb09 value=20 at (5.3, -0.5)
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[loot] magic stone drop id=2d962030-fa02-4d1d-a211-390b61a84168 value=20 at (0.0, -32.5)
+[loot] currency drop id=3611c622-7f7d-460b-990e-8d51dfb786ea value=13 at (0.0, -32.5)
+[loot] magic stone drop id=eab32678-2d8a-4ca8-bd98-89614347c3eb value=20 at (0.3, -32.0)
+[loot] currency drop id=90d64796-6a48-4a2a-b086-880e227a42c5 value=17 at (0.3, -32.0)
+[loot] magic stone drop id=5f69a81e-f7ed-42c3-ae71-83ce9d365307 value=55 at (0.0, 22.5)
+[loot] currency drop id=ebd12524-fc63-4f5f-aa87-435fed7d1814 value=54 at (0.0, 22.5)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[telepipe] placed at (0.0, -32.5) by 3bde9f2f-3d28-43a3-84a2-0ac208772be7
+[telepipe] player 3bde9f2f-3d28-43a3-84a2-0ac208772be7 extracted
+[run] checkpoint captured
+[run] extracted to hub: Frost Crossing
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+Player disconnected: rmsqIxYIU68HTy73AAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

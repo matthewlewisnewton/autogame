@@ -2383,7 +2383,8 @@ describe('debugScenario — frost-crossing harness shortcuts', () => {
 			(e) => e.hp > 0 && e.type !== 'glacial_thrower' && !e.namedRare
 				&& (e.type === 'grunt' || e.type === 'skirmisher'),
 		);
-		expect(liveAdds.length).toBe(addsBefore.length);
+		// Clears signature/scripted hostiles then respawns the run-start support pack.
+		expect(liveAdds.length).toBe(5);
 		expect(liveAdds.every((e) => e.hp === 1 && !e.shieldHp)).toBe(true);
 		for (const add of liveAdds) {
 			expect(add.y).toBe(resolveFloorY(sampleFloorY(state.layout, add.x, add.z)));
@@ -2422,9 +2423,10 @@ describe('debugScenario — frost-crossing harness shortcuts', () => {
 		expect(player.debugGodmode).toBe(false);
 		expect(player.vx).toBe(0);
 		expect(player.vz).toBe(0);
-		expect(state.enemies.length).toBe(1);
-		expect(state.enemies[0].type).toBe('glacial_thrower');
-		expect(state.enemies[0].hp).toBeGreaterThan(0);
+		const thrower = state.enemies.find((e) => e.type === 'glacial_thrower');
+		expect(thrower?.hp).toBeGreaterThan(0);
+		const warden = state.enemies.find((e) => e.type === 'permafrost_warden');
+		expect(warden?.hp).toBeGreaterThan(0);
 		expect(player.hp).toBeGreaterThan(30);
 		const stoneRoom = state.layout.rooms.find((r) => r.band === 'stone');
 		if (stoneRoom) {
@@ -2448,6 +2450,12 @@ describe('debugScenario — frost-crossing harness shortcuts', () => {
 		expect(transitionResult.scenario).toBe('frost-crossing-surface-transition');
 
 		const state = testGameState();
+		const bossId = state.run.encounter.bossEnemyId;
+		const dormantBoss = state.enemies.find((e) => e.id === bossId);
+		expect(dormantBoss?.type).toBe('permafrost_warden');
+		expect(dormantBoss?.hp).toBeGreaterThan(0);
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
+
 		const player = playerForSocket(socket);
 		const iceRoom = state.layout.rooms.find((r) => r.band === 'ice');
 		const stoneRoom = state.layout.rooms.find((r) => r.band === 'stone');
