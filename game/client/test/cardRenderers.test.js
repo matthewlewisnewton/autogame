@@ -204,7 +204,9 @@ describe('resolveRenderers()', () => {
 	});
 
 	it('returns the chain_lightning arc renderer for Voltaic Chain', () => {
-		expect(resolveRenderers('chain_lightning')).toHaveLength(1);
+		const renderers = resolveRenderers('chain_lightning');
+		expect(renderers).toHaveLength(1);
+		expect(renderers[0].name).toBe('renderChainLightningArcs');
 	});
 
 	it('returns a fresh array (mutating one does not affect the next call)', () => {
@@ -3211,9 +3213,13 @@ describe('renderCardUsed() — creature dispatch', () => {
 		}, ctx)).not.toThrow();
 	});
 
-	it('chain_lightning with two chainSegments invokes spawnLightningArc twice', () => {
-		const ctx = makeCtx();
-		renderCardUsed({
+	it('chain_lightning has no positive windUpMs (instant cast; 307 charge telegraph absent)', () => {
+		expect(CARD_DEFS.chain_lightning.windUpMs ?? 0).toBeLessThanOrEqual(0);
+	});
+
+	it('chain_lightning with two chainSegments schedules later hops and uses voltaic arc style', () => {
+		const enemyMesh = { position: { x: 8, y: 1.1, z: 0.2 } };
+		const payload = {
 			cardId: 'chain_lightning',
 			origin: { x: 0, z: 0 },
 			direction: { x: 1, z: 0 },
@@ -3226,26 +3232,75 @@ describe('renderCardUsed() — creature dispatch', () => {
 				{ enemyId: 'e1', hp: 50 },
 				{ enemyId: 'e2', hp: 30 },
 			],
-		}, ctx);
-		const arcs = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
-		expect(arcs).toHaveLength(2);
-		expect(arcs[0][1]).toEqual({ x: 0, z: 0 });
-		expect(arcs[0][2]).toEqual({ x: 5, z: 0 });
-		expect(arcs[1][1]).toEqual({ x: 5, z: 0 });
-		expect(arcs[1][2]).toEqual({ x: 8, z: 0 });
+		};
+		const rendererCtx = makeCtx({
+			enemyMeshes: () => ({ e2: enemyMesh }),
+		});
+		resolveRenderers('chain_lightning')[0](payload, rendererCtx);
+		expect(rendererCtx._calls.some((c) => c[0] === 'playSound' && c[1] === 'enemyHit')).toBe(false);
+
+		const ctx = makeCtx({
+			enemyMeshes: () => ({ e2: enemyMesh }),
+		});
+		renderCardUsed(payload, ctx);
+
 		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
 		expect(telegraph).toBeDefined();
 		expect(telegraph[1]).toEqual({ x: 0, z: 0 });
 		expect(telegraph[2]).toBe(5);
-		expect(telegraph[3]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+		expect(telegraph[3]).toMatchObject({
+			color: 0x38bdf8,
+			emissive: 0x0ea5e9,
+			duration: ATTACK_EFFECT_DURATION,
+		});
+		const castBurst = ctx._calls.find(
+			(c) => c[0] === 'spawnParticleBurst' && c[1].x === 0 && c[1].z === 0 && c[2].spread === 1.4,
+		);
+		expect(castBurst).toBeDefined();
+		const scheduleIdx = ctx._calls.findIndex((c) => c[0] === 'scheduleAfter');
+		expect(scheduleIdx).toBeGreaterThan(0);
+		expect(ctx._calls.findIndex((c) => c[0] === 'spawnTelegraphRing')).toBeLessThan(scheduleIdx);
+		expect(ctx._calls.findIndex((c) => c[0] === 'spawnParticleBurst' && c[2]?.spread === 1.4)).toBeLessThan(scheduleIdx);
+
+		const arcs = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
+		expect(arcs).toHaveLength(1);
+		expect(arcs[0][3]).toMatchObject({
+			color: 0x38bdf8,
+			emissive: 0x0ea5e9,
+			duration: ATTACK_EFFECT_DURATION,
+		});
+		expect(arcs[0][1]).toEqual({ x: 0, z: 0 });
+		expect(arcs[0][2]).toEqual({ x: 5, z: 0 });
+		expect(ctx._calls.findIndex((c) => c[0] === 'spawnLightningArc')).toBeLessThan(scheduleIdx);
+
+		const hop0Burst = ctx._calls.find(
+			(c) => c[0] === 'spawnParticleBurst' && c[1].x === 5 && c[1].z === 0,
+		);
+		expect(hop0Burst).toBeDefined();
+		expect(ctx._calls.indexOf(hop0Burst)).toBeLessThan(scheduleIdx);
+
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(schedules).toHaveLength(1);
+		expect(schedules[0][1]).toBeGreaterThanOrEqual(80);
+		expect(schedules[0][1]).toBeLessThanOrEqual(120);
+		expect(schedules[0][1]).toBeLessThan(ATTACK_EFFECT_DURATION);
+
+		ctx.runScheduled();
+		const allArcs = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
+		expect(allArcs).toHaveLength(2);
+		expect(allArcs[1][1]).toEqual({ x: 5, z: 0 });
+		expect(allArcs[1][2]).toEqual({ x: 8, z: 0 });
+
 		const endpointBursts = ctx._calls.filter(
 			(c) => c[0] === 'spawnParticleBurst' && (c[1].x === 5 || c[1].x === 8),
 		);
 		expect(endpointBursts).toHaveLength(2);
 		expect(endpointBursts[0][1]).toEqual({ x: 5, z: 0 });
-		expect(endpointBursts[1][1]).toEqual({ x: 8, z: 0 });
+		expect(endpointBursts[1][1]).toEqual({ x: 8, y: 1.1, z: 0.2 });
+
 		expect(ctx._calls.some((c) => c[0] === 'spawnChainLightningEffect')).toBe(false);
-		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'enemyHit')).toBe(true);
+		const hitSounds = ctx._calls.filter((c) => c[0] === 'playSound' && c[1] === 'enemyHit');
+		expect(hitSounds).toHaveLength(1);
 	});
 
 	it('chain_lightning without chainSegments still uses legacy spawnChainLightningEffect', () => {
@@ -3258,7 +3313,10 @@ describe('renderCardUsed() — creature dispatch', () => {
 		}, ctx);
 		expect(ctx._calls.some((c) => c[0] === 'spawnChainLightningEffect')).toBe(true);
 		expect(ctx._calls.some((c) => c[0] === 'spawnLightningArc')).toBe(false);
-		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(true);
+		expect(ctx._calls.some(
+			(c) => c[0] === 'spawnParticleBurst' && c[1].x === 1 && c[1].z === 2,
+		)).toBe(true);
 	});
 
 	it('chain_lightning segment path still renders without throwing when new ctx primitives are absent', () => {

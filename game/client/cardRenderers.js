@@ -1109,6 +1109,14 @@ function renderNecroframeKnightSummon(data, ctx) {
 }
 
 const CHAIN_LIGHTNING_ARC_STYLE = { color: 0x38bdf8, emissive: 0x0ea5e9 };
+const VOLTAIC_CHAIN_COLOR = getAccentHex('chain_lightning') ?? 0x38bdf8;
+const VOLTAIC_CHAIN_EMISSIVE = 0x0ea5e9;
+const VOLTAIC_CHAIN_ARC_STYLE = {
+	color: VOLTAIC_CHAIN_COLOR,
+	emissive: VOLTAIC_CHAIN_EMISSIVE,
+	duration: ATTACK_EFFECT_DURATION,
+};
+const VOLTAIC_CHAIN_HOP_DELAY_MS = 100;
 const THUNDERBIRD_SUMMON_STYLE = { color: 0x38bdf8, emissive: 0x0ea5e9 };
 const THUNDERBIRD_ARC_STYLE = {
 	color: 0x38bdf8,
@@ -1134,32 +1142,76 @@ function spawnChainSegmentArcs(data, ctx) {
 	return true;
 }
 
+function voltaicChainEndpointBurst(pos, ctx) {
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(pos, {
+			...VOLTAIC_CHAIN_ARC_STYLE,
+			count: 8,
+			spread: 1.0,
+		});
+	} else if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(pos, VOLTAIC_CHAIN_ARC_STYLE);
+	}
+}
+
+function voltaicChainCastFlourish(origin, chainRadius, ctx) {
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, chainRadius, VOLTAIC_CHAIN_ARC_STYLE);
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, {
+			color: VOLTAIC_CHAIN_COLOR,
+			emissive: VOLTAIC_CHAIN_EMISSIVE,
+			count: 10,
+			spread: 1.4,
+		});
+	}
+}
+
 /**
- * Voltaic Chain spell: one cyan arc per server chain segment with cast
- * telegraph and endpoint impacts, or a legacy directional bolt when segments
- * are absent.
+ * Voltaic Chain spell: forked lightning arcs per server chain segment with
+ * cast telegraph, sequenced hop delays, and endpoint bursts snapped to live
+ * enemy meshes; legacy directional bolt when segments are absent.
  */
 function renderChainLightningArcs(data, ctx) {
-	if (spawnChainSegmentArcs(data, ctx)) {
-		const origin = originOf(data);
-		if (ctx.spawnTelegraphRing) {
-			ctx.spawnTelegraphRing(origin, data.chainRadius ?? 2, CHAIN_LIGHTNING_ARC_STYLE);
-		}
-		for (const seg of data.chainSegments) {
-			if (ctx.spawnParticleBurst) {
-				ctx.spawnParticleBurst(seg.to, {
-					...CHAIN_LIGHTNING_ARC_STYLE,
-					count: 8,
-					spread: 1.0,
-				});
-			} else if (ctx.spawnImpactDecal) {
-				ctx.spawnImpactDecal(seg.to, CHAIN_LIGHTNING_ARC_STYLE);
+	const origin = originOf(data);
+	const segments = data.chainSegments;
+	const chainRadius = data.chainRadius ?? 5;
+
+	if (segments?.length) {
+		voltaicChainCastFlourish(origin, chainRadius, ctx);
+		const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+
+		const fireHop = (index) => {
+			const seg = segments[index];
+			if (!seg) return;
+			if (ctx.spawnLightningArc) {
+				ctx.spawnLightningArc(seg.from, seg.to, VOLTAIC_CHAIN_ARC_STYLE);
+			}
+			const hit = data.hits?.[index];
+			let endpoint = seg.to;
+			const mesh = hit ? meshes[hit.enemyId] : null;
+			if (mesh) endpoint = enemyWorldPosition(mesh);
+			voltaicChainEndpointBurst(endpoint, ctx);
+		};
+
+		for (let i = 0; i < segments.length; i++) {
+			if (i === 0) {
+				fireHop(0);
+			} else if (ctx.scheduleAfter) {
+				ctx.scheduleAfter(VOLTAIC_CHAIN_HOP_DELAY_MS * i, () => fireHop(i));
+			} else {
+				fireHop(i);
 			}
 		}
 		return;
 	}
+
 	if (!data.origin) return;
-	ctx.spawnChainLightningEffect(data.origin, directionOf(data));
+	voltaicChainCastFlourish(origin, chainRadius, ctx);
+	if (ctx.spawnChainLightningEffect) {
+		ctx.spawnChainLightningEffect(origin, directionOf(data));
+	}
 }
 
 /**

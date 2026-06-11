@@ -1,0 +1,12 @@
+Broke the top-level ticket into **2 sub-tickets** in dependency order:
+
+1. **01 — Renderer + timing** — Rewrite `renderChainLightningArcs` with Voltaic Chain–specific styling (cast telegraph, origin flourish, sequenced hop delays, enemy-mesh endpoint sync), distinct from Thunderbird’s chain strike. Server resolves all hits instantly; no `windUpMs`, projectile travel, or DoT.
+
+2. **02 — Tests** — Update `cardRenderers.test.js` to lock in hop sequencing, timing constants, cast flourish, legacy fallback, graceful degradation, Thunderbird isolation, and `windUpMs` absence.
+
+Both use **`code`** verification (timing, `scheduleAfter`, handler existence, and structure are not verifiable from screenshots alone).
+
+**Created sub-ticket folders:**
+
+- `/home/matt/workspace/.autogame-worktrees/344-anim-voltaic-chain/tickets/344-anim-voltaic-chain/subtickets/01-voltaic-chain-renderer-and-timing/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/344-anim-voltaic-chain/tickets/344-anim-voltaic-chain/subtickets/02-voltaic-chain-animation-tests/ticket.md`
