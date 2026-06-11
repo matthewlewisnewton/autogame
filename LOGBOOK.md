@@ -7898,3 +7898,26 @@ PASS. This ticket did not add or change a `?debugScenario=...` development short
 
 None. The ticket meets the acceptance criteria. The fallback smoke capture did not include a dedicated Astral Guardian cast screenshot, but the game run is clean and the renderer behavior is covered by focused client tests.
 
+
+## v0.434 — 324-anim-phase-stalker  (2026-06-11 01:22:20)
+
+### No performance regression
+
+PASS. The added work is bounded: one delayed deploy pulse, two short projectile trails, two small bursts, one attack corridor, and one spark per reported enemy hit. The minion wind-up update adjusts existing telegraph material opacity and reuses the existing keyed telegraph mesh lifecycle. There is no unbounded allocation loop or persistent effect leak apparent in the changed code.
+
+### Client tests where feasible
+
+PASS. Coverage log shows the Vitest suite passed: 50 files, 759 tests. Focused tests were added for Phase Stalker deploy layering, helper absence, beam travel timing, rift accent, per-hit enemy sparks, and null-crawler wind-up telegraph creation/disposal. The coverage report itself is visibility-only and does not enforce thresholds.
+
+## Design and foundation consistency
+
+PASS. The changes remain consistent with the design doc's card-combat model: Phase Stalker is still a creature minion whose attack is represented visually without changing server combat, economy, dungeon, lobby, or persistence behavior. The foundation requirements still hold in the captured run: a Three.js scene loads, clients connect through the server, multiplayer state is visible, and WASD movement updates during gameplay.
+
+## Debug scenarios
+
+PASS. This ticket did not add or modify a `?debugScenario=` shortcut or server debug scenario. The capture also ran with `debugScenario: null`, so normal gameplay remains the entry path exercised by the smoke flow.
+
+## Remaining gaps
+
+None.
+
