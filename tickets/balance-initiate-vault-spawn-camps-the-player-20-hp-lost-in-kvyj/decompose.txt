@@ -1,0 +1,9 @@
+Broke the top-level ticket into **2 sub-tickets** in dependency order:
+
+1. **`/home/matt/workspace/.autogame-worktrees/balance-initiate-vault-spawn-camps-the-player-20-hp-lost-in-kvyj/tickets/balance-initiate-vault-spawn-camps-the-player-20-hp-lost-in-kvyj/subtickets/01-entry-grunt-bulkhead-placement`**
+   - Passage-relative bulkhead spawn placement so entry grunts no longer overlap the player deploy point.
+
+2. **`/home/matt/workspace/.autogame-worktrees/balance-initiate-vault-spawn-camps-the-player-20-hp-lost-in-kvyj/tickets/balance-initiate-vault-spawn-camps-the-player-20-hp-lost-in-kvyj/subtickets/02-entry-aggro-grace-and-regression`**
+   - 3s aggro grace on room-0 wave-0 grunts plus a vitest regression for the 3-second idle HP check.
+
+**Rationale:** Grunts and the player both spawn at room center today; even bulkhead offsets leave them inside `DETECTION_RADIUS`, so chip damage during the intro still happens without an aggro grace. Placement fixes the overlap/design issue; grace + test satisfy the parent acceptance criterion. Both use `code` verification (behavior, timing, HP values). No existing sub-tickets needed cleanup.

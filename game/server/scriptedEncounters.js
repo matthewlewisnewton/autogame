@@ -4,6 +4,7 @@
  */
 const { mulberry32 } = require('./dungeon');
 const { DEFAULT_QUEST_TIER } = require('./quests');
+const { simNow } = require('./simulation');
 
 function syncScriptedDefeatEnemiesActiveCount(run, enemies) {
   if (!run?.scriptedEncounter || run.objective?.type !== 'defeat_enemies') return;
@@ -15,6 +16,7 @@ function syncScriptedDefeatEnemiesActiveCount(run, enemies) {
  * @property {string} type - Enemy type id.
  * @property {number} [count=1] - How many of this type to spawn.
  * @property {{ x: number, z: number }} [offset] - World offset from the spawn anchor.
+ * @property {boolean} [towardPassage] - Offset spawn toward the outbound passage bulkhead.
  * @property {string} [anchor] - Layout landmark type used as spawn anchor (room center when omitted).
  * @property {{ id: string, displayName: string, variantId?: string, enemyType?: string }} [namedRare]
  *   Quest-exclusive rare spawn metadata (custom label + optional forced variant/type).
@@ -23,6 +25,7 @@ function syncScriptedDefeatEnemiesActiveCount(run, enemies) {
 /**
  * @typedef {Object} ScriptedWaveDef
  * @property {ScriptedSpawnDef[]} spawns - Ordered spawn entries for this wave.
+ * @property {number} [aggroGraceMs] - Ms after spawn during which spawned enemies ignore players.
  */
 
 /**
@@ -228,14 +231,85 @@ function resolveSpawnAnchor(layout, room, spawnDef) {
   return { x: 0, z: 0 };
 }
 
+function findOutboundPassage(layout, room) {
+  if (!layout?.passages || !room || !Array.isArray(layout.rooms)) return null;
+  const roomIndex = layout.rooms.indexOf(room);
+  if (roomIndex < 0) return null;
+  const passageIndex = findPassageIndexFromRoom(layout, roomIndex);
+  if (passageIndex >= 0) {
+    return layout.passages[passageIndex];
+  }
+  // Start rooms can be corridor endpoints: bulkhead faces the inbound passage mouth.
+  return layout.passages.find(
+    (passage) => passage.x2 === room.x && passage.z2 === room.z,
+  ) || null;
+}
+
+function bulkheadAxisFromPassage(passage, room) {
+  if (!passage || !room) return null;
+  const towardX = passage.x1 === room.x && passage.z1 === room.z
+    ? passage.x2
+    : passage.x1;
+  const towardZ = passage.x1 === room.x && passage.z1 === room.z
+    ? passage.z2
+    : passage.z1;
+  const dx = towardX - room.x;
+  const dz = towardZ - room.z;
+  const len = Math.hypot(dx, dz);
+  if (len <= 0) return null;
+  return { dx: dx / len, dz: dz / len };
+}
+
+/**
+ * World offset from a room center toward the outbound passage bulkhead.
+ * @param {import('./dungeon').Layout} layout
+ * @param {{ x: number, z: number, width: number, depth: number }} room
+ * @returns {{ x: number, z: number }}
+ */
+function passageBulkheadOffset(layout, room) {
+  const passage = findOutboundPassage(layout, room);
+  const axis = bulkheadAxisFromPassage(passage, room);
+  if (!axis || !room) return { x: 0, z: 0 };
+
+  const axisDist = Math.max(0, Math.min(room.width, room.depth) / 2 - 1.5);
+
+  return {
+    x: axis.dx * axisDist,
+    z: axis.dz * axisDist,
+  };
+}
+
 function resolveSpawnPosition(layout, room, spawnDef, spawnIndex, rng) {
   const anchor = resolveSpawnAnchor(layout, room, spawnDef);
-  const offset = spawnDef?.offset || { x: 0, z: 0 };
-  const jitterX = spawnIndex > 0 ? (rng() * 2 - 1) * 1.5 : 0;
-  const jitterZ = spawnIndex > 0 ? (rng() * 2 - 1) * 1.5 : 0;
+  let offsetX = spawnDef?.offset?.x || 0;
+  let offsetZ = spawnDef?.offset?.z || 0;
+
+  if (spawnDef?.towardPassage) {
+    const bulkhead = passageBulkheadOffset(layout, room);
+    offsetX += bulkhead.x;
+    offsetZ += bulkhead.z;
+
+    if (spawnIndex > 0) {
+      const passage = findOutboundPassage(layout, room);
+      const axis = bulkheadAxisFromPassage(passage, room);
+      if (axis) {
+        const perpX = -axis.dz;
+        const perpZ = axis.dx;
+        const lateral = 1.2 * (spawnIndex % 2 === 0 ? 1 : -1);
+        offsetX += perpX * lateral;
+        offsetZ += perpZ * lateral;
+      }
+    }
+  } else {
+    const jitterX = spawnIndex > 0 ? (rng() * 2 - 1) * 1.5 : 0;
+    const jitterZ = spawnIndex > 0 ? (rng() * 2 - 1) * 1.5 : 0;
+    offsetX += jitterX;
+    offsetZ += jitterZ;
+  }
+
   return {
-    x: anchor.x + (offset.x || 0) + jitterX,
-    z: anchor.z + (offset.z || 0) + jitterZ,
+    x: anchor.x + offsetX,
+    z: anchor.z + offsetZ,
   };
 }
 
@@ -328,6 +402,9 @@ function spawnScriptedWave(run, gameState, roomKey, waveIndex, ctx) {
       const enemy = ctx.spawnEnemy(pos.x, pos.z, spawnDef.type, undefined, spawnOpts);
       enemy.wanderTarget = ctx.randomWanderTarget();
       enemy.scriptedWave = { roomKey, waveIndex };
+      if (Number.isFinite(wave.aggroGraceMs) && wave.aggroGraceMs > 0) {
+        enemy.aggroGraceUntil = simNow() + wave.aggroGraceMs;
+      }
       enemyIds.push(enemy.id);
       spawnIndex += 1;
     }
@@ -594,6 +671,9 @@ module.exports = {
   setWaveClearedCallback,
   findPassageIndexFromRoom,
   findPassageIndicesFromRoom,
+  findOutboundPassage,
+  passageBulkheadOffset,
+  resolveSpawnPosition,
   isWaveRequirementMet,
   roomKeyForDef,
   resolveRoomDef,

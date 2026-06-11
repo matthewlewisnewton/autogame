@@ -8570,6 +8570,75 @@ the natural-trigger path (server test) and the validation debug-scenario path
 separately.
 
 
+## v0.461 — auth: register flips to login form without prefilling username (and no auto-login)  (2026-06-11 09:18:47)
+
+- **Debug scenarios:** None added or modified. N/A.
+
+---
+
+## Code quality
+
+- **Scope:** Minimal 7-line client fix plus focused regression test — appropriate for an easy ticket.
+- **Correctness:** Handler order is right (`showLoginForm()` clears error before success message is applied; prefill runs after form flip).
+- **Null guards:** `loginUsernameInput` / `loginPasswordInput` checked before use, matching surrounding auth handler style.
+- **Dead code:** None introduced.
+- **Console errors:** None in browser capture.
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are satisfied; runtime capture and unit tests confirm behavior.
+
+---
+
+
+
+## v0.462 — test hooks: __openDeckBoothForTest / __openShopBoothForTest throw TypeError (missing deps argument)  (2026-06-11 09:41:24)
+
+
+## Code quality
+
+- Minimal, correct fix: reuses existing `deckBoothDeps` / `shopBoothDeps` rather than duplicating dep objects.
+- No dead code introduced; no new console errors in capture or tests.
+- Test updated to exercise the documented zero-arg API instead of manually constructing deps (which masked the production bug).
+
+## Debug scenarios
+
+This ticket did not add or change any `?debugScenario=` shortcuts. Existing `?booth=` debug openers already passed deps correctly via `createRequestDebugBoothOpener` / `createRequestDebugShopBoothOpener`; only the window test hooks were broken. No debug-path gating or normal-gameplay bypass concerns apply.
+
+## Integration notes
+
+- Single sub-ticket (`01-bind-booth-test-hook-deps`) covers the full top-level acceptance criteria.
+- Browser capture used the fallback full-flow smoke plan (auth → lobby → deploy → dungeon movement/dodge); it does not invoke the booth test hooks directly, but vitest provides direct hook coverage and the runtime capture confirms the game loads and plays cleanly with the change applied.
+
+## Remaining gaps
+
+None. The TypeError from calling unbound `openDeckBooth` / `openShopBooth` without a deps argument is fixed, covered by unit test, and the game runs cleanly in capture.
+
+
+## v0.463 — balance: Initiate Vault spawn-camps the player — ~20 HP lost in the first seconds while intro text is up  (2026-06-11 10:09:22)
+
+- Changes are focused: spawn offset helpers, wave-level `aggroGraceMs`, minimal `simulation.js` guard.
+- `simNow()` used consistently for grace timing (matches combat clock).
+- Dead-code / obvious bugs: none found.
+- Vitest: **4085 tests passed** in `coverage.log`; new `training_caverns_spawn_camp.test.js` included.
+- No new `?debugScenario=` shortcuts — nothing to audit on debug gating.
+
+---
+
+## Debug scenarios
+
+Not applicable — this ticket did not add or change development debug scenarios.
+
+---
+
+## Remaining gaps
+
+None blocking. The acceptance criterion is satisfied in code and covered by targeted regression tests. The browser capture does not directly exercise the 3-second standstill check, but runtime evidence plus server simulation on the production layout seed corroborates the fix; the 70 HP first-probe reading is explained by persisted vitals on harness accounts rather than spawn-camp damage.
+
+---
+
 
 ## v0.464 — hud: top-right corner collision — key-item badge overlaps toolbar buttons; lock-on panel overlaps comms log  (2026-06-11 10:42:22)
 

@@ -1,0 +1,7 @@
+Broke the top-level ticket into **one** sub-ticket. The bug is a single root cause (`main.js` exposes unbound `openBooth` closures), and `deckBoothDeps` / `shopBoothDeps` already exist — binding them plus updating the existing vitest fully delivers the acceptance criteria.
+
+**Created sub-ticket:**
+
+- `/home/matt/workspace/.autogame-worktrees/test-hooks-opendeckboothfortest-openshopboothfortest-throw-t-uvx1/tickets/test-hooks-opendeckboothfortest-openshopboothfortest-throw-t-uvx1/subtickets/01-bind-booth-test-hook-deps/ticket.md`
+
+**`01-bind-booth-test-hook-deps`** — Bind `deckBoothDeps` / `shopBoothDeps` when assigning `window.__openDeckBoothForTest` and `window.__openShopBoothForTest`, and update `lobby-menu-dismiss.test.js` to call the hooks with zero args. Verification: **code**.

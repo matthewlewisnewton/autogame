@@ -1,0 +1,7 @@
+Broke the top-level ticket into **one** sub-ticket — a single client-side change plus a regression test fully covers the acceptance criteria.
+
+**Created sub-ticket folders:**
+
+- `/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/tickets/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/subtickets/01-prefill-login-after-register/`
+
+**Rationale:** The bug is localized to the register success handler in `game/client/main.js` (~lines 3730–3735), which calls `showLoginForm()` without copying the username into `#login-username`. The parent ticket accepts either auto-login or prefill+focus; both are implementable in one pass. No server changes, no existing sub-tickets to retire, and verification is `code` (handler logic, input values, focus, vitest).

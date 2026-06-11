@@ -21,6 +21,7 @@ const {
   countScriptedEnemiesInQuest,
 } = require('../quests.js');
 const { ENEMY_DEFS, setGameState: setSimulationGameState } = require('../simulation.js');
+const { ENEMY_ATTACK_RANGE } = require('../config.js');
 const { getObjectiveDef } = require('../objectives.js');
 const { countAuthoredScriptedEnemies } = require('../scriptedEncounters.js');
 
@@ -98,11 +99,22 @@ describe('training_caverns tier 1 scripted named rare — Vault Stalker', () => 
     expect(def.skipBulkCombatSpawn(quest)).toBe(true);
 
     const state = createGameState();
-    deployTrainingCaverns(state);
+    const { startRoom } = deployTrainingCaverns(state);
     expect(state.run.objective.totalEnemies).toBe(6);
     expect(state.enemies).toHaveLength(2);
     expect(state.run.scriptedEncounter).toBeDefined();
     expect(state.run.waveScript).toBeUndefined();
+
+    const entryGrunts = state.enemies.filter(
+      (enemy) => enemy.scriptedWave?.roomKey === 'room:0' && enemy.scriptedWave?.waveIndex === 0,
+    );
+    expect(entryGrunts).toHaveLength(2);
+    for (const grunt of entryGrunts) {
+      const dist = Math.hypot(grunt.x - startRoom.x, grunt.z - startRoom.z);
+      expect(dist).toBeGreaterThanOrEqual(ENEMY_ATTACK_RANGE);
+      expect(grunt.x !== startRoom.x || grunt.z !== startRoom.z).toBe(true);
+    }
+    expect(new Set(entryGrunts.map((grunt) => `${grunt.x},${grunt.z}`)).size).toBe(2);
   });
 
   it('authors Vault Stalker in the final vault room', () => {

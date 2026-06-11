@@ -1,0 +1,21 @@
+## Review complete
+
+**VERDICT: PASS**
+
+Written to `tickets/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/round-1/review.md`.
+
+### Runtime
+- `metrics.json`: `ok: true`, `pageerrors: []`
+- `console.log`: no page errors or fatal lines
+- Full smoke capture succeeded (auth → lobby → gameplay)
+
+### Acceptance criteria
+The register success handler in `game/client/main.js` prefills `#login-username` with the trimmed registered name, clears and focuses `#login-password`, and keeps the green “Account created — please login” message. That satisfies the ticket’s either/or requirement (prefill path vs auto-login).
+
+### Tests
+319 tests pass, including the new regression test in `main.test.js`.
+
+### Files
+- `review.md` — full assessment
+- `nits.md` — one follow-up: login error color isn’t reset after register success sets it green
+- No `gaps.md` (PASS)

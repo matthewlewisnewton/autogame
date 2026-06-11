@@ -1,0 +1,15 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/test-hooks-opendeckboothfortest-openshopboothfortest-throw-t-uvx1/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/test-hooks-opendeckboothfortest-openshopboothfortest-throw-t-uvx1/game/data
+Server listening on port 3004
+Player connected: socket=Ks5dV8rJJ7Em1uHWAAAB, playerId=cfd4a9c5-9248-46b4-8de3-e193c08587c8
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=77mx7fPwChO4AgvZAAAD, playerId=5a2804a1-e731-4bbc-9835-51bd9903484a
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=394dded9-1ccc-4330-9269-ecac50ec485f value=19
+Player disconnected: Ks5dV8rJJ7Em1uHWAAAB
+Player disconnected: 77mx7fPwChO4AgvZAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

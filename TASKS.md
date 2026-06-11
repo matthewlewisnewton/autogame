@@ -182,6 +182,8 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [406-cleanup-hud-no-status-effect-indicators-for-ember-burn-glacial-slow-gwrd](tickets/406-cleanup-hud-no-status-effect-indicators-for-ember-burn-glacial-slow-gwrd/)
 - [ ] [406-cleanup-hud-objective-line-shows-only-quest-title-for-stage-boss-and-iykh](tickets/406-cleanup-hud-objective-line-shows-only-quest-title-for-stage-boss-and-iykh/)
 - [ ] [407-cleanup-level-settings-money-this-run-and-return-lines-show-em-dash-zcss](tickets/407-cleanup-level-settings-money-this-run-and-return-lines-show-em-dash-zcss/)
+- [ ] [408-cleanup-auth-register-flips-to-login-form-without-prefilling-usernam-aogf](tickets/408-cleanup-auth-register-flips-to-login-form-without-prefilling-usernam-aogf/)
 - [ ] [408-cleanup-medic-heal-button-silently-disabled-when-the-player-cannot-a-y199](tickets/408-cleanup-medic-heal-button-silently-disabled-when-the-player-cannot-a-y199/)
 - [ ] [406-cleanup-encounters-boss-encounter-hud-never-appeared-in-any-tested-f-0xrv](tickets/406-cleanup-encounters-boss-encounter-hud-never-appeared-in-any-tested-f-0xrv/)
+- [ ] [409-cleanup-balance-initiate-vault-spawn-camps-the-player-20-hp-lost-in-kvyj](tickets/409-cleanup-balance-initiate-vault-spawn-camps-the-player-20-hp-lost-in-kvyj/)
 - [ ] [409-cleanup-hud-top-right-corner-collision-key-item-badge-overlaps-toolb-ihb5](tickets/409-cleanup-hud-top-right-corner-collision-key-item-badge-overlaps-toolb-ihb5/)
