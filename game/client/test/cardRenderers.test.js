@@ -245,10 +245,14 @@ describe('resolveRenderers()', () => {
 
 	it('returns composed summon + attack renderers for Bulkhead Mauler', () => {
 		const bulkhead = resolveRenderers('bulkhead_mauler');
+		const creatureDefault = resolveRenderers('aegis_sentinel')[0];
 		expect(bulkhead).toHaveLength(2);
 		expect(bulkhead[0].name).toBe('renderBulkheadMaulerSummon');
 		expect(bulkhead[1].name).toBe('renderBulkheadMaulerShockwaveSweep');
-		expect(bulkhead[0]).not.toBe(resolveRenderers('aegis_sentinel')[0]);
+		expect(bulkhead[0]).not.toBe(creatureDefault);
+		expect(bulkhead[1]).not.toBe(creatureDefault);
+		expect(bulkhead[0].name).not.toBe('renderCreatureSummon');
+		expect(bulkhead[1].name).not.toBe('renderCreatureSummon');
 	});
 
 	it('returns the chain_lightning arc renderer for Voltaic Chain', () => {
@@ -3359,13 +3363,13 @@ describe('renderCardUsed() — creature dispatch', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'bulkhead_mauler',
-			origin: { x: 2, z: 3 },
-			minionId: 'minion-1',
+			minionId: 'm1',
+			origin: { x: 0, z: 0 },
 			hits: [],
 		}, ctx);
 		const summon = ctx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
 		expect(summon).toBeDefined();
-		expect(summon[1]).toEqual({ x: 2, z: 3 });
+		expect(summon[1]).toEqual({ x: 0, z: 0 });
 		expect(summon[2]).toMatchObject({
 			color: 0x78716c,
 			emissive: 0xf59e0b,
@@ -3375,16 +3379,32 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(summon[2].color).not.toBe(0x22c55e);
 		const deploy = ctx._calls.find((c) => c[0] === 'spawnBulkheadMaulerDeployEffect');
 		expect(deploy).toBeDefined();
-		expect(deploy[1]).toEqual({ x: 2, z: 3 });
+		expect(deploy[1]).toEqual({ x: 0, z: 0 });
 		expect(deploy[2]).toMatchObject({
 			color: 0x78716c,
 			emissive: 0xf59e0b,
 			radius: 1.4,
 			duration: MINION_SUMMON_IN_MS,
 		});
+		expect(ctx._calls.some((c) => c[0] === 'spawnBulkheadMaulerShockwaveEffect')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
 		expect(methodsCalled(ctx)).toContain('playSound');
+	});
+
+	it('bulkhead_mauler summon guard ignores shockwave_sweep payloads (no deploy or summon flourish)', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'bulkhead_mauler',
+			specialEffect: 'shockwave_sweep',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			attackRange: 4,
+			attackConeAngle: (Math.PI * 2) / 3,
+			hits: [{ enemyId: 'e1', hp: 41 }],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnBulkheadMaulerDeployEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
 	});
 
 	it('bulkhead_mauler summon without minionId stays sound-only (no deploy or summon flourish)', () => {
@@ -3843,18 +3863,59 @@ describe('renderCardUsed() — creature dispatch', () => {
 		}, ctx);
 		const shockwaves = ctx._calls.filter((c) => c[0] === 'spawnBulkheadMaulerShockwaveEffect');
 		expect(shockwaves).toHaveLength(1);
+		expect(shockwaves[0][1]).toEqual({ x: 0, z: 0 });
+		expect(shockwaves[0][2]).toEqual({ x: 1, z: 0 });
 		expect(shockwaves[0][3]).toMatchObject({
 			range: 4,
 			coneAngle: (Math.PI * 2) / 3,
 			color: 0x78716c,
 			emissive: 0xf59e0b,
 		});
-		expect(ctx._calls.some((c) => c[0] === 'spawnHitSpark')).toBe(true);
+		const hitSparks = ctx._calls.filter((c) => c[0] === 'spawnHitSpark');
+		expect(hitSparks).toHaveLength(1);
+		expect(hitSparks[0][1]).toEqual({ x: 2, y: 0.6, z: 0 });
 		// Accent-tinted debris burst at the construct's feet.
 		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
 		expect(burst).toBeDefined();
 		expect(burst[1]).toEqual({ x: 0, z: 0 });
 		expect(burst[2]).toMatchObject({ color: 0x78716c, emissive: 0xf59e0b });
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('bulkhead_mauler attack guard ignores summon payloads (no shockwave effect)', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'bulkhead_mauler',
+			minionId: 'm1',
+			origin: { x: 0, z: 0 },
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnBulkheadMaulerShockwaveEffect')).toBe(false);
+	});
+
+	it('Bulkhead Mauler shockwave degrades gracefully when spawnBulkheadMaulerShockwaveEffect is absent', () => {
+		const meshes = {
+			e1: { position: { x: 2, y: 0, z: 0 } },
+		};
+		const ctx = makeCtx({
+			enemyMeshes: () => meshes,
+			spawnBulkheadMaulerShockwaveEffect: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'bulkhead_mauler',
+			specialEffect: 'shockwave_sweep',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			attackRange: 4,
+			attackConeAngle: (Math.PI * 2) / 3,
+			hits: [{ enemyId: 'e1', hp: 41 }],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnBulkheadMaulerShockwaveEffect')).toBe(false);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnHitSpark')).toHaveLength(1);
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 0, z: 0 });
 	});
 
 	it('Bulkhead Mauler still renders without throwing when spawnParticleBurst is absent', () => {
