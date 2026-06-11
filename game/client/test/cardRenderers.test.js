@@ -1113,15 +1113,20 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
 	});
 
-	it('soul_drain adds pink drain telegraph, primary burst, and heal flourish decal', () => {
-		const ctx = makeCtx();
+	it('soul_drain adds pink drain telegraph, primary burst, per-hit tethers, and heal flourish decal', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 4, y: 1, z: 2 } },
+				e2: { position: { x: 6, y: 0, z: -1 } },
+			}),
+		});
 		renderCardUsed({
 			cardId: 'soul_drain',
 			origin: { x: 0, z: 0 },
 			radius: 4,
 			specialEffect: 'soul_drain',
 			hpHealed: 12,
-			hits: [],
+			hits: [{ enemyId: 'e1' }, { enemyId: 'e2' }, { enemyId: 'gone' }],
 		}, ctx);
 		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
 		expect(ring).toBeDefined();
@@ -1129,6 +1134,15 @@ describe('renderCardUsed() — spell dispatch', () => {
 		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
 		expect(burst).toBeDefined();
 		expect(burst[2]).toMatchObject({ color: 0xe879f9, count: 14, spread: 2.4 });
+		// One drain tether per hit-with-mesh, each ending at the cast origin; the
+		// hit whose enemy has no mesh ('gone') is skipped.
+		const tethers = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
+		expect(tethers).toHaveLength(2);
+		expect(tethers[0][1]).toEqual({ x: 4, y: 1, z: 2 });
+		expect(tethers[0][2]).toEqual({ x: 0, z: 0 });
+		expect(tethers[0][3]).toMatchObject({ color: 0xe879f9, emissive: 0xd946ef });
+		expect(tethers[1][1]).toEqual({ x: 6, y: 0, z: -1 });
+		expect(tethers[1][2]).toEqual({ x: 0, z: 0 });
 		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
 		expect(decal).toBeDefined();
 		expect(decal[1]).toEqual({ x: 0, z: 0 });
@@ -1137,11 +1151,37 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
 	});
 
+	it('soul_drain skips the heal flourish when hpHealed is 0 or absent', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'soul_drain',
+			origin: { x: 0, z: 0 },
+			radius: 4,
+			specialEffect: 'soul_drain',
+			hpHealed: 0,
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
+
+		const ctxNoHeal = makeCtx();
+		renderCardUsed({
+			cardId: 'soul_drain',
+			origin: { x: 0, z: 0 },
+			radius: 4,
+			specialEffect: 'soul_drain',
+			hits: [],
+		}, ctxNoHeal);
+		expect(ctxNoHeal._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
+		expect(ctxNoHeal._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
+	});
+
 	it('arcane radial spells still render without throwing when new ctx primitives are absent', () => {
 		const minimalCtx = makeCtx({
 			spawnTelegraphRing: undefined,
 			spawnParticleBurst: undefined,
 			spawnImpactDecal: undefined,
+			spawnLightningArc: undefined,
+			enemyMeshes: undefined,
 		});
 		for (const cardId of ['battle_familiar', 'mana_leach', 'soul_drain']) {
 			const ctx = { ...minimalCtx, _calls: [] };
@@ -1149,7 +1189,8 @@ describe('renderCardUsed() — spell dispatch', () => {
 				cardId,
 				origin: { x: 0, z: 0 },
 				radius: 4,
-				hits: [],
+				hpHealed: 8,
+				hits: [{ enemyId: 'e1' }],
 			}, ctx)).not.toThrow();
 		}
 	});

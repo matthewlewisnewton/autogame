@@ -829,6 +829,7 @@ const MANA_LEACH_COLOR = 0xa855f7;
 const MANA_LEACH_EMISSIVE = 0x9333ea;
 const SOUL_DRAIN_COLOR = 0xe879f9;
 const SOUL_DRAIN_EMISSIVE = 0xd946ef;
+const SOUL_DRAIN_TETHER_STYLE = { color: SOUL_DRAIN_COLOR, emissive: SOUL_DRAIN_EMISSIVE };
 
 function spawnChainSegmentArcs(data, ctx) {
 	const segments = data.chainSegments;
@@ -900,9 +901,10 @@ function renderManaLeach(data, ctx) {
 }
 
 /**
- * Soul Drain: pink evolved drain telegraph, primary burst, and a smaller
- * heal-adjacent flourish at the origin. No extra sounds — heal audio stays in
- * common post-effects when applicable.
+ * Soul Drain: pink evolved drain telegraph and primary burst, a drain tether
+ * pulled from each struck enemy back into the caster, and a life-absorb
+ * flourish at the origin that ONLY plays when the cast actually healed. No
+ * extra sounds — heal audio stays in common post-effects when applicable.
  */
 function renderSoulDrain(data, ctx) {
 	if (data.radius === undefined) return;
@@ -915,15 +917,31 @@ function renderSoulDrain(data, ctx) {
 	if (ctx.spawnParticleBurst) {
 		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.4 });
 	}
-	if (ctx.spawnImpactDecal) {
-		ctx.spawnImpactDecal(origin, { color: SOUL_DRAIN_EMISSIVE, emissive: 0xf0abfc });
-	} else if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(origin, {
-			color: SOUL_DRAIN_EMISSIVE,
-			emissive: 0xf0abfc,
-			count: 6,
-			spread: 1.0,
-		});
+	// Per-hit drain tether: pull life/souls FROM each struck enemy (with a live
+	// mesh) back TO the caster's cast origin. Hits whose enemy already
+	// despawned have no mesh and are skipped.
+	if (data.hits?.length && ctx.spawnLightningArc && ctx.enemyMeshes) {
+		const meshes = ctx.enemyMeshes() || {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const enemyPos = { x: mesh.position.x, z: mesh.position.z };
+			if (Number.isFinite(mesh.position.y)) enemyPos.y = mesh.position.y;
+			ctx.spawnLightningArc(enemyPos, origin, SOUL_DRAIN_TETHER_STYLE);
+		}
+	}
+	// Life-absorb flourish at the caster, only when the cast actually healed.
+	if (data.hpHealed > 0) {
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(origin, { color: SOUL_DRAIN_EMISSIVE, emissive: 0xf0abfc });
+		} else if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(origin, {
+				color: SOUL_DRAIN_EMISSIVE,
+				emissive: 0xf0abfc,
+				count: 6,
+				spread: 1.0,
+			});
+		}
 	}
 }
 

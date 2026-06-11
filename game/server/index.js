@@ -645,6 +645,7 @@ const DEBUG_SCENARIOS = new Set([
   'flying-enemies',
   'chain-lightning-ready',
   'arcane-radial-ready',
+  'soul-drain-heal-ready',
   'status-mutual-exclusion-ready',
   'fireball-ready',
   'fireball-hand-ready',
