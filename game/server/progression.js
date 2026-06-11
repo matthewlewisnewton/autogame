@@ -2858,7 +2858,19 @@ function roomTierAt(layout, x, z) {
   return 0;
 }
 
-function buildObjectiveSpawnCtx() {
+function generateRunSpawnSeed() {
+  return crypto.randomInt(1, 0x7fffffff);
+}
+
+function ensureRunSpawnSeed(gameState = _gameState) {
+  if (!Number.isInteger(gameState.runSpawnSeed)) {
+    gameState.runSpawnSeed = generateRunSpawnSeed();
+  }
+  return gameState.runSpawnSeed;
+}
+
+function buildObjectiveSpawnCtx(gameState = _gameState) {
+  const runSpawnSeed = ensureRunSpawnSeed(gameState);
   return {
     spawnEnemy,
     pickEnemySpawnPosition,
@@ -2866,6 +2878,7 @@ function buildObjectiveSpawnCtx() {
     randomWanderTarget,
     spawnCrystals,
     mulberry32,
+    objectiveRng: mulberry32(runSpawnSeed),
   };
 }
 
@@ -3020,17 +3033,18 @@ function spawnLoot(layout, rng) {
 function spawnEnemies() {
   const layout = _gameState.layout;
   const seed = _gameState.layoutSeed || 42;
-  const rng = mulberry32(seed + 1000);
+  const layoutRng = mulberry32(seed + 1000);
+  ensureRunSpawnSeed();
   const quest = getSelectedQuest(_gameState);
   const def = getObjectiveDef(quest.objectiveType);
   const spawnCtx = buildObjectiveSpawnCtx();
 
   if (def?.spawnQuestEntities) {
-    def.spawnQuestEntities(layout, rng, quest, _gameState, spawnCtx);
+    def.spawnQuestEntities(layout, layoutRng, quest, _gameState, spawnCtx);
   }
 
-  spawnCombatEnemies(layout, rng, quest);
-  spawnLoot(layout, rng);
+  spawnCombatEnemies(layout, layoutRng, quest);
+  spawnLoot(layout, layoutRng);
 }
 
 function isPlayerActive(player) {
@@ -3072,6 +3086,7 @@ function captureWorldState() {
     telepipe: _gameState.telepipe ? deepCloneJson(_gameState.telepipe) : null,
     layout: _gameState.layout ? deepCloneJson(_gameState.layout) : null,
     layoutSeed: _gameState.layoutSeed ?? null,
+    runSpawnSeed: _gameState.runSpawnSeed ?? null,
     dungeonBounds: _gameState.dungeonBounds ? deepCloneJson(_gameState.dungeonBounds) : null,
   };
 }
@@ -3170,6 +3185,9 @@ function restoreCardCheckpoint() {
     }
     if (world.layoutSeed != null) {
       _gameState.layoutSeed = world.layoutSeed;
+    }
+    if (world.runSpawnSeed != null) {
+      _gameState.runSpawnSeed = world.runSpawnSeed;
     }
     if (world.dungeonBounds != null) {
       _gameState.dungeonBounds = deepCloneJson(world.dungeonBounds);
@@ -3527,6 +3545,7 @@ function buildWorldSnapshot(shopOffer) {
     run: _gameState.run,
     dungeonBounds: _gameState.dungeonBounds,
     layoutSeed: _gameState.layoutSeed,
+    runSpawnSeed: _gameState.runSpawnSeed ?? null,
     currency: _gameState.currency,
     shopOffer,
     telepipe: _gameState.telepipe || null,
@@ -3752,6 +3771,8 @@ function checkAllReadyInner() {
         _gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER,
       );
 
+      _gameState.runSpawnSeed = generateRunSpawnSeed();
+
       assignRunSpawnPositions(all);
       for (const player of all) {
         const deployHp = Number.isFinite(player.hp) ? player.hp : null;
@@ -3946,6 +3967,8 @@ module.exports = {
   cleanupAfterDamage,
   spawnLoot,
   spawnCrystals,
+  generateRunSpawnSeed,
+  ensureRunSpawnSeed,
   spawnEnemies,
   spawnCombatEnemies,
   updateSurviveSpawns,
