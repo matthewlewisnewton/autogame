@@ -1,0 +1,12 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health** — clean. `metrics.json` reports `ok: true`, empty `pageerrors`, no `harness_failure`. `console.log` has only Vite/scene-init noise (the lone `409` is pre-existing and unrelated). Capture probes show a real run where the player dodges and ends inside the dungeon at `z=19` with cooldown active — no tunnel.
+
+**Acceptance criterion** — fully met:
+- The `dodge_roll` handler (`keyItemEffects.js:547-584`) already routes its dash through `tryPlayerMove(..., colliders)` and only commits position on `result.moved`.
+- The anti-tunnel guarantee is real: `tryDisplacement` runs `checkSweptCollision` over the full start→target segment (`simulation.js:500`), so a 7.2-unit dash can't leap a thin wall — exactly the repro it fixes.
+- This ticket's diff is **test-only**: `dodge_roll.test.js` adds dodge-into-wall (incl. full 7.2u distance and pinned-flush cases) and open-floor-full-distance regression tests. All 11 pass; all imported `index.js` exports resolve.
+
+**Notes:** the wall-collision code predated this ticket's baseline (`7e9bb5f5`); the implementer's contribution is the regression coverage the AC explicitly asks for. Two genuine nits filed (tests hit `tryPlayerMove` directly rather than end-to-end through `handleUseKeyItem`; two unit tests reimplement handler logic inline) — non-blocking, written to `nits.md`. No `gaps.md` written since the verdict is PASS.

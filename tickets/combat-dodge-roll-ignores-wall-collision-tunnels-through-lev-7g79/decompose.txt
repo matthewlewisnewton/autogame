@@ -1,0 +1,15 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 2 sub-tickets:
+
+```
+tickets/combat-dodge-roll-ignores-wall-collision-tunnels-through-lev-7g79/subtickets/
+├── 01-dodge-wall-collision-server-test/ticket.md
+└── 02-dodge-open-floor-full-distance-test/ticket.md
+```
+
+**Rationale:** The server-side dodge roll code in `keyItemEffects.js` already uses `tryPlayerMove` with `getWallColliders()` — the collision pipeline is wired correctly. The gap is **test coverage** at the actual dodge distance (7.2 units). The existing `dodge_roll.test.js` has a wall test but only at 3.5 units distance, and lacks the "pinned flush against wall" scenario from the ticket's reproduction steps.
+
+- **01** — Adds wall collision tests at full 7.2-unit dodge distance, including the pinned-against-wall scenario
+- **02** — Verifies open-floor dodge travels the full 7.2 units (regression guard)
+
+Both use `code` verification (test assertions + `pnpm test`).

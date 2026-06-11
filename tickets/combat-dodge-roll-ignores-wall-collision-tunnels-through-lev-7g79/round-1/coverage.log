@@ -1,0 +1,23 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/combat-dodge-roll-ignores-wall-collision-tunnels-through-lev-7g79/game
+      Coverage enabled with v8
+
+stdout | server/test/dodge_roll.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/combat-dodge-roll-ignores-wall-collision-tunnels-through-lev-7g79/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+ ✓ |server| server/test/dodge_roll.test.js (11 tests) 12ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  14:44:19
+   Duration  1.67s (transform 2ms, setup 0ms, collect 216ms, tests 12ms, environment 0ms, prepare 63ms)
+
+ % Coverage report from v8
+----------|---------|----------|---------|---------|----------------------------
+File      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s          
+----------|---------|----------|---------|---------|----------------------------
+All files |   11.99 |     2.57 |    2.94 |    12.9 |                            
+ index.js |   11.99 |     2.57 |    2.94 |    12.9 | ...075-1967,1973-1974,2245 
+----------|---------|----------|---------|---------|----------------------------

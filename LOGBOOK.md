@@ -8662,3 +8662,26 @@ No new or modified `?debugScenario=` shortcuts. Existing test hooks (`__showQues
 
 None blocking. All acceptance criteria are met with automated overlap regression coverage at 1280×800 and 1920×1080, corroborated by in-run capture showing toolbar clearance and comms stacking.
 
+
+## v0.465 — combat: dodge roll ignores wall collision — tunnels through level geometry  (2026-06-11 14:46:38)
+
+`index.js` resolve at runtime.
+
+## Design / regression consistency
+
+- The change is test-only over already-correct handler code; it adds no new
+  surface and does not alter movement, collision, or net-replication behavior.
+  The dodge path now provably honors the same wall-collision foundation as
+  walking, consistent with `requirements.md`.
+- No debug scenarios added or changed by this ticket.
+
+## Code quality
+
+- No new game-code edits in the diff (`git diff` shows only test + sub-ticket
+  files). No dead code, no console errors introduced.
+
+## Remaining gaps
+
+None blocking. The acceptance criterion is fully and robustly met, and the
+captured run is healthy.
+
