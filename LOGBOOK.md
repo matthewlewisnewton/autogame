@@ -7754,3 +7754,26 @@ PASS. This ticket did not add or change any `?debugScenario=` shortcut. `metrics
 
 None.
 
+
+## v0.428 — 330-anim-archive-wyrm  (2026-06-11 00:23:51)
+
+### Scope, Performance, And Integration
+
+PASS. The implementation stays within client renderer registration/VFX plumbing/tests, with only small ctx wiring for `spawnFireTrailEffect` and an enemy HP-drop fallback update. It reuses existing VFX primitives and does not touch `updateAttackEffects` or add per-frame work. `dungeon_drake` behavior is covered by regression tests and remains on the shared Vault Wyrm renderers.
+
+### Tests And Coverage
+
+PASS. `round-1/coverage.log` shows `62 passed (62)` test files and `1413 passed (1413)` tests with coverage visibility enabled. `client/test/cardRenderers.test.js` includes focused assertions for Archive Wyrm renderer registration, summon palette/primitives, fire-breath composition, tick-only hit feedback, server timing constants, and airborne origin/direction Y handling.
+
+### Design And Requirements Consistency
+
+PASS. The change preserves the design's active card-combat creature model: Archive Wyrm remains a creature/minion with server-authored combat effects and client-side visuals only. The foundation requirements are not regressed; the captured run shows 3D rendering, socket connectivity, multiplayer presence, and movement/dodge gameplay still working.
+
+### Debug Scenarios
+
+PASS. This ticket did not add or change debug scenario entry points. Existing Archive Wyrm debug helpers remain gated through the localhost `?debugScenario` flow and are documented as shortcuts for states reachable through normal play by evolving `dungeon_drake` to `ancient_wyrm` and deploying it in combat.
+
+## Remaining gaps
+
+None.
+

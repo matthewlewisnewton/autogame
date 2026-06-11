@@ -1,0 +1,1212 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game
+      Coverage enabled with v8
+
+stdout | client/test/renderer-shield-bar.test.js > enemy shield bar > createEnemyShieldBarMesh uses cyan above the enemy half-height
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/boothPrompt.test.js > booth interaction prompt > shows the prompt on zone enter and hides it on exit
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/passage-gate-meshes.test.js > passage gate meshes > creates one gate mesh per locked passage and removes it when unlocked
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-minion-summon.test.js > minion summon scale-in > records spawn time and starts new minion meshes below full scale
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > creates a persistent mesh keyed by enc.id and positions it at enc.x/z
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/avatar-cosmetic-render.test.js > avatar cosmetic render (hub + in-run) > lobby hub layout builds local avatar whose cosmeticKey matches non-default cosmetic
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > getPickedUpLootIds reflects lootPickupAttempts after walk-over pickup
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > builds meshes for local and remote lobby players
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/boothPrompt.test.js > booth interaction prompt > shows the prompt on zone enter and hides it on exit
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer/playerSync.js:87:37[90m)[39m
+    at Module.animate [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:7331:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stderr | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > creates a persistent mesh keyed by enc.id and positions it at enc.x/z
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer/playerSync.js:87:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:7331:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stderr | client/test/renderer-minion-summon.test.js > minion summon scale-in > records spawn time and starts new minion meshes below full scale
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer/playerSync.js:87:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:7331:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stderr | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > builds meshes for local and remote lobby players
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer/playerSync.js:87:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:7331:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer/playerSync.js:87:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:7331:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stderr | client/test/renderer-loot.test.js > renderer loot helpers > getPickedUpLootIds reflects lootPickupAttempts after walk-over pickup
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer/playerSync.js:87:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:7331:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stdout | client/test/renderer-shield-bar.test.js > enemy shield bar > updateEnemyShieldBarMesh scales by shieldHp / maxShieldHp
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/passage-gate-meshes.test.js > passage gate meshes > tracks multiple locked passages independently
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/avatar-cosmetic-render.test.js > avatar cosmetic render (hub + in-run) > playing quest layout builds the same avatar with cosmetic applied after mocked glTF load
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/renderer-variant.test.js > warded variant visuals > createEnemyMesh stores _origColor from the type palette
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer/enemySync.js:149:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/test/renderer-variant.test.js:29:16
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stdout | client/test/boothPrompt.test.js > booth interaction prompt > hides the prompt when the rendered scene is not the hub
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > disposes the hazard mesh when the enchantment leaves the snapshot
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-minion-summon.test.js > minion summon scale-in > does not re-trigger spawn scale-in when the minion id was already seen
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > moves the remote mesh when hub presence coordinates change
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-shield-bar.test.js > enemy shield bar > animate sync creates, updates, and disposes shield bars from game state
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/spire-atmosphere.test.js > spire-ascent atmosphere > resetAtmosphere restores default background and removes fog
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/escort-hp-bar.test.js > escort NPC HP bar > animate sync creates a bar only for escort minions and scales/colors it from hp
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/passage-gate-meshes.test.js > passage gate meshes > clears gate meshes on rebuildDungeonLayout
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > markLootCollected shows "+N MS" for magic stone pickups
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/renderer-minion-summon.test.js (2 tests) 590ms
+   ✓ minion summon scale-in > records spawn time and starts new minion meshes below full scale  464ms
+stderr | client/test/renderer-shield-bar.test.js > enemy shield bar > animate sync creates, updates, and disposes shield bars from game state
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer/playerSync.js:87:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:7331:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer/enemySync.js:149:21[90m)[39m
+    at syncEnemyMeshes [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer/enemySync.js:848:17[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:7339:18[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer/enemySync.js:149:21[90m)[39m
+    at syncEnemyMeshes [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer/enemySync.js:848:17[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:7339:18[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stdout | client/test/fire-atmosphere.test.js > fire-cavern atmosphere > resetAtmosphere restores default background and removes fog
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/escort-hp-bar.test.js > escort NPC HP bar > animate sync creates a bar only for escort minions and scales/colors it from hp
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer/playerSync.js:87:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:7331:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > hub lobby join starts with #lobby hidden and lobbyMenuDismissed true
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/passage-gate-meshes.test.js (3 tests) 591ms
+   ✓ passage gate meshes > creates one gate mesh per locked passage and removes it when unlocked  352ms
+stdout | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > does NOT create a hazard mesh for cinder_snare enchantments
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/avatar-cosmetic-render.test.js > avatar cosmetic render (hub + in-run) > rebuilds avatar when cosmetic changes between animate() calls
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/boothPrompt.test.js > booth interaction prompt > emits boothInteract for the in-range booth and nothing when out of range
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/named-rare-visuals.test.js > named-rare enemy visuals > applyEnemyNameplate creates and disposes sprites keyed on namedRare
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/boss-encounter-hud-wiring.test.js (6 tests) 587ms
+   ✓ boss-encounter HUD wiring in main.js > populates the model and shows the HUD for an active encounter with a live boss  576ms
+ ✓ |client| client/test/deck-viewer.test.js (21 tests) 533ms
+   ✓ renderDeckViewer() / renderDeckStack() > renders draw pile cards with type icons and toggles via V key  524ms
+ ✓ |client| client/test/boothPrompt.test.js (5 tests) 741ms
+   ✓ booth interaction prompt > shows the prompt on zone enter and hides it on exit  447ms
+ ✓ |client| client/test/named-rare-visuals.test.js (4 tests) 786ms
+   ✓ named-rare enemy visuals > parseNamedRareTintHex converts hex strings to color numbers  374ms
+stdout | client/test/spire-atmosphere.test.js > spire-ascent atmosphere > rebuildDungeonLayout re-inits spire atmosphere when swapping layouts
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > markLootCollected plays loot SFX only for magic stone pickups
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-shield-bar.test.js > enemy shield bar > does not create a shield bar when shieldHp is absent or zero
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/renderer-enemy-emissive-priority.test.js (4 tests) 886ms
+   ✓ resolveEnemyEmissive priority > windup survives a non-reveal reveal pass on the same frame  435ms
+stdout | client/test/escort-hp-bar.test.js > escort NPC HP bar > disposes the bar when the escort minion leaves the snapshot
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/avatar-cosmetic-render.test.js (3 tests) 802ms
+   ✓ avatar cosmetic render (hub + in-run) > lobby hub layout builds local avatar whose cosmeticKey matches non-default cosmetic  351ms
+stdout | client/test/fire-atmosphere.test.js > fire-cavern atmosphere > rebuildDungeonLayout re-inits fire atmosphere when swapping layouts
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-variant.test.js > warded variant visuals > applyVariantMarker uses per-variant badge colors on the marker mesh
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/spire-atmosphere.test.js (4 tests) 882ms
+   ✓ spire-ascent atmosphere > lerpSpireAtmosphere(0) is darker than lerpSpireAtmosphere(1) for background and fog  378ms
+ ✓ |client| client/test/fire-atmosphere.test.js (4 tests) 897ms
+   ✓ fire-cavern atmosphere > lerpFireCavernAtmosphere(1) has higher red/orange channel sum than lerpFireCavernAtmosphere(0)  310ms
+ ✓ |client| client/test/escort-hp-bar.test.js (4 tests) 1232ms
+   ✓ escort NPC HP bar > shouldHaveEscortHealthBar is true only for isEscort minions  654ms
+ ✓ |client| client/test/renderer-shield-bar.test.js (4 tests) 960ms
+   ✓ enemy shield bar > createEnemyShieldBarMesh uses cyan above the enemy half-height  399ms
+stdout | client/test/questBooth.test.js > quest booth booth:action hook (main.js) > reveals and scrolls the quest panel into view for boothId quest in lobby and ignores other booths
+[launchBooth] ready-up via booth
+[launchBooth] ready-up via booth
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > applyHubPresence sequence updates remote mesh position and cosmeticKey
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > updateCollectingLoot disposes cloned loot materials when animation finishes
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > dismissGameLobby then lobby-phase stateUpdate keeps #lobby hidden
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/renderer-loot.test.js (4 tests) 1189ms
+   ✓ renderer loot helpers > getPickedUpLootIds reflects lootPickupAttempts after walk-over pickup  476ms
+ ✓ |client| client/test/boothDeck.test.js (4 tests) 1165ms
+   ✓ deck booth via booth:action > opens the loadout bay when booth:action targets the deck booth  582ms
+   ✓ deck booth via booth:action > populates the deck editor and deck-add still emits deckAddCard  550ms
+ ✓ |client| client/test/airborne-floor-render.test.js (7 tests) 1398ms
+   ✓ airborne floor-aware render + shadow > flying enemy render offset tracks the floor surface via server world Y  490ms
+stdout | client/test/main.test.js > cardError handler — server hand rejection > shows a toast when the server rejects an unauthorized card use
+[cardError] Card not in hand
+[cardError] Card not in hand
+[cardError] Card not in hand
+[cardError] Card not in hand
+[cardError] Card not in hand
+
+ ✓ |client| client/test/renderer-variant.test.js (6 tests) 1464ms
+   ✓ warded variant visuals > variantMarkerColor returns cyan for warded and magenta for other variants  421ms
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > applyHubPresence removedPlayerIds disposes remote avatar mesh
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > hubPresenceUpdate and applyHubPresence while dismissed do not show #lobby
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/hub-presence-avatars.test.js (4 tests) 1559ms
+   ✓ hub presence avatars (lobby) > builds meshes for local and remote lobby players  472ms
+   ✓ hub presence avatars (lobby) > applyHubPresence sequence updates remote mesh position and cosmeticKey  590ms
+   ✓ hub presence avatars (lobby) > applyHubPresence removedPlayerIds disposes remote avatar mesh  378ms
+ ✓ |client| client/test/boothShop.test.js (5 tests) 1623ms
+   ✓ shop booth via booth:action > opens the card shop when booth:action targets the shop booth  578ms
+   ✓ shop booth via booth:action > emits buyShopCard when the buy button is clicked after booth open  525ms
+   ✓ shop booth via booth:action > emits sellCard when a sell button is clicked after booth open  431ms
+ ✓ |client| client/test/renderer-telepipe-portal.test.js (7 tests) 1589ms
+   ✓ telepipe portal animation > creates a Group with cylinder, two rings, and particle children  400ms
+   ✓ telepipe portal animation > animateTelepipePortal is a no-op when no portal exists  315ms
+ ✓ |client| client/test/debug-hatswap-hook.test.js (3 tests) 1790ms
+   ✓ ?booth=hatswap debug hook (main.js requestBoothDebugOpen) > opens the character booth and requests hats-unlocked once on localhost  847ms
+   ✓ ?booth=hatswap debug hook (main.js requestBoothDebugOpen) > does nothing for ?booth=hatswap on a non-localhost host  565ms
+   ✓ ?booth=hatswap debug hook (main.js requestBoothDebugOpen) > does not fire before the phase is lobby  377ms
+stderr | client/test/main.test.js > createEnemyMesh() > creates a red cone for grunt (default) type
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer/enemySync.js:149:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/test/main.test.js:2796:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates an orange cone for skirmisher type
+[renderer] failed to apply model "/models/skirmisher.glb" for "skirmisher": TypeError: Failed to parse URL from /models/skirmisher.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer/enemySync.js:149:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/test/main.test.js:2808:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/skirmisher.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a teal octahedron for spawner type
+[renderer] failed to apply model "/models/spawner.glb" for "spawner": TypeError: Failed to parse URL from /models/spawner.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer/enemySync.js:149:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/test/main.test.js:2818:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/spawner.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a warm emissive octahedron for ember_wraith type
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer/enemySync.js:149:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/test/main.test.js:2796:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a purple cone for miniboss type
+[renderer] failed to apply model "/models/miniboss.glb" for "miniboss": TypeError: Failed to parse URL from /models/miniboss.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer/enemySync.js:149:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/test/main.test.js:2860:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/miniboss.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+ ✓ |client| client/test/renderer-spike-trap.test.js (5 tests) 1973ms
+   ✓ spike trap persistent hazard reconcile > creates a persistent mesh keyed by enc.id and positions it at enc.x/z  761ms
+   ✓ SPIKE_TRAP_TRIGGERED handler > spawns the eruption VFX at the reported x/z/radius  581ms
+   ✓ SPIKE_TRAP_TRIGGERED handler > is a guarded no-op when x/z are not finite  354ms
+ ✓ |client| client/test/dungeon.test.js (110 tests) 815ms
+stdout | client/test/passage-gate-unlock-feedback.test.js > passage gate unlock feedback > plays unlock feedback exactly once when a passage transitions locked to unlocked
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/key-item-dodge.test.js > dash VFX > triggerDashVFX applies squash scale when a player mesh exists
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > deck booth open shows #lobby and clears the dismissed flag
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-lock-on-ring.test.js > syncLockOnRing > positions the ring at the supplied render height for the locked flying enemy
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/passage-gate-unlock-feedback.test.js > passage gate unlock feedback > spawns unlock VFX without leaving the gate mesh in the scene map
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-clock.test.js > renderer animation loop clock > uses THREE.Clock.getDelta without requiring a clock.update method
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/models-registry.test.js > loadModel() resilience > resolves null for a missing path without throwing
+[models] failed to load model "/models/__missing__.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/test/models-registry.test.js:134:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+    at new Promise (<anonymous>)
+    at Module.loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/test/models-registry.test.js:137:16
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1897:20
+
+stderr | client/test/models-registry.test.js > loadModel() resilience > caches failure so the same missing path is not re-fetched
+[models] failed to load model "/models/__missing__.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/test/models-registry.test.js:142:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+    at new Promise (<anonymous>)
+    at Module.loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/test/models-registry.test.js:145:9
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1897:20
+
+ ✓ |client| client/test/renderer-clock.test.js (1 test) 353ms
+   ✓ renderer animation loop clock > uses THREE.Clock.getDelta without requiring a clock.update method  351ms
+stdout | client/test/hub-lobby-render.test.js > hub lobby render > renders the hub during the lobby and spawns the local avatar on the hub floor
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/passage-gate-unlock-feedback.test.js (2 tests) 697ms
+   ✓ passage gate unlock feedback > plays unlock feedback exactly once when a passage transitions locked to unlocked  501ms
+ ✓ |client| client/test/settings-effects.test.js (2 tests) 341ms
+   ✓ settings-driven renderer effects > spawnHitSpark no-ops when particles are disabled  338ms
+stdout | client/test/debug-godmode.test.js > debug godmode toggle (main.js) > mirrors debugGodmode onto local player when toggle succeeds
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+
+stdout | client/test/renderer-lock-on-ring.test.js > syncLockOnRing > hides the ring when lock-on cycles away from that enemy
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/hub-lobby-render.test.js > hub lobby render > renders the hub during the lobby and spawns the local avatar on the hub floor
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer/playerSync.js:87:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:7331:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > shop booth open shows #lobby and clears the dismissed flag
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/models-registry.test.js > registry attach fallback (renderer) > createPlayerAvatar keeps procedural visible when the model fails to load
+[models] failed to load model "/models/player.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/test/models-registry.test.js:199:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+    at new Promise (<anonymous>)
+    at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at Module.createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/test/models-registry.test.js:202:18
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+
+stderr | client/test/models-registry.test.js > registry attach fallback (renderer) > createEnemyMesh keeps procedural visible when loadModel resolves null
+[models] failed to load model "/models/grunt.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/test/models-registry.test.js:216:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+    at new Promise (<anonymous>)
+    at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at Module.createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer/enemySync.js:149:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/test/models-registry.test.js:219:16
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+
+stderr | client/test/keyItemProp.test.js > createPlayerAvatar key-item prop > seats the equipped prop on the avatar and tracks the shown id
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/test/keyItemProp.test.js:50:36
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stderr | client/test/keyItemProp.test.js > createPlayerAvatar key-item prop > adds no prop for an unequipped/none key item
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/test/keyItemProp.test.js:50:36
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stderr | client/test/mesh-dispose.test.js > disposeOne > does not dispose shared glTF geometry/material still used by another live enemy
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: bodyMesh.material.clone is not a function
+    at retargetEnemyBodyMesh [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:938:24[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:841:5
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: bodyMesh.material.clone is not a function
+    at retargetEnemyBodyMesh [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:938:24[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:841:5
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+
+ ✓ |client| client/test/renderer-lock-on-ring.test.js (2 tests) 527ms
+   ✓ syncLockOnRing > positions the ring at the supplied render height for the locked flying enemy  317ms
+stderr | client/test/mesh-dispose.test.js > disposeOne > disposes owned procedural geometry/material when model load fails
+[models] failed to load model "/models/grunt.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/test/mesh-dispose.test.js:107:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+    at new Promise (<anonymous>)
+    at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at Module.createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer/enemySync.js:149:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/test/mesh-dispose.test.js:110:16
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+
+ ✓ |client| client/test/cardRenderers.test.js (240 tests) 212ms
+ ✓ |client| client/test/mesh-dispose.test.js (2 tests) 81ms
+stdout | client/test/renderer-registry-normalize.test.js > field medic VFX > triggerMedicAllyHealVFX spawns telegraph ring and particle burst primitives
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/levelMapIntegration.test.js (5 tests) 2449ms
+   ✓ level-map lobby integration (main.js) > renders nodes from the payload levelUnlockGraph through questUpdate  631ms
+   ✓ level-map lobby integration (main.js) > marks the node matching selectedQuestId/Tier as selected  596ms
+   ✓ level-map lobby integration (main.js) > clicking an unlocked node emits SELECT_QUEST with that questId/tier  382ms
+   ✓ level-map lobby integration (main.js) > clicking a locked node emits nothing  519ms
+   ✓ level-map lobby integration (main.js) > renders empty without throwing when no levelUnlockGraph is present  319ms
+stdout | client/test/renderer-registry-normalize.test.js > field medic VFX > triggerMedicEnergyBeadVFX spawns corridor, trail, decal, and burst along the bead vector
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/avatar-dispose.test.js > disposeAvatar > fully disposes procedural fallback avatars when model load fails
+[models] failed to load model "/models/player.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/test/avatar-dispose.test.js:146:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+    at new Promise (<anonymous>)
+    at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at Module.createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/test/avatar-dispose.test.js:149:18
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+
+ ✓ |client| client/test/keyItemProp.test.js (7 tests) 88ms
+stderr | client/test/renderer-registry-normalize.test.js > getEnemyRenderScaleForTest() > reads world-space height from a live enemy mesh
+[renderer] failed to apply model "/models/miniboss.glb" for "miniboss": TypeError: Failed to parse URL from /models/miniboss.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer/enemySync.js:149:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/test/renderer-registry-normalize.test.js:242:31
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11 {
+  [cause]: TypeError: Invalid URL: /models/miniboss.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+ ✓ |client| client/test/renderer-registry-normalize.test.js (20 tests) 100ms
+ ✓ |client| client/test/input.test.js (40 tests) 41ms
+ ✓ |client| client/test/models-registry.test.js (11 tests) 203ms
+ ✓ |client| client/test/key-item-dodge.test.js (6 tests) 2595ms
+   ✓ key item cooldown HUD > shows ready state with name and default keybind when equipped and playing with zero cooldown  673ms
+   ✓ key item cooldown HUD > clears indicator when unequipped or not in playing phase  417ms
+   ✓ key item cooldown HUD > updateKeyItemCooldownHud toggles cooldown class and countdown text  419ms
+   ✓ key item cooldown HUD > flashKeyItemIndicator adds flash classes without removing HUD children  491ms
+   ✓ dash VFX detection in stateUpdate > calls triggerDashVFX when player position jumps beyond dash threshold  377ms
+ ✓ |client| client/test/lockOn.test.js (35 tests) 24ms
+ ✓ |client| client/test/avatar-dispose.test.js (4 tests) 235ms
+ ✓ |client| client/test/debug-time-scale-gate.test.js (5 tests) 2699ms
+   ✓ debug time-scale client gate (main.js) > Shift+T does not emit on localhost until the server reports the feature authorized  664ms
+   ✓ debug time-scale client gate (main.js) > Shift+T emits setDebugTimeScale once the snapshot reports debugTimeScaleAllowed:true  546ms
+   ✓ debug time-scale client gate (main.js) > Shift+T stops emitting again after the snapshot revokes authorization  441ms
+   ✓ debug time-scale client gate (main.js) > __setDebugTimeScaleForTest no-ops when not authorized and emits when authorized  581ms
+   ✓ debug time-scale client gate (main.js) > exposes debugTimeScaleAllowed in the harness state  465ms
+stdout | client/test/hub-lobby-render.test.js > hub lobby render > rebuilds to the quest layout on deploy, moving the avatar off the hub
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/gamepad-profiles.test.js (15 tests) 21ms
+ ✓ |client| client/test/cosmeticAppearance.test.js (6 tests) 7ms
+ ✓ |client| client/test/hub-lobby-render.test.js (2 tests) 889ms
+   ✓ hub lobby render > renders the hub during the lobby and spawns the local avatar on the hub floor  453ms
+   ✓ hub lobby render > rebuilds to the quest layout on deploy, moving the avatar off the hub  434ms
+stdout | client/test/debug-godmode.test.js > debug godmode toggle (main.js) > keeps debugGodmode false across stateUpdate after godmode-off debugGodmodeResult
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+
+ ✓ |client| client/test/collision-hand.test.js (53 tests) 27ms
+ ✓ |client| client/test/attack-cast-hint.test.js (5 tests) 11ms
+ ✓ |client| client/test/gamepad.test.js (14 tests) 22ms
+ ✓ |client| client/test/avatar-cosmetic.test.js (11 tests) 319ms
+ ✓ |client| client/test/lobby-menu-dismiss.test.js (6 tests) 2947ms
+   ✓ lobby menu dismiss guard (main.js) > hub lobby join starts with #lobby hidden and lobbyMenuDismissed true  636ms
+   ✓ lobby menu dismiss guard (main.js) > dismissGameLobby then lobby-phase stateUpdate keeps #lobby hidden  535ms
+   ✓ lobby menu dismiss guard (main.js) > hubPresenceUpdate and applyHubPresence while dismissed do not show #lobby  388ms
+   ✓ lobby menu dismiss guard (main.js) > deck booth open shows #lobby and clears the dismissed flag  542ms
+   ✓ lobby menu dismiss guard (main.js) > shop booth open shows #lobby and clears the dismissed flag  313ms
+   ✓ lobby menu dismiss guard (main.js) > __openDeckBoothForTest and __openShopBoothForTest show #lobby when wired through main  531ms
+ ✓ |client| client/test/vfx-primitives.test.js (32 tests) 41ms
+ ✓ |client| client/test/windup-charge.test.js (10 tests) 10ms
+ ✓ |client| client/test/flying-enemy-registry.test.js (3 tests) 10ms
+ ✓ |client| client/test/debug-godmode.test.js (7 tests) 3415ms
+   ✓ debug godmode toggle (main.js) > Shift+G emits toggleDebugGodmode when debugScenarioAllowed is true  743ms
+   ✓ debug godmode toggle (main.js) > Shift+G does not emit toggleDebugGodmode when debugScenarioAllowed is false  505ms
+   ✓ debug godmode toggle (main.js) > Shift+G is swallowed when focus is in a text input  418ms
+   ✓ debug godmode toggle (main.js) > __toggleDebugGodmodeForTest emits toggleDebugGodmode when the socket is ready  476ms
+   ✓ debug godmode toggle (main.js) > mirrors debugGodmode onto local player when toggle succeeds  411ms
+   ✓ debug godmode toggle (main.js) > keeps debugGodmode false across stateUpdate after godmode-off debugGodmodeResult  577ms
+stdout | server/test/server.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/330-anim-archive-wyrm/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+ ✓ |client| client/test/slippery_movement.test.js (5 tests) 7ms
+ ✓ |client| client/test/controller-calibration.test.js (2 tests) 8ms
+ ✓ |client| client/test/camera-height.test.js (2 tests) 5ms
+stdout | client/test/characterBooth.test.js > character booth ?booth=character debug hook (main.js) > auto-opens once after hub lobby entry on localhost with ?booth=character
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/questDialogue.test.js (8 tests) 3641ms
+   ✓ quest dialogue comms UI (main.js) > shows a comms toast and appends to the log via the test hook  751ms
+   ✓ quest dialogue comms UI (main.js) > auto-dismisses the comms toast after ~4s  506ms
+   ✓ quest dialogue comms UI (main.js) > ignores malformed questDialogue payloads  441ms
+   ✓ quest dialogue comms UI (main.js) > keeps only the last 20 log entries  591ms
+   ✓ quest dialogue comms UI (main.js) > hides and clears comms when returning to lobby  305ms
+   ✓ quest dialogue comms UI (main.js) > handles questDialogue socket events when playing  573ms
+stdout | server/test/server.test.js > updateMinions() > removes dead enemies and spawns magic stone and currency loot on death
+[loot] magic stone drop id=2c75b4d6-c884-4d6c-b386-5de2993e56eb value=20 at (0.0, 0.0)
+[loot] currency drop id=e799399f-83c8-43df-99a3-573595b7b87a value=8 at (0.0, 0.0)
+
+stdout | server/test/server.test.js > spawnLoot(layout, rng) > creates loot with correct structure when it spawns
+[loot] spawned id=3f260e7c-2a25-4f44-b8c5-db409fc33774 value=11
+
+stdout | server/test/server.test.js > spawnLoot(layout, rng) > loot value is in range [5, 20)
+[loot] spawned id=04701039-a29b-4435-8d5b-c2c0c03acd81 value=13
+
+stdout | server/test/server.test.js > spawnLoot(layout, rng) > loot createdAt is a timestamp
+[loot] spawned id=d8071c7a-dc99-47d1-be28-54e4277d2366 value=11
+
+stdout | server/test/server.test.js > spawnLoot(layout, rng) > spawns loot in treasure room when one exists
+[loot] spawned id=ee07f046-85ab-4ac5-8c18-da5f0c4fec27 value=11
+
+stdout | server/test/server.test.js > spawnLoot(layout, rng) > falls back to non-start room when no treasure room exists
+[loot] spawned id=f656b104-1d84-45f1-9fb3-6bf84f1386d7 value=11
+
+stdout | server/test/server.test.js > enemy magic stone drops and discard > removeDeadEnemies skips currency loot when the drop chance fails
+[loot] magic stone drop id=67591f0b-5045-4981-9773-1cbaf7e9631c value=20 at (4.0, -2.0)
+
+stdout | server/test/server.test.js > enemy magic stone drops and discard > removeDeadEnemies spawns magic stone and currency loot at the enemy position
+[loot] magic stone drop id=3eaa1ad6-7902-48fa-b2ce-7ae441b7a758 value=20 at (4.0, -2.0)
+[loot] currency drop id=c935a285-37d0-47d8-9135-488ee0c96ccb value=8 at (4.0, -2.0)
+
+stdout | server/test/server.test.js > cleanupStalePlayers > removes players inactive for STALE_THRESHOLD ms
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > cleanupStalePlayers > removes players inactive for STALE_THRESHOLD ms
+Player disconnected due to inactivity: p1
+
+stdout | server/test/server.test.js > cleanupStalePlayers > keeps active players
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > cleanupStalePlayers > keeps players at exactly STALE_THRESHOLD (not exceeding)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+ ✓ |client| client/test/local-slow-prediction.test.js (5 tests) 7ms
+stdout | server/test/server.test.js > cleanupStalePlayers > stale threshold constant is 10 seconds
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > cleanupStalePlayers > removes multiple stale players
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > cleanupStalePlayers > removes multiple stale players
+Player disconnected due to inactivity: p1
+Player disconnected due to inactivity: p2
+
+stdout | server/test/server.test.js > cleanupStalePlayers > calls savePlayerData before deleting stale player
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > cleanupStalePlayers > calls savePlayerData before deleting stale player
+Player disconnected due to inactivity: p1
+
+ ✓ |client| client/test/renderer-cinder-warden.test.js (3 tests) 6ms
+stdout | server/test/server.test.js > cleanupStalePlayers > saves stale player data even when provider is null (no crash)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > cleanupStalePlayers > saves stale player data even when provider is null (no crash)
+Player disconnected due to inactivity: p1
+
+stdout | server/test/server.test.js > cleanupStalePlayers > saves multiple stale players before deleting
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > cleanupStalePlayers > saves multiple stale players before deleting
+Player disconnected due to inactivity: p1
+Player disconnected due to inactivity: p2
+
+ ✓ |client| client/test/renderer-riftbound-colossus.test.js (3 tests) 4ms
+stdout | server/test/server.test.js > cleanupStalePlayers > disconnects socket by matching socket.playerId (not socket.id)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > cleanupStalePlayers > disconnects socket by matching socket.playerId (not socket.id)
+Player disconnected due to inactivity: p1
+
+stdout | server/test/server.test.js > cleanupStalePlayers > gracefully handles stale player with no connected socket
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > cleanupStalePlayers > gracefully handles stale player with no connected socket
+Player disconnected due to inactivity: p1
+
+stdout | server/test/server.test.js > cleanupStalePlayers > does not disconnect socket for player that is not stale
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > findSocketByPlayerId > finds socket by matching socket.playerId
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+ ✓ |client| client/test/renderer-magma-colossus.test.js (3 tests) 7ms
+stdout | server/test/server.test.js > findSocketByPlayerId > returns null when no socket matches the playerId
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > findSocketByPlayerId > returns null when there are no connected sockets
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > findSocketByPlayerId > finds correct socket among multiple connections
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > findSocketByPlayerId > excludeSocketId returns the other socket when two share a playerId
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > findSocketByPlayerId > excludeSocketId returns null when only the excluded socket matches
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > findSocketByPlayerId > unregisterPlayerSocket removes only when the socket still owns the map entry
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > run state > quest-objective-near-complete debug scenario > leaves one low-HP enemy and reaches victory when it is defeated
+[loot] magic stone drop id=9b2a8693-82d1-4513-b537-7c8e9d6e6057 value=20 at (5.0, 0.0)
+[loot] currency drop id=e4b8e999-35c4-43bb-822c-698baad3868b value=19 at (5.0, 0.0)
+
+stdout | server/test/server.test.js > run state > telepipe extract hub return > tryEnterTelepipe extracts one player while another remains active
+[telepipe] player p1 extracted
+
+stdout | server/test/server.test.js > run state > telepipe extract hub return > telepipe extract returns squad to hub with cleared world and captured checkpoint
+[telepipe] player p1 extracted
+[telepipe] player p2 extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault
+
+ ✓ |client| client/test/renderer-citadel-sovereign.test.js (3 tests) 8ms
+stdout | server/test/server.test.js > run state > telepipe extract hub return > suspendRunToLobby captures world snapshot with enemy ids, objective, and layout
+[telepipe] player p1 extracted
+[telepipe] player p2 extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault
+
+stdout | server/test/server.test.js > run state > telepipe extract hub return > checkAllReady after telepipe extract restores full world snapshot on resume
+[telepipe] player p1 extracted
+[telepipe] player p2 extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault
+[run] checkpoint restored
+
+stdout | server/test/server.test.js > run state > telepipe extract hub return > checkAllReady after telepipe extract resumes suspended dungeon run
+[telepipe] player p1 extracted
+[telepipe] player p2 extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault
+[run] checkpoint restored
+
+stdout | server/test/server.test.js > run state > telepipe extract hub return > new sortie after abandon resets card charges but preserves hp and magicStones
+[telepipe] player p1 extracted
+[telepipe] player p2 extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=a5ca66c7-d522-4730-b4f4-590470353797 value=17
+
+stdout | server/test/server.test.js > run state > telepipe extract hub return > checkAllReady fresh deploy preserves existing hp and magicStones
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=b0d1e12e-9b2d-485f-8c20-304efbcb075f value=17
+
+stdout | server/test/server.test.js > run state > telepipe extract hub return > checkAllReady fresh deploy defaults vitals for brand-new players
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > run state > telepipe extract hub return > telepipe resume redeploy preserves hp, magicStones, and card charges
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[telepipe] player p1 extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault
+[run] checkpoint restored
+
+stdout | server/test/server.test.js > run state > telepipe extract hub return > checkAllReady injects telepipe for telepipe-ready debug scenario
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=efbe362d-a008-43d0-8c76-79ee6ab63a1d value=18
+
+stdout | server/test/server.test.js > run state > telepipe extract hub return > checkAllReady staggers spawn positions for multiple players
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > run state > telepipe extract hub return > portal proximity grace prevents immediate extraction after placement
+[telepipe] player p1 extracted
+
+stdout | server/test/server.test.js > run state > telepipe extract hub return > single extract keeps dungeon running until all players leave
+[telepipe] player p1 extracted
+
+stdout | server/test/server.test.js > run state > card charge persistence — telepipe resume vs new sortie > telepipe-resume: spend charges → full extract → redeploy preserves remainingCharges, hp, and magicStones
+[telepipe] player p1 extracted
+[telepipe] player p2 extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault
+[run] checkpoint restored
+
+stdout | server/test/server.test.js > run state > card charge persistence — telepipe resume vs new sortie > new sortie: spend charges → full extract → abandon → redeploy resets charges and run id
+[telepipe] player p1 extracted
+[telepipe] player p2 extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=c04f46b0-63ea-4504-a1b7-515de6d3ccbe value=7
+
+stdout | server/test/server.test.js > run state > card charge persistence — telepipe resume vs new sortie > regression: neither path resets hp to MAX_HP or magicStones to STARTING_MAGIC_STONES
+[telepipe] player p1 extracted
+[telepipe] player p2 extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault
+[run] checkpoint restored
+[telepipe] player p1 extracted
+[telepipe] player p2 extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | client/test/characterBooth.test.js > character booth ?booth=character debug hook (main.js) > stays closed without the booth URL param
+[initScene] Initializing Three.js scene...
+
+stdout | server/test/server.test.js > run state > variant enemy bonus drops > spawns an extra magic-stone loot entry for a variant enemy
+[loot] magic stone drop id=16d7b9ee-c000-415c-bc1d-94b2b229066e value=20 at (4.0, -2.0)
+[loot] variant bonus magic stone drop id=b2f7082a-769a-4df8-8560-9110bc0b93af value=15 at (4.0, -2.0)
+
+stdout | server/test/server.test.js > run state > variant enemy bonus drops > spawns only the normal magic-stone loot entry for a non-variant enemy
+[loot] magic stone drop id=e3f5a2a3-4a89-48e7-b3a8-262fa611ad51 value=20 at (4.0, -2.0)
+
+stdout | server/test/server.test.js > card sell and trade economy > getCardSellValue returns configured sell prices
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > getCardBuyValue is double the sell value
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > pickShopOffer returns a valid card from the shop pool
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > buyShopCard grants a card and deducts gold
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > buyShopCard adds to inventory only when the selected deck is full
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > buyShopCard rejects insufficient gold
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > canSellCardInstance rejects selling deck-required copies
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > sellCard removes an extra copy and grants currency
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+ ✓ |client| client/test/characterBooth.test.js (13 tests) 3694ms
+   ✓ character booth overlay (module) > openCharacterBooth() / closeCharacterBooth() toggle overlay visibility and preview  328ms
+   ✓ character booth overlay (module) > does not show confirm for hat-only changes  343ms
+   ✓ character booth overlay (module) > surfaces appearance errors and re-enables save  361ms
+   ✓ character booth booth:action hook (main.js) > opens the overlay for boothId character in lobby and ignores other booths  649ms
+   ✓ character booth booth:action hook (main.js) > does not open the overlay when gamePhase is not lobby  332ms
+stdout | server/test/server.test.js > card sell and trade economy > offerCardTrade and respondCardTrade swap one instance each
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > respondCardTrade reject does not mutate inventories
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > spawnEnemy() variant field > produces variant (tag or null) on every combat spawn
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=e1d4d786-87f6-4e56-97ed-9805ffc7248b value=12
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > produces quest.enemyCount enemies drawn from unscripted quest pools
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > skips bulk combat spawns for scripted default quest and spawns room-0 wave-0 scripted encounter
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > skips bulk combat spawns for scripted default quest and spawns room-0 wave-0 scripted encounter
+[loot] spawned id=c7c97b6d-687c-463d-8060-c16983ac7938 value=8
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > spawns crystals without bulk combat enemies for crystal rescue
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > spawns crystals without bulk combat enemies for crystal rescue
+[crystal] spawned id=173bc0bc-163e-453d-b935-29d362b751a3 at (24.7, -8.4)
+[crystal] spawned id=1842b217-5a37-4fcf-af79-f9f386671a60 at (6.4, 13.6)
+[crystal] spawned id=45ec3086-ac18-4abb-8419-229b2cd7a239 at (28.3, 27.4)
+[loot] spawned id=b0026c53-457a-4e3f-b8d8-e9e149f5a1f8 value=17
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > places scripted crystal rescue guard wave 0 in the start room
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > places scripted crystal rescue guard wave 0 in the start room
+[crystal] spawned id=e12aa34d-fd5b-428c-b961-aa9cd74b6097 at (24.7, -8.4)
+[crystal] spawned id=6018c17a-511e-48a3-b46c-4ef7133b2902 at (6.4, 13.6)
+[crystal] spawned id=bac2c080-fb5d-4a10-a6a6-5c8013d320b8 at (28.3, 27.4)
+[loot] spawned id=0789462b-a66e-4aff-9030-4ade1c899f64 value=17
+
+stdout | server/test/server.test.js > Role-aware spawning constraints > enemy spawn positions exclude the start room when combat rooms exist
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > Role-aware spawning constraints > loot spawn positions prefer treasure room when one exists
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > isEntityPositionBlocked(x, z, radius) > returns false for a position in the center of a room
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > isEntityPositionBlocked(x, z, radius) > returns true for a position inside a wall
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > isEntityPositionBlocked(x, z, radius) > accepts a custom radius parameter
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > isEntityPositionBlocked(x, z, radius) > defaults to ENTITY_RADIUS when radius is omitted
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > moves entity toward target in open space
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > reaches target when distance is less than maxDistance
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > returns reached when entity is already within stopDistance
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > respects custom stopDistance option
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > returns reached: true after direct move lands within stopDistance
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > returns reached: false after wall-slide leaves entity beyond stopDistance
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > returns reached: false after direct move when entity remains farther than stopDistance
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > clamps final position to dungeon bounds
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > returns blocked when direct movement hits a wall and both axes are blocked
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > performs wall-slide when direct movement is blocked but one axis is free
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > wall-slide moves only the free axis when the other is blocked
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > is deterministic — no timers, randomness, or socket emissions
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > uses custom radius from options
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > assigns entity x and z only to the validated final position
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+ ✓ |server| server/test/server.test.js (396 tests) 390ms
+ ✓ |client| client/test/questBooth.test.js (18 tests) 3856ms
+   ✓ quest booth booth:action hook (main.js) > shows #lobby and reveals the quest panel when the menu starts dismissed  559ms
+   ✓ quest booth booth:action hook (main.js) > reveals and scrolls the quest panel into view for boothId quest in lobby and ignores other booths  503ms
+   ✓ quest booth booth:action hook (main.js) > keeps the quest panel hidden when boothId quest fires outside the lobby phase  403ms
+   ✓ quest booth booth:action hook (main.js) > keeps the quest panel visible when the lobby is (re)shown after booth open  483ms
+   ✓ quest booth booth:action hook (main.js) > dismissGameLobby resets questPanelOpen and re-hides the wrapper  358ms
+   ✓ quest booth booth:action hook (main.js) > does not open the panel when gamePhase is not lobby  559ms
+   ✓ quest booth booth:action hook (main.js) > listens on the shared booth:action event name  337ms
+stdout | client/test/main.test.js > suspended run resume/abandon UI > resume button triggers the launch-booth ready-up path
+[launchBooth] ready-up via booth
+
+ ✓ |client| client/test/main.test.js (187 tests) 5026ms
+   ✓ renderDeckEditor() > populates owned card counts and deck size from mock data  453ms
+   ✓ auth overlay functions > exposes auth overlay functions on window  511ms
+   ✓ auth overlay functions > showAuthOverlay removes .hidden from #auth-overlay and hides lobby screens  473ms
+   ✓ auth overlay functions > hideAuthOverlay adds .hidden to #auth-overlay and shows the lobby browser  386ms
+
+ Test Files  62 passed (62)
+      Tests  1413 passed (1413)
+   Start at  00:21:32
+   Duration  8.63s (transform 3.41s, setup 3.76s, collect 12.16s, tests 59.08s, environment 39.69s, prepare 10.43s)
+
+ % Coverage report from v8
+---------------|---------|----------|---------|---------|-----------------------
+File           | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s     
+---------------|---------|----------|---------|---------|-----------------------
+All files      |   45.48 |    36.85 |    39.7 |   46.59 |                       
+ client        |      77 |    66.17 |   83.78 |   81.63 |                       
+  cards.js     |    67.1 |    52.63 |      90 |   72.58 | ...,93-94,102,234-250 
+  collision.js |   77.86 |    71.84 |     100 |   84.31 | ...59,193-198,200,243 
+  delta.js     |   66.66 |       50 |     100 |     100 | 12                    
+  hand.js      |   83.83 |    71.42 |   70.58 |   84.81 | 63-66,90-94,175-181   
+ server        |   31.89 |    21.94 |   23.23 |   33.12 |                       
+  index.js     |   31.89 |    21.94 |   23.23 |   33.12 | ...851,1857-1858,2117 
+---------------|---------|----------|---------|---------|-----------------------
