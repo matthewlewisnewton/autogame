@@ -7480,3 +7480,26 @@ requirements foundation.
 None blocking. One minor non-blocking observation filed to `nits.md` (column
 VFX pattern duplicated across per-card primitives).
 
+
+## v0.414 — 344-anim-voltaic-chain  (2026-06-10 21:36:21)
+
+render loop. Legacy fallback path (`spawnChainLightningEffect`) retained when segments are absent.
+
+### AC4 — Client test where feasible
+PASS. game/client/test/cardRenderers.test.js updated with strong regression guards: renderer
+identity, telegraph style incl. `duration`, cast-burst ordering before scheduled hops, arc style,
+hop-0 immediate vs hop-1 scheduled within `[80,120]ms` and `< ATTACK_EFFECT_DURATION`, endpoint
+snapped to enemy mesh world position, exactly one throttled `enemyHit` sound, and graceful behavior
+when new ctx primitives are absent. Full suite: **203/203 pass** (ran locally).
+
+## Consistency / regressions
+- Scope respected: only `game/client/cardRenderers.js` (this card's render fn) and its client test
+  changed. No server, design, or foundation files touched.
+- No debug scenario added or changed by this ticket — debug-scenario rules N/A.
+- The shared `spawnChainSegmentArcs` / `CHAIN_LIGHTNING_ARC_STYLE` helpers remain in use by a
+  different renderer (cardRenderers.js:1246-1249); not dead code.
+- Consistent with `game/docs/design.md` per-card VFX direction; no foundation regression.
+
+## Remaining gaps
+None blocking. One minor nit (duplicate cyan style constant) recorded in nits.md.
+
