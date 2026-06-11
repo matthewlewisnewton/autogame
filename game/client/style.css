@@ -36,6 +36,8 @@ body, html {
   );
   --hand-n64-lift-cright: var(--hand-n64-lift-cleft);
   --hand-n64-grid-h: calc(var(--hand-n64-row-h) + var(--hand-n64-card-h) + var(--hand-n64-lift-cup));
+  /* #app-toolbar clearance: 12px top + 40px button row + 8px gap = 60px */
+  --top-right-hud-stack-top: 60px;
 }
 
 #ui {
@@ -2172,12 +2174,24 @@ body[data-phase="lobby"] #objective-hud {
   text-align: center;
 }
 
+/* ── Top-right HUD column (key-item badge; lock-on/comms in sub-ticket 02) ── */
+
+#top-right-hud-stack {
+  position: fixed;
+  right: 16px;
+  top: var(--top-right-hud-stack-top, 60px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none;
+  z-index: 10;
+}
+
 /* ── Key item HUD indicator (persistent slot + flash feedback) ── */
 
 #key-item-indicator {
-  position: absolute;
-  top: 36px;
-  right: 16px;
+  position: relative;
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
   grid-template-rows: auto auto;
