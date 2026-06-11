@@ -769,7 +769,8 @@ describe('renderCardUsed() — energy & photon blade slashes', () => {
 
 	it('Resonance Edge slashes magenta and rings twice via a scheduled second pulse', () => {
 		const ctx = makeCtx();
-		fire('resonance_edge', ctx);
+		// The common non-discharge swing: server sends an empty shockwaveHits.
+		fire('resonance_edge', ctx, { shockwaveHits: [] });
 		const style = swingStyle(ctx);
 		expect(style).toMatchObject({ color: 0xe879f9, coneAngle: Math.PI / 3.5 });
 		// First pulse is immediate; the second ring is deferred via scheduleAfter.
@@ -784,6 +785,29 @@ describe('renderCardUsed() — energy & photon blade slashes', () => {
 		expect(rings[1][2]).toBe(2.6);
 		// Both pulses share the magenta accent.
 		for (const r of rings) expect(r[3]).toMatchObject({ color: 0xe879f9 });
+		// No resonance-discharge layer on the off-cadence swing: no large ring
+		// near the shockwave radius and no heavy burst.
+		expect(rings.some((r) => r[2] >= 6)).toBe(false);
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		expect(bursts.every((b) => b[2].count <= 8)).toBe(true);
+	});
+
+	it('Resonance Edge discharges a larger resonance burst on the shockwave cadence', () => {
+		const ctx = makeCtx();
+		// Server collected radial shockwave hits this use (every 2nd use).
+		fire('resonance_edge', ctx, { shockwaveHits: [{ enemyId: 'e1' }] });
+		// Still the magenta cone swing and base ringing.
+		expect(swingStyle(ctx)).toMatchObject({ color: 0xe879f9, coneAngle: Math.PI / 3.5 });
+		ctx.runScheduled();
+		const rings = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
+		// A discharge ring sized to the shockwave radius (~6), far larger than the
+		// base 1.6/2.6 pulses, and a still-larger expanding after-ring.
+		expect(rings.some((r) => r[2] >= 6)).toBe(true);
+		expect(rings.some((r) => r[2] > 6)).toBe(true);
+		for (const r of rings) expect(r[3]).toMatchObject({ color: 0xe879f9 });
+		// A heavier spark burst than the base count-8 pulses.
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		expect(bursts.some((b) => b[2].count >= 20)).toBe(true);
 	});
 
 	it('Phase Echo swings pink, then schedules a fainter echo swing', () => {

@@ -399,10 +399,20 @@ function renderHeavyGreatsword(data, ctx) {
 }
 
 /**
- * Resonance Edge: a magenta slash that "rings" twice. The cut lands, then a
- * resonant double pulse — two expanding telegraph rings (the second delayed via
- * scheduleAfter) with a magenta spark burst — radiates out from the arc. Reuses
- * the same 315 primitives as the styled blades, each guarded so the swing
+ * Resonance Edge: a resonant / harmonic sonic blade. The magenta cone cut lands
+ * immediately, then the blade "rings" — an immediate resonance pulse plus a
+ * harmonic after-ring a beat later (the base ringing fires on every swing).
+ *
+ * On every 2nd use the server actually discharges a radial shockwave: it only
+ * collects `data.shockwaveHits` when `comboCount % shockwaveEvery === 0`, so
+ * that array is non-empty exactly on the shockwave cadence. When it is, we layer
+ * a distinct, much larger "resonance discharge" on top — heavy spark burst plus
+ * expanding rings sized to the shockwave radius (~6) bursting outward from the
+ * cast origin — so the on-screen resonance peak matches when the server fires
+ * it. We never key the discharge off `comboCount` arithmetic and never re-spawn
+ * the generic summon ring `applyShockwave` already provides.
+ *
+ * Reuses the same 315 primitives as the styled blades, each guarded so the swing
  * degrades gracefully when a primitive is absent.
  */
 function renderResonantDoublePulse(data, ctx) {
@@ -412,15 +422,19 @@ function renderResonantDoublePulse(data, ctx) {
 	const emissive = 0xc026d3;
 	const range = 5;
 
-	ctx.spawnAttackEffect(origin, direction, {
-		color,
-		emissive,
-		coneAngle: Math.PI / 3.5,
-		range,
-		fillOpacity: 0.4,
-		edgeOpacity: 0.88,
-	});
+	if (ctx.spawnAttackEffect) {
+		ctx.spawnAttackEffect(origin, direction, {
+			color,
+			emissive,
+			coneAngle: Math.PI / 3.5,
+			range,
+			fillOpacity: 0.4,
+			edgeOpacity: 0.88,
+		});
+	}
 
+	// Base "resonance ringing": an immediate pulse plus a harmonic after-ring a
+	// beat later. Fires on every swing, independent of the shockwave cadence.
 	const pulseAt = pointAlong(origin, direction, range * 0.55);
 	const pulse = (radius) => {
 		if (ctx.spawnTelegraphRing) ctx.spawnTelegraphRing(pulseAt, radius, { color, emissive });
@@ -429,7 +443,27 @@ function renderResonantDoublePulse(data, ctx) {
 		}
 	};
 	pulse(1.6);
-	ctx.scheduleAfter(130, () => pulse(2.6));
+	if (ctx.scheduleAfter) ctx.scheduleAfter(130, () => pulse(2.6));
+
+	// Resonance discharge: only on the server's every-2nd-use shockwave cadence,
+	// signalled by a non-empty `data.shockwaveHits`. A heavier burst and large
+	// expanding rings at the cast origin read as the resonance peaking and
+	// bursting outward — clearly larger than the base ~1.6–2.6 pulses.
+	if (data.shockwaveHits && data.shockwaveHits.length > 0) {
+		const dischargeAt = originOf(data);
+		const shockRadius = Number.isFinite(data.shockwaveRadius) ? data.shockwaveRadius : 6;
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(dischargeAt, { color, emissive, count: 24, spread: 3.5 });
+		}
+		if (ctx.spawnTelegraphRing) ctx.spawnTelegraphRing(dischargeAt, shockRadius, { color, emissive });
+		if (ctx.scheduleAfter) {
+			ctx.scheduleAfter(90, () => {
+				if (ctx.spawnTelegraphRing) {
+					ctx.spawnTelegraphRing(dischargeAt, shockRadius * 1.4, { color, emissive });
+				}
+			});
+		}
+	}
 }
 
 /**
