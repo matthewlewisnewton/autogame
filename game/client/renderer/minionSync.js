@@ -40,6 +40,7 @@ import {
 	spawnTelegraphRing,
 	flashMesh,
 	spawnDamageNumber,
+	spawnBatteryChargePulseEffect,
 	SPIKE_TRAP_SPIKE_COLOR,
 	SPIKE_TRAP_EMISSIVE,
 	SPIKE_TRAP_RING_COLOR,
@@ -58,6 +59,8 @@ const minionSpawnTimes = {};
 const minionBaseScales = {};
 /** minionId → hp from previous frame (drives the damage flash + number). */
 const previousMinionHp = {};
+/** battery_automaton id → lastChargePulseAt from previous sync (drives charge-pulse VFX). */
+const previousBatteryChargePulseAt = {};
 
 /** Test harness: pending minion scale-in start times keyed by minion id. */
 export function getMinionSpawnTimes() {
@@ -279,6 +282,17 @@ export function syncMinionMeshes(gs) {
 			spawnDamageNumber(minion.x, 1.2 + flyingRenderOffset(minion, gs.layout), minion.z, damageAmount, '#ff4444');
 		}
 		previousMinionHp[minion.id] = minion.hp;
+
+		if (minion.type === 'battery_automaton' && minion.lastChargePulseAt != null) {
+			const previousPulseAt = previousBatteryChargePulseAt[minion.id];
+			if (previousPulseAt !== undefined && minion.lastChargePulseAt > previousPulseAt) {
+				spawnBatteryChargePulseEffect(
+					{ x: minion.x, z: minion.z },
+					{ duration: 700 },
+				);
+			}
+			previousBatteryChargePulseAt[minion.id] = minion.lastChargePulseAt;
+		}
 	}
 
 	disposeStaleMeshes(minionsMeshes, currentMinionIds, scene);
@@ -288,6 +302,11 @@ export function syncMinionMeshes(gs) {
 	for (const id of Object.keys(previousMinionHp)) {
 		if (!currentMinionIds.has(id)) {
 			delete previousMinionHp[id];
+		}
+	}
+	for (const id of Object.keys(previousBatteryChargePulseAt)) {
+		if (!currentMinionIds.has(id)) {
+			delete previousBatteryChargePulseAt[id];
 		}
 	}
 	for (const id of [...seenMinionIds]) {
