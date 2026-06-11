@@ -21,6 +21,7 @@ import {
 	connectClient,
 	waitForEvent,
 	playerForSocket,
+	lobbyStateForSocket,
 	testGameState,
 } from './helpers.js';
 
@@ -726,7 +727,7 @@ describe('useKeyItem — flare_beacon', () => {
 	it('spherical radius: elevated in-sphere enemy revealed, XZ-inside out-of-sphere enemy not', async () => {
 		const { socket } = await connectAndStartRun();
 		const player = playerForSocket(socket);
-		const state = testGameState();
+		const state = lobbyStateForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
 		player.equippedKeyItemId = 'flare_beacon';
@@ -1439,7 +1440,7 @@ describe('useKeyItem — rally_cry', () => {
 	it('spherical radius: elevated in-sphere ally buffed, XZ-inside out-of-sphere ally not', async () => {
 		const { socket } = await connectAndStartRun();
 		const caster = playerForSocket(socket);
-		const state = testGameState();
+		const state = lobbyStateForSocket(socket);
 		state.enemies.length = 0;
 
 		const room = state.layout.rooms[0];

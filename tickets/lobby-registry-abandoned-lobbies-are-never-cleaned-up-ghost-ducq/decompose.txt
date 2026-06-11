@@ -1,0 +1,13 @@
+I created one focused sub-ticket. The bug is a single cohesive server-side defect, so splitting would only manufacture artificial dependencies and overlapping diffs.
+
+**Root cause** (confirmed in code):
+- `cleanupStalePlayers()` (`simulation.js:3923`) deletes player records with a bare `delete _gameState.players[playerId]`, bypassing `removePlayerFromLobby` — orphaning empty lobbies that are never reaped.
+- `lobbySummary()` (`lobbies.js`) counts *all* player records including `connected:false` ones, so an in-run lobby whose players have all dropped is still advertised joinable.
+
+The existing `evictDisconnectedPlayers` deletes empty lobbies only after removing *recorded* players post-grace; it doesn't cover orphans or the "shown as joinable while ghost" window — which is the gap the sub-ticket closes.
+
+Verification is `code`: every AC concerns server state, timing (TTL), the reaper function existing, exclusion logic, and an error path — none are visual.
+
+Sub-ticket folder created:
+
+- `tickets/lobby-registry-abandoned-lobbies-are-never-cleaned-up-ghost-ducq/subtickets/01-reap-abandoned-lobbies/ticket.md`
