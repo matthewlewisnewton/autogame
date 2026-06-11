@@ -30,6 +30,7 @@ function makeCtx(overrides = {}) {
 		spawnProjectileTrail: record('spawnProjectileTrail'),
 		spawnImpactDecal: record('spawnImpactDecal'),
 		spawnTelegraphRing: record('spawnTelegraphRing'),
+		spawnTelepipeCastEffect: record('spawnTelepipeCastEffect'),
 		spawnSpikeTrapEffect: record('spawnSpikeTrapEffect'),
 		spawnMirrorWardShellEffect: record('spawnMirrorWardShellEffect'),
 		dismissMirrorWardShellEffect: record('dismissMirrorWardShellEffect'),
@@ -2677,5 +2678,82 @@ describe('renderCardUsed() — economy card VFX', () => {
 			expect(ctx._calls.filter((c) => c[0] === 'spawnSummonEffect')).toHaveLength(1);
 			expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(0);
 		});
+	});
+});
+
+describe('telepipe', () => {
+	const samplePayload = {
+		cardId: 'telepipe',
+		effect: 'telepipe',
+		specialEffect: 'portal',
+		origin: { x: 3, z: -5 },
+	};
+
+	function renderTelepipe(data, ctx) {
+		return resolveRenderers('telepipe')[0](data, ctx);
+	}
+
+	it('resolveRenderers returns a single non-empty renderer named renderTelepipe', () => {
+		const renderers = resolveRenderers('telepipe');
+		expect(renderers.length).toBeGreaterThan(0);
+		expect(renderers).toHaveLength(1);
+		expect(renderers[0].name).toBe('renderTelepipe');
+	});
+
+	it('invokes spawnTelepipeCastEffect, spawnTelegraphRing, and spawnParticleBurst at cast origin with cyan accent palette', () => {
+		const ctx = makeCtx();
+		renderTelepipe(samplePayload, ctx);
+
+		const accent = getAccentHex('telepipe');
+		expect(accent).toBe(0x67e8f9);
+
+		const cast = ctx._calls.find((c) => c[0] === 'spawnTelepipeCastEffect');
+		expect(cast).toBeDefined();
+		expect(cast[1]).toEqual({ x: 3, z: -5 });
+		expect(cast[2]).toBe(2.5);
+		expect(cast[3]).toMatchObject({ color: accent, emissive: 0x22d3ee });
+
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 3, z: -5 });
+		expect(ring[2]).toBe(2.5);
+		expect(ring[3]).toMatchObject({ color: accent, emissive: 0x22d3ee });
+
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 3, y: 1.0, z: -5 });
+		expect(burst[2]).toMatchObject({ color: accent, emissive: 0x22d3ee, count: 10, spread: 1.6 });
+	});
+
+	it('no-ops when data.origin is absent', () => {
+		const ctx = makeCtx();
+		renderTelepipe({
+			cardId: 'telepipe',
+			effect: 'telepipe',
+			specialEffect: 'portal',
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelepipeCastEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
+	});
+
+	it('has no positive windUpMs (instant cast; no 307 charge telegraph expected)', () => {
+		expect(CARD_DEFS.telepipe).toBeDefined();
+		expect(CARD_DEFS.telepipe.windUpMs ?? 0).toBeLessThanOrEqual(0);
+	});
+
+	it('does not call scheduleAfter (synchronous instant cast)', () => {
+		const ctx = makeCtx();
+		renderTelepipe(samplePayload, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('defaults portal radius to 2.5 when data.radius is omitted', () => {
+		const ctx = makeCtx();
+		renderTelepipe(samplePayload, ctx);
+		const cast = ctx._calls.find((c) => c[0] === 'spawnTelepipeCastEffect');
+		expect(cast[2]).toBe(2.5);
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring[2]).toBe(2.5);
 	});
 });
