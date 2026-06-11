@@ -1748,6 +1748,28 @@ function renderBattleFamiliar(data, ctx) {
 	if (ctx.spawnParticleBurst) {
 		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.0 });
 	}
+
+	// Per-hit signal delivery: for every struck enemy with a live mesh, the
+	// familiar fires a signal arc OUT from the cast origin to the target plus a
+	// spark at the impact, so on-screen hits line up with the server's instant
+	// radial resolution. Hits whose enemy already despawned have no mesh and are
+	// skipped. Arg order (origin→enemy) is the inverse of Ether Siphon's inward
+	// drain arc, keeping the helper signature distinct.
+	if (data.hits?.length) {
+		const meshes = (ctx.enemyMeshes && ctx.enemyMeshes()) || {};
+		const arcStyle = { color, emissive, duration: ATTACK_EFFECT_DURATION };
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const enemyPos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnLightningArc) {
+				ctx.spawnLightningArc(origin, enemyPos, arcStyle);
+			}
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(enemyPos, { color, emissive, count: 5, spread: 0.55 });
+			}
+		}
+	}
 }
 
 /**

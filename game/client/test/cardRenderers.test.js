@@ -1916,13 +1916,18 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ring[3]).toMatchObject({ color: 0x67e8f9 });
 	});
 
-	it('battle_familiar broadcasts concentric signal ping rings, a familiar wisp, and a spark burst at the cast origin', () => {
-		const ctx = makeCtx();
+	it('battle_familiar broadcasts concentric signal ping rings, a familiar wisp, a spark burst, and per-hit signal delivery', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 5, y: 0, z: 3 } },
+				e2: { position: { x: 8, y: 1, z: 3 } },
+			}),
+		});
 		renderCardUsed({
 			cardId: 'battle_familiar',
 			origin: { x: 2, z: 3 },
 			radius: 4,
-			hits: [],
+			hits: [{ enemyId: 'e1' }, { enemyId: 'e2' }],
 		}, ctx);
 		// Familiar wisp answering the signal — a summon-style flourish at origin.
 		const wisp = ctx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
@@ -1955,6 +1960,64 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(burst[1]).toEqual({ x: 2, z: 3 });
 		expect(burst[2]).toMatchObject({ color: 0x818cf8, count: 14, spread: 2.0 });
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+		// One signal arc per live-mesh hit, broadcast OUT from the cast origin to
+		// each struck enemy (arg order inverse of Ether Siphon's inward drain),
+		// plus a spark at each impact — synced to the server's radial resolution.
+		const arcs = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
+		expect(arcs).toHaveLength(2);
+		expect(arcs[0][1]).toEqual({ x: 2, z: 3 });
+		expect(arcs[0][2]).toEqual({ x: 5, y: 0.6, z: 3 });
+		expect(arcs[0][3]).toMatchObject({ color: 0x818cf8, emissive: 0x6366f1 });
+		expect(arcs[1][1]).toEqual({ x: 2, z: 3 });
+		expect(arcs[1][2]).toEqual({ x: 8, y: 1.6, z: 3 });
+		const sparks = ctx._calls.filter((c) => c[0] === 'spawnHitSpark');
+		expect(sparks).toHaveLength(2);
+		expect(sparks[0][1]).toEqual({ x: 5, y: 0.6, z: 3 });
+		expect(sparks[0][2]).toMatchObject({ color: 0x818cf8, emissive: 0x6366f1 });
+		expect(sparks[1][1]).toEqual({ x: 8, y: 1.6, z: 3 });
+	});
+
+	it('battle_familiar skips per-hit signal effects for missing meshes and empty hits without throwing', () => {
+		// Hits whose enemy has no live mesh are skipped; only the live one delivers.
+		const partialCtx = makeCtx({
+			enemyMeshes: () => ({ e1: { position: { x: 5, y: 0, z: 3 } } }),
+		});
+		renderCardUsed({
+			cardId: 'battle_familiar',
+			origin: { x: 2, z: 3 },
+			radius: 4,
+			hits: [{ enemyId: 'e1' }, { enemyId: 'gone' }],
+		}, partialCtx);
+		expect(partialCtx._calls.filter((c) => c[0] === 'spawnLightningArc')).toHaveLength(1);
+		expect(partialCtx._calls.filter((c) => c[0] === 'spawnHitSpark')).toHaveLength(1);
+
+		// Empty hits → cast still renders rings + wisp + burst, zero per-hit effects.
+		const emptyCtx = makeCtx({ enemyMeshes: () => ({ e1: { position: { x: 5, y: 0, z: 3 } } }) });
+		renderCardUsed({
+			cardId: 'battle_familiar',
+			origin: { x: 2, z: 3 },
+			radius: 4,
+			hits: [],
+		}, emptyCtx);
+		expect(emptyCtx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(true);
+		expect(emptyCtx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(true);
+		expect(emptyCtx._calls.some((c) => c[0] === 'spawnLightningArc')).toBe(false);
+		expect(emptyCtx._calls.some((c) => c[0] === 'spawnHitSpark')).toBe(false);
+
+		// Missing mesh-resolver + arc/spark helpers → guarded, no throw, no per-hit.
+		const noHelpersCtx = makeCtx({
+			enemyMeshes: undefined,
+			spawnLightningArc: undefined,
+			spawnHitSpark: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'battle_familiar',
+			origin: { x: 2, z: 3 },
+			radius: 4,
+			hits: [{ enemyId: 'e1' }],
+		}, noHelpersCtx)).not.toThrow();
+		expect(noHelpersCtx._calls.some((c) => c[0] === 'spawnLightningArc')).toBe(false);
+		expect(noHelpersCtx._calls.some((c) => c[0] === 'spawnHitSpark')).toBe(false);
 	});
 
 	it('mana_leach dispatches spawnEtherSiphonEffect with violet accent colors at AoE radius', () => {
