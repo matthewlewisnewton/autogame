@@ -175,8 +175,9 @@ function safeCompare(a, b) {
 }
 
 /**
- * Read the supplied admin password from the `x-admin-password` header or a
- * `?password=` query param.
+ * Read the supplied admin password from the `x-admin-password` header only.
+ * Query-param passwords are no longer accepted (security: URLs appear in
+ * browser history, proxy logs, and access logs).
  *
  * @param {object} req
  * @returns {string|null}
@@ -187,10 +188,6 @@ function readSuppliedPassword(req) {
 		(req.headers && req.headers['x-admin-password']);
 	if (headerValue) {
 		return String(headerValue);
-	}
-	const queryValue = req.query && req.query.password;
-	if (queryValue) {
-		return String(queryValue);
 	}
 	return null;
 }

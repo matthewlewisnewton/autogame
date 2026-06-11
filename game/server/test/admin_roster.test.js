@@ -200,13 +200,22 @@ describe('admin roster + ADMIN_PASSWORD gate', () => {
 			expect(res.statusCode).toBeNull();
 		});
 
-		it('allows the correct password via ?password= query param', () => {
+		it('rejects the password via ?password= query param (security: URLs are logged)', () => {
 			process.env.ADMIN_PASSWORD = 'secret';
 			const res = makeRes();
 			let nextCalled = false;
 			requireAdminPassword(makeReq({ query: { password: 'secret' } }), res, () => { nextCalled = true; });
-			expect(nextCalled).toBe(true);
-			expect(res.statusCode).toBeNull();
+			expect(nextCalled).toBe(false);
+			expect(res.statusCode).toBe(403);
+		});
+
+		it('rejects query param even when header is absent', () => {
+			process.env.ADMIN_PASSWORD = 'secret';
+			const res = makeRes();
+			let nextCalled = false;
+			requireAdminPassword(makeReq({ query: { password: 'secret' }, headers: {} }), res, () => { nextCalled = true; });
+			expect(nextCalled).toBe(false);
+			expect(res.statusCode).toBe(403);
 		});
 
 		it('never consults the Authorization bearer header', () => {
@@ -264,14 +273,14 @@ describe('admin roster + ADMIN_PASSWORD gate', () => {
 			expect(html).not.toContain('passwordHash');
 		});
 
-		it('accepts the admin password via ?password= query param', async () => {
+		it('rejects the admin password via ?password= query param (security: URLs are logged)', async () => {
 			process.env.ADMIN_PASSWORD = 'topsecret';
 			seedRoster();
 
 			const res = await fetch(`${baseUrl}/admin?password=topsecret`);
-			expect(res.status).toBe(200);
-			const html = await res.text();
-			expect(html).toContain('alice');
+			expect(res.status).toBe(403);
+			const body = await res.text();
+			expect(body).not.toContain('alice');
 		});
 
 		it('returns 403 with no account data for a wrong password', async () => {
