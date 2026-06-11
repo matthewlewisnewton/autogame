@@ -4,6 +4,7 @@ import {
 	ARCHIVE_WYRM_BREATH_DURATION_MS,
 	ARCHIVE_WYRM_BREATH_TICK_COUNT,
 	ARCHIVE_WYRM_BREATH_TICK_MS,
+	ATTACK_CONE_ANGLE,
 	ATTACK_EFFECT_DURATION,
 	ATTACK_RANGE,
 	EVENT_HORIZON_CRUSH_DELAY_MS,
@@ -46,6 +47,7 @@ function makeCtx(overrides = {}) {
 		spawnLightningArc: record('spawnLightningArc'),
 		spawnParticleBurst: record('spawnParticleBurst'),
 		spawnProjectileTrail: record('spawnProjectileTrail'),
+		spawnSolarEdgeImpactFlourish: record('spawnSolarEdgeImpactFlourish'),
 		spawnImpactDecal: record('spawnImpactDecal'),
 		spawnGravityWellEffect: record('spawnGravityWellEffect'),
 		spawnTelegraphRing: record('spawnTelegraphRing'),
@@ -143,10 +145,16 @@ describe('resolveRenderers()', () => {
 
 	it('returns the card-specific weapon swing for the styled standard blades', () => {
 		expect(resolveRenderers('iron_sword')).toHaveLength(1);
-		expect(resolveRenderers('flame_blade')).toHaveLength(1);
 		expect(resolveRenderers('harvesting_scythe')).toHaveLength(1);
 		// Distinct from the plain cone-swing default.
 		expect(resolveRenderers('iron_sword')[0]).not.toBe(WEAPON_TYPE_DEFAULT_RENDERER);
+	});
+
+	it('returns the dedicated Solar Edge renderer for flame_blade (not renderWeaponSwing)', () => {
+		const solar = resolveRenderers('flame_blade');
+		expect(solar).toHaveLength(1);
+		expect(solar[0].name).toBe('renderSolarEdge');
+		expect(solar[0].name).not.toBe('renderWeaponSwing');
 	});
 
 	it('returns card-specific renderers for the energy/photon blades (not the cone default)', () => {
@@ -858,7 +866,7 @@ describe('renderCardUsed() — styled weapon slashes', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
 	});
 
-	it('Solar Edge slashes a warm fiery arc with a flame trail and ember burst', () => {
+	it('Solar Edge slashes a gold-white radiant arc with solar streak, impact flourish, and corona pulse', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'flame_blade',
@@ -867,15 +875,23 @@ describe('renderCardUsed() — styled weapon slashes', () => {
 			hits: [],
 		}, ctx);
 		const style = swingStyle(ctx);
-		expect(style).toMatchObject({ color: 0xff7a18, emissive: 0xff3b00, range: 5 });
+		expect(style).toMatchObject({
+			color: 0xfef08a,
+			emissive: 0xfbbf24,
+			coneAngle: ATTACK_CONE_ANGLE,
+			range: ATTACK_RANGE,
+		});
 		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
 		expect(trail).toBeDefined();
-		expect(trail[3]).toMatchObject({ color: 0xff7a18, range: 5 });
-		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
-		expect(burst).toBeDefined();
-		expect(burst[2]).toMatchObject({ color: 0xff7a18 });
-		// No lingering decal for the fiery blade.
+		expect(trail[3]).toMatchObject({ color: 0xfef08a, emissive: 0xfbbf24, range: ATTACK_RANGE });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSolarEdgeImpactFlourish')).toBe(true);
+		const corona = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(corona).toBeDefined();
+		expect(corona[3]).toMatchObject({ color: 0xff7a18, emissive: 0xff3b00 });
+		// Dedicated solar renderer — no generic ember burst or ground decal.
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
 	});
 
 	it('Ether Scythe slashes a wide ghostly arc with a lingering spectral decal and no flame trail', () => {
@@ -941,7 +957,7 @@ describe('renderCardUsed() — styled weapon slashes', () => {
 		expect(decal[1].x).toBeCloseTo(3.6);
 	});
 
-	it('a sibling blade (flame_blade) ignores the payload attackConeAngle/attackRange and keeps its authored arc', () => {
+	it('Solar Edge drives its sweep cone/range from the server payload (attackConeAngle/attackRange)', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'flame_blade',
@@ -952,9 +968,11 @@ describe('renderCardUsed() — styled weapon slashes', () => {
 			hits: [],
 		}, ctx);
 		const style = swingStyle(ctx);
-		// Flame blade is not opted in, so it keeps its hardcoded cone/range.
-		expect(style.coneAngle).toBe(Math.PI / 4);
-		expect(style.range).toBe(5);
+		expect(style.coneAngle).toBe(Math.PI);
+		expect(style.range).toBe(9);
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail[3]).toMatchObject({ range: 9 });
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
 	});
 
 	it('Ether Scythe reaps an ether-tinted soul-wisp burst at each struck enemy', () => {

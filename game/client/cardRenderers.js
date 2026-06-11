@@ -31,6 +31,7 @@
 //   spawnLightningArc(from, to, style?)
 //   spawnParticleBurst(position, style?)       — multi-particle spark/ember burst
 //   spawnProjectileTrail(origin, direction, style?) — fading streak along a path
+//   spawnSolarEdgeImpactFlourish(origin, direction, style?) — solar disc + corona + embers at strike
 //   spawnImpactDecal(origin, style?)           — lingering ground flash/decal ring
 //   spawnGravityWellEffect(origin, radius, style?) — contracting pull ring, void core, inward inflow
 //   spawnTelegraphRing(origin, radius, style?) — expanding/pulsing AoE telegraph ring
@@ -49,6 +50,7 @@ import {
 	ARCHIVE_WYRM_BREATH_DURATION_MS,
 	ARCHIVE_WYRM_BREATH_TICK_COUNT,
 	ARCHIVE_WYRM_BREATH_TICK_MS,
+	ATTACK_CONE_ANGLE,
 	ATTACK_EFFECT_DURATION,
 	ATTACK_RANGE,
 	EVENT_HORIZON_CRUSH_DELAY_MS,
@@ -152,18 +154,6 @@ const WEAPON_SLASH_STYLES = {
 		edgeOpacity: 0.85,
 		sparkCount: 6,
 		sparkSpread: 0.7,
-	},
-	// Solar Edge: a warm fiery arc with a trailing flame streak and ember burst.
-	flame_blade: {
-		color: 0xff7a18,
-		emissive: 0xff3b00,
-		coneAngle: Math.PI / 4,
-		range: 5,
-		fillOpacity: 0.4,
-		edgeOpacity: 0.8,
-		trail: true,
-		sparkCount: 10,
-		sparkSpread: 1.3,
 	},
 	// Ether Scythe: a wide ghostly ether-green sweep edged in spectral violet,
 	// leaving a lingering spectral decal and reaping soul-wisps off each hit.
@@ -302,6 +292,75 @@ function renderWeaponSwing(data, ctx) {
 			if (!mesh?.position) continue;
 			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
 			ctx.spawnParticleBurst(pos, { color, emissive, count: 10, spread: 1.1, soulWisp: true });
+		}
+	}
+}
+
+/** Solar Edge: gold-white radiant blade body with orange corona accents. */
+const SOLAR_EDGE_COLOR = 0xfef08a;
+const SOLAR_EDGE_EMISSIVE = 0xfbbf24;
+const SOLAR_EDGE_CORONA_COLOR = 0xff7a18;
+const SOLAR_EDGE_CORONA_EMISSIVE = 0xff3b00;
+/** Brief corona pulse — smaller than spawnSolarEdgeImpactFlourish's default ring. */
+const SOLAR_EDGE_CORONA_PULSE_RADIUS = 1.35;
+
+/**
+ * Solar Edge swing. Composes the solar impact primitive with 315 VFX helpers —
+ * a gold-white radiant arc driven by server cone geometry, a solar streak along
+ * the reach, the sub-ticket 01 impact flourish, and a brief corona telegraph at
+ * the strike point. Wind-up telegraph is server-side (`windUpMs`); this fires
+ * synchronously on `CARD_USED` with no extra `scheduleAfter` delay.
+ */
+function renderSolarEdge(data, ctx) {
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex(data.cardId) ?? SOLAR_EDGE_COLOR;
+	const emissive = SOLAR_EDGE_EMISSIVE;
+	const coronaColor = SOLAR_EDGE_CORONA_COLOR;
+	const coronaEmissive = SOLAR_EDGE_CORONA_EMISSIVE;
+	const coneAngle = data.attackConeAngle ?? ATTACK_CONE_ANGLE;
+	const range = data.attackRange ?? ATTACK_RANGE;
+	const impactAt = pointAlong(origin, direction, range);
+
+	ctx.spawnAttackEffect(origin, direction, {
+		color,
+		emissive,
+		coneAngle,
+		range,
+		fillOpacity: 0.42,
+		edgeOpacity: 0.88,
+	});
+
+	if (ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, { range, color, emissive });
+	}
+
+	if (ctx.spawnSolarEdgeImpactFlourish) {
+		ctx.spawnSolarEdgeImpactFlourish(origin, direction, {
+			range,
+			color,
+			emissive,
+			coronaColor,
+			coronaEmissive,
+		});
+	}
+
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(impactAt, SOLAR_EDGE_CORONA_PULSE_RADIUS, {
+			color: coronaColor,
+			emissive: coronaEmissive,
+		});
+	}
+
+	if (data.hits?.length && ctx.enemyMeshes) {
+		const meshes = ctx.enemyMeshes() || {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh?.position) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(pos, { color: coronaColor, emissive: coronaEmissive, count: 5, spread: 0.55 });
+			}
 		}
 	}
 }
@@ -2893,7 +2952,7 @@ function renderChronoTrigger(data, ctx) {
 const CARD_RENDERERS = {
 	// Weapons
 	iron_sword: renderWeaponSwing,
-	flame_blade: renderWeaponSwing,
+	flame_blade: renderSolarEdge,
 	harvesting_scythe: renderWeaponSwing,
 	reapers_scythe: renderReapersScythe,
 	saber_of_light: renderSaberOfLight,
