@@ -1,9 +1,8 @@
 // ── Attack-effect updater registry ──
-// Shared primitives, column/ring, and group-child updaters dispatch on fx.kind;
-// unmigrated effects still use boolean flags in updateAttackEffects until later
-// sub-tickets.
+// Combat VFX dispatch on fx.kind via ATTACK_EFFECT_UPDATERS; unmigrated effects
+// still use boolean flags in updateAttackEffects until later sub-tickets.
 
-import { HIT_SPARK_DURATION, SUMMON_EXPAND_MS } from '../config.js';
+import { ATTACK_RANGE, HIT_SPARK_DURATION, SUMMON_EXPAND_MS } from '../config.js';
 import { FLOOR_Y } from '../dungeon.js';
 import { getScene } from './rendererState.js';
 
@@ -39,6 +38,14 @@ export const ATTACK_EFFECT_KINDS = {
 	mirrorWardShell: 'mirrorWardShell',
 	dragonsBreathCone: 'dragonsBreathCone',
 	fireTrail: 'fireTrail',
+	fireballProjectile: 'fireballProjectile',
+	glacialOrbProjectile: 'glacialOrbProjectile',
+	arcaneBoltProjectile: 'arcaneBoltProjectile',
+	chainLightning: 'chainLightning',
+	returningProjectile: 'returningProjectile',
+	legacyProjectile: 'legacyProjectile',
+	weaponCone: 'weaponCone',
+	rustyShiv: 'rustyShiv',
 };
 
 // Default shaft dims for lightColumn (Divine Grace / telepipe / cleanse); per-effect
@@ -579,6 +586,153 @@ function updateFireTrail(fx, elapsed) {
 	fadeHitboxOpacity(fx.mesh, lifeRatio);
 }
 
+function updateRustyShiv(fx, elapsed) {
+	const stabMs = fx.duration * 0.35;
+	const holdMs = fx.duration * 0.15;
+	const fadeMs = Math.max(1, fx.duration - stabMs - holdMs);
+	let thrustT = 0;
+	let opacity = 1;
+
+	if (elapsed < stabMs) {
+		thrustT = elapsed / stabMs;
+	} else if (elapsed < stabMs + holdMs) {
+		thrustT = 1;
+	} else {
+		thrustT = 1;
+		opacity = 1 - (elapsed - stabMs - holdMs) / fadeMs;
+	}
+
+	const reach = fx.range * thrustT;
+	if (fx.bladeMesh) {
+		fx.bladeMesh.position.z = 0.12 + reach * 0.78;
+		fx.bladeMesh.scale.z = 0.85 + thrustT * 0.2;
+		fx.bladeMesh.material.opacity = Math.max(0.01, opacity);
+	}
+	if (fx.stabCorridor) {
+		fadeHitboxOpacity(fx.stabCorridor, Math.max(0.01, opacity));
+	}
+}
+
+function updateWeaponCone(fx, elapsed) {
+	const lifeRatio = 1.0 - (elapsed / fx.duration);
+	fadeHitboxOpacity(fx.mesh, lifeRatio);
+}
+
+function updateFireballProjectile(fx, elapsed) {
+	const travelRange = fx.range ?? ATTACK_RANGE;
+	const t = Math.min(elapsed / fx.duration, 1.0);
+	const travel = travelRange * t;
+	fx.mesh.position.x = fx.origin.x + fx.direction.x * travel;
+	fx.mesh.position.z = fx.origin.z + fx.direction.z * travel;
+
+	const pulse = 0.9 + 0.14 * Math.sin(elapsed / 45);
+	const flicker = 1.0 + 0.28 * Math.sin(elapsed / 28 + 1.3);
+	if (fx.coreMesh) {
+		fx.coreMesh.scale.setScalar(pulse);
+		fx.coreMesh.material.emissiveIntensity = 2.0 * flicker;
+	}
+	if (fx.haloMesh) {
+		const haloPulse = 1.0 + 0.2 * Math.sin(elapsed / 60 + 0.7);
+		fx.haloMesh.scale.setScalar(haloPulse);
+		fx.haloMesh.material.emissiveIntensity = 1.3 * flicker;
+		fx.haloMesh.material.opacity = Math.max(0.2, 0.48 + 0.14 * Math.sin(elapsed / 35));
+	}
+
+	const lifeRatio = 1.0 - t;
+	if (fx.coreMesh?.material) {
+		fx.coreMesh.material.opacity = Math.max(0.01, 0.95 * lifeRatio);
+	}
+}
+
+function updateGlacialOrbProjectile(fx, elapsed) {
+	const travelRange = fx.range ?? ATTACK_RANGE;
+	const t = Math.min(elapsed / fx.duration, 1.0);
+	const travel = travelRange * t;
+	fx.mesh.position.x = fx.origin.x + fx.direction.x * travel;
+	fx.mesh.position.z = fx.origin.z + fx.direction.z * travel;
+
+	const pulse = 0.88 + 0.12 * Math.sin(elapsed / 80);
+	const shimmer = 1.0 + 0.22 * Math.sin(elapsed / 55 + 0.5);
+	if (fx.coreMesh) {
+		fx.coreMesh.rotation.y = elapsed * 0.002;
+		fx.coreMesh.rotation.x = Math.sin(elapsed / 200) * 0.15;
+		fx.coreMesh.scale.setScalar(pulse);
+		fx.coreMesh.material.emissiveIntensity = 2.2 * shimmer;
+	}
+	if (fx.haloMesh) {
+		const haloPulse = 1.0 + 0.18 * Math.sin(elapsed / 90 + 1.1);
+		fx.haloMesh.scale.setScalar(haloPulse);
+		fx.haloMesh.material.emissiveIntensity = 1.5 * shimmer;
+		fx.haloMesh.material.opacity = Math.max(0.15, 0.38 + 0.12 * Math.sin(elapsed / 70));
+	}
+
+	const lifeRatio = 1.0 - t;
+	if (fx.coreMesh?.material) {
+		fx.coreMesh.material.opacity = Math.max(0.01, 0.92 * lifeRatio);
+	}
+}
+
+function updateArcaneBoltProjectile(fx, elapsed) {
+	const travelRange = fx.range ?? ATTACK_RANGE;
+	const t = Math.min(elapsed / fx.duration, 1.0);
+	const travel = travelRange * t;
+	fx.mesh.position.x = fx.origin.x + fx.direction.x * travel;
+	fx.mesh.position.z = fx.origin.z + fx.direction.z * travel;
+
+	const pulse = 0.92 + 0.12 * Math.sin(elapsed / 38);
+	const lengthPulse = 0.95 + 0.08 * Math.sin(elapsed / 52);
+	const flicker = 1.0 + 0.32 * Math.sin(elapsed / 24 + 0.5);
+	if (fx.coreMesh) {
+		fx.coreMesh.scale.set(pulse, pulse * lengthPulse, pulse);
+		fx.coreMesh.material.emissiveIntensity = 1.7 * flicker;
+	}
+	if (fx.glowMesh) {
+		const glowPulse = 1.0 + 0.18 * Math.sin(elapsed / 48 + 1.1);
+		fx.glowMesh.scale.setScalar(glowPulse);
+		fx.glowMesh.material.emissiveIntensity = 1.1 * flicker;
+		fx.glowMesh.material.opacity = Math.max(0.15, 0.42 + 0.12 * Math.sin(elapsed / 30));
+	}
+
+	const lifeRatio = 1.0 - t;
+	if (fx.coreMesh?.material) {
+		fx.coreMesh.material.opacity = Math.max(0.01, 0.95 * lifeRatio);
+	}
+}
+
+function updateReturningProjectile(fx, elapsed) {
+	const totalPasses = 1 + (fx.returnPasses || 1);
+	const passDuration = fx.duration / totalPasses;
+	const passIndex = Math.min(Math.floor(elapsed / passDuration), totalPasses - 1);
+	const passElapsed = elapsed - passIndex * passDuration;
+	const passT = Math.min(passElapsed / passDuration, 1.0);
+	const outbound = passIndex === 0;
+	const travel = outbound ? fx.range * passT : fx.range * (1 - passT);
+
+	if (fx.headMesh) {
+		fx.headMesh.position.set(
+			fx.direction.x * travel,
+			0.88,
+			fx.direction.z * travel,
+		);
+	}
+
+	const lifeRatio = 1.0 - (elapsed / fx.duration);
+	fadeHitboxOpacity(fx.mesh, lifeRatio);
+}
+
+function updateLegacyProjectile(fx, elapsed) {
+	const travelRange = fx.range ?? ATTACK_RANGE;
+	const t = Math.min(elapsed / fx.duration, 1.0);
+	const travel = travelRange * t;
+	fx.mesh.position.x = fx.origin.x + fx.direction.x * travel;
+	fx.mesh.position.z = fx.origin.z + fx.direction.z * travel;
+
+	const lifeRatio = 1.0 - (elapsed / fx.duration);
+	const weaponScale = Math.max(0.01, lifeRatio);
+	fx.mesh.scale.setScalar(weaponScale);
+	fx.mesh.material.opacity = Math.max(0.01, lifeRatio);
+}
+
 export const ATTACK_EFFECT_UPDATERS = {
 	[ATTACK_EFFECT_KINDS.particleBurst]: updateParticleBurst,
 	[ATTACK_EFFECT_KINDS.projectileTrail]: updateProjectileTrail,
@@ -611,6 +765,14 @@ export const ATTACK_EFFECT_UPDATERS = {
 	[ATTACK_EFFECT_KINDS.mirrorWardShell]: updateMirrorWardShell,
 	[ATTACK_EFFECT_KINDS.dragonsBreathCone]: updateDragonsBreathCone,
 	[ATTACK_EFFECT_KINDS.fireTrail]: updateFireTrail,
+	[ATTACK_EFFECT_KINDS.fireballProjectile]: updateFireballProjectile,
+	[ATTACK_EFFECT_KINDS.glacialOrbProjectile]: updateGlacialOrbProjectile,
+	[ATTACK_EFFECT_KINDS.arcaneBoltProjectile]: updateArcaneBoltProjectile,
+	[ATTACK_EFFECT_KINDS.chainLightning]: updateLegacyProjectile,
+	[ATTACK_EFFECT_KINDS.returningProjectile]: updateReturningProjectile,
+	[ATTACK_EFFECT_KINDS.legacyProjectile]: updateLegacyProjectile,
+	[ATTACK_EFFECT_KINDS.weaponCone]: updateWeaponCone,
+	[ATTACK_EFFECT_KINDS.rustyShiv]: updateRustyShiv,
 };
 
 /**

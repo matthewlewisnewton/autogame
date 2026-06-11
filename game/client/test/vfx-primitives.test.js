@@ -1000,6 +1000,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.glacialOrbProjectile);
 		expect(fx.isGlacialOrbProjectile).toBe(true);
 		expect(fx.range).toBe(9);
 		expect(fx.duration).toBe(1200);
@@ -1024,6 +1025,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.legacyProjectile);
 		expect(fx.effect).toBe('permafrost_lance');
 		expect(fx.range).toBe(6);
 		expect(fx.mesh.geometry._name).toBe('ConeGeometry');
@@ -1117,6 +1119,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.arcaneBoltProjectile);
 		expect(fx.isArcaneBoltProjectile).toBe(true);
 		expect(fx.range).toBe(10);
 		expect(fx.duration).toBe(ATTACK_EFFECT_DURATION);

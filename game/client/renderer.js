@@ -4227,6 +4227,7 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 			origin: { x: origin.x, z: origin.z },
 			direction: { x: direction.x, z: direction.z },
 			range,
+			kind: ATTACK_EFFECT_KINDS.legacyProjectile,
 			createdAt: performance.now(),
 			duration: ATTACK_EFFECT_DURATION,
 		});
@@ -4244,6 +4245,7 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 			stabCorridor: corridor,
 			bladeLen,
 			range,
+			kind: ATTACK_EFFECT_KINDS.rustyShiv,
 			isRustyShiv: true,
 			createdAt: performance.now(),
 			duration: RUSTY_SHIV_EFFECT_DURATION,
@@ -4269,6 +4271,7 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 			origin: { x: origin.x, z: origin.z },
 			direction: { x: direction.x, z: direction.z },
 			range,
+			kind: ATTACK_EFFECT_KINDS.legacyProjectile,
 			createdAt: performance.now(),
 			duration: ATTACK_EFFECT_DURATION,
 		});
@@ -4319,6 +4322,7 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 			origin: { x: origin.x, z: origin.z },
 			direction: { x: direction.x, z: direction.z },
 			range,
+			kind: ATTACK_EFFECT_KINDS.fireballProjectile,
 			createdAt: performance.now(),
 			duration: style.projectileTravelMs ?? ATTACK_EFFECT_DURATION,
 			isFireballProjectile: true,
@@ -4371,6 +4375,7 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 			origin: { x: origin.x, z: origin.z },
 			direction: { x: direction.x, z: direction.z },
 			range,
+			kind: ATTACK_EFFECT_KINDS.glacialOrbProjectile,
 			createdAt: performance.now(),
 			duration: style.projectileTravelMs ?? 1200,
 			isGlacialOrbProjectile: true,
@@ -4432,6 +4437,7 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 			origin: { x: origin.x, z: origin.z },
 			direction: { x: nx, z: nz },
 			range,
+			kind: ATTACK_EFFECT_KINDS.arcaneBoltProjectile,
 			createdAt: performance.now(),
 			duration: style.projectileTravelMs ?? ATTACK_EFFECT_DURATION,
 			isArcaneBoltProjectile: true,
@@ -4471,6 +4477,7 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 			direction: { x: nx, z: nz },
 			range,
 			effect: 'permafrost_lance',
+			kind: ATTACK_EFFECT_KINDS.legacyProjectile,
 			createdAt: performance.now(),
 			duration: style.duration ?? ATTACK_EFFECT_DURATION,
 		});
@@ -4490,6 +4497,7 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 			direction: { x: direction.x, z: direction.z },
 			range,
 			hitWidth,
+			kind: ATTACK_EFFECT_KINDS.returningProjectile,
 			returning: true,
 			returnPasses: style.returnPasses
 				?? (effect === 'triple_returning_projectile' ? 3 : 1),
@@ -4515,6 +4523,7 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 		direction: { x: direction.x, z: direction.z },
 		range,
 		coneAngle,
+		kind: ATTACK_EFFECT_KINDS.weaponCone,
 		isWeaponCone: true,
 		createdAt: performance.now(),
 		duration: style.duration ?? ATTACK_EFFECT_DURATION,
@@ -6543,6 +6552,7 @@ export function spawnChainLightningEffect(origin, direction) {
 		mesh,
 		origin: { x: origin.x, z: origin.z },
 		direction: { x: dir.x / len, z: dir.z / len },
+		kind: ATTACK_EFFECT_KINDS.chainLightning,
 		createdAt: performance.now(),
 		duration: ATTACK_EFFECT_DURATION,
 		isChainLightning: true,
@@ -7262,200 +7272,6 @@ export function updateAttackEffects() {
 			continue;
 		}
 
-		// ── Rusty Shiv close-range thrust ──
-		if (fx.isRustyShiv) {
-			const stabMs = fx.duration * 0.35;
-			const holdMs = fx.duration * 0.15;
-			const fadeMs = Math.max(1, fx.duration - stabMs - holdMs);
-			let thrustT = 0;
-			let opacity = 1;
-
-			if (elapsed < stabMs) {
-				thrustT = elapsed / stabMs;
-			} else if (elapsed < stabMs + holdMs) {
-				thrustT = 1;
-			} else {
-				thrustT = 1;
-				opacity = 1 - (elapsed - stabMs - holdMs) / fadeMs;
-			}
-
-			const reach = fx.range * thrustT;
-			if (fx.bladeMesh) {
-				fx.bladeMesh.position.z = 0.12 + reach * 0.78;
-				fx.bladeMesh.scale.z = 0.85 + thrustT * 0.2;
-				fx.bladeMesh.material.opacity = Math.max(0.01, opacity);
-			}
-			if (fx.stabCorridor) {
-				fadeHitboxOpacity(fx.stabCorridor, Math.max(0.01, opacity));
-			}
-
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
-		// ── Weapon cone wedge (matches server forward cone hitbox) ──
-		if (fx.isWeaponCone) {
-			const lifeRatio = 1.0 - (elapsed / fx.duration);
-			fadeHitboxOpacity(fx.mesh, lifeRatio);
-
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
-		// ── Fireball projectile (grouped core + flame halo) ──
-		if (fx.isFireballProjectile) {
-			const travelRange = fx.range ?? ATTACK_RANGE;
-			const t = Math.min(elapsed / fx.duration, 1.0);
-			const travel = travelRange * t;
-			fx.mesh.position.x = fx.origin.x + fx.direction.x * travel;
-			fx.mesh.position.z = fx.origin.z + fx.direction.z * travel;
-
-			const pulse = 0.9 + 0.14 * Math.sin(elapsed / 45);
-			const flicker = 1.0 + 0.28 * Math.sin(elapsed / 28 + 1.3);
-			if (fx.coreMesh) {
-				fx.coreMesh.scale.setScalar(pulse);
-				fx.coreMesh.material.emissiveIntensity = 2.0 * flicker;
-			}
-			if (fx.haloMesh) {
-				const haloPulse = 1.0 + 0.2 * Math.sin(elapsed / 60 + 0.7);
-				fx.haloMesh.scale.setScalar(haloPulse);
-				fx.haloMesh.material.emissiveIntensity = 1.3 * flicker;
-				fx.haloMesh.material.opacity = Math.max(0.2, 0.48 + 0.14 * Math.sin(elapsed / 35));
-			}
-
-			const lifeRatio = 1.0 - t;
-			if (fx.coreMesh?.material) {
-				fx.coreMesh.material.opacity = Math.max(0.01, 0.95 * lifeRatio);
-			}
-
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
-		// ── Glacial Orb projectile (crystalline core + frost halo) ──
-		if (fx.isGlacialOrbProjectile) {
-			const travelRange = fx.range ?? ATTACK_RANGE;
-			const t = Math.min(elapsed / fx.duration, 1.0);
-			const travel = travelRange * t;
-			fx.mesh.position.x = fx.origin.x + fx.direction.x * travel;
-			fx.mesh.position.z = fx.origin.z + fx.direction.z * travel;
-
-			const pulse = 0.88 + 0.12 * Math.sin(elapsed / 80);
-			const shimmer = 1.0 + 0.22 * Math.sin(elapsed / 55 + 0.5);
-			if (fx.coreMesh) {
-				fx.coreMesh.rotation.y = elapsed * 0.002;
-				fx.coreMesh.rotation.x = Math.sin(elapsed / 200) * 0.15;
-				fx.coreMesh.scale.setScalar(pulse);
-				fx.coreMesh.material.emissiveIntensity = 2.2 * shimmer;
-			}
-			if (fx.haloMesh) {
-				const haloPulse = 1.0 + 0.18 * Math.sin(elapsed / 90 + 1.1);
-				fx.haloMesh.scale.setScalar(haloPulse);
-				fx.haloMesh.material.emissiveIntensity = 1.5 * shimmer;
-				fx.haloMesh.material.opacity = Math.max(0.15, 0.38 + 0.12 * Math.sin(elapsed / 70));
-			}
-
-			const lifeRatio = 1.0 - t;
-			if (fx.coreMesh?.material) {
-				fx.coreMesh.material.opacity = Math.max(0.01, 0.92 * lifeRatio);
-			}
-
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
-		// ── Arcane bolt projectile (elongated violet lance + trailing glow) ──
-		if (fx.isArcaneBoltProjectile) {
-			const travelRange = fx.range ?? ATTACK_RANGE;
-			const t = Math.min(elapsed / fx.duration, 1.0);
-			const travel = travelRange * t;
-			fx.mesh.position.x = fx.origin.x + fx.direction.x * travel;
-			fx.mesh.position.z = fx.origin.z + fx.direction.z * travel;
-
-			const pulse = 0.92 + 0.12 * Math.sin(elapsed / 38);
-			const lengthPulse = 0.95 + 0.08 * Math.sin(elapsed / 52);
-			const flicker = 1.0 + 0.32 * Math.sin(elapsed / 24 + 0.5);
-			if (fx.coreMesh) {
-				fx.coreMesh.scale.set(pulse, pulse * lengthPulse, pulse);
-				fx.coreMesh.material.emissiveIntensity = 1.7 * flicker;
-			}
-			if (fx.glowMesh) {
-				const glowPulse = 1.0 + 0.18 * Math.sin(elapsed / 48 + 1.1);
-				fx.glowMesh.scale.setScalar(glowPulse);
-				fx.glowMesh.material.emissiveIntensity = 1.1 * flicker;
-				fx.glowMesh.material.opacity = Math.max(0.15, 0.42 + 0.12 * Math.sin(elapsed / 30));
-			}
-
-			const lifeRatio = 1.0 - t;
-			if (fx.coreMesh?.material) {
-				fx.coreMesh.material.opacity = Math.max(0.01, 0.95 * lifeRatio);
-			}
-
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, fx._scene || scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
-		// ── Returning projectile corridor + traveling head ──
-		if (fx.returning) {
-			const totalPasses = 1 + (fx.returnPasses || 1);
-			const passDuration = fx.duration / totalPasses;
-			const passIndex = Math.min(Math.floor(elapsed / passDuration), totalPasses - 1);
-			const passElapsed = elapsed - passIndex * passDuration;
-			const passT = Math.min(passElapsed / passDuration, 1.0);
-			const outbound = passIndex === 0;
-			const travel = outbound ? fx.range * passT : fx.range * (1 - passT);
-
-			if (fx.headMesh) {
-				fx.headMesh.position.set(
-					fx.direction.x * travel,
-					0.88,
-					fx.direction.z * travel,
-				);
-			}
-
-			const lifeRatio = 1.0 - (elapsed / fx.duration);
-			fadeHitboxOpacity(fx.mesh, lifeRatio);
-
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
-		// ── Legacy weapon projectile effect ──
-		const travelRange = fx.range ?? ATTACK_RANGE;
-		const t = Math.min(elapsed / fx.duration, 1.0);
-		const travel = travelRange * t;
-		fx.mesh.position.x = fx.origin.x + fx.direction.x * travel;
-		fx.mesh.position.z = fx.origin.z + fx.direction.z * travel;
-
-		const lifeRatio = 1.0 - (elapsed / fx.duration);
-		const weaponScale = Math.max(0.01, lifeRatio);
-		fx.mesh.scale.setScalar(weaponScale);
-		fx.mesh.material.opacity = Math.max(0.01, lifeRatio);
-
-		if (elapsed >= fx.duration) {
-			(fx._scene || scene).remove(fx.mesh);
-			fx.mesh.geometry.dispose();
-			fx.mesh.material.dispose();
-			activeEffects.splice(i, 1);
-		}
 	}
 }
 
