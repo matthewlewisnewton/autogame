@@ -30,6 +30,7 @@ function makeCtx(overrides = {}) {
 		spawnProjectileTrail: record('spawnProjectileTrail'),
 		spawnImpactDecal: record('spawnImpactDecal'),
 		spawnTelegraphRing: record('spawnTelegraphRing'),
+		spawnEtherSiphonEffect: record('spawnEtherSiphonEffect'),
 		spawnTelepipeCastEffect: record('spawnTelepipeCastEffect'),
 		spawnSpikeTrapEffect: record('spawnSpikeTrapEffect'),
 		spawnMirrorWardShellEffect: record('spawnMirrorWardShellEffect'),
@@ -138,7 +139,9 @@ describe('resolveRenderers()', () => {
 
 	it('returns bespoke renderers for arcane radial spells', () => {
 		expect(resolveRenderers('battle_familiar')).toHaveLength(1);
-		expect(resolveRenderers('mana_leach')).toHaveLength(1);
+		const manaLeachRenderers = resolveRenderers('mana_leach');
+		expect(manaLeachRenderers).toHaveLength(1);
+		expect(manaLeachRenderers[0].name).toBe('renderManaLeach');
 		expect(resolveRenderers('soul_drain')).toHaveLength(1);
 	});
 
@@ -1094,13 +1097,27 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
 	});
 
-	it('mana_leach adds a purple drain telegraph and siphon burst at AoE radius', () => {
+	it('mana_leach dispatches spawnEtherSiphonEffect with violet accent colors at AoE radius', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'mana_leach',
 			origin: { x: 1, z: 2 },
 			radius: 4,
-			specialEffect: 'mana_drain',
+			hits: [],
+		}, ctx);
+		const siphon = ctx._calls.find((c) => c[0] === 'spawnEtherSiphonEffect');
+		expect(siphon).toBeDefined();
+		expect(siphon[1]).toEqual({ x: 1, z: 2 });
+		expect(siphon[2]).toBe(4);
+		expect(siphon[3]).toMatchObject({ color: 0xa855f7, emissive: 0x9333ea });
+	});
+
+	it('mana_leach fires telegraph ring and cast burst synchronously (no scheduleAfter)', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'mana_leach',
+			origin: { x: 1, z: 2 },
+			radius: 4,
 			hits: [],
 		}, ctx);
 		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
@@ -1108,10 +1125,96 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ring[1]).toEqual({ x: 1, z: 2 });
 		expect(ring[2]).toBe(4);
 		expect(ring[3]).toMatchObject({ color: 0xa855f7, emissive: 0x9333ea });
-		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		const burst = ctx._calls.find(
+			(c) => c[0] === 'spawnParticleBurst' && c[2].count === 16,
+		);
 		expect(burst).toBeDefined();
-		expect(burst[2]).toMatchObject({ color: 0xa855f7, count: 16, spread: 2.2 });
+		expect(burst[1]).toEqual({ x: 1, z: 2 });
+		expect(burst[2]).toMatchObject({ color: 0xa855f7, emissive: 0x9333ea, spread: 2.2 });
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('mana_leach spawns immediate per-hit drain arcs and sparks at enemy mesh positions', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 4, y: 0, z: 2 } },
+				e2: { position: { x: 7, y: 0, z: 2 } },
+			}),
+		});
+		renderCardUsed({
+			cardId: 'mana_leach',
+			origin: { x: 1, z: 2 },
+			radius: 4,
+			hits: [{ enemyId: 'e1' }, { enemyId: 'e2' }, { enemyId: 'missing' }],
+		}, ctx);
+		const arcs = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
+		expect(arcs).toHaveLength(2);
+		expect(arcs[0][1]).toEqual({ x: 4, y: 0.6, z: 2 });
+		expect(arcs[0][2]).toEqual({ x: 1, z: 2 });
+		expect(arcs[0][3]).toMatchObject({
+			color: 0xa855f7,
+			emissive: 0x9333ea,
+			duration: ATTACK_EFFECT_DURATION,
+		});
+		expect(arcs[1][1]).toEqual({ x: 7, y: 0.6, z: 2 });
+		const hitSparks = ctx._calls.filter((c) => c[0] === 'spawnHitSpark');
+		expect(hitSparks).toHaveLength(2);
+		expect(hitSparks[0][1]).toEqual({ x: 4, y: 0.6, z: 2 });
+		const hitBursts = ctx._calls.filter(
+			(c) => c[0] === 'spawnParticleBurst' && c[2].count === 6,
+		);
+		expect(hitBursts).toHaveLength(2);
+		expect(hitBursts[0][1]).toEqual({ x: 4, y: 0.6, z: 2 });
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('mana_leach spawns a magic-stone absorption flourish at the caster origin', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'mana_leach',
+			origin: { x: 1, z: 2 },
+			radius: 4,
+			magicStonesGained: 2,
+			hits: [],
+		}, ctx);
+		const absorbBurst = ctx._calls.find(
+			(c) => c[0] === 'spawnParticleBurst' && c[2].count === 22,
+		);
+		expect(absorbBurst).toBeDefined();
+		expect(absorbBurst[1]).toEqual({ x: 1, z: 2 });
+		expect(absorbBurst[2]).toMatchObject({ color: 0xa855f7, emissive: 0x9333ea, spread: 2.6 });
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 1, z: 2 });
+		expect(decal[2]).toMatchObject({ color: 0xa855f7, emissive: 0x9333ea });
+	});
+
+	it('mana_leach has no positive windUpMs (instant cast; 315 charge telegraph absent)', () => {
+		expect(CARD_DEFS.mana_leach).toBeDefined();
+		expect(CARD_DEFS.mana_leach.windUpMs ?? 0).toBeLessThanOrEqual(0);
+	});
+
+	it('mana_leach, battle_familiar, and soul_drain produce distinct helper signatures for equivalent radial payloads', () => {
+		const payload = {
+			origin: { x: 0, z: 0 },
+			radius: 4,
+			hits: [],
+		};
+		const familiarCtx = makeCtx();
+		resolveRenderers('battle_familiar')[0]({ ...payload, cardId: 'battle_familiar' }, familiarCtx);
+		const leachCtx = makeCtx();
+		resolveRenderers('mana_leach')[0]({ ...payload, cardId: 'mana_leach' }, leachCtx);
+		const drainCtx = makeCtx();
+		resolveRenderers('soul_drain')[0]({ ...payload, cardId: 'soul_drain' }, drainCtx);
+		const familiarSig = methodsCalled(familiarCtx);
+		const leachSig = methodsCalled(leachCtx);
+		const drainSig = methodsCalled(drainCtx);
+		expect(leachSig).not.toEqual(familiarSig);
+		expect(leachSig).not.toEqual(drainSig);
+		expect(leachSig).toContain('spawnEtherSiphonEffect');
+		expect(familiarSig).not.toContain('spawnEtherSiphonEffect');
+		expect(drainSig).not.toContain('spawnEtherSiphonEffect');
 	});
 
 	it('soul_drain adds pink drain telegraph, primary burst, and heal flourish decal', () => {
@@ -1140,6 +1243,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 
 	it('arcane radial spells still render without throwing when new ctx primitives are absent', () => {
 		const minimalCtx = makeCtx({
+			spawnEtherSiphonEffect: undefined,
 			spawnTelegraphRing: undefined,
 			spawnParticleBurst: undefined,
 			spawnImpactDecal: undefined,
