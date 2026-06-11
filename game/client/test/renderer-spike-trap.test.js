@@ -130,8 +130,10 @@ describe('SPIKE_TRAP_TRIGGERED handler', () => {
 		window.__triggerSocketEvent('spikeTrapTriggered', { x: 7, z: -3, radius: 1.4 });
 
 		const effects = getActiveEffects();
-		const ring = effects.find((e) => e.spikeTrapRing);
+		const { ATTACK_EFFECT_KINDS } = await import('../renderer/attackEffectUpdaters.js');
+		const ring = effects.find((e) => e.kind === ATTACK_EFFECT_KINDS.spikeTrapRing);
 		expect(ring).toBeDefined();
+		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.spikeTrapRing);
 		expect(ring.origin).toEqual({ x: 7, z: -3 });
 		expect(ring.radius).toBe(1.4);
 		expect(effects.some((e) => e.isSpikeTrapSpike)).toBe(true);

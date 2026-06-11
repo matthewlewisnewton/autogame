@@ -1757,6 +1757,7 @@ export function playPassageUnlockEffect(passageIndex, layout, gateMesh = null) {
 		_scene: targetScene,
 		origin: { x: origin.x, z: origin.z },
 		radius: 2.2,
+		kind: ATTACK_EFFECT_KINDS.expandFadeRing,
 		createdAt: performance.now(),
 		duration: PASSAGE_UNLOCK_EFFECT_DURATION,
 	});
@@ -4553,6 +4554,7 @@ export function spawnSummonEffect(origin, radius, styleOrColor = {}) {
 		mesh,
 		origin: { x: origin.x, z: origin.z },
 		radius,
+		kind: ATTACK_EFFECT_KINDS.expandFadeRing,
 		createdAt: performance.now(),
 		duration: SUMMON_EFFECT_DURATION,
 	});
@@ -4631,6 +4633,7 @@ export function spawnLegionMarshalRallyEffect(origin, radius, style = {}) {
 		mesh: ringMesh,
 		origin: { x: origin.x, z: origin.z },
 		radius: r,
+		kind: ATTACK_EFFECT_KINDS.expandFadeRing,
 		createdAt: performance.now(),
 		duration,
 		_scene: targetScene,
@@ -5036,6 +5039,7 @@ export function spawnDivineGracePulseRing(origin, radius) {
 		mesh,
 		origin: { x: origin.x, z: origin.z },
 		radius,
+		kind: ATTACK_EFFECT_KINDS.expandFadeRing,
 		createdAt: performance.now(),
 		duration: SUMMON_EFFECT_DURATION,
 	});
@@ -5138,6 +5142,7 @@ export function spawnRestorationBeaconRing(origin, radius) {
 		mesh,
 		origin: { x: origin.x, z: origin.z },
 		radius,
+		kind: ATTACK_EFFECT_KINDS.expandFadeRing,
 		createdAt: performance.now(),
 		duration: SUMMON_EFFECT_DURATION,
 	});
@@ -5398,6 +5403,7 @@ export function spawnTelepipeCastEffect(origin, radius, style = {}) {
 		mesh: ring,
 		origin: { x: origin.x, z: origin.z },
 		radius: r,
+		kind: ATTACK_EFFECT_KINDS.expandFadeRing,
 		createdAt: performance.now(),
 		duration: SUMMON_EFFECT_DURATION,
 		_scene: targetScene,
@@ -5607,8 +5613,9 @@ export function spawnPurifyingPulseHealRing(origin, radius, options = {}) {
 		mesh,
 		origin: { x: origin.x, z: origin.z },
 		radius,
-		// Push later waves' start into the future. The radius-AoE branch holds the
-		// ring at ~zero scale until its createdAt arrives, so waves expand in
+		kind: ATTACK_EFFECT_KINDS.expandFadeRing,
+		// Push later waves' start into the future. The expand-fade ring updater holds
+		// the ring at ~zero scale until its createdAt arrives, so waves expand in
 		// sequence (a visible outward pulse) with no timer and a bounded lifetime.
 		createdAt: performance.now() + wave * staggerMs,
 		duration: SUMMON_EFFECT_DURATION,
@@ -5766,6 +5773,7 @@ function spawnThermalColumnScorchRing(origin, radius, style = {}) {
 		mesh,
 		origin: { x: origin.x, z: origin.z },
 		radius,
+		kind: ATTACK_EFFECT_KINDS.expandFadeRing,
 		createdAt: performance.now(),
 		duration,
 		_scene: targetScene,
@@ -5828,9 +5836,10 @@ export function spawnSpikeTrapEffect(origin, radius) {
 		mesh: ring,
 		origin: { x: origin.x, z: origin.z },
 		radius,
+		kind: ATTACK_EFFECT_KINDS.spikeTrapRing,
+		spikeTrapRing: true,
 		createdAt: performance.now(),
 		duration: SUMMON_EFFECT_DURATION,
-		spikeTrapRing: true,
 		_scene: targetScene,
 	});
 
@@ -6261,9 +6270,10 @@ function spawnDragonsBreathScorchFan(origin, direction, range, coneAngle, style)
 		origin: { x: origin.x, z: origin.z },
 		radius: range,
 		coneAngle,
+		kind: ATTACK_EFFECT_KINDS.dragonsBreathScorch,
+		isDragonsBreathScorch: true,
 		createdAt: performance.now(),
 		duration: style.duration,
-		isDragonsBreathScorch: true,
 		_scene: targetScene,
 	});
 }
@@ -6370,9 +6380,10 @@ export function spawnVolatileExplosionEffect(origin, radius) {
 		mesh,
 		origin: { x: origin.x, z: origin.z },
 		radius,
+		kind: ATTACK_EFFECT_KINDS.expandFadeRing,
+		volatileBurst: true,
 		createdAt: performance.now(),
 		duration: SUMMON_EFFECT_DURATION,
-		volatileBurst: true,
 	});
 }
 
@@ -7434,24 +7445,6 @@ export function updateAttackEffects() {
 					child.rotation.z = elapsed * 0.005;
 				}
 				if (child.material) child.material.opacity = fade;
-			}
-
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, fx._scene || scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
-		// ── Summon AoE effect (has a radius field) ──
-		if (fx.radius !== undefined) {
-			const expandT = Math.min(elapsed / SUMMON_EXPAND_MS, 1.0);
-			const scale = fx.radius * expandT * 2;
-			fx.mesh.scale.setScalar(Math.max(0.001, scale));
-
-			if (elapsed > SUMMON_EXPAND_MS) {
-				const fadeRatio = 1.0 - (elapsed - SUMMON_EXPAND_MS) / (fx.duration - SUMMON_EXPAND_MS);
-				fx.mesh.material.opacity = Math.max(0.01, fadeRatio);
 			}
 
 			if (elapsed >= fx.duration) {

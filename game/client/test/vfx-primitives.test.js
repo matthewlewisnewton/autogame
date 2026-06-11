@@ -153,7 +153,8 @@ describe('shared VFX primitives', () => {
 		const ring = effects[before];
 		const column = effects[before + 1];
 
-		// Ring is the radius-based expanding pulse with a gold (NOT green) emissive.
+		// Ring is the expand-fade ground pulse with a gold (NOT green) emissive.
+		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.expandFadeRing);
 		expect(ring.radius).toBe(1.4);
 		expect(Number.isFinite(ring.duration)).toBe(true);
 		expect(ring.duration).toBeGreaterThan(0);
@@ -174,11 +175,12 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 3);
 
 		const effects = getActiveEffects().slice(before);
-		const ring = effects.find((fx) => fx.radius !== undefined);
+		const ring = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.expandFadeRing);
 		const column = effects.find((fx) => fx.isLightColumn);
 		const burst = effects.find((fx) => fx.isParticleBurst);
 
 		expect(ring).toBeDefined();
+		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.expandFadeRing);
 		expect(ring.radius).toBe(2.5);
 		expect(Number.isFinite(ring.duration)).toBe(true);
 		expect(ring.duration).toBeGreaterThan(0);
@@ -211,13 +213,13 @@ describe('shared VFX primitives', () => {
 
 	it('spawnTelepipeCastEffect defaults radius to 2.5 and honors color overrides', () => {
 		spawnTelepipeCastEffect({ x: 0, z: 0 });
-		const ring = getActiveEffects().find((fx) => fx.radius !== undefined);
+		const ring = getActiveEffects().find((fx) => fx.kind === ATTACK_EFFECT_KINDS.expandFadeRing);
 		expect(ring.radius).toBe(2.5);
 
 		getActiveEffects().length = 0;
 		spawnTelepipeCastEffect({ x: 0, z: 0 }, 1.8, { color: 0x123456, emissive: 0x654321 });
 		const effects = getActiveEffects();
-		const ringFx = effects.find((fx) => fx.radius !== undefined);
+		const ringFx = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.expandFadeRing);
 		const columnFx = effects.find((fx) => fx.isLightColumn);
 		expect(ringFx.mesh.material.color.getHex()).toBe(0x123456);
 		expect(ringFx.mesh.material.emissive.getHex()).toBe(0x654321);
@@ -246,11 +248,12 @@ describe('shared VFX primitives', () => {
 		spawnSpikeTrapEffect({ x: 5, z: -2 }, 1.4);
 
 		const effects = getActiveEffects().slice(before);
-		const ring = effects.find((fx) => fx.spikeTrapRing);
+		const ring = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.spikeTrapRing);
 		const spikes = effects.filter((fx) => fx.isSpikeTrapSpike);
 
 		// One hazard ring plus several upward spike meshes (NOT a flat ring alone).
 		expect(ring).toBeDefined();
+		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.spikeTrapRing);
 		expect(spikes.length).toBeGreaterThanOrEqual(3);
 		expect(effects.length).toBe(spikes.length + 1);
 
@@ -289,10 +292,11 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBeGreaterThanOrEqual(before + 2);
 
 		const effects = getActiveEffects().slice(before);
-		const ring = effects.find((fx) => fx.radius !== undefined);
+		const ring = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.expandFadeRing);
 		const column = effects.find((fx) => fx.isLegionMarshalColumn);
 
 		expect(ring).toBeDefined();
+		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.expandFadeRing);
 		expect(ring.radius).toBe(2);
 		expect(Number.isFinite(ring.duration)).toBe(true);
 		expect(ring.duration).toBeGreaterThan(0);
@@ -579,7 +583,7 @@ describe('shared VFX primitives', () => {
 
 	it('spawnLegionMarshalRallyEffect defaults radius to 2 and honors color overrides', () => {
 		spawnLegionMarshalRallyEffect({ x: 0, z: 0 });
-		const ring = getActiveEffects().find((fx) => fx.radius !== undefined);
+		const ring = getActiveEffects().find((fx) => fx.kind === ATTACK_EFFECT_KINDS.expandFadeRing);
 		expect(ring.radius).toBe(2);
 
 		getActiveEffects().length = 0;
@@ -589,7 +593,7 @@ describe('shared VFX primitives', () => {
 			duration: 900,
 		});
 		const effects = getActiveEffects();
-		const ringFx = effects.find((fx) => fx.radius !== undefined);
+		const ringFx = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.expandFadeRing);
 		const columnFx = effects.find((fx) => fx.isLegionMarshalColumn);
 		expect(ringFx.radius).toBe(1.6);
 		expect(ringFx.duration).toBe(900);
@@ -658,6 +662,7 @@ describe('shared VFX primitives', () => {
 		const scorch = effects[before];
 		const cone = effects[before + 1];
 
+		expect(scorch.kind).toBe(ATTACK_EFFECT_KINDS.dragonsBreathScorch);
 		expect(scorch.isDragonsBreathScorch).toBe(true);
 		expect(scorch.radius).toBe(7);
 		expect(scorch.duration).toBe(2250);
@@ -746,6 +751,7 @@ describe('shared VFX primitives', () => {
 		const ring = effects[before];
 		const column = effects[before + 1];
 
+		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.expandFadeRing);
 		expect(ring.radius).toBe(3.5);
 		expect(ring.duration).toBe(2250);
 		expect(column.isThermalColumn).toBe(true);

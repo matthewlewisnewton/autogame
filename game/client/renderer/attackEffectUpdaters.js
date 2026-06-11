@@ -2,7 +2,7 @@
 // Shared primitives dispatch on fx.kind; unmigrated effects still use boolean
 // flags in updateAttackEffects until later sub-tickets register them here.
 
-import { HIT_SPARK_DURATION } from '../config.js';
+import { HIT_SPARK_DURATION, SUMMON_EXPAND_MS } from '../config.js';
 import { getScene } from './rendererState.js';
 
 export const ATTACK_EFFECT_KINDS = {
@@ -13,6 +13,9 @@ export const ATTACK_EFFECT_KINDS = {
 	hitSpark: 'hitSpark',
 	lightningArc: 'lightningArc',
 	passageUnlockGate: 'passageUnlockGate',
+	expandFadeRing: 'expandFadeRing',
+	spikeTrapRing: 'spikeTrapRing',
+	dragonsBreathScorch: 'dragonsBreathScorch',
 };
 
 function disposeEffectObject(mesh, targetScene) {
@@ -106,6 +109,17 @@ function updatePassageUnlockGate(fx, elapsed) {
 	});
 }
 
+function updateExpandFadeRing(fx, elapsed) {
+	const expandT = Math.min(elapsed / SUMMON_EXPAND_MS, 1.0);
+	const scale = fx.radius * expandT * 2;
+	fx.mesh.scale.setScalar(Math.max(0.001, scale));
+
+	if (elapsed > SUMMON_EXPAND_MS) {
+		const fadeRatio = 1.0 - (elapsed - SUMMON_EXPAND_MS) / (fx.duration - SUMMON_EXPAND_MS);
+		fx.mesh.material.opacity = Math.max(0.01, fadeRatio);
+	}
+}
+
 export const ATTACK_EFFECT_UPDATERS = {
 	[ATTACK_EFFECT_KINDS.particleBurst]: updateParticleBurst,
 	[ATTACK_EFFECT_KINDS.projectileTrail]: updateProjectileTrail,
@@ -114,6 +128,9 @@ export const ATTACK_EFFECT_UPDATERS = {
 	[ATTACK_EFFECT_KINDS.hitSpark]: updateHitSpark,
 	[ATTACK_EFFECT_KINDS.lightningArc]: updateLightningArc,
 	[ATTACK_EFFECT_KINDS.passageUnlockGate]: updatePassageUnlockGate,
+	[ATTACK_EFFECT_KINDS.expandFadeRing]: updateExpandFadeRing,
+	[ATTACK_EFFECT_KINDS.spikeTrapRing]: updateExpandFadeRing,
+	[ATTACK_EFFECT_KINDS.dragonsBreathScorch]: updateExpandFadeRing,
 };
 
 /**
