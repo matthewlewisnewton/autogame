@@ -209,7 +209,12 @@ const QUEST_DEFS = {
             {
               roomIndex: 0,
               waves: [
-                { spawns: [{ type: 'grunt', count: 2 }] },
+                {
+                  spawns: [
+                    { type: 'grunt', count: 1, towardPassage: true },
+                    { type: 'grunt', count: 1, towardPassage: true },
+                  ],
+                },
               ],
             },
             {
