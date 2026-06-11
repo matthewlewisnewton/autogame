@@ -1,0 +1,19 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The Cryo Burst (`frost_nova`) animation polish ticket passes the senior review.
+
+**Runtime health (gate):** Clean. `metrics.json` reports `"ok": true`, empty `pageerrors`, no `harness_failure`; the game started and both players reached gameplay. `console.log` has only benign noise (vite connect, one-off 409 auth, info logs) — no `pageerror`/`[fatal]`.
+
+**Acceptance criteria — all met:**
+- **Visual matches theme** — `renderFrostNova` composes a frost shockwave ring (sized to radius), a denser 28-particle ice-shard burst, and a frozen impact decal, all in an ice palette (`0x67e8f9`/`0x38bdf8`); deliberately avoids summon/projectile primitives so it stays distinct from `glacier_collapse`/`permafrost_lance`.
+- **Timing synced** — no `windUpMs` on this card, so the renderer fires synchronously matching the server's instant resolution; the lingering frost-field decal runs `duration: 2500` to mirror the server's `freezeDurationMs: 2500` and fades over that window.
+- **Integration verified end-to-end** — server `CARD_USED` payload carries `frozen: true`/`specialEffect: 'freeze'` (cardEffects.js:768–772) which the linger gate keys off, and `spawnImpactDecal` honors both `radius` and `duration`. So the linger actually fires in real play, not just tests.
+- **No perf regression**, and **206/206 client tests pass** including 3 new `frost_nova` cases.
+
+**Scope:** diff is confined to `cardRenderers.js`, its test, and sub-ticket files — within the ticket's SCOPE.
+
+I noted one non-blocking nit (the 2500ms freeze duration is hardcoded client-side rather than derived from the source of truth) in `nits.md`. Since the verdict is PASS, no `gaps.md` was written.
+
+One observation for the record: the capture used the fallback smoke deck which doesn't contain `frost_nova`, so there's no screenshot of the animation itself — but the renderer behavior is fully covered by unit tests and the live data path was verified by reading the code, so this is a capture limitation, not a defect.

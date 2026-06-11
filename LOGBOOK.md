@@ -7436,3 +7436,207 @@ will not conflict with sibling per-card animation beads.
 ## Remaining gaps
 None blocking. One minor nit (palette-constant duplication) recorded in nits.md.
 
+## v0.409 — 354-anim-stormwing-drone  (2026-06-10 20:31:57)
+
+`origin.y` mutation is safe. The no-`strikeTarget` fallback
+(`stormEagleStrikePoint`, :1132) carries the same downward tilt.
+
+### "No perf regression"
+PASS. Deploy adds two extra primitive spawns (ring + burst) on a one-shot
+summon event; strike reuses the existing single arc + single burst. No new
+hot-loop work, allocations, or per-frame cost.
+
+### "Client test where feasible"
+PASS. Six storm_eagle tests cover palette, Thunderbird distinctness, the
+ring/wing-burst deploy cues, single-arc-to-strikeTarget, the aerial-origin
+geometry (`y ≈ 8` from a 0.8/0.6 tilt over reach 6), the no-strikeTarget tilt
+fallback, and summon-vs-strike gating. Full file: 181 passed / 0 failed.
+
+## Remaining gaps
+None blocking. The only observation is that the fallback smoke capture did not
+visually exercise the animation (harness deck limitation, not a code defect);
+correctness is fully established by code inspection against the server payload
+plus the unit suite.
+
+## v0.410 — 355-anim-thunderbird  (2026-06-10 20:46:26)
+
+### "Timing synced to server effect resolution; 307 wind-up if windUpMs"
+PASS. Server (`simulation.js:3513-3567`) resolves all chain damage instantly within one tick and emits `chainSegments` + an order-aligned `hits[]` in `_pendingMinionBreaths`. The renderer treats hop delays as visual-only (`THUNDERBIRD_CHAIN_HOP_DELAY_MS = 100`, hop `i` scheduled at `100*i`), so the cosmetic cascade never desyncs from authoritative damage — correctly documented in the renderer's docstring. Arc/burst durations use `ATTACK_EFFECT_DURATION`; summon effects use `MINION_SUMMON_IN_MS`. `hits[index]` correctly indexes the enemy at `segments[index].to` (segment 0 = minion→nearest, hits[0] = nearest), so endpoint sparks land on the right mesh. Thunderbird is a minion strike with no `windUpMs`, so no 307 telegraph applies.
+
+### "No perf regression"
+PASS. All new work is guarded primitive calls (`spawnLightningArc`, `spawnParticleBurst`, `spawnTelegraphRing`) from the 315 foundation; no new per-frame loops, no allocation in hot paths. Each feature degrades gracefully when a primitive is absent (e.g. `scheduleAfter` missing → synchronous hops; `enemyMeshes` missing → falls back to `seg.to`).
+
+### "Client test where feasible"
+PASS. `cardRenderers.test.js` adds focused coverage: summon flourish (ring + aerial burst + telegraph, no stray chain/schedule calls), early-return on attack payloads, `resolveRenderers` ordering, single-target legacy bolt path, multi-segment scheduled hops with correct arc endpoints and endpoint bursts, and a no-`spawnLightningArc` fallback that must not throw. Full suite: **186/186 pass**.
+
+### Scope
+PASS. Diff touches only `game/client/cardRenderers.js`, `game/client/test/cardRenderers.test.js`, and the sub-ticket markdown — exactly the declared scope (this card's render fn + registration + client test). Registration changed only `thunderbird:` (cardRenderers.js:1905). The legacy `chain_lightning` spell card still maps to `renderChainLightningArcs` and is unaffected — no regression to other cards.
+
+### Debug scenarios
+N/A. This ticket added/changed no `?debugScenario=` shortcut.
+
+## Remaining gaps
+None blocking.
+
+Nit (non-blocking, filed to nits.md): `renderChainLightning` (cardRenderers.js:1104) is now dead code — before this ticket it was thunderbird's strike renderer; thunderbird now uses `renderThunderbirdStrike`, and the `chain_lightning` card uses the separate `renderChainLightningArcs`. The function is no longer referenced or exported.
+
+## v0.411 — 353-anim-legion-marshal  (2026-06-10 20:58:33)
+
+### 6. Client tests
+PASS. `cardRenderers.test.js` (190) + `vfx-primitives.test.js` (24) = 214 tests
+pass locally. Coverage includes rally call args, commander + skeleton flourish
+ordering/positions, tether endpoints, ground bursts, palette, default radius,
+color/duration overrides, and cleanup.
+
+## Debug scenarios
+No `?debugScenario` entry point was added or changed by this ticket (the
+existing `debugScenarios.js` reference to `undead_commander` predates the
+baseline and is untouched). N/A.
+
+## Design consistency
+`docs/design.md` has no card-specific VFX constraints for this card; the change
+follows the established per-card animation foundation and does not regress the
+requirements foundation.
+
+## Remaining gaps
+None blocking. One minor non-blocking observation filed to `nits.md` (column
+VFX pattern duplicated across per-card primitives).
+
+## v0.412 — 349-anim-restoration-beacon  (2026-06-10 21:01:39)
+
+PASS. All three sub-effects ride existing `updateAttackEffects` branches and dispose cleanly:
+- Column → `isLightColumn` branch (renderer.js:6213), now reading per-effect `columnHeight/columnBaseY/columnOpacity` that default to the gold constants — a backward-compatible generalization, base stays ground-pinned.
+- Ring → generic `fx.radius !== undefined` expand→fade→dispose branch (renderer.js:6178).
+- Motes → `isParticleBurst` branch (renderer.js:6334).
+
+### 5. No perf regression
+PASS. No per-frame allocation; geometry/material built once per cast, motes built as a single Group, every effect calls `disposeEffectObject` at end of life. Motes guard on `areParticlesEnabled()`. Particle count reduced (14→10 burst). The `isLightColumn` change adds three `??` reads per frame for an already-iterated effect — negligible.
+
+### 6. Client test where feasible
+PASS. `cardRenderers.test.js` updated to assert the beacon effect dispatch, plus new cases for the optional-spawner guard (`?.`) and non-caster sound gating. Full suite green: **199/199 passing**.
+
+## Debug scenarios
+No debug scenario was added or changed by this ticket — the diff touches only `cardRenderers.js`, `main.js`, `renderer.js`, and the client test (the `debugScenarios.js` `healing_font` references are pre-existing). Nothing to verify here.
+
+## Design / regression consistency
+Consistent with `game/docs/design.md`'s per-card VFX-on-shared-primitives model. Scope respected: changes confined to this card's render fn + registration (main.js ctx wiring) + the shared renderer primitives + the client test. No server logic, no other card renderers touched.
+
+## Remaining gaps
+None blocking. The captured smoke run did not happen to cast this card (deck-dependent), so the proof rests on the code path + the dispatch/lifecycle tests + the clean run — which together are sufficient for an additive-VFX polish ticket. Minor polish noted in `nits.md`.
+
+
+## v0.417 — 345-anim-cryo-burst  (2026-06-10 22:04:35)
+
+cases: (1) shockwave ring + denser burst + frozen decal at origin with no
+summon primitive; (2) lingering 2500ms frost field present and sized to radius
+when `frozen`, all synchronous (no `scheduleAfter`/scheduled effects); (3) no
+2.5s linger when not frozen but the cast burst still fires. Full suite:
+**206/206 pass**.
+
+### Scope / regression
+
+PASS. `git diff 2c595809 HEAD` touches only game/client/cardRenderers.js,
+game/client/test/cardRenderers.test.js, and the two sub-ticket `ticket.md`
+files — within the ticket's stated SCOPE. No server, shared, or other-card
+renderer changes. No debug scenarios added. Consistent with design.md (no
+`frost_nova`-specific constraints there) and no foundation regression.
+
+## Remaining gaps
+
+None blocking. One non-blocking nit recorded in `nits.md` (the 2500ms freeze
+duration is duplicated client-side from cardStats.json behind a manual
+keep-in-sync comment rather than being carried in the payload or imported).
+
+
+## v0.416 — 347-anim-glacial-orb  (2026-06-10 22:02:50)
+
+### AC4 — Client test where feasible
+Met and strong. New/updated tests assert: `resolveRenderers('ice_ball')` →
+`renderIceBall`; cast flourish (telegraph ring + 8-count burst); trail carries
+`travelMs`; terminal impact is **deferred** (not fired at cast) and lands at the
+correct point after `runScheduled()`; immediate per-hit frost bursts at enemy mesh
+positions with missing-mesh skip; instant-cast (no positive `windUpMs`); graceful
+degradation when optional ctx primitives are absent; and a `spawnAttackEffect`
+integration test verifying the glacial-orb group, colors, flag, and cleanup.
+Ran `vitest run cardRenderers.test.js vfx-primitives.test.js` → **227 passed**.
+
+## Consistency / regression
+Consistent with the 315 VFX-primitive + per-card-renderer foundation (uses
+`spawnTelegraphRing`, `spawnParticleBurst`, `spawnProjectileTrail`, `spawnImpactDecal`,
+`spawnHitSpark`, `scheduleAfter`, `enemyMeshes` — all present in the `cardRenderCtx`
+built in `socketHandlers/cardHandlers.js`). No debug scenario added/changed. No
+gameplay, server, or shared logic touched, so no foundation regression.
+
+## Remaining gaps
+None blocking. Minor visual nits recorded in `nits.md`.
+
+
+## v0.415 — 341-anim-infinite-disk  (2026-06-10 21:39:15)
+
+Met. The renderer spawns three spinning cyan **photon discs** (`color 0xa5f3fc`, `emissive 0x22d3ee`) fanned along the perpendicular axis, a chasing projectile trail, and a spark burst at the far point — then schedules **boomerang return beats** that send a trail/burst back from the far point toward the origin. "Infinite Disk" → returning thrown disc → the discs visibly come back. This reads unmistakably as the card's name. Uses the 315 primitives (`spawnAttackEffect`, `spawnProjectileTrail`, `spawnParticleBurst`, `scheduleAfter`).
+
+### 2. Timing synced to the server effect resolution
+Met. Travel distance now derives from `data.attackRange` (payload) instead of a hardcoded `3.5`/`6`, so the visual far point matches the server's actual reach. Return-beat count is driven by `data.returnPasses` from the payload, never a hardcoded constant. Confirmed the server actually emits these in the `CARD_USED` payload: `cardEffects.js:550` (`attackRange`) and `cardEffects.js:553-554` (`returnPasses`, = 3 for `triple_returning_projectile`, matching `cardStats.json:166`). Return beats are paced at `ATTACK_EFFECT_DURATION/3` (≈200ms) so the full flourish resolves within the ~600ms attack-effect window rather than lagging. The server resolves all passes same-tick (`collectReturningProjectileHits`), so the return beats are an honest cosmetic flourish over the resolution window — appropriate and documented in the code comments.
+
+### 3. No perf regression
+Met. Lightweight: three effect spawns + at most `returnPasses` (3) deferred beats, each a single trail + small burst. No per-frame work added, no leaks (uses the shared `scheduleAfter`).
+
+### 4. Client test where feasible
+Met and strong. New tests cover: range sizing from `attackRange`, one scheduled beat per `returnPass` (staggered/increasing delays), reversed return direction from the far point, payload-driven count (`returnPasses: 2`), and graceful degradation when `scheduleAfter` / trail / burst primitives are absent (still renders three discs, never throws). Full suite: **211/211 pass**.
+
+### 5. Debug scenarios
+No `?debugScenario` shortcut added or changed by this ticket. N/A.
+
+## Consistency / regression
+Consistent with the 315 VFX foundation and the per-card registration pattern (matches sibling renderers' use of `scheduleAfter`, `pointAlong`, accent-color lookup). The `data.attackRange ?? INFINITE_DISK_RANGE(6)` and `returnPasses ?? 0` fallbacks keep the renderer robust if a payload omits a field. No foundation regression.
+
+## Remaining gaps
+None blocking. (Minor non-blocking observation captured in `nits.md`: the return beats are cosmetic over the resolution window rather than tied to discrete per-pass server hit timestamps — acceptable, since the server resolves all passes same-tick.)
+
+
+## v0.414 — 344-anim-voltaic-chain  (2026-06-10 21:36:21)
+
+render loop. Legacy fallback path (`spawnChainLightningEffect`) retained when segments are absent.
+
+### AC4 — Client test where feasible
+PASS. game/client/test/cardRenderers.test.js updated with strong regression guards: renderer
+identity, telegraph style incl. `duration`, cast-burst ordering before scheduled hops, arc style,
+hop-0 immediate vs hop-1 scheduled within `[80,120]ms` and `< ATTACK_EFFECT_DURATION`, endpoint
+snapped to enemy mesh world position, exactly one throttled `enemyHit` sound, and graceful behavior
+when new ctx primitives are absent. Full suite: **203/203 pass** (ran locally).
+
+## Consistency / regressions
+- Scope respected: only `game/client/cardRenderers.js` (this card's render fn) and its client test
+  changed. No server, design, or foundation files touched.
+- No debug scenario added or changed by this ticket — debug-scenario rules N/A.
+- The shared `spawnChainSegmentArcs` / `CHAIN_LIGHTNING_ARC_STYLE` helpers remain in use by a
+  different renderer (cardRenderers.js:1246-1249); not dead code.
+- Consistent with `game/docs/design.md` per-card VFX direction; no foundation regression.
+
+## Remaining gaps
+None blocking. One minor nit (duplicate cyan style constant) recorded in nits.md.
+
+
+## v0.413 — 352-anim-necroframe-knight  (2026-06-10 21:10:16)
+
+- degrades gracefully when optional ctx helpers (`spawnTelegraphRing`,
+  `spawnParticleBurst`, `scheduleAfter`) are absent.
+Plus a `resolveRenderers` assertion that the card uses its bespoke renderer, not
+the generic creature default. Full suite: **193 passed**.
+
+### Scope & integration
+PASS. Diff touches only `game/client/cardRenderers.js` (this card's render fn +
+registration) and its test file — exactly the declared scope. No other per-card
+beads are affected. Every optional helper is guarded, so the renderer is robust
+against a minimal ctx. No debug scenarios added.
+
+### Design consistency
+PASS. Reuses the 315 shared VFX primitives and the per-card registration pattern;
+palette deliberately matched to the evolution chain. No regression to the
+foundation.
+
+## Remaining gaps
+None. The captured run is clean, all acceptance criteria are robustly met, and
+the client tests pass.
+
+

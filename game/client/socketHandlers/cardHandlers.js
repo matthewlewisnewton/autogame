@@ -13,6 +13,7 @@ function createCardRenderCtx(ctx) {
 		spawnAttackEffect: ctx.spawnAttackEffect,
 		spawnSummonEffect: ctx.spawnSummonEffect,
 		spawnMinionSummonInEffect: ctx.spawnMinionSummonInEffect,
+		spawnLegionMarshalRallyEffect: ctx.spawnLegionMarshalRallyEffect,
 		spawnDivineGraceEffect: ctx.spawnDivineGraceEffect,
 		spawnEventHorizonEffect: ctx.spawnEventHorizonEffect,
 		spawnPurifyingPulseEffect: ctx.spawnPurifyingPulseEffect,

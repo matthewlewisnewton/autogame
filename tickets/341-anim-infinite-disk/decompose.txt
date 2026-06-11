@@ -1,0 +1,9 @@
+Created 1 sub-ticket. The Infinite Disk work is a single tightly-coupled change to one renderer function (`renderTripleReturning`) plus its tests — splitting the visual theming from the timing-sync would put two beads in conflict over the same function, so one focused pass is correct.
+
+Sub-ticket folder created:
+
+- `/home/matt/workspace/.autogame-worktrees/341-anim-infinite-disk/tickets/341-anim-infinite-disk/subtickets/01-disk-theme-and-return-timing/ticket.md`
+
+**Summary of scope:** Rework `renderTripleReturning` so Infinite Disk reads as three spinning cyan photon discs that fan out and *return* per server return-pass, driving travel range and return-beat count from the `cardUsed` payload (`attackRange`, `returnPasses`) to stay synced with the server's instant outbound+return resolution — using only the 315 shared primitives, keeping graceful degradation, no long wind-up, and adding/updating client tests.
+
+**Verification mode:** `code` — the acceptance criteria turn on payload-driven values, `scheduleAfter` beat counts, and primitive-call structure that the single happy-path visual run (which never casts the card) cannot observe.

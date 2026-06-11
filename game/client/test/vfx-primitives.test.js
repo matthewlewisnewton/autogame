@@ -20,6 +20,7 @@ import {
 	spawnGravityWellEffect,
 	spawnEventHorizonEffect,
 	spawnGlacierRuptureEffect,
+	spawnLegionMarshalRallyEffect,
 	updateAttackEffects,
 	getActiveEffects,
 } from '../renderer.js';
@@ -260,6 +261,62 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before);
 		expect(ringDispose).toHaveBeenCalled();
 		expect(spikeDispose).toHaveBeenCalled();
+	});
+
+	it('spawnLegionMarshalRallyEffect pushes bone/purple rally ring + rising column and cleans up', () => {
+		const before = getActiveEffects().length;
+		spawnLegionMarshalRallyEffect({ x: 1, z: -2 }, 2);
+		expect(getActiveEffects().length).toBeGreaterThanOrEqual(before + 2);
+
+		const effects = getActiveEffects().slice(before);
+		const ring = effects.find((fx) => fx.radius !== undefined);
+		const column = effects.find((fx) => fx.isLegionMarshalColumn);
+
+		expect(ring).toBeDefined();
+		expect(ring.radius).toBe(2);
+		expect(Number.isFinite(ring.duration)).toBe(true);
+		expect(ring.duration).toBeGreaterThan(0);
+		expect(ring.mesh.material.color.getHex()).toBe(0xe4e4e7);
+		expect(ring.mesh.material.emissive.getHex()).toBe(0xa855f7);
+
+		expect(column).toBeDefined();
+		expect(column.isLegionMarshalColumn).toBe(true);
+		expect(Number.isFinite(column.duration)).toBe(true);
+		expect(column.duration).toBeGreaterThan(0);
+		expect(column.mesh.material.color.getHex()).toBe(0xe4e4e7);
+		expect(column.mesh.material.emissive.getHex()).toBe(0xa855f7);
+
+		const ringDispose = vi.spyOn(ring.mesh.geometry, 'dispose');
+		const columnDispose = vi.spyOn(column.mesh.geometry, 'dispose');
+		for (const fx of effects) fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(ringDispose).toHaveBeenCalled();
+		expect(columnDispose).toHaveBeenCalled();
+	});
+
+	it('spawnLegionMarshalRallyEffect defaults radius to 2 and honors color overrides', () => {
+		spawnLegionMarshalRallyEffect({ x: 0, z: 0 });
+		const ring = getActiveEffects().find((fx) => fx.radius !== undefined);
+		expect(ring.radius).toBe(2);
+
+		getActiveEffects().length = 0;
+		spawnLegionMarshalRallyEffect({ x: 0, z: 0 }, 1.6, {
+			color: 0x123456,
+			emissive: 0x654321,
+			duration: 900,
+		});
+		const effects = getActiveEffects();
+		const ringFx = effects.find((fx) => fx.radius !== undefined);
+		const columnFx = effects.find((fx) => fx.isLegionMarshalColumn);
+		expect(ringFx.radius).toBe(1.6);
+		expect(ringFx.duration).toBe(900);
+		expect(columnFx.duration).toBe(900);
+		expect(ringFx.mesh.material.color.getHex()).toBe(0x123456);
+		expect(ringFx.mesh.material.emissive.getHex()).toBe(0x654321);
+		expect(columnFx.mesh.material.color.getHex()).toBe(0x123456);
+		expect(columnFx.mesh.material.emissive.getHex()).toBe(0x654321);
 	});
 
 	it('spawnEtherSiphonEffect pushes a contracting violet ring + ascending ether column', () => {
@@ -607,6 +664,36 @@ describe('shared VFX primitives', () => {
 		expect(ring.mesh.material.emissive.getHex()).toBe(0x654321);
 		expect(shards.mesh.children[0].material.color.getHex()).toBe(0x123456);
 		expect(shards.mesh.children[0].material.emissive.getHex()).toBe(0x654321);
+	});
+
+	it('spawnAttackEffect ice_ball adds a glacial orb projectile and cleans it up', () => {
+		const before = getActiveEffects().length;
+		spawnAttackEffect(
+			{ x: 0, z: 0 },
+			{ x: 1, z: 0 },
+			{
+				effect: 'ice_ball',
+				range: 9,
+				projectileTravelMs: 1200,
+				color: 0x67e8f9,
+				emissive: 0x38bdf8,
+			},
+		);
+		expect(getActiveEffects().length).toBe(before + 1);
+
+		const fx = lastEffect();
+		expect(fx.isGlacialOrbProjectile).toBe(true);
+		expect(fx.range).toBe(9);
+		expect(fx.duration).toBe(1200);
+		expect(fx.mesh.children.length).toBeGreaterThanOrEqual(2);
+		const core = fx.mesh.children[0];
+		expect(core.material.color.getHex()).toBe(0x67e8f9);
+		expect(core.material.emissive.getHex()).toBe(0x38bdf8);
+
+		fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
 	});
 
 	it('spawnAttackEffect permafrost_lance adds a flagged lance projectile and cleans it up', () => {

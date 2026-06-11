@@ -1,0 +1,17 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The Legion Marshal animation ticket holistically satisfies its acceptance criteria.
+
+**Runtime health (gate passed):** `metrics.json` reports `ok: true`, empty `pageerrors`, servers up, scene initialized; `console.log` is clean (only benign Vite/lobby-race lines, no game-code errors). No harness failure.
+
+**Acceptance criteria — all met:**
+- **Theme** — `renderUndeadCommander` now composes a bone-white/necrotic-purple rally ring + rising wisp column at the cast origin, a commander summon-in flourish, and per-skeleton summon-in flourishes + ground bursts + necrotic tether arcs (`spawnLightningArc`) from commander to each skeleton. Reads unmistakably as an undead commander rallying a legion.
+- **Timing** — card has no `windUpMs` (verified in both card def files), so instant cast / no telegraph needed; renderer fires on the `cardUsed` broadcast whose payload carries real server `minionId` + `summonedMinions[]` positions, so VFX land on actual spawns at resolution.
+- **Primitives/scope** — reuses 315 primitives plus one new `spawnLegionMarshalRallyEffect` following the existing Ether Siphon column pattern; diff is confined to this card's renderer, the vfx primitive, ctx plumbing, and tests.
+- **Perf** — generic radius path for ring, allocation-free per-frame column update, proper disposal verified by test.
+- **Robustness** — all optional ctx calls guarded; graceful-degradation test confirms no throw when primitives are absent.
+- **Tests** — 214 client tests pass locally.
+
+No debug scenario was added/changed (N/A). No blocking gaps, so no `gaps.md`. Filed one non-blocking nit (shared rising-column helper) to `nits.md`.

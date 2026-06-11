@@ -13,6 +13,7 @@
 // ctx interface (provided by main.js):
 //   spawnAttackEffect(origin, direction, style?)
 //   spawnSummonEffect(origin, radius, styleOrColor?)
+//   spawnLegionMarshalRallyEffect(origin, radius, style?) — undead commander rally ring + column
 //   spawnMinionSummonInEffect(origin, style?) — creature minion summon flourish
 //   spawnDivineGraceEffect(origin, radius)
 //   spawnEventHorizonEffect(origin, pullRadius, centerRadius, style?)
@@ -52,6 +53,11 @@ const NULL_CRAWLER_SUMMON_COLOR = 0x22d3ee;
 const NULL_CRAWLER_SUMMON_EMISSIVE = 0x67e8f9;
 const UNDEAD_COMMANDER_COLOR = 0xe4e4e7;
 const UNDEAD_COMMANDER_EMISSIVE = 0xa855f7;
+// Necroframe Knight shares its evolution's bone-white body + necrotic-purple
+// glow so the base taunt-wall reads as the same undead lineage.
+const NECROFRAME_KNIGHT_COLOR = 0xe4e4e7;
+const NECROFRAME_KNIGHT_EMISSIVE = 0xa855f7;
+const LEGION_MARSHAL_TETHER_STYLE = { color: UNDEAD_COMMANDER_COLOR, emissive: UNDEAD_COMMANDER_EMISSIVE };
 
 // ── Accent helpers ──────────────────────────────────────────────────────
 
@@ -544,11 +550,23 @@ function renderEchoSlash(data, ctx) {
 	}
 }
 
+/** Default disc travel range when the payload omits `attackRange`. */
+const INFINITE_DISK_RANGE = 6;
+/**
+ * Cadence between Infinite Disk return beats. Kept on the order of
+ * `ATTACK_EFFECT_DURATION` (a fraction of it) so the full boomerang flourish
+ * resolves quickly and stays in sync with the server's same-tick hit
+ * resolution instead of lagging behind it.
+ */
+const INFINITE_DISK_RETURN_BEAT_MS = Math.round(ATTACK_EFFECT_DURATION / 3);
+
 /**
  * Infinite Disk and any card flagged with `triple_returning_projectile`:
- * spawn three projectile flashes offset along the perpendicular axis so the
- * player can see the three disks fan out, plus a cyan trail/spark polish pass
- * along the disk path so the fan reads richer than three flat flashes.
+ * three spinning cyan photon discs fan out along the perpendicular axis to the
+ * weapon's range, then boomerang home. The outbound throw spawns the three
+ * fanned discs plus a trail/spark polish pass; each server return-pass
+ * (`data.returnPasses`) schedules a short return beat whose trail/burst travels
+ * from the far point back toward the origin so the discs visibly come back.
  */
 function renderTripleReturning(data, ctx) {
 	const origin = originOf(data);
@@ -558,6 +576,10 @@ function renderTripleReturning(data, ctx) {
 	const color = getAccentHex(data.cardId) ?? 0xa5f3fc;
 	const emissive = 0x22d3ee;
 	const style = { color, emissive };
+	// Disc travel distance is driven by the weapon's reach from the payload so
+	// the visual matches the server's actual outbound+return resolution.
+	const range = Number.isFinite(data.attackRange) ? data.attackRange : INFINITE_DISK_RANGE;
+	const farPoint = pointAlong(origin, direction, range);
 	for (const offset of [-0.6, 0, 0.6]) {
 		ctx.spawnAttackEffect(
 			{ x: origin.x + perpX * offset, z: origin.z + perpZ * offset },
@@ -565,18 +587,36 @@ function renderTripleReturning(data, ctx) {
 			style,
 		);
 	}
-	// Spinning-light polish: a cyan streak chasing the lead disk plus a spark
-	// shower out along its path.
+	// Spinning-light polish: a cyan streak chasing the lead disc plus a spark
+	// shower out at the far end of its path.
 	if (ctx.spawnProjectileTrail) {
-		ctx.spawnProjectileTrail(origin, direction, { range: 6, color, emissive });
+		ctx.spawnProjectileTrail(origin, direction, { range, color, emissive });
 	}
 	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(pointAlong(origin, direction, 3.5), {
+		ctx.spawnParticleBurst(farPoint, {
 			color,
 			emissive,
 			count: 10,
 			spread: 1.6,
 		});
+	}
+	// Boomerang return passes: one beat per server return-pass. Each beat sends a
+	// trail/burst back from the far point toward the origin so the discs read as
+	// returning. Beat count follows the payload, never a hardcoded constant.
+	const passes = Math.max(0, data.returnPasses ?? 0);
+	if (passes > 0 && ctx.scheduleAfter) {
+		const returnDir = { x: -direction.x, z: -direction.z };
+		if (Number.isFinite(direction.y)) returnDir.y = -direction.y;
+		for (let i = 0; i < passes; i++) {
+			ctx.scheduleAfter(INFINITE_DISK_RETURN_BEAT_MS * (i + 1), () => {
+				if (ctx.spawnProjectileTrail) {
+					ctx.spawnProjectileTrail(farPoint, returnDir, { range, color, emissive });
+				}
+				if (ctx.spawnParticleBurst) {
+					ctx.spawnParticleBurst(origin, { color, emissive, count: 6, spread: 1.2 });
+				}
+			});
+		}
 	}
 }
 
@@ -594,9 +634,23 @@ const ICE_ACCENT_EMISSIVE = 0x38bdf8;
 const GLACIER_COLOR = 0x38bdf8;
 const GLACIER_EMISSIVE = 0x0ea5e9;
 
+// On-screen lifetime of Cryo Burst's lingering frost field. Mirrors the server's
+// `frost_nova` `freezeDurationMs` in game/shared/cardStats.json (2500ms) so the
+// visual persistence reads as the "things are frozen for ~2.5s" window. The
+// CARD_USED payload does not carry the freeze duration, so it is duplicated here;
+// keep in sync with cardStats.json if that value changes.
+const FROST_NOVA_FREEZE_MS = 2500;
+
 /**
- * Cryo Burst: expanding icy telegraph plus a radial frost particle burst at
- * the cast origin. Replaces the generic accent summon ring.
+ * Cryo Burst: an explosive icy radial burst at the cast origin — an expanding
+ * frost shockwave ring sized to `data.radius`, a dense radial ice-shard burst
+ * (denser/wider than the old one-ring look), and a frozen ground impact decal.
+ * When the payload reports a freeze, a slow-fading frost-field ground sheen also
+ * lingers for the full freeze window so the animation persists alongside the
+ * server's 2.5s freeze. All fire synchronously to match the server's instant
+ * frost_nova resolution (no wind-up, no travel). Deliberately avoids
+ * spawnSummonEffect and any projectile/lance primitive so it stays distinct from
+ * glacier_collapse and permafrost_lance.
  */
 function renderFrostNova(data, ctx) {
 	if (data.radius === undefined) return;
@@ -607,7 +661,21 @@ function renderFrostNova(data, ctx) {
 		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
 	}
 	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.0 });
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 28, spread: 3.4 });
+	}
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(origin, { color, emissive });
+	}
+	// Lingering frost field, gated on the freeze path only: a wider ground sheen
+	// sized to the freeze radius that fades over the full 2.5s freeze window.
+	const frozen = data.frozen === true || data.specialEffect === 'freeze';
+	if (frozen && ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(origin, {
+			color,
+			emissive,
+			radius: data.radius,
+			duration: FROST_NOVA_FREEZE_MS,
+		});
 	}
 }
 
@@ -696,19 +764,23 @@ const DIVINE_GRACE_COLOR = 0xfde68a;
 const DIVINE_GRACE_EMISSIVE = 0xfbbf24;
 
 /**
- * Restoration Beacon: green telegraph ring plus radial heal spark burst at
- * the cast origin. Distinct from Sanctum Pulse's golden sanctum signature.
+ * Restoration Beacon: a vertical emerald beacon pillar of restorative light
+ * rising from the cast origin, plus an expanding ground heal ring and ascending
+ * heal motes (all inside spawnRestorationBeaconEffect). The server resolves the
+ * heal instantly in a single `cardUsed` (no projectile/DoT/wind-up), so every
+ * primitive fires synchronously here — no setTimeout/scheduleAfter. Distinct
+ * from Sanctum Pulse's golden sanctum column signature.
  */
 function renderHealingFont(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
 	const color = getAccentHex(data.cardId) ?? HEALING_FONT_COLOR;
 	const emissive = HEALING_FONT_EMISSIVE;
-	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
-	}
+	ctx.spawnRestorationBeaconEffect?.(origin, data.radius);
+	// Optional emerald accent burst when the beacon effect is wired but the
+	// caller still supplies the shared particle spawner.
 	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.0 });
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 10, spread: 1.6 });
 	}
 	if (data.hpGained > 0 && data.playerId === ctx.myId) ctx.playSound('heal');
 }
@@ -998,12 +1070,21 @@ function renderCreatureSummon(data, ctx) {
 }
 
 /**
- * Undead Commander: bone-white/purple caster ring plus a smaller summon-in
- * flourish and rising ground burst for each spawned skeleton minion.
+ * Undead Commander: rally ring at cast origin, commander summon-in flourish,
+ * and per-skeleton summon-in + ground burst + necrotic tether arcs.
  */
 function renderUndeadCommander(data, ctx) {
+	const commanderOrigin = originOf(data);
 	const commanderStyle = { color: UNDEAD_COMMANDER_COLOR, emissive: UNDEAD_COMMANDER_EMISSIVE };
-	ctx.spawnSummonEffect(originOf(data), 2, commanderStyle);
+	if (ctx.spawnLegionMarshalRallyEffect) {
+		ctx.spawnLegionMarshalRallyEffect(commanderOrigin, 2, commanderStyle);
+	}
+	if (data.minionId && ctx.spawnMinionSummonInEffect) {
+		ctx.spawnMinionSummonInEffect(commanderOrigin, {
+			...commanderStyle,
+			radius: 1.6,
+		});
+	}
 	const skeletonStyle = {
 		color: UNDEAD_COMMANDER_COLOR,
 		emissive: UNDEAD_COMMANDER_EMISSIVE,
@@ -1012,15 +1093,13 @@ function renderUndeadCommander(data, ctx) {
 		burstSpread: 1.4,
 	};
 	for (const spawn of (data.summonedMinions || [])) {
-		const origin = { x: spawn.x, z: spawn.z };
+		const skeletonOrigin = { x: spawn.x, z: spawn.z };
 		if (ctx.spawnMinionSummonInEffect) {
-			ctx.spawnMinionSummonInEffect(origin, skeletonStyle);
-		} else {
-			ctx.spawnSummonEffect(origin, 1.0, commanderStyle);
+			ctx.spawnMinionSummonInEffect(skeletonOrigin, skeletonStyle);
 		}
 		if (ctx.spawnParticleBurst) {
 			ctx.spawnParticleBurst(
-				{ x: origin.x, y: 0.35, z: origin.z },
+				{ x: skeletonOrigin.x, y: 0.35, z: skeletonOrigin.z },
 				{
 					color: UNDEAD_COMMANDER_COLOR,
 					emissive: UNDEAD_COMMANDER_EMISSIVE,
@@ -1029,10 +1108,74 @@ function renderUndeadCommander(data, ctx) {
 				},
 			);
 		}
+		if (ctx.spawnLightningArc) {
+			ctx.spawnLightningArc(commanderOrigin, skeletonOrigin, LEGION_MARSHAL_TETHER_STYLE);
+		}
+	}
+}
+
+/**
+ * Necroframe Knight: an undead bone-knight rising to guard. Reuses the
+ * `undead_commander` bone-white/necrotic-purple palette so the base taunt-wall
+ * reads as the same lineage. The summon-in flourish is driven through
+ * `spawnMinionSummonInEffect` (bound to MINION_SUMMON_IN_MS), wrapped by a
+ * necrotic telegraph ring and a rising bone-shard burst staggered partway
+ * through — but still well within — the materialize window. Fires only on the
+ * initial summon (guarded on `data.minionId`) and degrades to a no-op when the
+ * minion-summon helper is absent; every optional helper is guarded.
+ */
+function renderNecroframeKnightSummon(data, ctx) {
+	if (!data.minionId || !ctx.spawnMinionSummonInEffect) return;
+	const origin = originOf(data);
+	const knightStyle = {
+		color: NECROFRAME_KNIGHT_COLOR,
+		emissive: NECROFRAME_KNIGHT_EMISSIVE,
+		radius: 1.1,
+		burstCount: 14,
+		burstSpread: 1.6,
+	};
+	ctx.spawnMinionSummonInEffect(origin, knightStyle);
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, 1.6, {
+			color: NECROFRAME_KNIGHT_COLOR,
+			emissive: NECROFRAME_KNIGHT_EMISSIVE,
+		});
+	}
+	// Bone shards heave up from the ground partway through the rise — staggered
+	// but capped well under MINION_SUMMON_IN_MS so the burst lands before the
+	// minion mesh finishes materializing.
+	const emitBoneShards = () => {
+		if (!ctx.spawnParticleBurst) return;
+		ctx.spawnParticleBurst({ x: origin.x, y: 0.35, z: origin.z }, {
+			color: NECROFRAME_KNIGHT_COLOR,
+			emissive: NECROFRAME_KNIGHT_EMISSIVE,
+			count: 12,
+			spread: 1.4,
+		});
+	};
+	if (ctx.scheduleAfter) {
+		ctx.scheduleAfter(Math.round(MINION_SUMMON_IN_MS * 0.4), emitBoneShards);
+	} else {
+		emitBoneShards();
 	}
 }
 
 const CHAIN_LIGHTNING_ARC_STYLE = { color: 0x38bdf8, emissive: 0x0ea5e9 };
+const VOLTAIC_CHAIN_COLOR = getAccentHex('chain_lightning') ?? 0x38bdf8;
+const VOLTAIC_CHAIN_EMISSIVE = 0x0ea5e9;
+const VOLTAIC_CHAIN_ARC_STYLE = {
+	color: VOLTAIC_CHAIN_COLOR,
+	emissive: VOLTAIC_CHAIN_EMISSIVE,
+	duration: ATTACK_EFFECT_DURATION,
+};
+const VOLTAIC_CHAIN_HOP_DELAY_MS = 100;
+const THUNDERBIRD_SUMMON_STYLE = { color: 0x38bdf8, emissive: 0x0ea5e9 };
+const THUNDERBIRD_ARC_STYLE = {
+	color: 0x38bdf8,
+	emissive: 0x0ea5e9,
+	duration: ATTACK_EFFECT_DURATION,
+};
+const THUNDERBIRD_CHAIN_HOP_DELAY_MS = 100;
 const STORM_EAGLE_ARC_STYLE = { color: 0x67e8f9, emissive: 0x22d3ee };
 const ARCANE_FAMILIAR_COLOR = 0x818cf8;
 const ARCANE_FAMILIAR_EMISSIVE = 0x6366f1;
@@ -1051,32 +1194,76 @@ function spawnChainSegmentArcs(data, ctx) {
 	return true;
 }
 
+function voltaicChainEndpointBurst(pos, ctx) {
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(pos, {
+			...VOLTAIC_CHAIN_ARC_STYLE,
+			count: 8,
+			spread: 1.0,
+		});
+	} else if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(pos, VOLTAIC_CHAIN_ARC_STYLE);
+	}
+}
+
+function voltaicChainCastFlourish(origin, chainRadius, ctx) {
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, chainRadius, VOLTAIC_CHAIN_ARC_STYLE);
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, {
+			color: VOLTAIC_CHAIN_COLOR,
+			emissive: VOLTAIC_CHAIN_EMISSIVE,
+			count: 10,
+			spread: 1.4,
+		});
+	}
+}
+
 /**
- * Voltaic Chain spell: one cyan arc per server chain segment with cast
- * telegraph and endpoint impacts, or a legacy directional bolt when segments
- * are absent.
+ * Voltaic Chain spell: forked lightning arcs per server chain segment with
+ * cast telegraph, sequenced hop delays, and endpoint bursts snapped to live
+ * enemy meshes; legacy directional bolt when segments are absent.
  */
 function renderChainLightningArcs(data, ctx) {
-	if (spawnChainSegmentArcs(data, ctx)) {
-		const origin = originOf(data);
-		if (ctx.spawnTelegraphRing) {
-			ctx.spawnTelegraphRing(origin, data.chainRadius ?? 2, CHAIN_LIGHTNING_ARC_STYLE);
-		}
-		for (const seg of data.chainSegments) {
-			if (ctx.spawnParticleBurst) {
-				ctx.spawnParticleBurst(seg.to, {
-					...CHAIN_LIGHTNING_ARC_STYLE,
-					count: 8,
-					spread: 1.0,
-				});
-			} else if (ctx.spawnImpactDecal) {
-				ctx.spawnImpactDecal(seg.to, CHAIN_LIGHTNING_ARC_STYLE);
+	const origin = originOf(data);
+	const segments = data.chainSegments;
+	const chainRadius = data.chainRadius ?? 5;
+
+	if (segments?.length) {
+		voltaicChainCastFlourish(origin, chainRadius, ctx);
+		const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+
+		const fireHop = (index) => {
+			const seg = segments[index];
+			if (!seg) return;
+			if (ctx.spawnLightningArc) {
+				ctx.spawnLightningArc(seg.from, seg.to, VOLTAIC_CHAIN_ARC_STYLE);
+			}
+			const hit = data.hits?.[index];
+			let endpoint = seg.to;
+			const mesh = hit ? meshes[hit.enemyId] : null;
+			if (mesh) endpoint = enemyWorldPosition(mesh);
+			voltaicChainEndpointBurst(endpoint, ctx);
+		};
+
+		for (let i = 0; i < segments.length; i++) {
+			if (i === 0) {
+				fireHop(0);
+			} else if (ctx.scheduleAfter) {
+				ctx.scheduleAfter(VOLTAIC_CHAIN_HOP_DELAY_MS * i, () => fireHop(i));
+			} else {
+				fireHop(i);
 			}
 		}
 		return;
 	}
+
 	if (!data.origin) return;
-	ctx.spawnChainLightningEffect(data.origin, directionOf(data));
+	voltaicChainCastFlourish(origin, chainRadius, ctx);
+	if (ctx.spawnChainLightningEffect) {
+		ctx.spawnChainLightningEffect(origin, directionOf(data));
+	}
 }
 
 /**
@@ -1191,9 +1378,8 @@ function renderSoulDrain(data, ctx) {
 }
 
 /**
- * Thunderbird (chain_lightning): zap effect on origin, an enemy-hit cue, and
- * a follow-up attack flash. Triggered by specialEffect rather than cardId so
- * future cards reusing the chain_lightning effect inherit the visual.
+ * Shared chain-lightning zap for legacy specialEffect paths not tied to a
+ * dedicated card renderer. Thunderbird minion strikes use renderThunderbirdStrike.
  */
 function renderChainLightning(data, ctx) {
 	if (!data.origin || !data.hits?.length) return;
@@ -1204,33 +1390,179 @@ function renderChainLightning(data, ctx) {
 	ctx.spawnAttackEffect(data.origin, directionOf(data));
 }
 
+function thunderbirdEndpointBurst(pos, ctx) {
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(pos, {
+			...THUNDERBIRD_ARC_STYLE,
+			count: 8,
+			spread: 1.0,
+		});
+	} else if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(pos, THUNDERBIRD_ARC_STYLE);
+	}
+}
+
+function thunderbirdOriginFlare(origin, ctx) {
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, {
+			...THUNDERBIRD_ARC_STYLE,
+			count: 6,
+			spread: 0.9,
+		});
+	} else if (ctx.spawnAttackEffect) {
+		ctx.spawnAttackEffect(origin, { x: 1, z: 0 });
+	}
+}
+
+function enemyWorldPosition(mesh) {
+	const pos = { x: mesh.position.x, z: mesh.position.z };
+	if (Number.isFinite(mesh.position.y)) pos.y = mesh.position.y;
+	return pos;
+}
+
 /**
- * Stormwing Drone deploy: soft cyan summon flourish (lighter than Thunderbird).
+ * Thunderbird minion chain strike: forked sky-blue arcs per server segment
+ * with sequenced hops, endpoint sparks, and a brief origin flare. Damage
+ * resolves instantly on the server; hop delays are visual-only.
+ */
+function renderThunderbirdStrike(data, ctx) {
+	if (!data.origin || !data.hits?.length) return;
+	const origin = originOf(data);
+	const segments = data.chainSegments;
+	const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+
+	const fireHop = (index) => {
+		const seg = segments[index];
+		if (!seg) return;
+		if (ctx.spawnLightningArc) {
+			ctx.spawnLightningArc(seg.from, seg.to, THUNDERBIRD_ARC_STYLE);
+		}
+		const hit = data.hits[index];
+		let endpoint = seg.to;
+		const mesh = hit ? meshes[hit.enemyId] : null;
+		if (mesh) endpoint = enemyWorldPosition(mesh);
+		thunderbirdEndpointBurst(endpoint, ctx);
+		if (index === 0) thunderbirdOriginFlare(origin, ctx);
+	};
+
+	if (segments?.length) {
+		for (let i = 0; i < segments.length; i++) {
+			if (i === 0) {
+				fireHop(0);
+			} else if (ctx.scheduleAfter) {
+				ctx.scheduleAfter(THUNDERBIRD_CHAIN_HOP_DELAY_MS * i, () => fireHop(i));
+			} else {
+				fireHop(i);
+			}
+		}
+		return;
+	}
+
+	if (ctx.spawnChainLightningEffect) {
+		ctx.spawnChainLightningEffect(origin, directionOf(data));
+	}
+	thunderbirdOriginFlare(origin, ctx);
+	for (const hit of data.hits) {
+		const mesh = meshes[hit.enemyId];
+		if (!mesh) continue;
+		thunderbirdEndpointBurst(enemyWorldPosition(mesh), ctx);
+	}
+}
+
+/**
+ * Stormwing Drone deploy: a tight cyan storm flourish (smaller than Thunderbird)
+ * topped with a wind ripple ring and wing-beat spark burst so the drone reads as
+ * a storm-charged flyer lifting off — distinct from Thunderbird's wider summon.
  */
 function renderStormEagleSummon(data, ctx) {
 	if (!data.minionId || data.hits?.length) return;
 	if (!ctx.spawnMinionSummonInEffect) return;
-	ctx.spawnMinionSummonInEffect(originOf(data), {
+	const origin = originOf(data);
+	ctx.spawnMinionSummonInEffect(origin, {
 		color: 0x93c5fd,
 		emissive: 0x7dd3fc,
+		radius: 0.9,
 		burstCount: 10,
 		burstSpread: 1.2,
 	});
+	// Wing/wind read: an expanding storm ripple plus a low wing-beat spark puff.
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, 1.1, { color: 0x93c5fd, emissive: 0x7dd3fc });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, {
+			color: 0x93c5fd,
+			emissive: 0x7dd3fc,
+			count: 8,
+			spread: 1.6,
+		});
+	}
 }
 
 /**
- * Stormwing Drone ranged strike: single cyan arc to the primary target plus
- * an impact spark burst at the enemy.
+ * Lift the storm bolt's origin to the Stormwing Drone's aerial position. The
+ * minion fires from the air, but the server omits the minion's Y from `origin`,
+ * so resolve the flight height in priority order:
+ *   1. a server-supplied `origin.y` (mirrors how other minion renderers read it),
+ *   2. otherwise derive it from the tilted 3D aim — the drone sits above the
+ *      ground target by |dirY|/|dirXZ| × the horizontal reach to it.
+ * When the aim is level (no finite `direction.y`) or the geometry is degenerate,
+ * keep the current ground-level origin.
+ */
+function stormEagleAerialOrigin(data, direction) {
+	const origin = originOf(data);
+	if (Number.isFinite(origin.y)) return origin;
+	if (!Number.isFinite(direction.y) || direction.y === 0) return origin;
+	const horiz = Math.hypot(direction.x, direction.z);
+	if (horiz <= 0) return origin;
+	const target = data.strikeTarget;
+	if (!target) return origin;
+	const reach = Math.hypot(target.x - origin.x, target.z - origin.z);
+	origin.y = Math.abs(direction.y) * (reach / horiz);
+	return origin;
+}
+
+/**
+ * Fallback strike point along the tilted 3D aim (only used when the server
+ * sends no `strikeTarget`). Mirrors `renderWyrmAttack`'s burst-Y handling so the
+ * bolt terminus follows the downward storm-bolt slant rather than staying flat.
+ */
+function stormEagleStrikePoint(origin, direction, distance) {
+	const point = pointAlong(origin, direction, distance);
+	if (Number.isFinite(direction.y) && direction.y !== 0) {
+		const len = Math.hypot(direction.x, direction.z, direction.y) || 1;
+		const baseY = Number.isFinite(origin.y) ? origin.y : 0;
+		point.y = baseY + (direction.y / len) * distance;
+	}
+	return point;
+}
+
+/** Strike target from the server `strikeTarget`, preserving an optional Y. */
+function strikeTargetPoint(strikeTarget) {
+	const point = { x: strikeTarget.x, z: strikeTarget.z };
+	if (Number.isFinite(strikeTarget.y)) point.y = strikeTarget.y;
+	return point;
+}
+
+/**
+ * Stormwing Drone ranged strike: one jagged cyan storm bolt fired from the
+ * drone's aerial position down onto the resolved hit, plus a single impact spark
+ * burst at the strike target. Fires once per server strike event (origin +
+ * direction + non-empty hits); summon events (minionId + empty hits) are ignored
+ * by the guard, so they emit no arc or burst.
  */
 function renderStormEagleStrike(data, ctx) {
-	if (!data.origin || !data.hits?.length) return;
+	if (!(data.origin && data.hits?.length)) return;
+	const direction = directionOf(data);
+	const origin = stormEagleAerialOrigin(data, direction);
 	const target = data.strikeTarget
-		|| pointAlong(originOf(data), directionOf(data), data.attackRange || 7);
-	ctx.spawnLightningArc(originOf(data), target, STORM_EAGLE_ARC_STYLE);
+		? strikeTargetPoint(data.strikeTarget)
+		: stormEagleStrikePoint(origin, direction, data.attackRange || 7);
+	ctx.spawnLightningArc(origin, target, STORM_EAGLE_ARC_STYLE);
 	if (ctx.spawnParticleBurst) {
 		ctx.spawnParticleBurst(target, {
-			color: 0x67e8f9,
-			emissive: 0x22d3ee,
+			color: STORM_EAGLE_ARC_STYLE.color,
+			emissive: STORM_EAGLE_ARC_STYLE.emissive,
 			count: 8,
 			spread: 0.85,
 		});
@@ -1238,18 +1570,38 @@ function renderStormEagleStrike(data, ctx) {
 }
 
 /**
- * Thunderbird deploy: vivid sky-blue summon ring distinct from Stormwing Drone.
+ * Thunderbird deploy: vivid sky-blue storm-bird flourish — larger/brighter than
+ * Stormwing Drone with an aerial wing-lift burst and sky pulse on top of the
+ * shared minion summon-in ring.
  */
 function renderThunderbirdSummon(data, ctx) {
 	if (!data.minionId || data.hits?.length) return;
-	if (!ctx.spawnMinionSummonInEffect) return;
-	ctx.spawnMinionSummonInEffect(originOf(data), {
-		color: 0x38bdf8,
-		emissive: 0x0ea5e9,
-		radius: 1.2,
-		burstCount: 14,
-		burstSpread: 1.8,
-	});
+	const origin = originOf(data);
+	if (ctx.spawnMinionSummonInEffect) {
+		ctx.spawnMinionSummonInEffect(origin, {
+			...THUNDERBIRD_SUMMON_STYLE,
+			radius: 1.2,
+			burstCount: 14,
+			burstSpread: 1.8,
+		});
+	}
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, 1.35, {
+			...THUNDERBIRD_SUMMON_STYLE,
+			duration: MINION_SUMMON_IN_MS,
+		});
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(
+			{ x: origin.x, y: 3.5, z: origin.z },
+			{
+				...THUNDERBIRD_SUMMON_STYLE,
+				count: 16,
+				spread: 2.2,
+				duration: MINION_SUMMON_IN_MS,
+			},
+		);
+	}
 }
 
 const WYRM_SUMMON_STYLES = {
@@ -1418,29 +1770,59 @@ function renderIceBall(data, ctx) {
 	if (!data.origin) return;
 	const origin = originOf(data);
 	const direction = directionOf(data);
+	const travelMs = data.projectileTravelMs ?? 1200;
 	const color = getAccentHex(data.cardId) ?? ICE_ACCENT_COLOR;
 	const emissive = ICE_ACCENT_EMISSIVE;
+	const impact = pointAlong(origin, direction, data.attackRange ?? 8);
+
+	// Brief frost channel at cast (instant spell — no wind-up telegraph).
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, 0.45, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 8, spread: 1.0 });
+	}
+
 	ctx.spawnAttackEffect(origin, direction, {
 		effect: 'ice_ball',
 		range: data.attackRange,
-		projectileTravelMs: data.projectileTravelMs,
+		projectileTravelMs: travelMs,
 		color,
 		emissive,
 	});
 	if (ctx.spawnProjectileTrail) {
 		ctx.spawnProjectileTrail(origin, direction, {
 			range: data.attackRange,
+			travelMs,
 			color,
 			emissive,
 		});
 	}
-	// Freeze-crystal burst + frost scorch where the projectile lands.
-	const impact = pointAlong(origin, direction, data.attackRange ?? 8);
-	if (ctx.spawnImpactDecal) {
-		ctx.spawnImpactDecal(impact, { color, emissive });
-	}
-	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(impact, { color, emissive, count: 14, spread: 1.8 });
+
+	const terminalImpact = () => {
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(impact, { color, emissive });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(impact, { color, emissive, count: 14, spread: 1.8 });
+		}
+	};
+	ctx.scheduleAfter(travelMs, terminalImpact);
+
+	// Per-enemy frost bursts align with instant server damage + applySlow.
+	if (data.hits?.length) {
+		const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(pos, { color, emissive, count: 5, spread: 0.55 });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pos, { color, emissive, count: 6, spread: 0.7 });
+			}
+		}
 	}
 }
 
@@ -1895,9 +2277,10 @@ const CARD_RENDERERS = {
 	chrono_trigger: renderChronoTrigger,
 
 	// Creatures
+	skeleton_knight: renderNecroframeKnightSummon,
 	undead_commander: renderUndeadCommander,
 	storm_eagle: [renderStormEagleSummon, renderStormEagleStrike],
-	thunderbird: [renderThunderbirdSummon, renderChainLightning],
+	thunderbird: [renderThunderbirdSummon, renderThunderbirdStrike],
 	dungeon_drake: [renderWyrmSummon, renderWyrmAttack],
 	ancient_wyrm: [renderWyrmSummon, renderWyrmAttack],
 	null_crawler: [renderNullCrawlerSummon, renderPhaseBeam],
