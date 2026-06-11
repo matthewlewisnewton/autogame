@@ -8295,6 +8295,52 @@ comments still reference the removed `isLightColumn`/`isThermalColumn`/etc.
 None. All acceptance criteria are satisfied; runtime capture and tests confirm the fix.
 
 
+## v0.449 — lobby registry: abandoned lobbies are never cleaned up; ghost 'In run - 0 player(s)' entries accumulate  (2026-06-11 06:38:02)
+
+- `simulation.js cleanupStalePlayers()` now routes stale removal through
+  `lobbies.removePlayerFromLobby` (cleaning lobby mapping, minions, trades and
+  deleting emptied lobbies), with a bare-`delete` fallback for legacy/test
+  gameState. All 170 integration tests still pass.
+- Reconnection is unaffected by list-hiding: the reconnect path
+  (`lobbyHandlers.js:90`) resolves the lobby via the `playerLobby` mapping, not
+  the advertised summaries, and the player record survives (connected=false)
+  until the TTL elapses.
+- Map deletion during `for...of` iteration in the reaper is safe (only the
+  current/visited entry is removed).
+- Consistent with `design.md`; no foundation regressions.
+
+## Tests
+`vitest run` over `reap_abandoned_lobbies.test.js`, `lobbies.test.js`,
+`integration.test.js`: **189 passed (3 files)**.
+
+## Remaining gaps
+None blocking. (Minor nit — redundant `cancelTradesForPlayer` in the reaper that
+`removePlayerFromLobby` already performs — recorded in `nits.md`.)
+
+
+## v0.450 — objectives: stage_boss objective counter increments on regular enemy kills  (2026-06-11 06:46:27)
+
+The six tier-2 stage_boss suites updated their `recordEnemyDefeated` assertions to
+verify the counter is no longer inflated — matching the corrected behavior.
+
+## Consistency / regressions
+- Design (`game/docs/design.md`) and foundation requirements are not regressed; the
+  boss-defeat completion path (`onBossDefeated` / `isEncounterCleared` → victory) is
+  intact and exercised by the existing "completes the run with victory" test.
+- Boss is not double-counted: when it dies while active it contributes a single +1
+  via `countStageBossObjectiveKills` and `onStageBossDefeated` sets `bossDefeated`.
+- No debug scenario (`?debugScenario=`) was added or changed by this ticket.
+- Full suite green: **server 2651/2651, client 1353/1353** at HEAD.
+
+## Code quality
+Clean, well-scoped helper with a single source of truth for stage_boss kill counting,
+reused across `removeDeadEnemies` and `tryActivateEncounter`. No dead code, no console
+errors.
+
+## Remaining gaps
+None blocking.
+
+
 ## v0.451 — identity: lobby player list and trade UI show raw account UUIDs instead of player names  (2026-06-11 06:49:07)
 
 - **Trade target dropdown** — `renderTradeForm` (`main.js:2861-2865`) renders `player.username || player.id`, sourced either from the passed lobby player list (now carrying username) or from `gameState.players` (`...username: p.username || id`). The prior bug was that the source data lacked username; the server fix now propagates it. PASS.

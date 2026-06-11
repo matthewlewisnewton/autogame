@@ -35,6 +35,7 @@ import {
 	validateDeck,
 	wallAABB,
 	evictDisconnectedPlayers,
+	reapAbandonedLobbies,
 	DISCONNECT_GRACE_MS,
 	runGameLoopTick,
 	getCardDef,
@@ -44,7 +45,7 @@ import {
 import { hubSpawnPosition } from '../simulation.js';
 import { InMemoryProvider } from '../providers.js';
 import { getQuest } from '../quests.js';
-import { COOLDOWN_MS, MOVE_SPEED, MAX_HP, MAX_HAND_SLOTS, MAX_MAGIC_STONES, STARTING_MAGIC_STONES, MEDIC_HEAL_COST, TICK_RATE, MAGIC_STONES_REGEN_PER_TICK, LOBBY_REVIVE_HP } from '../config.js';
+import { COOLDOWN_MS, MOVE_SPEED, MAX_HP, MAX_HAND_SLOTS, MAX_MAGIC_STONES, STARTING_MAGIC_STONES, MEDIC_HEAL_COST, TICK_RATE, MAGIC_STONES_REGEN_PER_TICK, LOBBY_REVIVE_HP, EMPTY_LOBBY_TTL_MS } from '../config.js';
 
 // ── Helpers ──
 
@@ -565,6 +566,35 @@ describe('Socket Integration — Lobby create/join', () => {
 		p1.socket.disconnect();
 		p2.socket.disconnect();
 		p3.socket.disconnect();
+	});
+
+	it('joining a reaped / unknown lobby id emits a single clean lobbyError', async () => {
+		// Create a lobby, then reap it so its id is no longer in the registry.
+		const host = await connectAndJoinLobby(baseUrl, 'reap-host', { name: 'Doomed Room' });
+		const reapedId = host.init.lobbyId;
+		host.socket.disconnect();
+		await sleep(50);
+
+		const { _lobbies } = require('../lobbies.js');
+		const lobby = _lobbies.get(reapedId);
+		if (lobby) {
+			// Force the empty lobby past its TTL and reap it directly.
+			lobby.emptySince = Date.now() - EMPTY_LOBBY_TTL_MS - 1;
+			reapAbandonedLobbies();
+		}
+		expect(_lobbies.has(reapedId)).toBe(false);
+
+		const browser = await connectClient(baseUrl, 'reap-browser', { skipLobby: true });
+		const errors = [];
+		browser.socket.on('lobbyError', (e) => errors.push(e));
+		const errorPromise = waitForEvent(browser.socket, 'lobbyError');
+		browser.socket.emit('joinLobby', { lobbyId: reapedId });
+		const err = await errorPromise;
+		expect(err).toEqual({ reason: 'Lobby not found' });
+		await sleep(50);
+		expect(errors).toHaveLength(1);
+
+		browser.socket.disconnect();
 	});
 });
 

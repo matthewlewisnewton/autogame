@@ -127,6 +127,29 @@ function areAllNonBossEnemiesDefeated(gameState, bossId) {
   return !gameState.enemies.some((e) => e.id !== bossId && e.hp > 0);
 }
 
+/**
+ * How many dying enemies count toward `stage_boss` defeatedEnemies: the encounter
+ * boss (only while active) and adds tagged `encounterHostile`, excluding scripted
+ * waves and other non-encounter spawns.
+ */
+function countStageBossObjectiveKills(dyingEnemies, run) {
+  if (!run || run.objective?.type !== 'stage_boss' || !Array.isArray(dyingEnemies)) {
+    return 0;
+  }
+  const bossId = getEncounterBossId(run);
+  const encounterActive = run.encounter?.phase === ENCOUNTER_PHASES.ACTIVE;
+  let count = 0;
+  for (const enemy of dyingEnemies) {
+    if (enemy.scriptedWave) continue;
+    if (enemy.id === bossId) {
+      if (encounterActive) count += 1;
+      continue;
+    }
+    if (enemy.encounterHostile) count += 1;
+  }
+  return count;
+}
+
 function isPlayerNearEncounterAnchor(gameState, anchor, radius) {
   if (!anchor) return false;
   for (const player of Object.values(gameState.players || {})) {
@@ -206,12 +229,16 @@ function tryActivateEncounter(gameState) {
   if (anchor && !run.encounter.spawnAnchor) {
     run.encounter.spawnAnchor = { x: anchor.x, z: anchor.z };
   }
-  const deadAddCount = gameState.enemies.filter(
+  const deadAdds = gameState.enemies.filter(
     (e) => e.id !== bossId && e.hp <= 0,
-  ).length;
+  );
+  const deadAddCount = countStageBossObjectiveKills(deadAdds, run);
   if (deadAddCount > 0) {
-    const { recordEnemyDefeated } = require('./progression');
-    recordEnemyDefeated(deadAddCount);
+    const { getObjectiveDef } = require('./objectives');
+    const def = getObjectiveDef('stage_boss');
+    if (def?.onEnemyDefeated) {
+      def.onEnemyDefeated(run, deadAddCount);
+    }
   }
   clearNonBossEnemies(gameState, bossId);
   for (const hook of encounterActivationHooks) {
@@ -245,6 +272,7 @@ module.exports = {
   ensureEncounterSpawnAnchor,
   resolveEncounterAnchor,
   areAllNonBossEnemiesDefeated,
+  countStageBossObjectiveKills,
   clearNonBossEnemies,
   tryActivateEncounter,
   onStageBossDefeated,

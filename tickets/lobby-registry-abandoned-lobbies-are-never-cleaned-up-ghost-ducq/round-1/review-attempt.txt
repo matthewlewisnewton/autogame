@@ -1,0 +1,14 @@
+**VERDICT: PASS**
+
+The ticket is complete and robust. Summary:
+
+**Runtime health** — `metrics.json` shows `ok: true`, empty `pageerrors`, no `harness_failure`; `console.log` is free of page/fatal errors. The captured smoke flow ran cleanly through gameplay.
+
+**All three AC clauses met:**
+1. **Bounded-TTL reaping** — new `reapAbandonedLobbies()` interval deletes orphan lobbies immediately and zero-connected lobbies after a 60s `EMPTY_LOBBY_TTL_MS`, with `emptySince` stamping/clearing that preserves the reconnection window.
+2. **No "In run · 0 player(s)"** — `connectedPlayerCount()` drives both `playerCount` and a `listLobbySummaries()` filter that hides zero-connected lobbies (including `playing` ones) immediately on disconnect via re-broadcast.
+3. **Clean join error** — joining a reaped id emits a single `LOBBY_ERROR: 'Lobby not found'`.
+
+**No regressions** — reconnection still works (resolves via `playerLobby` mapping, not the list); the stale-cleanup path now routes through the registry with a legacy fallback. **189 server tests pass.**
+
+One non-blocking nit (redundant `cancelTradesForPlayer` in the reaper) recorded in `nits.md`. No `gaps.md` written since the verdict is PASS.

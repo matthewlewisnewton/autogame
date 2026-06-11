@@ -58,6 +58,7 @@ const {
   PROJECTILE_HIT_WIDTH,
   STALE_THRESHOLD,
   DISCONNECT_GRACE_MS,
+  EMPTY_LOBBY_TTL_MS,
   BOUNDS_MARGIN,
   COOLDOWN_MS,
   SPAWN_PADDING,
@@ -474,6 +475,7 @@ function restartBackgroundTimers() {
   _intervals.push(setInterval(safeIntervalTick('gameLoop', runGameLoopTick), 1000 / TICK_RATE));
   _intervals.push(setInterval(safeIntervalTick('staleCleanup', cleanupStalePlayersInAllLobbies), STALE_CLEANUP_INTERVAL_MS));
   _intervals.push(setInterval(safeIntervalTick('evictDisconnected', evictDisconnectedPlayers), STALE_CLEANUP_INTERVAL_MS));
+  _intervals.push(setInterval(safeIntervalTick('reapAbandonedLobbies', reapAbandonedLobbies), STALE_CLEANUP_INTERVAL_MS));
   _intervals.push(setInterval(safeIntervalTick('periodicSave', saveAllPlayersInAllLobbies), PERIODIC_SAVE_INTERVAL_MS));
 }
 
@@ -1535,6 +1537,57 @@ function evictDisconnectedPlayers() {
   }
 }
 
+/**
+ * Reap abandoned lobbies from the registry:
+ *  - A lobby with zero player records (orphaned, e.g. by stale-player cleanup)
+ *    is deleted immediately.
+ *  - A lobby with player records but zero connected players is stamped with
+ *    `emptySince` the first time it is seen empty; once it has been empty for at
+ *    least EMPTY_LOBBY_TTL_MS its remaining (disconnected) records are evicted
+ *    through the registry and the lobby is deleted.
+ *  - A lobby with at least one connected player has its `emptySince` cleared, so
+ *    reconnection within the window keeps the lobby alive.
+ */
+function reapAbandonedLobbies() {
+  const now = Date.now();
+  let reapedAny = false;
+
+  for (const [lobbyId, lobby] of lobbies._lobbies) {
+    if (Object.keys(lobby.state.players).length === 0) {
+      lobbies._lobbies.delete(lobbyId);
+      reapedAny = true;
+      continue;
+    }
+
+    if (lobbies.connectedPlayerCount(lobby) > 0) {
+      delete lobby.emptySince;
+      continue;
+    }
+
+    if (!lobby.emptySince) {
+      lobby.emptySince = now;
+      continue;
+    }
+
+    if (now - lobby.emptySince >= EMPTY_LOBBY_TTL_MS) {
+      for (const playerId of Object.keys(lobby.state.players)) {
+        withLobbyContext(lobby, () => {
+          savePlayerData(playerId);
+          cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
+        });
+        lobbies.removePlayerFromLobby(playerId);
+      }
+      // removePlayerFromLobby deletes the lobby once empty; ensure it is gone.
+      lobbies._lobbies.delete(lobbyId);
+      reapedAny = true;
+    }
+  }
+
+  if (reapedAny) {
+    broadcastLobbyList();
+  }
+}
+
 function leaveLobbyForSocket(socket) {
   const lobby = getLobbyForSocket(socket);
   if (!lobby) return null;
@@ -1980,6 +2033,7 @@ if (typeof module !== 'undefined' && module.exports) {
     runGameLoopTick,
     cleanupStalePlayers,
     evictDisconnectedPlayers,
+    reapAbandonedLobbies,
     reconnectPlayerToLobby,
     regenMagicStones,
     stateSnapshot,
