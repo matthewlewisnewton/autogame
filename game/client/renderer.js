@@ -4328,6 +4328,66 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 		return;
 	}
 
+	if (effect === 'arcane_bolt') {
+		// Violet arcane energy lance — elongated bolt core + trailing glow, visually
+		// distinct from generic `projectile` spheres and ground cone wedges.
+		const boltColor = style.color ?? 0xa78bfa;
+		const boltEmissive = style.emissive ?? 0x7c3aed;
+		const dir = direction || { x: 1, z: 0 };
+		const len = Math.hypot(dir.x, dir.z) || 1;
+		const nx = dir.x / len;
+		const nz = dir.z / len;
+		const heading = Math.atan2(nx, nz);
+		const group = new THREE.Group();
+
+		const coreMat = new THREE.MeshStandardMaterial({
+			color: boltColor,
+			emissive: boltEmissive,
+			emissiveIntensity: 1.8,
+			roughness: 0.28,
+			metalness: 0.12,
+			transparent: true,
+			opacity: 0.95,
+		});
+		const coreMesh = new THREE.Mesh(new THREE.ConeGeometry(0.08, 1.45, 8), coreMat);
+		coreMesh.position.y = 1.0;
+		coreMesh.rotation.x = Math.PI / 2;
+		coreMesh.rotation.y = heading;
+		group.add(coreMesh);
+
+		const glowMat = new THREE.MeshStandardMaterial({
+			color: boltColor,
+			emissive: boltEmissive,
+			emissiveIntensity: 1.15,
+			roughness: 0.45,
+			metalness: 0.0,
+			transparent: true,
+			opacity: 0.42,
+			depthWrite: false,
+		});
+		const glowMesh = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.85, 8), glowMat);
+		glowMesh.position.set(-nx * 0.32, 1.0, -nz * 0.32);
+		glowMesh.rotation.x = Math.PI / 2;
+		glowMesh.rotation.y = heading;
+		group.add(glowMesh);
+
+		group.position.set(origin.x, 0, origin.z);
+		targetScene.add(group);
+
+		activeEffects.push({
+			mesh: group,
+			coreMesh,
+			glowMesh,
+			origin: { x: origin.x, z: origin.z },
+			direction: { x: nx, z: nz },
+			range,
+			createdAt: performance.now(),
+			duration: style.projectileTravelMs ?? ATTACK_EFFECT_DURATION,
+			isArcaneBoltProjectile: true,
+		});
+		return;
+	}
+
 	if (effect === 'permafrost_lance') {
 		// Elongated crystalline ice spear — travels like `fireball` / `ice_ball` but
 		// reads as a forward-thrusting lance rather than a sphere or ground cone.
@@ -6673,6 +6733,40 @@ export function updateAttackEffects() {
 				fx.haloMesh.scale.setScalar(haloPulse);
 				fx.haloMesh.material.emissiveIntensity = 1.3 * flicker;
 				fx.haloMesh.material.opacity = Math.max(0.2, 0.48 + 0.14 * Math.sin(elapsed / 35));
+			}
+
+			const lifeRatio = 1.0 - t;
+			if (fx.coreMesh?.material) {
+				fx.coreMesh.material.opacity = Math.max(0.01, 0.95 * lifeRatio);
+			}
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Arcane bolt projectile (elongated violet lance + trailing glow) ──
+		if (fx.isArcaneBoltProjectile) {
+			const travelRange = fx.range ?? ATTACK_RANGE;
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const travel = travelRange * t;
+			fx.mesh.position.x = fx.origin.x + fx.direction.x * travel;
+			fx.mesh.position.z = fx.origin.z + fx.direction.z * travel;
+
+			const pulse = 0.92 + 0.12 * Math.sin(elapsed / 38);
+			const lengthPulse = 0.95 + 0.08 * Math.sin(elapsed / 52);
+			const flicker = 1.0 + 0.32 * Math.sin(elapsed / 24 + 0.5);
+			if (fx.coreMesh) {
+				fx.coreMesh.scale.set(pulse, pulse * lengthPulse, pulse);
+				fx.coreMesh.material.emissiveIntensity = 1.7 * flicker;
+			}
+			if (fx.glowMesh) {
+				const glowPulse = 1.0 + 0.18 * Math.sin(elapsed / 48 + 1.1);
+				fx.glowMesh.scale.setScalar(glowPulse);
+				fx.glowMesh.material.emissiveIntensity = 1.1 * flicker;
+				fx.glowMesh.material.opacity = Math.max(0.15, 0.42 + 0.12 * Math.sin(elapsed / 30));
 			}
 
 			const lifeRatio = 1.0 - t;
