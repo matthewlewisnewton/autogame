@@ -7617,3 +7617,26 @@ foundation.
 None. The captured run is clean, all acceptance criteria are robustly met, and
 the client tests pass.
 
+
+## v0.422 — 338-anim-saber-of-light  (2026-06-10 23:23:33)
+
+### Timing and server-effect sync
+
+PASS. Server card data defines `saber_of_light` as a `swift_slash` weapon with `cooldownMs: 400`, `attackRange: 5`, `aoeGrindScale: 0.03`, and no `windUpMs`. The server emits the grind-scaled `attackRange` in the `CARD_USED` payload, and the client renderer uses `data.attackRange` for both cone reach and flash/spark placement, falling back only when the field is absent. The single-swing path fires synchronously with card use, and only additional swings are staggered with the established multi-swing delay idiom.
+
+### Test coverage and regression risk
+
+PASS. `game/client/test/cardRenderers.test.js` adds focused coverage for dedicated renderer resolution, light-themed primitives, reach scaling from small vs large `attackRange`, immediate `swift_slash` timing, and graceful degradation when optional light primitives are missing. The captured `coverage.log` shows the full visible vitest run passed: 50 files, 707 tests.
+
+### Design and requirements consistency
+
+PASS. The change is scoped to client card VFX and tests, preserving the existing 3D scene, websocket play flow, multiplayer visualization, and movement synchronization foundation. It fits the design's card-based combat model and does not alter server combat rules, persistence, lobby flow, or economy.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=` entry point. Existing saber-related scenarios remain URL-driven/local QA shortcuts, and their comments describe normally reachable equivalent states through owning/grinding reward weapons and deploying normally.
+
+## Remaining gaps
+
+None.
+
