@@ -2805,7 +2805,7 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnLightningArc')).toBe(false);
 	});
 
-	it('storm_eagle attack renders a cyan arc and impact burst', () => {
+	it('storm_eagle attack renders a single cyan storm bolt to strikeTarget with one impact burst', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'storm_eagle',
@@ -2815,11 +2815,75 @@ describe('renderCardUsed() — creature dispatch', () => {
 			strikeTarget: { x: 6, z: 0 },
 			hits: [{ enemyId: 'e1', hp: 27 }],
 		}, ctx);
+		// Exactly one arc, in the storm palette, terminating at the server hit point.
 		const arcs = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
 		expect(arcs).toHaveLength(1);
-		expect(arcs[0][1]).toEqual({ x: 0, z: 0 });
 		expect(arcs[0][2]).toEqual({ x: 6, z: 0 });
-		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(true);
+		expect(arcs[0][3]).toMatchObject({ color: 0x67e8f9, emissive: 0x22d3ee });
+		// Exactly one impact burst, in the storm palette, at the strike target.
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		expect(bursts).toHaveLength(1);
+		expect(bursts[0][1]).toEqual({ x: 6, z: 0 });
+		expect(bursts[0][2]).toMatchObject({ color: 0x67e8f9, emissive: 0x22d3ee });
+	});
+
+	it('storm_eagle attack fires the bolt from the drone aerial position using the 3D tilted direction', () => {
+		const ctx = makeCtx();
+		// Drone above and beside the target: direction tilts downward (negative Y).
+		renderCardUsed({
+			cardId: 'storm_eagle',
+			minionId: 'eagle-1',
+			origin: { x: 0, z: 0 },
+			direction: { x: 0.6, y: -0.8, z: 0 },
+			strikeTarget: { x: 6, z: 0 },
+			hits: [{ enemyId: 'e1', hp: 27 }],
+		}, ctx);
+		const arc = ctx._calls.find((c) => c[0] === 'spawnLightningArc');
+		const from = arc[1];
+		// Origin is lifted to an aerial height derived from the downward tilt
+		// (|dirY|/|dirXZ| × horizontal reach = 0.8/0.6 × 6 = 8).
+		expect(from.x).toBe(0);
+		expect(from.z).toBe(0);
+		expect(from.y).toBeCloseTo(8, 5);
+		// Impact still lands on the ground-level server target.
+		expect(arc[2]).toEqual({ x: 6, z: 0 });
+	});
+
+	it('storm_eagle attack without strikeTarget falls back along the 3D direction by attackRange', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'storm_eagle',
+			minionId: 'eagle-1',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, y: -0.5, z: 0 },
+			attackRange: 7,
+			hits: [{ enemyId: 'e1', hp: 27 }],
+		}, ctx);
+		const arc = ctx._calls.find((c) => c[0] === 'spawnLightningArc');
+		expect(arc).toBeDefined();
+		const to = arc[2];
+		// Horizontal component normalized over XZ length (=1): reach 7 along +X.
+		expect(to.x).toBeCloseTo(7, 5);
+		expect(to.z).toBe(0);
+		// Tilt carried through: y = (dirY / |dir3D|) × distance, |dir3D| = √1.25.
+		const len3D = Math.hypot(1, 0.5);
+		expect(to.y).toBeCloseTo((-0.5 / len3D) * 7, 5);
+	});
+
+	it('storm_eagle summon-only event produces no strike arc', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'storm_eagle',
+			minionId: 'eagle-1',
+			origin: { x: 2, z: 3 },
+			hits: [],
+		}, ctx);
+		// The strike renderer is gated behind non-empty hits, so a deploy event
+		// (empty hits) emits no storm bolt; the only burst is the deploy puff.
+		const arcs = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
+		expect(arcs).toHaveLength(0);
+		const summonBursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		expect(summonBursts.every((c) => c[1].x === 2 && c[1].z === 3)).toBe(true);
 	});
 
 	it('thunderbird summon renders a sky-blue flourish distinct from storm_eagle', () => {
