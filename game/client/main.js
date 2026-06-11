@@ -204,6 +204,8 @@ import eventsCatalog from '../shared/events.json' with { type: 'json' };
 import { sampleFloorSurface } from '../shared/floorSampling.esm.js';
 import { createSocketHandlerCtx } from './socketHandlers/socketHandlerCtx.js';
 import { bindConnectionHandlers } from './socketHandlers/connectionHandlers.js';
+import { bindInitHandlers } from './socketHandlers/initHandlers.js';
+import { bindLobbyBrowserHandlers } from './socketHandlers/lobbyBrowserHandlers.js';
 
 const { serverToClient: SERVER_TO_CLIENT, clientToServer: CLIENT_TO_SERVER } = eventsCatalog;
 
@@ -1237,6 +1239,16 @@ const socketHandlerCtx = createSocketHandlerCtx({
 		set connectionState(v) { connectionState = v; },
 		get latency() { return latency; },
 		set latency(v) { latency = v; },
+		get mySelectedDeck() { return mySelectedDeck; },
+		set mySelectedDeck(v) { mySelectedDeck = v; },
+		get myInventory() { return myInventory; },
+		set myInventory(v) { myInventory = v; },
+		get myOwnedCards() { return myOwnedCards; },
+		set myOwnedCards(v) { myOwnedCards = v; },
+		get keyItemDefs() { return keyItemDefs; },
+		set keyItemDefs(v) { keyItemDefs = v; },
+		get enemyDisplayCatalog() { return enemyDisplayCatalog; },
+		set enemyDisplayCatalog(v) { enemyDisplayCatalog = v; },
 	},
 	clearConnectWatchdog,
 	startConnectWatchdog,
@@ -1255,9 +1267,22 @@ const socketHandlerCtx = createSocketHandlerCtx({
 	lobbyEl,
 	setLobbyHudVisible,
 	lobbyBrowserEl,
+	lobbyBrowserStatusEl,
 	runSummaryOverlay,
 	showAuthOverlay,
 	showLoginForm,
+	rendererSetMyId,
+	renderDeckEditor,
+	setLoggedInStatus,
+	showAppToolbar,
+	showLobbyBrowser,
+	renderLobbyList,
+	applyLobbyJoinedData,
+	getBoothDebugHook,
+	launchBoothReadyUp,
+	setGameStateRef,
+	STORAGE_KEY_PLAYER_ID,
+	LAUNCH_BOOTH_ID,
 });
 
 /** Bind all Socket.IO event listeners to the given socket instance. */
@@ -1265,70 +1290,8 @@ function bindSocketHandlers(s) {
 	if (!s) return;
 
 	bindConnectionHandlers(s, socketHandlerCtx);
-
-	s.on(SERVER_TO_CLIENT.INIT, (data) => {
-		myId = data.id;
-		rendererSetMyId(data.id);
-		if (data.playerId) {
-			try { localStorage.setItem(STORAGE_KEY_PLAYER_ID, data.playerId); } catch (_) {}
-		}
-
-		mySelectedDeck = data.selectedDeck || [];
-		myInventory = Array.isArray(data.inventory) ? data.inventory : null;
-		myOwnedCards = data.ownedCards || {};
-		keyItemDefs = data.keyItemDefs || {};
-		enemyDisplayCatalog = data.enemyDisplayCatalog || null;
-		renderDeckEditor();
-
-		if (data.accountId) {
-			const username = data.username || data.accountId;
-			setLoggedInStatus(username);
-			showAppToolbar();
-		}
-
-		// Reconnect path: lobbyJoined already restored lobby/run UI.
-		if (data.inLobby) return;
-
-		showLobbyBrowser();
-		renderLobbyList(data.lobbies || []);
-		showLobbyBrowserError('');
-		if (lobbyBrowserStatusEl) {
-			lobbyBrowserStatusEl.textContent = 'Choose a lobby or create your own.';
-		}
-	});
-
-	s.on(SERVER_TO_CLIENT.LOBBY_JOINED, (data) => {
-		showLobbyBrowserError('');
-		applyLobbyJoinedData(data);
-		// Debug hook: ?booth=launch readies up automatically on a lobby join so a
-		// run can be launched without walking to the Launch Bay booth. Guarded to
-		// the lobby phase so it never fires when dropping into an in-progress run.
-		const inLobbyPhase = data && data.state && data.state.gamePhase === 'lobby';
-		if (inLobbyPhase && getBoothDebugHook(window.location.search) === LAUNCH_BOOTH_ID) {
-			launchBoothReadyUp();
-		}
-	});
-
-	s.on(SERVER_TO_CLIENT.LOBBY_LEFT, (data) => {
-		gameState = null;
-		setGameStateRef(null);
-		showLobbyBrowser();
-		renderLobbyList((data && data.lobbies) || []);
-		if (lobbyBrowserStatusEl) {
-			lobbyBrowserStatusEl.textContent = 'Left lobby. Pick another or create one.';
-		}
-	});
-
-	s.on(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, (data) => {
-		if (lobbyBrowserEl && !lobbyBrowserEl.classList.contains('hidden')) {
-			renderLobbyList((data && data.lobbies) || []);
-		}
-	});
-
-	s.on(SERVER_TO_CLIENT.LOBBY_ERROR, (data) => {
-		const reason = data && data.reason ? data.reason : 'Lobby action failed';
-		showLobbyBrowserError(reason);
-	});
+	bindInitHandlers(s, socketHandlerCtx);
+	bindLobbyBrowserHandlers(s, socketHandlerCtx);
 
 	s.on(SERVER_TO_CLIENT.STATE_UPDATE, (state) => {
 		const previousPhase = gameState && gameState.gamePhase;
