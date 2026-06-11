@@ -31,6 +31,7 @@
 //   spawnLightningArc(from, to, style?)
 //   spawnParticleBurst(position, style?)       — multi-particle spark/ember burst
 //   spawnProjectileTrail(origin, direction, style?) — fading streak along a path
+//   spawnSolarEdgeImpactFlourish(origin, direction, style?) — solar disc + corona + embers at strike
 //   spawnImpactDecal(origin, style?)           — lingering ground flash/decal ring
 //   spawnGravityWellEffect(origin, radius, style?) — contracting pull ring, void core, inward inflow
 //   spawnTelegraphRing(origin, radius, style?) — expanding/pulsing AoE telegraph ring
@@ -49,6 +50,7 @@ import {
 	ARCHIVE_WYRM_BREATH_DURATION_MS,
 	ARCHIVE_WYRM_BREATH_TICK_COUNT,
 	ARCHIVE_WYRM_BREATH_TICK_MS,
+	ATTACK_CONE_ANGLE,
 	ATTACK_EFFECT_DURATION,
 	ATTACK_RANGE,
 	EVENT_HORIZON_CRUSH_DELAY_MS,
@@ -155,29 +157,6 @@ function renderConeSwings(data, ctx) {
  * composed primitives.
  */
 const WEAPON_SLASH_STYLES = {
-	// Rust-Forged Saber: a tight, steely arc — a quick clean cut with a few sparks.
-	iron_sword: {
-		color: 0x94a3b8,
-		emissive: 0x64748b,
-		coneAngle: Math.PI / 5,
-		range: 4,
-		fillOpacity: 0.42,
-		edgeOpacity: 0.85,
-		sparkCount: 6,
-		sparkSpread: 0.7,
-	},
-	// Solar Edge: a warm fiery arc with a trailing flame streak and ember burst.
-	flame_blade: {
-		color: 0xff7a18,
-		emissive: 0xff3b00,
-		coneAngle: Math.PI / 4,
-		range: 5,
-		fillOpacity: 0.4,
-		edgeOpacity: 0.8,
-		trail: true,
-		sparkCount: 10,
-		sparkSpread: 1.3,
-	},
 	// Ether Scythe: a wide ghostly ether-green sweep edged in spectral violet,
 	// leaving a lingering spectral decal and reaping soul-wisps off each hit.
 	harvesting_scythe: {
@@ -319,6 +298,139 @@ function renderWeaponSwing(data, ctx) {
 	}
 }
 
+/** Rust-Forged Saber: weathered iron body with oxidized rust emissive accents. */
+const RUST_FORGED_SABER_STYLE = {
+	color: 0x78716c,
+	emissive: 0xb45309,
+	coneAngle: Math.PI / 5,
+	range: 4,
+	fillOpacity: 0.42,
+	edgeOpacity: 0.85,
+	sparkCount: 6,
+	sparkSpread: 0.7,
+	decalRadius: 1.1,
+};
+
+/**
+ * Rust-Forged Saber swing. Composes the 315 primitives — a tight saber slash
+ * arc in warm rust-steel tones plus a metallic spark/rust-flake burst along the
+ * cut — into one weathered forged-blade blow. No projectile trail (that reads
+ * as fire/energy). Optional scored-metal ground mark at the strike point.
+ * Falls through to the uniform hit-flash / sound / shockwave post-effects in
+ * `renderCardUsed`. Each ctx call is guarded so the swing degrades gracefully
+ * when a primitive is absent.
+ */
+function renderRustForgedSaber(data, ctx) {
+	const style = RUST_FORGED_SABER_STYLE;
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex('iron_sword') ?? style.color;
+	const emissive = style.emissive;
+	const swingCount = data.swingCount || 1;
+	const range = Number.isFinite(data.attackRange) ? data.attackRange : style.range;
+	const coneAngle = Number.isFinite(data.attackConeAngle) ? data.attackConeAngle : style.coneAngle;
+	const impactAt = pointAlong(origin, direction, range);
+
+	const swing = () => {
+		if (ctx.spawnAttackEffect) {
+			ctx.spawnAttackEffect(origin, direction, {
+				color,
+				emissive,
+				coneAngle,
+				range,
+				fillOpacity: style.fillOpacity,
+				edgeOpacity: style.edgeOpacity,
+			});
+		}
+		if (ctx.spawnParticleBurst) {
+			const sparkAt = pointAlong(origin, direction, range * 0.6);
+			ctx.spawnParticleBurst(sparkAt, {
+				color,
+				emissive,
+				count: style.sparkCount,
+				spread: style.sparkSpread,
+			});
+		}
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(impactAt, { color, emissive, radius: style.decalRadius });
+		}
+	};
+	for (let i = 0; i < swingCount; i++) {
+		const delay = i * PHOTON_BARRAGE_SWING_DELAY_MS;
+		if (delay > 0 && ctx.scheduleAfter) ctx.scheduleAfter(delay, swing);
+		else swing();
+	}
+}
+
+/** Solar Edge: gold-white radiant blade body with orange corona accents. */
+const SOLAR_EDGE_COLOR = 0xfef08a;
+const SOLAR_EDGE_EMISSIVE = 0xfbbf24;
+const SOLAR_EDGE_CORONA_COLOR = 0xff7a18;
+const SOLAR_EDGE_CORONA_EMISSIVE = 0xff3b00;
+/** Brief corona pulse — smaller than spawnSolarEdgeImpactFlourish's default ring. */
+const SOLAR_EDGE_CORONA_PULSE_RADIUS = 1.35;
+
+/**
+ * Solar Edge swing. Composes the solar impact primitive with 315 VFX helpers —
+ * a gold-white radiant arc driven by server cone geometry, a solar streak along
+ * the reach, the sub-ticket 01 impact flourish, and a brief corona telegraph at
+ * the strike point. Wind-up telegraph is server-side (`windUpMs`); this fires
+ * synchronously on `CARD_USED` with no extra `scheduleAfter` delay.
+ */
+function renderSolarEdge(data, ctx) {
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex(data.cardId) ?? SOLAR_EDGE_COLOR;
+	const emissive = SOLAR_EDGE_EMISSIVE;
+	const coronaColor = SOLAR_EDGE_CORONA_COLOR;
+	const coronaEmissive = SOLAR_EDGE_CORONA_EMISSIVE;
+	const coneAngle = data.attackConeAngle ?? ATTACK_CONE_ANGLE;
+	const range = data.attackRange ?? ATTACK_RANGE;
+	const impactAt = pointAlong(origin, direction, range);
+
+	ctx.spawnAttackEffect(origin, direction, {
+		color,
+		emissive,
+		coneAngle,
+		range,
+		fillOpacity: 0.42,
+		edgeOpacity: 0.88,
+	});
+
+	if (ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, { range, color, emissive });
+	}
+
+	if (ctx.spawnSolarEdgeImpactFlourish) {
+		ctx.spawnSolarEdgeImpactFlourish(origin, direction, {
+			range,
+			color,
+			emissive,
+			coronaColor,
+			coronaEmissive,
+		});
+	}
+
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(impactAt, SOLAR_EDGE_CORONA_PULSE_RADIUS, {
+			color: coronaColor,
+			emissive: coronaEmissive,
+		});
+	}
+
+	if (data.hits?.length && ctx.enemyMeshes) {
+		const meshes = ctx.enemyMeshes() || {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh?.position) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(pos, { color: coronaColor, emissive: coronaEmissive, count: 5, spread: 0.55 });
+			}
+		}
+	}
+}
+
 const REAPERS_SCYTHE_COLOR = 0x1e293b;
 const REAPERS_SCYTHE_EMISSIVE = 0xe7e5e4;
 const REAPERS_SCYTHE_EMBER = 0xb45309;
@@ -399,29 +511,97 @@ function renderReapersScythe(data, ctx) {
 	}
 }
 
+/** Alloy Greatblade: a heavy slate cleave that shatters the ground on impact. */
+const ALLOY_GREATBLADE_STYLE = {
+	color: 0x94a3b8,
+	emissive: 0x64748b,
+	coneAngle: Math.PI / 2.2,
+	range: 7,
+	fillOpacity: 0.5,
+	edgeOpacity: 0.92,
+	decalRadius: 3.2,
+	debrisCount: 18,
+	debrisSpread: 2.4,
+	knockbackRingRadius: 2.8,
+	knockbackBurstCount: 22,
+	knockbackBurstSpread: 3.2,
+};
+
 /**
- * Per-weapon styling for the heavy wind-up greatswords (`steel_claymore`,
- * `magma_greatsword`). These carry a `windUpMs` lockout, so
- * the 315 charge telegraph already plays during the wind-up; the entries here
- * make the *resulting* hit feel proportionally heavy: a wider/larger cone arc
- * plus a pronounced impact — a larger-radius decal and a high-`count` debris/
- * spark burst — so the blow reads as a big committed swing. Each differs from
- * the others (color + shape/impact params) and hits harder than the lighter
- * blades in sub-tickets 01/02 (bigger decal radius, higher particle count).
+ * Alloy Greatblade swing. Composes the 315 primitives — a wide slate cone
+ * cleave, a metallic streak along the arc, and guarded `spawnImpactDecal` plus
+ * `spawnParticleBurst` metal-shard shower at the strike point — into one
+ * weighty, committed blow. The server-side `windUpMs` charge telegraph (315)
+ * covers the wind-up; this renderer fires the cleave synchronously when
+ * `cardUsed` arrives. Strike reach tracks `data.attackRange` from the server
+ * payload. When `knockbackMoved` is non-empty, layers an expanding telegraph
+ * ring plus a heavier outward burst at the strike point.
+ */
+function renderAlloyGreatblade(data, ctx) {
+	const style = ALLOY_GREATBLADE_STYLE;
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex('steel_claymore') ?? style.color;
+	const emissive = style.emissive;
+	const swingCount = data.swingCount || 1;
+	const delayPerSwing = data.specialEffect === 'photon_barrage' ? PHOTON_BARRAGE_SWING_DELAY_MS : 0;
+	const range = data.attackRange ?? style.range;
+	const impactAt = pointAlong(origin, direction, range);
+
+	const swing = () => {
+		ctx.spawnAttackEffect(origin, direction, {
+			color,
+			emissive,
+			coneAngle: style.coneAngle,
+			range,
+			fillOpacity: style.fillOpacity,
+			edgeOpacity: style.edgeOpacity,
+		});
+		if (ctx.spawnProjectileTrail) {
+			ctx.spawnProjectileTrail(origin, direction, { color, emissive, range });
+		}
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(impactAt, { color, emissive, radius: style.decalRadius });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(impactAt, {
+				color,
+				emissive,
+				count: style.debrisCount,
+				spread: style.debrisSpread,
+			});
+		}
+		if (data.knockbackMoved && data.knockbackMoved.length > 0) {
+			if (ctx.spawnTelegraphRing) {
+				ctx.spawnTelegraphRing(impactAt, style.knockbackRingRadius, { color, emissive });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(impactAt, {
+					color,
+					emissive,
+					count: style.knockbackBurstCount,
+					spread: style.knockbackBurstSpread,
+				});
+			}
+		}
+	};
+	for (let i = 0; i < swingCount; i++) {
+		const delay = delayPerSwing * i;
+		if (delay > 0) ctx.scheduleAfter(delay, swing);
+		else swing();
+	}
+}
+
+/**
+ * Per-weapon styling for the heavy wind-up greatsword (`magma_greatsword`).
+ * These carry a `windUpMs` lockout, so the 315 charge telegraph already plays
+ * during the wind-up; the entry here makes the *resulting* hit feel
+ * proportionally heavy: a wider/larger cone arc plus a pronounced impact — a
+ * larger-radius decal and a high-`count` debris/spark burst — so the blow
+ * reads as a big committed swing. Hits harder than the lighter blades in
+ * sub-tickets 01/02 (bigger decal radius, higher particle count).
  */
 const HEAVY_GREATSWORD_STYLES = {
-	// Alloy Greatblade: a heavy slate cleave that shatters the ground on impact.
-	steel_claymore: {
-		color: 0x94a3b8,
-		emissive: 0x64748b,
-		coneAngle: Math.PI / 2.2,
-		range: 7,
-		fillOpacity: 0.5,
-		edgeOpacity: 0.92,
-		decalRadius: 3.2,
-		debrisCount: 18,
-		debrisSpread: 2.4,
-	},
 	// Corebreaker Greatsword: a wide magma swing that erupts molten debris.
 	magma_greatsword: {
 		color: 0xf97316,
@@ -3193,8 +3373,8 @@ function renderChronoTrigger(data, ctx) {
 
 const CARD_RENDERERS = {
 	// Weapons
-	iron_sword: renderWeaponSwing,
-	flame_blade: renderWeaponSwing,
+	iron_sword: renderRustForgedSaber,
+	flame_blade: renderSolarEdge,
 	harvesting_scythe: renderWeaponSwing,
 	reapers_scythe: renderReapersScythe,
 	saber_of_light: renderSaberOfLight,
@@ -3204,7 +3384,7 @@ const CARD_RENDERERS = {
 	echo_blade: renderEchoSlash,
 	infinite_disk: renderTripleReturning,
 	// Heavy wind-up greatswords — weighty committed-hit slash + impact.
-	steel_claymore: renderHeavyGreatsword,
+	steel_claymore: renderAlloyGreatblade,
 	magma_greatsword: renderCorebreakerGreatsword,
 	excalibur_photon: renderExcaliburPhoton,
 	fireball: renderFireball,

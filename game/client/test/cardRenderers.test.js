@@ -4,6 +4,7 @@ import {
 	ARCHIVE_WYRM_BREATH_DURATION_MS,
 	ARCHIVE_WYRM_BREATH_TICK_COUNT,
 	ARCHIVE_WYRM_BREATH_TICK_MS,
+	ATTACK_CONE_ANGLE,
 	ATTACK_EFFECT_DURATION,
 	ATTACK_RANGE,
 	EVENT_HORIZON_CRUSH_DELAY_MS,
@@ -46,6 +47,7 @@ function makeCtx(overrides = {}) {
 		spawnLightningArc: record('spawnLightningArc'),
 		spawnParticleBurst: record('spawnParticleBurst'),
 		spawnProjectileTrail: record('spawnProjectileTrail'),
+		spawnSolarEdgeImpactFlourish: record('spawnSolarEdgeImpactFlourish'),
 		spawnImpactDecal: record('spawnImpactDecal'),
 		spawnGravityWellEffect: record('spawnGravityWellEffect'),
 		spawnTelegraphRing: record('spawnTelegraphRing'),
@@ -143,10 +145,18 @@ describe('resolveRenderers()', () => {
 
 	it('returns the card-specific weapon swing for the styled standard blades', () => {
 		expect(resolveRenderers('iron_sword')).toHaveLength(1);
-		expect(resolveRenderers('flame_blade')).toHaveLength(1);
 		expect(resolveRenderers('harvesting_scythe')).toHaveLength(1);
 		// Distinct from the plain cone-swing default.
 		expect(resolveRenderers('iron_sword')[0]).not.toBe(WEAPON_TYPE_DEFAULT_RENDERER);
+		expect(resolveRenderers('iron_sword')[0].name).toBe('renderRustForgedSaber');
+		expect(resolveRenderers('iron_sword')[0].name).not.toBe('renderWeaponSwing');
+	});
+
+	it('returns the dedicated Solar Edge renderer for flame_blade (not renderWeaponSwing)', () => {
+		const solar = resolveRenderers('flame_blade');
+		expect(solar).toHaveLength(1);
+		expect(solar[0].name).toBe('renderSolarEdge');
+		expect(solar[0].name).not.toBe('renderWeaponSwing');
 	});
 
 	it('returns card-specific renderers for the energy/photon blades (not the cone default)', () => {
@@ -156,21 +166,29 @@ describe('resolveRenderers()', () => {
 		}
 	});
 
+	it('returns a dedicated renderer for alloy greatblade (not heavy greatsword or cone default)', () => {
+		const corebreaker = resolveRenderers('magma_greatsword')[0];
+		expect(resolveRenderers('steel_claymore')).toHaveLength(1);
+		expect(resolveRenderers('steel_claymore')[0]).not.toBe(WEAPON_TYPE_DEFAULT_RENDERER);
+		expect(resolveRenderers('steel_claymore')[0]).not.toBe(corebreaker);
+		expect(resolveRenderers('steel_claymore')[0].name).toBe('renderAlloyGreatblade');
+	});
+
 	it('returns a dedicated, non-default renderer for alloy/corebreaker greatswords', () => {
 		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
 			expect(resolveRenderers(cardId)).toHaveLength(1);
 			expect(resolveRenderers(cardId)[0]).not.toBe(WEAPON_TYPE_DEFAULT_RENDERER);
 		}
 		// Corebreaker now has its own dedicated renderer, distinct from the Alloy
-		// Greatblade's shared heavy renderer (its molten fire-trail diverges).
+		// Greatblade's dedicated renderer (its molten fire-trail diverges).
 		expect(resolveRenderers('magma_greatsword')[0]).not.toBe(resolveRenderers('steel_claymore')[0]);
 		expect(resolveRenderers('magma_greatsword')[0].name).toBe('renderCorebreakerGreatsword');
-		expect(resolveRenderers('steel_claymore')[0].name).toBe('renderHeavyGreatsword');
+		expect(resolveRenderers('steel_claymore')[0].name).toBe('renderAlloyGreatblade');
 	});
 
 	it('returns a dedicated renderer for excalibur_photon (not heavy greatsword or cone default)', () => {
 		const plain = WEAPON_TYPE_DEFAULT_RENDERER;
-		const heavy = resolveRenderers('steel_claymore')[0];
+		const heavy = resolveRenderers('magma_greatsword')[0];
 		expect(resolveRenderers('excalibur_photon')).toHaveLength(1);
 		expect(resolveRenderers('excalibur_photon')[0]).not.toBe(plain);
 		expect(resolveRenderers('excalibur_photon')[0]).not.toBe(heavy);
@@ -846,7 +864,8 @@ describe('renderCardUsed() — styled weapon slashes', () => {
 		return attack[3];
 	}
 
-	it('Rust-Forged Saber slashes a tight steely arc with a spark burst and no trail/decal', () => {
+	it('Rust-Forged Saber slashes a tight rust-steel arc with a spark burst and no flame trail', () => {
+		expect(resolveRenderers('iron_sword')[0].name).toBe('renderRustForgedSaber');
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'iron_sword',
@@ -855,31 +874,18 @@ describe('renderCardUsed() — styled weapon slashes', () => {
 			hits: [],
 		}, ctx);
 		const style = swingStyle(ctx);
-		expect(style).toMatchObject({ color: 0x94a3b8, coneAngle: Math.PI / 5, range: 4 });
-		// Steel slash kicks up sparks but no flame trail and no ground decal.
-		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(true);
-		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
-		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
-	});
-
-	it('Solar Edge slashes a warm fiery arc with a flame trail and ember burst', () => {
-		const ctx = makeCtx();
-		renderCardUsed({
-			cardId: 'flame_blade',
-			origin: { x: 0, z: 0 },
-			direction: { x: 1, z: 0 },
-			hits: [],
-		}, ctx);
-		const style = swingStyle(ctx);
-		expect(style).toMatchObject({ color: 0xff7a18, emissive: 0xff3b00, range: 5 });
-		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
-		expect(trail).toBeDefined();
-		expect(trail[3]).toMatchObject({ color: 0xff7a18, range: 5 });
+		// Weathered iron body + oxidized rust emissive — distinct from flame_blade orange
+		// and steel_claymore cool slate.
+		expect(style).toMatchObject({
+			color: 0x78716c,
+			emissive: 0xb45309,
+			coneAngle: Math.PI / 5,
+			range: 4,
+		});
 		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
 		expect(burst).toBeDefined();
-		expect(burst[2]).toMatchObject({ color: 0xff7a18 });
-		// No lingering decal for the fiery blade.
-		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
+		expect(burst[2]).toMatchObject({ color: 0x78716c, emissive: 0xb45309, count: 6 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
 	});
 
 	it('Ether Scythe slashes a wide ghostly arc with a lingering spectral decal and no flame trail', () => {
@@ -943,22 +949,6 @@ describe('renderCardUsed() — styled weapon slashes', () => {
 		// Decal still scales off the style range: 6 * 0.6 = 3.6.
 		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
 		expect(decal[1].x).toBeCloseTo(3.6);
-	});
-
-	it('a sibling blade (flame_blade) ignores the payload attackConeAngle/attackRange and keeps its authored arc', () => {
-		const ctx = makeCtx();
-		renderCardUsed({
-			cardId: 'flame_blade',
-			origin: { x: 0, z: 0 },
-			direction: { x: 1, z: 0 },
-			attackConeAngle: Math.PI,
-			attackRange: 9,
-			hits: [],
-		}, ctx);
-		const style = swingStyle(ctx);
-		// Flame blade is not opted in, so it keeps its hardcoded cone/range.
-		expect(style.coneAngle).toBe(Math.PI / 4);
-		expect(style.range).toBe(5);
 	});
 
 	it('Ether Scythe reaps an ether-tinted soul-wisp burst at each struck enemy', () => {
@@ -1072,18 +1062,18 @@ describe('renderCardUsed() — styled weapon slashes', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 
-	it('the three blades use mutually distinct colors and arc shapes', () => {
+	it('the three styled blades use mutually distinct colors and arc shapes', () => {
 		const styleFor = (cardId) => {
 			const ctx = makeCtx();
 			renderCardUsed({ cardId, origin: { x: 0, z: 0 }, direction: { x: 1, z: 0 }, hits: [] }, ctx);
 			return swingStyle(ctx);
 		};
 		const iron = styleFor('iron_sword');
-		const flame = styleFor('flame_blade');
 		const scythe = styleFor('harvesting_scythe');
-		const colors = new Set([iron.color, flame.color, scythe.color]);
+		const saber = styleFor('saber_of_light');
+		const colors = new Set([iron.color, scythe.color, saber.color]);
 		expect(colors.size).toBe(3);
-		const cones = new Set([iron.coneAngle, flame.coneAngle, scythe.coneAngle]);
+		const cones = new Set([iron.coneAngle, scythe.coneAngle, saber.coneAngle]);
 		expect(cones.size).toBe(3);
 	});
 
@@ -1094,13 +1084,130 @@ describe('renderCardUsed() — styled weapon slashes', () => {
 			spawnParticleBurst: undefined,
 		});
 		expect(() => renderCardUsed({
-			cardId: 'flame_blade',
+			cardId: 'iron_sword',
 			origin: { x: 0, z: 0 },
 			direction: { x: 1, z: 0 },
 			hits: [],
 		}, ctx)).not.toThrow();
 		// The core cone swing still fires.
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+	});
+});
+
+describe('renderCardUsed() — Solar Edge (flame_blade)', () => {
+	function fireSolar(ctx, extra = {}) {
+		renderCardUsed({
+			cardId: 'flame_blade',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			hits: [],
+			...extra,
+		}, ctx);
+	}
+	function swingStyle(ctx) {
+		const attack = ctx._calls.find((c) => c[0] === 'spawnAttackEffect');
+		expect(attack).toBeDefined();
+		return attack[3];
+	}
+
+	it('resolveRenderers returns exactly one dedicated renderer (not renderWeaponSwing)', () => {
+		const solar = resolveRenderers('flame_blade');
+		expect(solar).toHaveLength(1);
+		expect(solar[0].name).toBe('renderSolarEdge');
+		expect(solar[0]).not.toBe(resolveRenderers('iron_sword')[0]);
+	});
+
+	it('slashes a gold-white radiant arc with solar streak, impact flourish, and corona pulse', () => {
+		const ctx = makeCtx();
+		fireSolar(ctx);
+		const style = swingStyle(ctx);
+		expect(style).toMatchObject({
+			color: 0xfef08a,
+			emissive: 0xfbbf24,
+			coneAngle: ATTACK_CONE_ANGLE,
+			range: ATTACK_RANGE,
+		});
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail).toBeDefined();
+		expect(trail[3]).toMatchObject({ color: 0xfef08a, emissive: 0xfbbf24, range: ATTACK_RANGE });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSolarEdgeImpactFlourish')).toBe(true);
+		const corona = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(corona).toBeDefined();
+		expect(corona[1]).toEqual({ x: ATTACK_RANGE, z: 0 });
+		expect(corona[3]).toMatchObject({ color: 0xff7a18, emissive: 0xff3b00 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
+	});
+
+	it('honors server attackConeAngle and attackRange on the sweep cone and trail', () => {
+		const ctx = makeCtx();
+		fireSolar(ctx, { attackConeAngle: Math.PI / 2, attackRange: 5 });
+		const style = swingStyle(ctx);
+		expect(style.coneAngle).toBe(Math.PI / 2);
+		expect(style.range).toBe(5);
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail[3]).toMatchObject({ range: 5 });
+		const corona = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(corona[1]).toEqual({ x: 5, z: 0 });
+	});
+
+	it('matches server timing contract (windUpMs 650, immediate swing on CARD_USED)', () => {
+		expect(CARD_DEFS.flame_blade.windUpMs).toBe(650);
+		const ctx = makeCtx();
+		fireSolar(ctx);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('spawns solar hit sparks at each struck enemy mesh position', () => {
+		const meshes = { e1: { position: { x: 4, y: 1, z: 2 } } };
+		const ctx = makeCtx({ enemyMeshes: () => meshes });
+		fireSolar(ctx, { hits: [{ enemyId: 'e1' }] });
+		const sparks = ctx._calls.filter((c) => c[0] === 'spawnHitSpark');
+		expect(sparks).toHaveLength(1);
+		expect(sparks[0][1]).toEqual({ x: 4, y: 1.6, z: 2 });
+		expect(sparks[0][2]).toMatchObject({ color: 0xff7a18, emissive: 0xff3b00 });
+	});
+
+	it('uses a palette distinct from iron_sword, magma_greatsword, and saber_of_light', () => {
+		const read = (cardId) => {
+			const ctx = makeCtx();
+			renderCardUsed({
+				cardId,
+				origin: { x: 0, z: 0 },
+				direction: { x: 1, z: 0 },
+				hits: [],
+			}, ctx);
+			const attack = ctx._calls.find((c) => c[0] === 'spawnAttackEffect');
+			const corona = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+			return {
+				color: attack[3].color,
+				emissive: attack[3].emissive,
+				coronaColor: corona?.[3]?.color,
+				hasSolarFlourish: ctx._calls.some((c) => c[0] === 'spawnSolarEdgeImpactFlourish'),
+				hasProjectileTrail: ctx._calls.some((c) => c[0] === 'spawnProjectileTrail'),
+			};
+		};
+		const solar = read('flame_blade');
+		const iron = read('iron_sword');
+		const magma = read('magma_greatsword');
+		const saber = read('saber_of_light');
+		expect(solar.color).not.toBe(iron.color);
+		expect(solar.color).not.toBe(magma.color);
+		expect(solar.emissive).not.toBe(magma.emissive);
+		expect(solar.coronaColor).toBe(0xff7a18);
+		expect(solar.hasSolarFlourish).toBe(true);
+		expect(solar.hasProjectileTrail).toBe(true);
+		expect(iron.hasSolarFlourish).toBe(false);
+		expect(magma.hasSolarFlourish).toBe(false);
+		expect(saber.hasSolarFlourish).toBe(false);
+		expect(saber.hasProjectileTrail).toBe(false);
+	});
+
+	it('degrades gracefully when spawnSolarEdgeImpactFlourish is absent', () => {
+		const ctx = makeCtx({ spawnSolarEdgeImpactFlourish: undefined });
+		expect(() => fireSolar(ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnSolarEdgeImpactFlourish')).toBe(false);
 	});
 });
 
@@ -1493,7 +1600,7 @@ describe('renderCardUsed() — saber_of_light reach + swift_slash timing', () =>
 
 	it('uses a dedicated renderer, distinct from the plain cone default and renderWeaponSwing', () => {
 		const plainCone = resolveRenderers('reapers_scythe')[0]; // weapon type default (renderConeSwings)
-		const weaponSwing = resolveRenderers('iron_sword')[0]; // shared renderWeaponSwing
+		const weaponSwing = resolveRenderers('flame_blade')[0]; // shared renderWeaponSwing
 		const saber = resolveRenderers('saber_of_light');
 		expect(saber).toHaveLength(1);
 		expect(saber[0]).not.toBe(plainCone);
@@ -1563,6 +1670,197 @@ describe('renderCardUsed() — saber_of_light reach + swift_slash timing', () =>
 	});
 });
 
+describe('renderCardUsed() — iron_sword reach + instant-hit timing', () => {
+	function fireIron(ctx, extra = {}) {
+		renderCardUsed(
+			{
+				cardId: 'iron_sword',
+				origin: { x: 0, z: 0 },
+				direction: { x: 1, z: 0 },
+				swingCount: 1,
+				hits: [],
+				...extra,
+			},
+			ctx,
+		);
+	}
+	function swingStyle(ctx) {
+		const attack = ctx._calls.find((c) => c[0] === 'spawnAttackEffect');
+		expect(attack).toBeDefined();
+		return attack[3];
+	}
+	function sparkPoint(ctx) {
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		return burst[1];
+	}
+	function decalPoint(ctx) {
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		return decal[1];
+	}
+
+	it('passes server attackRange and attackConeAngle through to spawnAttackEffect', () => {
+		const ctx = makeCtx();
+		fireIron(ctx, { attackRange: 5, attackConeAngle: Math.PI / 2 });
+		expect(swingStyle(ctx)).toMatchObject({
+			range: 5,
+			coneAngle: Math.PI / 2,
+		});
+	});
+
+	it('sizes the cone reach and spark/decal placement from data.attackRange (longer for larger range)', () => {
+		const near = makeCtx();
+		fireIron(near, { attackRange: 3, attackConeAngle: Math.PI / 2 });
+		const far = makeCtx();
+		fireIron(far, { attackRange: 9, attackConeAngle: Math.PI / 2 });
+
+		expect(swingStyle(near).range).toBe(3);
+		expect(swingStyle(far).range).toBe(9);
+		expect(swingStyle(far).range).toBeGreaterThan(swingStyle(near).range);
+
+		expect(decalPoint(far).x).toBeGreaterThan(decalPoint(near).x);
+		expect(decalPoint(far).x / decalPoint(near).x).toBeCloseTo(3);
+		expect(sparkPoint(far).x).toBeGreaterThan(sparkPoint(near).x);
+		expect(sparkPoint(far).x / sparkPoint(near).x).toBeCloseTo(3);
+	});
+
+	it('fires the single swing immediately with no scheduleAfter delay', () => {
+		const ctx = makeCtx();
+		fireIron(ctx, { attackRange: 5, attackConeAngle: Math.PI / 2, swingCount: 1 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('has no windUpMs — instant weapon contract', () => {
+		expect(CARD_DEFS.iron_sword.windUpMs).toBeUndefined();
+		expect(getCardDef('iron_sword').windUpMs).toBeFalsy();
+	});
+});
+
+describe('renderCardUsed() — steel_claymore / Alloy Greatblade timing + knockback', () => {
+	function fire(ctx, extra = {}) {
+		renderCardUsed({
+			cardId: 'steel_claymore',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			hits: [],
+			...extra,
+		}, ctx);
+	}
+	function swingStyle(ctx) {
+		const attack = ctx._calls.find((c) => c[0] === 'spawnAttackEffect');
+		expect(attack).toBeDefined();
+		return attack[3];
+	}
+	function impactDecal(ctx) {
+		return ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+	}
+	function debrisBurst(ctx) {
+		return ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+	}
+	function knockbackBurst(ctx) {
+		return ctx._calls.filter((c) => c[0] === 'spawnParticleBurst').find(
+			(c) => c[2]?.spread === 3.2,
+		);
+	}
+
+	it('matches server timing contract (windUpMs 600, single swing)', () => {
+		expect(CARD_DEFS.steel_claymore.windUpMs).toBe(600);
+		expect(CARD_DEFS.steel_claymore.swingsPerUse).toBeUndefined();
+	});
+
+	it('cleaves a wide slate arc with metallic trail, large decal, and heavy debris', () => {
+		const ctx = makeCtx();
+		fire(ctx);
+		const style = swingStyle(ctx);
+		expect(style).toMatchObject({ color: 0x94a3b8, coneAngle: Math.PI / 2.2, range: 7 });
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail).toBeDefined();
+		expect(trail[3]).toMatchObject({ color: 0x94a3b8, emissive: 0x64748b, range: 7 });
+		const decal = impactDecal(ctx);
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 7, z: 0 });
+		expect(decal[2]).toMatchObject({ color: 0x94a3b8, emissive: 0x64748b, radius: 3.2 });
+		const burst = debrisBurst(ctx);
+		expect(burst).toBeDefined();
+		expect(burst[1]).toEqual({ x: 7, z: 0 });
+		expect(burst[2]).toMatchObject({
+			color: 0x94a3b8,
+			emissive: 0x64748b,
+			count: 18,
+			spread: 2.4,
+		});
+	});
+
+	it('places impact primitives from data.attackRange (not the style default)', () => {
+		const ctx = makeCtx();
+		fire(ctx, { attackRange: 9 });
+		expect(swingStyle(ctx).range).toBe(9);
+		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
+		expect(trail[3].range).toBe(9);
+		expect(impactDecal(ctx)[1]).toEqual({ x: 9, z: 0 });
+		expect(debrisBurst(ctx)[1]).toEqual({ x: 9, z: 0 });
+	});
+
+	it('fires the single cleave synchronously with no scheduleAfter delay', () => {
+		const ctx = makeCtx();
+		fire(ctx, { swingCount: 1 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('emits a knockback burst layer when knockbackMoved is non-empty', () => {
+		const ctx = makeCtx();
+		fire(ctx, {
+			attackRange: 9,
+			knockbackMoved: [{ enemyId: 'e1', fromX: 8, fromZ: 0, toX: 11, toZ: 0 }],
+		});
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 9, z: 0 });
+		expect(ring[2]).toBe(2.8);
+		expect(knockbackBurst(ctx)).toBeDefined();
+		expect(knockbackBurst(ctx)[2]).toMatchObject({ count: 22, spread: 3.2 });
+	});
+
+	it('skips the knockback burst layer when knockbackMoved is empty', () => {
+		const ctx = makeCtx();
+		fire(ctx, { knockbackMoved: [] });
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		expect(knockbackBurst(ctx)).toBeUndefined();
+		expect(debrisBurst(ctx)).toBeDefined();
+	});
+
+	it('emits a metallic trail (distinct from magma greatsword)', () => {
+		const ctx = makeCtx();
+		fire(ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(true);
+	});
+
+	it('hits harder than lighter blades (bigger decal + more particles)', () => {
+		const ctx = makeCtx();
+		fire(ctx);
+		expect(impactDecal(ctx)[2].radius).toBeGreaterThan(2);
+		expect(debrisBurst(ctx)[2].count).toBeGreaterThan(12);
+	});
+
+	it('degrades gracefully when optional impact primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnImpactDecal: undefined,
+			spawnParticleBurst: undefined,
+			spawnTelegraphRing: undefined,
+			spawnProjectileTrail: undefined,
+		});
+		expect(() => fire(ctx, {
+			knockbackMoved: [{ enemyId: 'e1', fromX: 7, fromZ: 0, toX: 10, toZ: 0 }],
+		})).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+	});
+});
+
 describe('renderCardUsed() — heavy wind-up greatswords', () => {
 	function fire(cardId, ctx, extra = {}) {
 		renderCardUsed({ cardId, origin: { x: 0, z: 0 }, direction: { x: 1, z: 0 }, hits: [], ...extra }, ctx);
@@ -1578,22 +1876,6 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 	function debrisBurst(ctx) {
 		return ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
 	}
-
-	it('Alloy Greatblade cleaves a wide slate arc with a large decal and heavy debris', () => {
-		const ctx = makeCtx();
-		fire('steel_claymore', ctx);
-		const style = swingStyle(ctx);
-		expect(style).toMatchObject({ color: 0x94a3b8, coneAngle: Math.PI / 2.2, range: 7 });
-		// Larger-radius decal + high-count debris burst at the strike point (range = 7).
-		const decal = impactDecal(ctx);
-		expect(decal).toBeDefined();
-		expect(decal[1]).toEqual({ x: 7, z: 0 });
-		expect(decal[2]).toMatchObject({ color: 0x94a3b8, radius: 3.2 });
-		const burst = debrisBurst(ctx);
-		expect(burst).toBeDefined();
-		expect(burst[1]).toEqual({ x: 7, z: 0 });
-		expect(burst[2]).toMatchObject({ color: 0x94a3b8, count: 18 });
-	});
 
 	it('Corebreaker Greatsword erupts a wide magma swing with the biggest decal/debris', () => {
 		const ctx = makeCtx();
@@ -1723,13 +2005,10 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 		expect(debrisBurst(ctx)[2]).toMatchObject({ color: 0xe879f9, count: 20 });
 	});
 
-	it('heavy greatswords do not emit a photon-only projectile trail', () => {
-		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
-			const ctx = makeCtx();
-			fire(cardId, ctx);
-			ctx.runScheduled();
-			expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
-		}
+	it('magma greatsword does not emit a metallic projectile trail', () => {
+		const magmaCtx = makeCtx();
+		fire('magma_greatsword', magmaCtx);
+		expect(magmaCtx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
 	});
 
 	it('Alloy Greatblade stays a pure committed swing (no telegraph ring, no lingering trail)', () => {
@@ -1752,35 +2031,22 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 		expect(new Set(rows.map((r) => r.decalRadius)).size).toBe(2);
 	});
 
-	it('hit harder than the lighter sub-ticket 01/02 blades (bigger decal + more particles)', () => {
-		// Lighter blades top out around 12 sparks and use the default ~0.8 decal radius.
-		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
-			const ctx = makeCtx();
-			fire(cardId, ctx);
-			expect(impactDecal(ctx)[2].radius).toBeGreaterThan(2);
-			expect(debrisBurst(ctx)[2].count).toBeGreaterThan(12);
-		}
+	it('hits harder than the lighter sub-ticket 01/02 blades (bigger decal + more particles)', () => {
+		const ctx = makeCtx();
+		fire('magma_greatsword', ctx);
+		expect(impactDecal(ctx)[2].radius).toBeGreaterThan(2);
+		expect(debrisBurst(ctx)[2].count).toBeGreaterThan(12);
 	});
 
-	it('greatsword swings degrade gracefully when the optional impact primitives are absent', () => {
+	it('magma greatsword degrades gracefully when optional impact primitives are absent', () => {
 		const ctx = makeCtx({ spawnImpactDecal: undefined, spawnParticleBurst: undefined });
-		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
-			expect(() => fire(cardId, ctx)).not.toThrow();
-		}
-		// The core heavy cone swing still fires.
+		expect(() => fire('magma_greatsword', ctx)).not.toThrow();
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 
-	it('each heavy greatsword carries a positive windUpMs so the 315 charge telegraph fires', () => {
-		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
-			expect(CARD_DEFS[cardId]).toBeDefined();
-			expect(CARD_DEFS[cardId].windUpMs).toBeGreaterThan(0);
-		}
-	});
-
-	it('Solar Edge (flame_blade) carries a positive windUpMs so the 315 charge telegraph fires', () => {
-		expect(CARD_DEFS['flame_blade']).toBeDefined();
-		expect(CARD_DEFS['flame_blade'].windUpMs).toBeGreaterThan(0);
+	it('magma greatsword carries a positive windUpMs so the 315 charge telegraph fires', () => {
+		expect(CARD_DEFS.magma_greatsword).toBeDefined();
+		expect(CARD_DEFS.magma_greatsword.windUpMs).toBeGreaterThan(0);
 	});
 });
 

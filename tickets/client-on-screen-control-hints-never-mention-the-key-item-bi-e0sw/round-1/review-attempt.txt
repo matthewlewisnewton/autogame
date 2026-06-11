@@ -1,0 +1,22 @@
+## Review complete
+
+**VERDICT: PASS**
+
+Wrote the full assessment to [`tickets/client-on-screen-control-hints-never-mention-the-key-item-bi-e0sw/round-1/review.md`](tickets/client-on-screen-control-hints-never-mention-the-key-item-bi-e0sw/round-1/review.md).
+
+### Runtime health
+- `metrics.json`: `"ok": true`, `pageerrors: []`
+- `console.log`: no `pageerror` or `[fatal]` lines
+- Capture reached in-run gameplay with dodge roll equipped; probe and screenshot show `Click to attack · press 1–6 to cast cards · E for key item`
+
+### Acceptance criteria
+All four criteria are met:
+1. Hint includes resolved use-key-item binding via `getUseKeyItemBinding()`
+2. Updates on rebind through `onSettingsChange` → `renderHand()` → `applyAttackHintText()`
+3. Key-item fragment only when `equippedKeyItemId` is truthy
+4. Tests in `attack-cast-hint.test.js` cover default, rebound, and gamepad bindings (549/549 tests passed)
+
+### Files written
+- `review.md` — full per-criterion findings
+- No `gaps.md` (PASS)
+- No `nits.md` (no blocking or backlog-worthy nits)

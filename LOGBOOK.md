@@ -7974,9 +7974,97 @@ PASS. The changes remain consistent with the design doc's card-combat model: Pha
 
 PASS. This ticket did not add or modify a `?debugScenario=` shortcut or server debug scenario. The capture also ran with `debugScenario: null`, so normal gameplay remains the entry path exercised by the smoke flow.
 
+
+## v0.435 — 326-anim-alloy-greatblade  (2026-06-11 01:31:06)
+
+
+### Uses shared VFX primitives and stays scoped
+
+PASS. The implementation composes existing client VFX primitives (`spawnAttackEffect`, `spawnProjectileTrail`, `spawnImpactDecal`, `spawnParticleBurst`, `spawnTelegraphRing`) and only changes `game/client/cardRenderers.js` plus targeted renderer tests. No server contract, gameplay rules, or unrelated cards were modified.
+
+### No performance regression
+
+PASS. The effect adds a small bounded number of short-lived primitives per `cardUsed` event: one cone, one trail, one decal, one burst, and optionally one knockback ring plus one burst. There are no new loops over scene state, persistent effects, timers for the normal `steel_claymore` payload, or allocations that scale with enemy count beyond the existing shared hit-flash handling.
+
+### Client test coverage
+
+PASS. `coverage.log` shows the full vitest run passed: 50 files and 763 tests. The new tests cover dedicated renderer dispatch, `windUpMs`/single-swing timing contract, `attackRange`-driven placement, synchronous impact, knockback-gated burst, thematic trail/decal/debris composition, and graceful degradation when optional primitives are unavailable.
+
+## Design and requirements consistency
+
+PASS. The change fits the documented card-combat model: weapons are multi-charge directional attacks, and wind-up commitment remains server-driven. It does not alter the foundation requirements for rendering, socket connection, player visualization, or movement synchronization. No development debug scenario was added or changed.
+
 ## Remaining gaps
 
 None.
+
+## v0.436 — Client: on-screen control hints never mention the key item binding  (2026-06-11 01:54:41)
+
+**PASS.** `game/client/test/attack-cast-hint.test.js` adds four focused cases: default `E`, rebound `Q`, standard gamepad `DPad Down`, and 8BitDo 64 label (no raw `Btn 13`). Full suite: **549/549 tests passed** (`coverage.log`).
+
+## Design & integration
+
+- **Scope:** Single sub-ticket; changes limited to `input.js`, `main.js`, and tests. No server or persistence changes — appropriate for a client HUD hint.
+- **Consistency with `design.md`:** No combat-loop or progression regressions; improves discoverability of a core combat tool already documented in controls/settings.
+- **Existing HUD:** The persistent key-item slot (`Dodge Roll` / `E`) was already present; this ticket correctly fills the gap in the center attack/cast hint line noted in the ticket goal.
+- **Debug scenarios:** None added or modified — N/A.
+
+## Code quality
+
+- Reuses existing `getUseKeyItemBinding()` rather than duplicating resolution logic.
+- `renderHand()` already refreshed attack/cast hint text for hand-slot binding changes; extending the same path for key-item state keeps behavior consistent.
+- No dead code, no new console errors, no pageerrors in capture.
+
+## Remaining gaps
+
+None. All acceptance criteria are met; the captured run proves the game loads and displays the new hint correctly.
+
+
+## v0.437 — 321-anim-solar-edge  (2026-06-11 01:59:15)
+
+### "Timing synced to server-side effect resolution"
+PASS. The swing fires synchronously on `CARD_USED` with no extra `scheduleAfter` delay; the server-side `windUpMs: 650` telegraph (cardStats.json) owns the wind-up, matching the 307/315 charge-telegraph foundation. Test "matches server timing contract (windUpMs 650, immediate swing on CARD_USED)" asserts both. Cone geometry and reach use the payload's `attackConeAngle`/`attackRange` (cardEffects.js emits both on `CARD_USED`, lines 551–552), so the VFX cone matches the server's actual hit volume rather than a hardcoded arc — a genuine improvement over the prior shared-style path. Hit sparks key off `data.hits[].enemyId`, the same field the server populates, so impact VFX align with real resolved hits.
+
+### "Use the 315 primitives; touch only this card's renderer + registration"
+PASS. New primitive `spawnSolarEdgeImpactFlourish` lives in renderer.js alongside the other 315 primitives, is exported, wired through `main.js` → `socketHandlerCtx` → `cardHandlers` ctx exactly like its siblings, and updated in `updateAttackEffects()` with proper `disposeEffectObject` cleanup. Diff is confined to cardRenderers.js (this card's fn + registration), renderer.js (the new primitive), the two ctx wiring lines, and tests — no other card renderer touched, no server changes.
+
+### "No perf regression"
+PASS (by inspection). Additive VFX only; `depthWrite:false`, bounded ember count (12), and the effect is spliced + disposed once `elapsed >= duration`. No per-frame allocation leaks; cleanup verified by `vfx-primitives.test.js` dispose assertions.
+
+### "Client test where feasible"
+PASS. `cardRenderers.test.js` + `vfx-primitives.test.js` run green: **312 tests passed**. Coverage on changed files captured in `coverage.log`. Graceful-degradation tests confirm no throw when `spawnSolarEdgeImpactFlourish` is absent.
+
+## Consistency / regressions
+- No `debugScenario` added or touched — normal-gameplay path only.
+- `flame_blade` card definition (name "Solar Edge", weapon, windUpMs 650) unchanged; design/requirements foundation intact.
+- Removed obsolete `flame_blade` assertions in tests were replaced by a dedicated, stronger Solar Edge suite — no coverage lost.
+
+## Remaining gaps
+None blocking. Minor nits recorded in `nits.md`.
+
+
+## v0.438 — 320-anim-rust-forged-saber  (2026-06-11 02:02:50)
+
+`CARD_DEFS.iron_sword.windUpMs` is undefined, that range/cone pass through, that
+spark/decal placement scales with `attackRange` (≈3× at 9 vs 3), and that a
+single swing schedules no delay.
+
+### "No perf regression"
+PASS. Pure VFX composition on a single weapon's render path; no new per-frame
+work, no added allocations in hot loops. Swing count is server-bounded.
+
+### "Client test where feasible"
+PASS. `cardRenderers.test.js` adds renderer-identity assertions
+(`resolveRenderers('iron_sword')[0].name === 'renderRustForgedSaber'`), updated
+the existing styled-slash test to the new rust palette + spark contract, and adds
+a new "iron_sword reach + instant-hit timing" describe block (4 tests). Full
+suite runs green: **292 passed**.
+
+## Remaining gaps
+None blocking. One nit (see `nits.md`): `getAccentHex('iron_sword') ?? style.color`
+is effectively always `style.color` because `iron_sword` has no `CARD_ACCENT_STYLE`
+entry — harmless defensive code, but the accent lookup is dead for this card.
+
 
 ## v0.439 — 322-anim-signal-familiar  (2026-06-11 02:07:59)
 
