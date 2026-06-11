@@ -1,0 +1,11 @@
+I broke the top-level ticket into 2 sub-tickets, both in dependency order:
+
+**01-celestial-summon-and-synced-impact** — Rebuilds `renderAstralGuardian` so the cast reads as an astral guardian materializing: swaps the generic summon for the dedicated `spawnMinionSummonInEffect` primitive, keeps the telegraph ring synced to the exact server `SUMMON_RADIUS` (`data.radius`), adds a starlight burst, and fires synchronously since the card has no `windUpMs`.
+
+**02-astral-shield-ward-on-caster** — Adds the card's namesake shield, which the current renderer ignores. Uses the existing `spawnMirrorWardShellEffect` ward primitive, tinted astral indigo, gated strictly on the server's `shieldGranted` payload and anchored to the caster by `playerId`.
+
+Both default to **`code`** verification — every criterion is about which VFX primitives are called, palette constants, radius-to-server sync, instant (no-`scheduleAfter`) timing, and `shieldGranted` gating, all of which the diff/logs can confirm (not pure pixel looks).
+
+Created folders:
+- `/home/matt/workspace/.autogame-worktrees/329-anim-astral-guardian/tickets/329-anim-astral-guardian/subtickets/01-celestial-summon-and-synced-impact/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/329-anim-astral-guardian/tickets/329-anim-astral-guardian/subtickets/02-astral-shield-ward-on-caster/ticket.md`

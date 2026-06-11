@@ -58,5 +58,28 @@ Several spell cards (e.g. Signal Familiar, Mana Leach) overlap mechanically with
 
 Tier-1 contracts are intentionally distinct: **Initiate Vault** (`training_caverns`) is a scripted annex sweep with passage locks and a named vault stalker; **Prism Salvage** (`crystal_rescue`) pairs prism recovery with per-room guard waves; **Frost Crossing** (`frost_crossing`) stages ice-band thrower waves culminating in the glacial rare Rimecast. **Annex Evacuation** (`annex_escort`) showcases the escort objective with Archivist Vale. Each quest exposes its own briefing NPC, signature reward card, objective summary, and mid-run dialogue beacon set on the quest board.
 
+## Layout & spawn determinism
+
+**Decision (option b):** deterministic quest geometry + per-run randomized objective placement.
+
+Playtesting (2026-06-09) showed that `questLayoutSeed(questId, tier)` in `game/server/dungeon.js` makes every run of a quest reuse the same map topology *and* the same objective coordinates. On **Prism Salvage** (`crystal_rescue`) tier 1, prism loot always appeared at the same `(x, z)` spots across accounts and reruns — turning the contract into a memorizable checklist instead of an exploration puzzle. We keep geometry fixed per quest+tier but vary objective entity placement on each fresh deploy.
+
+**Kept (pro):**
+
+- Route learning and muscle-memory navigation within a quest tier
+- Speedrun consistency (same room graph, passages, landmark positions)
+- Authored scripted set pieces (room roles, passage locks, wave anchors tied to layout landmarks)
+
+**Addressed (con):**
+
+- Checklist replay on `collect_items` quests once objective spots are memorized
+
+**Seed split** (parent ticket; implementation in follow-up sub-tickets; context in commit `b4a5bb8`):
+
+- **`questLayoutSeed(questId, tier)`** — sole seed for `generateLayout` / room geometry. Must **not** change per run; every deploy of the same quest+tier shares the same layout seed. This is the only input to layout generation.
+- **`runSpawnSeed`** (to be introduced in sub-ticket 02) — per-run seed for objective loot placement (e.g. `spawnCrystals` via `collect_items.spawnQuestEntities` in `game/server/objectives.js`). Fresh deploys draw a new `runSpawnSeed`; room geometry stays identical.
+
+Scripted encounter waves stay **room-anchored**: they key off authored room roles and layout landmarks (e.g. guard waves on room entry in `crystal_rescue`), not absolute world coordinates that players memorize across runs. Bulk combat spawns and scripted wave RNG continue to derive from the layout seed stream, not from `runSpawnSeed`.
+
 ## Future Mechanics
 - **PvP Wager Battles**: In a later update, players will be able to challenge each other to PvP deck battles and wager their collected currency.

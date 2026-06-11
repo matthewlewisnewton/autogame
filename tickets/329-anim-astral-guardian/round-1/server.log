@@ -1,0 +1,15 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/329-anim-astral-guardian/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/329-anim-astral-guardian/game/data
+Server listening on port 3000
+Player connected: socket=pXpphM0JGyhw3QWIAAAB, playerId=95e3452a-93cd-4e98-acd2-413259b26e23
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=dpUB2oKmbZKYJW2sAAAD, playerId=e7c803cd-209c-47bf-aed1-04665f8a4152
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=c917d8ef-e251-4936-9229-b02a64157185 value=5
+Player disconnected: pXpphM0JGyhw3QWIAAAB
+Player disconnected: dpUB2oKmbZKYJW2sAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
