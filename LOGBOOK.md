@@ -7731,3 +7731,26 @@ PASS. This ticket did not add or change a `?debugScenario=` entry point. Existin
 
 None.
 
+
+## v0.427 — 331-anim-mana-prism  (2026-06-11 00:22:40)
+
+### Wiring, robustness, and performance
+
+PASS. The new `spawnManaPrismEffect` primitive is threaded through `main.js`, `socketHandlerCtx.js`, and `cardHandlers.js` into the per-card renderer context. The renderer uses a finite group of eight meshes for the cast flourish and a finite six-callback pulse schedule; no intervals, unbounded allocations, or persistent scene objects are introduced. The minimal-context tests also cover graceful no-op behavior when optional primitives are absent.
+
+### Tests and coverage
+
+PASS. The latest coverage run reports `50 passed` test files and `719 passed` tests. `client/test/cardRenderers.test.js` includes targeted assertions for the Mana Prism cast VFX, exact pulse schedule, pulse flourish contents, and missing-primitive graceful degradation. Coverage thresholds were disabled as expected; the relevant changed client renderer behavior is directly covered.
+
+### Design and foundation consistency
+
+PASS. The implementation stays within the documented card-combat model in `game/docs/design.md`: Mana Prism remains a spell/resource effect in the active deck combat system, with no server-client architecture, movement, multiplayer visualization, or foundation requirement regression. The runtime smoke verifies the 3D scene, websocket connection, multiplayer presence, and movement flow remain functional.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=NAME` shortcut. Existing Mana Prism QA shortcuts referenced in sub-ticket handoff material remain pre-existing debug paths, and the captured run used `debugScenario: null`.
+
+## Remaining gaps
+
+None.
+

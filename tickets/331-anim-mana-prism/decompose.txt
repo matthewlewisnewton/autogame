@@ -1,0 +1,13 @@
+I broke the top-level ticket into 2 dependency-ordered sub-tickets. Both verify as `code` (they assert functions/wiring/structure/timing values — none verifiable from a single happy-path screenshot run).
+
+Created sub-ticket folders:
+
+- `tickets/331-anim-mana-prism/subtickets/01-prism-cast-refraction/ticket.md` — Signature refracting-prism cast VFX: a new exported `spawnManaPrismEffect` in `renderer.js` rendering a rotating violet→cyan crystal core throwing rainbow dispersion shards, wired through the full ctx chain (renderer → main → socketHandlerCtx → cardHandlers) and called from `renderManaPrism`, replacing the generic summon. Makes the visual match the name.
+
+- `tickets/331-anim-mana-prism/subtickets/02-prism-pulse-timing-sync/ticket.md` — Lingering pulse timing sync: `renderManaPrism` reads `pulseIntervalMs`/`durationSeconds`/`magicStonePulse` from `CARD_DEFS.mana_prism` and uses the established `scheduleAfter` tick loop (à la Wyrmflare / Inferno Pillar) to fire 6 stone-emission flourishes at 2000ms cadence over 12s, locked to the server's `addMagicStones` cadence. Makes the timing match the server effect.
+
+Key findings that shaped the split:
+- Mana Prism is a placed resource minion (12s life, +10 stones / 2s), not a projectile, and has no `windUpMs` — so "timing sync" means the lingering pulse cadence, not a wind-up/travel/impact chain.
+- The CARD_USED payload only carries `origin` + `radius: 1`, but `CARD_DEFS` (already imported in `cardRenderers.js`) merges `shared/cardStats.json`, so the client can read pulse/duration values with no server change — keeping everything inside the ticket's client-only scope.
+
+No existing sub-tickets to retire (folder was empty).
