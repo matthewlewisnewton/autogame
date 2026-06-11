@@ -621,6 +621,9 @@ export const ENEMY_GEOMETRY = {
 	// Largest stage-boss silhouette in the catalog; ice/fire two-tone — deep
 	// ice-blue body with an ember-orange glow for the rift convergence tyrant.
 	riftbound_colossus: { type: 'cone', radius: 1.45, height: 3.2, segments: 16, color: 0x164e63, emissive: 0xf97316, emissiveIntensity: 0.5 },
+	// Capstone sovereign: the only cylinder silhouette in the catalog — a tall
+	// crowned tower (radiusTop flares past the base) in deep violet with a gold glow.
+	citadel_sovereign: { type: 'cylinder', radius: 1.1, radiusTop: 1.35, height: 3.4, segments: 16, color: 0x312e81, emissive: 0xfacc15, emissiveIntensity: 0.5 },
 	ember_wraith: { type: 'octahedron', radius: 0.35, color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.6 },
 	// Flying types — hovering octahedron bodies (cf. ember_wraith); flying/altitude
 	// arrive per-instance from the server so flyingRenderOffset lifts the body.
@@ -646,6 +649,8 @@ export const ENEMY_ATTACK_VISUAL = {
 	glacial_tyrant: { style: 'projectile', range: 9, color: 0x7dd3fc, emissive: 0x0ea5e9, hitWidth: 1.2 },
 	// Riftbound Colossus: igniting rift shockwave telegraphed as an ember-orange radial ring (server attackStyle 'radial', range 5.5).
 	riftbound_colossus: { style: 'radial', range: 5.5, color: 0xfb923c, emissive: 0xea580c },
+	// Citadel Sovereign: capstone shockwave telegraphed as a gold radial ring (server attackStyle 'radial', range 6).
+	citadel_sovereign: { style: 'radial', range: 6, color: 0xfde047, emissive: 0xca8a04 },
 	ember_wraith: { style: 'cone', coneAngle: Math.PI / 3, color: 0xff4400, emissive: 0xff2200 },
 	// Void Seraph: spherical void burst telegraphed as a radial ring (server attackStyle 'radial').
 	void_seraph: { style: 'radial', range: 4.5, color: 0xa855f7, emissive: 0x7c3aed },

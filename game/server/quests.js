@@ -724,7 +724,8 @@ const QUEST_DEFS = {
         objectiveType: 'stage_boss',
         levelKind: 'boss_level',
         layoutProfile: 'boss-arena',
-        // No arenaTheme yet — citadel theme rendering lands in sub-ticket 04.
+        // Cosmetic arena identity: rampart rings + banner bands on the boss arena.
+        arenaTheme: 'citadel',
         unlockRequires: [
           { questId: 'canyon_descent', tier: 2 },
           { questId: 'spire_ascent', tier: 2 },
