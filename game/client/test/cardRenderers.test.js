@@ -200,8 +200,16 @@ describe('resolveRenderers()', () => {
 	});
 
 	it('returns composed summon + attack renderers for Vault Wyrm and Archive Wyrm', () => {
-		expect(resolveRenderers('dungeon_drake')).toHaveLength(2);
-		expect(resolveRenderers('ancient_wyrm')).toHaveLength(2);
+		const vault = resolveRenderers('dungeon_drake');
+		const archive = resolveRenderers('ancient_wyrm');
+		expect(vault).toHaveLength(2);
+		expect(archive).toHaveLength(2);
+		expect(vault[0].name).toBe('renderWyrmSummon');
+		expect(vault[1].name).toBe('renderWyrmAttack');
+		expect(archive[0].name).toBe('renderArchiveWyrmSummon');
+		expect(archive[1].name).toBe('renderArchiveWyrmBreath');
+		expect(archive[0]).not.toBe(vault[0]);
+		expect(archive[1]).not.toBe(vault[1]);
 	});
 
 	it('returns composed summon + attack renderers for Phase Stalker', () => {

@@ -1732,12 +1732,13 @@ function renderThunderbirdSummon(data, ctx) {
 
 const WYRM_SUMMON_STYLES = {
 	dungeon_drake: { radius: 1.0, burstCount: 8, burstSpread: 1.2 },
-	ancient_wyrm: { radius: 1.85, burstCount: 18, burstSpread: 2.5 },
 };
 
+const ARCHIVE_WYRM_SUMMON_STYLE = { radius: 1.85, burstCount: 18, burstSpread: 2.5 };
+
 /**
- * Vault Wyrm / Archive Wyrm deploy: per-card summon-in palettes on top of the
- * shared minion flourish (tight burst vs wide ring + embers).
+ * Vault Wyrm deploy: per-card summon-in palette on top of the shared minion
+ * flourish (tight burst).
  */
 function renderWyrmSummon(data, ctx) {
 	if (!data.minionId || data.breathPhase || !ctx.spawnMinionSummonInEffect) return;
@@ -1749,8 +1750,20 @@ function renderWyrmSummon(data, ctx) {
 }
 
 /**
- * Vault Wyrm / Archive Wyrm minion attacks: ground cone matching server
- * collectConeHits geometry (melee swipe or fire breath).
+ * Archive Wyrm deploy: wide summon-in ring + embers on top of the shared
+ * minion flourish.
+ */
+function renderArchiveWyrmSummon(data, ctx) {
+	if (!data.minionId || data.breathPhase || !ctx.spawnMinionSummonInEffect) return;
+	ctx.spawnMinionSummonInEffect(originOf(data), {
+		...accentSummonStyle('ancient_wyrm'),
+		...ARCHIVE_WYRM_SUMMON_STYLE,
+	});
+}
+
+/**
+ * Vault Wyrm minion attacks: ground cone matching server collectConeHits
+ * geometry (melee swipe).
  */
 function renderWyrmAttack(data, ctx) {
 	if (!data.origin) return;
@@ -1758,6 +1771,76 @@ function renderWyrmAttack(data, ctx) {
 
 	const isFireBreath = data.specialEffect === 'fire_breath';
 	const accentHex = getAccentHex(data.cardId);
+	const color = isFireBreath ? 0xef4444 : (accentHex ?? 0x22c55e);
+	const emissive = isFireBreath ? (accentHex ?? 0x9333ea) : 0x16a34a;
+
+	if (data.breathPhase !== 'tick') {
+		const origin = originOf(data);
+		const direction = directionOf(data);
+		ctx.spawnAttackEffect(origin, direction, {
+			range: data.attackRange,
+			coneAngle: data.attackConeAngle,
+			color,
+			emissive,
+			duration: data.breathDurationMs,
+			fillOpacity: isFireBreath ? 0.38 : 0.48,
+			edgeOpacity: isFireBreath ? 0.72 : 0.85,
+		});
+		const breathRange = data.attackRange ?? 6;
+		if (ctx.spawnTelegraphRing) {
+			ctx.spawnTelegraphRing(origin, breathRange * 0.55, { color, emissive });
+		}
+		if (ctx.spawnParticleBurst) {
+			const alongDist = breathRange * 0.45;
+			const along = pointAlong(origin, direction, alongDist);
+			const burstPos = { x: along.x, z: along.z };
+			if (Number.isFinite(origin.y)) {
+				burstPos.y = origin.y;
+				if (Number.isFinite(direction.y)) {
+					const len = Math.hypot(direction.x, direction.z, direction.y) || 1;
+					burstPos.y = origin.y + (direction.y / len) * alongDist;
+				}
+			} else {
+				burstPos.y = 0.8;
+			}
+			ctx.spawnParticleBurst(
+				burstPos,
+				{
+					color,
+					emissive,
+					count: isFireBreath ? 14 : 10,
+					spread: isFireBreath ? 2.0 : 1.5,
+				},
+			);
+		}
+	}
+
+	if (!data.hits?.length) return;
+
+	const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+	for (const hit of data.hits) {
+		const mesh = meshes[hit.enemyId];
+		if (!mesh) continue;
+		const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+		if (ctx.spawnHitSpark) {
+			ctx.spawnHitSpark(pos, { color, emissive, count: 5, spread: 0.55 });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(pos, { color, emissive, count: 6, spread: 0.7 });
+		}
+	}
+}
+
+/**
+ * Archive Wyrm minion attacks: ground cone matching server collectConeHits
+ * geometry (fire breath).
+ */
+function renderArchiveWyrmBreath(data, ctx) {
+	if (!data.origin) return;
+	if (data.minionId && !data.breathPhase) return;
+
+	const isFireBreath = data.specialEffect === 'fire_breath';
+	const accentHex = getAccentHex('ancient_wyrm');
 	const color = isFireBreath ? 0xef4444 : (accentHex ?? 0x22c55e);
 	const emissive = isFireBreath ? (accentHex ?? 0x9333ea) : 0x16a34a;
 
@@ -2519,7 +2602,7 @@ const CARD_RENDERERS = {
 	storm_eagle: [renderStormEagleSummon, renderStormEagleStrike],
 	thunderbird: [renderThunderbirdSummon, renderThunderbirdStrike],
 	dungeon_drake: [renderWyrmSummon, renderWyrmAttack],
-	ancient_wyrm: [renderWyrmSummon, renderWyrmAttack],
+	ancient_wyrm: [renderArchiveWyrmSummon, renderArchiveWyrmBreath],
 	null_crawler: [renderNullCrawlerSummon, renderPhaseBeam],
 	bulkhead_mauler: renderShockwaveSweep,
 
