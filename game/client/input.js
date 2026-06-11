@@ -12,6 +12,7 @@ import { renderCButtonMark, getCButtonAccessibleLabel } from './c-button-icons.j
 import {
 	resolveGamepadProfile,
 	isBindingActive,
+	isGamepadButtonActive,
 	STANDARD_PROFILE,
 	EIGHTBITDO_64_PROFILE,
 	getPrimaryGamepad as getProfilePrimaryGamepad,
@@ -182,7 +183,7 @@ function getModifierButtonIndex(gamepad, profile = getActiveProfile(gamepad), cf
 }
 
 function isHandModifierHeld(gp, profile, cfg) {
-	return isButtonPressed(gp, getModifierButtonIndex(gp, profile, cfg));
+	return isGamepadButtonActive(gp, getModifierButtonIndex(gp, profile, cfg));
 }
 
 function bindingMatchesModifier(binding, modifierHeld) {
@@ -232,12 +233,6 @@ export function getMovementDirection() {
 		return { dx: merged.x, dz: -merged.z, mag };
 	}
 	return { dx: 0, dz: 0, mag: 0 };
-}
-
-function isButtonPressed(gp, index) {
-	const btn = gp.buttons[index];
-	if (!btn) return false;
-	return btn.pressed || btn.value > 0.5;
 }
 
 /**

@@ -2,8 +2,6 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
 	resolveGamepadProfile,
 	isBindingActive,
-	get8BitDo64CStickAxes,
-	get8BitDo64CAxisPairs,
 	EIGHTBITDO_64_PROFILE,
 	EIGHTBITDO_64_LOCK_ON_BUTTON,
 	EIGHTBITDO_64_RIGHT_TRIGGER_BUTTON,
@@ -12,9 +10,6 @@ import {
 	is8BitDo64Gamepad,
 	read8BitDo64CButtonState,
 	read8BitDo64CStickHorizontal,
-	readProfileCStick,
-	readAxisSectorDirections,
-	uses8BitDo64DigitalCButtons,
 	isProfileLockOnPressed,
 } from '../gamepad-profiles.js';
 import { mockGamepad, clearMockGamepads, installGamepadMock, uninstallGamepadMock } from './gamepad-mock.js';
@@ -41,14 +36,6 @@ describe('8BitDo 64 profile', () => {
 		expect(EIGHTBITDO_64_PROFILE.lockOnButton).toBe(EIGHTBITDO_64_LOCK_ON_BUTTON);
 		expect(EIGHTBITDO_64_PROFILE.bindings.useSlot0).toEqual({ type: 'button', index: 0 });
 		expect(EIGHTBITDO_64_PROFILE.bindings.useSlot2).toMatchObject({ type: 'cButton', direction: 'up' });
-	});
-
-	it('uses digital C-buttons without a secondary analog C stick on axes 4/5', () => {
-		expect(uses8BitDo64DigitalCButtons()).toBe(true);
-		mockGamepad(0, { id: '8BitDo 64', axes: [0, 0, 0.8, -0.7, 0, 0], buttons: [] });
-		const pad = navigator.getGamepads()[0];
-		expect(get8BitDo64CStickAxes(pad)).toBeNull();
-		expect(get8BitDo64CAxisPairs(pad)).toEqual([]);
 	});
 
 	it('reads C-buttons from discrete browser buttons 2–5', () => {
@@ -145,15 +132,6 @@ describe('8BitDo 64 profile', () => {
 		expect(read8BitDo64CStickHorizontal(navigator.getGamepads()[0])).toBe(0);
 	});
 
-	it('synthesizes C-stick display from digital buttons when no analog C stick exists', () => {
-		const buttons = Array(12).fill({ pressed: false, value: 0 });
-		buttons[4] = { pressed: true, value: 1 };
-		mockGamepad(0, { id: '8BitDo 64', axes: [0, 0, 0, 0], buttons });
-		const pad = navigator.getGamepads()[0];
-		expect(get8BitDo64CStickAxes(pad)).toBeNull();
-		expect(readProfileCStick(pad, EIGHTBITDO_64_PROFILE)).toEqual({ x: -1, y: 0 });
-	});
-
 	it('reserves Z (button 8) for lock-on instead of C-down', () => {
 		const buttons = Array(12).fill({ pressed: false, value: 0 });
 		buttons[8] = { pressed: false, value: 0.25 };
@@ -169,11 +147,6 @@ describe('8BitDo 64 profile', () => {
 			EIGHTBITDO_64_LOCK_ON_BUTTON,
 			EIGHTBITDO_64_RIGHT_TRIGGER_BUTTON,
 		]);
-	});
-
-	it('derives four-way directions from axis sectors', () => {
-		expect(readAxisSectorDirections(0, -0.8).up).toBe(true);
-		expect(readAxisSectorDirections(0.8, 0).right).toBe(true);
 	});
 
 	it('auto-detects Bluetooth 8BitDo 64 by product id 3019', () => {

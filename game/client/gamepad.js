@@ -221,8 +221,3 @@ export function initGamepadListeners() {
 	});
 	listenersAdded = true;
 }
-
-/** Whether any connected gamepad is currently providing movement input. */
-export function isGamepadMoving(deadzone = GAMEPAD_DEADZONE, moveStick = 'left') {
-	return pollGamepadMovement(deadzone, moveStick) != null;
-}
