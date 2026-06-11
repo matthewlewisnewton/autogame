@@ -1,0 +1,11 @@
+Review complete. **VERDICT: PASS**
+
+Summary:
+- **Runtime health**: clean — `metrics.json` `ok: true`, `pageerrors: []`, no `harness_failure`; `console.log` has no page errors or fatals. Servers started and scene initialized.
+- **Scope**: confined to `game/client/cardRenderers.js` + its test, exactly as declared. No debug scenario added/changed.
+- **Theme**: deploy = tight cyan storm flourish + wind ripple ring + wing-beat burst (distinct from Thunderbird); strike = cyan storm bolt from reconstructed aerial origin down to the ground target. Reads unmistakably as a storm-charged flyer.
+- **Timing**: renderer fires once per server hitscan strike event at damage-resolution; summon/strike cleanly gated; aerial-origin geometry is the exact inverse of the server's `computeAimDirection3D`; card has no `windUpMs` so the 307 telegraph is correctly N/A.
+- **Perf**: only one-shot primitive spawns; no hot-path cost.
+- **Tests**: 6 new storm_eagle tests; full file 181/181 passing.
+
+No blocking gaps, so no `gaps.md` written. No genuinely actionable code nits, so no `nits.md` either. Wrote only `review.md`.
