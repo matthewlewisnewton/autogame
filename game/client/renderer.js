@@ -4301,29 +4301,53 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 	}
 
 	if (effect === 'ice_ball') {
-		// Icy sphere projectile — same travel/cleanup shape as `fireball` but
-		// with cool cyan/blue colors and a slower `projectileTravelMs` duration.
-		const geometry = new THREE.SphereGeometry(0.35, 12, 12);
-		const material = new THREE.MeshStandardMaterial({
-			color: style.color ?? 0x67e8f9,
-			emissive: style.emissive ?? 0x38bdf8,
-			emissiveIntensity: 1.2,
-			roughness: 0.35,
+		// Glacial Orb: faceted crystalline core + outer frost halo — cool cyan
+		// palette and layered silhouette distinct from generic `projectile`,
+		// warm `fireball`, and elongated `permafrost_lance`.
+		const iceColor = style.color ?? 0x67e8f9;
+		const iceEmissive = style.emissive ?? 0x38bdf8;
+		const group = new THREE.Group();
+
+		const coreMat = new THREE.MeshStandardMaterial({
+			color: iceColor,
+			emissive: iceEmissive,
+			emissiveIntensity: 2.4,
+			roughness: 0.2,
+			metalness: 0.25,
+			transparent: true,
+			opacity: 0.92,
+		});
+		const coreMesh = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 0), coreMat);
+		coreMesh.position.y = 1.0;
+		group.add(coreMesh);
+
+		const haloMat = new THREE.MeshStandardMaterial({
+			color: iceColor,
+			emissive: iceEmissive,
+			emissiveIntensity: 1.6,
+			roughness: 0.45,
 			metalness: 0.1,
 			transparent: true,
-			opacity: 1.0,
+			opacity: 0.38,
+			depthWrite: false,
 		});
-		const mesh = new THREE.Mesh(geometry, material);
-		mesh.position.set(origin.x, 1.0, origin.z);
-		targetScene.add(mesh);
+		const haloMesh = new THREE.Mesh(new THREE.SphereGeometry(0.48, 10, 10), haloMat);
+		haloMesh.position.y = 1.0;
+		group.add(haloMesh);
+
+		group.position.set(origin.x, 0, origin.z);
+		targetScene.add(group);
 
 		activeEffects.push({
-			mesh,
+			mesh: group,
+			coreMesh,
+			haloMesh,
 			origin: { x: origin.x, z: origin.z },
 			direction: { x: direction.x, z: direction.z },
 			range,
 			createdAt: performance.now(),
 			duration: style.projectileTravelMs ?? 1200,
+			isGlacialOrbProjectile: true,
 		});
 		return;
 	}
@@ -6678,6 +6702,41 @@ export function updateAttackEffects() {
 			const lifeRatio = 1.0 - t;
 			if (fx.coreMesh?.material) {
 				fx.coreMesh.material.opacity = Math.max(0.01, 0.95 * lifeRatio);
+			}
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Glacial Orb projectile (crystalline core + frost halo) ──
+		if (fx.isGlacialOrbProjectile) {
+			const travelRange = fx.range ?? ATTACK_RANGE;
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const travel = travelRange * t;
+			fx.mesh.position.x = fx.origin.x + fx.direction.x * travel;
+			fx.mesh.position.z = fx.origin.z + fx.direction.z * travel;
+
+			const pulse = 0.88 + 0.12 * Math.sin(elapsed / 80);
+			const shimmer = 1.0 + 0.22 * Math.sin(elapsed / 55 + 0.5);
+			if (fx.coreMesh) {
+				fx.coreMesh.rotation.y = elapsed * 0.002;
+				fx.coreMesh.rotation.x = Math.sin(elapsed / 200) * 0.15;
+				fx.coreMesh.scale.setScalar(pulse);
+				fx.coreMesh.material.emissiveIntensity = 2.2 * shimmer;
+			}
+			if (fx.haloMesh) {
+				const haloPulse = 1.0 + 0.18 * Math.sin(elapsed / 90 + 1.1);
+				fx.haloMesh.scale.setScalar(haloPulse);
+				fx.haloMesh.material.emissiveIntensity = 1.5 * shimmer;
+				fx.haloMesh.material.opacity = Math.max(0.15, 0.38 + 0.12 * Math.sin(elapsed / 70));
+			}
+
+			const lifeRatio = 1.0 - t;
+			if (fx.coreMesh?.material) {
+				fx.coreMesh.material.opacity = Math.max(0.01, 0.92 * lifeRatio);
 			}
 
 			if (elapsed >= fx.duration) {

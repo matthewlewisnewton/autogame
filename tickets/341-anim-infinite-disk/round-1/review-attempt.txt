@@ -1,0 +1,15 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime gate passed** — `metrics.json` reports `ok: true` with an empty `pageerrors` array, no `harness_failure`, the console log is clean (only benign vite/initScene/409-lobby-race lines), and the smoke screenshot shows a fully rendered scene with HUD and card hand.
+
+**Acceptance criteria fully met:**
+- **Theme/visual** — `renderTripleReturning` fans three spinning cyan photon discs out along the perpendicular axis, then schedules boomerang return beats that travel the trail/burst back from the far point to the origin. Reads unmistakably as "Infinite Disk."
+- **Timing sync** — travel range now comes from `data.attackRange` and the return-beat count from `data.returnPasses`, both of which the server genuinely emits in the `CARD_USED` payload (`cardEffects.js:550,553`). Beats pace at `ATTACK_EFFECT_DURATION/3` so the flourish resolves inside the attack window.
+- **No perf regression** — at most 3 deferred lightweight beats, no per-frame work.
+- **Tests** — strong new coverage (range sizing, per-pass beat scheduling, reversed return direction, payload-driven count, graceful degradation without primitives); 211/211 client tests pass.
+
+**Scope** is exactly as ticketed: only `cardRenderers.js` + its test. No debug scenarios added. No blocking gaps.
+
+I filed one non-blocking nit (return beats are window-paced rather than tied to per-pass server hit timestamps — acceptable since the server resolves all passes same-tick) to `nits.md`. No `gaps.md` written since the verdict is PASS.

@@ -1,0 +1,14 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/352-anim-necroframe-knight/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/352-anim-necroframe-knight/game/data
+Server listening on port 3000
+Player connected: socket=kH0AEUoXZIUlLdkKAAAB, playerId=29c82169-61a1-45d7-b2e2-1ac3646aa5fb
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=oSHF5yQQSMjoQQ_QAAAD, playerId=d00e37a6-a2c2-47e8-bbb0-2877aa7e27a0
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: kH0AEUoXZIUlLdkKAAAB
+Player disconnected: oSHF5yQQSMjoQQ_QAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

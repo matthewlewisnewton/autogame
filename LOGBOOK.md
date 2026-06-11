@@ -7525,3 +7525,95 @@ None blocking. One non-blocking nit recorded in `nits.md` (the 2500ms freeze
 duration is duplicated client-side from cardStats.json behind a manual
 keep-in-sync comment rather than being carried in the payload or imported).
 
+
+## v0.416 — 347-anim-glacial-orb  (2026-06-10 22:02:50)
+
+### AC4 — Client test where feasible
+Met and strong. New/updated tests assert: `resolveRenderers('ice_ball')` →
+`renderIceBall`; cast flourish (telegraph ring + 8-count burst); trail carries
+`travelMs`; terminal impact is **deferred** (not fired at cast) and lands at the
+correct point after `runScheduled()`; immediate per-hit frost bursts at enemy mesh
+positions with missing-mesh skip; instant-cast (no positive `windUpMs`); graceful
+degradation when optional ctx primitives are absent; and a `spawnAttackEffect`
+integration test verifying the glacial-orb group, colors, flag, and cleanup.
+Ran `vitest run cardRenderers.test.js vfx-primitives.test.js` → **227 passed**.
+
+## Consistency / regression
+Consistent with the 315 VFX-primitive + per-card-renderer foundation (uses
+`spawnTelegraphRing`, `spawnParticleBurst`, `spawnProjectileTrail`, `spawnImpactDecal`,
+`spawnHitSpark`, `scheduleAfter`, `enemyMeshes` — all present in the `cardRenderCtx`
+built in `socketHandlers/cardHandlers.js`). No debug scenario added/changed. No
+gameplay, server, or shared logic touched, so no foundation regression.
+
+## Remaining gaps
+None blocking. Minor visual nits recorded in `nits.md`.
+
+
+## v0.415 — 341-anim-infinite-disk  (2026-06-10 21:39:15)
+
+Met. The renderer spawns three spinning cyan **photon discs** (`color 0xa5f3fc`, `emissive 0x22d3ee`) fanned along the perpendicular axis, a chasing projectile trail, and a spark burst at the far point — then schedules **boomerang return beats** that send a trail/burst back from the far point toward the origin. "Infinite Disk" → returning thrown disc → the discs visibly come back. This reads unmistakably as the card's name. Uses the 315 primitives (`spawnAttackEffect`, `spawnProjectileTrail`, `spawnParticleBurst`, `scheduleAfter`).
+
+### 2. Timing synced to the server effect resolution
+Met. Travel distance now derives from `data.attackRange` (payload) instead of a hardcoded `3.5`/`6`, so the visual far point matches the server's actual reach. Return-beat count is driven by `data.returnPasses` from the payload, never a hardcoded constant. Confirmed the server actually emits these in the `CARD_USED` payload: `cardEffects.js:550` (`attackRange`) and `cardEffects.js:553-554` (`returnPasses`, = 3 for `triple_returning_projectile`, matching `cardStats.json:166`). Return beats are paced at `ATTACK_EFFECT_DURATION/3` (≈200ms) so the full flourish resolves within the ~600ms attack-effect window rather than lagging. The server resolves all passes same-tick (`collectReturningProjectileHits`), so the return beats are an honest cosmetic flourish over the resolution window — appropriate and documented in the code comments.
+
+### 3. No perf regression
+Met. Lightweight: three effect spawns + at most `returnPasses` (3) deferred beats, each a single trail + small burst. No per-frame work added, no leaks (uses the shared `scheduleAfter`).
+
+### 4. Client test where feasible
+Met and strong. New tests cover: range sizing from `attackRange`, one scheduled beat per `returnPass` (staggered/increasing delays), reversed return direction from the far point, payload-driven count (`returnPasses: 2`), and graceful degradation when `scheduleAfter` / trail / burst primitives are absent (still renders three discs, never throws). Full suite: **211/211 pass**.
+
+### 5. Debug scenarios
+No `?debugScenario` shortcut added or changed by this ticket. N/A.
+
+## Consistency / regression
+Consistent with the 315 VFX foundation and the per-card registration pattern (matches sibling renderers' use of `scheduleAfter`, `pointAlong`, accent-color lookup). The `data.attackRange ?? INFINITE_DISK_RANGE(6)` and `returnPasses ?? 0` fallbacks keep the renderer robust if a payload omits a field. No foundation regression.
+
+## Remaining gaps
+None blocking. (Minor non-blocking observation captured in `nits.md`: the return beats are cosmetic over the resolution window rather than tied to discrete per-pass server hit timestamps — acceptable, since the server resolves all passes same-tick.)
+
+
+## v0.414 — 344-anim-voltaic-chain  (2026-06-10 21:36:21)
+
+render loop. Legacy fallback path (`spawnChainLightningEffect`) retained when segments are absent.
+
+### AC4 — Client test where feasible
+PASS. game/client/test/cardRenderers.test.js updated with strong regression guards: renderer
+identity, telegraph style incl. `duration`, cast-burst ordering before scheduled hops, arc style,
+hop-0 immediate vs hop-1 scheduled within `[80,120]ms` and `< ATTACK_EFFECT_DURATION`, endpoint
+snapped to enemy mesh world position, exactly one throttled `enemyHit` sound, and graceful behavior
+when new ctx primitives are absent. Full suite: **203/203 pass** (ran locally).
+
+## Consistency / regressions
+- Scope respected: only `game/client/cardRenderers.js` (this card's render fn) and its client test
+  changed. No server, design, or foundation files touched.
+- No debug scenario added or changed by this ticket — debug-scenario rules N/A.
+- The shared `spawnChainSegmentArcs` / `CHAIN_LIGHTNING_ARC_STYLE` helpers remain in use by a
+  different renderer (cardRenderers.js:1246-1249); not dead code.
+- Consistent with `game/docs/design.md` per-card VFX direction; no foundation regression.
+
+## Remaining gaps
+None blocking. One minor nit (duplicate cyan style constant) recorded in nits.md.
+
+
+## v0.413 — 352-anim-necroframe-knight  (2026-06-10 21:10:16)
+
+- degrades gracefully when optional ctx helpers (`spawnTelegraphRing`,
+  `spawnParticleBurst`, `scheduleAfter`) are absent.
+Plus a `resolveRenderers` assertion that the card uses its bespoke renderer, not
+the generic creature default. Full suite: **193 passed**.
+
+### Scope & integration
+PASS. Diff touches only `game/client/cardRenderers.js` (this card's render fn +
+registration) and its test file — exactly the declared scope. No other per-card
+beads are affected. Every optional helper is guarded, so the renderer is robust
+against a minimal ctx. No debug scenarios added.
+
+### Design consistency
+PASS. Reuses the 315 shared VFX primitives and the per-card registration pattern;
+palette deliberately matched to the evolution chain. No regression to the
+foundation.
+
+## Remaining gaps
+None. The captured run is clean, all acceptance criteria are robustly met, and
+the client tests pass.
+

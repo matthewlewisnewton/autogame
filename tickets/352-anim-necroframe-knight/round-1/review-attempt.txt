@@ -1,0 +1,13 @@
+Review complete. **VERDICT: PASS**
+
+**Runtime health (gate):** `metrics.json` reports `ok: true`, empty `pageerrors`, no `harness_failure`; `console.log` is clean (the two `409` lines are benign init-time contention, no pageerror/fatal). Game starts and loads cleanly.
+
+**Acceptance criteria — all met:**
+- **Theme:** `renderNecroframeKnightSummon` uses bone-white/necrotic-purple (`0xe4e4e7`/`0xa855f7`) — the exact palette of its evolution `undead_commander` — with a summon-in flourish, telegraph ring, and rising bone-shard burst. Reads as an undead bone-knight.
+- **Timing:** Server `skeleton_knight` has no `windUpMs` (resolves instantly, confirmed by the windup regression test), so no charge telegraph is needed/added. Flourish bound to `MINION_SUMMON_IN_MS` (750ms); shard burst staggered at 300ms, capped within the window.
+- **No perf regression:** one-shot guarded effect reusing pooled primitives.
+- **Tests:** 3 new deterministic tests + a renderer-dispatch assertion; full suite **193 passed**.
+
+**Scope:** diff touches only `cardRenderers.js` + its test — exactly as declared. No debug scenarios added, no nits worth backlogging.
+
+No `gaps.md` or `nits.md` written (PASS with no blocking gaps and no genuine nits).

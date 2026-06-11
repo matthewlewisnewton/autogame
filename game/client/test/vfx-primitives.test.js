@@ -616,6 +616,36 @@ describe('shared VFX primitives', () => {
 		expect(accretion.material.emissive.getHex()).toBe(0x654321);
 	});
 
+	it('spawnAttackEffect ice_ball adds a glacial orb projectile and cleans it up', () => {
+		const before = getActiveEffects().length;
+		spawnAttackEffect(
+			{ x: 0, z: 0 },
+			{ x: 1, z: 0 },
+			{
+				effect: 'ice_ball',
+				range: 9,
+				projectileTravelMs: 1200,
+				color: 0x67e8f9,
+				emissive: 0x38bdf8,
+			},
+		);
+		expect(getActiveEffects().length).toBe(before + 1);
+
+		const fx = lastEffect();
+		expect(fx.isGlacialOrbProjectile).toBe(true);
+		expect(fx.range).toBe(9);
+		expect(fx.duration).toBe(1200);
+		expect(fx.mesh.children.length).toBeGreaterThanOrEqual(2);
+		const core = fx.mesh.children[0];
+		expect(core.material.color.getHex()).toBe(0x67e8f9);
+		expect(core.material.emissive.getHex()).toBe(0x38bdf8);
+
+		fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+	});
+
 	it('spawnAttackEffect permafrost_lance adds a flagged lance projectile and cleans it up', () => {
 		const before = getActiveEffects().length;
 		spawnAttackEffect(
