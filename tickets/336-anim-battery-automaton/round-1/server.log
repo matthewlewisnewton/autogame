@@ -1,0 +1,14 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/336-anim-battery-automaton/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/336-anim-battery-automaton/game/data
+Server listening on port 3002
+Player connected: socket=AAmkZSF-fr2T8YszAAAB, playerId=e82799a9-3b7a-4586-9ecc-bcf7e1f1e2a3
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=CAqzJa1PFt39Xs0qAAAD, playerId=3d438cb9-b900-4718-86fd-cd4922bae347
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: AAmkZSF-fr2T8YszAAAB
+Player disconnected: CAqzJa1PFt39Xs0qAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

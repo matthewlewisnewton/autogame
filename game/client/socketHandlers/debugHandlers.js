@@ -23,6 +23,7 @@ export function bindDebugHandlers(s, ctx) {
 				'status-mutual-exclusion-ready',
 				'purifying-pulse-ready',
 				'magma-windup-ready',
+				'reapers-scythe-ready',
 			]);
 			// Card exercises cast on the next harness tick; sync facing/cooldowns now
 			// so keyboard useCard is not blocked or mis-aimed before deferred snap.

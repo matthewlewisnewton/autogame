@@ -7709,6 +7709,85 @@ None. The captured run is clean, all acceptance criteria are robustly met, and
 the client tests pass.
 
 
+## v0.422 — 338-anim-saber-of-light  (2026-06-10 23:23:33)
+
+### Timing and server-effect sync
+
+PASS. Server card data defines `saber_of_light` as a `swift_slash` weapon with `cooldownMs: 400`, `attackRange: 5`, `aoeGrindScale: 0.03`, and no `windUpMs`. The server emits the grind-scaled `attackRange` in the `CARD_USED` payload, and the client renderer uses `data.attackRange` for both cone reach and flash/spark placement, falling back only when the field is absent. The single-swing path fires synchronously with card use, and only additional swings are staggered with the established multi-swing delay idiom.
+
+### Test coverage and regression risk
+
+PASS. `game/client/test/cardRenderers.test.js` adds focused coverage for dedicated renderer resolution, light-themed primitives, reach scaling from small vs large `attackRange`, immediate `swift_slash` timing, and graceful degradation when optional light primitives are missing. The captured `coverage.log` shows the full visible vitest run passed: 50 files, 707 tests.
+
+### Design and requirements consistency
+
+PASS. The change is scoped to client card VFX and tests, preserving the existing 3D scene, websocket play flow, multiplayer visualization, and movement synchronization foundation. It fits the design's card-based combat model and does not alter server combat rules, persistence, lobby flow, or economy.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=` entry point. Existing saber-related scenarios remain URL-driven/local QA shortcuts, and their comments describe normally reachable equivalent states through owning/grinding reward weapons and deploying normally.
+
+## Remaining gaps
+
+None.
+
+
+## v0.423 — 337-anim-chrono-trigger  (2026-06-10 23:31:38)
+
+### Performance and integration
+
+PASS. The implementation uses the existing `activeEffects` lifecycle and fixed small mesh counts: two ripples, one column, and optional per-restored-slot flares/arcs. `spawnChronoTriggerEffect` adds no network traffic, persistent world state, or per-frame allocations beyond the established effect update loop. The socket handler context and main renderer dependency wiring expose the primitive cleanly to card renderers.
+
+### Tests and coverage
+
+PASS. `coverage.log` reports 50 client test files passing with 708 tests. The added coverage includes Chrono Trigger renderer registration, instant dispatch without delayed scheduling, absent-windup behavior, restored-charge flare placement, distinct utility-spell signatures, primitive palette/defaults, and cleanup through `updateAttackEffects`. Coverage thresholds were disabled, but the changed client files have focused behavioral assertions.
+
+### Design and foundation consistency
+
+PASS. The change is consistent with `game/docs/design.md`: Chrono Trigger remains a spell card whose effect is a single-use utility action, not a new combat system or server-side invariant. The foundation requirements in `game/docs/requirements.md` are preserved; the captured run shows a rendered 3D scene, working client-server connection, multiplayer presence, and movement state updates.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change any `?debugScenario=` shortcut. `metrics.json` also reports no development scenarios used for the capture, so there is no debug-path gating or reachability issue to review for this ticket.
+
+
+## v0.424 — 333-anim-reaper-s-scythe  (2026-06-10 23:50:22)
+
+
+### Timing and server-effect sync
+PASS. The primary sweep fires synchronously on `CARD_USED`, uses `data.attackConeAngle ?? Math.PI` and `data.attackRange ?? ATTACK_RANGE`, and does not call `scheduleAfter` for the primary swing, tethers, or reward flourish. This matches the server-side Reaper's Scythe contract: no positive `windUpMs`, instant cone resolution, kill rewards emitted in the same `CARD_USED` payload as `hpHealed` and `currencyGained`.
+
+### Reap kill-reward visuals
+PASS. Killing hits with live enemy meshes spawn guarded soul tethers back to the cast origin, missing meshes are skipped without throwing, and the harvest flourish is gated on actual positive `currencyGained` or `hpHealed` rather than `specialEffect` alone. Non-killing swings retain only the sweep stack.
+
+### Debug scenarios
+PASS. The added `reapers-scythe-ready` scenario is registered as a debug scenario and the client entry point remains the localhost-only `?debugScenario=...` flow. The scenario only shortcuts setup for QA by placing the evolved card and target enemies after entering a standard playing debug state; the same end-state remains reachable through normal gameplay by evolving `harvesting_scythe` into `reapers_scythe` and deploying with it.
+
+### Design and foundation consistency
+PASS. The implementation stays within the card-animation layer and small debug/test plumbing, preserving the core server-client loop, multiplayer state, movement, and combat foundations described in the design and requirements docs. It uses the existing shared VFX/context primitives rather than adding renderer branches or new gameplay effects.
+
+### Tests and coverage
+PASS with residual unrelated validation noise. `coverage.log` shows the focused client renderer suite passing (`client/test/cardRenderers.test.js`, 229 tests) and the VFX primitives suite passing. The full coverage run has one server failure in `server/test/key-items.test.js` for `flare_beacon` `revealedUntil`; this ticket did not touch key-item code, state snapshots, or that test path, so I do not consider it a Reaper's Scythe blocking gap.
+
+
+## v0.425 — 336-anim-battery-automaton  (2026-06-10 23:52:55)
+
+Battery Automaton now has a card-specific renderer registered for `battery_automaton`, so it no longer falls back to the generic creature summon. The summon uses an amber/gold chassis palette with electric-cyan emissive accents, a mechanical deploy ring, an ascending electric column, and the shared minion summon-in burst. This reads as a battery-powered automaton rather than a plain creature summon.
+
+The timing is aligned with the server-side behavior. The server emits `cardUsed` only after the minion is created, includes `minionId`, and initializes `lastChargePulseAt` at summon time. The client deploy effect fires synchronously with that `cardUsed` event and uses `MINION_SUMMON_IN_MS` rather than a delayed wind-up. Battery Automaton has no card `windUpMs`, projectile travel, impact hit, or DoT requirement to sync. Its ongoing effect is the periodic charge restore; the server advances `lastChargePulseAt` on the same 6s restore cadence, and the client only spawns the charge pulse when that timestamp increases, avoiding a false pulse on first sighting.
+
+The persistent minion mesh is also themed consistently: `MINION_VISUAL.battery_automaton` uses a box chassis with the same amber/cyan palette, while the charge pulse adds a brief electric ring and spark burst at the minion position. Cleanup paths dispose Battery Automaton effects through the shared `activeEffects` lifecycle and prune per-minion pulse state when a minion leaves the snapshot, so there is no obvious effect leak or accumulating stale sync state.
+
+## Design and foundation consistency
+
+The work preserves the documented card-combat model: Battery Automaton remains a creature card that spawns a battlefield ally, and the charge-restore mechanic continues to be server-authoritative. Normal multiplayer, movement, lobby, socket, and 3D-rendering foundations from `requirements.md` are intact in the captured run.
+
+The added `battery-automaton-ready` debug scenario is gated by the existing `?debugScenario=` URL path and server debug-scenario authorization. It sets up mana and a hand card for QA, but the actual deployment still goes through the normal `useCard` socket path; Battery Automaton remains reachable through normal acquisition/deck play as covered by the card acquisition and integration tests.
+
+## Tests and coverage
+
+The recorded vitest run passed: 175 files and 2486 tests. Focused coverage includes renderer dispatch for `battery_automaton`, deploy and charge-pulse VFX primitive lifecycle tests, minion summon mesh behavior, charge-pulse sync, and existing server/integration coverage for Battery Automaton spawning and charge restoration. Coverage is visibility-only; no disabled threshold concern blocks the ticket.
+
 ## v0.426 — 332-anim-ether-scythe  (2026-06-11 00:02:39)
 
 ### Scope, performance, and integration

@@ -15,6 +15,7 @@
 //   spawnSummonEffect(origin, radius, styleOrColor?)
 //   spawnLegionMarshalRallyEffect(origin, radius, style?) — undead commander rally ring + column
 //   spawnMinionSummonInEffect(origin, style?) — creature minion summon flourish
+//   spawnBatteryAutomatonDeployEffect(origin, style?) — battery mechanical deploy ring + column
 //   spawnDivineGraceEffect(origin, radius)
 //   spawnEventHorizonEffect(origin, pullRadius, centerRadius, style?)
 //   spawnPurifyingPulseHealRing(origin, radius, options?) — options: { wave, waveCount } stagger one concentric heal wave
@@ -31,6 +32,7 @@
 //   spawnImpactDecal(origin, style?)           — lingering ground flash/decal ring
 //   spawnGravityWellEffect(origin, radius, style?) — contracting pull ring, void core, inward inflow
 //   spawnTelegraphRing(origin, radius, style?) — expanding/pulsing AoE telegraph ring
+//   spawnChronoTriggerEffect(origin, radius, style?) — time-ripple + temporal column (style: { color, emissive, duration })
 //   spawnTelepipeCastEffect(origin, radius, style?) — telepipe portal-opening cast flourish
 //   spawnMirrorWardShellEffect(origin, radius, style?) — lingering mirror ward shell
 //   spawnMirrorWardReflectBurst(origin, direction, style?) — mirror reflect impact VFX
@@ -43,6 +45,7 @@
 import { CARD_ACCENT_STYLE, CARD_DEFS, getCardDef } from './cards.js';
 import {
 	ATTACK_EFFECT_DURATION,
+	ATTACK_RANGE,
 	EVENT_HORIZON_CRUSH_DELAY_MS,
 	MINION_SUMMON_IN_MS,
 	PHOTON_BARRAGE_SWING_DELAY_MS,
@@ -179,6 +182,30 @@ const WEAPON_SLASH_STYLES = {
 		// echoing the card's Magic-Stone-on-hit harvest. Scythe-only.
 		harvestWisps: true,
 	},
+	// Photon Slicer: a near-full cyan spin slice trailing light around the arc.
+	photon_slicer: {
+		color: 0x22d3ee,
+		emissive: 0x06b6d4,
+		coneAngle: Math.PI,
+		range: 4.5,
+		fillOpacity: 0.34,
+		edgeOpacity: 0.8,
+		trail: true,
+		sparkCount: 9,
+		sparkSpread: 1.4,
+	},
+	// Arcane Bolt: a tight violet energy lance stabbing far forward with a beam streak.
+	arcane_bolt: {
+		color: 0xa78bfa,
+		emissive: 0x7c3aed,
+		coneAngle: Math.PI / 9,
+		range: 7.5,
+		fillOpacity: 0.5,
+		edgeOpacity: 0.92,
+		trail: true,
+		sparkCount: 7,
+		sparkSpread: 0.8,
+	},
 	// Saber of Light: a broad, radiant pale-gold arc haloed in bright sparks.
 	saber_of_light: {
 		color: 0xfef08a,
@@ -270,6 +297,86 @@ function renderWeaponSwing(data, ctx) {
 			if (!mesh?.position) continue;
 			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
 			ctx.spawnParticleBurst(pos, { color, emissive, count: 10, spread: 1.1, soulWisp: true });
+		}
+	}
+}
+
+const REAPERS_SCYTHE_COLOR = 0x1e293b;
+const REAPERS_SCYTHE_EMISSIVE = 0xe7e5e4;
+const REAPERS_SCYTHE_EMBER = 0xb45309;
+const REAPERS_SCYTHE_SOUL_GREEN = 0x4ade80;
+const REAPERS_SCYTHE_TETHER_STYLE = { color: REAPERS_SCYTHE_COLOR, emissive: REAPERS_SCYTHE_EMISSIVE };
+const REAPERS_SCYTHE_HARVEST_FLOURISH = { color: REAPERS_SCYTHE_EMBER, emissive: REAPERS_SCYTHE_SOUL_GREEN };
+
+/**
+ * Reaper's Scythe: a wide, dark harvest sweep distinct from the ghostly Ether
+ * Scythe. Honors server-supplied cone geometry so the visible arc matches the
+ * hit volume; composes soul wisps and harvest sparks along the arc. Fires
+ * synchronously on CARD_USED (no windUpMs, no delayed primary swing).
+ */
+function renderReapersScythe(data, ctx) {
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const coneAngle = data.attackConeAngle ?? Math.PI;
+	const range = data.attackRange ?? ATTACK_RANGE;
+	const color = REAPERS_SCYTHE_COLOR;
+	const emissive = REAPERS_SCYTHE_EMISSIVE;
+
+	if (ctx.spawnAttackEffect) {
+		ctx.spawnAttackEffect(origin, direction, {
+			color,
+			emissive,
+			coneAngle,
+			range,
+			fillOpacity: 0.34,
+			edgeOpacity: 0.82,
+		});
+	}
+
+	if (ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, { range, color, emissive });
+	}
+
+	if (ctx.spawnParticleBurst) {
+		const burstAt = pointAlong(origin, direction, range * 0.65);
+		ctx.spawnParticleBurst(burstAt, {
+			color: REAPERS_SCYTHE_EMBER,
+			emissive: REAPERS_SCYTHE_EMISSIVE,
+			count: 10,
+			spread: 1.8,
+		});
+	}
+
+	if (ctx.spawnImpactDecal) {
+		const decalAt = pointAlong(origin, direction, range * 0.55);
+		ctx.spawnImpactDecal(decalAt, { color, emissive });
+	}
+
+	// Kill-reward layer: soul tethers from slain enemies back to the caster.
+	if (data.hits?.length && ctx.spawnLightningArc && ctx.enemyMeshes) {
+		const meshes = ctx.enemyMeshes() || {};
+		for (const hit of data.hits) {
+			if ((hit.hp ?? 1) > 0) continue;
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const enemyPos = { x: mesh.position.x, z: mesh.position.z };
+			if (Number.isFinite(mesh.position.y)) enemyPos.y = mesh.position.y;
+			ctx.spawnLightningArc(enemyPos, origin, REAPERS_SCYTHE_TETHER_STYLE);
+		}
+	}
+
+	// Harvest flourish at the origin when currency or HP was actually gained.
+	const currencyGained = data.currencyGained ?? 0;
+	const hpHealed = data.hpHealed ?? 0;
+	if (currencyGained > 0 || hpHealed > 0) {
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(origin, REAPERS_SCYTHE_HARVEST_FLOURISH);
+		} else if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(origin, {
+				...REAPERS_SCYTHE_HARVEST_FLOURISH,
+				count: 8,
+				spread: 1.2,
+			});
 		}
 	}
 }
@@ -371,6 +478,79 @@ function renderExcaliburPhoton(data, ctx) {
 	};
 	for (let i = 0; i < swingCount; i++) {
 		const delay = delayPerSwing * i;
+		if (delay > 0) ctx.scheduleAfter(delay, swing);
+		else swing();
+	}
+}
+
+/** Saber of Light: a broad, radiant pale-gold/near-white blade of holy light. */
+const SABER_OF_LIGHT_STYLE = {
+	color: 0xfef08a,
+	emissive: 0xfffbeb,
+	coneAngle: Math.PI / 3,
+	range: 5.5,
+	fillOpacity: 0.5,
+	edgeOpacity: 0.97,
+	flashRadius: 2.2,
+	haloCount: 14,
+	haloSpread: 2.0,
+};
+
+/**
+ * Saber of Light swing. Composes the 315 primitives — a wide radiant
+ * pale-gold/near-white cone swing, a bright telegraph-ring flash at the cut, and
+ * a halo of holy sparks — into one unmistakable blade-of-light blow. Its
+ * near-white emissive and pale-gold accent read as holy light, clearly distinct
+ * from `flame_blade`'s orange and `excalibur_photon`'s magenta.
+ *
+ * The on-screen reach tracks the server's actual `attackRange` (which widens
+ * with grind via `aoeGrindScale`) rather than a hardcoded constant: the cone
+ * `range` and the impact flash/spark placement both derive from
+ * `data.attackRange`, falling back to the style default when absent.
+ *
+ * The card is a `swift_slash` fast attack (cooldown 400ms, no wind-up), so the
+ * single swing fires synchronously with the card use — no artificial delay
+ * before the first swing. Only extra swings (`swingCount > 1`) stagger via
+ * `scheduleAfter` like the other multi-swing blades. saber_of_light has
+ * `swingCount === 1`, so its visual lands in one immediate beat aligned to the
+ * server hit resolution. Each ctx call is guarded so the swing degrades
+ * gracefully when a primitive is absent.
+ */
+function renderSaberOfLight(data, ctx) {
+	const style = SABER_OF_LIGHT_STYLE;
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex('saber_of_light') ?? style.color;
+	const emissive = style.emissive;
+	const swingCount = data.swingCount || 1;
+	// Honor the server's grind-scaled reach; fall back to the style default.
+	const range = data.attackRange || style.range;
+	const impactAt = pointAlong(origin, direction, range);
+
+	const swing = () => {
+		ctx.spawnAttackEffect(origin, direction, {
+			color,
+			emissive,
+			coneAngle: style.coneAngle,
+			range,
+			fillOpacity: style.fillOpacity,
+			edgeOpacity: style.edgeOpacity,
+		});
+		if (ctx.spawnTelegraphRing) {
+			ctx.spawnTelegraphRing(impactAt, style.flashRadius, { color, emissive });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(impactAt, {
+				color,
+				emissive,
+				count: style.haloCount,
+				spread: style.haloSpread,
+			});
+		}
+	};
+	// First swing is immediate (swift_slash); only extra swings stagger.
+	for (let i = 0; i < swingCount; i++) {
+		const delay = i * PHOTON_BARRAGE_SWING_DELAY_MS;
 		if (delay > 0) ctx.scheduleAfter(delay, swing);
 		else swing();
 	}
@@ -1132,6 +1312,36 @@ function renderInfernoPillar(data, ctx) {
 function renderCreatureSummon(data, ctx) {
 	if (!data.minionId || !ctx.spawnMinionSummonInEffect) return;
 	ctx.spawnMinionSummonInEffect(originOf(data), accentSummonStyle(data.cardId));
+}
+
+const BATTERY_AUTOMATON_COLOR = 0xfbbf24;
+const BATTERY_AUTOMATON_EMISSIVE = 0x38bdf8;
+
+/**
+ * Battery Automaton: mechanical deploy ring + electric column composed with the
+ * shared minion summon-in flourish. Fires synchronously on CARD_USED when the
+ * server reports a new minion id — no wind-up delay. Every optional helper is
+ * guarded so missing primitives never throw.
+ */
+function renderBatteryAutomaton(data, ctx) {
+	if (!data.minionId || !ctx.spawnMinionSummonInEffect) return;
+	const origin = originOf(data);
+	const batteryStyle = {
+		color: BATTERY_AUTOMATON_COLOR,
+		emissive: BATTERY_AUTOMATON_EMISSIVE,
+		duration: MINION_SUMMON_IN_MS,
+		radius: 1.4,
+	};
+	if (ctx.spawnBatteryAutomatonDeployEffect) {
+		ctx.spawnBatteryAutomatonDeployEffect(origin, batteryStyle);
+	}
+	ctx.spawnMinionSummonInEffect(origin, {
+		color: BATTERY_AUTOMATON_COLOR,
+		emissive: BATTERY_AUTOMATON_EMISSIVE,
+		radius: 1.1,
+		burstCount: 10,
+		burstSpread: 1.4,
+	});
 }
 
 /**
@@ -2303,9 +2513,10 @@ const MANA_PRISM_COLOR = 0xa855f7;
 const MANA_PRISM_EMISSIVE = 0x22d3ee;
 const SACRIFICIAL_ALTAR_COLOR = 0xfbbf24;
 const SACRIFICIAL_ALTAR_EMISSIVE = 0xef4444;
-const CHRONO_TRIGGER_COLOR = 0x67e8f9;
-const CHRONO_TRIGGER_EMISSIVE = 0xfbbf24;
+const CHRONO_TRIGGER_COLOR = 0xf59e0b;
+const CHRONO_TRIGGER_EMISSIVE = 0x67e8f9;
 const CHRONO_TRIGGER_TELEGRAPH_RADIUS = 2;
+const CHRONO_TRIGGER_SLOT_SPACING = 1.2;
 
 /**
  * Astral Guardian: indigo shield/summon telegraph at cast radius, spark burst,
@@ -2371,36 +2582,36 @@ function renderSacrificialAltar(data, ctx) {
 }
 
 /**
- * Chrono Trigger: time-ripple utility cast when `restoredCharges` is present;
- * otherwise amber hand-slot bursts for the economy draw path.
+ * Chrono Trigger: instant time-ripple at the caster (t = 0, no wind-up) plus
+ * per-slot charge-restore flares when the server reports `restoredCharges`.
  */
 function renderChronoTrigger(data, ctx) {
 	if (!data.origin) return;
 	const origin = originOf(data);
-	if (data.restoredCharges !== undefined) {
-		const color = CHRONO_TRIGGER_COLOR;
-		const emissive = CHRONO_TRIGGER_EMISSIVE;
-		const radius = data.radius ?? CHRONO_TRIGGER_TELEGRAPH_RADIUS;
-		if (ctx.spawnTelegraphRing) {
-			ctx.spawnTelegraphRing(origin, radius, { color, emissive });
-		}
-		if (ctx.spawnParticleBurst) {
-			ctx.spawnParticleBurst(origin, { color, emissive, count: 12, spread: 2.0 });
-		}
-		return;
+	const color = getAccentHex(data.cardId) ?? CHRONO_TRIGGER_COLOR;
+	const emissive = CHRONO_TRIGGER_EMISSIVE;
+	if (ctx.spawnChronoTriggerEffect) {
+		ctx.spawnChronoTriggerEffect(origin, CHRONO_TRIGGER_TELEGRAPH_RADIUS, { color, emissive });
 	}
+	if (!Array.isArray(data.restoredCharges) || data.restoredCharges.length === 0) return;
+
 	const direction = directionOf(data);
 	const perpX = -direction.z;
 	const perpZ = direction.x;
-	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, 3, { color: 0xfbbf24, emissive: 0xf59e0b });
-	}
-	if (ctx.spawnParticleBurst) {
-		for (const offset of [-1.2, 1.2]) {
-			ctx.spawnParticleBurst(
-				{ x: origin.x + perpX * offset, z: origin.z + perpZ * offset },
-				{ color: 0xfbbf24, emissive: 0xf59e0b, count: 8, spread: 1.0 },
-			);
+	const castSlot = data.slotIndex;
+	for (const entry of data.restoredCharges) {
+		if (!entry || !Number.isFinite(entry.slotIndex) || !Number.isFinite(castSlot)) continue;
+		const slotDelta = entry.slotIndex - castSlot;
+		const offset = slotDelta * CHRONO_TRIGGER_SLOT_SPACING;
+		const slotPos = {
+			x: origin.x + perpX * offset,
+			z: origin.z + perpZ * offset,
+		};
+		if (ctx.spawnLightningArc) {
+			ctx.spawnLightningArc(origin, slotPos, { color, emissive });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(slotPos, { color, emissive, count: 8, spread: 1.0 });
 		}
 	}
 }
@@ -2416,7 +2627,8 @@ const CARD_RENDERERS = {
 	iron_sword: renderWeaponSwing,
 	flame_blade: renderWeaponSwing,
 	harvesting_scythe: renderWeaponSwing,
-	saber_of_light: renderWeaponSwing,
+	reapers_scythe: renderReapersScythe,
+	saber_of_light: renderSaberOfLight,
 	photon_slicer: renderReturningDisc,
 	arcane_bolt: renderArcaneBolt,
 	resonance_edge: renderResonantDoublePulse,
@@ -2460,6 +2672,7 @@ const CARD_RENDERERS = {
 	ancient_wyrm: [renderWyrmSummon, renderWyrmAttack],
 	null_crawler: [renderNullCrawlerSummon, renderPhaseBeam],
 	bulkhead_mauler: renderShockwaveSweep,
+	battery_automaton: renderBatteryAutomaton,
 
 	// Enchantments
 	spike_trap: renderSpikeTrap,
@@ -2477,6 +2690,9 @@ const TYPE_DEFAULT_RENDERERS = {
 
 /** Alias for coverage tests asserting no spell card still uses the generic burst. */
 export const SPELL_TYPE_DEFAULT_RENDERER = TYPE_DEFAULT_RENDERERS.spell;
+
+/** Alias for tests comparing bespoke weapon renderers against the plain cone default. */
+export const WEAPON_TYPE_DEFAULT_RENDERER = TYPE_DEFAULT_RENDERERS.weapon;
 
 /**
  * Return the renderer(s) responsible for the given cardId, accounting for

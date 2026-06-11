@@ -697,6 +697,15 @@ export const MINION_VISUAL = {
 		emissive: 0x38bdf8,
 		emissiveIntensity: 0.45,
 	},
+	battery_automaton: {
+		shape: 'box',
+		width: 0.55,
+		height: 0.7,
+		depth: 0.45,
+		color: 0xfbbf24,
+		emissive: 0x38bdf8,
+		emissiveIntensity: 0.4,
+	},
 };
 
 /**
@@ -4645,6 +4654,140 @@ export function spawnLegionMarshalRallyEffect(origin, radius, style = {}) {
 	);
 }
 
+// Battery Automaton palette — amber/gold chassis with electric cyan sparks.
+export const BATTERY_AUTOMATON_COLOR = 0xfbbf24;
+export const BATTERY_AUTOMATON_EMISSIVE = 0x38bdf8;
+const BATTERY_AUTOMATON_COLUMN_HEIGHT = 2.5;
+const BATTERY_AUTOMATON_COLUMN_OPACITY = 0.75;
+const BATTERY_AUTOMATON_COLUMN_BASE_Y = 0.1;
+const BATTERY_AUTOMATON_EMISSIVE_INTENSITY = 1.5;
+const BATTERY_AUTOMATON_DEFAULT_RADIUS = 1.4;
+const BATTERY_AUTOMATON_CHARGE_PULSE_DURATION = 700;
+const BATTERY_AUTOMATON_CHARGE_BURST_COUNT = 10;
+const BATTERY_AUTOMATON_CHARGE_BURST_SPREAD = 1.6;
+
+/**
+ * Mechanical deploy flourish: expanding amber/gold assembly ring plus a short
+ * rising electric column. Pure additive VFX; no network traffic or state
+ * beyond activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration, radius }
+ */
+export function spawnBatteryAutomatonDeployEffect(origin, style = {}) {
+	const color = style.color ?? BATTERY_AUTOMATON_COLOR;
+	const emissive = style.emissive ?? BATTERY_AUTOMATON_EMISSIVE;
+	const duration = style.duration ?? MINION_SUMMON_IN_MS;
+	const radius = style.radius ?? BATTERY_AUTOMATON_DEFAULT_RADIUS;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const ringGeometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	ringMesh.position.set(origin.x, 0.1, origin.z);
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(0.001);
+	targetScene.add(ringMesh);
+
+	activeEffects.push({
+		mesh: ringMesh,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration,
+		isBatteryAutomatonRing: true,
+		_baseEmissiveIntensity: 1.2,
+		_scene: targetScene,
+	});
+
+	const columnGeometry = new THREE.CylinderGeometry(0.22, 0.42, BATTERY_AUTOMATON_COLUMN_HEIGHT, 16, 1, true);
+	const columnMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: BATTERY_AUTOMATON_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: BATTERY_AUTOMATON_COLUMN_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const columnMesh = new THREE.Mesh(columnGeometry, columnMaterial);
+	columnMesh.scale.y = 0.001;
+	columnMesh.position.set(origin.x, BATTERY_AUTOMATON_COLUMN_BASE_Y, origin.z);
+	targetScene.add(columnMesh);
+
+	activeEffects.push({
+		mesh: columnMesh,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration,
+		isBatteryAutomatonColumn: true,
+		_baseEmissiveIntensity: BATTERY_AUTOMATON_EMISSIVE_INTENSITY,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Brief charge-delivery pulse: quick expanding cyan/amber ring plus an upward
+ * electric spark burst. Pure additive VFX; no network traffic or state beyond
+ * activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration, radius }
+ */
+export function spawnBatteryChargePulseEffect(origin, style = {}) {
+	const color = style.color ?? BATTERY_AUTOMATON_COLOR;
+	const emissive = style.emissive ?? BATTERY_AUTOMATON_EMISSIVE;
+	const duration = style.duration ?? BATTERY_AUTOMATON_CHARGE_PULSE_DURATION;
+	const radius = style.radius ?? 1.0;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const ringGeometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color: emissive,
+		emissive,
+		emissiveIntensity: 1.35,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	ringMesh.position.set(origin.x, 0.12, origin.z);
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(0.001);
+	targetScene.add(ringMesh);
+
+	activeEffects.push({
+		mesh: ringMesh,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration,
+		isBatteryAutomatonRing: true,
+		_baseEmissiveIntensity: 1.35,
+		_scene: targetScene,
+	});
+
+	spawnParticleBurst(
+		{ x: origin.x, y: 0.6, z: origin.z },
+		{
+			color,
+			emissive,
+			count: BATTERY_AUTOMATON_CHARGE_BURST_COUNT,
+			spread: BATTERY_AUTOMATON_CHARGE_BURST_SPREAD,
+			duration,
+		},
+	);
+}
+
 // Sanctum Pulse palette: a coherent holy-gold so the divine "pulse" reads as
 // radiant sacred light, not the accidental green the ring emissive used to be.
 const DIVINE_GRACE_RING_COLOR = 0xfde68a; // warm gold ground ring
@@ -5085,6 +5228,126 @@ export function spawnTelepipeCastEffect(origin, radius, style = {}) {
 			duration: SUMMON_EFFECT_DURATION,
 		},
 	);
+}
+
+// Chrono Trigger palette — amber temporal charge-reset with cyan glow (cards.js #f59e0b).
+export const CHRONO_TRIGGER_COLOR = 0xf59e0b;
+export const CHRONO_TRIGGER_EMISSIVE = 0x67e8f9;
+const CHRONO_TRIGGER_COLUMN_HEIGHT = 1.4;
+const CHRONO_TRIGGER_COLUMN_OPACITY = 0.72;
+const CHRONO_TRIGGER_COLUMN_BASE_Y = 0.1;
+const CHRONO_TRIGGER_EMISSIVE_INTENSITY = 1.5;
+const CHRONO_TRIGGER_DEFAULT_RADIUS = 2;
+const CHRONO_TRIGGER_WAVE_COUNT = 2;
+const CHRONO_TRIGGER_WAVE_STAGGER_MS = 80; // faster cadence than purifying heal waves
+const CHRONO_TRIGGER_TICK_MS = 55; // clock-tick emissive pulse period
+
+/**
+ * One staggered cyan/amber time-ripple ground ring for Chrono Trigger. Pass
+ * `style.wave` (0-based) to offset this ring's start via `createdAt` so waves
+ * expand in sequence without setTimeout.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ * @param {object} [style] - optional { color, emissive, duration, wave, waveCount, staggerMs }
+ */
+export function spawnChronoTriggerRipple(origin, radius, style = {}) {
+	const color = style.color ?? CHRONO_TRIGGER_COLOR;
+	const emissive = style.emissive ?? CHRONO_TRIGGER_EMISSIVE;
+	const duration = style.duration ?? SUMMON_EFFECT_DURATION;
+	const r = radius ?? CHRONO_TRIGGER_DEFAULT_RADIUS;
+	const wave = style.wave ?? 0;
+	const waveCount = style.waveCount ?? CHRONO_TRIGGER_WAVE_COUNT;
+	const staggerMs = style.staggerMs ?? CHRONO_TRIGGER_WAVE_STAGGER_MS;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const geometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const material = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.position.set(origin.x, 0.1, origin.z);
+	mesh.rotation.x = -Math.PI / 2;
+	mesh.scale.setScalar(0.001);
+	targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		radius: r,
+		createdAt: performance.now() + wave * staggerMs,
+		duration,
+		isChronoTriggerRipple: true,
+		wave,
+		waveCount,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Brief temporal column/wisp rising from the cast origin. Rises and fades via the
+ * `isChronoTriggerColumn` branch in updateAttackEffects (no per-frame allocation).
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration }
+ */
+export function spawnChronoTriggerColumn(origin, style = {}) {
+	const color = style.color ?? CHRONO_TRIGGER_COLOR;
+	const emissive = style.emissive ?? CHRONO_TRIGGER_EMISSIVE;
+	const duration = style.duration ?? SUMMON_EFFECT_DURATION;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const geometry = new THREE.CylinderGeometry(0.18, 0.42, CHRONO_TRIGGER_COLUMN_HEIGHT, 16, 1, true);
+	const material = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: CHRONO_TRIGGER_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: CHRONO_TRIGGER_COLUMN_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.scale.y = 0.001;
+	mesh.position.set(origin.x, CHRONO_TRIGGER_COLUMN_BASE_Y, origin.z);
+	targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration,
+		isChronoTriggerColumn: true,
+		_baseEmissiveIntensity: CHRONO_TRIGGER_EMISSIVE_INTENSITY,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Chrono Trigger: dual-phase staggered time ripples plus a brief ascending temporal
+ * column. Pure additive VFX; no network traffic or state beyond activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {number} [radius]
+ * @param {object} [style] - optional { color, emissive, duration }
+ */
+export function spawnChronoTriggerEffect(origin, radius, style = {}) {
+	const r = radius ?? CHRONO_TRIGGER_DEFAULT_RADIUS;
+	const duration = style.duration ?? SUMMON_EFFECT_DURATION;
+	const rippleStyle = { ...style, duration };
+	for (let wave = 0; wave < CHRONO_TRIGGER_WAVE_COUNT; wave += 1) {
+		spawnChronoTriggerRipple(origin, r, {
+			...rippleStyle,
+			wave,
+			waveCount: CHRONO_TRIGGER_WAVE_COUNT,
+		});
+	}
+	spawnChronoTriggerColumn(origin, { ...style, duration });
 }
 
 const PURIFYING_HEAL_COLOR = 0x6ee7b7;
@@ -6464,6 +6727,48 @@ export function updateAttackEffects() {
 			continue;
 		}
 
+		// ── Battery Automaton expanding ground ring (deploy / charge pulse) ──
+		if (fx.isBatteryAutomatonRing) {
+			const expandMs = Math.min(SUMMON_EXPAND_MS, fx.duration * 0.55);
+			const expandT = Math.min(elapsed / expandMs, 1.0);
+			const scale = fx.radius * expandT * 2;
+			fx.mesh.scale.setScalar(Math.max(0.001, scale));
+
+			if (elapsed > expandMs) {
+				const fadeRatio = 1.0 - (elapsed - expandMs) / (fx.duration - expandMs);
+				fx.mesh.material.opacity = Math.max(0.01, fadeRatio);
+			}
+			const baseIntensity = fx._baseEmissiveIntensity ?? 1.2;
+			const flicker = 1.0 + 0.3 * Math.sin(elapsed * 0.028);
+			fx.mesh.material.emissiveIntensity = baseIntensity * flicker;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Battery Automaton ascending electric column ──
+		if (fx.isBatteryAutomatonColumn) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.35, 1.0);
+			const s = Math.max(0.001, riseT);
+			fx.mesh.scale.y = s;
+			fx.mesh.position.y = BATTERY_AUTOMATON_COLUMN_BASE_Y + (BATTERY_AUTOMATON_COLUMN_HEIGHT * s) / 2;
+			const fade = Math.max(0.01, BATTERY_AUTOMATON_COLUMN_OPACITY * (1.0 - t));
+			fx.mesh.material.opacity = fade;
+			const baseIntensity = fx._baseEmissiveIntensity ?? BATTERY_AUTOMATON_EMISSIVE_INTENSITY;
+			const flicker = 1.0 + 0.35 * Math.sin(elapsed * 0.03);
+			fx.mesh.material.emissiveIntensity = baseIntensity * flicker * fade;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
 		// ── Ether Siphon ascending violet ether column ──
 		if (fx.isEtherSiphonColumn) {
 			const t = Math.min(elapsed / fx.duration, 1.0);
@@ -6484,6 +6789,27 @@ export function updateAttackEffects() {
 			continue;
 		}
 
+		// ── Chrono Trigger staggered time-ripple rings ──
+		if (fx.isChronoTriggerRipple) {
+			const expandT = Math.min(elapsed / SUMMON_EXPAND_MS, 1.0);
+			const scale = fx.radius * expandT * 2;
+			fx.mesh.scale.setScalar(Math.max(0.001, scale));
+			const tick = 0.6 + 0.4 * Math.abs(Math.sin(elapsed / CHRONO_TRIGGER_TICK_MS));
+			if (elapsed > SUMMON_EXPAND_MS) {
+				const fadeRatio = 1.0 - (elapsed - SUMMON_EXPAND_MS) / (fx.duration - SUMMON_EXPAND_MS);
+				fx.mesh.material.opacity = Math.max(0.01, fadeRatio * tick);
+			} else {
+				fx.mesh.material.opacity = Math.max(0.01, tick);
+			}
+			fx.mesh.material.emissiveIntensity = 1.2 * tick;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
 		// ── Glacier Rupture ice-fracture ring (expand → fade) ──
 		if (fx.isGlacierRuptureRing) {
 			const expandT = Math.min(elapsed / SUMMON_EXPAND_MS, 1.0);
@@ -6496,6 +6822,26 @@ export function updateAttackEffects() {
 			}
 			const fracturePulse = 0.75 + 0.25 * Math.abs(Math.sin(elapsed / 85));
 			fx.mesh.material.emissiveIntensity = 1.15 * fracturePulse;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Chrono Trigger ascending temporal column/wisp ──
+		if (fx.isChronoTriggerColumn) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.35, 1.0);
+			const s = Math.max(0.001, riseT);
+			fx.mesh.scale.y = s;
+			fx.mesh.position.y = CHRONO_TRIGGER_COLUMN_BASE_Y + (CHRONO_TRIGGER_COLUMN_HEIGHT * s) / 2;
+			const fade = Math.max(0.01, CHRONO_TRIGGER_COLUMN_OPACITY * (1.0 - t));
+			fx.mesh.material.opacity = fade;
+			const baseIntensity = fx._baseEmissiveIntensity ?? CHRONO_TRIGGER_EMISSIVE_INTENSITY;
+			const tick = 1.0 + 0.3 * Math.sin(elapsed / CHRONO_TRIGGER_TICK_MS);
+			fx.mesh.material.emissiveIntensity = baseIntensity * tick * fade;
 
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, fx._scene || scene);
