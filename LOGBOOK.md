@@ -7413,3 +7413,26 @@ so tests exercise the real primitive.
 None blocking. One minor cosmetic timing inconsistency noted as a nit (per-hit
 sparks fire at cast while the central crush ring fires at +375 ms).
 
+
+## v0.409 — 354-anim-stormwing-drone  (2026-06-10 20:31:57)
+
+`origin.y` mutation is safe. The no-`strikeTarget` fallback
+(`stormEagleStrikePoint`, :1132) carries the same downward tilt.
+
+### "No perf regression"
+PASS. Deploy adds two extra primitive spawns (ring + burst) on a one-shot
+summon event; strike reuses the existing single arc + single burst. No new
+hot-loop work, allocations, or per-frame cost.
+
+### "Client test where feasible"
+PASS. Six storm_eagle tests cover palette, Thunderbird distinctness, the
+ring/wing-burst deploy cues, single-arc-to-strikeTarget, the aerial-origin
+geometry (`y ≈ 8` from a 0.8/0.6 tilt over reach 6), the no-strikeTarget tilt
+fallback, and summon-vs-strike gating. Full file: 181 passed / 0 failed.
+
+## Remaining gaps
+None blocking. The only observation is that the fallback smoke capture did not
+visually exercise the animation (harness deck limitation, not a code defect);
+correctness is fully established by code inspection against the server payload
+plus the unit suite.
+
