@@ -161,3 +161,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [400-cleanup-anim-infinite-disk](tickets/400-cleanup-anim-infinite-disk/)
 - [ ] [400-cleanup-anim-glacial-orb](tickets/400-cleanup-anim-glacial-orb/)
 - [ ] [400-cleanup-anim-cryo-burst](tickets/400-cleanup-anim-cryo-burst/)
+- [ ] [401-cleanup-anim-offering-terminal](tickets/401-cleanup-anim-offering-terminal/)
