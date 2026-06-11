@@ -7271,3 +7271,26 @@ other-card changes; no new debug scenario; no regression to other renderers
 
 None blocking. Two minor thematic nits captured in `nits.md`.
 
+
+## v0.408 — 356-anim-gravity-well  (2026-06-10 20:28:18)
+
+Coverage includes: single bespoke renderer resolution, synchronous fire at t=0,
+correct origin/radius/style args, per-enemy arc geometry, empty/absent `pulled`,
+radius-absent skip, and the primitive pushing ring/core/inflow with correct
+colors and disposal.
+
+### 5. Scope & consistency
+PASS. Diff touches only the gravity-well renderer + registration, the VFX
+primitive in renderer.js, the two wiring points (main.js, socketHandlerCtx.js),
+and tests — within the ticket's stated scope. No debug scenario was added or
+changed. Consistent with the 315/316-319 primitive+per-card foundation; no
+foundation regression.
+
+## Remaining gaps
+None blocking. One non-blocking nit recorded in nits.md: the inflow particles'
+runtime trajectory (`position = velocity * t`) starts each particle at the well
+center and moves it outward to the opposite side, rather than flowing inward
+from its spawned outer ring position — a minor visual imperfection that does not
+change the overall inward read (contracting ring + void core + enemy pull arcs
+dominate).
+
