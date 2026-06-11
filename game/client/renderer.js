@@ -5114,6 +5114,12 @@ const MIRROR_WARD_EMISSIVE = 0x2dd4bf;
 const MIRROR_WARD_SILVER = 0xe2e8f0;
 const mirrorWardShellsByPlayer = new Map();
 
+const EVENT_HORIZON_CORE_COLOR = 0x1a0a2e;
+const EVENT_HORIZON_RING_COLOR = 0x581c87;
+const EVENT_HORIZON_EMISSIVE = 0x7c3aed;
+const EVENT_HORIZON_EFFECT_DURATION = SUMMON_EFFECT_DURATION;
+const EVENT_HORIZON_PARTICLE_COUNT = 12;
+
 /**
  * Immediately dispose a tracked Mirror Ward shell for `playerId`.
  * @param {string} playerId
@@ -5261,6 +5267,114 @@ export function spawnMirrorWardReflectBurst(origin, direction, style = {}) {
 	for (let i = before; i < activeEffects.length; i += 1) {
 		activeEffects[i].isMirrorWardReflect = true;
 	}
+}
+
+/**
+ * Event Horizon singularity: near-black void core, violet accretion ring at
+ * `centerRadius`, and an outer pull halo at `pullRadius` that contracts inward.
+ * Edge particles spiral toward the core to reinforce the pull field.
+ * @param {object} origin - { x, z }
+ * @param {number} pullRadius
+ * @param {number} centerRadius
+ * @param {object} [style]
+ */
+export function spawnEventHorizonEffect(origin, pullRadius, centerRadius, style = {}) {
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const pull = pullRadius ?? 12;
+	const center = centerRadius ?? 2.5;
+	const color = style.color ?? EVENT_HORIZON_RING_COLOR;
+	const emissive = style.emissive ?? EVENT_HORIZON_EMISSIVE;
+	const duration = style.duration ?? EVENT_HORIZON_EFFECT_DURATION;
+
+	const group = new THREE.Group();
+	group.position.set(origin.x, 0, origin.z);
+
+	const coreRadius = Math.min(center * 0.45, 1.1);
+	const coreGeometry = new THREE.SphereGeometry(coreRadius, 16, 12);
+	const coreMaterial = new THREE.MeshStandardMaterial({
+		color: EVENT_HORIZON_CORE_COLOR,
+		emissive: EVENT_HORIZON_CORE_COLOR,
+		emissiveIntensity: 0.35,
+		transparent: true,
+		opacity: 0.95,
+	});
+	const coreMesh = new THREE.Mesh(coreGeometry, coreMaterial);
+	coreMesh.position.y = GROUND_OVERLAY_Y + coreRadius * 0.55;
+	coreMesh.userData.isEventHorizonCore = true;
+	group.add(coreMesh);
+
+	const accretionGeometry = new THREE.RingGeometry(center * 0.72, center, 48);
+	const accretionMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.35,
+		transparent: true,
+		opacity: 0.88,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const accretionMesh = new THREE.Mesh(accretionGeometry, accretionMaterial);
+	accretionMesh.position.y = GROUND_OVERLAY_Y;
+	accretionMesh.rotation.x = -Math.PI / 2;
+	accretionMesh.userData.isEventHorizonAccretion = true;
+	group.add(accretionMesh);
+
+	const haloGeometry = new THREE.RingGeometry(0.86, 1.0, 48);
+	const haloMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.05,
+		transparent: true,
+		opacity: 0.72,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const haloMesh = new THREE.Mesh(haloGeometry, haloMaterial);
+	haloMesh.position.y = GROUND_OVERLAY_Y + 0.02;
+	haloMesh.rotation.x = -Math.PI / 2;
+	haloMesh.scale.setScalar(pull);
+	haloMesh.userData.isEventHorizonHalo = true;
+	group.add(haloMesh);
+
+	const particleCount = style.particleCount ?? EVENT_HORIZON_PARTICLE_COUNT;
+	for (let i = 0; i < particleCount; i += 1) {
+		const particleGeometry = new THREE.IcosahedronGeometry
+			? new THREE.IcosahedronGeometry(0.07, 0)
+			: new THREE.SphereGeometry(0.07, 6, 6);
+		const particleMaterial = new THREE.MeshStandardMaterial({
+			color,
+			emissive,
+			emissiveIntensity: 1.3,
+			transparent: true,
+			opacity: 0.9,
+		});
+		const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+		const startAngle = (i / particleCount) * Math.PI * 2 + Math.random() * 0.35;
+		particle.position.set(
+			Math.cos(startAngle) * pull,
+			GROUND_OVERLAY_Y + 0.12 + Math.random() * 0.18,
+			Math.sin(startAngle) * pull,
+		);
+		particle.userData.isEventHorizonParticle = true;
+		particle.userData.startAngle = startAngle;
+		particle.userData.startRadius = pull;
+		group.add(particle);
+	}
+
+	targetScene.add(group);
+
+	activeEffects.push({
+		mesh: group,
+		_scene: targetScene,
+		origin: { x: origin.x, z: origin.z },
+		pullRadius: pull,
+		centerRadius: center,
+		isEventHorizonEffect: true,
+		createdAt: performance.now(),
+		duration,
+	});
 }
 
 // ── Shared accent-themeable VFX primitives ──
@@ -5627,6 +5741,43 @@ export function updateAttackEffects() {
 			const scale = t < 0.2 ? 0.6 + (t / 0.2) * 0.4 : 1.0;
 			fx.mesh.scale.setScalar(scale);
 			fx.mesh.material.opacity = Math.max(0.01, 1.0 - t);
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Event Horizon singularity pull field ──
+		if (fx.isEventHorizonEffect) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const fade = Math.max(0.01, 1.0 - t);
+			const contractT = Math.min(t / 0.75, 1.0);
+			const haloRadius = fx.pullRadius * (1.0 - contractT * 0.92) + fx.centerRadius * contractT * 0.15;
+			const corePulse = 0.88 + 0.14 * Math.abs(Math.sin(elapsed / 95));
+			const accretionPulse = 0.72 + 0.28 * Math.abs(Math.sin(elapsed / 140));
+
+			for (let c = 0; c < fx.mesh.children.length; c += 1) {
+				const child = fx.mesh.children[c];
+				if (child.userData.isEventHorizonCore) {
+					child.scale.setScalar(corePulse);
+					child.material.opacity = Math.max(0.01, 0.95 * fade);
+				} else if (child.userData.isEventHorizonAccretion) {
+					child.scale.setScalar(accretionPulse);
+					child.material.opacity = Math.max(0.01, 0.88 * fade);
+					child.material.emissiveIntensity = 1.35 * accretionPulse * fade;
+				} else if (child.userData.isEventHorizonHalo) {
+					child.scale.setScalar(Math.max(0.001, haloRadius));
+					child.material.opacity = Math.max(0.01, 0.72 * fade * (1.0 - contractT * 0.35));
+				} else if (child.userData.isEventHorizonParticle) {
+					const spiral = child.userData.startAngle + elapsed * 0.0045;
+					const radius = child.userData.startRadius * (1.0 - contractT);
+					child.position.x = Math.cos(spiral) * radius;
+					child.position.z = Math.sin(spiral) * radius;
+					child.material.opacity = Math.max(0.01, 0.9 * fade);
+				}
+			}
+
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, fx._scene || scene);
 				activeEffects.splice(i, 1);
