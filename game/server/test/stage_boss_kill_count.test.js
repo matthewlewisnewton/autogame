@@ -26,8 +26,7 @@ const SEED = 6161;
 const FIXTURE_QUEST_ID = 'stage_boss_defeat_fixture';
 const ADD_COUNT = 2;
 
-// Real combat-path bug (ticket 282): removeDeadEnemies → recordEnemyDefeated is a
-// no-op for stage_boss because objectives.js lacks onEnemyDefeated / defeatedEnemies.
+// Encounter-scoped kill counting: only boss + encounterHostile adds advance defeatedEnemies.
 
 function openPlazaLayout(seed = SEED) {
   return generateLayout(seed, 'open-plaza');
@@ -140,5 +139,22 @@ describe('stage boss hostiles-purged count (ticket 282)', () => {
 
     expect(state.run.objective.defeatedEnemies).toBe(expectedDefeated);
     expect(buildRunSummary('victory').defeatedEnemies).toBe(expectedDefeated);
+  });
+
+  it('does not increment defeatedEnemies for scripted-wave kills on a stage_boss run', () => {
+    state.enemies.push({
+      id: 'scripted-dock-grunt',
+      type: 'grunt',
+      x: 5,
+      z: 5,
+      hp: 0,
+      scriptedWave: { roomKey: 'room:0', waveIndex: 0 },
+    });
+
+    removeDeadEnemies();
+
+    expect(state.run.objective.defeatedEnemies).toBe(0);
+    expect(state.run.objective.bossDefeated).toBe(false);
+    expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
   });
 });

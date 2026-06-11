@@ -135,11 +135,11 @@ describe('stage boss defeat hook', () => {
     expect(state.enemies.some((e) => e.id === bossId)).toBe(true);
   });
 
-  it('recordEnemyDefeated does not complete the stage_boss objective', () => {
-    const before = { ...state.run.objective };
+  it('recordEnemyDefeated does not complete or inflate the stage_boss objective', () => {
+    const before = state.run.objective.defeatedEnemies;
     recordEnemyDefeated(5);
     expect(state.run.objective.bossDefeated).toBe(false);
-    expect(state.run.objective.defeatedEnemies).toBeGreaterThan(before.defeatedEnemies);
+    expect(state.run.objective.defeatedEnemies).toBe(before);
     expect(isRunObjectiveComplete(state.run.objective)).toBe(false);
   });
 

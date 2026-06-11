@@ -133,6 +133,7 @@ const {
   tryActivateEncounter,
   getEncounterBossId,
   onStageBossDefeated,
+  countStageBossObjectiveKills,
 } = require('./encounters');
 
 let _gameState = null;
@@ -1433,6 +1434,8 @@ function syncRunObjectiveToEnemies() {
 
 function recordEnemyDefeated(count = 1) {
   if (!_gameState.run) return;
+  // stage_boss counts only encounter-scoped kills via removeDeadEnemies / tryActivateEncounter.
+  if (_gameState.run.objective.type === 'stage_boss') return;
   const def = getObjectiveDef(_gameState.run.objective.type);
   if (!def?.onEnemyDefeated) return;
   def.onEnemyDefeated(_gameState.run, count);
@@ -2584,6 +2587,10 @@ function removeDeadEnemies() {
     }
   }
 
+  const stageBossDefeatCount = _gameState.run?.objective?.type === 'stage_boss'
+    ? countStageBossObjectiveKills(dying, _gameState.run)
+    : 0;
+
   const bossId = getEncounterBossId(_gameState.run);
   if (bossId) {
     const bossDying = dying.find((e) => e.id === bossId);
@@ -2596,7 +2603,16 @@ function removeDeadEnemies() {
   _gameState.enemies = _gameState.enemies.filter((e) => e.hp > 0);
   const removed = before - _gameState.enemies.length;
   if (removed > 0) {
-    recordEnemyDefeated(removed);
+    if (_gameState.run?.objective?.type === 'stage_boss') {
+      if (stageBossDefeatCount > 0) {
+        const def = getObjectiveDef('stage_boss');
+        if (def?.onEnemyDefeated) {
+          def.onEnemyDefeated(_gameState.run, stageBossDefeatCount);
+        }
+      }
+    } else {
+      recordEnemyDefeated(removed);
+    }
   }
   syncScriptedDefeatEnemiesActiveCount(_gameState.run, _gameState.enemies);
   return removed;
