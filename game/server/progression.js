@@ -4080,6 +4080,7 @@ module.exports = {
   checkTelepipeProximity,
   previewReturnRewards,
   emitPlayerDeckUpdate,
+  maybeEmitPlayerDeckUpdate,
   buildPlayerDeckUpdatePayload,
   buildPlayerHotSnapshot,
 };

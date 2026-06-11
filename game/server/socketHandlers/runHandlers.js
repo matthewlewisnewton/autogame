@@ -12,6 +12,7 @@ const {
   recordCrystalCollected,
   checkRunTerminalState,
   stateSnapshot,
+  maybeEmitPlayerDeckUpdate,
 } = require('../progression');
 
 function register(socket, ctx) {
@@ -207,6 +208,7 @@ function register(socket, ctx) {
     } else {
       player.currency += loot.value;
       player.currencyEarnedThisRun += loot.value;
+      maybeEmitPlayerDeckUpdate(player);
     }
     state.loot.splice(lootIdx, 1);
 
