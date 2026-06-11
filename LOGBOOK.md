@@ -7414,6 +7414,28 @@ None blocking. One minor cosmetic timing inconsistency noted as a nit (per-hit
 sparks fire at cast while the central crush ring fires at +375 ms).
 
 
+## v0.418 — 348-anim-glacier-rupture  (2026-06-10 22:18:48)
+
+
+### 4. Client test where feasible
+PASS. Strong coverage: dispatch/palette/decal/burst, per-hit positioning, frozenShatter sizing, distinctness
+from frost_nova, the windUpMs contract, and graceful degradation when optional ctx primitives are absent. The
+primitive itself is tested for ring+shard creation, palette/style overrides, and cleanup.
+
+### 5. Scope
+PASS. Changes are confined to `game/client`: the card render fn + registration (cardRenderers.js), the vfx
+primitive (renderer.js), and ctx wiring (main.js, socketHandlers/cardHandlers.js,
+socketHandlers/socketHandlerCtx.js), plus client tests. No server, no debug-scenario, no TASKS.md changes.
+This ticket did not add or modify any `?debugScenario=` shortcut.
+
+### Design/foundation consistency
+PASS. Builds on the 315 shared-primitive + per-card registration pattern; reuses the established palette and
+telegraph/decal/burst helpers. No regression to requirements foundation; touches only this card's path, so it
+will not conflict with sibling per-card animation beads.
+
+## Remaining gaps
+None blocking. One minor nit (palette-constant duplication) recorded in nits.md.
+
 ## v0.409 — 354-anim-stormwing-drone  (2026-06-10 20:31:57)
 
 `origin.y` mutation is safe. The no-`strikeTarget` fallback
@@ -7593,6 +7615,75 @@ when new ctx primitives are absent. Full suite: **203/203 pass** (ran locally).
 
 ## Remaining gaps
 None blocking. One minor nit (duplicate cyan style constant) recorded in nits.md.
+
+
+## v0.420 — 342-anim-arcane-bolt  (2026-06-10 22:50:59)
+
+- **Terminal max-range impact** (`spawnImpactDecal` + 16-particle burst) deferred by `travelMs` via `scheduleAfter`, for visual travel sync only.
+This is a faithful match to instant projectile resolution.
+
+### "No perf regression" — MET
+The projectile effect is registered in `activeEffects` and disposed on expiry (`disposeEffectObject` + array splice once `elapsed >= duration`). A vfx-primitives test confirms the flagged lance is added and cleaned up with geometry disposal. No persistent leaks.
+
+### "Client test where feasible" — MET
+`cardRenderers.test.js` and `vfx-primitives.test.js` add coverage: renderer resolution (`renderArcaneBolt`, explicitly not `renderWeaponSwing`), synced `spawnAttackEffect`/`spawnProjectileTrail` params, deferred terminal impact via `runScheduled`, immediate per-hit pierce bursts at mesh positions (with a missing-mesh guard), no-windUp assertion, and projectile lifecycle/cleanup. Ran `vitest run` on both files: **237 passed (237)**.
+
+### Scope — RESPECTED
+Diff touches only `game/client/cardRenderers.js`, `game/client/renderer.js`, and the two client test files — exactly the declared scope. No server, no other per-card renderers, no debug scenarios added.
+
+## Consistency / regressions
+- Consistent with `design.md` (Weapons = directional projectiles). No foundation regression.
+- No debug-scenario shortcuts introduced.
+- Removed the now-dead `arcane_bolt` entry from `WEAPON_SLASH_STYLES`, avoiding stale config.
+
+## Remaining gaps
+None blocking. The implementation fully and robustly satisfies the ticket.
+
+
+## v0.419 — 340-anim-photon-slicer  (2026-06-10 22:20:51)
+
+Uses `INFINITE_DISK_RETURN_BEAT_MS = round(ATTACK_EFFECT_DURATION/3)` (cardRenderers.js:548) — no fixed multi-second delay; the throw+return flourish resolves within the attack-effect window. No `windUpMs` on photon_slicer, so no charge telegraph is required. PASS.
+
+**Graceful degradation.**
+`spawnProjectileTrail`, `spawnParticleBurst`, and `scheduleAfter` are each guarded; only `spawnAttackEffect` is unconditional (consistent with sibling renderers and the always-present primitive). Calling with all optional primitives absent does not throw. PASS.
+
+**Dead `WEAPON_SLASH_STYLES.photon_slicer` removed.**
+Removed (former lines 182–193); other weapon styles untouched. PASS.
+
+**Tests updated and passing.**
+The old cone-slash assertion is replaced by a returning-disc test asserting the cyan outbound effect, far-point burst at `{x:8,z:0}`, exactly one scheduled return beat, and a reversed return trail after `runScheduled()`. `npx vitest run client/test/cardRenderers.test.js` → 212/212 pass, including the shared distinct-accent / graceful-degradation / card-specific-renderer tests with `photon_slicer` included.
+
+**Scope.**
+`git diff` touches only `game/client/cardRenderers.js`, `game/client/test/cardRenderers.test.js`, and the subticket md — within the declared scope. Server CARD_DEFS unchanged, so server tests referencing photon_slicer (`saber_aoe_grind`, `new_card_pack`) are unaffected.
+
+## Design / regression consistency
+Mirrors the established `renderTripleReturning` (Infinite Disk, photon_slicer's evolution) as its single-disc sibling — visually coherent across the lineage. No new ctx methods, no `renderer.js`/`main.js` changes, no foundation regression. No debug-scenario changes in this ticket.
+
+## Remaining gaps
+None blocking. Minor non-blocking nits filed separately (duplicate range constant, redundant accent fallback).
+
+
+## v0.421 — 334-anim-deck-sifter  (2026-06-10 23:19:41)
+
+- Palette stays on the card's own theme: `DECK_SIFTER_ACCENT 0xd4a843` matches the `deck_sifter` card color `#d4a843`; parchment body `0xf5deb3` + gold emissive `0xdaa520`. The "deck sifting / drawing a card" read is clear and distinct from a generic hit burst.
+
+### 2. Timing synced to server effect resolution
+PASS. `deck_sifter` is a `weapon` with effect `draw_card` and **no `windUpMs`** (confirmed in cardDefs.json and the HUD probe, which shows wind-up labels only on Solar Edge/Vault Wyrm, not deck_sifter), so no 307 charge telegraph is required. The draw is instant server-side, so the centre card puffs immediately (synced to the instant draw) and the two flanking cards riffle out via `scheduleAfter` at 70ms/140ms — total ~140ms, asserted `< 300ms` in the test. Sub-ticket 01 added `origin: { x: originX, z: originZ }` to the `draw_card` `CARD_USED` emit (game/server/cardEffects.js:371), so the flourish renders at the caster instead of world (0,0). Origin is the player's locked cast position.
+
+### 3. No perf regression
+PASS. Built only from existing ctx primitives (`spawnParticleBurst`, `spawnTelegraphRing`, `scheduleAfter`). Particle budget is modest (one ring + 3×6 particles) and actually lower per-burst count than before; no new render loops or allocations of concern.
+
+### 4. Client test where feasible
+PASS. The client test was rewritten to assert the full composition: ground ring palette/position/radius, immediate centre burst, the `[70, 140]` schedule, and the three fanned bursts at z `[3.3, 4, 4.7]` perpendicular to a `+x` cast. A graceful-degradation test (no `spawnParticleBurst`) is retained. A server integration test asserts the `draw_card` `CARD_USED` carries finite origin equal to player position. Client tests pass (`2 passed`). Server integration suite is skipped wholesale in this environment (all 168 skip — pre-existing harness behavior, not introduced here).
+
+## Design / scope consistency
+- Consistent with the 315 shared-VFX-primitive foundation; no new bespoke primitives.
+- Scope was nominally client-only (cardRenderers.js + vfx + client test), but the implementation also touches game/server/cardEffects.js (one line) and the server integration test. This deviation is minimal and necessary: the burst cannot render at the caster without the server forwarding the cast origin for the instant `draw_card` path. Well-justified and self-contained; not a blocking concern.
+- No debug scenarios added or changed.
+- `directionOf`/`originOf` both default safely (direction → `{x:1,z:0}`, origin → `{x:0,z:0}`), so a missing direction yields a finite perpendicular fan rather than NaN.
+
+## Remaining gaps
+None blocking.
 
 
 ## v0.413 — 352-anim-necroframe-knight  (2026-06-10 21:10:16)

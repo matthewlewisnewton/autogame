@@ -1,0 +1,11 @@
+I created one sub-ticket. Here is the path:
+
+- `/home/matt/workspace/.autogame-worktrees/340-anim-photon-slicer/tickets/340-anim-photon-slicer/subtickets/01-returning-photon-disc/ticket.md`
+
+**Decomposition rationale (1 sub-ticket):**
+
+The top-level ticket is a single cohesive re-theme. Investigation showed the real problem: Photon Slicer's server effect is `returning_projectile` (a thrown disc that flies out to `attackRange: 8` and boomerangs back — icon `⟲`, evolves into "Infinite Disk"), but the client renders it as a **stationary melee cone slash** via `renderWeaponSwing`. Fixing both the ticket's threads — VISUAL matching the name/theme *and* TIMING synced to the server effect — is accomplished by one new renderer function (the single-disc sibling of the existing `renderTripleReturning` that already powers the evolved `infinite_disk`), its one-line registration swap, and its test. Splitting "outbound throw" from "return beat" would force a second pass to re-edit the same function the first just wrote — the bundled-concern anti-pattern — so a single focused sub-ticket is the correct smallest set.
+
+It has no `windUpMs`, so no charge-telegraph work is needed; the server resolves `returning_projectile` synchronously, so the renderer just needs its outbound+return beats to land within `ATTACK_EFFECT_DURATION`.
+
+**Verification mode: `code`** — the acceptance criteria mix rendering ("reads as a thrown disc") with structural/logic checks (renderer registered, `scheduleAfter` return-beat cadence, `returnPasses` defaulting to 1, graceful degradation, dead-config removal, tests pass). Per the rules, mixed → `code`; and visual QA's happy-path run (load, two players, WASD) never casts this card, so visual could never verify it.

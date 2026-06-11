@@ -21,6 +21,7 @@
 //   spawnCleanseBurstEffect(origin) — upward white→mint cleanse rise (column + sparkle)
 //   spawnPurifyingPulseEffect(origin, radius)
 //   spawnInfernoPillarEffect(origin, radius, style?) — style: { color, emissive, dotTicks, dotIntervalMs, duration }
+//   spawnGlacierRuptureEffect(origin, radius, style?) — ice-fracture ring + rising shard burst
 //   spawnEtherSiphonEffect(origin, radius, style?) — style: { color, emissive, duration }
 //   spawnDragonsBreathEffect(origin, direction, style?) — style: { color, emissive, range, coneAngle, dotTicks, dotIntervalMs, duration }
 //   spawnChainLightningEffect(origin, direction)
@@ -191,6 +192,17 @@ const WEAPON_SLASH_STYLES = {
 		trail: true,
 		sparkCount: 7,
 		sparkSpread: 0.8,
+	},
+	// Saber of Light: a broad, radiant pale-gold arc haloed in bright sparks.
+	saber_of_light: {
+		color: 0xfef08a,
+		emissive: 0xfde047,
+		coneAngle: Math.PI / 3,
+		range: 5.5,
+		fillOpacity: 0.46,
+		edgeOpacity: 0.95,
+		sparkCount: 12,
+		sparkSpread: 1.8,
 	},
 };
 
@@ -681,6 +693,58 @@ function renderTripleReturning(data, ctx) {
 	}
 }
 
+/** Default disc travel range when a returning-disc payload omits `attackRange`. */
+const RETURNING_DISC_RANGE = 6;
+
+/**
+ * Photon Slicer (server effect `returning_projectile`): a single spinning cyan
+ * photon disc thrown forward to the weapon's reach that then boomerangs home —
+ * the single-disc sibling of `renderTripleReturning`. The outbound throw spawns
+ * one disc plus a trail/spark polish pass at the far point; each return-pass
+ * schedules a short return beat whose trail/burst travels from the far point
+ * back toward the origin so the disc visibly comes back. Beat count follows the
+ * payload but defaults to 1 (Photon Slicer omits `returnPasses` yet the server
+ * still runs exactly one return pass), so the base card always shows a return.
+ */
+function renderReturningDisc(data, ctx) {
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex(data.cardId) ?? 0x22d3ee;
+	const emissive = 0x06b6d4;
+	// Disc travel distance is driven by the weapon's reach from the payload so
+	// the visual matches the server's actual outbound+return resolution.
+	const range = Number.isFinite(data.attackRange) ? data.attackRange : RETURNING_DISC_RANGE;
+	const farPoint = pointAlong(origin, direction, range);
+	// Outbound throw: a single spinning cyan disc along the firing direction.
+	ctx.spawnAttackEffect(origin, direction, { color, emissive });
+	// Spinning-light polish: a cyan streak chasing the disc plus a spark shower
+	// out at the far end of its path.
+	if (ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, { range, color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(farPoint, { color, emissive, count: 8, spread: 1.4 });
+	}
+	// Boomerang return passes: one beat per server return-pass, defaulting to 1
+	// so the base card always shows the disc coming home. Each beat sends a
+	// trail/burst back from the far point toward the origin.
+	const passes = Math.max(1, data.returnPasses ?? 1);
+	if (ctx.scheduleAfter) {
+		const returnDir = { x: -direction.x, z: -direction.z };
+		if (Number.isFinite(direction.y)) returnDir.y = -direction.y;
+		for (let i = 0; i < passes; i++) {
+			ctx.scheduleAfter(INFINITE_DISK_RETURN_BEAT_MS * (i + 1), () => {
+				if (ctx.spawnProjectileTrail) {
+					ctx.spawnProjectileTrail(farPoint, returnDir, { range, color, emissive });
+				}
+				if (ctx.spawnParticleBurst) {
+					ctx.spawnParticleBurst(origin, { color, emissive, count: 6, spread: 1.2 });
+				}
+			});
+		}
+	}
+}
+
 /**
  * Generic radial AoE preview, tinted with the card's accent color. This is
  * the default renderer for `type: 'spell'` cards that report a `radius`.
@@ -787,12 +851,35 @@ function renderPermafrostLance(data, ctx) {
 function renderGlacierCollapse(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
-	ctx.spawnSummonEffect(origin, data.radius, { color: GLACIER_COLOR, emissive: GLACIER_EMISSIVE });
+	const palette = { color: GLACIER_COLOR, emissive: GLACIER_EMISSIVE };
+	if (ctx.spawnGlacierRuptureEffect) {
+		ctx.spawnGlacierRuptureEffect(origin, data.radius, palette);
+	}
 	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, data.radius, { color: GLACIER_COLOR, emissive: GLACIER_EMISSIVE });
+		ctx.spawnTelegraphRing(origin, data.radius, palette);
+	}
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(origin, palette);
 	}
 	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(origin, { color: GLACIER_COLOR, emissive: GLACIER_EMISSIVE, count: 12, spread: 2.4 });
+		ctx.spawnParticleBurst(origin, { ...palette, count: 16, spread: 2.4 });
+	}
+	if (data.hits?.length && ctx.enemyMeshes) {
+		const meshes = ctx.enemyMeshes() || {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh?.position) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			const burstStyle = hit.frozenShatter
+				? { ...palette, count: 12, spread: 1.4 }
+				: { ...palette, count: 6, spread: 0.7 };
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(pos, burstStyle);
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pos, burstStyle);
+			}
+		}
 	}
 }
 
@@ -1731,6 +1818,73 @@ function renderWyrmAttack(data, ctx) {
 }
 
 /**
+ * Arcane Bolt: a violet energy lance projectile that travels from the caster
+ * along the cast direction. Instant cast (no wind-up telegraph). Per-enemy pierce
+ * hit bursts fire immediately on CARD_USED to match the server's instant
+ * `collectProjectileHits` resolution; terminal impact at max range is deferred
+ * by `travelMs` for visual travel sync only.
+ */
+function renderArcaneBolt(data, ctx) {
+	if (!data.origin) return;
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const travelMs = data.projectileTravelMs ?? ATTACK_EFFECT_DURATION;
+	const color = getAccentHex(data.cardId) ?? 0xa78bfa;
+	const emissive = 0x7c3aed;
+	const impact = pointAlong(origin, direction, data.attackRange ?? 10);
+
+	// Brief arcane channel at cast (instant weapon — no wind-up telegraph).
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, 0.45, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 8, spread: 1.0 });
+	}
+
+	ctx.spawnAttackEffect(origin, direction, {
+		effect: 'arcane_bolt',
+		range: data.attackRange,
+		projectileTravelMs: travelMs,
+		color,
+		emissive,
+	});
+	if (ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, {
+			range: data.attackRange,
+			travelMs,
+			color,
+			emissive,
+		});
+	}
+
+	const terminalImpact = () => {
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(impact, { color, emissive });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(impact, { color, emissive, count: 16, spread: 2.0 });
+		}
+	};
+	ctx.scheduleAfter(travelMs, terminalImpact);
+
+	// Per-enemy pierce hit bursts align with instant server damage resolution.
+	if (data.hits?.length) {
+		const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(pos, { color, emissive, count: 5, spread: 0.55 });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pos, { color, emissive, count: 6, spread: 0.7 });
+			}
+		}
+	}
+}
+
+/**
  * Fireball: a fiery sphere projectile that travels from the caster along the
  * cast direction. Distinct from the plain `projectile` visual via the warm
  * fire palette in the renderer's `fireball` branch. On impact, an enhanced
@@ -2146,17 +2300,60 @@ function renderTelepipe(data, ctx) {
 	}
 }
 
+// Parchment body + gold glow keep the flourish reading as cards, not a hit.
+// DECK_SIFTER_ACCENT matches the `deck_sifter` card color (#d4a843).
+const DECK_SIFTER_COLOR = 0xf5deb3;
+const DECK_SIFTER_EMISSIVE = 0xdaa520;
+const DECK_SIFTER_ACCENT = 0xd4a843;
+// Fan offsets perpendicular to the cast direction: centre card first, then the
+// flanking cards riffle outward. Center fires immediately so the flourish stays
+// synced to the instant `draw_card`; the rest follow within ~140ms total.
+const DECK_SIFTER_FAN_OFFSETS = [0, -0.7, 0.7];
+const DECK_SIFTER_RIFFLE_STEP_MS = 70;
+const DECK_SIFTER_RING_RADIUS = 1.4;
+
 /**
- * Deck Sifter: fan of ghost card silhouettes rising from the caster using
- * a parchment/gold particle burst to signal a draw action.
+ * Deck Sifter: a staggered parchment/gold flourish that reads as riffling a
+ * deck to draw a card. A short ground ring fans open at the caster's feet and a
+ * fan of card-puff bursts rises perpendicular to the cast direction, each beat
+ * scheduled a touch after the last so it suggests sifting — all on the
+ * parchment/gold theme, composed only from existing ctx primitives.
  */
 function renderDeckSifter(data, ctx) {
 	if (!ctx.spawnParticleBurst) return;
-	ctx.spawnParticleBurst(originOf(data), {
-		color: 0xf5deb3,
-		emissive: 0xdaa520,
-		count: 10,
-		spread: 1.8,
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const len = Math.hypot(direction.x, direction.z) || 1;
+	// Perpendicular to the cast direction, so the cards fan across the caster.
+	const perpX = -direction.z / len;
+	const perpZ = direction.x / len;
+
+	// Ground accent: a quick parchment/gold ring reading as the deck fanned open.
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, DECK_SIFTER_RING_RADIUS, {
+			color: DECK_SIFTER_ACCENT,
+			emissive: DECK_SIFTER_EMISSIVE,
+		});
+	}
+
+	DECK_SIFTER_FAN_OFFSETS.forEach((offset, i) => {
+		const position = {
+			x: origin.x + perpX * offset,
+			y: 1.0,
+			z: origin.z + perpZ * offset,
+		};
+		const emit = () =>
+			ctx.spawnParticleBurst(position, {
+				color: DECK_SIFTER_COLOR,
+				emissive: DECK_SIFTER_EMISSIVE,
+				count: 6,
+				spread: 0.8,
+			});
+		if (i === 0 || !ctx.scheduleAfter) {
+			emit();
+		} else {
+			ctx.scheduleAfter(DECK_SIFTER_RIFFLE_STEP_MS * i, emit);
+		}
 	});
 }
 
@@ -2280,8 +2477,8 @@ const CARD_RENDERERS = {
 	flame_blade: renderWeaponSwing,
 	harvesting_scythe: renderWeaponSwing,
 	saber_of_light: renderSaberOfLight,
-	photon_slicer: renderWeaponSwing,
-	arcane_bolt: renderWeaponSwing,
+	photon_slicer: renderReturningDisc,
+	arcane_bolt: renderArcaneBolt,
 	resonance_edge: renderResonantDoublePulse,
 	echo_blade: renderEchoSlash,
 	infinite_disk: renderTripleReturning,
