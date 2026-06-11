@@ -17,13 +17,45 @@ function rateLimitKey(req, action, username) {
 	return `${action}:${ip}:${normalizedUsername}`;
 }
 
-function isRateLimited(req, action, username) {
+function isRateLimited(req, action, username, increment = true) {
 	if (process.env.NODE_ENV === 'test' && process.env.AUTH_RATE_LIMIT_IN_TESTS !== '1') {
 		return false;
 	}
 	const now = Date.now();
 	const key = rateLimitKey(req, action, username);
 	const bucket = rateLimitBuckets.get(key);
+	if (!bucket || now - bucket.windowStart >= RATE_LIMIT_WINDOW_MS) {
+		if (increment) {
+			rateLimitBuckets.set(key, { windowStart: now, attempts: 1 });
+		}
+		return false;
+	}
+	if (increment) {
+		bucket.attempts += 1;
+	}
+	// When not incrementing (check-only mode), use >= because the
+	// separate increment call on failure would otherwise allow one
+	// extra request through (off-by-one in check-then-increment pattern).
+	return increment
+		? bucket.attempts > RATE_LIMIT_MAX_ATTEMPTS
+		: bucket.attempts >= RATE_LIMIT_MAX_ATTEMPTS;
+}
+
+/**
+ * Increment (or create) a rate-limit bucket for a given request.
+ * Used when rate limiting should only count failures (e.g. admin auth).
+ * Call `isRateLimited(req, action, username, false)` first to check,
+ * then call this only on failure.
+ *
+ * @returns {boolean} true if the bucket now exceeds the max attempts.
+ */
+function incrementRateLimit(req, action, username) {
+	if (process.env.NODE_ENV === 'test' && process.env.AUTH_RATE_LIMIT_IN_TESTS !== '1') {
+		return false;
+	}
+	const now = Date.now();
+	const key = rateLimitKey(req, action, username);
+	let bucket = rateLimitBuckets.get(key);
 	if (!bucket || now - bucket.windowStart >= RATE_LIMIT_WINDOW_MS) {
 		rateLimitBuckets.set(key, { windowStart: now, attempts: 1 });
 		return false;
@@ -189,3 +221,7 @@ module.exports.getJWTSecret = function getJWTSecret() { return JWT_SECRET; };
 module.exports.verifyToken = verifyToken;
 module.exports.resetAuthSecret = function resetAuthSecret() { JWT_SECRET = null; };
 module.exports._resetRateLimits = function _resetRateLimits() { rateLimitBuckets.clear(); };
+module.exports.isRateLimited = isRateLimited;
+module.exports.incrementRateLimit = incrementRateLimit;
+module.exports.RATE_LIMIT_WINDOW_MS = RATE_LIMIT_WINDOW_MS;
+module.exports.RATE_LIMIT_MAX_ATTEMPTS = RATE_LIMIT_MAX_ATTEMPTS;

@@ -5,6 +5,7 @@
 
 const crypto = require('crypto');
 const { getAllUsers } = require('./users');
+const { isRateLimited, incrementRateLimit } = require('./auth');
 
 /**
  * Default key item every account starts with. Mirrors the persistence default
@@ -198,6 +199,11 @@ function readSuppliedPassword(req) {
  * denied with HTTP 403. A wrong or missing supplied password is also denied;
  * only an exact (constant-time) match calls next(). It NEVER consults the
  * player JWT / `Authorization: Bearer` header.
+ *
+ * Rate limiting: only failed auth attempts are counted. After more than
+ * `RATE_LIMIT_MAX_ATTEMPTS` failures from the same IP within the window,
+ * requests return HTTP 429. Successful auth does not increment the counter.
+ * Disabled in tests unless `AUTH_RATE_LIMIT_IN_TESTS=1`.
  */
 function requireAdminPassword(req, res, next) {
 	const expected = process.env.ADMIN_PASSWORD;
@@ -206,8 +212,14 @@ function requireAdminPassword(req, res, next) {
 		return res.status(403).json({ error: 'Admin access disabled' });
 	}
 
+	// Check rate limit (without incrementing — only failures count).
+	if (isRateLimited(req, 'admin', 'admin', false)) {
+		return res.status(429).json({ error: 'Too many admin login attempts. Please try again later.' });
+	}
+
 	const supplied = readSuppliedPassword(req);
 	if (!supplied || !safeCompare(supplied, expected)) {
+		incrementRateLimit(req, 'admin', 'admin');
 		return res.status(403).json({ error: 'Forbidden' });
 	}
 
