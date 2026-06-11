@@ -1,0 +1,17 @@
+Broke the top-level ticket into **4 sub-tickets** in dependency order. The renderer split (`playerSync.js`, `enemySync.js`, `minionSync.js`) is reflected in the specs; line numbers from the original ticket are mapped to the current modules.
+
+| # | Scope |
+|---|--------|
+| **01** | Reusable module-level Sets for enemy/minion ID reconciliation |
+| **02** | `Object.entries` → `Object.keys` in player sync + phase-step highlight |
+| **03** | Cosmetic signature caching + scratch objects for local slow/burn indicators |
+| **04** | Hoisted `Vector3` in `updateDamageNumbers` |
+
+All use **Verification: code** (test + diff review; no purely visual criteria).
+
+**Created sub-ticket folders:**
+
+- `/home/matt/workspace/.autogame-worktrees/client-hoist-per-frame-allocations-in-renderer-animate-objec-cgpv/tickets/client-hoist-per-frame-allocations-in-renderer-animate-objec-cgpv/subtickets/01-hoist-enemy-minion-id-sets`
+- `/home/matt/workspace/.autogame-worktrees/client-hoist-per-frame-allocations-in-renderer-animate-objec-cgpv/tickets/client-hoist-per-frame-allocations-in-renderer-animate-objec-cgpv/subtickets/02-replace-object-entries-player-loops`
+- `/home/matt/workspace/.autogame-worktrees/client-hoist-per-frame-allocations-in-renderer-animate-objec-cgpv/tickets/client-hoist-per-frame-allocations-in-renderer-animate-objec-cgpv/subtickets/03-cache-cosmetic-signature-and-status-scratch`
+- `/home/matt/workspace/.autogame-worktrees/client-hoist-per-frame-allocations-in-renderer-animate-objec-cgpv/tickets/client-hoist-per-frame-allocations-in-renderer-animate-objec-cgpv/subtickets/04-hoist-damage-numbers-vector3`

@@ -8180,3 +8180,26 @@ Not applicable — this ticket did not add or modify any `?debugScenario=` short
 
 None. All acceptance criteria are fully and robustly satisfied; the captured run proves the game is healthy.
 
+
+## v0.446 — Client: hoist per-frame allocations in renderer animate() (Object.entries, Sets, template strings)  (2026-06-11 03:14:53)
+
+- `cosmeticRef` is set on avatar creation/rebuild; `applyLoadedModelCosmetic` still runs every frame for proportion morphs (intentional — proportions are outside `cosmeticSignature`).
+- No debug scenarios added or modified; debug-scenario gating not applicable.
+
+## Sub-ticket integration
+
+All four decomposed sub-tickets are present in the commit history and map cleanly to the changed files:
+
+| Sub-ticket | Files |
+|------------|-------|
+| 01 enemy/minion ID Sets | `enemySync.js`, `minionSync.js` |
+| 02 Object.keys player loops | `playerSync.js`, `renderer.js` (`syncPhaseStepAllyHighlight`) |
+| 03 cosmetic cache + status scratch | `playerSync.js` |
+| 04 damage-number Vector3 | `renderer.js` |
+
+No integration gaps between sub-tickets.
+
+## Remaining gaps
+
+None.
+
