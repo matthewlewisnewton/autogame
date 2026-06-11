@@ -1,0 +1,18 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The ticket robustly satisfies its acceptance criteria and the captured run is clean.
+
+**Runtime health (gate cleared):** `metrics.json` has `"ok": true`, `"pageerrors": []`, no `harness_failure`; `console.log` is clean; screenshots render the full game. (The capture used the smoke fallback, so it doesn't visually show the Mauler animation — that's covered by the 323 passing unit tests and code inspection of the live tree.)
+
+**Key findings:**
+- **Theme/visual** — slate stone chassis + amber forge glow; deploy = assembly ring + rising tapered bulkhead slab + summon flourish; attack = ground-hugging stone shockwave wedge + foot debris. Reads unmistakably as "Bulkhead Mauler."
+- **Timing** — no `windUpMs`, so both deploy and shockwave fire synchronously off the server events, matching the instant cone resolution; `range`/`coneAngle` pulled from the server payload.
+- **The subtle part I verified** — the real server *deploy* payload carries `specialEffect: 'shockwave_sweep'` (copied from the card def), yet the renderers correctly route it to summon-only because the attack renderer additionally requires `direction` or non-empty `hits`. The tests cover exactly this case.
+- **No double-render** — `applyHitFlashes` → `markCardHitEnemies` + the 500ms grace window suppresses the `MINION_HIT_VFX` fallback.
+- **Debug scenario** `bulkhead-mauler-ready` is properly gated, keeps the normal reward→deploy path intact, and bypasses no validation.
+
+**One nit** (non-blocking, filed in `nits.md`): overlapping per-hit spark sources on the shockwave (renderer loop + `applyHitFlashes`) can slightly double the impact VFX.
+
+Files written: `review.md`, `nits.md`. No `gaps.md` (PASS). No game code or git state changed.

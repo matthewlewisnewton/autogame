@@ -7852,3 +7852,26 @@ PASS. This ticket did not add or change debug scenario entry points. Existing Ar
 
 None.
 
+
+## v0.442 — 325-anim-bulkhead-mauler  (2026-06-11 02:18:48)
+
+  normal gameplay never invokes `setupBulkheadMaulerReadyDebug`.
+- Normal path intact: the scenario only tops up hp/mana and inserts the reward
+  creature into hand; `bulkhead_mauler` is `acquisition:"reward", rewardOrder:13`,
+  earnable in normal play, and the actual deploy still goes through
+  `executeUseCard` (server validation, minion spawn, net replication unchanged).
+- No invariant short-circuit: it stocks the hand and clears the stage; it does
+  not bypass cost/validation.
+
+## Consistency with design / foundation
+Uses the 315 shared primitives (`spawnMinionSummonInEffect`, `spawnParticleBurst`,
+`spawnHitSpark`) and the 316-319 per-card registration pattern (Battery Automaton
+is the structural sibling). Scope stayed within this card: cardRenderers.js (its
+fns + registration), renderer.js (its two primitives), the ctx wiring, the
+`enemySync` fallback entry for this minion only, and a debug scenario. No other
+card's renderer was touched.
+
+## Remaining gaps
+None blocking. One minor nit recorded in nits.md (overlapping per-hit spark
+sources on the shockwave). It does not affect correctness or the verdict.
+

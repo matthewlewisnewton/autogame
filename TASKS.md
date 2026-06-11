@@ -163,3 +163,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [400-cleanup-anim-glacial-orb](tickets/400-cleanup-anim-glacial-orb/)
 - [ ] [400-cleanup-anim-cryo-burst](tickets/400-cleanup-anim-cryo-burst/)
 - [ ] [401-cleanup-anim-photon-slicer](tickets/401-cleanup-anim-photon-slicer/)
+- [ ] [402-cleanup-anim-bulkhead-mauler](tickets/402-cleanup-anim-bulkhead-mauler/)
