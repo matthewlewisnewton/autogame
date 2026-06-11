@@ -19,6 +19,7 @@ import {
 	spawnDragonsBreathEffect,
 	spawnGravityWellEffect,
 	spawnEventHorizonEffect,
+	spawnGlacierRuptureEffect,
 	updateAttackEffects,
 	getActiveEffects,
 } from '../renderer.js';
@@ -557,6 +558,55 @@ describe('shared VFX primitives', () => {
 		const accretion = fx.mesh.children.find((c) => c.userData.isEventHorizonAccretion);
 		expect(accretion.material.color.getHex()).toBe(0x123456);
 		expect(accretion.material.emissive.getHex()).toBe(0x654321);
+	});
+
+	it('spawnGlacierRuptureEffect pushes ice-fracture ring + shard burst with glacier palette', () => {
+		const before = getActiveEffects().length;
+		spawnGlacierRuptureEffect({ x: 2, z: -3 }, 2.2);
+		expect(getActiveEffects().length).toBe(before + 2);
+
+		const effects = getActiveEffects().slice(before);
+		const ring = effects.find((fx) => fx.isGlacierRuptureRing);
+		const shards = effects.find((fx) => fx.isGlacierRuptureShards);
+
+		expect(ring).toBeDefined();
+		expect(ring.radius).toBe(2.2);
+		expect(Number.isFinite(ring.duration)).toBe(true);
+		expect(ring.duration).toBeGreaterThan(0);
+		expect(ring.mesh.material.color.getHex()).toBe(0x38bdf8);
+		expect(ring.mesh.material.emissive.getHex()).toBe(0x0ea5e9);
+
+		expect(shards).toBeDefined();
+		expect(shards.mesh.children.length).toBeGreaterThanOrEqual(3);
+		expect(Number.isFinite(shards.duration)).toBe(true);
+		expect(shards.duration).toBeGreaterThan(0);
+		expect(shards.mesh.children[0].material.color.getHex()).toBe(0x38bdf8);
+		expect(shards.mesh.children[0].material.emissive.getHex()).toBe(0x0ea5e9);
+
+		const ringDispose = vi.spyOn(ring.mesh.geometry, 'dispose');
+		const shardDispose = vi.spyOn(shards.mesh.children[0].geometry, 'dispose');
+		for (const fx of effects) fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(ringDispose).toHaveBeenCalled();
+		expect(shardDispose).toHaveBeenCalled();
+	});
+
+	it('spawnGlacierRuptureEffect honors style.color, style.emissive, and style.duration', () => {
+		spawnGlacierRuptureEffect({ x: 0, z: 0 }, 1.5, {
+			color: 0x123456,
+			emissive: 0x654321,
+			duration: 900,
+		});
+		const ring = getActiveEffects().find((fx) => fx.isGlacierRuptureRing);
+		const shards = getActiveEffects().find((fx) => fx.isGlacierRuptureShards);
+		expect(ring.duration).toBe(900);
+		expect(shards.duration).toBe(900);
+		expect(ring.mesh.material.color.getHex()).toBe(0x123456);
+		expect(ring.mesh.material.emissive.getHex()).toBe(0x654321);
+		expect(shards.mesh.children[0].material.color.getHex()).toBe(0x123456);
+		expect(shards.mesh.children[0].material.emissive.getHex()).toBe(0x654321);
 	});
 
 	it('spawnAttackEffect permafrost_lance adds a flagged lance projectile and cleans it up', () => {
