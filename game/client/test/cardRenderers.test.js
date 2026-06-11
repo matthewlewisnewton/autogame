@@ -850,6 +850,63 @@ describe('renderCardUsed() — styled weapon slashes', () => {
 		expect(ctx._calls.some((c) => c[1]?.soulWisp || c[2]?.soulWisp)).toBe(false);
 	});
 
+	it('Ether Scythe drives its sweep cone/range from the server payload (attackConeAngle/attackRange)', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'harvesting_scythe',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			// Mirror the real scythe payload: a full 180° cone and an extended reach
+			// the hardcoded style (120°, range 6) would under-cover.
+			attackConeAngle: Math.PI,
+			attackRange: 9,
+			hits: [],
+		}, ctx);
+		const style = swingStyle(ctx);
+		// Cone/range come from the server, not the authored style.
+		expect(style.coneAngle).toBe(Math.PI);
+		expect(style.range).toBe(9);
+		// Decal placement scales off the server range: 9 * 0.6 = 5.4.
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1].x).toBeCloseTo(5.4);
+		// The swing fires immediately on cardUsed — no deferred wind-up scheduling.
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('Ether Scythe falls back to its style cone/range when the payload omits them', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'harvesting_scythe',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			// No attackConeAngle/attackRange (older/minion payloads).
+			hits: [],
+		}, ctx);
+		const style = swingStyle(ctx);
+		expect(style.coneAngle).toBe((Math.PI * 2) / 3);
+		expect(style.range).toBe(6);
+		// Decal still scales off the style range: 6 * 0.6 = 3.6.
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal[1].x).toBeCloseTo(3.6);
+	});
+
+	it('a sibling blade (flame_blade) ignores the payload attackConeAngle/attackRange and keeps its authored arc', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'flame_blade',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			attackConeAngle: Math.PI,
+			attackRange: 9,
+			hits: [],
+		}, ctx);
+		const style = swingStyle(ctx);
+		// Flame blade is not opted in, so it keeps its hardcoded cone/range.
+		expect(style.coneAngle).toBe(Math.PI / 4);
+		expect(style.range).toBe(5);
+	});
+
 	it('Ether Scythe reaps an ether-tinted soul-wisp burst at each struck enemy', () => {
 		const meshes = {
 			ghoul: { position: { x: 4, y: 0, z: -1 } },

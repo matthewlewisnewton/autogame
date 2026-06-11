@@ -514,6 +514,7 @@ const DEBUG_SCENARIOS = new Set([
   'summon-recall',
   'combat-damaged-player',
   'saber-grind-max',
+  'harvesting-scythe-combat',
   'lobby-partial-vitals',
   'hub-med-booth-ready',
   'custom-avatar-demo',

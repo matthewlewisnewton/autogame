@@ -2300,6 +2300,26 @@ function setupSaberGrindMaxDebug({ lobby, state, player, socket, name, spawn }) 
         }
 }
 
+function setupHarvestingScytheCombatDebug({ lobby, state, player, socket, name, spawn }) {
+  // Enter a normal run holding an Ether Scythe (harvesting_scythe) with full HP
+  // and mana so its wide server-driven sweep can be cast immediately against a
+  // nearby enemy. The scythe's server hit geometry is a full 180° cone
+  // (progression.js: attackConeAngle = Math.PI) and an extended range, which the
+  // client now mirrors — this scenario lets that synced sweep be observed
+  // without first earning the reward card. The same state is reachable normally
+  // by acquiring the harvesting_scythe reward card and deploying with it in hand.
+  player.hp = MAX_HP;
+        player.magicStones = MAX_MAGIC_STONES;
+        const scytheCharges = CARD_DEFS.harvesting_scythe.charges;
+        const scytheSlot = player.hand.findIndex(c => c && c.id === 'harvesting_scythe');
+        const scytheCard = { id: 'harvesting_scythe', name: 'Ether Scythe', type: 'weapon', charges: scytheCharges, remainingCharges: scytheCharges, grind: 0 };
+        if (scytheSlot >= 0) {
+          player.hand[scytheSlot].remainingCharges = player.hand[scytheSlot].charges || scytheCharges;
+        } else {
+          player.hand[0] = scytheCard;
+        }
+}
+
 function setupEconomyCardsReadyDebug({ lobby, state, player, socket, name, spawn }) {
   // Enter a normal run with the three economy utility cards (deck_sifter,
         // chrono_trigger, mana_prism) in hand plus an iron_sword filler, full HP
@@ -4725,6 +4745,10 @@ const DEBUG_SCENARIO_REGISTRY = {
   'saber-grind-max': (ctx) => {
     enterStandardPlayingDebugScenario(ctx);
     setupSaberGrindMaxDebug(ctx);
+  },
+  'harvesting-scythe-combat': (ctx) => {
+    enterStandardPlayingDebugScenario(ctx);
+    setupHarvestingScytheCombatDebug(ctx);
   },
   'economy-cards-ready': (ctx) => {
     enterStandardPlayingDebugScenario(ctx);

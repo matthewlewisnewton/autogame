@@ -169,6 +169,12 @@ const WEAPON_SLASH_STYLES = {
 		decal: true,
 		sparkCount: 8,
 		sparkSpread: 1.6,
+		// Opt-in: drive the visible sweep from the server's resolved hit geometry
+		// (`data.attackConeAngle` / `data.attackRange`) so the ghostly arc covers
+		// exactly what the server reaps (Math.PI cone for the scythe). Scythe-only;
+		// the other blades keep their authored cones. Falls back to the style
+		// cone/range when the payload omits those fields.
+		syncToServerCone: true,
 		// Opt-in soul-harvest hook: draws ether wisps off each struck enemy,
 		// echoing the card's Magic-Stone-on-hit harvest. Scythe-only.
 		harvestWisps: true,
@@ -205,11 +211,24 @@ function renderWeaponSwing(data, ctx) {
 	const color = getAccentHex(data.cardId) ?? style.color;
 	const emissive = style.emissive;
 
+	// When the style opts in, drive the sweep's cone/range from the server's
+	// resolved hit geometry so the arc covers exactly what was reaped; fall back
+	// to the authored style values when the payload omits them. Non-opt-in blades
+	// always render their authored cone/range regardless of payload contents.
+	const coneAngle =
+		style.syncToServerCone && Number.isFinite(data.attackConeAngle)
+			? data.attackConeAngle
+			: style.coneAngle;
+	const range =
+		style.syncToServerCone && Number.isFinite(data.attackRange)
+			? data.attackRange
+			: style.range;
+
 	ctx.spawnAttackEffect(origin, direction, {
 		color,
 		emissive,
-		coneAngle: style.coneAngle,
-		range: style.range,
+		coneAngle,
+		range,
 		fillOpacity: style.fillOpacity,
 		edgeOpacity: style.edgeOpacity,
 	});
@@ -217,7 +236,7 @@ function renderWeaponSwing(data, ctx) {
 	// Optional flame streak chasing the blade's leading edge.
 	if (style.trail && ctx.spawnProjectileTrail) {
 		ctx.spawnProjectileTrail(origin, direction, {
-			range: style.range,
+			range,
 			color,
 			emissive,
 		});
@@ -225,7 +244,7 @@ function renderWeaponSwing(data, ctx) {
 
 	// Spark/ember burst out along the blade's mid-arc reach.
 	if (style.sparkCount && ctx.spawnParticleBurst) {
-		const sparkAt = pointAlong(origin, direction, style.range * 0.6);
+		const sparkAt = pointAlong(origin, direction, range * 0.6);
 		ctx.spawnParticleBurst(sparkAt, {
 			color,
 			emissive,
@@ -236,7 +255,7 @@ function renderWeaponSwing(data, ctx) {
 
 	// Lingering ground decal traced by a wide sweep.
 	if (style.decal && ctx.spawnImpactDecal) {
-		const decalAt = pointAlong(origin, direction, style.range * 0.6);
+		const decalAt = pointAlong(origin, direction, range * 0.6);
 		ctx.spawnImpactDecal(decalAt, { color, emissive });
 	}
 
