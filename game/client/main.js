@@ -104,6 +104,7 @@ import {
 	getHpBarTier,
 	getMsBarTier,
 	getCardMagicStoneCost,
+	computeActiveStatusEffects,
 } from './vanguard-hud.js';
 import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
 import { buildBossEncounterModel, syncBossEncounterHud } from './boss-encounter-hud.js';
@@ -1053,6 +1054,7 @@ const deckSpellCountEl = document.getElementById('deck-spell-count');
 const deckCreatureCountEl = document.getElementById('deck-creature-count');
 const deckEnchantmentCountEl = document.getElementById('deck-enchantment-count');
 const deckStatsPanelEl = document.getElementById('deck-stats-panel');
+const statusEffectStripEl = document.getElementById('status-effect-strip');
 const deckViewerPanelEl = document.getElementById('deck-viewer-panel');
 const objectiveHudEl = document.getElementById('objective-hud');
 const debugTimeScaleBadgeEl = document.getElementById('debug-time-scale-badge');
@@ -2058,6 +2060,7 @@ function syncVanguardHud(me, phase) {
 	if (gamePhase === 'playing') {
 		updateMsBar(me.magicStones ?? 0);
 		updateDeckStats(me.deck, me.hand, me.inventory);
+		updateStatusEffectStrip(me);
 		updateVanguardPortrait();
 	}
 }
@@ -2103,6 +2106,34 @@ function updateMsBar(ms) {
 		}
 	}
 	_lastMagicStones = clamped;
+}
+
+// Rebuild the HUD status-effect strip from the snapshot's expiry timestamps.
+// Effect derivation lives in computeActiveStatusEffects (sub-ticket 01); this
+// only renders one badge per active effect and hides the strip when empty.
+function updateStatusEffectStrip(me) {
+	if (!statusEffectStripEl) return;
+	const effects = computeActiveStatusEffects(me, Date.now());
+	statusEffectStripEl.replaceChildren();
+	if (effects.length === 0) {
+		statusEffectStripEl.classList.remove('has-effects');
+		return;
+	}
+	statusEffectStripEl.classList.add('has-effects');
+	for (const effect of effects) {
+		const badge = document.createElement('div');
+		badge.className = `status-badge status-badge--${effect.id}`;
+		const icon = document.createElement('span');
+		icon.className = 'status-badge-icon';
+		icon.setAttribute('aria-hidden', 'true');
+		icon.textContent = effect.icon;
+		const label = document.createElement('span');
+		label.className = 'status-badge-label';
+		const seconds = Math.max(0, Math.ceil(effect.remainingMs / 1000));
+		label.textContent = `${effect.label} ${seconds}s`;
+		badge.append(icon, label);
+		statusEffectStripEl.append(badge);
+	}
 }
 
 function updateDeckStats(deckPile, handCards, inventory) {
