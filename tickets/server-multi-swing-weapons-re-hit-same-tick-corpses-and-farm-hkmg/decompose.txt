@@ -1,0 +1,7 @@
+Broke the top-level ticket into **one sub-ticket** — the fix is a paired guard in two collectors plus a regression test, so splitting further would add overhead without independent value.
+
+**Sub-ticket folder created:**
+
+- `/home/matt/workspace/.autogame-worktrees/server-multi-swing-weapons-re-hit-same-tick-corpses-and-farm-hkmg/tickets/server-multi-swing-weapons-re-hit-same-tick-corpses-and-farm-hkmg/subtickets/01-skip-dead-enemies-in-cone-radial-collectors/`
+
+**`01-skip-dead-enemies-in-cone-radial-collectors`** — Add `enemy.hp <= 0` early-continue guards to `collectConeHits` and `collectRadialHits` (matching chain-lightning), and add `collect_hit_corpse_rehit.test.js` to assert multi-swing corpse re-hits do not double-grant `magicStoneOnHit`. Verification: **code**.

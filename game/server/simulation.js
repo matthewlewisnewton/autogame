@@ -1703,6 +1703,8 @@ function collectConeHits(originX, originZ, dirX, dirZ, range, coneAngle, damage,
   const halfCos = Math.cos(coneAngle / 2);
 
   for (const enemy of _gameState.enemies) {
+    if (enemy.hp <= 0) continue;
+
     const dx = enemy.x - originX;
     const dy = getEntityWorldY(enemy) - originY;
     const dz = enemy.z - originZ;
@@ -1739,6 +1741,8 @@ function collectRadialHits(originX, originY, originZ, radius, damage, options = 
   const oy = resolveAoeOriginY(originX, originY, originZ);
 
   for (const enemy of _gameState.enemies) {
+    if (enemy.hp <= 0) continue;
+
     const dist = sphericalDistanceToEntity(originX, oy, originZ, enemy);
     if (dist > radius) continue;
 

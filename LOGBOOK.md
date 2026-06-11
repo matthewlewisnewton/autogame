@@ -8181,6 +8181,51 @@ Not applicable — this ticket did not add or modify any `?debugScenario=` short
 None. All acceptance criteria are fully and robustly satisfied; the captured run proves the game is healthy.
 
 
+## v0.444 — Client: extract a booth module factory — boothDeck.js and boothShop.js are line-for-line copy-paste  (2026-06-11 02:47:45)
+
+
+## Code quality
+
+- Factory is small, focused, and testable (no `window`/`socket` in the core logic beyond the listener registration guard).
+- `renderDepKey` dynamic lookup is a reasonable way to parameterize the render callback without changing the deps object shape expected by `main.js`.
+- No dead code or obvious bugs introduced.
+- New `boothCommon.test.js` provides meaningful coverage of the extracted abstraction.
+
+## Debug hooks (`?booth=`)
+
+This ticket refactored existing `?booth=` URL shortcuts; it did not add new `?debugScenario=` entries.
+
+- **Deck/shop:** Still gated to localhost loopback hosts via `DEBUG_BOOTH_ALLOWED_HOSTS` inside the factory. Normal gameplay reaches deck/shop through hub booth interaction (`booth:action` events).
+- **Launch:** `?booth=launch` auto-ready on lobby join (in `lobbyBrowserHandlers.js`) is unchanged from baseline — pre-existing harness convenience, not weakened by this refactor.
+- **Quest:** `getBoothDebugHook` re-export path updated only; quest panel reveal via booth interaction is unchanged.
+
+## Remaining gaps
+
+None. All acceptance criteria are fully met; runtime capture is clean.
+
+
+## v0.445 — Server: multi-swing weapons re-hit same-tick corpses and farm magicStoneOnHit before cleanup  (2026-06-11 03:03:48)
+
+## Debug scenarios
+
+No new or modified `?debugScenario=` shortcuts in this ticket. Nothing to gate-check.
+
+---
+
+## Code quality
+
+- **Scope:** Minimal — two `continue` guards plus focused regression tests. No dead code or unrelated churn.
+- **Integration:** `cardEffects.js` `swingsPerUse` loop unchanged (correct per sub-ticket spec); fix lives at the collector layer where chain-lightning already rejected corpses.
+- **Risk:** Low. Guards are idempotent for living enemies and align with `damageEnemy` / `cleanupAfterDamage` lifecycle.
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are satisfied; runtime capture is clean; tests pass.
+
+---
+
 ## v0.446 — Client: hoist per-frame allocations in renderer animate() (Object.entries, Sets, template strings)  (2026-06-11 03:14:53)
 
 - `cosmeticRef` is set on avatar creation/rebuild; `applyLoadedModelCosmetic` still runs every frame for proportion morphs (intentional — proportions are outside `cosmeticSignature`).
