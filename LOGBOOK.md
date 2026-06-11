@@ -7875,3 +7875,26 @@ None. All acceptance criteria from the three sub-tickets are met; runtime captur
 
 See `nits.md` — stale doc tense in `design.md` only.
 
+
+## v0.435 — 326-anim-alloy-greatblade  (2026-06-11 01:31:06)
+
+
+### Uses shared VFX primitives and stays scoped
+
+PASS. The implementation composes existing client VFX primitives (`spawnAttackEffect`, `spawnProjectileTrail`, `spawnImpactDecal`, `spawnParticleBurst`, `spawnTelegraphRing`) and only changes `game/client/cardRenderers.js` plus targeted renderer tests. No server contract, gameplay rules, or unrelated cards were modified.
+
+### No performance regression
+
+PASS. The effect adds a small bounded number of short-lived primitives per `cardUsed` event: one cone, one trail, one decal, one burst, and optionally one knockback ring plus one burst. There are no new loops over scene state, persistent effects, timers for the normal `steel_claymore` payload, or allocations that scale with enemy count beyond the existing shared hit-flash handling.
+
+### Client test coverage
+
+PASS. `coverage.log` shows the full vitest run passed: 50 files and 763 tests. The new tests cover dedicated renderer dispatch, `windUpMs`/single-swing timing contract, `attackRange`-driven placement, synchronous impact, knockback-gated burst, thematic trail/decal/debris composition, and graceful degradation when optional primitives are unavailable.
+
+## Design and requirements consistency
+
+PASS. The change fits the documented card-combat model: weapons are multi-charge directional attacks, and wind-up commitment remains server-driven. It does not alter the foundation requirements for rendering, socket connection, player visualization, or movement synchronization. No development debug scenario was added or changed.
+
+## Remaining gaps
+
+None.

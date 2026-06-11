@@ -1,0 +1,15 @@
+Broke ticket **326-anim-alloy-greatblade** into **3 sub-tickets** (dependency order), mirroring the Excalibur Photon split pattern: dedicated renderer → alloy theme → timing/knockback sync + tests. All use **`code`** verification since they cover structure, handlers, server payload contracts, and knockback gating — not purely on-screen appearance.
+
+**Sub-ticket folder paths created:**
+
+1. `/home/matt/workspace/.autogame-worktrees/326-anim-alloy-greatblade/tickets/326-anim-alloy-greatblade/subtickets/01-alloy-greatblade-dedicated-renderer/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/326-anim-alloy-greatblade/tickets/326-anim-alloy-greatblade/subtickets/02-alloy-theme-vfx-composition/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/326-anim-alloy-greatblade/tickets/326-anim-alloy-greatblade/subtickets/03-alloy-timing-knockback-sync-and-tests/ticket.md`
+
+**Summary:**
+
+| # | Focus |
+|---|--------|
+| **01** | Split `steel_claymore` off shared `renderHeavyGreatsword` into `renderAlloyGreatblade` with baseline slate cleave + impact |
+| **02** | Alloy identity — metallic trail, metal shard burst, ground-shatter decal; visually distinct from magma |
+| **03** | Server timing sync — `data.attackRange` for strike point, knockback burst gated on `knockbackMoved`, `windUpMs: 600` contract, comprehensive tests |
