@@ -8,7 +8,7 @@ const MAIN_DOM_IDS = [
 	'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 	'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 	'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
-	'currency-display', 'objective-hud', 'quest-comms-log', 'ui', 'card-hand',
+	'currency-display', 'objective-hud', 'top-right-hud-stack', 'quest-comms-log', 'ui', 'card-hand',
 	'lobby', 'lobby-browser', 'lobby-player-list',
 	'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 	'summary-currency', 'summary-rewards', 'summary-rewards-currency',
@@ -38,7 +38,11 @@ function ensureMainDom() {
 			cardHand.appendChild(slot);
 		}
 	}
+	const stack = document.getElementById('top-right-hud-stack');
 	const log = document.getElementById('quest-comms-log');
+	if (stack && log && log.parentElement !== stack) {
+		stack.appendChild(log);
+	}
 	if (log) {
 		log.className = 'quest-comms-log hidden';
 		log.setAttribute('aria-hidden', 'true');
@@ -84,6 +88,8 @@ describe('quest dialogue comms UI (main.js)', () => {
 		expect(toast).not.toBeNull();
 		expect(toast.textContent).toContain('Rewa:');
 		expect(toast.textContent).toContain('Radio check');
+		expect(toast.parentElement?.id).toBe('top-right-hud-stack');
+		expect(toast.nextElementSibling?.id).toBe('quest-comms-log');
 
 		const log = document.getElementById('quest-comms-log');
 		const line = log.querySelector('.quest-comms-line');

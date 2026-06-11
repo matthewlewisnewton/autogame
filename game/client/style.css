@@ -1609,12 +1609,20 @@ body[data-phase="lobby"] #lobby-hud {
 /* ── Quest comms (radio dialogue) ── */
 
 .quest-comms-toast {
+  position: relative;
+  align-self: flex-end;
+  width: min(300px, calc(100vw - 32px));
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: sans-serif;
+  line-height: 1.45;
+  pointer-events: none;
   background: rgba(15, 23, 42, 0.92);
   color: #e2e8f0;
   border: 1px solid rgba(56, 189, 248, 0.45);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
-  max-width: min(520px, calc(100vw - 32px));
-  line-height: 1.45;
 }
 
 .quest-comms-toast strong {

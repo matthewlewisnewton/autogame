@@ -1064,6 +1064,7 @@ const statusEffectStripEl = document.getElementById('status-effect-strip');
 const deckViewerPanelEl = document.getElementById('deck-viewer-panel');
 const objectiveHudEl = document.getElementById('objective-hud');
 const debugTimeScaleBadgeEl = document.getElementById('debug-time-scale-badge');
+const topRightHudStackEl = document.getElementById('top-right-hud-stack');
 const questCommsLogEl = document.getElementById('quest-comms-log');
 const QUEST_COMMS_LOG_MAX = 20;
 const QUEST_COMMS_TOAST_MS = 4000;
@@ -4006,13 +4007,28 @@ function syncQuestCommsPhase(phase) {
 
 function showQuestCommsToast(speaker, text) {
 	const toast = document.createElement('div');
+	toast.className = 'quest-comms-toast';
 	const speakerEl = document.createElement('strong');
 	speakerEl.textContent = `${speaker}: `;
 	const bodyEl = document.createElement('span');
 	bodyEl.textContent = text;
 	toast.appendChild(speakerEl);
 	toast.appendChild(bodyEl);
-	showTransientToast(toast, { durationMs: QUEST_COMMS_TOAST_MS, className: 'quest-comms-toast' });
+
+	const fadeMs = 300;
+	toast.style.opacity = '1';
+	toast.style.transition = `opacity ${fadeMs}ms`;
+
+	if (topRightHudStackEl && questCommsLogEl) {
+		topRightHudStackEl.insertBefore(toast, questCommsLogEl);
+	} else {
+		document.body.appendChild(toast);
+	}
+
+	setTimeout(() => {
+		toast.style.opacity = '0';
+		setTimeout(() => toast.remove(), fadeMs);
+	}, QUEST_COMMS_TOAST_MS);
 }
 
 function appendQuestCommsLog(speaker, text) {
