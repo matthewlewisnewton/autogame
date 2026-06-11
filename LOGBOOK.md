@@ -7049,3 +7049,26 @@ Targeted time-scale coverage is present and passing in `round-2/coverage.log`: `
 
 No blocking gaps for this ticket.
 
+
+## v0.400 — Server: convert debugScenarios.js 113-branch if-chain to a registry and move debug hooks out of hot gameplay paths  (2026-06-10 18:57:54)
+
+- **Gated** behind the same `DEBUG_SCENARIOS` allowlist (and
+  `ALLOW_DEBUG_SCENARIOS` env) as every other scenario — URL param is the only
+  entry point.
+- **Reachable normally** — it calls the shared `deployQuestTier1(..,
+  'ember_descent')` helper, deploying the real ember_descent Tier 1 quest run
+  that a player reaches by playing that quest. It is a parallel of the existing
+  `frost-crossing-tier-1` / `training-caverns-tier-1` deploy scenarios.
+- **No invariant bypass** — it deploys an actual quest run through the same
+  helpers; it does not skip validation, persistence, or replication.
+
+Consistent with `game/docs/design.md` and does not regress the foundation:
+this is a server-internal refactor of debug tooling with no gameplay-facing
+behavior change, confirmed by the unchanged preservation/suspend-resume probe.
+
+## Remaining gaps
+
+None. The acceptance criterion is fully and robustly met, the game runs
+cleanly in the captured registry-dispatched scenario, and the full server test
+suite is green.
+

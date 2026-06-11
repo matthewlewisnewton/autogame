@@ -1,0 +1,18 @@
+Broke the top-level ticket into **4 sub-tickets** in dependency order:
+
+1. **01-debug-hooks-hot-paths** — Introduce `player.debugHooks` and remove scenario string checks from `simulation.js`, `cardEffects.js`, `progression.js`, and `nudgeDebugBossApproachPlayers`.
+
+2. **02-registry-scaffold-and-shared-helpers** — Add `DEBUG_SCENARIO_REGISTRY`, extract shared setup helpers, and migrate the first batch of scenarios (existing `setup*` functions and simple stubs).
+
+3. **03-registry-quest-pipeline-scenarios** — Migrate the repeated tier-2 harness pipelines (`training-caverns-*`, `arena-trials-*`, `canyon-descent-*`, `spire-ascent-*`, `frost-crossing-*`, `ember-descent-*`, `crystal-rescue-*`).
+
+4. **04-registry-remaining-scenarios** — Migrate all remaining `DEBUG_SCENARIOS` names and delete the last `if (name === …)` chain from `applyDebugScenario`.
+
+All use **Verification: code** (structural/behavioral changes verified via diff + vitest).
+
+**Created sub-ticket paths:**
+
+- `/home/matt/workspace/.autogame-worktrees/server-convert-debugscenarios-js-113-branch-if-chain-to-a-re-7wr7/tickets/server-convert-debugscenarios-js-113-branch-if-chain-to-a-re-7wr7/subtickets/01-debug-hooks-hot-paths/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/server-convert-debugscenarios-js-113-branch-if-chain-to-a-re-7wr7/tickets/server-convert-debugscenarios-js-113-branch-if-chain-to-a-re-7wr7/subtickets/02-registry-scaffold-and-shared-helpers/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/server-convert-debugscenarios-js-113-branch-if-chain-to-a-re-7wr7/tickets/server-convert-debugscenarios-js-113-branch-if-chain-to-a-re-7wr7/subtickets/03-registry-quest-pipeline-scenarios/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/server-convert-debugscenarios-js-113-branch-if-chain-to-a-re-7wr7/tickets/server-convert-debugscenarios-js-113-branch-if-chain-to-a-re-7wr7/subtickets/04-registry-remaining-scenarios/ticket.md`
