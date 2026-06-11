@@ -24,6 +24,7 @@ function makeCtx(overrides = {}) {
 		spawnPurifyingPulseHealRing: record('spawnPurifyingPulseHealRing'),
 		spawnCleanseBurstEffect: record('spawnCleanseBurstEffect'),
 		spawnInfernoPillarEffect: record('spawnInfernoPillarEffect'),
+		spawnDragonsBreathEffect: record('spawnDragonsBreathEffect'),
 		spawnChainLightningEffect: record('spawnChainLightningEffect'),
 		spawnLightningArc: record('spawnLightningArc'),
 		spawnParticleBurst: record('spawnParticleBurst'),
@@ -76,7 +77,9 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('undead_commander')).toHaveLength(1);
 		expect(resolveRenderers('thunderbird')).toHaveLength(2);
 		expect(resolveRenderers('storm_eagle')).toHaveLength(2);
-		expect(resolveRenderers('dragons_breath')).toHaveLength(1);
+		const breathRenderers = resolveRenderers('dragons_breath');
+		expect(breathRenderers).toHaveLength(1);
+		expect(breathRenderers[0].name).toBe('renderDragonsBreath');
 		const infernoRenderers = resolveRenderers('inferno_pillar');
 		expect(infernoRenderers).toHaveLength(1);
 		expect(infernoRenderers[0].name).toBe('renderInfernoPillar');
@@ -1706,7 +1709,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 		]);
 	});
 
-	it('dragons_breath renders a forward fire cone, trail, and tip embers', () => {
+	it('dragons_breath dispatches spawnDragonsBreathEffect with server-synced timing style', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'dragons_breath',
@@ -1715,6 +1718,31 @@ describe('renderCardUsed() — spell dispatch', () => {
 			radius: 7,
 			dotTicks: 4,
 			specialEffect: 'fire_dot',
+			hits: [],
+		}, ctx);
+		const breath = ctx._calls.find((c) => c[0] === 'spawnDragonsBreathEffect');
+		expect(breath).toBeDefined();
+		expect(breath[1]).toEqual({ x: 1, z: 2 });
+		expect(breath[2]).toEqual({ x: 1, z: 0 });
+		expect(breath[3]).toMatchObject({
+			color: 0xfb923c,
+			emissive: 0xff3b00,
+			range: 7,
+			coneAngle: Math.PI / 3,
+			dotTicks: 4,
+			dotIntervalMs: 500,
+			duration: 2250,
+		});
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('dragons_breath fires cone burst primitives synchronously at cast', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'dragons_breath',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			radius: 7,
 			hits: [],
 		}, ctx);
 		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
@@ -1727,33 +1755,107 @@ describe('renderCardUsed() — spell dispatch', () => {
 			color: 0xfb923c,
 			emissive: 0xff3b00,
 		});
-		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
-		expect(trail).toBeDefined();
-		expect(trail[3]).toMatchObject({ range: 7, color: 0xfb923c });
-		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
-		expect(burst).toBeDefined();
-		expect(burst[1]).toEqual({ x: 8, z: 2 });
-		expect(burst[2]).toMatchObject({ color: 0xfb923c });
+		const castBurstOrigin = ctx._calls.find(
+			(c) => c[0] === 'spawnParticleBurst' && c[1].x === 1 && c[1].z === 2,
+		);
+		expect(castBurstOrigin).toBeDefined();
+		expect(castBurstOrigin[2]).toMatchObject({ color: 0xfb923c, emissive: 0xff3b00 });
+		const castBurstTip = ctx._calls.find(
+			(c) => c[0] === 'spawnParticleBurst' && c[1].x === 8 && c[1].z === 2,
+		);
+		expect(castBurstTip).toBeDefined();
+		expect(castBurstTip[2]).toMatchObject({ color: 0xfb923c, emissive: 0xff3b00 });
 		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
 		expect(decal).toBeDefined();
 		expect(decal[1]).toEqual({ x: 8, z: 2 });
-		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+		expect(decal[2]).toMatchObject({ color: 0xfb923c, emissive: 0xff3b00 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
+		// DoT tick pulses are deferred — only cast primitives exist before scheduling runs.
+		const scheduleIdx = ctx._calls.findIndex((c) => c[0] === 'scheduleAfter');
+		const preSchedule = ctx._calls.slice(0, scheduleIdx);
+		expect(preSchedule.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(preSchedule.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(2);
+		expect(preSchedule.some((c) => c[0] === 'spawnImpactDecal')).toBe(true);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst' && c[2].count === 8)).toHaveLength(0);
+	});
+
+	it('dragons_breath spawns immediate per-hit ignite bursts at enemy mesh positions', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 4, y: 0, z: 2 } },
+				e2: { position: { x: 7, y: 0, z: 2 } },
+			}),
+		});
+		renderCardUsed({
+			cardId: 'dragons_breath',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			radius: 7,
+			hits: [{ enemyId: 'e1' }, { enemyId: 'e2' }, { enemyId: 'missing' }],
+		}, ctx);
+		const hitSparks = ctx._calls.filter((c) => c[0] === 'spawnHitSpark');
+		expect(hitSparks).toHaveLength(2);
+		expect(hitSparks[0][1]).toEqual({ x: 4, y: 0.6, z: 2 });
+		expect(hitSparks[1][1]).toEqual({ x: 7, y: 0.6, z: 2 });
+		expect(hitSparks[0][2]).toMatchObject({ color: 0xfb923c, emissive: 0xff3b00, count: 5 });
+		const igniteBursts = ctx._calls.filter(
+			(c) => c[0] === 'spawnParticleBurst' && c[2].count === 6,
+		);
+		expect(igniteBursts).toHaveLength(2);
+		expect(igniteBursts[0][1]).toEqual({ x: 4, y: 0.6, z: 2 });
+		expect(igniteBursts[1][1]).toEqual({ x: 7, y: 0.6, z: 2 });
+	});
+
+	it('dragons_breath schedules four DoT tick pulses at 500ms intervals', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'dragons_breath',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			radius: 7,
+			hits: [],
+		}, ctx);
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(schedules.map((c) => c[1])).toEqual([500, 1000, 1500, 2000]);
+		expect(ctx._scheduled).toHaveLength(4);
+		for (const entry of ctx._scheduled) expect(entry.invoked).toBe(false);
+		ctx.runScheduled();
+		const tickBursts = ctx._calls.filter(
+			(c) => c[0] === 'spawnParticleBurst' && c[2].count === 8,
+		);
+		expect(tickBursts).toHaveLength(4);
+		for (const burst of tickBursts) {
+			expect(burst[1]).toEqual({ x: 5.55, z: 2 });
+			expect(burst[2]).toMatchObject({ color: 0xfb923c, emissive: 0xff3b00 });
+		}
+	});
+
+	it('dragons_breath has no positive windUpMs (instant cast; 315 charge telegraph absent)', () => {
+		expect(CARD_DEFS.dragons_breath).toBeDefined();
+		expect(CARD_DEFS.dragons_breath.windUpMs ?? 0).toBeLessThanOrEqual(0);
 	});
 
 	it('dragons_breath still renders without throwing when the new ctx primitives are absent', () => {
 		const ctx = makeCtx({
-			spawnProjectileTrail: undefined,
-			spawnImpactDecal: undefined,
+			spawnTelegraphRing: undefined,
 			spawnParticleBurst: undefined,
+			spawnImpactDecal: undefined,
+			spawnHitSpark: undefined,
 		});
 		expect(() => renderCardUsed({
 			cardId: 'dragons_breath',
 			origin: { x: 1, z: 2 },
 			direction: { x: 1, z: 0 },
 			radius: 7,
-			hits: [],
+			hits: [{ enemyId: 'e1' }],
 		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnDragonsBreathEffect')).toBe(true);
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
+		expect(ctx._calls.filter((c) => c[0] === 'scheduleAfter').map((c) => c[1])).toEqual([
+			500, 1000, 1500, 2000,
+		]);
 	});
 
 	it('astral_guardian adds indigo shield telegraph, burst, and minion spawn ring', () => {

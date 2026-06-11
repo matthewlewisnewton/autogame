@@ -19,6 +19,7 @@
 //   spawnCleanseBurstEffect(origin)
 //   spawnPurifyingPulseEffect(origin, radius)
 //   spawnInfernoPillarEffect(origin, radius, style?) — style: { color, emissive, dotTicks, dotIntervalMs, duration }
+//   spawnDragonsBreathEffect(origin, direction, style?) — style: { color, emissive, range, coneAngle, dotTicks, dotIntervalMs, duration }
 //   spawnChainLightningEffect(origin, direction)
 //   spawnLightningArc(from, to, style?)
 //   spawnParticleBurst(position, style?)       — multi-particle spark/ember burst
@@ -685,8 +686,8 @@ const FIRE_ACCENT_COLOR = 0xfb923c;
 const FIRE_ACCENT_EMISSIVE = 0xff3b00;
 
 /**
- * Wyrmflare: forward fire breath cone with ember trail and impact flourish at
- * the cone tip. Replaces the generic accent summon ring.
+ * Wyrmflare: instant forward fire breath cone plus a lingering breath zone
+ * whose tick pulses align with server area-effect intervals. No travel phase.
  */
 function renderDragonsBreath(data, ctx) {
 	if (data.radius === undefined) return;
@@ -694,27 +695,68 @@ function renderDragonsBreath(data, ctx) {
 	const direction = directionOf(data);
 	const color = getAccentHex(data.cardId) ?? FIRE_ACCENT_COLOR;
 	const emissive = FIRE_ACCENT_EMISSIVE;
+	const dotTicks = data.dotTicks ?? 4;
+	const dotIntervalMs = data.dotIntervalMs ?? 500;
+	const duration = dotTicks * dotIntervalMs + 250;
+	const coneAngle = data.attackConeAngle ?? Math.PI / 3;
+	const tip = pointAlong(origin, direction, data.radius);
+	const tipRingRadius = data.radius * 0.35;
+
+	ctx.spawnDragonsBreathEffect(origin, direction, {
+		color,
+		emissive,
+		range: data.radius,
+		coneAngle,
+		dotTicks,
+		dotIntervalMs,
+		duration,
+	});
+
+	// Instant burst (t = 0): mirrors server immediate collectConeHits resolution.
 	ctx.spawnAttackEffect(origin, direction, {
 		range: data.radius,
-		coneAngle: data.attackConeAngle ?? Math.PI / 3,
+		coneAngle,
 		color,
 		emissive,
 		fillOpacity: 0.38,
 		edgeOpacity: 0.72,
 	});
-	if (ctx.spawnProjectileTrail) {
-		ctx.spawnProjectileTrail(origin, direction, {
-			range: data.radius,
-			color,
-			emissive,
-		});
-	}
-	const tip = pointAlong(origin, direction, data.radius);
 	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 12, spread: 1.4 });
 		ctx.spawnParticleBurst(tip, { color, emissive, count: 10, spread: 1.2 });
 	}
 	if (ctx.spawnImpactDecal) {
 		ctx.spawnImpactDecal(tip, { color, emissive });
+	}
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(tip, tipRingRadius, { color, emissive });
+	}
+
+	if (data.hits?.length) {
+		const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(pos, { color, emissive, count: 5, spread: 0.55 });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pos, { color, emissive, count: 6, spread: 0.7 });
+			}
+		}
+	}
+
+	for (let tick = 1; tick <= dotTicks; tick += 1) {
+		ctx.scheduleAfter(dotIntervalMs * tick, () => {
+			const pulseAt = pointAlong(origin, direction, data.radius * 0.65);
+			if (ctx.spawnTelegraphRing) {
+				ctx.spawnTelegraphRing(pulseAt, tipRingRadius, { color, emissive });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pulseAt, { color, emissive, count: 8, spread: 1.4 });
+			}
+		});
 	}
 }
 
