@@ -8294,3 +8294,26 @@ comments still reference the removed `isLightColumn`/`isThermalColumn`/etc.
 
 None. All acceptance criteria are satisfied; runtime capture and tests confirm the fix.
 
+
+## v0.450 — objectives: stage_boss objective counter increments on regular enemy kills  (2026-06-11 06:46:27)
+
+The six tier-2 stage_boss suites updated their `recordEnemyDefeated` assertions to
+verify the counter is no longer inflated — matching the corrected behavior.
+
+## Consistency / regressions
+- Design (`game/docs/design.md`) and foundation requirements are not regressed; the
+  boss-defeat completion path (`onBossDefeated` / `isEncounterCleared` → victory) is
+  intact and exercised by the existing "completes the run with victory" test.
+- Boss is not double-counted: when it dies while active it contributes a single +1
+  via `countStageBossObjectiveKills` and `onStageBossDefeated` sets `bossDefeated`.
+- No debug scenario (`?debugScenario=`) was added or changed by this ticket.
+- Full suite green: **server 2651/2651, client 1353/1353** at HEAD.
+
+## Code quality
+Clean, well-scoped helper with a single source of truth for stage_boss kill counting,
+reused across `removeDeadEnemies` and `tryActivateEncounter`. No dead code, no console
+errors.
+
+## Remaining gaps
+None blocking.
+
