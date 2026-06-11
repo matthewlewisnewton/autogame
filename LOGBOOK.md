@@ -7093,3 +7093,26 @@ Pure server-side performance refactor that preserves observable behavior. No cha
 ## Remaining gaps
 
 None blocking.
+
+## v0.398 — 364-anim-telepipe  (2026-06-10 18:43:25)
+
+construction, palette, overrides, and cleanup/disposal. Ran
+`vitest run cardRenderers.test.js vfx-primitives.test.js` → **182 passed**.
+
+## Design / regression consistency
+
+- Scope respected: diff touches only `game/client/cardRenderers.js`,
+  `game/client/renderer.js` (new primitive), `game/client/main.js` (ctx
+  wiring), and the two client test files. `git diff … -- game/server/` is empty.
+- The persistent portal marker is unaffected — it is owned by
+  `syncTelepipeMesh`/`animateTelepipePortal` (state-driven), which this ticket
+  does not modify. The old `renderTelepipe` call to `spawnSummonEffect` is
+  replaced by the dedicated cast flourish; the standing portal is still rendered
+  from `state.telepipe`, so no regression to the evac-point marker.
+- No debug scenario was added or changed by this ticket (no server diff);
+  `telepipe-ready` predates the baseline and is used only by the harness capture.
+
+## Remaining gaps
+
+None blocking. (Minor non-blocking redundancy noted in nits.md.)
+
