@@ -42,6 +42,7 @@ function makeCtx(overrides = {}) {
 		dismissMirrorWardShellEffect: record('dismissMirrorWardShellEffect'),
 		spawnMirrorWardReflectBurst: record('spawnMirrorWardReflectBurst'),
 		spawnMinionSummonInEffect: record('spawnMinionSummonInEffect'),
+		spawnBatteryAutomatonDeployEffect: record('spawnBatteryAutomatonDeployEffect'),
 		spawnLegionMarshalRallyEffect: record('spawnLegionMarshalRallyEffect'),
 		flashMesh: record('flashMesh'),
 		spawnHitSpark: record('spawnHitSpark'),
@@ -186,7 +187,16 @@ describe('resolveRenderers()', () => {
 	});
 
 	it('falls back to the creature default for plain creature cards', () => {
-		expect(resolveRenderers('battery_automaton')).toHaveLength(1);
+		const creatureDefault = resolveRenderers('aegis_sentinel');
+		expect(creatureDefault).toHaveLength(1);
+		expect(creatureDefault[0].name).toBe('renderCreatureSummon');
+	});
+
+	it('returns renderBatteryAutomaton for battery_automaton (not the creature type default)', () => {
+		const batteryRenderers = resolveRenderers('battery_automaton');
+		expect(batteryRenderers).toHaveLength(1);
+		expect(batteryRenderers[0].name).toBe('renderBatteryAutomaton');
+		expect(batteryRenderers[0]).not.toBe(resolveRenderers('aegis_sentinel')[0]);
 	});
 
 	it('returns an empty list for unknown card ids', () => {
@@ -2724,7 +2734,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 });
 
 describe('renderCardUsed() — creature dispatch', () => {
-	it('vanilla creature spawn with minionId triggers the summon-in flourish', () => {
+	it('battery_automaton summon uses battery palette, deploy effect, and no scheduleAfter deferral', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'battery_automaton',
@@ -2735,18 +2745,50 @@ describe('renderCardUsed() — creature dispatch', () => {
 		const summon = ctx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
 		expect(summon).toBeDefined();
 		expect(summon[1]).toEqual({ x: 2, z: 3 });
+		expect(summon[2]).toMatchObject({
+			color: 0xfbbf24,
+			emissive: 0x38bdf8,
+			radius: 1.1,
+			burstCount: 10,
+		});
+		expect(summon[2].color).not.toBe(0x22c55e);
+		const deploy = ctx._calls.find((c) => c[0] === 'spawnBatteryAutomatonDeployEffect');
+		expect(deploy).toBeDefined();
+		expect(deploy[1]).toEqual({ x: 2, z: 3 });
+		expect(deploy[2]).toMatchObject({
+			color: 0xfbbf24,
+			emissive: 0x38bdf8,
+			radius: 1.4,
+			duration: MINION_SUMMON_IN_MS,
+		});
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
 		expect(methodsCalled(ctx)).toContain('playSound');
 	});
 
-	it('vanilla creature spawn without minionId stays sound-only', () => {
+	it('battery_automaton summon without minionId stays sound-only (no deploy or summon flourish)', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'battery_automaton',
 			origin: { x: 0, z: 0 },
 			hits: [],
 		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnBatteryAutomatonDeployEffect')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
 		expect(methodsCalled(ctx)).toEqual(['playSound']);
+	});
+
+	it('battery_automaton summon degrades gracefully when spawnBatteryAutomatonDeployEffect is absent', () => {
+		const ctx = makeCtx({ spawnBatteryAutomatonDeployEffect: undefined });
+		expect(() => renderCardUsed({
+			cardId: 'battery_automaton',
+			origin: { x: 1, z: 2 },
+			minionId: 'minion-2',
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnBatteryAutomatonDeployEffect')).toBe(false);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect')).toHaveLength(1);
+		const summon = ctx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(summon[2]).toMatchObject({ color: 0xfbbf24, emissive: 0x38bdf8 });
 	});
 
 	it('Vault Wyrm minion breath renders a forward cone hitbox on breath start', () => {

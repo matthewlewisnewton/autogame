@@ -83,3 +83,62 @@ describe('minion summon scale-in', () => {
 		expect(getMinionSpawnTimes()['ally-2']).toBe(initialSpawnAt);
 	});
 });
+
+describe('battery_automaton charge-pulse sync', () => {
+	beforeEach(() => {
+		vi.resetModules();
+		vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1));
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
+
+	it('fires spawnBatteryChargePulseEffect once when lastChargePulseAt advances, not on first sighting', async () => {
+		const renderer = await import('../renderer.js');
+		const pulseSpy = vi.spyOn(renderer, 'spawnBatteryChargePulseEffect');
+
+		const {
+			initScene,
+			setGameStateRef,
+			setMyId,
+			animate,
+		} = renderer;
+
+		initScene(null, { x: 0, z: 0 });
+		setMyId('p1');
+
+		const minionBase = {
+			id: 'battery-1',
+			type: 'battery_automaton',
+			x: 3,
+			z: 4,
+			hp: 40,
+			maxHp: 40,
+		};
+
+		setGameStateRef({
+			players: { p1: { x: 0, z: 0, dead: false, hp: 100 } },
+			enemies: [],
+			minions: [{ ...minionBase, lastChargePulseAt: 1000 }],
+		});
+		animate(0);
+		expect(pulseSpy).not.toHaveBeenCalled();
+
+		setGameStateRef({
+			players: { p1: { x: 0, z: 0, dead: false, hp: 100 } },
+			enemies: [],
+			minions: [{ ...minionBase, lastChargePulseAt: 2500 }],
+		});
+		animate(16);
+		expect(pulseSpy).toHaveBeenCalledTimes(1);
+		expect(pulseSpy).toHaveBeenCalledWith(
+			{ x: 3, z: 4 },
+			{ duration: 700 },
+		);
+
+		animate(32);
+		expect(pulseSpy).toHaveBeenCalledTimes(1);
+	});
+});
