@@ -3739,6 +3739,7 @@ describe('renderCardUsed() — creature dispatch', () => {
 		});
 		renderCardUsed({
 			cardId: 'dungeon_drake',
+			specialEffect: 'burning_breath',
 			origin: { x: 1, z: 2 },
 			direction: { x: 0, z: 1 },
 			attackRange: 4,
@@ -3755,19 +3756,19 @@ describe('renderCardUsed() — creature dispatch', () => {
 			range: 4,
 			coneAngle: Math.PI / 4,
 			duration: 2000,
-			color: 0x22c55e,
-			emissive: 0x16a34a,
+			color: 0xfb923c,
+			emissive: 0xf97316,
 		});
 		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
 		expect(ring).toBeDefined();
 		expect(ring[1]).toEqual({ x: 1, z: 2 });
 		expect(ring[2]).toBeCloseTo(4 * 0.55);
-		expect(ring[3]).toMatchObject({ color: 0x22c55e, emissive: 0x16a34a });
+		expect(ring[3]).toMatchObject({ color: 0xfb923c, emissive: 0xf97316 });
 		const alongBurst = ctx._calls.find(
 			(c) => c[0] === 'spawnParticleBurst' && c[1].x === 1 && c[1].z === 2 + 4 * 0.45,
 		);
 		expect(alongBurst).toBeDefined();
-		expect(alongBurst[2]).toMatchObject({ color: 0x22c55e, emissive: 0x16a34a, count: 10 });
+		expect(alongBurst[2]).toMatchObject({ color: 0xfb923c, emissive: 0xf97316, count: 14 });
 		expect(ctx._calls.filter((c) => c[0] === 'spawnHitSpark')).toHaveLength(1);
 		expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(2);
 	});
@@ -3780,6 +3781,7 @@ describe('renderCardUsed() — creature dispatch', () => {
 		});
 		renderCardUsed({
 			cardId: 'dungeon_drake',
+			specialEffect: 'burning_breath',
 			origin: { x: 1, z: 2 },
 			direction: { x: 0, z: 1 },
 			attackRange: 4,
@@ -3789,6 +3791,8 @@ describe('renderCardUsed() — creature dispatch', () => {
 		}, ctx);
 		expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(0);
 		expect(ctx._calls.filter((c) => c[0] === 'spawnHitSpark')).toHaveLength(1);
+		const hitSpark = ctx._calls.find((c) => c[0] === 'spawnHitSpark');
+		expect(hitSpark[2]).toMatchObject({ color: 0xfb923c, emissive: 0xf97316 });
 	});
 
 	it('Archive Wyrm fire breath renders a channeled cone hitbox', () => {

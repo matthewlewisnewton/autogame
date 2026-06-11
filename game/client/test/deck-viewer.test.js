@@ -36,7 +36,7 @@ describe('buildDeckMiniEntries()', () => {
 		expect(entries).toHaveLength(3);
 		expect(entries[0]).toMatchObject({ cardId: 'iron_sword', name: 'Rust-Forged Saber', icon: '⚔' });
 		expect(entries[1]).toMatchObject({ cardId: 'battle_familiar', icon: '✦' });
-		expect(entries[2]).toMatchObject({ cardId: 'dungeon_drake', icon: '🐉' });
+		expect(entries[2]).toMatchObject({ cardId: 'dungeon_drake', icon: '🔥' });
 	});
 
 	it('marks evolved cards', () => {

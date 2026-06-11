@@ -2090,10 +2090,13 @@ function renderWyrmAttack(data, ctx) {
 	if (!data.origin) return;
 	if (data.minionId && !data.breathPhase) return;
 
-	const isFireBreath = data.specialEffect === 'fire_breath';
+	// Vault Wyrm breath is fiery (burning_breath): derive a warm ember palette
+	// from its accent with a warm fallback — never the old green melee defaults.
+	// fire_breath / burning_breath select the hotter emissive + denser particles.
+	const isFireBreath = data.specialEffect === 'fire_breath' || data.specialEffect === 'burning_breath';
 	const accentHex = getAccentHex(data.cardId);
-	const color = isFireBreath ? 0xef4444 : (accentHex ?? 0x22c55e);
-	const emissive = isFireBreath ? (accentHex ?? 0x9333ea) : 0x16a34a;
+	const color = accentHex ?? 0xfb923c;
+	const emissive = isFireBreath ? 0xf97316 : 0xea580c;
 
 	if (data.breathPhase !== 'tick') {
 		const origin = originOf(data);
