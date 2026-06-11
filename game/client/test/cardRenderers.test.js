@@ -2603,8 +2603,18 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect')).toHaveLength(0);
 	});
 
-	it('thunderbird (chain_lightning) renders zap + enemy-hit cue + follow-up attack', () => {
-		const ctx = makeCtx();
+	it('resolveRenderers thunderbird second renderer is renderThunderbirdStrike', () => {
+		const renderers = resolveRenderers('thunderbird');
+		expect(renderers).toHaveLength(2);
+		expect(renderers[0].name).toBe('renderThunderbirdSummon');
+		expect(renderers[1].name).toBe('renderThunderbirdStrike');
+	});
+
+	it('thunderbird single-target strike uses legacy bolt, origin flare, and no renderer enemyHit', () => {
+		const enemyMesh = { position: { x: 6, y: 1.2, z: 0 } };
+		const ctx = makeCtx({
+			enemyMeshes: () => ({ e1: enemyMesh }),
+		});
 		renderCardUsed({
 			cardId: 'thunderbird',
 			origin: { x: 3, z: 4 },
@@ -2613,12 +2623,16 @@ describe('renderCardUsed() — creature dispatch', () => {
 			hits: [{ enemyId: 'e1', hp: 30 }],
 		}, ctx);
 		expect(ctx._calls.some((c) => c[0] === 'spawnChainLightningEffect')).toBe(true);
-		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(false);
+		const originFlares = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		expect(originFlares).toHaveLength(2);
+		expect(originFlares[0][1]).toEqual({ x: 3, z: 4 });
+		expect(originFlares[1][1]).toEqual({ x: 6, y: 1.2, z: 0 });
 		const hitSounds = ctx._calls.filter((c) => c[0] === 'playSound' && c[1] === 'enemyHit');
-		expect(hitSounds).toHaveLength(2);
+		expect(hitSounds).toHaveLength(1);
 	});
 
-	it('thunderbird chain_lightning with chainSegments invokes spawnLightningArc per hop', () => {
+	it('thunderbird chain strike schedules later hops and uses thunderbird arc style', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'thunderbird',
@@ -2635,9 +2649,33 @@ describe('renderCardUsed() — creature dispatch', () => {
 			],
 		}, ctx);
 		const arcs = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
-		expect(arcs).toHaveLength(2);
+		expect(arcs).toHaveLength(1);
+		expect(arcs[0][3]).toMatchObject({
+			color: 0x38bdf8,
+			emissive: 0x0ea5e9,
+			duration: ATTACK_EFFECT_DURATION,
+		});
 		expect(ctx._calls.some((c) => c[0] === 'spawnChainLightningEffect')).toBe(false);
-		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(false);
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(schedules).toHaveLength(1);
+		expect(schedules[0][1]).toBe(100);
+		expect(schedules[0][1]).toBeLessThan(ATTACK_EFFECT_DURATION);
+		ctx.runScheduled();
+		expect(ctx._calls.filter((c) => c[0] === 'spawnLightningArc')).toHaveLength(2);
+		const endpointBursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		expect(endpointBursts.length).toBeGreaterThanOrEqual(2);
+	});
+
+	it('thunderbird chain strike without spawnLightningArc does not throw', () => {
+		const ctx = makeCtx({ spawnLightningArc: undefined });
+		expect(() => renderCardUsed({
+			cardId: 'thunderbird',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			chainSegments: [{ from: { x: 0, z: 0 }, to: { x: 5, z: 0 } }],
+			hits: [{ enemyId: 'e1', hp: 30 }],
+		}, ctx)).not.toThrow();
 	});
 
 	it('chain_lightning with two chainSegments invokes spawnLightningArc twice', () => {

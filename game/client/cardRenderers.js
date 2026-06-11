@@ -968,6 +968,12 @@ function renderUndeadCommander(data, ctx) {
 
 const CHAIN_LIGHTNING_ARC_STYLE = { color: 0x38bdf8, emissive: 0x0ea5e9 };
 const THUNDERBIRD_SUMMON_STYLE = { color: 0x38bdf8, emissive: 0x0ea5e9 };
+const THUNDERBIRD_ARC_STYLE = {
+	color: 0x38bdf8,
+	emissive: 0x0ea5e9,
+	duration: ATTACK_EFFECT_DURATION,
+};
+const THUNDERBIRD_CHAIN_HOP_DELAY_MS = 100;
 const STORM_EAGLE_ARC_STYLE = { color: 0x67e8f9, emissive: 0x22d3ee };
 const ARCANE_FAMILIAR_COLOR = 0x818cf8;
 const ARCANE_FAMILIAR_EMISSIVE = 0x6366f1;
@@ -1092,9 +1098,8 @@ function renderSoulDrain(data, ctx) {
 }
 
 /**
- * Thunderbird (chain_lightning): zap effect on origin, an enemy-hit cue, and
- * a follow-up attack flash. Triggered by specialEffect rather than cardId so
- * future cards reusing the chain_lightning effect inherit the visual.
+ * Shared chain-lightning zap for legacy specialEffect paths not tied to a
+ * dedicated card renderer. Thunderbird minion strikes use renderThunderbirdStrike.
  */
 function renderChainLightning(data, ctx) {
 	if (!data.origin || !data.hits?.length) return;
@@ -1103,6 +1108,85 @@ function renderChainLightning(data, ctx) {
 	}
 	ctx.playSound('enemyHit');
 	ctx.spawnAttackEffect(data.origin, directionOf(data));
+}
+
+function thunderbirdEndpointBurst(pos, ctx) {
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(pos, {
+			...THUNDERBIRD_ARC_STYLE,
+			count: 8,
+			spread: 1.0,
+		});
+	} else if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(pos, THUNDERBIRD_ARC_STYLE);
+	}
+}
+
+function thunderbirdOriginFlare(origin, ctx) {
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, {
+			...THUNDERBIRD_ARC_STYLE,
+			count: 6,
+			spread: 0.9,
+		});
+	} else if (ctx.spawnAttackEffect) {
+		ctx.spawnAttackEffect(origin, { x: 1, z: 0 });
+	}
+}
+
+function enemyWorldPosition(mesh) {
+	const pos = { x: mesh.position.x, z: mesh.position.z };
+	if (Number.isFinite(mesh.position.y)) pos.y = mesh.position.y;
+	return pos;
+}
+
+/**
+ * Thunderbird minion chain strike: forked sky-blue arcs per server segment
+ * with sequenced hops, endpoint sparks, and a brief origin flare. Damage
+ * resolves instantly on the server; hop delays are visual-only.
+ */
+function renderThunderbirdStrike(data, ctx) {
+	if (!data.origin || !data.hits?.length) return;
+	const origin = originOf(data);
+	const segments = data.chainSegments;
+	const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+
+	const fireHop = (index) => {
+		const seg = segments[index];
+		if (!seg) return;
+		if (ctx.spawnLightningArc) {
+			ctx.spawnLightningArc(seg.from, seg.to, THUNDERBIRD_ARC_STYLE);
+		}
+		const hit = data.hits[index];
+		let endpoint = seg.to;
+		const mesh = hit ? meshes[hit.enemyId] : null;
+		if (mesh) endpoint = enemyWorldPosition(mesh);
+		thunderbirdEndpointBurst(endpoint, ctx);
+		if (index === 0) thunderbirdOriginFlare(origin, ctx);
+	};
+
+	if (segments?.length) {
+		for (let i = 0; i < segments.length; i++) {
+			if (i === 0) {
+				fireHop(0);
+			} else if (ctx.scheduleAfter) {
+				ctx.scheduleAfter(THUNDERBIRD_CHAIN_HOP_DELAY_MS * i, () => fireHop(i));
+			} else {
+				fireHop(i);
+			}
+		}
+		return;
+	}
+
+	if (ctx.spawnChainLightningEffect) {
+		ctx.spawnChainLightningEffect(origin, directionOf(data));
+	}
+	thunderbirdOriginFlare(origin, ctx);
+	for (const hit of data.hits) {
+		const mesh = meshes[hit.enemyId];
+		if (!mesh) continue;
+		thunderbirdEndpointBurst(enemyWorldPosition(mesh), ctx);
+	}
 }
 
 /**
@@ -1818,7 +1902,7 @@ const CARD_RENDERERS = {
 	// Creatures
 	undead_commander: renderUndeadCommander,
 	storm_eagle: [renderStormEagleSummon, renderStormEagleStrike],
-	thunderbird: [renderThunderbirdSummon, renderChainLightning],
+	thunderbird: [renderThunderbirdSummon, renderThunderbirdStrike],
 	dungeon_drake: [renderWyrmSummon, renderWyrmAttack],
 	ancient_wyrm: [renderWyrmSummon, renderWyrmAttack],
 	null_crawler: [renderNullCrawlerSummon, renderPhaseBeam],
