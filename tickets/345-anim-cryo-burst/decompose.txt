@@ -1,0 +1,13 @@
+I've broken the top-level ticket into 2 sub-tickets, in dependency order. No existing sub-tickets to retire (the subtickets folder was empty).
+
+Created:
+- `/home/matt/workspace/.autogame-worktrees/345-anim-cryo-burst/tickets/345-anim-cryo-burst/subtickets/01-cryo-burst-cast-visual/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/345-anim-cryo-burst/tickets/345-anim-cryo-burst/subtickets/02-cryo-burst-freeze-linger-sync/ticket.md`
+
+**Rationale:**
+
+- **01 — Cast burst visual identity.** Make `renderFrostNova` read unmistakably as an explosive cryo burst (expanding frost shockwave ring + denser radial ice-shard burst + frozen impact decal, ice palette), distinct from `permafrost_lance` and `glacier_collapse`, fired synchronously. This is the "shape/color matches the name" half.
+
+- **02 — Lingering freeze timing sync.** Adds a lingering frost field at the origin whose on-screen lifetime is pinned to the server's `freezeDurationMs` (2500ms), gated on the payload's freeze flag, all fired synchronously to match the instant `CARD_USED` resolution. This is the "timing lines up with the server effect" half.
+
+Both are **`code`** verification: every criterion concerns primitive composition, renderer distinctness, a freeze-flag code path, synchronous (no-`setTimeout`) firing, and a duration constant matching server state — none of which screenshot QA can check. The card is an instant spell (no wind-up, no projectile), so there was no travel/charge-telegraph timing to split out.

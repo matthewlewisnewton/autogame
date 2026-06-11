@@ -26,6 +26,7 @@ function makeCtx(overrides = {}) {
 		spawnPurifyingPulseHealRing: record('spawnPurifyingPulseHealRing'),
 		spawnCleanseBurstEffect: record('spawnCleanseBurstEffect'),
 		spawnInfernoPillarEffect: record('spawnInfernoPillarEffect'),
+		spawnGlacierRuptureEffect: record('spawnGlacierRuptureEffect'),
 		spawnDragonsBreathEffect: record('spawnDragonsBreathEffect'),
 		spawnChainLightningEffect: record('spawnChainLightningEffect'),
 		spawnLightningArc: record('spawnLightningArc'),
@@ -76,7 +77,9 @@ describe('resolveRenderers()', () => {
 		const fireballRenderers = resolveRenderers('fireball');
 		expect(fireballRenderers).toHaveLength(1);
 		expect(fireballRenderers[0].name).toBe('renderFireball');
-		expect(resolveRenderers('ice_ball')).toHaveLength(1);
+		const iceBallRenderers = resolveRenderers('ice_ball');
+		expect(iceBallRenderers).toHaveLength(1);
+		expect(iceBallRenderers[0].name).toBe('renderIceBall');
 		expect(resolveRenderers('divine_grace')).toHaveLength(1);
 		expect(resolveRenderers('purifying_pulse')).toHaveLength(1);
 		expect(resolveRenderers('spike_trap')).toHaveLength(1);
@@ -674,10 +677,12 @@ describe('renderCardUsed() — weapon dispatch', () => {
 			effect: 'ice_ball',
 			range: 9,
 			projectileTravelMs: 1200,
+			color: 0x67e8f9,
+			emissive: 0x38bdf8,
 		});
 	});
 
-	it('ice_ball adds a projectile trail, freeze-crystal burst, and frost decal at impact', () => {
+	it('ice_ball adds cast flourish, synced travel timing, and deferred terminal impact', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'ice_ball',
@@ -687,20 +692,72 @@ describe('renderCardUsed() — weapon dispatch', () => {
 			projectileTravelMs: 1200,
 			hits: [],
 		}, ctx);
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 1, z: 2 });
+		expect(ring[3]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
+		const castBurst = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.find((c) => c[1].x === 1 && c[1].z === 2 && c[2].count === 8);
+		expect(castBurst).toBeDefined();
 		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
 		expect(trail).toBeDefined();
 		expect(trail[1]).toEqual({ x: 1, z: 2 });
 		expect(trail[2]).toEqual({ x: 1, z: 0 });
-		expect(trail[3]).toMatchObject({ range: 9, color: 0x67e8f9 });
-		// Impact at origin + direction * range = (10, 2).
+		expect(trail[3]).toMatchObject({
+			range: 9,
+			travelMs: 1200,
+			color: 0x67e8f9,
+		});
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(schedules).toHaveLength(1);
+		expect(schedules[0][1]).toBe(1200);
+		expect(ctx._scheduled).toHaveLength(1);
+		expect(ctx._scheduled[0].invoked).toBe(false);
+		// Terminal impact at (10, 2) is deferred — not fired synchronously at cast.
+		expect(ctx._calls.find((c) => c[0] === 'spawnImpactDecal')).toBeUndefined();
+		expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.some((c) => c[1].x === 10 && c[1].z === 2 && c[2].count === 14)).toBe(false);
+		ctx.runScheduled();
+		expect(ctx._scheduled[0].invoked).toBe(true);
+		// Impact decal + freeze-crystal burst land at origin + direction * range = (10, 2).
 		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
 		expect(decal).toBeDefined();
 		expect(decal[1]).toEqual({ x: 10, z: 2 });
 		expect(decal[2]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
-		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
-		expect(burst).toBeDefined();
-		expect(burst[1]).toEqual({ x: 10, z: 2 });
-		expect(burst[2]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8, count: 14, spread: 1.8 });
+		const terminalBurst = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.find((c) => c[1].x === 10 && c[1].z === 2 && c[2].count === 14);
+		expect(terminalBurst).toBeDefined();
+		expect(terminalBurst[2]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8, spread: 1.8 });
+	});
+
+	it('ice_ball has no positive windUpMs (instant cast; no charge telegraph)', () => {
+		expect(CARD_DEFS.ice_ball).toBeDefined();
+		expect(CARD_DEFS.ice_ball.windUpMs ?? 0).toBeLessThanOrEqual(0);
+	});
+
+	it('ice_ball spawns immediate per-hit frost bursts at enemy mesh positions', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 4, y: 0, z: 2 } },
+				e2: { position: { x: 7, y: 0, z: 2 } },
+			}),
+		});
+		renderCardUsed({
+			cardId: 'ice_ball',
+			effect: 'ice_ball',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			attackRange: 9,
+			projectileTravelMs: 1200,
+			hits: [{ enemyId: 'e1' }, { enemyId: 'e2' }, { enemyId: 'missing' }],
+		}, ctx);
+		const hitSparks = ctx._calls.filter((c) => c[0] === 'spawnHitSpark');
+		expect(hitSparks).toHaveLength(2);
+		expect(hitSparks[0][1]).toEqual({ x: 4, y: 0.6, z: 2 });
+		expect(hitSparks[1][1]).toEqual({ x: 7, y: 0.6, z: 2 });
+		const frostBursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.filter((c) => c[2].count === 6);
+		expect(frostBursts).toHaveLength(2);
 	});
 
 	it('ice_ball still renders without throwing when the new ctx primitives are absent', () => {
@@ -708,6 +765,8 @@ describe('renderCardUsed() — weapon dispatch', () => {
 			spawnProjectileTrail: undefined,
 			spawnImpactDecal: undefined,
 			spawnParticleBurst: undefined,
+			spawnTelegraphRing: undefined,
+			spawnHitSpark: undefined,
 		});
 		expect(() => renderCardUsed({
 			cardId: 'ice_ball',
@@ -718,6 +777,7 @@ describe('renderCardUsed() — weapon dispatch', () => {
 			hits: [],
 		}, ctx)).not.toThrow();
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(true);
 	});
 });
 
@@ -1474,7 +1534,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 		}
 	});
 
-	it('frost_nova adds an icy telegraph ring and radial frost burst at the cast origin', () => {
+	it('frost_nova composes an icy shockwave ring, denser radial shard burst, and frozen impact decal at the origin', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'frost_nova',
@@ -1482,16 +1542,73 @@ describe('renderCardUsed() — spell dispatch', () => {
 			radius: 4,
 			hits: [],
 		}, ctx);
+		// Expanding frost shockwave ring sized to the radius.
 		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
 		expect(ring).toBeDefined();
 		expect(ring[1]).toEqual({ x: 2, z: 3 });
 		expect(ring[2]).toBe(4);
 		expect(ring[3]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
+		// Dense radial ice-shard burst — denser/wider than the old count:14, spread:2.0.
 		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
 		expect(burst).toBeDefined();
 		expect(burst[1]).toEqual({ x: 2, z: 3 });
-		expect(burst[2]).toMatchObject({ color: 0x67e8f9 });
+		expect(burst[2]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
+		expect(burst[2].count).toBeGreaterThan(14);
+		expect(burst[2].spread).toBeGreaterThan(2.0);
+		// Frozen ground impact decal at the cast origin.
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 2, z: 3 });
+		expect(decal[2]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
+		// Stays distinct from the generic summon / glacier_collapse look.
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('frost_nova spawns a lingering frost field timed to the 2.5s freeze when the payload is frozen', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'frost_nova',
+			origin: { x: 2, z: 3 },
+			radius: 4,
+			frozen: true,
+			specialEffect: 'freeze',
+			hits: [],
+		}, ctx);
+		const decals = ctx._calls.filter((c) => c[0] === 'spawnImpactDecal');
+		// The lingering frost field is a decal sized to the radius whose lifetime
+		// equals the 2500ms server freeze window (not the default impact lifetime).
+		const linger = decals.find((c) => c[2]?.duration === 2500);
+		expect(linger).toBeDefined();
+		expect(linger[1]).toEqual({ x: 2, z: 3 });
+		expect(linger[2]).toMatchObject({
+			color: 0x67e8f9,
+			emissive: 0x38bdf8,
+			radius: 4,
+			duration: 2500,
+		});
+		// Same frost palette as the cast burst.
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring[3]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
+		// Everything fires synchronously — no async scheduling.
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+		expect(ctx._scheduled).toHaveLength(0);
+	});
+
+	it('frost_nova does not spawn the lingering frost field when the payload is not frozen, but the cast burst still fires', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'frost_nova',
+			origin: { x: 2, z: 3 },
+			radius: 4,
+			hits: [],
+		}, ctx);
+		// No lingering (2.5s) decal without the freeze flag.
+		expect(ctx._calls.filter((c) => c[0] === 'spawnImpactDecal')
+			.some((c) => c[2]?.duration === 2500)).toBe(false);
+		// The immediate cast burst still fires regardless of the freeze gate.
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(true);
 	});
 
 	it('permafrost_lance uses a narrower telegraph, lance projectile, trail, tip decal, and burst', () => {
@@ -1565,19 +1682,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(windUp == null || windUp <= 0).toBe(true);
 	});
 
-	it('uses the fixed glacier palette for glacier_collapse (not the accent)', () => {
-		const ctx = makeCtx();
-		renderCardUsed({
-			cardId: 'glacier_collapse',
-			origin: { x: 0, z: 0 },
-			radius: 5,
-			hits: [],
-		}, ctx);
-		const ring = ctx._calls.find((c) => c[0] === 'spawnSummonEffect');
-		expect(ring[3]).toEqual({ color: 0x38bdf8, emissive: 0x0ea5e9 });
-	});
-
-	it('glacier_collapse adds a glacier telegraph ring and shatter burst at the rupture point', () => {
+	it('glacier_collapse dispatches the polished rupture primitive, telegraph, decal, and radial burst synchronously', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'glacier_collapse',
@@ -1585,15 +1690,111 @@ describe('renderCardUsed() — spell dispatch', () => {
 			radius: 5,
 			hits: [],
 		}, ctx);
+		const rupture = ctx._calls.find((c) => c[0] === 'spawnGlacierRuptureEffect');
+		expect(rupture).toBeDefined();
+		expect(rupture[1]).toEqual({ x: 1, z: 2 });
+		expect(rupture[2]).toBe(5);
+		expect(rupture[3]).toEqual({ color: 0x38bdf8, emissive: 0x0ea5e9 });
 		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
 		expect(telegraph).toBeDefined();
 		expect(telegraph[1]).toEqual({ x: 1, z: 2 });
 		expect(telegraph[2]).toBe(5);
-		expect(telegraph[3]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+		expect(telegraph[3]).toEqual({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 1, z: 2 });
+		expect(decal[2]).toEqual({ color: 0x38bdf8, emissive: 0x0ea5e9 });
 		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
 		expect(burst).toBeDefined();
 		expect(burst[1]).toEqual({ x: 1, z: 2 });
-		expect(burst[2]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+		expect(burst[2]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9, count: 16, spread: 2.4 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('glacier_collapse spawns a per-hit shatter burst at the enemy mesh position', () => {
+		const meshes = { e1: { position: { x: 3, y: 0, z: 4 } } };
+		const ctx = makeCtx({ enemyMeshes: () => meshes });
+		renderCardUsed({
+			cardId: 'glacier_collapse',
+			origin: { x: 0, z: 0 },
+			radius: 5,
+			hits: [{ enemyId: 'e1' }],
+		}, ctx);
+		const hitPos = { x: 3, y: 0.6, z: 4 };
+		const hitSpark = ctx._calls.find((c) => c[0] === 'spawnHitSpark' && c[1].x === 3);
+		const hitBurst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst' && c[1].x === 3);
+		expect(hitSpark ?? hitBurst).toBeDefined();
+		if (hitSpark) {
+			expect(hitSpark[1]).toEqual(hitPos);
+			expect(hitSpark[2]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+		}
+		if (hitBurst) {
+			expect(hitBurst[1]).toEqual(hitPos);
+			expect(hitBurst[2]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9 });
+		}
+	});
+
+	it('glacier_collapse uses a larger shatter burst for frozenShatter hits than normal freeze hits', () => {
+		const meshes = { e1: { position: { x: 1, y: 0, z: 1 } } };
+		const normalCtx = makeCtx({ enemyMeshes: () => meshes });
+		renderCardUsed({
+			cardId: 'glacier_collapse',
+			origin: { x: 0, z: 0 },
+			radius: 5,
+			hits: [{ enemyId: 'e1' }],
+		}, normalCtx);
+		const shatterCtx = makeCtx({ enemyMeshes: () => meshes });
+		renderCardUsed({
+			cardId: 'glacier_collapse',
+			origin: { x: 0, z: 0 },
+			radius: 5,
+			hits: [{ enemyId: 'e1', frozenShatter: true }],
+		}, shatterCtx);
+		const normalBurst = normalCtx._calls.find((c) => c[0] === 'spawnParticleBurst' && c[1].x === 1);
+		const shatterBurst = shatterCtx._calls.find((c) => c[0] === 'spawnParticleBurst' && c[1].x === 1);
+		expect(normalBurst).toBeDefined();
+		expect(shatterBurst).toBeDefined();
+		expect(shatterBurst[2].count).toBeGreaterThan(normalBurst[2].count);
+		expect(shatterBurst[2].spread).toBeGreaterThan(normalBurst[2].spread);
+	});
+
+	it('glacier_collapse and frost_nova resolve to different renderer functions and helper signatures', () => {
+		expect(resolveRenderers('glacier_collapse')[0]).not.toBe(resolveRenderers('frost_nova')[0]);
+		const payload = {
+			origin: { x: 0, z: 0 },
+			radius: 6,
+			hits: [],
+		};
+		const glacierCtx = makeCtx();
+		resolveRenderers('glacier_collapse')[0]({ ...payload, cardId: 'glacier_collapse' }, glacierCtx);
+		const novaCtx = makeCtx();
+		resolveRenderers('frost_nova')[0]({ ...payload, cardId: 'frost_nova' }, novaCtx);
+		expect(methodsCalled(glacierCtx)).not.toEqual(methodsCalled(novaCtx));
+		expect(glacierCtx._calls.some((c) => c[0] === 'spawnGlacierRuptureEffect')).toBe(true);
+		expect(novaCtx._calls.some((c) => c[0] === 'spawnGlacierRuptureEffect')).toBe(false);
+	});
+
+	it('Glacier Collapse carries windUpMs 700 so the 307/315 charge telegraph fires during wind-up', () => {
+		expect(getCardDef('glacier_collapse')).toBeDefined();
+		expect(getCardDef('glacier_collapse').windUpMs).toBe(700);
+	});
+
+	it('glacier_collapse degrades gracefully when optional ctx primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnGlacierRuptureEffect: undefined,
+			spawnTelegraphRing: undefined,
+			spawnImpactDecal: undefined,
+			spawnParticleBurst: undefined,
+			spawnHitSpark: undefined,
+			enemyMeshes: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'glacier_collapse',
+			origin: { x: 0, z: 0 },
+			radius: 5,
+			hits: [{ enemyId: 'e1' }],
+		}, ctx)).not.toThrow();
 	});
 
 	it('healing_font and divine_grace resolve to different renderer functions', () => {

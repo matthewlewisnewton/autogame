@@ -1,0 +1,14 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/348-anim-glacier-rupture/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/348-anim-glacier-rupture/game/data
+Server listening on port 3002
+Player connected: socket=NiaZefJ_NBaSR4PNAAAB, playerId=fbee967e-5034-4caa-9d44-0b3092a0fcd5
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=lJZWRp1apif1IHBBAAAD, playerId=3b8492d1-369a-4d26-9c55-6c43ca2a82a3
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: NiaZefJ_NBaSR4PNAAAB
+Player disconnected: lJZWRp1apif1IHBBAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

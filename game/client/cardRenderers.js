@@ -21,6 +21,7 @@
 //   spawnCleanseBurstEffect(origin) — upward white→mint cleanse rise (column + sparkle)
 //   spawnPurifyingPulseEffect(origin, radius)
 //   spawnInfernoPillarEffect(origin, radius, style?) — style: { color, emissive, dotTicks, dotIntervalMs, duration }
+//   spawnGlacierRuptureEffect(origin, radius, style?) — ice-fracture ring + rising shard burst
 //   spawnEtherSiphonEffect(origin, radius, style?) — style: { color, emissive, duration }
 //   spawnDragonsBreathEffect(origin, direction, style?) — style: { color, emissive, range, coneAngle, dotTicks, dotIntervalMs, duration }
 //   spawnChainLightningEffect(origin, direction)
@@ -673,9 +674,23 @@ const ICE_ACCENT_EMISSIVE = 0x38bdf8;
 const GLACIER_COLOR = 0x38bdf8;
 const GLACIER_EMISSIVE = 0x0ea5e9;
 
+// On-screen lifetime of Cryo Burst's lingering frost field. Mirrors the server's
+// `frost_nova` `freezeDurationMs` in game/shared/cardStats.json (2500ms) so the
+// visual persistence reads as the "things are frozen for ~2.5s" window. The
+// CARD_USED payload does not carry the freeze duration, so it is duplicated here;
+// keep in sync with cardStats.json if that value changes.
+const FROST_NOVA_FREEZE_MS = 2500;
+
 /**
- * Cryo Burst: expanding icy telegraph plus a radial frost particle burst at
- * the cast origin. Replaces the generic accent summon ring.
+ * Cryo Burst: an explosive icy radial burst at the cast origin — an expanding
+ * frost shockwave ring sized to `data.radius`, a dense radial ice-shard burst
+ * (denser/wider than the old one-ring look), and a frozen ground impact decal.
+ * When the payload reports a freeze, a slow-fading frost-field ground sheen also
+ * lingers for the full freeze window so the animation persists alongside the
+ * server's 2.5s freeze. All fire synchronously to match the server's instant
+ * frost_nova resolution (no wind-up, no travel). Deliberately avoids
+ * spawnSummonEffect and any projectile/lance primitive so it stays distinct from
+ * glacier_collapse and permafrost_lance.
  */
 function renderFrostNova(data, ctx) {
 	if (data.radius === undefined) return;
@@ -686,7 +701,21 @@ function renderFrostNova(data, ctx) {
 		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
 	}
 	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.0 });
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 28, spread: 3.4 });
+	}
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(origin, { color, emissive });
+	}
+	// Lingering frost field, gated on the freeze path only: a wider ground sheen
+	// sized to the freeze radius that fades over the full 2.5s freeze window.
+	const frozen = data.frozen === true || data.specialEffect === 'freeze';
+	if (frozen && ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(origin, {
+			color,
+			emissive,
+			radius: data.radius,
+			duration: FROST_NOVA_FREEZE_MS,
+		});
 	}
 }
 
@@ -737,12 +766,35 @@ function renderPermafrostLance(data, ctx) {
 function renderGlacierCollapse(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
-	ctx.spawnSummonEffect(origin, data.radius, { color: GLACIER_COLOR, emissive: GLACIER_EMISSIVE });
+	const palette = { color: GLACIER_COLOR, emissive: GLACIER_EMISSIVE };
+	if (ctx.spawnGlacierRuptureEffect) {
+		ctx.spawnGlacierRuptureEffect(origin, data.radius, palette);
+	}
 	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, data.radius, { color: GLACIER_COLOR, emissive: GLACIER_EMISSIVE });
+		ctx.spawnTelegraphRing(origin, data.radius, palette);
+	}
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(origin, palette);
 	}
 	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(origin, { color: GLACIER_COLOR, emissive: GLACIER_EMISSIVE, count: 12, spread: 2.4 });
+		ctx.spawnParticleBurst(origin, { ...palette, count: 16, spread: 2.4 });
+	}
+	if (data.hits?.length && ctx.enemyMeshes) {
+		const meshes = ctx.enemyMeshes() || {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh?.position) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			const burstStyle = hit.frozenShatter
+				? { ...palette, count: 12, spread: 1.4 }
+				: { ...palette, count: 6, spread: 0.7 };
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(pos, burstStyle);
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pos, burstStyle);
+			}
+		}
 	}
 }
 
@@ -1758,29 +1810,59 @@ function renderIceBall(data, ctx) {
 	if (!data.origin) return;
 	const origin = originOf(data);
 	const direction = directionOf(data);
+	const travelMs = data.projectileTravelMs ?? 1200;
 	const color = getAccentHex(data.cardId) ?? ICE_ACCENT_COLOR;
 	const emissive = ICE_ACCENT_EMISSIVE;
+	const impact = pointAlong(origin, direction, data.attackRange ?? 8);
+
+	// Brief frost channel at cast (instant spell — no wind-up telegraph).
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, 0.45, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 8, spread: 1.0 });
+	}
+
 	ctx.spawnAttackEffect(origin, direction, {
 		effect: 'ice_ball',
 		range: data.attackRange,
-		projectileTravelMs: data.projectileTravelMs,
+		projectileTravelMs: travelMs,
 		color,
 		emissive,
 	});
 	if (ctx.spawnProjectileTrail) {
 		ctx.spawnProjectileTrail(origin, direction, {
 			range: data.attackRange,
+			travelMs,
 			color,
 			emissive,
 		});
 	}
-	// Freeze-crystal burst + frost scorch where the projectile lands.
-	const impact = pointAlong(origin, direction, data.attackRange ?? 8);
-	if (ctx.spawnImpactDecal) {
-		ctx.spawnImpactDecal(impact, { color, emissive });
-	}
-	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(impact, { color, emissive, count: 14, spread: 1.8 });
+
+	const terminalImpact = () => {
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(impact, { color, emissive });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(impact, { color, emissive, count: 14, spread: 1.8 });
+		}
+	};
+	ctx.scheduleAfter(travelMs, terminalImpact);
+
+	// Per-enemy frost bursts align with instant server damage + applySlow.
+	if (data.hits?.length) {
+		const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(pos, { color, emissive, count: 5, spread: 0.55 });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pos, { color, emissive, count: 6, spread: 0.7 });
+			}
+		}
 	}
 }
 

@@ -4301,29 +4301,53 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 	}
 
 	if (effect === 'ice_ball') {
-		// Icy sphere projectile — same travel/cleanup shape as `fireball` but
-		// with cool cyan/blue colors and a slower `projectileTravelMs` duration.
-		const geometry = new THREE.SphereGeometry(0.35, 12, 12);
-		const material = new THREE.MeshStandardMaterial({
-			color: style.color ?? 0x67e8f9,
-			emissive: style.emissive ?? 0x38bdf8,
-			emissiveIntensity: 1.2,
-			roughness: 0.35,
+		// Glacial Orb: faceted crystalline core + outer frost halo — cool cyan
+		// palette and layered silhouette distinct from generic `projectile`,
+		// warm `fireball`, and elongated `permafrost_lance`.
+		const iceColor = style.color ?? 0x67e8f9;
+		const iceEmissive = style.emissive ?? 0x38bdf8;
+		const group = new THREE.Group();
+
+		const coreMat = new THREE.MeshStandardMaterial({
+			color: iceColor,
+			emissive: iceEmissive,
+			emissiveIntensity: 2.4,
+			roughness: 0.2,
+			metalness: 0.25,
+			transparent: true,
+			opacity: 0.92,
+		});
+		const coreMesh = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 0), coreMat);
+		coreMesh.position.y = 1.0;
+		group.add(coreMesh);
+
+		const haloMat = new THREE.MeshStandardMaterial({
+			color: iceColor,
+			emissive: iceEmissive,
+			emissiveIntensity: 1.6,
+			roughness: 0.45,
 			metalness: 0.1,
 			transparent: true,
-			opacity: 1.0,
+			opacity: 0.38,
+			depthWrite: false,
 		});
-		const mesh = new THREE.Mesh(geometry, material);
-		mesh.position.set(origin.x, 1.0, origin.z);
-		targetScene.add(mesh);
+		const haloMesh = new THREE.Mesh(new THREE.SphereGeometry(0.48, 10, 10), haloMat);
+		haloMesh.position.y = 1.0;
+		group.add(haloMesh);
+
+		group.position.set(origin.x, 0, origin.z);
+		targetScene.add(group);
 
 		activeEffects.push({
-			mesh,
+			mesh: group,
+			coreMesh,
+			haloMesh,
 			origin: { x: origin.x, z: origin.z },
 			direction: { x: direction.x, z: direction.z },
 			range,
 			createdAt: performance.now(),
 			duration: style.projectileTravelMs ?? 1200,
+			isGlacialOrbProjectile: true,
 		});
 		return;
 	}
@@ -5229,6 +5253,13 @@ export const SPIKE_TRAP_SPIKE_COUNT = 6; // spikes erupting in a ring around the
 export const SPIKE_TRAP_SPIKE_HEIGHT = 0.75; // height of each iron spike
 export const SPIKE_TRAP_SPIKE_RADIUS = 0.13; // base radius of each cone spike
 
+// Glacier Rupture palette — fixed icy cyan for the shatter/collapse primitive.
+export const GLACIER_RUPTURE_COLOR = 0x38bdf8;
+export const GLACIER_RUPTURE_EMISSIVE = 0x0ea5e9;
+export const GLACIER_RUPTURE_SHARD_HEIGHT = 0.85;
+export const GLACIER_RUPTURE_SHARD_RADIUS = 0.11;
+export const GLACIER_RUPTURE_SHARD_COUNT = 6;
+
 /**
  * Spawn the erupting-spikes VFX for a Spike Trap: a cluster of vertical
  * iron/steel cones bursting up out of the ground inside a blood-red hazard ring.
@@ -5305,6 +5336,115 @@ export function spawnSpikeTrapEffect(origin, radius) {
 			_scene: targetScene,
 		});
 	}
+}
+
+/**
+ * Expanding ground ice-fracture ring for Glacier Rupture. Segmented thin ring
+ * geometry reads as cracking ice (distinct from spawnSummonEffect / telegraph).
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ * @param {object} [style]
+ */
+export function spawnGlacierRuptureRing(origin, radius, style = {}) {
+	const color = style.color ?? GLACIER_RUPTURE_COLOR;
+	const emissive = style.emissive ?? GLACIER_RUPTURE_EMISSIVE;
+	const duration = style.duration ?? SUMMON_EFFECT_DURATION;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+
+	// Eight theta segments + a thin band evoke a shattering ice fracture ring.
+	const geometry = new THREE.RingGeometry(0.18, 0.46, 32, 8);
+	const material = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.15,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ring = new THREE.Mesh(geometry, material);
+	ring.position.set(origin.x, 0.14, origin.z);
+	ring.rotation.x = -Math.PI / 2;
+	ring.scale.setScalar(0.001);
+	if (targetScene) targetScene.add(ring);
+
+	activeEffects.push({
+		mesh: ring,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration,
+		isGlacierRuptureRing: true,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Upward/outward ice-shard burst for Glacier Rupture. A single group of tapered
+ * cones rises and scatters from the rupture point.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ * @param {object} [style]
+ */
+export function spawnGlacierRuptureShards(origin, radius, style = {}) {
+	const color = style.color ?? GLACIER_RUPTURE_COLOR;
+	const emissive = style.emissive ?? GLACIER_RUPTURE_EMISSIVE;
+	const duration = style.duration ?? SUMMON_EFFECT_DURATION;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+
+	const group = new THREE.Group();
+	group.position.set(origin.x, 0, origin.z);
+	const innerOffset = radius * 0.18;
+
+	for (let s = 0; s < GLACIER_RUPTURE_SHARD_COUNT; s += 1) {
+		const angle = (s / GLACIER_RUPTURE_SHARD_COUNT) * Math.PI * 2;
+		const geometry = new THREE.ConeGeometry(
+			GLACIER_RUPTURE_SHARD_RADIUS,
+			GLACIER_RUPTURE_SHARD_HEIGHT,
+			5,
+		);
+		const material = new THREE.MeshStandardMaterial({
+			color,
+			emissive,
+			emissiveIntensity: 1.0,
+			transparent: true,
+			opacity: 1.0,
+		});
+		const shard = new THREE.Mesh(geometry, material);
+		const baseX = Math.cos(angle) * innerOffset;
+		const baseZ = Math.sin(angle) * innerOffset;
+		shard.userData.scatterDir = { x: Math.cos(angle), z: Math.sin(angle) };
+		shard.userData.baseX = baseX;
+		shard.userData.baseZ = baseZ;
+		shard.userData.shardHeight = GLACIER_RUPTURE_SHARD_HEIGHT;
+		shard.position.set(baseX, 0, baseZ);
+		shard.scale.y = 0.001;
+		group.add(shard);
+	}
+
+	if (targetScene) targetScene.add(group);
+
+	activeEffects.push({
+		mesh: group,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration,
+		isGlacierRuptureShards: true,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Glacier Rupture shatter VFX: expanding ice-fracture ground ring plus a brief
+ * upward/outward ice-shard burst. Composes ring + shard group primitives.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ * @param {object} [style]
+ */
+export function spawnGlacierRuptureEffect(origin, radius, style = {}) {
+	spawnGlacierRuptureRing(origin, radius, style);
+	spawnGlacierRuptureShards(origin, radius, style);
 }
 
 // createSpikeTrapHazardMesh() now lives in ./renderer/minionSync.js (re-exported
@@ -6283,6 +6423,55 @@ export function updateAttackEffects() {
 			continue;
 		}
 
+		// ── Glacier Rupture ice-fracture ring (expand → fade) ──
+		if (fx.isGlacierRuptureRing) {
+			const expandT = Math.min(elapsed / SUMMON_EXPAND_MS, 1.0);
+			const scale = fx.radius * expandT * 2;
+			fx.mesh.scale.setScalar(Math.max(0.001, scale));
+
+			if (elapsed > SUMMON_EXPAND_MS) {
+				const fadeRatio = 1.0 - (elapsed - SUMMON_EXPAND_MS) / (fx.duration - SUMMON_EXPAND_MS);
+				fx.mesh.material.opacity = Math.max(0.01, fadeRatio);
+			}
+			const fracturePulse = 0.75 + 0.25 * Math.abs(Math.sin(elapsed / 85));
+			fx.mesh.material.emissiveIntensity = 1.15 * fracturePulse;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Glacier Rupture ice-shard burst (rise → scatter → fade) ──
+		if (fx.isGlacierRuptureShards) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.28, 1.0);
+			const scatterT = Math.min(t / 0.32, 1.0);
+			const fade = Math.max(0.01, 1.0 - t);
+			const scatterDist = (fx.radius ?? 1) * 0.55 * scatterT;
+
+			for (let c = 0; c < fx.mesh.children.length; c += 1) {
+				const shard = fx.mesh.children[c];
+				const dir = shard.userData.scatterDir;
+				const riseH = shard.userData.shardHeight ?? GLACIER_RUPTURE_SHARD_HEIGHT;
+				const s = Math.max(0.001, riseT);
+				shard.scale.y = s;
+				shard.position.y = (riseH * s) / 2;
+				shard.position.x = shard.userData.baseX + dir.x * scatterDist;
+				shard.position.z = shard.userData.baseZ + dir.z * scatterDist;
+				shard.rotation.z = dir.x * scatterT * 0.4;
+				shard.rotation.x = -dir.z * scatterT * 0.4;
+				if (shard.material) shard.material.opacity = fade;
+			}
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
 		// ── Summon AoE effect (has a radius field) ──
 		if (fx.radius !== undefined) {
 			const expandT = Math.min(elapsed / SUMMON_EXPAND_MS, 1.0);
@@ -6678,6 +6867,41 @@ export function updateAttackEffects() {
 			const lifeRatio = 1.0 - t;
 			if (fx.coreMesh?.material) {
 				fx.coreMesh.material.opacity = Math.max(0.01, 0.95 * lifeRatio);
+			}
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Glacial Orb projectile (crystalline core + frost halo) ──
+		if (fx.isGlacialOrbProjectile) {
+			const travelRange = fx.range ?? ATTACK_RANGE;
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const travel = travelRange * t;
+			fx.mesh.position.x = fx.origin.x + fx.direction.x * travel;
+			fx.mesh.position.z = fx.origin.z + fx.direction.z * travel;
+
+			const pulse = 0.88 + 0.12 * Math.sin(elapsed / 80);
+			const shimmer = 1.0 + 0.22 * Math.sin(elapsed / 55 + 0.5);
+			if (fx.coreMesh) {
+				fx.coreMesh.rotation.y = elapsed * 0.002;
+				fx.coreMesh.rotation.x = Math.sin(elapsed / 200) * 0.15;
+				fx.coreMesh.scale.setScalar(pulse);
+				fx.coreMesh.material.emissiveIntensity = 2.2 * shimmer;
+			}
+			if (fx.haloMesh) {
+				const haloPulse = 1.0 + 0.18 * Math.sin(elapsed / 90 + 1.1);
+				fx.haloMesh.scale.setScalar(haloPulse);
+				fx.haloMesh.material.emissiveIntensity = 1.5 * shimmer;
+				fx.haloMesh.material.opacity = Math.max(0.15, 0.38 + 0.12 * Math.sin(elapsed / 70));
+			}
+
+			const lifeRatio = 1.0 - t;
+			if (fx.coreMesh?.material) {
+				fx.coreMesh.material.opacity = Math.max(0.01, 0.92 * lifeRatio);
 			}
 
 			if (elapsed >= fx.duration) {

@@ -1,0 +1,17 @@
+Broke ticket **347-anim-glacial-orb** into **3 sub-tickets** (same pattern as fireball 343 / permafrost lance 346): projectile mesh → renderer timing sync → test coverage.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/347-anim-glacial-orb/tickets/347-anim-glacial-orb/subtickets/01-ice-ball-projectile-visual`
+2. `/home/matt/workspace/.autogame-worktrees/347-anim-glacial-orb/tickets/347-anim-glacial-orb/subtickets/02-ice-ball-cast-trail-impact-sync`
+3. `/home/matt/workspace/.autogame-worktrees/347-anim-glacial-orb/tickets/347-anim-glacial-orb/subtickets/03-ice-ball-animation-tests`
+
+**Rationale:**
+
+| # | Focus | Why separate |
+|---|--------|--------------|
+| **01** | `renderer.js` glacial orb mesh + in-flight animation | Low-level Three.js primitive; no `cardRenderers.js` changes |
+| **02** | `renderIceBall` cast/trail/deferred impact/per-hit frost sync | Fixes the current bug where impact VFX fires at cast time instead of after `projectileTravelMs` (1200 ms); mirrors `renderFireball` |
+| **03** | Vitest regression guards | Locks timing constants, `scheduleAfter` behavior, and `windUpMs` absence after 01–02 land |
+
+All sub-tickets use **Verification: code** — criteria cover structure, handlers, timing values, and test assertions, not only on-screen appearance.
