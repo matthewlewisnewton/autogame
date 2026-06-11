@@ -36,6 +36,7 @@ function makeCtx(overrides = {}) {
 		spawnImpactDecal: record('spawnImpactDecal'),
 		spawnGravityWellEffect: record('spawnGravityWellEffect'),
 		spawnTelegraphRing: record('spawnTelegraphRing'),
+		spawnChronoTriggerEffect: record('spawnChronoTriggerEffect'),
 		spawnEtherSiphonEffect: record('spawnEtherSiphonEffect'),
 		spawnTelepipeCastEffect: record('spawnTelepipeCastEffect'),
 		spawnSpikeTrapEffect: record('spawnSpikeTrapEffect'),
@@ -107,6 +108,7 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('gravity_well')).toHaveLength(1);
 		expect(resolveRenderers('deck_sifter')).toHaveLength(1);
 		expect(resolveRenderers('chrono_trigger')).toHaveLength(1);
+		expect(resolveRenderers('chrono_trigger')[0].name).toBe('renderChronoTrigger');
 		expect(resolveRenderers('mana_prism')).toHaveLength(1);
 	});
 
@@ -1284,6 +1286,104 @@ describe('renderCardUsed() — energy & photon blade slashes', () => {
 			fire('echo_blade', ctx, { shockwaveHits: [{ enemyId: 'e1' }], shockwaveRadius: 6 }),
 		).not.toThrow();
 		// Each blade's core cone swing still fired.
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+	});
+});
+
+describe('renderCardUsed() — saber_of_light reach + swift_slash timing', () => {
+	function fireSaber(ctx, extra = {}) {
+		renderCardUsed(
+			{
+				cardId: 'saber_of_light',
+				specialEffect: 'swift_slash',
+				origin: { x: 0, z: 0 },
+				direction: { x: 1, z: 0 },
+				swingCount: 1,
+				hits: [],
+				...extra,
+			},
+			ctx,
+		);
+	}
+	function swingStyle(ctx) {
+		const attack = ctx._calls.find((c) => c[0] === 'spawnAttackEffect');
+		expect(attack).toBeDefined();
+		return attack[3];
+	}
+	function impactPoint(ctx) {
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		return ring[1];
+	}
+
+	it('uses a dedicated renderer, distinct from the plain cone default and renderWeaponSwing', () => {
+		const plainCone = resolveRenderers('reapers_scythe')[0]; // weapon type default (renderConeSwings)
+		const weaponSwing = resolveRenderers('iron_sword')[0]; // shared renderWeaponSwing
+		const saber = resolveRenderers('saber_of_light');
+		expect(saber).toHaveLength(1);
+		expect(saber[0]).not.toBe(plainCone);
+		expect(saber[0]).not.toBe(weaponSwing);
+	});
+
+	it('records the light-themed primitives: cone attack, telegraph flash, and spark burst', () => {
+		const ctx = makeCtx();
+		fireSaber(ctx, { attackRange: 5 });
+		const names = methodsCalled(ctx);
+		expect(names).toContain('spawnAttackEffect');
+		expect(names).toContain('spawnTelegraphRing');
+		expect(names).toContain('spawnParticleBurst');
+		// Holy radiant blade, not a flame trail.
+		expect(names).not.toContain('spawnProjectileTrail');
+		// Pale-gold accent on the cone swing.
+		expect(swingStyle(ctx)).toMatchObject({ color: 0xfef08a });
+	});
+
+	it('sizes the cone reach and impact placement from data.attackRange (longer for larger range)', () => {
+		const near = makeCtx();
+		fireSaber(near, { attackRange: 3 });
+		const far = makeCtx();
+		fireSaber(far, { attackRange: 9 });
+
+		// The cone swing range tracks the server attackRange directly.
+		expect(swingStyle(near).range).toBe(3);
+		expect(swingStyle(far).range).toBe(9);
+		expect(swingStyle(far).range).toBeGreaterThan(swingStyle(near).range);
+
+		// The impact flash / sparks are placed proportionally farther along the
+		// facing direction for the larger reach (origin 0,0 facing +x).
+		expect(impactPoint(far).x).toBeGreaterThan(impactPoint(near).x);
+		expect(impactPoint(far).x / impactPoint(near).x).toBeCloseTo(3);
+		// Spark burst rides the same impact point.
+		const nearBurst = near._calls.find((c) => c[0] === 'spawnParticleBurst');
+		const farBurst = far._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(farBurst[1].x).toBeGreaterThan(nearBurst[1].x);
+	});
+
+	it('falls back to a sane default reach when attackRange is absent', () => {
+		const ctx = makeCtx();
+		fireSaber(ctx, { attackRange: undefined });
+		// No hardcoded saber range constant leaks in as 0; a usable default reach.
+		expect(swingStyle(ctx).range).toBeGreaterThan(0);
+		expect(impactPoint(ctx).x).toBeGreaterThan(0);
+	});
+
+	it('fires the single swing immediately with no artificial scheduleAfter delay', () => {
+		const ctx = makeCtx();
+		fireSaber(ctx, { attackRange: 5, swingCount: 1 });
+		// The whole swing — cone, telegraph flash, sparks — lands synchronously.
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(true);
+		// swift_slash, swingCount 1: nothing is deferred.
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('degrades gracefully when optional light primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnTelegraphRing: undefined,
+			spawnParticleBurst: undefined,
+		});
+		expect(() => fireSaber(ctx, { attackRange: 5 })).not.toThrow();
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 	});
 });
@@ -2921,22 +3021,20 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
 	});
 
-	it('chrono_trigger adds a time-ripple telegraph and burst using a default radius', () => {
+	it('chrono_trigger fires spawnChronoTriggerEffect at cast with amber/cyan palette', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'chrono_trigger',
 			origin: { x: 3, z: 4 },
-			restoredCharges: 2,
+			restoredCharges: [],
 			hits: [],
 		}, ctx);
-		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
-		expect(telegraph).toBeDefined();
-		expect(telegraph[1]).toEqual({ x: 3, z: 4 });
-		expect(telegraph[2]).toBe(2);
-		expect(telegraph[3]).toMatchObject({ color: 0x67e8f9, emissive: 0xfbbf24 });
-		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
-		expect(burst).toBeDefined();
-		expect(burst[1]).toEqual({ x: 3, z: 4 });
+		const ripple = ctx._calls.find((c) => c[0] === 'spawnChronoTriggerEffect');
+		expect(ripple).toBeDefined();
+		expect(ripple[1]).toEqual({ x: 3, z: 4 });
+		expect(ripple[2]).toBe(2);
+		expect(ripple[3]).toMatchObject({ color: 0xf59e0b, emissive: 0x67e8f9 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
 	});
 
@@ -2944,11 +3042,13 @@ describe('renderCardUsed() — spell dispatch', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'chrono_trigger',
-			restoredCharges: 2,
+			restoredCharges: [{ slotIndex: 0, cardId: 'iron_sword', amount: 2 }],
 			hits: [],
 		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnChronoTriggerEffect')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnLightningArc')).toBe(false);
 	});
 
 	it('utility spells still render without throwing when new ctx primitives are absent', () => {
@@ -2960,7 +3060,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 			{ cardId: 'astral_guardian', origin: { x: 0, z: 0 }, radius: 4, hits: [] },
 			{ cardId: 'mana_prism', origin: { x: 0, z: 0 }, radius: 1, hits: [] },
 			{ cardId: 'sacrificial_altar', origin: { x: 0, z: 0 }, radius: 10, hits: [] },
-			{ cardId: 'chrono_trigger', origin: { x: 0, z: 0 }, hits: [] },
+			{ cardId: 'chrono_trigger', origin: { x: 0, z: 0 }, restoredCharges: [], hits: [] },
 		]) {
 			const ctx = { ...minimalCtx, _calls: [] };
 			expect(() => renderCardUsed(payload, ctx)).not.toThrow();
@@ -4062,22 +4162,50 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 
 describe('renderCardUsed() — economy card VFX', () => {
 	describe('deck_sifter', () => {
-		it('spawns a parchment/gold particle burst at the caster origin', () => {
+		it('composes a staggered parchment/gold card-riffle flourish at the caster', () => {
 			const ctx = makeCtx();
 			renderCardUsed({
 				cardId: 'deck_sifter',
 				origin: { x: 3, z: 4 },
+				direction: { x: 1, z: 0 },
 				hits: [],
 			}, ctx);
-			const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+
+			// Ground accent ring on the deck_sifter parchment/gold palette.
+			const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+			expect(ring).toBeDefined();
+			expect(ring[1]).toEqual({ x: 3, z: 4 });
+			expect(ring[2]).toBe(1.4);
+			expect(ring[3]).toMatchObject({ color: 0xd4a843, emissive: 0xdaa520 });
+
+			// The centre card puffs immediately so it stays synced to the instant
+			// draw; the flanking cards riffle out via short scheduled beats.
+			let bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
 			expect(bursts).toHaveLength(1);
-			expect(bursts[0][1]).toEqual({ x: 3, z: 4 });
-			expect(bursts[0][2]).toMatchObject({
-				color: 0xf5deb3,
-				emissive: 0xdaa520,
-				count: 10,
-				spread: 1.8,
-			});
+			expect(bursts[0][1]).toEqual({ x: 3, y: 1.0, z: 4 });
+
+			const delays = ctx._calls
+				.filter((c) => c[0] === 'scheduleAfter')
+				.map((c) => c[1]);
+			expect(delays).toEqual([70, 140]);
+			for (const d of delays) expect(d).toBeLessThan(300);
+
+			// After the staggered beats fire, three cards fan out perpendicular to
+			// the cast direction (+x → spread along z), all on the parchment theme.
+			ctx.runScheduled();
+			bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+			expect(bursts).toHaveLength(3);
+			const zs = bursts.map((b) => b[1].z).sort((a, b) => a - b);
+			expect(zs).toEqual([3.3, 4, 4.7]);
+			for (const b of bursts) {
+				expect(b[1]).toMatchObject({ x: 3, y: 1.0 });
+				expect(b[2]).toMatchObject({
+					color: 0xf5deb3,
+					emissive: 0xdaa520,
+					count: 6,
+					spread: 0.8,
+				});
+			}
 		});
 
 		it('does not throw when spawnParticleBurst is absent', () => {
@@ -4092,49 +4220,170 @@ describe('renderCardUsed() — economy card VFX', () => {
 	});
 
 	describe('chrono_trigger', () => {
-		it('spawns a temporal amber/gold telegraph ring around the caster', () => {
+		it('resolveRenderers returns exactly renderChronoTrigger', () => {
+			const renderers = resolveRenderers('chrono_trigger');
+			expect(renderers).toHaveLength(1);
+			expect(renderers[0].name).toBe('renderChronoTrigger');
+		});
+
+		it('calls spawnChronoTriggerEffect(origin, radius, style) with amber/cyan accent colors', () => {
 			const ctx = makeCtx();
 			renderCardUsed({
 				cardId: 'chrono_trigger',
 				origin: { x: 5, z: 6 },
-				direction: { x: 1, z: 0 },
+				restoredCharges: [],
 				hits: [],
 			}, ctx);
-			const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
-			expect(ring).toBeDefined();
-			expect(ring[1]).toEqual({ x: 5, z: 6 });
-			expect(ring[2]).toBe(3);
-			expect(ring[3]).toMatchObject({ color: 0xfbbf24, emissive: 0xf59e0b });
+			const ripple = ctx._calls.find((c) => c[0] === 'spawnChronoTriggerEffect');
+			expect(ripple).toBeDefined();
+			expect(ripple[1]).toEqual({ x: 5, z: 6 });
+			expect(ripple[2]).toBe(2);
+			expect(ripple[3]).toMatchObject({ color: 0xf59e0b, emissive: 0x67e8f9 });
 		});
 
-		it('spawns two particle bursts at adjacent hand-slot positions', () => {
+		it('fires all VFX synchronously at cast without scheduleAfter', () => {
 			const ctx = makeCtx();
 			renderCardUsed({
 				cardId: 'chrono_trigger',
 				origin: { x: 0, z: 0 },
+				slotIndex: 1,
 				direction: { x: 1, z: 0 },
+				restoredCharges: [
+					{ slotIndex: 0, cardId: 'iron_sword', amount: 2 },
+					{ slotIndex: 2, cardId: 'flame_blade', amount: 1 },
+				],
+				hits: [],
+			}, ctx);
+			expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+			expect(ctx._calls.some((c) => c[0] === 'spawnChronoTriggerEffect')).toBe(true);
+			expect(ctx._calls.filter((c) => c[0] === 'spawnLightningArc')).toHaveLength(2);
+			expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(2);
+		});
+
+		it('spawns per-slot charge-restore flares at perpendicular offsets from cast direction', () => {
+			const ctx = makeCtx();
+			renderCardUsed({
+				cardId: 'chrono_trigger',
+				origin: { x: 0, z: 0 },
+				slotIndex: 1,
+				direction: { x: 1, z: 0 },
+				restoredCharges: [
+					{ slotIndex: 0, cardId: 'iron_sword', amount: 2 },
+					{ slotIndex: 2, cardId: 'flame_blade', amount: 1 },
+				],
 				hits: [],
 			}, ctx);
 			const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
 			expect(bursts).toHaveLength(2);
-			// Direction is +x, so perpendicular is along z: offsets at z = -1.2 and z = +1.2.
 			const positions = bursts.map((b) => b[1]).sort((p, q) => p.z - q.z);
 			expect(positions[0]).toEqual({ x: 0, z: -1.2 });
 			expect(positions[1]).toEqual({ x: 0, z: 1.2 });
-			// Both bursts use the amber/gold palette.
+			const arcs = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
+			expect(arcs).toHaveLength(2);
+			expect(arcs[0][1]).toEqual({ x: 0, z: 0 });
+			expect(arcs[1][1]).toEqual({ x: 0, z: 0 });
+			const arcTargets = arcs.map((a) => a[2]).sort((p, q) => p.z - q.z);
+			expect(arcTargets[0]).toEqual({ x: 0, z: -1.2 });
+			expect(arcTargets[1]).toEqual({ x: 0, z: 1.2 });
 			for (const b of bursts) {
-				expect(b[2]).toMatchObject({ color: 0xfbbf24, emissive: 0xf59e0b, count: 8, spread: 1.0 });
+				expect(b[2]).toMatchObject({ color: 0xf59e0b, emissive: 0x67e8f9, count: 8, spread: 1.0 });
 			}
 		});
 
-		it('does not throw when telegraph ring or particle burst primitives are absent', () => {
-			const ctx = makeCtx({ spawnTelegraphRing: undefined, spawnParticleBurst: undefined });
+		it('with empty restoredCharges only the center time-ripple fires', () => {
+			const ctx = makeCtx();
+			renderCardUsed({
+				cardId: 'chrono_trigger',
+				origin: { x: 2, z: 3 },
+				restoredCharges: [],
+				hits: [],
+			}, ctx);
+			expect(ctx._calls.filter((c) => c[0] === 'spawnChronoTriggerEffect')).toHaveLength(1);
+			expect(ctx._calls.some((c) => c[0] === 'spawnLightningArc')).toBe(false);
+			expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
+		});
+
+		it('no-ops when origin is absent', () => {
+			const ctx = makeCtx();
+			renderCardUsed({
+				cardId: 'chrono_trigger',
+				slotIndex: 1,
+				restoredCharges: [{ slotIndex: 0, cardId: 'iron_sword', amount: 2 }],
+				hits: [],
+			}, ctx);
+			expect(ctx._calls.some((c) => c[0] === 'spawnChronoTriggerEffect')).toBe(false);
+			expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+			expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
+			expect(ctx._calls.some((c) => c[0] === 'spawnLightningArc')).toBe(false);
+		});
+
+		it('does not use spawnTelegraphRing as the primary cast read', () => {
+			const ctx = makeCtx();
+			renderCardUsed({
+				cardId: 'chrono_trigger',
+				origin: { x: 0, z: 0 },
+				restoredCharges: [],
+				hits: [],
+			}, ctx);
+			expect(ctx._calls.some((c) => c[0] === 'spawnChronoTriggerEffect')).toBe(true);
+			expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		});
+
+		it('has no positive windUpMs (instant cast; 307 charge telegraph absent)', () => {
+			expect(CARD_DEFS.chrono_trigger).toBeDefined();
+			expect(CARD_DEFS.chrono_trigger.windUpMs ?? 0).toBeLessThanOrEqual(0);
+		});
+
+		it('chrono_trigger, mana_prism, and sacrificial_altar produce distinct helper signatures for equivalent utility payloads', () => {
+			const origin = { x: 0, z: 0 };
+			const chronoCtx = makeCtx();
+			resolveRenderers('chrono_trigger')[0]({
+				cardId: 'chrono_trigger',
+				origin,
+				restoredCharges: [],
+				hits: [],
+			}, chronoCtx);
+			const prismCtx = makeCtx();
+			resolveRenderers('mana_prism')[0]({
+				cardId: 'mana_prism',
+				origin,
+				radius: 1,
+				hits: [],
+			}, prismCtx);
+			const altarCtx = makeCtx();
+			resolveRenderers('sacrificial_altar')[0]({
+				cardId: 'sacrificial_altar',
+				origin,
+				radius: 10,
+				hits: [],
+			}, altarCtx);
+			const chronoSig = methodsCalled(chronoCtx);
+			const prismSig = methodsCalled(prismCtx);
+			const altarSig = methodsCalled(altarCtx);
+			expect(chronoSig).not.toEqual(prismSig);
+			expect(chronoSig).not.toEqual(altarSig);
+			expect(chronoSig).toContain('spawnChronoTriggerEffect');
+			expect(chronoSig).not.toContain('spawnTelegraphRing');
+			expect(prismSig).toContain('spawnTelegraphRing');
+			expect(altarSig).toContain('spawnTelegraphRing');
+		});
+
+		it('does not throw when spawnChronoTriggerEffect or optional flare primitives are absent', () => {
+			const ctx = makeCtx({
+				spawnChronoTriggerEffect: undefined,
+				spawnLightningArc: undefined,
+				spawnParticleBurst: undefined,
+			});
 			expect(() => renderCardUsed({
 				cardId: 'chrono_trigger',
 				origin: { x: 0, z: 0 },
+				slotIndex: 1,
+				direction: { x: 1, z: 0 },
+				restoredCharges: [{ slotIndex: 0, cardId: 'iron_sword', amount: 2 }],
 				hits: [],
 			}, ctx)).not.toThrow();
-			expect(ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing')).toHaveLength(0);
+			expect(ctx._calls.filter((c) => c[0] === 'spawnChronoTriggerEffect')).toHaveLength(0);
+			expect(ctx._calls.filter((c) => c[0] === 'spawnLightningArc')).toHaveLength(0);
 			expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')).toHaveLength(0);
 		});
 	});

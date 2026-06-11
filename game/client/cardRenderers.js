@@ -31,6 +31,7 @@
 //   spawnImpactDecal(origin, style?)           — lingering ground flash/decal ring
 //   spawnGravityWellEffect(origin, radius, style?) — contracting pull ring, void core, inward inflow
 //   spawnTelegraphRing(origin, radius, style?) — expanding/pulsing AoE telegraph ring
+//   spawnChronoTriggerEffect(origin, radius, style?) — time-ripple + temporal column (style: { color, emissive, duration })
 //   spawnTelepipeCastEffect(origin, radius, style?) — telepipe portal-opening cast flourish
 //   spawnMirrorWardShellEffect(origin, radius, style?) — lingering mirror ward shell
 //   spawnMirrorWardReflectBurst(origin, direction, style?) — mirror reflect impact VFX
@@ -169,6 +170,30 @@ const WEAPON_SLASH_STYLES = {
 		decal: true,
 		sparkCount: 8,
 		sparkSpread: 1.6,
+	},
+	// Photon Slicer: a near-full cyan spin slice trailing light around the arc.
+	photon_slicer: {
+		color: 0x22d3ee,
+		emissive: 0x06b6d4,
+		coneAngle: Math.PI,
+		range: 4.5,
+		fillOpacity: 0.34,
+		edgeOpacity: 0.8,
+		trail: true,
+		sparkCount: 9,
+		sparkSpread: 1.4,
+	},
+	// Arcane Bolt: a tight violet energy lance stabbing far forward with a beam streak.
+	arcane_bolt: {
+		color: 0xa78bfa,
+		emissive: 0x7c3aed,
+		coneAngle: Math.PI / 9,
+		range: 7.5,
+		fillOpacity: 0.5,
+		edgeOpacity: 0.92,
+		trail: true,
+		sparkCount: 7,
+		sparkSpread: 0.8,
 	},
 	// Saber of Light: a broad, radiant pale-gold arc haloed in bright sparks.
 	saber_of_light: {
@@ -415,6 +440,79 @@ function renderExcaliburPhoton(data, ctx) {
 	};
 	for (let i = 0; i < swingCount; i++) {
 		const delay = delayPerSwing * i;
+		if (delay > 0) ctx.scheduleAfter(delay, swing);
+		else swing();
+	}
+}
+
+/** Saber of Light: a broad, radiant pale-gold/near-white blade of holy light. */
+const SABER_OF_LIGHT_STYLE = {
+	color: 0xfef08a,
+	emissive: 0xfffbeb,
+	coneAngle: Math.PI / 3,
+	range: 5.5,
+	fillOpacity: 0.5,
+	edgeOpacity: 0.97,
+	flashRadius: 2.2,
+	haloCount: 14,
+	haloSpread: 2.0,
+};
+
+/**
+ * Saber of Light swing. Composes the 315 primitives — a wide radiant
+ * pale-gold/near-white cone swing, a bright telegraph-ring flash at the cut, and
+ * a halo of holy sparks — into one unmistakable blade-of-light blow. Its
+ * near-white emissive and pale-gold accent read as holy light, clearly distinct
+ * from `flame_blade`'s orange and `excalibur_photon`'s magenta.
+ *
+ * The on-screen reach tracks the server's actual `attackRange` (which widens
+ * with grind via `aoeGrindScale`) rather than a hardcoded constant: the cone
+ * `range` and the impact flash/spark placement both derive from
+ * `data.attackRange`, falling back to the style default when absent.
+ *
+ * The card is a `swift_slash` fast attack (cooldown 400ms, no wind-up), so the
+ * single swing fires synchronously with the card use — no artificial delay
+ * before the first swing. Only extra swings (`swingCount > 1`) stagger via
+ * `scheduleAfter` like the other multi-swing blades. saber_of_light has
+ * `swingCount === 1`, so its visual lands in one immediate beat aligned to the
+ * server hit resolution. Each ctx call is guarded so the swing degrades
+ * gracefully when a primitive is absent.
+ */
+function renderSaberOfLight(data, ctx) {
+	const style = SABER_OF_LIGHT_STYLE;
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex('saber_of_light') ?? style.color;
+	const emissive = style.emissive;
+	const swingCount = data.swingCount || 1;
+	// Honor the server's grind-scaled reach; fall back to the style default.
+	const range = data.attackRange || style.range;
+	const impactAt = pointAlong(origin, direction, range);
+
+	const swing = () => {
+		ctx.spawnAttackEffect(origin, direction, {
+			color,
+			emissive,
+			coneAngle: style.coneAngle,
+			range,
+			fillOpacity: style.fillOpacity,
+			edgeOpacity: style.edgeOpacity,
+		});
+		if (ctx.spawnTelegraphRing) {
+			ctx.spawnTelegraphRing(impactAt, style.flashRadius, { color, emissive });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(impactAt, {
+				color,
+				emissive,
+				count: style.haloCount,
+				spread: style.haloSpread,
+			});
+		}
+	};
+	// First swing is immediate (swift_slash); only extra swings stagger.
+	for (let i = 0; i < swingCount; i++) {
+		const delay = i * PHOTON_BARRAGE_SWING_DELAY_MS;
 		if (delay > 0) ctx.scheduleAfter(delay, swing);
 		else swing();
 	}
@@ -2284,17 +2382,60 @@ function renderTelepipe(data, ctx) {
 	}
 }
 
+// Parchment body + gold glow keep the flourish reading as cards, not a hit.
+// DECK_SIFTER_ACCENT matches the `deck_sifter` card color (#d4a843).
+const DECK_SIFTER_COLOR = 0xf5deb3;
+const DECK_SIFTER_EMISSIVE = 0xdaa520;
+const DECK_SIFTER_ACCENT = 0xd4a843;
+// Fan offsets perpendicular to the cast direction: centre card first, then the
+// flanking cards riffle outward. Center fires immediately so the flourish stays
+// synced to the instant `draw_card`; the rest follow within ~140ms total.
+const DECK_SIFTER_FAN_OFFSETS = [0, -0.7, 0.7];
+const DECK_SIFTER_RIFFLE_STEP_MS = 70;
+const DECK_SIFTER_RING_RADIUS = 1.4;
+
 /**
- * Deck Sifter: fan of ghost card silhouettes rising from the caster using
- * a parchment/gold particle burst to signal a draw action.
+ * Deck Sifter: a staggered parchment/gold flourish that reads as riffling a
+ * deck to draw a card. A short ground ring fans open at the caster's feet and a
+ * fan of card-puff bursts rises perpendicular to the cast direction, each beat
+ * scheduled a touch after the last so it suggests sifting — all on the
+ * parchment/gold theme, composed only from existing ctx primitives.
  */
 function renderDeckSifter(data, ctx) {
 	if (!ctx.spawnParticleBurst) return;
-	ctx.spawnParticleBurst(originOf(data), {
-		color: 0xf5deb3,
-		emissive: 0xdaa520,
-		count: 10,
-		spread: 1.8,
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const len = Math.hypot(direction.x, direction.z) || 1;
+	// Perpendicular to the cast direction, so the cards fan across the caster.
+	const perpX = -direction.z / len;
+	const perpZ = direction.x / len;
+
+	// Ground accent: a quick parchment/gold ring reading as the deck fanned open.
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, DECK_SIFTER_RING_RADIUS, {
+			color: DECK_SIFTER_ACCENT,
+			emissive: DECK_SIFTER_EMISSIVE,
+		});
+	}
+
+	DECK_SIFTER_FAN_OFFSETS.forEach((offset, i) => {
+		const position = {
+			x: origin.x + perpX * offset,
+			y: 1.0,
+			z: origin.z + perpZ * offset,
+		};
+		const emit = () =>
+			ctx.spawnParticleBurst(position, {
+				color: DECK_SIFTER_COLOR,
+				emissive: DECK_SIFTER_EMISSIVE,
+				count: 6,
+				spread: 0.8,
+			});
+		if (i === 0 || !ctx.scheduleAfter) {
+			emit();
+		} else {
+			ctx.scheduleAfter(DECK_SIFTER_RIFFLE_STEP_MS * i, emit);
+		}
 	});
 }
 
@@ -2304,9 +2445,10 @@ const MANA_PRISM_COLOR = 0xa855f7;
 const MANA_PRISM_EMISSIVE = 0x22d3ee;
 const SACRIFICIAL_ALTAR_COLOR = 0xfbbf24;
 const SACRIFICIAL_ALTAR_EMISSIVE = 0xef4444;
-const CHRONO_TRIGGER_COLOR = 0x67e8f9;
-const CHRONO_TRIGGER_EMISSIVE = 0xfbbf24;
+const CHRONO_TRIGGER_COLOR = 0xf59e0b;
+const CHRONO_TRIGGER_EMISSIVE = 0x67e8f9;
 const CHRONO_TRIGGER_TELEGRAPH_RADIUS = 2;
+const CHRONO_TRIGGER_SLOT_SPACING = 1.2;
 
 /**
  * Astral Guardian: indigo shield/summon telegraph at cast radius, spark burst,
@@ -2372,36 +2514,36 @@ function renderSacrificialAltar(data, ctx) {
 }
 
 /**
- * Chrono Trigger: time-ripple utility cast when `restoredCharges` is present;
- * otherwise amber hand-slot bursts for the economy draw path.
+ * Chrono Trigger: instant time-ripple at the caster (t = 0, no wind-up) plus
+ * per-slot charge-restore flares when the server reports `restoredCharges`.
  */
 function renderChronoTrigger(data, ctx) {
 	if (!data.origin) return;
 	const origin = originOf(data);
-	if (data.restoredCharges !== undefined) {
-		const color = CHRONO_TRIGGER_COLOR;
-		const emissive = CHRONO_TRIGGER_EMISSIVE;
-		const radius = data.radius ?? CHRONO_TRIGGER_TELEGRAPH_RADIUS;
-		if (ctx.spawnTelegraphRing) {
-			ctx.spawnTelegraphRing(origin, radius, { color, emissive });
-		}
-		if (ctx.spawnParticleBurst) {
-			ctx.spawnParticleBurst(origin, { color, emissive, count: 12, spread: 2.0 });
-		}
-		return;
+	const color = getAccentHex(data.cardId) ?? CHRONO_TRIGGER_COLOR;
+	const emissive = CHRONO_TRIGGER_EMISSIVE;
+	if (ctx.spawnChronoTriggerEffect) {
+		ctx.spawnChronoTriggerEffect(origin, CHRONO_TRIGGER_TELEGRAPH_RADIUS, { color, emissive });
 	}
+	if (!Array.isArray(data.restoredCharges) || data.restoredCharges.length === 0) return;
+
 	const direction = directionOf(data);
 	const perpX = -direction.z;
 	const perpZ = direction.x;
-	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, 3, { color: 0xfbbf24, emissive: 0xf59e0b });
-	}
-	if (ctx.spawnParticleBurst) {
-		for (const offset of [-1.2, 1.2]) {
-			ctx.spawnParticleBurst(
-				{ x: origin.x + perpX * offset, z: origin.z + perpZ * offset },
-				{ color: 0xfbbf24, emissive: 0xf59e0b, count: 8, spread: 1.0 },
-			);
+	const castSlot = data.slotIndex;
+	for (const entry of data.restoredCharges) {
+		if (!entry || !Number.isFinite(entry.slotIndex) || !Number.isFinite(castSlot)) continue;
+		const slotDelta = entry.slotIndex - castSlot;
+		const offset = slotDelta * CHRONO_TRIGGER_SLOT_SPACING;
+		const slotPos = {
+			x: origin.x + perpX * offset,
+			z: origin.z + perpZ * offset,
+		};
+		if (ctx.spawnLightningArc) {
+			ctx.spawnLightningArc(origin, slotPos, { color, emissive });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(slotPos, { color, emissive, count: 8, spread: 1.0 });
 		}
 	}
 }
@@ -2418,7 +2560,7 @@ const CARD_RENDERERS = {
 	flame_blade: renderWeaponSwing,
 	harvesting_scythe: renderWeaponSwing,
 	reapers_scythe: renderReapersScythe,
-	saber_of_light: renderWeaponSwing,
+	saber_of_light: renderSaberOfLight,
 	photon_slicer: renderReturningDisc,
 	arcane_bolt: renderArcaneBolt,
 	resonance_edge: renderResonantDoublePulse,

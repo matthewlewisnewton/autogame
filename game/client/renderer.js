@@ -5087,6 +5087,126 @@ export function spawnTelepipeCastEffect(origin, radius, style = {}) {
 	);
 }
 
+// Chrono Trigger palette — amber temporal charge-reset with cyan glow (cards.js #f59e0b).
+export const CHRONO_TRIGGER_COLOR = 0xf59e0b;
+export const CHRONO_TRIGGER_EMISSIVE = 0x67e8f9;
+const CHRONO_TRIGGER_COLUMN_HEIGHT = 1.4;
+const CHRONO_TRIGGER_COLUMN_OPACITY = 0.72;
+const CHRONO_TRIGGER_COLUMN_BASE_Y = 0.1;
+const CHRONO_TRIGGER_EMISSIVE_INTENSITY = 1.5;
+const CHRONO_TRIGGER_DEFAULT_RADIUS = 2;
+const CHRONO_TRIGGER_WAVE_COUNT = 2;
+const CHRONO_TRIGGER_WAVE_STAGGER_MS = 80; // faster cadence than purifying heal waves
+const CHRONO_TRIGGER_TICK_MS = 55; // clock-tick emissive pulse period
+
+/**
+ * One staggered cyan/amber time-ripple ground ring for Chrono Trigger. Pass
+ * `style.wave` (0-based) to offset this ring's start via `createdAt` so waves
+ * expand in sequence without setTimeout.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ * @param {object} [style] - optional { color, emissive, duration, wave, waveCount, staggerMs }
+ */
+export function spawnChronoTriggerRipple(origin, radius, style = {}) {
+	const color = style.color ?? CHRONO_TRIGGER_COLOR;
+	const emissive = style.emissive ?? CHRONO_TRIGGER_EMISSIVE;
+	const duration = style.duration ?? SUMMON_EFFECT_DURATION;
+	const r = radius ?? CHRONO_TRIGGER_DEFAULT_RADIUS;
+	const wave = style.wave ?? 0;
+	const waveCount = style.waveCount ?? CHRONO_TRIGGER_WAVE_COUNT;
+	const staggerMs = style.staggerMs ?? CHRONO_TRIGGER_WAVE_STAGGER_MS;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const geometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const material = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.position.set(origin.x, 0.1, origin.z);
+	mesh.rotation.x = -Math.PI / 2;
+	mesh.scale.setScalar(0.001);
+	targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		radius: r,
+		createdAt: performance.now() + wave * staggerMs,
+		duration,
+		isChronoTriggerRipple: true,
+		wave,
+		waveCount,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Brief temporal column/wisp rising from the cast origin. Rises and fades via the
+ * `isChronoTriggerColumn` branch in updateAttackEffects (no per-frame allocation).
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration }
+ */
+export function spawnChronoTriggerColumn(origin, style = {}) {
+	const color = style.color ?? CHRONO_TRIGGER_COLOR;
+	const emissive = style.emissive ?? CHRONO_TRIGGER_EMISSIVE;
+	const duration = style.duration ?? SUMMON_EFFECT_DURATION;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const geometry = new THREE.CylinderGeometry(0.18, 0.42, CHRONO_TRIGGER_COLUMN_HEIGHT, 16, 1, true);
+	const material = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: CHRONO_TRIGGER_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: CHRONO_TRIGGER_COLUMN_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.scale.y = 0.001;
+	mesh.position.set(origin.x, CHRONO_TRIGGER_COLUMN_BASE_Y, origin.z);
+	targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration,
+		isChronoTriggerColumn: true,
+		_baseEmissiveIntensity: CHRONO_TRIGGER_EMISSIVE_INTENSITY,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Chrono Trigger: dual-phase staggered time ripples plus a brief ascending temporal
+ * column. Pure additive VFX; no network traffic or state beyond activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {number} [radius]
+ * @param {object} [style] - optional { color, emissive, duration }
+ */
+export function spawnChronoTriggerEffect(origin, radius, style = {}) {
+	const r = radius ?? CHRONO_TRIGGER_DEFAULT_RADIUS;
+	const duration = style.duration ?? SUMMON_EFFECT_DURATION;
+	const rippleStyle = { ...style, duration };
+	for (let wave = 0; wave < CHRONO_TRIGGER_WAVE_COUNT; wave += 1) {
+		spawnChronoTriggerRipple(origin, r, {
+			...rippleStyle,
+			wave,
+			waveCount: CHRONO_TRIGGER_WAVE_COUNT,
+		});
+	}
+	spawnChronoTriggerColumn(origin, { ...style, duration });
+}
+
 const PURIFYING_HEAL_COLOR = 0x6ee7b7;
 const PURIFYING_HEAL_EMISSIVE = 0x34d399;
 const PURIFYING_HEAL_WAVE_COUNT = 3; // concentric heal waves emitted per cast
@@ -6484,6 +6604,27 @@ export function updateAttackEffects() {
 			continue;
 		}
 
+		// ── Chrono Trigger staggered time-ripple rings ──
+		if (fx.isChronoTriggerRipple) {
+			const expandT = Math.min(elapsed / SUMMON_EXPAND_MS, 1.0);
+			const scale = fx.radius * expandT * 2;
+			fx.mesh.scale.setScalar(Math.max(0.001, scale));
+			const tick = 0.6 + 0.4 * Math.abs(Math.sin(elapsed / CHRONO_TRIGGER_TICK_MS));
+			if (elapsed > SUMMON_EXPAND_MS) {
+				const fadeRatio = 1.0 - (elapsed - SUMMON_EXPAND_MS) / (fx.duration - SUMMON_EXPAND_MS);
+				fx.mesh.material.opacity = Math.max(0.01, fadeRatio * tick);
+			} else {
+				fx.mesh.material.opacity = Math.max(0.01, tick);
+			}
+			fx.mesh.material.emissiveIntensity = 1.2 * tick;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
 		// ── Glacier Rupture ice-fracture ring (expand → fade) ──
 		if (fx.isGlacierRuptureRing) {
 			const expandT = Math.min(elapsed / SUMMON_EXPAND_MS, 1.0);
@@ -6496,6 +6637,26 @@ export function updateAttackEffects() {
 			}
 			const fracturePulse = 0.75 + 0.25 * Math.abs(Math.sin(elapsed / 85));
 			fx.mesh.material.emissiveIntensity = 1.15 * fracturePulse;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Chrono Trigger ascending temporal column/wisp ──
+		if (fx.isChronoTriggerColumn) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.35, 1.0);
+			const s = Math.max(0.001, riseT);
+			fx.mesh.scale.y = s;
+			fx.mesh.position.y = CHRONO_TRIGGER_COLUMN_BASE_Y + (CHRONO_TRIGGER_COLUMN_HEIGHT * s) / 2;
+			const fade = Math.max(0.01, CHRONO_TRIGGER_COLUMN_OPACITY * (1.0 - t));
+			fx.mesh.material.opacity = fade;
+			const baseIntensity = fx._baseEmissiveIntensity ?? CHRONO_TRIGGER_EMISSIVE_INTENSITY;
+			const tick = 1.0 + 0.3 * Math.sin(elapsed / CHRONO_TRIGGER_TICK_MS);
+			fx.mesh.material.emissiveIntensity = baseIntensity * tick * fade;
 
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, fx._scene || scene);
