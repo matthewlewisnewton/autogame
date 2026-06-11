@@ -684,7 +684,7 @@ const QUEST_DEFS = {
           briefing:
             'Rift convergence contract. The Riftbound Colossus holds the boss-arena dais '
             + 'where the ice and fire stages meet, with four marked supports off the rift — '
-            + 'drop all five and claim twenty-two stones, the richest boss purse on the board.',
+            + 'drop all five and claim twenty-two stones, the richest purse short of the citadel itself.',
         },
         dialogue: [
           {
@@ -698,6 +698,70 @@ const QUEST_DEFS = {
           {
             trigger: 'objective_complete',
             text: 'Colossus down and the rift is quiet. Convergence acknowledged — twenty-two stones released.',
+          },
+        ],
+      },
+    },
+  },
+  citadel_assault: {
+    id: 'citadel_assault',
+    // Capstone convergence pool: encounter adds draw ONLY from foes shared by
+    // all three prerequisite stages (canyon_descent, spire_ascent,
+    // arena_trials) so the arena reads as the three quest lines converging.
+    // Their stage-exclusive signatures (spawner, void_seraph) stay home: the
+    // spawn-pool exclusivity suites pin those types to their own stages.
+    enemyPool: [
+      { type: 'grunt', weight: 2 },
+      { type: 'skirmisher', weight: 2 },
+      { type: 'miniboss', weight: 1 },
+    ],
+    tiers: {
+      1: {
+        name: 'The Citadel',
+        description:
+          'Face the Citadel Sovereign in the capstone arena where the canyon, '
+          + 'spire, and trial lines converge, with five marked supports.',
+        objectiveType: 'stage_boss',
+        levelKind: 'boss_level',
+        layoutProfile: 'boss-arena',
+        // No arenaTheme yet — citadel theme rendering lands in sub-ticket 04.
+        unlockRequires: [
+          { questId: 'canyon_descent', tier: 2 },
+          { questId: 'spire_ascent', tier: 2 },
+          { questId: 'arena_trials', tier: 2 },
+        ],
+        encounter: {
+          bossType: 'citadel_sovereign',
+          landmark: 'arena_dais',
+          // Apex add density: strictly more than rift_convergence's 4 and
+          // every other boss level.
+          addCount: 5,
+        },
+        // Apex purse: strictly the highest boss-level rewardCurrency
+        // (rift_convergence pays 22).
+        rewardCurrency: 26,
+        signatureCardId: 'event_horizon',
+        rewardCards: ['event_horizon', 'excalibur_photon'],
+        client: {
+          name: 'Venn',
+          briefing:
+            'Citadel assault contract — the capstone listing. The Citadel Sovereign '
+            + 'holds the dais where the canyon, spire, and trial lines converge, with '
+            + 'five marked supports — drop all six and claim twenty-six stones, the '
+            + 'richest purse ever posted.',
+        },
+        dialogue: [
+          {
+            trigger: 'run_start',
+            text: 'Venn on citadel feed. Sovereign and five marked supports on the dais — canyon, spire, and trial veterans all, watch every angle.',
+          },
+          {
+            trigger: { waveCleared: 3 },
+            text: 'Three supports spent. The Sovereign still has not moved from the dais — keep the pressure on.',
+          },
+          {
+            trigger: 'objective_complete',
+            text: 'Sovereign down and the citadel is silent. Assault acknowledged — twenty-six stones released.',
           },
         ],
       },

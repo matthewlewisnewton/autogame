@@ -84,7 +84,10 @@ describe('rift_convergence quest definition', () => {
     ]);
   });
 
-  it('stages the riftbound_colossus on the arena dais with the most adds of any boss level', () => {
+  // citadel_assault (the capstone) now fields the most adds and the richest
+  // purse of any boss level — see citadel_capstone_quest.test.js. These two
+  // tests assert the rift's standing among the non-capstone boss levels.
+  it('stages the riftbound_colossus on the arena dais with the most adds of any non-capstone boss level', () => {
     const encounter = getEncounterConfig(getQuest(QUEST_ID, TIER));
     expect(encounter).toMatchObject({
       bossType: 'riftbound_colossus',
@@ -110,7 +113,7 @@ describe('rift_convergence quest definition', () => {
     expect(types).toContain('ember_wraith');
   });
 
-  it('pays the richest boss-level purse with both reward cards in the catalog', () => {
+  it('pays the richest non-capstone boss-level purse with both reward cards in the catalog', () => {
     const quest = getQuest(QUEST_ID, TIER);
     expect(quest.rewardCurrency).toBe(22);
     expect(quest.rewardCurrency).toBeGreaterThan(getQuest('crucible_duel', 1).rewardCurrency);
