@@ -1,0 +1,20 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health:** Clean. `round-2/metrics.json` reports `"ok": true`, empty `pageerrors`, servers up on :5175, scene initialized. Console has only the benign two-client `409` lobby-create conflict. No fatal/pageerror lines.
+
+**The fix is correct and addresses the root cause.** The original bug was that the validation scenarios pinned the boss to 1 HP and killed it *without ever locking the encounter*, so `run.encounter.phase` never reached `engaged`/`active` and the client `bossEncounter` stayed null → HUD hidden. This ticket:
+
+- Retargets the scenarios (`frost-crossing-boss-low-hp`, `frost-crossing-encounter-trigger`) through the **real** server state machine — `activateEncounter()` + `lockEncounter()` — so the HUD is driven by genuinely replicated encounter state, not fabricated.
+- Rewrites `frost_crossing_stage_boss.test.js` to prove the **natural** `ice_cairn` landmark trigger (`tryActivateEncounter`) flips the encounter to active+locked with the warden alive — the path the original bot never reached.
+
+**Acceptance criterion met in both paths:**
+- Debug-scenario path: `game/validation/ice/06-boss-active.png` shows the HUD — "STAGE BOSS / Permafrost Warden / Frost Crossing" with HP bar; `findings.md` marks `bossEncounterUiVisible: PASS`.
+- Natural-trigger path: proven by the rewritten server test.
+
+**Debug-scenario integrity** (criterion #4): scenarios are gated behind the debug allow-set only, reach the same end-state normal play does, and bypass no invariants.
+
+**Verification:** 81/81 tests pass across the three relevant suites; only two game logic files changed (`debugScenarios.js`, `index.js`); HUD rendering was untouched and already correct.
+
+One non-blocking nit filed: the boss-active still is captured with the boss at 1 HP, so the HP bar reads empty — a fuller-bar frame would make the proof more convincing. HP draining is already covered by the client wiring tests.

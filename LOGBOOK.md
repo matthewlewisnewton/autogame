@@ -8386,3 +8386,26 @@ None blocking. All acceptance criteria are met, the game runs cleanly, and the
 fail-state is correctly gated and reachable through normal play. Minor non-
 blocking nits recorded separately in `nits.md`.
 
+
+## v0.460 — encounters: boss-encounter HUD never appeared in any tested Frost Crossing path  (2026-06-11 09:17:17)
+
+  worked at baseline — confirming the bug was scenario-side, exactly as the
+  ticket diagnosed.
+- Other touched scenarios (`near-adds`, `glacial-thrower-slow`,
+  `surface-transition`) were updated to zero out only non-boss enemies and
+  `removeDeadEnemies()` rather than `state.enemies = []`, deliberately keeping
+  the dormant stage boss alive so later boss-encounter steps still find the
+  warden — a sound fix that keeps the validation chain coherent.
+- 81/81 tests pass across `frost_crossing_stage_boss.test.js`,
+  `debug-scenarios.test.js`, and `boss-encounter-hud-wiring.test.js`.
+- `game/validation/ice/findings.md` reports a fully green run (boss spawned,
+  encounter activated, boss defeated, victory, HUD visible, slippery floor,
+  glacial slow, card mechanics, telepipe reset) with no console/page errors.
+
+## Remaining gaps
+
+None blocking. The game runs cleanly and the acceptance criterion is met in both
+the natural-trigger path (server test) and the validation debug-scenario path
+(captured `06-boss-active.png` HUD screenshot). One non-blocking nit recorded
+separately.
+
