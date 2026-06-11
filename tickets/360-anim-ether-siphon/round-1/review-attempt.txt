@@ -1,0 +1,11 @@
+**VERDICT: PASS**
+
+Summary of the review:
+
+- **Runtime health**: `metrics.json` shows `ok: true`, empty `pageerrors`, no `harness_failure`. Scene initialized, no fatal/uncaught errors in `console.log` (only benign Vite/init noise). Game runs cleanly.
+- **Visual/theme**: New `spawnEtherSiphonEffect` primitive draws a *contracting* inward-pull ring (the inverse of the standard expanding telegraph — a literal "siphon") plus a rising violet ether column, and `renderManaLeach` adds per-victim drain arcs from enemies back to the caster plus a magic-stone absorption flourish. Violet palette matches the card accent. Unmistakably "Ether Siphon."
+- **Timing**: Server resolves `mana_leach` as an instant radial drain emitting `hits`/`magicStonesGained`/`radius`; the renderer consumes exactly those fields (keyed by `hit.enemyId`) and fires synchronously on `CARD_USED`. The card has no `windUpMs`, so the wind-up telegraph is correctly absent — a test guards this.
+- **Perf**: Uses the `activeEffects` pool, no per-frame allocation, disposes on expiry, guards all ctx primitives.
+- **Tests**: 194/194 client tests pass; scope is exactly the renderer + vfx + wiring + tests.
+
+No blocking gaps, so no `gaps.md`. No genuine code nits worth filing (the only quirk — the fallback smoke capture didn't roll the card into the hand, so no live screenshot — is a harness capture limitation, not a code defect), so no `nits.md`.

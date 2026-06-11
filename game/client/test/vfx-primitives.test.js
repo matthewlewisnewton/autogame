@@ -15,8 +15,10 @@ import {
 	dismissMirrorWardShellEffect,
 	spawnMirrorWardReflectBurst,
 	spawnInfernoPillarEffect,
+	spawnEtherSiphonEffect,
 	spawnDragonsBreathEffect,
 	spawnGravityWellEffect,
+	spawnEventHorizonEffect,
 	updateAttackEffects,
 	getActiveEffects,
 } from '../renderer.js';
@@ -259,6 +261,55 @@ describe('shared VFX primitives', () => {
 		expect(spikeDispose).toHaveBeenCalled();
 	});
 
+	it('spawnEtherSiphonEffect pushes a contracting violet ring + ascending ether column', () => {
+		const before = getActiveEffects().length;
+		spawnEtherSiphonEffect({ x: 3, z: -1 }, 2.2);
+		expect(getActiveEffects().length).toBe(before + 2);
+
+		const effects = getActiveEffects().slice(before);
+		const ring = effects.find((fx) => fx.isEtherSiphonRing);
+		const column = effects.find((fx) => fx.isEtherSiphonColumn);
+
+		expect(ring).toBeDefined();
+		expect(ring.radius).toBe(2.2);
+		expect(Number.isFinite(ring.duration)).toBe(true);
+		expect(ring.duration).toBeGreaterThan(0);
+		expect(ring.mesh.material.color.getHex()).toBe(0xa855f7);
+		expect(ring.mesh.material.emissive.getHex()).toBe(0x9333ea);
+
+		expect(column).toBeDefined();
+		expect(Number.isFinite(column.duration)).toBe(true);
+		expect(column.duration).toBeGreaterThan(0);
+		expect(column.mesh.material.color.getHex()).toBe(0xa855f7);
+		expect(column.mesh.material.emissive.getHex()).toBe(0x9333ea);
+
+		const ringDispose = vi.spyOn(ring.mesh.geometry, 'dispose');
+		const columnDispose = vi.spyOn(column.mesh.geometry, 'dispose');
+		for (const fx of effects) fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(ringDispose).toHaveBeenCalled();
+		expect(columnDispose).toHaveBeenCalled();
+	});
+
+	it('spawnEtherSiphonEffect honors color/emissive/duration style overrides', () => {
+		spawnEtherSiphonEffect({ x: 0, z: 0 }, 1.5, {
+			color: 0x123456,
+			emissive: 0x654321,
+			duration: 900,
+		});
+		const effects = getActiveEffects();
+		const ring = effects.find((fx) => fx.isEtherSiphonRing);
+		const column = effects.find((fx) => fx.isEtherSiphonColumn);
+		expect(ring.duration).toBe(900);
+		expect(column.duration).toBe(900);
+		expect(ring.mesh.material.color.getHex()).toBe(0x123456);
+		expect(ring.mesh.material.emissive.getHex()).toBe(0x654321);
+		expect(column.mesh.material.color.getHex()).toBe(0x123456);
+		expect(column.mesh.material.emissive.getHex()).toBe(0x654321);
+	});
+
 	it('spawnDragonsBreathEffect pushes a forward breath cone + ground scorch fan', () => {
 		const before = getActiveEffects().length;
 		spawnDragonsBreathEffect({ x: 1, z: -2 }, { x: 1, z: 0 });
@@ -458,6 +509,54 @@ describe('shared VFX primitives', () => {
 		updateAttackEffects();
 
 		expect(getActiveEffects().length).toBe(before);
+	});
+
+	it('spawnEventHorizonEffect adds a singularity group with palette, radii, and cleanup', () => {
+		const before = getActiveEffects().length;
+		spawnEventHorizonEffect({ x: 0, z: 0 }, 12, 2.5);
+		expect(getActiveEffects().length).toBe(before + 1);
+
+		const fx = lastEffect();
+		expect(fx.isEventHorizonEffect).toBe(true);
+		expect(fx.pullRadius).toBe(12);
+		expect(fx.centerRadius).toBe(2.5);
+		expect(Number.isFinite(fx.duration)).toBe(true);
+		expect(fx.duration).toBeGreaterThan(0);
+
+		const core = fx.mesh.children.find((c) => c.userData.isEventHorizonCore);
+		const accretion = fx.mesh.children.find((c) => c.userData.isEventHorizonAccretion);
+		const halo = fx.mesh.children.find((c) => c.userData.isEventHorizonHalo);
+		const particles = fx.mesh.children.filter((c) => c.userData.isEventHorizonParticle);
+
+		expect(core).toBeDefined();
+		expect(accretion).toBeDefined();
+		expect(halo).toBeDefined();
+		expect(particles.length).toBeGreaterThanOrEqual(8);
+
+		expect(core.material.color.getHex()).toBeLessThanOrEqual(0x1a0a2e);
+		expect(accretion.material.color.getHex()).toBe(0x581c87);
+		expect(accretion.material.emissive.getHex()).toBe(0x7c3aed);
+		expect(halo.material.emissive.getHex()).toBe(0x7c3aed);
+
+		const disposeSpy = vi.spyOn(core.geometry, 'dispose');
+		fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(disposeSpy).toHaveBeenCalled();
+	});
+
+	it('spawnEventHorizonEffect honors color/emissive style overrides', () => {
+		spawnEventHorizonEffect({ x: 1, z: -2 }, 8, 1.8, {
+			color: 0x123456,
+			emissive: 0x654321,
+			duration: 850,
+		});
+		const fx = lastEffect();
+		expect(fx.duration).toBe(850);
+		const accretion = fx.mesh.children.find((c) => c.userData.isEventHorizonAccretion);
+		expect(accretion.material.color.getHex()).toBe(0x123456);
+		expect(accretion.material.emissive.getHex()).toBe(0x654321);
 	});
 
 	it('spawnAttackEffect permafrost_lance adds a flagged lance projectile and cleans it up', () => {

@@ -623,6 +623,9 @@ export const ENEMY_GEOMETRY = {
 	// Largest stage-boss silhouette in the catalog; ice/fire two-tone — deep
 	// ice-blue body with an ember-orange glow for the rift convergence tyrant.
 	riftbound_colossus: { type: 'cone', radius: 1.45, height: 3.2, segments: 16, color: 0x164e63, emissive: 0xf97316, emissiveIntensity: 0.5 },
+	// Capstone sovereign: the only cylinder silhouette in the catalog — a tall
+	// crowned tower (radiusTop flares past the base) in deep violet with a gold glow.
+	citadel_sovereign: { type: 'cylinder', radius: 1.1, radiusTop: 1.35, height: 3.4, segments: 16, color: 0x312e81, emissive: 0xfacc15, emissiveIntensity: 0.5 },
 	ember_wraith: { type: 'octahedron', radius: 0.35, color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.6 },
 	// Flying types — hovering octahedron bodies (cf. ember_wraith); flying/altitude
 	// arrive per-instance from the server so flyingRenderOffset lifts the body.
@@ -648,6 +651,8 @@ export const ENEMY_ATTACK_VISUAL = {
 	glacial_tyrant: { style: 'projectile', range: 9, color: 0x7dd3fc, emissive: 0x0ea5e9, hitWidth: 1.2 },
 	// Riftbound Colossus: igniting rift shockwave telegraphed as an ember-orange radial ring (server attackStyle 'radial', range 5.5).
 	riftbound_colossus: { style: 'radial', range: 5.5, color: 0xfb923c, emissive: 0xea580c },
+	// Citadel Sovereign: capstone shockwave telegraphed as a gold radial ring (server attackStyle 'radial', range 6).
+	citadel_sovereign: { style: 'radial', range: 6, color: 0xfde047, emissive: 0xca8a04 },
 	ember_wraith: { style: 'cone', coneAngle: Math.PI / 3, color: 0xff4400, emissive: 0xff2200 },
 	// Void Seraph: spherical void burst telegraphed as a radial ring (server attackStyle 'radial').
 	void_seraph: { style: 'radial', range: 4.5, color: 0xa855f7, emissive: 0x7c3aed },
@@ -4559,6 +4564,108 @@ export function spawnDivineGraceEffect(origin, radius) {
 	spawnDivineGraceColumn(origin);
 }
 
+// Ether Siphon palette — violet ethereal mana-drain (matches cards.js mana_leach accent).
+export const ETHER_SIPHON_COLOR = 0xa855f7;
+export const ETHER_SIPHON_EMISSIVE = 0x9333ea;
+const ETHER_SIPHON_COLUMN_HEIGHT = 4.5;
+const ETHER_SIPHON_COLUMN_OPACITY = 0.7;
+const ETHER_SIPHON_COLUMN_BASE_Y = 0.1;
+const ETHER_SIPHON_EMISSIVE_INTENSITY = 1.4;
+const ETHER_SIPHON_RING_CONTRACT_MIN = 0.35; // final scale factor vs full radius
+
+/**
+ * Contracting ground ether ring — inward siphon pull (inverse of spawnTelegraphRing).
+ * Unit-radius ring mesh scaled to `radius`; shrinks toward the origin over duration.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ * @param {object} [style] - optional { color, emissive, duration }
+ */
+function spawnEtherSiphonRing(origin, radius, style = {}) {
+	const color = style.color ?? ETHER_SIPHON_COLOR;
+	const emissive = style.emissive ?? ETHER_SIPHON_EMISSIVE;
+	const duration = style.duration ?? SUMMON_EFFECT_DURATION;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const geometry = new THREE.RingGeometry(0.82, 1.0, 48);
+	const material = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 0.9,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	const ringY = Number.isFinite(origin.y) ? origin.y : GROUND_OVERLAY_Y;
+	mesh.position.set(origin.x, ringY, origin.z);
+	mesh.rotation.x = -Math.PI / 2;
+	mesh.scale.setScalar(radius);
+	targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration,
+		isEtherSiphonRing: true,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Short vertical violet ether wisp column rising from the origin. Rises and fades via
+ * the `isEtherSiphonColumn` branch in updateAttackEffects (no per-frame allocation).
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration }
+ */
+function spawnEtherSiphonColumn(origin, style = {}) {
+	const color = style.color ?? ETHER_SIPHON_COLOR;
+	const emissive = style.emissive ?? ETHER_SIPHON_EMISSIVE;
+	const duration = style.duration ?? SUMMON_EFFECT_DURATION;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const geometry = new THREE.CylinderGeometry(0.3, 0.55, ETHER_SIPHON_COLUMN_HEIGHT, 16, 1, true);
+	const material = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: ETHER_SIPHON_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: ETHER_SIPHON_COLUMN_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.scale.y = 0.001;
+	mesh.position.set(origin.x, ETHER_SIPHON_COLUMN_BASE_Y, origin.z);
+	targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration,
+		isEtherSiphonColumn: true,
+		_baseEmissiveIntensity: ETHER_SIPHON_EMISSIVE_INTENSITY,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Ether Siphon: contracting inward-pull ground ring plus a rising violet ether column.
+ * Pure additive VFX; no network traffic or state beyond activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ * @param {object} [style] - optional { color, emissive, duration }
+ */
+export function spawnEtherSiphonEffect(origin, radius, style = {}) {
+	spawnEtherSiphonRing(origin, radius, style);
+	spawnEtherSiphonColumn(origin, style);
+}
+
 // Telepipe cast palette — matches cards.js accent and syncTelepipeMesh portal cyan.
 export const TELEPIPE_CAST_COLOR = 0x67e8f9;
 export const TELEPIPE_CAST_EMISSIVE = 0x22d3ee;
@@ -4644,18 +4751,31 @@ export function spawnTelepipeCastEffect(origin, radius, style = {}) {
 
 const PURIFYING_HEAL_COLOR = 0x6ee7b7;
 const PURIFYING_HEAL_EMISSIVE = 0x34d399;
+const PURIFYING_HEAL_WAVE_COUNT = 3; // concentric heal waves emitted per cast
+const PURIFYING_HEAL_WAVE_STAGGER_MS = 130; // fixed offset between successive waves
 const CLEANSE_BURST_COLOR = 0xffffff;
 const CLEANSE_BURST_EMISSIVE = 0x5eead4;
 const CLEANSE_BURST_SPARK_COUNT = 10;
 const CLEANSE_BURST_SPARK_SPREAD = 1.2;
 const CLEANSE_BURST_SPARK_DURATION = 450;
+const CLEANSE_RISE_COLOR = 0xffffff; // white core of the purifying rise
+const CLEANSE_RISE_EMISSIVE = 0x6ee7b7; // mint glow (white→mint, never gold)
+const CLEANSE_RISE_OPACITY = 0.6;
 
 /**
- * Mint-green expanding heal ring for Purifying Pulse (distinct from Divine Grace gold).
+ * One mint-green expanding heal ring for Purifying Pulse (distinct from Divine
+ * Grace gold). Rides the shared radius-AoE expand→fade lifecycle in
+ * updateAttackEffects. Pass `options.wave` (0-based) to stagger this ring after
+ * earlier waves: the delay is baked into the effect's `createdAt` so the wave
+ * sequence plays out without any `setTimeout` or extra animation loop, and each
+ * wave still expands out to the full `radius`.
  * @param {object} origin - { x, z }
  * @param {number} radius
+ * @param {object} [options] - { wave, waveCount, staggerMs }
  */
-export function spawnPurifyingPulseHealRing(origin, radius) {
+export function spawnPurifyingPulseHealRing(origin, radius, options = {}) {
+	const wave = options.wave ?? 0;
+	const staggerMs = options.staggerMs ?? PURIFYING_HEAL_WAVE_STAGGER_MS;
 	const geometry = new THREE.RingGeometry(0.1, 0.5, 32);
 	const material = new THREE.MeshStandardMaterial({
 		color: PURIFYING_HEAL_COLOR,
@@ -4677,19 +4797,53 @@ export function spawnPurifyingPulseHealRing(origin, radius) {
 		mesh,
 		origin: { x: origin.x, z: origin.z },
 		radius,
-		createdAt: performance.now(),
+		// Push later waves' start into the future. The radius-AoE branch holds the
+		// ring at ~zero scale until its createdAt arrives, so waves expand in
+		// sequence (a visible outward pulse) with no timer and a bounded lifetime.
+		createdAt: performance.now() + wave * staggerMs,
 		duration: SUMMON_EFFECT_DURATION,
 	});
 }
 
 /**
- * Brief white/teal upward sparkle burst for the cleanse half of Purifying Pulse.
+ * Upward white→mint "purifying rise" for Purifying Pulse: an ascending cleanse
+ * column (corruption lifted away) plus a few white/teal sparkle motes lifting
+ * off it. The column rides the shared `isLightColumn` lifecycle (same shaft
+ * primitive Sanctum Pulse and the telepipe use) but in the purifying mint/white
+ * palette — never gold. Distinct from, and separate from, the flat ground rings.
  * @param {object} origin - { x, z }
  */
 export function spawnCleanseBurstEffect(origin) {
 	if (!origin) return;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	// Ascending cleanse column. Geometry height matches the shared column height
+	// so updateAttackEffects' base-pinning keeps the shaft rooted as it grows.
+	const columnGeo = new THREE.CylinderGeometry(0.18, 0.4, DIVINE_GRACE_COLUMN_HEIGHT, 16, 1, true);
+	const columnMat = new THREE.MeshStandardMaterial({
+		color: CLEANSE_RISE_COLOR,
+		emissive: CLEANSE_RISE_EMISSIVE,
+		emissiveIntensity: 1.3,
+		transparent: true,
+		opacity: CLEANSE_RISE_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const columnMesh = new THREE.Mesh(columnGeo, columnMat);
+	columnMesh.scale.y = 0.001;
+	columnMesh.position.set(origin.x, DIVINE_GRACE_COLUMN_BASE_Y, origin.z);
+	if (targetScene) targetScene.add(columnMesh);
+	activeEffects.push({
+		mesh: columnMesh,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration: SUMMON_EFFECT_DURATION,
+		isLightColumn: true,
+		_scene: targetScene,
+	});
+
+	// White/teal sparkle motes rising with the column.
 	spawnHitSpark(
-		{ x: origin.x, y: 0.35, z: origin.z },
+		{ x: origin.x, y: 0.5, z: origin.z },
 		{
 			color: CLEANSE_BURST_COLOR,
 			emissive: CLEANSE_BURST_EMISSIVE,
@@ -4701,12 +4855,15 @@ export function spawnCleanseBurstEffect(origin) {
 }
 
 /**
- * Purifying Pulse: mint heal ring plus a white/teal cleanse sparkle burst.
+ * Purifying Pulse: staggered concentric mint heal waves that pulse outward to
+ * `radius` plus an upward white→mint cleanse rise.
  * @param {object} origin - { x, z }
  * @param {number} radius
  */
 export function spawnPurifyingPulseEffect(origin, radius) {
-	spawnPurifyingPulseHealRing(origin, radius);
+	for (let wave = 0; wave < PURIFYING_HEAL_WAVE_COUNT; wave += 1) {
+		spawnPurifyingPulseHealRing(origin, radius, { wave, waveCount: PURIFYING_HEAL_WAVE_COUNT });
+	}
 	spawnCleanseBurstEffect(origin);
 }
 
@@ -5232,6 +5389,12 @@ const MIRROR_WARD_EMISSIVE = 0x2dd4bf;
 const MIRROR_WARD_SILVER = 0xe2e8f0;
 const mirrorWardShellsByPlayer = new Map();
 
+const EVENT_HORIZON_CORE_COLOR = 0x1a0a2e;
+const EVENT_HORIZON_RING_COLOR = 0x581c87;
+const EVENT_HORIZON_EMISSIVE = 0x7c3aed;
+const EVENT_HORIZON_EFFECT_DURATION = SUMMON_EFFECT_DURATION;
+const EVENT_HORIZON_PARTICLE_COUNT = 12;
+
 /**
  * Immediately dispose a tracked Mirror Ward shell for `playerId`.
  * @param {string} playerId
@@ -5379,6 +5542,114 @@ export function spawnMirrorWardReflectBurst(origin, direction, style = {}) {
 	for (let i = before; i < activeEffects.length; i += 1) {
 		activeEffects[i].isMirrorWardReflect = true;
 	}
+}
+
+/**
+ * Event Horizon singularity: near-black void core, violet accretion ring at
+ * `centerRadius`, and an outer pull halo at `pullRadius` that contracts inward.
+ * Edge particles spiral toward the core to reinforce the pull field.
+ * @param {object} origin - { x, z }
+ * @param {number} pullRadius
+ * @param {number} centerRadius
+ * @param {object} [style]
+ */
+export function spawnEventHorizonEffect(origin, pullRadius, centerRadius, style = {}) {
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const pull = pullRadius ?? 12;
+	const center = centerRadius ?? 2.5;
+	const color = style.color ?? EVENT_HORIZON_RING_COLOR;
+	const emissive = style.emissive ?? EVENT_HORIZON_EMISSIVE;
+	const duration = style.duration ?? EVENT_HORIZON_EFFECT_DURATION;
+
+	const group = new THREE.Group();
+	group.position.set(origin.x, 0, origin.z);
+
+	const coreRadius = Math.min(center * 0.45, 1.1);
+	const coreGeometry = new THREE.SphereGeometry(coreRadius, 16, 12);
+	const coreMaterial = new THREE.MeshStandardMaterial({
+		color: EVENT_HORIZON_CORE_COLOR,
+		emissive: EVENT_HORIZON_CORE_COLOR,
+		emissiveIntensity: 0.35,
+		transparent: true,
+		opacity: 0.95,
+	});
+	const coreMesh = new THREE.Mesh(coreGeometry, coreMaterial);
+	coreMesh.position.y = GROUND_OVERLAY_Y + coreRadius * 0.55;
+	coreMesh.userData.isEventHorizonCore = true;
+	group.add(coreMesh);
+
+	const accretionGeometry = new THREE.RingGeometry(center * 0.72, center, 48);
+	const accretionMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.35,
+		transparent: true,
+		opacity: 0.88,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const accretionMesh = new THREE.Mesh(accretionGeometry, accretionMaterial);
+	accretionMesh.position.y = GROUND_OVERLAY_Y;
+	accretionMesh.rotation.x = -Math.PI / 2;
+	accretionMesh.userData.isEventHorizonAccretion = true;
+	group.add(accretionMesh);
+
+	const haloGeometry = new THREE.RingGeometry(0.86, 1.0, 48);
+	const haloMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.05,
+		transparent: true,
+		opacity: 0.72,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const haloMesh = new THREE.Mesh(haloGeometry, haloMaterial);
+	haloMesh.position.y = GROUND_OVERLAY_Y + 0.02;
+	haloMesh.rotation.x = -Math.PI / 2;
+	haloMesh.scale.setScalar(pull);
+	haloMesh.userData.isEventHorizonHalo = true;
+	group.add(haloMesh);
+
+	const particleCount = style.particleCount ?? EVENT_HORIZON_PARTICLE_COUNT;
+	for (let i = 0; i < particleCount; i += 1) {
+		const particleGeometry = new THREE.IcosahedronGeometry
+			? new THREE.IcosahedronGeometry(0.07, 0)
+			: new THREE.SphereGeometry(0.07, 6, 6);
+		const particleMaterial = new THREE.MeshStandardMaterial({
+			color,
+			emissive,
+			emissiveIntensity: 1.3,
+			transparent: true,
+			opacity: 0.9,
+		});
+		const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+		const startAngle = (i / particleCount) * Math.PI * 2 + Math.random() * 0.35;
+		particle.position.set(
+			Math.cos(startAngle) * pull,
+			GROUND_OVERLAY_Y + 0.12 + Math.random() * 0.18,
+			Math.sin(startAngle) * pull,
+		);
+		particle.userData.isEventHorizonParticle = true;
+		particle.userData.startAngle = startAngle;
+		particle.userData.startRadius = pull;
+		group.add(particle);
+	}
+
+	targetScene.add(group);
+
+	activeEffects.push({
+		mesh: group,
+		_scene: targetScene,
+		origin: { x: origin.x, z: origin.z },
+		pullRadius: pull,
+		centerRadius: center,
+		isEventHorizonEffect: true,
+		createdAt: performance.now(),
+		duration,
+	});
 }
 
 // ── Shared accent-themeable VFX primitives ──
@@ -5702,6 +5973,43 @@ export function updateAttackEffects() {
 		const fx = activeEffects[i];
 		const elapsed = now - fx.createdAt;
 
+		// ── Ether Siphon contracting ground ring (inward mana pull) ──
+		if (fx.isEtherSiphonRing) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const contractT = Math.min(t / 0.55, 1.0);
+			const scaleFactor =
+				1.0 - contractT * (1.0 - ETHER_SIPHON_RING_CONTRACT_MIN);
+			fx.mesh.scale.setScalar(Math.max(0.001, fx.radius * scaleFactor));
+			const pulse = 0.55 + 0.35 * Math.abs(Math.sin(elapsed / 110));
+			fx.mesh.material.opacity = Math.max(0.01, pulse * (1.0 - t * 0.6));
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Ether Siphon ascending violet ether column ──
+		if (fx.isEtherSiphonColumn) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.35, 1.0);
+			const s = Math.max(0.001, riseT);
+			fx.mesh.scale.y = s;
+			fx.mesh.position.y = ETHER_SIPHON_COLUMN_BASE_Y + (ETHER_SIPHON_COLUMN_HEIGHT * s) / 2;
+			const fade = Math.max(0.01, ETHER_SIPHON_COLUMN_OPACITY * (1.0 - t));
+			fx.mesh.material.opacity = fade;
+			const baseIntensity = fx._baseEmissiveIntensity ?? ETHER_SIPHON_EMISSIVE_INTENSITY;
+			const flicker = 1.0 + 0.25 * Math.sin(elapsed * 0.02);
+			fx.mesh.material.emissiveIntensity = baseIntensity * flicker * fade;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
 		// ── Summon AoE effect (has a radius field) ──
 		if (fx.radius !== undefined) {
 			const expandT = Math.min(elapsed / SUMMON_EXPAND_MS, 1.0);
@@ -5890,6 +6198,43 @@ export function updateAttackEffects() {
 			const scale = t < 0.2 ? 0.6 + (t / 0.2) * 0.4 : 1.0;
 			fx.mesh.scale.setScalar(scale);
 			fx.mesh.material.opacity = Math.max(0.01, 1.0 - t);
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Event Horizon singularity pull field ──
+		if (fx.isEventHorizonEffect) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const fade = Math.max(0.01, 1.0 - t);
+			const contractT = Math.min(t / 0.75, 1.0);
+			const haloRadius = fx.pullRadius * (1.0 - contractT * 0.92) + fx.centerRadius * contractT * 0.15;
+			const corePulse = 0.88 + 0.14 * Math.abs(Math.sin(elapsed / 95));
+			const accretionPulse = 0.72 + 0.28 * Math.abs(Math.sin(elapsed / 140));
+
+			for (let c = 0; c < fx.mesh.children.length; c += 1) {
+				const child = fx.mesh.children[c];
+				if (child.userData.isEventHorizonCore) {
+					child.scale.setScalar(corePulse);
+					child.material.opacity = Math.max(0.01, 0.95 * fade);
+				} else if (child.userData.isEventHorizonAccretion) {
+					child.scale.setScalar(accretionPulse);
+					child.material.opacity = Math.max(0.01, 0.88 * fade);
+					child.material.emissiveIntensity = 1.35 * accretionPulse * fade;
+				} else if (child.userData.isEventHorizonHalo) {
+					child.scale.setScalar(Math.max(0.001, haloRadius));
+					child.material.opacity = Math.max(0.01, 0.72 * fade * (1.0 - contractT * 0.35));
+				} else if (child.userData.isEventHorizonParticle) {
+					const spiral = child.userData.startAngle + elapsed * 0.0045;
+					const radius = child.userData.startRadius * (1.0 - contractT);
+					child.position.x = Math.cos(spiral) * radius;
+					child.position.z = Math.sin(spiral) * radius;
+					child.material.opacity = Math.max(0.01, 0.9 * fade);
+				}
+			}
+
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, fx._scene || scene);
 				activeEffects.splice(i, 1);

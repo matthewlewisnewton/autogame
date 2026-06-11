@@ -1,0 +1,15 @@
+Review complete. **VERDICT: PASS**
+
+The ticket fully and robustly satisfies its acceptance criteria, and the captured run is healthy:
+
+**Runtime gate:** `metrics.json` shows `"ok": true`, empty `pageerrors`, no `harness_failure`; `console.log` is clean; the scene renders correctly in screenshots; all 198 tests pass.
+
+**Acceptance criteria:**
+- **Theme/visual** — Single static ring replaced with 3 staggered concentric mint heal waves pulsing outward to `radius`, plus an upward white→mint "purifying rise" column. Palette deliberately distinct from Divine Grace gold (asserted by test).
+- **Timing sync** — Server resolves `heal_and_cleanse` instantly in one `CARD_USED` emit; client fires all primitives synchronously with wave stagger baked into `createdAt` (no `setTimeout`, asserted by spy). Verified the future-`createdAt` trick is sound — `updateAttackEffects` clamps not-yet-due rings to invisible scale, then expands them on schedule with bounded lifetime.
+- **No perf regression** — Rides existing shared `updateAttackEffects` branches, no per-frame allocation, self-disposing.
+- **Client tests** — Thorough, including a sound-gating test (caster/healed target hears it, spectator gets VFX only), matching the server payload (`playerId` + `healedTargets`).
+
+**Scope** is respected (only the card's renderer + registration + tests). No debug scenario was added/changed by this ticket, so that gate doesn't apply.
+
+No blocking gaps and no genuine cleanup nits — so per the rules I did not write `gaps.md` or `nits.md`.

@@ -15,10 +15,12 @@
 //   spawnSummonEffect(origin, radius, styleOrColor?)
 //   spawnMinionSummonInEffect(origin, style?) — creature minion summon flourish
 //   spawnDivineGraceEffect(origin, radius)
-//   spawnPurifyingPulseHealRing(origin, radius)
-//   spawnCleanseBurstEffect(origin)
+//   spawnEventHorizonEffect(origin, pullRadius, centerRadius, style?)
+//   spawnPurifyingPulseHealRing(origin, radius, options?) — options: { wave, waveCount } stagger one concentric heal wave
+//   spawnCleanseBurstEffect(origin) — upward white→mint cleanse rise (column + sparkle)
 //   spawnPurifyingPulseEffect(origin, radius)
 //   spawnInfernoPillarEffect(origin, radius, style?) — style: { color, emissive, dotTicks, dotIntervalMs, duration }
+//   spawnEtherSiphonEffect(origin, radius, style?) — style: { color, emissive, duration }
 //   spawnDragonsBreathEffect(origin, direction, style?) — style: { color, emissive, range, coneAngle, dotTicks, dotIntervalMs, duration }
 //   spawnChainLightningEffect(origin, direction)
 //   spawnLightningArc(from, to, style?)
@@ -37,7 +39,13 @@
 //   scheduleAfter(ms, fn) — wrapper around setTimeout used for delayed swings
 
 import { CARD_ACCENT_STYLE, CARD_DEFS, getCardDef } from './cards.js';
-import { ATTACK_EFFECT_DURATION, MINION_SUMMON_IN_MS, PHOTON_BARRAGE_SWING_DELAY_MS, SUMMON_EFFECT_DURATION } from './config.js';
+import {
+	ATTACK_EFFECT_DURATION,
+	EVENT_HORIZON_CRUSH_DELAY_MS,
+	MINION_SUMMON_IN_MS,
+	PHOTON_BARRAGE_SWING_DELAY_MS,
+	SUMMON_EFFECT_DURATION,
+} from './config.js';
 
 const NULL_CRAWLER_SUMMON_COLOR = 0x22d3ee;
 const NULL_CRAWLER_SUMMON_EMISSIVE = 0x67e8f9;
@@ -472,6 +480,19 @@ function renderResonantDoublePulse(data, ctx) {
  * Phase Echo: a pink twin-slash. The blade swings once, then a fainter echo
  * swing replays a beat later via scheduleAfter so it reads as a phasing
  * after-image. A pink light streak trails both passes.
+ *
+ * On every 3rd use the server discharges a radial shockwave: it only collects
+ * `data.shockwaveHits` when `comboCount % shockwaveEvery === 0`, so that array
+ * is non-empty exactly on the shockwave cadence. When it is, we layer a
+ * distinct, much larger phase-shockwave on top — an expanding ring sized to the
+ * shockwave radius (~6) plus a heavy particle burst bursting outward from the
+ * cast origin — so the on-screen burst lands when the server fires it. echo_blade
+ * has no `windUpMs`, so the shockwave fires immediately alongside the lead swing,
+ * matching the server's synchronous resolution. We never key the discharge off
+ * `comboCount` arithmetic.
+ *
+ * Reuses the same 315 primitives as the styled blades, each guarded so the swing
+ * degrades gracefully when a primitive is absent.
  */
 function renderEchoSlash(data, ctx) {
 	const origin = originOf(data);
@@ -482,14 +503,16 @@ function renderEchoSlash(data, ctx) {
 	const range = 5;
 
 	const swing = (fillOpacity, edgeOpacity) => {
-		ctx.spawnAttackEffect(origin, direction, {
-			color,
-			emissive,
-			coneAngle,
-			range,
-			fillOpacity,
-			edgeOpacity,
-		});
+		if (ctx.spawnAttackEffect) {
+			ctx.spawnAttackEffect(origin, direction, {
+				color,
+				emissive,
+				coneAngle,
+				range,
+				fillOpacity,
+				edgeOpacity,
+			});
+		}
 		if (ctx.spawnProjectileTrail) {
 			ctx.spawnProjectileTrail(origin, direction, { range, color, emissive });
 		}
@@ -497,7 +520,27 @@ function renderEchoSlash(data, ctx) {
 
 	swing(0.42, 0.9);
 	// The echo: a fainter after-image swing a beat later.
-	ctx.scheduleAfter(150, () => swing(0.22, 0.55));
+	if (ctx.scheduleAfter) ctx.scheduleAfter(150, () => swing(0.22, 0.55));
+
+	// Phase shockwave: only on the server's every-3rd-use cadence, signalled by a
+	// non-empty `data.shockwaveHits`. A large expanding ring and heavy particle
+	// burst at the cast origin read as the phasing twin collapsing into a radial
+	// shockwave — clearly larger/heavier than the base twin-slash swing.
+	if (data.shockwaveHits && data.shockwaveHits.length > 0) {
+		const shockAt = originOf(data);
+		const shockRadius = Number.isFinite(data.shockwaveRadius) ? data.shockwaveRadius : 6;
+		if (ctx.spawnTelegraphRing) ctx.spawnTelegraphRing(shockAt, shockRadius, { color, emissive });
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(shockAt, { color, emissive, count: 24, spread: 3.5 });
+		}
+		if (ctx.scheduleAfter) {
+			ctx.scheduleAfter(90, () => {
+				if (ctx.spawnTelegraphRing) {
+					ctx.spawnTelegraphRing(shockAt, shockRadius * 1.4, { color, emissive });
+				}
+			});
+		}
+	}
 }
 
 /**
@@ -662,15 +705,38 @@ function renderDivineGrace(data, ctx) {
 	if (data.hpGained > 0 && data.playerId === ctx.myId) ctx.playSound('heal');
 }
 
+const PURIFYING_PULSE_WAVE_COUNT = 3;
+
 /**
- * Purifying Pulse: mint AoE heal ring plus a white/teal cleanse sparkle burst.
+ * Purifying Pulse: a cleansing wave that visibly *pulses* outward — several
+ * staggered concentric mint heal rings, each expanding to the card's `radius`
+ * — plus an upward white→mint *purifying rise* (corruption lifted away). The
+ * server resolves `heal_and_cleanse` instantly (one `cardUsed`, no travel
+ * phase), so every primitive fires synchronously within this call: the rings
+ * are sequenced by a per-wave delay baked into each effect's `createdAt`
+ * (inside `spawnPurifyingPulseHealRing`), never via `setTimeout`/`scheduleAfter`.
  */
 function renderPurifyingPulse(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
-	ctx.spawnPurifyingPulseHealRing(origin, data.radius);
+	// Staggered concentric heal waves so the cleanse pulses outward to `radius`.
+	for (let wave = 0; wave < PURIFYING_PULSE_WAVE_COUNT; wave += 1) {
+		ctx.spawnPurifyingPulseHealRing(origin, data.radius, {
+			wave,
+			waveCount: PURIFYING_PULSE_WAVE_COUNT,
+		});
+	}
+	// Distinct upward cleanse rise (white→mint column + sparkle), separate from
+	// the flat ground rings.
 	ctx.spawnCleanseBurstEffect(origin);
-	ctx.playSound('heal');
+	// Heal cue is local-only: the caster or anyone actually healed hears it; a
+	// pure spectator does not.
+	if (
+		data.playerId === ctx.myId ||
+		data.healedTargets?.some((t) => t.playerId === ctx.myId)
+	) {
+		ctx.playSound('heal');
+	}
 }
 
 const GRAVITY_WELL_COLOR = 0xc084fc;
@@ -716,22 +782,48 @@ function renderGravityWell(data, ctx) {
 }
 
 /**
- * Event Horizon: dark-purple outer pull telegraph + burst, plus a tighter inner
- * crush ring keyed off `data.centerRadius` (distinct helper mix from Gravity Well).
+ * Event Horizon: singularity pull primitive at cast, then a deferred inner crush
+ * impact keyed off `data.centerRadius` (distinct from Gravity Well's telegraph mix).
  */
 function renderEventHorizon(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
 	const color = getAccentHex(data.cardId) ?? EVENT_HORIZON_COLOR;
 	const emissive = EVENT_HORIZON_EMISSIVE;
-	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	const centerRadius = data.centerRadius ?? 2.5;
+
+	if (ctx.spawnEventHorizonEffect) {
+		ctx.spawnEventHorizonEffect(origin, data.radius, centerRadius, { color, emissive });
 	}
-	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(origin, { color, emissive, count: 12, spread: 2.4 });
+
+	if (ctx.scheduleAfter) {
+		ctx.scheduleAfter(EVENT_HORIZON_CRUSH_DELAY_MS, () => {
+			if (ctx.spawnImpactDecal) {
+				ctx.spawnImpactDecal(origin, { color, emissive });
+			}
+			if (ctx.spawnTelegraphRing) {
+				ctx.spawnTelegraphRing(origin, centerRadius, { color, emissive });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(origin, { color, emissive, count: 10, spread: 1.6 });
+			}
+		});
 	}
-	if (data.centerRadius) {
-		ctx.spawnSummonEffect(origin, data.centerRadius, { color, emissive });
+
+	const hitEntries = data.hits?.length ? data.hits : data.crushed;
+	if (hitEntries?.length) {
+		const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+		for (const hit of hitEntries) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(pos, { color, emissive, count: 5, spread: 0.55 });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pos, { color, emissive, count: 6, spread: 0.7 });
+			}
+		}
 	}
 }
 
@@ -980,18 +1072,52 @@ function renderBattleFamiliar(data, ctx) {
 }
 
 /**
- * Ether Siphon: purple drain telegraph at AoE radius plus a siphon burst.
+ * Ether Siphon: instant radial mana drain — ether-siphon primitive, cast flourish,
+ * per-victim drain arcs, and magic-stone absorption at the caster origin.
  */
 function renderManaLeach(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
 	const color = getAccentHex(data.cardId) ?? MANA_LEACH_COLOR;
 	const emissive = MANA_LEACH_EMISSIVE;
+	const style = { color, emissive };
+
+	if (ctx.spawnEtherSiphonEffect) {
+		ctx.spawnEtherSiphonEffect(origin, data.radius, style);
+	}
 	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+		ctx.spawnTelegraphRing(origin, data.radius, style);
 	}
 	if (ctx.spawnParticleBurst) {
 		ctx.spawnParticleBurst(origin, { color, emissive, count: 16, spread: 2.2 });
+	}
+
+	if (data.hits?.length) {
+		const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+		const arcStyle = { color, emissive, duration: ATTACK_EFFECT_DURATION };
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const enemyPos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnLightningArc) {
+				ctx.spawnLightningArc(enemyPos, origin, arcStyle);
+			}
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(enemyPos, { color, emissive, count: 5, spread: 0.55 });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(enemyPos, { color, emissive, count: 6, spread: 0.7 });
+			}
+		}
+	}
+
+	if (data.magicStonesGained > 0) {
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(origin, { color, emissive, count: 22, spread: 2.6 });
+		}
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(origin, { color, emissive });
+		}
 	}
 }
 

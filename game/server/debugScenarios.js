@@ -206,6 +206,27 @@ function setupRiftConvergenceBossDebug(lobby, state, player) {
   deployQuestDebugRun(lobby, state, { clearEncounterBoss: true });
 }
 
+function setupCitadelBossDebug(lobby, state, player) {
+  const questId = 'citadel_assault';
+  const tier = 1;
+  completeQuestTier(player.accountId, 'canyon_descent', 2);
+  completeQuestTier(player.accountId, 'spire_ascent', 2);
+  completeQuestTier(player.accountId, 'arena_trials', 2);
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+
+  player.ready = true;
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  const startSpawn = firstRoomPosition();
+  player.x = startSpawn.x;
+  player.z = startSpawn.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+  deployQuestDebugRun(lobby, state, { clearEncounterBoss: true });
+}
+
 function setupEscortObjectiveDeploy(lobby, state, player) {
   ensureEscortObjectiveFixtureQuest();
   const questId = ESCORT_OBJECTIVE_FIXTURE_DEF.id;
@@ -1740,6 +1761,54 @@ function setupRiftConvergenceOnePrereqDebug({ lobby, state, player, socket, name
           scenario: name,
           levelUnlockGraph: buildQuestUpdatePayload(state, player.accountId).levelUnlockGraph,
         };
+}
+
+function setupCitadelUnlockedDebug({ lobby, state, player, socket, name }) {
+  // Lobby with ALL THREE citadel_assault prerequisites (canyon_descent Tier 2,
+  // spire_ascent Tier 2, and arena_trials Tier 2) completed and Citadel
+  // Assault selected, so the quest board / level map shows the capstone node
+  // unlocked with all three prerequisite edges satisfied. Reachable normally
+  // by clearing all three quest lines through Tier 2.
+  setPhase(lobby, PHASES.LOBBY);
+  player.ready = false;
+  player.hp = MAX_HP;
+  completeQuestTier(player.accountId, 'canyon_descent', 2);
+  completeQuestTier(player.accountId, 'spire_ascent', 2);
+  completeQuestTier(player.accountId, 'arena_trials', 2);
+  const questId = 'citadel_assault';
+  const tier = 1;
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+  assignRunSpawnPositions(Object.values(state.players));
+  emitLobbyQuestUpdate(lobby, state, {
+    layoutSeed: state.layoutSeed,
+    layout: state.layout,
+  });
+  broadcastLobbyUpdate(lobby);
+  return {
+    ok: true,
+    scenario: name,
+    levelUnlockGraph: buildQuestUpdatePayload(state, player.accountId).levelUnlockGraph,
+  };
+}
+
+function setupCitadelOnePrereqDebug({ lobby, state, player, socket, name }) {
+  // Lobby with ONLY canyon_descent Tier 2 completed: the Citadel Assault
+  // node stays locked on the level map, demonstrating the three-way AND
+  // gate across the prerequisite edges. Reachable normally by clearing the
+  // canyon line through Tier 2 before touching the spire or trial lines.
+  setPhase(lobby, PHASES.LOBBY);
+  player.ready = false;
+  player.hp = MAX_HP;
+  completeQuestTier(player.accountId, 'canyon_descent', 2);
+  emitLobbyQuestUpdate(lobby, state);
+  broadcastLobbyUpdate(lobby);
+  return {
+    ok: true,
+    scenario: name,
+    levelUnlockGraph: buildQuestUpdatePayload(state, player.accountId).levelUnlockGraph,
+  };
 }
 
 function setupStageBossDormantDebug({ lobby, state, player, socket, name }) {
@@ -4617,6 +4686,11 @@ const DEBUG_SCENARIO_REGISTRY = {
   'quest-tier-2-unlocked': (ctx) => setupQuestTier2UnlockedDebug(ctx),
   'rift-convergence-unlocked': (ctx) => setupRiftConvergenceUnlockedDebug(ctx),
   'rift-convergence-one-prereq': (ctx) => setupRiftConvergenceOnePrereqDebug(ctx),
+  'citadel-unlocked': (ctx) => setupCitadelUnlockedDebug(ctx),
+  'citadel-one-prereq': (ctx) => setupCitadelOnePrereqDebug(ctx),
+  'citadel-boss': (ctx) => setupBossApproachDebugScenario(
+    ctx.lobby, ctx.state, ctx.player, ctx.name, setupCitadelBossDebug,
+  ),
   'stage-boss-dormant': (ctx) => setupStageBossDormantDebug(ctx),
   'stage-boss-active': (ctx) => setupStageBossActiveDebug(ctx),
   'escort-near-destination': (ctx) => setupEscortNearDestinationDebug(ctx),

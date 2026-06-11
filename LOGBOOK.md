@@ -7183,6 +7183,28 @@ None blocking. Two minor nits filed to `nits.md`:
 1. `data.shockwaveRadius` is never included in the `CARD_USED` emit, so that branch always falls back to the literal `6`; harmless today (equals the card's radius) but the dynamic-radius intent is unrealized.
 2. The discharge keys off `shockwaveHits` being non-empty, so a cadence use that strikes no enemy in radius shows no discharge VFX even though the server's shockwave "fired." Defensible (no targets = no meaningful effect) but a slight fidelity gap vs. keying off the cadence itself.
 
+## v0.403 — 358-anim-phase-echo  (2026-06-10 19:38:48)
+
+## Code quality
+
+Clean, well-commented, idiomatic with the surrounding styled-blade renderers. No dead/broken
+code beyond the minor `shockwaveRadius` observation below (a nit, not a defect — the fallback
+yields the correct value).
+
+## Remaining gaps
+
+None blocking.
+
+Two non-blocking nits recorded in `nits.md`:
+1. The server's `CARD_USED` payload never includes `shockwaveRadius`, so the client's
+   `Number.isFinite(data.shockwaveRadius) ? … : 6` branch always takes the fallback. It happens
+   to equal echo_blade's real radius (6), so the visual is correct, but the dynamic branch is
+   effectively unreachable in production.
+2. The shockwave VFX is gated on `shockwaveHits.length > 0`, so on the every-3rd-use beat with
+   no enemy in radius nothing renders even though it is the cadence beat. Acceptable (the
+   server shockwave is a no-op without hits, and this matches the sibling card), but worth a
+   look if a "discharge always shows" feel is desired.
+
 ## v0.399 — 361-anim-soul-drain  (2026-06-10 18:46:55)
 
 - **Dev-gated, sole entry**: added only to the `DEBUG_SCENARIOS` set (index.js:648) and the
@@ -7271,7 +7293,6 @@ other-card changes; no new debug scenario; no regression to other renderers
 
 None blocking. Two minor thematic nits captured in `nits.md`.
 
-
 ## v0.408 — 356-anim-gravity-well  (2026-06-10 20:28:18)
 
 Coverage includes: single bespoke renderer resolution, synchronous fire at t=0,
@@ -7293,4 +7314,102 @@ center and moves it outward to the opposite side, rather than flowing inward
 from its spawned outer ring position — a minor visual imperfection that does not
 change the overall inward read (contracting ring + void core + enemy pull arcs
 dominate).
+
+## v0.407 — 351-anim-purifying-pulse  (2026-06-10 20:24:09)
+
+VFX without sound. Server emits `playerId` + `healedTargets`, matching exactly
+what the client gating reads.
+
+### Scope
+**Respected.** Diff touches only `game/client/cardRenderers.js`,
+`game/client/renderer.js`, and `game/client/test/cardRenderers.test.js` (plus
+ticket bookkeeping) — within the declared scope.
+
+### Design/regression consistency
+Consistent with `game/docs/design.md` (heal/cleanse spell identity, mint palette
+distinct from gold sanctum). No debug scenario added or changed by this ticket
+(the existing `debugScenarios.js` purifying_pulse entry is untouched), so the
+debug-scenario gate does not apply. No foundation regression.
+
+## Remaining gaps
+None blocking. The fallback smoke capture did not cast purifying_pulse itself
+(deck/hand smoke flow), but the card's visual was validated at the sub-ticket
+level, the runtime is proven healthy, and the rendering path is fully unit-tested
+— this is a minor coverage observation, not a blocker.
+
+## v0.406 — 387-boss-level-citadel-sovereign-capstone-gated  (2026-06-10 19:50:08)
+
+## Debug scenarios (gating audit)
+Three scenarios added: `citadel-boss`, `citadel-unlocked`, `citadel-one-prereq`.
+- Gated: all three are registered in `DEBUG_SCENARIOS` and reachable only via
+  the debug path; `citadel-boss` is also in
+  `DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN`. The `?debugScenario=` URL is the only
+  entry point. Normal gameplay does not touch them.
+- Normal path still reachable: each scenario reaches its end-state by calling
+  the *real* primitives — `completeQuestTier(...)` for the actual prereqs,
+  `applyLayoutForQuest`, and `deployQuestDebugRun`/`finishStageBossDebugScenario`
+  — i.e. the same path a real player hits after clearing all three Tier-II
+  lines and deploying. The `citadel_capstone_e2e.test.js` lifecycle test proves
+  the equivalent state is reachable through normal unlock + run flow.
+- No invariants bypassed: the boss stays dormant/invulnerable until adds are
+  cleared and `tryActivateEncounter` succeeds; the unlock gate is enforced via
+  `users.isQuestTierUnlocked`. The shortcut does not skip validation or the
+  encounter machine.
+
+## Tests
+All six relevant suites pass locally: 149 tests green
+(`citadel_sovereign`, `citadel_capstone_quest`, `citadel_arena`,
+`citadel_capstone_e2e`, client `dungeon`, `renderer-citadel-sovereign`).
+Cross-cutting "this boss is the apex" invariants are pinned by assertions, so a
+future boss that out-stats the Sovereign will fail CI.
+
+## Remaining gaps
+None blocking. The capture not visually reaching the citadel arena is a
+capture-plan fallback, not a defect; runtime health is proven and the citadel
+path is covered by passing unit + e2e suites. One minor non-blocking redundancy
+is noted in `nits.md`.
+
+## v0.405 — 360-anim-ether-siphon  (2026-06-10 19:42:39)
+
+- Built on the 315 primitives (`spawnTelegraphRing`, `spawnParticleBurst`, `spawnLightningArc`, `spawnHitSpark`, `spawnImpactDecal`) plus the one new card-specific primitive. Thematically coherent. ✅
+
+### 2. Timing synced to server effect resolution
+- Server resolves `mana_leach` in the default radial-AoE branch (`cardEffects.js:1149+`), emitting `CARD_USED` with `origin`, `radius` (SUMMON_RADIUS), `hits[]` (each `{enemyId, hp, magicStonesGained}`), and applied `magicStonesGained`. `renderManaLeach` consumes exactly these fields, keying meshes by `hit.enemyId` (matches the server field name).
+- This is an **instant** radial drain — no projectile travel to sync. `mana_leach` has **no `windUpMs`** in `cardStats.json` (only the evolved `soul_drain` does, at 700ms), so the 307/315 wind-up charge telegraph is correctly absent. A test asserts `mana_leach.windUpMs ?? 0 <= 0`. The effect fires synchronously on `CARD_USED` receipt — i.e. at server resolution. ✅
+
+### 3. No perf regression
+- VFX use the existing `activeEffects` pool; the new ring/column branches mutate scale/opacity/emissive per frame with no per-frame allocation, and dispose geometry/material on expiry (`disposeEffectObject`). Missing enemy meshes are skipped (`if (!mesh) continue`). All `ctx.spawn*` calls are guarded by presence checks, so absent primitives degrade gracefully (covered by the "without throwing when new ctx primitives are absent" test). ✅
+
+### 4. Client test where feasible
+- `vfx-primitives.test.js`: primitive pushes a contracting ring + ascending column, honors color/emissive/duration overrides, and disposes on expiry.
+- `cardRenderers.test.js`: dispatch wiring, violet accents, synchronous fire (asserts no `scheduleAfter`), per-hit arcs/sparks at mesh positions with missing-mesh skip, absorption flourish, windUp-absent guard, and a regression guard that `mana_leach`'s helper signature stays distinct from `battle_familiar`/`soul_drain`.
+- Full run: **194/194 passing** locally. ✅
+
+## Consistency / regression
+- No debug scenario added/changed (none present in the diff). Server logic untouched, so foundation/replication is unchanged. Normal cast path is the only entry point.
+
+## Remaining gaps
+None blocking. The fallback smoke capture did not happen to roll `mana_leach` into the captured hand, so there is no screenshot of the live animation — but this is a capture-plan limitation, not a code defect, and the behavior is fully covered by passing unit tests over the real render/primitive code.
+
+## v0.404 — 357-anim-event-horizon  (2026-06-10 19:41:53)
+
+distinction, per-hit bursts at enemy meshes (including a missing-mesh skip),
+no-windUp assertion, radius-absent early return, graceful degradation when
+optional ctx primitives are absent, plus two primitive-level tests covering group
+structure, palette, style overrides, and cleanup. All green.
+
+## Scope & integration
+Within ticket scope: `cardRenderers.js` (this card's render fn), `renderer.js`
+(new VFX primitive + update branch), `config.js` (delay constant), and the
+standard plumbing to thread `spawnEventHorizonEffect` through `main.js` /
+`socketHandlerCtx.js` / `cardHandlers.js` — the same wiring pattern every other
+spawn effect uses. Renderer is already registered (`event_horizon:
+renderEventHorizon`). No server changes, no debug-scenario changes, no
+design.md/requirements.md regression. `IcosahedronGeometry` has a `typeof`-free
+truthiness guard with a `SphereGeometry` fallback, and `___test_scene` is honored
+so tests exercise the real primitive.
+
+## Remaining gaps
+None blocking. One minor cosmetic timing inconsistency noted as a nit (per-hit
+sparks fire at cast while the central crush ring fires at +375 ms).
 

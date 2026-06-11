@@ -60,6 +60,16 @@ const RIFT_THEME = {
   bandWallInset: 0.6,       // keep decals fully inside the arena walls
 };
 
+// Citadel arena theme (arenaTheme: 'citadel'): cosmetic floor-decal rings/bands only.
+const CITADEL_THEME = {
+  rampartRings: [
+    { innerRadius: 4.0, outerRadius: 4.6 },  // inner rampart — clear of the center_ring (outerRadius 3.2)
+    { innerRadius: 6.8, outerRadius: 7.4 },  // outer rampart — short of the barricade line (z ±8)
+  ],
+  bannerWallInset: 0.6,     // keep banner bands fully inside the arena walls
+  bannerDepth: 1.2,         // north/south banner strip thickness
+};
+
 // Hub ship-interior: three zone rooms (Operations, Commerce, Salon) in a compact row.
 const HUB_ROOM_WIDTH = 12;
 const HUB_ROOM_DEPTH = 12;
@@ -2421,11 +2431,34 @@ function buildRiftFloorMarkings(half) {
 }
 
 /**
+ * Citadel-theme floor decals: two concentric rampart rings circling the dais
+ * plus gold banner bands along the north and south walls. Cosmetic floor
+ * markings only — flat ring/rectangle records (the same shapes center_ring
+ * and the rift bands use) that add no walls or cover. Rings start outside the
+ * center_ring and stop short of the barricade line; bands are inset from the
+ * walls so every decal lies fully inside bounds.
+ */
+function buildCitadelFloorMarkings(half) {
+  const inset = CITADEL_THEME.bannerWallInset;
+  const depth = CITADEL_THEME.bannerDepth;
+  const width = (half - inset) * 2;
+  const bandZ = half - inset - depth / 2;
+  return [
+    ...CITADEL_THEME.rampartRings.map(({ innerRadius, outerRadius }) => (
+      { type: 'citadel_rampart_ring', x: 0, z: 0, innerRadius, outerRadius }
+    )),
+    { type: 'citadel_banner_band', x: 0, z: -bandZ, width, depth },
+    { type: 'citadel_banner_band', x: 0, z: bandZ, width, depth },
+  ];
+}
+
+/**
  * Build the boss-arena layout: one compact walkable room with a centre
  * `arena_dais` landmark and sparse cover. Deterministic for a given seed in
  * `layoutMode: 'default'`; rigid mode uses seed-independent cover placement.
- * `options.arenaTheme: 'rift'` appends ice/ember floor-band markings (cosmetic
- * decals only); any other value leaves the layout untouched.
+ * `options.arenaTheme: 'rift'` appends ice/ember floor-band markings and
+ * `'citadel'` appends rampart-ring/banner-band markings (cosmetic decals
+ * only); any other value leaves the layout untouched.
  *
  * Returns { rooms: [arena], passages: [], cover, floorMarkings, landmarks,
  *           passageWidth, cellSpacing, profile: 'boss-arena' }.
@@ -2495,6 +2528,8 @@ function generateBossArena(seed, options = {}) {
 
   if (options.arenaTheme === 'rift') {
     layout.floorMarkings.push(...buildRiftFloorMarkings(half));
+  } else if (options.arenaTheme === 'citadel') {
+    layout.floorMarkings.push(...buildCitadelFloorMarkings(half));
   }
 
   assignRoomRoles(layout);
