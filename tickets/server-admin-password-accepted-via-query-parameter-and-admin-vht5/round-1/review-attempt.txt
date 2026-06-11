@@ -1,0 +1,20 @@
+## Review complete
+
+**Verdict: PASS**
+
+Wrote the full assessment to `tickets/server-admin-password-accepted-via-query-parameter-and-admin-vht5/round-1/review.md`.
+
+### Runtime health
+- `metrics.json`: `"ok": true`, `pageerrors: []`
+- `console.log`: clean (no page errors or fatals)
+- Gameplay smoke capture reached lobby → deploy → movement → dodge
+
+### Acceptance criteria
+1. **Query-param password rejected** — `readSuppliedPassword()` is header-only; middleware and HTTP tests assert 403 for `?password=`.
+2. **Admin rate limiting** — `requireAdminPassword` reuses auth bucket logic; failures increment, success does not; 429 after max attempts from one IP.
+3. **Tests** — 21 admin roster tests pass, including new query-param rejection and rate-limit cases; auth tests still pass after the `isRateLimited` refactor.
+
+### Files written
+- `review.md` — full review with `VERDICT: PASS` as the last line
+- No `gaps.md` (PASS only)
+- No `nits.md` (no blocking or backlog-worthy nits found)

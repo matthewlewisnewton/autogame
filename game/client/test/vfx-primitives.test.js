@@ -9,6 +9,7 @@ import {
 	spawnAttackEffect,
 	spawnDivineGraceEffect,
 	spawnDivineGraceColumn,
+	spawnTelepipeCastEffect,
 	spawnSpikeTrapEffect,
 	spawnMirrorWardShellEffect,
 	dismissMirrorWardShellEffect,
@@ -139,6 +140,63 @@ describe('shared VFX primitives', () => {
 		expect(Number.isFinite(column.duration)).toBe(true);
 		expect(column.duration).toBeGreaterThan(0);
 		expect(column.mesh.material.emissive.getHex()).toBe(0xfbbf24); // bright gold
+	});
+
+	it('spawnTelepipeCastEffect pushes cyan ring, warp-tube column, and particle burst', () => {
+		const before = getActiveEffects().length;
+		spawnTelepipeCastEffect({ x: 4, z: -1 }, 2.5);
+		expect(getActiveEffects().length).toBe(before + 3);
+
+		const effects = getActiveEffects().slice(before);
+		const ring = effects.find((fx) => fx.radius !== undefined);
+		const column = effects.find((fx) => fx.isLightColumn);
+		const burst = effects.find((fx) => fx.isParticleBurst);
+
+		expect(ring).toBeDefined();
+		expect(ring.radius).toBe(2.5);
+		expect(Number.isFinite(ring.duration)).toBe(true);
+		expect(ring.duration).toBeGreaterThan(0);
+		expect(ring.mesh.material.color.getHex()).toBe(0x67e8f9);
+		expect(ring.mesh.material.emissive.getHex()).toBe(0x22d3ee);
+
+		expect(column).toBeDefined();
+		expect(column.isLightColumn).toBe(true);
+		expect(Number.isFinite(column.duration)).toBe(true);
+		expect(column.duration).toBeGreaterThan(0);
+		expect(column.mesh.material.color.getHex()).toBe(0x67e8f9);
+		expect(column.mesh.material.emissive.getHex()).toBe(0x22d3ee);
+
+		expect(burst).toBeDefined();
+		expect(burst.isParticleBurst).toBe(true);
+		expect(Number.isFinite(burst.duration)).toBe(true);
+		expect(burst.duration).toBeGreaterThan(0);
+
+		const ringDispose = vi.spyOn(ring.mesh.geometry, 'dispose');
+		const columnDispose = vi.spyOn(column.mesh.geometry, 'dispose');
+		const burstDispose = vi.spyOn(burst.mesh.children[0].geometry, 'dispose');
+		for (const fx of effects) fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(ringDispose).toHaveBeenCalled();
+		expect(columnDispose).toHaveBeenCalled();
+		expect(burstDispose).toHaveBeenCalled();
+	});
+
+	it('spawnTelepipeCastEffect defaults radius to 2.5 and honors color overrides', () => {
+		spawnTelepipeCastEffect({ x: 0, z: 0 });
+		const ring = getActiveEffects().find((fx) => fx.radius !== undefined);
+		expect(ring.radius).toBe(2.5);
+
+		getActiveEffects().length = 0;
+		spawnTelepipeCastEffect({ x: 0, z: 0 }, 1.8, { color: 0x123456, emissive: 0x654321 });
+		const effects = getActiveEffects();
+		const ringFx = effects.find((fx) => fx.radius !== undefined);
+		const columnFx = effects.find((fx) => fx.isLightColumn);
+		expect(ringFx.mesh.material.color.getHex()).toBe(0x123456);
+		expect(ringFx.mesh.material.emissive.getHex()).toBe(0x654321);
+		expect(columnFx.mesh.material.color.getHex()).toBe(0x123456);
+		expect(columnFx.mesh.material.emissive.getHex()).toBe(0x654321);
 	});
 
 	it('spawnDivineGraceColumn rises then fades and cleans itself up', () => {

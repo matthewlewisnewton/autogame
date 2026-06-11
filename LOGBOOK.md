@@ -7138,6 +7138,50 @@ other-card changes; no new debug scenario; no regression to other renderers
 
 None blocking. Two minor thematic nits captured in `nits.md`.
 
+## v0.397 — Server: admin password accepted via query parameter and /admin has no rate limit  (2026-06-10 18:13:13)
+
+## Code quality
+
+- Focused diff (~240 lines, mostly tests). No dead code introduced.
+- Security properties preserved: fail-closed when `ADMIN_PASSWORD` unset, constant-time compare, Bearer token still ignored for admin.
+- `auth.js` export surface expanded minimally for reuse; register/login call sites unchanged.
+- Comments in `admin.js` and `auth.js` document the check-then-increment pattern and why check-only uses `>=`.
+
+## Sub-ticket integration
+
+Both sub-tickets integrate cleanly:
+
+1. **01-remove-query-param-password** — query fallback removed; tests inverted from expect-200 to expect-403.
+2. **02-add-admin-rate-limit** — bucket logic reused from auth; middleware wired before password check.
+
+No gaps between sub-ticket scope and top-level acceptance criteria.
+
+## Remaining gaps
+
+None. All acceptance criteria are fully and robustly satisfied; runtime capture is clean.
+
+## v0.398 — 364-anim-telepipe  (2026-06-10 18:43:25)
+
+construction, palette, overrides, and cleanup/disposal. Ran
+`vitest run cardRenderers.test.js vfx-primitives.test.js` → **182 passed**.
+
+## Design / regression consistency
+
+- Scope respected: diff touches only `game/client/cardRenderers.js`,
+  `game/client/renderer.js` (new primitive), `game/client/main.js` (ctx
+  wiring), and the two client test files. `git diff … -- game/server/` is empty.
+- The persistent portal marker is unaffected — it is owned by
+  `syncTelepipeMesh`/`animateTelepipePortal` (state-driven), which this ticket
+  does not modify. The old `renderTelepipe` call to `spawnSummonEffect` is
+  replaced by the dedicated cast flourish; the standing portal is still rendered
+  from `state.telepipe`, so no regression to the evac-point marker.
+- No debug scenario was added or changed by this ticket (no server diff);
+  `telepipe-ready` predates the baseline and is used only by the harness capture.
+
+## Remaining gaps
+
+None blocking. (Minor non-blocking redundancy noted in nits.md.)
+
 ## v0.399 — 361-anim-soul-drain  (2026-06-10 18:46:55)
 
 - **Dev-gated, sole entry**: added only to the `DEBUG_SCENARIOS` set (index.js:648) and the
@@ -7159,4 +7203,3 @@ touches this card's render fn. No foundation regression.
 None blocking. The only out-of-strict-scope change is the server-side debug scenario (ticket
 SCOPE names client paths); it is additive, properly gated, and a legitimate QA enabler — noted
 in nits.md, not blocking.
-

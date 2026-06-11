@@ -14,6 +14,10 @@ import { InMemoryProvider } from '../providers.js';
 const require = createRequire(import.meta.url);
 const users = require('../users.js');
 const { buildAdminRoster, requireAdminPassword } = require('../admin.js');
+const {
+	_resetRateLimits,
+	RATE_LIMIT_MAX_ATTEMPTS
+} = require('../auth.js');
 
 async function startTestServer() {
 	if (httpServer.listening) {
@@ -47,12 +51,13 @@ async function closeTestServer() {
 }
 
 // Minimal Express-like req/res doubles for exercising the middleware directly.
-function makeReq({ headers = {}, query = {} } = {}) {
+function makeReq({ headers = {}, query = {}, ip = '127.0.0.1' } = {}) {
 	const lower = {};
 	for (const [k, v] of Object.entries(headers)) lower[k.toLowerCase()] = v;
 	return {
 		headers: lower,
 		query,
+		ip,
 		get(name) { return lower[String(name).toLowerCase()]; }
 	};
 }
@@ -200,13 +205,22 @@ describe('admin roster + ADMIN_PASSWORD gate', () => {
 			expect(res.statusCode).toBeNull();
 		});
 
-		it('allows the correct password via ?password= query param', () => {
+		it('rejects the password via ?password= query param (security: URLs are logged)', () => {
 			process.env.ADMIN_PASSWORD = 'secret';
 			const res = makeRes();
 			let nextCalled = false;
 			requireAdminPassword(makeReq({ query: { password: 'secret' } }), res, () => { nextCalled = true; });
-			expect(nextCalled).toBe(true);
-			expect(res.statusCode).toBeNull();
+			expect(nextCalled).toBe(false);
+			expect(res.statusCode).toBe(403);
+		});
+
+		it('rejects query param even when header is absent', () => {
+			process.env.ADMIN_PASSWORD = 'secret';
+			const res = makeRes();
+			let nextCalled = false;
+			requireAdminPassword(makeReq({ query: { password: 'secret' }, headers: {} }), res, () => { nextCalled = true; });
+			expect(nextCalled).toBe(false);
+			expect(res.statusCode).toBe(403);
 		});
 
 		it('never consults the Authorization bearer header', () => {
@@ -264,14 +278,14 @@ describe('admin roster + ADMIN_PASSWORD gate', () => {
 			expect(html).not.toContain('passwordHash');
 		});
 
-		it('accepts the admin password via ?password= query param', async () => {
+		it('rejects the admin password via ?password= query param (security: URLs are logged)', async () => {
 			process.env.ADMIN_PASSWORD = 'topsecret';
 			seedRoster();
 
 			const res = await fetch(`${baseUrl}/admin?password=topsecret`);
-			expect(res.status).toBe(200);
-			const html = await res.text();
-			expect(html).toContain('alice');
+			expect(res.status).toBe(403);
+			const body = await res.text();
+			expect(body).not.toContain('alice');
 		});
 
 		it('returns 403 with no account data for a wrong password', async () => {
@@ -332,6 +346,135 @@ describe('admin roster + ADMIN_PASSWORD gate', () => {
 			});
 			// GET-only route — POST is never handled (404 from Express).
 			expect(res.status).toBe(404);
+		});
+	});
+
+	describe('requireAdminPassword() rate limiting', () => {
+		const ORIGINAL_RATE_LIMIT_FLAG = process.env.AUTH_RATE_LIMIT_IN_TESTS;
+
+		beforeEach(() => {
+			process.env.AUTH_RATE_LIMIT_IN_TESTS = '1';
+			process.env.ADMIN_PASSWORD = 'secret';
+			_resetRateLimits();
+		});
+
+		afterEach(() => {
+			_resetRateLimits();
+			if (ORIGINAL_RATE_LIMIT_FLAG === undefined) {
+				delete process.env.AUTH_RATE_LIMIT_IN_TESTS;
+			} else {
+				process.env.AUTH_RATE_LIMIT_IN_TESTS = ORIGINAL_RATE_LIMIT_FLAG;
+			}
+		});
+
+		it('returns 429 after RATE_LIMIT_MAX_ATTEMPTS failed attempts from the same IP', () => {
+			// Send RATE_LIMIT_MAX_ATTEMPTS failed requests
+			for (let i = 0; i < RATE_LIMIT_MAX_ATTEMPTS; i++) {
+				const res = makeRes();
+				let nextCalled = false;
+				requireAdminPassword(
+					makeReq({ headers: { 'x-admin-password': 'wrong' } }),
+					res,
+					() => { nextCalled = true; }
+				);
+				expect(nextCalled).toBe(false);
+				expect(res.statusCode).toBe(403);
+			}
+
+			// The next attempt should be rate-limited (429)
+			const res = makeRes();
+			let nextCalled = false;
+			requireAdminPassword(
+				makeReq({ headers: { 'x-admin-password': 'wrong' } }),
+				res,
+				() => { nextCalled = true; }
+			);
+			expect(nextCalled).toBe(false);
+			expect(res.statusCode).toBe(429);
+			expect(res.body.error).toContain('Too many admin login attempts');
+		});
+
+		it('successful auth does not increment the rate-limit counter', () => {
+			// Send 3 failed attempts
+			for (let i = 0; i < 3; i++) {
+				const res = makeRes();
+				requireAdminPassword(
+					makeReq({ headers: { 'x-admin-password': 'wrong' } }),
+					res,
+					() => {}
+				);
+				expect(res.statusCode).toBe(403);
+			}
+
+			// Successful auth — should NOT increment the counter
+			const resOk = makeRes();
+			let nextCalled = false;
+			requireAdminPassword(
+				makeReq({ headers: { 'x-admin-password': 'secret' } }),
+				resOk,
+				() => { nextCalled = true; }
+			);
+			expect(nextCalled).toBe(true);
+
+			// Send 6 more failed attempts — total failure count is 9 (not 10)
+			// If successful auth HAD incremented, the count would be 10 and the
+			// next check would return 429. Because it didn't, the count is 9
+			// and the next request with the correct password passes.
+			for (let i = 0; i < 6; i++) {
+				const res = makeRes();
+				requireAdminPassword(
+					makeReq({ headers: { 'x-admin-password': 'wrong' } }),
+					res,
+					() => {}
+				);
+				expect(res.statusCode).toBe(403);
+			}
+
+			// Correct password should pass through (bucket has 9, not 10)
+			const resFinal = makeRes();
+			let nextCalledFinal = false;
+			requireAdminPassword(
+				makeReq({ headers: { 'x-admin-password': 'secret' } }),
+				resFinal,
+				() => { nextCalledFinal = true; }
+			);
+			expect(nextCalledFinal).toBe(true);
+			expect(resFinal.statusCode).toBeNull();
+		});
+
+		it('_resetRateLimits clears admin rate-limit buckets', () => {
+			// Exhaust the rate limit
+			for (let i = 0; i < RATE_LIMIT_MAX_ATTEMPTS; i++) {
+				const res = makeRes();
+				requireAdminPassword(
+					makeReq({ headers: { 'x-admin-password': 'wrong' } }),
+					res,
+					() => {}
+				);
+			}
+
+			// Verify rate-limited
+			const resBefore = makeRes();
+			requireAdminPassword(
+				makeReq({ headers: { 'x-admin-password': 'wrong' } }),
+				resBefore,
+				() => {}
+			);
+			expect(resBefore.statusCode).toBe(429);
+
+			// Reset rate limits
+			_resetRateLimits();
+
+			// Should be able to authenticate again
+			const resAfter = makeRes();
+			let nextCalled = false;
+			requireAdminPassword(
+				makeReq({ headers: { 'x-admin-password': 'secret' } }),
+				resAfter,
+				() => { nextCalled = true; }
+			);
+			expect(nextCalled).toBe(true);
+			expect(resAfter.statusCode).toBeNull();
 		});
 	});
 });

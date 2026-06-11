@@ -1,0 +1,17 @@
+Broke ticket **364-anim-telepipe** into **3 sub-tickets** in dependency order. The persistent portal mesh animation from ticket 319 is already done; these focus on the **cast flourish** (theme + instant server sync) and test coverage.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/364-anim-telepipe/tickets/364-anim-telepipe/subtickets/01-telepipe-cast-vfx-primitive`
+2. `/home/matt/workspace/.autogame-worktrees/364-anim-telepipe/tickets/364-anim-telepipe/subtickets/02-telepipe-renderer-and-timing`
+3. `/home/matt/workspace/.autogame-worktrees/364-anim-telepipe/tickets/364-anim-telepipe/subtickets/03-telepipe-animation-tests`
+
+**Plan summary:**
+
+| # | Focus | Why separate |
+|---|--------|--------------|
+| **01** | `spawnTelepipeCastEffect` primitive in `renderer.js` | Warp-tube opening silhouette (column + ring), distinct from generic `spawnSummonEffect` |
+| **02** | Rewrite `renderTelepipe` + wire `cardRenderCtx` | Instant synchronous cast aligned with server placement; no `windUpMs`, no `scheduleAfter` |
+| **03** | `cardRenderers.test.js` coverage | Locks registration, palette, radius `2.5`, and timing contract |
+
+All three use **Verification: code** — criteria cover function existence, timing contracts, and spawn-call behavior, not pixel-perfect screenshots.

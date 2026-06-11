@@ -147,3 +147,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [395-cleanup-client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0](tickets/395-cleanup-client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/)
 - [ ] [395-cleanup-anim-cinder-snare](tickets/395-cleanup-anim-cinder-snare/)
 - [ ] [396-cleanup-anim-soul-drain](tickets/396-cleanup-anim-soul-drain/)
+- [ ] [396-cleanup-anim-telepipe](tickets/396-cleanup-anim-telepipe/)
