@@ -1,0 +1,10 @@
+I broke the top-level ticket into two dependency-ordered sub-tickets.
+
+**Key finding:** The server already broadcasts `burningUntil`, `slowedUntil`, and `slowFactor` per-player in `buildPlayerHotSnapshot` (`game/server/progression.js:3502-3504`). The existing world-space visuals (flame mesh, icy ground ring in `renderer.js`) are on the 3D character, but there's no HUD strip near the HP/MS bars — exactly what the ticket asks for. So this is **purely a client HUD addition; no server work needed.**
+
+Sub-tickets created:
+
+- `tickets/.../subtickets/01-status-effect-helper/ticket.md` — pure, unit-tested helper `computeActiveStatusEffects(player, now)` in `vanguard-hud.js` that derives the active-effect list (burning/slowed + future effects) from the snapshot fields. Verification: **code**.
+- `tickets/.../subtickets/02-status-effect-strip-hud/ticket.md` — `#status-effect-strip` markup, CSS (distinct ember vs. chill badges), and `updateStatusEffectStrip(me)` wiring in `main.js` driven by the sub-ticket 01 helper, called from `syncVanguardHud`. Verification: **code**.
+
+Both are `code` verification: the criteria involve a function existing, snapshot-field timing, expiry/clear behavior, and DOM structure — none of which a single happy-path screenshot run (which never applies burn or slow) could confirm.

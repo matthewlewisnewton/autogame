@@ -8363,3 +8363,26 @@ Consistent with `syncLivePlayerCosmetic` and the lobby-broadcast architecture; n
 
 None blocking. The acceptance criterion is fully and robustly met, the game runs cleanly, and the change is consistent with existing patterns.
 
+
+## v0.456 — hud: no status-effect indicators for ember burn / glacial slow (DoT and slow are invisible to the player)  (2026-06-11 08:01:44)
+
+No new debug scenario was added by this ticket (diff touches only
+`game/client/*`), so the debug-scenario review section does not apply.
+
+## Design / regression consistency
+
+- The strip lives inside the existing vitals block beside the HP/MS bars
+  (`index.html:56`), matching the ticket's "small status-effect strip near the
+  HP/MS bars". `pointer-events:none` keeps it from intercepting input. `aria-live`
+  is a reasonable accessibility touch.
+- No existing HUD elements, server fields, or DoT/slow mechanics were changed —
+  purely additive client rendering of already-broadcast fields. No regression to
+  the requirements foundation.
+
+## Remaining gaps
+
+None blocking. The capture's smoke flow never burns/slows the player, so no
+screenshot shows a live badge — but this is a capture-plan limitation, not a code
+defect, and the appear/clear logic is covered by the passing unit tests. Filed as a
+nit (DOM render not directly tested; no live-effect capture).
+
