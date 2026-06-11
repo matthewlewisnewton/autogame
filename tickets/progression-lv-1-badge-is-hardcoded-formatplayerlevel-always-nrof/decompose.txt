@@ -1,0 +1,9 @@
+Decomposition complete. I chose the "implement player leveling" branch of the acceptance criteria (rather than removing the badge), since the codebase already has everything needed for a low-risk implementation: per-kill attribution via `enemy.lastDamagedBy`, a persistence pipeline (`extractPersistentData` → `savedData` restore), per-tick player snapshots (`buildPlayerHotSnapshot`), and a HUD sync path (`syncVanguardHud(me)`) that already holds the local player snapshot where the badge is updated.
+
+Created two sub-tickets, both `code`-verified:
+
+1. `tickets/progression-lv-1-badge-is-hardcoded-formatplayerlevel-always-nrof/subtickets/01-server-player-xp-levels/ticket.md` — server-side `xp`/`level` on the player record: kill XP awarded to the attributed killer in `removeDeadEnemies()`, a 50 XP victory bonus per player, a deterministic level curve (level 2 at 100 XP, level 3 at 300, …), persistence via `extractPersistentData()`/`buildPlayerRecord()`, `level`+`xp` in every state snapshot, and a new `game/server/test/player_level.test.js`. Explicitly scoped to NOT touch tier-unlock gating.
+
+2. `tickets/progression-lv-1-badge-is-hardcoded-formatplayerlevel-always-nrof/subtickets/02-hud-level-badge-uses-server-level/ticket.md` — `formatPlayerLevel(player)` in `game/client/vanguard-hud.js` returns the server level (fallback 1), `updateVanguardPortrait(me)` threads the local snapshot in from `syncVanguardHud`, and the placeholder client test is replaced with real coverage.
+
+Sub-ticket 02 depends on 01 (it reads the `level` field 01 adds to snapshots). Together they satisfy the top-level AC's first branch: a real server-tracked level that increases through play, displayed in the HUD, covered by tests.

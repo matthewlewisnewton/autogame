@@ -5401,6 +5401,8 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 			ready: false,
 			magicStones: 50,
 			currency: 10,
+			xp: 0,
+			level: 1,
 			inDesperation: false,
 			nextDrawAt: null,
 			desperationDeck: [],
