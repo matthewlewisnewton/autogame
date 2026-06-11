@@ -7617,28 +7617,27 @@ when new ctx primitives are absent. Full suite: **203/203 pass** (ran locally).
 None blocking. One minor nit (duplicate cyan style constant) recorded in nits.md.
 
 
-## v0.413 — 352-anim-necroframe-knight  (2026-06-10 21:10:16)
+## v0.420 — 342-anim-arcane-bolt  (2026-06-10 22:50:59)
 
-- degrades gracefully when optional ctx helpers (`spawnTelegraphRing`,
-  `spawnParticleBurst`, `scheduleAfter`) are absent.
-Plus a `resolveRenderers` assertion that the card uses its bespoke renderer, not
-the generic creature default. Full suite: **193 passed**.
+- **Terminal max-range impact** (`spawnImpactDecal` + 16-particle burst) deferred by `travelMs` via `scheduleAfter`, for visual travel sync only.
+This is a faithful match to instant projectile resolution.
 
-### Scope & integration
-PASS. Diff touches only `game/client/cardRenderers.js` (this card's render fn +
-registration) and its test file — exactly the declared scope. No other per-card
-beads are affected. Every optional helper is guarded, so the renderer is robust
-against a minimal ctx. No debug scenarios added.
+### "No perf regression" — MET
+The projectile effect is registered in `activeEffects` and disposed on expiry (`disposeEffectObject` + array splice once `elapsed >= duration`). A vfx-primitives test confirms the flagged lance is added and cleaned up with geometry disposal. No persistent leaks.
 
-### Design consistency
-PASS. Reuses the 315 shared VFX primitives and the per-card registration pattern;
-palette deliberately matched to the evolution chain. No regression to the
-foundation.
+### "Client test where feasible" — MET
+`cardRenderers.test.js` and `vfx-primitives.test.js` add coverage: renderer resolution (`renderArcaneBolt`, explicitly not `renderWeaponSwing`), synced `spawnAttackEffect`/`spawnProjectileTrail` params, deferred terminal impact via `runScheduled`, immediate per-hit pierce bursts at mesh positions (with a missing-mesh guard), no-windUp assertion, and projectile lifecycle/cleanup. Ran `vitest run` on both files: **237 passed (237)**.
+
+### Scope — RESPECTED
+Diff touches only `game/client/cardRenderers.js`, `game/client/renderer.js`, and the two client test files — exactly the declared scope. No server, no other per-card renderers, no debug scenarios added.
+
+## Consistency / regressions
+- Consistent with `design.md` (Weapons = directional projectiles). No foundation regression.
+- No debug-scenario shortcuts introduced.
+- Removed the now-dead `arcane_bolt` entry from `WEAPON_SLASH_STYLES`, avoiding stale config.
 
 ## Remaining gaps
-None. The captured run is clean, all acceptance criteria are robustly met, and
-the client tests pass.
-
+None blocking. The implementation fully and robustly satisfies the ticket.
 
 
 ## v0.419 — 340-anim-photon-slicer  (2026-06-10 22:20:51)
@@ -7685,4 +7684,27 @@ PASS. The client test was rewritten to assert the full composition: ground ring 
 
 ## Remaining gaps
 None blocking.
+
+
+## v0.413 — 352-anim-necroframe-knight  (2026-06-10 21:10:16)
+
+- degrades gracefully when optional ctx helpers (`spawnTelegraphRing`,
+  `spawnParticleBurst`, `scheduleAfter`) are absent.
+Plus a `resolveRenderers` assertion that the card uses its bespoke renderer, not
+the generic creature default. Full suite: **193 passed**.
+
+### Scope & integration
+PASS. Diff touches only `game/client/cardRenderers.js` (this card's render fn +
+registration) and its test file — exactly the declared scope. No other per-card
+beads are affected. Every optional helper is guarded, so the renderer is robust
+against a minimal ctx. No debug scenarios added.
+
+### Design consistency
+PASS. Reuses the 315 shared VFX primitives and the per-card registration pattern;
+palette deliberately matched to the evolution chain. No regression to the
+foundation.
+
+## Remaining gaps
+None. The captured run is clean, all acceptance criteria are robustly met, and
+the client tests pass.
 

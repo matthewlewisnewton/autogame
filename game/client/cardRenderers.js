@@ -180,18 +180,6 @@ const WEAPON_SLASH_STYLES = {
 		sparkCount: 12,
 		sparkSpread: 1.8,
 	},
-	// Arcane Bolt: a tight violet energy lance stabbing far forward with a beam streak.
-	arcane_bolt: {
-		color: 0xa78bfa,
-		emissive: 0x7c3aed,
-		coneAngle: Math.PI / 9,
-		range: 7.5,
-		fillOpacity: 0.5,
-		edgeOpacity: 0.92,
-		trail: true,
-		sparkCount: 7,
-		sparkSpread: 0.8,
-	},
 };
 
 /**
@@ -1733,6 +1721,73 @@ function renderWyrmAttack(data, ctx) {
 }
 
 /**
+ * Arcane Bolt: a violet energy lance projectile that travels from the caster
+ * along the cast direction. Instant cast (no wind-up telegraph). Per-enemy pierce
+ * hit bursts fire immediately on CARD_USED to match the server's instant
+ * `collectProjectileHits` resolution; terminal impact at max range is deferred
+ * by `travelMs` for visual travel sync only.
+ */
+function renderArcaneBolt(data, ctx) {
+	if (!data.origin) return;
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const travelMs = data.projectileTravelMs ?? ATTACK_EFFECT_DURATION;
+	const color = getAccentHex(data.cardId) ?? 0xa78bfa;
+	const emissive = 0x7c3aed;
+	const impact = pointAlong(origin, direction, data.attackRange ?? 10);
+
+	// Brief arcane channel at cast (instant weapon — no wind-up telegraph).
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, 0.45, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 8, spread: 1.0 });
+	}
+
+	ctx.spawnAttackEffect(origin, direction, {
+		effect: 'arcane_bolt',
+		range: data.attackRange,
+		projectileTravelMs: travelMs,
+		color,
+		emissive,
+	});
+	if (ctx.spawnProjectileTrail) {
+		ctx.spawnProjectileTrail(origin, direction, {
+			range: data.attackRange,
+			travelMs,
+			color,
+			emissive,
+		});
+	}
+
+	const terminalImpact = () => {
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(impact, { color, emissive });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(impact, { color, emissive, count: 16, spread: 2.0 });
+		}
+	};
+	ctx.scheduleAfter(travelMs, terminalImpact);
+
+	// Per-enemy pierce hit bursts align with instant server damage resolution.
+	if (data.hits?.length) {
+		const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(pos, { color, emissive, count: 5, spread: 0.55 });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pos, { color, emissive, count: 6, spread: 0.7 });
+			}
+		}
+	}
+}
+
+/**
  * Fireball: a fiery sphere projectile that travels from the caster along the
  * cast direction. Distinct from the plain `projectile` visual via the warm
  * fire palette in the renderer's `fireball` branch. On impact, an enhanced
@@ -2326,7 +2381,7 @@ const CARD_RENDERERS = {
 	harvesting_scythe: renderWeaponSwing,
 	saber_of_light: renderWeaponSwing,
 	photon_slicer: renderReturningDisc,
-	arcane_bolt: renderWeaponSwing,
+	arcane_bolt: renderArcaneBolt,
 	resonance_edge: renderResonantDoublePulse,
 	echo_blade: renderEchoSlash,
 	infinite_disk: renderTripleReturning,
