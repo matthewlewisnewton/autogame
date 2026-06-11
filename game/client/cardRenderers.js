@@ -596,8 +596,13 @@ const GLACIER_COLOR = 0x38bdf8;
 const GLACIER_EMISSIVE = 0x0ea5e9;
 
 /**
- * Cryo Burst: expanding icy telegraph plus a radial frost particle burst at
- * the cast origin. Replaces the generic accent summon ring.
+ * Cryo Burst: an explosive icy radial burst at the cast origin — an expanding
+ * frost shockwave ring sized to `data.radius`, a dense radial ice-shard burst
+ * (denser/wider than the old one-ring look), and a frozen ground impact decal.
+ * All fire synchronously to match the server's instant frost_nova resolution
+ * (no wind-up, no travel). Deliberately avoids spawnSummonEffect and any
+ * projectile/lance primitive so it stays distinct from glacier_collapse and
+ * permafrost_lance.
  */
 function renderFrostNova(data, ctx) {
 	if (data.radius === undefined) return;
@@ -608,7 +613,10 @@ function renderFrostNova(data, ctx) {
 		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
 	}
 	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.0 });
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 28, spread: 3.4 });
+	}
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(origin, { color, emissive });
 	}
 }
 

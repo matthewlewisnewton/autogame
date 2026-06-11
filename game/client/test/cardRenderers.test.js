@@ -1375,7 +1375,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 		}
 	});
 
-	it('frost_nova adds an icy telegraph ring and radial frost burst at the cast origin', () => {
+	it('frost_nova composes an icy shockwave ring, denser radial shard burst, and frozen impact decal at the origin', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'frost_nova',
@@ -1383,15 +1383,25 @@ describe('renderCardUsed() — spell dispatch', () => {
 			radius: 4,
 			hits: [],
 		}, ctx);
+		// Expanding frost shockwave ring sized to the radius.
 		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
 		expect(ring).toBeDefined();
 		expect(ring[1]).toEqual({ x: 2, z: 3 });
 		expect(ring[2]).toBe(4);
 		expect(ring[3]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
+		// Dense radial ice-shard burst — denser/wider than the old count:14, spread:2.0.
 		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
 		expect(burst).toBeDefined();
 		expect(burst[1]).toEqual({ x: 2, z: 3 });
-		expect(burst[2]).toMatchObject({ color: 0x67e8f9 });
+		expect(burst[2]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
+		expect(burst[2].count).toBeGreaterThan(14);
+		expect(burst[2].spread).toBeGreaterThan(2.0);
+		// Frozen ground impact decal at the cast origin.
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 2, z: 3 });
+		expect(decal[2]).toMatchObject({ color: 0x67e8f9, emissive: 0x38bdf8 });
+		// Stays distinct from the generic summon / glacier_collapse look.
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
 	});
 
