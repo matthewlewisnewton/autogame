@@ -15,16 +15,20 @@
 //   spawnSummonEffect(origin, radius, styleOrColor?)
 //   spawnMinionSummonInEffect(origin, style?) — creature minion summon flourish
 //   spawnDivineGraceEffect(origin, radius)
+//   spawnEventHorizonEffect(origin, pullRadius, centerRadius, style?)
 //   spawnPurifyingPulseHealRing(origin, radius)
 //   spawnCleanseBurstEffect(origin)
 //   spawnPurifyingPulseEffect(origin, radius)
 //   spawnInfernoPillarEffect(origin, radius, style?) — style: { color, emissive, dotTicks, dotIntervalMs, duration }
+//   spawnEtherSiphonEffect(origin, radius, style?) — style: { color, emissive, duration }
+//   spawnDragonsBreathEffect(origin, direction, style?) — style: { color, emissive, range, coneAngle, dotTicks, dotIntervalMs, duration }
 //   spawnChainLightningEffect(origin, direction)
 //   spawnLightningArc(from, to, style?)
 //   spawnParticleBurst(position, style?)       — multi-particle spark/ember burst
 //   spawnProjectileTrail(origin, direction, style?) — fading streak along a path
 //   spawnImpactDecal(origin, style?)           — lingering ground flash/decal ring
 //   spawnTelegraphRing(origin, radius, style?) — expanding/pulsing AoE telegraph ring
+//   spawnTelepipeCastEffect(origin, radius, style?) — telepipe portal-opening cast flourish
 //   spawnMirrorWardShellEffect(origin, radius, style?) — lingering mirror ward shell
 //   spawnMirrorWardReflectBurst(origin, direction, style?) — mirror reflect impact VFX
 //   flashMesh(mesh, color, durationMs)
@@ -34,7 +38,13 @@
 //   scheduleAfter(ms, fn) — wrapper around setTimeout used for delayed swings
 
 import { CARD_ACCENT_STYLE, CARD_DEFS, getCardDef } from './cards.js';
-import { ATTACK_EFFECT_DURATION, MINION_SUMMON_IN_MS, PHOTON_BARRAGE_SWING_DELAY_MS, SUMMON_EFFECT_DURATION } from './config.js';
+import {
+	ATTACK_EFFECT_DURATION,
+	EVENT_HORIZON_CRUSH_DELAY_MS,
+	MINION_SUMMON_IN_MS,
+	PHOTON_BARRAGE_SWING_DELAY_MS,
+	SUMMON_EFFECT_DURATION,
+} from './config.js';
 
 const NULL_CRAWLER_SUMMON_COLOR = 0x22d3ee;
 const NULL_CRAWLER_SUMMON_EMISSIVE = 0x67e8f9;
@@ -398,10 +408,20 @@ function renderHeavyGreatsword(data, ctx) {
 }
 
 /**
- * Resonance Edge: a magenta slash that "rings" twice. The cut lands, then a
- * resonant double pulse — two expanding telegraph rings (the second delayed via
- * scheduleAfter) with a magenta spark burst — radiates out from the arc. Reuses
- * the same 315 primitives as the styled blades, each guarded so the swing
+ * Resonance Edge: a resonant / harmonic sonic blade. The magenta cone cut lands
+ * immediately, then the blade "rings" — an immediate resonance pulse plus a
+ * harmonic after-ring a beat later (the base ringing fires on every swing).
+ *
+ * On every 2nd use the server actually discharges a radial shockwave: it only
+ * collects `data.shockwaveHits` when `comboCount % shockwaveEvery === 0`, so
+ * that array is non-empty exactly on the shockwave cadence. When it is, we layer
+ * a distinct, much larger "resonance discharge" on top — heavy spark burst plus
+ * expanding rings sized to the shockwave radius (~6) bursting outward from the
+ * cast origin — so the on-screen resonance peak matches when the server fires
+ * it. We never key the discharge off `comboCount` arithmetic and never re-spawn
+ * the generic summon ring `applyShockwave` already provides.
+ *
+ * Reuses the same 315 primitives as the styled blades, each guarded so the swing
  * degrades gracefully when a primitive is absent.
  */
 function renderResonantDoublePulse(data, ctx) {
@@ -411,15 +431,19 @@ function renderResonantDoublePulse(data, ctx) {
 	const emissive = 0xc026d3;
 	const range = 5;
 
-	ctx.spawnAttackEffect(origin, direction, {
-		color,
-		emissive,
-		coneAngle: Math.PI / 3.5,
-		range,
-		fillOpacity: 0.4,
-		edgeOpacity: 0.88,
-	});
+	if (ctx.spawnAttackEffect) {
+		ctx.spawnAttackEffect(origin, direction, {
+			color,
+			emissive,
+			coneAngle: Math.PI / 3.5,
+			range,
+			fillOpacity: 0.4,
+			edgeOpacity: 0.88,
+		});
+	}
 
+	// Base "resonance ringing": an immediate pulse plus a harmonic after-ring a
+	// beat later. Fires on every swing, independent of the shockwave cadence.
 	const pulseAt = pointAlong(origin, direction, range * 0.55);
 	const pulse = (radius) => {
 		if (ctx.spawnTelegraphRing) ctx.spawnTelegraphRing(pulseAt, radius, { color, emissive });
@@ -428,13 +452,46 @@ function renderResonantDoublePulse(data, ctx) {
 		}
 	};
 	pulse(1.6);
-	ctx.scheduleAfter(130, () => pulse(2.6));
+	if (ctx.scheduleAfter) ctx.scheduleAfter(130, () => pulse(2.6));
+
+	// Resonance discharge: only on the server's every-2nd-use shockwave cadence,
+	// signalled by a non-empty `data.shockwaveHits`. A heavier burst and large
+	// expanding rings at the cast origin read as the resonance peaking and
+	// bursting outward — clearly larger than the base ~1.6–2.6 pulses.
+	if (data.shockwaveHits && data.shockwaveHits.length > 0) {
+		const dischargeAt = originOf(data);
+		const shockRadius = Number.isFinite(data.shockwaveRadius) ? data.shockwaveRadius : 6;
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(dischargeAt, { color, emissive, count: 24, spread: 3.5 });
+		}
+		if (ctx.spawnTelegraphRing) ctx.spawnTelegraphRing(dischargeAt, shockRadius, { color, emissive });
+		if (ctx.scheduleAfter) {
+			ctx.scheduleAfter(90, () => {
+				if (ctx.spawnTelegraphRing) {
+					ctx.spawnTelegraphRing(dischargeAt, shockRadius * 1.4, { color, emissive });
+				}
+			});
+		}
+	}
 }
 
 /**
  * Phase Echo: a pink twin-slash. The blade swings once, then a fainter echo
  * swing replays a beat later via scheduleAfter so it reads as a phasing
  * after-image. A pink light streak trails both passes.
+ *
+ * On every 3rd use the server discharges a radial shockwave: it only collects
+ * `data.shockwaveHits` when `comboCount % shockwaveEvery === 0`, so that array
+ * is non-empty exactly on the shockwave cadence. When it is, we layer a
+ * distinct, much larger phase-shockwave on top — an expanding ring sized to the
+ * shockwave radius (~6) plus a heavy particle burst bursting outward from the
+ * cast origin — so the on-screen burst lands when the server fires it. echo_blade
+ * has no `windUpMs`, so the shockwave fires immediately alongside the lead swing,
+ * matching the server's synchronous resolution. We never key the discharge off
+ * `comboCount` arithmetic.
+ *
+ * Reuses the same 315 primitives as the styled blades, each guarded so the swing
+ * degrades gracefully when a primitive is absent.
  */
 function renderEchoSlash(data, ctx) {
 	const origin = originOf(data);
@@ -445,14 +502,16 @@ function renderEchoSlash(data, ctx) {
 	const range = 5;
 
 	const swing = (fillOpacity, edgeOpacity) => {
-		ctx.spawnAttackEffect(origin, direction, {
-			color,
-			emissive,
-			coneAngle,
-			range,
-			fillOpacity,
-			edgeOpacity,
-		});
+		if (ctx.spawnAttackEffect) {
+			ctx.spawnAttackEffect(origin, direction, {
+				color,
+				emissive,
+				coneAngle,
+				range,
+				fillOpacity,
+				edgeOpacity,
+			});
+		}
 		if (ctx.spawnProjectileTrail) {
 			ctx.spawnProjectileTrail(origin, direction, { range, color, emissive });
 		}
@@ -460,7 +519,27 @@ function renderEchoSlash(data, ctx) {
 
 	swing(0.42, 0.9);
 	// The echo: a fainter after-image swing a beat later.
-	ctx.scheduleAfter(150, () => swing(0.22, 0.55));
+	if (ctx.scheduleAfter) ctx.scheduleAfter(150, () => swing(0.22, 0.55));
+
+	// Phase shockwave: only on the server's every-3rd-use cadence, signalled by a
+	// non-empty `data.shockwaveHits`. A large expanding ring and heavy particle
+	// burst at the cast origin read as the phasing twin collapsing into a radial
+	// shockwave — clearly larger/heavier than the base twin-slash swing.
+	if (data.shockwaveHits && data.shockwaveHits.length > 0) {
+		const shockAt = originOf(data);
+		const shockRadius = Number.isFinite(data.shockwaveRadius) ? data.shockwaveRadius : 6;
+		if (ctx.spawnTelegraphRing) ctx.spawnTelegraphRing(shockAt, shockRadius, { color, emissive });
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(shockAt, { color, emissive, count: 24, spread: 3.5 });
+		}
+		if (ctx.scheduleAfter) {
+			ctx.scheduleAfter(90, () => {
+				if (ctx.spawnTelegraphRing) {
+					ctx.spawnTelegraphRing(shockAt, shockRadius * 1.4, { color, emissive });
+				}
+			});
+		}
+	}
 }
 
 /**
@@ -662,22 +741,48 @@ function renderGravityWell(data, ctx) {
 }
 
 /**
- * Event Horizon: dark-purple outer pull telegraph + burst, plus a tighter inner
- * crush ring keyed off `data.centerRadius` (distinct helper mix from Gravity Well).
+ * Event Horizon: singularity pull primitive at cast, then a deferred inner crush
+ * impact keyed off `data.centerRadius` (distinct from Gravity Well's telegraph mix).
  */
 function renderEventHorizon(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
 	const color = getAccentHex(data.cardId) ?? EVENT_HORIZON_COLOR;
 	const emissive = EVENT_HORIZON_EMISSIVE;
-	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	const centerRadius = data.centerRadius ?? 2.5;
+
+	if (ctx.spawnEventHorizonEffect) {
+		ctx.spawnEventHorizonEffect(origin, data.radius, centerRadius, { color, emissive });
 	}
-	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(origin, { color, emissive, count: 12, spread: 2.4 });
+
+	if (ctx.scheduleAfter) {
+		ctx.scheduleAfter(EVENT_HORIZON_CRUSH_DELAY_MS, () => {
+			if (ctx.spawnImpactDecal) {
+				ctx.spawnImpactDecal(origin, { color, emissive });
+			}
+			if (ctx.spawnTelegraphRing) {
+				ctx.spawnTelegraphRing(origin, centerRadius, { color, emissive });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(origin, { color, emissive, count: 10, spread: 1.6 });
+			}
+		});
 	}
-	if (data.centerRadius) {
-		ctx.spawnSummonEffect(origin, data.centerRadius, { color, emissive });
+
+	const hitEntries = data.hits?.length ? data.hits : data.crushed;
+	if (hitEntries?.length) {
+		const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+		for (const hit of hitEntries) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(pos, { color, emissive, count: 5, spread: 0.55 });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pos, { color, emissive, count: 6, spread: 0.7 });
+			}
+		}
 	}
 }
 
@@ -685,8 +790,8 @@ const FIRE_ACCENT_COLOR = 0xfb923c;
 const FIRE_ACCENT_EMISSIVE = 0xff3b00;
 
 /**
- * Wyrmflare: forward fire breath cone with ember trail and impact flourish at
- * the cone tip. Replaces the generic accent summon ring.
+ * Wyrmflare: instant forward fire breath cone plus a lingering breath zone
+ * whose tick pulses align with server area-effect intervals. No travel phase.
  */
 function renderDragonsBreath(data, ctx) {
 	if (data.radius === undefined) return;
@@ -694,27 +799,68 @@ function renderDragonsBreath(data, ctx) {
 	const direction = directionOf(data);
 	const color = getAccentHex(data.cardId) ?? FIRE_ACCENT_COLOR;
 	const emissive = FIRE_ACCENT_EMISSIVE;
+	const dotTicks = data.dotTicks ?? 4;
+	const dotIntervalMs = data.dotIntervalMs ?? 500;
+	const duration = dotTicks * dotIntervalMs + 250;
+	const coneAngle = data.attackConeAngle ?? Math.PI / 3;
+	const tip = pointAlong(origin, direction, data.radius);
+	const tipRingRadius = data.radius * 0.35;
+
+	ctx.spawnDragonsBreathEffect(origin, direction, {
+		color,
+		emissive,
+		range: data.radius,
+		coneAngle,
+		dotTicks,
+		dotIntervalMs,
+		duration,
+	});
+
+	// Instant burst (t = 0): mirrors server immediate collectConeHits resolution.
 	ctx.spawnAttackEffect(origin, direction, {
 		range: data.radius,
-		coneAngle: data.attackConeAngle ?? Math.PI / 3,
+		coneAngle,
 		color,
 		emissive,
 		fillOpacity: 0.38,
 		edgeOpacity: 0.72,
 	});
-	if (ctx.spawnProjectileTrail) {
-		ctx.spawnProjectileTrail(origin, direction, {
-			range: data.radius,
-			color,
-			emissive,
-		});
-	}
-	const tip = pointAlong(origin, direction, data.radius);
 	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 12, spread: 1.4 });
 		ctx.spawnParticleBurst(tip, { color, emissive, count: 10, spread: 1.2 });
 	}
 	if (ctx.spawnImpactDecal) {
 		ctx.spawnImpactDecal(tip, { color, emissive });
+	}
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(tip, tipRingRadius, { color, emissive });
+	}
+
+	if (data.hits?.length) {
+		const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(pos, { color, emissive, count: 5, spread: 0.55 });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pos, { color, emissive, count: 6, spread: 0.7 });
+			}
+		}
+	}
+
+	for (let tick = 1; tick <= dotTicks; tick += 1) {
+		ctx.scheduleAfter(dotIntervalMs * tick, () => {
+			const pulseAt = pointAlong(origin, direction, data.radius * 0.65);
+			if (ctx.spawnTelegraphRing) {
+				ctx.spawnTelegraphRing(pulseAt, tipRingRadius, { color, emissive });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pulseAt, { color, emissive, count: 8, spread: 1.4 });
+			}
+		});
 	}
 }
 
@@ -829,6 +975,7 @@ const MANA_LEACH_COLOR = 0xa855f7;
 const MANA_LEACH_EMISSIVE = 0x9333ea;
 const SOUL_DRAIN_COLOR = 0xe879f9;
 const SOUL_DRAIN_EMISSIVE = 0xd946ef;
+const SOUL_DRAIN_TETHER_STYLE = { color: SOUL_DRAIN_COLOR, emissive: SOUL_DRAIN_EMISSIVE };
 
 function spawnChainSegmentArcs(data, ctx) {
 	const segments = data.chainSegments;
@@ -884,25 +1031,60 @@ function renderBattleFamiliar(data, ctx) {
 }
 
 /**
- * Ether Siphon: purple drain telegraph at AoE radius plus a siphon burst.
+ * Ether Siphon: instant radial mana drain — ether-siphon primitive, cast flourish,
+ * per-victim drain arcs, and magic-stone absorption at the caster origin.
  */
 function renderManaLeach(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
 	const color = getAccentHex(data.cardId) ?? MANA_LEACH_COLOR;
 	const emissive = MANA_LEACH_EMISSIVE;
+	const style = { color, emissive };
+
+	if (ctx.spawnEtherSiphonEffect) {
+		ctx.spawnEtherSiphonEffect(origin, data.radius, style);
+	}
 	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+		ctx.spawnTelegraphRing(origin, data.radius, style);
 	}
 	if (ctx.spawnParticleBurst) {
 		ctx.spawnParticleBurst(origin, { color, emissive, count: 16, spread: 2.2 });
 	}
+
+	if (data.hits?.length) {
+		const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
+		const arcStyle = { color, emissive, duration: ATTACK_EFFECT_DURATION };
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const enemyPos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			if (ctx.spawnLightningArc) {
+				ctx.spawnLightningArc(enemyPos, origin, arcStyle);
+			}
+			if (ctx.spawnHitSpark) {
+				ctx.spawnHitSpark(enemyPos, { color, emissive, count: 5, spread: 0.55 });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(enemyPos, { color, emissive, count: 6, spread: 0.7 });
+			}
+		}
+	}
+
+	if (data.magicStonesGained > 0) {
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(origin, { color, emissive, count: 22, spread: 2.6 });
+		}
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(origin, { color, emissive });
+		}
+	}
 }
 
 /**
- * Soul Drain: pink evolved drain telegraph, primary burst, and a smaller
- * heal-adjacent flourish at the origin. No extra sounds — heal audio stays in
- * common post-effects when applicable.
+ * Soul Drain: pink evolved drain telegraph and primary burst, a drain tether
+ * pulled from each struck enemy back into the caster, and a life-absorb
+ * flourish at the origin that ONLY plays when the cast actually healed. No
+ * extra sounds — heal audio stays in common post-effects when applicable.
  */
 function renderSoulDrain(data, ctx) {
 	if (data.radius === undefined) return;
@@ -915,15 +1097,31 @@ function renderSoulDrain(data, ctx) {
 	if (ctx.spawnParticleBurst) {
 		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.4 });
 	}
-	if (ctx.spawnImpactDecal) {
-		ctx.spawnImpactDecal(origin, { color: SOUL_DRAIN_EMISSIVE, emissive: 0xf0abfc });
-	} else if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(origin, {
-			color: SOUL_DRAIN_EMISSIVE,
-			emissive: 0xf0abfc,
-			count: 6,
-			spread: 1.0,
-		});
+	// Per-hit drain tether: pull life/souls FROM each struck enemy (with a live
+	// mesh) back TO the caster's cast origin. Hits whose enemy already
+	// despawned have no mesh and are skipped.
+	if (data.hits?.length && ctx.spawnLightningArc && ctx.enemyMeshes) {
+		const meshes = ctx.enemyMeshes() || {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh) continue;
+			const enemyPos = { x: mesh.position.x, z: mesh.position.z };
+			if (Number.isFinite(mesh.position.y)) enemyPos.y = mesh.position.y;
+			ctx.spawnLightningArc(enemyPos, origin, SOUL_DRAIN_TETHER_STYLE);
+		}
+	}
+	// Life-absorb flourish at the caster, only when the cast actually healed.
+	if (data.hpHealed > 0) {
+		if (ctx.spawnImpactDecal) {
+			ctx.spawnImpactDecal(origin, { color: SOUL_DRAIN_EMISSIVE, emissive: 0xf0abfc });
+		} else if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(origin, {
+				color: SOUL_DRAIN_EMISSIVE,
+				emissive: 0xf0abfc,
+				count: 6,
+				spread: 1.0,
+			});
+		}
 	}
 }
 
@@ -1302,6 +1500,69 @@ function renderSpikeTrap(data, ctx) {
 	if (ctx.spawnTelegraphRing) ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
 }
 
+const CINDER_SNARE_COLOR = 0xf97316; // fiery-orange card accent (#f97316)
+const CINDER_SNARE_EMISSIVE = 0xff3b00; // inferno-red smolder glow
+
+/**
+ * Cinder Snare: a smoldering ember snare dropped on the ground. Fires
+ * synchronously at cast (the card has no windUpMs) — a low fiery ground
+ * coil/ring plus an ember spark burst at the placement origin — then keeps
+ * smoldering with ticking ember pulses. Themed to the card's fiery-orange
+ * accent and visibly distinct from spike_trap's steel/blood-red look.
+ *
+ * The lingering cadence/duration are DERIVED from the server effect stats
+ * (`dotIntervalMs`/`dotTicks`/`ttlMs`/`radius` from getCardDef), not hardcoded,
+ * so the visual stays in sync if the server stats change. Client-only: it adds
+ * no network traffic and no payload changes, and a missing radius/origin is a
+ * no-op. Modeled on renderInfernoPillar's instant-eruption + scheduled-tick
+ * structure; only `ctx.scheduleAfter` (no projectile delay) gates the lingering
+ * smolder, never the initial placement.
+ */
+function renderCinderSnare(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	const def = getCardDef('cinder_snare') ?? {};
+	const color = getAccentHex('cinder_snare') ?? CINDER_SNARE_COLOR;
+	const emissive = CINDER_SNARE_EMISSIVE;
+	const dotTicks = def.dotTicks ?? 4;
+	const dotIntervalMs = def.dotIntervalMs ?? 500;
+	const ttlMs = def.ttlMs ?? 30000;
+	const radius = def.radius ?? 2.5;
+
+	// Initial ember snare (t = 0): low fiery coil + ember burst, fired
+	// synchronously at cast. `duration` reflects the snare's full ttlMs so the
+	// lingering smolder lasts as long as the server-side hazard.
+	ctx.spawnInfernoPillarEffect(origin, radius, {
+		color,
+		emissive,
+		dotTicks,
+		dotIntervalMs,
+		duration: ttlMs,
+	});
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, radius, { color, emissive });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, { color, emissive, count: 12, spread: 1.8 });
+	}
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(origin, { color, emissive });
+	}
+
+	// Lingering smolder: an ember pulse per DoT tick, aligned to dotIntervalMs,
+	// so the snare reads as a ticking fiery hazard while it persists.
+	for (let tick = 1; tick <= dotTicks; tick += 1) {
+		ctx.scheduleAfter(dotIntervalMs * tick, () => {
+			if (ctx.spawnTelegraphRing) {
+				ctx.spawnTelegraphRing(origin, radius * 0.6, { color, emissive });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(origin, { color, emissive, count: 6, spread: 1.2 });
+			}
+		});
+	}
+}
+
 /**
  * Future self-targeted enchantments: teal ring around the caster. Range is
  * fixed since self-enchantments don't report a radius.
@@ -1367,11 +1628,37 @@ function renderMirrorWard(data, ctx) {
 	}
 }
 
+const TELEPIPE_COLOR = 0x67e8f9;
+const TELEPIPE_EMISSIVE = 0x22d3ee;
+
 /**
- * Telepipe portal placement: blue field ring marking the shared evac point.
+ * Telepipe portal placement: evacuation portal flourish at the caster's feet.
+ * Fires synchronously on CARD_USED — no wind-up telegraph or deferred scheduling.
  */
 function renderTelepipe(data, ctx) {
-	ctx.spawnSummonEffect(originOf(data), data.radius || 2.5, { color: 0x22d3ee, emissive: 0x67e8f9 });
+	if (!data.origin) return;
+
+	const origin = originOf(data);
+	const radius = data.radius ?? 2.5;
+	const color = getAccentHex(data.cardId) ?? TELEPIPE_COLOR;
+	const emissive = TELEPIPE_EMISSIVE;
+
+	if (ctx.spawnTelepipeCastEffect) {
+		ctx.spawnTelepipeCastEffect(origin, radius, { color, emissive });
+	}
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, radius, {
+			duration: SUMMON_EFFECT_DURATION,
+			color,
+			emissive,
+		});
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(
+			{ x: origin.x, y: 1.0, z: origin.z },
+			{ color, emissive, count: 10, spread: 1.6 },
+		);
+	}
 }
 
 /**
@@ -1554,7 +1841,7 @@ const CARD_RENDERERS = {
 	// Enchantments
 	spike_trap: renderSpikeTrap,
 	mirror_ward: renderMirrorWard,
-	cinder_snare: renderGroundEnchantment,
+	cinder_snare: renderCinderSnare,
 };
 
 // Type-level defaults — used when no card-specific renderer is registered.

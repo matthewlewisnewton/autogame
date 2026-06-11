@@ -1,0 +1,295 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game
+      Coverage enabled with v8
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > builds meshes for local and remote lobby players
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > creates a persistent mesh keyed by enc.id and positions it at enc.x/z
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > builds meshes for local and remote lobby players
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer.js:810:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer.js:2694:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer/playerSync.js:87:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer.js:5837:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer.js:810:11[90m)[39m
+}
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer.js:810:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer.js:2694:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer/playerSync.js:87:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer.js:5837:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer.js:810:11[90m)[39m
+}
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > moves the remote mesh when hub presence coordinates change
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > creates a persistent mesh keyed by enc.id and positions it at enc.x/z
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer.js:810:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer.js:2694:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer/playerSync.js:87:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer.js:5837:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer.js:810:11[90m)[39m
+}
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > hub lobby join starts with #lobby hidden and lobbyMenuDismissed true
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/deck-viewer.test.js (21 tests) 253ms
+ ✓ |client| client/test/boss-encounter-hud-wiring.test.js (6 tests) 250ms
+stdout | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > disposes the hazard mesh when the enchantment leaves the snapshot
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/questBooth.test.js > quest booth booth:action hook (main.js) > reveals and scrolls the quest panel into view for boothId quest in lobby and ignores other booths
+[launchBooth] ready-up via booth
+[launchBooth] ready-up via booth
+
+stdout | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > does NOT create a hazard mesh for cinder_snare enchantments
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > applyHubPresence sequence updates remote mesh position and cosmeticKey
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/boothDeck.test.js (4 tests) 433ms
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > dismissGameLobby then lobby-phase stateUpdate keeps #lobby hidden
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/debug-hatswap-hook.test.js (3 tests) 762ms
+   ✓ ?booth=hatswap debug hook (main.js requestBoothDebugOpen) > opens the character booth and requests hats-unlocked once on localhost  493ms
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > applyHubPresence removedPlayerIds disposes remote avatar mesh
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > hubPresenceUpdate and applyHubPresence while dismissed do not show #lobby
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/hub-presence-avatars.test.js (4 tests) 726ms
+   ✓ hub presence avatars (lobby) > builds meshes for local and remote lobby players  363ms
+ ✓ |client| client/test/boothShop.test.js (5 tests) 659ms
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > deck booth open shows #lobby and clears the dismissed flag
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/debug-godmode.test.js > debug godmode toggle (main.js) > mirrors debugGodmode onto local player when toggle succeeds
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > shop booth open shows #lobby and clears the dismissed flag
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/renderer-spike-trap.test.js (5 tests) 899ms
+   ✓ spike trap persistent hazard reconcile > creates a persistent mesh keyed by enc.id and positions it at enc.x/z  431ms
+stdout | client/test/key-item-dodge.test.js > dash VFX > triggerDashVFX applies squash scale when a player mesh exists
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/debug-godmode.test.js > debug godmode toggle (main.js) > keeps debugGodmode false across stateUpdate after godmode-off debugGodmodeResult
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+
+ ✓ |client| client/test/levelMapIntegration.test.js (5 tests) 988ms
+   ✓ level-map lobby integration (main.js) > renders nodes from the payload levelUnlockGraph through questUpdate  484ms
+stdout | client/test/main.test.js > cardError handler — server hand rejection > shows a toast when the server rejects an unauthorized card use
+[cardError] Card not in hand
+[cardError] Card not in hand
+[cardError] Card not in hand
+[cardError] Card not in hand
+[cardError] Card not in hand
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a red cone for grunt (default) type
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer.js:810:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer/enemySync.js:145:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/test/main.test.js:2796:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer.js:810:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates an orange cone for skirmisher type
+[renderer] failed to apply model "/models/skirmisher.glb" for "skirmisher": TypeError: Failed to parse URL from /models/skirmisher.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer.js:810:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer/enemySync.js:145:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/test/main.test.js:2808:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/skirmisher.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer.js:810:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a teal octahedron for spawner type
+[renderer] failed to apply model "/models/spawner.glb" for "spawner": TypeError: Failed to parse URL from /models/spawner.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer.js:810:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer/enemySync.js:145:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/test/main.test.js:2818:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/spawner.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer.js:810:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a warm emissive octahedron for ember_wraith type
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer.js:810:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer/enemySync.js:145:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/test/main.test.js:2796:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer.js:810:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a purple cone for miniboss type
+[renderer] failed to apply model "/models/miniboss.glb" for "miniboss": TypeError: Failed to parse URL from /models/miniboss.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer.js:810:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer/enemySync.js:145:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/test/main.test.js:2860:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/miniboss.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/client-split-main-js-bindsockethandlers-930-lines-into-handl-ocv0/game/[39mclient/renderer.js:810:11[90m)[39m
+}
+
+ ✓ |client| client/test/debug-godmode.test.js (7 tests) 964ms
+ ✓ |client| client/test/lobby-menu-dismiss.test.js (6 tests) 919ms
+   ✓ lobby menu dismiss guard (main.js) > hub lobby join starts with #lobby hidden and lobbyMenuDismissed true  326ms
+ ✓ |client| client/test/key-item-dodge.test.js (6 tests) 776ms
+ ✓ |client| client/test/questDialogue.test.js (8 tests) 1257ms
+   ✓ quest dialogue comms UI (main.js) > shows a comms toast and appends to the log via the test hook  480ms
+stdout | client/test/characterBooth.test.js > character booth ?booth=character debug hook (main.js) > auto-opens once after hub lobby entry on localhost with ?booth=character
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/characterBooth.test.js > character booth ?booth=character debug hook (main.js) > stays closed without the booth URL param
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/characterBooth.test.js (13 tests) 1181ms
+ ✓ |client| client/test/questBooth.test.js (18 tests) 1236ms
+stdout | client/test/main.test.js > suspended run resume/abandon UI > resume button triggers the launch-booth ready-up path
+[launchBooth] ready-up via booth
+
+ ✓ |client| client/test/main.test.js (186 tests) 2299ms
+
+ Test Files  15 passed (15)
+      Tests  297 passed (297)
+   Start at  18:00:51
+   Duration  5.00s (transform 836ms, setup 516ms, collect 1.54s, tests 13.60s, environment 6.45s, prepare 1.97s)
+
+ % Coverage report from v8
+--------------|---------|----------|---------|---------|------------------------
+File          | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s      
+--------------|---------|----------|---------|---------|------------------------
+All files     |   38.33 |    28.43 |   62.16 |   41.63 |                        
+ cards.js     |   65.78 |    52.63 |      80 |   70.96 | ...-94,102,116,234-250 
+ collision.js |   27.86 |    15.53 |   77.77 |   28.43 | ...175-229,238-243,251 
+ delta.js     |   66.66 |       50 |     100 |     100 | 12                     
+ hand.js      |   29.29 |    26.19 |   41.17 |   34.17 | 45-73,90-157,175-181   
+--------------|---------|----------|---------|---------|------------------------

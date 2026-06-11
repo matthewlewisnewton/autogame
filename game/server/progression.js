@@ -1076,7 +1076,7 @@ function applyTelepipeReadyHand(player) {
     effect: 'telepipe',
   };
 
-  if (player.debugScenario === 'fire-telepipe-ready') {
+  if (player.debugHooks?.telepipeHand === 'fire') {
     const freshSortie = !!player._telepipeFreshSortie;
     if (freshSortie) {
       delete player._telepipeFreshSortie;
@@ -1106,7 +1106,7 @@ function applyTelepipeReadyHand(player) {
     return;
   }
 
-  if (player.debugScenario === 'frost-crossing-telepipe-ready') {
+  if (player.debugHooks?.telepipeHand === 'frost-crossing') {
     const freshSortie = !!player._telepipeFreshSortie;
     if (freshSortie) {
       delete player._telepipeFreshSortie;
@@ -3517,6 +3517,11 @@ function buildWorldSnapshot(shopOffer) {
       })),
     lobby: _gameState.lobby,
     gamePhase: _gameState.gamePhase,
+    debugTimeScale: _gameState.debugTimeScale ?? 1,
+    // Surface whether time-scale debug control is authorized so the client can
+    // gate its Shift+T keybind / test hook on the server's authority rather than
+    // a localhost hostname check. Strictly ALLOW_DEBUG_SCENARIOS=1.
+    debugTimeScaleAllowed: process.env.ALLOW_DEBUG_SCENARIOS === '1',
     selectedQuestId: _gameState.selectedQuestId,
     selectedQuestTier: _gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER,
     run: _gameState.run,
@@ -3755,10 +3760,7 @@ function checkAllReadyInner() {
         player.lastMoveTime = Date.now();
         createDrawDeckFromSelectedDeck(player);
         initPlayerHand(player);
-        if (player.debugScenario === 'telepipe-ready'
-          || player.debugScenario === 'fire-telepipe-ready'
-          || player.debugScenario === 'frost-telepipe-ready'
-          || player.debugScenario === 'frost-crossing-telepipe-ready') {
+        if (player.debugHooks?.telepipeDeploy) {
           applyTelepipeReadyHand(player);
         }
         player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
@@ -3773,10 +3775,7 @@ function checkAllReadyInner() {
           player.hp = MAX_HP;
           player.dead = false;
         }
-        if ((player.debugScenario === 'fire-telepipe-ready'
-          || player.debugScenario === 'frost-telepipe-ready'
-          || player.debugScenario === 'frost-crossing-telepipe-ready')
-          && deployMagicStones != null) {
+        if (player.debugHooks?.pinMsOnDeploy && deployMagicStones != null) {
           player._telepipeDeployMagicStones = deployMagicStones;
           player._msRegenGraceUntil = Date.now() + 120000;
         }
@@ -3784,8 +3783,7 @@ function checkAllReadyInner() {
       }
       spawnEnemies();
       for (const player of connectedPlayers) {
-        if (player.debugScenario === 'fire-telepipe-ready'
-          || player.debugScenario === 'frost-crossing-telepipe-ready') {
+        if (player.debugHooks?.spawnTelepipeDummy) {
           const dummy = spawnEnemy(player.x + 2.5, player.z, 'grunt');
           dummy.hp = 500;
           dummy.maxHp = 500;
@@ -3797,7 +3795,7 @@ function checkAllReadyInner() {
       }
       startDungeonRun();
       for (const player of connectedPlayers) {
-        if (player.debugScenario === 'frost-crossing-telepipe-ready') {
+        if (player.debugHooks?.suppressWavesAfterDeploy) {
           // Telepipe harness walks with 'w' for up to 30s; suppress live waves so
           // entering the ice band does not spawn Frostmaw and fail the run mid-suspend.
           const dummy = spawnEnemy(player.x + 2.5, player.z, 'grunt');

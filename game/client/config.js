@@ -56,6 +56,9 @@ export const CARD_HIT_GRACE_MS = 500;
 /** Delay between photon_barrage swings — matches server swing stagger (ms) */
 export const PHOTON_BARRAGE_SWING_DELAY_MS = 80;
 
+/** Event Horizon crush impact delay after pull VFX — visual pull→crush beat (ms) */
+export const EVENT_HORIZON_CRUSH_DELAY_MS = 375;
+
 // ── Visual effect durations ──
 
 /** Weapon projectile: ms before auto-removal */

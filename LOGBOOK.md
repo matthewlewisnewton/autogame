@@ -7027,9 +7027,328 @@ PASS. The changed live files are focused on validation harness wiring, rooms art
 
 None.
 
+## v0.392 — Client: consolidate gamepad polling to one snapshot per frame and delete dead gamepad-layer code  (2026-06-10 17:18:44)
+
+
+### Dead gamepad-layer code and orphan tests
+
+PASS. The confirmed-dead helpers named in the ticket are no longer exported or referenced in `game/client/`: `uses8BitDo64DigitalCButtons`, `get8BitDo64CStickAxes`, `get8BitDo64CAxisPairs`, `readAxisSectorDirections`, `readProfileCStick`, `isGamepadMoving`, `describeGamepadConnectionWithProfile`, and the duplicate `isButtonPressed`. The tests tied only to those removed helpers were deleted, while live 8BitDo C-button, profile, lock-on, and binding behavior remains covered.
+
+### Design and requirements consistency
+
+PASS. The change is limited to client input polling and dead-code cleanup. It does not alter the documented lobby/dungeon/card loop, server simulation, multiplayer flow, or floor/quest/combat systems. The capture and probes confirm the baseline setup requirements remain intact: 3D rendering, server-client connection, multiplayer visualization, and movement synchronization.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=...` shortcut. The capture used the fallback full-flow smoke path with `scenarios: []`, so there is no debug-scenario gating or normal-gameplay reachability issue to review for this ticket.
+
+### Verification evidence
+
+PASS. The round-1 coverage log reports `52` test files passed and `540` tests passed. Coverage thresholds were disabled as expected for visibility only.
+
+## Remaining gaps
+
+No blocking gaps remain.
+
+## v0.393 — Debug tooling: time-scale control (slow-mo/pause) behind ALLOW_DEBUG_SCENARIOS for playtesting and QA  (2026-06-10 17:19:45)
+
+### Harness state exposes the current scale for automated tests
+
+PASS. `buildWorldSnapshot()` includes `debugTimeScale` and `debugTimeScaleAllowed`, and `window.__AUTOGAME_HARNESS_STATE__()` exposes `debugTimeScale`, `debugTimeScaleResult`, and `debugTimeScaleAllowed`. The captured fallback run shows the fields present with `debugTimeScale: 1` and `debugTimeScaleAllowed: false`; the client test verifies the allowed flag becomes true when a snapshot reports it.
+
+### Design and Foundation Consistency
+
+PASS. The feature is debug-only, per-lobby, and does not alter normal gameplay when unset. It fits the design doc's multiplayer lobby/dungeon model by storing the scale on lobby game state rather than global process state, and it preserves the requirements baseline: rendering, socket connectivity, multiplayer presence, and WASD movement sync all remain functional in the captured run.
+
+### Debug Scenarios
+
+PASS / not applicable. This ticket did not add or change a `?debugScenario=NAME` URL shortcut. Existing debug scenario behavior is not used as an entry point for the new time-scale control; the time-scale test hook is gated by the server-authorized snapshot field and the socket handler.
+
+### Tests and Artifacts
+
+Targeted time-scale coverage is present and passing in `round-2/coverage.log`: `server/test/debug_time_scale_sim.test.js`, `server/test/debug_time_scale_gate.test.js`, and `client/test/debug-time-scale-gate.test.js` all pass. The same coverage log reports one failing pre-existing-style `server/test/debug-scenarios.test.js` case for `arena-trials-boss-approach`; the ticket did not change `game/server/debugScenarios.js`, and I did not find a path from the time-scale changes to that scenario result, so I am not treating it as a blocking gap for this ticket.
+
+## Remaining gaps
+
+No blocking gaps for this ticket.
+
+
+## v0.400 — Server: convert debugScenarios.js 113-branch if-chain to a registry and move debug hooks out of hot gameplay paths  (2026-06-10 18:57:54)
+
+- **Gated** behind the same `DEBUG_SCENARIOS` allowlist (and
+  `ALLOW_DEBUG_SCENARIOS` env) as every other scenario — URL param is the only
+  entry point.
+- **Reachable normally** — it calls the shared `deployQuestTier1(..,
+  'ember_descent')` helper, deploying the real ember_descent Tier 1 quest run
+  that a player reaches by playing that quest. It is a parallel of the existing
+  `frost-crossing-tier-1` / `training-caverns-tier-1` deploy scenarios.
+- **No invariant bypass** — it deploys an actual quest run through the same
+  helpers; it does not skip validation, persistence, or replication.
+
+Consistent with `game/docs/design.md` and does not regress the foundation:
+this is a server-internal refactor of debug tooling with no gameplay-facing
+behavior change, confirmed by the unchanged preservation/suspend-resume probe.
+
+## Remaining gaps
+
+None. The acceptance criterion is fully and robustly met, the game runs
+cleanly in the captured registry-dispatched scenario, and the full server test
+suite is green.
+
+## v0.394 — Server: index.js broadcast/lookup helpers scan every connected socket per lobby per event  (2026-06-10 17:39:04)
+
+- **O(1) player→socket lookup.** `playerSockets` Map registered on connect (`registerPlayerSocket` after `socket.playerId = playerId`) and unregistered on disconnect (`unregisterPlayerSocket` in `lobbyHandlers.js` disconnect handler). `findSocketByPlayerId` checks the Map first and **falls back to the linear scan** if absent — so correctness is preserved even if the Map is ever out of sync. The reconnect race is handled correctly: `unregisterPlayerSocket` only deletes when `playerSockets.get(playerId) === socket`, so a late disconnect of a replaced socket cannot evict the live one (covered by the new `unregisterPlayerSocket removes only when the socket still owns the map entry` test).
+
+- **Smaller win — user lookups O(1).** `users.js` adds `accountIdIndex` and `emailIndex`, maintained in `indexUser`/`unindexUser` across `loadUsers`, `createUser`, `createUserAsync`, `updateProfile`, and cleared in `clearUsers`. `findUserByAccountId`/`findUserByEmail` are now Map gets. Email index only stores already-normalized emails — matching the old `record.email === normalized` comparison exactly, so no behavior change for mixed-case stored emails. `updateProfile` correctly removes the stale email entry before reassigning (verified including the email-clear `null` path: `oldEmail` deleted, `indexUser` re-adds only the accountId). New test `keeps email index consistent when email is updated or cleared` exercises set→change→clear.
+
+- **Behavior unchanged / existing tests pass.** Full server suite re-run clean: **179 files, 2571 tests, all pass** (`npx vitest run server/test/`). The lone failure in the harness `coverage.log` (`debug-scenarios … places player outside dormant arena_champion trigger after adds cleared`) is a flake under v8 coverage instrumentation: it passes standalone (`-t`), passes as a full file (57/57), and passes in the full uninstrumented suite. The changed code (socket map, room iteration, user indexes) is orthogonal to arena-champion positioning. Not a regression from this ticket.
+
+## Design / regression check
+
+Pure server-side performance refactor that preserves observable behavior. No change to `game/docs/design.md` surface area, no requirements regression. No debug scenarios added or changed by this ticket (the `?debugScenario` machinery is untouched).
+
+## Code quality
+
+- `resetGameState` clears `playerSockets`; live sockets are not re-registered, but the linear fallback in `findSocketByPlayerId` keeps lookups correct. `resetGameState` is a reset/test path, so harmless. (Nit below.)
+- `broadcastLobbyUpdate`'s active-game branch iterates `Object.keys(activeState.players)` + `findSocketByPlayerId` rather than the room helper — correct (active state can span merged members), just a different pattern from the per-lobby branch. (Nit below.)
+- No dead code, no obvious bugs, no console errors.
+
+## Remaining gaps
+
+None blocking.
+
+## v0.395 — Client: split main.js bindSocketHandlers (~930 lines) into handler registration groups  (2026-06-10 18:03:35)
+
+- No behavior change: the full suite (`260 test files, 3717 tests`) passes, including the server socket integration tests and client main/socket tests.
+- `grep` confirms **zero** remaining `s.on(`/`socket.on(` registrations in main.js — every listener was relocated, no duplicated or dead inline handler left behind.
+
+## Consistency with design / no regression
+
+- This is a pure structural refactor of client socket-handler registration; no gameplay rules, server logic, or `shared/` schema changed. `game/docs/design.md` and `requirements.md` foundations are untouched. The diff is confined to main.js (net −931 lines) plus the new `socketHandlers/` modules and sub-ticket bookkeeping.
+
+## Debug scenarios
+
+- No new `?debugScenario=NAME` URL shortcut was added or changed. `debugHandlers.js` only relocates the existing `DEBUG_SCENARIO_RESULT` / `DEBUG_GODMODE_RESULT` *result* listeners (and re-applies godmode mirroring to keep probes consistent). The debug-shortcut review criteria do not apply; nothing bypasses normal-play invariants.
+
+## Code quality
+
+- Clean, idiomatic split matching the codebase's existing context-object convention. Each module imports only what it needs; `index.js` re-exports the registrars. The STATE_UPDATE extraction preserves comments and edge-case handling (hub-layout floor sampling, desperation deck sync, prediction drift thresholds).
+- No obvious bugs, no broken imports (tests would have failed otherwise), no console errors in the capture.
+
+## Remaining gaps
+
+None blocking. The acceptance criterion is fully and robustly met, the game runs cleanly, and the entire test suite passes. Minor non-blocking observations are recorded in `nits.md`.
+
+## v0.402 — 362-anim-wyrmflare  (2026-06-10 19:10:53)
+
+`spawnInfernoPillarEffect` pattern. Changes touch only this card's renderer, the
+vfx primitive, its ctx registration, and tests — no other per-card renderer
+affected.
+
+### No perf regression
+PASS. Effects are pushed to `activeEffects` with a finite `duration` and disposed
+via `disposeEffectObject` once `elapsed >= duration` (renderer.js:5571-5597);
+geometry/material are released. No retained allocations or leaked timers.
+
+### Client test where feasible
+PASS. Six new targeted tests (dispatch + synced style, synchronous cone burst,
+per-hit ignite at mesh positions, four 500ms tick pulses, no-windUp guard,
+primitive shape) plus the vfx-primitive test. Full suite: 179/179 passing.
+
+## Remaining gaps
+None blocking. Two minor default-coupling nits filed in `nits.md` (server omits
+`dotIntervalMs`/`attackConeAngle` from the CARD_USED payload; client relies on
+matching hardcoded defaults). These currently agree (500ms / π⁄3) and are
+regression-tested, so they do not affect correctness today.
+
+## v0.401 — 359-anim-resonance-edge  (2026-06-10 19:07:44)
+
+### Visual matches name/theme ("Resonance Edge", weapon)
+PASS. Accent is magenta `#e879f9` with icon `≋` (a wave/resonance glyph) in `game/client/cards.js:165`. The renderer lands a magenta cone cut, then "rings" — an immediate telegraph-ring + spark pulse and a harmonic after-ring 130ms later (`pulse(1.6)` then `scheduleAfter(130, () => pulse(2.6))`). The double/harmonic pulse reads unmistakably as a resonant sonic blade. On the shockwave cadence a much larger discharge (radius-6 ring + 1.4× expanding after-ring + 24-particle burst) bursts from the cast origin — a clear "resonance peak." Uses only the 315 primitives (`spawnAttackEffect`, `spawnTelegraphRing`, `spawnParticleBurst`, `scheduleAfter`).
+
+### Timing synced to server effect resolution
+PASS. Server (`game/server/cardEffects.js:480-497`) increments a per-card combo count and, when `nextCount % shockwaveEvery === 0`, collects radial hits and ships them as `shockwaveHits` in the `CARD_USED` payload (line 562); otherwise it ships `[]`. `resonance_edge` has `shockwaveEvery: 2`, `shockwaveRadius: 6` (`game/shared/cardStats.json:310-317`). The renderer keys its discharge on `data.shockwaveHits.length > 0`, so the on-screen resonance peak fires exactly on the every-2nd-use cadence, sized to the server's radius (defaults to 6, matching the card). Base ringing is immediate + 130ms; discharge after-ring at +90ms. No client-side combo arithmetic that could drift from the server. This is a faithful, server-driven sync.
+
+### No perf regression
+PASS. The added work is a handful of extra primitive spawns and only on the every-2nd-use cadence; base swing adds two guarded ring/burst pulses as before. No loops, allocations, or per-frame cost introduced.
+
+### Client test where feasible
+PASS. Two tests added and passing (`npx vitest run -t "Resonance Edge"` → 2 passed): the off-cadence swing (empty `shockwaveHits`) asserts no large discharge ring and only light bursts; the on-cadence swing asserts a ring ≥6 plus a larger after-ring and a ≥20 spark burst. Both assert the magenta accent.
+
+## Robustness
+Every primitive call is now guarded (`if (ctx.spawnAttackEffect)`, `if (ctx.scheduleAfter)`, etc.), so the swing degrades gracefully when a primitive is absent — an improvement over the prior unguarded `spawnAttackEffect`/`scheduleAfter` calls. `shockwaveRadius` is read defensively with a finite-check fallback.
+
+## Remaining gaps
+None blocking. Two minor nits filed to `nits.md`:
+1. `data.shockwaveRadius` is never included in the `CARD_USED` emit, so that branch always falls back to the literal `6`; harmless today (equals the card's radius) but the dynamic-radius intent is unrealized.
+2. The discharge keys off `shockwaveHits` being non-empty, so a cadence use that strikes no enemy in radius shows no discharge VFX even though the server's shockwave "fired." Defensible (no targets = no meaningful effect) but a slight fidelity gap vs. keying off the cadence itself.
+
+## v0.403 — 358-anim-phase-echo  (2026-06-10 19:38:48)
+
+## Code quality
+
+Clean, well-commented, idiomatic with the surrounding styled-blade renderers. No dead/broken
+code beyond the minor `shockwaveRadius` observation below (a nit, not a defect — the fallback
+yields the correct value).
+
+## Remaining gaps
+
+None blocking.
+
+Two non-blocking nits recorded in `nits.md`:
+1. The server's `CARD_USED` payload never includes `shockwaveRadius`, so the client's
+   `Number.isFinite(data.shockwaveRadius) ? … : 6` branch always takes the fallback. It happens
+   to equal echo_blade's real radius (6), so the visual is correct, but the dynamic branch is
+   effectively unreachable in production.
+2. The shockwave VFX is gated on `shockwaveHits.length > 0`, so on the every-3rd-use beat with
+   no enemy in radius nothing renders even though it is the cadence beat. Acceptable (the
+   server shockwave is a no-op without hits, and this matches the sibling card), but worth a
+   look if a "discharge always shows" feel is desired.
+
+## v0.399 — 361-anim-soul-drain  (2026-06-10 18:46:55)
+
+- **Dev-gated, sole entry**: added only to the `DEBUG_SCENARIOS` set (index.js:648) and the
+  `applyDebugScenario` chain (debugScenarios.js:4970); the `?debugScenario=` path is the only
+  way in. Normal gameplay never references it.
+- **End-state reachable normally**: a damaged caster with full Magic Stones casting an evolved
+  Soul Drain into a grunt cluster is ordinary combat — the scenario only pre-arranges that
+  state; it does not auto-cast.
+- **No invariant bypass**: the scenario only mutates state (hp, magicStones, one hand slot,
+  enemy spawns). The actual cast still flows through the normal `useCard`/`cardEffects`
+  validation, server resolution, and net replication.
+
+## Design consistency
+Consistent with game/docs/design.md: builds on the 315 shared VFX primitives
+(`spawnLightningArc`, `spawnTelegraphRing`, `spawnParticleBurst`, `spawnImpactDecal`) and only
+touches this card's render fn. No foundation regression.
+
+## Remaining gaps
+None blocking. The only out-of-strict-scope change is the server-side debug scenario (ticket
+SCOPE names client paths); it is additive, properly gated, and a legitimate QA enabler — noted
+in nits.md, not blocking.
+
+## v0.398 — 364-anim-telepipe  (2026-06-10 18:43:25)
+
+construction, palette, overrides, and cleanup/disposal. Ran
+`vitest run cardRenderers.test.js vfx-primitives.test.js` → **182 passed**.
+
+## Design / regression consistency
+
+- Scope respected: diff touches only `game/client/cardRenderers.js`,
+  `game/client/renderer.js` (new primitive), `game/client/main.js` (ctx
+  wiring), and the two client test files. `git diff … -- game/server/` is empty.
+- The persistent portal marker is unaffected — it is owned by
+  `syncTelepipeMesh`/`animateTelepipePortal` (state-driven), which this ticket
+  does not modify. The old `renderTelepipe` call to `spawnSummonEffect` is
+  replaced by the dedicated cast flourish; the standing portal is still rendered
+  from `state.telepipe`, so no regression to the evac-point marker.
+- No debug scenario was added or changed by this ticket (no server diff);
+  `telepipe-ready` predates the baseline and is used only by the harness capture.
+
+## Remaining gaps
+
+None blocking. (Minor non-blocking redundancy noted in nits.md.)
+
+## v0.397 — Server: admin password accepted via query parameter and /admin has no rate limit  (2026-06-10 18:13:13)
+
+## Code quality
+
+- Focused diff (~240 lines, mostly tests). No dead code introduced.
+- Security properties preserved: fail-closed when `ADMIN_PASSWORD` unset, constant-time compare, Bearer token still ignored for admin.
+- `auth.js` export surface expanded minimally for reuse; register/login call sites unchanged.
+- Comments in `admin.js` and `auth.js` document the check-then-increment pattern and why check-only uses `>=`.
+
+## Sub-ticket integration
+
+Both sub-tickets integrate cleanly:
+
+1. **01-remove-query-param-password** — query fallback removed; tests inverted from expect-200 to expect-403.
+2. **02-add-admin-rate-limit** — bucket logic reused from auth; middleware wired before password check.
+
+No gaps between sub-ticket scope and top-level acceptance criteria.
+
+## Remaining gaps
+
+None. All acceptance criteria are fully and robustly satisfied; runtime capture is clean.
+
+## v0.396 — 367-anim-cinder-snare  (2026-06-10 18:06:10)
+
+`updateAttackEffects` with no per-frame allocation, fading/disposing at `ttlMs`.
+Negligible cost even with the 30s lifetime.
+
+### "Client test where feasible"
+MET. Five new tests in `game/client/test/cardRenderers.test.js` cover: distinct
+dispatch vs `spike_trap`, themed accent at origin/radius, stat-derived cadence/
+duration, synchronous placement (no wind-up gating), and a no-radius no-op. Full
+file (164 tests) passes; server `enchantment.test.js` (17) passes.
+
+### Scope / design consistency
+MET. The diff touches only `game/client/cardRenderers.js` (this card's render fn
++ registration) and its test — exactly the declared scope. No server, shared, or
+other-card changes; no new debug scenario; no regression to other renderers
+(`renderGroundEnchantment` is retained for other cards). Consistent with
+`design.md` VFX-primitive approach.
+
+## Remaining gaps
+
+None blocking. Two minor thematic nits captured in `nits.md`.
+
+## v0.405 — 360-anim-ether-siphon  (2026-06-10 19:42:39)
+
+- Built on the 315 primitives (`spawnTelegraphRing`, `spawnParticleBurst`, `spawnLightningArc`, `spawnHitSpark`, `spawnImpactDecal`) plus the one new card-specific primitive. Thematically coherent. ✅
+
+### 2. Timing synced to server effect resolution
+- Server resolves `mana_leach` in the default radial-AoE branch (`cardEffects.js:1149+`), emitting `CARD_USED` with `origin`, `radius` (SUMMON_RADIUS), `hits[]` (each `{enemyId, hp, magicStonesGained}`), and applied `magicStonesGained`. `renderManaLeach` consumes exactly these fields, keying meshes by `hit.enemyId` (matches the server field name).
+- This is an **instant** radial drain — no projectile travel to sync. `mana_leach` has **no `windUpMs`** in `cardStats.json` (only the evolved `soul_drain` does, at 700ms), so the 307/315 wind-up charge telegraph is correctly absent. A test asserts `mana_leach.windUpMs ?? 0 <= 0`. The effect fires synchronously on `CARD_USED` receipt — i.e. at server resolution. ✅
+
+### 3. No perf regression
+- VFX use the existing `activeEffects` pool; the new ring/column branches mutate scale/opacity/emissive per frame with no per-frame allocation, and dispose geometry/material on expiry (`disposeEffectObject`). Missing enemy meshes are skipped (`if (!mesh) continue`). All `ctx.spawn*` calls are guarded by presence checks, so absent primitives degrade gracefully (covered by the "without throwing when new ctx primitives are absent" test). ✅
+
+### 4. Client test where feasible
+- `vfx-primitives.test.js`: primitive pushes a contracting ring + ascending column, honors color/emissive/duration overrides, and disposes on expiry.
+- `cardRenderers.test.js`: dispatch wiring, violet accents, synchronous fire (asserts no `scheduleAfter`), per-hit arcs/sparks at mesh positions with missing-mesh skip, absorption flourish, windUp-absent guard, and a regression guard that `mana_leach`'s helper signature stays distinct from `battle_familiar`/`soul_drain`.
+- Full run: **194/194 passing** locally. ✅
+
+## Consistency / regression
+- No debug scenario added/changed (none present in the diff). Server logic untouched, so foundation/replication is unchanged. Normal cast path is the only entry point.
+
+## Remaining gaps
+None blocking. The fallback smoke capture did not happen to roll `mana_leach` into the captured hand, so there is no screenshot of the live animation — but this is a capture-plan limitation, not a code defect, and the behavior is fully covered by passing unit tests over the real render/primitive code.
+
+## v0.404 — 357-anim-event-horizon  (2026-06-10 19:41:53)
+
+distinction, per-hit bursts at enemy meshes (including a missing-mesh skip),
+no-windUp assertion, radius-absent early return, graceful degradation when
+optional ctx primitives are absent, plus two primitive-level tests covering group
+structure, palette, style overrides, and cleanup. All green.
+
+## Scope & integration
+Within ticket scope: `cardRenderers.js` (this card's render fn), `renderer.js`
+(new VFX primitive + update branch), `config.js` (delay constant), and the
+standard plumbing to thread `spawnEventHorizonEffect` through `main.js` /
+`socketHandlerCtx.js` / `cardHandlers.js` — the same wiring pattern every other
+spawn effect uses. Renderer is already registered (`event_horizon:
+renderEventHorizon`). No server changes, no debug-scenario changes, no
+design.md/requirements.md regression. `IcosahedronGeometry` has a `typeof`-free
+truthiness guard with a `SphereGeometry` fallback, and `___test_scene` is honored
+so tests exercise the real primitive.
+
+## Remaining gaps
+None blocking. One minor cosmetic timing inconsistency noted as a nit (per-hit
+sparks fire at cast while the central crush ring fires at +375 ms).
 
 ## v0.406 — 387-boss-level-citadel-sovereign-capstone-gated  (2026-06-10 19:50:08)
 
+## Debug scenarios (gating audit)
+Three scenarios added: `citadel-boss`, `citadel-unlocked`, `citadel-one-prereq`.
+- Gated: all three are registered in `DEBUG_SCENARIOS` and reachable only via
+  the debug path; `citadel-boss` is also in
+  `DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN`. The `?debugScenario=` URL is the only
+  entry point. Normal gameplay does not touch them.
+- Normal path still reachable: each scenario reaches its end-state by calling
+  the *real* primitives — `completeQuestTier(...)` for the actual prereqs,
+  `applyLayoutForQuest`, and `deployQuestDebugRun`/`finishStageBossDebugScenario`
+  — i.e. the same path a real player hits after clearing all three Tier-II
   lines and deploying. The `citadel_capstone_e2e.test.js` lifecycle test proves
   the equivalent state is reachable through normal unlock + run flow.
 - No invariants bypassed: the boss stays dormant/invulnerable until adds are

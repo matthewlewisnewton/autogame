@@ -1,0 +1,10 @@
+Created **2 sub-tickets** (mirroring the 350 Sanctum Pulse split). Event Horizon is an instant two-phase spell (pull → crush, no `windUpMs`, no projectile), so the work splits into a singularity VFX primitive and renderer/timing integration.
+
+**01** adds `spawnEventHorizonEffect` — a contracting pull halo, dark void core, and violet accretion ring — distinct from Gravity Well’s expanding telegraph.
+
+**02** wires `renderEventHorizon` to that primitive, stages the center crush via `scheduleAfter` to match the server’s pull-then-crush resolution, and extends client tests.
+
+Sub-ticket folder paths created:
+
+- `/home/matt/workspace/.autogame-worktrees/357-anim-event-horizon/tickets/357-anim-event-horizon/subtickets/01-event-horizon-singularity-vfx/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/357-anim-event-horizon/tickets/357-anim-event-horizon/subtickets/02-event-horizon-renderer-timing/ticket.md`

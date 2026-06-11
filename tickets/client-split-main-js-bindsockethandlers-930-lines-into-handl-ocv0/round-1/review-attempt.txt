@@ -1,0 +1,17 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+This is a clean, well-executed refactor of the 930-line `bindSocketHandlers`.
+
+**Runtime health (gate passed):** `metrics.json` reports `ok: true`, `pageerrors: []`, no harness failure. `console.log` has only two benign lobby-race `409` lines — no page errors or fatals. Live capture probes show the game reaching `playing` with two players and the STATE_UPDATE-driven systems all firing (HP 60→40, cooldown HUD 378ms→"0.0", dash detection, prediction reconciliation).
+
+**Acceptance criterion fully met:**
+- `bindSocketHandlers` is now a thin dispatcher to eight per-domain registrars (`bindConnection/Init/LobbyBrowser/State/Card/Lobby/Run/DebugHandlers`), each sharing a single `socketHandlerCtx` built via `createSocketHandlerCtx` — following the existing `cardRenderCtx` pattern, with mutable state exposed through getters/setters so handlers read live values.
+- The ~210-line STATE_UPDATE handler is extracted verbatim into `stateHandlers.js` with logic and ordering intact.
+- **Zero** `s.on(` registrations remain in main.js (no dead/duplicate handlers).
+- No behavior change: **all 3717 tests across 260 files pass**.
+
+No new `?debugScenario=` URL shortcut was added (debugHandlers only relocates existing result listeners), so the debug-shortcut criteria don't apply. No design regression — pure client-side structural change.
+
+**No blocking gaps**, so no `gaps.md`. I filed two non-blocking nits (the parallel getter/setter lists between main.js and socketHandlerCtx.js, and the ~180-entry flat dependency bag) to `nits.md`.

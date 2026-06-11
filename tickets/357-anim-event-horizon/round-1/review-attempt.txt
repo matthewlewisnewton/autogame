@@ -1,0 +1,15 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime gate — passes.** `metrics.json` reports `ok: true`, no `failure_kind`, no `harness_failure`; `pageerrors` is empty; `console.log` is clean (the two `409 Conflict` lines are the pre-existing booth/ready-up artifact, present identically for both clients and carrying no game-code trace). Client suites are green: 195 tests across `cardRenderers.test.js` + `vfx-primitives.test.js`.
+
+**Acceptance criteria — fully met:**
+- **Theme/visual:** new `spawnEventHorizonEffect` builds a genuine singularity — black void core, violet accretion ring at `centerRadius`, contracting outer pull halo at `pullRadius`, and 12 particles spiraling inward. A dedicated test asserts it's visually distinct from Gravity Well's plain telegraph.
+- **Timing sync:** immediate pull field → crush impact deferred 375 ms (`EVENT_HORIZON_CRUSH_DELAY_MS`) → per-hit sparks at each crushed enemy mesh, keyed on `hit.enemyId` which matches the server's `collectRadialHits` payload shape exactly. No `windUpMs`, so the 307 charge telegraph correctly doesn't apply (asserted).
+- **No perf regression:** ~15 meshes per cast, fixed 1000 ms lifetime, disposed on expiry (dispose-spy test).
+- **Tests:** thorough new coverage, all passing.
+
+**Scope** stayed within `cardRenderers.js` + `renderer.js` vfx + `config.js` + standard wiring + tests. No server, debug-scenario, or design-doc impact.
+
+One non-blocking nit recorded (per-hit sparks fire at cast while the central crush ring fires at +375 ms — could be unified into one beat). Wrote `review.md` and `nits.md`; no `gaps.md` since the verdict is PASS.
