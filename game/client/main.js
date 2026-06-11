@@ -202,12 +202,16 @@ import { renderLevelMap } from './levelMap.js';
 import eventsCatalog from '../shared/events.json' with { type: 'json' };
 import { sampleFloorSurface } from '../shared/floorSampling.esm.js';
 import { createSocketHandlerCtx } from './socketHandlers/socketHandlerCtx.js';
-import { bindConnectionHandlers } from './socketHandlers/connectionHandlers.js';
-import { bindInitHandlers } from './socketHandlers/initHandlers.js';
-import { bindLobbyBrowserHandlers } from './socketHandlers/lobbyBrowserHandlers.js';
-import { bindStateHandlers } from './socketHandlers/stateHandlers.js';
-import { bindCardHandlers } from './socketHandlers/cardHandlers.js';
-import { bindLobbyHandlers } from './socketHandlers/lobbyHandlers.js';
+import {
+	bindConnectionHandlers,
+	bindInitHandlers,
+	bindLobbyBrowserHandlers,
+	bindStateHandlers,
+	bindCardHandlers,
+	bindLobbyHandlers,
+	bindRunHandlers,
+	bindDebugHandlers,
+} from './socketHandlers/index.js';
 
 const { serverToClient: SERVER_TO_CLIENT, clientToServer: CLIENT_TO_SERVER } = eventsCatalog;
 
@@ -1229,8 +1233,16 @@ const socketHandlerCtx = createSocketHandlerCtx({
 		set currentLayout(v) { currentLayout = v; },
 		get hubLayout() { return hubLayout; },
 		set hubLayout(v) { hubLayout = v; },
+		get renderedSceneProfile() { return renderedSceneProfile; },
+		set renderedSceneProfile(v) { renderedSceneProfile = v; },
+		get debugScenarioResult() { return debugScenarioResult; },
+		set debugScenarioResult(v) { debugScenarioResult = v; },
 		get debugGodmodeResult() { return debugGodmodeResult; },
 		set debugGodmodeResult(v) { debugGodmodeResult = v; },
+		get claimedCardRewardId() { return claimedCardRewardId; },
+		set claimedCardRewardId(v) { claimedCardRewardId = v; },
+		get currentCardChoices() { return currentCardChoices; },
+		set currentCardChoices(v) { currentCardChoices = v; },
 		get _prevDashX() { return _prevDashX; },
 		set _prevDashX(v) { _prevDashX = v; },
 		get _prevDashZ() { return _prevDashZ; },
@@ -1273,6 +1285,24 @@ const socketHandlerCtx = createSocketHandlerCtx({
 	flushPendingQuestDialogue,
 	showExtractedLobbyOverlay,
 	returnToGuildLobby,
+	requestGiveUp,
+	showRunSummary,
+	showLevelSettingsError,
+	renderSuspendedRunBanner,
+	renderCardChoices,
+	removeRemotePlayerVisuals,
+	resolveRunSpawnPosition,
+	initHand,
+	isSceneInitialized,
+	rendererInitScene,
+	rebuildDungeonLayout,
+	setPlayerRotation,
+	setWasDead,
+	rendererDisposeMeshMap,
+	closeCharacterBooth,
+	alignAttackFacing,
+	clearAllLockOnState,
+	slotCooldowns,
 	syncVanguardHud,
 	showCardHand,
 	setDeployButtonVisible,
@@ -1303,11 +1333,13 @@ const socketHandlerCtx = createSocketHandlerCtx({
 	startHeartbeat,
 	stopHeartbeat,
 	updateStatus,
+	statusEl,
 	showLobbyBrowserError,
 	disposeAllLootMeshes: rendererDisposeAllLootMeshes,
 	TOKEN_KEY,
 	setAuthToken,
 	uiEl,
+	giveUpBtnEl,
 	cardHandEl,
 	hideCardHand,
 	hideVariantCodex,
@@ -1410,204 +1442,8 @@ function bindSocketHandlers(s) {
 	bindStateHandlers(s, socketHandlerCtx);
 	bindCardHandlers(s, socketHandlerCtx);
 	bindLobbyHandlers(s, socketHandlerCtx);
-
-	s.on(SERVER_TO_CLIENT.HEARTBEAT_ACK, (data) => {
-		if (connectionState === 'connected') {
-			latency = data.latency;
-			statusEl.innerText = `Latency: ${latency}ms`;
-		}
-	});
-
-	s.on(SERVER_TO_CLIENT.DEBUG_SCENARIO_RESULT, (data) => {
-		debugScenarioResult = data || null;
-		if (data && data.ok) {
-			console.log(`[debugScenario] applied ${data.scenario}`);
-			const cardProbeScenarios = new Set([
-				'ice-ball-ready',
-				'fireball-hand-ready',
-				'fireball-ready',
-				'status-mutual-exclusion-ready',
-				'purifying-pulse-ready',
-				'magma-windup-ready',
-			]);
-			// Card exercises cast on the next harness tick; sync facing/cooldowns now
-			// so keyboard useCard is not blocked or mis-aimed before deferred snap.
-			if (cardProbeScenarios.has(data.scenario)
-				&& gameState?.gamePhase === 'playing'
-				&& myId
-				&& gameState.players[myId]) {
-				const me = gameState.players[myId];
-				for (let i = 0; i < slotCooldowns.length; i += 1) {
-					slotCooldowns[i] = false;
-				}
-				if (Array.isArray(me.hand)) {
-					applyInRunDeckPayload({ hand: me.hand });
-					renderHand();
-				}
-				if (Number.isFinite(me.rotation)) {
-					alignAttackFacing(me.rotation);
-				}
-			}
-			// Repositioning scenarios emit stateUpdate before this result; defer one
-			// tick so the client sim snaps after that payload is applied.
-			setTimeout(() => {
-				if (gameState?.gamePhase === 'playing' && myId && gameState.players[myId]) {
-					const me = gameState.players[myId];
-					setPlayerPosition(me.x, me.z);
-					clearAllLockOnState();
-					if (cardProbeScenarios.has(data.scenario) && Number.isFinite(me.rotation)) {
-						alignAttackFacing(me.rotation);
-					}
-				}
-			}, 0);
-			// Debug-only: the `hats-unlocked` scenario persists hat unlocks on the
-			// account and reports the new owned set so the (already-loaded) client
-			// cache reflects them without a full reload. No normal scenario sends
-			// this field, so normal gameplay is unaffected.
-			if (Array.isArray(data.unlockedHats)) {
-				setUnlockedHats(data.unlockedHats);
-				// Mirror the `hatUnlocked` handler: when the character booth is open
-				// (e.g. via the `?booth=hatswap` debug hook), rebuild its hat list so
-				// the newly-unlocked hats appear as selectable (owned) entries.
-				if (isCharacterBoothOpen()) {
-					rebuildBoothHatList();
-				}
-			}
-			if (Number.isFinite(data.currency)) {
-				myCurrency = data.currency;
-				updateCurrencyHud(myCurrency);
-				if (myId && gameState?.players?.[myId]) {
-					gameState.players[myId].currency = data.currency;
-				}
-			}
-		} else if (data && data.reason) {
-			console.warn(`[debugScenario] ${data.reason}`);
-		}
-	});
-
-	s.on(SERVER_TO_CLIENT.DEBUG_GODMODE_RESULT, (data) => {
-		debugGodmodeResult = data || null;
-		if (data && data.ok) {
-			// Mirror server toggle locally so harness probes see debugGodmode without
-			// waiting for a full stateUpdate (snapshots omit this debug-only flag).
-			if (myId && gameState?.players?.[myId]) {
-				gameState.players[myId].debugGodmode = !!data.enabled;
-			}
-			console.log(`[debugGodmode] ${data.enabled ? 'enabled' : 'disabled'}`);
-		} else if (data && data.reason) {
-			console.warn(`[debugGodmode] ${data.reason}`);
-		}
-	});
-
-	s.on(SERVER_TO_CLIENT.PLAYER_DISCONNECTED, (id) => {
-		removeRemotePlayerVisuals(id);
-	});
-
-	s.on(SERVER_TO_CLIENT.START_GAME, () => {
-		if (isCharacterBoothOpen()) closeCharacterBooth();
-		claimedCardRewardId = null;
-		currentCardChoices = [];
-		clearQuestCommsLog();
-		setQuestCommsUiVisible(true);
-		if (lobbyEl) lobbyEl.classList.add('hidden');
-		setLobbyHudVisible(false);
-		uiEl.style.display = 'block';
-		showCardHand();
-		setDeckStackVisible(true);
-		updateObjectiveHud();
-		if (!isSceneInitialized()) {
-			initHand();
-			rendererInitScene(currentLayout, resolveRunSpawnPosition());
-			renderedSceneProfile = 'quest';
-			if (gameState) gameState.layout = currentLayout;
-			setGamePhase('playing');
-			updateLevelSettingsBtnVisibility();
-			return;
-		}
-		initHand();
-		// Deploying from the lobby: switch the rendered geometry from the hub to
-		// the quest run before placing the player at the run spawn, so players
-		// never deploy into the hub geometry.
-		if (currentLayout && renderedSceneProfile !== 'quest') {
-			rebuildDungeonLayout(currentLayout);
-		}
-		renderedSceneProfile = 'quest';
-		if (gameState) gameState.layout = currentLayout;
-		const spawnPos = resolveRunSpawnPosition();
-		setPlayerPosition(spawnPos.x, spawnPos.z);
-		setPlayerRotation(0);
-		setWasDead(false);
-		clearSuspendedRunUi();
-		setGamePhase('playing');
-		updateLevelSettingsBtnVisibility();
-
-		// Only clear entity meshes when we lack fresh server state; otherwise the animate
-		// loop will reconcile from gameState on the next stateUpdate.
-		const hasWorldEntities = gameState && (
-			(Array.isArray(gameState.enemies) && gameState.enemies.length > 0) ||
-			(Array.isArray(gameState.minions) && gameState.minions.length > 0) ||
-			(Array.isArray(gameState.loot) && gameState.loot.length > 0)
-		);
-		if (!hasWorldEntities) {
-			const sc = getScene();
-			const maps = getMeshMaps();
-			rendererDisposeMeshMap(maps.enemiesMeshes, sc);
-			rendererDisposeMeshMap(maps.enemyHealthBars, sc);
-			rendererDisposeMeshMap(maps.enemyShieldBars, sc);
-			rendererDisposeMeshMap(maps.telegraphMeshes, sc);
-			rendererDisposeMeshMap(maps.minionTelegraphMeshes, sc);
-			rendererDisposeMeshMap(maps.minionsMeshes, sc);
-			rendererDisposeMeshMap(maps.spikeTrapMeshes, sc);
-			rendererDisposeMeshMap(maps.iceBallMeshes, sc);
-			rendererDisposeAllLootMeshes();
-		}
-	});
-
-	s.on(SERVER_TO_CLIENT.RUN_COMPLETE, showRunSummary);
-	s.on(SERVER_TO_CLIENT.RUN_FAILED, showRunSummary);
-
-	s.on(SERVER_TO_CLIENT.RUN_ERROR, (data) => {
-		const reason = (data && data.reason) ? data.reason : 'Run action failed';
-		console.warn(`[run] ${reason}`);
-		showLevelSettingsError(reason);
-		if (giveUpBtnEl) giveUpBtnEl.disabled = false;
-	});
-
-	s.on(SERVER_TO_CLIENT.RUN_SUSPENDED, (summary) => {
-		suspendedRunSummary = cloneSuspendedRunSummary(summary);
-		if (gameState?.gamePhase === 'lobby') {
-			renderSuspendedRunBanner(suspendedRunSummary);
-		}
-	});
-
-	s.on(SERVER_TO_CLIENT.RUN_ABANDONED, () => {
-		suspendedRunSummary = null;
-		clearSuspendedRunUi();
-		if (gameState) {
-			gameState.gamePhase = 'lobby';
-			delete gameState.run;
-		}
-		if (giveUpBtnEl) giveUpBtnEl.disabled = false;
-		returnToGuildLobby(gameState, { refreshCollection: true, rebuildHub: true });
-	});
-
-	if (giveUpBtnEl) {
-		giveUpBtnEl.onclick = () => requestGiveUp(s);
-	}
-
-	s.on(SERVER_TO_CLIENT.PLAYER_EXTRACTED, (data) => {
-		if (data && data.playerId === myId) {
-			showExtractedLobbyOverlay();
-		}
-	});
-
-	s.on(SERVER_TO_CLIENT.CARD_REWARD_CLAIMED, (data) => {
-		if (!data || !data.cardId) return;
-		claimedCardRewardId = data.cardId;
-		if (data.ownedCards) myOwnedCards = data.ownedCards;
-		if (data.inventory) myInventory = data.inventory;
-		renderCardChoices(currentCardChoices);
-	});
+	bindRunHandlers(s, socketHandlerCtx);
+	bindDebugHandlers(s, socketHandlerCtx);
 }
 
 let myId = null;
