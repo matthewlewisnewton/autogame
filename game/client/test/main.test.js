@@ -3303,6 +3303,39 @@ describe('auth overlay functions', () => {
 		expect(document.getElementById('register-error').textContent).toBe('');
 		expect(document.getElementById('login-error').textContent).toBe('');
 	});
+
+	it('prefills login username and focuses password after successful registration', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+			ok: true,
+			status: 201,
+			json: async () => ({ accountId: 'test-id' }),
+		}));
+
+		const regForm = document.getElementById('register-form');
+		const logForm = document.getElementById('login-form');
+		regForm.classList.remove('hidden');
+		logForm.classList.add('hidden');
+
+		await import('../main.js');
+
+		document.getElementById('register-username').value = 'newplayer';
+		document.getElementById('register-password').value = 'secret123';
+		document.getElementById('login-username').value = 'stale';
+		document.getElementById('login-password').value = 'oldpass';
+
+		document.getElementById('register-btn').click();
+		await vi.waitFor(() => {
+			expect(document.getElementById('login-username').value).toBe('newplayer');
+		});
+
+		expect(regForm.classList.contains('hidden')).toBe(true);
+		expect(logForm.classList.contains('hidden')).toBe(false);
+		expect(document.getElementById('login-password').value).toBe('');
+		expect(document.getElementById('login-error').textContent).toBe('Account created — please login');
+		expect(document.activeElement).toBe(document.getElementById('login-password'));
+
+		vi.unstubAllGlobals();
+	});
 });
 
 // ── bindSocketHandlers rebinding on recreate ──

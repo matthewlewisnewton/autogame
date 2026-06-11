@@ -3729,6 +3729,13 @@ if (registerBtnEl) {
 			const data = await res.json();
 			if (res.ok) {
 				showLoginForm();
+				const loginUsernameInput = document.getElementById('login-username');
+				const loginPasswordInput = document.getElementById('login-password');
+				if (loginUsernameInput) loginUsernameInput.value = username;
+				if (loginPasswordInput) {
+					loginPasswordInput.value = '';
+					loginPasswordInput.focus();
+				}
 				if (loginErrorEl) {
 					loginErrorEl.textContent = 'Account created — please login';
 					loginErrorEl.style.color = '#4ade80';
