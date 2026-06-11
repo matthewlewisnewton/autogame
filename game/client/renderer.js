@@ -4788,6 +4788,221 @@ export function spawnBatteryChargePulseEffect(origin, style = {}) {
 	);
 }
 
+// Bulkhead Mauler palette — slate stone chassis with amber forge glow.
+export const BULKHEAD_MAULER_COLOR = 0x78716c;
+export const BULKHEAD_MAULER_EMISSIVE = 0xf59e0b;
+const BULKHEAD_MAULER_COLUMN_HEIGHT = 1.4;
+const BULKHEAD_MAULER_COLUMN_OPACITY = 0.78;
+const BULKHEAD_MAULER_COLUMN_BASE_Y = 0.1;
+const BULKHEAD_MAULER_EMISSIVE_INTENSITY = 1.3;
+const BULKHEAD_MAULER_DEFAULT_RADIUS = 1.4;
+const BULKHEAD_MAULER_SHOCKWAVE_DURATION = 500;
+const BULKHEAD_MAULER_SHOCKWAVE_RANGE = 4;
+const BULKHEAD_MAULER_SHOCKWAVE_CONE_ANGLE = (Math.PI * 2) / 3;
+const BULKHEAD_MAULER_BURST_COUNT = 10;
+const BULKHEAD_MAULER_BURST_SPREAD = 1.6;
+const BULKHEAD_MAULER_SHOCKWAVE_FILL_OPACITY = 0.55;
+const BULKHEAD_MAULER_SHOCKWAVE_EDGE_OPACITY = 0.85;
+
+function createBulkheadMaulerShockwaveWedge(direction, range, coneAngle, style) {
+	const dirAngle = Math.atan2(direction.z, direction.x);
+	const group = new THREE.Group();
+	const color = style.color ?? BULKHEAD_MAULER_COLOR;
+	const emissive = style.emissive ?? BULKHEAD_MAULER_EMISSIVE;
+	const thetaStart = dirAngle - coneAngle / 2;
+
+	const fillMat = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: BULKHEAD_MAULER_EMISSIVE_INTENSITY * 0.85,
+		roughness: 0.92,
+		metalness: 0.12,
+		transparent: true,
+		opacity: BULKHEAD_MAULER_SHOCKWAVE_FILL_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const fill = new THREE.Mesh(
+		new THREE.CircleGeometry(0.5, 32, thetaStart, coneAngle),
+		fillMat,
+	);
+	fill.rotation.x = -Math.PI / 2;
+	fill.position.y = 0.004;
+	fill.userData.baseOpacity = BULKHEAD_MAULER_SHOCKWAVE_FILL_OPACITY;
+	group.add(fill);
+
+	const boundary = new THREE.LineSegments(
+		new THREE.EdgesGeometry(fill.geometry),
+		new THREE.LineBasicMaterial({
+			color: emissive,
+			transparent: true,
+			opacity: BULKHEAD_MAULER_SHOCKWAVE_EDGE_OPACITY,
+			depthWrite: false,
+		}),
+	);
+	boundary.rotation.copy(fill.rotation);
+	boundary.position.y = 0.008;
+	boundary.userData.baseOpacity = BULKHEAD_MAULER_SHOCKWAVE_EDGE_OPACITY;
+	group.add(boundary);
+
+	const rimMat = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: BULKHEAD_MAULER_EMISSIVE_INTENSITY,
+		roughness: 0.88,
+		metalness: 0.18,
+		transparent: true,
+		opacity: 0.35,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const rim = new THREE.Mesh(
+		new THREE.RingGeometry(0.42, 0.5, 32, 1, thetaStart, coneAngle),
+		rimMat,
+	);
+	rim.rotation.x = -Math.PI / 2;
+	rim.position.y = 0.006;
+	rim.userData.baseOpacity = 0.35;
+	group.add(rim);
+
+	group.scale.setScalar(0.001);
+	return group;
+}
+
+/**
+ * Heavy stone construct deploy: expanding slate/amber assembly ring plus a short
+ * rising tapered bulkhead slab. Pure additive VFX; no network traffic or state
+ * beyond activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration, radius }
+ */
+export function spawnBulkheadMaulerDeployEffect(origin, style = {}) {
+	const color = style.color ?? BULKHEAD_MAULER_COLOR;
+	const emissive = style.emissive ?? BULKHEAD_MAULER_EMISSIVE;
+	const duration = style.duration ?? MINION_SUMMON_IN_MS;
+	const radius = style.radius ?? BULKHEAD_MAULER_DEFAULT_RADIUS;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const ringGeometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.15,
+		roughness: 0.9,
+		metalness: 0.1,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	ringMesh.position.set(origin.x, 0.1, origin.z);
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(0.001);
+	targetScene.add(ringMesh);
+
+	activeEffects.push({
+		mesh: ringMesh,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration,
+		isBulkheadMaulerRing: true,
+		_baseEmissiveIntensity: 1.15,
+		_scene: targetScene,
+	});
+
+	const columnGeometry = new THREE.CylinderGeometry(
+		0.32,
+		0.48,
+		BULKHEAD_MAULER_COLUMN_HEIGHT,
+		12,
+		1,
+		true,
+	);
+	const columnMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: BULKHEAD_MAULER_EMISSIVE_INTENSITY,
+		roughness: 0.94,
+		metalness: 0.08,
+		transparent: true,
+		opacity: BULKHEAD_MAULER_COLUMN_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const columnMesh = new THREE.Mesh(columnGeometry, columnMaterial);
+	columnMesh.scale.y = 0.001;
+	columnMesh.position.set(origin.x, BULKHEAD_MAULER_COLUMN_BASE_Y, origin.z);
+	targetScene.add(columnMesh);
+
+	activeEffects.push({
+		mesh: columnMesh,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration,
+		isBulkheadMaulerColumn: true,
+		_baseEmissiveIntensity: BULKHEAD_MAULER_EMISSIVE_INTENSITY,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Bulkhead Mauler shockwave: a brief ground-hugging stone wedge expanding along
+ * `direction` plus a foot-level debris burst. Instant cone footprint — no
+ * projectile travel implied.
+ * @param {object} origin - { x, z }
+ * @param {object} direction - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration, range, coneAngle }
+ */
+export function spawnBulkheadMaulerShockwaveEffect(origin, direction, style = {}) {
+	const dir = direction || { x: 1, z: 0 };
+	const dirLen = Math.hypot(dir.x, dir.z) || 1;
+	const nx = dir.x / dirLen;
+	const nz = dir.z / dirLen;
+	const range = style.range ?? BULKHEAD_MAULER_SHOCKWAVE_RANGE;
+	const coneAngle = style.coneAngle ?? BULKHEAD_MAULER_SHOCKWAVE_CONE_ANGLE;
+	const color = style.color ?? BULKHEAD_MAULER_COLOR;
+	const emissive = style.emissive ?? BULKHEAD_MAULER_EMISSIVE;
+	const duration = style.duration ?? BULKHEAD_MAULER_SHOCKWAVE_DURATION;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const wedge = createBulkheadMaulerShockwaveWedge(
+		{ x: nx, z: nz },
+		range,
+		coneAngle,
+		{ color, emissive },
+	);
+	wedge.position.set(origin.x, GROUND_OVERLAY_Y, origin.z);
+	targetScene.add(wedge);
+
+	activeEffects.push({
+		mesh: wedge,
+		origin: { x: origin.x, z: origin.z },
+		direction: { x: nx, z: nz },
+		range,
+		coneAngle,
+		createdAt: performance.now(),
+		duration,
+		isBulkheadMaulerShockwave: true,
+		_baseEmissiveIntensity: BULKHEAD_MAULER_EMISSIVE_INTENSITY,
+		_scene: targetScene,
+	});
+
+	spawnParticleBurst(
+		{ x: origin.x, y: 0.35, z: origin.z },
+		{
+			color,
+			emissive,
+			count: style.burstCount ?? BULKHEAD_MAULER_BURST_COUNT,
+			spread: style.burstSpread ?? BULKHEAD_MAULER_BURST_SPREAD,
+			duration,
+		},
+	);
+}
+
 // Sanctum Pulse palette: a coherent holy-gold so the divine "pulse" reads as
 // radiant sacred light, not the accidental green the ring emissive used to be.
 const DIVINE_GRACE_RING_COLOR = 0xfde68a; // warm gold ground ring
@@ -6849,6 +7064,79 @@ export function updateAttackEffects() {
 			const baseIntensity = fx._baseEmissiveIntensity ?? BATTERY_AUTOMATON_EMISSIVE_INTENSITY;
 			const flicker = 1.0 + 0.35 * Math.sin(elapsed * 0.03);
 			fx.mesh.material.emissiveIntensity = baseIntensity * flicker * fade;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Bulkhead Mauler expanding slate/amber assembly ring ──
+		if (fx.isBulkheadMaulerRing) {
+			const expandMs = Math.min(SUMMON_EXPAND_MS, fx.duration * 0.55);
+			const expandT = Math.min(elapsed / expandMs, 1.0);
+			const scale = fx.radius * expandT * 2;
+			fx.mesh.scale.setScalar(Math.max(0.001, scale));
+
+			if (elapsed > expandMs) {
+				const fadeRatio = 1.0 - (elapsed - expandMs) / (fx.duration - expandMs);
+				fx.mesh.material.opacity = Math.max(0.01, fadeRatio);
+			}
+			const baseIntensity = fx._baseEmissiveIntensity ?? 1.15;
+			const flicker = 1.0 + 0.22 * Math.sin(elapsed * 0.024);
+			fx.mesh.material.emissiveIntensity = baseIntensity * flicker;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Bulkhead Mauler rising tapered bulkhead slab ──
+		if (fx.isBulkheadMaulerColumn) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.35, 1.0);
+			const s = Math.max(0.001, riseT);
+			fx.mesh.scale.y = s;
+			fx.mesh.position.y = BULKHEAD_MAULER_COLUMN_BASE_Y + (BULKHEAD_MAULER_COLUMN_HEIGHT * s) / 2;
+			const fade = Math.max(0.01, BULKHEAD_MAULER_COLUMN_OPACITY * (1.0 - t));
+			fx.mesh.material.opacity = fade;
+			const baseIntensity = fx._baseEmissiveIntensity ?? BULKHEAD_MAULER_EMISSIVE_INTENSITY;
+			const flicker = 1.0 + 0.28 * Math.sin(elapsed * 0.026);
+			fx.mesh.material.emissiveIntensity = baseIntensity * flicker * fade;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Bulkhead Mauler ground-hugging shockwave wedge ──
+		if (fx.isBulkheadMaulerShockwave) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const expandT = Math.min(t / 0.32, 1.0);
+			const scale = Math.max(0.001, (fx.range ?? BULKHEAD_MAULER_SHOCKWAVE_RANGE) * 2 * expandT);
+			fx.mesh.scale.setScalar(scale);
+
+			const fadeStart = 0.45;
+			const sustainFade = t < fadeStart
+				? 1.0
+				: Math.max(0.01, 1.0 - (t - fadeStart) / (1.0 - fadeStart));
+			const baseIntensity = fx._baseEmissiveIntensity ?? BULKHEAD_MAULER_EMISSIVE_INTENSITY;
+			const flicker = 1.0 + 0.2 * Math.sin(elapsed * 0.032);
+			for (let c = 0; c < fx.mesh.children.length; c += 1) {
+				const child = fx.mesh.children[c];
+				const baseOpacity = child.userData.baseOpacity ?? 0.5;
+				if (child.material) {
+					child.material.opacity = Math.max(0.01, baseOpacity * sustainFade);
+					if (child.material.emissiveIntensity !== undefined) {
+						child.material.emissiveIntensity = baseIntensity * flicker * sustainFade;
+					}
+				}
+			}
 
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, fx._scene || scene);
