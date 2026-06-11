@@ -1,0 +1,15 @@
+Created 2 sub-tickets, in dependency order:
+
+- `/home/matt/workspace/.autogame-worktrees/322-anim-signal-familiar/tickets/322-anim-signal-familiar/subtickets/01-signal-familiar-cast-theme/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/322-anim-signal-familiar/tickets/322-anim-signal-familiar/subtickets/02-signal-familiar-hit-sync-test/ticket.md`
+
+**Key findings that shaped the split:**
+- `battle_familiar` is a `spell` resolving through the **generic radial-AoE branch** in `cardEffects.js:1143` — instant cast, **no `windUpMs`** (so no 307 wind-up telegraph applies) and **no `minionId`** in the payload (no persistent minion). The "Familiar" theme must therefore be a transient cast wisp, not a `spawnMinionSummonInEffect` on a real minion entity.
+- Payload available to the renderer: `origin`, `radius` (`SUMMON_RADIUS`), `hits`, `magicStonesGained`, `hpHealed`.
+- The current renderer (`cardRenderers.js:1707`) is just a single telegraph ring + spark burst — structurally fine but thematically generic.
+
+**Why 2 sub-tickets, both `code`:**
+- **01** — thematic cast rework (concentric "signal" broadcast ping rings + familiar wisp at origin). All criteria are about which primitives fire / structure / instant timing → `code`.
+- **02** — per-hit signal delivery synced to `data.hits` live meshes (guarding despawned meshes) + updating the existing `cardRenderers.test.js` cases, preserving distinctness from `mana_leach`/`soul_drain`. Involves handlers, server-state sync, error paths, and a test → `code`.
+
+Both modify the same `renderBattleFamiliar` function sequentially (02 builds on 01), avoiding conflict with sibling per-card animation beads. No existing sub-tickets to retire.

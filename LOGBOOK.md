@@ -8020,6 +8020,97 @@ None.
 None. All acceptance criteria are met; the captured run proves the game loads and displays the new hint correctly.
 
 
+## v0.437 — 321-anim-solar-edge  (2026-06-11 01:59:15)
+
+### "Timing synced to server-side effect resolution"
+PASS. The swing fires synchronously on `CARD_USED` with no extra `scheduleAfter` delay; the server-side `windUpMs: 650` telegraph (cardStats.json) owns the wind-up, matching the 307/315 charge-telegraph foundation. Test "matches server timing contract (windUpMs 650, immediate swing on CARD_USED)" asserts both. Cone geometry and reach use the payload's `attackConeAngle`/`attackRange` (cardEffects.js emits both on `CARD_USED`, lines 551–552), so the VFX cone matches the server's actual hit volume rather than a hardcoded arc — a genuine improvement over the prior shared-style path. Hit sparks key off `data.hits[].enemyId`, the same field the server populates, so impact VFX align with real resolved hits.
+
+### "Use the 315 primitives; touch only this card's renderer + registration"
+PASS. New primitive `spawnSolarEdgeImpactFlourish` lives in renderer.js alongside the other 315 primitives, is exported, wired through `main.js` → `socketHandlerCtx` → `cardHandlers` ctx exactly like its siblings, and updated in `updateAttackEffects()` with proper `disposeEffectObject` cleanup. Diff is confined to cardRenderers.js (this card's fn + registration), renderer.js (the new primitive), the two ctx wiring lines, and tests — no other card renderer touched, no server changes.
+
+### "No perf regression"
+PASS (by inspection). Additive VFX only; `depthWrite:false`, bounded ember count (12), and the effect is spliced + disposed once `elapsed >= duration`. No per-frame allocation leaks; cleanup verified by `vfx-primitives.test.js` dispose assertions.
+
+### "Client test where feasible"
+PASS. `cardRenderers.test.js` + `vfx-primitives.test.js` run green: **312 tests passed**. Coverage on changed files captured in `coverage.log`. Graceful-degradation tests confirm no throw when `spawnSolarEdgeImpactFlourish` is absent.
+
+## Consistency / regressions
+- No `debugScenario` added or touched — normal-gameplay path only.
+- `flame_blade` card definition (name "Solar Edge", weapon, windUpMs 650) unchanged; design/requirements foundation intact.
+- Removed obsolete `flame_blade` assertions in tests were replaced by a dedicated, stronger Solar Edge suite — no coverage lost.
+
+## Remaining gaps
+None blocking. Minor nits recorded in `nits.md`.
+
+
+## v0.438 — 320-anim-rust-forged-saber  (2026-06-11 02:02:50)
+
+`CARD_DEFS.iron_sword.windUpMs` is undefined, that range/cone pass through, that
+spark/decal placement scales with `attackRange` (≈3× at 9 vs 3), and that a
+single swing schedules no delay.
+
+### "No perf regression"
+PASS. Pure VFX composition on a single weapon's render path; no new per-frame
+work, no added allocations in hot loops. Swing count is server-bounded.
+
+### "Client test where feasible"
+PASS. `cardRenderers.test.js` adds renderer-identity assertions
+(`resolveRenderers('iron_sword')[0].name === 'renderRustForgedSaber'`), updated
+the existing styled-slash test to the new rust palette + spark contract, and adds
+a new "iron_sword reach + instant-hit timing" describe block (4 tests). Full
+suite runs green: **292 passed**.
+
+## Remaining gaps
+None blocking. One nit (see `nits.md`): `getAccentHex('iron_sword') ?? style.color`
+is effectively always `style.color` because `iron_sword` has no `CARD_ACCENT_STYLE`
+entry — harmless defensive code, but the accent lookup is dead for this card.
+
+
+## v0.439 — 322-anim-signal-familiar  (2026-06-11 02:07:59)
+
+### "Client test where feasible"
+PASS. Two expanded tests in cardRenderers.test.js cover: the wisp, immediate-vs-scheduled ring
+ordering, distinct increasing ring radii reaching the full AoE radius, the spark burst, and
+per-hit arcs/sparks with correct origin→enemy arg order and y-offset. A second test covers the
+guarded edge cases: missing meshes skipped, empty hits (cast still renders, zero per-hit),
+and missing helper functions (no throw, no per-hit). `npx vitest run client/test/cardRenderers.test.js`
+→ **280 passed**.
+
+## Integration / scope
+- All ctx helpers used by the renderer are really wired in `socketHandlers/cardHandlers.js`
+  (`spawnMinionSummonInEffect`, `spawnLightningArc`, `spawnHitSpark`, `spawnParticleBurst`,
+  `spawnTelegraphRing`, `enemyMeshes`, `scheduleAfter`). No missing-helper risk in production.
+- Diff is tightly scoped to `game/client/cardRenderers.js` + its test (per ticket SCOPE). No
+  server, shared, or other-card renderer changes — no conflict surface with sibling animation beads.
+- No debug scenarios added or changed by this ticket.
+- Consistent with design.md's per-card VFX direction; no regression to requirements foundation.
+
+## Remaining gaps
+None blocking. (See nits.md for optional polish.)
+
+
+## v0.440 — 323-anim-vault-wyrm  (2026-06-11 02:11:27)
+
+unbounded particle growth. No new allocations in hot loops beyond the existing
+pattern. No timers.
+
+### 4. Client test where feasible
+PASS. `cardRenderers.test.js` updated and extended: palette assertions, cone
+duration binding, per-hit ember bursts on tick across multiple enemies, and the
+no-client-timer guarantee. `deck-viewer.test.js` updated for the 🔥 icon. Full
+suite: 277/277 pass.
+
+## Consistency / regressions
+- `renderArchiveWyrmBreath` (ancient_wyrm) is untouched and still keys off
+  `fire_breath` — correct, that is a different card with different server payload.
+- No debug scenarios added or changed.
+- No design.md / requirements.md regressions; this is a cosmetic + timing polish
+  on existing primitives.
+
+## Remaining gaps
+None blocking. One minor doc-accuracy nit (renderer comment says the server emits
+"NO specialEffect" when it actually emits `"burning_breath"`) — filed in nits.md.
+
 
 ## v0.441 — Client: registration success message rendered into hidden error field; no auto-login after register  (2026-06-11 02:18:14)
 

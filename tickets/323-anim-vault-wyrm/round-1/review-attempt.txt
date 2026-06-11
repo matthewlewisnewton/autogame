@@ -1,0 +1,19 @@
+**VERDICT: PASS**
+
+## Summary
+
+The Vault Wyrm animation ticket is complete and robust.
+
+**Runtime health (gate):** Game runs clean — `metrics.json` has `ok: true`, empty `pageerrors`, scene initialized, both players connected. `console.log` shows only benign vite/init lines plus a 409 lobby-create race (not a game-code page error).
+
+**Acceptance criteria — all met:**
+1. **Theme matches name** — Breath now uses an unconditional fire/ember palette (`0xfb923c`/`0xf97316`) with dense bursts; card gets a 🔥 icon and amber accent. Screenshot confirms the card reads clearly as a fire breather ("BURNING BREATH"). The fix correctly resolves a latent bug where the old `=== 'fire_breath'` check never matched the server's `"burning_breath"` and silently fell back to a dim green/purple look.
+2. **Timing synced** — Cone lifetime bound to server `breathDurationMs` (2000ms); per-hit ember bursts fire on every server `start`/`tick` event matching `breathTickMs` (500ms); no client-side timer invents its own cadence; HUD shows the 600ms wind-up.
+3. **No perf regression** — bounded per-event bursts, no unbounded growth, no timers.
+4. **Client tests** — extended and passing (277/277).
+
+**Scope** stayed within `cardRenderers.js` + `game/client` + tests.
+
+One non-blocking nit filed (`nits.md`): a renderer comment inaccurately says the server emits "no specialEffect" when it actually emits `"burning_breath"`. The code is correct; only the comment misleads.
+
+No `gaps.md` written (PASS).
