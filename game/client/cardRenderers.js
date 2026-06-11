@@ -50,6 +50,10 @@ const NULL_CRAWLER_SUMMON_COLOR = 0x22d3ee;
 const NULL_CRAWLER_SUMMON_EMISSIVE = 0x67e8f9;
 const UNDEAD_COMMANDER_COLOR = 0xe4e4e7;
 const UNDEAD_COMMANDER_EMISSIVE = 0xa855f7;
+// Necroframe Knight shares its evolution's bone-white body + necrotic-purple
+// glow so the base taunt-wall reads as the same undead lineage.
+const NECROFRAME_KNIGHT_COLOR = 0xe4e4e7;
+const NECROFRAME_KNIGHT_EMISSIVE = 0xa855f7;
 
 // ── Accent helpers ──────────────────────────────────────────────────────
 
@@ -990,6 +994,52 @@ function renderUndeadCommander(data, ctx) {
 	}
 }
 
+/**
+ * Necroframe Knight: an undead bone-knight rising to guard. Reuses the
+ * `undead_commander` bone-white/necrotic-purple palette so the base taunt-wall
+ * reads as the same lineage. The summon-in flourish is driven through
+ * `spawnMinionSummonInEffect` (bound to MINION_SUMMON_IN_MS), wrapped by a
+ * necrotic telegraph ring and a rising bone-shard burst staggered partway
+ * through — but still well within — the materialize window. Fires only on the
+ * initial summon (guarded on `data.minionId`) and degrades to a no-op when the
+ * minion-summon helper is absent; every optional helper is guarded.
+ */
+function renderNecroframeKnightSummon(data, ctx) {
+	if (!data.minionId || !ctx.spawnMinionSummonInEffect) return;
+	const origin = originOf(data);
+	const knightStyle = {
+		color: NECROFRAME_KNIGHT_COLOR,
+		emissive: NECROFRAME_KNIGHT_EMISSIVE,
+		radius: 1.1,
+		burstCount: 14,
+		burstSpread: 1.6,
+	};
+	ctx.spawnMinionSummonInEffect(origin, knightStyle);
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, 1.6, {
+			color: NECROFRAME_KNIGHT_COLOR,
+			emissive: NECROFRAME_KNIGHT_EMISSIVE,
+		});
+	}
+	// Bone shards heave up from the ground partway through the rise — staggered
+	// but capped well under MINION_SUMMON_IN_MS so the burst lands before the
+	// minion mesh finishes materializing.
+	const emitBoneShards = () => {
+		if (!ctx.spawnParticleBurst) return;
+		ctx.spawnParticleBurst({ x: origin.x, y: 0.35, z: origin.z }, {
+			color: NECROFRAME_KNIGHT_COLOR,
+			emissive: NECROFRAME_KNIGHT_EMISSIVE,
+			count: 12,
+			spread: 1.4,
+		});
+	};
+	if (ctx.scheduleAfter) {
+		ctx.scheduleAfter(Math.round(MINION_SUMMON_IN_MS * 0.4), emitBoneShards);
+	} else {
+		emitBoneShards();
+	}
+}
+
 const CHAIN_LIGHTNING_ARC_STYLE = { color: 0x38bdf8, emissive: 0x0ea5e9 };
 const STORM_EAGLE_ARC_STYLE = { color: 0x67e8f9, emissive: 0x22d3ee };
 const ARCANE_FAMILIAR_COLOR = 0x818cf8;
@@ -1853,6 +1903,7 @@ const CARD_RENDERERS = {
 	chrono_trigger: renderChronoTrigger,
 
 	// Creatures
+	skeleton_knight: renderNecroframeKnightSummon,
 	undead_commander: renderUndeadCommander,
 	storm_eagle: [renderStormEagleSummon, renderStormEagleStrike],
 	thunderbird: [renderThunderbirdSummon, renderChainLightning],

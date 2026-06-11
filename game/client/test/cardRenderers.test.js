@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CARD_DEFS, getCardDef } from '../cards.js';
-import { ATTACK_EFFECT_DURATION, EVENT_HORIZON_CRUSH_DELAY_MS, PHOTON_BARRAGE_SWING_DELAY_MS, SUMMON_EFFECT_DURATION } from '../config.js';
+import { ATTACK_EFFECT_DURATION, EVENT_HORIZON_CRUSH_DELAY_MS, MINION_SUMMON_IN_MS, PHOTON_BARRAGE_SWING_DELAY_MS, SUMMON_EFFECT_DURATION } from '../config.js';
 import {
 	renderCardUsed,
 	resolveRenderers,
@@ -78,6 +78,10 @@ describe('resolveRenderers()', () => {
 		expect(resolveRenderers('purifying_pulse')).toHaveLength(1);
 		expect(resolveRenderers('spike_trap')).toHaveLength(1);
 		expect(resolveRenderers('undead_commander')).toHaveLength(1);
+		expect(resolveRenderers('skeleton_knight')).toHaveLength(1);
+		// Necroframe Knight must use its bespoke renderer, not the generic
+		// creature type-default (which battery_automaton falls through to).
+		expect(resolveRenderers('skeleton_knight')[0]).not.toBe(resolveRenderers('battery_automaton')[0]);
 		expect(resolveRenderers('thunderbird')).toHaveLength(2);
 		expect(resolveRenderers('storm_eagle')).toHaveLength(2);
 		const breathRenderers = resolveRenderers('dragons_breath');
@@ -2707,6 +2711,59 @@ describe('renderCardUsed() — creature dispatch', () => {
 		);
 		expect(groundBursts).toHaveLength(2);
 		expect(groundBursts[0][2]).toMatchObject({ color: 0xe4e4e7, emissive: 0xa855f7 });
+	});
+
+	it('skeleton_knight summon renders a bone-white/necrotic-purple flourish bound to the summon window', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'skeleton_knight',
+			minionId: 'knight-1',
+			origin: { x: 4, z: 5 },
+			hits: [],
+		}, ctx);
+		const flourishes = ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(flourishes).toHaveLength(1);
+		expect(flourishes[0][1]).toEqual({ x: 4, z: 5 });
+		expect(flourishes[0][2]).toMatchObject({ color: 0xe4e4e7, emissive: 0xa855f7 });
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 4, z: 5 });
+		expect(ring[3]).toMatchObject({ color: 0xe4e4e7, emissive: 0xa855f7 });
+		// Bone-shard burst is staggered, but capped well within the summon window.
+		const sched = ctx._calls.find((c) => c[0] === 'scheduleAfter');
+		expect(sched).toBeDefined();
+		expect(sched[1]).toBeLessThan(MINION_SUMMON_IN_MS);
+		ctx.runScheduled();
+		const shardBurst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst' && c[1].y === 0.35);
+		expect(shardBurst).toBeDefined();
+		expect(shardBurst[1]).toMatchObject({ x: 4, z: 5 });
+		expect(shardBurst[2]).toMatchObject({ color: 0xe4e4e7, emissive: 0xa855f7 });
+	});
+
+	it('skeleton_knight summon stays sound-only with no minionId and never throws', () => {
+		const ctx = makeCtx();
+		expect(() => renderCardUsed({
+			cardId: 'skeleton_knight',
+			origin: { x: 0, z: 0 },
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+	});
+
+	it('skeleton_knight summon degrades gracefully when optional ctx helpers are absent', () => {
+		const ctx = makeCtx({
+			spawnTelegraphRing: undefined,
+			spawnParticleBurst: undefined,
+			scheduleAfter: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'skeleton_knight',
+			minionId: 'knight-2',
+			origin: { x: 1, z: 1 },
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect')).toHaveLength(1);
 	});
 
 	it('storm_eagle summon renders a soft cyan minion flourish', () => {
