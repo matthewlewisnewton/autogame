@@ -61,6 +61,8 @@ const minionBaseScales = {};
 const previousMinionHp = {};
 /** battery_automaton id → lastChargePulseAt from previous sync (drives charge-pulse VFX). */
 const previousBatteryChargePulseAt = {};
+/** Reused each frame for stale-minion disposal (avoids per-frame Set allocation). */
+const _currentMinionIds = new Set();
 
 /** Test harness: pending minion scale-in start times keyed by minion id. */
 export function getMinionSpawnTimes() {
@@ -214,9 +216,10 @@ function updateNullCrawlerTelegraph(minion, telegraph) {
 export function syncMinionMeshes(gs) {
 	const scene = getScene();
 	// ── Minion mesh sync ──
-	const currentMinionIds = new Set(gs.minions ? gs.minions.map((m) => m.id) : []);
+	_currentMinionIds.clear();
 
 	for (const minion of (gs.minions || [])) {
+		_currentMinionIds.add(minion.id);
 		if (!minionsMeshes[minion.id]) {
 			const visualKey = minion.isEscort ? 'escort_npc' : minion.type;
 			const mesh = createMinionMesh(visualKey);
@@ -313,22 +316,22 @@ export function syncMinionMeshes(gs) {
 		}
 	}
 
-	disposeStaleMeshes(minionsMeshes, currentMinionIds, scene);
-	disposeStaleMeshes(minionShadows, currentMinionIds, scene);
-	disposeStaleMeshes(minionTelegraphMeshes, currentMinionIds, scene);
-	disposeStaleMeshes(escortHealthBars, currentMinionIds, scene);
+	disposeStaleMeshes(minionsMeshes, _currentMinionIds, scene);
+	disposeStaleMeshes(minionShadows, _currentMinionIds, scene);
+	disposeStaleMeshes(minionTelegraphMeshes, _currentMinionIds, scene);
+	disposeStaleMeshes(escortHealthBars, _currentMinionIds, scene);
 	for (const id of Object.keys(previousMinionHp)) {
-		if (!currentMinionIds.has(id)) {
+		if (!_currentMinionIds.has(id)) {
 			delete previousMinionHp[id];
 		}
 	}
 	for (const id of Object.keys(previousBatteryChargePulseAt)) {
-		if (!currentMinionIds.has(id)) {
+		if (!_currentMinionIds.has(id)) {
 			delete previousBatteryChargePulseAt[id];
 		}
 	}
 	for (const id of [...seenMinionIds]) {
-		if (!currentMinionIds.has(id)) {
+		if (!_currentMinionIds.has(id)) {
 			seenMinionIds.delete(id);
 			delete minionSpawnTimes[id];
 			delete minionBaseScales[id];
