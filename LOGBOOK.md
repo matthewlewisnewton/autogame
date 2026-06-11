@@ -6987,3 +6987,26 @@ None. All acceptance criteria are met; the game runs cleanly in capture; tests p
 
 ---
 
+
+## v0.392 — Client: consolidate gamepad polling to one snapshot per frame and delete dead gamepad-layer code  (2026-06-10 17:18:44)
+
+
+### Dead gamepad-layer code and orphan tests
+
+PASS. The confirmed-dead helpers named in the ticket are no longer exported or referenced in `game/client/`: `uses8BitDo64DigitalCButtons`, `get8BitDo64CStickAxes`, `get8BitDo64CAxisPairs`, `readAxisSectorDirections`, `readProfileCStick`, `isGamepadMoving`, `describeGamepadConnectionWithProfile`, and the duplicate `isButtonPressed`. The tests tied only to those removed helpers were deleted, while live 8BitDo C-button, profile, lock-on, and binding behavior remains covered.
+
+### Design and requirements consistency
+
+PASS. The change is limited to client input polling and dead-code cleanup. It does not alter the documented lobby/dungeon/card loop, server simulation, multiplayer flow, or floor/quest/combat systems. The capture and probes confirm the baseline setup requirements remain intact: 3D rendering, server-client connection, multiplayer visualization, and movement synchronization.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=...` shortcut. The capture used the fallback full-flow smoke path with `scenarios: []`, so there is no debug-scenario gating or normal-gameplay reachability issue to review for this ticket.
+
+### Verification evidence
+
+PASS. The round-1 coverage log reports `52` test files passed and `540` tests passed. Coverage thresholds were disabled as expected for visibility only.
+
+## Remaining gaps
+
+No blocking gaps remain.
