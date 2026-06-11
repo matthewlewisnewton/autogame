@@ -15,6 +15,8 @@
 //   spawnSummonEffect(origin, radius, styleOrColor?)
 //   spawnLegionMarshalRallyEffect(origin, radius, style?) — undead commander rally ring + column
 //   spawnMinionSummonInEffect(origin, style?) — creature minion summon flourish
+//   spawnAegisSentinelShieldFlourish(origin, style?) — caster shield wrap at cast time
+//   spawnAegisSentinelDeployEffect(origin, style?) — shield-wall deploy ward ring + wall
 //   spawnBatteryAutomatonDeployEffect(origin, style?) — battery mechanical deploy ring + column
 //   spawnDivineGraceEffect(origin, radius)
 //   spawnEventHorizonEffect(origin, pullRadius, centerRadius, style?)
@@ -1279,6 +1281,46 @@ function renderCreatureSummon(data, ctx) {
 
 const BATTERY_AUTOMATON_COLOR = 0xfbbf24;
 const BATTERY_AUTOMATON_EMISSIVE = 0x38bdf8;
+const AEGIS_SENTINEL_COLOR = 0x4ade80;
+const AEGIS_SENTINEL_EMISSIVE = 0x22c55e;
+const AEGIS_SENTINEL_GOLD = 0xfbbf24;
+
+/**
+ * Aegis Sentinel: green shield wrap at cast time plus shield-wall deploy and
+ * minion summon-in flourish. Fires synchronously on CARD_USED — no wind-up
+ * delay. Shield flourish when `shieldGranted` is present; deploy + summon-in
+ * when the server reports a new minion id. Every optional helper is guarded.
+ */
+function renderAegisSentinel(data, ctx) {
+	const origin = originOf(data);
+	const aegisStyle = {
+		color: AEGIS_SENTINEL_COLOR,
+		emissive: AEGIS_SENTINEL_EMISSIVE,
+		highlight: AEGIS_SENTINEL_GOLD,
+		duration: MINION_SUMMON_IN_MS,
+	};
+	if (data.shieldGranted && ctx.spawnAegisSentinelShieldFlourish) {
+		ctx.spawnAegisSentinelShieldFlourish(origin, aegisStyle);
+	}
+	if (!data.minionId) return;
+	const deployStyle = {
+		...aegisStyle,
+		radius: data.radius ?? 2.0,
+	};
+	if (ctx.spawnAegisSentinelDeployEffect) {
+		ctx.spawnAegisSentinelDeployEffect(origin, deployStyle);
+	}
+	if (ctx.spawnMinionSummonInEffect) {
+		ctx.spawnMinionSummonInEffect(origin, {
+			color: AEGIS_SENTINEL_COLOR,
+			emissive: AEGIS_SENTINEL_EMISSIVE,
+			highlight: AEGIS_SENTINEL_GOLD,
+			radius: 1.4,
+			burstCount: 10,
+			burstSpread: 1.4,
+		});
+	}
+}
 
 /**
  * Battery Automaton: mechanical deploy ring + electric column composed with the
@@ -2636,6 +2678,7 @@ const CARD_RENDERERS = {
 	null_crawler: [renderNullCrawlerSummon, renderPhaseBeam],
 	bulkhead_mauler: renderShockwaveSweep,
 	battery_automaton: renderBatteryAutomaton,
+	aegis_sentinel: renderAegisSentinel,
 
 	// Enchantments
 	spike_trap: renderSpikeTrap,

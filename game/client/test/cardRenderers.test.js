@@ -195,10 +195,12 @@ describe('resolveRenderers()', () => {
 		expect(lanceCtx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(true);
 	});
 
-	it('falls back to the creature default for plain creature cards', () => {
-		const creatureDefault = resolveRenderers('aegis_sentinel');
-		expect(creatureDefault).toHaveLength(1);
-		expect(creatureDefault[0].name).toBe('renderCreatureSummon');
+	it('returns renderAegisSentinel for aegis_sentinel (not the creature type default)', () => {
+		const aegisRenderers = resolveRenderers('aegis_sentinel');
+		expect(aegisRenderers).toHaveLength(1);
+		expect(aegisRenderers[0].name).toBe('renderAegisSentinel');
+		expect(aegisRenderers[0].name).not.toBe('renderCreatureSummon');
+		expect(aegisRenderers[0].name).not.toBe('renderAstralGuardian');
 	});
 
 	it('returns renderBatteryAutomaton for battery_automaton (not the creature type default)', () => {

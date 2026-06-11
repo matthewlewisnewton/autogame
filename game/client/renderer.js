@@ -706,6 +706,15 @@ export const MINION_VISUAL = {
 		emissive: 0x38bdf8,
 		emissiveIntensity: 0.4,
 	},
+	aegis_sentinel: {
+		shape: 'box',
+		width: 1.85,
+		height: 2.6,
+		depth: 0.35,
+		color: 0x4ade80,
+		emissive: 0x22c55e,
+		emissiveIntensity: 0.45,
+	},
 };
 
 /**

@@ -13,6 +13,8 @@ function createCardRenderCtx(ctx) {
 		spawnAttackEffect: ctx.spawnAttackEffect,
 		spawnSummonEffect: ctx.spawnSummonEffect,
 		spawnMinionSummonInEffect: ctx.spawnMinionSummonInEffect,
+		spawnAegisSentinelShieldFlourish: ctx.spawnAegisSentinelShieldFlourish,
+		spawnAegisSentinelDeployEffect: ctx.spawnAegisSentinelDeployEffect,
 		spawnBatteryAutomatonDeployEffect: ctx.spawnBatteryAutomatonDeployEffect,
 		spawnLegionMarshalRallyEffect: ctx.spawnLegionMarshalRallyEffect,
 		spawnDivineGraceEffect: ctx.spawnDivineGraceEffect,
