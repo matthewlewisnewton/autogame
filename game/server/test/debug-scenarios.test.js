@@ -2384,7 +2384,8 @@ describe('debugScenario — frost-crossing harness shortcuts', () => {
 			(e) => e.hp > 0 && e.type !== 'glacial_thrower' && !e.namedRare
 				&& (e.type === 'grunt' || e.type === 'skirmisher'),
 		);
-		expect(liveAdds.length).toBe(addsBefore.length);
+		// Clears signature/scripted hostiles then respawns the run-start support pack.
+		expect(liveAdds.length).toBe(5);
 		expect(liveAdds.every((e) => e.hp === 1 && !e.shieldHp)).toBe(true);
 		for (const add of liveAdds) {
 			expect(add.y).toBe(resolveFloorY(sampleFloorY(state.layout, add.x, add.z)));
@@ -2423,9 +2424,10 @@ describe('debugScenario — frost-crossing harness shortcuts', () => {
 		expect(player.debugGodmode).toBe(false);
 		expect(player.vx).toBe(0);
 		expect(player.vz).toBe(0);
-		expect(state.enemies.length).toBe(1);
-		expect(state.enemies[0].type).toBe('glacial_thrower');
-		expect(state.enemies[0].hp).toBeGreaterThan(0);
+		const thrower = state.enemies.find((e) => e.type === 'glacial_thrower');
+		expect(thrower?.hp).toBeGreaterThan(0);
+		const warden = state.enemies.find((e) => e.type === 'permafrost_warden');
+		expect(warden?.hp).toBeGreaterThan(0);
 		expect(player.hp).toBeGreaterThan(30);
 		const stoneRoom = state.layout.rooms.find((r) => r.band === 'stone');
 		if (stoneRoom) {
@@ -2449,6 +2451,12 @@ describe('debugScenario — frost-crossing harness shortcuts', () => {
 		expect(transitionResult.scenario).toBe('frost-crossing-surface-transition');
 
 		const state = testGameState();
+		const bossId = state.run.encounter.bossEnemyId;
+		const dormantBoss = state.enemies.find((e) => e.id === bossId);
+		expect(dormantBoss?.type).toBe('permafrost_warden');
+		expect(dormantBoss?.hp).toBeGreaterThan(0);
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
+
 		const player = playerForSocket(socket);
 		const iceRoom = state.layout.rooms.find((r) => r.band === 'ice');
 		const stoneRoom = state.layout.rooms.find((r) => r.band === 'stone');
@@ -2510,6 +2518,110 @@ describe('debugScenario — frost-crossing harness shortcuts', () => {
 		expect(distFromAnchor).toBeGreaterThan(ENCOUNTER_TRIGGER_RADIUS);
 		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
 		expect(state.enemies.some((e) => e.type === 'permafrost_warden')).toBe(true);
+	});
+
+	it('activates Permafrost Warden and spawns a visual add after boss approach', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const deployPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'frost-crossing-tier-1' });
+		await deployPromise;
+
+		const state = testGameState();
+		const bossId = state.run.encounter.bossEnemyId;
+		for (const enemy of state.enemies) {
+			if (enemy.id !== bossId) enemy.hp = 0;
+		}
+		state.enemies = state.enemies.filter((e) => e.hp > 0);
+
+		const approachPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'frost-crossing-boss-approach' });
+		await approachPromise;
+
+		const triggerPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'frost-crossing-encounter-trigger' });
+		const triggerResult = await triggerPromise;
+		// Wait for stateUpdate after the scenario resolves so periodic dormant snapshots
+		// cannot race ahead of the encounter-trigger mutation.
+		const stateUpdate = await waitForEvent(socket, 'stateUpdate');
+
+		expect(triggerResult.ok).toBe(true);
+		expect(triggerResult.scenario).toBe('frost-crossing-encounter-trigger');
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
+		expect(state.run.encounter.locked).toBe(true);
+
+		const boss = state.enemies.find((e) => e.id === bossId);
+		expect(boss?.type).toBe('permafrost_warden');
+		const liveAdds = state.enemies.filter(
+			(e) => e.hp > 0 && e.id !== bossId && e.type !== 'permafrost_warden',
+		);
+		expect(liveAdds.length).toBeGreaterThanOrEqual(1);
+		expect(liveAdds.some((e) => e.type === 'grunt')).toBe(true);
+		expect(stateUpdate.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
+		expect(stateUpdate.run.encounter.locked).toBe(true);
+	});
+
+	it('positions permafrost_warden at 1 HP beside the player in playing phase', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const deployPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'frost-crossing-tier-1' });
+		await deployPromise;
+
+		const lowHpPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'frost-crossing-boss-low-hp' });
+		const lowHpResult = await lowHpPromise;
+
+		expect(lowHpResult.ok).toBe(true);
+		expect(lowHpResult.scenario).toBe('frost-crossing-boss-low-hp');
+
+		const state = testGameState();
+		expect(state.gamePhase).toBe('playing');
+
+		const bossId = state.run.encounter.bossEnemyId;
+		const boss = state.enemies.find((e) => e.id === bossId);
+		expect(boss).toBeTruthy();
+		expect(boss.type).toBe('permafrost_warden');
+		expect(boss.hp).toBe(1);
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
+		expect(state.run.encounter.locked).toBe(true);
+
+		const player = playerForSocket(socket);
+		const dist = Math.hypot(boss.x - player.x, boss.z - player.z);
+		expect(dist).toBeGreaterThanOrEqual(2);
+		expect(dist).toBeLessThanOrEqual(5.5);
+
+		const stateUpdate = await waitForEvent(socket, 'stateUpdate');
+		const wardenUpdate = stateUpdate.enemies.find((e) => e.id === bossId);
+		expect(wardenUpdate?.hp).toBe(1);
+		expect(wardenUpdate?.type).toBe('permafrost_warden');
+	});
+
+	it('frost-crossing-last-enemy deploys active locked encounter with 1-HP warden', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const lastEnemyPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'frost-crossing-last-enemy' });
+		const lastEnemyResult = await lastEnemyPromise;
+
+		expect(lastEnemyResult.ok).toBe(true);
+		expect(lastEnemyResult.scenario).toBe('frost-crossing-last-enemy');
+
+		const state = testGameState();
+		expect(state.gamePhase).toBe('playing');
+		expect(state.selectedQuestId).toBe(FROST_CROSSING_ID);
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
+		expect(state.run.encounter.locked).toBe(true);
+
+		const bossId = state.run.encounter.bossEnemyId;
+		const boss = state.enemies.find((e) => e.id === bossId);
+		expect(boss?.type).toBe('permafrost_warden');
+		expect(boss?.hp).toBe(1);
+
+		const player = playerForSocket(socket);
+		const dist = Math.hypot(boss.x - player.x, boss.z - player.z);
+		expect(dist).toBeGreaterThanOrEqual(2);
+		expect(dist).toBeLessThanOrEqual(5.5);
 	});
 
 	it('frost-crossing-telepipe-ready deploys playing frost_crossing with telepipe and partial vitals', async () => {

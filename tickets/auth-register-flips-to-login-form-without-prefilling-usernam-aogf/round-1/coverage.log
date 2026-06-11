@@ -1,0 +1,339 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game
+      Coverage enabled with v8
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > builds meshes for local and remote lobby players
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > creates a persistent mesh keyed by enc.id and positions it at enc.x/z
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > builds meshes for local and remote lobby players
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:845:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:2753:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer/playerSync.js:101:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:7480:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:845:11[90m)[39m
+}
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:845:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:2753:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer/playerSync.js:101:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:7480:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:845:11[90m)[39m
+}
+
+stderr | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > creates a persistent mesh keyed by enc.id and positions it at enc.x/z
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:845:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:2753:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer/playerSync.js:101:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:7480:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:845:11[90m)[39m
+}
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > moves the remote mesh when hub presence coordinates change
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > disposes the hazard mesh when the enchantment leaves the snapshot
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > hub lobby join starts with #lobby hidden and lobbyMenuDismissed true
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/deck-viewer.test.js (21 tests) 456ms
+   ✓ renderDeckViewer() / renderDeckStack() > renders draw pile cards with type icons and toggles via V key  446ms
+ ✓ |client| client/test/boss-encounter-hud-wiring.test.js (6 tests) 538ms
+   ✓ boss-encounter HUD wiring in main.js > populates the model and shows the HUD for an active encounter with a live boss  526ms
+stdout | client/test/renderer-run-summary-input.test.js > renderer run-summary input lock > animate() does not emit lootPickup while overlay is visible
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > does NOT create a hazard mesh for cinder_snare enchantments
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/questBooth.test.js > quest booth booth:action hook (main.js) > reveals and scrolls the quest panel into view for boothId quest in lobby and ignores other booths
+[launchBooth] ready-up via booth
+[launchBooth] ready-up via booth
+
+stderr | client/test/renderer-run-summary-input.test.js > renderer run-summary input lock > animate() does not emit lootPickup while overlay is visible
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:845:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:2753:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer/playerSync.js:101:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:7480:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:845:11[90m)[39m
+}
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > dismissGameLobby then lobby-phase stateUpdate keeps #lobby hidden
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > applyHubPresence sequence updates remote mesh position and cosmeticKey
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/boothDeck.test.js (4 tests) 654ms
+   ✓ deck booth via booth:action > opens the loadout bay when booth:action targets the deck booth  471ms
+ ✓ |client| client/test/level-settings-rewards.test.js (2 tests) 791ms
+   ✓ level settings return rewards preview cache > keeps return rewards preview across a slim stateUpdate tick after deploy  596ms
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > hubPresenceUpdate and applyHubPresence while dismissed do not show #lobby
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > applyHubPresence removedPlayerIds disposes remote avatar mesh
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/medicHud.test.js (3 tests) 816ms
+   ✓ renderGuildMedic() charity medic HUD > disables heal at full health with zero currency  469ms
+ ✓ |client| client/test/debug-hatswap-hook.test.js (3 tests) 958ms
+   ✓ ?booth=hatswap debug hook (main.js requestBoothDebugOpen) > opens the character booth and requests hats-unlocked once on localhost  601ms
+ ✓ |client| client/test/renderer-run-summary-input.test.js (3 tests) 968ms
+   ✓ renderer run-summary input lock > updateMyPlayer() does not advance position or emit move while overlay is visible  583ms
+ ✓ |client| client/test/boothShop.test.js (5 tests) 1180ms
+   ✓ shop booth via booth:action > opens the card shop when booth:action targets the shop booth  745ms
+ ✓ |client| client/test/hub-presence-avatars.test.js (4 tests) 851ms
+   ✓ hub presence avatars (lobby) > builds meshes for local and remote lobby players  347ms
+stdout | client/test/key-item-dodge.test.js > dash VFX > triggerDashVFX applies squash scale when a player mesh exists
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/renderer-spike-trap.test.js (5 tests) 1093ms
+   ✓ spike trap persistent hazard reconcile > creates a persistent mesh keyed by enc.id and positions it at enc.x/z  545ms
+ ✓ |client| client/test/run-summary-input-lock.test.js (4 tests) 1077ms
+   ✓ run-summary overlay input lock > isRunSummaryOverlayVisible() is true when #run-summary-overlay display is not none  590ms
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > deck booth open shows #lobby and clears the dismissed flag
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/debug-godmode.test.js > debug godmode toggle (main.js) > mirrors debugGodmode onto local player when toggle succeeds
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+
+stdout | client/test/main.test.js > cardError handler — server hand rejection > shows a toast when the server rejects an unauthorized card use
+[cardError] Card not in hand
+[cardError] Card not in hand
+[cardError] Card not in hand
+[cardError] Card not in hand
+[cardError] Card not in hand
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > shop booth open shows #lobby and clears the dismissed flag
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/levelMapIntegration.test.js (5 tests) 1405ms
+   ✓ level-map lobby integration (main.js) > renders nodes from the payload levelUnlockGraph through questUpdate  727ms
+stderr | client/test/main.test.js > createEnemyMesh() > creates a red cone for grunt (default) type
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:845:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer/enemySync.js:152:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/test/main.test.js:2798:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:845:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates an orange cone for skirmisher type
+[renderer] failed to apply model "/models/skirmisher.glb" for "skirmisher": TypeError: Failed to parse URL from /models/skirmisher.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:845:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer/enemySync.js:152:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/test/main.test.js:2810:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/skirmisher.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:845:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a teal octahedron for spawner type
+[renderer] failed to apply model "/models/spawner.glb" for "spawner": TypeError: Failed to parse URL from /models/spawner.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:845:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer/enemySync.js:152:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/test/main.test.js:2820:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/spawner.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:845:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a warm emissive octahedron for ember_wraith type
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:845:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer/enemySync.js:152:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/test/main.test.js:2798:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:845:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a purple cone for miniboss type
+[renderer] failed to apply model "/models/miniboss.glb" for "miniboss": TypeError: Failed to parse URL from /models/miniboss.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:845:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer/enemySync.js:152:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/test/main.test.js:2862:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/miniboss.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/auth-register-flips-to-login-form-without-prefilling-usernam-aogf/game/[39mclient/renderer.js:845:11[90m)[39m
+}
+
+stdout | client/test/debug-godmode.test.js > debug godmode toggle (main.js) > keeps debugGodmode false across stateUpdate after godmode-off debugGodmodeResult
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+
+ ✓ |client| client/test/key-item-dodge.test.js (6 tests) 1277ms
+   ✓ key item cooldown HUD > shows ready state with name and default keybind when equipped and playing with zero cooldown  527ms
+ ✓ |client| client/test/debug-time-scale-gate.test.js (5 tests) 1330ms
+   ✓ debug time-scale client gate (main.js) > Shift+T does not emit on localhost until the server reports the feature authorized  550ms
+ ✓ |client| client/test/lobby-menu-dismiss.test.js (6 tests) 1283ms
+   ✓ lobby menu dismiss guard (main.js) > hub lobby join starts with #lobby hidden and lobbyMenuDismissed true  518ms
+ ✓ |client| client/test/debug-godmode.test.js (7 tests) 1649ms
+   ✓ debug godmode toggle (main.js) > Shift+G emits toggleDebugGodmode when debugScenarioAllowed is true  720ms
+stdout | client/test/characterBooth.test.js > character booth ?booth=character debug hook (main.js) > auto-opens once after hub lobby entry on localhost with ?booth=character
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/questDialogue.test.js (8 tests) 1823ms
+   ✓ quest dialogue comms UI (main.js) > shows a comms toast and appends to the log via the test hook  789ms
+stdout | client/test/characterBooth.test.js > character booth ?booth=character debug hook (main.js) > stays closed without the booth URL param
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/characterBooth.test.js (13 tests) 1608ms
+   ✓ character booth overlay (module) > openCharacterBooth() / closeCharacterBooth() toggle overlay visibility and preview  314ms
+ ✓ |client| client/test/questBooth.test.js (18 tests) 1670ms
+   ✓ quest booth booth:action hook (main.js) > shows #lobby and reveals the quest panel when the menu starts dismissed  437ms
+stdout | client/test/main.test.js > suspended run resume/abandon UI > resume button triggers the launch-booth ready-up path
+[launchBooth] ready-up via booth
+
+ ✓ |client| client/test/main.test.js (191 tests) 3049ms
+   ✓ renderDeckEditor() > populates owned card counts and deck size from mock data  360ms
+
+ Test Files  20 passed (20)
+      Tests  319 passed (319)
+   Start at  09:17:51
+   Duration  5.52s (transform 1.43s, setup 716ms, collect 2.31s, tests 24.48s, environment 9.96s, prepare 3.12s)
+
+ % Coverage report from v8
+--------------|---------|----------|---------|---------|------------------------
+File          | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s      
+--------------|---------|----------|---------|---------|------------------------
+All files     |   38.33 |    28.43 |   62.16 |   41.63 |                        
+ cards.js     |   65.78 |    52.63 |      80 |   70.96 | ...-94,102,116,235-251 
+ collision.js |   27.86 |    15.53 |   77.77 |   28.43 | ...175-229,238-243,251 
+ delta.js     |   66.66 |       50 |     100 |     100 | 12                     
+ hand.js      |   29.29 |    26.19 |   41.17 |   34.17 | 45-73,90-157,175-181   
+--------------|---------|----------|---------|---------|------------------------

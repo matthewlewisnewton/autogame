@@ -1,0 +1,15 @@
+Review complete. **VERDICT: FAIL.**
+
+## Summary
+
+The game runs cleanly — `metrics.json` has `"ok": true`, `"pageerrors": []`, the scene initializes, and there's no `harness_failure`. So the runtime-health gate passes.
+
+But the ticket's **single acceptance criterion** — a playthrough screenshot showing the boss-encounter HUD (warden name + draining HP bar) in both the natural-trigger and debug-scenario paths — has **zero supporting evidence anywhere**, which is the exact failure mode this ticket was filed to fix ("HUD never appeared in any tested path"):
+
+- **Top-level capture** used `capturePlanSource: "fallback"` — a generic smoke that timed out on lobby creation and dropped into "Initiate Vault", never Frost Crossing. `bossEncounter: null` in every probe; screenshots are plain W/D/dodge gameplay.
+- **Sub-ticket captures (02, 03)** are also fallback smokes — none capture the boss HUD.
+- **Committed `game/validation/ice/`** is stale: still `objectiveType: "defeat_enemies"`, old assertion keys (`layoutDeployed`/`enemiesCleared`), zero `bossEncounter` probes, old PNG names. It now *contradicts* the new `verify-ice-artifacts.mjs`, which requires the boss-encounter assertions/PNGs and forbids the old keys — so verification against the tree as committed would fail. Sub-ticket 03's handoff admits the regeneration was deferred as "optional" and never run.
+
+The code itself is sound — the debug-scenario fix (activate+lock encounter, 1-HP warden), the natural-path `tryActivateEncounter` test, the client HUD wiring tests, and the ice-preset retarget are all coherent and would produce the proof *if the ice validation were actually run*. The blocking gap is that it wasn't, leaving the AC undemonstrated and the validation artifacts stale/inconsistent.
+
+Wrote `review.md`, `gaps.md` (2 blocking gaps), and `nits.md` (1 findings.mjs cleanup).

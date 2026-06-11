@@ -1781,8 +1781,8 @@ function emitSetDebugTimeScale(scale) {
 	socket.emit(CLIENT_TO_SERVER.SET_DEBUG_TIME_SCALE, { scale });
 }
 
-window.__openDeckBoothForTest = openDeckBooth;
-window.__openShopBoothForTest = openShopBooth;
+window.__openDeckBoothForTest = () => openDeckBooth(deckBoothDeps);
+window.__openShopBoothForTest = () => openShopBooth(shopBoothDeps);
 window.__requestDebugBoothOpenForTest = requestDebugBoothOpen;
 window.__requestDebugShopBoothOpenForTest = requestDebugShopBoothOpen;
 // Capture/test hook: ready up via the launch-booth path (no new socket event).
@@ -3729,6 +3729,13 @@ if (registerBtnEl) {
 			const data = await res.json();
 			if (res.ok) {
 				showLoginForm();
+				const loginUsernameInput = document.getElementById('login-username');
+				const loginPasswordInput = document.getElementById('login-password');
+				if (loginUsernameInput) loginUsernameInput.value = username;
+				if (loginPasswordInput) {
+					loginPasswordInput.value = '';
+					loginPasswordInput.focus();
+				}
 				if (loginErrorEl) {
 					loginErrorEl.textContent = 'Account created — please login';
 					loginErrorEl.style.color = '#4ade80';

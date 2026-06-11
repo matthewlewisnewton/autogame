@@ -262,21 +262,15 @@ describe('lobby menu dismiss guard (main.js)', () => {
 		window.__setGameState({ gamePhase: 'lobby', players: { p1: {} } }, 'p1');
 		window.dismissGameLobby();
 
-		window.__openDeckBoothForTest({
-			showGameLobby: window.showGameLobby,
-			setLobbyTab: window.__setLobbyTabState ? (tab) => window.__setLobbyTabState(tab) : () => {},
-			renderDeckEditor: window.renderDeckEditor,
-		});
+		window.__openDeckBoothForTest();
 		expect(lobby.classList.contains('hidden')).toBe(false);
 		expect(window.__getLobbyMenuDismissed()).toBe(false);
+		expect(document.getElementById('deck-editor').classList.contains('hidden')).toBe(false);
 
 		window.dismissGameLobby();
-		window.__openShopBoothForTest({
-			showGameLobby: window.showGameLobby,
-			setLobbyTab: (tab) => window.__setLobbyTabState(tab, null),
-			renderCardShop: window.renderCardShop,
-		});
+		window.__openShopBoothForTest();
 		expect(lobby.classList.contains('hidden')).toBe(false);
 		expect(window.__getLobbyMenuDismissed()).toBe(false);
+		expect(document.getElementById('card-shop').classList.contains('hidden')).toBe(false);
 	});
 });
