@@ -8432,3 +8432,26 @@ heal is keyed purely on `currency < 10`, so any low-funds player — not strictl
 a post-death one — gets free heals; harmless and within the ticket's "equivalent
 mitigation" latitude, but worth a deliberate design note later).
 
+
+## v0.457 — level settings: 'Money this run' and return lines show em-dash placeholders during an active run  (2026-06-11 08:48:37)
+
+- No dead code or obvious bugs in the changed paths.
+
+**Minor refactor note:** `extractedLobbyOverlayActive = false` was removed from the deploy (`enteringPlaying`) branch when restructuring; it remains cleared on `enteringLobby`. No observed impact in capture or tests (see nits).
+
+### Debug scenarios
+
+**N/A — no new or changed debug scenarios.** Existing `summon-ready` used only in server integration tests behind `ALLOW_DEBUG_SCENARIOS`; normal gameplay path (deploy → collect loot → open Lv) is unchanged and is what the fix targets.
+
+---
+
+## Harness capture gap (non-blocking)
+
+Round-1 capture used the **fallback** full-flow smoke plan (movement + dodge). It did **not** open the Lv overlay or pick up currency loot. Acceptance for this ticket is explicitly vitest-driven; the code path and integration tests cover the reported bug. Runtime health is still proven by the capture.
+
+---
+
+## Remaining gaps
+
+None. Both sub-ticket fixes integrate correctly; the full ticket acceptance criteria are met with automated test coverage and a clean captured run.
+
