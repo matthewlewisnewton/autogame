@@ -3,7 +3,7 @@
 
 const { CLIENT_TO_SERVER, SERVER_TO_CLIENT } = require('../../shared/events.js');
 const { LOOT_PICKUP_RADIUS } = require('../config');
-const { isPlayingPhase, isLobbyPhase } = require('../lobbies');
+const { isPlayingPhase, isLobbyPhase, isActiveRun } = require('../lobbies');
 const { isPlayerCardCommitted } = require('../simulation');
 const {
   savePlayerData,
@@ -12,6 +12,7 @@ const {
   recordCrystalCollected,
   checkRunTerminalState,
   stateSnapshot,
+  maybeEmitPlayerDeckUpdate,
 } = require('../progression');
 
 function register(socket, ctx) {
@@ -107,6 +108,7 @@ function register(socket, ctx) {
 
     if (!player) return;
     if (isPlayingPhase(state)) {
+      if (!isActiveRun(state)) return;
       if (player.dead) return;
       if (player.extracted) return;
       if (isPlayerCardCommitted(player)) return;
@@ -183,6 +185,7 @@ function register(socket, ctx) {
   socket.on(CLIENT_TO_SERVER.LOOT_PICKUP, (data) => {
     withLobbyFromSocket(socket, (state, lobby) => {
     if (!data || !data.lootId) return;
+    if (state.run && state.run.status !== 'playing') return;
 
     const player = state.players[socket.playerId];
     if (!player) return;
@@ -205,6 +208,7 @@ function register(socket, ctx) {
     } else {
       player.currency += loot.value;
       player.currencyEarnedThisRun += loot.value;
+      maybeEmitPlayerDeckUpdate(player);
     }
     state.loot.splice(lootIdx, 1);
 

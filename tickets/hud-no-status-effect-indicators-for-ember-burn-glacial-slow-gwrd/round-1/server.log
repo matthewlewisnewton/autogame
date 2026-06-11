@@ -1,0 +1,15 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/hud-no-status-effect-indicators-for-ember-burn-glacial-slow-gwrd/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/hud-no-status-effect-indicators-for-ember-burn-glacial-slow-gwrd/game/data
+Server listening on port 3001
+Player connected: socket=qnNgTX3Q233Q20ToAAAB, playerId=a0349faf-3de7-4ed9-a6eb-baf465f531f4
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=4SCoiV2TxMwvQqcAAAAD, playerId=b09ea722-bb5e-41aa-82ce-cebd959b2ab1
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=f96c6c6a-0143-45c1-8aee-f0ca0659fb97 value=5
+Player disconnected: qnNgTX3Q233Q20ToAAAB
+Player disconnected: 4SCoiV2TxMwvQqcAAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

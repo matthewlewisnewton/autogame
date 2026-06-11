@@ -1,0 +1,16 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The ticket fixes the bug where the simulation kept running behind the "Sortie Complete" overlay (wallet diverging from the frozen summary, key-item HUD flashing). The implementation chose option A — **lock all interactive input once the run reaches a terminal status** — with defense-in-depth on both layers:
+
+**Server (authoritative):** a new `isActiveRun(state)` helper gates movement (`applyPlayerMovement` + MOVE handler), loot pickup, key-item use (`reason: 'run_terminal'`), and card cast/discard. `checkRunTerminalState` also zeroes per-player input the instant the run ends. The loot-pickup block is what directly closes the wallet-vs-summary divergence.
+
+**Client (UX):** `isDungeonInputBlocked()` (terminal `run.status` OR overlay visible) nulls movement and suppresses MOVE/loot emits in the renderer; `canUseGameActions()` gates attacks, cards, and key-item use while the overlay shows.
+
+Verification:
+- Game runs cleanly — `ok: true`, `pageerrors: []`, no fatal console lines (the 409 is benign auth noise).
+- All 11 ticket-specific tests pass; full server suite green (438 passed, 0 failed).
+- The new `run-victory` debug scenario is dev/localhost-gated, reaches victory through the *real* `checkRunTerminalState()` path, and weakens no invariants.
+
+No blocking gaps and no nits worth filing, so `gaps.md` / `nits.md` were not written.

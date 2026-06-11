@@ -95,9 +95,49 @@ export function computeDesperationHudStats(desperationDeckIds, handCards) {
 	};
 }
 
-/** Placeholder level until a player-level stat exists on the server. */
-export function formatPlayerLevel() {
-	return 1;
+/**
+ * Status effects derivable from the snapshot fields the server broadcasts.
+ * Each entry maps a stable id/label/icon to the player field holding its
+ * expiry timestamp. Order here defines the deterministic output order.
+ */
+const STATUS_EFFECT_DEFS = [
+	{ id: 'burning', label: 'Burning', icon: '🔥', untilField: 'burningUntil' },
+	{ id: 'slowed', label: 'Slowed', icon: '🐌', untilField: 'slowedUntil' },
+];
+
+/**
+ * Derive the list of active status effects for a player from the snapshot.
+ * Pure: the caller passes `now` (ms epoch); no `Date.now()` here.
+ *
+ * @param {object|null|undefined} player - player snapshot (may have `burningUntil`, `slowedUntil`, …)
+ * @param {number} now - current time in ms epoch
+ * @returns {Array<{ id: string, label: string, icon: string, remainingMs: number }>}
+ */
+export function computeActiveStatusEffects(player, now) {
+	if (!player) return [];
+
+	const effects = [];
+	for (const def of STATUS_EFFECT_DEFS) {
+		const until = player[def.untilField];
+		if (typeof until !== 'number' || !(until > now)) continue;
+		effects.push({
+			id: def.id,
+			label: def.label,
+			icon: def.icon,
+			remainingMs: Math.max(0, until - now),
+		});
+	}
+	return effects;
+}
+
+/**
+ * Resolve the level shown on the portrait badge from the player snapshot.
+ * Falls back to 1 when the player or its `level` field is missing/invalid.
+ * @param {object|null|undefined} player - local player's state-snapshot entry
+ */
+export function formatPlayerLevel(player) {
+	const lvl = Number(player?.level);
+	return Number.isFinite(lvl) && lvl >= 1 ? Math.floor(lvl) : 1;
 }
 
 /** Short label for the portrait frame from a display name (username, with a player-id fallback). */

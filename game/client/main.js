@@ -10,6 +10,7 @@ import {
 	renderQuestBoard,
 	renderQuestBriefing,
 } from './questBoard.js';
+import { formatRunObjectiveHudLines } from './objectiveHud.js';
 import {
 	THEME,
 	formatCurrencyHud,
@@ -104,6 +105,7 @@ import {
 	getHpBarTier,
 	getMsBarTier,
 	getCardMagicStoneCost,
+	computeActiveStatusEffects,
 } from './vanguard-hud.js';
 import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
 import { buildBossEncounterModel, syncBossEncounterHud } from './boss-encounter-hud.js';
@@ -208,6 +210,7 @@ import {
 	emitBoothInteract,
 	setBoothInRangeListener,
 	setEnemyDisplayCatalogGetter,
+	setRunSummaryOverlayVisibleChecker,
 } from './renderer.js';
 import { updateBoothPrompt, dispatchBoothAction, BOOTH_ACTION_EVENT } from './boothPrompt.js';
 import { openDeckBooth, registerDeckBoothListener, createRequestDebugBoothOpener } from './boothDeck.js';
@@ -531,6 +534,10 @@ function isGameLobbyMenuVisible() {
 	return !!lobbyEl && !lobbyEl.classList.contains('hidden');
 }
 
+function isRunSummaryOverlayVisible() {
+	return !!(runSummaryOverlay && getComputedStyle(runSummaryOverlay).display !== 'none');
+}
+
 function isLobbyMenuDismissKeyBlocked(e) {
 	const target = e.target;
 	if (target instanceof HTMLInputElement ||
@@ -544,7 +551,7 @@ function isLobbyMenuDismissKeyBlocked(e) {
 		|| (authOverlayEl && !authOverlayEl.classList.contains('hidden'))
 		|| (accountOverlayEl && !accountOverlayEl.classList.contains('hidden'))
 		|| (levelSettingsOverlayEl && !levelSettingsOverlayEl.classList.contains('hidden'))
-		|| (runSummaryOverlay && getComputedStyle(runSummaryOverlay).display !== 'none'));
+		|| isRunSummaryOverlayVisible());
 }
 
 function dismissGameLobby() {
@@ -1053,6 +1060,7 @@ const deckSpellCountEl = document.getElementById('deck-spell-count');
 const deckCreatureCountEl = document.getElementById('deck-creature-count');
 const deckEnchantmentCountEl = document.getElementById('deck-enchantment-count');
 const deckStatsPanelEl = document.getElementById('deck-stats-panel');
+const statusEffectStripEl = document.getElementById('status-effect-strip');
 const deckViewerPanelEl = document.getElementById('deck-viewer-panel');
 const objectiveHudEl = document.getElementById('objective-hud');
 const debugTimeScaleBadgeEl = document.getElementById('debug-time-scale-badge');
@@ -1162,7 +1170,9 @@ async function restoreSession(token) {
 }
 
 function canUseGameActions() {
-	return gameState && gameState.gamePhase === 'playing';
+	if (!gameState || gameState.gamePhase !== 'playing') return false;
+	if (isRunSummaryOverlayVisible()) return false;
+	return true;
 }
 
 initInput({
@@ -1525,6 +1535,7 @@ let lastEvolutionResult = null;
 let keyItemDefs = {};
 let enemyDisplayCatalog = null;
 setEnemyDisplayCatalogGetter(() => enemyDisplayCatalog);
+setRunSummaryOverlayVisibleChecker(isRunSummaryOverlayVisible);
 let availableQuests = [];
 let questVariants = [];
 let unlockedQuestTiers = {};
@@ -2058,7 +2069,8 @@ function syncVanguardHud(me, phase) {
 	if (gamePhase === 'playing') {
 		updateMsBar(me.magicStones ?? 0);
 		updateDeckStats(me.deck, me.hand, me.inventory);
-		updateVanguardPortrait();
+		updateStatusEffectStrip(me);
+		updateVanguardPortrait(me);
 	}
 }
 
@@ -2105,6 +2117,34 @@ function updateMsBar(ms) {
 	_lastMagicStones = clamped;
 }
 
+// Rebuild the HUD status-effect strip from the snapshot's expiry timestamps.
+// Effect derivation lives in computeActiveStatusEffects (sub-ticket 01); this
+// only renders one badge per active effect and hides the strip when empty.
+function updateStatusEffectStrip(me) {
+	if (!statusEffectStripEl) return;
+	const effects = computeActiveStatusEffects(me, Date.now());
+	statusEffectStripEl.replaceChildren();
+	if (effects.length === 0) {
+		statusEffectStripEl.classList.remove('has-effects');
+		return;
+	}
+	statusEffectStripEl.classList.add('has-effects');
+	for (const effect of effects) {
+		const badge = document.createElement('div');
+		badge.className = `status-badge status-badge--${effect.id}`;
+		const icon = document.createElement('span');
+		icon.className = 'status-badge-icon';
+		icon.setAttribute('aria-hidden', 'true');
+		icon.textContent = effect.icon;
+		const label = document.createElement('span');
+		label.className = 'status-badge-label';
+		const seconds = Math.max(0, Math.ceil(effect.remainingMs / 1000));
+		label.textContent = `${effect.label} ${seconds}s`;
+		badge.append(icon, label);
+		statusEffectStripEl.append(badge);
+	}
+}
+
 function updateDeckStats(deckPile, handCards, inventory) {
 	const pile = deckPile || [];
 	const deckInventory = Array.isArray(inventory) ? inventory : getDeckInventory();
@@ -2125,9 +2165,9 @@ function updateDeckStats(deckPile, handCards, inventory) {
 	if (deckEnchantmentCountEl) deckEnchantmentCountEl.textContent = String(stats.types.enchantment);
 }
 
-function updateVanguardPortrait() {
+function updateVanguardPortrait(me) {
 	if (characterIdEl) characterIdEl.textContent = formatCharacterId(gameState.players[myId]?.username || myId);
-	if (playerLevelEl) playerLevelEl.textContent = String(formatPlayerLevel());
+	if (playerLevelEl) playerLevelEl.textContent = String(formatPlayerLevel(me));
 }
 
 function updateObjectiveHud() {
@@ -2145,6 +2185,14 @@ function updateObjectiveHud() {
 				.replace('{total}', String(obj.totalItems ?? 0));
 		} else if (obj.type === 'defeat_enemies') {
 			progress = `Purged ${obj.defeatedEnemies ?? 0} / ${obj.totalEnemies ?? 0} hostiles`;
+		} else if (obj.type === 'stage_boss' || obj.type === 'escort' || obj.type === 'survive') {
+			const questMeta = findQuestBoardEntry(
+				run.questId,
+				run.questTier,
+				availableQuests,
+				questVariants,
+			);
+			progress = formatRunObjectiveHudLines({ run, questMeta }).secondLine;
 		}
 		objectiveHudEl.textContent = progress ? `${title}\n${progress}` : title;
 		objectiveHudEl.style.display = 'block';
@@ -2959,16 +3007,27 @@ function renderGuildMedic() {
 	const hp = Math.max(0, Math.min(MAX_HP, me.hp ?? MAX_HP));
 	const currency = me.currency || 0;
 	const atFull = hp >= MAX_HP && !me.dead;
+	const canAffordMedic = currency >= MEDIC_HEAL_COST;
 
 	if (hpDisplayEl) hpDisplayEl.textContent = `Health: ${hp}/${MAX_HP}`;
 	if (costDisplayEl) {
-		costDisplayEl.textContent = atFull
-			? 'You are already at full health.'
-			: `Full restore: ${formatCurrencyPrice(MEDIC_HEAL_COST)}`;
+		if (atFull) {
+			costDisplayEl.textContent = 'You are already at full health.';
+		} else if (!canAffordMedic) {
+			costDisplayEl.textContent = `Need ${formatCurrencyPrice(MEDIC_HEAL_COST)} — you have ${currency}. Free triage available.`;
+		} else {
+			costDisplayEl.textContent = `Full restore: ${formatCurrencyPrice(MEDIC_HEAL_COST)}`;
+		}
 	}
 	if (healBtnEl) {
-		healBtnEl.disabled = atFull || currency < MEDIC_HEAL_COST;
-		healBtnEl.textContent = `Heal to full (${MEDIC_HEAL_COST} money)`;
+		healBtnEl.disabled = atFull;
+		if (atFull) {
+			healBtnEl.textContent = `Heal to full (${MEDIC_HEAL_COST} money)`;
+		} else if (!canAffordMedic) {
+			healBtnEl.textContent = 'Heal to full (free triage)';
+		} else {
+			healBtnEl.textContent = `Heal to full (${MEDIC_HEAL_COST} money)`;
+		}
 	}
 	showMedicError('');
 	syncVanguardHud(me, 'lobby');
@@ -4418,6 +4477,8 @@ function showRunSummary(data) {
 		} else if (data.objective?.bossDefeated === true && gameState.run.objective) {
 			gameState.run.objective.bossDefeated = true;
 		}
+	} else if (data.status === 'failed' && gameState?.run) {
+		gameState.run.status = 'failed';
 	}
 }
 
@@ -4533,6 +4594,7 @@ window.renderDeckEditor = renderDeckEditor;
 window.renderCardShop = renderCardShop;
 window.renderPhotonForge = renderPhotonForge;
 window.renderKeyItemList = renderKeyItemList;
+window.renderGuildMedic = renderGuildMedic;
 window.__setKeyItemDefs = (defs) => { keyItemDefs = defs || {}; };
 window.__getEnemyDisplayCatalog = () => enemyDisplayCatalog;
 window.__setEnemyDisplayCatalog = (catalog) => { enemyDisplayCatalog = catalog; };
@@ -4718,6 +4780,7 @@ window.closeSettingsOverlay = closeSettingsOverlay;
 window.openAccountOverlay = openAccountOverlay;
 window.openLevelSettingsOverlay = openLevelSettingsOverlay;
 window.closeLevelSettingsOverlay = closeLevelSettingsOverlay;
+window.__syncLevelSettingsRewardsForTest = syncLevelSettingsRewards;
 window.updateLevelSettingsBtnVisibility = updateLevelSettingsBtnVisibility;
 window.closeAccountOverlay = closeAccountOverlay;
 window.openCharacterBooth = openCharacterBooth;
@@ -4729,6 +4792,8 @@ window.performLogout = performLogout;
 window.showGameLobby = showGameLobby;
 window.dismissGameLobby = dismissGameLobby;
 window.__getLobbyMenuDismissed = () => lobbyMenuDismissed;
+window.__isRunSummaryOverlayVisible = isRunSummaryOverlayVisible;
+window.__canUseGameActionsForTest = canUseGameActions;
 window.__isQuestPanelOpen = () => questPanelOpen;
 window.renderLobbyList = renderLobbyList;
 window.applyLobbyJoinedData = applyLobbyJoinedData;

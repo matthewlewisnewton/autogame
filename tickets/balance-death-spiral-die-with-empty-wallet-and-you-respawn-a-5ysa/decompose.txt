@@ -1,0 +1,13 @@
+Sub-tickets created (2 total, dependency order):
+
+1. `/home/matt/workspace/.autogame-worktrees/balance-death-spiral-die-with-empty-wallet-and-you-respawn-a-5ysa/tickets/balance-death-spiral-die-with-empty-wallet-and-you-respawn-a-5ysa/subtickets/01-post-death-recovery-server/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/balance-death-spiral-die-with-empty-wallet-and-you-respawn-a-5ysa/tickets/balance-death-spiral-die-with-empty-wallet-and-you-respawn-a-5ysa/subtickets/02-charity-medic-client/ticket.md`
+
+**Plan summary**
+
+| # | Focus | Why |
+|---|--------|-----|
+| **01** | Server: `LOBBY_REVIVE_HP` 10→50, charity medic in `healAtMedic`, design doc, regression tests | Passive survivability (50 HP vs 10-damage grunts) plus a free full-heal path when broke; documents the decision and proves it in vitest |
+| **02** | Client: medic HUD enables free triage for 0-currency injured players | Fixes the exact repro (disabled medic button) so broke players can use the charity heal the server now offers |
+
+No existing sub-ticket folders were present, so numbering starts at `01`. Both use **code** verification.

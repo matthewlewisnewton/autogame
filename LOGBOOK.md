@@ -8387,6 +8387,166 @@ fail-state is correctly gated and reachable through normal play. Minor non-
 blocking nits recorded separately in `nits.md`.
 
 
+## v0.453 — run-end: simulation keeps running under 'Sortie Complete' overlay; summary money diverges from wallet  (2026-06-11 07:31:35)
+
+## Design / regression check
+
+Consistent with the run-end / Sortie Complete flow; no foundation regression.
+Full server suite green (438 passed, 0 failed) including movement, key-item,
+loot, and run-terminal integration tests. The four ticket-specific suites pass:
+`run_terminal_input.test.js`, `renderer-run-summary-input.test.js`,
+`run-summary-input-lock.test.js` (11/11). The `Failed to parse URL
+/models/player.glb` line in the client run is benign jsdom asset-fetch noise.
+
+## Code quality
+
+Changes are small, well-commented, and symmetric across client/server. The
+`isActiveRun` helper correctly returns `true` for the no-run (lobby) case so it
+doesn't accidentally freeze lobby movement. No dead code, no console errors.
+
+## Remaining gaps
+
+None. The acceptance criterion is fully and robustly satisfied, the game runs
+cleanly, and the change is well-tested.
+
+
+## v0.454 — balance: death spiral — die with empty wallet and you respawn at 10/100 HP with no way to heal  (2026-06-11 07:54:55)
+
+  (lobby phase, `run` cleared, `hp = LOBBY_REVIVE_HP`, `currency = 0`,
+  `dead = false`) that the real `runFailed → returnToLobby` flow produces — and
+  that real flow is what `death_spiral_recovery.test.js` drives, so the shortcut
+  is a faithful QA mirror, not a substitute.
+- **No invariants short-circuited:** it only sets hub-side state; it does not
+  skip server validation, persistence, or replication that normal play uses.
+
+## Code quality
+
+No bugs found. The charity-medic branch is small and correct; currency is only
+deducted on the paid path; `savePlayerData` runs in both cases. No dead code, no
+console errors.
+
+## Remaining gaps
+
+None blocking. One non-blocking observation captured in `nits.md` (the charity
+heal is keyed purely on `currency < 10`, so any low-funds player — not strictly
+a post-death one — gets free heals; harmless and within the ticket's "equivalent
+mitigation" latitude, but worth a deliberate design note later).
+
+
+## v0.455 — progression: 'LV 1' badge is hardcoded — formatPlayerLevel() always returns 1, no player leveling exists  (2026-06-11 08:00:10)
+
+The change is additive: two new fields on the player snapshot, a self-contained
+XP block in `progression.js`, and a re-pointed HUD formatter. No existing
+progression (card grind, currency) is touched. No design.md invariant is
+weakened. No debug scenarios were added or changed.
+
+## Code quality
+
+Clean, null-safe helpers; level derived from a single source of truth; sensible
+fallbacks throughout. No dead code, no console errors from game logic.
+
+## Remaining gaps
+
+None blocking. The implementation fully and robustly satisfies the binding
+acceptance criteria.
+
+(Note — non-blocking: the Goal text suggested level could "gate something
+meaningful (e.g. tier-2 unlock pacing)", but that is an illustrative `e.g.` in
+the Goal, not part of the AC, which only requires a tracked/displayed/tested
+level. Captured as a nit, not a gap.)
+
+
+## v0.456 — hud: no status-effect indicators for ember burn / glacial slow (DoT and slow are invisible to the player)  (2026-06-11 08:01:44)
+
+No new debug scenario was added by this ticket (diff touches only
+`game/client/*`), so the debug-scenario review section does not apply.
+
+## Design / regression consistency
+
+- The strip lives inside the existing vitals block beside the HP/MS bars
+  (`index.html:56`), matching the ticket's "small status-effect strip near the
+  HP/MS bars". `pointer-events:none` keeps it from intercepting input. `aria-live`
+  is a reasonable accessibility touch.
+- No existing HUD elements, server fields, or DoT/slow mechanics were changed —
+  purely additive client rendering of already-broadcast fields. No regression to
+  the requirements foundation.
+
+## Remaining gaps
+
+None blocking. The capture's smoke flow never burns/slows the player, so no
+screenshot shows a live badge — but this is a capture-plan limitation, not a code
+defect, and the appear/clear logic is covered by the passing unit tests. Filed as a
+nit (DOM render not directly tested; no live-effect capture).
+
+
+## v0.457 — level settings: 'Money this run' and return lines show em-dash placeholders during an active run  (2026-06-11 08:48:37)
+
+- No dead code or obvious bugs in the changed paths.
+
+**Minor refactor note:** `extractedLobbyOverlayActive = false` was removed from the deploy (`enteringPlaying`) branch when restructuring; it remains cleared on `enteringLobby`. No observed impact in capture or tests (see nits).
+
+### Debug scenarios
+
+**N/A — no new or changed debug scenarios.** Existing `summon-ready` used only in server integration tests behind `ALLOW_DEBUG_SCENARIOS`; normal gameplay path (deploy → collect loot → open Lv) is unchanged and is what the fix targets.
+
+---
+
+## Harness capture gap (non-blocking)
+
+Round-1 capture used the **fallback** full-flow smoke plan (movement + dodge). It did **not** open the Lv overlay or pick up currency loot. Acceptance for this ticket is explicitly vitest-driven; the code path and integration tests cover the reported bug. Runtime health is still proven by the capture.
+
+---
+
+## Remaining gaps
+
+None. Both sub-ticket fixes integrate correctly; the full ticket acceptance criteria are met with automated test coverage and a clean captured run.
+
+
+## v0.458 — hud: objective line shows only quest title for stage_boss and escort quests (no goal or progress)  (2026-06-11 08:55:13)
+
+- **Tests:** `coverage.log` reports 369 client tests passed (20 files), including all 13 new `objectiveHud` cases and 3 new `updateObjectiveHud` integration cases. No regressions observed.
+
+## Debug scenarios
+
+No new `?debugScenario=` shortcuts were added. N/A.
+
+## Capture vs. ticket scope
+
+The round-1 harness used the **fallback** smoke plan on default Initiate Vault (`defeat_enemies`), not Frost Crossing / Annex Evacuation / Endless Siege. Browser capture therefore does not visually prove the three newly wired objective types, but:
+
+1. Runtime health is clean.
+2. Capture probe `bodyText` confirms the objective HUD renders correctly for the default quest.
+3. Per-type behavior is covered by integration tests that exercise the real `updateObjectiveHud()` path with quest-board metadata.
+
+This is a harness-coverage gap (nit), not a code defect.
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are satisfied in code and tests; the game loads and runs cleanly in capture.
+
+## v0.459 — medic: heal button silently disabled when the player cannot afford it  (2026-06-11 09:15:43)
+
+### Code quality
+
+**PASS**
+
+- Minimal, focused diff; uses existing `formatCurrencyPrice` for consistency with paid copy.
+- No dead code, no new console errors.
+- `medicHud.test.js` (3 cases) passes; round-1 `coverage.log` shows full client suite green (315 tests).
+
+### Debug scenarios
+
+**N/A — no new or changed `?debugScenario=` shortcuts in this ticket.**
+
+## Integration check
+
+Sub-ticket `01-medic-affordability-shortfall-message` passed its own QA. Holistic review confirms the single sub-ticket fully covers the parent acceptance criterion; no integration gaps between client HUD and server charity heal logic.
+
+## Remaining gaps
+
+None blocking.
+
+
 ## v0.460 — encounters: boss-encounter HUD never appeared in any tested Frost Crossing path  (2026-06-11 09:17:17)
 
   worked at baseline — confirming the bug was scenario-side, exactly as the
@@ -8408,4 +8568,5 @@ None blocking. The game runs cleanly and the acceptance criterion is met in both
 the natural-trigger path (server test) and the validation debug-scenario path
 (captured `06-boss-active.png` HUD screenshot). One non-blocking nit recorded
 separately.
+
 

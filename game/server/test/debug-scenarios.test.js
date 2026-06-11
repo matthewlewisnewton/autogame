@@ -1826,9 +1826,6 @@ describe('debugScenario — spire-ascent-tier-2 harness shortcuts', () => {
 		const triggerPromise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'spire-ascent-encounter-trigger' });
 		const triggerResult = await triggerPromise;
-		// Wait for stateUpdate after the scenario resolves so periodic dormant snapshots
-		// cannot race ahead of the encounter-trigger mutation.
-		const stateUpdate = await waitForEvent(socket, 'stateUpdate');
 
 		expect(triggerResult.ok).toBe(true);
 		expect(triggerResult.scenario).toBe('spire-ascent-encounter-trigger');
@@ -1842,6 +1839,10 @@ describe('debugScenario — spire-ascent-tier-2 harness shortcuts', () => {
 		);
 		expect(liveAdds.length).toBeGreaterThanOrEqual(1);
 		expect(liveAdds.some((e) => e.type === 'grunt')).toBe(true);
+		// Encounter is active during spire-ascent tier-2 play, so periodic game-loop stateUpdates can
+		// race ahead of the scenario's own snapshot when the listener is registered in parallel with
+		// the emit. Capture after debugScenarioResult resolves (same pattern as boss-low-hp above).
+		const stateUpdate = await waitForEvent(socket, 'stateUpdate');
 		expect(stateUpdate.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
 		expect(stateUpdate.run.encounter.locked).toBe(true);
 	});

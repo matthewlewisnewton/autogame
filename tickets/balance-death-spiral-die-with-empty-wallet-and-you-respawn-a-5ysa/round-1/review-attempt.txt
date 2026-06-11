@@ -1,0 +1,18 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The ticket asked for some floor on post-death recovery so a broke player isn't trapped in repeat deaths. The implementation delivers layered mitigation:
+
+- **Respawn HP raised** — `LOBBY_REVIVE_HP` 10 → 50 (50% of MAX_HP), enough to survive ≥2 Initiate Vault grunt hits instead of 1.
+- **Charity medic** — `healAtMedic()` charges 0 (full restore, no currency required) when the player can't afford the 10-money fee; paying players still pay normally.
+- **Documented** in `design.md`, and **tested** across server integration (full die → revive → free-heal → redeploy flow), server unit, and client HUD tests.
+
+Verification:
+- **Runtime health:** `metrics.json` `ok:true`, empty `pageerrors`, no `harness_failure`; `console.log` clean (only benign 409 lobby-create race + THREE/EPIPE noise). Game starts and loads cleanly.
+- **Tests:** ran the affected suites — 55/55 pass.
+- **Debug scenario** `post-death-broke-lobby` is properly debug-gated, the same end-state is reachable (and tested) via the normal `returnToLobby` path, and it short-circuits no invariants.
+
+One non-blocking nit recorded (`nits.md`): the free heal keys on `currency < 10`, so it benefits any low-funds player, not strictly post-death ones — harmless but worth a deliberate design note later.
+
+Files written: `review.md`, `nits.md`. No `gaps.md` (PASS).

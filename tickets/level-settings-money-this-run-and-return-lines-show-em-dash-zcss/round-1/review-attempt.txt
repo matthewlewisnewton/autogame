@@ -1,0 +1,23 @@
+## Review complete
+
+**VERDICT: PASS**
+
+### Runtime
+- `metrics.json`: `"ok": true`, empty `pageerrors`
+- `console.log`: clean (no page errors or fatals)
+
+### Implementation (2 commits)
+1. **Client** — Seeds and preserves `_lastReturnRewardsPreview` on deploy and across slim `stateUpdate` ticks (`stateHandlers.js`).
+2. **Server** — Emits `deckUpdate` with refreshed `returnRewardsPreview` after currency loot pickup (`runHandlers.js`).
+
+Together these fix the em-dash placeholders: the overlay now reads live run money and keep/forfeit copy from the cached preview, and updates after loot collection via `deckUpdate` or full `stateSnapshot` (auto-collect).
+
+### Tests
+- New `level-settings-rewards.test.js` (2 tests)
+- New integration tests for currency vs magic-stone loot pickup
+- Full harness suite passed in `coverage.log`
+
+### Files written
+- `round-1/review.md` — full assessment
+- `round-1/nits.md` — optional follow-ups (client test for loot > 0, richer harness capture)
+- No `gaps.md` (PASS only)

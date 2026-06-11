@@ -39,7 +39,7 @@ const {
 const { PASSAGE_WIDTH, sampleFloorY, sampleFloorSurface, DEFAULT_FLOOR_Y, resolveFloorY } = require('./dungeon');
 const { applyLeechHeal, getFrenziedCombatMultipliers, checkFrenziedTelegraph } = require('./enemyVariants');
 const lobbies = require('./lobbies');
-const { isPlayingPhase, isLobbyPhase } = lobbies;
+const { isPlayingPhase, isLobbyPhase, isActiveRun } = lobbies;
 const { getEncounterBossId, isEncounterDormant, isEncounterLocked, canDamageEnemy } = require('./encounters');
 
 // ── Airborne / altitude model ──
@@ -647,6 +647,7 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
   const inPlaying = isPlayingPhase(state);
   const inLobby = isLobbyPhase(state);
   if (!inPlaying && !inLobby) return;
+  if (inPlaying && !isActiveRun(state)) return;
 
   const ctx = resolveMovementContext(movementContext);
   const step = MOVE_SPEED / TICK_RATE;

@@ -307,6 +307,8 @@ let lockOnReleaseLookAt = null;
 let gameStateRef = null; // reference to gameState object set by main.js
 let myIdRef = null; // current player id string
 let socketRef = null; // socket instance for emitting 'move'
+/** @type {(() => boolean) | null} */
+let runSummaryOverlayVisibleChecker = null;
 /** @type {(() => object | null) | null} */
 let enemyDisplayCatalogGetter = null;
 /** @type {{ panelEl: HTMLElement, nameEl: HTMLElement, variantEl: HTMLElement, hpEl: HTMLElement, statsEl: HTMLElement, descEl: HTMLElement } | null} */
@@ -1421,6 +1423,20 @@ export function setSocketRef(s) {
 }
 
 /**
+ * Register the run-summary overlay visibility probe from main.js.
+ * @param {() => boolean} checker
+ */
+export function setRunSummaryOverlayVisibleChecker(checker) {
+	runSummaryOverlayVisibleChecker = checker;
+}
+
+function isDungeonInputBlocked() {
+	const runStatus = gameStateRef?.run?.status;
+	if (runStatus && runStatus !== 'playing') return true;
+	return !!(runSummaryOverlayVisibleChecker?.());
+}
+
+/**
  * Provide a getter for the server enemy display catalog (set from main.js).
  * @param {() => object | null} getter
  */
@@ -2212,13 +2228,20 @@ export function updateMyPlayer(delta) {
 	}
 
 	const cardWindupLocked = isLocalPlayerCardWindup();
-	const movement = cardWindupLocked ? null : getMovementInput();
+	const dungeonInputBlocked = isDungeonInputBlocked();
+	const movement = (cardWindupLocked || dungeonInputBlocked) ? null : getMovementInput();
 	const layout = gameStateRef?.layout;
 	let dirX = 0;
 	let dirZ = 0;
 	let moveRotation = playerRotation;
 
-	if (movement) {
+	if (dungeonInputBlocked) {
+		moveEmitAccumulator = 0;
+		moveAccumulator = 0;
+		simVx = 0;
+		simVz = 0;
+		moveStopPending = false;
+	} else if (movement) {
 		moveAccumulator += delta;
 		moveEmitAccumulator += delta;
 		// Target-relative while locked: stick up/down closes or opens distance,
@@ -2251,49 +2274,51 @@ export function updateMyPlayer(delta) {
 		}
 	}
 
-	const speedScale = clientMoveSpeedScale(me) * localSlowFactor(me);
-	while (moveAccumulator >= TICK_DT) {
-		prevSimX = simX;
-		prevSimZ = simZ;
-		const tickResult = tickMovementPrediction({
-			x: simX,
-			z: simZ,
-			vx: simVx,
-			vz: simVz,
-			layout,
-			inputDx: dirX,
-			inputDz: dirZ,
-			inputActive: Boolean(movement),
-			speedScale,
-			tryPlayerMove,
-			colliders: wallColliders,
-			walkableAABBs,
-			bounds: dungeonBounds,
-			tickRate: TICK_RATE,
-			moveSpeed: MOVE_SPEED,
-			slipperyAccel: SLIPPERY_ACCEL,
-			slipperyFriction: SLIPPERY_FRICTION,
-			normalStopFriction: NORMAL_STOP_FRICTION,
-		});
-		simX = tickResult.x;
-		simZ = tickResult.z;
-		simVx = tickResult.vx;
-		simVz = tickResult.vz;
-		moveAccumulator -= TICK_DT;
-	}
-
-	if (movement) {
-		while (moveEmitAccumulator >= TICK_DT && socketRef) {
-			moveEmitAccumulator -= TICK_DT;
-			moveSequence += 1;
-			lastEmittedRotation = moveRotation;
-			moveStopPending = true;
-			socketRef.emit(CLIENT_TO_SERVER.MOVE, {
-				dx: dirX,
-				dz: dirZ,
-				rotation: moveRotation,
-				sequence: moveSequence,
+	if (!dungeonInputBlocked) {
+		const speedScale = clientMoveSpeedScale(me) * localSlowFactor(me);
+		while (moveAccumulator >= TICK_DT) {
+			prevSimX = simX;
+			prevSimZ = simZ;
+			const tickResult = tickMovementPrediction({
+				x: simX,
+				z: simZ,
+				vx: simVx,
+				vz: simVz,
+				layout,
+				inputDx: dirX,
+				inputDz: dirZ,
+				inputActive: Boolean(movement),
+				speedScale,
+				tryPlayerMove,
+				colliders: wallColliders,
+				walkableAABBs,
+				bounds: dungeonBounds,
+				tickRate: TICK_RATE,
+				moveSpeed: MOVE_SPEED,
+				slipperyAccel: SLIPPERY_ACCEL,
+				slipperyFriction: SLIPPERY_FRICTION,
+				normalStopFriction: NORMAL_STOP_FRICTION,
 			});
+			simX = tickResult.x;
+			simZ = tickResult.z;
+			simVx = tickResult.vx;
+			simVz = tickResult.vz;
+			moveAccumulator -= TICK_DT;
+		}
+
+		if (movement) {
+			while (moveEmitAccumulator >= TICK_DT && socketRef) {
+				moveEmitAccumulator -= TICK_DT;
+				moveSequence += 1;
+				lastEmittedRotation = moveRotation;
+				moveStopPending = true;
+				socketRef.emit(CLIENT_TO_SERVER.MOVE, {
+					dx: dirX,
+					dz: dirZ,
+					rotation: moveRotation,
+					sequence: moveSequence,
+				});
+			}
 		}
 	}
 
@@ -7439,7 +7464,7 @@ export function animate(timestamp) {
 	const myId = myIdRef;
 
 	// ── Loot proximity check — closest drop in range; any player can grab it ──
-	if (gs && gs.loot && gs.loot.length > 0) {
+	if (gs && gs.loot && gs.loot.length > 0 && !isDungeonInputBlocked()) {
 		const localPlayer = gs.players[myId];
 		if (localPlayer && !localPlayer.dead) {
 			const now = performance.now();
