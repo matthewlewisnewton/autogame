@@ -15,22 +15,6 @@ import { ENEMY_CARD_DROPS, ENEMY_MS_DROPS } from '../config.js';
 
 const START = 2_000_000;
 
-// design.md stage-boss band: every non-capstone objectiveType-boss def the
-// colossus must strictly out-stat on both hp and attackDamage. The
-// citadel_sovereign capstone is deliberately NOT in this list — it ties the
-// colossus at the 460 HP ceiling and out-damages it.
-const STAGE_BOSS_BAND = [
-	'miniboss',
-	'annex_overseer',
-	'arena_champion',
-	'crucible_sovereign',
-	'spire_warden',
-	'cinder_warden',
-	'magma_colossus',
-	'permafrost_warden',
-	'glacial_tyrant',
-];
-
 function setupPlayingRun() {
 	gameState.gamePhase = 'playing';
 	gameState.run = { status: 'playing' };
@@ -73,26 +57,25 @@ function makeExpiredWindup(type, targetId, overrides = {}) {
 	return enemy;
 }
 
-describe('riftbound_colossus enemy def', () => {
-	const def = ENEMY_DEFS.riftbound_colossus;
+describe('citadel_sovereign enemy def', () => {
+	const def = ENEMY_DEFS.citadel_sovereign;
 
-	it('is registered with ice+fire rift-convergence metadata', () => {
+	it('is registered as the citadel capstone tyrant', () => {
 		expect(def).toBeDefined();
-		expect(def.name).toBe('Riftbound Colossus');
-		expect(def.description.toLowerCase()).toContain('rift');
-		expect(def.description.toLowerCase()).toContain('ice');
-		expect(def.description.toLowerCase()).toContain('fire');
+		expect(def.name).toBe('Citadel Sovereign');
+		expect(def.description.toLowerCase()).toContain('citadel');
+		expect(def.description.toLowerCase()).toContain('capstone');
 	});
 
-	it('has the hardest-stage-boss combat stats from the ticket', () => {
+	it('has the capstone combat stats from the ticket', () => {
 		expect(def.hp).toBe(460);
-		expect(def.attackDamage).toBe(28);
+		expect(def.attackDamage).toBe(30);
 		expect(def.attackStyle).toBe('radial');
-		expect(def.attackRange).toBe(5.5);
+		expect(def.attackRange).toBe(6);
 		expect(def.attackWindupMs).toBe(1200);
-		expect(def.chaseSpeed).toBeCloseTo(1.1);
+		expect(def.chaseSpeed).toBeCloseTo(1.15);
 		expect(def.wanderSpeed).toBeCloseTo(0.5);
-		expect(def.burnDurationMs).toBe(3000);
+		expect(def.burnDurationMs).toBe(3500);
 	});
 
 	it('surfaces hp, attackDamage, attackStyle, attackRange, and burnDurationMs', () => {
@@ -101,42 +84,43 @@ describe('riftbound_colossus enemy def', () => {
 		}
 	});
 
-	it('strictly out-stats every non-capstone stage-boss band def, with hp capped at 460', () => {
+	it('ties the 460 HP defeatBoss validation ceiling without exceeding it', () => {
 		// 500 HP could not be defeated inside the 180s defeatBoss validation
-		// window (design.md), so the cap is a hard ceiling.
+		// window (design.md), so 460 is a hard ceiling — the sovereign ties
+		// riftbound_colossus there and must NOT exceed it.
+		expect(def.hp).toBe(460);
 		expect(def.hp).toBeLessThanOrEqual(460);
-		for (const type of STAGE_BOSS_BAND) {
-			const other = ENEMY_DEFS[type];
-			expect(other, `missing band def ${type}`).toBeDefined();
-			expect(def.hp, `hp must exceed ${type}`).toBeGreaterThan(other.hp);
-			expect(def.attackDamage, `attackDamage must exceed ${type}`).toBeGreaterThan(other.attackDamage);
+		expect(def.hp).toBe(ENEMY_DEFS.riftbound_colossus.hp);
+	});
+
+	it('out-damages every other entry in ENEMY_DEFS', () => {
+		for (const [type, other] of Object.entries(ENEMY_DEFS)) {
+			if (type === 'citadel_sovereign') continue;
+			expect(
+				def.attackDamage,
+				`attackDamage must strictly exceed ${type}'s`,
+			).toBeGreaterThan(other.attackDamage);
 		}
 	});
 });
 
-describe('riftbound_colossus drop registry', () => {
+describe('citadel_sovereign drop registry', () => {
 	it('drops a dungeon_drake card like the other stage bosses', () => {
-		expect(ENEMY_CARD_DROPS.riftbound_colossus).toBe('dungeon_drake');
-		expect(getEnemyCardDrop({ type: 'riftbound_colossus' })).toBe('dungeon_drake');
+		expect(ENEMY_CARD_DROPS.citadel_sovereign).toBe('dungeon_drake');
+		expect(getEnemyCardDrop({ type: 'citadel_sovereign' })).toBe('dungeon_drake');
 	});
 
-	it('drops the highest magic stone value among non-capstone entries', () => {
-		expect(ENEMY_MS_DROPS.riftbound_colossus).toBe(80);
-		expect(getEnemyMagicStoneDrop({ type: 'riftbound_colossus' })).toBe(80);
+	it('drops the highest magic stone value in the table', () => {
+		expect(ENEMY_MS_DROPS.citadel_sovereign).toBe(90);
+		expect(getEnemyMagicStoneDrop({ type: 'citadel_sovereign' })).toBe(90);
 		for (const [type, value] of Object.entries(ENEMY_MS_DROPS)) {
-			if (type === 'riftbound_colossus') continue;
-			if (type === 'citadel_sovereign') {
-				// The citadel capstone now tops the table at 90.
-				expect(value, 'citadel_sovereign tops the table').toBe(90);
-				expect(value).toBeGreaterThan(ENEMY_MS_DROPS.riftbound_colossus);
-				continue;
-			}
-			expect(value, `${type} must drop less than the colossus`).toBeLessThan(80);
+			if (type === 'citadel_sovereign') continue;
+			expect(value, `${type} must drop less than the sovereign`).toBeLessThan(90);
 		}
 	});
 });
 
-describe('riftbound_colossus radial strike applies BURNING', () => {
+describe('citadel_sovereign radial strike applies BURNING', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
 		vi.setSystemTime(START);
@@ -149,9 +133,9 @@ describe('riftbound_colossus radial strike applies BURNING', () => {
 	});
 
 	it('resolved radial hit damages and ignites the player', () => {
-		const def = ENEMY_DEFS.riftbound_colossus;
+		const def = ENEMY_DEFS.citadel_sovereign;
 		const player = addPlayer('p1', { x: 3, z: 0, hp: 100 });
-		const colossus = makeExpiredWindup('riftbound_colossus', 'p1');
+		const sovereign = makeExpiredWindup('citadel_sovereign', 'p1');
 
 		updateEnemies();
 
@@ -159,18 +143,18 @@ describe('riftbound_colossus radial strike applies BURNING', () => {
 		expect(isBurning(player)).toBe(true);
 		expect(player.burningUntil).toBe(START + def.burnDurationMs);
 		expect(player.burningUntil).toBeGreaterThan(Date.now());
-		expect(colossus.attackState).toBe('recovering');
+		expect(sovereign.attackState).toBe('recovering');
 	});
 
 	it('out-of-range windup cancels without damage or burn', () => {
-		const def = ENEMY_DEFS.riftbound_colossus;
+		const def = ENEMY_DEFS.citadel_sovereign;
 		const player = addPlayer('p1', { x: def.attackRange + 3, z: 0, hp: 100 });
-		const colossus = makeExpiredWindup('riftbound_colossus', 'p1');
+		const sovereign = makeExpiredWindup('citadel_sovereign', 'p1');
 
 		updateEnemies();
 
 		expect(player.hp).toBe(100);
 		expect(isBurning(player)).toBe(false);
-		expect(colossus.attackState).toBe('chasing');
+		expect(sovereign.attackState).toBe('chasing');
 	});
 });

@@ -1232,6 +1232,17 @@ const ENEMY_DEFS = {
 		attackStyle: 'radial', attackRange: 5.5,
 		burnDurationMs: 3000,
 	},
+	citadel_sovereign: {
+		name: 'Citadel Sovereign',
+		description: 'Capstone tyrant of the citadel — the hardest-hitting boss in the game; its radial shockwave ignites (BURNING) everything it strikes and burns longer than the rift.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange', 'burnDurationMs'],
+		// HP capped at 460: design.md records that a 500 HP boss could not be
+		// defeated inside the 180s defeatBoss validation window. Ties
+		// riftbound_colossus at the ceiling — must NOT exceed 460.
+		hp: 460, chaseSpeed: 1.15, wanderSpeed: 0.5, attackDamage: 30, attackWindupMs: 1200,
+		attackStyle: 'radial', attackRange: 6,
+		burnDurationMs: 3500,
+	},
 	spawner: {
 		name: 'Brood Node',
 		description: 'Radial attacker that periodically summons skirmishers.',
