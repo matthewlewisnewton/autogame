@@ -148,3 +148,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [395-cleanup-anim-cinder-snare](tickets/395-cleanup-anim-cinder-snare/)
 - [ ] [396-cleanup-anim-soul-drain](tickets/396-cleanup-anim-soul-drain/)
 - [ ] [396-cleanup-anim-telepipe](tickets/396-cleanup-anim-telepipe/)
+- [ ] [397-cleanup-anim-event-horizon](tickets/397-cleanup-anim-event-horizon/)

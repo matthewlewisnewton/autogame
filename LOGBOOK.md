@@ -7226,3 +7226,26 @@ touches this card's render fn. No foundation regression.
 None blocking. The only out-of-strict-scope change is the server-side debug scenario (ticket
 SCOPE names client paths); it is additive, properly gated, and a legitimate QA enabler — noted
 in nits.md, not blocking.
+
+## v0.404 — 357-anim-event-horizon  (2026-06-10 19:41:53)
+
+distinction, per-hit bursts at enemy meshes (including a missing-mesh skip),
+no-windUp assertion, radius-absent early return, graceful degradation when
+optional ctx primitives are absent, plus two primitive-level tests covering group
+structure, palette, style overrides, and cleanup. All green.
+
+## Scope & integration
+Within ticket scope: `cardRenderers.js` (this card's render fn), `renderer.js`
+(new VFX primitive + update branch), `config.js` (delay constant), and the
+standard plumbing to thread `spawnEventHorizonEffect` through `main.js` /
+`socketHandlerCtx.js` / `cardHandlers.js` — the same wiring pattern every other
+spawn effect uses. Renderer is already registered (`event_horizon:
+renderEventHorizon`). No server changes, no debug-scenario changes, no
+design.md/requirements.md regression. `IcosahedronGeometry` has a `typeof`-free
+truthiness guard with a `SphereGeometry` fallback, and `___test_scene` is honored
+so tests exercise the real primitive.
+
+## Remaining gaps
+None blocking. One minor cosmetic timing inconsistency noted as a nit (per-hit
+sparks fire at cast while the central crush ring fires at +375 ms).
+
