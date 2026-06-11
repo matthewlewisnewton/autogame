@@ -154,6 +154,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [397-cleanup-anim-event-horizon](tickets/397-cleanup-anim-event-horizon/)
 - [ ] [398-cleanup-anim-phase-echo](tickets/398-cleanup-anim-phase-echo/)
 - [ ] [398-cleanup-anim-gravity-well](tickets/398-cleanup-anim-gravity-well/)
+- [ ] [399-cleanup-anim-glacier-rupture](tickets/399-cleanup-anim-glacier-rupture/)
 - [ ] [399-cleanup-anim-restoration-beacon](tickets/399-cleanup-anim-restoration-beacon/)
 - [ ] [399-cleanup-anim-thunderbird](tickets/399-cleanup-anim-thunderbird/)
 - [ ] [399-cleanup-anim-legion-marshal](tickets/399-cleanup-anim-legion-marshal/)
@@ -162,3 +163,5 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [400-cleanup-anim-glacial-orb](tickets/400-cleanup-anim-glacial-orb/)
 - [ ] [400-cleanup-anim-cryo-burst](tickets/400-cleanup-anim-cryo-burst/)
 - [ ] [401-cleanup-anim-offering-terminal](tickets/401-cleanup-anim-offering-terminal/)
+- [ ] [401-cleanup-anim-photon-slicer](tickets/401-cleanup-anim-photon-slicer/)
+- [ ] [402-cleanup-decision-per-quest-layouts-are-fully-deterministic-every-run-xnu8](tickets/402-cleanup-decision-per-quest-layouts-are-fully-deterministic-every-run-xnu8/)

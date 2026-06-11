@@ -1,0 +1,896 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game
+      Coverage enabled with v8
+
+stdout | client/test/passage-gate-unlock-feedback.test.js > passage gate unlock feedback > plays unlock feedback exactly once when a passage transitions locked to unlocked
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-shield-bar.test.js > enemy shield bar > createEnemyShieldBarMesh uses cyan above the enemy half-height
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/passage-gate-meshes.test.js > passage gate meshes > creates one gate mesh per locked passage and removes it when unlocked
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/boothPrompt.test.js > booth interaction prompt > shows the prompt on zone enter and hides it on exit
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-minion-summon.test.js > minion summon scale-in > records spawn time and starts new minion meshes below full scale
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > getPickedUpLootIds reflects lootPickupAttempts after walk-over pickup
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > builds meshes for local and remote lobby players
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > creates a persistent mesh keyed by enc.id and positions it at enc.x/z
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/avatar-cosmetic-render.test.js > avatar cosmetic render (hub + in-run) > lobby hub layout builds local avatar whose cosmeticKey matches non-default cosmetic
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > creates a persistent mesh keyed by enc.id and positions it at enc.x/z
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer/playerSync.js:87:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:6910:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stderr | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > builds meshes for local and remote lobby players
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer/playerSync.js:87:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:6910:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer/playerSync.js:87:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:6910:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stderr | client/test/renderer-minion-summon.test.js > minion summon scale-in > records spawn time and starts new minion meshes below full scale
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer/playerSync.js:87:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:6910:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stderr | client/test/renderer-loot.test.js > renderer loot helpers > getPickedUpLootIds reflects lootPickupAttempts after walk-over pickup
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer/playerSync.js:87:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:6910:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stderr | client/test/boothPrompt.test.js > booth interaction prompt > shows the prompt on zone enter and hides it on exit
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer/playerSync.js:87:37[90m)[39m
+    at Module.animate [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:6910:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stdout | client/test/passage-gate-meshes.test.js > passage gate meshes > tracks multiple locked passages independently
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/passage-gate-unlock-feedback.test.js > passage gate unlock feedback > spawns unlock VFX without leaving the gate mesh in the scene map
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-shield-bar.test.js > enemy shield bar > updateEnemyShieldBarMesh scales by shieldHp / maxShieldHp
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/avatar-cosmetic-render.test.js > avatar cosmetic render (hub + in-run) > playing quest layout builds the same avatar with cosmetic applied after mocked glTF load
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/renderer-variant.test.js > warded variant visuals > createEnemyMesh stores _origColor from the type palette
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer/enemySync.js:148:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/test/renderer-variant.test.js:29:16
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+ ✓ |client| client/test/passage-gate-unlock-feedback.test.js (2 tests) 707ms
+   ✓ passage gate unlock feedback > plays unlock feedback exactly once when a passage transitions locked to unlocked  578ms
+stdout | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > disposes the hazard mesh when the enchantment leaves the snapshot
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-minion-summon.test.js > minion summon scale-in > does not re-trigger spawn scale-in when the minion id was already seen
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/boothPrompt.test.js > booth interaction prompt > hides the prompt when the rendered scene is not the hub
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > moves the remote mesh when hub presence coordinates change
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/spire-atmosphere.test.js > spire-ascent atmosphere > resetAtmosphere restores default background and removes fog
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > markLootCollected shows "+N MS" for magic stone pickups
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-shield-bar.test.js > enemy shield bar > animate sync creates, updates, and disposes shield bars from game state
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/passage-gate-meshes.test.js > passage gate meshes > clears gate meshes on rebuildDungeonLayout
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/escort-hp-bar.test.js > escort NPC HP bar > animate sync creates a bar only for escort minions and scales/colors it from hp
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/renderer-minion-summon.test.js (2 tests) 771ms
+   ✓ minion summon scale-in > records spawn time and starts new minion meshes below full scale  590ms
+stderr | client/test/renderer-shield-bar.test.js > enemy shield bar > animate sync creates, updates, and disposes shield bars from game state
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer/playerSync.js:87:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:6910:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer/enemySync.js:148:21[90m)[39m
+    at syncEnemyMeshes [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer/enemySync.js:844:17[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:6918:18[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer/enemySync.js:148:21[90m)[39m
+    at syncEnemyMeshes [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer/enemySync.js:844:17[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:6918:18[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stderr | client/test/escort-hp-bar.test.js > escort NPC HP bar > animate sync creates a bar only for escort minions and scales/colors it from hp
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer/playerSync.js:87:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:6910:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+ ✓ |client| client/test/passage-gate-meshes.test.js (3 tests) 778ms
+   ✓ passage gate meshes > creates one gate mesh per locked passage and removes it when unlocked  468ms
+stdout | client/test/fire-atmosphere.test.js > fire-cavern atmosphere > resetAtmosphere restores default background and removes fog
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/avatar-cosmetic-render.test.js > avatar cosmetic render (hub + in-run) > rebuilds avatar when cosmetic changes between animate() calls
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > hub lobby join starts with #lobby hidden and lobbyMenuDismissed true
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > does NOT create a hazard mesh for cinder_snare enchantments
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/boothPrompt.test.js > booth interaction prompt > emits boothInteract for the in-range booth and nothing when out of range
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > markLootCollected plays loot SFX only for magic stone pickups
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/named-rare-visuals.test.js > named-rare enemy visuals > applyEnemyNameplate creates and disposes sprites keyed on namedRare
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/spire-atmosphere.test.js > spire-ascent atmosphere > rebuildDungeonLayout re-inits spire atmosphere when swapping layouts
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-shield-bar.test.js > enemy shield bar > does not create a shield bar when shieldHp is absent or zero
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/avatar-cosmetic-render.test.js (3 tests) 1095ms
+   ✓ avatar cosmetic render (hub + in-run) > lobby hub layout builds local avatar whose cosmeticKey matches non-default cosmetic  439ms
+   ✓ avatar cosmetic render (hub + in-run) > rebuilds avatar when cosmetic changes between animate() calls  442ms
+ ✓ |client| client/test/boss-encounter-hud-wiring.test.js (6 tests) 959ms
+   ✓ boss-encounter HUD wiring in main.js > populates the model and shows the HUD for an active encounter with a live boss  947ms
+ ✓ |client| client/test/boothPrompt.test.js (5 tests) 1141ms
+   ✓ booth interaction prompt > shows the prompt on zone enter and hides it on exit  548ms
+   ✓ booth interaction prompt > emits boothInteract for the in-range booth and nothing when out of range  384ms
+ ✓ |client| client/test/named-rare-visuals.test.js (4 tests) 1446ms
+   ✓ named-rare enemy visuals > parseNamedRareTintHex converts hex strings to color numbers  700ms
+   ✓ named-rare enemy visuals > applyEnemyNameplate creates and disposes sprites keyed on namedRare  462ms
+ ✓ |client| client/test/renderer-enemy-emissive-priority.test.js (4 tests) 1285ms
+   ✓ resolveEnemyEmissive priority > windup survives a non-reveal reveal pass on the same frame  488ms
+   ✓ resolveEnemyEmissive priority > falls back to windup after damage flash expires  507ms
+ ✓ |client| client/test/spire-atmosphere.test.js (4 tests) 1303ms
+   ✓ spire-ascent atmosphere > lerpSpireAtmosphere(0) is darker than lerpSpireAtmosphere(1) for background and fog  454ms
+   ✓ spire-ascent atmosphere > rebuildDungeonLayout re-inits spire atmosphere when swapping layouts  546ms
+ ✓ |client| client/test/deck-viewer.test.js (21 tests) 909ms
+   ✓ renderDeckViewer() / renderDeckStack() > renders draw pile cards with type icons and toggles via V key  899ms
+stdout | client/test/renderer-variant.test.js > warded variant visuals > applyVariantMarker uses per-variant badge colors on the marker mesh
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/renderer-shield-bar.test.js (4 tests) 1466ms
+   ✓ enemy shield bar > createEnemyShieldBarMesh uses cyan above the enemy half-height  507ms
+   ✓ enemy shield bar > does not create a shield bar when shieldHp is absent or zero  530ms
+stdout | client/test/escort-hp-bar.test.js > escort NPC HP bar > disposes the bar when the escort minion leaves the snapshot
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/escort-hp-bar.test.js (4 tests) 1830ms
+   ✓ escort NPC HP bar > shouldHaveEscortHealthBar is true only for isEscort minions  304ms
+   ✓ escort NPC HP bar > animate sync creates a bar only for escort minions and scales/colors it from hp  393ms
+   ✓ escort NPC HP bar > disposes the bar when the escort minion leaves the snapshot  1004ms
+stdout | client/test/fire-atmosphere.test.js > fire-cavern atmosphere > rebuildDungeonLayout re-inits fire atmosphere when swapping layouts
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/fire-atmosphere.test.js (4 tests) 2195ms
+   ✓ fire-cavern atmosphere > lerpFireCavernAtmosphere(1) has higher red/orange channel sum than lerpFireCavernAtmosphere(0)  589ms
+   ✓ fire-cavern atmosphere > resetAtmosphere restores default background and removes fog  343ms
+   ✓ fire-cavern atmosphere > rebuildDungeonLayout re-inits fire atmosphere when swapping layouts  1051ms
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > updateCollectingLoot disposes cloned loot materials when animation finishes
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > applyHubPresence sequence updates remote mesh position and cosmeticKey
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/renderer-loot.test.js (4 tests) 2245ms
+   ✓ renderer loot helpers > getPickedUpLootIds reflects lootPickupAttempts after walk-over pickup  562ms
+   ✓ renderer loot helpers > markLootCollected plays loot SFX only for magic stone pickups  402ms
+   ✓ renderer loot helpers > updateCollectingLoot disposes cloned loot materials when animation finishes  1079ms
+stdout | client/test/questBooth.test.js > quest booth booth:action hook (main.js) > reveals and scrolls the quest panel into view for boothId quest in lobby and ignores other booths
+[launchBooth] ready-up via booth
+[launchBooth] ready-up via booth
+
+stdout | client/test/main.test.js > cardError handler — server hand rejection > shows a toast when the server rejects an unauthorized card use
+[cardError] Card not in hand
+[cardError] Card not in hand
+[cardError] Card not in hand
+[cardError] Card not in hand
+[cardError] Card not in hand
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > dismissGameLobby then lobby-phase stateUpdate keeps #lobby hidden
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/airborne-floor-render.test.js (7 tests) 2579ms
+   ✓ airborne floor-aware render + shadow > flying enemy render offset tracks the floor surface via server world Y  446ms
+   ✓ airborne floor-aware render + shadow > flying shadow Y sits on the sampled floor surface, not a fixed plane  474ms
+   ✓ airborne floor-aware render + shadow > flying player reuses the same airborne helper as enemies/minions  954ms
+   ✓ airborne floor-aware render + shadow > grounded enemies and minions are unchanged on a non-default floor  401ms
+stderr | client/test/main.test.js > createEnemyMesh() > creates a red cone for grunt (default) type
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer/enemySync.js:148:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/test/main.test.js:2796:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates an orange cone for skirmisher type
+[renderer] failed to apply model "/models/skirmisher.glb" for "skirmisher": TypeError: Failed to parse URL from /models/skirmisher.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer/enemySync.js:148:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/test/main.test.js:2808:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/skirmisher.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a teal octahedron for spawner type
+[renderer] failed to apply model "/models/spawner.glb" for "spawner": TypeError: Failed to parse URL from /models/spawner.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer/enemySync.js:148:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/test/main.test.js:2818:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/spawner.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a warm emissive octahedron for ember_wraith type
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer/enemySync.js:148:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/test/main.test.js:2796:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a purple cone for miniboss type
+[renderer] failed to apply model "/models/miniboss.glb" for "miniboss": TypeError: Failed to parse URL from /models/miniboss.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer/enemySync.js:148:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/test/main.test.js:2860:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/miniboss.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+ ✓ |client| client/test/renderer-variant.test.js (6 tests) 2762ms
+   ✓ warded variant visuals > variantMarkerColor returns cyan for warded and magenta for other variants  549ms
+   ✓ warded variant visuals > applyVariantMarker uses per-variant badge colors on the marker mesh  735ms
+   ✓ frenzied variant visuals > variantMarkerColor returns red for frenzied, distinct from other variants  757ms
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > applyHubPresence removedPlayerIds disposes remote avatar mesh
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/boothDeck.test.js (4 tests) 2639ms
+   ✓ deck booth via booth:action > opens the loadout bay when booth:action targets the deck booth  1134ms
+   ✓ deck booth via booth:action > populates the deck editor and deck-add still emits deckAddCard  1462ms
+ ✓ |client| client/test/hub-presence-avatars.test.js (4 tests) 2841ms
+   ✓ hub presence avatars (lobby) > builds meshes for local and remote lobby players  554ms
+   ✓ hub presence avatars (lobby) > applyHubPresence sequence updates remote mesh position and cosmeticKey  1565ms
+   ✓ hub presence avatars (lobby) > applyHubPresence removedPlayerIds disposes remote avatar mesh  522ms
+ ✓ |client| client/test/debug-hatswap-hook.test.js (3 tests) 3134ms
+   ✓ ?booth=hatswap debug hook (main.js requestBoothDebugOpen) > opens the character booth and requests hats-unlocked once on localhost  1241ms
+   ✓ ?booth=hatswap debug hook (main.js requestBoothDebugOpen) > does nothing for ?booth=hatswap on a non-localhost host  1385ms
+   ✓ ?booth=hatswap debug hook (main.js requestBoothDebugOpen) > does not fire before the phase is lobby  506ms
+ ✓ |client| client/test/renderer-telepipe-portal.test.js (7 tests) 3031ms
+   ✓ telepipe portal animation > creates a Group with cylinder, two rings, and particle children  556ms
+   ✓ telepipe portal animation > animateTelepipePortal oscillates cylinder emissive intensity  569ms
+   ✓ telepipe portal animation > animateTelepipePortal is a no-op when no portal exists  1001ms
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > hubPresenceUpdate and applyHubPresence while dismissed do not show #lobby
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/renderer-spike-trap.test.js (5 tests) 3274ms
+   ✓ spike trap persistent hazard reconcile > creates a persistent mesh keyed by enc.id and positions it at enc.x/z  770ms
+   ✓ spike trap persistent hazard reconcile > does NOT create a hazard mesh for cinder_snare enchantments  374ms
+   ✓ SPIKE_TRAP_TRIGGERED handler > spawns the eruption VFX at the reported x/z/radius  1522ms
+   ✓ SPIKE_TRAP_TRIGGERED handler > is a guarded no-op when x/z are not finite  426ms
+stdout | client/test/renderer-lock-on-ring.test.js > syncLockOnRing > positions the ring at the supplied render height for the locked flying enemy
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/boothShop.test.js (5 tests) 2913ms
+   ✓ shop booth via booth:action > opens the card shop when booth:action targets the shop booth  864ms
+   ✓ shop booth via booth:action > emits buyShopCard when the buy button is clicked after booth open  1345ms
+   ✓ shop booth via booth:action > emits sellCard when a sell button is clicked after booth open  627ms
+stdout | client/test/hub-lobby-render.test.js > hub lobby render > renders the hub during the lobby and spawns the local avatar on the hub floor
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/hub-lobby-render.test.js > hub lobby render > renders the hub during the lobby and spawns the local avatar on the hub floor
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer/playerSync.js:87:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:6910:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stdout | client/test/renderer-lock-on-ring.test.js > syncLockOnRing > hides the ring when lock-on cycles away from that enemy
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > deck booth open shows #lobby and clears the dismissed flag
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/renderer-lock-on-ring.test.js (2 tests) 750ms
+   ✓ syncLockOnRing > positions the ring at the supplied render height for the locked flying enemy  439ms
+   ✓ syncLockOnRing > hides the ring when lock-on cycles away from that enemy  309ms
+stdout | client/test/hub-lobby-render.test.js > hub lobby render > rebuilds to the quest layout on deploy, moving the avatar off the hub
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-clock.test.js > renderer animation loop clock > uses THREE.Clock.getDelta without requiring a clock.update method
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/key-item-dodge.test.js > dash VFX > triggerDashVFX applies squash scale when a player mesh exists
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/hub-lobby-render.test.js (2 tests) 706ms
+   ✓ hub lobby render > renders the hub during the lobby and spawns the local avatar on the hub floor  532ms
+ ✓ |client| client/test/renderer-clock.test.js (1 test) 533ms
+   ✓ renderer animation loop clock > uses THREE.Clock.getDelta without requiring a clock.update method  531ms
+ ✓ |client| client/test/settings-effects.test.js (2 tests) 349ms
+   ✓ settings-driven renderer effects > spawnHitSpark no-ops when particles are disabled  345ms
+ ✓ |client| client/test/cardRenderers.test.js (222 tests) 289ms
+stderr | client/test/mesh-dispose.test.js > disposeOne > does not dispose shared glTF geometry/material still used by another live enemy
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: bodyMesh.material.clone is not a function
+    at retargetEnemyBodyMesh [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:938:24[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:841:5
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: bodyMesh.material.clone is not a function
+    at retargetEnemyBodyMesh [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:938:24[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:841:5
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m
+
+stderr | client/test/models-registry.test.js > loadModel() resilience > resolves null for a missing path without throwing
+[models] failed to load model "/models/__missing__.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/test/models-registry.test.js:134:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+    at new Promise (<anonymous>)
+    at Module.loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/test/models-registry.test.js:137:16
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1897:20
+
+stderr | client/test/models-registry.test.js > loadModel() resilience > caches failure so the same missing path is not re-fetched
+[models] failed to load model "/models/__missing__.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/test/models-registry.test.js:142:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+    at new Promise (<anonymous>)
+    at Module.loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/test/models-registry.test.js:145:9
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1897:20
+
+stdout | client/test/debug-godmode.test.js > debug godmode toggle (main.js) > mirrors debugGodmode onto local player when toggle succeeds
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+
+stderr | client/test/mesh-dispose.test.js > disposeOne > disposes owned procedural geometry/material when model load fails
+[models] failed to load model "/models/grunt.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/test/mesh-dispose.test.js:107:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+    at new Promise (<anonymous>)
+    at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at Module.createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer/enemySync.js:148:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/test/mesh-dispose.test.js:110:16
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+
+stderr | client/test/keyItemProp.test.js > createPlayerAvatar key-item prop > seats the equipped prop on the avatar and tracks the shown id
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/test/keyItemProp.test.js:50:36
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stderr | client/test/keyItemProp.test.js > createPlayerAvatar key-item prop > adds no prop for an unequipped/none key item
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/test/keyItemProp.test.js:50:36
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+stderr | client/test/avatar-dispose.test.js > disposeAvatar > fully disposes procedural fallback avatars when model load fails
+[models] failed to load model "/models/player.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/test/avatar-dispose.test.js:146:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+    at new Promise (<anonymous>)
+    at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at Module.createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/test/avatar-dispose.test.js:149:18
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+
+ ✓ |client| client/test/mesh-dispose.test.js (2 tests) 176ms
+stderr | client/test/models-registry.test.js > registry attach fallback (renderer) > createPlayerAvatar keeps procedural visible when the model fails to load
+[models] failed to load model "/models/player.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/test/models-registry.test.js:199:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+    at new Promise (<anonymous>)
+    at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at Module.createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:2701:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/test/models-registry.test.js:202:18
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+
+stderr | client/test/models-registry.test.js > registry attach fallback (renderer) > createEnemyMesh keeps procedural visible when loadModel resolves null
+[models] failed to load model "/models/grunt.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/test/models-registry.test.js:216:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+    at new Promise (<anonymous>)
+    at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at Module.createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer/enemySync.js:148:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/test/models-registry.test.js:219:16
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+
+ ✓ |client| client/test/avatar-dispose.test.js (4 tests) 430ms
+ ✓ |client| client/test/avatar-cosmetic.test.js (11 tests) 333ms
+ ✓ |client| client/test/keyItemProp.test.js (7 tests) 143ms
+ ✓ |client| client/test/debug-time-scale-gate.test.js (5 tests) 3990ms
+   ✓ debug time-scale client gate (main.js) > Shift+T does not emit on localhost until the server reports the feature authorized  989ms
+   ✓ debug time-scale client gate (main.js) > Shift+T emits setDebugTimeScale once the snapshot reports debugTimeScaleAllowed:true  1543ms
+   ✓ debug time-scale client gate (main.js) > Shift+T stops emitting again after the snapshot revokes authorization  443ms
+   ✓ debug time-scale client gate (main.js) > __setDebugTimeScaleForTest no-ops when not authorized and emits when authorized  440ms
+   ✓ debug time-scale client gate (main.js) > exposes debugTimeScaleAllowed in the harness state  573ms
+stdout | client/test/renderer-registry-normalize.test.js > field medic VFX > triggerMedicAllyHealVFX spawns telegraph ring and particle burst primitives
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-registry-normalize.test.js > field medic VFX > triggerMedicEnergyBeadVFX spawns corridor, trail, decal, and burst along the bead vector
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > shop booth open shows #lobby and clears the dismissed flag
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/vfx-primitives.test.js (27 tests) 61ms
+stderr | client/test/renderer-registry-normalize.test.js > getEnemyRenderScaleForTest() > reads world-space height from a live enemy mesh
+[renderer] failed to apply model "/models/miniboss.glb" for "miniboss": TypeError: Failed to parse URL from /models/miniboss.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer/enemySync.js:148:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/test/renderer-registry-normalize.test.js:242:31
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11 {
+  [cause]: TypeError: Invalid URL: /models/miniboss.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/[39mclient/renderer.js:817:11[90m)[39m
+}
+
+ ✓ |client| client/test/models-registry.test.js (11 tests) 262ms
+ ✓ |client| client/test/levelMapIntegration.test.js (5 tests) 4332ms
+   ✓ level-map lobby integration (main.js) > renders nodes from the payload levelUnlockGraph through questUpdate  1153ms
+   ✓ level-map lobby integration (main.js) > marks the node matching selectedQuestId/Tier as selected  1504ms
+   ✓ level-map lobby integration (main.js) > clicking an unlocked node emits SELECT_QUEST with that questId/tier  474ms
+   ✓ level-map lobby integration (main.js) > clicking a locked node emits nothing  569ms
+   ✓ level-map lobby integration (main.js) > renders empty without throwing when no levelUnlockGraph is present  630ms
+ ✓ |client| client/test/local-slow-prediction.test.js (5 tests) 13ms
+ ✓ |client| client/test/windup-charge.test.js (10 tests) 10ms
+ ✓ |client| client/test/renderer-registry-normalize.test.js (20 tests) 112ms
+stdout | client/test/debug-godmode.test.js > debug godmode toggle (main.js) > keeps debugGodmode false across stateUpdate after godmode-off debugGodmodeResult
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+
+ ✓ |client| client/test/renderer-citadel-sovereign.test.js (3 tests) 19ms
+ ✓ |client| client/test/key-item-dodge.test.js (6 tests) 4684ms
+   ✓ key item cooldown HUD > shows ready state with name and default keybind when equipped and playing with zero cooldown  1042ms
+   ✓ key item cooldown HUD > clears indicator when unequipped or not in playing phase  1545ms
+   ✓ key item cooldown HUD > updateKeyItemCooldownHud toggles cooldown class and countdown text  436ms
+   ✓ key item cooldown HUD > flashKeyItemIndicator adds flash classes without removing HUD children  554ms
+   ✓ dash VFX detection in stateUpdate > calls triggerDashVFX when player position jumps beyond dash threshold  889ms
+ ✓ |client| client/test/lobby-menu-dismiss.test.js (6 tests) 4683ms
+   ✓ lobby menu dismiss guard (main.js) > hub lobby join starts with #lobby hidden and lobbyMenuDismissed true  1029ms
+   ✓ lobby menu dismiss guard (main.js) > dismissGameLobby then lobby-phase stateUpdate keeps #lobby hidden  1535ms
+   ✓ lobby menu dismiss guard (main.js) > hubPresenceUpdate and applyHubPresence while dismissed do not show #lobby  479ms
+   ✓ lobby menu dismiss guard (main.js) > deck booth open shows #lobby and clears the dismissed flag  497ms
+   ✓ lobby menu dismiss guard (main.js) > shop booth open shows #lobby and clears the dismissed flag  598ms
+   ✓ lobby menu dismiss guard (main.js) > __openDeckBoothForTest and __openShopBoothForTest show #lobby when wired through main  543ms
+ ✓ |client| client/test/renderer-magma-colossus.test.js (3 tests) 7ms
+ ✓ |client| client/test/renderer-riftbound-colossus.test.js (3 tests) 8ms
+ ✓ |client| client/test/flying-enemy-registry.test.js (3 tests) 8ms
+ ✓ |client| client/test/renderer-cinder-warden.test.js (3 tests) 7ms
+ ✓ |client| client/test/debug-godmode.test.js (7 tests) 5278ms
+   ✓ debug godmode toggle (main.js) > Shift+G emits toggleDebugGodmode when debugScenarioAllowed is true  1007ms
+   ✓ debug godmode toggle (main.js) > Shift+G does not emit toggleDebugGodmode when debugScenarioAllowed is false  1542ms
+   ✓ debug godmode toggle (main.js) > Shift+G is swallowed when focus is in a text input  409ms
+   ✓ debug godmode toggle (main.js) > __toggleDebugGodmodeForTest emits toggleDebugGodmode when the socket is ready  544ms
+   ✓ debug godmode toggle (main.js) > mirrors debugGodmode onto local player when toggle succeeds  463ms
+   ✓ debug godmode toggle (main.js) > keeps debugGodmode false across stateUpdate after godmode-off debugGodmodeResult  787ms
+   ✓ debug godmode toggle (main.js) > stores debugGodmodeResult in harness state and logs success/failure  525ms
+stdout | client/test/characterBooth.test.js > character booth ?booth=character debug hook (main.js) > auto-opens once after hub lobby entry on localhost with ?booth=character
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/questDialogue.test.js (8 tests) 5526ms
+   ✓ quest dialogue comms UI (main.js) > shows a comms toast and appends to the log via the test hook  1004ms
+   ✓ quest dialogue comms UI (main.js) > auto-dismisses the comms toast after ~4s  1538ms
+   ✓ quest dialogue comms UI (main.js) > ignores malformed questDialogue payloads  483ms
+   ✓ quest dialogue comms UI (main.js) > keeps only the last 20 log entries  555ms
+   ✓ quest dialogue comms UI (main.js) > hides and clears comms when returning to lobby  607ms
+   ✓ quest dialogue comms UI (main.js) > handles questDialogue socket events when playing  522ms
+   ✓ quest dialogue comms UI (main.js) > does not render comms outside the playing phase  498ms
+   ✓ quest dialogue comms UI (main.js) > queues pre-playing questDialogue and flushes when gamePhase becomes playing  317ms
+stdout | client/test/characterBooth.test.js > character booth ?booth=character debug hook (main.js) > stays closed without the booth URL param
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/characterBooth.test.js (13 tests) 5679ms
+   ✓ character booth overlay (module) > openCharacterBooth() / closeCharacterBooth() toggle overlay visibility and preview  394ms
+   ✓ character booth overlay (module) > shows paid confirm for appearance edits and saves after confirm  630ms
+   ✓ character booth overlay (module) > does not show confirm for hat-only changes  1155ms
+   ✓ character booth overlay (module) > cancel on paid confirm aborts without save traffic  305ms
+   ✓ character booth overlay (module) > emits applyAppearanceChange on confirm when socket is connected  319ms
+   ✓ character booth overlay (module) > surfaces appearance errors and re-enables save  383ms
+   ✓ character booth booth:action hook (main.js) > opens the overlay for boothId character in lobby and ignores other booths  805ms
+   ✓ character booth booth:action hook (main.js) > does not open the overlay when gamePhase is not lobby  360ms
+   ✓ character booth booth:action hook (main.js) > listens on the shared booth:action event name  468ms
+ ✓ |client| client/test/questBooth.test.js (18 tests) 6072ms
+   ✓ quest booth booth:action hook (main.js) > shows #lobby and reveals the quest panel when the menu starts dismissed  913ms
+   ✓ quest booth booth:action hook (main.js) > reveals and scrolls the quest panel into view for boothId quest in lobby and ignores other booths  1515ms
+   ✓ quest booth booth:action hook (main.js) > keeps the quest panel hidden when boothId quest fires outside the lobby phase  400ms
+   ✓ quest booth booth:action hook (main.js) > keeps the quest panel visible when the lobby is (re)shown after booth open  574ms
+   ✓ quest booth booth:action hook (main.js) > dismissGameLobby resets questPanelOpen and re-hides the wrapper  519ms
+   ✓ quest booth booth:action hook (main.js) > does not open the panel when gamePhase is not lobby  641ms
+   ✓ quest booth booth:action hook (main.js) > listens on the shared booth:action event name  417ms
+   ✓ ?booth=quest debug hook (main.js requestBoothDebugOpen) > opens the quest panel once on localhost and is guarded against re-firing  335ms
+stdout | client/test/main.test.js > suspended run resume/abandon UI > resume button triggers the launch-booth ready-up path
+[launchBooth] ready-up via booth
+
+ ✓ |client| client/test/main.test.js (187 tests) 9149ms
+   ✓ renderDeckEditor() > populates owned card counts and deck size from mock data  776ms
+   ✓ auth overlay functions > exposes auth overlay functions on window  515ms
+   ✓ auth overlay functions > showAuthOverlay removes .hidden from #auth-overlay and hides lobby screens  409ms
+   ✓ auth overlay functions > hideAuthOverlay adds .hidden to #auth-overlay and shows the lobby browser  702ms
+   ✓ auth overlay functions > toolbar account button opens the account overlay  509ms
+   ✓ auth overlay functions > toolbar settings button opens the settings overlay  510ms
+   ✓ updateObjectiveHud() > shows prism progress for collect_items and hides outside playing  356ms
+
+ Test Files  50 passed (50)
+      Tests  707 passed (707)
+   Start at  23:21:42
+   Duration  12.82s (transform 4.17s, setup 3.70s, collect 13.61s, tests 94.91s, environment 40.73s, prepare 12.24s)
+
+ % Coverage report from v8
+--------------|---------|----------|---------|---------|------------------------
+File          | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s      
+--------------|---------|----------|---------|---------|------------------------
+All files     |   38.33 |    28.43 |   62.16 |   41.63 |                        
+ cards.js     |   65.78 |    52.63 |      80 |   70.96 | ...-94,102,116,234-250 
+ collision.js |   27.86 |    15.53 |   77.77 |   28.43 | ...175-229,238-243,251 
+ delta.js     |   66.66 |       50 |     100 |     100 | 12                     
+ hand.js      |   29.29 |    26.19 |   41.17 |   34.17 | 45-73,90-157,175-181   
+--------------|---------|----------|---------|---------|------------------------

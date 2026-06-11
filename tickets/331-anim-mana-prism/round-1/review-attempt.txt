@@ -1,0 +1,5 @@
+Wrote the holistic review to `tickets/331-anim-mana-prism/round-1/review.md`.
+
+Verdict: `VERDICT: PASS`
+
+No `gaps.md` or `nits.md` was created.

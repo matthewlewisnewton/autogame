@@ -1,0 +1,15 @@
+Review complete. **VERDICT: PASS**
+
+Summary of what I verified:
+
+**Runtime health (the blocking gate):** `metrics.json` shows `"ok": true`, empty `pageerrors`, no `harness_failure`, scene initialized. `console.log` is clean (the lone `409` is a benign lobby resource race, not a game-code error). The screenshot confirms gameplay renders. The game runs cleanly.
+
+**Acceptance criteria — all met:**
+- **Theme/visual:** `arcane_bolt` now routes to a dedicated `renderArcaneBolt` + a violet energy-lance projectile in `spawnAttackEffect` (elongated cone core + glow, `#a78bfa`/`0x7c3aed`), replacing the generic melee swing. Reads clearly as "Arcane Bolt."
+- **Timing sync:** Matches the server's instant pierce-projectile resolution — per-enemy hit bursts fire immediately on CARD_USED, terminal impact deferred by `travelMs` for visual travel, no wind-up telegraph (server has no `windUpMs`).
+- **No perf regression:** projectile is tracked and disposed on expiry (covered by test).
+- **Tests:** new client coverage in both test files; I ran `vitest` → 237/237 pass.
+
+**Scope respected:** only `cardRenderers.js`, `renderer.js`, and the two client test files touched. No debug scenarios added.
+
+No blocking gaps and no genuine nits worth a backlog ticket, so I wrote only `review.md` (no `gaps.md`, no `nits.md`).

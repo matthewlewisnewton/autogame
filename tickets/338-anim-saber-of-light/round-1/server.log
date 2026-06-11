@@ -1,0 +1,14 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/game/data
+Server listening on port 3001
+Player connected: socket=6RJJ_qB6FwBe-eOmAAAB, playerId=02add3e7-7fd2-405f-a92a-cf26450ce1f4
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=5YzmreDkx-Cx2eWkAAAD, playerId=2be91f0a-e44a-499b-acae-e8e0b39aa2e3
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: 6RJJ_qB6FwBe-eOmAAAB
+Player disconnected: 5YzmreDkx-Cx2eWkAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

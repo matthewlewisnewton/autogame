@@ -1,0 +1,17 @@
+Broke ticket **342-anim-arcane-bolt** into **3 sub-tickets** (dependency order), modeled on the fireball animation pass. The core issue: Arcane Bolt is an instant long-range piercing **projectile** on the server (`effect: 'projectile'`, `attackRange: 10`) but the client still routes it through `renderWeaponSwing` with a melee cone — wrong visual and no travel/impact sync.
+
+### Sub-tickets created
+
+1. **`01-arcane-bolt-projectile-vfx`** — Dedicated `arcane_bolt` mesh in `renderer.js` (elongated violet energy bolt, travel interpolation, in-flight pulse).
+2. **`02-arcane-bolt-cast-trail-impact-sync`** — New `renderArcaneBolt` replacing `renderWeaponSwing`; cast flourish, deferred terminal impact, immediate per-pierce-hit sparks; remove `WEAPON_SLASH_STYLES` entry.
+3. **`03-arcane-bolt-animation-tests`** — Client tests locking renderer registration, timing (`ATTACK_EFFECT_DURATION` 600 ms), primitive composition, and `windUpMs` absence.
+
+All three use **`Verification: code`** (timing constants, handler existence, structure — not purely visual).
+
+### Folder paths
+
+```
+/home/matt/workspace/.autogame-worktrees/342-anim-arcane-bolt/tickets/342-anim-arcane-bolt/subtickets/01-arcane-bolt-projectile-vfx
+/home/matt/workspace/.autogame-worktrees/342-anim-arcane-bolt/tickets/342-anim-arcane-bolt/subtickets/02-arcane-bolt-cast-trail-impact-sync
+/home/matt/workspace/.autogame-worktrees/342-anim-arcane-bolt/tickets/342-anim-arcane-bolt/subtickets/03-arcane-bolt-animation-tests
+```

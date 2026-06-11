@@ -1,0 +1,20 @@
+Created **4 sub-tickets** in dependency order for ticket 336 (Battery Automaton animation polish):
+
+1. **`01-battery-automaton-vfx-primitive`** — Deploy + charge-pulse VFX primitives in `renderer.js` (amber/gold mechanical battery theme with cyan electric accents).
+
+2. **`02-battery-automaton-summon-renderer`** — Dedicated `renderBatteryAutomaton`, `CARD_RENDERERS` registration, `MINION_VISUAL` mesh preset, and `main.js` wiring for the deploy primitive (synced to `MINION_SUMMON_IN_MS`).
+
+3. **`03-battery-charge-pulse-sync`** — `minionSync.js` detects `lastChargePulseAt` advancing every 6000 ms and fires `spawnBatteryChargePulseEffect` in sync with server charge restores.
+
+4. **`04-battery-automaton-animation-tests`** — Client test coverage for summon renderer, pulse sync, and regression guards.
+
+All use **Verification: code** (criteria cover structure, timing, handlers, and server-state sync — not purely visual).
+
+### Sub-ticket folder paths
+
+```
+/home/matt/workspace/.autogame-worktrees/336-anim-battery-automaton/tickets/336-anim-battery-automaton/subtickets/01-battery-automaton-vfx-primitive/ticket.md
+/home/matt/workspace/.autogame-worktrees/336-anim-battery-automaton/tickets/336-anim-battery-automaton/subtickets/02-battery-automaton-summon-renderer/ticket.md
+/home/matt/workspace/.autogame-worktrees/336-anim-battery-automaton/tickets/336-anim-battery-automaton/subtickets/03-battery-charge-pulse-sync/ticket.md
+/home/matt/workspace/.autogame-worktrees/336-anim-battery-automaton/tickets/336-anim-battery-automaton/subtickets/04-battery-automaton-animation-tests/ticket.md
+```

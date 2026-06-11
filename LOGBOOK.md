@@ -7414,6 +7414,28 @@ None blocking. One minor cosmetic timing inconsistency noted as a nit (per-hit
 sparks fire at cast while the central crush ring fires at +375 ms).
 
 
+## v0.418 — 348-anim-glacier-rupture  (2026-06-10 22:18:48)
+
+
+### 4. Client test where feasible
+PASS. Strong coverage: dispatch/palette/decal/burst, per-hit positioning, frozenShatter sizing, distinctness
+from frost_nova, the windUpMs contract, and graceful degradation when optional ctx primitives are absent. The
+primitive itself is tested for ring+shard creation, palette/style overrides, and cleanup.
+
+### 5. Scope
+PASS. Changes are confined to `game/client`: the card render fn + registration (cardRenderers.js), the vfx
+primitive (renderer.js), and ctx wiring (main.js, socketHandlers/cardHandlers.js,
+socketHandlers/socketHandlerCtx.js), plus client tests. No server, no debug-scenario, no TASKS.md changes.
+This ticket did not add or modify any `?debugScenario=` shortcut.
+
+### Design/foundation consistency
+PASS. Builds on the 315 shared-primitive + per-card registration pattern; reuses the established palette and
+telegraph/decal/burst helpers. No regression to requirements foundation; touches only this card's path, so it
+will not conflict with sibling per-card animation beads.
+
+## Remaining gaps
+None blocking. One minor nit (palette-constant duplication) recorded in nits.md.
+
 ## v0.409 — 354-anim-stormwing-drone  (2026-06-10 20:31:57)
 
 `origin.y` mutation is safe. The no-`strikeTarget` fallback
@@ -7595,6 +7617,75 @@ when new ctx primitives are absent. Full suite: **203/203 pass** (ran locally).
 None blocking. One minor nit (duplicate cyan style constant) recorded in nits.md.
 
 
+## v0.420 — 342-anim-arcane-bolt  (2026-06-10 22:50:59)
+
+- **Terminal max-range impact** (`spawnImpactDecal` + 16-particle burst) deferred by `travelMs` via `scheduleAfter`, for visual travel sync only.
+This is a faithful match to instant projectile resolution.
+
+### "No perf regression" — MET
+The projectile effect is registered in `activeEffects` and disposed on expiry (`disposeEffectObject` + array splice once `elapsed >= duration`). A vfx-primitives test confirms the flagged lance is added and cleaned up with geometry disposal. No persistent leaks.
+
+### "Client test where feasible" — MET
+`cardRenderers.test.js` and `vfx-primitives.test.js` add coverage: renderer resolution (`renderArcaneBolt`, explicitly not `renderWeaponSwing`), synced `spawnAttackEffect`/`spawnProjectileTrail` params, deferred terminal impact via `runScheduled`, immediate per-hit pierce bursts at mesh positions (with a missing-mesh guard), no-windUp assertion, and projectile lifecycle/cleanup. Ran `vitest run` on both files: **237 passed (237)**.
+
+### Scope — RESPECTED
+Diff touches only `game/client/cardRenderers.js`, `game/client/renderer.js`, and the two client test files — exactly the declared scope. No server, no other per-card renderers, no debug scenarios added.
+
+## Consistency / regressions
+- Consistent with `design.md` (Weapons = directional projectiles). No foundation regression.
+- No debug-scenario shortcuts introduced.
+- Removed the now-dead `arcane_bolt` entry from `WEAPON_SLASH_STYLES`, avoiding stale config.
+
+## Remaining gaps
+None blocking. The implementation fully and robustly satisfies the ticket.
+
+
+## v0.419 — 340-anim-photon-slicer  (2026-06-10 22:20:51)
+
+Uses `INFINITE_DISK_RETURN_BEAT_MS = round(ATTACK_EFFECT_DURATION/3)` (cardRenderers.js:548) — no fixed multi-second delay; the throw+return flourish resolves within the attack-effect window. No `windUpMs` on photon_slicer, so no charge telegraph is required. PASS.
+
+**Graceful degradation.**
+`spawnProjectileTrail`, `spawnParticleBurst`, and `scheduleAfter` are each guarded; only `spawnAttackEffect` is unconditional (consistent with sibling renderers and the always-present primitive). Calling with all optional primitives absent does not throw. PASS.
+
+**Dead `WEAPON_SLASH_STYLES.photon_slicer` removed.**
+Removed (former lines 182–193); other weapon styles untouched. PASS.
+
+**Tests updated and passing.**
+The old cone-slash assertion is replaced by a returning-disc test asserting the cyan outbound effect, far-point burst at `{x:8,z:0}`, exactly one scheduled return beat, and a reversed return trail after `runScheduled()`. `npx vitest run client/test/cardRenderers.test.js` → 212/212 pass, including the shared distinct-accent / graceful-degradation / card-specific-renderer tests with `photon_slicer` included.
+
+**Scope.**
+`git diff` touches only `game/client/cardRenderers.js`, `game/client/test/cardRenderers.test.js`, and the subticket md — within the declared scope. Server CARD_DEFS unchanged, so server tests referencing photon_slicer (`saber_aoe_grind`, `new_card_pack`) are unaffected.
+
+## Design / regression consistency
+Mirrors the established `renderTripleReturning` (Infinite Disk, photon_slicer's evolution) as its single-disc sibling — visually coherent across the lineage. No new ctx methods, no `renderer.js`/`main.js` changes, no foundation regression. No debug-scenario changes in this ticket.
+
+## Remaining gaps
+None blocking. Minor non-blocking nits filed separately (duplicate range constant, redundant accent fallback).
+
+
+## v0.421 — 334-anim-deck-sifter  (2026-06-10 23:19:41)
+
+- Palette stays on the card's own theme: `DECK_SIFTER_ACCENT 0xd4a843` matches the `deck_sifter` card color `#d4a843`; parchment body `0xf5deb3` + gold emissive `0xdaa520`. The "deck sifting / drawing a card" read is clear and distinct from a generic hit burst.
+
+### 2. Timing synced to server effect resolution
+PASS. `deck_sifter` is a `weapon` with effect `draw_card` and **no `windUpMs`** (confirmed in cardDefs.json and the HUD probe, which shows wind-up labels only on Solar Edge/Vault Wyrm, not deck_sifter), so no 307 charge telegraph is required. The draw is instant server-side, so the centre card puffs immediately (synced to the instant draw) and the two flanking cards riffle out via `scheduleAfter` at 70ms/140ms — total ~140ms, asserted `< 300ms` in the test. Sub-ticket 01 added `origin: { x: originX, z: originZ }` to the `draw_card` `CARD_USED` emit (game/server/cardEffects.js:371), so the flourish renders at the caster instead of world (0,0). Origin is the player's locked cast position.
+
+### 3. No perf regression
+PASS. Built only from existing ctx primitives (`spawnParticleBurst`, `spawnTelegraphRing`, `scheduleAfter`). Particle budget is modest (one ring + 3×6 particles) and actually lower per-burst count than before; no new render loops or allocations of concern.
+
+### 4. Client test where feasible
+PASS. The client test was rewritten to assert the full composition: ground ring palette/position/radius, immediate centre burst, the `[70, 140]` schedule, and the three fanned bursts at z `[3.3, 4, 4.7]` perpendicular to a `+x` cast. A graceful-degradation test (no `spawnParticleBurst`) is retained. A server integration test asserts the `draw_card` `CARD_USED` carries finite origin equal to player position. Client tests pass (`2 passed`). Server integration suite is skipped wholesale in this environment (all 168 skip — pre-existing harness behavior, not introduced here).
+
+## Design / scope consistency
+- Consistent with the 315 shared-VFX-primitive foundation; no new bespoke primitives.
+- Scope was nominally client-only (cardRenderers.js + vfx + client test), but the implementation also touches game/server/cardEffects.js (one line) and the server integration test. This deviation is minimal and necessary: the burst cannot render at the caster without the server forwarding the cast origin for the instant `draw_card` path. Well-justified and self-contained; not a blocking concern.
+- No debug scenarios added or changed.
+- `directionOf`/`originOf` both default safely (direction → `{x:1,z:0}`, origin → `{x:0,z:0}`), so a missing direction yields a finite perpendicular fan rather than NaN.
+
+## Remaining gaps
+None blocking.
+
+
 ## v0.413 — 352-anim-necroframe-knight  (2026-06-10 21:10:16)
 
 - degrades gracefully when optional ctx helpers (`spawnTelegraphRing`,
@@ -7640,3 +7731,211 @@ PASS. This ticket did not add or modify a `?debugScenario=...` entry. The existi
 
 None.
 
+## v0.422 — 338-anim-saber-of-light  (2026-06-10 23:23:33)
+
+### Timing and server-effect sync
+
+PASS. Server card data defines `saber_of_light` as a `swift_slash` weapon with `cooldownMs: 400`, `attackRange: 5`, `aoeGrindScale: 0.03`, and no `windUpMs`. The server emits the grind-scaled `attackRange` in the `CARD_USED` payload, and the client renderer uses `data.attackRange` for both cone reach and flash/spark placement, falling back only when the field is absent. The single-swing path fires synchronously with card use, and only additional swings are staggered with the established multi-swing delay idiom.
+
+### Test coverage and regression risk
+
+PASS. `game/client/test/cardRenderers.test.js` adds focused coverage for dedicated renderer resolution, light-themed primitives, reach scaling from small vs large `attackRange`, immediate `swift_slash` timing, and graceful degradation when optional light primitives are missing. The captured `coverage.log` shows the full visible vitest run passed: 50 files, 707 tests.
+
+### Design and requirements consistency
+
+PASS. The change is scoped to client card VFX and tests, preserving the existing 3D scene, websocket play flow, multiplayer visualization, and movement synchronization foundation. It fits the design's card-based combat model and does not alter server combat rules, persistence, lobby flow, or economy.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=` entry point. Existing saber-related scenarios remain URL-driven/local QA shortcuts, and their comments describe normally reachable equivalent states through owning/grinding reward weapons and deploying normally.
+
+## Remaining gaps
+
+None.
+
+
+## v0.423 — 337-anim-chrono-trigger  (2026-06-10 23:31:38)
+
+### Performance and integration
+
+PASS. The implementation uses the existing `activeEffects` lifecycle and fixed small mesh counts: two ripples, one column, and optional per-restored-slot flares/arcs. `spawnChronoTriggerEffect` adds no network traffic, persistent world state, or per-frame allocations beyond the established effect update loop. The socket handler context and main renderer dependency wiring expose the primitive cleanly to card renderers.
+
+### Tests and coverage
+
+PASS. `coverage.log` reports 50 client test files passing with 708 tests. The added coverage includes Chrono Trigger renderer registration, instant dispatch without delayed scheduling, absent-windup behavior, restored-charge flare placement, distinct utility-spell signatures, primitive palette/defaults, and cleanup through `updateAttackEffects`. Coverage thresholds were disabled, but the changed client files have focused behavioral assertions.
+
+### Design and foundation consistency
+
+PASS. The change is consistent with `game/docs/design.md`: Chrono Trigger remains a spell card whose effect is a single-use utility action, not a new combat system or server-side invariant. The foundation requirements in `game/docs/requirements.md` are preserved; the captured run shows a rendered 3D scene, working client-server connection, multiplayer presence, and movement state updates.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change any `?debugScenario=` shortcut. `metrics.json` also reports no development scenarios used for the capture, so there is no debug-path gating or reachability issue to review for this ticket.
+
+
+## v0.424 — 333-anim-reaper-s-scythe  (2026-06-10 23:50:22)
+
+
+### Timing and server-effect sync
+PASS. The primary sweep fires synchronously on `CARD_USED`, uses `data.attackConeAngle ?? Math.PI` and `data.attackRange ?? ATTACK_RANGE`, and does not call `scheduleAfter` for the primary swing, tethers, or reward flourish. This matches the server-side Reaper's Scythe contract: no positive `windUpMs`, instant cone resolution, kill rewards emitted in the same `CARD_USED` payload as `hpHealed` and `currencyGained`.
+
+### Reap kill-reward visuals
+PASS. Killing hits with live enemy meshes spawn guarded soul tethers back to the cast origin, missing meshes are skipped without throwing, and the harvest flourish is gated on actual positive `currencyGained` or `hpHealed` rather than `specialEffect` alone. Non-killing swings retain only the sweep stack.
+
+### Debug scenarios
+PASS. The added `reapers-scythe-ready` scenario is registered as a debug scenario and the client entry point remains the localhost-only `?debugScenario=...` flow. The scenario only shortcuts setup for QA by placing the evolved card and target enemies after entering a standard playing debug state; the same end-state remains reachable through normal gameplay by evolving `harvesting_scythe` into `reapers_scythe` and deploying with it.
+
+### Design and foundation consistency
+PASS. The implementation stays within the card-animation layer and small debug/test plumbing, preserving the core server-client loop, multiplayer state, movement, and combat foundations described in the design and requirements docs. It uses the existing shared VFX/context primitives rather than adding renderer branches or new gameplay effects.
+
+### Tests and coverage
+PASS with residual unrelated validation noise. `coverage.log` shows the focused client renderer suite passing (`client/test/cardRenderers.test.js`, 229 tests) and the VFX primitives suite passing. The full coverage run has one server failure in `server/test/key-items.test.js` for `flare_beacon` `revealedUntil`; this ticket did not touch key-item code, state snapshots, or that test path, so I do not consider it a Reaper's Scythe blocking gap.
+
+
+## v0.425 — 336-anim-battery-automaton  (2026-06-10 23:52:55)
+
+Battery Automaton now has a card-specific renderer registered for `battery_automaton`, so it no longer falls back to the generic creature summon. The summon uses an amber/gold chassis palette with electric-cyan emissive accents, a mechanical deploy ring, an ascending electric column, and the shared minion summon-in burst. This reads as a battery-powered automaton rather than a plain creature summon.
+
+The timing is aligned with the server-side behavior. The server emits `cardUsed` only after the minion is created, includes `minionId`, and initializes `lastChargePulseAt` at summon time. The client deploy effect fires synchronously with that `cardUsed` event and uses `MINION_SUMMON_IN_MS` rather than a delayed wind-up. Battery Automaton has no card `windUpMs`, projectile travel, impact hit, or DoT requirement to sync. Its ongoing effect is the periodic charge restore; the server advances `lastChargePulseAt` on the same 6s restore cadence, and the client only spawns the charge pulse when that timestamp increases, avoiding a false pulse on first sighting.
+
+The persistent minion mesh is also themed consistently: `MINION_VISUAL.battery_automaton` uses a box chassis with the same amber/cyan palette, while the charge pulse adds a brief electric ring and spark burst at the minion position. Cleanup paths dispose Battery Automaton effects through the shared `activeEffects` lifecycle and prune per-minion pulse state when a minion leaves the snapshot, so there is no obvious effect leak or accumulating stale sync state.
+
+## Design and foundation consistency
+
+The work preserves the documented card-combat model: Battery Automaton remains a creature card that spawns a battlefield ally, and the charge-restore mechanic continues to be server-authoritative. Normal multiplayer, movement, lobby, socket, and 3D-rendering foundations from `requirements.md` are intact in the captured run.
+
+The added `battery-automaton-ready` debug scenario is gated by the existing `?debugScenario=` URL path and server debug-scenario authorization. It sets up mana and a hand card for QA, but the actual deployment still goes through the normal `useCard` socket path; Battery Automaton remains reachable through normal acquisition/deck play as covered by the card acquisition and integration tests.
+
+## Tests and coverage
+
+The recorded vitest run passed: 175 files and 2486 tests. Focused coverage includes renderer dispatch for `battery_automaton`, deploy and charge-pulse VFX primitive lifecycle tests, minion summon mesh behavior, charge-pulse sync, and existing server/integration coverage for Battery Automaton spawning and charge restoration. Coverage is visibility-only; no disabled threshold concern blocks the ticket.
+
+## v0.426 — 332-anim-ether-scythe  (2026-06-11 00:02:39)
+
+### Scope, performance, and integration
+
+PASS. The implementation is narrowly scoped to `game/client/cardRenderers.js`, renderer tests, and a debug scenario registration. The new visual work composes existing primitives (`spawnAttackEffect`, `spawnParticleBurst`, `spawnImpactDecal`) and is guarded for missing optional helpers or missing enemy meshes, so it should degrade cleanly and not introduce broad rendering or performance risk.
+
+### Client test coverage
+
+PASS. `game/client/test/cardRenderers.test.js` covers the scythe theme, server cone/range sync, fallback behavior, sibling blade isolation, hit-wisp behavior, and graceful degradation. The round coverage log shows the full suite passed: 175 test files and 2489 tests.
+
+### Design and foundation consistency
+
+PASS. The change preserves the design document's active card-combat model and the requirements baseline: the game still starts, renders a 3D scene, connects client/server, shows multiplayer state, and accepts synchronized movement in the captured flow. Ether Scythe remains an earnable weapon reward card and no core combat or progression invariant is weakened.
+
+### Debug scenarios
+
+PASS. The added `harvesting-scythe-combat` debug scenario is registered through the existing debug scenario path and remains gated by the existing local/dev `debugScenario` mechanism. It only creates a QA shortcut to a normally reachable state: a player in a normal run with the earnable `harvesting_scythe` in hand. It does not bypass normal `useCard` validation, server hit resolution, net replication, or the client `cardUsed` renderer path.
+
+
+## v0.427 — 331-anim-mana-prism  (2026-06-11 00:22:40)
+
+### Wiring, robustness, and performance
+
+PASS. The new `spawnManaPrismEffect` primitive is threaded through `main.js`, `socketHandlerCtx.js`, and `cardHandlers.js` into the per-card renderer context. The renderer uses a finite group of eight meshes for the cast flourish and a finite six-callback pulse schedule; no intervals, unbounded allocations, or persistent scene objects are introduced. The minimal-context tests also cover graceful no-op behavior when optional primitives are absent.
+
+### Tests and coverage
+
+PASS. The latest coverage run reports `50 passed` test files and `719 passed` tests. `client/test/cardRenderers.test.js` includes targeted assertions for the Mana Prism cast VFX, exact pulse schedule, pulse flourish contents, and missing-primitive graceful degradation. Coverage thresholds were disabled as expected; the relevant changed client renderer behavior is directly covered.
+
+### Design and foundation consistency
+
+PASS. The implementation stays within the documented card-combat model in `game/docs/design.md`: Mana Prism remains a spell/resource effect in the active deck combat system, with no server-client architecture, movement, multiplayer visualization, or foundation requirement regression. The runtime smoke verifies the 3D scene, websocket connection, multiplayer presence, and movement flow remain functional.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=NAME` shortcut. Existing Mana Prism QA shortcuts referenced in sub-ticket handoff material remain pre-existing debug paths, and the captured run used `debugScenario: null`.
+
+## Remaining gaps
+
+None.
+
+
+## v0.428 — 330-anim-archive-wyrm  (2026-06-11 00:23:51)
+
+### Scope, Performance, And Integration
+
+PASS. The implementation stays within client renderer registration/VFX plumbing/tests, with only small ctx wiring for `spawnFireTrailEffect` and an enemy HP-drop fallback update. It reuses existing VFX primitives and does not touch `updateAttackEffects` or add per-frame work. `dungeon_drake` behavior is covered by regression tests and remains on the shared Vault Wyrm renderers.
+
+### Tests And Coverage
+
+PASS. `round-1/coverage.log` shows `62 passed (62)` test files and `1413 passed (1413)` tests with coverage visibility enabled. `client/test/cardRenderers.test.js` includes focused assertions for Archive Wyrm renderer registration, summon palette/primitives, fire-breath composition, tick-only hit feedback, server timing constants, and airborne origin/direction Y handling.
+
+### Design And Requirements Consistency
+
+PASS. The change preserves the design's active card-combat creature model: Archive Wyrm remains a creature/minion with server-authored combat effects and client-side visuals only. The foundation requirements are not regressed; the captured run shows 3D rendering, socket connectivity, multiplayer presence, and movement/dodge gameplay still working.
+
+### Debug Scenarios
+
+PASS. This ticket did not add or change debug scenario entry points. Existing Archive Wyrm debug helpers remain gated through the localhost `?debugScenario` flow and are documented as shortcuts for states reachable through normal play by evolving `dungeon_drake` to `ancient_wyrm` and deploying it in combat.
+
+
+## v0.429 — Decision: per-quest layouts are fully deterministic — every run of a level is the identical map. Intentional?  (2026-06-11 00:43:01)
+
+## Code quality
+
+- **Seed separation is clean:** layout stream and objective stream are explicitly split; only `collect_items` crystal placement consumes `objectiveRng`.
+- **Checkpoint symmetry:** `runSpawnSeed` is captured and restored alongside `layoutSeed` and loot — consistent with telepipe durability rules in `design.md`.
+- **No dead code:** new exports (`generateRunSpawnSeed`, `ensureRunSpawnSeed`) are used by tests and the deploy path.
+- **Test depth:** unit (`quest_per_run_spawn.test.js`), server lifecycle (`server.test.js`), integration socket abandon (`integration.test.js`), and debug-scenario smoke cover the full matrix.
+- **Coverage artifact:** `round-1/coverage.log` reports 1969/1969 tests passed; scoped file report only surfaces `index.js`/`cards.js` (harness diff filter), but changed `progression.js` / `objectives.js` paths are exercised by the new and extended tests above.
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria from the three sub-tickets are met; runtime capture is clean; tests pass.
+
+---
+
+## Nits (non-blocking)
+
+See `nits.md` — stale doc tense in `design.md` only.
+
+
+## v0.430 — 329-anim-astral-guardian  (2026-06-11 00:44:45)
+
+### Timing and server-effect sync
+
+PASS. The server `astral_guardian` effect resolves immediately in `applyAstralShieldCast`, emits `radius: SUMMON_RADIUS`, `shieldGranted`, `playerId`, `hits`, and `minionId`, and the renderer consumes those live payload fields synchronously. The client test asserts no `scheduleAfter` deferral, no generic `spawnSummonEffect`, and an AoE telegraph radius exactly equal to `data.radius`, so the visible impact aligns with the instant radial damage and shield-up moment.
+
+### Design and foundation consistency
+
+PASS. The change is consistent with the design doc's card-combat model: Astral Guardian remains a spell with an instant radial effect plus defensive/minion utility, and it does not alter lobby, movement, multiplayer, economy, or server-client foundations from `game/docs/requirements.md`.
+
+### Code quality, tests, and coverage
+
+PASS. The diff is narrow: `game/client/cardRenderers.js` and `game/client/test/cardRenderers.test.js` are the only game files changed. Optional VFX helpers are guarded, the renderer no-ops when `data.radius` is absent, and the tests cover the summon/telegraph/burst path, shield-present path, shield-absent path, and synchronous timing. The recorded coverage run shows `50` test files and `747` tests passing, including `client/test/cardRenderers.test.js`.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=...` development shortcut; no debug-scenario gating or normal-gameplay reachability issue is introduced.
+
+## Remaining gaps
+
+None. The ticket meets the acceptance criteria. The fallback smoke capture did not include a dedicated Astral Guardian cast screenshot, but the game run is clean and the renderer behavior is covered by focused client tests.
+
+
+## v0.431 — 328-anim-aegis-sentinel  (2026-06-11 00:53:30)
+
+The persistent minion visual in `game/client/renderer.js` is also themed as a wide, tall green shield-wall box, so the summoned creature continues to read as a defensive sentinel after the cast flourish ends.
+
+### Timing and server-effect sync
+PASS. The server-side `aegis_sentinel` definition has no `windUpMs`, and the normal creature `CARD_USED` payload is emitted when the effect resolves with `minionId`; the existing server test confirms the card grants 30 shield HP, spawns the taunt minion, and deals zero burst damage. The client renderer fires synchronously from `CARD_USED`, does not use `scheduleAfter` on the main path, keys shield flourish to `shieldGranted`, and keys deploy/summon visuals to `minionId`. VFX duration uses `MINION_SUMMON_IN_MS`, matching the minion scale-in window.
+
+### Shared primitives and performance
+PASS. The Aegis primitives are additive VFX registered in `activeEffects`, use finite durations, clean up through `updateAttackEffects()`, and do not add network traffic or per-frame allocations beyond the existing active-effect update pattern. Optional helper calls are guarded, so partial context exposure will not throw.
+
+### Debug scenario requirements
+PASS. The `aegis-sentinel-ready` scenario is reachable only through the existing `?debugScenario=` path and is gated by the normal localhost/debug scenario flow. It enters the standard playing debug state, then seeds Aegis Sentinel into the player's hand with enough Magic Stones. The same end state is reachable through normal gameplay because `aegis_sentinel` is in the shop/reward card pool, can be acquired, placed in the deck, and used in a run; the shortcut does not replace or weaken the server-side use-card path.
+
+### Design and requirements consistency
+PASS. The change preserves the documented 3D multiplayer action-RPG foundation: it only affects client-side rendering/VFX for one creature card plus test coverage and debug visibility. The captured run confirms the core requirements still hold: Three.js scene renders, client/server connection works, multiplayer avatars appear, and movement/dodge interactions update during play.
+
+### Verification evidence
+PASS. The requested diff/log commands show the ticket's three commits and a scoped change set in `game/client/cardRenderers.js`, `game/client/renderer.js`, `game/client/main.js`, `game/client/socketHandlers/*`, and focused client tests. Coverage visibility shows the client vitest run passing: 50 test files and 748 tests passed. The fallback capture screenshots exercise lobby and baseline gameplay health; they do not specifically show Aegis Sentinel, but the live code and focused tests cover the card renderer and primitive behavior directly.
+
+## Remaining gaps
+
+None.

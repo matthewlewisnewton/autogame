@@ -1205,14 +1205,27 @@ describe('Socket Integration — useCard Event', () => {
 		socket.emit('discardCard', { slotIndex: 0, cardId: 'iron_sword' });
 		await discardUpdatePromise;
 
+		player.x = 12.5;
+		player.z = -7.25;
+
 		const deckBeforeDraw = player.deck.length;
+		const cardUsedPromise = waitForEvent(socket, 'cardUsed');
 		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
 		socket.emit('useCard', { cardId: 'deck_sifter', slotIndex: 4 });
 		await stateUpdatePromise;
+		const cardUsed = await cardUsedPromise;
 
 		expect(player.hand[0]).toBeTruthy();
 		expect(player.deck.length).toBe(deckBeforeDraw - 1);
 		expect(player.hand[4].remainingCharges).toBe(2);
+
+		// draw_card cardUsed must carry the caster's locked cast origin so the
+		// client renders the particle burst at the player, not at world (0,0).
+		expect(cardUsed.effect).toBe('draw_card');
+		expect(Number.isFinite(cardUsed.origin.x)).toBe(true);
+		expect(Number.isFinite(cardUsed.origin.z)).toBe(true);
+		expect(cardUsed.origin.x).toBe(player.x);
+		expect(cardUsed.origin.z).toBe(player.z);
 	});
 
 	it('Chrono Trigger restores charges to adjacent hand cards', async () => {
@@ -5730,6 +5743,78 @@ describe('Telepipe extract and redeploy vitals persistence', () => {
 				}
 			}
 		}
+
+		p1.socket.disconnect();
+		p2.socket.disconnect();
+	});
+
+	it('crystal_rescue: abandon after telepipe extract rolls new crystal positions with same layoutSeed', async () => {
+		const baseUrl = await startTestServer();
+		const p1 = await connectAndJoinLobby(baseUrl, 'crystal-abandon-1');
+		const p2 = await connectAndJoinLobby(baseUrl, 'crystal-abandon-2', { joinLobbyId: p1.init.lobbyId });
+
+		const quest1 = waitForQuestUpdate(p1.socket, 'crystal_rescue');
+		const quest2 = waitForQuestUpdate(p2.socket, 'crystal_rescue');
+		p1.socket.emit('selectQuest', { questId: 'crystal_rescue' });
+		await quest1;
+		await quest2;
+
+		const startPromise1 = waitForEvent(p1.socket, 'startGame');
+		const startPromise2 = waitForEvent(p2.socket, 'startGame');
+		p1.socket.emit('playerReady', true);
+		p2.socket.emit('playerReady', true);
+		await startPromise1;
+		await startPromise2;
+
+		const p1Id = p1.socket._playerId;
+		const p2Id = p2.socket._playerId;
+		const crystalPos = (state) => state.loot
+			.filter((loot) => loot.kind === 'crystal')
+			.map((loot) => ({ x: loot.x, z: loot.z }));
+
+		const preAbort = testGameState();
+		const preAbortLayoutSeed = preAbort.layoutSeed;
+		const preAbortRunSpawnSeed = preAbort.runSpawnSeed;
+		const preAbortCrystals = crystalPos(preAbort);
+		expect(preAbortCrystals.length).toBeGreaterThan(0);
+
+		runSimulationInPrimaryLobby((liveState) => {
+			liveState.telepipe = {
+				x: liveState.players[p1Id].x,
+				z: liveState.players[p1Id].z,
+				placedBy: p1Id,
+				placedAt: Date.now() - 3000,
+			};
+		});
+
+		const portalState = testGameState();
+		const portalX = portalState.telepipe.x;
+		const portalZ = portalState.telepipe.z;
+
+		expect(tryEnterTelepipe(p1Id).ok).toBe(true);
+		runSimulationInPrimaryLobby((afterP1Extract) => {
+			afterP1Extract.players[p2Id].x = portalX;
+			afterP1Extract.players[p2Id].z = portalZ;
+		});
+		expect(tryEnterTelepipe(p2Id).ok).toBe(true);
+		expect(testGameState().suspendedCheckpoint).not.toBeNull();
+
+		const abandonedPromise = waitForEvent(p1.socket, 'runAbandoned');
+		p1.socket.emit('abandonRun');
+		await abandonedPromise;
+
+		const redeployPromise1 = waitForEvent(p1.socket, 'startGame');
+		const redeployPromise2 = waitForEvent(p2.socket, 'startGame');
+		p1.socket.emit('playerReady', true);
+		p2.socket.emit('playerReady', true);
+		await redeployPromise1;
+		await redeployPromise2;
+
+		const redeployed = testGameState();
+		expect(redeployed.layoutSeed).toBe(preAbortLayoutSeed);
+		expect(redeployed.runSpawnSeed).not.toBe(preAbortRunSpawnSeed);
+		expect(crystalPos(redeployed).length).toBe(preAbortCrystals.length);
+		expect(crystalPos(redeployed)).not.toEqual(preAbortCrystals);
 
 		p1.socket.disconnect();
 		p2.socket.disconnect();

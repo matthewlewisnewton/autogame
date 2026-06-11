@@ -1,0 +1,11 @@
+I broke the top-level ticket into 2 dependency-ordered, code-verified sub-tickets. The work is contained: saber_of_light is a fast melee weapon (`swift_slash`, no windUp/projectile/DoT) currently sharing the generic `renderWeaponSwing` whose hardcoded range ignores the server's grind-scaled `attackRange`. Scope mandates touching only this card's renderer + registration, so I split into building a dedicated radiant renderer, then wiring its reach/timing to server data with a test.
+
+Created sub-tickets:
+- `/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/tickets/338-anim-saber-of-light/subtickets/01-radiant-saber-renderer/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/338-anim-saber-of-light/tickets/338-anim-saber-of-light/subtickets/02-saber-reach-timing-sync/ticket.md`
+
+**01** — adds a dedicated `renderSaberOfLight` (modeled on `renderExcaliburPhoton`) bound in `CARD_RENDERERS`, composing light-themed 315 primitives into a radiant pale-gold/white arc distinct from flame_blade and excalibur_photon. Verified by code (function exists, registration, distinct from shared renderer, light primitives composed).
+
+**02** — makes that renderer drive its reach from the server's grind-scaled `data.attackRange` and keep the single swing immediate (swift_slash sync), plus a client test asserting renderer wiring, grind-aware reach scaling, and recorded light primitives. Verified by code (the criteria concern values, structure, timing, and a test — not just look).
+
+Both are `code` verification: each mixes "renders as radiant light" with "function/registration exists" and "reach tracks server value / timing", which per the rules makes them code, not visual.

@@ -697,6 +697,24 @@ export const MINION_VISUAL = {
 		emissive: 0x38bdf8,
 		emissiveIntensity: 0.45,
 	},
+	battery_automaton: {
+		shape: 'box',
+		width: 0.55,
+		height: 0.7,
+		depth: 0.45,
+		color: 0xfbbf24,
+		emissive: 0x38bdf8,
+		emissiveIntensity: 0.4,
+	},
+	aegis_sentinel: {
+		shape: 'box',
+		width: 1.85,
+		height: 2.6,
+		depth: 0.35,
+		color: 0x4ade80,
+		emissive: 0x22c55e,
+		emissiveIntensity: 0.45,
+	},
 };
 
 /**
@@ -4352,6 +4370,67 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 		return;
 	}
 
+	if (effect === 'arcane_bolt') {
+		// Violet arcane energy lance — elongated bolt core + trailing glow, visually
+		// distinct from generic `projectile` spheres and ground cone wedges.
+		const boltColor = style.color ?? 0xa78bfa;
+		const boltEmissive = style.emissive ?? 0x7c3aed;
+		const dir = direction || { x: 1, z: 0 };
+		const len = Math.hypot(dir.x, dir.z) || 1;
+		const nx = dir.x / len;
+		const nz = dir.z / len;
+		const heading = Math.atan2(nx, nz);
+		const group = new THREE.Group();
+
+		const coreMat = new THREE.MeshStandardMaterial({
+			color: boltColor,
+			emissive: boltEmissive,
+			emissiveIntensity: 1.8,
+			roughness: 0.28,
+			metalness: 0.12,
+			transparent: true,
+			opacity: 0.95,
+		});
+		const coreMesh = new THREE.Mesh(new THREE.ConeGeometry(0.08, 1.45, 8), coreMat);
+		coreMesh.position.y = 1.0;
+		coreMesh.rotation.x = Math.PI / 2;
+		coreMesh.rotation.y = heading;
+		group.add(coreMesh);
+
+		const glowMat = new THREE.MeshStandardMaterial({
+			color: boltColor,
+			emissive: boltEmissive,
+			emissiveIntensity: 1.15,
+			roughness: 0.45,
+			metalness: 0.0,
+			transparent: true,
+			opacity: 0.42,
+			depthWrite: false,
+		});
+		const glowMesh = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.85, 8), glowMat);
+		glowMesh.position.set(-nx * 0.32, 1.0, -nz * 0.32);
+		glowMesh.rotation.x = Math.PI / 2;
+		glowMesh.rotation.y = heading;
+		group.add(glowMesh);
+
+		group.position.set(origin.x, 0, origin.z);
+		targetScene.add(group);
+
+		activeEffects.push({
+			mesh: group,
+			coreMesh,
+			glowMesh,
+			_scene: targetScene,
+			origin: { x: origin.x, z: origin.z },
+			direction: { x: nx, z: nz },
+			range,
+			createdAt: performance.now(),
+			duration: style.projectileTravelMs ?? ATTACK_EFFECT_DURATION,
+			isArcaneBoltProjectile: true,
+		});
+		return;
+	}
+
 	if (effect === 'permafrost_lance') {
 		// Elongated crystalline ice spear — travels like `fireball` / `ice_ball` but
 		// reads as a forward-thrusting lance rather than a sphere or ground cone.
@@ -4582,6 +4661,330 @@ export function spawnLegionMarshalRallyEffect(origin, radius, style = {}) {
 			duration,
 		},
 	);
+}
+
+// Battery Automaton palette — amber/gold chassis with electric cyan sparks.
+export const BATTERY_AUTOMATON_COLOR = 0xfbbf24;
+export const BATTERY_AUTOMATON_EMISSIVE = 0x38bdf8;
+const BATTERY_AUTOMATON_COLUMN_HEIGHT = 2.5;
+const BATTERY_AUTOMATON_COLUMN_OPACITY = 0.75;
+const BATTERY_AUTOMATON_COLUMN_BASE_Y = 0.1;
+const BATTERY_AUTOMATON_EMISSIVE_INTENSITY = 1.5;
+const BATTERY_AUTOMATON_DEFAULT_RADIUS = 1.4;
+const BATTERY_AUTOMATON_CHARGE_PULSE_DURATION = 700;
+const BATTERY_AUTOMATON_CHARGE_BURST_COUNT = 10;
+const BATTERY_AUTOMATON_CHARGE_BURST_SPREAD = 1.6;
+
+/**
+ * Mechanical deploy flourish: expanding amber/gold assembly ring plus a short
+ * rising electric column. Pure additive VFX; no network traffic or state
+ * beyond activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration, radius }
+ */
+export function spawnBatteryAutomatonDeployEffect(origin, style = {}) {
+	const color = style.color ?? BATTERY_AUTOMATON_COLOR;
+	const emissive = style.emissive ?? BATTERY_AUTOMATON_EMISSIVE;
+	const duration = style.duration ?? MINION_SUMMON_IN_MS;
+	const radius = style.radius ?? BATTERY_AUTOMATON_DEFAULT_RADIUS;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const ringGeometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	ringMesh.position.set(origin.x, 0.1, origin.z);
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(0.001);
+	targetScene.add(ringMesh);
+
+	activeEffects.push({
+		mesh: ringMesh,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration,
+		isBatteryAutomatonRing: true,
+		_baseEmissiveIntensity: 1.2,
+		_scene: targetScene,
+	});
+
+	const columnGeometry = new THREE.CylinderGeometry(0.22, 0.42, BATTERY_AUTOMATON_COLUMN_HEIGHT, 16, 1, true);
+	const columnMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: BATTERY_AUTOMATON_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: BATTERY_AUTOMATON_COLUMN_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const columnMesh = new THREE.Mesh(columnGeometry, columnMaterial);
+	columnMesh.scale.y = 0.001;
+	columnMesh.position.set(origin.x, BATTERY_AUTOMATON_COLUMN_BASE_Y, origin.z);
+	targetScene.add(columnMesh);
+
+	activeEffects.push({
+		mesh: columnMesh,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration,
+		isBatteryAutomatonColumn: true,
+		_baseEmissiveIntensity: BATTERY_AUTOMATON_EMISSIVE_INTENSITY,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Brief charge-delivery pulse: quick expanding cyan/amber ring plus an upward
+ * electric spark burst. Pure additive VFX; no network traffic or state beyond
+ * activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration, radius }
+ */
+export function spawnBatteryChargePulseEffect(origin, style = {}) {
+	const color = style.color ?? BATTERY_AUTOMATON_COLOR;
+	const emissive = style.emissive ?? BATTERY_AUTOMATON_EMISSIVE;
+	const duration = style.duration ?? BATTERY_AUTOMATON_CHARGE_PULSE_DURATION;
+	const radius = style.radius ?? 1.0;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const ringGeometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color: emissive,
+		emissive,
+		emissiveIntensity: 1.35,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	ringMesh.position.set(origin.x, 0.12, origin.z);
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(0.001);
+	targetScene.add(ringMesh);
+
+	activeEffects.push({
+		mesh: ringMesh,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration,
+		isBatteryAutomatonRing: true,
+		_baseEmissiveIntensity: 1.35,
+		_scene: targetScene,
+	});
+
+	spawnParticleBurst(
+		{ x: origin.x, y: 0.6, z: origin.z },
+		{
+			color,
+			emissive,
+			count: BATTERY_AUTOMATON_CHARGE_BURST_COUNT,
+			spread: BATTERY_AUTOMATON_CHARGE_BURST_SPREAD,
+			duration,
+		},
+	);
+}
+
+// Aegis Sentinel palette — protective green ward with optional gold trim.
+export const AEGIS_SENTINEL_COLOR = 0x4ade80;
+export const AEGIS_SENTINEL_EMISSIVE = 0x22c55e;
+export const AEGIS_SENTINEL_GOLD = 0xfbbf24;
+const AEGIS_SENTINEL_SHIELD_DEFAULT_RADIUS = 1.5;
+const AEGIS_SENTINEL_DEPLOY_DEFAULT_RADIUS = 2.0;
+const AEGIS_SENTINEL_DOME_HEIGHT = 2.1;
+const AEGIS_SENTINEL_DOME_OPACITY = 0.58;
+const AEGIS_SENTINEL_WALL_HEIGHT = 2.6;
+const AEGIS_SENTINEL_WALL_WIDTH = 1.85;
+const AEGIS_SENTINEL_WALL_DEPTH = 0.18;
+const AEGIS_SENTINEL_WALL_OPACITY = 0.72;
+const AEGIS_SENTINEL_EMISSIVE_INTENSITY = 1.35;
+
+/**
+ * Brief caster shield wrap at cast time: pulsing green ground ring plus a short
+ * translucent shield facet/dome rising around the origin. Pure additive VFX.
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration, radius }
+ */
+export function spawnAegisSentinelShieldFlourish(origin, style = {}) {
+	const color = style.color ?? AEGIS_SENTINEL_COLOR;
+	const emissive = style.emissive ?? AEGIS_SENTINEL_EMISSIVE;
+	const highlight = style.highlight ?? AEGIS_SENTINEL_GOLD;
+	const duration = style.duration ?? MINION_SUMMON_IN_MS;
+	const radius = style.radius ?? AEGIS_SENTINEL_SHIELD_DEFAULT_RADIUS;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const group = new THREE.Group();
+	group.position.set(origin.x, 0, origin.z);
+
+	const ringGeometry = new THREE.RingGeometry(0.78, 1.0, 40);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.15,
+		transparent: true,
+		opacity: 0.88,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	ringMesh.position.y = GROUND_OVERLAY_Y;
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(0.001);
+	ringMesh.userData.isAegisSentinelRing = true;
+	group.add(ringMesh);
+
+	const domeHeight = Math.min(radius * 1.25, AEGIS_SENTINEL_DOME_HEIGHT);
+	const domeRadius = Math.min(radius * 0.72, 1.15);
+	const domeGeometry = new THREE.CylinderGeometry(domeRadius, domeRadius * 1.08, domeHeight, 20, 1, true);
+	const domeMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: AEGIS_SENTINEL_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: AEGIS_SENTINEL_DOME_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const domeMesh = new THREE.Mesh(domeGeometry, domeMaterial);
+	domeMesh.scale.y = 0.001;
+	domeMesh.position.y = domeHeight * 0.5;
+	domeMesh.userData.isAegisSentinelDome = true;
+	group.add(domeMesh);
+
+	const facetWidth = Math.min(radius * 0.55, 1.1);
+	const facetHeight = domeHeight * 0.92;
+	const facetAngles = [Math.PI * 0.25, -Math.PI * 0.25];
+	for (let i = 0; i < facetAngles.length; i += 1) {
+		const facetPalette = i === 0
+			? { color, emissive }
+			: { color: highlight, emissive: highlight };
+		const facetGeometry = new THREE.PlaneGeometry(facetWidth, facetHeight);
+		const facetMaterial = new THREE.MeshStandardMaterial({
+			color: facetPalette.color,
+			emissive: facetPalette.emissive,
+			emissiveIntensity: 1.2,
+			transparent: true,
+			opacity: 0.5,
+			side: THREE.DoubleSide,
+			depthWrite: false,
+		});
+		const facetMesh = new THREE.Mesh(facetGeometry, facetMaterial);
+		facetMesh.position.y = facetHeight * 0.5;
+		facetMesh.rotation.y = facetAngles[i];
+		facetMesh.userData.isAegisSentinelFacet = true;
+		group.add(facetMesh);
+	}
+
+	targetScene.add(group);
+
+	activeEffects.push({
+		mesh: group,
+		_scene: targetScene,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		domeHeight,
+		createdAt: performance.now(),
+		duration,
+		isAegisSentinelShield: true,
+	});
+}
+
+/**
+ * Minion-deploy flourish: expanding green ward ring plus a rising shield-wall
+ * silhouette so the sentinel materialization reads as a taunt wall. Pure
+ * additive VFX.
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration, radius }
+ */
+export function spawnAegisSentinelDeployEffect(origin, style = {}) {
+	const color = style.color ?? AEGIS_SENTINEL_COLOR;
+	const emissive = style.emissive ?? AEGIS_SENTINEL_EMISSIVE;
+	const highlight = style.highlight ?? AEGIS_SENTINEL_GOLD;
+	const duration = style.duration ?? MINION_SUMMON_IN_MS;
+	const radius = style.radius ?? AEGIS_SENTINEL_DEPLOY_DEFAULT_RADIUS;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const group = new THREE.Group();
+	group.position.set(origin.x, 0, origin.z);
+
+	const ringGeometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	ringMesh.position.y = GROUND_OVERLAY_Y;
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(0.001);
+	ringMesh.userData.isAegisSentinelRing = true;
+	group.add(ringMesh);
+
+	const wallWidth = Math.min(radius * 0.95, AEGIS_SENTINEL_WALL_WIDTH);
+	const wallHeight = AEGIS_SENTINEL_WALL_HEIGHT;
+	const wallGeometry = new THREE.BoxGeometry(wallWidth, wallHeight, AEGIS_SENTINEL_WALL_DEPTH);
+	const wallMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: AEGIS_SENTINEL_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: AEGIS_SENTINEL_WALL_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const wallMesh = new THREE.Mesh(wallGeometry, wallMaterial);
+	wallMesh.scale.y = 0.001;
+	wallMesh.position.y = wallHeight * 0.5;
+	wallMesh.userData.isAegisSentinelWall = true;
+	group.add(wallMesh);
+
+	const trimGeometry = new THREE.BoxGeometry(wallWidth * 1.04, 0.12, AEGIS_SENTINEL_WALL_DEPTH * 1.6);
+	const trimMaterial = new THREE.MeshStandardMaterial({
+		color: highlight,
+		emissive: highlight,
+		emissiveIntensity: 1.25,
+		transparent: true,
+		opacity: 0.85,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const trimMesh = new THREE.Mesh(trimGeometry, trimMaterial);
+	trimMesh.scale.y = 0.001;
+	trimMesh.position.y = wallHeight * 0.5;
+	trimMesh.userData.isAegisSentinelWallTrim = true;
+	group.add(trimMesh);
+
+	targetScene.add(group);
+
+	activeEffects.push({
+		mesh: group,
+		_scene: targetScene,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		wallHeight,
+		createdAt: performance.now(),
+		duration,
+		isAegisSentinelDeploy: true,
+		_baseEmissiveIntensity: AEGIS_SENTINEL_EMISSIVE_INTENSITY,
+	});
 }
 
 // Sanctum Pulse palette: a coherent holy-gold so the divine "pulse" reads as
@@ -5026,6 +5429,126 @@ export function spawnTelepipeCastEffect(origin, radius, style = {}) {
 	);
 }
 
+// Chrono Trigger palette — amber temporal charge-reset with cyan glow (cards.js #f59e0b).
+export const CHRONO_TRIGGER_COLOR = 0xf59e0b;
+export const CHRONO_TRIGGER_EMISSIVE = 0x67e8f9;
+const CHRONO_TRIGGER_COLUMN_HEIGHT = 1.4;
+const CHRONO_TRIGGER_COLUMN_OPACITY = 0.72;
+const CHRONO_TRIGGER_COLUMN_BASE_Y = 0.1;
+const CHRONO_TRIGGER_EMISSIVE_INTENSITY = 1.5;
+const CHRONO_TRIGGER_DEFAULT_RADIUS = 2;
+const CHRONO_TRIGGER_WAVE_COUNT = 2;
+const CHRONO_TRIGGER_WAVE_STAGGER_MS = 80; // faster cadence than purifying heal waves
+const CHRONO_TRIGGER_TICK_MS = 55; // clock-tick emissive pulse period
+
+/**
+ * One staggered cyan/amber time-ripple ground ring for Chrono Trigger. Pass
+ * `style.wave` (0-based) to offset this ring's start via `createdAt` so waves
+ * expand in sequence without setTimeout.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ * @param {object} [style] - optional { color, emissive, duration, wave, waveCount, staggerMs }
+ */
+export function spawnChronoTriggerRipple(origin, radius, style = {}) {
+	const color = style.color ?? CHRONO_TRIGGER_COLOR;
+	const emissive = style.emissive ?? CHRONO_TRIGGER_EMISSIVE;
+	const duration = style.duration ?? SUMMON_EFFECT_DURATION;
+	const r = radius ?? CHRONO_TRIGGER_DEFAULT_RADIUS;
+	const wave = style.wave ?? 0;
+	const waveCount = style.waveCount ?? CHRONO_TRIGGER_WAVE_COUNT;
+	const staggerMs = style.staggerMs ?? CHRONO_TRIGGER_WAVE_STAGGER_MS;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const geometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const material = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.position.set(origin.x, 0.1, origin.z);
+	mesh.rotation.x = -Math.PI / 2;
+	mesh.scale.setScalar(0.001);
+	targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		radius: r,
+		createdAt: performance.now() + wave * staggerMs,
+		duration,
+		isChronoTriggerRipple: true,
+		wave,
+		waveCount,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Brief temporal column/wisp rising from the cast origin. Rises and fades via the
+ * `isChronoTriggerColumn` branch in updateAttackEffects (no per-frame allocation).
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration }
+ */
+export function spawnChronoTriggerColumn(origin, style = {}) {
+	const color = style.color ?? CHRONO_TRIGGER_COLOR;
+	const emissive = style.emissive ?? CHRONO_TRIGGER_EMISSIVE;
+	const duration = style.duration ?? SUMMON_EFFECT_DURATION;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const geometry = new THREE.CylinderGeometry(0.18, 0.42, CHRONO_TRIGGER_COLUMN_HEIGHT, 16, 1, true);
+	const material = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: CHRONO_TRIGGER_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: CHRONO_TRIGGER_COLUMN_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.scale.y = 0.001;
+	mesh.position.set(origin.x, CHRONO_TRIGGER_COLUMN_BASE_Y, origin.z);
+	targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration,
+		isChronoTriggerColumn: true,
+		_baseEmissiveIntensity: CHRONO_TRIGGER_EMISSIVE_INTENSITY,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Chrono Trigger: dual-phase staggered time ripples plus a brief ascending temporal
+ * column. Pure additive VFX; no network traffic or state beyond activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {number} [radius]
+ * @param {object} [style] - optional { color, emissive, duration }
+ */
+export function spawnChronoTriggerEffect(origin, radius, style = {}) {
+	const r = radius ?? CHRONO_TRIGGER_DEFAULT_RADIUS;
+	const duration = style.duration ?? SUMMON_EFFECT_DURATION;
+	const rippleStyle = { ...style, duration };
+	for (let wave = 0; wave < CHRONO_TRIGGER_WAVE_COUNT; wave += 1) {
+		spawnChronoTriggerRipple(origin, r, {
+			...rippleStyle,
+			wave,
+			waveCount: CHRONO_TRIGGER_WAVE_COUNT,
+		});
+	}
+	spawnChronoTriggerColumn(origin, { ...style, duration });
+}
+
 const PURIFYING_HEAL_COLOR = 0x6ee7b7;
 const PURIFYING_HEAL_EMISSIVE = 0x34d399;
 const PURIFYING_HEAL_WAVE_COUNT = 3; // concentric heal waves emitted per cast
@@ -5253,6 +5776,13 @@ export const SPIKE_TRAP_SPIKE_COUNT = 6; // spikes erupting in a ring around the
 export const SPIKE_TRAP_SPIKE_HEIGHT = 0.75; // height of each iron spike
 export const SPIKE_TRAP_SPIKE_RADIUS = 0.13; // base radius of each cone spike
 
+// Glacier Rupture palette — fixed icy cyan for the shatter/collapse primitive.
+export const GLACIER_RUPTURE_COLOR = 0x38bdf8;
+export const GLACIER_RUPTURE_EMISSIVE = 0x0ea5e9;
+export const GLACIER_RUPTURE_SHARD_HEIGHT = 0.85;
+export const GLACIER_RUPTURE_SHARD_RADIUS = 0.11;
+export const GLACIER_RUPTURE_SHARD_COUNT = 6;
+
 /**
  * Spawn the erupting-spikes VFX for a Spike Trap: a cluster of vertical
  * iron/steel cones bursting up out of the ground inside a blood-red hazard ring.
@@ -5329,6 +5859,203 @@ export function spawnSpikeTrapEffect(origin, radius) {
 			_scene: targetScene,
 		});
 	}
+}
+
+/**
+ * Expanding ground ice-fracture ring for Glacier Rupture. Segmented thin ring
+ * geometry reads as cracking ice (distinct from spawnSummonEffect / telegraph).
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ * @param {object} [style]
+ */
+export function spawnGlacierRuptureRing(origin, radius, style = {}) {
+	const color = style.color ?? GLACIER_RUPTURE_COLOR;
+	const emissive = style.emissive ?? GLACIER_RUPTURE_EMISSIVE;
+	const duration = style.duration ?? SUMMON_EFFECT_DURATION;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+
+	// Eight theta segments + a thin band evoke a shattering ice fracture ring.
+	const geometry = new THREE.RingGeometry(0.18, 0.46, 32, 8);
+	const material = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.15,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ring = new THREE.Mesh(geometry, material);
+	ring.position.set(origin.x, 0.14, origin.z);
+	ring.rotation.x = -Math.PI / 2;
+	ring.scale.setScalar(0.001);
+	if (targetScene) targetScene.add(ring);
+
+	activeEffects.push({
+		mesh: ring,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration,
+		isGlacierRuptureRing: true,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Upward/outward ice-shard burst for Glacier Rupture. A single group of tapered
+ * cones rises and scatters from the rupture point.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ * @param {object} [style]
+ */
+export function spawnGlacierRuptureShards(origin, radius, style = {}) {
+	const color = style.color ?? GLACIER_RUPTURE_COLOR;
+	const emissive = style.emissive ?? GLACIER_RUPTURE_EMISSIVE;
+	const duration = style.duration ?? SUMMON_EFFECT_DURATION;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+
+	const group = new THREE.Group();
+	group.position.set(origin.x, 0, origin.z);
+	const innerOffset = radius * 0.18;
+
+	for (let s = 0; s < GLACIER_RUPTURE_SHARD_COUNT; s += 1) {
+		const angle = (s / GLACIER_RUPTURE_SHARD_COUNT) * Math.PI * 2;
+		const geometry = new THREE.ConeGeometry(
+			GLACIER_RUPTURE_SHARD_RADIUS,
+			GLACIER_RUPTURE_SHARD_HEIGHT,
+			5,
+		);
+		const material = new THREE.MeshStandardMaterial({
+			color,
+			emissive,
+			emissiveIntensity: 1.0,
+			transparent: true,
+			opacity: 1.0,
+		});
+		const shard = new THREE.Mesh(geometry, material);
+		const baseX = Math.cos(angle) * innerOffset;
+		const baseZ = Math.sin(angle) * innerOffset;
+		shard.userData.scatterDir = { x: Math.cos(angle), z: Math.sin(angle) };
+		shard.userData.baseX = baseX;
+		shard.userData.baseZ = baseZ;
+		shard.userData.shardHeight = GLACIER_RUPTURE_SHARD_HEIGHT;
+		shard.position.set(baseX, 0, baseZ);
+		shard.scale.y = 0.001;
+		group.add(shard);
+	}
+
+	if (targetScene) targetScene.add(group);
+
+	activeEffects.push({
+		mesh: group,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration,
+		isGlacierRuptureShards: true,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Glacier Rupture shatter VFX: expanding ice-fracture ground ring plus a brief
+ * upward/outward ice-shard burst. Composes ring + shard group primitives.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ * @param {object} [style]
+ */
+export function spawnGlacierRuptureEffect(origin, radius, style = {}) {
+	spawnGlacierRuptureRing(origin, radius, style);
+	spawnGlacierRuptureShards(origin, radius, style);
+}
+
+// ── Mana Prism: signature refracting-crystal cast VFX ──
+// A rising, spinning octahedral prism core that throws rainbow dispersion
+// shards outward across the violet→cyan refraction range so the cast reads as
+// light refraction, not a generic summon ring. Bounded one-shot: the whole
+// group tears down through disposeEffectObject when the lifetime ends, so no
+// geometry/material leaks. Animated by the `isManaPrismEffect` branch in
+// updateAttackEffects (no per-frame allocation).
+export const MANA_PRISM_VFX_COLOR = 0xa855f7;
+export const MANA_PRISM_VFX_EMISSIVE = 0x22d3ee;
+export const MANA_PRISM_EFFECT_DURATION = 1000;
+export const MANA_PRISM_SHARD_COUNT = 7;
+const MANA_PRISM_CORE_BASE_Y = 0.5;
+const MANA_PRISM_CORE_RISE = 1.1; // how high the crystal core floats
+const MANA_PRISM_SHARD_SPREAD = 1.6; // how far refracted shards radiate
+
+/**
+ * Spawn the Mana Prism refracting-crystal cast VFX: a bipyramidal (octahedral)
+ * crystal core that rises and spins while N elongated light shards — each tinted
+ * at a different point along the violet→cyan dispersion — radiate outward. Pure
+ * additive VFX: no network traffic, no state beyond activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - { color, emissive, duration }
+ */
+export function spawnManaPrismEffect(origin, style = {}) {
+	const color = style.color ?? MANA_PRISM_VFX_COLOR;
+	const emissive = style.emissive ?? MANA_PRISM_VFX_EMISSIVE;
+	const duration = style.duration ?? MANA_PRISM_EFFECT_DURATION;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+
+	const group = new THREE.Group();
+	group.position.set(origin.x, 0, origin.z);
+
+	// Bipyramidal crystal core — an octahedron reads as a cut prism, distinct
+	// from the flat summon ring. Starts collapsed; the update branch scales it up.
+	const coreGeometry = new THREE.OctahedronGeometry(0.42, 0);
+	const coreMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.3,
+		transparent: true,
+		opacity: 1.0,
+		flatShading: true,
+	});
+	const core = new THREE.Mesh(coreGeometry, coreMaterial);
+	core.position.y = MANA_PRISM_CORE_BASE_Y;
+	core.scale.setScalar(0.001);
+	core.userData.isPrismCore = true;
+	group.add(core);
+
+	// Refracted light shards — thin elongated crystals radiating outward, each
+	// tinted at a different point along the violet→cyan dispersion so the burst
+	// reads as multi-colored light rather than a single flat tint.
+	const violet = new THREE.Color(color);
+	const cyan = new THREE.Color(emissive);
+	for (let s = 0; s < MANA_PRISM_SHARD_COUNT; s += 1) {
+		const angle = (s / MANA_PRISM_SHARD_COUNT) * Math.PI * 2;
+		const hueT = MANA_PRISM_SHARD_COUNT > 1 ? s / (MANA_PRISM_SHARD_COUNT - 1) : 0;
+		const shardColor = violet.clone().lerp(cyan, hueT);
+		const shardEmissive = cyan.clone().lerp(violet, hueT);
+		const geometry = new THREE.OctahedronGeometry(0.12, 0);
+		const material = new THREE.MeshStandardMaterial({
+			color: shardColor,
+			emissive: shardEmissive,
+			emissiveIntensity: 1.1,
+			transparent: true,
+			opacity: 1.0,
+			flatShading: true,
+		});
+		const shard = new THREE.Mesh(geometry, material);
+		shard.scale.set(0.5, 2.4, 0.5); // elongate the octahedron into a light shard
+		shard.userData.scatterDir = { x: Math.cos(angle), z: Math.sin(angle) };
+		shard.userData.angle = angle;
+		shard.position.set(0, MANA_PRISM_CORE_BASE_Y, 0);
+		group.add(shard);
+	}
+
+	if (targetScene) targetScene.add(group);
+
+	activeEffects.push({
+		mesh: group,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration,
+		isManaPrismEffect: true,
+		_scene: targetScene,
+	});
 }
 
 // createSpikeTrapHazardMesh() now lives in ./renderer/minionSync.js (re-exported
@@ -6287,6 +7014,117 @@ export function updateAttackEffects() {
 			continue;
 		}
 
+		// ── Aegis Sentinel caster shield wrap (ring + dome/facets) ──
+		if (fx.isAegisSentinelShield) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const expandT = Math.min(t / 0.4, 1.0);
+			const pulse = 0.5 + 0.35 * Math.abs(Math.sin(elapsed / 250));
+			for (let c = 0; c < fx.mesh.children.length; c += 1) {
+				const child = fx.mesh.children[c];
+				if (child.userData.isAegisSentinelRing) {
+					child.scale.setScalar(Math.max(0.001, fx.radius * expandT));
+					child.material.opacity = Math.max(0.01, pulse * (1.0 - t * 0.9));
+				} else if (child.userData.isAegisSentinelDome) {
+					const riseT = Math.min(t / 0.45, 1.0);
+					const s = Math.max(0.001, riseT);
+					child.scale.y = s;
+					child.position.y = (fx.domeHeight * s) / 2;
+					child.material.opacity = Math.max(0.01, AEGIS_SENTINEL_DOME_OPACITY * (1.0 - t));
+				} else if (child.userData.isAegisSentinelFacet) {
+					const riseT = Math.min(t / 0.42, 1.0);
+					child.scale.y = Math.max(0.001, riseT);
+					child.material.opacity = Math.max(0.01, 0.5 * (1.0 - t));
+				}
+			}
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Aegis Sentinel deploy ward ring + rising shield wall ──
+		if (fx.isAegisSentinelDeploy) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const expandMs = Math.min(SUMMON_EXPAND_MS, fx.duration * 0.55);
+			const expandT = Math.min(elapsed / expandMs, 1.0);
+			const fade = Math.max(0.01, 1.0 - t);
+			for (let c = 0; c < fx.mesh.children.length; c += 1) {
+				const child = fx.mesh.children[c];
+				if (child.userData.isAegisSentinelRing) {
+					const scale = fx.radius * expandT * 2;
+					child.scale.setScalar(Math.max(0.001, scale));
+					if (elapsed > expandMs) {
+						const fadeRatio = 1.0 - (elapsed - expandMs) / (fx.duration - expandMs);
+						child.material.opacity = Math.max(0.01, fadeRatio);
+					}
+					const flicker = 1.0 + 0.28 * Math.sin(elapsed * 0.026);
+					child.material.emissiveIntensity = 1.2 * flicker;
+				} else if (child.userData.isAegisSentinelWall) {
+					const riseT = Math.min(t / 0.35, 1.0);
+					const s = Math.max(0.001, riseT);
+					child.scale.y = s;
+					child.position.y = (fx.wallHeight * s) / 2;
+					child.material.opacity = Math.max(0.01, AEGIS_SENTINEL_WALL_OPACITY * fade);
+					const baseIntensity = fx._baseEmissiveIntensity ?? AEGIS_SENTINEL_EMISSIVE_INTENSITY;
+					child.material.emissiveIntensity = baseIntensity * fade;
+				} else if (child.userData.isAegisSentinelWallTrim) {
+					const riseT = Math.min(t / 0.35, 1.0);
+					const s = Math.max(0.001, riseT);
+					child.scale.y = s;
+					child.position.y = (fx.wallHeight * s) / 2;
+					child.material.opacity = Math.max(0.01, 0.85 * fade);
+				}
+			}
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Battery Automaton expanding ground ring (deploy / charge pulse) ──
+		if (fx.isBatteryAutomatonRing) {
+			const expandMs = Math.min(SUMMON_EXPAND_MS, fx.duration * 0.55);
+			const expandT = Math.min(elapsed / expandMs, 1.0);
+			const scale = fx.radius * expandT * 2;
+			fx.mesh.scale.setScalar(Math.max(0.001, scale));
+
+			if (elapsed > expandMs) {
+				const fadeRatio = 1.0 - (elapsed - expandMs) / (fx.duration - expandMs);
+				fx.mesh.material.opacity = Math.max(0.01, fadeRatio);
+			}
+			const baseIntensity = fx._baseEmissiveIntensity ?? 1.2;
+			const flicker = 1.0 + 0.3 * Math.sin(elapsed * 0.028);
+			fx.mesh.material.emissiveIntensity = baseIntensity * flicker;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Battery Automaton ascending electric column ──
+		if (fx.isBatteryAutomatonColumn) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.35, 1.0);
+			const s = Math.max(0.001, riseT);
+			fx.mesh.scale.y = s;
+			fx.mesh.position.y = BATTERY_AUTOMATON_COLUMN_BASE_Y + (BATTERY_AUTOMATON_COLUMN_HEIGHT * s) / 2;
+			const fade = Math.max(0.01, BATTERY_AUTOMATON_COLUMN_OPACITY * (1.0 - t));
+			fx.mesh.material.opacity = fade;
+			const baseIntensity = fx._baseEmissiveIntensity ?? BATTERY_AUTOMATON_EMISSIVE_INTENSITY;
+			const flicker = 1.0 + 0.35 * Math.sin(elapsed * 0.03);
+			fx.mesh.material.emissiveIntensity = baseIntensity * flicker * fade;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
 		// ── Ether Siphon ascending violet ether column ──
 		if (fx.isEtherSiphonColumn) {
 			const t = Math.min(elapsed / fx.duration, 1.0);
@@ -6299,6 +7137,128 @@ export function updateAttackEffects() {
 			const baseIntensity = fx._baseEmissiveIntensity ?? ETHER_SIPHON_EMISSIVE_INTENSITY;
 			const flicker = 1.0 + 0.25 * Math.sin(elapsed * 0.02);
 			fx.mesh.material.emissiveIntensity = baseIntensity * flicker * fade;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Chrono Trigger staggered time-ripple rings ──
+		if (fx.isChronoTriggerRipple) {
+			const expandT = Math.min(elapsed / SUMMON_EXPAND_MS, 1.0);
+			const scale = fx.radius * expandT * 2;
+			fx.mesh.scale.setScalar(Math.max(0.001, scale));
+			const tick = 0.6 + 0.4 * Math.abs(Math.sin(elapsed / CHRONO_TRIGGER_TICK_MS));
+			if (elapsed > SUMMON_EXPAND_MS) {
+				const fadeRatio = 1.0 - (elapsed - SUMMON_EXPAND_MS) / (fx.duration - SUMMON_EXPAND_MS);
+				fx.mesh.material.opacity = Math.max(0.01, fadeRatio * tick);
+			} else {
+				fx.mesh.material.opacity = Math.max(0.01, tick);
+			}
+			fx.mesh.material.emissiveIntensity = 1.2 * tick;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Glacier Rupture ice-fracture ring (expand → fade) ──
+		if (fx.isGlacierRuptureRing) {
+			const expandT = Math.min(elapsed / SUMMON_EXPAND_MS, 1.0);
+			const scale = fx.radius * expandT * 2;
+			fx.mesh.scale.setScalar(Math.max(0.001, scale));
+
+			if (elapsed > SUMMON_EXPAND_MS) {
+				const fadeRatio = 1.0 - (elapsed - SUMMON_EXPAND_MS) / (fx.duration - SUMMON_EXPAND_MS);
+				fx.mesh.material.opacity = Math.max(0.01, fadeRatio);
+			}
+			const fracturePulse = 0.75 + 0.25 * Math.abs(Math.sin(elapsed / 85));
+			fx.mesh.material.emissiveIntensity = 1.15 * fracturePulse;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Chrono Trigger ascending temporal column/wisp ──
+		if (fx.isChronoTriggerColumn) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.35, 1.0);
+			const s = Math.max(0.001, riseT);
+			fx.mesh.scale.y = s;
+			fx.mesh.position.y = CHRONO_TRIGGER_COLUMN_BASE_Y + (CHRONO_TRIGGER_COLUMN_HEIGHT * s) / 2;
+			const fade = Math.max(0.01, CHRONO_TRIGGER_COLUMN_OPACITY * (1.0 - t));
+			fx.mesh.material.opacity = fade;
+			const baseIntensity = fx._baseEmissiveIntensity ?? CHRONO_TRIGGER_EMISSIVE_INTENSITY;
+			const tick = 1.0 + 0.3 * Math.sin(elapsed / CHRONO_TRIGGER_TICK_MS);
+			fx.mesh.material.emissiveIntensity = baseIntensity * tick * fade;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Glacier Rupture ice-shard burst (rise → scatter → fade) ──
+		if (fx.isGlacierRuptureShards) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.28, 1.0);
+			const scatterT = Math.min(t / 0.32, 1.0);
+			const fade = Math.max(0.01, 1.0 - t);
+			const scatterDist = (fx.radius ?? 1) * 0.55 * scatterT;
+
+			for (let c = 0; c < fx.mesh.children.length; c += 1) {
+				const shard = fx.mesh.children[c];
+				const dir = shard.userData.scatterDir;
+				const riseH = shard.userData.shardHeight ?? GLACIER_RUPTURE_SHARD_HEIGHT;
+				const s = Math.max(0.001, riseT);
+				shard.scale.y = s;
+				shard.position.y = (riseH * s) / 2;
+				shard.position.x = shard.userData.baseX + dir.x * scatterDist;
+				shard.position.z = shard.userData.baseZ + dir.z * scatterDist;
+				shard.rotation.z = dir.x * scatterT * 0.4;
+				shard.rotation.x = -dir.z * scatterT * 0.4;
+				if (shard.material) shard.material.opacity = fade;
+			}
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Mana Prism refracting crystal (rise + spin → disperse → fade) ──
+		if (fx.isManaPrismEffect) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.35, 1.0);
+			const scatterT = Math.min(t / 0.45, 1.0);
+			const fade = t < 0.55 ? 1.0 : Math.max(0.01, 1.0 - (t - 0.55) / 0.45);
+			const scatterDist = MANA_PRISM_SHARD_SPREAD * scatterT;
+			for (let c = 0; c < fx.mesh.children.length; c += 1) {
+				const child = fx.mesh.children[c];
+				if (child.userData.isPrismCore) {
+					child.scale.setScalar(Math.max(0.001, riseT));
+					child.position.y = MANA_PRISM_CORE_BASE_Y + MANA_PRISM_CORE_RISE * riseT;
+					child.rotation.y = elapsed * 0.006;
+					child.rotation.x = elapsed * 0.003;
+				} else {
+					const dir = child.userData.scatterDir;
+					child.position.x = dir.x * scatterDist;
+					child.position.z = dir.z * scatterDist;
+					child.position.y = MANA_PRISM_CORE_BASE_Y + MANA_PRISM_CORE_RISE * riseT * 0.7;
+					child.rotation.y = child.userData.angle + elapsed * 0.004;
+					child.rotation.z = elapsed * 0.005;
+				}
+				if (child.material) child.material.opacity = fade;
+			}
 
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, fx._scene || scene);
@@ -6741,6 +7701,40 @@ export function updateAttackEffects() {
 
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Arcane bolt projectile (elongated violet lance + trailing glow) ──
+		if (fx.isArcaneBoltProjectile) {
+			const travelRange = fx.range ?? ATTACK_RANGE;
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const travel = travelRange * t;
+			fx.mesh.position.x = fx.origin.x + fx.direction.x * travel;
+			fx.mesh.position.z = fx.origin.z + fx.direction.z * travel;
+
+			const pulse = 0.92 + 0.12 * Math.sin(elapsed / 38);
+			const lengthPulse = 0.95 + 0.08 * Math.sin(elapsed / 52);
+			const flicker = 1.0 + 0.32 * Math.sin(elapsed / 24 + 0.5);
+			if (fx.coreMesh) {
+				fx.coreMesh.scale.set(pulse, pulse * lengthPulse, pulse);
+				fx.coreMesh.material.emissiveIntensity = 1.7 * flicker;
+			}
+			if (fx.glowMesh) {
+				const glowPulse = 1.0 + 0.18 * Math.sin(elapsed / 48 + 1.1);
+				fx.glowMesh.scale.setScalar(glowPulse);
+				fx.glowMesh.material.emissiveIntensity = 1.1 * flicker;
+				fx.glowMesh.material.opacity = Math.max(0.15, 0.42 + 0.12 * Math.sin(elapsed / 30));
+			}
+
+			const lifeRatio = 1.0 - t;
+			if (fx.coreMesh?.material) {
+				fx.coreMesh.material.opacity = Math.max(0.01, 0.95 * lifeRatio);
+			}
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
 				activeEffects.splice(i, 1);
 			}
 			continue;
