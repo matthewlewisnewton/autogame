@@ -1558,16 +1558,22 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
 	});
 
+	it('gravity_well resolves to a single bespoke renderer', () => {
+		const renderers = resolveRenderers('gravity_well');
+		expect(renderers).toHaveLength(1);
+		expect(renderers[0].name).toBe('renderGravityWell');
+	});
+
 	it('gravity_well fires spawnGravityWellEffect and center impact synchronously at t=0', () => {
-		const ctx = makeCtx({
-			enemyMeshes: () => ({
-				e1: { position: { x: 8, y: 0.5, z: 2 } },
-				e2: { position: { x: 10, z: -1 } },
-			}),
+		const origin = { x: 1, z: 2 };
+		const enemyMeshes = () => ({
+			e1: { position: { x: 5, y: 0.6, z: 0 } },
+			e2: { position: { x: -3, y: 0.6, z: 2 } },
 		});
+		const ctx = makeCtx({ enemyMeshes });
 		renderCardUsed({
 			cardId: 'gravity_well',
-			origin: { x: 1, z: 2 },
+			origin,
 			radius: 12,
 			pulled: [{ enemyId: 'e1' }, { enemyId: 'e2' }, { enemyId: 'gone' }],
 			hits: [],
@@ -1575,7 +1581,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
 		const pull = ctx._calls.find((c) => c[0] === 'spawnGravityWellEffect');
 		expect(pull).toBeDefined();
-		expect(pull[1]).toEqual({ x: 1, z: 2 });
+		expect(pull[1]).toEqual(origin);
 		expect(pull[2]).toBe(12);
 		expect(pull[3]).toMatchObject({
 			color: 0xc084fc,
@@ -1584,22 +1590,43 @@ describe('renderCardUsed() — spell dispatch', () => {
 		});
 		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
 		expect(decal).toBeDefined();
-		expect(decal[1]).toEqual({ x: 1, z: 2 });
+		expect(decal[1]).toEqual(origin);
 		expect(decal[2]).toMatchObject({ color: 0xc084fc, emissive: 0xa855f7 });
 		const streaks = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
 		expect(streaks).toHaveLength(2);
-		expect(streaks[0][1]).toEqual({ x: 8, y: 0.5, z: 2 });
-		expect(streaks[0][2]).toEqual({ x: 1, z: 2 });
+		expect(streaks[0][1]).toEqual({ x: 5, y: 0.6, z: 0 });
+		expect(streaks[0][2]).toEqual(origin);
 		expect(streaks[0][3]).toMatchObject({
 			color: 0xc084fc,
 			emissive: 0xa855f7,
 			duration: 320,
 		});
-		expect(streaks[1][1]).toEqual({ x: 10, z: -1 });
-		expect(streaks[1][2]).toEqual({ x: 1, z: 2 });
+		expect(streaks[1][1]).toEqual({ x: -3, y: 0.6, z: 2 });
+		expect(streaks[1][2]).toEqual(origin);
 		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('gravity_well fires no per-enemy pull arcs when pulled is empty or absent', () => {
+		const origin = { x: 1, z: 2 };
+		const enemyMeshes = () => ({
+			e1: { position: { x: 5, y: 0.6, z: 0 } },
+		});
+		for (const pulled of [[], undefined]) {
+			const ctx = makeCtx({ enemyMeshes });
+			const payload = {
+				cardId: 'gravity_well',
+				origin,
+				radius: 12,
+				hits: [],
+			};
+			if (pulled !== undefined) payload.pulled = pulled;
+			renderCardUsed(payload, ctx);
+			expect(ctx._calls.some((c) => c[0] === 'spawnLightningArc')).toBe(false);
+			expect(ctx._calls.some((c) => c[0] === 'spawnGravityWellEffect')).toBe(true);
+			expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(true);
+		}
 	});
 
 	it('gravity_well has no positive windUpMs (instant cast; no 307 charge telegraph expected)', () => {
