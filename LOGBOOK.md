@@ -7997,3 +7997,26 @@ PASS. The change fits the documented card-combat model: weapons are multi-charge
 ## Remaining gaps
 
 None.
+
+## v0.438 — 320-anim-rust-forged-saber  (2026-06-11 02:02:50)
+
+`CARD_DEFS.iron_sword.windUpMs` is undefined, that range/cone pass through, that
+spark/decal placement scales with `attackRange` (≈3× at 9 vs 3), and that a
+single swing schedules no delay.
+
+### "No perf regression"
+PASS. Pure VFX composition on a single weapon's render path; no new per-frame
+work, no added allocations in hot loops. Swing count is server-bounded.
+
+### "Client test where feasible"
+PASS. `cardRenderers.test.js` adds renderer-identity assertions
+(`resolveRenderers('iron_sword')[0].name === 'renderRustForgedSaber'`), updated
+the existing styled-slash test to the new rust palette + spark contract, and adds
+a new "iron_sword reach + instant-hit timing" describe block (4 tests). Full
+suite runs green: **292 passed**.
+
+## Remaining gaps
+None blocking. One nit (see `nits.md`): `getAccentHex('iron_sword') ?? style.color`
+is effectively always `style.color` because `iron_sword` has no `CARD_ACCENT_STYLE`
+entry — harmless defensive code, but the accent lookup is dead for this card.
+
