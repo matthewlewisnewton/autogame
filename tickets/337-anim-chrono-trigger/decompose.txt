@@ -1,0 +1,10 @@
+Remediation round 2 addressed the failed sub-ticket 02 deadlock: the old ticket forbade test updates while the harness required `local-checks rc: 0`, but sub-ticket 03 (which owned tests) could not run until 02 passed.
+
+**Actions taken**
+- Removed failed folder `02-chrono-trigger-renderer-timing` (mis-scoped split).
+- Left `01-chrono-trigger-time-ripple-vfx` and `03-chrono-trigger-animation-tests` untouched (both have `.passed`).
+- Added replacement sub-ticket **04** with the same renderer/timing goals, explicit `pnpm test:quick` / `rc: 0` requirement, and permission to adjust tests in the same pass if the renderer changes.
+
+**Sub-ticket folder path created**
+
+- `/home/matt/workspace/.autogame-worktrees/337-anim-chrono-trigger/tickets/337-anim-chrono-trigger/subtickets/04-chrono-trigger-renderer-timing`
