@@ -151,6 +151,7 @@ import {
 	computeDungeonBounds,
 } from '../simulation.js';
 import { sampleFloorY, resolveFloorY } from '../dungeon.js';
+import * as progressionModule from '../progression.js';
 
 const { createLobby, resetAllLobbies } = require('../lobbies.js');
 const { VARIANT_DEFS } = require('../enemyVariants.js');
@@ -3652,6 +3653,152 @@ describe('run state', () => {
 			expect(gameState.players.p1.magicStones).toBe(nonDefaultMs);
 			expect(gameState.players.p1.hp).not.toBe(MAX_HP);
 			expect(gameState.players.p1.magicStones).not.toBe(STARTING_MAGIC_STONES);
+		});
+	});
+
+	describe('runSpawnSeed checkpoint lifecycle — crystal_rescue', () => {
+		const deck = ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'];
+
+		function crystalPositions(state = gameState) {
+			return state.loot
+				.filter((loot) => loot.kind === 'crystal')
+				.map((loot) => ({ x: loot.x, z: loot.z }));
+		}
+
+		function setupCrystalRescueRun() {
+			resetState();
+			gameState._lobbyId = 'test-lobby';
+			gameState.selectedQuestId = 'crystal_rescue';
+			gameState.selectedQuestTier = 1;
+			addPlayer('p1', {
+				ready: true,
+				selectedDeck: [...deck],
+				deck: [],
+				slotCooldowns: [null, null, null, null],
+				pendingSummons: new Set(),
+			});
+			addPlayer('p2', {
+				ready: true,
+				selectedDeck: [...deck],
+				deck: [],
+				slotCooldowns: [null, null, null, null],
+				pendingSummons: new Set(),
+			});
+			checkAllReady();
+			expect(gameState.gamePhase).toBe('playing');
+			expect(crystalPositions().length).toBe(getQuest('crystal_rescue').itemCount);
+			gameState.players.p1.hand[0] = {
+				id: 'telepipe',
+				name: 'Telepipe',
+				type: 'spell',
+				charges: 1,
+				remainingCharges: 1,
+			};
+			gameState.telepipe = {
+				x: gameState.players.p1.x,
+				z: gameState.players.p1.z,
+				placedBy: 'p1',
+				placedAt: Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1,
+			};
+		}
+
+		function extractAllPlayers() {
+			tryEnterTelepipe('p1');
+			gameState.players.p2.x = gameState.telepipe.x;
+			gameState.players.p2.z = gameState.telepipe.z;
+			tryEnterTelepipe('p2');
+		}
+
+		it('suspendRunToLobby captures runSpawnSeed and crystal positions in checkpoint', () => {
+			setupCrystalRescueRun();
+			const preSuspendRunSpawnSeed = gameState.runSpawnSeed;
+			const preSuspendCrystals = crystalPositions();
+
+			extractAllPlayers();
+
+			expect(gameState.suspendedCheckpoint).not.toBeNull();
+			expect(gameState.suspendedCheckpoint.worldState.runSpawnSeed).toBe(preSuspendRunSpawnSeed);
+			expect(
+				gameState.suspendedCheckpoint.worldState.loot
+					.filter((loot) => loot.kind === 'crystal')
+					.map((loot) => ({ x: loot.x, z: loot.z })),
+			).toEqual(preSuspendCrystals);
+		});
+
+		it('telepipe resume restores runSpawnSeed and crystal (x,z) tuples unchanged', () => {
+			setupCrystalRescueRun();
+			const preSuspendRunSpawnSeed = gameState.runSpawnSeed;
+			const preSuspendCrystals = crystalPositions();
+			const preSuspendLayoutSeed = gameState.layoutSeed;
+
+			extractAllPlayers();
+
+			gameState.players.p1.ready = true;
+			gameState.players.p2.ready = true;
+			checkAllReady();
+
+			expect(gameState.gamePhase).toBe('playing');
+			expect(gameState.runSpawnSeed).toBe(preSuspendRunSpawnSeed);
+			expect(gameState.layoutSeed).toBe(preSuspendLayoutSeed);
+			expect(crystalPositions()).toEqual(preSuspendCrystals);
+		});
+
+		it('telepipe resume does not call spawnEnemies', () => {
+			setupCrystalRescueRun();
+			extractAllPlayers();
+
+			const spawnSpy = vi.spyOn(progressionModule, 'spawnEnemies');
+			gameState.players.p1.ready = true;
+			gameState.players.p2.ready = true;
+			checkAllReady();
+
+			expect(spawnSpy).not.toHaveBeenCalled();
+			spawnSpy.mockRestore();
+		});
+
+		it('abandon + redeploy mints new runSpawnSeed and crystal positions with same layoutSeed', () => {
+			setupCrystalRescueRun();
+			const preAbortLayoutSeed = gameState.layoutSeed;
+			const preAbortRunSpawnSeed = gameState.runSpawnSeed;
+			const preAbortCrystals = crystalPositions();
+
+			extractAllPlayers();
+			expect(abandonSuspendedRun().ok).toBe(true);
+
+			gameState.players.p1.ready = true;
+			gameState.players.p2.ready = true;
+			checkAllReady();
+
+			expect(gameState.gamePhase).toBe('playing');
+			expect(gameState.layoutSeed).toBe(preAbortLayoutSeed);
+			expect(gameState.runSpawnSeed).not.toBe(preAbortRunSpawnSeed);
+			expect(crystalPositions().length).toBe(preAbortCrystals.length);
+			expect(crystalPositions()).not.toEqual(preAbortCrystals);
+		});
+
+		it('each fresh deploy from a waiting lobby mints a new runSpawnSeed', () => {
+			resetState();
+			gameState._lobbyId = 'test-lobby';
+			gameState.selectedQuestId = 'crystal_rescue';
+			gameState.selectedQuestTier = 1;
+			addPlayer('p1', {
+				ready: true,
+				selectedDeck: [...deck],
+				deck: [],
+				slotCooldowns: [null, null, null, null],
+				pendingSummons: new Set(),
+			});
+
+			checkAllReady();
+			const firstRunSpawnSeed = gameState.runSpawnSeed;
+			expect(Number.isInteger(firstRunSpawnSeed)).toBe(true);
+
+			expect(giveUpRun().ok).toBe(true);
+			expect(gameState.suspendedCheckpoint).toBeNull();
+
+			gameState.players.p1.ready = true;
+			checkAllReady();
+			expect(gameState.runSpawnSeed).not.toBe(firstRunSpawnSeed);
 		});
 	});
 
