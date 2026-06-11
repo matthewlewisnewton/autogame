@@ -828,7 +828,7 @@ describe('renderCardUsed() — styled weapon slashes', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
 	});
 
-	it('Ether Scythe slashes a wide ghostly arc with a lingering decal', () => {
+	it('Ether Scythe slashes a wide ghostly arc with a lingering spectral decal and no flame trail', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'harvesting_scythe',
@@ -837,6 +837,7 @@ describe('renderCardUsed() — styled weapon slashes', () => {
 			hits: [],
 		}, ctx);
 		const style = swingStyle(ctx);
+		// Ethereal palette: ghostly ether-green body, spectral-violet emissive.
 		expect(style).toMatchObject({ color: 0x86efac, emissive: 0x8b5cf6, coneAngle: (Math.PI * 2) / 3, range: 6 });
 		// Decal lands out along the sweep at range * 0.6 = 3.6.
 		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
@@ -844,8 +845,72 @@ describe('renderCardUsed() — styled weapon slashes', () => {
 		expect(decal[1].x).toBeCloseTo(3.6);
 		expect(decal[1].z).toBe(0);
 		expect(decal[2]).toMatchObject({ color: 0x86efac });
-		// Wide ghostly sweep adds no flame trail.
+		// Spectral sweep reaps no souls without hits, and never streams a flame trail.
 		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
+		expect(ctx._calls.some((c) => c[1]?.soulWisp || c[2]?.soulWisp)).toBe(false);
+	});
+
+	it('Ether Scythe reaps an ether-tinted soul-wisp burst at each struck enemy', () => {
+		const meshes = {
+			ghoul: { position: { x: 4, y: 0, z: -1 } },
+			wraith: { position: { x: -2, y: 1, z: 3 } },
+		};
+		const ctx = makeCtx({ enemyMeshes: () => meshes });
+		renderCardUsed({
+			cardId: 'harvesting_scythe',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			hits: [{ enemyId: 'ghoul' }, { enemyId: 'wraith' }],
+		}, ctx);
+		const wisps = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst' && c[2]?.soulWisp);
+		expect(wisps).toHaveLength(2);
+		// Each wisp rises at its enemy's mesh position (lifted by 0.6) in the scythe palette.
+		expect(wisps[0][1]).toMatchObject({ x: 4, y: 0.6, z: -1 });
+		expect(wisps[1][1]).toMatchObject({ x: -2, y: 1.6, z: 3 });
+		for (const wisp of wisps) {
+			expect(wisp[2]).toMatchObject({ color: 0x86efac, emissive: 0x8b5cf6 });
+		}
+	});
+
+	it('Ether Scythe skips wisps for hits with no resolvable mesh', () => {
+		const meshes = { ghoul: { position: { x: 4, y: 0, z: -1 } } };
+		const ctx = makeCtx({ enemyMeshes: () => meshes });
+		renderCardUsed({
+			cardId: 'harvesting_scythe',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			hits: [{ enemyId: 'ghoul' }, { enemyId: 'phantom' }],
+		}, ctx);
+		const wisps = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst' && c[2]?.soulWisp);
+		expect(wisps).toHaveLength(1);
+		expect(wisps[0][1]).toMatchObject({ x: 4, y: 0.6, z: -1 });
+	});
+
+	it('Ether Scythe harvest degrades gracefully when enemyMeshes/spawnParticleBurst are absent', () => {
+		const ctx = makeCtx({ enemyMeshes: undefined, spawnParticleBurst: undefined });
+		expect(() => renderCardUsed({
+			cardId: 'harvesting_scythe',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			hits: [{ enemyId: 'ghoul' }],
+		}, ctx)).not.toThrow();
+		// The core cone swing and decal still fire.
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(true);
+	});
+
+	it('the soul-harvest hook fires only for the scythe, not the other styled blades', () => {
+		const meshes = { ghoul: { position: { x: 4, y: 0, z: -1 } } };
+		for (const cardId of ['iron_sword', 'flame_blade', 'saber_of_light']) {
+			const ctx = makeCtx({ enemyMeshes: () => meshes });
+			renderCardUsed({
+				cardId,
+				origin: { x: 0, z: 0 },
+				direction: { x: 1, z: 0 },
+				hits: [{ enemyId: 'ghoul' }],
+			}, ctx);
+			expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst' && c[2]?.soulWisp)).toBe(false);
+		}
 	});
 
 	it('the three blades use mutually distinct colors and arc shapes', () => {

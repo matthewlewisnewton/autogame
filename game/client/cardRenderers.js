@@ -157,7 +157,8 @@ const WEAPON_SLASH_STYLES = {
 		sparkCount: 10,
 		sparkSpread: 1.3,
 	},
-	// Ether Scythe: a wide ghostly sweeping arc with a lingering spectral decal.
+	// Ether Scythe: a wide ghostly ether-green sweep edged in spectral violet,
+	// leaving a lingering spectral decal and reaping soul-wisps off each hit.
 	harvesting_scythe: {
 		color: 0x86efac,
 		emissive: 0x8b5cf6,
@@ -168,6 +169,9 @@ const WEAPON_SLASH_STYLES = {
 		decal: true,
 		sparkCount: 8,
 		sparkSpread: 1.6,
+		// Opt-in soul-harvest hook: draws ether wisps off each struck enemy,
+		// echoing the card's Magic-Stone-on-hit harvest. Scythe-only.
+		harvestWisps: true,
 	},
 	// Saber of Light: a broad, radiant pale-gold arc haloed in bright sparks.
 	saber_of_light: {
@@ -234,6 +238,20 @@ function renderWeaponSwing(data, ctx) {
 	if (style.decal && ctx.spawnImpactDecal) {
 		const decalAt = pointAlong(origin, direction, style.range * 0.6);
 		ctx.spawnImpactDecal(decalAt, { color, emissive });
+	}
+
+	// Soul-harvest: ether-tinted wisps drawn off each struck enemy as its soul
+	// is reaped (mirrors the card's Magic-Stone-on-hit harvest). Opt-in per
+	// style; every optional primitive is guarded so absence is a no-op, and a
+	// hit-free swing simply skips the wisps.
+	if (style.harvestWisps && data.hits?.length && ctx.enemyMeshes && ctx.spawnParticleBurst) {
+		const meshes = ctx.enemyMeshes() || {};
+		for (const hit of data.hits) {
+			const mesh = meshes[hit.enemyId];
+			if (!mesh?.position) continue;
+			const pos = { x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z };
+			ctx.spawnParticleBurst(pos, { color, emissive, count: 10, spread: 1.1, soulWisp: true });
+		}
 	}
 }
 
