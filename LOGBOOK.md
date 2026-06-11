@@ -8203,3 +8203,26 @@ This ticket refactored existing `?booth=` URL shortcuts; it did not add new `?de
 
 None. All acceptance criteria are fully met; runtime capture is clean.
 
+
+## v0.445 — Server: multi-swing weapons re-hit same-tick corpses and farm magicStoneOnHit before cleanup  (2026-06-11 03:03:48)
+
+## Debug scenarios
+
+No new or modified `?debugScenario=` shortcuts in this ticket. Nothing to gate-check.
+
+---
+
+## Code quality
+
+- **Scope:** Minimal — two `continue` guards plus focused regression tests. No dead code or unrelated churn.
+- **Integration:** `cardEffects.js` `swingsPerUse` loop unchanged (correct per sub-ticket spec); fix lives at the collector layer where chain-lightning already rejected corpses.
+- **Risk:** Low. Guards are idempotent for living enemies and align with `damageEnemy` / `cleanupAfterDamage` lifecycle.
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are satisfied; runtime capture is clean; tests pass.
+
+---
+
