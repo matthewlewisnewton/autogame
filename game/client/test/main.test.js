@@ -781,8 +781,9 @@ describe('spawnHitSpark()', () => {
 		expect(typeof window.spawnHitSpark).toBe('function');
 	});
 
-	it('adds a hit spark effect to activeEffects with isHitSpark flag', async () => {
+	it('adds a hit spark effect to activeEffects with hitSpark kind', async () => {
 		await import('../main.js');
+		const { ATTACK_EFFECT_KINDS } = await import('../renderer/attackEffectUpdaters.js');
 
 		// Set a mock scene so spawnHitSpark doesn't early-return
 		window.__setScene(new (await import('three')).Scene());
@@ -793,7 +794,7 @@ describe('spawnHitSpark()', () => {
 
 		expect(effects.length).toBe(effectsBefore + 1);
 		const spark = effects[effects.length - 1];
-		expect(spark.isHitSpark).toBe(true);
+		expect(spark.kind).toBe(ATTACK_EFFECT_KINDS.hitSpark);
 		expect(spark.mesh).toBeDefined();
 		expect(spark.duration).toBe(400);
 	});
@@ -856,7 +857,8 @@ describe('spawnHitSpark()', () => {
 		// We can't call updateAttackEffects directly (not exposed on window),
 		// but we can verify the spark was created with correct auto-clean properties
 		expect(spark.duration).toBe(400);
-		expect(spark.isHitSpark).toBe(true);
+		const { ATTACK_EFFECT_KINDS } = await import('../renderer/attackEffectUpdaters.js');
+		expect(spark.kind).toBe(ATTACK_EFFECT_KINDS.hitSpark);
 	});
 });
 

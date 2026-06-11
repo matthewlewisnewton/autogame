@@ -240,6 +240,7 @@ import {
 	runAttackEffectUpdater,
 	shouldExpireAttackEffect,
 	disposeAttackEffect,
+	warnUnknownAttackEffectKind,
 } from './renderer/attackEffectUpdaters.js';
 
 // Player-domain sync now lives in ./renderer/playerSync.js; re-exported so main.js
@@ -1731,7 +1732,6 @@ export function playPassageUnlockEffect(passageIndex, layout, gateMesh = null) {
 			mesh: gateMesh,
 			_scene: targetScene,
 			kind: ATTACK_EFFECT_KINDS.passageUnlockGate,
-			isPassageUnlockGate: true,
 			createdAt: performance.now(),
 			duration: PASSAGE_UNLOCK_EFFECT_DURATION,
 		});
@@ -4246,7 +4246,6 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 			bladeLen,
 			range,
 			kind: ATTACK_EFFECT_KINDS.rustyShiv,
-			isRustyShiv: true,
 			createdAt: performance.now(),
 			duration: RUSTY_SHIV_EFFECT_DURATION,
 		});
@@ -4325,7 +4324,6 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 			kind: ATTACK_EFFECT_KINDS.fireballProjectile,
 			createdAt: performance.now(),
 			duration: style.projectileTravelMs ?? ATTACK_EFFECT_DURATION,
-			isFireballProjectile: true,
 		});
 		return;
 	}
@@ -4378,7 +4376,6 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 			kind: ATTACK_EFFECT_KINDS.glacialOrbProjectile,
 			createdAt: performance.now(),
 			duration: style.projectileTravelMs ?? 1200,
-			isGlacialOrbProjectile: true,
 		});
 		return;
 	}
@@ -4440,7 +4437,6 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 			kind: ATTACK_EFFECT_KINDS.arcaneBoltProjectile,
 			createdAt: performance.now(),
 			duration: style.projectileTravelMs ?? ATTACK_EFFECT_DURATION,
-			isArcaneBoltProjectile: true,
 		});
 		return;
 	}
@@ -4498,7 +4494,6 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 			range,
 			hitWidth,
 			kind: ATTACK_EFFECT_KINDS.returningProjectile,
-			returning: true,
 			returnPasses: style.returnPasses
 				?? (effect === 'triple_returning_projectile' ? 3 : 1),
 			createdAt: performance.now(),
@@ -4524,7 +4519,6 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 		range,
 		coneAngle,
 		kind: ATTACK_EFFECT_KINDS.weaponCone,
-		isWeaponCone: true,
 		createdAt: performance.now(),
 		duration: style.duration ?? ATTACK_EFFECT_DURATION,
 	});
@@ -4669,7 +4663,6 @@ export function spawnLegionMarshalRallyEffect(origin, radius, style = {}) {
 		kind: ATTACK_EFFECT_KINDS.legionMarshalColumn,
 		createdAt: performance.now(),
 		duration,
-		isLegionMarshalColumn: true,
 		_baseEmissiveIntensity: LEGION_MARSHAL_EMISSIVE_INTENSITY,
 		_scene: targetScene,
 	});
@@ -4736,7 +4729,6 @@ export function spawnBatteryAutomatonDeployEffect(origin, style = {}) {
 		kind: ATTACK_EFFECT_KINDS.batteryAutomatonRing,
 		createdAt: performance.now(),
 		duration,
-		isBatteryAutomatonRing: true,
 		_baseEmissiveIntensity: 1.2,
 		_scene: targetScene,
 	});
@@ -4762,7 +4754,6 @@ export function spawnBatteryAutomatonDeployEffect(origin, style = {}) {
 		kind: ATTACK_EFFECT_KINDS.batteryAutomatonColumn,
 		createdAt: performance.now(),
 		duration,
-		isBatteryAutomatonColumn: true,
 		_baseEmissiveIntensity: BATTERY_AUTOMATON_EMISSIVE_INTENSITY,
 		_scene: targetScene,
 	});
@@ -4806,7 +4797,6 @@ export function spawnBatteryChargePulseEffect(origin, style = {}) {
 		kind: ATTACK_EFFECT_KINDS.batteryAutomatonRing,
 		createdAt: performance.now(),
 		duration,
-		isBatteryAutomatonRing: true,
 		_baseEmissiveIntensity: 1.35,
 		_scene: targetScene,
 	});
@@ -4925,7 +4915,6 @@ export function spawnAegisSentinelShieldFlourish(origin, style = {}) {
 		kind: ATTACK_EFFECT_KINDS.aegisSentinelShield,
 		createdAt: performance.now(),
 		duration,
-		isAegisSentinelShield: true,
 	});
 }
 
@@ -5010,7 +4999,6 @@ export function spawnAegisSentinelDeployEffect(origin, style = {}) {
 		kind: ATTACK_EFFECT_KINDS.aegisSentinelDeploy,
 		createdAt: performance.now(),
 		duration,
-		isAegisSentinelDeploy: true,
 		_baseEmissiveIntensity: AEGIS_SENTINEL_EMISSIVE_INTENSITY,
 	});
 }
@@ -5093,7 +5081,6 @@ export function spawnDivineGraceColumn(origin) {
 		kind: ATTACK_EFFECT_KINDS.lightColumn,
 		createdAt: performance.now(),
 		duration: SUMMON_EFFECT_DURATION,
-		isLightColumn: true,
 		_scene: targetScene,
 	});
 }
@@ -5203,7 +5190,6 @@ export function spawnRestorationBeaconColumn(origin) {
 		kind: ATTACK_EFFECT_KINDS.lightColumn,
 		createdAt: performance.now(),
 		duration: SUMMON_EFFECT_DURATION,
-		isLightColumn: true,
 		// Per-effect shaft dims so the shared isLightColumn branch keeps the base
 		// pinned for the taller/brighter green beacon without gold constants.
 		columnHeight: RESTORATION_BEACON_COLUMN_HEIGHT,
@@ -5254,7 +5240,7 @@ export function spawnRestorationBeaconMotes(origin) {
 	activeEffects.push({
 		mesh: group,
 		_scene: targetScene,
-		isParticleBurst: true,
+		kind: ATTACK_EFFECT_KINDS.particleBurst,
 		createdAt: performance.now(),
 		duration: SUMMON_EFFECT_DURATION,
 	});
@@ -5323,7 +5309,6 @@ function spawnEtherSiphonRing(origin, radius, style = {}) {
 		kind: ATTACK_EFFECT_KINDS.etherSiphonRing,
 		createdAt: performance.now(),
 		duration,
-		isEtherSiphonRing: true,
 		_scene: targetScene,
 	});
 }
@@ -5362,7 +5347,6 @@ function spawnEtherSiphonColumn(origin, style = {}) {
 		kind: ATTACK_EFFECT_KINDS.etherSiphonColumn,
 		createdAt: performance.now(),
 		duration,
-		isEtherSiphonColumn: true,
 		_baseEmissiveIntensity: ETHER_SIPHON_EMISSIVE_INTENSITY,
 		_scene: targetScene,
 	});
@@ -5449,7 +5433,6 @@ export function spawnTelepipeCastEffect(origin, radius, style = {}) {
 		kind: ATTACK_EFFECT_KINDS.lightColumn,
 		createdAt: performance.now(),
 		duration: SUMMON_EFFECT_DURATION,
-		isLightColumn: true,
 		_scene: targetScene,
 	});
 
@@ -5519,7 +5502,6 @@ export function spawnChronoTriggerRipple(origin, radius, style = {}) {
 		kind: ATTACK_EFFECT_KINDS.chronoTriggerRipple,
 		createdAt: performance.now() + wave * staggerMs,
 		duration,
-		isChronoTriggerRipple: true,
 		wave,
 		waveCount,
 		_scene: targetScene,
@@ -5560,7 +5542,6 @@ export function spawnChronoTriggerColumn(origin, style = {}) {
 		kind: ATTACK_EFFECT_KINDS.chronoTriggerColumn,
 		createdAt: performance.now(),
 		duration,
-		isChronoTriggerColumn: true,
 		_baseEmissiveIntensity: CHRONO_TRIGGER_EMISSIVE_INTENSITY,
 		_scene: targetScene,
 	});
@@ -5677,7 +5658,6 @@ export function spawnCleanseBurstEffect(origin) {
 		kind: ATTACK_EFFECT_KINDS.lightColumn,
 		createdAt: performance.now(),
 		duration: SUMMON_EFFECT_DURATION,
-		isLightColumn: true,
 		_scene: targetScene,
 	});
 
@@ -5730,7 +5710,6 @@ export function spawnFireTrailEffect(origin, direction, style = {}) {
 		range,
 		coneAngle,
 		kind: ATTACK_EFFECT_KINDS.fireTrail,
-		isFireTrail: true,
 		createdAt: performance.now(),
 		duration: dotTicks * dotIntervalMs,
 	});
@@ -5862,7 +5841,6 @@ export function spawnSpikeTrapEffect(origin, radius) {
 		origin: { x: origin.x, z: origin.z },
 		radius,
 		kind: ATTACK_EFFECT_KINDS.spikeTrapRing,
-		spikeTrapRing: true,
 		createdAt: performance.now(),
 		duration: SUMMON_EFFECT_DURATION,
 		_scene: targetScene,
@@ -5899,7 +5877,6 @@ export function spawnSpikeTrapEffect(origin, radius) {
 			kind: ATTACK_EFFECT_KINDS.spikeTrapSpike,
 			createdAt: performance.now(),
 			duration: SUMMON_EFFECT_DURATION,
-			isSpikeTrapSpike: true,
 			spikeHeight: SPIKE_TRAP_SPIKE_HEIGHT,
 			_scene: targetScene,
 		});
@@ -5943,7 +5920,6 @@ export function spawnGlacierRuptureRing(origin, radius, style = {}) {
 		kind: ATTACK_EFFECT_KINDS.glacierRuptureRing,
 		createdAt: performance.now(),
 		duration,
-		isGlacierRuptureRing: true,
 		_scene: targetScene,
 	});
 }
@@ -6000,7 +5976,6 @@ export function spawnGlacierRuptureShards(origin, radius, style = {}) {
 		kind: ATTACK_EFFECT_KINDS.glacierRuptureShards,
 		createdAt: performance.now(),
 		duration,
-		isGlacierRuptureShards: true,
 		_scene: targetScene,
 	});
 }
@@ -6129,7 +6104,6 @@ export function spawnSolarEdgeImpactFlourish(origin, direction, style = {}) {
 		kind: ATTACK_EFFECT_KINDS.solarEdgeImpact,
 		createdAt: performance.now(),
 		duration,
-		isSolarEdgeImpact: true,
 	});
 }
 
@@ -6217,7 +6191,6 @@ export function spawnManaPrismEffect(origin, style = {}) {
 		kind: ATTACK_EFFECT_KINDS.manaPrismEffect,
 		createdAt: performance.now(),
 		duration,
-		isManaPrismEffect: true,
 		_scene: targetScene,
 	});
 }
@@ -6258,7 +6231,6 @@ export function spawnThermalColumnShaft(origin, style = {}) {
 		kind: ATTACK_EFFECT_KINDS.thermalColumn,
 		createdAt: performance.now(),
 		duration,
-		isThermalColumn: true,
 		_baseEmissiveIntensity: THERMAL_COLUMN_EMISSIVE_INTENSITY,
 		_scene: targetScene,
 	});
@@ -6302,7 +6274,6 @@ function spawnDragonsBreathScorchFan(origin, direction, range, coneAngle, style)
 		radius: range,
 		coneAngle,
 		kind: ATTACK_EFFECT_KINDS.dragonsBreathScorch,
-		isDragonsBreathScorch: true,
 		createdAt: performance.now(),
 		duration: style.duration,
 		_scene: targetScene,
@@ -6353,7 +6324,6 @@ function spawnDragonsBreathConeSector(origin, direction, range, coneAngle, style
 		kind: ATTACK_EFFECT_KINDS.dragonsBreathCone,
 		createdAt: performance.now(),
 		duration: style.duration,
-		isDragonsBreathCone: true,
 		_baseEmissiveIntensity: WYRMFLARE_BREATH_EMISSIVE_INTENSITY,
 		_scene: targetScene,
 	});
@@ -6413,7 +6383,6 @@ export function spawnVolatileExplosionEffect(origin, radius) {
 		origin: { x: origin.x, z: origin.z },
 		radius,
 		kind: ATTACK_EFFECT_KINDS.expandFadeRing,
-		volatileBurst: true,
 		createdAt: performance.now(),
 		duration: SUMMON_EFFECT_DURATION,
 	});
@@ -6459,7 +6428,6 @@ export function spawnHitSpark(position, style = {}) {
 			origin: { x: ox, y: oy, z: oz },
 			direction: null,
 			kind: ATTACK_EFFECT_KINDS.hitSpark,
-			isHitSpark: true,
 			createdAt: performance.now(),
 			duration: style.duration ?? HIT_SPARK_DURATION,
 		});
@@ -6521,7 +6489,6 @@ export function spawnLightningArc(from, to, style = {}) {
 		mesh: line,
 		_scene: targetScene,
 		kind: ATTACK_EFFECT_KINDS.lightningArc,
-		isLightningArc: true,
 		createdAt: performance.now(),
 		duration: style.duration ?? ATTACK_EFFECT_DURATION,
 	});
@@ -6555,7 +6522,6 @@ export function spawnChainLightningEffect(origin, direction) {
 		kind: ATTACK_EFFECT_KINDS.chainLightning,
 		createdAt: performance.now(),
 		duration: ATTACK_EFFECT_DURATION,
-		isChainLightning: true,
 	});
 }
 
@@ -6662,7 +6628,6 @@ export function spawnMirrorWardShellEffect(origin, radius, style = {}) {
 		origin: { x: origin.x, z: origin.z },
 		wardRadius: r,
 		kind: ATTACK_EFFECT_KINDS.mirrorWardShell,
-		isMirrorWardShell: true,
 		playerId: style.playerId,
 		createdAt: performance.now(),
 		duration,
@@ -6716,7 +6681,7 @@ export function spawnMirrorWardReflectBurst(origin, direction, style = {}) {
 		},
 	);
 	for (let i = before; i < activeEffects.length; i += 1) {
-		activeEffects[i].isMirrorWardReflect = true;
+		activeEffects[i].vfxGroup = 'mirrorWardReflect';
 	}
 }
 
@@ -6823,7 +6788,6 @@ export function spawnEventHorizonEffect(origin, pullRadius, centerRadius, style 
 		pullRadius: pull,
 		centerRadius: center,
 		kind: ATTACK_EFFECT_KINDS.eventHorizonEffect,
-		isEventHorizonEffect: true,
 		createdAt: performance.now(),
 		duration,
 	});
@@ -6888,7 +6852,6 @@ export function spawnParticleBurst(position, style = {}) {
 		mesh: group,
 		_scene: targetScene,
 		kind: ATTACK_EFFECT_KINDS.particleBurst,
-		isParticleBurst: true,
 		createdAt: performance.now(),
 		duration: style.duration ?? HIT_SPARK_DURATION,
 	});
@@ -6937,7 +6900,6 @@ export function spawnProjectileTrail(origin, direction, style = {}) {
 		direction: { x: nx, z: nz },
 		range,
 		kind: ATTACK_EFFECT_KINDS.projectileTrail,
-		isProjectileTrail: true,
 		createdAt: performance.now(),
 		duration: style.travelMs ?? style.duration ?? ATTACK_EFFECT_DURATION,
 	});
@@ -6977,7 +6939,6 @@ export function spawnImpactDecal(origin, style = {}) {
 		mesh,
 		_scene: targetScene,
 		kind: ATTACK_EFFECT_KINDS.impactDecal,
-		isImpactDecal: true,
 		createdAt: performance.now(),
 		duration: style.duration ?? HIT_SPARK_DURATION,
 	});
@@ -7023,9 +6984,7 @@ export function spawnGravityWellEffect(origin, radius, style = {}) {
 		mesh: ringMesh,
 		origin: originXZ,
 		pullRadius,
-		kind: ATTACK_EFFECT_KINDS.gravityWellPull,
-		isGravityWellPull: true,
-		isGravityWellRing: true,
+		kind: ATTACK_EFFECT_KINDS.gravityWellRing,
 		createdAt,
 		duration,
 		_scene: targetScene,
@@ -7047,9 +7006,7 @@ export function spawnGravityWellEffect(origin, radius, style = {}) {
 	activeEffects.push({
 		mesh: coreMesh,
 		origin: originXZ,
-		kind: ATTACK_EFFECT_KINDS.gravityWellPull,
-		isGravityWellPull: true,
-		isGravityWellVoid: true,
+		kind: ATTACK_EFFECT_KINDS.gravityWellVoid,
 		_baseEmissiveIntensity: GRAVITY_WELL_VOID_EMISSIVE_INTENSITY,
 		createdAt,
 		duration,
@@ -7093,9 +7050,7 @@ export function spawnGravityWellEffect(origin, radius, style = {}) {
 		mesh: inflowGroup,
 		origin: originXZ,
 		pullRadius,
-		kind: ATTACK_EFFECT_KINDS.gravityWellPull,
-		isGravityWellPull: true,
-		isGravityWellInflow: true,
+		kind: ATTACK_EFFECT_KINDS.gravityWellInflow,
 		createdAt,
 		duration,
 		_scene: targetScene,
@@ -7141,7 +7096,6 @@ export function spawnTelegraphRing(origin, radius, style = {}) {
 		_scene: targetScene,
 		telegraphRadius: r,
 		kind: ATTACK_EFFECT_KINDS.telegraphRing,
-		isTelegraphRing: true,
 		createdAt: performance.now(),
 		duration: style.duration ?? SUMMON_EFFECT_DURATION,
 	});
@@ -7158,120 +7112,15 @@ export function updateAttackEffects() {
 		const fx = activeEffects[i];
 		const elapsed = now - fx.createdAt;
 
-		if (fx.kind && runAttackEffectUpdater(fx, elapsed)) {
-			if (shouldExpireAttackEffect(fx, elapsed)) {
-				disposeAttackEffect(fx, activeEffects, i, attackEffectCtx);
-			}
-			continue;
-		}
-
-		// ── Lightning arc (chain segments) ──
-		if (fx.isLightningArc) {
-			const lifeRatio = 1.0 - (elapsed / fx.duration);
-			fx.mesh.material.opacity = Math.max(0.01, lifeRatio);
-
-			if (elapsed >= fx.duration) {
-				(fx._scene || scene).remove(fx.mesh);
-				fx.mesh.geometry.dispose();
-				fx.mesh.material.dispose();
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
-		// ── Passage gate unlock flash (scale + emissive fade) ──
-		if (fx.isPassageUnlockGate) {
-			const t = Math.min(elapsed / fx.duration, 1.0);
-			const scale = 1.0 + t * 0.35;
-			fx.mesh.scale.setScalar(scale);
-			fx.mesh.traverse((child) => {
-				if (!child.material) return;
-				child.material.opacity = Math.max(0.01, 1.0 - t);
-				child.material.emissiveIntensity = Math.max(0.01, 1.8 * (1.0 - t));
+		if (fx.kind && !runAttackEffectUpdater(fx, elapsed)) {
+			warnUnknownAttackEffectKind(fx.kind, {
+				suppressThrow: shouldExpireAttackEffect(fx, elapsed),
 			});
-
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, fx._scene || scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
 		}
 
-		// ── Hit spark effect ──
-		if (fx.isHitSpark) {
-			const sparkT = Math.min(elapsed / HIT_SPARK_DURATION, 1.0);
-			const scalePhase = sparkT < 0.2 ? sparkT / 0.2 : 1.0 - (sparkT - 0.2) / 0.8;
-			fx.mesh.scale.setScalar(Math.max(0.01, 1.0 + scalePhase * 2.0));
-			fx.mesh.position.y = fx.origin.y + sparkT * 0.5;
-			fx.mesh.material.opacity = Math.max(0.01, 1.0 - sparkT);
-
-			if (elapsed >= fx.duration) {
-				(fx._scene || scene).remove(fx.mesh);
-				fx.mesh.geometry.dispose();
-				fx.mesh.material.dispose();
-				activeEffects.splice(i, 1);
-			}
-			continue;
+		if (shouldExpireAttackEffect(fx, elapsed)) {
+			disposeAttackEffect(fx, activeEffects, i, attackEffectCtx);
 		}
-
-		// ── Shared primitive: multi-particle burst ──
-		if (fx.isParticleBurst) {
-			const t = Math.min(elapsed / fx.duration, 1.0);
-			const opacity = Math.max(0.01, 1.0 - t);
-			for (let c = 0; c < fx.mesh.children.length; c++) {
-				const particle = fx.mesh.children[c];
-				const v = particle.userData.velocity;
-				particle.position.set(v.x * t, v.y * t - t * t * 0.8, v.z * t);
-				particle.material.opacity = opacity;
-			}
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, fx._scene || scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
-		// ── Shared primitive: projectile trail streak ──
-		if (fx.isProjectileTrail) {
-			const t = Math.min(elapsed / fx.duration, 1.0);
-			const travel = fx.range * t;
-			fx.mesh.position.x = fx.origin.x + fx.direction.x * travel;
-			fx.mesh.position.z = fx.origin.z + fx.direction.z * travel;
-			fx.mesh.material.opacity = Math.max(0.01, 1.0 - t);
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, fx._scene || scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
-		// ── Shared primitive: lingering impact decal ──
-		if (fx.isImpactDecal) {
-			const t = Math.min(elapsed / fx.duration, 1.0);
-			const scale = t < 0.2 ? 0.6 + (t / 0.2) * 0.4 : 1.0;
-			fx.mesh.scale.setScalar(scale);
-			fx.mesh.material.opacity = Math.max(0.01, 1.0 - t);
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, fx._scene || scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
-		// ── Shared primitive: expanding/pulsing telegraph ring ──
-		if (fx.isTelegraphRing) {
-			const t = Math.min(elapsed / fx.duration, 1.0);
-			const expandT = Math.min(t / 0.4, 1.0);
-			fx.mesh.scale.setScalar(Math.max(0.001, fx.telegraphRadius * expandT));
-			const pulse = 0.55 + 0.35 * Math.abs(Math.sin(elapsed / 120));
-			fx.mesh.material.opacity = Math.max(0.01, pulse * (1.0 - t));
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, fx._scene || scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
 	}
 }
 

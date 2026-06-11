@@ -148,8 +148,9 @@ describe('field medic VFX', () => {
 
 		expect(getActiveEffects().length).toBe(before + 2);
 		const effects = getActiveEffects().slice(before);
-		expect(effects.some((fx) => fx.isTelegraphRing && fx.telegraphRadius === 6)).toBe(true);
-		expect(effects.some((fx) => fx.isParticleBurst)).toBe(true);
+		const { ATTACK_EFFECT_KINDS } = await import('../renderer/attackEffectUpdaters.js');
+		expect(effects.some((fx) => fx.kind === ATTACK_EFFECT_KINDS.telegraphRing && fx.telegraphRadius === 6)).toBe(true);
+		expect(effects.some((fx) => fx.kind === ATTACK_EFFECT_KINDS.particleBurst)).toBe(true);
 	});
 
 	it('triggerMedicEnergyBeadVFX spawns corridor, trail, decal, and burst along the bead vector', async () => {
@@ -171,14 +172,15 @@ describe('field medic VFX', () => {
 
 		expect(getActiveEffects().length).toBe(before + 4);
 		const effects = getActiveEffects().slice(before);
-		const corridor = effects.find((fx) => fx.returning === true);
+		const { ATTACK_EFFECT_KINDS } = await import('../renderer/attackEffectUpdaters.js');
+		const corridor = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.returningProjectile);
 		expect(corridor).toBeTruthy();
 		expect(corridor.returnPasses).toBe(0);
 		expect(corridor.range).toBe(8);
 		expect(corridor.hitWidth).toBe(0.5);
-		expect(effects.some((fx) => fx.isProjectileTrail)).toBe(true);
-		expect(effects.some((fx) => fx.isImpactDecal)).toBe(true);
-		expect(effects.some((fx) => fx.isParticleBurst)).toBe(true);
+		expect(effects.some((fx) => fx.kind === ATTACK_EFFECT_KINDS.projectileTrail)).toBe(true);
+		expect(effects.some((fx) => fx.kind === ATTACK_EFFECT_KINDS.impactDecal)).toBe(true);
+		expect(effects.some((fx) => fx.kind === ATTACK_EFFECT_KINDS.particleBurst)).toBe(true);
 	});
 });
 

@@ -1,6 +1,6 @@
 // ── Attack-effect updater registry ──
-// Combat VFX dispatch on fx.kind via ATTACK_EFFECT_UPDATERS; unmigrated effects
-// still use boolean flags in updateAttackEffects until later sub-tickets.
+// To add a new VFX: set `kind: ATTACK_EFFECT_KINDS.…` in the spawner, then
+// register an updater here via registerAttackEffectUpdater (or add to the map).
 
 import { ATTACK_RANGE, HIT_SPARK_DURATION, SUMMON_EXPAND_MS } from '../config.js';
 import { FLOOR_Y } from '../dungeon.js';
@@ -34,7 +34,9 @@ export const ATTACK_EFFECT_KINDS = {
 	solarEdgeImpact: 'solarEdgeImpact',
 	manaPrismEffect: 'manaPrismEffect',
 	eventHorizonEffect: 'eventHorizonEffect',
-	gravityWellPull: 'gravityWellPull',
+	gravityWellRing: 'gravityWellRing',
+	gravityWellVoid: 'gravityWellVoid',
+	gravityWellInflow: 'gravityWellInflow',
 	mirrorWardShell: 'mirrorWardShell',
 	dragonsBreathCone: 'dragonsBreathCone',
 	fireTrail: 'fireTrail',
@@ -535,33 +537,38 @@ function updateEventHorizonEffect(fx, elapsed) {
 	}
 }
 
-function updateGravityWellPull(fx, elapsed) {
+function updateGravityWellRing(fx, elapsed) {
 	const t = Math.min(elapsed / fx.duration, 1.0);
 	const fade = Math.max(0.01, 1.0 - t);
+	const contractT = Math.min(t / 0.4, 1.0);
+	const startScale = fx.pullRadius ?? GRAVITY_WELL_PULL_RING_MIN_SCALE;
+	const endScale = GRAVITY_WELL_PULL_RING_MIN_SCALE;
+	const scale = startScale + (endScale - startScale) * contractT;
+	fx.mesh.scale.setScalar(Math.max(0.001, scale));
+	const pulse = 0.6 + 0.3 * Math.abs(Math.sin(elapsed / 95));
+	fx.mesh.material.opacity = Math.max(0.01, pulse * fade);
+}
 
-	if (fx.isGravityWellRing) {
-		const contractT = Math.min(t / 0.4, 1.0);
-		const startScale = fx.pullRadius ?? GRAVITY_WELL_PULL_RING_MIN_SCALE;
-		const endScale = GRAVITY_WELL_PULL_RING_MIN_SCALE;
-		const scale = startScale + (endScale - startScale) * contractT;
-		fx.mesh.scale.setScalar(Math.max(0.001, scale));
-		const pulse = 0.6 + 0.3 * Math.abs(Math.sin(elapsed / 95));
-		fx.mesh.material.opacity = Math.max(0.01, pulse * fade);
-	} else if (fx.isGravityWellVoid) {
-		const pulseT = Math.min(t / 0.12, 1.0);
-		const pulse = 1.0 + (1.0 - pulseT) * 0.9;
-		const baseIntensity = fx._baseEmissiveIntensity ?? GRAVITY_WELL_VOID_EMISSIVE_INTENSITY;
-		fx.mesh.material.emissiveIntensity = baseIntensity * pulse * fade;
-		fx.mesh.material.opacity = Math.max(0.01, 0.92 * fade);
-		const coreScale = 0.85 + 0.2 * (1.0 - pulseT);
-		fx.mesh.scale.setScalar(coreScale);
-	} else if (fx.isGravityWellInflow) {
-		for (let c = 0; c < fx.mesh.children.length; c += 1) {
-			const particle = fx.mesh.children[c];
-			const v = particle.userData.velocity;
-			particle.position.set(v.x * t, v.y * t, v.z * t);
-			particle.material.opacity = fade;
-		}
+function updateGravityWellVoid(fx, elapsed) {
+	const t = Math.min(elapsed / fx.duration, 1.0);
+	const fade = Math.max(0.01, 1.0 - t);
+	const pulseT = Math.min(t / 0.12, 1.0);
+	const pulse = 1.0 + (1.0 - pulseT) * 0.9;
+	const baseIntensity = fx._baseEmissiveIntensity ?? GRAVITY_WELL_VOID_EMISSIVE_INTENSITY;
+	fx.mesh.material.emissiveIntensity = baseIntensity * pulse * fade;
+	fx.mesh.material.opacity = Math.max(0.01, 0.92 * fade);
+	const coreScale = 0.85 + 0.2 * (1.0 - pulseT);
+	fx.mesh.scale.setScalar(coreScale);
+}
+
+function updateGravityWellInflow(fx, elapsed) {
+	const t = Math.min(elapsed / fx.duration, 1.0);
+	const fade = Math.max(0.01, 1.0 - t);
+	for (let c = 0; c < fx.mesh.children.length; c += 1) {
+		const particle = fx.mesh.children[c];
+		const v = particle.userData.velocity;
+		particle.position.set(v.x * t, v.y * t, v.z * t);
+		particle.material.opacity = fade;
 	}
 }
 
@@ -733,6 +740,8 @@ function updateLegacyProjectile(fx, elapsed) {
 	fx.mesh.material.opacity = Math.max(0.01, lifeRatio);
 }
 
+const warnedUnknownKinds = new Set();
+
 export const ATTACK_EFFECT_UPDATERS = {
 	[ATTACK_EFFECT_KINDS.particleBurst]: updateParticleBurst,
 	[ATTACK_EFFECT_KINDS.projectileTrail]: updateProjectileTrail,
@@ -761,7 +770,9 @@ export const ATTACK_EFFECT_UPDATERS = {
 	[ATTACK_EFFECT_KINDS.solarEdgeImpact]: updateSolarEdgeImpact,
 	[ATTACK_EFFECT_KINDS.manaPrismEffect]: updateManaPrismEffect,
 	[ATTACK_EFFECT_KINDS.eventHorizonEffect]: updateEventHorizonEffect,
-	[ATTACK_EFFECT_KINDS.gravityWellPull]: updateGravityWellPull,
+	[ATTACK_EFFECT_KINDS.gravityWellRing]: updateGravityWellRing,
+	[ATTACK_EFFECT_KINDS.gravityWellVoid]: updateGravityWellVoid,
+	[ATTACK_EFFECT_KINDS.gravityWellInflow]: updateGravityWellInflow,
 	[ATTACK_EFFECT_KINDS.mirrorWardShell]: updateMirrorWardShell,
 	[ATTACK_EFFECT_KINDS.dragonsBreathCone]: updateDragonsBreathCone,
 	[ATTACK_EFFECT_KINDS.fireTrail]: updateFireTrail,
@@ -774,6 +785,34 @@ export const ATTACK_EFFECT_UPDATERS = {
 	[ATTACK_EFFECT_KINDS.weaponCone]: updateWeaponCone,
 	[ATTACK_EFFECT_KINDS.rustyShiv]: updateRustyShiv,
 };
+
+/**
+ * Register a per-kind animation updater. Used by tests and future VFX extensions.
+ * @param {string} kind
+ * @param {(fx: object, elapsed: number) => void} fn
+ */
+export function registerAttackEffectUpdater(kind, fn) {
+	ATTACK_EFFECT_UPDATERS[kind] = fn;
+}
+
+/**
+ * Warn once per unknown kind (throws in vitest so tests catch missing registration).
+ * @param {string} kind
+ */
+export function warnUnknownAttackEffectKind(kind, { suppressThrow = false } = {}) {
+	if (warnedUnknownKinds.has(kind)) return;
+	warnedUnknownKinds.add(kind);
+	const msg = `Unknown attack effect kind: ${kind}`;
+	if (import.meta.env?.VITEST && !suppressThrow) {
+		throw new Error(msg);
+	}
+	console.warn(msg);
+}
+
+/** @internal vitest-only reset for warned-kind deduplication */
+export function resetUnknownAttackEffectKindWarnings() {
+	warnedUnknownKinds.clear();
+}
 
 /**
  * Run the registered updater for fx.kind. Returns true when a handler ran.
