@@ -186,12 +186,19 @@ function renderGlacialSlowSection(glacialSlow) {
 function renderStageBossGapSection(run) {
 	const lines = ['', '## Stage boss gap', ''];
 	const objectiveType = run.objectiveType ?? 'stage_boss';
-	if (run.preset === 'ice' || run.questId === 'frost_crossing') {
-		lines.push(
-			'`frost_crossing` tier 1 has **no stage boss** — encounter UI and distinct boss visuals are N/A '
-			+ '(tickets 283/284). The signature encounter is the named rare **Rimecast the Slow** on the ice band; '
-			+ 'victory is driven by the `defeat_enemies` objective only.',
-		);
+	const hasBossEncounterProbes = run.bossEncounterUi != null || run.bossVisualIdentity != null;
+	if ((run.preset === 'ice' || run.questId === 'frost_crossing') && objectiveType === 'stage_boss') {
+		lines.push('Stage-boss encounter flow applies to Frost Crossing tier 1 (Permafrost Warden).');
+	} else if (run.preset === 'ice' || run.questId === 'frost_crossing') {
+		if (hasBossEncounterProbes) {
+			lines.push('Stage-boss encounter flow applies to Frost Crossing tier 1 (Permafrost Warden).');
+		} else {
+			lines.push(
+				'`frost_crossing` tier 1 has **no stage boss** — encounter UI and distinct boss visuals are N/A '
+				+ '(tickets 283/284). The signature encounter is the named rare **Rimecast the Slow** on the ice band; '
+				+ 'victory is driven by the `defeat_enemies` objective only.',
+			);
+		}
 	} else if (objectiveType === 'defeat_enemies' || run.preset === 'fire') {
 		lines.push(
 			'`ember_descent` tier 1 has **no stage boss** — encounter UI and distinct boss visuals are N/A '
@@ -487,6 +494,17 @@ export function renderFindings(run) {
 		);
 	}
 
+	if (run.preset === 'ice' && objectiveType === 'stage_boss') {
+		lines.push(
+			formatAssertion('bossEncounterUiVisible', run.assertions?.bossEncounterUiVisible === true),
+			formatAssertion('slipperyFloorOk', run.assertions?.slipperyFloorOk === true),
+			formatAssertion('glacialSlowApplied', run.assertions?.glacialSlowApplied === true),
+			formatAssertion('cardMechanicsOk', run.assertions?.cardMechanicsOk === true),
+			formatAssertion('telepipeVitalsPreserved', run.assertions?.telepipeVitalsPreserved === true),
+			formatAssertion('cardChargesResetOnFreshSortie', run.assertions?.cardChargesResetOnFreshSortie === true),
+		);
+	}
+
 	if (run.error) {
 		lines.push('', '## Failure', '', run.error);
 	}
@@ -495,7 +513,9 @@ export function renderFindings(run) {
 		lines.push(...renderSlipperyFloorSection(run.slipperyFloor));
 		lines.push(...renderGlacialSlowSection(run.glacialSlow));
 		lines.push(...renderCardMechanicsSection(run.cardMechanics));
-		lines.push(...renderStageBossGapSection(run));
+		if (objectiveType !== 'stage_boss') {
+			lines.push(...renderStageBossGapSection(run));
+		}
 		lines.push(...renderTelepipeSection(run.telepipeReset));
 	} else if (objectiveType === 'defeat_enemies' || run.preset === 'fire') {
 		lines.push(...renderEmberBurnSection(run.emberBurn));

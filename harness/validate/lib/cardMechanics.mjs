@@ -222,7 +222,11 @@ export async function runGlacialSlowStep({ page, preset, outDirAbs, repoRoot }) 
 		await page.waitForTimeout(100);
 	}
 
-	const screenshotPath = await writeScreenshot(page, outDirAbs, '05-glacial-slow');
+	const screenshotPath = await writeScreenshot(
+		page,
+		outDirAbs,
+		preset.glacialSlowScreenshot ?? '05-glacial-slow',
+	);
 
 	return {
 		glacialSlowApplied: slowApplied,

@@ -1,0 +1,13 @@
+Sub-tickets created for the medic affordability feedback ticket. Charity medic already enables healing when broke; the remaining gap is shortfall messaging in the cost line.
+
+**Created:**
+
+- `/home/matt/workspace/.autogame-worktrees/medic-heal-button-silently-disabled-when-the-player-cannot-a-y199/tickets/medic-heal-button-silently-disabled-when-the-player-cannot-a-y199/subtickets/01-medic-affordability-shortfall-message/ticket.md`
+
+**Plan (1 sub-ticket):**
+
+| # | Sub-ticket | Scope |
+|---|------------|--------|
+| 01 | `medic-affordability-shortfall-message` | Update `renderGuildMedic()` cost copy to show need/have shortfall + free triage note; keep charity button enabled; extend `medicHud.test.js` |
+
+Partial heal was mentioned as “ideally” in the parent ticket but is not in the acceptance criteria, so it was left out. No existing sub-ticket folders needed cleanup.

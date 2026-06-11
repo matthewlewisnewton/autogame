@@ -1312,29 +1312,30 @@ function setupCrystalRescueExtractionPhaseDebug(lobby, state, player) {
   player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
 }
 
-function setupFrostCrossingLastEnemyDebug(lobby, state, player) {
+function setupFrostCrossingBossLowHpDebug(lobby, state, player, name) {
+  const bossId = state.run?.encounter?.bossEnemyId;
+  const bossAlive = bossId
+    && (state.enemies || []).some((e) => e.id === bossId && e.hp > 0);
+  if (!isFrostCrossingTier1StageBossRun(state) || !bossAlive) {
+    const error = setupFrostCrossingLastEnemyDebug(lobby, state, player, name);
+    if (error) return error;
+    return emitQuestDebugState(lobby, state, player, name);
+  }
+  return setupQuestBossLowHp(lobby, state, player, name, {
+    questId: 'frost_crossing',
+    tier: 1,
+    bossType: 'permafrost_warden',
+    bossNotFoundReason: 'Permafrost Warden boss not found',
+    activateEncounterIfDormant: true,
+    pinHpTwice: true,
+  });
+}
+
+function setupFrostCrossingLastEnemyDebug(lobby, state, player, name) {
   setupFrostCrossingTier1Deploy(lobby, state, player);
   clearFrostCrossingScriptedHostiles(state);
-  const bossId = state.run.encounter.bossEnemyId;
-  const boss = state.enemies.find((e) => e.id === bossId);
-  if (!boss || boss.type !== 'permafrost_warden') {
-    return { ok: false, reason: 'Permafrost Warden boss not found' };
-  }
-  player.hp = MAX_HP;
-  player.magicStones = MAX_MAGIC_STONES;
-  repositionNearEnemy(player, boss, 4);
-  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-  boss.hp = 1;
-  boss.maxHp = boss.maxHp || boss.hp;
-  boss.shieldHp = 0;
-  boss.maxShieldHp = 0;
-  if (isEncounterDormant(state.run)) {
-    activateEncounter(state.run);
-  }
-  if (!state.run.encounter.locked) {
-    lockEncounter(state.run);
-  }
-  boss.hp = 1;
+  const result = setupFrostCrossingBossLowHpDebug(lobby, state, player, name);
+  if (!result.ok) return result;
   ensureHarnessWeaponInHand(player);
   return null;
 }
@@ -1385,6 +1386,14 @@ function setupFrostCrossingNearAddsDebug(lobby, state, player, name) {
   if (!isFrostCrossingTier1StageBossRun(state)) {
     return { ok: false, reason: 'Requires frost_crossing Tier 1 stage_boss run on ice-cavern' };
   }
+  // Harness defeatAdds only targets grunts/skirmishers; clear signature/scripted
+  // hostiles (glacial_thrower, named rare) so boss-approach passes afterward.
+  const bossId = state.run?.encounter?.bossEnemyId;
+  for (const enemy of [...(state.enemies || [])]) {
+    if (!bossId || enemy.id !== bossId) enemy.hp = 0;
+  }
+  removeDeadEnemies();
+  syncRunObjectiveToEnemies();
   return setupQuestNearAdds(lobby, state, player, name, {
     questId: 'frost_crossing',
     tier: 1,
@@ -1408,7 +1417,11 @@ function setupFrostCrossingGlacialThrowerSlowDebug(lobby, state, player, socket,
   player.vx = 0;
   player.vz = 0;
   player.debugGodmode = false;
-  state.enemies = [];
+  const bossId = state.run?.encounter?.bossEnemyId;
+  for (const enemy of [...(state.enemies || [])]) {
+    if (!bossId || enemy.id !== bossId) enemy.hp = 0;
+  }
+  removeDeadEnemies();
   state.iceBalls = [];
   const stoneRoom = state.layout.rooms.find((r) => r.band === 'stone');
   if (stoneRoom) {
@@ -1436,7 +1449,13 @@ function setupFrostCrossingSurfaceTransitionDebug(lobby, state, player, name) {
   const targetX = iceRoom?.x ?? 0;
   const targetZ = iceRoom?.z ?? 0;
 
-  state.enemies = [];
+  // Clear scripted adds for a clean slide but keep the dormant stage boss so later
+  // boss-encounter harness steps still find permafrost_warden after this shortcut.
+  const bossId = state.run?.encounter?.bossEnemyId;
+  for (const enemy of [...(state.enemies || [])]) {
+    if (!bossId || enemy.id !== bossId) enemy.hp = 0;
+  }
+  removeDeadEnemies();
   state.iceBalls = [];
 
   if (iceRoom) {
@@ -4766,8 +4785,22 @@ const DEBUG_SCENARIO_REGISTRY = {
     ctx.lobby, ctx.state, ctx.player, ctx.name,
   ),
 
+  'frost-crossing-encounter-trigger': (ctx) => setupQuestEncounterTrigger(
+    ctx.lobby, ctx.state, ctx.player, ctx.name, {
+      questId: 'frost_crossing',
+      tier: 1,
+      bossType: 'permafrost_warden',
+      bossNotFoundReason: 'Permafrost Warden boss not found',
+      spawnVisualAdd: true,
+    },
+  ),
+
+  'frost-crossing-boss-low-hp': (ctx) => setupFrostCrossingBossLowHpDebug(
+    ctx.lobby, ctx.state, ctx.player, ctx.name,
+  ),
+
   'frost-crossing-last-enemy': ({ lobby, state, player, name }) => {
-    const error = setupFrostCrossingLastEnemyDebug(lobby, state, player);
+    const error = setupFrostCrossingLastEnemyDebug(lobby, state, player, name);
     if (error) return error;
     return emitQuestDebugState(lobby, state, player, name);
   },

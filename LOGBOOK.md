@@ -8524,6 +8524,51 @@ This is a harness-coverage gap (nit), not a code defect.
 
 None blocking. All acceptance criteria are satisfied in code and tests; the game loads and runs cleanly in capture.
 
+## v0.459 — medic: heal button silently disabled when the player cannot afford it  (2026-06-11 09:15:43)
+
+### Code quality
+
+**PASS**
+
+- Minimal, focused diff; uses existing `formatCurrencyPrice` for consistency with paid copy.
+- No dead code, no new console errors.
+- `medicHud.test.js` (3 cases) passes; round-1 `coverage.log` shows full client suite green (315 tests).
+
+### Debug scenarios
+
+**N/A — no new or changed `?debugScenario=` shortcuts in this ticket.**
+
+## Integration check
+
+Sub-ticket `01-medic-affordability-shortfall-message` passed its own QA. Holistic review confirms the single sub-ticket fully covers the parent acceptance criterion; no integration gaps between client HUD and server charity heal logic.
+
+## Remaining gaps
+
+None blocking.
+
+
+## v0.460 — encounters: boss-encounter HUD never appeared in any tested Frost Crossing path  (2026-06-11 09:17:17)
+
+  worked at baseline — confirming the bug was scenario-side, exactly as the
+  ticket diagnosed.
+- Other touched scenarios (`near-adds`, `glacial-thrower-slow`,
+  `surface-transition`) were updated to zero out only non-boss enemies and
+  `removeDeadEnemies()` rather than `state.enemies = []`, deliberately keeping
+  the dormant stage boss alive so later boss-encounter steps still find the
+  warden — a sound fix that keeps the validation chain coherent.
+- 81/81 tests pass across `frost_crossing_stage_boss.test.js`,
+  `debug-scenarios.test.js`, and `boss-encounter-hud-wiring.test.js`.
+- `game/validation/ice/findings.md` reports a fully green run (boss spawned,
+  encounter activated, boss defeated, victory, HUD visible, slippery floor,
+  glacial slow, card mechanics, telepipe reset) with no console/page errors.
+
+## Remaining gaps
+
+None blocking. The game runs cleanly and the acceptance criterion is met in both
+the natural-trigger path (server test) and the validation debug-scenario path
+(captured `06-boss-active.png` HUD screenshot). One non-blocking nit recorded
+separately.
+
 
 ## v0.461 — auth: register flips to login form without prefilling username (and no auto-login)  (2026-06-11 09:18:47)
 
@@ -8546,4 +8591,5 @@ None blocking. All acceptance criteria are satisfied in code and tests; the game
 None. All acceptance criteria are satisfied; runtime capture and unit tests confirm behavior.
 
 ---
+
 
