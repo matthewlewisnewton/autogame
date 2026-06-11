@@ -142,12 +142,16 @@ describe('resolveRenderers()', () => {
 		}
 	});
 
-	it('returns the heavy greatsword renderer for alloy/corebreaker (not the cone default)', () => {
+	it('returns a dedicated, non-default renderer for alloy/corebreaker greatswords', () => {
 		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
 			expect(resolveRenderers(cardId)).toHaveLength(1);
 			expect(resolveRenderers(cardId)[0]).not.toBe(WEAPON_TYPE_DEFAULT_RENDERER);
 		}
-		expect(resolveRenderers('steel_claymore')[0]).toBe(resolveRenderers('magma_greatsword')[0]);
+		// Corebreaker now has its own dedicated renderer, distinct from the Alloy
+		// Greatblade's shared heavy renderer (its molten fire-trail diverges).
+		expect(resolveRenderers('magma_greatsword')[0]).not.toBe(resolveRenderers('steel_claymore')[0]);
+		expect(resolveRenderers('magma_greatsword')[0].name).toBe('renderCorebreakerGreatsword');
+		expect(resolveRenderers('steel_claymore')[0].name).toBe('renderHeavyGreatsword');
 	});
 
 	it('returns a dedicated renderer for excalibur_photon (not heavy greatsword or cone default)', () => {
@@ -1564,6 +1568,73 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 		expect(burst[2]).toMatchObject({ color: 0xf97316, count: 24 });
 	});
 
+	it('Corebreaker uses its own dedicated renderer, distinct from the Alloy Greatblade', () => {
+		expect(resolveRenderers('magma_greatsword')[0]).not.toBe(resolveRenderers('steel_claymore')[0]);
+		expect(resolveRenderers('magma_greatsword')[0].name).toBe('renderCorebreakerGreatsword');
+	});
+
+	it('Corebreaker lays a lingering molten fire-trail synced to the card-def DoT cadence', () => {
+		const def = getCardDef('magma_greatsword');
+		const ctx = makeCtx();
+		fire('magma_greatsword', ctx);
+		// Directional fire-zone primitive carries the derived DoT timing/duration.
+		const breath = ctx._calls.find((c) => c[0] === 'spawnDragonsBreathEffect');
+		expect(breath).toBeDefined();
+		expect(breath[3]).toMatchObject({
+			color: 0xf97316,
+			emissive: 0xff3b00,
+			dotTicks: def.dotTicks,
+			dotIntervalMs: def.dotIntervalMs,
+			duration: def.dotTicks * def.dotIntervalMs,
+		});
+		// One scheduled molten pulse per DoT tick, at the derived interval cadence.
+		const delays = ctx._calls.filter((c) => c[0] === 'scheduleAfter').map((c) => c[1]);
+		const expected = Array.from({ length: def.dotTicks }, (_, i) => def.dotIntervalMs * (i + 1));
+		expect(delays).toEqual(expected);
+		// The pulses only fire their VFX once their timers elapse.
+		const ringsBefore = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing').length;
+		expect(ringsBefore).toBe(0);
+		ctx.runScheduled();
+		const ringsAfter = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing').length;
+		expect(ringsAfter).toBe(def.dotTicks);
+	});
+
+	it('Corebreaker derives its trail cadence from the card def, never hardcodes it', () => {
+		// The number of scheduled pulses tracks the card-def dotTicks value.
+		const def = getCardDef('magma_greatsword');
+		const ctx = makeCtx();
+		fire('magma_greatsword', ctx);
+		const pulses = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(pulses).toHaveLength(def.dotTicks);
+		expect(pulses.every((c) => c[1] % def.dotIntervalMs === 0)).toBe(true);
+	});
+
+	it('Corebreaker fires its swing + impact synchronously, before any DoT tick', () => {
+		const ctx = makeCtx();
+		fire('magma_greatsword', ctx);
+		// Swing + heavy impact land at t=0 (no scheduleAfter gating the first beat).
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(true);
+		const firstSchedule = ctx._calls.findIndex((c) => c[0] === 'scheduleAfter');
+		const firstSwing = ctx._calls.findIndex((c) => c[0] === 'spawnAttackEffect');
+		expect(firstSwing).toBeLessThan(firstSchedule);
+	});
+
+	it('Corebreaker degrades gracefully when the lingering-trail primitives are absent', () => {
+		const ctx = makeCtx({
+			spawnDragonsBreathEffect: undefined,
+			spawnImpactDecal: undefined,
+			spawnParticleBurst: undefined,
+			spawnTelegraphRing: undefined,
+		});
+		expect(() => {
+			fire('magma_greatsword', ctx);
+			ctx.runScheduled();
+		}).not.toThrow();
+		// The core heavy cone swing still fires.
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+	});
+
 	it('Excalibur Photon greatslashes magenta with a light-shard burst, honoring the photon_barrage stagger', () => {
 		const ctx = makeCtx();
 		fire('excalibur_photon', ctx, { swingCount: 2, specialEffect: 'photon_barrage' });
@@ -1580,13 +1651,21 @@ describe('renderCardUsed() — heavy wind-up greatswords', () => {
 		expect(debrisBurst(ctx)[2]).toMatchObject({ color: 0xe879f9, count: 20 });
 	});
 
-	it('heavy greatswords (claymore, magma) do not emit photon-only trail or telegraph ring primitives', () => {
+	it('heavy greatswords do not emit a photon-only projectile trail', () => {
 		for (const cardId of ['steel_claymore', 'magma_greatsword']) {
 			const ctx = makeCtx();
 			fire(cardId, ctx);
+			ctx.runScheduled();
 			expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
-			expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
 		}
+	});
+
+	it('Alloy Greatblade stays a pure committed swing (no telegraph ring, no lingering trail)', () => {
+		const ctx = makeCtx();
+		fire('steel_claymore', ctx);
+		ctx.runScheduled();
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnDragonsBreathEffect')).toBe(false);
 	});
 
 	it('the two heavy greatswords use mutually distinct accent colors and an impact param', () => {

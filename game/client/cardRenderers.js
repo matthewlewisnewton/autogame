@@ -609,6 +609,104 @@ function renderHeavyGreatsword(data, ctx) {
 }
 
 /**
+ * Corebreaker Greatsword (`magma_greatsword`): a dedicated molten magma
+ * greatsword. Reuses the heavy wind-up swing + pronounced impact of the heavy
+ * greatswords (wide magma cone, the card's biggest ground decal + debris
+ * shower), then lays a lingering molten **fire-trail** along the swing direction
+ * — the card's signature `fire_trail` DoT, finally made visible.
+ *
+ * The trail's tick cadence and total duration are DERIVED from the server card
+ * stats (`dotTicks` / `dotIntervalMs` on `getCardDef('magma_greatsword')`),
+ * never hardcoded, so the on-screen molten pulses stay locked to the server's
+ * `fire_trail` resolution (4 ticks at 500ms; duration = dotTicks * dotIntervalMs).
+ * The directional fire-zone primitive (`spawnDragonsBreathEffect`) carries the
+ * same derived timing, and one molten pulse fires per DoT tick via
+ * `ctx.scheduleAfter`.
+ *
+ * The primary swing + impact fire synchronously on CARD_USED (no projectile
+ * delay); the 800ms wind-up charge telegraph is owned by renderer.js's automatic
+ * wind-up handler, so this renderer never re-implements it. Honors `swingCount`
+ * and the `photon_barrage` stagger like the heavy greatswords. Derives all stats
+ * from getCardDef (no new network/payload fields). Every ctx call is guarded so
+ * the renderer degrades gracefully when an optional primitive is absent.
+ */
+function renderCorebreakerGreatsword(data, ctx) {
+	const style = HEAVY_GREATSWORD_STYLES.magma_greatsword;
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex('magma_greatsword') ?? style.color;
+	const emissive = style.emissive;
+	const swingCount = data.swingCount || 1;
+	const delayPerSwing = data.specialEffect === 'photon_barrage' ? PHOTON_BARRAGE_SWING_DELAY_MS : 0;
+
+	// Lingering fire-trail cadence/duration derived from the server card stats —
+	// keeps the molten pulses synced to the server `fire_trail` resolution.
+	const def = getCardDef('magma_greatsword') ?? {};
+	const dotTicks = def.dotTicks ?? 4;
+	const dotIntervalMs = def.dotIntervalMs ?? 500;
+	const trailDuration = dotTicks * dotIntervalMs;
+
+	// Heavy magma cone swing — fired synchronously (extra swings stagger).
+	const swing = () => ctx.spawnAttackEffect(origin, direction, {
+		color,
+		emissive,
+		coneAngle: style.coneAngle,
+		range: style.range,
+		fillOpacity: style.fillOpacity,
+		edgeOpacity: style.edgeOpacity,
+	});
+	for (let i = 0; i < swingCount; i++) {
+		const delay = delayPerSwing * i;
+		if (delay > 0) ctx.scheduleAfter(delay, swing);
+		else swing();
+	}
+
+	// Pronounced impact at the blade's strike point — the card's biggest ground
+	// decal plus a heavy molten-debris shower.
+	const impactAt = pointAlong(origin, direction, style.range);
+	if (ctx.spawnImpactDecal) {
+		ctx.spawnImpactDecal(impactAt, { color, emissive, radius: style.decalRadius });
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(impactAt, {
+			color,
+			emissive,
+			count: style.debrisCount,
+			spread: style.debrisSpread,
+		});
+	}
+
+	// Lingering molten fire-trail along the swing direction: a directional
+	// fire-zone whose derived timing keeps it smoldering for the full DoT window,
+	// themed to the magma accent.
+	if (ctx.spawnDragonsBreathEffect) {
+		ctx.spawnDragonsBreathEffect(origin, direction, {
+			color,
+			emissive,
+			range: style.range,
+			coneAngle: style.coneAngle,
+			dotTicks,
+			dotIntervalMs,
+			duration: trailDuration,
+		});
+	}
+
+	// One molten pulse per DoT tick, at the derived dotIntervalMs cadence, so the
+	// trail visibly ticks in lockstep with the server fire_trail damage ticks.
+	for (let tick = 1; tick <= dotTicks; tick += 1) {
+		ctx.scheduleAfter(dotIntervalMs * tick, () => {
+			const pulseAt = pointAlong(origin, direction, style.range * 0.6);
+			if (ctx.spawnTelegraphRing) {
+				ctx.spawnTelegraphRing(pulseAt, style.decalRadius * 0.6, { color, emissive });
+			}
+			if (ctx.spawnParticleBurst) {
+				ctx.spawnParticleBurst(pulseAt, { color, emissive, count: 8, spread: 2.2 });
+			}
+		});
+	}
+}
+
+/**
  * Resonance Edge: a resonant / harmonic sonic blade. The magenta cone cut lands
  * immediately, then the blade "rings" — an immediate resonance pulse plus a
  * harmonic after-ring a beat later (the base ringing fires on every swing).
@@ -2673,7 +2771,7 @@ const CARD_RENDERERS = {
 	infinite_disk: renderTripleReturning,
 	// Heavy wind-up greatswords — weighty committed-hit slash + impact.
 	steel_claymore: renderHeavyGreatsword,
-	magma_greatsword: renderHeavyGreatsword,
+	magma_greatsword: renderCorebreakerGreatsword,
 	excalibur_photon: renderExcaliburPhoton,
 	fireball: renderFireball,
 	deck_sifter: renderDeckSifter,
