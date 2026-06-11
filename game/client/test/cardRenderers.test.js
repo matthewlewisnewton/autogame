@@ -3841,22 +3841,50 @@ describe('renderCardUsed() — enchantment dispatch', () => {
 
 describe('renderCardUsed() — economy card VFX', () => {
 	describe('deck_sifter', () => {
-		it('spawns a parchment/gold particle burst at the caster origin', () => {
+		it('composes a staggered parchment/gold card-riffle flourish at the caster', () => {
 			const ctx = makeCtx();
 			renderCardUsed({
 				cardId: 'deck_sifter',
 				origin: { x: 3, z: 4 },
+				direction: { x: 1, z: 0 },
 				hits: [],
 			}, ctx);
-			const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+
+			// Ground accent ring on the deck_sifter parchment/gold palette.
+			const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+			expect(ring).toBeDefined();
+			expect(ring[1]).toEqual({ x: 3, z: 4 });
+			expect(ring[2]).toBe(1.4);
+			expect(ring[3]).toMatchObject({ color: 0xd4a843, emissive: 0xdaa520 });
+
+			// The centre card puffs immediately so it stays synced to the instant
+			// draw; the flanking cards riffle out via short scheduled beats.
+			let bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
 			expect(bursts).toHaveLength(1);
-			expect(bursts[0][1]).toEqual({ x: 3, z: 4 });
-			expect(bursts[0][2]).toMatchObject({
-				color: 0xf5deb3,
-				emissive: 0xdaa520,
-				count: 10,
-				spread: 1.8,
-			});
+			expect(bursts[0][1]).toEqual({ x: 3, y: 1.0, z: 4 });
+
+			const delays = ctx._calls
+				.filter((c) => c[0] === 'scheduleAfter')
+				.map((c) => c[1]);
+			expect(delays).toEqual([70, 140]);
+			for (const d of delays) expect(d).toBeLessThan(300);
+
+			// After the staggered beats fire, three cards fan out perpendicular to
+			// the cast direction (+x → spread along z), all on the parchment theme.
+			ctx.runScheduled();
+			bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+			expect(bursts).toHaveLength(3);
+			const zs = bursts.map((b) => b[1].z).sort((a, b) => a - b);
+			expect(zs).toEqual([3.3, 4, 4.7]);
+			for (const b of bursts) {
+				expect(b[1]).toMatchObject({ x: 3, y: 1.0 });
+				expect(b[2]).toMatchObject({
+					color: 0xf5deb3,
+					emissive: 0xdaa520,
+					count: 6,
+					spread: 0.8,
+				});
+			}
 		});
 
 		it('does not throw when spawnParticleBurst is absent', () => {

@@ -2148,17 +2148,60 @@ function renderTelepipe(data, ctx) {
 	}
 }
 
+// Parchment body + gold glow keep the flourish reading as cards, not a hit.
+// DECK_SIFTER_ACCENT matches the `deck_sifter` card color (#d4a843).
+const DECK_SIFTER_COLOR = 0xf5deb3;
+const DECK_SIFTER_EMISSIVE = 0xdaa520;
+const DECK_SIFTER_ACCENT = 0xd4a843;
+// Fan offsets perpendicular to the cast direction: centre card first, then the
+// flanking cards riffle outward. Center fires immediately so the flourish stays
+// synced to the instant `draw_card`; the rest follow within ~140ms total.
+const DECK_SIFTER_FAN_OFFSETS = [0, -0.7, 0.7];
+const DECK_SIFTER_RIFFLE_STEP_MS = 70;
+const DECK_SIFTER_RING_RADIUS = 1.4;
+
 /**
- * Deck Sifter: fan of ghost card silhouettes rising from the caster using
- * a parchment/gold particle burst to signal a draw action.
+ * Deck Sifter: a staggered parchment/gold flourish that reads as riffling a
+ * deck to draw a card. A short ground ring fans open at the caster's feet and a
+ * fan of card-puff bursts rises perpendicular to the cast direction, each beat
+ * scheduled a touch after the last so it suggests sifting — all on the
+ * parchment/gold theme, composed only from existing ctx primitives.
  */
 function renderDeckSifter(data, ctx) {
 	if (!ctx.spawnParticleBurst) return;
-	ctx.spawnParticleBurst(originOf(data), {
-		color: 0xf5deb3,
-		emissive: 0xdaa520,
-		count: 10,
-		spread: 1.8,
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const len = Math.hypot(direction.x, direction.z) || 1;
+	// Perpendicular to the cast direction, so the cards fan across the caster.
+	const perpX = -direction.z / len;
+	const perpZ = direction.x / len;
+
+	// Ground accent: a quick parchment/gold ring reading as the deck fanned open.
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, DECK_SIFTER_RING_RADIUS, {
+			color: DECK_SIFTER_ACCENT,
+			emissive: DECK_SIFTER_EMISSIVE,
+		});
+	}
+
+	DECK_SIFTER_FAN_OFFSETS.forEach((offset, i) => {
+		const position = {
+			x: origin.x + perpX * offset,
+			y: 1.0,
+			z: origin.z + perpZ * offset,
+		};
+		const emit = () =>
+			ctx.spawnParticleBurst(position, {
+				color: DECK_SIFTER_COLOR,
+				emissive: DECK_SIFTER_EMISSIVE,
+				count: 6,
+				spread: 0.8,
+			});
+		if (i === 0 || !ctx.scheduleAfter) {
+			emit();
+		} else {
+			ctx.scheduleAfter(DECK_SIFTER_RIFFLE_STEP_MS * i, emit);
+		}
 	});
 }
 
