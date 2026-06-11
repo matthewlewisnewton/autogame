@@ -42,6 +42,14 @@ import {
 import { ATTACK_EFFECT_KINDS } from '../renderer/attackEffectUpdaters.js';
 import { ATTACK_EFFECT_DURATION, ATTACK_RANGE, MINION_SUMMON_IN_MS, SUMMON_EFFECT_DURATION } from '../config.js';
 
+function findEffect(effects, kind, legacyFlag) {
+	return effects.find((fx) => fx.kind === kind || fx[legacyFlag]);
+}
+
+function filterEffects(effects, kind, legacyFlag) {
+	return effects.filter((fx) => fx.kind === kind || fx[legacyFlag]);
+}
+
 // Each primitive should: add exactly one entry to activeEffects on spawn, and be
 // removed (and its mesh's geometry/material disposed) once updateAttackEffects()
 // runs past its duration. We force expiry by back-dating createdAt rather than
@@ -163,6 +171,7 @@ describe('shared VFX primitives', () => {
 		expect(ring.mesh.material.color.getHex()).toBe(0xfde68a); // warm gold
 
 		// Column is the vertical ascending shaft, also gold and finite-lived.
+		expect(column.kind).toBe(ATTACK_EFFECT_KINDS.lightColumn);
 		expect(column.isLightColumn).toBe(true);
 		expect(Number.isFinite(column.duration)).toBe(true);
 		expect(column.duration).toBeGreaterThan(0);
@@ -176,7 +185,7 @@ describe('shared VFX primitives', () => {
 
 		const effects = getActiveEffects().slice(before);
 		const ring = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.expandFadeRing);
-		const column = effects.find((fx) => fx.isLightColumn);
+		const column = findEffect(effects, ATTACK_EFFECT_KINDS.lightColumn, 'isLightColumn');
 		const burst = effects.find((fx) => fx.isParticleBurst);
 
 		expect(ring).toBeDefined();
@@ -188,6 +197,7 @@ describe('shared VFX primitives', () => {
 		expect(ring.mesh.material.emissive.getHex()).toBe(0x22d3ee);
 
 		expect(column).toBeDefined();
+		expect(column.kind).toBe(ATTACK_EFFECT_KINDS.lightColumn);
 		expect(column.isLightColumn).toBe(true);
 		expect(Number.isFinite(column.duration)).toBe(true);
 		expect(column.duration).toBeGreaterThan(0);
@@ -220,7 +230,7 @@ describe('shared VFX primitives', () => {
 		spawnTelepipeCastEffect({ x: 0, z: 0 }, 1.8, { color: 0x123456, emissive: 0x654321 });
 		const effects = getActiveEffects();
 		const ringFx = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.expandFadeRing);
-		const columnFx = effects.find((fx) => fx.isLightColumn);
+		const columnFx = findEffect(effects, ATTACK_EFFECT_KINDS.lightColumn, 'isLightColumn');
 		expect(ringFx.mesh.material.color.getHex()).toBe(0x123456);
 		expect(ringFx.mesh.material.emissive.getHex()).toBe(0x654321);
 		expect(columnFx.mesh.material.color.getHex()).toBe(0x123456);
@@ -233,6 +243,7 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 1);
 
 		const fx = lastEffect();
+		expect(fx.kind).toBe(ATTACK_EFFECT_KINDS.lightColumn);
 		expect(fx.isLightColumn).toBe(true);
 
 		const disposeSpy = vi.spyOn(fx.mesh.geometry, 'dispose');
@@ -249,7 +260,7 @@ describe('shared VFX primitives', () => {
 
 		const effects = getActiveEffects().slice(before);
 		const ring = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.spikeTrapRing);
-		const spikes = effects.filter((fx) => fx.isSpikeTrapSpike);
+		const spikes = filterEffects(effects, ATTACK_EFFECT_KINDS.spikeTrapSpike, 'isSpikeTrapSpike');
 
 		// One hazard ring plus several upward spike meshes (NOT a flat ring alone).
 		expect(ring).toBeDefined();
@@ -267,6 +278,7 @@ describe('shared VFX primitives', () => {
 		// Spikes: metallic steel grey body with a blood-red emissive glow, each a
 		// vertical cone (height-bearing ConeGeometry) with a finite, lifted lifecycle.
 		for (const spike of spikes) {
+			expect(spike.kind).toBe(ATTACK_EFFECT_KINDS.spikeTrapSpike);
 			expect(spike.mesh.material.color.getHex()).toBe(0x9ca3af); // steel grey
 			expect(spike.mesh.material.emissive.getHex()).toBe(0xdc2626); // blood-red
 			expect(spike.spikeHeight).toBeGreaterThan(0); // vertical spike geometry
@@ -293,7 +305,7 @@ describe('shared VFX primitives', () => {
 
 		const effects = getActiveEffects().slice(before);
 		const ring = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.expandFadeRing);
-		const column = effects.find((fx) => fx.isLegionMarshalColumn);
+		const column = findEffect(effects, ATTACK_EFFECT_KINDS.legionMarshalColumn, 'isLegionMarshalColumn');
 
 		expect(ring).toBeDefined();
 		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.expandFadeRing);
@@ -304,6 +316,7 @@ describe('shared VFX primitives', () => {
 		expect(ring.mesh.material.emissive.getHex()).toBe(0xa855f7);
 
 		expect(column).toBeDefined();
+		expect(column.kind).toBe(ATTACK_EFFECT_KINDS.legionMarshalColumn);
 		expect(column.isLegionMarshalColumn).toBe(true);
 		expect(Number.isFinite(column.duration)).toBe(true);
 		expect(column.duration).toBeGreaterThan(0);
@@ -326,16 +339,18 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 2);
 
 		const effects = getActiveEffects().slice(before);
-		const ring = effects.find((fx) => fx.isBatteryAutomatonRing);
-		const column = effects.find((fx) => fx.isBatteryAutomatonColumn);
+		const ring = findEffect(effects, ATTACK_EFFECT_KINDS.batteryAutomatonRing, 'isBatteryAutomatonRing');
+		const column = findEffect(effects, ATTACK_EFFECT_KINDS.batteryAutomatonColumn, 'isBatteryAutomatonColumn');
 
 		expect(ring).toBeDefined();
+		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.batteryAutomatonRing);
 		expect(ring.radius).toBe(1.4);
 		expect(ring.duration).toBe(MINION_SUMMON_IN_MS);
 		expect(ring.mesh.material.color.getHex()).toBe(BATTERY_AUTOMATON_COLOR);
 		expect(ring.mesh.material.emissive.getHex()).toBe(BATTERY_AUTOMATON_EMISSIVE);
 
 		expect(column).toBeDefined();
+		expect(column.kind).toBe(ATTACK_EFFECT_KINDS.batteryAutomatonColumn);
 		expect(column.isBatteryAutomatonColumn).toBe(true);
 		expect(column.duration).toBe(MINION_SUMMON_IN_MS);
 		expect(column.mesh.material.color.getHex()).toBe(BATTERY_AUTOMATON_COLOR);
@@ -359,8 +374,8 @@ describe('shared VFX primitives', () => {
 			radius: 1.8,
 		});
 		const effects = getActiveEffects();
-		const ring = effects.find((fx) => fx.isBatteryAutomatonRing);
-		const column = effects.find((fx) => fx.isBatteryAutomatonColumn);
+		const ring = findEffect(effects, ATTACK_EFFECT_KINDS.batteryAutomatonRing, 'isBatteryAutomatonRing');
+		const column = findEffect(effects, ATTACK_EFFECT_KINDS.batteryAutomatonColumn, 'isBatteryAutomatonColumn');
 		expect(ring.radius).toBe(1.8);
 		expect(ring.duration).toBe(900);
 		expect(column.duration).toBe(900);
@@ -376,10 +391,11 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 2);
 
 		const effects = getActiveEffects().slice(before);
-		const ring = effects.find((fx) => fx.isBatteryAutomatonRing);
+		const ring = findEffect(effects, ATTACK_EFFECT_KINDS.batteryAutomatonRing, 'isBatteryAutomatonRing');
 		const burst = effects.find((fx) => fx.isParticleBurst);
 
 		expect(ring).toBeDefined();
+		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.batteryAutomatonRing);
 		expect(ring.radius).toBe(1.0);
 		expect(ring.duration).toBe(700);
 		expect(ring.mesh.material.emissive.getHex()).toBe(BATTERY_AUTOMATON_EMISSIVE);
@@ -508,7 +524,7 @@ describe('shared VFX primitives', () => {
 			radius: 1.3,
 		});
 		const effects = getActiveEffects();
-		const ring = effects.find((fx) => fx.isBatteryAutomatonRing);
+		const ring = findEffect(effects, ATTACK_EFFECT_KINDS.batteryAutomatonRing, 'isBatteryAutomatonRing');
 		const burst = effects.find((fx) => fx.isParticleBurst);
 		expect(ring.radius).toBe(1.3);
 		expect(ring.duration).toBe(800);
@@ -524,11 +540,12 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 3);
 
 		const effects = getActiveEffects().slice(before);
-		const ripples = effects.filter((fx) => fx.isChronoTriggerRipple);
-		const column = effects.find((fx) => fx.isChronoTriggerColumn);
+		const ripples = filterEffects(effects, ATTACK_EFFECT_KINDS.chronoTriggerRipple, 'isChronoTriggerRipple');
+		const column = findEffect(effects, ATTACK_EFFECT_KINDS.chronoTriggerColumn, 'isChronoTriggerColumn');
 
 		expect(ripples.length).toBe(2);
 		for (const ripple of ripples) {
+			expect(ripple.kind).toBe(ATTACK_EFFECT_KINDS.chronoTriggerRipple);
 			expect(ripple.radius).toBe(2);
 			expect(Number.isFinite(ripple.duration)).toBe(true);
 			expect(ripple.duration).toBeGreaterThan(0);
@@ -542,6 +559,7 @@ describe('shared VFX primitives', () => {
 		expect(ripples[1].createdAt).toBeGreaterThan(ripples[0].createdAt);
 
 		expect(column).toBeDefined();
+		expect(column.kind).toBe(ATTACK_EFFECT_KINDS.chronoTriggerColumn);
 		expect(column.isChronoTriggerColumn).toBe(true);
 		expect(Number.isFinite(column.duration)).toBe(true);
 		expect(column.duration).toBeGreaterThan(0);
@@ -560,7 +578,7 @@ describe('shared VFX primitives', () => {
 
 	it('spawnChronoTriggerEffect defaults radius to 2 and honors color overrides', () => {
 		spawnChronoTriggerEffect({ x: 0, z: 0 });
-		const ripple = getActiveEffects().find((fx) => fx.isChronoTriggerRipple);
+		const ripple = findEffect(getActiveEffects(), ATTACK_EFFECT_KINDS.chronoTriggerRipple, 'isChronoTriggerRipple');
 		expect(ripple.radius).toBe(2);
 
 		getActiveEffects().length = 0;
@@ -570,8 +588,8 @@ describe('shared VFX primitives', () => {
 			duration: 900,
 		});
 		const effects = getActiveEffects();
-		const rippleFx = effects.find((fx) => fx.isChronoTriggerRipple);
-		const columnFx = effects.find((fx) => fx.isChronoTriggerColumn);
+		const rippleFx = findEffect(effects, ATTACK_EFFECT_KINDS.chronoTriggerRipple, 'isChronoTriggerRipple');
+		const columnFx = findEffect(effects, ATTACK_EFFECT_KINDS.chronoTriggerColumn, 'isChronoTriggerColumn');
 		expect(rippleFx.radius).toBe(1.6);
 		expect(rippleFx.duration).toBe(900);
 		expect(columnFx.duration).toBe(900);
@@ -594,7 +612,7 @@ describe('shared VFX primitives', () => {
 		});
 		const effects = getActiveEffects();
 		const ringFx = effects.find((fx) => fx.kind === ATTACK_EFFECT_KINDS.expandFadeRing);
-		const columnFx = effects.find((fx) => fx.isLegionMarshalColumn);
+		const columnFx = findEffect(effects, ATTACK_EFFECT_KINDS.legionMarshalColumn, 'isLegionMarshalColumn');
 		expect(ringFx.radius).toBe(1.6);
 		expect(ringFx.duration).toBe(900);
 		expect(columnFx.duration).toBe(900);
@@ -610,10 +628,11 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 2);
 
 		const effects = getActiveEffects().slice(before);
-		const ring = effects.find((fx) => fx.isEtherSiphonRing);
-		const column = effects.find((fx) => fx.isEtherSiphonColumn);
+		const ring = findEffect(effects, ATTACK_EFFECT_KINDS.etherSiphonRing, 'isEtherSiphonRing');
+		const column = findEffect(effects, ATTACK_EFFECT_KINDS.etherSiphonColumn, 'isEtherSiphonColumn');
 
 		expect(ring).toBeDefined();
+		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.etherSiphonRing);
 		expect(ring.radius).toBe(2.2);
 		expect(Number.isFinite(ring.duration)).toBe(true);
 		expect(ring.duration).toBeGreaterThan(0);
@@ -621,6 +640,7 @@ describe('shared VFX primitives', () => {
 		expect(ring.mesh.material.emissive.getHex()).toBe(0x9333ea);
 
 		expect(column).toBeDefined();
+		expect(column.kind).toBe(ATTACK_EFFECT_KINDS.etherSiphonColumn);
 		expect(Number.isFinite(column.duration)).toBe(true);
 		expect(column.duration).toBeGreaterThan(0);
 		expect(column.mesh.material.color.getHex()).toBe(0xa855f7);
@@ -643,8 +663,8 @@ describe('shared VFX primitives', () => {
 			duration: 900,
 		});
 		const effects = getActiveEffects();
-		const ring = effects.find((fx) => fx.isEtherSiphonRing);
-		const column = effects.find((fx) => fx.isEtherSiphonColumn);
+		const ring = findEffect(effects, ATTACK_EFFECT_KINDS.etherSiphonRing, 'isEtherSiphonRing');
+		const column = findEffect(effects, ATTACK_EFFECT_KINDS.etherSiphonColumn, 'isEtherSiphonColumn');
 		expect(ring.duration).toBe(900);
 		expect(column.duration).toBe(900);
 		expect(ring.mesh.material.color.getHex()).toBe(0x123456);
@@ -754,6 +774,7 @@ describe('shared VFX primitives', () => {
 		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.expandFadeRing);
 		expect(ring.radius).toBe(3.5);
 		expect(ring.duration).toBe(2250);
+		expect(column.kind).toBe(ATTACK_EFFECT_KINDS.thermalColumn);
 		expect(column.isThermalColumn).toBe(true);
 		expect(column.duration).toBe(2250);
 		expect(column.mesh.material.color.getHex()).toBe(0xef4444);
@@ -910,10 +931,11 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before + 2);
 
 		const effects = getActiveEffects().slice(before);
-		const ring = effects.find((fx) => fx.isGlacierRuptureRing);
+		const ring = findEffect(effects, ATTACK_EFFECT_KINDS.glacierRuptureRing, 'isGlacierRuptureRing');
 		const shards = effects.find((fx) => fx.isGlacierRuptureShards);
 
 		expect(ring).toBeDefined();
+		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.glacierRuptureRing);
 		expect(ring.radius).toBe(2.2);
 		expect(Number.isFinite(ring.duration)).toBe(true);
 		expect(ring.duration).toBeGreaterThan(0);
@@ -943,7 +965,7 @@ describe('shared VFX primitives', () => {
 			emissive: 0x654321,
 			duration: 900,
 		});
-		const ring = getActiveEffects().find((fx) => fx.isGlacierRuptureRing);
+		const ring = findEffect(getActiveEffects(), ATTACK_EFFECT_KINDS.glacierRuptureRing, 'isGlacierRuptureRing');
 		const shards = getActiveEffects().find((fx) => fx.isGlacierRuptureShards);
 		expect(ring.duration).toBe(900);
 		expect(shards.duration).toBe(900);

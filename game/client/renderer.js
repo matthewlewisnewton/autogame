@@ -4657,6 +4657,7 @@ export function spawnLegionMarshalRallyEffect(origin, radius, style = {}) {
 	activeEffects.push({
 		mesh: columnMesh,
 		origin: { x: origin.x, z: origin.z },
+		kind: ATTACK_EFFECT_KINDS.legionMarshalColumn,
 		createdAt: performance.now(),
 		duration,
 		isLegionMarshalColumn: true,
@@ -4723,6 +4724,7 @@ export function spawnBatteryAutomatonDeployEffect(origin, style = {}) {
 		mesh: ringMesh,
 		origin: { x: origin.x, z: origin.z },
 		radius,
+		kind: ATTACK_EFFECT_KINDS.batteryAutomatonRing,
 		createdAt: performance.now(),
 		duration,
 		isBatteryAutomatonRing: true,
@@ -4748,6 +4750,7 @@ export function spawnBatteryAutomatonDeployEffect(origin, style = {}) {
 	activeEffects.push({
 		mesh: columnMesh,
 		origin: { x: origin.x, z: origin.z },
+		kind: ATTACK_EFFECT_KINDS.batteryAutomatonColumn,
 		createdAt: performance.now(),
 		duration,
 		isBatteryAutomatonColumn: true,
@@ -4791,6 +4794,7 @@ export function spawnBatteryChargePulseEffect(origin, style = {}) {
 		mesh: ringMesh,
 		origin: { x: origin.x, z: origin.z },
 		radius,
+		kind: ATTACK_EFFECT_KINDS.batteryAutomatonRing,
 		createdAt: performance.now(),
 		duration,
 		isBatteryAutomatonRing: true,
@@ -5075,6 +5079,7 @@ export function spawnDivineGraceColumn(origin) {
 	activeEffects.push({
 		mesh,
 		origin: { x: origin.x, z: origin.z },
+		kind: ATTACK_EFFECT_KINDS.lightColumn,
 		createdAt: performance.now(),
 		duration: SUMMON_EFFECT_DURATION,
 		isLightColumn: true,
@@ -5184,6 +5189,7 @@ export function spawnRestorationBeaconColumn(origin) {
 	activeEffects.push({
 		mesh,
 		origin: { x: origin.x, z: origin.z },
+		kind: ATTACK_EFFECT_KINDS.lightColumn,
 		createdAt: performance.now(),
 		duration: SUMMON_EFFECT_DURATION,
 		isLightColumn: true,
@@ -5303,6 +5309,7 @@ function spawnEtherSiphonRing(origin, radius, style = {}) {
 		mesh,
 		origin: { x: origin.x, z: origin.z },
 		radius,
+		kind: ATTACK_EFFECT_KINDS.etherSiphonRing,
 		createdAt: performance.now(),
 		duration,
 		isEtherSiphonRing: true,
@@ -5341,6 +5348,7 @@ function spawnEtherSiphonColumn(origin, style = {}) {
 	activeEffects.push({
 		mesh,
 		origin: { x: origin.x, z: origin.z },
+		kind: ATTACK_EFFECT_KINDS.etherSiphonColumn,
 		createdAt: performance.now(),
 		duration,
 		isEtherSiphonColumn: true,
@@ -5427,6 +5435,7 @@ export function spawnTelepipeCastEffect(origin, radius, style = {}) {
 	activeEffects.push({
 		mesh,
 		origin: { x: origin.x, z: origin.z },
+		kind: ATTACK_EFFECT_KINDS.lightColumn,
 		createdAt: performance.now(),
 		duration: SUMMON_EFFECT_DURATION,
 		isLightColumn: true,
@@ -5496,6 +5505,7 @@ export function spawnChronoTriggerRipple(origin, radius, style = {}) {
 		mesh,
 		origin: { x: origin.x, z: origin.z },
 		radius: r,
+		kind: ATTACK_EFFECT_KINDS.chronoTriggerRipple,
 		createdAt: performance.now() + wave * staggerMs,
 		duration,
 		isChronoTriggerRipple: true,
@@ -5536,6 +5546,7 @@ export function spawnChronoTriggerColumn(origin, style = {}) {
 	activeEffects.push({
 		mesh,
 		origin: { x: origin.x, z: origin.z },
+		kind: ATTACK_EFFECT_KINDS.chronoTriggerColumn,
 		createdAt: performance.now(),
 		duration,
 		isChronoTriggerColumn: true,
@@ -5652,6 +5663,7 @@ export function spawnCleanseBurstEffect(origin) {
 	activeEffects.push({
 		mesh: columnMesh,
 		origin: { x: origin.x, z: origin.z },
+		kind: ATTACK_EFFECT_KINDS.lightColumn,
 		createdAt: performance.now(),
 		duration: SUMMON_EFFECT_DURATION,
 		isLightColumn: true,
@@ -5871,6 +5883,7 @@ export function spawnSpikeTrapEffect(origin, radius) {
 		activeEffects.push({
 			mesh: spike,
 			origin: { x: sx, z: sz },
+			kind: ATTACK_EFFECT_KINDS.spikeTrapSpike,
 			createdAt: performance.now(),
 			duration: SUMMON_EFFECT_DURATION,
 			isSpikeTrapSpike: true,
@@ -5914,6 +5927,7 @@ export function spawnGlacierRuptureRing(origin, radius, style = {}) {
 		mesh: ring,
 		origin: { x: origin.x, z: origin.z },
 		radius,
+		kind: ATTACK_EFFECT_KINDS.glacierRuptureRing,
 		createdAt: performance.now(),
 		duration,
 		isGlacierRuptureRing: true,
@@ -6225,6 +6239,7 @@ export function spawnThermalColumnShaft(origin, style = {}) {
 	activeEffects.push({
 		mesh,
 		origin: { x: origin.x, z: origin.z },
+		kind: ATTACK_EFFECT_KINDS.thermalColumn,
 		createdAt: performance.now(),
 		duration,
 		isThermalColumn: true,
@@ -7126,43 +7141,6 @@ export function updateAttackEffects() {
 			continue;
 		}
 
-		// ── Ether Siphon contracting ground ring (inward mana pull) ──
-		if (fx.isEtherSiphonRing) {
-			const t = Math.min(elapsed / fx.duration, 1.0);
-			const contractT = Math.min(t / 0.55, 1.0);
-			const scaleFactor =
-				1.0 - contractT * (1.0 - ETHER_SIPHON_RING_CONTRACT_MIN);
-			fx.mesh.scale.setScalar(Math.max(0.001, fx.radius * scaleFactor));
-			const pulse = 0.55 + 0.35 * Math.abs(Math.sin(elapsed / 110));
-			fx.mesh.material.opacity = Math.max(0.01, pulse * (1.0 - t * 0.6));
-
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, fx._scene || scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
-		// ── Legion Marshal ascending bone-shard / necrotic wisp column ──
-		if (fx.isLegionMarshalColumn) {
-			const t = Math.min(elapsed / fx.duration, 1.0);
-			const riseT = Math.min(t / 0.35, 1.0);
-			const s = Math.max(0.001, riseT);
-			fx.mesh.scale.y = s;
-			fx.mesh.position.y = LEGION_MARSHAL_COLUMN_BASE_Y + (LEGION_MARSHAL_COLUMN_HEIGHT * s) / 2;
-			const fade = Math.max(0.01, LEGION_MARSHAL_COLUMN_OPACITY * (1.0 - t));
-			fx.mesh.material.opacity = fade;
-			const baseIntensity = fx._baseEmissiveIntensity ?? LEGION_MARSHAL_EMISSIVE_INTENSITY;
-			const flicker = 1.0 + 0.25 * Math.sin(elapsed * 0.02);
-			fx.mesh.material.emissiveIntensity = baseIntensity * flicker * fade;
-
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, fx._scene || scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
 		// ── Aegis Sentinel caster shield wrap (ring + dome/facets) ──
 		if (fx.isAegisSentinelShield) {
 			const t = Math.min(elapsed / fx.duration, 1.0);
@@ -7225,129 +7203,6 @@ export function updateAttackEffects() {
 					child.material.opacity = Math.max(0.01, 0.85 * fade);
 				}
 			}
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, fx._scene || scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
-		// ── Battery Automaton expanding ground ring (deploy / charge pulse) ──
-		if (fx.isBatteryAutomatonRing) {
-			const expandMs = Math.min(SUMMON_EXPAND_MS, fx.duration * 0.55);
-			const expandT = Math.min(elapsed / expandMs, 1.0);
-			const scale = fx.radius * expandT * 2;
-			fx.mesh.scale.setScalar(Math.max(0.001, scale));
-
-			if (elapsed > expandMs) {
-				const fadeRatio = 1.0 - (elapsed - expandMs) / (fx.duration - expandMs);
-				fx.mesh.material.opacity = Math.max(0.01, fadeRatio);
-			}
-			const baseIntensity = fx._baseEmissiveIntensity ?? 1.2;
-			const flicker = 1.0 + 0.3 * Math.sin(elapsed * 0.028);
-			fx.mesh.material.emissiveIntensity = baseIntensity * flicker;
-
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, fx._scene || scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
-		// ── Battery Automaton ascending electric column ──
-		if (fx.isBatteryAutomatonColumn) {
-			const t = Math.min(elapsed / fx.duration, 1.0);
-			const riseT = Math.min(t / 0.35, 1.0);
-			const s = Math.max(0.001, riseT);
-			fx.mesh.scale.y = s;
-			fx.mesh.position.y = BATTERY_AUTOMATON_COLUMN_BASE_Y + (BATTERY_AUTOMATON_COLUMN_HEIGHT * s) / 2;
-			const fade = Math.max(0.01, BATTERY_AUTOMATON_COLUMN_OPACITY * (1.0 - t));
-			fx.mesh.material.opacity = fade;
-			const baseIntensity = fx._baseEmissiveIntensity ?? BATTERY_AUTOMATON_EMISSIVE_INTENSITY;
-			const flicker = 1.0 + 0.35 * Math.sin(elapsed * 0.03);
-			fx.mesh.material.emissiveIntensity = baseIntensity * flicker * fade;
-
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, fx._scene || scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
-		// ── Ether Siphon ascending violet ether column ──
-		if (fx.isEtherSiphonColumn) {
-			const t = Math.min(elapsed / fx.duration, 1.0);
-			const riseT = Math.min(t / 0.35, 1.0);
-			const s = Math.max(0.001, riseT);
-			fx.mesh.scale.y = s;
-			fx.mesh.position.y = ETHER_SIPHON_COLUMN_BASE_Y + (ETHER_SIPHON_COLUMN_HEIGHT * s) / 2;
-			const fade = Math.max(0.01, ETHER_SIPHON_COLUMN_OPACITY * (1.0 - t));
-			fx.mesh.material.opacity = fade;
-			const baseIntensity = fx._baseEmissiveIntensity ?? ETHER_SIPHON_EMISSIVE_INTENSITY;
-			const flicker = 1.0 + 0.25 * Math.sin(elapsed * 0.02);
-			fx.mesh.material.emissiveIntensity = baseIntensity * flicker * fade;
-
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, fx._scene || scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
-		// ── Chrono Trigger staggered time-ripple rings ──
-		if (fx.isChronoTriggerRipple) {
-			const expandT = Math.min(elapsed / SUMMON_EXPAND_MS, 1.0);
-			const scale = fx.radius * expandT * 2;
-			fx.mesh.scale.setScalar(Math.max(0.001, scale));
-			const tick = 0.6 + 0.4 * Math.abs(Math.sin(elapsed / CHRONO_TRIGGER_TICK_MS));
-			if (elapsed > SUMMON_EXPAND_MS) {
-				const fadeRatio = 1.0 - (elapsed - SUMMON_EXPAND_MS) / (fx.duration - SUMMON_EXPAND_MS);
-				fx.mesh.material.opacity = Math.max(0.01, fadeRatio * tick);
-			} else {
-				fx.mesh.material.opacity = Math.max(0.01, tick);
-			}
-			fx.mesh.material.emissiveIntensity = 1.2 * tick;
-
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, fx._scene || scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
-		// ── Glacier Rupture ice-fracture ring (expand → fade) ──
-		if (fx.isGlacierRuptureRing) {
-			const expandT = Math.min(elapsed / SUMMON_EXPAND_MS, 1.0);
-			const scale = fx.radius * expandT * 2;
-			fx.mesh.scale.setScalar(Math.max(0.001, scale));
-
-			if (elapsed > SUMMON_EXPAND_MS) {
-				const fadeRatio = 1.0 - (elapsed - SUMMON_EXPAND_MS) / (fx.duration - SUMMON_EXPAND_MS);
-				fx.mesh.material.opacity = Math.max(0.01, fadeRatio);
-			}
-			const fracturePulse = 0.75 + 0.25 * Math.abs(Math.sin(elapsed / 85));
-			fx.mesh.material.emissiveIntensity = 1.15 * fracturePulse;
-
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, fx._scene || scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
-		// ── Chrono Trigger ascending temporal column/wisp ──
-		if (fx.isChronoTriggerColumn) {
-			const t = Math.min(elapsed / fx.duration, 1.0);
-			const riseT = Math.min(t / 0.35, 1.0);
-			const s = Math.max(0.001, riseT);
-			fx.mesh.scale.y = s;
-			fx.mesh.position.y = CHRONO_TRIGGER_COLUMN_BASE_Y + (CHRONO_TRIGGER_COLUMN_HEIGHT * s) / 2;
-			const fade = Math.max(0.01, CHRONO_TRIGGER_COLUMN_OPACITY * (1.0 - t));
-			fx.mesh.material.opacity = fade;
-			const baseIntensity = fx._baseEmissiveIntensity ?? CHRONO_TRIGGER_EMISSIVE_INTENSITY;
-			const tick = 1.0 + 0.3 * Math.sin(elapsed / CHRONO_TRIGGER_TICK_MS);
-			fx.mesh.material.emissiveIntensity = baseIntensity * tick * fade;
-
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, fx._scene || scene);
 				activeEffects.splice(i, 1);
@@ -7446,66 +7301,6 @@ export function updateAttackEffects() {
 				}
 				if (child.material) child.material.opacity = fade;
 			}
-
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, fx._scene || scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
-		// ── Erupting spike (Spike Trap) ──
-		if (fx.isSpikeTrapSpike) {
-			const t = Math.min(elapsed / fx.duration, 1.0);
-			const riseT = Math.min(t / 0.3, 1.0); // burst upward over the first 30%
-			const s = Math.max(0.001, riseT);
-			fx.mesh.scale.y = s;
-			// Cone is centered on its local origin, so raise position.y in lockstep
-			// with scale.y to keep the spike's base pinned to the ground as it grows.
-			fx.mesh.position.y = (fx.spikeHeight * s) / 2;
-			fx.mesh.material.opacity = Math.max(0.01, 1.0 - t);
-
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, fx._scene || scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
-		// ── Ascending holy light column (Sanctum Pulse / Restoration Beacon) ──
-		if (fx.isLightColumn) {
-			const t = Math.min(elapsed / fx.duration, 1.0);
-			const riseT = Math.min(t / 0.35, 1.0); // grow upward over first 35%
-			const s = Math.max(0.001, riseT);
-			fx.mesh.scale.y = s;
-			// Per-effect shaft dims (default to the gold column) so a taller/brighter
-			// green beacon stays base-pinned through the same branch.
-			const colHeight = fx.columnHeight ?? DIVINE_GRACE_COLUMN_HEIGHT;
-			const colBaseY = fx.columnBaseY ?? DIVINE_GRACE_COLUMN_BASE_Y;
-			const colOpacity = fx.columnOpacity ?? DIVINE_GRACE_COLUMN_OPACITY;
-			// Keep the base on the ground as the centered cylinder scales up.
-			fx.mesh.position.y = colBaseY + (colHeight * s) / 2;
-			fx.mesh.material.opacity = Math.max(0.01, colOpacity * (1.0 - t));
-
-			if (elapsed >= fx.duration) {
-				disposeEffectObject(fx.mesh, fx._scene || scene);
-				activeEffects.splice(i, 1);
-			}
-			continue;
-		}
-
-		// ── Rising thermal fire column (Thermal Column) ──
-		if (fx.isThermalColumn) {
-			const t = Math.min(elapsed / fx.duration, 1.0);
-			const riseT = Math.min(t / 0.35, 1.0);
-			const s = Math.max(0.001, riseT);
-			fx.mesh.scale.y = s;
-			fx.mesh.position.y = THERMAL_COLUMN_BASE_Y + (THERMAL_COLUMN_HEIGHT * s) / 2;
-			const fade = Math.max(0.01, THERMAL_COLUMN_OPACITY * (1.0 - t));
-			fx.mesh.material.opacity = fade;
-			const baseIntensity = fx._baseEmissiveIntensity ?? THERMAL_COLUMN_EMISSIVE_INTENSITY;
-			const flicker = 1.0 + 0.25 * Math.sin(elapsed * 0.02);
-			fx.mesh.material.emissiveIntensity = baseIntensity * flicker * fade;
 
 			if (elapsed >= fx.duration) {
 				disposeEffectObject(fx.mesh, fx._scene || scene);

@@ -136,7 +136,7 @@ describe('SPIKE_TRAP_TRIGGERED handler', () => {
 		expect(ring.kind).toBe(ATTACK_EFFECT_KINDS.spikeTrapRing);
 		expect(ring.origin).toEqual({ x: 7, z: -3 });
 		expect(ring.radius).toBe(1.4);
-		expect(effects.some((e) => e.isSpikeTrapSpike)).toBe(true);
+		expect(effects.some((e) => e.kind === ATTACK_EFFECT_KINDS.spikeTrapSpike || e.isSpikeTrapSpike)).toBe(true);
 	});
 
 	it('is a guarded no-op when x/z are not finite', async () => {
