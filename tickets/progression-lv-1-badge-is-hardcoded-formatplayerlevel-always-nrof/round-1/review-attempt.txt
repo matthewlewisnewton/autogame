@@ -1,0 +1,17 @@
+**VERDICT: PASS**
+
+## Summary
+
+The ticket replaces the hardcoded `LV 1` badge with a real, end-to-end player XP/level system, taking the "implement" branch of the acceptance criteria.
+
+**Runtime health:** Game starts and loads cleanly — `metrics.json` is `ok: true`, `pageerrors` is empty, no `harness_failure`, and `console.log` shows both players reaching gameplay. The only error lines are two benign `409 Conflict` resource loads (re-auth), not page errors and not from ticket code.
+
+**Acceptance criteria — all met:**
+- **Server-tracked stat** — `xp`/`level` added to player progress, persistence, and the player record; level is always derived from XP (single source of truth), recomputed on restore.
+- **Increases through play** — kill XP via `lastDamagedBy` attribution (a field set across ~15 damage paths) plus a flat victory bonus on `victory` only; `awardXp` is null-safe and monotonic.
+- **Displayed in HUD** — `level` flows through the hot snapshot; `formatPlayerLevel(player)` now reads it (floors, falls back to 1). The capture badge stays "LV 1" only because the smoke run killed 0 enemies — correct.
+- **Tested** — 39 tests pass (18 server + 21 client) covering curve, attribution, threshold crossing, victory bonus, no-bonus-on-failure, persistence round-trip, and snapshot inclusion.
+
+Additive change, no design regression, no debug scenarios touched.
+
+**Nits (non-blocking, filed to `nits.md`):** level is currently cosmetic and doesn't gate gameplay (the Goal's `e.g.` suggestion, not in the AC); and XP progress toward next level isn't visualized despite being in the snapshot.

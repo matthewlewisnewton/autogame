@@ -1327,6 +1327,57 @@ body[data-phase="lobby"] #lobby-hud {
   gap: 8px;
 }
 
+/* Status-effect strip: small badge column beside the HP/MS bars. Hidden until
+   computeActiveStatusEffects yields at least one active effect (.has-effects). */
+#status-effect-strip {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 2px;
+  pointer-events: none;
+}
+
+#status-effect-strip.has-effects {
+  display: flex;
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-family: 'Exo 2', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border: 1px solid transparent;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.status-badge-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.status-badge--burning {
+  color: #ffe0b2;
+  background: linear-gradient(135deg, rgba(124, 33, 12, 0.85), rgba(234, 88, 12, 0.7));
+  border-color: #fb923c;
+  box-shadow:
+    0 0 8px rgba(249, 115, 22, 0.55),
+    inset 0 0 6px rgba(253, 186, 116, 0.25);
+}
+
+.status-badge--slowed {
+  color: #dbeafe;
+  background: linear-gradient(135deg, rgba(12, 74, 110, 0.85), rgba(56, 189, 248, 0.55));
+  border-color: #7dd3fc;
+  box-shadow:
+    0 0 8px rgba(56, 189, 248, 0.55),
+    inset 0 0 6px rgba(186, 230, 253, 0.25);
+}
+
 #hp-label {
   font-family: 'Exo 2', sans-serif;
   font-size: 11px;
@@ -1977,6 +2028,7 @@ body[data-phase="lobby"] #vanguard-hud {
 
 body[data-phase="lobby"] #ms-bar-container,
 body[data-phase="lobby"] #deck-stats-panel,
+body[data-phase="lobby"] #status-effect-strip,
 body[data-phase="lobby"] #objective-hud {
   display: none;
 }

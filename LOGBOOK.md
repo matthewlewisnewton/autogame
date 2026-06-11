@@ -8433,6 +8433,52 @@ a post-death one — gets free heals; harmless and within the ticket's "equivale
 mitigation" latitude, but worth a deliberate design note later).
 
 
+## v0.455 — progression: 'LV 1' badge is hardcoded — formatPlayerLevel() always returns 1, no player leveling exists  (2026-06-11 08:00:10)
+
+The change is additive: two new fields on the player snapshot, a self-contained
+XP block in `progression.js`, and a re-pointed HUD formatter. No existing
+progression (card grind, currency) is touched. No design.md invariant is
+weakened. No debug scenarios were added or changed.
+
+## Code quality
+
+Clean, null-safe helpers; level derived from a single source of truth; sensible
+fallbacks throughout. No dead code, no console errors from game logic.
+
+## Remaining gaps
+
+None blocking. The implementation fully and robustly satisfies the binding
+acceptance criteria.
+
+(Note — non-blocking: the Goal text suggested level could "gate something
+meaningful (e.g. tier-2 unlock pacing)", but that is an illustrative `e.g.` in
+the Goal, not part of the AC, which only requires a tracked/displayed/tested
+level. Captured as a nit, not a gap.)
+
+
+## v0.456 — hud: no status-effect indicators for ember burn / glacial slow (DoT and slow are invisible to the player)  (2026-06-11 08:01:44)
+
+No new debug scenario was added by this ticket (diff touches only
+`game/client/*`), so the debug-scenario review section does not apply.
+
+## Design / regression consistency
+
+- The strip lives inside the existing vitals block beside the HP/MS bars
+  (`index.html:56`), matching the ticket's "small status-effect strip near the
+  HP/MS bars". `pointer-events:none` keeps it from intercepting input. `aria-live`
+  is a reasonable accessibility touch.
+- No existing HUD elements, server fields, or DoT/slow mechanics were changed —
+  purely additive client rendering of already-broadcast fields. No regression to
+  the requirements foundation.
+
+## Remaining gaps
+
+None blocking. The capture's smoke flow never burns/slows the player, so no
+screenshot shows a live badge — but this is a capture-plan limitation, not a code
+defect, and the appear/clear logic is covered by the passing unit tests. Filed as a
+nit (DOM render not directly tested; no live-effect capture).
+
+
 ## v0.457 — level settings: 'Money this run' and return lines show em-dash placeholders during an active run  (2026-06-11 08:48:37)
 
 - No dead code or obvious bugs in the changed paths.
