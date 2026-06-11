@@ -6964,3 +6964,26 @@ None. All acceptance criteria are met; the game runs cleanly in capture; tests p
 
 ---
 
+
+## v0.397 — Server: admin password accepted via query parameter and /admin has no rate limit  (2026-06-10 18:13:13)
+
+## Code quality
+
+- Focused diff (~240 lines, mostly tests). No dead code introduced.
+- Security properties preserved: fail-closed when `ADMIN_PASSWORD` unset, constant-time compare, Bearer token still ignored for admin.
+- `auth.js` export surface expanded minimally for reuse; register/login call sites unchanged.
+- Comments in `admin.js` and `auth.js` document the check-then-increment pattern and why check-only uses `>=`.
+
+## Sub-ticket integration
+
+Both sub-tickets integrate cleanly:
+
+1. **01-remove-query-param-password** — query fallback removed; tests inverted from expect-200 to expect-403.
+2. **02-add-admin-rate-limit** — bucket logic reused from auth; middleware wired before password check.
+
+No gaps between sub-ticket scope and top-level acceptance criteria.
+
+## Remaining gaps
+
+None. All acceptance criteria are fully and robustly satisfied; runtime capture is clean.
+

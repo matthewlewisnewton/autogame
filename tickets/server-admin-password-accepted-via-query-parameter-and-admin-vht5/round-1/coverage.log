@@ -1,0 +1,569 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/server-admin-password-accepted-via-query-parameter-and-admin-vht5/game
+      Coverage enabled with v8
+
+stdout | server/test/auth.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/server-admin-password-accepted-via-query-parameter-and-admin-vht5/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/cosmetic_runtime.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/server-admin-password-accepted-via-query-parameter-and-admin-vht5/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/admin_roster.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/server-admin-password-accepted-via-query-parameter-and-admin-vht5/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/auth.test.js > POST /api/register > returns 201 with accountId on success
+[users] No existing user file at /tmp/auth-test-1781140338134-8jvkoykcf59.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/register > returns 201 with accountId on success
+Server listening on port 0
+
+stdout | server/test/hub_presence_integration.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/server-admin-password-accepted-via-query-parameter-and-admin-vht5/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/account.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/server-admin-password-accepted-via-query-parameter-and-admin-vht5/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > getAllUsers() > returns every created account as a copy without passwordHash
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > getAllUsers() > returns every created account as a copy without passwordHash
+Server listening on port 0
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > move updates merged lobby player record and broadcasts distinct cosmetics
+[users] No existing user file at /tmp/hub-presence-int-users-1781140338164-rpgf89dbtg.json — starting fresh
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > move updates merged lobby player record and broadcasts distinct cosmetics
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > move updates merged lobby player record and broadcasts distinct cosmetics
+Server listening on port 0
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > buildPlayerRecord sources the cosmetic from the account record
+[users] No existing user file at /tmp/cosmetic-runtime-users-1781140338163-ju1xmilay6i.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > buildPlayerRecord sources the cosmetic from the account record
+Server listening on port 0
+
+stdout | server/test/account.test.js > GET /api/me > returns profile and default settings
+[users] No existing user file at /tmp/account-test-users-1781140338190-1045666-1nglknivsgi.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > GET /api/me > returns profile and default settings
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/register > returns 409 when username is already taken
+[users] No existing user file at /tmp/auth-test-1781140338212-pnr8f9iyd7l.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/register > returns 409 when username is already taken
+Server listening on port 0
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > buildAdminRoster() > joins persisted currency/deck for an account that has played
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > buildAdminRoster() > joins persisted currency/deck for an account that has played
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is missing
+[users] No existing user file at /tmp/auth-test-1781140338261-s3nexr42ei.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is missing
+Server listening on port 0
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > buildAdminRoster() > joins persisted currency/deck for an account that has played
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when password is missing
+[users] No existing user file at /tmp/auth-test-1781140338270-i24p06ewhnq.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when password is missing
+Server listening on port 0
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > buildAdminRoster() > uses safe defaults for an account with no persisted player file
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > buildAdminRoster() > uses safe defaults for an account with no persisted player file
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when both fields are missing
+[users] No existing user file at /tmp/auth-test-1781140338276-kb9mb5xsemc.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when both fields are missing
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is less than 3 characters
+[users] No existing user file at /tmp/auth-test-1781140338280-2tmbuy869c.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is less than 3 characters
+Server listening on port 0
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > move updates merged lobby player record and broadcasts distinct cosmetics
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is more than 32 characters
+[users] No existing user file at /tmp/auth-test-1781140338286-gosombnhcyt.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is more than 32 characters
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when password is empty string
+[users] No existing user file at /tmp/auth-test-1781140338294-q7ov1023jgk.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when password is empty string
+Server listening on port 0
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > buildPlayerRecord sources the cosmetic from the account record
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is not a string
+[users] No existing user file at /tmp/auth-test-1781140338301-2tjuqlvbnck.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is not a string
+Server listening on port 0
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > buildPlayerRecord falls back to a copy of the default cosmetic when no account is found
+[users] No existing user file at /tmp/cosmetic-runtime-users-1781140338303-2ecd2g2tqqu.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > buildPlayerRecord falls back to a copy of the default cosmetic when no account is found
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when password is not a string
+[users] No existing user file at /tmp/auth-test-1781140338307-7v7pfnlwigk.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when password is not a string
+Server listening on port 0
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > stateSnapshot exposes each player cosmetic with the full body/accent/shape
+[users] No existing user file at /tmp/cosmetic-runtime-users-1781140338307-ai85e5p88d.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > stateSnapshot exposes each player cosmetic with the full body/accent/shape
+Server listening on port 0
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > buildAdminRoster() > does not mutate stored accounts or persisted data
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > buildAdminRoster() > does not mutate stored accounts or persisted data
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/login > returns 200 with JWT token on success
+[users] No existing user file at /tmp/auth-test-1781140338313-34gtbiaf0zr.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/login > returns 200 with JWT token on success
+Server listening on port 0
+
+stdout | server/test/account.test.js > GET /api/me > returns 401 without token
+[users] No existing user file at /tmp/account-test-users-1781140338319-1045666-dra2efvdu4q.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > GET /api/me > returns 401 without token
+Server listening on port 0
+
+stdout | server/test/account.test.js > GET /api/me > returns modelIds array containing player model
+[users] No existing user file at /tmp/account-test-users-1781140338329-1045666-bqorridt5rn.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > GET /api/me > returns modelIds array containing player model
+Server listening on port 0
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > requireAdminPassword() > denies all requests when ADMIN_PASSWORD is unset (fail closed)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > requireAdminPassword() > denies all requests when ADMIN_PASSWORD is unset (fail closed)
+Server listening on port 0
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > requireAdminPassword() > denies a wrong supplied password
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > requireAdminPassword() > denies a wrong supplied password
+Server listening on port 0
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > requireAdminPassword() > denies a missing supplied password
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > requireAdminPassword() > denies a missing supplied password
+Server listening on port 0
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > requireAdminPassword() > allows the correct password via header
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > requireAdminPassword() > allows the correct password via header
+Server listening on port 0
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > requireAdminPassword() > rejects the password via ?password= query param (security: URLs are logged)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > requireAdminPassword() > rejects the password via ?password= query param (security: URLs are logged)
+Server listening on port 0
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > requireAdminPassword() > rejects query param even when header is absent
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > requireAdminPassword() > rejects query param even when header is absent
+Server listening on port 0
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > requireAdminPassword() > never consults the Authorization bearer header
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > requireAdminPassword() > never consults the Authorization bearer header
+Server listening on port 0
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > GET /admin (HTTP route) > renders every seeded account with currency/hat/deck data (200, text/html)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > GET /admin (HTTP route) > renders every seeded account with currency/hat/deck data (200, text/html)
+Server listening on port 0
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > move updates merged lobby player record and broadcasts distinct cosmetics
+Player connected: socket=zLWpAXg1gd36lsb9AAAB, playerId=1d079cc7-01d1-4fbe-928c-bd46e675f239
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > move updates merged lobby player record and broadcasts distinct cosmetics
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > move updates merged lobby player record and broadcasts distinct cosmetics
+Player connected: socket=5IcxdNNlJpMcSrNMAAAD, playerId=6d5cc3a5-463c-4cd4-9c7f-6eddaf0e743c
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > stateSnapshot defaults the cosmetic for a player record lacking one
+[users] No existing user file at /tmp/cosmetic-runtime-users-1781140338397-l8lf6t9o5z.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > stateSnapshot defaults the cosmetic for a player record lacking one
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/login > returns a JWT containing accountId and username
+[users] No existing user file at /tmp/auth-test-1781140338402-gjltre0qr37.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/login > returns a JWT containing accountId and username
+Server listening on port 0
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > snapshot reflects an account cosmetic updated before the player joins
+[users] No existing user file at /tmp/cosmetic-runtime-users-1781140338403-ywt267vqyf.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > snapshot reflects an account cosmetic updated before the player joins
+Server listening on port 0
+
+stdout | server/test/account.test.js > GET /api/me > returns proportionConfig with keys and ranges
+[users] No existing user file at /tmp/account-test-users-1781140338419-1045666-kgl9zxn5o6.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > GET /api/me > returns proportionConfig with keys and ranges
+Server listening on port 0
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > GET /admin (HTTP route) > rejects the admin password via ?password= query param (security: URLs are logged)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > GET /admin (HTTP route) > rejects the admin password via ?password= query param (security: URLs are logged)
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/login > JWT token has ~24h expiration
+[users] No existing user file at /tmp/auth-test-1781140338481-roae5cuu6ub.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/login > JWT token has ~24h expiration
+Server listening on port 0
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > PATCH profile cosmetic syncs an existing live player record and snapshot
+[users] No existing user file at /tmp/cosmetic-runtime-users-1781140338485-lxh2t9m1lvl.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > PATCH profile cosmetic syncs an existing live player record and snapshot
+Server listening on port 0
+
+stdout | server/test/account.test.js > PATCH /api/me/settings > updates and returns merged settings
+[users] No existing user file at /tmp/account-test-users-1781140338497-1045666-i7ujlmxfj9f.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > PATCH /api/me/settings > updates and returns merged settings
+Server listening on port 0
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > GET /admin (HTTP route) > returns 403 with no account data for a wrong password
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > GET /admin (HTTP route) > returns 403 with no account data for a wrong password
+Server listening on port 0
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > move updates merged lobby player record and broadcasts distinct cosmetics
+Player disconnected: zLWpAXg1gd36lsb9AAAB
+Player disconnected: 5IcxdNNlJpMcSrNMAAAD
+
+stdout | server/test/auth.test.js > POST /api/login > returns 401 for unknown username
+[users] No existing user file at /tmp/auth-test-1781140338559-gx0crki1jx6.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/login > returns 401 for unknown username
+Server listening on port 0
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > late join notifies existing member with cosmetic and username
+[users] No existing user file at /tmp/hub-presence-int-users-1781140338564-ykn0c5r9jn.json — starting fresh
+
+stdout | server/test/auth.test.js > POST /api/login > returns 401 for wrong password
+[users] No existing user file at /tmp/auth-test-1781140338564-b31m6paps64.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/login > returns 401 for wrong password
+Server listening on port 0
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > late join notifies existing member with cosmetic and username
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > late join notifies existing member with cosmetic and username
+Server listening on port 0
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > applyAppearanceChange syncs a joined lobby player for the next snapshot
+[users] No existing user file at /tmp/cosmetic-runtime-users-1781140338568-kfc8wu76fn.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > applyAppearanceChange syncs a joined lobby player for the next snapshot
+Server listening on port 0
+
+stdout | server/test/account.test.js > PATCH /api/me/settings > returns 400 for invalid settings fields
+[users] No existing user file at /tmp/account-test-users-1781140338583-1045666-86cngqimpzh.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > PATCH /api/me/settings > returns 400 for invalid settings fields
+Server listening on port 0
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > GET /admin (HTTP route) > returns 403 with no account data for a missing password
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > GET /admin (HTTP route) > returns 403 with no account data for a missing password
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/login > returns 400 when username is missing
+[users] No existing user file at /tmp/auth-test-1781140338650-kbk6jfwpu5b.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/login > returns 400 when username is missing
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/login > returns 400 when password is missing
+[users] No existing user file at /tmp/auth-test-1781140338654-aqbvj4uhnup.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/login > returns 400 when password is missing
+Server listening on port 0
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > throws in dev mode with PORT but without ALLOW_DEV_AUTH
+[users] No existing user file at /tmp/auth-test-1781140338658-ry6d301nyu.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > throws in dev mode with PORT but without ALLOW_DEV_AUTH
+Server listening on port 0
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > uses dev fallback secret when ALLOW_DEV_AUTH=1
+[users] No existing user file at /tmp/auth-test-1781140338662-orysaakycoa.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > uses dev fallback secret when ALLOW_DEV_AUTH=1
+Server listening on port 0
+
+stderr | server/test/auth.test.js > initAuth() dev fallback > uses dev fallback secret when ALLOW_DEV_AUTH=1
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > throws when NODE_ENV is production and JWT_SECRET is missing
+[users] No existing user file at /tmp/auth-test-1781140338664-x7or15cgl2j.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > throws when NODE_ENV is production and JWT_SECRET is missing
+Server listening on port 0
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > accepts JWT_SECRET from environment regardless of NODE_ENV
+[users] No existing user file at /tmp/auth-test-1781140338667-ev7hnsh191k.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > accepts JWT_SECRET from environment regardless of NODE_ENV
+Server listening on port 0
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > uses test-secret in NODE_ENV=test without requiring ALLOW_DEV_AUTH
+[users] No existing user file at /tmp/auth-test-1781140338669-vnkbfhykohm.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > uses test-secret in NODE_ENV=test without requiring ALLOW_DEV_AUTH
+Server listening on port 0
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > JWT_SECRET env value takes precedence over ALLOW_DEV_AUTH
+[users] No existing user file at /tmp/auth-test-1781140338671-1zg5flbnn1o.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > JWT_SECRET env value takes precedence over ALLOW_DEV_AUTH
+Server listening on port 0
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > applyAppearanceChange syncs a joined lobby player for the next snapshot
+Player connected: socket=rc9evYErFxlh36RlAAAB, playerId=a30bebfa-0e89-41ac-8d13-bcd1d891416e
+
+stdout | server/test/account.test.js > PATCH /api/me/settings > returns 400 when settings would exceed the size cap
+[users] No existing user file at /tmp/account-test-users-1781140338675-1045666-6pa2ygpradh.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > PATCH /api/me/settings > returns 400 when settings would exceed the size cap
+Server listening on port 0
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > applyAppearanceChange syncs a joined lobby player for the next snapshot
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > applyAppearanceChange syncs a joined lobby player for the next snapshot
+Player disconnected: rc9evYErFxlh36RlAAAB
+
+ ✓ |server| server/test/auth.test.js (23 tests) 542ms
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > GET /admin (HTTP route) > returns 403 when ADMIN_PASSWORD is unset (fail closed)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > GET /admin (HTTP route) > returns 403 when ADMIN_PASSWORD is unset (fail closed)
+Server listening on port 0
+
+ ✓ |server| server/test/cosmetic_runtime.test.js (7 tests) 534ms
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > late join notifies existing member with cosmetic and username
+Player connected: socket=Gk2_Ry2OId1mFRthAAAF, playerId=88936c25-d61b-4279-a555-5bcdaa0d3fca
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > late join notifies existing member with cosmetic and username
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > late join notifies existing member with cosmetic and username
+Player connected: socket=DTf7FgajqfSzYC4SAAAH, playerId=2fc6cc68-a849-4daa-8da7-faca98315aad
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > late join notifies existing member with cosmetic and username
+Player disconnected: Gk2_Ry2OId1mFRthAAAF
+Player disconnected: DTf7FgajqfSzYC4SAAAH
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > leaveLobby removes departed player from presence snapshot
+[users] No existing user file at /tmp/hub-presence-int-users-1781140338751-30xa7e17sdx.json — starting fresh
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > leaveLobby removes departed player from presence snapshot
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > leaveLobby removes departed player from presence snapshot
+Server listening on port 0
+
+stdout | server/test/account.test.js > PATCH /api/me/settings > does not persist unknown keys from PATCH body
+[users] No existing user file at /tmp/account-test-users-1781140338761-1045666-wefpwfxrerd.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > PATCH /api/me/settings > does not persist unknown keys from PATCH body
+Server listening on port 0
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > GET /admin (HTTP route) > ignores a valid player Bearer token and still requires the admin password
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > GET /admin (HTTP route) > ignores a valid player Bearer token and still requires the admin password
+Server listening on port 0
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > updates email with uniqueness check
+[users] No existing user file at /tmp/account-test-users-1781140338858-1045666-jfpdrztcmx.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > updates email with uniqueness check
+Server listening on port 0
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > GET /admin (HTTP route) > does not accept POST to /admin
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > GET /admin (HTTP route) > does not accept POST to /admin
+Server listening on port 0
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > leaveLobby removes departed player from presence snapshot
+Player connected: socket=K31EMzTSbPhWfRtuAAAJ, playerId=ce91cd3a-7eba-429b-833c-cbd702e2eac8
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > leaveLobby removes departed player from presence snapshot
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > leaveLobby removes departed player from presence snapshot
+Player connected: socket=erPOtyn9-C2Ms1C3AAAL, playerId=f481fca8-d055-4cdb-86f5-4623104336c0
+
+stdout | server/test/hub_presence_integration.test.js > hub presence integration > leaveLobby removes departed player from presence snapshot
+Player disconnected: K31EMzTSbPhWfRtuAAAJ
+Player disconnected: erPOtyn9-C2Ms1C3AAAL
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > requireAdminPassword() rate limiting > returns 429 after RATE_LIMIT_MAX_ATTEMPTS failed attempts from the same IP
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > requireAdminPassword() rate limiting > returns 429 after RATE_LIMIT_MAX_ATTEMPTS failed attempts from the same IP
+Server listening on port 0
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > requireAdminPassword() rate limiting > successful auth does not increment the rate-limit counter
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > requireAdminPassword() rate limiting > successful auth does not increment the rate-limit counter
+Server listening on port 0
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > requireAdminPassword() rate limiting > _resetRateLimits clears admin rate-limit buckets
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/admin_roster.test.js > admin roster + ADMIN_PASSWORD gate > requireAdminPassword() rate limiting > _resetRateLimits clears admin rate-limit buckets
+Server listening on port 0
+
+ ✓ |server| server/test/hub_presence_integration.test.js (3 tests) 764ms
+   ✓ hub presence integration > move updates merged lobby player record and broadcasts distinct cosmetics  400ms
+ ✓ |server| server/test/admin_roster.test.js (21 tests) 798ms
+stdout | server/test/account.test.js > PATCH /api/me/profile > changes username and returns new token
+[users] No existing user file at /tmp/account-test-users-1781140339020-1045666-9f98xgs6oo.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > changes username and returns new token
+Server listening on port 0
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > updates cosmetic and returns it in the 200 payload
+[users] No existing user file at /tmp/account-test-users-1781140339103-1045666-enxdph6gm2j.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > updates cosmetic and returns it in the 200 payload
+Server listening on port 0
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > updates cosmetic and returns it in the 200 payload
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > returns 400 for invalid cosmetic input
+[users] No existing user file at /tmp/account-test-users-1781140339193-1045666-dqy7719ptm7.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > returns 400 for invalid cosmetic input
+Server listening on port 0
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > updates cosmetic modelId and proportions and persists correctly
+[users] No existing user file at /tmp/account-test-users-1781140339272-1045666-4cgl3dsf619.json — starting fresh
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > updates cosmetic modelId and proportions and persists correctly
+Server listening on port 0
+
+ ✓ |server| server/test/account.test.js (13 tests) 1171ms
+
+ Test Files  5 passed (5)
+      Tests  67 passed (67)
+   Start at  18:12:16
+   Duration  2.81s (transform 4ms, setup 0ms, collect 1.20s, tests 3.81s, environment 1ms, prepare 472ms)
+
+ % Coverage report from v8
+----------|---------|----------|---------|---------|----------------------------
+File      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s          
+----------|---------|----------|---------|---------|----------------------------
+All files |   32.54 |    18.48 |   37.23 |   34.29 |                            
+ index.js |   32.54 |    18.48 |   37.23 |   34.29 | ...760,1783-1794,1801-2061 
+----------|---------|----------|---------|---------|----------------------------
