@@ -168,17 +168,6 @@ const WEAPON_SLASH_STYLES = {
 		sparkCount: 8,
 		sparkSpread: 1.6,
 	},
-	// Saber of Light: a broad, radiant pale-gold arc haloed in bright sparks.
-	saber_of_light: {
-		color: 0xfef08a,
-		emissive: 0xfde047,
-		coneAngle: Math.PI / 3,
-		range: 5.5,
-		fillOpacity: 0.46,
-		edgeOpacity: 0.95,
-		sparkCount: 12,
-		sparkSpread: 1.8,
-	},
 	// Photon Slicer: a near-full cyan spin slice trailing light around the arc.
 	photon_slicer: {
 		color: 0x22d3ee,
@@ -352,6 +341,67 @@ function renderExcaliburPhoton(data, ctx) {
 				emissive,
 				count: style.debrisCount,
 				spread: style.debrisSpread,
+			});
+		}
+	};
+	for (let i = 0; i < swingCount; i++) {
+		const delay = delayPerSwing * i;
+		if (delay > 0) ctx.scheduleAfter(delay, swing);
+		else swing();
+	}
+}
+
+/** Saber of Light: a broad, radiant pale-gold/near-white blade of holy light. */
+const SABER_OF_LIGHT_STYLE = {
+	color: 0xfef08a,
+	emissive: 0xfffbeb,
+	coneAngle: Math.PI / 3,
+	range: 5.5,
+	fillOpacity: 0.5,
+	edgeOpacity: 0.97,
+	flashRadius: 2.2,
+	haloCount: 14,
+	haloSpread: 2.0,
+};
+
+/**
+ * Saber of Light swing. Composes the 315 primitives — a wide radiant
+ * pale-gold/near-white cone swing, a bright telegraph-ring flash at the cut, and
+ * a halo of holy sparks — into one unmistakable blade-of-light blow. Its
+ * near-white emissive and pale-gold accent read as holy light, clearly distinct
+ * from `flame_blade`'s orange and `excalibur_photon`'s magenta. Honors
+ * `swingCount` and the `photon_barrage` stagger like `renderExcaliburPhoton`, and
+ * each ctx call is guarded so the swing degrades gracefully when a primitive is
+ * absent.
+ */
+function renderSaberOfLight(data, ctx) {
+	const style = SABER_OF_LIGHT_STYLE;
+	const origin = originOf(data);
+	const direction = directionOf(data);
+	const color = getAccentHex('saber_of_light') ?? style.color;
+	const emissive = style.emissive;
+	const swingCount = data.swingCount || 1;
+	const delayPerSwing = data.specialEffect === 'photon_barrage' ? PHOTON_BARRAGE_SWING_DELAY_MS : 0;
+	const impactAt = pointAlong(origin, direction, style.range);
+
+	const swing = () => {
+		ctx.spawnAttackEffect(origin, direction, {
+			color,
+			emissive,
+			coneAngle: style.coneAngle,
+			range: style.range,
+			fillOpacity: style.fillOpacity,
+			edgeOpacity: style.edgeOpacity,
+		});
+		if (ctx.spawnTelegraphRing) {
+			ctx.spawnTelegraphRing(impactAt, style.flashRadius, { color, emissive });
+		}
+		if (ctx.spawnParticleBurst) {
+			ctx.spawnParticleBurst(impactAt, {
+				color,
+				emissive,
+				count: style.haloCount,
+				spread: style.haloSpread,
 			});
 		}
 	};
@@ -2217,7 +2267,7 @@ const CARD_RENDERERS = {
 	iron_sword: renderWeaponSwing,
 	flame_blade: renderWeaponSwing,
 	harvesting_scythe: renderWeaponSwing,
-	saber_of_light: renderWeaponSwing,
+	saber_of_light: renderSaberOfLight,
 	photon_slicer: renderWeaponSwing,
 	arcane_bolt: renderWeaponSwing,
 	resonance_edge: renderResonantDoublePulse,
