@@ -25,6 +25,7 @@ const STATE_ACCESSORS = [
 	'_lastReturnRewardsPreview',
 	'_lastMagicStones',
 	'extractedLobbyOverlayActive',
+	'lastUsedSlot',
 ];
 
 export function createSocketHandlerCtx(deps) {
@@ -104,6 +105,35 @@ export function createSocketHandlerCtx(deps) {
 		renderKeyItemHud: deps.renderKeyItemHud,
 		updateKeyItemCooldownHud: deps.updateKeyItemCooldownHud,
 		clearKeyItemCooldownHud: deps.clearKeyItemCooldownHud,
+		getScene: deps.getScene,
+		getMeshMaps: deps.getMeshMaps,
+		playSound: deps.playSound,
+		showCardErrorToast: deps.showCardErrorToast,
+		handleQuestDialogue: deps.handleQuestDialogue,
+		getCardSlotEl: deps.getCardSlotEl,
+		THEME: deps.THEME,
+		spawnAttackEffect: deps.spawnAttackEffect,
+		spawnSummonEffect: deps.spawnSummonEffect,
+		spawnMinionSummonInEffect: deps.spawnMinionSummonInEffect,
+		spawnDivineGraceEffect: deps.spawnDivineGraceEffect,
+		spawnPurifyingPulseEffect: deps.spawnPurifyingPulseEffect,
+		spawnPurifyingPulseHealRing: deps.spawnPurifyingPulseHealRing,
+		spawnCleanseBurstEffect: deps.spawnCleanseBurstEffect,
+		spawnInfernoPillarEffect: deps.spawnInfernoPillarEffect,
+		spawnSpikeTrapEffect: deps.spawnSpikeTrapEffect,
+		spawnVolatileExplosionEffect: deps.spawnVolatileExplosionEffect,
+		spawnChainLightningEffect: deps.spawnChainLightningEffect,
+		spawnLightningArc: deps.spawnLightningArc,
+		flashMesh: deps.flashMesh,
+		markCardHitEnemies: deps.markCardHitEnemies,
+		spawnHitSpark: deps.spawnHitSpark,
+		spawnParticleBurst: deps.spawnParticleBurst,
+		spawnProjectileTrail: deps.spawnProjectileTrail,
+		spawnImpactDecal: deps.spawnImpactDecal,
+		spawnTelegraphRing: deps.spawnTelegraphRing,
+		spawnMirrorWardShellEffect: deps.spawnMirrorWardShellEffect,
+		dismissMirrorWardShellEffect: deps.dismissMirrorWardShellEffect,
+		spawnMirrorWardReflectBurst: deps.spawnMirrorWardReflectBurst,
 	};
 
 	for (const key of STATE_ACCESSORS) {

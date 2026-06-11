@@ -23,7 +23,6 @@ import { io } from 'socket.io-client';
 import { CARD_DEFS, CARD_TYPE_STYLE, CARD_ACCENT_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, getCardSellValue, getGrindCost, getCardDef, getForgeAttunePreview, weaponCardIds, spellCardIds, creatureCardIds, enchantmentCardIds } from './cards.js';
 import { buildLoadoutDeckDisplay } from './deck-loadout.js';
 import { drawCard, initHand as initHandFromModule, hand, deck, desperationDeck, slotCooldowns, canUseSlot, setDrawPile, setDesperationDrawPile, inDesperation, setInDesperation, canDrawIntoHandLocal, MAX_HAND_SLOTS, setHandInputLockChecker } from './hand.js';
-import { renderCardUsed } from './cardRenderers.js';
 import {
 	buildDeckMiniEntries,
 	computeRunDeckTotal,
@@ -207,6 +206,7 @@ import { bindConnectionHandlers } from './socketHandlers/connectionHandlers.js';
 import { bindInitHandlers } from './socketHandlers/initHandlers.js';
 import { bindLobbyBrowserHandlers } from './socketHandlers/lobbyBrowserHandlers.js';
 import { bindStateHandlers } from './socketHandlers/stateHandlers.js';
+import { bindCardHandlers } from './socketHandlers/cardHandlers.js';
 
 const { serverToClient: SERVER_TO_CLIENT, clientToServer: CLIENT_TO_SERVER } = eventsCatalog;
 
@@ -1196,38 +1196,6 @@ window.addEventListener(BOOTH_ACTION_EVENT, (ev) => {
 	openQuestPanel();
 });
 
-// Context bundle handed to per-card renderers — declared once so the
-// cardUsed handler does not re-allocate it on every event. `myId` is read
-// via a getter so renderers always see the current local player.
-const cardRenderCtx = {
-	spawnAttackEffect: rendererSpawnAttackEffect,
-	spawnSummonEffect: rendererSpawnSummonEffect,
-	spawnMinionSummonInEffect: rendererSpawnMinionSummonInEffect,
-	spawnDivineGraceEffect: rendererSpawnDivineGraceEffect,
-	spawnPurifyingPulseEffect: rendererSpawnPurifyingPulseEffect,
-	spawnPurifyingPulseHealRing: rendererSpawnPurifyingPulseHealRing,
-	spawnCleanseBurstEffect: rendererSpawnCleanseBurstEffect,
-	spawnInfernoPillarEffect: rendererSpawnInfernoPillarEffect,
-	spawnSpikeTrapEffect: rendererSpawnSpikeTrapEffect,
-	spawnVolatileExplosionEffect: rendererSpawnVolatileExplosionEffect,
-	spawnChainLightningEffect: rendererSpawnChainLightningEffect,
-	spawnLightningArc: rendererSpawnLightningArc,
-	flashMesh: rendererFlashMesh,
-	markCardHitEnemies: rendererMarkCardHitEnemies,
-	spawnHitSpark: rendererSpawnHitSpark,
-	spawnParticleBurst: rendererSpawnParticleBurst,
-	spawnProjectileTrail: rendererSpawnProjectileTrail,
-	spawnImpactDecal: rendererSpawnImpactDecal,
-	spawnTelegraphRing: rendererSpawnTelegraphRing,
-	spawnMirrorWardShellEffect: rendererSpawnMirrorWardShellEffect,
-	dismissMirrorWardShellEffect: rendererDismissMirrorWardShellEffect,
-	spawnMirrorWardReflectBurst: rendererSpawnMirrorWardReflectBurst,
-	enemyMeshes: () => getMeshMaps().enemiesMeshes,
-	playSound,
-	scheduleAfter: (ms, fn) => setTimeout(fn, ms),
-	get myId() { return myId; },
-};
-
 // Shared ctx for socket handler modules — state fields use getters so handlers
 // always see current values (same pattern as cardRenderCtx above).
 const socketHandlerCtx = createSocketHandlerCtx({
@@ -1272,6 +1240,8 @@ const socketHandlerCtx = createSocketHandlerCtx({
 		set _lastMagicStones(v) { _lastMagicStones = v; },
 		get extractedLobbyOverlayActive() { return extractedLobbyOverlayActive; },
 		set extractedLobbyOverlayActive(v) { extractedLobbyOverlayActive = v; },
+		get lastUsedSlot() { return lastUsedSlot; },
+		set lastUsedSlot(v) { lastUsedSlot = v; },
 	},
 	hand,
 	deck,
@@ -1348,6 +1318,35 @@ const socketHandlerCtx = createSocketHandlerCtx({
 	setGameStateRef,
 	STORAGE_KEY_PLAYER_ID,
 	LAUNCH_BOOTH_ID,
+	getScene,
+	getMeshMaps,
+	playSound,
+	showCardErrorToast,
+	handleQuestDialogue,
+	getCardSlotEl,
+	THEME,
+	spawnAttackEffect: rendererSpawnAttackEffect,
+	spawnSummonEffect: rendererSpawnSummonEffect,
+	spawnMinionSummonInEffect: rendererSpawnMinionSummonInEffect,
+	spawnDivineGraceEffect: rendererSpawnDivineGraceEffect,
+	spawnPurifyingPulseEffect: rendererSpawnPurifyingPulseEffect,
+	spawnPurifyingPulseHealRing: rendererSpawnPurifyingPulseHealRing,
+	spawnCleanseBurstEffect: rendererSpawnCleanseBurstEffect,
+	spawnInfernoPillarEffect: rendererSpawnInfernoPillarEffect,
+	spawnSpikeTrapEffect: rendererSpawnSpikeTrapEffect,
+	spawnVolatileExplosionEffect: rendererSpawnVolatileExplosionEffect,
+	spawnChainLightningEffect: rendererSpawnChainLightningEffect,
+	spawnLightningArc: rendererSpawnLightningArc,
+	flashMesh: rendererFlashMesh,
+	markCardHitEnemies: rendererMarkCardHitEnemies,
+	spawnHitSpark: rendererSpawnHitSpark,
+	spawnParticleBurst: rendererSpawnParticleBurst,
+	spawnProjectileTrail: rendererSpawnProjectileTrail,
+	spawnImpactDecal: rendererSpawnImpactDecal,
+	spawnTelegraphRing: rendererSpawnTelegraphRing,
+	spawnMirrorWardShellEffect: rendererSpawnMirrorWardShellEffect,
+	dismissMirrorWardShellEffect: rendererDismissMirrorWardShellEffect,
+	spawnMirrorWardReflectBurst: rendererSpawnMirrorWardReflectBurst,
 });
 
 /** Bind all Socket.IO event listeners to the given socket instance. */
@@ -1358,6 +1357,7 @@ function bindSocketHandlers(s) {
 	bindInitHandlers(s, socketHandlerCtx);
 	bindLobbyBrowserHandlers(s, socketHandlerCtx);
 	bindStateHandlers(s, socketHandlerCtx);
+	bindCardHandlers(s, socketHandlerCtx);
 
 	s.on(SERVER_TO_CLIENT.HEARTBEAT_ACK, (data) => {
 		if (connectionState === 'connected') {
@@ -1455,60 +1455,6 @@ function bindSocketHandlers(s) {
 		if (!data || !gameState || gameState.gamePhase !== 'lobby') return;
 		if (!data.presence) return;
 		applyHubPresence(data.presence, { removedPlayerIds: data.removedPlayerIds });
-	});
-
-	s.on(SERVER_TO_CLIENT.CARD_USED, (data) => {
-		if (!data || !getScene()) return;
-		renderCardUsed(data, cardRenderCtx);
-	});
-
-	s.on(SERVER_TO_CLIENT.VOLATILE_EXPLOSION, (data) => {
-		if (!data || !getScene()) return;
-		const { x, z, radius } = data;
-		if (!Number.isFinite(x) || !Number.isFinite(z)) return;
-		playSound('volatileExplosion');
-		rendererSpawnVolatileExplosionEffect(
-			{ x, z },
-			Number.isFinite(radius) ? radius : 5,
-		);
-	});
-
-	// Synced hit feedback: erupt the spike VFX where the server reports a trap
-	// firing. Purely additive — no new network traffic or server payload.
-	s.on(SERVER_TO_CLIENT.SPIKE_TRAP_TRIGGERED, (data) => {
-		if (!data || !getScene()) return;
-		const { x, z, radius } = data;
-		if (!Number.isFinite(x) || !Number.isFinite(z)) return;
-		if (typeof rendererSpawnSpikeTrapEffect !== 'function') return;
-		rendererSpawnSpikeTrapEffect(
-			{ x, z },
-			Number.isFinite(radius) ? radius : 2.5,
-		);
-	});
-
-	s.on(SERVER_TO_CLIENT.LEECH_HEAL, (data) => {
-		if (!data) return;
-		playSound('leechHeal');
-	});
-
-	s.on(SERVER_TO_CLIENT.SHIELD_BREAK, (data) => {
-		if (!data) return;
-		playSound('shieldBreak');
-	});
-
-	s.on(SERVER_TO_CLIENT.QUEST_DIALOGUE, (payload) => {
-		handleQuestDialogue(payload);
-	});
-
-	s.on(SERVER_TO_CLIENT.CARD_ERROR, (data) => {
-		if (!data || !data.reason) return;
-		console.log(`[cardError] ${data.reason}`);
-		showCardErrorToast(data.reason);
-		if (data.reason === THEME.resource.insufficient && lastUsedSlot >= 0) {
-			const slot = getCardSlotEl(lastUsedSlot);
-			if (slot) slot.classList.add('no-ms');
-		}
-		lastUsedSlot = -1;
 	});
 
 	s.on(SERVER_TO_CLIENT.BOOTH_ACTION, (data) => {
