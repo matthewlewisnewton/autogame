@@ -6898,3 +6898,26 @@ PASS: Test and coverage evidence. The coverage log reports `212 passed` test fil
 
 None.
 
+
+## v0.393 — Debug tooling: time-scale control (slow-mo/pause) behind ALLOW_DEBUG_SCENARIOS for playtesting and QA  (2026-06-10 17:19:45)
+
+### Harness state exposes the current scale for automated tests
+
+PASS. `buildWorldSnapshot()` includes `debugTimeScale` and `debugTimeScaleAllowed`, and `window.__AUTOGAME_HARNESS_STATE__()` exposes `debugTimeScale`, `debugTimeScaleResult`, and `debugTimeScaleAllowed`. The captured fallback run shows the fields present with `debugTimeScale: 1` and `debugTimeScaleAllowed: false`; the client test verifies the allowed flag becomes true when a snapshot reports it.
+
+### Design and Foundation Consistency
+
+PASS. The feature is debug-only, per-lobby, and does not alter normal gameplay when unset. It fits the design doc's multiplayer lobby/dungeon model by storing the scale on lobby game state rather than global process state, and it preserves the requirements baseline: rendering, socket connectivity, multiplayer presence, and WASD movement sync all remain functional in the captured run.
+
+### Debug Scenarios
+
+PASS / not applicable. This ticket did not add or change a `?debugScenario=NAME` URL shortcut. Existing debug scenario behavior is not used as an entry point for the new time-scale control; the time-scale test hook is gated by the server-authorized snapshot field and the socket handler.
+
+### Tests and Artifacts
+
+Targeted time-scale coverage is present and passing in `round-2/coverage.log`: `server/test/debug_time_scale_sim.test.js`, `server/test/debug_time_scale_gate.test.js`, and `client/test/debug-time-scale-gate.test.js` all pass. The same coverage log reports one failing pre-existing-style `server/test/debug-scenarios.test.js` case for `arena-trials-boss-approach`; the ticket did not change `game/server/debugScenarios.js`, and I did not find a path from the time-scale changes to that scenario result, so I am not treating it as a blocking gap for this ticket.
+
+## Remaining gaps
+
+No blocking gaps for this ticket.
+
