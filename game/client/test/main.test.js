@@ -4714,6 +4714,149 @@ describe('updateObjectiveHud()', () => {
 		expect(hud.textContent).toContain('Initiate Vault');
 		expect(hud.textContent).toContain('Purged 1 / 5 hostiles');
 	});
+
+	it('shows stage_boss goal and progress for frost_crossing tier 1', async () => {
+		await import('../main.js');
+		const hud = document.getElementById('objective-hud');
+
+		window.__setQuestBoardState([
+			{
+				id: 'frost_crossing',
+				name: 'Frost Crossing',
+				objectiveType: 'stage_boss',
+				encounter: { bossType: 'permafrost_warden', addCount: 0 },
+				scriptedEncounters: {
+					rooms: [
+						{ roomIndex: 0, waves: [{ spawns: [{ type: 'grunt', count: 2 }] }] },
+						{
+							band: 'ice',
+							waves: [
+								{ spawns: [{ type: 'grunt', count: 1 }] },
+								{ spawns: [{ type: 'grunt', count: 1 }] },
+							],
+						},
+					],
+				},
+			},
+		], 'frost_crossing', 1);
+
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'playing',
+			run: {
+				questId: 'frost_crossing',
+				questName: 'Frost Crossing',
+				questTier: 1,
+				encounter: { phase: 'dormant', bossType: 'permafrost_warden' },
+				objective: {
+					type: 'stage_boss',
+					bossDefeated: false,
+					addCount: 0,
+					totalEnemies: 1,
+					defeatedEnemies: 0,
+				},
+				scriptedEncounter: {
+					rooms: {
+						'room:0': { waveIndex: 0, cleared: false, started: true },
+						'band:ice': { waveIndex: -1, cleared: false, started: false },
+					},
+				},
+				_scriptedEncounterConfig: {
+					rooms: [
+						{ roomIndex: 0, waves: [{ spawns: [{ type: 'grunt', count: 2 }] }] },
+						{
+							band: 'ice',
+							waves: [
+								{ spawns: [{ type: 'grunt', count: 1 }] },
+								{ spawns: [{ type: 'grunt', count: 1 }] },
+							],
+						},
+					],
+				},
+			},
+			players: { p1: { hp: 80, magicStones: 40, currency: 0, x: 0, z: 0 } },
+		});
+
+		expect(hud.style.display).toBe('block');
+		expect(hud.textContent).toContain('Frost Crossing');
+		expect(hud.textContent).toContain('Defeat the Permafrost Warden');
+		expect(hud.textContent).toContain('Waves cleared 0 / 3');
+	});
+
+	it('shows escort goal and ambush progress for annex_escort tier 1', async () => {
+		await import('../main.js');
+		const hud = document.getElementById('objective-hud');
+
+		window.__setQuestBoardState([
+			{
+				id: 'annex_escort',
+				name: 'Annex Evacuation',
+				objectiveType: 'escort',
+				escortNpc: { name: 'Archivist Vale', maxHp: 70 },
+				escortDestination: { roomRole: 'treasure' },
+			},
+		], 'annex_escort', 1);
+
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'playing',
+			run: {
+				questId: 'annex_escort',
+				questName: 'Annex Evacuation',
+				questTier: 1,
+				escort: { npcName: 'Archivist Vale', atDestination: false, failed: false },
+				objective: {
+					type: 'escort',
+					totalEnemies: 4,
+					defeatedEnemies: 2,
+					reachedDestination: false,
+				},
+			},
+			players: { p1: { hp: 80, magicStones: 40, currency: 0, x: 0, z: 0 } },
+		});
+
+		expect(hud.style.display).toBe('block');
+		expect(hud.textContent).toContain('Annex Evacuation');
+		expect(hud.textContent).toContain('Archivist Vale');
+		expect(hud.textContent).toContain('ambush 2 / 4 cleared');
+	});
+
+	it('shows survive goal and wave progress for endless_siege tier 1', async () => {
+		await import('../main.js');
+		const hud = document.getElementById('objective-hud');
+
+		window.__setQuestBoardState([
+			{
+				id: 'endless_siege',
+				name: 'Endless Siege',
+				objectiveType: 'survive',
+				totalSpawns: 10,
+				minibossCount: 2,
+			},
+		], 'endless_siege', 1);
+
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'playing',
+			run: {
+				questId: 'endless_siege',
+				questName: 'Endless Siege',
+				questTier: 1,
+				objective: {
+					type: 'survive',
+					totalSpawns: 10,
+					minibossCount: 2,
+					spawnedEnemies: 5,
+					defeatedEnemies: 4,
+					totalEnemies: 10,
+				},
+			},
+			players: { p1: { hp: 80, magicStones: 40, currency: 0, x: 0, z: 0 } },
+		});
+
+		expect(hud.style.display).toBe('block');
+		expect(hud.textContent).toContain('Endless Siege');
+		expect(hud.textContent).toContain('Survive 10 hostiles (2 minibosses)');
+		expect(hud.textContent).toContain('Wave 5 / 10 spawned');
+		expect(hud.textContent).toContain('Purged 4 / 10 hostiles');
+	});
 });
 
 describe('__captureBossVisualIdentityForTest', () => {

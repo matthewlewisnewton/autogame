@@ -8502,6 +8502,28 @@ Round-1 capture used the **fallback** full-flow smoke plan (movement + dodge). I
 None. Both sub-ticket fixes integrate correctly; the full ticket acceptance criteria are met with automated test coverage and a clean captured run.
 
 
+## v0.458 — hud: objective line shows only quest title for stage_boss and escort quests (no goal or progress)  (2026-06-11 08:55:13)
+
+- **Tests:** `coverage.log` reports 369 client tests passed (20 files), including all 13 new `objectiveHud` cases and 3 new `updateObjectiveHud` integration cases. No regressions observed.
+
+## Debug scenarios
+
+No new `?debugScenario=` shortcuts were added. N/A.
+
+## Capture vs. ticket scope
+
+The round-1 harness used the **fallback** smoke plan on default Initiate Vault (`defeat_enemies`), not Frost Crossing / Annex Evacuation / Endless Siege. Browser capture therefore does not visually prove the three newly wired objective types, but:
+
+1. Runtime health is clean.
+2. Capture probe `bodyText` confirms the objective HUD renders correctly for the default quest.
+3. Per-type behavior is covered by integration tests that exercise the real `updateObjectiveHud()` path with quest-board metadata.
+
+This is a harness-coverage gap (nit), not a code defect.
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are satisfied in code and tests; the game loads and runs cleanly in capture.
+
 ## v0.459 — medic: heal button silently disabled when the player cannot afford it  (2026-06-11 09:15:43)
 
 ### Code quality
