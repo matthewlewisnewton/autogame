@@ -1,0 +1,15 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/353-anim-legion-marshal/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/353-anim-legion-marshal/game/data
+Server listening on port 3004
+Player connected: socket=jJfcDKPmtyrqtG1TAAAB, playerId=8ca59a6c-7feb-49ab-9ec1-acd5c570899e
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=L6vozU12jC8gBS12AAAD, playerId=a8745be9-0266-4d5b-b904-ba5f60467fec
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=25ea6a64-f591-4583-a99a-a4bfdae9748b value=20
+Player disconnected: jJfcDKPmtyrqtG1TAAAB
+Player disconnected: L6vozU12jC8gBS12AAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

@@ -1,0 +1,13 @@
+Broke the top-level Thunderbird animation ticket into **3 sub-tickets** in dependency order:
+
+1. **Summon polish** — storm-bird deploy flourish timed to `MINION_SUMMON_IN_MS`, distinct from Stormwing Drone  
+2. **Chain-strike renderer + timing** — dedicated `renderThunderbirdStrike` replacing shared `renderChainLightning`, with per-hop arc sequencing synced to instant server hits  
+3. **Tests** — `cardRenderers.test.js` coverage and regression guard for Voltaic Chain / Stormwing Drone  
+
+All use **code** verification (mixed visual + structural/timing criteria).
+
+**Created sub-ticket folders:**
+
+- `/home/matt/workspace/.autogame-worktrees/355-anim-thunderbird/tickets/355-anim-thunderbird/subtickets/01-thunderbird-summon-vfx`
+- `/home/matt/workspace/.autogame-worktrees/355-anim-thunderbird/tickets/355-anim-thunderbird/subtickets/02-thunderbird-chain-strike-renderer-and-timing`
+- `/home/matt/workspace/.autogame-worktrees/355-anim-thunderbird/tickets/355-anim-thunderbird/subtickets/03-thunderbird-animation-tests`
