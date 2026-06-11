@@ -8294,3 +8294,26 @@ comments still reference the removed `isLightColumn`/`isThermalColumn`/etc.
 
 None. All acceptance criteria are satisfied; runtime capture and tests confirm the fix.
 
+
+## v0.449 — lobby registry: abandoned lobbies are never cleaned up; ghost 'In run - 0 player(s)' entries accumulate  (2026-06-11 06:38:02)
+
+- `simulation.js cleanupStalePlayers()` now routes stale removal through
+  `lobbies.removePlayerFromLobby` (cleaning lobby mapping, minions, trades and
+  deleting emptied lobbies), with a bare-`delete` fallback for legacy/test
+  gameState. All 170 integration tests still pass.
+- Reconnection is unaffected by list-hiding: the reconnect path
+  (`lobbyHandlers.js:90`) resolves the lobby via the `playerLobby` mapping, not
+  the advertised summaries, and the player record survives (connected=false)
+  until the TTL elapses.
+- Map deletion during `for...of` iteration in the reaper is safe (only the
+  current/visited entry is removed).
+- Consistent with `design.md`; no foundation regressions.
+
+## Tests
+`vitest run` over `reap_abandoned_lobbies.test.js`, `lobbies.test.js`,
+`integration.test.js`: **189 passed (3 files)**.
+
+## Remaining gaps
+None blocking. (Minor nit — redundant `cancelTradesForPlayer` in the reaper that
+`removePlayerFromLobby` already performs — recorded in `nits.md`.)
+
