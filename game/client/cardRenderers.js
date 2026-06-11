@@ -57,6 +57,9 @@ import {
 
 const NULL_CRAWLER_SUMMON_COLOR = 0x22d3ee;
 const NULL_CRAWLER_SUMMON_EMISSIVE = 0x67e8f9;
+// Beat between the initial telegraph and the second "phase-flicker" pulse so
+// the deploy reads as the stalker blinking in from another dimension.
+const NULL_CRAWLER_PHASE_FLICKER_MS = 180;
 const UNDEAD_COMMANDER_COLOR = 0xe4e4e7;
 const UNDEAD_COMMANDER_EMISSIVE = 0xa855f7;
 // Necroframe Knight shares its evolution's bone-white body + necrotic-purple
@@ -2328,8 +2331,11 @@ function renderIceBall(data, ctx) {
 }
 
 /**
- * Phase Stalker deploy: tight cyan telegraph ring and ground swirl distinct
- * from the generic creature summon flourish.
+ * Phase Stalker deploy: a layered dimensional "phase-in". The first beat is the
+ * tight cyan telegraph ring + ground swirl; a beat later a second, smaller
+ * pulsing ring and a converging rift burst snap in around the body so the
+ * creature reads as a predatory stalker blinking in from another dimension
+ * rather than the generic creature summon flourish.
  */
 function renderNullCrawlerSummon(data, ctx) {
 	if (!data.minionId || data.specialEffect === 'phase_beam') return;
@@ -2357,6 +2363,35 @@ function renderNullCrawlerSummon(data, ctx) {
 			},
 		);
 	}
+
+	// Phase-flicker beat: a quick second pulse that blinks in a beat after the
+	// telegraph, reading as the stalker rifting into phase.
+	const flickerDuration = MINION_SUMMON_IN_MS - NULL_CRAWLER_PHASE_FLICKER_MS;
+	const phaseFlicker = () => {
+		if (ctx.spawnTelegraphRing) {
+			ctx.spawnTelegraphRing(origin, 0.46, {
+				color: NULL_CRAWLER_SUMMON_COLOR,
+				emissive: 0xa5f3fc,
+				duration: flickerDuration,
+			});
+		}
+		if (ctx.spawnParticleBurst) {
+			// Tighter, faster rift burst lifted off the ground so it converges
+			// around the materializing body rather than splaying outward.
+			ctx.spawnParticleBurst(
+				{ x: origin.x, y: 0.9, z: origin.z },
+				{
+					color: NULL_CRAWLER_SUMMON_COLOR,
+					emissive: NULL_CRAWLER_SUMMON_EMISSIVE,
+					count: 12,
+					spread: 1.1,
+					duration: flickerDuration,
+				},
+			);
+		}
+	};
+	if (ctx.scheduleAfter) ctx.scheduleAfter(NULL_CRAWLER_PHASE_FLICKER_MS, phaseFlicker);
+	else phaseFlicker();
 }
 
 /**

@@ -3744,6 +3744,59 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
 	});
 
+	it('Phase Stalker deploy adds a delayed phase-flicker pulse layer (second ring + converging cyan rift burst)', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'null_crawler',
+			origin: { x: 2, z: 3 },
+			minionId: 'stalker-1',
+			hits: [],
+		}, ctx);
+		// The flicker beat is deferred behind a scheduleAfter, so only the
+		// initial telegraph ring exists until the scheduled callbacks run.
+		expect(ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing')).toHaveLength(1);
+		const sched = ctx._calls.find((c) => c[0] === 'scheduleAfter');
+		expect(sched).toBeDefined();
+		expect(sched[1]).toBeGreaterThan(0);
+		expect(sched[1]).toBeLessThan(MINION_SUMMON_IN_MS);
+
+		ctx.runScheduled();
+
+		const rings = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
+		expect(rings).toHaveLength(2);
+		// The flicker ring is a tighter pulse than the initial 0.72 telegraph,
+		// and keeps the cyan identity.
+		const flickerRing = rings[1];
+		expect(flickerRing[1]).toEqual({ x: 2, z: 3 });
+		expect(flickerRing[2]).toBeLessThan(0.72);
+		expect(flickerRing[3]).toMatchObject({ color: 0x22d3ee, emissive: 0xa5f3fc });
+
+		// The rift burst snaps in around the body (lifted off the ground, above
+		// the 0.4 ground swirl) and stays on the null_crawler cyan accent.
+		const riftBurst = ctx._calls.find(
+			(c) => c[0] === 'spawnParticleBurst' && c[1].x === 2 && c[1].z === 3 && c[1].y > 0.4,
+		);
+		expect(riftBurst).toBeDefined();
+		expect(riftBurst[2]).toMatchObject({ color: 0x22d3ee, emissive: 0x67e8f9 });
+
+		expect(ctx._calls.some((c) => c[0] === 'spawnMinionSummonInEffect')).toBe(false);
+	});
+
+	it('Phase Stalker deploy still renders without throwing when telegraph/burst helpers are absent', () => {
+		const ctx = makeCtx({
+			spawnTelegraphRing: undefined,
+			spawnParticleBurst: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'null_crawler',
+			origin: { x: 2, z: 3 },
+			minionId: 'stalker-1',
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(() => ctx.runScheduled()).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(true);
+	});
+
 	it('Phase Stalker beam renders a narrow projectile corridor with trail, terminus burst, and hit sparks', () => {
 		const ctx = makeCtx({
 			enemyMeshes: () => ({
