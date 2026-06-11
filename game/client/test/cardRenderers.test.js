@@ -74,7 +74,9 @@ describe('resolveRenderers()', () => {
 		const fireballRenderers = resolveRenderers('fireball');
 		expect(fireballRenderers).toHaveLength(1);
 		expect(fireballRenderers[0].name).toBe('renderFireball');
-		expect(resolveRenderers('ice_ball')).toHaveLength(1);
+		const iceBallRenderers = resolveRenderers('ice_ball');
+		expect(iceBallRenderers).toHaveLength(1);
+		expect(iceBallRenderers[0].name).toBe('renderIceBall');
 		expect(resolveRenderers('divine_grace')).toHaveLength(1);
 		expect(resolveRenderers('purifying_pulse')).toHaveLength(1);
 		expect(resolveRenderers('spike_trap')).toHaveLength(1);
@@ -595,6 +597,8 @@ describe('renderCardUsed() — weapon dispatch', () => {
 			effect: 'ice_ball',
 			range: 9,
 			projectileTravelMs: 1200,
+			color: 0x67e8f9,
+			emissive: 0x38bdf8,
 		});
 	});
 
