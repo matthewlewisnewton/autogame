@@ -1205,14 +1205,27 @@ describe('Socket Integration — useCard Event', () => {
 		socket.emit('discardCard', { slotIndex: 0, cardId: 'iron_sword' });
 		await discardUpdatePromise;
 
+		player.x = 12.5;
+		player.z = -7.25;
+
 		const deckBeforeDraw = player.deck.length;
+		const cardUsedPromise = waitForEvent(socket, 'cardUsed');
 		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
 		socket.emit('useCard', { cardId: 'deck_sifter', slotIndex: 4 });
 		await stateUpdatePromise;
+		const cardUsed = await cardUsedPromise;
 
 		expect(player.hand[0]).toBeTruthy();
 		expect(player.deck.length).toBe(deckBeforeDraw - 1);
 		expect(player.hand[4].remainingCharges).toBe(2);
+
+		// draw_card cardUsed must carry the caster's locked cast origin so the
+		// client renders the particle burst at the player, not at world (0,0).
+		expect(cardUsed.effect).toBe('draw_card');
+		expect(Number.isFinite(cardUsed.origin.x)).toBe(true);
+		expect(Number.isFinite(cardUsed.origin.z)).toBe(true);
+		expect(cardUsed.origin.x).toBe(player.x);
+		expect(cardUsed.origin.z).toBe(player.z);
 	});
 
 	it('Chrono Trigger restores charges to adjacent hand cards', async () => {
