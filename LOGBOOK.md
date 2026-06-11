@@ -8524,3 +8524,26 @@ This is a harness-coverage gap (nit), not a code defect.
 
 None blocking. All acceptance criteria are satisfied in code and tests; the game loads and runs cleanly in capture.
 
+
+## v0.461 — auth: register flips to login form without prefilling username (and no auto-login)  (2026-06-11 09:18:47)
+
+- **Debug scenarios:** None added or modified. N/A.
+
+---
+
+## Code quality
+
+- **Scope:** Minimal 7-line client fix plus focused regression test — appropriate for an easy ticket.
+- **Correctness:** Handler order is right (`showLoginForm()` clears error before success message is applied; prefill runs after form flip).
+- **Null guards:** `loginUsernameInput` / `loginPasswordInput` checked before use, matching surrounding auth handler style.
+- **Dead code:** None introduced.
+- **Console errors:** None in browser capture.
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are satisfied; runtime capture and unit tests confirm behavior.
+
+---
+
