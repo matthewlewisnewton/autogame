@@ -4559,6 +4559,108 @@ export function spawnDivineGraceEffect(origin, radius) {
 	spawnDivineGraceColumn(origin);
 }
 
+// Ether Siphon palette — violet ethereal mana-drain (matches cards.js mana_leach accent).
+export const ETHER_SIPHON_COLOR = 0xa855f7;
+export const ETHER_SIPHON_EMISSIVE = 0x9333ea;
+const ETHER_SIPHON_COLUMN_HEIGHT = 4.5;
+const ETHER_SIPHON_COLUMN_OPACITY = 0.7;
+const ETHER_SIPHON_COLUMN_BASE_Y = 0.1;
+const ETHER_SIPHON_EMISSIVE_INTENSITY = 1.4;
+const ETHER_SIPHON_RING_CONTRACT_MIN = 0.35; // final scale factor vs full radius
+
+/**
+ * Contracting ground ether ring — inward siphon pull (inverse of spawnTelegraphRing).
+ * Unit-radius ring mesh scaled to `radius`; shrinks toward the origin over duration.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ * @param {object} [style] - optional { color, emissive, duration }
+ */
+function spawnEtherSiphonRing(origin, radius, style = {}) {
+	const color = style.color ?? ETHER_SIPHON_COLOR;
+	const emissive = style.emissive ?? ETHER_SIPHON_EMISSIVE;
+	const duration = style.duration ?? SUMMON_EFFECT_DURATION;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const geometry = new THREE.RingGeometry(0.82, 1.0, 48);
+	const material = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 0.9,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	const ringY = Number.isFinite(origin.y) ? origin.y : GROUND_OVERLAY_Y;
+	mesh.position.set(origin.x, ringY, origin.z);
+	mesh.rotation.x = -Math.PI / 2;
+	mesh.scale.setScalar(radius);
+	targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration,
+		isEtherSiphonRing: true,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Short vertical violet ether wisp column rising from the origin. Rises and fades via
+ * the `isEtherSiphonColumn` branch in updateAttackEffects (no per-frame allocation).
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration }
+ */
+function spawnEtherSiphonColumn(origin, style = {}) {
+	const color = style.color ?? ETHER_SIPHON_COLOR;
+	const emissive = style.emissive ?? ETHER_SIPHON_EMISSIVE;
+	const duration = style.duration ?? SUMMON_EFFECT_DURATION;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const geometry = new THREE.CylinderGeometry(0.3, 0.55, ETHER_SIPHON_COLUMN_HEIGHT, 16, 1, true);
+	const material = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: ETHER_SIPHON_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: ETHER_SIPHON_COLUMN_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.scale.y = 0.001;
+	mesh.position.set(origin.x, ETHER_SIPHON_COLUMN_BASE_Y, origin.z);
+	targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration,
+		isEtherSiphonColumn: true,
+		_baseEmissiveIntensity: ETHER_SIPHON_EMISSIVE_INTENSITY,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Ether Siphon: contracting inward-pull ground ring plus a rising violet ether column.
+ * Pure additive VFX; no network traffic or state beyond activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ * @param {object} [style] - optional { color, emissive, duration }
+ */
+export function spawnEtherSiphonEffect(origin, radius, style = {}) {
+	spawnEtherSiphonRing(origin, radius, style);
+	spawnEtherSiphonColumn(origin, style);
+}
+
 // Telepipe cast palette — matches cards.js accent and syncTelepipeMesh portal cyan.
 export const TELEPIPE_CAST_COLOR = 0x67e8f9;
 export const TELEPIPE_CAST_EMISSIVE = 0x22d3ee;
@@ -5467,6 +5569,43 @@ export function updateAttackEffects() {
 	for (let i = activeEffects.length - 1; i >= 0; i--) {
 		const fx = activeEffects[i];
 		const elapsed = now - fx.createdAt;
+
+		// ── Ether Siphon contracting ground ring (inward mana pull) ──
+		if (fx.isEtherSiphonRing) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const contractT = Math.min(t / 0.55, 1.0);
+			const scaleFactor =
+				1.0 - contractT * (1.0 - ETHER_SIPHON_RING_CONTRACT_MIN);
+			fx.mesh.scale.setScalar(Math.max(0.001, fx.radius * scaleFactor));
+			const pulse = 0.55 + 0.35 * Math.abs(Math.sin(elapsed / 110));
+			fx.mesh.material.opacity = Math.max(0.01, pulse * (1.0 - t * 0.6));
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Ether Siphon ascending violet ether column ──
+		if (fx.isEtherSiphonColumn) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.35, 1.0);
+			const s = Math.max(0.001, riseT);
+			fx.mesh.scale.y = s;
+			fx.mesh.position.y = ETHER_SIPHON_COLUMN_BASE_Y + (ETHER_SIPHON_COLUMN_HEIGHT * s) / 2;
+			const fade = Math.max(0.01, ETHER_SIPHON_COLUMN_OPACITY * (1.0 - t));
+			fx.mesh.material.opacity = fade;
+			const baseIntensity = fx._baseEmissiveIntensity ?? ETHER_SIPHON_EMISSIVE_INTENSITY;
+			const flicker = 1.0 + 0.25 * Math.sin(elapsed * 0.02);
+			fx.mesh.material.emissiveIntensity = baseIntensity * flicker * fade;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
 
 		// ── Summon AoE effect (has a radius field) ──
 		if (fx.radius !== undefined) {

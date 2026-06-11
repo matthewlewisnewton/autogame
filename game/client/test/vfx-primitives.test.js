@@ -15,6 +15,7 @@ import {
 	dismissMirrorWardShellEffect,
 	spawnMirrorWardReflectBurst,
 	spawnInfernoPillarEffect,
+	spawnEtherSiphonEffect,
 	updateAttackEffects,
 	getActiveEffects,
 } from '../renderer.js';
@@ -255,6 +256,55 @@ describe('shared VFX primitives', () => {
 		expect(getActiveEffects().length).toBe(before);
 		expect(ringDispose).toHaveBeenCalled();
 		expect(spikeDispose).toHaveBeenCalled();
+	});
+
+	it('spawnEtherSiphonEffect pushes a contracting violet ring + ascending ether column', () => {
+		const before = getActiveEffects().length;
+		spawnEtherSiphonEffect({ x: 3, z: -1 }, 2.2);
+		expect(getActiveEffects().length).toBe(before + 2);
+
+		const effects = getActiveEffects().slice(before);
+		const ring = effects.find((fx) => fx.isEtherSiphonRing);
+		const column = effects.find((fx) => fx.isEtherSiphonColumn);
+
+		expect(ring).toBeDefined();
+		expect(ring.radius).toBe(2.2);
+		expect(Number.isFinite(ring.duration)).toBe(true);
+		expect(ring.duration).toBeGreaterThan(0);
+		expect(ring.mesh.material.color.getHex()).toBe(0xa855f7);
+		expect(ring.mesh.material.emissive.getHex()).toBe(0x9333ea);
+
+		expect(column).toBeDefined();
+		expect(Number.isFinite(column.duration)).toBe(true);
+		expect(column.duration).toBeGreaterThan(0);
+		expect(column.mesh.material.color.getHex()).toBe(0xa855f7);
+		expect(column.mesh.material.emissive.getHex()).toBe(0x9333ea);
+
+		const ringDispose = vi.spyOn(ring.mesh.geometry, 'dispose');
+		const columnDispose = vi.spyOn(column.mesh.geometry, 'dispose');
+		for (const fx of effects) fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(ringDispose).toHaveBeenCalled();
+		expect(columnDispose).toHaveBeenCalled();
+	});
+
+	it('spawnEtherSiphonEffect honors color/emissive/duration style overrides', () => {
+		spawnEtherSiphonEffect({ x: 0, z: 0 }, 1.5, {
+			color: 0x123456,
+			emissive: 0x654321,
+			duration: 900,
+		});
+		const effects = getActiveEffects();
+		const ring = effects.find((fx) => fx.isEtherSiphonRing);
+		const column = effects.find((fx) => fx.isEtherSiphonColumn);
+		expect(ring.duration).toBe(900);
+		expect(column.duration).toBe(900);
+		expect(ring.mesh.material.color.getHex()).toBe(0x123456);
+		expect(ring.mesh.material.emissive.getHex()).toBe(0x654321);
+		expect(column.mesh.material.color.getHex()).toBe(0x123456);
+		expect(column.mesh.material.emissive.getHex()).toBe(0x654321);
 	});
 
 	it('spawnInfernoPillarEffect pushes a fire scorch ring + rising thermal column', () => {
