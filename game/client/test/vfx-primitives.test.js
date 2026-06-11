@@ -25,6 +25,7 @@ import {
 	spawnBatteryChargePulseEffect,
 	BATTERY_AUTOMATON_COLOR,
 	BATTERY_AUTOMATON_EMISSIVE,
+	spawnChronoTriggerEffect,
 	updateAttackEffects,
 	getActiveEffects,
 } from '../renderer.js';
@@ -397,6 +398,69 @@ describe('shared VFX primitives', () => {
 		expect(burst.duration).toBe(800);
 		expect(burst.mesh.children[0].material.color.getHex()).toBe(0xabcdef);
 		expect(burst.mesh.children[0].material.emissive.getHex()).toBe(0xfedcba);
+	});
+
+	it('spawnChronoTriggerEffect pushes staggered time ripples + temporal column with amber/cyan palette', () => {
+		const before = getActiveEffects().length;
+		spawnChronoTriggerEffect({ x: 2, z: -1 }, 2);
+		expect(getActiveEffects().length).toBe(before + 3);
+
+		const effects = getActiveEffects().slice(before);
+		const ripples = effects.filter((fx) => fx.isChronoTriggerRipple);
+		const column = effects.find((fx) => fx.isChronoTriggerColumn);
+
+		expect(ripples.length).toBe(2);
+		for (const ripple of ripples) {
+			expect(ripple.radius).toBe(2);
+			expect(Number.isFinite(ripple.duration)).toBe(true);
+			expect(ripple.duration).toBeGreaterThan(0);
+			expect(ripple.wave).toBeGreaterThanOrEqual(0);
+			expect(ripple.waveCount).toBe(2);
+			expect(ripple.mesh.material.color.getHex()).toBe(0xf59e0b);
+			expect(ripple.mesh.material.emissive.getHex()).toBe(0x67e8f9);
+		}
+		expect(ripples[0].wave).toBe(0);
+		expect(ripples[1].wave).toBe(1);
+		expect(ripples[1].createdAt).toBeGreaterThan(ripples[0].createdAt);
+
+		expect(column).toBeDefined();
+		expect(column.isChronoTriggerColumn).toBe(true);
+		expect(Number.isFinite(column.duration)).toBe(true);
+		expect(column.duration).toBeGreaterThan(0);
+		expect(column.mesh.material.color.getHex()).toBe(0xf59e0b);
+		expect(column.mesh.material.emissive.getHex()).toBe(0x67e8f9);
+
+		const rippleDispose = vi.spyOn(ripples[0].mesh.geometry, 'dispose');
+		const columnDispose = vi.spyOn(column.mesh.geometry, 'dispose');
+		for (const fx of effects) fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(rippleDispose).toHaveBeenCalled();
+		expect(columnDispose).toHaveBeenCalled();
+	});
+
+	it('spawnChronoTriggerEffect defaults radius to 2 and honors color overrides', () => {
+		spawnChronoTriggerEffect({ x: 0, z: 0 });
+		const ripple = getActiveEffects().find((fx) => fx.isChronoTriggerRipple);
+		expect(ripple.radius).toBe(2);
+
+		getActiveEffects().length = 0;
+		spawnChronoTriggerEffect({ x: 0, z: 0 }, 1.6, {
+			color: 0x123456,
+			emissive: 0x654321,
+			duration: 900,
+		});
+		const effects = getActiveEffects();
+		const rippleFx = effects.find((fx) => fx.isChronoTriggerRipple);
+		const columnFx = effects.find((fx) => fx.isChronoTriggerColumn);
+		expect(rippleFx.radius).toBe(1.6);
+		expect(rippleFx.duration).toBe(900);
+		expect(columnFx.duration).toBe(900);
+		expect(rippleFx.mesh.material.color.getHex()).toBe(0x123456);
+		expect(rippleFx.mesh.material.emissive.getHex()).toBe(0x654321);
+		expect(columnFx.mesh.material.color.getHex()).toBe(0x123456);
+		expect(columnFx.mesh.material.emissive.getHex()).toBe(0x654321);
 	});
 
 	it('spawnLegionMarshalRallyEffect defaults radius to 2 and honors color overrides', () => {
@@ -818,6 +882,36 @@ describe('shared VFX primitives', () => {
 		expect(fx.mesh.material.emissive.getHex()).toBe(0x38bdf8);
 
 		const disposeSpy = vi.spyOn(fx.mesh.geometry, 'dispose');
+		fx.createdAt = performance.now() - fx.duration - 100;
+		updateAttackEffects();
+
+		expect(getActiveEffects().length).toBe(before);
+		expect(disposeSpy).toHaveBeenCalled();
+	});
+
+	it('spawnAttackEffect arcane_bolt adds a flagged violet lance projectile and cleans it up', () => {
+		const before = getActiveEffects().length;
+		spawnAttackEffect(
+			{ x: 0, z: 0 },
+			{ x: 1, z: 0 },
+			{
+				effect: 'arcane_bolt',
+				range: 10,
+				color: 0xa78bfa,
+				emissive: 0x7c3aed,
+				projectileTravelMs: ATTACK_EFFECT_DURATION,
+			},
+		);
+		expect(getActiveEffects().length).toBe(before + 1);
+
+		const fx = lastEffect();
+		expect(fx.isArcaneBoltProjectile).toBe(true);
+		expect(fx.range).toBe(10);
+		expect(fx.duration).toBe(ATTACK_EFFECT_DURATION);
+		expect(fx.coreMesh.material.color.getHex()).toBe(0xa78bfa);
+		expect(fx.coreMesh.material.emissive.getHex()).toBe(0x7c3aed);
+
+		const disposeSpy = vi.spyOn(fx.coreMesh.geometry, 'dispose');
 		fx.createdAt = performance.now() - fx.duration - 100;
 		updateAttackEffects();
 

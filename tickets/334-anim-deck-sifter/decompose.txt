@@ -1,0 +1,14 @@
+Created 2 sub-tickets in dependency order:
+
+- `/home/matt/workspace/.autogame-worktrees/334-anim-deck-sifter/tickets/334-anim-deck-sifter/subtickets/01-deck-sifter-cast-origin-sync/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/334-anim-deck-sifter/tickets/334-anim-deck-sifter/subtickets/02-deck-sifter-themed-draw-vfx/ticket.md`
+
+**Decomposition rationale:**
+
+The Deck Sifter is an instant utility weapon (`effect: 'draw_card'`, no projectile/DoT/wind-up), so most of the top-level checklist (travel speed, impact sync, DoT, 307 wind-up telegraph) doesn't apply — it just needs a correctly-positioned, on-theme on-cast flourish. Two real problems exist:
+
+1. **Timing/position sync (01):** The `draw_card` `CARD_USED` emit is the *only* card emit in `cardEffects.js` that omits `origin`, so the VFX currently spawns at world `(0,0)` instead of the caster. The existing client test masks this by fabricating an `origin` the server never sends. This is a server one-liner with a server test — its own concern, and a prerequisite for the visual to land where the player is. It only affects `deck_sifter` (the sole `draw_card` card), so no conflict with other animation beads.
+
+2. **Theme (02):** The renderer is currently a single generic parchment burst, indistinguishable from many cards. Sub-ticket 02 composes a recognizable card-sifting/riffle flourish from existing 315 primitives only, depending on 01's origin fix.
+
+**Both are `code` verification** — and necessarily so: `visual` QA only sees the load/join/WASD happy-path run, which never casts Deck Sifter, so it could verify nothing about this card. The criteria (origin in payload, primitives used, registration intact, no perf regression, tests pass) are all diff/log-checkable.

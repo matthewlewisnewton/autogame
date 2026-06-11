@@ -7617,6 +7617,75 @@ when new ctx primitives are absent. Full suite: **203/203 pass** (ran locally).
 None blocking. One minor nit (duplicate cyan style constant) recorded in nits.md.
 
 
+## v0.420 — 342-anim-arcane-bolt  (2026-06-10 22:50:59)
+
+- **Terminal max-range impact** (`spawnImpactDecal` + 16-particle burst) deferred by `travelMs` via `scheduleAfter`, for visual travel sync only.
+This is a faithful match to instant projectile resolution.
+
+### "No perf regression" — MET
+The projectile effect is registered in `activeEffects` and disposed on expiry (`disposeEffectObject` + array splice once `elapsed >= duration`). A vfx-primitives test confirms the flagged lance is added and cleaned up with geometry disposal. No persistent leaks.
+
+### "Client test where feasible" — MET
+`cardRenderers.test.js` and `vfx-primitives.test.js` add coverage: renderer resolution (`renderArcaneBolt`, explicitly not `renderWeaponSwing`), synced `spawnAttackEffect`/`spawnProjectileTrail` params, deferred terminal impact via `runScheduled`, immediate per-hit pierce bursts at mesh positions (with a missing-mesh guard), no-windUp assertion, and projectile lifecycle/cleanup. Ran `vitest run` on both files: **237 passed (237)**.
+
+### Scope — RESPECTED
+Diff touches only `game/client/cardRenderers.js`, `game/client/renderer.js`, and the two client test files — exactly the declared scope. No server, no other per-card renderers, no debug scenarios added.
+
+## Consistency / regressions
+- Consistent with `design.md` (Weapons = directional projectiles). No foundation regression.
+- No debug-scenario shortcuts introduced.
+- Removed the now-dead `arcane_bolt` entry from `WEAPON_SLASH_STYLES`, avoiding stale config.
+
+## Remaining gaps
+None blocking. The implementation fully and robustly satisfies the ticket.
+
+
+## v0.419 — 340-anim-photon-slicer  (2026-06-10 22:20:51)
+
+Uses `INFINITE_DISK_RETURN_BEAT_MS = round(ATTACK_EFFECT_DURATION/3)` (cardRenderers.js:548) — no fixed multi-second delay; the throw+return flourish resolves within the attack-effect window. No `windUpMs` on photon_slicer, so no charge telegraph is required. PASS.
+
+**Graceful degradation.**
+`spawnProjectileTrail`, `spawnParticleBurst`, and `scheduleAfter` are each guarded; only `spawnAttackEffect` is unconditional (consistent with sibling renderers and the always-present primitive). Calling with all optional primitives absent does not throw. PASS.
+
+**Dead `WEAPON_SLASH_STYLES.photon_slicer` removed.**
+Removed (former lines 182–193); other weapon styles untouched. PASS.
+
+**Tests updated and passing.**
+The old cone-slash assertion is replaced by a returning-disc test asserting the cyan outbound effect, far-point burst at `{x:8,z:0}`, exactly one scheduled return beat, and a reversed return trail after `runScheduled()`. `npx vitest run client/test/cardRenderers.test.js` → 212/212 pass, including the shared distinct-accent / graceful-degradation / card-specific-renderer tests with `photon_slicer` included.
+
+**Scope.**
+`git diff` touches only `game/client/cardRenderers.js`, `game/client/test/cardRenderers.test.js`, and the subticket md — within the declared scope. Server CARD_DEFS unchanged, so server tests referencing photon_slicer (`saber_aoe_grind`, `new_card_pack`) are unaffected.
+
+## Design / regression consistency
+Mirrors the established `renderTripleReturning` (Infinite Disk, photon_slicer's evolution) as its single-disc sibling — visually coherent across the lineage. No new ctx methods, no `renderer.js`/`main.js` changes, no foundation regression. No debug-scenario changes in this ticket.
+
+## Remaining gaps
+None blocking. Minor non-blocking nits filed separately (duplicate range constant, redundant accent fallback).
+
+
+## v0.421 — 334-anim-deck-sifter  (2026-06-10 23:19:41)
+
+- Palette stays on the card's own theme: `DECK_SIFTER_ACCENT 0xd4a843` matches the `deck_sifter` card color `#d4a843`; parchment body `0xf5deb3` + gold emissive `0xdaa520`. The "deck sifting / drawing a card" read is clear and distinct from a generic hit burst.
+
+### 2. Timing synced to server effect resolution
+PASS. `deck_sifter` is a `weapon` with effect `draw_card` and **no `windUpMs`** (confirmed in cardDefs.json and the HUD probe, which shows wind-up labels only on Solar Edge/Vault Wyrm, not deck_sifter), so no 307 charge telegraph is required. The draw is instant server-side, so the centre card puffs immediately (synced to the instant draw) and the two flanking cards riffle out via `scheduleAfter` at 70ms/140ms — total ~140ms, asserted `< 300ms` in the test. Sub-ticket 01 added `origin: { x: originX, z: originZ }` to the `draw_card` `CARD_USED` emit (game/server/cardEffects.js:371), so the flourish renders at the caster instead of world (0,0). Origin is the player's locked cast position.
+
+### 3. No perf regression
+PASS. Built only from existing ctx primitives (`spawnParticleBurst`, `spawnTelegraphRing`, `scheduleAfter`). Particle budget is modest (one ring + 3×6 particles) and actually lower per-burst count than before; no new render loops or allocations of concern.
+
+### 4. Client test where feasible
+PASS. The client test was rewritten to assert the full composition: ground ring palette/position/radius, immediate centre burst, the `[70, 140]` schedule, and the three fanned bursts at z `[3.3, 4, 4.7]` perpendicular to a `+x` cast. A graceful-degradation test (no `spawnParticleBurst`) is retained. A server integration test asserts the `draw_card` `CARD_USED` carries finite origin equal to player position. Client tests pass (`2 passed`). Server integration suite is skipped wholesale in this environment (all 168 skip — pre-existing harness behavior, not introduced here).
+
+## Design / scope consistency
+- Consistent with the 315 shared-VFX-primitive foundation; no new bespoke primitives.
+- Scope was nominally client-only (cardRenderers.js + vfx + client test), but the implementation also touches game/server/cardEffects.js (one line) and the server integration test. This deviation is minimal and necessary: the burst cannot render at the caster without the server forwarding the cast origin for the instant `draw_card` path. Well-justified and self-contained; not a blocking concern.
+- No debug scenarios added or changed.
+- `directionOf`/`originOf` both default safely (direction → `{x:1,z:0}`, origin → `{x:0,z:0}`), so a missing direction yields a finite perpendicular fan rather than NaN.
+
+## Remaining gaps
+None blocking.
+
+
 ## v0.413 — 352-anim-necroframe-knight  (2026-06-10 21:10:16)
 
 - degrades gracefully when optional ctx helpers (`spawnTelegraphRing`,
@@ -7639,6 +7708,66 @@ foundation.
 None. The captured run is clean, all acceptance criteria are robustly met, and
 the client tests pass.
 
+
+## v0.422 — 338-anim-saber-of-light  (2026-06-10 23:23:33)
+
+### Timing and server-effect sync
+
+PASS. Server card data defines `saber_of_light` as a `swift_slash` weapon with `cooldownMs: 400`, `attackRange: 5`, `aoeGrindScale: 0.03`, and no `windUpMs`. The server emits the grind-scaled `attackRange` in the `CARD_USED` payload, and the client renderer uses `data.attackRange` for both cone reach and flash/spark placement, falling back only when the field is absent. The single-swing path fires synchronously with card use, and only additional swings are staggered with the established multi-swing delay idiom.
+
+### Test coverage and regression risk
+
+PASS. `game/client/test/cardRenderers.test.js` adds focused coverage for dedicated renderer resolution, light-themed primitives, reach scaling from small vs large `attackRange`, immediate `swift_slash` timing, and graceful degradation when optional light primitives are missing. The captured `coverage.log` shows the full visible vitest run passed: 50 files, 707 tests.
+
+### Design and requirements consistency
+
+PASS. The change is scoped to client card VFX and tests, preserving the existing 3D scene, websocket play flow, multiplayer visualization, and movement synchronization foundation. It fits the design's card-based combat model and does not alter server combat rules, persistence, lobby flow, or economy.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=` entry point. Existing saber-related scenarios remain URL-driven/local QA shortcuts, and their comments describe normally reachable equivalent states through owning/grinding reward weapons and deploying normally.
+
+## Remaining gaps
+
+None.
+
+
+## v0.423 — 337-anim-chrono-trigger  (2026-06-10 23:31:38)
+
+### Performance and integration
+
+PASS. The implementation uses the existing `activeEffects` lifecycle and fixed small mesh counts: two ripples, one column, and optional per-restored-slot flares/arcs. `spawnChronoTriggerEffect` adds no network traffic, persistent world state, or per-frame allocations beyond the established effect update loop. The socket handler context and main renderer dependency wiring expose the primitive cleanly to card renderers.
+
+### Tests and coverage
+
+PASS. `coverage.log` reports 50 client test files passing with 708 tests. The added coverage includes Chrono Trigger renderer registration, instant dispatch without delayed scheduling, absent-windup behavior, restored-charge flare placement, distinct utility-spell signatures, primitive palette/defaults, and cleanup through `updateAttackEffects`. Coverage thresholds were disabled, but the changed client files have focused behavioral assertions.
+
+### Design and foundation consistency
+
+PASS. The change is consistent with `game/docs/design.md`: Chrono Trigger remains a spell card whose effect is a single-use utility action, not a new combat system or server-side invariant. The foundation requirements in `game/docs/requirements.md` are preserved; the captured run shows a rendered 3D scene, working client-server connection, multiplayer presence, and movement state updates.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change any `?debugScenario=` shortcut. `metrics.json` also reports no development scenarios used for the capture, so there is no debug-path gating or reachability issue to review for this ticket.
+
+
+## v0.424 — 333-anim-reaper-s-scythe  (2026-06-10 23:50:22)
+
+
+### Timing and server-effect sync
+PASS. The primary sweep fires synchronously on `CARD_USED`, uses `data.attackConeAngle ?? Math.PI` and `data.attackRange ?? ATTACK_RANGE`, and does not call `scheduleAfter` for the primary swing, tethers, or reward flourish. This matches the server-side Reaper's Scythe contract: no positive `windUpMs`, instant cone resolution, kill rewards emitted in the same `CARD_USED` payload as `hpHealed` and `currencyGained`.
+
+### Reap kill-reward visuals
+PASS. Killing hits with live enemy meshes spawn guarded soul tethers back to the cast origin, missing meshes are skipped without throwing, and the harvest flourish is gated on actual positive `currencyGained` or `hpHealed` rather than `specialEffect` alone. Non-killing swings retain only the sweep stack.
+
+### Debug scenarios
+PASS. The added `reapers-scythe-ready` scenario is registered as a debug scenario and the client entry point remains the localhost-only `?debugScenario=...` flow. The scenario only shortcuts setup for QA by placing the evolved card and target enemies after entering a standard playing debug state; the same end-state remains reachable through normal gameplay by evolving `harvesting_scythe` into `reapers_scythe` and deploying with it.
+
+### Design and foundation consistency
+PASS. The implementation stays within the card-animation layer and small debug/test plumbing, preserving the core server-client loop, multiplayer state, movement, and combat foundations described in the design and requirements docs. It uses the existing shared VFX/context primitives rather than adding renderer branches or new gameplay effects.
+
+### Tests and coverage
+PASS with residual unrelated validation noise. `coverage.log` shows the focused client renderer suite passing (`client/test/cardRenderers.test.js`, 229 tests) and the VFX primitives suite passing. The full coverage run has one server failure in `server/test/key-items.test.js` for `flare_beacon` `revealedUntil`; this ticket did not touch key-item code, state snapshots, or that test path, so I do not consider it a Reaper's Scythe blocking gap.
 
 
 ## v0.425 — 336-anim-battery-automaton  (2026-06-10 23:52:55)

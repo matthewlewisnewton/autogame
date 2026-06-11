@@ -367,6 +367,7 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
           cardId: data.cardId,
           slotIndex: data.slotIndex,
           effect: 'draw_card',
+          origin: { x: originX, z: originZ },
         });
         return;
       }

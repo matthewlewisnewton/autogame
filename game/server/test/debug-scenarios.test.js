@@ -860,10 +860,8 @@ describe('debugScenario — training-caverns-tier-2', () => {
 		await tier2Promise;
 
 		const lowHpPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
 		socket.emit('debugScenario', { name: 'training-caverns-boss-low-hp' });
 		const lowHpResult = await lowHpPromise;
-		const stateUpdate = await stateUpdatePromise;
 
 		expect(lowHpResult.ok).toBe(true);
 		expect(lowHpResult.scenario).toBe('training-caverns-boss-low-hp');
@@ -882,6 +880,11 @@ describe('debugScenario — training-caverns-tier-2', () => {
 		expect(dist).toBeGreaterThanOrEqual(2);
 		expect(dist).toBeLessThanOrEqual(5.5);
 
+		// The training-caverns encounter is active, so the game loop emits periodic stateUpdates
+		// and the pre-mutation full-HP boss can race ahead of the scenario's own snapshot. Read the
+		// boss HP from a stateUpdate captured AFTER the scenario result resolves: the boss is pinned
+		// at 1 HP by then and is never healed, so every post-result snapshot reports hp === 1.
+		const stateUpdate = await waitForEvent(socket, 'stateUpdate');
 		const overseerUpdate = stateUpdate.enemies.find((e) => e.id === bossId);
 		expect(overseerUpdate?.hp).toBe(1);
 		expect(overseerUpdate?.type).toBe('annex_overseer');
@@ -1727,10 +1730,8 @@ describe('debugScenario — spire-ascent-tier-2 harness shortcuts', () => {
 		await tier2Promise;
 
 		const lowHpPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
 		socket.emit('debugScenario', { name: 'spire-ascent-boss-low-hp' });
 		const lowHpResult = await lowHpPromise;
-		const stateUpdate = await stateUpdatePromise;
 
 		expect(lowHpResult.ok).toBe(true);
 		expect(lowHpResult.scenario).toBe('spire-ascent-boss-low-hp');
@@ -1749,6 +1750,11 @@ describe('debugScenario — spire-ascent-tier-2 harness shortcuts', () => {
 		expect(dist).toBeGreaterThanOrEqual(2);
 		expect(dist).toBeLessThanOrEqual(5.5);
 
+		// The spire-ascent encounter is active, so the game loop emits periodic stateUpdates and
+		// the pre-mutation full-HP boss can race ahead of the scenario's own snapshot. Read the
+		// boss HP from a stateUpdate captured AFTER the scenario result resolves: the boss is pinned
+		// at 1 HP by then and is never healed, so every post-result snapshot reports hp === 1.
+		const stateUpdate = await waitForEvent(socket, 'stateUpdate');
 		const wardenUpdate = stateUpdate.enemies.find((e) => e.id === bossId);
 		expect(wardenUpdate?.hp).toBe(1);
 		expect(wardenUpdate?.type).toBe('spire_warden');

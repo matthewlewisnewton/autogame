@@ -1,0 +1,13 @@
+Breakdown for ticket **333-anim-reaper-s-scythe** into **2 sub-tickets** in dependency order:
+
+| # | Sub-ticket | Scope |
+|---|------------|-------|
+| **01** | Death-themed sweep + registration | Replace the plain `renderConeSwings` default with a dedicated `renderReapersScythe` using server-supplied `attackConeAngle`/`attackRange`, dark reaper palette distinct from Ether Scythe, immediate cast timing (no `windUpMs`), and baseline test migration |
+| **02** | Reap kill-reward sync + tests | Soul tethers from killing blows + harvest flourish gated on `currencyGained`/`hpHealed`, full test coverage |
+
+Both use **`Verification: code`** — they cover registration, payload-driven behavior, timing contracts, and tests, not purely on-screen appearance.
+
+**Sub-ticket folder paths created:**
+
+- `/home/matt/workspace/.autogame-worktrees/333-anim-reaper-s-scythe/tickets/333-anim-reaper-s-scythe/subtickets/01-reapers-scythe-death-sweep/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/333-anim-reaper-s-scythe/tickets/333-anim-reaper-s-scythe/subtickets/02-reap-kill-flourish-and-tests/ticket.md`

@@ -667,6 +667,7 @@ const DEBUG_SCENARIOS = new Set([
   'magma-windup-ready',
   'economy-cards-ready',
   'weapon-slash-ready',
+  'reapers-scythe-ready',
   'energy-blade-slash-ready',
   'heavy-greatsword-slash-ready',
   'lock-on-elevated-projectile',
