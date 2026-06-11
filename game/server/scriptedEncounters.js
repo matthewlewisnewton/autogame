@@ -4,6 +4,7 @@
  */
 const { mulberry32 } = require('./dungeon');
 const { DEFAULT_QUEST_TIER } = require('./quests');
+const { simNow } = require('./simulation');
 
 function syncScriptedDefeatEnemiesActiveCount(run, enemies) {
   if (!run?.scriptedEncounter || run.objective?.type !== 'defeat_enemies') return;
@@ -24,6 +25,7 @@ function syncScriptedDefeatEnemiesActiveCount(run, enemies) {
 /**
  * @typedef {Object} ScriptedWaveDef
  * @property {ScriptedSpawnDef[]} spawns - Ordered spawn entries for this wave.
+ * @property {number} [aggroGraceMs] - Ms after spawn during which spawned enemies ignore players.
  */
 
 /**
@@ -400,6 +402,9 @@ function spawnScriptedWave(run, gameState, roomKey, waveIndex, ctx) {
       const enemy = ctx.spawnEnemy(pos.x, pos.z, spawnDef.type, undefined, spawnOpts);
       enemy.wanderTarget = ctx.randomWanderTarget();
       enemy.scriptedWave = { roomKey, waveIndex };
+      if (Number.isFinite(wave.aggroGraceMs) && wave.aggroGraceMs > 0) {
+        enemy.aggroGraceUntil = simNow() + wave.aggroGraceMs;
+      }
       enemyIds.push(enemy.id);
       spawnIndex += 1;
     }

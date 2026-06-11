@@ -210,6 +210,7 @@ const QUEST_DEFS = {
               roomIndex: 0,
               waves: [
                 {
+                  aggroGraceMs: 3000,
                   spawns: [
                     { type: 'grunt', count: 1, towardPassage: true },
                     { type: 'grunt', count: 1, towardPassage: true },

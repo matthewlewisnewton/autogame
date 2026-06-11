@@ -3094,6 +3094,10 @@ function updateFieldMedicEnemy(enemy, players, dt, now, encounterLocked) {
 	}
 }
 
+function isEnemyAggroGraceActive(enemy) {
+	return enemy.aggroGraceUntil != null && simNow() < enemy.aggroGraceUntil;
+}
+
 // ── Enemy AI Tick ──
 
 function updateEnemies() {
@@ -3148,6 +3152,10 @@ function updateEnemies() {
 
 		// ── Wind-up: wait, then revalidate range before striking ──
 		if (enemy.attackState === 'windup') {
+			if (enemy.windupTargetType === 'player' && isEnemyAggroGraceActive(enemy)) {
+				enemy.attackState = 'idle';
+				continue;
+			}
 			const elapsed = simNow() - enemy.windupStartTime;
 			if (elapsed >= attackWindupMs) {
 				// Ranged ice-ball throwers launch a slow traveling projectile in the
@@ -3263,7 +3271,9 @@ function updateEnemies() {
 		}
 
 		const nowConceal = Date.now();
+		const skipPlayerAggro = isEnemyAggroGraceActive(enemy);
 		for (const player of players) {
+			if (skipPlayerAggro) break;
 			// Players hidden inside an active smoke zone cannot be acquired.
 			if (isPlayerConcealed(player, nowConceal)) continue;
 			const dx = player.x - enemy.x;
