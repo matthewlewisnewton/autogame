@@ -166,3 +166,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [401-cleanup-anim-photon-slicer](tickets/401-cleanup-anim-photon-slicer/)
 - [ ] [402-cleanup-decision-per-quest-layouts-are-fully-deterministic-every-run-xnu8](tickets/402-cleanup-decision-per-quest-layouts-are-fully-deterministic-every-run-xnu8/)
 - [ ] [403-cleanup-anim-rust-forged-saber](tickets/403-cleanup-anim-rust-forged-saber/)
+- [ ] [403-cleanup-anim-solar-edge](tickets/403-cleanup-anim-solar-edge/)

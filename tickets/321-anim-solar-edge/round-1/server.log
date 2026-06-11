@@ -1,0 +1,15 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/321-anim-solar-edge/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/321-anim-solar-edge/game/data
+Server listening on port 3002
+Player connected: socket=EBN9KlkYz93Gp-86AAAB, playerId=69c27407-db3a-4e68-acef-974a012b327b
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=Hj1aIDpcp1i5jl3kAAAD, playerId=aeb603b1-794d-42fd-b1d4-8d45763c212e
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=5eedcf80-2164-4d69-876a-46b9f7120022 value=6
+Player disconnected: EBN9KlkYz93Gp-86AAAB
+Player disconnected: Hj1aIDpcp1i5jl3kAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

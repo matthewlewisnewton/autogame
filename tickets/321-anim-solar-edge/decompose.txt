@@ -1,0 +1,17 @@
+Broke ticket **321-anim-solar-edge** into **3 sub-tickets** in dependency order:
+
+1. **`01-solar-edge-impact-primitive`** — New `spawnSolarEdgeImpactFlourish` primitive in `renderer.js` (gold-white solar disc + orange corona + embers), with `vfx-primitives.test.js` smoke tests.
+
+2. **`02-solar-edge-renderer-timing`** — Dedicated `renderSolarEdge` replacing `renderWeaponSwing`; honors server `attackConeAngle`/`attackRange`; fires synchronously on `CARD_USED` (no extra `scheduleAfter` after the 650 ms server wind-up); wires the primitive via `main.js`.
+
+3. **`03-solar-edge-animation-tests`** — Client test coverage for theme, geometry sync, timing contract, per-hit sparks, palette distinctness, and graceful degradation.
+
+**Sub-ticket folder paths created:**
+
+```
+/home/matt/workspace/.autogame-worktrees/321-anim-solar-edge/tickets/321-anim-solar-edge/subtickets/01-solar-edge-impact-primitive
+/home/matt/workspace/.autogame-worktrees/321-anim-solar-edge/tickets/321-anim-solar-edge/subtickets/02-solar-edge-renderer-timing
+/home/matt/workspace/.autogame-worktrees/321-anim-solar-edge/tickets/321-anim-solar-edge/subtickets/03-solar-edge-animation-tests
+```
+
+All three use **Verification: code** — acceptance criteria cover structure, timing values, handler existence, and server geometry sync, not purely pixel-level appearance.

@@ -442,15 +442,21 @@ export function getHandSlotInputHints() {
  * labels (`hintLabels`) so C-buttons survive being written via `textContent`
  * (the inline-SVG `hints` would not render as text).
  *
+ * @param {string | null | undefined} [equippedKeyItemId] - ID of equipped key item (truthy when one is equipped)
  * @returns {{ mode: 'keyboard' | 'gamepad', text: string }}
  */
-export function getAttackCastHint() {
+export function getAttackCastHint(equippedKeyItemId) {
 	const slotHints = getHandSlotInputHints();
 	if (slotHints.mode !== 'gamepad') {
 		// Keyboard / mouse: preserve the original index.html copy verbatim.
+		let text = 'Click to attack · press 1–6 to cast cards';
+		if (equippedKeyItemId) {
+			const binding = getUseKeyItemBinding();
+			text += ` · ${binding.keyboard.toUpperCase()} for key item`;
+		}
 		return {
 			mode: 'keyboard',
-			text: 'Click to attack · press 1–6 to cast cards',
+			text,
 		};
 	}
 	// Gamepad: slot 0 is the primary attack button (face A on both profiles);
@@ -461,9 +467,14 @@ export function getAttackCastHint() {
 	const first = labels[0];
 	const last = labels[labels.length - 1];
 	const castRange = first === last ? first : `${first}–${last}`;
+	let text = `Press ${first} to attack · press ${castRange} to cast cards`;
+	if (equippedKeyItemId) {
+		const binding = getUseKeyItemBinding();
+		text += ` · ${binding.gamepadHint} for key item`;
+	}
 	return {
 		mode: 'gamepad',
-		text: `Press ${first} to attack · press ${castRange} to cast cards`,
+		text,
 	};
 }
 
