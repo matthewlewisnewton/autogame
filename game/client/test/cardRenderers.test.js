@@ -76,6 +76,9 @@ describe('resolveRenderers()', () => {
 		const fireballRenderers = resolveRenderers('fireball');
 		expect(fireballRenderers).toHaveLength(1);
 		expect(fireballRenderers[0].name).toBe('renderFireball');
+		const arcaneBoltRenderers = resolveRenderers('arcane_bolt');
+		expect(arcaneBoltRenderers).toHaveLength(1);
+		expect(arcaneBoltRenderers[0].name).toBe('renderArcaneBolt');
 		expect(resolveRenderers('ice_ball')).toHaveLength(1);
 		expect(resolveRenderers('divine_grace')).toHaveLength(1);
 		expect(resolveRenderers('purifying_pulse')).toHaveLength(1);
@@ -776,14 +779,80 @@ describe('renderCardUsed() — energy & photon blade slashes', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(true);
 	});
 
-	it('Arcane Bolt thrusts a tight violet energy lance with a beam streak', () => {
+	it('Arcane Bolt fires a violet arcane_bolt projectile with synced travel timing', () => {
 		const ctx = makeCtx();
-		fire('arcane_bolt', ctx);
-		const style = swingStyle(ctx);
-		expect(style).toMatchObject({ color: 0xa78bfa, coneAngle: Math.PI / 9, range: 7.5 });
+		renderCardUsed({
+			cardId: 'arcane_bolt',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			attackRange: 10,
+			hits: [],
+		}, ctx);
+		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
+		expect(attacks).toHaveLength(1);
+		expect(attacks[0][3]).toMatchObject({
+			effect: 'arcane_bolt',
+			range: 10,
+			projectileTravelMs: ATTACK_EFFECT_DURATION,
+			color: 0xa78bfa,
+			emissive: 0x7c3aed,
+		});
+		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
+		expect(ring).toBeDefined();
+		expect(ring[1]).toEqual({ x: 1, z: 2 });
+		expect(ring[3]).toMatchObject({ color: 0xa78bfa, emissive: 0x7c3aed });
+		const castBurst = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.find((c) => c[1].x === 1 && c[1].z === 2 && c[2].count === 8);
+		expect(castBurst).toBeDefined();
 		const trail = ctx._calls.find((c) => c[0] === 'spawnProjectileTrail');
 		expect(trail).toBeDefined();
-		expect(trail[3]).toMatchObject({ color: 0xa78bfa, range: 7.5 });
+		expect(trail[3]).toMatchObject({
+			range: 10,
+			travelMs: ATTACK_EFFECT_DURATION,
+			color: 0xa78bfa,
+			emissive: 0x7c3aed,
+		});
+		const schedules = ctx._calls.filter((c) => c[0] === 'scheduleAfter');
+		expect(schedules).toHaveLength(1);
+		expect(schedules[0][1]).toBe(ATTACK_EFFECT_DURATION);
+		expect(ctx._calls.find((c) => c[0] === 'spawnImpactDecal')).toBeUndefined();
+		expect(ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.some((c) => c[1].x === 11 && c[1].z === 2 && c[2].count === 16)).toBe(false);
+		ctx.runScheduled();
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		expect(decal[1]).toEqual({ x: 11, z: 2 });
+		const terminalBurst = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.find((c) => c[1].x === 11 && c[1].z === 2 && c[2].count === 16);
+		expect(terminalBurst).toBeDefined();
+	});
+
+	it('arcane_bolt has no positive windUpMs (instant cast; 315 charge telegraph absent)', () => {
+		expect(CARD_DEFS.arcane_bolt).toBeDefined();
+		expect(CARD_DEFS.arcane_bolt.windUpMs ?? 0).toBeLessThanOrEqual(0);
+	});
+
+	it('arcane_bolt spawns immediate per-hit pierce bursts at enemy mesh positions', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 4, y: 0, z: 2 } },
+				e2: { position: { x: 7, y: 0, z: 2 } },
+			}),
+		});
+		renderCardUsed({
+			cardId: 'arcane_bolt',
+			origin: { x: 1, z: 2 },
+			direction: { x: 1, z: 0 },
+			attackRange: 10,
+			hits: [{ enemyId: 'e1' }, { enemyId: 'e2' }, { enemyId: 'missing' }],
+		}, ctx);
+		const hitSparks = ctx._calls.filter((c) => c[0] === 'spawnHitSpark');
+		expect(hitSparks).toHaveLength(2);
+		expect(hitSparks[0][1]).toEqual({ x: 4, y: 0.6, z: 2 });
+		expect(hitSparks[1][1]).toEqual({ x: 7, y: 0.6, z: 2 });
+		const pierceBursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst')
+			.filter((c) => c[2].count === 6);
+		expect(pierceBursts).toHaveLength(2);
 	});
 
 	it('Resonance Edge slashes magenta and rings twice via a scheduled second pulse', () => {
