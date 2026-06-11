@@ -8020,3 +8020,26 @@ None.
 None. All acceptance criteria are met; the captured run proves the game loads and displays the new hint correctly.
 
 
+
+## v0.441 — Client: registration success message rendered into hidden error field; no auto-login after register  (2026-06-11 02:18:14)
+
+
+### 6. Code quality and tests
+
+**Finding: Met.** Single focused diff (4 lines moved/reordered in `game/client/main.js`). No dead code, no new debug scenarios, no socket/server changes.
+
+Vitest: **303/303 passed** (`coverage.log`). No new unit test for the registration-success path, but existing auth form helpers (`showLoginForm`, `clearAuthForms`) remain covered.
+
+### 7. Debug scenarios
+
+**Finding: N/A.** No `?debugScenario=` or other debug shortcut was added or changed.
+
+## Integration notes
+
+- Sub-ticket `01-show-success-on-login-form` fully addresses the decomposed scope (one sub-ticket for this UI-only fix).
+- Harness round-1 proof confirms the game runs end-to-end but does not visually prove the registration success message; code inspection and handler ordering confirm the fix for the reported repro.
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are satisfied; runtime capture is clean.
+

@@ -165,3 +165,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [401-cleanup-anim-offering-terminal](tickets/401-cleanup-anim-offering-terminal/)
 - [ ] [401-cleanup-anim-photon-slicer](tickets/401-cleanup-anim-photon-slicer/)
 - [ ] [402-cleanup-decision-per-quest-layouts-are-fully-deterministic-every-run-xnu8](tickets/402-cleanup-decision-per-quest-layouts-are-fully-deterministic-every-run-xnu8/)
+- [ ] [403-cleanup-client-registration-success-message-rendered-into-hidden-err-4dy2](tickets/403-cleanup-client-registration-success-message-rendered-into-hidden-err-4dy2/)
