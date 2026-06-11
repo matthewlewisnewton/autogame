@@ -1,0 +1,15 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/359-anim-resonance-edge/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/359-anim-resonance-edge/game/data
+Server listening on port 3001
+Player connected: socket=YEWD4r6FW2_hXnJpAAAB, playerId=d41703c9-2b01-4b84-8673-86a112dba5ee
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=KCG5E7pVx9oaym-qAAAD, playerId=e48ded78-8858-4d26-b2cf-9fc3730a463b
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=63f14a7a-c793-4ab7-920e-52147c9bf63c value=5
+Player disconnected: YEWD4r6FW2_hXnJpAAAB
+Player disconnected: KCG5E7pVx9oaym-qAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
