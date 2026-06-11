@@ -337,7 +337,8 @@ function renderRustForgedSaber(data, ctx) {
 	const color = getAccentHex('iron_sword') ?? style.color;
 	const emissive = style.emissive;
 	const swingCount = data.swingCount || 1;
-	const range = data.attackRange || style.range;
+	const range = Number.isFinite(data.attackRange) ? data.attackRange : style.range;
+	const coneAngle = Number.isFinite(data.attackConeAngle) ? data.attackConeAngle : style.coneAngle;
 	const impactAt = pointAlong(origin, direction, range);
 
 	const swing = () => {
@@ -345,7 +346,7 @@ function renderRustForgedSaber(data, ctx) {
 			ctx.spawnAttackEffect(origin, direction, {
 				color,
 				emissive,
-				coneAngle: style.coneAngle,
+				coneAngle,
 				range,
 				fillOpacity: style.fillOpacity,
 				edgeOpacity: style.edgeOpacity,

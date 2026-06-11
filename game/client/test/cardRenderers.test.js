@@ -1581,6 +1581,76 @@ describe('renderCardUsed() — saber_of_light reach + swift_slash timing', () =>
 	});
 });
 
+describe('renderCardUsed() — iron_sword reach + instant-hit timing', () => {
+	function fireIron(ctx, extra = {}) {
+		renderCardUsed(
+			{
+				cardId: 'iron_sword',
+				origin: { x: 0, z: 0 },
+				direction: { x: 1, z: 0 },
+				swingCount: 1,
+				hits: [],
+				...extra,
+			},
+			ctx,
+		);
+	}
+	function swingStyle(ctx) {
+		const attack = ctx._calls.find((c) => c[0] === 'spawnAttackEffect');
+		expect(attack).toBeDefined();
+		return attack[3];
+	}
+	function sparkPoint(ctx) {
+		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
+		expect(burst).toBeDefined();
+		return burst[1];
+	}
+	function decalPoint(ctx) {
+		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
+		expect(decal).toBeDefined();
+		return decal[1];
+	}
+
+	it('passes server attackRange and attackConeAngle through to spawnAttackEffect', () => {
+		const ctx = makeCtx();
+		fireIron(ctx, { attackRange: 5, attackConeAngle: Math.PI / 2 });
+		expect(swingStyle(ctx)).toMatchObject({
+			range: 5,
+			coneAngle: Math.PI / 2,
+		});
+	});
+
+	it('sizes the cone reach and spark/decal placement from data.attackRange (longer for larger range)', () => {
+		const near = makeCtx();
+		fireIron(near, { attackRange: 3, attackConeAngle: Math.PI / 2 });
+		const far = makeCtx();
+		fireIron(far, { attackRange: 9, attackConeAngle: Math.PI / 2 });
+
+		expect(swingStyle(near).range).toBe(3);
+		expect(swingStyle(far).range).toBe(9);
+		expect(swingStyle(far).range).toBeGreaterThan(swingStyle(near).range);
+
+		expect(decalPoint(far).x).toBeGreaterThan(decalPoint(near).x);
+		expect(decalPoint(far).x / decalPoint(near).x).toBeCloseTo(3);
+		expect(sparkPoint(far).x).toBeGreaterThan(sparkPoint(near).x);
+		expect(sparkPoint(far).x / sparkPoint(near).x).toBeCloseTo(3);
+	});
+
+	it('fires the single swing immediately with no scheduleAfter delay', () => {
+		const ctx = makeCtx();
+		fireIron(ctx, { attackRange: 5, attackConeAngle: Math.PI / 2, swingCount: 1 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('has no windUpMs — instant weapon contract', () => {
+		expect(CARD_DEFS.iron_sword.windUpMs).toBeUndefined();
+		expect(getCardDef('iron_sword').windUpMs).toBeFalsy();
+	});
+});
+
 describe('renderCardUsed() — steel_claymore / Alloy Greatblade timing + knockback', () => {
 	function fire(ctx, extra = {}) {
 		renderCardUsed({
