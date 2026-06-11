@@ -2581,14 +2581,56 @@ describe('renderCardUsed() — spell dispatch', () => {
 			sacrificedMinionId: 'minion-2',
 			hits: [],
 		}, ctx);
+
+		// 1. Dark altar/terminal pillar at origin
+		const summon = ctx._calls.find((c) => c[0] === 'spawnSummonEffect');
+		expect(summon).toBeDefined();
+		expect(summon[1]).toEqual({ x: 0, z: 0 });
+		expect(summon[3]).toMatchObject({ color: 0x1c1917, emissive: 0xfbbf24 });
+
+		// 2. Telegraph ring at sacrifice radius
 		const telegraph = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
 		expect(telegraph).toBeDefined();
 		expect(telegraph[2]).toBe(10);
 		expect(telegraph[3]).toMatchObject({ color: 0xfbbf24, emissive: 0xef4444 });
-		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
-		expect(burst).toBeDefined();
-		expect(burst[2]).toMatchObject({ color: 0xfbbf24, count: 16, spread: 2.4 });
-		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+
+		// 3. Red consumption burst (sacrificedMinionId present)
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		const consumptionBurst = bursts.find(
+			(b) => b[2].color === 0x991b1b && b[2].emissive === 0xef4444
+		);
+		expect(consumptionBurst).toBeDefined();
+		expect(consumptionBurst[1]).toEqual({ x: 0, z: 0 });
+		expect(consumptionBurst[2]).toMatchObject({ count: 10, spread: 1.0 });
+
+		// 4. Gold/red ember burst at origin
+		const emberBurst = bursts.find(
+			(b) => b[2].color === 0xfbbf24 && b[2].count === 16
+		);
+		expect(emberBurst).toBeDefined();
+		expect(emberBurst[1]).toEqual({ x: 0, z: 0 });
+		expect(emberBurst[2]).toMatchObject({ color: 0xfbbf24, emissive: 0xef4444, count: 16, spread: 2.4 });
+	});
+
+	it('sacrificial_altar skips consumption burst when sacrificedMinionId is absent', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'sacrificial_altar',
+			origin: { x: 0, z: 0 },
+			radius: 10,
+			hits: [],
+		}, ctx);
+		const bursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		const consumptionBurst = bursts.find(
+			(b) => b[2].color === 0x991b1b
+		);
+		expect(consumptionBurst).toBeUndefined();
+
+		// Altar pillar and ember burst should still fire
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(true);
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(true);
+		const emberBurst = bursts.find((b) => b[2].color === 0xfbbf24);
+		expect(emberBurst).toBeDefined();
 	});
 
 	it('chrono_trigger adds a time-ripple telegraph and burst using a default radius', () => {

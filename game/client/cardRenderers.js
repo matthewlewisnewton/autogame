@@ -2155,17 +2155,35 @@ function renderManaPrism(data, ctx) {
 }
 
 /**
- * Sacrificial Altar: large gold/red ritual telegraph at sacrifice radius and
- * an ember burst at the caster origin.
+ * Sacrificial Altar (Offering Terminal): dark altar pillar at origin, expanding
+ * ritual telegraph at sacrifice radius, red implosion burst when a minion is
+ * consumed, and a gold/red ember burst at the caster origin.
  */
 function renderSacrificialAltar(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
 	const color = SACRIFICIAL_ALTAR_COLOR;
 	const emissive = SACRIFICIAL_ALTAR_EMISSIVE;
+
+	// 1. Dark altar/terminal pillar at cast origin
+	ctx.spawnSummonEffect(origin, 1.2, { color: 0x1c1917, emissive: 0xfbbf24 });
+
+	// 2. Expanding ritual telegraph ring at sacrifice radius
 	if (ctx.spawnTelegraphRing) {
 		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
 	}
+
+	// 3. Red implosion/collapse burst at origin when minion is consumed
+	if (data.sacrificedMinionId && ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(origin, {
+			color: 0x991b1b,
+			emissive: 0xef4444,
+			count: 10,
+			spread: 1.0,
+		});
+	}
+
+	// 4. Gold/red ember burst at caster origin
 	if (ctx.spawnParticleBurst) {
 		ctx.spawnParticleBurst(origin, { color, emissive, count: 16, spread: 2.4 });
 	}
