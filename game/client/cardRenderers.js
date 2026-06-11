@@ -1614,6 +1614,10 @@ const THUNDERBIRD_CHAIN_HOP_DELAY_MS = 100;
 const STORM_EAGLE_ARC_STYLE = { color: 0x67e8f9, emissive: 0x22d3ee };
 const ARCANE_FAMILIAR_COLOR = 0x818cf8;
 const ARCANE_FAMILIAR_EMISSIVE = 0x6366f1;
+// Concentric "signal" broadcast ping rings, as fractions of the AoE radius
+// (inner → outer), staggered by this cadence for a radar/sonar read.
+const SIGNAL_FAMILIAR_PING_FRACTIONS = [0.5, 0.75, 1.0];
+const SIGNAL_FAMILIAR_PING_DELAY_MS = 110;
 const MANA_LEACH_COLOR = 0xa855f7;
 const MANA_LEACH_EMISSIVE = 0x9333ea;
 const SOUL_DRAIN_COLOR = 0xe879f9;
@@ -1702,16 +1706,45 @@ function renderChainLightningArcs(data, ctx) {
 }
 
 /**
- * Signal Familiar: indigo arcane telegraph and spark burst at the cast origin.
+ * Signal Familiar: an indigo arcane familiar wisp materializes at the cast
+ * origin and emits concentric "signal" broadcast ping rings (radar/sonar feel)
+ * outward to the AoE radius. Instant cast — the first ping fires immediately at
+ * the origin and the remaining rings are merely staggered for cadence (no
+ * wind-up / projectile travel), matching the server's instant resolution.
  */
 function renderBattleFamiliar(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
 	const color = getAccentHex(data.cardId) ?? ARCANE_FAMILIAR_COLOR;
 	const emissive = ARCANE_FAMILIAR_EMISSIVE;
-	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
+	const style = { color, emissive };
+
+	// Familiar wisp answering the signal — a transient summon-style flourish,
+	// distinct from the generic spark burst below.
+	if (ctx.spawnMinionSummonInEffect) {
+		ctx.spawnMinionSummonInEffect(origin, {
+			color,
+			emissive,
+			radius: 1.1,
+			burstCount: 12,
+			burstSpread: 1.6,
+		});
 	}
+
+	// Concentric broadcast ping rings expanding to the AoE radius. The inner
+	// ring fires at cast time; outer rings are staggered for a sonar cadence.
+	if (ctx.spawnTelegraphRing) {
+		const pingRing = (fraction) =>
+			ctx.spawnTelegraphRing(origin, data.radius * fraction, style);
+		SIGNAL_FAMILIAR_PING_FRACTIONS.forEach((fraction, i) => {
+			if (i === 0 || !ctx.scheduleAfter) {
+				pingRing(fraction);
+			} else {
+				ctx.scheduleAfter(SIGNAL_FAMILIAR_PING_DELAY_MS * i, () => pingRing(fraction));
+			}
+		});
+	}
+
 	if (ctx.spawnParticleBurst) {
 		ctx.spawnParticleBurst(origin, { color, emissive, count: 14, spread: 2.0 });
 	}

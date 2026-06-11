@@ -1916,7 +1916,7 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ring[3]).toMatchObject({ color: 0x67e8f9 });
 	});
 
-	it('battle_familiar adds an indigo arcane telegraph and spark burst at the cast origin', () => {
+	it('battle_familiar broadcasts concentric signal ping rings, a familiar wisp, and a spark burst at the cast origin', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'battle_familiar',
@@ -1924,11 +1924,32 @@ describe('renderCardUsed() — spell dispatch', () => {
 			radius: 4,
 			hits: [],
 		}, ctx);
-		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
-		expect(ring).toBeDefined();
-		expect(ring[1]).toEqual({ x: 2, z: 3 });
-		expect(ring[2]).toBe(4);
-		expect(ring[3]).toMatchObject({ color: 0x818cf8, emissive: 0x6366f1 });
+		// Familiar wisp answering the signal — a summon-style flourish at origin.
+		const wisp = ctx._calls.find((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(wisp).toBeDefined();
+		expect(wisp[1]).toEqual({ x: 2, z: 3 });
+		expect(wisp[2]).toMatchObject({ color: 0x818cf8, emissive: 0x6366f1 });
+		// The first ring fires immediately at cast time (before any scheduled
+		// cadence); the outer rings are merely staggered for the sonar feel.
+		const firstTelegraphImmediate = ctx._calls.findIndex((c) => c[0] === 'spawnTelegraphRing');
+		const firstScheduleImmediate = ctx._calls.findIndex((c) => c[0] === 'scheduleAfter');
+		expect(firstTelegraphImmediate).toBeGreaterThanOrEqual(0);
+		expect(firstTelegraphImmediate).toBeLessThan(firstScheduleImmediate);
+		// Flush the staggered ping cadence to inspect the full broadcast.
+		ctx.runScheduled();
+		// Multiple concentric broadcast ping rings keyed to the AoE radius — the
+		// inner ring fires at cast time, the outer rings expand out to the radius.
+		const rings = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing');
+		expect(rings.length).toBeGreaterThanOrEqual(2);
+		for (const ring of rings) {
+			expect(ring[1]).toEqual({ x: 2, z: 3 });
+			expect(ring[3]).toMatchObject({ color: 0x818cf8, emissive: 0x6366f1 });
+		}
+		const radii = rings.map((r) => r[2]);
+		// Distinct, increasing radii reaching the full AoE radius (broadcast read).
+		expect(new Set(radii).size).toBe(radii.length);
+		expect(Math.max(...radii)).toBe(4);
+		expect(Math.min(...radii)).toBeLessThan(4);
 		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
 		expect(burst).toBeDefined();
 		expect(burst[1]).toEqual({ x: 2, z: 3 });
