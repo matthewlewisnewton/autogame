@@ -7337,3 +7337,26 @@ so tests exercise the real primitive.
 None blocking. One minor cosmetic timing inconsistency noted as a nit (per-hit
 sparks fire at cast while the central crush ring fires at +375 ms).
 
+
+## v0.411 — 353-anim-legion-marshal  (2026-06-10 20:58:33)
+
+### 6. Client tests
+PASS. `cardRenderers.test.js` (190) + `vfx-primitives.test.js` (24) = 214 tests
+pass locally. Coverage includes rally call args, commander + skeleton flourish
+ordering/positions, tether endpoints, ground bursts, palette, default radius,
+color/duration overrides, and cleanup.
+
+## Debug scenarios
+No `?debugScenario` entry point was added or changed by this ticket (the
+existing `debugScenarios.js` reference to `undead_commander` predates the
+baseline and is untouched). N/A.
+
+## Design consistency
+`docs/design.md` has no card-specific VFX constraints for this card; the change
+follows the established per-card animation foundation and does not regress the
+requirements foundation.
+
+## Remaining gaps
+None blocking. One minor non-blocking observation filed to `nits.md` (column
+VFX pattern duplicated across per-card primitives).
+
