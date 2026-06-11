@@ -1358,7 +1358,7 @@ function renderBatteryAutomaton(data, ctx) {
  * is guarded so missing primitives never throw.
  */
 function renderBulkheadMaulerSummon(data, ctx) {
-	if (!data.minionId || data.specialEffect === 'shockwave_sweep') return;
+	if (!data.minionId || data.direction) return;
 	if (!ctx.spawnMinionSummonInEffect) return;
 	const origin = originOf(data);
 	const bulkheadStyle = {
@@ -2436,6 +2436,7 @@ function renderPhaseBeam(data, ctx) {
  */
 function renderBulkheadMaulerShockwaveSweep(data, ctx) {
 	if (data.specialEffect !== 'shockwave_sweep' || !data.origin) return;
+	if (!data.direction && !(Array.isArray(data.hits) && data.hits.length > 0)) return;
 	const origin = originOf(data);
 	const direction = directionOf(data);
 	const color = BULKHEAD_MAULER_COLOR;
