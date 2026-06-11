@@ -95,9 +95,14 @@ export function computeDesperationHudStats(desperationDeckIds, handCards) {
 	};
 }
 
-/** Placeholder level until a player-level stat exists on the server. */
-export function formatPlayerLevel() {
-	return 1;
+/**
+ * Resolve the level shown on the portrait badge from the player snapshot.
+ * Falls back to 1 when the player or its `level` field is missing/invalid.
+ * @param {object|null|undefined} player - local player's state-snapshot entry
+ */
+export function formatPlayerLevel(player) {
+	const lvl = Number(player?.level);
+	return Number.isFinite(lvl) && lvl >= 1 ? Math.floor(lvl) : 1;
 }
 
 /** Short label for the portrait frame from a player id. */

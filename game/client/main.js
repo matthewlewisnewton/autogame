@@ -2058,7 +2058,7 @@ function syncVanguardHud(me, phase) {
 	if (gamePhase === 'playing') {
 		updateMsBar(me.magicStones ?? 0);
 		updateDeckStats(me.deck, me.hand, me.inventory);
-		updateVanguardPortrait();
+		updateVanguardPortrait(me);
 	}
 }
 
@@ -2125,9 +2125,9 @@ function updateDeckStats(deckPile, handCards, inventory) {
 	if (deckEnchantmentCountEl) deckEnchantmentCountEl.textContent = String(stats.types.enchantment);
 }
 
-function updateVanguardPortrait() {
+function updateVanguardPortrait(me) {
 	if (characterIdEl) characterIdEl.textContent = formatCharacterId(myId);
-	if (playerLevelEl) playerLevelEl.textContent = String(formatPlayerLevel());
+	if (playerLevelEl) playerLevelEl.textContent = String(formatPlayerLevel(me));
 }
 
 function updateObjectiveHud() {
