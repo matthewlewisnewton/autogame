@@ -1,0 +1,15 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/shared-samplefloory-missing-null-layout-guard-and-floorcorne-m47o/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/shared-samplefloory-missing-null-layout-guard-and-floorcorne-m47o/game/data
+Server listening on port 3004
+Player connected: socket=J3BmG11LUtFRyG3sAAAB, playerId=4696d34c-84ff-41c0-9d9d-8cb6978874cb
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=ZILEwImUMlpDOSLKAAAD, playerId=23e001ca-d497-4590-a0df-a55cbee2802f
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=a517e0df-344e-47a3-8bca-1253b64f2595 value=14
+Player disconnected: J3BmG11LUtFRyG3sAAAB
+Player disconnected: ZILEwImUMlpDOSLKAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

@@ -1,0 +1,13 @@
+## Review complete
+
+Holistic senior review written to `tickets/shared-samplefloory-missing-null-layout-guard-and-floorcorne-m47o/round-1/review.md`.
+
+**Runtime health:** `metrics.json` reports `"ok": true` with empty `pageerrors`; `console.log` has no `pageerror` or `[fatal]` lines. Harness smoke capture reached active gameplay (movement, dodge roll, connected socket).
+
+**Acceptance criteria:** All met.
+- Null-layout guard: `if (!layout) return DEFAULT_FLOOR_Y` in `floorSampling.esm.js`
+- Platform `floorCorners` fallback mirrors the room branch
+- Unit tests in both `game/server/test/dungeon.test.js` and `game/client/test/shared-floor-sampling.test.js`
+- CJS bridge untouched; full suite passes (3972 tests)
+
+**VERDICT: PASS** — no `gaps.md` or `nits.md` written (no blocking gaps, no nits worth a follow-up ticket).

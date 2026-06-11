@@ -1,0 +1,15 @@
+Sub-tickets planned for this ticket. The work is a single cohesive fix in `sampleFloorY` plus matching unit tests, so one sub-ticket is enough (smallest set that fully delivers the parent ticket).
+
+**Created:**
+
+- `/home/matt/workspace/.autogame-worktrees/shared-samplefloory-missing-null-layout-guard-and-floorcorne-m47o/tickets/shared-samplefloory-missing-null-layout-guard-and-floorcorne-m47o/subtickets/01-null-layout-and-platform-fallback/ticket.md`
+
+**`01-null-layout-and-platform-fallback`** covers:
+
+1. **Null-layout guard** — early `return DEFAULT_FLOOR_Y` before dereferencing `layout`
+2. **Platform `floorCorners` fallback** — same per-corner `fc ? fc.yNW : DEFAULT_FLOOR_Y` pattern as the room branch
+3. **Unit tests** — edge cases in `dungeon.test.js` and `shared-floor-sampling.test.js`
+
+Verification mode is `code` (logic/guard behavior and tests, not pixel-level rendering).
+
+No existing sub-ticket folders were present, so nothing was deleted or skipped.
