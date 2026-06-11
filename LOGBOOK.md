@@ -6876,6 +6876,24 @@ Fallback smoke capture exercised the real player path: auth → lobby → ready 
 
 None. All acceptance criteria are fully met; runtime capture is clean; test suite is green.
 
+## v0.388 — 369-playthrough-revalidate-open-plaza  (2026-06-10 16:24:35)
+
+Pass. `game/validation/open-plaza/findings.md` lists the assertion results, console/page-error status, visual notes, floor alignment, boss UI/visual identity, card exercises, telepipe checks, and screenshot inventory. The required screenshot references and probes are present in `run-summary.json`/`probes.json`.
+
+## Design and foundation consistency
+
+The implementation is consistent with `game/docs/design.md`: the lobby-to-dungeon loop, stage-boss flow, card combat interactions, and telepipe persistence/reset behavior match the documented design. It does not regress the foundation requirements in `game/docs/requirements.md`: the captured run renders a 3D scene, connects client/server, shows the player, and continues to provide synchronized gameplay state.
+
+## Debug scenarios
+
+Pass. The added arena debug scenarios are entered only through the debug scenario socket path, which is gated by `ALLOW_DEBUG_SCENARIOS`, non-production localhost/private access, or explicit dev conditions. Normal gameplay does not call these paths.
+
+The same end states are reachable through normal play: Arena Trials Tier 2 is reached by clearing/unlocking/deploying, add combat is reached by traversing the plaza, the boss approach/activation is reached by clearing adds and moving into the encounter trigger, low boss HP is reached by fighting the boss, and the telepipe state is reached by bringing a Telepipe and spending vitals/charges during a sortie. The shortcuts still use server-side state, encounter, objective, floor sampling, and snapshot/broadcast paths rather than bypassing client-only invariants.
+
+## Code quality and validation
+
+No blocking code-quality issues found in the live codebase. The changed debug scenarios have unit/integration coverage in `game/server/test/debug-scenarios.test.js`, and coverage output reports the test suite green: 119 files passed, 1720 tests passed. The open-plaza artifact verifier checks the full-run summary, required assertion keys, required files, and distinct victory screenshots.
+
 ## v0.389 — 371-playthrough-revalidate-spire-ascent  (2026-06-10 16:26:06)
 
 
@@ -6987,6 +7005,72 @@ None. All acceptance criteria are met; the game runs cleanly in capture; tests p
 
 ---
 
+## v0.391 — 368-playthrough-revalidate-rooms  (2026-06-10 16:50:11)
+
+### Screenshots and findings
+
+PASS. `game/validation/rooms/findings.md` exists and reports `Outcome: PASS` with every relevant assertion listed. The expected screenshots are present in `game/validation/rooms/`, including hub/browser, level entry, mid-combat, dormant/active boss, boss defeated, victory, slow/burn, Purifying Pulse, wind-up, and telepipe before/after captures. The findings file explicitly reports no observed console/page errors or visual glitches.
+
+### Design and requirements consistency
+
+PASS. The result remains aligned with `game/docs/design.md`: the Training Caverns flow still uses lobby deploy into a dungeon, a stage boss encounter, card combat, Telepipe suspend/abandon/new sortie behavior, and preserved vitals with new-sortie card-charge reset. The implementation does not regress the foundation in `game/docs/requirements.md`: rendering, WebSocket connection, player representation, and movement/gameplay synchronization are all exercised by the captured run and rooms validation.
+
+### Debug scenario safety
+
+PASS. The added/changed debug scenarios remain behind the existing debug scenario request path and are not part of normal gameplay entry. The rooms-specific shortcuts document normal-play equivalence in code comments and tests: Tier 2 is reachable by unlocking and deploying Training Caverns, near-adds/boss-approach states are reachable by traversing and clearing adds, encounter activation is reachable by walking into the trigger, low-HP boss is a combat-time shortcut, and Telepipe-in-hand is reachable by purchasing Telepipe before deploy. The scenarios preserve server-side state machinery rather than bypassing it wholesale: they set quest/tier/layout, call deploy/start-run helpers, use the encounter state machine, and the telepipe harness validates abandon-plus-fresh-deploy instead of a checkpoint restore.
+
+### Code quality and tests
+
+PASS. The changed live files are focused on validation harness wiring, rooms artifacts, and narrowly scoped debug/probe support. The earlier accumulated `game/validation/rooms/server.log` includes an old `spawnEnemy is not a function` attempt, but the live `game/server/encounters.js` no longer contains that helper path and the current round capture/server log is clean. `coverage.log` ends with `155 passed` test files and `2165 passed` tests; coverage thresholds are disabled, but the changed paths have direct unit and integration coverage for rooms findings, debug scenarios, and telepipe behavior.
+
+## Remaining gaps
+
+None.
+
+## v0.392 — Client: consolidate gamepad polling to one snapshot per frame and delete dead gamepad-layer code  (2026-06-10 17:18:44)
+
+
+### Dead gamepad-layer code and orphan tests
+
+PASS. The confirmed-dead helpers named in the ticket are no longer exported or referenced in `game/client/`: `uses8BitDo64DigitalCButtons`, `get8BitDo64CStickAxes`, `get8BitDo64CAxisPairs`, `readAxisSectorDirections`, `readProfileCStick`, `isGamepadMoving`, `describeGamepadConnectionWithProfile`, and the duplicate `isButtonPressed`. The tests tied only to those removed helpers were deleted, while live 8BitDo C-button, profile, lock-on, and binding behavior remains covered.
+
+### Design and requirements consistency
+
+PASS. The change is limited to client input polling and dead-code cleanup. It does not alter the documented lobby/dungeon/card loop, server simulation, multiplayer flow, or floor/quest/combat systems. The capture and probes confirm the baseline setup requirements remain intact: 3D rendering, server-client connection, multiplayer visualization, and movement synchronization.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=...` shortcut. The capture used the fallback full-flow smoke path with `scenarios: []`, so there is no debug-scenario gating or normal-gameplay reachability issue to review for this ticket.
+
+### Verification evidence
+
+PASS. The round-1 coverage log reports `52` test files passed and `540` tests passed. Coverage thresholds were disabled as expected for visibility only.
+
+## Remaining gaps
+
+No blocking gaps remain.
+
+## v0.393 — Debug tooling: time-scale control (slow-mo/pause) behind ALLOW_DEBUG_SCENARIOS for playtesting and QA  (2026-06-10 17:19:45)
+
+### Harness state exposes the current scale for automated tests
+
+PASS. `buildWorldSnapshot()` includes `debugTimeScale` and `debugTimeScaleAllowed`, and `window.__AUTOGAME_HARNESS_STATE__()` exposes `debugTimeScale`, `debugTimeScaleResult`, and `debugTimeScaleAllowed`. The captured fallback run shows the fields present with `debugTimeScale: 1` and `debugTimeScaleAllowed: false`; the client test verifies the allowed flag becomes true when a snapshot reports it.
+
+### Design and Foundation Consistency
+
+PASS. The feature is debug-only, per-lobby, and does not alter normal gameplay when unset. It fits the design doc's multiplayer lobby/dungeon model by storing the scale on lobby game state rather than global process state, and it preserves the requirements baseline: rendering, socket connectivity, multiplayer presence, and WASD movement sync all remain functional in the captured run.
+
+### Debug Scenarios
+
+PASS / not applicable. This ticket did not add or change a `?debugScenario=NAME` URL shortcut. Existing debug scenario behavior is not used as an entry point for the new time-scale control; the time-scale test hook is gated by the server-authorized snapshot field and the socket handler.
+
+### Tests and Artifacts
+
+Targeted time-scale coverage is present and passing in `round-2/coverage.log`: `server/test/debug_time_scale_sim.test.js`, `server/test/debug_time_scale_gate.test.js`, and `client/test/debug-time-scale-gate.test.js` all pass. The same coverage log reports one failing pre-existing-style `server/test/debug-scenarios.test.js` case for `arena-trials-boss-approach`; the ticket did not change `game/server/debugScenarios.js`, and I did not find a path from the time-scale changes to that scenario result, so I am not treating it as a blocking gap for this ticket.
+
+## Remaining gaps
+
+No blocking gaps for this ticket.
 
 ## v0.394 — Server: index.js broadcast/lookup helpers scan every connected socket per lobby per event  (2026-06-10 17:39:04)
 
@@ -7009,4 +7093,3 @@ Pure server-side performance refactor that preserves observable behavior. No cha
 ## Remaining gaps
 
 None blocking.
-

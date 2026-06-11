@@ -405,6 +405,28 @@ function register(socket, ctx) {
     });
   });
 
+  socket.on(CLIENT_TO_SERVER.SET_DEBUG_TIME_SCALE, (data) => {
+    // Time scaling is gated strictly on ALLOW_DEBUG_SCENARIOS=1, NOT the
+    // localhost-permissive isDebugScenarioAllowed path: a normal local dev
+    // session must not slow the sim unless the operator explicitly opted in.
+    if (process.env.ALLOW_DEBUG_SCENARIOS !== '1') {
+      socket.emit(SERVER_TO_CLIENT.DEBUG_TIME_SCALE_RESULT, { ok: false, reason: 'Debug time scale is disabled' });
+      return;
+    }
+
+    const scale = data && data.scale;
+    if (!Number.isFinite(scale)) {
+      socket.emit(SERVER_TO_CLIENT.DEBUG_TIME_SCALE_RESULT, { ok: false, reason: 'Invalid time scale' });
+      return;
+    }
+
+    const clamped = Math.max(0, Math.min(1, scale));
+    withLobbyPlayer(socket, {}, (state) => {
+      state.debugTimeScale = clamped;
+      socket.emit(SERVER_TO_CLIENT.DEBUG_TIME_SCALE_RESULT, { ok: true, scale: clamped });
+    });
+  });
+
   socket.on(CLIENT_TO_SERVER.HEARTBEAT, (data) => {
     if (!data || !Number.isFinite(data.timestamp)) {
       console.warn(`Rejected heartbeat from ${socket.id}: invalid payload`);

@@ -27,6 +27,10 @@ function createGameState() {
     selectedQuestTier: DEFAULT_QUEST_TIER,
     pendingTrades: {},
     shopOffer: null,
+    // Debug-only simulation speed multiplier in [0, 1]: 1 = normal speed, 0 =
+    // paused. Set via the SET_DEBUG_TIME_SCALE socket handler (gated behind
+    // isDebugScenarioAllowed). Defaults to 1 so every lobby starts un-slowed.
+    debugTimeScale: 1,
     telepipe: null,
     suspendedCheckpoint: null,
     // Pending Echo Strike packets ({ attackerId, targets:[{enemyId,damage}], applyAt }),

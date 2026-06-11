@@ -11,7 +11,6 @@ import {
 	resolveGamepadProfile,
 	describeActiveGamepadProfile,
 	read8BitDo64CButtonState,
-	uses8BitDo64DigitalCButtons,
 	is8BitDo64BluetoothGamepad,
 	get8BitDo64VerticalCAxisIndex,
 	EIGHTBITDO_64_TRIGGER_BUTTON_INDICES,
@@ -341,7 +340,8 @@ export function syncControllerCalibrationForm() {
 			+ (profile.id === '8bitdo-64' ? ` — ${profile.description}` : '');
 	}
 	if (els.secondaryStickPanelEl) {
-		const hideSecondary = profile.id === '8bitdo-64' && uses8BitDo64DigitalCButtons();
+		// The 8BitDo 64 uses digital C-buttons, so it has no secondary analog stick panel.
+		const hideSecondary = profile.id === '8bitdo-64';
 		els.secondaryStickPanelEl.hidden = hideSecondary;
 	}
 	if (els.secondaryStickLabelEl && !els.secondaryStickPanelEl?.hidden) {
@@ -429,7 +429,8 @@ function updateButtonGrid(gamepad, profile) {
 }
 
 function getSecondaryStickValues(gamepad, profile) {
-	if (profile.id === '8bitdo-64' && uses8BitDo64DigitalCButtons()) {
+	// The 8BitDo 64 has no secondary analog stick — its C cluster is digital buttons.
+	if (profile.id === '8bitdo-64') {
 		return { x: 0, y: 0 };
 	}
 	return {

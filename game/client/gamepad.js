@@ -1,10 +1,78 @@
 import { GAMEPAD_DEADZONE, GAMEPAD_LOOK_SENSITIVITY, LOCK_ON_GAMEPAD_BUTTON } from './config.js';
 import { isLockOnActive, isLockOnCameraReleasing } from './lockOn.js';
 import { getGamepadConfig } from './settings.js';
-import { resolveGamepadProfile, read8BitDo64CStickHorizontal, getPrimaryGamepad, isProfileLockOnPressed } from './gamepad-profiles.js';
+import {
+	resolveGamepadProfile,
+	read8BitDo64CStickHorizontal,
+	read8BitDo64CButtonState,
+	getPrimaryGamepad,
+	isProfileLockOnPressed,
+	EIGHTBITDO_64_C_BUTTON_THRESHOLD,
+} from './gamepad-profiles.js';
 
-let prevButtons = [];
+let prevLockOnPressed = false;
 let listenersAdded = false;
+
+/**
+ * Shared per-frame gamepad snapshot. Captured once near the top of the animation
+ * loop via `pollGamepadSnapshot()` so every reader (movement, look, buttons,
+ * input.js bindings) consumes a single `navigator.getGamepads()` poll instead of
+ * each re-resolving the pad/profile/config. Readers fall back to a fresh lazy
+ * build when no frame snapshot is captured (e.g. unit tests call readers directly).
+ * @typedef {{
+ *   pad: Gamepad | null,
+ *   profile: import('./gamepad-profiles.js').GamepadProfile,
+ *   cfg: ReturnType<typeof getGamepadConfig>,
+ *   cState: Record<'up' | 'down' | 'left' | 'right', boolean> | null,
+ * }} GamepadSnapshot
+ * @type {GamepadSnapshot | null}
+ */
+let frameSnapshot = null;
+let frameSnapshotCaptured = false;
+
+/**
+ * Resolve the primary pad, profile, config, and (8BitDo 64 only) C-button state.
+ * @returns {GamepadSnapshot}
+ */
+function buildGamepadSnapshot() {
+	const cfg = getGamepadConfig();
+	const configuredProfile = cfg.profile ?? 'auto';
+	const pad = getPrimaryGamepad(configuredProfile);
+	const profile = resolveGamepadProfile(pad, configuredProfile);
+	// The 8BitDo 64 C-buttons drive four hand-slot bindings; read their state once
+	// here (at the binding threshold) so pollInput reuses one result per frame.
+	const cState = pad && profile.id === '8bitdo-64'
+		? read8BitDo64CButtonState(pad, EIGHTBITDO_64_C_BUTTON_THRESHOLD)
+		: null;
+	return { pad, profile, cfg, cState };
+}
+
+/**
+ * Capture the shared per-frame snapshot. Call once near the top of `animate()`
+ * before movement/look/button readers run.
+ * @returns {GamepadSnapshot}
+ */
+export function pollGamepadSnapshot() {
+	frameSnapshot = buildGamepadSnapshot();
+	frameSnapshotCaptured = true;
+	return frameSnapshot;
+}
+
+/**
+ * Return the captured frame snapshot, lazily building a fresh one when none was
+ * captured this frame (direct reader calls outside the loop take this path).
+ * @returns {GamepadSnapshot}
+ */
+export function getGamepadSnapshot() {
+	if (frameSnapshotCaptured && frameSnapshot) return frameSnapshot;
+	return buildGamepadSnapshot();
+}
+
+/** Drop the captured snapshot so the next read re-polls the pad. */
+export function invalidateGamepadSnapshot() {
+	frameSnapshot = null;
+	frameSnapshotCaptured = false;
+}
 
 /**
  * Zero out small stick drift while rescaling the remainder to full range.
@@ -76,8 +144,7 @@ export function mergeMovementVectors(a, b) {
  * @returns {Gamepad | null}
  */
 export function getActiveGamepad() {
-	const cfg = getGamepadConfig();
-	return getPrimaryGamepad(cfg.profile ?? 'auto');
+	return getGamepadSnapshot().pad;
 }
 
 /**
@@ -104,10 +171,8 @@ export function pollGamepadMovement(deadzone = GAMEPAD_DEADZONE, moveStick = 'le
  */
 export function pollGamepadLook(delta, deadzone = GAMEPAD_DEADZONE) {
 	if (isLockOnActive() || isLockOnCameraReleasing()) return 0;
-	const pad = getActiveGamepad();
+	const { pad, profile, cfg } = getGamepadSnapshot();
 	if (!pad || delta <= 0) return 0;
-	const cfg = getGamepadConfig();
-	const profile = resolveGamepadProfile(pad, cfg.profile ?? 'auto');
 	let lookX = 0;
 	if (profile.lookSource === 'cStick') {
 		lookX = read8BitDo64CStickHorizontal(pad, deadzone);
@@ -126,32 +191,23 @@ export function pollGamepadLook(delta, deadzone = GAMEPAD_DEADZONE) {
  * @returns {{ lockOn: boolean }}
  */
 export function pollGamepadButtons() {
-	const pad = getActiveGamepad();
+	const { pad, profile } = getGamepadSnapshot();
 	const result = { lockOn: false };
 	if (!pad) {
-		prevButtons = [];
+		prevLockOnPressed = false;
 		return result;
 	}
 
-	const cfg = getGamepadConfig();
-	const profile = resolveGamepadProfile(pad, cfg.profile ?? 'auto');
-	const lockButton = profile.lockOnButton ?? LOCK_ON_GAMEPAD_BUTTON;
-	const buttons = pad.buttons;
-
 	const lockPressed = isProfileLockOnPressed(pad, profile);
-	const lockWas = prevButtons[lockButton] ?? false;
-	if (lockPressed && !lockWas) result.lockOn = true;
-
-	prevButtons = Array.from({ length: buttons.length }, (_, i) => {
-		if (i === lockButton) return lockPressed;
-		return buttons[i]?.pressed ?? false;
-	});
+	if (lockPressed && !prevLockOnPressed) result.lockOn = true;
+	prevLockOnPressed = lockPressed;
 	return result;
 }
 
 /** Clear cached button state when the tab loses focus. */
 export function resetGamepadState() {
-	prevButtons = [];
+	prevLockOnPressed = false;
+	invalidateGamepadSnapshot();
 }
 
 /** Register gamepad connect/disconnect listeners once. */
@@ -164,9 +220,4 @@ export function initGamepadListeners() {
 		if (document.visibilityState !== 'visible') resetGamepadState();
 	});
 	listenersAdded = true;
-}
-
-/** Whether any connected gamepad is currently providing movement input. */
-export function isGamepadMoving(deadzone = GAMEPAD_DEADZONE, moveStick = 'left') {
-	return pollGamepadMovement(deadzone, moveStick) != null;
 }

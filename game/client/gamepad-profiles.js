@@ -2,7 +2,6 @@ import {
 	is8BitDo64Gamepad,
 	is8BitDo64BluetoothGamepad,
 	get8BitDo64VerticalCAxisIndex,
-	is8BitDoGamepad,
 	getConnectedGamepads,
 } from './gamepad-detect.js';
 import { HAND_MODIFIER_GAMEPAD_BUTTON, LOCK_ON_GAMEPAD_BUTTON } from './config.js';
@@ -74,36 +73,6 @@ export const EIGHTBITDO_64_C_BUTTON_DIRECTIONS = {
 export const EIGHTBITDO_64_C_BUTTON_THRESHOLD = 0.2;
 
 /**
- * The 8BitDo 64 exposes four digital C-buttons — not a separate analog C stick on axes 4/5.
- * @returns {boolean}
- */
-export function uses8BitDo64DigitalCButtons() {
-	return true;
-}
-
-/**
- * Analog C-cluster axis pair (SDL Mac/Linux: rightx:a2, righty:a3).
- * Axes 4/5 are unused on the single-stick 8BitDo 64 in the browser.
- * @param {Gamepad} gamepad
- * @returns {{ x: number, y: number } | null}
- */
-export function get8BitDo64CStickAxes(gamepad) {
-	if (uses8BitDo64DigitalCButtons()) return null;
-	if (gamepad.axes.length >= 4) return { x: 2, y: 3 };
-	return null;
-}
-
-/**
- * @param {Gamepad} gamepad
- * @returns {Array<{ x: number, y: number }>}
- */
-export function get8BitDo64CAxisPairs(gamepad) {
-	if (uses8BitDo64DigitalCButtons()) return [];
-	if (gamepad.axes.length >= 4) return [{ x: 2, y: 3 }];
-	return [];
-}
-
-/**
  * @param {Gamepad | null | undefined} gamepad
  * @param {number} index
  * @returns {boolean}
@@ -121,25 +90,6 @@ export function isGamepadButtonActive(gamepad, index, threshold = 0.5) {
  */
 export function is8BitDo64DiscreteCButtonActive(gamepad, index) {
 	return isGamepadButtonActive(gamepad, index, EIGHTBITDO_64_C_BUTTON_THRESHOLD);
-}
-
-/**
- * Convert a C-cluster axis pair into four-way digital directions.
- * Each axis is evaluated independently (better for horizontal C on noisy Y).
- * @param {number} axisX
- * @param {number} axisY
- * @param {number} [threshold]
- * @returns {Record<'up' | 'down' | 'left' | 'right', boolean>}
- */
-export function readAxisSectorDirections(axisX, axisY, threshold = 0.35) {
-	const result = { up: false, down: false, left: false, right: false };
-	const x = Number.isFinite(axisX) ? axisX : 0;
-	const y = Number.isFinite(axisY) ? axisY : 0;
-	if (x <= -threshold) result.left = true;
-	else if (x >= threshold) result.right = true;
-	if (y <= -threshold) result.up = true;
-	else if (y >= threshold) result.down = true;
-	return result;
 }
 
 /**
@@ -385,56 +335,33 @@ export function describeActiveGamepadProfile(gamepad, configuredProfile = 'auto'
  */
 export function readBindingAxisValue(gamepad, binding) {
 	if (binding.type !== 'axis') return 0;
-	if (binding.axis === 'cX' || binding.axis === 'cY') {
-		const cStick = get8BitDo64CStickAxes(gamepad);
-		if (!cStick) return 0;
-		return binding.axis === 'cX'
-			? (gamepad.axes[cStick.x] ?? 0)
-			: (gamepad.axes[cStick.y] ?? 0);
-	}
+	// cX/cY are read via the digital C-button path, not a separate analog stick.
+	if (typeof binding.axis !== 'number') return 0;
 	return gamepad.axes[binding.axis] ?? 0;
 }
 
 /**
  * @param {Gamepad} gamepad
  * @param {GamepadBinding} binding
+ * @param {Record<'up' | 'down' | 'left' | 'right', boolean> | null} [cState]
+ *   Precomputed 8BitDo 64 C-button state (read once per frame at the binding
+ *   threshold). Reused for cButton bindings to avoid re-reading per slot.
  * @returns {boolean}
  */
-export function isBindingActive(gamepad, binding) {
+export function isBindingActive(gamepad, binding, cState = null) {
 	if (binding.type === 'button') {
 		return isGamepadButtonActive(gamepad, binding.index);
 	}
 	if (binding.type === 'cButton') {
-		return is8BitDo64CButtonActive(
-			gamepad,
-			binding.direction,
-			binding.threshold ?? EIGHTBITDO_64_C_BUTTON_THRESHOLD,
-		);
+		const threshold = binding.threshold ?? EIGHTBITDO_64_C_BUTTON_THRESHOLD;
+		if (cState && threshold === EIGHTBITDO_64_C_BUTTON_THRESHOLD) {
+			return cState[binding.direction];
+		}
+		return is8BitDo64CButtonActive(gamepad, binding.direction, threshold);
 	}
 	const threshold = binding.threshold ?? 0.5;
 	const value = readBindingAxisValue(gamepad, binding);
 	return binding.direction === 'positive' ? value >= threshold : value <= -threshold;
-}
-
-/**
- * @param {Gamepad | null | undefined} gamepad
- * @param {GamepadProfile} profile
- * @returns {{ x: number, y: number } | null}
- */
-export function readProfileCStick(gamepad, profile) {
-	if (!gamepad || profile.id !== '8bitdo-64') return null;
-	const cStick = get8BitDo64CStickAxes(gamepad);
-	if (cStick) {
-		return { x: gamepad.axes[cStick.x] ?? 0, y: gamepad.axes[cStick.y] ?? 0 };
-	}
-	const c = read8BitDo64CButtonState(gamepad);
-	let x = 0;
-	let y = 0;
-	if (c.left) x -= 1;
-	if (c.right) x += 1;
-	if (c.up) y -= 1;
-	if (c.down) y += 1;
-	return { x, y };
 }
 
 /**
@@ -466,17 +393,6 @@ export function read8BitDo64CStickHorizontal(gamepad, deadzone = 0.15) {
 	}
 	// Digital C-buttons are card bindings — never map them to camera look.
 	return 0;
-}
-
-/**
- * @param {Gamepad | null | undefined} gamepad
- * @returns {string}
- */
-export function describeGamepadConnectionWithProfile(gamepad, configuredProfile = 'auto') {
-	if (!gamepad) return 'No controller detected';
-	if (is8BitDo64Gamepad(gamepad)) return '8BitDo 64 controller connected';
-	if (is8BitDoGamepad(gamepad)) return '8BitDo controller connected';
-	return 'Controller connected';
 }
 
 /**
