@@ -7708,3 +7708,26 @@ foundation.
 None. The captured run is clean, all acceptance criteria are robustly met, and
 the client tests pass.
 
+
+## v0.426 — 332-anim-ether-scythe  (2026-06-11 00:02:39)
+
+### Scope, performance, and integration
+
+PASS. The implementation is narrowly scoped to `game/client/cardRenderers.js`, renderer tests, and a debug scenario registration. The new visual work composes existing primitives (`spawnAttackEffect`, `spawnParticleBurst`, `spawnImpactDecal`) and is guarded for missing optional helpers or missing enemy meshes, so it should degrade cleanly and not introduce broad rendering or performance risk.
+
+### Client test coverage
+
+PASS. `game/client/test/cardRenderers.test.js` covers the scythe theme, server cone/range sync, fallback behavior, sibling blade isolation, hit-wisp behavior, and graceful degradation. The round coverage log shows the full suite passed: 175 test files and 2489 tests.
+
+### Design and foundation consistency
+
+PASS. The change preserves the design document's active card-combat model and the requirements baseline: the game still starts, renders a 3D scene, connects client/server, shows multiplayer state, and accepts synchronized movement in the captured flow. Ether Scythe remains an earnable weapon reward card and no core combat or progression invariant is weakened.
+
+### Debug scenarios
+
+PASS. The added `harvesting-scythe-combat` debug scenario is registered through the existing debug scenario path and remains gated by the existing local/dev `debugScenario` mechanism. It only creates a QA shortcut to a normally reachable state: a player in a normal run with the earnable `harvesting_scythe` in hand. It does not bypass normal `useCard` validation, server hit resolution, net replication, or the client `cardUsed` renderer path.
+
+## Remaining gaps
+
+None.
+
