@@ -157,3 +157,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [399-cleanup-anim-restoration-beacon](tickets/399-cleanup-anim-restoration-beacon/)
 - [ ] [399-cleanup-anim-thunderbird](tickets/399-cleanup-anim-thunderbird/)
 - [ ] [399-cleanup-anim-legion-marshal](tickets/399-cleanup-anim-legion-marshal/)
+- [ ] [400-cleanup-anim-infinite-disk](tickets/400-cleanup-anim-infinite-disk/)
