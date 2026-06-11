@@ -349,6 +349,7 @@ function isCoastingOnSlippery(layout) {
 
 // ── Damage number tracking ──
 const damageNumbers = []; // { element, createdAt, position3d, duration }
+const _damageNumberProjVec = new THREE.Vector3();
 
 // ── Card hit tracking ──
 export const lastCardHitTime = {}; // enemyId → performance.now() of last card hit (read/pruned by enemySync.js)
@@ -3520,7 +3521,6 @@ export function updateDamageNumbers() {
 	if (!camera || !renderer) return;
 
 	const now = performance.now();
-	const vec = new THREE.Vector3();
 
 	for (let i = damageNumbers.length - 1; i >= 0; i--) {
 		const dn = damageNumbers[i];
@@ -3534,12 +3534,12 @@ export function updateDamageNumbers() {
 
 		// Float upward over time
 		const floatOffset = (elapsed / dn.duration) * 1.5;
-		vec.set(dn.position3d.x, dn.position3d.y + floatOffset, dn.position3d.z);
-		vec.project(camera);
+		_damageNumberProjVec.set(dn.position3d.x, dn.position3d.y + floatOffset, dn.position3d.z);
+		_damageNumberProjVec.project(camera);
 
 		// Convert to screen coordinates
-		const sx = (vec.x * 0.5 + 0.5) * window.innerWidth;
-		const sy = (-vec.y * 0.5 + 0.5) * window.innerHeight;
+		const sx = (_damageNumberProjVec.x * 0.5 + 0.5) * window.innerWidth;
+		const sy = (-_damageNumberProjVec.y * 0.5 + 0.5) * window.innerHeight;
 
 		// Fade out in the last half of the lifetime
 		const opacity = elapsed > dn.duration * 0.5
@@ -3547,7 +3547,7 @@ export function updateDamageNumbers() {
 			: 1.0;
 
 		// Hide if behind camera (vec.z > 1)
-		if (vec.z > 1) {
+		if (_damageNumberProjVec.z > 1) {
 			dn.element.style.display = 'none';
 		} else {
 			dn.element.style.display = 'block';
