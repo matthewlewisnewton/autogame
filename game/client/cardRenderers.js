@@ -967,6 +967,7 @@ function renderUndeadCommander(data, ctx) {
 }
 
 const CHAIN_LIGHTNING_ARC_STYLE = { color: 0x38bdf8, emissive: 0x0ea5e9 };
+const THUNDERBIRD_SUMMON_STYLE = { color: 0x38bdf8, emissive: 0x0ea5e9 };
 const STORM_EAGLE_ARC_STYLE = { color: 0x67e8f9, emissive: 0x22d3ee };
 const ARCANE_FAMILIAR_COLOR = 0x818cf8;
 const ARCANE_FAMILIAR_EMISSIVE = 0x6366f1;
@@ -1138,18 +1139,38 @@ function renderStormEagleStrike(data, ctx) {
 }
 
 /**
- * Thunderbird deploy: vivid sky-blue summon ring distinct from Stormwing Drone.
+ * Thunderbird deploy: vivid sky-blue storm-bird flourish — larger/brighter than
+ * Stormwing Drone with an aerial wing-lift burst and sky pulse on top of the
+ * shared minion summon-in ring.
  */
 function renderThunderbirdSummon(data, ctx) {
 	if (!data.minionId || data.hits?.length) return;
-	if (!ctx.spawnMinionSummonInEffect) return;
-	ctx.spawnMinionSummonInEffect(originOf(data), {
-		color: 0x38bdf8,
-		emissive: 0x0ea5e9,
-		radius: 1.2,
-		burstCount: 14,
-		burstSpread: 1.8,
-	});
+	const origin = originOf(data);
+	if (ctx.spawnMinionSummonInEffect) {
+		ctx.spawnMinionSummonInEffect(origin, {
+			...THUNDERBIRD_SUMMON_STYLE,
+			radius: 1.2,
+			burstCount: 14,
+			burstSpread: 1.8,
+		});
+	}
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, 1.35, {
+			...THUNDERBIRD_SUMMON_STYLE,
+			duration: MINION_SUMMON_IN_MS,
+		});
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(
+			{ x: origin.x, y: 3.5, z: origin.z },
+			{
+				...THUNDERBIRD_SUMMON_STYLE,
+				count: 16,
+				spread: 2.2,
+				duration: MINION_SUMMON_IN_MS,
+			},
+		);
+	}
 }
 
 const WYRM_SUMMON_STYLES = {

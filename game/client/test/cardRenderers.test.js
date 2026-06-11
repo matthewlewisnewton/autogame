@@ -2578,7 +2578,29 @@ describe('renderCardUsed() — creature dispatch', () => {
 		}, ctx);
 		const flourishes = ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect');
 		expect(flourishes).toHaveLength(1);
-		expect(flourishes[0][2]).toMatchObject({ color: 0x38bdf8, emissive: 0x0ea5e9, radius: 1.2 });
+		expect(flourishes[0][1]).toEqual({ x: 1, z: 2 });
+		expect(flourishes[0][2]).toMatchObject({
+			color: 0x38bdf8,
+			emissive: 0x0ea5e9,
+			radius: 1.2,
+			burstCount: 14,
+		});
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(true);
+		const wingBursts = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst');
+		expect(wingBursts).toHaveLength(1);
+		expect(wingBursts[0][1]).toMatchObject({ x: 1, y: 3.5, z: 2 });
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
+	it('thunderbird summon early-returns on attack payloads with hits', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'thunderbird',
+			minionId: 'bird-1',
+			origin: { x: 0, z: 0 },
+			hits: [{ enemyId: 'e1', hp: 30 }],
+		}, ctx);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect')).toHaveLength(0);
 	});
 
 	it('thunderbird (chain_lightning) renders zap + enemy-hit cue + follow-up attack', () => {
