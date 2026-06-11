@@ -1642,6 +1642,9 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(graceHelpers).toContain('spawnDivineGraceEffect');
 		expect(pulseHelpers).not.toContain('spawnDivineGraceEffect');
 		expect(graceHelpers).not.toContain('spawnPurifyingPulseHealRing');
+		// Purifying pulse pulses outward via >=2 heal waves plus a distinct rise.
+		expect(pulseHelpers.filter((h) => h === 'spawnPurifyingPulseHealRing').length).toBeGreaterThanOrEqual(2);
+		expect(pulseHelpers).toContain('spawnCleanseBurstEffect');
 		// Gold particle palette is unique to divine_grace (purifying_pulse never bursts gold).
 		const graceBurst = graceCtx._calls.find((c) => c[0] === 'spawnParticleBurst');
 		expect(graceBurst).toBeDefined();
@@ -1673,30 +1676,96 @@ describe('renderCardUsed() — spell dispatch', () => {
 		timeoutSpy.mockRestore();
 	});
 
-	it('purifying_pulse renders heal ring and cleanse burst with heal sound', () => {
-		const ctx = makeCtx();
+	it('purifying_pulse pulses outward via >=2 staggered heal waves plus a cleanse rise', () => {
+		// setTimeout is spied to prove the multi-wave sequence is synchronous — the
+		// server resolves heal_and_cleanse instantly, so no timer-based travel delay.
+		const timeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+		const ctx = makeCtx({ myId: 'me' });
 		renderCardUsed({
 			cardId: 'purifying_pulse',
 			origin: { x: 2, z: 3 },
 			radius: 5.5,
+			playerId: 'me',
 			specialEffect: 'heal_and_cleanse',
 			hits: [],
 		}, ctx);
-		const healRing = ctx._calls.find((c) => c[0] === 'spawnPurifyingPulseHealRing');
+		const healRings = ctx._calls.filter((c) => c[0] === 'spawnPurifyingPulseHealRing');
+		// At least two concentric waves so the effect visibly pulses outward.
+		expect(healRings.length).toBeGreaterThanOrEqual(2);
+		// Every wave fires at the cast origin and expands to the card radius; the
+		// waves are staggered (distinct, increasing wave indices), not identical.
+		for (const ring of healRings) {
+			expect(ring[1]).toEqual({ x: 2, z: 3 });
+			expect(ring[2]).toBe(5.5);
+		}
+		const waveIndices = healRings.map((c) => c[3]?.wave);
+		expect(new Set(waveIndices).size).toBe(healRings.length);
+		expect(Math.max(...waveIndices)).toBe(healRings.length - 1);
+		// Distinct upward cleanse rise, separate from the ground rings.
 		const cleanse = ctx._calls.find((c) => c[0] === 'spawnCleanseBurstEffect');
-		expect(healRing).toBeDefined();
-		expect(healRing[1]).toEqual({ x: 2, z: 3 });
-		expect(healRing[2]).toBe(5.5);
 		expect(cleanse).toBeDefined();
 		expect(cleanse[1]).toEqual({ x: 2, z: 3 });
+		// Heal cue plays for the caster, all synchronously (no setTimeout).
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(true);
+		expect(timeoutSpy).not.toHaveBeenCalled();
+		timeoutSpy.mockRestore();
 	});
 
-	it('purifying_pulse skips VFX when radius is absent', () => {
-		const ctx = makeCtx();
+	it('purifying_pulse never emits Divine Grace gold', () => {
+		const ctx = makeCtx({ myId: 'me' });
 		renderCardUsed({
 			cardId: 'purifying_pulse',
 			origin: { x: 0, z: 0 },
+			radius: 4,
+			playerId: 'me',
+			hits: [],
+		}, ctx);
+		// The purifying renderer never reaches for Divine Grace's sanctum effect or
+		// its gold particle palette.
+		expect(ctx._calls.some((c) => c[0] === 'spawnDivineGraceEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst' && (c[2]?.color === 0xfde68a || c[2]?.emissive === 0xfbbf24))).toBe(false);
+	});
+
+	it('purifying_pulse heal cue is local-only: caster or a healed target, not a spectator', () => {
+		// Caster hears it.
+		const casterCtx = makeCtx({ myId: 'me' });
+		renderCardUsed({
+			cardId: 'purifying_pulse', origin: { x: 0, z: 0 }, radius: 4,
+			playerId: 'me', hits: [],
+		}, casterCtx);
+		expect(casterCtx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(true);
+
+		// A healed (but non-casting) target hears it.
+		const healedCtx = makeCtx({ myId: 'me' });
+		renderCardUsed({
+			cardId: 'purifying_pulse', origin: { x: 0, z: 0 }, radius: 4,
+			playerId: 'someone-else',
+			healedTargets: [{ playerId: 'me', hpGained: 6, cleansed: true }],
+			hits: [],
+		}, healedCtx);
+		expect(healedCtx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(true);
+
+		// A pure spectator (not caster, not in healedTargets) does NOT hear it, but
+		// the VFX still play for them.
+		const spectatorCtx = makeCtx({ myId: 'me' });
+		renderCardUsed({
+			cardId: 'purifying_pulse', origin: { x: 0, z: 0 }, radius: 4,
+			playerId: 'someone-else',
+			healedTargets: [{ playerId: 'other', hpGained: 6, cleansed: true }],
+			hits: [],
+		}, spectatorCtx);
+		expect(spectatorCtx._calls.some((c) => c[0] === 'spawnPurifyingPulseHealRing')).toBe(true);
+		expect(spectatorCtx._calls.some((c) => c[0] === 'spawnCleanseBurstEffect')).toBe(true);
+		expect(spectatorCtx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
+	});
+
+	it('purifying_pulse skips VFX and sound when radius is absent', () => {
+		const ctx = makeCtx({ myId: 'me' });
+		renderCardUsed({
+			cardId: 'purifying_pulse',
+			origin: { x: 0, z: 0 },
+			playerId: 'me',
+			healedTargets: [{ playerId: 'me', hpGained: 6, cleansed: true }],
 			hits: [],
 		}, ctx);
 		expect(ctx._calls.some((c) => c[0] === 'spawnPurifyingPulseHealRing')).toBe(false);

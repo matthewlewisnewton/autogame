@@ -4751,18 +4751,31 @@ export function spawnTelepipeCastEffect(origin, radius, style = {}) {
 
 const PURIFYING_HEAL_COLOR = 0x6ee7b7;
 const PURIFYING_HEAL_EMISSIVE = 0x34d399;
+const PURIFYING_HEAL_WAVE_COUNT = 3; // concentric heal waves emitted per cast
+const PURIFYING_HEAL_WAVE_STAGGER_MS = 130; // fixed offset between successive waves
 const CLEANSE_BURST_COLOR = 0xffffff;
 const CLEANSE_BURST_EMISSIVE = 0x5eead4;
 const CLEANSE_BURST_SPARK_COUNT = 10;
 const CLEANSE_BURST_SPARK_SPREAD = 1.2;
 const CLEANSE_BURST_SPARK_DURATION = 450;
+const CLEANSE_RISE_COLOR = 0xffffff; // white core of the purifying rise
+const CLEANSE_RISE_EMISSIVE = 0x6ee7b7; // mint glow (white→mint, never gold)
+const CLEANSE_RISE_OPACITY = 0.6;
 
 /**
- * Mint-green expanding heal ring for Purifying Pulse (distinct from Divine Grace gold).
+ * One mint-green expanding heal ring for Purifying Pulse (distinct from Divine
+ * Grace gold). Rides the shared radius-AoE expand→fade lifecycle in
+ * updateAttackEffects. Pass `options.wave` (0-based) to stagger this ring after
+ * earlier waves: the delay is baked into the effect's `createdAt` so the wave
+ * sequence plays out without any `setTimeout` or extra animation loop, and each
+ * wave still expands out to the full `radius`.
  * @param {object} origin - { x, z }
  * @param {number} radius
+ * @param {object} [options] - { wave, waveCount, staggerMs }
  */
-export function spawnPurifyingPulseHealRing(origin, radius) {
+export function spawnPurifyingPulseHealRing(origin, radius, options = {}) {
+	const wave = options.wave ?? 0;
+	const staggerMs = options.staggerMs ?? PURIFYING_HEAL_WAVE_STAGGER_MS;
 	const geometry = new THREE.RingGeometry(0.1, 0.5, 32);
 	const material = new THREE.MeshStandardMaterial({
 		color: PURIFYING_HEAL_COLOR,
@@ -4784,19 +4797,53 @@ export function spawnPurifyingPulseHealRing(origin, radius) {
 		mesh,
 		origin: { x: origin.x, z: origin.z },
 		radius,
-		createdAt: performance.now(),
+		// Push later waves' start into the future. The radius-AoE branch holds the
+		// ring at ~zero scale until its createdAt arrives, so waves expand in
+		// sequence (a visible outward pulse) with no timer and a bounded lifetime.
+		createdAt: performance.now() + wave * staggerMs,
 		duration: SUMMON_EFFECT_DURATION,
 	});
 }
 
 /**
- * Brief white/teal upward sparkle burst for the cleanse half of Purifying Pulse.
+ * Upward white→mint "purifying rise" for Purifying Pulse: an ascending cleanse
+ * column (corruption lifted away) plus a few white/teal sparkle motes lifting
+ * off it. The column rides the shared `isLightColumn` lifecycle (same shaft
+ * primitive Sanctum Pulse and the telepipe use) but in the purifying mint/white
+ * palette — never gold. Distinct from, and separate from, the flat ground rings.
  * @param {object} origin - { x, z }
  */
 export function spawnCleanseBurstEffect(origin) {
 	if (!origin) return;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	// Ascending cleanse column. Geometry height matches the shared column height
+	// so updateAttackEffects' base-pinning keeps the shaft rooted as it grows.
+	const columnGeo = new THREE.CylinderGeometry(0.18, 0.4, DIVINE_GRACE_COLUMN_HEIGHT, 16, 1, true);
+	const columnMat = new THREE.MeshStandardMaterial({
+		color: CLEANSE_RISE_COLOR,
+		emissive: CLEANSE_RISE_EMISSIVE,
+		emissiveIntensity: 1.3,
+		transparent: true,
+		opacity: CLEANSE_RISE_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const columnMesh = new THREE.Mesh(columnGeo, columnMat);
+	columnMesh.scale.y = 0.001;
+	columnMesh.position.set(origin.x, DIVINE_GRACE_COLUMN_BASE_Y, origin.z);
+	if (targetScene) targetScene.add(columnMesh);
+	activeEffects.push({
+		mesh: columnMesh,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration: SUMMON_EFFECT_DURATION,
+		isLightColumn: true,
+		_scene: targetScene,
+	});
+
+	// White/teal sparkle motes rising with the column.
 	spawnHitSpark(
-		{ x: origin.x, y: 0.35, z: origin.z },
+		{ x: origin.x, y: 0.5, z: origin.z },
 		{
 			color: CLEANSE_BURST_COLOR,
 			emissive: CLEANSE_BURST_EMISSIVE,
@@ -4808,12 +4855,15 @@ export function spawnCleanseBurstEffect(origin) {
 }
 
 /**
- * Purifying Pulse: mint heal ring plus a white/teal cleanse sparkle burst.
+ * Purifying Pulse: staggered concentric mint heal waves that pulse outward to
+ * `radius` plus an upward white→mint cleanse rise.
  * @param {object} origin - { x, z }
  * @param {number} radius
  */
 export function spawnPurifyingPulseEffect(origin, radius) {
-	spawnPurifyingPulseHealRing(origin, radius);
+	for (let wave = 0; wave < PURIFYING_HEAL_WAVE_COUNT; wave += 1) {
+		spawnPurifyingPulseHealRing(origin, radius, { wave, waveCount: PURIFYING_HEAL_WAVE_COUNT });
+	}
 	spawnCleanseBurstEffect(origin);
 }
 

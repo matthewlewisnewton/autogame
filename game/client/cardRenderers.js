@@ -16,8 +16,8 @@
 //   spawnMinionSummonInEffect(origin, style?) — creature minion summon flourish
 //   spawnDivineGraceEffect(origin, radius)
 //   spawnEventHorizonEffect(origin, pullRadius, centerRadius, style?)
-//   spawnPurifyingPulseHealRing(origin, radius)
-//   spawnCleanseBurstEffect(origin)
+//   spawnPurifyingPulseHealRing(origin, radius, options?) — options: { wave, waveCount } stagger one concentric heal wave
+//   spawnCleanseBurstEffect(origin) — upward white→mint cleanse rise (column + sparkle)
 //   spawnPurifyingPulseEffect(origin, radius)
 //   spawnInfernoPillarEffect(origin, radius, style?) — style: { color, emissive, dotTicks, dotIntervalMs, duration }
 //   spawnEtherSiphonEffect(origin, radius, style?) — style: { color, emissive, duration }
@@ -704,15 +704,38 @@ function renderDivineGrace(data, ctx) {
 	if (data.hpGained > 0 && data.playerId === ctx.myId) ctx.playSound('heal');
 }
 
+const PURIFYING_PULSE_WAVE_COUNT = 3;
+
 /**
- * Purifying Pulse: mint AoE heal ring plus a white/teal cleanse sparkle burst.
+ * Purifying Pulse: a cleansing wave that visibly *pulses* outward — several
+ * staggered concentric mint heal rings, each expanding to the card's `radius`
+ * — plus an upward white→mint *purifying rise* (corruption lifted away). The
+ * server resolves `heal_and_cleanse` instantly (one `cardUsed`, no travel
+ * phase), so every primitive fires synchronously within this call: the rings
+ * are sequenced by a per-wave delay baked into each effect's `createdAt`
+ * (inside `spawnPurifyingPulseHealRing`), never via `setTimeout`/`scheduleAfter`.
  */
 function renderPurifyingPulse(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
-	ctx.spawnPurifyingPulseHealRing(origin, data.radius);
+	// Staggered concentric heal waves so the cleanse pulses outward to `radius`.
+	for (let wave = 0; wave < PURIFYING_PULSE_WAVE_COUNT; wave += 1) {
+		ctx.spawnPurifyingPulseHealRing(origin, data.radius, {
+			wave,
+			waveCount: PURIFYING_PULSE_WAVE_COUNT,
+		});
+	}
+	// Distinct upward cleanse rise (white→mint column + sparkle), separate from
+	// the flat ground rings.
 	ctx.spawnCleanseBurstEffect(origin);
-	ctx.playSound('heal');
+	// Heal cue is local-only: the caster or anyone actually healed hears it; a
+	// pure spectator does not.
+	if (
+		data.playerId === ctx.myId ||
+		data.healedTargets?.some((t) => t.playerId === ctx.myId)
+	) {
+		ctx.playSound('heal');
+	}
 }
 
 const GRAVITY_WELL_COLOR = 0xc084fc;
