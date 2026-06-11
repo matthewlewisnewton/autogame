@@ -7685,3 +7685,26 @@ foundation.
 None. The captured run is clean, all acceptance criteria are robustly met, and
 the client tests pass.
 
+
+## v0.424 — 333-anim-reaper-s-scythe  (2026-06-10 23:50:22)
+
+
+### Timing and server-effect sync
+PASS. The primary sweep fires synchronously on `CARD_USED`, uses `data.attackConeAngle ?? Math.PI` and `data.attackRange ?? ATTACK_RANGE`, and does not call `scheduleAfter` for the primary swing, tethers, or reward flourish. This matches the server-side Reaper's Scythe contract: no positive `windUpMs`, instant cone resolution, kill rewards emitted in the same `CARD_USED` payload as `hpHealed` and `currencyGained`.
+
+### Reap kill-reward visuals
+PASS. Killing hits with live enemy meshes spawn guarded soul tethers back to the cast origin, missing meshes are skipped without throwing, and the harvest flourish is gated on actual positive `currencyGained` or `hpHealed` rather than `specialEffect` alone. Non-killing swings retain only the sweep stack.
+
+### Debug scenarios
+PASS. The added `reapers-scythe-ready` scenario is registered as a debug scenario and the client entry point remains the localhost-only `?debugScenario=...` flow. The scenario only shortcuts setup for QA by placing the evolved card and target enemies after entering a standard playing debug state; the same end-state remains reachable through normal gameplay by evolving `harvesting_scythe` into `reapers_scythe` and deploying with it.
+
+### Design and foundation consistency
+PASS. The implementation stays within the card-animation layer and small debug/test plumbing, preserving the core server-client loop, multiplayer state, movement, and combat foundations described in the design and requirements docs. It uses the existing shared VFX/context primitives rather than adding renderer branches or new gameplay effects.
+
+### Tests and coverage
+PASS with residual unrelated validation noise. `coverage.log` shows the focused client renderer suite passing (`client/test/cardRenderers.test.js`, 229 tests) and the VFX primitives suite passing. The full coverage run has one server failure in `server/test/key-items.test.js` for `flare_beacon` `revealedUntil`; this ticket did not touch key-item code, state snapshots, or that test path, so I do not consider it a Reaper's Scythe blocking gap.
+
+## Remaining gaps
+
+None.
+
