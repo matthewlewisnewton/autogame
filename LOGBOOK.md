@@ -8294,3 +8294,26 @@ comments still reference the removed `isLightColumn`/`isThermalColumn`/etc.
 
 None. All acceptance criteria are satisfied; runtime capture and tests confirm the fix.
 
+
+## v0.453 — run-end: simulation keeps running under 'Sortie Complete' overlay; summary money diverges from wallet  (2026-06-11 07:31:35)
+
+## Design / regression check
+
+Consistent with the run-end / Sortie Complete flow; no foundation regression.
+Full server suite green (438 passed, 0 failed) including movement, key-item,
+loot, and run-terminal integration tests. The four ticket-specific suites pass:
+`run_terminal_input.test.js`, `renderer-run-summary-input.test.js`,
+`run-summary-input-lock.test.js` (11/11). The `Failed to parse URL
+/models/player.glb` line in the client run is benign jsdom asset-fetch noise.
+
+## Code quality
+
+Changes are small, well-commented, and symmetric across client/server. The
+`isActiveRun` helper correctly returns `true` for the no-run (lobby) case so it
+doesn't accidentally freeze lobby movement. No dead code, no console errors.
+
+## Remaining gaps
+
+None. The acceptance criterion is fully and robustly satisfied, the game runs
+cleanly, and the change is well-tested.
+
