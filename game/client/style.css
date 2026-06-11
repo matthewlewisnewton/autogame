@@ -1623,9 +1623,6 @@ body[data-phase="lobby"] #lobby-hud {
 }
 
 #quest-comms-log.quest-comms-log {
-  position: absolute;
-  top: 92px;
-  right: 16px;
   width: min(300px, calc(100vw - 32px));
   max-height: 180px;
   overflow-y: auto;
@@ -1637,7 +1634,6 @@ body[data-phase="lobby"] #lobby-hud {
   background: rgba(15, 23, 42, 0.72);
   border: 1px solid rgba(56, 189, 248, 0.25);
   pointer-events: none;
-  z-index: 11;
   font-size: 12px;
   line-height: 1.35;
   color: #cbd5e1;
@@ -1745,9 +1741,6 @@ body[data-phase="lobby"] #quest-comms-log {
 /* ── Lock-on info panel ── */
 
 #lock-on-info-panel {
-  position: absolute;
-  top: 44px;
-  right: -8px;
   width: min(240px, calc(100vw - 32px));
   padding: 8px 12px;
   background: rgba(15, 23, 42, 0.78);
@@ -1755,7 +1748,6 @@ body[data-phase="lobby"] #quest-comms-log {
   border-radius: 6px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
   pointer-events: none;
-  z-index: 11;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -2174,7 +2166,7 @@ body[data-phase="lobby"] #objective-hud {
   text-align: center;
 }
 
-/* ── Top-right HUD column (key-item badge; lock-on/comms in sub-ticket 02) ── */
+/* ── Top-right HUD column (key-item badge, lock-on panel, quest comms log) ── */
 
 #top-right-hud-stack {
   position: fixed;
