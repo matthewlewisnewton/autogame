@@ -25,6 +25,7 @@
 //   spawnProjectileTrail(origin, direction, style?) — fading streak along a path
 //   spawnImpactDecal(origin, style?)           — lingering ground flash/decal ring
 //   spawnTelegraphRing(origin, radius, style?) — expanding/pulsing AoE telegraph ring
+//   spawnTelepipeCastEffect(origin, radius, style?) — telepipe portal-opening cast flourish
 //   spawnMirrorWardShellEffect(origin, radius, style?) — lingering mirror ward shell
 //   spawnMirrorWardReflectBurst(origin, direction, style?) — mirror reflect impact VFX
 //   flashMesh(mesh, color, durationMs)
@@ -1367,11 +1368,37 @@ function renderMirrorWard(data, ctx) {
 	}
 }
 
+const TELEPIPE_COLOR = 0x67e8f9;
+const TELEPIPE_EMISSIVE = 0x22d3ee;
+
 /**
- * Telepipe portal placement: blue field ring marking the shared evac point.
+ * Telepipe portal placement: evacuation portal flourish at the caster's feet.
+ * Fires synchronously on CARD_USED — no wind-up telegraph or deferred scheduling.
  */
 function renderTelepipe(data, ctx) {
-	ctx.spawnSummonEffect(originOf(data), data.radius || 2.5, { color: 0x22d3ee, emissive: 0x67e8f9 });
+	if (!data.origin) return;
+
+	const origin = originOf(data);
+	const radius = data.radius ?? 2.5;
+	const color = getAccentHex(data.cardId) ?? TELEPIPE_COLOR;
+	const emissive = TELEPIPE_EMISSIVE;
+
+	if (ctx.spawnTelepipeCastEffect) {
+		ctx.spawnTelepipeCastEffect(origin, radius, { color, emissive });
+	}
+	if (ctx.spawnTelegraphRing) {
+		ctx.spawnTelegraphRing(origin, radius, {
+			duration: SUMMON_EFFECT_DURATION,
+			color,
+			emissive,
+		});
+	}
+	if (ctx.spawnParticleBurst) {
+		ctx.spawnParticleBurst(
+			{ x: origin.x, y: 1.0, z: origin.z },
+			{ color, emissive, count: 10, spread: 1.6 },
+		);
+	}
 }
 
 /**
