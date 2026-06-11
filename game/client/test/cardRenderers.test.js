@@ -39,6 +39,7 @@ function makeCtx(overrides = {}) {
 		dismissMirrorWardShellEffect: record('dismissMirrorWardShellEffect'),
 		spawnMirrorWardReflectBurst: record('spawnMirrorWardReflectBurst'),
 		spawnMinionSummonInEffect: record('spawnMinionSummonInEffect'),
+		spawnLegionMarshalRallyEffect: record('spawnLegionMarshalRallyEffect'),
 		flashMesh: record('flashMesh'),
 		spawnHitSpark: record('spawnHitSpark'),
 		enemyMeshes: () => ({}),
@@ -2613,6 +2614,7 @@ describe('renderCardUsed() — creature dispatch', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'undead_commander',
+			minionId: 'commander-1',
 			origin: { x: 0, z: 0 },
 			summonedMinions: [
 				{ x: 1, z: 0 },
@@ -2620,19 +2622,34 @@ describe('renderCardUsed() — creature dispatch', () => {
 			],
 			hits: [],
 		}, ctx);
-		const casterRing = ctx._calls.filter((c) => c[0] === 'spawnSummonEffect');
-		expect(casterRing).toHaveLength(1);
-		expect(casterRing[0][2]).toBe(2);
-		expect(casterRing[0][3]).toMatchObject({ color: 0xe4e4e7, emissive: 0xa855f7 });
-		const skeletonFlourishes = ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect');
-		expect(skeletonFlourishes).toHaveLength(2);
-		expect(skeletonFlourishes[0][1]).toEqual({ x: 1, z: 0 });
-		expect(skeletonFlourishes[1][1]).toEqual({ x: 0, z: 1 });
-		expect(skeletonFlourishes[0][2]).toMatchObject({
+		const rally = ctx._calls.filter((c) => c[0] === 'spawnLegionMarshalRallyEffect');
+		expect(rally).toHaveLength(1);
+		expect(rally[0][1]).toEqual({ x: 0, z: 0 });
+		expect(rally[0][2]).toBe(2);
+		expect(rally[0][3]).toMatchObject({ color: 0xe4e4e7, emissive: 0xa855f7 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnProjectileTrail')).toBe(false);
+		const flourishes = ctx._calls.filter((c) => c[0] === 'spawnMinionSummonInEffect');
+		expect(flourishes).toHaveLength(3);
+		expect(flourishes[0][1]).toEqual({ x: 0, z: 0 });
+		expect(flourishes[0][2]).toMatchObject({
+			color: 0xe4e4e7,
+			emissive: 0xa855f7,
+			radius: 1.6,
+		});
+		expect(flourishes[1][1]).toEqual({ x: 1, z: 0 });
+		expect(flourishes[2][1]).toEqual({ x: 0, z: 1 });
+		expect(flourishes[1][2]).toMatchObject({
 			color: 0xe4e4e7,
 			emissive: 0xa855f7,
 			radius: 0.85,
 		});
+		const tethers = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
+		expect(tethers).toHaveLength(2);
+		expect(tethers[0][1]).toEqual({ x: 0, z: 0 });
+		expect(tethers[0][2]).toEqual({ x: 1, z: 0 });
+		expect(tethers[1][2]).toEqual({ x: 0, z: 1 });
 		const groundBursts = ctx._calls.filter(
 			(c) => c[0] === 'spawnParticleBurst' && c[1].y === 0.35,
 		);

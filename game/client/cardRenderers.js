@@ -13,6 +13,7 @@
 // ctx interface (provided by main.js):
 //   spawnAttackEffect(origin, direction, style?)
 //   spawnSummonEffect(origin, radius, styleOrColor?)
+//   spawnLegionMarshalRallyEffect(origin, radius, style?) — undead commander rally ring + column
 //   spawnMinionSummonInEffect(origin, style?) — creature minion summon flourish
 //   spawnDivineGraceEffect(origin, radius)
 //   spawnEventHorizonEffect(origin, pullRadius, centerRadius, style?)
@@ -50,6 +51,7 @@ const NULL_CRAWLER_SUMMON_COLOR = 0x22d3ee;
 const NULL_CRAWLER_SUMMON_EMISSIVE = 0x67e8f9;
 const UNDEAD_COMMANDER_COLOR = 0xe4e4e7;
 const UNDEAD_COMMANDER_EMISSIVE = 0xa855f7;
+const LEGION_MARSHAL_TETHER_STYLE = { color: UNDEAD_COMMANDER_COLOR, emissive: UNDEAD_COMMANDER_EMISSIVE };
 
 // ── Accent helpers ──────────────────────────────────────────────────────
 
@@ -933,12 +935,21 @@ function renderCreatureSummon(data, ctx) {
 }
 
 /**
- * Undead Commander: bone-white/purple caster ring plus a smaller summon-in
- * flourish and rising ground burst for each spawned skeleton minion.
+ * Undead Commander: rally ring at cast origin, commander summon-in flourish,
+ * and per-skeleton summon-in + ground burst + necrotic tether arcs.
  */
 function renderUndeadCommander(data, ctx) {
+	const commanderOrigin = originOf(data);
 	const commanderStyle = { color: UNDEAD_COMMANDER_COLOR, emissive: UNDEAD_COMMANDER_EMISSIVE };
-	ctx.spawnSummonEffect(originOf(data), 2, commanderStyle);
+	if (ctx.spawnLegionMarshalRallyEffect) {
+		ctx.spawnLegionMarshalRallyEffect(commanderOrigin, 2, commanderStyle);
+	}
+	if (data.minionId && ctx.spawnMinionSummonInEffect) {
+		ctx.spawnMinionSummonInEffect(commanderOrigin, {
+			...commanderStyle,
+			radius: 1.6,
+		});
+	}
 	const skeletonStyle = {
 		color: UNDEAD_COMMANDER_COLOR,
 		emissive: UNDEAD_COMMANDER_EMISSIVE,
@@ -947,15 +958,13 @@ function renderUndeadCommander(data, ctx) {
 		burstSpread: 1.4,
 	};
 	for (const spawn of (data.summonedMinions || [])) {
-		const origin = { x: spawn.x, z: spawn.z };
+		const skeletonOrigin = { x: spawn.x, z: spawn.z };
 		if (ctx.spawnMinionSummonInEffect) {
-			ctx.spawnMinionSummonInEffect(origin, skeletonStyle);
-		} else {
-			ctx.spawnSummonEffect(origin, 1.0, commanderStyle);
+			ctx.spawnMinionSummonInEffect(skeletonOrigin, skeletonStyle);
 		}
 		if (ctx.spawnParticleBurst) {
 			ctx.spawnParticleBurst(
-				{ x: origin.x, y: 0.35, z: origin.z },
+				{ x: skeletonOrigin.x, y: 0.35, z: skeletonOrigin.z },
 				{
 					color: UNDEAD_COMMANDER_COLOR,
 					emissive: UNDEAD_COMMANDER_EMISSIVE,
@@ -963,6 +972,9 @@ function renderUndeadCommander(data, ctx) {
 					spread: 1.2,
 				},
 			);
+		}
+		if (ctx.spawnLightningArc) {
+			ctx.spawnLightningArc(commanderOrigin, skeletonOrigin, LEGION_MARSHAL_TETHER_STYLE);
 		}
 	}
 }
