@@ -169,6 +169,7 @@ import {
 	spawnProjectileTrail as rendererSpawnProjectileTrail,
 	spawnImpactDecal as rendererSpawnImpactDecal,
 	spawnTelegraphRing as rendererSpawnTelegraphRing,
+	spawnSolarEdgeImpactFlourish as rendererSpawnSolarEdgeImpactFlourish,
 	spawnChronoTriggerEffect as rendererSpawnChronoTriggerEffect,
 	spawnTelepipeCastEffect as rendererSpawnTelepipeCastEffect,
 	spawnMirrorWardShellEffect as rendererSpawnMirrorWardShellEffect,
@@ -277,7 +278,8 @@ const attackHintEl = document.getElementById('attack-hint');
 
 /** Write the device-aware attack/cast hint text, overriding the static HTML. */
 function applyAttackHintText() {
-	if (attackHintEl) attackHintEl.textContent = getAttackCastHint().text;
+	const equippedKeyItemId = gameState?.players?.[myId]?.equippedKeyItemId ?? null;
+	if (attackHintEl) attackHintEl.textContent = getAttackCastHint(equippedKeyItemId).text;
 }
 
 // How long the fade-out runs before the hint is fully `display:none` (kept in
@@ -1431,6 +1433,7 @@ const socketHandlerCtx = createSocketHandlerCtx({
 	spawnProjectileTrail: rendererSpawnProjectileTrail,
 	spawnImpactDecal: rendererSpawnImpactDecal,
 	spawnTelegraphRing: rendererSpawnTelegraphRing,
+	spawnSolarEdgeImpactFlourish: rendererSpawnSolarEdgeImpactFlourish,
 	spawnChronoTriggerEffect: rendererSpawnChronoTriggerEffect,
 	spawnTelepipeCastEffect: rendererSpawnTelepipeCastEffect,
 	spawnMirrorWardShellEffect: rendererSpawnMirrorWardShellEffect,

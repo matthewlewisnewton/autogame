@@ -173,6 +173,7 @@ export function createSocketHandlerCtx(deps) {
 		spawnProjectileTrail: deps.spawnProjectileTrail,
 		spawnImpactDecal: deps.spawnImpactDecal,
 		spawnTelegraphRing: deps.spawnTelegraphRing,
+		spawnSolarEdgeImpactFlourish: deps.spawnSolarEdgeImpactFlourish,
 		spawnChronoTriggerEffect: deps.spawnChronoTriggerEffect,
 		spawnMirrorWardShellEffect: deps.spawnMirrorWardShellEffect,
 		dismissMirrorWardShellEffect: deps.dismissMirrorWardShellEffect,

@@ -4486,7 +4486,10 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 			returnPasses: style.returnPasses
 				?? (effect === 'triple_returning_projectile' ? 3 : 1),
 			createdAt: performance.now(),
-			duration: ATTACK_EFFECT_DURATION,
+			// Default to the standard travel window, but honor a caller-supplied
+			// short `travelMs`/`duration` so a hitscan-style beam (Phase Stalker's
+			// phase_beam) can resolve near-instantly to match the server hit.
+			duration: style.travelMs ?? style.duration ?? ATTACK_EFFECT_DURATION,
 		});
 		return;
 	}
@@ -5970,6 +5973,121 @@ export function spawnGlacierRuptureEffect(origin, radius, style = {}) {
 	spawnGlacierRuptureShards(origin, radius, style);
 }
 
+// Solar Edge impact palette — radiant gold-white core with orange corona.
+export const SOLAR_EDGE_CORE_COLOR = 0xfef08a;
+export const SOLAR_EDGE_CORE_EMISSIVE = 0xfbbf24;
+export const SOLAR_EDGE_CORONA_COLOR = 0xff7a18;
+export const SOLAR_EDGE_CORONA_EMISSIVE = 0xff3b00;
+const SOLAR_EDGE_DEFAULT_RING_RADIUS = 2.0;
+const SOLAR_EDGE_EMBER_COUNT = 12;
+const SOLAR_EDGE_EMBER_SPREAD = 1.15;
+
+function pointAlongXZ(origin, direction, distance) {
+	const len = Math.hypot(direction.x, direction.z) || 1;
+	return {
+		x: origin.x + (direction.x / len) * distance,
+		z: origin.z + (direction.z / len) * distance,
+	};
+}
+
+/**
+ * Solar Edge strike flourish: gold-white solar disc burst, expanding orange
+ * corona ring, and a short scatter of solar embers at the blade impact point.
+ * Pure additive VFX; no network traffic or state beyond activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {object} direction - { x, z }
+ * @param {object} [style]
+ */
+export function spawnSolarEdgeImpactFlourish(origin, direction, style = {}) {
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const dir = direction || { x: 1, z: 0 };
+	const range = style.range ?? ATTACK_RANGE;
+	const impact = pointAlongXZ(origin, dir, range);
+	const duration = style.duration ?? ATTACK_EFFECT_DURATION;
+	const ringRadius = style.ringRadius ?? SOLAR_EDGE_DEFAULT_RING_RADIUS;
+	const coreColor = style.color ?? SOLAR_EDGE_CORE_COLOR;
+	const coreEmissive = style.emissive ?? SOLAR_EDGE_CORE_EMISSIVE;
+	const coronaColor = style.coronaColor ?? SOLAR_EDGE_CORONA_COLOR;
+	const coronaEmissive = style.coronaEmissive ?? SOLAR_EDGE_CORONA_EMISSIVE;
+	const emberCount = style.count ?? SOLAR_EDGE_EMBER_COUNT;
+
+	const group = new THREE.Group();
+	group.position.set(impact.x, 0, impact.z);
+
+	const discGeometry = new THREE.CircleGeometry(0.42, 28);
+	const discMaterial = new THREE.MeshStandardMaterial({
+		color: coreColor,
+		emissive: coreEmissive,
+		emissiveIntensity: 1.5,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const discMesh = new THREE.Mesh(discGeometry, discMaterial);
+	discMesh.position.y = GROUND_OVERLAY_Y + 0.1;
+	discMesh.rotation.x = -Math.PI / 2;
+	discMesh.scale.setScalar(0.001);
+	discMesh.userData.isSolarEdgeDisc = true;
+	group.add(discMesh);
+
+	const coronaGeometry = new THREE.RingGeometry(0.18, 0.36, 40);
+	const coronaMaterial = new THREE.MeshStandardMaterial({
+		color: coronaColor,
+		emissive: coronaEmissive,
+		emissiveIntensity: 1.35,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const coronaMesh = new THREE.Mesh(coronaGeometry, coronaMaterial);
+	coronaMesh.position.y = GROUND_OVERLAY_Y + 0.08;
+	coronaMesh.rotation.x = -Math.PI / 2;
+	coronaMesh.scale.setScalar(0.001);
+	coronaMesh.userData.isSolarEdgeCorona = true;
+	group.add(coronaMesh);
+
+	for (let i = 0; i < emberCount; i += 1) {
+		const geometry = new THREE.IcosahedronGeometry
+			? new THREE.IcosahedronGeometry(0.07, 0)
+			: new THREE.SphereGeometry(0.07, 6, 6);
+		const material = new THREE.MeshStandardMaterial({
+			color: coreColor,
+			emissive: coronaEmissive,
+			emissiveIntensity: 1.4,
+			transparent: true,
+			opacity: 1.0,
+		});
+		const ember = new THREE.Mesh(geometry, material);
+		const angle = (i / emberCount) * Math.PI * 2 + Math.random() * 0.4;
+		const elevation = 0.25 + Math.random() * 0.55;
+		const speed = SOLAR_EDGE_EMBER_SPREAD * (0.45 + Math.random() * 0.55);
+		ember.userData.isSolarEdgeEmber = true;
+		ember.userData.velocity = {
+			x: Math.cos(angle) * speed,
+			y: elevation * speed,
+			z: Math.sin(angle) * speed,
+		};
+		ember.position.y = GROUND_OVERLAY_Y + 0.12;
+		group.add(ember);
+	}
+
+	targetScene.add(group);
+
+	activeEffects.push({
+		mesh: group,
+		_scene: targetScene,
+		origin: { x: impact.x, z: impact.z },
+		ringRadius,
+		createdAt: performance.now(),
+		duration,
+		isSolarEdgeImpact: true,
+	});
+}
+
 // ── Mana Prism: signature refracting-crystal cast VFX ──
 // A rising, spinning octahedral prism core that throws rainbow dispersion
 // shards outward across the violet→cyan refraction range so the cast reads as
@@ -7226,6 +7344,44 @@ export function updateAttackEffects() {
 				shard.rotation.z = dir.x * scatterT * 0.4;
 				shard.rotation.x = -dir.z * scatterT * 0.4;
 				if (shard.material) shard.material.opacity = fade;
+			}
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Solar Edge impact flourish (disc pop → corona expand → ember scatter) ──
+		if (fx.isSolarEdgeImpact) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const expandMs = Math.min(fx.duration * 0.45, 280);
+			const expandT = Math.min(elapsed / expandMs, 1.0);
+			const fade = Math.max(0.01, 1.0 - t);
+			const coronaScale = (fx.ringRadius ?? SOLAR_EDGE_DEFAULT_RING_RADIUS) * expandT * 2;
+
+			for (let c = 0; c < fx.mesh.children.length; c += 1) {
+				const child = fx.mesh.children[c];
+				if (child.userData.isSolarEdgeDisc) {
+					const popT = Math.min(t / 0.22, 1.0);
+					child.scale.setScalar(Math.max(0.001, popT * 1.15));
+					child.material.opacity = Math.max(0.01, fade);
+					child.material.emissiveIntensity = 1.5 * fade;
+				} else if (child.userData.isSolarEdgeCorona) {
+					child.scale.setScalar(Math.max(0.001, coronaScale));
+					const pulse = 0.82 + 0.18 * Math.abs(Math.sin(elapsed / 70));
+					child.material.opacity = Math.max(0.01, fade * (1.0 - expandT * 0.25));
+					child.material.emissiveIntensity = 1.35 * pulse * fade;
+				} else if (child.userData.isSolarEdgeEmber) {
+					const v = child.userData.velocity;
+					child.position.set(
+						v.x * t,
+						GROUND_OVERLAY_Y + 0.12 + v.y * t - t * t * 0.55,
+						v.z * t,
+					);
+					child.material.opacity = Math.max(0.01, fade);
+				}
 			}
 
 			if (elapsed >= fx.duration) {

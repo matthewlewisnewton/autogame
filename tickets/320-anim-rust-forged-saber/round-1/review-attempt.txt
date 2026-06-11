@@ -1,0 +1,14 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health (gate):** Game starts and loads cleanly — `metrics.json` `ok: true`, `pageerrors: []`, no `harness_failure`, and `console.log` shows only benign vite/409/initScene noise. No game-code exception. Screenshots render correctly with the Rust-Forged Saber cards in hand.
+
+**Scope:** Tight and correct — only `game/client/cardRenderers.js` (this card's render fn + registration) and its test. No server/shared/other-card changes, no debug scenario.
+
+**Acceptance criteria — all met:**
+- **Theme:** New dedicated `renderRustForgedSaber` (replacing the shared `renderWeaponSwing` for `iron_sword`) — weathered-iron body (`0x78716c`) with oxidized **rust** emissive (`0xb45309`), a tight saber arc + metallic spark/rust-flake burst + scored-metal decal, and deliberately **no** projectile trail. Distinct from `flame_blade` and `steel_claymore`. Composes 315 primitives only, all guarded.
+- **Timing sync:** Reach/cone/placement derived from server `attackRange`/`attackConeAngle`/`swingCount`; instant-weapon contract (no `windUpMs`, fires immediately with no `scheduleAfter`).
+- **No perf regression** and **client tests:** full suite green — **292 passed**.
+
+One non-blocking nit filed (`nits.md`): a dead `getAccentHex('iron_sword')` lookup that always falls back to `style.color` since `iron_sword` has no accent entry.

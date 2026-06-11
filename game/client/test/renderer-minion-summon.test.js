@@ -142,3 +142,66 @@ describe('battery_automaton charge-pulse sync', () => {
 		expect(pulseSpy).toHaveBeenCalledTimes(1);
 	});
 });
+
+describe('null_crawler windup telegraph lifetime', () => {
+	beforeEach(() => {
+		vi.resetModules();
+		vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1));
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
+
+	it('drives the telegraph ring duration from attackWindupMs and disposes the corridor when windup ends', async () => {
+		const renderer = await import('../renderer.js');
+		const ringSpy = vi.spyOn(renderer, 'spawnTelegraphRing');
+
+		const {
+			initScene,
+			setGameStateRef,
+			setMyId,
+			animate,
+			getMeshMaps,
+		} = renderer;
+
+		initScene(null, { x: 0, z: 0 });
+		setMyId('p1');
+
+		const minionBase = {
+			id: 'stalker-1',
+			type: 'null_crawler',
+			x: 2,
+			z: 0,
+			hp: 55,
+			maxHp: 55,
+			attackRange: 14,
+			projectileHitWidth: 0.8,
+			attackWindupMs: 750,
+		};
+
+		// Mid-windup: telegraph corridor mesh is created and the charge ring's
+		// duration is driven by the server wind-up window (attackWindupMs).
+		setGameStateRef({
+			players: { p1: { x: 0, z: 0, dead: false, hp: 100 } },
+			enemies: [],
+			minions: [{ ...minionBase, attackState: 'windup', windupDirX: 1, windupDirZ: 0, windupStartTime: Date.now() }],
+		});
+		animate(0);
+
+		expect(getMeshMaps().minionTelegraphMeshes['stalker-1']).toBeDefined();
+		const windupRing = ringSpy.mock.calls.find((args) => args[2]?.duration === 750);
+		expect(windupRing).toBeDefined();
+
+		// Windup ends: the corridor telegraph is disposed.
+		setGameStateRef({
+			players: { p1: { x: 0, z: 0, dead: false, hp: 100 } },
+			enemies: [],
+			minions: [{ ...minionBase, attackState: 'idle' }],
+		});
+		animate(16);
+
+		expect(getMeshMaps().minionTelegraphMeshes['stalker-1']).toBeUndefined();
+	});
+});

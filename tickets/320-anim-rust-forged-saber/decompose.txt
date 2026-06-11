@@ -1,0 +1,13 @@
+Created **2 sub-tickets** in dependency order:
+
+1. `/home/matt/workspace/.autogame-worktrees/320-anim-rust-forged-saber/tickets/320-anim-rust-forged-saber/subtickets/01-rust-forged-saber-theme-renderer/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/320-anim-rust-forged-saber/tickets/320-anim-rust-forged-saber/subtickets/02-rust-forged-saber-timing-sync/ticket.md`
+
+**Plan summary**
+
+| # | Focus | Why separate |
+|---|--------|--------------|
+| **01** | Bespoke `renderRustForgedSaber` with rust-steel palette, metal sparks, registration; remove from shared `WEAPON_SLASH_STYLES` | Delivers the visual identity called out in the top-level ticket without touching other weapons |
+| **02** | Sync `attackRange` (5) / `attackConeAngle` (π/2) from server payload, synchronous instant swing (no `scheduleAfter`, no `windUpMs`) | Fixes the current geometry mismatch (π/5 cone, range 4 vs server π/2 at range 5) and timing contract |
+
+Both use **code** verification — criteria cover renderer registration, primitive calls, payload-driven geometry, and timing behavior, not screenshot-only rendering.

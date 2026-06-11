@@ -1,0 +1,6 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created one sub-ticket:
+
+- `tickets/client-on-screen-control-hints-never-mention-the-key-item-bi-e0sw/subtickets/01-key-item-binding-in-attack-hint/ticket.md`
+
+This is a single sub-ticket because the scope is small and cohesive: extend `getAttackCastHint()` to conditionally append the key item binding, wire the caller in `main.js` to pass the equipped state, and add tests. All changes touch the same logical flow (hint text generation → DOM update → test coverage).
