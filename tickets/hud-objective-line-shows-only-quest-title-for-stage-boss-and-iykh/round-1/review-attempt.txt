@@ -1,0 +1,14 @@
+## Review complete
+
+**Runtime:** Game starts cleanly — `metrics.json` has `"ok": true`, empty `pageerrors`, no fatal console errors.
+
+**Implementation:** Three commits add `objectiveHud.js` and wire `stage_boss`, `escort`, and `survive` through `updateObjectiveHud()`. `collect_items` behavior is unchanged from baseline (prism progress line). 369 client tests pass, including 13 new formatter tests and 3 integration tests.
+
+**Verdict:** **PASS** — all acceptance criteria are met in code and tests; capture confirms a healthy run (on Initiate Vault / `defeat_enemies`).
+
+**Files written:**
+- `tickets/.../round-1/review.md` — full assessment
+- `tickets/.../round-1/nits.md` — 4 non-blocking follow-ups (generic "Warden defeated" copy, survive strings outside THEME, harness capture scope, collect HUD consistency)
+- No `gaps.md` (PASS only)
+
+**Note:** Browser capture used the fallback smoke plan on Initiate Vault, not Frost Crossing / Annex Evacuation / Endless Siege. The ticket-specific types are covered by unit/integration tests, not live screenshots — logged as a harness nit, not a blocking gap.
