@@ -32,6 +32,16 @@ export function bindStateHandlers(s, ctx) {
 		if (ctx.myId && ctx.debugGodmodeResult?.ok && ctx.gameState.players?.[ctx.myId]) {
 			ctx.gameState.players[ctx.myId].debugGodmode = !!ctx.debugGodmodeResult.enabled;
 		}
+		// Keep the time-scale badge authoritative: the snapshot's debugTimeScale
+		// (added in sub-ticket 01) is the source of truth when present.
+		if (Number.isFinite(state.debugTimeScale)) {
+			ctx.applyDebugTimeScale(state.debugTimeScale);
+		}
+		// Track the server's authority for the time-scale feature so the keybind
+		// and test hook gate on it (see emitSetDebugTimeScale).
+		if (typeof state.debugTimeScaleAllowed === 'boolean') {
+			ctx.debugTimeScaleAllowed = state.debugTimeScaleAllowed;
+		}
 		const me = ctx.myId && ctx.gameState.players ? ctx.gameState.players[ctx.myId] : null;
 		const cardProbeScenarios = new Set([
 			'fireball-ready',

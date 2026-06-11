@@ -21,6 +21,8 @@ import {
 	runGameLoopTick,
 	cleanupStalePlayers,
 	findSocketByPlayerId,
+	registerPlayerSocket,
+	unregisterPlayerSocket,
 	regenMagicStones,
 	createRunState,
 	startDungeonRun,
@@ -1880,7 +1882,7 @@ describe('synergistic minion pulses', () => {
 // ── Stale player cleanup ──
 
 describe('cleanupStalePlayers', () => {
-	beforeEach(() => resetState());
+	beforeEach(() => resetGameState());
 
 	it('removes players inactive for STALE_THRESHOLD ms', () => {
 		addPlayer('p1', { lastActivity: Date.now() - STALE_THRESHOLD - 1000 });
@@ -1899,11 +1901,15 @@ describe('cleanupStalePlayers', () => {
 	});
 
 	it('keeps players at exactly STALE_THRESHOLD (not exceeding)', () => {
-		addPlayer('p1', { lastActivity: Date.now() - STALE_THRESHOLD + 1 });
+		vi.useFakeTimers();
+		const now = 1_700_000_000_000;
+		vi.setSystemTime(now);
+		addPlayer('p1', { lastActivity: now - STALE_THRESHOLD + 1 });
 
 		cleanupStalePlayers();
 
 		expect(gameState.players['p1']).toBeDefined();
+		vi.useRealTimers();
 	});
 
 	it('stale threshold constant is 10 seconds', () => {
@@ -2002,6 +2008,7 @@ describe('cleanupStalePlayers', () => {
 		const mockMap = new Map();
 		mockMap.set(mockSocket.id, mockSocket);
 		serverIo.sockets.sockets = mockMap;
+		registerPlayerSocket('p1', mockSocket);
 
 		addPlayer('p1', { lastActivity: Date.now() - STALE_THRESHOLD - 1000 });
 
@@ -2011,6 +2018,7 @@ describe('cleanupStalePlayers', () => {
 		expect(gameState.players['p1']).toBeUndefined();
 
 		// Restore original sockets
+		unregisterPlayerSocket('p1', mockSocket);
 		serverIo.sockets.sockets = originalSockets;
 	});
 
@@ -2042,6 +2050,7 @@ describe('cleanupStalePlayers', () => {
 		const mockMap = new Map();
 		mockMap.set(mockSocket.id, mockSocket);
 		serverIo.sockets.sockets = mockMap;
+		registerPlayerSocket('p1', mockSocket);
 
 		addPlayer('p1', { lastActivity: Date.now() });
 
@@ -2051,6 +2060,7 @@ describe('cleanupStalePlayers', () => {
 		expect(gameState.players['p1']).toBeDefined();
 
 		// Restore
+		unregisterPlayerSocket('p1', mockSocket);
 		serverIo.sockets.sockets = originalSockets;
 	});
 });
@@ -2105,6 +2115,7 @@ describe('findSocketByPlayerId', () => {
 		if (serverIo.sockets.sockets instanceof Map) {
 			serverIo.sockets.sockets.clear();
 		}
+		resetGameState();
 	});
 
 	it('finds socket by matching socket.playerId', () => {
@@ -2114,6 +2125,7 @@ describe('findSocketByPlayerId', () => {
 			connected: true
 		};
 		serverIo.sockets.sockets.set(mockSocket.id, mockSocket);
+		registerPlayerSocket('player-alpha', mockSocket);
 
 		const result = findSocketByPlayerId('player-alpha');
 
@@ -2127,6 +2139,7 @@ describe('findSocketByPlayerId', () => {
 			connected: true
 		};
 		serverIo.sockets.sockets.set(mockSocket.id, mockSocket);
+		registerPlayerSocket('other-player', mockSocket);
 
 		const result = findSocketByPlayerId('nonexistent-player');
 
@@ -2144,6 +2157,9 @@ describe('findSocketByPlayerId', () => {
 		serverIo.sockets.sockets.set(s1.id, s1);
 		serverIo.sockets.sockets.set(s2.id, s2);
 		serverIo.sockets.sockets.set(s3.id, s3);
+		registerPlayerSocket('p1', s1);
+		registerPlayerSocket('p2', s2);
+		registerPlayerSocket('p3', s3);
 
 		expect(findSocketByPlayerId('p2')).toBe(s2);
 		expect(findSocketByPlayerId('p1')).toBe(s1);
@@ -2155,6 +2171,8 @@ describe('findSocketByPlayerId', () => {
 		const s2 = { id: 'sock-new', playerId: 'shared', connected: true };
 		serverIo.sockets.sockets.set(s1.id, s1);
 		serverIo.sockets.sockets.set(s2.id, s2);
+		registerPlayerSocket('shared', s1);
+		registerPlayerSocket('shared', s2);
 
 		expect(findSocketByPlayerId('shared', 'sock-new')).toBe(s1);
 		expect(findSocketByPlayerId('shared', 'sock-old')).toBe(s2);
@@ -2163,8 +2181,20 @@ describe('findSocketByPlayerId', () => {
 	it('excludeSocketId returns null when only the excluded socket matches', () => {
 		const only = { id: 'sock-only', playerId: 'solo', connected: true };
 		serverIo.sockets.sockets.set(only.id, only);
+		registerPlayerSocket('solo', only);
 
 		expect(findSocketByPlayerId('solo', 'sock-only')).toBeNull();
+	});
+
+	it('unregisterPlayerSocket removes only when the socket still owns the map entry', () => {
+		const s1 = { id: 'sock-old', playerId: 'shared', connected: true };
+		const s2 = { id: 'sock-new', playerId: 'shared', connected: true };
+		registerPlayerSocket('shared', s1);
+		registerPlayerSocket('shared', s2);
+		unregisterPlayerSocket('shared', s1);
+		expect(findSocketByPlayerId('shared')).toBe(s2);
+		unregisterPlayerSocket('shared', s2);
+		expect(findSocketByPlayerId('shared')).toBeNull();
 	});
 });
 

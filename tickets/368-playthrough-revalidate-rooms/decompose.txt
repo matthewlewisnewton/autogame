@@ -1,0 +1,11 @@
+## Round 3 planning
+
+Sub-tickets **01–06** all have `.passed` markers — left untouched.
+
+**review-feedback.md** has one open gap: rooms boss visual QA depends on `spawnHarnessBossVisualAddIfNeeded` / post-activation debug grunt spawns, which create a boss+add state normal Training Caverns activation cannot reach.
+
+**Created one new sub-ticket** to close that gap:
+
+- `/home/matt/workspace/.autogame-worktrees/368-playthrough-revalidate-rooms/tickets/368-playthrough-revalidate-rooms/subtickets/07-rooms-boss-visual-reachable-state/ticket.md`
+
+**07** removes the debug grunt machinery, captures `bossVisualIdentity` during a reachable mid-combat moment (dormant boss + live adds), and re-runs rooms validation so `bossDistinctFromAdds` passes without fabricated enemies. Verification mode: **code**.

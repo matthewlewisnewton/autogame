@@ -52,6 +52,22 @@ async function focusCanvas(page) {
 }
 
 /**
+ * Wait until the run is in the playing phase on the expected layout profile.
+ * `layoutProfile` is preset-driven (e.g. 'sunken-canyon', 'open-plaza'); when
+ * omitted only the playing phase is required.
+ *
+ * @param {import('playwright').Page} page
+ * @param {string} [layoutProfile]
+ */
+async function waitForPlayingOnProfile(page, layoutProfile) {
+	await page.waitForFunction((expectedProfile) => {
+		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
+		if (harness?.phase !== 'playing') return false;
+		return !expectedProfile || harness?.layout?.profile === expectedProfile;
+	}, layoutProfile ?? null, { timeout: 60000 });
+}
+
+/**
  * Press the keyboard hint for a 0-based hand slot (1–6).
  *
  * @param {import('playwright').Page} page
@@ -131,13 +147,13 @@ export function assertSlowBurnMutualExclusive(probes) {
  * Cast ice_ball then fireball on the same grunt and assert ticket 301 exclusivity.
  *
  * @param {import('playwright').Page} page
- * @param {{ outDir?: string, repoRoot?: string, preset?: { iceBallScenario?: string, fireballScenario?: string } }} [opts]
+ * @param {{ outDir?: string, repoRoot?: string, layoutProfile?: string, preset?: { iceBallScenario?: string, fireballScenario?: string, layoutProfile?: string } }} [opts]
  */
-export async function runSlowBurnExercise(page, { outDir, repoRoot, preset } = {}) {
+export async function runSlowBurnExercise(page, { outDir, repoRoot, layoutProfile, preset } = {}) {
 	const iceBallScenario = preset?.iceBallScenario ?? 'ice-ball-ready';
 	const fireballScenario = preset?.fireballScenario ?? 'fireball-hand-ready';
 
-	await waitForCardExercisePlaying(page);
+	await waitForPlayingOnProfile(page, layoutProfile ?? preset?.layoutProfile);
 
 	await focusCanvas(page);
 	await requestScenario(page, iceBallScenario);
@@ -257,12 +273,12 @@ export async function probeWindupTelegraphDom(page) {
  * Cast Purifying Pulse after purifying-pulse-ready and assert heal + cleanse.
  *
  * @param {import('playwright').Page} page
- * @param {{ outDir?: string, repoRoot?: string, preset?: { purifyingPulseScenario?: string } }} [opts]
+ * @param {{ outDir?: string, repoRoot?: string, layoutProfile?: string, preset?: { purifyingPulseScenario?: string, layoutProfile?: string } }} [opts]
  */
-export async function runPurifyingPulseExercise(page, { outDir, repoRoot, preset } = {}) {
+export async function runPurifyingPulseExercise(page, { outDir, repoRoot, layoutProfile, preset } = {}) {
 	const purifyingPulseScenario = preset?.purifyingPulseScenario ?? 'purifying-pulse-ready';
 
-	await waitForCardExercisePlaying(page);
+	await waitForPlayingOnProfile(page, layoutProfile ?? preset?.layoutProfile);
 
 	await focusCanvas(page);
 	await requestScenario(page, purifyingPulseScenario);
@@ -310,19 +326,20 @@ export async function runPurifyingPulseExercise(page, { outDir, repoRoot, preset
  * Press a wind-up weapon once and capture harness + DOM probes during lockout.
  *
  * @param {import('playwright').Page} page
- * @param {{ outDir?: string, repoRoot?: string, cardId?: string, scenario?: string, preset?: { windupScenario?: string, windupCardId?: string } }} [opts]
+ * @param {{ outDir?: string, repoRoot?: string, cardId?: string, scenario?: string, layoutProfile?: string, preset?: { windupScenario?: string, windupCardId?: string, layoutProfile?: string } }} [opts]
  */
 export async function runWindupCardExercise(page, {
 	outDir,
 	repoRoot,
 	cardId,
 	scenario,
+	layoutProfile,
 	preset,
 } = {}) {
 	const windupCardId = cardId ?? preset?.windupCardId ?? 'magma_greatsword';
 	const windupScenario = scenario ?? preset?.windupScenario ?? 'magma-windup-ready';
 
-	await waitForCardExercisePlaying(page);
+	await waitForPlayingOnProfile(page, layoutProfile ?? preset?.layoutProfile);
 
 	await focusCanvas(page);
 	await requestScenario(page, windupScenario);

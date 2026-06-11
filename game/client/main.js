@@ -1038,6 +1038,7 @@ const deckEnchantmentCountEl = document.getElementById('deck-enchantment-count')
 const deckStatsPanelEl = document.getElementById('deck-stats-panel');
 const deckViewerPanelEl = document.getElementById('deck-viewer-panel');
 const objectiveHudEl = document.getElementById('objective-hud');
+const debugTimeScaleBadgeEl = document.getElementById('debug-time-scale-badge');
 const questCommsLogEl = document.getElementById('quest-comms-log');
 const QUEST_COMMS_LOG_MAX = 20;
 const QUEST_COMMS_TOAST_MS = 4000;
@@ -1072,6 +1073,18 @@ let debugScenarioRequested = false;
 let boothDebugRequested = false;
 let debugScenarioResult = null;
 let debugGodmodeResult = null;
+// Active debug time scale (slow-mo/pause). `debugTimeScale` tracks the
+// authoritative value — from stateUpdate snapshots when present, else the last
+// DEBUG_TIME_SCALE_RESULT. `debugTimeScaleResult` keeps the raw last result.
+let debugTimeScale = 1;
+let debugTimeScaleResult = null;
+// Server-reported authority for the time-scale debug feature
+// (process.env.ALLOW_DEBUG_SCENARIOS === '1'). The Shift+T keybind and
+// __setDebugTimeScaleForTest hook stay inert until the snapshot reports true —
+// localhost alone is NOT sufficient for this feature.
+let debugTimeScaleAllowed = false;
+// Preset cycle for the Shift+T keybind: full speed → slow-mo steps → paused → full.
+const DEBUG_TIME_SCALE_PRESETS = [1, 0.5, 0.25, 0];
 const debugBooth = new URLSearchParams(window.location.search).get('booth');
 const debugBoothAllowed = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 let lastRunSummary = null; // most recent runComplete payload, for harness-state inspection
@@ -1239,6 +1252,10 @@ const socketHandlerCtx = createSocketHandlerCtx({
 		set debugScenarioResult(v) { debugScenarioResult = v; },
 		get debugGodmodeResult() { return debugGodmodeResult; },
 		set debugGodmodeResult(v) { debugGodmodeResult = v; },
+		get debugTimeScaleResult() { return debugTimeScaleResult; },
+		set debugTimeScaleResult(v) { debugTimeScaleResult = v; },
+		get debugTimeScaleAllowed() { return debugTimeScaleAllowed; },
+		set debugTimeScaleAllowed(v) { debugTimeScaleAllowed = v; },
 		get claimedCardRewardId() { return claimedCardRewardId; },
 		set claimedCardRewardId(v) { claimedCardRewardId = v; },
 		get currentCardChoices() { return currentCardChoices; },
@@ -1430,6 +1447,7 @@ const socketHandlerCtx = createSocketHandlerCtx({
 	applyQuestLayoutFromServer,
 	showQuestError,
 	showQuestDialogueToast,
+	applyDebugTimeScale,
 });
 
 /** Bind all Socket.IO event listeners to the given socket instance. */
@@ -1445,6 +1463,7 @@ function bindSocketHandlers(s) {
 	bindRunHandlers(s, socketHandlerCtx);
 	bindDebugHandlers(s, socketHandlerCtx);
 }
+
 
 let myId = null;
 let isReady = false;
@@ -1685,6 +1704,38 @@ function emitToggleDebugGodmode() {
 	socket.emit(CLIENT_TO_SERVER.TOGGLE_DEBUG_GODMODE);
 }
 
+// Single place that renders the debug time-scale HUD badge. Hidden at scale 1;
+// shows "PAUSED" at 0 and "TIME ×<scale>" otherwise.
+function updateDebugTimeScaleBadge() {
+	if (!debugTimeScaleBadgeEl) return;
+	const scale = Number.isFinite(debugTimeScale) ? debugTimeScale : 1;
+	if (scale === 1) {
+		debugTimeScaleBadgeEl.textContent = '';
+		debugTimeScaleBadgeEl.classList.add('hidden');
+		debugTimeScaleBadgeEl.setAttribute('aria-hidden', 'true');
+		return;
+	}
+	debugTimeScaleBadgeEl.textContent = scale === 0 ? 'PAUSED' : `TIME ×${scale}`;
+	debugTimeScaleBadgeEl.classList.remove('hidden');
+	debugTimeScaleBadgeEl.setAttribute('aria-hidden', 'false');
+}
+
+// Update the authoritative active scale and re-render the badge. Ignores
+// non-finite values so a bad snapshot/result can't blank the badge.
+function applyDebugTimeScale(scale) {
+	if (!Number.isFinite(scale)) return;
+	debugTimeScale = scale;
+	updateDebugTimeScaleBadge();
+}
+
+function emitSetDebugTimeScale(scale) {
+	// Inert unless the server reported the feature as authorized
+	// (ALLOW_DEBUG_SCENARIOS=1). Localhost alone is not sufficient here.
+	if (!debugTimeScaleAllowed) return;
+	if (!socket?.connected) return;
+	socket.emit(CLIENT_TO_SERVER.SET_DEBUG_TIME_SCALE, { scale });
+}
+
 window.__openDeckBoothForTest = openDeckBooth;
 window.__openShopBoothForTest = openShopBooth;
 window.__requestDebugBoothOpenForTest = requestDebugBoothOpen;
@@ -1730,6 +1781,7 @@ function requestBoothDebugOpen() {
 
 /** Test / Playwright hook: apply a debug scenario on demand. */
 window.__toggleDebugGodmodeForTest = emitToggleDebugGodmode;
+window.__setDebugTimeScaleForTest = emitSetDebugTimeScale;
 
 window.__patchCharacterBoothForTest = (patch) => patchBoothSelection(patch);
 window.__requestBoothSaveForTest = () => requestBoothSave();
@@ -3534,6 +3586,13 @@ window.__variantCodexKeydownHandler = (e) => {
 		e.preventDefault();
 		emitToggleDebugGodmode();
 	}
+	if (key === 't' && e.shiftKey && debugTimeScaleAllowed && socket?.connected && !isDebugGodmodeKeyBlocked(e)) {
+		e.preventDefault();
+		// Cycle to the next preset after the current scale (1 → 0.5 → 0.25 → 0 → 1).
+		const idx = DEBUG_TIME_SCALE_PRESETS.indexOf(debugTimeScale);
+		const next = DEBUG_TIME_SCALE_PRESETS[(idx + 1) % DEBUG_TIME_SCALE_PRESETS.length];
+		emitSetDebugTimeScale(next);
+	}
 };
 window.addEventListener('keydown', window.__variantCodexKeydownHandler);
 
@@ -4536,6 +4595,54 @@ window.__getEnemyRenderScaleForTest = (enemyId) => {
 	const info = rendererGetEnemyRenderScaleForTest(enemyId, enemy.type);
 	return info ? { scale: info.scale, type: enemy.type } : null;
 };
+
+/** Harness probe: compare stage boss vs nearest live add (incl. dormant boss + mid-combat adds). */
+function captureBossVisualIdentityProbeData(expectedBossType) {
+	const harness = typeof window.__AUTOGAME_HARNESS_STATE__ === 'function'
+		? window.__AUTOGAME_HARNESS_STATE__()
+		: null;
+	const enemyHp = Array.isArray(harness?.enemyHp) ? harness.enemyHp : [];
+	const bossEnemyId = harness?.encounter?.bossEnemyId ?? null;
+	const boss = enemyHp.find((e) => e.id === bossEnemyId && e.hp > 0)
+		|| enemyHp.find((e) => e.type === expectedBossType && e.hp > 0)
+		|| null;
+	const adds = enemyHp.filter(
+		(e) => e.hp > 0 && e.id !== boss?.id && e.type !== expectedBossType,
+	);
+	let nearestAdd = null;
+	let nearestDist = Infinity;
+	if (boss) {
+		for (const add of adds) {
+			const dist = Math.hypot((add.x ?? 0) - (boss.x ?? 0), (add.z ?? 0) - (boss.z ?? 0));
+			if (dist < nearestDist) {
+				nearestDist = dist;
+				nearestAdd = add;
+			}
+		}
+	}
+	const nearestAddType = nearestAdd?.type ?? null;
+	const bossMaxHp = boss?.maxHp ?? 0;
+	const addMaxHp = nearestAdd?.maxHp ?? 0;
+	const bossDistinctFromAdds = !!boss
+		&& !!nearestAdd
+		&& boss.type !== nearestAddType
+		&& bossMaxHp > addMaxHp;
+	const bossRenderScale = boss && typeof window.__getEnemyRenderScaleForTest === 'function'
+		? window.__getEnemyRenderScaleForTest(boss.id)?.scale ?? null
+		: null;
+	const addRenderScale = nearestAdd && typeof window.__getEnemyRenderScaleForTest === 'function'
+		? window.__getEnemyRenderScaleForTest(nearestAdd.id)?.scale ?? null
+		: null;
+	return {
+		bossType: boss?.type ?? expectedBossType,
+		bossEnemyId: boss?.id ?? bossEnemyId,
+		nearestAddType,
+		bossDistinctFromAdds,
+		bossRenderScale,
+		addRenderScale,
+	};
+}
+window.__captureBossVisualIdentityForTest = captureBossVisualIdentityProbeData;
 window.__iceBallMeshes = () => getMeshMaps().iceBallMeshes;
 window.applyWindupFlash = rendererApplyWindupFlash;
 window.applyRevealHighlight = rendererApplyRevealHighlight;
@@ -4692,6 +4799,9 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		debugScenarioAllowed,
 		debugScenarioResult,
 		debugGodmodeResult,
+		debugTimeScale,
+		debugTimeScaleResult,
+		debugTimeScaleAllowed,
 		objective,
 		encounter,
 		bossEncounter: bossEncounterModel ? { ...bossEncounterModel } : null,
@@ -4783,8 +4893,8 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 					z: Number.isFinite(p.z) ? p.z : null,
 				}))
 			: [],
-		enemies: gameState ? gameState.enemies.length : 0,
-		enemyHp: gameState ? gameState.enemies.map((enemy) => {
+		enemies: gameState && Array.isArray(gameState.enemies) ? gameState.enemies.length : 0,
+		enemyHp: gameState && Array.isArray(gameState.enemies) ? gameState.enemies.map((enemy) => {
 			const statusNow = Date.now();
 			const slowedUntil = enemy.slowedUntil ?? 0;
 			const burningUntil = enemy.burningUntil ?? 0;

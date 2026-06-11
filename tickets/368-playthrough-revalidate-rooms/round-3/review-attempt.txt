@@ -1,0 +1,3 @@
+Wrote `tickets/368-playthrough-revalidate-rooms/round-3/review.md` with `VERDICT: PASS`.
+
+No `gaps.md` or `nits.md` was created because I found no blocking gaps or worthwhile nits.

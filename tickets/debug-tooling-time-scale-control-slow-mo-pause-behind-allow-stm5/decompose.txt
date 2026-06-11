@@ -1,0 +1,8 @@
+Created one new sub-ticket to close the single open gap from the round-1 review.
+
+**Sub-tickets 01–03 are `.passed` — left untouched.** The only remaining gap was the strict env-flag gating.
+
+Created:
+- `/home/matt/workspace/.autogame-worktrees/debug-tooling-time-scale-control-slow-mo-pause-behind-allow-stm5/tickets/debug-tooling-time-scale-control-slow-mo-pause-behind-allow-stm5/subtickets/04-strict-env-gate-time-scale/ticket.md`
+
+It strictly gates `SET_DEBUG_TIME_SCALE` on `process.env.ALLOW_DEBUG_SCENARIOS === '1'` (dropping the localhost-permissive `isDebugScenarioAllowed` path for this feature), surfaces a server `debugTimeScaleAllowed` flag so the client keybind/test-hook go inert when unauthorized, and adds server + client coverage for the env-unset rejection path. Verification: **code** (server state, gating logic, error path, tests).

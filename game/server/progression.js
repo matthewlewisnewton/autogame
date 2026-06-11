@@ -2952,6 +2952,7 @@ function tickCollectItemsExtraction(gameState = _gameState) {
 
 function updateEncounterTriggers() {
   if (!isPlayingPhase(_gameState)) return;
+  if (_gameState._applyingDebugScenario) return;
   tryActivateEncounter(_gameState);
 }
 
@@ -3516,6 +3517,11 @@ function buildWorldSnapshot(shopOffer) {
       })),
     lobby: _gameState.lobby,
     gamePhase: _gameState.gamePhase,
+    debugTimeScale: _gameState.debugTimeScale ?? 1,
+    // Surface whether time-scale debug control is authorized so the client can
+    // gate its Shift+T keybind / test hook on the server's authority rather than
+    // a localhost hostname check. Strictly ALLOW_DEBUG_SCENARIOS=1.
+    debugTimeScaleAllowed: process.env.ALLOW_DEBUG_SCENARIOS === '1',
     selectedQuestId: _gameState.selectedQuestId,
     selectedQuestTier: _gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER,
     run: _gameState.run,

@@ -69,6 +69,8 @@ import {
 import {
 	initGamepadListeners,
 	pollGamepadLook,
+	pollGamepadSnapshot,
+	invalidateGamepadSnapshot,
 	resetGamepadState,
 } from './gamepad.js';
 import { pollInput, getMovementDirection, resetInputState } from './input.js';
@@ -5809,6 +5811,12 @@ export function animate(timestamp) {
 	if (!renderer || !scene || !camera || !clock) return;
 
 	const delta = clampDelta(clock.getDelta());
+
+	// Poll the gamepad once per frame into a shared snapshot so the movement,
+	// look, and button readers below all consume the same navigator.getGamepads()
+	// read instead of each re-polling the pad/profile/config.
+	pollGamepadSnapshot();
+
 	updateMyPlayer(delta);
 
 	pollInput();
@@ -5895,4 +5903,8 @@ export function animate(timestamp) {
 	updateCollectingLoot();
 
 	renderer.render(scene, camera);
+
+	// Release the frame snapshot so any out-of-loop reader (e.g. socket-handler
+	// movement checks) re-polls the live pad rather than reusing this frame's.
+	invalidateGamepadSnapshot();
 }

@@ -1,0 +1,14 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health:** Game starts and loads cleanly — `metrics.json` has `"ok": true`, empty `pageerrors`, no `harness_failure`. `console.log` has no fatal/pageerror lines (the lone `409` is benign dual-player auth racing). Probes show a full live flow: two players in a squad lobby, movement, dodge cooldown HUD ticking down, squadmate replicated, 1ms latency — i.e. the broadcast/lookup paths this ticket touched are demonstrably working end-to-end.
+
+**Acceptance criterion fully met:**
+- Per-lobby emits now iterate `io.sockets.adapter.rooms.get(lobby.id)` via `forEachSocketInLobby` — verified equivalent to the old `socket.rooms.has()` filter since sockets `join`/`leave` that exact room.
+- Player→socket lookup is O(1) via a maintained `playerSockets` Map, registered on connect / unregistered on disconnect, **with a linear-scan fallback** so correctness can't break. The reconnect race is correctly guarded (only deletes when the socket still owns the entry).
+- Bonus user-lookup indexes (`accountIdIndex`/`emailIndex`) are maintained across load/create/update/clear, including the tricky email-change and email-clear paths.
+
+**Behavior unchanged:** Full server suite re-run clean — **179 files / 2571 tests, all pass**. The single failure in the harness `coverage.log` (an arena-champion positioning test) is a coverage-instrumentation flake unrelated to the changed code: it passes standalone, as a full file, and in the full uninstrumented suite.
+
+No blocking gaps → no `gaps.md`. Wrote two non-blocking nits (resetGameState doesn't rebuild the map; the two `broadcastLobbyUpdate` branches use different iteration patterns) to `nits.md`.

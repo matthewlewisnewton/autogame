@@ -22,6 +22,8 @@ const STATE_ACCESSORS = [
 	'renderedSceneProfile',
 	'debugScenarioResult',
 	'debugGodmodeResult',
+	'debugTimeScaleResult',
+	'debugTimeScaleAllowed',
 	'claimedCardRewardId',
 	'currentCardChoices',
 	'_prevDashX',
@@ -202,6 +204,7 @@ export function createSocketHandlerCtx(deps) {
 		applyQuestLayoutFromServer: deps.applyQuestLayoutFromServer,
 		showQuestError: deps.showQuestError,
 		showQuestDialogueToast: deps.showQuestDialogueToast,
+		applyDebugTimeScale: deps.applyDebugTimeScale,
 	};
 
 	for (const key of STATE_ACCESSORS) {

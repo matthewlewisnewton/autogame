@@ -1,0 +1,11 @@
+Created two new sub-tickets to close the two open gaps in `review-feedback.md`. All three existing sub-tickets carry `.passed` markers, so I left them untouched.
+
+**Created:**
+- `/home/matt/workspace/.autogame-worktrees/369-playthrough-revalidate-open-plaza/tickets/369-playthrough-revalidate-open-plaza/subtickets/04-fix-arena-trials-boss-approach-test/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/369-playthrough-revalidate-open-plaza/tickets/369-playthrough-revalidate-open-plaza/subtickets/05-report-open-plaza-console-oddities/ticket.md`
+
+**Mapping to gaps:**
+- **04** closes gap 1 — the red `arena-trials-boss-approach` test in `server/test/debug-scenarios.test.js`. Scoped to `debugScenarios.js` + the test file; reconciles the scenario's adds-cleared/dormant/anchor guards with the test setup while preserving the negative ("adds remain") case. `code` verification (test pass + server logic).
+- **05** closes gap 2 — `findings.md` omitting the `arena-champion.glb` load failure and `502` resource errors. Re-runs `pnpm validate:open-plaza` against live code, makes `findings.md` consistent with the fresh `console.log`, and fixes `models.js` only if it still fetches the missing `.glb`. `code` verification (reads diff + logs to check findings.md vs console.log).
+
+04 is ordered before 05 because the validation driver exercises the debug scenario fixed in 04.

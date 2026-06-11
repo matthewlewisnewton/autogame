@@ -93,6 +93,17 @@ export function bindDebugHandlers(s, ctx) {
 		}
 	});
 
+	s.on(SERVER_TO_CLIENT.DEBUG_TIME_SCALE_RESULT, (data) => {
+		ctx.debugTimeScaleResult = data || null;
+		if (data && data.ok) {
+			ctx.applyDebugTimeScale(data.scale);
+			console.log(`[debugTimeScale] ${data.scale === 0 ? 'paused' : `×${data.scale}`}`);
+		} else if (data && data.reason) {
+			// Leave the displayed scale unchanged on rejection.
+			console.warn(`[debugTimeScale] ${data.reason}`);
+		}
+	});
+
 	s.on(SERVER_TO_CLIENT.PLAYER_DISCONNECTED, (id) => {
 		ctx.removeRemotePlayerVisuals(id);
 	});

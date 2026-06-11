@@ -1,0 +1,10 @@
+Wrote the holistic review artifacts:
+
+- `tickets/369-playthrough-revalidate-open-plaza/round-1/review.md`
+- `tickets/369-playthrough-revalidate-open-plaza/round-1/gaps.md`
+
+Verdict is `VERDICT: FAIL`.
+
+Blocking gaps found:
+1. Changed coverage/test run has 1 failing test in `server/test/debug-scenarios.test.js` for `arena-trials-boss-approach`.
+2. `game/validation/open-plaza/findings.md` omits console/resource oddities present in the open-plaza validation console log.

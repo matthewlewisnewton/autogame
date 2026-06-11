@@ -54,7 +54,7 @@ import {
 import { runEmberBurnStep, runGlacialSlowStep, runCardMechanicsStep } from './lib/cardMechanics.mjs';
 import { runSlipperyFloorStep } from './lib/slipperyFloor.mjs';
 import {
-	runCanyonTelepipeNewSortieStep,
+	runStageBossTelepipeNewSortieStep,
 	runSpireAscentTelepipeNewSortieStep,
 	runTelepipeResetStep,
 } from './lib/telepipe.mjs';
@@ -472,6 +472,9 @@ async function captureBossEncounterUiProbe(page) {
 
 async function captureBossVisualIdentityProbe(page, bossType) {
 	return page.evaluate((expectedBossType) => {
+		if (typeof window.__captureBossVisualIdentityForTest === 'function') {
+			return window.__captureBossVisualIdentityForTest(expectedBossType);
+		}
 		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
 		const bossEnemyId = harness?.encounter?.bossEnemyId ?? null;
 		const boss = (harness?.enemyHp || []).find((e) => e.id === bossEnemyId && e.hp > 0)
@@ -511,6 +514,14 @@ async function captureBossVisualIdentityProbe(page, bossType) {
 			addRenderScale,
 		};
 	}, bossType);
+}
+
+async function waitForBossVisualIdentityProbeReady(page, bossType, timeoutMs = 15000) {
+	await page.waitForFunction((expectedBoss) => {
+		if (typeof window.__captureBossVisualIdentityForTest !== 'function') return false;
+		const probe = window.__captureBossVisualIdentityForTest(expectedBoss);
+		return probe?.bossDistinctFromAdds === true;
+	}, bossType, { timeout: timeoutMs });
 }
 
 async function probeHubLobbyFinder(page) {
@@ -803,7 +814,7 @@ async function runDefeatEnemiesCombatStep({ page, preset, outDirAbs }) {
 	};
 }
 
-async function runSunkenCanyonMidCombatProbeStep({ page, preset, outDirAbs }) {
+async function runStageBossMidCombatProbeStep({ page, preset, outDirAbs }) {
 	const { bossType, nearAddsScenario, addTypes } = preset;
 
 	await enableGodmode(page);
@@ -822,9 +833,94 @@ async function runSunkenCanyonMidCombatProbeStep({ page, preset, outDirAbs }) {
 	const midCombatFloor = await captureFloorAlignmentProbe(page);
 	if (midCombatFloor) floorAlignment.midCombat = midCombatFloor;
 
+	// Training Caverns clears non-boss enemies on encounter activation; capture
+	// boss-vs-add visuals while dormant boss and live adds still coexist.
+	let bossVisualIdentity = null;
+	if (bossType === 'annex_overseer') {
+		const midHarness = await readHarness(page);
+		if (liveAdds(midHarness, bossType, addTypes).length === 0) {
+			throw new Error('mid-combat boss visual probe requested with zero live adds');
+		}
+		await waitForBossVisualIdentityProbeReady(page, bossType);
+		bossVisualIdentity = await captureBossVisualIdentityProbe(page, bossType);
+		if (!bossVisualIdentity?.bossDistinctFromAdds) {
+			throw new Error(
+				`bossVisualIdentity mid-combat probe missing distinct boss vs add: ${JSON.stringify(bossVisualIdentity)}`,
+			);
+		}
+	}
+
 	return {
 		midCombatScreenshot,
-		probes: Object.keys(floorAlignment).length > 0 ? { floorAlignment } : {},
+		probes: {
+			...(Object.keys(floorAlignment).length > 0 ? { floorAlignment } : {}),
+			...(bossVisualIdentity ? { bossVisualIdentity } : {}),
+		},
+	};
+}
+
+/** @deprecated Use runStageBossMidCombatProbeStep */
+const runSunkenCanyonMidCombatProbeStep = runStageBossMidCombatProbeStep;
+
+async function runStageBossRevalidateFullStep({
+	page,
+	preset,
+	outDirAbs,
+	game,
+	telepipeSummaryKey,
+}) {
+	const midCombatPart = await runStageBossMidCombatProbeStep({ page, preset, outDirAbs });
+	const cardExerciseOpts = {
+		outDir: outDirAbs,
+		repoRoot: REPO_ROOT,
+		layoutProfile: preset.layoutProfile ?? 'sunken-canyon',
+		preset,
+	};
+	const cardExercises = {
+		slowBurn: await runSlowBurnExercise(page, cardExerciseOpts),
+		purifyingPulse: await runPurifyingPulseExercise(page, cardExerciseOpts),
+		windup: await runWindupCardExercise(page, {
+			...cardExerciseOpts,
+			cardId: preset.windupCardId ?? 'magma_greatsword',
+			scenario: preset.windupScenario ?? 'magma-windup-ready',
+		}),
+	};
+	const telepipe = await runStageBossTelepipeNewSortieStep({
+		page,
+		preset,
+		outDirAbs,
+		repoRoot: REPO_ROOT,
+		serverLogPath: game.serverLogPath,
+		gameProcess: game,
+		fromPlaying: true,
+	});
+	const bossPart = await runBossEncounterStep({
+		page,
+		preset,
+		outDirAbs,
+		skipMidCombatCapture: true,
+	});
+	const bossVisualIdentity = bossPart.probes?.bossVisualIdentity
+		?? midCombatPart.probes?.bossVisualIdentity
+		?? null;
+	const bossEncounter = {
+		...bossPart,
+		midCombatScreenshot: midCombatPart.midCombatScreenshot,
+		probes: {
+			...(bossPart.probes || {}),
+			bossVisualIdentity,
+			floorAlignment: {
+				...(midCombatPart.probes?.floorAlignment || {}),
+				...(bossPart.probes?.floorAlignment || {}),
+			},
+		},
+	};
+	const victory = await runVictoryStep({ page, preset, outDirAbs });
+	return {
+		bossEncounter,
+		cardExercises,
+		[telepipeSummaryKey]: telepipe,
+		victory,
 	};
 }
 
@@ -849,6 +945,10 @@ async function runBossEncounterStep({ page, preset, outDirAbs, skipMidCombatCapt
 
 	let midCombatScreenshot = null;
 	const floorAlignment = {};
+	// Training Caverns clears non-boss enemies on encounter activation; capture
+	// boss-vs-add visuals while dormant boss and live adds still coexist.
+	const captureBossVisualAtMidCombat = bossType === 'annex_overseer';
+	let bossVisualIdentity = null;
 	const onMidCombat = skipMidCombatCapture ? null : async () => {
 		const midHarness = await readHarness(page);
 		if (liveAdds(midHarness, bossType, addTypes).length === 0) {
@@ -858,6 +958,10 @@ async function runBossEncounterStep({ page, preset, outDirAbs, skipMidCombatCapt
 		midCombatScreenshot = path.relative(REPO_ROOT, shotPath);
 		const midCombatFloor = await captureFloorAlignmentProbe(page);
 		if (midCombatFloor) floorAlignment.midCombat = midCombatFloor;
+		if (captureBossVisualAtMidCombat) {
+			await waitForBossVisualIdentityProbeReady(page, bossType);
+			bossVisualIdentity = await captureBossVisualIdentityProbe(page, bossType);
+		}
 	};
 	const afterAddsHarness = await defeatAdds(page, {
 		bossType,
@@ -884,12 +988,16 @@ async function runBossEncounterStep({ page, preset, outDirAbs, skipMidCombatCapt
 		assertDormantBoss(approachHarness, bossType);
 	}
 
+	// Prefer a preset-driven encounter-trigger debug scenario (which activates the dormant
+	// boss AND leaves a live add beside it for the bossDistinctFromAdds probe, since normal
+	// proximity activation clears non-boss enemies). Fall back to the keyboard walk-in for
+	// presets that do not provide one.
 	const encounterTriggerByApproach = {
 		'canyon-descent-boss-approach': 'canyon-descent-encounter-trigger',
 		'spire-ascent-boss-approach': 'spire-ascent-encounter-trigger',
 	};
-	const encounterTriggerScenario = encounterTriggerByApproach[bossApproachScenario];
-
+	const encounterTriggerScenario = preset.encounterTriggerScenario
+		?? encounterTriggerByApproach[bossApproachScenario];
 	let activeHarness;
 	if (encounterTriggerScenario) {
 		await requestScenario(page, encounterTriggerScenario);
@@ -911,7 +1019,13 @@ async function runBossEncounterStep({ page, preset, outDirAbs, skipMidCombatCapt
 	const activeFloor = await captureFloorAlignmentProbe(page);
 	if (activeFloor) floorAlignment.bossActive = activeFloor;
 	const bossEncounterUi = await captureBossEncounterUiProbe(page);
-	const bossVisualIdentity = await captureBossVisualIdentityProbe(page, bossType);
+	if (!captureBossVisualAtMidCombat) {
+		bossVisualIdentity = await captureBossVisualIdentityProbe(page, bossType);
+	} else if (!skipMidCombatCapture && !bossVisualIdentity?.bossDistinctFromAdds) {
+		throw new Error(
+			`bossVisualIdentity mid-combat probe missing distinct boss vs add: ${JSON.stringify(bossVisualIdentity)}`,
+		);
+	}
 
 	return {
 		midCombatScreenshot,
@@ -1062,6 +1176,10 @@ async function runVictoryStep({ page, preset, outDirAbs }) {
 	};
 }
 
+function isNewContentPreset(preset) {
+	return preset?.newContentFull === true;
+}
+
 function isStageRevalidationPreset(preset, summary) {
 	const profile = preset?.layoutProfile ?? summary?.preset;
 	return profile === 'sunken-canyon' || profile === 'spire-ascent'
@@ -1069,10 +1187,29 @@ function isStageRevalidationPreset(preset, summary) {
 }
 
 function telepipeSummaryKey(preset, summary) {
+	if (summary?.preset === 'rooms') return 'roomsTelepipe';
 	const profile = preset?.layoutProfile ?? summary?.preset;
 	return profile === 'spire-ascent' || summary?.preset === 'spire-ascent'
 		? 'spireTelepipe'
 		: 'canyonTelepipe';
+}
+
+function isRoomsPreset(preset, summary) {
+	return summary?.preset === 'rooms';
+}
+
+function buildBossEncounterUiAssertions(summary, { requireAnnexOverseer = false } = {}) {
+	const bossEncounterUi = summary.bossEncounter?.probes?.bossEncounterUi;
+	const bossVisualIdentity = summary.bossEncounter?.probes?.bossVisualIdentity;
+	return {
+		bossEncounterUiVisible: bossEncounterUi?.hudVisible === true
+			&& typeof bossEncounterUi?.bossName === 'string'
+			&& bossEncounterUi.bossName.length > 0
+			&& bossEncounterUi?.encounterLocked === true
+			&& bossEncounterUi?.encounterPhase === 'active',
+		bossDistinctFromAdds: bossVisualIdentity?.bossDistinctFromAdds === true
+			&& (!requireAnnexOverseer || bossVisualIdentity?.bossType === 'annex_overseer'),
+	};
 }
 
 function buildAssertions(summary, preset) {
@@ -1131,21 +1268,25 @@ function buildAssertions(summary, preset) {
 		bossDefeated,
 		victoryFired,
 	};
-	if (!isStageRevalidationPreset(preset, summary)) {
+	if (isRoomsPreset(preset, summary)) {
+		return {
+			...base,
+			...buildBossEncounterUiAssertions(summary, { requireAnnexOverseer: true }),
+			slowBurnMutuallyExclusive: summary.cardExercises?.slowBurn?.slowBurnMutuallyExclusive === true,
+			healCleanseApplied: summary.cardExercises?.purifyingPulse?.healCleanseApplied === true,
+			windupTelegraphActive: summary.cardExercises?.windup?.windupTelegraphActive === true,
+			telepipeVitalsPreserved: summary.roomsTelepipe?.telepipeVitalsPreserved === true,
+			cardChargesResetOnNewSortie: summary.roomsTelepipe?.cardChargesResetOnNewSortie === true,
+		};
+	}
+	if (!isNewContentPreset(preset) && !isStageRevalidationPreset(preset, summary)) {
 		return base;
 	}
 	const telepipeKey = telepipeSummaryKey(preset, summary);
 	const questTelepipe = summary[telepipeKey];
-	const bossEncounterUi = summary.bossEncounter?.probes?.bossEncounterUi;
-	const bossVisualIdentity = summary.bossEncounter?.probes?.bossVisualIdentity;
 	return {
 		...base,
-		bossEncounterUiVisible: bossEncounterUi?.hudVisible === true
-			&& typeof bossEncounterUi?.bossName === 'string'
-			&& bossEncounterUi.bossName.length > 0
-			&& bossEncounterUi?.encounterLocked === true
-			&& bossEncounterUi?.encounterPhase === 'active',
-		bossDistinctFromAdds: bossVisualIdentity?.bossDistinctFromAdds === true,
+		...buildBossEncounterUiAssertions(summary),
 		slowBurnMutuallyExclusive: summary.cardExercises?.slowBurn?.slowBurnMutuallyExclusive === true,
 		healCleanseApplied: summary.cardExercises?.purifyingPulse?.healCleanseApplied === true,
 		windupTelegraphActive: summary.cardExercises?.windup?.windupTelegraphActive === true,
@@ -1219,6 +1360,8 @@ function collectScreenshots(summary) {
 	if (summary.cardExercises?.windup?.screenshot) shots.push(summary.cardExercises.windup.screenshot);
 	if (summary.canyonTelepipe?.beforeScreenshot) shots.push(summary.canyonTelepipe.beforeScreenshot);
 	if (summary.canyonTelepipe?.afterScreenshot) shots.push(summary.canyonTelepipe.afterScreenshot);
+	if (summary.roomsTelepipe?.beforeScreenshot) shots.push(summary.roomsTelepipe.beforeScreenshot);
+	if (summary.roomsTelepipe?.afterScreenshot) shots.push(summary.roomsTelepipe.afterScreenshot);
 	if (summary.spireTelepipe?.beforeScreenshot) shots.push(summary.spireTelepipe.beforeScreenshot);
 	if (summary.spireTelepipe?.afterScreenshot) shots.push(summary.spireTelepipe.afterScreenshot);
 	return shots;
@@ -1307,6 +1450,14 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
 					cardChargesResetOnNewSortie: summary.canyonTelepipe.cardChargesResetOnNewSortie ?? null,
 				},
 			} : {}),
+			...(summary.roomsTelepipe ? {
+				roomsTelepipe: {
+					preSuspend: summary.roomsTelepipe.preSuspend ?? null,
+					postDeploy: summary.roomsTelepipe.postDeploy ?? null,
+					telepipeVitalsPreserved: summary.roomsTelepipe.telepipeVitalsPreserved ?? null,
+					cardChargesResetOnNewSortie: summary.roomsTelepipe.cardChargesResetOnNewSortie ?? null,
+				},
+			} : {}),
 			...(summary.spireTelepipe ? {
 				spireTelepipe: {
 					preSuspend: summary.spireTelepipe.preSuspend ?? null,
@@ -1329,6 +1480,7 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
 			bossVisualIdentity: summary.bossEncounter?.probes?.bossVisualIdentity ?? null,
 			cardExercises: summary.cardExercises ?? null,
 			canyonTelepipe: summary.canyonTelepipe ?? null,
+			roomsTelepipe: summary.roomsTelepipe ?? null,
 			spireTelepipe: summary.spireTelepipe ?? null,
 			floorAlignment,
 			emberBurn: summary.emberBurn || null,
@@ -1536,15 +1688,18 @@ async function main() {
 			});
 		}
 
+		const runsNewContentFull = preset.newContentFull === true && runsRoomsFull;
 		const runsSunkenCanyonFull = opts.preset === 'sunken-canyon' && runsRoomsFull;
 		const runsSpireAscentFull = opts.preset === 'spire-ascent' && runsRoomsFull;
-		const runsStageRevalidationFull = runsSunkenCanyonFull || runsSpireAscentFull;
+		const runsRoomsRevalidateFull = opts.preset === 'rooms' && runsRoomsFull;
+		const runsStageBossRevalidateFull = runsSunkenCanyonFull || runsSpireAscentFull || runsRoomsRevalidateFull;
+		const runsExtendedRevalidationFull = runsNewContentFull || runsStageBossRevalidateFull;
 
 		if (runsBossEncounter && page) {
 			const objectiveType = preset.objectiveType ?? 'stage_boss';
 			if (objectiveType === 'defeat_enemies') {
 				summary.defeatEnemiesCombat = await runDefeatEnemiesCombatStep({ page, preset, outDirAbs });
-			} else if (!runsStageRevalidationFull) {
+			} else if (!runsExtendedRevalidationFull) {
 				summary.bossEncounter = await runBossEncounterStep({ page, preset, outDirAbs });
 			}
 		}
@@ -1576,100 +1731,64 @@ async function main() {
 			});
 		}
 
-		if (runsRoomsFull && page && !runsStageRevalidationFull) {
-			summary.victory = await runVictoryStep({ page, preset, outDirAbs });
-		}
-
-		if (runsSpireAscentFull && page) {
-			const midCombatPart = await runSunkenCanyonMidCombatProbeStep({ page, preset, outDirAbs });
-			summary.bossEncounter = { ...midCombatPart };
-
-			const cardExerciseOpts = { outDir: outDirAbs, repoRoot: REPO_ROOT };
-			summary.cardExercises = {
-				slowBurn: await runSlowBurnExercise(page, cardExerciseOpts),
-				purifyingPulse: await runPurifyingPulseExercise(page, cardExerciseOpts),
-				windup: await runWindupCardExercise(page, {
-					...cardExerciseOpts,
-					cardId: preset.windupCardId ?? 'magma_greatsword',
-					scenario: preset.windupScenario ?? 'magma-windup-ready',
-				}),
-			};
-
-			summary.spireTelepipe = await runSpireAscentTelepipeNewSortieStep({
-				page,
-				preset,
-				outDirAbs,
-				repoRoot: REPO_ROOT,
-				serverLogPath: game.serverLogPath,
-				gameProcess: game,
-				fromPlaying: true,
-			});
-
-			const bossPart = await runBossEncounterStep({
-				page,
-				preset,
-				outDirAbs,
-				skipMidCombatCapture: true,
-			});
-			summary.bossEncounter = {
-				...bossPart,
-				midCombatScreenshot: midCombatPart.midCombatScreenshot,
-				probes: {
-					...(bossPart.probes || {}),
-					floorAlignment: {
-						...(midCombatPart.probes?.floorAlignment || {}),
-						...(bossPart.probes?.floorAlignment || {}),
-					},
-				},
-			};
-
+		if (runsRoomsFull && page && !runsExtendedRevalidationFull) {
 			summary.victory = await runVictoryStep({ page, preset, outDirAbs });
 		}
 
 		if (runsSunkenCanyonFull && page) {
-			const midCombatPart = await runSunkenCanyonMidCombatProbeStep({ page, preset, outDirAbs });
-			summary.bossEncounter = { ...midCombatPart };
-
-			const cardExerciseOpts = { outDir: outDirAbs, repoRoot: REPO_ROOT };
-			summary.cardExercises = {
-				slowBurn: await runSlowBurnExercise(page, cardExerciseOpts),
-				purifyingPulse: await runPurifyingPulseExercise(page, cardExerciseOpts),
-				windup: await runWindupCardExercise(page, {
-					...cardExerciseOpts,
-					cardId: preset.windupCardId ?? 'magma_greatsword',
-					scenario: preset.windupScenario ?? 'magma-windup-ready',
-				}),
-			};
-
-			summary.canyonTelepipe = await runCanyonTelepipeNewSortieStep({
+			const result = await runStageBossRevalidateFullStep({
 				page,
 				preset,
 				outDirAbs,
-				repoRoot: REPO_ROOT,
-				serverLogPath: game.serverLogPath,
-				gameProcess: game,
-				fromPlaying: true,
+				game,
+				telepipeSummaryKey: 'canyonTelepipe',
 			});
+			summary.bossEncounter = result.bossEncounter;
+			summary.cardExercises = result.cardExercises;
+			summary.canyonTelepipe = result.canyonTelepipe;
+			summary.victory = result.victory;
+		}
 
-			const bossPart = await runBossEncounterStep({
+		if (runsSpireAscentFull && page) {
+			const result = await runStageBossRevalidateFullStep({
 				page,
 				preset,
 				outDirAbs,
-				skipMidCombatCapture: true,
+				game,
+				telepipeSummaryKey: 'spireTelepipe',
 			});
-			summary.bossEncounter = {
-				...bossPart,
-				midCombatScreenshot: midCombatPart.midCombatScreenshot,
-				probes: {
-					...(bossPart.probes || {}),
-					floorAlignment: {
-						...(midCombatPart.probes?.floorAlignment || {}),
-						...(bossPart.probes?.floorAlignment || {}),
-					},
-				},
-			};
+			summary.bossEncounter = result.bossEncounter;
+			summary.cardExercises = result.cardExercises;
+			summary.spireTelepipe = result.spireTelepipe;
+			summary.victory = result.victory;
+		}
 
-			summary.victory = await runVictoryStep({ page, preset, outDirAbs });
+		if (runsNewContentFull && page && !runsSunkenCanyonFull) {
+			const result = await runStageBossRevalidateFullStep({
+				page,
+				preset,
+				outDirAbs,
+				game,
+				telepipeSummaryKey: 'canyonTelepipe',
+			});
+			summary.bossEncounter = result.bossEncounter;
+			summary.cardExercises = result.cardExercises;
+			summary.canyonTelepipe = result.canyonTelepipe;
+			summary.victory = result.victory;
+		}
+
+		if (runsRoomsRevalidateFull && page) {
+			const result = await runStageBossRevalidateFullStep({
+				page,
+				preset,
+				outDirAbs,
+				game,
+				telepipeSummaryKey: 'roomsTelepipe',
+			});
+			summary.bossEncounter = result.bossEncounter;
+			summary.cardExercises = result.cardExercises;
+			summary.roomsTelepipe = result.roomsTelepipe;
+			summary.victory = result.victory;
 		}
 
 		if (runsQuestTelepipeReset && page) {
