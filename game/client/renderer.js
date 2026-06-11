@@ -4584,6 +4584,140 @@ export function spawnLegionMarshalRallyEffect(origin, radius, style = {}) {
 	);
 }
 
+// Battery Automaton palette — amber/gold chassis with electric cyan sparks.
+export const BATTERY_AUTOMATON_COLOR = 0xfbbf24;
+export const BATTERY_AUTOMATON_EMISSIVE = 0x38bdf8;
+const BATTERY_AUTOMATON_COLUMN_HEIGHT = 2.5;
+const BATTERY_AUTOMATON_COLUMN_OPACITY = 0.75;
+const BATTERY_AUTOMATON_COLUMN_BASE_Y = 0.1;
+const BATTERY_AUTOMATON_EMISSIVE_INTENSITY = 1.5;
+const BATTERY_AUTOMATON_DEFAULT_RADIUS = 1.4;
+const BATTERY_AUTOMATON_CHARGE_PULSE_DURATION = 700;
+const BATTERY_AUTOMATON_CHARGE_BURST_COUNT = 10;
+const BATTERY_AUTOMATON_CHARGE_BURST_SPREAD = 1.6;
+
+/**
+ * Mechanical deploy flourish: expanding amber/gold assembly ring plus a short
+ * rising electric column. Pure additive VFX; no network traffic or state
+ * beyond activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration, radius }
+ */
+export function spawnBatteryAutomatonDeployEffect(origin, style = {}) {
+	const color = style.color ?? BATTERY_AUTOMATON_COLOR;
+	const emissive = style.emissive ?? BATTERY_AUTOMATON_EMISSIVE;
+	const duration = style.duration ?? MINION_SUMMON_IN_MS;
+	const radius = style.radius ?? BATTERY_AUTOMATON_DEFAULT_RADIUS;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const ringGeometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	ringMesh.position.set(origin.x, 0.1, origin.z);
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(0.001);
+	targetScene.add(ringMesh);
+
+	activeEffects.push({
+		mesh: ringMesh,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration,
+		isBatteryAutomatonRing: true,
+		_baseEmissiveIntensity: 1.2,
+		_scene: targetScene,
+	});
+
+	const columnGeometry = new THREE.CylinderGeometry(0.22, 0.42, BATTERY_AUTOMATON_COLUMN_HEIGHT, 16, 1, true);
+	const columnMaterial = new THREE.MeshStandardMaterial({
+		color,
+		emissive,
+		emissiveIntensity: BATTERY_AUTOMATON_EMISSIVE_INTENSITY,
+		transparent: true,
+		opacity: BATTERY_AUTOMATON_COLUMN_OPACITY,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const columnMesh = new THREE.Mesh(columnGeometry, columnMaterial);
+	columnMesh.scale.y = 0.001;
+	columnMesh.position.set(origin.x, BATTERY_AUTOMATON_COLUMN_BASE_Y, origin.z);
+	targetScene.add(columnMesh);
+
+	activeEffects.push({
+		mesh: columnMesh,
+		origin: { x: origin.x, z: origin.z },
+		createdAt: performance.now(),
+		duration,
+		isBatteryAutomatonColumn: true,
+		_baseEmissiveIntensity: BATTERY_AUTOMATON_EMISSIVE_INTENSITY,
+		_scene: targetScene,
+	});
+}
+
+/**
+ * Brief charge-delivery pulse: quick expanding cyan/amber ring plus an upward
+ * electric spark burst. Pure additive VFX; no network traffic or state beyond
+ * activeEffects.
+ * @param {object} origin - { x, z }
+ * @param {object} [style] - optional { color, emissive, duration, radius }
+ */
+export function spawnBatteryChargePulseEffect(origin, style = {}) {
+	const color = style.color ?? BATTERY_AUTOMATON_COLOR;
+	const emissive = style.emissive ?? BATTERY_AUTOMATON_EMISSIVE;
+	const duration = style.duration ?? BATTERY_AUTOMATON_CHARGE_PULSE_DURATION;
+	const radius = style.radius ?? 1.0;
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (!targetScene) return;
+
+	const ringGeometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const ringMaterial = new THREE.MeshStandardMaterial({
+		color: emissive,
+		emissive,
+		emissiveIntensity: 1.35,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+	ringMesh.position.set(origin.x, 0.12, origin.z);
+	ringMesh.rotation.x = -Math.PI / 2;
+	ringMesh.scale.setScalar(0.001);
+	targetScene.add(ringMesh);
+
+	activeEffects.push({
+		mesh: ringMesh,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration,
+		isBatteryAutomatonRing: true,
+		_baseEmissiveIntensity: 1.35,
+		_scene: targetScene,
+	});
+
+	spawnParticleBurst(
+		{ x: origin.x, y: 0.6, z: origin.z },
+		{
+			color,
+			emissive,
+			count: BATTERY_AUTOMATON_CHARGE_BURST_COUNT,
+			spread: BATTERY_AUTOMATON_CHARGE_BURST_SPREAD,
+			duration,
+		},
+	);
+}
+
 // Sanctum Pulse palette: a coherent holy-gold so the divine "pulse" reads as
 // radiant sacred light, not the accidental green the ring emissive used to be.
 const DIVINE_GRACE_RING_COLOR = 0xfde68a; // warm gold ground ring
@@ -6394,6 +6528,48 @@ export function updateAttackEffects() {
 			fx.mesh.material.opacity = fade;
 			const baseIntensity = fx._baseEmissiveIntensity ?? LEGION_MARSHAL_EMISSIVE_INTENSITY;
 			const flicker = 1.0 + 0.25 * Math.sin(elapsed * 0.02);
+			fx.mesh.material.emissiveIntensity = baseIntensity * flicker * fade;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Battery Automaton expanding ground ring (deploy / charge pulse) ──
+		if (fx.isBatteryAutomatonRing) {
+			const expandMs = Math.min(SUMMON_EXPAND_MS, fx.duration * 0.55);
+			const expandT = Math.min(elapsed / expandMs, 1.0);
+			const scale = fx.radius * expandT * 2;
+			fx.mesh.scale.setScalar(Math.max(0.001, scale));
+
+			if (elapsed > expandMs) {
+				const fadeRatio = 1.0 - (elapsed - expandMs) / (fx.duration - expandMs);
+				fx.mesh.material.opacity = Math.max(0.01, fadeRatio);
+			}
+			const baseIntensity = fx._baseEmissiveIntensity ?? 1.2;
+			const flicker = 1.0 + 0.3 * Math.sin(elapsed * 0.028);
+			fx.mesh.material.emissiveIntensity = baseIntensity * flicker;
+
+			if (elapsed >= fx.duration) {
+				disposeEffectObject(fx.mesh, fx._scene || scene);
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Battery Automaton ascending electric column ──
+		if (fx.isBatteryAutomatonColumn) {
+			const t = Math.min(elapsed / fx.duration, 1.0);
+			const riseT = Math.min(t / 0.35, 1.0);
+			const s = Math.max(0.001, riseT);
+			fx.mesh.scale.y = s;
+			fx.mesh.position.y = BATTERY_AUTOMATON_COLUMN_BASE_Y + (BATTERY_AUTOMATON_COLUMN_HEIGHT * s) / 2;
+			const fade = Math.max(0.01, BATTERY_AUTOMATON_COLUMN_OPACITY * (1.0 - t));
+			fx.mesh.material.opacity = fade;
+			const baseIntensity = fx._baseEmissiveIntensity ?? BATTERY_AUTOMATON_EMISSIVE_INTENSITY;
+			const flicker = 1.0 + 0.35 * Math.sin(elapsed * 0.03);
 			fx.mesh.material.emissiveIntensity = baseIntensity * flicker * fade;
 
 			if (elapsed >= fx.duration) {
