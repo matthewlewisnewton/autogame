@@ -30,6 +30,7 @@ function makeCtx(overrides = {}) {
 		spawnParticleBurst: record('spawnParticleBurst'),
 		spawnProjectileTrail: record('spawnProjectileTrail'),
 		spawnImpactDecal: record('spawnImpactDecal'),
+		spawnGravityWellEffect: record('spawnGravityWellEffect'),
 		spawnTelegraphRing: record('spawnTelegraphRing'),
 		spawnTelepipeCastEffect: record('spawnTelepipeCastEffect'),
 		spawnSpikeTrapEffect: record('spawnSpikeTrapEffect'),
@@ -1557,41 +1558,79 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'heal')).toBe(false);
 	});
 
-	it('gravity_well adds a purple pull telegraph, inward burst, and center impact decal', () => {
-		const ctx = makeCtx();
+	it('gravity_well fires spawnGravityWellEffect and center impact synchronously at t=0', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 8, y: 0.5, z: 2 } },
+				e2: { position: { x: 10, z: -1 } },
+			}),
+		});
 		renderCardUsed({
 			cardId: 'gravity_well',
 			origin: { x: 1, z: 2 },
 			radius: 12,
-			pulled: 2,
+			pulled: [{ enemyId: 'e1' }, { enemyId: 'e2' }, { enemyId: 'gone' }],
 			hits: [],
 		}, ctx);
-		const ring = ctx._calls.find((c) => c[0] === 'spawnTelegraphRing');
-		expect(ring).toBeDefined();
-		expect(ring[1]).toEqual({ x: 1, z: 2 });
-		expect(ring[2]).toBe(12);
-		expect(ring[3]).toMatchObject({ color: 0xc084fc, emissive: 0xa855f7 });
-		const burst = ctx._calls.find((c) => c[0] === 'spawnParticleBurst');
-		expect(burst).toBeDefined();
-		expect(burst[1]).toEqual({ x: 1, z: 2 });
-		expect(burst[2]).toMatchObject({ color: 0xc084fc, count: 18, spread: 2.8 });
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+		const pull = ctx._calls.find((c) => c[0] === 'spawnGravityWellEffect');
+		expect(pull).toBeDefined();
+		expect(pull[1]).toEqual({ x: 1, z: 2 });
+		expect(pull[2]).toBe(12);
+		expect(pull[3]).toMatchObject({
+			color: 0xc084fc,
+			emissive: 0xa855f7,
+			duration: ATTACK_EFFECT_DURATION,
+		});
 		const decal = ctx._calls.find((c) => c[0] === 'spawnImpactDecal');
 		expect(decal).toBeDefined();
 		expect(decal[1]).toEqual({ x: 1, z: 2 });
+		expect(decal[2]).toMatchObject({ color: 0xc084fc, emissive: 0xa855f7 });
+		const streaks = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
+		expect(streaks).toHaveLength(2);
+		expect(streaks[0][1]).toEqual({ x: 8, y: 0.5, z: 2 });
+		expect(streaks[0][2]).toEqual({ x: 1, z: 2 });
+		expect(streaks[0][3]).toMatchObject({
+			color: 0xc084fc,
+			emissive: 0xa855f7,
+			duration: 320,
+		});
+		expect(streaks[1][1]).toEqual({ x: 10, z: -1 });
+		expect(streaks[1][2]).toEqual({ x: 1, z: 2 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnTelegraphRing')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnParticleBurst')).toBe(false);
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
+	});
+
+	it('gravity_well has no positive windUpMs (instant cast; no 307 charge telegraph expected)', () => {
+		expect(CARD_DEFS.gravity_well.windUpMs ?? 0).toBeLessThanOrEqual(0);
+	});
+
+	it('gravity_well skips VFX when radius is absent', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'gravity_well',
+			origin: { x: 0, z: 0 },
+			pulled: [{ enemyId: 'e1' }],
+			hits: [],
+		}, ctx);
+		expect(ctx._calls.some((c) => c[0] === 'spawnGravityWellEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnImpactDecal')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'spawnLightningArc')).toBe(false);
 	});
 
 	it('gravity_well still renders without throwing when the new ctx primitives are absent', () => {
 		const ctx = makeCtx({
-			spawnTelegraphRing: undefined,
-			spawnParticleBurst: undefined,
+			spawnGravityWellEffect: undefined,
 			spawnImpactDecal: undefined,
+			spawnLightningArc: undefined,
+			enemyMeshes: undefined,
 		});
 		expect(() => renderCardUsed({
 			cardId: 'gravity_well',
 			origin: { x: 0, z: 0 },
 			radius: 12,
-			pulled: 0,
+			pulled: [{ enemyId: 'e1' }],
 			hits: [],
 		}, ctx)).not.toThrow();
 	});

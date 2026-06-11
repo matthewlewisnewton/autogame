@@ -25,6 +25,7 @@
 //   spawnParticleBurst(position, style?)       — multi-particle spark/ember burst
 //   spawnProjectileTrail(origin, direction, style?) — fading streak along a path
 //   spawnImpactDecal(origin, style?)           — lingering ground flash/decal ring
+//   spawnGravityWellEffect(origin, radius, style?) — contracting pull ring, void core, inward inflow
 //   spawnTelegraphRing(origin, radius, style?) — expanding/pulsing AoE telegraph ring
 //   spawnTelepipeCastEffect(origin, radius, style?) — telepipe portal-opening cast flourish
 //   spawnMirrorWardShellEffect(origin, radius, style?) — lingering mirror ward shell
@@ -674,26 +675,43 @@ function renderPurifyingPulse(data, ctx) {
 
 const GRAVITY_WELL_COLOR = 0xc084fc;
 const GRAVITY_WELL_EMISSIVE = 0xa855f7;
+const GRAVITY_WELL_PULL_STREAK_STYLE = {
+	color: GRAVITY_WELL_COLOR,
+	emissive: GRAVITY_WELL_EMISSIVE,
+	duration: 320,
+};
 const EVENT_HORIZON_COLOR = 0x581c87;
 const EVENT_HORIZON_EMISSIVE = 0x7c3aed;
 
 /**
- * Gravity Well: purple pull telegraph at pull radius, inward-styled particle
- * burst at the origin, and an optional center impact decal.
+ * Gravity Well: instant collapsing singularity (spawnGravityWellEffect), a
+ * brief center impact at t = 0, and inward pull streaks from each pulled enemy.
  */
 function renderGravityWell(data, ctx) {
 	if (data.radius === undefined) return;
 	const origin = originOf(data);
 	const color = getAccentHex(data.cardId) ?? GRAVITY_WELL_COLOR;
 	const emissive = GRAVITY_WELL_EMISSIVE;
-	if (ctx.spawnTelegraphRing) {
-		ctx.spawnTelegraphRing(origin, data.radius, { color, emissive });
-	}
-	if (ctx.spawnParticleBurst) {
-		ctx.spawnParticleBurst(origin, { color, emissive, count: 18, spread: 2.8 });
+	if (ctx.spawnGravityWellEffect) {
+		ctx.spawnGravityWellEffect(origin, data.radius, {
+			color,
+			emissive,
+			duration: ATTACK_EFFECT_DURATION,
+		});
 	}
 	if (ctx.spawnImpactDecal) {
 		ctx.spawnImpactDecal(origin, { color, emissive });
+	}
+	const pulled = Array.isArray(data.pulled) ? data.pulled : [];
+	if (pulled.length && ctx.spawnLightningArc && ctx.enemyMeshes) {
+		const meshes = ctx.enemyMeshes() || {};
+		for (const entry of pulled) {
+			const mesh = meshes[entry.enemyId];
+			if (!mesh) continue;
+			const enemyPos = { x: mesh.position.x, z: mesh.position.z };
+			if (Number.isFinite(mesh.position.y)) enemyPos.y = mesh.position.y;
+			ctx.spawnLightningArc(enemyPos, origin, GRAVITY_WELL_PULL_STREAK_STYLE);
+		}
 	}
 }
 
