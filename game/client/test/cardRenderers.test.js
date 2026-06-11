@@ -2854,6 +2854,72 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnSummonEffect')).toBe(false);
 	});
 
+	it('mana_prism schedules six stone-emission pulses at the server cadence (2000ms over 12s)', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'mana_prism',
+			origin: { x: 1, z: 2 },
+			radius: 1,
+			hits: [],
+		}, ctx);
+		// Pulse count and interval are derived from CARD_DEFS.mana_prism, so the
+		// telegraph stays locked to the server addMagicStones cadence.
+		const delays = ctx._calls.filter((c) => c[0] === 'scheduleAfter').map((c) => c[1]);
+		expect(delays).toEqual([2000, 4000, 6000, 8000, 10000, 12000]);
+	});
+
+	it('mana_prism each scheduled pulse emits a distinct stone-gain ring + upward burst', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'mana_prism',
+			origin: { x: 1, z: 2 },
+			radius: 1,
+			hits: [],
+		}, ctx);
+		// Before the timers fire only the initial cast flourish has rendered.
+		const ringsBefore = ctx._calls.filter((c) => c[0] === 'spawnTelegraphRing').length;
+		const burstsBefore = ctx._calls.filter((c) => c[0] === 'spawnParticleBurst').length;
+		expect(ringsBefore).toBe(1);
+		expect(burstsBefore).toBe(1);
+
+		ctx.runScheduled();
+
+		// Each of the six pulses adds one small ring + one cyan-cored mote burst.
+		const pulseRings = ctx._calls
+			.filter((c) => c[0] === 'spawnTelegraphRing')
+			.slice(ringsBefore);
+		const pulseBursts = ctx._calls
+			.filter((c) => c[0] === 'spawnParticleBurst')
+			.slice(burstsBefore);
+		expect(pulseRings).toHaveLength(6);
+		expect(pulseBursts).toHaveLength(6);
+		expect(pulseRings[0][1]).toEqual({ x: 1, z: 2 });
+		expect(pulseRings[0][2]).toBe(0.9);
+		expect(pulseRings[0][3]).toMatchObject({ color: 0xa855f7, emissive: 0x22d3ee });
+		expect(pulseBursts[0][2]).toMatchObject({
+			color: 0x22d3ee,
+			emissive: 0xa855f7,
+			count: 8,
+			spread: 0.8,
+		});
+	});
+
+	it('mana_prism pulse schedule no-ops gracefully when scheduleAfter and spawn primitives are absent', () => {
+		const ctx = makeCtx({
+			scheduleAfter: undefined,
+			spawnTelegraphRing: undefined,
+			spawnParticleBurst: undefined,
+			spawnManaPrismEffect: undefined,
+		});
+		expect(() => renderCardUsed({
+			cardId: 'mana_prism',
+			origin: { x: 0, z: 0 },
+			radius: 1,
+			hits: [],
+		}, ctx)).not.toThrow();
+		expect(ctx._calls.some((c) => c[0] === 'scheduleAfter')).toBe(false);
+	});
+
 	it('sacrificial_altar adds a gold/red ritual telegraph and burst at sacrifice radius', () => {
 		const ctx = makeCtx();
 		renderCardUsed({

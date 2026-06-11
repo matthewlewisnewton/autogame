@@ -2388,8 +2388,13 @@ function renderAstralGuardian(data, ctx) {
 /**
  * Mana Prism: on the utility cast path (`radius` present) the bespoke
  * refracting-crystal VFX is the primary read, with the violet/cyan telegraph
- * ring and particle burst kept as accents. Otherwise a summon ring plus crystal
- * burst for the economy placement path.
+ * ring and particle burst kept as accents. After the cast flourish a finite,
+ * bounded schedule of stone-emission pulses telegraphs the lingering minion:
+ * one flourish per server `magicStonePulse`, timed off the shared card stats
+ * (`pulseIntervalMs` / `durationSeconds`) so the on-screen rhythm stays in
+ * lockstep with the server `addMagicStones` cadence (6 pulses @ 2000ms over
+ * 12s by default) and cannot silently drift. Otherwise a summon ring plus
+ * crystal burst for the economy placement path.
  */
 function renderManaPrism(data, ctx) {
 	const origin = originOf(data);
@@ -2402,6 +2407,35 @@ function renderManaPrism(data, ctx) {
 		}
 		if (ctx.spawnParticleBurst) {
 			ctx.spawnParticleBurst(origin, { color, emissive, count: 12, spread: 1.6 });
+		}
+
+		// Pulse cadence + lifetime come straight from the shared card stats the
+		// server consumes, so the telegraph can never drift from the real
+		// addMagicStones emission timing. Safe fallbacks match cardStats.json.
+		const stats = CARD_DEFS.mana_prism;
+		const interval = stats?.pulseIntervalMs ?? 2000;
+		const durationMs = (stats?.durationSeconds ?? 12) * 1000;
+		const pulses = Math.floor(durationMs / interval);
+		for (let n = 1; n <= pulses; n += 1) {
+			ctx.scheduleAfter?.(interval * n, () => {
+				// Stone-gain flourish: small violet/cyan ring + upward mote burst,
+				// distinct from the wide initial cast flourish above. Guarded so a
+				// minimal ctx (no spawn primitives) no-ops gracefully.
+				if (ctx.spawnTelegraphRing) {
+					ctx.spawnTelegraphRing(origin, 0.9, { color, emissive });
+				}
+				if (ctx.spawnParticleBurst) {
+					// spawnParticleBurst already biases motes upward; swapping
+					// color/emissive vs. the cast flourish keeps each pulse a
+					// distinct cyan-cored stone-gain read.
+					ctx.spawnParticleBurst(origin, {
+						color: emissive,
+						emissive: color,
+						count: 8,
+						spread: 0.8,
+					});
+				}
+			});
 		}
 		return;
 	}
