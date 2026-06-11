@@ -1,0 +1,13 @@
+I broke the top-level ticket into two independently-implementable, code-verified sub-tickets:
+
+**01 — `subtickets/01-one-snapshot-per-frame/ticket.md`**
+The core refactor: capture one cached `{ pad, profile, cfg, cState }` snapshot per frame in `gamepad.js`, populated once near the top of `animate()`, and rewire `getMovementDirection`, `pollGamepadMovement`, `pollGamepadLook`, `pollGamepadButtons`, and `pollInput` to consume it instead of each calling `navigator.getGamepads()`. Also collapses `prevButtons[]` to a single lock-on boolean and reads `read8BitDo64CButtonState` once. Keeps a lazy-build fallback so direct test calls (mock `navigator.getGamepads`) still work. Verified by code (call-count/structure/edge-trigger logic + existing tests).
+
+**02 — `subtickets/02-delete-dead-gamepad-code/ticket.md`**
+Dead-code removal: delete `uses8BitDo64DigitalCButtons`, `get8BitDo64CStickAxes`, `get8BitDo64CAxisPairs`, `readAxisSectorDirections`, `readProfileCStick`, `describeGamepadConnectionWithProfile` from `gamepad-profiles.js` (plus the now-dead cX/cY branch of `readBindingAxisValue`), `isGamepadMoving` from `gamepad.js`, and `isButtonPressed` from `input.js`; inline the always-true calibration call sites; and remove the orphan tests. Verified by code ("X removed", grep-clean, tests pass).
+
+Both are `code` — every criterion concerns structure, function existence/removal, logic, and test pass/fail, none of which `visual` QA could check. They're ordered so the consolidation lands first and the dead-code pass builds on the cleaner tree (minimal overlap in `gamepad.js`/`input.js`).
+
+Created sub-ticket paths:
+- `tickets/client-consolidate-gamepad-polling-to-one-snapshot-per-frame-w3lf/subtickets/01-one-snapshot-per-frame/ticket.md`
+- `tickets/client-consolidate-gamepad-polling-to-one-snapshot-per-frame-w3lf/subtickets/02-delete-dead-gamepad-code/ticket.md`

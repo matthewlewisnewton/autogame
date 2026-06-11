@@ -22,3 +22,71 @@
 [console:log] [debugScenario] applied spire-ascent-near-adds
 [console:log] [debugScenario] applied spire-ascent-boss-approach
 [console:log] [debugScenario] applied spire-ascent-boss-low-hp
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:log] [debugScenario] applied spire-ascent-tier-2
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied spire-ascent-near-adds
+[console:log] [debugScenario] applied ice-ball-ready
+[console:log] [debugScenario] applied fireball-hand-ready
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:log] [debugScenario] applied spire-ascent-tier-2
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied spire-ascent-near-adds
+[console:log] [debugScenario] applied ice-ball-ready
+[console:log] [debugScenario] applied fireball-hand-ready
+[console:log] [debugScenario] applied purifying-pulse-ready
+[console:log] [debugScenario] applied magma-windup-ready
+[console:log] [debugScenario] applied spire-ascent-telepipe-ready
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:log] [debugScenario] applied spire-ascent-tier-2
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied spire-ascent-near-adds
+[console:log] [debugScenario] applied ice-ball-ready
+[console:log] [debugScenario] applied fireball-hand-ready
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:log] [debugScenario] applied spire-ascent-tier-2
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied spire-ascent-near-adds
+[console:log] [debugScenario] applied ice-ball-ready
+[console:log] [debugScenario] applied fireball-hand-ready
+[console:log] [debugScenario] applied purifying-pulse-ready
+[console:log] [debugScenario] applied magma-windup-ready
+[console:log] [debugScenario] applied spire-ascent-telepipe-ready
+[console:log] [debugScenario] applied spire-ascent-tier-2
+[console:log] [debugScenario] applied spire-ascent-near-adds
+[console:warning] [debugScenario] Adds must be cleared before boss approach
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:log] [debugScenario] applied spire-ascent-tier-2
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied spire-ascent-near-adds
+[console:log] [debugScenario] applied ice-ball-ready
+[console:log] [debugScenario] applied fireball-hand-ready
+[console:log] [debugScenario] applied purifying-pulse-ready
+[console:log] [debugScenario] applied magma-windup-ready
+[console:log] [debugScenario] applied spire-ascent-telepipe-ready
+[console:log] [cardError] Slot on cooldown
+[console:log] [debugScenario] applied spire-ascent-tier-2
+[console:log] [debugScenario] applied spire-ascent-near-adds
+[console:log] [debugScenario] applied spire-ascent-boss-approach
+[console:log] [debugScenario] applied spire-ascent-encounter-trigger
+[console:log] [debugScenario] applied spire-ascent-boss-low-hp

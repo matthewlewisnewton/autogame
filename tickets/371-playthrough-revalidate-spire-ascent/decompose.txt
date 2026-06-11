@@ -1,0 +1,19 @@
+## Remediation summary
+
+**Round 1 gap:** Sub-ticket `03-spire-telepipe-vitals-and-new-sortie-charges` exhausted MAX_ITER. QA found the **game-side** debug scenario (`spire-ascent-telepipe-ready`) landed, but the **harness** deliverables never shipped — partly because implementers were scoped to `game/` only while the ticket also required `harness/validate/**` changes.
+
+**Action taken:**
+- **Deleted** failed `03-spire-telepipe-vitals-and-new-sortie-charges` (mis-scoped bundle).
+- **Left untouched** passed sub-tickets `01`, `02`, `04`, `05` (all have `.passed`).
+- **Created** one harness-only replacement numbered after `05`.
+
+**New sub-ticket `06`** closes the specific harness gaps from the failure feedback:
+- Export `runSpireAscentTelepipeNewSortieStep` + preset `telepipeScenario` / `telepipeDeployScenario`
+- Add isolated `--steps telepipe-new-sortie` + npm script so QA can verify suspend → abandon → redeploy without re-running the full boss path
+- Explicitly **no** `--steps full` changes (04 already passed) and **no** `game/` edits unless the debug scenario is broken
+
+## Created sub-ticket folder paths
+
+```
+/home/matt/workspace/.autogame-worktrees/371-playthrough-revalidate-spire-ascent/tickets/371-playthrough-revalidate-spire-ascent/subtickets/06-spire-telepipe-harness-new-sortie-step/
+```

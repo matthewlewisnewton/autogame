@@ -148,6 +148,7 @@ function clearNonBossEnemies(gameState, bossId) {
  */
 /** Optional hooks invoked once per stage-boss defeat (after loot, before filter). */
 const encounterRewardHooks = [];
+const encounterActivationHooks = [];
 
 function registerEncounterRewardHook(fn) {
   if (typeof fn === 'function') {
@@ -213,7 +214,18 @@ function tryActivateEncounter(gameState) {
     recordEnemyDefeated(deadAddCount);
   }
   clearNonBossEnemies(gameState, bossId);
+  for (const hook of encounterActivationHooks) {
+    hook(gameState, boss);
+  }
   return true;
+}
+
+function registerEncounterActivationHook(fn) {
+  if (typeof fn === 'function') encounterActivationHooks.push(fn);
+}
+
+function clearEncounterActivationHooks() {
+  encounterActivationHooks.length = 0;
 }
 
 module.exports = {
@@ -239,4 +251,7 @@ module.exports = {
   registerEncounterRewardHook,
   clearEncounterRewardHooks,
   encounterRewardHooks,
+  registerEncounterActivationHook,
+  clearEncounterActivationHooks,
+  encounterActivationHooks,
 };

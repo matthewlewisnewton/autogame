@@ -35,6 +35,19 @@ function resolvePresetCopy(run) {
 	};
 }
 
+/** Parse `type (Display Name)` boss labels from preset metadata. */
+function parseBossSpawnLabel(label) {
+	if (typeof label !== 'string' || !label.trim()) {
+		return { type: null, displayName: null };
+	}
+	const match = label.trim().match(/^([^(]+?)(?:\s*\(([^)]+)\))?$/);
+	if (!match) return { type: label.trim(), displayName: null };
+	return {
+		type: match[1].trim() || null,
+		displayName: match[2]?.trim() || null,
+	};
+}
+
 function renderAssertionSection(run) {
 	const lines = ['', '## Assertions', ''];
 	const objectiveType = run.objectiveType ?? 'stage_boss';
@@ -214,12 +227,15 @@ function renderTelepipeSection(telepipeReset) {
 	return lines;
 }
 
-function renderBossEncounterUiSection(probe) {
+function renderBossEncounterUiSection(probe, run = {}) {
 	const lines = ['', '## Boss encounter UI', ''];
 	if (!probe || typeof probe !== 'object') {
 		lines.push('No boss encounter UI probe recorded.');
 		return lines;
 	}
+	const { displayName: expectedBossName } = parseBossSpawnLabel(
+		run.bossSpawnLabel || run.bossType,
+	);
 	const encounterActive = probe.encounterLocked === true && probe.encounterPhase === 'active';
 	lines.push(`- **hudVisible**: ${probe.hudVisible === true ? 'yes' : 'no'}`);
 	lines.push(`- **bossName**: ${probe.bossName || '(empty)'}`);
@@ -229,7 +245,9 @@ function renderBossEncounterUiSection(probe) {
 		lines.push('  - Note: boss encounter HUD missing or hidden during boss-active capture.');
 	}
 	if (!probe.bossName) {
-		lines.push('  - Note: boss display name is empty.');
+		lines.push(`  - Note: boss display name is empty${expectedBossName ? ` (expected ${expectedBossName})` : ''}.`);
+	} else if (expectedBossName && probe.bossName !== expectedBossName) {
+		lines.push(`  - Note: expected "${expectedBossName}" display name for ${run.bossSpawnLabel || run.bossType || 'boss'}.`);
 	}
 	if (!encounterActive) {
 		lines.push('  - Note: encounter was not active/locked when probed.');
@@ -288,10 +306,10 @@ function renderWindupSection(exercise) {
 	return lines;
 }
 
-function renderCanyonTelepipeSection(telepipe) {
+function renderQuestTelepipeSection(telepipe, { emptyLabel = 'quest telepipe' } = {}) {
 	const lines = ['', '## Telepipe vitals and new-sortie charges', ''];
 	if (!telepipe || typeof telepipe !== 'object') {
-		lines.push('No canyon telepipe exercise recorded.');
+		lines.push(`No ${emptyLabel} exercise recorded.`);
 		return lines;
 	}
 	const pre = telepipe.preSuspend;
@@ -327,12 +345,14 @@ function renderNewContentExerciseSection(screenshots) {
 	return lines;
 }
 
-function renderBossVisualIdentitySection(probe) {
+function renderBossVisualIdentitySection(probe, run = {}) {
 	const lines = ['', '## Boss visual identity', ''];
 	if (!probe || typeof probe !== 'object') {
 		lines.push('No boss visual identity probe recorded.');
 		return lines;
 	}
+	const { type: labelBossType } = parseBossSpawnLabel(run.bossSpawnLabel);
+	const expectedBossType = run.bossType || labelBossType;
 	lines.push(`- **bossType**: ${probe.bossType ?? '(missing)'}`);
 	lines.push(`- **bossEnemyId**: ${probe.bossEnemyId ?? '(missing)'}`);
 	lines.push(`- **nearestAddType**: ${probe.nearestAddType ?? '(none)'}`);
@@ -340,8 +360,12 @@ function renderBossVisualIdentitySection(probe) {
 	if (probe.bossRenderScale != null || probe.addRenderScale != null) {
 		lines.push(`- **bossRenderScale / addRenderScale**: ${probe.bossRenderScale ?? '?'} / ${probe.addRenderScale ?? '?'}`);
 	}
+	if (expectedBossType && probe.bossType && probe.bossType !== expectedBossType) {
+		lines.push(`  - Note: expected boss type "${expectedBossType}" (${run.bossSpawnLabel || expectedBossType}), not ${probe.bossType}.`);
+	}
 	if (probe.bossDistinctFromAdds !== true) {
-		lines.push('  - Note: boss type or maxHp is not clearly distinct from the nearest live add.');
+		const bossLabel = run.bossSpawnLabel || expectedBossType || 'boss';
+		lines.push(`  - Note: ${bossLabel} type or maxHp is not clearly distinct from the nearest live add.`);
 	}
 	if (probe.bossRenderScale != null && probe.addRenderScale != null
 		&& !(probe.bossRenderScale > probe.addRenderScale)) {
@@ -417,6 +441,8 @@ function renderFloorAlignmentSection(floorAlignment, { preset, objectiveType } =
  *   bossVisualIdentity?: object | null,
  *   cardExercises?: { slowBurn?: object, purifyingPulse?: object, windup?: object } | null,
  *   canyonTelepipe?: object | null,
+ *   roomsTelepipe?: object | null,
+ *   spireTelepipe?: object | null,
  *   consoleErrors?: string[],
  *   screenshots?: string[],
  *   visualNotes?: string[],
@@ -437,7 +463,19 @@ export function renderFindings(run) {
 
 	lines.push(...renderAssertionSection(run));
 
-	if (run.preset === 'sunken-canyon') {
+	if (run.preset === 'rooms') {
+		lines.push(
+			formatAssertion('bossEncounterUiVisible', run.assertions?.bossEncounterUiVisible === true),
+			formatAssertion('bossDistinctFromAdds', run.assertions?.bossDistinctFromAdds === true),
+			formatAssertion('slowBurnMutuallyExclusive', run.assertions?.slowBurnMutuallyExclusive === true),
+			formatAssertion('healCleanseApplied', run.assertions?.healCleanseApplied === true),
+			formatAssertion('windupTelegraphActive', run.assertions?.windupTelegraphActive === true),
+			formatAssertion('telepipeVitalsPreserved', run.assertions?.telepipeVitalsPreserved === true),
+			formatAssertion('cardChargesResetOnNewSortie', run.assertions?.cardChargesResetOnNewSortie === true),
+		);
+	}
+
+	if (run.preset === 'sunken-canyon' || run.preset === 'spire-ascent') {
 		lines.push(
 			formatAssertion('bossEncounterUiVisible', run.assertions?.bossEncounterUiVisible === true),
 			formatAssertion('bossDistinctFromAdds', run.assertions?.bossDistinctFromAdds === true),
@@ -490,13 +528,21 @@ export function renderFindings(run) {
 		preset: run.preset,
 		objectiveType,
 	}));
-	lines.push(...renderBossEncounterUiSection(run.bossEncounterUi));
-	lines.push(...renderBossVisualIdentitySection(run.bossVisualIdentity));
+	lines.push(...renderBossEncounterUiSection(run.bossEncounterUi, run));
+	lines.push(...renderBossVisualIdentitySection(run.bossVisualIdentity, run));
 	lines.push(...renderSlowBurnSection(run.cardExercises?.slowBurn));
 	lines.push(...renderPurifyingPulseSection(run.cardExercises?.purifyingPulse));
 	lines.push(...renderWindupSection(run.cardExercises?.windup));
-	lines.push(...renderCanyonTelepipeSection(run.canyonTelepipe));
-	lines.push(...renderNewContentExerciseSection(run.screenshots));
+	if (run.preset === 'spire-ascent') {
+		lines.push(...renderQuestTelepipeSection(run.spireTelepipe, { emptyLabel: 'spire-ascent telepipe' }));
+	} else if (run.preset === 'rooms') {
+		lines.push(...renderQuestTelepipeSection(run.roomsTelepipe, { emptyLabel: 'rooms telepipe' }));
+	} else {
+		lines.push(...renderQuestTelepipeSection(run.canyonTelepipe, { emptyLabel: 'canyon telepipe' }));
+	}
+	if (run.preset === 'spire-ascent' || run.preset === 'sunken-canyon' || run.preset === 'rooms') {
+		lines.push(...renderNewContentExerciseSection(run.screenshots));
+	}
 
 	lines.push('', '## Screenshots', '');
 	for (const shot of run.screenshots || []) {

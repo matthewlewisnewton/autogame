@@ -16,6 +16,7 @@ import { resolveVariantRollTier } from '../enemyVariants.js';
 import {
 	ENCOUNTER_PHASES,
 	ENCOUNTER_TRIGGER_RADIUS,
+	clearNonBossEnemies,
 	resolveEncounterAnchor,
 } from '../encounters.js';
 import { resetGameState, gameState, runGameLoopTick, applyBurning, updateBurning, updateEnemies, hasLineOfSight, buildWallColliders } from '../index.js';
@@ -409,6 +410,18 @@ describe('debugScenario — arena-trials harness combat shortcuts', () => {
 
 		const state = testGameState();
 		const bossId = state.run.encounter.bossEnemyId;
+		// Open-plaza is a single room that spawns the player at its centre, within
+		// ENCOUNTER_TRIGGER_RADIUS of the central dais boss anchor. Clear the adds only AFTER
+		// moving the player out of the trigger so the live game loop's updateEncounterTriggers
+		// cannot auto-activate the dormant encounter in the window before the boss-approach
+		// scenario runs. This mirrors real play (adds are cleared out in the plaza, not while
+		// standing on the dais); the scenario then repositions to just outside the trigger.
+		const preClearPlayer = playerForSocket(socket);
+		const preClearDais = state.layout.landmarks.find((lm) => lm.type === 'arena_dais');
+		const preClearAnchor = resolveEncounterAnchor(state.run, state)
+			|| (preClearDais ? { x: preClearDais.x, z: preClearDais.z } : { x: preClearPlayer.x, z: preClearPlayer.z });
+		preClearPlayer.x = preClearAnchor.x + ENCOUNTER_TRIGGER_RADIUS + 12;
+		preClearPlayer.z = preClearAnchor.z;
 		for (const enemy of state.enemies) {
 			if (enemy.id !== bossId) enemy.hp = 0;
 		}
@@ -598,6 +611,25 @@ describe('debugScenario — training-caverns-tier-2', () => {
 		}
 	});
 
+	it('training-caverns-telepipe-ready deploys Tier 2 with telepipe in hand', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
+		socket.emit('debugScenario', { name: 'training-caverns-telepipe-ready' });
+		const result = await debugResultPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('training-caverns-telepipe-ready');
+		expect(stateUpdate.gamePhase).toBe('playing');
+		expect(stateUpdate.selectedQuestId).toBe(TRAINING_CAVERNS_ID);
+		expect(stateUpdate.selectedQuestTier).toBe(TRAINING_CAVERNS_TIER_2);
+
+		const player = playerForSocket(socket);
+		expect(player.hand.some((card) => card && card.id === 'telepipe')).toBe(true);
+	});
+
 	it('deploys training_caverns Tier 2 stage-boss run with encounter and rigid crowded layout', async () => {
 		const { socket } = await connectClient(baseUrl);
 
@@ -643,6 +675,66 @@ describe('debugScenario — training-caverns-tier-2', () => {
 		).toBe(true);
 		expect(stateUpdate.enemies.every((e) => e.variant !== undefined)).toBe(true);
 		expect(resolveVariantRollTier(stateUpdate.run.questTier, 0)).toBe(1);
+	});
+
+	function evaluateBossVisualIdentityProbe(state, expectedBossType) {
+		const bossEnemyId = state.run?.encounter?.bossEnemyId ?? null;
+		const enemyHp = (state.enemies || []).map((e) => ({
+			id: e.id,
+			type: e.type,
+			hp: e.hp,
+			maxHp: e.maxHp,
+			x: e.x,
+			z: e.z,
+		}));
+		const boss = enemyHp.find((e) => e.id === bossEnemyId && e.hp > 0)
+			|| enemyHp.find((e) => e.type === expectedBossType && e.hp > 0)
+			|| null;
+		const adds = enemyHp.filter(
+			(e) => e.hp > 0 && e.id !== boss?.id && e.type !== expectedBossType,
+		);
+		let nearestAdd = null;
+		let nearestDist = Infinity;
+		if (boss) {
+			for (const add of adds) {
+				const dist = Math.hypot((add.x ?? 0) - (boss.x ?? 0), (add.z ?? 0) - (boss.z ?? 0));
+				if (dist < nearestDist) {
+					nearestDist = dist;
+					nearestAdd = add;
+				}
+			}
+		}
+		const bossDistinctFromAdds = !!boss
+			&& !!nearestAdd
+			&& boss.type !== nearestAdd?.type
+			&& (boss.maxHp ?? 0) > (nearestAdd.maxHp ?? 0);
+		return {
+			bossType: boss?.type ?? expectedBossType,
+			bossEnemyId: boss?.id ?? bossEnemyId,
+			nearestAddType: nearestAdd?.type ?? null,
+			bossDistinctFromAdds,
+		};
+	}
+
+	it('training-caverns-near-adds keeps dormant boss and adds for bossVisualIdentity probe', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'training-caverns-tier-2' });
+		await tier2Promise;
+
+		const nearAddsPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'training-caverns-near-adds' });
+		const nearAddsResult = await nearAddsPromise;
+
+		expect(nearAddsResult.ok).toBe(true);
+
+		const state = testGameState();
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
+		const probe = evaluateBossVisualIdentityProbe(state, 'annex_overseer');
+		expect(probe.bossType).toBe('annex_overseer');
+		expect(probe.nearestAddType).toMatch(/^(grunt|skirmisher)$/);
+		expect(probe.bossDistinctFromAdds).toBe(true);
 	});
 
 	it('repositions beside live adds after training-caverns-tier-2 deploy', async () => {
@@ -724,6 +816,40 @@ describe('debugScenario — training-caverns-tier-2', () => {
 		const distFromAnchor = Math.hypot(anchor.x - player.x, anchor.z - player.z);
 		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
 		expect(distFromAnchor).toBeGreaterThan(ENCOUNTER_TRIGGER_RADIUS);
+	});
+
+	it('training-caverns-encounter-trigger activates boss without spawning debug grunts', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'training-caverns-tier-2' });
+		await tier2Promise;
+
+		const state = testGameState();
+		const bossId = state.run.encounter.bossEnemyId;
+		for (const enemy of state.enemies) {
+			if (enemy.id !== bossId) enemy.hp = 0;
+		}
+		state.enemies = state.enemies.filter((e) => e.hp > 0);
+
+		const approachPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'training-caverns-boss-approach' });
+		await approachPromise;
+
+		const triggerPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('debugScenario', { name: 'training-caverns-encounter-trigger' });
+		const triggerResult = await triggerPromise;
+		await stateUpdatePromise;
+
+		expect(triggerResult.ok).toBe(true);
+		expect(triggerResult.scenario).toBe('training-caverns-encounter-trigger');
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
+		expect(state.run.encounter.locked).toBe(true);
+		const liveEnemies = state.enemies.filter((e) => e.hp > 0);
+		expect(liveEnemies).toHaveLength(1);
+		expect(liveEnemies[0].id).toBe(bossId);
+		expect(liveEnemies[0].type).toBe('annex_overseer');
 	});
 
 	it('positions annex_overseer at 1 HP beside the player in playing phase', async () => {
@@ -1182,10 +1308,19 @@ describe('debugScenario — arena-trials-*', () => {
 
 		const state = lobbyStateForSocket(socket);
 		const bossId = state.run.encounter.bossEnemyId;
-		for (const enemy of state.enemies) {
-			if (enemy.id !== bossId) enemy.hp = 0;
-		}
-		state.enemies = state.enemies.filter((e) => e.hp > 0);
+		// Open-plaza is a single room that spawns the player at its centre, within
+		// ENCOUNTER_TRIGGER_RADIUS of the central dais boss anchor. Clear the adds only AFTER
+		// moving the player out of the trigger so the live game loop's updateEncounterTriggers
+		// cannot auto-activate the dormant encounter in the window before the boss-approach
+		// scenario runs. This mirrors real play (adds are cleared out in the plaza, not while
+		// standing on the dais); the scenario then repositions to just outside the trigger.
+		const preClearPlayer = playerForSocket(socket);
+		const preClearDais = state.layout.landmarks.find((lm) => lm.type === 'arena_dais');
+		const preClearAnchor = resolveEncounterAnchor(state.run, state)
+			|| (preClearDais ? { x: preClearDais.x, z: preClearDais.z } : { x: preClearPlayer.x, z: preClearPlayer.z });
+		preClearPlayer.x = preClearAnchor.x + ENCOUNTER_TRIGGER_RADIUS + 12;
+		preClearPlayer.z = preClearAnchor.z;
+		clearNonBossEnemies(state, bossId);
 
 		const approachPromise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'arena-trials-boss-approach' });
@@ -1288,6 +1423,25 @@ describe('debugScenario — spire-ascent-tier-2', () => {
 		} else {
 			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
 		}
+	});
+
+	it('spire-ascent-telepipe-ready deploys Tier 2 with telepipe in hand', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
+		socket.emit('debugScenario', { name: 'spire-ascent-telepipe-ready' });
+		const result = await debugResultPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('spire-ascent-telepipe-ready');
+		expect(stateUpdate.gamePhase).toBe('playing');
+		expect(stateUpdate.selectedQuestId).toBe(SPIRE_ASCENT_ID);
+		expect(stateUpdate.selectedQuestTier).toBe(SPIRE_ASCENT_TIER_2);
+
+		const player = playerForSocket(socket);
+		expect(player.hand.some((card) => card && card.id === 'telepipe')).toBe(true);
 	});
 
 	it('deploys spire_ascent Tier 2 stage-boss run with encounter and rigid layout', async () => {
@@ -1469,15 +1623,17 @@ describe('debugScenario — spire-ascent-tier-2 harness shortcuts', () => {
 
 		expect(player.hand[0]?.type).toBe('weapon');
 		expect(player.hand[0]?.remainingCharges).toBeGreaterThan(0);
+		const spireHarnessAddTypes = new Set(['grunt', 'skirmisher', 'miniboss', 'spawner']);
 		expect(
 			state.enemies.filter(
-				(e) => e.hp > 0 && e.type !== 'spire_warden',
+				(e) => e.hp > 0 && e.type !== 'spire_warden' && spireHarnessAddTypes.has(e.type),
 			).every((e) => e.hp === 1 && !e.shieldHp),
 		).toBe(true);
 
-		let nearest = addsBefore[0];
+		const harnessAddsBefore = addsBefore.filter((e) => spireHarnessAddTypes.has(e.type));
+		let nearest = harnessAddsBefore[0] ?? addsBefore[0];
 		let bestDist = Infinity;
-		for (const add of addsBefore) {
+		for (const add of harnessAddsBefore.length > 0 ? harnessAddsBefore : addsBefore) {
 			const dist = Math.hypot(add.x - player.x, add.z - player.z);
 			if (dist < bestDist) {
 				bestDist = dist;
@@ -1521,6 +1677,46 @@ describe('debugScenario — spire-ascent-tier-2 harness shortcuts', () => {
 		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
 		const distAfterTicks = Math.hypot(anchor.x - player.x, anchor.z - player.z);
 		expect(distAfterTicks).toBeGreaterThan(ENCOUNTER_TRIGGER_RADIUS);
+	});
+
+	it('activates Summit Warden and spawns a visual add after boss approach', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'spire-ascent-tier-2' });
+		await tier2Promise;
+
+		const state = testGameState();
+		const bossId = state.run.encounter.bossEnemyId;
+		for (const enemy of state.enemies) {
+			if (enemy.id !== bossId) enemy.hp = 0;
+		}
+		state.enemies = state.enemies.filter((e) => e.hp > 0);
+
+		const approachPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'spire-ascent-boss-approach' });
+		await approachPromise;
+
+		const triggerPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('debugScenario', { name: 'spire-ascent-encounter-trigger' });
+		const triggerResult = await triggerPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(triggerResult.ok).toBe(true);
+		expect(triggerResult.scenario).toBe('spire-ascent-encounter-trigger');
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
+		expect(state.run.encounter.locked).toBe(true);
+
+		const boss = state.enemies.find((e) => e.id === bossId);
+		expect(boss?.type).toBe('spire_warden');
+		const liveAdds = state.enemies.filter(
+			(e) => e.hp > 0 && e.id !== bossId && e.type !== 'spire_warden',
+		);
+		expect(liveAdds.length).toBeGreaterThanOrEqual(1);
+		expect(liveAdds.some((e) => e.type === 'grunt')).toBe(true);
+		expect(stateUpdate.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
+		expect(stateUpdate.run.encounter.locked).toBe(true);
 	});
 
 	it('positions spire_warden at 1 HP beside the player in playing phase', async () => {

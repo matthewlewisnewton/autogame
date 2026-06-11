@@ -1,0 +1,7 @@
+Review complete: `VERDICT: FAIL`.
+
+Wrote:
+- `tickets/debug-tooling-time-scale-control-slow-mo-pause-behind-allow-stm5/round-1/review.md`
+- `tickets/debug-tooling-time-scale-control-slow-mo-pause-behind-allow-stm5/round-1/gaps.md`
+
+Blocking gap: time-scale control is accepted on localhost when `ALLOW_DEBUG_SCENARIOS` is unset, so the required env-flag gate is not met. No nits file was created.

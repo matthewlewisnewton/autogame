@@ -6,6 +6,7 @@ export default {
 	questTier: 2,
 	bossType: 'miniboss',
 	deployScenario: 'canyon-descent-tier-2',
+	newContentFull: true,
 	iceBallScenario: 'ice-ball-ready',
 	fireballScenario: 'fireball-hand-ready',
 	purifyingPulseScenario: 'purifying-pulse-ready',

@@ -176,6 +176,23 @@ describe('profile helpers', () => {
 		expect(findUserByUsername('a_new')).not.toBeNull();
 		expect(findUserByUsername('a')).toBeNull();
 	});
+
+	it('keeps email index consistent when email is updated or cleared', () => {
+		createUser('indexer', 'pass');
+		const user = findUserByUsername('indexer');
+
+		expect(updateProfile(user.accountId, { email: 'first@example.com' }).ok).toBe(true);
+		expect(findUserByEmail('first@example.com')?.username).toBe('indexer');
+		expect(findUserByEmail('FIRST@example.com')?.username).toBe('indexer');
+
+		expect(updateProfile(user.accountId, { email: 'second@example.com' }).ok).toBe(true);
+		expect(findUserByEmail('first@example.com')).toBeNull();
+		expect(findUserByEmail('second@example.com')?.username).toBe('indexer');
+
+		expect(updateProfile(user.accountId, { email: null }).ok).toBe(true);
+		expect(findUserByEmail('second@example.com')).toBeNull();
+		expect(findUserByAccountId(user.accountId)?.username).toBe('indexer');
+	});
 });
 
 // ── Cosmetic storage & validation ──
