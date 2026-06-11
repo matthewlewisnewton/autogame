@@ -38,6 +38,16 @@ function isPlayingPhase(state) {
 }
 
 /**
+ * @param {{ run?: { status?: string } }} state
+ * @returns {boolean}
+ */
+function isActiveRun(state) {
+  const run = state?.run;
+  if (!run) return true;
+  return run.status === 'playing';
+}
+
+/**
  * @param {string} from
  * @param {string} to
  * @returns {boolean}
@@ -235,6 +245,7 @@ module.exports = {
   PHASES,
   isLobbyPhase,
   isPlayingPhase,
+  isActiveRun,
   canTransition,
   setPhase,
   setGamePhase,

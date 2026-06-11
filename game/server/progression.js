@@ -3402,6 +3402,13 @@ function checkRunTerminalState() {
 
   _gameState.run.status = status;
 
+  for (const p of Object.values(_gameState.players)) {
+    if (!p) continue;
+    p.inputActive = false;
+    p.inputDx = 0;
+    p.inputDz = 0;
+  }
+
   if (status === 'victory' && (_gameState.run.questTier ?? DEFAULT_QUEST_TIER) === 1) {
     const questId = _gameState.run.questId;
     if (questId) {

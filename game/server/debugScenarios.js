@@ -3089,6 +3089,16 @@ function setupRunFailedDebug({ lobby, state, player, socket, name, spawn }) {
         checkRunTerminalState();
 }
 
+function setupRunVictoryDebug({ state }) {
+  const objective = state.run?.objective;
+  if (objective?.type === 'defeat_enemies') {
+    objective.defeatedEnemies = objective.totalEnemies ?? 1;
+  }
+  state.enemies = [];
+  state.minions = [];
+  checkRunTerminalState();
+}
+
 function setupRunExhaustedDebug({ lobby, state, player, socket, name, spawn }) {
   for (const p of Object.values(state.players)) {
           p.deck = [];
@@ -4982,6 +4992,10 @@ const DEBUG_SCENARIO_REGISTRY = {
   'run-failed': (ctx) => {
     enterStandardPlayingDebugScenario(ctx);
     setupRunFailedDebug(ctx);
+  },
+  'run-victory': (ctx) => {
+    enterStandardPlayingDebugScenario(ctx);
+    setupRunVictoryDebug(ctx);
   },
   'run-exhausted': (ctx) => {
     enterStandardPlayingDebugScenario(ctx);

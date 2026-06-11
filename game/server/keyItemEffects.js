@@ -11,7 +11,7 @@
 // handler needs (io) is supplied via setCallbacks() after both modules load.
 
 const { SERVER_TO_CLIENT } = require('../shared/events.js');
-const { isPlayingPhase } = require('./lobbies');
+const { isPlayingPhase, isActiveRun } = require('./lobbies');
 const {
   MOVE_SPEED,
   LOOT_PICKUP_RADIUS,
@@ -67,6 +67,10 @@ function handleUseKeyItem(socket, state, lobby, data) {
     }
     if (player.extracted) {
       socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: false, reason: 'extracted' });
+      return;
+    }
+    if (!isActiveRun(state)) {
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: false, reason: 'run_terminal' });
       return;
     }
     if (isPlayerCardCommitted(player)) {

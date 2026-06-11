@@ -544,6 +544,7 @@ const DEBUG_SCENARIOS = new Set([
   'phase-stalker-combat',
   'legion-marshal-ready',
   'run-failed',
+  'run-victory',
   'run-exhausted',
   'quest-objective-near-complete',
   'quest-comms-run-start',
