@@ -209,6 +209,7 @@ import {
 	emitBoothInteract,
 	setBoothInRangeListener,
 	setEnemyDisplayCatalogGetter,
+	setRunSummaryOverlayVisibleChecker,
 } from './renderer.js';
 import { updateBoothPrompt, dispatchBoothAction, BOOTH_ACTION_EVENT } from './boothPrompt.js';
 import { openDeckBooth, registerDeckBoothListener, createRequestDebugBoothOpener } from './boothDeck.js';
@@ -532,6 +533,10 @@ function isGameLobbyMenuVisible() {
 	return !!lobbyEl && !lobbyEl.classList.contains('hidden');
 }
 
+function isRunSummaryOverlayVisible() {
+	return !!(runSummaryOverlay && getComputedStyle(runSummaryOverlay).display !== 'none');
+}
+
 function isLobbyMenuDismissKeyBlocked(e) {
 	const target = e.target;
 	if (target instanceof HTMLInputElement ||
@@ -545,7 +550,7 @@ function isLobbyMenuDismissKeyBlocked(e) {
 		|| (authOverlayEl && !authOverlayEl.classList.contains('hidden'))
 		|| (accountOverlayEl && !accountOverlayEl.classList.contains('hidden'))
 		|| (levelSettingsOverlayEl && !levelSettingsOverlayEl.classList.contains('hidden'))
-		|| (runSummaryOverlay && getComputedStyle(runSummaryOverlay).display !== 'none'));
+		|| isRunSummaryOverlayVisible());
 }
 
 function dismissGameLobby() {
@@ -1164,7 +1169,9 @@ async function restoreSession(token) {
 }
 
 function canUseGameActions() {
-	return gameState && gameState.gamePhase === 'playing';
+	if (!gameState || gameState.gamePhase !== 'playing') return false;
+	if (isRunSummaryOverlayVisible()) return false;
+	return true;
 }
 
 initInput({
@@ -1527,6 +1534,7 @@ let lastEvolutionResult = null;
 let keyItemDefs = {};
 let enemyDisplayCatalog = null;
 setEnemyDisplayCatalogGetter(() => enemyDisplayCatalog);
+setRunSummaryOverlayVisibleChecker(isRunSummaryOverlayVisible);
 let availableQuests = [];
 let questVariants = [];
 let unlockedQuestTiers = {};
@@ -2061,7 +2069,7 @@ function syncVanguardHud(me, phase) {
 		updateMsBar(me.magicStones ?? 0);
 		updateDeckStats(me.deck, me.hand, me.inventory);
 		updateStatusEffectStrip(me);
-		updateVanguardPortrait();
+		updateVanguardPortrait(me);
 	}
 }
 
@@ -2156,9 +2164,9 @@ function updateDeckStats(deckPile, handCards, inventory) {
 	if (deckEnchantmentCountEl) deckEnchantmentCountEl.textContent = String(stats.types.enchantment);
 }
 
-function updateVanguardPortrait() {
+function updateVanguardPortrait(me) {
 	if (characterIdEl) characterIdEl.textContent = formatCharacterId(gameState.players[myId]?.username || myId);
-	if (playerLevelEl) playerLevelEl.textContent = String(formatPlayerLevel());
+	if (playerLevelEl) playerLevelEl.textContent = String(formatPlayerLevel(me));
 }
 
 function updateObjectiveHud() {
@@ -2990,16 +2998,27 @@ function renderGuildMedic() {
 	const hp = Math.max(0, Math.min(MAX_HP, me.hp ?? MAX_HP));
 	const currency = me.currency || 0;
 	const atFull = hp >= MAX_HP && !me.dead;
+	const canAffordMedic = currency >= MEDIC_HEAL_COST;
 
 	if (hpDisplayEl) hpDisplayEl.textContent = `Health: ${hp}/${MAX_HP}`;
 	if (costDisplayEl) {
-		costDisplayEl.textContent = atFull
-			? 'You are already at full health.'
-			: `Full restore: ${formatCurrencyPrice(MEDIC_HEAL_COST)}`;
+		if (atFull) {
+			costDisplayEl.textContent = 'You are already at full health.';
+		} else if (!canAffordMedic) {
+			costDisplayEl.textContent = 'Free triage restore — no money required';
+		} else {
+			costDisplayEl.textContent = `Full restore: ${formatCurrencyPrice(MEDIC_HEAL_COST)}`;
+		}
 	}
 	if (healBtnEl) {
-		healBtnEl.disabled = atFull || currency < MEDIC_HEAL_COST;
-		healBtnEl.textContent = `Heal to full (${MEDIC_HEAL_COST} money)`;
+		healBtnEl.disabled = atFull;
+		if (atFull) {
+			healBtnEl.textContent = `Heal to full (${MEDIC_HEAL_COST} money)`;
+		} else if (!canAffordMedic) {
+			healBtnEl.textContent = 'Heal to full (free triage)';
+		} else {
+			healBtnEl.textContent = `Heal to full (${MEDIC_HEAL_COST} money)`;
+		}
 	}
 	showMedicError('');
 	syncVanguardHud(me, 'lobby');
@@ -4449,6 +4468,8 @@ function showRunSummary(data) {
 		} else if (data.objective?.bossDefeated === true && gameState.run.objective) {
 			gameState.run.objective.bossDefeated = true;
 		}
+	} else if (data.status === 'failed' && gameState?.run) {
+		gameState.run.status = 'failed';
 	}
 }
 
@@ -4564,6 +4585,7 @@ window.renderDeckEditor = renderDeckEditor;
 window.renderCardShop = renderCardShop;
 window.renderPhotonForge = renderPhotonForge;
 window.renderKeyItemList = renderKeyItemList;
+window.renderGuildMedic = renderGuildMedic;
 window.__setKeyItemDefs = (defs) => { keyItemDefs = defs || {}; };
 window.__getEnemyDisplayCatalog = () => enemyDisplayCatalog;
 window.__setEnemyDisplayCatalog = (catalog) => { enemyDisplayCatalog = catalog; };
@@ -4760,6 +4782,8 @@ window.performLogout = performLogout;
 window.showGameLobby = showGameLobby;
 window.dismissGameLobby = dismissGameLobby;
 window.__getLobbyMenuDismissed = () => lobbyMenuDismissed;
+window.__isRunSummaryOverlayVisible = isRunSummaryOverlayVisible;
+window.__canUseGameActionsForTest = canUseGameActions;
 window.__isQuestPanelOpen = () => questPanelOpen;
 window.renderLobbyList = renderLobbyList;
 window.applyLobbyJoinedData = applyLobbyJoinedData;

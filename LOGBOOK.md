@@ -8364,6 +8364,98 @@ Consistent with `syncLivePlayerCosmetic` and the lobby-broadcast architecture; n
 None blocking. The acceptance criterion is fully and robustly met, the game runs cleanly, and the change is consistent with existing patterns.
 
 
+## v0.452 — combat/balance: deck exhaustion soft-locks a run — no cards castable, run never ends  (2026-06-11 06:55:14)
+
+- Same end-state reachable through normal play: a real run that empties
+  deck+desperation with MS below every cost hits the identical
+  `tickCombatExhaustionGrace` → `checkRunTerminalState` path each tick. The
+  scenario merely pre-ages `_combatExhaustedSince` to skip the 20 s wait for QA.
+- No invariant short-circuit: failure still routes through the real
+  `isPlayerCombatExhaustionFailureReady` + `checkRunTerminalState`; it does not
+  bypass server validation or the terminal-state emit.
+
+## Code quality
+
+Clean and idiomatic; matches surrounding progression helpers. The previous
+broken/misindented `setupRunExhaustedDebug` body was repaired. No dead code, no
+console errors.
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are met, the game runs cleanly, and the
+fail-state is correctly gated and reachable through normal play. Minor non-
+blocking nits recorded separately in `nits.md`.
+
+
+## v0.453 — run-end: simulation keeps running under 'Sortie Complete' overlay; summary money diverges from wallet  (2026-06-11 07:31:35)
+
+## Design / regression check
+
+Consistent with the run-end / Sortie Complete flow; no foundation regression.
+Full server suite green (438 passed, 0 failed) including movement, key-item,
+loot, and run-terminal integration tests. The four ticket-specific suites pass:
+`run_terminal_input.test.js`, `renderer-run-summary-input.test.js`,
+`run-summary-input-lock.test.js` (11/11). The `Failed to parse URL
+/models/player.glb` line in the client run is benign jsdom asset-fetch noise.
+
+## Code quality
+
+Changes are small, well-commented, and symmetric across client/server. The
+`isActiveRun` helper correctly returns `true` for the no-run (lobby) case so it
+doesn't accidentally freeze lobby movement. No dead code, no console errors.
+
+## Remaining gaps
+
+None. The acceptance criterion is fully and robustly satisfied, the game runs
+cleanly, and the change is well-tested.
+
+
+## v0.454 — balance: death spiral — die with empty wallet and you respawn at 10/100 HP with no way to heal  (2026-06-11 07:54:55)
+
+  (lobby phase, `run` cleared, `hp = LOBBY_REVIVE_HP`, `currency = 0`,
+  `dead = false`) that the real `runFailed → returnToLobby` flow produces — and
+  that real flow is what `death_spiral_recovery.test.js` drives, so the shortcut
+  is a faithful QA mirror, not a substitute.
+- **No invariants short-circuited:** it only sets hub-side state; it does not
+  skip server validation, persistence, or replication that normal play uses.
+
+## Code quality
+
+No bugs found. The charity-medic branch is small and correct; currency is only
+deducted on the paid path; `savePlayerData` runs in both cases. No dead code, no
+console errors.
+
+## Remaining gaps
+
+None blocking. One non-blocking observation captured in `nits.md` (the charity
+heal is keyed purely on `currency < 10`, so any low-funds player — not strictly
+a post-death one — gets free heals; harmless and within the ticket's "equivalent
+mitigation" latitude, but worth a deliberate design note later).
+
+
+## v0.455 — progression: 'LV 1' badge is hardcoded — formatPlayerLevel() always returns 1, no player leveling exists  (2026-06-11 08:00:10)
+
+The change is additive: two new fields on the player snapshot, a self-contained
+XP block in `progression.js`, and a re-pointed HUD formatter. No existing
+progression (card grind, currency) is touched. No design.md invariant is
+weakened. No debug scenarios were added or changed.
+
+## Code quality
+
+Clean, null-safe helpers; level derived from a single source of truth; sensible
+fallbacks throughout. No dead code, no console errors from game logic.
+
+## Remaining gaps
+
+None blocking. The implementation fully and robustly satisfies the binding
+acceptance criteria.
+
+(Note — non-blocking: the Goal text suggested level could "gate something
+meaningful (e.g. tier-2 unlock pacing)", but that is an illustrative `e.g.` in
+the Goal, not part of the AC, which only requires a tracked/displayed/tested
+level. Captured as a nit, not a gap.)
+
+
 ## v0.456 — hud: no status-effect indicators for ember burn / glacial slow (DoT and slow are invisible to the player)  (2026-06-11 08:01:44)
 
 No new debug scenario was added by this ticket (diff touches only

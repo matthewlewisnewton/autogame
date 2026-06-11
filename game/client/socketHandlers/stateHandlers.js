@@ -129,7 +129,7 @@ export function bindStateHandlers(s, ctx) {
 						Array.isArray(me.inventory) ? me.inventory : ctx.myInventory,
 					);
 				}
-				ctx.updateVanguardPortrait();
+				ctx.updateVanguardPortrait(me);
 			}
 		}
 

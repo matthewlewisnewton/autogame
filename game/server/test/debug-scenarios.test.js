@@ -20,8 +20,11 @@ import {
 	resolveEncounterAnchor,
 } from '../encounters.js';
 import { resetGameState, gameState, runGameLoopTick, applyBurning, updateBurning, updateEnemies, hasLineOfSight, buildWallColliders } from '../index.js';
-import { checkAllReady, setGameState as setProgressionGameStateForReady } from '../progression.js';
-import { APPEARANCE_CHANGE_COST, MAX_MAGIC_STONES } from '../config.js';
+import { checkAllReady, setGameState as setProgressionGameStateForReady, startDungeonRun, isPlayerCombatExhausted } from '../progression.js';
+import { APPEARANCE_CHANGE_COST, MAX_MAGIC_STONES, RUN_EXHAUSTION_GRACE_MS } from '../config.js';
+import * as progressionModule from '../progression.js';
+
+const { setupRunExhaustedDebug } = require('../debugScenarios.js');
 import { spawnEnemies, setGameState } from '../progression.js';
 import {
 	startTestServer,
@@ -166,6 +169,77 @@ describe('debugScenario — quest-objective-near-complete', () => {
 		const player = playerForSocket(socket);
 		expect(player.hp).toBeGreaterThan(0);
 		expect(player.hand.some((c) => c)).toBe(true);
+	});
+});
+
+describe('setupRunExhaustedDebug', () => {
+	beforeEach(() => {
+		resetGameState();
+		gameState.enemies = [
+			{ id: 'e1', x: 5, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 5, z: 0 } },
+		];
+		setGameState(gameState);
+		startDungeonRun();
+		gameState.players.p1 = {
+			x: 0,
+			z: 0,
+			hp: 80,
+			dead: false,
+			extracted: false,
+			magicStones: MAX_MAGIC_STONES,
+			deck: ['iron_sword', 'flame_blade'],
+			hand: [{ id: 'iron_sword', type: 'weapon', charges: 5, remainingCharges: 5 }],
+			desperationDeck: [],
+		};
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('configures MS-insufficient stall for in-dungeon players', () => {
+		const terminalSpy = vi.spyOn(progressionModule, 'checkRunTerminalState').mockImplementation(() => {});
+		const player = gameState.players.p1;
+
+		setupRunExhaustedDebug({
+			lobby: null,
+			state: gameState,
+			player,
+			socket: null,
+			name: 'run-exhausted',
+			spawn: null,
+		});
+
+		const familiar = player.hand.find((c) => c?.id === 'battle_familiar');
+		expect(player.deck).toEqual([]);
+		expect(player.desperationDeck).toEqual([]);
+		expect(familiar).toBeDefined();
+		expect(familiar.remainingCharges).toBe(1);
+		expect(familiar.magicStoneCost).toBe(50);
+		expect(player.magicStones).toBe(25);
+		expect(player.magicStones).toBeLessThan(familiar.magicStoneCost);
+		expect(isPlayerCombatExhausted(player)).toBe(true);
+		expect(player._combatExhaustedSince).toBeLessThanOrEqual(Date.now() - RUN_EXHAUSTION_GRACE_MS);
+		expect(gameState.enemies.length).toBe(1);
+		expect(gameState.enemies[0].hp).toBeGreaterThan(0);
+		expect(gameState.run.objective.defeatedEnemies).toBeLessThan(gameState.run.objective.totalEnemies);
+
+		terminalSpy.mockRestore();
+	});
+
+	it('fails the run immediately when exhaustion grace is pre-aged', () => {
+		const player = gameState.players.p1;
+
+		setupRunExhaustedDebug({
+			lobby: null,
+			state: gameState,
+			player,
+			socket: null,
+			name: 'run-exhausted',
+			spawn: null,
+		});
+
+		expect(gameState.run.status).toBe('failed');
 	});
 });
 
@@ -1750,10 +1824,8 @@ describe('debugScenario — spire-ascent-tier-2 harness shortcuts', () => {
 		await approachPromise;
 
 		const triggerPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
 		socket.emit('debugScenario', { name: 'spire-ascent-encounter-trigger' });
 		const triggerResult = await triggerPromise;
-		const stateUpdate = await stateUpdatePromise;
 
 		expect(triggerResult.ok).toBe(true);
 		expect(triggerResult.scenario).toBe('spire-ascent-encounter-trigger');
@@ -1767,6 +1839,10 @@ describe('debugScenario — spire-ascent-tier-2 harness shortcuts', () => {
 		);
 		expect(liveAdds.length).toBeGreaterThanOrEqual(1);
 		expect(liveAdds.some((e) => e.type === 'grunt')).toBe(true);
+		// Encounter is active during spire-ascent tier-2 play, so periodic game-loop stateUpdates can
+		// race ahead of the scenario's own snapshot when the listener is registered in parallel with
+		// the emit. Capture after debugScenarioResult resolves (same pattern as boss-low-hp above).
+		const stateUpdate = await waitForEvent(socket, 'stateUpdate');
 		expect(stateUpdate.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
 		expect(stateUpdate.run.encounter.locked).toBe(true);
 	});

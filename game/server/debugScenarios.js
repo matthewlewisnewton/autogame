@@ -27,7 +27,7 @@ const {
   countScriptedEnemiesInQuest,
   countFinalAmbushEnemies,
 } = require('./quests');
-const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS, MEDIC_HEAL_COST } = require('./config');
+const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS, MEDIC_HEAL_COST, LOBBY_REVIVE_HP, RUN_EXHAUSTION_GRACE_MS } = require('./config');
 const CARD_DEFS = require('../shared/cardDefs.json');
 const CARD_STATS = require('../shared/cardStats.json');
 const {
@@ -1678,6 +1678,20 @@ function setupHubMedBoothReadyDebug({ lobby, state, player, socket, name }) {
         return { ok: true, scenario: name, hp: player.hp, currency: player.currency };
 }
 
+function setupPostDeathBrokeLobbyDebug({ lobby, state, player, socket, name }) {
+  // Hub lobby after a wipe with zero currency and post-death revive HP.
+  // The same state is reachable by dying on a run with no earned gold and
+  // returning to the hub via returnToLobby.
+  setPhase(lobby, PHASES.LOBBY);
+  delete state.run;
+  player.ready = false;
+  player.dead = false;
+  player.hp = LOBBY_REVIVE_HP;
+  player.currency = 0;
+  io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+  return { ok: true, scenario: name, hp: player.hp, currency: player.currency };
+}
+
 function setupHatShopCurrencyDebug({ lobby, state, player, socket, name }) {
   // Stay in the lobby with enough currency for a paid booth appearance change
         // (at least APPEARANCE_CHANGE_COST) and to unlock any catalog hat without
@@ -3089,24 +3103,48 @@ function setupRunFailedDebug({ lobby, state, player, socket, name, spawn }) {
         checkRunTerminalState();
 }
 
+function setupRunVictoryDebug({ state }) {
+  const objective = state.run?.objective;
+  if (objective?.type === 'defeat_enemies') {
+    objective.defeatedEnemies = objective.totalEnemies ?? 1;
+  }
+  state.enemies = [];
+  state.minions = [];
+  checkRunTerminalState();
+}
+
 function setupRunExhaustedDebug({ lobby, state, player, socket, name, spawn }) {
+  const battleFamiliar = {
+    id: 'battle_familiar',
+    name: 'Signal Familiar',
+    type: 'spell',
+    charges: 1,
+    remainingCharges: 1,
+    magicStoneCost: CARD_STATS.battle_familiar?.magicStoneCost ?? 50,
+    damage: CARD_STATS.battle_familiar?.damage ?? 44,
+  };
+  const now = Date.now();
   for (const p of Object.values(state.players)) {
-          p.deck = [];
-          p.hand = [];
-          p.desperationDeck = [];
-        }
-        state.enemies = [{
-          id: 'e_remaining',
-          x: player.x + 5,
-          z: player.z,
-          hp: ENEMY_DEFS.grunt.hp,
-          maxHp: ENEMY_DEFS.grunt.hp,
-          state: 'idle',
-          wanderTarget: { x: player.x + 5, z: player.z },
-        }];
-        state.run.objective.totalEnemies = 1;
-        state.run.objective.defeatedEnemies = 0;
-        checkRunTerminalState();
+    if (!p || p.extracted) continue;
+    p.deck = [];
+    p.desperationDeck = [];
+    p.magicStones = 25;
+    p.hand = Array.from({ length: MAX_HAND_SLOTS }, () => null);
+    p.hand[0] = { ...battleFamiliar };
+    p._combatExhaustedSince = now - RUN_EXHAUSTION_GRACE_MS;
+  }
+  state.enemies = [{
+    id: 'e_remaining',
+    x: player.x + 5,
+    z: player.z,
+    hp: ENEMY_DEFS.grunt.hp,
+    maxHp: ENEMY_DEFS.grunt.hp,
+    state: 'idle',
+    wanderTarget: { x: player.x + 5, z: player.z },
+  }];
+  state.run.objective.totalEnemies = 1;
+  state.run.objective.defeatedEnemies = 0;
+  checkRunTerminalState();
 }
 
 function setupCollectPrismsProgressDebugPost({ lobby, state, player, socket, name, spawn }) {
@@ -4787,6 +4825,7 @@ const DEBUG_SCENARIO_REGISTRY = {
   'fireball-hand-ready': (ctx) => setupFireballHandReadyDebug(ctx),
   'lobby-partial-vitals': (ctx) => setupLobbyPartialVitalsDebug(ctx),
   'hub-med-booth-ready': (ctx) => setupHubMedBoothReadyDebug(ctx),
+  'post-death-broke-lobby': (ctx) => setupPostDeathBrokeLobbyDebug(ctx),
   'hat-shop-currency': (ctx) => setupHatShopCurrencyDebug(ctx),
   'quest-tier-2-unlocked': (ctx) => setupQuestTier2UnlockedDebug(ctx),
   'rift-convergence-unlocked': (ctx) => setupRiftConvergenceUnlockedDebug(ctx),
@@ -4982,6 +5021,10 @@ const DEBUG_SCENARIO_REGISTRY = {
   'run-failed': (ctx) => {
     enterStandardPlayingDebugScenario(ctx);
     setupRunFailedDebug(ctx);
+  },
+  'run-victory': (ctx) => {
+    enterStandardPlayingDebugScenario(ctx);
+    setupRunVictoryDebug(ctx);
   },
   'run-exhausted': (ctx) => {
     enterStandardPlayingDebugScenario(ctx);
@@ -5331,4 +5374,5 @@ module.exports = {
   syncDebugHooksForScenario,
   applyDebugScenario,
   nudgeDebugBossApproachPlayers,
+  setupRunExhaustedDebug,
 };

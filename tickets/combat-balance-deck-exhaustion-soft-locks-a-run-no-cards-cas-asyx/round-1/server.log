@@ -1,0 +1,15 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/combat-balance-deck-exhaustion-soft-locks-a-run-no-cards-cas-asyx/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/combat-balance-deck-exhaustion-soft-locks-a-run-no-cards-cas-asyx/game/data
+Server listening on port 3002
+Player connected: socket=jVv_b6HT9wU5Qu49AAAB, playerId=ca6ec1f8-85f9-46fc-8797-8bf34a21818e
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=lNfaeETeuBcejdgpAAAD, playerId=973ca688-bad6-4b0a-b7af-0481a1a6fb73
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=6c89ffbb-bdf8-4050-a6ba-472e126db0c9 value=18
+Player disconnected: jVv_b6HT9wU5Qu49AAAB
+Player disconnected: lNfaeETeuBcejdgpAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

@@ -34,6 +34,7 @@ const {
   OPENING_HAND_SIZE,
   HAND_SLOT_FILL_ORDER,
   PASSIVE_DRAW_INTERVAL_MS,
+  RUN_EXHAUSTION_GRACE_MS,
   DIFFICULTY_MINIBOSS_HP_PER_PLAYER,
   difficultyScaleFactor,
   runPlayerCount,
@@ -530,12 +531,13 @@ function healAtMedic(playerId, state = _gameState) {
     return { ok: false, reason: 'already_full' };
   }
 
-  const cost = MEDIC_HEAL_COST;
+  let cost = MEDIC_HEAL_COST;
   if ((player.currency || 0) < cost) {
-    return { ok: false, reason: 'insufficient_gold' };
+    cost = 0;
+  } else {
+    player.currency -= cost;
   }
 
-  player.currency -= cost;
   player.hp = MAX_HP;
   player.dead = false;
   savePlayerData(playerId);
@@ -909,6 +911,40 @@ function evolveCard(player, instanceId) {
   };
 }
 
+// ── Player XP / levels ──
+// Cumulative XP thresholds: reaching level n requires 100 * (n - 1) * n / 2
+// total XP (level 1 at 0, level 2 at 100, level 3 at 300, level 4 at 600, …).
+const XP_LEVEL_STEP = 100;
+const KILL_XP_MIN = 5;
+const KILL_XP_HP_DIVISOR = 6;
+const VICTORY_XP_BONUS = 50;
+
+function xpRequiredForLevel(level) {
+  if (!Number.isFinite(level) || level <= 1) return 0;
+  return XP_LEVEL_STEP * (level - 1) * level / 2;
+}
+
+function levelForXp(xp) {
+  if (!Number.isFinite(xp) || xp <= 0) return 1;
+  let level = 1;
+  while (xp >= xpRequiredForLevel(level + 1)) {
+    level += 1;
+  }
+  return level;
+}
+
+function killXpForEnemy(enemy) {
+  return Math.max(KILL_XP_MIN, Math.round((enemy.maxHp || 30) / KILL_XP_HP_DIVISOR));
+}
+
+function awardXp(player, amount) {
+  if (!player || !Number.isFinite(amount) || amount <= 0) return;
+  player.xp = (Number.isFinite(player.xp) ? player.xp : 0) + amount;
+  // Level only ever increases, even if the curve or XP totals change.
+  player.level = Math.max(player.level || 1, levelForXp(player.xp));
+  player.persistenceDirty = true;
+}
+
 function createPlayerProgress() {
   const inventory = createInventoryFromCardIds(STARTING_DECK_IDS);
   return {
@@ -919,6 +955,8 @@ function createPlayerProgress() {
     currencyEarnedThisRun: 0,
     equippedKeyItemId: 'dodge_roll',
     keyItemCooldownUntil: 0,
+    xp: 0,
+    level: 1,
   };
 }
 
@@ -937,6 +975,8 @@ function extractPersistentData(player) {
     hp: Number.isFinite(player.hp) ? player.hp : MAX_HP,
     dead: player.dead === true,
     magicStones: Number.isFinite(player.magicStones) ? player.magicStones : STARTING_MAGIC_STONES,
+    xp: Number.isFinite(player.xp) ? player.xp : 0,
+    level: Number.isFinite(player.level) ? player.level : 1,
   };
 }
 
@@ -2384,6 +2424,32 @@ function isPlayerOutOfCards(player) {
   return handEmpty && isDeckEmpty(player) && isDesperationDeckEmpty(player);
 }
 
+function canPlayerCastHandCard(player, handCard) {
+  if (!handCard) return false;
+  if (handCard.activeMinionId) return false;
+  if (Number.isFinite(handCard.remainingCharges) && handCard.remainingCharges <= 0) {
+    return false;
+  }
+  const magicStoneCost = handCard.magicStoneCost ?? 0;
+  const magicStones = player?.magicStones ?? 0;
+  if (magicStones < magicStoneCost) {
+    return false;
+  }
+  return true;
+}
+
+function isPlayerCombatExhausted(player) {
+  if (!player) return true;
+  if (canDrawIntoHand(player)) return false;
+  const hand = Array.isArray(player.hand) ? player.hand : [];
+  for (const handCard of hand) {
+    if (handCard && canPlayerCastHandCard(player, handCard)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function drawReplacementCard(player, slotIndex) {
   ensureHandSlots(player);
   const card = drawCardFromDeck(player) || drawCardFromDesperationDeck(player);
@@ -2569,6 +2635,10 @@ function removeDeadEnemies() {
   const spawnCtx = buildObjectiveSpawnCtx();
   for (const enemy of dying) {
     recordEnemyCardDrop(enemy);
+    const killer = enemy.lastDamagedBy ? _gameState.players[enemy.lastDamagedBy] : null;
+    if (killer) {
+      awardXp(killer, killXpForEnemy(enemy));
+    }
     spawnMagicStoneDrop(enemy);
     spawnCurrencyDrop(enemy);
     // Volatile-variant enemies detonate a radial blast where they fall before
@@ -3385,6 +3455,32 @@ function checkTelepipeProximity() {
   }
 }
 
+function isPlayerCombatExhaustionFailureReady(player, now = Date.now()) {
+  if (!isPlayerCombatExhausted(player)) return false;
+  if (isPlayerOutOfCards(player)) return true;
+  return player._combatExhaustedSince != null
+    && now - player._combatExhaustedSince >= RUN_EXHAUSTION_GRACE_MS;
+}
+
+function tickCombatExhaustionGrace(now = Date.now()) {
+  if (!_gameState.run || _gameState.run.status !== 'playing') return;
+
+  const inDungeon = Object.values(_gameState.players).filter((p) => p && !p.extracted);
+  for (const player of inDungeon) {
+    if (isPlayerCombatExhausted(player)) {
+      if (player._combatExhaustedSince == null) {
+        player._combatExhaustedSince = now;
+      }
+    } else {
+      delete player._combatExhaustedSince;
+    }
+  }
+
+  if (inDungeon.length > 0 && inDungeon.every((p) => isPlayerCombatExhaustionFailureReady(p, now))) {
+    checkRunTerminalState();
+  }
+}
+
 function checkRunTerminalState() {
   if (!_gameState.run || _gameState.run.status !== 'playing') return;
 
@@ -3408,8 +3504,9 @@ function checkRunTerminalState() {
   }
 
   if (!status) {
+    const now = Date.now();
     const inDungeon = Object.values(_gameState.players).filter((p) => p && !p.extracted);
-    if (inDungeon.length > 0 && inDungeon.every(isPlayerOutOfCards)) {
+    if (inDungeon.length > 0 && inDungeon.every((p) => isPlayerCombatExhaustionFailureReady(p, now))) {
       status = 'failed';
     }
   }
@@ -3417,6 +3514,13 @@ function checkRunTerminalState() {
   if (!status) return;
 
   _gameState.run.status = status;
+
+  for (const p of Object.values(_gameState.players)) {
+    if (!p) continue;
+    p.inputActive = false;
+    p.inputDx = 0;
+    p.inputDz = 0;
+  }
 
   if (status === 'victory' && (_gameState.run.questTier ?? DEFAULT_QUEST_TIER) === 1) {
     const questId = _gameState.run.questId;
@@ -3443,6 +3547,12 @@ function checkRunTerminalState() {
 
   for (const p of Object.values(_gameState.players)) {
     p.overclockChargesRemaining = 0;
+  }
+
+  if (status === 'victory') {
+    for (const player of Object.values(_gameState.players)) {
+      if (player) awardXp(player, VICTORY_XP_BONUS);
+    }
   }
 
   for (const playerId of Object.keys(_gameState.players)) {
@@ -3485,6 +3595,8 @@ function buildPlayerHotSnapshot(id, p) {
     ready: p.ready,
     magicStones: p.magicStones,
     currency: p.currency,
+    xp: Number.isFinite(p.xp) ? p.xp : 0,
+    level: Number.isFinite(p.level) ? p.level : 1,
     extracted: !!p.extracted,
     equippedKeyItemId: p.equippedKeyItemId || 'dodge_roll',
     keyItemCooldownRemaining: Math.max(0, (p.keyItemCooldownUntil || 0) - Date.now()),
@@ -3939,6 +4051,11 @@ module.exports = {
   findAvailableInventoryInstance,
   evolveCard,
   createPlayerProgress,
+  xpRequiredForLevel,
+  levelForXp,
+  killXpForEnemy,
+  awardXp,
+  VICTORY_XP_BONUS,
   extractPersistentData,
   persistenceKey,
   savePlayerData,
@@ -3973,6 +4090,8 @@ module.exports = {
   discardCardFromHand,
   validateDiscardHand,
   isPlayerOutOfCards,
+  canPlayerCastHandCard,
+  isPlayerCombatExhausted,
   validateUseCardHand,
   addMagicStones,
   restoreCardCharges,
@@ -3996,6 +4115,7 @@ module.exports = {
   recordCrystalCollected,
   isRunObjectiveComplete,
   checkRunTerminalState,
+  tickCombatExhaustionGrace,
   resetTransientRunState,
   returnPlayersToLobby,
   giveUpRun,

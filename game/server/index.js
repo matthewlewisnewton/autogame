@@ -282,6 +282,11 @@ const {
   offerCardTrade,
   respondCardTrade,
   createPlayerProgress,
+  xpRequiredForLevel,
+  levelForXp,
+  killXpForEnemy,
+  awardXp,
+  VICTORY_XP_BONUS,
   extractPersistentData,
   persistenceKey,
   savePlayerData,
@@ -316,6 +321,8 @@ const {
   drawReplacementCard,
   discardCardFromHand,
   isPlayerOutOfCards,
+  canPlayerCastHandCard,
+  isPlayerCombatExhausted,
   validateUseCardHand,
   addMagicStones,
   restoreCardCharges,
@@ -338,6 +345,7 @@ const {
   removeDeadEnemies,
   cleanupAfterDamage,
   checkRunTerminalState,
+  tickCombatExhaustionGrace,
   resetTransientRunState,
   returnPlayersToLobby,
   giveUpRun,
@@ -522,6 +530,7 @@ const DEBUG_SCENARIOS = new Set([
   'harvesting-scythe-combat',
   'lobby-partial-vitals',
   'hub-med-booth-ready',
+  'post-death-broke-lobby',
   'custom-avatar-demo',
   'avatar-proportions-demo',
   'avatar-wizard-hat',
@@ -546,6 +555,7 @@ const DEBUG_SCENARIOS = new Set([
   'phase-stalker-combat',
   'legion-marshal-ready',
   'run-failed',
+  'run-victory',
   'run-exhausted',
   'quest-objective-near-complete',
   'quest-comms-run-start',
@@ -1118,6 +1128,8 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
     ready: false,
     magicStones: STARTING_MAGIC_STONES,
     currency: progress.currency,
+    xp: progress.xp,
+    level: progress.level,
     inventory: progress.inventory,
     ownedCards: progress.ownedCards,
     runRewards: progress.runRewards,
@@ -1161,6 +1173,9 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
     player.hp = savedData.hp ?? player.hp;
     player.dead = savedData.dead ?? player.dead;
     player.magicStones = savedData.magicStones ?? player.magicStones;
+    player.xp = savedData.xp ?? 0;
+    // Always derive level from XP so the two can never disagree.
+    player.level = levelForXp(player.xp);
   }
 
   normalizePlayerInventory(player);
@@ -1732,6 +1747,7 @@ function runGameLoopTick() {
           }
 
           regenMagicStones();
+          tickCombatExhaustionGrace(now);
 
           state.loot = state.loot.filter(l => l.questCritical || (now - l.createdAt) < LOOT_LIFETIME_MS);
         }
@@ -2059,12 +2075,18 @@ if (typeof module !== 'undefined' && module.exports) {
     isRunObjectiveComplete,
     buildRunSummary,
     checkRunTerminalState,
+    tickCombatExhaustionGrace,
     resetTransientRunState,
     returnPlayersToLobby,
     giveUpRun,
     abandonSuspendedRun,
     previewReturnRewards,
     createPlayerProgress,
+    xpRequiredForLevel,
+    levelForXp,
+    killXpForEnemy,
+    awardXp,
+    VICTORY_XP_BONUS,
     grantCard,
     grantRunRewards,
     buildPlayerRewardSummary,
@@ -2105,6 +2127,8 @@ if (typeof module !== 'undefined' && module.exports) {
     DESPERATION_DECK_TEMPLATE,
     discardCardFromHand,
     isPlayerOutOfCards,
+    canPlayerCastHandCard,
+    isPlayerCombatExhausted,
     validateUseCardHand,
     addMagicStones,
     restoreCardCharges,
