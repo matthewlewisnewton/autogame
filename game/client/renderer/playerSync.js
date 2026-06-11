@@ -75,7 +75,9 @@ const previousPlayerHp = {}; // playerId → hp from previous frame
 export function syncPlayerMeshes(gs, myId, localKinematics) {
 	const scene = getScene();
 	const { myX, myZ, playerRotation } = localKinematics;
-	for (const [id, pData] of Object.entries(gs.players)) {
+	for (const id of Object.keys(gs.players)) {
+		const pData = gs.players[id];
+		if (!pData) continue;
 		// Build the cosmetic-driven avatar, or rebuild it when the player's
 		// broadcast cosmetic changes (signature differs from the rendered one).
 		const sig = cosmeticSignature(pData.cosmetic);
@@ -311,7 +313,9 @@ export function syncPlayerMeshes(gs, myId, localKinematics) {
 	// re-triggered while the zone is active if its VFX has faded out. Skip
 	// the tail end so a near-expired zone doesn't spawn a fresh 2s puff.
 	const smokeNow = Date.now();
-	for (const [id, pData] of Object.entries(gs.players)) {
+	for (const id of Object.keys(gs.players)) {
+		const pData = gs.players[id];
+		if (!pData) continue;
 		const remaining = (pData.smokeBombUntil || 0) - smokeNow;
 		if (remaining > 300 && !smokeVFX[id]) {
 			triggerSmokeVFX({ x: pData.smokeBombX, y: 0, z: pData.smokeBombZ }, id);

@@ -3825,7 +3825,8 @@ function syncPhaseStepAllyHighlight(gs, myId) {
 		&& me.equippedKeyItemId === 'phase_step'
 	) {
 		let bestDist = Infinity;
-		for (const [id, p] of Object.entries(gs.players)) {
+		for (const id of Object.keys(gs.players)) {
+			const p = gs.players[id];
 			if (id === myId || !p || p.dead || p.extracted) continue;
 			const d = Math.hypot(p.x - me.x, p.z - me.z);
 			if (d <= PHASE_STEP_RANGE && d < bestDist) {
