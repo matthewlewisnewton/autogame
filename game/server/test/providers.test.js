@@ -64,6 +64,62 @@ describe('InMemoryProvider', () => {
 	});
 });
 
+// ── InMemoryProvider settings ──
+
+describe('InMemoryProvider settings', () => {
+	let provider;
+
+	beforeEach(() => {
+		provider = new InMemoryProvider();
+	});
+
+	it('stores and retrieves settings', () => {
+		const sampleSettings = {
+			soundEnabled: false,
+			particlesEnabled: true,
+			lockOnRepeatAction: 'cycle',
+		};
+		provider.saveSettings('acct1', sampleSettings);
+		const loaded = provider.loadSettings('acct1');
+		expect(loaded).toEqual(sampleSettings);
+	});
+
+	it('returns null for unknown accountId', () => {
+		expect(provider.loadSettings('nonexistent')).toBeNull();
+	});
+
+	it('settings are independent from player store', () => {
+		const sampleSettings = { soundEnabled: false, particlesEnabled: true };
+		provider.savePlayer('player1', { currency: 42 });
+		provider.saveSettings('player1', sampleSettings);
+		expect(provider.loadPlayer('player1')).toEqual({ currency: 42 });
+		expect(provider.loadSettings('player1')).toEqual(sampleSettings);
+	});
+
+	it('overwrites settings on subsequent saves', () => {
+		const sampleSettings = { soundEnabled: false, particlesEnabled: true };
+		provider.saveSettings('acct1', sampleSettings);
+		const updated = { ...sampleSettings, soundEnabled: true };
+		provider.saveSettings('acct1', updated);
+		expect(provider.loadSettings('acct1')).toEqual(updated);
+	});
+
+	it('save returns a deep copy', () => {
+		const data = { soundEnabled: false, particlesEnabled: true };
+		provider.saveSettings('acct1', data);
+		data.soundEnabled = true;
+		expect(provider.loadSettings('acct1').soundEnabled).toBe(false);
+	});
+
+	it('load returns a deep copy', () => {
+		const data = { soundEnabled: false, particlesEnabled: true };
+		provider.saveSettings('acct1', data);
+		const loaded = provider.loadSettings('acct1');
+		loaded.soundEnabled = true;
+		expect(provider.loadSettings('acct1').soundEnabled).toBe(false);
+	});
+});
+
 // ── FileProvider ──
 
 describe('FileProvider', () => {
@@ -207,5 +263,83 @@ describe('FileProvider', () => {
 			fs.writeFileSync = realWrite;
 		}
 		expect(usedFixed).toBe(false);
+	});
+});
+
+// ── FileProvider settings ──
+
+describe('FileProvider settings', () => {
+	let tmpDir;
+	let provider;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fp-settings-test-'));
+		provider = new FileProvider(tmpDir);
+	});
+
+	afterEach(() => {
+		provider.close();
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	it('stores and retrieves settings in settings/ subdirectory', () => {
+		const sampleSettings = {
+			soundEnabled: false,
+			particlesEnabled: true,
+			lockOnRepeatAction: 'cycle',
+		};
+		provider.saveSettings('acct1', sampleSettings);
+		const loaded = provider.loadSettings('acct1');
+		expect(loaded).toEqual(sampleSettings);
+		expect(fs.existsSync(path.join(tmpDir, 'settings', 'acct1.json'))).toBe(true);
+	});
+
+	it('returns null when settings file does not exist', () => {
+		expect(provider.loadSettings('nonexistent')).toBeNull();
+	});
+
+	it('overwrites settings on subsequent saves', () => {
+		const sampleSettings = { soundEnabled: false, particlesEnabled: true };
+		provider.saveSettings('acct1', sampleSettings);
+		const updated = { ...sampleSettings, soundEnabled: true };
+		provider.saveSettings('acct1', updated);
+		expect(provider.loadSettings('acct1')).toEqual(updated);
+	});
+
+	it('persists settings across provider instances', () => {
+		const sampleSettings = { soundEnabled: false, particlesEnabled: true };
+		provider.saveSettings('acct1', sampleSettings);
+		provider.close();
+
+		const provider2 = new FileProvider(tmpDir);
+		expect(provider2.loadSettings('acct1')).toEqual(sampleSettings);
+		provider2.close();
+	});
+
+	it('settings are independent from player data', () => {
+		const sampleSettings = { soundEnabled: false, particlesEnabled: true };
+		provider.savePlayer('acct1', { currency: 42 });
+		provider.saveSettings('acct1', sampleSettings);
+		expect(provider.loadPlayer('acct1')).toEqual({ currency: 42 });
+		expect(provider.loadSettings('acct1')).toEqual(sampleSettings);
+		// Verify different file paths
+		expect(fs.existsSync(path.join(tmpDir, 'acct1.json'))).toBe(true);
+		expect(fs.existsSync(path.join(tmpDir, 'settings', 'acct1.json'))).toBe(true);
+	});
+
+	it('rejects a traversal accountId on save', () => {
+		expect(() => provider.saveSettings('../escaped', { soundEnabled: false })).toThrow(/Invalid player id/);
+	});
+
+	it('rejects a traversal accountId on load', () => {
+		expect(() => provider.loadSettings('../../etc/foo')).toThrow(/Invalid player id/);
+	});
+
+	it('uses atomic tmp+rename for settings writes', () => {
+		provider.saveSettings('acct1', { soundEnabled: false });
+		const settingsDir = path.join(tmpDir, 'settings');
+		expect(fs.existsSync(path.join(settingsDir, 'acct1.json'))).toBe(true);
+		const leftovers = fs.readdirSync(settingsDir).filter((f) => f.endsWith('.tmp'));
+		expect(leftovers).toEqual([]);
 	});
 });

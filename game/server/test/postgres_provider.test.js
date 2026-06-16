@@ -63,4 +63,32 @@ describe('PostgresProvider', () => {
 	it('accepts UUID-shaped playerIds unchanged', () => {
 		runPgmemCase('accepts UUID-shaped playerIds unchanged');
 	});
+
+	it('stores and retrieves settings', () => {
+		runPgmemCase('stores and retrieves settings');
+	});
+
+	it('returns null for unknown settings accountId', () => {
+		runPgmemCase('returns null for unknown settings accountId');
+	});
+
+	it('overwrites settings on subsequent saves', () => {
+		runPgmemCase('overwrites settings on subsequent saves');
+	});
+
+	it('isolates settings between different accounts', () => {
+		runPgmemCase('isolates settings between different accounts');
+	});
+
+	it('settings are independent from player data', () => {
+		runPgmemCase('settings are independent from player data');
+	});
+
+	it('rejects a traversal accountId on settings save', () => {
+		runPgmemCase('rejects a traversal accountId on settings save');
+	});
+
+	it('rejects a traversal accountId on settings load', () => {
+		runPgmemCase('rejects a traversal accountId on settings load');
+	});
 });

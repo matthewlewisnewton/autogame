@@ -3,7 +3,7 @@
 const { StorageProvider } = require('./storage');
 const { Pool } = require('pg');
 const deasync = require('deasync');
-const { ensurePlayersSchema } = require('./db/ensurePlayersSchema');
+const { ensurePlayersSchema, ensureSettingsSchema } = require('./db/ensurePlayersSchema');
 const fs = require('fs');
 const path = require('path');
 
@@ -58,6 +58,7 @@ class InMemoryProvider extends StorageProvider {
 	constructor() {
 		super();
 		this.store = new Map();
+		this.settingsStore = new Map();
 	}
 
 	savePlayer(playerId, data) {
@@ -66,6 +67,15 @@ class InMemoryProvider extends StorageProvider {
 
 	loadPlayer(playerId) {
 		const entry = this.store.get(playerId);
+		return entry !== undefined ? JSON.parse(JSON.stringify(entry)) : null;
+	}
+
+	saveSettings(accountId, data) {
+		this.settingsStore.set(accountId, JSON.parse(JSON.stringify(data)));
+	}
+
+	loadSettings(accountId) {
+		const entry = this.settingsStore.get(accountId);
 		return entry !== undefined ? JSON.parse(JSON.stringify(entry)) : null;
 	}
 
@@ -116,6 +126,36 @@ class FileProvider extends StorageProvider {
 		}
 	}
 
+	saveSettings(accountId, data) {
+		assertSafePlayerId(accountId);
+		const settingsDir = path.join(this.basePath, 'settings');
+		fs.mkdirSync(settingsDir, { recursive: true });
+		const json = JSON.stringify(data, null, 2);
+		const finalPath = path.join(settingsDir, `${accountId}.json`);
+		const tmpPath = `${finalPath}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`;
+
+		try {
+			fs.writeFileSync(tmpPath, json, 'utf-8');
+			fs.renameSync(tmpPath, finalPath);
+		} catch (err) {
+			try { fs.unlinkSync(tmpPath); } catch (_) {}
+			throw err;
+		}
+	}
+
+	loadSettings(accountId) {
+		assertSafePlayerId(accountId);
+		const settingsDir = path.join(this.basePath, 'settings');
+		const filePath = path.join(settingsDir, `${accountId}.json`);
+		try {
+			const raw = fs.readFileSync(filePath, 'utf-8');
+			return JSON.parse(raw);
+		} catch (err) {
+			if (err.code === 'ENOENT') return null;
+			throw err;
+		}
+	}
+
 	close() {
 		// no-op — no open handles to release
 	}
@@ -157,6 +197,7 @@ class PostgresProvider extends StorageProvider {
 		this._closed = false;
 		if (!options.skipSchemaEnsure) {
 			runSync(ensurePlayersSchema(this.pool));
+			runSync(ensureSettingsSchema(this.pool));
 		}
 	}
 
@@ -176,6 +217,27 @@ class PostgresProvider extends StorageProvider {
 		assertSafePlayerId(playerId);
 		const { rows } = runSync(
 			this.pool.query(`SELECT data FROM players WHERE player_id = $1`, [playerId])
+		);
+		if (rows.length === 0) return null;
+		return JSON.parse(JSON.stringify(rows[0].data));
+	}
+
+	saveSettings(accountId, data) {
+		assertSafePlayerId(accountId);
+		const copy = JSON.parse(JSON.stringify(data));
+		runSync(
+			this.pool.query(
+				`INSERT INTO settings (account_id, data) VALUES ($1, $2::jsonb)
+				 ON CONFLICT (account_id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
+				[accountId, JSON.stringify(copy)]
+			)
+		);
+	}
+
+	loadSettings(accountId) {
+		assertSafePlayerId(accountId);
+		const { rows } = runSync(
+			this.pool.query(`SELECT data FROM settings WHERE account_id = $1`, [accountId])
 		);
 		if (rows.length === 0) return null;
 		return JSON.parse(JSON.stringify(rows[0].data));
