@@ -39,6 +39,12 @@ function disableRedisForTests() {
 }
 
 function getInstanceId() {
+  if (typeof process.env.FLY_MACHINE_ID === 'string') {
+    const flyId = process.env.FLY_MACHINE_ID.trim();
+    if (flyId.length > 0) {
+      return flyId;
+    }
+  }
   if (typeof process.env.INSTANCE_ID === 'string' && process.env.INSTANCE_ID.length > 0) {
     return process.env.INSTANCE_ID;
   }
