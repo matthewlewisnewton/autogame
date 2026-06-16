@@ -268,6 +268,32 @@ describe('escort follow with nearby living enemy', () => {
     tickEscort(gameState);
     expect(gameState.run.status).toBe('victory');
   });
+
+  it('holds position when a grunt within range has LOS and targets the escort', () => {
+    const dais = gameState.layout.landmarks.find((lm) => lm.type === 'arena_dais');
+    const escort = getEscortMinion(gameState);
+    const grunt = gameState.enemies.find((enemy) => enemy.hp > 0);
+    expect(grunt).toBeTruthy();
+
+    gameState.players.p1.x = dais.x;
+    gameState.players.p1.z = dais.z;
+
+    grunt.x = 0;
+    grunt.z = 0;
+    escort.x = 2;
+    escort.z = 0;
+
+    const startX = escort.x;
+    const startZ = escort.z;
+
+    for (let i = 0; i < 40; i++) {
+      updateEnemies();
+      updateMinions();
+    }
+
+    expect(Math.abs(escort.x - startX)).toBeLessThan(0.5);
+    expect(Math.abs(escort.z - startZ)).toBeLessThan(0.5);
+  });
 });
 
 describe('escort checkpoint round-trip', () => {

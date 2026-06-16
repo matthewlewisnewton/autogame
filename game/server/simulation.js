@@ -3435,6 +3435,80 @@ function updateEnemyProjectiles() {
 
 // ── Minion AI Tick ──
 
+/**
+ * True when `enemy` would actively target `escort` using the same acquisition
+ * rules as updateEnemies (taunt → nearest minion vs player with LOS, plus
+ * in-progress windup/recovery against this escort minion id).
+ */
+function isEscortThreatenedByEnemy(enemy, escort, losColliders, players) {
+  if (!enemy || enemy.hp <= 0 || !escort || escort.hp <= 0) return false;
+  if (isEnemyFrozen(enemy)) return false;
+
+  const distToEscort = Math.hypot(escort.x - enemy.x, escort.z - enemy.z);
+  if (distToEscort >= DETECTION_RADIUS) return false;
+  if (!hasLineOfSight(enemy.x, enemy.z, escort.x, escort.z, losColliders)) return false;
+
+  if (
+    (enemy.attackState === 'windup' || enemy.attackState === 'recovering')
+    && enemy.windupTargetType === 'minion'
+    && enemy.windupTargetId === escort.id
+  ) {
+    return true;
+  }
+
+  const tauntMinion = findTauntMinionNear(enemy.x, enemy.z, DETECTION_RADIUS);
+  if (tauntMinion && hasLineOfSight(enemy.x, enemy.z, tauntMinion.x, tauntMinion.z, losColliders)) {
+    return tauntMinion.id === escort.id;
+  }
+
+  if (enemy.type === 'field_medic') return false;
+
+  let nearestTarget = null;
+  let nearestTargetType = null;
+  let nearestDist = Infinity;
+
+  const nearestMinion = findNearestMinionNear(enemy.x, enemy.z, DETECTION_RADIUS);
+  if (
+    nearestMinion
+    && nearestMinion.dist < nearestDist
+    && hasLineOfSight(enemy.x, enemy.z, nearestMinion.minion.x, nearestMinion.minion.z, losColliders)
+  ) {
+    nearestTarget = nearestMinion.minion;
+    nearestTargetType = 'minion';
+    nearestDist = nearestMinion.dist;
+  }
+
+  const nowConceal = Date.now();
+  const skipPlayerAggro = isEnemyAggroGraceActive(enemy);
+  for (const player of players) {
+    if (skipPlayerAggro) break;
+    if (isPlayerConcealed(player, nowConceal)) continue;
+    const dist = Math.hypot(player.x - enemy.x, player.z - enemy.z);
+    if (
+      dist < DETECTION_RADIUS
+      && dist < nearestDist
+      && hasLineOfSight(enemy.x, enemy.z, player.x, player.z, losColliders)
+    ) {
+      nearestDist = dist;
+      nearestTarget = player;
+      nearestTargetType = 'player';
+    }
+  }
+
+  return nearestTargetType === 'minion' && nearestTarget != null && nearestTarget.id === escort.id;
+}
+
+function isEscortThreatened(escort, enemies, losColliders) {
+  if (!escort || escort.hp <= 0) return false;
+  const players = Object.values(_gameState.players).filter(p => !p.dead && !p.extracted);
+  for (const enemy of enemies) {
+    if (isEscortThreatenedByEnemy(enemy, escort, losColliders, players)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function updateMinions() {
   // Minion movement/chase/wander + attack cadence advance at the scaled rate.
   const dt = debugScaledDt();
@@ -3481,24 +3555,12 @@ function updateMinions() {
   // If no enemy is nearby, follows its owner.
   // Skipped entirely when the run is terminal (victory or failed)
   if (!runTerminal) {
+    const losColliders = getWallColliders();
     for (const minion of _gameState.minions) {
       if (minion.type === 'mana_prism') continue;
 
       if (minion.isEscort) {
-        let nearestDist = Infinity;
-        let nearestEnemy = null;
-
-        for (const enemy of _gameState.enemies) {
-          const dx = enemy.x - minion.x;
-          const dz = enemy.z - minion.z;
-          const dist = Math.hypot(dx, dz);
-          if (dist < nearestDist) {
-            nearestDist = dist;
-            nearestEnemy = enemy;
-          }
-        }
-
-        const underAttack = nearestEnemy && nearestDist < DETECTION_RADIUS;
+        const underAttack = isEscortThreatened(minion, _gameState.enemies, losColliders);
         if (!underAttack) {
           let nearestPlayer = null;
           let nearestPlayerDist = Infinity;
