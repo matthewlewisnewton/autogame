@@ -70,6 +70,7 @@ import {
 	onSettingsChange,
 	loadAccountSettings,
 	setAuthToken,
+	getAuthToken,
 	patchProfile,
 	getAccountProfile,
 	getAccountCosmetic,
@@ -825,7 +826,7 @@ function renderLobbyList(lobbySummaries) {
 		joinBtn.dataset.joinMode = lobby.gamePhase === 'playing' ? 'drop-in' : 'join';
 		joinBtn.textContent = lobby.gamePhase === 'playing' ? 'Drop In' : 'Join';
 		joinBtn.addEventListener('click', () => {
-			if (socket) socket.emit(CLIENT_TO_SERVER.JOIN_LOBBY, { lobbyId: lobby.id });
+			requestJoinLobby(lobby);
 		});
 
 		item.appendChild(meta);
@@ -1092,9 +1093,10 @@ function getCardSlotEl(slotIndex) {
 		|| null;
 }
 
-const debugScenario = new URLSearchParams(window.location.search).get('debugScenario');
+const urlSearchParams = new URLSearchParams(window.location.search);
+const debugScenario = urlSearchParams.get('debugScenario');
 const debugScenarioAllowed = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
-const boothDebugParam = new URLSearchParams(window.location.search).get('booth');
+const boothDebugParam = urlSearchParams.get('booth');
 let debugScenarioRequested = false;
 let boothDebugRequested = false;
 let debugScenarioResult = null;
@@ -1111,7 +1113,7 @@ let debugTimeScaleResult = null;
 let debugTimeScaleAllowed = false;
 // Preset cycle for the Shift+T keybind: full speed → slow-mo steps → paused → full.
 const DEBUG_TIME_SCALE_PRESETS = [1, 0.5, 0.25, 0];
-const debugBooth = new URLSearchParams(window.location.search).get('booth');
+const debugBooth = urlSearchParams.get('booth');
 const debugBoothAllowed = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 let lastRunSummary = null; // most recent runComplete payload, for harness-state inspection
 /** @type {null | { questId: string, questName: string, objective: object | null }} */
@@ -1137,21 +1139,100 @@ const storedToken = (() => {
 })();
 
 let socket = null;
+/** @type {{ lobbyId: string, instanceId: string | null } | null} */
+let pendingLobbyJoin = null;
+let lastConnectedFlyInstanceId = null;
+
+const deepLinkLobbyParam = urlSearchParams.get('lobby');
+if (deepLinkLobbyParam) {
+	const trimmedLobbyId = deepLinkLobbyParam.trim();
+	if (trimmedLobbyId.length > 0) {
+		pendingLobbyJoin = { lobbyId: trimmedLobbyId, instanceId: null };
+	}
+}
+
+function getSocketAuthToken() {
+	const fromSettings = getAuthToken();
+	if (fromSettings) return fromSettings;
+	try { return localStorage.getItem(TOKEN_KEY); } catch (_) { return null; }
+}
+
+function emitPendingLobbyJoin(sock = socket) {
+	if (!pendingLobbyJoin || !sock) return;
+	sock.emit(CLIENT_TO_SERVER.JOIN_LOBBY, { lobbyId: pendingLobbyJoin.lobbyId });
+	pendingLobbyJoin = null;
+}
+
+function requestJoinLobby(lobby) {
+	if (!lobby || !lobby.id) return;
+	const token = getSocketAuthToken();
+	if (!token) return;
+
+	pendingLobbyJoin = { lobbyId: lobby.id, instanceId: lobby.instanceId ?? null };
+
+	if (lobby.instanceId) {
+		createSocket(token, { lobbyId: lobby.id, flyInstanceId: lobby.instanceId });
+		return;
+	}
+
+	if (socket?.connected) {
+		emitPendingLobbyJoin();
+	}
+}
+
+function handleLobbyDeepLinkAfterInit(lobbies) {
+	if (!pendingLobbyJoin?.lobbyId) return;
+	const summaries = Array.isArray(lobbies) ? lobbies : [];
+	const target = summaries.find((lobby) => lobby && lobby.id === pendingLobbyJoin.lobbyId);
+	if (!target) return;
+
+	pendingLobbyJoin.instanceId = target.instanceId ?? null;
+	const token = getSocketAuthToken();
+	if (!token) return;
+
+	if (target.instanceId) {
+		createSocket(token, { lobbyId: target.id, flyInstanceId: target.instanceId });
+		return;
+	}
+
+	if (socket?.connected) {
+		emitPendingLobbyJoin();
+	}
+}
 
 /** Create (or recreate) the Socket.IO connection with a JWT auth token. */
-function createSocket(token) {
+function createSocket(token, options) {
 	if (socket) socket.disconnect();
+	const affinity = options && typeof options === 'object' ? options : {};
+	const { lobbyId, flyInstanceId } = affinity;
 	// Explicit reconnection/timeout config rather than relying on undocumented
 	// defaults, so a stalled initial connect deterministically surfaces a
 	// `connect_error` the client can act on instead of hanging silently.
-	socket = io({
+	const ioConfig = {
 		auth: { token },
 		timeout: CONNECT_WATCHDOG_MS,
 		reconnection: true,
 		reconnectionAttempts: Infinity,
 		reconnectionDelay: 1000,
 		reconnectionDelayMax: 5000,
-	});
+	};
+	if (lobbyId) {
+		ioConfig.query = { lobbyId };
+		if (flyInstanceId) {
+			ioConfig.query.fly_instance_id = flyInstanceId;
+		}
+	} else if (flyInstanceId) {
+		ioConfig.query = { fly_instance_id: flyInstanceId };
+	}
+	if (flyInstanceId) {
+		ioConfig.extraHeaders = {
+			'fly-force-instance-id': flyInstanceId,
+		};
+		lastConnectedFlyInstanceId = flyInstanceId;
+	} else {
+		lastConnectedFlyInstanceId = null;
+	}
+	socket = io(ioConfig);
 	setSocketRef(socket);
 	bindSocketHandlers(socket);
 	// Surface a persistent error if this (re)created socket never reaches
@@ -1493,6 +1574,8 @@ const socketHandlerCtx = createSocketHandlerCtx({
 	showQuestError,
 	showQuestDialogueToast,
 	applyDebugTimeScale,
+	emitPendingLobbyJoin,
+	handleLobbyDeepLinkAfterInit,
 });
 
 /** Bind all Socket.IO event listeners to the given socket instance. */
@@ -4829,6 +4912,9 @@ window.showLoginForm = showLoginForm;
 window.clearAuthForms = clearAuthForms;
 window.bindSocketHandlers = bindSocketHandlers;
 window.createSocket = createSocket;
+window.__requestJoinLobbyForTest = requestJoinLobby;
+window.__getPendingLobbyJoinForTest = () => pendingLobbyJoin;
+window.__getLastConnectedFlyInstanceIdForTest = () => lastConnectedFlyInstanceId;
 window.showRunSummary = showRunSummary;
 window.renderCardChoices = renderCardChoices;
 window.__claimedCardRewardId = () => claimedCardRewardId;

@@ -219,6 +219,8 @@ export function createSocketHandlerCtx(deps) {
 		showQuestError: deps.showQuestError,
 		showQuestDialogueToast: deps.showQuestDialogueToast,
 		applyDebugTimeScale: deps.applyDebugTimeScale,
+		emitPendingLobbyJoin: deps.emitPendingLobbyJoin,
+		handleLobbyDeepLinkAfterInit: deps.handleLobbyDeepLinkAfterInit,
 	};
 
 	for (const key of STATE_ACCESSORS) {
