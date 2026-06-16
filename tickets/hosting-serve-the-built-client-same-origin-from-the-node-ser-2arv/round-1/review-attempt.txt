@@ -1,0 +1,16 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime gate passed:** `metrics.json` shows `ok: true`, empty `pageerrors`, no `harness_failure`. `console.log` has no `pageerror`/`[fatal]` lines — the game starts, both players ready up, reach gameplay, and the dodge/cooldown HUD works. (The lone 409 is a pre-existing lobby-create race, not from this ticket.)
+
+**Acceptance criterion fully met** (`game/server/index.js:1804-1828`):
+- Static serving is gated behind `NODE_ENV === 'production'` → **dev untouched**.
+- `express.static(dist)` + SPA `index.html` fallback served same-origin as `/api` and `/socket.io`.
+- `/api`, `/admin`, `/healthz` mounted *before* the static block (win by middleware order); fallback also explicitly skips `/api`; Socket.IO intercepts its own path → **no shadowing**.
+- Graceful warning when `dist` is missing; idempotent `_staticMounted` guard prevents duplicate middleware.
+- New test `hosting-static-serve.test.js` verifies all four cases — I ran it: **4 passed**.
+
+Change is additive (index.js + new test only), no design/requirements regression, no debug scenarios involved.
+
+**One non-blocking nit** filed: the new test recursively deletes `game/client/dist` on teardown — harmless for CI (dist is gitignored) but could wipe a developer's local build. Written to `nits.md`. No `gaps.md` written since the verdict is PASS.
