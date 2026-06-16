@@ -20,6 +20,19 @@ export function bindLobbyBrowserHandlers(s, ctx) {
 	s.on(SERVER_TO_CLIENT.LOBBY_LEFT, (data) => {
 		ctx.gameState = null;
 		ctx.setGameStateRef(null);
+		// Dispose world entity meshes so stale/frozen entities don't linger behind
+		// the lobby browser until the next join (mirrors runHandlers START_GAME).
+		const sc = ctx.getScene();
+		const maps = ctx.getMeshMaps();
+		ctx.rendererDisposeMeshMap(maps.enemiesMeshes, sc);
+		ctx.rendererDisposeMeshMap(maps.enemyHealthBars, sc);
+		ctx.rendererDisposeMeshMap(maps.enemyShieldBars, sc);
+		ctx.rendererDisposeMeshMap(maps.telegraphMeshes, sc);
+		ctx.rendererDisposeMeshMap(maps.minionTelegraphMeshes, sc);
+		ctx.rendererDisposeMeshMap(maps.minionsMeshes, sc);
+		ctx.rendererDisposeMeshMap(maps.spikeTrapMeshes, sc);
+		ctx.rendererDisposeMeshMap(maps.iceBallMeshes, sc);
+		ctx.disposeAllLootMeshes();
 		ctx.showLobbyBrowser();
 		ctx.renderLobbyList((data && data.lobbies) || []);
 		if (ctx.lobbyBrowserStatusEl) {

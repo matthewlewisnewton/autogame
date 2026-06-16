@@ -165,6 +165,21 @@ describe('updateLockOn', () => {
 		expect(state.toTarget.x).toBeCloseTo(1, 5);
 	});
 
+	it('keeps liveToTarget unit-length against an elevated (flying) enemy', () => {
+		// Flying enemy hovering at altitude 4 (world Y = PY + 4) while only 3 units
+		// away horizontally: the 3D distance is much longer than the 2D distance,
+		// so normalizing against the 3D dist would shrink the steering vector and
+		// throttle strafe/dodge input. liveToTarget must stay unit-length in (x,z).
+		const elevated = [{ id: 'a', x: 3, z: 0, flying: true, altitude: 4, hp: 50 }];
+		handleLockOnPress(elevated, 0, PY, 0, 'unlock', 0, LAYOUT);
+		const state = updateLockOn(elevated, 0, PY, 0, 0.1, 0, 0, LAYOUT);
+		expect(state.locked).toBe(true);
+		const mag = Math.hypot(state.liveToTarget.x, state.liveToTarget.z);
+		expect(mag).toBeCloseTo(1, 6);
+		expect(state.liveToTarget.x).toBeCloseTo(1, 6);
+		expect(state.liveToTarget.z).toBeCloseTo(0, 6);
+	});
+
 	it('auto-unlocks when target dies and starts a camera release', () => {
 		handleLockOnPress(enemies, 0, PY, 0, 'unlock', 0, LAYOUT);
 		updateLockOn(enemies, 0, PY, 0, 0.1, 0, 0, LAYOUT);

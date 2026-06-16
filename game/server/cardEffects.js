@@ -634,7 +634,9 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
 
       if (cardDef.effect === 'memory_shard') {
         player.pendingSummons.add(summonKey);
-        player.magicStones -= magicStoneCost;
+        // tryBeginCardWindup already paid at commit for windup spells — match the
+        // generic spell/creature branches and don't double-charge.
+        if (!fromWindup) player.magicStones -= magicStoneCost;
         applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
 
         const exhausted = pickRandomExhaustedCard(player);
@@ -688,7 +690,9 @@ function executeUseCard(socket, state, lobby, data, precomputed = {}, options = 
         }
 
         player.pendingSummons.add(summonKey);
-        player.magicStones -= magicStoneCost;
+        // tryBeginCardWindup already paid at commit for windup spells — match the
+        // generic spell/creature branches and don't double-charge.
+        if (!fromWindup) player.magicStones -= magicStoneCost;
         releaseBurningCreatureCard(player, target.minion);
         state.minions.splice(target.index, 1);
         const magicStonesGained = addMagicStones(player, cardDef.magicStoneGain || 0);

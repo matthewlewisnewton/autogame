@@ -515,6 +515,15 @@ export function getUseKeyItemBinding() {
 	return { keyboard: keyboardKey, gamepad: gamepadIndex, gamepadHint };
 }
 
+/**
+ * Clear cached per-pad button edge state. Called when a gamepad connects or
+ * disconnects so a stale held/released edge from a previous pad never carries
+ * over to a freshly attached one.
+ */
+export function resetGamepadButtonState() {
+	prevGamepadButtons.clear();
+}
+
 /** Test-only: reset key state */
 export function resetInputState() {
 	for (const k of Object.keys(keyState)) keyState[k] = false;

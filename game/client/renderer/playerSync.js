@@ -319,6 +319,11 @@ export function syncPlayerMeshes(gs, myId, localKinematics) {
 		}
 	}
 
+	// ── Prune damage-flash hp bookkeeping for players who left ──
+	for (const id of Object.keys(previousPlayerHp)) {
+		if (!gs.players[id]) delete previousPlayerHp[id];
+	}
+
 	// ── Smoke Bomb VFX: show a puff at each player's active smoke zone ──
 	// The zone is fixed at the cast point (smokeBombX/Z), so the puff is
 	// re-triggered while the zone is active if its VFX has faded out. Skip

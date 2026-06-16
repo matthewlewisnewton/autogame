@@ -220,6 +220,7 @@ import {
 	syncTelepipeMesh,
 	animateTelepipePortal,
 	disposeLootMeshMaterials,
+	resetLootSyncState,
 } from './renderer/lootSync.js';
 
 // Loot-domain + ice-ball + telepipe-portal sync now lives in
@@ -405,6 +406,10 @@ export function disposeRenderer() {
 		if (canvas?.parentNode) canvas.parentNode.removeChild(canvas);
 		renderer = null;
 	}
+	// Flush floating damage-number DOM nodes; updateDamageNumbers() early-returns
+	// when !renderer, so they would otherwise leak on document.body.
+	for (const dn of damageNumbers) dn.element?.remove();
+	damageNumbers.length = 0;
 	sceneInitialized = false;
 }
 
@@ -7387,6 +7392,9 @@ export function disposeAllLootMeshes() {
 		delete lootMeshes[id];
 	}
 	lootPickupAttempts.clear();
+	// Clear the loot-domain bookkeeping (previousLootValues + in-flight
+	// collectingLoot animations) so nothing leaks past a bulk teardown.
+	resetLootSyncState();
 }
 
 // ── Animate loop ──

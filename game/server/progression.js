@@ -2578,6 +2578,23 @@ function restoreHandCharges(player, amount, options = {}) {
   return restored;
 }
 
+// Boss/miniboss enemy types whose spawn HP scales with the live party size.
+// Quest stage bosses (arena_champion, crucible_sovereign) are included so a
+// multiplayer party doesn't fight them at solo HP. The 461-cap capstone bosses
+// (riftbound_colossus, citadel_sovereign) are deliberately absent — see the
+// note at the scaling call site below.
+const PARTY_HP_SCALING_BOSS_TYPES = new Set([
+  'miniboss',
+  'annex_overseer',
+  'spire_warden',
+  'cinder_warden',
+  'magma_colossus',
+  'permafrost_warden',
+  'glacial_tyrant',
+  'arena_champion',
+  'crucible_sovereign',
+]);
+
 function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
   const resolvedType = typeof opts.enemyType === 'string' ? opts.enemyType : type;
   const def = enemyDefFor(resolvedType);
@@ -2629,7 +2646,10 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
   // Difficulty scaling: miniboss-tier bosses get more HP the larger the party is at spawn.
   // Fixed once here from the live player count — never re-applied retroactively
   // when players later join or leave. 1–4 players stay at baseline (factor 1.0).
-  if (resolvedType === 'miniboss' || resolvedType === 'annex_overseer' || resolvedType === 'spire_warden' || resolvedType === 'cinder_warden' || resolvedType === 'magma_colossus' || resolvedType === 'permafrost_warden' || resolvedType === 'glacial_tyrant') {
+  // NOTE: the 461-cap capstone bosses `riftbound_colossus` and `citadel_sovereign`
+  // are intentionally excluded — their fixed HP is tuned for the 180s defeatBoss
+  // validation window and must not party-scale.
+  if (PARTY_HP_SCALING_BOSS_TYPES.has(resolvedType)) {
     const factor = difficultyScaleFactor(runPlayerCount(_gameState), DIFFICULTY_MINIBOSS_HP_PER_PLAYER);
     enemy.hp = Math.round(enemy.hp * factor);
     enemy.maxHp = Math.round(enemy.maxHp * factor);
@@ -2639,6 +2659,11 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
 }
 
 function removeDeadEnemies() {
+  // No-op when no game state is wired (e.g. isolated unit tests that drive
+  // simulation.js directly while this module's _gameState is unset). In
+  // production both modules share one _gameState via index.js, so this guard
+  // never fires on a live run.
+  if (!_gameState?.enemies) return 0;
   const dying = _gameState.enemies.filter((e) => e.hp <= 0);
   const spawnCtx = buildObjectiveSpawnCtx();
   for (const enemy of dying) {

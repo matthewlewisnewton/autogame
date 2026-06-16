@@ -1601,6 +1601,7 @@ function updateBurning() {
     }
   }
 
+  let enemyDamaged = false;
   for (const enemy of _gameState.enemies) {
     if (!isBurning(enemy)) {
       if (enemy.lastBurnTickAt != null) enemy.lastBurnTickAt = null;
@@ -1614,8 +1615,13 @@ function updateBurning() {
       const ticks = Math.floor((now - enemy.lastBurnTickAt) / BURN_TICK_INTERVAL_MS);
       damageEnemy(enemy, ticks * amount);
       enemy.lastBurnTickAt += ticks * BURN_TICK_INTERVAL_MS;
+      enemyDamaged = true;
     }
   }
+
+  // An enemy killed purely by burn must be reaped this tick (loot/XP/defeat
+  // bookkeeping + terminal-state checks), matching updateMinions/updateAreaEffects.
+  if (enemyDamaged) _progression().cleanupAfterDamage();
 }
 
 function healPlayer(playerId, amount) {
@@ -2826,6 +2832,63 @@ function clearPlayerCardCommitment(player) {
   delete player.pendingCardUse;
 }
 
+// Non-mutating predicate mirroring damagePlayer's i-frame / barrier-dome /
+// absorb-shield gates: returns true when a strike of `amount` would actually
+// reach the player's HP. Used to gate secondary on-hit effects (e.g. burn
+// ignition) so a correctly-timed dodge / dome / shield that eats the hit also
+// prevents the rider effect. Godmode is intentionally treated as "connects":
+// the ongoing burn DoT still re-routes through damagePlayer (a no-op under
+// godmode), preserving existing godmode burn behavior.
+function playerStrikeWouldConnect(playerId, amount, options = {}) {
+  const player = _gameState.players[playerId];
+  if (!player) return false;
+  if (amount <= 0) return false;
+  if (player.debugGodmode) return true;
+
+  const now = Date.now();
+
+  // Invulnerability (i-frames from dodge roll, etc.)
+  if (player.invulnerableUntil && now < player.invulnerableUntil) return false;
+
+  // Barrier dome (only ranged/projectile from outside the dome).
+  if (options.ranged || options.projectile) {
+    const attackerPos = getAttackerPosition(options);
+    for (const dome of Object.values(_gameState.players)) {
+      if (dome.dead) continue;
+      if (!dome.barrierDomeUntil || now >= dome.barrierDomeUntil) continue;
+      const radius = dome.barrierDomeRadius || 0;
+      if (radius <= 0) continue;
+      const victimDist = sphericalDistanceToEntity(
+        dome.barrierDomeX, dome.barrierDomeY, dome.barrierDomeZ, player
+      );
+      if (victimDist > radius) continue;
+      if (attackerPos) {
+        const domeY = resolveAoeOriginY(dome.barrierDomeX, dome.barrierDomeY, dome.barrierDomeZ);
+        const attackerY = Number.isFinite(attackerPos.y)
+          ? attackerPos.y
+          : resolveAoeOriginY(attackerPos.x, null, attackerPos.z);
+        const attackerDist = Math.hypot(
+          attackerPos.x - dome.barrierDomeX,
+          attackerY - domeY,
+          attackerPos.z - dome.barrierDomeZ
+        );
+        if (attackerDist <= radius) continue;
+      }
+      return false; // fully blocked by dome
+    }
+  }
+
+  // One-hit absorb shield fully eats the incoming hit.
+  if ((player.shieldHitsRemaining || 0) > 0) return false;
+
+  // Shield-HP pool: only blocks ignition if it would absorb the entire hit.
+  let shieldHp = player.shieldHp || 0;
+  if (player.shieldExpiresAt && now > player.shieldExpiresAt) shieldHp = 0;
+  let remaining = amount;
+  if (shieldHp > 0) remaining -= Math.min(shieldHp, remaining);
+  return remaining > 0;
+}
+
 function damagePlayer(playerId, amount, options = {}) {
   const player = _gameState.players[playerId];
   if (!player) return null;
@@ -3183,8 +3246,14 @@ function updateEnemies() {
 							runPlayerCount(_gameState),
 							DIFFICULTY_ENEMY_DAMAGE_PER_PLAYER
 						);
+						// Decide ignition BEFORE damagePlayer mutates shield/i-frame state: a
+						// dodge i-frame, barrier dome, or absorb shield that eats the hit also
+						// prevents the burn DoT rider. Godmode still ignites (the DoT later
+						// no-ops through damagePlayer) — see playerStrikeWouldConnect.
+						const strikeConnects = enemy.burnDurationMs > 0
+							&& playerStrikeWouldConnect(enemy.windupTargetId, scaledDamage, { attackerEnemyId: enemy.id });
 						damagePlayer(enemy.windupTargetId, scaledDamage, { attackerEnemyId: enemy.id });
-						if (enemy.burnDurationMs > 0) {
+						if (strikeConnects) {
 							applyBurning(target, enemy.burnDurationMs);
 						}
 					}

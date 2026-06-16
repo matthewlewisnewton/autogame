@@ -40,6 +40,10 @@ const C_BUTTON_DIRECTIONS = ['up', 'down', 'left', 'right'];
 const AXIS_DIRECTIONS = ['positive', 'negative'];
 const KEYBOARD_KEY_REGEX = /^[a-z]$/;
 
+// Safe accountId shape (server-issued UUIDs and simple keys). Last-line guard
+// against path traversal if a forged/leaked token carries "../../etc/foo".
+const SAFE_ACCOUNT_ID_REGEX = /^[A-Za-z0-9_-]+$/;
+
 /** Maximum UTF-8 byte length of persisted settings JSON (pretty-printed). */
 const SETTINGS_MAX_BYTES = 8192;
 
@@ -380,6 +384,9 @@ function getSettingsDir() {
 }
 
 function settingsFilePath(accountId) {
+	if (typeof accountId !== 'string' || !SAFE_ACCOUNT_ID_REGEX.test(accountId)) {
+		throw new Error(`Invalid account id: ${JSON.stringify(accountId)}`);
+	}
 	return path.join(getSettingsDir(), `${accountId}.json`);
 }
 
@@ -492,5 +499,7 @@ module.exports = {
 	setSettingsMaxBytesForTests,
 	resetSettingsMaxBytesForTests,
 	clearAllSettings,
-	getSettingsDir
+	getSettingsDir,
+	settingsFilePath,
+	SAFE_ACCOUNT_ID_REGEX
 };

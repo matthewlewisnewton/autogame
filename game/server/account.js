@@ -11,6 +11,11 @@ const { hasAppearanceFieldChanges } = require('../shared/cosmeticAppearance.js')
 const router = Router();
 const JWT_EXPIRATION = '24h';
 
+// Safe accountId shape (server-issued UUIDs). Reject anything else at the auth
+// boundary so a forged/leaked-secret token cannot drive path traversal in
+// settings/player file paths derived from the accountId claim.
+const SAFE_ACCOUNT_ID_REGEX = /^[A-Za-z0-9_-]+$/;
+
 function getJwtSecret() {
 	const auth = require('./auth');
 	return auth.getJWTSecret();
@@ -27,6 +32,9 @@ function requireAuth(req, res, next) {
 	const token = header.slice(7);
 	const decoded = verifyToken(token);
 	if (!decoded || !decoded.accountId) {
+		return res.status(401).json({ error: 'Invalid or expired token' });
+	}
+	if (typeof decoded.accountId !== 'string' || !SAFE_ACCOUNT_ID_REGEX.test(decoded.accountId)) {
 		return res.status(401).json({ error: 'Invalid or expired token' });
 	}
 	req.accountId = decoded.accountId;

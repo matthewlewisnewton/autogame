@@ -258,6 +258,25 @@ export function updateCollectingLoot() {
 }
 
 /**
+ * Reset the loot bookkeeping tables on bulk teardown (disconnect / run-clear).
+ * Clears `previousLootValues` and disposes + clears any in-flight collecting-loot
+ * meshes/materials so the loot domain leaves no stale state behind once the mesh
+ * maps themselves are torn down by disposeAllLootMeshes.
+ */
+export function resetLootSyncState() {
+	const scene = getScene();
+	for (const id of Object.keys(collectingLoot)) {
+		const entry = collectingLoot[id];
+		if (scene && entry.mesh) scene.remove(entry.mesh);
+		if (entry.mesh) disposeLootMeshMaterials(entry.mesh);
+		delete collectingLoot[id];
+	}
+	for (const id of Object.keys(previousLootValues)) {
+		delete previousLootValues[id];
+	}
+}
+
+/**
  * Sync the shared telepipe portal mesh with gameState.telepipe.
  * Creates an animated group: shimmer cylinder, two orbiting torus rings,
  * and a rising particle column.

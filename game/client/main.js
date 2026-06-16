@@ -4293,9 +4293,13 @@ function keyItemGamepadCaptureFrame() {
 	const pads = navigator.getGamepads ? Array.from(navigator.getGamepads()).filter(Boolean) : [];
 	for (const gp of pads) {
 		const btnCount = Math.min(gp.buttons.length, 16);
+		// Key edge state by pad index (mirrors pollInput) so two pads don't clobber
+		// each other's prev-button state.
+		if (!keyItemGamepadCapturePrev) keyItemGamepadCapturePrev = {};
+		const prev = keyItemGamepadCapturePrev[gp.index] ?? (keyItemGamepadCapturePrev[gp.index] = {});
 		for (let i = 0; i < btnCount; i++) {
 			const pressed = gp.buttons[i]?.pressed ?? false;
-			const wasPressed = keyItemGamepadCapturePrev?.[i] ?? false;
+			const wasPressed = prev[i] ?? false;
 			if (pressed && !wasPressed) {
 				patchSettings({ gamepad: { bindings: { useKeyItem: { type: 'button', index: i } } } });
 				capturingKeyItemGamepad = false;
@@ -4305,9 +4309,8 @@ function keyItemGamepadCaptureFrame() {
 			}
 		}
 		// Update prev state
-		if (!keyItemGamepadCapturePrev) keyItemGamepadCapturePrev = {};
 		for (let i = 0; i < btnCount; i++) {
-			keyItemGamepadCapturePrev[i] = gp.buttons[i]?.pressed ?? false;
+			prev[i] = gp.buttons[i]?.pressed ?? false;
 		}
 	}
 	keyItemGamepadCaptureRaf = requestAnimationFrame(keyItemGamepadCaptureFrame);

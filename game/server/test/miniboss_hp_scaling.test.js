@@ -89,6 +89,41 @@ describe('Miniboss HP scaling with party size at spawn', () => {
 		expect(big.maxHp).toBeGreaterThan(small.maxHp);
 	});
 
+	it('quest stage bosses arena_champion and crucible_sovereign scale with a large party', () => {
+		for (const type of ['arena_champion', 'crucible_sovereign']) {
+			const baseHp = ENEMY_DEFS[type].hp;
+
+			gameState.enemies.length = 0;
+			setPartySize(4);
+			const solo = spawnEnemy(0, 0, type);
+			expect(solo.hp).toBe(baseHp);
+			expect(solo.maxHp).toBe(baseHp);
+
+			gameState.enemies.length = 0;
+			setPartySize(16);
+			const expected = Math.round(
+				baseHp * difficultyScaleFactor(16, DIFFICULTY_MINIBOSS_HP_PER_PLAYER),
+			);
+			const party = spawnEnemy(0, 0, type);
+			expect(party.hp).toBeGreaterThan(baseHp);
+			expect(party.hp).toBe(expected);
+			expect(party.maxHp).toBe(expected);
+		}
+	});
+
+	it('the 461-cap capstone bosses keep fixed HP regardless of party size', () => {
+		// riftbound_colossus and citadel_sovereign are intentionally excluded from
+		// party HP scaling (180s defeatBoss validation window).
+		for (const type of ['riftbound_colossus', 'citadel_sovereign']) {
+			const baseHp = ENEMY_DEFS[type].hp;
+			gameState.enemies.length = 0;
+			setPartySize(16);
+			const boss = spawnEnemy(0, 0, type);
+			expect(boss.hp).toBe(baseHp);
+			expect(boss.maxHp).toBe(baseHp);
+		}
+	});
+
 	it('non-miniboss enemy types are unaffected by party size', () => {
 		setPartySize(16);
 		for (const type of ['grunt', 'skirmisher', 'spawner']) {

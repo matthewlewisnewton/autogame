@@ -1855,6 +1855,14 @@ function startServer(port) {
         return next(new Error('Invalid or expired JWT'));
       }
 
+      // Reject tokens whose accountId is not the expected safe shape
+      // (server-issued UUID). Defense-in-depth against a forged/leaked-secret
+      // token carrying e.g. "../../etc/foo" that would otherwise drive path
+      // traversal in the player/settings file paths derived from accountId.
+      if (typeof decoded.accountId !== 'string' || !/^[A-Za-z0-9_-]+$/.test(decoded.accountId)) {
+        return next(new Error('Invalid or expired JWT'));
+      }
+
       // Attach decoded claims so the connection handler can read them
       socket.data.accountId = decoded.accountId;
       socket.data.username = decoded.username;

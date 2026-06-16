@@ -210,6 +210,26 @@ describe('POST /api/register', () => {
 		});
 		expect(res.status).toBe(400);
 	});
+
+	it('returns 400 when password exceeds the maximum length', async () => {
+		const res = await fetch(`${baseUrl}/api/register`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ username: 'longpw', password: 'a'.repeat(257) })
+		});
+		expect(res.status).toBe(400);
+		const body = await res.json();
+		expect(body.error).toMatch(/at most/i);
+	});
+
+	it('accepts a password at exactly the maximum length', async () => {
+		const res = await fetch(`${baseUrl}/api/register`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ username: 'maxpw', password: 'a'.repeat(256) })
+		});
+		expect(res.status).toBe(201);
+	});
 });
 
 // ── POST /api/login ──
@@ -232,6 +252,22 @@ describe('POST /api/login', () => {
 		const data = await res.json();
 		expect(data.token).toBeDefined();
 		expect(typeof data.token).toBe('string');
+	});
+
+	it('returns 400 when login password exceeds the maximum length', async () => {
+		await fetch(`${baseUrl}/api/register`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ username: 'loginmax', password: 'secret123' })
+		});
+		const res = await fetch(`${baseUrl}/api/login`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ username: 'loginmax', password: 'a'.repeat(257) })
+		});
+		expect(res.status).toBe(400);
+		const body = await res.json();
+		expect(body.error).toMatch(/at most/i);
 	});
 
 	it('returns a JWT containing accountId and username', async () => {

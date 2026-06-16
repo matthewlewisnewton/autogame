@@ -7,6 +7,11 @@ const router = Router();
 
 let JWT_SECRET = null;
 const JWT_EXPIRATION = '24h';
+// Upper bound on accepted password length. bcrypt silently truncates at 72
+// bytes, so long passwords sharing a 72-byte prefix would authenticate
+// interchangeably; capping also avoids wasting CPU hashing on this
+// unauthenticated endpoint.
+const MAX_PASSWORD_LENGTH = 256;
 const RATE_LIMIT_WINDOW_MS = Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 60000);
 const RATE_LIMIT_MAX_ATTEMPTS = Number(process.env.AUTH_RATE_LIMIT_MAX_ATTEMPTS || 10);
 const RATE_LIMIT_SWEEP_INTERVAL_MS = 60_000;
@@ -192,6 +197,10 @@ router.post('/register', async (req, res) => {
 		return res.status(400).json({ error: 'Password must not be empty' });
 	}
 
+	if (password.length > MAX_PASSWORD_LENGTH) {
+		return res.status(400).json({ error: `Password must be at most ${MAX_PASSWORD_LENGTH} characters` });
+	}
+
 	if (isRateLimited(req, 'register', username)) {
 		return res.status(429).json({ error: 'Too many registration attempts. Please try again later.' });
 	}
@@ -228,6 +237,13 @@ router.post('/login', async (req, res) => {
 		return res.status(400).json({ error: 'Username and password must be strings' });
 	}
 
+	// Reject over-long passwords before the expensive bcrypt compare. Matches
+	// the register cap; bcrypt truncates at 72 bytes so anything longer cannot
+	// be a legitimately-stored password anyway.
+	if (password.length > MAX_PASSWORD_LENGTH) {
+		return res.status(400).json({ error: `Password must be at most ${MAX_PASSWORD_LENGTH} characters` });
+	}
+
 	if (isRateLimited(req, 'login', username)) {
 		return res.status(429).json({ error: 'Too many login attempts. Please try again later.' });
 	}
@@ -262,6 +278,7 @@ module.exports.isRateLimited = isRateLimited;
 module.exports.incrementRateLimit = incrementRateLimit;
 module.exports.RATE_LIMIT_WINDOW_MS = RATE_LIMIT_WINDOW_MS;
 module.exports.RATE_LIMIT_MAX_ATTEMPTS = RATE_LIMIT_MAX_ATTEMPTS;
+module.exports.MAX_PASSWORD_LENGTH = MAX_PASSWORD_LENGTH;
 module.exports.pruneExpiredBuckets = pruneExpiredBuckets;
 module.exports.startRateLimitSweep = startRateLimitSweep;
 module.exports.stopRateLimitSweep = stopRateLimitSweep;

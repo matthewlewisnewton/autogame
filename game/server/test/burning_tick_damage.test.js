@@ -6,6 +6,8 @@ import {
 	updateBurning,
 } from '../index.js';
 
+// Burn DoT each tick deals 5 (see above); an enemy at low HP dies purely to burn.
+
 // Each burn tick deals BURN_BASE_TICK_DAMAGE + BURN_EXTRA_FIRE_DAMAGE (4 + 1 = 5)
 // every BURN_TICK_INTERVAL_MS (500ms).
 const TICK_INTERVAL = 500;
@@ -146,6 +148,24 @@ describe('updateBurning() periodic damage', () => {
 		vi.setSystemTime(START + 6000);
 		updateBurning();
 		expect(player.hp).toBe(hpAfterRefresh);
+	});
+
+	it('an enemy killed purely by burn is reaped within the same updateBurning() tick', () => {
+		// cleanupAfterDamage → recordEnemyDefeated needs a concrete objective.
+		gameState.run.objective = { type: 'defeat_enemies', current: 0, target: 5 };
+		// HP below one tick of burn damage so the burn alone finishes it.
+		const enemy = addEnemy('e_burn_kill', { hp: TICK_DAMAGE - 1 });
+		applyBurning(enemy, 5000);
+
+		updateBurning(); // arm the clock — no damage yet
+		expect(gameState.enemies.some((e) => e.id === 'e_burn_kill')).toBe(true);
+
+		// Next tick deals lethal burn damage AND must clean up the corpse this pass
+		// (cleanupAfterDamage), not defer it to a later tick.
+		vi.setSystemTime(START + TICK_INTERVAL);
+		updateBurning();
+
+		expect(gameState.enemies.some((e) => e.id === 'e_burn_kill')).toBe(false);
 	});
 
 	it('a re-ignition after a gap does not dump a burst of catch-up ticks', () => {

@@ -125,6 +125,31 @@ describe('GET /api/me', () => {
 		expect(res.status).toBe(401);
 	});
 
+	it('rejects a validly-signed token whose accountId is a traversal string', async () => {
+		// Simulates a forged/leaked-secret token that escaped basePath via accountId.
+		const evilToken = jwt.sign(
+			{ accountId: '../../etc/passwd', username: 'evil' },
+			getJWTSecret(),
+			{ expiresIn: '24h' }
+		);
+		const res = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(evilToken) });
+		expect(res.status).toBe(401);
+	});
+
+	it('rejects settings PATCH with a traversal accountId in the token', async () => {
+		const evilToken = jwt.sign(
+			{ accountId: 'a/../b', username: 'evil' },
+			getJWTSecret(),
+			{ expiresIn: '24h' }
+		);
+		const res = await fetch(`${baseUrl}/api/me/settings`, {
+			method: 'PATCH',
+			headers: authHeaders(evilToken),
+			body: JSON.stringify({ soundEnabled: false })
+		});
+		expect(res.status).toBe(401);
+	});
+
 	it('returns modelIds array containing player model', async () => {
 		const token = await registerAndLogin('modelUser', 'pass');
 

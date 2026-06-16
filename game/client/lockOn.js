@@ -82,7 +82,7 @@ export function shortestAngleDelta(from, to) {
  * @returns {number}
  */
 export function unwrapAngle(previous, next, fallback = 0) {
-	if (previous == null) return next;
+	if (previous == null) return next + fallback;
 	return previous + shortestAngleDelta(previous, next);
 }
 
@@ -486,11 +486,15 @@ export function updateLockOn(
 		return { locked: false };
 	}
 
-	const liveToTarget = dist <= 1e-8
+	// Normalize the steering vector against the 2D horizontal distance so that
+	// airborne enemies don't shorten it (the 3D `dist` above is only for the
+	// break-range check, matching the acquisition path which uses 2D distance).
+	const horizDist = Math.hypot(enemy.x - playerX, enemy.z - playerZ);
+	const liveToTarget = horizDist <= 1e-8
 		? (lastStableAim?.toTarget ?? { x: 1, z: 0 })
 		: {
-			x: (enemy.x - playerX) / dist,
-			z: (enemy.z - playerZ) / dist,
+			x: (enemy.x - playerX) / horizDist,
+			z: (enemy.z - playerZ) / horizDist,
 		};
 
 	const playerRotation = advanceLockOnPlayerRotation(

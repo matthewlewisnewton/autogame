@@ -1,6 +1,7 @@
 import { GAMEPAD_DEADZONE, GAMEPAD_LOOK_SENSITIVITY, LOCK_ON_GAMEPAD_BUTTON } from './config.js';
 import { isLockOnActive, isLockOnCameraReleasing } from './lockOn.js';
 import { getGamepadConfig } from './settings.js';
+import { resetGamepadButtonState } from './input.js';
 import {
 	resolveGamepadProfile,
 	read8BitDo64CStickHorizontal,
@@ -208,6 +209,7 @@ export function pollGamepadButtons() {
 export function resetGamepadState() {
 	prevLockOnPressed = false;
 	invalidateGamepadSnapshot();
+	resetGamepadButtonState();
 }
 
 /** Register gamepad connect/disconnect listeners once. */

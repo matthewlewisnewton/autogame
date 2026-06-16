@@ -213,6 +213,32 @@ describe('settings persistence', () => {
 		expect(loaded.keyboard.extra).toBeUndefined();
 		expect(Object.keys(loaded).sort()).toEqual([...SETTINGS_TOP_LEVEL_KEYS].sort());
 	});
+
+	// ── Path-traversal hardening (Fix 1) ──
+
+	it('updateSettings rejects a traversal accountId and writes nothing outside the dir', () => {
+		const parentMarker = path.join(getSettingsDir(), '..', 'escaped.json');
+		expect(() => updateSettings('../escaped', { soundEnabled: false })).toThrow(/Invalid account id/);
+		expect(fs.existsSync(parentMarker)).toBe(false);
+	});
+
+	it('getSettings rejects a traversal accountId', () => {
+		expect(() => getSettings('../../etc/passwd')).toThrow(/Invalid account id/);
+	});
+
+	it('rejects accountIds with separators, dots, or empty string', () => {
+		for (const bad of ['a/b', 'a.b', 'a\\b', '', '..']) {
+			expect(() => getSettings(bad)).toThrow(/Invalid account id/);
+		}
+	});
+
+	it('accepts UUID-shaped accountIds unchanged', () => {
+		const uuid = '550e8400-e29b-41d4-a716-446655440000';
+		const result = updateSettings(uuid, { soundEnabled: false });
+		expect(result.ok).toBe(true);
+		expect(getSettings(uuid).soundEnabled).toBe(false);
+		expect(fs.existsSync(path.join(getSettingsDir(), `${uuid}.json`))).toBe(true);
+	});
 });
 
 describe('validateSettings', () => {

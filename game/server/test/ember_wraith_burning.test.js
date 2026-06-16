@@ -95,6 +95,71 @@ describe('ember_wraith burning on windup strike', () => {
 		expect(wraith.attackState).toBe('recovering');
 	});
 
+	it('a dodge i-frame eats the strike AND prevents burn ignition', () => {
+		const player = addPlayer('p1', {
+			x: 3,
+			z: 0,
+			hp: 100,
+			invulnerableUntil: START + 5000,
+		});
+		makeExpiredWindup('ember_wraith', 'p1');
+
+		updateEnemies();
+
+		// Strike dealt no damage (i-frame) and must NOT have applied burn.
+		expect(player.hp).toBe(100);
+		expect(isBurning(player)).toBe(false);
+	});
+
+	it('a one-hit absorb shield that eats the strike prevents burn ignition', () => {
+		const player = addPlayer('p1', {
+			x: 3,
+			z: 0,
+			hp: 100,
+			shieldHitsRemaining: 1,
+		});
+		makeExpiredWindup('ember_wraith', 'p1');
+
+		updateEnemies();
+
+		expect(player.hp).toBe(100);
+		expect(player.shieldHitsRemaining).toBe(0);
+		expect(isBurning(player)).toBe(false);
+	});
+
+	it('a shield-HP pool that fully absorbs the strike prevents burn ignition', () => {
+		const player = addPlayer('p1', {
+			x: 3,
+			z: 0,
+			hp: 100,
+			shieldHp: 9999,
+			shieldExpiresAt: START + 60_000,
+		});
+		makeExpiredWindup('ember_wraith', 'p1');
+
+		updateEnemies();
+
+		expect(player.hp).toBe(100);
+		expect(isBurning(player)).toBe(false);
+	});
+
+	it('godmode still ignites (burn DoT is later no-ops through damagePlayer)', () => {
+		const player = addPlayer('p1', { x: 3, z: 0, hp: 100, debugGodmode: true });
+		makeExpiredWindup('ember_wraith', 'p1');
+
+		updateEnemies();
+
+		// Godmode took no HP damage, but ignition is preserved per the fix.
+		expect(player.hp).toBe(100);
+		expect(isBurning(player)).toBe(true);
+
+		// And the DoT tick is a harmless no-op under godmode.
+		updateBurning();
+		vi.setSystemTime(START + TICK_INTERVAL);
+		updateBurning();
+		expect(player.hp).toBe(100);
+	});
+
 	it('cone miss does not ignite the player', () => {
 		const player = addPlayer('p1', { x: 0, z: 3, hp: 100 });
 		const wraith = makeExpiredWindup('ember_wraith', 'p1', { windupDirX: 1, windupDirZ: 0 });
