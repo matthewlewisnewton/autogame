@@ -77,7 +77,10 @@ const {
   MAX_GROUND_ENCHANTMENTS_PER_PLAYER,
   MAX_HAND_SLOTS,
 } = require('./config');
+const { closeRedis, isRedisEnabled, createPubSubClients } = require('./redis');
+const { createAdapter } = require('@socket.io/redis-adapter');
 const lobbies = require('./lobbies');
+const { publishLocalLobbies, listGlobalLobbySummaries } = require('./lobbyBrowser');
 const { PHASES, isLobbyPhase, isPlayingPhase } = lobbies;
 const {
   syncHubPresenceFromLobby,
@@ -403,8 +406,15 @@ function getLobbyForSocket(socket) {
   return lobbies.getLobbyForPlayer(socket.playerId);
 }
 
-function broadcastLobbyList() {
-  io.emit(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, { lobbies: lobbies.listLobbySummaries() });
+async function broadcastLobbyList() {
+  try {
+    await publishLocalLobbies();
+    const lobbyList = await listGlobalLobbySummaries();
+    io.emit(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, { lobbies: lobbyList });
+  } catch (err) {
+    console.error('[lobbyBrowser] broadcastLobbyList failed:', err);
+    io.emit(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, { lobbies: lobbies.listLobbySummaries() });
+  }
 }
 
 // Initialize simulation and progression modules with gameState and timeouts
@@ -476,6 +486,8 @@ function clearAllTimers() {
   for (const id of _timeouts) clearTimeout(id);
   _timeouts.length = 0;
   stopRateLimitSweep();
+  resetSocketIoAdapter();
+  closeRedis();
 }
 
 function restartBackgroundTimers() {
@@ -1023,6 +1035,7 @@ function installMainProcessErrorHandlers() {
     _harnessReady = false;
     logServerFault(`[server] ${signal} received — closing HTTP server`);
     try {
+      closeRedis();
       saveAllPlayersInAllLobbies();
       if (typeof server.closeAllConnections === 'function') {
         server.closeAllConnections();
@@ -1076,6 +1089,16 @@ let _middlewareRegistered = false;
 // Track whether production static middleware has been mounted — separate from
 // _routesMounted so static serving can be added after API routes are already up.
 let _staticMounted = false;
+// Track whether the Redis adapter has been attached — prevents stacking
+// duplicate pub/sub clients on repeated startServer() calls in tests.
+let _redisAdapterAttached = false;
+
+function resetSocketIoAdapter() {
+  if (!_redisAdapterAttached) return;
+  const { Adapter } = require('socket.io-adapter');
+  io.adapter(Adapter);
+  _redisAdapterAttached = false;
+}
 
 function withLobbyFromSocket(socket, fn) {
   const lobby = getLobbyForSocket(socket);
@@ -1863,6 +1886,12 @@ function startServer(port) {
   clearAllTimers();
   restartBackgroundTimers();
 
+  if (isRedisEnabled() && !_redisAdapterAttached) {
+    const { pubClient, subClient } = createPubSubClients();
+    io.adapter(createAdapter(pubClient, subClient));
+    _redisAdapterAttached = true;
+  }
+
   // Restart the rate-limit sweep after clearing all timers
   startRateLimitSweep();
 
@@ -1970,21 +1999,40 @@ function startServer(port) {
     registerPlayerSocket(playerId, socket);
     console.log(`Player connected: socket=${socket.id}, playerId=${playerId}`);
 
-    socket.emit(SERVER_TO_CLIENT.INIT, {
-      id: playerId,
-      playerId,
-      accountId,
-      username,
-      inLobby: !!lobbies.getLobbyForPlayer(playerId),
-      selectedDeck: sessionPlayer.selectedDeck,
-      inventory: sessionPlayer.inventory,
-      ownedCards: sessionPlayer.ownedCards,
-      lobbies: lobbies.listLobbySummaries(),
-      keyItemDefs: KEY_ITEM_DEFS,
-      enemyDisplayCatalog: buildEnemyDisplayCatalog(),
-    });
+    void (async () => {
+      const lobbyList = await listGlobalLobbySummaries();
+      socket.emit(SERVER_TO_CLIENT.INIT, {
+        id: playerId,
+        playerId,
+        accountId,
+        username,
+        inLobby: !!lobbies.getLobbyForPlayer(playerId),
+        selectedDeck: sessionPlayer.selectedDeck,
+        inventory: sessionPlayer.inventory,
+        ownedCards: sessionPlayer.ownedCards,
+        lobbies: lobbyList,
+        keyItemDefs: KEY_ITEM_DEFS,
+        enemyDisplayCatalog: buildEnemyDisplayCatalog(),
+      });
 
-    broadcastLobbyList();
+      void broadcastLobbyList();
+    })().catch((err) => {
+      console.error('[socket:connection] init lobby list failed:', err && err.stack ? err.stack : err);
+      socket.emit(SERVER_TO_CLIENT.INIT, {
+        id: playerId,
+        playerId,
+        accountId,
+        username,
+        inLobby: !!lobbies.getLobbyForPlayer(playerId),
+        selectedDeck: sessionPlayer.selectedDeck,
+        inventory: sessionPlayer.inventory,
+        ownedCards: sessionPlayer.ownedCards,
+        lobbies: lobbies.listLobbySummaries(),
+        keyItemDefs: KEY_ITEM_DEFS,
+        enemyDisplayCatalog: buildEnemyDisplayCatalog(),
+      });
+      void broadcastLobbyList();
+    });
     } catch (err) {
       console.error('[socket:connection] setup error:', err && err.stack ? err.stack : err);
       try {

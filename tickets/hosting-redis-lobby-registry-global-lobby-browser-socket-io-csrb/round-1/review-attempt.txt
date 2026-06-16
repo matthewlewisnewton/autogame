@@ -1,0 +1,18 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The ticket adds cross-instance coordination via Redis (ioredis) with a clean in-memory fallback when `REDIS_URL` is unset.
+
+**Runtime health (gate):** The captured run is clean — `metrics.json` shows `"ok": true`, empty `pageerrors`, no `harness_failure`; `console.log` has no fatal/pageerror lines (only a benign pre-existing 409 and standard Vite/WebGL noise). The smoke capture reached full gameplay, proving the single-instance path isn't regressed.
+
+**Acceptance criteria — all met:**
+- **Register/deregister in Redis** — `lobbyRegistry.js` writes owner on create (`hset`) and removes on last-leave (`hdel`), wired into `lobbies.js` lifecycle as non-blocking fire-and-forget.
+- **Browser reflects all instances** — `lobbyBrowser.js` publishes per-instance snapshots (30s TTL) and aggregates via SCAN with dedup (local wins), ghost-exclusion, and deterministic sort.
+- **socket.io Redis adapter** — attached in `startServer()` when enabled, guarded against client stacking, restored on teardown.
+- **Identical behavior when unset** — every Redis entry point short-circuits on `!isRedisEnabled()`, plus async paths have synchronous local-list fallbacks.
+- **Tests pass without live Redis** — uses `ioredis-mock` + in-memory shim.
+
+**Verification:** ran the 5 Redis test files (28 tests) and the full server project (199 files / **2766 tests, all passing**).
+
+Two non-blocking nits filed to `nits.md` (duplicated INIT payload construction; `MemoryStore.set` ignoring the `EX` option form). Neither affects correctness. No `gaps.md` written since the verdict is PASS.

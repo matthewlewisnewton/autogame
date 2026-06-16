@@ -34,6 +34,7 @@ const {
   stateSnapshot,
   savePlayerData,
 } = require('../progression');
+const { listGlobalLobbySummaries } = require('../lobbyBrowser');
 
 function register(socket, ctx) {
   const {
@@ -62,7 +63,14 @@ function register(socket, ctx) {
   } = ctx;
 
   socket.on(CLIENT_TO_SERVER.LIST_LOBBIES, () => {
-    socket.emit(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, { lobbies: lobbies.listLobbySummaries() });
+    void listGlobalLobbySummaries()
+      .then((lobbyList) => {
+        socket.emit(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, { lobbies: lobbyList });
+      })
+      .catch((err) => {
+        console.error('[lobbyBrowser] listLobbies failed:', err);
+        socket.emit(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, { lobbies: lobbies.listLobbySummaries() });
+      });
   });
 
   socket.on(CLIENT_TO_SERVER.CREATE_LOBBY, (data) => {
@@ -119,9 +127,14 @@ function register(socket, ctx) {
     leaveLobbyForSocket(socket);
     const session = lobbies.getSession(playerId) || buildSessionFromPlayer(sessionPlayer);
     lobbies.registerSession(playerId, session);
-    socket.emit(SERVER_TO_CLIENT.LOBBY_LEFT, {
-      lobbies: lobbies.listLobbySummaries(),
-    });
+    void listGlobalLobbySummaries()
+      .then((lobbyList) => {
+        socket.emit(SERVER_TO_CLIENT.LOBBY_LEFT, { lobbies: lobbyList });
+      })
+      .catch((err) => {
+        console.error('[lobbyBrowser] lobbyLeft list failed:', err);
+        socket.emit(SERVER_TO_CLIENT.LOBBY_LEFT, { lobbies: lobbies.listLobbySummaries() });
+      });
   });
 
   socket.on(CLIENT_TO_SERVER.SELECT_QUEST, (data) => {
