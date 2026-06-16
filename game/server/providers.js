@@ -1,8 +1,36 @@
-// Concrete storage providers — InMemory (dev/test) and File (production).
+// Concrete storage providers — InMemory (dev/test), File (production), Postgres (multi-instance).
 
 const { StorageProvider } = require('./storage');
+const { Pool } = require('pg');
+const deasync = require('deasync');
+const { ensurePlayersSchema } = require('./db/ensurePlayersSchema');
 const fs = require('fs');
 const path = require('path');
+
+/**
+ * Block until a promise settles. Callers expect synchronous savePlayer/loadPlayer.
+ * @template T
+ * @param {Promise<T>} promise
+ * @returns {T}
+ */
+function runSync(promise) {
+	let done = false;
+	let result;
+	let error;
+	promise.then(
+		(value) => {
+			result = value;
+			done = true;
+		},
+		(err) => {
+			error = err;
+			done = true;
+		}
+	);
+	deasync.loopWhile(() => !done);
+	if (error) throw error;
+	return result;
+}
 
 // Safe storage-key shape: matches server-issued UUIDs and other simple keys.
 // Used as a last-line guard against path traversal even if a forged/leaked
@@ -93,4 +121,79 @@ class FileProvider extends StorageProvider {
 	}
 }
 
-module.exports = { InMemoryProvider, FileProvider, assertSafePlayerId, SAFE_PLAYER_ID_REGEX };
+/**
+ * Postgres-backed provider — persists player blobs to the players table.
+ * Used for multi-instance hosting with a shared DATABASE_URL.
+ */
+class PostgresProvider extends StorageProvider {
+	/**
+	 * @param {string | { pool: import('pg').Pool }} databaseUrlOrOptions
+	 *   Connection string (DATABASE_URL) or test hook `{ pool }`.
+	 * @param {{ pool?: import('pg').Pool }} [options]
+	 */
+	constructor(databaseUrlOrOptions, options = {}) {
+		super();
+		let databaseUrl;
+		if (
+			databaseUrlOrOptions &&
+			typeof databaseUrlOrOptions === 'object' &&
+			databaseUrlOrOptions.pool
+		) {
+			options = databaseUrlOrOptions;
+		} else {
+			databaseUrl = databaseUrlOrOptions;
+		}
+
+		if (options.pool) {
+			this.pool = options.pool;
+			this._ownsPool = false;
+		} else {
+			if (!databaseUrl) {
+				throw new Error('PostgresProvider requires DATABASE_URL or an injectable pool');
+			}
+			this.pool = new Pool({ connectionString: databaseUrl });
+			this._ownsPool = true;
+		}
+		this._closed = false;
+		runSync(ensurePlayersSchema(this.pool));
+	}
+
+	savePlayer(playerId, data) {
+		assertSafePlayerId(playerId);
+		const copy = JSON.parse(JSON.stringify(data));
+		runSync(
+			this.pool.query(
+				`INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb)
+				 ON CONFLICT (player_id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
+				[playerId, JSON.stringify(copy)]
+			)
+		);
+	}
+
+	loadPlayer(playerId) {
+		assertSafePlayerId(playerId);
+		const { rows } = runSync(
+			this.pool.query(`SELECT data FROM players WHERE player_id = $1`, [playerId])
+		);
+		if (rows.length === 0) return null;
+		return JSON.parse(JSON.stringify(rows[0].data));
+	}
+
+	close() {
+		if (!this._ownsPool || this._closed) return;
+		this._closed = true;
+		try {
+			runSync(this.pool.end());
+		} catch (_) {
+			// pool may already be ended
+		}
+	}
+}
+
+module.exports = {
+	InMemoryProvider,
+	FileProvider,
+	PostgresProvider,
+	assertSafePlayerId,
+	SAFE_PLAYER_ID_REGEX,
+};
