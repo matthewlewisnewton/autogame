@@ -1230,6 +1230,14 @@ function isPortalEntryGraceActive() {
   return Date.now() - telepipe.placedAt < PORTAL_PLACEMENT_GRACE_MS;
 }
 
+function isRunAwaitingTelepipeExtraction() {
+  if (!_gameState?.telepipe) return false;
+  if (!_gameState.run || _gameState.run.status !== 'playing') return false;
+  return Object.values(_gameState.players).some(
+    (p) => p && isPlayerActive(p) && p.extracted !== true,
+  );
+}
+
 function cardChoiceDescription(def) {
   if (!def) return '';
   const windUpMs = def.windUpMs || 0;
@@ -3456,6 +3464,7 @@ function checkTelepipeProximity() {
 }
 
 function isPlayerCombatExhaustionFailureReady(player, now = Date.now()) {
+  if (isRunAwaitingTelepipeExtraction()) return false;
   if (!isPlayerCombatExhausted(player)) return false;
   if (isPlayerOutOfCards(player)) return true;
   return player._combatExhaustedSince != null
