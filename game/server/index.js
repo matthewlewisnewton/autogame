@@ -77,6 +77,7 @@ const {
   MAX_GROUND_ENCHANTMENTS_PER_PLAYER,
   MAX_HAND_SLOTS,
 } = require('./config');
+const { closeRedis } = require('./redis');
 const lobbies = require('./lobbies');
 const { PHASES, isLobbyPhase, isPlayingPhase } = lobbies;
 const {
@@ -476,6 +477,7 @@ function clearAllTimers() {
   for (const id of _timeouts) clearTimeout(id);
   _timeouts.length = 0;
   stopRateLimitSweep();
+  closeRedis();
 }
 
 function restartBackgroundTimers() {
@@ -1023,6 +1025,7 @@ function installMainProcessErrorHandlers() {
     _harnessReady = false;
     logServerFault(`[server] ${signal} received — closing HTTP server`);
     try {
+      closeRedis();
       saveAllPlayersInAllLobbies();
       if (typeof server.closeAllConnections === 'function') {
         server.closeAllConnections();
