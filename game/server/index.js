@@ -77,7 +77,8 @@ const {
   MAX_GROUND_ENCHANTMENTS_PER_PLAYER,
   MAX_HAND_SLOTS,
 } = require('./config');
-const { closeRedis } = require('./redis');
+const { closeRedis, isRedisEnabled, createPubSubClients } = require('./redis');
+const { createAdapter } = require('@socket.io/redis-adapter');
 const lobbies = require('./lobbies');
 const { PHASES, isLobbyPhase, isPlayingPhase } = lobbies;
 const {
@@ -477,6 +478,7 @@ function clearAllTimers() {
   for (const id of _timeouts) clearTimeout(id);
   _timeouts.length = 0;
   stopRateLimitSweep();
+  resetSocketIoAdapter();
   closeRedis();
 }
 
@@ -1076,6 +1078,16 @@ let _routesMounted = false;
 // Track whether Socket.IO middleware has been registered — prevents stacking
 // on repeated startServer() calls.
 let _middlewareRegistered = false;
+// Track whether the Redis adapter has been attached — prevents stacking
+// duplicate pub/sub clients on repeated startServer() calls in tests.
+let _redisAdapterAttached = false;
+
+function resetSocketIoAdapter() {
+  if (!_redisAdapterAttached) return;
+  const { Adapter } = require('socket.io-adapter');
+  io.adapter(Adapter);
+  _redisAdapterAttached = false;
+}
 
 function withLobbyFromSocket(socket, fn) {
   const lobby = getLobbyForSocket(socket);
@@ -1836,6 +1848,12 @@ function startServer(port) {
   // Clear any previously created intervals/timeouts (from prior test runs)
   clearAllTimers();
   restartBackgroundTimers();
+
+  if (isRedisEnabled() && !_redisAdapterAttached) {
+    const { pubClient, subClient } = createPubSubClients();
+    io.adapter(createAdapter(pubClient, subClient));
+    _redisAdapterAttached = true;
+  }
 
   // Restart the rate-limit sweep after clearing all timers
   startRateLimitSweep();

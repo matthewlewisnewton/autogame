@@ -16,6 +16,7 @@ let _memoryStore = null;
 let _memoryPubSubBus = null;
 
 let _instanceId = null;
+let _forceRedisEnabledForTests = false;
 
 function getRedisUrl() {
   const url = process.env.REDIS_URL;
@@ -25,7 +26,16 @@ function getRedisUrl() {
 }
 
 function isRedisEnabled() {
-  return getRedisUrl() !== null;
+  return _forceRedisEnabledForTests || getRedisUrl() !== null;
+}
+
+function enableRedisForTests() {
+  _forceRedisEnabledForTests = true;
+}
+
+function disableRedisForTests() {
+  _forceRedisEnabledForTests = false;
+  closeRedis();
 }
 
 function getInstanceId() {
@@ -193,6 +203,9 @@ class MemoryPubSubBus {
 
   clear() {
     this.subscribers.clear();
+    if (this.patternSubscribers) {
+      this.patternSubscribers.clear();
+    }
   }
 
   subscribe(channel, listener) {
@@ -222,6 +235,40 @@ class MemoryPubSubBus {
       listener(normalized, payload);
     }
     return listeners.size;
+  }
+
+  psubscribe(pattern, listener) {
+    const normalized = String(pattern);
+    if (!this.patternSubscribers) {
+      this.patternSubscribers = new Map();
+    }
+    if (!this.patternSubscribers.has(normalized)) {
+      this.patternSubscribers.set(normalized, new Set());
+    }
+    this.patternSubscribers.get(normalized).add(listener);
+  }
+
+  punsubscribe(pattern, listener) {
+    if (!this.patternSubscribers) return;
+    const normalized = String(pattern);
+    const listeners = this.patternSubscribers.get(normalized);
+    if (!listeners) return;
+    listeners.delete(listener);
+    if (listeners.size === 0) {
+      this.patternSubscribers.delete(normalized);
+    }
+  }
+
+  publishToPatterns(channel, message) {
+    if (!this.patternSubscribers || this.patternSubscribers.size === 0) return;
+    const normalizedChannel = String(channel);
+    const payload = String(message);
+    for (const [pattern, listeners] of this.patternSubscribers.entries()) {
+      if (!patternToRegex(pattern).test(normalizedChannel)) continue;
+      for (const listener of listeners) {
+        listener(pattern, normalizedChannel, payload);
+      }
+    }
   }
 }
 
@@ -260,6 +307,21 @@ function createMemoryRedisClient() {
 function createMemoryPubSubClient(bus) {
   const listeners = new Map();
   const subscriptions = new Set();
+  const patternSubscriptions = new Set();
+  const channelListeners = new Map();
+  const patternListeners = new Map();
+
+  const deliverChannelMessage = (channel, message) => {
+    const payload = String(message);
+    const messageBufferHandler = listeners.get('messageBuffer');
+    const messageHandler = listeners.get('message');
+    if (messageBufferHandler) {
+      messageBufferHandler(Buffer.from(payload), channel);
+    } else if (messageHandler) {
+      messageHandler(channel, payload);
+    }
+    bus.publishToPatterns(channel, payload);
+  };
 
   const client = {
     _isMemoryShim: true,
@@ -268,20 +330,76 @@ function createMemoryPubSubClient(bus) {
       return client;
     },
     async subscribe(channel) {
-      const normalized = String(channel);
-      subscriptions.add(normalized);
-      bus.subscribe(normalized, (ch, message) => {
-        const messageHandler = listeners.get('message');
-        if (messageHandler) messageHandler(ch, message);
-      });
+      const channels = Array.isArray(channel) ? channel : [channel];
+      for (const ch of channels) {
+        const normalized = String(ch);
+        subscriptions.add(normalized);
+        if (!channelListeners.has(normalized)) {
+          const listener = (incomingChannel, message) => {
+            deliverChannelMessage(incomingChannel, message);
+          };
+          channelListeners.set(normalized, listener);
+          bus.subscribe(normalized, listener);
+        }
+      }
       return subscriptions.size;
     },
     async unsubscribe(channel) {
-      subscriptions.delete(String(channel));
+      const channels = Array.isArray(channel) ? channel : [channel];
+      for (const ch of channels) {
+        const normalized = String(ch);
+        subscriptions.delete(normalized);
+        const listener = channelListeners.get(normalized);
+        if (listener) {
+          bus.unsubscribe(normalized, listener);
+          channelListeners.delete(normalized);
+        }
+      }
       return subscriptions.size;
     },
+    async psubscribe(pattern) {
+      const patterns = Array.isArray(pattern) ? pattern : [pattern];
+      for (const pat of patterns) {
+        const normalized = String(pat);
+        patternSubscriptions.add(normalized);
+        if (!patternListeners.has(normalized)) {
+          const listener = (matchedPattern, channel, message) => {
+            const pmessageBufferHandler = listeners.get('pmessageBuffer');
+            const pmessageHandler = listeners.get('pmessage');
+            const payload = String(message);
+            if (pmessageBufferHandler) {
+              pmessageBufferHandler(matchedPattern, channel, Buffer.from(payload));
+            } else if (pmessageHandler) {
+              pmessageHandler(matchedPattern, channel, payload);
+            }
+          };
+          patternListeners.set(normalized, listener);
+          bus.psubscribe(normalized, listener);
+        }
+      }
+      return patternSubscriptions.size;
+    },
+    async punsubscribe(pattern) {
+      const patterns = Array.isArray(pattern) ? pattern : [pattern];
+      for (const pat of patterns) {
+        const normalized = String(pat);
+        patternSubscriptions.delete(normalized);
+        const listener = patternListeners.get(normalized);
+        if (listener) {
+          bus.punsubscribe(normalized, listener);
+          patternListeners.delete(normalized);
+        }
+      }
+      return patternSubscriptions.size;
+    },
     async publish(channel, message) {
-      return bus.publish(channel, message);
+      const normalized = String(channel);
+      const delivered = bus.publish(normalized, message);
+      bus.publishToPatterns(normalized, message);
+      return delivered;
+    },
+    duplicate() {
+      return createMemoryPubSubClient(bus);
     },
     quit: async () => undefined,
     disconnect: () => undefined,
@@ -309,7 +427,8 @@ function loadRedis() {
 }
 
 function getRedisClient() {
-  if (!isRedisEnabled()) {
+  const redisUrl = getRedisUrl();
+  if (!isRedisEnabled() || !redisUrl) {
     if (!_mainClient) {
       _mainClient = createMemoryRedisClient();
     }
@@ -318,13 +437,14 @@ function getRedisClient() {
 
   if (!_mainClient) {
     const RedisCtor = loadRedis();
-    _mainClient = new RedisCtor(getRedisUrl());
+    _mainClient = new RedisCtor(redisUrl);
   }
   return _mainClient;
 }
 
 function createPubSubClients() {
-  if (!isRedisEnabled()) {
+  const redisUrl = getRedisUrl();
+  if (!isRedisEnabled() || !redisUrl) {
     const bus = getMemoryPubSubBus();
     const pubClient = createMemoryPubSubClient(bus);
     const subClient = createMemoryPubSubClient(bus);
@@ -333,8 +453,8 @@ function createPubSubClients() {
   }
 
   const RedisCtor = loadRedis();
-  const pubClient = new RedisCtor(getRedisUrl());
-  const subClient = new RedisCtor(getRedisUrl());
+  const pubClient = new RedisCtor(redisUrl);
+  const subClient = new RedisCtor(redisUrl);
   _pubSubClients.push(pubClient, subClient);
   return { pubClient, subClient };
 }
@@ -375,6 +495,8 @@ const resetRedisForTests = closeRedis;
 
 module.exports = {
   isRedisEnabled,
+  enableRedisForTests,
+  disableRedisForTests,
   getInstanceId,
   getRedisClient,
   createPubSubClients,
