@@ -1,0 +1,11 @@
+Split the top-level ticket into **2 sub-tickets** in dependency order:
+
+1. **01** — server guard in `isPlayerCombatExhaustionFailureReady()` so placing telepipe on an empty hand/deck does not immediately fail the run
+2. **02** — vitest regression coverage for the guard, extract-to-suspend path, and unchanged normal exhaustion behavior
+
+**Created sub-ticket folders:**
+
+- `/home/matt/workspace/.autogame-worktrees/telepipe-placing-an-extract-portal-with-an-empty-hand-deck-m-dup4/tickets/telepipe-placing-an-extract-portal-with-an-empty-hand-deck-m-dup4/subtickets/01-suppress-combat-exhaustion-with-active-telepipe/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/telepipe-placing-an-extract-portal-with-an-empty-hand-deck-m-dup4/tickets/telepipe-placing-an-extract-portal-with-an-empty-hand-deck-m-dup4/subtickets/02-telepipe-exhaustion-regression-tests/ticket.md`
+
+Both use **code** verification (logic, handlers, server state). The fire preset harness check from the parent ticket stays as end-to-end validation after both sub-tickets land.

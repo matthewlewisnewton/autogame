@@ -27,7 +27,7 @@ const {
   countScriptedEnemiesInQuest,
   countFinalAmbushEnemies,
 } = require('./quests');
-const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS, MEDIC_HEAL_COST, LOBBY_REVIVE_HP, RUN_EXHAUSTION_GRACE_MS } = require('./config');
+const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS, MEDIC_HEAL_COST, LOBBY_REVIVE_HP, RUN_EXHAUSTION_GRACE_MS, PORTAL_PLACEMENT_GRACE_MS } = require('./config');
 const CARD_DEFS = require('../shared/cardDefs.json');
 const CARD_STATS = require('../shared/cardStats.json');
 const {
@@ -3205,6 +3205,34 @@ function setupRunExhaustedDebug({ lobby, state, player, socket, name, spawn }) {
   checkRunTerminalState();
 }
 
+function setupTelepipeCombatExhaustedDebug({ state, player }) {
+  // Simulates post-telepipe placement with empty hand/deck/desperation — the
+  // state that previously tripped immediate combat-exhaustion failure. Same state
+  // is reachable by casting Telepipe as your last card with no cards left.
+  player.deck = [];
+  player.desperationDeck = [];
+  player.hand = Array.from({ length: MAX_HAND_SLOTS }, () => null);
+  state.telepipe = {
+    x: player.x,
+    z: player.z,
+    placedBy: player.id,
+    placedAt: Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1,
+  };
+  player.x += 5;
+  state.enemies = [{
+    id: 'e_remaining',
+    x: player.x + 5,
+    z: player.z,
+    hp: ENEMY_DEFS.grunt.hp,
+    maxHp: ENEMY_DEFS.grunt.hp,
+    state: 'idle',
+    wanderTarget: { x: player.x + 5, z: player.z },
+  }];
+  state.run.objective.totalEnemies = 1;
+  state.run.objective.defeatedEnemies = 0;
+  checkRunTerminalState();
+}
+
 function setupCollectPrismsProgressDebugPost({ lobby, state, player, socket, name, spawn }) {
   player.hp = MAX_HP;
         player.magicStones = MAX_MAGIC_STONES;
@@ -5102,6 +5130,11 @@ const DEBUG_SCENARIO_REGISTRY = {
   'run-exhausted': (ctx) => {
     enterStandardPlayingDebugScenario(ctx);
     setupRunExhaustedDebug(ctx);
+  },
+  'telepipe-combat-exhausted': (ctx) => {
+    enterStandardPlayingDebugScenario(ctx);
+    setupTelepipeCombatExhaustedDebug(ctx);
+    return finishStandardPlayingDebugScenario(ctx);
   },
   'collect-prisms-progress': (ctx) => {
     setupCollectPrismsProgressDebugPre(ctx);
