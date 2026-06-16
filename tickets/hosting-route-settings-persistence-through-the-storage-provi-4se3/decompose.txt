@@ -1,0 +1,17 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 4 sub-tickets:
+
+```
+tickets/hosting-route-settings-persistence-through-the-storage-provi-4se3/subtickets/
+├── 01-storage-provider-settings-interface/ticket.md
+├── 02-provider-settings-implementations/ticket.md
+├── 03-wire-settings-through-provider/ticket.md
+└── 04-startup-wiring-and-pgmem-tests/ticket.md
+```
+
+**Decomposition summary:**
+
+1. **01 — Interface**: Add `saveSettings`/`loadSettings` abstract methods to `StorageProvider` base class
+2. **02 — Implementations**: Implement settings methods in all 3 providers (InMemory → Map, File → `settings/` subdir, Postgres → new `settings` table with migration `002_settings.sql`)
+3. **03 — Refactor settings.js**: Route `getSettings()`/`updateSettings()` through the provider when `initSettingsWithProvider()` is called; keep file-based fallback for backward-compatible tests
+4. **04 — Wire + tests**: Call `initSettingsWithProvider(getProvider())` in `index.js` startup; add pg-mem test cases for Postgres settings persistence; verify existing tests pass

@@ -1,0 +1,14 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime gate — clean.** The capture shows `ok: true`, empty `pageerrors`, no `harness_failure`, clean `console.log`, and a full normal gameplay flow (auth → lobby → ready → movement → dodge with cooldown HUD). The game starts and runs.
+
+**Acceptance criterion — fully met.** The single AC is satisfied end-to-end:
+- `saveSettings`/`loadSettings` added to the `StorageProvider` contract and implemented in all three providers (InMemory deep-copy Map, FileProvider atomic write to `settings/` subdir, PostgresProvider JSONB upsert with idempotent schema).
+- `settings.js` routes `getSettings`/`updateSettings` through the provider when wired, with the original file path preserved as fallback. The accountId sanitization (`/^[A-Za-z0-9_-]+$/`) is applied identically in both branches, and `mergeWithDefaults(null)` safely returns defaults (parity with file-mode ENOENT).
+- Startup wires `initSettingsWithProvider(getProvider())`, so production always goes through the active backend.
+- pg-mem suite verifies Postgres persistence (round-trip, upsert, isolation, traversal rejection, UUID ids); File/InMemory parity tested too.
+- **142/142 tests pass**, including the pre-existing settings suite (file mode unchanged).
+
+**No blocking gaps.** One nit recorded in `nits.md`: the provider-routing branches inside `settings.js` itself lack a module-level integration test (the provider methods are tested directly; the delegation is verified by inspection + startup wiring). Non-blocking, so no `gaps.md` was written.
