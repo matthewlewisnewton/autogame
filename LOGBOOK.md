@@ -8811,3 +8811,26 @@ changed.
 
 None blocking. Minor non-blocking nits captured in `nits.md`.
 
+
+## v0.473 — Hosting: lobby-affinity WebSocket routing via Fly-Replay  (2026-06-16 00:09:04)
+
+
+- Client side: `requestJoinLobby` / `handleLobbyDeepLinkAfterInit` recreate the
+  socket with `query.lobbyId` (and `fly-force-instance-id` header) only when the
+  summary carries `instanceId`; otherwise they emit `joinLobby` on the existing
+  socket — preserving single-instance behavior. `instanceId` reaches the client
+  via the pre-existing global browser (`lobbyBrowser.listGlobalLobbySummaries` →
+  `tagSummariesWithInstanceId`), used by `broadcastLobbyList` and `init` with a
+  local-summary fallback. Coherent end-to-end.
+- `?lobby=<id>` deep-link is a production join-link feature (documented in
+  `game/docs/lobbies.md`), not a debug scenario — no localhost gating concerns,
+  and the existing `debugScenario` handling was only refactored (consolidated
+  `URLSearchParams`), not weakened.
+- Consistent with `game/docs/design.md` foundation; no regression to existing
+  lobby flow.
+
+## Remaining gaps
+
+None blocking. Acceptance criteria fully and robustly met; runtime healthy.
+(Minor non-blocking observations recorded in `nits.md`.)
+

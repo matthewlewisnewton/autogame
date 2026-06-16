@@ -1,0 +1,21 @@
+Broke the top-level ticket into **4 sub-tickets** in dependency order. Each is one focused implementation pass with **code** verification (routing logic, HTTP headers, client socket options, tests — not screenshot-only QA).
+
+### Plan
+
+| # | Scope |
+|---|--------|
+| **01** | `FLY_MACHINE_ID` identity, `flyReplay.js` routing helpers, unit tests |
+| **02** | HTTP upgrade / Socket.IO polling hook emitting `fly-replay` headers |
+| **03** | Client `io()` affinity options, lobby-browser join, `?lobby=` join-by-code |
+| **04** | Cross-instance integration tests + ownership assertions |
+
+When `REDIS_URL` or `FLY_MACHINE_ID` is unset, routing stays a no-op and behavior matches today. Lobby ownership registration on create already exists in `lobbies.js` from the Redis registry work; sub-ticket 04 verifies it under Fly machine ids.
+
+### Created sub-ticket folders
+
+```
+/home/matt/workspace/.autogame-worktrees/hosting-lobby-affinity-websocket-routing-via-fly-replay-suh3/tickets/hosting-lobby-affinity-websocket-routing-via-fly-replay-suh3/subtickets/01-fly-machine-id-and-routing-helpers/ticket.md
+/home/matt/workspace/.autogame-worktrees/hosting-lobby-affinity-websocket-routing-via-fly-replay-suh3/tickets/hosting-lobby-affinity-websocket-routing-via-fly-replay-suh3/subtickets/02-server-fly-replay-handshake-hook/ticket.md
+/home/matt/workspace/.autogame-worktrees/hosting-lobby-affinity-websocket-routing-via-fly-replay-suh3/tickets/hosting-lobby-affinity-websocket-routing-via-fly-replay-suh3/subtickets/03-client-lobby-affinity-socket-options/ticket.md
+/home/matt/workspace/.autogame-worktrees/hosting-lobby-affinity-websocket-routing-via-fly-replay-suh3/tickets/hosting-lobby-affinity-websocket-routing-via-fly-replay-suh3/subtickets/04-cross-instance-routing-integration-tests/ticket.md
+```

@@ -191,3 +191,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [411-cleanup-escort-harness-runobjectivecomplete-flips-true-on-enemy-clea-n92k](tickets/411-cleanup-escort-harness-runobjectivecomplete-flips-true-on-enemy-clea-n92k/)
 - [ ] [411-cleanup-validation-spire-ascent-sunken-canyon-full-playthroughs-bloc-5xcz](tickets/411-cleanup-validation-spire-ascent-sunken-canyon-full-playthroughs-bloc-5xcz/)
 - [ ] [412-cleanup-hosting-redis-lobby-registry-global-lobby-browser-socket-io-csrb](tickets/412-cleanup-hosting-redis-lobby-registry-global-lobby-browser-socket-io-csrb/)
+- [ ] [413-cleanup-hosting-lobby-affinity-websocket-routing-via-fly-replay-suh3](tickets/413-cleanup-hosting-lobby-affinity-websocket-routing-via-fly-replay-suh3/)
