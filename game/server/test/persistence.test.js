@@ -49,6 +49,16 @@ describe('StorageProvider base class', () => {
 		expect(() => sp.loadPlayer('p1')).toThrow('Not implemented');
 	});
 
+	it('saveSettings() throws when called on the abstract class', () => {
+		const sp = new StorageProvider();
+		expect(() => sp.saveSettings('a1', {})).toThrow('Not implemented');
+	});
+
+	it('loadSettings() throws when called on the abstract class', () => {
+		const sp = new StorageProvider();
+		expect(() => sp.loadSettings('a1')).toThrow('Not implemented');
+	});
+
 	it('close() throws when called on the abstract class', () => {
 		const sp = new StorageProvider();
 		expect(() => sp.close()).toThrow('Not implemented');
