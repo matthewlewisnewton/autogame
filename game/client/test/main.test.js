@@ -5201,6 +5201,90 @@ describe('__AUTOGAME_HARNESS_STATE__ encounter and godmode fields', () => {
 		expect(window.__AUTOGAME_HARNESS_STATE__().runObjectiveComplete).toBe(true);
 	});
 
+	it('runObjectiveComplete is false for escort when all enemies cleared but not at destination', async () => {
+		await import('../main.js');
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			run: {
+				status: 'playing',
+				escort: { atDestination: false, failed: false },
+				objective: {
+					type: 'escort',
+					totalEnemies: 4,
+					defeatedEnemies: 4,
+					reachedDestination: false,
+				},
+			},
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+			enemies: [],
+		}, 'p1');
+
+		expect(window.__AUTOGAME_HARNESS_STATE__().runObjectiveComplete).toBe(false);
+	});
+
+	it('runObjectiveComplete is true for escort when at destination and not failed', async () => {
+		await import('../main.js');
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			run: {
+				status: 'playing',
+				escort: { atDestination: false, failed: false },
+				objective: {
+					type: 'escort',
+					totalEnemies: 4,
+					defeatedEnemies: 4,
+					reachedDestination: true,
+				},
+			},
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+			enemies: [],
+		}, 'p1');
+
+		expect(window.__AUTOGAME_HARNESS_STATE__().runObjectiveComplete).toBe(true);
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			run: {
+				status: 'playing',
+				escort: { atDestination: true, failed: false },
+				objective: {
+					type: 'escort',
+					totalEnemies: 4,
+					defeatedEnemies: 2,
+					reachedDestination: false,
+				},
+			},
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+			enemies: [],
+		}, 'p1');
+
+		expect(window.__AUTOGAME_HARNESS_STATE__().runObjectiveComplete).toBe(true);
+	});
+
+	it('runObjectiveComplete is false for escort when failed even at destination', async () => {
+		await import('../main.js');
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			run: {
+				status: 'playing',
+				escort: { atDestination: true, failed: true },
+				objective: {
+					type: 'escort',
+					totalEnemies: 4,
+					defeatedEnemies: 4,
+					reachedDestination: true,
+				},
+			},
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+			enemies: [],
+		}, 'p1');
+
+		expect(window.__AUTOGAME_HARNESS_STATE__().runObjectiveComplete).toBe(false);
+	});
+
 	it('mirrors victory onto gameState.run when showRunSummary receives victory', async () => {
 		await import('../main.js');
 

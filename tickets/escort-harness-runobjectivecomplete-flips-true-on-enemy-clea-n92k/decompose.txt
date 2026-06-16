@@ -1,0 +1,14 @@
+Broke the top-level ticket into **2 sub-tickets** in dependency order:
+
+1. **01** — Fix the client `runObjectiveComplete` logic for escort objectives (the root cause in `main.js`).
+2. **02** — Add vitest regression tests so the harness instrumentation cannot regress.
+
+Both use **code** verification (logic diff + test pass), which fits criteria about handlers, state values, and behavior — not purely visual rendering.
+
+### Sub-ticket folders created
+
+```
+/home/matt/workspace/.autogame-worktrees/escort-harness-runobjectivecomplete-flips-true-on-enemy-clea-n92k/tickets/escort-harness-runobjectivecomplete-flips-true-on-enemy-clea-n92k/subtickets/01-escort-runobjectivecomplete-client-logic/ticket.md
+
+/home/matt/workspace/.autogame-worktrees/escort-harness-runobjectivecomplete-flips-true-on-enemy-clea-n92k/tickets/escort-harness-runobjectivecomplete-flips-true-on-enemy-clea-n92k/subtickets/02-escort-runobjectivecomplete-regression-tests/ticket.md
+```
