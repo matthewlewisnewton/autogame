@@ -815,7 +815,11 @@ function setupQuestTier2Deploy(lobby, state, player, questId, { preserveVitals =
 function setupQuestTelepipeReady(lobby, state, player, questId, {
   preserveVitals = true,
   afterDeploy,
+  forceRedeal = false,
 } = {}) {
+  if (forceRedeal) {
+    player.hand = null;
+  }
   setupQuestTier2Deploy(lobby, state, player, questId, { preserveVitals });
   if (afterDeploy) {
     afterDeploy(lobby, state, player);
@@ -4706,6 +4710,7 @@ const DEBUG_SCENARIO_REGISTRY = {
   'canyon-descent-telepipe-ready': ({ lobby, state, player, name }) => {
     setupQuestTelepipeReady(lobby, state, player, 'canyon_descent', {
       afterDeploy: (_lobby, state, player) => setupCanyonDescentTelepipeReadyExtras(state, player),
+      forceRedeal: true,
     });
     return finishQuestTier2DeployDebugScenario(lobby, state, player, name);
   },
@@ -4763,6 +4768,7 @@ const DEBUG_SCENARIO_REGISTRY = {
   'spire-ascent-telepipe-ready': ({ lobby, state, player, name }) => {
     setupQuestTelepipeReady(lobby, state, player, 'spire_ascent', {
       afterDeploy: (_lobby, state, player) => setupSpireAscentTelepipeReadyExtras(state, player),
+      forceRedeal: true,
     });
     return finishQuestTier2DeployDebugScenario(lobby, state, player, name);
   },

@@ -21,7 +21,7 @@ import {
 } from '../encounters.js';
 import { resetGameState, gameState, runGameLoopTick, applyBurning, updateBurning, updateEnemies, hasLineOfSight, buildWallColliders } from '../index.js';
 import { checkAllReady, setGameState as setProgressionGameStateForReady, startDungeonRun, isPlayerCombatExhausted } from '../progression.js';
-import { APPEARANCE_CHANGE_COST, MAX_MAGIC_STONES, RUN_EXHAUSTION_GRACE_MS } from '../config.js';
+import { APPEARANCE_CHANGE_COST, MAX_MAGIC_STONES, MAX_HAND_SLOTS, RUN_EXHAUSTION_GRACE_MS } from '../config.js';
 import * as progressionModule from '../progression.js';
 
 const { setupRunExhaustedDebug } = require('../debugScenarios.js');
@@ -1147,6 +1147,36 @@ describe('debugScenario — canyon-descent-tier-2', () => {
 		expect(player.hand[1]).toBeDefined();
 		expect(player.hand[1].id).toBe('magma_greatsword');
 		expect(player.hand[1].remainingCharges).toBeGreaterThanOrEqual(1);
+	});
+
+	it('canyon-descent-telepipe-ready forces fresh hand redeal over pre-existing hand', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		// Simulate post-windup state: 6-slot hand with a single non-null card
+		const player = playerForSocket(socket);
+		player.hand = new Array(MAX_HAND_SLOTS).fill(null);
+		player.hand[0] = {
+			id: 'ice_ball',
+			name: 'Glacial Orb',
+			type: 'spell',
+			charges: 2,
+			remainingCharges: 1,
+		};
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForStateUpdateWithRun(socket);
+		socket.emit('debugScenario', { name: 'canyon-descent-telepipe-ready' });
+		const result = await debugResultPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('canyon-descent-telepipe-ready');
+		expect(stateUpdate.gamePhase).toBe('playing');
+
+		const updatedPlayer = playerForSocket(socket);
+		expect(updatedPlayer.hand[0].id).toBe('telepipe');
+		expect(updatedPlayer.hand[1].id).toBe('magma_greatsword');
+		expect(updatedPlayer.hand[1].remainingCharges).toBeGreaterThanOrEqual(1);
 	});
 
 	it('deploys canyon_descent Tier 2 stage-boss run with encounter and rigid layout', async () => {
