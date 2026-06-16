@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 let settingsBasePath = null;
+let _settingsProvider = null;
 
 // Schema constants — kept in sync with game/client/settings.js and input bindings.
 const SETTINGS_TOP_LEVEL_KEYS = [
@@ -392,11 +393,21 @@ function settingsFilePath(accountId) {
 
 /**
  * Configure the settings storage directory (call from server startup / tests).
+ * Switches back to file-based mode, clearing any previously set provider.
  * @param {string} basePath - directory containing settings JSON files
  */
 function initSettingsPath(basePath) {
+	_settingsProvider = null;
 	settingsBasePath = path.join(basePath, 'settings');
 	fs.mkdirSync(settingsBasePath, { recursive: true });
+}
+
+/**
+ * Switch settings I/O to use a StorageProvider instead of the filesystem.
+ * @param {object} provider - a StorageProvider instance with loadSettings/saveSettings
+ */
+function initSettingsWithProvider(provider) {
+	_settingsProvider = provider;
 }
 
 /**
@@ -405,6 +416,20 @@ function initSettingsPath(basePath) {
  * @returns {object}
  */
 function getSettings(accountId) {
+	// Sanitize accountId — same guard regardless of backend.
+	if (typeof accountId !== 'string' || !SAFE_ACCOUNT_ID_REGEX.test(accountId)) {
+		throw new Error(`Invalid account id: ${JSON.stringify(accountId)}`);
+	}
+
+	if (_settingsProvider) {
+		const raw = _settingsProvider.loadSettings(accountId);
+		const merged = mergeWithDefaults(raw);
+		if (serializedSettingsByteLength(merged) > getSettingsMaxBytes()) {
+			return getDefaultSettings();
+		}
+		return merged;
+	}
+
 	const filePath = settingsFilePath(accountId);
 	try {
 		const raw = fs.readFileSync(filePath, 'utf-8');
@@ -441,6 +466,12 @@ function updateSettings(accountId, partial) {
 			reason: `Settings exceed maximum size of ${getSettingsMaxBytes()} bytes`,
 		};
 	}
+
+	if (_settingsProvider) {
+		_settingsProvider.saveSettings(accountId, merged);
+		return { ok: true, settings: merged };
+	}
+
 	const dir = getSettingsDir();
 	fs.mkdirSync(dir, { recursive: true });
 	const finalPath = settingsFilePath(accountId);
@@ -453,6 +484,12 @@ function updateSettings(accountId, partial) {
 /** Test-only: reset path and clear settings directory reference */
 function resetSettingsPath() {
 	settingsBasePath = null;
+	_settingsProvider = null;
+}
+
+/** Test-only: clear the storage provider (switch back to file-based mode) */
+function resetSettingsProvider() {
+	_settingsProvider = null;
 }
 
 /** Test-only: lower the settings size cap for cap-rejection tests */
@@ -492,10 +529,12 @@ module.exports = {
 	getSettings,
 	updateSettings,
 	initSettingsPath,
+	initSettingsWithProvider,
 	mergeWithDefaults,
 	validateSettings,
 	backfillSettings,
 	resetSettingsPath,
+	resetSettingsProvider,
 	setSettingsMaxBytesForTests,
 	resetSettingsMaxBytesForTests,
 	clearAllSettings,
