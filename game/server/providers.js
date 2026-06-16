@@ -127,9 +127,9 @@ class FileProvider extends StorageProvider {
  */
 class PostgresProvider extends StorageProvider {
 	/**
-	 * @param {string | { pool: import('pg').Pool }} databaseUrlOrOptions
-	 *   Connection string (DATABASE_URL) or test hook `{ pool }`.
-	 * @param {{ pool?: import('pg').Pool }} [options]
+	 * @param {string | { pool: import('pg').Pool, skipSchemaEnsure?: boolean }} databaseUrlOrOptions
+	 *   Connection string (DATABASE_URL) or test hook `{ pool, skipSchemaEnsure }`.
+	 * @param {{ pool?: import('pg').Pool, skipSchemaEnsure?: boolean }} [options]
 	 */
 	constructor(databaseUrlOrOptions, options = {}) {
 		super();
@@ -155,7 +155,9 @@ class PostgresProvider extends StorageProvider {
 			this._ownsPool = true;
 		}
 		this._closed = false;
-		runSync(ensurePlayersSchema(this.pool));
+		if (!options.skipSchemaEnsure) {
+			runSync(ensurePlayersSchema(this.pool));
+		}
 	}
 
 	savePlayer(playerId, data) {
