@@ -21,6 +21,7 @@ const { InMemoryProvider, FileProvider } = require('./providers');
 const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked } = require('./users');
 const { DEFAULT_COSMETIC, backfillCosmetic, backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
 const { verifyToken, initAuth, getJWTSecret, startRateLimitSweep, stopRateLimitSweep } = require('./auth');
+const { attachFlyReplayRouting } = require('./flyReplayHook');
 const {
   mulberry32,
   generateLayout,
@@ -1820,6 +1821,8 @@ function startServer(port) {
     app.get('/admin', requireAdminPassword, adminHandler);
     _routesMounted = true;
   }
+
+  attachFlyReplayRouting(server, app, io);
 
   // In test mode, clear the in-memory users Map to prevent contamination
   // from prior test files sharing the same module instance.  This pairs
