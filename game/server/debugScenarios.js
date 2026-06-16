@@ -901,6 +901,38 @@ function setupSpireAscentTelepipeReadyExtras(state, player) {
   syncCardProbeHand(player);
 }
 
+function setupCanyonDescentTelepipeReadyExtras(state, player) {
+  state.minions = [];
+  const telepipeDef = CARD_DEFS.telepipe;
+  if (telepipeDef) {
+    player.hand[0] = {
+      id: 'telepipe',
+      name: telepipeDef.name,
+      type: telepipeDef.type,
+      charges: 1,
+      remainingCharges: 1,
+      magicStoneCost: telepipeDef.magicStoneCost || 0,
+      effect: 'telepipe',
+    };
+  }
+  const greatswordDef = CARD_DEFS.magma_greatsword;
+  if (greatswordDef) {
+    player.hand[1] = {
+      id: 'magma_greatsword',
+      name: greatswordDef.name,
+      type: 'weapon',
+      charges: greatswordDef.charges,
+      remainingCharges: greatswordDef.charges,
+    };
+  }
+  for (const card of player.hand) {
+    if (!card) continue;
+    delete card.activeMinionId;
+    delete card.burnMaxTtl;
+  }
+  syncCardProbeHand(player);
+}
+
 function setupCrystalRescueTier2Deploy(lobby, state, player) {
   const questId = 'crystal_rescue';
   const tier = 2;
@@ -4672,7 +4704,9 @@ const DEBUG_SCENARIO_REGISTRY = {
   },
 
   'canyon-descent-telepipe-ready': ({ lobby, state, player, name }) => {
-    setupQuestTelepipeReady(lobby, state, player, 'canyon_descent');
+    setupQuestTelepipeReady(lobby, state, player, 'canyon_descent', {
+      afterDeploy: (_lobby, state, player) => setupCanyonDescentTelepipeReadyExtras(state, player),
+    });
     return finishQuestTier2DeployDebugScenario(lobby, state, player, name);
   },
 

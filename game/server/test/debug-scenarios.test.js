@@ -1144,6 +1144,9 @@ describe('debugScenario — canyon-descent-tier-2', () => {
 
 		const player = playerForSocket(socket);
 		expect(player.hand.some((card) => card && card.id === 'telepipe')).toBe(true);
+		expect(player.hand[1]).toBeDefined();
+		expect(player.hand[1].id).toBe('magma_greatsword');
+		expect(player.hand[1].remainingCharges).toBeGreaterThanOrEqual(1);
 	});
 
 	it('deploys canyon_descent Tier 2 stage-boss run with encounter and rigid layout', async () => {
