@@ -1798,6 +1798,20 @@ function startServer(port) {
     _routesMounted = true;
   }
 
+  // Serve the built Vite client from the same origin as /api and /socket.io
+  // in production mode. Placed AFTER /api and /admin so those routes win.
+  if (process.env.NODE_ENV === 'production') {
+    const clientDist = path.resolve(__dirname, '..', 'client', 'dist');
+    if (fs.existsSync(clientDist)) {
+      app.use(express.static(clientDist));
+      app.get('*', (_req, res) => {
+        res.sendFile(path.resolve(clientDist, 'index.html'));
+      });
+    } else {
+      console.warn(`[server] Client dist not found at ${clientDist} — static serving skipped (run "pnpm build" in game/client first)`);
+    }
+  }
+
   // In test mode, clear the in-memory users Map to prevent contamination
   // from prior test files sharing the same module instance.  This pairs
   // with setTestFilePath() / clearUsers() called in test beforeEach hooks.
