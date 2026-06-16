@@ -8811,7 +8811,6 @@ changed.
 
 None blocking. Minor non-blocking nits captured in `nits.md`.
 
-
 ## v0.473 — Hosting: lobby-affinity WebSocket routing via Fly-Replay  (2026-06-16 00:09:04)
 
 
@@ -8833,4 +8832,26 @@ None blocking. Minor non-blocking nits captured in `nits.md`.
 
 None blocking. Acceptance criteria fully and robustly met; runtime healthy.
 (Minor non-blocking observations recorded in `nits.md`.)
+
+## v0.472 — Hosting: serve the built client same-origin from the Node server in production  (2026-06-15 23:30:28)
+
+Met. The implementation in `game/server/index.js:1804-1828`:
+
+- **Production-gated**: the entire static block is guarded by `process.env.NODE_ENV === 'production'`, so dev (Vite proxy) behavior is completely untouched. ✓ (dev unchanged)
+- **Same-origin static serving**: mounts `express.static(clientDist)` on the same Express `app`/HTTP server that hosts `/api` and Socket.IO. ✓
+- **SPA fallback**: a middleware rewrites `req.url` to `/index.html` for any non-`/api` path that doesn't resolve to an existing file (or resolves to a directory), placed *before* `express.static`, so unknown client routes serve the SPA shell. ✓
+- **/api not shadowed**: the fallback explicitly skips `/api` paths, and — more importantly — the static block is mounted *after* the `/api`, `/admin`, and `/healthz` route handlers (`index.js:1791-1802`, plus `/healthz` at `index.js:94`), so real routes win by middleware order. `/socket.io` is intercepted by Socket.IO's own request handler before Express, so it is unaffected. ✓
+- **Graceful missing-build handling**: if `client/dist` doesn't exist, it logs a warning and skips static serving rather than crashing — sensible for environments where the build step hasn't run. ✓
+- **Idempotent mount**: a dedicated `_staticMounted` guard (separate from `_routesMounted`) prevents duplicate middleware stacking across repeated `startServer()` calls. ✓
+- **Test coverage**: `game/server/test/hosting-static-serve.test.js` forces `NODE_ENV=production`, mounts a mock `dist/index.html`, and verifies: `GET /` → 200 HTML containing `<title>Void Grimoire`; `GET /foo` → SPA fallback (200 HTML); `GET /healthz` → JSON `{ ok: true }` (not HTML); `GET /api/some-path` → non-HTML (not the SPA shell). I ran the suite locally: **4 passed**. ✓
+
+## Consistency / regression
+
+- Change is additive and isolated to `game/server/index.js` plus a new test file (`git diff --stat`: 29 lines in index.js, new test, two sub-ticket docs). No game logic, no client code, no design/requirements regression.
+- No debug scenarios were added or changed by this ticket.
+- Path traversal is not a new concern: the fallback only *decides* whether to rewrite to index.html via `fs.existsSync`; the actual file serving is delegated to `express.static`, which carries its own `..` protection.
+
+## Remaining gaps
+
+None blocking. (See `nits.md` for one minor test-hygiene follow-up.)
 

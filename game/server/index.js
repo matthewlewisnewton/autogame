@@ -79,7 +79,6 @@ const {
   MAX_HAND_SLOTS,
 } = require('./config');
 const { closeRedis, isRedisEnabled, createPubSubClients } = require('./redis');
-const { createAdapter } = require('@socket.io/redis-adapter');
 const lobbies = require('./lobbies');
 const { publishLocalLobbies, listGlobalLobbySummaries } = require('./lobbyBrowser');
 const { PHASES, isLobbyPhase, isPlayingPhase } = lobbies;
@@ -1087,6 +1086,9 @@ let _routesMounted = false;
 // Track whether Socket.IO middleware has been registered — prevents stacking
 // on repeated startServer() calls.
 let _middlewareRegistered = false;
+// Track whether production static middleware has been mounted — separate from
+// _routesMounted so static serving can be added after API routes are already up.
+let _staticMounted = false;
 // Track whether the Redis adapter has been attached — prevents stacking
 // duplicate pub/sub clients on repeated startServer() calls in tests.
 let _redisAdapterAttached = false;
@@ -1824,6 +1826,32 @@ function startServer(port) {
 
   attachFlyReplayRouting(server, app, io);
 
+  // Serve the built Vite client from the same origin as /api and /socket.io
+  // in production mode. Placed AFTER /api and /admin so those routes win.
+  // Guarded separately from _routesMounted so static middleware can be added
+  // even when API routes were already mounted by a prior startServer() call
+  // (e.g., tests that switch NODE_ENV between runs).
+  if (process.env.NODE_ENV === 'production' && !_staticMounted) {
+    const clientDist = path.resolve(__dirname, '..', 'client', 'dist');
+    if (fs.existsSync(clientDist)) {
+      // SPA history-api fallback: rewrite non-API, non-existent paths to /index.html
+      // BEFORE express.static() so the static middleware serves the right file.
+      app.use((req, _res, next) => {
+        if (!req.path.startsWith('/api')) {
+          const filePath = path.join(clientDist, req.path);
+          if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+            req.url = '/index.html';
+          }
+        }
+        next();
+      });
+      app.use(express.static(clientDist));
+    } else {
+      console.warn(`[server] Client dist not found at ${clientDist} — static serving skipped (run "pnpm build" in game/client first)`);
+    }
+    _staticMounted = true;
+  }
+
   // In test mode, clear the in-memory users Map to prevent contamination
   // from prior test files sharing the same module instance.  This pairs
   // with setTestFilePath() / clearUsers() called in test beforeEach hooks.
@@ -1861,6 +1889,7 @@ function startServer(port) {
   restartBackgroundTimers();
 
   if (isRedisEnabled() && !_redisAdapterAttached) {
+    const { createAdapter } = require('@socket.io/redis-adapter');
     const { pubClient, subClient } = createPubSubClients();
     io.adapter(createAdapter(pubClient, subClient));
     _redisAdapterAttached = true;
