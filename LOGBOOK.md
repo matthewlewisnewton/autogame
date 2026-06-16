@@ -8766,3 +8766,26 @@ The changed code is server-scoped and does not introduce client module load risk
 
 None. Runtime capture is clean, both prescribed playthrough commands pass with all assertions, and the telepipe-hand root cause is addressed for the `fromPlaying` full-flow path.
 
+
+## v0.470 — Hosting: multi-instance auth + rate-limit readiness (shared JWT secret)  (2026-06-15 22:53:10)
+
+added to `auth.js` plus docs/tests.
+
+## Design / foundation consistency
+
+This is a backend hosting concern and does not touch gameplay; nothing in
+`design.md`/`requirements.md` is affected, and the captured run confirms no
+gameplay regression. No debug scenarios were added or changed.
+
+## Code quality
+
+The test correctly uses `createRequire` to exercise the same CJS module the
+server uses (consistent with the project's known dual-module-instance gotcha),
+saves/restores `NODE_ENV` and `JWT_SECRET` around each block, and resets module
+secret state in before/after hooks. Documentation is accurate and actionable. No
+dead code, no console errors.
+
+## Remaining gaps
+
+None blocking. The ticket is fully and robustly satisfied.
+

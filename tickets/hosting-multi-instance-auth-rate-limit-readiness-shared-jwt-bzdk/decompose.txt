@@ -1,0 +1,15 @@
+Broke the top-level ticket into **3 sub-tickets** in dependency order. JWT verification is largely implemented already; the work is tests that prove cross-instance behavior, hosting docs for the shared secret, and an explicit per-instance rate-limit policy (document path instead of Redis, to preserve single-instance behavior).
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/hosting-multi-instance-auth-rate-limit-readiness-shared-jwt-bzdk/tickets/hosting-multi-instance-auth-rate-limit-readiness-shared-jwt-bzdk/subtickets/01-jwt-cross-instance-verification-tests/ticket.md`
+
+2. `/home/matt/workspace/.autogame-worktrees/hosting-multi-instance-auth-rate-limit-readiness-shared-jwt-bzdk/tickets/hosting-multi-instance-auth-rate-limit-readiness-shared-jwt-bzdk/subtickets/02-document-shared-jwt-multi-instance-hosting/ticket.md`
+
+3. `/home/matt/workspace/.autogame-worktrees/hosting-multi-instance-auth-rate-limit-readiness-shared-jwt-bzdk/tickets/hosting-multi-instance-auth-rate-limit-readiness-shared-jwt-bzdk/subtickets/03-document-per-instance-rate-limit-policy/ticket.md`
+
+| # | Focus | Why separate |
+|---|--------|--------------|
+| 01 | Vitest: shared-secret acceptance, mismatched-secret rejection, production boot guard | Proves stateless JWT readiness in code |
+| 02 | `auth-setup.md`: identical `JWT_SECRET`, WS/REST statelessness | Operator-facing multi-instance JWT guidance |
+| 03 | `auth-setup.md`: per-instance rate limits, no Redis | Satisfies “Redis **or** documented per-instance” without changing runtime behavior |
