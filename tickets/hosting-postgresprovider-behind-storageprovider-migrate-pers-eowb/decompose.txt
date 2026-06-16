@@ -1,0 +1,17 @@
+Broke the top-level ticket into **4 sub-tickets** in dependency order. No existing sub-tickets needed retirement.
+
+| # | Focus |
+|---|--------|
+| **01** | `pg` / `pg-mem` deps + `players` table SQL + `ensurePlayersSchema` helper + schema test |
+| **02** | `PostgresProvider` class in `providers.js` (sync interface, `assertSafePlayerId`, UPSERT/SELECT) |
+| **03** | pg-mem unit tests mirroring `FileProvider`/`InMemoryProvider` coverage |
+| **04** | `PERSISTENCE_BACKEND=postgres` + `DATABASE_URL` wiring in `index.js`; test-mode defaults unchanged |
+
+All use **Verification: code** (infrastructure + behavior, not visual).
+
+**Created sub-ticket paths:**
+
+- `/home/matt/workspace/.autogame-worktrees/hosting-postgresprovider-behind-storageprovider-migrate-pers-eowb/tickets/hosting-postgresprovider-behind-storageprovider-migrate-pers-eowb/subtickets/01-pg-deps-and-players-schema/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/hosting-postgresprovider-behind-storageprovider-migrate-pers-eowb/tickets/hosting-postgresprovider-behind-storageprovider-migrate-pers-eowb/subtickets/02-postgres-provider-implementation/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/hosting-postgresprovider-behind-storageprovider-migrate-pers-eowb/tickets/hosting-postgresprovider-behind-storageprovider-migrate-pers-eowb/subtickets/03-postgres-provider-pgmem-tests/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/hosting-postgresprovider-behind-storageprovider-migrate-pers-eowb/tickets/hosting-postgresprovider-behind-storageprovider-migrate-pers-eowb/subtickets/04-wire-postgres-persistence-backend/ticket.md`

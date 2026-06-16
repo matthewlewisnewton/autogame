@@ -190,3 +190,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [410-cleanup-combat-dodge-roll-ignores-wall-collision-tunnels-through-lev-7g79](tickets/410-cleanup-combat-dodge-roll-ignores-wall-collision-tunnels-through-lev-7g79/)
 - [ ] [411-cleanup-escort-harness-runobjectivecomplete-flips-true-on-enemy-clea-n92k](tickets/411-cleanup-escort-harness-runobjectivecomplete-flips-true-on-enemy-clea-n92k/)
 - [ ] [411-cleanup-validation-spire-ascent-sunken-canyon-full-playthroughs-bloc-5xcz](tickets/411-cleanup-validation-spire-ascent-sunken-canyon-full-playthroughs-bloc-5xcz/)
+- [ ] [412-cleanup-hosting-postgresprovider-behind-storageprovider-migrate-pers-eowb](tickets/412-cleanup-hosting-postgresprovider-behind-storageprovider-migrate-pers-eowb/)
