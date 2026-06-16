@@ -8766,3 +8766,26 @@ The changed code is server-scoped and does not introduce client module load risk
 
 None. Runtime capture is clean, both prescribed playthrough commands pass with all assertions, and the telepipe-hand root cause is addressed for the `fromPlaying` full-flow path.
 
+
+## v0.471 — Hosting: Redis lobby registry + global lobby browser + socket.io adapter  (2026-06-15 23:16:09)
+
+## Design / requirements consistency
+
+This is a hosting/infra ticket; it adds a backend coordination layer and does not touch gameplay,
+persistence semantics, or net-replication contracts. The REDIS_URL-unset path is byte-for-byte the prior
+behavior, so `game/docs/design.md` and `requirements.md` are unaffected. No debug scenarios were added or
+changed.
+
+## Code quality
+
+- Clean separation: `redis.js` (transport + shim) / `lobbyRegistry.js` (ownership) / `lobbyBrowser.js`
+  (aggregation). Test hooks (`setRedisConstructorForTests`, `enableRedisForTests`) are clearly scoped.
+- Defensive aggregation: malformed JSON snapshots and non-array payloads are skipped, not fatal.
+- Teardown (`closeRedis`) disconnects real clients, clears memory state, and is invoked on shutdown
+  signal and in `clearAllTimers`, avoiding leaked connections/pub-sub clients between test runs.
+- Fire-and-forget Redis writes on the lobby lifecycle keep gameplay paths non-blocking.
+
+## Remaining gaps
+
+None blocking. Minor non-blocking nits captured in `nits.md`.
+
