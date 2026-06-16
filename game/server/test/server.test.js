@@ -1917,6 +1917,122 @@ describe('combat exhaustion detection', () => {
 	});
 });
 
+describe('telepipe vs combat exhaustion', () => {
+	const EMPTY_HAND = [null, null, null, null];
+
+	function setupSoloExhaustedRun({ portalX = 5, portalZ = 5, placedAt } = {}) {
+		resetState();
+		gameState._lobbyId = 'test-lobby';
+		gameState.enemies = [
+			{ id: 'e1', x: 12, z: 12, hp: 50, state: 'idle', wanderTarget: { x: 12, z: 12 } },
+		];
+		startDungeonRun();
+		gameState.gamePhase = 'playing';
+		addPlayer('p1', {
+			x: portalX,
+			z: portalZ,
+			hp: 80,
+			dead: false,
+			hand: [...EMPTY_HAND],
+			deck: [],
+			desperationDeck: [],
+			slotCooldowns: [null, null, null, null],
+			pendingSummons: new Set(),
+		});
+		gameState.telepipe = {
+			x: portalX,
+			z: portalZ,
+			placedBy: 'p1',
+			placedAt: placedAt ?? Date.now(),
+		};
+	}
+
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(10_000);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('keeps run playing when solo player is card-exhausted with an active telepipe', () => {
+		setupSoloExhaustedRun({ placedAt: Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1 });
+
+		checkRunTerminalState();
+		expect(gameState.run.status).toBe('playing');
+
+		tickCombatExhaustionGrace(Date.now());
+		vi.advanceTimersByTime(RUN_EXHAUSTION_GRACE_MS);
+		tickCombatExhaustionGrace(Date.now());
+
+		expect(gameState.run.status).toBe('playing');
+	});
+
+	it('extracts solo card-exhausted player via telepipe into suspended lobby state', () => {
+		setupSoloExhaustedRun({ placedAt: Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1 });
+		const preSuspendRunId = gameState.run.id;
+
+		const result = tryEnterTelepipe('p1');
+
+		expect(result.ok).toBe(true);
+		expect(gameState.gamePhase).toBe('lobby');
+		expect(gameState.run).toBeUndefined();
+		expect(gameState.suspendedCheckpoint).not.toBeNull();
+		expect(gameState.suspendedCheckpoint.run.id).toBe(preSuspendRunId);
+		expect(gameState.suspendedCheckpoint.run.status).toBe('playing');
+	});
+
+	it('fails immediately when solo player is out of cards without a telepipe', () => {
+		resetState();
+		gameState.enemies = [
+			{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+		];
+		startDungeonRun();
+		addPlayer('p1', {
+			hp: 80,
+			dead: false,
+			hand: [...EMPTY_HAND],
+			deck: [],
+			desperationDeck: [],
+		});
+
+		checkRunTerminalState();
+
+		expect(gameState.run.status).toBe('failed');
+	});
+
+	it('still fails MS-insufficient stall after exhaustion grace when no telepipe is active', () => {
+		resetState();
+		gameState.enemies = [
+			{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+		];
+		startDungeonRun();
+		addPlayer('p1', {
+			hp: 80,
+			dead: false,
+			magicStones: 25,
+			hand: [{
+				id: 'battle_familiar',
+				type: 'spell',
+				charges: 1,
+				remainingCharges: 1,
+				magicStoneCost: 50,
+			}],
+			deck: [],
+			desperationDeck: [],
+		});
+
+		tickCombatExhaustionGrace(Date.now());
+		expect(gameState.run.status).toBe('playing');
+
+		vi.advanceTimersByTime(RUN_EXHAUSTION_GRACE_MS);
+		tickCombatExhaustionGrace(Date.now());
+
+		expect(gameState.run.status).toBe('failed');
+	});
+});
+
 describe('synergistic minion pulses', () => {
 	beforeEach(() => {
 		resetState();

@@ -27,7 +27,7 @@ const {
   countScriptedEnemiesInQuest,
   countFinalAmbushEnemies,
 } = require('./quests');
-const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS, MEDIC_HEAL_COST, LOBBY_REVIVE_HP, RUN_EXHAUSTION_GRACE_MS } = require('./config');
+const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS, MEDIC_HEAL_COST, LOBBY_REVIVE_HP, RUN_EXHAUSTION_GRACE_MS, PORTAL_PLACEMENT_GRACE_MS } = require('./config');
 const CARD_DEFS = require('../shared/cardDefs.json');
 const CARD_STATS = require('../shared/cardStats.json');
 const {
@@ -1945,6 +1945,45 @@ function setupEscortNearDestinationDebug({ lobby, state, player, socket, name })
         };
 }
 
+function setupEscortStallWaitDebug({ lobby, state, player, socket, name }) {
+  // escort_objective_fixture Tier 1 with the player on the arena dais and
+        // Archivist Vale pinned short of extraction while a wave-0 grunt holds
+        // LOS on the escort. Reachable normally by reaching the dais before the
+        // escort while enemies keep Vale from following; this scenario is a
+        // shortcut into the stall-fail wait state (45s until objective failure).
+        setupEscortObjectiveDeploy(lobby, state, player);
+
+        const destination = state.run?.escort?.destination;
+        const escort = getEscortMinion(state);
+        if (destination && escort) {
+          player.x = destination.x;
+          player.z = destination.z;
+          player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+          const pinnedOffset = ESCORT_DESTINATION_RADIUS + 4;
+          escort.x = destination.x + pinnedOffset;
+          escort.z = destination.z;
+
+          const grunt = state.enemies?.find((enemy) => enemy.hp > 0);
+          if (grunt) {
+            grunt.x = escort.x - 2;
+            grunt.z = escort.z;
+          }
+        }
+
+        emitLobbyQuestUpdate(lobby, state, {
+          layoutSeed: state.layoutSeed,
+          layout: state.layout,
+        });
+        broadcastLobbyUpdate(lobby);
+        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        return {
+          ok: true,
+          scenario: name,
+          unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+        };
+}
+
 function setupPassageLockGatedDebug({ lobby, state, player, socket, name }) {
   // Scripted Encounter Fixture with a wave-0 passage lock on the start-room exit.
         // Reachable normally by deploying the passage-lock fixture quest tier;
@@ -3188,6 +3227,34 @@ function setupRunExhaustedDebug({ lobby, state, player, socket, name, spawn }) {
     p.hand[0] = { ...battleFamiliar };
     p._combatExhaustedSince = now - RUN_EXHAUSTION_GRACE_MS;
   }
+  state.enemies = [{
+    id: 'e_remaining',
+    x: player.x + 5,
+    z: player.z,
+    hp: ENEMY_DEFS.grunt.hp,
+    maxHp: ENEMY_DEFS.grunt.hp,
+    state: 'idle',
+    wanderTarget: { x: player.x + 5, z: player.z },
+  }];
+  state.run.objective.totalEnemies = 1;
+  state.run.objective.defeatedEnemies = 0;
+  checkRunTerminalState();
+}
+
+function setupTelepipeCombatExhaustedDebug({ state, player }) {
+  // Simulates post-telepipe placement with empty hand/deck/desperation — the
+  // state that previously tripped immediate combat-exhaustion failure. Same state
+  // is reachable by casting Telepipe as your last card with no cards left.
+  player.deck = [];
+  player.desperationDeck = [];
+  player.hand = Array.from({ length: MAX_HAND_SLOTS }, () => null);
+  state.telepipe = {
+    x: player.x,
+    z: player.z,
+    placedBy: player.id,
+    placedAt: Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1,
+  };
+  player.x += 5;
   state.enemies = [{
     id: 'e_remaining',
     x: player.x + 5,
@@ -4911,6 +4978,7 @@ const DEBUG_SCENARIO_REGISTRY = {
   'stage-boss-dormant': (ctx) => setupStageBossDormantDebug(ctx),
   'stage-boss-active': (ctx) => setupStageBossActiveDebug(ctx),
   'escort-near-destination': (ctx) => setupEscortNearDestinationDebug(ctx),
+  'escort-stall-wait': (ctx) => setupEscortStallWaitDebug(ctx),
   'passage-lock-gated': (ctx) => setupPassageLockGatedDebug(ctx),
   'passage-lock-chain': (ctx) => setupPassageLockChainDebug(ctx),
   'annex-escort-ambush-room': (ctx) => setupAnnexEscortAmbushRoomDebug(ctx),
@@ -5102,6 +5170,11 @@ const DEBUG_SCENARIO_REGISTRY = {
   'run-exhausted': (ctx) => {
     enterStandardPlayingDebugScenario(ctx);
     setupRunExhaustedDebug(ctx);
+  },
+  'telepipe-combat-exhausted': (ctx) => {
+    enterStandardPlayingDebugScenario(ctx);
+    setupTelepipeCombatExhaustedDebug(ctx);
+    return finishStandardPlayingDebugScenario(ctx);
   },
   'collect-prisms-progress': (ctx) => {
     setupCollectPrismsProgressDebugPre(ctx);

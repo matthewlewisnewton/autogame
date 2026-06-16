@@ -1,0 +1,15 @@
+Broke the top-level ticket into **3 sub-tickets** in dependency order:
+
+1. `/home/matt/workspace/.autogame-worktrees/escort-npc-freezes-no-follow-no-retreat-while-any-enemy-is-w-ylwj/tickets/escort-npc-freezes-no-follow-no-retreat-while-any-enemy-is-w-ylwj/subtickets/01-regression-test-escort-freeze-near-destination/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/escort-npc-freezes-no-follow-no-retreat-while-any-enemy-is-w-ylwj/tickets/escort-npc-freezes-no-follow-no-retreat-while-any-enemy-is-w-ylwj/subtickets/02-escort-threat-aware-follow-ai/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/escort-npc-freezes-no-follow-no-retreat-while-any-enemy-is-w-ylwj/tickets/escort-npc-freezes-no-follow-no-retreat-while-any-enemy-is-w-ylwj/subtickets/03-escort-stall-fail-safeguard/ticket.md`
+
+**Plan summary**
+
+| # | Focus | Delivers |
+|---|--------|----------|
+| **01** | Failing regression test | Reproduces the exact soft-lock: player on dais, grunt alive nearby, escort frozen at ~8.5u |
+| **02** | Core fix (option a) | Replace proximity-only `underAttack` with threat-aware logic — escort follows unless an enemy with LOS is actually targeting it |
+| **03** | Safety net (option b) | Stall timeout fails the run if the escort can't reach the destination while the squad waits at the dais |
+
+All three use **code** verification (vitest + diff). No existing sub-tickets needed retirement.

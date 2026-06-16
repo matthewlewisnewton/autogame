@@ -8686,6 +8686,64 @@ None blocking. The acceptance criterion is fully and robustly met, and the
 captured run is healthy.
 
 
+## v0.466 — escort: harness runObjectiveComplete flips true on enemy-clear before escort reaches destination  (2026-06-15 18:52:44)
+
+**Met.** `game/docs/design.md` describes Annex Evacuation escort gameplay; this change aligns harness telemetry with server completion semantics without altering gameplay. `game/docs/requirements.md` has no conflicting harness or escort instrumentation requirements.
+
+### 7. Debug scenarios
+
+**N/A — no debug scenarios added or modified in this ticket.** The pre-existing `escort-near-destination` scenario (`game/server/debugScenarios.js`) was the repro vehicle; it was not touched by either commit. No new `?debugScenario=` entry points were introduced.
+
+## Code quality
+
+- **Focused diff:** Two game files changed (`main.js` +4 lines logic, `main.test.js` +84 lines tests). No dead code, no unrelated refactors.
+- **Correct data sources:** Reads `runObjective.reachedDestination` from full run state (not the trimmed harness `objective` snapshot, which omits that field) and `gameState.run.escort` for `atDestination` / `failed`.
+- **Pattern consistency:** Follows the existing per-type ternary chain used for `collect_items` and `stage_boss`.
+
+## Integration assessment
+
+Sub-tickets 01 (client logic) and 02 (regression tests) integrate cleanly. The client harness field now matches server `isComplete` for escort runs, closing the false-pass gap that caused automated escort validators to conclude success at ambush clear. Unit tests lock the three critical states (cleared-not-arrived, arrived-not-failed, failed-at-destination). Browser capture confirms general game health but does not re-run the escort repro in Playwright — acceptable given targeted vitest coverage of the exact bug.
+
+## Remaining gaps
+
+None. All acceptance criteria are satisfied; runtime capture is healthy; tests pass.
+
+## v0.467 — telepipe: placing an extract portal with an empty hand/deck marks the run 'failed' (combat exhaustion) before the player can step through it  (2026-06-15 18:59:16)
+
+### Suspension And Resume Behavior
+
+PASS. The capture proves a solo player can place/extract through Telepipe, return to hub with `runStatus='suspended'` and a `suspendedRunSummary`, then redeploy into the same preserved run. The probes show the same layout seed/profile, same run id, preserved enemy ids/HP, and objective progress restored after resume.
+
+### Regression Coverage
+
+PASS. `coverage.log` ends with `155 passed` test files and `2017 passed` tests. The new regression tests cover: a solo card-exhausted player with an active Telepipe stays `playing`, the same state can extract into a suspended lobby checkpoint, no-portal out-of-card exhaustion still fails immediately, and MS-insufficient no-portal stalls still fail after grace. Coverage thresholds were disabled as expected.
+
+### Design And Requirements Consistency
+
+PASS. The change matches `game/docs/design.md` Telepipe Evacuation: Telepipe remains a mid-run evacuation/suspend tool, extracted players return to hub, and the run suspends only through the normal extraction flow. It does not regress the foundation requirements: the captured browser session renders the 3D scene, connects through the server/client stack, shows the player in world, and continues after resume.
+
+### Debug Scenarios
+
+PASS. The added `telepipe-combat-exhausted` shortcut is confined to the existing debug scenario socket path, which is reached from the localhost/debug URL flow and server-side debug gate. The scenario models a state reachable through normal play by casting Telepipe as the last available card, and it does not replace or weaken the normal card-use, Telepipe placement, extraction, checkpoint, or resume code paths.
+
+## v0.468 — escort: NPC freezes (no follow, no retreat) while ANY enemy is within DETECTION_RADIUS — softlocks if that enemy is unreachable  (2026-06-15 19:04:12)
+
+The counter-case where an enemy is genuinely threatening the escort is preserved. The new tests cover a nearby living grunt that does not block following, and a grunt with LOS that actually targets the escort and makes the escort hold position. This keeps escort behavior consistent with the combat model rather than making the NPC blindly run through active attacks.
+
+The fallback safeguard is present in `tickEscort`: once a squad member waits at the escort destination while the escort remains outside arrival radius, the run tracks stall time and fails after `ESCORT_STALL_FAIL_MS` if progress is not made. The objective label and run summary carry a clear stalled-escort failure reason, so the former indefinite `playing` state is no longer possible in the pinned escort case.
+
+The new `escort-stall-wait` debug scenario is registered only through the existing debug scenario path. That path is guarded by `isDebugScenarioAllowed` and `ALLOW_DEBUG_SCENARIOS`/localhost/non-production checks, and normal gameplay does not touch the scenario registry. The scenario state is reachable through normal escort gameplay by reaching the destination while enemies keep Vale outside extraction range; it does not alter persistence, networking, or server validation invariants beyond staging the existing quest state for QA.
+
+## Design And Regression Review
+
+The change is consistent with the design doc's Annex Evacuation identity: escort remains a dungeon objective with scripted danger, completion on destination arrival, and failure when the NPC is lost or cannot reach extraction. It does not weaken the foundational client/server, rendering, multiplayer, or movement requirements.
+
+The changed code is server-scoped and does not introduce client module load risk. The new CommonJS import from `escort.js` to `simulation.js` is safe in the live module graph because `simNow` is exported before `escort.js` consumes it at runtime, and the captured browser run confirms there are no page/module errors.
+
+## Validation
+
+`coverage.log` shows the escort-specific suite passing: `server/test/escort_objective.test.js` ran 17 tests, including the new follow-near-living-enemy and stall-fail safeguard cases. The same coverage run recorded one failure in `server/test/training_caverns_spawn_camp.test.js`; I reran that exact test locally with `pnpm exec vitest run server/test/training_caverns_spawn_camp.test.js`, and it passed, so I am treating the logged failure as a transient full-suite artifact rather than a current blocking regression.
+
 ## v0.469 — validation: spire-ascent & sunken-canyon full playthroughs blocked at telepipe-new-sortie (telepipe-only hand → 'No usable card to deplete resources')  (2026-06-15 20:13:57)
 
 
