@@ -78,7 +78,6 @@ const {
   MAX_HAND_SLOTS,
 } = require('./config');
 const { closeRedis, isRedisEnabled, createPubSubClients } = require('./redis');
-const { createAdapter } = require('@socket.io/redis-adapter');
 const lobbies = require('./lobbies');
 const { publishLocalLobbies, listGlobalLobbySummaries } = require('./lobbyBrowser');
 const { PHASES, isLobbyPhase, isPlayingPhase } = lobbies;
@@ -1887,6 +1886,7 @@ function startServer(port) {
   restartBackgroundTimers();
 
   if (isRedisEnabled() && !_redisAdapterAttached) {
+    const { createAdapter } = require('@socket.io/redis-adapter');
     const { pubClient, subClient } = createPubSubClients();
     io.adapter(createAdapter(pubClient, subClient));
     _redisAdapterAttached = true;
