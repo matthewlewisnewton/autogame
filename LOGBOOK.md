@@ -8685,3 +8685,26 @@ None blocking. All acceptance criteria are met with automated overlap regression
 None blocking. The acceptance criterion is fully and robustly met, and the
 captured run is healthy.
 
+
+## v0.466 — escort: harness runObjectiveComplete flips true on enemy-clear before escort reaches destination  (2026-06-15 18:52:44)
+
+**Met.** `game/docs/design.md` describes Annex Evacuation escort gameplay; this change aligns harness telemetry with server completion semantics without altering gameplay. `game/docs/requirements.md` has no conflicting harness or escort instrumentation requirements.
+
+### 7. Debug scenarios
+
+**N/A — no debug scenarios added or modified in this ticket.** The pre-existing `escort-near-destination` scenario (`game/server/debugScenarios.js`) was the repro vehicle; it was not touched by either commit. No new `?debugScenario=` entry points were introduced.
+
+## Code quality
+
+- **Focused diff:** Two game files changed (`main.js` +4 lines logic, `main.test.js` +84 lines tests). No dead code, no unrelated refactors.
+- **Correct data sources:** Reads `runObjective.reachedDestination` from full run state (not the trimmed harness `objective` snapshot, which omits that field) and `gameState.run.escort` for `atDestination` / `failed`.
+- **Pattern consistency:** Follows the existing per-type ternary chain used for `collect_items` and `stage_boss`.
+
+## Integration assessment
+
+Sub-tickets 01 (client logic) and 02 (regression tests) integrate cleanly. The client harness field now matches server `isComplete` for escort runs, closing the false-pass gap that caused automated escort validators to conclude success at ambush clear. Unit tests lock the three critical states (cleared-not-arrived, arrived-not-failed, failed-at-destination). Browser capture confirms general game health but does not re-run the escort repro in Playwright — acceptable given targeted vitest coverage of the exact bug.
+
+## Remaining gaps
+
+None. All acceptance criteria are satisfied; runtime capture is healthy; tests pass.
+

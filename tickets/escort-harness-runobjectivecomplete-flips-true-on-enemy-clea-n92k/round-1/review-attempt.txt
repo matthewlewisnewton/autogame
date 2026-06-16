@@ -1,0 +1,20 @@
+## Review complete
+
+**VERDICT: PASS**
+
+Full write-up: [`tickets/.../round-1/review.md`](tickets/escort-harness-runobjectivecomplete-flips-true-on-enemy-clea-n92k/round-1/review.md)
+
+### Runtime
+- `metrics.json`: `ok: true`, `pageerrors: []`
+- `console.log`: clean (no game fatal/pageerror; only benign 409 on auth)
+
+### Implementation
+Two commits fix the root cause in `game/client/main.js`: escort `runObjectiveComplete` now gates on `reachedDestination` / `escort.atDestination` and rejects `escort.failed`, matching server `OBJECTIVE_DEFS.escort.isComplete`. Three vitest regressions cover cleared-not-arrived, arrived-not-failed, and failed-at-destination. All **4110** tests pass.
+
+### Gaps
+None — no `gaps.md` written.
+
+### Nits (non-blocking)
+Logged in [`round-1/nits.md`](tickets/escort-harness-runobjectivecomplete-flips-true-on-enemy-clea-n92k/round-1/nits.md):
+1. Round-1 capture used fallback Initiate Vault smoke, not the escort repro scenario
+2. Harness `objective` snapshot could expose `reachedDestination` for easier escort probing

@@ -1,0 +1,15 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/escort-harness-runobjectivecomplete-flips-true-on-enemy-clea-n92k/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/escort-harness-runobjectivecomplete-flips-true-on-enemy-clea-n92k/game/data
+Server listening on port 3003
+Player connected: socket=SaCFTRL1b-3p4ErkAAAB, playerId=bf09f1c3-d486-4c22-b044-96ed92e3ef88
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=oIElTYapQs-W7ctEAAAD, playerId=dd282b9e-de41-4885-92fa-ab1d638d9fe5
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=7ec769fc-cfc2-4022-8579-aaf46c587aa8 value=20
+Player disconnected: SaCFTRL1b-3p4ErkAAAB
+Player disconnected: oIElTYapQs-W7ctEAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
