@@ -1,0 +1,48 @@
+# Fly.io deploy config for the autogame server.
+#
+# NOTE: `app` and `primary_region` are placeholders — `flyctl launch` will let
+# you pick the real (globally-unique) app name and your nearest region.
+#
+# Secrets are NOT stored here — set them once with:
+#   flyctl secrets set JWT_SECRET=... DATABASE_URL=... REDIS_URL=...
+#
+# Designed for horizontal scale: instances are stateless (Postgres + Redis are
+# external), and lobby-affinity routing uses Fly-Replay (FLY_MACHINE_ID). Scale
+# out with `flyctl scale count 2+` once a first instance is verified.
+
+app = "autogame"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8080"
+  PERSISTENCE_BACKEND = "postgres"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Stateful lobbies live in-memory per machine — do NOT auto-stop running
+  # machines (it would drop active lobbies). Keep at least one warm.
+  auto_stop_machines = "off"
+  auto_start_machines = false
+  min_machines_running = 1
+
+  # WebSocket-friendly: balance on long-lived connections, not requests.
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 1000
+    soft_limit = 800
+
+  [[http_service.checks]]
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "20s"
+    method = "GET"
+    path = "/healthz"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"

@@ -1,0 +1,18 @@
+# Dependencies are installed fresh inside the image.
+**/node_modules
+node_modules
+
+# Build output (client is built in the image) and runtime/local data.
+client/dist
+client/dist-ssr
+server/data
+data
+
+# Test/coverage/validation artifacts and logs — not needed at runtime.
+coverage
+validation
+**/*.log
+
+# VCS / CI.
+.git
+.github
