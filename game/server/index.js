@@ -80,6 +80,7 @@ const {
 const { closeRedis, isRedisEnabled, createPubSubClients } = require('./redis');
 const { createAdapter } = require('@socket.io/redis-adapter');
 const lobbies = require('./lobbies');
+const { publishLocalLobbies, listGlobalLobbySummaries } = require('./lobbyBrowser');
 const { PHASES, isLobbyPhase, isPlayingPhase } = lobbies;
 const {
   syncHubPresenceFromLobby,
@@ -405,8 +406,15 @@ function getLobbyForSocket(socket) {
   return lobbies.getLobbyForPlayer(socket.playerId);
 }
 
-function broadcastLobbyList() {
-  io.emit(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, { lobbies: lobbies.listLobbySummaries() });
+async function broadcastLobbyList() {
+  try {
+    await publishLocalLobbies();
+    const lobbyList = await listGlobalLobbySummaries();
+    io.emit(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, { lobbies: lobbyList });
+  } catch (err) {
+    console.error('[lobbyBrowser] broadcastLobbyList failed:', err);
+    io.emit(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, { lobbies: lobbies.listLobbySummaries() });
+  }
 }
 
 // Initialize simulation and progression modules with gameState and timeouts
@@ -1962,21 +1970,40 @@ function startServer(port) {
     registerPlayerSocket(playerId, socket);
     console.log(`Player connected: socket=${socket.id}, playerId=${playerId}`);
 
-    socket.emit(SERVER_TO_CLIENT.INIT, {
-      id: playerId,
-      playerId,
-      accountId,
-      username,
-      inLobby: !!lobbies.getLobbyForPlayer(playerId),
-      selectedDeck: sessionPlayer.selectedDeck,
-      inventory: sessionPlayer.inventory,
-      ownedCards: sessionPlayer.ownedCards,
-      lobbies: lobbies.listLobbySummaries(),
-      keyItemDefs: KEY_ITEM_DEFS,
-      enemyDisplayCatalog: buildEnemyDisplayCatalog(),
-    });
+    void (async () => {
+      const lobbyList = await listGlobalLobbySummaries();
+      socket.emit(SERVER_TO_CLIENT.INIT, {
+        id: playerId,
+        playerId,
+        accountId,
+        username,
+        inLobby: !!lobbies.getLobbyForPlayer(playerId),
+        selectedDeck: sessionPlayer.selectedDeck,
+        inventory: sessionPlayer.inventory,
+        ownedCards: sessionPlayer.ownedCards,
+        lobbies: lobbyList,
+        keyItemDefs: KEY_ITEM_DEFS,
+        enemyDisplayCatalog: buildEnemyDisplayCatalog(),
+      });
 
-    broadcastLobbyList();
+      void broadcastLobbyList();
+    })().catch((err) => {
+      console.error('[socket:connection] init lobby list failed:', err && err.stack ? err.stack : err);
+      socket.emit(SERVER_TO_CLIENT.INIT, {
+        id: playerId,
+        playerId,
+        accountId,
+        username,
+        inLobby: !!lobbies.getLobbyForPlayer(playerId),
+        selectedDeck: sessionPlayer.selectedDeck,
+        inventory: sessionPlayer.inventory,
+        ownedCards: sessionPlayer.ownedCards,
+        lobbies: lobbies.listLobbySummaries(),
+        keyItemDefs: KEY_ITEM_DEFS,
+        enemyDisplayCatalog: buildEnemyDisplayCatalog(),
+      });
+      void broadcastLobbyList();
+    });
     } catch (err) {
       console.error('[socket:connection] setup error:', err && err.stack ? err.stack : err);
       try {
