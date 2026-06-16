@@ -45,12 +45,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "bcrypt",
-      "esbuild"
-    ]
-  },
   "devDependencies": {
     "@vitest/coverage-v8": "^3.2.4",
     "concurrently": "^9.2.1",

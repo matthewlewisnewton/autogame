@@ -6,3 +6,10 @@ allowBuilds:
   esbuild: true
   bcrypt: true
   deasync: true
+
+# Supply-chain guard: refuse to resolve/install any package version published
+# less than 7 days ago (10080 minutes), so a freshly-compromised release isn't
+# pulled the moment it's published. Belt-and-suspenders with the CI detective
+# check (scripts/check_package_age.js, also 7 days). Only affects version
+# resolution (pnpm add/update); --frozen-lockfile installs are unaffected.
+minimumReleaseAge: 10080
