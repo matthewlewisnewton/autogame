@@ -883,14 +883,14 @@ function setupSpireAscentTelepipeReadyExtras(state, player) {
       effect: 'telepipe',
     };
   }
-  const rockDef = CARD_DEFS.throw_rock;
-  if (rockDef) {
+  const greatswordDef = CARD_DEFS.magma_greatsword;
+  if (greatswordDef) {
     player.hand[1] = {
-      id: 'throw_rock',
-      name: rockDef.name,
+      id: 'magma_greatsword',
+      name: greatswordDef.name,
       type: 'weapon',
-      charges: rockDef.charges,
-      remainingCharges: rockDef.charges,
+      charges: greatswordDef.charges,
+      remainingCharges: greatswordDef.charges,
     };
   }
   for (const card of player.hand) {
