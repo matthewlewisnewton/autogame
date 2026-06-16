@@ -27,10 +27,12 @@ const {
 describe('lobbyRegistry', () => {
   const originalRedisUrl = process.env.REDIS_URL;
   const originalInstanceId = process.env.INSTANCE_ID;
+  const originalFlyMachineId = process.env.FLY_MACHINE_ID;
 
   beforeEach(() => {
     delete process.env.REDIS_URL;
     delete process.env.INSTANCE_ID;
+    delete process.env.FLY_MACHINE_ID;
     closeRedis();
     disableRedisForTests();
     resetAllLobbies();
@@ -51,6 +53,11 @@ describe('lobbyRegistry', () => {
       delete process.env.INSTANCE_ID;
     } else {
       process.env.INSTANCE_ID = originalInstanceId;
+    }
+    if (originalFlyMachineId === undefined) {
+      delete process.env.FLY_MACHINE_ID;
+    } else {
+      process.env.FLY_MACHINE_ID = originalFlyMachineId;
     }
   });
 
@@ -142,6 +149,18 @@ describe('lobbyRegistry', () => {
 
       await vi.waitFor(async () => {
         expect(await getLobbyOwner(lobby.id)).toBeNull();
+      });
+    });
+
+    it('createLobby registers ownership using FLY_MACHINE_ID when set', async () => {
+      delete process.env.INSTANCE_ID;
+      process.env.FLY_MACHINE_ID = 'fly-machine-a';
+      const { getFlyMachineId } = require('../flyReplay.js');
+
+      const lobby = createLobby('Fly Machine Registry');
+      await vi.waitFor(async () => {
+        expect(await getLobbyOwner(lobby.id)).toBe('fly-machine-a');
+        expect(await getLobbyOwner(lobby.id)).toBe(getFlyMachineId());
       });
     });
   });
