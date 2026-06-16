@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module';
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { generateLayout } from '../dungeon.js';
 import { getObjectiveDef, isValidObjectiveType } from '../objectives.js';
 import {
@@ -19,7 +19,7 @@ import {
   updateMinions,
   damageMinion,
 } from '../index.js';
-import { setGameState as setSimulationGameState } from '../simulation.js';
+import { setGameState as setSimulationGameState, simNow } from '../simulation.js';
 import {
   ESCORT_DESTINATION_RADIUS,
   getEscortMinion,
@@ -30,6 +30,10 @@ const require = createRequire(import.meta.url);
 const {
   QUEST_DEFS, ESCORT_OBJECTIVE_FIXTURE_DEF, formatObjectiveSummary, getQuest,
 } = require('../quests.js');
+const {
+  ESCORT_STALL_FAIL_MS,
+  setEscortStallFailMsForTests,
+} = require('../escort.js');
 
 const SEED = 5151;
 const FIXTURE_QUEST_ID = 'escort_objective_fixture';
@@ -293,6 +297,91 @@ describe('escort follow with nearby living enemy', () => {
 
     expect(Math.abs(escort.x - startX)).toBeLessThan(0.5);
     expect(Math.abs(escort.z - startZ)).toBeLessThan(0.5);
+  });
+});
+
+describe('escort stall fail safeguard', () => {
+  const TEST_STALL_MS = 1000;
+
+  beforeEach(() => {
+    resetGameState();
+    setSimulationGameState(gameState);
+    deployEscortRun(gameState);
+    gameState.enemies = [];
+    setEscortStallFailMsForTests(TEST_STALL_MS);
+  });
+
+  afterEach(() => {
+    setEscortStallFailMsForTests();
+  });
+
+  it('fails the run when squad waits at destination and escort stays pinned', () => {
+    const dais = gameState.layout.landmarks.find((lm) => lm.type === 'arena_dais');
+    const destination = gameState.run.escort.destination;
+    const escort = getEscortMinion(gameState);
+
+    gameState.players.p1.x = dais.x;
+    gameState.players.p1.z = dais.z;
+
+    const pinnedX = destination.x + ESCORT_DESTINATION_RADIUS + 4;
+    escort.x = pinnedX;
+    escort.z = destination.z;
+
+    tickEscort(gameState);
+    expect(gameState.run.status).toBe('playing');
+    expect(gameState.run.escort.stallWaitStartedAt).not.toBeNull();
+
+    gameState.run.escort.stallWaitStartedAt = simNow() - TEST_STALL_MS - 100;
+    tickEscort(gameState);
+
+    expect(gameState.run.status).toBe('failed');
+    expect(gameState.run.escort.failed).toBe(true);
+    expect(gameState.run.objective.label).toContain('Archivist Vale failed to reach extraction');
+    expect(gameState.run.objective.label).toContain('escort stalled');
+    const summary = buildRunSummary('failed');
+    expect(summary.failReason).toContain('stalled');
+  });
+
+  it('resets stall progress when the escort moves closer to the destination', () => {
+    const dais = gameState.layout.landmarks.find((lm) => lm.type === 'arena_dais');
+    const destination = gameState.run.escort.destination;
+    const escort = getEscortMinion(gameState);
+
+    gameState.players.p1.x = dais.x;
+    gameState.players.p1.z = dais.z;
+
+    escort.x = destination.x + ESCORT_DESTINATION_RADIUS + 6;
+    escort.z = destination.z;
+    tickEscort(gameState);
+    expect(gameState.run.escort.stallWaitStartedAt).not.toBeNull();
+
+    gameState.run.escort.stallWaitStartedAt = simNow() - TEST_STALL_MS - 100;
+    escort.x = destination.x + ESCORT_DESTINATION_RADIUS + 2;
+    tickEscort(gameState);
+
+    expect(gameState.run.status).toBe('playing');
+    expect(gameState.run.escort.stallWaitStartedAt).not.toBeNull();
+    expect(simNow() - gameState.run.escort.stallWaitStartedAt).toBeLessThan(TEST_STALL_MS);
+  });
+
+  it('resets stall progress when the squad leaves the destination wait zone', () => {
+    const dais = gameState.layout.landmarks.find((lm) => lm.type === 'arena_dais');
+    const destination = gameState.run.escort.destination;
+    const escort = getEscortMinion(gameState);
+
+    gameState.players.p1.x = dais.x;
+    gameState.players.p1.z = dais.z;
+    escort.x = destination.x + ESCORT_DESTINATION_RADIUS + 4;
+    escort.z = destination.z;
+
+    tickEscort(gameState);
+    expect(gameState.run.escort.stallWaitStartedAt).not.toBeNull();
+
+    gameState.players.p1.x = destination.x + ESCORT_DESTINATION_RADIUS + 20;
+    tickEscort(gameState);
+
+    expect(gameState.run.escort.stallWaitStartedAt).toBeNull();
+    expect(gameState.run.status).toBe('playing');
   });
 });
 

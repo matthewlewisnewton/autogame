@@ -4,8 +4,13 @@
  */
 const crypto = require('crypto');
 const { roomsByRole } = require('./dungeon');
+const { simNow } = require('./simulation');
 
 const ESCORT_DESTINATION_RADIUS = 4;
+const ESCORT_STALL_FAIL_MS = 45_000;
+const ESCORT_STALL_PROGRESS_EPSILON = 0.5;
+
+let _escortStallFailMs = ESCORT_STALL_FAIL_MS;
 
 let _checkRunTerminalState = () => {};
 
@@ -13,6 +18,25 @@ function setEscortCallbacks(deps) {
   _checkRunTerminalState = typeof deps?.checkRunTerminalState === 'function'
     ? deps.checkRunTerminalState
     : () => {};
+}
+
+function setEscortStallFailMsForTests(ms) {
+  _escortStallFailMs = typeof ms === 'number' && ms > 0 ? ms : ESCORT_STALL_FAIL_MS;
+}
+
+function distToEscortDestination(minion, destination) {
+  return Math.hypot(minion.x - destination.x, minion.z - destination.z);
+}
+
+function hasSquadMemberAtEscortDestination(gameState, destination) {
+  if (!destination) return false;
+  for (const player of Object.values(gameState.players || {})) {
+    if (!player || player.dead || player.extracted) continue;
+    if (distToEscortDestination(player, destination) <= ESCORT_DESTINATION_RADIUS) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function getStartSpawn(layout) {
@@ -144,6 +168,8 @@ function spawnEscortNpc(gameState, quest, layout) {
     failOnDeath,
     atDestination: false,
     failed: false,
+    stallWaitStartedAt: null,
+    lastDistToDestination: null,
   };
 
   if (run.objective) {
@@ -193,13 +219,44 @@ function tickEscort(gameState) {
   }
 
   if (atDestination) {
+    run.escort.stallWaitStartedAt = null;
     _checkRunTerminalState();
+    return;
+  }
+
+  const { destination } = run.escort;
+  const dist = distToEscortDestination(minion, destination);
+  const squadWaiting = hasSquadMemberAtEscortDestination(gameState, destination);
+
+  if (!squadWaiting) {
+    run.escort.stallWaitStartedAt = null;
+    run.escort.lastDistToDestination = dist;
+    return;
+  }
+
+  const lastDist = run.escort.lastDistToDestination;
+  if (lastDist != null && lastDist - dist >= ESCORT_STALL_PROGRESS_EPSILON) {
+    run.escort.stallWaitStartedAt = null;
+  }
+  run.escort.lastDistToDestination = dist;
+
+  if (run.escort.stallWaitStartedAt == null) {
+    run.escort.stallWaitStartedAt = simNow();
+    return;
+  }
+
+  if (simNow() - run.escort.stallWaitStartedAt >= _escortStallFailMs) {
+    const npcName = run.escort.npcName || 'Escort';
+    failEscortRun(gameState, `${npcName} failed to reach extraction — escort stalled`);
   }
 }
 
 module.exports = {
   ESCORT_DESTINATION_RADIUS,
+  ESCORT_STALL_FAIL_MS,
+  ESCORT_STALL_PROGRESS_EPSILON,
   setEscortCallbacks,
+  setEscortStallFailMsForTests,
   resolveEscortDestination,
   formatEscortDestinationLabel,
   getEscortMinion,

@@ -609,6 +609,7 @@ const DEBUG_SCENARIOS = new Set([
   'passage-lock-chain',
   'escort-objective',
   'escort-near-destination',
+  'escort-stall-wait',
   'fire-cavern',
   'ember-descent-cinderghast',
   'ember-descent-near-adds',

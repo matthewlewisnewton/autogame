@@ -1909,6 +1909,45 @@ function setupEscortNearDestinationDebug({ lobby, state, player, socket, name })
         };
 }
 
+function setupEscortStallWaitDebug({ lobby, state, player, socket, name }) {
+  // escort_objective_fixture Tier 1 with the player on the arena dais and
+        // Archivist Vale pinned short of extraction while a wave-0 grunt holds
+        // LOS on the escort. Reachable normally by reaching the dais before the
+        // escort while enemies keep Vale from following; this scenario is a
+        // shortcut into the stall-fail wait state (45s until objective failure).
+        setupEscortObjectiveDeploy(lobby, state, player);
+
+        const destination = state.run?.escort?.destination;
+        const escort = getEscortMinion(state);
+        if (destination && escort) {
+          player.x = destination.x;
+          player.z = destination.z;
+          player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+          const pinnedOffset = ESCORT_DESTINATION_RADIUS + 4;
+          escort.x = destination.x + pinnedOffset;
+          escort.z = destination.z;
+
+          const grunt = state.enemies?.find((enemy) => enemy.hp > 0);
+          if (grunt) {
+            grunt.x = escort.x - 2;
+            grunt.z = escort.z;
+          }
+        }
+
+        emitLobbyQuestUpdate(lobby, state, {
+          layoutSeed: state.layoutSeed,
+          layout: state.layout,
+        });
+        broadcastLobbyUpdate(lobby);
+        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        return {
+          ok: true,
+          scenario: name,
+          unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+        };
+}
+
 function setupPassageLockGatedDebug({ lobby, state, player, socket, name }) {
   // Scripted Encounter Fixture with a wave-0 passage lock on the start-room exit.
         // Reachable normally by deploying the passage-lock fixture quest tier;
@@ -4871,6 +4910,7 @@ const DEBUG_SCENARIO_REGISTRY = {
   'stage-boss-dormant': (ctx) => setupStageBossDormantDebug(ctx),
   'stage-boss-active': (ctx) => setupStageBossActiveDebug(ctx),
   'escort-near-destination': (ctx) => setupEscortNearDestinationDebug(ctx),
+  'escort-stall-wait': (ctx) => setupEscortStallWaitDebug(ctx),
   'passage-lock-gated': (ctx) => setupPassageLockGatedDebug(ctx),
   'passage-lock-chain': (ctx) => setupPassageLockChainDebug(ctx),
   'annex-escort-ambush-room': (ctx) => setupAnnexEscortAmbushRoomDebug(ctx),
