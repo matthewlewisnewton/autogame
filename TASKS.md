@@ -188,3 +188,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [409-cleanup-balance-initiate-vault-spawn-camps-the-player-20-hp-lost-in-kvyj](tickets/409-cleanup-balance-initiate-vault-spawn-camps-the-player-20-hp-lost-in-kvyj/)
 - [ ] [409-cleanup-hud-top-right-corner-collision-key-item-badge-overlaps-toolb-ihb5](tickets/409-cleanup-hud-top-right-corner-collision-key-item-badge-overlaps-toolb-ihb5/)
 - [ ] [410-cleanup-combat-dodge-roll-ignores-wall-collision-tunnels-through-lev-7g79](tickets/410-cleanup-combat-dodge-roll-ignores-wall-collision-tunnels-through-lev-7g79/)
+- [ ] [411-cleanup-validation-spire-ascent-sunken-canyon-full-playthroughs-bloc-5xcz](tickets/411-cleanup-validation-spire-ascent-sunken-canyon-full-playthroughs-bloc-5xcz/)

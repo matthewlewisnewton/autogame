@@ -8685,3 +8685,26 @@ None blocking. All acceptance criteria are met with automated overlap regression
 None blocking. The acceptance criterion is fully and robustly met, and the
 captured run is healthy.
 
+
+## v0.469 — validation: spire-ascent & sunken-canyon full playthroughs blocked at telepipe-new-sortie (telepipe-only hand → 'No usable card to deplete resources')  (2026-06-15 20:13:57)
+
+
+### 6. Debug scenario integrity
+
+**Pass.**
+
+- **Gating:** Scenarios are only reachable via `?debugScenario=NAME` (client) or harness `debugScenario` socket emit; `isDebugScenarioAllowed` blocks production/non-localhost use.
+- **Normal path preserved:** Telepipe-new-sortie in real play still flows through combat → telepipe extract → hub suspend → abort sortie → fresh deploy. Debug scenarios only seed QA hand state; they do not bypass server validation, checkpoint persistence, or abandon/redeploy logic exercised by `harness/validate/lib/telepipe.mjs`.
+- **No invariant weakening:** `forceRedeal` affects only debug-scenario setup; it is not exposed to normal deploy or `checkAllReady` paths.
+
+## Code quality
+
+- Focused diff: two production files (`debugScenarios.js`, `debug-scenarios.test.js`), ~50 lines of logic.
+- `setupSpireAscentTelepipeReadyExtras` and `setupCanyonDescentTelepipeReadyExtras` are nearly identical — acceptable for a targeted bugfix, but see nits for a possible DRY follow-up.
+- No dead code introduced; `throw_rock` reference correctly removed from spire extras.
+- Independent full playthrough runs confirm integration beyond unit tests.
+
+## Remaining gaps
+
+None. Runtime capture is clean, both prescribed playthrough commands pass with all assertions, and the telepipe-hand root cause is addressed for the `fromPlaying` full-flow path.
+

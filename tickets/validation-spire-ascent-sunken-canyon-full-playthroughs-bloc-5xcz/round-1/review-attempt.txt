@@ -1,0 +1,22 @@
+## Review complete — **VERDICT: FAIL**
+
+Wrote:
+- `tickets/.../round-1/review.md`
+- `tickets/.../round-1/gaps.md`
+- `tickets/.../round-1/nits.md`
+
+### Runtime health
+The captured game run is clean: `metrics.json` has `"ok": true`, empty `pageerrors`, and `console.log` has no fatal/page errors.
+
+### What works
+- **Spire-ascent** full playthrough passes end-to-end (all assertions including `telepipe-new-sortie`, boss, victory).
+- Sub-ticket 01 fix (`throw_rock` → `CARD_DEFS.magma_greatsword` in `setupSpireAscentTelepipeReadyExtras`) is in place.
+- Sub-ticket 02 added `setupCanyonDescentTelepipeReadyExtras` with `afterDeploy`; isolated unit tests pass.
+- Debug scenarios remain properly gated; no design-doc regressions.
+
+### Blocking gap
+- **Sunken-canyon** full playthrough still fails **2/2** at `telepipe-new-sortie` with `No usable card to deplete resources` — the exact failure mode the ticket targets.
+- Standalone `--steps telepipe-new-sortie` for sunken-canyon passes (fresh deploy), so the bug is still in the **`fromPlaying` full-flow path** after `magma-windup-ready`.
+- Root interaction: `ensurePlayerCombatHand` skips re-dealing when the windup exercise already populated hand slots; the `afterDeploy` magma_greatsword placement does not reliably survive to depletion time in full flow.
+
+The ticket requires **both** presets to pass full playthrough — only one does.

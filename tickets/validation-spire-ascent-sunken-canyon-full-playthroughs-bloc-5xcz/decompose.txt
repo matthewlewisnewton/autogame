@@ -1,0 +1,6 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created one sub-ticket:
+
+- `tickets/validation-spire-ascent-sunken-canyon-full-playthroughs-bloc-5xcz/subtickets/01-force-redeal-telepipe-ready-hand/ticket.md`
+
+**Rationale:** The review identified a single open gap — sunken-canyon full playthrough fails at `telepipe-new-sortie` because `ensurePlayerCombatHand` skips re-dealing when the hand already has 6 slots from the preceding `magma-windup-ready` card exercise. The fix is a single mechanism (`forceRedeal` option on `setupQuestTelepipeReady`) applied to both canyon-descent and spire-ascent scenarios. Both old failed sub-tickets (01, 02) were retired since neither had a `.passed` marker.

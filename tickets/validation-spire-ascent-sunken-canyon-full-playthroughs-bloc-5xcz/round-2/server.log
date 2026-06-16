@@ -1,0 +1,17 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/validation-spire-ascent-sunken-canyon-full-playthroughs-bloc-5xcz/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/validation-spire-ascent-sunken-canyon-full-playthroughs-bloc-5xcz/game/data
+Server listening on port 3005
+Player connected: socket=gHg9Oe9-ieNOrM6TAAAB, playerId=e5dc1d45-3353-4b22-b3ff-fd795d712ced
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[telepipe] placed at (-9.0, 27.0) by e5dc1d45-3353-4b22-b3ff-fd795d712ced
+[telepipe] player e5dc1d45-3353-4b22-b3ff-fd795d712ced extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault
+[run] checkpoint restored
+Player disconnected: gHg9Oe9-ieNOrM6TAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

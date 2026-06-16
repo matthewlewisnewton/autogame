@@ -1,0 +1,1 @@
+I've kicked off the result collector as a background task; it will notify me when both spire-ascent runs (4 and 5) complete. Pausing until then rather than polling.
