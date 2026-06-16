@@ -126,6 +126,15 @@ All existing gameplay events (`playerReady`, `move`, `useCard`, …) require the
 - `lobbyListUpdate` → refresh list when browser is visible.
 - List entries show phase (**Waiting** / **In run**), player count, and selected dungeon.
 
+## Fly.io lobby affinity (multi-instance)
+
+When `REDIS_URL` and `FLY_MACHINE_ID` are both set, each lobby’s owning Fly Machine is recorded in Redis (`lobby:owners`). Socket.IO handshakes that include a lobby id (`lobbyId`, `lobby`, or `joinLobby` query param) are routed before JWT auth:
+
+- **Same machine** — the connection proceeds normally.
+- **Different machine** — the edge returns `fly-replay: instance=<owner>` so Fly.io replays the request to the lobby owner.
+
+Lobby summaries published to Redis include `instanceId` (the owner’s `FLY_MACHINE_ID`) so operators can build join links such as `https://<app>/?lobby=<lobbyId>`; the client forwards that id on the Socket.IO URL and Fly handles affinity.
+
 ## Testing
 
 ### Unit tests

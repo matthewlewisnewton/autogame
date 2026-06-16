@@ -6,6 +6,7 @@ export function bindConnectionHandlers(s, ctx) {
 		ctx.showLobbyBrowserError('');
 		ctx.updateStatus('Connected', 'connected');
 		ctx.startHeartbeat();
+		ctx.emitPendingLobbyJoin(s);
 	});
 
 	s.on('disconnect', () => {
@@ -31,6 +32,7 @@ export function bindConnectionHandlers(s, ctx) {
 		ctx.showLobbyBrowserError('');
 		ctx.updateStatus('Connected', 'connected');
 		ctx.startHeartbeat();
+		ctx.emitPendingLobbyJoin(s);
 	});
 
 	s.on('connect_error', (err) => {

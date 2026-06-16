@@ -1,0 +1,14 @@
+Review complete. **VERDICT: PASS**
+
+Summary:
+- **Runtime health gate passed** — `metrics.json` has `"ok": true`, empty `pageerrors`, no `harness_failure`; `console.log` is clean. Probes confirm the full lobby→playing flow and a successful auth/WS handshake.
+- **All AC sub-requirements met:**
+  - JWT verification is stateless + secret-driven (`verifyToken` uses only `JWT_SECRET`; no session store), proven by new cross-instance tests.
+  - Production boot fails fast on missing `JWT_SECRET` (`initAuth` throws), with a test.
+  - Rate limiting is thoroughly documented as per-instance in `auth-setup.md` (the ticket explicitly allows this over Redis), and I verified the doc's claims against the code.
+  - 4 new tests + 59 existing auth tests pass.
+  - Single-instance behavior unchanged — the only production change is a one-line doc comment.
+
+This is a readiness/documentation ticket and the deliverable matches its intent. No blocking gaps and no genuine nits, so I did not write `gaps.md` or `nits.md`.
+
+I did not edit any game code, TASKS.md, or git state — only the review file.

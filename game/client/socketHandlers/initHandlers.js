@@ -34,5 +34,6 @@ export function bindInitHandlers(s, ctx) {
 		if (ctx.lobbyBrowserStatusEl) {
 			ctx.lobbyBrowserStatusEl.textContent = 'Choose a lobby or create your own.';
 		}
+		ctx.handleLobbyDeepLinkAfterInit(data.lobbies);
 	});
 }

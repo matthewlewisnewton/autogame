@@ -22,6 +22,7 @@ const { InMemoryProvider, FileProvider } = providers;
 const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked } = require('./users');
 const { DEFAULT_COSMETIC, backfillCosmetic, backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
 const { verifyToken, initAuth, getJWTSecret, startRateLimitSweep, stopRateLimitSweep } = require('./auth');
+const { attachFlyReplayRouting } = require('./flyReplayHook');
 const {
   mulberry32,
   generateLayout,
@@ -78,7 +79,9 @@ const {
   MAX_GROUND_ENCHANTMENTS_PER_PLAYER,
   MAX_HAND_SLOTS,
 } = require('./config');
+const { closeRedis, isRedisEnabled, createPubSubClients } = require('./redis');
 const lobbies = require('./lobbies');
+const { publishLocalLobbies, listGlobalLobbySummaries } = require('./lobbyBrowser');
 const { PHASES, isLobbyPhase, isPlayingPhase } = lobbies;
 const {
   syncHubPresenceFromLobby,
@@ -404,8 +407,15 @@ function getLobbyForSocket(socket) {
   return lobbies.getLobbyForPlayer(socket.playerId);
 }
 
-function broadcastLobbyList() {
-  io.emit(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, { lobbies: lobbies.listLobbySummaries() });
+async function broadcastLobbyList() {
+  try {
+    await publishLocalLobbies();
+    const lobbyList = await listGlobalLobbySummaries();
+    io.emit(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, { lobbies: lobbyList });
+  } catch (err) {
+    console.error('[lobbyBrowser] broadcastLobbyList failed:', err);
+    io.emit(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, { lobbies: lobbies.listLobbySummaries() });
+  }
 }
 
 // Initialize simulation and progression modules with gameState and timeouts
@@ -477,6 +487,8 @@ function clearAllTimers() {
   for (const id of _timeouts) clearTimeout(id);
   _timeouts.length = 0;
   stopRateLimitSweep();
+  resetSocketIoAdapter();
+  closeRedis();
 }
 
 function restartBackgroundTimers() {
@@ -1024,6 +1036,7 @@ function installMainProcessErrorHandlers() {
     _harnessReady = false;
     logServerFault(`[server] ${signal} received — closing HTTP server`);
     try {
+      closeRedis();
       saveAllPlayersInAllLobbies();
       if (typeof server.closeAllConnections === 'function') {
         server.closeAllConnections();
@@ -1074,6 +1087,19 @@ let _routesMounted = false;
 // Track whether Socket.IO middleware has been registered — prevents stacking
 // on repeated startServer() calls.
 let _middlewareRegistered = false;
+// Track whether production static middleware has been mounted — separate from
+// _routesMounted so static serving can be added after API routes are already up.
+let _staticMounted = false;
+// Track whether the Redis adapter has been attached — prevents stacking
+// duplicate pub/sub clients on repeated startServer() calls in tests.
+let _redisAdapterAttached = false;
+
+function resetSocketIoAdapter() {
+  if (!_redisAdapterAttached) return;
+  const { Adapter } = require('socket.io-adapter');
+  io.adapter(Adapter);
+  _redisAdapterAttached = false;
+}
 
 function withLobbyFromSocket(socket, fn) {
   const lobby = getLobbyForSocket(socket);
@@ -1799,6 +1825,34 @@ function startServer(port) {
     _routesMounted = true;
   }
 
+  attachFlyReplayRouting(server, app, io);
+
+  // Serve the built Vite client from the same origin as /api and /socket.io
+  // in production mode. Placed AFTER /api and /admin so those routes win.
+  // Guarded separately from _routesMounted so static middleware can be added
+  // even when API routes were already mounted by a prior startServer() call
+  // (e.g., tests that switch NODE_ENV between runs).
+  if (process.env.NODE_ENV === 'production' && !_staticMounted) {
+    const clientDist = path.resolve(__dirname, '..', 'client', 'dist');
+    if (fs.existsSync(clientDist)) {
+      // SPA history-api fallback: rewrite non-API, non-existent paths to /index.html
+      // BEFORE express.static() so the static middleware serves the right file.
+      app.use((req, _res, next) => {
+        if (!req.path.startsWith('/api')) {
+          const filePath = path.join(clientDist, req.path);
+          if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+            req.url = '/index.html';
+          }
+        }
+        next();
+      });
+      app.use(express.static(clientDist));
+    } else {
+      console.warn(`[server] Client dist not found at ${clientDist} — static serving skipped (run "pnpm build" in game/client first)`);
+    }
+    _staticMounted = true;
+  }
+
   // In test mode, clear the in-memory users Map to prevent contamination
   // from prior test files sharing the same module instance.  This pairs
   // with setTestFilePath() / clearUsers() called in test beforeEach hooks.
@@ -1841,6 +1895,13 @@ function startServer(port) {
   // Clear any previously created intervals/timeouts (from prior test runs)
   clearAllTimers();
   restartBackgroundTimers();
+
+  if (isRedisEnabled() && !_redisAdapterAttached) {
+    const { createAdapter } = require('@socket.io/redis-adapter');
+    const { pubClient, subClient } = createPubSubClients();
+    io.adapter(createAdapter(pubClient, subClient));
+    _redisAdapterAttached = true;
+  }
 
   // Restart the rate-limit sweep after clearing all timers
   startRateLimitSweep();
@@ -1949,21 +2010,40 @@ function startServer(port) {
     registerPlayerSocket(playerId, socket);
     console.log(`Player connected: socket=${socket.id}, playerId=${playerId}`);
 
-    socket.emit(SERVER_TO_CLIENT.INIT, {
-      id: playerId,
-      playerId,
-      accountId,
-      username,
-      inLobby: !!lobbies.getLobbyForPlayer(playerId),
-      selectedDeck: sessionPlayer.selectedDeck,
-      inventory: sessionPlayer.inventory,
-      ownedCards: sessionPlayer.ownedCards,
-      lobbies: lobbies.listLobbySummaries(),
-      keyItemDefs: KEY_ITEM_DEFS,
-      enemyDisplayCatalog: buildEnemyDisplayCatalog(),
-    });
+    void (async () => {
+      const lobbyList = await listGlobalLobbySummaries();
+      socket.emit(SERVER_TO_CLIENT.INIT, {
+        id: playerId,
+        playerId,
+        accountId,
+        username,
+        inLobby: !!lobbies.getLobbyForPlayer(playerId),
+        selectedDeck: sessionPlayer.selectedDeck,
+        inventory: sessionPlayer.inventory,
+        ownedCards: sessionPlayer.ownedCards,
+        lobbies: lobbyList,
+        keyItemDefs: KEY_ITEM_DEFS,
+        enemyDisplayCatalog: buildEnemyDisplayCatalog(),
+      });
 
-    broadcastLobbyList();
+      void broadcastLobbyList();
+    })().catch((err) => {
+      console.error('[socket:connection] init lobby list failed:', err && err.stack ? err.stack : err);
+      socket.emit(SERVER_TO_CLIENT.INIT, {
+        id: playerId,
+        playerId,
+        accountId,
+        username,
+        inLobby: !!lobbies.getLobbyForPlayer(playerId),
+        selectedDeck: sessionPlayer.selectedDeck,
+        inventory: sessionPlayer.inventory,
+        ownedCards: sessionPlayer.ownedCards,
+        lobbies: lobbies.listLobbySummaries(),
+        keyItemDefs: KEY_ITEM_DEFS,
+        enemyDisplayCatalog: buildEnemyDisplayCatalog(),
+      });
+      void broadcastLobbyList();
+    });
     } catch (err) {
       console.error('[socket:connection] setup error:', err && err.stack ? err.stack : err);
       try {

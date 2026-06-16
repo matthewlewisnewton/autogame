@@ -14,6 +14,7 @@ if (typeof HTMLCanvasElement !== 'undefined') {
 
 // ── Mock socket.io-client ──
 const emitLog = [];
+const ioCallLog = [];
 const handlerLog = {}; // event -> array of callbacks (keyed by "socketId:event")
 let socketConnected = true;
 let socketCounter = 0; // tracks how many times io() was called
@@ -54,7 +55,10 @@ function createMockSocket() {
 	};
 }
 
-const ioMock = function() { return createMockSocket(); };
+const ioMock = function(config) {
+	ioCallLog.push(config || {});
+	return createMockSocket();
+};
 
 // ── Set up localStorage with a fake JWT token ──
 // main.js reads `autogame_token` from localStorage at module load time.
@@ -146,9 +150,12 @@ if (typeof window !== 'undefined') {
 	window.__resetSocketHandlersForTest = () => {
 		for (const key of Object.keys(handlerLog)) delete handlerLog[key];
 		emitLog.length = 0;
+		ioCallLog.length = 0;
 		socketCounter = 0;
 		ioDisconnected = false;
 	};
+	window.__ioCallLog = () => ioCallLog;
+	window.__clearIoCallLog = () => { ioCallLog.length = 0; };
 	window.__triggerSocketEvent = function(event, data) {
 		// handlerLog is keyed by "socketId:event" — find all matching handlers
 		for (const key of Object.keys(handlerLog)) {

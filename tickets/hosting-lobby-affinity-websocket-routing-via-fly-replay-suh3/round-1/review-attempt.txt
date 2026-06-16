@@ -1,0 +1,16 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health (gate):** `metrics.json` shows `"ok": true`, empty `pageerrors`, no `harness_failure`; `console.log` has no `pageerror`/`[fatal]` lines. Both players reach the `playing` phase cleanly. The lone `409 Conflict` is the harness's second-user registration (pre-existing auth noise) — unrelated to this ticket, since the Fly-Replay middleware isn't even attached without `FLY_MACHINE_ID`. **Game runs.**
+
+**Acceptance criteria** — all five clauses verified against the live tree:
+1. ✅ Cross-instance connection replays to owner via `fly-replay: instance=<owner>` (server hook on both `io.engine.use` and the `upgrade` listener).
+2. ✅ Self-owned lobbies not replayed.
+3. ✅ `createLobby` records owner in Redis `lobby:owners` under `FLY_MACHINE_ID`; owner-unknown claims self.
+4. ✅ Off-Fly/single-instance is a no-op — `attachFlyReplayRouting` doesn't attach, routing stays `self`; captured run played normally.
+5. ✅ Thoroughly unit-tested with machine id + registry mocked — **35 server tests + 6 client tests, all green**.
+
+End-to-end coherence confirmed: the client only forwards affinity (`lobbyId` query + `fly-force-instance-id`) when summaries carry `instanceId`, which arrives via the pre-existing global browser; otherwise it preserves the legacy single-instance join path. The `?lobby=` deep link is a documented production join-link, not a debug shortcut.
+
+No blocking gaps. Two non-blocking nits filed in `nits.md` (verify the `101` status line against Fly's Fly-Replay contract; comment that the extra header is polling-only). No `gaps.md` written, per the PASS protocol.

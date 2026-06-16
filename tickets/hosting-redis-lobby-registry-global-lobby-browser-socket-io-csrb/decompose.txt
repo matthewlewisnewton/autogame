@@ -1,0 +1,21 @@
+Broke the top-level ticket into **4 sub-tickets** in dependency order. Each is independently implementable in one focused pass and uses **code** verification (handlers, Redis state, adapter wiring, tests — not screenshot-only QA).
+
+### Sub-ticket plan
+
+| # | Scope |
+|---|--------|
+| **01** | `ioredis` + in-memory shim, `INSTANCE_ID`, pub/sub client factory, test reset hooks |
+| **02** | `@socket.io/redis-adapter` wired in `startServer()` when Redis enabled |
+| **03** | `lobby:owners` registry — register on `createLobby`, unregister on lobby delete |
+| **04** | Per-instance summary publish + `listGlobalLobbySummaries()` union for browser payloads |
+
+When `REDIS_URL` is unset, 02–04 are no-ops and behavior stays identical to today.
+
+### Created sub-ticket folders
+
+```
+/home/matt/workspace/.autogame-worktrees/hosting-redis-lobby-registry-global-lobby-browser-socket-io-csrb/tickets/hosting-redis-lobby-registry-global-lobby-browser-socket-io-csrb/subtickets/01-redis-client-foundation/ticket.md
+/home/matt/workspace/.autogame-worktrees/hosting-redis-lobby-registry-global-lobby-browser-socket-io-csrb/tickets/hosting-redis-lobby-registry-global-lobby-browser-socket-io-csrb/subtickets/02-socket-io-redis-adapter/ticket.md
+/home/matt/workspace/.autogame-worktrees/hosting-redis-lobby-registry-global-lobby-browser-socket-io-csrb/tickets/hosting-redis-lobby-registry-global-lobby-browser-socket-io-csrb/subtickets/03-lobby-instance-registry/ticket.md
+/home/matt/workspace/.autogame-worktrees/hosting-redis-lobby-registry-global-lobby-browser-socket-io-csrb/tickets/hosting-redis-lobby-registry-global-lobby-browser-socket-io-csrb/subtickets/04-global-lobby-browser/ticket.md
+```
