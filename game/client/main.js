@@ -4897,12 +4897,16 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		locked: runEncounter.locked,
 	} : null;
 	// Mirror the server's isRunObjectiveComplete so a test can watch the flip.
+	const runEscort = gameState?.run?.escort;
 	const runObjectiveComplete = !!objective && (
 		objective.type === 'collect_items'
 			? (objective.collectedItems ?? 0) >= (objective.totalItems ?? 0)
 			: objective.type === 'stage_boss'
 				? objective.bossDefeated === true
-				: (objective.defeatedEnemies ?? 0) >= (objective.totalEnemies ?? 0)
+				: objective.type === 'escort'
+					? (runObjective?.reachedDestination === true || runEscort?.atDestination === true)
+						&& runEscort?.failed !== true
+					: (objective.defeatedEnemies ?? 0) >= (objective.totalEnemies ?? 0)
 	);
 
 	const sortieCompleteOverlayVisible = !!runSummaryOverlay
