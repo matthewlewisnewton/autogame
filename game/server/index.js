@@ -17,7 +17,8 @@ const {
   getLayoutGenerationOptions,
   buildQuestUpdatePayload
 } = require('./quests');
-const { InMemoryProvider, FileProvider } = require('./providers');
+const providers = require('./providers');
+const { InMemoryProvider, FileProvider } = providers;
 const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked } = require('./users');
 const { DEFAULT_COSMETIC, backfillCosmetic, backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
 const { verifyToken, initAuth, getJWTSecret, startRateLimitSweep, stopRateLimitSweep } = require('./auth');
@@ -1820,6 +1821,13 @@ function startServer(port) {
   } else if (process.env.PERSISTENCE_BACKEND === 'memory') {
     setTestProvider(new InMemoryProvider());
     console.log('[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)');
+  } else if (process.env.PERSISTENCE_BACKEND === 'postgres') {
+    const databaseUrl = process.env.DATABASE_URL;
+    if (!databaseUrl || !String(databaseUrl).trim()) {
+      throw new Error('PERSISTENCE_BACKEND=postgres requires DATABASE_URL to be set');
+    }
+    setTestProvider(new providers.PostgresProvider(databaseUrl));
+    console.log('[persistence] PostgresProvider initialized');
   } else {
     setTestProvider(new FileProvider(dataPath));
     console.log(`[persistence] FileProvider initialized at ${dataPath}`);
