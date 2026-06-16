@@ -33,6 +33,7 @@ function pruneExpiredBuckets() {
 
 /**
  * Start the periodic sweep that prunes expired rate-limit buckets.
+ * Per-instance in-memory only; see game/docs/auth-setup.md (Auth rate limiting).
  * Returns the interval ID (stored in `_rateLimitSweepInterval`).
  * Idempotent — calling again when already started is a no-op.
  */
