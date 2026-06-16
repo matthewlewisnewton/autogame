@@ -1865,7 +1865,7 @@ function startServer(port) {
   // Default is FileProvider for durable persistence across restarts.
   // Set PERSISTENCE_BACKEND=memory to opt into the ephemeral in-memory provider.
   const dataPath = process.env.PERSISTENCE_PATH || path.resolve(__dirname, '..', 'data');
-  const { initSettingsPath } = require('./settings');
+  const { initSettingsPath, initSettingsWithProvider } = require('./settings');
   initSettingsPath(dataPath);
 
   if (process.env.NODE_ENV === 'test') {
@@ -1886,6 +1886,10 @@ function startServer(port) {
     setTestProvider(new FileProvider(dataPath));
     console.log(`[persistence] FileProvider initialized at ${dataPath}`);
   }
+
+  // Wire settings I/O through the StorageProvider so settings persist
+  // via the same backend (File/InMemory/Postgres) as player data.
+  initSettingsWithProvider(getProvider());
 
   // Remove previous connection handlers so repeated calls (in tests) don't stack
   io.removeAllListeners('connection');

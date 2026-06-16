@@ -245,6 +245,17 @@ const cases = {
 			dispose(ctx);
 		}
 	},
+
+	'accepts UUID-shaped accountIds for settings': () => {
+		const ctx = createProvider();
+		try {
+			const uuid = '550e8400-e29b-41d4-a716-446655440000';
+			ctx.provider.saveSettings(uuid, sampleSettings);
+			assert.deepEqual(ctx.provider.loadSettings(uuid), sampleSettings);
+		} finally {
+			dispose(ctx);
+		}
+	},
 };
 
 const only = process.argv[2];

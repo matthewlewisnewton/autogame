@@ -91,4 +91,8 @@ describe('PostgresProvider', () => {
 	it('rejects a traversal accountId on settings load', () => {
 		runPgmemCase('rejects a traversal accountId on settings load');
 	});
+
+	it('accepts UUID-shaped accountIds for settings', () => {
+		runPgmemCase('accepts UUID-shaped accountIds for settings');
+	});
 });
