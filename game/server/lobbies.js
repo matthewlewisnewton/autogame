@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { createGameState } = require('./game-state');
 const { createEmptyHubPresence } = require('./hubPresence');
+const { registerLobby, unregisterLobby } = require('./lobbyRegistry');
 
 /** @typedef {import('./index').GameState} GameState */
 
@@ -212,6 +213,9 @@ function createLobby(name) {
   };
   lobbies.set(id, lobby);
   lobby.state._lobbyId = id;
+  registerLobby(id).catch((err) => {
+    console.error('[lobbyRegistry] registerLobby failed:', err);
+  });
   return lobby;
 }
 
@@ -242,6 +246,9 @@ function removePlayerFromLobby(playerId) {
 
   const remaining = Object.keys(lobby.state.players).length;
   if (remaining === 0) {
+    unregisterLobby(lobbyId).catch((err) => {
+      console.error('[lobbyRegistry] unregisterLobby failed:', err);
+    });
     lobbies.delete(lobbyId);
     return { lobby, deleted: true };
   }
