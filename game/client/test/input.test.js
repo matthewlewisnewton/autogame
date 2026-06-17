@@ -582,4 +582,72 @@ describe('input.js', () => {
 		pollInput();
 		expect(onUseKeyItem).not.toHaveBeenCalled();
 	});
+
+	it('keyboard F triggers onInteract', () => {
+		const onInteract = vi.fn();
+		initInput({ onInteract });
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f' }));
+		expect(onInteract).toHaveBeenCalledTimes(1);
+	});
+
+	it('gamepad D-pad Up (button 12) triggers onInteract — standard profile', () => {
+		const onInteract = vi.fn();
+		initInput({ onInteract });
+		const buttons = Array(16).fill({ pressed: false, value: 0 });
+		buttons[12] = { pressed: true, value: 1 };
+		mockGamepad(0, { buttons, axes: [0, 0, 0, 0] });
+		pollInput();
+		expect(onInteract).toHaveBeenCalledTimes(1);
+	});
+
+	it('gamepad D-pad Up triggers onInteract — 8BitDo 64 profile', () => {
+		patchSettings({ gamepad: { profile: '8bitdo-64' } });
+		const onInteract = vi.fn();
+		initInput({ onInteract });
+		const buttons = Array(16).fill({ pressed: false, value: 0 });
+		buttons[12] = { pressed: true, value: 1 };
+		mockGamepad(0, {
+			id: '8BitDo 64 (Vendor: 2dc8 Product: 1930)',
+			buttons,
+			axes: [0, 0, 0, 0],
+		});
+		pollInput();
+		expect(onInteract).toHaveBeenCalledTimes(1);
+	});
+
+	it('gamepad interact fires when canUseGameActions returns false', () => {
+		const onInteract = vi.fn();
+		initInput({
+			onInteract,
+			canUseGameActions: () => false,
+		});
+		const buttons = Array(16).fill({ pressed: false, value: 0 });
+		buttons[12] = { pressed: true, value: 1 };
+		mockGamepad(0, { buttons, axes: [0, 0, 0, 0] });
+		pollInput();
+		expect(onInteract).toHaveBeenCalledTimes(1);
+	});
+
+	it('gamepad interact is edge-triggered (no repeat on hold)', () => {
+		const onInteract = vi.fn();
+		initInput({ onInteract });
+		const buttons = Array(16).fill({ pressed: false, value: 0 });
+		buttons[12] = { pressed: true, value: 1 };
+		mockGamepad(0, { buttons, axes: [0, 0, 0, 0] });
+		pollInput();
+		expect(onInteract).toHaveBeenCalledTimes(1);
+		// Second poll with button still held should NOT re-fire
+		pollInput();
+		expect(onInteract).toHaveBeenCalledTimes(1);
+		// Release button
+		buttons[12] = { pressed: false, value: 0 };
+		mockGamepad(0, { buttons, axes: [0, 0, 0, 0] });
+		pollInput();
+		expect(onInteract).toHaveBeenCalledTimes(1);
+		// Press again — should fire once more
+		buttons[12] = { pressed: true, value: 1 };
+		mockGamepad(0, { buttons, axes: [0, 0, 0, 0] });
+		pollInput();
+		expect(onInteract).toHaveBeenCalledTimes(2);
+	});
 });
