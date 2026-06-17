@@ -82,6 +82,7 @@ const {
   MAX_HAND_SLOTS,
 } = require('./config');
 const { closeRedis, isRedisEnabled, createPubSubClients } = require('./redis');
+const { unregisterLobby } = require('./lobbyRegistry');
 const lobbies = require('./lobbies');
 const { publishLocalLobbies, listGlobalLobbySummaries } = require('./lobbyBrowser');
 const { PHASES, isLobbyPhase, isPlayingPhase } = lobbies;
@@ -1614,6 +1615,9 @@ function reapAbandonedLobbies() {
 
   for (const [lobbyId, lobby] of lobbies._lobbies) {
     if (Object.keys(lobby.state.players).length === 0) {
+      unregisterLobby(lobbyId).catch((err) => {
+        console.error('[lobbyRegistry] unregisterLobby failed:', err);
+      });
       lobbies._lobbies.delete(lobbyId);
       reapedAny = true;
       continue;
