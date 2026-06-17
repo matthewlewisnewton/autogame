@@ -63,6 +63,17 @@ async function queryUserCosmeticBodyColorFromDb(sharedPool, accountId) {
 	return rows[0]?.body_color ?? null;
 }
 
+/** Profile fields returned by GET /api/me (excluding settings and catalog metadata). */
+function buildApiMeProfileFromUser(user) {
+	return {
+		accountId: user.accountId,
+		username: user.username,
+		email: user.email || null,
+		cosmetic: user.cosmetic,
+		unlockedHats: user.unlockedHats,
+	};
+}
+
 describe('users postgres provider cross-instance', () => {
 	let pool;
 	let providerA;
@@ -170,6 +181,28 @@ describe('users postgres provider cross-instance', () => {
 		).toBe(true);
 		expect(await queryUserEmailFromDb(pool, created.accountId)).toBe('survive@example.com');
 		expect(await queryUserCosmeticBodyColorFromDb(pool, created.accountId)).toBe('#ff0000');
+	});
+
+	it('stale instance B GET /api/me profile shape reflects email updated on A', async () => {
+		await bootColdInstance(providerA, { preload: true });
+		const created = await createUserAsync(USERNAME, PASSWORD);
+		expect(created.ok).toBe(true);
+
+		await bootColdInstance(providerB, { preload: true });
+		const staleRecord = structuredClone(findUserByAccountId(created.accountId));
+		expect(staleRecord.email).toBeUndefined();
+
+		await bootColdInstance(providerA, { preload: true });
+		expect((await updateProfile(created.accountId, { email: 'crosstest@example.com' })).ok).toBe(true);
+		expect(await queryUserEmailFromDb(pool, created.accountId)).toBe('crosstest@example.com');
+
+		await bootColdInstance(providerB);
+		cacheUserRecordForTest(staleRecord);
+		expect(findUserByAccountId(created.accountId).email).toBeUndefined();
+
+		const refreshed = await findUserByAccountIdAsync(created.accountId);
+		const mePayload = buildApiMeProfileFromUser(refreshed);
+		expect(mePayload.email).toBe('crosstest@example.com');
 	});
 
 	it('findUserByAccountIdAsync refreshes stale cross-instance cache after profile update on A', async () => {

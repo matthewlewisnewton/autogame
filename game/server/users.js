@@ -379,10 +379,11 @@ async function findUserByAccountIdAsync(accountId) {
 		return findUserByAccountId(accountId);
 	}
 	const record = await _usersProvider.loadUserByAccountId(accountId);
-	if (!record) {
-		return null;
+	if (record) {
+		return hydrateRecord(record);
 	}
-	return hydrateRecord(record);
+	// Dev/test: sync createUser may seed in-memory cache without provider persistence.
+	return findUserByAccountId(accountId);
 }
 
 /**

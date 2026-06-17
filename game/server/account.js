@@ -3,7 +3,7 @@
 const { Router } = require('express');
 const { getSessionTokenFromRequest } = require('./cookies.js');
 const { getSession } = require('./sessions.js');
-const { findUserByAccountId, updateProfile } = require('./users');
+const { findUserByAccountId, findUserByAccountIdAsync, updateProfile } = require('./users');
 const { getSettings, updateSettings } = require('./settings');
 const { HAT_CATALOG, MODEL_IDS, PROPORTION_KEYS, PROPORTION_RANGES, validateCosmetic, backfillCosmetic } = require('./cosmetic');
 const { hasAppearanceFieldChanges } = require('../shared/cosmeticAppearance.js');
@@ -32,7 +32,7 @@ async function requireAuth(req, res, next) {
 			return res.status(401).json({ error: 'Invalid or expired token' });
 		}
 		req.accountId = session.accountId;
-		const user = findUserByAccountId(session.accountId);
+		const user = await findUserByAccountIdAsync(session.accountId);
 		if (user) {
 			req.username = user.username;
 		}
@@ -48,7 +48,7 @@ router.use(requireAuth);
  * GET /api/me — profile + settings
  */
 router.get('/me', async (req, res) => {
-	const user = findUserByAccountId(req.accountId);
+	const user = await findUserByAccountIdAsync(req.accountId);
 	if (!user) {
 		return res.status(404).json({ error: 'Account not found' });
 	}
@@ -118,7 +118,7 @@ router.patch('/me/profile', async (req, res) => {
 		return res.status(status).json({ error: result.reason });
 	}
 
-	const user = findUserByAccountId(req.accountId);
+	const user = await findUserByAccountIdAsync(req.accountId);
 	if (cosmetic !== undefined) {
 		const { syncLivePlayerCosmetic } = require('./index');
 		syncLivePlayerCosmetic(req.accountId, user.cosmetic);
