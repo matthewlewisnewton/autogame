@@ -25,8 +25,11 @@ const {
 	_rateLimitBuckets,
 	RATE_LIMIT_WINDOW_MS,
 	pruneExpiredBuckets,
-	getRateLimitSweepInterval
+	getRateLimitSweepInterval,
+	getJWTSecret,
+	verifyToken,
 } = auth;
+const jwt = requireCJS('jsonwebtoken');
 
 const { SESSION_COOKIE_NAME } = requireCJS('../cookies.js');
 const { getSession } = requireCJS('../sessions.js');
@@ -87,6 +90,24 @@ function expectSessionCookieAttributes(setCookieValue) {
 }
 
 /**
+ * Assert the response body includes a valid JWT for socket auth.
+ */
+function expectValidJwtToken(data, expectedAccountId, expectedUsername) {
+	expect(data.token).toBeDefined();
+	expect(typeof data.token).toBe('string');
+	expect(data.token.length).toBeGreaterThan(0);
+
+	const decoded = jwt.verify(data.token, getJWTSecret());
+	expect(decoded.accountId).toBe(expectedAccountId);
+	expect(decoded.username).toBe(expectedUsername);
+
+	const viaVerifyToken = verifyToken(data.token);
+	expect(viaVerifyToken).not.toBeNull();
+	expect(viaVerifyToken.accountId).toBe(expectedAccountId);
+	expect(viaVerifyToken.username).toBe(expectedUsername);
+}
+
+/**
  * Close the HTTP server.
  */
 async function closeTestServer() {
@@ -126,7 +147,7 @@ describe('POST /api/register', () => {
 		const data = await res.json();
 		expect(data.accountId).toBeDefined();
 		expect(typeof data.accountId).toBe('string');
-		expect(data.token).toBeUndefined();
+		expectValidJwtToken(data, data.accountId, 'alice');
 
 		const sessionToken = extractSessionTokenFromResponse(res);
 		expect(sessionToken).toBeTruthy();
@@ -275,7 +296,7 @@ describe('POST /api/login', () => {
 		});
 		expect(res.status).toBe(200);
 		const data = await res.json();
-		expect(data.token).toBeUndefined();
+		expectValidJwtToken(data, data.accountId, 'alice');
 		expect(data.accountId).toBeDefined();
 		expect(typeof data.accountId).toBe('string');
 
@@ -324,7 +345,7 @@ describe('POST /api/login', () => {
 			body: JSON.stringify({ username: 'carol', password: 'pass' })
 		});
 		const loginData = await loginRes.json();
-		expect(loginData.token).toBeUndefined();
+		expectValidJwtToken(loginData, regData.accountId, 'carol');
 		expect(loginData.accountId).toBe(regData.accountId);
 
 		const sessionToken = extractSessionTokenFromResponse(loginRes);
@@ -345,7 +366,7 @@ describe('POST /api/login', () => {
 			body: JSON.stringify({ username: 'dave', password: 'pass' })
 		});
 		const data = await res.json();
-		expect(data.token).toBeUndefined();
+		expectValidJwtToken(data, data.accountId, 'dave');
 
 		const sessionToken = extractSessionTokenFromResponse(res);
 		const session = await getSession(sessionToken);

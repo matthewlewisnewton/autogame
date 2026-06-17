@@ -174,7 +174,8 @@ function verifyToken(token) {
 /**
  * POST /api/register
  * Body: { username, password }
- * - 201 { accountId } on success
+ * - 201 { accountId, token } on success — `token` is a JWT for socket auth;
+ *   an httpOnly session cookie is also set for HTTP auth
  * - 409 { error: 'Username taken' } when username already exists
  * - 400 { error: '...' } when inputs are invalid
  */
@@ -214,9 +215,14 @@ router.post('/register', async (req, res) => {
 			return res.status(409).json({ error: 'Username taken' });
 		}
 
-		const token = await createSession(result.accountId);
-		setSessionCookie(res, token);
-		return res.status(201).json({ accountId: result.accountId });
+		const sessionToken = await createSession(result.accountId);
+		setSessionCookie(res, sessionToken);
+		const token = jwt.sign(
+			{ accountId: result.accountId, username },
+			JWT_SECRET,
+			{ expiresIn: JWT_EXPIRATION }
+		);
+		return res.status(201).json({ accountId: result.accountId, token });
 	} catch (err) {
 		console.error('[auth] registration failed:', err.message);
 		return res.status(500).json({ error: 'Registration failed' });
@@ -226,7 +232,8 @@ router.post('/register', async (req, res) => {
 /**
  * POST /api/login
  * Body: { username, password }
- * - 200 { accountId } with httpOnly session cookie set
+ * - 200 { accountId, token } on success — `token` is a JWT for socket auth;
+ *   an httpOnly session cookie is also set/refreshed for HTTP auth
  * - 401 { error: 'Invalid credentials' } on wrong password or unknown username
  */
 router.post('/login', async (req, res) => {
@@ -263,9 +270,14 @@ router.post('/login', async (req, res) => {
 		return res.status(401).json({ error: 'Invalid credentials' });
 	}
 
-	const token = await createSession(user.accountId);
-	setSessionCookie(res, token);
-	return res.status(200).json({ accountId: user.accountId });
+	const sessionToken = await createSession(user.accountId);
+	setSessionCookie(res, sessionToken);
+	const token = jwt.sign(
+		{ accountId: user.accountId, username },
+		JWT_SECRET,
+		{ expiresIn: JWT_EXPIRATION }
+	);
+	return res.status(200).json({ accountId: user.accountId, token });
 });
 
 /**
