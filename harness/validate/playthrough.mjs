@@ -15,7 +15,7 @@ import { chromium } from 'playwright';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { registerUser, injectToken, isSocketConnected } from './lib/auth.mjs';
+import { loginInBrowser, isSocketConnected } from './lib/auth.mjs';
 import {
 	enableGodmode,
 	defeatAdds,
@@ -312,11 +312,8 @@ async function runHubWalkStep({ browser, game, preset, outDirAbs }) {
 	const joinerPage = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 
 	try {
-		const hostToken = await registerUser(game.serverUrl, hostUsername, password);
-		const joinerToken = await registerUser(game.serverUrl, joinerUsername, password);
-
-		await injectToken(hostPage, hostToken, game.clientUrl);
-		await injectToken(joinerPage, joinerToken, game.clientUrl);
+		await loginInBrowser(hostPage, game.clientUrl, hostUsername, password);
+		await loginInBrowser(joinerPage, game.clientUrl, joinerUsername, password);
 		await waitForLobbyBrowser(hostPage);
 		await waitForLobbyBrowser(joinerPage);
 
@@ -613,11 +610,10 @@ async function assertHubLobbyFinder(page) {
 	return probe;
 }
 
-async function runAuthStep({ page, serverUrl, clientUrl, outDirAbs, presetName }) {
+async function runAuthStep({ page, clientUrl, outDirAbs, presetName }) {
 	const username = `playthrough-${Date.now()}`;
 	const password = 'harness-test-password';
-	const token = await registerUser(serverUrl, username, password);
-	await injectToken(page, token, clientUrl);
+	await loginInBrowser(page, clientUrl, username, password);
 	await waitForLobbyBrowser(page);
 
 	const harness = await readHarness(page);
@@ -1586,7 +1582,6 @@ async function main() {
 		if (runsHubFull) {
 			summary.auth = await runAuthStep({
 				page,
-				serverUrl: game.serverUrl,
 				clientUrl: game.clientUrl,
 				outDirAbs,
 				presetName: opts.preset,
@@ -1601,7 +1596,6 @@ async function main() {
 		} else if (page) {
 			summary.auth = await runAuthStep({
 				page,
-				serverUrl: game.serverUrl,
 				clientUrl: game.clientUrl,
 				outDirAbs,
 				presetName: opts.preset,

@@ -1,10 +1,10 @@
 /**
  * Two-player lobby helpers for hub validation playthroughs.
  */
-import { registerUser, injectToken } from './auth.mjs';
+import { loginInBrowser, isSocketConnected } from './auth.mjs';
 import { readHarness } from './harnessState.mjs';
 
-export { registerUser, injectToken };
+export { loginInBrowser, isSocketConnected };
 
 /** Hub zone room centres — must match generateHub() with HUB_CELL_SPACING = 20. */
 export const HUB_ZONE_CENTERS = {
