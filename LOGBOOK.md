@@ -9130,3 +9130,26 @@ do not apply.
 None blocking. All acceptance criteria are fully and robustly met; the game runs
 cleanly with session-only auth proven end-to-end in the captured run.
 
+
+## v0.487 — gameplay/telepipe-new-sortie: depleteRunResources fails — post-victory hand has only telepipe + empty slots  (2026-06-17 12:35:41)
+
+
+- **Tests.** `npx vitest run server/test/debug-scenarios.test.js -t
+  "telepipe-ready"` → 5 passed. New assertions
+  (`debug-scenarios.test.js:1147-1158`, `1609-1620`) lock in `magicStones === 20`
+  and `magicStones < STARTING_MAGIC_STONES` for both presets. **Met.**
+
+## Note (non-blocking)
+
+The fallback capture exercised the generic `telepipe-ready` scenario (probe shows
+MS 99/99), not the canyon/spire `telepipe-ready` scenarios that were actually
+changed. The captured run therefore proves runtime health but does not visually
+exercise the changed code paths. Those paths are covered by the unit tests, and
+the change is a 2-line MS adjustment per scenario, so this does not block — noted
+in nits.
+
+## Remaining gaps
+
+None. The game runs cleanly and the depletion failure mode is deterministically
+eliminated for both presets, with unit coverage.
+

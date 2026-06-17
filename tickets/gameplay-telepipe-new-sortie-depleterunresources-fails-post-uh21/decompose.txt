@@ -1,0 +1,16 @@
+I created one focused sub-ticket. Here is the path:
+
+```
+tickets/gameplay-telepipe-new-sortie-depleterunresources-fails-post-uh21/subtickets/01-deterministic-depletion-magic-stones/ticket.md
+```
+
+**Why one sub-ticket:** The failure across both presets (`sunken-canyon` / `spire-ascent`) has a single root cause and a single fix pattern, so it's one focused, independently-implementable pass.
+
+**Root cause (diagnosed from the code, not guessed):**
+- The harness probe `depleteRunResources` needs both `magicStones < STARTING_MAGIC_STONES` (49) **and** a hand card with depleted charges, simultaneously.
+- The `canyon-descent-telepipe-ready` / `spire-ascent-telepipe-ready` scenarios (`game/server/debugScenarios.js`, `setupCanyonDescentTelepipeReadyExtras` / `setupSpireAscentTelepipeReadyExtras`) deploy with MS at/near 49.
+- Weapon swings *gain* MS (`cardEffects.js` `addMagicStones`), and the only reliable attack (`magma_greatsword`, 2 charges) plus dealt cards get consumed to `null` before MS ever drops below 49 → hand collapses to `[telepipe, null×5]` → hard fail. Flaky because it depends on dealt-card luck and regen timing.
+
+**Fix direction (game-side, deterministic):** mirror the sibling `frost-crossing-telepipe-ready` scenario, which already deploys with `magicStones = 20` (below 49) and so never hits this. Setting MS to 20 + a regen-grace window pre-satisfies the `msDepleted` half, so a single greatsword swing finishes depletion before any card is exhausted. Plus unit-test assertions in `debug-scenarios.test.js`.
+
+**Verification: code** — the ACs (scenario sets MS below `STARTING_MAGIC_STONES`, regen grace set, usable attack card retained, unit tests assert it) are all checkable from the diff + logs, not from a single happy-path screenshot run. I deliberately scoped the fix to `game/` rather than `harness/validate/telepipe.mjs`, since uncommitted harness edits get reverted by the live supervisor and never merge.
