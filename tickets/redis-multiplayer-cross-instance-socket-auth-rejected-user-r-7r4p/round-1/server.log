@@ -1,0 +1,14 @@
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/redis-multiplayer-cross-instance-socket-auth-rejected-user-r-7r4p/game/data
+[users] Loaded 2 user record(s) from storage provider
+Server listening on port 3005
+Player connected: socket=yHQuhRyaugQ3imfTAAAD, playerId=f3083269-4050-4417-84ca-9582e87cc47f
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=8cH6c6SxvdnckgFUAAAH, playerId=2582e965-09a1-4410-b31f-200250967ae2
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=163d5cdc-6349-4312-b39f-9778d2d110e9 value=14
+Player disconnected: yHQuhRyaugQ3imfTAAAD
+Player disconnected: 8cH6c6SxvdnckgFUAAAH
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

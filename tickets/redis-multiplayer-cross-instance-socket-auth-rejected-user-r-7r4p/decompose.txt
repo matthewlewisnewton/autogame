@@ -1,0 +1,21 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+All 4 sub-tickets are created. Here's the summary:
+
+```
+tickets/redis-multiplayer-cross-instance-socket-auth-rejected-user-r-7r4p/subtickets/
+├── 01-add-loadUserByAccountId-to-providers/ticket.md
+├── 02-add-findUserByAccountIdAsync/ticket.md
+├── 03-socket-auth-middleware-lazy-load/ticket.md
+└── 04-cross-instance-auth-tests/ticket.md
+```
+
+**Decomposition logic:**
+
+| # | Sub-ticket | What it does | Dependency |
+|---|-----------|-------------|------------|
+| 01 | `loadUserByAccountId()` on providers | Add the storage-layer lookup method to InMemory, File, and Postgres providers | — |
+| 02 | `findUserByAccountIdAsync()` in users.js | Async wrapper with cache-then-lazy-load pattern (mirrors existing `findUserByUsernameAsync`) | 01 |
+| 03 | Wire middleware to async lookup | Single-line change: `findUserByAccountId` → `await findUserByAccountIdAsync` in `io.use()` | 02 |
+| 04 | Cross-instance tests | Verify the end-to-end fix with pg-mem shared-pool tests | 03 |
+
+**Root cause:** `findUserByAccountId()` is a synchronous in-memory `Map` lookup with no database fallback. Instance B's `accountIdIndex` doesn't know about users created on Instance A after B started. The fix follows the existing `findUserByUsernameAsync` pattern — cache check first, then lazy-load from storage provider on miss, hydrating the record into both indexes.

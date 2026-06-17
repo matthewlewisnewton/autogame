@@ -1,0 +1,15 @@
+**VERDICT: PASS**
+
+Reviewed the whole ticket holistically against the live working tree.
+
+**Runtime health (gate):** `metrics.json` has `ok: true`, empty `pageerrors`, no `harness_failure`; `console.log` shows only the expected 401/409 HTTP responses from the auth flow (no pageerror/fatal). The full smoke capture ran across two instances cleanly. Full vitest suite: 2072 passed.
+
+**Acceptance criteria:** The P1 cross-instance rejection is fixed exactly per the ticket's FIX DIRECTION:
+- `loadUserByAccountId` added to all three providers + base-class stub, key-guarded, deep-cloned.
+- `findUserByAccountIdAsync` lazy-loads on cache miss and hydrates into both indexes via `hydrateRecord`.
+- The `io.use()` auth middleware (`index.js:1960`) now awaits the async finder.
+- A real cross-instance repro test (shared pg-mem pool + shared Redis shim) proves the formerly-failing path now authenticates.
+
+**Integration:** Verified the remaining sync caller `buildPlayerRecord` (`index.js:1148`) is safe — it runs only after the middleware has warmed the cache. Filed that implicit ordering dependency as a non-blocking nit in `nits.md`.
+
+No blocking gaps, so no `gaps.md` written.

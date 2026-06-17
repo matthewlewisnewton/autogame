@@ -9130,3 +9130,26 @@ do not apply.
 None blocking. All acceptance criteria are fully and robustly met; the game runs
 cleanly with session-only auth proven end-to-end in the captured run.
 
+
+## v0.491 — redis/multiplayer: cross-instance socket auth rejected — user registered on A is invisible on B (Session account not found)  (2026-06-17 14:34:29)
+
+
+## Integration check
+- Second sync caller `findUserByAccountId` at `index.js:1148`
+  (`buildPlayerRecord`) is left synchronous. This is correct: it runs inside the
+  `connection` handler, which fires only after the `io.use()` middleware has
+  already lazy-loaded and hydrated that accountId into `accountIdIndex`, so the
+  sync lookup hits the now-warm cache. No second cross-instance gap.
+- `clearUserCaches` clears only the in-memory maps and intentionally leaves
+  `_usersProvider` intact — appropriate for simulating a cold-but-wired instance.
+
+## Design / regression
+- Consistent with the multi-instance auth design (shared Redis sessions + shared
+  Postgres user store). No change to session validation, persistence, or
+  net-replication. No debug-scenario shortcuts were added or touched. No
+  foundation regression — full suite green.
+
+## Remaining gaps
+None blocking. One minor robustness nit (sync lookup at `index.js:1148` relies on
+middleware ordering) is recorded in `nits.md`.
+
