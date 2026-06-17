@@ -19,7 +19,7 @@ const {
 } = require('./quests');
 const providers = require('./providers');
 const { InMemoryProvider, FileProvider } = providers;
-const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked } = require('./users');
+const { findUserByAccountId, findUserByAccountIdAsync, unlockHat: unlockHatForAccount, isQuestTierUnlocked } = require('./users');
 const { DEFAULT_COSMETIC, backfillCosmetic, backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
 const { startRateLimitSweep, stopRateLimitSweep } = require('./auth');
 const { parseCookies } = require('./cookies');
@@ -1957,7 +1957,7 @@ async function startServer(port) {
         return next(new Error('Invalid session account id'));
       }
 
-      const user = findUserByAccountId(session.accountId);
+      const user = await findUserByAccountIdAsync(session.accountId);
       if (!user) {
         return next(new Error('Session account not found'));
       }
