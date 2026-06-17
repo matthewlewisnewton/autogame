@@ -199,3 +199,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [415-cleanup-8bitdo-lock-on-z-should-recenter-camera-behind-player-c-stic-jpld](tickets/415-cleanup-8bitdo-lock-on-z-should-recenter-camera-behind-player-c-stic-jpld/)
 - [ ] [415-cleanup-lobby-interact-f-key-and-all-gamepad-buttons-does-nothing-ca-tob5](tickets/415-cleanup-lobby-interact-f-key-and-all-gamepad-buttons-does-nothing-ca-tob5/)
 - [ ] [415-cleanup-hosting-make-storageprovider-async-and-remove-deasync-perf-u-3qd3](tickets/415-cleanup-hosting-make-storageprovider-async-and-remove-deasync-perf-u-3qd3/)
+- [ ] [416-cleanup-hosting-account-credential-store-users-json-is-file-local-br-rdeu](tickets/416-cleanup-hosting-account-credential-store-users-json-is-file-local-br-rdeu/)

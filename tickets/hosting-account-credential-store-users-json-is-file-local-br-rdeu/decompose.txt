@@ -1,0 +1,19 @@
+Broke the top-level ticket into **5 sub-tickets** in dependency order, following the existing `players` / `settings` StorageProvider migration pattern. All use **Verification: code** (auth persistence, cross-instance behavior, and provider wiring are not verifiable from a single happy-path screenshot).
+
+**Plan summary**
+
+| # | Focus |
+|---|--------|
+| 01 | Postgres `users` table + `ensureUsersSchema` |
+| 02 | `StorageProvider` user methods in all three providers + pg-mem tests |
+| 03 | `users.js` provider delegation (`loadUsersAsync`, `persistUserAsync`, `findUserByUsernameAsync`); async login path; file fallback preserved |
+| 04 | Async mutations (`updateProfile`, `unlockHat`, quest tiers) + caller updates |
+| 05 | `index.js` startup wiring + cross-instance register/login integration tests |
+
+**Sub-ticket folder paths created:**
+
+- `/home/matt/workspace/.autogame-worktrees/hosting-account-credential-store-users-json-is-file-local-br-rdeu/tickets/hosting-account-credential-store-users-json-is-file-local-br-rdeu/subtickets/01-users-pg-schema/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/hosting-account-credential-store-users-json-is-file-local-br-rdeu/tickets/hosting-account-credential-store-users-json-is-file-local-br-rdeu/subtickets/02-provider-user-methods/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/hosting-account-credential-store-users-json-is-file-local-br-rdeu/tickets/hosting-account-credential-store-users-json-is-file-local-br-rdeu/subtickets/03-users-module-provider-delegation/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/hosting-account-credential-store-users-json-is-file-local-br-rdeu/tickets/hosting-account-credential-store-users-json-is-file-local-br-rdeu/subtickets/04-async-user-mutations-and-callers/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/hosting-account-credential-store-users-json-is-file-local-br-rdeu/tickets/hosting-account-credential-store-users-json-is-file-local-br-rdeu/subtickets/05-startup-wiring-and-multi-instance-tests/ticket.md`

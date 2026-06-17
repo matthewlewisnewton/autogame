@@ -9015,3 +9015,26 @@ state) is intact.
 None blocking. (A minor robustness nit on socket-handler rejection guarding is
 recorded in `nits.md`.)
 
+
+## v0.481 — Hosting: account/credential store (users.json) is file-local — breaks multi-instance login  (2026-06-16 23:44:39)
+
+
+`checkRunTerminalState` was restructured so the only awaited work (quest-tier persistence) runs
+*after* the `RUN_COMPLETE`/`RUN_FAILED` emit, using a captured `run` reference (and
+`buildRunSummary(status, run)` / `grantRunRewards(playerId, {status, run})`) so an async provider
+write cannot yield and swap lobby context before rewards are granted. This is a thoughtful concurrency
+fix and the e2e victory tests (`citadel_capstone_e2e`, `rift_convergence_e2e`) were updated to await
+the now-async terminal check.
+
+Path-traversal defense is extended to user keys via `assertSafeStorageKey` on `username`/`accountId`
+in all three providers. No regression to `game/docs/requirements.md` foundation.
+
+No new debug scenario was added; existing scenarios were only made async (their `completeQuestTier`/
+`unlockQuestTier` calls now awaited), so they continue to go through the same provider-backed
+persistence — no invariant bypass.
+
+## Remaining gaps
+
+None blocking. See `nits.md` for non-blocking follow-ups (fire-and-forget rejection handling on the
+unawaited `checkRunTerminalState()`/`cleanupAfterDamage()` production call sites).
+

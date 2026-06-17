@@ -1,0 +1,20 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The ticket migrates the credential/account store off file-local `users.json` onto the StorageProvider abstraction (Postgres for multi-instance, file/in-memory for default/test), on the async base the Verification note required — no deasync.
+
+**Runtime health:** `metrics.json` `ok: true`, `pageerrors: []`, no `harness_failure`. Console is clean apart from a benign `409 Conflict` from the auth capture re-registering an existing account (register-returns-409 by design, not a page/code error). Game loads, both clients reach gameplay, dodge cooldown HUD probes correctly.
+
+**Acceptance criteria — all met:**
+- `003_users.sql` adds a `users` table; `PostgresProvider` upserts on `username`; `ensureUsersSchema` runs at startup via `PostgresProvider.create()`.
+- `users.js` delegates through the provider (`loadUsersAsync`, `persistUserAsync`, `findUserByUsernameAsync` cache-miss fallback); `auth.js` login uses the async lookup so a second cold instance resolves an account it never cached. The cross-instance pg-mem test proves register-on-A / login-on-B.
+- Cosmetics + quest-tier mutations are async and persist through the provider (verified cross-instance).
+- File/in-memory fallback preserved when no provider is wired; `setTestFilePath` resets the provider.
+- pg-mem in tests; **full suite 305 files / 4322 tests passing**.
+
+**Notable quality point:** `checkRunTerminalState` was restructured to run quest-tier persistence *after* the run-complete emit using a captured `run` ref, so async writes can't swap lobby context before rewards land.
+
+**One non-blocking nit** filed (`nits.md`): the now-async `checkRunTerminalState()`/`cleanupAfterDamage()` are called fire-and-forget at several production sites without `void`/`.catch`, so a provider write failure during run completion would surface as an unhandledRejection. Behavior is correct today; this is hardening only.
+
+No `gaps.md` written (PASS).
