@@ -82,7 +82,7 @@ const {
   MAX_HAND_SLOTS,
 } = require('./config');
 const { closeRedis, isRedisEnabled, createPubSubClients } = require('./redis');
-const { unregisterLobby } = require('./lobbyRegistry');
+const { unregisterLobby, reconcileStaleLobbyOwners } = require('./lobbyRegistry');
 const lobbies = require('./lobbies');
 const { publishLocalLobbies, listGlobalLobbySummaries } = require('./lobbyBrowser');
 const { PHASES, isLobbyPhase, isPlayingPhase } = lobbies;
@@ -511,6 +511,7 @@ function restartBackgroundTimers() {
   _intervals.push(setInterval(safeIntervalTick('staleCleanup', cleanupStalePlayersInAllLobbies), STALE_CLEANUP_INTERVAL_MS));
   _intervals.push(setInterval(safeIntervalTick('evictDisconnected', evictDisconnectedPlayers), STALE_CLEANUP_INTERVAL_MS));
   _intervals.push(setInterval(safeIntervalTick('reapAbandonedLobbies', reapAbandonedLobbies), STALE_CLEANUP_INTERVAL_MS));
+  _intervals.push(setInterval(safeIntervalTick('reconcileStaleLobbyOwners', reconcileStaleLobbyOwnersSweep), STALE_CLEANUP_INTERVAL_MS));
   _intervals.push(setInterval(safeIntervalTick('periodicSave', saveAllPlayersInAllLobbies), PERIODIC_SAVE_INTERVAL_MS));
 }
 
@@ -1609,6 +1610,12 @@ function evictDisconnectedPlayers() {
  *  - A lobby with at least one connected player has its `emptySince` cleared, so
  *    reconnection within the window keeps the lobby alive.
  */
+function reconcileStaleLobbyOwnersSweep() {
+  reconcileStaleLobbyOwners(() => [...lobbies._lobbies.keys()]).catch((err) => {
+    console.error('[lobbyRegistry] reconcileStaleLobbyOwners failed:', err);
+  });
+}
+
 function reapAbandonedLobbies() {
   const now = Date.now();
   let reapedAny = false;
@@ -2198,6 +2205,7 @@ if (typeof module !== 'undefined' && module.exports) {
     cleanupStalePlayers,
     evictDisconnectedPlayers,
     reapAbandonedLobbies,
+    reconcileStaleLobbyOwnersSweep,
     reconnectPlayerToLobby,
     regenMagicStones,
     stateSnapshot,
