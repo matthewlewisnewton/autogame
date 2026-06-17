@@ -1,0 +1,16 @@
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/gameplay-telepipe-new-sortie-depleterunresources-fails-post-uh21/game/data
+[users] Loaded 1 user record(s) from storage provider
+Server listening on port 3001
+Player connected: socket=_8W1I4qOo3mouyDgAAAD, playerId=e13f04ad-b668-443a-b85f-25cee5898bc8
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[telepipe] placed at (-9.0, 27.0) by e13f04ad-b668-443a-b85f-25cee5898bc8
+[telepipe] player e13f04ad-b668-443a-b85f-25cee5898bc8 extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault
+[run] checkpoint restored
+Player disconnected: _8W1I4qOo3mouyDgAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

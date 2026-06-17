@@ -19,7 +19,7 @@ const {
 } = require('./quests');
 const providers = require('./providers');
 const { InMemoryProvider, FileProvider } = providers;
-const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked } = require('./users');
+const { findUserByAccountId, findUserByAccountIdAsync, unlockHat: unlockHatForAccount, isQuestTierUnlocked } = require('./users');
 const { DEFAULT_COSMETIC, backfillCosmetic, backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
 const { startRateLimitSweep, stopRateLimitSweep } = require('./auth');
 const { parseCookies } = require('./cookies');
@@ -82,6 +82,7 @@ const {
   MAX_HAND_SLOTS,
 } = require('./config');
 const { closeRedis, isRedisEnabled, createPubSubClients } = require('./redis');
+const { unregisterLobby, reconcileStaleLobbyOwners } = require('./lobbyRegistry');
 const lobbies = require('./lobbies');
 const { publishLocalLobbies, listGlobalLobbySummaries } = require('./lobbyBrowser');
 const { PHASES, isLobbyPhase, isPlayingPhase } = lobbies;
@@ -510,6 +511,7 @@ function restartBackgroundTimers() {
   _intervals.push(setInterval(safeIntervalTick('staleCleanup', cleanupStalePlayersInAllLobbies), STALE_CLEANUP_INTERVAL_MS));
   _intervals.push(setInterval(safeIntervalTick('evictDisconnected', evictDisconnectedPlayers), STALE_CLEANUP_INTERVAL_MS));
   _intervals.push(setInterval(safeIntervalTick('reapAbandonedLobbies', reapAbandonedLobbies), STALE_CLEANUP_INTERVAL_MS));
+  _intervals.push(setInterval(safeIntervalTick('reconcileStaleLobbyOwners', reconcileStaleLobbyOwnersSweep), STALE_CLEANUP_INTERVAL_MS));
   _intervals.push(setInterval(safeIntervalTick('periodicSave', saveAllPlayersInAllLobbies), PERIODIC_SAVE_INTERVAL_MS));
 }
 
@@ -1608,12 +1610,21 @@ function evictDisconnectedPlayers() {
  *  - A lobby with at least one connected player has its `emptySince` cleared, so
  *    reconnection within the window keeps the lobby alive.
  */
+function reconcileStaleLobbyOwnersSweep() {
+  reconcileStaleLobbyOwners(() => [...lobbies._lobbies.keys()]).catch((err) => {
+    console.error('[lobbyRegistry] reconcileStaleLobbyOwners failed:', err);
+  });
+}
+
 function reapAbandonedLobbies() {
   const now = Date.now();
   let reapedAny = false;
 
   for (const [lobbyId, lobby] of lobbies._lobbies) {
     if (Object.keys(lobby.state.players).length === 0) {
+      unregisterLobby(lobbyId).catch((err) => {
+        console.error('[lobbyRegistry] unregisterLobby failed:', err);
+      });
       lobbies._lobbies.delete(lobbyId);
       reapedAny = true;
       continue;
@@ -1957,7 +1968,7 @@ async function startServer(port) {
         return next(new Error('Invalid session account id'));
       }
 
-      const user = findUserByAccountId(session.accountId);
+      const user = await findUserByAccountIdAsync(session.accountId);
       if (!user) {
         return next(new Error('Session account not found'));
       }
@@ -2194,6 +2205,7 @@ if (typeof module !== 'undefined' && module.exports) {
     cleanupStalePlayers,
     evictDisconnectedPlayers,
     reapAbandonedLobbies,
+    reconcileStaleLobbyOwnersSweep,
     reconnectPlayerToLobby,
     regenMagicStones,
     stateSnapshot,

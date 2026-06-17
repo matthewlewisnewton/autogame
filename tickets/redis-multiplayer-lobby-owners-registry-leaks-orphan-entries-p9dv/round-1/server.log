@@ -1,0 +1,13 @@
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/redis-multiplayer-lobby-owners-registry-leaks-orphan-entries-p9dv/game/data
+[users] Loaded 2 user record(s) from storage provider
+Server listening on port 3004
+Player connected: socket=WBLoTUPtvF28QjtWAAAD, playerId=d7a4b6d7-e426-4037-9aa9-ceef63ae128b
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=fz6EWhfRuLmsS9T5AAAH, playerId=456cd373-874d-4f7e-a6a6-16b444deb38e
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: WBLoTUPtvF28QjtWAAAD
+Player disconnected: fz6EWhfRuLmsS9T5AAAH
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

@@ -368,6 +368,25 @@ function findUserByAccountId(accountId) {
 }
 
 /**
+ * Async find by accountId — when a provider is configured, always reloads from
+ * storage, backfills, re-indexes the in-memory cache, and returns the record.
+ * Without a provider, returns the same result as sync findUserByAccountId.
+ * @param {string} accountId
+ * @returns {Promise<object|null>}
+ */
+async function findUserByAccountIdAsync(accountId) {
+	if (!_usersProvider || typeof _usersProvider.loadUserByAccountId !== 'function') {
+		return findUserByAccountId(accountId);
+	}
+	const record = await _usersProvider.loadUserByAccountId(accountId);
+	if (record) {
+		return hydrateRecord(record);
+	}
+	// Dev/test: sync createUser may seed in-memory cache without provider persistence.
+	return findUserByAccountId(accountId);
+}
+
+/**
  * Find a user record by normalized email.
  * @param {string} email - raw or normalized email
  * @returns {object|null}
@@ -385,7 +404,7 @@ function findUserByEmail(email) {
  * @returns {{ ok: true, usernameChanged?: boolean } | { ok: false, reason: string }}
  */
 async function updateProfile(accountId, fields) {
-	const user = findUserByAccountId(accountId);
+	const user = await findUserByAccountIdAsync(accountId);
 	if (!user) {
 		return { ok: false, reason: 'Account not found' };
 	}
@@ -706,6 +725,11 @@ function setTestFilePath(filePath) {
 	loadUsers();
 }
 
+/** @internal test helper — index a user record into the in-memory cache. */
+function cacheUserRecordForTest(record) {
+	return hydrateRecord(record);
+}
+
 module.exports = {
 	hashPassword,
 	hashPasswordAsync,
@@ -716,6 +740,7 @@ module.exports = {
 	findUserByUsername,
 	findUserByUsernameAsync,
 	findUserByAccountId,
+	findUserByAccountIdAsync,
 	findUserByEmail,
 	updateProfile,
 	unlockHat,
@@ -734,5 +759,6 @@ module.exports = {
 	loadUsers,
 	saveUsers,
 	getUsersFilePath,
-	setTestFilePath
+	setTestFilePath,
+	cacheUserRecordForTest
 };

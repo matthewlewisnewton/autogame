@@ -1,0 +1,18 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health:** Clean. `metrics.json` reports `ok: true`, `pageerrors: []`, no `harness_failure`. The console shows a clean boot (scene init, debugScenario applied, suspend→resume succeeded), and `01-in-dungeon.png` confirms the game renders. The lone `401 Unauthorized` is the expected pre-login resource probe, not a game-code fault.
+
+**The fix:** The harness depletion probe needs `magicStones < STARTING_MAGIC_STONES` **and** a depleted-charge card simultaneously. The canyon/spire `telepipe-ready` scenarios previously deployed near-full MS, and since weapon swings *gain* MS, combat cards exhausted to `[telepipe, null×5]` before MS dropped below threshold — the flaky failure. The implementation (`game/server/debugScenarios.js:905-906`, `939-940`) deploys those two scenarios with `magicStones = 20` + a 20s regen-grace window, pre-satisfying the `msDepleted` half so a single greatsword swing completes depletion before any card exhausts.
+
+**Why it's sound:**
+- `_msRegenGraceUntil` is a real, honored mechanism (`simulation.js:4051-4055` freezes MS during the window).
+- It mirrors the established, tested `frost-crossing-telepipe-ready` pattern.
+- Scoped to `game/` (not `harness/`), correctly — uncommitted harness edits get reverted by the live supervisor.
+- No new debug entry point; it only adjusts starting MS inside existing debug scenarios without bypassing any invariant.
+- Tests pass (5 telepipe-ready tests, with new assertions locking `magicStones === 20 < STARTING_MAGIC_STONES`).
+
+**Nits (non-blocking, filed to `nits.md`):** the `20`/`20000` literals are duplicated across four scenario setups (could be named constants), and the fallback capture exercised the generic scenario rather than the changed canyon/spire presets (covered by unit tests only).
+
+No `gaps.md` written (PASS).

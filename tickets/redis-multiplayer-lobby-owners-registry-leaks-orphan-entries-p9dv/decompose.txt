@@ -1,0 +1,11 @@
+Sub-tickets created for the top-level ticket. Two passes cover both leak paths from the root-cause analysis:
+
+1. **01** — Direct fix: orphan reaper calls `unregisterLobby` (the branch that bypasses `removePlayerFromLobby`).
+2. **02** — Defense in depth: periodic reconcile sweep removes owner entries for dead instances (no `lobbies:<instanceId>` key) and local ghost entries.
+
+Both use **code** verification — acceptance criteria are about Redis hash state, handlers, and test assertions, not on-screen rendering.
+
+**Created sub-ticket folders:**
+
+- `/home/matt/workspace/.autogame-worktrees/redis-multiplayer-lobby-owners-registry-leaks-orphan-entries-p9dv/tickets/redis-multiplayer-lobby-owners-registry-leaks-orphan-entries-p9dv/subtickets/01-orphan-reaper-unregister-lobby/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/redis-multiplayer-lobby-owners-registry-leaks-orphan-entries-p9dv/tickets/redis-multiplayer-lobby-owners-registry-leaks-orphan-entries-p9dv/subtickets/02-reconcile-stale-lobby-owners/ticket.md`
