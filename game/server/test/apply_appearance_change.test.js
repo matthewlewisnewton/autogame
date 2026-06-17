@@ -12,6 +12,8 @@ import {
 	connectClient,
 	waitForEvent,
 	playerForSocket,
+	extractSessionTokenFromResponse,
+	cookieHeaders,
 } from './helpers.js';
 
 const require = createRequire(import.meta.url);
@@ -47,8 +49,9 @@ async function registerAndLogin(baseUrl, username, password = 'testpass') {
 		body: JSON.stringify({ username, password }),
 	});
 	expect(login.status).toBe(200);
-	const { token } = await login.json();
-	return { accountId, token };
+	const sessionToken = extractSessionTokenFromResponse(login);
+	expect(sessionToken).toBeTruthy();
+	return { accountId, sessionToken };
 }
 
 describe('applyAppearanceChange socket', () => {
@@ -57,7 +60,7 @@ describe('applyAppearanceChange socket', () => {
 	let fileProvider;
 	let baseUrl;
 	let accountId;
-	let token;
+	let sessionToken;
 	const initialCurrency = APPEARANCE_CHANGE_COST + 100;
 
 	beforeEach(async () => {
@@ -70,7 +73,7 @@ describe('applyAppearanceChange socket', () => {
 		users.clearUsers();
 
 		baseUrl = await startSharedTestServer();
-		({ accountId, token } = await registerAndLogin(baseUrl, 'appearance_player'));
+		({ accountId, sessionToken } = await registerAndLogin(baseUrl, 'appearance_player'));
 
 		fileProvider = new FileProvider(progressDir);
 		await fileProvider.savePlayer(accountId, persistentSeed(initialCurrency));
@@ -167,10 +170,7 @@ describe('applyAppearanceChange socket', () => {
 
 		const blocked = await fetch(`${baseUrl}/api/me/profile`, {
 			method: 'PATCH',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`,
-			},
+			headers: cookieHeaders(sessionToken),
 			body: JSON.stringify({ cosmetic: PAID_COSMETIC }),
 		});
 		expect(blocked.status).toBe(400);
@@ -179,10 +179,7 @@ describe('applyAppearanceChange socket', () => {
 
 		const hatOk = await fetch(`${baseUrl}/api/me/profile`, {
 			method: 'PATCH',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`,
-			},
+			headers: cookieHeaders(sessionToken),
 			body: JSON.stringify({ cosmetic: HAT_ONLY_COSMETIC }),
 		});
 		expect(hatOk.status).toBe(200);

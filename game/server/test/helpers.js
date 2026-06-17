@@ -15,6 +15,31 @@ import { InMemoryProvider } from '../providers.js';
 const require = createRequire(import.meta.url);
 
 const serverUsers = require('../users.js');
+const { SESSION_COOKIE_NAME } = require('../cookies.js');
+
+/**
+ * Extract the opaque session token from a fetch Response `Set-Cookie` header(s).
+ */
+export function extractSessionTokenFromResponse(res) {
+	const setCookies = typeof res.headers.getSetCookie === 'function'
+		? res.headers.getSetCookie()
+		: [res.headers.get('set-cookie')].filter(Boolean);
+
+	for (const cookie of setCookies) {
+		const prefix = `${SESSION_COOKIE_NAME}=`;
+		if (cookie.startsWith(prefix)) {
+			return cookie.slice(prefix.length).split(';')[0].trim();
+		}
+	}
+	return null;
+}
+
+export function cookieHeaders(sessionToken) {
+	return {
+		'Content-Type': 'application/json',
+		Cookie: `${SESSION_COOKIE_NAME}=${sessionToken}`,
+	};
+}
 
 /**
  * Point the server's CJS `users` module at a test file (same instance as

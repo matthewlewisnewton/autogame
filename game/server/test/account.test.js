@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { createRequire } from 'module';
 import {
@@ -19,6 +20,9 @@ import { PROPORTION_KEYS, PROPORTION_RANGES } from '../cosmetic.js';
 const require = createRequire(import.meta.url);
 // Vitest loads settings.js twice (ESM import vs CJS require); HTTP routes use the CJS instance.
 const serverSettings = require('../settings.js');
+const { SESSION_COOKIE_NAME } = require('../cookies.js');
+const { SESSION_KEY_PREFIX, SESSION_TTL_SECONDS } = require('../sessions.js');
+const { getRedisClient } = require('../redis.js');
 
 async function startTestServer() {
 	if (httpServer.listening) {
@@ -47,11 +51,35 @@ async function closeTestServer() {
 	});
 }
 
-function authHeaders(token) {
+function extractSessionTokenFromResponse(res) {
+	const setCookies = typeof res.headers.getSetCookie === 'function'
+		? res.headers.getSetCookie()
+		: [res.headers.get('set-cookie')].filter(Boolean);
+
+	for (const cookie of setCookies) {
+		const prefix = `${SESSION_COOKIE_NAME}=`;
+		if (cookie.startsWith(prefix)) {
+			return cookie.slice(prefix.length).split(';')[0].trim();
+		}
+	}
+	return null;
+}
+
+function cookieHeaders(sessionToken) {
 	return {
 		'Content-Type': 'application/json',
-		Authorization: `Bearer ${token}`
+		Cookie: `${SESSION_COOKIE_NAME}=${sessionToken}`,
 	};
+}
+
+async function createSessionWithAccountId(accountId) {
+	const token = crypto.randomBytes(32).toString('base64url');
+	const now = new Date().toISOString();
+	const redis = getRedisClient();
+	const key = `${SESSION_KEY_PREFIX}${token}`;
+	await redis.hset(key, { accountId, createdAt: now, lastSeen: now });
+	await redis.expire(key, SESSION_TTL_SECONDS);
+	return token;
 }
 
 async function registerAndLogin(username, password) {
@@ -67,8 +95,9 @@ async function registerAndLogin(username, password) {
 		body: JSON.stringify({ username, password })
 	});
 	expect(loginRes.status).toBe(200);
-	const { token } = await loginRes.json();
-	return token;
+	const sessionToken = extractSessionTokenFromResponse(loginRes);
+	expect(sessionToken).toBeTruthy();
+	return sessionToken;
 }
 
 let baseUrl;
@@ -100,7 +129,7 @@ describe('GET /api/me', () => {
 	it('returns profile and default settings', async () => {
 		const token = await registerAndLogin('alice', 'pass123');
 
-		const res = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		const res = await fetch(`${baseUrl}/api/me`, { headers: cookieHeaders(token) });
 		expect(res.status).toBe(200);
 		const data = await res.json();
 		expect(data.username).toBe('alice');
@@ -115,27 +144,25 @@ describe('GET /api/me', () => {
 		expect(res.status).toBe(401);
 	});
 
-	it('rejects a validly-signed token whose accountId is a traversal string', async () => {
-		// Simulates a forged/leaked-secret token that escaped basePath via accountId.
-		const evilToken = jwt.sign(
-			{ accountId: '../../etc/passwd', username: 'evil' },
-			getJWTSecret(),
-			{ expiresIn: '24h' }
-		);
-		const res = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(evilToken) });
+	it('rejects a session whose accountId is a traversal string', async () => {
+		const evilToken = await createSessionWithAccountId('../../etc/passwd');
+		const res = await fetch(`${baseUrl}/api/me`, { headers: cookieHeaders(evilToken) });
 		expect(res.status).toBe(401);
 	});
 
-	it('rejects settings PATCH with a traversal accountId in the token', async () => {
-		const evilToken = jwt.sign(
-			{ accountId: 'a/../b', username: 'evil' },
-			getJWTSecret(),
-			{ expiresIn: '24h' }
-		);
+	it('rejects settings PATCH with a traversal accountId in the session', async () => {
+		const evilToken = await createSessionWithAccountId('a/../b');
 		const res = await fetch(`${baseUrl}/api/me/settings`, {
 			method: 'PATCH',
-			headers: authHeaders(evilToken),
+			headers: cookieHeaders(evilToken),
 			body: JSON.stringify({ soundEnabled: false })
+		});
+		expect(res.status).toBe(401);
+	});
+
+	it('returns 401 for an unknown session token', async () => {
+		const res = await fetch(`${baseUrl}/api/me`, {
+			headers: cookieHeaders('not-a-real-session-token'),
 		});
 		expect(res.status).toBe(401);
 	});
@@ -143,7 +170,7 @@ describe('GET /api/me', () => {
 	it('returns modelIds array containing player model', async () => {
 		const token = await registerAndLogin('modelUser', 'pass');
 
-		const res = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		const res = await fetch(`${baseUrl}/api/me`, { headers: cookieHeaders(token) });
 		expect(res.status).toBe(200);
 		const data = await res.json();
 		expect(data.modelIds).toBeDefined();
@@ -154,7 +181,7 @@ describe('GET /api/me', () => {
 	it('returns proportionConfig with keys and ranges', async () => {
 		const token = await registerAndLogin('propUser', 'pass');
 
-		const res = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		const res = await fetch(`${baseUrl}/api/me`, { headers: cookieHeaders(token) });
 		expect(res.status).toBe(200);
 		const data = await res.json();
 		expect(data.proportionConfig).toBeDefined();
@@ -171,7 +198,7 @@ describe('PATCH /api/me/settings', () => {
 
 		const patchRes = await fetch(`${baseUrl}/api/me/settings`, {
 			method: 'PATCH',
-			headers: authHeaders(token),
+			headers: cookieHeaders(token),
 			body: JSON.stringify({ particlesEnabled: false, showHitboxes: false })
 		});
 		expect(patchRes.status).toBe(200);
@@ -186,14 +213,14 @@ describe('PATCH /api/me/settings', () => {
 
 		const patchRes = await fetch(`${baseUrl}/api/me/settings`, {
 			method: 'PATCH',
-			headers: authHeaders(token),
+			headers: cookieHeaders(token),
 			body: JSON.stringify({ lockOnRepeatAction: 'teleport' })
 		});
 		expect(patchRes.status).toBe(400);
 		const body = await patchRes.json();
 		expect(body.error).toMatch(/lockOnRepeatAction/);
 
-		const meRes = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		const meRes = await fetch(`${baseUrl}/api/me`, { headers: cookieHeaders(token) });
 		const me = await meRes.json();
 		expect(me.settings.lockOnRepeatAction).toBe('unlock');
 	});
@@ -203,7 +230,7 @@ describe('PATCH /api/me/settings', () => {
 
 		const okRes = await fetch(`${baseUrl}/api/me/settings`, {
 			method: 'PATCH',
-			headers: authHeaders(token),
+			headers: cookieHeaders(token),
 			body: JSON.stringify({ soundEnabled: false }),
 		});
 		expect(okRes.status).toBe(200);
@@ -212,7 +239,7 @@ describe('PATCH /api/me/settings', () => {
 
 		const patchRes = await fetch(`${baseUrl}/api/me/settings`, {
 			method: 'PATCH',
-			headers: authHeaders(token),
+			headers: cookieHeaders(token),
 			body: JSON.stringify({ particlesEnabled: false }),
 		});
 		expect(patchRes.status).toBe(400);
@@ -220,7 +247,7 @@ describe('PATCH /api/me/settings', () => {
 		expect(body.error).toMatch(/exceed maximum size/i);
 
 		serverSettings.resetSettingsMaxBytesForTests();
-		const meRes = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		const meRes = await fetch(`${baseUrl}/api/me`, { headers: cookieHeaders(token) });
 		const me = await meRes.json();
 		expect(me.settings.soundEnabled).toBe(false);
 		expect(me.settings.particlesEnabled).toBe(true);
@@ -231,7 +258,7 @@ describe('PATCH /api/me/settings', () => {
 
 		const patchRes = await fetch(`${baseUrl}/api/me/settings`, {
 			method: 'PATCH',
-			headers: authHeaders(token),
+			headers: cookieHeaders(token),
 			body: JSON.stringify({ soundEnabled: false, hackerField: 'nope' })
 		});
 		expect(patchRes.status).toBe(200);
@@ -239,7 +266,7 @@ describe('PATCH /api/me/settings', () => {
 		expect(settings.soundEnabled).toBe(false);
 		expect(settings.hackerField).toBeUndefined();
 
-		const meRes = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		const meRes = await fetch(`${baseUrl}/api/me`, { headers: cookieHeaders(token) });
 		const me = await meRes.json();
 		expect(me.settings.soundEnabled).toBe(false);
 		expect(me.settings.hackerField).toBeUndefined();
@@ -251,7 +278,7 @@ describe('PATCH /api/me/profile', () => {
 		const daveToken = await registerAndLogin('dave', 'pass');
 		await fetch(`${baseUrl}/api/me/profile`, {
 			method: 'PATCH',
-			headers: authHeaders(daveToken),
+			headers: cookieHeaders(daveToken),
 			body: JSON.stringify({ email: 'dave@example.com' })
 		});
 
@@ -259,14 +286,14 @@ describe('PATCH /api/me/profile', () => {
 
 		const conflict = await fetch(`${baseUrl}/api/me/profile`, {
 			method: 'PATCH',
-			headers: authHeaders(carolToken),
+			headers: cookieHeaders(carolToken),
 			body: JSON.stringify({ email: 'dave@example.com' })
 		});
 		expect(conflict.status).toBe(409);
 
 		const ok = await fetch(`${baseUrl}/api/me/profile`, {
 			method: 'PATCH',
-			headers: authHeaders(carolToken),
+			headers: cookieHeaders(carolToken),
 			body: JSON.stringify({ email: 'carol@example.com' })
 		});
 		expect(ok.status).toBe(200);
@@ -279,7 +306,7 @@ describe('PATCH /api/me/profile', () => {
 
 		const res = await fetch(`${baseUrl}/api/me/profile`, {
 			method: 'PATCH',
-			headers: authHeaders(token),
+			headers: cookieHeaders(token),
 			body: JSON.stringify({ username: 'eve2' })
 		});
 		expect(res.status).toBe(200);
@@ -295,7 +322,7 @@ describe('PATCH /api/me/profile', () => {
 
 		const res = await fetch(`${baseUrl}/api/me/profile`, {
 			method: 'PATCH',
-			headers: authHeaders(token),
+			headers: cookieHeaders(token),
 			body: JSON.stringify({ cosmetic: { bodyColor: '#0a0b0c', bodyShape: 'capsule' } })
 		});
 		expect(res.status).toBe(200);
@@ -305,7 +332,7 @@ describe('PATCH /api/me/profile', () => {
 		expect(data.cosmetic.accentColor).toBe('#f2c94c');
 
 		// Confirms it is reflected on GET /me as well.
-		const meRes = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		const meRes = await fetch(`${baseUrl}/api/me`, { headers: cookieHeaders(token) });
 		const me = await meRes.json();
 		expect(me.cosmetic.bodyColor).toBe('#0a0b0c');
 	});
@@ -315,7 +342,7 @@ describe('PATCH /api/me/profile', () => {
 
 		const res = await fetch(`${baseUrl}/api/me/profile`, {
 			method: 'PATCH',
-			headers: authHeaders(token),
+			headers: cookieHeaders(token),
 			body: JSON.stringify({ cosmetic: { bodyShape: 'pyramid' } })
 		});
 		expect(res.status).toBe(400);
@@ -326,7 +353,7 @@ describe('PATCH /api/me/profile', () => {
 
 		const res = await fetch(`${baseUrl}/api/me/profile`, {
 			method: 'PATCH',
-			headers: authHeaders(token),
+			headers: cookieHeaders(token),
 			body: JSON.stringify({ cosmetic: { modelId: 'player', proportions: { height: 1.1 } } })
 		});
 		expect(res.status).toBe(200);
@@ -337,7 +364,7 @@ describe('PATCH /api/me/profile', () => {
 		expect(data.cosmetic.proportions.headSize).toBe(1.0);
 
 		// Verify it is reflected on subsequent GET /me.
-		const meRes = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		const meRes = await fetch(`${baseUrl}/api/me`, { headers: cookieHeaders(token) });
 		const me = await meRes.json();
 		expect(me.cosmetic.modelId).toBe('player');
 		expect(me.cosmetic.proportions.height).toBe(1.1);

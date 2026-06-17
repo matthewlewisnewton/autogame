@@ -13,7 +13,14 @@ import {
 	server as httpServer,
 	clearAllTimers,
 } from '../index.js';
-import { connectAndJoinLobby, setServerUsersFilePath, clearServerUsers, waitForEvent } from './helpers.js';
+import {
+	connectAndJoinLobby,
+	setServerUsersFilePath,
+	clearServerUsers,
+	waitForEvent,
+	extractSessionTokenFromResponse,
+	cookieHeaders,
+} from './helpers.js';
 import { APPEARANCE_CHANGE_COST } from '../config.js';
 
 const require = createRequire(import.meta.url);
@@ -53,7 +60,7 @@ async function closeTestServer() {
 	});
 }
 
-/** Register + login a user, returning { accountId, token }. */
+/** Register + login a user, returning { accountId, sessionToken }. */
 async function registerUser(baseUrl, username, password = 'password123') {
 	const reg = await fetch(`${baseUrl}/api/register`, {
 		method: 'POST',
@@ -68,14 +75,15 @@ async function registerUser(baseUrl, username, password = 'password123') {
 		body: JSON.stringify({ username, password }),
 	});
 	expect(login.status).toBe(200);
-	const { token } = await login.json();
-	return { accountId, token };
+	const sessionToken = extractSessionTokenFromResponse(login);
+	expect(sessionToken).toBeTruthy();
+	return { accountId, sessionToken };
 }
 
-async function patchCosmetic(baseUrl, token, cosmetic) {
+async function patchCosmetic(baseUrl, sessionToken, cosmetic) {
 	const res = await fetch(`${baseUrl}/api/me/profile`, {
 		method: 'PATCH',
-		headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+		headers: cookieHeaders(sessionToken),
 		body: JSON.stringify({ cosmetic }),
 	});
 	expect(res.status).toBe(200);
@@ -108,8 +116,8 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 	});
 
 	it('buildPlayerRecord sources the cosmetic from the account record', async () => {
-		const { accountId, token } = await registerUser(baseUrl, 'alice');
-		await patchCosmetic(baseUrl, token, customCosmetic);
+		const { accountId, sessionToken } = await registerUser(baseUrl, 'alice');
+		await patchCosmetic(baseUrl, sessionToken, customCosmetic);
 
 		const player = buildPlayerRecord('p1', accountId, 'alice', null);
 		expect(player.cosmetic).toEqual(customCosmetic);
@@ -123,8 +131,8 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 	});
 
 	it('stateSnapshot exposes each player cosmetic with the full body/accent/shape', async () => {
-		const { accountId, token } = await registerUser(baseUrl, 'bob');
-		await patchCosmetic(baseUrl, token, customCosmetic);
+		const { accountId, sessionToken } = await registerUser(baseUrl, 'bob');
+		await patchCosmetic(baseUrl, sessionToken, customCosmetic);
 
 		gameState.players['p3'] = buildPlayerRecord('p3', accountId, 'bob', null);
 		const snapshot = stateSnapshot();
@@ -143,9 +151,9 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 	});
 
 	it('snapshot reflects an account cosmetic updated before the player joins', async () => {
-		const { accountId, token } = await registerUser(baseUrl, 'carol');
+		const { accountId, sessionToken } = await registerUser(baseUrl, 'carol');
 		// account starts with defaults; update it, then the player joins
-		await patchCosmetic(baseUrl, token, { bodyShape: 'capsule', bodyColor: '#00ff00' });
+		await patchCosmetic(baseUrl, sessionToken, { bodyShape: 'capsule', bodyColor: '#00ff00' });
 
 		gameState.players['p5'] = buildPlayerRecord('p5', accountId, 'carol', null);
 		const snapshot = stateSnapshot();
@@ -157,13 +165,13 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 	it('PATCH profile cosmetic syncs an existing live player record and snapshot', async () => {
 		const { gameState: liveState, setGameState, stateSnapshot, buildPlayerRecord: buildPlayer } = require('../index.js');
 		const { PHASES } = require('../lobbies.js');
-		const { accountId, token } = await registerUser(baseUrl, 'dave');
+		const { accountId, sessionToken } = await registerUser(baseUrl, 'dave');
 		liveState.players[accountId] = buildPlayer(accountId, accountId, 'dave', null);
 		// PATCH appearance fields are blocked only for live lobby-hub players.
 		liveState.gamePhase = PHASES.PLAYING;
 		expect(liveState.players[accountId].cosmetic.bodyColor).toBe(DEFAULT_COSMETIC.bodyColor);
 
-		await patchCosmetic(baseUrl, token, customCosmetic);
+		await patchCosmetic(baseUrl, sessionToken, customCosmetic);
 
 		expect(liveState.players[accountId].cosmetic.bodyColor).toBe(customCosmetic.bodyColor);
 		expect(liveState.players[accountId].cosmetic.hat).toBe(customCosmetic.hat);

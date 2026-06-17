@@ -14,6 +14,9 @@ import {
 	lobbyGameState,
 	setServerUsersFilePath,
 	clearServerUsers,
+	createTestToken,
+	extractSessionTokenFromResponse,
+	cookieHeaders,
 } from './helpers.js';
 
 const COSMETIC_A = {
@@ -65,14 +68,16 @@ async function registerUser(baseUrl, username, password = 'password123') {
 		body: JSON.stringify({ username, password }),
 	});
 	expect(login.status).toBe(200);
-	const { token } = await login.json();
-	return { accountId, token, username };
+	const sessionToken = extractSessionTokenFromResponse(login);
+	expect(sessionToken).toBeTruthy();
+	const token = createTestToken(accountId, username);
+	return { accountId, sessionToken, token, username };
 }
 
-async function patchCosmetic(baseUrl, token, cosmetic) {
+async function patchCosmetic(baseUrl, sessionToken, cosmetic) {
 	const res = await fetch(`${baseUrl}/api/me/profile`, {
 		method: 'PATCH',
-		headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+		headers: cookieHeaders(sessionToken),
 		body: JSON.stringify({ cosmetic }),
 	});
 	expect(res.status).toBe(200);
@@ -170,9 +175,9 @@ describe('hub presence integration', () => {
 	it('move updates merged lobby player record and broadcasts distinct cosmetics', async () => {
 		const hubSpawn = hubSpawnPosition(HUB_LAYOUT);
 		const userA = await registerUser(baseUrl, 'presence-move-a');
-		await patchCosmetic(baseUrl, userA.token, COSMETIC_A);
+		await patchCosmetic(baseUrl, userA.sessionToken, COSMETIC_A);
 		const userB = await registerUser(baseUrl, 'presence-move-b');
-		await patchCosmetic(baseUrl, userB.token, COSMETIC_B);
+		await patchCosmetic(baseUrl, userB.sessionToken, COSMETIC_B);
 
 		const { socketA, socketB, lobbyId, initA, initB } = await connectTwoWithCosmetics(
 			baseUrl,
@@ -204,9 +209,9 @@ describe('hub presence integration', () => {
 
 	it('late join notifies existing member with cosmetic and username', async () => {
 		const userA = await registerUser(baseUrl, 'presence-host');
-		await patchCosmetic(baseUrl, userA.token, COSMETIC_A);
+		await patchCosmetic(baseUrl, userA.sessionToken, COSMETIC_A);
 		const userB = await registerUser(baseUrl, 'presence-joiner');
-		await patchCosmetic(baseUrl, userB.token, COSMETIC_B);
+		await patchCosmetic(baseUrl, userB.sessionToken, COSMETIC_B);
 
 		const host = await connectWithToken(baseUrl, userA.token);
 		const joinUpdatePromise = waitForEvent(host.socket, 'hubPresenceUpdate');
@@ -223,9 +228,9 @@ describe('hub presence integration', () => {
 
 	it('leaveLobby removes departed player from presence snapshot', async () => {
 		const userA = await registerUser(baseUrl, 'presence-stay');
-		await patchCosmetic(baseUrl, userA.token, COSMETIC_A);
+		await patchCosmetic(baseUrl, userA.sessionToken, COSMETIC_A);
 		const userB = await registerUser(baseUrl, 'presence-leave');
-		await patchCosmetic(baseUrl, userB.token, COSMETIC_B);
+		await patchCosmetic(baseUrl, userB.sessionToken, COSMETIC_B);
 
 		const { socketA, socketB, initA, initB } = await connectTwoWithCosmetics(
 			baseUrl,

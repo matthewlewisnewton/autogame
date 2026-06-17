@@ -2,7 +2,8 @@
 
 const { Router } = require('express');
 const jwt = require('jsonwebtoken');
-const { verifyToken } = require('./auth');
+const { getSessionTokenFromRequest } = require('./cookies.js');
+const { getSession } = require('./sessions.js');
 const { findUserByAccountId, updateProfile } = require('./users');
 const { getSettings, updateSettings } = require('./settings');
 const { HAT_CATALOG, MODEL_IDS, PROPORTION_KEYS, PROPORTION_RANGES, validateCosmetic, backfillCosmetic } = require('./cosmetic');
@@ -22,24 +23,30 @@ function getJwtSecret() {
 }
 
 /**
- * Require Authorization: Bearer <token>. Sets req.accountId and req.username.
+ * Require the opaque session cookie. Sets req.accountId and req.username.
  */
-function requireAuth(req, res, next) {
-	const header = req.headers.authorization;
-	if (!header || !header.startsWith('Bearer ')) {
-		return res.status(401).json({ error: 'Missing or invalid authorization' });
+async function requireAuth(req, res, next) {
+	try {
+		const token = getSessionTokenFromRequest(req);
+		if (!token) {
+			return res.status(401).json({ error: 'Missing or invalid authorization' });
+		}
+		const session = await getSession(token);
+		if (!session || !session.accountId) {
+			return res.status(401).json({ error: 'Invalid or expired token' });
+		}
+		if (typeof session.accountId !== 'string' || !SAFE_ACCOUNT_ID_REGEX.test(session.accountId)) {
+			return res.status(401).json({ error: 'Invalid or expired token' });
+		}
+		req.accountId = session.accountId;
+		const user = findUserByAccountId(session.accountId);
+		if (user) {
+			req.username = user.username;
+		}
+		next();
+	} catch (err) {
+		next(err);
 	}
-	const token = header.slice(7);
-	const decoded = verifyToken(token);
-	if (!decoded || !decoded.accountId) {
-		return res.status(401).json({ error: 'Invalid or expired token' });
-	}
-	if (typeof decoded.accountId !== 'string' || !SAFE_ACCOUNT_ID_REGEX.test(decoded.accountId)) {
-		return res.status(401).json({ error: 'Invalid or expired token' });
-	}
-	req.accountId = decoded.accountId;
-	req.username = decoded.username;
-	next();
 }
 
 router.use(requireAuth);
