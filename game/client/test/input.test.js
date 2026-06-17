@@ -289,6 +289,27 @@ describe('input.js', () => {
 		expect(onLockOn).not.toHaveBeenCalled();
 	});
 
+	it('8BitDo 64 profile Z trigger edge invokes onLockOn via pollInput', () => {
+		patchSettings({ gamepad: { profile: '8bitdo-64' } });
+		const onLockOn = vi.fn();
+		initInput({
+			onLockOn,
+			canUseGameActions: () => true,
+		});
+		const buttons = Array(12).fill({ pressed: false, value: 0 });
+		buttons[8] = { pressed: false, value: 0.25 };
+		mockGamepad(0, {
+			id: '8BitDo 64 (Vendor: 2dc8 Product: 1930)',
+			axes: [0, 0, 0, 0],
+			buttons,
+		});
+		pollInput();
+		expect(onLockOn).toHaveBeenCalledTimes(1);
+		onLockOn.mockClear();
+		pollInput();
+		expect(onLockOn).not.toHaveBeenCalled();
+	});
+
 	it('exposes lockOn and dodge action labels', () => {
 		expect(getActionLabels()).toMatchObject({
 			lockOn: 'Lock on',

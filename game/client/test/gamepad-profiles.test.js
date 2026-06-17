@@ -132,6 +132,14 @@ describe('8BitDo 64 profile', () => {
 		expect(read8BitDo64CStickHorizontal(navigator.getGamepads()[0])).toBe(0);
 	});
 
+	it('isProfileLockOnPressed is false when Z (button 8) is idle', () => {
+		const buttons = Array(12).fill({ pressed: false, value: 0 });
+		buttons[8] = { pressed: false, value: 0.1 };
+		mockGamepad(0, { id: '8BitDo 64', axes: [0, 0, 0, 0], buttons });
+		const pad = navigator.getGamepads()[0];
+		expect(isProfileLockOnPressed(pad, EIGHTBITDO_64_PROFILE)).toBe(false);
+	});
+
 	it('reserves Z (button 8) for lock-on instead of C-down', () => {
 		const buttons = Array(12).fill({ pressed: false, value: 0 });
 		buttons[8] = { pressed: false, value: 0.25 };
