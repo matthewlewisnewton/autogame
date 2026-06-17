@@ -1,0 +1,17 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The ticket fully and robustly satisfies its acceptance criteria, and the captured run proves the game starts and loads cleanly.
+
+**Runtime gate (passed):** `metrics.json` shows `ok: true`, `pageerrors: []`, no `harness_failure`; full smoke flow captured (auth → lobby → ready → movement → dodge w/ cooldown HUD). `console.log` has no `pageerror`/`[fatal]` — only a benign 409 lobby-create auth race.
+
+**Acceptance criteria (all met):**
+- **deasync removed entirely** — gone from `providers.js`, `package.json`, `pnpm-workspace.yaml` allowBuilds, plus Dockerfile/run-e2e.sh comments. Only `node_modules` artifacts remain.
+- **All providers async** — base class + InMemory/File/Postgres all async; Postgres schema bootstrap moved to an awaited `static async create()`.
+- **No raw-Promise leaks** — all 5 call sites and their callers propagate async/await; `startServer` is async with a proper listen promise + `.catch` at the main entry; `withLobbyContext` correctly defers context-restore for async callbacks via `.finally()`. A targeted grep found zero un-awaited provider calls.
+- **pg-mem tests, suite passes** — persistence suites 173/173; full suite 2416/2417.
+
+**The one suite failure** (`training_caverns_spawn_camp`) is a pre-existing flaky combat-AI timing test — untouched by this ticket, no persistence code involved, and passes 3/3 in isolation. Not a regression, not blocking.
+
+No blocking gaps, so no `gaps.md` was written. I recorded two non-blocking items in `nits.md`: guarding the remaining async socket-handler callbacks against unhandled rejections (to match the join-path `.catch` pattern), and de-flaking the spawn-camp test.

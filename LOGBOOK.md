@@ -8923,3 +8923,26 @@ Not applicable — this ticket did not add or modify any `?debugScenario=` short
 
 None. The playthrough driver's persistence-backend override is removed, env passthrough is unit-tested, backward-compatible defaults are preserved, and the captured game run is healthy.
 
+
+## v0.480 — Hosting: make StorageProvider async and remove deasync (perf + unblocks users migration)  (2026-06-16 22:19:37)
+
+(`newDb()`) — no live DB, no busy-spin. The persistence-focused suites
+(providers, postgres_provider, persistence, settings, admin_roster, account)
+pass 173/173 locally. The full suite in `coverage.log` shows **2416 passed /
+2417**; the single failure is `training_caverns_spawn_camp.test.js` ("entry
+aggro grace window"), a combat-AI/timing test that touches no persistence code,
+was not modified by this ticket, and passes 3/3 when run in isolation — i.e. a
+pre-existing order/timing flake, not a regression from this change.
+
+### Consistency with design / no foundation regression
+PASS. The change is a behind-the-interface persistence refactor; it does not
+alter gameplay, netcode, or the design contract. Removing the 100%-CPU busy-spin
+directly advances the stated hosting/horizontal-scale goal and unblocks the users
+migration. The captured gameplay (movement, dodge cooldown, card hand, objective
+state) is intact.
+
+## Remaining gaps
+
+None blocking. (A minor robustness nit on socket-handler rejection guarding is
+recorded in `nits.md`.)
+

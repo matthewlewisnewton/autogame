@@ -1,0 +1,29 @@
+## Remediation Round 2 — Decomposition
+
+Review feedback listed failed sub-tickets **02** (player persistence) and **03** (settings API). Investigation of the current tree:
+
+| Area | Status |
+|------|--------|
+| **01** async providers | `.passed` — done |
+| **04** admin/startup + settings wiring | `.passed` — done (also landed settings async) |
+| Player **load** (`loadSavedPlayerData`, admin roster) | Already async |
+| Settings (`getSettings`/`updateSettings`, `/api/me` routes) | Already async |
+| Player **save** (`savePlayerData` in `progression.js`) | **Still sync** — root remaining gap |
+
+Sub-tickets 02 and 03 failed mainly because the full test suite could not pass until the save path was async; 03’s settings work was already correct but blocked by persistence failures. A separate settings sub-ticket would be redundant.
+
+### Actions taken
+- **Deleted** failed folders: `02-async-player-persistence`, `03-async-settings-api`
+- **Created** one focused replacement that closes both gaps:
+
+### Sub-ticket created
+
+```
+/home/matt/workspace/.autogame-worktrees/hosting-make-storageprovider-async-and-remove-deasync-perf-u-3qd3/tickets/hosting-make-storageprovider-async-and-remove-deasync-perf-u-3qd3/subtickets/05-async-player-save-path/ticket.md
+```
+
+**05-async-player-save-path** covers:
+- Making `savePlayerData` / `saveAllPlayers` async with awaited `provider.savePlayer`
+- Propagating `await`/`void` through all call sites (handlers, simulation debounce, periodic save)
+- Updating persistence tests to await async saves/loads
+- Requiring `pnpm test:quick` green (which also validates settings routes stay correct)
