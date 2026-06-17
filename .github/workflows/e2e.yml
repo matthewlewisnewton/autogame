@@ -1,0 +1,35 @@
+name: E2E (real Postgres + Redis)
+
+# End-to-end tests against the production infrastructure (real Postgres + Redis),
+# using the same scripts/e2e-services.sh that developers run locally. Separate
+# from the unit suite, which uses the in-memory shims + pg-mem.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '11'
+          run_install: false
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: game
+      - name: Start Postgres + Redis
+        run: bash scripts/e2e-services.sh up
+        working-directory: game
+      - name: Run e2e tests
+        run: pnpm test:e2e
+        working-directory: game
+      - name: Stop services
+        if: always()
+        run: bash scripts/e2e-services.sh down
+        working-directory: game
