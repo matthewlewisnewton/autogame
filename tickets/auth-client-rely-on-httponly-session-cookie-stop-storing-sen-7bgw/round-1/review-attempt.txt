@@ -1,0 +1,21 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The client cookie-auth migration fully and robustly satisfies the ticket's acceptance criteria, and the captured run is clean.
+
+**Runtime gate (passed):** `metrics.json` has `ok: true`, `pageerrors: []`, servers started, and the full flow (auth → lobby → ready → gameplay → dodge cooldown) was captured. No `pageerror`/`[fatal]` in `console.log` — the `401` (pre-login `/api/me` probe) and `409` (lobby conflict) are benign network responses, not uncaught exceptions.
+
+**Acceptance criteria (all met):**
+- **No JWT storage** — `TOKEN_KEY`, `storedToken`, `getSocketAuthToken` removed; no `localStorage` token writes remain (grep-confirmed).
+- **/api via cookie** — `Authorization: Bearer` headers stripped from all `settings.js` fetches; `/api/me` is now a bare same-origin fetch.
+- **socket.io via cookie** — `createSocket()` takes no token; `io()` connects same-origin so the cookie rides the handshake; unit test asserts `config.auth` is `undefined`.
+- **Login end-to-end** — login handler no longer reads `data.token`; capture reached gameplay, proving cookie issuance.
+- **Logout destroys session** — `performLogout()` POSTs `/api/logout`; the route exists and calls `destroySession` + clears the cookie.
+- **No Bearer/socket token sent** — grep-confirmed.
+
+209 client tests pass across the changed files.
+
+**Non-blocking nits filed** (`nits.md`): dead `getAuthToken` import / no-op `setAuthToken`; and the page-load IIFE's `catch` is effectively dead because `restoreSession()` swallows the `/api/me` 401 — the logged-out login screen is reached via the socket `connect_error` path instead, with a brief lobby-browser flash. Functionally correct, worth cleaning up later.
+
+No `gaps.md` written (PASS).

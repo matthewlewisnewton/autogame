@@ -202,3 +202,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [416-cleanup-hosting-account-credential-store-users-json-is-file-local-br-rdeu](tickets/416-cleanup-hosting-account-credential-store-users-json-is-file-local-br-rdeu/)
 - [ ] [417-cleanup-auth-replace-jwt-with-redis-backed-session-cookies-for-http-tc1j](tickets/417-cleanup-auth-replace-jwt-with-redis-backed-session-cookies-for-http-tc1j/)
 - [ ] [418-cleanup-auth-authenticate-socket-io-connections-via-the-session-cook-126l](tickets/418-cleanup-auth-authenticate-socket-io-connections-via-the-session-cook-126l/)
+- [ ] [419-cleanup-auth-client-rely-on-httponly-session-cookie-stop-storing-sen-7bgw](tickets/419-cleanup-auth-client-rely-on-httponly-session-cookie-stop-storing-sen-7bgw/)

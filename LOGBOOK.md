@@ -9084,3 +9084,26 @@ None blocking. The acceptance criterion is fully and robustly satisfied, the
 captured run is clean, and the test suite passes. A couple of minor non-blocking
 nits are recorded in `nits.md`.
 
+
+## v0.484 — Auth (client): rely on httpOnly session cookie; stop storing/sending the JWT  (2026-06-17 04:58:00)
+
+
+- Consistent with the prior server-side cookie-auth tickets; this completes the
+  client migration.
+- Unauthenticated page load still reaches the login screen: `restoreSession()`
+  swallows the `/api/me` 401, creates a socket, the socket auth fails, and the
+  `connect_error` auth path (`connectionHandlers.js:42-59`) shows the auth
+  overlay + login form. Functionally correct (see nits for the cleaner path).
+- Tests: 209 client tests pass across the changed files (`main.test.js`,
+  `fly_replay_client.test.js`, settings). Test updates correctly re-target the
+  new behavior (auth overlay on connect_error; `/api/me` fetch mock at setup).
+
+## Remaining gaps
+
+None blocking. A few non-blocking nits are filed in `nits.md`:
+- Dead `getAuthToken` import in `main.js`; `getAuthToken`/`setAuthToken` in
+  `settings.js` are now no-ops.
+- The page-load IIFE's outer `try/catch` is effectively dead because
+  `restoreSession()` never throws; the unauthenticated login screen relies on
+  the socket `connect_error` path, which causes a brief lobby-browser flash.
+
