@@ -9131,6 +9131,52 @@ None blocking. All acceptance criteria are fully and robustly met; the game runs
 cleanly with session-only auth proven end-to-end in the captured run.
 
 
+## v0.486 — redis/multiplayer: lobby:owners registry leaks orphan entries (no TTL; orphan-reaper + dead-instance paths never unregister)  (2026-06-17 12:29:58)
+
+→ **14 passed** (8 + 6).
+
+## Consistency with design / requirements
+
+Pure backend Redis-registry hygiene; no change to `game/docs/design.md`
+surfaces or the requirements foundation. The smoke capture confirms no
+gameplay regression. No debug scenario was added or changed.
+
+## Remaining gaps
+
+None blocking. The implementation fully and robustly satisfies both leak paths
+the ticket describes, with thorough unit coverage and a clean runtime capture.
+
+One non-blocking robustness follow-up (see `nits.md`): a *live* remote instance
+whose lobby list sees no churn for 30s lets its publish key lapse, after which a
+peer's sweep would prune its owner entry. This is the tradeoff the ticket's fix
+direction explicitly accepts and matches the pre-existing lobby-browser staleness
+assumption, so it does not block — but a periodic heartbeat publish (or
+re-register on publish) would harden routing correctness.
+
+
+## v0.487 — gameplay/telepipe-new-sortie: depleteRunResources fails — post-victory hand has only telepipe + empty slots  (2026-06-17 12:35:41)
+
+
+- **Tests.** `npx vitest run server/test/debug-scenarios.test.js -t
+  "telepipe-ready"` → 5 passed. New assertions
+  (`debug-scenarios.test.js:1147-1158`, `1609-1620`) lock in `magicStones === 20`
+  and `magicStones < STARTING_MAGIC_STONES` for both presets. **Met.**
+
+## Note (non-blocking)
+
+The fallback capture exercised the generic `telepipe-ready` scenario (probe shows
+MS 99/99), not the canyon/spire `telepipe-ready` scenarios that were actually
+changed. The captured run therefore proves runtime health but does not visually
+exercise the changed code paths. Those paths are covered by the unit tests, and
+the change is a 2-line MS adjustment per scenario, so this does not block — noted
+in nits.
+
+## Remaining gaps
+
+None. The game runs cleanly and the depletion failure mode is deterministically
+eliminated for both presets, with unit coverage.
+
+
 ## v0.488 — persistence: cross-instance profile data-loss — stale user cache on instance B clobbers profile changes made on A  (2026-06-17 13:03:27)
 
 connection time, so they read coherent data and never persist — no clobber
