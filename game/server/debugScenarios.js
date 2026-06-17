@@ -5436,6 +5436,7 @@ function syncDebugHooksForScenario(player, name) {
     hooks.pinMsOnDeploy = true;
     hooks.pinMsOnTelepipePlace = true;
     hooks.spawnTelepipeDummy = true;
+    hooks.suppressWavesAfterDeploy = true;
   } else if (name === 'frost-telepipe-ready') {
     hooks.pinMsOnDeploy = true;
   } else if (name === 'frost-crossing-telepipe-ready') {

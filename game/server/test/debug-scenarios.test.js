@@ -2088,6 +2088,40 @@ describe('debugScenario — fire-cavern', () => {
 		expect(player.ready).toBe(false);
 		expect(player.hand?.some((c) => c && c.id === 'telepipe')).not.toBe(true);
 	});
+
+	it('fire-telepipe-ready deploy isolates combat with one dummy grunt and debugGodmode', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'fire-telepipe-ready' });
+		const result = await debugResultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('fire-telepipe-ready');
+
+		const lobbyState = testGameState();
+		const player = playerForSocket(socket);
+		expect(lobbyState.gamePhase).toBe('lobby');
+		expect(lobbyState.selectedQuestId).toBe(EMBER_DESCENT_ID);
+		expect(lobbyState.selectedQuestTier).toBe(EMBER_DESCENT_TIER_1);
+
+		player.ready = true;
+		setProgressionGameStateForReady(lobbyState);
+		checkAllReady();
+
+		const state = testGameState();
+		expect(state.gamePhase).toBe('playing');
+		expect(state.enemies).toHaveLength(1);
+		expect(state.enemies[0].type).toBe('grunt');
+		expect(state.enemies[0].hp).toBe(500);
+		expect(player.debugGodmode).toBe(true);
+		if (state.run?.waveScript?.waves) {
+			for (const wave of state.run.waveScript.waves) {
+				expect(wave.status).toBe('cleared');
+				expect(wave.spawnedEnemyIds).toEqual([]);
+			}
+		}
+	});
 });
 
 describe('debugScenario — ember-descent-tier-2', () => {
