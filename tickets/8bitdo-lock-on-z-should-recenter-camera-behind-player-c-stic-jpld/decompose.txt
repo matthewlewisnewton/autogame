@@ -1,0 +1,13 @@
+Broke the top-level ticket into **3 sub-tickets** in dependency order:
+
+1. **`01-map-8bitdo-z-to-lock-on`** — Wire the physical Z trigger (button 8) to the lock-on input path with profile-aware polling and unit tests.
+2. **`02-snap-camera-behind-on-lock-on`** — On lock-on engage, immediately snap `cameraYaw` behind the player toward the target (or behind facing when no target).
+3. **`03-c-stick-free-look-when-unlocked`** — C-stick horizontal orbit when lock-on is off; suppress manual look while locked on.
+
+All three use **`code`** verification (handlers, state, and unit tests — not pixel-level screenshots).
+
+### Created sub-ticket paths
+
+- `/home/matt/workspace/.autogame-worktrees/8bitdo-lock-on-z-should-recenter-camera-behind-player-c-stic-jpld/tickets/8bitdo-lock-on-z-should-recenter-camera-behind-player-c-stic-jpld/subtickets/01-map-8bitdo-z-to-lock-on/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/8bitdo-lock-on-z-should-recenter-camera-behind-player-c-stic-jpld/tickets/8bitdo-lock-on-z-should-recenter-camera-behind-player-c-stic-jpld/subtickets/02-snap-camera-behind-on-lock-on/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/8bitdo-lock-on-z-should-recenter-camera-behind-player-c-stic-jpld/tickets/8bitdo-lock-on-z-should-recenter-camera-behind-player-c-stic-jpld/subtickets/03-c-stick-free-look-when-unlocked/ticket.md`

@@ -8923,3 +8923,26 @@ Not applicable — this ticket did not add or modify any `?debugScenario=` short
 
 None. The playthrough driver's persistence-backend override is removed, env passthrough is unit-tested, backward-compatible defaults are preserved, and the captured game run is healthy.
 
+
+## v0.478 — 8BitDo: lock-on (Z) should recenter camera behind player; C-stick free-look mapping is unexpected  (2026-06-16 21:40:11)
+
+for the `cStick` look source. New `pollGamepadLook()` tests in `gamepad.test.js`
+confirm: non-zero yaw from axis 2 when unlocked, 0 when locked on, 0 during
+post-death camera release. Digital C-buttons remain card bindings (not look).
+
+### Mapping verified by unit tests
+PASS. 115 tests across the five relevant files pass; the broader renderer suite
+(72 tests) also passes — no regression from the `applyLockOnPress` refactor or the
+new `get/setCameraYaw` exports.
+
+## Design / regression consistency
+Consistent with the GameCube/Z-target intent in the ticket and does not regress the
+standard-pad path (`STANDARD_PROFILE` still uses `lockOnButton: LOCK_ON_GAMEPAD_BUTTON`,
+`rightStick` look). No new console errors, no dead/broken code introduced. No debug
+`?debugScenario` shortcuts added by this ticket.
+
+## Remaining gaps
+None blocking. One minor non-blocking redundancy noted in `nits.md`
+(`handleLockOnPress` still returns `cameraYaw` for the `snapBehind` action, which
+`applyLockOnPress` now recomputes and ignores).
+

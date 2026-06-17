@@ -195,3 +195,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [412-cleanup-hosting-postgresprovider-behind-storageprovider-migrate-pers-eowb](tickets/412-cleanup-hosting-postgresprovider-behind-storageprovider-migrate-pers-eowb/)
 - [ ] [413-cleanup-hosting-lobby-affinity-websocket-routing-via-fly-replay-suh3](tickets/413-cleanup-hosting-lobby-affinity-websocket-routing-via-fly-replay-suh3/)
 - [ ] [414-cleanup-hosting-route-settings-persistence-through-the-storage-provi-4se3](tickets/414-cleanup-hosting-route-settings-persistence-through-the-storage-provi-4se3/)
+- [ ] [415-cleanup-8bitdo-lock-on-z-should-recenter-camera-behind-player-c-stic-jpld](tickets/415-cleanup-8bitdo-lock-on-z-should-recenter-camera-behind-player-c-stic-jpld/)
