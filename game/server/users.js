@@ -403,7 +403,7 @@ function findUserByEmail(email) {
  * @returns {{ ok: true, usernameChanged?: boolean } | { ok: false, reason: string }}
  */
 async function updateProfile(accountId, fields) {
-	const user = findUserByAccountId(accountId);
+	const user = await findUserByAccountIdAsync(accountId);
 	if (!user) {
 		return { ok: false, reason: 'Account not found' };
 	}
@@ -724,6 +724,11 @@ function setTestFilePath(filePath) {
 	loadUsers();
 }
 
+/** @internal test helper — index a user record into the in-memory cache. */
+function cacheUserRecordForTest(record) {
+	return hydrateRecord(record);
+}
+
 module.exports = {
 	hashPassword,
 	hashPasswordAsync,
@@ -753,5 +758,6 @@ module.exports = {
 	loadUsers,
 	saveUsers,
 	getUsersFilePath,
-	setTestFilePath
+	setTestFilePath,
+	cacheUserRecordForTest
 };
