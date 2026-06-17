@@ -9154,6 +9154,75 @@ assumption, so it does not block — but a periodic heartbeat publish (or
 re-register on publish) would harden routing correctness.
 
 
+## v0.487 — gameplay/telepipe-new-sortie: depleteRunResources fails — post-victory hand has only telepipe + empty slots  (2026-06-17 12:35:41)
+
+
+- **Tests.** `npx vitest run server/test/debug-scenarios.test.js -t
+  "telepipe-ready"` → 5 passed. New assertions
+  (`debug-scenarios.test.js:1147-1158`, `1609-1620`) lock in `magicStones === 20`
+  and `magicStones < STARTING_MAGIC_STONES` for both presets. **Met.**
+
+## Note (non-blocking)
+
+The fallback capture exercised the generic `telepipe-ready` scenario (probe shows
+MS 99/99), not the canyon/spire `telepipe-ready` scenarios that were actually
+changed. The captured run therefore proves runtime health but does not visually
+exercise the changed code paths. Those paths are covered by the unit tests, and
+the change is a 2-line MS adjustment per scenario, so this does not block — noted
+in nits.
+
+## Remaining gaps
+
+None. The game runs cleanly and the depletion failure mode is deterministically
+eliminated for both presets, with unit coverage.
+
+
+## v0.488 — persistence: cross-instance profile data-loss — stale user cache on instance B clobbers profile changes made on A  (2026-06-17 13:03:27)
+
+connection time, so they read coherent data and never persist — no clobber
+risk. The sync read at account.js:96 is only a live-lobby appearance-change
+guard; the authoritative write still flows through async `updateProfile`.
+
+## Debug scenarios
+None added or changed by this ticket. N/A.
+
+## Code quality
+Clean. Well-documented helpers, defensive provider fallback when no provider is
+configured (preserves dev/test sync semantics), and a clearly-marked
+`cacheUserRecordForTest` internal helper used only to seed stale-cache states in
+tests.
+
+## Remaining gaps
+None blocking. One adjacent follow-up (non-blocking) captured in nits.md:
+`unlockHat` / `unlockQuestTier` still read the sync stale cache before a
+whole-blob `persistUserAsync`, so they retain the same theoretical
+cross-instance clobber shape — outside this ticket's profile-store scope and not
+exercised by the repro, but worth hardening later.
+
+
+## v0.489 — gameplay/boss-victory: frost_crossing (ice) Sortie Complete overlay hidden instantly by returnToGuildLobby  (2026-06-17 13:23:54)
+
+is terminal AND not already in playing phase, so fire (defeat_enemies) and spire (stage_boss)
+victory flows — which already worked — are untouched.
+
+**Debug scenario (`frost-crossing-boss-low-hp`).** The only change is a guard: if the run is
+already terminal, emit current state instead of re-running last-enemy setup. It is gated behind
+the existing `ALLOW_DEBUG_SCENARIOS` debug path (the URL/`debugScenario` entry point only), does
+not create a new entry point, and does not bypass server-side victory validation — the real
+victory path (`defeatFrostCrossingBoss` → `cleanupAfterDamage` → `checkRunTerminalState`) is
+exercised by the non-debug tests, and `setupFrostCrossingBossLowHpDebug` only sets boss HP low
+so the player still lands the killing blow. Reachability and invariants are intact.
+
+**Consistency with design.** Keeping the player in the dungeon on the victory screen until an
+explicit "Return to Hub" matches the documented Sortie Complete flow and the behavior already
+shipped for fire/spire. No requirements regression.
+
+## Remaining gaps
+
+None blocking. All acceptance behavior is proven by 9/9 passing unit tests (server + client),
+which I ran independently, and the captured run starts/loads cleanly.
+
+
 ## v0.490 — gameplay/fire (ember_descent): run flips to 'failed' during telepipe-new-sortie after a clean victory  (2026-06-17 13:40:20)
 
 **(02) Fire harness deploy isolated from live combat — MET.**

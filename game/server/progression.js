@@ -2739,7 +2739,11 @@ function processQuestWaveCleared(gameState = _gameState) {
 async function cleanupAfterDamage() {
   if (removeDeadEnemies() > 0) {
     processQuestWaveCleared();
-    await checkRunTerminalState();
+    try {
+      await checkRunTerminalState();
+    } catch (err) {
+      console.error('[run] checkRunTerminalState failed:', err && err.stack ? err.stack : err);
+    }
   }
 }
 
@@ -3347,8 +3351,24 @@ function restoreCardCheckpoint() {
   emitLobbyDeploy(io, SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
 }
 
+function isTerminalRunStatus(status) {
+  return status === 'victory' || status === 'failed';
+}
+
+function isTerminalRun(run) {
+  return !!(run && isTerminalRunStatus(run.status));
+}
+
+/** Keep terminal runs in the dungeon until the player explicitly returns to the hub. */
+function ensureTerminalRunStaysInDungeon(state = _gameState) {
+  if (!state?.run || !isTerminalRun(state.run)) return;
+  if (!isPlayingPhase(state)) {
+    setGamePhase(state, PHASES.PLAYING);
+  }
+}
+
 function suspendRunToLobby() {
-  if (!_gameState.run || _gameState.run.status !== 'playing') return;
+  if (!_gameState.run || _gameState.run.status !== 'playing' || isTerminalRun(_gameState.run)) return;
 
   const questName = _gameState.run.questName || 'unknown';
 
@@ -3427,7 +3447,7 @@ function abandonSuspendedRun(state = _gameState) {
 }
 
 function maybeSuspendRun() {
-  if (!_gameState.run || _gameState.run.status !== 'playing') return;
+  if (!_gameState.run || _gameState.run.status !== 'playing' || isTerminalRun(_gameState.run)) return;
   if (hasActivePlayers()) return;
   suspendRunToLobby();
 }
@@ -3547,8 +3567,6 @@ async function checkRunTerminalState() {
 
   if (!status) return;
 
-  _gameState.run.status = status;
-
   const runQuestTier = run.questTier ?? DEFAULT_QUEST_TIER;
   const runQuestId = run.questId;
 
@@ -3579,9 +3597,13 @@ async function checkRunTerminalState() {
 
   const summary = buildRunSummary(status, run);
   const io = getIoTarget();
-  if (io) {
+  if (io && summary) {
     io.emit(status === 'victory' ? SERVER_TO_CLIENT.RUN_COMPLETE : SERVER_TO_CLIENT.RUN_FAILED, summary);
   }
+
+  // Publish terminal status only after runComplete/runFailed so per-tick snapshots
+  // cannot expose victory/failed before the client receives the summary event.
+  _gameState.run.status = status;
 
   // Persist quest-tier unlocks after runComplete/runFailed so async provider
   // writes cannot yield and swap lobby context before rewards are granted.
@@ -3601,6 +3623,8 @@ async function checkRunTerminalState() {
       }
     }
   }
+
+  ensureTerminalRunStaysInDungeon(_gameState);
 }
 
 function resetTransientRunState() {
@@ -3716,6 +3740,7 @@ function buildWorldSnapshot(shopOffer) {
 }
 
 function hotStateSnapshot() {
+  ensureTerminalRunStaysInDungeon();
   const shopOffer = ensureShopOffer();
 
   const players = {};
@@ -3730,6 +3755,7 @@ function hotStateSnapshot() {
 }
 
 function stateSnapshot() {
+  ensureTerminalRunStaysInDungeon();
   const shopOffer = ensureShopOffer();
 
   const players = {};
@@ -3754,8 +3780,8 @@ async function returnPlayersToLobby(state = _gameState) {
   resetTransientRunState();
 
   state.suspendedCheckpoint = null;
-  setGamePhase(state, PHASES.LOBBY);
   delete state.run;
+  setGamePhase(state, PHASES.LOBBY);
 
   const spawn = hubSpawnPosition(HUB_LAYOUT);
   for (const playerId of Object.keys(state.players)) {
@@ -3812,8 +3838,8 @@ function giveUpRun(state = _gameState) {
   resetTransientRunState();
 
   state.suspendedCheckpoint = null;
-  setGamePhase(state, PHASES.LOBBY);
   delete state.run;
+  setGamePhase(state, PHASES.LOBBY);
 
   const spawn = firstRoomPosition();
   for (const playerId of Object.keys(state.players)) {
@@ -4148,6 +4174,9 @@ module.exports = {
   recordCrystalCollected,
   isRunObjectiveComplete,
   checkRunTerminalState,
+  isTerminalRunStatus,
+  isTerminalRun,
+  ensureTerminalRunStaysInDungeon,
   tickCombatExhaustionGrace,
   resetTransientRunState,
   returnPlayersToLobby,

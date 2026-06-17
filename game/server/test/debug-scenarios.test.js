@@ -31,6 +31,7 @@ import {
 import {
 	APPEARANCE_CHANGE_COST,
 	MAX_MAGIC_STONES,
+	STARTING_MAGIC_STONES,
 	MAX_HAND_SLOTS,
 	RUN_EXHAUSTION_GRACE_MS,
 	PORTAL_PLACEMENT_GRACE_MS,
@@ -1168,6 +1169,11 @@ describe('debugScenario — canyon-descent-tier-2', () => {
 		expect(player.hand[1]).toBeDefined();
 		expect(player.hand[1].id).toBe('magma_greatsword');
 		expect(player.hand[1].remainingCharges).toBeGreaterThanOrEqual(1);
+		// Deploy with depleted magic stones so the harness depletion probe lands
+		// deterministically: msDepleted is satisfied at deploy and a single
+		// greatsword swing completes depletion before any card exhausts to telepipe-only.
+		expect(player.magicStones).toBe(20);
+		expect(player.magicStones).toBeLessThan(STARTING_MAGIC_STONES);
 	});
 
 	it('canyon-descent-telepipe-ready forces fresh hand redeal over pre-existing hand', async () => {
@@ -1625,6 +1631,11 @@ describe('debugScenario — spire-ascent-tier-2', () => {
 		expect(player.hand[1]).toBeDefined();
 		expect(player.hand[1].id).toBe('magma_greatsword');
 		expect(player.hand[1].remainingCharges).toBeGreaterThanOrEqual(1);
+		// Deploy with depleted magic stones so the harness depletion probe lands
+		// deterministically: msDepleted is satisfied at deploy and a single
+		// greatsword swing completes depletion before any card exhausts to telepipe-only.
+		expect(player.magicStones).toBe(20);
+		expect(player.magicStones).toBeLessThan(STARTING_MAGIC_STONES);
 	});
 
 	it('deploys spire_ascent Tier 2 stage-boss run with encounter and rigid layout', async () => {

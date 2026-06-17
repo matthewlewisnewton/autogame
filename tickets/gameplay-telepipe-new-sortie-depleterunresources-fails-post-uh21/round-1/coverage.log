@@ -1,0 +1,1576 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/gameplay-telepipe-new-sortie-depleterunresources-fails-post-uh21/game
+      Coverage enabled with v8
+
+stdout | server/test/debug-scenarios.test.js
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/debug-scenarios.test.js
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — retired fixture shortcuts > rejects boss-level-dormant (fixture-only shortcut retired)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — retired fixture shortcuts > rejects boss-level-dormant (fixture-only shortcut retired)
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — retired fixture shortcuts > rejects boss-level-dormant (fixture-only shortcut retired)
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — retired fixture shortcuts > rejects boss-level-dormant (fixture-only shortcut retired)
+Player connected: socket=N3CLaNwkeG27Z3dYAAAB, playerId=0bac6dbd-ff21-45bc-a196-d5d121debd50
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — retired fixture shortcuts > rejects boss-level-dormant (fixture-only shortcut retired)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — retired fixture shortcuts > rejects boss-level-dormant (fixture-only shortcut retired)
+Player disconnected: N3CLaNwkeG27Z3dYAAAB
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — retired fixture shortcuts > rejects boss-level-dormant (fixture-only shortcut retired)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — key-item-cooldown > puts the player in playing phase with dodge_roll equipped and active cooldown
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — key-item-cooldown > puts the player in playing phase with dodge_roll equipped and active cooldown
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — key-item-cooldown > puts the player in playing phase with dodge_roll equipped and active cooldown
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — key-item-cooldown > puts the player in playing phase with dodge_roll equipped and active cooldown
+Player connected: socket=rmZKWuXqYuDy3ZOtAAAD, playerId=2fbe4d4f-b2ab-4fbb-9b50-92dbe0c40bd2
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — key-item-cooldown > puts the player in playing phase with dodge_roll equipped and active cooldown
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — key-item-cooldown > puts the player in playing phase with dodge_roll equipped and active cooldown
+[loot] spawned id=56a18036-81c0-4b64-8043-f987068c27da value=18
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — key-item-cooldown > puts the player in playing phase with dodge_roll equipped and active cooldown
+Player disconnected: rmZKWuXqYuDy3ZOtAAAD
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — key-item-cooldown > puts the player in playing phase with dodge_roll equipped and active cooldown
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — quest-objective-near-complete > leaves a playing defeat_enemies run one low-HP grunt from victory
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — quest-objective-near-complete > leaves a playing defeat_enemies run one low-HP grunt from victory
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — quest-objective-near-complete > leaves a playing defeat_enemies run one low-HP grunt from victory
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — quest-objective-near-complete > leaves a playing defeat_enemies run one low-HP grunt from victory
+Player connected: socket=F9IfshGCUyjOginIAAAF, playerId=81f9a5c3-1b01-4127-ab26-3e50da5eb051
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — quest-objective-near-complete > leaves a playing defeat_enemies run one low-HP grunt from victory
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — quest-objective-near-complete > leaves a playing defeat_enemies run one low-HP grunt from victory
+Player disconnected: F9IfshGCUyjOginIAAAF
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — quest-objective-near-complete > leaves a playing defeat_enemies run one low-HP grunt from victory
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > setupRunExhaustedDebug > configures MS-insufficient stall for in-dungeon players
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > setupRunExhaustedDebug > fails the run immediately when exhaustion grace is pre-aged
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-suspended-hub > drops into hub with suspended crystal_rescue checkpoint retaining runSpawnSeed and crystal positions
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-suspended-hub > drops into hub with suspended crystal_rescue checkpoint retaining runSpawnSeed and crystal positions
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-suspended-hub > drops into hub with suspended crystal_rescue checkpoint retaining runSpawnSeed and crystal positions
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-suspended-hub > drops into hub with suspended crystal_rescue checkpoint retaining runSpawnSeed and crystal positions
+Player connected: socket=29j1cn_i9WykqsrqAAAH, playerId=8e9be322-9a3b-4a70-aed9-ba39e74e1aca
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-suspended-hub > drops into hub with suspended crystal_rescue checkpoint retaining runSpawnSeed and crystal positions
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-suspended-hub > drops into hub with suspended crystal_rescue checkpoint retaining runSpawnSeed and crystal positions
+[server] Layout for quest "crystal_rescue" tier 1: seed=2125694907, profile=open, rooms=5
+[crystal] spawned id=ed0f5a8f-9283-48fc-9c70-5ddd66d36c3e at (-8.2, 13.6)
+[crystal] spawned id=e60326b2-a39d-4aee-a536-f54367b8eb38 at (19.6, -11.9)
+[crystal] spawned id=95adb347-13a4-487d-8d26-08a92473650e at (-10.7, -15.8)
+[run] checkpoint captured
+[run] extracted to hub: Prism Salvage
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-suspended-hub > drops into hub with suspended crystal_rescue checkpoint retaining runSpawnSeed and crystal positions
+Player disconnected: 29j1cn_i9WykqsrqAAAH
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-suspended-hub > drops into hub with suspended crystal_rescue checkpoint retaining runSpawnSeed and crystal positions
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — suspended-run-hub > drops the squad into the hub lobby after telepipe extract with durable vitals
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — suspended-run-hub > drops the squad into the hub lobby after telepipe extract with durable vitals
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — suspended-run-hub > drops the squad into the hub lobby after telepipe extract with durable vitals
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — suspended-run-hub > drops the squad into the hub lobby after telepipe extract with durable vitals
+Player connected: socket=iJwHZtQEYKXyc6ooAAAJ, playerId=cfcf55c8-d52e-49c2-866b-3b691b6f0aba
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — suspended-run-hub > drops the squad into the hub lobby after telepipe extract with durable vitals
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — suspended-run-hub > drops the squad into the hub lobby after telepipe extract with durable vitals
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — suspended-run-hub > drops the squad into the hub lobby after telepipe extract with durable vitals
+Player disconnected: iJwHZtQEYKXyc6ooAAAJ
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — suspended-run-hub > drops the squad into the hub lobby after telepipe extract with durable vitals
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — warded-enemy > spawns a warded grunt with shield beside a plain grunt
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — warded-enemy > spawns a warded grunt with shield beside a plain grunt
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — warded-enemy > spawns a warded grunt with shield beside a plain grunt
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — warded-enemy > spawns a warded grunt with shield beside a plain grunt
+Player connected: socket=K7fQpU_wJPHGW-DxAAAL, playerId=6865b070-dbcd-40d7-a47b-d19e742e4367
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — warded-enemy > spawns a warded grunt with shield beside a plain grunt
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — warded-enemy > spawns a warded grunt with shield beside a plain grunt
+Player disconnected: K7fQpU_wJPHGW-DxAAAL
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — warded-enemy > spawns a warded grunt with shield beside a plain grunt
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-tier-2 > deploys arena_trials Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-tier-2 > deploys arena_trials Tier 2 stage-boss run with encounter and rigid layout
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-tier-2 > deploys arena_trials Tier 2 stage-boss run with encounter and rigid layout
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-tier-2 > deploys arena_trials Tier 2 stage-boss run with encounter and rigid layout
+Player connected: socket=fy2zSLKEeQ_57JxYAAAN, playerId=77690a3b-8935-46b9-9a80-b537021a3598
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-tier-2 > deploys arena_trials Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-tier-2 > deploys arena_trials Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-tier-2 > deploys arena_trials Tier 2 stage-boss run with encounter and rigid layout
+Player disconnected: fy2zSLKEeQ_57JxYAAAN
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-tier-2 > deploys arena_trials Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (arena_trials_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (arena_trials_tier2 parity)
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (arena_trials_tier2 parity)
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (arena_trials_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=adcd043c-d2c9-4f50-a302-e6e19bbea655 value=11
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (arena_trials_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > repositions beside live adds after arena-trials-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > repositions beside live adds after arena-trials-tier-2 deploy
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > repositions beside live adds after arena-trials-tier-2 deploy
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > repositions beside live adds after arena-trials-tier-2 deploy
+Player connected: socket=U-is7y47HB8SvGatAAAP, playerId=4d302e6f-b772-4497-a3fa-d1815053378a
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > repositions beside live adds after arena-trials-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > repositions beside live adds after arena-trials-tier-2 deploy
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > repositions beside live adds after arena-trials-tier-2 deploy
+Player disconnected: U-is7y47HB8SvGatAAAP
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > repositions beside live adds after arena-trials-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > places player outside dormant arena_champion trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > places player outside dormant arena_champion trigger after adds cleared
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > places player outside dormant arena_champion trigger after adds cleared
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > places player outside dormant arena_champion trigger after adds cleared
+Player connected: socket=pC5sc2ASZqDoksj-AAAR, playerId=02078e42-9642-4089-a3df-60aa509698eb
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > places player outside dormant arena_champion trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > places player outside dormant arena_champion trigger after adds cleared
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+[loot] spawned id=adcc2a1f-7160-42a8-b2ad-0317ed0f0c2b value=17
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > places player outside dormant arena_champion trigger after adds cleared
+Player disconnected: pC5sc2ASZqDoksj-AAAR
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > places player outside dormant arena_champion trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > positions arena_champion at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > positions arena_champion at 1 HP beside the player in playing phase
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > positions arena_champion at 1 HP beside the player in playing phase
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > positions arena_champion at 1 HP beside the player in playing phase
+Player connected: socket=xXW1ZGc4xzyDzvPsAAAT, playerId=dc684f72-72cc-4ddf-891a-d8f401d5d464
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > positions arena_champion at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > positions arena_champion at 1 HP beside the player in playing phase
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+[loot] spawned id=b384fddc-f8b7-4ca7-96cd-d3f22a629692 value=14
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > positions arena_champion at 1 HP beside the player in playing phase
+Player disconnected: xXW1ZGc4xzyDzvPsAAAT
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials harness combat shortcuts > positions arena_champion at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-dormant > deploys arena_trials Tier 2 dormant stage-boss encounter via normal run path
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-dormant > deploys arena_trials Tier 2 dormant stage-boss encounter via normal run path
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-dormant > deploys arena_trials Tier 2 dormant stage-boss encounter via normal run path
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-dormant > deploys arena_trials Tier 2 dormant stage-boss encounter via normal run path
+Player connected: socket=EDSyXTrgeDmS4JHBAAAV, playerId=61da00ab-7799-48c8-8bc3-4a9e629d5bba
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-dormant > deploys arena_trials Tier 2 dormant stage-boss encounter via normal run path
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-dormant > deploys arena_trials Tier 2 dormant stage-boss encounter via normal run path
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+[loot] spawned id=f74de9a9-b9dc-4b40-894f-2a85949f5a87 value=15
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-dormant > deploys arena_trials Tier 2 dormant stage-boss encounter via normal run path
+Player disconnected: EDSyXTrgeDmS4JHBAAAV
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-dormant > deploys arena_trials Tier 2 dormant stage-boss encounter via normal run path
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-active > activates arena_trials Tier 2 stage-boss encounter with boss at 1 HP
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-active > activates arena_trials Tier 2 stage-boss encounter with boss at 1 HP
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-active > activates arena_trials Tier 2 stage-boss encounter with boss at 1 HP
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-active > activates arena_trials Tier 2 stage-boss encounter with boss at 1 HP
+Player connected: socket=_Nl9iBSg8-Q07ZhqAAAX, playerId=1dc6ca7c-e21e-408d-8e46-21c53c545b1d
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-active > activates arena_trials Tier 2 stage-boss encounter with boss at 1 HP
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-active > activates arena_trials Tier 2 stage-boss encounter with boss at 1 HP
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-active > activates arena_trials Tier 2 stage-boss encounter with boss at 1 HP
+Player disconnected: _Nl9iBSg8-Q07ZhqAAAX
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — stage-boss-active > activates arena_trials Tier 2 stage-boss encounter with boss at 1 HP
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-telepipe-ready deploys Tier 2 with telepipe in hand
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-telepipe-ready deploys Tier 2 with telepipe in hand
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-telepipe-ready deploys Tier 2 with telepipe in hand
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-telepipe-ready deploys Tier 2 with telepipe in hand
+Player connected: socket=XS81qaa4Uq6HWhcvAAAZ, playerId=d18873b2-900d-47a2-9954-d9dd2e730b45
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-telepipe-ready deploys Tier 2 with telepipe in hand
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-telepipe-ready deploys Tier 2 with telepipe in hand
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-telepipe-ready deploys Tier 2 with telepipe in hand
+Player disconnected: XS81qaa4Uq6HWhcvAAAZ
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-telepipe-ready deploys Tier 2 with telepipe in hand
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > deploys training_caverns Tier 2 stage-boss run with encounter and rigid crowded layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > deploys training_caverns Tier 2 stage-boss run with encounter and rigid crowded layout
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > deploys training_caverns Tier 2 stage-boss run with encounter and rigid crowded layout
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > deploys training_caverns Tier 2 stage-boss run with encounter and rigid crowded layout
+Player connected: socket=47GffJQu8wzbv8pAAAAb, playerId=cd0c6225-b3a4-445e-83a2-f05151d61643
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > deploys training_caverns Tier 2 stage-boss run with encounter and rigid crowded layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > deploys training_caverns Tier 2 stage-boss run with encounter and rigid crowded layout
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+[loot] spawned id=6b61a382-9f36-47d9-85ec-6e81f51baf01 value=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > deploys training_caverns Tier 2 stage-boss run with encounter and rigid crowded layout
+Player disconnected: 47GffJQu8wzbv8pAAAAb
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > deploys training_caverns Tier 2 stage-boss run with encounter and rigid crowded layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-near-adds keeps dormant boss and adds for bossVisualIdentity probe
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-near-adds keeps dormant boss and adds for bossVisualIdentity probe
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-near-adds keeps dormant boss and adds for bossVisualIdentity probe
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-near-adds keeps dormant boss and adds for bossVisualIdentity probe
+Player connected: socket=afztjFogro0HzKJfAAAd, playerId=b3b26c59-b434-4b42-8ba9-8ff86c733bcb
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-near-adds keeps dormant boss and adds for bossVisualIdentity probe
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-near-adds keeps dormant boss and adds for bossVisualIdentity probe
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-near-adds keeps dormant boss and adds for bossVisualIdentity probe
+Player disconnected: afztjFogro0HzKJfAAAd
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-near-adds keeps dormant boss and adds for bossVisualIdentity probe
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > repositions beside live adds after training-caverns-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > repositions beside live adds after training-caverns-tier-2 deploy
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > repositions beside live adds after training-caverns-tier-2 deploy
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > repositions beside live adds after training-caverns-tier-2 deploy
+Player connected: socket=VLZ-XD1fsOFDWtBvAAAf, playerId=4fa1218d-ea7d-471e-8195-8c91ac607e7c
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > repositions beside live adds after training-caverns-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > repositions beside live adds after training-caverns-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > repositions beside live adds after training-caverns-tier-2 deploy
+Player disconnected: VLZ-XD1fsOFDWtBvAAAf
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > repositions beside live adds after training-caverns-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > places player outside dormant boss trigger after adds cleared
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > places player outside dormant boss trigger after adds cleared
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > places player outside dormant boss trigger after adds cleared
+Player connected: socket=ZF6jcAFLSbbjz_JDAAAh, playerId=fcfaecec-08e8-4378-9fc5-121eef05b57b
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > places player outside dormant boss trigger after adds cleared
+Player disconnected: ZF6jcAFLSbbjz_JDAAAh
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-encounter-trigger activates boss without spawning debug grunts
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-encounter-trigger activates boss without spawning debug grunts
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-encounter-trigger activates boss without spawning debug grunts
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-encounter-trigger activates boss without spawning debug grunts
+Player connected: socket=ZEyImWRxpXQYIIw6AAAj, playerId=da22eb74-71f5-4fd6-a23c-077be8c086af
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-encounter-trigger activates boss without spawning debug grunts
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-encounter-trigger activates boss without spawning debug grunts
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+[loot] spawned id=85620fe0-b3ab-40f0-8034-5bea2fbc18ee value=14
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-encounter-trigger activates boss without spawning debug grunts
+Player disconnected: ZEyImWRxpXQYIIw6AAAj
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > training-caverns-encounter-trigger activates boss without spawning debug grunts
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > positions annex_overseer at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > positions annex_overseer at 1 HP beside the player in playing phase
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > positions annex_overseer at 1 HP beside the player in playing phase
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > positions annex_overseer at 1 HP beside the player in playing phase
+Player connected: socket=81rWJsWa8SduQG5EAAAl, playerId=6430218e-895f-45ea-8062-66d549694c20
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > positions annex_overseer at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > positions annex_overseer at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > positions annex_overseer at 1 HP beside the player in playing phase
+Player disconnected: 81rWJsWa8SduQG5EAAAl
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > positions annex_overseer at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (training_caverns_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (training_caverns_tier2 parity)
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (training_caverns_tier2 parity)
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (training_caverns_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=1e27e68e-526b-4738-b337-fc0c20167e18 value=14
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — training-caverns-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (training_caverns_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-tier-2 > deploys crystal_rescue Tier 2 with rigid open layout, collect_items run metadata, and variant enemies
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-tier-2 > deploys crystal_rescue Tier 2 with rigid open layout, collect_items run metadata, and variant enemies
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-tier-2 > deploys crystal_rescue Tier 2 with rigid open layout, collect_items run metadata, and variant enemies
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-tier-2 > deploys crystal_rescue Tier 2 with rigid open layout, collect_items run metadata, and variant enemies
+Player connected: socket=Y1QDmoNyLuZ3B1k-AAAn, playerId=83bada3e-a9a9-4138-acb8-767505e04de9
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-tier-2 > deploys crystal_rescue Tier 2 with rigid open layout, collect_items run metadata, and variant enemies
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-tier-2 > deploys crystal_rescue Tier 2 with rigid open layout, collect_items run metadata, and variant enemies
+[server] Layout for quest "crystal_rescue" tier 2: seed=2125694908, profile=open, rooms=5
+[crystal] spawned id=c9115647-bf0a-4dbf-b300-7ad6d67c72ee at (34.9, -35.3)
+[crystal] spawned id=2c092bba-c1f6-452f-a8c2-8c70e3213fc6 at (-37.2, -43.5)
+[crystal] spawned id=c363c441-1f43-4ac0-9fd1-c8f19368b00d at (14.0, -38.3)
+[crystal] spawned id=5a5375f1-3646-4715-9796-847ea32f3e2c at (-8.6, -44.1)
+[crystal] spawned id=c7a85755-88b9-4b95-9fc5-1718390d6574 at (37.2, -48.5)
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-tier-2 > deploys crystal_rescue Tier 2 with rigid open layout, collect_items run metadata, and variant enemies
+Player disconnected: Y1QDmoNyLuZ3B1k-AAAn
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-tier-2 > deploys crystal_rescue Tier 2 with rigid open layout, collect_items run metadata, and variant enemies
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (crystal_rescue_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (crystal_rescue_tier2 parity)
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (crystal_rescue_tier2 parity)
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (crystal_rescue_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[crystal] spawned id=e84b3e33-add8-48af-a9ff-bcda8e7f8f00 at (48.5, -40.3)
+[crystal] spawned id=82f5c4c3-bc61-4875-a547-76cb7af9b14f at (-12.1, -46.2)
+[crystal] spawned id=9c9dd040-1cb0-4d74-b63d-3a5b0f193c65 at (-42.6, -40.3)
+[crystal] spawned id=254dc727-9d8c-4a1e-ad24-2d1d650e8a76 at (14.2, -44.8)
+[crystal] spawned id=28a6adbe-955a-4bab-a3cd-d36b79bef084 at (45.1, -50.2)
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — crystal-rescue-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (crystal_rescue_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > canyon-descent-telepipe-ready deploys Tier 2 with telepipe in hand
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > canyon-descent-telepipe-ready deploys Tier 2 with telepipe in hand
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > canyon-descent-telepipe-ready deploys Tier 2 with telepipe in hand
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > canyon-descent-telepipe-ready deploys Tier 2 with telepipe in hand
+Player connected: socket=lDzB1Xh8x8ukWT4UAAAp, playerId=d5d01b21-c196-4a5c-b359-e7638d331ffe
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > canyon-descent-telepipe-ready deploys Tier 2 with telepipe in hand
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > canyon-descent-telepipe-ready deploys Tier 2 with telepipe in hand
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+[loot] spawned id=3fd793b9-117b-4e26-a107-60907e41fa1e value=11
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > canyon-descent-telepipe-ready deploys Tier 2 with telepipe in hand
+Player disconnected: lDzB1Xh8x8ukWT4UAAAp
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > canyon-descent-telepipe-ready deploys Tier 2 with telepipe in hand
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > canyon-descent-telepipe-ready forces fresh hand redeal over pre-existing hand
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > canyon-descent-telepipe-ready forces fresh hand redeal over pre-existing hand
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > canyon-descent-telepipe-ready forces fresh hand redeal over pre-existing hand
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > canyon-descent-telepipe-ready forces fresh hand redeal over pre-existing hand
+Player connected: socket=wklFAbB5bI23HDe8AAAr, playerId=dd3d8489-9c9e-4b99-908b-fa4687139bfc
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > canyon-descent-telepipe-ready forces fresh hand redeal over pre-existing hand
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > canyon-descent-telepipe-ready forces fresh hand redeal over pre-existing hand
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > canyon-descent-telepipe-ready forces fresh hand redeal over pre-existing hand
+Player disconnected: wklFAbB5bI23HDe8AAAr
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > canyon-descent-telepipe-ready forces fresh hand redeal over pre-existing hand
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > deploys canyon_descent Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > deploys canyon_descent Tier 2 stage-boss run with encounter and rigid layout
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > deploys canyon_descent Tier 2 stage-boss run with encounter and rigid layout
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > deploys canyon_descent Tier 2 stage-boss run with encounter and rigid layout
+Player connected: socket=OoNbH_A-CCqnPT6BAAAt, playerId=665be939-e0a3-489a-b5bd-cd4dfb462e58
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > deploys canyon_descent Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > deploys canyon_descent Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > deploys canyon_descent Tier 2 stage-boss run with encounter and rigid layout
+Player disconnected: OoNbH_A-CCqnPT6BAAAt
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > deploys canyon_descent Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (canyon_descent_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (canyon_descent_tier2 parity)
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (canyon_descent_tier2 parity)
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (canyon_descent_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (canyon_descent_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > repositions beside live adds after canyon-descent-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > repositions beside live adds after canyon-descent-tier-2 deploy
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > repositions beside live adds after canyon-descent-tier-2 deploy
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > repositions beside live adds after canyon-descent-tier-2 deploy
+Player connected: socket=7RUa1YEFSKlSEYgmAAAv, playerId=333366e4-c0ef-464e-aac0-10547cce11ad
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > repositions beside live adds after canyon-descent-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > repositions beside live adds after canyon-descent-tier-2 deploy
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > repositions beside live adds after canyon-descent-tier-2 deploy
+Player disconnected: 7RUa1YEFSKlSEYgmAAAv
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > repositions beside live adds after canyon-descent-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > places player outside dormant boss trigger after adds cleared
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > places player outside dormant boss trigger after adds cleared
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > places player outside dormant boss trigger after adds cleared
+Player connected: socket=mj2RGdT-kbKn3zP1AAAx, playerId=1e3d2bc2-95e0-46e6-a4a5-7ebd2c3da7bd
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > places player outside dormant boss trigger after adds cleared
+Player disconnected: mj2RGdT-kbKn3zP1AAAx
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > positions miniboss at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > positions miniboss at 1 HP beside the player in playing phase
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > positions miniboss at 1 HP beside the player in playing phase
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > positions miniboss at 1 HP beside the player in playing phase
+Player connected: socket=M_jIOkmEpEQm0uObAAAz, playerId=9ffc966d-43df-4398-b2db-8d1f858f738d
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > positions miniboss at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > positions miniboss at 1 HP beside the player in playing phase
+[server] Layout for quest "canyon_descent" tier 2: seed=1080928427, profile=sunken-canyon, rooms=7
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > positions miniboss at 1 HP beside the player in playing phase
+Player disconnected: M_jIOkmEpEQm0uObAAAz
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — canyon-descent-tier-2 > positions miniboss at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > repositions beside live adds after arena-trials-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > repositions beside live adds after arena-trials-tier-2 deploy
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > repositions beside live adds after arena-trials-tier-2 deploy
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > repositions beside live adds after arena-trials-tier-2 deploy
+Player connected: socket=2btM0Il5M7MKD7zZAAA1, playerId=c6797aa8-58c5-47c6-bddd-8d0a419fd092
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > repositions beside live adds after arena-trials-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > repositions beside live adds after arena-trials-tier-2 deploy
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > repositions beside live adds after arena-trials-tier-2 deploy
+Player disconnected: 2btM0Il5M7MKD7zZAAA1
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > repositions beside live adds after arena-trials-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-near-adds without an active arena_trials run
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-near-adds without an active arena_trials run
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-near-adds without an active arena_trials run
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-near-adds without an active arena_trials run
+Player connected: socket=jz5kO5wTuS506owWAAA3, playerId=307a4a62-1e1f-4b40-9745-eee658b7c787
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-near-adds without an active arena_trials run
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-near-adds without an active arena_trials run
+Player disconnected: jz5kO5wTuS506owWAAA3
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-near-adds without an active arena_trials run
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > places player outside dormant boss trigger after adds cleared
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > places player outside dormant boss trigger after adds cleared
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > places player outside dormant boss trigger after adds cleared
+Player connected: socket=Nr8_fLtznhe59G-0AAA5, playerId=639594c3-2a13-4d71-96cd-3d4685842846
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+[loot] spawned id=e7857b53-a8b1-4458-8398-be07f1673075 value=14
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > places player outside dormant boss trigger after adds cleared
+Player disconnected: Nr8_fLtznhe59G-0AAA5
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-approach while adds remain
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-approach while adds remain
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-approach while adds remain
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-approach while adds remain
+Player connected: socket=pvt7a18zOJF6uYp1AAA7, playerId=ef33517d-c83a-41f4-b375-ef38ceb69028
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-approach while adds remain
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-approach while adds remain
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+[loot] spawned id=16f0f96d-68d8-4348-9a5a-2176980dcd57 value=7
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-approach while adds remain
+Player disconnected: pvt7a18zOJF6uYp1AAA7
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-approach while adds remain
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > positions arena champion at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > positions arena champion at 1 HP beside the player in playing phase
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > positions arena champion at 1 HP beside the player in playing phase
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > positions arena champion at 1 HP beside the player in playing phase
+Player connected: socket=ZZBlAEmcMXlNYgjUAAA9, playerId=9524a1d3-2bc3-4149-bfbc-62b55c5eba0c
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > positions arena champion at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > positions arena champion at 1 HP beside the player in playing phase
+[server] Layout for quest "arena_trials" tier 2: seed=365288573, profile=open-plaza, rooms=1
+[loot] spawned id=0ae2e272-b9e0-4150-af9a-461501e3a895 value=7
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > positions arena champion at 1 HP beside the player in playing phase
+Player disconnected: ZZBlAEmcMXlNYgjUAAA9
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > positions arena champion at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-low-hp without an active arena_trials run
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-low-hp without an active arena_trials run
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-low-hp without an active arena_trials run
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-low-hp without an active arena_trials run
+Player connected: socket=RyeV3bQB6UN6PHvjAAA_, playerId=9db024ba-4aae-4a05-b3d4-1a88ba10362d
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-low-hp without an active arena_trials run
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-low-hp without an active arena_trials run
+Player disconnected: RyeV3bQB6UN6PHvjAAA_
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — arena-trials-* > rejects arena-trials-boss-low-hp without an active arena_trials run
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > spire-ascent-telepipe-ready deploys Tier 2 with telepipe in hand
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > spire-ascent-telepipe-ready deploys Tier 2 with telepipe in hand
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > spire-ascent-telepipe-ready deploys Tier 2 with telepipe in hand
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > spire-ascent-telepipe-ready deploys Tier 2 with telepipe in hand
+Player connected: socket=TVcGSbNPOKk75JE2AABB, playerId=5e8c8dbb-c0d4-46c2-96d5-7d2ac5274880
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > spire-ascent-telepipe-ready deploys Tier 2 with telepipe in hand
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > spire-ascent-telepipe-ready deploys Tier 2 with telepipe in hand
+[server] Layout for quest "spire_ascent" tier 2: seed=727116418, profile=spire-ascent, rooms=7
+[loot] spawned id=873d8380-c005-4983-9dcb-61ee9d94399d value=8
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > spire-ascent-telepipe-ready deploys Tier 2 with telepipe in hand
+Player disconnected: TVcGSbNPOKk75JE2AABB
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > spire-ascent-telepipe-ready deploys Tier 2 with telepipe in hand
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > deploys spire_ascent Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > deploys spire_ascent Tier 2 stage-boss run with encounter and rigid layout
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > deploys spire_ascent Tier 2 stage-boss run with encounter and rigid layout
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > deploys spire_ascent Tier 2 stage-boss run with encounter and rigid layout
+Player connected: socket=XpXLnfHsbyO7Jh7nAABD, playerId=d4d844fb-ac4f-4d87-ba3d-ec4cafb88c21
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > deploys spire_ascent Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > deploys spire_ascent Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "spire_ascent" tier 2: seed=727116418, profile=spire-ascent, rooms=7
+[loot] spawned id=0dd150bb-64ce-43b3-84aa-799427db5e44 value=17
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > deploys spire_ascent Tier 2 stage-boss run with encounter and rigid layout
+Player disconnected: XpXLnfHsbyO7Jh7nAABD
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > deploys spire_ascent Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (spire_ascent_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (spire_ascent_tier2 parity)
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (spire_ascent_tier2 parity)
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (spire_ascent_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (spire_ascent_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing-tier-2 > deploys frost_crossing Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing-tier-2 > deploys frost_crossing Tier 2 stage-boss run with encounter and rigid layout
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing-tier-2 > deploys frost_crossing Tier 2 stage-boss run with encounter and rigid layout
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing-tier-2 > deploys frost_crossing Tier 2 stage-boss run with encounter and rigid layout
+Player connected: socket=3yDd8qtyJjOLmVqxAABF, playerId=5bfc3d8e-b2c6-4453-95d0-376c0c575b1c
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing-tier-2 > deploys frost_crossing Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing-tier-2 > deploys frost_crossing Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "frost_crossing" tier 2: seed=1081914341, profile=ice-cavern, rooms=5
+[loot] spawned id=048d90e3-000e-40fe-921b-22c5104d8f92 value=16
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing-tier-2 > deploys frost_crossing Tier 2 stage-boss run with encounter and rigid layout
+Player disconnected: 3yDd8qtyJjOLmVqxAABF
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing-tier-2 > deploys frost_crossing Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > repositions beside live adds after spire-ascent-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > repositions beside live adds after spire-ascent-tier-2 deploy
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > repositions beside live adds after spire-ascent-tier-2 deploy
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > repositions beside live adds after spire-ascent-tier-2 deploy
+Player connected: socket=D_sXbBDI3DiafZfuAABH, playerId=e2d0bccc-cbab-4b82-a9c6-97918bee947e
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > repositions beside live adds after spire-ascent-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > repositions beside live adds after spire-ascent-tier-2 deploy
+[server] Layout for quest "spire_ascent" tier 2: seed=727116418, profile=spire-ascent, rooms=7
+[loot] spawned id=cde73c7b-b70b-4c87-814f-ea05a060b4df value=15
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > repositions beside live adds after spire-ascent-tier-2 deploy
+Player disconnected: D_sXbBDI3DiafZfuAABH
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > repositions beside live adds after spire-ascent-tier-2 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > places player outside dormant boss trigger after adds cleared
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > places player outside dormant boss trigger after adds cleared
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > places player outside dormant boss trigger after adds cleared
+Player connected: socket=JvI9w_GsyF67cxf4AABJ, playerId=d922290e-ce92-4624-9944-58659a6f9644
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "spire_ascent" tier 2: seed=727116418, profile=spire-ascent, rooms=7
+[loot] spawned id=536d2bdf-518c-4fb6-8854-97b375b6384a value=8
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > places player outside dormant boss trigger after adds cleared
+Player disconnected: JvI9w_GsyF67cxf4AABJ
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > places player outside dormant boss trigger after adds cleared
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > activates Summit Warden and spawns a visual add after boss approach
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > activates Summit Warden and spawns a visual add after boss approach
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > activates Summit Warden and spawns a visual add after boss approach
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > activates Summit Warden and spawns a visual add after boss approach
+Player connected: socket=TVnU6fB8qILdET3jAABL, playerId=e8e95a51-0ed3-44a3-92c5-be0ede785178
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > activates Summit Warden and spawns a visual add after boss approach
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > activates Summit Warden and spawns a visual add after boss approach
+[server] Layout for quest "spire_ascent" tier 2: seed=727116418, profile=spire-ascent, rooms=7
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > activates Summit Warden and spawns a visual add after boss approach
+Player disconnected: TVnU6fB8qILdET3jAABL
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > activates Summit Warden and spawns a visual add after boss approach
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > positions spire_warden at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > positions spire_warden at 1 HP beside the player in playing phase
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > positions spire_warden at 1 HP beside the player in playing phase
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > positions spire_warden at 1 HP beside the player in playing phase
+Player connected: socket=na4a2NfrE4Ob7gZ5AABN, playerId=5a48d542-2607-4258-a813-2043b2d5797a
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > positions spire_warden at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > positions spire_warden at 1 HP beside the player in playing phase
+[server] Layout for quest "spire_ascent" tier 2: seed=727116418, profile=spire-ascent, rooms=7
+[loot] spawned id=47f103ca-8f60-4dc2-9810-49fac6f8f6c8 value=11
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > positions spire_warden at 1 HP beside the player in playing phase
+Player disconnected: na4a2NfrE4Ob7gZ5AABN
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — spire-ascent-tier-2 harness shortcuts > positions spire_warden at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — variant-frenzied > spawns a frenzied grunt beside a plain grunt
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — variant-frenzied > spawns a frenzied grunt beside a plain grunt
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — variant-frenzied > spawns a frenzied grunt beside a plain grunt
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — variant-frenzied > spawns a frenzied grunt beside a plain grunt
+Player connected: socket=Erdj0Mibz-JCL6j8AABP, playerId=a57e6162-fa26-4424-bfc8-27378edbb7a9
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — variant-frenzied > spawns a frenzied grunt beside a plain grunt
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — variant-frenzied > spawns a frenzied grunt beside a plain grunt
+Player disconnected: Erdj0Mibz-JCL6j8AABP
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — variant-frenzied > spawns a frenzied grunt beside a plain grunt
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern-stage > loads fire-cavern layout with player on rim and floor-aligned Y
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern-stage > loads fire-cavern layout with player on rim and floor-aligned Y
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern-stage > loads fire-cavern layout with player on rim and floor-aligned Y
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern-stage > loads fire-cavern layout with player on rim and floor-aligned Y
+Player connected: socket=10-8V30oQjXcGbUgAABR, playerId=f8108601-0700-4310-b9b8-42073afe0994
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern-stage > loads fire-cavern layout with player on rim and floor-aligned Y
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern-stage > loads fire-cavern layout with player on rim and floor-aligned Y
+Player disconnected: 10-8V30oQjXcGbUgAABR
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern-stage > loads fire-cavern layout with player on rim and floor-aligned Y
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern > deploys ember_descent tier-1 with fire-cavern layout, rim spawn, and enemies
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern > deploys ember_descent tier-1 with fire-cavern layout, rim spawn, and enemies
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern > deploys ember_descent tier-1 with fire-cavern layout, rim spawn, and enemies
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern > deploys ember_descent tier-1 with fire-cavern layout, rim spawn, and enemies
+Player connected: socket=XgJKnO9-ifpwqP72AABT, playerId=381cdb92-0571-4f2b-a958-5017380d9f3d
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern > deploys ember_descent tier-1 with fire-cavern layout, rim spawn, and enemies
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern > deploys ember_descent tier-1 with fire-cavern layout, rim spawn, and enemies
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=0f500780-02dd-4dc2-978f-ce732b2e0cc6 value=11
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern > deploys ember_descent tier-1 with fire-cavern layout, rim spawn, and enemies
+Player disconnected: XgJKnO9-ifpwqP72AABT
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern > deploys ember_descent tier-1 with fire-cavern layout, rim spawn, and enemies
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern > stays in lobby with ember_descent tier-1 fire-cavern quest for telepipe-reset QA
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern > stays in lobby with ember_descent tier-1 fire-cavern quest for telepipe-reset QA
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern > stays in lobby with ember_descent tier-1 fire-cavern quest for telepipe-reset QA
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern > stays in lobby with ember_descent tier-1 fire-cavern quest for telepipe-reset QA
+Player connected: socket=EWa0fkf3IbQkEUBqAABV, playerId=5b1a0f97-a70c-4be9-a9ea-cfd5363241cb
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern > stays in lobby with ember_descent tier-1 fire-cavern quest for telepipe-reset QA
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern > stays in lobby with ember_descent tier-1 fire-cavern quest for telepipe-reset QA
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern > stays in lobby with ember_descent tier-1 fire-cavern quest for telepipe-reset QA
+Player disconnected: EWa0fkf3IbQkEUBqAABV
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — fire-cavern > stays in lobby with ember_descent tier-1 fire-cavern quest for telepipe-reset QA
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent-tier-2 > deploys ember_descent Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent-tier-2 > deploys ember_descent Tier 2 stage-boss run with encounter and rigid layout
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent-tier-2 > deploys ember_descent Tier 2 stage-boss run with encounter and rigid layout
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent-tier-2 > deploys ember_descent Tier 2 stage-boss run with encounter and rigid layout
+Player connected: socket=6PJlTWOTYi87uNEHAABX, playerId=2aa309ca-1c48-4942-b428-28e9a787e9cb
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent-tier-2 > deploys ember_descent Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent-tier-2 > deploys ember_descent Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "ember_descent" tier 2: seed=1023983958, profile=fire-cavern, rooms=5
+[loot] spawned id=d9cdbf2a-bce7-45fc-ab1d-2221760bc78c value=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent-tier-2 > deploys ember_descent Tier 2 stage-boss run with encounter and rigid layout
+Player disconnected: 6PJlTWOTYi87uNEHAABX
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent-tier-2 > deploys ember_descent Tier 2 stage-boss run with encounter and rigid layout
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (ember_descent_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (ember_descent_tier2 parity)
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (ember_descent_tier2 parity)
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (ember_descent_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent-tier-2 > Tier 2 variant rolls tag enemies under fixed seed 4242 (ember_descent_tier2 parity)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > repositions beside live support adds after fire-cavern deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > repositions beside live support adds after fire-cavern deploy
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > repositions beside live support adds after fire-cavern deploy
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > repositions beside live support adds after fire-cavern deploy
+Player connected: socket=M0Jd0ER9dzXhY3oWAABZ, playerId=d51114ba-d820-4100-a6f3-21dd0b79e2bb
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > repositions beside live support adds after fire-cavern deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > repositions beside live support adds after fire-cavern deploy
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=0bb2aa23-b316-4e56-ac96-8c2a58b8b845 value=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > repositions beside live support adds after fire-cavern deploy
+Player disconnected: M0Jd0ER9dzXhY3oWAABZ
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > repositions beside live support adds after fire-cavern deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > spawns ember_wraith with godmode off for burn QA after fire-cavern deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > spawns ember_wraith with godmode off for burn QA after fire-cavern deploy
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > spawns ember_wraith with godmode off for burn QA after fire-cavern deploy
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > spawns ember_wraith with godmode off for burn QA after fire-cavern deploy
+Player connected: socket=omV5BVef_PRDW_6-AABb, playerId=899eb28d-3cae-4155-a882-1fdb9e2e7d05
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > spawns ember_wraith with godmode off for burn QA after fire-cavern deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > spawns ember_wraith with godmode off for burn QA after fire-cavern deploy
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > spawns ember_wraith with godmode off for burn QA after fire-cavern deploy
+Player disconnected: omV5BVef_PRDW_6-AABb
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > spawns ember_wraith with godmode off for burn QA after fire-cavern deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > ember-descent-ember-wraith-burn allows burn tick damage after clearing godmode
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > ember-descent-ember-wraith-burn allows burn tick damage after clearing godmode
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > ember-descent-ember-wraith-burn allows burn tick damage after clearing godmode
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > ember-descent-ember-wraith-burn allows burn tick damage after clearing godmode
+Player connected: socket=LcZHpjr9apouhVs9AABd, playerId=f72e2847-3116-4555-8c5b-37ab66b368b3
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > ember-descent-ember-wraith-burn allows burn tick damage after clearing godmode
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > ember-descent-ember-wraith-burn allows burn tick damage after clearing godmode
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > ember-descent-ember-wraith-burn allows burn tick damage after clearing godmode
+Player disconnected: LcZHpjr9apouhVs9AABd
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > ember-descent-ember-wraith-burn allows burn tick damage after clearing godmode
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > status-mutual-exclusion-ready pins fireball and permafrost_lance with one grunt in cast range
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > status-mutual-exclusion-ready pins fireball and permafrost_lance with one grunt in cast range
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > status-mutual-exclusion-ready pins fireball and permafrost_lance with one grunt in cast range
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > status-mutual-exclusion-ready pins fireball and permafrost_lance with one grunt in cast range
+Player connected: socket=6razyWPAImvZ5OedAABf, playerId=ff4538d8-3d1a-4f2b-a85f-9644c0e7878a
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > status-mutual-exclusion-ready pins fireball and permafrost_lance with one grunt in cast range
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > status-mutual-exclusion-ready pins fireball and permafrost_lance with one grunt in cast range
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > status-mutual-exclusion-ready pins fireball and permafrost_lance with one grunt in cast range
+Player disconnected: 6razyWPAImvZ5OedAABf
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > status-mutual-exclusion-ready pins fireball and permafrost_lance with one grunt in cast range
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > leaves one 1-HP enemy with objective not yet complete after fire-cavern deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > leaves one 1-HP enemy with objective not yet complete after fire-cavern deploy
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > leaves one 1-HP enemy with objective not yet complete after fire-cavern deploy
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > leaves one 1-HP enemy with objective not yet complete after fire-cavern deploy
+Player connected: socket=ru3ttdS71Kq6qoXrAABh, playerId=1cdbe7c7-ce99-4912-a286-6f8a4168f1c5
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > leaves one 1-HP enemy with objective not yet complete after fire-cavern deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > leaves one 1-HP enemy with objective not yet complete after fire-cavern deploy
+[server] Layout for quest "ember_descent" tier 1: seed=1023983957, profile=fire-cavern, rooms=4
+[loot] spawned id=3c04605a-6059-470b-8f00-651419ea70b5 value=19
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > leaves one 1-HP enemy with objective not yet complete after fire-cavern deploy
+Player disconnected: ru3ttdS71Kq6qoXrAABh
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — ember-descent harness shortcuts > leaves one 1-HP enemy with objective not yet complete after fire-cavern deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > repositions beside live support adds after frost-crossing-tier-1 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > repositions beside live support adds after frost-crossing-tier-1 deploy
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > repositions beside live support adds after frost-crossing-tier-1 deploy
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > repositions beside live support adds after frost-crossing-tier-1 deploy
+Player connected: socket=uWXv7-oNzc3OF2PrAABj, playerId=79605601-a2ef-4fe3-a00f-2ad9b902b3c2
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > repositions beside live support adds after frost-crossing-tier-1 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > repositions beside live support adds after frost-crossing-tier-1 deploy
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > repositions beside live support adds after frost-crossing-tier-1 deploy
+[loot] magic stone drop id=d4248fac-3a81-4bd7-a2e4-c73820daf40c value=20 at (0.0, -32.5)
+[loot] magic stone drop id=e6a3d670-216c-4971-9aed-5c7eeeaaeb2d value=20 at (0.3, -32.0)
+[loot] currency drop id=05a63714-23fe-4977-b939-84c32fadaa35 value=14 at (0.3, -32.0)
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > repositions beside live support adds after frost-crossing-tier-1 deploy
+Player disconnected: uWXv7-oNzc3OF2PrAABj
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > repositions beside live support adds after frost-crossing-tier-1 deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > spawns glacial_thrower with godmode off for slow QA after frost-crossing deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > spawns glacial_thrower with godmode off for slow QA after frost-crossing deploy
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > spawns glacial_thrower with godmode off for slow QA after frost-crossing deploy
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > spawns glacial_thrower with godmode off for slow QA after frost-crossing deploy
+Player connected: socket=luEgMsV4hCjaR5RJAABl, playerId=18ef9f15-cb50-4f48-9417-1aab42588b68
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > spawns glacial_thrower with godmode off for slow QA after frost-crossing deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > spawns glacial_thrower with godmode off for slow QA after frost-crossing deploy
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[loot] spawned id=483aedb4-5e93-4edf-8d21-2c043f2c0bcf value=5
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > spawns glacial_thrower with godmode off for slow QA after frost-crossing deploy
+[loot] magic stone drop id=837bc982-b5b4-4dbc-bed8-dc8bcc126f6b value=20 at (0.0, -32.5)
+[loot] magic stone drop id=6ddeeeec-5f25-4d5d-aa86-51acda696847 value=20 at (0.3, -32.0)
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > spawns glacial_thrower with godmode off for slow QA after frost-crossing deploy
+Player disconnected: luEgMsV4hCjaR5RJAABl
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > spawns glacial_thrower with godmode off for slow QA after frost-crossing deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > seats player on ice lip facing centre with momentum on slippery floor
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > seats player on ice lip facing centre with momentum on slippery floor
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > seats player on ice lip facing centre with momentum on slippery floor
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > seats player on ice lip facing centre with momentum on slippery floor
+Player connected: socket=DOMDgcOOYxD8MHloAABn, playerId=c4d37f28-30f9-49ae-9aed-afbbcd6e0793
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > seats player on ice lip facing centre with momentum on slippery floor
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > seats player on ice lip facing centre with momentum on slippery floor
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[loot] spawned id=ba23fca9-601c-4c08-9bfe-bfb74c871bd4 value=7
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > seats player on ice lip facing centre with momentum on slippery floor
+[loot] magic stone drop id=6a8b5cf1-98f0-45d0-bca1-72c872ac5fb3 value=20 at (0.0, -32.5)
+[loot] magic stone drop id=ac7cffc0-1a1f-49f9-b427-4419523c1611 value=20 at (0.3, -32.0)
+[loot] currency drop id=849489d3-e1dc-4525-8bed-a83be7d41bcf value=14 at (0.3, -32.0)
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > seats player on ice lip facing centre with momentum on slippery floor
+Player disconnected: DOMDgcOOYxD8MHloAABn
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > seats player on ice lip facing centre with momentum on slippery floor
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > places player outside dormant boss trigger after scripted clears
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > places player outside dormant boss trigger after scripted clears
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > places player outside dormant boss trigger after scripted clears
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > places player outside dormant boss trigger after scripted clears
+Player connected: socket=ihzoPzKtNarv0wvJAABp, playerId=145d5709-95be-4030-a693-21b2a87d55ae
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > places player outside dormant boss trigger after scripted clears
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > places player outside dormant boss trigger after scripted clears
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[loot] spawned id=ce08aadc-8ae1-4b83-b931-4aabd27ab9b4 value=12
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > places player outside dormant boss trigger after scripted clears
+Player disconnected: ihzoPzKtNarv0wvJAABp
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > places player outside dormant boss trigger after scripted clears
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > activates Permafrost Warden and spawns a visual add after boss approach
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > activates Permafrost Warden and spawns a visual add after boss approach
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > activates Permafrost Warden and spawns a visual add after boss approach
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > activates Permafrost Warden and spawns a visual add after boss approach
+Player connected: socket=HthKq77h-KNgDZ5NAABr, playerId=66cdf28e-d653-432d-8787-632e98069c28
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > activates Permafrost Warden and spawns a visual add after boss approach
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > activates Permafrost Warden and spawns a visual add after boss approach
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > activates Permafrost Warden and spawns a visual add after boss approach
+Player disconnected: HthKq77h-KNgDZ5NAABr
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > activates Permafrost Warden and spawns a visual add after boss approach
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > positions permafrost_warden at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > positions permafrost_warden at 1 HP beside the player in playing phase
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > positions permafrost_warden at 1 HP beside the player in playing phase
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > positions permafrost_warden at 1 HP beside the player in playing phase
+Player connected: socket=C8c3Zrfni9BUJj9DAABt, playerId=1764752e-a44e-4029-abec-553253c3f5b5
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > positions permafrost_warden at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > positions permafrost_warden at 1 HP beside the player in playing phase
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > positions permafrost_warden at 1 HP beside the player in playing phase
+Player disconnected: C8c3Zrfni9BUJj9DAABt
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > positions permafrost_warden at 1 HP beside the player in playing phase
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > frost-crossing-last-enemy deploys active locked encounter with 1-HP warden
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > frost-crossing-last-enemy deploys active locked encounter with 1-HP warden
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > frost-crossing-last-enemy deploys active locked encounter with 1-HP warden
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > frost-crossing-last-enemy deploys active locked encounter with 1-HP warden
+Player connected: socket=isdLmjb0kCyI6TQvAABv, playerId=7c36da88-074d-4d77-adae-71cd1d784bae
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > frost-crossing-last-enemy deploys active locked encounter with 1-HP warden
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > frost-crossing-last-enemy deploys active locked encounter with 1-HP warden
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[loot] magic stone drop id=ab4d1a1a-4072-47a9-96fa-281a9090bb87 value=20 at (0.0, -32.5)
+[loot] currency drop id=a8ec28ce-5eb4-4c34-b289-b44da106cdb6 value=18 at (0.0, -32.5)
+[loot] magic stone drop id=97b75314-fc73-41bf-b0f6-2c669813ac9c value=20 at (0.3, -32.0)
+[loot] currency drop id=4515a093-e484-4d72-b2cc-608f61f7938c value=17 at (0.3, -32.0)
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > frost-crossing-last-enemy deploys active locked encounter with 1-HP warden
+Player disconnected: isdLmjb0kCyI6TQvAABv
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > frost-crossing-last-enemy deploys active locked encounter with 1-HP warden
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > frost-crossing-telepipe-ready deploys playing frost_crossing with telepipe and partial vitals
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > frost-crossing-telepipe-ready deploys playing frost_crossing with telepipe and partial vitals
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > frost-crossing-telepipe-ready deploys playing frost_crossing with telepipe and partial vitals
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > frost-crossing-telepipe-ready deploys playing frost_crossing with telepipe and partial vitals
+Player connected: socket=MaoW9DY_NQitLuMZAABx, playerId=190fc62a-13a6-4fbc-8e63-50f0a53f0734
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > frost-crossing-telepipe-ready deploys playing frost_crossing with telepipe and partial vitals
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > frost-crossing-telepipe-ready deploys playing frost_crossing with telepipe and partial vitals
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > frost-crossing-telepipe-ready deploys playing frost_crossing with telepipe and partial vitals
+[loot] spawned id=ee1c086d-91c3-4402-925c-dae688842e76 value=14
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > frost-crossing-telepipe-ready deploys playing frost_crossing with telepipe and partial vitals
+Player disconnected: MaoW9DY_NQitLuMZAABx
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — frost-crossing harness shortcuts > frost-crossing-telepipe-ready deploys playing frost_crossing with telepipe and partial vitals
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — hat-shop-currency > stays in lobby with at least APPEARANCE_CHANGE_COST and broadcasts currency
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — hat-shop-currency > stays in lobby with at least APPEARANCE_CHANGE_COST and broadcasts currency
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — hat-shop-currency > stays in lobby with at least APPEARANCE_CHANGE_COST and broadcasts currency
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — hat-shop-currency > stays in lobby with at least APPEARANCE_CHANGE_COST and broadcasts currency
+Player connected: socket=t5lA96Z4GYfKEcZTAABz, playerId=d3b81203-8d75-4184-bc5e-585d1c1cb1ca
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — hat-shop-currency > stays in lobby with at least APPEARANCE_CHANGE_COST and broadcasts currency
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — hat-shop-currency > stays in lobby with at least APPEARANCE_CHANGE_COST and broadcasts currency
+Player disconnected: t5lA96Z4GYfKEcZTAABz
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — hat-shop-currency > stays in lobby with at least APPEARANCE_CHANGE_COST and broadcasts currency
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — enemy-behind-wall > parks a grunt behind a wall within detection range that does not aggro through it
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — enemy-behind-wall > parks a grunt behind a wall within detection range that does not aggro through it
+[users] Loaded 0 user record(s) from storage provider
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — enemy-behind-wall > parks a grunt behind a wall within detection range that does not aggro through it
+Server listening on port 0
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — enemy-behind-wall > parks a grunt behind a wall within detection range that does not aggro through it
+Player connected: socket=eIfflAQ-oJuiDyV5AAB1, playerId=02245470-7b9c-41bf-96ef-c048916f61e5
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — enemy-behind-wall > parks a grunt behind a wall within detection range that does not aggro through it
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — enemy-behind-wall > parks a grunt behind a wall within detection range that does not aggro through it
+[server] Layout for quest "frost_crossing" tier 1: seed=1081914342, profile=ice-cavern, rooms=5
+[loot] spawned id=e3fb762e-4bba-4a7f-ac15-e23ceb4e6d64 value=12
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — enemy-behind-wall > parks a grunt behind a wall within detection range that does not aggro through it
+Player disconnected: eIfflAQ-oJuiDyV5AAB1
+
+stdout | server/test/debug-scenarios.test.js > debugScenario — enemy-behind-wall > parks a grunt behind a wall within detection range that does not aggro through it
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+ ✓ |server| server/test/debug-scenarios.test.js (67 tests) 6255ms
+
+ Test Files  1 passed (1)
+      Tests  67 passed (67)
+   Start at  12:32:59
+   Duration  8.36s (transform 4ms, setup 0ms, collect 235ms, tests 6.26s, environment 0ms, prepare 70ms)
+
+ % Coverage report from v8
+----------|---------|----------|---------|---------|----------------------------
+File      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s          
+----------|---------|----------|---------|---------|----------------------------
+All files |   34.42 |    18.06 |   38.73 |   35.61 |                            
+ index.js |   34.42 |    18.06 |   38.73 |   35.61 | ...079,2090-2091,2106-2387 
+----------|---------|----------|---------|---------|----------------------------

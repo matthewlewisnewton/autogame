@@ -1,0 +1,18 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The ticket fixes the frost_crossing (ice) bug where the "Sortie Complete" overlay was instantly clobbered by a racing lobby-phase `STATE_UPDATE` calling `returnToGuildLobby()`.
+
+**Runtime health (gate):** Game runs cleanly — `metrics.json` `ok: true`, empty `pageerrors`, no `harness_failure`, no fatal console/server errors. Gate passes.
+
+**The fix is robust and correctly layered:**
+- **Server (root cause):** `checkRunTerminalState` now publishes `run.status` *after* emitting `RUN_COMPLETE`, and `ensureTerminalRunStaysInDungeon` forces terminal runs to stay in `PLAYING` phase in both snapshot paths — so the server no longer emits the lobby-phase update that caused the race.
+- **Client (defense-in-depth):** `stateHandlers`/`returnToGuildLobby` guard against hiding the overlay while a terminal summary is active, plus a reconstruction path that re-synthesizes the overlay from a terminal snapshot if `RUN_COMPLETE` was missed.
+- **No regressions:** suspend/give-up/hub-return paths reordered correctly (`delete run` before `setGamePhase(LOBBY)`); fire/spire presets untouched; the debug-scenario change is a gated terminal-run guard that doesn't bypass victory validation.
+
+I independently ran the test suites: **9/9 passing** (6 server + 3 client), covering phase-stays-playing, no-lobby-emit, event ordering, no-suspend-of-terminal, overlay persistence, missed-event synthesis, and correct dismissal on real hub return.
+
+**One non-blocking note (filed to `nits.md`):** the capture fell back to a `telepipe-ready` suspend/resume scenario instead of the ice-victory flow, so there's no visual `10-victory.png` this round — a harness capture-plan limitation, not a code defect, since the AC is fully proven by tests.
+
+No `gaps.md` written (PASS).

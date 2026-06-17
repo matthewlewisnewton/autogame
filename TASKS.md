@@ -205,4 +205,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [419-cleanup-auth-client-rely-on-httponly-session-cookie-stop-storing-sen-7bgw](tickets/419-cleanup-auth-client-rely-on-httponly-session-cookie-stop-storing-sen-7bgw/)
 - [ ] [420-cleanup-auth-remove-jsonwebtoken-jwt-secret-and-the-dev-test-secret-ommg](tickets/420-cleanup-auth-remove-jsonwebtoken-jwt-secret-and-the-dev-test-secret-ommg/)
 - [ ] [421-cleanup-redis-multiplayer-lobby-owners-registry-leaks-orphan-entries-p9dv](tickets/421-cleanup-redis-multiplayer-lobby-owners-registry-leaks-orphan-entries-p9dv/)
+- [ ] [421-cleanup-gameplay-telepipe-new-sortie-depleterunresources-fails-post-uh21](tickets/421-cleanup-gameplay-telepipe-new-sortie-depleterunresources-fails-post-uh21/)
+- [ ] [421-cleanup-persistence-cross-instance-profile-data-loss-stale-user-cach-5kz3](tickets/421-cleanup-persistence-cross-instance-profile-data-loss-stale-user-cach-5kz3/)
+- [ ] [421-cleanup-gameplay-boss-victory-frost-crossing-ice-sortie-complete-ove-0dkw](tickets/421-cleanup-gameplay-boss-victory-frost-crossing-ice-sortie-complete-ove-0dkw/)
 - [ ] [422-cleanup-gameplay-fire-ember-descent-run-flips-to-failed-during-telep-nawa](tickets/422-cleanup-gameplay-fire-ember-descent-run-flips-to-failed-during-telep-nawa/)

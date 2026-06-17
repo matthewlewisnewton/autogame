@@ -1,0 +1,13 @@
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/persistence-cross-instance-profile-data-loss-stale-user-cach-5kz3/game/data
+[users] Loaded 2 user record(s) from storage provider
+Server listening on port 3003
+Player connected: socket=oM_lJxerT12jzc8BAAAD, playerId=b4d4bcef-2741-4512-bb4f-b8952dfab9ab
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=ZMdvNMqk2GTgMAwoAAAH, playerId=3918c9d6-6ac3-4297-b450-c9e24ce53d91
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: oM_lJxerT12jzc8BAAAD
+Player disconnected: ZMdvNMqk2GTgMAwoAAAH
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

@@ -25,6 +25,10 @@ class StorageProvider {
 		throw new Error('Not implemented');
 	}
 
+	async loadUserByAccountId(accountId) {
+		throw new Error('Not implemented');
+	}
+
 	async saveUser(record) {
 		throw new Error('Not implemented');
 	}
