@@ -71,6 +71,24 @@ export async function findFreePortInRange(min, max) {
 	throw new Error(`No free port in range ${min}-${max}`);
 }
 
+/**
+ * Build the environment object passed to the game server child process.
+ * Extracted as a pure helper so the passthrough logic is unit-testable
+ * without spawning real processes.
+ *
+ * @param {number} serverPort - Port the server should listen on.
+ * @returns {Record<string, string>} Environment object for child_process.spawn.
+ */
+export function buildServerEnv(serverPort) {
+	return {
+		...process.env,
+		PORT: String(serverPort),
+		ALLOW_DEBUG_SCENARIOS: '1',
+		ALLOW_DEV_AUTH: '1',
+		PERSISTENCE_BACKEND: process.env.PERSISTENCE_BACKEND ?? 'memory',
+	};
+}
+
 function launch(cmd, args, opts) {
 	const child = spawn(cmd, args, { detached: true, ...opts });
 	procs.push(child);
@@ -121,13 +139,7 @@ export async function startGame({ serverPort, clientPort, serverLogPath } = {}) 
 	const serverChild = launch(process.execPath, ['index.js'], {
 		cwd: SERVER_DIR,
 		tag: 'server',
-		env: {
-			...process.env,
-			PORT: String(resolvedServerPort),
-			ALLOW_DEBUG_SCENARIOS: '1',
-			ALLOW_DEV_AUTH: '1',
-			PERSISTENCE_BACKEND: process.env.PERSISTENCE_BACKEND ?? 'memory',
-		},
+		env: buildServerEnv(resolvedServerPort),
 	});
 	activeServerChild = serverChild;
 	serverChild.once('exit', (code, sig) => {

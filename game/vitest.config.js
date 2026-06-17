@@ -51,6 +51,15 @@ export default defineConfig({
 					fileParallelism: false,
 					maxWorkers: 1,
 				}
+			},
+			{
+				test: {
+					name: 'harness',
+					include: [
+						'../harness/validate/lib/**/*.test.{js,mjs}'
+					],
+					environment: 'node',
+				}
 			}
 		],
 		hookTimeout: 30000,
