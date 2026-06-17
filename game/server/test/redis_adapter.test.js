@@ -29,27 +29,10 @@ async function bootServer() {
     });
   }
 
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(
-      () => reject(new Error('bootServer: timed out')),
-      15000,
-    );
-
-    resetGameState();
-    serverIo.removeAllListeners('connection');
-    clearAllTimers();
-    startServer(0);
-
-    httpServer.once('listening', () => {
-      clearTimeout(timeout);
-      resolve();
-    });
-
-    httpServer.once('error', (err) => {
-      clearTimeout(timeout);
-      reject(err);
-    });
-  });
+  resetGameState();
+  serverIo.removeAllListeners('connection');
+  clearAllTimers();
+  await startServer(0);
 }
 
 async function shutdownServer() {

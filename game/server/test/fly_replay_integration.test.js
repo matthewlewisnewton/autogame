@@ -115,28 +115,17 @@ async function bootMachineServer(flyMachineId, { redisEnabled = true } = {}) {
   process.env.FLY_MACHINE_ID = flyMachineId;
   resetFlyReplayHookForTests();
 
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error('bootMachineServer timed out')), 15000);
-    resetGameState();
-    resetAllLobbies();
-    serverIo.removeAllListeners('connection');
-    clearAllTimers();
-    if (redisEnabled) {
-      enableRedisForTests();
-    } else {
-      disableRedisForTests();
-    }
-    startServer(0);
-
-    httpServer.once('listening', () => {
-      clearTimeout(timeout);
-      resolve(`http://localhost:${httpServer.address().port}`);
-    });
-    httpServer.once('error', (err) => {
-      clearTimeout(timeout);
-      reject(err);
-    });
-  });
+  resetGameState();
+  resetAllLobbies();
+  serverIo.removeAllListeners('connection');
+  clearAllTimers();
+  if (redisEnabled) {
+    enableRedisForTests();
+  } else {
+    disableRedisForTests();
+  }
+  await startServer(0);
+  return `http://localhost:${httpServer.address().port}`;
 }
 
 async function bootRoutingHookServer(flyMachineId) {

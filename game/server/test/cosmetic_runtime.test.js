@@ -37,19 +37,12 @@ async function startTestServer() {
 			httpServer.close(() => resolve());
 		});
 	}
-	return new Promise((resolve, reject) => {
-		const timeout = setTimeout(() => reject(new Error('startTestServer: timed out')), 15000);
-		resetGameState();
-		serverIo.removeAllListeners('connection');
-		clearAllTimers();
-		clearServerUsers();
-		startServer(0);
-		httpServer.once('listening', () => {
-			clearTimeout(timeout);
-			resolve(`http://localhost:${httpServer.address().port}`);
-		});
-		httpServer.once('error', (e) => { clearTimeout(timeout); reject(e); });
-	});
+	resetGameState();
+	serverIo.removeAllListeners('connection');
+	clearAllTimers();
+	clearServerUsers();
+	await startServer(0);
+	return `http://localhost:${httpServer.address().port}`;
 }
 
 async function closeTestServer() {

@@ -22,20 +22,20 @@ const DEFAULT_KEY_ITEM_ID = 'dodge_roll';
  * it never calls savePlayer/saveUsers and never mutates any account or player
  * record (account records arrive as detached copies from getAllUsers()).
  *
- * @returns {Array<object>} one entry per account.
+ * @returns {Promise<Array<object>>} one entry per account.
  */
-function buildAdminRoster() {
+async function buildAdminRoster() {
 	// Lazy require to dodge the index.js ↔ admin.js circular dependency.
 	const provider = require('./index').getProvider();
 	const accounts = getAllUsers();
 
-	return accounts.map((account) => {
+	return Promise.all(accounts.map(async (account) => {
 		const accountId = account.accountId;
 
 		let persisted = null;
 		if (provider) {
 			try {
-				persisted = provider.loadPlayer(accountId);
+				persisted = await provider.loadPlayer(accountId);
 			} catch (_err) {
 				persisted = null;
 			}
@@ -56,7 +56,7 @@ function buildAdminRoster() {
 			selectedDeck: Array.isArray(player.selectedDeck) ? player.selectedDeck : [],
 			equippedKeyItemId: player.equippedKeyItemId || DEFAULT_KEY_ITEM_ID
 		};
-	});
+	}));
 }
 
 /**
@@ -152,8 +152,8 @@ ${rows}
  * @param {object} _req
  * @param {object} res
  */
-function adminHandler(_req, res) {
-	const roster = buildAdminRoster();
+async function adminHandler(_req, res) {
+	const roster = await buildAdminRoster();
 	const html = renderAdminRosterHtml(roster);
 	res.type('html').send(html);
 }

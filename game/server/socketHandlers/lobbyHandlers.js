@@ -87,7 +87,9 @@ function register(socket, ctx) {
       );
       ensureShopOffer();
     });
-    joinPlayerToLobby(socket, lobby);
+    void joinPlayerToLobby(socket, lobby).catch((err) => {
+      console.error('[lobbyHandlers] joinPlayerToLobby failed:', err);
+    });
   });
 
   socket.on(CLIENT_TO_SERVER.JOIN_LOBBY, (data) => {
@@ -116,7 +118,9 @@ function register(socket, ctx) {
       socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Lobby is full' });
       return;
     }
-    joinLobbyWithPhasePolicy(socket, lobby);
+    void joinLobbyWithPhasePolicy(socket, lobby).catch((err) => {
+      console.error('[lobbyHandlers] joinLobbyWithPhasePolicy failed:', err);
+    });
   });
 
   socket.on(CLIENT_TO_SERVER.LEAVE_LOBBY, () => {

@@ -11,7 +11,7 @@
 #   PERSISTENCE_BACKEND=postgres  DATABASE_URL=postgres://...
 #   REDIS_URL=redis://...         (FLY_MACHINE_ID is injected by Fly)
 
-# ---- builder: install workspace deps (native bcrypt/deasync) + build client ----
+# ---- builder: install workspace deps (native bcrypt) + build client ----
 FROM node:22-bookworm AS builder
 RUN npm install -g pnpm@11.1.3
 WORKDIR /app

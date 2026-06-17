@@ -73,7 +73,7 @@ describe('applyAppearanceChange socket', () => {
 		({ accountId, token } = await registerAndLogin(baseUrl, 'appearance_player'));
 
 		fileProvider = new FileProvider(progressDir);
-		fileProvider.savePlayer(accountId, persistentSeed(initialCurrency));
+		await fileProvider.savePlayer(accountId, persistentSeed(initialCurrency));
 		setTestProvider(fileProvider);
 	});
 

@@ -74,7 +74,7 @@ describe('applyAppearanceChange persistence (currency before account cosmetic wr
 		users.updateProfile(accountId, { cosmetic: BASELINE_COSMETIC });
 
 		fileProvider = new FileProvider(progressDir);
-		fileProvider.savePlayer(accountId, persistentSeed(initialCurrency));
+		await fileProvider.savePlayer(accountId, persistentSeed(initialCurrency));
 		setTestProvider(fileProvider);
 	});
 
@@ -135,7 +135,7 @@ describe('applyAppearanceChange persistence (currency before account cosmetic wr
 		expect(accountCosmeticOnDisk(usersFile).bodyColor).toBe(PAID_COSMETIC.bodyColor);
 
 		const reloaded = reloadFromDisk(progressDir, usersFile);
-		expect(reloaded.loadPlayer(accountId).currency).toBe(expectedCurrency);
+		expect((await reloaded.loadPlayer(accountId)).currency).toBe(expectedCurrency);
 		expect(users.findUserByAccountId(accountId).cosmetic.bodyColor).toBe(PAID_COSMETIC.bodyColor);
 
 		socket.disconnect();
@@ -153,7 +153,7 @@ describe('applyAppearanceChange persistence (currency before account cosmetic wr
 		expect(err.reason).toMatch(/Not enough/i);
 
 		const reloaded = reloadFromDisk(progressDir, usersFile);
-		expect(reloaded.loadPlayer(accountId).currency).toBe(initialCurrency);
+		expect((await reloaded.loadPlayer(accountId)).currency).toBe(initialCurrency);
 		expect(accountCosmeticOnDisk(usersFile).bodyColor).toBe(BASELINE_COSMETIC.bodyColor);
 		expect(users.findUserByAccountId(accountId).cosmetic.bodyColor).toBe(BASELINE_COSMETIC.bodyColor);
 		expect(player.cosmetic.bodyColor).toBe(BASELINE_COSMETIC.bodyColor);
@@ -187,13 +187,13 @@ describe('applyAppearanceChange persistence (currency before account cosmetic wr
 
 		const reloaded = reloadFromDisk(progressDir, usersFile);
 		const account = users.findUserByAccountId(accountId);
-		expect(reloaded.loadPlayer(accountId).currency).toBe(expectedCurrency);
+		expect((await reloaded.loadPlayer(accountId)).currency).toBe(expectedCurrency);
 		expect(account.cosmetic.bodyColor).toBe(BASELINE_COSMETIC.bodyColor);
 		expect(accountCosmeticOnDisk(usersFile).bodyColor).toBe(BASELINE_COSMETIC.bodyColor);
 
 		const freeEditExploit =
 			account.cosmetic.bodyColor === PAID_COSMETIC.bodyColor &&
-			reloaded.loadPlayer(accountId).currency === initialCurrency;
+			(await reloaded.loadPlayer(accountId)).currency === initialCurrency;
 		expect(freeEditExploit).toBe(false);
 
 		socket.disconnect();
@@ -219,7 +219,7 @@ describe('applyAppearanceChange persistence (currency before account cosmetic wr
 		expect(readProgressCurrencyFromDisk()).toBe(initialCurrency);
 
 		const reloaded = reloadFromDisk(progressDir, usersFile);
-		expect(reloaded.loadPlayer(accountId).currency).toBe(initialCurrency);
+		expect((await reloaded.loadPlayer(accountId)).currency).toBe(initialCurrency);
 		expect(users.findUserByAccountId(accountId).cosmetic.bodyColor).toBe(BASELINE_COSMETIC.bodyColor);
 
 		socket.disconnect();
@@ -245,7 +245,7 @@ describe('applyAppearanceChange persistence (currency before account cosmetic wr
 		expect(accountCosmeticOnDisk(usersFile).bodyColor).toBe(BASELINE_COSMETIC.bodyColor);
 
 		const reloaded = reloadFromDisk(progressDir, usersFile);
-		expect(reloaded.loadPlayer(accountId).currency).toBe(initialCurrency);
+		expect((await reloaded.loadPlayer(accountId)).currency).toBe(initialCurrency);
 		expect(users.findUserByAccountId(accountId).cosmetic.bodyColor).toBe(BASELINE_COSMETIC.bodyColor);
 
 		socket.disconnect();
@@ -263,7 +263,7 @@ describe('applyAppearanceChange persistence (currency before account cosmetic wr
 		expect(payload.cosmetic.hat).toBe('bandana');
 
 		const reloaded = reloadFromDisk(progressDir, usersFile);
-		expect(reloaded.loadPlayer(accountId).currency).toBe(initialCurrency);
+		expect((await reloaded.loadPlayer(accountId)).currency).toBe(initialCurrency);
 		expect(users.findUserByAccountId(accountId).cosmetic.hat).toBe('bandana');
 		expect(accountCosmeticOnDisk(usersFile).hat).toBe('bandana');
 		expect(accountCosmeticOnDisk(usersFile).bodyColor).toBe(BASELINE_COSMETIC.bodyColor);

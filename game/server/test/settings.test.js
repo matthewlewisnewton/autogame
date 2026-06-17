@@ -45,48 +45,48 @@ describe('settings persistence', () => {
 		expect(defaults.keyboard.bindings.useKeyItem).toBe('e');
 	});
 
-	it('getSettings returns defaults when file missing', () => {
-		const s = getSettings('acct-new');
+	it('getSettings returns defaults when file missing', async () => {
+		const s = await getSettings('acct-new');
 		expect(s).toEqual(getDefaultSettings());
 	});
 
-	it('updateSettings persists and deep-merges', () => {
+	it('updateSettings persists and deep-merges', async () => {
 		const id = 'acct-1';
-		const first = updateSettings(id, { soundEnabled: false });
+		const first = await updateSettings(id, { soundEnabled: false });
 		expect(first.ok).toBe(true);
-		const loaded = getSettings(id);
+		const loaded = await getSettings(id);
 		expect(loaded.soundEnabled).toBe(false);
 		expect(loaded.particlesEnabled).toBe(true);
 
-		const second = updateSettings(id, { gamepad: { deadzone: 0.2 } });
+		const second = await updateSettings(id, { gamepad: { deadzone: 0.2 } });
 		expect(second.ok).toBe(true);
-		const merged = getSettings(id);
+		const merged = await getSettings(id);
 		expect(merged.soundEnabled).toBe(false);
 		expect(merged.gamepad.deadzone).toBe(0.2);
 		expect(merged.gamepad.moveStick).toBe('left');
 	});
 
-	it('updateSettings deep-merges keyboard.bindings.useKeyItem', () => {
+	it('updateSettings deep-merges keyboard.bindings.useKeyItem', async () => {
 		const id = 'acct-kb';
-		const result = updateSettings(id, { keyboard: { bindings: { useKeyItem: 'u' } } });
+		const result = await updateSettings(id, { keyboard: { bindings: { useKeyItem: 'u' } } });
 		expect(result.ok).toBe(true);
-		const s = getSettings(id);
+		const s = await getSettings(id);
 		expect(s.keyboard.bindings.useKeyItem).toBe('u');
 		expect(s.soundEnabled).toBe(true);
 	});
 
-	it('updateSettings deep-merges gamepad.bindings.useKeyItem', () => {
+	it('updateSettings deep-merges gamepad.bindings.useKeyItem', async () => {
 		const id = 'acct-gp';
-		const result = updateSettings(id, { gamepad: { bindings: { useKeyItem: { type: 'button', index: 4 } } } });
+		const result = await updateSettings(id, { gamepad: { bindings: { useKeyItem: { type: 'button', index: 4 } } } });
 		expect(result.ok).toBe(true);
-		const s = getSettings(id);
+		const s = await getSettings(id);
 		expect(s.gamepad.bindings.useKeyItem).toEqual({ type: 'button', index: 4 });
 		expect(s.gamepad.moveStick).toBe('left');
 	});
 
-	it('updateSettings does not persist unknown top-level keys', () => {
+	it('updateSettings does not persist unknown top-level keys', async () => {
 		const id = 'acct-prune';
-		const result = updateSettings(id, { soundEnabled: false, hackerField: 'nope' });
+		const result = await updateSettings(id, { soundEnabled: false, hackerField: 'nope' });
 		expect(result.ok).toBe(true);
 		expect(result.settings.hackerField).toBeUndefined();
 
@@ -95,26 +95,26 @@ describe('settings persistence', () => {
 		expect(Object.keys(raw).sort()).toEqual([...SETTINGS_TOP_LEVEL_KEYS].sort());
 	});
 
-	it('updateSettings rejects invalid lockOnRepeatAction without writing', () => {
+	it('updateSettings rejects invalid lockOnRepeatAction without writing', async () => {
 		const id = 'acct-invalid-lock';
-		updateSettings(id, { soundEnabled: false });
-		const result = updateSettings(id, { lockOnRepeatAction: 'teleport' });
+		await updateSettings(id, { soundEnabled: false });
+		const result = await updateSettings(id, { lockOnRepeatAction: 'teleport' });
 		expect(result.ok).toBe(false);
 		expect(result.reason).toMatch(/lockOnRepeatAction/);
 
-		const loaded = getSettings(id);
+		const loaded = await getSettings(id);
 		expect(loaded.lockOnRepeatAction).toBe('unlock');
 		expect(loaded.soundEnabled).toBe(false);
 	});
 
-	it('updateSettings rejects invalid boolean types without writing', () => {
+	it('updateSettings rejects invalid boolean types without writing', async () => {
 		const id = 'acct-invalid-bool';
-		updateSettings(id, { particlesEnabled: false });
-		const result = updateSettings(id, { soundEnabled: 'yes' });
+		await updateSettings(id, { particlesEnabled: false });
+		const result = await updateSettings(id, { soundEnabled: 'yes' });
 		expect(result.ok).toBe(false);
 		expect(result.reason).toMatch(/soundEnabled/);
 
-		const loaded = getSettings(id);
+		const loaded = await getSettings(id);
 		expect(loaded.soundEnabled).toBe(true);
 		expect(loaded.particlesEnabled).toBe(false);
 	});
@@ -123,9 +123,9 @@ describe('settings persistence', () => {
 		expect(SETTINGS_MAX_BYTES).toBe(8192);
 	});
 
-	it('persists legitimate full binding/profile overrides under the cap', () => {
+	it('persists legitimate full binding/profile overrides under the cap', async () => {
 		const id = 'acct-full-profile';
-		const result = updateSettings(id, {
+		const result = await updateSettings(id, {
 			soundEnabled: false,
 			particlesEnabled: false,
 			showHitboxes: false,
@@ -147,16 +147,16 @@ describe('settings persistence', () => {
 		expect(result.ok).toBe(true);
 		const raw = fs.readFileSync(path.join(getSettingsDir(), `${id}.json`), 'utf-8');
 		expect(Buffer.byteLength(raw, 'utf-8')).toBeLessThanOrEqual(SETTINGS_MAX_BYTES);
-		expect(getSettings(id)).toEqual(result.settings);
+		expect(await getSettings(id)).toEqual(result.settings);
 	});
 
-	it('updateSettings rejects merged settings over the cap without writing', () => {
+	it('updateSettings rejects merged settings over the cap without writing', async () => {
 		const id = 'acct-cap';
-		updateSettings(id, { soundEnabled: false });
+		await updateSettings(id, { soundEnabled: false });
 		const before = fs.readFileSync(path.join(getSettingsDir(), `${id}.json`), 'utf-8');
 
 		setSettingsMaxBytesForTests(100);
-		const result = updateSettings(id, { particlesEnabled: false });
+		const result = await updateSettings(id, { particlesEnabled: false });
 		expect(result.ok).toBe(false);
 		expect(result.reason).toMatch(/exceed maximum size/i);
 		expect(result.reason).toMatch(/100/);
@@ -168,9 +168,9 @@ describe('settings persistence', () => {
 		expect(onDisk.particlesEnabled).toBe(true);
 	});
 
-	it('repeated PATCHes with junk keys do not grow stored byte size', () => {
+	it('repeated PATCHes with junk keys do not grow stored byte size', async () => {
 		const id = 'acct-junk-growth';
-		updateSettings(id, { soundEnabled: false });
+		await updateSettings(id, { soundEnabled: false });
 		const filePath = path.join(getSettingsDir(), `${id}.json`);
 		const baselineSize = Buffer.byteLength(fs.readFileSync(filePath, 'utf-8'), 'utf-8');
 		for (let i = 0; i < 20; i++) {
@@ -178,7 +178,7 @@ describe('settings persistence', () => {
 			for (let j = 0; j < 50; j++) {
 				junk[`junk_${i}_${j}`] = 'x'.repeat(200);
 			}
-			const result = updateSettings(id, { ...junk });
+			const result = await updateSettings(id, { ...junk });
 			expect(result.ok).toBe(true);
 			const raw = fs.readFileSync(filePath, 'utf-8');
 			expect(Buffer.byteLength(raw, 'utf-8')).toBe(baselineSize);
@@ -188,16 +188,16 @@ describe('settings persistence', () => {
 		}
 	});
 
-	it('getSettings falls back to defaults when on-disk backfilled settings exceed the cap', () => {
+	it('getSettings falls back to defaults when on-disk backfilled settings exceed the cap', async () => {
 		const id = 'acct-oversized-load';
 		const filePath = path.join(getSettingsDir(), `${id}.json`);
 		fs.writeFileSync(filePath, JSON.stringify(getDefaultSettings(), null, 2), 'utf-8');
 
 		setSettingsMaxBytesForTests(100);
-		expect(getSettings(id)).toEqual(getDefaultSettings());
+		expect(await getSettings(id)).toEqual(getDefaultSettings());
 	});
 
-	it('getSettings prunes junk keys from manually written files on read', () => {
+	it('getSettings prunes junk keys from manually written files on read', async () => {
 		const id = 'acct-junk-file';
 		const filePath = path.join(getSettingsDir(), `${id}.json`);
 		fs.writeFileSync(filePath, JSON.stringify({
@@ -206,7 +206,7 @@ describe('settings persistence', () => {
 			keyboard: { bindings: { useKeyItem: 'q', bogus: 'x' }, extra: 1 },
 		}, null, 2));
 
-		const loaded = getSettings(id);
+		const loaded = await getSettings(id);
 		expect(loaded.hackerField).toBeUndefined();
 		expect(loaded.soundEnabled).toBe(false);
 		expect(loaded.keyboard.bindings).toEqual({ useKeyItem: 'q' });
@@ -216,27 +216,27 @@ describe('settings persistence', () => {
 
 	// ── Path-traversal hardening (Fix 1) ──
 
-	it('updateSettings rejects a traversal accountId and writes nothing outside the dir', () => {
+	it('updateSettings rejects a traversal accountId and writes nothing outside the dir', async () => {
 		const parentMarker = path.join(getSettingsDir(), '..', 'escaped.json');
-		expect(() => updateSettings('../escaped', { soundEnabled: false })).toThrow(/Invalid account id/);
+		await expect(updateSettings('../escaped', { soundEnabled: false })).rejects.toThrow(/Invalid account id/);
 		expect(fs.existsSync(parentMarker)).toBe(false);
 	});
 
-	it('getSettings rejects a traversal accountId', () => {
-		expect(() => getSettings('../../etc/passwd')).toThrow(/Invalid account id/);
+	it('getSettings rejects a traversal accountId', async () => {
+		await expect(getSettings('../../etc/passwd')).rejects.toThrow(/Invalid account id/);
 	});
 
-	it('rejects accountIds with separators, dots, or empty string', () => {
+	it('rejects accountIds with separators, dots, or empty string', async () => {
 		for (const bad of ['a/b', 'a.b', 'a\\b', '', '..']) {
-			expect(() => getSettings(bad)).toThrow(/Invalid account id/);
+			await expect(getSettings(bad)).rejects.toThrow(/Invalid account id/);
 		}
 	});
 
-	it('accepts UUID-shaped accountIds unchanged', () => {
+	it('accepts UUID-shaped accountIds unchanged', async () => {
 		const uuid = '550e8400-e29b-41d4-a716-446655440000';
-		const result = updateSettings(uuid, { soundEnabled: false });
+		const result = await updateSettings(uuid, { soundEnabled: false });
 		expect(result.ok).toBe(true);
-		expect(getSettings(uuid).soundEnabled).toBe(false);
+		expect((await getSettings(uuid)).soundEnabled).toBe(false);
 		expect(fs.existsSync(path.join(getSettingsDir(), `${uuid}.json`))).toBe(true);
 	});
 });

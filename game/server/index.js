@@ -1301,9 +1301,9 @@ function buildSessionFromPlayer(player) {
   };
 }
 
-function loadSavedPlayerData(loadKey) {
+async function loadSavedPlayerData(loadKey) {
   try {
-    return getProvider() ? getProvider().loadPlayer(loadKey) : null;
+    return getProvider() ? await getProvider().loadPlayer(loadKey) : null;
   } catch (err) {
     console.error(`[persistence] loadPlayer failed for ${loadKey}:`, err.message);
     return null;
@@ -1349,16 +1349,16 @@ function handleDropInJoin(socket, lobby) {
   withLobbyContext(lobby, () => initializePlayerForActiveRun(player));
 }
 
-function joinLobbyWithPhasePolicy(socket, lobby) {
+async function joinLobbyWithPhasePolicy(socket, lobby) {
   if (isPlayingPhase(lobby.state)) {
     if (!allowDropInJoin(lobby)) {
       socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Drop-in not allowed for this lobby' });
       return;
     }
-    joinPlayerToLobby(socket, lobby, { dropIn: true });
+    await joinPlayerToLobby(socket, lobby, { dropIn: true });
     return;
   }
-  joinPlayerToLobby(socket, lobby);
+  await joinPlayerToLobby(socket, lobby);
 }
 
 function emitLobbyJoined(socket, lobby, explicitPlayerId) {
@@ -1399,10 +1399,10 @@ function emitLobbyJoined(socket, lobby, explicitPlayerId) {
   broadcastLobbyUpdate(lobby);
 }
 
-function joinPlayerToLobby(socket, lobby, options = {}) {
+async function joinPlayerToLobby(socket, lobby, options = {}) {
   const playerId = socket.playerId;
   const state = lobby.state;
-  const savedData = loadSavedPlayerData(playerId);
+  const savedData = await loadSavedPlayerData(playerId);
 
   if (!state.players[playerId]) {
     state.players[playerId] = buildPlayerRecord(
@@ -1796,7 +1796,7 @@ function runGameLoopTick() {
   return true;
 }
 
-function startServer(port) {
+async function startServer(port) {
   ensureHttpErrorLogger();
   _harnessReady = false;
 
@@ -1880,7 +1880,7 @@ function startServer(port) {
     if (!databaseUrl || !String(databaseUrl).trim()) {
       throw new Error('PERSISTENCE_BACKEND=postgres requires DATABASE_URL to be set');
     }
-    setTestProvider(new providers.PostgresProvider(databaseUrl));
+    setTestProvider(await providers.PostgresProvider.create(databaseUrl));
     console.log('[persistence] PostgresProvider initialized');
   } else {
     setTestProvider(new FileProvider(dataPath));
@@ -1944,7 +1944,7 @@ function startServer(port) {
     _middlewareRegistered = true;
   }
 
-  io.on('connection', (socket) => {
+  io.on('connection', async (socket) => {
     try {
     patchSocketOn(socket);
 
@@ -1960,7 +1960,7 @@ function startServer(port) {
     // Authenticated connection — accountId is the stable identity
     const playerId = accountId;
 
-    const savedData = loadSavedPlayerData(accountId || playerId);
+    const savedData = await loadSavedPlayerData(accountId || playerId);
     const sessionPlayer = buildPlayerRecord(playerId, accountId, username, savedData);
     lobbies.registerSession(playerId, buildSessionFromPlayer(sessionPlayer));
 
@@ -2060,11 +2060,22 @@ function startServer(port) {
 
   const listenPort = (port !== undefined && port !== null) ? port : (process.env.PORT || 3000);
   if (!server.listening) {
-    server.listen(listenPort, () => {
-      // Flip readiness only after the listener is bound and every handler from
-      // this startServer() call is mounted — matches /healthz and Vite probes.
-      _harnessReady = true;
-      console.log(`Server listening on port ${listenPort}`);
+    await new Promise((resolve, reject) => {
+      const onError = (err) => {
+        server.removeListener('listening', onListening);
+        reject(err);
+      };
+      const onListening = () => {
+        server.removeListener('error', onError);
+        // Flip readiness only after the listener is bound and every handler from
+        // this startServer() call is mounted — matches /healthz and Vite probes.
+        _harnessReady = true;
+        console.log(`Server listening on port ${listenPort}`);
+        resolve();
+      };
+      server.once('error', onError);
+      server.once('listening', onListening);
+      server.listen(listenPort);
     });
   } else {
     _harnessReady = true;
@@ -2074,7 +2085,10 @@ function startServer(port) {
 // Only start the HTTP server when run directly (not when required by tests)
 if (require.main === module) {
   installMainProcessErrorHandlers();
-  startServer();
+  startServer().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
 }
 
 // ── Conditional exports for unit tests ──

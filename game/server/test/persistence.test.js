@@ -312,7 +312,7 @@ describe('vitals persistence cold-load', () => {
 		setTestProvider(null);
 	});
 
-	it('vitals round-trip through savePlayerData and buildPlayerRecord', () => {
+	it('vitals round-trip through savePlayerData and buildPlayerRecord', async () => {
 		gameState.players['acct-vitals'] = {
 			id: 'acct-vitals',
 			accountId: 'acct-vitals',
@@ -330,7 +330,7 @@ describe('vitals persistence cold-load', () => {
 
 		savePlayerData('acct-vitals');
 
-		const loaded = testProvider.loadPlayer('acct-vitals');
+		const loaded = await testProvider.loadPlayer('acct-vitals');
 		expect(loaded.hp).toBe(42);
 		expect(loaded.dead).toBe(false);
 		expect(loaded.magicStones).toBe(15);
@@ -341,7 +341,7 @@ describe('vitals persistence cold-load', () => {
 		expect(restored.magicStones).toBe(15);
 	});
 
-	it('dead state with low HP round-trips through save and restore', () => {
+	it('dead state with low HP round-trips through save and restore', async () => {
 		gameState.players['acct-dead'] = {
 			id: 'acct-dead',
 			accountId: 'acct-dead',
@@ -355,7 +355,7 @@ describe('vitals persistence cold-load', () => {
 
 		savePlayerData('acct-dead');
 
-		const loaded = testProvider.loadPlayer('acct-dead');
+		const loaded = await testProvider.loadPlayer('acct-dead');
 		expect(loaded.hp).toBe(0);
 		expect(loaded.dead).toBe(true);
 
@@ -388,7 +388,7 @@ describe('savePlayerData', () => {
 		setTestProvider(null);
 	});
 
-	it('calls provider.savePlayer with the correct data shape including vitals', () => {
+	it('calls provider.savePlayer with the correct data shape including vitals', async () => {
 		const player = {
 			x: 2,
 			y: 0.5,
@@ -405,7 +405,7 @@ describe('savePlayerData', () => {
 
 		savePlayerData('testPlayer');
 
-		const loaded = testProvider.loadPlayer('testPlayer');
+		const loaded = await testProvider.loadPlayer('testPlayer');
 		expectPersistentData(loaded, {
 			x: 2,
 			y: 0.5,
@@ -420,7 +420,7 @@ describe('savePlayerData', () => {
 		expect(loaded.magicStones).toBe(15);
 	});
 
-	it('saves vitals but excludes transient fields (hand, deck, ready)', () => {
+	it('saves vitals but excludes transient fields (hand, deck, ready)', async () => {
 		const player = {
 			x: 0,
 			y: 0.5,
@@ -440,7 +440,7 @@ describe('savePlayerData', () => {
 
 		savePlayerData('p1');
 
-		const loaded = testProvider.loadPlayer('p1');
+		const loaded = await testProvider.loadPlayer('p1');
 		expectPersistentData(loaded, {
 			x: 0,
 			y: 0.5,
@@ -457,9 +457,9 @@ describe('savePlayerData', () => {
 		expect(loaded).not.toHaveProperty('ready');
 	});
 
-	it('does nothing when player does not exist in gameState', () => {
+	it('does nothing when player does not exist in gameState', async () => {
 		expect(() => savePlayerData('nonexistent')).not.toThrow();
-		expect(testProvider.loadPlayer('nonexistent')).toBeNull();
+		expect(await testProvider.loadPlayer('nonexistent')).toBeNull();
 	});
 
 	it('does nothing when provider is null', () => {
@@ -539,19 +539,19 @@ describe('saveAllPlayers', () => {
 		setTestProvider(null);
 	});
 
-	it('calls savePlayerData for each player in gameState.players', () => {
+	it('calls savePlayerData for each player in gameState.players', async () => {
 		gameState.players['a'] = { x: 1, y: 0.5, z: 2, rotation: 0, currency: 1, ownedCards: { iron_sword: 1 }, selectedDeck: ['iron_sword'] };
 		gameState.players['b'] = { x: 3, y: 0.5, z: 4, rotation: 1, currency: 2, ownedCards: { flame_blade: 1 }, selectedDeck: ['flame_blade'] };
 
 		saveAllPlayers();
 
-		expectPersistentData(testProvider.loadPlayer('a'), {
+		expectPersistentData(await testProvider.loadPlayer('a'), {
 			x: 1, y: 0.5, z: 2, rotation: 0,
 			currency: 1,
 			ownedCards: { iron_sword: 1 },
 			selectedDeck: ['iron_sword'],
 		});
-		expectPersistentData(testProvider.loadPlayer('b'), {
+		expectPersistentData(await testProvider.loadPlayer('b'), {
 			x: 3, y: 0.5, z: 4, rotation: 1,
 			currency: 2,
 			ownedCards: { flame_blade: 1 },
@@ -564,7 +564,7 @@ describe('saveAllPlayers', () => {
 		expect(() => saveAllPlayers()).not.toThrow();
 	});
 
-	it('catches per-player errors without crashing the loop', () => {
+	it('catches per-player errors without crashing the loop', async () => {
 		gameState.players['p1'] = { x: 0, y: 0.5, z: 0, rotation: 0, currency: 10, ownedCards: {}, selectedDeck: [] };
 		gameState.players['p2'] = { x: 0, y: 0.5, z: 0, rotation: 0, currency: 20, ownedCards: {}, selectedDeck: [] };
 
@@ -578,7 +578,7 @@ describe('saveAllPlayers', () => {
 		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		expect(() => saveAllPlayers()).not.toThrow();
 		// p2 should still have been saved
-		expectPersistentData(testProvider.loadPlayer('p2'), {
+		expectPersistentData(await testProvider.loadPlayer('p2'), {
 			x: 0, y: 0.5, z: 0, rotation: 0,
 			currency: 20,
 			ownedCards: {},
@@ -656,7 +656,7 @@ describe('authenticated save/load round-trip by accountId', () => {
 		setTestProvider(null);
 	});
 
-	it('saves under accountId and loads by accountId — round-trip preserves data', () => {
+	it('saves under accountId and loads by accountId — round-trip preserves data', async () => {
 		const testAccountId = 'acct-roundtrip-' + Date.now();
 		const playerId = 'player-uuid-' + Date.now();
 
@@ -677,7 +677,7 @@ describe('authenticated save/load round-trip by accountId', () => {
 		savePlayerData(playerId);
 
 		// Verify data is stored under accountId, not playerId
-		expectPersistentData(testProvider.loadPlayer(testAccountId), {
+		expectPersistentData(await testProvider.loadPlayer(testAccountId), {
 			x: 5,
 			y: 0.5,
 			z: 10,
@@ -688,10 +688,10 @@ describe('authenticated save/load round-trip by accountId', () => {
 		});
 
 		// Verify data is NOT stored under playerId
-		expect(testProvider.loadPlayer(playerId)).toBeNull();
+		expect(await testProvider.loadPlayer(playerId)).toBeNull();
 
 		// Simulate reconnect: load by accountId and verify data matches
-		const loaded = testProvider.loadPlayer(testAccountId);
+		const loaded = await testProvider.loadPlayer(testAccountId);
 		expect(loaded.currency).toBe(42);
 		expect(loaded.ownedCards).toEqual({ iron_sword: 3, flame_blade: 1 });
 		expect(loaded.selectedDeck.map((entry) => cardIdForDeckEntry(entry, loaded.inventory))).toEqual(['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake']);
@@ -699,7 +699,7 @@ describe('authenticated save/load round-trip by accountId', () => {
 		expect(loaded.z).toBe(10);
 	});
 
-	it('multiple authenticated players save under distinct accountIds', () => {
+	it('multiple authenticated players save under distinct accountIds', async () => {
 		gameState.players['p1'] = {
 			id: 'p1',
 			accountId: 'acct-user-a',
@@ -720,11 +720,11 @@ describe('authenticated save/load round-trip by accountId', () => {
 		savePlayerData('p1');
 		savePlayerData('p2');
 
-		expect(testProvider.loadPlayer('acct-user-a').currency).toBe(100);
-		expect(testProvider.loadPlayer('acct-user-b').currency).toBe(200);
+		expect((await testProvider.loadPlayer('acct-user-a')).currency).toBe(100);
+		expect((await testProvider.loadPlayer('acct-user-b')).currency).toBe(200);
 		// Data isolated between accounts
-		expect(testProvider.loadPlayer('acct-user-a').ownedCards).toEqual({ iron_sword: 5 });
-		expect(testProvider.loadPlayer('acct-user-b').ownedCards).toEqual({ flame_blade: 2 });
+		expect((await testProvider.loadPlayer('acct-user-a')).ownedCards).toEqual({ iron_sword: 5 });
+		expect((await testProvider.loadPlayer('acct-user-b')).ownedCards).toEqual({ flame_blade: 2 });
 	});
 });
 
@@ -743,7 +743,7 @@ describe('anonymous save/load round-trip by playerId', () => {
 		setTestProvider(null);
 	});
 
-	it('saves under playerId and loads by playerId — round-trip preserves data', () => {
+	it('saves under playerId and loads by playerId — round-trip preserves data', async () => {
 		const anonPlayerId = 'anon-player-' + Date.now();
 
 		// Simulate an anonymous player (no accountId)
@@ -763,7 +763,7 @@ describe('anonymous save/load round-trip by playerId', () => {
 		savePlayerData(anonPlayerId);
 
 		// Verify data is stored under playerId
-		const loaded = testProvider.loadPlayer(anonPlayerId);
+		const loaded = await testProvider.loadPlayer(anonPlayerId);
 		expectPersistentData(loaded, {
 			x: 3,
 			y: 0.5,

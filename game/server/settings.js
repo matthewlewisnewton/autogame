@@ -415,14 +415,14 @@ function initSettingsWithProvider(provider) {
  * @param {string} accountId
  * @returns {object}
  */
-function getSettings(accountId) {
+async function getSettings(accountId) {
 	// Sanitize accountId — same guard regardless of backend.
 	if (typeof accountId !== 'string' || !SAFE_ACCOUNT_ID_REGEX.test(accountId)) {
 		throw new Error(`Invalid account id: ${JSON.stringify(accountId)}`);
 	}
 
 	if (_settingsProvider) {
-		const raw = _settingsProvider.loadSettings(accountId);
+		const raw = await _settingsProvider.loadSettings(accountId);
 		const merged = mergeWithDefaults(raw);
 		if (serializedSettingsByteLength(merged) > getSettingsMaxBytes()) {
 			return getDefaultSettings();
@@ -451,13 +451,13 @@ function getSettings(accountId) {
  * @param {object} partial
  * @returns {{ ok: true, settings: object } | { ok: false, reason: string }}
  */
-function updateSettings(accountId, partial) {
+async function updateSettings(accountId, partial) {
 	const validation = validateSettings(partial);
 	if (!validation.ok) {
 		return validation;
 	}
 
-	const current = getSettings(accountId);
+	const current = await getSettings(accountId);
 	const merged = backfillSettings(deepMerge(current, validation.value));
 	const serialized = JSON.stringify(merged, null, 2);
 	if (Buffer.byteLength(serialized, 'utf-8') > getSettingsMaxBytes()) {
@@ -468,7 +468,7 @@ function updateSettings(accountId, partial) {
 	}
 
 	if (_settingsProvider) {
-		_settingsProvider.saveSettings(accountId, merged);
+		await _settingsProvider.saveSettings(accountId, merged);
 		return { ok: true, settings: merged };
 	}
 

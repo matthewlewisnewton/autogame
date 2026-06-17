@@ -57,31 +57,14 @@ beforeAll(async () => {
 	setupMockDist();
 	clearAllTimers();
 
-	return new Promise((resolve, reject) => {
-		const timeout = setTimeout(
-			() => reject(new Error('startTestServer: timed out')),
-			15000
-		);
+	if (httpServer.listening) {
+		const addr = httpServer.address();
+		return `http://127.0.0.1:${addr.port}`;
+	}
 
-		if (httpServer.listening) {
-			clearTimeout(timeout);
-			const addr = httpServer.address();
-			return resolve(`http://127.0.0.1:${addr.port}`);
-		}
-
-		startServer(0);
-
-		httpServer.once('listening', () => {
-			clearTimeout(timeout);
-			const addr = httpServer.address();
-			resolve(`http://127.0.0.1:${addr.port}`);
-		});
-
-		httpServer.once('error', (e) => {
-			clearTimeout(timeout);
-			reject(e);
-		});
-	});
+	await startServer(0);
+	const addr = httpServer.address();
+	return `http://127.0.0.1:${addr.port}`;
 });
 
 afterAll(async () => {

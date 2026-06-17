@@ -47,12 +47,12 @@ router.use(requireAuth);
 /**
  * GET /api/me — profile + settings
  */
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
 	const user = findUserByAccountId(req.accountId);
 	if (!user) {
 		return res.status(404).json({ error: 'Account not found' });
 	}
-	const settings = getSettings(req.accountId);
+	const settings = await getSettings(req.accountId);
 	return res.status(200).json({
 		accountId: user.accountId,
 		username: user.username,
@@ -69,12 +69,12 @@ router.get('/me', (req, res) => {
 /**
  * PATCH /api/me/settings — partial settings update
  */
-router.patch('/me/settings', (req, res) => {
+router.patch('/me/settings', async (req, res) => {
 	const body = req.body;
 	if (!body || typeof body !== 'object' || Array.isArray(body)) {
 		return res.status(400).json({ error: 'Settings body must be a JSON object' });
 	}
-	const result = updateSettings(req.accountId, body);
+	const result = await updateSettings(req.accountId, body);
 	if (!result.ok) {
 		return res.status(400).json({ error: result.reason });
 	}

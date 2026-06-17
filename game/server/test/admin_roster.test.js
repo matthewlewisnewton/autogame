@@ -23,23 +23,13 @@ async function startTestServer() {
 	if (httpServer.listening) {
 		await new Promise((resolve) => httpServer.close(resolve));
 	}
-	return new Promise((resolve, reject) => {
-		const timeout = setTimeout(() => reject(new Error('startTestServer: timed out')), 15000);
-		resetGameState();
-		serverIo.removeAllListeners('connection');
-		clearAllTimers();
-		users.clearUsers();
-		startServer(0);
-		httpServer.once('listening', () => {
-			clearTimeout(timeout);
-			const addr = httpServer.address();
-			resolve(`http://localhost:${addr.port}`);
-		});
-		httpServer.once('error', (e) => {
-			clearTimeout(timeout);
-			reject(e);
-		});
-	});
+	resetGameState();
+	serverIo.removeAllListeners('connection');
+	clearAllTimers();
+	users.clearUsers();
+	await startServer(0);
+	const addr = httpServer.address();
+	return `http://localhost:${addr.port}`;
 }
 
 async function closeTestServer() {
@@ -113,10 +103,10 @@ describe('admin roster + ADMIN_PASSWORD gate', () => {
 	});
 
 	describe('buildAdminRoster()', () => {
-		it('joins persisted currency/deck for an account that has played', () => {
+		it('joins persisted currency/deck for an account that has played', async () => {
 			users.createUser('player1', 'pw');
 			const accountId = users.findUserByUsername('player1').accountId;
-			provider.savePlayer(accountId, {
+			await provider.savePlayer(accountId, {
 				currency: 250,
 				inventory: [{ instanceId: 'i1', cardId: 'fireball' }],
 				ownedCards: { fireball: 1 },
@@ -124,7 +114,7 @@ describe('admin roster + ADMIN_PASSWORD gate', () => {
 				equippedKeyItemId: 'blink'
 			});
 
-			const roster = buildAdminRoster();
+			const roster = await buildAdminRoster();
 			const entry = roster.find((r) => r.username === 'player1');
 			expect(entry).toBeDefined();
 			expect(entry.accountId).toBe(accountId);
@@ -137,12 +127,12 @@ describe('admin roster + ADMIN_PASSWORD gate', () => {
 			expect(entry.cosmetic).toBeDefined();
 		});
 
-		it('uses safe defaults for an account with no persisted player file', () => {
+		it('uses safe defaults for an account with no persisted player file', async () => {
 			users.createUser('newbie', 'pw');
 			const accountId = users.findUserByUsername('newbie').accountId;
 			// No savePlayer call — loadPlayer returns null.
 
-			const roster = buildAdminRoster();
+			const roster = await buildAdminRoster();
 			const entry = roster.find((r) => r.username === 'newbie');
 			expect(entry).toBeDefined();
 			expect(entry.accountId).toBe(accountId);
@@ -154,17 +144,17 @@ describe('admin roster + ADMIN_PASSWORD gate', () => {
 			expect(entry.email).toBeNull();
 		});
 
-		it('does not mutate stored accounts or persisted data', () => {
+		it('does not mutate stored accounts or persisted data', async () => {
 			users.createUser('immutable', 'pw');
 			const accountId = users.findUserByUsername('immutable').accountId;
-			provider.savePlayer(accountId, { currency: 99 });
+			await provider.savePlayer(accountId, { currency: 99 });
 
-			const roster = buildAdminRoster();
+			const roster = await buildAdminRoster();
 			roster[0].currency = -1;
 			roster[0].username = 'hacked';
 
 			expect(users.findUserByUsername('immutable')).not.toBeNull();
-			expect(provider.loadPlayer(accountId).currency).toBe(99);
+			expect((await provider.loadPlayer(accountId)).currency).toBe(99);
 		});
 	});
 
@@ -245,20 +235,21 @@ describe('admin roster + ADMIN_PASSWORD gate', () => {
 			const bobId = users.findUserByUsername('bob').accountId;
 			// Equip a default-unlocked hat so the rendered page shows hat data.
 			users.updateProfile(aliceId, { cosmetic: { hat: 'bandana' } });
-			provider.savePlayer(aliceId, {
-				currency: 1234,
-				inventory: [{ instanceId: 'i1', cardId: 'fireball' }],
-				ownedCards: { fireball: 2 },
-				selectedDeck: ['i1'],
-				equippedKeyItemId: 'blink'
-			});
-			provider.savePlayer(bobId, { currency: 77, selectedDeck: [] });
-			return { aliceId, bobId };
+			return Promise.all([
+				provider.savePlayer(aliceId, {
+					currency: 1234,
+					inventory: [{ instanceId: 'i1', cardId: 'fireball' }],
+					ownedCards: { fireball: 2 },
+					selectedDeck: ['i1'],
+					equippedKeyItemId: 'blink'
+				}),
+				provider.savePlayer(bobId, { currency: 77, selectedDeck: [] }),
+			]).then(() => ({ aliceId, bobId }));
 		}
 
 		it('renders every seeded account with currency/hat/deck data (200, text/html)', async () => {
 			process.env.ADMIN_PASSWORD = 'topsecret';
-			seedRoster();
+			await seedRoster();
 
 			const res = await fetch(`${baseUrl}/admin`, {
 				headers: { 'x-admin-password': 'topsecret' }
@@ -280,7 +271,7 @@ describe('admin roster + ADMIN_PASSWORD gate', () => {
 
 		it('rejects the admin password via ?password= query param (security: URLs are logged)', async () => {
 			process.env.ADMIN_PASSWORD = 'topsecret';
-			seedRoster();
+			await seedRoster();
 
 			const res = await fetch(`${baseUrl}/admin?password=topsecret`);
 			expect(res.status).toBe(403);
@@ -290,7 +281,7 @@ describe('admin roster + ADMIN_PASSWORD gate', () => {
 
 		it('returns 403 with no account data for a wrong password', async () => {
 			process.env.ADMIN_PASSWORD = 'topsecret';
-			seedRoster();
+			await seedRoster();
 
 			const res = await fetch(`${baseUrl}/admin`, {
 				headers: { 'x-admin-password': 'wrong' }
@@ -303,7 +294,7 @@ describe('admin roster + ADMIN_PASSWORD gate', () => {
 
 		it('returns 403 with no account data for a missing password', async () => {
 			process.env.ADMIN_PASSWORD = 'topsecret';
-			seedRoster();
+			await seedRoster();
 
 			const res = await fetch(`${baseUrl}/admin`);
 			expect(res.status).toBe(403);
@@ -313,7 +304,7 @@ describe('admin roster + ADMIN_PASSWORD gate', () => {
 
 		it('returns 403 when ADMIN_PASSWORD is unset (fail closed)', async () => {
 			delete process.env.ADMIN_PASSWORD;
-			seedRoster();
+			await seedRoster();
 
 			const res = await fetch(`${baseUrl}/admin`, {
 				headers: { 'x-admin-password': 'anything' }
@@ -325,7 +316,7 @@ describe('admin roster + ADMIN_PASSWORD gate', () => {
 
 		it('ignores a valid player Bearer token and still requires the admin password', async () => {
 			process.env.ADMIN_PASSWORD = 'topsecret';
-			seedRoster();
+			await seedRoster();
 
 			// A Bearer-only request (no admin password) must be denied.
 			const res = await fetch(`${baseUrl}/admin`, {
@@ -338,7 +329,7 @@ describe('admin roster + ADMIN_PASSWORD gate', () => {
 
 		it('does not accept POST to /admin', async () => {
 			process.env.ADMIN_PASSWORD = 'topsecret';
-			seedRoster();
+			await seedRoster();
 
 			const res = await fetch(`${baseUrl}/admin`, {
 				method: 'POST',

@@ -38,27 +38,14 @@ async function startTestServer() {
 		});
 	}
 
-	return new Promise((resolve, reject) => {
-		const timeout = setTimeout(() => reject(new Error('startTestServer: timed out')), 15000);
+	resetGameState();
+	serverIo.removeAllListeners('connection');
+	clearAllTimers();
+	setTestProvider(new InMemoryProvider());
 
-		resetGameState();
-		serverIo.removeAllListeners('connection');
-		clearAllTimers();
-		setTestProvider(new InMemoryProvider());
-
-		startServer(0);
-
-		httpServer.once('listening', () => {
-			clearTimeout(timeout);
-			const addr = httpServer.address();
-			resolve(`http://localhost:${addr.port}`);
-		});
-
-		httpServer.once('error', (e) => {
-			clearTimeout(timeout);
-			reject(e);
-		});
-	});
+	await startServer(0);
+	const addr = httpServer.address();
+	return `http://localhost:${addr.port}`;
 }
 
 async function closeServer() {

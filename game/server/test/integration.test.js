@@ -82,27 +82,14 @@ async function startTestServer() {
 		});
 	}
 
-	return new Promise((resolve, reject) => {
-		const timeout = setTimeout(() => reject(new Error('startTestServer: timed out waiting for listening')), 15000);
+	resetGameState();
+	serverIo.removeAllListeners('connection');
+	clearAllTimers();
+	setTestProvider(new InMemoryProvider());
 
-		resetGameState();
-		serverIo.removeAllListeners('connection');
-		clearAllTimers();
-		setTestProvider(new InMemoryProvider());
-
-		startServer(0);
-
-		httpServer.once('listening', () => {
-			clearTimeout(timeout);
-			const addr = httpServer.address();
-			resolve(`http://localhost:${addr.port}`);
-		});
-
-		httpServer.once('error', (e) => {
-			clearTimeout(timeout);
-			reject(e);
-		});
-	});
+	await startServer(0);
+	const addr = httpServer.address();
+	return `http://localhost:${addr.port}`;
 }
 
 /**
@@ -3340,7 +3327,7 @@ describe('Server Ready Validation and Deck-to-Hand', () => {
 	it('converts old persisted ownedCards count-map data on connect', async () => {
 		const accountId = `legacy-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 		const testProvider = new InMemoryProvider();
-		testProvider.savePlayer(accountId, {
+		await testProvider.savePlayer(accountId, {
 			currency: 77,
 			ownedCards: { iron_sword: 2, flame_blade: 1 },
 			selectedDeck: ['iron_sword', 'iron_sword', 'flame_blade'],
@@ -4978,7 +4965,7 @@ describe('Player ID Drift Prevention on Cold Reconnect', () => {
 		expect(testGameState()).toBeNull();
 
 		// Verify data was persisted under serverId
-		const savedAfterDisconnect = testProvider.loadPlayer(serverId);
+		const savedAfterDisconnect = await testProvider.loadPlayer(serverId);
 		expect(savedAfterDisconnect).not.toBeNull();
 		expect(savedAfterDisconnect.currency).toBe(42);
 

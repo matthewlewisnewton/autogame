@@ -64,11 +64,11 @@ async function teardownServer() {
 	});
 }
 
-function initPersistenceProvider() {
+async function initPersistenceProvider() {
 	resetGameState();
 	serverIo.removeAllListeners('connection');
 	clearAllTimers();
-	startServer(0);
+	await startServer(0);
 }
 
 describe('persistence backend selection in startServer', () => {
@@ -99,35 +99,35 @@ describe('persistence backend selection in startServer', () => {
 		}
 	});
 
-	it('uses InMemoryProvider in NODE_ENV=test when no provider was injected', () => {
+	it('uses InMemoryProvider in NODE_ENV=test when no provider was injected', async () => {
 		process.env.NODE_ENV = 'test';
 		delete process.env.PERSISTENCE_BACKEND;
 		delete process.env.DATABASE_URL;
 		setTestProvider(null);
 
-		initPersistenceProvider();
+		await initPersistenceProvider();
 
 		expect(getProvider()).toBeInstanceOf(InMemoryProvider);
 	});
 
-	it('keeps an injected provider in NODE_ENV=test', () => {
+	it('keeps an injected provider in NODE_ENV=test', async () => {
 		process.env.NODE_ENV = 'test';
 		const injected = new InMemoryProvider();
 		setTestProvider(injected);
 
-		initPersistenceProvider();
+		await initPersistenceProvider();
 
 		expect(getProvider()).toBe(injected);
 	});
 
-	it('uses InMemoryProvider when PERSISTENCE_BACKEND=memory (non-test)', () => {
+	it('uses InMemoryProvider when PERSISTENCE_BACKEND=memory (non-test)', async () => {
 		useNonTestEnv();
 		process.env.PERSISTENCE_BACKEND = 'memory';
 		delete process.env.DATABASE_URL;
 		setTestProvider(null);
 		const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
-		initPersistenceProvider();
+		await initPersistenceProvider();
 
 		expect(getProvider()).toBeInstanceOf(InMemoryProvider);
 		expect(logSpy).toHaveBeenCalledWith(
@@ -135,7 +135,7 @@ describe('persistence backend selection in startServer', () => {
 		);
 	});
 
-	it('uses FileProvider when PERSISTENCE_BACKEND is unset (non-test)', () => {
+	it('uses FileProvider when PERSISTENCE_BACKEND is unset (non-test)', async () => {
 		useNonTestEnv();
 		delete process.env.PERSISTENCE_BACKEND;
 		delete process.env.DATABASE_URL;
@@ -143,27 +143,24 @@ describe('persistence backend selection in startServer', () => {
 		setTestProvider(null);
 		const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
-		initPersistenceProvider();
+		await initPersistenceProvider();
 
 		expect(getProvider()).toBeInstanceOf(FileProvider);
 		expect(logSpy).toHaveBeenCalledWith(`[persistence] FileProvider initialized at ${tmpDir}`);
 	});
 
-	it('uses PostgresProvider when PERSISTENCE_BACKEND=postgres and DATABASE_URL is set', () => {
+	it('uses PostgresProvider when PERSISTENCE_BACKEND=postgres and DATABASE_URL is set', async () => {
 		useNonTestEnv();
 		process.env.PERSISTENCE_BACKEND = 'postgres';
 		process.env.DATABASE_URL = 'postgres://user:pass@localhost:5432/testdb';
 		setTestProvider(null);
 		const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 		const mockProvider = { savePlayer: vi.fn(), loadPlayer: vi.fn(), close: vi.fn() };
-		const ctorSpy = vi.spyOn(providers, 'PostgresProvider').mockImplementation((url) => {
-			expect(url).toBe('postgres://user:pass@localhost:5432/testdb');
-			return mockProvider;
-		});
+		const createSpy = vi.spyOn(providers.PostgresProvider, 'create').mockResolvedValue(mockProvider);
 
-		initPersistenceProvider();
+		await initPersistenceProvider();
 
-		expect(ctorSpy).toHaveBeenCalledWith('postgres://user:pass@localhost:5432/testdb');
+		expect(createSpy).toHaveBeenCalledWith('postgres://user:pass@localhost:5432/testdb');
 		expect(getProvider()).toBe(mockProvider);
 		expect(logSpy).toHaveBeenCalledWith('[persistence] PostgresProvider initialized');
 	});
@@ -174,19 +171,19 @@ describe('persistence backend selection in startServer', () => {
 		delete process.env.DATABASE_URL;
 		setTestProvider(null);
 
-		expect(() => initPersistenceProvider()).toThrow(
+		await expect(initPersistenceProvider()).rejects.toThrow(
 			/PERSISTENCE_BACKEND=postgres requires DATABASE_URL/
 		);
 		expect(httpServer.listening).toBe(false);
 	});
 
-	it('throws when PERSISTENCE_BACKEND=postgres but DATABASE_URL is empty', () => {
+	it('throws when PERSISTENCE_BACKEND=postgres but DATABASE_URL is empty', async () => {
 		useNonTestEnv();
 		process.env.PERSISTENCE_BACKEND = 'postgres';
 		process.env.DATABASE_URL = '   ';
 		setTestProvider(null);
 
-		expect(() => initPersistenceProvider()).toThrow(
+		await expect(initPersistenceProvider()).rejects.toThrow(
 			/PERSISTENCE_BACKEND=postgres requires DATABASE_URL/
 		);
 		expect(httpServer.listening).toBe(false);

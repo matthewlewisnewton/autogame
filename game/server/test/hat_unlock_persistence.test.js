@@ -74,7 +74,7 @@ describe('unlockHat persistence (currency before account hat write)', () => {
 		accountId = users.findUserByUsername('hat_buyer').accountId;
 
 		fileProvider = new FileProvider(progressDir);
-		fileProvider.savePlayer(accountId, persistentSeed(initialCurrency));
+		await fileProvider.savePlayer(accountId, persistentSeed(initialCurrency));
 		setTestProvider(fileProvider);
 	});
 
@@ -134,7 +134,7 @@ describe('unlockHat persistence (currency before account hat write)', () => {
 		expect(accountHatsOnDisk(usersFile)).toContain(HAT_ID);
 
 		const reloaded = reloadFromDisk(progressDir, usersFile);
-		expect(reloaded.loadPlayer(accountId).currency).toBe(expectedCurrency);
+		expect((await reloaded.loadPlayer(accountId)).currency).toBe(expectedCurrency);
 		expect(users.findUserByAccountId(accountId).unlockedHats).toContain(HAT_ID);
 
 		socket.disconnect();
@@ -165,13 +165,13 @@ describe('unlockHat persistence (currency before account hat write)', () => {
 
 		const reloaded = reloadFromDisk(progressDir, usersFile);
 		const account = users.findUserByAccountId(accountId);
-		expect(reloaded.loadPlayer(accountId).currency).toBe(expectedCurrency);
+		expect((await reloaded.loadPlayer(accountId)).currency).toBe(expectedCurrency);
 		expect(account.unlockedHats).not.toContain(HAT_ID);
 
 		// Old ordering (hat before currency) would leave cap unlocked at full currency.
 		const freeHatExploit =
 			account.unlockedHats.includes(HAT_ID) &&
-			reloaded.loadPlayer(accountId).currency === initialCurrency;
+			(await reloaded.loadPlayer(accountId)).currency === initialCurrency;
 		expect(freeHatExploit).toBe(false);
 
 		socket.disconnect();
@@ -197,7 +197,7 @@ describe('unlockHat persistence (currency before account hat write)', () => {
 		expect(accountHatsOnDisk(usersFile)).not.toContain(HAT_ID);
 
 		const reloaded = reloadFromDisk(progressDir, usersFile);
-		expect(reloaded.loadPlayer(accountId).currency).toBe(initialCurrency);
+		expect((await reloaded.loadPlayer(accountId)).currency).toBe(initialCurrency);
 		expect(users.findUserByAccountId(accountId).unlockedHats).not.toContain(HAT_ID);
 
 		socket.disconnect();
@@ -224,7 +224,7 @@ describe('unlockHat persistence (currency before account hat write)', () => {
 		expect(readProgressCurrencyFromDisk()).toBe(initialCurrency);
 
 		const reloaded = reloadFromDisk(progressDir, usersFile);
-		expect(reloaded.loadPlayer(accountId).currency).toBe(initialCurrency);
+		expect((await reloaded.loadPlayer(accountId)).currency).toBe(initialCurrency);
 		expect(users.findUserByAccountId(accountId).unlockedHats).not.toContain(HAT_ID);
 
 		socket.disconnect();

@@ -43,22 +43,12 @@ async function startTestServer() {
 		});
 	}
 
-	return new Promise((resolve, reject) => {
-		const timeout = setTimeout(() => reject(new Error('startTestServer: timed out')), 15000);
-		resetGameState();
-		serverIo.removeAllListeners('connection');
-		clearAllTimers();
-		startServer(0);
-		httpServer.once('listening', () => {
-			clearTimeout(timeout);
-			const addr = httpServer.address();
-			resolve(`http://localhost:${addr.port}`);
-		});
-		httpServer.once('error', (e) => {
-			clearTimeout(timeout);
-			reject(e);
-		});
-	});
+	resetGameState();
+	serverIo.removeAllListeners('connection');
+	clearAllTimers();
+	await startServer(0);
+	const addr = httpServer.address();
+	return `http://localhost:${addr.port}`;
 }
 
 
@@ -131,7 +121,7 @@ describe('savePlayerData triggers on state-changing handlers', () => {
 
 		// Verify the saved data reflects the new position
 		const savedKey = playerForSocket(socket)?.accountId || socket._playerId;
-		const saved = testProvider.loadPlayer(savedKey);
+		const saved = await testProvider.loadPlayer(savedKey);
 		expect(saved).not.toBeNull();
 		expect(saved.x).toBeCloseTo(player.x, 4);
 
@@ -222,7 +212,7 @@ describe('savePlayerData triggers on state-changing handlers', () => {
 
 		// Verify the saved data reflects the new currency
 		const savedKey = playerForSocket(socket)?.accountId || socket._playerId;
-		const saved = testProvider.loadPlayer(savedKey);
+		const saved = await testProvider.loadPlayer(savedKey);
 		expect(saved).not.toBeNull();
 		expect(saved.currency).toBe(currencyBefore + lootValue);
 
@@ -257,7 +247,7 @@ describe('savePlayerData triggers on state-changing handlers', () => {
 
 		// Verify the saved data reflects the updated deck
 		const savedKey = playerForSocket(socket)?.accountId || socket._playerId;
-		const saved = testProvider.loadPlayer(savedKey);
+		const saved = await testProvider.loadPlayer(savedKey);
 		expect(saved).not.toBeNull();
 		expect(saved.selectedDeck.length).toBe(deckBefore.length);
 
@@ -287,7 +277,7 @@ describe('savePlayerData triggers on state-changing handlers', () => {
 
 		// Verify the saved data reflects the updated deck
 		const savedKey = playerForSocket(socket)?.accountId || socket._playerId;
-		const saved = testProvider.loadPlayer(savedKey);
+		const saved = await testProvider.loadPlayer(savedKey);
 		expect(saved).not.toBeNull();
 		expect(saved.selectedDeck.length).toBe(deckBefore.length - 1);
 

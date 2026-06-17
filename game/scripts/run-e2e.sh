@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 #
 # Run every end-to-end scenario (server/e2e/*.e2e.cjs) against the real Postgres
-# + Redis spun up by e2e-services.sh. Each scenario is a standalone Node script
-# (plain top-level execution so deasync works — see postgres.e2e.cjs). Aggregates
-# exit codes so a failure in any scenario fails the whole run.
+# + Redis spun up by e2e-services.sh. Each scenario is a standalone Node script.
+# Aggregates exit codes so a failure in any scenario fails the whole run.
 set -u
 cd "$(dirname "$0")/.." || exit 2
 
