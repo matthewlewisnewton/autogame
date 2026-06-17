@@ -1209,8 +1209,10 @@ function createSocket(token, options) {
 	// Explicit reconnection/timeout config rather than relying on undocumented
 	// defaults, so a stalled initial connect deterministically surfaces a
 	// `connect_error` the client can act on instead of hanging silently.
+	// Socket auth is handled via the browser's session cookie (sent
+	// automatically on same-origin WebSocket upgrades); the `token` parameter
+	// is retained for backward compatibility with existing callers.
 	const ioConfig = {
-		auth: { token },
 		timeout: CONNECT_WATCHDOG_MS,
 		reconnection: true,
 		reconnectionAttempts: Infinity,

@@ -37,7 +37,7 @@ export function bindConnectionHandlers(s, ctx) {
 
 	s.on('connect_error', (err) => {
 		const msg = err?.message || String(err || '');
-		const isAuthError = /jwt|token|unauthorized|authentication/i.test(msg);
+		const isAuthError = /jwt|token|session|unauthorized|authentication/i.test(msg);
 		ctx.stopHeartbeat();
 		if (isAuthError) {
 			// Auth recovery wins outright: cancel the connect watchdog so it can

@@ -93,7 +93,7 @@ describe('fly replay client socket affinity', () => {
 		window.__clearIoCallLog();
 		window.createSocket('affinity-test-token');
 		const config = lastIoConfig();
-		expect(config.auth).toEqual({ token: 'affinity-test-token' });
+		expect(config.auth).toBeUndefined();
 		expect(config.query).toBeUndefined();
 		expect(config.extraHeaders).toBeUndefined();
 	});
@@ -211,7 +211,7 @@ describe('fly replay client socket affinity', () => {
 
 		window.createSocket('restored-token');
 		const config = lastIoConfig();
-		expect(config.auth).toEqual({ token: 'restored-token' });
+		expect(config.auth).toBeUndefined();
 		expect(config.query).toBeUndefined();
 		expect(config.extraHeaders).toBeUndefined();
 		expect(window.__getLastConnectedFlyInstanceIdForTest()).toBeNull();
