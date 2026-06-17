@@ -1,0 +1,19 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The ticket fixes cross-instance profile data-loss caused by a never-refreshed write-through user cache. I verified it holistically against the live codebase, not just the sub-tickets.
+
+**Runtime health (blocking gate):** `metrics.json` shows `"ok": true`, `pageerrors: []`, no `harness_failure`. The full-flow smoke (auth → lobby → ready → movement → dodge with cooldown HUD) captured cleanly. `console.log` has only benign noise (Vite connect, expected pre-auth 401, lobby-name 409, WS-close warning). Game starts and loads cleanly.
+
+**Acceptance criteria — all met:**
+- **No clobber:** `updateProfile` now reloads authoritative state via `findUserByAccountIdAsync` → `loadUserByAccountId`, and `hydrateRecord` *replaces* the stale cache entry before the partial mutation + persist. The exact repro (B's cosmetic-only write no longer reverts A's email) passes as a test.
+- **Fresh reads:** `GET /api/me`, `requireAuth`, and the socket `io.use()` auth middleware all switched to the async provider lookup — also resolving the related stale-read/"Session account not found" path.
+- **Provider primitive:** `loadUserByAccountId` added to InMemory/File/Postgres providers + base class, with `assertSafeStorageKey` guards.
+- **Tests:** Ran affected suites — 40 + 47 passed, no regressions.
+
+No debug scenarios were touched. Downstream sync reads (`buildPlayerRecord`, lobby handlers) are coherent because the async auth middleware primes the cache at connection time and they never persist.
+
+**One non-blocking nit** filed to `nits.md`: `unlockHat`/`unlockQuestTier` still read the sync cache before a whole-blob persist, retaining the same theoretical clobber shape — outside this ticket's profile-store scope but worth hardening later.
+
+No `gaps.md` written (PASS).

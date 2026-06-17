@@ -9130,3 +9130,26 @@ do not apply.
 None blocking. All acceptance criteria are fully and robustly met; the game runs
 cleanly with session-only auth proven end-to-end in the captured run.
 
+
+## v0.488 — persistence: cross-instance profile data-loss — stale user cache on instance B clobbers profile changes made on A  (2026-06-17 13:03:27)
+
+connection time, so they read coherent data and never persist — no clobber
+risk. The sync read at account.js:96 is only a live-lobby appearance-change
+guard; the authoritative write still flows through async `updateProfile`.
+
+## Debug scenarios
+None added or changed by this ticket. N/A.
+
+## Code quality
+Clean. Well-documented helpers, defensive provider fallback when no provider is
+configured (preserves dev/test sync semantics), and a clearly-marked
+`cacheUserRecordForTest` internal helper used only to seed stale-cache states in
+tests.
+
+## Remaining gaps
+None blocking. One adjacent follow-up (non-blocking) captured in nits.md:
+`unlockHat` / `unlockQuestTier` still read the sync stale cache before a
+whole-blob `persistUserAsync`, so they retain the same theoretical
+cross-instance clobber shape — outside this ticket's profile-store scope and not
+exercised by the repro, but worth hardening later.
+

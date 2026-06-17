@@ -1,0 +1,17 @@
+Broke the top-level ticket into **4 sub-tickets** (dependency order), each scoped to one focused implementation pass with `code` verification.
+
+**Plan summary**
+
+| # | Focus |
+|---|--------|
+| 01 | `loadUserByAccountId` on all storage providers |
+| 02 | `findUserByAccountIdAsync` — provider read-through + cache refresh |
+| 03 | `updateProfile` read-modify-write — fixes cross-instance field clobbering |
+| 04 | Wire `GET /api/me`, `requireAuth`, and socket middleware to async lookup + stale-read regression |
+
+**Created sub-ticket folders:**
+
+- `/home/matt/workspace/.autogame-worktrees/persistence-cross-instance-profile-data-loss-stale-user-cach-5kz3/tickets/persistence-cross-instance-profile-data-loss-stale-user-cach-5kz3/subtickets/01-provider-load-user-by-account-id/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/persistence-cross-instance-profile-data-loss-stale-user-cach-5kz3/tickets/persistence-cross-instance-profile-data-loss-stale-user-cach-5kz3/subtickets/02-find-user-by-account-id-async/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/persistence-cross-instance-profile-data-loss-stale-user-cach-5kz3/tickets/persistence-cross-instance-profile-data-loss-stale-user-cach-5kz3/subtickets/03-update-profile-read-modify-write/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/persistence-cross-instance-profile-data-loss-stale-user-cach-5kz3/tickets/persistence-cross-instance-profile-data-loss-stale-user-cach-5kz3/subtickets/04-wire-profile-read-callers-and-regression/ticket.md`
