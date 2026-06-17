@@ -309,4 +309,44 @@ describe('PostgresProvider user store', () => {
 		loaded.cosmetic.color = 'red';
 		expect((await ctx.provider.loadUser('alice')).cosmetic.color).toBe('blue');
 	});
+
+	it('loadUserByAccountId returns user record when accountId matches', async () => {
+		ctx = createProvider();
+		await ctx.provider.saveUser(sampleUser);
+		const loaded = await ctx.provider.loadUserByAccountId('acct-alice-001');
+		expect(loaded).toEqual(sampleUser);
+	});
+
+	it('loadUserByAccountId returns null for unknown accountId', async () => {
+		ctx = createProvider();
+		expect(await ctx.provider.loadUserByAccountId('nonexistent')).toBeNull();
+	});
+
+	it('loadUserByAccountId returns null when no users exist', async () => {
+		ctx = createProvider();
+		expect(await ctx.provider.loadUserByAccountId('acct-alice-001')).toBeNull();
+	});
+
+	it('loadUserByAccountId returns deep copy', async () => {
+		ctx = createProvider();
+		await ctx.provider.saveUser(sampleUser);
+		const loaded = await ctx.provider.loadUserByAccountId('acct-alice-001');
+		loaded.cosmetic.color = 'red';
+		const again = await ctx.provider.loadUserByAccountId('acct-alice-001');
+		expect(again.cosmetic.color).toBe('blue');
+	});
+
+	it('loadUserByAccountId matches only correct accountId among multiple users', async () => {
+		ctx = createProvider();
+		await ctx.provider.saveUser(sampleUser);
+		const bob = { ...sampleUser, username: 'bob', accountId: 'acct-bob-002' };
+		await ctx.provider.saveUser(bob);
+		expect((await ctx.provider.loadUserByAccountId('acct-alice-001')).username).toBe('alice');
+		expect((await ctx.provider.loadUserByAccountId('acct-bob-002')).username).toBe('bob');
+	});
+
+	it('loadUserByAccountId rejects a traversal accountId', async () => {
+		ctx = createProvider();
+		await expect(ctx.provider.loadUserByAccountId('../escaped')).rejects.toThrow(/Invalid accountId/);
+	});
 });

@@ -334,3 +334,118 @@ describe('FileProvider settings', () => {
 		expect(leftovers).toEqual([]);
 	});
 });
+
+// ── InMemoryProvider loadUserByAccountId ──
+
+describe('InMemoryProvider loadUserByAccountId', () => {
+	let provider;
+
+	beforeEach(() => {
+		provider = new InMemoryProvider();
+	});
+
+	const sampleUser = {
+		username: 'alice',
+		passwordHash: '$2b$10$abcdefghijklmnopqrstuv',
+		accountId: 'acct-alice-001',
+		cosmetic: { bodyShape: 'box' },
+		unlockedHats: ['none'],
+		unlockedQuestTiers: {},
+		completedQuestTiers: {},
+	};
+
+	it('returns user record when accountId matches', async () => {
+		await provider.saveUser(sampleUser);
+		const loaded = await provider.loadUserByAccountId('acct-alice-001');
+		expect(loaded).toEqual(sampleUser);
+	});
+
+	it('returns null for unknown accountId', async () => {
+		expect(await provider.loadUserByAccountId('nonexistent')).toBeNull();
+	});
+
+	it('returns null when store is empty', async () => {
+		expect(await provider.loadUserByAccountId('acct-alice-001')).toBeNull();
+	});
+
+	it('returns deep copy (mutations do not affect stored data)', async () => {
+		await provider.saveUser(sampleUser);
+		const loaded = await provider.loadUserByAccountId('acct-alice-001');
+		loaded.cosmetic.bodyShape = 'sphere';
+		const again = await provider.loadUserByAccountId('acct-alice-001');
+		expect(again.cosmetic.bodyShape).toBe('box');
+	});
+
+	it('matches only the correct accountId among multiple users', async () => {
+		await provider.saveUser(sampleUser);
+		const bob = { ...sampleUser, username: 'bob', accountId: 'acct-bob-002' };
+		await provider.saveUser(bob);
+		expect((await provider.loadUserByAccountId('acct-alice-001')).username).toBe('alice');
+		expect((await provider.loadUserByAccountId('acct-bob-002')).username).toBe('bob');
+	});
+
+	it('rejects a traversal accountId', async () => {
+		await expect(provider.loadUserByAccountId('../escaped')).rejects.toThrow(/Invalid accountId/);
+	});
+});
+
+// ── FileProvider loadUserByAccountId ──
+
+describe('FileProvider loadUserByAccountId', () => {
+	let tmpDir;
+	let provider;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fp-user-acct-test-'));
+		provider = new FileProvider(tmpDir);
+	});
+
+	afterEach(async () => {
+		await provider.close();
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	const sampleUser = {
+		username: 'alice',
+		passwordHash: '$2b$10$abcdefghijklmnopqrstuv',
+		accountId: 'acct-alice-001',
+		cosmetic: { bodyShape: 'box' },
+		unlockedHats: ['none'],
+		unlockedQuestTiers: {},
+		completedQuestTiers: {},
+	};
+
+	it('returns user record when accountId matches', async () => {
+		await provider.saveUser(sampleUser);
+		const loaded = await provider.loadUserByAccountId('acct-alice-001');
+		expect(loaded).toEqual(sampleUser);
+	});
+
+	it('returns null for unknown accountId', async () => {
+		expect(await provider.loadUserByAccountId('nonexistent')).toBeNull();
+	});
+
+	it('returns null when users file is empty', async () => {
+		expect(await provider.loadUserByAccountId('acct-alice-001')).toBeNull();
+	});
+
+	it('returns deep copy (mutations do not affect stored data)', async () => {
+		await provider.saveUser(sampleUser);
+		const loaded = await provider.loadUserByAccountId('acct-alice-001');
+		loaded.cosmetic.bodyShape = 'sphere';
+		const again = await provider.loadUserByAccountId('acct-alice-001');
+		expect(again.cosmetic.bodyShape).toBe('box');
+	});
+
+	it('matches only the correct accountId among multiple users', async () => {
+		await provider.saveUser(sampleUser);
+		const bob = { ...sampleUser, username: 'bob', accountId: 'acct-bob-002' };
+		await provider.saveUser(bob);
+		expect((await provider.loadUserByAccountId('acct-alice-001')).username).toBe('alice');
+		expect((await provider.loadUserByAccountId('acct-bob-002')).username).toBe('bob');
+	});
+
+	it('rejects a traversal accountId', async () => {
+		await expect(provider.loadUserByAccountId('../escaped')).rejects.toThrow(/Invalid accountId/);
+	});
+});

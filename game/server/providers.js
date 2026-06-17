@@ -116,6 +116,16 @@ class InMemoryProvider extends StorageProvider {
 		return entry !== undefined ? JSON.parse(JSON.stringify(entry)) : null;
 	}
 
+	async loadUserByAccountId(accountId) {
+		assertSafeStorageKey(accountId, 'accountId');
+		for (const record of this.usersStore.values()) {
+			if (record.accountId === accountId) {
+				return JSON.parse(JSON.stringify(record));
+			}
+		}
+		return null;
+	}
+
 	async saveUser(record) {
 		if (!record || typeof record !== 'object') {
 			throw new Error('saveUser requires a user record object');
@@ -217,6 +227,13 @@ class FileProvider extends StorageProvider {
 		assertSafeStorageKey(username, 'username');
 		const records = readUsersArray(usersFilePath(this.basePath));
 		const found = records.find((record) => record.username === username);
+		return found !== undefined ? JSON.parse(JSON.stringify(found)) : null;
+	}
+
+	async loadUserByAccountId(accountId) {
+		assertSafeStorageKey(accountId, 'accountId');
+		const records = readUsersArray(usersFilePath(this.basePath));
+		const found = records.find((record) => record.accountId === accountId);
 		return found !== undefined ? JSON.parse(JSON.stringify(found)) : null;
 	}
 
@@ -355,6 +372,16 @@ class PostgresProvider extends StorageProvider {
 		const { rows } = await this.pool.query(
 			`SELECT data FROM users WHERE username = $1`,
 			[username]
+		);
+		if (rows.length === 0) return null;
+		return JSON.parse(JSON.stringify(rows[0].data));
+	}
+
+	async loadUserByAccountId(accountId) {
+		assertSafeStorageKey(accountId, 'accountId');
+		const { rows } = await this.pool.query(
+			`SELECT data FROM users WHERE account_id = $1`,
+			[accountId]
 		);
 		if (rows.length === 0) return null;
 		return JSON.parse(JSON.stringify(rows[0].data));
