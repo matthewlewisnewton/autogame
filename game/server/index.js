@@ -23,7 +23,7 @@ const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked
 const { DEFAULT_COSMETIC, backfillCosmetic, backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
 const { verifyToken, initAuth, getJWTSecret, startRateLimitSweep, stopRateLimitSweep } = require('./auth');
 const { parseCookies } = require('./cookies');
-const { getSession } = require('./sessions');
+const { getSession, destroySession } = require('./sessions');
 const { attachFlyReplayRouting } = require('./flyReplayHook');
 const {
   mulberry32,
@@ -2415,6 +2415,7 @@ if (typeof module !== 'undefined' && module.exports) {
     // Auth
     verifyToken,
     getJWTSecret,
+    destroySession,
     // Debug gate
     isDebugScenarioAllowed,
     // Quests
