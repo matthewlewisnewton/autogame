@@ -805,7 +805,7 @@ function flushDirtyPlayerSaves() {
     if (now - lastSavedAt < PLAYER_MOVEMENT_SAVE_DEBOUNCE_MS) continue;
     player.persistenceDirty = false;
     player.persistenceLastSavedAt = now;
-    _savePlayerData(playerId);
+    void _savePlayerData(playerId);
   }
 }
 
@@ -4069,7 +4069,7 @@ function cleanupStalePlayers() {
     if (Date.now() - player.lastActivity > STALE_THRESHOLD) {
       // Persist latest state before removing
       if (_savePlayerData) {
-        _savePlayerData(playerId);
+        void _savePlayerData(playerId);
       }
       if (_findSocketByPlayerId) {
         const socket = _findSocketByPlayerId(playerId);

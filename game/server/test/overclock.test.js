@@ -324,12 +324,12 @@ describe('Overclock run-end lifecycle', () => {
 		expect(gameState.players.p1.overclockChargesRemaining).toBe(0);
 	});
 
-	it('returnPlayersToLobby clears overclockChargesRemaining', () => {
+	it('returnPlayersToLobby clears overclockChargesRemaining', async () => {
 		gameState._lobbyId = 'test-lobby';
 		startDungeonRun();
 		addPlayer('p1', { overclockChargesRemaining: 2 });
 		const { restore } = mockIoEmit();
-		returnPlayersToLobby();
+		await returnPlayersToLobby();
 		restore();
 		expect(gameState.players.p1.overclockChargesRemaining).toBe(0);
 	});

@@ -220,7 +220,7 @@ function savePlayerInPrimaryLobby(playerId) {
 	const progression = require('../progression');
 	sim.setGameState(state, _timeouts);
 	progression.setGameState(state);
-	savePlayerData(playerId);
+	return savePlayerData(playerId);
 }
 
 function runSimulationInPrimaryLobby(fn) {
@@ -4952,7 +4952,7 @@ describe('Player ID Drift Prevention on Cold Reconnect', () => {
 
 		// Simulate earning currency
 		testGameState().players[serverId].currency = 42;
-		savePlayerInPrimaryLobby(serverId);
+		await savePlayerInPrimaryLobby(serverId);
 
 		// Disconnect — triggers savePlayerData and starts grace period
 		sock1.disconnect();
@@ -5046,7 +5046,7 @@ describe('Restore Persisted Location on Cold Reconnect During Active Run', () =>
 		player2.rotation = 1.5;
 
 		// Force-save the moved position
-		savePlayerInPrimaryLobby(player2Id);
+		await savePlayerInPrimaryLobby(player2Id);
 
 		// --- Disconnect player 2 (triggers save + grace period) ---
 		c2.socket.disconnect();
@@ -5091,7 +5091,7 @@ describe('Restore Persisted Location on Cold Reconnect During Active Run', () =>
 		player1.rotation = 2.0;
 
 		// Force-save
-		savePlayerInPrimaryLobby(player1Id);
+		await savePlayerInPrimaryLobby(player1Id);
 
 		// Disconnect (last player → returns to lobby, but saves location)
 		c1.socket.disconnect();
@@ -5181,7 +5181,7 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 		expect(player2.deck).toBeDefined();
 
 		// Save player data
-		savePlayerInPrimaryLobby(player2Id);
+		await savePlayerInPrimaryLobby(player2Id);
 
 		// --- Disconnect player 2 ---
 		c2.socket.disconnect();
@@ -5250,7 +5250,7 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 			wanderTarget: { x: player2.x + 3, z: player2.z }
 		});
 
-		savePlayerInPrimaryLobby(player2Id);
+		await savePlayerInPrimaryLobby(player2Id);
 
 		// --- Disconnect and reconnect player 2 (warm reconnect within grace) ---
 		c2.socket.disconnect();
@@ -5307,7 +5307,7 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 		// Player should NOT have a hand in lobby
 		expect(player1.hand).toBeUndefined();
 
-		savePlayerInPrimaryLobby(player1Id);
+		await savePlayerInPrimaryLobby(player1Id);
 
 		// --- Disconnect and reconnect in lobby ---
 		c1.socket.disconnect();
@@ -5342,7 +5342,7 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 		player2.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(Date.now() + 99999);
 		player2.magicStones = 0;
 
-		savePlayerInPrimaryLobby(player2Id);
+		await savePlayerInPrimaryLobby(player2Id);
 
 		// --- Disconnect and reconnect ---
 		c2.socket.disconnect();
@@ -5379,7 +5379,7 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 		player2.hp = 0;
 		player2.dead = true;
 
-		savePlayerInPrimaryLobby(player2Id);
+		await savePlayerInPrimaryLobby(player2Id);
 
 		// --- Disconnect and reconnect ---
 		c2.socket.disconnect();

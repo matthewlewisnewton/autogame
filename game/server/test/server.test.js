@@ -2144,7 +2144,7 @@ describe('cleanupStalePlayers', () => {
 		expect(gameState.players['p3']).toBeDefined();
 	});
 
-	it('calls savePlayerData before deleting stale player', () => {
+	it('calls savePlayerData before deleting stale player', async () => {
 		const mockProvider = {
 			savePlayer: vi.fn().mockResolvedValue(undefined),
 			loadPlayer: vi.fn().mockResolvedValue(null)
@@ -2164,7 +2164,8 @@ describe('cleanupStalePlayers', () => {
 
 		cleanupStalePlayers();
 
-		expect(mockProvider.savePlayer).toHaveBeenCalledWith('p1', expect.objectContaining({
+		await vi.waitFor(() => {
+			expect(mockProvider.savePlayer).toHaveBeenCalledWith('p1', expect.objectContaining({
 			currency: 42,
 			ownedCards: { iron_sword: 3 },
 			x: 5,
@@ -2172,6 +2173,8 @@ describe('cleanupStalePlayers', () => {
 			z: 10,
 			rotation: 1.5
 		}));
+		});
+
 		const saved = mockProvider.savePlayer.mock.calls[0][1];
 		expect(saved.inventory).toHaveLength(3);
 		expect(saved.inventory.every((instance) => instance.cardId === 'iron_sword')).toBe(true);
@@ -2191,7 +2194,7 @@ describe('cleanupStalePlayers', () => {
 		expect(gameState.players['p1']).toBeUndefined();
 	});
 
-	it('saves multiple stale players before deleting', () => {
+	it('saves multiple stale players before deleting', async () => {
 		const mockProvider = {
 			savePlayer: vi.fn().mockResolvedValue(undefined),
 			loadPlayer: vi.fn().mockResolvedValue(null)
@@ -2203,7 +2206,9 @@ describe('cleanupStalePlayers', () => {
 
 		cleanupStalePlayers();
 
-		expect(mockProvider.savePlayer).toHaveBeenCalledTimes(2);
+		await vi.waitFor(() => {
+			expect(mockProvider.savePlayer).toHaveBeenCalledTimes(2);
+		});
 		expect(mockProvider.savePlayer).toHaveBeenCalledWith('p1', expect.objectContaining({ currency: 10 }));
 		expect(mockProvider.savePlayer).toHaveBeenCalledWith('p2', expect.objectContaining({ currency: 20 }));
 
@@ -2293,13 +2298,13 @@ describe('saveAllPlayersInAllLobbies (shutdown flush)', () => {
 		vi.useRealTimers();
 	});
 
-	it('persists dirty players inside the movement debounce window', () => {
+	it('persists dirty players inside the movement debounce window', async () => {
 		vi.useFakeTimers();
 		const now = 1_700_000_000_000;
 		vi.setSystemTime(now);
 
 		const mockProvider = {
-			savePlayer: vi.fn(),
+			savePlayer: vi.fn().mockResolvedValue(undefined),
 			loadPlayer: vi.fn().mockReturnValue(null),
 		};
 		setTestProvider(mockProvider);
@@ -2314,6 +2319,7 @@ describe('saveAllPlayersInAllLobbies (shutdown flush)', () => {
 		};
 
 		saveAllPlayersInAllLobbies();
+		await Promise.resolve();
 
 		expect(mockProvider.savePlayer).toHaveBeenCalledTimes(1);
 		expect(mockProvider.savePlayer).toHaveBeenCalledWith(
@@ -4205,68 +4211,68 @@ describe('run state', () => {
 			vi.useRealTimers();
 		});
 
-		it('throws when called outside lobby context', () => {
+		it('throws when called outside lobby context', async () => {
 			delete gameState._lobbyId;
-			expect(() => returnPlayersToLobby()).toThrow('returnPlayersToLobby requires lobby context');
+			await expect(returnPlayersToLobby()).rejects.toThrow('returnPlayersToLobby requires lobby context');
 		});
 
-		it('resets gamePhase to lobby', () => {
+		it('resets gamePhase to lobby', async () => {
 			gameState.gamePhase = 'playing';
 			startDungeonRun();
 
 			const { restore } = mockRoomEmit();
 
-			returnPlayersToLobby();
+			await returnPlayersToLobby();
 
 			restore();
 
 			expect(gameState.gamePhase).toBe('lobby');
 		});
 
-		it('clears dead flag and restores HP to LOBBY_REVIVE_HP when returning dead player to lobby', () => {
+		it('clears dead flag and restores HP to LOBBY_REVIVE_HP when returning dead player to lobby', async () => {
 			addPlayer('p1', { hp: 0, dead: true });
 
 			const { restore } = mockRoomEmit();
-			returnPlayersToLobby();
+			await returnPlayersToLobby();
 			restore();
 
 			expect(gameState.players.p1.hp).toBe(LOBBY_REVIVE_HP);
 			expect(gameState.players.p1.dead).toBe(false);
 		});
 
-		it('preserves partial-HP for living player on run-failure return', () => {
+		it('preserves partial-HP for living player on run-failure return', async () => {
 			addPlayer('p1', { hp: 42, dead: false });
 			gameState.gamePhase = 'playing';
 			startDungeonRun();
 
 			const { restore } = mockRoomEmit();
-			returnPlayersToLobby();
+			await returnPlayersToLobby();
 			restore();
 
 			expect(gameState.players.p1.hp).toBe(42);
 			expect(gameState.players.p1.dead).toBe(false);
 		});
 
-		it('clears gameState.run', () => {
+		it('clears gameState.run', async () => {
 			startDungeonRun();
 
 			const { restore } = mockRoomEmit();
 
-			returnPlayersToLobby();
+			await returnPlayersToLobby();
 
 			restore();
 
 			expect(gameState.run).toBeUndefined();
 		});
 
-		it('clears enemies, minions, and loot', () => {
+		it('clears enemies, minions, and loot', async () => {
 			gameState.enemies.push({ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } });
 			gameState.minions.push({ id: 'm1', ownerId: 'p1', x: 0, z: 0, hp: 50, ttl: 30 });
 			gameState.loot.push({ id: 'l1', x: 0, z: 0, value: 10, createdAt: Date.now() });
 
 			const { restore } = mockRoomEmit();
 
-			returnPlayersToLobby();
+			await returnPlayersToLobby();
 
 			restore();
 
@@ -4275,7 +4281,7 @@ describe('run state', () => {
 			expect(gameState.loot.length).toBe(0);
 		});
 
-		it('clears pending minion cardUsed queue', () => {
+		it('clears pending minion cardUsed queue', async () => {
 			gameState._pendingMinionBreaths = [{
 				playerId: 'p1',
 				cardId: 'ancient_wyrm',
@@ -4285,19 +4291,19 @@ describe('run state', () => {
 
 			const { restore } = mockRoomEmit();
 
-			returnPlayersToLobby();
+			await returnPlayersToLobby();
 
 			restore();
 
 			expect(gameState._pendingMinionBreaths).toHaveLength(0);
 		});
 
-		it('sets all players to ready: false and preserves HP/position', () => {
+		it('sets all players to ready: false and preserves HP/position', async () => {
 			addPlayer('p1', { x: 50, z: 50, hp: 30, ready: true, currency: 20 });
 
 			const { restore } = mockRoomEmit();
 
-			returnPlayersToLobby();
+			await returnPlayersToLobby();
 
 			restore();
 
@@ -4308,13 +4314,13 @@ describe('run state', () => {
 			expect(gameState.players['p1'].currency).toBe(20);
 		});
 
-		it('emits stateUpdate to lobby room', () => {
+		it('emits stateUpdate to lobby room', async () => {
 			addPlayer('p1');
 			startDungeonRun();
 
 			const { emitCalls, restore } = mockRoomEmit();
 
-			returnPlayersToLobby();
+			await returnPlayersToLobby();
 
 			restore();
 
@@ -4322,12 +4328,12 @@ describe('run state', () => {
 			expect(stateUpdateCalls.length).toBeGreaterThan(0);
 		});
 
-		it('emits lobbyUpdate after stateUpdate', () => {
+		it('emits lobbyUpdate after stateUpdate', async () => {
 			addPlayer('p1');
 
 			const { emitCalls, restore } = mockRoomEmit();
 
-			returnPlayersToLobby();
+			await returnPlayersToLobby();
 
 			restore();
 
@@ -4335,14 +4341,14 @@ describe('run state', () => {
 			expect(lobbyUpdateCalls.length).toBeGreaterThan(0);
 		});
 
-		it('clears pendingSummons for all players', () => {
+		it('clears pendingSummons for all players', async () => {
 			addPlayer('p1');
 			gameState.players['p1'].pendingSummons.add('0:iron_sword');
 			gameState.players['p1'].pendingSummons.add('1:fireball');
 
 			const { restore } = mockRoomEmit();
 
-			returnPlayersToLobby();
+			await returnPlayersToLobby();
 
 			restore();
 

@@ -31,7 +31,7 @@ function register(socket, ctx) {
     }
 
     player.equippedKeyItemId = keyItemId;
-    savePlayerData(socket.playerId);
+    void savePlayerData(socket.playerId);
 
     socket.emit(SERVER_TO_CLIENT.KEY_ITEM_EQUIPPED, { keyItemId });
     });

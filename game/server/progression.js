@@ -540,7 +540,7 @@ function healAtMedic(playerId, state = _gameState) {
 
   player.hp = MAX_HP;
   player.dead = false;
-  savePlayerData(playerId);
+  void savePlayerData(playerId);
 
   return { ok: true, hp: player.hp, currency: player.currency, cost };
 }
@@ -986,13 +986,13 @@ function persistenceKey(playerId) {
   return player.accountId || playerId;
 }
 
-function savePlayerData(playerId) {
+async function savePlayerData(playerId) {
   if (!provider) return true;
   const player = _gameState.players[playerId];
   if (!player) return true;
   try {
     const key = persistenceKey(playerId);
-    provider.savePlayer(key, extractPersistentData(player));
+    await provider.savePlayer(key, extractPersistentData(player));
     player.persistenceLastSavedAt = Date.now();
     return true;
   } catch (err) {
@@ -1001,10 +1001,10 @@ function savePlayerData(playerId) {
   }
 }
 
-function saveAllPlayers() {
+async function saveAllPlayers() {
   for (const playerId of Object.keys(_gameState.players)) {
     try {
-      savePlayerData(playerId);
+      await savePlayerData(playerId);
     } catch (err) {
       console.error(`[persistence] saveAllPlayers failed for ${playerId}:`, err.message);
     }
@@ -3462,7 +3462,7 @@ function tryEnterTelepipe(playerId) {
   player.inputDx = 0;
   player.inputDz = 0;
   clearPlayerCardCommitment(player);
-  savePlayerData(playerId);
+  void savePlayerData(playerId);
   console.log(`[telepipe] player ${playerId} extracted`);
 
   const io = getIoTarget();
@@ -3594,7 +3594,7 @@ function checkRunTerminalState() {
   }
 
   for (const playerId of Object.keys(_gameState.players)) {
-    savePlayerData(playerId);
+    void savePlayerData(playerId);
   }
 
   const summary = buildRunSummary(status);
@@ -3747,7 +3747,7 @@ function stateSnapshot() {
   };
 }
 
-function returnPlayersToLobby(state = _gameState) {
+async function returnPlayersToLobby(state = _gameState) {
   if (!state || !state._lobbyId) {
     throw new Error('returnPlayersToLobby requires lobby context');
   }
@@ -3792,7 +3792,7 @@ function returnPlayersToLobby(state = _gameState) {
   }
 
   for (const playerId of Object.keys(state.players)) {
-    savePlayerData(playerId);
+    await savePlayerData(playerId);
   }
 
   const io = getIoTarget();
@@ -3850,7 +3850,7 @@ function giveUpRun(state = _gameState) {
   }
 
   for (const playerId of Object.keys(state.players)) {
-    savePlayerData(playerId);
+    void savePlayerData(playerId);
   }
 
   refreshShopOffer();

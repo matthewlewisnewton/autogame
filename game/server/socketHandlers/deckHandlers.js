@@ -81,7 +81,7 @@ function register(socket, ctx) {
       ownedCards: player.ownedCards
     });
 
-    savePlayerData(socket.playerId);
+    void savePlayerData(socket.playerId);
     });
   });
 
@@ -123,7 +123,7 @@ function register(socket, ctx) {
       ownedCards: player.ownedCards
     });
 
-    savePlayerData(socket.playerId);
+    void savePlayerData(socket.playerId);
     });
   });
 
@@ -147,7 +147,7 @@ function register(socket, ctx) {
       inventory: player.inventory,
       ownedCards: player.ownedCards
     });
-    savePlayerData(socket.playerId);
+    void savePlayerData(socket.playerId);
     });
   });
 
@@ -167,7 +167,7 @@ function register(socket, ctx) {
         currency: player.currency,
         selectedDeck: player.selectedDeck,
       });
-      savePlayerData(socket.playerId);
+      void savePlayerData(socket.playerId);
       broadcastLobbyUpdate(lobby);
     });
   });
@@ -199,7 +199,7 @@ function register(socket, ctx) {
       currency: player.currency,
       selectedDeck: player.selectedDeck
     });
-    savePlayerData(socket.playerId);
+    void savePlayerData(socket.playerId);
     });
   });
 
@@ -225,7 +225,7 @@ function register(socket, ctx) {
       ownedCards: player.ownedCards,
       currency: player.currency
     });
-    savePlayerData(socket.playerId);
+    void savePlayerData(socket.playerId);
     });
   });
 

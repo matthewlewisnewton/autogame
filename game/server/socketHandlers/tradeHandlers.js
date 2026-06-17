@@ -109,8 +109,8 @@ function register(socket, ctx) {
       responderSocket.emit(SERVER_TO_CLIENT.CARD_INVENTORY_UPDATE, inventoryPayload(responder));
     }
 
-    savePlayerData(result.offererId);
-    savePlayerData(result.responderId);
+    void savePlayerData(result.offererId);
+    void savePlayerData(result.responderId);
     });
   });
 }

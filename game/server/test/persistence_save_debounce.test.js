@@ -72,13 +72,13 @@ describe('movement save debounce (flushDirtyPlayerSaves)', () => {
 		expect(savePlayerSpy.mock.calls.length).toBeLessThan(tickCount);
 	});
 
-	it('savePlayerData bypasses debounce and saves immediately', () => {
+	it('savePlayerData bypasses debounce and saves immediately', async () => {
 		savePlayerSpy.mockClear();
 
 		gameState.players.p1.persistenceDirty = true;
 		gameState.players.p1.persistenceLastSavedAt = Date.now();
 
-		savePlayerData('p1');
+		await savePlayerData('p1');
 
 		expect(savePlayerSpy).toHaveBeenCalledTimes(1);
 		expect(savePlayerSpy).toHaveBeenCalledWith(

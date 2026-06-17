@@ -392,14 +392,25 @@ function withLobbyContext(lobby, fn) {
   sim.setGameState(lobby.state, _timeouts);
   setProgressionGameState(lobby.state);
   _lobbyContextStack.push(lobby);
-  try {
-    return fn();
-  } finally {
+
+  const popContext = () => {
     _lobbyContextStack.pop();
     const parentLobby = _lobbyContextStack[_lobbyContextStack.length - 1];
     const restoreState = parentLobby ? parentLobby.state : gameState;
     sim.setGameState(restoreState, _timeouts);
     setProgressionGameState(restoreState);
+  };
+
+  try {
+    const result = fn();
+    if (result && typeof result.then === 'function') {
+      return result.finally(popContext);
+    }
+    popContext();
+    return result;
+  } catch (err) {
+    popContext();
+    throw err;
   }
 }
 
@@ -508,7 +519,7 @@ function cleanupStalePlayersInAllLobbies() {
 
 function saveAllPlayersInAllLobbies() {
   for (const lobby of lobbies._lobbies.values()) {
-    withLobbyContext(lobby, () => saveAllPlayers());
+    withLobbyContext(lobby, () => void saveAllPlayers());
   }
 }
 
@@ -1539,7 +1550,7 @@ function softDisconnectPlayerFromLobby(socket) {
   }
 
   withLobbyContext(lobby, () => {
-    savePlayerData(playerId);
+    void savePlayerData(playerId);
     cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
 
     player.connected = false;
@@ -1570,7 +1581,7 @@ function evictDisconnectedPlayers() {
 
     for (const playerId of toEvict) {
       withLobbyContext(lobby, () => {
-        savePlayerData(playerId);
+        void savePlayerData(playerId);
         cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
       });
       const result = lobbies.removePlayerFromLobby(playerId);
@@ -1619,7 +1630,7 @@ function reapAbandonedLobbies() {
     if (now - lobby.emptySince >= EMPTY_LOBBY_TTL_MS) {
       for (const playerId of Object.keys(lobby.state.players)) {
         withLobbyContext(lobby, () => {
-          savePlayerData(playerId);
+          void savePlayerData(playerId);
           cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
         });
         lobbies.removePlayerFromLobby(playerId);
@@ -1641,7 +1652,7 @@ function leaveLobbyForSocket(socket) {
 
   const playerId = socket.playerId;
   withLobbyContext(lobby, () => {
-    savePlayerData(playerId);
+    void savePlayerData(playerId);
     cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
   });
   socket.leave(lobby.id);

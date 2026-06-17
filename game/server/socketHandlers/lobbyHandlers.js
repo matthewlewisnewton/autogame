@@ -191,7 +191,7 @@ function register(socket, ctx) {
   runHandlers.register(socket, ctx);
 
   socket.on(CLIENT_TO_SERVER.UNLOCK_HAT, (data) => {
-    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, async (state, lobby, player) => {
     const hatId = data && typeof data.hatId === 'string' ? data.hatId : null;
     if (!hatId) {
       socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: 'Missing hatId' });
@@ -221,7 +221,7 @@ function register(socket, ctx) {
     // Safe ordering: currency first, hat second — a crash after this save but
     // before unlock leaves charged-but-not-unlocked (retryable via unlockHat)
     // instead of unlocked-but-not-charged (free-hat exploit).
-    const saved = savePlayerData(socket.playerId);
+    const saved = await savePlayerData(socket.playerId);
     if (!saved) {
       player.currency += result.cost;
       socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: 'Failed to save progress' });
@@ -233,7 +233,7 @@ function register(socket, ctx) {
       // Refund in memory and re-save so disk matches RAM; otherwise the first
       // save would leave deducted currency on disk without a hat unlock.
       player.currency += result.cost;
-      savePlayerData(socket.playerId);
+      await savePlayerData(socket.playerId);
       socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: unlockResult.reason });
       return;
     }
@@ -242,7 +242,7 @@ function register(socket, ctx) {
       unlockedHats: unlockResult.unlockedHats,
       currency: player.currency
     });
-    savePlayerData(socket.playerId);
+    void savePlayerData(socket.playerId);
     });
   });
 
@@ -258,7 +258,7 @@ function register(socket, ctx) {
       return;
     }
 
-    withLobbyContext(lobby, () => {
+    withLobbyContext(lobby, async () => {
       const proposed = data && data.cosmetic;
       if (!proposed || typeof proposed !== 'object' || Array.isArray(proposed)) {
         socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: 'Invalid cosmetic' });
@@ -301,7 +301,7 @@ function register(socket, ctx) {
           currency: player.currency,
           cost,
         });
-        savePlayerData(socket.playerId);
+        void savePlayerData(socket.playerId);
       };
 
       if (!paidChange) {
@@ -323,7 +323,7 @@ function register(socket, ctx) {
       // Safe ordering: currency first, cosmetic second — a crash after this save
       // but before updateProfile leaves charged-but-not-applied (retryable) instead
       // of applied-but-not-charged (free-appearance exploit).
-      const saved = savePlayerData(socket.playerId);
+      const saved = await savePlayerData(socket.playerId);
       if (!saved) {
         player.currency += chargeResult.cost;
         socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: 'Failed to save progress' });
@@ -333,7 +333,7 @@ function register(socket, ctx) {
       const profileResult = updateProfile(player.accountId, { cosmetic: proposed });
       if (!profileResult.ok) {
         player.currency += chargeResult.cost;
-        savePlayerData(socket.playerId);
+        await savePlayerData(socket.playerId);
         socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: profileResult.reason });
         return;
       }

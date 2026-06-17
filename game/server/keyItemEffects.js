@@ -365,7 +365,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
 
       player.keyItemCooldownUntil = now + (def.cooldownMs || 8000);
       player.persistenceDirty = true;
-      savePlayerData(socket.playerId);
+      void savePlayerData(socket.playerId);
 
       socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, pulled, collected, cooldownUntil: player.keyItemCooldownUntil });
       io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());

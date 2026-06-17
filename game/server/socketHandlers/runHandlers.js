@@ -27,7 +27,7 @@ function register(socket, ctx) {
   } = ctx;
 
   socket.on(CLIENT_TO_SERVER.RETURN_TO_LOBBY, () => {
-    withLobbyFromSocket(socket, (state) => {
+    withLobbyFromSocket(socket, async (state) => {
     if (state.run && state.run.status === 'playing') {
       socket.emit(SERVER_TO_CLIENT.RUN_ERROR, { reason: 'Run still in progress' });
       return;
@@ -35,7 +35,7 @@ function register(socket, ctx) {
 
     if (!state.run) return;
 
-    returnPlayersToLobby(state);
+    await returnPlayersToLobby(state);
     });
   });
 
@@ -91,7 +91,7 @@ function register(socket, ctx) {
     const result = claimCardReward(socket.playerId, data.cardId, state);
     if (!result.ok) return;
 
-    savePlayerData(socket.playerId);
+    void savePlayerData(socket.playerId);
     socket.emit(SERVER_TO_CLIENT.CARD_REWARD_CLAIMED, {
       cardId: result.cardId,
       ownedCards: result.ownedCards,
@@ -215,7 +215,7 @@ function register(socket, ctx) {
     const lootLabel = isCrystal ? ' (crystal)' : isMagicStone ? ' (magic stone)' : '';
     console.log(`[loot] picked up id=${loot.id}${lootLabel} value=${loot.value} by ${socket.id} (currency=${player.currency}, ms=${player.magicStones})`);
 
-    savePlayerData(socket.playerId);
+    void savePlayerData(socket.playerId);
 
     if (isCrystal) {
       checkRunTerminalState();

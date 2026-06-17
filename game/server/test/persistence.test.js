@@ -328,7 +328,7 @@ describe('vitals persistence cold-load', () => {
 			magicStones: 15,
 		};
 
-		savePlayerData('acct-vitals');
+		await savePlayerData('acct-vitals');
 
 		const loaded = await testProvider.loadPlayer('acct-vitals');
 		expect(loaded.hp).toBe(42);
@@ -353,7 +353,7 @@ describe('vitals persistence cold-load', () => {
 			magicStones: 3,
 		};
 
-		savePlayerData('acct-dead');
+		await savePlayerData('acct-dead');
 
 		const loaded = await testProvider.loadPlayer('acct-dead');
 		expect(loaded.hp).toBe(0);
@@ -403,7 +403,7 @@ describe('savePlayerData', () => {
 		};
 		gameState.players['testPlayer'] = player;
 
-		savePlayerData('testPlayer');
+		await savePlayerData('testPlayer');
 
 		const loaded = await testProvider.loadPlayer('testPlayer');
 		expectPersistentData(loaded, {
@@ -438,7 +438,7 @@ describe('savePlayerData', () => {
 		};
 		gameState.players['p1'] = player;
 
-		savePlayerData('p1');
+		await savePlayerData('p1');
 
 		const loaded = await testProvider.loadPlayer('p1');
 		expectPersistentData(loaded, {
@@ -458,32 +458,32 @@ describe('savePlayerData', () => {
 	});
 
 	it('does nothing when player does not exist in gameState', async () => {
-		expect(() => savePlayerData('nonexistent')).not.toThrow();
+		await expect(savePlayerData('nonexistent')).resolves.toBe(true);
 		expect(await testProvider.loadPlayer('nonexistent')).toBeNull();
 	});
 
-	it('does nothing when provider is null', () => {
+	it('does nothing when provider is null', async () => {
 		setTestProvider(null);
 		gameState.players['anyone'] = { currency: 10, ownedCards: {}, selectedDeck: [] };
-		expect(() => savePlayerData('anyone')).not.toThrow();
+		await expect(savePlayerData('anyone')).resolves.toBe(true);
 	});
 
-	it('sets persistenceLastSavedAt after a successful save', () => {
+	it('sets persistenceLastSavedAt after a successful save', async () => {
 		vi.useFakeTimers();
 		const now = 1_700_000_000_000;
 		vi.setSystemTime(now);
 
 		gameState.players['p1'] = { currency: 10, ownedCards: {}, selectedDeck: [] };
 
-		savePlayerData('p1');
+		await savePlayerData('p1');
 
 		expect(gameState.players['p1'].persistenceLastSavedAt).toBe(now);
 		vi.useRealTimers();
 	});
 
-	it('does not set persistenceLastSavedAt when provider.savePlayer throws', () => {
+	it('does not set persistenceLastSavedAt when provider.savePlayer throws', async () => {
 		const throwingProvider = {
-			savePlayer: () => { throw new Error('disk full'); },
+			savePlayer: vi.fn().mockRejectedValue(new Error('disk full')),
 		};
 		setTestProvider(throwingProvider);
 
@@ -496,14 +496,14 @@ describe('savePlayerData', () => {
 		gameState.players['errPlayer'] = player;
 
 		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		savePlayerData('errPlayer');
+		await savePlayerData('errPlayer');
 		expect(player.persistenceLastSavedAt).toBe(123);
 		consoleErrorSpy.mockRestore();
 	});
 
-	it('catches and logs errors without rethrowing when provider.savePlayer throws', () => {
+	it('catches and logs errors without rethrowing when provider.savePlayer throws', async () => {
 		const throwingProvider = {
-			savePlayer: () => { throw new Error('disk full'); },
+			savePlayer: vi.fn().mockRejectedValue(new Error('disk full')),
 		};
 		setTestProvider(throwingProvider);
 
@@ -515,7 +515,7 @@ describe('savePlayerData', () => {
 		gameState.players['errPlayer'] = player;
 
 		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		expect(savePlayerData('errPlayer')).toBe(false);
+		await expect(savePlayerData('errPlayer')).resolves.toBe(false);
 		expect(consoleErrorSpy).toHaveBeenCalledWith(
 			expect.stringContaining('[persistence] savePlayerData failed for errPlayer'),
 			expect.any(String)
@@ -543,7 +543,7 @@ describe('saveAllPlayers', () => {
 		gameState.players['a'] = { x: 1, y: 0.5, z: 2, rotation: 0, currency: 1, ownedCards: { iron_sword: 1 }, selectedDeck: ['iron_sword'] };
 		gameState.players['b'] = { x: 3, y: 0.5, z: 4, rotation: 1, currency: 2, ownedCards: { flame_blade: 1 }, selectedDeck: ['flame_blade'] };
 
-		saveAllPlayers();
+		await saveAllPlayers();
 
 		expectPersistentData(await testProvider.loadPlayer('a'), {
 			x: 1, y: 0.5, z: 2, rotation: 0,
@@ -559,9 +559,9 @@ describe('saveAllPlayers', () => {
 		});
 	});
 
-	it('is a no-op when there are no players', () => {
+	it('is a no-op when there are no players', async () => {
 		expect(Object.keys(gameState.players)).toHaveLength(0);
-		expect(() => saveAllPlayers()).not.toThrow();
+		await expect(saveAllPlayers()).resolves.toBeUndefined();
 	});
 
 	it('catches per-player errors without crashing the loop', async () => {
@@ -570,13 +570,13 @@ describe('saveAllPlayers', () => {
 
 		// Make p1's save throw but let p2's save call through to the real implementation
 		const originalSave = testProvider.savePlayer.bind(testProvider);
-		vi.spyOn(testProvider, 'savePlayer').mockImplementation((id, data) => {
+		vi.spyOn(testProvider, 'savePlayer').mockImplementation(async (id, data) => {
 			if (id === 'p1') throw new Error('fail');
-			originalSave(id, data);
+			await originalSave(id, data);
 		});
 
 		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		expect(() => saveAllPlayers()).not.toThrow();
+		await saveAllPlayers();
 		// p2 should still have been saved
 		expectPersistentData(await testProvider.loadPlayer('p2'), {
 			x: 0, y: 0.5, z: 0, rotation: 0,
@@ -674,7 +674,7 @@ describe('authenticated save/load round-trip by accountId', () => {
 		};
 
 		// Save using playerId (as the server does)
-		savePlayerData(playerId);
+		await savePlayerData(playerId);
 
 		// Verify data is stored under accountId, not playerId
 		expectPersistentData(await testProvider.loadPlayer(testAccountId), {
@@ -717,8 +717,8 @@ describe('authenticated save/load round-trip by accountId', () => {
 			selectedDeck: ['flame_blade'],
 		};
 
-		savePlayerData('p1');
-		savePlayerData('p2');
+		await savePlayerData('p1');
+		await savePlayerData('p2');
 
 		expect((await testProvider.loadPlayer('acct-user-a')).currency).toBe(100);
 		expect((await testProvider.loadPlayer('acct-user-b')).currency).toBe(200);
@@ -760,7 +760,7 @@ describe('anonymous save/load round-trip by playerId', () => {
 		};
 
 		// Save using playerId
-		savePlayerData(anonPlayerId);
+		await savePlayerData(anonPlayerId);
 
 		// Verify data is stored under playerId
 		const loaded = await testProvider.loadPlayer(anonPlayerId);
