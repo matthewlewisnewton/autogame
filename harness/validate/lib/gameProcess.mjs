@@ -126,7 +126,7 @@ export async function startGame({ serverPort, clientPort, serverLogPath } = {}) 
 			PORT: String(resolvedServerPort),
 			ALLOW_DEBUG_SCENARIOS: '1',
 			ALLOW_DEV_AUTH: '1',
-			PERSISTENCE_BACKEND: 'memory',
+			PERSISTENCE_BACKEND: process.env.PERSISTENCE_BACKEND ?? 'memory',
 		},
 	});
 	activeServerChild = serverChild;
