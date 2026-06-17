@@ -1,0 +1,15 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/gamepad-auto-detection-input-only-works-in-chrome-not-macos-s4k7/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/gamepad-auto-detection-input-only-works-in-chrome-not-macos-s4k7/game/data
+Server listening on port 3001
+Player connected: socket=raqBRHF9tWqBgjE1AAAB, playerId=55cc06b2-c1d7-4636-b607-cb7afb7113de
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=FqzWdOTmFhU2Q7yYAAAD, playerId=b688867f-3639-4ce1-acea-26457cb81afb
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=5d26a7ca-da16-47a3-bd0a-15ef69bf0c3a value=11
+Player disconnected: raqBRHF9tWqBgjE1AAAB
+Player disconnected: FqzWdOTmFhU2Q7yYAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
