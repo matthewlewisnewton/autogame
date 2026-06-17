@@ -1,15 +1,27 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
 	applyDeadzone,
 	readStickMovement,
 	readDpadMovement,
 	mergeMovementVectors,
 	pollGamepadButtons,
+	pollGamepadLook,
 	resetGamepadState,
 } from '../gamepad.js';
-import { GAMEPAD_DEADZONE, LOCK_ON_GAMEPAD_BUTTON } from '../config.js';
+import { GAMEPAD_DEADZONE, GAMEPAD_LOOK_SENSITIVITY, LOCK_ON_GAMEPAD_BUTTON } from '../config.js';
 import { patchSettings } from '../settings.js';
+import {
+	handleLockOnPress,
+	isLockOnActive,
+	isLockOnCameraReleasing,
+	clearAllLockOnState,
+	updateLockOn,
+} from '../lockOn.js';
+import { DEFAULT_FLOOR_Y } from '../../shared/floorSampling.esm.js';
 import { installGamepadMock, uninstallGamepadMock, mockGamepad, clearMockGamepads } from './gamepad-mock.js';
+
+const LOCK_ON_ENEMIES = [{ id: 'a', x: 3, z: 0, hp: 50 }];
+const PY = DEFAULT_FLOOR_Y;
 
 describe('applyDeadzone()', () => {
 	it('returns zero inside the deadzone', () => {
@@ -109,6 +121,47 @@ describe('pollGamepadButtons()', () => {
 		expect(pollGamepadButtons().lockOn).toBe(true);
 		expect(pollGamepadButtons().lockOn).toBe(false);
 		uninstallGamepadMock();
+	});
+});
+
+describe('pollGamepadLook()', () => {
+	beforeEach(() => {
+		resetGamepadState();
+		clearAllLockOnState();
+		installGamepadMock();
+		clearMockGamepads();
+		patchSettings({ gamepad: { profile: '8bitdo-64' } });
+		mockGamepad(0, {
+			id: '8BitDo 64 (Vendor: 2dc8 Product: 1930)',
+			axes: [0, 0, 0.9, 0.2, 0, 0],
+			buttons: [],
+		});
+	});
+
+	afterEach(() => {
+		clearAllLockOnState();
+		uninstallGamepadMock();
+	});
+
+	it('returns non-zero yaw from axis 2 when lock-on is inactive', () => {
+		const delta = 0.016;
+		const look = pollGamepadLook(delta);
+		expect(look).not.toBe(0);
+		expect(look).toBeCloseTo(-0.9 * GAMEPAD_LOOK_SENSITIVITY * delta);
+	});
+
+	it('returns 0 when lock-on is active even with axis 2 deflected', () => {
+		handleLockOnPress(LOCK_ON_ENEMIES, 0, PY, 0, 'unlock', 0, null);
+		expect(isLockOnActive()).toBe(true);
+		expect(pollGamepadLook(0.016)).toBe(0);
+	});
+
+	it('returns 0 during post-death camera release', () => {
+		handleLockOnPress(LOCK_ON_ENEMIES, 0, PY, 0, 'unlock', 0, null);
+		updateLockOn(LOCK_ON_ENEMIES, 0, PY, 0, 0.1, 0, 0, null);
+		updateLockOn([{ id: 'a', x: 3, z: 0, hp: 0 }], 0, PY, 0, 0.1, 0, 0, null);
+		expect(isLockOnCameraReleasing()).toBe(true);
+		expect(pollGamepadLook(0.016)).toBe(0);
 	});
 });
 

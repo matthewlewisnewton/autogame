@@ -119,6 +119,15 @@ describe('8BitDo 64 profile', () => {
 		expect(read8BitDo64CButtonState(navigator.getGamepads()[0]).right).toBe(true);
 	});
 
+	it('reads horizontal C-stick from axis 2 when horizontal motion dominates', () => {
+		mockGamepad(0, { id: '8BitDo 64', axes: [0, 0, 0.9, 0.2, 0, 0], buttons: [] });
+		expect(read8BitDo64CStickHorizontal(navigator.getGamepads()[0])).toBeCloseTo(0.9);
+
+		clearMockGamepads();
+		mockGamepad(0, { id: '8BitDo 64', axes: [0, 0, -0.9, 0.2, 0, 0], buttons: [] });
+		expect(read8BitDo64CStickHorizontal(navigator.getGamepads()[0])).toBeCloseTo(-0.9);
+	});
+
 	it('does not map digital C-buttons to camera look', () => {
 		const buttonsLeft = Array(12).fill({ pressed: false, value: 0 });
 		buttonsLeft[4] = { pressed: true, value: 1 };
