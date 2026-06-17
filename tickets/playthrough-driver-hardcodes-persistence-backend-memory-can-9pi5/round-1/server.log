@@ -1,0 +1,14 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/playthrough-driver-hardcodes-persistence-backend-memory-can-9pi5/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/playthrough-driver-hardcodes-persistence-backend-memory-can-9pi5/game/data
+Server listening on port 3005
+Player connected: socket=nsv3ALh_0VSVKTvBAAAB, playerId=d051190c-ecc8-4c3b-866e-ca24a71314ca
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=HYDuIA8Dpew6qiwOAAAD, playerId=c32b7bb5-adfc-419d-b613-33e4aaac8194
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: nsv3ALh_0VSVKTvBAAAB
+Player disconnected: HYDuIA8Dpew6qiwOAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

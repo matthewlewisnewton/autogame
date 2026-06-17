@@ -1,0 +1,12 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 2 sub-tickets:
+
+```
+tickets/playthrough-driver-hardcodes-persistence-backend-memory-can-9pi5/subtickets/
+├── 01-env-passthrough/
+│   └── ticket.md      # Remove hard-coded PERSISTENCE_BACKEND='memory'; pass through from parent env with 'memory' fallback
+└── 02-passthrough-tests/
+    └── ticket.md      # Extract buildServerEnv() helper + unit tests for passthrough logic
+```
+
+**Rationale:** The fix is a single-line change in `gameProcess.mjs` (sub-ticket 01). Sub-ticket 02 extracts the env construction into a testable helper and adds coverage for both the passthrough and fallback paths. Both are `code` verification — QA reads the diff and test output.

@@ -1,0 +1,15 @@
+## Review complete
+
+**VERDICT: PASS**
+
+Written to [`tickets/playthrough-driver-hardcodes-persistence-backend-memory-can-9pi5/round-1/review.md`](tickets/playthrough-driver-hardcodes-persistence-backend-memory-can-9pi5/round-1/review.md).
+
+### Summary
+
+**Runtime health:** Capture is clean — `metrics.json` has `"ok": true` and empty `pageerrors`; `console.log` has no fatal/page errors.
+
+**Acceptance criteria:** The hardcoded `PERSISTENCE_BACKEND: 'memory'` override in `gameProcess.mjs` is replaced with `buildServerEnv()`, which passes through caller env vars and defaults to `'memory'` when unset. Seven unit tests cover postgres/`DATABASE_URL`/`REDIS_URL` passthrough and the memory fallback; all pass.
+
+**Scope:** Harness-only change (2 commits). No game code or debug scenarios touched. Screenshot capture uses `harness/steps/game.py` (FileProvider on port 3005) — a separate path from the playthrough driver this ticket fixes.
+
+No `gaps.md` (PASS) or `nits.md` (no blocking or backlog-worthy items).

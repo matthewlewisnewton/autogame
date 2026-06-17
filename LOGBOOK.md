@@ -8900,3 +8900,26 @@ None blocking. One architectural follow-up noted in `nits.md`: the `deasync` bri
 
 None blocking. (One nit recorded in `nits.md`: the provider-routing branches inside `settings.js` itself are not covered by a module-level integration test — the provider methods are tested directly, but `getSettings`/`updateSettings` delegating to a provider is verified only by inspection and startup wiring.)
 
+
+## v0.476 — Playthrough driver hardcodes PERSISTENCE_BACKEND=memory — can't validate against Postgres/real infra  (2026-06-16 19:04:00)
+
+## Design & foundation consistency
+
+- **Scope:** harness-only (`gameProcess.mjs`, tests, vitest config). No `game/` gameplay, persistence, or client changes.
+- **`game/docs/design.md`:** unaffected; no new mechanics or debug scenarios.
+- **Foundation:** no regression to server persistence selection logic; the fix unblocks callers who export real-infra env vars into the playthrough driver.
+
+## Code quality
+
+- Clean extraction of `buildServerEnv()` for testability without mocking `child_process`.
+- Env construction is minimal and matches the sub-ticket spec (spread parent env, explicit harness overrides, conditional `PERSISTENCE_BACKEND` default).
+- No dead code, no debug-scenario changes, no console/page errors in capture.
+
+## Debug scenarios
+
+Not applicable — this ticket did not add or modify any `?debugScenario=` shortcuts.
+
+## Remaining gaps
+
+None. The playthrough driver's persistence-backend override is removed, env passthrough is unit-tested, backward-compatible defaults are preserved, and the captured game run is healthy.
+

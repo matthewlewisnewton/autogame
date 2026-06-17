@@ -1,0 +1,17 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/playthrough-driver-hardcodes-persistence-backend-memory-can-9pi5/game
+      Coverage enabled with v8
+
+ ✓ |harness| ../harness/validate/lib/gameProcess.test.mjs (7 tests) 3ms
+
+ Test Files  1 passed (1)
+      Tests  7 passed (7)
+   Start at  19:02:25
+   Duration  1.38s (transform 3ms, setup 0ms, collect 14ms, tests 3ms, environment 0ms, prepare 60ms)
+
+ % Coverage report from v8
+----------|---------|----------|---------|---------|-------------------
+File      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+----------|---------|----------|---------|---------|-------------------
+All files |       0 |        0 |       0 |       0 |                   
+----------|---------|----------|---------|---------|-------------------
