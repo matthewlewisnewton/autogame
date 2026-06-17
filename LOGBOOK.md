@@ -9153,3 +9153,26 @@ direction explicitly accepts and matches the pre-existing lobby-browser stalenes
 assumption, so it does not block — but a periodic heartbeat publish (or
 re-register on publish) would harden routing correctness.
 
+
+## v0.490 — gameplay/fire (ember_descent): run flips to 'failed' during telepipe-new-sortie after a clean victory  (2026-06-17 13:40:20)
+
+**(02) Fire harness deploy isolated from live combat — MET.**
+`game/server/debugScenarios.js`: the `fire-telepipe-ready` block now sets `hooks.suppressWavesAfterDeploy = true`, mirroring `frost-crossing-telepipe-ready`. The pre-existing `suppressWavesAfterDeploy` branch in `checkAllReadyInner` (~L3979) replaces enemies with a single stationary dummy grunt (hp 500), clears scripted-wave state, and sets `player.debugGodmode = true`. `harness/validate/lib/telepipe.mjs`: `suspendViaTelepipe` now calls `enableGodmode(page)` before placing the portal so godmode survives any prior playthrough step. This addresses the true cause of the harness failure: the resource-exhausted bot was being killed by live fire waves during the scripted ~30s suspend walk (player-death → run failed), which is a test-driver artifact, not a defect in the suspend logic.
+
+**(03) Regression tests — MET.**
+- `server/test/server.test.js` retains the `telepipe vs combat exhaustion` block (4 tests pass).
+- `server/test/debug-scenarios.test.js` adds `fire-telepipe-ready deploy isolates combat...` (passes): asserts exactly one dummy grunt, `debugGodmode === true`, `suppressWavesAfterDeploy` active, scripted waves cleared, `checkRunTerminalState()` keeps `run.status === 'playing'` with an exhausted hand+placed telepipe, and `tryEnterTelepipe` suspends into a checkpoint preserving the run id and `status: 'playing'`.
+
+## Debug-scenario invariant check
+
+`fire-telepipe-ready` is a `?debugScenario=` shortcut. It is gated behind the debug path (`debugScenarioAllowed: true` in capture; normal play never sets it). The same end-state (a suspended, resumable run) is reachable in normal gameplay: a real player places a telepipe and walks into it, and the combat-exhaustion guard ensures an out-of-cards player still suspends rather than failing. The scenario's godmode/wave-suppression only protects the harness's automated walk from enemy damage — it does **not** short-circuit the suspend path itself: `tryEnterTelepipe`, `maybeSuspendRun`, and checkpoint capture/restore are all fully exercised (server-side, in tests and in the live capture). No invariant is weakened.
+
+## Consistency / regressions
+
+- Consistent with the suspend/resume design (telepipe → checkpoint → hub → resume), no foundation regression. `frost-crossing-telepipe-ready` behavior is unchanged (its hooks were already this shape).
+- Diff is appropriately narrow: 1 line of game code (debug scenario hook), 1 line of harness driver, plus tests. No production game-logic was rewritten because the needed guard already existed.
+
+## Remaining gaps
+
+None blocking. The captured run is clean and proves the reported bug is fixed (suspend instead of fail, resumable, state preserved); all relevant unit tests pass.
+

@@ -1,0 +1,16 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health:** Clean. `metrics.json` reports `ok: true`, `pageerrors: []`; no fatal/uncaught errors in any log. `server.log` shows the exact correct sequence — `telepipe placed → extracted → checkpoint captured → checkpoint restored`, with **no run-failed** — the precise inverse of the reported bug.
+
+**The bug is fixed.** The capture proves it: probe 2 shows `runStatus: "suspended"` with `suspendedRunSummary` populated and resume/abort buttons usable; probe 3/4 shows a clean resume with enemies and objective preserved (capture would have failed on any restore mismatch).
+
+**What this ticket actually changed** — and why the small diff is correct:
+- **(01)** The game-side guard that defers combat-exhaustion failure while a telepipe awaits extraction (`isRunAwaitingTelepipeExtraction`) **already existed** from a prior ticket, so sub-ticket 01 was correctly "verify, not rewrite" — `progression.js` is untouched.
+- **(02)** The real fix: the `fire-telepipe-ready` debug scenario now sets `suppressWavesAfterDeploy` (mirroring frost), and the harness driver `suspendViaTelepipe` enables godmode. This addresses the true cause — the resource-exhausted *bot* was dying to live fire waves during the scripted ~30s suspend walk, a test-driver artifact, not a suspend-logic defect.
+- **(03)** Regression tests added/retained; the combat-exhaustion assertions are godmode-independent, so they genuinely lock in the game-side guarantee. All relevant tests pass (I ran them).
+
+**Debug-scenario check:** `fire-telepipe-ready` is debug-gated, the suspended end-state is reachable in normal play, and godmode/wave-suppression only protect the harness walk — the actual suspend path (`tryEnterTelepipe`/`maybeSuspendRun`/checkpoint) is fully exercised. No invariant weakened.
+
+One non-blocking nit filed (`nits.md`): the shared `suppressWavesAfterDeploy` comment is still frost-specific.
