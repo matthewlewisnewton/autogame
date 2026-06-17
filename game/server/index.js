@@ -1902,6 +1902,12 @@ async function startServer(port) {
   // via the same backend (File/InMemory/Postgres) as player data.
   initSettingsWithProvider(getProvider());
 
+  // Wire user credential I/O through the same StorageProvider and hydrate
+  // the in-memory cache before accepting socket connections.
+  const { initUsersWithProvider, loadUsersAsync } = require('./users');
+  initUsersWithProvider(getProvider());
+  await loadUsersAsync();
+
   // Remove previous connection handlers so repeated calls (in tests) don't stack
   io.removeAllListeners('connection');
   // Clear Socket.IO middleware so repeated calls (in tests) don't stack.

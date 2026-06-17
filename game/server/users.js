@@ -172,7 +172,7 @@ function initUsersWithProvider(provider) {
  * or from disk when no provider is set.
  */
 async function loadUsersAsync() {
-	if (_usersProvider) {
+	if (_usersProvider && typeof _usersProvider.loadAllUsers === 'function') {
 		const records = await _usersProvider.loadAllUsers();
 		for (const record of records) {
 			hydrateRecord(record);
@@ -188,7 +188,7 @@ async function loadUsersAsync() {
  * @param {object} record
  */
 async function persistUserAsync(record) {
-	if (_usersProvider) {
+	if (_usersProvider && typeof _usersProvider.saveUser === 'function') {
 		await _usersProvider.saveUser(record);
 		return;
 	}
@@ -348,7 +348,7 @@ async function findUserByUsernameAsync(username) {
 	if (cached) {
 		return cached;
 	}
-	if (!_usersProvider) {
+	if (!_usersProvider || typeof _usersProvider.loadUser !== 'function') {
 		return null;
 	}
 	const record = await _usersProvider.loadUser(username);
@@ -455,7 +455,7 @@ async function updateProfile(accountId, fields) {
 		}
 	}
 
-	if (_usersProvider && usernameChanged) {
+	if (_usersProvider && typeof _usersProvider.deleteUser === 'function' && usernameChanged) {
 		await _usersProvider.deleteUser(oldUsername);
 	}
 	await persistUserAsync(user);

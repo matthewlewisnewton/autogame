@@ -155,6 +155,10 @@ export async function startTestServer() {
 	clearAllTimers();
 	setTestProvider(new InMemoryProvider());
 	await startServer(0);
+	// Integration suites keep account data on disk via setTestFilePath while
+	// player progress uses InMemoryProvider. startServer wires users through
+	// the provider; undo that so legacy file-based user tests keep working.
+	serverUsers.initUsersWithProvider(null);
 	const addr = httpServer.address();
 	return `http://localhost:${addr.port}`;
 }
