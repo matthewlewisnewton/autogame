@@ -32,6 +32,7 @@ from harness.workspace.repo import Repo
 _QA_MODE_RE = re.compile(r"^\s*##?\s*Verification\s*:\s*(\w+)\s*$", re.MULTILINE | re.IGNORECASE)
 _HARNESS_REF_RE = re.compile(r"(^|[^A-Za-z0-9_./-])harness/")
 _VALIDATION_REF_RE = re.compile(r"(^|[^A-Za-z0-9_./-])validation/")
+_CONTEXT_REF_RE = re.compile(r"CONTEXT\.md")
 
 
 def _detect_qa_mode(ticket_file: Path) -> str:
@@ -57,6 +58,13 @@ def _detect_ticket_allows_harness(ticket_file: Path) -> bool:
 def _detect_ticket_allows_validation(ticket_file: Path) -> bool:
     try:
         return bool(_VALIDATION_REF_RE.search(ticket_file.read_text()))
+    except OSError:
+        return False
+
+
+def _detect_ticket_allows_context(ticket_file: Path) -> bool:
+    try:
+        return bool(_CONTEXT_REF_RE.search(ticket_file.read_text()))
     except OSError:
         return False
 
@@ -95,9 +103,12 @@ def _subtask_body(ctx: SubtaskContext) -> PipelineResult:
     qa_mode = _detect_qa_mode(ctx.ticket_file)
     ticket_allows_harness = _detect_ticket_allows_harness(ctx.ticket_file)
     ticket_allows_validation = _detect_ticket_allows_validation(ctx.ticket_file)
+    ticket_allows_context = _detect_ticket_allows_context(ctx.ticket_file)
     log(f"=== sub-ticket: {ctx.label} — QA mode: {qa_mode} ===")
     if ticket_allows_validation:
         log("[scope] validation writes allowed")
+    if ticket_allows_context:
+        log("[scope] CONTEXT.md writes allowed")
     emit_progress_event("subtask_start", {
         "label": ctx.label, "ticketFile": str(ctx.ticket_file), "qaMode": qa_mode,
     })
@@ -120,12 +131,15 @@ def _subtask_body(ctx: SubtaskContext) -> PipelineResult:
         # there so scope_audit doesn't revert them (review.md/gaps.md/nits.md
         # stay protected via protect_review's chmod + verify_reviews restore).
         round_glob = f"tickets/{ctx.label.split('/')[0]}/round-*"
+        extra_safe = [round_glob]
+        if ticket_allows_context:
+            extra_safe.append("CONTEXT.md")
         chain = implement(impl_role, workspace=ctx.workspace,
                           ticket_file=ctx.ticket_file, feedback=ctx.feedback,
                           handoff=ctx.handoff, artifacts_dir=arti,
                           allow_harness=ticket_allows_harness,
                           allow_validation=ticket_allows_validation,
-                          extra_safe_paths=[round_glob], telemetry=ctx.telemetry)
+                          extra_safe_paths=extra_safe, telemetry=ctx.telemetry)
         coder_result = chain.final
         coder_out = arti / impl_role.out_file
         ensure_handoff(ctx.handoff, before_hash=handoff_hash_before,
