@@ -119,6 +119,15 @@ describe('8BitDo 64 profile', () => {
 		expect(read8BitDo64CButtonState(navigator.getGamepads()[0]).right).toBe(true);
 	});
 
+	it('reads horizontal C-stick from axis 2 when horizontal motion dominates', () => {
+		mockGamepad(0, { id: '8BitDo 64', axes: [0, 0, 0.9, 0.2, 0, 0], buttons: [] });
+		expect(read8BitDo64CStickHorizontal(navigator.getGamepads()[0])).toBeCloseTo(0.9);
+
+		clearMockGamepads();
+		mockGamepad(0, { id: '8BitDo 64', axes: [0, 0, -0.9, 0.2, 0, 0], buttons: [] });
+		expect(read8BitDo64CStickHorizontal(navigator.getGamepads()[0])).toBeCloseTo(-0.9);
+	});
+
 	it('does not map digital C-buttons to camera look', () => {
 		const buttonsLeft = Array(12).fill({ pressed: false, value: 0 });
 		buttonsLeft[4] = { pressed: true, value: 1 };
@@ -130,6 +139,14 @@ describe('8BitDo 64 profile', () => {
 		buttonsRight[5] = { pressed: true, value: 1 };
 		mockGamepad(0, { id: '8BitDo 64', axes: [0, 0, 0, 0], buttons: buttonsRight });
 		expect(read8BitDo64CStickHorizontal(navigator.getGamepads()[0])).toBe(0);
+	});
+
+	it('isProfileLockOnPressed is false when Z (button 8) is idle', () => {
+		const buttons = Array(12).fill({ pressed: false, value: 0 });
+		buttons[8] = { pressed: false, value: 0.1 };
+		mockGamepad(0, { id: '8BitDo 64', axes: [0, 0, 0, 0], buttons });
+		const pad = navigator.getGamepads()[0];
+		expect(isProfileLockOnPressed(pad, EIGHTBITDO_64_PROFILE)).toBe(false);
 	});
 
 	it('reserves Z (button 8) for lock-on instead of C-down', () => {

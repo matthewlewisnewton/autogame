@@ -6,6 +6,7 @@ import {
 	hasStandardGamepadMapping,
 	describeGamepadConnection,
 	formatGamepadDeviceInfo,
+	getGamepadActivationHint,
 } from './gamepad-detect.js';
 import {
 	resolveGamepadProfile,
@@ -16,6 +17,7 @@ import {
 	EIGHTBITDO_64_TRIGGER_BUTTON_INDICES,
 } from './gamepad-profiles.js';
 import { applyDeadzone } from './gamepad.js';
+import { isGamepadAccessPrimed, onGamepadActivationChange } from './gamepad-activation.js';
 import { renderCButtonMark } from './c-button-icons.js';
 import { getGamepadConfig, getGamepadProfileSetting, patchSettings } from './settings.js';
 
@@ -79,6 +81,7 @@ let prevDebugCState = null;
 
 let polling = false;
 let rafId = 0;
+let activationListenerAdded = false;
 /** @type {HTMLElement[]} */
 let buttonCells = [];
 /** @type {Array<{ el: HTMLElement, direction: 'up' | 'down' | 'left' | 'right' }>} */
@@ -91,6 +94,12 @@ export function initControllerCalibration(elements) {
 	els = { ...els, ...elements };
 	buildButtonGrid();
 	wireControls();
+	if (!activationListenerAdded) {
+		activationListenerAdded = true;
+		onGamepadActivationChange(() => {
+			updateStatusDisplay(getCalibrationGamepad());
+		});
+	}
 }
 
 function getActiveCalibrationProfile(gamepad) {
@@ -380,15 +389,15 @@ function updateStatusDisplay(gamepad) {
 		els.statusEl.dataset.eightbitdo = gamepad && is8BitDoGamepad(gamepad) ? 'true' : 'false';
 		els.statusEl.dataset.eightbitdo64 = gamepad && is8BitDo64Gamepad(gamepad) ? 'true' : 'false';
 	}
+	const primed = isGamepadAccessPrimed();
+	const connected = getConnectedGamepads().length > 0;
 	if (els.deviceIdEl) {
-		els.deviceIdEl.textContent = formatGamepadDeviceInfo(gamepad);
+		els.deviceIdEl.textContent = formatGamepadDeviceInfo(gamepad, { primed });
 	}
 	if (els.activationHintEl) {
-		const needsActivation = getConnectedGamepads().length === 0;
-		els.activationHintEl.hidden = !needsActivation;
-		els.activationHintEl.textContent = needsActivation
-			? 'Press any button or move a stick on your controller. Browsers only expose gamepads after user interaction (GamePad API privacy rule).'
-			: '';
+		const hint = getGamepadActivationHint({ primed, connected });
+		els.activationHintEl.hidden = !hint;
+		els.activationHintEl.textContent = hint;
 	}
 	if (els.statusEl && gamepad && is8BitDoGamepad(gamepad) && !hasStandardGamepadMapping(gamepad)) {
 		els.statusEl.title = profile.id === '8bitdo-64'

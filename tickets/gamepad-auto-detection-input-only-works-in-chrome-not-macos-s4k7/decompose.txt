@@ -1,0 +1,22 @@
+Broke the top-level ticket into **4 sub-tickets** in dependency order:
+
+1. **01-gesture-gated-gamepad-activation** — New `gamepad-activation.js` module with gesture priming + rAF polling + unit tests (Safari-style delayed pad exposure). No runtime wiring yet.
+
+2. **02-wire-activation-into-client** — Integrate activation at startup; poll-detected connects drive the same reset/UI refresh paths as `gamepadconnected`.
+
+3. **03-verify-gamepad-input-after-activation** — Regression tests confirming movement, look, and button input work after delayed detection; minimal mapping fixes only if tests prove necessary.
+
+4. **04-safari-limitations-docs-and-hints** — Safari subsection in `controls.md`, Safari-aware activation hints, and `isSafariBrowser()` helper.
+
+All use **Verification: code** (none are purely visual rendering).
+
+### Created sub-ticket paths
+
+```
+/home/matt/workspace/.autogame-worktrees/gamepad-auto-detection-input-only-works-in-chrome-not-macos-s4k7/tickets/gamepad-auto-detection-input-only-works-in-chrome-not-macos-s4k7/subtickets/01-gesture-gated-gamepad-activation/ticket.md
+/home/matt/workspace/.autogame-worktrees/gamepad-auto-detection-input-only-works-in-chrome-not-macos-s4k7/tickets/gamepad-auto-detection-input-only-works-in-chrome-not-macos-s4k7/subtickets/02-wire-activation-into-client/ticket.md
+/home/matt/workspace/.autogame-worktrees/gamepad-auto-detection-input-only-works-in-chrome-not-macos-s4k7/tickets/gamepad-auto-detection-input-only-works-in-chrome-not-macos-s4k7/subtickets/03-verify-gamepad-input-after-activation/ticket.md
+/home/matt/workspace/.autogame-worktrees/gamepad-auto-detection-input-only-works-in-chrome-not-macos-s4k7/tickets/gamepad-auto-detection-input-only-works-in-chrome-not-macos-s4k7/subtickets/04-safari-limitations-docs-and-hints/ticket.md
+```
+
+No prior sub-ticket folders existed for this ticket, so numbering starts at `01`.
