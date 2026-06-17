@@ -17,6 +17,22 @@ class StorageProvider {
 		throw new Error('Not implemented');
 	}
 
+	async loadAllUsers() {
+		throw new Error('Not implemented');
+	}
+
+	async loadUser(username) {
+		throw new Error('Not implemented');
+	}
+
+	async saveUser(record) {
+		throw new Error('Not implemented');
+	}
+
+	async deleteUser(username) {
+		throw new Error('Not implemented');
+	}
+
 	async close() {
 		throw new Error('Not implemented');
 	}

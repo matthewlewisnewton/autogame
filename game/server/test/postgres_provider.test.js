@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { newDb } from 'pg-mem';
 import { PostgresProvider } from '../providers.js';
-import { PLAYERS_SCHEMA_SQL, SETTINGS_SCHEMA_SQL } from '../db/ensurePlayersSchema.js';
+import { PLAYERS_SCHEMA_SQL, SETTINGS_SCHEMA_SQL, USERS_SCHEMA_SQL } from '../db/ensurePlayersSchema.js';
 
 const sampleData = {
 	currency: 42,
@@ -15,10 +15,34 @@ const sampleSettings = {
 	lockOnRepeatAction: 'cycle',
 };
 
+const sampleUser = {
+	username: 'alice',
+	passwordHash: '$2b$10$abcdefghijklmnopqrstuv',
+	accountId: 'acct-alice-001',
+	cosmetic: {
+		bodyShape: 'box',
+		modelId: 'player',
+		proportions: {
+			height: 1,
+			headSize: 1,
+			torsoWidth: 1,
+			armLength: 1,
+			legLength: 1,
+			shoulderWidth: 1,
+		},
+		hat: 'none',
+		color: 'blue',
+	},
+	unlockedHats: ['none', 'bandana', 'beanie'],
+	unlockedQuestTiers: {},
+	completedQuestTiers: {},
+};
+
 function createProvider() {
 	const db = newDb();
 	db.public.none(PLAYERS_SCHEMA_SQL);
 	db.public.none(SETTINGS_SCHEMA_SQL);
+	db.public.none(USERS_SCHEMA_SQL);
 	const { Pool } = db.adapters.createPg();
 	const pool = new Pool();
 	const provider = new PostgresProvider({ pool, skipSchemaEnsure: true });
@@ -169,5 +193,120 @@ describe('PostgresProvider', () => {
 		const uuid = '550e8400-e29b-41d4-a716-446655440000';
 		await ctx.provider.saveSettings(uuid, sampleSettings);
 		expect(await ctx.provider.loadSettings(uuid)).toEqual(sampleSettings);
+	});
+});
+
+describe('PostgresProvider user store', () => {
+	let ctx;
+
+	afterEach(async () => {
+		if (ctx) {
+			await dispose(ctx);
+			ctx = null;
+		}
+	});
+
+	it('stores and retrieves user records', async () => {
+		ctx = createProvider();
+		await ctx.provider.saveUser(sampleUser);
+		expect(await ctx.provider.loadUser('alice')).toEqual(sampleUser);
+	});
+
+	it('returns null for unknown username', async () => {
+		ctx = createProvider();
+		expect(await ctx.provider.loadUser('nonexistent')).toBeNull();
+	});
+
+	it('overwrites user data on subsequent saves', async () => {
+		ctx = createProvider();
+		await ctx.provider.saveUser(sampleUser);
+		const updated = {
+			...sampleUser,
+			unlockedQuestTiers: { training_caverns: [2] },
+		};
+		await ctx.provider.saveUser(updated);
+		expect(await ctx.provider.loadUser('alice')).toEqual(updated);
+	});
+
+	it('isolates data between different users', async () => {
+		ctx = createProvider();
+		await ctx.provider.saveUser(sampleUser);
+		const bob = {
+			...sampleUser,
+			username: 'bob',
+			accountId: 'acct-bob-002',
+		};
+		await ctx.provider.saveUser(bob);
+		expect((await ctx.provider.loadUser('alice')).accountId).toBe('acct-alice-001');
+		expect((await ctx.provider.loadUser('bob')).accountId).toBe('acct-bob-002');
+	});
+
+	it('loadAllUsers returns every stored record', async () => {
+		ctx = createProvider();
+		await ctx.provider.saveUser(sampleUser);
+		await ctx.provider.saveUser({
+			...sampleUser,
+			username: 'bob',
+			accountId: 'acct-bob-002',
+		});
+		const all = await ctx.provider.loadAllUsers();
+		expect(all).toHaveLength(2);
+		expect(all.map((u) => u.username).sort()).toEqual(['alice', 'bob']);
+	});
+
+	it('loadAllUsers returns an empty array when no users exist', async () => {
+		ctx = createProvider();
+		expect(await ctx.provider.loadAllUsers()).toEqual([]);
+	});
+
+	it('deleteUser removes a stored record', async () => {
+		ctx = createProvider();
+		await ctx.provider.saveUser(sampleUser);
+		await ctx.provider.deleteUser('alice');
+		expect(await ctx.provider.loadUser('alice')).toBeNull();
+		expect(await ctx.provider.loadAllUsers()).toEqual([]);
+	});
+
+	it('accepts UUID-shaped accountIds', async () => {
+		ctx = createProvider();
+		const uuid = '550e8400-e29b-41d4-a716-446655440000';
+		const user = { ...sampleUser, accountId: uuid };
+		await ctx.provider.saveUser(user);
+		expect((await ctx.provider.loadUser('alice')).accountId).toBe(uuid);
+	});
+
+	it('rejects a traversal username on save', async () => {
+		ctx = createProvider();
+		await expect(
+			ctx.provider.saveUser({ ...sampleUser, username: '../escaped' })
+		).rejects.toThrow(/Invalid username/);
+	});
+
+	it('rejects a traversal username on load', async () => {
+		ctx = createProvider();
+		await expect(ctx.provider.loadUser('../../etc/foo')).rejects.toThrow(/Invalid username/);
+	});
+
+	it('rejects a traversal accountId on save', async () => {
+		ctx = createProvider();
+		await expect(
+			ctx.provider.saveUser({ ...sampleUser, accountId: '../escaped' })
+		).rejects.toThrow(/Invalid accountId/);
+	});
+
+	it('save returns a deep copy (mutations do not affect stored data)', async () => {
+		ctx = createProvider();
+		const user = JSON.parse(JSON.stringify(sampleUser));
+		await ctx.provider.saveUser(user);
+		user.cosmetic.color = 'red';
+		expect((await ctx.provider.loadUser('alice')).cosmetic.color).toBe('blue');
+	});
+
+	it('load returns a deep copy (mutations do not affect stored data)', async () => {
+		ctx = createProvider();
+		await ctx.provider.saveUser(sampleUser);
+		const loaded = await ctx.provider.loadUser('alice');
+		loaded.cosmetic.color = 'red';
+		expect((await ctx.provider.loadUser('alice')).cosmetic.color).toBe('blue');
 	});
 });

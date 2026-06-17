@@ -2,7 +2,11 @@
 
 const { StorageProvider } = require('./storage');
 const { Pool } = require('pg');
-const { ensurePlayersSchema, ensureSettingsSchema } = require('./db/ensurePlayersSchema');
+const {
+	ensurePlayersSchema,
+	ensureSettingsSchema,
+	ensureUsersSchema,
+} = require('./db/ensurePlayersSchema');
 const fs = require('fs');
 const path = require('path');
 
@@ -25,6 +29,52 @@ function assertSafePlayerId(playerId) {
 }
 
 /**
+ * Reject usernames/accountIds that could escape basePath or carry traversal segments.
+ * Mirrors assertSafePlayerId — defense-in-depth for user-store keys.
+ * @param {string} key
+ * @param {string} label
+ * @returns {string}
+ */
+function assertSafeStorageKey(key, label = 'storage key') {
+	if (typeof key !== 'string' || !SAFE_PLAYER_ID_REGEX.test(key)) {
+		throw new Error(`Invalid ${label}: ${JSON.stringify(key)}`);
+	}
+	return key;
+}
+
+function usersFilePath(basePath) {
+	return path.join(basePath, 'users.json');
+}
+
+function readUsersArray(filePath) {
+	try {
+		const raw = fs.readFileSync(filePath, 'utf-8');
+		const records = JSON.parse(raw);
+		if (!Array.isArray(records)) {
+			throw new Error('users file must contain a JSON array');
+		}
+		return records;
+	} catch (err) {
+		if (err.code === 'ENOENT') return [];
+		throw err;
+	}
+}
+
+function writeUsersArrayAtomic(filePath, records) {
+	const json = JSON.stringify(records, null, 2);
+	const dir = path.dirname(filePath);
+	fs.mkdirSync(dir, { recursive: true });
+	const tmpPath = `${filePath}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`;
+	try {
+		fs.writeFileSync(tmpPath, json, 'utf-8');
+		fs.renameSync(tmpPath, filePath);
+	} catch (err) {
+		try { fs.unlinkSync(tmpPath); } catch (_) {}
+		throw err;
+	}
+}
+
+/**
  * In-memory provider — data lives in a Map and is lost on process exit.
  * Used for tests and development.
  */
@@ -33,6 +83,7 @@ class InMemoryProvider extends StorageProvider {
 		super();
 		this.store = new Map();
 		this.settingsStore = new Map();
+		this.usersStore = new Map();
 	}
 
 	async savePlayer(playerId, data) {
@@ -51,6 +102,32 @@ class InMemoryProvider extends StorageProvider {
 	async loadSettings(accountId) {
 		const entry = this.settingsStore.get(accountId);
 		return entry !== undefined ? JSON.parse(JSON.stringify(entry)) : null;
+	}
+
+	async loadAllUsers() {
+		return Array.from(this.usersStore.values()).map((record) =>
+			JSON.parse(JSON.stringify(record))
+		);
+	}
+
+	async loadUser(username) {
+		assertSafeStorageKey(username, 'username');
+		const entry = this.usersStore.get(username);
+		return entry !== undefined ? JSON.parse(JSON.stringify(entry)) : null;
+	}
+
+	async saveUser(record) {
+		if (!record || typeof record !== 'object') {
+			throw new Error('saveUser requires a user record object');
+		}
+		assertSafeStorageKey(record.username, 'username');
+		assertSafeStorageKey(record.accountId, 'accountId');
+		this.usersStore.set(record.username, JSON.parse(JSON.stringify(record)));
+	}
+
+	async deleteUser(username) {
+		assertSafeStorageKey(username, 'username');
+		this.usersStore.delete(username);
 	}
 
 	async close() {
@@ -130,6 +207,48 @@ class FileProvider extends StorageProvider {
 		}
 	}
 
+	async loadAllUsers() {
+		return readUsersArray(usersFilePath(this.basePath)).map((record) =>
+			JSON.parse(JSON.stringify(record))
+		);
+	}
+
+	async loadUser(username) {
+		assertSafeStorageKey(username, 'username');
+		const records = readUsersArray(usersFilePath(this.basePath));
+		const found = records.find((record) => record.username === username);
+		return found !== undefined ? JSON.parse(JSON.stringify(found)) : null;
+	}
+
+	async saveUser(record) {
+		if (!record || typeof record !== 'object') {
+			throw new Error('saveUser requires a user record object');
+		}
+		assertSafeStorageKey(record.username, 'username');
+		assertSafeStorageKey(record.accountId, 'accountId');
+		const copy = JSON.parse(JSON.stringify(record));
+		const filePath = usersFilePath(this.basePath);
+		const records = readUsersArray(filePath);
+		const index = records.findIndex((entry) => entry.username === copy.username);
+		if (index >= 0) {
+			records[index] = copy;
+		} else {
+			records.push(copy);
+		}
+		writeUsersArrayAtomic(filePath, records);
+	}
+
+	async deleteUser(username) {
+		assertSafeStorageKey(username, 'username');
+		const filePath = usersFilePath(this.basePath);
+		const records = readUsersArray(filePath);
+		const filtered = records.filter((entry) => entry.username !== username);
+		if (filtered.length === records.length) {
+			return;
+		}
+		writeUsersArrayAtomic(filePath, filtered);
+	}
+
 	async close() {
 		// no-op — no open handles to release
 	}
@@ -181,6 +300,7 @@ class PostgresProvider extends StorageProvider {
 		if (!options.skipSchemaEnsure) {
 			await ensurePlayersSchema(provider.pool);
 			await ensureSettingsSchema(provider.pool);
+			await ensureUsersSchema(provider.pool);
 		}
 		return provider;
 	}
@@ -225,6 +345,41 @@ class PostgresProvider extends StorageProvider {
 		return JSON.parse(JSON.stringify(rows[0].data));
 	}
 
+	async loadAllUsers() {
+		const { rows } = await this.pool.query(`SELECT data FROM users`);
+		return rows.map((row) => JSON.parse(JSON.stringify(row.data)));
+	}
+
+	async loadUser(username) {
+		assertSafeStorageKey(username, 'username');
+		const { rows } = await this.pool.query(
+			`SELECT data FROM users WHERE username = $1`,
+			[username]
+		);
+		if (rows.length === 0) return null;
+		return JSON.parse(JSON.stringify(rows[0].data));
+	}
+
+	async saveUser(record) {
+		if (!record || typeof record !== 'object') {
+			throw new Error('saveUser requires a user record object');
+		}
+		assertSafeStorageKey(record.username, 'username');
+		assertSafeStorageKey(record.accountId, 'accountId');
+		const copy = JSON.parse(JSON.stringify(record));
+		await this.pool.query(
+			`INSERT INTO users (username, account_id, data) VALUES ($1, $2, $3::jsonb)
+			 ON CONFLICT (username) DO UPDATE
+			 SET account_id = EXCLUDED.account_id, data = EXCLUDED.data, updated_at = NOW()`,
+			[copy.username, copy.accountId, JSON.stringify(copy)]
+		);
+	}
+
+	async deleteUser(username) {
+		assertSafeStorageKey(username, 'username');
+		await this.pool.query(`DELETE FROM users WHERE username = $1`, [username]);
+	}
+
 	async close() {
 		if (!this._ownsPool || this._closed) return;
 		this._closed = true;
@@ -241,5 +396,6 @@ module.exports = {
 	FileProvider,
 	PostgresProvider,
 	assertSafePlayerId,
+	assertSafeStorageKey,
 	SAFE_PLAYER_ID_REGEX,
 };
