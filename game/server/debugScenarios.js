@@ -902,6 +902,8 @@ function setupSpireAscentTelepipeReadyExtras(state, player) {
     delete card.activeMinionId;
     delete card.burnMaxTtl;
   }
+  player.magicStones = 20;
+  player._msRegenGraceUntil = Date.now() + 20000;
   syncCardProbeHand(player);
 }
 
@@ -934,6 +936,8 @@ function setupCanyonDescentTelepipeReadyExtras(state, player) {
     delete card.activeMinionId;
     delete card.burnMaxTtl;
   }
+  player.magicStones = 20;
+  player._msRegenGraceUntil = Date.now() + 20000;
   syncCardProbeHand(player);
 }
 
