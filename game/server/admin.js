@@ -1,7 +1,7 @@
 // Admin view building blocks — read-only roster aggregation and an
-// ADMIN_PASSWORD-gated auth middleware. This is completely separate from the
-// player JWT auth: it never reads `Authorization: Bearer` and never touches the
-// player token. No HTTP route is wired here — only reusable, tested pieces.
+// ADMIN_PASSWORD-gated auth middleware. This is completely separate from
+// player session auth (`ag_session` cookie): it never reads that cookie for
+// player identity. No HTTP route is wired here — only reusable, tested pieces.
 
 const crypto = require('crypto');
 const { getAllUsers } = require('./users');
@@ -198,7 +198,7 @@ function readSuppliedPassword(req) {
  * var. Fails closed: when `ADMIN_PASSWORD` is unset/empty, every request is
  * denied with HTTP 403. A wrong or missing supplied password is also denied;
  * only an exact (constant-time) match calls next(). It NEVER consults the
- * player JWT / `Authorization: Bearer` header.
+ * player session cookie (`ag_session`).
  *
  * Rate limiting: only failed auth attempts are counted. After more than
  * `RATE_LIMIT_MAX_ATTEMPTS` failures from the same IP within the window,

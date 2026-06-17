@@ -128,7 +128,7 @@ All existing gameplay events (`playerReady`, `move`, `useCard`, …) require the
 
 ## Fly.io lobby affinity (multi-instance)
 
-When `REDIS_URL` and `FLY_MACHINE_ID` are both set, each lobby’s owning Fly Machine is recorded in Redis (`lobby:owners`). Socket.IO handshakes that include a lobby id (`lobbyId`, `lobby`, or `joinLobby` query param) are routed before JWT auth:
+When `REDIS_URL` and `FLY_MACHINE_ID` are both set, each lobby’s owning Fly Machine is recorded in Redis (`lobby:owners`). Socket.IO handshakes that include a lobby id (`lobbyId`, `lobby`, or `joinLobby` query param) are routed before session auth:
 
 - **Same machine** — the connection proceeds normally.
 - **Different machine** — the edge returns `fly-replay: instance=<owner>` so Fly.io replays the request to the lobby owner.
