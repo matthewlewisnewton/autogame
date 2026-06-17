@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createRequire } from 'module';
 import { io as ClientIO } from 'socket.io-client';
-import jwt from 'jsonwebtoken';
 import {
 	startServer,
 	resetGameState,
@@ -9,7 +8,6 @@ import {
 	server as httpServer,
 	clearAllTimers,
 	setTestProvider,
-	getJWTSecret,
 	destroySession as serverDestroySession,
 } from '../index.js';
 import { InMemoryProvider } from '../providers.js';
@@ -167,11 +165,11 @@ describe('WebSocket session-cookie authentication', () => {
 		socket.disconnect();
 	});
 
-	it('rejects connection when no session cookie AND no JWT token', async () => {
+	it('rejects connection when no session cookie is present', async () => {
 		const { reason, error } = await connectExpectError(baseUrl);
 
 		expect(reason).toBe('connect_error');
-		expect(error).toBe('No JWT token');
+		expect(error).toBe('Missing or invalid session');
 		expect(getSessionCount()).toBe(0);
 	});
 
@@ -211,46 +209,6 @@ describe('WebSocket session-cookie authentication', () => {
 		expect(reason).toBe('connect_error');
 		expect(error).toBe('Invalid or expired session');
 		expect(getSessionCount()).toBe(0);
-	});
-
-	it('accepts valid JWT with no session cookie (JWT fallback preserved)', async () => {
-		const token = jwt.sign(
-			{ accountId: 'jwt-fallback-user', username: 'jwtuser' },
-			getJWTSecret(),
-			{ expiresIn: '1h' }
-		);
-
-		return new Promise((resolve, reject) => {
-			const socket = ClientIO(baseUrl, {
-				transports: ['websocket'],
-				retry: false,
-				autoConnect: true,
-				timeout: 5000,
-				auth: { token },
-			});
-
-			const timer = setTimeout(() => {
-				socket.disconnect();
-				reject(new Error('JWT fallback: timed out waiting for init'));
-			}, 10000);
-
-			socket.on('init', (data) => {
-				clearTimeout(timer);
-				resolve({ socket, init: data });
-			});
-
-			socket.on('connect_error', (err) => {
-				clearTimeout(timer);
-				socket.disconnect();
-				reject(new Error(`JWT fallback: connect_error — ${err.message}`));
-			});
-		}).then(({ socket, init }) => {
-			expect(init.accountId).toBe('jwt-fallback-user');
-			expect(init.playerId).toBe('jwt-fallback-user');
-			expect(getLobbySession('jwt-fallback-user')).toBeDefined();
-
-			socket.disconnect();
-		});
 	});
 
 	it('attaches accountId from session to socket.data.accountId and exposes it in init payload', async () => {

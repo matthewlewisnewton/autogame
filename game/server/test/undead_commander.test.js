@@ -1,6 +1,4 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { io as ClientIO } from 'socket.io-client';
-import jwt from 'jsonwebtoken';
 import {
 	startServer,
 	resetGameState,
@@ -8,7 +6,6 @@ import {
 	server as httpServer,
 	clearAllTimers,
 	setTestProvider,
-	getJWTSecret,
 	CARD_DEFS,
 	EVOLUTION_TRANSFORMS,
 	EVOLUTION_GRIND_REQUIRED,
@@ -17,14 +14,6 @@ import {
 } from '../index.js';
 import { InMemoryProvider } from '../providers.js';
 import { connectClient, waitForEvent, lobbyStateForSocket, playerForSocket } from './helpers.js';
-
-function createTestToken(accountId, username) {
-	return jwt.sign(
-		{ accountId, username: username || accountId },
-		getJWTSecret(),
-		{ expiresIn: '1h' }
-	);
-}
 
 async function startTestServer() {
 	for (const conn of Object.values(serverIo.engine?.sockets || {})) {

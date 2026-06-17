@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { io as ClientIO } from 'socket.io-client';
-import jwt from 'jsonwebtoken';
 import {
 	startServer,
 	resetGameState,
@@ -12,7 +11,6 @@ import {
 	clearAllTimers,
 	setTestProvider,
 	savePlayerData,
-	getJWTSecret,
 	ENEMY_ATTACK_RANGE,
 	ENEMY_ATTACK_RECOVERY_MS,
 	DETECTION_RADIUS,
@@ -45,19 +43,19 @@ import {
 import { hubSpawnPosition } from '../simulation.js';
 import { InMemoryProvider } from '../providers.js';
 import { getQuest } from '../quests.js';
+import { ensureTestUserSession, registerAndLoginWithCookie } from './helpers.js';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+const { createSession } = require('../sessions.js');
+const { SESSION_COOKIE_NAME } = require('../cookies.js');
 import { COOLDOWN_MS, MOVE_SPEED, MAX_HP, MAX_HAND_SLOTS, MAX_MAGIC_STONES, STARTING_MAGIC_STONES, MEDIC_HEAL_COST, TICK_RATE, MAGIC_STONES_REGEN_PER_TICK, LOBBY_REVIVE_HP, EMPTY_LOBBY_TTL_MS } from '../config.js';
 
 // ── Helpers ──
 
-/**
- * Create a valid JWT token for a test account.
- */
-function createTestToken(accountId, username) {
-	return jwt.sign(
-		{ accountId, username: username || accountId },
-		getJWTSecret(),
-		{ expiresIn: '1h' }
-	);
+async function sessionCookieForAccountId(accountId) {
+	const sessionToken = await createSession(accountId);
+	return `${SESSION_COOKIE_NAME}=${sessionToken}`;
 }
 
 /**
@@ -97,8 +95,12 @@ async function startTestServer() {
  * By default also creates/joins a lobby so gameplay handlers work in tests.
  * Pass { skipLobby: true } for lobby-browser-only tests.
  */
-function connectClient(baseUrl, accountId = `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, options = {}) {
-	const token = createTestToken(accountId);
+async function connectClient(baseUrl, accountId = `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, options = {}) {
+	let cookieHeader = options.cookieHeader;
+	if (!cookieHeader) {
+		const auth = await ensureTestUserSession(options.username || String(accountId), options.password);
+		cookieHeader = auth.cookieHeader;
+	}
 
 	return new Promise((resolve, reject) => {
 		const socket = ClientIO(baseUrl, {
@@ -106,7 +108,7 @@ function connectClient(baseUrl, accountId = `test-${Date.now()}-${Math.random().
 			retry: false,
 			autoConnect: true,
 			timeout: 5000,
-			auth: { token }
+			extraHeaders: { cookie: cookieHeader },
 		});
 
 		let lobbyJoinedPromise = null;
@@ -166,7 +168,8 @@ async function connectAndJoinLobby(baseUrl, accountId, options = {}) {
 
 /** Cold reconnect: new socket, same account, re-join an existing lobby. */
 async function reconnectClient(baseUrl, accountId, lobbyId) {
-	return connectClient(baseUrl, accountId, { joinLobbyId: lobbyId });
+	const cookieHeader = await sessionCookieForAccountId(accountId);
+	return connectClient(baseUrl, accountId, { joinLobbyId: lobbyId, cookieHeader, accountId });
 }
 
 function testGameState() {
@@ -1795,12 +1798,12 @@ describe('Socket Integration — Disconnect Event', () => {
 		await sleep(100);
 		expect(lobbyGameState(lobbyId).players[playerId].connected).toBe(false);
 
-		const token = createTestToken(playerId);
+		const cookieHeader = await sessionCookieForAccountId(playerId);
 		const resumed = await new Promise((resolve, reject) => {
 			const socket = ClientIO(baseUrl, {
 				transports: ['websocket'],
 				retry: false,
-				auth: { token },
+				extraHeaders: { cookie: cookieHeader },
 			});
 			const timer = setTimeout(() => reject(new Error('timed out waiting for lobby resume')), 10000);
 			socket.on('init', () => {});
@@ -1851,12 +1854,12 @@ describe('Socket Integration — Disconnect Event', () => {
 		await sleep(100);
 		expect(lobbyGameState(lobbyId).players[playerId].connected).toBe(false);
 
-		const token = createTestToken(playerId);
+		const cookieHeader = await sessionCookieForAccountId(playerId);
 		const resumed = await new Promise((resolve, reject) => {
 			const socket = ClientIO(baseUrl, {
 				transports: ['websocket'],
 				retry: false,
-				auth: { token },
+				extraHeaders: { cookie: cookieHeader },
 			});
 			const timer = setTimeout(() => reject(new Error('timed out waiting for lobby resume')), 10000);
 			socket.on('init', () => {});
@@ -3325,8 +3328,14 @@ describe('Server Ready Validation and Deck-to-Hand', () => {
 	});
 
 	it('converts old persisted ownedCards count-map data on connect', async () => {
-		const accountId = `legacy-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+		if (socket1?.connected) socket1.disconnect();
+		if (socket2?.connected) socket2.disconnect();
+		await sleep(50);
+
+		const username = `legacy-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 		const testProvider = new InMemoryProvider();
+		setTestProvider(testProvider);
+		const { accountId, cookieHeader } = await registerAndLoginWithCookie(baseUrl, username);
 		await testProvider.savePlayer(accountId, {
 			currency: 77,
 			ownedCards: { iron_sword: 2, flame_blade: 1 },
@@ -3336,9 +3345,8 @@ describe('Server Ready Validation and Deck-to-Hand', () => {
 			z: 2,
 			rotation: 0
 		});
-		setTestProvider(testProvider);
 
-		const { socket, init, lobbyId } = await connectClient(baseUrl, accountId);
+		const { socket, init, lobbyId } = await connectClient(baseUrl, accountId, { cookieHeader, accountId });
 		const player = lobbyGameState(lobbyId).players[socket._playerId];
 		expect(player).toBeDefined();
 
@@ -4969,8 +4977,9 @@ describe('Player ID Drift Prevention on Cold Reconnect', () => {
 		expect(savedAfterDisconnect).not.toBeNull();
 		expect(savedAfterDisconnect.currency).toBe(42);
 
-		// --- Second connection: reconnect with the server-assigned ID via auth ---
-		const { socket: sock2, init: init2 } = await connectClient(baseUrl, serverId);
+		// --- Second connection: reconnect with the server-assigned ID via session ---
+		const cookieHeader = await sessionCookieForAccountId(serverId);
+		const { socket: sock2, init: init2 } = await connectClient(baseUrl, serverId, { cookieHeader, accountId: serverId });
 
 		// Server should have reused the same ID — no drift
 		expect(init2.playerId).toBe(serverId);
@@ -4988,18 +4997,14 @@ describe('Player ID Drift Prevention on Cold Reconnect', () => {
 		sock2.disconnect();
 	});
 
-	it('uses accountId from JWT as playerId (even with no persisted data)', async () => {
-		const fakeId = 'nonexistent-player-id-' + crypto.randomUUID();
+	it('uses session accountId as playerId for an authenticated reconnect', async () => {
+		const username = `session-player-${Date.now()}`;
+		const { accountId, cookieHeader } = await registerAndLoginWithCookie(baseUrl, username);
 
-		// Connect with a JWT whose accountId is the fake ID.
-		// With JWT auth, the server uses decoded.accountId as playerId,
-		// regardless of whether persisted data exists.
-		const { socket: sock, init } = await connectClient(baseUrl, fakeId);
+		const { socket: sock, init } = await connectClient(baseUrl, accountId, { cookieHeader });
 
-		// Server should use the accountId from the JWT as playerId
-		expect(init.playerId).toBe(fakeId);
-		// The init payload should also include the accountId
-		expect(init.accountId).toBe(fakeId);
+		expect(init.playerId).toBe(accountId);
+		expect(init.accountId).toBe(accountId);
 
 		sock.disconnect();
 	});
@@ -5098,7 +5103,8 @@ describe('Restore Persisted Location on Cold Reconnect During Active Run', () =>
 		await sleep(100);
 
 		// --- Cold reconnect ---
-		const c1Reconnect = await connectClient(baseUrl, player1Id);
+		const cookieHeader = await sessionCookieForAccountId(player1Id);
+		const c1Reconnect = await connectClient(baseUrl, player1Id, { cookieHeader, accountId: player1Id });
 
 		expect(c1Reconnect.init.playerId).toBe(player1Id);
 		const restored = testGameState().players[player1Id];
@@ -5256,7 +5262,8 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 		c2.socket.disconnect();
 		await sleep(100);
 
-		const c2Reconnect = await connectClient(baseUrl, player2Id);
+		const cookieHeader2 = await sessionCookieForAccountId(player2Id);
+		const c2Reconnect = await connectClient(baseUrl, player2Id, { cookieHeader: cookieHeader2, accountId: player2Id });
 
 		await waitForEvent(c2Reconnect.socket, 'stateUpdate');
 
@@ -5313,7 +5320,8 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 		c1.socket.disconnect();
 		await sleep(100);
 
-		const c1Reconnect = await connectClient(baseUrl, player1Id);
+		const cookieHeader1 = await sessionCookieForAccountId(player1Id);
+		const c1Reconnect = await connectClient(baseUrl, player1Id, { cookieHeader: cookieHeader1, accountId: player1Id });
 
 		expect(c1Reconnect.init.playerId).toBe(player1Id);
 

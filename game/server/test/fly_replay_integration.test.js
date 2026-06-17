@@ -11,9 +11,10 @@ import {
   server as httpServer,
   clearAllTimers,
 } from '../index.js';
-import { createTestToken } from './helpers.js';
+import { ensureTestUserSession } from './helpers.js';
 
 const require = createRequire(import.meta.url);
+const { SESSION_COOKIE_NAME } = require('../cookies.js');
 const {
   enableRedisForTests,
   disableRedisForTests,
@@ -148,15 +149,15 @@ async function shutdownHookServer(server) {
   await new Promise((resolve) => server.close(resolve));
 }
 
-function connectSocketWithLobbyQuery(baseUrl, lobbyId, accountId = 'routing-guest') {
-  const token = createTestToken(accountId);
+async function connectSocketWithLobbyQuery(baseUrl, lobbyId, accountId = 'routing-guest') {
+  const { cookieHeader } = await ensureTestUserSession(accountId, 'password123', baseUrl);
   return new Promise((resolve, reject) => {
     const socket = ClientIO(baseUrl, {
       transports: ['websocket'],
       retry: false,
       autoConnect: true,
       timeout: 5000,
-      auth: { token },
+      extraHeaders: { cookie: cookieHeader },
       query: { lobbyId },
     });
 

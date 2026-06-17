@@ -6,8 +6,6 @@ import path from 'path';
 // Force production mode BEFORE importing server module so static middleware
 // is mounted inside startServer() (which checks process.env.NODE_ENV at runtime).
 process.env.NODE_ENV = 'production';
-// Production mode requires JWT_SECRET for initAuth(); use a test-only value.
-process.env.JWT_SECRET = 'test-secret-for-static-serve-tests';
 
 import {
 	startServer,

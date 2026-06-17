@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { io as ClientIO } from 'socket.io-client';
-import jwt from 'jsonwebtoken';
 import {
 	startServer,
 	resetGameState,
@@ -11,7 +10,6 @@ import {
 	clearAllTimers,
 	setTestProvider,
 	savePlayerData,
-	getJWTSecret,
 	spawnLoot,
 	runGameLoopTick,
 } from '../index.js';
@@ -20,14 +18,6 @@ import { PLAYER_MOVEMENT_SAVE_DEBOUNCE_MS } from '../config.js';
 import { connectClient, waitForEvent, lobbyStateForSocket, playerForSocket } from './helpers.js';
 
 // ── Helpers ──
-
-function createTestToken(accountId, username) {
-	return jwt.sign(
-		{ accountId, username: username || accountId },
-		getJWTSecret(),
-		{ expiresIn: '1h' }
-	);
-}
 
 async function startTestServer() {
 	for (const [id, conn] of Object.entries(serverIo.engine?.sockets || {})) {

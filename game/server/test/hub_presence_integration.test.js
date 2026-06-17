@@ -1,11 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { io as ClientIO } from 'socket.io-client';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { HUB_LAYOUT } from '../index.js';
 import { hubSpawnPosition } from '../simulation.js';
-import { initAuth, resetAuthSecret } from '../auth.js';
 import { resetSettingsPath, clearAllSettings } from '../settings.js';
 import {
 	startTestServer,
@@ -14,7 +12,7 @@ import {
 	lobbyGameState,
 	setServerUsersFilePath,
 	clearServerUsers,
-	createTestToken,
+	connectWithSessionCookie,
 	extractSessionTokenFromResponse,
 	cookieHeaders,
 } from './helpers.js';
@@ -70,8 +68,11 @@ async function registerUser(baseUrl, username, password = 'password123') {
 	expect(login.status).toBe(200);
 	const sessionToken = extractSessionTokenFromResponse(login);
 	expect(sessionToken).toBeTruthy();
-	const token = createTestToken(accountId, username);
-	return { accountId, sessionToken, token, username };
+	return { accountId, sessionToken, username };
+}
+
+async function connectWithSession(baseUrl, sessionToken, options = {}) {
+	return connectWithSessionCookie(baseUrl, sessionToken, options);
 }
 
 async function patchCosmetic(baseUrl, sessionToken, cosmetic) {
@@ -84,55 +85,9 @@ async function patchCosmetic(baseUrl, sessionToken, cosmetic) {
 	return res.json();
 }
 
-function connectWithToken(baseUrl, token, options = {}) {
-	return new Promise((resolve, reject) => {
-		const socket = ClientIO(baseUrl, {
-			transports: ['websocket'],
-			retry: false,
-			autoConnect: true,
-			timeout: 5000,
-			auth: { token },
-		});
-
-		const timer = setTimeout(() => {
-			try { socket.disconnect(); } catch (_) {}
-			reject(new Error('connectWithToken: timed out waiting for init'));
-		}, 10000);
-
-		socket.on('init', async (data) => {
-			clearTimeout(timer);
-			socket._playerId = data.playerId || data.id;
-
-			if (options.skipLobby) {
-				resolve({ socket, init: data, session: data, lobbyId: null });
-				return;
-			}
-
-			try {
-				if (options.joinLobbyId) {
-					socket.emit('joinLobby', { lobbyId: options.joinLobbyId });
-				} else {
-					socket.emit('createLobby', options.name ? { name: options.name } : {});
-				}
-				const joined = await waitForEvent(socket, 'lobbyJoined');
-				socket._lobbyId = joined.lobbyId;
-				resolve({ socket, init: joined, session: data, lobbyId: joined.lobbyId });
-			} catch (err) {
-				try { socket.disconnect(); } catch (_) {}
-				reject(err);
-			}
-		});
-
-		socket.on('connect_error', (e) => {
-			clearTimeout(timer);
-			reject(e);
-		});
-	});
-}
-
 async function connectTwoWithCosmetics(baseUrl, userA, userB) {
-	const first = await connectWithToken(baseUrl, userA.token);
-	const second = await connectWithToken(baseUrl, userB.token, { joinLobbyId: first.lobbyId });
+	const first = await connectWithSession(baseUrl, userA.sessionToken);
+	const second = await connectWithSession(baseUrl, userB.sessionToken, { joinLobbyId: first.lobbyId });
 	return {
 		socketA: first.socket,
 		socketB: second.socket,
@@ -160,8 +115,6 @@ describe('hub presence integration', () => {
 		clearServerUsers();
 		resetSettingsPath();
 		clearAllSettings();
-		resetAuthSecret();
-		initAuth();
 		baseUrl = await startTestServer();
 	});
 
@@ -213,9 +166,9 @@ describe('hub presence integration', () => {
 		const userB = await registerUser(baseUrl, 'presence-joiner');
 		await patchCosmetic(baseUrl, userB.sessionToken, COSMETIC_B);
 
-		const host = await connectWithToken(baseUrl, userA.token);
+		const host = await connectWithSession(baseUrl, userA.sessionToken);
 		const joinUpdatePromise = waitForEvent(host.socket, 'hubPresenceUpdate');
-		const joiner = await connectWithToken(baseUrl, userB.token, { joinLobbyId: host.lobbyId });
+		const joiner = await connectWithSession(baseUrl, userB.sessionToken, { joinLobbyId: host.lobbyId });
 
 		const update = await joinUpdatePromise;
 		const joinerEntry = update.presence.entries[joiner.init.playerId];

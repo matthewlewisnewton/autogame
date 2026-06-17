@@ -3,7 +3,6 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import crypto from 'crypto';
-import jwt from 'jsonwebtoken';
 import { createRequire } from 'module';
 import {
 	startServer,
@@ -11,10 +10,8 @@ import {
 	io as serverIo,
 	server as httpServer,
 	clearAllTimers,
-	getJWTSecret
 } from '../index.js';
 import { setServerUsersFilePath, clearServerUsers } from './helpers.js';
-import { initAuth, resetAuthSecret } from '../auth.js';
 import { PROPORTION_KEYS, PROPORTION_RANGES } from '../cosmetic.js';
 
 const require = createRequire(import.meta.url);
@@ -112,8 +109,6 @@ beforeEach(async () => {
 	clearServerUsers();
 	serverSettings.resetSettingsPath();
 	serverSettings.clearAllSettings();
-	resetAuthSecret();
-	initAuth();
 	baseUrl = await startTestServer();
 });
 
@@ -301,7 +296,7 @@ describe('PATCH /api/me/profile', () => {
 		expect(body.email).toBe('carol@example.com');
 	});
 
-	it('changes username and returns new token', async () => {
+	it('changes username without returning a legacy JWT token', async () => {
 		const token = await registerAndLogin('eve', 'pass');
 
 		const res = await fetch(`${baseUrl}/api/me/profile`, {
@@ -312,9 +307,7 @@ describe('PATCH /api/me/profile', () => {
 		expect(res.status).toBe(200);
 		const data = await res.json();
 		expect(data.username).toBe('eve2');
-		expect(data.token).toBeDefined();
-		const decoded = jwt.verify(data.token, getJWTSecret());
-		expect(decoded.username).toBe('eve2');
+		expect(data.token).toBeUndefined();
 	});
 
 	it('updates cosmetic and returns it in the 200 payload', async () => {

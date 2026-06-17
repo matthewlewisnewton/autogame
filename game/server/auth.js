@@ -1,14 +1,11 @@
 // Auth routes — POST /register, POST /login, POST /logout
 const { Router } = require('express');
-const jwt = require('jsonwebtoken');
 const { createUserAsync, findUserByUsernameAsync, comparePasswordAsync } = require('./users');
 const { createSession, destroySession } = require('./sessions.js');
 const { setSessionCookie, clearSessionCookie, getSessionTokenFromRequest } = require('./cookies.js');
 
 const router = Router();
 
-let JWT_SECRET = null;
-const JWT_EXPIRATION = '24h';
 // Upper bound on accepted password length. bcrypt silently truncates at 72
 // bytes, so long passwords sharing a 72-byte prefix would authenticate
 // interchangeably; capping also avoids wasting CPU hashing on this
@@ -109,73 +106,9 @@ function incrementRateLimit(req, action, username) {
 }
 
 /**
- * Initialize the JWT secret. Must be called before the server starts
- * accepting connections. Reads `JWT_SECRET` from `process.env`; falls back
- * to a fixed test secret when `NODE_ENV === 'test'`; falls back to a
- * dev-only secret when `NODE_ENV` is neither `'test'` nor `'production'`
- * AND `ALLOW_DEV_AUTH=1` is explicitly set; throws when
- * `NODE_ENV === 'production'` and no secret is set; also throws in dev mode
- * unless `ALLOW_DEV_AUTH=1`.
- *
- * @returns {string} The resolved secret.
- */
-function initAuth() {
-	if (JWT_SECRET) return JWT_SECRET; // idempotent — safe for repeated calls in tests
-
-	if (process.env.JWT_SECRET) {
-		JWT_SECRET = process.env.JWT_SECRET;
-		return JWT_SECRET;
-	}
-
-	if (process.env.NODE_ENV === 'test') {
-		JWT_SECRET = 'test-secret';
-		return JWT_SECRET;
-	}
-
-	if (process.env.NODE_ENV === 'production') {
-		throw new Error(
-			'Missing JWT_SECRET environment variable. ' +
-			'Set JWT_SECRET to a cryptographically random value before starting the server. ' +
-			'Example: JWT_SECRET=$(openssl rand -hex 32) node server/index.js'
-		);
-	}
-
-	// Dev mode — require explicit opt-in to use the insecure dev fallback
-	if (process.env.ALLOW_DEV_AUTH === '1') {
-		console.warn(
-			'[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). ' +
-			'Do not use this in production. Set JWT_SECRET to a cryptographically random value.'
-		);
-		JWT_SECRET = 'dev-secret';
-		return JWT_SECRET;
-	}
-
-	throw new Error(
-		'Missing JWT_SECRET environment variable. ' +
-		'Set JWT_SECRET to a cryptographically random value, or set ALLOW_DEV_AUTH=1 to explicitly ' +
-		'enable the insecure dev fallback secret. ' +
-		'Example: JWT_SECRET=$(openssl rand -hex 32) node server/index.js'
-	);
-}
-
-/**
- * Verify a JWT token and return the decoded payload, or null on failure.
- * Used by the WebSocket connection handler to authenticate socket clients.
- */
-function verifyToken(token) {
-	if (!token || typeof token !== 'string') return null;
-	try {
-		return jwt.verify(token, JWT_SECRET);
-	} catch (e) {
-		return null;
-	}
-}
-
-/**
  * POST /api/register
  * Body: { username, password }
- * - 201 { accountId, token } on success — `token` is a JWT for socket auth;
- *   an httpOnly session cookie is also set for HTTP auth
+ * - 201 { accountId } on success — an httpOnly session cookie is set for auth
  * - 409 { error: 'Username taken' } when username already exists
  * - 400 { error: '...' } when inputs are invalid
  */
@@ -217,12 +150,7 @@ router.post('/register', async (req, res) => {
 
 		const sessionToken = await createSession(result.accountId);
 		setSessionCookie(res, sessionToken);
-		const token = jwt.sign(
-			{ accountId: result.accountId, username },
-			JWT_SECRET,
-			{ expiresIn: JWT_EXPIRATION }
-		);
-		return res.status(201).json({ accountId: result.accountId, token });
+		return res.status(201).json({ accountId: result.accountId });
 	} catch (err) {
 		console.error('[auth] registration failed:', err.message);
 		return res.status(500).json({ error: 'Registration failed' });
@@ -232,8 +160,7 @@ router.post('/register', async (req, res) => {
 /**
  * POST /api/login
  * Body: { username, password }
- * - 200 { accountId, token } on success — `token` is a JWT for socket auth;
- *   an httpOnly session cookie is also set/refreshed for HTTP auth
+ * - 200 { accountId } on success — an httpOnly session cookie is set/refreshed
  * - 401 { error: 'Invalid credentials' } on wrong password or unknown username
  */
 router.post('/login', async (req, res) => {
@@ -272,12 +199,7 @@ router.post('/login', async (req, res) => {
 
 	const sessionToken = await createSession(user.accountId);
 	setSessionCookie(res, sessionToken);
-	const token = jwt.sign(
-		{ accountId: user.accountId, username },
-		JWT_SECRET,
-		{ expiresIn: JWT_EXPIRATION }
-	);
-	return res.status(200).json({ accountId: user.accountId, token });
+	return res.status(200).json({ accountId: user.accountId });
 });
 
 /**
@@ -300,10 +222,6 @@ router.post('/logout', async (req, res) => {
 });
 
 module.exports = router;
-module.exports.initAuth = initAuth;
-module.exports.getJWTSecret = function getJWTSecret() { return JWT_SECRET; };
-module.exports.verifyToken = verifyToken;
-module.exports.resetAuthSecret = function resetAuthSecret() { JWT_SECRET = null; };
 module.exports._resetRateLimits = function _resetRateLimits() { rateLimitBuckets.clear(); };
 module.exports._rateLimitBuckets = rateLimitBuckets;
 module.exports.isRateLimited = isRateLimited;

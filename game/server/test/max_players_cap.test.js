@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { io as ClientIO } from 'socket.io-client';
-import jwt from 'jsonwebtoken';
 import {
 	startServer,
 	resetGameState,
@@ -8,21 +7,11 @@ import {
 	server as httpServer,
 	clearAllTimers,
 	setTestProvider,
-	getJWTSecret,
 	evictDisconnectedPlayers,
 } from '../index.js';
 import { InMemoryProvider } from '../providers.js';
 import { MAX_PLAYERS, DISCONNECT_GRACE_MS } from '../config.js';
-
-// ── Helpers ──
-
-function createTestToken(accountId, username) {
-	return jwt.sign(
-		{ accountId, username: username || accountId },
-		getJWTSecret(),
-		{ expiresIn: '1h' },
-	);
-}
+import { ensureTestUserSession } from './helpers.js';
 
 async function startTestServer() {
 	for (const [id, conn] of Object.entries(serverIo.engine?.sockets || {})) {
@@ -85,7 +74,7 @@ function sleep(ms) {
 
 /** Connect a client and optionally join/create a lobby. */
 async function connectClient(baseUrl, accountId, options = {}) {
-	const token = createTestToken(accountId);
+	const { cookieHeader } = await ensureTestUserSession(String(accountId));
 
 	return new Promise((resolve, reject) => {
 		const socket = ClientIO(baseUrl, {
@@ -93,7 +82,7 @@ async function connectClient(baseUrl, accountId, options = {}) {
 			retry: false,
 			autoConnect: true,
 			timeout: 5000,
-			auth: { token },
+			extraHeaders: { cookie: cookieHeader },
 		});
 
 		const timer = setTimeout(() => {
@@ -139,7 +128,7 @@ async function connectClient(baseUrl, accountId, options = {}) {
 
 /** Connect and expect a lobbyError (for full-lobby rejection tests). */
 async function connectAndTryJoin(baseUrl, accountId, lobbyId) {
-	const token = createTestToken(accountId);
+	const { cookieHeader } = await ensureTestUserSession(String(accountId));
 
 	return new Promise((resolve, reject) => {
 		const socket = ClientIO(baseUrl, {
@@ -147,7 +136,7 @@ async function connectAndTryJoin(baseUrl, accountId, lobbyId) {
 			retry: false,
 			autoConnect: true,
 			timeout: 5000,
-			auth: { token },
+			extraHeaders: { cookie: cookieHeader },
 		});
 
 		const timer = setTimeout(() => {

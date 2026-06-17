@@ -1,16 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { io as ClientIO } from 'socket.io-client';
-import jwt from 'jsonwebtoken';
 import {
 	startServer,
 	resetGameState,
 	io as serverIo,
 	server as httpServer,
 	clearAllTimers,
-	getJWTSecret,
 	findSocketByPlayerId,
 } from '../index.js';
 import { clearUsers } from '../users.js';
+import { ensureTestUserSession } from './helpers.js';
 
 // ── Helpers ──
 
@@ -49,14 +48,6 @@ async function closeTestServer() {
 	});
 }
 
-function createTestToken(accountId, username = 'testuser') {
-	return jwt.sign(
-		{ accountId, username },
-		getJWTSecret(),
-		{ expiresIn: '1h' }
-	);
-}
-
 function countConnectedSocketsForPlayerId(playerId) {
 	let count = 0;
 	for (const socket of serverIo.sockets.sockets.values()) {
@@ -67,14 +58,14 @@ function countConnectedSocketsForPlayerId(playerId) {
 	return count;
 }
 
-function connectAndWaitForInit(baseUrl, token) {
+function connectAndWaitForInit(baseUrl, cookieHeader) {
 	return new Promise((resolve, reject) => {
 		const socket = ClientIO(baseUrl, {
 			transports: ['websocket'],
 			retry: false,
 			autoConnect: true,
 			timeout: 5000,
-			auth: { token },
+			extraHeaders: { cookie: cookieHeader },
 		});
 
 		const timer = setTimeout(() => {
@@ -121,11 +112,11 @@ afterEach(async () => {
 // ── Tests ──
 
 describe('Dual socket race', () => {
-	it('second connection with same JWT evicts the first live socket', async () => {
-		const accountId = `acct-dual-socket-${Date.now()}`;
-		const token = createTestToken(accountId);
+	it('second connection with the same session evicts the first live socket', async () => {
+		const username = `dual-socket-${Date.now()}`;
+		const { accountId, cookieHeader } = await ensureTestUserSession(username, 'password123', baseUrl);
 
-		const { socket: socketA, init: initA } = await connectAndWaitForInit(baseUrl, token);
+		const { socket: socketA, init: initA } = await connectAndWaitForInit(baseUrl, cookieHeader);
 		expect(initA.playerId).toBe(accountId);
 
 		socketA.emit('createLobby', { name: 'Dual Socket Race' });
@@ -135,7 +126,7 @@ describe('Dual socket race', () => {
 			socketA.once('disconnect', resolve);
 		});
 
-		const { socket: socketB, init: initB } = await connectAndWaitForInit(baseUrl, token);
+		const { socket: socketB, init: initB } = await connectAndWaitForInit(baseUrl, cookieHeader);
 		expect(initB.playerId).toBe(accountId);
 
 		await socketADisconnected;

@@ -1,7 +1,6 @@
 // Authenticated account routes — profile and settings.
 
 const { Router } = require('express');
-const jwt = require('jsonwebtoken');
 const { getSessionTokenFromRequest } = require('./cookies.js');
 const { getSession } = require('./sessions.js');
 const { findUserByAccountId, updateProfile } = require('./users');
@@ -10,17 +9,11 @@ const { HAT_CATALOG, MODEL_IDS, PROPORTION_KEYS, PROPORTION_RANGES, validateCosm
 const { hasAppearanceFieldChanges } = require('../shared/cosmeticAppearance.js');
 
 const router = Router();
-const JWT_EXPIRATION = '24h';
 
 // Safe accountId shape (server-issued UUIDs). Reject anything else at the auth
 // boundary so a forged/leaked-secret token cannot drive path traversal in
 // settings/player file paths derived from the accountId claim.
 const SAFE_ACCOUNT_ID_REGEX = /^[A-Za-z0-9_-]+$/;
-
-function getJwtSecret() {
-	const auth = require('./auth');
-	return auth.getJWTSecret();
-}
 
 /**
  * Require the opaque session cookie. Sets req.accountId and req.username.
@@ -130,23 +123,16 @@ router.patch('/me/profile', async (req, res) => {
 		const { syncLivePlayerCosmetic } = require('./index');
 		syncLivePlayerCosmetic(req.accountId, user.cosmetic);
 	}
-	const payload = {
-		username: user.username,
-		email: user.email || null,
-		cosmetic: user.cosmetic
-	};
-
 	if (result.usernameChanged) {
 		const { syncLivePlayerUsername } = require('./index');
 		syncLivePlayerUsername(req.accountId, user.username);
-		payload.token = jwt.sign(
-			{ accountId: user.accountId, username: user.username },
-			getJwtSecret(),
-			{ expiresIn: JWT_EXPIRATION }
-		);
 	}
 
-	return res.status(200).json(payload);
+	return res.status(200).json({
+		username: user.username,
+		email: user.email || null,
+		cosmetic: user.cosmetic
+	});
 });
 
 module.exports = router;

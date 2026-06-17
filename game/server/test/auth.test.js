@@ -19,17 +19,12 @@ import { setServerUsersFilePath, clearServerUsers } from './helpers.js';
 const requireCJS = createRequire(import.meta.url);
 const auth = requireCJS('../auth.js');
 const {
-	initAuth,
-	resetAuthSecret,
 	_resetRateLimits,
 	_rateLimitBuckets,
 	RATE_LIMIT_WINDOW_MS,
 	pruneExpiredBuckets,
 	getRateLimitSweepInterval,
-	getJWTSecret,
-	verifyToken,
 } = auth;
-const jwt = requireCJS('jsonwebtoken');
 
 const { SESSION_COOKIE_NAME } = requireCJS('../cookies.js');
 const { getSession } = requireCJS('../sessions.js');
@@ -90,21 +85,10 @@ function expectSessionCookieAttributes(setCookieValue) {
 }
 
 /**
- * Assert the response body includes a valid JWT for socket auth.
+ * Assert register/login JSON omits a legacy JWT token field.
  */
-function expectValidJwtToken(data, expectedAccountId, expectedUsername) {
-	expect(data.token).toBeDefined();
-	expect(typeof data.token).toBe('string');
-	expect(data.token.length).toBeGreaterThan(0);
-
-	const decoded = jwt.verify(data.token, getJWTSecret());
-	expect(decoded.accountId).toBe(expectedAccountId);
-	expect(decoded.username).toBe(expectedUsername);
-
-	const viaVerifyToken = verifyToken(data.token);
-	expect(viaVerifyToken).not.toBeNull();
-	expect(viaVerifyToken.accountId).toBe(expectedAccountId);
-	expect(viaVerifyToken.username).toBe(expectedUsername);
+function expectNoTokenField(data) {
+	expect(data.token).toBeUndefined();
 }
 
 /**
@@ -147,7 +131,7 @@ describe('POST /api/register', () => {
 		const data = await res.json();
 		expect(data.accountId).toBeDefined();
 		expect(typeof data.accountId).toBe('string');
-		expectValidJwtToken(data, data.accountId, 'alice');
+		expectNoTokenField(data);
 
 		const sessionToken = extractSessionTokenFromResponse(res);
 		expect(sessionToken).toBeTruthy();
@@ -296,7 +280,7 @@ describe('POST /api/login', () => {
 		});
 		expect(res.status).toBe(200);
 		const data = await res.json();
-		expectValidJwtToken(data, data.accountId, 'alice');
+		expectNoTokenField(data);
 		expect(data.accountId).toBeDefined();
 		expect(typeof data.accountId).toBe('string');
 
@@ -345,7 +329,7 @@ describe('POST /api/login', () => {
 			body: JSON.stringify({ username: 'carol', password: 'pass' })
 		});
 		const loginData = await loginRes.json();
-		expectValidJwtToken(loginData, regData.accountId, 'carol');
+		expectNoTokenField(loginData);
 		expect(loginData.accountId).toBe(regData.accountId);
 
 		const sessionToken = extractSessionTokenFromResponse(loginRes);
@@ -366,7 +350,7 @@ describe('POST /api/login', () => {
 			body: JSON.stringify({ username: 'dave', password: 'pass' })
 		});
 		const data = await res.json();
-		expectValidJwtToken(data, data.accountId, 'dave');
+		expectNoTokenField(data);
 
 		const sessionToken = extractSessionTokenFromResponse(res);
 		const session = await getSession(sessionToken);
@@ -497,73 +481,6 @@ describe('POST /api/logout', () => {
 	it('returns 204 when no session cookie is present', async () => {
 		const res = await fetch(`${baseUrl}/api/logout`, { method: 'POST' });
 		expect(res.status).toBe(204);
-	});
-});
-
-// ── initAuth() dev fallback ──
-
-describe('initAuth() dev fallback', () => {
-	const origNodeEnv = process.env.NODE_ENV;
-	const origJwtSecret = process.env.JWT_SECRET;
-	const origAllowDevAuth = process.env.ALLOW_DEV_AUTH;
-	const origPort = process.env.PORT;
-
-	beforeEach(() => {
-		resetAuthSecret();
-		delete process.env.JWT_SECRET;
-		delete process.env.ALLOW_DEV_AUTH;
-		delete process.env.PORT;
-	});
-
-	afterEach(() => {
-		process.env.NODE_ENV = origNodeEnv;
-		process.env.JWT_SECRET = origJwtSecret;
-		process.env.ALLOW_DEV_AUTH = origAllowDevAuth;
-		if (origPort === undefined) {
-			delete process.env.PORT;
-		} else {
-			process.env.PORT = origPort;
-		}
-		resetAuthSecret();
-	});
-
-	it('throws in dev mode with PORT but without ALLOW_DEV_AUTH', () => {
-		process.env.NODE_ENV = 'development';
-		process.env.PORT = '3000';
-		expect(() => initAuth()).toThrow('Missing JWT_SECRET');
-	});
-
-	it('uses dev fallback secret when ALLOW_DEV_AUTH=1', () => {
-		process.env.NODE_ENV = 'development';
-		process.env.ALLOW_DEV_AUTH = '1';
-		const secret = initAuth();
-		expect(secret).toBe('dev-secret');
-	});
-
-	it('throws when NODE_ENV is production and JWT_SECRET is missing', () => {
-		process.env.NODE_ENV = 'production';
-		expect(() => initAuth()).toThrow('Missing JWT_SECRET');
-	});
-
-	it('accepts JWT_SECRET from environment regardless of NODE_ENV', () => {
-		process.env.NODE_ENV = 'development';
-		process.env.JWT_SECRET = 'custom-secret';
-		const secret = initAuth();
-		expect(secret).toBe('custom-secret');
-	});
-
-	it('uses test-secret in NODE_ENV=test without requiring ALLOW_DEV_AUTH', () => {
-		process.env.NODE_ENV = 'test';
-		const secret = initAuth();
-		expect(secret).toBe('test-secret');
-	});
-
-	it('JWT_SECRET env value takes precedence over ALLOW_DEV_AUTH', () => {
-		process.env.NODE_ENV = 'development';
-		process.env.JWT_SECRET = 'custom-secret';
-		process.env.ALLOW_DEV_AUTH = '1';
-		const secret = initAuth();
-		expect(secret).toBe('custom-secret');
 	});
 });
 

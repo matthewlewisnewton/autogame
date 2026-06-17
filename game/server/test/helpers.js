@@ -1,5 +1,4 @@
 import { io as ClientIO } from 'socket.io-client';
-import jwt from 'jsonwebtoken';
 import { createRequire } from 'module';
 import {
 	startServer,
@@ -8,13 +7,14 @@ import {
 	server as httpServer,
 	clearAllTimers,
 	setTestProvider,
-	getJWTSecret,
 } from '../index.js';
 import { InMemoryProvider } from '../providers.js';
 
 const require = createRequire(import.meta.url);
 
 const serverUsers = require('../users.js');
+const { createUser, findUserByUsername, findUserByAccountId } = serverUsers;
+const { createSession } = require('../sessions.js');
 const { SESSION_COOKIE_NAME } = require('../cookies.js');
 
 /**
@@ -86,12 +86,63 @@ export function clearServerUsers() {
 	serverUsers.clearUsers();
 }
 
-export function createTestToken(accountId, username) {
-	return jwt.sign(
-		{ accountId, username: username || accountId },
-		getJWTSecret(),
-		{ expiresIn: '1h' }
-	);
+/**
+ * Create (or reuse) a test user and opaque session token for socket connects.
+ * When `baseUrl` is provided, register/login via HTTP so the user lands in the
+ * same `users` module instance the running server uses for socket auth.
+ */
+export async function ensureTestUserSession(username, password = 'password123', baseUrl = null) {
+	if (baseUrl) {
+		const existing = findUserByUsername(username);
+		if (existing) {
+			const login = await fetch(`${baseUrl}/api/login`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ username, password }),
+			});
+			if (login.status !== 200) {
+				throw new Error(`login failed for ${username} with status ${login.status}`);
+			}
+			const sessionToken = extractSessionTokenFromResponse(login);
+			if (!sessionToken) {
+				throw new Error(`login response missing session cookie for ${username}`);
+			}
+			return {
+				accountId: existing.accountId,
+				username: existing.username,
+				sessionToken,
+				cookieHeader: `${SESSION_COOKIE_NAME}=${sessionToken}`,
+			};
+		}
+		return registerAndLoginWithCookie(baseUrl, username, password);
+	}
+
+	let user = findUserByUsername(username);
+	if (!user) {
+		const result = createUser(username, password);
+		if (!result.ok) {
+			throw new Error(`createUser failed for ${username}: ${result.reason || 'unknown'}`);
+		}
+		user = findUserByUsername(username);
+	}
+	if (!user) {
+		throw new Error(`createUser succeeded but user not found: ${username}`);
+	}
+	const sessionToken = await createSession(user.accountId);
+	return {
+		accountId: user.accountId,
+		username: user.username,
+		sessionToken,
+		cookieHeader: `${SESSION_COOKIE_NAME}=${sessionToken}`,
+	};
+}
+
+/**
+ * Connect with an existing opaque session token (no HTTP register/login).
+ */
+export function connectWithSessionCookie(baseUrl, sessionToken, options = {}) {
+	const cookieHeader = `${SESSION_COOKIE_NAME}=${sessionToken}`;
+	return connectClientInternal(baseUrl, cookieHeader, options);
 }
 
 export function waitForEvent(socket, event, timeout = 10000) {
@@ -226,23 +277,14 @@ export async function closeServer() {
 	resetGameState();
 }
 
-/**
- * Connect a test client. By default creates a lobby after session init.
- * Always resolves { socket, init, session, lobbyId }:
- * - init: lobbyJoined payload when a lobby was joined/created, otherwise the session init payload
- * - session: always the session init payload from the server's init event
- * - lobbyId: joined lobby id, or null when skipLobby is set
- */
-export function connectClient(baseUrl, accountId = `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, options = {}) {
-	const token = createTestToken(accountId);
-
+function connectClientInternal(baseUrl, cookieHeader, options = {}) {
 	return new Promise((resolve, reject) => {
 		const socket = ClientIO(baseUrl, {
 			transports: ['websocket'],
 			retry: false,
 			autoConnect: true,
 			timeout: 5000,
-			auth: { token },
+			extraHeaders: { cookie: cookieHeader },
 		});
 
 		const timer = setTimeout(() => {
@@ -279,6 +321,43 @@ export function connectClient(baseUrl, accountId = `test-${Date.now()}-${Math.ra
 			reject(e);
 		});
 	});
+}
+
+/**
+ * Connect a test client. By default creates a lobby after session init.
+ * Always resolves { socket, init, session, lobbyId, accountId }:
+ * - init: lobbyJoined payload when a lobby was joined/created, otherwise the session init payload
+ * - session: always the session init payload from the server's init event
+ * - lobbyId: joined lobby id, or null when skipLobby is set
+ * - accountId: stable server-issued account id from the session
+ */
+export async function connectClient(baseUrl, accountId = `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, options = {}) {
+	let cookieHeader = options.cookieHeader;
+	let resolvedAccountId = options.accountId ?? accountId;
+	if (!cookieHeader) {
+		if (options.sessionToken) {
+			cookieHeader = `${SESSION_COOKIE_NAME}=${options.sessionToken}`;
+		} else {
+			const existingByAccountId = findUserByAccountId(String(accountId));
+			const existingByUsername = findUserByUsername(options.username || String(accountId));
+			const existing = existingByAccountId || existingByUsername;
+			if (existing) {
+				const sessionToken = await createSession(existing.accountId);
+				cookieHeader = `${SESSION_COOKIE_NAME}=${sessionToken}`;
+				resolvedAccountId = existing.accountId;
+			} else {
+				const auth = await ensureTestUserSession(
+					options.username || String(accountId),
+					options.password,
+					baseUrl,
+				);
+				cookieHeader = auth.cookieHeader;
+				resolvedAccountId = auth.accountId;
+			}
+		}
+	}
+	const result = await connectClientInternal(baseUrl, cookieHeader, options);
+	return { ...result, accountId: resolvedAccountId ?? result.session?.accountId };
 }
 
 /**

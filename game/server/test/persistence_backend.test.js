@@ -12,13 +12,12 @@ import {
 	setTestProvider,
 	getProvider,
 } from '../index.js';
-import { resetAuthSecret } from '../auth.js';
 
 const require = createRequire(import.meta.url);
 const providers = require('../providers.js');
 const { InMemoryProvider, FileProvider } = providers;
 
-const ENV_KEYS = ['NODE_ENV', 'PERSISTENCE_BACKEND', 'DATABASE_URL', 'PERSISTENCE_PATH', 'JWT_SECRET'];
+const ENV_KEYS = ['NODE_ENV', 'PERSISTENCE_BACKEND', 'DATABASE_URL', 'PERSISTENCE_PATH'];
 
 function saveEnv() {
 	const saved = {};
@@ -40,7 +39,6 @@ function restoreEnv(saved) {
 
 function useNonTestEnv() {
 	process.env.NODE_ENV = 'development';
-	process.env.JWT_SECRET = 'persistence-backend-test-secret';
 }
 
 async function teardownServer() {
@@ -78,7 +76,6 @@ describe('persistence backend selection in startServer', () => {
 	beforeEach(async () => {
 		savedEnv = saveEnv();
 		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'persistence-backend-'));
-		resetAuthSecret();
 		await teardownServer();
 	});
 
@@ -90,7 +87,6 @@ describe('persistence backend selection in startServer', () => {
 			} catch (_) {}
 		}
 		setTestProvider(null);
-		resetAuthSecret();
 		vi.restoreAllMocks();
 		restoreEnv(savedEnv);
 		await teardownServer();

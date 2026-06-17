@@ -25,7 +25,6 @@ import { APPEARANCE_CHANGE_COST } from '../config.js';
 
 const require = createRequire(import.meta.url);
 import { DEFAULT_COSMETIC, PROPORTION_KEYS } from '../cosmetic.js';
-import { initAuth, resetAuthSecret } from '../auth.js';
 import { clearAllSettings, resetSettingsPath } from '../settings.js';
 
 const customCosmetic = {
@@ -103,8 +102,6 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 		clearServerUsers();
 		resetSettingsPath();
 		clearAllSettings();
-		resetAuthSecret();
-		initAuth();
 		baseUrl = await startTestServer();
 	});
 

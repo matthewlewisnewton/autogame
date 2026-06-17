@@ -21,7 +21,7 @@ const providers = require('./providers');
 const { InMemoryProvider, FileProvider } = providers;
 const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked } = require('./users');
 const { DEFAULT_COSMETIC, backfillCosmetic, backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
-const { verifyToken, initAuth, getJWTSecret, startRateLimitSweep, stopRateLimitSweep } = require('./auth');
+const { startRateLimitSweep, stopRateLimitSweep } = require('./auth');
 const { parseCookies } = require('./cookies');
 const { getSession, destroySession } = require('./sessions');
 const { attachFlyReplayRouting } = require('./flyReplayHook');
@@ -1813,9 +1813,6 @@ async function startServer(port) {
   ensureHttpErrorLogger();
   _harnessReady = false;
 
-  // Initialize auth — throws if JWT_SECRET is missing (unless NODE_ENV === 'test')
-  initAuth();
-
   // Ensure the data/ directory exists for user records and player persistence
   const dataDir = process.env.PERSISTENCE_PATH || path.resolve(__dirname, '..', 'data');
   fs.mkdirSync(dataDir, { recursive: true });
@@ -1833,7 +1830,7 @@ async function startServer(port) {
     app.use('/api', authRouter);
     app.use('/api', accountRouter);
     // Read-only admin roster page, gated by ADMIN_PASSWORD (separate from the
-    // player JWT auth). GET-only — no mutation routes are mounted under /admin.
+    // player session auth). GET-only — no mutation routes are mounted under /admin.
     app.get('/admin', requireAdminPassword, adminHandler);
     _routesMounted = true;
   }
@@ -1929,18 +1926,16 @@ async function startServer(port) {
   // Restart the rate-limit sweep after clearing all timers
   startRateLimitSweep();
 
-  // ── JWT authentication middleware ──
+  // ── Session-cookie authentication middleware ──
   // Runs before the 'connection' event. Calling next(new Error(...)) here
   // triggers a connect_error on the client (not connect → disconnect), which
-  // the existing client connect_error handler already handles by clearing
-  // the stale token and re-showing the login overlay.
+  // the existing client connect_error handler already handles by re-showing
+  // the login overlay.
   if (!_middlewareRegistered) {
     io.use(async (socket, next) => {
-      // ── Safe accountId guard (shared by both auth paths) ──
       const accountIdSafe = (id) =>
         typeof id === 'string' && /^[A-Za-z0-9_-]+$/.test(id);
 
-      // ── 1. Try session-cookie authentication ──
       // Socket.IO may deliver the cookie header as a string or an array
       // (when multiple Set-Cookie headers are merged by the HTTP parser).
       const rawCookie = Array.isArray(socket.handshake.headers.cookie)
@@ -1949,49 +1944,27 @@ async function startServer(port) {
       const cookies = parseCookies(rawCookie);
       const sessionToken = cookies.ag_session;
 
-      if (sessionToken) {
-        const session = await getSession(sessionToken);
-        if (!session) {
-          // Cookie was present but token is unknown, destroyed, or expired.
-          // Do NOT fall through to JWT — a stale session cookie indicates
-          // the client should re-authenticate via the HTTP login flow.
-          return next(new Error('Invalid or expired session'));
-        }
-
-        if (!accountIdSafe(session.accountId)) {
-          return next(new Error('Invalid session account id'));
-        }
-
-        // Resolve username from the user store
-        const user = findUserByAccountId(session.accountId);
-        if (!user) {
-          return next(new Error('Session account not found'));
-        }
-
-        socket.data.accountId = session.accountId;
-        socket.data.username = user.username;
-        return next();
+      if (!sessionToken) {
+        return next(new Error('Missing or invalid session'));
       }
 
-      // ── 2. Fall back to JWT authentication (backward compatibility) ──
-      const token = socket.handshake.auth && socket.handshake.auth.token;
-
-      if (!token) {
-        return next(new Error('No JWT token'));
+      const session = await getSession(sessionToken);
+      if (!session) {
+        return next(new Error('Invalid or expired session'));
       }
 
-      const decoded = verifyToken(token);
-      if (!decoded) {
-        return next(new Error('Invalid or expired JWT'));
+      if (!accountIdSafe(session.accountId)) {
+        return next(new Error('Invalid session account id'));
       }
 
-      if (!accountIdSafe(decoded.accountId)) {
-        return next(new Error('Invalid or expired JWT'));
+      const user = findUserByAccountId(session.accountId);
+      if (!user) {
+        return next(new Error('Session account not found'));
       }
 
-      socket.data.accountId = decoded.accountId;
-      socket.data.username = decoded.username;
-      next();
+      socket.data.accountId = session.accountId;
+      socket.data.username = user.username;
+      return next();
     });
     _middlewareRegistered = true;
   }
@@ -2000,10 +1973,10 @@ async function startServer(port) {
     try {
     patchSocketOn(socket);
 
-    // ── JWT authentication (required) ──
-    // JWT validation is performed by the io.use() middleware above.
+    // ── Session authentication (required) ──
+    // Session validation is performed by the io.use() middleware above.
     // Failed auth triggers a client-side connect_error (not connect → disconnect),
-    // which the client handler uses to clear stale tokens and re-show login.
+    // which the client handler uses to re-show login.
     // The connection handler trusts the middleware to have already validated.
     const accountId = socket.data.accountId;
     const username = socket.data.username;
@@ -2413,8 +2386,6 @@ if (typeof module !== 'undefined' && module.exports) {
     persistenceKey,
     get provider() { return getProvider(); },
     // Auth
-    verifyToken,
-    getJWTSecret,
     destroySession,
     // Debug gate
     isDebugScenarioAllowed,

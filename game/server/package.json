@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "ALLOW_DEV_AUTH=1 nodemon index.js",
+    "dev": "nodemon index.js",
     "test": "cd .. && vitest run --config vitest.config.js server/test"
   },
   "keywords": [],
@@ -15,7 +15,6 @@
     "bcrypt": "^5.1.1",
     "express": "^5.2.1",
     "ioredis": "^5.6.1",
-    "jsonwebtoken": "^9.0.2",
     "pg": "^8.16.3",
     "socket.io": "^4.8.3"
   },
