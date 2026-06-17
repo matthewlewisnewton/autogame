@@ -13,6 +13,7 @@ import {
 	findUserByUsernameAsync,
 	comparePasswordAsync,
 	findUserByAccountId,
+	findUserByAccountIdAsync,
 	updateProfile,
 	unlockQuestTier,
 	isQuestTierUnlocked,
@@ -126,5 +127,25 @@ describe('users postgres provider cross-instance', () => {
 		await findUserByUsernameAsync(USERNAME);
 		expect(isQuestTierUnlocked(created.accountId, QUEST_ID, TIER_2)).toBe(true);
 		expect(findUserByAccountId(created.accountId).unlockedQuestTiers[QUEST_ID]).toEqual([TIER_2]);
+	});
+
+	it('findUserByAccountIdAsync refreshes stale cross-instance cache after profile update on A', async () => {
+		await bootColdInstance(providerA, { preload: true });
+		const created = await createUserAsync(USERNAME, PASSWORD);
+		expect(created.ok).toBe(true);
+
+		await bootColdInstance(providerB, { preload: true });
+		expect(findUserByAccountId(created.accountId)).not.toBeNull();
+		expect(findUserByAccountId(created.accountId).email).toBeUndefined();
+
+		const persisted = await providerA.loadUserByAccountId(created.accountId);
+		await providerA.saveUser({ ...persisted, email: 'survive@example.com' });
+
+		expect(findUserByAccountId(created.accountId).email).toBeUndefined();
+
+		const refreshed = await findUserByAccountIdAsync(created.accountId);
+		expect(refreshed).not.toBeNull();
+		expect(refreshed.email).toBe('survive@example.com');
+		expect(findUserByAccountId(created.accountId).email).toBe('survive@example.com');
 	});
 });

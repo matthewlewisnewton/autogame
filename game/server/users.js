@@ -368,6 +368,24 @@ function findUserByAccountId(accountId) {
 }
 
 /**
+ * Async find by accountId — when a provider is configured, always reloads from
+ * storage, backfills, re-indexes the in-memory cache, and returns the record.
+ * Without a provider, returns the same result as sync findUserByAccountId.
+ * @param {string} accountId
+ * @returns {Promise<object|null>}
+ */
+async function findUserByAccountIdAsync(accountId) {
+	if (!_usersProvider || typeof _usersProvider.loadUserByAccountId !== 'function') {
+		return findUserByAccountId(accountId);
+	}
+	const record = await _usersProvider.loadUserByAccountId(accountId);
+	if (!record) {
+		return null;
+	}
+	return hydrateRecord(record);
+}
+
+/**
  * Find a user record by normalized email.
  * @param {string} email - raw or normalized email
  * @returns {object|null}
@@ -716,6 +734,7 @@ module.exports = {
 	findUserByUsername,
 	findUserByUsernameAsync,
 	findUserByAccountId,
+	findUserByAccountIdAsync,
 	findUserByEmail,
 	updateProfile,
 	unlockHat,
