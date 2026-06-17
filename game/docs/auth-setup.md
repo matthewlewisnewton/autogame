@@ -1,44 +1,60 @@
 # Auth Setup
 
-The server requires a JWT secret before accepting connections. There are two ways to provide one:
+The server authenticates players with an opaque **httpOnly `ag_session` cookie**. Session data is stored server-side (Redis when `REDIS_URL` is set, otherwise an in-process shim for local dev). No JWT signing secret or token verification is required.
 
 ## Local development
 
-Set `ALLOW_DEV_AUTH=1` to explicitly opt in to an insecure dev fallback secret (`dev-secret`). The dev script does this automatically:
+Start the game as usual — no auth env vars are required:
 
 ```bash
-pnpm run dev   # runs: ALLOW_DEV_AUTH=1 nodemon index.js
+pnpm run dev   # concurrently runs server + client
 ```
 
-If you start the server without `JWT_SECRET` and without `ALLOW_DEV_AUTH=1`, it throws:
+`POST /api/register` and `POST /api/login` create a session and set the `ag_session` cookie. Protected HTTP routes (`GET /api/me`, etc.) and Socket.IO connections read that cookie on each request.
 
-```
-Missing JWT_SECRET environment variable. Set JWT_SECRET to a cryptographically random value, or set ALLOW_DEV_AUTH=1 to explicitly enable the insecure dev fallback secret. Example: JWT_SECRET=$(openssl rand -hex 32) node server/index.js
-```
+When `REDIS_URL` is unset, sessions live in the server's in-memory Redis shim (`game/server/redis.js`). That is fine for a single local process; sessions are lost on restart.
+
+## HTTP authentication
+
+1. **Login / register** — `game/server/auth.js` calls `createSession(accountId)` and `setSessionCookie(res, token)`.
+2. **Subsequent requests** — `getSessionTokenFromRequest(req)` in `game/server/cookies.js` reads `ag_session` from the `Cookie` header; `getSession(token)` in `game/server/sessions.js` loads the session from Redis (or the in-memory shim).
+3. **Logout** — `POST /api/logout` destroys the session and clears the cookie.
+
+Cookie attributes: `Path=/`, `HttpOnly`, `SameSite=Lax`, and `Secure` in production (`NODE_ENV=production`).
+
+## WebSocket authentication
+
+Socket.IO middleware in `game/server/index.js` parses the same `ag_session` cookie from `socket.handshake.headers.cookie`, calls `getSession(sessionToken)`, and attaches `socket.data.accountId` / `socket.data.username` before the connection is accepted. The browser sends the cookie automatically on the upgrade handshake when client and server are same-origin (or when cross-origin cookies are configured correctly).
 
 ## Production
 
-Set `JWT_SECRET` to a cryptographically random value. Do not use `ALLOW_DEV_AUTH` in production — the server throws if `NODE_ENV=production` and no `JWT_SECRET` is set:
-
-```
-Missing JWT_SECRET environment variable. Set JWT_SECRET to a cryptographically random value before starting the server. Example: JWT_SECRET=$(openssl rand -hex 32) node server/index.js
-```
-
-Example:
+Set persistence and a shared session store:
 
 ```bash
-JWT_SECRET=$(openssl rand -hex 32) node server/index.js
+PERSISTENCE_BACKEND=postgres
+DATABASE_URL=postgres://...
+REDIS_URL=redis://...
+NODE_ENV=production
+PORT=8080
 ```
+
+Example Fly deploy secrets:
+
+```bash
+flyctl secrets set DATABASE_URL=... REDIS_URL=...
+```
+
+See `game/Dockerfile` and `game/fly.toml` for the full operator-facing env contract.
+
+A future `SESSION_SECRET` env var could be added to sign or encrypt cookie values; the current implementation uses opaque random tokens with server-side lookup only.
 
 ## Horizontal scaling / multi-instance
 
-When you run more than one server process behind a load balancer, every instance must use the **same** `JWT_SECRET` value — inject the identical secret on each host (for example from a shared secret manager or the same env var in your orchestrator). `initAuth()` reads `JWT_SECRET` once at boot; there is no per-instance auth session store and no sticky sessions required for JWT validation.
+When you run more than one server process behind a load balancer, every instance must share the **same `REDIS_URL`**. Sessions are keyed in Redis (`session:<token>`); any instance can validate any session via `getSession()` — no sticky sessions are required for auth.
 
-Auth is stateless: `verifyToken()` in `game/server/auth.js` validates tokens with only that shared secret. `POST /api/login` signs tokens with `JWT_SECRET`; any instance that shares the secret can validate those tokens for `GET /api/me` (`game/server/account.js`, `Authorization: Bearer`) and for Socket.IO handshakes (`io.use` middleware in `game/server/index.js` calls `verifyToken` on `socket.handshake.auth.token`). A client may log in on one instance and connect WebSockets or call REST on another as long as the secret matches.
+`POST /api/login` on instance A creates a session in Redis; the client can call `GET /api/me` or open a WebSocket on instance B as long as both instances use the same `REDIS_URL`.
 
-Production boot rules still apply on every instance: `NODE_ENV=production` without `JWT_SECRET` throws the same `Missing JWT_SECRET environment variable` error from `initAuth()`. Do not use `ALLOW_DEV_AUTH` in production.
-
-User account data (registrations, profiles, settings) is persisted separately from JWT validation. Ensuring all instances read the same user store (shared filesystem, database, etc.) is a different hosting concern; matching `JWT_SECRET` alone does not synchronize accounts across instances.
+User account data (registrations, profiles, settings) is persisted separately via `DATABASE_URL` / `PERSISTENCE_BACKEND`. Shared Redis synchronizes **sessions**; shared Postgres (or equivalent) synchronizes **accounts**.
 
 ## Auth rate limiting (multi-instance)
 
@@ -72,7 +88,7 @@ Revisit a shared store (e.g. Redis) when:
 - You need a global cap independent of instance count.
 - Compliance or threat modeling requires centralized rate limiting.
 
-Until then, per-instance limits still protect each process from local abuse and keep deployment simple (no Redis dependency for auth).
+Until then, per-instance limits still protect each process from local abuse and keep deployment simple (no Redis dependency for auth rate limits — Redis is still required for shared sessions in multi-instance production).
 
 ### Tests
 

@@ -7,9 +7,12 @@
 #
 # Required runtime env (set via `flyctl secrets set` / fly.toml [env]):
 #   NODE_ENV=production  PORT=8080
-#   JWT_SECRET=<strong shared secret, identical on every instance>
 #   PERSISTENCE_BACKEND=postgres  DATABASE_URL=postgres://...
-#   REDIS_URL=redis://...         (FLY_MACHINE_ID is injected by Fly)
+#   REDIS_URL=redis://...         (shared session store; FLY_MACHINE_ID is injected by Fly)
+#
+# Auth uses opaque httpOnly `ag_session` cookies backed by Redis when REDIS_URL
+# is set (no signing secret required today). Set REDIS_URL on every instance so
+# HTTP and WebSocket auth can look up sessions across machines.
 
 # ---- builder: install workspace deps (native bcrypt) + build client ----
 FROM node:22-bookworm AS builder

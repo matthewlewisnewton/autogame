@@ -4,7 +4,7 @@
 # you pick the real (globally-unique) app name and your nearest region.
 #
 # Secrets are NOT stored here — set them once with:
-#   flyctl secrets set JWT_SECRET=... DATABASE_URL=... REDIS_URL=...
+#   flyctl secrets set DATABASE_URL=... REDIS_URL=...
 #
 # Designed for horizontal scale: instances are stateless (Postgres + Redis are
 # external), and lobby-affinity routing uses Fly-Replay (FLY_MACHINE_ID). Scale
