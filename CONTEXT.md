@@ -46,7 +46,7 @@ pnpm run dev
 # Client: http://localhost:5173
 ```
 
-Register or log in via the auth overlay before playing. Socket connections require a JWT from `/api/register` or `/api/login`.
+Register or log in via the auth overlay before playing. Auth uses httpOnly session cookies (`ag_session`) for both REST and Socket.IO.
 
 ## Testing
 ```bash
