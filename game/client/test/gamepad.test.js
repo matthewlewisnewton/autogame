@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
 	applyDeadzone,
 	readStickMovement,
@@ -7,8 +7,9 @@ import {
 	pollGamepadButtons,
 	resetGamepadState,
 } from '../gamepad.js';
-import { GAMEPAD_DEADZONE, LOCK_ON_GAMEPAD_BUTTON } from '../config.js';
+import { GAMEPAD_DEADZONE, GAMEPAD_LOOK_SENSITIVITY, LOCK_ON_GAMEPAD_BUTTON } from '../config.js';
 import { installGamepadMock, uninstallGamepadMock, mockGamepad, clearMockGamepads } from './gamepad-mock.js';
+import { patchSettings } from '../settings.js';
 
 describe('applyDeadzone()', () => {
 	it('returns zero inside the deadzone', () => {
@@ -113,5 +114,99 @@ describe('pollGamepadButtons()', () => {
 describe('GAMEPAD_DEADZONE', () => {
 	it('matches the expected default deadzone', () => {
 		expect(GAMEPAD_DEADZONE).toBe(0.15);
+	});
+});
+
+describe('delayed activation input path', () => {
+	/** @type {Array<(time: number) => void>} */
+	let rafCallbacks;
+
+	beforeEach(() => {
+		vi.resetModules();
+		resetGamepadState();
+		rafCallbacks = [];
+		vi.stubGlobal('requestAnimationFrame', vi.fn((cb) => {
+			rafCallbacks.push(cb);
+			return rafCallbacks.length;
+		}));
+		installGamepadMock();
+		clearMockGamepads();
+		patchSettings({ gamepad: { profile: 'standard' } });
+	});
+
+	afterEach(() => {
+		uninstallGamepadMock();
+		vi.unstubAllGlobals();
+		resetGamepadState();
+	});
+
+	function flushActivationPoll() {
+		const callback = rafCallbacks.shift();
+		expect(callback).toBeTypeOf('function');
+		callback(0);
+	}
+
+	async function primeActivationAndListeners() {
+		const { initGamepadActivation } = await import('../gamepad-activation.js');
+		const { initGamepadListeners } = await import('../gamepad.js');
+		initGamepadActivation();
+		initGamepadListeners();
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+	}
+
+	async function insertDelayedPad(spec) {
+		mockGamepad(0, {
+			id: 'Xbox 360 Controller (XInput)',
+			buttons: [],
+			axes: [0, 0, 0, 0],
+			...spec,
+		});
+		flushActivationPoll();
+		const { pollGamepadSnapshot } = await import('../gamepad.js');
+		pollGamepadSnapshot();
+	}
+
+	it('pollGamepadMovement returns non-null after gesture prime and delayed pad with left stick deflected', async () => {
+		await primeActivationAndListeners();
+		await insertDelayedPad({ axes: [0.9, 0, 0, 0] });
+
+		const { pollGamepadMovement } = await import('../gamepad.js');
+		const movement = pollGamepadMovement();
+		expect(movement).not.toBeNull();
+		expect(movement.x).toBeGreaterThan(0);
+	});
+
+	it('pollGamepadLook returns non-zero yaw after gesture prime and delayed pad with right stick deflected', async () => {
+		await primeActivationAndListeners();
+		await insertDelayedPad({ axes: [0, 0, 0.9, 0] });
+
+		const { pollGamepadLook } = await import('../gamepad.js');
+		const delta = 0.016;
+		const yaw = pollGamepadLook(delta);
+		expect(yaw).not.toBe(0);
+		expect(Math.sign(yaw)).toBe(-Math.sign(0.9));
+		expect(Math.abs(yaw)).toBeCloseTo(
+			Math.abs(applyDeadzone(0.9) * GAMEPAD_LOOK_SENSITIVITY * delta),
+		);
+	});
+
+	it('invalidates a stale frame snapshot when activation reports a new connect', async () => {
+		await primeActivationAndListeners();
+
+		const { pollGamepadSnapshot, pollGamepadMovement } = await import('../gamepad.js');
+		const stale = pollGamepadSnapshot();
+		expect(stale.pad).toBeNull();
+
+		mockGamepad(0, {
+			id: 'Xbox 360 Controller (XInput)',
+			axes: [0.9, 0, 0, 0],
+			buttons: [],
+		});
+		flushActivationPoll();
+
+		pollGamepadSnapshot();
+		const movement = pollGamepadMovement();
+		expect(movement).not.toBeNull();
+		expect(movement.x).toBeGreaterThan(0);
 	});
 });

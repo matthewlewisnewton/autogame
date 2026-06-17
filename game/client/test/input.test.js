@@ -423,6 +423,64 @@ describe('input.js', () => {
 		});
 	});
 
+	it('pollInput fires onUseSlot and onLockOn after gesture prime and delayed pad insertion', async () => {
+		vi.resetModules();
+		/** @type {Array<(time: number) => void>} */
+		const rafCallbacks = [];
+		vi.stubGlobal('requestAnimationFrame', vi.fn((cb) => {
+			rafCallbacks.push(cb);
+			return rafCallbacks.length;
+		}));
+
+		const { initGamepadActivation } = await import('../gamepad-activation.js');
+		const { initGamepadListeners, pollGamepadSnapshot, resetGamepadState: resetPadState } = await import('../gamepad.js');
+		const { pollInput: pollInputFresh, initInput: initInputFresh, resetInputState: resetInputFresh } = await import('../input.js');
+
+		patchSettings({ gamepad: { profile: 'standard' } });
+		const onUseSlot = vi.fn();
+		const onLockOn = vi.fn();
+		initInputFresh({
+			onUseSlot,
+			onLockOn,
+			canUseGameActions: () => true,
+		});
+		initGamepadActivation();
+		initGamepadListeners();
+
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+
+		const slotButtons = Array(16).fill({ pressed: false, value: 0 });
+		slotButtons[0] = { pressed: true, value: 1 };
+		mockGamepad(0, {
+			id: 'Xbox 360 Controller (XInput)',
+			buttons: slotButtons,
+			axes: [0, 0, 0, 0],
+		});
+		const pollCallback = rafCallbacks.shift();
+		expect(pollCallback).toBeTypeOf('function');
+		pollCallback(0);
+
+		pollGamepadSnapshot();
+		pollInputFresh();
+		expect(onUseSlot).toHaveBeenCalledWith(0);
+
+		resetInputFresh();
+		resetPadState();
+		installGamepadMock();
+		const lockButtons = Array(16).fill({ pressed: false, value: 0 });
+		lockButtons[LOCK_ON_GAMEPAD_BUTTON] = { pressed: true, value: 1 };
+		mockGamepad(0, {
+			id: 'Xbox 360 Controller (XInput)',
+			buttons: lockButtons,
+			axes: [0, 0, 0, 0],
+		});
+		pollGamepadSnapshot();
+		pollInputFresh();
+		expect(onLockOn).toHaveBeenCalledTimes(1);
+
+		vi.unstubAllGlobals();
+	});
+
 	it('returns gamepad mode after delayed pad appearance post-gesture via activation poll', async () => {
 		vi.resetModules();
 		/** @type {Array<(time: number) => void>} */
