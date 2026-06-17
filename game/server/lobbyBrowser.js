@@ -59,10 +59,13 @@ async function publishLocalLobbies() {
   if (client._isMemoryShim) {
     await client.set(key, payload);
     await client.expire(key, PUBLISH_TTL_SEC);
-    return;
+  } else {
+    await client.set(key, payload, 'EX', PUBLISH_TTL_SEC);
   }
 
-  await client.set(key, payload, 'EX', PUBLISH_TTL_SEC);
+  const { reconcileStaleLobbyOwners } = require('./lobbyRegistry');
+  const localLobbies = require('./lobbies');
+  await reconcileStaleLobbyOwners(() => [...localLobbies._lobbies.keys()]);
 }
 
 async function listGlobalLobbySummaries() {
