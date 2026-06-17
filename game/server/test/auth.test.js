@@ -9,7 +9,6 @@ import {
 	io as serverIo,
 	server as httpServer,
 	clearAllTimers,
-	getJWTSecret
 } from '../index.js';
 import { setServerUsersFilePath, clearServerUsers } from './helpers.js';
 
@@ -29,7 +28,8 @@ const {
 	getRateLimitSweepInterval
 } = auth;
 
-import jwt from 'jsonwebtoken';
+const { SESSION_COOKIE_NAME } = requireCJS('../cookies.js');
+const { getSession } = requireCJS('../sessions.js');
 
 // ── Helpers ──
 
@@ -56,6 +56,34 @@ async function startTestServer() {
 	await startServer(0);
 	const addr = httpServer.address();
 	return `http://localhost:${addr.port}`;
+}
+
+/**
+ * Extract the opaque session token from a fetch Response `Set-Cookie` header(s).
+ */
+function extractSessionTokenFromResponse(res) {
+	const setCookies = typeof res.headers.getSetCookie === 'function'
+		? res.headers.getSetCookie()
+		: [res.headers.get('set-cookie')].filter(Boolean);
+
+	for (const cookie of setCookies) {
+		const prefix = `${SESSION_COOKIE_NAME}=`;
+		if (cookie.startsWith(prefix)) {
+			return cookie.slice(prefix.length).split(';')[0].trim();
+		}
+	}
+	return null;
+}
+
+/**
+ * Assert Set-Cookie uses the expected session cookie attributes (non-production).
+ */
+function expectSessionCookieAttributes(setCookieValue) {
+	expect(setCookieValue).toContain(`${SESSION_COOKIE_NAME}=`);
+	expect(setCookieValue).toContain('Path=/');
+	expect(setCookieValue).toContain('HttpOnly');
+	expect(setCookieValue).toContain('SameSite=Lax');
+	expect(setCookieValue).not.toContain('Secure');
 }
 
 /**
@@ -98,6 +126,19 @@ describe('POST /api/register', () => {
 		const data = await res.json();
 		expect(data.accountId).toBeDefined();
 		expect(typeof data.accountId).toBe('string');
+		expect(data.token).toBeUndefined();
+
+		const sessionToken = extractSessionTokenFromResponse(res);
+		expect(sessionToken).toBeTruthy();
+
+		const setCookies = res.headers.getSetCookie?.() ?? [res.headers.get('set-cookie')].filter(Boolean);
+		const sessionCookie = setCookies.find((c) => c.startsWith(`${SESSION_COOKIE_NAME}=`));
+		expect(sessionCookie).toBeDefined();
+		expectSessionCookieAttributes(sessionCookie);
+
+		const session = await getSession(sessionToken);
+		expect(session).not.toBeNull();
+		expect(session.accountId).toBe(data.accountId);
 	});
 
 	it('returns 409 when username is already taken', async () => {
@@ -219,7 +260,7 @@ describe('POST /api/register', () => {
 // ── POST /api/login ──
 
 describe('POST /api/login', () => {
-	it('returns 200 with JWT token on success', async () => {
+	it('returns 200 with session cookie on success', async () => {
 		// Register first
 		await fetch(`${baseUrl}/api/register`, {
 			method: 'POST',
@@ -234,8 +275,21 @@ describe('POST /api/login', () => {
 		});
 		expect(res.status).toBe(200);
 		const data = await res.json();
-		expect(data.token).toBeDefined();
-		expect(typeof data.token).toBe('string');
+		expect(data.token).toBeUndefined();
+		expect(data.accountId).toBeDefined();
+		expect(typeof data.accountId).toBe('string');
+
+		const sessionToken = extractSessionTokenFromResponse(res);
+		expect(sessionToken).toBeTruthy();
+
+		const setCookies = res.headers.getSetCookie?.() ?? [res.headers.get('set-cookie')].filter(Boolean);
+		const sessionCookie = setCookies.find((c) => c.startsWith(`${SESSION_COOKIE_NAME}=`));
+		expect(sessionCookie).toBeDefined();
+		expectSessionCookieAttributes(sessionCookie);
+
+		const session = await getSession(sessionToken);
+		expect(session).not.toBeNull();
+		expect(session.accountId).toBe(data.accountId);
 	});
 
 	it('returns 400 when login password exceeds the maximum length', async () => {
@@ -254,7 +308,7 @@ describe('POST /api/login', () => {
 		expect(body.error).toMatch(/at most/i);
 	});
 
-	it('returns a JWT containing accountId and username', async () => {
+	it('session cookie maps to the registered accountId', async () => {
 		// Register and get accountId
 		const regRes = await fetch(`${baseUrl}/api/register`, {
 			method: 'POST',
@@ -270,14 +324,15 @@ describe('POST /api/login', () => {
 			body: JSON.stringify({ username: 'carol', password: 'pass' })
 		});
 		const loginData = await loginRes.json();
+		expect(loginData.token).toBeUndefined();
+		expect(loginData.accountId).toBe(regData.accountId);
 
-		// Decode JWT — verify with the secret the auth module is using (test-secret in NODE_ENV=test)
-		const decoded = jwt.verify(loginData.token, getJWTSecret());
-		expect(decoded.accountId).toBe(regData.accountId);
-		expect(decoded.username).toBe('carol');
+		const sessionToken = extractSessionTokenFromResponse(loginRes);
+		const session = await getSession(sessionToken);
+		expect(session.accountId).toBe(regData.accountId);
 	});
 
-	it('JWT token has ~24h expiration', async () => {
+	it('creates a Redis session record on login', async () => {
 		await fetch(`${baseUrl}/api/register`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -290,11 +345,14 @@ describe('POST /api/login', () => {
 			body: JSON.stringify({ username: 'dave', password: 'pass' })
 		});
 		const data = await res.json();
+		expect(data.token).toBeUndefined();
 
-		const decoded = jwt.verify(data.token, getJWTSecret());
-		const now = Math.floor(Date.now() / 1000);
-		// exp should be roughly 24h from iat
-		expect(decoded.exp - decoded.iat).toBe(86400);
+		const sessionToken = extractSessionTokenFromResponse(res);
+		const session = await getSession(sessionToken);
+		expect(session).not.toBeNull();
+		expect(session.accountId).toBe(data.accountId);
+		expect(session.createdAt).toBeDefined();
+		expect(session.lastSeen).toBeDefined();
 	});
 
 	it('returns 401 for unknown username', async () => {

@@ -2,6 +2,8 @@
 const { Router } = require('express');
 const jwt = require('jsonwebtoken');
 const { createUserAsync, findUserByUsernameAsync, comparePasswordAsync } = require('./users');
+const { createSession } = require('./sessions.js');
+const { setSessionCookie } = require('./cookies.js');
 
 const router = Router();
 
@@ -212,6 +214,8 @@ router.post('/register', async (req, res) => {
 			return res.status(409).json({ error: 'Username taken' });
 		}
 
+		const token = await createSession(result.accountId);
+		setSessionCookie(res, token);
 		return res.status(201).json({ accountId: result.accountId });
 	} catch (err) {
 		console.error('[auth] registration failed:', err.message);
@@ -222,7 +226,7 @@ router.post('/register', async (req, res) => {
 /**
  * POST /api/login
  * Body: { username, password }
- * - 200 { token } with JWT containing { accountId, username }
+ * - 200 { accountId } with httpOnly session cookie set
  * - 401 { error: 'Invalid credentials' } on wrong password or unknown username
  */
 router.post('/login', async (req, res) => {
@@ -259,13 +263,9 @@ router.post('/login', async (req, res) => {
 		return res.status(401).json({ error: 'Invalid credentials' });
 	}
 
-	const token = jwt.sign(
-		{ accountId: user.accountId, username: user.username },
-		JWT_SECRET,
-		{ expiresIn: JWT_EXPIRATION }
-	);
-
-	return res.status(200).json({ token });
+	const token = await createSession(user.accountId);
+	setSessionCookie(res, token);
+	return res.status(200).json({ accountId: user.accountId });
 });
 
 module.exports = router;
