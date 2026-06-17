@@ -1,0 +1,16 @@
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/gameplay-fire-ember-descent-run-flips-to-failed-during-telep-nawa/game/data
+[users] Loaded 1 user record(s) from storage provider
+Server listening on port 3004
+Player connected: socket=oW67x39VTOydiwyTAAAD, playerId=4248abba-dfb9-457c-bf83-ea1b8d228804
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[telepipe] placed at (-9.0, 27.0) by 4248abba-dfb9-457c-bf83-ea1b8d228804
+[telepipe] player 4248abba-dfb9-457c-bf83-ea1b8d228804 extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault
+[run] checkpoint restored
+Player disconnected: oW67x39VTOydiwyTAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

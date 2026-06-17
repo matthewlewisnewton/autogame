@@ -18,6 +18,7 @@ import {
 	unlockQuestTier,
 	isQuestTierUnlocked,
 	setTestFilePath,
+	cacheUserRecordForTest,
 } from '../users.js';
 
 const USERNAME = 'cross_inst_user';
@@ -44,6 +45,33 @@ function bootColdInstance(provider, { preload = false } = {}) {
 		return loadUsersAsync();
 	}
 	return Promise.resolve();
+}
+
+async function queryUserEmailFromDb(sharedPool, accountId) {
+	const { rows } = await sharedPool.query(
+		`SELECT data->>'email' AS email FROM users WHERE account_id = $1`,
+		[accountId],
+	);
+	return rows[0]?.email ?? null;
+}
+
+async function queryUserCosmeticBodyColorFromDb(sharedPool, accountId) {
+	const { rows } = await sharedPool.query(
+		`SELECT data->'cosmetic'->>'bodyColor' AS body_color FROM users WHERE account_id = $1`,
+		[accountId],
+	);
+	return rows[0]?.body_color ?? null;
+}
+
+/** Profile fields returned by GET /api/me (excluding settings and catalog metadata). */
+function buildApiMeProfileFromUser(user) {
+	return {
+		accountId: user.accountId,
+		username: user.username,
+		email: user.email || null,
+		cosmetic: user.cosmetic,
+		unlockedHats: user.unlockedHats,
+	};
 }
 
 describe('users postgres provider cross-instance', () => {
@@ -161,5 +189,73 @@ describe('users postgres provider cross-instance', () => {
 		const user = findUserByAccountId(created.accountId);
 		expect(user).not.toBeNull();
 		expect(user.username).toBe(USERNAME);
+	});
+
+	it('updateProfile on stale instance B does not clobber email written on A', async () => {
+		await bootColdInstance(providerA, { preload: true });
+		const created = await createUserAsync(USERNAME, PASSWORD);
+		expect(created.ok).toBe(true);
+
+		expect((await updateProfile(created.accountId, { email: 'bside@example.com' })).ok).toBe(true);
+
+		await bootColdInstance(providerB, { preload: true });
+		const staleRecord = structuredClone(findUserByAccountId(created.accountId));
+		expect(staleRecord.email).toBe('bside@example.com');
+
+		await bootColdInstance(providerA, { preload: true });
+		expect((await updateProfile(created.accountId, { email: 'survive@example.com' })).ok).toBe(true);
+		expect(await queryUserEmailFromDb(pool, created.accountId)).toBe('survive@example.com');
+
+		await bootColdInstance(providerB);
+		cacheUserRecordForTest(staleRecord);
+		expect(findUserByAccountId(created.accountId).email).toBe('bside@example.com');
+
+		expect(
+			(await updateProfile(created.accountId, { cosmetic: { bodyColor: '#ff0000' } })).ok,
+		).toBe(true);
+		expect(await queryUserEmailFromDb(pool, created.accountId)).toBe('survive@example.com');
+		expect(await queryUserCosmeticBodyColorFromDb(pool, created.accountId)).toBe('#ff0000');
+	});
+
+	it('stale instance B GET /api/me profile shape reflects email updated on A', async () => {
+		await bootColdInstance(providerA, { preload: true });
+		const created = await createUserAsync(USERNAME, PASSWORD);
+		expect(created.ok).toBe(true);
+
+		await bootColdInstance(providerB, { preload: true });
+		const staleRecord = structuredClone(findUserByAccountId(created.accountId));
+		expect(staleRecord.email).toBeUndefined();
+
+		await bootColdInstance(providerA, { preload: true });
+		expect((await updateProfile(created.accountId, { email: 'crosstest@example.com' })).ok).toBe(true);
+		expect(await queryUserEmailFromDb(pool, created.accountId)).toBe('crosstest@example.com');
+
+		await bootColdInstance(providerB);
+		cacheUserRecordForTest(staleRecord);
+		expect(findUserByAccountId(created.accountId).email).toBeUndefined();
+
+		const refreshed = await findUserByAccountIdAsync(created.accountId);
+		const mePayload = buildApiMeProfileFromUser(refreshed);
+		expect(mePayload.email).toBe('crosstest@example.com');
+	});
+
+	it('findUserByAccountIdAsync refreshes stale cross-instance cache after profile update on A', async () => {
+		await bootColdInstance(providerA, { preload: true });
+		const created = await createUserAsync(USERNAME, PASSWORD);
+		expect(created.ok).toBe(true);
+
+		await bootColdInstance(providerB, { preload: true });
+		expect(findUserByAccountId(created.accountId)).not.toBeNull();
+		expect(findUserByAccountId(created.accountId).email).toBeUndefined();
+
+		const persisted = await providerA.loadUserByAccountId(created.accountId);
+		await providerA.saveUser({ ...persisted, email: 'survive@example.com' });
+
+		expect(findUserByAccountId(created.accountId).email).toBeUndefined();
+
+		const refreshed = await findUserByAccountIdAsync(created.accountId);
+		expect(refreshed).not.toBeNull();
+		expect(refreshed.email).toBe('survive@example.com');
+		expect(findUserByAccountId(created.accountId).email).toBe('survive@example.com');
 	});
 });

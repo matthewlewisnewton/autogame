@@ -217,6 +217,17 @@ describe('PostgresProvider user store', () => {
 		expect(await ctx.provider.loadUser('nonexistent')).toBeNull();
 	});
 
+	it('stores and retrieves user records by accountId', async () => {
+		ctx = createProvider();
+		await ctx.provider.saveUser(sampleUser);
+		expect(await ctx.provider.loadUserByAccountId('acct-alice-001')).toEqual(sampleUser);
+	});
+
+	it('returns null for unknown accountId', async () => {
+		ctx = createProvider();
+		expect(await ctx.provider.loadUserByAccountId('nonexistent')).toBeNull();
+	});
+
 	it('overwrites user data on subsequent saves', async () => {
 		ctx = createProvider();
 		await ctx.provider.saveUser(sampleUser);

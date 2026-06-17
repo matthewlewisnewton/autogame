@@ -292,6 +292,7 @@ export async function depleteRunResources(page) {
  */
 export async function suspendViaTelepipe(page) {
 	await focusCanvas(page);
+	await enableGodmode(page);
 	const harness = await readHarness(page);
 	const telepipeSlot = (harness?.hand || []).findIndex((card) => card?.id === 'telepipe');
 	if (telepipeSlot < 0) {

@@ -118,9 +118,9 @@ class InMemoryProvider extends StorageProvider {
 
 	async loadUserByAccountId(accountId) {
 		assertSafeStorageKey(accountId, 'accountId');
-		for (const record of this.usersStore.values()) {
-			if (record.accountId === accountId) {
-				return JSON.parse(JSON.stringify(record));
+		for (const entry of this.usersStore.values()) {
+			if (entry.accountId === accountId) {
+				return JSON.parse(JSON.stringify(entry));
 			}
 		}
 		return null;

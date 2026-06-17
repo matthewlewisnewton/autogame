@@ -1,12 +1,21 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { reapAbandonedLobbies } from '../index.js';
 
 // index.js operates on the CommonJS `require('./lobbies')` / `require('./config')`
 // instances. Under vitest the ESM import of these modules can resolve to a
 // *different* instance than the one index.js closes over, so we must reach the
 // registry through require() to share state with reapAbandonedLobbies().
-const { createLobby, listLobbySummaries, resetAllLobbies, _lobbies } = require('../lobbies.js');
+const { createLobby, listLobbySummaries, resetAllLobbies, _lobbies, assignPlayerToLobby } = require('../lobbies.js');
 const { EMPTY_LOBBY_TTL_MS } = require('../config.js');
+const {
+  getLobbyOwner,
+  resetLobbyRegistryForTests,
+} = require('../lobbyRegistry.js');
+const {
+  enableRedisForTests,
+  disableRedisForTests,
+  closeRedis,
+} = require('../redis.js');
 
 // Add a player record to a lobby's state.
 function addPlayer(lobby, id, { connected = true } = {}) {
@@ -77,5 +86,58 @@ describe('reapAbandonedLobbies', () => {
     reapAbandonedLobbies(); // still within TTL
 
     expect(_lobbies.has(lobby.id)).toBe(true);
+  });
+});
+
+describe('reapAbandonedLobbies with Redis enabled', () => {
+  const originalInstanceId = process.env.INSTANCE_ID;
+
+  beforeEach(() => {
+    process.env.INSTANCE_ID = 'reaper-instance';
+    enableRedisForTests();
+    resetAllLobbies();
+  });
+
+  afterEach(async () => {
+    await resetLobbyRegistryForTests();
+    closeRedis();
+    disableRedisForTests();
+    resetAllLobbies();
+    if (originalInstanceId === undefined) {
+      delete process.env.INSTANCE_ID;
+    } else {
+      process.env.INSTANCE_ID = originalInstanceId;
+    }
+  });
+
+  it('unregisters lobby ownership when reaping an orphan with zero player records', async () => {
+    const lobby = createLobby('Orphan Redis');
+    await vi.waitFor(async () => {
+      expect(await getLobbyOwner(lobby.id)).toBe('reaper-instance');
+    });
+
+    reapAbandonedLobbies();
+
+    expect(_lobbies.has(lobby.id)).toBe(false);
+    await vi.waitFor(async () => {
+      expect(await getLobbyOwner(lobby.id)).toBeNull();
+    });
+  });
+
+  it('still unregisters ownership via removePlayerFromLobby on TTL expiry', async () => {
+    const lobby = createLobby('Ghost Redis');
+    addPlayer(lobby, 'p1', { connected: false });
+    assignPlayerToLobby('p1', lobby.id);
+    await vi.waitFor(async () => {
+      expect(await getLobbyOwner(lobby.id)).toBe('reaper-instance');
+    });
+
+    lobby.emptySince = Date.now() - EMPTY_LOBBY_TTL_MS - 1;
+    reapAbandonedLobbies();
+
+    expect(_lobbies.has(lobby.id)).toBe(false);
+    await vi.waitFor(async () => {
+      expect(await getLobbyOwner(lobby.id)).toBeNull();
+    });
   });
 });

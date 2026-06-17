@@ -1,0 +1,7 @@
+Created **3 sub-tickets** in dependency order. The failure has two likely causes: combat-exhaustion racing telepipe extraction (same family as `telepipe-placing-an-extract-portal-with-an-empty-hand-deck-m-dup4`) and live `ember_descent` combat during the fire telepipe harness suspend walk while godmode is off (unlike `frost-crossing-telepipe-ready`, which already suppresses waves and enables godmode on deploy).
+
+**Sub-ticket folder paths:**
+
+- `/home/matt/workspace/.autogame-worktrees/gameplay-fire-ember-descent-run-flips-to-failed-during-telep-nawa/tickets/gameplay-fire-ember-descent-run-flips-to-failed-during-telep-nawa/subtickets/01-suppress-combat-exhaustion-with-active-telepipe/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/gameplay-fire-ember-descent-run-flips-to-failed-during-telep-nawa/tickets/gameplay-fire-ember-descent-run-flips-to-failed-during-telep-nawa/subtickets/02-fire-telepipe-deploy-combat-isolation/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/gameplay-fire-ember-descent-run-flips-to-failed-during-telep-nawa/tickets/gameplay-fire-ember-descent-run-flips-to-failed-during-telep-nawa/subtickets/03-telepipe-fire-regression-tests/ticket.md`

@@ -20,8 +20,22 @@ import {
 	resolveEncounterAnchor,
 } from '../encounters.js';
 import { resetGameState, gameState, runGameLoopTick, applyBurning, updateBurning, updateEnemies, hasLineOfSight, buildWallColliders } from '../index.js';
-import { checkAllReady, setGameState as setProgressionGameStateForReady, startDungeonRun, isPlayerCombatExhausted } from '../progression.js';
-import { APPEARANCE_CHANGE_COST, MAX_MAGIC_STONES, MAX_HAND_SLOTS, RUN_EXHAUSTION_GRACE_MS } from '../config.js';
+import {
+	checkAllReady,
+	setGameState as setProgressionGameStateForReady,
+	startDungeonRun,
+	isPlayerCombatExhausted,
+	tryEnterTelepipe,
+	checkRunTerminalState,
+} from '../progression.js';
+import {
+	APPEARANCE_CHANGE_COST,
+	MAX_MAGIC_STONES,
+	STARTING_MAGIC_STONES,
+	MAX_HAND_SLOTS,
+	RUN_EXHAUSTION_GRACE_MS,
+	PORTAL_PLACEMENT_GRACE_MS,
+} from '../config.js';
 import * as progressionModule from '../progression.js';
 
 const { setupRunExhaustedDebug } = require('../debugScenarios.js');
@@ -53,6 +67,14 @@ const EMBER_DESCENT_TIER_1 = 1;
 const EMBER_DESCENT_TIER_2 = 2;
 const FROST_CROSSING_ID = 'frost_crossing';
 const FROST_CROSSING_TIER_1 = 1;
+
+function runSimulationInPrimaryLobby(fn) {
+	const state = testGameState();
+	if (!state) throw new Error('runSimulationInPrimaryLobby: no active lobby state');
+	sim.setGameState(state, _timeouts);
+	setProgressionGameStateForReady(state);
+	return fn(state);
+}
 
 describe('debugScenario — retired fixture shortcuts', () => {
 	let baseUrl;
@@ -1147,6 +1169,11 @@ describe('debugScenario — canyon-descent-tier-2', () => {
 		expect(player.hand[1]).toBeDefined();
 		expect(player.hand[1].id).toBe('magma_greatsword');
 		expect(player.hand[1].remainingCharges).toBeGreaterThanOrEqual(1);
+		// Deploy with depleted magic stones so the harness depletion probe lands
+		// deterministically: msDepleted is satisfied at deploy and a single
+		// greatsword swing completes depletion before any card exhausts to telepipe-only.
+		expect(player.magicStones).toBe(20);
+		expect(player.magicStones).toBeLessThan(STARTING_MAGIC_STONES);
 	});
 
 	it('canyon-descent-telepipe-ready forces fresh hand redeal over pre-existing hand', async () => {
@@ -1604,6 +1631,11 @@ describe('debugScenario — spire-ascent-tier-2', () => {
 		expect(player.hand[1]).toBeDefined();
 		expect(player.hand[1].id).toBe('magma_greatsword');
 		expect(player.hand[1].remainingCharges).toBeGreaterThanOrEqual(1);
+		// Deploy with depleted magic stones so the harness depletion probe lands
+		// deterministically: msDepleted is satisfied at deploy and a single
+		// greatsword swing completes depletion before any card exhausts to telepipe-only.
+		expect(player.magicStones).toBe(20);
+		expect(player.magicStones).toBeLessThan(STARTING_MAGIC_STONES);
 	});
 
 	it('deploys spire_ascent Tier 2 stage-boss run with encounter and rigid layout', async () => {
@@ -2087,6 +2119,71 @@ describe('debugScenario — fire-cavern', () => {
 		expect(state.layout.profile).toBe('fire-cavern');
 		expect(player.ready).toBe(false);
 		expect(player.hand?.some((c) => c && c.id === 'telepipe')).not.toBe(true);
+	});
+
+	it('fire-telepipe-ready deploy isolates combat with one dummy grunt and debugGodmode', async () => {
+		const { socket } = await connectClient(baseUrl);
+		const playerId = socket._playerId;
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'fire-telepipe-ready' });
+		const result = await debugResultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('fire-telepipe-ready');
+
+		const lobbyState = testGameState();
+		const player = playerForSocket(socket);
+		expect(lobbyState.gamePhase).toBe('lobby');
+		expect(lobbyState.selectedQuestId).toBe(EMBER_DESCENT_ID);
+		expect(lobbyState.selectedQuestTier).toBe(EMBER_DESCENT_TIER_1);
+
+		player.ready = true;
+		setProgressionGameStateForReady(lobbyState);
+		checkAllReady();
+
+		const state = testGameState();
+		expect(state.gamePhase).toBe('playing');
+		expect(state.enemies).toHaveLength(1);
+		expect(state.enemies[0].type).toBe('grunt');
+		expect(state.enemies[0].hp).toBe(500);
+		expect(player.debugGodmode).toBe(true);
+		expect(player.debugHooks?.suppressWavesAfterDeploy).toBe(true);
+		if (state.run?.waveScript?.waves) {
+			for (const wave of state.run.waveScript.waves) {
+				expect(wave.status).toBe('cleared');
+				expect(wave.spawnedEnemyIds).toEqual([]);
+			}
+		}
+
+		const preSuspendRunId = state.run.id;
+
+		runSimulationInPrimaryLobby((liveState) => {
+			const p = liveState.players[playerId];
+			p.hand = [null, null, null, null];
+			p.deck = [];
+			p.desperationDeck = [];
+			liveState.telepipe = {
+				x: p.x,
+				z: p.z,
+				placedBy: playerId,
+				placedAt: Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1,
+			};
+			checkRunTerminalState();
+			expect(liveState.run.status).toBe('playing');
+		});
+
+		runSimulationInPrimaryLobby(() => {
+			const enterResult = tryEnterTelepipe(playerId);
+			expect(enterResult.ok).toBe(true);
+		});
+
+		const hub = testGameState();
+		expect(hub.gamePhase).toBe('lobby');
+		expect(hub.run).toBeUndefined();
+		expect(hub.suspendedCheckpoint).not.toBeNull();
+		expect(hub.suspendedCheckpoint.run.id).toBe(preSuspendRunId);
+		expect(hub.suspendedCheckpoint.run.status).toBe('playing');
 	});
 });
 
