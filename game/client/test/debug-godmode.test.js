@@ -73,7 +73,6 @@ describe('debug godmode toggle (main.js)', () => {
 		vi.resetModules();
 		document.body.innerHTML = '';
 		ensureMainDom();
-		try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) { /* ignore */ }
 	});
 
 	afterEach(() => {

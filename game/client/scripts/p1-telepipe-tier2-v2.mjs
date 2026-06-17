@@ -7,9 +7,9 @@
 import { chromium } from 'playwright';
 import fs from 'fs';
 import path from 'path';
+import { loginInBrowser } from './session-auth.mjs';
 
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173/?debugScenario=telepipe-ready';
-const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3000';
 const P1_USER = 'qa-telepipe-p1';
 const P2_USER = 'qa-telepipe-p2';
 const PASSWORD = 'testpass123';
@@ -36,25 +36,7 @@ function record(step, desc, pass, notes = '') {
   console.log(`${pass ? '✓' : '✗'} Step ${step}: ${desc}${notes ? ` — ${notes}` : ''}`);
 }
 
-async function auth(username) {
-  let res = await fetch(`${SERVER_URL}/api/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password: PASSWORD }),
-  });
-  let body = await res.json();
-  if (body.token) return body.token;
-  res = await fetch(`${SERVER_URL}/api/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password: PASSWORD }),
-  });
-  body = await res.json();
-  if (!body.token) throw new Error(`Auth failed for ${username}: ${JSON.stringify(body)}`);
-  return body.token;
-}
-
-async function loginPage(page, token, logKey) {
+async function loginPage(page, username, logKey) {
   page.on('console', (msg) => {
     consoleLogs[logKey].push({ type: msg.type(), text: msg.text() });
   });
@@ -76,14 +58,7 @@ async function loginPage(page, token, logKey) {
     }, 10);
   });
 
-  await page.goto(CLIENT_URL);
-  await page.evaluate((t) => localStorage.setItem('autogame_token', t), token);
-  await page.reload();
-  await page.waitForFunction(() => {
-    const browserEl = document.getElementById('lobby-browser');
-    const auth = document.getElementById('auth-overlay');
-    return browserEl && !browserEl.classList.contains('hidden') && auth?.classList.contains('hidden');
-  }, { timeout: 15000 });
+  await loginInBrowser(page, CLIENT_URL, username, PASSWORD);
 }
 
 async function harness(page) {
@@ -176,10 +151,9 @@ const pages = {};
 async function bootstrapP2(browser) {
   p2Source = 'bootstrap';
   try {
-    const token = await auth(P2_USER);
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     pages.p2 = await ctx.newPage();
-    await loginPage(pages.p2, token, 'p2');
+    await loginPage(pages.p2, P2_USER, 'p2');
     await pages.p2.waitForTimeout(1000);
     await joinLobbyAsP2(pages.p2);
     writeCoord({ p2Joined: true, step: 'p2-joined' });
@@ -200,11 +174,10 @@ async function main() {
   fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
   writeCoord({ lobbyName: LOBBY_NAME, p1Ready: false, p2Joined: false, step: 'waiting', runId: 2 });
 
-  const p1Token = await auth(P1_USER);
   const browser = await chromium.launch({ headless: true });
   const p1Ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   pages.p1 = await p1Ctx.newPage();
-  await loginPage(pages.p1, p1Token, 'p1');
+  await loginPage(pages.p1, P1_USER, 'p1');
   record(1, 'Navigate + login (P1)', true);
 
   await pages.p1.fill('#create-lobby-name', LOBBY_NAME);

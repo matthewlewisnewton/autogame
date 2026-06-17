@@ -13,60 +13,24 @@ import { chromium } from 'playwright';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { loginInBrowser } from './session-auth.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = path.join(__dirname, '..', '..', 'docs', 'walkthroughs', 'keyitems-capture');
 
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
-const SERVER_URL = process.env.SERVER_URL || process.env.BASE_URL || 'http://localhost:3000';
-
-async function register(username) {
-	const res = await fetch(`${SERVER_URL}/api/register`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username, password: 'password123' }),
-	});
-	const body = await res.json();
-	if (body.token) return body.token;
-	const login = await fetch(`${SERVER_URL}/api/login`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username, password: 'password123' }),
-	});
-	return (await login.json()).token;
-}
-
-async function loginWithToken(page, token) {
-	page.on('console', (msg) => {
-		if (msg.type() === 'error') console.log('[browser]', msg.text());
-	});
-	await page.goto(CLIENT_URL);
-	await page.evaluate((t) => localStorage.setItem('autogame_token', t), token);
-	await page.reload();
-	await page.waitForFunction(() => {
-		const browserEl = document.getElementById('lobby-browser');
-		const auth = document.getElementById('auth-overlay');
-		return browserEl && !browserEl.classList.contains('hidden')
-			&& auth && auth.classList.contains('hidden');
-	}, { timeout: 15000 }).catch(async () => {
-		const state = await page.evaluate(() => ({
-			lobbyHidden: document.getElementById('lobby-browser')?.classList.contains('hidden'),
-			authHidden: document.getElementById('auth-overlay')?.classList.contains('hidden'),
-			authError: document.getElementById('login-error')?.textContent,
-		}));
-		throw new Error(`Login UI not ready: ${JSON.stringify(state)}`);
-	});
-}
 
 async function main() {
 	const suffix = Date.now();
-	const token = await register(`keyitems-${suffix}`);
 
 	const browser = await chromium.launch({ headless: true });
 	const ctx = await browser.newContext();
 	const page = await ctx.newPage();
 
-	await loginWithToken(page, token);
+	page.on('console', (msg) => {
+		if (msg.type() === 'error') console.log('[browser]', msg.text());
+	});
+	await loginInBrowser(page, CLIENT_URL, `keyitems-${suffix}`);
 	console.log('✓ Logged in and lobby browser visible');
 
 	// Create + enter a lobby.

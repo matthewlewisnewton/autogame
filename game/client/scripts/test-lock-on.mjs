@@ -3,37 +3,9 @@
  * Smoke test: Z-targeting lock-on and repeat-press settings (unlock + cycle).
  */
 import { chromium } from 'playwright';
+import { loginInBrowser } from './session-auth.mjs';
 
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
-const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3000';
-
-async function register(username) {
-	const res = await fetch(`${SERVER_URL}/api/register`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username, password: 'password123' }),
-	});
-	const body = await res.json();
-	if (body.token) return body.token;
-	const login = await fetch(`${SERVER_URL}/api/login`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username, password: 'password123' }),
-	});
-	return (await login.json()).token;
-}
-
-async function loginWithToken(page, token) {
-	await page.goto(CLIENT_URL);
-	await page.evaluate((t) => localStorage.setItem('autogame_token', t), token);
-	await page.reload();
-	await page.waitForFunction(() => {
-		const browserEl = document.getElementById('lobby-browser');
-		const auth = document.getElementById('auth-overlay');
-		return browserEl && !browserEl.classList.contains('hidden')
-			&& auth && auth.classList.contains('hidden');
-	}, { timeout: 15000 });
-}
 
 async function startSoloRun(page1, page2) {
 	const lobbyName = 'Lock-On Test';
@@ -81,15 +53,13 @@ async function setLockOnSetting(page, value) {
 
 async function main() {
 	const suffix = Date.now();
-	const token1 = await register(`lockon-a-${suffix}`);
-	const token2 = await register(`lockon-b-${suffix}`);
 
 	const browser = await chromium.launch({ headless: true });
 	const page1 = await (await browser.newContext()).newPage();
 	const page2 = await (await browser.newContext()).newPage();
 
-	await loginWithToken(page1, token1);
-	await loginWithToken(page2, token2);
+	await loginInBrowser(page1, CLIENT_URL, `lockon-a-${suffix}`);
+	await loginInBrowser(page2, CLIENT_URL, `lockon-b-${suffix}`);
 	console.log('✓ Logged in');
 
 	await startSoloRun(page1, page2);

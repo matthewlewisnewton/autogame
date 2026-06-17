@@ -42,7 +42,6 @@ describe('run-summary overlay input lock', () => {
 		vi.resetModules();
 		document.body.innerHTML = '';
 		ensureMainDom();
-		try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) { /* ignore */ }
 	});
 
 	afterEach(() => {
@@ -91,7 +90,7 @@ describe('run-summary overlay input lock', () => {
 	it('key-item binding does not emit useKeyItem while run-summary overlay is visible', async () => {
 		await import('../main.js');
 
-		window.createSocket('test-token');
+		window.createSocket();
 		window.__setGameState({
 			gamePhase: 'playing',
 			run: { status: 'playing' },

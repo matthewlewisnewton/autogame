@@ -25,6 +25,7 @@ import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { loginInBrowser } from './session-auth.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CLIENT_DIR = path.join(__dirname, '..'); // game/client
@@ -83,34 +84,6 @@ async function waitForHttp(url, { timeout = 30000, expectOk = false } = {}) {
 	throw new Error(`Timed out waiting for ${url}`);
 }
 
-async function register(username) {
-	const res = await fetch(`${SERVER_URL}/api/register`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username, password: 'password123' }),
-	});
-	const body = await res.json();
-	if (body.token) return body.token;
-	const login = await fetch(`${SERVER_URL}/api/login`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username, password: 'password123' }),
-	});
-	return (await login.json()).token;
-}
-
-async function loginWithToken(page, token) {
-	await page.goto(CLIENT_URL);
-	await page.evaluate((t) => localStorage.setItem('autogame_token', t), token);
-	await page.reload();
-	await page.waitForFunction(() => {
-		const browserEl = document.getElementById('lobby-browser');
-		const auth = document.getElementById('auth-overlay');
-		return browserEl && !browserEl.classList.contains('hidden')
-			&& auth && auth.classList.contains('hidden');
-	}, { timeout: 15000 });
-}
-
 async function startSoloRun(page) {
 	await page.evaluate(() => {
 		document.getElementById('create-lobby-name').value = 'World Stage QA';
@@ -162,14 +135,13 @@ async function main() {
 	console.log(`vite up on ${CLIENT_URL}`);
 
 	const suffix = Date.now();
-	const token = await register(`world-stage-${suffix}`);
 
 	const browser = await chromium.launch({ headless: true });
 	children.push({ kill: () => browser.close().catch(() => {}), killed: false });
 	const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 
 	try {
-		await loginWithToken(page, token);
+		await loginInBrowser(page, CLIENT_URL, `world-stage-${suffix}`);
 		await startSoloRun(page);
 
 		// 2. Record the starting (default) stage before the transition.

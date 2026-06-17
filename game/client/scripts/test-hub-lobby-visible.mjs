@@ -12,29 +12,12 @@
  * Requires: client on :5173, server on :3000, playwright chromium.
  */
 import { chromium } from 'playwright';
+import { loginInBrowser } from './session-auth.mjs';
 
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
-const SERVER_URL = process.env.SERVER_URL || process.env.BASE_URL || 'http://localhost:3000';
-
-async function register(username) {
-  const res = await fetch(`${SERVER_URL}/api/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password: 'password123' }),
-  });
-  const body = await res.json();
-  if (body.token) return body.token;
-  const login = await fetch(`${SERVER_URL}/api/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password: 'password123' }),
-  });
-  return (await login.json()).token;
-}
 
 async function main() {
   const suffix = Date.now();
-  const token = await register(`hub-lobby-${suffix}`);
 
   const browser = await chromium.launch({ headless: true });
   const ctx = await browser.newContext();
@@ -46,16 +29,7 @@ async function main() {
   });
   page.on('pageerror', (err) => errors.push(`[pageerror] ${err.message}`));
 
-  await page.goto(CLIENT_URL);
-  await page.evaluate((t) => localStorage.setItem('autogame_token', t), token);
-  await page.reload();
-
-  await page.waitForFunction(() => {
-    const browserEl = document.getElementById('lobby-browser');
-    const auth = document.getElementById('auth-overlay');
-    return browserEl && !browserEl.classList.contains('hidden')
-      && auth && auth.classList.contains('hidden');
-  }, { timeout: 15000 });
+  await loginInBrowser(page, CLIENT_URL, `hub-lobby-${suffix}`);
   console.log('✓ Logged in and lobby browser visible');
 
   await page.evaluate(() => {

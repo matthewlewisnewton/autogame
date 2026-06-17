@@ -7,6 +7,7 @@ import { chromium } from 'playwright';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { loginInBrowser, loginSessionCookie } from './session-auth.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = path.join(__dirname, '..', '..', 'docs', 'walkthroughs', 'p0-bugs');
@@ -14,34 +15,6 @@ const PHASE = process.env.PHASE || 'before'; // 'before' | 'after'
 
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3000';
-
-async function register(username) {
-	const res = await fetch(`${SERVER_URL}/api/register`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username, password: 'password123' }),
-	});
-	const body = await res.json();
-	if (body.token) return body.token;
-	const login = await fetch(`${SERVER_URL}/api/login`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username, password: 'password123' }),
-	});
-	return (await login.json()).token;
-}
-
-async function loginWithToken(page, token) {
-	await page.goto(CLIENT_URL);
-	await page.evaluate((t) => localStorage.setItem('autogame_token', t), token);
-	await page.reload();
-	await page.waitForFunction(() => {
-		const browserEl = document.getElementById('lobby-browser');
-		const auth = document.getElementById('auth-overlay');
-		return browserEl && !browserEl.classList.contains('hidden')
-			&& auth && auth.classList.contains('hidden');
-	}, { timeout: 15000 });
-}
 
 async function startSoloRun(page) {
 	await page.evaluate(() => {
@@ -73,11 +46,12 @@ async function screenshot(page, name) {
 
 async function main() {
 	const suffix = Date.now();
-	const token = await register(`p0-test-${suffix}`);
+	const username = `p0-test-${suffix}`;
+	const { cookieHeader } = await loginSessionCookie(SERVER_URL, username);
 
 	const browser = await chromium.launch({ headless: true });
 	const page = await browser.newPage();
-	await loginWithToken(page, token);
+	await loginInBrowser(page, CLIENT_URL, username);
 	await startSoloRun(page);
 
 	// Bug 1: deck HUD type counts
@@ -129,13 +103,10 @@ async function main() {
 
 	// Bug 3: settings persistence — patch lock-on via client API then verify server
 	await page.evaluate(async () => {
-		const token = localStorage.getItem('autogame_token');
 		await fetch('/api/me/settings', {
 			method: 'PATCH',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`,
-			},
+			headers: { 'Content-Type': 'application/json' },
+			credentials: 'include',
 			body: JSON.stringify({ lockOnRepeatAction: 'cycle' }),
 		});
 	});
@@ -146,38 +117,29 @@ async function main() {
 	}, { timeout: 15000 });
 
 	const settingsLoaded = await page.evaluate(() => {
-		// settings module state is not exposed; read from settings UI if present
 		const sel = document.getElementById('lock-on-repeat-select');
 		return sel ? sel.value : null;
 	});
 
-	// Also verify via direct API (server truth)
 	const meRes = await fetch(`${SERVER_URL}/api/me`, {
-		headers: { Authorization: `Bearer ${token}` },
+		headers: { Cookie: cookieHeader },
 	});
 	const me = await meRes.json();
 	console.log('server lockOnRepeatAction:', me.settings?.lockOnRepeatAction);
 	console.log('client settings UI value:', settingsLoaded);
 
 	if (PHASE === 'before') {
-		// Before fix: reload won't call loadAccountSettings, UI stays at default 'unlock'
 		if (settingsLoaded !== 'cycle' && me.settings?.lockOnRepeatAction === 'cycle') {
 			console.log('CONFIRMED: server has cycle but client UI shows default after reload (settings not wired)');
 		}
 	} else {
-		await page.goto(CLIENT_URL);
-		await page.evaluate((t) => localStorage.setItem('autogame_token', t), token);
-		await page.reload();
-		await page.waitForFunction(() => {
-			const browserEl = document.getElementById('lobby-browser');
-			return browserEl && !browserEl.classList.contains('hidden');
-		}, { timeout: 15000 });
+		await loginInBrowser(page, CLIENT_URL, username);
 		const uiAfterReload = await page.evaluate(() =>
 			document.getElementById('lock-on-repeat-select')?.value);
 		if (uiAfterReload !== 'cycle') {
 			throw new Error(`Settings not loaded after reload: expected cycle, got ${uiAfterReload}`);
 		}
-		console.log('FIXED: account settings loaded after token restore');
+		console.log('FIXED: account settings loaded after session restore');
 	}
 
 	await browser.close();

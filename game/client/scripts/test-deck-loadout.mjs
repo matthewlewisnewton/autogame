@@ -7,7 +7,7 @@
  *   1. launches `node server/index.js` with ALLOW_DEBUG_SCENARIOS=1 +
  *      PERSISTENCE_BACKEND=memory on an isolated high PORT, and vite on an
  *      isolated high --strictPort with HARNESS_GAME_PORT pointed at that server,
- *   2. registers a player and injects the token into localStorage('autogame_token'),
+ *   2. registers a player via session cookie login,
  *   3. enters a lobby and configures a non-default 4-card deck loadout (a
  *      selectedDeck that differs from the player's 12-card default) by driving
  *      the live socket's deckRemoveCard/deckAddCard via __configureDeckForTest,
@@ -26,6 +26,7 @@ import net from 'net';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { loginInBrowser } from './session-auth.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CLIENT_DIR = path.join(__dirname, '..');
@@ -95,44 +96,6 @@ async function waitForHttp(url, { timeout = 30000, expectOk = false } = {}) {
 	throw new Error(`Timed out waiting for ${url}`);
 }
 
-async function register(serverUrl, username) {
-	const res = await fetch(`${serverUrl}/api/register`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username, password: 'password123' }),
-	});
-	const body = await res.json();
-	if (body.token) return body.token;
-	const login = await fetch(`${serverUrl}/api/login`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username, password: 'password123' }),
-	});
-	return (await login.json()).token;
-}
-
-async function loginWithToken(page, clientUrl, token) {
-	page.on('console', (msg) => {
-		if (msg.type() === 'error') console.log('[browser]', msg.text());
-	});
-	await page.goto(clientUrl);
-	await page.evaluate((t) => localStorage.setItem('autogame_token', t), token);
-	await page.reload();
-	await page.waitForFunction(() => {
-		const browserEl = document.getElementById('lobby-browser');
-		const auth = document.getElementById('auth-overlay');
-		return browserEl && !browserEl.classList.contains('hidden')
-			&& auth && auth.classList.contains('hidden');
-	}, { timeout: 15000 }).catch(async () => {
-		const state = await page.evaluate(() => ({
-			lobbyHidden: document.getElementById('lobby-browser')?.classList.contains('hidden'),
-			authHidden: document.getElementById('auth-overlay')?.classList.contains('hidden'),
-			authError: document.getElementById('login-error')?.textContent,
-		}));
-		throw new Error(`Login UI not ready: ${JSON.stringify(state)}`);
-	});
-}
-
 // Build a non-default loadout of LOADOUT_SIZE card ids from what the player owns:
 // prefer distinct cards, then fill with extra owned copies if needed.
 function buildLoadout(ownedCards) {
@@ -183,8 +146,11 @@ async function main() {
 	const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 
 	try {
-		const token = await register(SERVER_URL, `deck-loadout-${Date.now()}`);
-		await loginWithToken(page, CLIENT_URL, token);
+		const username = `deck-loadout-${Date.now()}`;
+		page.on('console', (msg) => {
+			if (msg.type() === 'error') console.log('[browser]', msg.text());
+		});
+		await loginInBrowser(page, CLIENT_URL, username);
 		console.log('✓ logged in, lobby browser visible');
 
 		// Create + enter a solo lobby.

@@ -8,42 +8,12 @@ import { chromium } from 'playwright';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { loginInBrowser } from './session-auth.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = path.join(__dirname, '..', '..', 'docs', 'walkthroughs', 'wyrm-breath');
 
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
-const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3000';
-
-async function register(username) {
-	const res = await fetch(`${SERVER_URL}/api/register`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username, password: 'password123' }),
-	});
-	const body = await res.json();
-	if (body.token) return body.token;
-	const login = await fetch(`${SERVER_URL}/api/login`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username, password: 'password123' }),
-	});
-	return (await login.json()).token;
-}
-
-async function loginWithToken(page, token) {
-	await page.goto(CLIENT_URL);
-	await page.evaluate((t) => localStorage.setItem('autogame_token', t), token);
-	await page.reload();
-	await page.waitForFunction(() => {
-		const browserEl = document.getElementById('lobby-browser');
-		const auth = document.getElementById('auth-overlay');
-		return browserEl && !browserEl.classList.contains('hidden')
-			&& auth && auth.classList.contains('hidden');
-	}, { timeout: 15000 });
-}
-
-async function startMinionCombatScenario(page) {
 	await page.evaluate(() => {
 		document.getElementById('create-lobby-name').value = 'Wyrm Breath QA';
 		document.getElementById('create-lobby-btn')?.click();
@@ -107,12 +77,11 @@ function countHpChanges(samples) {
 }
 
 async function main() {
-	const token = await register(`wyrm-breath-${Date.now()}`);
 	const browser = await chromium.launch({ headless: true });
 	const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 
 	try {
-		await loginWithToken(page, token);
+		await loginInBrowser(page, CLIENT_URL, `wyrm-breath-${Date.now()}`);
 		await startMinionCombatScenario(page);
 
 		const start = await readHarness(page);

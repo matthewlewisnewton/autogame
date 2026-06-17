@@ -7,10 +7,10 @@ import { chromium } from '../../../../harness/node_modules/playwright/index.mjs'
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { loginInBrowser } from '../../../client/scripts/session-auth.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CLIENT_URL = 'http://localhost:5173/?debugScenario=telepipe-ready';
-const SERVER_URL = 'http://localhost:3000';
 const P2_USER = 'qa-telepipe-p2';
 const PASSWORD = 'testpass123';
 const LOBBY_NAME = 'Telepipe QA v3';
@@ -35,25 +35,7 @@ function record(step, desc, pass, notes = '') {
   console.log(`${pass ? '✓' : '✗'} Step ${step}: ${desc}${notes ? ` — ${notes}` : ''}`);
 }
 
-async function auth(username) {
-  let res = await fetch(`${SERVER_URL}/api/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password: PASSWORD }),
-  });
-  let body = await res.json();
-  if (body.token) return body.token;
-  res = await fetch(`${SERVER_URL}/api/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password: PASSWORD }),
-  });
-  body = await res.json();
-  if (!body.token) throw new Error(`Auth failed for ${username}: ${JSON.stringify(body)}`);
-  return body.token;
-}
-
-async function loginPage(page, token) {
+async function loginPage(page) {
   page.on('console', (msg) => {
     const entry = { type: msg.type(), text: msg.text() };
     consoleLogs.push(entry);
@@ -88,14 +70,7 @@ async function loginPage(page, token) {
     }, 10);
   });
 
-  await page.goto(CLIENT_URL);
-  await page.evaluate((t) => localStorage.setItem('autogame_token', t), token);
-  await page.reload();
-  await page.waitForFunction(() => {
-    const browserEl = document.getElementById('lobby-browser');
-    const auth = document.getElementById('auth-overlay');
-    return browserEl && !browserEl.classList.contains('hidden') && auth?.classList.contains('hidden');
-  }, null, { timeout: 20000 });
+  await loginInBrowser(page, CLIENT_URL, P2_USER, PASSWORD);
 }
 
 async function harness(page) {
@@ -237,13 +212,12 @@ function buildReport(overallPass) {
 
 async function main() {
   fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
-  const token = await auth(P2_USER);
   const browser = await chromium.launch({ headless: true });
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await ctx.newPage();
 
   try {
-    await loginPage(page, token);
+    await loginPage(page);
     record(1, 'Navigate + login', true);
 
     const lobbyCoord = await waitForCoord((c) => c.lobbyName === LOBBY_NAME, 120000);

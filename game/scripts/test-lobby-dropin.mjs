@@ -4,6 +4,7 @@
  * player 2 leaves and rejoins while the run persists.
  */
 import { io as ClientIO } from 'socket.io-client';
+import { loginSessionCookie } from '../client/scripts/session-auth.mjs';
 
 const SERVER_URL = process.env.SERVER_URL || process.env.BASE_URL || 'http://localhost:3000';
 
@@ -17,27 +18,11 @@ function waitFor(socket, event, ms = 8000) {
   });
 }
 
-async function register(username) {
-  const res = await fetch(`${SERVER_URL}/api/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password: 'password123' }),
-  });
-  const body = await res.json();
-  if (body.token) return body.token;
-  const login = await fetch(`${SERVER_URL}/api/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password: 'password123' }),
-  });
-  return (await login.json()).token;
-}
-
-function connect(token) {
+function connect(cookieHeader) {
   return new Promise((resolve, reject) => {
     const socket = ClientIO(SERVER_URL, {
       transports: ['websocket'],
-      auth: { token },
+      extraHeaders: { cookie: cookieHeader },
     });
     const t = setTimeout(() => reject(new Error('connect timeout')), 10000);
     socket.on('init', (data) => {
@@ -60,11 +45,11 @@ async function createLobby(socket, name) {
 
 async function main() {
   const suffix = Date.now();
-  const t1 = await register(`dropin-a-${suffix}`);
-  const t2 = await register(`dropin-b-${suffix}`);
+  const { cookieHeader: cookie1 } = await loginSessionCookie(SERVER_URL, `dropin-a-${suffix}`);
+  const { cookieHeader: cookie2 } = await loginSessionCookie(SERVER_URL, `dropin-b-${suffix}`);
 
-  const p1 = await connect(t1);
-  const p2 = await connect(t2);
+  const p1 = await connect(cookie1);
+  const p2 = await connect(cookie2);
 
   console.log('✓ Both players connected (session init, not in lobby yet)');
   console.log('  p1 inLobby:', p1.init.inLobby === false);

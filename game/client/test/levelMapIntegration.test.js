@@ -111,10 +111,9 @@ describe('level-map lobby integration (main.js)', () => {
 		ensureMainDom();
 		stubLocalhostLocation();
 		vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1));
-		try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) { /* ignore */ }
 		await import('../main.js');
 		// Ensure a connected socket so node-selection emits are recorded.
-		window.createSocket('test-fake-jwt-token');
+		window.createSocket();
 		window.__clearSocketEmitLog();
 	});
 

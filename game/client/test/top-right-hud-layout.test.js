@@ -448,7 +448,6 @@ describe('top-right HUD layout (collision regression)', () => {
 				vi.useFakeTimers();
 				mountHudFixture(viewport);
 				populateKeyItemDodgeRoll();
-				try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) { /* ignore */ }
 
 				await import('../main.js');
 				window.__setKeyItemDefs({ dodge_roll: DODGE_ROLL_DEF });

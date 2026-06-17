@@ -48,7 +48,7 @@ function ensureMainDom() {
 
 function ensureSocket() {
 	if (!window.__isSocketReady()) {
-		window.createSocket('test-fake-jwt-token');
+		window.createSocket();
 	}
 }
 
@@ -64,7 +64,6 @@ describe('key item cooldown HUD', () => {
 		vi.resetModules();
 		document.body.innerHTML = '';
 		ensureMainDom();
-		try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) { /* ignore */ }
 	});
 
 	afterEach(() => {
@@ -255,7 +254,6 @@ describe('dash VFX detection in stateUpdate', () => {
 		vi.resetModules();
 		document.body.innerHTML = '';
 		ensureMainDom();
-		try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) { /* ignore */ }
 	});
 
 	it('calls triggerDashVFX when player position jumps beyond dash threshold', async () => {

@@ -118,7 +118,6 @@ describe('quest booth booth:action hook (main.js)', () => {
 		document.body.innerHTML = '';
 		ensureMainDom();
 		stubLocalhostLocation();
-		try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) { /* ignore */ }
 	});
 
 	afterEach(() => {
@@ -242,7 +241,6 @@ describe('?booth=quest debug hook (main.js requestBoothDebugOpen)', () => {
 		vi.resetModules();
 		document.body.innerHTML = '';
 		ensureMainDom();
-		try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) { /* ignore */ }
 	});
 
 	afterEach(() => {

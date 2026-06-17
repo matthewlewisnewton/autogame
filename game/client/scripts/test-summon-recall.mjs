@@ -14,43 +14,15 @@ import { chromium } from 'playwright';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { loginInBrowser } from './session-auth.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = path.join(__dirname, '..', '..', 'docs', 'walkthroughs', 'summon-recall');
 
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
-const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3000';
 
 // Keyboard key bound to useKeyItem by default (see client/input.js).
 const USE_KEY_ITEM_KEY = 'e';
-
-async function register(username) {
-	const res = await fetch(`${SERVER_URL}/api/register`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username, password: 'password123' }),
-	});
-	const body = await res.json();
-	if (body.token) return body.token;
-	const login = await fetch(`${SERVER_URL}/api/login`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username, password: 'password123' }),
-	});
-	return (await login.json()).token;
-}
-
-async function loginWithToken(page, token) {
-	await page.goto(CLIENT_URL);
-	await page.evaluate((t) => localStorage.setItem('autogame_token', t), token);
-	await page.reload();
-	await page.waitForFunction(() => {
-		const browserEl = document.getElementById('lobby-browser');
-		const auth = document.getElementById('auth-overlay');
-		return browserEl && !browserEl.classList.contains('hidden')
-			&& auth && auth.classList.contains('hidden');
-	}, { timeout: 15000 });
-}
 
 async function startSoloRun(page) {
 	await page.evaluate(() => {
@@ -109,13 +81,12 @@ async function screenshot(page, name) {
 
 async function main() {
 	const suffix = Date.now();
-	const token = await register(`summon-recall-${suffix}`);
 
 	const browser = await chromium.launch({ headless: true });
 	const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 
 	try {
-		await loginWithToken(page, token);
+		await loginInBrowser(page, CLIENT_URL, `summon-recall-${suffix}`);
 		await startSoloRun(page);
 
 		const before = await readHarness(page);

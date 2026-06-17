@@ -27,6 +27,7 @@ import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { loginInBrowser } from './session-auth.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CLIENT_DIR = path.join(__dirname, '..'); // game/client
@@ -79,34 +80,6 @@ async function waitForHttp(url, { timeout = 30000, expectOk = false } = {}) {
 		await new Promise((r) => setTimeout(r, 250));
 	}
 	throw new Error(`Timed out waiting for ${url}`);
-}
-
-async function register(username) {
-	const res = await fetch(`${SERVER_URL}/api/register`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username, password: 'password123' }),
-	});
-	const body = await res.json();
-	if (body.token) return body.token;
-	const login = await fetch(`${SERVER_URL}/api/login`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username, password: 'password123' }),
-	});
-	return (await login.json()).token;
-}
-
-async function loginWithToken(page, token) {
-	await page.goto(SCENARIO_URL);
-	await page.evaluate((t) => localStorage.setItem('autogame_token', t), token);
-	await page.reload();
-	await page.waitForFunction(() => {
-		const browserEl = document.getElementById('lobby-browser');
-		const auth = document.getElementById('auth-overlay');
-		return browserEl && !browserEl.classList.contains('hidden')
-			&& auth && auth.classList.contains('hidden');
-	}, { timeout: 15000 });
 }
 
 async function readHarness(page) {
@@ -215,7 +188,7 @@ async function main() {
 	await waitForHttp(`${CLIENT_URL}/`, { timeout: 30000, expectOk: true });
 	console.log(`vite up on ${CLIENT_URL}`);
 
-	const token = await register(`telepipe-hub-${Date.now()}`);
+	const username = `telepipe-hub-${Date.now()}`;
 
 	const browser = await chromium.launch({ headless: true });
 	const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
@@ -229,7 +202,7 @@ async function main() {
 	});
 
 	try {
-		await loginWithToken(page, token);
+		await loginInBrowser(page, SCENARIO_URL, username);
 		await createLobbyAndDeploy(page);
 
 		const preState = await readHarness(page);

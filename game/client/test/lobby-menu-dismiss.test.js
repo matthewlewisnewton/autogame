@@ -134,7 +134,6 @@ describe('lobby menu dismiss guard (main.js)', () => {
 			rafCallbacks.push(cb);
 			return rafCallbacks.length;
 		}));
-		try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) { /* ignore */ }
 	});
 
 	afterEach(() => {

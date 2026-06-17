@@ -10,7 +10,7 @@
  *      PERSISTENCE_BACKEND=memory on an isolated server PORT in the 32xx range,
  *      and vite on an isolated --port in the 52xx range with --strictPort and
  *      HARNESS_GAME_PORT pointed at that server,
- *   2. registers a player and injects the token into localStorage('autogame_token'),
+ *   2. registers a player via session cookie login,
  *   3. creates a solo lobby, readies up, and waits for game phase === 'playing'
  *      with the default `training_caverns` (defeat_enemies) quest,
  *   4. invokes window.__requestDebugScenarioForTest('quest-objective-near-complete'),
@@ -36,6 +36,7 @@ import net from 'net';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { loginInBrowser } from './session-auth.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CLIENT_DIR = path.join(__dirname, '..');
@@ -115,44 +116,6 @@ async function waitForHttp(url, { timeout = 30000, expectOk = false } = {}) {
 	throw new Error(`Timed out waiting for ${url}`);
 }
 
-async function register(serverUrl, username) {
-	const res = await fetch(`${serverUrl}/api/register`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username, password: 'password123' }),
-	});
-	const body = await res.json();
-	if (body.token) return body.token;
-	const login = await fetch(`${serverUrl}/api/login`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username, password: 'password123' }),
-	});
-	return (await login.json()).token;
-}
-
-async function loginWithToken(page, clientUrl, token) {
-	page.on('console', (msg) => {
-		if (msg.type() === 'error') console.log('[browser]', msg.text());
-	});
-	await page.goto(clientUrl);
-	await page.evaluate((t) => localStorage.setItem('autogame_token', t), token);
-	await page.reload();
-	await page.waitForFunction(() => {
-		const browserEl = document.getElementById('lobby-browser');
-		const auth = document.getElementById('auth-overlay');
-		return browserEl && !browserEl.classList.contains('hidden')
-			&& auth && auth.classList.contains('hidden');
-	}, { timeout: 15000 }).catch(async () => {
-		const state = await page.evaluate(() => ({
-			lobbyHidden: document.getElementById('lobby-browser')?.classList.contains('hidden'),
-			authHidden: document.getElementById('auth-overlay')?.classList.contains('hidden'),
-			authError: document.getElementById('login-error')?.textContent,
-		}));
-		throw new Error(`Login UI not ready: ${JSON.stringify(state)}`);
-	});
-}
-
 async function readHarness(page) {
 	return page.evaluate(() => window.__AUTOGAME_HARNESS_STATE__());
 }
@@ -220,8 +183,11 @@ async function main() {
 	const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 
 	try {
-		const token = await register(SERVER_URL, `quest-completion-${Date.now()}`);
-		await loginWithToken(page, CLIENT_URL, token);
+		const username = `quest-completion-${Date.now()}`;
+		page.on('console', (msg) => {
+			if (msg.type() === 'error') console.log('[browser]', msg.text());
+		});
+		await loginInBrowser(page, CLIENT_URL, username);
 		console.log('✓ logged in, lobby browser visible');
 
 		// 3. Create + enter a solo lobby and ready up (default training_caverns quest).

@@ -117,7 +117,6 @@ describe('level settings return rewards preview cache', () => {
 			window.__resetSocketHandlersForTest();
 		}
 		ensureMainDom();
-		try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) { /* ignore */ }
 	});
 
 	afterEach(() => {

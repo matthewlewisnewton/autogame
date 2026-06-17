@@ -2597,7 +2597,7 @@ describe('Card wind-up input lock', () => {
 		await import('../main.js');
 		const { updateMyPlayer, setGamePhase } = await import('../renderer.js');
 
-		window.createSocket('test-token');
+		window.createSocket();
 		window.__setGameState({
 			gamePhase: 'playing',
 			players: {
@@ -2628,7 +2628,7 @@ describe('Card wind-up input lock', () => {
 		await import('../main.js');
 		const { updateMyPlayer, setGamePhase } = await import('../renderer.js');
 
-		window.createSocket('test-token');
+		window.createSocket();
 		window.__setGameState({
 			gamePhase: 'playing',
 			players: {
@@ -2655,7 +2655,7 @@ describe('Card wind-up input lock', () => {
 	it('pressing the key-item binding while committed does NOT emit useKeyItem', async () => {
 		await import('../main.js');
 
-		window.createSocket('test-token');
+		window.createSocket();
 		window.__setGameState({
 			gamePhase: 'playing',
 			players: {
@@ -2679,7 +2679,7 @@ describe('Card wind-up input lock', () => {
 	it('key-item binding emits useKeyItem again after commitment clears', async () => {
 		await import('../main.js');
 
-		window.createSocket('test-token');
+		window.createSocket();
 		window.__setGameState({
 			gamePhase: 'playing',
 			players: {
@@ -3383,14 +3383,14 @@ describe('bindSocketHandlers() — handler rebinding on socket recreate', () => 
 	it('createSocket calls bindSocketHandlers on the new socket (login path)', async () => {
 		await import('../main.js');
 
-		// main.js has already called createSocket(storedToken) at module load,
+		// main.js has already called createSocket() at module load,
 		// which created the first mock socket and bound handlers to it.
 		const initialCounter = window.__socketCounter();
 		expect(initialCounter).toBeGreaterThanOrEqual(1);
 
-		// Simulate login: createSocket() is called again with a new token.
+		// Simulate login: createSocket() is called again after restoreSession.
 		// This should disconnect the old socket and create a new one.
-		window.createSocket('new-login-token');
+		window.createSocket();
 
 		// A new socket should have been created
 		expect(window.__socketCounter()).toBe(initialCounter + 1);
@@ -3511,22 +3511,16 @@ describe('connect_error handler', () => {
 				cardHand.appendChild(slot);
 			}
 		}
-		// Set up localStorage with a test token
-		try { localStorage.setItem('autogame_token', 'test-bad-token'); } catch (_) {}
 		// Reset ioDisconnected flag
 		if (typeof window.__clearIoDisconnected === 'function') window.__clearIoDisconnected();
 	});
 
-	afterEach(() => {
-		// Clean up localStorage
-		try { localStorage.removeItem('autogame_token'); } catch (_) {}
-	});
 
 	it('shows auth overlay on connect_error (session expired)', async () => {
 		await import('../main.js');
 
 		// Trigger connect_error via mock
-		window.__triggerSocketEvent('connect_error', 'error: invalid token');
+		window.__triggerSocketEvent('connect_error', 'error: session expired');
 
 		const authOverlay = document.getElementById('auth-overlay');
 		expect(authOverlay && !authOverlay.classList.contains('hidden')).toBe(true);
@@ -3535,7 +3529,7 @@ describe('connect_error handler', () => {
 	it('destroys the socket to prevent auto-reconnect', async () => {
 		await import('../main.js');
 
-		window.__triggerSocketEvent('connect_error', 'error: invalid token');
+		window.__triggerSocketEvent('connect_error', 'error: session expired');
 
 		expect(window.__ioDisconnected()).toBe(true);
 	});
@@ -3549,7 +3543,7 @@ describe('connect_error handler', () => {
 		uiEl.style.display = 'block';
 		cardHandEl.style.display = 'flex';
 
-		window.__triggerSocketEvent('connect_error', 'error: invalid token');
+		window.__triggerSocketEvent('connect_error', 'error: session expired');
 
 		expect(uiEl.style.display).toBe('none');
 		expect(cardHandEl.style.display).toBe('none');
@@ -3561,7 +3555,7 @@ describe('connect_error handler', () => {
 		const lobbyEl = document.getElementById('lobby');
 		lobbyEl.classList.remove('hidden');
 
-		window.__triggerSocketEvent('connect_error', 'error: invalid token');
+		window.__triggerSocketEvent('connect_error', 'error: session expired');
 
 		expect(lobbyEl.classList.contains('hidden')).toBe(true);
 	});
@@ -3574,7 +3568,7 @@ describe('connect_error handler', () => {
 		authOverlay.classList.add('hidden');
 		loginForm.classList.add('hidden');
 
-		window.__triggerSocketEvent('connect_error', 'error: invalid token');
+		window.__triggerSocketEvent('connect_error', 'error: session expired');
 
 		expect(authOverlay.classList.contains('hidden')).toBe(false);
 		expect(loginForm.classList.contains('hidden')).toBe(false);
@@ -3583,7 +3577,7 @@ describe('connect_error handler', () => {
 	it('updates status text to indicate session expired', async () => {
 		await import('../main.js');
 
-		window.__triggerSocketEvent('connect_error', 'error: invalid token');
+		window.__triggerSocketEvent('connect_error', 'error: session expired');
 
 		// Verify via connectionState (more reliable than DOM in jsdom)
 		expect(window.__connectionState()).toBe('disconnected');
@@ -3598,7 +3592,7 @@ describe('connect_error handler', () => {
 		const runSummary = document.getElementById('run-summary-overlay');
 		runSummary.style.display = 'block';
 
-		window.__triggerSocketEvent('connect_error', 'error: invalid token');
+		window.__triggerSocketEvent('connect_error', 'error: session expired');
 
 		expect(runSummary.style.display).toBe('none');
 	});
@@ -3651,7 +3645,7 @@ describe('connect watchdog', () => {
 		await import('../main.js');
 
 		// Fresh socket: this starts a new watchdog and clears any prior one.
-		window.createSocket('watchdog-token');
+		window.createSocket();
 
 		// Connection never reaches `connect` — let the watchdog fire.
 		vi.advanceTimersByTime(10000);
@@ -3666,7 +3660,7 @@ describe('connect watchdog', () => {
 	it('clears the watchdog when connect fires before the timeout (no error shown)', async () => {
 		await import('../main.js');
 
-		window.createSocket('watchdog-token');
+		window.createSocket();
 
 		// A timely `connect` should cancel the watchdog.
 		window.__triggerSocketEvent('connect');
@@ -3680,7 +3674,7 @@ describe('connect watchdog', () => {
 	it('re-arms the watchdog after a post-connect disconnect and escalates if no reconnect', async () => {
 		await import('../main.js');
 
-		window.createSocket('watchdog-token');
+		window.createSocket();
 
 		// Establish a good connection first — this clears the initial watchdog.
 		window.__triggerSocketEvent('connect');
@@ -3703,7 +3697,7 @@ describe('connect watchdog', () => {
 	it('clears the re-armed watchdog when a post-disconnect reconnect succeeds in time', async () => {
 		await import('../main.js');
 
-		window.createSocket('watchdog-token');
+		window.createSocket();
 
 		window.__triggerSocketEvent('connect');
 		window.__triggerSocketEvent('disconnect');
@@ -4071,8 +4065,7 @@ describe('Cold-start mute persistence', () => {
 
 		// Pre-seed localStorage BEFORE importing main.js
 		try { localStorage.setItem('autogame:soundEnabled', 'false'); } catch (_) {}
-		// Ensure auth token exists so socket is created (required for import to succeed)
-		try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) {}
+		// setup.js mocks /api/me so restoreSession succeeds on import
 
 		// Cold import — module-level loadSoundEnabled() reads the persisted value
 		await import('../main.js');
@@ -4090,7 +4083,6 @@ describe('Cold-start mute persistence', () => {
 
 		// No autogame:soundEnabled key — should default to unmuted
 		try { localStorage.removeItem('autogame:soundEnabled'); } catch (_) {}
-		try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) {}
 
 		await import('../main.js');
 
@@ -4188,7 +4180,7 @@ describe('Key Items equip UI', () => {
 	 * If the socket isn't ready, we create it directly. */
 	function ensureSocket() {
 		if (!window.__isSocketReady()) {
-			window.createSocket('test-fake-jwt-token');
+			window.createSocket();
 		}
 	}
 
@@ -4319,7 +4311,6 @@ describe('Key Items equip UI', () => {
 describe('keyItemUsed loot magnet VFX', () => {
 	beforeEach(() => {
 		vi.resetModules();
-		try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) {}
 		const requiredIds = [
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
@@ -4360,7 +4351,7 @@ describe('keyItemUsed loot magnet VFX', () => {
 		await import('../main.js');
 
 		if (!window.__isSocketReady()) {
-			window.createSocket('test-fake-jwt-token');
+			window.createSocket();
 		}
 
 		window.__setKeyItemDefs({ loot_magnet: { id: 'loot_magnet', attractRadius: 8 } });

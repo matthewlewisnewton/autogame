@@ -81,7 +81,6 @@ describe('fly replay client socket affinity', () => {
 		window.__resetSocketHandlersForTest?.();
 		window.__clearSocketEmitLog?.();
 		window.__clearIoCallLog?.();
-		try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) { /* ignore */ }
 	});
 
 	afterEach(() => {
@@ -203,13 +202,13 @@ describe('fly replay client socket affinity', () => {
 
 	it('plain createSocket after affinity clears fly extras (restoreSession path)', async () => {
 		await import('../main.js');
-		window.createSocket('first-token', {
+		window.createSocket({
 			lobbyId: 'temp01',
 			flyInstanceId: 'fly-machine-temp',
 		});
 		window.__clearIoCallLog();
 
-		window.createSocket('restored-token');
+		window.createSocket();
 		const config = lastIoConfig();
 		expect(config.auth).toBeUndefined();
 		expect(config.query).toBeUndefined();

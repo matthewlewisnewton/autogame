@@ -12,41 +12,13 @@ import { chromium } from 'playwright';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { loginInBrowser } from './session-auth.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = path.join(__dirname, '..', '..', 'docs', 'walkthroughs', 'creature-burndown');
 
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
-const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3000';
 const PASSIVE_DRAW_WAIT_MS = Number(process.env.PASSIVE_DRAW_WAIT_MS) || 8000;
-
-async function register(username) {
-	const res = await fetch(`${SERVER_URL}/api/register`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username, password: 'password123' }),
-	});
-	const body = await res.json();
-	if (body.token) return body.token;
-	const login = await fetch(`${SERVER_URL}/api/login`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ username, password: 'password123' }),
-	});
-	return (await login.json()).token;
-}
-
-async function loginWithToken(page, token) {
-	await page.goto(CLIENT_URL);
-	await page.evaluate((t) => localStorage.setItem('autogame_token', t), token);
-	await page.reload();
-	await page.waitForFunction(() => {
-		const browserEl = document.getElementById('lobby-browser');
-		const auth = document.getElementById('auth-overlay');
-		return browserEl && !browserEl.classList.contains('hidden')
-			&& auth && auth.classList.contains('hidden');
-	}, { timeout: 15000 });
-}
 
 async function startSoloRun(page) {
 	await page.evaluate(() => {
@@ -116,12 +88,11 @@ async function findCreatureSlot(page) {
 
 async function main() {
 	const suffix = Date.now();
-	const token = await register(`creature-burn-${suffix}`);
 
 	const browser = await chromium.launch({ headless: true });
 	const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 
-	await loginWithToken(page, token);
+	await loginInBrowser(page, CLIENT_URL, `creature-burn-${suffix}`);
 	await startSoloRun(page);
 
 	const before = await readHarness(page);

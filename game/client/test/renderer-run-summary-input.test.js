@@ -40,7 +40,6 @@ describe('renderer run-summary input lock', () => {
 			rafCallbacks.push(cb);
 			return rafCallbacks.length;
 		}));
-		try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) { /* ignore */ }
 	});
 
 	afterEach(() => {
@@ -51,7 +50,7 @@ describe('renderer run-summary input lock', () => {
 		await import('../main.js');
 		const { updateMyPlayer, setGamePhase, getSimPlayerPosition, setPlayerPosition } = await import('../renderer.js');
 
-		window.createSocket('test-token');
+		window.createSocket();
 		window.__setGameState({
 			gamePhase: 'playing',
 			run: { status: 'playing' },
@@ -122,7 +121,7 @@ describe('renderer run-summary input lock', () => {
 		await import('../main.js');
 		const { updateMyPlayer, setGamePhase, getSimPlayerPosition, setPlayerPosition } = await import('../renderer.js');
 
-		window.createSocket('test-token');
+		window.createSocket();
 		window.__setGameState({
 			gamePhase: 'playing',
 			run: { status: 'failed' },

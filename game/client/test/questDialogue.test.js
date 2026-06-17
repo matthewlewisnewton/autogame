@@ -66,7 +66,6 @@ describe('quest dialogue comms UI (main.js)', () => {
 			window.__resetSocketHandlersForTest();
 		}
 		ensureMainDom();
-		try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) { /* ignore */ }
 	});
 
 	afterEach(() => {

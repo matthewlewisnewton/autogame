@@ -431,7 +431,6 @@ describe('character booth booth:action hook (main.js)', () => {
 		document.body.innerHTML = '';
 		ensureMainDom();
 		stubLocalhostLocation();
-		try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) { /* ignore */ }
 	});
 
 	afterEach(() => {
@@ -493,7 +492,6 @@ describe('character booth ?booth=character debug hook (main.js)', () => {
 			rafCallbacks.push(cb);
 			return rafCallbacks.length;
 		}));
-		try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) { /* ignore */ }
 	});
 
 	afterEach(() => {
