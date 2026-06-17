@@ -354,17 +354,17 @@ def build_factory(main_root, *, workers: Optional[int] = None,
         # Staleness breaker (autogame-sug): a ticket that keeps failing gets
         # requeued forever (171 looped ~8h, 177 churned ~12h). After 3 attempts,
         # bump it to `hard` so a stronger agent than the churning one retries;
-        # after 6 attempts OR 8h, abandon it (close) so it stops looping. Pairs
+        # after 6 attempts OR 14h, abandon it (close) so it stops looping. Pairs
         # with the round-boundary incremental rebase (autogame-6xs) that keeps
         # branches from drifting in the first place.
         breaker_escalate_attempts=3,
         breaker_max_attempts=6,
-        breaker_max_hours=8.0,
+        breaker_max_hours=14.0,
         # Merge-integration breaker: a ticket that passes its worker pipeline but
         # repeatedly fails to integrate at the merge queue (re-running whole each
         # time — the 210 case). Lower limits than the worker-side breaker since
         # each merge reject is a full ticket run: escalate to `hard` after 2 merge
-        # failures, abandon after 4 (or the 8h ceiling above).
+        # failures, abandon after 4 (or the 14h ceiling above).
         breaker_merge_escalate=2,
         breaker_merge_abandon=4,
         # Requeue backoff: a requeued ticket can't be re-claimed for
@@ -375,9 +375,12 @@ def build_factory(main_root, *, workers: Optional[int] = None,
         # Persist breaker counters + backoff stamps across restarts so an
         # often-restarted factory can still abandon a churning ticket.
         state_file=Path(main_root) / "harness" / "tmp" / "breaker_state.json",
-        # Watchdog: SIGTERM (then SIGKILL) any worker running past 4h — a wedged
+        # Watchdog: SIGTERM (then SIGKILL) any worker running past 8h — a wedged
         # worker otherwise holds its agent slot, port pair, and worktree forever.
-        worker_max_s=4 * 3600.0,
+        # Raised from 4h: qwen on a large/slow-but-healthy ticket can legitimately
+        # exceed 4h as context grows. Loops are meant to be caught earlier by the
+        # per-sub-ticket iteration cap, NOT by this coarse whole-ticket backstop.
+        worker_max_s=8 * 3600.0,
     )
     # The merge queue reports integration failures back to the breaker (it can't
     # be a constructor arg — disp doesn't exist when mq is built).
