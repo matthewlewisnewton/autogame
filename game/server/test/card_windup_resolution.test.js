@@ -67,7 +67,7 @@ describe('processPendingCardWindups (unit)', () => {
 			setProgressionGameState(state);
 			expect(collectConeHits(0, 0, 1, 0, 5, Math.PI / 2, 42, { attackerId: socket._playerId }).hits.length).toBe(1);
 
-			processPendingCardWindups();
+			await processPendingCardWindups();
 
 			expect(state.enemies[0].hp).toBeLessThan(200);
 			expect(player.pendingCardUse).toBeUndefined();
@@ -216,7 +216,7 @@ describe('card wind-up deferred resolution', () => {
 		setSimGameState(state, {});
 		setProgressionGameState(state);
 		player.cardWindupStartTime = Date.now() + 100000;
-		processPendingCardWindups();
+		await processPendingCardWindups();
 		expect(target().hp).toBe(hpBefore);
 		expect(player.cardUseState).toBe('windup');
 
@@ -266,7 +266,7 @@ describe('card wind-up deferred resolution', () => {
 		setSimGameState(state, {});
 		setProgressionGameState(state);
 		player.cardWindupStartTime = Date.now() + 100000;
-		processPendingCardWindups();
+		await processPendingCardWindups();
 		expect(target().hp).toBe(hpBefore);
 		expect(player.cardUseState).toBe('windup');
 
@@ -308,7 +308,7 @@ describe('card wind-up deferred resolution', () => {
 		setSimGameState(state, {});
 		setProgressionGameState(state);
 		player.cardWindupStartTime = Date.now() + 100000;
-		processPendingCardWindups();
+		await processPendingCardWindups();
 		expect(target().hp).toBe(hpBefore);
 		expect(player.cardUseState).toBe('windup');
 
@@ -351,7 +351,7 @@ describe('card wind-up deferred resolution', () => {
 		expect(state._lobbyId).toBeDefined();
 		// Pin wind-up so the live game loop cannot resolve under us (see key-items echo tests).
 		player.cardWindupStartTime = Date.now() + 100000;
-		processPendingCardWindups();
+		await processPendingCardWindups();
 		expect(target().hp).toBe(hpBefore);
 		expect(player.cardUseState).toBe('windup');
 
@@ -391,7 +391,7 @@ describe('card wind-up deferred resolution', () => {
 		player.cardWindupStartTime = Date.now() - windUpMs;
 		setSimGameState(state, {});
 		setProgressionGameState(state);
-		processPendingCardWindups();
+		await processPendingCardWindups();
 
 		expect(cardUsed).toBe(false);
 		expect(enemy.hp).toBe(hpBefore);

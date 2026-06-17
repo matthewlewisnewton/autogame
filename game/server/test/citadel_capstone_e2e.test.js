@@ -118,14 +118,14 @@ describe('citadel_assault end-to-end unlock → run → defeat lifecycle', () =>
     } catch {}
   });
 
-  it('admits a qualified account, plays dormant → active → cleared, and pays the capstone purse', () => {
+  it('admits a qualified account, plays dormant → active → cleared, and pays the capstone purse', async () => {
     // ── Gate: ALL THREE tier-2 prereqs are required; two of three stays locked.
-    users.completeQuestTier(twoPrereqAccountId, 'canyon_descent', 2);
-    users.completeQuestTier(twoPrereqAccountId, 'spire_ascent', 2);
+    await users.completeQuestTier(twoPrereqAccountId, 'canyon_descent', 2);
+    await users.completeQuestTier(twoPrereqAccountId, 'spire_ascent', 2);
     expect(users.isQuestTierUnlocked(twoPrereqAccountId, QUEST_ID, TIER)).toBe(false);
 
     for (const prereq of PREREQS) {
-      users.completeQuestTier(accountId, prereq.questId, prereq.tier);
+      await users.completeQuestTier(accountId, prereq.questId, prereq.tier);
     }
     expect(users.isQuestTierUnlocked(accountId, QUEST_ID, TIER)).toBe(true);
 
@@ -215,7 +215,7 @@ describe('citadel_assault end-to-end unlock → run → defeat lifecycle', () =>
     expect(users.hasCompletedQuestTier(accountId, QUEST_ID, TIER)).toBe(false);
     expect(state.players.p1.currency).toBe(0);
     cleanupAfterDamage();
-    checkRunTerminalState();
+    await checkRunTerminalState();
     expect(state.run.status).toBe('victory');
     expect(users.hasCompletedQuestTier(accountId, QUEST_ID, TIER)).toBe(true);
     expect(state.players.p1.currency).toBe(REWARD_CURRENCY);

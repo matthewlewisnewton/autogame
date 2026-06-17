@@ -161,35 +161,35 @@ describe('profile helpers', () => {
 		expect(findUserByAccountId(user.accountId).username).toBe('prof1');
 	});
 
-	it('updateProfile sets email and rejects duplicates', () => {
+	it('updateProfile sets email and rejects duplicates', async () => {
 		createUser('a', 'pass');
 		createUser('b', 'pass');
 		const a = findUserByUsername('a');
 		const b = findUserByUsername('b');
 
-		expect(updateProfile(a.accountId, { email: 'a@test.com' }).ok).toBe(true);
-		expect(updateProfile(b.accountId, { email: 'a@test.com' }).ok).toBe(false);
+		expect((await updateProfile(a.accountId, { email: 'a@test.com' })).ok).toBe(true);
+		expect((await updateProfile(b.accountId, { email: 'a@test.com' })).ok).toBe(false);
 
-		const renamed = updateProfile(a.accountId, { username: 'a_new' });
+		const renamed = await updateProfile(a.accountId, { username: 'a_new' });
 		expect(renamed.ok).toBe(true);
 		expect(renamed.usernameChanged).toBe(true);
 		expect(findUserByUsername('a_new')).not.toBeNull();
 		expect(findUserByUsername('a')).toBeNull();
 	});
 
-	it('keeps email index consistent when email is updated or cleared', () => {
+	it('keeps email index consistent when email is updated or cleared', async () => {
 		createUser('indexer', 'pass');
 		const user = findUserByUsername('indexer');
 
-		expect(updateProfile(user.accountId, { email: 'first@example.com' }).ok).toBe(true);
+		expect((await updateProfile(user.accountId, { email: 'first@example.com' })).ok).toBe(true);
 		expect(findUserByEmail('first@example.com')?.username).toBe('indexer');
 		expect(findUserByEmail('FIRST@example.com')?.username).toBe('indexer');
 
-		expect(updateProfile(user.accountId, { email: 'second@example.com' }).ok).toBe(true);
+		expect((await updateProfile(user.accountId, { email: 'second@example.com' })).ok).toBe(true);
 		expect(findUserByEmail('first@example.com')).toBeNull();
 		expect(findUserByEmail('second@example.com')?.username).toBe('indexer');
 
-		expect(updateProfile(user.accountId, { email: null }).ok).toBe(true);
+		expect((await updateProfile(user.accountId, { email: null })).ok).toBe(true);
 		expect(findUserByEmail('second@example.com')).toBeNull();
 		expect(findUserByAccountId(user.accountId)?.username).toBe('indexer');
 	});
@@ -217,11 +217,11 @@ describe('cosmetic profile', () => {
 		expect(user.cosmetic).toEqual({ bodyColor: '#4f9dde', accentColor: '#f2c94c', bodyShape: 'box', hat: 'none', modelId: 'player', proportions: { height: 1.0, headSize: 1.0, torsoWidth: 1.0, armLength: 1.0, legLength: 1.0, shoulderWidth: 1.0 } });
 	});
 
-	it('partial cosmetic update merges only provided fields', () => {
+	it('partial cosmetic update merges only provided fields', async () => {
 		createUser('cosmo', 'pass');
 		const id = findUserByUsername('cosmo').accountId;
 
-		const res = updateProfile(id, { cosmetic: { bodyShape: 'cone' } });
+		const res = await updateProfile(id, { cosmetic: { bodyShape: 'cone' } });
 		expect(res.ok).toBe(true);
 		const user = findUserByAccountId(id);
 		expect(user.cosmetic.bodyShape).toBe('cone');
@@ -229,19 +229,19 @@ describe('cosmetic profile', () => {
 		expect(user.cosmetic.accentColor).toBe('#f2c94c');
 	});
 
-	it('partial proportions update deep-merges and preserves other proportion keys', () => {
+	it('partial proportions update deep-merges and preserves other proportion keys', async () => {
 		createUser('propuser', 'pass');
 		const id = findUserByUsername('propuser').accountId;
 
 		// First set a non-default armLength so we have something to preserve.
-		updateProfile(id, { cosmetic: { proportions: { armLength: 1.1, legLength: 0.9 } } });
+		await updateProfile(id, { cosmetic: { proportions: { armLength: 1.1, legLength: 0.9 } } });
 		let user = findUserByAccountId(id);
 		expect(user.cosmetic.proportions.armLength).toBe(1.1);
 		expect(user.cosmetic.proportions.legLength).toBe(0.9);
 		expect(user.cosmetic.proportions.height).toBe(1.0);
 
 		// Now only update height — armLength and legLength must survive.
-		const res = updateProfile(id, { cosmetic: { proportions: { height: 1.15 } } });
+		const res = await updateProfile(id, { cosmetic: { proportions: { height: 1.15 } } });
 		expect(res.ok).toBe(true);
 		user = findUserByAccountId(id);
 		expect(user.cosmetic.proportions.height).toBe(1.15);
@@ -252,28 +252,28 @@ describe('cosmetic profile', () => {
 		expect(user.cosmetic.proportions.shoulderWidth).toBe(1.0);
 	});
 
-	it('rejects an invalid bodyShape without mutating or persisting', () => {
+	it('rejects an invalid bodyShape without mutating or persisting', async () => {
 		createUser('cosmo', 'pass');
 		const id = findUserByUsername('cosmo').accountId;
 
-		const res = updateProfile(id, { cosmetic: { bodyShape: 'pyramid' } });
+		const res = await updateProfile(id, { cosmetic: { bodyShape: 'pyramid' } });
 		expect(res.ok).toBe(false);
 		expect(findUserByAccountId(id).cosmetic.bodyShape).toBe('box');
 	});
 
-	it('rejects a malformed color without mutating or persisting', () => {
+	it('rejects a malformed color without mutating or persisting', async () => {
 		createUser('cosmo', 'pass');
 		const id = findUserByUsername('cosmo').accountId;
 
-		const res = updateProfile(id, { cosmetic: { bodyColor: 'notacolor' } });
+		const res = await updateProfile(id, { cosmetic: { bodyColor: 'notacolor' } });
 		expect(res.ok).toBe(false);
 		expect(findUserByAccountId(id).cosmetic.bodyColor).toBe('#4f9dde');
 	});
 
-	it('persists cosmetic across a simulated restart', () => {
+	it('persists cosmetic across a simulated restart', async () => {
 		createUser('cosmo', 'pass');
 		const id = findUserByUsername('cosmo').accountId;
-		updateProfile(id, { cosmetic: { bodyColor: '#010203', bodyShape: 'capsule' } });
+		await updateProfile(id, { cosmetic: { bodyColor: '#010203', bodyShape: 'capsule' } });
 
 		clearUsers();
 		loadUsers();

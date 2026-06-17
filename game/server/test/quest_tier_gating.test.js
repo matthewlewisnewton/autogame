@@ -102,7 +102,7 @@ describe('quest tier gating (socket + persistence)', () => {
 	});
 
 	it('allows Tier 2 selection after manual unlockQuestTier', async () => {
-		users.unlockQuestTier(accountId, QUEST_ID, TIER_2);
+		await users.unlockQuestTier(accountId, QUEST_ID, TIER_2);
 		expect(users.isQuestTierUnlocked(accountId, QUEST_ID, TIER_2)).toBe(true);
 
 		const updatePromise = waitForQuestSelection(socket, QUEST_ID, TIER_2);
@@ -201,7 +201,7 @@ describe('Tier 2 squad ready/deploy gate', () => {
 		users.createUser('still_locked', 'testpass');
 		const accountA = users.findUserByUsername('unlock_holder').accountId;
 		const accountB = users.findUserByUsername('still_locked').accountId;
-		users.unlockQuestTier(accountA, QUEST_ID, TIER_2);
+		await users.unlockQuestTier(accountA, QUEST_ID, TIER_2);
 
 		const { socketA, socketB } = await connectTwoClients(accountA, accountB);
 
@@ -233,8 +233,8 @@ describe('Tier 2 squad ready/deploy gate', () => {
 		users.createUser('tier2_b', 'testpass');
 		const accountA = users.findUserByUsername('tier2_a').accountId;
 		const accountB = users.findUserByUsername('tier2_b').accountId;
-		users.unlockQuestTier(accountA, QUEST_ID, TIER_2);
-		users.unlockQuestTier(accountB, QUEST_ID, TIER_2);
+		await users.unlockQuestTier(accountA, QUEST_ID, TIER_2);
+		await users.unlockQuestTier(accountB, QUEST_ID, TIER_2);
 
 		const { socketA, socketB } = await connectTwoClients(accountA, accountB);
 
@@ -262,7 +262,7 @@ describe('Tier 2 squad ready/deploy gate', () => {
 		users.createUser('still_locked', 'testpass');
 		const accountA = users.findUserByUsername('unlock_holder').accountId;
 		const accountB = users.findUserByUsername('still_locked').accountId;
-		users.unlockQuestTier(accountA, QUEST_ID, TIER_2);
+		await users.unlockQuestTier(accountA, QUEST_ID, TIER_2);
 
 		const { socketA, socketB } = await connectTwoClients(accountA, accountB);
 

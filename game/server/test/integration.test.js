@@ -2177,7 +2177,7 @@ describe('Socket Integration — Quest Selection', () => {
 		player.x = startRoom.x;
 		player.z = startRoom.z;
 		state.run.objective.extractionReached = true;
-		runSimulationInPrimaryLobby(() => checkRunTerminalState());
+		await runSimulationInPrimaryLobby(async () => { await checkRunTerminalState(); });
 
 		const summary = await runCompletePromise;
 		expect(summary.status).toBe('victory');
@@ -2711,7 +2711,7 @@ describe('Rewards in run complete payload', () => {
 		testGameState()._victoryCounters[socket1._playerId] = 0;
 
 		const runCompletePromise = waitForEvent(socket1, 'runComplete');
-		runSimulationInPrimaryLobby(() => checkRunTerminalState());
+		await runSimulationInPrimaryLobby(async () => { await checkRunTerminalState(); });
 		const summary = await runCompletePromise;
 
 		expect(summary.status).toBe('victory');
@@ -2953,7 +2953,7 @@ describe('Reward state persistence across runs', () => {
 		testGameState()._victoryCounters[socket1._playerId] = 0;
 
 		const runCompletePromise = waitForEvent(socket1, 'runComplete');
-		runSimulationInPrimaryLobby(() => checkRunTerminalState());
+		await runSimulationInPrimaryLobby(async () => { await checkRunTerminalState(); });
 		await runCompletePromise;
 
 		// Verify rewards were granted
@@ -2994,7 +2994,7 @@ describe('Reward state persistence across runs', () => {
 		testGameState()._victoryCounters[socket1._playerId] = 0;
 
 		const runComplete1 = waitForEvent(socket1, 'runComplete');
-		runSimulationInPrimaryLobby(() => checkRunTerminalState());
+		await runSimulationInPrimaryLobby(async () => { await checkRunTerminalState(); });
 		await runComplete1;
 
 		const currencyAfterRun1 = player.currency;
@@ -3023,7 +3023,7 @@ describe('Reward state persistence across runs', () => {
 		testGameState().minions = [];
 
 		const runComplete2 = waitForEvent(socket1, 'runComplete');
-		runSimulationInPrimaryLobby(() => checkRunTerminalState());
+		await runSimulationInPrimaryLobby(async () => { await checkRunTerminalState(); });
 		await runComplete2;
 
 		// Verify currency accumulated (second victory bonus on top of first)
@@ -3059,7 +3059,7 @@ describe('Reward state persistence across runs', () => {
 		testGameState()._victoryCounters[socket1._playerId] = 0;
 
 		const runCompletePromise = waitForEvent(socket1, 'runComplete');
-		runSimulationInPrimaryLobby(() => checkRunTerminalState());
+		await runSimulationInPrimaryLobby(async () => { await checkRunTerminalState(); });
 		await runCompletePromise;
 
 		// Capture state before returnToLobby

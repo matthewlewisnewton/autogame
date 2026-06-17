@@ -104,15 +104,15 @@ describe('rift_convergence end-to-end unlock → run → defeat lifecycle', () =
     } catch {}
   });
 
-  it('admits a qualified account, plays dormant → active → cleared, and records completion', () => {
+  it('admits a qualified account, plays dormant → active → cleared, and records completion', async () => {
     // ── Gate: BOTH ice-2 and fire-2 are required; missing either keeps it locked.
-    users.completeQuestTier(frostOnlyAccountId, 'frost_crossing', 2);
-    users.completeQuestTier(emberOnlyAccountId, 'ember_descent', 2);
+    await users.completeQuestTier(frostOnlyAccountId, 'frost_crossing', 2);
+    await users.completeQuestTier(emberOnlyAccountId, 'ember_descent', 2);
     expect(users.isQuestTierUnlocked(frostOnlyAccountId, QUEST_ID, TIER)).toBe(false);
     expect(users.isQuestTierUnlocked(emberOnlyAccountId, QUEST_ID, TIER)).toBe(false);
 
-    users.completeQuestTier(accountId, 'frost_crossing', 2);
-    users.completeQuestTier(accountId, 'ember_descent', 2);
+    await users.completeQuestTier(accountId, 'frost_crossing', 2);
+    await users.completeQuestTier(accountId, 'ember_descent', 2);
     expect(users.isQuestTierUnlocked(accountId, QUEST_ID, TIER)).toBe(true);
 
     // ── Run start: boss-arena layout, stage_boss objective for 5, dormant encounter.
@@ -180,7 +180,7 @@ describe('rift_convergence end-to-end unlock → run → defeat lifecycle', () =
     // ── Victory: terminal check records tier-1 completion on the account.
     expect(users.hasCompletedQuestTier(accountId, QUEST_ID, TIER)).toBe(false);
     cleanupAfterDamage();
-    checkRunTerminalState();
+    await checkRunTerminalState();
     expect(state.run.status).toBe('victory');
     expect(users.hasCompletedQuestTier(accountId, QUEST_ID, TIER)).toBe(true);
   });

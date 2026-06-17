@@ -174,9 +174,9 @@ describe('citadel_assault three-way AND-gated unlock', () => {
   for (let skip = 0; skip < PREREQS.length; skip++) {
     const cleared = PREREQS.filter((_, i) => i !== skip);
     const missing = PREREQS[skip];
-    it(`stays locked with only ${cleared.map((p) => p.questId).join(' + ')} tier 2 completed`, () => {
+    it(`stays locked with only ${cleared.map((p) => p.questId).join(' + ')} tier 2 completed`, async () => {
       for (const prereq of cleared) {
-        users.completeQuestTier(accountId, prereq.questId, prereq.tier);
+        await users.completeQuestTier(accountId, prereq.questId, prereq.tier);
         expect(users.hasCompletedQuestTier(accountId, prereq.questId, prereq.tier)).toBe(true);
       }
       expect(users.hasCompletedQuestTier(accountId, missing.questId, missing.tier)).toBe(false);
@@ -184,9 +184,9 @@ describe('citadel_assault three-way AND-gated unlock', () => {
     });
   }
 
-  it('unlocks once ALL THREE tier-2 prerequisites are completed', () => {
+  it('unlocks once ALL THREE tier-2 prerequisites are completed', async () => {
     for (const prereq of PREREQS) {
-      users.completeQuestTier(accountId, prereq.questId, prereq.tier);
+      await users.completeQuestTier(accountId, prereq.questId, prereq.tier);
     }
     expect(users.isQuestTierUnlocked(accountId, QUEST_ID, TIER)).toBe(true);
   });
@@ -238,16 +238,16 @@ describe('citadel_assault quest-list and level-map payloads', () => {
     expect(node.unlockRequires).toEqual(PREREQS);
   });
 
-  it("flips state from 'locked' to 'unlocked' only when the third prereq completes", () => {
+  it("flips state from 'locked' to 'unlocked' only when the third prereq completes", async () => {
     expect(citadelNode(buildLevelUnlockGraph(accountId)).state).toBe('locked');
 
-    users.completeQuestTier(accountId, 'canyon_descent', 2);
+    await users.completeQuestTier(accountId, 'canyon_descent', 2);
     expect(citadelNode(buildLevelUnlockGraph(accountId)).state).toBe('locked');
 
-    users.completeQuestTier(accountId, 'spire_ascent', 2);
+    await users.completeQuestTier(accountId, 'spire_ascent', 2);
     expect(citadelNode(buildLevelUnlockGraph(accountId)).state).toBe('locked');
 
-    users.completeQuestTier(accountId, 'arena_trials', 2);
+    await users.completeQuestTier(accountId, 'arena_trials', 2);
     expect(citadelNode(buildLevelUnlockGraph(accountId)).state).toBe('unlocked');
   });
 });

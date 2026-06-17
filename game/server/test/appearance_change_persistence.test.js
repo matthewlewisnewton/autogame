@@ -71,7 +71,7 @@ describe('applyAppearanceChange persistence (currency before account cosmetic wr
 
 		users.createUser('appearance_buyer', 'testpass');
 		accountId = users.findUserByUsername('appearance_buyer').accountId;
-		users.updateProfile(accountId, { cosmetic: BASELINE_COSMETIC });
+		await users.updateProfile(accountId, { cosmetic: BASELINE_COSMETIC });
 
 		fileProvider = new FileProvider(progressDir);
 		await fileProvider.savePlayer(accountId, persistentSeed(initialCurrency));

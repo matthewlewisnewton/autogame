@@ -384,7 +384,7 @@ function findUserByEmail(email) {
  * @param {{ username?: string, email?: string|null, cosmetic?: object }} fields
  * @returns {{ ok: true, usernameChanged?: boolean } | { ok: false, reason: string }}
  */
-function updateProfile(accountId, fields) {
+async function updateProfile(accountId, fields) {
 	const user = findUserByAccountId(accountId);
 	if (!user) {
 		return { ok: false, reason: 'Account not found' };
@@ -455,7 +455,10 @@ function updateProfile(accountId, fields) {
 		}
 	}
 
-	saveUsers();
+	if (_usersProvider && usernameChanged) {
+		await _usersProvider.deleteUser(oldUsername);
+	}
+	await persistUserAsync(user);
 	return { ok: true, usernameChanged };
 }
 
@@ -469,7 +472,7 @@ function updateProfile(accountId, fields) {
  * @param {string} hatId
  * @returns {{ ok: true, unlockedHats: string[] } | { ok: false, reason: string }}
  */
-function unlockHat(accountId, hatId) {
+async function unlockHat(accountId, hatId) {
 	const user = findUserByAccountId(accountId);
 	if (!user) {
 		return { ok: false, reason: 'Account not found' };
@@ -481,7 +484,7 @@ function unlockHat(accountId, hatId) {
 	user.unlockedHats = backfillUnlockedHats(user.unlockedHats);
 	if (!user.unlockedHats.includes(hatId)) {
 		user.unlockedHats.push(hatId);
-		saveUsers();
+		await persistUserAsync(user);
 	}
 
 	return { ok: true, unlockedHats: user.unlockedHats };
@@ -551,7 +554,7 @@ function isQuestTierUnlocked(accountId, questId, tier) {
  * @param {number} tier
  * @returns {{ ok: true, unlockedQuestTiers: Record<string, number[]> } | { ok: false, reason: string }}
  */
-function unlockQuestTier(accountId, questId, tier) {
+async function unlockQuestTier(accountId, questId, tier) {
 	const user = findUserByAccountId(accountId);
 	if (!user) {
 		return { ok: false, reason: 'Account not found' };
@@ -573,7 +576,7 @@ function unlockQuestTier(accountId, questId, tier) {
 			...user.unlockedQuestTiers,
 			[questId]: [...existing, normalizedTier].sort((a, b) => a - b)
 		};
-		saveUsers();
+		await persistUserAsync(user);
 	}
 
 	return { ok: true, unlockedQuestTiers: user.unlockedQuestTiers };
@@ -587,7 +590,7 @@ function unlockQuestTier(accountId, questId, tier) {
  * @param {number} tier
  * @returns {{ ok: true, completedQuestTiers: Record<string, number[]> } | { ok: false, reason: string }}
  */
-function completeQuestTier(accountId, questId, tier) {
+async function completeQuestTier(accountId, questId, tier) {
 	const user = findUserByAccountId(accountId);
 	if (!user) {
 		return { ok: false, reason: 'Account not found' };
@@ -605,7 +608,7 @@ function completeQuestTier(accountId, questId, tier) {
 			...user.completedQuestTiers,
 			[questId]: [...existing, normalizedTier].sort((a, b) => a - b)
 		};
-		saveUsers();
+		await persistUserAsync(user);
 	}
 
 	return { ok: true, completedQuestTiers: user.completedQuestTiers };

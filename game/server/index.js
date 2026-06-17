@@ -1713,7 +1713,7 @@ function runGameLoopTick() {
           syncAndEmitHubPresenceIfChanged(io, lobby);
           flushDirtyPlayerSaves();
         } else if (isPlayingPhase(state)) {
-          processPendingCardWindups();
+          void processPendingCardWindups();
           applyPlayerMovement(state, buildMovementContext(state));
           updateQuestDialogueRoomEntry();
           checkTelepipeProximity();

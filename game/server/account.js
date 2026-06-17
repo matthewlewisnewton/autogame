@@ -84,7 +84,7 @@ router.patch('/me/settings', async (req, res) => {
 /**
  * PATCH /api/me/profile — username and/or email
  */
-router.patch('/me/profile', (req, res) => {
+router.patch('/me/profile', async (req, res) => {
 	const { username, email, cosmetic } = req.body || {};
 	if (username === undefined && email === undefined && cosmetic === undefined) {
 		return res.status(400).json({ error: 'No profile fields to update' });
@@ -110,7 +110,7 @@ router.patch('/me/profile', (req, res) => {
 		}
 	}
 
-	const result = updateProfile(req.accountId, { username, email, cosmetic });
+	const result = await updateProfile(req.accountId, { username, email, cosmetic });
 	if (!result.ok) {
 		const status = result.reason === 'Email already in use' || result.reason === 'Username already taken'
 			? 409

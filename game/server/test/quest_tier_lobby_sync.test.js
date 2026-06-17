@@ -119,7 +119,7 @@ describe('per-account quest unlock lobby sync', () => {
 		users.createUser('still_locked', 'testpass');
 		const accountA = users.findUserByUsername('unlock_holder').accountId;
 		const accountB = users.findUserByUsername('still_locked').accountId;
-		users.unlockQuestTier(accountA, QUEST_ID, TIER_2);
+		await users.unlockQuestTier(accountA, QUEST_ID, TIER_2);
 		expect(users.isQuestTierUnlocked(accountB, QUEST_ID, TIER_2)).toBe(false);
 
 		const { socketA, socketB } = await connectTwoClients(baseUrl, accountA, accountB);
@@ -189,7 +189,7 @@ describe('per-account quest unlock lobby sync', () => {
 		users.createUser('tier_still_locked', 'testpass');
 		const accountA = users.findUserByUsername('tier_unlock_holder').accountId;
 		const accountB = users.findUserByUsername('tier_still_locked').accountId;
-		users.unlockQuestTier(accountA, QUEST_ID, TIER_2);
+		await users.unlockQuestTier(accountA, QUEST_ID, TIER_2);
 
 		const { socketA, socketB } = await connectTwoClients(baseUrl, accountA, accountB);
 

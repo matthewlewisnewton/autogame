@@ -228,7 +228,7 @@ function register(socket, ctx) {
       return;
     }
 
-    const unlockResult = unlockHatForAccount(player.accountId, hatId);
+    const unlockResult = await unlockHatForAccount(player.accountId, hatId);
     if (!unlockResult.ok) {
       // Refund in memory and re-save so disk matches RAM; otherwise the first
       // save would leave deducted currency on disk without a hat unlock.
@@ -305,7 +305,7 @@ function register(socket, ctx) {
       };
 
       if (!paidChange) {
-        const profileResult = updateProfile(player.accountId, { cosmetic: proposed });
+        const profileResult = await updateProfile(player.accountId, { cosmetic: proposed });
         if (!profileResult.ok) {
           socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: profileResult.reason });
           return;
@@ -330,7 +330,7 @@ function register(socket, ctx) {
         return;
       }
 
-      const profileResult = updateProfile(player.accountId, { cosmetic: proposed });
+      const profileResult = await updateProfile(player.accountId, { cosmetic: proposed });
       if (!profileResult.ok) {
         player.currency += chargeResult.cost;
         await savePlayerData(socket.playerId);
@@ -406,8 +406,9 @@ function register(socket, ctx) {
       return;
     }
 
-    const result = applyDebugScenario(socket, name);
-    socket.emit(SERVER_TO_CLIENT.DEBUG_SCENARIO_RESULT, result);
+    Promise.resolve(applyDebugScenario(socket, name)).then((result) => {
+      socket.emit(SERVER_TO_CLIENT.DEBUG_SCENARIO_RESULT, result);
+    });
   });
 
   socket.on(CLIENT_TO_SERVER.TOGGLE_DEBUG_GODMODE, () => {

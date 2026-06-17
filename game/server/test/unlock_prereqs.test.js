@@ -160,13 +160,13 @@ describe('hasCompletedQuestTier', () => {
 		expect(hasCompletedQuestTier(accountId, QUEST_A, TIER_1)).toBe(false);
 	});
 
-	it('returns true after unlockQuestTier records tier 2 (tier 1 victory)', () => {
-		unlockQuestTier(accountId, QUEST_A, TIER_2);
+	it('returns true after unlockQuestTier records tier 2 (tier 1 victory)', async () => {
+		await unlockQuestTier(accountId, QUEST_A, TIER_2);
 		expect(hasCompletedQuestTier(accountId, QUEST_A, TIER_1)).toBe(true);
 	});
 
-	it('returns true when tier completion is recorded explicitly', () => {
-		completeQuestTier(accountId, QUEST_A, TIER_2);
+	it('returns true when tier completion is recorded explicitly', async () => {
+		await completeQuestTier(accountId, QUEST_A, TIER_2);
 		expect(hasCompletedQuestTier(accountId, QUEST_A, TIER_2)).toBe(true);
 	});
 
@@ -212,15 +212,15 @@ describe('areUnlockPrereqsMet', () => {
 		).toBe(false);
 	});
 
-	it('returns true for a single met prerequisite', () => {
-		unlockQuestTier(accountId, QUEST_A, TIER_2);
+	it('returns true for a single met prerequisite', async () => {
+		await unlockQuestTier(accountId, QUEST_A, TIER_2);
 		expect(
 			areUnlockPrereqsMet(accountId, { questId: QUEST_A, tier: TIER_1 }),
 		).toBe(true);
 	});
 
-	it('returns false when only one of two AND prerequisites is met', () => {
-		unlockQuestTier(accountId, QUEST_A, TIER_2);
+	it('returns false when only one of two AND prerequisites is met', async () => {
+		await unlockQuestTier(accountId, QUEST_A, TIER_2);
 		expect(
 			areUnlockPrereqsMet(accountId, [
 				{ questId: QUEST_A, tier: TIER_1 },
@@ -229,9 +229,9 @@ describe('areUnlockPrereqsMet', () => {
 		).toBe(false);
 	});
 
-	it('returns true when both AND prerequisites are met', () => {
-		unlockQuestTier(accountId, QUEST_A, TIER_2);
-		unlockQuestTier(accountId, QUEST_B, TIER_2);
+	it('returns true when both AND prerequisites are met', async () => {
+		await unlockQuestTier(accountId, QUEST_A, TIER_2);
+		await unlockQuestTier(accountId, QUEST_B, TIER_2);
 		expect(
 			areUnlockPrereqsMet(accountId, [
 				{ questId: QUEST_A, tier: TIER_1 },
@@ -240,8 +240,8 @@ describe('areUnlockPrereqsMet', () => {
 		).toBe(true);
 	});
 
-	it('accepts backward-compatible single-object unlockRequires input', () => {
-		unlockQuestTier(accountId, QUEST_A, TIER_2);
+	it('accepts backward-compatible single-object unlockRequires input', async () => {
+		await unlockQuestTier(accountId, QUEST_A, TIER_2);
 		expect(
 			areUnlockPrereqsMet(accountId, { questId: QUEST_A, tier: TIER_1 }),
 		).toBe(true);
@@ -278,20 +278,20 @@ describe('isQuestTierUnlocked multi-prereq AND gating', () => {
 		expect(isQuestTierUnlocked(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_1)).toBe(true);
 	});
 
-	it('returns false with persisted tier-2 unlock but no prerequisites completed', () => {
-		unlockQuestTier(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2);
+	it('returns false with persisted tier-2 unlock but no prerequisites completed', async () => {
+		await unlockQuestTier(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2);
 		expect(isQuestTierUnlocked(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2)).toBe(false);
 	});
 
-	it('returns true when persisted tier-2 unlock and all prerequisites are met', () => {
-		unlockQuestTier(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2);
-		unlockQuestTier(accountId, QUEST_A, TIER_2);
-		unlockQuestTier(accountId, QUEST_B, TIER_2);
+	it('returns true when persisted tier-2 unlock and all prerequisites are met', async () => {
+		await unlockQuestTier(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2);
+		await unlockQuestTier(accountId, QUEST_A, TIER_2);
+		await unlockQuestTier(accountId, QUEST_B, TIER_2);
 		expect(isQuestTierUnlocked(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2)).toBe(true);
 	});
 
-	it('still gates single-object unlockRequires the same as before', () => {
-		unlockQuestTier(accountId, QUEST_A, TIER_2);
+	it('still gates single-object unlockRequires the same as before', async () => {
+		await unlockQuestTier(accountId, QUEST_A, TIER_2);
 		expect(isQuestTierUnlocked(accountId, QUEST_A, TIER_2)).toBe(true);
 	});
 });
@@ -332,7 +332,7 @@ describe('isQuestTierUnlocked tier-2 multi-prereq normal flow', () => {
 	});
 
 	it('unlocks fixture tier 2 after tier-1 and tier-2 victories on prerequisites', async () => {
-		users.unlockQuestTier(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2);
+		await users.unlockQuestTier(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2);
 		expect(users.isQuestTierUnlocked(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2)).toBe(false);
 
 		const startGamePromise = waitForEvent(socket, 'startGame');
@@ -393,9 +393,9 @@ describe('buildQuestUpdatePayload multi-prereq tierUnlocked', () => {
 		);
 	}
 
-	it('reports tierUnlocked false with one prereq completed and persisted tier-2 unlock', () => {
-		users.unlockQuestTier(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2);
-		users.unlockQuestTier(accountId, QUEST_A, TIER_2);
+	it('reports tierUnlocked false with one prereq completed and persisted tier-2 unlock', async () => {
+		await users.unlockQuestTier(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2);
+		await users.unlockQuestTier(accountId, QUEST_A, TIER_2);
 
 		const payload = buildQuestUpdatePayload({}, accountId);
 		const tier2 = fixtureTier2Variant(payload);
@@ -409,10 +409,10 @@ describe('buildQuestUpdatePayload multi-prereq tierUnlocked', () => {
 		expect(payload.unlockedQuestTiers).toEqual(users.getUnlockedQuestTiers(accountId));
 	});
 
-	it('reports tierUnlocked true when both prerequisites are met and tier-2 is persisted', () => {
-		users.unlockQuestTier(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2);
-		users.unlockQuestTier(accountId, QUEST_A, TIER_2);
-		users.unlockQuestTier(accountId, QUEST_B, TIER_2);
+	it('reports tierUnlocked true when both prerequisites are met and tier-2 is persisted', async () => {
+		await users.unlockQuestTier(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2);
+		await users.unlockQuestTier(accountId, QUEST_A, TIER_2);
+		await users.unlockQuestTier(accountId, QUEST_B, TIER_2);
 
 		const payload = buildQuestUpdatePayload({}, accountId);
 		const tier2 = fixtureTier2Variant(payload);
@@ -462,7 +462,7 @@ describe('isQuestTierUnlocked multi-prereq socket selectQuest', () => {
 	});
 
 	it('rejects tier 2 selectQuest with tier_locked when prerequisites are unmet', async () => {
-		users.unlockQuestTier(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2);
+		await users.unlockQuestTier(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2);
 		expect(users.isQuestTierUnlocked(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2)).toBe(false);
 
 		const errorPromise = waitForEvent(socket, 'questError');
@@ -474,9 +474,9 @@ describe('isQuestTierUnlocked multi-prereq socket selectQuest', () => {
 	});
 
 	it('allows tier 2 selectQuest when persisted unlock and prerequisites are met', async () => {
-		users.unlockQuestTier(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2);
-		users.unlockQuestTier(accountId, QUEST_A, TIER_2);
-		users.unlockQuestTier(accountId, QUEST_B, TIER_2);
+		await users.unlockQuestTier(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2);
+		await users.unlockQuestTier(accountId, QUEST_A, TIER_2);
+		await users.unlockQuestTier(accountId, QUEST_B, TIER_2);
 		expect(users.isQuestTierUnlocked(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2)).toBe(true);
 
 		const updatePromise = waitForEvent(socket, 'questUpdate');
@@ -529,8 +529,8 @@ describe('lobby broadcast multi-prereq tierUnlocked', () => {
 	});
 
 	async function connectWithPartialPrereqs() {
-		users.unlockQuestTier(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2);
-		users.unlockQuestTier(accountId, QUEST_A, TIER_2);
+		await users.unlockQuestTier(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2);
+		await users.unlockQuestTier(accountId, QUEST_A, TIER_2);
 		expect(users.isQuestTierUnlocked(accountId, MULTI_PREREQ_FIXTURE_ID, TIER_2)).toBe(false);
 
 		const connected = await connectClient(baseUrl, accountId, { name: 'Multi Prereq Broadcast' });

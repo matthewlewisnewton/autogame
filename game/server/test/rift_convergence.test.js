@@ -163,21 +163,21 @@ describe('rift_convergence AND-gated unlock', () => {
     expect(users.isQuestTierUnlocked(accountId, QUEST_ID, TIER)).toBe(false);
   });
 
-  it('stays locked with only frost_crossing tier 2 completed', () => {
-    users.completeQuestTier(accountId, 'frost_crossing', 2);
+  it('stays locked with only frost_crossing tier 2 completed', async () => {
+    await users.completeQuestTier(accountId, 'frost_crossing', 2);
     expect(users.hasCompletedQuestTier(accountId, 'frost_crossing', 2)).toBe(true);
     expect(users.isQuestTierUnlocked(accountId, QUEST_ID, TIER)).toBe(false);
   });
 
-  it('stays locked with only ember_descent tier 2 completed', () => {
-    users.completeQuestTier(accountId, 'ember_descent', 2);
+  it('stays locked with only ember_descent tier 2 completed', async () => {
+    await users.completeQuestTier(accountId, 'ember_descent', 2);
     expect(users.hasCompletedQuestTier(accountId, 'ember_descent', 2)).toBe(true);
     expect(users.isQuestTierUnlocked(accountId, QUEST_ID, TIER)).toBe(false);
   });
 
-  it('unlocks once BOTH frost_crossing and ember_descent tier 2 are completed', () => {
-    users.completeQuestTier(accountId, 'frost_crossing', 2);
-    users.completeQuestTier(accountId, 'ember_descent', 2);
+  it('unlocks once BOTH frost_crossing and ember_descent tier 2 are completed', async () => {
+    await users.completeQuestTier(accountId, 'frost_crossing', 2);
+    await users.completeQuestTier(accountId, 'ember_descent', 2);
     expect(users.isQuestTierUnlocked(accountId, QUEST_ID, TIER)).toBe(true);
   });
 });
@@ -221,13 +221,13 @@ describe('rift_convergence level unlock graph node', () => {
     ]);
   });
 
-  it("flips state from 'locked' to 'unlocked' only when both prereq tiers are completed", () => {
+  it("flips state from 'locked' to 'unlocked' only when both prereq tiers are completed", async () => {
     expect(riftNode(buildLevelUnlockGraph(accountId)).state).toBe('locked');
 
-    users.completeQuestTier(accountId, 'frost_crossing', 2);
+    await users.completeQuestTier(accountId, 'frost_crossing', 2);
     expect(riftNode(buildLevelUnlockGraph(accountId)).state).toBe('locked');
 
-    users.completeQuestTier(accountId, 'ember_descent', 2);
+    await users.completeQuestTier(accountId, 'ember_descent', 2);
     expect(riftNode(buildLevelUnlockGraph(accountId)).state).toBe('unlocked');
   });
 });

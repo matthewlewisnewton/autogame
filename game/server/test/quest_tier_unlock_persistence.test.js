@@ -76,14 +76,14 @@ describe('quest tier unlock persistence', () => {
 		});
 	});
 
-	it('unlockQuestTier persists tier 2 and is idempotent', () => {
+	it('unlockQuestTier persists tier 2 and is idempotent', async () => {
 		createUser('unlocker', 'pass');
 		const { accountId } = findUserByUsername('unlocker');
 
 		expect(isQuestTierUnlocked(accountId, QUEST_ID, 1)).toBe(true);
 		expect(isQuestTierUnlocked(accountId, QUEST_ID, TIER_2)).toBe(false);
 
-		const first = unlockQuestTier(accountId, QUEST_ID, TIER_2);
+		const first = await unlockQuestTier(accountId, QUEST_ID, TIER_2);
 		expect(first).toEqual({
 			ok: true,
 			unlockedQuestTiers: { [QUEST_ID]: [TIER_2] },
@@ -93,7 +93,7 @@ describe('quest tier unlock persistence', () => {
 		const onDiskAfterFirst = JSON.parse(fs.readFileSync(tmpFile, 'utf-8'));
 		expect(onDiskAfterFirst[0].unlockedQuestTiers).toEqual({ [QUEST_ID]: [TIER_2] });
 
-		const second = unlockQuestTier(accountId, QUEST_ID, TIER_2);
+		const second = await unlockQuestTier(accountId, QUEST_ID, TIER_2);
 		expect(second).toEqual({
 			ok: true,
 			unlockedQuestTiers: { [QUEST_ID]: [TIER_2] },
@@ -101,10 +101,10 @@ describe('quest tier unlock persistence', () => {
 		expect(getUnlockedQuestTiers(accountId)).toEqual({ [QUEST_ID]: [TIER_2] });
 	});
 
-	it('reload-from-disk restores unlocks without sockets', () => {
+	it('reload-from-disk restores unlocks without sockets', async () => {
 		createUser('reloader', 'pass');
 		const { accountId } = findUserByUsername('reloader');
-		unlockQuestTier(accountId, QUEST_ID, TIER_2);
+		await unlockQuestTier(accountId, QUEST_ID, TIER_2);
 
 		clearUsers();
 		loadUsers();
@@ -115,29 +115,29 @@ describe('quest tier unlock persistence', () => {
 		expect(isQuestTierUnlocked(accountId, QUEST_ID, TIER_2)).toBe(true);
 	});
 
-	it('rejects unknown quest or tier', () => {
+	it('rejects unknown quest or tier', async () => {
 		createUser('rejecter', 'pass');
 		const { accountId } = findUserByUsername('rejecter');
 
-		expect(unlockQuestTier(accountId, 'not_a_quest', TIER_2)).toEqual({
+		expect(await unlockQuestTier(accountId, 'not_a_quest', TIER_2)).toEqual({
 			ok: false,
 			reason: 'Unknown quest or tier',
 		});
-		expect(unlockQuestTier(accountId, QUEST_ID, 99)).toEqual({
+		expect(await unlockQuestTier(accountId, QUEST_ID, 99)).toEqual({
 			ok: false,
 			reason: 'Unknown quest or tier',
 		});
-		expect(unlockQuestTier('missing-account', QUEST_ID, TIER_2)).toEqual({
+		expect(await unlockQuestTier('missing-account', QUEST_ID, TIER_2)).toEqual({
 			ok: false,
 			reason: 'Account not found',
 		});
 	});
 
-	it('tier 1 unlock succeeds without persisting tier 1', () => {
+	it('tier 1 unlock succeeds without persisting tier 1', async () => {
 		createUser('tier_one', 'pass');
 		const { accountId } = findUserByUsername('tier_one');
 
-		const result = unlockQuestTier(accountId, QUEST_ID, 1);
+		const result = await unlockQuestTier(accountId, QUEST_ID, 1);
 		expect(result.ok).toBe(true);
 		expect(result.unlockedQuestTiers).toEqual({});
 		expect(getUnlockedQuestTiers(accountId)).toEqual({});
@@ -171,13 +171,13 @@ describe('quest tier unlock persistence', () => {
 		});
 	});
 
-	it('completeQuestTier persists tier 2 and is idempotent', () => {
+	it('completeQuestTier persists tier 2 and is idempotent', async () => {
 		createUser('completer', 'pass');
 		const { accountId } = findUserByUsername('completer');
 
 		expect(hasCompletedQuestTier(accountId, QUEST_ID, TIER_2)).toBe(false);
 
-		const first = completeQuestTier(accountId, QUEST_ID, TIER_2);
+		const first = await completeQuestTier(accountId, QUEST_ID, TIER_2);
 		expect(first).toEqual({
 			ok: true,
 			completedQuestTiers: { [QUEST_ID]: [TIER_2] },
@@ -187,7 +187,7 @@ describe('quest tier unlock persistence', () => {
 		const onDiskAfterFirst = JSON.parse(fs.readFileSync(tmpFile, 'utf-8'));
 		expect(onDiskAfterFirst[0].completedQuestTiers).toEqual({ [QUEST_ID]: [TIER_2] });
 
-		const second = completeQuestTier(accountId, QUEST_ID, TIER_2);
+		const second = await completeQuestTier(accountId, QUEST_ID, TIER_2);
 		expect(second).toEqual({
 			ok: true,
 			completedQuestTiers: { [QUEST_ID]: [TIER_2] },

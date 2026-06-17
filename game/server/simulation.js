@@ -2506,7 +2506,7 @@ function _cardEffects() {
  * with costs paid at commit; when cardWindupMs elapses we run the stored effect using
  * the locked origin/rotation from pendingCardUse (see cardEffects.resolvePendingCardUse).
  */
-function processPendingCardWindups() {
+async function processPendingCardWindups() {
   if (!_gameState || !isPlayingPhase(_gameState)) return;
   if (!_gameState.run || _gameState.run.status !== 'playing') return;
 
@@ -2515,6 +2515,7 @@ function processPendingCardWindups() {
 
   const now = Date.now();
   const lobby = { id: lobbyId };
+  const tasks = [];
 
   for (const playerId of Object.keys(_gameState.players)) {
     const player = _gameState.players[playerId];
@@ -2533,7 +2534,11 @@ function processPendingCardWindups() {
 
     const socket = _findSocketByPlayerId ? _findSocketByPlayerId(playerId) : null;
     const pseudoSocket = socket || { playerId, emit: () => {} };
-    _cardEffects().resolvePendingCardUse(pseudoSocket, _gameState, lobby, player);
+    tasks.push(_cardEffects().resolvePendingCardUse(pseudoSocket, _gameState, lobby, player));
+  }
+
+  if (tasks.length > 0) {
+    await Promise.all(tasks);
   }
 }
 

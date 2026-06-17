@@ -147,10 +147,10 @@ function ensureEscortObjectiveFixtureQuest() {
   }
 }
 
-function setupCrucibleDuelBossDebug(lobby, state, player) {
+async function setupCrucibleDuelBossDebug(lobby, state, player) {
   const questId = 'crucible_duel';
   const tier = 1;
-  completeQuestTier(player.accountId, 'arena_trials', 2);
+  await completeQuestTier(player.accountId, 'arena_trials', 2);
   state.selectedQuestId = questId;
   state.selectedQuestTier = tier;
   applyLayoutForQuest(state, questId, tier);
@@ -166,11 +166,11 @@ function setupCrucibleDuelBossDebug(lobby, state, player) {
   deployQuestDebugRun(lobby, state, { clearEncounterBoss: true });
 }
 
-function setupVaultOnslaughtBossDebug(lobby, state, player) {
+async function setupVaultOnslaughtBossDebug(lobby, state, player) {
   const questId = 'vault_onslaught';
   const tier = 1;
-  completeQuestTier(player.accountId, 'arena_trials', 2);
-  completeQuestTier(player.accountId, 'crucible_duel', 1);
+  await completeQuestTier(player.accountId, 'arena_trials', 2);
+  await completeQuestTier(player.accountId, 'crucible_duel', 1);
   state.selectedQuestId = questId;
   state.selectedQuestTier = tier;
   applyLayoutForQuest(state, questId, tier);
@@ -186,11 +186,11 @@ function setupVaultOnslaughtBossDebug(lobby, state, player) {
   deployQuestDebugRun(lobby, state, { clearEncounterBoss: true });
 }
 
-function setupRiftConvergenceBossDebug(lobby, state, player) {
+async function setupRiftConvergenceBossDebug(lobby, state, player) {
   const questId = 'rift_convergence';
   const tier = 1;
-  completeQuestTier(player.accountId, 'frost_crossing', 2);
-  completeQuestTier(player.accountId, 'ember_descent', 2);
+  await completeQuestTier(player.accountId, 'frost_crossing', 2);
+  await completeQuestTier(player.accountId, 'ember_descent', 2);
   state.selectedQuestId = questId;
   state.selectedQuestTier = tier;
   applyLayoutForQuest(state, questId, tier);
@@ -206,12 +206,12 @@ function setupRiftConvergenceBossDebug(lobby, state, player) {
   deployQuestDebugRun(lobby, state, { clearEncounterBoss: true });
 }
 
-function setupCitadelBossDebug(lobby, state, player) {
+async function setupCitadelBossDebug(lobby, state, player) {
   const questId = 'citadel_assault';
   const tier = 1;
-  completeQuestTier(player.accountId, 'canyon_descent', 2);
-  completeQuestTier(player.accountId, 'spire_ascent', 2);
-  completeQuestTier(player.accountId, 'arena_trials', 2);
+  await completeQuestTier(player.accountId, 'canyon_descent', 2);
+  await completeQuestTier(player.accountId, 'spire_ascent', 2);
+  await completeQuestTier(player.accountId, 'arena_trials', 2);
   state.selectedQuestId = questId;
   state.selectedQuestTier = tier;
   applyLayoutForQuest(state, questId, tier);
@@ -429,10 +429,10 @@ function deployQuestDebugRun(lobby, state, { clearEncounterBoss = false } = {}) 
   }
 }
 
-function setupArenaTrialsTier2StageBossDebug(lobby, state, player) {
+async function setupArenaTrialsTier2StageBossDebug(lobby, state, player) {
   const questId = 'arena_trials';
   const tier = 2;
-  unlockQuestTier(player.accountId, questId, tier);
+  await unlockQuestTier(player.accountId, questId, tier);
   state.selectedQuestId = questId;
   state.selectedQuestTier = tier;
   applyLayoutForQuest(state, questId, tier);
@@ -750,8 +750,8 @@ function finishQuestTier1DeployDebugScenario(lobby, state, player, name) {
   };
 }
 
-function setupBossApproachDebugScenario(lobby, state, player, name, setupFn) {
-  setupFn(lobby, state, player);
+async function setupBossApproachDebugScenario(lobby, state, player, name, setupFn) {
+  await setupFn(lobby, state, player);
   const anchor = resolveArenaDaisAnchor(state);
   player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 2;
   player.z = anchor.z;
@@ -768,9 +768,9 @@ function finishQuestTier2DeployDebugScenario(lobby, state, player, name) {
   return finishQuestTier1DeployDebugScenario(lobby, state, player, name);
 }
 
-function setupQuestTier2Deploy(lobby, state, player, questId, { preserveVitals = true } = {}) {
+async function setupQuestTier2Deploy(lobby, state, player, questId, { preserveVitals = true } = {}) {
   const tier = 2;
-  unlockQuestTier(player.accountId, questId, tier);
+  await unlockQuestTier(player.accountId, questId, tier);
   state.selectedQuestId = questId;
   state.selectedQuestTier = tier;
   applyLayoutForQuest(state, questId, tier);
@@ -812,7 +812,7 @@ function setupQuestTier2Deploy(lobby, state, player, questId, { preserveVitals =
   startDungeonRun();
 }
 
-function setupQuestTelepipeReady(lobby, state, player, questId, {
+async function setupQuestTelepipeReady(lobby, state, player, questId, {
   preserveVitals = true,
   afterDeploy,
   forceRedeal = false,
@@ -820,7 +820,7 @@ function setupQuestTelepipeReady(lobby, state, player, questId, {
   if (forceRedeal) {
     player.hand = null;
   }
-  setupQuestTier2Deploy(lobby, state, player, questId, { preserveVitals });
+  await setupQuestTier2Deploy(lobby, state, player, questId, { preserveVitals });
   if (afterDeploy) {
     afterDeploy(lobby, state, player);
   } else {
@@ -840,8 +840,8 @@ function setupQuestTelepipeReady(lobby, state, player, questId, {
   }
 }
 
-function setupArenaTrialsTelepipeReadyDeploy(lobby, state, player) {
-  setupArenaTrialsTier2StageBossDebug(lobby, state, player);
+async function setupArenaTrialsTelepipeReadyDeploy(lobby, state, player) {
+  await setupArenaTrialsTier2StageBossDebug(lobby, state, player);
   clearPlayerCardCommitment(player);
   player.magicStones = 20;
   player._msRegenGraceUntil = Date.now() + 20000;
@@ -937,10 +937,10 @@ function setupCanyonDescentTelepipeReadyExtras(state, player) {
   syncCardProbeHand(player);
 }
 
-function setupCrystalRescueTier2Deploy(lobby, state, player) {
+async function setupCrystalRescueTier2Deploy(lobby, state, player) {
   const questId = 'crystal_rescue';
   const tier = 2;
-  unlockQuestTier(player.accountId, questId, tier);
+  await unlockQuestTier(player.accountId, questId, tier);
   state.selectedQuestId = questId;
   state.selectedQuestTier = tier;
   applyLayoutForQuest(state, questId, tier);
@@ -1760,7 +1760,7 @@ function setupHatShopCurrencyDebug({ lobby, state, player, socket, name }) {
         return { ok: true, scenario: name, currency: player.currency };
 }
 
-function setupQuestTier2UnlockedDebug({ lobby, state, player, socket, name }) {
+async function setupQuestTier2UnlockedDebug({ lobby, state, player, socket, name }) {
   // Lobby with training_caverns Tier 2 unlocked and selected so the quest board
         // shows an unlocked Tier 2 row without completing Tier 1 first. The same state is
         // reachable normally by clearing the Tier 1 contract once.
@@ -1769,7 +1769,7 @@ function setupQuestTier2UnlockedDebug({ lobby, state, player, socket, name }) {
         player.hp = MAX_HP;
         const questId = 'training_caverns';
         const tier = 2;
-        unlockQuestTier(player.accountId, questId, tier);
+        await unlockQuestTier(player.accountId, questId, tier);
         state.selectedQuestId = questId;
         state.selectedQuestTier = tier;
         applyLayoutForQuest(state, questId, tier);
@@ -1786,7 +1786,7 @@ function setupQuestTier2UnlockedDebug({ lobby, state, player, socket, name }) {
         };
 }
 
-function setupRiftConvergenceUnlockedDebug({ lobby, state, player, socket, name }) {
+async function setupRiftConvergenceUnlockedDebug({ lobby, state, player, socket, name }) {
   // Lobby with BOTH rift_convergence prerequisites (frost_crossing Tier 2 and
         // ember_descent Tier 2) completed and Rift Convergence selected, so the
         // level map shows the boss node unlocked with both prerequisite edges
@@ -1794,8 +1794,8 @@ function setupRiftConvergenceUnlockedDebug({ lobby, state, player, socket, name 
         setPhase(lobby, PHASES.LOBBY);
         player.ready = false;
         player.hp = MAX_HP;
-        completeQuestTier(player.accountId, 'frost_crossing', 2);
-        completeQuestTier(player.accountId, 'ember_descent', 2);
+        await completeQuestTier(player.accountId, 'frost_crossing', 2);
+        await completeQuestTier(player.accountId, 'ember_descent', 2);
         const questId = 'rift_convergence';
         const tier = 1;
         state.selectedQuestId = questId;
@@ -1814,7 +1814,7 @@ function setupRiftConvergenceUnlockedDebug({ lobby, state, player, socket, name 
         };
 }
 
-function setupRiftConvergenceOnePrereqDebug({ lobby, state, player, socket, name }) {
+async function setupRiftConvergenceOnePrereqDebug({ lobby, state, player, socket, name }) {
   // Lobby with ONLY frost_crossing Tier 2 completed: the Rift Convergence
         // node stays locked on the level map, demonstrating the AND gate across
         // both prerequisite edges. Reachable normally by clearing the frost line
@@ -1822,7 +1822,7 @@ function setupRiftConvergenceOnePrereqDebug({ lobby, state, player, socket, name
         setPhase(lobby, PHASES.LOBBY);
         player.ready = false;
         player.hp = MAX_HP;
-        completeQuestTier(player.accountId, 'frost_crossing', 2);
+        await completeQuestTier(player.accountId, 'frost_crossing', 2);
         emitLobbyQuestUpdate(lobby, state);
         broadcastLobbyUpdate(lobby);
         return {
@@ -1832,7 +1832,7 @@ function setupRiftConvergenceOnePrereqDebug({ lobby, state, player, socket, name
         };
 }
 
-function setupCitadelUnlockedDebug({ lobby, state, player, socket, name }) {
+async function setupCitadelUnlockedDebug({ lobby, state, player, socket, name }) {
   // Lobby with ALL THREE citadel_assault prerequisites (canyon_descent Tier 2,
   // spire_ascent Tier 2, and arena_trials Tier 2) completed and Citadel
   // Assault selected, so the quest board / level map shows the capstone node
@@ -1841,9 +1841,9 @@ function setupCitadelUnlockedDebug({ lobby, state, player, socket, name }) {
   setPhase(lobby, PHASES.LOBBY);
   player.ready = false;
   player.hp = MAX_HP;
-  completeQuestTier(player.accountId, 'canyon_descent', 2);
-  completeQuestTier(player.accountId, 'spire_ascent', 2);
-  completeQuestTier(player.accountId, 'arena_trials', 2);
+  await completeQuestTier(player.accountId, 'canyon_descent', 2);
+  await completeQuestTier(player.accountId, 'spire_ascent', 2);
+  await completeQuestTier(player.accountId, 'arena_trials', 2);
   const questId = 'citadel_assault';
   const tier = 1;
   state.selectedQuestId = questId;
@@ -1862,7 +1862,7 @@ function setupCitadelUnlockedDebug({ lobby, state, player, socket, name }) {
   };
 }
 
-function setupCitadelOnePrereqDebug({ lobby, state, player, socket, name }) {
+async function setupCitadelOnePrereqDebug({ lobby, state, player, socket, name }) {
   // Lobby with ONLY canyon_descent Tier 2 completed: the Citadel Assault
   // node stays locked on the level map, demonstrating the three-way AND
   // gate across the prerequisite edges. Reachable normally by clearing the
@@ -1870,7 +1870,7 @@ function setupCitadelOnePrereqDebug({ lobby, state, player, socket, name }) {
   setPhase(lobby, PHASES.LOBBY);
   player.ready = false;
   player.hp = MAX_HP;
-  completeQuestTier(player.accountId, 'canyon_descent', 2);
+  await completeQuestTier(player.accountId, 'canyon_descent', 2);
   emitLobbyQuestUpdate(lobby, state);
   broadcastLobbyUpdate(lobby);
   return {
@@ -1880,10 +1880,10 @@ function setupCitadelOnePrereqDebug({ lobby, state, player, socket, name }) {
   };
 }
 
-function setupStageBossDormantDebug({ lobby, state, player, socket, name }) {
+async function setupStageBossDormantDebug({ lobby, state, player, socket, name }) {
   // arena_trials Tier 2 stage_boss encounter left dormant for QA.
         // Reachable normally by unlocking Arena Trials Tier 2 and deploying.
-        setupArenaTrialsTier2StageBossDebug(lobby, state, player);
+        await setupArenaTrialsTier2StageBossDebug(lobby, state, player);
         const anchor = resolveArenaDaisAnchor(state);
         player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 2;
         player.z = anchor.z;
@@ -1891,10 +1891,10 @@ function setupStageBossDormantDebug({ lobby, state, player, socket, name }) {
         return finishStageBossDebugScenario(lobby, state, player, name);
 }
 
-function setupStageBossActiveDebug({ lobby, state, player, socket, name }) {
+async function setupStageBossActiveDebug({ lobby, state, player, socket, name }) {
   // arena_trials Tier 2 stage_boss encounter activated for quick-defeat QA.
         // Reachable normally by clearing adds or entering the trigger radius.
-        setupArenaTrialsTier2StageBossDebug(lobby, state, player);
+        await setupArenaTrialsTier2StageBossDebug(lobby, state, player);
         const anchor = resolveArenaDaisAnchor(state);
         const bossId = state.run.encounter.bossEnemyId;
         for (const enemy of state.enemies) {
@@ -2209,7 +2209,7 @@ function setupFireCavernDebug({ lobby, state, player, socket, name }) {
         };
 }
 
-function setupHatsUnlockedDebug({ lobby, state, player, socket, name }) {
+async function setupHatsUnlockedDebug({ lobby, state, player, socket, name }) {
   // Persist a couple of catalog-hat unlocks on the account (leaving at least
         // one hat locked) so the customization panel's equip flow can be exercised
         // on owned, non-'none' hats — and the locked-hat branch too — without
@@ -2224,7 +2224,7 @@ function setupHatsUnlockedDebug({ lobby, state, player, socket, name }) {
         const toUnlock = HAT_CATALOG.filter((h) => h.id !== 'none').slice(0, -1);
         let unlockedHats = backfillUnlockedHats(null);
         for (const hat of toUnlock) {
-          const r = unlockHatForAccount(player.accountId, hat.id);
+          const r = await unlockHatForAccount(player.accountId, hat.id);
           if (r.ok) unlockedHats = r.unlockedHats;
         }
         return { ok: true, scenario: name, unlockedHats };
@@ -4662,13 +4662,13 @@ const DEBUG_SCENARIO_REGISTRY = {
     return finishQuestTier1DeployDebugScenario(lobby, state, player, name);
   },
 
-  'training-caverns-tier-2': ({ lobby, state, player, name }) => {
-    setupQuestTier2Deploy(lobby, state, player, 'training_caverns');
+  'training-caverns-tier-2': async ({ lobby, state, player, name }) => {
+    await setupQuestTier2Deploy(lobby, state, player, 'training_caverns');
     return finishQuestTier2DeployDebugScenario(lobby, state, player, name);
   },
 
-  'training-caverns-telepipe-ready': ({ lobby, state, player, name }) => {
-    setupQuestTelepipeReady(lobby, state, player, 'training_caverns');
+  'training-caverns-telepipe-ready': async ({ lobby, state, player, name }) => {
+    await setupQuestTelepipeReady(lobby, state, player, 'training_caverns');
     return finishQuestTier2DeployDebugScenario(lobby, state, player, name);
   },
 
@@ -4716,13 +4716,13 @@ const DEBUG_SCENARIO_REGISTRY = {
     return emitQuestDebugState(lobby, state, player, name);
   },
 
-  'arena-trials-tier-2': ({ lobby, state, player, name }) => {
-    setupArenaTrialsTier2StageBossDebug(lobby, state, player);
+  'arena-trials-tier-2': async ({ lobby, state, player, name }) => {
+    await setupArenaTrialsTier2StageBossDebug(lobby, state, player);
     return finishStageBossDebugScenario(lobby, state, player, name);
   },
 
-  'arena-trials-telepipe-ready': ({ lobby, state, player, name }) => {
-    setupArenaTrialsTelepipeReadyDeploy(lobby, state, player);
+  'arena-trials-telepipe-ready': async ({ lobby, state, player, name }) => {
+    await setupArenaTrialsTelepipeReadyDeploy(lobby, state, player);
     return finishStageBossDebugScenario(lobby, state, player, name);
   },
 
@@ -4769,13 +4769,13 @@ const DEBUG_SCENARIO_REGISTRY = {
     },
   ),
 
-  'canyon-descent-tier-2': ({ lobby, state, player, name }) => {
-    setupQuestTier2Deploy(lobby, state, player, 'canyon_descent');
+  'canyon-descent-tier-2': async ({ lobby, state, player, name }) => {
+    await setupQuestTier2Deploy(lobby, state, player, 'canyon_descent');
     return finishQuestTier2DeployDebugScenario(lobby, state, player, name);
   },
 
-  'canyon-descent-telepipe-ready': ({ lobby, state, player, name }) => {
-    setupQuestTelepipeReady(lobby, state, player, 'canyon_descent', {
+  'canyon-descent-telepipe-ready': async ({ lobby, state, player, name }) => {
+    await setupQuestTelepipeReady(lobby, state, player, 'canyon_descent', {
       afterDeploy: (_lobby, state, player) => setupCanyonDescentTelepipeReadyExtras(state, player),
       forceRedeal: true,
     });
@@ -4827,13 +4827,13 @@ const DEBUG_SCENARIO_REGISTRY = {
     },
   ),
 
-  'spire-ascent-tier-2': ({ lobby, state, player, name }) => {
-    setupQuestTier2Deploy(lobby, state, player, 'spire_ascent');
+  'spire-ascent-tier-2': async ({ lobby, state, player, name }) => {
+    await setupQuestTier2Deploy(lobby, state, player, 'spire_ascent');
     return finishQuestTier2DeployDebugScenario(lobby, state, player, name);
   },
 
-  'spire-ascent-telepipe-ready': ({ lobby, state, player, name }) => {
-    setupQuestTelepipeReady(lobby, state, player, 'spire_ascent', {
+  'spire-ascent-telepipe-ready': async ({ lobby, state, player, name }) => {
+    await setupQuestTelepipeReady(lobby, state, player, 'spire_ascent', {
       afterDeploy: (_lobby, state, player) => setupSpireAscentTelepipeReadyExtras(state, player),
       forceRedeal: true,
     });
@@ -4879,8 +4879,8 @@ const DEBUG_SCENARIO_REGISTRY = {
     },
   ),
 
-  'frost-crossing-tier-2': ({ lobby, state, player, name }) => {
-    setupQuestTier2Deploy(lobby, state, player, 'frost_crossing', { preserveVitals: false });
+  'frost-crossing-tier-2': async ({ lobby, state, player, name }) => {
+    await setupQuestTier2Deploy(lobby, state, player, 'frost_crossing', { preserveVitals: false });
     return finishQuestTier2DeployDebugScenario(lobby, state, player, name);
   },
 
@@ -4925,8 +4925,8 @@ const DEBUG_SCENARIO_REGISTRY = {
     ctx.lobby, ctx.state, ctx.player, ctx.name,
   ),
 
-  'ember-descent-tier-2': ({ lobby, state, player, name }) => {
-    setupQuestTier2Deploy(lobby, state, player, 'ember_descent', { preserveVitals: false });
+  'ember-descent-tier-2': async ({ lobby, state, player, name }) => {
+    await setupQuestTier2Deploy(lobby, state, player, 'ember_descent', { preserveVitals: false });
     return finishQuestTier2DeployDebugScenario(lobby, state, player, name);
   },
 
@@ -4947,8 +4947,8 @@ const DEBUG_SCENARIO_REGISTRY = {
     ctx.lobby, ctx.state, ctx.player, ctx.name,
   ),
 
-  'crystal-rescue-tier-2': ({ lobby, state, player, name }) => {
-    setupCrystalRescueTier2Deploy(lobby, state, player);
+  'crystal-rescue-tier-2': async ({ lobby, state, player, name }) => {
+    await setupCrystalRescueTier2Deploy(lobby, state, player);
     return finishQuestTier2DeployDebugScenario(lobby, state, player, name);
   },
 
@@ -5462,7 +5462,7 @@ function applyDebugScenario(socket, name) {
   if (!player) return { ok: false, reason: 'No player for debug scenario' };
   const spawn = firstRoomPosition();
 
-  return withLobbyContext(lobby, () => {
+  return withLobbyContext(lobby, async () => {
     state._applyingDebugScenario = true;
     try {
     const resetError = resetPlayerForDebugScenario(player, name);
@@ -5474,7 +5474,7 @@ function applyDebugScenario(socket, name) {
     }
 
     const ctx = { lobby, state, player, socket, name, spawn };
-    const handlerResult = handler(ctx);
+    const handlerResult = await handler(ctx);
     if (handlerResult !== undefined) {
       return handlerResult;
     }

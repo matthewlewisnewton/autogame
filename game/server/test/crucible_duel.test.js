@@ -230,7 +230,7 @@ describe('crucible_duel unlock gating', () => {
   });
 
   it('allows selectQuest after arena_trials Tier 2 is completed', async () => {
-    users.completeQuestTier(accountId, 'arena_trials', 2);
+    await users.completeQuestTier(accountId, 'arena_trials', 2);
     expect(users.isQuestTierUnlocked(accountId, QUEST_ID, TIER)).toBe(true);
 
     const updatePromise = waitForEvent(socket, 'questUpdate');

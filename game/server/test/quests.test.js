@@ -638,7 +638,7 @@ describe('buildQuestUpdatePayload tierUnlocked', () => {
     );
   });
 
-  it('exposes tierUnlocked false for locked tier 2 and true after prerequisite unlock', () => {
+  it('exposes tierUnlocked false for locked tier 2 and true after prerequisite unlock', async () => {
     const lockedPayload = buildQuestUpdatePayload({}, accountId);
     const lockedTier2 = lockedPayload.questVariants.find(
       (v) => v.questId === 'training_caverns' && v.tier === 2,
@@ -651,7 +651,7 @@ describe('buildQuestUpdatePayload tierUnlocked', () => {
     expect(tier1.tierUnlocked).toBe(true);
     expect(lockedPayload.unlockedQuestTiers).toEqual({});
 
-    users.unlockQuestTier(accountId, 'training_caverns', 2);
+    await users.unlockQuestTier(accountId, 'training_caverns', 2);
     const unlockedPayload = buildQuestUpdatePayload({}, accountId);
     const unlockedTier2 = unlockedPayload.questVariants.find(
       (v) => v.questId === 'training_caverns' && v.tier === 2,

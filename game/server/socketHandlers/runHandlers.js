@@ -154,8 +154,8 @@ function register(socket, ctx) {
   });
 
   socket.on(CLIENT_TO_SERVER.USE_CARD, (data) => {
-    withLobbyFromSocket(socket, (state, lobby) => {
-      cardEffects.handleUseCard(socket, state, lobby, data);
+    void withLobbyFromSocket(socket, async (state, lobby) => {
+      await cardEffects.handleUseCard(socket, state, lobby, data);
     });
   });
 
@@ -183,7 +183,7 @@ function register(socket, ctx) {
   });
 
   socket.on(CLIENT_TO_SERVER.LOOT_PICKUP, (data) => {
-    withLobbyFromSocket(socket, (state, lobby) => {
+    void withLobbyFromSocket(socket, async (state, lobby) => {
     if (!data || !data.lootId) return;
     if (state.run && state.run.status !== 'playing') return;
 
@@ -218,7 +218,7 @@ function register(socket, ctx) {
     void savePlayerData(socket.playerId);
 
     if (isCrystal) {
-      checkRunTerminalState();
+      await checkRunTerminalState();
     }
     });
   });

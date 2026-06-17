@@ -391,32 +391,32 @@ describe('equipping starter hats on a fresh account', () => {
 		try { fs.unlinkSync(tmpFile + '.tmp'); } catch {}
 	});
 
-	it('lets a default account equip none, bandana, and beanie without unlocking first', () => {
+	it('lets a default account equip none, bandana, and beanie without unlocking first', async () => {
 		createUser('starterhats', 'password123');
 		const user = findUserByUsername('starterhats');
 		expect(user.unlockedHats).toEqual(['none', 'bandana', 'beanie']);
 		expect(user.cosmetic.hat).toBe('none');
 
-		const noneResult = updateProfile(user.accountId, { cosmetic: { hat: 'none' } });
+		const noneResult = await updateProfile(user.accountId, { cosmetic: { hat: 'none' } });
 		expect(noneResult.ok).toBe(true);
 		expect(findUserByUsername('starterhats').cosmetic.hat).toBe('none');
 
-		const bandanaResult = updateProfile(user.accountId, { cosmetic: { hat: 'bandana' } });
+		const bandanaResult = await updateProfile(user.accountId, { cosmetic: { hat: 'bandana' } });
 		expect(bandanaResult.ok).toBe(true);
 		expect(findUserByUsername('starterhats').cosmetic.hat).toBe('bandana');
 
-		const beanieResult = updateProfile(user.accountId, { cosmetic: { hat: 'beanie' } });
+		const beanieResult = await updateProfile(user.accountId, { cosmetic: { hat: 'beanie' } });
 		expect(beanieResult.ok).toBe(true);
 		expect(findUserByUsername('starterhats').cosmetic.hat).toBe('beanie');
 	});
 
-	it('rejects updateProfile for a locked hat on a fresh account and leaves cosmetic.hat unchanged', () => {
+	it('rejects updateProfile for a locked hat on a fresh account and leaves cosmetic.hat unchanged', async () => {
 		createUser('lockedhats', 'password123');
 		const user = findUserByUsername('lockedhats');
 		expect(user.unlockedHats).toEqual(['none', 'bandana', 'beanie']);
 		expect(user.cosmetic.hat).toBe('none');
 
-		const result = updateProfile(user.accountId, { cosmetic: { hat: 'crown' } });
+		const result = await updateProfile(user.accountId, { cosmetic: { hat: 'crown' } });
 		expect(result.ok).toBe(false);
 		expect(result.reason).toMatch(/not unlocked/i);
 		expect(findUserByUsername('lockedhats').cosmetic.hat).toBe('none');

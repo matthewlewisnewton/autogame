@@ -117,7 +117,7 @@ describe('card wind-up by card type', () => {
 		setSimGameState(state, {});
 		setProgressionGameState(state);
 		player.cardWindupStartTime = Date.now() + 100000;
-		processPendingCardWindups();
+		await processPendingCardWindups();
 		expect(cardUsed).toBe(false);
 		assertNoEffectAtCommit({ state, player });
 

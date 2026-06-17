@@ -228,13 +228,13 @@ describe('admin roster + ADMIN_PASSWORD gate', () => {
 	});
 
 	describe('GET /admin (HTTP route)', () => {
-		function seedRoster() {
+		async function seedRoster() {
 			users.createUser('alice', 'pw-alice');
 			users.createUser('bob', 'pw-bob');
 			const aliceId = users.findUserByUsername('alice').accountId;
 			const bobId = users.findUserByUsername('bob').accountId;
 			// Equip a default-unlocked hat so the rendered page shows hat data.
-			users.updateProfile(aliceId, { cosmetic: { hat: 'bandana' } });
+			await users.updateProfile(aliceId, { cosmetic: { hat: 'bandana' } });
 			return Promise.all([
 				provider.savePlayer(aliceId, {
 					currency: 1234,

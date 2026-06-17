@@ -111,7 +111,7 @@ describe('buildLevelUnlockGraph', () => {
 		expect(nodeFor(unknownGraph, 'vault_onslaught', 1).state).toBe('locked');
 	});
 
-	it('reports cleared tiers and unlocks the dependent tier after progression', () => {
+	it('reports cleared tiers and unlocks the dependent tier after progression', async () => {
 		createUser('graph_player', 'pass');
 		const { accountId } = findUserByUsername('graph_player');
 
@@ -121,8 +121,8 @@ describe('buildLevelUnlockGraph', () => {
 		expect(nodeFor(before, QUEST_ID, 2).state).toBe('locked');
 
 		// Clear tier 1 and unlock its dependent tier 2.
-		completeQuestTier(accountId, QUEST_ID, 1);
-		unlockQuestTier(accountId, QUEST_ID, 2);
+		await completeQuestTier(accountId, QUEST_ID, 1);
+		await unlockQuestTier(accountId, QUEST_ID, 2);
 
 		const after = buildLevelUnlockGraph(accountId);
 		expect(nodeFor(after, QUEST_ID, 1).state).toBe('cleared');
@@ -151,7 +151,7 @@ describe('buildQuestUpdatePayload levelUnlockGraph', () => {
 		} catch {}
 	});
 
-	it('attaches the per-player unlock graph when an accountId is provided', () => {
+	it('attaches the per-player unlock graph when an accountId is provided', async () => {
 		createUser('payload_player', 'pass');
 		const { accountId } = findUserByUsername('payload_player');
 
@@ -173,8 +173,8 @@ describe('buildQuestUpdatePayload levelUnlockGraph', () => {
 		}
 
 		// State reflects progression once a tier is cleared.
-		completeQuestTier(accountId, QUEST_ID, 1);
-		unlockQuestTier(accountId, QUEST_ID, 2);
+		await completeQuestTier(accountId, QUEST_ID, 1);
+		await unlockQuestTier(accountId, QUEST_ID, 2);
 		const after = buildQuestUpdatePayload({}, accountId);
 		expect(nodeFor(after.levelUnlockGraph, QUEST_ID, 1).state).toBe('cleared');
 		expect(nodeFor(after.levelUnlockGraph, QUEST_ID, 2).state).toBe('unlocked');

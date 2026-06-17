@@ -1594,8 +1594,7 @@ function isRunObjectiveComplete(objective) {
   return def.isComplete(objective, _gameState.run);
 }
 
-function buildRunSummary(status) {
-  const run = _gameState.run;
+function buildRunSummary(status, run = _gameState.run) {
   if (!run) return null;
 
   const players = Object.entries(_gameState.players).map(([id, p]) => ({
@@ -1648,8 +1647,9 @@ function grantRunRewards(playerId, summary) {
   const lootCurrency = player.currencyEarnedThisRun || 0;
 
   if (summary.status === 'victory') {
-    const quest = _gameState.run && _gameState.run.questId
-      ? getQuest(_gameState.run.questId, _gameState.run.questTier)
+    const runRef = summary.run || _gameState.run;
+    const quest = runRef && runRef.questId
+      ? getQuest(runRef.questId, runRef.questTier)
       : getSelectedQuest(_gameState);
     const currencyBonus = (quest && quest.rewardCurrency) || 10;
     player.currency += currencyBonus;
@@ -1661,8 +1661,7 @@ function grantRunRewards(playerId, summary) {
     if (cardChoices.length === 0) {
       if (!_gameState._victoryCounters) _gameState._victoryCounters = {};
       const idx = _gameState._victoryCounters[playerId] || 0;
-      const run = _gameState.run;
-      const pool = getQuestRewardCards(run?.questId, run?.questTier) || VICTORY_REWARD_ROTATION;
+      const pool = getQuestRewardCards(runRef?.questId, runRef?.questTier) || VICTORY_REWARD_ROTATION;
       const cardId = pool[idx % pool.length];
       _gameState._victoryCounters[playerId] = idx + 1;
 
@@ -2737,10 +2736,10 @@ function processQuestWaveCleared(gameState = _gameState) {
   fireWaveClearedTriggers(gameState, buildQuestScriptSpawnCtx(gameState));
 }
 
-function cleanupAfterDamage() {
+async function cleanupAfterDamage() {
   if (removeDeadEnemies() > 0) {
     processQuestWaveCleared();
-    checkRunTerminalState();
+    await checkRunTerminalState();
   }
 }
 
@@ -3515,18 +3514,19 @@ function tickCombatExhaustionGrace(now = Date.now()) {
   }
 }
 
-function checkRunTerminalState() {
-  if (!_gameState.run || _gameState.run.status !== 'playing') return;
+async function checkRunTerminalState() {
+  const run = _gameState.run;
+  if (!run || run.status !== 'playing') return;
 
   let status = null;
 
-  if (isRunObjectiveComplete(_gameState.run.objective)) {
+  if (run.objective && isRunObjectiveComplete(run.objective)) {
     const io = getIoTarget();
     fireQuestDialogue(io, _gameState, 'objective_complete');
     status = 'victory';
   }
 
-  if (!status && _gameState.run.escort?.failed) {
+  if (!status && run.escort?.failed) {
     status = 'failed';
   }
 
@@ -3549,34 +3549,14 @@ function checkRunTerminalState() {
 
   _gameState.run.status = status;
 
+  const runQuestTier = run.questTier ?? DEFAULT_QUEST_TIER;
+  const runQuestId = run.questId;
+
   for (const p of Object.values(_gameState.players)) {
     if (!p) continue;
     p.inputActive = false;
     p.inputDx = 0;
     p.inputDz = 0;
-  }
-
-  if (status === 'victory' && (_gameState.run.questTier ?? DEFAULT_QUEST_TIER) === 1) {
-    const questId = _gameState.run.questId;
-    if (questId) {
-      for (const player of Object.values(_gameState.players)) {
-        if (player && player.accountId) {
-          unlockQuestTier(player.accountId, questId, 2);
-          completeQuestTier(player.accountId, questId, 1);
-        }
-      }
-    }
-  }
-
-  if (status === 'victory' && (_gameState.run.questTier ?? DEFAULT_QUEST_TIER) === 2) {
-    const questId = _gameState.run.questId;
-    if (questId) {
-      for (const player of Object.values(_gameState.players)) {
-        if (player && player.accountId) {
-          completeQuestTier(player.accountId, questId, 2);
-        }
-      }
-    }
   }
 
   for (const p of Object.values(_gameState.players)) {
@@ -3590,17 +3570,36 @@ function checkRunTerminalState() {
   }
 
   for (const playerId of Object.keys(_gameState.players)) {
-    grantRunRewards(playerId, { status });
+    grantRunRewards(playerId, { status, run });
   }
 
   for (const playerId of Object.keys(_gameState.players)) {
     void savePlayerData(playerId);
   }
 
-  const summary = buildRunSummary(status);
+  const summary = buildRunSummary(status, run);
   const io = getIoTarget();
   if (io) {
     io.emit(status === 'victory' ? SERVER_TO_CLIENT.RUN_COMPLETE : SERVER_TO_CLIENT.RUN_FAILED, summary);
+  }
+
+  // Persist quest-tier unlocks after runComplete/runFailed so async provider
+  // writes cannot yield and swap lobby context before rewards are granted.
+  if (status === 'victory' && runQuestTier === 1 && runQuestId) {
+    for (const player of Object.values(_gameState.players)) {
+      if (player && player.accountId) {
+        await unlockQuestTier(player.accountId, runQuestId, 2);
+        await completeQuestTier(player.accountId, runQuestId, 1);
+      }
+    }
+  }
+
+  if (status === 'victory' && runQuestTier === 2 && runQuestId) {
+    for (const player of Object.values(_gameState.players)) {
+      if (player && player.accountId) {
+        await completeQuestTier(player.accountId, runQuestId, 2);
+      }
+    }
   }
 }
 
