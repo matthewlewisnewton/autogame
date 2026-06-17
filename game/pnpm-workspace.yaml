@@ -5,7 +5,6 @@ packages:
 allowBuilds:
   esbuild: true
   bcrypt: true
-  deasync: true
 
 # Supply-chain guard: refuse to resolve/install any package version published
 # less than 7 days ago (10080 minutes), so a freshly-compromised release isn't

@@ -2,35 +2,9 @@
 
 const { StorageProvider } = require('./storage');
 const { Pool } = require('pg');
-const deasync = require('deasync');
 const { ensurePlayersSchema, ensureSettingsSchema } = require('./db/ensurePlayersSchema');
 const fs = require('fs');
 const path = require('path');
-
-/**
- * Block until a promise settles. Callers expect synchronous savePlayer/loadPlayer.
- * @template T
- * @param {Promise<T>} promise
- * @returns {T}
- */
-function runSync(promise) {
-	let done = false;
-	let result;
-	let error;
-	promise.then(
-		(value) => {
-			result = value;
-			done = true;
-		},
-		(err) => {
-			error = err;
-			done = true;
-		}
-	);
-	deasync.loopWhile(() => !done);
-	if (error) throw error;
-	return result;
-}
 
 // Safe storage-key shape: matches server-issued UUIDs and other simple keys.
 // Used as a last-line guard against path traversal even if a forged/leaked
@@ -61,25 +35,25 @@ class InMemoryProvider extends StorageProvider {
 		this.settingsStore = new Map();
 	}
 
-	savePlayer(playerId, data) {
+	async savePlayer(playerId, data) {
 		this.store.set(playerId, JSON.parse(JSON.stringify(data)));
 	}
 
-	loadPlayer(playerId) {
+	async loadPlayer(playerId) {
 		const entry = this.store.get(playerId);
 		return entry !== undefined ? JSON.parse(JSON.stringify(entry)) : null;
 	}
 
-	saveSettings(accountId, data) {
+	async saveSettings(accountId, data) {
 		this.settingsStore.set(accountId, JSON.parse(JSON.stringify(data)));
 	}
 
-	loadSettings(accountId) {
+	async loadSettings(accountId) {
 		const entry = this.settingsStore.get(accountId);
 		return entry !== undefined ? JSON.parse(JSON.stringify(entry)) : null;
 	}
 
-	close() {
+	async close() {
 		// no-op
 	}
 }
@@ -97,7 +71,7 @@ class FileProvider extends StorageProvider {
 		fs.mkdirSync(basePath, { recursive: true });
 	}
 
-	savePlayer(playerId, data) {
+	async savePlayer(playerId, data) {
 		assertSafePlayerId(playerId);
 		const json = JSON.stringify(data, null, 2);
 		const finalPath = path.join(this.basePath, `${playerId}.json`);
@@ -114,7 +88,7 @@ class FileProvider extends StorageProvider {
 		}
 	}
 
-	loadPlayer(playerId) {
+	async loadPlayer(playerId) {
 		assertSafePlayerId(playerId);
 		const filePath = path.join(this.basePath, `${playerId}.json`);
 		try {
@@ -126,7 +100,7 @@ class FileProvider extends StorageProvider {
 		}
 	}
 
-	saveSettings(accountId, data) {
+	async saveSettings(accountId, data) {
 		assertSafePlayerId(accountId);
 		const settingsDir = path.join(this.basePath, 'settings');
 		fs.mkdirSync(settingsDir, { recursive: true });
@@ -143,7 +117,7 @@ class FileProvider extends StorageProvider {
 		}
 	}
 
-	loadSettings(accountId) {
+	async loadSettings(accountId) {
 		assertSafePlayerId(accountId);
 		const settingsDir = path.join(this.basePath, 'settings');
 		const filePath = path.join(settingsDir, `${accountId}.json`);
@@ -156,7 +130,7 @@ class FileProvider extends StorageProvider {
 		}
 	}
 
-	close() {
+	async close() {
 		// no-op — no open handles to release
 	}
 }
@@ -195,59 +169,67 @@ class PostgresProvider extends StorageProvider {
 			this._ownsPool = true;
 		}
 		this._closed = false;
+	}
+
+	/**
+	 * Create a provider and await schema bootstrap (production startup path).
+	 * @param {string} databaseUrl
+	 * @param {{ skipSchemaEnsure?: boolean }} [options]
+	 */
+	static async create(databaseUrl, options = {}) {
+		const provider = new PostgresProvider(databaseUrl, { ...options, skipSchemaEnsure: true });
 		if (!options.skipSchemaEnsure) {
-			runSync(ensurePlayersSchema(this.pool));
-			runSync(ensureSettingsSchema(this.pool));
+			await ensurePlayersSchema(provider.pool);
+			await ensureSettingsSchema(provider.pool);
 		}
+		return provider;
 	}
 
-	savePlayer(playerId, data) {
+	async savePlayer(playerId, data) {
 		assertSafePlayerId(playerId);
 		const copy = JSON.parse(JSON.stringify(data));
-		runSync(
-			this.pool.query(
-				`INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb)
-				 ON CONFLICT (player_id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
-				[playerId, JSON.stringify(copy)]
-			)
+		await this.pool.query(
+			`INSERT INTO players (player_id, data) VALUES ($1, $2::jsonb)
+			 ON CONFLICT (player_id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
+			[playerId, JSON.stringify(copy)]
 		);
 	}
 
-	loadPlayer(playerId) {
+	async loadPlayer(playerId) {
 		assertSafePlayerId(playerId);
-		const { rows } = runSync(
-			this.pool.query(`SELECT data FROM players WHERE player_id = $1`, [playerId])
+		const { rows } = await this.pool.query(
+			`SELECT data FROM players WHERE player_id = $1`,
+			[playerId]
 		);
 		if (rows.length === 0) return null;
 		return JSON.parse(JSON.stringify(rows[0].data));
 	}
 
-	saveSettings(accountId, data) {
+	async saveSettings(accountId, data) {
 		assertSafePlayerId(accountId);
 		const copy = JSON.parse(JSON.stringify(data));
-		runSync(
-			this.pool.query(
-				`INSERT INTO settings (account_id, data) VALUES ($1, $2::jsonb)
-				 ON CONFLICT (account_id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
-				[accountId, JSON.stringify(copy)]
-			)
+		await this.pool.query(
+			`INSERT INTO settings (account_id, data) VALUES ($1, $2::jsonb)
+			 ON CONFLICT (account_id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
+			[accountId, JSON.stringify(copy)]
 		);
 	}
 
-	loadSettings(accountId) {
+	async loadSettings(accountId) {
 		assertSafePlayerId(accountId);
-		const { rows } = runSync(
-			this.pool.query(`SELECT data FROM settings WHERE account_id = $1`, [accountId])
+		const { rows } = await this.pool.query(
+			`SELECT data FROM settings WHERE account_id = $1`,
+			[accountId]
 		);
 		if (rows.length === 0) return null;
 		return JSON.parse(JSON.stringify(rows[0].data));
 	}
 
-	close() {
+	async close() {
 		if (!this._ownsPool || this._closed) return;
 		this._closed = true;
 		try {
-			runSync(this.pool.end());
+			await this.pool.end();
 		} catch (_) {
 			// pool may already be ended
 		}

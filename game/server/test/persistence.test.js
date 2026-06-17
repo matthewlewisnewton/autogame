@@ -39,29 +39,29 @@ function expectPersistentData(data, expected) {
 // ── StorageProvider (abstract base class) ──
 
 describe('StorageProvider base class', () => {
-	it('savePlayer() throws when called on the abstract class', () => {
+	it('savePlayer() throws when called on the abstract class', async () => {
 		const sp = new StorageProvider();
-		expect(() => sp.savePlayer('p1', {})).toThrow('Not implemented');
+		await expect(sp.savePlayer('p1', {})).rejects.toThrow('Not implemented');
 	});
 
-	it('loadPlayer() throws when called on the abstract class', () => {
+	it('loadPlayer() throws when called on the abstract class', async () => {
 		const sp = new StorageProvider();
-		expect(() => sp.loadPlayer('p1')).toThrow('Not implemented');
+		await expect(sp.loadPlayer('p1')).rejects.toThrow('Not implemented');
 	});
 
-	it('saveSettings() throws when called on the abstract class', () => {
+	it('saveSettings() throws when called on the abstract class', async () => {
 		const sp = new StorageProvider();
-		expect(() => sp.saveSettings('a1', {})).toThrow('Not implemented');
+		await expect(sp.saveSettings('a1', {})).rejects.toThrow('Not implemented');
 	});
 
-	it('loadSettings() throws when called on the abstract class', () => {
+	it('loadSettings() throws when called on the abstract class', async () => {
 		const sp = new StorageProvider();
-		expect(() => sp.loadSettings('a1')).toThrow('Not implemented');
+		await expect(sp.loadSettings('a1')).rejects.toThrow('Not implemented');
 	});
 
-	it('close() throws when called on the abstract class', () => {
+	it('close() throws when called on the abstract class', async () => {
 		const sp = new StorageProvider();
-		expect(() => sp.close()).toThrow('Not implemented');
+		await expect(sp.close()).rejects.toThrow('Not implemented');
 	});
 });
 
@@ -80,45 +80,45 @@ describe('InMemoryProvider', () => {
 		selectedDeck: ['iron_sword', 'iron_sword', 'flame_blade'],
 	};
 
-	it('savePlayer() then loadPlayer() returns the same data', () => {
-		provider.savePlayer('player1', sampleData);
-		expect(provider.loadPlayer('player1')).toEqual(sampleData);
+	it('savePlayer() then loadPlayer() returns the same data', async () => {
+		await provider.savePlayer('player1', sampleData);
+		expect(await provider.loadPlayer('player1')).toEqual(sampleData);
 	});
 
-	it('loadPlayer() for unknown id returns null', () => {
-		expect(provider.loadPlayer('nonexistent')).toBeNull();
+	it('loadPlayer() for unknown id returns null', async () => {
+		expect(await provider.loadPlayer('nonexistent')).toBeNull();
 	});
 
-	it('overwrites data on subsequent saves', () => {
-		provider.savePlayer('player1', sampleData);
+	it('overwrites data on subsequent saves', async () => {
+		await provider.savePlayer('player1', sampleData);
 		const updated = { ...sampleData, currency: 100 };
-		provider.savePlayer('player1', updated);
-		expect(provider.loadPlayer('player1')).toEqual(updated);
+		await provider.savePlayer('player1', updated);
+		expect(await provider.loadPlayer('player1')).toEqual(updated);
 	});
 
-	it('isolates data between different players', () => {
-		provider.savePlayer('player1', sampleData);
-		provider.savePlayer('player2', { ...sampleData, currency: 99 });
-		expect(provider.loadPlayer('player1').currency).toBe(42);
-		expect(provider.loadPlayer('player2').currency).toBe(99);
+	it('isolates data between different players', async () => {
+		await provider.savePlayer('player1', sampleData);
+		await provider.savePlayer('player2', { ...sampleData, currency: 99 });
+		expect((await provider.loadPlayer('player1')).currency).toBe(42);
+		expect((await provider.loadPlayer('player2')).currency).toBe(99);
 	});
 
-	it('save deep-copies input (mutations do not affect stored data)', () => {
-		provider.savePlayer('player1', sampleData);
+	it('save deep-copies input (mutations do not affect stored data)', async () => {
+		await provider.savePlayer('player1', sampleData);
 		sampleData.currency = 999;
-		expect(provider.loadPlayer('player1').currency).toBe(42);
+		expect((await provider.loadPlayer('player1')).currency).toBe(42);
 	});
 
-	it('load returns a deep copy (mutations do not affect stored data)', () => {
+	it('load returns a deep copy (mutations do not affect stored data)', async () => {
 		const data = { currency: 42, ownedCards: {}, selectedDeck: [] };
-		provider.savePlayer('player1', data);
-		const loaded = provider.loadPlayer('player1');
+		await provider.savePlayer('player1', data);
+		const loaded = await provider.loadPlayer('player1');
 		loaded.currency = 999;
-		expect(provider.loadPlayer('player1').currency).toBe(42);
+		expect((await provider.loadPlayer('player1')).currency).toBe(42);
 	});
 
-	it('close() is a no-op', () => {
-		expect(() => provider.close()).not.toThrow();
+	it('close() is a no-op', async () => {
+		await expect(provider.close()).resolves.toBeUndefined();
 	});
 });
 
@@ -133,8 +133,8 @@ describe('FileProvider', () => {
 		provider = new FileProvider(tmpDir);
 	});
 
-	afterEach(() => {
-		provider.close();
+	afterEach(async () => {
+		await provider.close();
 		fs.rmSync(tmpDir, { recursive: true, force: true });
 	});
 
@@ -144,59 +144,59 @@ describe('FileProvider', () => {
 		selectedDeck: ['iron_sword', 'iron_sword', 'flame_blade'],
 	};
 
-	it('savePlayer() then loadPlayer() returns the same data', () => {
-		provider.savePlayer('player1', sampleData);
-		expect(provider.loadPlayer('player1')).toEqual(sampleData);
+	it('savePlayer() then loadPlayer() returns the same data', async () => {
+		await provider.savePlayer('player1', sampleData);
+		expect(await provider.loadPlayer('player1')).toEqual(sampleData);
 	});
 
-	it('loadPlayer() for unknown id returns null', () => {
-		expect(provider.loadPlayer('nonexistent')).toBeNull();
+	it('loadPlayer() for unknown id returns null', async () => {
+		expect(await provider.loadPlayer('nonexistent')).toBeNull();
 	});
 
-	it('overwrites data on subsequent saves', () => {
-		provider.savePlayer('player1', sampleData);
+	it('overwrites data on subsequent saves', async () => {
+		await provider.savePlayer('player1', sampleData);
 		const updated = { ...sampleData, currency: 100 };
-		provider.savePlayer('player1', updated);
-		expect(provider.loadPlayer('player1')).toEqual(updated);
+		await provider.savePlayer('player1', updated);
+		expect(await provider.loadPlayer('player1')).toEqual(updated);
 	});
 
-	it('close() is a no-op', () => {
-		expect(() => provider.close()).not.toThrow();
+	it('close() is a no-op', async () => {
+		await expect(provider.close()).resolves.toBeUndefined();
 	});
 
-	it('data survives across separate FileProvider instances', () => {
-		provider.savePlayer('player1', sampleData);
-		provider.close();
+	it('data survives across separate FileProvider instances', async () => {
+		await provider.savePlayer('player1', sampleData);
+		await provider.close();
 
 		const provider2 = new FileProvider(tmpDir);
-		expect(provider2.loadPlayer('player1')).toEqual(sampleData);
-		provider2.close();
+		expect(await provider2.loadPlayer('player1')).toEqual(sampleData);
+		await provider2.close();
 	});
 
-	it('isolates data between different player files', () => {
-		provider.savePlayer('player1', sampleData);
-		provider.savePlayer('player2', { ...sampleData, currency: 99 });
-		expect(provider.loadPlayer('player1').currency).toBe(42);
-		expect(provider.loadPlayer('player2').currency).toBe(99);
+	it('isolates data between different player files', async () => {
+		await provider.savePlayer('player1', sampleData);
+		await provider.savePlayer('player2', { ...sampleData, currency: 99 });
+		expect((await provider.loadPlayer('player1')).currency).toBe(42);
+		expect((await provider.loadPlayer('player2')).currency).toBe(99);
 	});
 
-	it('writes to .tmp file then renames (atomic save)', () => {
-		provider.savePlayer('player1', sampleData);
+	it('writes to .tmp file then renames (atomic save)', async () => {
+		await provider.savePlayer('player1', sampleData);
 		expect(fs.existsSync(path.join(tmpDir, 'player1.json'))).toBe(true);
 		expect(fs.existsSync(path.join(tmpDir, 'player1.json.tmp'))).toBe(false);
 	});
 
-	it('creates basePath directory if it does not exist', () => {
+	it('creates basePath directory if it does not exist', async () => {
 		const nestedDir = path.join(tmpDir, 'deep', 'nested', 'dir');
 		expect(fs.existsSync(nestedDir)).toBe(false);
 		const nestedProvider = new FileProvider(nestedDir);
 		expect(fs.existsSync(nestedDir)).toBe(true);
-		nestedProvider.close();
+		await nestedProvider.close();
 	});
 
-	it('throws on non-ENOENT errors (e.g. invalid JSON)', () => {
+	it('throws on non-ENOENT errors (e.g. invalid JSON)', async () => {
 		fs.writeFileSync(path.join(tmpDir, 'bad.json'), '{not valid json', 'utf-8');
-		expect(() => provider.loadPlayer('bad')).toThrow();
+		await expect(provider.loadPlayer('bad')).rejects.toThrow();
 	});
 });
 
