@@ -9130,3 +9130,26 @@ do not apply.
 None blocking. All acceptance criteria are fully and robustly met; the game runs
 cleanly with session-only auth proven end-to-end in the captured run.
 
+
+## v0.489 — gameplay/boss-victory: frost_crossing (ice) Sortie Complete overlay hidden instantly by returnToGuildLobby  (2026-06-17 13:23:54)
+
+is terminal AND not already in playing phase, so fire (defeat_enemies) and spire (stage_boss)
+victory flows — which already worked — are untouched.
+
+**Debug scenario (`frost-crossing-boss-low-hp`).** The only change is a guard: if the run is
+already terminal, emit current state instead of re-running last-enemy setup. It is gated behind
+the existing `ALLOW_DEBUG_SCENARIOS` debug path (the URL/`debugScenario` entry point only), does
+not create a new entry point, and does not bypass server-side victory validation — the real
+victory path (`defeatFrostCrossingBoss` → `cleanupAfterDamage` → `checkRunTerminalState`) is
+exercised by the non-debug tests, and `setupFrostCrossingBossLowHpDebug` only sets boss HP low
+so the player still lands the killing blow. Reachability and invariants are intact.
+
+**Consistency with design.** Keeping the player in the dungeon on the victory screen until an
+explicit "Return to Hub" matches the documented Sortie Complete flow and the behavior already
+shipped for fire/spire. No requirements regression.
+
+## Remaining gaps
+
+None blocking. All acceptance behavior is proven by 9/9 passing unit tests (server + client),
+which I ran independently, and the captured run starts/loads cleanly.
+

@@ -1,0 +1,17 @@
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/gameplay-boss-victory-frost-crossing-ice-sortie-complete-ove-0dkw/game/data
+[users] Loaded 2 user record(s) from storage provider
+Server listening on port 3002
+Player connected: socket=LZdtBubeLePZijsAAAAD, playerId=f4507537-3cbb-4256-a791-a03a8346c448
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=69d2c9e0-89fe-45fb-be37-18e8d3d91f17 value=17
+[telepipe] placed at (-9.0, 27.0) by f4507537-3cbb-4256-a791-a03a8346c448
+[telepipe] player f4507537-3cbb-4256-a791-a03a8346c448 extracted
+[run] checkpoint captured
+[run] extracted to hub: Initiate Vault
+[run] checkpoint restored
+Player disconnected: LZdtBubeLePZijsAAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

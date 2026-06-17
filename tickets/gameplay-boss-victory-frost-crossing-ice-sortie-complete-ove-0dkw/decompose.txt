@@ -1,0 +1,17 @@
+Broke the top-level ticket into **3 sub-tickets** in dependency order:
+
+| # | Folder | Focus |
+|---|--------|--------|
+| 01 | Client guard | Stop `returnToGuildLobby` / lobby `STATE_UPDATE` from hiding the Sortie Complete overlay after `runComplete` |
+| 02 | Server phase | Ensure frost_crossing victory keeps `gamePhase: 'playing'` until explicit hub return (fix spurious lobby snapshots) |
+| 03 | Harness | Ice preset full playthrough passes `waitForSortieCompleteOverlay` and writes `10-victory.png` |
+
+**Rationale:** The parent ticket already traces the failure to `returnToGuildLobby` hiding the overlay ~6ms after `showRunSummary`, triggered by a lobby-phase `STATE_UPDATE` that only reproduces on frost_crossing. Sub-ticket 01 delivers the user-visible fix with a unit test; sub-ticket 02 addresses the server emission if one exists; sub-ticket 03 is the end-to-end acceptance gate.
+
+All sub-tickets use **code** verification (not visual) because acceptance criteria cover handlers, server state, harness probes, and overlay visibility checks — not purely pixel appearance.
+
+**Created sub-ticket folder paths:**
+
+1. `/home/matt/workspace/.autogame-worktrees/gameplay-boss-victory-frost-crossing-ice-sortie-complete-ove-0dkw/tickets/gameplay-boss-victory-frost-crossing-ice-sortie-complete-ove-0dkw/subtickets/01-client-guard-run-summary-overlay/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/gameplay-boss-victory-frost-crossing-ice-sortie-complete-ove-0dkw/tickets/gameplay-boss-victory-frost-crossing-ice-sortie-complete-ove-0dkw/subtickets/02-server-frost-victory-stays-playing/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/gameplay-boss-victory-frost-crossing-ice-sortie-complete-ove-0dkw/tickets/gameplay-boss-victory-frost-crossing-ice-sortie-complete-ove-0dkw/subtickets/03-ice-playthrough-victory-harness/ticket.md`
