@@ -539,6 +539,18 @@ function isRunSummaryOverlayVisible() {
 	return !!(runSummaryOverlay && getComputedStyle(runSummaryOverlay).display !== 'none');
 }
 
+function isTerminalRunStatus(status) {
+	return status === 'victory' || status === 'failed';
+}
+
+/** True while Sortie Complete / Signal Lost should stay on screen (not auto-dismissed). */
+function isTerminalRunSummaryActive(state = gameState) {
+	if (isRunSummaryOverlayVisible()) return true;
+	if (isTerminalRunStatus(lastRunSummary?.status)) return true;
+	if (isTerminalRunStatus(state?.run?.status)) return true;
+	return false;
+}
+
 function isLobbyMenuDismissKeyBlocked(e) {
 	const target = e.target;
 	if (target instanceof HTMLInputElement ||
@@ -676,14 +688,17 @@ function syncLevelSettingsRewards() {
 }
 
 /** Switch UI from in-dungeon play back to the guild lobby. */
-function returnToGuildLobby(state, { refreshCollection = false, rebuildHub = false } = {}) {
+function returnToGuildLobby(state, { refreshCollection = false, rebuildHub = false, dismissRunSummary = false } = {}) {
 	syncQuestCommsPhase('lobby');
 	closeLevelSettingsOverlay();
 	showLevelSettingsError('');
 	if (giveUpBtnEl) giveUpBtnEl.disabled = false;
 	updateLevelSettingsBtnVisibility();
 
-	if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
+	if (runSummaryOverlay && (!isTerminalRunSummaryActive(state) || dismissRunSummary)) {
+		runSummaryOverlay.style.display = 'none';
+	}
+	if (dismissRunSummary) lastRunSummary = null;
 	if (cardHandEl) hideCardHand();
 	hideVariantCodex();
 	setDeckStackVisible(false);
@@ -1395,6 +1410,7 @@ const socketHandlerCtx = createSocketHandlerCtx({
 	setQuestCommsUiVisible,
 	flushPendingQuestDialogue,
 	showExtractedLobbyOverlay,
+	isTerminalRunSummaryActive,
 	returnToGuildLobby,
 	requestGiveUp,
 	showRunSummary,

@@ -92,6 +92,7 @@ export function createSocketHandlerCtx(deps) {
 		setQuestCommsUiVisible: deps.setQuestCommsUiVisible,
 		flushPendingQuestDialogue: deps.flushPendingQuestDialogue,
 		showExtractedLobbyOverlay: deps.showExtractedLobbyOverlay,
+		isTerminalRunSummaryActive: deps.isTerminalRunSummaryActive,
 		returnToGuildLobby: deps.returnToGuildLobby,
 		requestGiveUp: deps.requestGiveUp,
 		showRunSummary: deps.showRunSummary,

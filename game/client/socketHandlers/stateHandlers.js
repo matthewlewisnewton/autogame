@@ -93,10 +93,15 @@ export function bindStateHandlers(s, ctx) {
 		if (isExtracted && state.gamePhase === 'playing') {
 			ctx.showExtractedLobbyOverlay();
 		} else if (state.gamePhase === 'lobby') {
-			ctx.returnToGuildLobby(state, {
-				refreshCollection: enteringLobby || collectionChanged,
-				rebuildHub: enteringLobby,
-			});
+			const terminalSummaryActive = ctx.isTerminalRunSummaryActive(state);
+			const runClearedOnServer = !state.run;
+			if (!terminalSummaryActive || runClearedOnServer) {
+				ctx.returnToGuildLobby(state, {
+					refreshCollection: enteringLobby || collectionChanged,
+					rebuildHub: enteringLobby,
+					dismissRunSummary: terminalSummaryActive && runClearedOnServer,
+				});
+			}
 		} else if (me) {
 			ctx.syncVanguardHud(me, state.gamePhase);
 		}
