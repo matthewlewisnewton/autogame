@@ -16,6 +16,7 @@ const {
 const { isValidQuestId, isValidQuestSelection, normalizeUnlockRequires, getQuest } = require('./quests');
 
 let usersFilePath = process.env.USERS_FILE || path.join(__dirname, '..', 'data', 'users.json');
+let _usersProvider = null;
 
 const users = new Map();
 const accountIdIndex = new Map();
@@ -143,24 +144,67 @@ function normalizeUnlockTier(tier) {
 	return Number.isInteger(n) && n > 0 ? n : null;
 }
 
+function applyUserBackfills(record) {
+	record.cosmetic = backfillCosmetic(record.cosmetic);
+	record.unlockedHats = backfillUnlockedHats(record.unlockedHats);
+	record.unlockedQuestTiers = backfillUnlockedQuestTiers(record.unlockedQuestTiers);
+	record.completedQuestTiers = backfillCompletedQuestTiers(record.completedQuestTiers);
+	return record;
+}
+
+function hydrateRecord(record) {
+	applyUserBackfills(record);
+	users.set(record.username, record);
+	indexUser(record);
+	return record;
+}
+
+/**
+ * Switch user I/O to use a StorageProvider instead of the filesystem.
+ * @param {import('./storage').StorageProvider} provider
+ */
+function initUsersWithProvider(provider) {
+	_usersProvider = provider;
+}
+
+/**
+ * Load existing user records into the in-memory Map from the configured provider
+ * or from disk when no provider is set.
+ */
+async function loadUsersAsync() {
+	if (_usersProvider) {
+		const records = await _usersProvider.loadAllUsers();
+		for (const record of records) {
+			hydrateRecord(record);
+		}
+		console.log(`[users] Loaded ${users.size} user record(s) from storage provider`);
+		return;
+	}
+	loadUsers();
+}
+
+/**
+ * Persist a single user record via the provider, or bulk-save to users.json in file mode.
+ * @param {object} record
+ */
+async function persistUserAsync(record) {
+	if (_usersProvider) {
+		await _usersProvider.saveUser(record);
+		return;
+	}
+	saveUsers();
+}
+
 /**
  * Load existing user records from disk into the in-memory Map.
  * Silently ignores file-not-found errors (first run). Logs other errors.
- * Called automatically at module initialization.
  */
 function loadUsers() {
 	try {
 		const raw = fs.readFileSync(usersFilePath, 'utf-8');
 		const records = JSON.parse(raw);
 		for (const record of records) {
-			// Backfill cosmetic on legacy records missing it (or missing fields).
-			record.cosmetic = backfillCosmetic(record.cosmetic);
-			// Backfill unlocked hats on legacy records (or missing/invalid values).
-			record.unlockedHats = backfillUnlockedHats(record.unlockedHats);
-			record.unlockedQuestTiers = backfillUnlockedQuestTiers(record.unlockedQuestTiers);
-			record.completedQuestTiers = backfillCompletedQuestTiers(record.completedQuestTiers);
-			users.set(record.username, record);
-			indexUser(record);
+			hydrateRecord(record);
 		}
 		console.log(`[users] Loaded ${users.size} user record(s) from ${usersFilePath}`);
 	} catch (err) {
@@ -190,9 +234,6 @@ function saveUsers() {
 		throw err;
 	}
 }
-
-// Load existing users on module initialization.
-loadUsers();
 
 /**
  * Hash a plaintext password using bcrypt with a cost factor of 10.
@@ -284,7 +325,7 @@ async function createUserAsync(username, plainPassword) {
 
 	users.set(username, record);
 	indexUser(record);
-	saveUsers();
+	await persistUserAsync(record);
 	return { ok: true, accountId };
 }
 
@@ -294,6 +335,27 @@ async function createUserAsync(username, plainPassword) {
  */
 function findUserByUsername(username) {
 	return users.get(username) || null;
+}
+
+/**
+ * Async find — returns the in-memory hit when present; on miss with a provider
+ * configured, loads from storage, backfills, indexes, and returns the record.
+ * @param {string} username
+ * @returns {Promise<object|null>}
+ */
+async function findUserByUsernameAsync(username) {
+	const cached = users.get(username);
+	if (cached) {
+		return cached;
+	}
+	if (!_usersProvider) {
+		return null;
+	}
+	const record = await _usersProvider.loadUser(username);
+	if (!record) {
+		return null;
+	}
+	return hydrateRecord(record);
 }
 
 /**
@@ -635,6 +697,7 @@ function getUsersFilePath() {
  * so that a fresh temp file starts with an empty store.
  */
 function setTestFilePath(filePath) {
+	_usersProvider = null;
 	usersFilePath = filePath;
 	clearUsers();
 	loadUsers();
@@ -648,6 +711,7 @@ module.exports = {
 	createUser,
 	createUserAsync,
 	findUserByUsername,
+	findUserByUsernameAsync,
 	findUserByAccountId,
 	findUserByEmail,
 	updateProfile,
@@ -661,6 +725,9 @@ module.exports = {
 	normalizeEmail,
 	getAllUsers,
 	clearUsers,
+	initUsersWithProvider,
+	loadUsersAsync,
+	persistUserAsync,
 	loadUsers,
 	saveUsers,
 	getUsersFilePath,

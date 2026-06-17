@@ -1,7 +1,7 @@
 // Auth routes — POST /register and POST /login
 const { Router } = require('express');
 const jwt = require('jsonwebtoken');
-const { createUserAsync, findUserByUsername, comparePasswordAsync } = require('./users');
+const { createUserAsync, findUserByUsernameAsync, comparePasswordAsync } = require('./users');
 
 const router = Router();
 
@@ -249,7 +249,7 @@ router.post('/login', async (req, res) => {
 		return res.status(429).json({ error: 'Too many login attempts. Please try again later.' });
 	}
 
-	const user = findUserByUsername(username);
+	const user = await findUserByUsernameAsync(username);
 	if (!user) {
 		return res.status(401).json({ error: 'Invalid credentials' });
 	}
