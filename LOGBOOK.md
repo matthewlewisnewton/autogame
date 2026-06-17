@@ -9061,3 +9061,26 @@ unawaited `checkRunTerminalState()`/`cleanupAfterDamage()` production call sites
 None blocking. The acceptance criterion is fully and robustly met, the game runs and loads
 cleanly, and the test suite passes. Minor non-blocking polish is recorded in `nits.md`.
 
+
+## v0.483 — Auth: authenticate socket.io connections via the session cookie (replace JWT handshake)  (2026-06-17 02:21:35)
+
+- `game/client/socketHandlers/connectionHandlers.js`: the auth-error regex now
+  also matches `session`, so a `connect_error` carrying "Invalid or expired
+  session" triggers the existing re-login recovery path.
+- JWT middleware path is intentionally kept as a fallback (ticket: "Do not
+  remove the JWT middleware path until the client is migrated"), and remains
+  covered by a test. Client test `fly_replay_client.test.js` — **6/6 pass**.
+
+## Consistency with design / requirements
+
+The change is confined to the auth handshake and is consistent with the
+Redis-backed session work from the [HTTP session] ticket. No gameplay, design,
+or foundation behavior is touched or regressed. No debug scenarios added or
+changed.
+
+## Remaining gaps
+
+None blocking. The acceptance criterion is fully and robustly satisfied, the
+captured run is clean, and the test suite passes. A couple of minor non-blocking
+nits are recorded in `nits.md`.
+

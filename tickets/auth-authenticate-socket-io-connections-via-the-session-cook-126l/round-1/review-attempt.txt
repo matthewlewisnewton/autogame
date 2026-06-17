@@ -1,0 +1,14 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health (gate):** ✅ Clean. `metrics.json` has `ok: true`, `pageerrors: []`, no `harness_failure`. `console.log` has no `pageerror`/`[fatal]` lines — only benign HTTP 409s from re-registering the deterministic capture user. The captured run reaches full gameplay with both players connected over the WebSocket.
+
+**Acceptance criteria:** Fully met.
+- Middleware now reads the `ag_session` cookie from `socket.handshake.headers.cookie` (string-or-array safe), validates it via `getSession()` against the Redis session store, sets `socket.data.accountId` from the session, and resolves username from the user store (`game/server/index.js:1938-1976`).
+- Missing/unknown/destroyed/expired sessions are rejected with `connect_error` ("Invalid or expired session") and deliberately do **not** fall through to JWT.
+- The safe-accountId guard is preserved (refactored into a shared `accountIdSafe` helper covering both paths).
+- JWT fallback retained per ticket instruction; client migrated off `auth.token` to the cookie, and the auth-error regex now matches `session` for re-login recovery.
+- Test coverage: `websocket_session_auth.test.js` (6/6 pass) with real client connections; client `fly_replay_client.test.js` (6/6 pass).
+
+**No blocking gaps.** Two non-blocking nits recorded in `nits.md` (drop the now-unused `token` param from `createSocket`; add an explicit cross-instance assertion test). No `gaps.md` written since the verdict is PASS.

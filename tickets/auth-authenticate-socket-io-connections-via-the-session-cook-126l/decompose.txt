@@ -1,0 +1,17 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 3 sub-tickets:
+
+```
+tickets/auth-authenticate-socket-io-connections-via-the-session-cook-126l/subtickets/
+├── 01-add-session-cookie-auth-to-socket-middleware/ticket.md
+├── 02-add-session-socket-auth-tests/ticket.md
+└── 03-migrate-client-to-cookie-auth/ticket.md
+```
+
+**Decomposition rationale:**
+
+1. **01 — Server middleware**: Add session-cookie auth path to `io.use()` in `game/server/index.js`. Reads `ag_session` from `socket.handshake.headers.cookie`, validates via `getSession()` → Redis, resolves username via `findUserByAccountId()`, keeps safe-accountId guard. Falls back to JWT when no cookie is present (backward compat).
+
+2. **02 — Tests**: New `websocket_session_auth.test.js` covering valid cookie connect, missing/invalid/destroyed session rejection, and JWT fallback. Uses `socket.io-client` with `extraHeaders` to pass cookies.
+
+3. **03 — Client migration**: Remove `auth: { token }` from `createSocket()`'s Socket.IO config; update `connect_error` regex to match "session" errors. Callers unchanged — they still pass the token (used for HTTP APIs), it's just ignored for socket auth.

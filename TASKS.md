@@ -201,3 +201,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [415-cleanup-hosting-make-storageprovider-async-and-remove-deasync-perf-u-3qd3](tickets/415-cleanup-hosting-make-storageprovider-async-and-remove-deasync-perf-u-3qd3/)
 - [ ] [416-cleanup-hosting-account-credential-store-users-json-is-file-local-br-rdeu](tickets/416-cleanup-hosting-account-credential-store-users-json-is-file-local-br-rdeu/)
 - [ ] [417-cleanup-auth-replace-jwt-with-redis-backed-session-cookies-for-http-tc1j](tickets/417-cleanup-auth-replace-jwt-with-redis-backed-session-cookies-for-http-tc1j/)
+- [ ] [418-cleanup-auth-authenticate-socket-io-connections-via-the-session-cook-126l](tickets/418-cleanup-auth-authenticate-socket-io-connections-via-the-session-cook-126l/)
