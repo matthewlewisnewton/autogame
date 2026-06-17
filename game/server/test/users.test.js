@@ -8,13 +8,15 @@ import {
 	createUser,
 	findUserByUsername,
 	findUserByAccountId,
+	findUserByAccountIdAsync,
 	findUserByEmail,
 	updateProfile,
 	clearUsers,
 	loadUsers,
 	saveUsers,
 	getUsersFilePath,
-	setTestFilePath
+	setTestFilePath,
+	initUsersWithProvider
 } from '../users.js';
 
 // ── hashPassword ──
@@ -408,5 +410,70 @@ describe('file-backed persistence', () => {
 
 	it('getUsersFilePath returns the configured path', () => {
 		expect(getUsersFilePath()).toBe(tmpFile);
+	});
+});
+
+// ── findUserByAccountIdAsync ──
+
+describe('findUserByAccountIdAsync', () => {
+	let tmpFile;
+
+	beforeEach(() => {
+		tmpFile = path.join(os.tmpdir(), `users-async-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
+		setTestFilePath(tmpFile);
+		clearUsers();
+	});
+
+	afterEach(() => {
+		try { fs.unlinkSync(tmpFile); } catch {}
+		try { fs.unlinkSync(tmpFile + '.tmp'); } catch {}
+	});
+
+	it('returns cached record when accountIdIndex already has the accountId', async () => {
+		createUser('cached', 'pass');
+		const user = findUserByUsername('cached');
+		const result = await findUserByAccountIdAsync(user.accountId);
+		expect(result).not.toBeNull();
+		expect(result.username).toBe('cached');
+		expect(result.accountId).toBe(user.accountId);
+	});
+
+	it('returns null when accountId is absent from cache and no provider is configured', async () => {
+		const result = await findUserByAccountIdAsync('00000000-0000-4000-a000-000000000000');
+		expect(result).toBeNull();
+	});
+
+	it('on cache miss calls provider.loadUserByAccountId, hydrates record, and returns it', async () => {
+		const fakeRecord = {
+			username: 'phantom',
+			passwordHash: '$2b$10$x',
+			accountId: '11111111-1111-4111-b111-111111111111',
+			cosmetic: { bodyColor: '#ff0000', accentColor: '#00ff00', bodyShape: 'box', hat: 'none', modelId: 'player', proportions: { height: 1.0, headSize: 1.0, torsoWidth: 1.0, armLength: 1.0, legLength: 1.0, shoulderWidth: 1.0 } },
+			unlockedHats: [],
+			unlockedQuestTiers: {},
+			completedQuestTiers: {}
+		};
+		const provider = {
+			loadUserByAccountId: async (id) => (id === fakeRecord.accountId ? fakeRecord : null)
+		};
+		initUsersWithProvider(provider);
+
+		const result = await findUserByAccountIdAsync(fakeRecord.accountId);
+		expect(result).not.toBeNull();
+		expect(result.username).toBe('phantom');
+
+		// Verify record was hydrated into both indexes
+		expect(findUserByUsername('phantom')).not.toBeNull();
+		expect(findUserByAccountId(fakeRecord.accountId)).not.toBeNull();
+	});
+
+	it('returns null when provider.loadUserByAccountId returns null', async () => {
+		const provider = {
+			loadUserByAccountId: async () => null
+		};
+		initUsersWithProvider(provider);
+
+		const result = await findUserByAccountIdAsync('22222222-2222-4222-c222-222222222222');
+		expect(result).toBeNull();
 	});
 });

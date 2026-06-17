@@ -368,6 +368,28 @@ function findUserByAccountId(accountId) {
 }
 
 /**
+ * Async find by accountId — returns the in-memory hit when present; on miss
+ * with a provider configured, loads from storage, backfills, indexes, and
+ * returns the record.
+ * @param {string} accountId
+ * @returns {Promise<object|null>}
+ */
+async function findUserByAccountIdAsync(accountId) {
+	const cached = accountIdIndex.get(accountId);
+	if (cached) {
+		return cached;
+	}
+	if (!_usersProvider || typeof _usersProvider.loadUserByAccountId !== 'function') {
+		return null;
+	}
+	const record = await _usersProvider.loadUserByAccountId(accountId);
+	if (!record) {
+		return null;
+	}
+	return hydrateRecord(record);
+}
+
+/**
  * Find a user record by normalized email.
  * @param {string} email - raw or normalized email
  * @returns {object|null}
@@ -716,6 +738,7 @@ module.exports = {
 	findUserByUsername,
 	findUserByUsernameAsync,
 	findUserByAccountId,
+	findUserByAccountIdAsync,
 	findUserByEmail,
 	updateProfile,
 	unlockHat,
