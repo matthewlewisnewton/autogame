@@ -22,6 +22,8 @@ const { InMemoryProvider, FileProvider } = providers;
 const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked } = require('./users');
 const { DEFAULT_COSMETIC, backfillCosmetic, backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
 const { verifyToken, initAuth, getJWTSecret, startRateLimitSweep, stopRateLimitSweep } = require('./auth');
+const { parseCookies } = require('./cookies');
+const { getSession } = require('./sessions');
 const { attachFlyReplayRouting } = require('./flyReplayHook');
 const {
   mulberry32,
@@ -1933,7 +1935,45 @@ async function startServer(port) {
   // the existing client connect_error handler already handles by clearing
   // the stale token and re-showing the login overlay.
   if (!_middlewareRegistered) {
-    io.use((socket, next) => {
+    io.use(async (socket, next) => {
+      // ── Safe accountId guard (shared by both auth paths) ──
+      const accountIdSafe = (id) =>
+        typeof id === 'string' && /^[A-Za-z0-9_-]+$/.test(id);
+
+      // ── 1. Try session-cookie authentication ──
+      // Socket.IO may deliver the cookie header as a string or an array
+      // (when multiple Set-Cookie headers are merged by the HTTP parser).
+      const rawCookie = Array.isArray(socket.handshake.headers.cookie)
+        ? socket.handshake.headers.cookie.join('; ')
+        : socket.handshake.headers.cookie;
+      const cookies = parseCookies(rawCookie);
+      const sessionToken = cookies.ag_session;
+
+      if (sessionToken) {
+        const session = await getSession(sessionToken);
+        if (!session) {
+          // Cookie was present but token is unknown, destroyed, or expired.
+          // Do NOT fall through to JWT — a stale session cookie indicates
+          // the client should re-authenticate via the HTTP login flow.
+          return next(new Error('Invalid or expired session'));
+        }
+
+        if (!accountIdSafe(session.accountId)) {
+          return next(new Error('Invalid session account id'));
+        }
+
+        // Resolve username from the user store
+        const user = findUserByAccountId(session.accountId);
+        if (!user) {
+          return next(new Error('Session account not found'));
+        }
+
+        socket.data.accountId = session.accountId;
+        socket.data.username = user.username;
+        return next();
+      }
+
+      // ── 2. Fall back to JWT authentication (backward compatibility) ──
       const token = socket.handshake.auth && socket.handshake.auth.token;
 
       if (!token) {
@@ -1945,15 +1985,10 @@ async function startServer(port) {
         return next(new Error('Invalid or expired JWT'));
       }
 
-      // Reject tokens whose accountId is not the expected safe shape
-      // (server-issued UUID). Defense-in-depth against a forged/leaked-secret
-      // token carrying e.g. "../../etc/foo" that would otherwise drive path
-      // traversal in the player/settings file paths derived from accountId.
-      if (typeof decoded.accountId !== 'string' || !/^[A-Za-z0-9_-]+$/.test(decoded.accountId)) {
+      if (!accountIdSafe(decoded.accountId)) {
         return next(new Error('Invalid or expired JWT'));
       }
 
-      // Attach decoded claims so the connection handler can read them
       socket.data.accountId = decoded.accountId;
       socket.data.username = decoded.username;
       next();
