@@ -13,6 +13,7 @@ import {
 	findUserByUsernameAsync,
 	comparePasswordAsync,
 	findUserByAccountId,
+	findUserByAccountIdAsync,
 	updateProfile,
 	unlockQuestTier,
 	isQuestTierUnlocked,
@@ -126,5 +127,39 @@ describe('users postgres provider cross-instance', () => {
 		await findUserByUsernameAsync(USERNAME);
 		expect(isQuestTierUnlocked(created.accountId, QUEST_ID, TIER_2)).toBe(true);
 		expect(findUserByAccountId(created.accountId).unlockedQuestTiers[QUEST_ID]).toEqual([TIER_2]);
+	});
+
+	it('findUserByAccountIdAsync lazy-loads user created on A from cold instance B', async () => {
+		await bootColdInstance(providerA, { preload: true });
+		const created = await createUserAsync(USERNAME, PASSWORD);
+		expect(created.ok).toBe(true);
+
+		// Boot a cold instance B: empty in-memory cache, no preload
+		await bootColdInstance(providerB, { preload: false });
+
+		// Sync lookup should miss (cache is empty)
+		expect(findUserByAccountId(created.accountId)).toBeNull();
+
+		// Async lookup should lazy-load from shared Postgres
+		const user = await findUserByAccountIdAsync(created.accountId);
+		expect(user).not.toBeNull();
+		expect(user.username).toBe(USERNAME);
+	});
+
+	it('findUserByAccountIdAsync hydrates into accountIdIndex for subsequent sync lookup', async () => {
+		await bootColdInstance(providerA, { preload: true });
+		const created = await createUserAsync(USERNAME, PASSWORD);
+		expect(created.ok).toBe(true);
+
+		// Boot a cold instance B: empty in-memory cache, no preload
+		await bootColdInstance(providerB, { preload: false });
+
+		// Async lookup lazy-loads and hydrates
+		await findUserByAccountIdAsync(created.accountId);
+
+		// Subsequent sync lookup should hit the now-populated accountIdIndex
+		const user = findUserByAccountId(created.accountId);
+		expect(user).not.toBeNull();
+		expect(user.username).toBe(USERNAME);
 	});
 });

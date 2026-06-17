@@ -728,6 +728,17 @@ function setTestFilePath(filePath) {
 	loadUsers();
 }
 
+/**
+ * Clear in-memory user caches without resetting the storage provider.
+ * Used in cross-instance tests to simulate a cold server that still has
+ * a provider wired for lazy-loading.
+ */
+function clearUserCaches() {
+	users.clear();
+	accountIdIndex.clear();
+	emailIndex.clear();
+}
+
 module.exports = {
 	hashPassword,
 	hashPasswordAsync,
@@ -751,6 +762,7 @@ module.exports = {
 	normalizeEmail,
 	getAllUsers,
 	clearUsers,
+	clearUserCaches,
 	initUsersWithProvider,
 	loadUsersAsync,
 	persistUserAsync,

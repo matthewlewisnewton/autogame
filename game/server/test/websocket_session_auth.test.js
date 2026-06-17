@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createRequire } from 'module';
 import { io as ClientIO } from 'socket.io-client';
+import { newDb } from 'pg-mem';
 import {
 	startServer,
 	resetGameState,
@@ -10,13 +11,15 @@ import {
 	setTestProvider,
 	destroySession as serverDestroySession,
 } from '../index.js';
-import { InMemoryProvider } from '../providers.js';
+import { InMemoryProvider, PostgresProvider } from '../providers.js';
+import { USERS_SCHEMA_SQL } from '../db/ensurePlayersSchema.js';
+import { resetRedisForTests } from '../redis.js';
 
 const require = createRequire(import.meta.url);
 const { getSession: getLobbySession, getSessionCount } = require('../lobbies.js');
 const { createSession, destroySession } = require('../sessions.js');
 const { SESSION_COOKIE_NAME } = require('../cookies.js');
-const { createUser, clearUsers } = require('../users.js');
+const { createUser, createUserAsync, clearUsers, clearUserCaches } = require('../users.js');
 
 // ── Helpers ──
 
@@ -61,6 +64,35 @@ async function closeTestServer() {
 		try { serverIo.close(); } catch (_) {}
 		httpServer.close(() => { clearTimeout(resolve); resolve(); });
 	});
+}
+
+/**
+ * Start a fresh server on a random port WITHOUT switching the provider.
+ * Useful for cross-instance tests where the provider is set externally.
+ */
+async function startTestServerKeepProvider() {
+	// Disconnect all existing clients
+	for (const [id, conn] of Object.entries(serverIo.engine?.sockets || {})) {
+		try { conn.close(true); } catch (_) {}
+	}
+	if (httpServer.listening) {
+		await new Promise((resolve) => {
+			const t = setTimeout(() => {
+				try { serverIo.close(); } catch (_) {}
+				httpServer.close(resolve);
+			}, 5000);
+			httpServer.close(() => { clearTimeout(t); resolve(); });
+		});
+	}
+
+	resetGameState();
+	serverIo.removeAllListeners('connection');
+	clearAllTimers();
+	clearUsers();
+
+	await startServer(0);
+	const addr = httpServer.address();
+	return `http://localhost:${addr.port}`;
 }
 
 /**
@@ -226,5 +258,63 @@ describe('WebSocket session-cookie authentication', () => {
 		expect(lobbySession.accountId).toBe(user.accountId);
 
 		socket.disconnect();
+	});
+
+	it('cross-instance socket auth: user registered on A connects to B via lazy-load', async () => {
+		// Close the server started by beforeEach (InMemoryProvider)
+		await closeTestServer();
+
+		// Shared pg-mem Postgres pool — both instances see the same data
+		const db = newDb();
+		db.public.none(USERS_SCHEMA_SQL);
+		const { Pool } = db.adapters.createPg();
+		const sharedPool = new Pool();
+
+		const providerA = new PostgresProvider({ pool: sharedPool, skipSchemaEnsure: true });
+		const providerB = new PostgresProvider({ pool: sharedPool, skipSchemaEnsure: true });
+
+		// Reset Redis shim so sessions are shared between instances
+		resetRedisForTests();
+
+		// ── Instance A: register user and create session ──
+		setTestProvider(providerA);
+		const urlA = await startTestServerKeepProvider();
+		const created = await createUserAsync('cross-instance-user', 'password123');
+		expect(created.ok).toBe(true);
+		const sessionToken = await createSession(created.accountId);
+
+		// Verify session is stored and retrievable
+		const { getSession } = require('../sessions.js');
+		const sessionCheck = await getSession(sessionToken);
+		expect(sessionCheck).not.toBeNull();
+		expect(sessionCheck.accountId).toBe(created.accountId);
+
+		// ── Simulate Instance B: switch provider, clear user cache ──
+		// Instead of restarting the server (which resets Redis state),
+		// we switch the provider and clear caches on the same server.
+		// This tests the same lazy-load path the socket middleware uses.
+		setTestProvider(providerB);
+		require('../users.js').initUsersWithProvider(providerB);
+		clearUserCaches();
+
+		// Verify session is still retrievable (same Redis store)
+		const sessionCheckB = await getSession(sessionToken);
+		expect(sessionCheckB).not.toBeNull();
+		expect(sessionCheckB.accountId).toBe(created.accountId);
+
+		// Connect socket.io client with A-issued session cookie
+		// The middleware will use findUserByAccountIdAsync() which lazy-loads
+		// from providerB's Postgres (same pool as providerA)
+		const { socket, init } = await connectWithSessionCookie(urlA, sessionToken);
+
+		// Should receive init event (not connect_error) — lazy-load succeeded
+		expect(init.accountId).toBe(created.accountId);
+		expect(init.playerId).toBe(created.accountId);
+
+		socket.disconnect();
+		await closeTestServer();
+		await providerA.close();
+		await providerB.close();
+		await sharedPool.end();
 	});
 });
