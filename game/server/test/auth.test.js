@@ -402,6 +402,83 @@ describe('POST /api/login', () => {
 	});
 });
 
+// ── POST /api/logout ──
+
+function cookieHeaders(sessionToken) {
+	return {
+		'Content-Type': 'application/json',
+		Cookie: `${SESSION_COOKIE_NAME}=${sessionToken}`,
+	};
+}
+
+describe('POST /api/logout', () => {
+	it('revokes the session so /api/me returns 401 afterward', async () => {
+		await fetch(`${baseUrl}/api/register`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ username: 'logout-user', password: 'secret123' }),
+		});
+
+		const loginRes = await fetch(`${baseUrl}/api/login`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ username: 'logout-user', password: 'secret123' }),
+		});
+		expect(loginRes.status).toBe(200);
+		const sessionToken = extractSessionTokenFromResponse(loginRes);
+		expect(sessionToken).toBeTruthy();
+
+		const meBefore = await fetch(`${baseUrl}/api/me`, { headers: cookieHeaders(sessionToken) });
+		expect(meBefore.status).toBe(200);
+
+		const logoutRes = await fetch(`${baseUrl}/api/logout`, {
+			method: 'POST',
+			headers: cookieHeaders(sessionToken),
+		});
+		expect(logoutRes.status).toBe(204);
+
+		const setCookies = logoutRes.headers.getSetCookie?.() ?? [logoutRes.headers.get('set-cookie')].filter(Boolean);
+		const cleared = setCookies.find((c) => c.startsWith(`${SESSION_COOKIE_NAME}=`));
+		expect(cleared).toBeDefined();
+		expect(cleared).toContain('Max-Age=0');
+
+		const meAfter = await fetch(`${baseUrl}/api/me`, { headers: cookieHeaders(sessionToken) });
+		expect(meAfter.status).toBe(401);
+	});
+
+	it('removes the session key from Redis after logout', async () => {
+		await fetch(`${baseUrl}/api/register`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ username: 'redis-revoke', password: 'secret123' }),
+		});
+
+		const loginRes = await fetch(`${baseUrl}/api/login`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ username: 'redis-revoke', password: 'secret123' }),
+		});
+		const sessionToken = extractSessionTokenFromResponse(loginRes);
+		expect(sessionToken).toBeTruthy();
+
+		const sessionBefore = await getSession(sessionToken);
+		expect(sessionBefore).not.toBeNull();
+
+		await fetch(`${baseUrl}/api/logout`, {
+			method: 'POST',
+			headers: cookieHeaders(sessionToken),
+		});
+
+		const sessionAfter = await getSession(sessionToken);
+		expect(sessionAfter).toBeNull();
+	});
+
+	it('returns 204 when no session cookie is present', async () => {
+		const res = await fetch(`${baseUrl}/api/logout`, { method: 'POST' });
+		expect(res.status).toBe(204);
+	});
+});
+
 // ── initAuth() dev fallback ──
 
 describe('initAuth() dev fallback', () => {

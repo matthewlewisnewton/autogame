@@ -1,9 +1,9 @@
-// Auth routes — POST /register and POST /login
+// Auth routes — POST /register, POST /login, POST /logout
 const { Router } = require('express');
 const jwt = require('jsonwebtoken');
 const { createUserAsync, findUserByUsernameAsync, comparePasswordAsync } = require('./users');
-const { createSession } = require('./sessions.js');
-const { setSessionCookie } = require('./cookies.js');
+const { createSession, destroySession } = require('./sessions.js');
+const { setSessionCookie, clearSessionCookie, getSessionTokenFromRequest } = require('./cookies.js');
 
 const router = Router();
 
@@ -266,6 +266,25 @@ router.post('/login', async (req, res) => {
 	const token = await createSession(user.accountId);
 	setSessionCookie(res, token);
 	return res.status(200).json({ accountId: user.accountId });
+});
+
+/**
+ * POST /api/logout
+ * Destroys the server-side session (when present) and clears the session cookie.
+ * No cookie → 204 no-op (idempotent logout).
+ */
+router.post('/logout', async (req, res) => {
+	try {
+		const token = getSessionTokenFromRequest(req);
+		if (token) {
+			await destroySession(token);
+		}
+		clearSessionCookie(res);
+		return res.status(204).end();
+	} catch (err) {
+		console.error('[auth] logout failed:', err.message);
+		return res.status(500).json({ error: 'Logout failed' });
+	}
 });
 
 module.exports = router;

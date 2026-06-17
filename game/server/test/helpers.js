@@ -42,6 +42,38 @@ export function cookieHeaders(sessionToken) {
 }
 
 /**
+ * Register a user and log in, returning session cookie details for HTTP auth.
+ */
+export async function registerAndLoginWithCookie(baseUrl, username, password = 'password123') {
+	const reg = await fetch(`${baseUrl}/api/register`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ username, password }),
+	});
+	if (reg.status !== 201) {
+		throw new Error(`register failed with status ${reg.status}`);
+	}
+	const { accountId } = await reg.json();
+	const login = await fetch(`${baseUrl}/api/login`, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ username, password }),
+	});
+	if (login.status !== 200) {
+		throw new Error(`login failed with status ${login.status}`);
+	}
+	const sessionToken = extractSessionTokenFromResponse(login);
+	if (!sessionToken) {
+		throw new Error('login response missing session cookie');
+	}
+	return {
+		accountId,
+		sessionToken,
+		cookieHeader: `${SESSION_COOKIE_NAME}=${sessionToken}`,
+	};
+}
+
+/**
  * Point the server's CJS `users` module at a test file (same instance as
  * auth.js / index.js). Vitest loads users.js twice (ESM import vs CJS
  * require), so HTTP suites must configure this instance before startServer().
