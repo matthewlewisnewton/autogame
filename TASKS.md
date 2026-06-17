@@ -203,3 +203,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [417-cleanup-auth-replace-jwt-with-redis-backed-session-cookies-for-http-tc1j](tickets/417-cleanup-auth-replace-jwt-with-redis-backed-session-cookies-for-http-tc1j/)
 - [ ] [418-cleanup-auth-authenticate-socket-io-connections-via-the-session-cook-126l](tickets/418-cleanup-auth-authenticate-socket-io-connections-via-the-session-cook-126l/)
 - [ ] [419-cleanup-auth-client-rely-on-httponly-session-cookie-stop-storing-sen-7bgw](tickets/419-cleanup-auth-client-rely-on-httponly-session-cookie-stop-storing-sen-7bgw/)
+- [ ] [420-cleanup-auth-remove-jsonwebtoken-jwt-secret-and-the-dev-test-secret-ommg](tickets/420-cleanup-auth-remove-jsonwebtoken-jwt-secret-and-the-dev-test-secret-ommg/)

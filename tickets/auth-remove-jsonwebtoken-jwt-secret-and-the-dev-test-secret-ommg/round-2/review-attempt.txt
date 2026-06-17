@@ -1,0 +1,16 @@
+## Verdict: FAIL
+
+The captured run is healthy — the game starts and loads cleanly (`ok: true`, `pageerrors: []`, no harness failure), the full session-auth flow works end-to-end (both players reach gameplay, movement and dodge-cooldown function), and the only console noise is the expected pre-login 401/ws-closed probe.
+
+The security-critical objective is **fully and correctly done**:
+- `jsonwebtoken` removed from `package.json` + lockfile
+- `auth.js`/`index.js` are entirely session-cookie based — no `verifyToken`/`getJWTSecret`/`JWT_SECRET`, and the insecure dev/test-secret fallbacks are gone
+- Dockerfile/fly.toml/auth-setup.md updated to drop `JWT_SECRET`
+- JWT-only test suites deleted; remaining auth tests pass (48/48)
+
+It fails only on the AC's explicit **"no dead JWT references"** clause. Three doc/comment locations still present JWT as the live mechanism:
+1. `game/docs/gameplay-review.md` — a "how the game behaves today" doc that still describes the old JWT login/middleware flow (actively misleading about a security-sensitive path)
+2. `game/docs/lobbies.md` — "routed before JWT auth"
+3. `game/server/admin.js` — comments contrasting against "player JWT auth" / `Authorization: Bearer`
+
+These are within the ticket's stated scope ("Remove any remaining references to the JWT path"), so I wrote them as blocking gaps in `gaps.md`. No separate nits file — the only findings are the blocking gaps. Fixes are text-only and straightforward.

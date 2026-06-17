@@ -9107,3 +9107,26 @@ None blocking. A few non-blocking nits are filed in `nits.md`:
   `restoreSession()` never throws; the unauthenticated login screen relies on
   the socket `connect_error` path, which causes a brief lobby-browser flash.
 
+
+## v0.485 — Auth: remove jsonwebtoken + JWT_SECRET and the dev/test secret fallbacks (cleanup)  (2026-06-17 11:30:46)
+
+### No dead JWT references
+PASS for code. Client `connectionHandlers.js` narrowed its auth-error regex from
+`/jwt|token|session|.../` to `/session|unauthorized|authentication/`. CONTEXT.md,
+auth-setup.md, lobbies.md, gameplay-review.md, admin.js/index.js comments, and the
+harness `validate/lib/auth.mjs` were all rewritten to session-cookie wording. The
+sole remaining `jwt` doc mention (auth-setup.md) is an explicit "No JWT signing
+secret … is required" statement — intentional, not stale.
+
+## Consistency with design / requirements
+
+No `game/docs/design.md` or `requirements.md` foundation is touched or regressed —
+this is an auth-infrastructure cleanup. Debug scenarios: none added or changed by
+this ticket (`debugScenario: null`, gate untouched), so the debug-shortcut checks
+do not apply.
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are fully and robustly met; the game runs
+cleanly with session-only auth proven end-to-end in the captured run.
+

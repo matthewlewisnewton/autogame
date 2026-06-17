@@ -1,0 +1,9 @@
+Round 4 has one blocking gap in `review-feedback.md`: the harness validation playthrough still uses the dead JWT auth path. Sub-tickets 01–07 are all marked `.passed`, so only a new sub-ticket was added.
+
+**Created sub-ticket:**
+
+- `/home/matt/workspace/.autogame-worktrees/auth-remove-jsonwebtoken-jwt-secret-and-the-dev-test-secret-ommg/tickets/auth-remove-jsonwebtoken-jwt-secret-and-the-dev-test-secret-ommg/subtickets/08-migrate-harness-validate-to-session-auth/ticket.md`
+
+**Scope:** Migrate `harness/validate/lib/auth.mjs` from JWT token injection to session-cookie auth (mirroring `game/client/scripts/session-auth.mjs`), update `playthrough.mjs` and `multiPlayer.mjs` call sites, and verify `npm run validate:playthrough -- --preset rooms --steps auth` succeeds.
+
+No failed sub-ticket folders needed deletion. The stale JWT comment nit in `main.test.js` is non-blocking and not listed in `review-feedback.md`, so it was not given a sub-ticket.

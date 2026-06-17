@@ -1,0 +1,16 @@
+Review complete. **VERDICT: FAIL.**
+
+## Summary
+
+The game **runs cleanly** — `metrics.json` shows `ok: true`, empty `pageerrors`, no `harness_failure`; the console log is free of fatal/uncaught errors; and the full-flow capture (auth → squad lobby → ready → gameplay → dodge cooldown) succeeded on session-cookie auth. So the runtime gate passes.
+
+Most of the acceptance criterion is solidly met:
+- ✅ `jsonwebtoken` gone from `package.json` deps + `pnpm-lock.yaml`
+- ✅ `auth.js` fully clean — no `verifyToken`/`getJWTSecret`/`JWT_SECRET`, and the insecure `'dev-secret'`/`'test-secret'` fallbacks (the footgun) are eliminated
+- ✅ `index.js` socket auth now uses the `ag_session` cookie + `getSession`
+- ✅ `Dockerfile`/`fly.toml`/`auth-setup.md` carry no `JWT_SECRET`
+- ✅ Auth flow works on sessions; 220 server auth/account/session/integration tests pass; JWT-only test suites correctly deleted
+
+**One blocking gap** fails the "no dead JWT references" AC: sub-ticket 04 migrated every `game/client/scripts/*.mjs` onto the new `session-auth.mjs`, but the parallel harness helper `harness/validate/lib/auth.mjs` was missed. It still reads `body.token` (removed from the server response by this very ticket) and injects `autogame_token` into localStorage (which the client no longer reads), so it's now broken dead JWT-path code — it breaks `npm run validate:playthrough`. The active QA path uses `screenshot.mjs` (UI-form driven), which is why per-sub-ticket QA didn't catch it.
+
+Fix is well-scoped and written to `gaps.md`: port the helper to the session-cookie pattern already established in `session-auth.mjs`. One stale-comment nit recorded in `nits.md`.

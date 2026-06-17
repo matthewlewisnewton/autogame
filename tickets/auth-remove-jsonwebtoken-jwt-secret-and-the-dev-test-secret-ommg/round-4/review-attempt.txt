@@ -1,0 +1,18 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The ticket cleanly removes all JWT machinery and runs correctly on session-cookie auth.
+
+**Runtime health:** `metrics.json` shows `ok: true`, `pageerrors: []`, no `harness_failure`. `console.log` has no page errors or game-code fatals (the only `error` lines are an expected pre-login `401` session probe and player B's expected `409` duplicate-username). Probes prove the full session-auth flow works end-to-end: both players authenticated, lobbied, readied, entered gameplay, moved, and dodged (cooldown HUD active) — all over Socket.IO connections that now authenticate purely on the `ag_session` cookie.
+
+**Acceptance criteria — all met:**
+- `jsonwebtoken` dropped from `package.json` + `pnpm-lock.yaml` (and the `ALLOW_DEV_AUTH=1` dev-script prefix).
+- `auth.js`, `account.js`, `index.js` fully stripped of `getJWTSecret`/`verifyToken`/`initAuth`/`JWT_SECRET` **and the insecure dev/test fallback secrets** — the footgun the ticket targeted is gone.
+- Dockerfile + fly.toml env docs updated (no `JWT_SECRET`; documents the cookie + Redis session store).
+- Tests pass: server 2872/2872, client 1448/1448. Dead JWT test files removed; remaining `jwt` mentions are intentional regression guards.
+- No dead JWT references in code; docs/comments/harness all rewritten to session wording.
+
+**No debug scenarios** were added (checks N/A). 
+
+**One nit** (filed, non-blocking): tracked `game/validation/*/server.log` artifacts still contain old `JWT_SECRET not set` log lines — run output, not code, but worth pruning/gitignoring.

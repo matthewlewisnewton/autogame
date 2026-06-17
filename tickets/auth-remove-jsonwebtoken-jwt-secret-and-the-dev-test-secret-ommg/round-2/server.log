@@ -1,0 +1,14 @@
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/auth-remove-jsonwebtoken-jwt-secret-and-the-dev-test-secret-ommg/game/data
+[users] Loaded 1 user record(s) from storage provider
+Server listening on port 3005
+Player connected: socket=itd31vdCwqDxYr0hAAAD, playerId=dc31e1b5-2a27-43ff-93a5-8fdb87c51e9c
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=UbLq1dTQJl-VgiWxAAAH, playerId=cc52ba6f-db76-4173-8846-c73fdcee6985
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=381b51a3-8e24-4aa0-9d87-7b4711bfc216 value=12
+Player disconnected: itd31vdCwqDxYr0hAAAD
+Player disconnected: UbLq1dTQJl-VgiWxAAAH
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
