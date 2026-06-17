@@ -2739,7 +2739,11 @@ function processQuestWaveCleared(gameState = _gameState) {
 async function cleanupAfterDamage() {
   if (removeDeadEnemies() > 0) {
     processQuestWaveCleared();
-    await checkRunTerminalState();
+    try {
+      await checkRunTerminalState();
+    } catch (err) {
+      console.error('[run] checkRunTerminalState failed:', err && err.stack ? err.stack : err);
+    }
   }
 }
 
@@ -3563,8 +3567,6 @@ async function checkRunTerminalState() {
 
   if (!status) return;
 
-  _gameState.run.status = status;
-
   const runQuestTier = run.questTier ?? DEFAULT_QUEST_TIER;
   const runQuestId = run.questId;
 
@@ -3595,9 +3597,13 @@ async function checkRunTerminalState() {
 
   const summary = buildRunSummary(status, run);
   const io = getIoTarget();
-  if (io) {
+  if (io && summary) {
     io.emit(status === 'victory' ? SERVER_TO_CLIENT.RUN_COMPLETE : SERVER_TO_CLIENT.RUN_FAILED, summary);
   }
+
+  // Publish terminal status only after runComplete/runFailed so per-tick snapshots
+  // cannot expose victory/failed before the client receives the summary event.
+  _gameState.run.status = status;
 
   // Persist quest-tier unlocks after runComplete/runFailed so async provider
   // writes cannot yield and swap lobby context before rewards are granted.

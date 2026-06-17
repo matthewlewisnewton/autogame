@@ -206,4 +206,66 @@ describe('frost_crossing Tier 1 victory phase snapshots', () => {
       expect(state.run?.status).toBe('victory');
     });
   });
+
+  it('emits runComplete before hot snapshots expose terminal run.status', async () => {
+    socket.emit('playerReady', true);
+    await waitForEvent(socket, 'startGame');
+    await waitForEvent(socket, 'stateUpdate');
+
+    const ordering = { runCompleteAt: null, victorySnapshotAt: null };
+    const onRunComplete = () => {
+      if (ordering.runCompleteAt == null) ordering.runCompleteAt = Date.now();
+    };
+    const onStateUpdate = (payload) => {
+      if (ordering.victorySnapshotAt == null && payload.run?.status === 'victory') {
+        ordering.victorySnapshotAt = Date.now();
+      }
+    };
+
+    socket.on('runComplete', onRunComplete);
+    socket.on('stateUpdate', onStateUpdate);
+
+    try {
+      await runSimulationInPrimaryLobby(async (state) => {
+        defeatFrostCrossingBoss(state);
+        await cleanupAfterDamage();
+      });
+      await waitForEvent(socket, 'runComplete');
+      await new Promise((resolve) => setTimeout(resolve, 400));
+    } finally {
+      socket.off('runComplete', onRunComplete);
+      socket.off('stateUpdate', onStateUpdate);
+    }
+
+    expect(ordering.runCompleteAt).not.toBeNull();
+    expect(ordering.victorySnapshotAt).not.toBeNull();
+    expect(ordering.runCompleteAt).toBeLessThanOrEqual(ordering.victorySnapshotAt);
+  });
+
+  it('emits runComplete after frost-crossing-boss-low-hp boss kill', async () => {
+    const prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+    process.env.ALLOW_DEBUG_SCENARIOS = '1';
+
+    try {
+      socket.emit('debugScenario', { name: 'frost-crossing-tier-1' });
+      await waitForEvent(socket, 'debugScenarioResult');
+
+      socket.emit('debugScenario', { name: 'frost-crossing-boss-low-hp' });
+      await waitForEvent(socket, 'debugScenarioResult');
+
+      const runCompletePromise = waitForEvent(socket, 'runComplete');
+      runSimulationInPrimaryLobby((state) => {
+        const boss = bossEnemy(state);
+        boss.hp = 0;
+      });
+      await cleanupAfterDamage();
+
+      const summary = await runCompletePromise;
+      expect(summary?.status).toBe('victory');
+      expect(testGameState().run?.status).toBe('victory');
+    } finally {
+      if (prevAllowDebug === undefined) delete process.env.ALLOW_DEBUG_SCENARIOS;
+      else process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+    }
+  });
 });

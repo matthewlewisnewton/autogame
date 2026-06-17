@@ -56,6 +56,7 @@ const {
   emitRunStartDialogue,
   syncRunObjectiveToEnemies,
   checkRunTerminalState,
+  isTerminalRun,
   stateSnapshot,
   assignRunSpawnPositions,
   suspendRunToLobby,
@@ -1353,6 +1354,9 @@ function setupFrostCrossingBossLowHpDebug(lobby, state, player, name) {
   const bossAlive = bossId
     && (state.enemies || []).some((e) => e.id === bossId && e.hp > 0);
   if (!isFrostCrossingTier1StageBossRun(state) || !bossAlive) {
+    if (isTerminalRun(state.run)) {
+      return emitQuestDebugState(lobby, state, player, name);
+    }
     const error = setupFrostCrossingLastEnemyDebug(lobby, state, player, name);
     if (error) return error;
     return emitQuestDebugState(lobby, state, player, name);

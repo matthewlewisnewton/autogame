@@ -93,6 +93,8 @@ export function createSocketHandlerCtx(deps) {
 		flushPendingQuestDialogue: deps.flushPendingQuestDialogue,
 		showExtractedLobbyOverlay: deps.showExtractedLobbyOverlay,
 		isTerminalRunSummaryActive: deps.isTerminalRunSummaryActive,
+		needsTerminalRunSummaryFromState: deps.needsTerminalRunSummaryFromState,
+		buildRunSummaryFromState: deps.buildRunSummaryFromState,
 		returnToGuildLobby: deps.returnToGuildLobby,
 		requestGiveUp: deps.requestGiveUp,
 		showRunSummary: deps.showRunSummary,

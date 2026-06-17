@@ -120,6 +120,52 @@ describe('run-summary lobby-phase STATE_UPDATE race guard', () => {
 		expect(harness.lastRunSummary?.status).toBe('victory');
 	});
 
+	it('synthesizes Sortie Complete from a terminal run snapshot when runComplete was missed', async () => {
+		await import('../main.js');
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			run: { status: 'playing', objective: { type: 'stage_boss', bossDefeated: false } },
+			players: { p1: { id: 'p1', rewards: { currency: 0, cards: [] }, cardChoices: [] } },
+			enemies: [],
+		}, 'p1');
+		window.createSocket();
+
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'playing',
+			run: {
+				id: 'run-1',
+				status: 'victory',
+				startedAt: Date.now() - 5000,
+				questId: 'frost_crossing',
+				questTier: 1,
+				questName: 'Frost Crossing',
+				objective: { type: 'stage_boss', bossDefeated: true, defeatedEnemies: 1 },
+			},
+			players: {
+				p1: {
+					id: 'p1',
+					x: 0,
+					z: 0,
+					hp: 100,
+					dead: false,
+					runRewards: { currency: 12, cards: [], cardChoices: [] },
+				},
+			},
+			enemies: [],
+			minions: [],
+			loot: [],
+		});
+
+		const overlay = document.getElementById('run-summary-overlay');
+		const summaryStatus = document.getElementById('summary-status');
+		expect(overlay.style.display).toBe('flex');
+		expect(summaryStatus.textContent).toBe('Sortie Complete');
+		const harness = window.__AUTOGAME_HARNESS_STATE__();
+		expect(harness.sortieCompleteOverlayVisible).toBe(true);
+		expect(harness.lastRunSummary?.status).toBe('victory');
+	});
+
 	it('Return to Hub dismisses the overlay after server clears the run', async () => {
 		const hubLayout = generateHub(0);
 		await import('../main.js');

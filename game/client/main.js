@@ -551,6 +551,42 @@ function isTerminalRunSummaryActive(state = gameState) {
 	return false;
 }
 
+/** Server snapshot shows a terminal run but the client never received runComplete. */
+function needsTerminalRunSummaryFromState(state = gameState) {
+	const status = state?.run?.status;
+	if (!isTerminalRunStatus(status)) return false;
+	if (isRunSummaryOverlayVisible()) return false;
+	if (isTerminalRunStatus(lastRunSummary?.status)) return false;
+	return true;
+}
+
+function buildRunSummaryFromState(state = gameState) {
+	const run = state?.run;
+	const status = run?.status;
+	if (!isTerminalRunStatus(status)) return null;
+	const me = myId && state.players ? state.players[myId] : null;
+	const rewards = me?.runRewards ?? { currency: 0, cards: [], cardChoices: [] };
+	const cardChoices = Array.isArray(me?.pendingCardChoices)
+		? me.pendingCardChoices
+		: (Array.isArray(rewards.cardChoices) ? rewards.cardChoices : []);
+	return {
+		status,
+		runId: run.id,
+		durationMs: Math.max(0, Date.now() - (run.startedAt || Date.now())),
+		questId: run.questId,
+		questTier: run.questTier,
+		questName: run.questName,
+		objective: run.objective ? { ...run.objective } : null,
+		defeatedEnemies: run.objective?.defeatedEnemies ?? 0,
+		currencyCollected: me?.currency ?? 0,
+		players: me ? [{
+			id: myId,
+			rewards,
+			cardChoices,
+		}] : [],
+	};
+}
+
 function isLobbyMenuDismissKeyBlocked(e) {
 	const target = e.target;
 	if (target instanceof HTMLInputElement ||
@@ -1411,6 +1447,8 @@ const socketHandlerCtx = createSocketHandlerCtx({
 	flushPendingQuestDialogue,
 	showExtractedLobbyOverlay,
 	isTerminalRunSummaryActive,
+	needsTerminalRunSummaryFromState,
+	buildRunSummaryFromState,
 	returnToGuildLobby,
 	requestGiveUp,
 	showRunSummary,

@@ -106,6 +106,11 @@ export function bindStateHandlers(s, ctx) {
 			ctx.syncVanguardHud(me, state.gamePhase);
 		}
 
+		if (ctx.needsTerminalRunSummaryFromState(state)) {
+			const summary = ctx.buildRunSummaryFromState(state);
+			if (summary) ctx.showRunSummary(summary);
+		}
+
 		// Entering gameplay: ensure HUD is visible (unless extracted mid-run)
 		if (state.gamePhase === 'playing' && !isExtracted) {
 			ctx.showCardHand();
