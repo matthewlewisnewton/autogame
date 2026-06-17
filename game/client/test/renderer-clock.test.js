@@ -22,7 +22,8 @@ describe('renderer animation loop clock', () => {
 
 		initScene(null, { x: 0, z: 0 });
 
-		expect(rafCallbacks).toHaveLength(1);
-		expect(() => rafCallbacks[0](16)).not.toThrow();
+		// initGamepadActivation() registers a poll loop rAF; animate() registers the render loop.
+		expect(rafCallbacks).toHaveLength(2);
+		expect(() => rafCallbacks[1](16)).not.toThrow();
 	});
 });

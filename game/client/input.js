@@ -75,10 +75,11 @@ const DEFAULT_GAMEPAD_BUTTONS = {
 	useSlot4: 4,
 	useSlot5: 5,
 	toggleDeckViewer: 8,
-	useKeyItem: 13
+	useKeyItem: 13,
+	interact: 12,
 };
 
-const POLLABLE_ACTIONS = Object.keys(DEFAULT_GAMEPAD_BUTTONS);
+const POLLABLE_ACTIONS = Object.keys(DEFAULT_GAMEPAD_BUTTONS).filter((a) => a !== 'interact');
 
 const keyState = {
 	moveUp: false,
@@ -268,6 +269,18 @@ export function pollInput() {
 					const slotMatch = action.match(/^useSlot(\d)$/);
 					if (slotMatch) callbacks.onUseSlot?.(parseInt(slotMatch[1], 10));
 				}
+			}
+		}
+
+		// Interact fires in the hub/lobby phase — NOT gated behind
+		// canUseGameActions (same as keyboard F key).
+		{
+			const binding = getBindingForAction('interact', gp, profile, cfg);
+			const pressed = !!binding && isBindingActive(gp, binding, cState);
+			const wasPressed = !!prev.interact;
+			prev.interact = pressed;
+			if (pressed && !wasPressed) {
+				callbacks.onInteract?.();
 			}
 		}
 	}

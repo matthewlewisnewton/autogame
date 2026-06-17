@@ -1,0 +1,11 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Both sub-tickets created:
+
+```
+tickets/lobby-interact-f-key-and-all-gamepad-buttons-does-nothing-ca-tob5/subtickets/01-gamepad-interact-binding/ticket.md
+tickets/lobby-interact-f-key-and-all-gamepad-buttons-does-nothing-ca-tob5/subtickets/02-interact-chain-integration-test/ticket.md
+```
+
+**01-gamepad-interact-binding** — Adds D-pad Up (index 12) as the interact button for both standard and 8BitDo 64 profiles, with special-case polling outside the `canUseGameActions` gate so it fires in the lobby phase.
+
+**02-interact-chain-integration-test** — Extends the existing booth prompt tests to cover the full chain: input (keyboard F + gamepad D-pad Up) → socket `boothInteract` → server `boothAction` response → `BOOTH_ACTION_EVENT` dispatch → booth UI opens. Also tests the out-of-range rejection path.

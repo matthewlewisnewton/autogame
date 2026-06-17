@@ -73,6 +73,7 @@ import {
 	invalidateGamepadSnapshot,
 	resetGamepadState,
 } from './gamepad.js';
+import { initGamepadActivation } from './gamepad-activation.js';
 import { pollInput, getMovementDirection, resetInputState } from './input.js';
 import { clientMoveSpeedScale, tickMovementPrediction } from './movementPrediction.js';
 import {
@@ -1301,11 +1302,11 @@ export function applyLockOnPress() {
 		playerRotation = Math.atan2(toTarget.z, toTarget.x);
 		lastEmittedRotation = playerRotation;
 		cameraYaw = normalizeAngle(cameraYawFromToTarget(toTarget));
+	} else if (result.action === 'snapBehind') {
+		lockOnToTarget = null;
+		cameraYaw = normalizeAngle(cameraYawBehindFacing(playerRotation));
 	} else {
 		lockOnToTarget = null;
-		if (result.cameraYaw != null) {
-			cameraYaw = normalizeAngle(result.cameraYaw);
-		}
 	}
 }
 
@@ -1609,6 +1610,22 @@ export function getPlayerFacingDirection() {
  */
 export function setPlayerRotation(rot) {
 	playerRotation = rot;
+}
+
+/**
+ * Get the orbit camera yaw.
+ * @returns {number}
+ */
+export function getCameraYaw() {
+	return cameraYaw;
+}
+
+/**
+ * Set the orbit camera yaw.
+ * @param {number} yaw
+ */
+export function setCameraYaw(yaw) {
+	cameraYaw = normalizeAngle(yaw);
 }
 
 /** Align local attack facing and orbit camera behind a server rotation (debug QA). */
@@ -2057,6 +2074,7 @@ export function initScene(layout, spawnPos) {
 		inputListenersAdded = true;
 	}
 
+	initGamepadActivation();
 	initGamepadListeners();
 
 	if (!cameraListenersAdded) {

@@ -195,4 +195,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [412-cleanup-hosting-postgresprovider-behind-storageprovider-migrate-pers-eowb](tickets/412-cleanup-hosting-postgresprovider-behind-storageprovider-migrate-pers-eowb/)
 - [ ] [413-cleanup-hosting-lobby-affinity-websocket-routing-via-fly-replay-suh3](tickets/413-cleanup-hosting-lobby-affinity-websocket-routing-via-fly-replay-suh3/)
 - [ ] [414-cleanup-hosting-route-settings-persistence-through-the-storage-provi-4se3](tickets/414-cleanup-hosting-route-settings-persistence-through-the-storage-provi-4se3/)
+- [ ] [415-cleanup-gamepad-auto-detection-input-only-works-in-chrome-not-macos-s4k7](tickets/415-cleanup-gamepad-auto-detection-input-only-works-in-chrome-not-macos-s4k7/)
+- [ ] [415-cleanup-8bitdo-lock-on-z-should-recenter-camera-behind-player-c-stic-jpld](tickets/415-cleanup-8bitdo-lock-on-z-should-recenter-camera-behind-player-c-stic-jpld/)
+- [ ] [415-cleanup-lobby-interact-f-key-and-all-gamepad-buttons-does-nothing-ca-tob5](tickets/415-cleanup-lobby-interact-f-key-and-all-gamepad-buttons-does-nothing-ca-tob5/)
 - [ ] [415-cleanup-hosting-make-storageprovider-async-and-remove-deasync-perf-u-3qd3](tickets/415-cleanup-hosting-make-storageprovider-async-and-remove-deasync-perf-u-3qd3/)

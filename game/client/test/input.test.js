@@ -289,6 +289,27 @@ describe('input.js', () => {
 		expect(onLockOn).not.toHaveBeenCalled();
 	});
 
+	it('8BitDo 64 profile Z trigger edge invokes onLockOn via pollInput', () => {
+		patchSettings({ gamepad: { profile: '8bitdo-64' } });
+		const onLockOn = vi.fn();
+		initInput({
+			onLockOn,
+			canUseGameActions: () => true,
+		});
+		const buttons = Array(12).fill({ pressed: false, value: 0 });
+		buttons[8] = { pressed: false, value: 0.25 };
+		mockGamepad(0, {
+			id: '8BitDo 64 (Vendor: 2dc8 Product: 1930)',
+			axes: [0, 0, 0, 0],
+			buttons,
+		});
+		pollInput();
+		expect(onLockOn).toHaveBeenCalledTimes(1);
+		onLockOn.mockClear();
+		pollInput();
+		expect(onLockOn).not.toHaveBeenCalled();
+	});
+
 	it('exposes lockOn and dodge action labels', () => {
 		expect(getActionLabels()).toMatchObject({
 			lockOn: 'Lock on',
@@ -421,6 +442,99 @@ describe('input.js', () => {
 			hints: ['A', 'B', 'X', 'Y', 'LB', 'RB'],
 			hintLabels: ['A', 'B', 'X', 'Y', 'LB', 'RB'],
 		});
+	});
+
+	it('pollInput fires onUseSlot and onLockOn after gesture prime and delayed pad insertion', async () => {
+		vi.resetModules();
+		/** @type {Array<(time: number) => void>} */
+		const rafCallbacks = [];
+		vi.stubGlobal('requestAnimationFrame', vi.fn((cb) => {
+			rafCallbacks.push(cb);
+			return rafCallbacks.length;
+		}));
+
+		const { initGamepadActivation } = await import('../gamepad-activation.js');
+		const { initGamepadListeners, pollGamepadSnapshot, resetGamepadState: resetPadState } = await import('../gamepad.js');
+		const { pollInput: pollInputFresh, initInput: initInputFresh, resetInputState: resetInputFresh } = await import('../input.js');
+
+		patchSettings({ gamepad: { profile: 'standard' } });
+		const onUseSlot = vi.fn();
+		const onLockOn = vi.fn();
+		initInputFresh({
+			onUseSlot,
+			onLockOn,
+			canUseGameActions: () => true,
+		});
+		initGamepadActivation();
+		initGamepadListeners();
+
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+
+		const slotButtons = Array(16).fill({ pressed: false, value: 0 });
+		slotButtons[0] = { pressed: true, value: 1 };
+		mockGamepad(0, {
+			id: 'Xbox 360 Controller (XInput)',
+			buttons: slotButtons,
+			axes: [0, 0, 0, 0],
+		});
+		const pollCallback = rafCallbacks.shift();
+		expect(pollCallback).toBeTypeOf('function');
+		pollCallback(0);
+
+		pollGamepadSnapshot();
+		pollInputFresh();
+		expect(onUseSlot).toHaveBeenCalledWith(0);
+
+		resetInputFresh();
+		resetPadState();
+		installGamepadMock();
+		const lockButtons = Array(16).fill({ pressed: false, value: 0 });
+		lockButtons[LOCK_ON_GAMEPAD_BUTTON] = { pressed: true, value: 1 };
+		mockGamepad(0, {
+			id: 'Xbox 360 Controller (XInput)',
+			buttons: lockButtons,
+			axes: [0, 0, 0, 0],
+		});
+		pollGamepadSnapshot();
+		pollInputFresh();
+		expect(onLockOn).toHaveBeenCalledTimes(1);
+
+		vi.unstubAllGlobals();
+	});
+
+	it('returns gamepad mode after delayed pad appearance post-gesture via activation poll', async () => {
+		vi.resetModules();
+		/** @type {Array<(time: number) => void>} */
+		const rafCallbacks = [];
+		vi.stubGlobal('requestAnimationFrame', vi.fn((cb) => {
+			rafCallbacks.push(cb);
+			return rafCallbacks.length;
+		}));
+
+		const { initGamepadActivation } = await import('../gamepad-activation.js');
+		const { initGamepadListeners } = await import('../gamepad.js');
+
+		patchSettings({ gamepad: { profile: 'auto' } });
+		expect(getHandSlotInputHints().mode).toBe('keyboard');
+
+		initGamepadActivation();
+		initGamepadListeners();
+
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+		expect(getHandSlotInputHints().mode).toBe('keyboard');
+
+		mockGamepad(0, { id: 'Xbox 360 Controller (XInput)', buttons: [], axes: [0, 0, 0, 0] });
+		const pollCallback = rafCallbacks.shift();
+		expect(pollCallback).toBeTypeOf('function');
+		pollCallback(0);
+
+		expect(getHandSlotInputHints()).toEqual({
+			mode: 'gamepad',
+			hints: ['A', 'B', 'X', 'Y', 'LB', 'RB'],
+			hintLabels: ['A', 'B', 'X', 'Y', 'LB', 'RB'],
+		});
+
+		vi.unstubAllGlobals();
 	});
 
 	it('hides legacy gamepad-only hints for the standard profile', () => {
@@ -581,5 +695,73 @@ describe('input.js', () => {
 		mockGamepad(0, { buttons: buttons2, axes: [0, 0, 0, 0] });
 		pollInput();
 		expect(onUseKeyItem).not.toHaveBeenCalled();
+	});
+
+	it('keyboard F triggers onInteract', () => {
+		const onInteract = vi.fn();
+		initInput({ onInteract });
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f' }));
+		expect(onInteract).toHaveBeenCalledTimes(1);
+	});
+
+	it('gamepad D-pad Up (button 12) triggers onInteract — standard profile', () => {
+		const onInteract = vi.fn();
+		initInput({ onInteract });
+		const buttons = Array(16).fill({ pressed: false, value: 0 });
+		buttons[12] = { pressed: true, value: 1 };
+		mockGamepad(0, { buttons, axes: [0, 0, 0, 0] });
+		pollInput();
+		expect(onInteract).toHaveBeenCalledTimes(1);
+	});
+
+	it('gamepad D-pad Up triggers onInteract — 8BitDo 64 profile', () => {
+		patchSettings({ gamepad: { profile: '8bitdo-64' } });
+		const onInteract = vi.fn();
+		initInput({ onInteract });
+		const buttons = Array(16).fill({ pressed: false, value: 0 });
+		buttons[12] = { pressed: true, value: 1 };
+		mockGamepad(0, {
+			id: '8BitDo 64 (Vendor: 2dc8 Product: 1930)',
+			buttons,
+			axes: [0, 0, 0, 0],
+		});
+		pollInput();
+		expect(onInteract).toHaveBeenCalledTimes(1);
+	});
+
+	it('gamepad interact fires when canUseGameActions returns false', () => {
+		const onInteract = vi.fn();
+		initInput({
+			onInteract,
+			canUseGameActions: () => false,
+		});
+		const buttons = Array(16).fill({ pressed: false, value: 0 });
+		buttons[12] = { pressed: true, value: 1 };
+		mockGamepad(0, { buttons, axes: [0, 0, 0, 0] });
+		pollInput();
+		expect(onInteract).toHaveBeenCalledTimes(1);
+	});
+
+	it('gamepad interact is edge-triggered (no repeat on hold)', () => {
+		const onInteract = vi.fn();
+		initInput({ onInteract });
+		const buttons = Array(16).fill({ pressed: false, value: 0 });
+		buttons[12] = { pressed: true, value: 1 };
+		mockGamepad(0, { buttons, axes: [0, 0, 0, 0] });
+		pollInput();
+		expect(onInteract).toHaveBeenCalledTimes(1);
+		// Second poll with button still held should NOT re-fire
+		pollInput();
+		expect(onInteract).toHaveBeenCalledTimes(1);
+		// Release button
+		buttons[12] = { pressed: false, value: 0 };
+		mockGamepad(0, { buttons, axes: [0, 0, 0, 0] });
+		pollInput();
+		expect(onInteract).toHaveBeenCalledTimes(1);
+		// Press again — should fire once more
+		buttons[12] = { pressed: true, value: 1 };
+		mockGamepad(0, { buttons, axes: [0, 0, 0, 0] });
+		pollInput();
+		expect(onInteract).toHaveBeenCalledTimes(2);
 	});
 });

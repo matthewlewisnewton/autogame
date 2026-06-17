@@ -1,0 +1,17 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health:** Game runs cleanly — `metrics.json` has `ok: true`, empty `pageerrors`, scene initialized, connected; no fatal/pageerror lines in `console.log`; no harness failure.
+
+**The fix:** The diff is small and focused (2 commits):
+1. Bound `interact` to D-pad Up (button 12) in both gamepad profiles and `DEFAULT_GAMEPAD_BUTTONS`, with a dedicated edge-triggered poll block placed *outside* the `canUseGameActions` gate so it fires in the lobby — mirroring the keyboard F path.
+2. Added an end-to-end integration test proving the full chain (input → socket `boothInteract` → `boothAction` → `BOOTH_ACTION_EVENT` → booth UI opens) for both keyboard F and gamepad, plus an out-of-range rejection path.
+
+**Root cause:** The keyboard F handler already worked at the code level (unchanged, now test-proven); the genuinely missing piece was the gamepad binding — there was no `interact` gamepad action at all. This matches the ticket's macOS-Safari/gamepad note.
+
+**Verification:** All 49 tests across the two changed test files pass locally. Proximity arming, edge-triggering, and server-side rejection are all covered. The change is purely additive — no existing handlers, gates, or validation altered.
+
+**One nit** (non-blocking, filed to backlog): the capture used the fallback gameplay smoke rather than a lobby-booth scenario, so there's no *visual* screenshot of a booth opening — covered by tests instead. A dedicated capture scenario would strengthen future visual QA.
+
+No blocking gaps, so no `gaps.md` was written.

@@ -1,14 +1,27 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
 	applyDeadzone,
 	readStickMovement,
 	readDpadMovement,
 	mergeMovementVectors,
 	pollGamepadButtons,
+	pollGamepadLook,
 	resetGamepadState,
 } from '../gamepad.js';
-import { GAMEPAD_DEADZONE, LOCK_ON_GAMEPAD_BUTTON } from '../config.js';
+import { GAMEPAD_DEADZONE, GAMEPAD_LOOK_SENSITIVITY, LOCK_ON_GAMEPAD_BUTTON } from '../config.js';
+import { patchSettings } from '../settings.js';
+import {
+	handleLockOnPress,
+	isLockOnActive,
+	isLockOnCameraReleasing,
+	clearAllLockOnState,
+	updateLockOn,
+} from '../lockOn.js';
+import { DEFAULT_FLOOR_Y } from '../../shared/floorSampling.esm.js';
 import { installGamepadMock, uninstallGamepadMock, mockGamepad, clearMockGamepads } from './gamepad-mock.js';
+
+const LOCK_ON_ENEMIES = [{ id: 'a', x: 3, z: 0, hp: 50 }];
+const PY = DEFAULT_FLOOR_Y;
 
 describe('applyDeadzone()', () => {
 	it('returns zero inside the deadzone', () => {
@@ -98,9 +111,10 @@ describe('pollGamepadButtons()', () => {
 		expect(pollGamepadButtons().lockOn).toBe(false);
 	});
 
-	it('fires 8BitDo Z lock-on from low analog trigger values', () => {
+	it('fires 8BitDo Z lock-on once per press with profile 8bitdo-64', () => {
 		installGamepadMock();
 		clearMockGamepads();
+		patchSettings({ gamepad: { profile: '8bitdo-64' } });
 		const buttons = Array(12).fill({ pressed: false, value: 0 });
 		buttons[8] = { pressed: false, value: 0.25 };
 		mockGamepad(0, { id: '8BitDo 64 (Vendor: 2dc8 Product: 1930)', axes: [0, 0, 0, 0], buttons });
@@ -110,8 +124,143 @@ describe('pollGamepadButtons()', () => {
 	});
 });
 
+describe('pollGamepadLook()', () => {
+	beforeEach(() => {
+		resetGamepadState();
+		clearAllLockOnState();
+		installGamepadMock();
+		clearMockGamepads();
+		patchSettings({ gamepad: { profile: '8bitdo-64' } });
+		mockGamepad(0, {
+			id: '8BitDo 64 (Vendor: 2dc8 Product: 1930)',
+			axes: [0, 0, 0.9, 0.2, 0, 0],
+			buttons: [],
+		});
+	});
+
+	afterEach(() => {
+		clearAllLockOnState();
+		uninstallGamepadMock();
+	});
+
+	it('returns non-zero yaw from axis 2 when lock-on is inactive', () => {
+		const delta = 0.016;
+		const look = pollGamepadLook(delta);
+		expect(look).not.toBe(0);
+		expect(look).toBeCloseTo(-0.9 * GAMEPAD_LOOK_SENSITIVITY * delta);
+	});
+
+	it('returns 0 when lock-on is active even with axis 2 deflected', () => {
+		handleLockOnPress(LOCK_ON_ENEMIES, 0, PY, 0, 'unlock', 0, null);
+		expect(isLockOnActive()).toBe(true);
+		expect(pollGamepadLook(0.016)).toBe(0);
+	});
+
+	it('returns 0 during post-death camera release', () => {
+		handleLockOnPress(LOCK_ON_ENEMIES, 0, PY, 0, 'unlock', 0, null);
+		updateLockOn(LOCK_ON_ENEMIES, 0, PY, 0, 0.1, 0, 0, null);
+		updateLockOn([{ id: 'a', x: 3, z: 0, hp: 0 }], 0, PY, 0, 0.1, 0, 0, null);
+		expect(isLockOnCameraReleasing()).toBe(true);
+		expect(pollGamepadLook(0.016)).toBe(0);
+	});
+});
+
 describe('GAMEPAD_DEADZONE', () => {
 	it('matches the expected default deadzone', () => {
 		expect(GAMEPAD_DEADZONE).toBe(0.15);
+	});
+});
+
+describe('delayed activation input path', () => {
+	/** @type {Array<(time: number) => void>} */
+	let rafCallbacks;
+
+	beforeEach(() => {
+		vi.resetModules();
+		resetGamepadState();
+		rafCallbacks = [];
+		vi.stubGlobal('requestAnimationFrame', vi.fn((cb) => {
+			rafCallbacks.push(cb);
+			return rafCallbacks.length;
+		}));
+		installGamepadMock();
+		clearMockGamepads();
+		patchSettings({ gamepad: { profile: 'standard' } });
+	});
+
+	afterEach(() => {
+		uninstallGamepadMock();
+		vi.unstubAllGlobals();
+		resetGamepadState();
+	});
+
+	function flushActivationPoll() {
+		const callback = rafCallbacks.shift();
+		expect(callback).toBeTypeOf('function');
+		callback(0);
+	}
+
+	async function primeActivationAndListeners() {
+		const { initGamepadActivation } = await import('../gamepad-activation.js');
+		const { initGamepadListeners } = await import('../gamepad.js');
+		initGamepadActivation();
+		initGamepadListeners();
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+	}
+
+	async function insertDelayedPad(spec) {
+		mockGamepad(0, {
+			id: 'Xbox 360 Controller (XInput)',
+			buttons: [],
+			axes: [0, 0, 0, 0],
+			...spec,
+		});
+		flushActivationPoll();
+		const { pollGamepadSnapshot } = await import('../gamepad.js');
+		pollGamepadSnapshot();
+	}
+
+	it('pollGamepadMovement returns non-null after gesture prime and delayed pad with left stick deflected', async () => {
+		await primeActivationAndListeners();
+		await insertDelayedPad({ axes: [0.9, 0, 0, 0] });
+
+		const { pollGamepadMovement } = await import('../gamepad.js');
+		const movement = pollGamepadMovement();
+		expect(movement).not.toBeNull();
+		expect(movement.x).toBeGreaterThan(0);
+	});
+
+	it('pollGamepadLook returns non-zero yaw after gesture prime and delayed pad with right stick deflected', async () => {
+		await primeActivationAndListeners();
+		await insertDelayedPad({ axes: [0, 0, 0.9, 0] });
+
+		const { pollGamepadLook } = await import('../gamepad.js');
+		const delta = 0.016;
+		const yaw = pollGamepadLook(delta);
+		expect(yaw).not.toBe(0);
+		expect(Math.sign(yaw)).toBe(-Math.sign(0.9));
+		expect(Math.abs(yaw)).toBeCloseTo(
+			Math.abs(applyDeadzone(0.9) * GAMEPAD_LOOK_SENSITIVITY * delta),
+		);
+	});
+
+	it('invalidates a stale frame snapshot when activation reports a new connect', async () => {
+		await primeActivationAndListeners();
+
+		const { pollGamepadSnapshot, pollGamepadMovement } = await import('../gamepad.js');
+		const stale = pollGamepadSnapshot();
+		expect(stale.pad).toBeNull();
+
+		mockGamepad(0, {
+			id: 'Xbox 360 Controller (XInput)',
+			axes: [0.9, 0, 0, 0],
+			buttons: [],
+		});
+		flushActivationPoll();
+
+		pollGamepadSnapshot();
+		const movement = pollGamepadMovement();
+		expect(movement).not.toBeNull();
+		expect(movement.x).toBeGreaterThan(0);
 	});
 });

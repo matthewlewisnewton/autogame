@@ -98,6 +98,7 @@ import {
 	syncControllerCalibrationForm,
 	onGamepadConnectChange,
 } from './controller-calibration.js';
+import { initGamepadActivation, onGamepadActivationChange } from './gamepad-activation.js';
 import {
 	computeDeckHudStats,
 	computeDesperationHudStats,
@@ -4431,23 +4432,26 @@ initControllerCalibration({
 	debugClearBtnEl: calibrationDebugClearBtnEl,
 });
 
-window.addEventListener('gamepadconnected', (event) => {
-	onGamepadConnectChange(event.gamepad);
+function handleGamepadConnectChange(gamepad) {
+	onGamepadConnectChange(gamepad);
 	resetHandLayoutLock();
 	if (cardHandEl && cardHandEl.style.display !== 'none') showCardHand();
 	renderHand();
 	applyAttackHintText();
 	const me = myId && gameState?.players ? gameState.players[myId] : null;
 	renderKeyItemHud(me, gameState?.gamePhase);
+}
+
+initGamepadActivation();
+onGamepadActivationChange((detail) => {
+	handleGamepadConnectChange(detail.connected);
+});
+
+window.addEventListener('gamepadconnected', (event) => {
+	handleGamepadConnectChange(event.gamepad);
 });
 window.addEventListener('gamepaddisconnected', () => {
-	onGamepadConnectChange(null);
-	resetHandLayoutLock();
-	if (cardHandEl && cardHandEl.style.display !== 'none') showCardHand();
-	renderHand();
-	applyAttackHintText();
-	const me = myId && gameState?.players ? gameState.players[myId] : null;
-	renderKeyItemHud(me, gameState?.gamePhase);
+	handleGamepadConnectChange(null);
 });
 
 // On page load: only connect if we have a stored token; otherwise show auth overlay.

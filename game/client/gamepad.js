@@ -2,6 +2,7 @@ import { GAMEPAD_DEADZONE, GAMEPAD_LOOK_SENSITIVITY, LOCK_ON_GAMEPAD_BUTTON } fr
 import { isLockOnActive, isLockOnCameraReleasing } from './lockOn.js';
 import { getGamepadConfig } from './settings.js';
 import { resetGamepadButtonState } from './input.js';
+import { onGamepadActivationChange } from './gamepad-activation.js';
 import {
 	resolveGamepadProfile,
 	read8BitDo64CStickHorizontal,
@@ -220,6 +221,9 @@ export function initGamepadListeners() {
 	window.addEventListener('blur', resetGamepadState);
 	document.addEventListener('visibilitychange', () => {
 		if (document.visibilityState !== 'visible') resetGamepadState();
+	});
+	onGamepadActivationChange(() => {
+		resetGamepadState();
 	});
 	listenersAdded = true;
 }

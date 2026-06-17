@@ -8924,6 +8924,75 @@ Not applicable — this ticket did not add or modify any `?debugScenario=` short
 None. The playthrough driver's persistence-backend override is removed, env passthrough is unit-tested, backward-compatible defaults are preserved, and the captured game run is healthy.
 
 
+## v0.477 — Gamepad auto-detection + input only works in Chrome, not macOS Safari  (2026-06-16 21:38:04)
+
+  de-duplicated into `handleGamepadConnectChange`, behavior preserved.
+- No new console errors attributable to the change; rAF loop only does work when
+  `accessPrimed`, and is guarded for environments without `requestAnimationFrame`.
+- No debug scenario added or changed by this ticket.
+
+## Tests / quality
+
+- `vitest run` on the four affected client suites: 82/82 pass
+  (`gamepad-activation` 5, `gamepad-detect` 18, `gamepad` 17, `input` 42).
+- Code is well-typed (JSDoc), idiomatic to the surrounding module, and the new
+  module cleanly separates priming, polling, and subscription concerns.
+
+The AC is fully and robustly satisfied within what is verifiable without a physical
+pad + Safari (the ticket explicitly flags CI cannot test those; manual Safari check
+remains a documented follow-up, as intended).
+
+## Remaining gaps
+
+None blocking. (Minor non-blocking nits recorded in `nits.md`.)
+
+
+## v0.478 — 8BitDo: lock-on (Z) should recenter camera behind player; C-stick free-look mapping is unexpected  (2026-06-16 21:40:11)
+
+for the `cStick` look source. New `pollGamepadLook()` tests in `gamepad.test.js`
+confirm: non-zero yaw from axis 2 when unlocked, 0 when locked on, 0 during
+post-death camera release. Digital C-buttons remain card bindings (not look).
+
+### Mapping verified by unit tests
+PASS. 115 tests across the five relevant files pass; the broader renderer suite
+(72 tests) also passes — no regression from the `applyLockOnPress` refactor or the
+new `get/setCameraYaw` exports.
+
+## Design / regression consistency
+Consistent with the GameCube/Z-target intent in the ticket and does not regress the
+standard-pad path (`STANDARD_PROFILE` still uses `lockOnButton: LOCK_ON_GAMEPAD_BUTTON`,
+`rightStick` look). No new console errors, no dead/broken code introduced. No debug
+`?debugScenario` shortcuts added by this ticket.
+
+## Remaining gaps
+None blocking. One minor non-blocking redundancy noted in `nits.md`
+(`handleLockOnPress` still returns `cameraYaw` for the `snapBehind` action, which
+`applyLockOnPress` now recomputes and ignores).
+
+
+## v0.479 — Lobby: interact (F key AND all gamepad buttons) does nothing — can't interact with booths in main lobby  (2026-06-16 22:06:26)
+
+  fires when `canUseGameActions()` is false, edge-triggered). `booth-interact-chain.test.js`
+  adds 4 end-to-end tests including the server out-of-range `boothError` rejection path. All
+  49 tests across the two files pass locally.
+
+## Design / regression consistency
+
+The change is additive: one new gamepad binding and one isolated poll block. No existing action
+handling, gate, or the keyboard path was altered. No server-side validation is bypassed — the
+client still relies on the server `boothAction`/`boothError` response. No debug scenario was
+added (lobby is the default start state), so the debug-scenario rules do not apply.
+
+## Code quality
+
+Clean and idiomatic — matches the surrounding edge-trigger pattern. Comments explain the
+non-gated lobby behavior. No dead code, no console errors, no obvious bugs.
+
+## Remaining gaps
+
+None blocking.
+
+
 ## v0.480 — Hosting: make StorageProvider async and remove deasync (perf + unblocks users migration)  (2026-06-16 22:19:37)
 
 (`newDb()`) — no live DB, no busy-spin. The persistence-focused suites
