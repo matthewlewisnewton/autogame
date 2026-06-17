@@ -20,8 +20,21 @@ import {
 	resolveEncounterAnchor,
 } from '../encounters.js';
 import { resetGameState, gameState, runGameLoopTick, applyBurning, updateBurning, updateEnemies, hasLineOfSight, buildWallColliders } from '../index.js';
-import { checkAllReady, setGameState as setProgressionGameStateForReady, startDungeonRun, isPlayerCombatExhausted } from '../progression.js';
-import { APPEARANCE_CHANGE_COST, MAX_MAGIC_STONES, MAX_HAND_SLOTS, RUN_EXHAUSTION_GRACE_MS } from '../config.js';
+import {
+	checkAllReady,
+	setGameState as setProgressionGameStateForReady,
+	startDungeonRun,
+	isPlayerCombatExhausted,
+	tryEnterTelepipe,
+	checkRunTerminalState,
+} from '../progression.js';
+import {
+	APPEARANCE_CHANGE_COST,
+	MAX_MAGIC_STONES,
+	MAX_HAND_SLOTS,
+	RUN_EXHAUSTION_GRACE_MS,
+	PORTAL_PLACEMENT_GRACE_MS,
+} from '../config.js';
 import * as progressionModule from '../progression.js';
 
 const { setupRunExhaustedDebug } = require('../debugScenarios.js');
@@ -53,6 +66,14 @@ const EMBER_DESCENT_TIER_1 = 1;
 const EMBER_DESCENT_TIER_2 = 2;
 const FROST_CROSSING_ID = 'frost_crossing';
 const FROST_CROSSING_TIER_1 = 1;
+
+function runSimulationInPrimaryLobby(fn) {
+	const state = testGameState();
+	if (!state) throw new Error('runSimulationInPrimaryLobby: no active lobby state');
+	sim.setGameState(state, _timeouts);
+	setProgressionGameStateForReady(state);
+	return fn(state);
+}
 
 describe('debugScenario — retired fixture shortcuts', () => {
 	let baseUrl;
@@ -2091,6 +2112,7 @@ describe('debugScenario — fire-cavern', () => {
 
 	it('fire-telepipe-ready deploy isolates combat with one dummy grunt and debugGodmode', async () => {
 		const { socket } = await connectClient(baseUrl);
+		const playerId = socket._playerId;
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'fire-telepipe-ready' });
@@ -2115,12 +2137,42 @@ describe('debugScenario — fire-cavern', () => {
 		expect(state.enemies[0].type).toBe('grunt');
 		expect(state.enemies[0].hp).toBe(500);
 		expect(player.debugGodmode).toBe(true);
+		expect(player.debugHooks?.suppressWavesAfterDeploy).toBe(true);
 		if (state.run?.waveScript?.waves) {
 			for (const wave of state.run.waveScript.waves) {
 				expect(wave.status).toBe('cleared');
 				expect(wave.spawnedEnemyIds).toEqual([]);
 			}
 		}
+
+		const preSuspendRunId = state.run.id;
+
+		runSimulationInPrimaryLobby((liveState) => {
+			const p = liveState.players[playerId];
+			p.hand = [null, null, null, null];
+			p.deck = [];
+			p.desperationDeck = [];
+			liveState.telepipe = {
+				x: p.x,
+				z: p.z,
+				placedBy: playerId,
+				placedAt: Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1,
+			};
+			checkRunTerminalState();
+			expect(liveState.run.status).toBe('playing');
+		});
+
+		runSimulationInPrimaryLobby(() => {
+			const enterResult = tryEnterTelepipe(playerId);
+			expect(enterResult.ok).toBe(true);
+		});
+
+		const hub = testGameState();
+		expect(hub.gamePhase).toBe('lobby');
+		expect(hub.run).toBeUndefined();
+		expect(hub.suspendedCheckpoint).not.toBeNull();
+		expect(hub.suspendedCheckpoint.run.id).toBe(preSuspendRunId);
+		expect(hub.suspendedCheckpoint.run.status).toBe('playing');
 	});
 });
 
