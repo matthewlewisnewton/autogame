@@ -423,6 +423,41 @@ describe('input.js', () => {
 		});
 	});
 
+	it('returns gamepad mode after delayed pad appearance post-gesture via activation poll', async () => {
+		vi.resetModules();
+		/** @type {Array<(time: number) => void>} */
+		const rafCallbacks = [];
+		vi.stubGlobal('requestAnimationFrame', vi.fn((cb) => {
+			rafCallbacks.push(cb);
+			return rafCallbacks.length;
+		}));
+
+		const { initGamepadActivation } = await import('../gamepad-activation.js');
+		const { initGamepadListeners } = await import('../gamepad.js');
+
+		patchSettings({ gamepad: { profile: 'auto' } });
+		expect(getHandSlotInputHints().mode).toBe('keyboard');
+
+		initGamepadActivation();
+		initGamepadListeners();
+
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+		expect(getHandSlotInputHints().mode).toBe('keyboard');
+
+		mockGamepad(0, { id: 'Xbox 360 Controller (XInput)', buttons: [], axes: [0, 0, 0, 0] });
+		const pollCallback = rafCallbacks.shift();
+		expect(pollCallback).toBeTypeOf('function');
+		pollCallback(0);
+
+		expect(getHandSlotInputHints()).toEqual({
+			mode: 'gamepad',
+			hints: ['A', 'B', 'X', 'Y', 'LB', 'RB'],
+			hintLabels: ['A', 'B', 'X', 'Y', 'LB', 'RB'],
+		});
+
+		vi.unstubAllGlobals();
+	});
+
 	it('hides legacy gamepad-only hints for the standard profile', () => {
 		patchSettings({ gamepad: { profile: 'standard' } });
 		expect(is8BitDo64HandHintsActive()).toBe(false);

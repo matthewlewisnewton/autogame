@@ -73,6 +73,7 @@ import {
 	invalidateGamepadSnapshot,
 	resetGamepadState,
 } from './gamepad.js';
+import { initGamepadActivation } from './gamepad-activation.js';
 import { pollInput, getMovementDirection, resetInputState } from './input.js';
 import { clientMoveSpeedScale, tickMovementPrediction } from './movementPrediction.js';
 import {
@@ -2057,6 +2058,7 @@ export function initScene(layout, spawnPos) {
 		inputListenersAdded = true;
 	}
 
+	initGamepadActivation();
 	initGamepadListeners();
 
 	if (!cameraListenersAdded) {

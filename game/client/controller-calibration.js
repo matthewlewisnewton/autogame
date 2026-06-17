@@ -16,6 +16,7 @@ import {
 	EIGHTBITDO_64_TRIGGER_BUTTON_INDICES,
 } from './gamepad-profiles.js';
 import { applyDeadzone } from './gamepad.js';
+import { onGamepadActivationChange } from './gamepad-activation.js';
 import { renderCButtonMark } from './c-button-icons.js';
 import { getGamepadConfig, getGamepadProfileSetting, patchSettings } from './settings.js';
 
@@ -79,6 +80,7 @@ let prevDebugCState = null;
 
 let polling = false;
 let rafId = 0;
+let activationListenerAdded = false;
 /** @type {HTMLElement[]} */
 let buttonCells = [];
 /** @type {Array<{ el: HTMLElement, direction: 'up' | 'down' | 'left' | 'right' }>} */
@@ -91,6 +93,12 @@ export function initControllerCalibration(elements) {
 	els = { ...els, ...elements };
 	buildButtonGrid();
 	wireControls();
+	if (!activationListenerAdded) {
+		activationListenerAdded = true;
+		onGamepadActivationChange(() => {
+			updateStatusDisplay(getCalibrationGamepad());
+		});
+	}
 }
 
 function getActiveCalibrationProfile(gamepad) {
