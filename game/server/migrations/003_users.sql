@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS users (
+  username TEXT PRIMARY KEY,
+  account_id TEXT UNIQUE NOT NULL,
+  data JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

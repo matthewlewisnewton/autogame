@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { newDb } from 'pg-mem';
-import { ensurePlayersSchema, ensureSettingsSchema } from '../db/ensurePlayersSchema.js';
+import { ensurePlayersSchema, ensureSettingsSchema, ensureUsersSchema } from '../db/ensurePlayersSchema.js';
 
 describe('players schema', () => {
 	let pool;
@@ -125,5 +125,76 @@ describe('settings schema', () => {
 
 		expect(rows).toHaveLength(1);
 		expect(rows[0].data).toEqual({ soundEnabled: true, particlesEnabled: false });
+	});
+});
+
+describe('users schema', () => {
+	let pool;
+
+	beforeEach(async () => {
+		const db = newDb();
+		const { Pool } = db.adapters.createPg();
+		pool = new Pool();
+		await ensureUsersSchema(pool);
+	});
+
+	afterEach(async () => {
+		await pool.end();
+	});
+
+	it('creates the users table idempotently', async () => {
+		const first = await pool.query(
+			`SELECT 1 FROM information_schema.tables
+			 WHERE table_schema = 'public' AND table_name = 'users'`
+		);
+		expect(first.rowCount).toBe(1);
+
+		await ensureUsersSchema(pool);
+
+		const second = await pool.query(
+			`SELECT 1 FROM information_schema.tables
+			 WHERE table_schema = 'public' AND table_name = 'users'`
+		);
+		expect(second.rowCount).toBe(1);
+	});
+
+	it('round-trips a sample user document', async () => {
+		const sample = {
+			passwordHash: '$2b$10$abcdefghijklmnopqrstuv',
+			cosmetic: { hat: 'default', color: 'blue' },
+			unlockedHats: ['default'],
+			unlockedQuestTiers: { training_caverns: [2] },
+			completedQuestTiers: { training_caverns: [1] },
+			email: 'player@example.com',
+		};
+
+		await pool.query(
+			`INSERT INTO users (username, account_id, data) VALUES ($1, $2, $3::jsonb)`,
+			['alice', 'acct-alice-001', JSON.stringify(sample)]
+		);
+
+		const { rows } = await pool.query(
+			`SELECT data FROM users WHERE username = $1`,
+			['alice']
+		);
+
+		expect(rows).toHaveLength(1);
+		expect(rows[0].data).toEqual(sample);
+	});
+
+	it('enforces account_id uniqueness', async () => {
+		const sample = { passwordHash: 'hash1' };
+
+		await pool.query(
+			`INSERT INTO users (username, account_id, data) VALUES ($1, $2, $3::jsonb)`,
+			['user_a', 'shared-acct', JSON.stringify(sample)]
+		);
+
+		await expect(
+			pool.query(
+				`INSERT INTO users (username, account_id, data) VALUES ($1, $2, $3::jsonb)`,
+				['user_b', 'shared-acct', JSON.stringify({ passwordHash: 'hash2' })]
+			)
+		).rejects.toThrow();
 	});
 });

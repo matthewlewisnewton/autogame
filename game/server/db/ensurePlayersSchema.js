@@ -11,6 +11,11 @@ const SETTINGS_SCHEMA_SQL = fs.readFileSync(
 	'utf-8'
 );
 
+const USERS_SCHEMA_SQL = fs.readFileSync(
+	path.join(__dirname, '..', 'migrations', '003_users.sql'),
+	'utf-8'
+);
+
 /**
  * Apply the players table schema idempotently (safe to call on every startup).
  * @param {import('pg').Pool} pool
@@ -41,4 +46,26 @@ async function ensureSettingsSchema(pool) {
 	await pool.query(SETTINGS_SCHEMA_SQL);
 }
 
-module.exports = { PLAYERS_SCHEMA_SQL, ensurePlayersSchema, SETTINGS_SCHEMA_SQL, ensureSettingsSchema };
+/**
+ * Apply the users table schema idempotently (safe to call on every startup).
+ * @param {import('pg').Pool} pool
+ */
+async function ensureUsersSchema(pool) {
+	const { rows } = await pool.query(
+		`SELECT 1 FROM information_schema.tables
+		 WHERE table_schema = 'public' AND table_name = 'users'`
+	);
+	if (rows.length > 0) {
+		return;
+	}
+	await pool.query(USERS_SCHEMA_SQL);
+}
+
+module.exports = {
+	PLAYERS_SCHEMA_SQL,
+	ensurePlayersSchema,
+	SETTINGS_SCHEMA_SQL,
+	ensureSettingsSchema,
+	USERS_SCHEMA_SQL,
+	ensureUsersSchema,
+};
