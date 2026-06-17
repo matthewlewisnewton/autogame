@@ -424,7 +424,6 @@ const loginErrorEl = document.getElementById('login-error');
 const showLoginLinkEl = document.getElementById('show-login-link');
 const showRegisterLinkEl = document.getElementById('show-register-link');
 
-const TOKEN_KEY = 'autogame_token';
 let currentLobbyName = '';
 /** When true, the dismissible #lobby menu stays hidden until showGameLobby(). */
 let lobbyMenuDismissed = false;
@@ -1135,9 +1134,6 @@ const STORAGE_KEY_PLAYER_ID = 'autogame_playerId';
 const storedPlayerId = (() => {
 	try { return localStorage.getItem(STORAGE_KEY_PLAYER_ID); } catch (_) { return null; }
 })();
-const storedToken = (() => {
-	try { return localStorage.getItem(TOKEN_KEY); } catch (_) { return null; }
-})();
 
 let socket = null;
 /** @type {{ lobbyId: string, instanceId: string | null } | null} */
@@ -1152,12 +1148,6 @@ if (deepLinkLobbyParam) {
 	}
 }
 
-function getSocketAuthToken() {
-	const fromSettings = getAuthToken();
-	if (fromSettings) return fromSettings;
-	try { return localStorage.getItem(TOKEN_KEY); } catch (_) { return null; }
-}
-
 function emitPendingLobbyJoin(sock = socket) {
 	if (!pendingLobbyJoin || !sock) return;
 	sock.emit(CLIENT_TO_SERVER.JOIN_LOBBY, { lobbyId: pendingLobbyJoin.lobbyId });
@@ -1166,13 +1156,11 @@ function emitPendingLobbyJoin(sock = socket) {
 
 function requestJoinLobby(lobby) {
 	if (!lobby || !lobby.id) return;
-	const token = getSocketAuthToken();
-	if (!token) return;
 
 	pendingLobbyJoin = { lobbyId: lobby.id, instanceId: lobby.instanceId ?? null };
 
 	if (lobby.instanceId) {
-		createSocket(token, { lobbyId: lobby.id, flyInstanceId: lobby.instanceId });
+		createSocket({ lobbyId: lobby.id, flyInstanceId: lobby.instanceId });
 		return;
 	}
 
@@ -1188,11 +1176,9 @@ function handleLobbyDeepLinkAfterInit(lobbies) {
 	if (!target) return;
 
 	pendingLobbyJoin.instanceId = target.instanceId ?? null;
-	const token = getSocketAuthToken();
-	if (!token) return;
 
 	if (target.instanceId) {
-		createSocket(token, { lobbyId: target.id, flyInstanceId: target.instanceId });
+		createSocket({ lobbyId: target.id, flyInstanceId: target.instanceId });
 		return;
 	}
 
@@ -1201,17 +1187,13 @@ function handleLobbyDeepLinkAfterInit(lobbies) {
 	}
 }
 
-/** Create (or recreate) the Socket.IO connection with a JWT auth token. */
-function createSocket(token, options) {
+/** Create (or recreate) the Socket.IO connection.
+ * Auth is handled via the browser's httpOnly session cookie, sent automatically
+ * on same-origin WebSocket upgrades. */
+function createSocket(options) {
 	if (socket) socket.disconnect();
 	const affinity = options && typeof options === 'object' ? options : {};
 	const { lobbyId, flyInstanceId } = affinity;
-	// Explicit reconnection/timeout config rather than relying on undocumented
-	// defaults, so a stalled initial connect deterministically surfaces a
-	// `connect_error` the client can act on instead of hanging silently.
-	// Socket auth is handled via the browser's session cookie (sent
-	// automatically on same-origin WebSocket upgrades); the `token` parameter
-	// is retained for backward compatibility with existing callers.
 	const ioConfig = {
 		timeout: CONNECT_WATCHDOG_MS,
 		reconnection: true,
@@ -1243,14 +1225,14 @@ function createSocket(token, options) {
 	startConnectWatchdog();
 }
 
-async function restoreSession(token) {
+async function restoreSession() {
 	try {
-		await loadAccountSettings(token);
+		await loadAccountSettings();
 	} catch (_) {
-		setAuthToken(token);
+		setAuthToken(null);
 	}
 	syncSettingsForm();
-	createSocket(token);
+	createSocket();
 	hideAuthOverlay();
 }
 
@@ -1465,7 +1447,6 @@ const socketHandlerCtx = createSocketHandlerCtx({
 	statusEl,
 	showLobbyBrowserError,
 	disposeAllLootMeshes: rendererDisposeAllLootMeshes,
-	TOKEN_KEY,
 	setAuthToken,
 	uiEl,
 	giveUpBtnEl,
@@ -3858,9 +3839,8 @@ if (loginBtnEl) {
 				body: JSON.stringify({ username, password }),
 			});
 			const data = await res.json();
-			if (res.ok && data.token) {
-				try { localStorage.setItem(TOKEN_KEY, data.token); } catch (_) {}
-				await restoreSession(data.token);
+			if (res.ok) {
+				await restoreSession();
 				clearAuthForms();
 			} else {
 				if (loginErrorEl) loginErrorEl.textContent = data.error || 'Login failed';
@@ -3871,9 +3851,9 @@ if (loginBtnEl) {
 	});
 }
 
-function performLogout() {
+async function performLogout() {
 	closeAccountOverlay();
-	try { localStorage.removeItem(TOKEN_KEY); } catch (_) {}
+	try { await fetch("/api/logout", { method: "POST" }); } catch (_) {}
 	setAuthToken(null);
 	currentLobbyName = '';
 	if (socket) socket.disconnect();
@@ -4013,10 +3993,6 @@ if (accountSaveBtnEl) {
 
 		showAccountError('');
 		setLoggedInStatus(result.username);
-		if (result.token) {
-			try { localStorage.setItem(TOKEN_KEY, result.token); } catch (_) {}
-			createSocket(result.token);
-		}
 		closeAccountOverlay();
 	});
 }
@@ -4456,13 +4432,15 @@ window.addEventListener('gamepaddisconnected', () => {
 	handleGamepadConnectChange(null);
 });
 
-// On page load: only connect if we have a stored token; otherwise show auth overlay.
-if (storedToken) {
-	restoreSession(storedToken);
-} else {
-	showAuthOverlay();
-	showRegisterForm();
-}
+// On page load: probe /api/me via session cookie to detect active session.
+( async () => {
+    try {
+        await restoreSession();
+    } catch (_) {
+        showAuthOverlay();
+        showRegisterForm();
+    }
+} )();
 
 // ── Run Summary Overlay ──
 

@@ -49,7 +49,7 @@ let cachedCosmetic = { ...DEFAULT_COSMETIC, proportions: defaultProportions() };
 let cachedUnlockedHats = ['none'];
 /** @type {{ id: string, name: string, price: number }[]} Server hat catalog. */
 let cachedHatCatalog = [];
-let authToken = null;
+
 let patchTimer = null;
 /** @type {Set<(s: AccountSettings) => void>} */
 const listeners = new Set();
@@ -191,7 +191,7 @@ export function getHatCatalog() {
 }
 
 export function getAuthToken() {
-	return authToken;
+	return null;
 }
 
 export function onSettingsChange(fn) {
@@ -230,14 +230,11 @@ export function applySettings() {
 
 /**
  * Load profile + settings from GET /api/me.
- * @param {string} token
+ * 
  * @returns {Promise<{ accountId: string, username: string, email: string|null, settings: AccountSettings }>}
  */
-export async function loadAccountSettings(token) {
-	authToken = token;
-	const res = await fetch('/api/me', {
-		headers: { Authorization: `Bearer ${token}` }
-	});
+export async function loadAccountSettings() {
+	const res = await fetch('/api/me');
 	if (!res.ok) {
 		throw new Error('Failed to load account settings');
 	}
@@ -274,7 +271,6 @@ async function migrateLocalStorageMute() {
 export function patchSettings(partial) {
 	cachedSettings = deepMerge(cachedSettings, partial);
 	applySettings();
-	if (!authToken) return;
 	if (patchTimer) clearTimeout(patchTimer);
 	patchTimer = setTimeout(() => {
 		patchSettingsImmediate(partial).catch(() => {});
@@ -286,12 +282,10 @@ export function patchSettings(partial) {
  * @param {Partial<AccountSettings>} partial
  */
 export async function patchSettingsImmediate(partial) {
-	if (!authToken) return;
 	const res = await fetch('/api/me/settings', {
 		method: 'PATCH',
 		headers: {
 			'Content-Type': 'application/json',
-			Authorization: `Bearer ${authToken}`
 		},
 		body: JSON.stringify(partial)
 	});
@@ -310,22 +304,16 @@ export async function patchSettingsImmediate(partial) {
  * @returns {Promise<{ token?: string, username: string, email: string|null, error?: string }>}
  */
 export async function patchProfile(fields) {
-	if (!authToken) return { error: 'Not logged in' };
 	const res = await fetch('/api/me/profile', {
 		method: 'PATCH',
 		headers: {
 			'Content-Type': 'application/json',
-			Authorization: `Bearer ${authToken}`
 		},
 		body: JSON.stringify(fields)
 	});
 	const data = await res.json().catch(() => ({}));
 	if (!res.ok) {
 		return { error: data.error || 'Profile update failed' };
-	}
-	if (data.token) {
-		authToken = data.token;
-		try { localStorage.setItem('autogame_token', data.token); } catch (_) {}
 	}
 	cachedProfile = {
 		username: data.username || cachedProfile.username,
@@ -338,7 +326,6 @@ export async function patchProfile(fields) {
 }
 
 export function setAuthToken(token) {
-	authToken = token;
 }
 
 export function areParticlesEnabled() {

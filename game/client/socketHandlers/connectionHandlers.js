@@ -44,7 +44,6 @@ export function bindConnectionHandlers(s, ctx) {
 			// never overwrite the "session expired" surface with a generic
 			// connect-timeout error.
 			ctx.clearConnectWatchdog();
-			try { localStorage.removeItem(ctx.TOKEN_KEY); } catch (_) {}
 			ctx.setAuthToken(null);
 			s.io.disconnect();
 			if (ctx.uiEl) ctx.uiEl.style.display = 'none';

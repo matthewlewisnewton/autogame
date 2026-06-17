@@ -91,7 +91,7 @@ describe('fly replay client socket affinity', () => {
 	it('createSocket omits fly query and headers without affinity options', async () => {
 		await import('../main.js');
 		window.__clearIoCallLog();
-		window.createSocket('affinity-test-token');
+		window.createSocket();
 		const config = lastIoConfig();
 		expect(config.auth).toBeUndefined();
 		expect(config.query).toBeUndefined();
@@ -101,7 +101,7 @@ describe('fly replay client socket affinity', () => {
 	it('createSocket passes lobbyId and fly_instance_id query plus fly-force-instance-id header', async () => {
 		await import('../main.js');
 		window.__clearIoCallLog();
-		window.createSocket('affinity-test-token', {
+		window.createSocket({
 			lobbyId: 'lobby1234',
 			flyInstanceId: 'fly-machine-b',
 		});

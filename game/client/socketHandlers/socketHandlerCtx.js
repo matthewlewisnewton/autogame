@@ -50,7 +50,6 @@ export function createSocketHandlerCtx(deps) {
 		statusEl: deps.statusEl,
 		showLobbyBrowserError: deps.showLobbyBrowserError,
 		disposeAllLootMeshes: deps.disposeAllLootMeshes,
-		TOKEN_KEY: deps.TOKEN_KEY,
 		setAuthToken: deps.setAuthToken,
 		uiEl: deps.uiEl,
 		giveUpBtnEl: deps.giveUpBtnEl,

@@ -3522,13 +3522,14 @@ describe('connect_error handler', () => {
 		try { localStorage.removeItem('autogame_token'); } catch (_) {}
 	});
 
-	it('removes autogame_token from localStorage on connect_error', async () => {
+	it('shows auth overlay on connect_error (session expired)', async () => {
 		await import('../main.js');
 
 		// Trigger connect_error via mock
 		window.__triggerSocketEvent('connect_error', 'error: invalid token');
 
-		expect(localStorage.getItem('autogame_token')).toBeNull();
+		const authOverlay = document.getElementById('auth-overlay');
+		expect(authOverlay && !authOverlay.classList.contains('hidden')).toBe(true);
 	});
 
 	it('destroys the socket to prevent auto-reconnect', async () => {

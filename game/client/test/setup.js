@@ -60,13 +60,27 @@ const ioMock = function(config) {
 	return createMockSocket();
 };
 
-// ── Set up localStorage with a fake JWT token ──
-// main.js reads `autogame_token` from localStorage at module load time.
-// Without it, createSocket() is never called and `socket` stays null.
-if (typeof localStorage !== 'undefined') {
-	try {
-		localStorage.setItem('autogame_token', 'test-fake-jwt-token');
-	} catch (_) { /* ignore */ }
+// ── Mock fetch for /api/me (session-cookie auth) ──
+// main.js calls restoreSession() at module load, which fetches /api/me via
+// the httpOnly session cookie. Mock the response so tests start logged in.
+if (typeof globalThis.fetch === "undefined") {
+    globalThis.fetch = async (url) => {
+        if (url === "/api/me") {
+            return {
+                ok: true,
+                json: async () => ({
+                    accountId: "test-account",
+                    username: "testuser",
+                    email: null,
+                    settings: {},
+                    cosmetic: { bodyColor: "#4f9dde", accentColor: "#f2c94c", bodyShape: "box", hat: "none" },
+                    unlockedHats: ["none"],
+                    hatCatalog: [],
+                }),
+            };
+        }
+        return { ok: false, json: async () => ({ error: "not found" }) };
+    };
 }
 
 // ── Create auth overlay DOM elements at setup time ──
