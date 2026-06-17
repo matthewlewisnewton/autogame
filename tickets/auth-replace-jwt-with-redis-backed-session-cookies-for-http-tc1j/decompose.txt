@@ -1,0 +1,9 @@
+Remediation round 2 had one open gap in `review-feedback.md`: login/register stopped returning a body JWT while the client and Socket.IO handshake still depend on it. Sub-tickets 01–05 are marked `.passed` and were left untouched.
+
+## New sub-ticket
+
+**06-return-jwt-for-socket-bridge** — Re-issue a JWT in the `/api/login` and `/api/register` JSON response alongside the existing session cookie and Redis session, restoring the socket bridge without rolling back HTTP cookie auth.
+
+## Created folder
+
+- `/home/matt/workspace/.autogame-worktrees/auth-replace-jwt-with-redis-backed-session-cookies-for-http-tc1j/tickets/auth-replace-jwt-with-redis-backed-session-cookies-for-http-tc1j/subtickets/06-return-jwt-for-socket-bridge/ticket.md`

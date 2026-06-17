@@ -9038,3 +9038,26 @@ persistence — no invariant bypass.
 None blocking. See `nits.md` for non-blocking follow-ups (fire-and-forget rejection handling on the
 unawaited `checkRunTerminalState()`/`cleanupAfterDamage()` production call sites).
 
+
+## v0.482 — Auth: replace JWT with Redis-backed session cookies for HTTP (login/register/logout/requireAuth)  (2026-06-17 01:14:02)
+
+  socket bridge — consistent with "do NOT remove JWT yet; cookie path becomes primary." ✓
+
+**6. Auth tests updated and passing.**
+- Ran `vitest run` on sessions/cookies/auth/account: **69 passed, 0 failed.** ✓
+
+## Consistency / regressions
+
+- No debug scenarios were added or changed by this ticket — the debug-scenario checklist does
+  not apply. (`metrics.json` shows `debugScenario: null`, `debugScenarioAllowed: true`,
+  unchanged.)
+- No design.md or requirements.md regression — this is server-side auth plumbing; gameplay
+  capture is unaffected and ran to `playing`.
+- Code quality is good: clear JSDoc, the accountId regex re-check is a thoughtful hardening
+  step, rate limiting and password-length caps preserved.
+
+## Remaining gaps
+
+None blocking. The acceptance criterion is fully and robustly met, the game runs and loads
+cleanly, and the test suite passes. Minor non-blocking polish is recorded in `nits.md`.
+

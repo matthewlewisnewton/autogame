@@ -1,0 +1,23 @@
+{
+  "ok": false,
+  "failure_kind": "capture_failed",
+  "capture_diagnosis": {
+    "detected": [],
+    "client_log_tail": "[vite] Proxying /api and /socket.io \u2192 http://127.0.0.1:3005\n[vite] Game server ready at http://127.0.0.1:3005\n\n  VITE v8.0.13  ready in 650 ms\n\n  \u279c  Local:   http://localhost:5178/\n  \u279c  Network: use --host to expose",
+    "server_log_tail": "[server] Layout for quest \"training_caverns\" tier 1: seed=352369970, profile=crowded, rooms=10\n[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]\n[auth] JWT_SECRET not set \u2014 using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.\n[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/auth-replace-jwt-with-redis-backed-session-cookies-for-http-tc1j/game/data\n[users] Loaded 4 user record(s) from storage provider\nServer listening on port 3005",
+    "port_holders": {
+      "5178": [
+        {
+          "pid": 3622622,
+          "cmdline": "node /home/matt/workspace/.autogame-worktrees/auth-replace-jwt-with-redis-backed-session-cookies-for-http-tc1j/game/client/node_modules/.bin/../vite/bin/vite.js --port 5178 --strictPort"
+        }
+      ],
+      "3005": [
+        {
+          "pid": 3622575,
+          "cmdline": "node game/server/index.js"
+        }
+      ]
+    }
+  }
+}

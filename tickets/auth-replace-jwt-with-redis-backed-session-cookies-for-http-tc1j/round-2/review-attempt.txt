@@ -1,0 +1,16 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime gate passes.** `metrics.json` reports `ok: true`, empty `pageerrors`, no `harness_failure`; `console.log` is clean (only Vite/initScene/launchBooth lines). The full-flow smoke capture logged in two players via the new session-cookie path and reached `phase: "playing"` connected with a populated HUD.
+
+**All acceptance criteria are fully and robustly met:**
+- `sessions.js` — opaque `crypto.randomBytes(32)` base64url tokens, `session:<token>` hashes with `{accountId, createdAt, lastSeen}` and a 24h sliding TTL via the `redis.js` client; create/get/destroy/refresh all present.
+- `cookies.js` — `Path=/; HttpOnly; SameSite=Lax`, with `Secure` appended only when `NODE_ENV=production` (local http dev still works).
+- login/register set the cookie + create a session; `requireAuth` validates via cookie (401 on missing/expired/destroyed) and re-validates the stored accountId; logout destroys the session + clears the cookie (idempotent 204).
+- Works with both the in-memory shim and `ioredis-mock` (cross-instance test included); bcrypt retained; JWT still returned in the body for the socket bridge and not removed, per the ticket.
+- **69/69 auth tests pass.**
+
+No debug scenarios were touched, so that checklist doesn't apply. No blocking gaps → `gaps.md` was not written.
+
+I filed two non-blocking nits in `nits.md`: (1) make the `hset`+`expire` pairs atomic so a real-Redis crash can't leave a session without a TTL, and (2) add a test asserting `Secure` is present in production.

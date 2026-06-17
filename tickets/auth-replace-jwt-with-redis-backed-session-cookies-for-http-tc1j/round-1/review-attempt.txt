@@ -1,0 +1,14 @@
+**VERDICT: FAIL** — written to `review.md`, with the single blocking gap in `gaps.md`. No independent nits, so no `nits.md`.
+
+## Summary
+
+The new server-side code is solid — `sessions.js`, `cookies.js`, the `requireAuth`/logout rewiring are clean, and all **69 server unit tests pass**. But the ticket regressed the running game, and the capture proves it.
+
+**What broke:** The ticket took "Set-Cookie INSTEAD of returning a JWT in the body" literally — `/api/login` and `/api/register` now return only `{ accountId }`. But the JWT removal for the socket/client was explicitly deferred ("Do NOT remove JWT code yet… after socket+client migrate"). So:
+
+- `main.js:3859` — client login requires `data.token` to create the socket; it's now `undefined`, so login silently fails.
+- `index.js:1937` — the Socket.IO handshake still authenticates with the JWT (`verifyToken`).
+
+Net effect: a player can no longer log in or reach the lobby. The fallback smoke capture timed out waiting for `#lobby-browser` (`metrics.json: ok:false, capture_failed`; no `harness_failure`, no `pageerrors` — this is a code regression, not infra).
+
+**Fix handed to the next round:** keep returning the JWT `token` in the login/register body *in addition* to the session cookie. The cookie stays primary for HTTP `requireAuth`; the body token keeps the legacy socket/client path alive until the dedicated socket-migration bead.
