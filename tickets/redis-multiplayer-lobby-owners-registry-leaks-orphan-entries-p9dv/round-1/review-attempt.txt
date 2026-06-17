@@ -1,0 +1,15 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime gate passed** — `metrics.json` shows `"ok": true`, empty `pageerrors`, servers started, and the full-flow smoke capture (auth → lobby → ready → movement → dodge) ran cleanly with live `playing`/`connected` probes. `console.log` has no `pageerror`/`[fatal]`/uncaught exceptions. No `harness_failure`.
+
+**Both leak paths from the ticket are fixed and well-tested:**
+1. **Orphan-reaper path** — `reapAbandonedLobbies()` now calls `unregisterLobby(lobbyId)` before the direct `_lobbies.delete` in the zero-player branch (the missing `hdel` the ticket identified).
+2. **Dead-instance path** — new `reconcileStaleLobbyOwners()` sweep prunes local ghost entries and remote entries whose `lobbies:<instanceId>` publish key has expired, wired into a 5s timer and the publish path. This is exactly the ticket's prescribed "drop owners whose instance no longer publishes" direction.
+
+I independently verified there's **no false-prune race** for local lobbies (`_lobbies.set` precedes the async `registerLobby`), and ran the tests: **14 passed** (8 reconcile + 6 reap), covering every branch.
+
+**One non-blocking nit** filed (`nits.md`): a live remote instance with no lobby-list churn for 30s could let its publish key lapse and have its owner entry pruned — a routing-correctness hardening opportunity (heartbeat publish). This matches the pre-existing lobby-browser staleness assumption and is the tradeoff the ticket's fix direction accepts, so it does not block.
+
+Since the verdict is PASS, no `gaps.md` was written.

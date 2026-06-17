@@ -9130,3 +9130,26 @@ do not apply.
 None blocking. All acceptance criteria are fully and robustly met; the game runs
 cleanly with session-only auth proven end-to-end in the captured run.
 
+
+## v0.486 — redis/multiplayer: lobby:owners registry leaks orphan entries (no TTL; orphan-reaper + dead-instance paths never unregister)  (2026-06-17 12:29:58)
+
+→ **14 passed** (8 + 6).
+
+## Consistency with design / requirements
+
+Pure backend Redis-registry hygiene; no change to `game/docs/design.md`
+surfaces or the requirements foundation. The smoke capture confirms no
+gameplay regression. No debug scenario was added or changed.
+
+## Remaining gaps
+
+None blocking. The implementation fully and robustly satisfies both leak paths
+the ticket describes, with thorough unit coverage and a clean runtime capture.
+
+One non-blocking robustness follow-up (see `nits.md`): a *live* remote instance
+whose lobby list sees no churn for 30s lets its publish key lapse, after which a
+peer's sweep would prune its owner entry. This is the tradeoff the ticket's fix
+direction explicitly accepts and matches the pre-existing lobby-browser staleness
+assumption, so it does not block — but a periodic heartbeat publish (or
+re-register on publish) would harden routing correctness.
+
