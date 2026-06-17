@@ -117,6 +117,15 @@ describe('handleLockOnPress', () => {
 		expect(getLockedEnemyId()).toBe('a');
 	});
 
+	it('returns camera snap yaw toward enemy when player faces a different direction', () => {
+		const enemy = { id: 'a', x: 3, z: 4, hp: 50 };
+		const playerRot = Math.PI / 2;
+		const result = handleLockOnPress([enemy], 0, PY, 0, 'unlock', playerRot, LAYOUT);
+		const toTarget = getDirectionToTarget(0, 0, enemy);
+		expect(result.action).toBe('locked');
+		expect(result.cameraYaw).toBeCloseTo(cameraYawFromToTarget(toTarget), 5);
+	});
+
 	it('snaps camera behind facing when no target is in range', () => {
 		const farEnemies = [
 			{ id: 'a', x: 20, z: 0, hp: 50 },
