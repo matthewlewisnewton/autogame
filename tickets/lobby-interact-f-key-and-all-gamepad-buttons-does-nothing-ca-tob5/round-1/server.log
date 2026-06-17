@@ -1,0 +1,15 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/lobby-interact-f-key-and-all-gamepad-buttons-does-nothing-ca-tob5/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/lobby-interact-f-key-and-all-gamepad-buttons-does-nothing-ca-tob5/game/data
+Server listening on port 3003
+Player connected: socket=8J0p8A6JOeb9twFiAAAB, playerId=96353b20-43cd-4364-b113-93482b90c0de
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=LhpAGgRZKydro6a1AAAD, playerId=74e75060-8d8b-4618-99c3-9364c668eb86
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=48ae19b0-7f70-4312-8ac7-29d53e83f378 value=20
+Player disconnected: 8J0p8A6JOeb9twFiAAAB
+Player disconnected: LhpAGgRZKydro6a1AAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

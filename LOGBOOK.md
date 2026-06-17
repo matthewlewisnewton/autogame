@@ -8923,3 +8923,26 @@ Not applicable — this ticket did not add or modify any `?debugScenario=` short
 
 None. The playthrough driver's persistence-backend override is removed, env passthrough is unit-tested, backward-compatible defaults are preserved, and the captured game run is healthy.
 
+
+## v0.479 — Lobby: interact (F key AND all gamepad buttons) does nothing — can't interact with booths in main lobby  (2026-06-16 22:06:26)
+
+  fires when `canUseGameActions()` is false, edge-triggered). `booth-interact-chain.test.js`
+  adds 4 end-to-end tests including the server out-of-range `boothError` rejection path. All
+  49 tests across the two files pass locally.
+
+## Design / regression consistency
+
+The change is additive: one new gamepad binding and one isolated poll block. No existing action
+handling, gate, or the keyboard path was altered. No server-side validation is bypassed — the
+client still relies on the server `boothAction`/`boothError` response. No debug scenario was
+added (lobby is the default start state), so the debug-scenario rules do not apply.
+
+## Code quality
+
+Clean and idiomatic — matches the surrounding edge-trigger pattern. Comments explain the
+non-gated lobby behavior. No dead code, no console errors, no obvious bugs.
+
+## Remaining gaps
+
+None blocking.
+
