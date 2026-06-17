@@ -8,6 +8,8 @@ import {
 	hasStandardGamepadMapping,
 	parseGamepadId,
 	formatGamepadDeviceInfo,
+	isSafariBrowser,
+	getGamepadActivationHint,
 	EIGHTBITDO_VENDOR_ID,
 	EIGHTBITDO_64_PRODUCT_ID,
 	EIGHTBITDO_64_BT_PRODUCT_ID,
@@ -117,5 +119,60 @@ describe('formatGamepadDeviceInfo()', () => {
 		expect(info).toContain('vendor 0x2dc8');
 		expect(info).toContain('16 buttons');
 		expect(info).toContain('6 axes');
+	});
+
+	it('asks the player to interact before pressing buttons when not primed', () => {
+		const info = formatGamepadDeviceInfo(null, { primed: false });
+		expect(info).toContain('click or tap this page');
+		expect(info).toContain('press any controller button or move a stick');
+	});
+});
+
+describe('isSafariBrowser()', () => {
+	const SAFARI_MAC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15';
+	const CHROME_MAC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
+	const IOS_SAFARI = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
+	const ANDROID_CHROME = 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Mobile Safari/537.36';
+
+	it('detects Safari and excludes Chrome/Android', () => {
+		expect(isSafariBrowser(SAFARI_MAC)).toBe(true);
+		expect(isSafariBrowser(IOS_SAFARI)).toBe(true);
+		expect(isSafariBrowser(CHROME_MAC)).toBe(false);
+		expect(isSafariBrowser(ANDROID_CHROME)).toBe(false);
+	});
+});
+
+describe('getGamepadActivationHint()', () => {
+	const SAFARI_MAC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15';
+	const CHROME_MAC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
+
+	it('returns empty text when a pad is connected', () => {
+		expect(getGamepadActivationHint({ connected: true })).toBe('');
+	});
+
+	it('asks for page interaction before controller input when not primed', () => {
+		const hint = getGamepadActivationHint({ primed: false, connected: false });
+		expect(hint).toContain('Click or tap this page first');
+		expect(hint).toContain('press any controller button or move a stick');
+	});
+
+	it('includes Safari guidance when the UA is Safari', () => {
+		const hint = getGamepadActivationHint({
+			primed: false,
+			connected: false,
+			userAgent: SAFARI_MAC,
+		});
+		expect(hint).toContain('Safari');
+		expect(hint).toContain('gamepadconnected');
+		expect(hint).toContain('HTTPS or localhost');
+	});
+
+	it('omits Safari guidance for non-Safari browsers', () => {
+		const hint = getGamepadActivationHint({
+			primed: false,
+			connected: false,
+			userAgent: CHROME_MAC,
+		});
+		expect(hint).not.toContain('Safari');
 	});
 });

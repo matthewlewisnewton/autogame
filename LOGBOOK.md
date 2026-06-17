@@ -8924,6 +8924,29 @@ Not applicable — this ticket did not add or modify any `?debugScenario=` short
 None. The playthrough driver's persistence-backend override is removed, env passthrough is unit-tested, backward-compatible defaults are preserved, and the captured game run is healthy.
 
 
+## v0.477 — Gamepad auto-detection + input only works in Chrome, not macOS Safari  (2026-06-16 21:38:04)
+
+  de-duplicated into `handleGamepadConnectChange`, behavior preserved.
+- No new console errors attributable to the change; rAF loop only does work when
+  `accessPrimed`, and is guarded for environments without `requestAnimationFrame`.
+- No debug scenario added or changed by this ticket.
+
+## Tests / quality
+
+- `vitest run` on the four affected client suites: 82/82 pass
+  (`gamepad-activation` 5, `gamepad-detect` 18, `gamepad` 17, `input` 42).
+- Code is well-typed (JSDoc), idiomatic to the surrounding module, and the new
+  module cleanly separates priming, polling, and subscription concerns.
+
+The AC is fully and robustly satisfied within what is verifiable without a physical
+pad + Safari (the ticket explicitly flags CI cannot test those; manual Safari check
+remains a documented follow-up, as intended).
+
+## Remaining gaps
+
+None blocking. (Minor non-blocking nits recorded in `nits.md`.)
+
+
 ## v0.478 — 8BitDo: lock-on (Z) should recenter camera behind player; C-stick free-look mapping is unexpected  (2026-06-16 21:40:11)
 
 for the `cStick` look source. New `pollGamepadLook()` tests in `gamepad.test.js`

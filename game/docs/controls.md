@@ -71,3 +71,12 @@ When an **8BitDo 64** is connected, Settings → Controller profile can stay on 
 | **Select (−)** | Toggle deck viewer |
 | **L** | Modifier for extended hand slots |
 | **Start (+)** | — |
+
+## Gamepad / Safari
+
+Safari on macOS (and iOS) implements the Gamepad API with extra restrictions that other browsers do not impose. The game accounts for these where possible, but some behavior is controlled by the browser.
+
+- **User gesture required** — Connected pads may not appear in `navigator.getGamepads()` until the player **clicks or taps the page** and then **presses a controller button or moves a stick**. Until that happens, Settings may show "No controller detected" even when a pad is plugged in.
+- **`gamepadconnected` may not fire** — Safari sometimes omits the `gamepadconnected` event when a pad is attached. The client polls after the first gesture instead of relying on that event alone.
+- **Secure context required** — Gamepad access requires **HTTPS** or **localhost**. Plain `http://` on a LAN IP will not expose controllers.
+- **Manual verification recommended** — Confirm controller detection and calibration on **macOS Safari** with your hardware; behavior can differ from Chrome and Firefox on the same machine.

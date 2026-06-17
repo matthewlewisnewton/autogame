@@ -1,0 +1,17 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime gate passed.** `metrics.json` shows `"ok": true`, `pageerrors: []`, scene initialized and connected. `console.log` has only two benign `409 Conflict` resource errors (lobby/auth race), no page errors or fatals. The full-flow smoke capture (auth → lobby → ready → movement → dodge) ran cleanly.
+
+**Acceptance criterion fully met**, broken into its three obligations:
+
+1. **Detection no longer solely load-time** — new `gamepad-activation.js` primes `navigator.getGamepads()` on the first user gesture (`pointerdown`/`keydown`/`touchstart`) and runs a `requestAnimationFrame` poll loop that diffs the pad snapshot, so detection works even when Safari never fires `gamepadconnected`. Chrome's native event and the poll path now converge through one `handleGamepadConnectChange` in `main.js`.
+
+2. **Drives input** — the per-frame input poll (`gamepad.js`) reads `navigator.getGamepads()` independently of activation, so once Safari exposes the pad it feeds movement/look/buttons with no extra gating. New `input.test.js`/`gamepad.test.js` regressions cover delayed activation.
+
+3. **Documented limitation + user hint** — `docs/controls.md` gains a Safari section (gesture requirement, `gamepadconnected` quirk, HTTPS/localhost requirement); `getGamepadActivationHint()` surfaces a Safari-aware, primed-aware hint in Settings → Controller Calibration.
+
+**Tests:** 82/82 pass across the four affected suites. No debug scenario added. No regression to the native-event path.
+
+Recorded two non-blocking nits (a dead-guard cleanup and an optional rAF teardown helper) in `nits.md`. No `gaps.md` written since the verdict is PASS.

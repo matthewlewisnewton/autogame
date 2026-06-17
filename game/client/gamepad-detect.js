@@ -158,6 +158,55 @@ export function getCalibrationGamepad() {
 }
 
 /**
+ * True for desktop/mobile Safari; excludes Chrome, Chromium, and Android WebView
+ * (they also include "Safari" in the UA string).
+ * @param {string} [userAgent]
+ * @returns {boolean}
+ */
+export function isSafariBrowser(userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '') {
+	return /Safari/i.test(userAgent)
+		&& !/Chrome|Chromium|CriOS|FxiOS|EdgiOS|OPiOS|Android/i.test(userAgent);
+}
+
+/**
+ * @param {{ primed?: boolean }} options
+ * @returns {string}
+ */
+function getGamepadConnectSteps({ primed }) {
+	if (!primed) {
+		return 'Click or tap this page first, then press any controller button or move a stick';
+	}
+	return 'Press any controller button or move a stick';
+}
+
+/**
+ * @param {string} [userAgent]
+ * @returns {string}
+ */
+function getSafariGamepadNote(userAgent) {
+	if (!isSafariBrowser(userAgent)) return '';
+	return ' On Safari, controllers may not appear until you interact with the page; gamepadconnected may not fire when you plug in a pad. Use HTTPS or localhost.';
+}
+
+/**
+ * Shared activation hint for Settings → Controller Calibration (#gamepad-activation-hint).
+ * @param {{ primed?: boolean, connected?: boolean, userAgent?: string }} [options]
+ * @returns {string} Empty when a pad is already connected (hint should be hidden).
+ */
+export function getGamepadActivationHint({
+	primed = false,
+	connected = false,
+	userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '',
+} = {}) {
+	if (connected) return '';
+	const steps = getGamepadConnectSteps({ primed });
+	const suffix = primed
+		? ' so the browser can detect your controller.'
+		: ' so the browser can expose gamepads (GamePad API privacy rule).';
+	return `${steps}${suffix}${getSafariGamepadNote(userAgent)}`;
+}
+
+/**
  * @param {Gamepad | null | undefined} gamepad
  * @returns {string}
  */
@@ -170,11 +219,17 @@ export function describeGamepadConnection(gamepad) {
 
 /**
  * @param {Gamepad | null | undefined} gamepad
+ * @param {{ primed?: boolean, userAgent?: string }} [options]
  * @returns {string}
  */
-export function formatGamepadDeviceInfo(gamepad) {
+export function formatGamepadDeviceInfo(gamepad, options = {}) {
 	if (!gamepad) {
-		return 'Connect a USB or Bluetooth gamepad, then press any button or move a stick so the browser can expose it.';
+		const {
+			primed = false,
+			userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : '',
+		} = options;
+		const steps = getGamepadConnectSteps({ primed });
+		return `Connect a USB or Bluetooth gamepad, then ${steps.toLowerCase()} so the browser can expose it.${getSafariGamepadNote(userAgent)}`;
 	}
 	const parsed = parseGamepadId(gamepad.id);
 	const parts = [gamepad.id || 'Unknown device'];
