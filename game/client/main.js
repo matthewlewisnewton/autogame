@@ -1803,17 +1803,13 @@ function renderQuestBoardState() {
 		selectedQuestId,
 		(questId, tier) => {
 			if (!socket) return;
-			if (suspendedRunSummary) {
-				showQuestError(THEME.run.questSuspendedLocked);
-				return;
-			}
 			socket.emit(CLIENT_TO_SERVER.SELECT_QUEST, { questId, tier: tier ?? 1 });
 		},
 		{
 			selectedQuestTier,
 			unlockedQuestTiers,
 			questVariants,
-			selectionLocked: !!suspendedRunSummary,
+			selectionLocked: false,
 			briefingPanelEl: questBriefingPanelEl,
 		},
 	);
@@ -1841,10 +1837,6 @@ function renderLevelMapState() {
 		selectedQuestTier,
 		onSelectNode: (questId, tier) => {
 			if (!socket) return;
-			if (suspendedRunSummary) {
-				showQuestError(THEME.run.questSuspendedLocked);
-				return;
-			}
 			socket.emit(CLIENT_TO_SERVER.SELECT_QUEST, { questId, tier: tier ?? 1 });
 		},
 	});

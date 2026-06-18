@@ -5669,7 +5669,8 @@ describe('suspended run resume/abandon UI', () => {
 		'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 		'summary-currency', 'summary-rewards', 'return-to-lobby-btn',
 		'suspended-run-banner', 'resume-run-btn', 'abandon-run-btn',
-		'quest-board', 'quest-board-wrapper', 'quest-error',
+		'quest-board', 'quest-board-wrapper', 'quest-error', 'level-map',
+		'quest-briefing-panel',
 	];
 
 	const suspendedSummary = {
@@ -5789,6 +5790,124 @@ describe('suspended run resume/abandon UI', () => {
 		const readyEmits = window.__socketEmitLog().filter((entry) => entry.event === 'playerReady');
 		expect(readyEmits).toHaveLength(1);
 		expect(readyEmits[0].data).toBe(true);
+	});
+
+	it('clicking a quest card emits SELECT_QUEST when suspendedRunSummary is set', async () => {
+		await import('../main.js');
+
+		window.__triggerSocketEvent('runSuspended', suspendedSummary);
+		window.__triggerSocketEvent('stateUpdate', lobbyStateUpdate());
+
+		window.__setQuestBoardState([
+			{
+				id: 'training_caverns',
+				name: 'Initiate Vault',
+				objectiveType: 'defeat_enemies',
+			},
+			{
+				id: 'crystal_rescue',
+				name: 'Prism Salvage',
+				objectiveType: 'collect_items',
+			},
+		], 'training_caverns', 1);
+
+		window.renderQuestBoardState();
+		window.__clearSocketEmitLog();
+
+		const questBoard = document.getElementById('quest-board');
+		const crystalCard = questBoard.querySelector('[data-quest-id="crystal_rescue"]');
+		expect(crystalCard).toBeTruthy();
+		crystalCard.click();
+
+		const emits = window.__socketEmitLog().filter(
+			(e) => e.event === 'selectQuest'
+		);
+		expect(emits).toHaveLength(1);
+		expect(emits[0].data).toEqual({ questId: 'crystal_rescue', tier: 1 });
+	});
+
+	it('clicking a level map node emits SELECT_QUEST when suspendedRunSummary is set', async () => {
+		await import('../main.js');
+
+		window.__triggerSocketEvent('runSuspended', suspendedSummary);
+		window.__triggerSocketEvent('stateUpdate', lobbyStateUpdate());
+
+		window.__applyQuestBoardFromPayload({
+			quests: [
+				{
+					id: 'training_caverns',
+					name: 'Initiate Vault',
+					objectiveType: 'defeat_enemies',
+				},
+				{
+					id: 'crystal_rescue',
+					name: 'Prism Salvage',
+					objectiveType: 'collect_items',
+				},
+			],
+			selectedQuestId: 'training_caverns',
+			selectedQuestTier: 1,
+			levelUnlockGraph: {
+				nodes: [
+					{
+						questId: 'training_caverns',
+						tier: 1,
+						name: 'Initiate Vault',
+						objectiveType: 'defeat_enemies',
+						isBoss: false,
+						unlockRequires: null,
+						state: 'unlocked',
+					},
+					{
+						questId: 'crystal_rescue',
+						tier: 1,
+						name: 'Prism Salvage',
+						objectiveType: 'collect_items',
+						isBoss: false,
+						unlockRequires: [{ questId: 'training_caverns', tier: 1 }],
+						state: 'unlocked',
+					},
+				],
+			},
+		});
+
+		window.renderQuestBoardState();
+		window.__clearSocketEmitLog();
+
+		const levelMap = document.getElementById('level-map');
+		const nodes = levelMap.querySelectorAll('.level-map-node');
+		expect(nodes.length).toBeGreaterThan(0);
+
+		const someNode = nodes[0];
+		const questId = someNode.dataset.questId;
+		const tier = Number(someNode.dataset.questTier) || 1;
+		someNode.click();
+
+		const emits = window.__socketEmitLog().filter(
+			(e) => e.event === 'selectQuest'
+		);
+		expect(emits).toHaveLength(1);
+		expect(emits[0].data).toEqual({ questId, tier });
+	});
+
+	it('clears suspended banner after STATE_UPDATE with suspendedRunSummary null following quest change', async () => {
+		await import('../main.js');
+
+		window.__triggerSocketEvent('runSuspended', suspendedSummary);
+		window.__triggerSocketEvent('stateUpdate', lobbyStateUpdate());
+
+		const banner = document.getElementById('suspended-run-banner');
+		expect(banner.classList.contains('hidden')).toBe(false);
+
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'lobby',
+			suspendedRunSummary: null,
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+			enemies: [],
+		});
+
+		expect(banner.classList.contains('hidden')).toBe(true);
+		expect(window.__AUTOGAME_HARNESS_STATE__().suspendedRunSummary).toBeNull();
 	});
 });
 
