@@ -1,0 +1,433 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game
+      Coverage enabled with v8
+
+stdout | client/test/booth-interact-chain.test.js > booth interact chain (input → socket → server response → booth UI) > keyboard F: in-range booth → boothInteract → boothAction → booth UI opens
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > creates a persistent mesh keyed by enc.id and positions it at enc.x/z
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > builds meshes for local and remote lobby players
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/booth-interact-chain.test.js > booth interact chain (input → socket → server response → booth UI) > keyboard F: in-range booth → boothInteract → boothAction → booth UI opens
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:2776:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer/playerSync.js:101:37[90m)[39m
+    at Module.animate [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:7506:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stderr | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > builds meshes for local and remote lobby players
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:2776:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer/playerSync.js:101:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:7506:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:2776:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer/playerSync.js:101:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:7506:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stderr | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > creates a persistent mesh keyed by enc.id and positions it at enc.x/z
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:2776:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer/playerSync.js:101:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:7506:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > moves the remote mesh when hub presence coordinates change
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > disposes the hazard mesh when the enchantment leaves the snapshot
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > hub lobby join starts with #lobby hidden and lobbyMenuDismissed true
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/booth-interact-chain.test.js > booth interact chain (input → socket → server response → booth UI) > gamepad D-pad Up: in-range booth → same chain as keyboard F
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/deck-viewer.test.js (21 tests) 619ms
+   ✓ renderDeckViewer() / renderDeckStack() > renders draw pile cards with type icons and toggles via V key  604ms
+ ✓ |client| client/test/boss-encounter-hud-wiring.test.js (8 tests) 834ms
+   ✓ boss-encounter HUD wiring in main.js > populates the model and shows the HUD for an active encounter with a live boss  723ms
+stdout | client/test/renderer-spike-trap.test.js > spike trap persistent hazard reconcile > does NOT create a hazard mesh for cinder_snare enchantments
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/booth-interact-chain.test.js > booth interact chain (input → socket → server response → booth UI) > pressing F when out of range produces no socket emission and no booth open
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/questBooth.test.js > quest booth booth:action hook (main.js) > reveals and scrolls the quest panel into view for boothId quest in lobby and ignores other booths
+[launchBooth] ready-up via booth
+[launchBooth] ready-up via booth
+
+stdout | client/test/renderer-run-summary-input.test.js > renderer run-summary input lock > animate() does not emit lootPickup while overlay is visible
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > dismissGameLobby then lobby-phase stateUpdate keeps #lobby hidden
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/renderer-run-summary-input.test.js > renderer run-summary input lock > animate() does not emit lootPickup while overlay is visible
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:2776:2[90m)[39m
+    at syncPlayerMeshes [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer/playerSync.js:101:37[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:7506:19[90m)[39m {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > applyHubPresence sequence updates remote mesh position and cosmeticKey
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/booth-interact-chain.test.js > booth interact chain (input → socket → server response → booth UI) > server rejects out-of-range interaction with boothError
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/boothDeck.test.js (4 tests) 1319ms
+   ✓ deck booth via booth:action > opens the loadout bay when booth:action targets the deck booth  868ms
+   ✓ deck booth via booth:action > populates the deck editor and deck-add still emits deckAddCard  411ms
+ ✓ |client| client/test/level-settings-rewards.test.js (2 tests) 1299ms
+   ✓ level settings return rewards preview cache > keeps return rewards preview across a slim stateUpdate tick after deploy  811ms
+   ✓ level settings return rewards preview cache > clears cached preview when returning to the lobby  485ms
+ ✓ |client| client/test/booth-interact-chain.test.js (4 tests) 1150ms
+   ✓ booth interact chain (input → socket → server response → booth UI) > keyboard F: in-range booth → boothInteract → boothAction → booth UI opens  538ms
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > hubPresenceUpdate and applyHubPresence while dismissed do not show #lobby
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/medicHud.test.js (3 tests) 1373ms
+   ✓ renderGuildMedic() charity medic HUD > disables heal at full health with zero currency  632ms
+   ✓ renderGuildMedic() charity medic HUD > enables heal with shortfall copy when injured and broke  395ms
+   ✓ renderGuildMedic() charity medic HUD > enables heal with paid copy when injured and can afford medic  344ms
+ ✓ |client| client/test/debug-hatswap-hook.test.js (3 tests) 1791ms
+   ✓ ?booth=hatswap debug hook (main.js requestBoothDebugOpen) > opens the character booth and requests hats-unlocked once on localhost  1010ms
+   ✓ ?booth=hatswap debug hook (main.js requestBoothDebugOpen) > does nothing for ?booth=hatswap on a non-localhost host  379ms
+   ✓ ?booth=hatswap debug hook (main.js requestBoothDebugOpen) > does not fire before the phase is lobby  400ms
+ ✓ |client| client/test/run-summary-lobby-race.test.js (3 tests) 1711ms
+   ✓ run-summary lobby-phase STATE_UPDATE race guard > keeps Sortie Complete visible when lobby stateUpdate follows showRunSummary  931ms
+   ✓ run-summary lobby-phase STATE_UPDATE race guard > synthesizes Sortie Complete from a terminal run snapshot when runComplete was missed  405ms
+   ✓ run-summary lobby-phase STATE_UPDATE race guard > Return to Hub dismisses the overlay after server clears the run  372ms
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > applyHubPresence removedPlayerIds disposes remote avatar mesh
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/renderer-run-summary-input.test.js (3 tests) 1600ms
+   ✓ renderer run-summary input lock > updateMyPlayer() does not advance position or emit move while overlay is visible  765ms
+   ✓ renderer run-summary input lock > animate() does not emit lootPickup while overlay is visible  512ms
+   ✓ renderer run-summary input lock > updateMyPlayer() blocks movement when run.status is failed without overlay checker  321ms
+ ✓ |client| client/test/boothShop.test.js (5 tests) 1558ms
+   ✓ shop booth via booth:action > opens the card shop when booth:action targets the shop booth  723ms
+   ✓ shop booth via booth:action > emits buyShopCard when the buy button is clicked after booth open  374ms
+   ✓ shop booth via booth:action > emits sellCard when a sell button is clicked after booth open  373ms
+stdout | client/test/main.test.js > cardError handler — server hand rejection > shows a toast when the server rejects an unauthorized card use
+[cardError] Card not in hand
+[cardError] Card not in hand
+[cardError] Card not in hand
+[cardError] Card not in hand
+[cardError] Card not in hand
+
+ ✓ |client| client/test/hub-presence-avatars.test.js (4 tests) 1819ms
+   ✓ hub presence avatars (lobby) > builds meshes for local and remote lobby players  784ms
+   ✓ hub presence avatars (lobby) > applyHubPresence sequence updates remote mesh position and cosmeticKey  492ms
+   ✓ hub presence avatars (lobby) > applyHubPresence removedPlayerIds disposes remote avatar mesh  392ms
+stderr | client/test/main.test.js > createEnemyMesh() > creates a red cone for grunt (default) type
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer/enemySync.js:152:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/test/main.test.js:2798:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates an orange cone for skirmisher type
+[renderer] failed to apply model "/models/skirmisher.glb" for "skirmisher": TypeError: Failed to parse URL from /models/skirmisher.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer/enemySync.js:152:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/test/main.test.js:2810:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/skirmisher.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a teal octahedron for spawner type
+[renderer] failed to apply model "/models/spawner.glb" for "spawner": TypeError: Failed to parse URL from /models/spawner.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer/enemySync.js:152:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/test/main.test.js:2820:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/spawner.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a warm emissive octahedron for ember_wraith type
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer/enemySync.js:152:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/test/main.test.js:2798:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a purple cone for miniboss type
+[renderer] failed to apply model "/models/miniboss.glb" for "miniboss": TypeError: Failed to parse URL from /models/miniboss.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:851:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer/enemySync.js:152:21[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/test/main.test.js:2862:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/miniboss.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/models.js:164:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/models.js:155:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/game/[39mclient/renderer.js:851:11[90m)[39m
+}
+
+ ✓ |client| client/test/renderer-spike-trap.test.js (5 tests) 1783ms
+   ✓ spike trap persistent hazard reconcile > creates a persistent mesh keyed by enc.id and positions it at enc.x/z  610ms
+   ✓ SPIKE_TRAP_TRIGGERED handler > spawns the eruption VFX at the reported x/z/radius  318ms
+   ✓ SPIKE_TRAP_TRIGGERED handler > is a guarded no-op when x/z are not finite  481ms
+stdout | client/test/key-item-dodge.test.js > dash VFX > triggerDashVFX applies squash scale when a player mesh exists
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > deck booth open shows #lobby and clears the dismissed flag
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/run-summary-input-lock.test.js (4 tests) 1939ms
+   ✓ run-summary overlay input lock > isRunSummaryOverlayVisible() is true when #run-summary-overlay display is not none  784ms
+   ✓ run-summary overlay input lock > canUseGameActions() is false after showRunSummary({ status: victory })  396ms
+   ✓ run-summary overlay input lock > key-item binding does not emit useKeyItem while run-summary overlay is visible  337ms
+   ✓ run-summary overlay input lock > showRunSummary mirrors failed onto gameState.run.status  419ms
+stdout | client/test/debug-godmode.test.js > debug godmode toggle (main.js) > mirrors debugGodmode onto local player when toggle succeeds
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+
+ ✓ |client| client/test/levelMapIntegration.test.js (5 tests) 2392ms
+   ✓ level-map lobby integration (main.js) > renders nodes from the payload levelUnlockGraph through questUpdate  938ms
+   ✓ level-map lobby integration (main.js) > marks the node matching selectedQuestId/Tier as selected  375ms
+   ✓ level-map lobby integration (main.js) > clicking an unlocked node emits SELECT_QUEST with that questId/tier  350ms
+   ✓ level-map lobby integration (main.js) > clicking a locked node emits nothing  466ms
+stdout | client/test/lobby-menu-dismiss.test.js > lobby menu dismiss guard (main.js) > shop booth open shows #lobby and clears the dismissed flag
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/key-item-dodge.test.js (6 tests) 2481ms
+   ✓ key item cooldown HUD > shows ready state with name and default keybind when equipped and playing with zero cooldown  884ms
+   ✓ key item cooldown HUD > clears indicator when unequipped or not in playing phase  387ms
+   ✓ key item cooldown HUD > flashKeyItemIndicator adds flash classes without removing HUD children  459ms
+stdout | client/test/debug-godmode.test.js > debug godmode toggle (main.js) > keeps debugGodmode false across stateUpdate after godmode-off debugGodmodeResult
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+[debugGodmode] disabled
+
+ ✓ |client| client/test/debug-time-scale-gate.test.js (5 tests) 2664ms
+   ✓ debug time-scale client gate (main.js) > Shift+T does not emit on localhost until the server reports the feature authorized  1055ms
+   ✓ debug time-scale client gate (main.js) > Shift+T emits setDebugTimeScale once the snapshot reports debugTimeScaleAllowed:true  451ms
+   ✓ debug time-scale client gate (main.js) > Shift+T stops emitting again after the snapshot revokes authorization  421ms
+   ✓ debug time-scale client gate (main.js) > __setDebugTimeScaleForTest no-ops when not authorized and emits when authorized  454ms
+ ✓ |client| client/test/fly_replay_client.test.js (6 tests) 2478ms
+   ✓ fly replay client socket affinity > createSocket omits fly query and headers without affinity options  828ms
+   ✓ fly replay client socket affinity > createSocket passes lobbyId and fly_instance_id query plus fly-force-instance-id header  409ms
+   ✓ fly replay client socket affinity > requestJoinLobby reconnects with remote instanceId and emits joinLobby on connect  362ms
+   ✓ fly replay client socket affinity > requestJoinLobby without instanceId emits joinLobby on the existing socket  467ms
+ ✓ |client| client/test/lobby-menu-dismiss.test.js (6 tests) 2357ms
+   ✓ lobby menu dismiss guard (main.js) > hub lobby join starts with #lobby hidden and lobbyMenuDismissed true  797ms
+   ✓ lobby menu dismiss guard (main.js) > dismissGameLobby then lobby-phase stateUpdate keeps #lobby hidden  378ms
+   ✓ lobby menu dismiss guard (main.js) > hubPresenceUpdate and applyHubPresence while dismissed do not show #lobby  370ms
+   ✓ lobby menu dismiss guard (main.js) > deck booth open shows #lobby and clears the dismissed flag  448ms
+ ✓ |client| client/test/debug-godmode.test.js (7 tests) 2633ms
+   ✓ debug godmode toggle (main.js) > Shift+G emits toggleDebugGodmode when debugScenarioAllowed is true  735ms
+   ✓ debug godmode toggle (main.js) > Shift+G does not emit toggleDebugGodmode when debugScenarioAllowed is false  383ms
+   ✓ debug godmode toggle (main.js) > Shift+G is swallowed when focus is in a text input  320ms
+   ✓ debug godmode toggle (main.js) > __toggleDebugGodmodeForTest emits toggleDebugGodmode when the socket is ready  458ms
+   ✓ debug godmode toggle (main.js) > mirrors debugGodmode onto local player when toggle succeeds  308ms
+ ✓ |client| client/test/questDialogue.test.js (8 tests) 2794ms
+   ✓ quest dialogue comms UI (main.js) > shows a comms toast and appends to the log via the test hook  836ms
+   ✓ quest dialogue comms UI (main.js) > auto-dismisses the comms toast after ~4s  394ms
+   ✓ quest dialogue comms UI (main.js) > ignores malformed questDialogue payloads  306ms
+   ✓ quest dialogue comms UI (main.js) > keeps only the last 20 log entries  455ms
+stdout | client/test/characterBooth.test.js > character booth ?booth=character debug hook (main.js) > auto-opens once after hub lobby entry on localhost with ?booth=character
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/characterBooth.test.js > character booth ?booth=character debug hook (main.js) > stays closed without the booth URL param
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/characterBooth.test.js (13 tests) 2889ms
+   ✓ character booth overlay (module) > openCharacterBooth() / closeCharacterBooth() toggle overlay visibility and preview  522ms
+   ✓ character booth overlay (module) > emits applyAppearanceChange on confirm when socket is connected  326ms
+ ✓ |client| client/test/questBooth.test.js (18 tests) 3078ms
+   ✓ quest booth booth:action hook (main.js) > shows #lobby and reveals the quest panel when the menu starts dismissed  665ms
+   ✓ quest booth booth:action hook (main.js) > reveals and scrolls the quest panel into view for boothId quest in lobby and ignores other booths  415ms
+   ✓ quest booth booth:action hook (main.js) > keeps the quest panel hidden when boothId quest fires outside the lobby phase  330ms
+   ✓ quest booth booth:action hook (main.js) > keeps the quest panel visible when the lobby is (re)shown after booth open  457ms
+ ✓ |client| client/test/top-right-hud-layout.test.js (12 tests) 5371ms
+   ✓ top-right HUD layout (collision regression) > pre-fix absolute anchors would overlap (regression guard) > flags toolbar vs key-item collision at the old top:36px anchor  563ms
+   ✓ top-right HUD layout (collision regression) > 1280x800 > scenario 1: toolbar buttons do not overlap equipped dodge_roll key-item badge  711ms
+   ✓ top-right HUD layout (collision regression) > 1280x800 > scenario 2: lock-on panel does not overlap comms log when both are visible  407ms
+   ✓ top-right HUD layout (collision regression) > 1280x800 > scenario 3: quest comms toast does not overlap comms log line at level entry  787ms
+   ✓ top-right HUD layout (collision regression) > 1280x800 > full visible top-right HUD matrix has no pairwise overlaps  594ms
+   ✓ top-right HUD layout (collision regression) > 1920x1080 > scenario 2: lock-on panel does not overlap comms log when both are visible  309ms
+   ✓ top-right HUD layout (collision regression) > 1920x1080 > scenario 3: quest comms toast does not overlap comms log line at level entry  624ms
+   ✓ top-right HUD layout (collision regression) > 1920x1080 > full visible top-right HUD matrix has no pairwise overlaps  1045ms
+stdout | client/test/main.test.js > suspended run resume/abandon UI > resume button triggers the launch-booth ready-up path
+[launchBooth] ready-up via booth
+
+ ✓ |client| client/test/main.test.js (194 tests) 6192ms
+   ✓ renderDeckEditor() > populates owned card counts and deck size from mock data  462ms
+   ✓ __AUTOGAME_HARNESS_STATE__ suspendedRunSummary > clears suspendedRunSummary when stateUpdate reports null after resume or abandon  393ms
+
+ Test Files  24 passed (24)
+      Tests  349 passed (349)
+   Start at  23:56:17
+   Duration  10.74s (transform 2.55s, setup 1.63s, collect 4.78s, tests 54.13s, environment 19.21s, prepare 5.86s)
+
+ % Coverage report from v8
+--------------|---------|----------|---------|---------|------------------------
+File          | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s      
+--------------|---------|----------|---------|---------|------------------------
+All files     |   38.33 |    28.43 |   62.16 |   41.63 |                        
+ cards.js     |   65.78 |    52.63 |      80 |   70.96 | ...-94,102,116,235-251 
+ collision.js |   27.86 |    15.53 |   77.77 |   28.43 | ...175-229,238-243,251 
+ delta.js     |   66.66 |       50 |     100 |     100 | 12                     
+ hand.js      |   29.29 |    26.19 |   41.17 |   34.17 | 45-73,90-157,175-181   
+--------------|---------|----------|---------|---------|------------------------

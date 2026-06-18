@@ -1,0 +1,23 @@
+## Verdict: **FAIL**
+
+Review written to `tickets/.../round-1/review.md`. Summary:
+
+### Runtime health — pass
+- `metrics.json`: `ok: true`, empty `pageerrors`
+- `console.log`: no game `pageerror` / `[fatal]` lines
+- Gameplay probes healthy (`Deck: 8/12` in-run)
+
+### Why it fails holistically
+The JS fix is **correct but incomplete**:
+
+- `syncVanguardHud()` and `DECK_UPDATE` now call `updateDeckStats()` in lobby phase
+- DOM text can update to e.g. `Deck: 12/12`
+
+But **`#deck-stats-panel` is `display: none` in lobby** (`style.css` lines 2031–2035). Hub screenshot `01-initial.png` shows HP/currency only — no deck strip. Players still cannot see deck size in the hub, which is the ticket’s core UX goal.
+
+### Remediation (`gaps.md`)
+1. Unhide `#deck-stats-panel` in lobby (remove it from the `body[data-phase="lobby"]` hide rule) and verify hub screenshot shows correct deck count.
+
+### Nits (`nits.md`)
+- Add lobby-phase integration test / harness probe
+- Handle `syncVanguardHud` `!me` early-return edge case

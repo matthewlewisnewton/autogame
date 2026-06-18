@@ -1,0 +1,21 @@
+## Review complete
+
+**VERDICT: PASS**
+
+Wrote:
+- `tickets/.../round-2/review.md` — full assessment
+- `tickets/.../round-2/nits.md` — non-blocking follow-ups
+- No `gaps.md` (PASS only)
+
+### Runtime health
+- `metrics.json`: `ok: true`, empty `pageerrors`
+- `console.log`: no `pageerror` or `[fatal]` lines (only benign 401 / socket reconnect noise)
+- Game runs through lobby → deploy → combat
+
+### Acceptance criteria
+Round-1 failed because `#deck-stats-panel` was CSS-hidden in lobby even though JS was wired. Round-2 adds sub-ticket 02 (`d795a6e7`), which removes that hide rule.
+
+Hub screenshot `01-initial.png` now shows **`Deck: 12/12`** with type breakdown (⟡ 7, ✦ 3, 🐉 2, ✨ 0) — the player-facing fix the ticket describes. Combined with sub-ticket 01’s `syncVanguardHud` / `DECK_UPDATE` wiring, the full ticket is satisfied. In-run deck display is unchanged (`Deck: 8/12` → `7/12` in probes).
+
+### Nits (non-blocking)
+Logged in `nits.md`: missing lobby-specific unit test, structured harness lobby probe, `syncVanguardHud` `!me` edge case, stale comment in `stateHandlers.js`.

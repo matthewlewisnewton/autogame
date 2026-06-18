@@ -1,0 +1,3 @@
+1. Hub deck HUD is still invisible in lobby — `#deck-stats-panel` (contains `#deck-count` and type breakdown) is `display: none` under `body[data-phase="lobby"]`, so players standing in the 3D hub never see deck info even though `updateDeckStats()` now runs.
+   Files: `game/client/style.css` (lobby-phase hide rule ~2031–2035), optionally `game/client/main.js` (`syncVanguardHud` if toggling visibility in JS instead)
+   Fix: Remove `#deck-stats-panel` from the `body[data-phase="lobby"]` hide list (keep MS bar / status strip hidden if desired) so the deck strip is visible in the hub; confirm `01-initial.png`-style hub screenshot shows e.g. `Deck: 12/12` with correct type counts after join.

@@ -210,3 +210,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [421-cleanup-persistence-cross-instance-profile-data-loss-stale-user-cach-5kz3](tickets/421-cleanup-persistence-cross-instance-profile-data-loss-stale-user-cach-5kz3/)
 - [ ] [421-cleanup-gameplay-boss-victory-frost-crossing-ice-sortie-complete-ove-0dkw](tickets/421-cleanup-gameplay-boss-victory-frost-crossing-ice-sortie-complete-ove-0dkw/)
 - [ ] [422-cleanup-gameplay-fire-ember-descent-run-flips-to-failed-during-telep-nawa](tickets/422-cleanup-gameplay-fire-ember-descent-run-flips-to-failed-during-telep-nawa/)
+- [ ] [423-cleanup-playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m](tickets/423-cleanup-playability-ux-hub-deck-hud-always-shows-deck-0-0-never-upda-2v2m/)

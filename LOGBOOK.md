@@ -9267,3 +9267,26 @@ which I ran independently, and the captured run starts/loads cleanly.
 
 None blocking. The captured run is clean and proves the reported bug is fixed (suspend instead of fail, resumable, state preserved); all relevant unit tests pass.
 
+
+## v0.494 — playability/ux: hub deck HUD always shows 'Deck: 0/0' (never updates in lobby), implying player has no deck and cannot deploy  (2026-06-18 00:24:23)
+
+
+### 8. Debug scenarios
+
+**N/A.** No new `?debugScenario=` shortcuts were added.
+
+## Code quality
+
+- Minimal, focused diff across three files; reuses existing `updateDeckStats` / `computeDeckHudStats` pipeline.
+- In-run `playing` path unchanged.
+- `stateHandlers.js` line-128 comment ("MS/deck/portrait in-run only") is now stale — deck stats also update in lobby via `syncVanguardHud`; cosmetic only (see nits).
+
+## Capture notes
+
+- Fallback capture plan (`capturePlanSource: "fallback"`) still probes only `playing` phase for deck text, but hub screenshot `01-initial.png` provides direct visual proof of the lobby fix.
+- Playing-phase deck counts (`8/12`, `7/12`) confirm no in-run regression.
+
+## Remaining gaps
+
+None. Round-1's blocking CSS hide was resolved in commit `d795a6e7`; JS wiring from `13200844` is now player-visible.
+
