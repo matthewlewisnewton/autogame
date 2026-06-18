@@ -61,6 +61,7 @@ export function getDefaultSettings() {
 		showHitboxes: true,
 		lockOnRepeatAction: 'unlock',
 		keyboard: {
+			// dodge has no default here — Space is hardcoded in input.js; stored dodge overrides when present.
 			bindings: {
 				useKeyItem: 'e',
 			},

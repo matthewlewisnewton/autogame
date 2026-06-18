@@ -36,12 +36,13 @@ describe('input.js', () => {
 		resetInputState();
 	});
 
-	it('getReservedKeys lists fixed keyboard bindings and excludes useKeyItem', () => {
+	it('getReservedKeys lists fixed keyboard bindings and excludes remappable actions', () => {
 		const reserved = getReservedKeys();
 		expect(reserved).toEqual(
-			new Set(['w', 'a', 's', 'd', '1', '2', '3', '4', '5', '6', 'v', 'z', ' ', 'f']),
+			new Set(['w', 'a', 's', 'd', '1', '2', '3', '4', '5', '6', 'v', 'z', 'f']),
 		);
 		expect(reserved.has('e')).toBe(false);
+		expect(reserved.has(' ')).toBe(false);
 	});
 
 	it('keyboard W produces upward movement', () => {
@@ -354,6 +355,23 @@ describe('input.js', () => {
 		const binding = getDodgeBinding();
 		expect(binding.keyboard).toBe(' ');
 		expect(binding.display).toBe('SPACE');
+	});
+
+	it('custom keyboard binding for dodge overrides default', () => {
+		patchSettings({ keyboard: { bindings: { dodge: 'x' } } });
+		const onDodge = vi.fn();
+		initInput({
+			onDodge,
+			canUseGameActions: () => true,
+		});
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'x' }));
+		expect(onDodge).toHaveBeenCalledTimes(1);
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
+		expect(onDodge).toHaveBeenCalledTimes(1);
+
+		const binding = getDodgeBinding();
+		expect(binding.keyboard).toBe('x');
+		expect(binding.display).toBe('X');
 	});
 
 	it('exposes labels and defaults for all six hand slots', () => {

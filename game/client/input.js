@@ -54,11 +54,11 @@ const DEFAULT_KEYBOARD = {
 	interact: ['f'],
 };
 
-/** Lowercase keys claimed by non-remappable DEFAULT_KEYBOARD actions (excludes useKeyItem). */
+/** Lowercase keys claimed by non-remappable DEFAULT_KEYBOARD actions (excludes remappable actions). */
 export function getReservedKeys() {
 	const reserved = new Set();
 	for (const [action, keys] of Object.entries(DEFAULT_KEYBOARD)) {
-		if (action === 'useKeyItem') continue;
+		if (action === 'useKeyItem' || action === 'dodge') continue;
 		for (const key of keys) {
 			const normalized = key.toLowerCase();
 			if (normalized) reserved.add(normalized);
@@ -118,9 +118,12 @@ function onKeyDown(e) {
 	const kbBindings = getKeyboardBindings();
 	for (const [action, keys] of Object.entries(DEFAULT_KEYBOARD)) {
 		let matchedKeys = keys;
-		// For useKeyItem, check custom keyboard binding from settings first
+		// Remappable actions: check custom keyboard binding from settings first
 		if (action === 'useKeyItem' && kbBindings.useKeyItem) {
 			matchedKeys = [kbBindings.useKeyItem.toLowerCase()];
+		}
+		if (action === 'dodge' && kbBindings.dodge) {
+			matchedKeys = [kbBindings.dodge.toLowerCase()];
 		}
 		if (!matchedKeys.includes(key)) continue;
 		if (action.startsWith('move')) {
@@ -538,7 +541,10 @@ export function getUseKeyItemBinding() {
  * @returns {{ keyboard: string, display: string }}
  */
 export function getDodgeBinding() {
-	const keyboard = DEFAULT_KEYBOARD.dodge[0] ?? ' ';
+	const kbBindings = getKeyboardBindings();
+	const keyboard = kbBindings.dodge
+		? kbBindings.dodge.toLowerCase()
+		: (DEFAULT_KEYBOARD.dodge[0] ?? ' ');
 	const display = keyboard === ' ' ? 'SPACE' : keyboard.toUpperCase();
 	return { keyboard, display };
 }

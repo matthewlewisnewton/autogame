@@ -394,6 +394,7 @@ const settingsCloseBtnEl = document.getElementById('settings-close-btn');
 const lockOnRepeatSelectEl = document.getElementById('lock-on-repeat-select');
 const useKeyItemKeyInputEl = document.getElementById('use-key-item-key-input');
 const useKeyItemGamepadLabelEl = document.getElementById('use-key-item-gamepad-label');
+const dodgeKeyInputEl = document.getElementById('dodge-key-input');
 const gamepadStatusEl = document.getElementById('gamepad-status');
 const gamepadDeviceIdEl = document.getElementById('gamepad-device-id');
 const gamepadActivationHintEl = document.getElementById('gamepad-activation-hint');
@@ -4302,7 +4303,18 @@ function syncSettingsForm() {
 		lockOnRepeatSelectEl.value = getLockOnRepeatAction();
 	}
 	syncUseKeyItemBindingUI();
+	syncDodgeBindingUI();
 	syncControllerCalibrationForm();
+}
+
+/** Display the current dodge binding in the settings UI */
+function syncDodgeBindingUI() {
+	const binding = getDodgeBinding();
+	if (dodgeKeyInputEl) {
+		dodgeKeyInputEl.value = binding.display;
+	}
+	const me = myId && gameState?.players ? gameState.players[myId] : null;
+	renderKeyItemHud(me, gameState?.gamePhase);
 }
 
 /** Display the current useKeyItem binding in the settings UI */
@@ -4320,6 +4332,7 @@ function syncUseKeyItemBindingUI() {
 
 /** State for keyboard key capture */
 let capturingKeyItemKey = false;
+let capturingDodgeKey = false;
 
 /** State for gamepad button capture */
 let capturingKeyItemGamepad = false;
@@ -4334,6 +4347,7 @@ function closeSettingsOverlay() {
 	stopControllerCalibration();
 	capturingKeyItemKey = false;
 	capturingKeyItemGamepad = false;
+	capturingDodgeKey = false;
 	if (keyItemGamepadCaptureRaf) {
 		cancelAnimationFrame(keyItemGamepadCaptureRaf);
 		keyItemGamepadCaptureRaf = 0;
@@ -4387,6 +4401,37 @@ if (useKeyItemKeyInputEl) {
 		capturingKeyItemKey = false;
 		useKeyItemKeyInputEl.blur();
 		syncUseKeyItemBindingUI();
+	});
+}
+
+// ── dodge keyboard binding capture ──
+
+if (dodgeKeyInputEl) {
+	dodgeKeyInputEl.addEventListener('focus', () => {
+		capturingDodgeKey = true;
+		dodgeKeyInputEl.value = '';
+	});
+	dodgeKeyInputEl.addEventListener('blur', () => {
+		capturingDodgeKey = false;
+		if (!dodgeKeyInputEl.value) syncDodgeBindingUI();
+	});
+	dodgeKeyInputEl.addEventListener('keydown', (e) => {
+		if (!capturingDodgeKey) return;
+		if (['control', 'shift', 'alt', 'meta', 'capslock', 'tab', 'escape'].includes(e.key.toLowerCase())) return;
+		e.preventDefault();
+		e.stopPropagation();
+		const key = e.key.toLowerCase();
+		if (getReservedKeys().has(key)) {
+			showCardErrorToast('Key already in use');
+			capturingDodgeKey = false;
+			dodgeKeyInputEl.blur();
+			syncDodgeBindingUI();
+			return;
+		}
+		patchSettings({ keyboard: { bindings: { dodge: key } } });
+		capturingDodgeKey = false;
+		dodgeKeyInputEl.blur();
+		syncDodgeBindingUI();
 	});
 }
 

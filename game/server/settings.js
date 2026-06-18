@@ -19,7 +19,7 @@ const SETTINGS_TOP_LEVEL_KEYS = [
 const LOCK_ON_REPEAT_ACTIONS = ['unlock', 'cycle', 'reacquire'];
 
 // Remappable keyboard actions (subset of ACTIONS in game/client/input.js).
-const KEYBOARD_BINDING_ACTIONS = ['useKeyItem'];
+const KEYBOARD_BINDING_ACTIONS = ['useKeyItem', 'dodge'];
 
 // Remappable gamepad actions (DEFAULT_GAMEPAD_BUTTONS keys in game/client/input.js).
 const GAMEPAD_BINDING_ACTIONS = [

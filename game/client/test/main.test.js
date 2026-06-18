@@ -4652,6 +4652,111 @@ describe('useKeyItem key capture', () => {
 	});
 });
 
+// ── dodge key capture ──
+
+describe('dodge key capture', () => {
+	beforeEach(() => {
+		vi.resetModules();
+		const requiredIds = [
+			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-browser', 'lobby-player-list',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 6; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+		document.getElementById('use-key-item-key-input')?.remove();
+		const keyItemInput = document.createElement('input');
+		keyItemInput.id = 'use-key-item-key-input';
+		keyItemInput.readOnly = true;
+		document.body.appendChild(keyItemInput);
+		document.getElementById('use-key-item-gamepad-label')?.remove();
+		const label = document.createElement('span');
+		label.id = 'use-key-item-gamepad-label';
+		document.body.appendChild(label);
+		document.getElementById('dodge-key-input')?.remove();
+		const dodgeInput = document.createElement('input');
+		dodgeInput.id = 'dodge-key-input';
+		dodgeInput.readOnly = true;
+		document.body.appendChild(dodgeInput);
+		for (const el of document.body.querySelectorAll('div')) {
+			if (el.textContent === 'Key already in use') el.remove();
+		}
+	});
+
+	afterEach(() => {
+		vi.resetModules();
+	});
+
+	function captureDodgeKey(input, key) {
+		input.focus();
+		input.dispatchEvent(new FocusEvent('focus', { bubbles: false }));
+		input.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+	}
+
+	it('rejects reserved keys without changing the binding and shows a toast', async () => {
+		const { patchSettings, getDefaultSettings, getSettings } = await import('../settings.js');
+		patchSettings(getDefaultSettings());
+		await import('../main.js');
+
+		const input = document.getElementById('dodge-key-input');
+		captureDodgeKey(input, 'w');
+
+		expect(getSettings().keyboard.bindings.dodge).toBeUndefined();
+		const toast = [...document.body.querySelectorAll('div')].find(
+			(el) => el.textContent === 'Key already in use',
+		);
+		expect(toast).toBeDefined();
+	});
+
+	it('saves a non-reserved key via patchSettings', async () => {
+		const { patchSettings, getDefaultSettings, getSettings } = await import('../settings.js');
+		patchSettings(getDefaultSettings());
+		await import('../main.js');
+
+		const input = document.getElementById('dodge-key-input');
+		captureDodgeKey(input, 'q');
+
+		expect(getSettings().keyboard.bindings.dodge).toBe('q');
+		expect(input.value).toBe('Q');
+	});
+
+	it('ignores modifier-only keys with no toast', async () => {
+		const { patchSettings, getDefaultSettings, getSettings } = await import('../settings.js');
+		patchSettings(getDefaultSettings());
+		await import('../main.js');
+
+		const input = document.getElementById('dodge-key-input');
+		captureDodgeKey(input, 'Shift');
+
+		expect(getSettings().keyboard.bindings.dodge).toBeUndefined();
+		const toast = [...document.body.querySelectorAll('div')].find(
+			(el) => el.textContent === 'Key already in use',
+		);
+		expect(toast).toBeUndefined();
+	});
+});
+
 describe('updateObjectiveHud()', () => {
 	const requiredIds = [
 		'status', 'vanguard-hud', 'character-id', 'player-level',
