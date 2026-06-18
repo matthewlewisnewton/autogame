@@ -2029,7 +2029,6 @@ body[data-phase="lobby"] #vanguard-hud {
 }
 
 body[data-phase="lobby"] #ms-bar-container,
-body[data-phase="lobby"] #deck-stats-panel,
 body[data-phase="lobby"] #status-effect-strip,
 body[data-phase="lobby"] #objective-hud {
   display: none;
