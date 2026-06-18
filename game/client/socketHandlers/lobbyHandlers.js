@@ -49,6 +49,8 @@ export function bindLobbyHandlers(s, ctx) {
 			if (data.returnRewardsPreview != null && ctx.isLevelSettingsOpen()) {
 				ctx.syncLevelSettingsRewards();
 			}
+		} else {
+			ctx.updateDeckStats(ctx.mySelectedDeck, [], ctx.myInventory);
 		}
 
 		ctx.renderDeckEditor();

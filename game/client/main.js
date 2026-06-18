@@ -2193,6 +2193,8 @@ function syncVanguardHud(me, phase) {
 		updateDeckStats(me.deck, me.hand, me.inventory);
 		updateStatusEffectStrip(me);
 		updateVanguardPortrait(me);
+	} else if (gamePhase === 'lobby') {
+		updateDeckStats(mySelectedDeck, [], myInventory);
 	}
 }
 
