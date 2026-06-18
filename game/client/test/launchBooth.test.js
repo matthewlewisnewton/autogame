@@ -45,14 +45,21 @@ describe('launch booth helpers', () => {
 	});
 
 	describe('shouldLaunchReadyUp', () => {
-		it('is true when the player is not yet ready', () => {
+		it('is true when the player is not yet ready and no request is pending', () => {
 			expect(shouldLaunchReadyUp(false)).toBe(true);
+			expect(shouldLaunchReadyUp(false, false)).toBe(true);
 			expect(shouldLaunchReadyUp(undefined)).toBe(true);
 			expect(shouldLaunchReadyUp(null)).toBe(true);
 		});
 
 		it('is false when the player is already ready', () => {
 			expect(shouldLaunchReadyUp(true)).toBe(false);
+			expect(shouldLaunchReadyUp(true, false)).toBe(false);
+		});
+
+		it('is false while a launch ready request is in flight', () => {
+			expect(shouldLaunchReadyUp(false, true)).toBe(false);
+			expect(shouldLaunchReadyUp(undefined, true)).toBe(false);
 		});
 	});
 

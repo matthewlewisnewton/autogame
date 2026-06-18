@@ -1423,6 +1423,8 @@ const socketHandlerCtx = createSocketHandlerCtx({
 		set pendingTradeOffer(v) { pendingTradeOffer = v; },
 		get isReady() { return isReady; },
 		set isReady(v) { isReady = v; },
+		get launchReadyPending() { return launchReadyPending; },
+		set launchReadyPending(v) { launchReadyPending = v; },
 		get lastEvolutionResult() { return lastEvolutionResult; },
 		set lastEvolutionResult(v) { lastEvolutionResult = v; },
 		get extractedLobbyOverlayActive() { return extractedLobbyOverlayActive; },
@@ -1524,6 +1526,7 @@ const socketHandlerCtx = createSocketHandlerCtx({
 	applyLobbyJoinedData,
 	getBoothDebugHook,
 	launchBoothReadyUp,
+	confirmLaunchReadyUp,
 	setGameStateRef,
 	STORAGE_KEY_PLAYER_ID,
 	LAUNCH_BOOTH_ID,
@@ -1633,6 +1636,7 @@ function bindSocketHandlers(s) {
 
 let myId = null;
 let isReady = false;
+let launchReadyPending = false;
 let gameState = null;
 /** Client anchor for key-item cooldown until the next authoritative stateUpdate. */
 let keyItemCooldownUntilClient = 0;
@@ -4264,18 +4268,22 @@ function renderPlayerList(players) {
 	}
 }
 
-// Ready the local player up via the hub Launch Bay booth: set the shared isReady
-// flag and emit playerReady(true). The server's checkAllReady gate routes to
-// startGame once the whole party is ready. The Launch Bay booth and the
-// ?booth=launch debug hook both call this; no new socket event is introduced.
-// Idempotent: a second booth touch or a repeated lobbyJoined (reconnect) does
-// NOT re-emit, since we bail out early when the player is already ready.
-function launchBoothReadyUp() {
-	if (!shouldLaunchReadyUp(isReady)) return;
-	isReady = true;
-	socket.emit(CLIENT_TO_SERVER.PLAYER_READY, true);
+// Ready the local player up via the hub Launch Bay booth: emit playerReady(true)
+// and wait for the server to confirm via LOBBY_UPDATE before promoting local
+// isReady or firing the launch:ready event. The server's checkAllReady gate
+// routes to startGame once the whole party is ready. The Launch Bay booth and
+// the ?booth=launch debug hook both call this; no new socket event is introduced.
+// Idempotent: a second booth touch while a request is in flight or after the
+// player is already ready does NOT re-emit playerReady(true).
+function confirmLaunchReadyUp() {
 	console.log('[launchBooth] ready-up via booth');
 	window.dispatchEvent(new CustomEvent(LAUNCH_READY_EVENT));
+}
+
+function launchBoothReadyUp() {
+	if (!shouldLaunchReadyUp(isReady, launchReadyPending)) return;
+	launchReadyPending = true;
+	socket.emit(CLIENT_TO_SERVER.PLAYER_READY, true);
 }
 
 // The hub Launch Bay booth's first subscriber: when the player interacts with
@@ -5111,6 +5119,8 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		runId,
 		resumeBtnUsable,
 		abandonRunBtnUsable,
+		isReady,
+		launchReadyPending,
 		cardHandVisible,
 		status: statusEl ? statusEl.innerText : '',
 		hpText: hpText ? hpText.textContent : '',

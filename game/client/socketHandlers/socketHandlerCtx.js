@@ -37,6 +37,7 @@ const STATE_ACCESSORS = [
 	'activeLobbyTab',
 	'pendingTradeOffer',
 	'isReady',
+	'launchReadyPending',
 	'lastEvolutionResult',
 ];
 
@@ -73,6 +74,7 @@ export function createSocketHandlerCtx(deps) {
 		applyLobbyJoinedData: deps.applyLobbyJoinedData,
 		getBoothDebugHook: deps.getBoothDebugHook,
 		launchBoothReadyUp: deps.launchBoothReadyUp,
+		confirmLaunchReadyUp: deps.confirmLaunchReadyUp,
 		setGameStateRef: deps.setGameStateRef,
 		STORAGE_KEY_PLAYER_ID: deps.STORAGE_KEY_PLAYER_ID,
 		LAUNCH_BOOTH_ID: deps.LAUNCH_BOOTH_ID,

@@ -58,6 +58,8 @@ export function bindLobbyHandlers(s, ctx) {
 
 	s.on(SERVER_TO_CLIENT.DECK_ERROR, (data) => {
 		if (!data || !data.reason) return;
+		ctx.isReady = false;
+		ctx.launchReadyPending = false;
 		if (ctx.activeLobbyTab === 'shop') ctx.showShopError(data.reason);
 		else ctx.showDeckError(data.reason);
 	});
@@ -307,7 +309,15 @@ export function bindLobbyHandlers(s, ctx) {
 		if (data.players && ctx.myId) {
 			const me = data.players.find((p) => p.id === ctx.myId);
 			if (me) {
+				const wasReady = ctx.isReady;
+				const hadPending = ctx.launchReadyPending;
 				ctx.isReady = me.ready;
+				if (hadPending) {
+					ctx.launchReadyPending = false;
+					if (me.ready && !wasReady) {
+						ctx.confirmLaunchReadyUp();
+					}
+				}
 			}
 		}
 		if (data.quests || data.questVariants || data.selectedQuestId || data.unlockedQuestTiers || data.levelUnlockGraph) {

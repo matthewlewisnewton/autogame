@@ -16,13 +16,14 @@ export const LAUNCH_READY_EVENT = 'launch:ready';
 
 /**
  * Decide whether a booth ready-up should proceed. Ready-up only proceeds when
- * the player is not already ready, so a repeated booth touch / reconnect does
- * not re-emit `playerReady(true)`.
+ * the player is not already ready and no launch ready request is in flight,
+ * so a repeated booth touch before server ack does not re-emit `playerReady(true)`.
  * @param {boolean|undefined|null} currentIsReady - the local ready flag
+ * @param {boolean|undefined|null} launchReadyPending - true while awaiting server ack
  * @returns {boolean} true when ready-up should proceed
  */
-export function shouldLaunchReadyUp(currentIsReady) {
-	return !currentIsReady;
+export function shouldLaunchReadyUp(currentIsReady, launchReadyPending = false) {
+	return !currentIsReady && !launchReadyPending;
 }
 
 /**

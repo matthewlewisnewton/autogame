@@ -5686,3 +5686,89 @@ describe('suspended run resume/abandon UI', () => {
 		expect(readyEmits[0].data).toBe(true);
 	});
 });
+
+describe('launchBoothReadyUp — invalid deck rejection path', () => {
+	const requiredIds = [
+		'status', 'vanguard-hud', 'character-id', 'player-level',
+		'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+		'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+		'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+		'currency-display', 'objective-hud', 'ui', 'card-hand',
+		'lobby', 'lobby-browser', 'lobby-player-list',
+		'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+		'summary-currency', 'summary-rewards', 'return-to-lobby-btn',
+		'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+	];
+
+	beforeEach(() => {
+		vi.resetModules();
+		window.__resetSocketHandlersForTest?.();
+		document.body.innerHTML = '';
+		for (const id of requiredIds) {
+			const el = (id === 'return-to-lobby-btn')
+				? document.createElement('button')
+				: document.createElement('div');
+			el.id = id;
+			document.body.appendChild(el);
+		}
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('keeps isReady false after deckError and lobbyUpdate when deck is rejected', async () => {
+		await import('../main.js');
+
+		window.__setGameState({
+			gamePhase: 'lobby',
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+		}, 'p1');
+		window.__clearSocketEmitLog();
+
+		window.__launchReadyUpForTest();
+		expect(window.__AUTOGAME_HARNESS_STATE__().isReady).toBe(false);
+		expect(window.__AUTOGAME_HARNESS_STATE__().launchReadyPending).toBe(true);
+
+		const readyEmits = window.__socketEmitLog().filter((entry) => entry.event === 'playerReady');
+		expect(readyEmits).toHaveLength(1);
+		expect(readyEmits[0].data).toBe(true);
+
+		window.__launchReadyUpForTest();
+		expect(window.__socketEmitLog().filter((entry) => entry.event === 'playerReady')).toHaveLength(1);
+
+		window.__triggerSocketEvent('deckError', { reason: 'Deck must have at least 4 cards' });
+		window.__triggerSocketEvent('lobbyUpdate', {
+			players: [{ id: 'p1', ready: false, hp: 80, magicStones: 40 }],
+		});
+
+		const harness = window.__AUTOGAME_HARNESS_STATE__();
+		expect(harness.isReady).toBe(false);
+		expect(harness.launchReadyPending).toBe(false);
+	});
+
+	it('promotes isReady and fires launch:ready only after server confirms ready', async () => {
+		await import('../main.js');
+
+		window.__setGameState({
+			gamePhase: 'lobby',
+			players: { p1: { hp: 80, magicStones: 40, x: 0, z: 0 } },
+		}, 'p1');
+		window.__clearSocketEmitLog();
+
+		const readyEvents = [];
+		window.addEventListener('launch:ready', () => readyEvents.push(true));
+
+		window.__launchReadyUpForTest();
+		expect(readyEvents).toHaveLength(0);
+		expect(window.__AUTOGAME_HARNESS_STATE__().isReady).toBe(false);
+
+		window.__triggerSocketEvent('lobbyUpdate', {
+			players: [{ id: 'p1', ready: true, hp: 80, magicStones: 40 }],
+		});
+
+		expect(window.__AUTOGAME_HARNESS_STATE__().isReady).toBe(true);
+		expect(window.__AUTOGAME_HARNESS_STATE__().launchReadyPending).toBe(false);
+		expect(readyEvents).toHaveLength(1);
+	});
+});
