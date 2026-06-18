@@ -9360,6 +9360,28 @@ None. Round-1's blocking CSS hide was resolved in commit `d795a6e7`; JS wiring f
 None blocking.
 
 
+## v0.496 — playability: no spatial objective guidance (waypoint/marker) in maze-like 'open' layouts — collect-item/find-room quests require blind exploration  (2026-06-18 01:32:52)
+
+- The client reads `gameState.loot` for `kind:'crystal'` + `questCritical:true` items. These fields are produced server-side in `progression.js:2844-2852` (`spawnCrystals`) and the objective carries `type:'collect_items'` / `collectedItems` / `totalItems` (`objectives.js:131-149`). Loot is shipped to the client unstripped (`progression.js:3210,3714`).
+- This ticket makes **zero server changes** (`git diff --name-only … game/server/` is empty) — it consumes the existing authoritative contract. No risk of bypassing validation/persistence/replication.
+
+### Show/hide gating — MET (robust)
+`updateObjectiveNavIndicator()` hides the indicator when: not in `playing` phase; no `run.objective`; objective type ≠ `collect_items`; all items collected (`collected >= total`); no local player; or no quest-critical crystal remains. Otherwise it shows (`display:flex`) and updates rotation + distance. Re-targets to next-nearest crystal automatically (covered by test).
+
+### Wiring / lifecycle — MET
+Updated on each `stateHandlers`/`runHandlers` event (1-line ctx additions) and additionally driven every frame via a `requestAnimationFrame` loop (`main.js:5362`), so the arrow tracks camera yaw smoothly even between server ticks. Hidden in lobby phase via CSS (`body[data-phase="lobby"] #objective-nav-indicator { display:none }`).
+
+### Tests — MET
+- `objectiveNav.test.js` (14 tests): nearest-selection, bearing math, rotation/shortest-arc.
+- `objectiveNavIndicator.test.js` (4 tests): shows + rotates toward nearest crystal, hides on full collection, hides outside `playing` and for `stage_boss`, retargets after loot removal.
+
+### Debug scenarios
+No `?debugScenario` added or changed by this ticket — debug-scenario review section is N/A.
+
+## Remaining gaps
+
+None blocking. The minimum acceptance bar (directional guidance for quest-critical prisms in `collect_items` runs) is fully and robustly met, the game runs clean, and the feature is well-tested and correctly integrated with the existing server contract. Minor polish items are recorded in `nits.md` (none affect the verdict).
+
 ## v0.497 — playability: selecting a new quest is ignored when a suspended run exists — Launch Bay deploy resumes the OLD run instead  (2026-06-18 02:52:30)
 
 debug scenario was added or changed by this ticket.

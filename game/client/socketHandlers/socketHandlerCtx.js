@@ -127,6 +127,7 @@ export function createSocketHandlerCtx(deps) {
 		updateVanguardPortrait: deps.updateVanguardPortrait,
 		updateCurrencyHud: deps.updateCurrencyHud,
 		updateObjectiveHud: deps.updateObjectiveHud,
+		updateObjectiveNavIndicator: deps.updateObjectiveNavIndicator,
 		updateBossEncounterHud: deps.updateBossEncounterHud,
 		setInDesperation: deps.setInDesperation,
 		setDesperationDrawPile: deps.setDesperationDrawPile,

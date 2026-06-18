@@ -17,6 +17,7 @@ export function bindRunHandlers(s, ctx) {
 		ctx.showCardHand();
 		ctx.setDeckStackVisible(true);
 		ctx.updateObjectiveHud();
+		ctx.updateObjectiveNavIndicator();
 		if (!ctx.isSceneInitialized()) {
 			ctx.initHand();
 			ctx.rendererInitScene(ctx.currentLayout, ctx.resolveRunSpawnPosition());
