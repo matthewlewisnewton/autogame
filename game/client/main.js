@@ -12,6 +12,11 @@ import {
 } from './questBoard.js';
 import { formatRunObjectiveHudLines } from './objectiveHud.js';
 import {
+	findNearestQuestCriticalLoot,
+	computeWorldBearing,
+	computeArrowRotation,
+} from './objectiveNav.js';
+import {
 	THEME,
 	formatCurrencyHud,
 	formatCurrencyLabel,
@@ -131,6 +136,7 @@ import {
 	isSceneInitialized,
 	getSpawnPosition,
 	getPlayerPosition,
+	getCameraYaw,
 	setPlayerPosition,
 	isPlayerMoving,
 	getPlayerRotation,
@@ -1033,6 +1039,7 @@ function applyLobbyJoinedData(data) {
 			renderedSceneProfile = 'quest';
 			if (gameState) gameState.layout = currentLayout;
 			updateObjectiveHud();
+			updateObjectiveNavIndicator();
 			setGamePhase('playing');
 			return;
 		}
@@ -1063,6 +1070,7 @@ function applyLobbyJoinedData(data) {
 	requestDebugBoothOpen();
 	requestDebugShopBoothOpen();
 	updateObjectiveHud();
+	updateObjectiveNavIndicator();
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 	setLobbyHudVisible(true);
 	applyLobbyThemeLabels();
@@ -1117,6 +1125,9 @@ const deckStatsPanelEl = document.getElementById('deck-stats-panel');
 const statusEffectStripEl = document.getElementById('status-effect-strip');
 const deckViewerPanelEl = document.getElementById('deck-viewer-panel');
 const objectiveHudEl = document.getElementById('objective-hud');
+const objectiveNavIndicatorEl = document.getElementById('objective-nav-indicator');
+const objectiveNavArrowEl = document.getElementById('objective-nav-arrow');
+const objectiveNavDistanceEl = document.getElementById('objective-nav-distance');
 const debugTimeScaleBadgeEl = document.getElementById('debug-time-scale-badge');
 const topRightHudStackEl = document.getElementById('top-right-hud-stack');
 const questCommsLogEl = document.getElementById('quest-comms-log');
@@ -1488,6 +1499,7 @@ const socketHandlerCtx = createSocketHandlerCtx({
 	updateVanguardPortrait,
 	updateCurrencyHud,
 	updateObjectiveHud,
+	updateObjectiveNavIndicator,
 	updateBossEncounterHud,
 	setInDesperation,
 	setDesperationDrawPile,
@@ -2333,6 +2345,53 @@ function updateObjectiveHud() {
 		objectiveHudEl.style.display = 'block';
 	} else {
 		objectiveHudEl.style.display = 'none';
+	}
+}
+
+function updateObjectiveNavIndicator() {
+	if (!objectiveNavIndicatorEl || !objectiveNavArrowEl) return;
+
+	const run = gameState?.run;
+	if (gameState?.gamePhase !== 'playing' || !run?.objective) {
+		objectiveNavIndicatorEl.style.display = 'none';
+		return;
+	}
+
+	const obj = run.objective;
+	if (obj.type !== 'collect_items') {
+		objectiveNavIndicatorEl.style.display = 'none';
+		return;
+	}
+
+	const collected = obj.collectedItems ?? 0;
+	const total = obj.totalItems ?? 0;
+	if (collected >= total) {
+		objectiveNavIndicatorEl.style.display = 'none';
+		return;
+	}
+
+	const me = myId && gameState?.players ? gameState.players[myId] : null;
+	if (!me) {
+		objectiveNavIndicatorEl.style.display = 'none';
+		return;
+	}
+
+	const playerX = Number.isFinite(me.x) ? me.x : getPlayerPosition().x;
+	const playerZ = Number.isFinite(me.z) ? me.z : getPlayerPosition().z;
+	const nearest = findNearestQuestCriticalLoot(gameState.loot, playerX, playerZ);
+	if (!nearest) {
+		objectiveNavIndicatorEl.style.display = 'none';
+		return;
+	}
+
+	objectiveNavIndicatorEl.style.display = 'flex';
+
+	const bearing = computeWorldBearing(playerX, playerZ, nearest.x, nearest.z);
+	const rotation = computeArrowRotation(bearing, getCameraYaw());
+	objectiveNavArrowEl.style.transform = `rotate(${rotation * (180 / Math.PI)}deg)`;
+
+	if (objectiveNavDistanceEl) {
+		objectiveNavDistanceEl.textContent = `${Math.round(nearest.distance)}m`;
 	}
 }
 
@@ -4828,6 +4887,7 @@ window.__getEnemyDisplayCatalog = () => enemyDisplayCatalog;
 window.__setEnemyDisplayCatalog = (catalog) => { enemyDisplayCatalog = catalog; };
 window.__syncLockOnInfoPanel = syncLockOnInfoPanel;
 window.__updateBossEncounterHud = updateBossEncounterHud;
+window.__updateObjectiveNavIndicator = updateObjectiveNavIndicator;
 window.__getBossEncounterModel = () => (bossEncounterModel ? { ...bossEncounterModel } : null);
 window.__updateKeyItemCooldownHud = updateKeyItemCooldownHud;
 window.__renderKeyItemHudForTest = renderKeyItemHud;
@@ -5298,5 +5358,14 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 			: null,
 	};
 };
+
+function objectiveNavIndicatorFrame() {
+	updateObjectiveNavIndicator();
+	requestAnimationFrame(objectiveNavIndicatorFrame);
+}
+
+if (typeof requestAnimationFrame !== 'undefined') {
+	requestAnimationFrame(objectiveNavIndicatorFrame);
+}
 
 // v8 ignore end

@@ -150,6 +150,7 @@ export function bindStateHandlers(s, ctx) {
 
 		// Update objective HUD
 		ctx.updateObjectiveHud();
+		ctx.updateObjectiveNavIndicator();
 
 		// Update stage-boss encounter HUD (boss bar shown while the encounter is
 		// active/locked and the boss enemy is alive; hidden otherwise)
