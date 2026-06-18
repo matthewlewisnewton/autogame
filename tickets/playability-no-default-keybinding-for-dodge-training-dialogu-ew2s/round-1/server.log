@@ -1,0 +1,14 @@
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/game/data
+[users] Loaded 2 user record(s) from storage provider
+Server listening on port 3003
+Player connected: socket=uz5SSnXYTt1SDHARAAAD, playerId=64fd1a3d-fa07-4bc0-b4bf-68488cf5555b
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=VYO6xwxEl2-MNx0cAAAH, playerId=3ef8b32f-8d23-49e1-baa2-658d221990f1
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=a0b5ac16-4839-42f3-83a1-18e6c51a725f value=20
+Player disconnected: uz5SSnXYTt1SDHARAAAD
+Player disconnected: VYO6xwxEl2-MNx0cAAAH
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

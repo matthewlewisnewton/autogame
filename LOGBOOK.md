@@ -9267,3 +9267,26 @@ which I ran independently, and the captured run starts/loads cleanly.
 
 None blocking. The captured run is clean and proves the reported bug is fixed (suspend instead of fail, resumable, state preserved); all relevant unit tests pass.
 
+
+## v0.493 — playability: no default keybinding for Dodge — training dialogue tells player to 'dodge roll' but the dodge action has no key and is not bindable in Settings  (2026-06-18 00:24:09)
+
+- Default Space → `onDodge` and `canUseGameActions` gate (`input.test.js`)
+- Custom dodge override (`input.test.js`)
+- `getDodgeBinding()` defaults and override display
+- Settings layout row (`settings-layout.test.js`)
+- Dodge key capture accept/reject (`main.test.js`)
+- Server schema accept/reject for `keyboard.bindings.dodge` (`settings.test.js`)
+- HUD label for dodge_roll (`key-item-dodge.test.js`)
+
+`getReservedKeys()` intentionally excludes `dodge` (like `useKeyItem`) so remapped dodge keys are not double-reserved — consistent with sub-ticket 02 and covered by an updated test expectation.
+
+## Integration notes (non-blocking)
+
+- **Dual activation paths:** With `dodge_roll` equipped, both **Space** (`onDodge`) and **E** (`onUseKeyItem` → equipped item) can trigger dodge. This is reasonable — Space is the dedicated dodge binding; E remains the generic key-item action.
+- **`onDodge` always emits `dodge_roll`:** Space triggers dodge even if another key item were equipped later. That matches a dedicated dodge binding and is outside this ticket's training-caverns scope.
+- **Gamepad:** Dodge on gamepad still routes through the existing `useKeyItem` gamepad binding (D-pad Down). Keyboard was the reported gap; gamepad was already wired.
+
+## Remaining gaps
+
+None. All acceptance criteria from both sub-tickets and the top-level playability goal are satisfied with live capture proof and passing tests.
+
