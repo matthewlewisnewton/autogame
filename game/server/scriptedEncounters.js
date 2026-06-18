@@ -20,6 +20,8 @@ function syncScriptedDefeatEnemiesActiveCount(run, enemies) {
  * @property {string} [anchor] - Layout landmark type used as spawn anchor (room center when omitted).
  * @property {{ id: string, displayName: string, variantId?: string, enemyType?: string }} [namedRare]
  *   Quest-exclusive rare spawn metadata (custom label + optional forced variant/type).
+ * @property {number} [hp] - Per-spawn HP override (sets both hp and maxHp after variant scaling).
+ * @property {number} [attackDamage] - Per-spawn attack damage override.
  */
 
 /**
@@ -398,6 +400,12 @@ function spawnScriptedWave(run, gameState, roomKey, waveIndex, ctx) {
           spawnOpts.forceVariant = namedRare.variantId.trim();
           spawnOpts.skipVariantRoll = true;
         }
+      }
+      if (Number.isFinite(spawnDef.hp) && spawnDef.hp > 0) {
+        spawnOpts.hp = spawnDef.hp;
+      }
+      if (Number.isFinite(spawnDef.attackDamage) && spawnDef.attackDamage > 0) {
+        spawnOpts.attackDamage = spawnDef.attackDamage;
       }
       const enemy = ctx.spawnEnemy(pos.x, pos.z, spawnDef.type, undefined, spawnOpts);
       enemy.wanderTarget = ctx.randomWanderTarget();

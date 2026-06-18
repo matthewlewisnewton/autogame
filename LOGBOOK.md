@@ -9268,6 +9268,29 @@ which I ran independently, and the captured run starts/loads cleanly.
 None blocking. The captured run is clean and proves the reported bug is fixed (suspend instead of fail, resumable, state preserved); all relevant unit tests pass.
 
 
+## v0.492 — playability: first level (Initiate Vault / training_caverns t1) is near-unwinnable from cold start — player dies in room 0 before killing a single grunt  (2026-06-18 00:17:00)
+
+**3. No debug-scenario shortcut introduced — MET.**
+The repro and capture both run the genuine cold-start flow; `debugScenario` is `null`. No new
+`?debugScenario=` entry point was added, so the debug-scenario invariants do not apply.
+
+**4. Consistency with design / no regression — MET.**
+`design.md` describes Initiate Vault as a scripted annex sweep with passage locks and a 6-enemy
+sweep objective — all preserved. `tier1_quest_identity.test.js` was updated to match the new spawn
+defs and still asserts quest identity, objective wiring, and authored enemy count. Full server
+identity + fight suite: 9/9 passing.
+
+**5. Code quality — MET.**
+The override is a small, well-documented addition (JSDoc on the `@property` entries). No dead code,
+no console errors, no obvious bugs. The regression test is thorough and deterministic (fake timers,
+fixed seed).
+
+## Remaining gaps
+None. The captured run is clean, the opening fight is now survivable in real flow, and a real-combat
+regression test locks in the clear. Rooms 1–2 retain default grunt stats by design; the ticket's
+blocker was specifically the room-0 spawn camp, which is resolved.
+
+
 ## v0.493 — playability: no default keybinding for Dodge — training dialogue tells player to 'dodge roll' but the dodge action has no key and is not bindable in Settings  (2026-06-18 00:24:09)
 
 - Default Space → `onDodge` and `canUseGameActions` gate (`input.test.js`)

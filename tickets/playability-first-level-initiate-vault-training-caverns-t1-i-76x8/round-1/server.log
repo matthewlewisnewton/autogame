@@ -1,0 +1,13 @@
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/playability-first-level-initiate-vault-training-caverns-t1-i-76x8/game/data
+[users] Loaded 2 user record(s) from storage provider
+Server listening on port 3002
+Player connected: socket=VSr2N3z_mnGYfLMCAAAD, playerId=5cd59f5a-0319-4da2-b83c-3f6ce9ab5846
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=t70eGwTOMQcUrg4kAAAH, playerId=703e0a95-6ca0-41a3-aba9-c8de9be4d875
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player disconnected: VSr2N3z_mnGYfLMCAAAD
+Player disconnected: t70eGwTOMQcUrg4kAAAH
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

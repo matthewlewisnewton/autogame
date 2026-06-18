@@ -212,8 +212,8 @@ const QUEST_DEFS = {
                 {
                   aggroGraceMs: 3000,
                   spawns: [
-                    { type: 'grunt', count: 1, towardPassage: true },
-                    { type: 'grunt', count: 1, towardPassage: true },
+                    { type: 'grunt', count: 1, towardPassage: true, hp: 50, attackDamage: 7 },
+                    { type: 'grunt', count: 1, towardPassage: true, hp: 50, attackDamage: 7 },
                   ],
                 },
               ],
