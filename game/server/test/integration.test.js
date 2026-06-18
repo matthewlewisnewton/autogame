@@ -6390,4 +6390,109 @@ describe('Socket Integration — useKeyItem dodge_roll', () => {
 
 		socket.disconnect();
 	});
+
+	it('SELECT_QUEST rejects same quest+tier when suspended checkpoint exists', async () => {
+		const baseUrl = await startTestServer();
+		const p1 = await connectAndJoinLobby(baseUrl, 'quest-suspend-same-1');
+		const p2 = await connectAndJoinLobby(baseUrl, 'quest-suspend-same-2', { joinLobbyId: p1.init.lobbyId });
+
+		// Start a run on training_caverns (default quest)
+		const startPromise1 = waitForEvent(p1.socket, 'startGame');
+		const startPromise2 = waitForEvent(p2.socket, 'startGame');
+		p1.socket.emit('playerReady', true);
+		p2.socket.emit('playerReady', true);
+		await startPromise1;
+		await startPromise2;
+
+		const state = testGameState();
+		const p1Id = p1.socket._playerId;
+		const p2Id = p2.socket._playerId;
+
+		// Place telepipe and extract both players to create suspended checkpoint
+		runSimulationInPrimaryLobby((liveState) => {
+			liveState.telepipe = {
+				x: liveState.players[p1Id].x,
+				z: liveState.players[p1Id].z,
+				placedBy: p1Id,
+				placedAt: Date.now() - 3000,
+			};
+		});
+		expect(tryEnterTelepipe(p1Id).ok).toBe(true);
+		runSimulationInPrimaryLobby((s) => {
+			const tp = s.telepipe;
+			s.players[p2Id].x = tp.x;
+			s.players[p2Id].z = tp.z;
+		});
+		expect(tryEnterTelepipe(p2Id).ok).toBe(true);
+
+		expect(testGameState().suspendedCheckpoint).not.toBeNull();
+		expect(testGameState().suspendedCheckpoint.run.questId).toBe('training_caverns');
+
+		// Try to select the SAME quest — should be rejected
+		const errorPromise = waitForEvent(p1.socket, 'questError');
+		p1.socket.emit('selectQuest', { questId: 'training_caverns', tier: 1 });
+		const err = await errorPromise;
+
+		expect(err.reason).toBe('suspended_checkpoint');
+		// Checkpoint should still exist
+		expect(testGameState().suspendedCheckpoint).not.toBeNull();
+
+		p1.socket.disconnect();
+		p2.socket.disconnect();
+	});
+
+	it('SELECT_QUEST accepts different quest when suspended checkpoint exists and clears checkpoint', async () => {
+		const baseUrl = await startTestServer();
+		const p1 = await connectAndJoinLobby(baseUrl, 'quest-suspend-diff-1');
+		const p2 = await connectAndJoinLobby(baseUrl, 'quest-suspend-diff-2', { joinLobbyId: p1.init.lobbyId });
+
+		// Start a run on training_caverns (default quest)
+		const startPromise1 = waitForEvent(p1.socket, 'startGame');
+		const startPromise2 = waitForEvent(p2.socket, 'startGame');
+		p1.socket.emit('playerReady', true);
+		p2.socket.emit('playerReady', true);
+		await startPromise1;
+		await startPromise2;
+
+		const state = testGameState();
+		const p1Id = p1.socket._playerId;
+		const p2Id = p2.socket._playerId;
+
+		// Place telepipe and extract both players to create suspended checkpoint
+		runSimulationInPrimaryLobby((liveState) => {
+			liveState.telepipe = {
+				x: liveState.players[p1Id].x,
+				z: liveState.players[p1Id].z,
+				placedBy: p1Id,
+				placedAt: Date.now() - 3000,
+			};
+		});
+		expect(tryEnterTelepipe(p1Id).ok).toBe(true);
+		runSimulationInPrimaryLobby((s) => {
+			const tp = s.telepipe;
+			s.players[p2Id].x = tp.x;
+			s.players[p2Id].z = tp.z;
+		});
+		expect(tryEnterTelepipe(p2Id).ok).toBe(true);
+
+		expect(testGameState().suspendedCheckpoint).not.toBeNull();
+		expect(testGameState().suspendedCheckpoint.run.questId).toBe('training_caverns');
+
+		// Select a DIFFERENT quest — should succeed and clear checkpoint
+		const questPromise = waitForQuestUpdate(p1.socket, 'crystal_rescue');
+		const runAbandonedPromise = waitForEvent(p1.socket, 'runAbandoned');
+		p1.socket.emit('selectQuest', { questId: 'crystal_rescue', tier: 1 });
+		await runAbandonedPromise; // abandonSuspendedRun emits this
+		const questData = await questPromise;
+
+		expect(questData.selectedQuestId).toBe('crystal_rescue');
+		expect(questData.selectedQuestTier).toBe(1);
+		// Checkpoint should be cleared
+		expect(testGameState().suspendedCheckpoint).toBeNull();
+		// State snapshot should not include suspended run summary
+		expect(testGameState().suspendedCheckpoint).toBeNull();
+
+		p1.socket.disconnect();
+		p2.socket.disconnect();
+	});
 });

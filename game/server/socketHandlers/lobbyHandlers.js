@@ -33,6 +33,7 @@ const {
   healAtMedic,
   stateSnapshot,
   savePlayerData,
+  abandonSuspendedRun,
 } = require('../progression');
 const { listGlobalLobbySummaries } = require('../lobbyBrowser');
 
@@ -143,11 +144,6 @@ function register(socket, ctx) {
 
   socket.on(CLIENT_TO_SERVER.SELECT_QUEST, (data) => {
     withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
-    if (state.suspendedCheckpoint) {
-      socket.emit(SERVER_TO_CLIENT.QUEST_ERROR, { reason: 'suspended_checkpoint' });
-      return;
-    }
-
     const questId = data && typeof data.questId === 'string' ? data.questId : null;
     if (!questId) {
       socket.emit(SERVER_TO_CLIENT.QUEST_ERROR, { reason: 'Missing questId' });
@@ -155,6 +151,18 @@ function register(socket, ctx) {
     }
 
     const tier = normalizeQuestTier(data && data.tier);
+
+    if (state.suspendedCheckpoint) {
+      // Same quest+tier as suspended run → still locked (unchanged behavior).
+      // Different quest+tier → implicitly abandon checkpoint and allow selection.
+      const runQuestId = state.suspendedCheckpoint.run.questId;
+      const runQuestTier = state.suspendedCheckpoint.run.questTier ?? DEFAULT_QUEST_TIER;
+      if (questId === runQuestId && tier === runQuestTier) {
+        socket.emit(SERVER_TO_CLIENT.QUEST_ERROR, { reason: 'suspended_checkpoint' });
+        return;
+      }
+      abandonSuspendedRun(state);
+    }
 
     if (!isValidQuestSelection(questId, tier)) {
       socket.emit(SERVER_TO_CLIENT.QUEST_ERROR, { reason: `Unknown quest or tier: ${questId} tier ${tier}` });
