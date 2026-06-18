@@ -9359,3 +9359,26 @@ None. Round-1's blocking CSS hide was resolved in commit `d795a6e7`; JS wiring f
 ## Remaining gaps
 None blocking.
 
+
+## v0.497 — playability: selecting a new quest is ignored when a suspended run exists — Launch Bay deploy resumes the OLD run instead  (2026-06-18 02:52:30)
+
+debug scenario was added or changed by this ticket.
+
+### Tests / quality — PASS
+`npx vitest run` on the three touched suites: **792 passed**. New, targeted
+coverage:
+- `server.test.js`: `checkAllReady` starts a fresh run (new run id, new questId/tier)
+  when selected quest differs from the suspended checkpoint — exercises the safety net.
+- `integration.test.js`: SELECT_QUEST rejects same quest+tier (checkpoint preserved);
+  accepts a different quest, emits `runAbandoned`, clears the checkpoint, updates
+  selection to the new quest.
+- `main.test.js`: client emits SELECT_QUEST from quest card and level-map node
+  while `suspendedRunSummary` is set; banner clears after the quest change.
+
+## Remaining gaps
+None blocking. Two minor nits captured in `nits.md` (a now-dead
+`THEME.run.questSuspendedLocked` reference in `clearSuspendedRunUi`, and the
+absence of a client handler for the server's `suspended_checkpoint` quest error
+so a same-quest reselect is silently a no-op). Neither affects the acceptance
+criteria.
+

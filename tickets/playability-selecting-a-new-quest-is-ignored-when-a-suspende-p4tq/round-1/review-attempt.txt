@@ -1,0 +1,18 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health — clean.** `metrics.json` reports `"ok": true`, empty `pageerrors`, no `harness_failure`; `console.log` shows only benign noise (vite connect, transient 401/409 during the auth smoke, `initScene`). The game starts and loads. The capture was the deterministic *fallback* smoke (didn't exercise the suspend scenario in-browser), but the specific behavior is covered by green server + client tests.
+
+**Acceptance criteria fully met** via three coordinated changes:
+1. **`lobbyHandlers.js`** — SELECT_QUEST now allows a *different* quest while suspended (calls `abandonSuspendedRun`), still rejects the *same* quest+tier (preserving resume semantics).
+2. **`progression.js checkAllReadyInner`** — resume only fires when checkpoint quest+tier matches the selection; otherwise falls through to a fresh deploy with the new quest's layout. Correct safety net.
+3. **`main.js`** — removed the client-side selection lock so the quest board/level map emit SELECT_QUEST while suspended.
+
+The implicit-abandon path is the real `abandonSuspendedRun` + fresh-deploy flow — no invariants short-circuited, consistent with `design.md`'s "new sortie discards checkpoint" model. No debug scenarios touched.
+
+**Tests:** 792 passed, including targeted new tests for same-quest reject, different-quest accept + checkpoint clear, the fresh-run safety net in `checkAllReady`, and client emission while suspended.
+
+**Two nits** (non-blocking, written to `nits.md`): a now-dead `questSuspendedLocked` reference in `clearSuspendedRunUi`, and no client handler for the server's `suspended_checkpoint` error (same-quest reselect is a silent no-op).
+
+No `gaps.md` written (PASS).

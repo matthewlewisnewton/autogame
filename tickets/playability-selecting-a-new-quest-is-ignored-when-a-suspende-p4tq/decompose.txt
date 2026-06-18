@@ -1,0 +1,19 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 3 sub-tickets:
+
+```
+tickets/playability-selecting-a-new-quest-is-ignored-when-a-suspende-p4tq/subtickets/
+├── 01-server-allow-quest-select-with-suspend/ticket.md
+├── 02-server-checkAllReady-respect-quest-change/ticket.md
+└── 03-client-unlock-quest-selection/ticket.md
+```
+
+**Decomposition rationale:**
+
+1. **01 — Server `SELECT_QUEST` handler**: The root cause is that `lobbyHandlers.js` rejects quest selection when `suspendedCheckpoint` exists. This sub-ticket allows selecting a *different* quest to implicitly abandon the suspended run (clears checkpoint, applies new quest).
+
+2. **02 — Server `checkAllReadyInner` guard**: Even if the checkpoint is cleared, the ready-up path at `progression.js:3949` is a blind `if (suspendedCheckpoint) { restore; return; }`. This adds a quest-match check so a stale checkpoint can't override a fresh deploy.
+
+3. **03 — Client quest lock removal**: The client blocks quest selection when `suspendedRunSummary` is set (`main.js` lines ~1806, ~1844). After sub-ticket 01, the server accepts changes, so the client needs to stop blocking and allow the emit.
+
+All 3 are `code` verification — they concern logic, handlers, and state, not visuals.

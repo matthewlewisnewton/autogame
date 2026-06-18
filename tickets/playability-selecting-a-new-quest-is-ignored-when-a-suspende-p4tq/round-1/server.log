@@ -1,0 +1,14 @@
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/playability-selecting-a-new-quest-is-ignored-when-a-suspende-p4tq/game/data
+[users] Loaded 3 user record(s) from storage provider
+Server listening on port 3004
+Player connected: socket=xTRrNFztP3Re8rsBAAAD, playerId=3d60ab92-e28d-4e00-a9cf-a798fbe43009
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=m0Iv_06gIv1E531vAAAH, playerId=3595f3db-9faf-451c-8b73-0ed246efca61
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=51420dc3-42e3-44f3-9b18-83d63f978f2a value=11
+Player disconnected: xTRrNFztP3Re8rsBAAAD
+Player disconnected: m0Iv_06gIv1E531vAAAH
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined
