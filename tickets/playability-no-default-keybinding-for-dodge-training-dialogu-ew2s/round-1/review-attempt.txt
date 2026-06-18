@@ -1,0 +1,22 @@
+## Review complete
+
+**VERDICT: PASS**
+
+Wrote the full assessment to `tickets/playability-no-default-keybinding-for-dodge-training-dialogu-ew2s/round-1/review.md`.
+
+### Runtime
+- `metrics.json`: `ok: true`, empty `pageerrors`
+- `console.log`: no fatal/page errors (only benign auth/socket noise)
+- Live capture shows dodge working on Initiate Vault (`training_caverns`): HUD **Dodge Roll / SPACE**, cooldown after dodge, player movement
+
+### Acceptance criteria
+Both sub-ticket scopes are met:
+1. **Default binding** — Space wired through `onDodge` → `useKeyItem({ keyItemId: 'dodge_roll' })` with `canUseGameActions` and card-commitment guards
+2. **Settings rebind** — `#dodge-key-input` row, server schema persistence, HUD/docs updated
+
+700/700 vitest tests passed.
+
+### Files written
+- `round-1/review.md` — full per-criterion review
+- `round-1/nits.md` — one non-blocking follow-up (Space not reserved when remapping key-item, possible binding conflict)
+- No `gaps.md` (PASS only)

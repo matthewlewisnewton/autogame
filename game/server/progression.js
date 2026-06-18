@@ -2653,6 +2653,13 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
     enemy.hp = Math.round(enemy.hp * factor);
     enemy.maxHp = Math.round(enemy.maxHp * factor);
   }
+  if (Number.isFinite(opts.hp) && opts.hp > 0) {
+    enemy.hp = opts.hp;
+    enemy.maxHp = opts.hp;
+  }
+  if (Number.isFinite(opts.attackDamage) && opts.attackDamage > 0) {
+    enemy.attackDamage = opts.attackDamage;
+  }
   _gameState.enemies.push(enemy);
   return enemy;
 }
