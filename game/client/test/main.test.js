@@ -2750,6 +2750,45 @@ describe('cardError handler — server hand rejection', () => {
 	});
 });
 
+describe('deckError handler — hidden deck editor', () => {
+	beforeEach(() => {
+		const requiredIds = [
+			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-browser', 'lobby-player-list',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+			'deck-editor',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+		document.getElementById('deck-editor').classList.add('hidden');
+	});
+
+	it('shows a toast when deck validation fails and the deck editor is hidden', async () => {
+		await import('../main.js');
+
+		const reason = 'Deck must have at least 4 cards';
+		window.__triggerSocketEvent('deckError', { reason });
+
+		const toast = [...document.body.querySelectorAll('div')].find(
+			(el) => el.textContent.includes('Deck too small') && el.textContent.includes('4'),
+		);
+		expect(toast).toBeDefined();
+		expect(document.getElementById('deck-error').textContent).toBe(reason);
+	});
+});
+
 // ── createEnemyMesh ──
 
 describe('createEnemyMesh()', () => {

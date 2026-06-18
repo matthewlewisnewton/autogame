@@ -3088,9 +3088,25 @@ if (offerTradeBtn) {
 	});
 }
 
+function formatDeckErrorToast(message) {
+	const minCardsMatch = /^Deck must have at least (\d+) cards$/.exec(message);
+	if (minCardsMatch) {
+		return `Deck too small — open the Deck booth (need ${minCardsMatch[1]}+ cards)`;
+	}
+	return message;
+}
+
 function showDeckError(message) {
 	deckErrorEl.textContent = message;
 	deckErrorEl.style.display = 'block';
+	const editorEl = document.getElementById('deck-editor');
+	if (!editorEl || editorEl.classList.contains('hidden')) {
+		showTransientToast(formatDeckErrorToast(message), {
+			durationMs: 3000,
+			background: '#dc2626',
+			color: '#fff',
+		});
+	}
 }
 
 function showShopError(message) {

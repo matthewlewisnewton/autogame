@@ -1755,6 +1755,31 @@ function setupPostDeathBrokeLobbyDebug({ lobby, state, player, socket, name }) {
   return { ok: true, scenario: name, hp: player.hp, currency: player.currency };
 }
 
+function setupLaunchBayInvalidDeckDebug({ lobby, state, player, socket, name }) {
+  // Hub lobby with selectedDeck below the 4-card minimum so Launch Bay ready-up
+  // rejects with DECK_ERROR while the deck editor is closed. Reachable normally
+  // by removing cards in the Deck booth until below the minimum.
+  setPhase(lobby, PHASES.LOBBY);
+  delete state.run;
+  player.ready = false;
+  normalizePlayerInventory(player);
+  if (Array.isArray(player.selectedDeck) && player.selectedDeck.length > 0) {
+    player.selectedDeck = player.selectedDeck.slice(0, 1);
+  } else if (player.inventory.length > 0) {
+    player.selectedDeck = [player.inventory[0].instanceId];
+  } else {
+    player.selectedDeck = [];
+  }
+  player.ownedCards = inventoryToOwnedCards(player.inventory);
+  socket.emit(SERVER_TO_CLIENT.DECK_UPDATE, {
+    selectedDeck: player.selectedDeck,
+    inventory: player.inventory,
+    ownedCards: player.ownedCards,
+  });
+  io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+  return { ok: true, scenario: name, deckSize: player.selectedDeck.length };
+}
+
 function setupHatShopCurrencyDebug({ lobby, state, player, socket, name }) {
   // Stay in the lobby with enough currency for a paid booth appearance change
         // (at least APPEARANCE_CHANGE_COST) and to unlock any catalog hat without
@@ -4973,6 +4998,7 @@ const DEBUG_SCENARIO_REGISTRY = {
   'fireball-hand-ready': (ctx) => setupFireballHandReadyDebug(ctx),
   'lobby-partial-vitals': (ctx) => setupLobbyPartialVitalsDebug(ctx),
   'hub-med-booth-ready': (ctx) => setupHubMedBoothReadyDebug(ctx),
+  'launch-bay-invalid-deck': (ctx) => setupLaunchBayInvalidDeckDebug(ctx),
   'post-death-broke-lobby': (ctx) => setupPostDeathBrokeLobbyDebug(ctx),
   'hat-shop-currency': (ctx) => setupHatShopCurrencyDebug(ctx),
   'quest-tier-2-unlocked': (ctx) => setupQuestTier2UnlockedDebug(ctx),

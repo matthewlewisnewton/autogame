@@ -558,6 +558,7 @@ const DEBUG_SCENARIOS = new Set([
   'harvesting-scythe-combat',
   'lobby-partial-vitals',
   'hub-med-booth-ready',
+  'launch-bay-invalid-deck',
   'post-death-broke-lobby',
   'custom-avatar-demo',
   'avatar-proportions-demo',
