@@ -3853,6 +3853,36 @@ describe('run state', () => {
 			expect(gameState.run.status).toBe('playing');
 			expect(isPlayerActive(gameState.players.p2)).toBe(true);
 		});
+
+		it('checkAllReady starts fresh run when selected quest differs from suspended checkpoint', () => {
+			const originalRunId = gameState.run.id;
+			expect(gameState.run.questId).toBe(DEFAULT_QUEST_ID);
+
+			// Both players extract via telepipe to create suspended checkpoint
+			tryEnterTelepipe('p1');
+			gameState.players.p2.x = 5;
+			gameState.players.p2.z = 5;
+			tryEnterTelepipe('p2');
+
+			expect(gameState.suspendedCheckpoint).not.toBeNull();
+			expect(gameState.suspendedCheckpoint.run.questId).toBe(DEFAULT_QUEST_ID);
+
+			// Change selected quest to a different quest
+			gameState.selectedQuestId = 'crystal_rescue';
+			gameState.selectedQuestTier = 1;
+
+			// Both players ready up
+			gameState.players.p1.ready = true;
+			gameState.players.p2.ready = true;
+			checkAllReady();
+
+			// Should start a FRESH run for the newly selected quest
+			expect(gameState.gamePhase).toBe('playing');
+			expect(gameState.run.questId).toBe('crystal_rescue');
+			expect(gameState.run.questTier).toBe(1);
+			expect(gameState.run.id).not.toBe(originalRunId);
+			expect(gameState.suspendedCheckpoint).not.toBeNull();
+		});
 	});
 
 	describe('card charge persistence — telepipe resume vs new sortie', () => {

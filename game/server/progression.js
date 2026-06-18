@@ -3946,9 +3946,16 @@ function checkAllReadyInner() {
     if (!isLobbyPhase(_gameState)) return;
 
     try {
-      if (_gameState.suspendedCheckpoint) {
-        restoreCardCheckpoint();
-        return;
+      const cp = _gameState.suspendedCheckpoint;
+      if (cp && cp.run) {
+        const cpQuestId = cp.run.questId;
+        const cpQuestTier = cp.run.questTier ?? DEFAULT_QUEST_TIER;
+        if (cpQuestId === questId && cpQuestTier === selectedTier) {
+          restoreCardCheckpoint();
+          return;
+        }
+        // Selected quest+tier differs from checkpoint — fall through to fresh deploy
+        // (checkpoint should already be cleared by sub-ticket 01, this is a safety net)
       }
 
       setGamePhase(_gameState, PHASES.PLAYING);
